@@ -26,11 +26,19 @@
 		"solo": "Seul",
 		"people": "{count, plural, one {# personne} other {# personnes}}",
 		"spent": "dépensé",
-		"budgetUsed": "Budget utilisé"
+		"budgetUsed": "Budget utilisé",
+		"yourShare": "votre part",
+		"left": "reste <amount></amount>",
+		"over": "<amount></amount> de dépassement",
+		"justYou": "Vous seul"
 	},
 	"account": {
 		"updated": "Mis à jour le {date}",
-		"change": "{change} ce mois-ci"
+		"change": "{change} ce mois-ci",
+		"closed": "Fermé le {date}. Historique conservé.",
+		"noRate": "Pas de taux {currency}. Exclu du patrimoine.",
+		"apr": "TAEG {apr}",
+		"valuedAt": "Évalué au {type}"
 	},
 	"envelope": {
 		"spent": "Dépensé sur le prévu"
@@ -43,7 +51,11 @@
 		"weekly": "Hebdomadaire",
 		"monthly": "Mensuel",
 		"quarterly": "Trimestriel",
-		"yearly": "Annuel"
+		"yearly": "Annuel",
+		"biweekly": "Toutes les 2 semaines",
+		"paused": "En pause",
+		"autoPayOn": "Paiement auto activé",
+		"autoPayOff": "Paiement auto désactivé"
 	},
 	"table": {
 		"selectAll": "Tout sélectionner",
@@ -57,6 +69,30 @@
 		"actions": "Actions",
 		"yourSpending": "Tes dépenses",
 		"count": "{count, plural, one {# dépense} other {# dépenses}}",
-		"withoutRate": "{count, plural, one {# sans taux} other {# sans taux}}"
+		"withoutRate": "{count, plural, one {# sans taux} other {# sans taux}}",
+		"selection": "Sélection",
+		"selected": "{count, plural, one {# sélectionné} other {# sélectionnés}}",
+		"clear": "Effacer",
+		"total": "Total",
+		"yourShare": "Votre part",
+		"paidBy": "Payé par",
+		"split": "Partage",
+		"between": "Entre vous",
+		"you": "Vous",
+		"waitsForYou": "Vous attend",
+		"none": "Aucune",
+		"rejected": "Refusé",
+		"noChange": "Aucun changement",
+		"wasSettled": "était <amount></amount> · réglé",
+		"paidYou": "vous a payé",
+		"youPaid": "vous avez payé"
+	},
+	"person": {
+		"new": "{count} nouveaux",
+		"needYou": "{count} à traiter",
+		"currencies": "{count} devises",
+		"youPaid": "vous avez payé",
+		"paidYou": "vous a payé",
+		"settleUp": "Régler"
 	}
 }

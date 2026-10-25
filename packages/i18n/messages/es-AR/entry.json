@@ -73,7 +73,8 @@
 			"rate": "Ingresá una cotización para {currency}",
 			"splitAmount": "La división no suma el monto",
 			"splitPct": "Los porcentajes no suman 100%",
-			"save": "No se pudo guardar. Revisá los campos y probá de nuevo."
+			"save": "No se pudo guardar. Revisá los campos y probá de nuevo.",
+			"projectMembers": "No se pudieron cargar las personas del proyecto. Probá de nuevo."
 		},
 		"toast": {
 			"added": "Agregaste {title}",
@@ -90,7 +91,9 @@
 			"title": "¿Eliminar {title}?",
 			"body": "Cambia los saldos de otras personas.",
 			"confirm": "Eliminar gasto"
-		}
+		},
+		"projectAria": "Proyecto, {project}",
+		"addShort": "Agregar"
 	},
 	"rate": {
 		"default": "Tu cotización predeterminada para {currency}",
@@ -112,18 +115,16 @@
 			"crypto": "Cripto",
 			"market": "Mercado",
 			"custom": "Personalizada"
-		}
+		},
+		"label": "Cotización",
+		"youSpent": "Gastaste"
 	},
 	"changes": {
-		"title": "Qué cambia",
 		"titleEdit": "Qué cambia con esta edición",
 		"empty": "Escribí un monto y elegí una categoría para ver qué cambia.",
 		"emptyAmount": "Escribí un monto para ver qué cambia.",
 		"loading": "Revisando qué cambia",
 		"cannot": "Todavía no se puede guardar: {reason}",
-		"nothingElse": "Nada más cambia: {list} quedan como están.",
-		"nothingElseOne": "Nada más cambia: {item} queda como está.",
-		"unavailable": "No se pudo revisar {list}.",
 		"figures": {
 			"spent": "Tus gastos",
 			"owed_owedToYou": "Te deben",
@@ -149,8 +150,7 @@
 			"budget_leftToSpend": "lo disponible para gastar",
 			"project_total": "el total del proyecto",
 			"envelope_left": "el sobre"
-		},
-		"noneChange": "Sin cambios en {list}."
+		}
 	},
 	"income": {
 		"title": "Agregar ingreso",
@@ -183,7 +183,6 @@
 		"save": "Agregar ingreso",
 		"error": {
 			"amount": "Ingresá un monto mayor a cero",
-			"rate": "Hoy no hay cotización para {currency}",
 			"category": "Elegí qué es",
 			"source": "¿Quién te pagó?"
 		},
@@ -193,7 +192,9 @@
 			"kept": "Agregaste {amount} a {account}. Queda en Patrimonio",
 			"planned": "Agregaste {amount}. {count, plural, one {# sobre con fondos} other {# sobres con fondos}}"
 		},
-		"someoneElse": "Otra persona"
+		"someoneElse": "Otra persona",
+		"received": "Recibiste",
+		"countsAs": "Equivale a"
 	},
 	"transfer": {
 		"titleTransfer": "Transferencia",

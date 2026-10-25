@@ -83,6 +83,7 @@ export function SplitSection(p: {
 						{t("paidBy")}
 					</span>
 					<Select
+						kit
 						onValueChange={(key) => {
 							const hit = payers.find((x) => splitKey(x) === key);
 							if (hit)
@@ -119,7 +120,11 @@ export function SplitSection(p: {
 			</div>
 			{d.split === "custom" ? (
 				<div className="flex flex-wrap items-center justify-between gap-2">
-					<Select onValueChange={(v) => p.x.setBy(v as CustomBy)} value={d.by}>
+					<Select
+						kit
+						onValueChange={(v) => p.x.setBy(v as CustomBy)}
+						value={d.by}
+					>
 						<SelectTrigger aria-label={t("by.label")} className="w-40">
 							<SelectValue />
 						</SelectTrigger>

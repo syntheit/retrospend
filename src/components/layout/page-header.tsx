@@ -6,6 +6,12 @@ import { cn } from "~/lib/cn";
  * menu. Optionally the faces of the people involved and one sub line, and
  * the PageTabs of sibling pages, which belong to the header. No tagline, no
  * helper paragraph. The Toolbar comes right after it, with nothing between.
+ *
+ * From md up the sub line sits under the title; on phones it runs under the
+ * whole header row, full width (kit `.wsub`), so a back button and the
+ * actions never squeeze it into a wrap. One element, placed by the grid.
+ * Each lead part carries its own space, so a part hidden on this width
+ * (a phone-only BackButton) leaves none.
  */
 export function PageHeader({
 	title,
@@ -18,7 +24,7 @@ export function PageHeader({
 	className,
 }: {
 	title: ReactNode;
-	/** A back link or a cover thumb before the title. */
+	/** A BackButton or a cover thumb before the title. */
 	lead?: ReactNode;
 	/** A FaceStack of the people involved. */
 	faces?: ReactNode;
@@ -32,21 +38,26 @@ export function PageHeader({
 	tabs?: ReactNode;
 	className?: string;
 }) {
+	const line = Boolean(faces || sub);
 	return (
 		<header className={cn("mb-4", className)} data-slot="page-header">
-			<div className="flex min-h-10 items-center gap-3">
-				{lead}
-				<div className="min-w-0 flex-1">
-					<h1 className="truncate text-fg text-title">{title}</h1>
-					{(faces || sub) && (
-						<div className="flex flex-wrap items-center gap-2 text-fg-3 text-small">
-							{faces}
-							{sub && <span>{sub}</span>}
-						</div>
-					)}
-				</div>
+			<div className="grid min-h-10 grid-cols-[auto_minmax(0,1fr)_auto] items-center">
+				{lead ? (
+					<div className="col-start-1 row-start-1 flex items-center *:mr-3 md:row-span-2">
+						{lead}
+					</div>
+				) : null}
+				<h1 className="text-fg text-title col-start-2 row-start-1 truncate">
+					{title}
+				</h1>
+				{line && (
+					<div className="text-fg-3 text-small col-span-3 col-start-1 row-start-2 flex flex-wrap items-center gap-2 max-md:mt-1 md:col-span-1 md:col-start-2">
+						{faces}
+						{sub && <span>{sub}</span>}
+					</div>
+				)}
 				{(primary || overflow) && (
-					<div className="flex shrink-0 items-center gap-2">
+					<div className="col-start-3 row-start-1 ml-3 flex shrink-0 items-center gap-2 md:row-span-2">
 						{primary}
 						{overflow}
 					</div>

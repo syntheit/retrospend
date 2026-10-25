@@ -1,21 +1,19 @@
 /**
  * Use my plan (owner N72, INCOME.md): confirming money in assigns it by the
- * plan in the same action. The plan is the envelope budget's own (2B P2):
- * Fill from targets proposes the lines (`fillFromTargetsIn`, what
- * `envelope.fillFromTargets` shows) and `assign` writes them as one batch,
- * inside the confirm's transaction, so the preview lists every line and an
- * undo of the confirm takes the batch back with it.
+ * plan in the same action. The plan is the envelope budget's own
+ * (envelope/use-my-plan.ts): Fill from targets proposes the lines, the rest
+ * goes where the person chose (Leave it by default, Save it, Next month;
+ * D-owner-2026-10-22e), and one batch writes them inside the confirm's
+ * transaction, so the preview lists every line and an undo of the confirm
+ * takes the batch back with it.
  */
 import { randomUUID } from "node:crypto";
-import type { FillFromTargetsOutput } from "~/lib/schemas/envelope";
+import type { FillFromTargetsOutput, RestChoice } from "~/lib/schemas/envelope";
 import type { Money } from "~/server/figures/registry";
 import type { Prisma } from "~prisma";
-import {
-	fillFromTargetsIn,
-	forgetMonthViews,
-	monthViewIn,
-} from "../envelope/month-read";
-import { assign, undo } from "../envelope/movement.service";
+import { forgetMonthViews, monthViewIn } from "../envelope/month-read";
+import { undo } from "../envelope/movement.service";
+import { applyPlan } from "../envelope/use-my-plan";
 
 type Tx = Prisma.TransactionClient;
 
@@ -24,6 +22,8 @@ export interface PlanRequest {
 	readonly incomeExpenseId: string;
 	/** The income's booked value: what the plan may assign. Null when kept in Wealth or no rate values it. */
 	readonly amount: Money | null;
+	/** Where the rest goes after the targets; Leave it when omitted. */
+	readonly rest?: RestChoice;
 }
 
 export interface PlanResult {
@@ -40,6 +40,8 @@ export interface PlanResult {
 	readonly lines: FillFromTargetsOutput["lines"];
 	/** What stays Not planned yet. */
 	readonly rest: Money | null;
+	/** Where the rest went (LEAVE when it stayed or there was none). */
+	readonly restChoice: RestChoice;
 }
 
 const notApplied = (reason: PlanResult["reason"]): PlanResult => ({
@@ -48,6 +50,7 @@ const notApplied = (reason: PlanResult["reason"]): PlanResult => ({
 	batchId: null,
 	lines: [],
 	rest: null,
+	restChoice: "LEAVE",
 });
 
 export const PLAN_NOT_REQUESTED = notApplied("not_requested");
@@ -67,37 +70,21 @@ export async function applyPlanFor(
 	if (request.amount.currency !== view.dto.book.currency) {
 		return notApplied("other_currency");
 	}
-	const proposal = await fillFromTargetsIn(
-		tx,
-		request.userId,
-		now,
-		undefined,
-		request.amount.minor,
-	);
-	const lines = proposal.lines.filter((l) => l.amount.minor > 0);
-	if (lines.length === 0) return notApplied("nothing_to_assign");
-	const batchId = randomUUID();
-	await assign(
-		tx,
-		request.userId,
-		{
-			batchId,
-			month: proposal.month,
-			mode: "add",
-			items: lines.map((l) => ({
-				id: randomUUID(),
-				envelopeId: l.envelopeId,
-				amountMinor: l.amount.minor,
-			})),
-		},
-		now,
-	);
+	const plan = await applyPlan(tx, request.userId, now, {
+		amount: request.amount.minor,
+		rest: request.rest ?? "LEAVE",
+		// Income rules take their part of this money in first (SPEC §5.4).
+		sourceExpenseId: request.incomeExpenseId,
+	});
+	if (!plan) return notApplied("no_envelope_budget");
+	if (!plan.batchId) return notApplied("nothing_to_assign");
 	return {
 		applied: true,
 		reason: null,
-		batchId,
-		lines,
-		rest: proposal.rest,
+		batchId: plan.batchId,
+		lines: plan.lines,
+		rest: plan.rest,
+		restChoice: plan.restChoice,
 	};
 }
 

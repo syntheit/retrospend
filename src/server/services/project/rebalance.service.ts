@@ -68,7 +68,7 @@ async function memberKeys(
  */
 export async function rebalanceableExpenses(
 	db: PrismaClient,
-	{ userId }: ProjectActor,
+	{ userId, timeZone }: ProjectActor,
 	projectId: string,
 	newcomer: MemberRef,
 ) {
@@ -79,7 +79,7 @@ export async function rebalanceableExpenses(
 			m.participantId === newcomer.participantId,
 	);
 	const joined = { joinedOn: row?.joinedOn ? toIsoDate(row.joinedOn) : null };
-	const zone = await userTimeZone(userId);
+	const zone = await userTimeZone(db, userId, timeZone);
 	const { canonicalKey, newcomerKey, others } = await memberKeys(
 		db,
 		newcomer,

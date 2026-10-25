@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 /**
  * One action registry per entity (R8). An entity file lists what can be done
@@ -38,9 +39,25 @@ export type ActionDef<T extends ActionTarget> = {
 	when?: (target: T) => boolean;
 	/** Separators go between groups. */
 	group: number;
+	/**
+	 * The action picks one of several choices (Change category, Move to
+	 * project): the menu opens them as a submenu with their identity lead,
+	 * and the handler gets the chosen id. Shown only when the page passes
+	 * choices for it. Never a row letter or a swipe (there is no choice).
+	 */
+	pick?: true;
 };
 
-export type ActionHandler<T> = (target: T) => unknown;
+/** One choice of a pick action: its id, its name and its identity lead. */
+export type ActionChoice = {
+	id: string;
+	label: string;
+	/** A bare category glyph, a face, a project cover (R25). */
+	lead?: ReactNode;
+};
+export type ActionChoices = Partial<Record<string, readonly ActionChoice[]>>;
+
+export type ActionHandler<T> = (target: T, choice?: string) => unknown;
 export type ActionHandlers<T> = Partial<Record<string, ActionHandler<T>>>;
 
 export type MenuEntry<T extends ActionTarget> =
@@ -51,19 +68,29 @@ function available<T extends ActionTarget>(
 	defs: readonly ActionDef<T>[],
 	target: T,
 	handlers: ActionHandlers<T>,
+	choices?: ActionChoices,
 ) {
-	return defs.filter((a) => handlers[a.id] && (a.when ? a.when(target) : true));
+	return defs.filter(
+		(a) =>
+			handlers[a.id] &&
+			(a.when ? a.when(target) : true) &&
+			(!a.pick || (choices?.[a.id]?.length ?? 0) > 0),
+	);
 }
+
+/** Actions that run at once on a letter or a swipe: never a pick. */
+const direct = <T extends ActionTarget>(a: ActionDef<T>) => !a.pick;
 
 /** The menu for one target: available actions, a separator between groups. */
 export function menuEntries<T extends ActionTarget>(
 	defs: readonly ActionDef<T>[],
 	target: T,
 	handlers: ActionHandlers<T>,
+	choices?: ActionChoices,
 ): MenuEntry<T>[] {
 	const out: MenuEntry<T>[] = [];
 	let group: number | null = null;
-	for (const action of available(defs, target, handlers)) {
+	for (const action of available(defs, target, handlers, choices)) {
 		if (group !== null && action.group !== group)
 			out.push({ kind: "separator", key: `sep-${action.group}` });
 		group = action.group;
@@ -88,7 +115,7 @@ export function swipeEntries<T extends ActionTarget>(
 	side: SwipeSide,
 ): ActionDef<T>[] {
 	return available(defs, target, handlers).filter(
-		(a) => swipeSide(a, target) === side,
+		(a) => direct(a) && swipeSide(a, target) === side,
 	);
 }
 
@@ -122,7 +149,9 @@ export function actionForKey<T extends ActionTarget>(
 	if (e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1) return null;
 	const letter = e.key.toUpperCase();
 	return (
-		available(defs, target, handlers).find((a) => a.kbd === letter) ?? null
+		available(defs, target, handlers).find(
+			(a) => direct(a) && a.kbd === letter,
+		) ?? null
 	);
 }
 
@@ -144,6 +173,10 @@ export function registryProblems<T extends ActionTarget>(
 		}
 		if (a.danger && a.swipe === "lead")
 			problems.push(`${entity}.${a.id}: destructive on the lead swipe`);
+		if (a.pick && (a.kbd || a.swipe || a.danger))
+			problems.push(
+				`${entity}.${a.id}: a pick has no letter, swipe or confirm`,
+			);
 	}
 	return problems;
 }

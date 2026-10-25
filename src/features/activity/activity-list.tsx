@@ -20,6 +20,7 @@ import { SkeletonRows } from "~/components/ui/skeleton";
 import { useIsMobile } from "~/hooks/use-mobile";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
 import { dayFigure, opens, toExpenseTarget, toTransactionVM } from "./to-vm";
+import { useBulkActions } from "./use-bulk-actions";
 
 type Props = {
 	rows: ActivityRowDTO[];
@@ -129,6 +130,8 @@ function PhoneList({ entries, props }: { entries: Entry[]; props: Props }) {
 export function ActivityList(props: Props) {
 	const phone = useIsMobile();
 	const entries = useEntries(props.rows, props);
+	const bulk = useBulkActions(props.rows);
+	const { day } = useRowDates(props.today);
 	const byId = useMemo(
 		() => new Map(entries.map((e) => [e.row.id, e])),
 		[entries],
@@ -171,17 +174,29 @@ export function ActivityList(props: Props) {
 		if (!entries.length) return props.empty;
 		return <PhoneList entries={entries} props={props} />;
 	}
+	// Layout A (activity.html): day rows with your spending that day take the
+	// Date column's place; a selection of your own expenses shows the bulk bar.
+	const total = (date: string) => {
+		const value = props.dayTotals?.[date];
+		return value ? <Money figure={dayFigure(date)} value={value} /> : null;
+	};
 	return (
-		<TransactionTable
-			actions={actions}
-			empty={props.empty}
-			onOpen={onOpen}
-			rowArea={rowArea}
-			rows={entries.map((e) => e.vm)}
-			selectable={false}
-			today={props.today}
-			total={props.total}
-		/>
+		<>
+			<TransactionTable
+				actions={actions}
+				bulk={bulk.bulk}
+				canSelect={bulk.canSelect}
+				empty={props.empty}
+				groups={{ by: "day", label: day, total }}
+				onOpen={onOpen}
+				rowArea={rowArea}
+				rows={entries.map((e) => e.vm)}
+				selection={bulk.selection}
+				today={props.today}
+				total={props.total}
+			/>
+			{bulk.confirm}
+		</>
 	);
 }
 

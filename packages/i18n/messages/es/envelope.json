@@ -3,11 +3,22 @@
 		"bills": "Cuentas",
 		"spending": "Gastos",
 		"everyday": "Gastos",
-		"savings": "Ahorros"
+		"limits": "Límites",
+		"savings": "Ahorros",
+		"needs": "Necesidades",
+		"wants": "Deseos",
+		"debts": "Deudas"
 	},
 	"envelopes": {
 		"spending": "Gastos",
 		"savings": "Ahorros",
-		"everythingElse": "Todo lo demás"
+		"everythingElse": "Todo lo demás",
+		"needs": "Necesidades",
+		"wants": "Deseos",
+		"extraDebt": "Pago extra de deudas"
+	},
+	"rules": {
+		"saveFirst": "Ahorro primero",
+		"rest": "El resto"
 	}
 }

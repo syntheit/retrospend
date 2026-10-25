@@ -65,7 +65,6 @@
 	"money": {
 		"amount": "Montant",
 		"currency": "Devise, {code}",
-		"rate": "Taux de change : {rate}",
 		"error": {
 			"empty": "Saisissez un montant",
 			"invalidCharacter": "Chiffres et + - × ÷ uniquement",
@@ -77,6 +76,22 @@
 			"outOfRange": "Montant trop élevé",
 			"zero": "Saisissez un montant supérieur à zéro",
 			"negative": "Le montant doit être supérieur à zéro"
+		},
+		"operators": "Touches de calcul",
+		"operator": {
+			"plus": "Plus",
+			"minus": "Moins",
+			"times": "Fois",
+			"divide": "Divisé par"
 		}
+	},
+	"project": {
+		"label": "Projets",
+		"find": "Trouver un projet",
+		"empty": "Aucun résultat",
+		"selected": "Sélectionné",
+		"none": "Aucun",
+		"solo": "Solo",
+		"people": "{count, plural, one {# personne} other {# personnes}}"
 	}
 }

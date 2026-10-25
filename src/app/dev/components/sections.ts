@@ -242,8 +242,13 @@ export const SECTIONS: GallerySection[] = [
 	{
 		id: "catpick",
 		nav: "Pickers",
-		title: "CategoryPicker, PersonPicker, DatePicker",
-		components: ["CategoryPicker", "PersonPicker", "DatePicker"],
+		title: "CategoryPicker, PersonPicker, ProjectPicker, DatePicker",
+		components: [
+			"CategoryPicker",
+			"PersonPicker",
+			"ProjectPicker",
+			"DatePicker",
+		],
 		use: "choosing a category (recents first), people (with their status) and a date (presets first).",
 		never: "a fourth category picker.",
 		replaces: "4 category pickers, 4 date pickers.",
@@ -306,9 +311,20 @@ export const CAP = {
 	listGroup: "List group",
 	glanceA: "A. Glance line and rows (recommended)",
 	glanceB: "B. Compact 3-number strip",
+	glanceNoRate:
+		"Missing rate: no spent figure, a row that says No rate yet, the budget line names the currency; faces on You owe",
 	itemDefault: "Item default",
 	itemOverdue: "Overdue (amber icon, word in the sentence)",
+	itemSetup: "Setup prompt with a context line (new user)",
+	itemRejected: "Rejected split",
+	itemBudget: "Budget prompt (missing rate, named)",
 	allClear: "Empty, nothing needs you",
+	itemFace:
+		"People: the face of the person asking, Not received as a quiet second action",
+	itemMenu:
+		"Home: the three-dot menu (Open, Later) from the needs-you actions; long press opens it too",
+	glanceTrack:
+		"No budget: the pace in words against last month, Money in, and the dollar today",
 	table:
 		"Desktop table. Hover a row, select with the checkbox or a click (shift-click for a range), right-click or use the three-dot button.",
 	phoneRows:

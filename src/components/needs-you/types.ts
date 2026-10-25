@@ -5,12 +5,30 @@
  * server computed (R9).
  */
 import type { MoneyValue } from "~/components/money/format";
+import type { FacePerson } from "~/components/ui/avatar-face";
 
 type Base = {
 	id: string;
 	href?: string;
 	/** Figures registry key of the item's amount, for the audit. */
 	figure?: string;
+	/** One fact under the sentence ("Was due Oct 8", "Your share BRL 155.00"). */
+	context?: string;
+	/**
+	 * The primary action id the server sent (`actions[0].id`), when it has a
+	 * word in `needsYou.action`; otherwise the kind's own action is shown.
+	 */
+	action?: string;
+	/**
+	 * The person asking (a payment to confirm, a split to review): the item
+	 * leads with their face instead of the kind's icon (People mockup).
+	 */
+	face?: FacePerson;
+	/**
+	 * A second action id with a word in `needsYou.action` ("notReceived"),
+	 * offered as a quiet link after the context line.
+	 */
+	secondary?: string;
 };
 
 export type NeedsYouItemVM =
@@ -32,6 +50,33 @@ export type NeedsYouItemVM =
 	/** A recurring expense past its date. */
 	| (Base & { kind: "overdue"; title: string; amount: MoneyValue })
 	/** An envelope that spent more than it had. */
-	| (Base & { kind: "overspent"; envelope: string; amount: MoneyValue });
+	| (Base & { kind: "overspent"; envelope: string; amount: MoneyValue })
+	/** Several envelopes over; the amount is what they are over in total. */
+	| (Base & { kind: "overspentMany"; count: number; amount: MoneyValue })
+	/** Someone rejected a split you made; the amount is their share. */
+	| (Base & {
+			kind: "rejected";
+			person: string;
+			title: string;
+			amount: MoneyValue;
+	  })
+	/** More is planned than there is. */
+	| (Base & { kind: "overAssigned"; amount: MoneyValue })
+	/** Bills due soon that are not fully funded; a title when there is one. */
+	| (Base & {
+			kind: "billDue";
+			title: string | null;
+			count: number;
+			amount: MoneyValue;
+	  })
+	/** Currencies without a rate keep totals out, named (R14). */
+	| (Base & { kind: "missingRate"; currencies: string[] })
+	/** The budget's starting money waits for a confirm. */
+	| (Base & { kind: "startingMoney" })
+	/** New-user setup prompts (no amount). */
+	| (Base & { kind: "firstExpense" })
+	| (Base & { kind: "homeCurrency" })
+	| (Base & { kind: "verifyEmail" })
+	| (Base & { kind: "importStatement" });
 
 export type NeedsYouKind = NeedsYouItemVM["kind"];

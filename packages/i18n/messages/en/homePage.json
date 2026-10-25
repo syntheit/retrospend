@@ -1,0 +1,42 @@
+{
+	"title": "Home",
+	"missingRates": "Some totals leave out {currencies}: no rate yet.",
+	"needs": {
+		"title": "Needs you",
+		"showMore": "Show {count} more",
+		"showFewer": "Show fewer",
+		"confirmed": "Confirmed {name}'s payment",
+		"emailSent": "Verification email sent",
+		"failed": "That did not save. Try again.",
+		"context": {
+			"wasDue": "Was due {date}",
+			"paidOn": "Paid on {date}",
+			"yourShare": "Your share, {date}",
+			"dueOn": "Due {date}",
+			"arrived": "{title}, {date}",
+			"firstExpense": "Takes about ten seconds",
+			"homeCurrency": "Every total is shown in it",
+			"importStatement": "CSV or PDF from your bank"
+		}
+	},
+	"recent": {
+		"title": "Recent",
+		"seeAll": "See all",
+		"empty": "No expenses yet",
+		"emptyHint": "Add your first expense and it shows up here.",
+		"add": "Add expense"
+	},
+	"rail": {
+		"label": "At a glance",
+		"people": "People",
+		"allPeople": "All people",
+		"comingUp": "Coming up",
+		"recurring": "Recurring",
+		"nothingDue": "Nothing due in the next 3 weeks"
+	},
+	"unavailable": {
+		"title": "Not available right now",
+		"hint": "This part of Home could not load.",
+		"retry": "Try again"
+	}
+}

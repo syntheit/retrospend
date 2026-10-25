@@ -2,6 +2,8 @@
 
 import { CircleCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
+import type { NeedsYouTarget } from "~/components/actions/needs-you";
+import type { ActionHandlers } from "~/components/actions/types";
 import { Empty } from "~/components/ui/empty-state";
 import { cn } from "~/lib/cn";
 import { NeedsYouItem } from "./needs-you-item";
@@ -15,11 +17,17 @@ import type { NeedsYouItemVM } from "./types";
 export function NeedsYouList({
 	items,
 	onAction,
+	onSecondary,
+	menu,
 	variant = "flat",
 	className,
 }: {
 	items: NeedsYouItemVM[];
 	onAction?: (item: NeedsYouItemVM) => void;
+	/** An item's second action (`secondary`), such as Not received. */
+	onSecondary?: (item: NeedsYouItemVM) => void;
+	/** The ⋯ menu's handlers (open, later), for every item. */
+	menu?: ActionHandlers<NeedsYouTarget>;
 	variant?: "flat" | "group";
 	className?: string;
 }) {
@@ -42,7 +50,9 @@ export function NeedsYouList({
 				<NeedsYouItem
 					item={item}
 					key={item.id}
+					menu={menu}
 					onAction={onAction}
+					onSecondary={onSecondary}
 					variant={variant}
 				/>
 			))}

@@ -26,11 +26,19 @@
 		"solo": "Sozinho",
 		"people": "{count, plural, one {# pessoa} other {# pessoas}}",
 		"spent": "gasto",
-		"budgetUsed": "Orçamento usado"
+		"budgetUsed": "Orçamento usado",
+		"yourShare": "sua parte",
+		"left": "restam <amount></amount>",
+		"over": "<amount></amount> acima",
+		"justYou": "Só você"
 	},
 	"account": {
 		"updated": "Atualizado {date}",
-		"change": "{change} este mês"
+		"change": "{change} este mês",
+		"closed": "Encerrada em {date}. Histórico mantido.",
+		"noRate": "Sem cotação de {currency}. Fora do patrimônio.",
+		"apr": "Juros {apr}",
+		"valuedAt": "Avaliada a {type}"
 	},
 	"envelope": {
 		"spent": "Gasto do planejado"
@@ -43,7 +51,11 @@
 		"weekly": "Semanal",
 		"monthly": "Mensal",
 		"quarterly": "Trimestral",
-		"yearly": "Anual"
+		"yearly": "Anual",
+		"biweekly": "A cada 2 semanas",
+		"paused": "Pausado",
+		"autoPayOn": "Débito automático ligado",
+		"autoPayOff": "Débito automático desligado"
 	},
 	"table": {
 		"selectAll": "Selecionar tudo",
@@ -57,6 +69,30 @@
 		"actions": "Ações",
 		"yourSpending": "Seus gastos",
 		"count": "{count, plural, one {# gasto} other {# gastos}}",
-		"withoutRate": "{count, plural, one {# sem cotação} other {# sem cotação}}"
+		"withoutRate": "{count, plural, one {# sem cotação} other {# sem cotação}}",
+		"selection": "Seleção",
+		"selected": "{count, plural, one {# selecionado} other {# selecionados}}",
+		"clear": "Limpar",
+		"total": "Total",
+		"yourShare": "Sua parte",
+		"paidBy": "Pago por",
+		"split": "Divisão",
+		"between": "Entre vocês",
+		"you": "Você",
+		"waitsForYou": "Aguarda você",
+		"none": "Nenhuma",
+		"rejected": "Recusada",
+		"noChange": "Sem mudança",
+		"wasSettled": "era <amount></amount> · acertado",
+		"paidYou": "pagou a você",
+		"youPaid": "você pagou"
+	},
+	"person": {
+		"new": "{count} novos",
+		"needYou": "{count} precisam de você",
+		"currencies": "{count} moedas",
+		"youPaid": "você pagou",
+		"paidYou": "pagou a você",
+		"settleUp": "Acertar"
 	}
 }

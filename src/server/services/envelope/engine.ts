@@ -10,9 +10,10 @@
  *   Carry(e, k) = max(0, Left(e, k)) under CARRY, 0 under RETURN or SWEEP,
  *                 plus what envelopes sweeping into e leave
  *
- * Months before the viewed one count as closed with today's leftover rules:
- * month close with rule snapshots (MonthClose) arrives in P4. Viewing next
- * month projects the current month's close the same way.
+ * A month that has closed (MonthClose) carries, returns and sweeps by the
+ * leftover rules it closed under (`closedRules`, B7); a month not closed yet
+ * uses today's rules, and viewing next month projects the current month's
+ * close the same way.
  *
  * Invariant (SPEC §5.3, asserted by every scenario):
  *   ToAssign(c) + Σ Left(e, c) + Assigned(c+1) = MoneyIn - Σ outflows - SplitsNet
@@ -34,7 +35,12 @@ export interface EngineEnvelope {
 	categoryIds: readonly string[];
 }
 
-export type MoneyInSource = "INCOME" | "STARTING_BALANCE" | "ADJUSTMENT";
+export type MoneyInSource =
+	| "INCOME"
+	| "STARTING_BALANCE"
+	| "ADJUSTMENT"
+	/** Wealth to To assign (positive) or To assign to Wealth (negative). */
+	| "WEALTH";
 
 /** A row that raises (or, for an OUT adjustment, lowers) To assign. Signed. */
 export interface MoneyInEntry {
@@ -44,7 +50,13 @@ export interface MoneyInEntry {
 	source: MoneyInSource;
 }
 
-export type ActivitySource = "SPENT" | "REFUND" | "SHARE" | "FORGIVEN";
+export type ActivitySource =
+	| "SPENT"
+	| "REFUND"
+	| "SHARE"
+	| "FORGIVEN"
+	/** Out of the envelope to Wealth (negative) or from Wealth into it (positive). */
+	| "WEALTH";
 
 /** A row that moves an envelope's Activity. Signed: spending is negative, refunds positive. */
 export interface ActivityEntry {
@@ -81,8 +93,39 @@ export interface EngineInput {
 	moneyIn: readonly MoneyInEntry[];
 	activity: readonly ActivityEntry[];
 	movements: readonly MovementEntry[];
-	/** Splits replay effects (P3 wires the loader; empty until then). */
+	/** Splits replay effects. */
 	splits: readonly ReplayEffect[];
+	/** Leftover rules each closed month closed under (MonthClose snapshots). */
+	closedRules?: ReadonlyMap<MonthKey, ReadonlyMap<string, ClosedRule>>;
+	/** Category to envelope links each closed month closed with (MonthClose snapshots). */
+	closedLinks?: ReadonlyMap<MonthKey, ReadonlyMap<string, string>>;
+	/**
+	 * Where the pass starts (SPEC §5.13): the state at the end of a closed
+	 * month. Months up to it are not computed; rows dated in them are ignored.
+	 */
+	checkpoint?: EngineCheckpoint | null;
+}
+
+/** Running totals of every month up to and including a checkpoint month. */
+export type RunningTotals = Omit<MonthTotals, "activity">;
+
+export interface EngineCheckpoint {
+	month: MonthKey;
+	/** What each envelope carries into the next month (after its close rule). */
+	carry: ReadonlyMap<string, Minor>;
+	totals: RunningTotals;
+}
+
+export interface ClosedRule {
+	rule: LeftoverRule;
+	sweepToId: string | null;
+}
+
+/** The rule an envelope closes under: Monthly envelopes follow theirs; bills, goals and No target carry. */
+export function ruleAtClose(e: EngineEnvelope): ClosedRule {
+	return e.kind === "MONTHLY"
+		? { rule: e.leftoverRule, sweepToId: e.sweepToId }
+		: { rule: "CARRY", sweepToId: null };
 }
 
 export interface EnvelopeMonth {
@@ -95,6 +138,8 @@ export interface EnvelopeMonth {
 	pending: Minor;
 	/** Σ outflows posted by recurring templates (negative or 0). */
 	recurring: Minor;
+	/** Σ moves to (negative) and from (positive) Wealth: in Activity, never spending. */
+	wealth: Minor;
 }
 
 export interface MonthTotals {
@@ -109,6 +154,8 @@ export interface MonthTotals {
 	fronted: Minor;
 	returnedByPeople: Minor;
 	forgiven: Minor;
+	/** Paid after the start toward debts from before it (owner 2026-10-23). */
+	oldDebtsPaid: Minor;
 }
 
 export interface MonthState {
@@ -128,6 +175,8 @@ export interface ToAssignTerms {
 	fronted: Minor;
 	returnedByPeople: Minor;
 	forgiven: Minor;
+	/** Paid after the start toward debts from before it (owner 2026-10-23). */
+	oldDebtsPaid: Minor;
 	splitsNet: Minor;
 	total: Minor;
 }
@@ -135,11 +184,20 @@ export interface ToAssignTerms {
 export interface BookState {
 	startMonth: MonthKey;
 	currentMonth: MonthKey;
-	/** Oldest first, startMonth to max(through, c + 1). */
+	/** The first month computed: the book start, or the month after the checkpoint. */
+	firstMonth: MonthKey;
+	/** Oldest first, firstMonth to max(through, c + 1). */
 	months: readonly MonthState[];
 	month(key: MonthKey): MonthState;
 	toAssign(key: MonthKey): ToAssignTerms;
-	envelopeOf(entry: Pick<ActivityEntry, "categoryId" | "envelopeId">): string;
+	/** Running totals through month `key` (checkpoint included). */
+	runningTotals(key: MonthKey): RunningTotals;
+	/** With `month`, a closed month routes by the links it closed with. */
+	envelopeOf(
+		entry: Pick<ActivityEntry, "categoryId" | "envelopeId"> & {
+			month?: MonthKey;
+		},
+	): string;
 }
 
 /** A movement or link that names an envelope the book does not have: a loader bug. */
@@ -160,7 +218,28 @@ function emptyTotals(): MonthTotals {
 		fronted: 0,
 		returnedByPeople: 0,
 		forgiven: 0,
+		oldDebtsPaid: 0,
 	};
+}
+
+const RUNNING_KEYS = [
+	"moneyIn",
+	"assigned",
+	"overspent",
+	"returned",
+	"fronted",
+	"returnedByPeople",
+	"forgiven",
+	"oldDebtsPaid",
+] as const satisfies readonly (keyof RunningTotals)[];
+
+export function emptyRunningTotals(): RunningTotals {
+	const { activity: _a, ...rest } = emptyTotals();
+	return rest;
+}
+
+function addRunning(into: RunningTotals, t: RunningTotals) {
+	for (const k of RUNNING_KEYS) into[k] += t[k];
 }
 
 function bucket<T extends { month: MonthKey }>(
@@ -189,14 +268,24 @@ function router(input: EngineInput) {
 		if (!ids.has(id)) throw new EngineInputError(`unknown envelope ${id}`);
 		return id;
 	};
+	// A closed month routes by the links it closed with (B7); open months by today's.
+	const linksAt = (month: MonthKey | undefined) => {
+		const closed =
+			month === undefined ? undefined : input.closedLinks?.get(month);
+		return closed ?? byCategory;
+	};
 	const envelopeOf = (
-		entry: Pick<ActivityEntry, "categoryId" | "envelopeId">,
-	) =>
-		entry.envelopeId && ids.has(entry.envelopeId)
-			? entry.envelopeId
-			: ((entry.categoryId && byCategory.get(entry.categoryId)) ??
-				input.defaultEnvelopeId);
-	return { known, envelopeOf };
+		entry: Pick<ActivityEntry, "categoryId" | "envelopeId"> & {
+			month?: MonthKey;
+		},
+	) => {
+		if (entry.envelopeId && ids.has(entry.envelopeId)) return entry.envelopeId;
+		const linked = entry.categoryId
+			? linksAt(entry.month).get(entry.categoryId)
+			: undefined;
+		return linked && ids.has(linked) ? linked : input.defaultEnvelopeId;
+	};
+	return { known, envelopeOf, byCategory };
 }
 
 /** Forgiven balances are charged to their envelope in the forgive month (§5.8). */
@@ -206,7 +295,7 @@ function forgiveCharges(splits: readonly ReplayEffect[]): ActivityEntry[] {
 		.map((s) => ({
 			id: `forgive:${s.eventId}`,
 			month: s.month,
-			date: "",
+			date: s.date,
 			minor: -s.minor,
 			source: "FORGIVEN" as const,
 			categoryId: null,
@@ -240,6 +329,7 @@ function monthState(
 			left: 0,
 			pending: 0,
 			recurring: 0,
+			wealth: 0,
 		});
 	}
 	const row = (id: string) => rows.get(id) as EnvelopeMonth;
@@ -256,11 +346,13 @@ function monthState(
 		r.activity += assertMinor(a.minor);
 		if (a.pending) r.pending += a.minor;
 		if (a.recurring && a.minor < 0) r.recurring += a.minor;
+		if (a.source === "WEALTH") r.wealth += a.minor;
 		totals.activity += a.minor;
 	}
 	for (const s of b.splits.get(month) ?? []) {
 		if (s.term === "FRONTED") totals.fronted += s.minor;
 		else if (s.term === "RETURNED") totals.returnedByPeople += s.minor;
+		else if (s.term === "OLD_DEBT_PAID") totals.oldDebtsPaid += s.minor;
 		else totals.forgiven += s.minor;
 	}
 	for (const r of rows.values()) {
@@ -270,20 +362,26 @@ function monthState(
 	return { month, envelopes: rows, totals };
 }
 
-/** Leftovers after month k: carry, return or sweep (SPEC §5.5 step 1); bills, goals and No target always carry. */
+/**
+ * Leftovers after month k: carry, return or sweep (SPEC §5.5 step 1), by the
+ * rules month k closed under when it has closed (B7), else today's.
+ */
 function close(
 	state: MonthState,
 	envelopes: readonly EngineEnvelope[],
 	totals: MonthTotals,
+	snapshot: ReadonlyMap<string, ClosedRule> | undefined,
 ): Map<string, Minor> {
 	const next = new Map<string, Minor>();
 	const add = (id: string, v: Minor) => next.set(id, (next.get(id) ?? 0) + v);
+	const known = new Set(envelopes.map((e) => e.id));
 	for (const e of envelopes) {
 		const pos = Math.max(0, state.envelopes.get(e.id)?.left ?? 0);
-		const rule = e.kind === "MONTHLY" ? e.leftoverRule : "CARRY";
+		const { rule, sweepToId } = snapshot?.get(e.id) ?? ruleAtClose(e);
 		if (rule === "CARRY") add(e.id, pos);
 		else if (rule === "RETURN") totals.returned += pos;
-		else add(e.sweepToId ?? e.id, pos);
+		// A sweep target archived since keeps the money where it was.
+		else add(sweepToId && known.has(sweepToId) ? sweepToId : e.id, pos);
 	}
 	return next;
 }
@@ -294,7 +392,10 @@ export function computeBook(
 	through: MonthKey = input.currentMonth,
 ): BookState {
 	const last = Math.max(through, addMonths(input.currentMonth, 1));
-	const first = input.startMonth;
+	const cp = input.checkpoint ?? null;
+	if (cp && cp.month >= input.currentMonth)
+		throw new EngineInputError("a checkpoint is for a closed month");
+	const first = cp ? addMonths(cp.month, 1) : input.startMonth;
 	const route = router(input);
 	const b: MonthBuckets = {
 		moneyIn: bucket(input.moneyIn, first, last),
@@ -307,14 +408,19 @@ export function computeBook(
 		splits: bucket(input.splits, first, last),
 	};
 	for (const mv of input.movements) {
-		if (mv.month < first)
+		if (mv.month < input.startMonth)
 			throw new EngineInputError(`movement ${mv.id} is before the book start`);
 	}
 	const months: MonthState[] = [];
-	let carry = new Map<string, Minor>();
+	let carry = new Map<string, Minor>(cp?.carry ?? []);
 	for (const key of monthsFrom(first, last)) {
 		const state = monthState(key, carry, input, b, route);
-		carry = close(state, input.envelopes, state.totals);
+		carry = close(
+			state,
+			input.envelopes,
+			state.totals,
+			input.closedRules?.get(key),
+		);
 		months.push(state);
 	}
 	const index = new Map(months.map((s) => [s.month, s]));
@@ -323,12 +429,20 @@ export function computeBook(
 		if (!s) throw new RangeError(`month ${key} is outside the book`);
 		return s;
 	};
+	const base = cp?.totals ?? emptyRunningTotals();
 	return {
-		startMonth: first,
+		startMonth: input.startMonth,
 		currentMonth: input.currentMonth,
+		firstMonth: first,
 		months,
 		month,
-		toAssign: (key) => toAssignAt(months, input.currentMonth, month(key).month),
+		toAssign: (key) =>
+			toAssignAt(months, input.currentMonth, month(key).month, base),
+		runningTotals: (key) => {
+			const out = { ...base };
+			for (const s of months) if (s.month <= key) addRunning(out, s.totals);
+			return out;
+		},
 		envelopeOf: route.envelopeOf,
 	};
 }
@@ -337,17 +451,20 @@ function toAssignAt(
 	months: readonly MonthState[],
 	c: MonthKey,
 	m: MonthKey,
+	base: RunningTotals,
 ): ToAssignTerms {
 	const a = m < c ? m : addMonths(c, 1);
+	// Months up to the checkpoint are all before m (it is a closed month).
 	const t: ToAssignTerms = {
-		moneyIn: 0,
-		assigned: 0,
+		moneyIn: base.moneyIn,
+		assigned: base.assigned,
 		assignedAhead: 0,
-		overspendTaken: 0,
-		returned: 0,
-		fronted: 0,
-		returnedByPeople: 0,
-		forgiven: 0,
+		overspendTaken: base.overspent,
+		returned: base.returned,
+		fronted: base.fronted,
+		returnedByPeople: base.returnedByPeople,
+		forgiven: base.forgiven,
+		oldDebtsPaid: base.oldDebtsPaid,
 		splitsNet: 0,
 		total: 0,
 	};
@@ -361,12 +478,13 @@ function toAssignAt(
 		t.fronted += s.totals.fronted;
 		t.returnedByPeople += s.totals.returnedByPeople;
 		t.forgiven += s.totals.forgiven;
+		t.oldDebtsPaid += s.totals.oldDebtsPaid;
 		if (s.month < m) {
 			t.overspendTaken += s.totals.overspent;
 			t.returned += s.totals.returned;
 		}
 	}
-	t.splitsNet = t.fronted - t.returnedByPeople - t.forgiven;
+	t.splitsNet = t.fronted - t.returnedByPeople - t.forgiven + t.oldDebtsPaid;
 	t.total =
 		t.moneyIn - t.assigned - t.overspendTaken + t.returned - t.splitsNet;
 	return t;
@@ -377,46 +495,4 @@ export function sumLeft(state: BookState, m: MonthKey): Minor {
 	let total = 0;
 	for (const r of state.month(m).envelopes.values()) total += r.left;
 	return total;
-}
-
-/**
- * Both sides of the SPEC §5.3 invariant at the current month c, the right
- * side from the raw inputs (never from engine results), so a test that
- * compares them checks the engine against the ledger.
- */
-export function invariantSides(
-	input: EngineInput,
-	state: BookState,
-): { budget: Minor; ledger: Minor } {
-	const c = input.currentMonth;
-	const next = addMonths(c, 1);
-	const inBook = (m: MonthKey) => m >= input.startMonth && m <= c;
-	const sum = (xs: Iterable<Minor>) => {
-		let t = 0;
-		for (const x of xs) t += x;
-		return t;
-	};
-	const moneyIn = sum(
-		input.moneyIn.filter((r) => inBook(r.month)).map((r) => r.minor),
-	);
-	const outflows = sum(
-		input.activity.filter((r) => inBook(r.month)).map((r) => r.minor),
-	);
-	const splits = input.splits.filter((s) => inBook(s.month));
-	const splitsNet =
-		sum(splits.filter((s) => s.term === "FRONTED").map((s) => s.minor)) -
-		sum(splits.filter((s) => s.term === "RETURNED").map((s) => s.minor));
-	// Forgiven leaves SplitsNet and lands in Activity: both cancel in the ledger.
-	const nextAssigned = sum(
-		input.movements
-			.filter((mv) => mv.month === next)
-			.map(
-				(mv) =>
-					(mv.from === null ? mv.minor : 0) - (mv.to === null ? mv.minor : 0),
-			),
-	);
-	return {
-		budget: state.toAssign(c).total + sumLeft(state, c) + nextAssigned,
-		ledger: moneyIn + outflows - splitsNet,
-	};
 }

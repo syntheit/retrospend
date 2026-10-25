@@ -15,8 +15,21 @@ import * as React from "react";
 
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
-import { CurrencyChip, RateChip } from "./money-input-chips";
+import {
+	CurrencyChip,
+	HomeRow,
+	type MoneyHome,
+	type MoneyRates,
+	OperatorRow,
+	RateStrip,
+} from "./money-input-chips";
 
+export type {
+	MoneyHome,
+	MoneyRateOption,
+	MoneyRates,
+} from "./money-input-chips";
+export { MoneyInputRow } from "./money-input-chips";
 export type { MoneyInputError, MoneyInputResult };
 
 /**
@@ -109,22 +122,28 @@ export type MoneyInputProps = {
 	onChange: (text: string, result: MoneyInputResult) => void;
 	onCurrencyChange?: (code: string) => void;
 	favoriteCurrencies?: readonly string[];
-	/**
-	 * Foreign amounts: the server's rate line and home amount, already
-	 * formatted ("USD 1 = ARS 1,468 · Blue", "About ARS 93,071.20").
-	 */
-	rate?: { label: string; home?: string; onClick?: () => void };
+	/** Words on the amount row, wide screens only ("You spent"). */
+	label?: string;
+	/** A foreign amount's rate types, side by side under the amount. */
+	rates?: MoneyRates;
+	/** Rows inside the field under the rates: a custom rate, a missing rate, a fixed rate line. */
+	rows?: React.ReactNode;
+	/** The converted amount in the home currency (the server's figure). */
+	home?: MoneyHome;
 	/** Show errors now (after a Save attempt). */
 	showErrors?: boolean;
 	disabled?: boolean;
 	id?: string;
 	autoFocus?: boolean;
+	/** Phone web: the + − × ÷ row under the field while it has focus. */
+	operators?: boolean;
 };
 
 /**
  * MoneyInput (R22): the amount at input height, 16px medium. Groups
  * thousands while typing, reads the page locale, does + - × ÷ math with a
- * live result, and shows the rate chip for a foreign currency.
+ * live result. A foreign amount keeps its conversion in the same field:
+ * the rate types side by side, then the home amount (kit .aex-amtg).
  */
 export function MoneyInput(p: MoneyInputProps) {
 	const t = useTranslations("pickers.money");
@@ -141,30 +160,43 @@ export function MoneyInput(p: MoneyInputProps) {
 
 	return (
 		<div className="flex flex-col gap-1">
-			{/* kit .moneyinput: the currency chip inside the field, the amount on the right */}
 			<div
 				className={cn(
-					"flex h-money items-center gap-2 rounded-ctl border border-line-strong bg-surface p-1 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand",
-					error && "border-danger",
+					"rounded-ctl border-line-strong bg-surface ease-land focus-within:border-brand focus-within:ring-brand overflow-hidden border transition-colors duration-(--t-state) focus-within:ring-1",
+					error && "border-danger ring-danger ring-1",
 					p.disabled && "opacity-50",
 				)}
 			>
-				<CurrencyChip {...p} />
-				<Input
-					aria-describedby={error ? `${id}-error` : undefined}
-					aria-invalid={error ? true : undefined}
-					aria-label={t("amount")}
-					autoComplete="off"
-					autoFocus={p.autoFocus}
-					className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 pr-2 text-right font-medium text-base text-fg tabular-nums shadow-none placeholder:text-fg-3 focus-visible:ring-0 dark:bg-transparent"
-					disabled={p.disabled}
-					id={id}
-					inputMode="decimal"
-					placeholder="0"
-					value={p.value}
-					{...field.handlers}
-				/>
+				{/* kit .moneyinput: the currency chip inside the field, the amount on the right */}
+				<div className="h-money flex items-center gap-2 p-1">
+					<CurrencyChip {...p} />
+					{p.label ? (
+						<span className="text-fg-3 text-small shrink-0 max-md:hidden">
+							{p.label}
+						</span>
+					) : null}
+					<Input
+						aria-describedby={error ? `${id}-error` : undefined}
+						aria-invalid={error ? true : undefined}
+						aria-label={t("amount")}
+						autoComplete="off"
+						autoFocus={p.autoFocus}
+						className="text-fg placeholder:text-fg-3 h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 pr-2 text-right text-base font-medium tabular-nums shadow-none focus-visible:ring-0 dark:bg-transparent"
+						disabled={p.disabled}
+						id={id}
+						inputMode="decimal"
+						placeholder="0"
+						value={p.value}
+						{...field.handlers}
+					/>
+				</div>
+				{p.rates ? <RateStrip rates={p.rates} /> : null}
+				{p.rows}
+				{p.home ? <HomeRow home={p.home} /> : null}
 			</div>
+			{p.operators && field.focused ? (
+				<OperatorRow onKey={field.insert} />
+			) : null}
 			{error ? (
 				<span className="text-danger text-meta" id={`${id}-error`} role="alert">
 					{t(`error.${error}`, {
@@ -173,14 +205,10 @@ export function MoneyInput(p: MoneyInputProps) {
 					})}
 				</span>
 			) : null}
-			{p.rate || preview ? (
-				<div className="flex flex-wrap items-center gap-2 text-fg-2 text-small">
-					{p.rate ? <RateChip {...p.rate} /> : null}
-					{p.rate?.home ? (
-						<span className="tabular-nums">{p.rate.home}</span>
-					) : null}
-					{preview ? <span className="tabular-nums">{preview}</span> : null}
-				</div>
+			{preview ? (
+				<span className="text-fg-2 text-small text-right tabular-nums">
+					{preview}
+				</span>
 			) : null}
 		</div>
 	);
@@ -192,6 +220,7 @@ function useDraftField(p: MoneyInputProps, locale: string) {
 	const pasted = React.useRef(false);
 	const caret = React.useRef<number | null>(null);
 	const [touched, setTouched] = React.useState(false);
+	const [focused, setFocused] = React.useState(false);
 
 	React.useLayoutEffect(() => {
 		if (caret.current == null || !ref.current) return;
@@ -211,9 +240,22 @@ function useDraftField(p: MoneyInputProps, locale: string) {
 		p.onChange(edit.text, edit.result);
 	};
 
+	/** An operator key: typed over the selection, as if from the keyboard. */
+	const insert = (op: string) => {
+		const el = ref.current;
+		const text = el?.value ?? p.value;
+		const end = el?.selectionEnd ?? text.length;
+		const start = el?.selectionStart ?? end;
+		update(`${text.slice(0, start)}${op}${text.slice(end)}`, start + op.length);
+	};
+
 	const handlers = {
 		ref,
-		onBlur: () => setTouched(true),
+		onFocus: () => setFocused(true),
+		onBlur: () => {
+			setTouched(true);
+			setFocused(false);
+		},
 		onPaste: () => {
 			pasted.current = true;
 		},
@@ -235,5 +277,5 @@ function useDraftField(p: MoneyInputProps, locale: string) {
 			update(typed.text, typed.caret);
 		},
 	};
-	return { touched, handlers };
+	return { touched, focused, insert, handlers };
 }

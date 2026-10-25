@@ -1,18 +1,22 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { BASE_CURRENCY } from "~/lib/constants";
+import { customRateSchema } from "~/lib/schemas/rate";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { CsvService } from "~/server/services/csv.service";
-import {
-	expenseDto,
-	listHomeCurrency,
-} from "~/server/services/expense-dto";
 import { ExpenseService } from "~/server/services/expense.service";
+import { expenseDto, listHomeCurrency } from "~/server/services/expense-dto";
 import {
 	getExcludedProjectIds,
 	listSharedParticipationsForUser,
 } from "~/server/services/shared-expense-integration";
 import { titleSuggestions } from "~/server/services/title-suggestions.service";
+
+/**
+ * An existing expense's id: forms write uuids, imports and the sidecar
+ * cuids (Expense.id defaults to cuid()). Every query filters by userId.
+ */
+const expenseId = z.string().min(1).max(64);
 
 const expenseInputSchema = z.object({
 	id: z.guid(),
@@ -25,7 +29,7 @@ const expenseInputSchema = z.object({
 	/** The pair's rate type (official, blue...) or "custom" with customRate. */
 	rateType: z.string().min(1).max(32).optional(),
 	customRate: z
-		.object({ base: z.string().min(3).max(10), value: z.number().positive() })
+		.object({ base: z.string().min(3).max(10), value: customRateSchema })
 		.optional(),
 	date: z.date(),
 	location: z.string().max(500).optional(),
@@ -64,7 +68,10 @@ export const expenseRouter = createTRPCRouter({
 			const service = new ExpenseService(ctx.db);
 			const [expenses, home] = await Promise.all([
 				service.listFinalized(
-					ctx.session.user.id, input?.from, input?.to, input?.limit,
+					ctx.session.user.id,
+					input?.from,
+					input?.to,
+					input?.limit,
 				),
 				listHomeCurrency(ctx.db, ctx.session.user.id),
 			]);
@@ -99,14 +106,14 @@ export const expenseRouter = createTRPCRouter({
 		}),
 
 	deleteExpense: protectedProcedure
-		.input(z.object({ id: z.guid() }))
+		.input(z.object({ id: expenseId }))
 		.mutation(async ({ ctx, input }) => {
 			const service = new ExpenseService(ctx.db);
 			return await service.deleteExpense(ctx.session.user.id, input.id);
 		}),
 
 	exportCsv: protectedProcedure
-		.input(z.object({ expenseIds: z.array(z.guid()).optional() }).optional())
+		.input(z.object({ expenseIds: z.array(expenseId).optional() }).optional())
 		.mutation(async ({ ctx, input }) => {
 			const service = new CsvService(ctx.db);
 			const csv = await service.exportExpensesAsCsv(
@@ -163,7 +170,7 @@ export const expenseRouter = createTRPCRouter({
 	bulkUpdateCategory: protectedProcedure
 		.input(
 			z.object({
-				expenseIds: z.array(z.guid()).min(1).max(500),
+				expenseIds: z.array(expenseId).min(1).max(500),
 				categoryId: z.cuid(),
 			}),
 		)

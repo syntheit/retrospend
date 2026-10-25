@@ -6,13 +6,13 @@ import { ActionMenu } from "~/components/actions/action-menu";
 import type { ProjectTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
 import { useExpenseModal } from "~/components/expense-modal-provider";
+import { BackButton } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useProjectDates } from "~/components/rows/project-row";
 import { FaceStack } from "~/components/ui/avatar-face";
 import { Button } from "~/components/ui/button";
 import { PageTabs } from "~/components/ui/page-tabs";
 import { ProjectCover } from "~/features/projects/project-cover";
-import { BackButton } from "~/features/wealth/page-frame";
 import type { PageView, ProjectTab } from "./types";
 
 /**

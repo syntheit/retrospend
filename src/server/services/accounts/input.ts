@@ -5,6 +5,8 @@
  * their number fields until stream 4 rebuilds them.
  */
 import { z } from "zod";
+import { restChoiceSchema } from "~/lib/schemas/envelope";
+import { customRateSchema } from "~/lib/schemas/rate";
 import { AssetType, RecurringFrequency, TransferKind } from "~prisma";
 
 const decimal = z
@@ -119,6 +121,8 @@ export const addIncomeSchema = z.object({
 	amount: positive,
 	currency,
 	rateType: rateType.nullish(),
+	/** A typed rate: 1 unit of `currency` = this much home (up to 12 decimals). */
+	customRate: customRateSchema.nullish(),
 	categoryId: id.nullish(),
 	description: z.string().max(1000).nullish(),
 	date: isoDay.nullish(),
@@ -128,6 +132,8 @@ export const addIncomeSchema = z.object({
 		.object({ frequency: z.enum(RecurringFrequency), next: isoDay.nullish() })
 		.nullish(),
 	usePlan: z.boolean().optional(),
+	/** Where Use my plan puts the rest; Leave it when omitted. */
+	planRest: restChoiceSchema.optional(),
 });
 
 const storedDecimal = z.string().regex(/^-?\d{1,20}(\.\d{1,12})?$/);
@@ -139,6 +145,8 @@ export const recreateIncomeSchema = addIncomeSchema.extend({
 		.object({
 			exchangeRate: storedDecimal,
 			amountInUSD: storedDecimal,
+			rateType: rateType.nullish(),
+			homeRate: storedDecimal.nullish(),
 			units: storedDecimal.nullable(),
 			homeAmount: storedDecimal.nullable(),
 			homeCurrency: currency.nullable(),
@@ -155,6 +163,8 @@ export const deleteIncomeSchema = z.object({
 export const moveInSchema = z.union([
 	z.object({ expenseId: id, putIn: id.nullish(), date: isoDay.nullish() }),
 	z.object({
+		/** Client id of the move: its undo removes exactly this one. */
+		id: z.string().uuid(),
 		accountId: id,
 		units: positive,
 		putIn: id.nullish(),
@@ -167,9 +177,13 @@ export const confirmRecurringIncomeSchema = z.object({
 	dueDate: z.date().nullish(),
 	/** The real amount as typed, when the template's amount varies. */
 	amount: positive.nullish(),
+	rateType: rateType.nullish(),
+	customRate: customRateSchema.nullish(),
 	into: id.nullish(),
 	keep: z.boolean().nullish(),
 	usePlan: z.boolean().optional(),
+	/** Where Use my plan puts the rest; Leave it when omitted. */
+	planRest: restChoiceSchema.optional(),
 });
 
 export const unconfirmRecurringIncomeSchema = z.object({ expenseId: id });

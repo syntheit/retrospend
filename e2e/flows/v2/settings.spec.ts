@@ -142,6 +142,31 @@ test.describe("Settings v2", () => {
 		await expect(smart).toHaveAttribute("aria-checked", String(before));
 	});
 
+	test("time zone: taken from the browser, saves with Undo", async ({
+		page,
+	}) => {
+		test.setTimeout(120_000);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await openSettings(page);
+
+		// The browser runs in Buenos Aires (playwright.config timezoneId), and
+		// the first signed-in request stores it.
+		const zone = page.getByLabel("Time zone");
+		await expect(zone).toContainText("Buenos Aires");
+
+		await zone.click();
+		await untilSaved(page, "settings.updateGeneral", () =>
+			page.getByRole("option", { name: "Asia/Tokyo" }).click(),
+		);
+		await expect(zone).toContainText("Asia/Tokyo");
+		await untilSaved(page, "settings.updateGeneral", () =>
+			page.getByRole("button", { name: "Undo" }).first().click(),
+		);
+		await expect(zone).toContainText("Buenos Aires");
+		await gotoReady(page, "/settings");
+		await expect(page.getByLabel("Time zone")).toContainText("Buenos Aires");
+	});
+
 	test("an API key is shown once, listed read-only, and revoked with a named button", async ({
 		page,
 	}) => {

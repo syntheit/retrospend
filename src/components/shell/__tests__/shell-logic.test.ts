@@ -87,7 +87,7 @@ describe("palette Go to", () => {
 	it("lists each place's current route, without Insights (no page yet)", () => {
 		const items = goToItems(false);
 		expect(items.map((i) => i.href)).toEqual([
-			"/dashboard",
+			"/home",
 			"/activity",
 			"/budget",
 			"/people",

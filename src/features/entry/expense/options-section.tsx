@@ -64,6 +64,7 @@ export function OptionsSection(p: {
 				<div className="flex min-h-ctl items-center justify-between gap-3">
 					<span className="text-body text-fg">{t("spread")}</span>
 					<Select
+						kit
 						onValueChange={(v) => p.onSet({ spread: v as SpreadChoice })}
 						value={d.spread}
 					>

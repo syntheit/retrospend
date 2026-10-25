@@ -9,14 +9,18 @@ import type {
 	GetMonthOutput,
 	HistoryInput,
 	HistoryOutput,
+	OwedDto,
 	SetupPresetOutput,
 	VerdictDto,
 } from "~/lib/schemas/envelope";
+import type { MonthSummaryOutput } from "~/lib/schemas/envelope-book";
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
 import { setupPreset } from "./book.service";
 import { EnvelopeError } from "./errors";
+import { ensureLegacyBook } from "./legacy-lazy";
+import { ensureMonthsClosed } from "./month-close.service";
 import {
 	coverSourcesIn,
 	fillFromTargetsIn,
@@ -24,7 +28,11 @@ import {
 	monthViewIn,
 } from "./month-read";
 import type { SetupStyle } from "./presets";
+import { runPendingRules } from "./rule.service";
+import { owedIn, saveShareDefaults } from "./splits.service";
+import { monthSummaryIn } from "./summary.service";
 import type { Minor, MonthKey } from "./types";
+import { touchOpened } from "./welcome.service";
 
 function read<T>(
 	userId: string,
@@ -33,14 +41,93 @@ function read<T>(
 	return userTransaction(db, userId, work);
 }
 
-/** Null when the user has no budget yet ("Just track"). */
+/** A month read after the lazy close (SPEC §5.5): months before today's close on first read. */
+export async function closedView(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	now: Date,
+	month?: MonthKey,
+) {
+	await prepareRead(tx, userId, now);
+	return monthViewIn(tx, userId, now, month);
+}
+
+/**
+ * A read that finds no book first tries the lazy move from the old budget
+ * (02 §6), outside the read's transaction and without ever failing it, then
+ * reads again. Everyone with a book reads once and pays nothing extra.
+ */
+export async function movedFirst<T>(
+	userId: string,
+	now: Date,
+	timeZone: string | null,
+	load: () => Promise<T | null>,
+): Promise<T | null> {
+	const first = await load();
+	if (first !== null) return first;
+	const moved = await ensureLegacyBook(db, userId, now, timeZone);
+	// HAS_BOOK: a read at the same moment moved them first.
+	return moved?.status === "MIGRATED" || moved?.status === "HAS_BOOK"
+		? load()
+		: null;
+}
+
+/**
+ * The lazy steps before any budget read (02 §5.3), each a cheap check when
+ * nothing waits: close finished months, then run income rules on money in
+ * nobody ran them on (sidecar rows, edits, deletes). Needs you and other
+ * readers of the month view call this first too.
+ */
+export async function prepareRead(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	now: Date,
+) {
+	await ensureMonthsClosed(tx, userId, now);
+	await runPendingRules(tx, userId, now);
+}
+
+/**
+ * Null when the user has no budget yet ("Just track"). Stores the share
+ * categories the smart default picked (D19), so they stay put; the view
+ * already counts them, so storing changes no number.
+ */
 export async function getMonth(
 	userId: string,
 	month?: MonthKey,
 	now = new Date(),
+	timeZone: string | null = null,
 ): Promise<GetMonthOutput | null> {
-	const view = await read(userId, (tx) => monthViewIn(tx, userId, now, month));
-	return view?.dto ?? null;
+	return movedFirst(userId, now, timeZone, () =>
+		read(userId, async (tx) => {
+			const v = await closedView(tx, userId, now, month);
+			if (v?.loaded.splits.unsaved.length)
+				await saveShareDefaults(tx, v.loaded.splits.unsaved);
+			// Opening the budget is what Welcome back measures time away from.
+			if (v) await touchOpened(tx, userId, now);
+			return v?.dto ?? null;
+		}),
+	);
+}
+
+/** What a closed month ended with (SPEC §6.6); null when it has not closed. */
+export function getMonthSummary(
+	userId: string,
+	month: MonthKey,
+	now = new Date(),
+): Promise<MonthSummaryOutput | null> {
+	return read(userId, async (tx) => {
+		await ensureMonthsClosed(tx, userId, now);
+		return monthSummaryIn(tx, userId, month);
+	});
+}
+
+/** Money owed, per person and currency, with names; null without a budget. */
+export function getOwed(
+	userId: string,
+	now = new Date(),
+): Promise<OwedDto | null> {
+	return read(userId, (tx) => owedIn(tx, userId, now));
 }
 
 /** The top of Budget and Home's card (`BudgetPlan.verdict(ym)`), null without a budget. */
@@ -49,8 +136,13 @@ export async function getVerdict(
 	month?: MonthKey,
 	now = new Date(),
 ): Promise<VerdictDto | null> {
-	const view = await read(userId, (tx) => monthViewIn(tx, userId, now, month));
-	return view?.dto.verdict ?? null;
+	return movedFirst(userId, now, null, () =>
+		read(
+			userId,
+			async (tx) =>
+				(await closedView(tx, userId, now, month))?.dto.verdict ?? null,
+		),
+	);
 }
 
 export async function getLeftToSpend(
@@ -58,8 +150,13 @@ export async function getLeftToSpend(
 	month?: MonthKey,
 	now = new Date(),
 ): Promise<GetMonthOutput["leftToSpend"] | null> {
-	const view = await read(userId, (tx) => monthViewIn(tx, userId, now, month));
-	return view?.dto.leftToSpend ?? null;
+	return movedFirst(userId, now, null, () =>
+		read(
+			userId,
+			async (tx) =>
+				(await closedView(tx, userId, now, month))?.dto.leftToSpend ?? null,
+		),
+	);
 }
 
 export function getFillFromTargets(
@@ -68,9 +165,10 @@ export function getFillFromTargets(
 	amount?: Minor,
 	now = new Date(),
 ): Promise<FillFromTargetsOutput> {
-	return read(userId, (tx) =>
-		fillFromTargetsIn(tx, userId, now, month, amount),
-	);
+	return read(userId, async (tx) => {
+		await prepareRead(tx, userId, now);
+		return fillFromTargetsIn(tx, userId, now, month, amount);
+	});
 }
 
 export function getCoverSources(

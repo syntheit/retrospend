@@ -44,6 +44,24 @@ export const GLANCE: GlanceVM = {
 	],
 };
 
+/** A missing rate: no spent figure, the budget line names the currency. */
+export const GLANCE_NO_RATE: GlanceVM = {
+	...GLANCE,
+	spent: null,
+	line: { kind: "unavailable", currencies: ["BRL"] },
+	fasterThanPlanned: false,
+	rows: [
+		{ id: "owedToYou", amount: null, href: "#people" },
+		{
+			id: "youOwe",
+			amount: m("229770"),
+			href: "#people",
+			faces: [P.martin, P.paz],
+		},
+		...GLANCE.rows.filter((r) => r.id === "netWorth"),
+	],
+};
+
 export const NEEDS_YOU: NeedsYouItemVM[] = [
 	{ id: "ny5", kind: "overdue", title: "Fibra e internet", amount: m("38900") },
 	{ id: "ny3", kind: "confirmPayment", person: "Lucía", amount: m("20000") },
@@ -65,6 +83,58 @@ export const NEEDS_YOU: NeedsYouItemVM[] = [
 	{ id: "ny4", kind: "due", title: "Streamly", amount: m("19225") },
 	{ id: "ny8", kind: "overspent", envelope: "Restaurants", amount: m("48400") },
 	{ id: "ny1", kind: "assign", amount: m("850000") },
+];
+
+/** Just track (no budget): the pace in words, money in and the dollar today. */
+export const GLANCE_TRACK: GlanceVM = {
+	...GLANCE,
+	line: { kind: "pace", faster: true, lastMonth: "2026-09-01" },
+	fasterThanPlanned: false,
+	rows: [
+		{ id: "owedToYou", amount: m("1663643"), href: "#people" },
+		{ id: "moneyIn", amount: m("3200000"), href: "#activity" },
+		{ id: "netWorth", amount: m("135325483"), href: "#wealth" },
+		{
+			id: "dollarToday",
+			amount: m("1475"),
+			href: "#currencies",
+			rateLabel: "Blue",
+		},
+	],
+};
+
+/** People's items: the face of the person asking, Not received as a second action. */
+export const NEEDS_YOU_PEOPLE: NeedsYouItemVM[] = [
+	{
+		id: "nyp1",
+		kind: "confirmPayment",
+		person: "Lucía",
+		amount: m("20000"),
+		face: P.lucia,
+		context: "Mercado Pago · Oct 19",
+		secondary: "notReceived",
+	},
+	{
+		id: "nyp2",
+		kind: "verify",
+		person: "Tomás",
+		title: "Remeras de la banda",
+		amount: m("85.00", "USD"),
+		face: P.tomas,
+	},
+];
+
+/** One per new kind group: setup, rejected split, budget. */
+export const NEEDS_YOU_MORE: NeedsYouItemVM[] = [
+	{ id: "nys1", kind: "firstExpense", context: "Takes about ten seconds" },
+	{
+		id: "nyr1",
+		kind: "rejected",
+		person: "Martín",
+		title: "Pizza night",
+		amount: m("18000"),
+	},
+	{ id: "nyb1", kind: "missingRate", currencies: ["BRL"] },
 ];
 
 export const MONTHS: MonthTotal[] = [

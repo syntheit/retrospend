@@ -25,6 +25,8 @@ export function useRowDates(today?: string) {
 				if (back === 1) return t("yesterday");
 				return f(iso, "weekday");
 			},
+			/** "Wednesday, October 21" (a page's date line). */
+			long: (iso: string) => f(iso, "long"),
 			/** "October". */
 			month: (iso: string) => f(iso, "month"),
 			/** "Oct". */

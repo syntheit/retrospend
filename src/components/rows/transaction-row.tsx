@@ -67,7 +67,14 @@ export function useKindWord() {
  * the other side of an exchange, your share of a split, or the home amount
  * of a foreign expense. Money in and refunds read positive with a plus.
  */
-export function TransactionAmount({ tx }: { tx: TransactionVM }) {
+export function TransactionAmount({
+	tx,
+	share = true,
+}: {
+	tx: TransactionVM;
+	/** False where your share has its own column (a project's table). */
+	share?: boolean;
+}) {
 	const t = useTranslations("rows.transaction");
 	const move = isMoneyMove(tx.kind);
 	const signed = tx.kind === "income" || tx.kind === "refund";
@@ -88,7 +95,7 @@ export function TransactionAmount({ tx }: { tx: TransactionVM }) {
 				<Money className={muted} value={tx.counter} />
 			</span>
 		);
-	if (tx.share && (tx.people?.length ?? 0) > 1 && !move)
+	if (share && tx.share && (tx.people?.length ?? 0) > 1 && !move)
 		return (
 			<span className="flex flex-col items-end">
 				{top}
@@ -110,7 +117,11 @@ export function TransactionAmount({ tx }: { tx: TransactionVM }) {
 	return top;
 }
 
-/** Who was in it: faces with the payer first, and "Martín paid". */
+/**
+ * Who was in it: faces with the payer first, and "Martín paid". Phones keep
+ * the faces only (the payer leads the stack): the words would crowd the
+ * category out of a 390 subline.
+ */
 export function TransactionWith({ tx }: { tx: TransactionVM }) {
 	const t = useTranslations("rows.transaction");
 	const variant = useRowVariant();
@@ -123,7 +134,15 @@ export function TransactionWith({ tx }: { tx: TransactionVM }) {
 				people={tx.people ?? []}
 			/>
 			{tx.payerName && (
-				<span className="text-fg-2">{t("paid", { name: tx.payerName })}</span>
+				<span
+					className={cn(
+						"text-fg-2",
+						variant === "group" && "hidden",
+						variant === "auto" && "max-md:hidden",
+					)}
+				>
+					{t("paid", { name: tx.payerName })}
+				</span>
 			)}
 		</span>
 	);

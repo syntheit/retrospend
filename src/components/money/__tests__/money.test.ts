@@ -33,6 +33,22 @@ type PairCase = {
 	expected: { original: string; home: string | null };
 };
 
+describe("approximate figures", () => {
+	it("a converted figure reads ≈ inside its money span, tags unchanged", () => {
+		const html = render(h(Money, { value: ars(130300000), approx: true }));
+		expect(amounts(html)).toEqual([`≈ ARS${NB}1,303,000`]);
+		expect(html).toContain('data-minor="130300000"');
+	});
+
+	it("Balance passes it on and can drop its words inside a titled group", () => {
+		const html = render(
+			h(Balance, { amount: ars(-3620000), approx: true, words: false }),
+		);
+		expect(amounts(html)).toEqual([`≈ ARS${NB}36,200`]);
+		expect(html).not.toContain("you owe");
+	});
+});
+
 describe("golden vectors through the components", () => {
 	const format = (vectors.format as FormatCase[]).filter((c) => !c.throws);
 	const pair = vectors.pair as PairCase[];

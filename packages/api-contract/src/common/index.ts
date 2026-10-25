@@ -9,3 +9,4 @@ export * from "./pagination";
 export * from "./preview";
 export * from "./scopes";
 export * from "./sync";
+export * from "./user-text";

@@ -12,6 +12,9 @@ const ME = `user:${SOFIA.id}`;
 
 export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	dashboard: [],
+	// S4A: the redesigned Home on Sofía's seed. The pool (budget.notPlannedYet)
+	// shows only with an envelope book, which the seed does not have.
+	home: ["glance.spent", "owed.owedToYou", "owed.youOwe", "netWorth"],
 	transactions: [],
 	people: [],
 	// S4D: the redesigned People page (the smoke walk opens the old one).
@@ -44,6 +47,9 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	// S4G: the Add expense sheet with a foreign amount, audited inside the
 	// sheet: the booked home value and the preview's spending line.
 	addExpense: ["entry.home", "preview.spent.delta"],
+	// S4B part 2: the Import review of the flow's CSV, whose first row is a
+	// foreign amount: the original and the home value the import saves.
+	import: ["import.amount:0", "import.home:0"],
 };
 
 export function requiredFiguresFor(page: string): readonly string[] {

@@ -15,8 +15,15 @@ import type {
 	EnvelopeRowDto,
 	FillFromTargetsOutput,
 	GetMonthOutput,
+	RestOption,
 } from "~/lib/schemas/envelope";
-import { autoFill, type FillCandidate } from "./auto-fill";
+import {
+	autoFill,
+	type FillCandidate,
+	type FillStep,
+	type TargetedGroup,
+} from "./auto-fill";
+import { addMonths } from "./calendar";
 import type { Minor } from "./types";
 
 function rowsOf(
@@ -27,32 +34,143 @@ function rowsOf(
 	);
 }
 
-/** "Use my plan" for `amount` (default: all of a positive To assign). */
+/** A saved plan's line (Plan next month): what the envelope should have assigned in the month. */
+export interface SavedPlanLine {
+	envelopeId: string;
+	amountMinor: Minor;
+}
+
+/**
+ * The saved plan first (owner r5 Q1: a plan funds itself when the month's
+ * money arrives): each envelope up to its planned Assigned, in plan order.
+ */
+function planSteps(
+	rows: ReadonlyArray<EnvelopeRowDto>,
+	plan: readonly SavedPlanLine[],
+	available: Minor,
+): { lines: Map<string, Minor>; left: Minor } {
+	const assigned = new Map(rows.map((r) => [r.id, r.assigned.minor]));
+	const lines = new Map<string, Minor>();
+	let left = available;
+	for (const p of plan) {
+		if (!assigned.has(p.envelopeId)) continue;
+		const want = Math.max(0, p.amountMinor - (assigned.get(p.envelopeId) ?? 0));
+		const amount = Math.min(left, want);
+		if (amount <= 0) continue;
+		lines.set(p.envelopeId, amount);
+		left -= amount;
+	}
+	return { lines, left };
+}
+
+/** Targeted groups (SPEC §5.9) for auto-fill, after what the saved plan already gave them. */
+function targetedGroups(
+	view: GetMonthOutput,
+	given: ReadonlyMap<string, Minor>,
+): TargetedGroup[] {
+	return view.groups.flatMap((g) => {
+		const t = g.target;
+		if (!t || g.id === null) return [];
+		const gave = g.envelopes.reduce((s, e) => s + (given.get(e.id) ?? 0), 0);
+		const groupNeed = Math.max(0, t.need.minor - gave);
+		const childNeeds = g.envelopes
+			.filter((e) => e.target !== null)
+			.reduce(
+				(s, e) =>
+					s + Math.max(0, (e.target?.need.minor ?? 0) - (given.get(e.id) ?? 0)),
+				0,
+			);
+		return [
+			{
+				groupOrder: g.sortOrder,
+				envelopeIds: g.envelopes.map((e) => e.id),
+				mainEnvelopeId: t.mainEnvelopeId,
+				mainExtra: t.mainEnvelopeId ? Math.max(0, groupNeed - childNeeds) : 0,
+			},
+		];
+	});
+}
+
+/**
+ * "Use my plan" for `amount` (default: all of a positive To assign): the
+ * saved plan for the month when there is one, then the targets (overspent,
+ * bills, group targets, Monthly, Savings), each need less what the plan gave.
+ */
 export function fillFromTargets(
 	view: GetMonthOutput,
 	amount?: Minor,
+	plan: readonly SavedPlanLine[] = [],
 ): FillFromTargetsOutput {
 	const currency = view.book.currency;
 	const available = Math.max(0, amount ?? view.toAssign.amount.minor);
-	const candidates: FillCandidate[] = rowsOf(view).map((r) => ({
+	const rows = rowsOf(view);
+	const planned = planSteps(rows, plan, available);
+	const candidates: FillCandidate[] = rows.map((r) => ({
 		envelopeId: r.id,
 		kind: r.kind,
 		order: r.order,
-		left: r.left.minor,
-		need: r.target?.need.minor ?? 0,
+		left: r.left.minor + (planned.lines.get(r.id) ?? 0),
+		need: Math.max(
+			0,
+			(r.target?.need.minor ?? 0) - (planned.lines.get(r.id) ?? 0),
+		),
 		dueDate: r.target?.dueDate ?? null,
 	}));
-	const { lines, left } = autoFill(available, candidates);
+	const { lines, left } = autoFill(
+		planned.left,
+		candidates,
+		targetedGroups(view, planned.lines),
+	);
+	const line = (envelopeId: string, minor: Minor, step: FillStep | "PLAN") => ({
+		envelopeId,
+		month: view.month.key,
+		amount: { minor, currency },
+		step,
+	});
 	return {
 		month: view.month.key,
 		available: { minor: available, currency },
-		lines: lines.map((l) => ({
-			envelopeId: l.envelopeId,
-			amount: { minor: l.amount, currency },
-			step: l.step,
-		})),
+		lines: [
+			...[...planned.lines].map(([id, minor]) => line(id, minor, "PLAN")),
+			...lines.map((l) => line(l.envelopeId, l.amount, l.step)),
+		],
 		rest: { minor: left, currency },
+		restOptions: restOptions(view),
 	};
+}
+
+/**
+ * Where "Save it" puts the rest (kit budget-plan.js saveHome): the first
+ * savings goal in the Savings group whose date is still ahead, else the
+ * group's first envelope. Null without a Savings group.
+ */
+export function saveHome(view: GetMonthOutput): string | null {
+	const ahead = rowsOf(view).filter(
+		(e) =>
+			view.groups.some(
+				(g) => g.role === "SAVINGS" && g.envelopes.some((x) => x.id === e.id),
+			) && !(e.target?.dueDate && e.target.dueDate < view.today),
+	);
+	return (ahead.find((e) => e.kind === "SAVINGS") ?? ahead[0])?.id ?? null;
+}
+
+/**
+ * The rest's choices after Use my plan (D-owner-2026-10-22e): Save it (when
+ * there is a savings home), Next month (from the current month only, D22)
+ * and Leave it, the default.
+ */
+export function restOptions(view: GetMonthOutput): RestOption[] {
+	const home = saveHome(view);
+	const options: RestOption[] = [];
+	if (home) options.push({ choice: "SAVE", envelopeId: home, month: null });
+	if (view.month.state === "OPEN")
+		options.push({
+			choice: "NEXT_MONTH",
+			envelopeId: null,
+			month: addMonths(view.month.key, 1),
+		});
+	options.push({ choice: "LEAVE", envelopeId: null, month: null });
+	return options;
 }
 
 const KIND_RANK = { MONTHLY: 0, NONE: 0, SAVINGS: 1, BILL: 2 } as const;

@@ -73,7 +73,8 @@
 			"rate": "Digite uma cotação para {currency}",
 			"splitAmount": "A divisão não soma o valor",
 			"splitPct": "As porcentagens não somam 100%",
-			"save": "Não foi possível salvar. Confira os campos e tente de novo."
+			"save": "Não foi possível salvar. Confira os campos e tente de novo.",
+			"projectMembers": "Não foi possível carregar as pessoas do projeto. Tente de novo."
 		},
 		"toast": {
 			"added": "{title} adicionado",
@@ -90,7 +91,9 @@
 			"title": "Excluir {title}?",
 			"body": "Isso muda os saldos de outras pessoas.",
 			"confirm": "Excluir gasto"
-		}
+		},
+		"projectAria": "Projeto, {project}",
+		"addShort": "Adicionar"
 	},
 	"rate": {
 		"default": "Sua cotação padrão para {currency}",
@@ -112,18 +115,16 @@
 			"crypto": "Cripto",
 			"market": "Mercado",
 			"custom": "Personalizada"
-		}
+		},
+		"label": "Câmbio",
+		"youSpent": "Você gastou"
 	},
 	"changes": {
-		"title": "O que isso muda",
 		"titleEdit": "O que esta edição muda",
 		"empty": "Digite um valor e escolha uma categoria para ver o que muda.",
 		"emptyAmount": "Digite um valor para ver o que muda.",
 		"loading": "Verificando o que muda",
 		"cannot": "Ainda não dá para salvar: {reason}",
-		"nothingElse": "Nada mais muda: {list} continuam como estão.",
-		"nothingElseOne": "Nada mais muda: {item} continua como está.",
-		"unavailable": "Não foi possível verificar {list}.",
 		"figures": {
 			"spent": "Seus gastos",
 			"owed_owedToYou": "Devem a você",
@@ -149,8 +150,7 @@
 			"budget_leftToSpend": "o disponível para gastar",
 			"project_total": "o total do projeto",
 			"envelope_left": "o envelope"
-		},
-		"noneChange": "Sem mudança em {list}."
+		}
 	},
 	"income": {
 		"title": "Adicionar receita",
@@ -183,7 +183,6 @@
 		"save": "Adicionar receita",
 		"error": {
 			"amount": "Digite um valor maior que zero",
-			"rate": "Sem cotação para {currency} hoje",
 			"category": "Escolha o que é",
 			"source": "Quem pagou você?"
 		},
@@ -193,7 +192,9 @@
 			"kept": "{amount} adicionado em {account}. Mantido no Patrimônio",
 			"planned": "{amount} adicionado. {count, plural, one {# envelope com fundos} other {# envelopes com fundos}}"
 		},
-		"someoneElse": "Outra pessoa"
+		"someoneElse": "Outra pessoa",
+		"received": "Você recebeu",
+		"countsAs": "Equivale a"
 	},
 	"transfer": {
 		"titleTransfer": "Transferência",

@@ -8,6 +8,7 @@ import { useLocale } from "next-intl";
 import { useState } from "react";
 import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
+import { readRateText } from "../rate-text";
 import { type EntryCatalog, useSettled } from "../shared-ui";
 
 export type IncomeDraft = {
@@ -15,6 +16,11 @@ export type IncomeDraft = {
 	amountText: string;
 	minor: number | null;
 	rateType: string | null;
+	/** A typed rate (Custom, or Enter rate when the pair has none), as Add expense. */
+	custom: boolean;
+	customText: string;
+	/** The typed rate parsed in the page locale; null until it reads as a rate. */
+	customRate: string | null;
 	source: string;
 	categoryId: string | null;
 	/** An account id, or null for no account (N75: accounts unchanged). */
@@ -43,6 +49,9 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 			amountText: "",
 			minor: null,
 			rateType: null,
+			custom: false,
+			customText: "",
+			customRate: null,
 			source: "",
 			categoryId: null,
 			into: account?.id ?? catalog.defaultAccounts[currency] ?? null,
@@ -70,6 +79,7 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 	// The sheet's own id: a second click on Add income cannot write a second row.
 	const [id] = useState(generateId);
 
+	const custom = foreign && d.custom;
 	const rates = api.entry.rateOptions.useQuery(
 		useSettled({
 			currency: d.currency,
@@ -77,16 +87,20 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 			amount: d.minor
 				? fromMinor({ minor: d.minor, currency: d.currency })
 				: undefined,
+			// The typed rate is booked by the server too, so the home row shows it.
+			customRate: custom && d.customRate ? d.customRate : undefined,
 		}),
 		{ enabled: foreign, placeholderData: (p) => p },
 	);
 	const rateType = foreign
-		? (d.rateType ?? rates.data?.defaultType ?? null)
+		? custom
+			? "custom"
+			: (d.rateType ?? rates.data?.defaultType ?? null)
 		: null;
-	const missing = foreign && !!rates.data?.missing;
+	const missing = foreign && !!rates.data?.missing && !custom;
 	const errors = {
 		amount: !d.minor,
-		rate: missing,
+		rate: missing || (custom && !d.customRate),
 		category: !d.categoryId,
 		source: !d.source.trim(),
 	};
@@ -96,7 +110,11 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 				title: `${category?.name ?? ""}, ${d.source.trim()}`,
 				amount: fromMinor({ minor: d.minor ?? 0, currency: d.currency }),
 				currency: d.currency,
-				...(rateType ? { rateType } : {}),
+				...(custom
+					? { customRate: d.customRate }
+					: rateType
+						? { rateType }
+						: {}),
 				categoryId: d.categoryId,
 				date: d.date,
 				...(d.note.trim() ? { description: d.note.trim() } : {}),
@@ -125,6 +143,9 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 			set({
 				currency,
 				rateType: null,
+				custom: false,
+				customText: "",
+				customRate: null,
 				amountText: "",
 				minor: null,
 				into: catalog.defaultAccounts[currency] ?? null,
@@ -135,6 +156,12 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 		foreign,
 		rates: rates.data,
 		rateType,
+		pickRate: (type: string) => set({ rateType: type, custom: false }),
+		pickCustom: () => set({ custom: true }),
+		setCustomText: (text: string) => {
+			const read = readRateText(text, locale);
+			set({ customText: read.text, customRate: read.rate });
+		},
 		usePlan,
 		hasBudget: !!book.data,
 		errors,

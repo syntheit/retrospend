@@ -75,6 +75,45 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"envelope.move": ENVELOPE_DEPS,
 	"envelope.cover": ENVELOPE_DEPS,
 	"envelope.undo": ENVELOPE_DEPS,
+	"envelope.carryOverspend": ENVELOPE_DEPS,
+	"envelope.fixNegative": ENVELOPE_DEPS,
+	"envelope.reset": ENVELOPE_DEPS,
+	"envelope.setLimit": ENVELOPE_DEPS,
+	"envelope.revertLimit": ENVELOPE_DEPS,
+	"envelope.acknowledgeMonth": ENVELOPE_DEPS,
+	"envelope.pause": ENVELOPE_DEPS,
+	"envelope.resume": ENVELOPE_DEPS,
+	"envelope.applyRuleToMonth": ENVELOPE_DEPS,
+	"envelope.createRule": ENVELOPE_DEPS,
+	"envelope.updateRule": ENVELOPE_DEPS,
+	"envelope.reorderRules": ENVELOPE_DEPS,
+	"envelope.archiveRule": ENVELOPE_DEPS,
+	"envelope.applyDraft": ENVELOPE_DEPS,
+	"envelope.unapplyDraft": ENVELOPE_DEPS,
+	"envelope.fundPlanNow": ENVELOPE_DEPS,
+	"envelope.setGroupTarget": ENVELOPE_DEPS,
+	// Style, period and routing change what reports group and the dashboard shows.
+	"envelope.setStyle": ["dashboard", "stats"],
+	"envelope.revertStyle": ["dashboard", "stats"],
+	"envelope.setBookPeriod": ["dashboard", "stats"],
+	"envelope.setProjectRouting": ["dashboard", "stats", "project"],
+	"envelope.setShareCategory": ["expense", "stats"],
+	// These write Adjustment money-in rows.
+	"envelope.reconcile": ["dashboard", "expense"],
+	"envelope.removeAdjustment": ["dashboard", "expense"],
+	"envelope.welcomeBack": ["dashboard", "expense"],
+	// Debts: terms and the plan change the Wealth liability view and bills;
+	// a payment moves accounts, the liability and the budget.
+	// A hidden-rows answer changes the row's flags: lists, stats and the budget.
+	"envelope.resolveHidden": ["dashboard", "expense", "stats"],
+	"envelope.revertHidden": ["dashboard", "expense", "stats"],
+	"envelope.dismissMigrationNotice": [],
+	"envelope.setDebtTerms": ["wealth", "dashboard"],
+	"envelope.savePayoffPlan": ENVELOPE_DEPS,
+	"envelope.revertPayoffPlan": ENVELOPE_DEPS,
+	"envelope.recordDebtPayment": ["wealth", "expense", "dashboard", "stats"],
+	"envelope.forgive": ["people", "dashboard"],
+	"envelope.unforgive": ["people", "dashboard"],
 
 	// ── Personal expenses ───────────────────────────────────────────────
 	"expense.createExpense": EXPENSE_DEPS,
@@ -168,6 +207,9 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 
 	// ── Import ──────────────────────────────────────────────────────────
 	"importQueue.finalizeImport": ["expense", "dashboard", "budget", "stats"],
+	// The Import page (uiV2): one batch in, or the batch out again.
+	"importQueue.commit": [...EXPENSE_DEPS, "expense", "entry"],
+	"importQueue.undo": [...EXPENSE_DEPS, "expense", "entry"],
 
 	// ── Project ─────────────────────────────────────────────────────────
 	"project.create": ["dashboard"],

@@ -73,7 +73,8 @@
 			"rate": "Enter a rate for {currency}",
 			"splitAmount": "The split does not add up to the amount",
 			"splitPct": "The percentages do not add up to 100%",
-			"save": "Couldn't save. Check the fields and try again."
+			"save": "Couldn't save. Check the fields and try again.",
+			"projectMembers": "Couldn't load the project's people. Try again."
 		},
 		"toast": {
 			"added": "Added {title}",
@@ -90,7 +91,9 @@
 			"title": "Delete {title}?",
 			"body": "It changes other people's balances.",
 			"confirm": "Delete expense"
-		}
+		},
+		"projectAria": "Project, {project}",
+		"addShort": "Add"
 	},
 	"rate": {
 		"default": "Your default rate for {currency}",
@@ -112,18 +115,16 @@
 			"crypto": "Crypto",
 			"market": "Market",
 			"custom": "Custom"
-		}
+		},
+		"label": "Rate",
+		"youSpent": "You spent"
 	},
 	"changes": {
-		"title": "What this changes",
 		"titleEdit": "What this edit changes",
 		"empty": "Type an amount and pick a category to see what changes.",
 		"emptyAmount": "Type an amount to see what changes.",
 		"loading": "Checking what changes",
 		"cannot": "This cannot be saved yet: {reason}",
-		"nothingElse": "Nothing else changes: {list} stay as they are.",
-		"nothingElseOne": "Nothing else changes: {item} stays as it is.",
-		"unavailable": "Could not check {list}.",
 		"figures": {
 			"spent": "Your spending",
 			"owed_owedToYou": "Owed to you",
@@ -149,8 +150,7 @@
 			"budget_leftToSpend": "left to spend",
 			"project_total": "the project total",
 			"envelope_left": "the envelope"
-		},
-		"noneChange": "No change to {list}."
+		}
 	},
 	"income": {
 		"title": "Add income",
@@ -183,7 +183,6 @@
 		"save": "Add income",
 		"error": {
 			"amount": "Enter an amount above zero",
-			"rate": "No rate for {currency} today",
 			"category": "Pick what it is",
 			"source": "Who paid you?"
 		},
@@ -193,7 +192,9 @@
 			"kept": "Added {amount} into {account}. Kept in Wealth",
 			"planned": "Added {amount}. {count, plural, one {# envelope} other {# envelopes}} funded"
 		},
-		"someoneElse": "Someone else"
+		"someoneElse": "Someone else",
+		"received": "You received",
+		"countsAs": "Counts as"
 	},
 	"transfer": {
 		"titleTransfer": "Transfer",

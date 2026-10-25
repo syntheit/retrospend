@@ -5,13 +5,6 @@ import { Money } from "~/components/money/money";
 import { DatePicker } from "~/components/pickers/date-picker";
 import { Input } from "~/components/ui/input";
 import { Notice } from "~/components/ui/notice";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "~/components/ui/select";
 import { Field, type EntryCatalog } from "../shared-ui";
 import type { EntryPerson } from "../types";
 import { AmountField, type RateState } from "./amount-field";
@@ -19,13 +12,19 @@ import { CategoryLine } from "./category-line";
 import { type DraftErrors, isShared } from "./draft";
 import { OptionsSection } from "./options-section";
 import { usePeople, WithField } from "./people-field";
+import { ProjectField } from "./project-field";
 import { SplitSection } from "./split-section";
 import type { useExpenseDraft } from "./use-expense-draft";
 
 export type Project = {
 	id: string;
 	name: string;
+	/** The cover photo's URL, or null for the flat tile. */
+	coverUrl: string | null;
 	primaryCurrency: string;
+	/** Everyone in it, you included (the server's count). */
+	peopleCount: number;
+	/** The project list's first few members: faces only, never the split. */
 	members: EntryPerson[];
 };
 
@@ -42,6 +41,9 @@ export function ExpenseFields(p: {
 	bookedHome: { minor: number; currency: string } | null;
 	favorites?: readonly string[];
 	projects: readonly Project[];
+	/** The picked project's members on the expense's day, all of them (null while loading). */
+	projectMembers: readonly EntryPerson[] | null;
+	onProject: (project: Project | null) => void;
 	shares: ReadonlyMap<string, number> | null;
 	errors: DraftErrors;
 	tried: boolean;
@@ -55,8 +57,10 @@ export function ExpenseFields(p: {
 	const home = catalog.homeCurrency;
 	const shared = isShared(d);
 	const project = p.projects.find((pr) => pr.id === d.projectId) ?? null;
-	const solo = !!project && project.members.length === 0;
-	const people = usePeople(project ? project.members : null);
+	// The list's members are only the first few: the full read wins once loaded.
+	const members = project ? (p.projectMembers ?? project.members) : null;
+	const solo = !!members && members.length === 0;
+	const people = usePeople(members);
 	const editingShared = d.editing?.source === "shared";
 	const canProject = d.editing === null || editingShared;
 	const err = (k: keyof DraftErrors) =>
@@ -117,29 +121,11 @@ export function ExpenseFields(p: {
 			<div className="grid gap-4 md:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
 				{canProject ? (
 					<Field label={t("project")}>
-						<Select
-							onValueChange={(id) => {
-								const next = p.projects.find((pr) => pr.id === id) ?? null;
-								x.setProject(
-									next?.id ?? null,
-									next?.members ?? [],
-									next?.primaryCurrency,
-								);
-							}}
-							value={d.projectId ?? "none"}
-						>
-							<SelectTrigger aria-label={t("project")} className="w-full">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="none">{t("noProject")}</SelectItem>
-								{p.projects.map((pr) => (
-									<SelectItem key={pr.id} value={pr.id}>
-										{pr.name}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+						<ProjectField
+							onChange={p.onProject}
+							projects={p.projects}
+							value={d.projectId}
+						/>
 					</Field>
 				) : null}
 				{(d.editing === null || editingShared) && !solo ? (
@@ -148,8 +134,8 @@ export function ExpenseFields(p: {
 							chips={people.chips}
 							inProject={!!project}
 							known={
-								project
-									? project.members.map((m) => ({
+								members
+									? members.map((m) => ({
 											...m,
 											onRetrospend: m.participantType === "user",
 										}))

@@ -9,12 +9,32 @@
 		"verify": "{person} hat dich zu {title} hinzugefügt",
 		"due": "{title} ist heute fällig",
 		"overdue": "{title} ist überfällig",
-		"overspent": "{envelope} ist überzogen"
+		"overspent": "{envelope} ist überzogen",
+		"firstExpense": "Erfasse deine erste Ausgabe",
+		"homeCurrency": "Wähle deine Hauptwährung",
+		"verifyEmail": "Bestätige deine E-Mail",
+		"importStatement": "Importiere einen Kontoauszug",
+		"rejected": "{person} hat {title} abgelehnt",
+		"overspentMany": "{count, plural, one {# Umschlag ist} other {# Umschläge sind}} überzogen",
+		"overAssigned": "Du hast <amount></amount> mehr verplant, als du hast",
+		"billDue": "{title} ist bald fällig",
+		"billsDue": "{count, plural, one {# Rechnung ist} other {# Rechnungen sind}} bald fällig",
+		"missingRate": "Noch kein Kurs für {currencies}",
+		"startingMoney": "Bestätige dein Startguthaben"
 	},
 	"action": {
 		"assign": "Zuweisen",
 		"review": "Prüfen",
 		"confirm": "Bestätigen",
-		"cover": "Ausgleichen"
+		"cover": "Ausgleichen",
+		"addExpense": "Ausgabe erfassen",
+		"choose": "Wählen",
+		"resend": "Erneut senden",
+		"import": "Importieren",
+		"edit": "Bearbeiten",
+		"takeBack": "Zurückholen",
+		"fund": "Auffüllen",
+		"setRate": "Kurs festlegen",
+		"notReceived": "Nicht erhalten?"
 	}
 }

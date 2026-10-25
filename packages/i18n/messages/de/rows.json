@@ -26,11 +26,19 @@
 		"solo": "Allein",
 		"people": "{count, plural, one {# Person} other {# Personen}}",
 		"spent": "ausgegeben",
-		"budgetUsed": "Budget genutzt"
+		"budgetUsed": "Budget genutzt",
+		"yourShare": "dein Anteil",
+		"left": "<amount></amount> übrig",
+		"over": "<amount></amount> drüber",
+		"justYou": "Nur du"
 	},
 	"account": {
 		"updated": "Aktualisiert {date}",
-		"change": "{change} diesen Monat"
+		"change": "{change} diesen Monat",
+		"closed": "Geschlossen am {date}. Verlauf bleibt.",
+		"noRate": "Kein {currency}-Kurs. Nicht im Vermögen.",
+		"apr": "Effektivzins {apr}",
+		"valuedAt": "Bewertet zu {type}"
 	},
 	"envelope": {
 		"spent": "Ausgegeben vom Geplanten"
@@ -43,7 +51,11 @@
 		"weekly": "Wöchentlich",
 		"monthly": "Monatlich",
 		"quarterly": "Vierteljährlich",
-		"yearly": "Jährlich"
+		"yearly": "Jährlich",
+		"biweekly": "Alle 2 Wochen",
+		"paused": "Pausiert",
+		"autoPayOn": "Auto-Zahlung an",
+		"autoPayOff": "Auto-Zahlung aus"
 	},
 	"table": {
 		"selectAll": "Alle auswählen",
@@ -57,6 +69,30 @@
 		"actions": "Aktionen",
 		"yourSpending": "Deine Ausgaben",
 		"count": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
-		"withoutRate": "{count, plural, one {# ohne Kurs} other {# ohne Kurs}}"
+		"withoutRate": "{count, plural, one {# ohne Kurs} other {# ohne Kurs}}",
+		"selection": "Auswahl",
+		"selected": "{count} ausgewählt",
+		"clear": "Aufheben",
+		"total": "Gesamt",
+		"yourShare": "Dein Anteil",
+		"paidBy": "Bezahlt von",
+		"split": "Aufgeteilt",
+		"between": "Zwischen euch",
+		"you": "Du",
+		"waitsForYou": "Wartet auf dich",
+		"none": "Keiner",
+		"rejected": "Abgelehnt",
+		"noChange": "Keine Änderung",
+		"wasSettled": "war <amount></amount> · ausgeglichen",
+		"paidYou": "hat dir gezahlt",
+		"youPaid": "du hast gezahlt"
+	},
+	"person": {
+		"new": "{count} neu",
+		"needYou": "{count} brauchen dich",
+		"currencies": "{count} Währungen",
+		"youPaid": "du hast gezahlt",
+		"paidYou": "hat dir gezahlt",
+		"settleUp": "Ausgleichen"
 	}
 }

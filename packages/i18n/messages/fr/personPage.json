@@ -71,6 +71,8 @@
 		"of": "sur <amount></amount>",
 		"paidYou": "{name} vous a payé",
 		"youPaid": "Vous avez payé {name}",
-		"waitingFor": "En attente de {name}"
+		"waitingFor": "En attente de {name}",
+		"categoryGroup": "Catégorie",
+		"projectGroup": "Projet"
 	}
 }

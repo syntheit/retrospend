@@ -34,6 +34,13 @@ export interface SheetProps {
 	/** The specific verb ("Add expense", "Record"). No submit button without it. */
 	submitLabel?: string;
 	cancelLabel?: string;
+	/**
+	 * Phone web only (ADD-EXPENSE-R2): the short save verb ("Add", "Save") in
+	 * the header, with close on the left and the title centered. The footer
+	 * then holds only what `footer` gives it (Add and new); desktop keeps the
+	 * footer's Cancel and verb.
+	 */
+	headerSubmit?: string;
 	/** Return false to stay open. A throw keeps the sheet open with an inline error. */
 	onSubmit?: () => SheetSubmitResult | Promise<SheetSubmitResult>;
 	submitDisabled?: boolean;

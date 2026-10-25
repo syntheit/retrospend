@@ -13,6 +13,7 @@ import {
 	roundMoney,
 	sumIn,
 	toUSD,
+	USD,
 } from "~/lib/money";
 import { toNumberWithDefault as toNumber } from "~/lib/utils";
 import type { db as PrismaClient } from "~/server/db";
@@ -175,10 +176,8 @@ export async function getBudgets(
 			const rate = await getRate(budget.currency, rateDate);
 
 			const actualSpend = sumIn(catExpenses, budget.currency, rate);
-			const actualSpendInUSD = catExpenses.reduce(
-				(sum, e) => sum + e.amountInUSD,
-				0,
-			);
+			// sumIn, not a plain sum: an unpriced share is named, never NaN.
+			const actualSpendInUSD = sumIn(catExpenses, USD, 1);
 			const actualSpendInHome = sumIn(catExpenses, homeCurrency, homeRate);
 
 			const budgetAmount = toNumber(budget.amount);
@@ -206,10 +205,7 @@ export async function getBudgets(
 						getRate(homeCurrency, lastRateDate),
 					]);
 					effectiveAmount = sumIn(lastMonthExpenses, budget.currency, lastRate);
-					effectiveAmountInUSD = lastMonthExpenses.reduce(
-						(sum, e) => sum + e.amountInUSD,
-						0,
-					);
+					effectiveAmountInUSD = sumIn(lastMonthExpenses, USD, 1);
 					effectiveAmountInHome = sumIn(
 						lastMonthExpenses,
 						homeCurrency,

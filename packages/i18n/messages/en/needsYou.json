@@ -9,12 +9,32 @@
 		"verify": "{person} added you to {title}",
 		"due": "{title} is due today",
 		"overdue": "{title} is overdue",
-		"overspent": "{envelope} is over"
+		"overspent": "{envelope} is over",
+		"firstExpense": "Add your first expense",
+		"homeCurrency": "Set your home currency",
+		"verifyEmail": "Verify your email",
+		"importStatement": "Import a statement",
+		"rejected": "{person} rejected {title}",
+		"overspentMany": "{count, plural, one {# envelope is} other {# envelopes are}} over",
+		"overAssigned": "You planned <amount></amount> more than you have",
+		"billDue": "{title} is due soon",
+		"billsDue": "{count, plural, one {# bill is} other {# bills are}} due soon",
+		"missingRate": "No rate for {currencies} yet",
+		"startingMoney": "Confirm your starting money"
 	},
 	"action": {
 		"assign": "Assign",
 		"review": "Review",
 		"confirm": "Confirm",
-		"cover": "Cover"
+		"cover": "Cover",
+		"addExpense": "Add expense",
+		"choose": "Choose",
+		"resend": "Resend",
+		"import": "Import",
+		"edit": "Edit",
+		"takeBack": "Take back",
+		"fund": "Fund",
+		"setRate": "Set rate",
+		"notReceived": "Not received?"
 	}
 }

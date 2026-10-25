@@ -65,7 +65,6 @@
 	"money": {
 		"amount": "Betrag",
 		"currency": "Währung, {code}",
-		"rate": "Wechselkurs: {rate}",
 		"error": {
 			"empty": "Betrag eingeben",
 			"invalidCharacter": "Nur Ziffern und + - × ÷",
@@ -77,6 +76,22 @@
 			"outOfRange": "Betrag ist zu groß",
 			"zero": "Betrag über null eingeben",
 			"negative": "Der Betrag muss über null liegen"
+		},
+		"operators": "Rechentasten",
+		"operator": {
+			"plus": "Plus",
+			"minus": "Minus",
+			"times": "Mal",
+			"divide": "Geteilt durch"
 		}
+	},
+	"project": {
+		"label": "Projekte",
+		"find": "Projekt suchen",
+		"empty": "Keine Treffer",
+		"selected": "Ausgewählt",
+		"none": "Keins",
+		"solo": "Allein",
+		"people": "{count, plural, one {# Person} other {# Personen}}"
 	}
 }

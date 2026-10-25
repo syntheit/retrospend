@@ -11,10 +11,10 @@ import {
 	type ActivityEntry,
 	computeBook,
 	type EngineInput,
-	invariantSides,
 	type MoneyInEntry,
 	type MovementEntry,
 } from "./engine";
+import { invariantSides } from "./invariant";
 import { buildMonthView, type ViewBook, type ViewEnvelope } from "./month-view";
 import type { EnvelopeTarget } from "./needs";
 import type { GroupRole } from "./pace";

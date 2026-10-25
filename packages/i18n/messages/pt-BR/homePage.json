@@ -1,0 +1,42 @@
+{
+	"title": "Início",
+	"missingRates": "Alguns totais deixam de fora {currencies}: ainda não há cotação.",
+	"needs": {
+		"title": "Precisa de você",
+		"showMore": "Mostrar mais {count}",
+		"showFewer": "Mostrar menos",
+		"confirmed": "Pagamento de {name} confirmado",
+		"emailSent": "E-mail de confirmação enviado",
+		"failed": "Não foi salvo. Tente de novo.",
+		"context": {
+			"wasDue": "Venceu em {date}",
+			"paidOn": "Pago em {date}",
+			"yourShare": "Sua parte, {date}",
+			"dueOn": "Vence em {date}",
+			"arrived": "{title}, {date}",
+			"firstExpense": "Leva uns dez segundos",
+			"homeCurrency": "Todos os totais aparecem nela",
+			"importStatement": "CSV ou PDF do seu banco"
+		}
+	},
+	"recent": {
+		"title": "Recentes",
+		"seeAll": "Ver tudo",
+		"empty": "Nenhuma despesa ainda",
+		"emptyHint": "Adicione sua primeira despesa e ela aparece aqui.",
+		"add": "Adicionar despesa"
+	},
+	"rail": {
+		"label": "Num relance",
+		"people": "Pessoas",
+		"allPeople": "Todas as pessoas",
+		"comingUp": "Em breve",
+		"recurring": "Recorrentes",
+		"nothingDue": "Nada vence nas próximas 3 semanas"
+	},
+	"unavailable": {
+		"title": "Indisponível no momento",
+		"hint": "Esta parte do Início não carregou.",
+		"retry": "Tentar de novo"
+	}
+}

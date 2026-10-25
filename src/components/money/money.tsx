@@ -23,6 +23,11 @@ type MoneyProps = Format & {
 	missing?: Missing;
 	/** The figures registry key of this number, for the e2e audit. */
 	figure?: string;
+	/**
+	 * A converted figure (a net across currencies at today's rates): it reads
+	 * "≈ ARS 1,234" so nobody takes it for an exact amount (people.html).
+	 */
+	approx?: boolean;
 	className?: string;
 };
 
@@ -40,6 +45,7 @@ function MoneyAmount({
 	compact,
 	missing = "none",
 	figure,
+	approx = false,
 	className,
 }: MoneyProps) {
 	const locale = useLocale();
@@ -55,7 +61,7 @@ function MoneyAmount({
 			data-slot="money"
 			{...figureAttrs(figure, value)}
 		>
-			{text ?? t(missing)}
+			{text == null ? t(missing) : approx ? `≈ ${text}` : text}
 		</span>
 	);
 }

@@ -23,12 +23,6 @@
 		"weeks": "{count, plural, one {# неделю назад} few {# недели назад} many {# недель назад} other {# недели назад}}",
 		"months": "{count, plural, one {# месяц назад} few {# месяца назад} many {# месяцев назад} other {# месяца назад}}"
 	},
-	"row": {
-		"needYou": "Ждут вас: {count}",
-		"pendingOut": "Ожидает: вы заплатили {amount}, ждём {name}",
-		"pendingIn": "Ожидает: вам заплатили {amount}",
-		"new": "Новых: {count}"
-	},
 	"needs": {
 		"title": "Ждут вас",
 		"confirmed": "Платёж от {name} подтверждён",

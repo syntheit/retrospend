@@ -5,7 +5,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "~prisma";
-import { bookRate, loadRateContext } from "./rate-types";
+import { bookRate, loadRateContext, type RateChoice } from "./rate-types";
 
 /** Income categories every user gets on first money in (budget SPEC §12.1). */
 export const INCOME_CATEGORIES = [
@@ -60,15 +60,17 @@ export interface DueTemplate {
  * sidecar's auto-post: it copies the template's direction (money in is
  * income), and "Amount varies: ask me" (ASK) books the amount the user
  * confirmed. A FIXED template books its own amount and takes none. The rate
- * is the table rate for the due date at the user's default type, with the
- * home leg booked like a saved expense (rate-types.ts); a missing rate
- * throws MissingRateError.
+ * is the table rate for the due date at the user's default type (or the
+ * `choice` a confirm makes: a type or a typed rate), with the home leg booked
+ * like a saved expense (rate-types.ts); a missing rate throws
+ * MissingRateError.
  */
 export async function recurringEntryData(
 	db: PrismaClient | Prisma.TransactionClient,
 	template: DueTemplate,
 	/** A decimal string is stored exactly as typed. */
 	confirmedAmount?: number | string,
+	choice: RateChoice = { kind: "table", rateType: null },
 ): Promise<Prisma.ExpenseUncheckedCreateInput> {
 	const asks = template.amountMode === "ASK";
 	if (asks !== (confirmedAmount !== undefined)) {
@@ -84,11 +86,12 @@ export async function recurringEntryData(
 		db,
 		await loadRateContext(db, template.userId),
 		{
-			amount: Number(amount),
+			// Decimal text keeps the home amount exact (a Decimal's toString never rounds).
+			amount: typeof amount === "object" ? amount.toFixed() : amount,
 			currency: template.currency,
 			date: template.nextDueDate,
 		},
-		{ kind: "table", rateType: null },
+		choice,
 	);
 	const isIncome = template.direction === "IN";
 	return {

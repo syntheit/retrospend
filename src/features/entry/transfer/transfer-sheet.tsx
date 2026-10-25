@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { formatMoney } from "~/components/money/format";
 import { Money } from "~/components/money/money";
-import { MoneyInput } from "~/components/money/money-input";
+import { MoneyInput, MoneyInputRow } from "~/components/money/money-input";
 import { DatePicker } from "~/components/pickers/date-picker";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -156,6 +156,46 @@ function TransferForm({
 						<MoneyInput
 							currency={x.toCur}
 							onChange={x.setIn}
+							rows={
+								// The rate the two typed amounts make, inside the field as Add expense shows its rate.
+								<MoneyInputRow>
+									<span data-testid="transfer-rate">
+										{v?.rate ? (
+											<>
+												<RateLine rate={v.rate} />
+												{vs && ref && v.reference ? (
+													<>
+														{" · "}
+														{ref} <Money value={v.reference.value} />
+														{" · "}
+														{vs.minor === 0
+															? t("vsSame", { type: ref })
+															: t.rich(
+																	vs.minor < 0 === (x.fromCur === home)
+																		? "vsMore"
+																		: "vsLess",
+																	{
+																		type: ref,
+																		amount: () => (
+																			<Money
+																				figure="preview.transfer.vsReference"
+																				value={{
+																					minor: Math.abs(vs.minor),
+																					currency: vs.currency,
+																				}}
+																			/>
+																		),
+																	},
+																)}
+													</>
+												) : null}
+											</>
+										) : (
+											t("rateHint")
+										)}
+									</span>
+								</MoneyInputRow>
+							}
 							showErrors={tried}
 							value={x.inn.text}
 						/>
@@ -170,43 +210,6 @@ function TransferForm({
 				) : null}
 				{tried && x.exchange && x.errors.both ? (
 					<FieldError text={t("error.both")} />
-				) : null}
-				{x.exchange ? (
-					<p className="text-fg-2 text-small" data-testid="transfer-rate">
-						{v?.rate ? (
-							<>
-								<RateLine rate={v.rate} />
-								{vs && ref && v.reference ? (
-									<>
-										{" · "}
-										{ref} <Money value={v.reference.value} />
-										{" · "}
-										{vs.minor === 0
-											? t("vsSame", { type: ref })
-											: t.rich(
-													vs.minor < 0 === (x.fromCur === home)
-														? "vsMore"
-														: "vsLess",
-													{
-														type: ref,
-														amount: () => (
-															<Money
-																figure="preview.transfer.vsReference"
-																value={{
-																	minor: Math.abs(vs.minor),
-																	currency: vs.currency,
-																}}
-															/>
-														),
-													},
-												)}
-									</>
-								) : null}
-							</>
-						) : (
-							t("rateHint")
-						)}
-					</p>
 				) : null}
 				{x.feeOpen ? (
 					<Field

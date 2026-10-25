@@ -6,12 +6,18 @@
 		"toAssign": "Pas encore prévu",
 		"owedToYou": "On te doit",
 		"youOwe": "Tu dois",
-		"netWorth": "Patrimoine"
+		"netWorth": "Patrimoine",
+		"moneyIn": "Rentrée",
+		"dollarToday": "Dollar aujourd’hui, {type}"
 	},
 	"line": {
 		"perDay": "<amount></amount> par jour pendant {days, plural, one {# jour} other {# jours}}",
 		"leftToday": "<amount></amount> restant aujourd'hui",
 		"over": "<amount></amount> au-dessus du plan ce mois-ci",
-		"noBudget": "Aucun budget pour ce mois"
+		"noBudget": "Aucun budget pour ce mois",
+		"unavailable": "Budget indisponible : pas encore de taux pour {currencies}",
+		"unavailableRate": "Budget indisponible : il manque un taux",
+		"paceFaster": "Plus vite qu’en {month} à la même date",
+		"paceSlower": "Au rythme de {month} ou plus lent"
 	}
 }

@@ -19,6 +19,8 @@ export type LedgerFilters = {
 	paidBy: "me" | "them" | null;
 	/** A project id, "none" for Outside projects, null for all. */
 	scope: string | null;
+	/** A category by name (ledger rows carry no category id), null for all. */
+	category: string | null;
 };
 
 export const NO_LEDGER_FILTERS: LedgerFilters = {
@@ -28,6 +30,7 @@ export const NO_LEDGER_FILTERS: LedgerFilters = {
 	payments: false,
 	paidBy: null,
 	scope: null,
+	category: null,
 };
 
 /** Expenses and payments merged, newest first; a payment before an expense on the same day. */
@@ -69,7 +72,7 @@ export function matchesItem(
 	if (!scopeMatches(item, f.scope)) return false;
 	if (item.kind === "payment") {
 		const p = item.payment;
-		if (f.review) return false;
+		if (f.review || f.category) return false;
 		if (f.outstanding && p.status !== "pending") return false;
 		if (f.paidBy && (f.paidBy === "me") !== (p.direction === "out"))
 			return false;
@@ -81,6 +84,7 @@ export function matchesItem(
 	if (f.outstanding && (r.effect === null || r.state === "settled"))
 		return false;
 	if (f.paidBy && r.paidBy !== f.paidBy) return false;
+	if (f.category && r.category?.name !== f.category) return false;
 	if (!f.query) return true;
 	const q = fold(f.query.trim());
 	return fold(`${r.title} ${r.category?.name ?? ""} ${categoryText}`).includes(

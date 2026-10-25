@@ -13,6 +13,7 @@ import { RowList } from "~/components/rows/row";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import { cn } from "~/lib/cn";
+import { useRateLabel } from "./sheets/rate-type-chips";
 import type { WealthAccount, WealthGroup, WealthView } from "./types";
 
 export type AccountFilters = {
@@ -73,6 +74,7 @@ function Rows({
 	onOpen?: (a: WealthAccount) => void;
 	label: string;
 }) {
+	const rate = useRateLabel();
 	return (
 		<RowList label={label}>
 			{accounts.map((a) => {
@@ -93,6 +95,14 @@ function Rows({
 								home: a.home,
 								updated: a.updated,
 								change: null,
+								// The sub line of wealth.html: the code, then how it counts.
+								detail: {
+									valuedAt: a.rateType ? rate(a.rateType) : null,
+									// APR as typed (118 is 118%), in hundredths for the formatter.
+									apr: a.apr != null ? Math.round(a.apr * 100) : null,
+									noRate: a.home === null,
+									closedOn: a.closedOn,
+								},
 							}}
 							actions={
 								<ActionMenu

@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useExpenseModal } from "~/components/expense-modal-provider";
+import { BackButton } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useRowDates } from "~/components/rows/dates";
 import { Face } from "~/components/ui/avatar-face";
@@ -27,7 +28,6 @@ import { useToast } from "~/components/ui/toast";
 import { Tip } from "~/components/ui/tooltip";
 import { firstName } from "~/features/people/filter";
 import type { PersonPage } from "~/features/people/types";
-import { BackButton, HeaderSub, PhoneSub } from "~/features/wealth/page-frame";
 import { downloadCsv, downloadPdf } from "~/lib/format";
 import { api } from "~/trpc/react";
 
@@ -165,10 +165,9 @@ export function PersonHeader({
 						</Button>
 					) : undefined
 				}
-				sub={sub ? <HeaderSub text={sub} /> : undefined}
+				sub={sub || undefined}
 				title={p.name}
 			/>
-			<PhoneSub text={sub} />
 		</>
 	);
 }

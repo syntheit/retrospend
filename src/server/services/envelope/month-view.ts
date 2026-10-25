@@ -11,9 +11,23 @@ import type {
 	EnvelopeTargetDto,
 	GetMonthOutput,
 	Money,
+	OwedSummaryDto,
 } from "~/lib/schemas/envelope";
 import { addMonths } from "./calendar";
 import type { BookState, EngineInput, EnvelopeMonth } from "./engine";
+import {
+	type GroupBase,
+	type GroupMemberView,
+	groupTargetDto,
+} from "./group-view";
+import type { GroupTarget } from "./groups";
+import { leftToSpendDto, verdictDto } from "./month-dto";
+import {
+	leftToSpendFor,
+	limitTotals,
+	tracksOnly,
+	weekTotals,
+} from "./month-totals";
 import { budgetMonthOf, type MonthBoundary, monthRange } from "./months";
 import {
 	type EnvelopeTarget,
@@ -23,8 +37,6 @@ import {
 import {
 	type GroupRole,
 	type LeftToSpend,
-	leftToSpend,
-	perDay,
 	weeklyPace,
 	weeksOfMonth,
 } from "./pace";
@@ -53,6 +65,10 @@ export interface ViewEnvelope {
 	foreign: Money | null;
 	/** The foreign target had no rate today: left out, flagged. */
 	targetIncomplete: boolean;
+	/** A goal's "Only for this goal" Wealth account, valued today in H (B12). */
+	dedicatedValue?: Minor | null;
+	/** A bill that follows this liability's minimum (SPEC §5.4). */
+	liabilityId?: string | null;
 }
 
 export interface ViewGroup {
@@ -60,6 +76,9 @@ export interface ViewGroup {
 	name: string;
 	role: GroupRole;
 	order: number;
+	/** SPEC §5.9; absent or null: no target. */
+	target?: GroupTarget | null;
+	mainEnvelopeId?: string | null;
 }
 
 export interface ViewBook {
@@ -71,6 +90,8 @@ export interface ViewBook {
 	weekStartDay: number;
 	periods: readonly MonthBoundary[];
 	defaultEnvelopeId: string;
+	/** Switched to Just track; absent reads as not paused. */
+	paused?: boolean;
 	groups: readonly ViewGroup[];
 	envelopes: readonly ViewEnvelope[];
 }
@@ -82,6 +103,32 @@ export interface MonthViewInput {
 	month: MonthKey;
 	today: IsoDate;
 	missingRates: readonly MissingRate[];
+	/** Rows valued at the nearest rate ("≈"). */
+	approximateRows?: number;
+	/** The Owed line (owed.ts); nothing owed when omitted. */
+	owed?: OwedSummaryDto;
+	/** The base for % group targets (group-view.ts); none when omitted. */
+	groupBase?: GroupBase | null;
+}
+
+/** Your shares in the month: how many found no category (D19) and what waits for your OK (D20). */
+function sharesOf(p: MonthViewInput, rows: Row[]) {
+	let unresolved = 0;
+	for (const a of p.input.activity)
+		if (
+			a.source === "SHARE" &&
+			a.month === p.month &&
+			!a.categoryId &&
+			!a.envelopeId
+		)
+			unresolved++;
+	return {
+		unresolved,
+		pending: {
+			minor: rows.reduce((t, r) => t + r.m.pending, 0),
+			currency: p.book.currency,
+		},
+	};
 }
 
 /** Net spending per envelope by date, for the bill paid-early rule. */
@@ -102,7 +149,7 @@ function spendingIndex(p: MonthViewInput) {
 	};
 }
 
-interface Row {
+export interface Row {
 	env: ViewEnvelope;
 	m: EnvelopeMonth;
 	target: TargetResult | null;
@@ -111,10 +158,22 @@ interface Row {
 	open: boolean;
 }
 
+/** Per envelope, Σ moved to Wealth minus Σ moved back, through the viewed month (goal progress, B12). */
+function wealthIndex(p: MonthViewInput) {
+	const moved = new Map<string, Minor>();
+	for (const a of p.input.activity) {
+		if (a.source !== "WEALTH" || a.month > p.month) continue;
+		const id = p.state.envelopeOf(a);
+		moved.set(id, (moved.get(id) ?? 0) - a.minor);
+	}
+	return moved;
+}
+
 function rowsFor(p: MonthViewInput, c: MonthKey): Row[] {
 	const range = monthRange(p.month, p.book.periods);
 	const weeks = weeksOfMonth({ ...range, weekStartDay: p.book.weekStartDay });
 	const spentSince = spendingIndex(p);
+	const moved = wealthIndex(p);
 	const monthOf = (d: IsoDate) => budgetMonthOf(d, p.book.periods);
 	const s = p.state.month(p.month);
 	return p.book.envelopes
@@ -132,6 +191,8 @@ function rowsFor(p: MonthViewInput, c: MonthKey): Row[] {
 							carryIn: m.carryIn,
 							assigned: m.assigned,
 							left: m.left,
+							movedToWealth: moved.get(env.id) ?? 0,
+							dedicatedValue: env.dedicatedValue ?? null,
 							monthOf,
 							spentSince: (from) => spentSince(env.id, from),
 						});
@@ -147,15 +208,34 @@ function rowsFor(p: MonthViewInput, c: MonthKey): Row[] {
 						carryIn: m.carryIn,
 						weekly: (env.target as Extract<EnvelopeTarget, { kind: "MONTHLY" }>)
 							.amount,
-						spentMonthToDate: -m.activity,
+						// Moves to Wealth are not spending (D24).
+						spentMonthToDate: -(m.activity - m.wealth),
 					})
 				: null;
 			return { env, m, target, week, open: p.month >= c };
 		});
 }
 
-function statusOf(r: Row): EnvelopeRowDto["status"] {
-	if (r.m.left < 0) return "OVERSPENT";
+/** A row as its group's target reads it (SPEC §5.9). */
+function memberOf(r: Row): GroupMemberView {
+	return {
+		envelopeId: r.env.id,
+		order: r.env.order,
+		hasTarget: r.env.target !== null,
+		assigned: r.m.assigned,
+		need: r.target?.need ?? 0,
+		// Spent and shares minus refunds; moves to Wealth are not spending.
+		spending: -(r.m.activity - r.m.wealth),
+	};
+}
+
+/** Left below zero that counts as overspending. */
+function overBy(r: Row, book: ViewBook): Minor {
+	return r.m.left < 0 && !tracksOnly(r, book) ? -r.m.left : 0;
+}
+
+function statusOf(r: Row, book: ViewBook): EnvelopeRowDto["status"] {
+	if (overBy(r, book) > 0) return "OVERSPENT";
 	if (!r.target && !(r.env.targetIncomplete && r.open)) return "NO_TARGET";
 	return (r.target?.need ?? 0) > 0 ? "UNDERFUNDED" : "FUNDED";
 }
@@ -189,6 +269,8 @@ function targetDto(
 		paid: res?.paid ?? false,
 		foreign: r.env.foreign,
 		incomplete: r.env.targetIncomplete,
+		liabilityId: r.env.liabilityId ?? null,
+		debtPaid: t?.kind === "BILL" ? (t.debtPaid ?? false) : false,
 	};
 }
 
@@ -212,7 +294,7 @@ function rowDto(
 		activity: money(r.m.activity),
 		left: money(r.m.left),
 		pending: money(r.m.pending),
-		status: statusOf(r),
+		status: statusOf(r, p.book),
 		target: targetDto(r, money),
 		leftThisWeek: r.week
 			? {
@@ -253,12 +335,18 @@ function groupsDto(
 				name: g.name,
 				role: g.role,
 				sortOrder: g.order === Number.MAX_SAFE_INTEGER ? 9999 : g.order,
+				target: groupTargetDto(
+					"target" in g ? g : null,
+					mine.map((r) => memberOf(r)),
+					p.month >= p.state.currentMonth ? (p.groupBase ?? null) : undefined,
+					money,
+				),
 				totals: {
 					carryIn: sum((r) => r.m.carryIn),
 					assigned: sum((r) => r.m.assigned),
 					activity: sum((r) => r.m.activity),
 					left: sum((r) => r.m.left),
-					over: sum((r) => Math.max(0, -r.m.left)),
+					over: sum((r) => overBy(r, p.book)),
 					need: sum((r) => r.target?.need ?? 0),
 					count: mine.length,
 				},
@@ -266,49 +354,6 @@ function groupsDto(
 			};
 		})
 		.filter((g) => g.id !== null || g.envelopes.length > 0);
-}
-
-function weekTotals(rows: Row[]) {
-	const weekly = rows.filter((r) => r.week);
-	if (weekly.length === 0) return null;
-	const first = weekly[0]?.week as NonNullable<Row["week"]>;
-	const left = weekly.reduce((t, r) => t + (r.week?.leftThisWeek ?? 0), 0);
-	return {
-		left,
-		perDay: perDay(left, first.daysLeftInWeek),
-		daysLeftInWeek: first.daysLeftInWeek,
-		resetsOn: first.resetsOn,
-	};
-}
-
-/** Left to spend for the month (D-owner-2026-10-22d) with the recurring part of Spending for the pace line (D60). */
-function leftToSpendFor(
-	rows: Row[],
-	p: MonthViewInput,
-	toAssign: Minor,
-): LeftToSpend {
-	const role = new Map(p.book.groups.map((g) => [g.id, g.role]));
-	const roleOf = (r: Row) =>
-		r.env.groupId ? (role.get(r.env.groupId) ?? null) : null;
-	const range = monthRange(p.month, p.book.periods);
-	return leftToSpend({
-		envelopes: rows.map((r) => ({
-			groupRole: roleOf(r),
-			carryIn: r.m.carryIn,
-			assigned: r.m.assigned,
-			activity: r.m.activity,
-			left: r.m.left,
-		})),
-		toAssign,
-		billNeeds: rows
-			.filter((r) => roleOf(r) === "BILLS")
-			.map((r) => r.target?.need ?? 0),
-		month: range,
-		today: p.today,
-		recurringSpent: -rows
-			.filter((r) => roleOf(r) === "SPENDING")
-			.reduce((t, r) => t + r.m.recurring, 0),
-	});
 }
 
 export interface MonthView {
@@ -333,9 +378,10 @@ export function buildMonthView(p: MonthViewInput): MonthView {
 		toAssign: terms.total,
 		leftToSpend: lts,
 		overspent: rows
-			.filter((r) => r.m.left < 0)
-			.map((r) => ({ id: r.env.id, over: -r.m.left })),
+			.filter((r) => overBy(r, p.book) > 0)
+			.map((r) => ({ id: r.env.id, over: overBy(r, p.book) })),
 		week: weekTotals(rows),
+		limits: limitTotals(rows, p),
 	});
 	const incomplete =
 		p.missingRates.length > 0 ||
@@ -352,6 +398,7 @@ export function buildMonthView(p: MonthViewInput): MonthView {
 				startMonth: p.book.startMonth,
 				weekStartDay: p.book.weekStartDay,
 				defaultEnvelopeId: p.book.defaultEnvelopeId,
+				paused: p.book.paused ?? false,
 			},
 			month: {
 				key: p.month,
@@ -374,55 +421,20 @@ export function buildMonthView(p: MonthViewInput): MonthView {
 			groups: groupsDto(rows, p, money),
 			leftToSpend: leftToSpendDto(lts, money),
 			verdict: verdictDto(v, money, incomplete),
+			owed: p.owed ?? {
+				held: money(0),
+				pending: money(0),
+				people: 0,
+				aging: 0,
+			},
+			shares: sharesOf(p, rows),
 			incomplete,
+			approximate: (p.approximateRows ?? 0) > 0,
 			missingRates: p.missingRates.map(({ currency, rateType, date }) => ({
 				currency,
 				rateType,
 				date,
 			})),
 		},
-	};
-}
-
-export function verdictDto(
-	v: Verdict,
-	money: (v: Minor) => Money,
-	incomplete: boolean,
-): GetMonthOutput["verdict"] {
-	return {
-		...v,
-		lead: { ...v.lead, amount: money(v.lead.amount) },
-		perDay: money(v.perDay),
-		over: money(v.over),
-		overEnvelopes: v.overEnvelopes.map((e) => ({
-			id: e.id,
-			over: money(e.over),
-		})),
-		billsShort: money(v.billsShort),
-		plannedTooMuch: money(v.plannedTooMuch),
-		notice: v.notice ? { ...v.notice, amount: money(v.notice.amount) } : null,
-		incomplete,
-	};
-}
-
-export function leftToSpendDto(
-	l: LeftToSpend,
-	money: (v: Minor) => Money,
-): GetMonthOutput["leftToSpend"] {
-	return {
-		left: money(l.left),
-		perDay: money(l.perDay),
-		daysLeft: l.daysLeft,
-		carry: money(l.carry),
-		assigned: money(l.assigned),
-		spent: money(l.spent),
-		plannedTooMuch: money(l.plannedTooMuch),
-		over: money(l.over),
-		billsHeld: money(l.billsHeld),
-		billsShort: money(l.billsShort),
-		billsCount: l.billsCount,
-		savings: money(l.savings),
-		notPlanned: money(l.notPlanned),
-		fasterThanPlanned: l.fasterThanPlanned,
 	};
 }

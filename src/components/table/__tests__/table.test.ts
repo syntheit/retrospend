@@ -131,6 +131,98 @@ describe("TransactionTable", () => {
 	});
 });
 
+describe("TransactionTable layouts", () => {
+	it("layout A: day rows with their total replace the Date column", () => {
+		const html = render(
+			h(TransactionTable, {
+				rows,
+				today: "2026-10-21",
+				groups: {
+					by: "day",
+					label: (d: string) => `Day ${d}`,
+					total: (d: string) => (d === "2026-10-21" ? "T21" : null),
+				},
+			}),
+		);
+		const t = text(html);
+		expect(t).not.toContain(" Date ");
+		expect(html.match(/data-group="/g)).toHaveLength(2);
+		expect(t.indexOf("Day 2026-10-21 T21")).toBeLessThan(t.indexOf("Azulejos"));
+		expect(t.indexOf("Day 2026-10-19")).toBeLessThan(t.indexOf("Uber"));
+		// Grouped rows keep the server's order: no sortable headers.
+		expect(html).not.toContain('aria-sort="none"');
+	});
+
+	it("a selection shows the bulk bar with its count; disabled rows keep a box", () => {
+		const html = render(
+			h(TransactionTable, {
+				rows,
+				canSelect: (tx: TransactionVM) => tx.id !== "d",
+				selection: { selected: new Set(["a", "b"]), onChange: () => undefined },
+				bulk: () => "BULK",
+			}),
+		);
+		expect(html).toContain('data-slot="bulk-bar"');
+		expect(text(html)).toContain("2 selected BULK Clear");
+		expect(html).toMatch(
+			/<button[^>]*disabled[^>]*aria-label="Select Dominio"|aria-label="Select Dominio"[^>]*disabled/,
+		);
+	});
+
+	it("a payment says Payment once: the category column names it, the title only Pending", () => {
+		const html = render(
+			h(TransactionTable, {
+				rows: [
+					{
+						...base,
+						id: "p",
+						title: "You paid Lucía",
+						kind: "payment",
+						category: null,
+						pending: true,
+						amount: ars(500000),
+					},
+				],
+			}),
+		);
+		const t = text(html);
+		expect(t).not.toContain("Payment · Pending");
+		expect(t.match(/Payment/g)).toHaveLength(1);
+		expect(t).toContain("Pending");
+	});
+
+	it("a project's columns: Paid by, Split, Total and Your share; a solo one only Total", () => {
+		const shared = text(
+			render(h(TransactionTable, { rows, ledger: "project" })),
+		);
+		for (const c of ["Paid by", "Split", "Total", "Your share"])
+			expect(shared).toContain(c);
+		expect(shared).not.toContain("Category");
+		const solo = text(
+			render(h(TransactionTable, { rows, ledger: "project", solo: true })),
+		);
+		expect(solo).toContain("Total");
+		for (const c of ["Paid by", "Split", "Your share"])
+			expect(solo).not.toContain(c);
+	});
+
+	it("a person's columns end with Between you: the effect, or why there is none", () => {
+		const html = render(
+			h(TransactionTable, {
+				ledger: "between",
+				rows: [
+					{ ...rows[0]!, between: { amount: ars(1200000), state: "ok" } },
+					{ ...rows[1]!, between: { amount: null, state: "review" } },
+				],
+			}),
+		);
+		const t = text(html);
+		expect(t).toContain("Between you");
+		expect(t).toContain("owes you ARS 12,000");
+		expect(t).toContain("Waits for you");
+	});
+});
+
 describe("TableSkeleton", () => {
 	it("is table-shaped: a header band and placeholder rows", () => {
 		const html = render(h(TableSkeleton, { rows: 3 }));

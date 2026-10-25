@@ -6,12 +6,18 @@
 		"toAssign": "Ещё не запланировано",
 		"owedToYou": "Вам должны",
 		"youOwe": "Вы должны",
-		"netWorth": "Капитал"
+		"netWorth": "Капитал",
+		"moneyIn": "Поступление",
+		"dollarToday": "Доллар сегодня, {type}"
 	},
 	"line": {
 		"perDay": "<amount></amount> в день, осталось {days, plural, one {# день} few {# дня} many {# дней} other {# дня}}",
 		"leftToday": "На сегодня осталось <amount></amount>",
 		"over": "<amount></amount> сверх плана в этом месяце",
-		"noBudget": "Нет бюджета на этот месяц"
+		"noBudget": "Нет бюджета на этот месяц",
+		"unavailable": "Бюджет недоступен: пока нет курса для {currencies}",
+		"unavailableRate": "Бюджет недоступен: не хватает курса",
+		"paceFaster": "Быстрее, чем за {month}, к этому дню",
+		"paceSlower": "Как за {month} или медленнее"
 	}
 }

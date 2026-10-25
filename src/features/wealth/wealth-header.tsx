@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { BackButton } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useRowDates } from "~/components/rows/dates";
 import { Button } from "~/components/ui/button";
@@ -26,7 +27,6 @@ import { Tip } from "~/components/ui/tooltip";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { entryOf, hrefOf } from "~/lib/nav";
 import { api } from "~/trpc/react";
-import { BackButton, HeaderSub, PhoneSub } from "./page-frame";
 import type { WealthView } from "./types";
 
 /** Saves the server's CSV as a file. */
@@ -159,10 +159,9 @@ export function WealthHeader({
 						{add}
 					</>
 				}
-				sub={sub ? <HeaderSub text={sub} /> : undefined}
+				sub={sub || undefined}
 				title={t("title")}
 			/>
-			<PhoneSub text={sub} />
 		</>
 	);
 }

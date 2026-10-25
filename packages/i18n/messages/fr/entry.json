@@ -73,7 +73,8 @@
 			"rate": "Saisis un taux pour {currency}",
 			"splitAmount": "Le partage ne correspond pas au montant",
 			"splitPct": "Les pourcentages ne font pas 100 %",
-			"save": "Impossible d'enregistrer. Vérifie les champs et réessaie."
+			"save": "Impossible d'enregistrer. Vérifie les champs et réessaie.",
+			"projectMembers": "Impossible de charger les personnes du projet. Réessayez."
 		},
 		"toast": {
 			"added": "{title} ajoutée",
@@ -90,7 +91,9 @@
 			"title": "Supprimer {title} ?",
 			"body": "Cela change les soldes d'autres personnes.",
 			"confirm": "Supprimer la dépense"
-		}
+		},
+		"projectAria": "Projet, {project}",
+		"addShort": "Ajouter"
 	},
 	"rate": {
 		"default": "Ton taux par défaut pour {currency}",
@@ -112,18 +115,16 @@
 			"crypto": "Crypto",
 			"market": "Marché",
 			"custom": "Personnalisé"
-		}
+		},
+		"label": "Taux",
+		"youSpent": "Vous avez dépensé"
 	},
 	"changes": {
-		"title": "Ce que ça change",
 		"titleEdit": "Ce que cette modification change",
 		"empty": "Saisis un montant et choisis une catégorie pour voir ce qui change.",
 		"emptyAmount": "Saisis un montant pour voir ce qui change.",
 		"loading": "Vérification de ce qui change",
 		"cannot": "Impossible d'enregistrer pour l'instant : {reason}",
-		"nothingElse": "Rien d'autre ne change : {list} restent tels quels.",
-		"nothingElseOne": "Rien d'autre ne change : {item} reste tel quel.",
-		"unavailable": "Impossible de vérifier {list}.",
 		"figures": {
 			"spent": "Tes dépenses",
 			"owed_owedToYou": "On te doit",
@@ -149,8 +150,7 @@
 			"budget_leftToSpend": "le reste à dépenser",
 			"project_total": "le total du projet",
 			"envelope_left": "l'enveloppe"
-		},
-		"noneChange": "Aucun changement : {list}."
+		}
 	},
 	"income": {
 		"title": "Ajouter un revenu",
@@ -183,7 +183,6 @@
 		"save": "Ajouter le revenu",
 		"error": {
 			"amount": "Saisis un montant supérieur à zéro",
-			"rate": "Aucun taux pour {currency} aujourd'hui",
 			"category": "Choisis ce que c'est",
 			"source": "Qui t'a payé ?"
 		},
@@ -193,7 +192,9 @@
 			"kept": "{amount} ajouté sur {account}. Gardé dans Patrimoine",
 			"planned": "{amount} ajouté. {count, plural, one {# enveloppe remplie} other {# enveloppes remplies}}"
 		},
-		"someoneElse": "Quelqu'un d'autre"
+		"someoneElse": "Quelqu'un d'autre",
+		"received": "Vous avez reçu",
+		"countsAs": "Équivaut à"
 	},
 	"transfer": {
 		"titleTransfer": "Virement",

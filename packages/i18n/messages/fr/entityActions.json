@@ -32,6 +32,18 @@
 			"confirmTitle": "Supprimer {name} ?",
 			"confirmBody": "Les soldes concernés sont mis à jour pour tous.",
 			"confirmButton": "Supprimer la dépense"
+		},
+		"accept": {
+			"label": "Accepter le partage"
+		},
+		"reject": {
+			"label": "Refuser le partage"
+		},
+		"recur": {
+			"label": "En faire une dépense récurrente"
+		},
+		"copy": {
+			"label": "Copier en texte"
 		}
 	},
 	"person": {
@@ -226,6 +238,74 @@
 			"confirmTitle": "Paiement de {name} pas reçu ?",
 			"confirmBody": "Le paiement est marqué comme non reçu et votre solde reste inchangé.",
 			"confirmButton": "Pas reçu"
+		}
+	},
+	"needsYou": {
+		"open": {
+			"label": "Ouvrir"
+		},
+		"later": {
+			"label": "Plus tard"
+		}
+	},
+	"budget": {
+		"fund": {
+			"label": "Financer"
+		},
+		"cover": {
+			"label": "Couvrir"
+		},
+		"takeBack": {
+			"label": "Reprendre"
+		},
+		"usePlan": {
+			"label": "Utiliser mon plan"
+		},
+		"assign": {
+			"label": "Attribuer"
+		},
+		"setRate": {
+			"label": "Définir le taux"
+		},
+		"confirmStartingMoney": {
+			"label": "Confirmer"
+		},
+		"recordPayment": {
+			"label": "Enregistrer le paiement"
+		},
+		"pickEnvelope": {
+			"label": "Choisir une enveloppe"
+		},
+		"openSummary": {
+			"label": "Ouvrir le résumé"
+		},
+		"seeChanges": {
+			"label": "Voir les changements"
+		},
+		"reviewHidden": {
+			"label": "Vérifier"
+		},
+		"reconcile": {
+			"label": "Rapprocher"
+		}
+	},
+	"import": {
+		"review": {
+			"label": "Vérifier"
+		}
+	},
+	"setup": {
+		"addExpense": {
+			"label": "Ajouter une dépense"
+		},
+		"chooseCurrency": {
+			"label": "Choisir"
+		},
+		"resendEmail": {
+			"label": "Renvoyer"
+		},
+		"import": {
+			"label": "Importer"
 		}
 	}
 }

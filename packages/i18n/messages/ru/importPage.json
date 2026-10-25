@@ -1,0 +1,202 @@
+{
+	"title": "Импорт",
+	"sub": "Расходы из банковской выписки или CSV",
+	"back": "Операции",
+	"more": "Другие действия",
+	"menu": {
+		"template": "Скачать шаблон CSV",
+		"export": "Экспортировать все данные",
+		"ai": "Настройки ИИ"
+	},
+	"steps": {
+		"label": "Шаги",
+		"choose": "Выбор файла",
+		"read": "Чтение",
+		"review": "Проверка",
+		"done": "Готово",
+		"of": "Шаг {n} из 4"
+	},
+	"type": {
+		"label": "Что импортировать",
+		"expenses": "Расходы",
+		"accounts": "Счета",
+		"budgets": "Бюджеты"
+	},
+	"drop": {
+		"label": "Файл для импорта",
+		"title": "Перетащите файл сюда",
+		"titlePhone": "Выберите файл",
+		"hint": "CSV, Excel или PDF, до 10 МБ",
+		"choose": "Выбрать файл",
+		"tooBig": "{name} больше 10 МБ.",
+		"wrongType": "{name} не является файлом CSV, Excel или PDF."
+	},
+	"recent": {
+		"title": "Недавние импорты",
+		"reading": "Чтение, {percent}%",
+		"readingNoPercent": "Чтение",
+		"queued": "Ожидает чтения",
+		"review": "{count, plural, one {# строка} few {# строки} many {# строк} other {# строки}} на проверку",
+		"failed": "Не удалось прочитать этот файл",
+		"imported": "Импортировано: {count} · {date}",
+		"importedNoDate": "Импортировано: {count}",
+		"cancel": "Отмена",
+		"reviewAction": "Проверить {count}",
+		"delete": "Удалить",
+		"view": "Открыть",
+		"cancelled": "Отменено: {name}",
+		"deleted": "Удалено: {name}",
+		"couldNotLoad": "Не удалось загрузить недавние импорты"
+	},
+	"read": {
+		"label": "Как читать файл",
+		"csv": "CSV Retrospend",
+		"csvHint": "Дата, название, сумма, валюта, категория",
+		"csvMissing": "Нужны столбцы даты, названия, суммы и валюты",
+		"csvPdf": "PDF можно прочитать только с ИИ",
+		"ai": "Прочитать с помощью ИИ",
+		"aiExternal": "Читает через ваш доступ к OpenRouter",
+		"aiLocal": "Читает с помощью ИИ этого сервера",
+		"aiOff": "Чтение с помощью ИИ на этом сервере выключено",
+		"aiSettings": "Настройки ИИ",
+		"pdfBlocked": "PDF читаются только с ИИ, а здесь он выключен. Используйте CSV или включите ИИ.",
+		"columns": "Столбцы",
+		"column": {
+			"date": "Дата",
+			"title": "Название",
+			"amount": "Сумма",
+			"currency": "Валюта",
+			"category": "Категория",
+			"kind": "Тип"
+		},
+		"notInFile": "Нет в файле",
+		"back": "Назад",
+		"continue": "Продолжить",
+		"readWithAi": "Прочитать с ИИ",
+		"failed": "Не удалось начать чтение {name}. {reason}",
+		"fastPath": "Прочитать как CSV Retrospend"
+	},
+	"reading": {
+		"title": "Чтение {name}",
+		"progress": "Чтение, {percent}%",
+		"reading": "Чтение",
+		"waiting": "Ожидает чтения",
+		"leave": "Можно уйти с этой страницы. Чтение продолжится, а файл появится в Недавних импортах.",
+		"cancel": "Отмена",
+		"back": "Назад к файлам",
+		"failed": "Не удалось прочитать {name}."
+	},
+	"review": {
+		"summary": "{rows, plural, one {# строка} few {# строки} many {# строк} other {# строки}} в файле: к импорту {toImport}",
+		"dups": "Уже в Операциях: {count}",
+		"skipped": "Пропущено: {count}",
+		"unmatched": "Нужно сопоставить {count, plural, one {# категорию} few {# категории} many {# категорий} other {# категории}}: {list}",
+		"unmatchedShort": "Нужно сопоставить {count, plural, one {# категорию} few {# категории} many {# категорий} other {# категории}}",
+		"match": "Сопоставить категории",
+		"dismiss": "Скрыть",
+		"unreadable": "{count, plural, one {# строку не удалось прочитать, она пропущена.} few {# строки не удалось прочитать, они пропущены.} many {# строк не удалось прочитать, они пропущены.} other {# строки не удалось прочитать, они пропущены.}}",
+		"toolbar": "Проверка строк",
+		"view": {
+			"label": "Вид",
+			"table": "Таблица",
+			"cards": "Карточки",
+			"list": "Список"
+		},
+		"currency": "Валюта {code}",
+		"currencyFile": "Валюта как в файле",
+		"asInFile": "Как в файле",
+		"showDups": "Показать уже в Операциях: {count}",
+		"reread": "Изменить способ чтения",
+		"bar": "Будет импортировано: {count}",
+		"barDups": "Уже в Операциях, пропускаются: {count}",
+		"back": "Назад",
+		"import": "Импортировать {count, plural, one {# строку} few {# строки} many {# строк} other {# строки}}",
+		"retry": "Повторить",
+		"loadError": "Не удалось загрузить строки",
+		"empty": "В этом файле нечего импортировать",
+		"col": {
+			"select": "Выбрать все",
+			"date": "Дата",
+			"title": "Название",
+			"kind": "Тип",
+			"category": "Категория",
+			"amount": "Сумма",
+			"status": "Статус",
+			"include": "Импортировать {title}"
+		},
+		"already": "Уже в Операциях",
+		"noCategory": "Без категории",
+		"categoryPicker": "Категория для {title}",
+		"kindMenu": "Импортировать {title} как",
+		"possible": "Возможно, уже в Операциях: {title}, {date}",
+		"skipOne": "Пропустить"
+	},
+	"kind": {
+		"expense": "Расход",
+		"income": "Поступление",
+		"refund": "Возврат",
+		"notSpending": "Не расход"
+	},
+	"kindCount": {
+		"expense": "{count, plural, one {# расход} few {# расхода} many {# расходов} other {# расхода}}",
+		"income": "{count, plural, one {# поступление} few {# поступления} many {# поступлений} other {# поступления}}",
+		"refund": "{count, plural, one {# возврат} few {# возврата} many {# возвратов} other {# возврата}}",
+		"notSpending": "Не расходы: {count}"
+	},
+	"rateType": {
+		"official": "Официальный",
+		"blue": "Blue",
+		"mep": "MEP",
+		"crypto": "Крипто",
+		"card": "Карта",
+		"market": "Рыночный",
+		"custom": "Свой"
+	},
+	"cards": {
+		"progress": "{n} из {total}",
+		"kept": "Оставлено: {count}",
+		"keep": "Оставить",
+		"skip": "Пропустить",
+		"hint": "Смахните вправо, чтобы оставить, влево, чтобы пропустить",
+		"ready": "Готово к импорту: {count}",
+		"readyHint": "Пропущено: {skipped}",
+		"backToCards": "Назад к карточкам",
+		"from": "из {file}",
+		"about": "Подробнее"
+	},
+	"match": {
+		"title": "Сопоставить категории",
+		"hint": "По одному шагу на каждую несовпавшую категорию.",
+		"rows": "{count, plural, one {# строка} few {# строки} many {# строк} other {# строки}}",
+		"suggested": "предложено по вашей истории",
+		"create": "Создать «{name}»",
+		"apply": "Применить",
+		"pick": "Категория для {name}",
+		"done": "Сопоставлено: {count, plural, one {# категория} few {# категории} many {# категорий} other {# категории}}",
+		"doneCreated": "Сопоставлено: {count, plural, one {# категория} few {# категории} many {# категорий} other {# категории}}, создано: {names}"
+	},
+	"sheet": {
+		"title": "Импорт {file}",
+		"submit": "Импортировать {count, plural, one {# строку} few {# строки} many {# строк} other {# строки}}",
+		"loading": "Проверяем, что будет импортировано",
+		"skipped": "Пропускаются: {list}",
+		"skipDups": "уже в Операциях ({count})",
+		"skipUnchecked": "снятые вами ({count})",
+		"skipUnreadable": "нечитаемые ({count})",
+		"skipNoRate": "без курса ({count})",
+		"withoutRate": "Без курса: {count}",
+		"reconcile": "{rows, plural, one {# строка} few {# строки} many {# строк} other {# строки}} в файле: импортировано {created}, пропущено {skipped}"
+	},
+	"done": {
+		"title": "Импортировано: {count, plural, one {# строка} few {# строки} many {# строк} other {# строки}}",
+		"dups": "{count, plural, one {# строка уже была в Операциях и пропущена.} few {# строки уже были в Операциях и пропущены.} many {# строк уже были в Операциях и пропущены.} other {# строки уже были в Операциях и пропущены.}}",
+		"reconcile": "{rows, plural, one {# строка} few {# строки} many {# строк} other {# строки}} в файле, импортировано {created}.",
+		"view": "Открыть в Операциях",
+		"undo": "Отменить импорт",
+		"again": "Импортировать другой файл",
+		"toast": "Импортировано: {count, plural, one {# строка} few {# строки} many {# строк} other {# строки}}",
+		"undone": "Импорт отменён",
+		"undoFailed": "Не удалось отменить импорт",
+		"undoFailedWhy": "Не удалось отменить импорт. {reason}"
+	}
+}

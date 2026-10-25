@@ -1,13 +1,16 @@
 import {
 	Check,
+	Clipboard,
 	Copy,
 	Eye,
 	FolderInput,
 	MessageCircle,
 	Pencil,
+	Repeat,
 	Split,
 	Tag,
 	Trash2,
+	X,
 } from "lucide-react";
 import type { ActionDef, ActionTarget } from "./types";
 
@@ -20,6 +23,12 @@ export type ExpenseTarget = ActionTarget & {
 	reviewed: boolean;
 	/** Already split with someone. */
 	shared: boolean;
+	/** Someone else's split waiting for you to accept or reject it. */
+	waiting?: boolean;
+	/** Money in, a refund or a transfer: not something that repeats as an expense. */
+	notSpending?: boolean;
+	/** Booked from a recurring template already. */
+	recurring?: boolean;
 };
 
 const own = (e: ExpenseTarget) => e.mine;
@@ -44,9 +53,24 @@ export const EXPENSE_ACTIONS: readonly ActionDef<ExpenseTarget>[] = [
 		when: (e) => e.mine && !e.shared,
 		swipe: (e) => (e.reviewed ? "lead" : null),
 	},
-	{ id: "category", icon: Tag, group: 0, when: own },
-	{ id: "project", icon: FolderInput, group: 0, when: own },
+	{ id: "category", icon: Tag, group: 0, when: own, pick: true },
+	{ id: "project", icon: FolderInput, group: 0, when: own, pick: true },
 	{ id: "duplicate", icon: Copy, group: 0 },
+	{
+		id: "accept",
+		icon: Check,
+		group: 0,
+		when: (e) => e.waiting === true,
+		swipe: (e) => (e.waiting ? "lead" : null),
+	},
+	{ id: "reject", icon: X, group: 0, when: (e) => e.waiting === true },
+	{
+		id: "recur",
+		icon: Repeat,
+		group: 0,
+		when: (e) => e.mine && !e.recurring && !e.notSpending,
+	},
+	{ id: "copy", icon: Clipboard, group: 0 },
 	{
 		id: "delete",
 		icon: Trash2,

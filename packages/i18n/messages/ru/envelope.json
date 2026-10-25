@@ -3,11 +3,22 @@
 		"bills": "Счета",
 		"spending": "Расходы",
 		"everyday": "Расходы",
-		"savings": "Сбережения"
+		"limits": "Лимиты",
+		"savings": "Сбережения",
+		"needs": "Необходимое",
+		"wants": "Желания",
+		"debts": "Долги"
 	},
 	"envelopes": {
 		"spending": "Расходы",
 		"savings": "Сбережения",
-		"everythingElse": "Всё остальное"
+		"everythingElse": "Всё остальное",
+		"needs": "Необходимое",
+		"wants": "Желания",
+		"extraDebt": "Дополнительное погашение"
+	},
+	"rules": {
+		"saveFirst": "Сначала сбережения",
+		"rest": "Остальное"
 	}
 }

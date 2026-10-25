@@ -77,6 +77,24 @@ describe("TransactionRow", () => {
 		expect(text(html)).toContain("Lucía paid");
 	});
 
+	it("keeps only the faces on a phone row, so the category keeps its room", () => {
+		const html = list(
+			h(TransactionRow, {
+				tx: {
+					...base,
+					people: [
+						{ id: "lucia", name: "Lucía Fernández" },
+						{ id: "me", name: "Sofía", isSelf: true },
+					],
+					payerId: "lucia",
+					payerName: "Lucía",
+				},
+			}),
+			"group",
+		);
+		expect(html).toMatch(/class="text-fg-2 hidden">Lucía paid/);
+	});
+
 	it("mutes a money move and names its kind; marks unreviewed rows", () => {
 		const html = list(
 			h(TransactionRow, {
@@ -153,6 +171,33 @@ describe("entity rows", () => {
 		expect(html).toContain('aria-label="Budget used"');
 	});
 
+	it("ProjectRow columns: total with your share, budget left, your balance", () => {
+		const html = list(
+			h(ProjectRow, {
+				project: {
+					id: "p2",
+					name: "Depto Palermo",
+					href: "/projects/p2",
+					solo: false,
+					people: [{ id: "martin", name: "Martín Acosta" }],
+					peopleCount: 2,
+					balance: ars(-4110000),
+					budgetUsed: { basis: 10000, over: true },
+					columns: {
+						total: ars(61500000),
+						share: ars(30750000),
+						budgetLeft: ars(-1500000),
+					},
+				},
+			}),
+		);
+		const t = text(html);
+		expect(t).toContain("ARS 615,000 your share ARS 307,500");
+		expect(t).toContain("ARS 15,000 over");
+		expect(t).toContain("you owe ARS 41,100");
+		expect(html).toContain("*:bg-attention");
+	});
+
 	it("AccountRow: native first, home under it, the month's change", () => {
 		const html = list(
 			h(AccountRow, {
@@ -171,6 +216,50 @@ describe("entity rows", () => {
 		expect(t).toContain("BTC 0.01834217");
 		expect(t).toContain("Updated Oct 12");
 		expect(t).toContain("-2.2% this month");
+	});
+
+	it("AccountRow on Wealth: the code, then how it counts, then the day", () => {
+		const account = {
+			id: "a2",
+			name: "Caja USD",
+			kind: "cash" as const,
+			amount: { minor: 120000, currency: "USD" },
+			home: ars(176160000),
+			updated: "2026-10-18",
+		};
+		const valued = text(
+			list(
+				h(AccountRow, {
+					account: { ...account, detail: { valuedAt: "Blue" } },
+				}),
+			),
+		);
+		expect(valued).toContain("USD · Valued at Blue · Updated Oct 18");
+		const card = text(
+			list(
+				h(AccountRow, {
+					account: {
+						...account,
+						kind: "liability",
+						detail: { apr: 11800, valuedAt: "Blue" },
+					},
+				}),
+			),
+		);
+		expect(card).toContain("APR 118");
+		expect(card).not.toContain("Valued at");
+		const norate = list(
+			h(AccountRow, {
+				account: {
+					...account,
+					amount: { minor: 5000000, currency: "CLP" },
+					home: null,
+					detail: { noRate: true },
+				},
+			}),
+		);
+		expect(text(norate)).toContain("No CLP rate. Left out of net worth.");
+		expect(norate).toContain("text-attention-text");
 	});
 
 	it("EnvelopeRow: one Available pill with its word", () => {
@@ -208,10 +297,83 @@ describe("entity rows", () => {
 			}),
 		);
 		const t = text(html);
-		expect(t).toContain("Monthly");
+		// Monthly is the usual case, so the row leaves the word out (recurring.html).
+		expect(t).not.toContain("Monthly");
 		expect(t).toContain("Overdue since Oct 8");
 		expect(t).toContain("Confirm");
 		expect(t).toContain("Skip");
+	});
+
+	it("RecurringRow: every 2 weeks, the auto-pay line, and a paused template", () => {
+		const item = {
+			id: "r9",
+			title: "Limpieza",
+			category: { name: "Home", tone: 4 },
+			frequency: "biweekly" as const,
+			next: "2026-10-30",
+			state: "upcoming" as const,
+			direction: "out" as const,
+			amount: ars(2500000),
+			autoPay: true,
+		};
+		const t = text(list(h(RecurringRow, { item }), "group"));
+		expect(t).toContain("Next Oct 30");
+		expect(t).toContain("Every 2 weeks");
+		expect(t).toContain("Auto-pay on");
+		const paused = list(
+			h(RecurringRow, {
+				item: { ...item, paused: true, state: "due" },
+				onConfirm: () => undefined,
+			}),
+		);
+		expect(text(paused)).toContain("Paused");
+		expect(text(paused)).not.toContain("Confirm");
+	});
+
+	it("PersonRow: a converted net reads ≈ and lists its parts as held", () => {
+		const html = list(
+			h(PersonRow, {
+				person: {
+					id: "lu",
+					name: "Lucía Fernández",
+					onRetrospend: true,
+					lastShared: "Asado",
+					when: "3 days ago",
+					balance: ars(130300000),
+					approx: true,
+					parts: [ars(80235200), { minor: 40250, currency: "BRL" }],
+					unseen: 2,
+					href: "/people/lu",
+				},
+				words: false,
+			}),
+		);
+		const t = text(html);
+		expect(t).toContain("≈ ARS 1,303,000");
+		expect(t).not.toContain("owes you");
+		expect(t).toContain("ARS 802,352 · BRL 402.50");
+		expect(t).toContain("2 new");
+		expect(html).toContain('data-slot="unseen-dot"');
+	});
+
+	it("PersonRow: a pending payment takes the balance's place", () => {
+		const t = text(
+			list(
+				h(PersonRow, {
+					person: {
+						id: "ju",
+						name: "Juan",
+						onRetrospend: true,
+						lastShared: "",
+						balance: ars(0),
+						pending: { direction: "out", amount: ars(3620000) },
+						href: "/people/ju",
+					},
+				}),
+			),
+		);
+		expect(t).toContain("Pending you paid ARS 36,200");
+		expect(t).not.toContain("Settled");
 	});
 });
 
@@ -241,5 +403,45 @@ describe("narrow rows (390)", () => {
 			h(TransactionRow, { tx: { ...base, figure: "expense.t1.amount" } }),
 		);
 		expect(html).toContain('data-figure="expense.t1.amount"');
+	});
+});
+
+describe("RowSub", () => {
+	it("keeps Not on Retrospend whole at 390: the last thing shared gives way", () => {
+		const html = list(
+			h(PersonRow, {
+				person: {
+					id: "p",
+					name: "Paz Ibarra",
+					onRetrospend: false,
+					lastShared: "Churrasco de despedida en la quinta",
+					when: "3 days ago",
+					balance: ars(94693469),
+					href: "/people/guest/p",
+				},
+			}),
+			"group",
+		);
+		expect(html).toMatch(
+			/class="flex items-center gap-2 shrink-0"><span class="[^"]*" data-status="notOnRetrospend"/,
+		);
+		expect(html).toMatch(/shrink truncate"><span class="truncate">Churrasco/);
+	});
+
+	it("leaves out an empty shrinkable part, so no separator leads the line", () => {
+		const html = list(
+			h(PersonRow, {
+				person: {
+					id: "p",
+					name: "Paz Ibarra",
+					onRetrospend: false,
+					lastShared: "",
+					balance: ars(94693469),
+					href: "/people/guest/p",
+				},
+			}),
+		);
+		const sub = html.match(/text-meta mt-px[^"]*">(.*?)<\/div>/)?.[1] ?? "";
+		expect(sub.match(/<span class="flex items-center gap-2/g)).toHaveLength(1);
 	});
 });

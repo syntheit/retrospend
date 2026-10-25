@@ -5,7 +5,7 @@
  * - A USD expense in an ARS home books its home leg at the picked type:
  *   USD 100 at Blue is ARS 146,800; at Official ARS 141,200.
  * - A typed rate of 1,475 books ARS 147,500, and the undo of a delete brings
- *   the same row back. No rate (UYU) blocks saving: never 1.
+ *   the same row back. No rate (BTN) blocks saving: never 1.
  * - An Exchange of ARS 442,500 for USD 300 derives 1,475 per USD, ARS 2,100
  *   more than Blue (300 x 1,468 = 440,400).
  * - Income with Use my plan: USD 1,000 fills Rent 500 and Dining 200; 300
@@ -95,7 +95,7 @@ describe("Add expense: rate per entry", () => {
 			await rateOptions(adminDb, user.id, {
 				currency: "USD",
 				date: TODAY,
-				amount: 100,
+				amount: "100",
 			}),
 		);
 		expect(view.defaultType).toBe("blue");
@@ -113,18 +113,19 @@ describe("Add expense: rate per entry", () => {
 		});
 	});
 
-	it("no UYU rate: the strip says missing and saving throws, never at 1", async () => {
+	// BTN: no pg test stores rates for it (the currencies test stores UYU).
+	it("no BTN rate: the strip says missing and saving throws, never at 1", async () => {
 		const { user } = await arsUser();
 		const cat = await category(user.id);
 		const view = await rateOptions(adminDb, user.id, {
-			currency: "UYU",
+			currency: "BTN",
 			date: TODAY,
 		});
-		expect(view.missing).toEqual({ currency: "UYU" });
+		expect(view.missing).toEqual({ currency: "BTN" });
 		await expect(
 			forUser(user.id).preview(createExpense, {
 				...usd100(crypto.randomUUID(), cat.id),
-				currency: "UYU",
+				currency: "BTN",
 			}),
 		).rejects.toThrow();
 	});

@@ -22,12 +22,19 @@ import type { NeedsItemDTO } from "./types";
 const FIRST = { desktop: 5, phone: 3 };
 
 function toItem(n: NeedsItemDTO): NeedsYouItemVM {
+	// Each item leads with the face of the person asking (People mockup).
+	const face = {
+		id: n.person.key,
+		name: n.person.name,
+		imageUrl: n.person.imageUrl,
+	};
 	return n.kind === "confirmPayment"
 		? {
 				kind: "confirmPayment",
 				id: n.id,
 				person: firstName(n.person.name),
 				amount: n.amount,
+				face,
 			}
 		: {
 				kind: "verify",
@@ -35,6 +42,7 @@ function toItem(n: NeedsItemDTO): NeedsYouItemVM {
 				person: firstName(n.person.name),
 				title: n.title,
 				amount: n.amount,
+				face,
 			};
 }
 

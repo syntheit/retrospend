@@ -7,6 +7,7 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { env } from "~/env";
 import { IntegrationService } from "~/server/services/integration.service";
 import {
 	adminDb,
@@ -23,6 +24,12 @@ vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
 	cookies: async () => ({ get: () => undefined }),
 }));
+// A configured sidecar by default (the worker call itself is mocked per
+// test); one case takes the key away to see the server say it cannot sync.
+vi.mock("~/env", async (importOriginal) => {
+	const real = await importOriginal<typeof import("~/env")>();
+	return { env: { ...real.env, WORKER_API_KEY: "pg-test-worker-key" } };
+});
 
 const c = contract.currencies;
 const day = (d: string) => new Date(`${d}T00:00:00Z`);
@@ -221,6 +228,30 @@ describe("/api/v1 currencies and rates", () => {
 			expect(replay.headers.get("idempotent-replayed")).toBe("true");
 			expect(worker).toHaveBeenCalledTimes(1);
 		} finally {
+			worker.mockRestore();
+		}
+	});
+
+	it("answers 501 when this server has no sidecar to sync with", async () => {
+		const worker = vi.spyOn(IntegrationService, "requestWorker");
+		const key = env.WORKER_API_KEY;
+		(env as { WORKER_API_KEY?: string }).WORKER_API_KEY = undefined;
+		try {
+			const admin = await webCookieFor(
+				(await createTestUser({ role: "ADMIN" })).user.id,
+			);
+			await expectProblem(
+				await call("/rates/sync", {
+					method: "POST",
+					headers: admin,
+					idempotent: true,
+				}),
+				501,
+				"not_implemented",
+			);
+			expect(worker).not.toHaveBeenCalled();
+		} finally {
+			(env as { WORKER_API_KEY?: string }).WORKER_API_KEY = key;
 			worker.mockRestore();
 		}
 	});

@@ -101,3 +101,151 @@ describe("style presets (SPEC §4.2)", () => {
 		]);
 	});
 });
+
+describe("Pay off debt preset (SPEC §4.2)", () => {
+	it("as Flex, plus a Debts group: a bill per liability that follows its minimum and Extra debt payment", () => {
+		const p = stylePreset({
+			style: "DEBT_PAYOFF",
+			currency: "USD",
+			templates: [],
+			categories,
+			liabilities: [{ id: "visa", name: "Visa" }],
+		});
+		expect(setupPresetOutputSchema.parse(p)).toEqual(p);
+		expect(p.groups.map((g) => g.key)).toEqual([
+			"bills",
+			"debts",
+			"spending",
+			"savings",
+		]);
+		expect(
+			p.envelopes
+				.filter((e) => e.groupKey === "debts")
+				.map((e) => [e.key, e.kind, e.target]),
+		).toEqual([
+			["debt-visa", "BILL", { kind: "BILL_LIABILITY", liabilityId: "visa" }],
+			[
+				"extra-debt",
+				"MONTHLY",
+				{
+					kind: "MONTHLY",
+					amountMinor: 0,
+					mode: "SET_ASIDE",
+					cadence: "MONTH",
+				},
+			],
+		]);
+		expect(p.envelopes.filter((e) => e.isDefault).map((e) => e.key)).toEqual([
+			"spending",
+		]);
+	});
+});
+
+describe("P5 presets (SPEC §4.2)", () => {
+	it("Save first: Savings first, Bills, one Spending envelope; 20% to Savings and the rest to Spending", () => {
+		const p = stylePreset({
+			style: "SAVE_FIRST",
+			currency: "ARS",
+			templates,
+			categories,
+		});
+		expect(setupPresetOutputSchema.parse(p)).toEqual(p);
+		expect(p.groups.map((g) => g.key)).toEqual([
+			"savings",
+			"bills",
+			"spending",
+		]);
+		expect(p.envelopes.map((e) => [e.key, e.isDefault])).toEqual([
+			["savings", false],
+			["bill-t-rent", false],
+			["bill-t-net", false],
+			["bill-t-power", false],
+			["spending", true],
+		]);
+		expect(p.rules?.map((r) => [r.envelopeKey, r.action])).toEqual([
+			["savings", { kind: "PERCENT", basisPoints: 2_000 }],
+			["spending", { kind: "REMAINDER" }],
+		]);
+	});
+
+	it("50/30/20: Needs 50%, Wants 30%, Savings 20%; fixed categories start in Needs", () => {
+		const p = stylePreset({
+			style: "FIFTY_THIRTY_TWENTY",
+			currency: "ARS",
+			templates,
+			categories,
+		});
+		expect(setupPresetOutputSchema.parse(p)).toEqual(p);
+		expect(p.groups.map((g) => [g.key, g.target])).toEqual([
+			["needs", { kind: "PERCENT_OF_INCOME", basisPoints: 5_000 }],
+			["wants", { kind: "PERCENT_OF_INCOME", basisPoints: 3_000 }],
+			["savings", { kind: "PERCENT_OF_INCOME", basisPoints: 2_000 }],
+		]);
+		expect(p.envelopes.map((e) => [e.key, e.isDefault, e.categoryIds])).toEqual(
+			[
+				["needs", false, ["c-housing", "c-utilities", "c-insurance"]],
+				["wants", true, ["c-groceries", "c-dining"]],
+				["savings", false, []],
+			],
+		);
+	});
+});
+
+describe("Limits preset (SPEC §4.2, A2)", () => {
+	const cats = ["a", "b", "c", "d", "e", "f", "g", "h"].map((id) => ({
+		id,
+		name: id.toUpperCase(),
+		isFixed: false,
+	}));
+	// 3-month totals in cents; h spent nothing.
+	const spent = new Map([
+		["a", 60_000],
+		["b", 126_001],
+		["c", 30_000],
+		["d", 9_000],
+		["e", 3_000],
+		["f", 300],
+		["g", 150],
+	]);
+	const p = stylePreset({
+		style: "LIMITS",
+		currency: "USD",
+		templates,
+		categories: cats,
+		spent,
+		unit: 100,
+	});
+
+	it("the top 6 categories by spending, each a Set aside limit of its average rounded up to whole dollars", () => {
+		expect(setupPresetOutputSchema.parse(p)).toBeTruthy();
+		const limited = p.envelopes.filter((e) => !e.isDefault);
+		expect(limited.map((e) => e.categoryIds[0])).toEqual([
+			"b",
+			"a",
+			"c",
+			"d",
+			"e",
+			"f",
+		]);
+		// 126,001 / 3 = 42,000.33 -> 42,100; 60,000 / 3 = 20,000; 300 / 3 = 100.
+		expect(limited.map((e) => e.target)).toMatchObject([
+			{ kind: "MONTHLY", mode: "SET_ASIDE", amountMinor: 42_100 },
+			{ amountMinor: 20_000 },
+			{ amountMinor: 10_000 },
+			{ amountMinor: 3_000 },
+			{ amountMinor: 1_000 },
+			{ amountMinor: 100 },
+		]);
+	});
+
+	it("Everything else covers the rest with no limit; one Limits group", () => {
+		expect(p.envelopes.find((e) => e.isDefault)).toMatchObject({
+			key: "else",
+			target: null,
+			groupKey: "limits",
+		});
+		expect(p.groups).toEqual([
+			{ key: "limits", nameKey: "envelope.groups.limits", role: "SPENDING" },
+		]);
+	});
+});

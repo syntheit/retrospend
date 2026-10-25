@@ -156,7 +156,7 @@ export function ActivityToolbar({
 				</div>
 			}
 		>
-			<FilterChips>
+			<FilterChips label={t("label")}>
 				<DateRange
 					compare={compare}
 					onChange={(r) => {

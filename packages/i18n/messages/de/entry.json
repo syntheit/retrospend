@@ -73,7 +73,8 @@
 			"rate": "Gib einen Kurs für {currency} ein",
 			"splitAmount": "Die Aufteilung ergibt nicht den Betrag",
 			"splitPct": "Die Prozente ergeben nicht 100 %",
-			"save": "Konnte nicht speichern. Prüf die Felder und versuch es noch einmal."
+			"save": "Konnte nicht speichern. Prüf die Felder und versuch es noch einmal.",
+			"projectMembers": "Die Personen des Projekts konnten nicht geladen werden. Versuch es noch einmal."
 		},
 		"toast": {
 			"added": "{title} hinzugefügt",
@@ -90,7 +91,9 @@
 			"title": "{title} löschen?",
 			"body": "Das ändert die Salden anderer Personen.",
 			"confirm": "Ausgabe löschen"
-		}
+		},
+		"projectAria": "Projekt, {project}",
+		"addShort": "Hinzufügen"
 	},
 	"rate": {
 		"default": "Dein Standardkurs für {currency}",
@@ -112,18 +115,16 @@
 			"crypto": "Krypto",
 			"market": "Markt",
 			"custom": "Eigener"
-		}
+		},
+		"label": "Kurs",
+		"youSpent": "Ausgegeben"
 	},
 	"changes": {
-		"title": "Was sich ändert",
 		"titleEdit": "Was diese Änderung ändert",
 		"empty": "Gib einen Betrag ein und wähle eine Kategorie, um zu sehen, was sich ändert.",
 		"emptyAmount": "Gib einen Betrag ein, um zu sehen, was sich ändert.",
 		"loading": "Prüfe, was sich ändert",
 		"cannot": "Das lässt sich noch nicht speichern: {reason}",
-		"nothingElse": "Sonst ändert sich nichts: {list} bleiben, wie sie sind.",
-		"nothingElseOne": "Sonst ändert sich nichts: {item} bleibt, wie es ist.",
-		"unavailable": "{list} ließ sich nicht prüfen.",
 		"figures": {
 			"spent": "Deine Ausgaben",
 			"owed_owedToYou": "Dir geschuldet",
@@ -149,8 +150,7 @@
 			"budget_leftToSpend": "was noch verfügbar ist",
 			"project_total": "die Projektsumme",
 			"envelope_left": "der Umschlag"
-		},
-		"noneChange": "Keine Änderung: {list}."
+		}
 	},
 	"income": {
 		"title": "Einnahme hinzufügen",
@@ -183,7 +183,6 @@
 		"save": "Einnahme hinzufügen",
 		"error": {
 			"amount": "Gib einen Betrag über null ein",
-			"rate": "Heute kein Kurs für {currency}",
 			"category": "Wähle, was es ist",
 			"source": "Wer hat dich bezahlt?"
 		},
@@ -193,7 +192,9 @@
 			"kept": "{amount} auf {account} hinzugefügt. Bleibt im Vermögen",
 			"planned": "{amount} hinzugefügt. {count, plural, one {# Umschlag gefüllt} other {# Umschläge gefüllt}}"
 		},
-		"someoneElse": "Jemand anderes"
+		"someoneElse": "Jemand anderes",
+		"received": "Erhalten",
+		"countsAs": "Entspricht"
 	},
 	"transfer": {
 		"titleTransfer": "Überweisung",
