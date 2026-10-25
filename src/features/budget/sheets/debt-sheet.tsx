@@ -138,10 +138,12 @@ export function DebtSheet({ open, onClose, month }: SheetProps) {
 								}
 								title={t("debtFree")}
 							/>
-							<Row
-								end={<Money value={p.totalInterest} />}
-								title={t("interest")}
-							/>
+							{p.diverges ? null : (
+								<Row
+									end={<Money value={p.totalInterest} />}
+									title={t("interest")}
+								/>
+							)}
 						</RowList>
 					) : null}
 					{p?.incomplete ? (

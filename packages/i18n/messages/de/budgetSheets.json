@@ -468,7 +468,8 @@
 		"stop": "Dein Plan kostet <cost></cost> im Monat, du startest aber mit <available></available>.",
 		"usePay": "Mit meinem Gehalt den Rest decken. Weitere <short></short> starten, wenn es eintrifft.",
 		"moneyNow": "Geld zum Verplanen",
-		"failed": "Dein Budget konnte nicht gestartet werden. Es wurde nichts geändert."
+		"failed": "Dein Budget konnte nicht gestartet werden. Es wurde nichts geändert.",
+		"stopNone": "Du startest mit <available></available>, daher bleibt nichts zum Verplanen."
 	},
 	"debt": {
 		"title": "Schuldentilgungsplan",

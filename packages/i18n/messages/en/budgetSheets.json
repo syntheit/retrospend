@@ -468,7 +468,8 @@
 		"stop": "Your plan costs <cost></cost> a month but you start with <available></available>.",
 		"usePay": "Use my pay for the rest. <short></short> more starts when it arrives.",
 		"moneyNow": "Money to plan",
-		"failed": "Could not start your budget. Nothing was changed."
+		"failed": "Could not start your budget. Nothing was changed.",
+		"stopNone": "You start with <available></available>, so nothing is left to plan."
 	},
 	"debt": {
 		"title": "Debt payoff plan",

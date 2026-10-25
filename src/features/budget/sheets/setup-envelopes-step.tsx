@@ -46,10 +46,13 @@ export function SetupEnvelopesStep({
 	const p = s.preset;
 	if (!p) return null;
 	const limits = s.style === "LIMITS";
-	const groups = p.groups.map((g) => ({
-		g,
-		envelopes: p.envelopes.filter((e) => e.groupKey === g.key),
-	}));
+	// A group with nothing in it (no bills yet) is not a heading over nothing.
+	const groups = p.groups
+		.map((g) => ({
+			g,
+			envelopes: p.envelopes.filter((e) => e.groupKey === g.key),
+		}))
+		.filter((x) => x.envelopes.length > 0);
 	return (
 		<div className="flex flex-col gap-4">
 			<div>
@@ -103,10 +106,14 @@ export function SetupEnvelopesStep({
 			{plan && plan.short.minor > 0 ? (
 				<div className="flex flex-col gap-3">
 					<Notice tone="attention">
-						{t.rich("stop", {
-							cost: () => <Money value={plan.cost} />,
-							available: () => <Money value={plan.available} />,
-						})}
+						{plan.cost.minor === 0
+							? t.rich("stopNone", {
+									available: () => <Money value={plan.available} />,
+								})
+							: t.rich("stop", {
+									cost: () => <Money value={plan.cost} />,
+									available: () => <Money value={plan.available} />,
+								})}
 					</Notice>
 					<div className="flex items-start gap-3">
 						<Checkbox
@@ -115,9 +122,11 @@ export function SetupEnvelopesStep({
 							onCheckedChange={(v) => onCovered(v === true)}
 						/>
 						<Label className="text-body text-fg" htmlFor="setup-covered">
-							{t.rich("usePay", {
-								short: () => <Money value={plan.short} />,
-							})}
+							<span>
+								{t.rich("usePay", {
+									short: () => <Money value={plan.short} />,
+								})}
+							</span>
 						</Label>
 					</div>
 				</div>

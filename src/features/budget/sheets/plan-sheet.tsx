@@ -55,9 +55,15 @@ export function PlanSheet({
 	);
 	const [choice, setChoice] = useState<Choice>("LEAVE");
 	const data = fill.data ?? null;
-	const input: UsePlan | null = data
-		? { rest: choice, ...(amountMinor ? { amountMinor } : {}) }
-		: null;
+	// Nothing to plan and nothing left over: the server refuses it, so do not ask.
+	const nothing =
+		data !== null &&
+		data.rest.minor <= 0 &&
+		!data.lines.some((l) => l.amount.minor > 0);
+	const input: UsePlan | null =
+		data && !nothing
+			? { rest: choice, ...(amountMinor ? { amountMinor } : {}) }
+			: null;
 	const preview = api.envelope.usePlanPreview.useMutation();
 	const commit = api.envelope.usePlan.useMutation();
 	const w = useMoneyWrite({
@@ -195,7 +201,7 @@ export function PlanSheet({
 							) : null}
 						</section>
 					) : null}
-					<FigureChanges dry={w.dry} poolName={pool} />
+					{nothing ? null : <FigureChanges dry={w.dry} poolName={pool} />}
 					<div>
 						<Button kind="ghost" onClick={() => setChanging(true)} size="sm">
 							{t("change")}

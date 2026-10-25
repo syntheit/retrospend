@@ -468,7 +468,8 @@
 		"stop": "Tu plan cuesta <cost></cost> al mes pero empiezas con <available></available>.",
 		"usePay": "Usar mi sueldo para el resto. Los <short></short> restantes empiezan cuando llegue.",
 		"moneyNow": "Dinero para planificar",
-		"failed": "No se pudo empezar tu presupuesto. No se cambió nada."
+		"failed": "No se pudo empezar tu presupuesto. No se cambió nada.",
+		"stopNone": "Empiezas con <available></available>, así que no queda nada para planificar."
 	},
 	"debt": {
 		"title": "Plan para pagar deudas",
