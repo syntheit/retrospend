@@ -65,8 +65,8 @@ export default function RootLayout() {
 						<ServerConnectionProvider>
 							<SessionProvider>
 								<ToastProvider>
-									{DevAutoSignIn ? <DevAutoSignIn /> : null}
 									<Routes />
+									{DevAutoSignIn ? <DevAutoSignIn /> : null}
 								</ToastProvider>
 							</SessionProvider>
 						</ServerConnectionProvider>
