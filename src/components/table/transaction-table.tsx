@@ -6,6 +6,7 @@ import {
 	type ReactNode,
 	useCallback,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import { DataTable } from "~/components/data-table";
@@ -14,6 +15,7 @@ import { Money } from "~/components/money/money";
 import type { TransactionVM } from "~/components/rows/types";
 import { TableCell, TableRow } from "~/components/ui/table";
 import { BulkBar } from "./bulk-bar";
+import { useElementWidth } from "./column-fit";
 import { type TableGroups, withGroupRows } from "./group-rows";
 import { type LedgerColumns, useLedgerColumns } from "./ledger-columns";
 import { TABLE_LOOK } from "./table-style";
@@ -162,7 +164,9 @@ export function TransactionTable({
 		actions,
 		onOpen,
 	};
-	const activity = useTransactionColumns({ ...shape, hideProject });
+	const panel = useRef<HTMLDivElement>(null);
+	const space = useElementWidth(panel);
+	const activity = useTransactionColumns({ ...shape, hideProject, space });
 	const ledgerCols = useLedgerColumns({
 		...shape,
 		set: ledger ?? "project",
@@ -181,7 +185,7 @@ export function TransactionTable({
 					{bulk(ids, sel.clear)}
 				</BulkBar>
 			)}
-			<div className={TABLE_LOOK}>
+			<div className={TABLE_LOOK} ref={panel}>
 				<SelectionContext.Provider value={sel.context}>
 					<DataTable
 						columns={columns}

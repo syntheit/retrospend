@@ -15,7 +15,15 @@ import type { TransactionVM } from "~/components/rows/types";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { StatusDot } from "~/components/ui/status-dot";
+import { fitColumns } from "./column-fit";
 import { MONEY_CELL } from "./table-style";
+
+const CATEGORY_SIZE = 148;
+const PROJECT_SIZE = 150;
+const WITH_SIZE = 150;
+const AMOUNT_SIZE = 140;
+const SELECT_SIZE = 40;
+const ACTIONS_SIZE = 40;
 
 export type Selection = {
 	selected: ReadonlySet<string>;
@@ -195,13 +203,16 @@ export function useDateColumn(today?: string, style: "day" | "short" = "day") {
  * table and the phone rows show one anatomy (R18). Identity columns have
  * fixed widths so faces start on one edge (R27). The amount sorts on the
  * server's home-currency sort key, never native minor units across
- * currencies; rows without a rate sort last either way.
+ * currencies; rows without a rate sort last either way. Given the table's
+ * width (`space`), With, Project and Category drop in that order, so Title
+ * keeps a usable width at tablet widths (column-fit.ts).
  */
 export function useTransactionColumns({
 	selectable,
 	today,
 	hideProject = false,
 	hideDate = false,
+	space = null,
 	sortable = true,
 	actions,
 	onOpen,
@@ -210,6 +221,8 @@ export function useTransactionColumns({
 	today?: string;
 	hideProject?: boolean;
 	hideDate?: boolean;
+	/** The table's width in pixels; null until measured (every column). */
+	space?: number | null;
 	sortable?: boolean;
 	actions?: (tx: TransactionVM) => ReactNode;
 	onOpen?: (tx: TransactionVM) => void;
@@ -217,6 +230,20 @@ export function useTransactionColumns({
 	const t = useTranslations("rows.table");
 	const kinds = useTranslations("rows.kind");
 	const date = useDateColumn(today);
+	const fixed =
+		AMOUNT_SIZE +
+		(selectable ? SELECT_SIZE : 0) +
+		(actions ? ACTIONS_SIZE : 0) +
+		(hideDate ? 0 : (date.size ?? 0));
+	const shown = useMemo(
+		() =>
+			fitColumns(space, fixed, [
+				{ id: "category", size: CATEGORY_SIZE },
+				...(hideProject ? [] : [{ id: "project", size: PROJECT_SIZE }]),
+				{ id: "with", size: WITH_SIZE },
+			]),
+		[space, fixed, hideProject],
+	);
 	return useMemo(() => {
 		const cols: DataTableColumnDef<TransactionVM>[] = [];
 		if (selectable) cols.push(selectColumn());
@@ -225,7 +252,7 @@ export function useTransactionColumns({
 				id: "title",
 				accessorKey: "title",
 				header: t("title"),
-				meta: { flex: true, className: "w-full max-w-0" },
+				meta: { flex: true, className: "w-full max-w-0 min-w-48" },
 				cell: ({ row }) => (
 					<span className="flex min-w-0 items-center gap-2">
 						<Title onOpen={onOpen} tx={row.original} />
@@ -233,11 +260,13 @@ export function useTransactionColumns({
 					</span>
 				),
 			},
-			{
+		);
+		if (shown.has("category"))
+			cols.push({
 				id: "category",
 				accessorFn: (tx) => tx.category?.name ?? "",
 				header: t("category"),
-				size: 148,
+				size: CATEGORY_SIZE,
 				cell: ({ row }) => {
 					const tx = row.original;
 					return (
@@ -248,26 +277,26 @@ export function useTransactionColumns({
 						</span>
 					);
 				},
-			},
-		);
-		if (!hideProject)
+			});
+		if (!hideProject && shown.has("project"))
 			cols.push({
 				id: "project",
 				accessorFn: (tx) => tx.project?.name ?? "",
 				header: t("project"),
-				size: 150,
+				size: PROJECT_SIZE,
 				cell: ({ row }) =>
 					row.original.project ? (
 						<ProjectCell project={row.original.project} />
 					) : null,
 			});
-		cols.push({
-			id: "with",
-			header: t("with"),
-			size: 150,
-			enableSorting: false,
-			cell: ({ row }) => <TransactionWith tx={row.original} />,
-		});
+		if (shown.has("with"))
+			cols.push({
+				id: "with",
+				header: t("with"),
+				size: WITH_SIZE,
+				enableSorting: false,
+				cell: ({ row }) => <TransactionWith tx={row.original} />,
+			});
 		if (!hideDate) cols.push(date);
 		cols.push({
 			id: "amount",
@@ -275,7 +304,7 @@ export function useTransactionColumns({
 			sortFn: "basic",
 			sortUndefined: "last",
 			header: t("amount"),
-			size: 140,
+			size: AMOUNT_SIZE,
 			meta: { className: MONEY_CELL, align: "right" },
 			cell: ({ row }) => (
 				<span className="ml-auto">
@@ -290,6 +319,7 @@ export function useTransactionColumns({
 		selectable,
 		hideProject,
 		hideDate,
+		shown,
 		sortable,
 		actions,
 		onOpen,
