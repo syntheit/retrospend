@@ -470,7 +470,7 @@ describe("Dara: pegged and unlimited envelopes are never overspent", () => {
 
 	const items = (now: Date) =>
 		userTransaction(adminDb, dara.user.id, (tx) =>
-			needsYouIn(tx, dara.user.id, { budget: true, timeZone: "UTC", now }),
+			needsYouIn(tx, dara.user.id, { timeZone: "UTC", now }),
 		).then((l) => l.items.filter((i) => i.type === "budget.overspent"));
 
 	it("month 1: only Groceries is over", async () => {
@@ -575,7 +575,7 @@ describe("Cris: rows the old budget hid", () => {
 			hiddenRows: 1,
 		});
 		const list = await userTransaction(adminDb, cris.user.id, (tx) =>
-			needsYouIn(tx, cris.user.id, { budget: true, timeZone: "UTC" }),
+			needsYouIn(tx, cris.user.id, { timeZone: "UTC" }),
 		);
 		const item = list.items.find((i) => i.type === "budget.hiddenReview");
 		expect(item).toMatchObject({ count: 1, group: "budget" });
@@ -699,7 +699,7 @@ describe("the first read moves a person in, once, even when reads race", () => {
 		const n = await person();
 		const rent = await n.cat("Rent", true);
 		await budget(n.user.id, { categoryId: rent, amount: "250.00" });
-		await needsYou(adminDb, n.user.id, { budget: true, timeZone: "UTC" });
+		await needsYou(adminDb, n.user.id, { timeZone: "UTC" });
 		expect(
 			await adminDb.budgetBook.count({ where: { createdById: n.user.id } }),
 		).toBe(1);
@@ -718,14 +718,6 @@ describe("the first read moves a person in, once, even when reads race", () => {
 		).toBe(0);
 	});
 });
-
-const SETTINGS_ID = "app_settings_singleton";
-const setFlag = (mode: "OFF" | "ALL") =>
-	adminDb.appSettings.upsert({
-		where: { id: SETTINGS_ID },
-		update: { envelopeBudgetMode: mode },
-		create: { id: SETTINGS_ID, envelopeBudgetMode: mode },
-	});
 
 async function moved(n: number, runId = `test-${randomUUID()}`) {
 	const people = [];
@@ -791,7 +783,6 @@ describe("a move that fails never fails the read", () => {
 		});
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		const list = await needsYou(adminDb, p.user.id, {
-			budget: true,
 			timeZone: "UTC",
 		});
 		expect(list.items.filter((i) => i.group === "budget")).toEqual([]);
@@ -919,24 +910,6 @@ describe("rolling a run back", () => {
 				where: { createdById: people[0]?.user.id },
 			}),
 		).toBe(1);
-	});
-
-	it("refuses while the envelope flag is on: the next read would move them again", async () => {
-		const { people, runId } = await moved(1);
-		await setFlag("ALL");
-		try {
-			const out = await rollbackRun(adminDb, runId, { force: false });
-			expect(out).toMatchObject({ blockedByFlag: "ALL", removed: [] });
-			expect(
-				await adminDb.budgetBook.count({
-					where: { createdById: people[0]?.user.id },
-				}),
-			).toBe(1);
-			const forced = await rollbackRun(adminDb, runId, { force: true });
-			expect(forced.removed).toEqual([people[0]?.user.id]);
-		} finally {
-			await setFlag("OFF");
-		}
 	});
 });
 

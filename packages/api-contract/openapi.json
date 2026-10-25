@@ -44,7 +44,6 @@
 							"unauthenticated",
 							"forbidden",
 							"missing_scope",
-							"api_disabled",
 							"not_found",
 							"conflict",
 							"payload_too_large",
@@ -102843,22 +102842,7 @@
 											"type": "object"
 										},
 										"features": {
-											"properties": {
-												"apiV1": {
-													"type": "boolean"
-												},
-												"envelopeBudget": {
-													"type": "boolean"
-												},
-												"uiV2": {
-													"type": "boolean"
-												}
-											},
-											"required": [
-												"apiV1",
-												"uiV2",
-												"envelopeBudget"
-											],
+											"description": "Optional server capabilities. Empty today: clients still read the object, so it stays.",
 											"type": "object"
 										},
 										"minClientVersion": {

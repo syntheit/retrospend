@@ -1136,19 +1136,7 @@ model AppSettings {
   // Webhooks may target private, loopback and link-local addresses (self-hosters).
   webhooksAllowPrivateTargets Boolean         @default(false)
 
-  // Rollout of the UI overhaul, read through src/server/flags.ts
-  uiV2Mode  FeatureFlagMode @default(OFF)
-  apiV1Mode FeatureFlagMode @default(OFF)
-  // New budget page, setup and envelope procedures (M6, budget build plan §8)
-  envelopeBudgetMode FeatureFlagMode @default(OFF)
-
   @@map("app_settings")
-}
-
-enum FeatureFlagMode {
-  OFF
-  ADMINS
-  ALL
 }
 
 enum AuditPrivacyMode {

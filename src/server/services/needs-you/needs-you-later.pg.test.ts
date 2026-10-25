@@ -24,7 +24,6 @@ import { snooze, snoozeIn, unsnooze } from "./snooze";
 const NOW = new Date("2026-10-24T15:00:00Z");
 const ZONE = "America/Argentina/Buenos_Aires";
 const opts = {
-	budget: true,
 	timeZone: ZONE,
 	now: NOW,
 	emailEnabled: false,
@@ -215,7 +214,6 @@ describe("Shares that need an envelope", () => {
 	it("with the budget off neither budget item shows", async () => {
 		const list = await needsYou(adminDb, lola.user.id, {
 			...opts,
-			budget: false,
 		});
 		expect(list.items.some((i) => i.type === "budget.sharesNeedEnvelope")).toBe(
 			false,

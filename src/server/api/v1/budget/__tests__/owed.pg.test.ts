@@ -14,13 +14,11 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 import {
 	bookedUser,
 	mobileFrom,
 	toV1,
-	useBudgetV1,
 	withoutStamps,
 } from "./fixtures";
 
@@ -103,8 +101,6 @@ async function payBack(from: Party, to: Party, amount: number) {
 }
 
 describe("/api/v1/budget owed and splits", () => {
-	useApiV1();
-	useBudgetV1();
 	let as: Record<string, string>;
 	let stranger: Record<string, string>;
 	let ids: Record<string, string>;

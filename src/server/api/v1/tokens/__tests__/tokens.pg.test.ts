@@ -15,7 +15,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 	webCookieFor,
 } from "../../core/__tests__/harness";
 
@@ -31,7 +30,6 @@ type Created = {
 };
 
 describe("/api/v1/tokens", () => {
-	useApiV1();
 	let alice: string;
 	let web: Record<string, string>;
 

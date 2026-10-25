@@ -21,9 +21,8 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
-import { mobileFrom, movementShape, toV1, useBudgetV1, uuid } from "./fixtures";
+import { mobileFrom, movementShape, toV1, uuid } from "./fixtures";
 
 const asMobile = mobileFrom("198.51.100.87");
 
@@ -69,8 +68,6 @@ async function bookedUser() {
 }
 
 describe("/api/v1/budget month-following writes", () => {
-	useApiV1();
-	useBudgetV1();
 
 	const post = (path: string, body: unknown, headers: Record<string, string>) =>
 		call(path, {

@@ -13,7 +13,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -41,7 +40,6 @@ async function expense(userId: string, categoryId: string | null) {
 }
 
 describe("/api/v1/categories", () => {
-	useApiV1();
 	let alice: string;
 	let bob: string;
 	let asAlice: Record<string, string>;

@@ -19,7 +19,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -47,7 +46,6 @@ const empty = { ids: {}, amounts: [], truncated: false };
 const today = () => new Date().toISOString().slice(0, 10);
 
 describe("event outbox", () => {
-	useApiV1();
 	let alice: string;
 	let bob: string;
 	let asAlice: Record<string, string>;

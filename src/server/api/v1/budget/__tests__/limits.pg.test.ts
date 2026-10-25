@@ -13,9 +13,8 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
-import { mobileFrom, toV1, useBudgetV1, uuid, withoutStamps } from "./fixtures";
+import { mobileFrom, toV1, uuid, withoutStamps } from "./fixtures";
 
 const asMobile = mobileFrom("198.51.100.83");
 
@@ -68,8 +67,6 @@ function limitsInput(s: { rent: string; dining: string }): SetupInput {
 }
 
 describe("/api/v1/budget set-up and Limits", () => {
-	useApiV1();
-	useBudgetV1();
 	let as: Record<string, string>;
 	let stranger: Record<string, string>;
 	let ids: Record<string, string>;

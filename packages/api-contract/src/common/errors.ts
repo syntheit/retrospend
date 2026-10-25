@@ -13,7 +13,6 @@ export const PROBLEM_STATUS = {
 	unauthenticated: 401,
 	forbidden: 403,
 	missing_scope: 403,
-	api_disabled: 403,
 	not_found: 404,
 	conflict: 409,
 	payload_too_large: 413,

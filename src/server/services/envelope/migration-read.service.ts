@@ -14,7 +14,6 @@ import { dayKey } from "~/lib/time-zone";
 import type { Session } from "~/server/better-auth/config";
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
-import { isFlagEnabled } from "~/server/flags";
 import type { Prisma } from "~prisma";
 import { pacingOf } from "./dashboard-pacing";
 import { envelopeExportFiles, zipExport } from "./envelope-export";
@@ -88,17 +87,11 @@ export function getEnvelopeExport(
 	});
 }
 
-/**
- * The pace line for a dashboard request: envelope totals when the envelope
- * budget is on for the viewer (null without a book), undefined to keep the
- * old budgets.
- */
-export async function pacingFor(ctx: {
+/** The pace line for a dashboard request: envelope totals, null without a book. */
+export function pacingFor(ctx: {
 	session: { user: Session["user"] };
 	timeZone?: string;
-}): Promise<EnvelopePacing | null | undefined> {
-	if (!(await isFlagEnabled("envelopeBudget", ctx.session.user)))
-		return undefined;
+}): Promise<EnvelopePacing | null> {
 	return getPacing(ctx.session.user.id, new Date(), ctx.timeZone ?? null);
 }
 

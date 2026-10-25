@@ -21,7 +21,6 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -42,7 +41,6 @@ type Detail = {
 };
 
 describe("shared expense reads and verification", () => {
-	useApiV1();
 	let sofia: TestUser;
 	let martin: TestUser;
 	let lucia: TestUser;

@@ -14,7 +14,6 @@ import {
 	expectBody,
 	expectProblem,
 	asMobile as sessionHeaders,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 const asMobile = async (userId: string) => ({
@@ -51,7 +50,6 @@ const bare = (v: unknown) =>
 	) as unknown;
 
 describe("/api/v1/accounts", () => {
-	useApiV1();
 	let as: Record<string, string>;
 	let stranger: Record<string, string>;
 	let userId: string;

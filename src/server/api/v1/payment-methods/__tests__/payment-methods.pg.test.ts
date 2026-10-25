@@ -20,7 +20,6 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -37,7 +36,6 @@ type Match = {
 };
 
 describe("/api/v1/payment-methods", () => {
-	useApiV1();
 	let sofia: TestUser;
 	let martin: TestUser;
 	let stranger: TestUser;

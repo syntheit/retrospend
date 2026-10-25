@@ -68,7 +68,6 @@ describe("glance dollarToday", () => {
 	it("carries the figure, the rate type used and the day the rate is from", async () => {
 		const id = await user("PLN");
 		const g = await glance(adminDb, id, {
-			budget: false,
 			now: NOW,
 			timeZone: "UTC",
 		});
@@ -84,7 +83,6 @@ describe("glance dollarToday", () => {
 	it("no rate at all: the row stays with no value, the type unknown", async () => {
 		const id = await user("ISK");
 		const g = await glance(adminDb, id, {
-			budget: false,
 			now: NOW,
 			timeZone: "UTC",
 		});
@@ -100,7 +98,6 @@ describe("glance dollarToday", () => {
 	it("USD and crypto homes leave the row out", async () => {
 		for (const home of ["USD", "BTC"]) {
 			const g = await glance(adminDb, await user(home), {
-				budget: false,
 				now: NOW,
 				timeZone: "UTC",
 			});

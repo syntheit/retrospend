@@ -1,7 +1,6 @@
 import type { Me, ServerInfo } from "@retrospend/api-contract";
 import { APP_VERSION } from "~/lib/version";
 import type { db as globalDb } from "~/server/db";
-import { isFlagEnabled } from "~/server/flags";
 import { getImageUrl } from "~/server/storage";
 import { isInviteOnlyEnabled } from "~/server/services/settings";
 import type { Principal } from "./principal.service";
@@ -13,27 +12,17 @@ import type { Principal } from "./principal.service";
 export const MIN_CLIENT_VERSION = "0.0.0";
 
 /**
- * GET /server-info. Features are evaluated for the caller when they sent
- * valid credentials (an admin sees apiV1 on while it is ADMINS only),
- * otherwise for a signed-out viewer. Push transports stay empty until the
+ * GET /server-info. Push transports stay empty until the
  * push fan-out ships (S3 wave 3); listing them earlier would be fake data.
  */
-export async function getServerInfo(
-	principal: Principal | null,
-): Promise<ServerInfo> {
-	const viewer = principal ? { role: principal.role } : null;
-	const [apiV1, uiV2, envelopeBudget, inviteOnly] = await Promise.all([
-		isFlagEnabled("apiV1", viewer),
-		isFlagEnabled("uiV2", viewer),
-		isFlagEnabled("envelopeBudget", viewer),
-		isInviteOnlyEnabled(),
-	]);
+export async function getServerInfo(): Promise<ServerInfo> {
+	const inviteOnly = await isInviteOnlyEnabled();
 	return {
 		name: "Retrospend",
 		version: APP_VERSION,
 		apiVersion: "v1",
 		minClientVersion: MIN_CLIENT_VERSION,
-		features: { apiV1, uiV2, envelopeBudget },
+		features: {},
 		auth: {
 			methods: ["password", "totp", "bearer", "apiKey", "deviceAuthorization"],
 			signUp: inviteOnly ? "inviteOnly" : "open",

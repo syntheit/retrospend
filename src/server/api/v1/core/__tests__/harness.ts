@@ -9,12 +9,10 @@
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { makeSignature } from "better-auth/crypto";
-import { afterAll, beforeAll, expect } from "vitest";
+import { expect } from "vitest";
 import { env } from "~/env";
 import { auth } from "~/server/better-auth";
-import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import type { FeatureFlagMode } from "~prisma";
 import { handleV1Request } from "../../handler";
 
 export const BASE = "http://localhost:3101/api/v1";
@@ -97,22 +95,6 @@ export async function asMobile(userId: string) {
 /** Headers for an API key of `userId` holding exactly `scopes`. */
 export async function asKey(userId: string, scopes: string[]) {
 	return { "x-api-key": await apiKeyFor(userId, scopes) };
-}
-
-/**
- * Turns apiV1Mode on for the file and puts it back afterwards (test files
- * share one database). updateAppSettings' upsert drops the flag columns
- * when it creates the row, so the row is read (created) first.
- */
-export function useApiV1() {
-	let initial: FeatureFlagMode = "OFF";
-	beforeAll(async () => {
-		initial = (await getAppSettings()).apiV1Mode;
-		await updateAppSettings({ apiV1Mode: "ALL" });
-	});
-	afterAll(async () => {
-		await updateAppSettings({ apiV1Mode: initial });
-	});
 }
 
 /** Parses a response body with the route's output schema (throws on drift). */

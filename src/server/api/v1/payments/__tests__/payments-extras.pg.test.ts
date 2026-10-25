@@ -24,7 +24,6 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -36,7 +35,6 @@ const c = contract.payments;
 type Preview = { changes: unknown[]; unchanged: unknown[] };
 
 describe("payment removal and square up", () => {
-	useApiV1();
 	let sofia: TestUser;
 	let martin: TestUser;
 	let lucia: TestUser;

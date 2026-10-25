@@ -4,11 +4,7 @@
  * service. Money writes go through the preview runner, so `xPreview` is the
  * same write rolled back and `x` commits it (R30). Splits and month close
  * procedures live in envelope-money.ts and merge in flat.
- *
- * Behind `envelopeBudgetMode` (OFF by default): with the flag off every
- * procedure except `enabled` answers FORBIDDEN.
  */
-import { z } from "zod";
 import {
 	applyOutputSchema,
 	assignInputSchema,
@@ -31,8 +27,7 @@ import {
 	undoInputSchema,
 	verdictSchema,
 } from "~/lib/schemas/envelope";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { isFlagEnabled } from "~/server/flags";
+import { createTRPCRouter } from "~/server/api/trpc";
 import {
 	assignEnvelopes,
 	coverEnvelope,
@@ -66,10 +61,6 @@ import {
 import { envelopeUsePlanProcedures } from "./envelope-use-plan";
 
 export const envelopeRouter = createTRPCRouter({
-	enabled: protectedProcedure
-		.output(z.boolean())
-		.query(({ ctx }) => isFlagEnabled("envelopeBudget", ctx.session.user)),
-
 	setupPreset: envelopeProcedure
 		.input(setupPresetInputSchema)
 		.output(setupPresetOutputSchema)

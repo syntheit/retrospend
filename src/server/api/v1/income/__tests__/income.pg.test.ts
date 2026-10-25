@@ -19,7 +19,6 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -43,7 +42,6 @@ type Write = {
 type Preview = { changes: { id: string; delta: Money }[] };
 
 describe("/api/v1/income", () => {
-	useApiV1();
 	let userId: string;
 	let otherId: string;
 	let savings: string;

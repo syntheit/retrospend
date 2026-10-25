@@ -10,7 +10,6 @@ import {
 } from "~/server/services/envelope/__tests__/pg-fixture";
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { forUser } from "~/server/services/preview";
-import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import {
 	adminDb,
 	asKey,
@@ -19,7 +18,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -47,7 +45,6 @@ type Glance = {
 };
 
 describe("Home reads over v1", () => {
-	useApiV1();
 	let userId: string;
 	let otherId: string;
 	let as: Record<string, string>;
@@ -130,42 +127,28 @@ describe("Home reads over v1", () => {
 		expect(glance.budget).toBeNull();
 	});
 
-	it("carries the budget verdict when the caller has a book and the flag is on", async () => {
-		await getAppSettings();
-		await adminDb.appSettings.update({
-			where: { id: "app_settings_singleton" },
-			data: { envelopeBudgetMode: "ALL" },
+	it("carries the budget verdict when the caller has a book", async () => {
+		const seeded = await seedUser();
+		await forUser(seeded.user.id).apply(setupEnvelopeBook, {
+			...setupInput(seeded),
+			timeZone: "UTC",
 		});
-		await updateAppSettings({});
-		try {
-			const seeded = await seedUser();
-			await forUser(seeded.user.id).apply(setupEnvelopeBook, {
-				...setupInput(seeded),
-				timeZone: "UTC",
-			});
-			const mine = await asMobile(seeded.user.id);
-			const glance = await expectBody<{
-				budget: {
-					state: string;
-					verdict: { style: string };
-					notPlannedYet: { id: string };
-				};
-			}>(
-				await call("/figures/glance", { headers: mine }),
-				contract.figures.glance,
-			);
-			expect(glance.budget).toMatchObject({
-				state: "ready",
-				verdict: { style: "FLEX" },
-				notPlannedYet: { id: "budget.notPlannedYet" },
-			});
-		} finally {
-			await adminDb.appSettings.update({
-				where: { id: "app_settings_singleton" },
-				data: { envelopeBudgetMode: "OFF" },
-			});
-			await updateAppSettings({});
-		}
+		const mine = await asMobile(seeded.user.id);
+		const glance = await expectBody<{
+			budget: {
+				state: string;
+				verdict: { style: string };
+				notPlannedYet: { id: string };
+			};
+		}>(
+			await call("/figures/glance", { headers: mine }),
+			contract.figures.glance,
+		);
+		expect(glance.budget).toMatchObject({
+			state: "ready",
+			verdict: { style: "FLEX" },
+			notPlannedYet: { id: "budget.notPlannedYet" },
+		});
 	});
 
 	it("needs the read scope", async () => {

@@ -7,12 +7,11 @@
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { makeSignature } from "better-auth/crypto";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { env } from "~/env";
 import { appRouter } from "~/server/api/root";
 import { createCallerFactory, createTRPCContext } from "~/server/api/trpc";
 import { auth } from "~/server/better-auth";
-import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import { adminDb } from "~/test/pg-harness";
 import { handleV1Request } from "../handler";
 
@@ -99,16 +98,7 @@ describe("scoped tokens cannot escalate", () => {
 	let asBearer: Record<string, string>;
 	let asCookie: Record<string, string>;
 
-	let initialMode: Awaited<ReturnType<typeof getAppSettings>>["apiV1Mode"];
-
-	// Test files share one database: leave the flag as this file found it.
-	afterAll(async () => {
-		await updateAppSettings({ apiV1Mode: initialMode });
-	});
-
 	beforeAll(async () => {
-		initialMode = (await getAppSettings()).apiV1Mode;
-		await updateAppSettings({ apiV1Mode: "ALL" });
 		admin = await passwordUser("ADMIN");
 		deviceToken = await deviceSession(admin.id, "read");
 		asBearer = { authorization: `Bearer ${deviceToken}` };

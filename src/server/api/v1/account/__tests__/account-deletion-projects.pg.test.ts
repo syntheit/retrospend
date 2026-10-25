@@ -16,7 +16,6 @@ import {
 	asMobile,
 	call,
 	expectBody,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -105,7 +104,6 @@ async function expense(
 }
 
 describe("account deletion: projects and ghosts", () => {
-	useApiV1();
 	let ed: TestUser;
 	let fay: TestUser;
 	let asEd: Record<string, string>;

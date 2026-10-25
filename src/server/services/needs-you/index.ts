@@ -37,8 +37,6 @@ import type { NeedsYouItem, NeedsYouList } from "./types";
 type Tx = Prisma.TransactionClient;
 
 export interface NeedsYouOptions {
-	/** Budget items only with the envelope budget on (`envelopeBudgetMode`). */
-	readonly budget: boolean;
 	/** The request's zone; else the user's stored zone, else the server default (userTimeZone). */
 	readonly timeZone?: string;
 	readonly now?: Date;
@@ -181,7 +179,7 @@ export async function needsYouIn(
 	const all = [
 		...people.items,
 		...(await activityItems(tx, userId, now, timeZone)),
-		...(options.budget ? await budgetSource(tx, userId, now) : []),
+		...(await budgetSource(tx, userId, now)),
 		...(await setupItems(tx, user, options.emailEnabled ?? true)),
 	].sort(compareItems);
 	// Later: what the person pushed to tomorrow is out of the list and the counts.
@@ -203,12 +201,11 @@ export async function needsYou(
 ): Promise<NeedsYouList> {
 	// A person with old limits and no book moves in on this first read (02 §6),
 	// before the read's own transaction opens and without ever failing it.
-	if (options.budget)
-		await ensureLegacyBook(
-			db,
-			userId,
-			options.now ?? new Date(),
-			options.timeZone ?? null,
-		);
+	await ensureLegacyBook(
+		db,
+		userId,
+		options.now ?? new Date(),
+		options.timeZone ?? null,
+	);
 	return userTransaction(db, userId, (tx) => needsYouIn(tx, userId, options));
 }
