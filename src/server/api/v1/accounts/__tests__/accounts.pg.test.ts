@@ -136,7 +136,7 @@ describe("/api/v1/accounts", () => {
 			balance: usd(25_050),
 			value: usd(25_050),
 		});
-		await expectProblem(await send("POST", "/accounts", body), 409, "conflict");
+		await expectProblem(await send("POST", "/accounts", body), 409, "id_taken");
 	});
 
 	it("replays a write with the same Idempotency-Key", async () => {

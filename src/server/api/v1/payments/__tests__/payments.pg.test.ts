@@ -191,7 +191,7 @@ describe("/api/v1/payments", () => {
 		await expectProblem(
 			await post("/payments", pay({ id, amount: "50" })),
 			409,
-			"conflict",
+			"id_taken",
 		);
 		await expectBody(
 			await post("/payments/undo", { token: made.undo }),
