@@ -24,6 +24,7 @@ export function NetAmount({
 	tone,
 	size = "body",
 	align = "right",
+	showCount = true,
 }: {
 	net: { minor: number; currency: string } | null;
 	parts: Part[];
@@ -31,6 +32,8 @@ export function NetAmount({
 	tone: "positive" | "default";
 	size?: "body" | "hero";
 	align?: "left" | "right";
+	/** Says how many currencies it spans; off for a total of many people. */
+	showCount?: boolean;
 }) {
 	const t = useTranslations("mobile.money");
 	const tp = useTranslations("mobile.people");
@@ -60,7 +63,7 @@ export function NetAmount({
 			>
 				{shown}
 			</Text>
-			{!hero && parts.length > 1 ? (
+			{showCount && !hero && parts.length > 1 ? (
 				<Text
 					numberOfLines={1}
 					style={{

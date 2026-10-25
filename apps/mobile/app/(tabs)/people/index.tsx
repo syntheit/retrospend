@@ -48,6 +48,7 @@ function Totals({ overview }: { overview: PeopleOverview }) {
 				home={overview.home}
 				net={overview.owedToYou}
 				parts={parts}
+				showCount={false}
 				size="hero"
 				tone="positive"
 			/>
@@ -67,6 +68,7 @@ function Totals({ overview }: { overview: PeopleOverview }) {
 					home={overview.home}
 					net={overview.youOwe}
 					parts={parts}
+					showCount={false}
 					tone="default"
 				/>
 			</View>

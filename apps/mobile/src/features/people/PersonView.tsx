@@ -1,6 +1,6 @@
 import { Button } from "@expo/ui";
 import { Stack } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -52,6 +52,11 @@ export function PersonView({
 		amount: { minor: number; currency: string };
 	} | null>(null);
 	const ledger = useLedgerMore(person);
+
+	// The same screen opened again by a "settle up" link.
+	useEffect(() => {
+		if (startSettling) setSettling(true);
+	}, [startSettling]);
 
 	if (state.status === "loading")
 		return (
