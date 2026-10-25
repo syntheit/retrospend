@@ -227,6 +227,148 @@ describe("/api/v1/shared-expenses", () => {
 		);
 	});
 
+	it("previews accepting and rejecting, and takes each back from its token", async () => {
+		const made = await add({ description: "Answer me" });
+		await waiting(made.id);
+		const mine = async () =>
+			(await row(made.id))?.splitParticipants.find(
+				(p) => p.participantId === martin.user.id,
+			);
+
+		const was = await mine();
+		const dry = await expectBody<Preview>(
+			await post(`/shared-expenses/${made.id}/accept/preview`, {}, asMartin),
+			c.previewAccept,
+		);
+		expect(dry.changes).toBeInstanceOf(Array);
+		expect((await mine())?.verificationStatus).toBe("PENDING");
+
+		const ok = await expectBody<Verification & { undo: string }>(
+			await post(`/shared-expenses/${made.id}/accept`, {}, asMartin),
+			c.accept,
+		);
+		expect((await mine())?.verificationStatus).toBe("ACCEPTED");
+		await expectBody(
+			await post("/shared-expenses/undo", { token: ok.undo }, asMartin),
+			c.undo,
+		);
+		// Back exactly as it was, stamp included.
+		expect(await mine()).toMatchObject({
+			verificationStatus: "PENDING",
+			verifiedAt: was?.verifiedAt,
+		});
+		// A token works once.
+		await expectProblem(
+			await post("/shared-expenses/undo", { token: ok.undo }, asMartin),
+			409,
+			"conflict",
+		);
+
+		await expectBody<Preview>(
+			await post(
+				`/shared-expenses/${made.id}/reject/preview`,
+				{ reason: "Not mine" },
+				asMartin,
+			),
+			c.previewReject,
+		);
+		expect((await mine())?.verificationStatus).toBe("PENDING");
+		const no = await expectBody<Verification & { undo: string }>(
+			await post(
+				`/shared-expenses/${made.id}/reject`,
+				{ reason: "Not mine" },
+				asMartin,
+			),
+			c.reject,
+		);
+		expect(await mine()).toMatchObject({
+			verificationStatus: "REJECTED",
+			rejectionReason: "Not mine",
+		});
+		await expectBody(
+			await post("/shared-expenses/undo", { token: no.undo }, asMartin),
+			c.undo,
+		);
+		expect(await mine()).toMatchObject({
+			verificationStatus: "PENDING",
+			rejectionReason: null,
+		});
+	});
+
+	it("refuses to take an answer back once the share changed again", async () => {
+		const made = await add({ description: "Answered twice" });
+		await waiting(made.id);
+		const first = await expectBody<Verification & { undo: string }>(
+			await post(`/shared-expenses/${made.id}/accept`, {}, asMartin),
+			c.accept,
+		);
+		await post(`/shared-expenses/${made.id}/reject`, {}, asMartin);
+		await expectProblem(
+			await post("/shared-expenses/undo", { token: first.undo }, asMartin),
+			409,
+			"conflict",
+		);
+	});
+
+	it("refuses to take an answer back once the expense is settled", async () => {
+		const made = await add({ description: "Locked after answering" });
+		await waiting(made.id);
+		const answered = await expectBody<Verification & { undo: string }>(
+			await post(`/shared-expenses/${made.id}/accept`, {}, asMartin),
+			c.accept,
+		);
+		await adminDb.sharedTransaction.update({
+			where: { id: made.id },
+			data: { isLocked: true },
+		});
+		await expectProblem(
+			await post("/shared-expenses/undo", { token: answered.undo }, asMartin),
+			409,
+			"conflict",
+		);
+		await expectProblem(
+			await post(
+				"/shared-expenses/undo/preview",
+				{ token: answered.undo },
+				asMartin,
+			),
+			409,
+			"conflict",
+		);
+		// The share was left as answered.
+		await expect(
+			adminDb.splitParticipant.findFirst({
+				where: { transactionId: made.id, participantId: martin.user.id },
+			}),
+		).resolves.toMatchObject({ verificationStatus: "ACCEPTED" });
+	});
+
+	it("refuses another person's undo token for an answer", async () => {
+		const made = await add({ description: "Not yours to undo" });
+		await waiting(made.id);
+		const answered = await expectBody<Verification & { undo: string }>(
+			await post(`/shared-expenses/${made.id}/reject`, {}, asMartin),
+			c.reject,
+		);
+		for (const headers of [as, asLucia]) {
+			await expectProblem(
+				await post("/shared-expenses/undo", { token: answered.undo }, headers),
+				400,
+				"bad_request",
+			);
+		}
+		await expect(
+			adminDb.splitParticipant.findFirst({
+				where: { transactionId: made.id, participantId: martin.user.id },
+			}),
+		).resolves.toMatchObject({ verificationStatus: "REJECTED" });
+		// The owner can still take it back.
+		await expectBody(
+			await post("/shared-expenses/undo", { token: answered.undo }, asMartin),
+			c.undo,
+		);
+	});
+
 	it("gives a participant who is not the creator what the web gives", async () => {
 		const made = await add({ description: "Sofia's" });
 		const edit = {

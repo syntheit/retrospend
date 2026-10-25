@@ -107,7 +107,11 @@ async function counterparts(
 	});
 }
 
-export type OwedRead = OwedTotals & { readonly currency: string };
+export type OwedRead = OwedTotals & {
+	readonly currency: string;
+	/** A balance in a currency other than home was converted into these totals. */
+	readonly converted: boolean;
+};
 
 /**
  * Owed to you and You owe in the home currency, or the currencies someone
@@ -143,7 +147,10 @@ export async function owedRead(
 				if (currency !== home && !quotes.has(currency)) missing.add(currency);
 	}
 	if (missing.size) return new FigureUnavailable([...missing]);
-	return { ...owedTotals(nets), currency: home };
+	const converted = overall.some((byCurrency) =>
+		[...byCurrency].some(([currency, minor]) => currency !== home && minor !== 0),
+	);
+	return { ...owedTotals(nets), currency: home, converted };
 }
 
 /** owedRead, or null when a rate is missing (People's overview names them itself). */
@@ -165,6 +172,16 @@ export function owedOnce(
 	return pass ? pass.once(`owed:${userId}`, load) : load();
 }
 
+/** Owed to you and You owe are estimates only when a balance in another currency went into them. */
+async function convertedOwed(
+	db: FigureDb,
+	scope: FigureScope,
+	pass?: FigurePass,
+): Promise<boolean> {
+	const owed = await owedOnce(db, scope.userId, pass);
+	return !(owed instanceof FigureUnavailable) && owed.converted;
+}
+
 export const balancePersonFigure: FigureDefinition = {
 	id: "balance.person",
 	scope: ["personId", "projectId"],
@@ -174,6 +191,7 @@ export const balancePersonFigure: FigureDefinition = {
 export const owedToYouFigure: FigureDefinition = {
 	id: "owed.owedToYou",
 	scope: [],
+	converted: convertedOwed,
 	compute: async (db, scope, pass) => {
 		const owed = await owedOnce(db, scope.userId, pass);
 		if (owed instanceof FigureUnavailable) return owed;
@@ -184,6 +202,7 @@ export const owedToYouFigure: FigureDefinition = {
 export const youOweFigure: FigureDefinition = {
 	id: "owed.youOwe",
 	scope: [],
+	converted: convertedOwed,
 	compute: async (db, scope, pass) => {
 		const owed = await owedOnce(db, scope.userId, pass);
 		if (owed instanceof FigureUnavailable) return owed;

@@ -52,6 +52,7 @@
 							"idempotency_replay_unavailable",
 							"idempotency_key_reused",
 							"missing_rate",
+							"overpay",
 							"id_taken",
 							"rate_limited",
 							"internal",
@@ -1545,6 +1546,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -1790,6 +1795,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -2773,6 +2782,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -3018,6 +3031,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -4282,6 +4299,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -4527,6 +4548,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -4988,6 +5013,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -5233,6 +5262,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -5578,6 +5611,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -5823,6 +5860,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -6160,6 +6201,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -6405,6 +6450,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -6868,6 +6917,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -7113,6 +7166,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -7574,6 +7631,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -7819,6 +7880,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -11963,6 +12028,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -12208,6 +12277,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -13101,6 +13174,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -13346,6 +13423,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -14069,6 +14150,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -14314,6 +14399,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -14830,6 +14919,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -15075,6 +15168,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -15844,6 +15941,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -16089,6 +16190,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -16634,6 +16739,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -16879,6 +16988,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -17428,6 +17541,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -17673,6 +17790,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -19741,6 +19862,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -19986,6 +20111,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -21112,6 +21241,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -21357,6 +21490,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -22424,6 +22561,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -22669,6 +22810,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -23660,6 +23805,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -23905,6 +24054,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -24999,6 +25152,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -25244,6 +25401,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -25490,6 +25651,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -25735,6 +25900,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -26768,6 +26937,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -27013,6 +27186,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -27885,6 +28062,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -28130,6 +28311,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -28621,6 +28806,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -28866,6 +29055,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -29509,6 +29702,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -29754,6 +29951,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -30318,6 +30519,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -30563,6 +30768,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -30962,6 +31171,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -31207,6 +31420,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -32355,6 +32572,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -32600,6 +32821,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -33119,6 +33344,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -33364,6 +33593,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -34339,6 +34572,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -34584,6 +34821,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -37163,6 +37404,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -37408,6 +37653,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -37971,6 +38220,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -38216,6 +38469,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -39408,6 +39665,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -39653,6 +39914,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -40083,6 +40348,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -40328,6 +40597,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -41127,6 +41400,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -41372,6 +41649,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -42186,6 +42467,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -42431,6 +42716,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -42823,6 +43112,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -43068,6 +43361,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -43569,6 +43866,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -43814,6 +44115,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -46201,6 +46506,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -46446,6 +46755,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -48723,6 +49036,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -48968,6 +49285,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -49449,6 +49770,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -49694,6 +50019,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -50123,6 +50452,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -50368,6 +50701,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -50963,6 +51300,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -51208,6 +51549,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -51572,6 +51917,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -51817,6 +52166,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -54024,6 +54377,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -54269,6 +54626,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -54632,6 +54993,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -54877,6 +55242,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -55575,6 +55944,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -55820,6 +56193,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -57039,6 +57416,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -57284,6 +57665,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -59120,6 +59505,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -59365,6 +59754,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -61840,6 +62233,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -62085,6 +62482,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -62511,6 +62912,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -62756,6 +63161,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -63263,6 +63672,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -63508,6 +63921,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -64413,6 +64830,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -64658,6 +65079,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -64941,6 +65366,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -65186,6 +65615,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -68110,6 +68543,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -68355,6 +68792,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -68871,6 +69312,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -69116,6 +69561,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -70860,6 +71309,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -71105,6 +71558,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -71819,6 +72276,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -72064,6 +72525,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -73103,6 +73568,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -73348,6 +73817,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -73722,6 +74195,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -73967,6 +74444,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -74342,6 +74823,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -74587,6 +75072,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -74981,6 +75470,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -75226,6 +75719,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -79455,6 +79952,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -79700,6 +80201,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -80111,6 +80616,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -80356,6 +80865,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -80710,6 +81223,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -80955,6 +81472,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -81690,6 +82211,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -81935,6 +82460,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -82296,6 +82825,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -82541,6 +83074,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -82742,6 +83279,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -82987,6 +83528,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -88996,13 +89541,19 @@
 																	},
 																	"name": {
 																		"type": "string"
+																	},
+																	"tone": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
 																	}
 																},
 																"required": [
 																	"id",
 																	"name",
 																	"icon",
-																	"color"
+																	"color",
+																	"tone"
 																],
 																"type": "object"
 															},
@@ -93590,6 +94141,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -93835,6 +94390,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -94404,6 +94963,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -94649,6 +95212,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -95291,6 +95858,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -95536,6 +96107,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -96203,6 +96778,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -96448,6 +97027,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -96824,6 +97407,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -97069,6 +97656,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -100362,6 +100953,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -100607,6 +101202,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -102069,6 +102668,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -102314,6 +102917,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -106137,6 +106744,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -106382,6 +106993,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -106677,7 +107292,7 @@
 		},
 		"/shared-expenses/undo": {
 			"post": {
-				"description": "Tokens from create and update. Undoing an add right away takes the notices back. A token is for its user and expires after 24 hours.",
+				"description": "Tokens from create, update, accept and reject. Undoing an add right away takes the notices back. A token is for its user and expires after 24 hours.",
 				"operationId": "undoSharedExpenseWrite",
 				"parameters": [
 					{
@@ -106890,6 +107505,10 @@
 																"type": "null"
 															}
 														]
+													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
 													},
 													"before": {
 														"anyOf": [
@@ -107136,6 +107755,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -108096,7 +108719,7 @@
 		},
 		"/shared-expenses/{id}/accept": {
 			"post": {
-				"description": "Accepting twice answers the current state.",
+				"description": "Accepting twice answers the current state. Answers an undo token for POST /shared-expenses/undo; the preview shows what changes.",
 				"operationId": "acceptSharedExpense",
 				"parameters": [
 					{
@@ -108172,12 +108795,18 @@
 												"active"
 											],
 											"type": "string"
+										},
+										"undo": {
+											"description": "Valid for 24 hours. Send it to the group's undo route to revert this write.",
+											"minLength": 1,
+											"type": "string"
 										}
 									},
 									"required": [
 										"id",
 										"status",
-										"participants"
+										"participants",
+										"undo"
 									],
 									"type": "object"
 								}
@@ -108258,6 +108887,460 @@
 					"Shared expenses"
 				],
 				"x-event-type": "shared_expense.accepted",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/shared-expenses/{id}/accept/preview": {
+			"post": {
+				"description": "Runs POST /shared-expenses/{id}/accept in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewAcceptSharedExpense",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Preview POST /shared-expenses/{id}/accept",
+				"tags": [
+					"Shared expenses"
+				],
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -108789,6 +109872,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -109034,6 +110121,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -109259,6 +110350,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -109504,6 +110599,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -110238,6 +111337,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -110483,6 +111586,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -111080,6 +112187,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -111325,6 +112436,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -111465,7 +112580,7 @@
 		},
 		"/shared-expenses/{id}/reject": {
 			"post": {
-				"description": "The person who added it is told.",
+				"description": "The person who added it is told. Answers an undo token for POST /shared-expenses/undo; the preview shows what changes.",
 				"operationId": "rejectSharedExpense",
 				"parameters": [
 					{
@@ -111558,12 +112673,18 @@
 												"active"
 											],
 											"type": "string"
+										},
+										"undo": {
+											"description": "Valid for 24 hours. Send it to the group's undo route to revert this write.",
+											"minLength": 1,
+											"type": "string"
 										}
 									},
 									"required": [
 										"id",
 										"status",
-										"participants"
+										"participants",
+										"undo"
 									],
 									"type": "object"
 								}
@@ -111644,6 +112765,477 @@
 					"Shared expenses"
 				],
 				"x-event-type": "shared_expense.rejected",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/shared-expenses/{id}/reject/preview": {
+			"post": {
+				"description": "Runs POST /shared-expenses/{id}/reject in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewRejectSharedExpense",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"reason": {
+										"maxLength": 500,
+										"minLength": 1,
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": false
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Preview POST /shared-expenses/{id}/reject",
+				"tags": [
+					"Shared expenses"
+				],
 				"x-required-scope": "write:expenses"
 			}
 		},
@@ -111870,6 +113462,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -112115,6 +113711,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -113702,6 +115302,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -113947,6 +115551,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -114322,6 +115930,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -114567,6 +116179,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",
@@ -114924,6 +116540,10 @@
 															}
 														]
 													},
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"before": {
 														"anyOf": [
 															{
@@ -115169,6 +116789,10 @@
 										"unchanged": {
 											"items": {
 												"properties": {
+													"approx": {
+														"const": true,
+														"description": "True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈)."
+													},
 													"id": {
 														"examples": [
 															"owed.owedToYou",

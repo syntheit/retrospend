@@ -46,6 +46,12 @@ interface SessionValue {
 	verifyCode(code: string): Promise<SignInStep>;
 	/** Changes made on this phone that the server does not have yet. */
 	unsyncedCount(): Promise<number>;
+	/**
+	 * Reads the profile again (home currency, language) and rewrites its
+	 * cache. Settings calls it after a change that the rest of the app reads
+	 * from `state.me`.
+	 */
+	refreshMe(): Promise<void>;
 	/** `discardUnsynced` drops the outbox; the screen asks first. */
 	signOut(options?: { discardUnsynced?: boolean }): Promise<void>;
 	/** Null until a server is connected. */
@@ -185,6 +191,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 						? await authApi.verifyCode(code)
 						: { status: "error", reason: "unknown" },
 				),
+			async refreshMe() {
+				const fresh = await fetchMe();
+				if (!fresh.ok) return;
+				await profileCache?.write(ME_CACHE.name, ME_CACHE.schema, fresh.me);
+				setState((prev) =>
+					prev.status === "signedIn"
+						? { ...prev, me: fresh.me, offline: false, offlineSince: null }
+						: prev,
+				);
+			},
 			unsyncedCount: async () => (await local?.outbox.all())?.length ?? 0,
 			async signOut(options) {
 				await authApi?.signOut();
@@ -198,7 +214,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 				setState({ status: "signedOut", expired: false });
 			},
 		}),
-		[state, api, local, authApi, tokens, finishSignIn, profileCache],
+		[state, api, local, authApi, tokens, finishSignIn, profileCache, fetchMe],
 	);
 
 	return (

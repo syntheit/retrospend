@@ -21,6 +21,18 @@ import { recordPayment } from "./record.mutation";
 type RecordInput = z.infer<typeof recordPaymentSchema>;
 type ConfirmInput = z.infer<typeof confirmPaymentSchema>;
 
+/**
+ * An amount above everything owed. It is a BAD_REQUEST on the web, as before;
+ * API v1 answers it with its own problem code (`overpay`), so a client can
+ * tell it from any other bad request.
+ */
+export class OverpayError extends TRPCError {
+	constructor(message: string) {
+		super({ code: "BAD_REQUEST", message });
+		this.name = "OverpayError";
+	}
+}
+
 /** Why payment.record wrote nothing, as the error the sheet shows. */
 const NOT_RECORDED = {
 	overpay: "That is more than is owed. Confirm the overpayment to record it.",
@@ -58,6 +70,8 @@ export async function applyPayment(
 		}
 	}
 	if (!result.value.recorded) {
+		if (result.value.reason === "overpay")
+			throw new OverpayError(NOT_RECORDED.overpay);
 		throw new TRPCError({
 			code: "BAD_REQUEST",
 			message: NOT_RECORDED[result.value.reason],
