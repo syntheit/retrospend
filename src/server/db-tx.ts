@@ -11,6 +11,10 @@ export interface UserTransactionOptions {
  * client from createUserScopedDb: the scoped client's `$transaction(callback)`
  * runs on the base client (one connection), so `tx` is never the per-query
  * wrapper that would split the work across connections.
+ *
+ * `userId` is who the whole transaction runs as, whatever scoped client was
+ * passed: `userTransaction(scopedForAlice, bobId, ...)` runs every query as
+ * Bob. Pass the caller's own id unless acting for someone else is intended.
  */
 export function userTransaction<T>(
 	client: Pick<PrismaClient, "$transaction">,
