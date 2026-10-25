@@ -578,7 +578,7 @@ describe("expense.listV2 entry kinds (M1, M2)", () => {
 });
 
 describe("expense.listV2 foreign shares", () => {
-	it("a BRL share row and its day total agree to the minor unit (no USD cents in between)", async () => {
+	it("a BRL share converts its exact USD value in the row and in the day total, with no USD cents in between", async () => {
 		const owner = await createTestUser();
 		const guest = await createTestUser();
 		await adminDb.user.update({
@@ -622,6 +622,55 @@ describe("expense.listV2 foreign shares", () => {
 			currency: "ARS",
 		});
 		expect(r.total?.value).toEqual({ minor: 3726296, currency: "ARS" });
+		await adminDb.sharedTransaction.deleteMany({
+			where: { id: { endsWith: guest.user.id } },
+		});
+		await adminDb.user.deleteMany({
+			where: { id: { in: [owner.user.id, guest.user.id] } },
+		});
+	});
+
+	it("rounds each row on its own and the day total once, so they can differ by a minor unit", async () => {
+		const owner = await createTestUser();
+		const guest = await createTestUser();
+		await adminDb.user.update({
+			where: { id: guest.user.id },
+			data: { homeCurrency: "ARS" },
+		});
+		for (const id of ["brl_one", "brl_two"])
+			await adminDb.sharedTransaction.create({
+				data: {
+					id: `${id}_${guest.user.id}`,
+					description: id,
+					amount: "1.00",
+					currency: "BRL",
+					exchangeRate: "5.4",
+					date: day(12),
+					paidByType: "user",
+					paidById: owner.user.id,
+					createdByType: "user",
+					createdById: owner.user.id,
+					splitParticipants: {
+						create: [
+							{
+								participantType: "user",
+								participantId: guest.user.id,
+								shareAmount: "1.00",
+								verificationStatus: "ACCEPTED",
+							},
+						],
+					},
+				},
+			});
+		const r = await list(guest, OCT);
+		// 1.00 / 5.4 = 0.185185 USD x 1000 = ARS 185.185185 per share.
+		// Each row rounds to 185.19, two rows read 370.38. The day total is
+		// spent(): the exact 370.37037 rounded once, ARS 370.37.
+		expect(r.items.map((i) => i.share?.minor)).toEqual([18519, 18519]);
+		expect(r.dayTotals?.["2026-10-12"]).toEqual({
+			minor: 37037,
+			currency: "ARS",
+		});
 		await adminDb.sharedTransaction.deleteMany({
 			where: { id: { endsWith: guest.user.id } },
 		});

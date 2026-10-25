@@ -84,7 +84,8 @@ describe("getSharedExpenseShares", () => {
 		]);
 		const shares = await getSharedExpenseShares(db as never, "user-1");
 		expect(shares[0]?.amountInUSD).toBe(60);
-		expect(shares[1]?.amountInUSD).toBeCloseTo(958.31, 1);
+		// 0.5 ETH x 1916.61 USD per coin, kept exact.
+		expect(shares[1]?.amountInUSD).toBe(958.305);
 	});
 
 	it("a share's USD value is exact: 123.45 BRL at 5.4 is not 22.86", async () => {
