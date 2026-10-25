@@ -467,6 +467,7 @@
 		"limitsSub": "From your last 3 months. Everything else is tracked, with no limit.",
 		"stop": "Your plan costs <cost></cost> a month but you start with <available></available>.",
 		"usePay": "Use my pay for the rest. <short></short> more starts when it arrives.",
+		"moneyNow": "Money to plan",
 		"failed": "Could not start your budget. Nothing was changed."
 	},
 	"debt": {

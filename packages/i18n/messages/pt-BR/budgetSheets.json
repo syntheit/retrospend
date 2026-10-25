@@ -467,6 +467,7 @@
 		"limitsSub": "Dos seus últimos 3 meses. O resto é acompanhado, sem limite.",
 		"stop": "Seu plano custa <cost></cost> por mês, mas você começa com <available></available>.",
 		"usePay": "Usar meu salário para o resto. Mais <short></short> começam quando ele chegar.",
+		"moneyNow": "Dinheiro para planejar",
 		"failed": "Não foi possível começar seu orçamento. Nada foi alterado."
 	},
 	"debt": {

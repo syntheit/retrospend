@@ -467,6 +467,7 @@
 		"limitsSub": "Con tus últimos 3 meses. Todo lo demás se registra, sin límite.",
 		"stop": "Tu plan cuesta <cost></cost> al mes pero empiezas con <available></available>.",
 		"usePay": "Usar mi sueldo para el resto. Los <short></short> restantes empiezan cuando llegue.",
+		"moneyNow": "Dinero para planificar",
 		"failed": "No se pudo empezar tu presupuesto. No se cambió nada."
 	},
 	"debt": {

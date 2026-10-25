@@ -13,6 +13,12 @@ import { hasAmount, type useSetup } from "./use-setup";
 
 type Setup = ReturnType<typeof useSetup>;
 type Amount = { minor: number; currency: string };
+const NEW_BOOK_FIGURES = [
+	"budget.notPlannedYet",
+	"budget.leftToSpend",
+	"budget.leftInLimits",
+	"budget.leftThisWeek",
+];
 type Plan = { cost: Amount; available: Amount; short: Amount } | null;
 
 /**
@@ -116,7 +122,24 @@ export function SetupEnvelopesStep({
 					</div>
 				</div>
 			) : null}
-			<FigureChanges dry={dry} poolName={poolName} />
+			<FigureChanges
+				dry={dry}
+				// No budget exists yet, so the figures it will have cannot be read
+				// before it does: the block says what the server will start with.
+				hide={NEW_BOOK_FIGURES}
+				own={() =>
+					plan
+						? [
+								{
+									key: "start",
+									label: t("moneyNow"),
+									value: <Money value={plan.available} />,
+								},
+							]
+						: []
+				}
+				poolName={poolName}
+			/>
 		</div>
 	);
 }

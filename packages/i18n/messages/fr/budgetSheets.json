@@ -467,6 +467,7 @@
 		"limitsSub": "D'après tes 3 derniers mois. Le reste est suivi, sans limite.",
 		"stop": "Ton plan coûte <cost></cost> par mois mais tu démarres avec <available></available>.",
 		"usePay": "Utiliser ma paie pour le reste. <short></short> de plus démarrent à son arrivée.",
+		"moneyNow": "Argent à planifier",
 		"failed": "Impossible de démarrer ton budget. Rien n'a été modifié."
 	},
 	"debt": {
