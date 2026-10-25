@@ -352,6 +352,8 @@ export async function unforgive(
 		header.settlements.some((s) => s.kind !== "FORGIVE")
 	)
 		throw new EnvelopeError("NOT_FOUND", "nothing to take back");
+	// Rows first: the database refuses a header delete that would cascade around its row rules.
+	await tx.settlement.deleteMany({ where: { paymentGroupId: header.id } });
 	await tx.payment.delete({ where: { id: header.id } });
 	await logAudit(tx, {
 		actor: { participantType: "user", participantId: userId },

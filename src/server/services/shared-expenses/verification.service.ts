@@ -104,7 +104,7 @@ export class VerificationService {
 			data: { verificationStatus: "AUTO_ACCEPTED", verifiedAt: now },
 		});
 
-		// Log each auto-accept (best-effort: logAudit has its own error handling)
+		// Log each auto-accept (a failed write throws, so a missing record is never silent)
 		for (const sp of expired) {
 			await logAudit(this.db, {
 				actor: SYSTEM_ACTOR,

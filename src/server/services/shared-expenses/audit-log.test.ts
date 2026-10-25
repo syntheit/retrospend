@@ -59,10 +59,9 @@ describe("logAudit", () => {
 		});
 	});
 
-	it("does not throw when db call fails", async () => {
+	it("throws when the db call fails, so a missing record is never silent", async () => {
 		const db = createMockDb();
 		db.auditLogEntry.create.mockRejectedValue(new Error("DB error"));
-		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
 		await expect(
 			logAudit(db as never, {
@@ -72,10 +71,7 @@ describe("logAudit", () => {
 				targetId: "txn-2",
 				changes: { snapshot: { amount: 100 } },
 			}),
-		).resolves.toBeUndefined();
-
-		expect(consoleSpy).toHaveBeenCalled();
-		consoleSpy.mockRestore();
+		).rejects.toThrow("DB error");
 	});
 
 	it("stores edit diffs in the expected format", async () => {
