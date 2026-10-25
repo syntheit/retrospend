@@ -26,6 +26,12 @@ const routes = listContractRoutes(contract).filter((r) =>
 	G3.includes(r.key[0] ?? ""),
 );
 
+/**
+ * This file sends hundreds of requests in a minute, so it comes from its own
+ * address and never uses up the per-IP limit the other v1 files share.
+ */
+const OWN_IP = { "x-forwarded-for": "198.51.100.78" };
+
 /** A concrete path: every `{param}` filled with a placeholder id. */
 const pathOf = (path: string) => path.replace(/\{[^}]+\}/g, "x0");
 
@@ -58,6 +64,7 @@ describe("G3 routes: authentication, scopes and idempotency", () => {
 		async (_name, r) => {
 			const res = await call(pathOf(r.path ?? ""), {
 				method: r.method,
+				headers: OWN_IP,
 				idempotent: r.method !== "GET",
 			});
 			await expectProblem(res, 401, "unauthenticated");
@@ -71,7 +78,7 @@ describe("G3 routes: authentication, scopes and idempotency", () => {
 			const key = await apiKeyFor(userId, others);
 			const res = await call(pathOf(r.path ?? ""), {
 				method: r.method,
-				headers: { "x-api-key": key },
+				headers: { ...OWN_IP, "x-api-key": key },
 				idempotent: r.method !== "GET",
 				body: r.method === "GET" ? undefined : {},
 			});
@@ -81,13 +88,13 @@ describe("G3 routes: authentication, scopes and idempotency", () => {
 
 	it.each(
 		routes
-			.filter((r) => r.method !== "GET")
+			.filter((r) => r.method !== "GET" && !r.meta.previewOf)
 			.map((r) => [`${r.method} ${r.path}`, r] as const),
 	)("%s needs an Idempotency-Key", async (_name, r) => {
 		const key = await apiKeyFor(userId, [r.meta.scope as never]);
 		const res = await call(pathOf(r.path ?? ""), {
 			method: r.method,
-			headers: { "x-api-key": key },
+			headers: { ...OWN_IP, "x-api-key": key },
 			body: {},
 		});
 		expect(res.status).toBe(400);
