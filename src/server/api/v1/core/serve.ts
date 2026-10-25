@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import type { ProblemCode } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import { MissingRateError } from "~/lib/money";
+import { OverpayError } from "~/server/services/payments/procedures";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import { Prisma } from "~prisma";
 import { problem } from "../errors";
@@ -42,6 +43,9 @@ export function toProblem(error: unknown, route?: string): unknown {
 	);
 	if (missing instanceof MissingRateError)
 		return problem("missing_rate", missing.message);
+	// More than everything owed: a code of its own, so a client can say so.
+	if (error instanceof OverpayError)
+		return problem("overpay", error.message);
 	if (error instanceof TRPCError) {
 		const code = TRPC_TO_PROBLEM[error.code];
 		if (code) return problem(code, error.message);

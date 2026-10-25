@@ -1,15 +1,15 @@
 {
 	"title": "Connecter un appareil",
-	"description": "Saisissez le code affiché par l'appareil pour qu'il puisse utiliser votre compte.",
+	"description": "Saisis le code affiché par l'appareil pour qu'il puisse utiliser ton compte.",
 	"codeLabel": "Code",
 	"continue": "Continuer",
-	"reviewTitle": "Autoriser {client} à utiliser votre compte ?",
+	"reviewTitle": "Autoriser {client} à utiliser ton compte ?",
 	"scopesIntro": "Il pourra :",
 	"scopes": {
-		"read": "Voir vos dépenses, personnes, budget et comptes",
+		"read": "Voir tes dépenses, personnes, budget et comptes",
 		"writeExpenses": "Ajouter et modifier des dépenses",
 		"writeMoney": "Enregistrer des paiements, virements, revenus et mouvements de budget",
-		"writeSettings": "Modifier vos paramètres",
+		"writeSettings": "Modifier tes paramètres",
 		"admin": "Administrer ce serveur"
 	},
 	"clients": {
@@ -19,11 +19,11 @@
 	},
 	"approve": "Autoriser",
 	"deny": "Refuser",
-	"approved": "Appareil connecté. Vous pouvez y retourner.",
+	"approved": "Appareil connecté. Tu peux y retourner.",
 	"denied": "Demande refusée. L'appareil n'a pas été connecté.",
 	"errors": {
 		"invalid": "Ce code n'est pas valide ou a expiré.",
 		"used": "Ce code a déjà été utilisé.",
-		"generic": "Impossible de terminer. Réessayez."
+		"generic": "Impossible de terminer. Réessaie."
 	}
 }

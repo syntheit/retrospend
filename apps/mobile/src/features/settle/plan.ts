@@ -8,16 +8,23 @@ export type PaymentPreview = Awaited<
 >;
 export type Direction = SettleContext["direction"];
 
-/** What the person settles: all of it, or one currency's part of it. */
+/**
+ * What the person settles: all of it, one currency's part of it, or an
+ * amount typed on the keypad (in the payment currency; `minor` is 0 until a
+ * valid amount is typed).
+ */
 export type AmountChoice =
 	| { kind: "everything" }
-	| { kind: "part"; currency: string };
+	| { kind: "part"; currency: string }
+	| { kind: "custom"; minor: number };
 
 /**
  * The body of POST /payments, and of its preview twin: the preview is a dry
  * run of exactly this write. "Everything" sends no amount (the server pays
  * all that is owed); a part sends that part's amount in the payment
- * currency and applies it to that currency's debts.
+ * currency and applies it to that currency's debts; a custom amount sends
+ * what was typed and the server allocates it. A half-typed custom amount is
+ * null, so nothing is previewed or recorded for it.
  */
 export function recordInput(
 	person: PersonRef,
@@ -25,9 +32,16 @@ export function recordInput(
 	direction: Direction,
 	choice: AmountChoice,
 	id: string,
-): RecordInput {
+): RecordInput | null {
 	const base = { id, person, direction, currency: context.currency };
 	if (choice.kind === "everything") return { ...base, amount: null };
+	if (choice.kind === "custom") {
+		if (choice.minor <= 0) return null;
+		return {
+			...base,
+			amount: fromMinor({ minor: choice.minor, currency: context.currency }),
+		};
+	}
 	const part = context.parts.find((p) => p.currency === choice.currency);
 	if (!part) throw new RangeError(`No ${choice.currency} part to settle`);
 	return {
@@ -50,11 +64,14 @@ export interface ChangeRow {
 	currency: string;
 	before: Money | null;
 	after: Money | null;
+	/** A converted total: its amounts are estimates, shown with "≈". */
+	approx: boolean;
 }
 
 export interface KeptRow {
 	figure: SettleFigure;
 	lines: Money[];
+	approx: boolean;
 }
 
 function isFigure(id: string): id is SettleFigure {
@@ -84,6 +101,7 @@ export function previewRows(preview: PaymentPreview): {
 						currency: change.currency,
 						before: asMoney(change.before),
 						after: asMoney(change.after),
+						approx: change.approx === true,
 					},
 				]
 			: [],
@@ -94,6 +112,7 @@ export function previewRows(preview: PaymentPreview): {
 					{
 						figure: item.id,
 						lines: item.lines.flatMap((line) => asMoney(line) ?? []),
+						approx: item.approx === true,
 					},
 				]
 			: [],
@@ -124,4 +143,21 @@ export function allocationOf(
 		amount: allocation.amount,
 		converted: (allocation.rows ?? []).some((row) => row.rate !== null),
 	};
+}
+
+/** The problem the server answers for an amount above everything owed. */
+export function isOverpay(error: unknown): boolean {
+	return (error as { code?: string } | null)?.code === "overpay";
+}
+
+/**
+ * A dry run answers one request. It is shown, and recorded, only for the
+ * request it was made for; after any change to the request it is gone until
+ * the new one answers.
+ */
+export function answerFor<T extends { key: string }>(
+	answer: T | null,
+	key: string | null,
+): T | null {
+	return answer !== null && key !== null && answer.key === key ? answer : null;
 }

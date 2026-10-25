@@ -23,7 +23,7 @@
 		"settings": "Paramètres",
 		"recurring": "Récurrentes",
 		"insights": "Analyses",
-		"needsYou": "{count, plural, one {# a besoin de vous} other {# ont besoin de vous}}"
+		"needsYou": "{count, plural, one {# a besoin de toi} other {# ont besoin de toi}}"
 	},
 	"add": {
 		"group": "Ajouter",
@@ -93,7 +93,7 @@
 	"account": {
 		"title": "Compte",
 		"menu": "Menu du compte",
-		"profile": "Votre profil",
+		"profile": "Ton profil",
 		"settings": "Paramètres",
 		"admin": "Admin",
 		"inviteCodes": "Codes d'invitation",

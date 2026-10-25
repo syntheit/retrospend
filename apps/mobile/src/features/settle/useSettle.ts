@@ -4,7 +4,9 @@ import { newClientId } from "@/data/ids";
 import type { PersonRef, SettleContext } from "@/features/people/source";
 import {
 	type AmountChoice,
+	answerFor,
 	type Direction,
+	isOverpay,
 	type PaymentPreview,
 	recordInput,
 } from "./plan";
@@ -29,10 +31,17 @@ export function useSettle(person: PersonRef, active: boolean) {
 	const [status, setStatus] = useState<SettleStatus>("loading");
 	const [direction, setDirection] = useState<Direction | null>(null);
 	const [choice, setChoice] = useState<AmountChoice>({ kind: "everything" });
-	const [preview, setPreview] = useState<PaymentPreview | null>(null);
-	const [previewFailed, setPreviewFailed] = useState(false);
+	// The dry run, kept with the request it answered: a preview that is not of
+	// the request on screen is never shown and never recorded.
+	const [settled, setSettled] = useState<{
+		key: string;
+		preview: PaymentPreview | null;
+		failed: "error" | "overpay" | null;
+	} | null>(null);
 	const [recording, setRecording] = useState(false);
-	const [recordFailed, setRecordFailed] = useState(false);
+	const [recordFailed, setRecordFailed] = useState<"error" | "overpay" | null>(
+		null,
+	);
 	// One id (also the idempotency key) per distinct request: a retry of the
 	// same body replays, a changed body is a different payment.
 	const write = useRef({ body: "", id: newClientId() });
@@ -41,7 +50,7 @@ export function useSettle(person: PersonRef, active: boolean) {
 		async (next: Direction | undefined) => {
 			if (!api) return;
 			setStatus("loading");
-			setPreview(null);
+			setSettled(null);
 			try {
 				const ctx = await api.people.settle({
 					type: person.type,
@@ -63,7 +72,7 @@ export function useSettle(person: PersonRef, active: boolean) {
 	useEffect(() => {
 		if (!active) return;
 		write.current = { body: "", id: newClientId() };
-		setRecordFailed(false);
+		setRecordFailed(null);
 		read(undefined);
 	}, [active, read]);
 
@@ -80,22 +89,29 @@ export function useSettle(person: PersonRef, active: boolean) {
 	// The preview is a dry run of this very input; it follows every change.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `inputKey` stands for `input`
 	useEffect(() => {
-		if (!api || !input || status !== "ready") return;
+		if (!api || !input || inputKey === null || status !== "ready") return;
 		let cancelled = false;
-		setPreview(null);
-		setPreviewFailed(false);
 		api.payments
 			.previewRecord(input)
 			.then((result) => {
-				if (!cancelled) setPreview(result);
+				if (!cancelled)
+					setSettled({ key: inputKey, preview: result, failed: null });
 			})
-			.catch(() => {
-				if (!cancelled) setPreviewFailed(true);
+			.catch((error) => {
+				if (!cancelled)
+					setSettled({
+						key: inputKey,
+						preview: null,
+						failed: isOverpay(error) ? "overpay" : "error",
+					});
 			});
 		return () => {
 			cancelled = true;
 		};
 	}, [api, inputKey, status]);
+
+	const current = answerFor(settled, inputKey);
+	const preview = current?.preview ?? null;
 
 	const changeDirection = useCallback(
 		(next: Direction) => {
@@ -105,21 +121,22 @@ export function useSettle(person: PersonRef, active: boolean) {
 	);
 
 	const record = useCallback(async (): Promise<Recorded | null> => {
-		if (!api || !input) return null;
+		// Only the request the person was shown is recorded.
+		if (!api || !input || !preview) return null;
 		setRecording(true);
-		setRecordFailed(false);
+		setRecordFailed(null);
 		try {
 			const result = await api.payments.record(input, {
 				context: { idempotencyKey: input.id },
 			});
 			return { status: result.status, undoToken: result.undo };
-		} catch {
-			setRecordFailed(true);
+		} catch (error) {
+			setRecordFailed(isOverpay(error) ? "overpay" : "error");
 			return null;
 		} finally {
 			setRecording(false);
 		}
-	}, [api, input]);
+	}, [api, input, preview]);
 
 	const undo = useCallback(
 		async (token: string): Promise<boolean> => {
@@ -145,9 +162,11 @@ export function useSettle(person: PersonRef, active: boolean) {
 		setChoice,
 		changeDirection,
 		preview,
-		previewFailed,
+		previewFailed: current?.failed === "error",
+		/** The amount is more than everything owed (the server's `overpay`). */
+		overpaid: current?.failed === "overpay" || recordFailed === "overpay",
 		recording,
-		recordFailed,
+		recordFailed: recordFailed === "error",
 		record,
 		undo,
 		retryLoad: () => read(direction ?? undefined),

@@ -21,7 +21,11 @@ import {
 	type RestoreSelfInput,
 	restoreSelfMutation,
 } from "~/server/services/shared-expenses/remove-self.mutation";
-import { VerificationService } from "~/server/services/shared-expenses/verification.service";
+import {
+	answerShareMutation,
+	type RestoreAnswerInput,
+	restoreAnswerMutation,
+} from "~/server/services/shared-expenses/answer-share.mutation";
 import { exactAmount } from "./amounts";
 import type { Caller } from "./caller";
 import { applyWrite, previewWrite, spendUndo, undoFor } from "./money-write";
@@ -42,6 +46,7 @@ type DeleteBody = z.infer<typeof deleteSharedExpenseSchema>;
 type Notify = (() => Promise<void>)[];
 
 const FAMILY = "shared" as const;
+const RESTORE_ANSWER = "shared.restoreAnswer";
 
 const refOf = (p: { type: "user" | "guest" | "shadow"; id: string }) => ({
 	participantType: p.type,
@@ -247,6 +252,16 @@ function inverseOf(caller: Caller, op: string, input: unknown): Inverse {
 			},
 		};
 	}
+	if (op === RESTORE_ANSWER) {
+		const args = input as RestoreAnswerInput;
+		return {
+			preview: () => previewWrite(caller, restoreAnswerMutation, args),
+			apply: async () => {
+				const done = await applyWrite(caller, restoreAnswerMutation, args);
+				return { id: done.transactionId, redo: null };
+			},
+		};
+	}
 	if (op === "shared.restoreSelf") {
 		const args = input as RestoreSelfInput;
 		return {
@@ -273,32 +288,47 @@ export function previewUndoSharedExpenseWrite(caller: Caller, token: string) {
 
 // ── Accept and reject ───────────────────────────────────────────────────────
 
-type Verified = Awaited<ReturnType<VerificationService["accept"]>>;
+const answerInput = (
+	id: string,
+	answer: "accept" | "reject",
+	reason?: string,
+) => ({ transactionId: id, answer, reason });
 
-const verificationOf = (result: Verified) => ({
-	id: result.id,
-	status: result.computedStatus,
-	participants: result.splitParticipants.map((p) => ({
-		type: p.participantType as "user" | "guest" | "shadow",
-		id: p.participantId,
-		status: p.verificationStatus,
-	})),
-});
-
-const verifierFor = (caller: Caller) =>
-	new VerificationService(caller.db, {
-		participantType: "user",
-		participantId: caller.principal.userId,
-	});
-
-export async function acceptSharedExpense(caller: Caller, id: string) {
-	return verificationOf(await verifierFor(caller).accept(id));
+/** The answer as the contract shows it, with the token that takes it back. */
+async function answerOf(
+	caller: Caller,
+	id: string,
+	answer: "accept" | "reject",
+	reason?: string,
+) {
+	const done = await applyWrite(
+		caller,
+		answerShareMutation,
+		answerInput(id, answer, reason),
+	);
+	return {
+		id: done.transactionId,
+		status: done.status,
+		participants: [...done.participants],
+		undo: undoFor(caller, FAMILY, RESTORE_ANSWER, {
+			transactionId: done.transactionId,
+			answer,
+			was: done.was,
+		} satisfies RestoreAnswerInput),
+	};
 }
 
-export async function rejectSharedExpense(
+export const acceptSharedExpense = (caller: Caller, id: string) =>
+	answerOf(caller, id, "accept");
+
+export const rejectSharedExpense = (caller: Caller, id: string, reason?: string) =>
+	answerOf(caller, id, "reject", reason);
+
+export const previewAcceptSharedExpense = (caller: Caller, id: string) =>
+	previewWrite(caller, answerShareMutation, answerInput(id, "accept"));
+
+export const previewRejectSharedExpense = (
 	caller: Caller,
 	id: string,
 	reason?: string,
-) {
-	return verificationOf(await verifierFor(caller).reject(id, reason));
-}
+) => previewWrite(caller, answerShareMutation, answerInput(id, "reject", reason));

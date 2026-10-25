@@ -11,7 +11,9 @@
 		"cancel": "Abbrechen",
 		"undo": "Rückgängig",
 		"dismiss": "Schließen",
-		"retry": "Erneut versuchen"
+		"retry": "Erneut versuchen",
+		"save": "Speichern",
+		"saving": "Speichern"
 	},
 	"keypad": {
 		"delete": "Löschen",
@@ -166,17 +168,17 @@
 	},
 	"connect": {
 		"title": "Mit einem Server verbinden",
-		"intro": "Nutzen Sie retrospend.app oder die Adresse eines eigenen Servers.",
+		"intro": "Nutze retrospend.app oder die Adresse eines eigenen Servers.",
 		"urlLabel": "Serveradresse",
 		"submit": "Verbinden",
 		"checking": "Server wird geprüft",
-		"invalidUrl": "Geben Sie eine Webadresse ein, zum Beispiel retrospend.app.",
-		"unreachable": "Dieser Server ist nicht erreichbar. Prüfen Sie die Adresse und Ihre Verbindung.",
+		"invalidUrl": "Gib eine Webadresse ein, zum Beispiel retrospend.app.",
+		"unreachable": "Dieser Server ist nicht erreichbar. Prüfe die Adresse und deine Verbindung.",
 		"notRetrospend": "Diese Adresse ist kein Retrospend-Server.",
-		"appTooOld": "Dieser Server benötigt eine neuere Version der App. Aktualisieren Sie Retrospend und versuchen Sie es erneut.",
-		"insecureWarning": "Dieser Server verwendet kein HTTPS. Ihr Passwort und Ihre Daten werden unverschlüsselt übertragen. Fahren Sie nur in einem vertrauenswürdigen Netzwerk fort.",
+		"appTooOld": "Dieser Server benötigt eine neuere Version der App. Aktualisiere Retrospend und versuche es erneut.",
+		"insecureWarning": "Dieser Server verwendet kein HTTPS. Dein Passwort und deine Daten werden unverschlüsselt übertragen. Fahre nur in einem vertrauenswürdigen Netzwerk fort.",
 		"continueAnyway": "Trotzdem fortfahren",
-		"saveFailed": "Der Server konnte nicht gespeichert werden. Versuchen Sie es erneut."
+		"saveFailed": "Der Server konnte nicht gespeichert werden. Versuche es erneut."
 	},
 	"signIn": {
 		"title": "Anmelden",
@@ -202,7 +204,8 @@
 		"open": "Konto",
 		"signOut": "Abmelden",
 		"signOutDiscard": "Abmelden und verwerfen",
-		"unsynced": "{count, plural, one {# Änderung ist noch nicht synchronisiert. Beim Abmelden wird sie verworfen.} other {# Änderungen sind noch nicht synchronisiert. Beim Abmelden werden sie verworfen.}}"
+		"unsynced": "{count, plural, one {# Änderung ist noch nicht synchronisiert. Beim Abmelden wird sie verworfen.} other {# Änderungen sind noch nicht synchronisiert. Beim Abmelden werden sie verworfen.}}",
+		"settings": "Einstellungen"
 	},
 	"activity": {
 		"title": "Aktivität",
@@ -770,6 +773,218 @@
 		"confirm": "Bestätigen",
 		"confirmed": "Zahlung bestätigt",
 		"confirmUndone": "Bestätigung rückgängig gemacht",
-		"confirmError": "Die Zahlung konnte nicht bestätigt werden. Versuche es erneut."
+		"confirmError": "Die Zahlung konnte nicht bestätigt werden. Versuche es erneut.",
+		"otherShort": "Anderer",
+		"typeAmount": "Gib einen Betrag ein",
+		"amountInvalid": "Dieser Betrag ist ungültig",
+		"overpay": "Das ist mehr, als offen ist. Gib weniger ein."
+	},
+	"review": {
+		"open": "Prüfen",
+		"title": "{name} hat dich zu einer geteilten Ausgabe hinzugefügt",
+		"yourShare": "Dein Anteil",
+		"betweenYou": "Zwischen euch",
+		"effectThem": "Schuldet dir {amount}",
+		"effectYou": "Du schuldest {amount}",
+		"accept": "Annehmen",
+		"reject": "Ablehnen",
+		"saving": "Speichern",
+		"accepted": "Anteil angenommen",
+		"rejected": "Anteil abgelehnt, {name} erfährt es",
+		"error": "Deine Antwort konnte nicht gespeichert werden. Versuche es erneut.",
+		"answer": "Deine Antwort",
+		"askToFix": "Korrektur erbitten",
+		"explain": {
+			"accept": "Die Ausgabe bleibt und zählt für dich.",
+			"reject": "{name} erfährt, dass du nicht einverstanden bist.",
+			"fix": "{name} wird gebeten, sie zu korrigieren. Bis dahin ändert sich nichts."
+		},
+		"message": "Nachricht (optional)",
+		"noFigures": "Deine Salden bleiben, wie sie sind.",
+		"checking": "Prüfen",
+		"previewError": "Das konnte nicht geprüft werden. Versuche es erneut.",
+		"asked": "{name} wurde um eine Korrektur gebeten",
+		"undone": "Antwort zurückgenommen",
+		"undoError": "Die Antwort konnte nicht zurückgenommen werden. Versuche es erneut."
+	},
+	"projects": {
+		"title": "Projekte",
+		"search": "Projekte suchen",
+		"pick": "Wähle ein Projekt",
+		"empty": "Noch keine Projekte",
+		"emptyDetail": "Hier erscheinen Projekte, die du mit anderen teilst.",
+		"noMatch": "Kein Projekt passt",
+		"error": "Projekte konnten nicht geladen werden",
+		"errorOne": "Dieses Projekt konnte nicht geladen werden",
+		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+		"group": {
+			"active": "Aktiv"
+		},
+		"settled": "Ausgeglichen",
+		"owesYou": "Schuldet dir",
+		"youOwe": "Du schuldest",
+		"owesYouAmount": "Die Gruppe schuldet dir {amount}",
+		"youOweAmount": "Du schuldest {amount}",
+		"expenseCount": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
+		"peopleCount": "{count, plural, one {# Person} other {# Personen}}",
+		"soloShort": "Nur du",
+		"spent": "Ausgegeben",
+		"totalSpoken": "Gesamt {amount}",
+		"budgetLeft": "{amount} übrig",
+		"budgetOver": "{amount} drüber",
+		"range": "{from} bis {to}",
+		"archived": "Archiviert",
+		"groupTotal": "Gruppensumme",
+		"yourShareLabel": "Dein Anteil",
+		"yourShare": "Dein Anteil {amount}",
+		"tabs": "Projektbereiche",
+		"tab": {
+			"expenses": "Ausgaben",
+			"summary": "Übersicht",
+			"people": "Personen"
+		},
+		"period": {
+			"label": "Zeitraum",
+			"all": "Ganzes Projekt",
+			"current": "Aktueller Zeitraum"
+		},
+		"expenses": "Ausgaben",
+		"noExpenses": "Noch keine Ausgaben",
+		"newestOnly": "Die neuesten {count} werden angezeigt",
+		"waiting": {
+			"review": "Zu prüfen",
+			"rejected": "Abgelehnt"
+		},
+		"paidByMe": "Du hast gezahlt",
+		"paidByName": "{name} hat gezahlt",
+		"you": "Du",
+		"role": {
+			"ORGANIZER": "Organisator",
+			"EDITOR": "Bearbeiter",
+			"CONTRIBUTOR": "Mitwirkender",
+			"VIEWER": "Betrachter"
+		},
+		"leftOn": "Ausgetreten am {date}",
+		"summary": {
+			"members": "Personen",
+			"error": "Die Übersicht konnte nicht geladen werden",
+			"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+			"imbalance": "Diese Salden gehen nicht auf: {amounts}",
+			"isOwed": "bekommt {amount}",
+			"owes": "schuldet {amount}",
+			"paidShare": "Gezahlt {paid}, Anteil {share}",
+			"left": "Nicht mehr im Projekt",
+			"even": "Ausgeglichen",
+			"isOwedShort": "Bekommt",
+			"owesShort": "Schuldet",
+			"transfers": "Wenigste Überweisungen",
+			"transfersNote": "Nur ein Vorschlag. Alles ausgleichen erfasst die Zahlungen.",
+			"pays": "{from} zahlt an {to}"
+		},
+		"settleAll": {
+			"open": "Alles ausgleichen",
+			"title": "Alles ausgleichen in {name}",
+			"explain": "Eine Zahlung pro Person und Währung, jeweils in der Währung, in der sie geschuldet ist.",
+			"checking": "Prüfen",
+			"nothing": "In diesem Projekt ist nichts auszugleichen",
+			"willRecord": "Diese Zahlungen werden erfasst",
+			"youPay": "Du zahlst an {name}",
+			"paidYou": "{name} hat dich bezahlt",
+			"waiting": "Wartet auf die Bestätigung von {name}",
+			"skipped": {
+				"matches_claim": "{name} sagt schon, {amount} gezahlt zu haben. Bestätige es auf der Seite der Person.",
+				"overpay": "{name}: {amount} ist mehr als offen, das bleibt dir überlassen",
+				"nothing_owed": "{name} wird in {amount} nichts geschuldet"
+			},
+			"record": "Zahlungen erfassen",
+			"recording": "Erfassen",
+			"recorded": "{count, plural, one {# Zahlung erfasst} other {# Zahlungen erfasst}}",
+			"undone": "Zahlungen rückgängig gemacht",
+			"undoError": "Die Zahlungen konnten nicht rückgängig gemacht werden. Versuche es erneut.",
+			"previewError": "Diese Zahlungen konnten nicht geprüft werden. Versuche es erneut.",
+			"loadError": "Das Offene konnte nicht geladen werden. Versuche es erneut.",
+			"moved": "Die Salden haben sich geändert. Prüfe die Liste und versuche es erneut.",
+			"error": "Die Zahlungen konnten nicht erfasst werden. Versuche es erneut."
+		}
+	},
+	"settings": {
+		"title": "Einstellungen",
+		"saved": "Gespeichert",
+		"saveError": "Konnte nicht gespeichert werden. Versuche es erneut.",
+		"error": "Einstellungen konnten nicht geladen werden",
+		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+		"notAvailable": "Noch nicht verfügbar",
+		"profile": {
+			"title": "Profil",
+			"name": "Name",
+			"username": "Benutzername",
+			"email": "E-Mail",
+			"edit": "Profil bearbeiten",
+			"usernameRule": "Nur Buchstaben und Zahlen.",
+			"error": "Dein Profil konnte nicht gespeichert werden. Versuche es erneut."
+		},
+		"money": {
+			"title": "Geld",
+			"footer": "Summen und Berichte nutzen deine Heimatwährung.",
+			"home": "Heimatwährung",
+			"default": "Standard für neue Ausgaben",
+			"monthStart": "Monat beginnt am Tag"
+		},
+		"rates": {
+			"section": "Kurse",
+			"footer": "Die Standard-Kursart lässt sich vorerst nur im Web ändern.",
+			"defaultType": "Standard-Kursart",
+			"pinned": "Angeheftete Kurse",
+			"title": "Angeheftete Kurse",
+			"none": "Keine angehefteten Kurse",
+			"unpin": "Lösen",
+			"unpinned": "Kurs gelöst",
+			"error": "Der Kurs konnte nicht gelöst werden. Versuche es erneut.",
+			"line": "1 USD = {rate} {currency}",
+			"spoken": "{currency} {type}, 1 USD sind {rate} {currency}"
+		},
+		"notifications": {
+			"inApp": "In der App",
+			"email": "Per E-Mail"
+		},
+		"notify": {
+			"EXPENSE_SPLIT": "Jemand fügt dich zu einer geteilten Ausgabe hinzu",
+			"VERIFICATION_REQUEST": "Eine geteilte Ausgabe braucht deine Prüfung",
+			"EXPENSE_EDITED": "Eine geteilte Ausgabe ändert sich",
+			"EXPENSE_DELETED": "Eine geteilte Ausgabe wird gelöscht",
+			"SETTLEMENT_RECEIVED": "Eine Zahlung wartet auf deine Bestätigung",
+			"SETTLEMENT_CONFIRMED": "Eine Zahlung wird bestätigt",
+			"SETTLEMENT_REJECTED": "Eine Zahlung wird abgelehnt",
+			"PERIOD_CLOSED": "Ein Abrechnungszeitraum endet",
+			"PARTICIPANT_ADDED": "Du wirst zu einem Projekt hinzugefügt",
+			"PAYMENT_REMINDER": "Jemand erinnert dich an eine Zahlung"
+		},
+		"server": {
+			"title": "Server",
+			"connected": "Verbunden mit"
+		},
+		"account": {
+			"title": "Konto",
+			"signOut": "Abmelden",
+			"delete": "Konto löschen"
+		},
+		"delete": {
+			"title": "Konto löschen",
+			"permanent": "Das löscht dein Konto und lässt sich nicht rückgängig machen. Du wirst überall abgemeldet.",
+			"loadError": "Was sich ändert, konnte nicht geprüft werden. Versuche es erneut.",
+			"checking": "Prüfen",
+			"changes": "Was sich für andere ändert",
+			"nothing": "Für niemanden sonst ändert sich etwas.",
+			"transfer": "{project} geht an {name}",
+			"deleteProject": "{project} wird gelöscht, niemand sonst kann es leiten",
+			"confirm": "{count, plural, one {# Zahlung, die auf dich wartet, wird bestätigt} other {# Zahlungen, die auf dich warten, werden bestätigt}}",
+			"cancel": "{count, plural, one {# unbestätigte Zahlung wird storniert} other {# unbestätigte Zahlungen werden storniert}}",
+			"accept": "{count, plural, one {# Anteil, der auf deine Antwort wartet, wird angenommen} other {# Anteile, die auf deine Antwort warten, werden angenommen}}",
+			"anonymize": "{count, plural, one {# geteilte Ausgabe behält deinen Anteil als Gelöschter Nutzer} other {# geteilte Ausgaben behalten deinen Anteil als Gelöschter Nutzer}}",
+			"password": "Passwort",
+			"delete": "Konto löschen",
+			"deleting": "Löschen",
+			"error": "Das Konto konnte nicht gelöscht werden. Prüfe dein Passwort und versuche es erneut."
+		}
 	}
 }

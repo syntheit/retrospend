@@ -21,8 +21,12 @@ import { mintUndo, type UndoFamily } from "./undo";
 
 /** The wire form of a preview: figures that moved, did not move, or could not be read. */
 export function toPreviewDto(result: PreviewResult<unknown>): PreviewDto {
+	// A converted total is an estimate: its lines say so, so no client has to know which figures those are.
+	const approx = (id: string) =>
+		result.approx.includes(id) ? { approx: true as const } : {};
 	return {
 		changes: result.changes.map((c) => ({
+			...approx(c.id),
 			id: c.id,
 			currency: c.currency,
 			before: c.before,
@@ -30,7 +34,11 @@ export function toPreviewDto(result: PreviewResult<unknown>): PreviewDto {
 			delta: c.delta,
 			figureAfter: [...c.figureAfter],
 		})),
-		unchanged: result.unchanged.map((u) => ({ id: u.id, lines: [...u.value] })),
+		unchanged: result.unchanged.map((u) => ({
+			...approx(u.id),
+			id: u.id,
+			lines: [...u.value],
+		})),
 		unavailable: result.unavailable.map((u) => ({
 			id: u.id,
 			before: u.before ? [...u.before] : null,

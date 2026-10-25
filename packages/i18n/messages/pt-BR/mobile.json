@@ -11,7 +11,9 @@
 		"cancel": "Cancelar",
 		"undo": "Desfazer",
 		"dismiss": "Dispensar",
-		"retry": "Tentar de novo"
+		"retry": "Tentar de novo",
+		"save": "Salvar",
+		"saving": "Salvando"
 	},
 	"keypad": {
 		"delete": "Apagar",
@@ -202,7 +204,8 @@
 		"open": "Conta",
 		"signOut": "Sair",
 		"signOutDiscard": "Sair e descartar",
-		"unsynced": "{count, plural, one {# alteração não sincronizada. Ao sair, ela será descartada.} other {# alterações não sincronizadas. Ao sair, elas serão descartadas.}}"
+		"unsynced": "{count, plural, one {# alteração não sincronizada. Ao sair, ela será descartada.} other {# alterações não sincronizadas. Ao sair, elas serão descartadas.}}",
+		"settings": "Ajustes"
 	},
 	"activity": {
 		"title": "Atividade",
@@ -770,6 +773,218 @@
 		"confirm": "Confirmar",
 		"confirmed": "Pagamento confirmado",
 		"confirmUndone": "Confirmação desfeita",
-		"confirmError": "Não foi possível confirmar o pagamento. Tente de novo."
+		"confirmError": "Não foi possível confirmar o pagamento. Tente de novo.",
+		"otherShort": "Outro",
+		"typeAmount": "Digite um valor",
+		"amountInvalid": "Esse valor não é válido",
+		"overpay": "Isso é mais do que o devido. Digite menos."
+	},
+	"review": {
+		"open": "Revisar",
+		"title": "{name} adicionou você a uma despesa dividida",
+		"yourShare": "Sua parte",
+		"betweenYou": "Entre vocês",
+		"effectThem": "Deve {amount} a você",
+		"effectYou": "Você deve {amount}",
+		"accept": "Aceitar",
+		"reject": "Recusar",
+		"saving": "Salvando",
+		"accepted": "Parte aceita",
+		"rejected": "Parte recusada, {name} foi avisado",
+		"error": "Não foi possível salvar sua resposta. Tente de novo.",
+		"answer": "Sua resposta",
+		"askToFix": "Pedir correção",
+		"explain": {
+			"accept": "A despesa fica e conta para você.",
+			"reject": "{name} é avisado de que você não concorda.",
+			"fix": "{name} é convidado a corrigir. Nada muda até que corrija."
+		},
+		"message": "Mensagem (opcional)",
+		"noFigures": "Seus saldos ficam como estão.",
+		"checking": "Verificando",
+		"previewError": "Não foi possível verificar isto. Tente de novo.",
+		"asked": "Você pediu a {name} que corrija",
+		"undone": "Resposta desfeita",
+		"undoError": "Não foi possível desfazer a resposta. Tente de novo."
+	},
+	"projects": {
+		"title": "Projetos",
+		"search": "Buscar projetos",
+		"pick": "Escolha um projeto",
+		"empty": "Ainda não há projetos",
+		"emptyDetail": "Os projetos que você divide com outras pessoas aparecem aqui.",
+		"noMatch": "Nenhum projeto corresponde",
+		"error": "Não foi possível carregar os projetos",
+		"errorOne": "Não foi possível carregar este projeto",
+		"errorDetail": "Verifique sua conexão e tente de novo.",
+		"group": {
+			"active": "Ativos"
+		},
+		"settled": "Em dia",
+		"owesYou": "Deve a você",
+		"youOwe": "Você deve",
+		"owesYouAmount": "O grupo deve {amount} a você",
+		"youOweAmount": "Você deve {amount}",
+		"expenseCount": "{count, plural, one {# despesa} other {# despesas}}",
+		"peopleCount": "{count, plural, one {# pessoa} other {# pessoas}}",
+		"soloShort": "Só você",
+		"spent": "Gasto",
+		"totalSpoken": "Total {amount}",
+		"budgetLeft": "Restam {amount}",
+		"budgetOver": "{amount} acima",
+		"range": "{from} a {to}",
+		"archived": "Arquivado",
+		"groupTotal": "Total do grupo",
+		"yourShareLabel": "Sua parte",
+		"yourShare": "Sua parte: {amount}",
+		"tabs": "Seções do projeto",
+		"tab": {
+			"expenses": "Despesas",
+			"summary": "Resumo",
+			"people": "Pessoas"
+		},
+		"period": {
+			"label": "Período",
+			"all": "Projeto inteiro",
+			"current": "Período atual"
+		},
+		"expenses": "Despesas",
+		"noExpenses": "Ainda não há despesas",
+		"newestOnly": "Mostrando as {count} mais recentes",
+		"waiting": {
+			"review": "Para revisar",
+			"rejected": "Recusada"
+		},
+		"paidByMe": "Você pagou",
+		"paidByName": "{name} pagou",
+		"you": "Você",
+		"role": {
+			"ORGANIZER": "Organizador",
+			"EDITOR": "Editor",
+			"CONTRIBUTOR": "Colaborador",
+			"VIEWER": "Leitor"
+		},
+		"leftOn": "Saiu em {date}",
+		"summary": {
+			"members": "Pessoas",
+			"error": "Não foi possível carregar o resumo",
+			"errorDetail": "Verifique sua conexão e tente de novo.",
+			"imbalance": "Estes saldos não fecham: {amounts}",
+			"isOwed": "tem {amount} a receber",
+			"owes": "deve {amount}",
+			"paidShare": "Pagou {paid}, parte {share}",
+			"left": "Não está mais no projeto",
+			"even": "Sem saldo",
+			"isOwedShort": "A receber",
+			"owesShort": "Deve",
+			"transfers": "Menos transferências",
+			"transfersNote": "É só um guia. Quitar tudo registra os pagamentos.",
+			"pays": "{from} paga a {to}"
+		},
+		"settleAll": {
+			"open": "Quitar tudo",
+			"title": "Quitar tudo em {name}",
+			"explain": "Um pagamento por pessoa e moeda, cada um na moeda em que é devido.",
+			"checking": "Verificando",
+			"nothing": "Não há nada para quitar neste projeto",
+			"willRecord": "Estes pagamentos serão registrados",
+			"youPay": "Você paga a {name}",
+			"paidYou": "{name} pagou você",
+			"waiting": "Aguardando {name} confirmar",
+			"skipped": {
+				"matches_claim": "{name} já diz que pagou {amount}. Confirme na página da pessoa.",
+				"overpay": "{name}: {amount} é mais do que o devido, fica para você resolver",
+				"nothing_owed": "Não se deve nada a {name} em {amount}"
+			},
+			"record": "Registrar pagamentos",
+			"recording": "Registrando",
+			"recorded": "{count, plural, one {# pagamento registrado} other {# pagamentos registrados}}",
+			"undone": "Pagamentos desfeitos",
+			"undoError": "Não foi possível desfazer os pagamentos. Tente de novo.",
+			"previewError": "Não foi possível verificar estes pagamentos. Tente de novo.",
+			"loadError": "Não foi possível carregar o que está em aberto. Tente de novo.",
+			"moved": "Os saldos mudaram. Confira a lista e tente de novo.",
+			"error": "Não foi possível registrar os pagamentos. Tente de novo."
+		}
+	},
+	"settings": {
+		"title": "Ajustes",
+		"saved": "Salvo",
+		"saveError": "Não foi possível salvar. Tente de novo.",
+		"error": "Não foi possível carregar os ajustes",
+		"errorDetail": "Verifique sua conexão e tente de novo.",
+		"notAvailable": "Ainda não disponível",
+		"profile": {
+			"title": "Perfil",
+			"name": "Nome",
+			"username": "Nome de usuário",
+			"email": "E-mail",
+			"edit": "Editar perfil",
+			"usernameRule": "Use só letras e números.",
+			"error": "Não foi possível salvar seu perfil. Tente de novo."
+		},
+		"money": {
+			"title": "Dinheiro",
+			"footer": "Totais e relatórios usam sua moeda principal.",
+			"home": "Moeda principal",
+			"default": "Padrão para novas despesas",
+			"monthStart": "O mês começa no dia"
+		},
+		"rates": {
+			"section": "Cotações",
+			"footer": "Por enquanto, o tipo de cotação padrão só pode ser alterado na web.",
+			"defaultType": "Tipo de cotação padrão",
+			"pinned": "Cotações fixadas",
+			"title": "Cotações fixadas",
+			"none": "Nenhuma cotação fixada",
+			"unpin": "Desafixar",
+			"unpinned": "Cotação desafixada",
+			"error": "Não foi possível desafixar a cotação. Tente de novo.",
+			"line": "1 USD = {rate} {currency}",
+			"spoken": "{currency} {type}, 1 USD vale {rate} {currency}"
+		},
+		"notifications": {
+			"inApp": "No app",
+			"email": "Por e-mail"
+		},
+		"notify": {
+			"EXPENSE_SPLIT": "Alguém adiciona você a uma despesa dividida",
+			"VERIFICATION_REQUEST": "Uma despesa dividida precisa da sua revisão",
+			"EXPENSE_EDITED": "Uma despesa dividida muda",
+			"EXPENSE_DELETED": "Uma despesa dividida é excluída",
+			"SETTLEMENT_RECEIVED": "Um pagamento espera sua confirmação",
+			"SETTLEMENT_CONFIRMED": "Um pagamento é confirmado",
+			"SETTLEMENT_REJECTED": "Um pagamento é recusado",
+			"PERIOD_CLOSED": "Um período de cobrança fecha",
+			"PARTICIPANT_ADDED": "Você é adicionado a um projeto",
+			"PAYMENT_REMINDER": "Alguém lembra você de um pagamento"
+		},
+		"server": {
+			"title": "Servidor",
+			"connected": "Conectado a"
+		},
+		"account": {
+			"title": "Conta",
+			"signOut": "Sair",
+			"delete": "Excluir conta"
+		},
+		"delete": {
+			"title": "Excluir conta",
+			"permanent": "Isso exclui sua conta e não pode ser desfeito. Você é desconectado de todos os lugares.",
+			"loadError": "Não foi possível verificar o que muda. Tente de novo.",
+			"checking": "Verificando",
+			"changes": "O que muda para outras pessoas",
+			"nothing": "Nada muda para mais ninguém.",
+			"transfer": "{project} passa para {name}",
+			"deleteProject": "{project} é excluído, ninguém mais pode cuidar dele",
+			"confirm": "{count, plural, one {# pagamento que espera você é confirmado} other {# pagamentos que esperam você são confirmados}}",
+			"cancel": "{count, plural, one {# pagamento que ninguém confirmou é cancelado} other {# pagamentos que ninguém confirmou são cancelados}}",
+			"accept": "{count, plural, one {# parte que espera sua resposta é aceita} other {# partes que esperam sua resposta são aceitas}}",
+			"anonymize": "{count, plural, one {# despesa dividida guarda sua parte como Usuário excluído} other {# despesas divididas guardam sua parte como Usuário excluído}}",
+			"password": "Senha",
+			"delete": "Excluir conta",
+			"deleting": "Excluindo",
+			"error": "Não foi possível excluir a conta. Confira sua senha e tente de novo."
+		}
 	}
 }

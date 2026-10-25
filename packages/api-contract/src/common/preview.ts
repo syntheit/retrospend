@@ -12,6 +12,12 @@ import { figureIdSchema, figureLineSchema } from "./money";
  */
 export const PREVIEW_SUFFIX = "/preview";
 
+/** Present and true for a total made by converting other currencies at reference rates: an estimate, shown with "≈". */
+const approxField = z.literal(true).optional().meta({
+	description:
+		"True when this figure is a total converted into your home currency at reference rates, so its amounts are estimates (show them with ≈).",
+});
+
 /** One currency line of a figure that moved; a side is null when it has no amount in that currency. */
 export const figureChangeSchema = z
 	.object({
@@ -23,6 +29,7 @@ export const figureChangeSchema = z
 		delta: figureLineSchema,
 		/** Every line of the figure after the write ("USD 20 stays"). */
 		figureAfter: z.array(figureLineSchema),
+		approx: approxField,
 	})
 	.meta({ id: "FigureChange" });
 
@@ -30,6 +37,7 @@ export const figureUnchangedSchema = z
 	.object({
 		id: figureIdSchema,
 		lines: z.array(figureLineSchema),
+		approx: approxField,
 	})
 	.meta({ id: "FigureUnchanged" });
 

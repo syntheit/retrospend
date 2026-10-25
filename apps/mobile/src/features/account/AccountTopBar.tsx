@@ -1,12 +1,14 @@
 import { Button } from "@expo/ui";
+import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useTheme } from "@/theme";
 import { NativeHost } from "@/ui/NativeHost";
 import { Sheet } from "@/ui/Sheet";
 import { TopBar } from "@/ui/TopBar";
+import { useSignOut } from "./useSignOut";
 
 function initialsOf(name: string): string {
 	const letters = name
@@ -19,34 +21,15 @@ function initialsOf(name: string): string {
 
 /**
  * The top bar with the account button; the button opens the account sheet
- * (name, email, Sign out). Settings, Currencies and the rest join it with the
- * settings screens.
+ * (name, email, Settings, Sign out).
  */
 export function AccountTopBar({ title }: { title: string }) {
 	const t = useTranslations("mobile.account");
-	const tc = useTranslations("mobile.common");
-	const { state, signOut, unsyncedCount } = useSession();
+	const { state } = useSession();
+	const confirmSignOut = useSignOut();
 	const { color, space, type } = useTheme();
 	const [open, setOpen] = useState(false);
 	const me = state.status === "signedIn" ? state.me : null;
-
-	// Signing out drops what is waiting to sync, so it asks first.
-	async function confirmSignOut() {
-		setOpen(false);
-		const count = await unsyncedCount();
-		if (count === 0) {
-			signOut();
-			return;
-		}
-		Alert.alert(t("signOut"), t("unsynced", { count }), [
-			{ text: tc("cancel"), style: "cancel" },
-			{
-				text: t("signOutDiscard"),
-				style: "destructive",
-				onPress: () => signOut({ discardUnsynced: true }),
-			},
-		]);
-	}
 
 	return (
 		<>
@@ -69,8 +52,21 @@ export function AccountTopBar({ title }: { title: string }) {
 				</View>
 				<NativeHost>
 					<Button
+						label={t("settings")}
+						onPress={() => {
+							setOpen(false);
+							router.push("/settings");
+						}}
+						variant="outlined"
+					/>
+				</NativeHost>
+				<NativeHost>
+					<Button
 						label={t("signOut")}
-						onPress={confirmSignOut}
+						onPress={() => {
+							setOpen(false);
+							confirmSignOut();
+						}}
 						variant="outlined"
 					/>
 				</NativeHost>

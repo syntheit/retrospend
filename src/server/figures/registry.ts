@@ -79,6 +79,18 @@ export interface FigureDefinition<Db = FigureDb> {
 	 * the whole user's net worth.
 	 */
 	readonly scope: readonly ScopeKey[];
+	/**
+	 * Whether this figure, right now, is a total in the home currency made by
+	 * converting balances held in other currencies at reference rates, so it
+	 * is an estimate. A preview marks the figure `approx` when it was so
+	 * before or after the write; a user who holds only home currency never
+	 * sees ≈.
+	 */
+	readonly converted?: (
+		db: Db,
+		scope: FigureScope,
+		pass?: FigurePass,
+	) => Promise<boolean>;
 	/** Checked by every preview, declared or not, so a sheet can say "Your accounts and net worth: no change" (R30). */
 	readonly inEveryPreview?: boolean;
 	/** Returns null when the number is unavailable (for example a missing rate, R14). Throws only on bugs. */
@@ -285,3 +297,19 @@ export const figures = createFiguresRegistry<FigureDb>([
 	dollarTodayFigure,
 	...insightsFigures,
 ]);
+
+/** The ids of the figures that are converted totals right now (see FigureDefinition.converted). */
+export async function convertedIn<Db>(
+	db: Db,
+	definitions: readonly FigureDefinition<Db>[],
+	scope: FigureScope,
+	pass: FigurePass = new FigurePass(),
+): Promise<ReadonlySet<string>> {
+	const ids = new Set<string>();
+	for (const definition of definitions) {
+		if (!definition.converted) continue;
+		const narrowed = narrowScope(scope, definition.scope);
+		if (await definition.converted(db, narrowed, pass)) ids.add(definition.id);
+	}
+	return ids;
+}
