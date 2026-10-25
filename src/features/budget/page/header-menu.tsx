@@ -12,6 +12,7 @@ const SHEET: Record<string, MonthSheet | null> = {
 	payoffPlan: "debt",
 	payDebt: "payDebt",
 	summary: "monthSummary",
+	reconcile: "reconcile",
 	whatIf: "whatIf",
 	addEnvelope: "newEnvelope",
 	combine: "mergeEnvelopes",

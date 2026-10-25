@@ -66,7 +66,11 @@
 		"usePlan": "Usar mi plan",
 		"notPlanned": "Entraron <amount></amount> que todavía no están planificados. No cuentan en lo que queda para gastar hasta que los planifiques.",
 		"cover": "Cubrir",
-		"overspent": "{count, plural, one {{name} se pasó por <amount></amount>.} other {# sobres se pasaron por <amount></amount>.}}"
+		"overspent": "{count, plural, one {{name} se pasó por <amount></amount>.} other {# sobres se pasaron por <amount></amount>.}}",
+		"startingMoney": "Indica cuánto dinero tienes ahora. El presupuesto cuenta desde ahí.",
+		"startingMoneyAction": "Confirmar",
+		"reconcile": "Empezó un mes nuevo. Revisa que el presupuesto coincida con tu banco.",
+		"reconcileAction": "Revisar"
 	},
 	"target": {
 		"none": "Sin objetivo",
@@ -104,7 +108,8 @@
 		"actions": "Acciones",
 		"paid": "Pagado",
 		"noMatch": "Ningún sobre coincide.",
-		"noLimitCell": "Sin límite"
+		"noLimitCell": "Sin límite",
+		"setLimit": "Poner un límite"
 	},
 	"rail": {
 		"label": "De un vistazo",
@@ -127,6 +132,12 @@
 			"line": "Hay partes que te esperan",
 			"unresolved": "{count, plural, one {# parte no tiene sobre} other {# partes no tienen sobre}}",
 			"pending": "Esperando tu OK"
+		},
+		"assign": {
+			"NOT_PLANNED_YET": "Sin planear aún",
+			"TO_ASSIGN": "Para asignar",
+			"open": "Asignar dinero",
+			"fromWealth": "Mover desde Patrimonio"
 		}
 	},
 	"unavailable": {

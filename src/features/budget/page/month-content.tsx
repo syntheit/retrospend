@@ -57,10 +57,23 @@ export function MonthContent({
 		enabled: !data.book.paused,
 		staleTime: 60_000,
 	});
+	// What Needs you says is waiting for the budget.
+	const needsList = api.home.needsYou.useQuery(undefined, {
+		enabled: !data.book.paused,
+		staleTime: 60_000,
+	});
+	const needs = {
+		startingMoney: !!needsList.data?.items.some(
+			(i) => i.type === "budget.startingMoney",
+		),
+		reconcile: !!needsList.data?.items.some(
+			(i) => i.type === "budget.reconcile",
+		),
+	};
 	const key = data.month.key;
 	const closed = data.month.state === "CLOSED";
 	const names = useMemo(() => namesById(data.groups), [data.groups]);
-	const notice = closed ? null : pickNotice(data, welcome.data, names);
+	const notice = closed ? null : pickNotice(data, welcome.data, names, needs);
 	const missing = [...new Set(data.missingRates.map((m) => m.currency))];
 	const list = { ...folds, groups, actions, readOnly: closed, filtering };
 	let columns: "plan" | "limits" | "closed" = "plan";

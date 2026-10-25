@@ -185,7 +185,7 @@ test("Move: from Not planned yet to Groceries, then out again", async ({
 	test.setTimeout(180_000);
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await openBudget(page);
-	await fromEnvelope(page, "Spending", "Groceries", /^Move/);
+	await fromEnvelope(page, "Spending", "Groceries", /^Move money/);
 	const sheet = page.getByRole("dialog", { name: "Groceries" });
 	await expect(sheet).toBeVisible();
 	await sheet.getByRole("textbox", { name: "Amount" }).fill("75");
@@ -374,7 +374,7 @@ test("Debt payoff plan: the card, the projection, save, undo", async ({
 	await expect(plan.getByText(/interest is more than you pay/)).toBeVisible();
 	await plan.getByRole("button", { name: "Cancel" }).click();
 	await sql(
-		`UPDATE "budget_book" SET "style" = 'FLEX' WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`,
+		`UPDATE "budget_book" SET "style" = 'FLEX', "fundingSource" = 'INCOME' WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`,
 		[TEST_USER.email],
 	);
 });
@@ -567,12 +567,7 @@ test("Edit envelope: rename, preview, save, undo", async ({ page }) => {
 	test.setTimeout(180_000);
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await openBudget(page);
-	await fromEnvelope(
-		page,
-		"Bills",
-		"E2E Gym",
-		"Rename or edit categories",
-	);
+	await fromEnvelope(page, "Bills", "E2E Gym", "Rename or edit categories");
 	const sheet = page.getByRole("dialog", { name: "Edit E2E Gym" });
 	await expect(sheet).toBeVisible();
 	await sheet.getByRole("textbox", { name: "Name" }).fill("E2E Gym Club");
@@ -619,12 +614,7 @@ test("Archive an envelope: its own preview, save, undo", async ({ page }) => {
 	test.setTimeout(180_000);
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await openBudget(page);
-	await fromEnvelope(
-		page,
-		"Bills",
-		"E2E Gym",
-		"Rename or edit categories",
-	);
+	await fromEnvelope(page, "Bills", "E2E Gym", "Rename or edit categories");
 	await page.getByRole("button", { name: "Archive envelope" }).click();
 	const sheet = page.getByRole("dialog", { name: "Archive E2E Gym" });
 	await expect(sheet).toBeVisible();
@@ -662,6 +652,244 @@ test("Can I afford it: one amount, one answer from the server", async ({
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	await sheet.getByRole("button", { name: "Done" }).click();
 	await expect(sheet).toBeHidden();
+});
+
+test("Assign: from the rail and from an envelope's menu; clear, type, preview, save, undo", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBudget(page);
+	// The Not planned yet line in the rail opens it.
+	await page
+		.locator('[data-slot="budget-rail"]')
+		.getByRole("button", { name: "Assign money" })
+		.click();
+	const first = page.getByRole("dialog", { name: /^Assign / });
+	await expect(first).toBeVisible();
+	await first.getByRole("button", { name: "Cancel" }).click();
+	await expect(first).toBeHidden();
+
+	await fromEnvelope(page, "Spending", "Groceries", "Assign money");
+	const sheet = page.getByRole("dialog", { name: /^Assign / });
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole("button", { name: "Clear" }).click();
+	await sheet.getByRole("textbox", { name: "Assign to Groceries" }).fill("250");
+	const changes = sheet.getByRole("region", { name: "What this changes" });
+	await expect(changes.getByText("Groceries")).toBeVisible();
+	await expect(changes).toContainText("USD 250.00");
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	const save = sheet.getByRole("button", { name: "Assign", exact: true });
+	await expect(save).toBeEnabled();
+	await untilSaved(page, "envelope.assign", () => save.click());
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "envelope.undo", () =>
+		toast(page, "Assigned").getByRole("button", { name: "Undo" }).click(),
+	);
+});
+
+test("Move to Wealth from an envelope's menu, and Move from Wealth from the rail", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBudget(page);
+	await fromEnvelope(page, "Spending", "Groceries", "Move to Wealth");
+	const to = page.getByRole("dialog", { name: "Move Groceries to Wealth" });
+	await expect(to).toBeVisible();
+	await to.getByRole("textbox", { name: "Amount", exact: true }).fill("60");
+	await expect(
+		to.getByRole("region", { name: "What this changes" }),
+	).toContainText("Groceries");
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "entry.transfer.save", () =>
+		to.getByRole("button", { name: "Move", exact: true }).click(),
+	);
+	await expect(to).toBeHidden();
+	await untilSaved(page, "wealth.transfers.delete.save", () =>
+		toast(page, "Moved").getByRole("button", { name: "Undo" }).click(),
+	);
+
+	await openBudget(page);
+	await page
+		.locator('[data-slot="budget-rail"]')
+		.getByRole("button", { name: "Move from Wealth" })
+		.click();
+	const from = page.getByRole("dialog", { name: "Move from Wealth" });
+	await expect(from).toBeVisible();
+	await from.getByRole("radio", { name: "No, just count it" }).click();
+	await from.getByRole("textbox", { name: "Amount" }).fill("50");
+	await expect(
+		from.getByRole("region", { name: "What this changes" }),
+	).toContainText("Not planned yet");
+	await untilSaved(page, "wealth.income.moveIn.save", () =>
+		from.getByRole("button", { name: "Move in" }).click(),
+	);
+	await expect(from).toBeHidden();
+	await untilSaved(page, "wealth.income.undoMoveIn.save", () =>
+		toast(page, "Counted").getByRole("button", { name: "Undo" }).click(),
+	);
+});
+
+test("Reconcile: a notice once a month has turned, and the header menu", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	// Checked in a month before this one: Needs you asks again.
+	await sql(
+		`UPDATE "budget_book" SET "reconciledAt" = now() - interval '70 days' WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`,
+		[TEST_USER.email],
+	);
+	await openBudget(page);
+	const main = page.getByRole("main");
+	await expect(
+		main.getByText(/Check that the budget matches your bank/),
+	).toBeVisible();
+	await main.getByRole("button", { name: "Check", exact: true }).click();
+	const sheet = page.getByRole("dialog", {
+		name: "Does this match your bank?",
+	});
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole("textbox", { name: "Amount" }).fill("1234");
+	await expect(
+		sheet.getByRole("region", { name: "What this changes" }),
+	).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "envelope.reconcile", () =>
+		sheet.getByRole("button", { name: "Record" }).click(),
+	);
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "envelope.removeAdjustment", () =>
+		toast(page, "Recorded an adjustment")
+			.getByRole("button", { name: "Undo" })
+			.click(),
+	);
+	// The header menu opens the same sheet.
+	await openBudget(page);
+	await fromMenu(page, "Check against your bank");
+	await expect(
+		page.getByRole("dialog", { name: "Does this match your bank?" }),
+	).toBeVisible();
+});
+
+test("Starting money: a notice while it is unconfirmed, preview, save, undo", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await sql(
+		`UPDATE "budget_book" SET "startingMoneyConfirmedAt" = NULL, "reconciledAt" = now() WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`,
+		[TEST_USER.email],
+	);
+	await openBudget(page);
+	const main = page.getByRole("main");
+	await expect(main.getByText(/Say how much you have right now/)).toBeVisible();
+	await main.getByRole("button", { name: "Confirm", exact: true }).click();
+	const sheet = page.getByRole("dialog", { name: "Starting money" });
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole("textbox", { name: "Amount" }).fill("1600");
+	await expect(
+		sheet.getByRole("region", { name: "What this changes" }),
+	).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "envelope.confirmStartingMoney", () =>
+		sheet.getByRole("button", { name: "Confirm", exact: true }).click(),
+	);
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "envelope.undoChange", () =>
+		toast(page, "Starting money confirmed")
+			.getByRole("button", { name: "Undo" })
+			.click(),
+	);
+	await sql(
+		`UPDATE "budget_book" SET "startingMoneyConfirmedAt" = now() WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`,
+		[TEST_USER.email],
+	);
+});
+
+test("Set a limit: a Limits envelope with no limit gets one, undo", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await sql(
+		`UPDATE "budget_book" SET "style" = 'LIMITS', "fundingSource" = 'TARGETS' WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`,
+		[TEST_USER.email],
+	);
+	try {
+		await openBudget(page);
+		const main = page.getByRole("main");
+		// Limits groups start open; E2E Gym, added above, has no limit.
+		const row = main.locator("tr", { hasText: "E2E Gym" });
+		await row.getByRole("button", { name: "Set a limit" }).click();
+		const sheet = page.getByRole("dialog", { name: "Set a limit" });
+		await expect(sheet).toBeVisible();
+		await sheet.getByRole("textbox", { name: "Amount" }).fill("200");
+		await expect(
+			sheet.getByRole("region", { name: "What this changes" }),
+		).toBeVisible();
+		await untilSaved(page, "envelope.setLimit", () =>
+			sheet.getByRole("button", { name: "Set limit" }).click(),
+		);
+		await expect(sheet).toBeHidden();
+		await untilSaved(page, "envelope.revertLimit", () =>
+			toast(page, "limit is").getByRole("button", { name: "Undo" }).click(),
+		);
+	} finally {
+		await sql(
+			`UPDATE "budget_book" SET "style" = 'FLEX', "fundingSource" = 'INCOME' WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`,
+			[TEST_USER.email],
+		);
+	}
+});
+
+test("Shares with no envelope: listed in Splits, pick a category, undo", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	// Paz paid a dinner and split it with this user; no category of theirs matches.
+	await sql(
+		`INSERT INTO "shadow_profile" ("id", "createdById", "name", "updatedAt") SELECT 'e2e_shadow_paz2', id, 'E2E Paz', now() FROM "user" WHERE email = $1 ON CONFLICT DO NOTHING`,
+		[TEST_USER.email],
+	);
+	await sql(
+		`INSERT INTO "shared_transaction" ("id", "description", "amount", "currency", "date", "paidByType", "paidById", "createdByType", "createdById", "updatedAt") VALUES ('e2e_split_dinner', 'E2E dinner', 80, 'USD', now(), 'shadow', 'e2e_shadow_paz2', 'shadow', 'e2e_shadow_paz2', now()) ON CONFLICT DO NOTHING`,
+	);
+	await sql(
+		`INSERT INTO "split_participant" ("id", "transactionId", "participantType", "participantId", "shareAmount", "verificationStatus", "updatedAt") SELECT 'e2e_share_me', 'e2e_split_dinner', 'user', id, 40, 'ACCEPTED', now() FROM "user" WHERE email = $1 ON CONFLICT DO NOTHING`,
+		[TEST_USER.email],
+	);
+	await sql(
+		`INSERT INTO "split_participant" ("id", "transactionId", "participantType", "participantId", "shareAmount", "verificationStatus", "updatedAt") VALUES ('e2e_share_paz', 'e2e_split_dinner', 'shadow', 'e2e_shadow_paz2', 40, 'ACCEPTED', now()) ON CONFLICT DO NOTHING`,
+	);
+	await openBudget(page);
+	await page
+		.locator('[data-slot="budget-rail"]')
+		.getByRole("button", { name: /Shares/i })
+		.first()
+		.click();
+	const sheet = page.getByRole("dialog", { name: "Splits waiting for you" });
+	await expect(sheet).toBeVisible();
+	await expect(sheet.getByText("No envelope yet")).toBeVisible();
+	await sheet
+		.getByRole("button", { name: /^Pick a category for the share/ })
+		.click();
+	const pick = page.getByRole("dialog", { name: "Pick a category" });
+	await expect(pick).toBeVisible();
+	await pick.getByRole("option", { name: /E2E coffee/ }).click();
+	await expect(
+		pick.getByRole("region", { name: "What this changes" }),
+	).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "envelope.setShareCategory", () =>
+		pick.getByRole("button", { name: "Put it there" }).click(),
+	);
+	await expect(pick).toBeHidden();
+	await untilSaved(page, "envelope.setShareCategory", () =>
+		toast(page, "Share moved").getByRole("button", { name: "Undo" }).click(),
+	);
 });
 
 test.describe("Set up your budget", () => {

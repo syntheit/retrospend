@@ -125,7 +125,9 @@ export const SHEET_ADAPTERS: BudgetSheets = {
 	raiseLimit: adapt(RaiseLimitSheet, (a: BudgetSheetArgs["raiseLimit"]) => ({
 		envelopeId: a.envelopeId,
 	})),
-	setLimit: adapt(SetLimitSheet),
+	setLimit: adapt(SetLimitSheet, (a: BudgetSheetArgs["setLimit"]) => ({
+		envelopeId: a.envelopeId,
+	})),
 	whatIf: adapt(WhatIfSheet, (a: BudgetSheetArgs["whatIf"]) => ({
 		envelopeId: a.envelopeId,
 	})),

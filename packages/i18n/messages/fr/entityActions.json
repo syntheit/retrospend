@@ -325,6 +325,9 @@
 		},
 		"payDebt": {
 			"label": "Rembourser une dette"
+		},
+		"reconcile": {
+			"label": "Comparer avec ta banque"
 		}
 	},
 	"envelope": {
@@ -348,6 +351,18 @@
 		},
 		"whatIf": {
 			"label": "Et si je dépense…"
+		},
+		"assign": {
+			"label": "Attribuer de l'argent"
+		},
+		"setLimit": {
+			"label": "Fixer une limite"
+		},
+		"toWealth": {
+			"label": "Déplacer vers Patrimoine"
+		},
+		"fromWealth": {
+			"label": "Déplacer depuis Patrimoine"
 		}
 	},
 	"import": {

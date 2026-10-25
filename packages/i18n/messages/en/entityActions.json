@@ -325,6 +325,9 @@
 		},
 		"payDebt": {
 			"label": "Pay down a debt"
+		},
+		"reconcile": {
+			"label": "Check against your bank"
 		}
 	},
 	"envelope": {
@@ -348,6 +351,18 @@
 		},
 		"whatIf": {
 			"label": "What if I spend…"
+		},
+		"assign": {
+			"label": "Assign money"
+		},
+		"setLimit": {
+			"label": "Set a limit"
+		},
+		"toWealth": {
+			"label": "Move to Wealth"
+		},
+		"fromWealth": {
+			"label": "Move from Wealth"
 		}
 	},
 	"import": {

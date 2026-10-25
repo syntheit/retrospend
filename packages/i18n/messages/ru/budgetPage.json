@@ -66,7 +66,11 @@
 		"usePlan": "Использовать мой план",
 		"notPlanned": "Поступило <amount></amount>, и оно ещё не распланировано. В остаток на траты оно попадёт, когда вы его спланируете.",
 		"cover": "Покрыть",
-		"overspent": "{count, plural, one {«{name}» превышен на <amount></amount>.} few {# конверта превышены на <amount></amount>.} other {# конвертов превышены на <amount></amount>.}}"
+		"overspent": "{count, plural, one {«{name}» превышен на <amount></amount>.} few {# конверта превышены на <amount></amount>.} other {# конвертов превышены на <amount></amount>.}}",
+		"startingMoney": "Укажите, сколько у вас денег сейчас. Бюджет считает с этой суммы.",
+		"startingMoneyAction": "Подтвердить",
+		"reconcile": "Начался новый месяц. Проверьте, совпадает ли бюджет с банком.",
+		"reconcileAction": "Проверить"
 	},
 	"target": {
 		"none": "Без цели",
@@ -104,7 +108,8 @@
 		"actions": "Действия",
 		"paid": "Оплачено",
 		"noMatch": "Подходящих конвертов нет.",
-		"noLimitCell": "Без лимита"
+		"noLimitCell": "Без лимита",
+		"setLimit": "Задать лимит"
 	},
 	"rail": {
 		"label": "Коротко",
@@ -127,6 +132,12 @@
 			"line": "Доли ждут вас",
 			"unresolved": "{count, plural, one {У # доли нет конверта} few {У # долей нет конверта} other {У # долей нет конверта}}",
 			"pending": "Ждёт вашего подтверждения"
+		},
+		"assign": {
+			"NOT_PLANNED_YET": "Ещё не запланировано",
+			"TO_ASSIGN": "К распределению",
+			"open": "Распределить деньги",
+			"fromWealth": "Переместить из «Капитала»"
 		}
 	},
 	"unavailable": {

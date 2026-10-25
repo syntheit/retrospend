@@ -325,6 +325,9 @@
 		},
 		"payDebt": {
 			"label": "Schulden tilgen"
+		},
+		"reconcile": {
+			"label": "Mit deiner Bank abgleichen"
 		}
 	},
 	"envelope": {
@@ -348,6 +351,18 @@
 		},
 		"whatIf": {
 			"label": "Was wäre, wenn ich ausgebe…"
+		},
+		"assign": {
+			"label": "Geld zuweisen"
+		},
+		"setLimit": {
+			"label": "Limit setzen"
+		},
+		"toWealth": {
+			"label": "Nach Vermögen verschieben"
+		},
+		"fromWealth": {
+			"label": "Aus Vermögen verschieben"
 		}
 	},
 	"import": {

@@ -2,10 +2,13 @@ import {
 	ArrowLeftRight,
 	CreditCard,
 	FlaskConical,
+	Gauge,
 	HandCoins,
+	Landmark,
 	Pencil,
 	Receipt,
 	Target,
+	Wallet,
 } from "lucide-react";
 import type { ActionDef, ActionTarget } from "./types";
 
@@ -18,10 +21,13 @@ export type EnvelopeTarget = ActionTarget & {
 	over?: boolean;
 	/** A bill that follows a liability (SPEC §5.11): Pay down a debt shows. */
 	debt?: boolean;
+	/** A Limits envelope with no limit: Set a limit shows. */
+	noLimit?: boolean;
 };
 
 export const ENVELOPE_ACTIONS: readonly ActionDef<EnvelopeTarget>[] = [
 	{ id: "move", icon: ArrowLeftRight, kbd: "M", group: 0, swipe: "lead" },
+	{ id: "assign", icon: Wallet, group: 0 },
 	{
 		id: "cover",
 		icon: HandCoins,
@@ -35,7 +41,15 @@ export const ENVELOPE_ACTIONS: readonly ActionDef<EnvelopeTarget>[] = [
 		when: (e) => e.debt === true,
 	},
 	{ id: "target", icon: Target, kbd: "T", group: 0, swipe: "trail" },
+	{
+		id: "setLimit",
+		icon: Gauge,
+		group: 0,
+		when: (e) => e.noLimit === true,
+	},
 	{ id: "activity", icon: Receipt, group: 0 },
+	{ id: "toWealth", icon: Landmark, group: 1 },
+	{ id: "fromWealth", icon: Landmark, group: 1 },
 	{ id: "edit", icon: Pencil, group: 1 },
 	{ id: "whatIf", icon: FlaskConical, group: 1 },
 ];

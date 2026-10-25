@@ -32,13 +32,14 @@ function LimitSheet({
 	onClose,
 	month,
 	fixedEnvelopeId,
-}: SheetProps & { fixedEnvelopeId?: string }) {
+	startEnvelopeId,
+}: SheetProps & { fixedEnvelopeId?: string; startEnvelopeId?: string }) {
 	const t = useTranslations("budgetSheets.limit");
 	const m = useMonth(month);
 	const pool = usePoolName(m.data);
 	const { money } = useBudgetWrite();
 	const currency = m.data?.book.currency ?? "";
-	const [picked, setPicked] = useState<string | null>(null);
+	const [picked, setPicked] = useState<string | null>(startEnvelopeId ?? null);
 	const envelopeId = fixedEnvelopeId ?? picked;
 	const env = envelopeId ? (m.byId.get(envelopeId) ?? null) : null;
 	// The current limit (the monthly target) is the starting point.
@@ -50,7 +51,7 @@ function LimitSheet({
 	const places = useMemo<Place[]>(
 		() =>
 			m.envelopes
-				.filter((e) => e.kind === "MONTHLY")
+				.filter((e) => e.kind === "MONTHLY" || e.kind === "NONE")
 				.map((e) => ({
 					value: e.id,
 					name: e.name,
@@ -146,6 +147,6 @@ export function RaiseLimitSheet(props: SheetProps<{ envelopeId: string }>) {
 	return <LimitSheet {...props} fixedEnvelopeId={props.envelopeId} />;
 }
 
-export function SetLimitSheet(props: SheetProps) {
-	return <LimitSheet {...props} />;
+export function SetLimitSheet(props: SheetProps<{ envelopeId?: string }>) {
+	return <LimitSheet {...props} startEnvelopeId={props.envelopeId} />;
 }

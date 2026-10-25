@@ -82,6 +82,7 @@ function EnvelopeTableRow({
 		name: e.name,
 		over: e.status === "OVERSPENT",
 		debt: Boolean(e.target?.liabilityId),
+		noLimit,
 	};
 	const row = (
 		<TableRow data-envelope={e.id}>
@@ -100,7 +101,17 @@ function EnvelopeTableRow({
 			</TableCell>
 			<TableCell className={NUM}>
 				{noLimit ? (
-					<span className="text-fg-3">{t("noLimitCell")}</span>
+					!readOnly && actions.envelope.setLimit ? (
+						<Button
+							kind="ghost"
+							onClick={() => actions.envelope.setLimit?.(target)}
+							size="sm"
+						>
+							{t("setLimit")}
+						</Button>
+					) : (
+						<span className="text-fg-3">{t("noLimitCell")}</span>
+					)
 				) : (
 					<Money value={e.assigned} />
 				)}

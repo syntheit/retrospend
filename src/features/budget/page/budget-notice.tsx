@@ -54,6 +54,16 @@ export function BudgetNotice({
 					})}
 				</Notice>
 			);
+		case "startingMoney":
+			return (
+				<Notice action={action(t("startingMoneyAction"))}>
+					{t("startingMoney")}
+				</Notice>
+			);
+		case "reconcile":
+			return (
+				<Notice action={action(t("reconcileAction"))}>{t("reconcile")}</Notice>
+			);
 		case "overspent":
 			return (
 				<Notice action={action(t("cover"))} tone="attention">

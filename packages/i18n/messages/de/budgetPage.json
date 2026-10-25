@@ -66,7 +66,11 @@
 		"usePlan": "Meinen Plan verwenden",
 		"notPlanned": "<amount></amount> sind eingegangen und noch nicht geplant. Sie zählen erst zum Übrigen, wenn du sie planst.",
 		"cover": "Decken",
-		"overspent": "{count, plural, one {{name} ist um <amount></amount> überzogen.} other {# Umschläge sind um <amount></amount> überzogen.}}"
+		"overspent": "{count, plural, one {{name} ist um <amount></amount> überzogen.} other {# Umschläge sind um <amount></amount> überzogen.}}",
+		"startingMoney": "Gib an, wie viel Geld du gerade hast. Das Budget zählt ab dann.",
+		"startingMoneyAction": "Bestätigen",
+		"reconcile": "Ein neuer Monat hat begonnen. Prüfe, ob das Budget mit deiner Bank übereinstimmt.",
+		"reconcileAction": "Prüfen"
 	},
 	"target": {
 		"none": "Kein Ziel",
@@ -104,7 +108,8 @@
 		"actions": "Aktionen",
 		"paid": "Bezahlt",
 		"noMatch": "Kein Umschlag passt.",
-		"noLimitCell": "Kein Limit"
+		"noLimitCell": "Kein Limit",
+		"setLimit": "Limit setzen"
 	},
 	"rail": {
 		"label": "Auf einen Blick",
@@ -127,6 +132,12 @@
 			"line": "Anteile warten auf dich",
 			"unresolved": "{count, plural, one {# Anteil hat keinen Umschlag} other {# Anteile haben keinen Umschlag}}",
 			"pending": "Wartet auf dein OK"
+		},
+		"assign": {
+			"NOT_PLANNED_YET": "Noch nicht verplant",
+			"TO_ASSIGN": "Zuzuweisen",
+			"open": "Geld zuweisen",
+			"fromWealth": "Aus Vermögen verschieben"
 		}
 	},
 	"unavailable": {

@@ -66,7 +66,11 @@
 		"usePlan": "Utiliser mon plan",
 		"notPlanned": "<amount></amount> sont arrivés sans être planifiés. Ils ne comptent dans le reste à dépenser qu'une fois planifiés.",
 		"cover": "Couvrir",
-		"overspent": "{count, plural, one {{name} dépasse de <amount></amount>.} other {# enveloppes dépassent de <amount></amount>.}}"
+		"overspent": "{count, plural, one {{name} dépasse de <amount></amount>.} other {# enveloppes dépassent de <amount></amount>.}}",
+		"startingMoney": "Indique combien tu as en ce moment. Le budget compte à partir de là.",
+		"startingMoneyAction": "Confirmer",
+		"reconcile": "Un nouveau mois a commencé. Vérifie que le budget correspond à ta banque.",
+		"reconcileAction": "Vérifier"
 	},
 	"target": {
 		"none": "Pas d'objectif",
@@ -104,7 +108,8 @@
 		"actions": "Actions",
 		"paid": "Payé",
 		"noMatch": "Aucune enveloppe ne correspond.",
-		"noLimitCell": "Pas de plafond"
+		"noLimitCell": "Pas de plafond",
+		"setLimit": "Fixer une limite"
 	},
 	"rail": {
 		"label": "En un coup d'œil",
@@ -127,6 +132,12 @@
 			"line": "Des parts vous attendent",
 			"unresolved": "{count, plural, one {# part n'a pas d'enveloppe} other {# parts n'ont pas d'enveloppe}}",
 			"pending": "Attend votre accord"
+		},
+		"assign": {
+			"NOT_PLANNED_YET": "Pas encore prévu",
+			"TO_ASSIGN": "À attribuer",
+			"open": "Attribuer de l'argent",
+			"fromWealth": "Déplacer depuis Patrimoine"
 		}
 	},
 	"unavailable": {

@@ -66,7 +66,11 @@
 		"usePlan": "Use my plan",
 		"notPlanned": "<amount></amount> came in that isn't planned yet. It isn't in your Left to spend until you plan it.",
 		"cover": "Cover",
-		"overspent": "{count, plural, one {{name} is over by <amount></amount>.} other {# envelopes are over by <amount></amount>.}}"
+		"overspent": "{count, plural, one {{name} is over by <amount></amount>.} other {# envelopes are over by <amount></amount>.}}",
+		"startingMoney": "Say how much you have right now. The budget counts from it.",
+		"startingMoneyAction": "Confirm",
+		"reconcile": "A new month started. Check that the budget matches your bank.",
+		"reconcileAction": "Check"
 	},
 	"target": {
 		"none": "No target",
@@ -104,7 +108,8 @@
 		"actions": "Actions",
 		"paid": "Paid",
 		"noMatch": "No envelope matches.",
-		"noLimitCell": "No limit"
+		"noLimitCell": "No limit",
+		"setLimit": "Set a limit"
 	},
 	"rail": {
 		"label": "At a glance",
@@ -127,6 +132,12 @@
 			"line": "Shares need you",
 			"unresolved": "{count, plural, one {# share has no envelope} other {# shares have no envelope}}",
 			"pending": "Waiting for your OK"
+		},
+		"assign": {
+			"NOT_PLANNED_YET": "Not planned yet",
+			"TO_ASSIGN": "To assign",
+			"open": "Assign money",
+			"fromWealth": "Move from Wealth"
 		}
 	},
 	"unavailable": {

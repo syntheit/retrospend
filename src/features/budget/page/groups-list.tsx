@@ -69,6 +69,7 @@ export function GroupsList({
 										name: e.name,
 										over: e.status === "OVERSPENT",
 										debt: Boolean(e.target?.liabilityId),
+										noLimit: columns === "limits" && !e.target,
 									};
 									const row = (
 										<EnvelopeRow

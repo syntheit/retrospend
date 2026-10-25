@@ -133,7 +133,12 @@ export type PageNotice =
 	| { kind: "welcomeBack" }
 	| { kind: "summary"; month: number }
 	| { kind: "notPlanned" }
-	| { kind: "overspent"; count: number; name: string | null };
+	| { kind: "overspent"; count: number; name: string | null }
+	| { kind: "startingMoney" }
+	| { kind: "reconcile" };
+
+/** What Needs you says is waiting for the budget (its own items, read once). */
+export type NeedsFacts = { startingMoney: boolean; reconcile: boolean };
 
 type WelcomeBack = {
 	pending: boolean;
@@ -142,17 +147,21 @@ type WelcomeBack = {
 
 /**
  * At most one notice (R14, SYNTHESIS-r6 §4): coming back after time away
- * first, then a closed month nobody has read, then the verdict's own.
+ * first, the starting money to confirm, a closed month nobody has read, a
+ * bank check that is due, then the verdict's own.
  */
 export function pickNotice(
 	data: GetMonthOutput,
 	welcome: WelcomeBack | undefined,
 	names: ReadonlyMap<string, string>,
+	needs?: NeedsFacts,
 ): PageNotice | null {
 	if (welcome?.pending) return { kind: "welcomeBack" };
+	if (needs?.startingMoney) return { kind: "startingMoney" };
 	const unread = welcome?.months.find((m) => !m.acknowledged);
 	if (unread) return { kind: "summary", month: unread.month };
 	const n = data.verdict.notice;
+	if (needs?.reconcile) return { kind: "reconcile" };
 	if (!n) return null;
 	if (n.kind === "NOT_PLANNED_YET") return { kind: "notPlanned" };
 	const over = data.verdict.overEnvelopes;

@@ -325,6 +325,9 @@
 		},
 		"payDebt": {
 			"label": "Pagar uma dívida"
+		},
+		"reconcile": {
+			"label": "Conferir com o banco"
 		}
 	},
 	"envelope": {
@@ -348,6 +351,18 @@
 		},
 		"whatIf": {
 			"label": "E se eu gastar…"
+		},
+		"assign": {
+			"label": "Atribuir dinheiro"
+		},
+		"setLimit": {
+			"label": "Definir um limite"
+		},
+		"toWealth": {
+			"label": "Mover para Patrimônio"
+		},
+		"fromWealth": {
+			"label": "Mover do Patrimônio"
 		}
 	},
 	"import": {

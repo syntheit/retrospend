@@ -39,7 +39,11 @@ export type MonthSheet =
 	| "coverAll"
 	| "takeBack"
 	| "owed"
-	| "splits";
+	| "splits"
+	| "assign"
+	| "reconcile"
+	| "fromWealth"
+	| "startingMoney";
 
 /**
  * Every button on the page opens a sheet by id (S4C). This maps the page's
@@ -99,6 +103,10 @@ export function useBudgetActions(data: GetMonthOutput) {
 				return "usePlan";
 			case "overspent":
 				return "coverAll";
+			case "startingMoney":
+				return "startingMoney";
+			case "reconcile":
+				return "reconcile";
 		}
 	};
 
@@ -116,7 +124,7 @@ export function useBudgetActions(data: GetMonthOutput) {
 	 * registry. An action whose sheet does not exist is left out, so the menu
 	 * never offers a button that does nothing.
 	 */
-	const envelope = useMemo(() => {
+	const envelope = useMemo<Record<string, (e: EnvelopeTarget) => void>>(() => {
 		const open = (id: BudgetSheetId) => (e: EnvelopeTarget) =>
 			(
 				sheet.open as (
@@ -131,6 +139,10 @@ export function useBudgetActions(data: GetMonthOutput) {
 			target: "target",
 			edit: "editEnvelope",
 			whatIf: "whatIf",
+			assign: "assign",
+			toWealth: "toWealth",
+			fromWealth: "fromWealth",
+			setLimit: "setLimit",
 		};
 		const handlers: Record<string, (e: EnvelopeTarget) => void> = {};
 		for (const [action, id] of Object.entries(sheets))

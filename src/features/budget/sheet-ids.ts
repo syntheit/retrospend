@@ -113,7 +113,7 @@ export type BudgetSheetArgs = {
 	};
 	target: ForEnvelope & { advanced?: boolean };
 	raiseLimit: ForEnvelope;
-	setLimit: WithMonth;
+	setLimit: WithMonth & { envelopeId?: string };
 	whatIf: WithMonth & { envelopeId?: string };
 	toWealth: ForEnvelope;
 	fromWealth: WithMonth & { envelopeId?: string };

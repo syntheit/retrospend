@@ -115,6 +115,39 @@ export function BudgetRail({
 					</p>
 				</Section>
 			)}
+			{!readOnly && (actions.can("assign") || actions.can("fromWealth")) && (
+				<Section id="rail-assign" title={t(`assign.${toAssign.poolName}`)}>
+					<RowList label={t(`assign.${toAssign.poolName}`)} variant="flat">
+						<Row
+							end={
+								<Money
+									className="font-semibold"
+									figure="budget.notPlannedYet"
+									value={toAssign.amount}
+								/>
+							}
+							open={
+								actions.can("assign")
+									? {
+											label: t("assign.open"),
+											onOpen: () => actions.sheet.open("assign", { month }),
+										}
+									: undefined
+							}
+							title={t("assign.open")}
+						/>
+						{actions.can("fromWealth") && (
+							<Row
+								open={{
+									label: t("assign.fromWealth"),
+									onOpen: () => actions.sheet.open("fromWealth", { month }),
+								}}
+								title={t("assign.fromWealth")}
+							/>
+						)}
+					</RowList>
+				</Section>
+			)}
 			{!readOnly && (
 				<Section id="rail-money-in" title={t("moneyIn.title")}>
 					<RowList label={t("moneyIn.title")} variant="flat">

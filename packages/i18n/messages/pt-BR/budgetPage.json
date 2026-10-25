@@ -66,7 +66,11 @@
 		"usePlan": "Usar meu plano",
 		"notPlanned": "<amount></amount> entraram e ainda não estão planejados. Só contam no que resta para gastar quando você planejar.",
 		"cover": "Cobrir",
-		"overspent": "{count, plural, one {{name} estourou em <amount></amount>.} other {# envelopes estouraram em <amount></amount>.}}"
+		"overspent": "{count, plural, one {{name} estourou em <amount></amount>.} other {# envelopes estouraram em <amount></amount>.}}",
+		"startingMoney": "Diga quanto dinheiro você tem agora. O orçamento conta a partir daí.",
+		"startingMoneyAction": "Confirmar",
+		"reconcile": "Começou um novo mês. Confira se o orçamento bate com o seu banco.",
+		"reconcileAction": "Conferir"
 	},
 	"target": {
 		"none": "Sem meta",
@@ -104,7 +108,8 @@
 		"actions": "Ações",
 		"paid": "Pago",
 		"noMatch": "Nenhum envelope corresponde.",
-		"noLimitCell": "Sem limite"
+		"noLimitCell": "Sem limite",
+		"setLimit": "Definir um limite"
 	},
 	"rail": {
 		"label": "Num relance",
@@ -127,6 +132,12 @@
 			"line": "Há partes esperando você",
 			"unresolved": "{count, plural, one {# parte não tem envelope} other {# partes não têm envelope}}",
 			"pending": "Esperando seu OK"
+		},
+		"assign": {
+			"NOT_PLANNED_YET": "Ainda não planejado",
+			"TO_ASSIGN": "A atribuir",
+			"open": "Atribuir dinheiro",
+			"fromWealth": "Mover do Patrimônio"
 		}
 	},
 	"unavailable": {
