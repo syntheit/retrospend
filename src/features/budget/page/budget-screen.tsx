@@ -34,11 +34,14 @@ import {
 function BudgetBody({
 	data,
 	current,
+	today,
 	onMonth,
 }: {
 	data: GetMonthOutput;
 	/** The month today is in. */
 	current: number;
+	/** The month today is in, whole: the plan reads what it spent. */
+	today: GetMonthOutput | undefined;
 	onMonth: (key: number) => void;
 }) {
 	const t = useTranslations("budgetPage");
@@ -61,7 +64,6 @@ function BudgetBody({
 					<HeaderMenu
 						actions={actions}
 						hasDebt={hasDebt(data)}
-						month={key}
 						onPlan={() => onMonth(shiftMonth(current, 1))}
 						readOnly={closed}
 					/>
@@ -83,7 +85,7 @@ function BudgetBody({
 			{planning ? (
 				<div className="lg:flex lg:items-start lg:gap-12">
 					<div className="min-w-0 flex-1">
-						<PlanView actions={actions} data={data} />
+						<PlanView actions={actions} data={data} thisMonth={today} />
 					</div>
 					<div className="mt-8 lg:mt-0 lg:w-64 lg:shrink-0">
 						<PlanRail month={key} />
@@ -148,7 +150,14 @@ export function BudgetScreen() {
 		!current.data.book.paused;
 	let body: React.ReactNode;
 	if (full)
-		body = <BudgetBody current={today} data={data} onMonth={setMonth} />;
+		body = (
+			<BudgetBody
+				current={today}
+				data={data}
+				onMonth={setMonth}
+				today={current.data ?? undefined}
+			/>
+		);
 	else if (current.isPending || (other && picked.isPending))
 		body = <BudgetSkeleton />;
 	else if (current.isError || (other && picked.isError))
@@ -182,5 +191,11 @@ export function BudgetScreen() {
 /** No book: setup is a sheet (month 0: none yet), so the page only hands off to it. */
 function NoBook() {
 	const sheet = useBudgetSheet();
-	return <BudgetEmpty onSetup={() => sheet.open("setup", { month: 0 })} />;
+	return (
+		<BudgetEmpty
+			onSetup={
+				sheet.has("setup") ? () => sheet.open("setup", { month: 0 }) : undefined
+			}
+		/>
+	);
 }

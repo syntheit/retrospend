@@ -23,6 +23,7 @@ export function EnvelopeRow({
 	onOpen,
 	target,
 	plain = false,
+	noAmount = false,
 	actions,
 	...rest
 }: {
@@ -32,6 +33,8 @@ export function EnvelopeRow({
 	target?: ReactNode[];
 	/** Show a plain amount, not a pill, unless the envelope is over or short. */
 	plain?: boolean;
+	/** Nothing to hold or to owe (a Limits envelope with no limit): no amount at the end. */
+	noAmount?: boolean;
 	actions?: ReactNode;
 } & RowPassThrough) {
 	const t = useTranslations("rows.envelope");
@@ -41,7 +44,7 @@ export function EnvelopeRow({
 			{...rest}
 			actions={actions}
 			end={
-				plain && !needsYou ? (
+				noAmount ? undefined : plain && !needsYou ? (
 					<Money
 						className="font-semibold"
 						figure={envelope.figure}

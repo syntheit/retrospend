@@ -102,3 +102,24 @@ describe("figure envelope.spent", () => {
 		expect(await bar("Rent")).toBe(0);
 	});
 });
+
+/**
+ * Money in this month (the rail's figure). The setup's starting money is
+ * 1,000.00 (100,000 minor) and a 25.00 income row arrives: 100,000 + 2,500
+ * = 102,500. Unavailable without a book.
+ */
+describe("figure budget.moneyIn", () => {
+	it("is the starting money plus income this month", async () => {
+		const s = await seedUser();
+		await forUser(s.user.id).apply(setupEnvelopeBook, {
+			...setupInput(s),
+			timeZone: "UTC",
+		});
+		await addRow(s.user.id, { amount: 25, direction: "IN", inType: "INCOME" });
+		const r = await readFigures(s.user.id, ["budget.moneyIn"]);
+		expect(r.get("budget.moneyIn")).toEqual([usd(102_500)]);
+		const none = await seedUser();
+		const n = await readFigures(none.user.id, ["budget.moneyIn"]);
+		expect(n.get("budget.moneyIn")).toBeNull();
+	});
+});

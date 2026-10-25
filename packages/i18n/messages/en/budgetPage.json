@@ -1,20 +1,5 @@
 {
 	"title": "Budget",
-	"menu": {
-		"more": "More budget actions",
-		"addIncome": "Add money in",
-		"usePlan": "Use my plan",
-		"planNext": "Plan next month",
-		"summary": "Month summary",
-		"whatIf": "What if I spend…",
-		"addEnvelope": "Add envelope",
-		"combine": "Combine envelopes",
-		"rules": "Income rules",
-		"style": "Budget style",
-		"help": "What the words mean",
-		"payoffPlan": "Payoff plan",
-		"payDebt": "Pay down a debt"
-	},
 	"month": {
 		"label": "{month} {year}",
 		"previous": "Previous month",
@@ -93,7 +78,8 @@
 		"goalProgress": "<saved></saved> of <amount></amount>",
 		"goalBy": "by {date}",
 		"moreNeeded": "<amount></amount> more needed",
-		"leftThisWeek": "<amount></amount> left this week"
+		"leftThisWeek": "<amount></amount> left this week",
+		"noLimit": "No limit"
 	},
 	"group": {
 		"role": {
@@ -117,7 +103,8 @@
 		"endOfMonth": "End of month",
 		"actions": "Actions",
 		"paid": "Paid",
-		"noMatch": "No envelope matches."
+		"noMatch": "No envelope matches.",
+		"noLimitCell": "No limit"
 	},
 	"rail": {
 		"label": "At a glance",
@@ -169,22 +156,25 @@
 		"emptyHint": "A plan is a draft. Nothing moves until you apply it.",
 		"emptyTitle": "Plan {month}",
 		"fill": {
-			"TARGETS": "Start from my targets",
-			"SAME_AS_THIS_MONTH": "Same as this month",
-			"THIS_MONTH_SPENT": "What this month spent"
+			"TARGETS": "Fill from targets",
+			"SAME_AS_THIS_MONTH": "Same as {month}",
+			"THIS_MONTH_SPENT": "What {month} spent"
 		},
-		"banner": "Planning {month}. Nothing changes until you apply it.",
 		"discard": "Discard",
 		"apply": "Apply plan",
-		"after": "Not planned yet after this plan",
-		"fillFrom": "Fill from…",
+		"after": "Left to plan in {month}",
 		"table": "Plan",
 		"envelope": "Envelope",
 		"planned": "Planned",
-		"left": "Left",
 		"edit": "Plan {name}",
 		"plannedSub": "Planned <amount></amount>",
-		"fundNow": "Fund it now"
+		"fundNow": "Fund it now…",
+		"spentIn": "{month} spent",
+		"startsWith": "Starts {month} with",
+		"bannerTitle": "Draft: {month} plan",
+		"bannerSub": "Apply saves the plan. {current} does not change. It funds itself when {month}'s money arrives.",
+		"fillLabel": "Fill the plan",
+		"input": "Plan for {name}"
 	},
 	"planRail": {
 		"label": "Plan cost",

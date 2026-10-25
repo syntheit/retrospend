@@ -38,14 +38,20 @@ export function BudgetUnavailable({ onRetry }: { onRetry: () => void }) {
 }
 
 /** No budget yet: setup is a sheet, so this only hands off to it. */
-export function BudgetEmpty({ onSetup }: { onSetup: () => void }) {
+export function BudgetEmpty({
+	onSetup,
+}: {
+	onSetup: (() => void) | undefined;
+}) {
 	const t = useTranslations("budgetPage.empty");
 	return (
 		<Empty
 			action={
-				<Button kind="primary" onClick={onSetup} size="sm">
-					{t("setup")}
-				</Button>
+				onSetup && (
+					<Button kind="primary" onClick={onSetup} size="sm">
+						{t("setup")}
+					</Button>
+				)
 			}
 			hint={t("hint")}
 			icon={Wallet}

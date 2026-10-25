@@ -4,12 +4,12 @@
  * It compares and filters; it never adds, subtracts or divides money.
  */
 import type { EnvelopeVM } from "~/components/rows/types";
+import { categoryTone } from "~/lib/category-tone";
 import type {
 	EnvelopeGroupDto,
 	EnvelopeRowDto,
 	GetMonthOutput,
 } from "~/lib/schemas/envelope";
-import { categoryTone } from "~/server/services/expense-list/category-tone";
 
 export type BudgetStyle = GetMonthOutput["book"]["style"];
 export type Status = EnvelopeRowDto["status"];

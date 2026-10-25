@@ -74,28 +74,34 @@ export function DebtHero({
 				})}
 			</p>
 			<div className="mt-3 flex flex-wrap items-center gap-3">
-				<Button
-					kind="secondary"
-					onClick={() => actions.sheet.open("debt", { month })}
-					size="sm"
-				>
-					{t("plan")}
-				</Button>
-				<Button
-					kind="secondary"
-					onClick={() => actions.sheet.open("payDebt", { month })}
-					size="sm"
-				>
-					{t("pay")}
-				</Button>
-				<Button
-					className="text-accent-strong"
-					kind="ghost"
-					onClick={() => actions.sheet.open("afford", { month })}
-					size="sm"
-				>
-					{t("afford")}
-				</Button>
+				{actions.can("debt") && (
+					<Button
+						kind="secondary"
+						onClick={() => actions.sheet.open("debt", { month })}
+						size="sm"
+					>
+						{t("plan")}
+					</Button>
+				)}
+				{actions.can("payDebt") && (
+					<Button
+						kind="secondary"
+						onClick={() => actions.sheet.open("payDebt", { month })}
+						size="sm"
+					>
+						{t("pay")}
+					</Button>
+				)}
+				{actions.can("afford") && (
+					<Button
+						className="text-accent-strong"
+						kind="ghost"
+						onClick={() => actions.sheet.open("afford", { month })}
+						size="sm"
+					>
+						{t("afford")}
+					</Button>
+				)}
 			</div>
 		</section>
 	);

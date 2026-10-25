@@ -18,10 +18,10 @@ export function useTargetParts() {
 	return (
 		e: EnvelopeRowDto,
 		/** The plan view leaves out "more needed": the plan is what fills it. */
-		o: { needed?: boolean } = {},
+		o: { needed?: boolean; limits?: boolean } = {},
 	): ReactNode[] => {
 		const target = e.target;
-		if (!target) return [t("none")];
+		if (!target) return [t(o.limits ? "noLimit" : "none")];
 		if (target.incomplete)
 			return [t("noRate", { currency: target.foreign?.currency ?? "" })];
 		const amount = target.amount;

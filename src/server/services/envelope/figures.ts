@@ -11,6 +11,8 @@
  * - envelope.left: one envelope's Left, narrowed by `envelopeId`.
  * - envelope.spent: what one envelope spent this month (positive), narrowed
  *   by `envelopeId`; spending and shares minus refunds, never Wealth moves.
+ * - budget.moneyIn: this month's money in (income, starting money, moves from
+ *   Wealth), from the same terms To assign is.
  * - budget.leftInLimits: Limits, Σ Left of the envelopes with a limit.
  * - budget.holds: To assign + Σ Left + next month's assigned, what the
  *   bank should hold (reconcile).
@@ -118,6 +120,16 @@ export const envelopeLeftFigure: FigureDefinition = {
 	},
 };
 
+/** Money in this month: what came into the budget (income, starting money, moves from Wealth), the rail's Money in. */
+export const moneyInFigure: FigureDefinition = {
+	id: "budget.moneyIn",
+	scope: [],
+	compute: async (db, scope, pass) => {
+		const v = await current(db, scope.userId, pass);
+		return v ? v.dto.toAssign.terms.moneyIn : null;
+	},
+};
+
 export const envelopeSpentFigure: FigureDefinition = {
 	id: "envelope.spent",
 	scope: ["envelopeId"],
@@ -214,6 +226,7 @@ export const budgetFigures = [
 	leftInLimitsFigure,
 	envelopeLeftFigure,
 	envelopeSpentFigure,
+	moneyInFigure,
 	heldForOthersFigure,
 	budgetHoldsFigure,
 	planCostFigure,

@@ -289,6 +289,44 @@
 			"label": "Conciliar"
 		}
 	},
+	"budgetMenu": {
+		"summary": {
+			"label": "Resumen del mes"
+		},
+		"whatIf": {
+			"label": "¿Y si gasto…?"
+		},
+		"addEnvelope": {
+			"label": "Agregar sobre"
+		},
+		"combine": {
+			"label": "Combinar sobres"
+		},
+		"rules": {
+			"label": "Reglas de ingresos"
+		},
+		"style": {
+			"label": "Estilo de presupuesto"
+		},
+		"help": {
+			"label": "Qué significan las palabras"
+		},
+		"addIncome": {
+			"label": "Agregar ingreso"
+		},
+		"usePlan": {
+			"label": "Usar mi plan"
+		},
+		"planNext": {
+			"label": "Planificar el mes siguiente"
+		},
+		"payoffPlan": {
+			"label": "Plan de pago"
+		},
+		"payDebt": {
+			"label": "Pagar una deuda"
+		}
+	},
 	"envelope": {
 		"move": {
 			"label": "Mover dinero"

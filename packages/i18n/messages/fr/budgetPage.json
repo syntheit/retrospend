@@ -1,20 +1,5 @@
 {
 	"title": "Budget",
-	"menu": {
-		"more": "Autres actions du budget",
-		"addIncome": "Ajouter une entrée d'argent",
-		"usePlan": "Utiliser mon plan",
-		"planNext": "Planifier le mois suivant",
-		"summary": "Résumé du mois",
-		"whatIf": "Et si je dépense…",
-		"addEnvelope": "Ajouter une enveloppe",
-		"combine": "Fusionner des enveloppes",
-		"rules": "Règles de revenus",
-		"style": "Style de budget",
-		"help": "Ce que veulent dire les mots",
-		"payoffPlan": "Plan de remboursement",
-		"payDebt": "Rembourser une dette"
-	},
 	"month": {
 		"label": "{month} {year}",
 		"previous": "Mois précédent",
@@ -93,7 +78,8 @@
 		"goalProgress": "<saved></saved> sur <amount></amount>",
 		"goalBy": "d'ici le {date}",
 		"moreNeeded": "il manque <amount></amount>",
-		"leftThisWeek": "<amount></amount> restants cette semaine"
+		"leftThisWeek": "<amount></amount> restants cette semaine",
+		"noLimit": "Pas de plafond"
 	},
 	"group": {
 		"role": {
@@ -117,7 +103,8 @@
 		"endOfMonth": "Fin de mois",
 		"actions": "Actions",
 		"paid": "Payé",
-		"noMatch": "Aucune enveloppe ne correspond."
+		"noMatch": "Aucune enveloppe ne correspond.",
+		"noLimitCell": "Pas de plafond"
 	},
 	"rail": {
 		"label": "En un coup d'œil",
@@ -169,22 +156,25 @@
 		"emptyHint": "Un plan est un brouillon. Rien ne bouge tant que vous ne l'appliquez pas.",
 		"emptyTitle": "Planifier {month}",
 		"fill": {
-			"TARGETS": "Partir de mes objectifs",
-			"SAME_AS_THIS_MONTH": "Comme ce mois-ci",
-			"THIS_MONTH_SPENT": "Ce que j'ai dépensé ce mois-ci"
+			"TARGETS": "Remplir depuis les objectifs",
+			"SAME_AS_THIS_MONTH": "Comme en {month}",
+			"THIS_MONTH_SPENT": "Ce qui a été dépensé en {month}"
 		},
-		"banner": "Planification de {month}. Rien ne change tant que vous n'appliquez pas le plan.",
 		"discard": "Abandonner",
 		"apply": "Appliquer le plan",
-		"after": "Pas encore planifié après ce plan",
-		"fillFrom": "Remplir à partir de…",
+		"after": "Reste à planifier en {month}",
 		"table": "Plan",
 		"envelope": "Enveloppe",
 		"planned": "Planifié",
-		"left": "Reste",
 		"edit": "Planifier {name}",
 		"plannedSub": "Planifié <amount></amount>",
-		"fundNow": "Le financer maintenant"
+		"fundNow": "Le financer maintenant…",
+		"spentIn": "Dépensé en {month}",
+		"startsWith": "Commence {month} avec",
+		"bannerTitle": "Brouillon : plan de {month}",
+		"bannerSub": "Appliquer enregistre le plan. {current} ne change pas. Il se finance tout seul quand l'argent de {month} arrive.",
+		"fillLabel": "Remplir le plan",
+		"input": "Plan pour {name}"
 	},
 	"planRail": {
 		"label": "Coût du plan",

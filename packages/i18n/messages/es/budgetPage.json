@@ -1,20 +1,5 @@
 {
 	"title": "Presupuesto",
-	"menu": {
-		"more": "Más acciones del presupuesto",
-		"addIncome": "Agregar ingreso",
-		"usePlan": "Usar mi plan",
-		"planNext": "Planificar el mes siguiente",
-		"summary": "Resumen del mes",
-		"whatIf": "¿Y si gasto…?",
-		"addEnvelope": "Agregar sobre",
-		"combine": "Combinar sobres",
-		"rules": "Reglas de ingresos",
-		"style": "Estilo de presupuesto",
-		"help": "Qué significan las palabras",
-		"payoffPlan": "Plan de pago",
-		"payDebt": "Pagar una deuda"
-	},
 	"month": {
 		"label": "{month} {year}",
 		"previous": "Mes anterior",
@@ -93,7 +78,8 @@
 		"goalProgress": "<saved></saved> de <amount></amount>",
 		"goalBy": "para el {date}",
 		"moreNeeded": "faltan <amount></amount>",
-		"leftThisWeek": "quedan <amount></amount> esta semana"
+		"leftThisWeek": "quedan <amount></amount> esta semana",
+		"noLimit": "Sin límite"
 	},
 	"group": {
 		"role": {
@@ -117,7 +103,8 @@
 		"endOfMonth": "Fin de mes",
 		"actions": "Acciones",
 		"paid": "Pagado",
-		"noMatch": "Ningún sobre coincide."
+		"noMatch": "Ningún sobre coincide.",
+		"noLimitCell": "Sin límite"
 	},
 	"rail": {
 		"label": "De un vistazo",
@@ -169,22 +156,25 @@
 		"emptyHint": "Un plan es un borrador. Nada se mueve hasta que lo apliques.",
 		"emptyTitle": "Planificar {month}",
 		"fill": {
-			"TARGETS": "Empezar desde mis objetivos",
-			"SAME_AS_THIS_MONTH": "Igual que este mes",
-			"THIS_MONTH_SPENT": "Lo que gasté este mes"
+			"TARGETS": "Rellenar desde los objetivos",
+			"SAME_AS_THIS_MONTH": "Igual que {month}",
+			"THIS_MONTH_SPENT": "Lo gastado en {month}"
 		},
-		"banner": "Planificando {month}. Nada cambia hasta que lo apliques.",
 		"discard": "Descartar",
 		"apply": "Aplicar plan",
-		"after": "Sin planificar después de este plan",
-		"fillFrom": "Rellenar desde…",
+		"after": "Falta planificar en {month}",
 		"table": "Plan",
 		"envelope": "Sobre",
 		"planned": "Planificado",
-		"left": "Queda",
 		"edit": "Planificar {name}",
 		"plannedSub": "Planificado <amount></amount>",
-		"fundNow": "Financiarlo ahora"
+		"fundNow": "Financiarlo ahora…",
+		"spentIn": "Gastado en {month}",
+		"startsWith": "Empieza {month} con",
+		"bannerTitle": "Borrador: plan de {month}",
+		"bannerSub": "Aplicar guarda el plan. {current} no cambia. Se financia solo cuando llega el dinero de {month}.",
+		"fillLabel": "Rellenar el plan",
+		"input": "Plan para {name}"
 	},
 	"planRail": {
 		"label": "Costo del plan",

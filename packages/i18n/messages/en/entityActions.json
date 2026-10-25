@@ -289,6 +289,44 @@
 			"label": "Reconcile"
 		}
 	},
+	"budgetMenu": {
+		"summary": {
+			"label": "Month summary"
+		},
+		"whatIf": {
+			"label": "What if I spend…"
+		},
+		"addEnvelope": {
+			"label": "Add envelope"
+		},
+		"combine": {
+			"label": "Combine envelopes"
+		},
+		"rules": {
+			"label": "Income rules"
+		},
+		"style": {
+			"label": "Budget style"
+		},
+		"help": {
+			"label": "What the words mean"
+		},
+		"addIncome": {
+			"label": "Add money in"
+		},
+		"usePlan": {
+			"label": "Use my plan"
+		},
+		"planNext": {
+			"label": "Plan next month"
+		},
+		"payoffPlan": {
+			"label": "Payoff plan"
+		},
+		"payDebt": {
+			"label": "Pay down a debt"
+		}
+	},
 	"envelope": {
 		"move": {
 			"label": "Move money"

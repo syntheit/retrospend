@@ -242,7 +242,10 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Budget sheets: Shares with no envelope | A read that lists your shares with no category (`getMonth.shares.unresolved` is a count) to pick an envelope for each with `setShareCategory` | `splits` reviews the shares waiting for your OK only | 4C2 follow-up |
 | Budget sheets: What moved (a migrated budget) | The migration's old-to-new list (P7 `envelope-migration`, not on main) | Not built | 4C2 follow-up, after P7 merges |
 | Budget sheets: Set up, Undo | `envelope.undoSetup`. Setup only creates a first book (a second is refused, and the sheet says so), so Save ends with a toast without Undo | Accepted for a new book | Owner |
-||||||| cb2000b0
+| Budget plan: "If you apply this" block | A plan summary read: planned spending, to savings, savings rate and saved in a year (`planCost` has the cost, the typical income and the runway only) | The plan rail shows Plan cost, Usual money in and the runway | 2B |
+| Budget plan: group subtotals and "November plan" allocation bar | Group totals and shares in basis points in `previewDraft` (it lists envelopes only) | The plan table lists envelopes under a group name, with no subtotal and no bar | 2B |
+| Budget plan: hero line and change count | The expected money in for the month, the total planned, and "N changes from your targets" in the draft read | The hero is Left to plan; the banner says what Apply does | 2B |
+| Budget: Assigned and group figure ids | `budget.assigned` and a group narrowing (`groupId`) on `GET /api/v1/figures`; only `budget.moneyIn` exists for the terms | The Assigned column and the group totals carry no `data-figure` | 2B |
 | Budget: table totals and group figures | Server totals for the month (Assigned, Activity, Left) and registry ids for a group's totals; only `toAssign.terms.assigned` exists | No footer row; each group row shows the server's group totals without a figure id | 2B |
 | Budget: Spending expands per category (Flex) | Activity per category inside an envelope that covers many (SPEC §6.1) | Spending is one envelope row with its target line | 2B |
 | Budget: "October plan" allocation by group | Shares of the month by group in basis points (`AllocationBar` needs the server's shares) | The rail shows Owed to you, Money in and Shares only | 2B |

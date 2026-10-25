@@ -18,7 +18,8 @@ export function ClosedHero({
 	onOpenSummary,
 }: {
 	month: number;
-	onOpenSummary: () => void;
+	/** Absent until the summary sheet exists. */
+	onOpenSummary: (() => void) | undefined;
 }) {
 	const t = useTranslations("budgetPage.closed");
 	const label = useMonthLabel();
@@ -54,11 +55,13 @@ export function ClosedHero({
 			) : (
 				<p className="text-fg-2 text-body mt-1">{t("none")}</p>
 			)}
-			<div className="mt-3">
-				<Button kind="secondary" onClick={onOpenSummary} size="sm">
-					{t("open")}
-				</Button>
-			</div>
+			{onOpenSummary && (
+				<div className="mt-3">
+					<Button kind="secondary" onClick={onOpenSummary} size="sm">
+						{t("open")}
+					</Button>
+				</div>
+			)}
 		</section>
 	);
 }

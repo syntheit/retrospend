@@ -72,8 +72,11 @@ function EnvelopeTableRow({
 	actions: BudgetActions;
 	readOnly: boolean;
 }) {
+	const t = useTranslations("budgetPage.table");
 	const parts = useTargetParts();
 	const vm = toEnvelopeVM(e);
+	// Limits: an envelope with no limit holds nothing to run out of (never "Overspent").
+	const noLimit = columns === "limits" && !e.target;
 	const target = {
 		id: e.id,
 		name: e.name,
@@ -89,19 +92,25 @@ function EnvelopeTableRow({
 						<span className="text-body text-fg block truncate font-medium">
 							{e.name}
 						</span>
-						{columns !== "closed" && <RowSub parts={parts(e)} />}
+						{columns !== "closed" && (
+							<RowSub parts={parts(e, { limits: columns === "limits" })} />
+						)}
 					</div>
 				</div>
 			</TableCell>
 			<TableCell className={NUM}>
-				<Money value={e.assigned} />
+				{noLimit ? (
+					<span className="text-fg-3">{t("noLimitCell")}</span>
+				) : (
+					<Money value={e.assigned} />
+				)}
 			</TableCell>
 			<TableCell className={NUM}>
 				<Money figure={`envelope.spent:${e.id}`} value={e.spent} />
 			</TableCell>
 			<TableCell className={NUM}>
 				<div className="flex justify-end">
-					<LeftCell e={e} />
+					{noLimit ? null : <LeftCell e={e} />}
 				</div>
 			</TableCell>
 			<TableCell className="w-14">
@@ -180,7 +189,7 @@ export function GroupsTable({
 											)}
 										/>
 									</Button>
-									{!open && <RowSub parts={sub(g)} />}
+									{!open && <RowSub parts={sub(g)} wrap />}
 								</TableCell>
 								<TableCell className={NUM}>
 									<Money value={g.totals.assigned} />
