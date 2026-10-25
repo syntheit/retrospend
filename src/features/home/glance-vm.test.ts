@@ -22,6 +22,7 @@ const BASE: GlanceDTO = {
 	netWorth: fig("netWorth", 13532548300),
 	budget: null,
 	moneyIn: null,
+	dollarToday: null,
 	missingRates: [],
 };
 

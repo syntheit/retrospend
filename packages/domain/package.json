@@ -14,6 +14,7 @@
 		"./format": "./src/format.ts",
 		"./format-date": "./src/format-date.ts",
 		"./format-percent": "./src/format-percent.ts",
+		"./insights": "./src/insights.ts",
 		"./money": "./src/money.ts",
 		"./money-minor": "./src/money-minor.ts",
 		"./parse": "./src/parse.ts",

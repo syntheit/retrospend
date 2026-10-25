@@ -95,6 +95,32 @@ export interface SharedExpenseShare {
 	date: Date;
 }
 
+/** Narrows shares to some projects, or to expenses that involve some people (Insights filters). */
+export interface ShareNarrowing {
+	projectIds?: readonly string[];
+	/** Expenses where any of these people paid or hold a share. */
+	withPeople?: readonly {
+		participantType: "user" | "guest" | "shadow";
+		participantId: string;
+	}[];
+}
+
+function narrowingFilter(
+	narrow: ShareNarrowing,
+): Prisma.SharedTransactionWhereInput[] {
+	const filters: Prisma.SharedTransactionWhereInput[] = [];
+	if (narrow.projectIds)
+		filters.push({ projectId: { in: [...narrow.projectIds] } });
+	if (narrow.withPeople)
+		filters.push({
+			OR: narrow.withPeople.flatMap((p) => [
+				{ splitParticipants: { some: { ...p } } },
+				{ paidByType: p.participantType, paidById: p.participantId },
+			]),
+		});
+	return filters;
+}
+
 /**
  * The participations that are the user's share of shared expenses: every
  * share except ones they rejected (pending shares count until answered),
@@ -106,10 +132,12 @@ export function shareParticipations(
 	userId: string,
 	dateFilter?: { gte?: Date; lte?: Date },
 	excludedProjectIds?: string[],
+	narrow?: ShareNarrowing,
 ) {
 	const whereTransaction: Prisma.SharedTransactionWhereInput = {
 		...(dateFilter ? { date: dateFilter } : {}),
 		...excludedProjectFilter(excludedProjectIds),
+		...(narrow ? { AND: narrowingFilter(narrow) } : {}),
 	};
 	return (db as PrismaClient).splitParticipant.findMany({
 		where: {
@@ -158,12 +186,14 @@ export async function getSharedExpenseShares(
 	// batched lookup instead of today's rate from the cache.
 	_rateCache?: RateCache,
 	excludedProjectIds?: string[],
+	narrow?: ShareNarrowing,
 ): Promise<SharedExpenseShare[]> {
 	const participations = await shareParticipations(
 		db,
 		userId,
 		dateFilter,
 		excludedProjectIds,
+		narrow,
 	);
 
 	if (participations.length === 0) return [];

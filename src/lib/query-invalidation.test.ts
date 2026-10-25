@@ -18,15 +18,24 @@ function invalidatedRouters(path: string[]): string[] {
 }
 
 describe("handleMutationSuccess", () => {
-	it.each(["create", "settleAll", "confirm", "reject", "deletePending", "void"])(
-		"settlement.%s refreshes project and people views",
-		(procedure) => {
-			const routers = invalidatedRouters(["settlement", procedure]);
-			expect(routers).toEqual(
-				expect.arrayContaining(["settlement", "project", "people", "billingPeriod"]),
-			);
-		},
-	);
+	it.each([
+		"create",
+		"settleAll",
+		"confirm",
+		"reject",
+		"deletePending",
+		"void",
+	])("settlement.%s refreshes project and people views", (procedure) => {
+		const routers = invalidatedRouters(["settlement", procedure]);
+		expect(routers).toEqual(
+			expect.arrayContaining([
+				"settlement",
+				"project",
+				"people",
+				"billingPeriod",
+			]),
+		);
+	});
 });
 
 /**
@@ -43,11 +52,24 @@ const REQUIRED_READERS: Record<string, string[]> = {
 
 	// Category edits change names, colors and exclusions shown everywhere.
 	"categories.update": ["categories", "budget", "dashboard", "expense"],
-	"categories.delete": ["categories", "budget", "dashboard", "expense"],
+	"categories.delete": [
+		"categories",
+		"budget",
+		"dashboard",
+		"expense",
+		"insights",
+	],
 	"expense.bulkUpdateCategory": ["expense", "budget", "dashboard", "stats"],
 
 	// The fiscal month start day moves every month boundary.
-	"settings.updateGeneral": ["settings", "dashboard", "budget", "stats", "expense"],
+	"settings.updateGeneral": [
+		"settings",
+		"dashboard",
+		"budget",
+		"stats",
+		"expense",
+		"insights",
+	],
 
 	// Personal expenses feed the overview, budgets and stats.
 	"expense.createExpense": ["expense", "dashboard", "budget", "stats"],
@@ -55,9 +77,36 @@ const REQUIRED_READERS: Record<string, string[]> = {
 	"expense.deleteExpense": ["expense", "dashboard", "budget", "stats"],
 
 	// Shared expenses also move balances.
-	"sharedTransaction.create": ["project", "people", "dashboard", "budget", "stats"],
-	"sharedTransaction.update": ["project", "people", "dashboard", "budget", "stats"],
-	"sharedTransaction.delete": ["project", "people", "dashboard", "budget", "stats"],
+	"sharedTransaction.create": [
+		"project",
+		"people",
+		"dashboard",
+		"budget",
+		"stats",
+	],
+	"sharedTransaction.update": [
+		"project",
+		"people",
+		"dashboard",
+		"budget",
+		"stats",
+	],
+	"sharedTransaction.delete": [
+		"project",
+		"people",
+		"dashboard",
+		"budget",
+		"stats",
+	],
+
+	// Insights reads the same spending, money in and categories.
+	"entry.expense.create.save": ["insights"],
+	"entry.shared.update.save": ["insights"],
+	"settlement.create": ["insights"],
+	"wealth.income.add.save": ["insights"],
+	"importQueue.commit": ["insights"],
+	"project.updateAnalyticsExclusion": ["insights"],
+	"exchangeRate.syncNow": ["insights"],
 };
 
 describe("cross-router invalidation map", () => {
@@ -70,10 +119,7 @@ describe("cross-router invalidation map", () => {
 	);
 
 	it("only names routers that exist", () => {
-		const root = readFileSync(
-			join(__dirname, "../server/api/root.ts"),
-			"utf8",
-		);
+		const root = readFileSync(join(__dirname, "../server/api/root.ts"), "utf8");
 		const body = root.slice(root.indexOf("createTRPCRouter({"));
 		const routers = new Set(
 			[...body.matchAll(/^\t(\w+): \w+Router,$/gm)].map((m) => m[1]),

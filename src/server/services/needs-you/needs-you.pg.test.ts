@@ -213,6 +213,8 @@ describe("needsYou on Postgres", () => {
 			`recurring.due:${ids.salary}`,
 			"budget.overspent",
 			"budget.giveJob",
+			// Her pending Asado share has no category yet (D19).
+			"budget.sharesNeedEnvelope",
 			"setup.verifyEmail",
 		]);
 		const by = Object.fromEntries(list.items.map((i) => [i.type, i]));
@@ -277,9 +279,9 @@ describe("needsYou on Postgres", () => {
 		expect(list.counts).toEqual({
 			people: 3,
 			activity: 3,
-			budget: 2,
+			budget: 3,
 			setup: 1,
-			total: 9,
+			total: 10,
 		});
 		expect(list.people[key(lucia.user.id)]).toMatchObject({
 			name: "Lucía",
@@ -467,8 +469,9 @@ describe("needsYou query budget", () => {
 		// The budget source reads its book in a fixed set of queries, splits
 		// included (budget P3), frozen row values (P4) and the income rules'
 		// idle check (P5) and the fix requests asked of you (2C.2): the count
-		// never grows with the items.
-		expect(one).toBeLessThanOrEqual(27);
+		// never grows with the items. One more for Later: the person's snoozed
+		// item ids (2E.2), a single read whatever their number.
+		expect(one).toBeLessThanOrEqual(28);
 	});
 
 	it("p95 under 150 ms", async () => {
@@ -503,8 +506,8 @@ describe("home.needsYou procedure", () => {
 		await updateAppSettings({});
 		try {
 			const on = await c.needsYou();
-			expect(on.counts.budget).toBe(2);
-			expect(on.counts.total).toBe(off.counts.total + 2);
+			expect(on.counts.budget).toBe(3);
+			expect(on.counts.total).toBe(off.counts.total + 3);
 		} finally {
 			await adminDb.appSettings.update({
 				where: { id: "app_settings_singleton" },

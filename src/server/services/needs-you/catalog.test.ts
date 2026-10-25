@@ -87,6 +87,10 @@ describe("Needs you catalog", () => {
 		for (const type of Object.keys(SEAMS)) expect(CATALOG).toHaveProperty(type);
 	});
 
+	it("no type waits for a source: Owed for 60 days and shares that need an envelope have one", () => {
+		expect(SEAMS).toEqual({});
+	});
+
 	it("action ids of entities the client registry has are real registry actions", () => {
 		const registry = ACTIONS as Record<string, readonly { id: string }[]>;
 		for (const [type, spec] of Object.entries(CATALOG)) {

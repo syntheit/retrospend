@@ -6041,6 +6041,27 @@
 						"schema": {
 							"type": "string"
 						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "categoryId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "month",
+						"required": false,
+						"schema": {
+							"pattern": "^\\d{4}-\\d{2}$",
+							"type": "string"
+						}
 					}
 				],
 				"responses": {
@@ -6560,6 +6581,69 @@
 												}
 											]
 										},
+										"dollarToday": {
+											"anyOf": [
+												{
+													"properties": {
+														"home": {
+															"description": "ISO 4217 code, or the app's code for a crypto asset.",
+															"examples": [
+																"USD",
+																"ARS",
+																"BTC"
+															],
+															"pattern": "^[A-Z0-9]{2,10}$",
+															"type": "string"
+														},
+														"id": {
+															"type": "string"
+														},
+														"rateDate": {
+															"anyOf": [
+																{
+																	"format": "date",
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														},
+														"rateType": {
+															"anyOf": [
+																{
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														},
+														"value": {
+															"anyOf": [
+																{
+																	"$ref": "#/components/schemas/Money"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														}
+													},
+													"required": [
+														"id",
+														"value",
+														"rateType",
+														"rateDate",
+														"home"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
 										"home": {
 											"description": "ISO 4217 code, or the app's code for a crypto asset.",
 											"examples": [
@@ -6865,6 +6949,7 @@
 										"netWorth",
 										"budget",
 										"moneyIn",
+										"dollarToday",
 										"missingRates"
 									],
 									"type": "object"
@@ -9675,7 +9760,8 @@
 																			"importJob",
 																			"envelope",
 																			"book",
-																			"user"
+																			"user",
+																			"person"
 																		],
 																		"type": "string"
 																	}

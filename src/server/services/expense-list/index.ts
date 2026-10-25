@@ -6,6 +6,7 @@
  * userTransaction, so the raw SQL is under RLS too.
  */
 
+import { periodRateDate } from "@retrospend/domain/money";
 import {
 	dayKey,
 	normalizeTimeZone,
@@ -80,10 +81,21 @@ export async function listActivity(
 			rates,
 			defaultRateType: preferredRateType(home, defaults),
 		});
+		// Totals convert at the rate of the range's last moment (or now if
+		// sooner), as Insights does, so a past month reads the same in both.
+		const totalsRate = bounds.lt
+			? ((
+					await findExchangeRate(
+						tx,
+						home,
+						periodRateDate(new Date(bounds.lt.getTime() - 1), now),
+					)
+				)?.rate ?? null)
+			: rates.homeRate;
 		const totals: TotalsContext = {
 			userId,
 			home,
-			homeRate: rates.homeRate,
+			homeRate: totalsRate,
 			excludedProjectIds,
 			timeZone,
 			missingRates: new Set(),

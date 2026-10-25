@@ -21,13 +21,20 @@ const SHARED_TX_DEPS = [
 	"budget",
 	"dashboard",
 	"stats",
+	"insights",
 	"billingPeriod",
 	"expense",
 	"envelope",
 ] as const;
 
 // The envelope budget reads every expense, share and settlement (build plan 02 §5.4).
-const EXPENSE_DEPS = ["dashboard", "budget", "stats", "envelope"] as const;
+const EXPENSE_DEPS = [
+	"dashboard",
+	"budget",
+	"stats",
+	"insights",
+	"envelope",
+] as const;
 
 // A payment can lock the splits it settled (2C.2), which Activity and the entry views show.
 const SETTLEMENT_DEPS = [
@@ -36,12 +43,14 @@ const SETTLEMENT_DEPS = [
 	"billingPeriod",
 	"dashboard",
 	"stats",
+	"insights",
 	"envelope",
 	"expense",
 	"sharedTransaction",
 ] as const;
 
 const CATEGORY_DEPS = [
+	"insights",
 	"expense",
 	"sharedTransaction",
 	"project",
@@ -58,6 +67,7 @@ const GENERAL_SETTINGS_DEPS = [
 	"dashboard",
 	"budget",
 	"stats",
+	"insights",
 	"expense",
 	"envelope",
 ] as const;
@@ -98,16 +108,22 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"envelope.setTarget": ENVELOPE_DEPS,
 	"envelope.createEnvelope": ENVELOPE_DEPS,
 	"envelope.updateEnvelope": ENVELOPE_DEPS,
-	"envelope.mergeEnvelopes": ["dashboard", "stats", "project"],
-	"envelope.archiveEnvelope": ["dashboard", "stats", "project"],
-	"envelope.undoChange": ["dashboard", "stats", "project", "expense"],
+	"envelope.mergeEnvelopes": ["dashboard", "stats", "insights", "project"],
+	"envelope.archiveEnvelope": ["dashboard", "stats", "insights", "project"],
+	"envelope.undoChange": [
+		"dashboard",
+		"stats",
+		"insights",
+		"project",
+		"expense",
+	],
 	"envelope.confirmStartingMoney": ["dashboard", "expense"],
 	// Style, period and routing change what reports group and the dashboard shows.
-	"envelope.setStyle": ["dashboard", "stats"],
-	"envelope.revertStyle": ["dashboard", "stats"],
-	"envelope.setBookPeriod": ["dashboard", "stats"],
-	"envelope.setProjectRouting": ["dashboard", "stats", "project"],
-	"envelope.setShareCategory": ["expense", "stats"],
+	"envelope.setStyle": ["dashboard", "stats", "insights"],
+	"envelope.revertStyle": ["dashboard", "stats", "insights"],
+	"envelope.setBookPeriod": ["dashboard", "stats", "insights"],
+	"envelope.setProjectRouting": ["dashboard", "stats", "insights", "project"],
+	"envelope.setShareCategory": ["expense", "stats", "insights"],
 	// These write Adjustment money-in rows.
 	"envelope.reconcile": ["dashboard", "expense"],
 	"envelope.removeAdjustment": ["dashboard", "expense"],
@@ -115,13 +131,19 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	// Debts: terms and the plan change the Wealth liability view and bills;
 	// a payment moves accounts, the liability and the budget.
 	// A hidden-rows answer changes the row's flags: lists, stats and the budget.
-	"envelope.resolveHidden": ["dashboard", "expense", "stats"],
-	"envelope.revertHidden": ["dashboard", "expense", "stats"],
+	"envelope.resolveHidden": ["dashboard", "expense", "stats", "insights"],
+	"envelope.revertHidden": ["dashboard", "expense", "stats", "insights"],
 	"envelope.dismissMigrationNotice": [],
 	"envelope.setDebtTerms": ["wealth", "dashboard"],
 	"envelope.savePayoffPlan": ENVELOPE_DEPS,
 	"envelope.revertPayoffPlan": ENVELOPE_DEPS,
-	"envelope.recordDebtPayment": ["wealth", "expense", "dashboard", "stats"],
+	"envelope.recordDebtPayment": [
+		"wealth",
+		"expense",
+		"dashboard",
+		"stats",
+		"insights",
+	],
 	"envelope.forgive": [
 		"people",
 		"dashboard",
@@ -165,7 +187,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"expense.updateExpense": EXPENSE_DEPS,
 	"expense.deleteExpense": EXPENSE_DEPS,
 	"expense.importExpenses": EXPENSE_DEPS,
-	"expense.bulkUpdateCategory": ["dashboard", "stats", "budget"],
+	"expense.bulkUpdateCategory": ["dashboard", "stats", "insights", "budget"],
 
 	// ── Add family (4G): the same writes through the entry router ─────────
 	"entry.expense.create.save": [...EXPENSE_DEPS, "expense"],
@@ -186,7 +208,9 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	],
 	"entry.shared.delete.save": [...SHARED_TX_DEPS, "sharedTransaction"],
 	"entry.transfer.save": ["wealth", "expense", "envelope", "dashboard"],
+	// Income feeds Insights' money in and savings rate.
 	"wealth.income.add.save": [
+		"insights",
 		"expense",
 		"envelope",
 		"dashboard",
@@ -194,6 +218,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 		"recurring",
 	],
 	"wealth.income.delete.save": [
+		"insights",
 		"expense",
 		"envelope",
 		"dashboard",
@@ -220,8 +245,15 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 		"sharedTransaction",
 		"people",
 		"stats",
+		"insights",
 	],
-	"billingPeriod.settlePeriod": ["project", "settlement", "people", "stats"],
+	"billingPeriod.settlePeriod": [
+		"project",
+		"settlement",
+		"people",
+		"stats",
+		"insights",
+	],
 	"billingPeriod.updateLabel": ["project"],
 
 	// ── Budgets ─────────────────────────────────────────────────────────
@@ -243,6 +275,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 		"dashboard",
 		"budget",
 		"stats",
+		"insights",
 		"sharedTransaction",
 	],
 
@@ -251,7 +284,13 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"verification.reject": ["project", "people", "sharedTransaction"],
 
 	// ── Import ──────────────────────────────────────────────────────────
-	"importQueue.finalizeImport": ["expense", "dashboard", "budget", "stats"],
+	"importQueue.finalizeImport": [
+		"expense",
+		"dashboard",
+		"budget",
+		"stats",
+		"insights",
+	],
 	// The Import page (uiV2): one batch in, or the batch out again.
 	"importQueue.commit": [...EXPENSE_DEPS, "expense", "entry"],
 	"importQueue.undo": [...EXPENSE_DEPS, "expense", "entry"],
@@ -260,12 +299,20 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"project.create": ["dashboard"],
 	"project.update": ["dashboard"],
 	"project.delete": ["dashboard"],
-	"project.updateAnalyticsExclusion": ["dashboard"],
+	// Hide from reports moves every spending total, Insights included.
+	"project.updateAnalyticsExclusion": ["dashboard", "insights"],
 	"project.addParticipant": ["people"],
 	"project.removeParticipant": ["people"],
 
 	// ── Exchange rates ──────────────────────────────────────────────────
-	"exchangeRate.syncNow": ["dashboard", "wealth", "project", "people", "stats"],
+	"exchangeRate.syncNow": [
+		"dashboard",
+		"wealth",
+		"project",
+		"people",
+		"stats",
+		"insights",
+	],
 
 	// ── Guest ───────────────────────────────────────────────────────────
 	"guest.joinWithAccount": ["project", "people"],

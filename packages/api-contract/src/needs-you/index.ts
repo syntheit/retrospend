@@ -49,6 +49,7 @@ export const NEEDS_YOU_ENTITY_KINDS = [
 	"envelope",
 	"book",
 	"user",
+	"person",
 ] as const;
 
 export const needsYouGroupSchema = z.enum(NEEDS_YOU_GROUPS);
