@@ -8,6 +8,7 @@ import { type PersonSettled, settledOf } from "~/server/services/payments/ledger
 import { buildContactVisibility, redactContact } from "./contact-visibility";
 import { resolveClaimAliases } from "./identity";
 import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
+import { encodeLedgerCursor, ledgerCursorWhere, peopleOn } from "./ledger-cursor";
 import type { ParticipantRef } from "./types";
 
 type AppDb = PrismaClient;
@@ -127,25 +128,18 @@ function toDirection(
 	return "settled";
 }
 
-/**
- * The page cursor of a person's ledger: the date and id of the last row, so
- * rows that share a date with it are never skipped. A cursor with only a
- * date (an older client) still works, on the date alone.
- */
-function encodeLedgerCursor(row: { date: Date; id: string }): string {
-	return `${row.date.toISOString()}|${row.id}`;
-}
-
-function ledgerCursorWhere(cursor: string): Prisma.SharedTransactionWhereInput {
-	const [iso, id] = cursor.split("|");
-	const date = new Date(iso ?? "");
-	if (Number.isNaN(date.getTime())) {
-		throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid cursor" });
-	}
-	return id
-		? { OR: [{ date: { lt: date } }, { date, id: { lt: id } }] }
-		: { date: { lt: date } };
-}
+/** What the People list counts per person, before claimed shadows are merged in. */
+type ContactStats = {
+	participantType: ParticipantType;
+	participantId: string;
+	mostRecentDate: Date;
+	mostRecentDescription: string | null;
+	mostRecentProjectName: string | null;
+	pendingVerificationCount: number;
+	unseenChangesCount: number;
+	transactionCount: number;
+	projectIds: Set<string>;
+};
 
 export class PeopleService {
 	private currentUserRef: ParticipantRef;
@@ -204,20 +198,7 @@ export class PeopleService {
 
 		if (transactions.length === 0) return [];
 
-		const contactStats = new Map<
-			string,
-			{
-				participantType: ParticipantType;
-				participantId: string;
-				mostRecentDate: Date;
-				mostRecentDescription: string | null;
-				mostRecentProjectName: string | null;
-				pendingVerificationCount: number;
-				unseenChangesCount: number;
-				transactionCount: number;
-				projectIds: Set<string>;
-			}
-		>();
+		const contactStats = new Map<string, ContactStats>();
 
 		for (const tx of transactions) {
 			const myEntry = tx.splitParticipants.find(
@@ -230,22 +211,7 @@ export class PeopleService {
 			const myVerificationIsPending = myEntry.verificationStatus === "PENDING";
 			const myHasUnseen = myEntry.hasUnseenChanges;
 
-			// The payer is on the expense, which you can read, even when their own
-			// split row is not yours to read (row level security shows you your
-			// row, and the others only inside a project you share).
-			const payer = {
-				participantType: tx.paidByType,
-				participantId: tx.paidById,
-			};
-			const people = tx.splitParticipants.some(
-				(sp) =>
-					sp.participantType === payer.participantType &&
-					sp.participantId === payer.participantId,
-			)
-				? tx.splitParticipants
-				: [...tx.splitParticipants, payer];
-
-			for (const sp of people) {
+			for (const sp of peopleOn(tx, tx.splitParticipants)) {
 				if (
 					sp.participantType === this.currentUserRef.participantType &&
 					sp.participantId === this.currentUserRef.participantId
@@ -1274,20 +1240,7 @@ export class PeopleService {
 		T extends { participantType: ParticipantType; participantId: string },
 	>(
 		contacts: T[],
-		contactStats: Map<
-			string,
-			{
-				participantType: ParticipantType;
-				participantId: string;
-				mostRecentDate: Date;
-				mostRecentDescription: string | null;
-				mostRecentProjectName: string | null;
-				pendingVerificationCount: number;
-				unseenChangesCount: number;
-				transactionCount: number;
-				projectIds: Set<string>;
-			}
-		>,
+		contactStats: Map<string, ContactStats>,
 	): Promise<T[]> {
 		const { canonicalKey } = await resolveClaimAliases(this.db, contacts);
 
