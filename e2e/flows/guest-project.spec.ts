@@ -272,9 +272,9 @@ test.describe("screenshots", () => {
 						baseURL: E2E_BASE_URL,
 						locale: "en-US",
 					});
+					const page = await context.newPage();
+					await useTheme(page, theme);
 					try {
-						const page = await context.newPage();
-						await useTheme(page, theme);
 						if (view === "guest")
 							await page.addInitScript((tokens) => {
 								for (const [k, v] of Object.entries(tokens))
