@@ -18,12 +18,9 @@ import { BulkBar } from "./bulk-bar";
 import { useElementWidth } from "./column-fit";
 import { type TableGroups, withGroupRows } from "./group-rows";
 import { type LedgerColumns, useLedgerColumns } from "./ledger-columns";
+import { type Selection, SelectionContext } from "./select-column";
 import { TABLE_LOOK } from "./table-style";
-import {
-	type Selection,
-	SelectionContext,
-	useTransactionColumns,
-} from "./transaction-columns";
+import { useTransactionColumns } from "./transaction-columns";
 
 /** The footer total, computed by the server for the rows the filter shows (R9). */
 export type TableTotal = {

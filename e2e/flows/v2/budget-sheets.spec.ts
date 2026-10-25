@@ -486,6 +486,35 @@ test("Style: Flex to Limits shows the preview, saves, and Undo switches back", a
 	);
 });
 
+test("Style: Flex to Debt payoff shows the preview, saves, and Undo switches back", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBudget(page);
+	await fromMenu(page, "Budget style");
+	const sheet = page.getByRole("dialog", { name: "Budget style" });
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole("combobox", { name: "Style" }).click();
+	await page.getByRole("option", { name: "Debt payoff" }).click();
+	await expect(
+		sheet.getByText("Debt-free by, and what you owe."),
+	).toBeVisible();
+	await expect(
+		sheet.getByRole("region", { name: "What this changes" }),
+	).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	const save = sheet.getByRole("button", { name: "Switch", exact: true });
+	await expect(save).toBeEnabled();
+	await untilSaved(page, "envelope.setStyle", () => save.click());
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "envelope.revertStyle", () =>
+		toast(page, "Switched to Debt payoff")
+			.getByRole("button", { name: "Undo" })
+			.click(),
+	);
+});
+
 test("What if: a pretend expense shows what the envelope would have", async ({
 	page,
 }) => {
@@ -948,7 +977,7 @@ test.describe("Set up your budget", () => {
 	// The admin account has no envelope book and no other flow uses it for money.
 	test.use({ storageState: ADMIN_STORAGE_STATE });
 
-	test("Pay off debt: the debt plan and the next pay show in the preview", async ({
+	test("Debt payoff: the debt plan and the next pay show in the preview", async ({
 		page,
 	}) => {
 		test.setTimeout(180_000);
@@ -966,7 +995,7 @@ test.describe("Set up your budget", () => {
 			.getByRole("button", { name: "Set up your budget" })
 			.click();
 		const sheet = page.getByRole("dialog", { name: "Set up your budget" });
-		await sheet.getByRole("button", { name: "Pick Pay off debt" }).click();
+		await sheet.getByRole("button", { name: "Pick Debt payoff" }).click();
 		await sheet.getByRole("button", { name: "Continue" }).click();
 		// How you get paid: nothing is picked until you answer.
 		await expect(sheet.getByText("Step 2 of 4")).toBeVisible();
@@ -975,7 +1004,7 @@ test.describe("Set up your budget", () => {
 		).toBeVisible();
 		await expect(sheet.getByRole("radio", { checked: true })).toHaveCount(0);
 		await sheet.getByRole("radio", { name: "Monthly" }).click();
-		await expect(sheet.getByText("Next pay")).toBeVisible();
+		await expect(sheet.getByText("Next pay", { exact: true })).toBeVisible();
 		await sheet.getByRole("button", { name: "Continue" }).click();
 		await sheet
 			.getByRole("textbox", { name: "Amount", exact: true })
@@ -997,7 +1026,8 @@ test.describe("Set up your budget", () => {
 		).toBeEnabled();
 		expect(await bannedOutputOn(page), "banned output").toEqual([]);
 		// Nothing is written: the Flex test below starts this account's budget.
-		await sheet.getByRole("button", { name: "Cancel" }).click();
+		await page.keyboard.press("Escape");
+		await expect(sheet).toBeHidden();
 		await sql(`DELETE FROM "asset_account" WHERE "id" = 'e2e_setup_visa'`);
 	});
 

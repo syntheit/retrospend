@@ -201,7 +201,7 @@
 			"lead": "Spent this month against usual."
 		},
 		"DEBT_PAYOFF": {
-			"name": "Pay off debt",
+			"name": "Debt payoff",
 			"sub": "Minimums on time, extra to one debt at a time.",
 			"lead": "Debt-free by, and what you owe."
 		}

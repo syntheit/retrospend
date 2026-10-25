@@ -79,8 +79,7 @@ function categoryPart(
 	const ids = picked.filter((id) => id !== NO_CATEGORY);
 	const ors: Prisma.Sql[] = [];
 	if (ids.length) ors.push(Prisma.sql`${col} = ANY(${ids}::text[])`);
-	if (picked.includes(NO_CATEGORY))
-		ors.push(none);
+	if (picked.includes(NO_CATEGORY)) ors.push(none);
 	return Prisma.sql`(${Prisma.join(ors, " OR ")})`;
 }
 
