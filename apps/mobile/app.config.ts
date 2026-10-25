@@ -9,7 +9,9 @@ const DEV_PROFILES = ["development", "simulator"];
  * config refuses to build with them unless the build says it is a dev or
  * simulator build (RETROSPEND_BUILD_PROFILE=development|simulator).
  */
-export function assertBuildProfile(env: Record<string, string | undefined>): void {
+export function assertBuildProfile(
+	env: Record<string, string | undefined>,
+): void {
 	const dev = Object.keys(env).filter(
 		(name) =>
 			(name.startsWith("EXPO_PUBLIC_DEV_") || name === "EXPO_PUBLIC_GALLERY") &&
