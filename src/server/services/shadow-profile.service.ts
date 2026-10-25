@@ -4,6 +4,7 @@ import { signClaimToken } from "~/lib/claim-token";
 import { getShadowInviteEmailTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 import type { PrismaClient } from "~prisma";
+import { consumeRateLimit } from "./api-v1/rate-limit.service";
 import { canMintClaimLink } from "./claim.service";
 
 /**
@@ -83,6 +84,20 @@ async function isConnected(
  */
 export const EMAIL_CHECKS = { limit: 20, windowMs: 60 * 60_000 } as const;
 export const emailCheckKey = (userId: string) => `people-email:${userId}`;
+
+/** The tRPC side of the meter (v1 meters with its own limiter, which sets Retry-After). */
+export async function assertEmailCheck(userId: string) {
+	const decision = await consumeRateLimit(
+		emailCheckKey(userId),
+		EMAIL_CHECKS.limit,
+		EMAIL_CHECKS.windowMs,
+	);
+	if (!decision.allowed)
+		throw new TRPCError({
+			code: "TOO_MANY_REQUESTS",
+			message: `Too many email checks. Try again in ${decision.retryAfterSeconds} seconds.`,
+		});
+}
 
 export async function addShadow(
 	db: PrismaClient,

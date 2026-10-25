@@ -1153,7 +1153,7 @@
 		"src/server/api/routers/export.ts": 1080,
 		"src/server/api/routers/guest.ts": 146,
 		"src/server/api/routers/invite.ts": 25,
-		"src/server/api/routers/people.ts": 35,
+		"src/server/api/routers/people.ts": 34,
 		"src/server/api/routers/recurring.ts": 84,
 		"src/server/api/routers/shared-transaction.ts": 66,
 		"src/server/services/import-queue.service.ts": 516,

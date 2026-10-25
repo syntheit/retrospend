@@ -1,4 +1,3 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
 	assertGuestProjectScope,
@@ -8,17 +7,11 @@ import {
 	protectedProcedure,
 } from "~/server/api/trpc";
 import { db as globalDb } from "~/server/db";
-import { consumeRateLimit } from "~/server/services/api-v1/rate-limit.service";
+import { getImageUrl } from "~/server/storage";
+import { addShadow, assertEmailCheck, renameShadow } from "~/server/services/shadow-profile.service";
 import { frequentSplitPartners } from "~/server/services/people/frequent-partners";
-import {
-	addShadow,
-	EMAIL_CHECKS,
-	emailCheckKey,
-	renameShadow,
-} from "~/server/services/shadow-profile.service";
 import { buildContactVisibility } from "~/server/services/shared-expenses/contact-visibility";
 import { PeopleService } from "~/server/services/shared-expenses/people.service";
-import { getImageUrl } from "~/server/storage";
 import { peopleV2Procedures } from "./people-v2";
 
 const participantRefSchema = z.object({
@@ -71,10 +64,7 @@ export const peopleRouter = createTRPCRouter({
 			const shadows = candidates
 				.map((s) => ({
 					...s,
-					email: contactVisible({
-						participantType: "shadow",
-						participantId: s.id,
-					})
+					email: contactVisible({ participantType: "shadow", participantId: s.id })
 						? s.email
 						: null,
 				}))
@@ -102,7 +92,9 @@ export const peopleRouter = createTRPCRouter({
 				select: { participantId: true },
 				distinct: ["participantId"],
 			});
-			const contactIds = new Set(contactUserIds.map((c) => c.participantId));
+			const contactIds = new Set(
+				contactUserIds.map((c) => c.participantId),
+			);
 
 			// Contacts: fuzzy search by name or email
 			const contactUsers =
@@ -116,13 +108,7 @@ export const peopleRouter = createTRPCRouter({
 									{ username: { contains: query, mode: "insensitive" } },
 								],
 							},
-							select: {
-								id: true,
-								name: true,
-								username: true,
-								image: true,
-								avatarPath: true,
-							},
+							select: { id: true, name: true, username: true, image: true, avatarPath: true },
 							take: 10,
 						})
 					: [];
@@ -132,20 +118,16 @@ export const peopleRouter = createTRPCRouter({
 				where: {
 					id: {
 						not: userId,
-						...(contactIds.size > 0 ? { notIn: [...contactIds] } : {}),
+						...(contactIds.size > 0
+							? { notIn: [...contactIds] }
+							: {}),
 					},
 					OR: [
 						{ username: { equals: query, mode: "insensitive" } },
 						{ email: { equals: query, mode: "insensitive" } },
 					],
 				},
-				select: {
-					id: true,
-					name: true,
-					username: true,
-					image: true,
-					avatarPath: true,
-				},
+				select: { id: true, name: true, username: true, image: true, avatarPath: true },
 				take: 5,
 			});
 
@@ -168,10 +150,7 @@ export const peopleRouter = createTRPCRouter({
 			};
 		}),
 
-	/**
-	 * Create a shadow profile for someone who doesn't have a Retrospend account.
-	 * Returns the new profile's participant ref.
-	 */
+	/** Adds a person by name; an email is metered and reveals an account only if you share with it. */
 	createShadow: protectedProcedure
 		.input(
 			z.object({
@@ -180,21 +159,7 @@ export const peopleRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			if (input.email) {
-				// An email asks whether it has an account: metered like /api/v1/people.
-				const decision = await consumeRateLimit(
-					emailCheckKey(ctx.session.user.id),
-					EMAIL_CHECKS.limit,
-					EMAIL_CHECKS.windowMs,
-				);
-				if (!decision.allowed)
-					throw new TRPCError({
-						code: "TOO_MANY_REQUESTS",
-						message: `Too many email checks. Try again in ${decision.retryAfterSeconds} seconds.`,
-					});
-			}
-			// An email that belongs to an account is answered with it only when you
-			// already share expenses or a project with that person.
+			if (input.email) await assertEmailCheck(ctx.session.user.id);
 			const result = await addShadow(
 				ctx.db,
 				{ id: ctx.session.user.id, name: ctx.session.user.name ?? null },
