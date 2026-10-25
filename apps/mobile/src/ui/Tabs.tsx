@@ -11,17 +11,23 @@ interface TabsProps {
 }
 
 /**
- * Five destinations on every device (N65): Home, Activity, Budget, People,
- * Projects. Add is not a destination. On iOS it is the system's detached
- * trailing tab: react-native-screens 4.29+ backs `role: "search"` with a
- * UISearchTab, which iOS 26 detaches at the end of the bar (iOS 27 does too
- * while automaticallyActivatesSearch is on; no search bar is set, so it never
- * opens a field). expo-router only forwards the role as a UITabBarItem system
- * item, so the native role goes through unstable_nativeProps. The trigger is
- * `disabled`: the native side keeps the selected tab and reports the press,
- * and that press opens the composer. Android has no such slot and keeps its
- * extended FAB (AddEntryProvider). iPad turns the bar into a sidebar. Active
- * nav is brand (GUIDELINE §2.1); the bar itself is a theme surface.
+ * Destinations: Home, Activity, Budget, People and Projects (N65). On iPhone
+ * the fifth slot goes to Add, so Projects is not in the bar there (see below).
+ *
+ * Add on iPhone is the system's detached trailing tab: react-native-screens
+ * 4.29+ backs `role: "search"` with a UISearchTab, which iOS 26 and 27 detach
+ * at the end of the bar (no search bar is set, so it never opens a field).
+ * expo-router only forwards the role as a UITabBarItem system item, so the
+ * native role goes through unstable_nativeProps. The trigger is `disabled`:
+ * the native side keeps the selected tab and reports the press, and that
+ * press opens the composer. The bar holds five items including this tab; a
+ * sixth tab sends the plus and the last destination into More (verified on
+ * iOS 26.5 and 27.0), so iPhone shows four destinations and the plus.
+ *
+ * iPad has a top bar that overflows behind a chevron with six destinations,
+ * which hides the plus there, and Android has no such slot: both keep the
+ * floating button (AddEntryProvider). iPad turns the bar into a sidebar.
+ * Active nav is brand (GUIDELINE §2.1); the bar itself is a theme surface.
  */
 export function Tabs({ onAdd, addLabel }: TabsProps) {
 	const t = useTranslations("mobile.tabs");
@@ -31,6 +37,7 @@ export function Tabs({ onAdd, addLabel }: TabsProps) {
 	const m3 = Platform.OS === "android";
 	// The iPad sidebar shows all six destinations; the phone bar keeps five.
 	const ipad = Platform.OS === "ios" && Platform.isPad;
+	const iphone = Platform.OS === "ios" && !Platform.isPad;
 	const tw = useTranslations("mobile.wealth");
 
 	return (
@@ -74,11 +81,13 @@ export function Tabs({ onAdd, addLabel }: TabsProps) {
 				<NativeTabs.Trigger.Label>{t("people")}</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon md="group" sf="person.2" />
 			</NativeTabs.Trigger>
-			<NativeTabs.Trigger name="projects">
-				<NativeTabs.Trigger.Label>{t("projects")}</NativeTabs.Trigger.Label>
-				<NativeTabs.Trigger.Icon md="folder" sf="folder" />
-			</NativeTabs.Trigger>
-			{Platform.OS === "ios" ? (
+			{iphone ? null : (
+				<NativeTabs.Trigger name="projects">
+					<NativeTabs.Trigger.Label>{t("projects")}</NativeTabs.Trigger.Label>
+					<NativeTabs.Trigger.Icon md="folder" sf="folder" />
+				</NativeTabs.Trigger>
+			)}
+			{iphone ? (
 				<NativeTabs.Trigger
 					accessibilityLabel={addLabel}
 					disabled

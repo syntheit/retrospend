@@ -37,9 +37,10 @@ export function useAddEntry(): AddEntryApi {
 }
 
 /**
- * Where "add" lives (IMPLEMENTATION S5). iOS has the system's detached plus
- * at the end of the tab bar (Tabs.tsx), which calls `open`. Android has no
- * such slot: the extended FAB floats above the M3 navigation bar. Both open
+ * Where "add" lives (IMPLEMENTATION S5). The iPhone has the system's detached
+ * plus at the end of the tab bar (Tabs.tsx), which calls `open`. Android has
+ * no such slot (the extended FAB floats above the M3 navigation bar), and the
+ * iPad's top bar hides it behind an overflow chevron (a glass plus). All open
  * the composer in a sheet with detents (Income is the mode row inside it).
  * It also keeps the outbox flowing, since an entry added offline needs a
  * sender when the network returns.
@@ -63,6 +64,8 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 				height: Math.round(height - insets.top - insets.bottom - SHEET_CHROME),
 			};
 
+	const barHeight = iPad ? 0 : M3_NAVIGATION_BAR;
+
 	const show = useCallback((next: EntryMode = "expense") => {
 		setMode(next);
 		setOpen(next);
@@ -73,13 +76,13 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	return (
 		<AddEntryContext.Provider value={api}>
 			{children}
-			{Platform.OS === "android" ? (
+			{Platform.OS === "android" || iPad ? (
 				<View
 					pointerEvents="box-none"
 					style={{
 						position: "absolute",
 						right: space[4],
-						bottom: insets.bottom + space[4] + M3_NAVIGATION_BAR,
+						bottom: insets.bottom + space[4] + barHeight,
 					}}
 				>
 					<AddButton label={t("addExpense")} onPress={() => show("expense")} />
