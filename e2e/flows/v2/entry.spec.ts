@@ -6,8 +6,8 @@ import { openV2 } from "./viewer";
 
 // Someone else's shared expense opens as a read view (owner Q1, RC11):
 // Lucía added "Cena en La Esquina", so Sofía sees it, her share and its
-// state, and Ask Lucía to fix, which waits for the server's ask state
-// (docs/ui/GAPS.md) and says so. Her own expense opens in the edit sheet.
+// state, and Ask Lucía to fix (the sheets are in corrections.spec.ts). Her
+// own expense opens in the edit sheet.
 
 test.use({ storageState: personaStorageState(SOFIA.username) });
 
@@ -27,12 +27,9 @@ test("Entry: read view of someone else's expense, edit sheet for your own", asyn
 	).toBeVisible();
 	await expect(read).toContainText("ARS 64,000");
 	await expect(read).toContainText("ARS 32,000");
-	const ask = read.getByRole("button", { name: "Ask Lucía to fix" });
-	await expect(ask).toHaveAttribute("aria-disabled", "true");
-	await ask.hover();
 	await expect(
-		page.getByRole("tooltip", { name: "Not available yet" }),
-	).toBeVisible();
+		read.getByRole("button", { name: "Ask Lucía to fix" }),
+	).toBeEnabled();
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	await read.getByRole("button", { name: "Close" }).last().click();
 	await expect(read).toBeHidden();
