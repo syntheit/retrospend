@@ -444,7 +444,7 @@
 		"haveNow": "Wie viel Geld kannst du gerade verplanen?",
 		"amountFor": "Betrag für {name}",
 		"keep": "{name} verwenden",
-		"followsRecurring": "Folgt deiner wiederkehrenden Ausgabe",
+		"followsRecurring": "Folgt deiner wiederkehrenden Ausgabe oder Schuld",
 		"moneyNow": "Geld zum Verplanen",
 		"start": "Mein Budget starten",
 		"toast": "Dein Budget ist bereit",

@@ -14,10 +14,11 @@ type PresetEnvelope = Preset["envelopes"][number];
 type Target = NonNullable<PresetEnvelope["target"]>;
 
 /** The target kinds that carry an amount the person may change. */
-const hasAmount = (
+export const hasAmount = (
 	t: Target | null,
-): t is Exclude<Target, { kind: "BILL_TEMPLATE" }> =>
-	t !== null && t.kind !== "BILL_TEMPLATE";
+): t is Extract<Target, { kind: "MONTHLY" | "BILL" | "SAVINGS" }> =>
+	t !== null &&
+	(t.kind === "MONTHLY" || t.kind === "BILL" || t.kind === "SAVINGS");
 
 /**
  * The setup sheet's state: the style, what you have now, and the style's

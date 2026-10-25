@@ -444,7 +444,7 @@
 		"haveNow": "Quanto dinheiro você pode orçar agora?",
 		"amountFor": "Valor para {name}",
 		"keep": "Usar {name}",
-		"followsRecurring": "Segue sua despesa recorrente",
+		"followsRecurring": "Segue sua despesa recorrente ou dívida",
 		"moneyNow": "Dinheiro para planejar",
 		"start": "Começar meu orçamento",
 		"toast": "Seu orçamento está pronto",

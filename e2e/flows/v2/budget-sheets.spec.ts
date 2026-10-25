@@ -96,6 +96,31 @@ test("the book: set up, with an overspent envelope", async ({ page }) => {
 		date: today(),
 		categoryId: category.id,
 	});
+	// Accounts for the Wealth and debt sheets: one the budget counts, one it
+	// does not, and a card with its terms.
+	await trpcMutation(page, "wealth.createAsset", {
+		name: "E2E Checking",
+		type: "CASH",
+		currency: "USD",
+		balance: 1000,
+		isLiquid: true,
+	});
+	await trpcMutation(page, "wealth.createAsset", {
+		name: "E2E Savings",
+		type: "INVESTMENT",
+		currency: "USD",
+		balance: 200,
+		isLiquid: true,
+	});
+	await trpcMutation(page, "wealth.createAsset", {
+		name: "E2E Visa",
+		type: "LIABILITY_CREDIT_CARD",
+		currency: "USD",
+		balance: 400,
+		interestRate: 24,
+		minimumPayment: 30,
+		dueDate: 12,
+	});
 });
 
 async function openSheet(page: Page, opener: string, title: RegExp | string) {
@@ -205,15 +230,134 @@ test("Use my plan: lists the jobs, then writes one batch and undoes it", async (
 	await expect(sheet.getByText("these jobs")).toBeVisible();
 	await expect(sheet.getByText("Groceries")).toBeVisible();
 	const changes = sheet.getByRole("region", { name: "What this changes" });
-	await expect(changes).toContainText("Groceries");
+	await expect(changes).toContainText("Not planned yet");
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
-	await untilSaved(page, "envelope.assign", () =>
+	await untilSaved(page, "envelope.usePlan", () =>
 		sheet.getByRole("button", { name: "Use my plan", exact: true }).click(),
 	);
 	await expect(sheet).toBeHidden();
 	await untilSaved(page, "envelope.undo", () =>
 		toast(page, "Plan used").getByRole("button", { name: "Undo" }).click(),
 	);
+});
+
+test("Use my plan, Next month: the rest is assigned ahead, one Undo", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const sheet = await openSheet(page, "usePlan", "Use my plan");
+	await sheet.getByRole("button", { name: /^Next month/ }).click();
+	await expect(
+		sheet.getByRole("region", { name: /Assigned ahead to/ }),
+	).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "envelope.usePlan", () =>
+		sheet.getByRole("button", { name: "Use my plan", exact: true }).click(),
+	);
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "envelope.undo", () =>
+		toast(page, "Plan used").getByRole("button", { name: "Undo" }).click(),
+	);
+});
+
+test("Pay down a debt: the card, preview with the balance, save, undo", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const sheet = await openSheet(page, "payDebt", "Pay down a debt");
+	await sheet.getByRole("combobox", { name: "Paid from" }).click();
+	await page.getByRole("option", { name: /E2E Checking/ }).click();
+	await sheet.getByRole("textbox", { name: "Amount" }).first().fill("100");
+	const changes = sheet.getByRole("region", { name: "What this changes" });
+	await expect(changes).toContainText("E2E Visa balance");
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "envelope.recordDebtPayment", () =>
+		sheet.getByRole("button", { name: "Pay", exact: true }).click(),
+	);
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "wealth.transfers.delete.save", () =>
+		toast(page, "Paid").getByRole("button", { name: "Undo" }).click(),
+	);
+});
+
+test("Debt payoff plan: the card, the projection, save, undo", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const sheet = await openSheet(page, "debt", "Debt payoff plan");
+	await expect(sheet.getByText("E2E Visa")).toBeVisible();
+	await sheet.getByRole("textbox", { name: "Amount" }).fill("50");
+	await expect(sheet.getByText("Debt-free by")).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "envelope.savePayoffPlan", () =>
+		sheet.getByRole("button", { name: "Save plan" }).click(),
+	);
+	await untilSaved(page, "envelope.revertPayoffPlan", () =>
+		toast(page, "Payoff plan saved")
+			.getByRole("button", { name: "Undo" })
+			.click(),
+	);
+});
+
+test("Move to Wealth: out of Groceries into the savings account, undo", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await gotoReady(page, "/dev/budget-sheets");
+	await page.getByRole("button", { name: "To Wealth Groceries" }).click();
+	const sheet = page.getByRole("dialog", { name: "Move Groceries to Wealth" });
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole("textbox", { name: "Amount", exact: true }).fill("60");
+	const changes = sheet.getByRole("region", { name: "What this changes" });
+	await expect(changes).toContainText("Groceries");
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "entry.transfer.save", () =>
+		sheet.getByRole("button", { name: "Move", exact: true }).click(),
+	);
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "wealth.transfers.delete.save", () =>
+		toast(page, "Moved").getByRole("button", { name: "Undo" }).click(),
+	);
+});
+
+test("Move from Wealth: count the savings account in, undo", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const sheet = await openSheet(page, "fromWealth", "Move from Wealth");
+	await sheet.getByRole("radio", { name: "No, just count it" }).click();
+	await sheet.getByRole("textbox", { name: "Amount" }).fill("50");
+	const changes = sheet.getByRole("region", { name: "What this changes" });
+	await expect(changes).toContainText("Not planned yet");
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "wealth.income.moveIn.save", () =>
+		sheet.getByRole("button", { name: "Move in" }).click(),
+	);
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "wealth.income.undoMoveIn.save", () =>
+		toast(page, "Counted").getByRole("button", { name: "Undo" }).click(),
+	);
+});
+
+test("Money in, Splits and Apply plan open with what the server has", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const income = await openSheet(page, "income", /^Money in/);
+	await expect(income.getByText("Money in", { exact: true })).toBeVisible();
+	await income.getByRole("button", { name: "Done" }).click();
+	const splits = await openSheet(page, "splits", "Splits waiting for you");
+	await expect(splits).toBeVisible();
+	await splits.getByRole("button", { name: "Done" }).click();
+	const plan = await openSheet(page, "planApply", /^Apply the/);
+	await expect(plan.getByText("no plan to apply")).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 });
 
 test("Rules: add a rule, see it in one sentence, remove it", async ({
@@ -235,7 +379,9 @@ test("Rules: add a rule, see it in one sentence, remove it", async ({
 		sheet.getByText("20% of money in to Emergency fund"),
 	).toBeVisible();
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
-	await sheet.getByRole("button", { name: "More for E2E save first" }).click();
+	await sheet
+		.getByRole("button", { name: "More actions for E2E save first" })
+		.click();
 	await page.getByRole("menuitem", { name: "Remove" }).click();
 	await untilSaved(page, "envelope.archiveRule", () =>
 		page.getByRole("button", { name: "Remove rule" }).click(),

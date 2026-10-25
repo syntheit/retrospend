@@ -444,7 +444,7 @@
 		"haveNow": "Combien d'argent peux-tu budgétiser maintenant ?",
 		"amountFor": "Montant pour {name}",
 		"keep": "Utiliser {name}",
-		"followsRecurring": "Suit ta dépense récurrente",
+		"followsRecurring": "Suit ta dépense récurrente ou ta dette",
 		"moneyNow": "Argent à planifier",
 		"start": "Démarrer mon budget",
 		"toast": "Ton budget est prêt",

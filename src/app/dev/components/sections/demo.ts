@@ -61,6 +61,7 @@ export const ACTION_IDS = {
 	],
 	import: ["review"],
 	setup: ["addExpense", "chooseCurrency", "resendEmail", "import"],
+	incomeRule: ["moveUp", "moveDown", "applyToMonth", "remove"],
 } as const;
 
 /**

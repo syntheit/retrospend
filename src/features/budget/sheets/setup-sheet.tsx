@@ -22,7 +22,7 @@ import { FigureChanges } from "./figure-changes";
 import type { SheetProps } from "./types";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
-import { type SetupStyle, useSetup } from "./use-setup";
+import { hasAmount, type SetupStyle, useSetup } from "./use-setup";
 
 const STYLES: SetupStyle[] = [
 	"FLEX",
@@ -121,7 +121,7 @@ function SetupForm({ open, onClose }: SheetProps) {
 									{envelopes.map((e) => (
 										<Row
 											end={
-												e.target && e.target.kind !== "BILL_TEMPLATE" ? (
+												hasAmount(e.target) ? (
 													<AmountCell
 														currency={p.currency}
 														label={t("amountFor", {
@@ -144,7 +144,7 @@ function SetupForm({ open, onClose }: SheetProps) {
 												/>
 											}
 											sub={
-												e.target?.kind === "BILL_TEMPLATE" ? (
+												e.target && !hasAmount(e.target) ? (
 													<RowSub parts={[t("followsRecurring")]} />
 												) : undefined
 											}

@@ -199,11 +199,19 @@ export function FromWealthSheet({
 							value={envelope}
 						/>
 					</Field>
-					<FigureChanges
-						dry={w.dry}
-						envelopeName={envelopeName}
-						poolName={pool}
-					/>
+					{mode === "moved" ? (
+						<FigureChanges
+							dry={transfer.dry}
+							envelopeName={envelopeName}
+							poolName={pool}
+						/>
+					) : (
+						<FigureChanges
+							dry={count.dry}
+							envelopeName={envelopeName}
+							poolName={pool}
+						/>
+					)}
 				</div>
 			)}
 		</Sheet>
