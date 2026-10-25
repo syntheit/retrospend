@@ -3,6 +3,7 @@ import { accountsRouter } from "./accounts";
 import { adminRouter } from "./admin";
 import { budgetRouter } from "./budget";
 import { categoriesRouter } from "./categories";
+import { correctionsRouter } from "./corrections";
 import { currenciesRouter } from "./currencies";
 import { eventsRouter } from "./events";
 import { expensesRouter } from "./expenses";
@@ -39,6 +40,7 @@ export const v1Router = v1.router({
 	admin: adminRouter,
 	budget: budgetRouter,
 	categories: categoriesRouter,
+	corrections: correctionsRouter,
 	currencies: currenciesRouter,
 	events: eventsRouter,
 	expenses: expensesRouter,

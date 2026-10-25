@@ -56,6 +56,10 @@ export const EVENT_TYPES = [
 	"transfer.deleted",
 	"transfer.undone",
 	// G3 people and projects (S3c)
+	"correction.undone",
+	"fix_request.answered",
+	"fix_request.cancelled",
+	"fix_request.created",
 	"payment.confirmed",
 	"payment.not_received",
 	"payment.recorded",
@@ -68,6 +72,7 @@ export const EVENT_TYPES = [
 	"project.settle_all_undone",
 	"project.settled_all",
 	"shared_expense.accepted",
+	"shared_expense.corrected",
 	"shared_expense.created",
 	"shared_expense.deleted",
 	"shared_expense.rejected",

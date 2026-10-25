@@ -46,8 +46,6 @@ const CLAIM_TOKEN = "a claim token flow, opened from a link";
 const LEGACY_BUDGET =
 	"the per-category budget is replaced by the envelope budget (/budget/*)";
 const G3_PROJECTS = "G3 people and projects: no v1 route yet";
-const G3_CORRECTIONS =
-	"G3 corrections (ask to fix, correct, forgive): no v1 route yet";
 
 /** The envelope budget: one entry per procedure, plus its Preview twin. */
 function envelope(): Record<string, Entry> {
@@ -253,26 +251,32 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"claim.projectGhosts": internal(GUEST),
 
 	// ── corrections ──────────────────────────────────────────────────────
-	"corrections.askToFix.preview": gap(G3_CORRECTIONS),
-	"corrections.askToFix.save": gap(G3_CORRECTIONS),
-	"corrections.cancelFix.preview": gap(G3_CORRECTIONS),
-	"corrections.cancelFix.save": gap(G3_CORRECTIONS),
-	"corrections.correct.preview": gap(G3_CORRECTIONS),
-	"corrections.correct.save": gap(G3_CORRECTIONS),
-	"corrections.fixRequests": gap(G3_CORRECTIONS),
-	"corrections.forgive.preview": gap(G3_CORRECTIONS),
-	"corrections.forgive.save": gap(G3_CORRECTIONS),
-	"corrections.lockStates": gap(G3_CORRECTIONS),
-	"corrections.respondToFix.preview": gap(G3_CORRECTIONS),
-	"corrections.respondToFix.save": gap(G3_CORRECTIONS),
-	"corrections.restoreFix.preview": gap(G3_CORRECTIONS),
-	"corrections.restoreFix.save": gap(G3_CORRECTIONS),
-	"corrections.undoCorrection.preview": gap(G3_CORRECTIONS),
-	"corrections.undoCorrection.save": gap(G3_CORRECTIONS),
-	"corrections.unforgive.preview": gap(G3_CORRECTIONS),
-	"corrections.unforgive.save": gap(G3_CORRECTIONS),
-	"corrections.withdrawFix.preview": gap(G3_CORRECTIONS),
-	"corrections.withdrawFix.save": gap(G3_CORRECTIONS),
+	"corrections.askToFix.preview": to(
+		"POST /shared-expenses/{id}/fix-requests/preview",
+	),
+	"corrections.askToFix.save": to("POST /shared-expenses/{id}/fix-requests"),
+	"corrections.cancelFix.preview": to("POST /fix-requests/{id}/cancel/preview"),
+	"corrections.cancelFix.save": to("POST /fix-requests/{id}/cancel"),
+	"corrections.correct.preview": to(
+		"POST /shared-expenses/{id}/corrections/preview",
+	),
+	"corrections.correct.save": to("POST /shared-expenses/{id}/corrections"),
+	"corrections.fixRequests": to("GET /shared-expenses/{id}/fix-requests"),
+	// Forgive is one mutation that the budget routes already carry.
+	"corrections.forgive.preview": to("POST /budget/forgive/preview"),
+	"corrections.forgive.save": to("POST /budget/forgive"),
+	"corrections.lockStates": to("GET /shared-expenses/lock-states"),
+	"corrections.respondToFix.preview": to("POST /fix-requests/{id}/respond/preview"),
+	"corrections.respondToFix.save": to("POST /fix-requests/{id}/respond"),
+	// The undo twins of the three writes above share one token route.
+	"corrections.restoreFix.preview": to("POST /corrections/undo/preview"),
+	"corrections.restoreFix.save": to("POST /corrections/undo"),
+	"corrections.undoCorrection.preview": to("POST /corrections/undo/preview"),
+	"corrections.undoCorrection.save": to("POST /corrections/undo"),
+	"corrections.unforgive.preview": to("POST /budget/unforgive/preview"),
+	"corrections.unforgive.save": to("POST /budget/unforgive"),
+	"corrections.withdrawFix.preview": to("POST /corrections/undo/preview"),
+	"corrections.withdrawFix.save": to("POST /corrections/undo"),
 
 	// ── old home dashboard ───────────────────────────────────────────────
 	"dashboard.getOverviewData": superseded(

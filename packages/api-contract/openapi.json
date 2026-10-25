@@ -58655,6 +58655,737 @@
 				"x-required-scope": "write:expenses"
 			}
 		},
+		"/corrections/undo": {
+			"post": {
+				"description": "Tokens from the correction, ask, answer and cancel writes. Only the latest correction of a split can be undone, and only while no payment has settled on top of it. A request can be withdrawn only while nobody answered. A token is for its user, works once and expires after 24 hours.",
+				"operationId": "undoCorrectionWrite",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"token": {
+										"description": "Pass to the undo route to revert.",
+										"minLength": 1,
+										"type": "string"
+									}
+								},
+								"required": [
+									"token"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"correctionIds": {
+											"items": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"type": "array"
+										},
+										"kind": {
+											"enum": [
+												"correction.undo",
+												"fixRequest.withdraw",
+												"fixRequest.restore"
+											],
+											"type": "string"
+										},
+										"redo": {
+											"anyOf": [
+												{
+													"description": "Pass to the undo route to revert.",
+													"minLength": 1,
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											],
+											"description": "Always null: none of these can be put back again."
+										},
+										"request": {
+											"properties": {
+												"answeredAt": {
+													"anyOf": [
+														{
+															"format": "date-time",
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"asked": {
+													"properties": {
+														"id": {
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														"type": {
+															"enum": [
+																"user",
+																"guest",
+																"shadow"
+															],
+															"type": "string"
+														}
+													},
+													"required": [
+														"type",
+														"id"
+													],
+													"type": "object"
+												},
+												"createdAt": {
+													"format": "date-time",
+													"type": "string"
+												},
+												"expenseId": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"id": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"message": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"reply": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"requestedBy": {
+													"properties": {
+														"id": {
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														"type": {
+															"enum": [
+																"user",
+																"guest",
+																"shadow"
+															],
+															"type": "string"
+														}
+													},
+													"required": [
+														"type",
+														"id"
+													],
+													"type": "object"
+												},
+												"status": {
+													"enum": [
+														"PENDING",
+														"ACCEPTED",
+														"DECLINED",
+														"FIXED",
+														"CANCELLED"
+													],
+													"type": "string"
+												},
+												"updatedAt": {
+													"format": "date-time",
+													"type": "string"
+												}
+											},
+											"required": [
+												"id",
+												"expenseId",
+												"requestedBy",
+												"asked",
+												"message",
+												"reply",
+												"status",
+												"createdAt",
+												"updatedAt",
+												"answeredAt"
+											],
+											"type": "object"
+										}
+									},
+									"required": [
+										"kind",
+										"redo"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Revert a correction or an Ask to fix write from its undo token",
+				"tags": [
+					"Corrections"
+				],
+				"x-event-type": "correction.undone",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/corrections/undo/preview": {
+			"post": {
+				"description": "Runs POST /corrections/undo in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewUndoCorrectionWrite",
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"token": {
+										"description": "Pass to the undo route to revert.",
+										"minLength": 1,
+										"type": "string"
+									}
+								},
+								"required": [
+									"token"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Preview POST /corrections/undo",
+				"tags": [
+					"Corrections"
+				],
+				"x-required-scope": "write:expenses"
+			}
+		},
 		"/currencies": {
 			"get": {
 				"operationId": "listCurrencies",
@@ -65996,6 +66727,1474 @@
 					"Figures"
 				],
 				"x-required-scope": "read"
+			}
+		},
+		"/fix-requests/{id}/cancel": {
+			"post": {
+				"description": "Only the person who asked, and only while it is open.",
+				"operationId": "cancelFixRequest",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"previousStatus": {
+											"anyOf": [
+												{
+													"enum": [
+														"PENDING",
+														"ACCEPTED",
+														"DECLINED",
+														"FIXED",
+														"CANCELLED"
+													],
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"request": {
+											"properties": {
+												"answeredAt": {
+													"anyOf": [
+														{
+															"format": "date-time",
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"asked": {
+													"properties": {
+														"id": {
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														"type": {
+															"enum": [
+																"user",
+																"guest",
+																"shadow"
+															],
+															"type": "string"
+														}
+													},
+													"required": [
+														"type",
+														"id"
+													],
+													"type": "object"
+												},
+												"createdAt": {
+													"format": "date-time",
+													"type": "string"
+												},
+												"expenseId": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"id": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"message": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"reply": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"requestedBy": {
+													"properties": {
+														"id": {
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														"type": {
+															"enum": [
+																"user",
+																"guest",
+																"shadow"
+															],
+															"type": "string"
+														}
+													},
+													"required": [
+														"type",
+														"id"
+													],
+													"type": "object"
+												},
+												"status": {
+													"enum": [
+														"PENDING",
+														"ACCEPTED",
+														"DECLINED",
+														"FIXED",
+														"CANCELLED"
+													],
+													"type": "string"
+												},
+												"updatedAt": {
+													"format": "date-time",
+													"type": "string"
+												}
+											},
+											"required": [
+												"id",
+												"expenseId",
+												"requestedBy",
+												"asked",
+												"message",
+												"reply",
+												"status",
+												"createdAt",
+												"updatedAt",
+												"answeredAt"
+											],
+											"type": "object"
+										},
+										"undo": {
+											"description": "Valid for 24 hours, once. Send it to POST /corrections/undo.",
+											"minLength": 1,
+											"type": "string"
+										}
+									},
+									"required": [
+										"request",
+										"previousStatus",
+										"undo"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Cancel a request you made",
+				"tags": [
+					"Corrections"
+				],
+				"x-event-type": "fix_request.cancelled",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/fix-requests/{id}/cancel/preview": {
+			"post": {
+				"description": "Runs POST /fix-requests/{id}/cancel in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewCancelFixRequest",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Preview POST /fix-requests/{id}/cancel",
+				"tags": [
+					"Corrections"
+				],
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/fix-requests/{id}/respond": {
+			"post": {
+				"description": "Only the person asked, and only while it waits. Accepting does not edit the expense: edit or correct it and the request is marked fixed.",
+				"operationId": "respondToFix",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"reply": {
+										"maxLength": 1000,
+										"minLength": 1,
+										"type": "string"
+									},
+									"response": {
+										"enum": [
+											"accept",
+											"decline"
+										],
+										"type": "string"
+									}
+								},
+								"required": [
+									"response"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"previousStatus": {
+											"anyOf": [
+												{
+													"enum": [
+														"PENDING",
+														"ACCEPTED",
+														"DECLINED",
+														"FIXED",
+														"CANCELLED"
+													],
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"request": {
+											"properties": {
+												"answeredAt": {
+													"anyOf": [
+														{
+															"format": "date-time",
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"asked": {
+													"properties": {
+														"id": {
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														"type": {
+															"enum": [
+																"user",
+																"guest",
+																"shadow"
+															],
+															"type": "string"
+														}
+													},
+													"required": [
+														"type",
+														"id"
+													],
+													"type": "object"
+												},
+												"createdAt": {
+													"format": "date-time",
+													"type": "string"
+												},
+												"expenseId": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"id": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"message": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"reply": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"requestedBy": {
+													"properties": {
+														"id": {
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														"type": {
+															"enum": [
+																"user",
+																"guest",
+																"shadow"
+															],
+															"type": "string"
+														}
+													},
+													"required": [
+														"type",
+														"id"
+													],
+													"type": "object"
+												},
+												"status": {
+													"enum": [
+														"PENDING",
+														"ACCEPTED",
+														"DECLINED",
+														"FIXED",
+														"CANCELLED"
+													],
+													"type": "string"
+												},
+												"updatedAt": {
+													"format": "date-time",
+													"type": "string"
+												}
+											},
+											"required": [
+												"id",
+												"expenseId",
+												"requestedBy",
+												"asked",
+												"message",
+												"reply",
+												"status",
+												"createdAt",
+												"updatedAt",
+												"answeredAt"
+											],
+											"type": "object"
+										},
+										"undo": {
+											"description": "Valid for 24 hours, once. Send it to POST /corrections/undo.",
+											"minLength": 1,
+											"type": "string"
+										}
+									},
+									"required": [
+										"request",
+										"previousStatus",
+										"undo"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Accept or decline a request to fix your expense",
+				"tags": [
+					"Corrections"
+				],
+				"x-event-type": "fix_request.answered",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/fix-requests/{id}/respond/preview": {
+			"post": {
+				"description": "Runs POST /fix-requests/{id}/respond in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewRespondToFix",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"reply": {
+										"maxLength": 1000,
+										"minLength": 1,
+										"type": "string"
+									},
+									"response": {
+										"enum": [
+											"accept",
+											"decline"
+										],
+										"type": "string"
+									}
+								},
+								"required": [
+									"response"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Preview POST /fix-requests/{id}/respond",
+				"tags": [
+					"Corrections"
+				],
+				"x-required-scope": "write:expenses"
 			}
 		},
 		"/imports/jobs": {
@@ -91592,6 +93791,181 @@
 				"x-required-scope": "write:expenses"
 			}
 		},
+		"/shared-expenses/lock-states": {
+			"get": {
+				"description": "Ids that are not yours to see are left out.",
+				"operationId": "getLockStates",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "ids",
+						"required": true,
+						"schema": {
+							"description": "Comma-separated expense ids, at most 200.",
+							"examples": [
+								"abc,def"
+							],
+							"maxLength": 8000,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"canAskToFix": {
+														"type": "boolean"
+													},
+													"canCorrect": {
+														"type": "boolean"
+													},
+													"corrections": {
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
+													},
+													"correctsId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"expenseId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"locked": {
+														"type": "boolean"
+													},
+													"reason": {
+														"anyOf": [
+															{
+																"enum": [
+																	"SETTLED",
+																	"PERIOD"
+																],
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"expenseId",
+													"locked",
+													"reason",
+													"canCorrect",
+													"canAskToFix",
+													"correctsId",
+													"corrections"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "Which split expenses are locked and who may correct or ask",
+				"tags": [
+					"Corrections"
+				],
+				"x-required-scope": "read"
+			}
+		},
 		"/shared-expenses/preview": {
 			"post": {
 				"description": "Runs POST /shared-expenses in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
@@ -93386,6 +95760,917 @@
 				"x-required-scope": "write:expenses"
 			}
 		},
+		"/shared-expenses/{id}/corrections": {
+			"post": {
+				"description": "Say what the split should be now. The difference is written as correction rows dated today and the original stays as it was. Only the person who added the expense can; open Ask to fix requests are answered by it. The people on it are told.",
+				"operationId": "correctSharedExpense",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"amount": {
+										"description": "What the split should be now, in the expense's currency.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
+									},
+									"categoryId": {
+										"anyOf": [
+											{
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"correctionId": {
+										"description": "A client-made id for the correction. Sending the same id twice writes nothing twice.",
+										"format": "uuid",
+										"type": "string"
+									},
+									"description": {
+										"description": "The correction's own title, for example \"Correction to ...\".",
+										"maxLength": 500,
+										"minLength": 1,
+										"type": "string"
+									},
+									"paidBy": {
+										"properties": {
+											"id": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"type": {
+												"enum": [
+													"user",
+													"guest",
+													"shadow"
+												],
+												"type": "string"
+											}
+										},
+										"required": [
+											"type",
+											"id"
+										],
+										"type": "object"
+									},
+									"splitMode": {
+										"enum": [
+											"EQUAL",
+											"EXACT",
+											"PERCENTAGE",
+											"SHARES"
+										],
+										"type": "string"
+									},
+									"splitWith": {
+										"items": {
+											"properties": {
+												"id": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"shareAmount": {
+													"description": "EXACT: what this person owes, in the expense's currency.",
+													"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+													"type": "string"
+												},
+												"sharePercentage": {
+													"description": "PERCENTAGE: their percent of the amount.",
+													"pattern": "^\\d{1,3}(\\.\\d{1,4})?$",
+													"type": "string"
+												},
+												"shareUnits": {
+													"description": "SHARES: their number of shares.",
+													"exclusiveMinimum": 0,
+													"maximum": 9007199254740991,
+													"minimum": -9007199254740991,
+													"type": "integer"
+												},
+												"type": {
+													"enum": [
+														"user",
+														"guest",
+														"shadow"
+													],
+													"type": "string"
+												}
+											},
+											"required": [
+												"type",
+												"id"
+											],
+											"type": "object"
+										},
+										"maxItems": 100,
+										"minItems": 1,
+										"type": "array"
+									}
+								},
+								"required": [
+									"description",
+									"amount",
+									"paidBy",
+									"categoryId",
+									"splitMode",
+									"splitWith"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"correctionIds": {
+											"items": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"type": "array"
+										},
+										"currency": {
+											"type": "string"
+										},
+										"differences": {
+											"items": {
+												"properties": {
+													"paid": {
+														"$ref": "#/components/schemas/Money"
+													},
+													"person": {
+														"properties": {
+															"id": {
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															"type": {
+																"enum": [
+																	"user",
+																	"guest",
+																	"shadow"
+																],
+																"type": "string"
+															}
+														},
+														"required": [
+															"type",
+															"id"
+														],
+														"type": "object"
+													},
+													"share": {
+														"$ref": "#/components/schemas/Money"
+													}
+												},
+												"required": [
+													"person",
+													"paid",
+													"share"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"resolvedRequests": {
+											"items": {
+												"properties": {
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"previousStatus": {
+														"enum": [
+															"PENDING",
+															"ACCEPTED",
+															"DECLINED",
+															"FIXED",
+															"CANCELLED"
+														],
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"previousStatus"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"undo": {
+											"anyOf": [
+												{
+													"description": "Pass to the undo route to revert.",
+													"minLength": 1,
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											],
+											"description": "Valid for 24 hours, once. Send it to POST /corrections/undo. Null when nothing changed."
+										}
+									},
+									"required": [
+										"correctionIds",
+										"currency",
+										"differences",
+										"resolvedRequests",
+										"undo"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Correct a settled split expense",
+				"tags": [
+					"Corrections"
+				],
+				"x-event-type": "shared_expense.corrected",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/shared-expenses/{id}/corrections/preview": {
+			"post": {
+				"description": "Runs POST /shared-expenses/{id}/corrections in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewCorrectSharedExpense",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"amount": {
+										"description": "What the split should be now, in the expense's currency.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
+									},
+									"categoryId": {
+										"anyOf": [
+											{
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"correctionId": {
+										"description": "A client-made id for the correction. Sending the same id twice writes nothing twice.",
+										"format": "uuid",
+										"type": "string"
+									},
+									"description": {
+										"description": "The correction's own title, for example \"Correction to ...\".",
+										"maxLength": 500,
+										"minLength": 1,
+										"type": "string"
+									},
+									"paidBy": {
+										"properties": {
+											"id": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"type": {
+												"enum": [
+													"user",
+													"guest",
+													"shadow"
+												],
+												"type": "string"
+											}
+										},
+										"required": [
+											"type",
+											"id"
+										],
+										"type": "object"
+									},
+									"splitMode": {
+										"enum": [
+											"EQUAL",
+											"EXACT",
+											"PERCENTAGE",
+											"SHARES"
+										],
+										"type": "string"
+									},
+									"splitWith": {
+										"items": {
+											"properties": {
+												"id": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"shareAmount": {
+													"description": "EXACT: what this person owes, in the expense's currency.",
+													"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+													"type": "string"
+												},
+												"sharePercentage": {
+													"description": "PERCENTAGE: their percent of the amount.",
+													"pattern": "^\\d{1,3}(\\.\\d{1,4})?$",
+													"type": "string"
+												},
+												"shareUnits": {
+													"description": "SHARES: their number of shares.",
+													"exclusiveMinimum": 0,
+													"maximum": 9007199254740991,
+													"minimum": -9007199254740991,
+													"type": "integer"
+												},
+												"type": {
+													"enum": [
+														"user",
+														"guest",
+														"shadow"
+													],
+													"type": "string"
+												}
+											},
+											"required": [
+												"type",
+												"id"
+											],
+											"type": "object"
+										},
+										"maxItems": 100,
+										"minItems": 1,
+										"type": "array"
+									}
+								},
+								"required": [
+									"description",
+									"amount",
+									"paidBy",
+									"categoryId",
+									"splitMode",
+									"splitWith"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Preview POST /shared-expenses/{id}/corrections",
+				"tags": [
+					"Corrections"
+				],
+				"x-required-scope": "write:expenses"
+			}
+		},
 		"/shared-expenses/{id}/delete/preview": {
 			"post": {
 				"description": "Runs DELETE /shared-expenses/{id} in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
@@ -93852,6 +97137,985 @@
 				"summary": "Preview DELETE /shared-expenses/{id}",
 				"tags": [
 					"Shared expenses"
+				],
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/shared-expenses/{id}/fix-requests": {
+			"get": {
+				"description": "Only the person who asked and the person asked see them.",
+				"operationId": "listFixRequests",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"answeredAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"asked": {
+														"properties": {
+															"id": {
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															"type": {
+																"enum": [
+																	"user",
+																	"guest",
+																	"shadow"
+																],
+																"type": "string"
+															}
+														},
+														"required": [
+															"type",
+															"id"
+														],
+														"type": "object"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"expenseId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"message": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"reply": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"requestedBy": {
+														"properties": {
+															"id": {
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															"type": {
+																"enum": [
+																	"user",
+																	"guest",
+																	"shadow"
+																],
+																"type": "string"
+															}
+														},
+														"required": [
+															"type",
+															"id"
+														],
+														"type": "object"
+													},
+													"status": {
+														"enum": [
+															"PENDING",
+															"ACCEPTED",
+															"DECLINED",
+															"FIXED",
+															"CANCELLED"
+														],
+														"type": "string"
+													},
+													"updatedAt": {
+														"format": "date-time",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"expenseId",
+													"requestedBy",
+													"asked",
+													"message",
+													"reply",
+													"status",
+													"createdAt",
+													"updatedAt",
+													"answeredAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "The Ask to fix requests on a split expense",
+				"tags": [
+					"Corrections"
+				],
+				"x-required-scope": "read"
+			},
+			"post": {
+				"description": "For anyone on the split but its creator, who is on Retrospend. One open request per person.",
+				"operationId": "askToFix",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"message": {
+										"maxLength": 1000,
+										"minLength": 1,
+										"type": "string"
+									},
+									"requestId": {
+										"description": "A client-made id for the request. Sending the same id twice returns the same request.",
+										"format": "uuid",
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": false
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"previousStatus": {
+											"anyOf": [
+												{
+													"enum": [
+														"PENDING",
+														"ACCEPTED",
+														"DECLINED",
+														"FIXED",
+														"CANCELLED"
+													],
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"request": {
+											"properties": {
+												"answeredAt": {
+													"anyOf": [
+														{
+															"format": "date-time",
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"asked": {
+													"properties": {
+														"id": {
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														"type": {
+															"enum": [
+																"user",
+																"guest",
+																"shadow"
+															],
+															"type": "string"
+														}
+													},
+													"required": [
+														"type",
+														"id"
+													],
+													"type": "object"
+												},
+												"createdAt": {
+													"format": "date-time",
+													"type": "string"
+												},
+												"expenseId": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"id": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"message": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"reply": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"requestedBy": {
+													"properties": {
+														"id": {
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														"type": {
+															"enum": [
+																"user",
+																"guest",
+																"shadow"
+															],
+															"type": "string"
+														}
+													},
+													"required": [
+														"type",
+														"id"
+													],
+													"type": "object"
+												},
+												"status": {
+													"enum": [
+														"PENDING",
+														"ACCEPTED",
+														"DECLINED",
+														"FIXED",
+														"CANCELLED"
+													],
+													"type": "string"
+												},
+												"updatedAt": {
+													"format": "date-time",
+													"type": "string"
+												}
+											},
+											"required": [
+												"id",
+												"expenseId",
+												"requestedBy",
+												"asked",
+												"message",
+												"reply",
+												"status",
+												"createdAt",
+												"updatedAt",
+												"answeredAt"
+											],
+											"type": "object"
+										},
+										"undo": {
+											"description": "Valid for 24 hours, once. Send it to POST /corrections/undo.",
+											"minLength": 1,
+											"type": "string"
+										}
+									},
+									"required": [
+										"request",
+										"previousStatus",
+										"undo"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Ask the person who added an expense to fix it",
+				"tags": [
+					"Corrections"
+				],
+				"x-event-type": "fix_request.created",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/shared-expenses/{id}/fix-requests/preview": {
+			"post": {
+				"description": "Runs POST /shared-expenses/{id}/fix-requests in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewAskToFix",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"message": {
+										"maxLength": 1000,
+										"minLength": 1,
+										"type": "string"
+									},
+									"requestId": {
+										"description": "A client-made id for the request. Sending the same id twice returns the same request.",
+										"format": "uuid",
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": false
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Preview POST /shared-expenses/{id}/fix-requests",
+				"tags": [
+					"Corrections"
 				],
 				"x-required-scope": "write:expenses"
 			}
