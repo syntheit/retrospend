@@ -138,11 +138,7 @@ export function Ledger({
 								i.kind === "expense" ? (
 									<ExpenseRow
 										key={i.row.id}
-										onOpen={
-											i.row.canEdit
-												? () => openSharedExpense(i.row.id)
-												: undefined
-										}
+										onOpen={() => openSharedExpense(i.row.id)}
 										row={i.row}
 									/>
 								) : (

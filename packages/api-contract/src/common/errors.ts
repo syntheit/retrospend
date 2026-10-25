@@ -16,6 +16,7 @@ export const PROBLEM_STATUS = {
 	api_disabled: 403,
 	not_found: 404,
 	conflict: 409,
+	payload_too_large: 413,
 	idempotency_in_progress: 409,
 	idempotency_replay_unavailable: 409,
 	idempotency_key_reused: 422,

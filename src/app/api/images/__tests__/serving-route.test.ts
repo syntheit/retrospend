@@ -44,19 +44,19 @@ describe("valid paths", () => {
 	});
 
 	it("returns correct content-type for .jpeg", async () => {
-		const res = await GET(makeRequest(), makeParams(["receipts", "r-1.jpeg"]));
+		const res = await GET(makeRequest(), makeParams(["projects", "r-1.jpeg"]));
 		expect(res.status).toBe(200);
 		expect(res.headers.get("Content-Type")).toBe("image/jpeg");
 	});
 
 	it("returns correct content-type for .jpg", async () => {
-		const res = await GET(makeRequest(), makeParams(["receipts", "r-1.jpg"]));
+		const res = await GET(makeRequest(), makeParams(["projects", "r-1.jpg"]));
 		expect(res.status).toBe(200);
 		expect(res.headers.get("Content-Type")).toBe("image/jpeg");
 	});
 
 	it("returns correct content-type for .png", async () => {
-		const res = await GET(makeRequest(), makeParams(["receipts", "r-1.png"]));
+		const res = await GET(makeRequest(), makeParams(["projects", "r-1.png"]));
 		expect(res.status).toBe(200);
 		expect(res.headers.get("Content-Type")).toBe("image/png");
 	});
@@ -73,6 +73,25 @@ describe("valid paths", () => {
 		const res = await GET(makeRequest(), makeParams(["avatars", "missing.webp"]));
 		expect(res.status).toBe(404);
 	});
+});
+
+// ─── Only picture folders are public ───────────────────────────────────────
+
+describe("folders outside the allowlist → 404", () => {
+	const cases: string[][] = [
+		["exports", "user-1", "abcdef", "job-1"],
+		["exports", "x.webp"],
+		["receipts", "r-1.jpg"],
+		["uploads", "avatars", "u.webp"],
+		["avatars.evil", "u.webp"],
+	];
+	for (const segments of cases) {
+		it(`rejects ${segments.join("/")} without touching storage`, async () => {
+			const res = await GET(makeRequest(), makeParams(segments));
+			expect(res.status).toBe(404);
+			expect(vi.mocked(getFileStream)).not.toHaveBeenCalled();
+		});
+	}
 });
 
 // ─── Path traversal - SECURITY CRITICAL ───────────────────────────────────

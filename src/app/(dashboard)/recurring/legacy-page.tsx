@@ -1,0 +1,286 @@
+"use client";
+
+import { Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { PageContent } from "~/components/page-content";
+import { useRecurringModal } from "~/components/recurring-modal-provider";
+import { SiteHeader } from "~/components/site-header";
+import { Button } from "~/components/ui/button";
+import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "~/components/ui/select";
+import { ExpandableSearch } from "~/components/table-search";
+import { useCurrency } from "~/hooks/use-currency";
+import { api } from "~/trpc/react";
+import { RecurringCalendar } from "./_components/recurring-calendar";
+import { RecurringHistoryDrawer } from "./_components/recurring-history-drawer";
+import { RecurringList } from "./_components/recurring-list";
+import { PendingPayments } from "./_components/pending-payments";
+import { RecurringProjections } from "./_components/recurring-projections";
+import { RecurringStatsCards } from "./_components/recurring-stats-cards";
+
+type SortKey = "nextPayment" | "amountDesc" | "amountAsc" | "nameAz";
+
+export default function RecurringPage() {
+	const t = useTranslations("recurring");
+	const { openNewRecurring, openRecurring } = useRecurringModal();
+	const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+	const [historyTemplateId, setHistoryTemplateId] = useState<string | null>(
+		null,
+	);
+	const [searchQuery, setSearchQuery] = useState("");
+	const [sortBy, setSortBy] = useState<SortKey>("nextPayment");
+
+	const { homeCurrency } = useCurrency();
+	const utils = api.useUtils();
+
+	// Server time for timezone-safe date comparisons
+	const { data: serverTimeData } = api.system.getServerTime.useQuery(
+		undefined,
+		{ staleTime: 30_000 },
+	);
+	const serverTime = serverTimeData?.serverTime
+		? new Date(serverTimeData.serverTime)
+		: undefined;
+
+	const { data: templates, isLoading } = api.recurring.list.useQuery();
+
+	// Derive pending templates client-side from list data + server time
+	const pendingTemplates = useMemo(() => {
+		if (!templates || !serverTime) return [];
+		return templates.filter(
+			(t) => t.isActive && !t.autoPay && new Date(t.nextDueDate) <= serverTime,
+		);
+	}, [templates, serverTime]);
+
+	const confirmAndCreate = api.recurring.confirmAndCreate.useMutation({
+		onSuccess: () => {
+			void utils.recurring.list.invalidate();
+			toast.success(t("paymentConfirmed"));
+		},
+		onError: () => {
+			toast.error(t("paymentConfirmFailed"));
+		},
+	});
+
+	const deleteTemplate = api.recurring.delete.useMutation({
+		onSuccess: () => {
+			void utils.recurring.list.invalidate();
+			setDeleteTarget(null);
+			toast.success(t("deleted"));
+		},
+		onError: () => {
+			toast.error(t("deleteFailed"));
+		},
+	});
+
+	// Pause/Resume toggle
+	const togglePause = api.recurring.update.useMutation({
+		onSuccess: (_data, variables) => {
+			void utils.recurring.list.invalidate();
+			toast.success(
+				variables.isActive ? t("resumed") : t("paused"),
+			);
+		},
+		onError: () => {
+			toast.error(t("updateFailed"));
+		},
+	});
+
+	const handleDelete = (id: string) => {
+		setDeleteTarget(id);
+	};
+
+	const handleEdit = (template: { id: string }) => {
+		openRecurring(template.id);
+	};
+
+	const handleTogglePause = (id: string, isActive: boolean) => {
+		togglePause.mutate({ id, isActive });
+	};
+
+	// Search + Sort
+	const filteredTemplates = useMemo(() => {
+		if (!templates) return undefined;
+
+		let filtered = templates;
+
+		if (searchQuery.trim()) {
+			const q = searchQuery.toLowerCase();
+			filtered = filtered.filter(
+				(t) =>
+					t.name.toLowerCase().includes(q) ||
+					t.category?.name.toLowerCase().includes(q) ||
+					t.paymentSource?.toLowerCase().includes(q),
+			);
+		}
+
+		const sorted = [...filtered];
+		switch (sortBy) {
+			case "nextPayment":
+				sorted.sort(
+					(a, b) => a.nextDueDate.getTime() - b.nextDueDate.getTime(),
+				);
+				break;
+			case "amountDesc":
+				sorted.sort(
+					(a, b) =>
+						(b.amountInHomeCurrency ?? 0) - (a.amountInHomeCurrency ?? 0),
+				);
+				break;
+			case "amountAsc":
+				sorted.sort(
+					(a, b) =>
+						(a.amountInHomeCurrency ?? 0) - (b.amountInHomeCurrency ?? 0),
+				);
+				break;
+			case "nameAz":
+				sorted.sort((a, b) => a.name.localeCompare(b.name));
+				break;
+		}
+
+		return sorted;
+	}, [templates, searchQuery, sortBy]);
+
+	const hasTemplates = templates && templates.length > 0;
+
+	return (
+		<>
+			<SiteHeader
+				actions={
+					<Button className="h-8" onClick={openNewRecurring} size="sm">
+						<Plus className="mr-2 h-4 w-4" />
+						{t("addRecurring")}
+					</Button>
+				}
+				title={t("title")}
+			/>
+			<PageContent>
+				<div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+					{/* Main column */}
+					<div className="min-w-0 space-y-6 lg:col-span-9">
+						<RecurringStatsCards
+							homeCurrency={homeCurrency}
+							loading={isLoading}
+							serverTime={serverTime}
+							templates={templates}
+						/>
+
+						{/* Pending Payments */}
+						{pendingTemplates && pendingTemplates.length > 0 && (
+							<PendingPayments
+								onConfirm={(id) => {
+									const due = pendingTemplates.find((p) => p.id === id)?.nextDueDate;
+									confirmAndCreate.mutate({
+										id,
+										dueDate: due ? new Date(due) : undefined,
+									});
+								}}
+								pendingTemplates={pendingTemplates}
+								confirmingId={
+									confirmAndCreate.isPending
+										? (confirmAndCreate.variables?.id ?? null)
+										: null
+								}
+							/>
+						)}
+
+						<div className="space-y-4">
+							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+								<div>
+									<h2 className="font-semibold text-lg">
+										{t("yourSubscriptions")}
+									</h2>
+									<p className="text-muted-foreground text-sm">
+										{t("subscriptionsDescription")}
+									</p>
+								</div>
+								{hasTemplates && (
+									<div className="flex items-center gap-2">
+										<ExpandableSearch
+											onChange={setSearchQuery}
+											placeholder={t("searchPlaceholder")}
+											value={searchQuery}
+											slashFocus
+										/>
+										<Select
+											onValueChange={(v) => setSortBy(v as SortKey)}
+											value={sortBy}
+										>
+											<SelectTrigger className="w-[160px] shrink-0">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="nextPayment">
+													{t("sortNextPayment")}
+												</SelectItem>
+												<SelectItem value="amountDesc">
+													{t("sortAmountHighLow")}
+												</SelectItem>
+												<SelectItem value="amountAsc">
+													{t("sortAmountLowHigh")}
+												</SelectItem>
+												<SelectItem value="nameAz">{t("sortNameAz")}</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+								)}
+							</div>
+
+							<RecurringList
+								loading={isLoading}
+								onCreate={openNewRecurring}
+								onDelete={handleDelete}
+								onEdit={handleEdit}
+								onResetSearch={() => setSearchQuery("")}
+								onTogglePause={handleTogglePause}
+								onViewHistory={setHistoryTemplateId}
+								searchActive={searchQuery.trim().length > 0}
+								templates={filteredTemplates}
+							/>
+						</div>
+					</div>
+
+					{/* Sidebar — hidden below lg, hidden when no templates */}
+					{(isLoading || hasTemplates) && (
+						<aside className="sticky top-6 hidden space-y-6 lg:col-span-3 lg:block">
+							<RecurringCalendar
+								loading={isLoading}
+								serverTime={serverTime}
+								templates={templates}
+							/>
+							<RecurringProjections
+								homeCurrency={homeCurrency}
+								loading={isLoading}
+								templates={templates}
+							/>
+						</aside>
+					)}
+				</div>
+			</PageContent>
+
+			<RecurringHistoryDrawer
+				onClose={() => setHistoryTemplateId(null)}
+				templateId={historyTemplateId}
+			/>
+
+			<ConfirmationDialog
+				confirmLabel={t("deleteConfirm")}
+				description={t("deleteDescription")}
+				isLoading={deleteTemplate.isPending}
+				onConfirm={() => deleteTarget && deleteTemplate.mutate({ id: deleteTarget })}
+				onOpenChange={(open) => !open && setDeleteTarget(null)}
+				open={deleteTarget !== null}
+				title={t("deleteTitle")}
+				variant="destructive"
+			/>
+		</>
+	);
+}

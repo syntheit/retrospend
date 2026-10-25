@@ -461,6 +461,15 @@ export class CsvNumber {
 }
 
 /**
+ * The lines above a table. A project or person name sits inside them, so
+ * each line gets the same guard as a cell: a name with a line break cannot
+ * start a row of its own, and a formula prefix is neutralized.
+ */
+export function csvMeta(lines: string[]): string {
+	return `${lines.map((line) => escapeValue(line)).join("\n")}\n`;
+}
+
+/**
  * Generates a complete CSV string from headers and raw data.
  */
 export function generateCsv(headers: string[], rows: unknown[][]): string {

@@ -138,6 +138,8 @@ export function useNeedsActions(list: NeedsYouList | undefined) {
 				case "split.review":
 					return setReview(list ? toVerify(item, list.people) : null);
 				case "split.rejected":
+				// The read view holds the request: Respond, then Correct or Edit.
+				case "split.fixRequested":
 					return item.entity && modal.openSharedExpense(item.entity.id);
 				case "recurring.due":
 				case "recurring.overdue":

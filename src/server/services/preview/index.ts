@@ -43,6 +43,8 @@
 import { db } from "~/server/db";
 import { type UserTransactionOptions, userTransaction } from "~/server/db-tx";
 import { type FigureDb, figures } from "~/server/figures/registry";
+import { notifyEventsCommitted } from "~/server/services/events/notify";
+import { recordMutationEvent } from "~/server/services/events/scope";
 import { Prisma } from "~prisma";
 import { createPreviewRunner, type PreviewRunner } from "./runner";
 import type { TransactionPurpose, TransactionRunner } from "./types";
@@ -70,6 +72,9 @@ export function forUser(userId: string): PreviewRunner<FigureDb> {
 		figures,
 		actor: { userId },
 		transaction: userTransactionRunner(userId),
+		// Every applied mutation appends its event in its own transaction (the outbox).
+		onApplied: recordMutationEvent,
+		afterCommit: notifyEventsCommitted,
 	});
 }
 

@@ -135,6 +135,7 @@
 			"notTracked": "Nicht erfasst",
 			"budget_notPlannedYet": "Noch nicht verplant",
 			"budget_leftToSpend": "Noch verfügbar",
+			"budget_heldForOthers": "Für andere gehalten",
 			"project_total": "Projektsumme",
 			"envelope_left": "Umschlag"
 		},
@@ -148,6 +149,7 @@
 			"notTracked": "nicht erfasst",
 			"budget_notPlannedYet": "Noch nicht verplant",
 			"budget_leftToSpend": "was noch verfügbar ist",
+			"budget_heldForOthers": "was für andere gehalten wird",
 			"project_total": "die Projektsumme",
 			"envelope_left": "der Umschlag"
 		}

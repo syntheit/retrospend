@@ -1,0 +1,58 @@
+{
+	"ask": {
+		"title": "Ask {name} to fix it",
+		"what": "What is wrong?",
+		"placeholder": "Say what looks off",
+		"hintOpen": "Nothing changes until {name} fixes it.",
+		"hintLocked": "Only the difference reopens your balance with {name}.",
+		"empty": "Nothing to check yet.",
+		"send": "Send to {name}",
+		"sent": "Asked {name} to fix {title}"
+	},
+	"respond": {
+		"title": "{name} asked you to fix this",
+		"noMessage": "No message.",
+		"reply": "Reply (optional)",
+		"replyPlaceholder": "Say what you will do",
+		"hint": "Accepting opens the fix. Declining tells {name} and leaves the expense as it is.",
+		"back": "Back",
+		"accept": "Accept",
+		"decline": "Decline",
+		"declined": "Declined {name}'s request",
+		"failed": "Couldn't send your answer",
+		"empty": "Nothing to check yet."
+	},
+	"correct": {
+		"sheetTitle": "Correct {title}",
+		"loadingTitle": "Correct expense",
+		"settled": "Settled, so a correction records only the difference.",
+		"correctionTitle": "Correction to {title}",
+		"record": "Record correction",
+		"saved": "Correction recorded on {title}",
+		"share": "{name}'s share",
+		"paid": "{name} paid",
+		"shareYou": "Your share",
+		"paidYou": "You paid",
+		"someone": "Someone",
+		"nothing": "Change the amount, who paid or the split.",
+		"empty": "Fill in the amount and the split to see what changes.",
+		"failed": "Couldn't load this expense",
+		"loading": "Loading"
+	},
+	"read": {
+		"askedPending": "{name} asked you to fix this.",
+		"askedAcceptedCorrect": "You said you would fix this. Correct it to answer {name}.",
+		"askedAcceptedEdit": "You said you would fix this. Edit it to answer {name}.",
+		"sent": {
+			"PENDING": "You asked {name} to fix this on {date}.",
+			"ACCEPTED": "{name} said they will fix this.",
+			"DECLINED": "{name} declined to fix this.",
+			"FIXED": "{name} fixed this."
+		},
+		"respond": "Respond",
+		"edit": "Edit",
+		"cancel": "Cancel request",
+		"canceled": "Canceled your request to {name}",
+		"failed": "Couldn't cancel the request"
+	}
+}

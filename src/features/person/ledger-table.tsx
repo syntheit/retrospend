@@ -89,15 +89,6 @@ export function LedgerTable({
 			),
 		[items],
 	);
-	const editable = useMemo(
-		() =>
-			new Set(
-				items.flatMap((i) =>
-					i.kind === "expense" && i.row.canEdit ? [i.row.id] : [],
-				),
-			),
-		[items],
-	);
 	const actions = useCallback(
 		(tx: TransactionVM) => {
 			const p = payments.get(tx.id);
@@ -135,7 +126,8 @@ export function LedgerTable({
 			groups={{ by: "month", label: heading }}
 			ledger="between"
 			onOpen={(tx) => {
-				if (editable.has(tx.id)) onOpen(tx.id);
+				// Expenses open the read view: yours edit, others' and settled ones read.
+				if (!payments.has(tx.id)) onOpen(tx.id);
 			}}
 			rowArea={rowArea}
 			rows={rows}

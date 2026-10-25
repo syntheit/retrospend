@@ -155,6 +155,16 @@ export function toNeedsVM(item: NeedsYouItem, w: Words): NeedsYouItemVM | null {
 				count: item.count ?? 0,
 				href: item.entity ? `/import?job=${item.entity.id}` : "/import",
 			};
+		case "split.fixRequested":
+			return item.title
+				? {
+						...b,
+						kind: "fixRequested",
+						person: firstPerson(item, w),
+						...faceOf(item, w),
+						title: item.title,
+					}
+				: null;
 		case "budget.giveJob": {
 			if (!amount) return null;
 			const src = item.sources[0];

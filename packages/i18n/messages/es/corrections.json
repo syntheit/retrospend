@@ -1,0 +1,58 @@
+{
+	"ask": {
+		"title": "Pedir a {name} que lo corrija",
+		"what": "¿Qué está mal?",
+		"placeholder": "Cuenta qué no cuadra",
+		"hintOpen": "Nada cambia hasta que {name} lo corrija.",
+		"hintLocked": "Solo la diferencia vuelve a abrir tu saldo con {name}.",
+		"empty": "Aún no hay nada que revisar.",
+		"send": "Enviar a {name}",
+		"sent": "Pediste a {name} que corrija {title}"
+	},
+	"respond": {
+		"title": "{name} te pidió que lo corrijas",
+		"noMessage": "Sin mensaje.",
+		"reply": "Respuesta (opcional)",
+		"replyPlaceholder": "Cuenta qué vas a hacer",
+		"hint": "Aceptar abre la corrección. Rechazar se lo dice a {name} y deja el gasto como está.",
+		"back": "Atrás",
+		"accept": "Aceptar",
+		"decline": "Rechazar",
+		"declined": "Has rechazado la petición de {name}",
+		"failed": "No se pudo enviar tu respuesta",
+		"empty": "Aún no hay nada que revisar."
+	},
+	"correct": {
+		"sheetTitle": "Corregir {title}",
+		"loadingTitle": "Corregir gasto",
+		"settled": "Saldado, así que una corrección registra solo la diferencia.",
+		"correctionTitle": "Corrección de {title}",
+		"record": "Registrar corrección",
+		"saved": "Corrección registrada en {title}",
+		"share": "Parte de {name}",
+		"paid": "{name} pagó",
+		"shareYou": "Tu parte",
+		"paidYou": "Tú pagaste",
+		"someone": "Alguien",
+		"nothing": "Cambia el importe, quién pagó o el reparto.",
+		"empty": "Indica el importe y el reparto para ver qué cambia.",
+		"failed": "No se pudo cargar este gasto",
+		"loading": "Cargando"
+	},
+	"read": {
+		"askedPending": "{name} te pidió que corrijas esto.",
+		"askedAcceptedCorrect": "Dijiste que lo corregirías. Corrígelo para responder a {name}.",
+		"askedAcceptedEdit": "Dijiste que lo corregirías. Edítalo para responder a {name}.",
+		"sent": {
+			"PENDING": "Pediste a {name} que lo corrija el {date}.",
+			"ACCEPTED": "{name} dijo que lo corregirá.",
+			"DECLINED": "{name} rechazó corregirlo.",
+			"FIXED": "{name} lo corrigió."
+		},
+		"respond": "Responder",
+		"edit": "Editar",
+		"cancel": "Cancelar petición",
+		"canceled": "Has cancelado tu petición a {name}",
+		"failed": "No se pudo cancelar la petición"
+	}
+}

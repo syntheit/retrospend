@@ -95,6 +95,9 @@ model User {
   deviceCodes             DeviceCode[]
   idempotencyKeys         IdempotencyKey[]
   pushDevices             PushDevice[]
+  exportJobs              ExportJob[]
+  apiEvents               ApiEvent[]
+  webhooks                Webhook[]
 
   @@map("user")
 }
@@ -1119,6 +1122,8 @@ model AppSettings {
   auditPrivacyMode       AuditPrivacyMode     @default(MINIMAL)
   maxConcurrentImportJobs Int                 @default(3)
   enableFeedback         Boolean              @default(false)
+  // Webhooks may target private, loopback and link-local addresses (self-hosters).
+  webhooksAllowPrivateTargets Boolean         @default(false)
 
   // Rollout of the UI overhaul, read through src/server/flags.ts
   uiV2Mode  FeatureFlagMode @default(OFF)
@@ -2161,6 +2166,40 @@ model ApiRateLimit {
   @@map("api_rate_limit")
 }
 
+enum ExportJobStatus {
+  QUEUED
+  RUNNING
+  READY
+  FAILED
+}
+
+// API v1 exports (G5): an asynchronous export request and its file. `params`
+// holds ids only (project, period, person); the file lives in the export
+// store (EXPORT_DIR, never the public upload store) at `storagePath` until `expiresAt`. `fileName` is derived from the
+// project or person name, in its own column.
+model ExportJob {
+  id          String          @id @default(cuid())
+  userId      String
+  kind        String          @db.VarChar(40)
+  params      Json
+  timeZone    String          @db.VarChar(64)
+  status      ExportJobStatus @default(QUEUED)
+  fileName    String?         @db.VarChar(255)
+  contentType String?         @db.VarChar(100)
+  sizeBytes   Int?
+  storagePath String?         @db.VarChar(512)
+  error       String?         @db.VarChar(500)
+  createdAt   DateTime        @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  expiresAt   DateTime
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("export_job")
+}
+
 enum PushPlatform {
   IOS
   ANDROID
@@ -2203,4 +2242,90 @@ model PushDevice {
   @@index([sessionId])
   @@index([apiKeyId])
   @@map("push_device")
+}
+
+// Event outbox (G5b): one row per event per user who sees it, written in the
+// same transaction as the change. `txid` and `seq` order the feed so a reader
+// never skips a row that commits late (the feed only reads rows whose txid is
+// below the oldest open transaction). `payload` holds ids and amounts only,
+// never user text. `fannedOutAt` is set by the webhook worker.
+// The partial index `api_event_unfanned_idx` ("txid") WHERE "fannedOutAt" IS
+// NULL exists only in the migration (the schema cannot express it on an
+// xid8 column). A `prisma migrate dev` would propose dropping it: do not
+// accept that. events.pg.test.ts asserts it exists.
+model ApiEvent {
+  id          String              @id @default(cuid())
+  seq         BigInt              @unique @default(autoincrement())
+  txid        Unsupported("xid8") @default(dbgenerated("pg_current_xact_id()"))
+  userId      String
+  actorUserId String?
+  type        String              @db.VarChar(64)
+  entityType  String?             @db.VarChar(64)
+  entityId    String?             @db.VarChar(64)
+  payload     Json
+  createdAt   DateTime            @default(now())
+  fannedOutAt DateTime?
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries  WebhookDelivery[]
+
+  @@index([userId, txid, seq])
+  @@index([createdAt])
+  @@map("api_event")
+}
+
+// A user's webhook endpoint. The signing secret is stored encrypted; it is
+// shown once, when created or rotated.
+model Webhook {
+  id                  String            @id @default(cuid())
+  userId              String
+  name                String
+  url                 String            @db.VarChar(2048)
+  /// Exact types ("expense.created") or "<resource>.*"; empty means every type.
+  eventTypes          String[]
+  secretCipher        String            @db.VarChar(512)
+  secretStart         String            @db.VarChar(16)
+  enabled             Boolean           @default(true)
+  consecutiveFailures Int               @default(0)
+  disabledAt          DateTime?
+  disabledReason      String?           @db.VarChar(32)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @default(now()) @updatedAt
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries          WebhookDelivery[]
+
+  @@index([userId])
+  @@map("webhook")
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+// One delivery of one event to one webhook. `eventId` is null for a test
+// delivery. `lastError` is a short code, never a response body.
+model WebhookDelivery {
+  id             String                @id @default(cuid())
+  webhookId      String
+  userId         String
+  eventId        String?
+  eventType      String                @db.VarChar(64)
+  status         WebhookDeliveryStatus @default(PENDING)
+  attempts       Int                   @default(0)
+  nextAttemptAt  DateTime?
+  lastAttemptAt  DateTime?
+  lastStatusCode Int?
+  lastError      String?               @db.VarChar(64)
+  deliveredAt    DateTime?
+  createdAt      DateTime              @default(now())
+  webhook        Webhook               @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  event          ApiEvent?             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([webhookId, eventId])
+  @@index([webhookId, createdAt])
+  @@index([eventId])
+  @@index([status, nextAttemptAt])
+  @@index([userId])
+  @@map("webhook_delivery")
 }

@@ -17,6 +17,7 @@ export interface AppSettings {
 	auditPrivacyMode: "MINIMAL" | "ANONYMIZED" | "FULL";
 	maxConcurrentImportJobs: number;
 	enableFeedback: boolean;
+	webhooksAllowPrivateTargets: boolean;
 	uiV2Mode: FeatureFlagMode;
 	apiV1Mode: FeatureFlagMode;
 	createdAt: Date;
@@ -74,6 +75,7 @@ export async function updateAppSettings(updates: {
 	auditPrivacyMode?: "MINIMAL" | "ANONYMIZED" | "FULL";
 	maxConcurrentImportJobs?: number;
 	enableFeedback?: boolean;
+	webhooksAllowPrivateTargets?: boolean;
 	uiV2Mode?: FeatureFlagMode;
 	apiV1Mode?: FeatureFlagMode;
 }): Promise<AppSettings> {

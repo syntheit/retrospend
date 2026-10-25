@@ -15,6 +15,7 @@
 		"verifyEmail": "Vérifie ton e-mail",
 		"importStatement": "Importe un relevé",
 		"rejected": "{person} a refusé {title}",
+		"fixRequested": "{person} te demande de corriger {title}",
 		"overspentMany": "{count, plural, one {# enveloppe est dépassée} other {# enveloppes sont dépassées}}",
 		"overAssigned": "Tu as prévu <amount></amount> de plus que ce que tu as",
 		"billDue": "{title} arrive bientôt à échéance",
@@ -39,6 +40,7 @@
 		"setRate": "Définir le taux",
 		"notReceived": "Pas reçu ?",
 		"remind": "Relancer",
-		"open": "Ouvrir"
+		"open": "Ouvrir",
+		"respond": "Répondre"
 	}
 }
