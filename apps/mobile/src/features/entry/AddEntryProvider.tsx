@@ -25,8 +25,6 @@ const AddEntryContext = createContext<AddEntryApi | null>(null);
 
 /** Height of the Material 3 navigation bar the Android button floats above. */
 const M3_NAVIGATION_BAR = 80;
-/** The floating glass tab bar's height above the home indicator on iPhone. */
-const IPHONE_TAB_BAR = 49;
 /** The sheet's handle and title above the composer, plus its padding. */
 const SHEET_CHROME = Platform.OS === "ios" ? 76 : 112;
 /** The share of the screen the iPad form sheet takes. */
@@ -39,14 +37,12 @@ export function useAddEntry(): AddEntryApi {
 }
 
 /**
- * Where "add" lives (IMPLEMENTATION S5). The tab bar holds the five
- * destinations: iOS keeps five slots, and react-native-screens 4.26 builds a
- * search-role tab as a plain sixth tab, which folds Projects into More. So
- * add is its own control floating above the bar: the extended FAB on Android
- * (M3), a glass plus on iPhone and iPad. All open the composer in a sheet
- * with detents (Income is the mode row inside it). It also keeps the outbox
- * flowing, since an entry added offline needs a sender when the network
- * returns.
+ * Where "add" lives (IMPLEMENTATION S5). iOS has the system's detached plus
+ * at the end of the tab bar (Tabs.tsx), which calls `open`. Android has no
+ * such slot: the extended FAB floats above the M3 navigation bar. Both open
+ * the composer in a sheet with detents (Income is the mode row inside it).
+ * It also keeps the outbox flowing, since an entry added offline needs a
+ * sender when the network returns.
  */
 export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const t = useTranslations("mobile.composer");
@@ -66,8 +62,6 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 				width: width - 2 * space[4],
 				height: Math.round(height - insets.top - insets.bottom - SHEET_CHROME),
 			};
-	const barHeight =
-		Platform.OS === "android" ? M3_NAVIGATION_BAR : iPad ? 0 : IPHONE_TAB_BAR;
 
 	const show = useCallback((next: EntryMode = "expense") => {
 		setMode(next);
@@ -79,16 +73,18 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	return (
 		<AddEntryContext.Provider value={api}>
 			{children}
-			<View
-				pointerEvents="box-none"
-				style={{
-					position: "absolute",
-					right: space[4],
-					bottom: insets.bottom + space[4] + barHeight,
-				}}
-			>
-				<AddButton label={t("addExpense")} onPress={() => show("expense")} />
-			</View>
+			{Platform.OS === "android" ? (
+				<View
+					pointerEvents="box-none"
+					style={{
+						position: "absolute",
+						right: space[4],
+						bottom: insets.bottom + space[4] + M3_NAVIGATION_BAR,
+					}}
+				>
+					<AddButton label={t("addExpense")} onPress={() => show("expense")} />
+				</View>
+			) : null}
 			<Sheet
 				detents={["large"]}
 				onClose={close}

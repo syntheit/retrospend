@@ -3,16 +3,27 @@ import { Platform } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 
+interface TabsProps {
+	/** Called when the trailing plus is pressed (iOS only). */
+	onAdd(): void;
+	/** The plus tab's accessibility label ("Add expense"). */
+	addLabel: string;
+}
+
 /**
  * Five destinations on every device (N65): Home, Activity, Budget, People,
- * Projects. Add is not a tab: iOS holds five slots, and react-native-screens
- * 4.26 builds a "search" tab as a plain sixth tab (a UITabBarItem system
- * item, not a UISearchTab), which folds Projects into More. The Add route
- * stays here, hidden, and AddEntryProvider floats the add button above the bar.
- * iPad turns the bar into a sidebar. Active nav is brand (GUIDELINE §2.1);
- * the bar itself is a theme surface.
+ * Projects. Add is not a destination. On iOS it is the system's detached
+ * trailing tab: react-native-screens 4.29+ backs `role: "search"` with a
+ * UISearchTab, which iOS 26 detaches at the end of the bar (iOS 27 does too
+ * while automaticallyActivatesSearch is on; no search bar is set, so it never
+ * opens a field). expo-router only forwards the role as a UITabBarItem system
+ * item, so the native role goes through unstable_nativeProps. The trigger is
+ * `disabled`: the native side keeps the selected tab and reports the press,
+ * and that press opens the composer. Android has no such slot and keeps its
+ * extended FAB (AddEntryProvider). iPad turns the bar into a sidebar. Active
+ * nav is brand (GUIDELINE §2.1); the bar itself is a theme surface.
  */
-export function Tabs() {
+export function Tabs({ onAdd, addLabel }: TabsProps) {
 	const t = useTranslations("mobile.tabs");
 	const { color } = useTheme();
 	// Android draws an M3 navigation bar in token colors; iOS keeps the
@@ -67,6 +78,21 @@ export function Tabs() {
 				<NativeTabs.Trigger.Label>{t("projects")}</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon md="folder" sf="folder" />
 			</NativeTabs.Trigger>
+			{Platform.OS === "ios" ? (
+				<NativeTabs.Trigger
+					accessibilityLabel={addLabel}
+					disabled
+					listeners={{ tabPress: onAdd }}
+					name="add"
+					testID="add-tab"
+					unstable_nativeProps={{
+						ios: { role: "search", automaticallyActivatesSearch: true },
+					}}
+				>
+					<NativeTabs.Trigger.Label>{addLabel}</NativeTabs.Trigger.Label>
+					<NativeTabs.Trigger.Icon sf="plus" />
+				</NativeTabs.Trigger>
+			) : null}
 		</NativeTabs>
 	);
 }
