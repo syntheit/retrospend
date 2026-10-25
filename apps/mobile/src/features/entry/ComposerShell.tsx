@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import {
 	KeyboardAvoidingView,
 	Platform,
@@ -38,6 +38,7 @@ export function ComposerShell({
 	busy,
 	typing,
 	amountError,
+	bottomInset = 0,
 	children,
 }: {
 	mode: EntryMode;
@@ -54,12 +55,17 @@ export function ComposerShell({
 	busy: boolean;
 	typing: boolean;
 	amountError: boolean;
+	/** Room for a bar that floats over the screen, like the iPhone tab bar. */
+	bottomInset?: number;
 	children: ReactNode;
 }) {
 	const t = useTranslations("mobile.entry");
 	const locale = useFormatLocale();
 	const { format } = useFormatMoney();
 	const { color, radius, size, space, type } = useTheme();
+	// Scrolling the fields folds the keypad away so the split and what changes
+	// show in full; touching the amount brings it back.
+	const [padOpen, setPadOpen] = useState(true);
 	const minor = amountMinor(amountText, locale, currency);
 	const spoken = minor
 		? t("amountLabel", { amount: format({ minor, currency }) ?? "" })
@@ -73,6 +79,7 @@ export function ComposerShell({
 			<ScrollView
 				contentContainerStyle={{ padding: space[4], gap: space[4] }}
 				keyboardShouldPersistTaps="handled"
+				onScrollBeginDrag={() => setPadOpen(false)}
 				style={{ flex: 1 }}
 			>
 				<Segmented
@@ -91,7 +98,7 @@ export function ComposerShell({
 					gap: space[2],
 					paddingHorizontal: space[4],
 					paddingTop: space[2],
-					paddingBottom: space[2],
+					paddingBottom: space[2] + bottomInset,
 					borderTopWidth: 1,
 					borderTopColor: color.line,
 				}}
@@ -112,22 +119,28 @@ export function ComposerShell({
 						}))}
 						label={currency}
 					/>
-					<Text
+					<Pressable
+						accessibilityHint={padOpen ? undefined : t("showKeypad")}
 						accessibilityLabel={spoken}
-						accessibilityLiveRegion="polite"
-						adjustsFontSizeToFit
-						numberOfLines={1}
-						style={{
-							flex: 1,
-							color: amountText ? color.fg : color.fg3,
-							fontSize: type.hero.size,
-							fontVariant: ["tabular-nums"],
-							fontWeight: "600",
-							textAlign: "right",
-						}}
+						accessibilityRole="button"
+						onPress={() => setPadOpen(true)}
+						style={{ flex: 1 }}
 					>
-						{amountText || "0"}
-					</Text>
+						<Text
+							accessibilityLiveRegion="polite"
+							adjustsFontSizeToFit
+							numberOfLines={1}
+							style={{
+								color: amountText ? color.fg : color.fg3,
+								fontSize: type.hero.size,
+								fontVariant: ["tabular-nums"],
+								fontWeight: "600",
+								textAlign: "right",
+							}}
+						>
+							{amountText || "0"}
+						</Text>
+					</Pressable>
 					<Pressable
 						accessibilityLabel={addDescription}
 						accessibilityRole="button"
@@ -166,9 +179,10 @@ export function ComposerShell({
 						{t("errors.amount")}
 					</Text>
 				) : null}
-				{typing ? null : (
+				{typing || !padOpen ? null : (
 					<MoneyKeypad
 						currency={currency}
+						keyHeight={size.touchMin.phone}
 						draft={amountText}
 						onDraftChange={onAmountChange}
 					/>

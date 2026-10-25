@@ -42,6 +42,7 @@ export function TextField({
 	placeholder,
 	onTypingChange,
 	invalid,
+	hideLabel,
 }: {
 	label: string;
 	value: string;
@@ -49,11 +50,13 @@ export function TextField({
 	placeholder: string;
 	onTypingChange: (typing: boolean) => void;
 	invalid?: boolean;
+	/** The placeholder says it; screen readers still get the label. */
+	hideLabel?: boolean;
 }) {
 	const { color, radius, size, space, type } = useTheme();
 	return (
 		<View style={{ gap: space[2] }}>
-			<FieldLabel>{label}</FieldLabel>
+			{hideLabel ? null : <FieldLabel>{label}</FieldLabel>}
 			<TextInput
 				accessibilityLabel={label}
 				onBlur={() => onTypingChange(false)}
@@ -114,6 +117,7 @@ export function ExpenseFields({
 	return (
 		<>
 			<TextField
+				hideLabel
 				label={t("titleField")}
 				onChangeText={(title) => onChange({ title })}
 				onTypingChange={onTypingChange}

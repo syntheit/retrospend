@@ -35,9 +35,11 @@ export function EntryComposer({
 	onDone,
 	initialMode = "expense",
 	onModeChange,
+	bottomInset,
 }: {
 	onDone: () => void;
 	initialMode?: EntryMode;
+	bottomInset?: number;
 	/** The host shows the mode in its title. */
 	onModeChange?: (mode: EntryMode) => void;
 }) {
@@ -60,6 +62,7 @@ export function EntryComposer({
 			initialMode={initialMode}
 			onDone={onDone}
 			onModeChange={onModeChange}
+			bottomInset={bottomInset}
 		/>
 	);
 }
@@ -78,11 +81,13 @@ function Form({
 	initialMode,
 	onDone,
 	onModeChange,
+	bottomInset,
 }: {
 	catalog: EntryCatalog;
 	initialMode: EntryMode;
 	onDone: () => void;
 	onModeChange?: (mode: EntryMode) => void;
+	bottomInset?: number;
 }) {
 	const t = useTranslations("mobile.entry");
 	const locale = useFormatLocale();
@@ -195,6 +200,7 @@ function Form({
 			addDescription={mode === "expense" ? t("addExpense") : t("addIncome")}
 			addLabel={t("add")}
 			amountError={tried && amountProblem === true}
+			bottomInset={bottomInset}
 			amountText={active.amountText}
 			busy={busy}
 			currencies={catalog.currencies}

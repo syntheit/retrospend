@@ -14,10 +14,13 @@ export function MoneyKeypad({
 	draft,
 	currency,
 	onDraftChange,
+	keyHeight,
 }: {
 	draft: string;
 	currency: string;
 	onDraftChange: (draft: string) => void;
+	/** Shorter keys for screens that also need room for fields; default is touch minimum plus a gap. */
+	keyHeight?: number;
 }) {
 	const t = useTranslations("mobile.keypad");
 	const locale = useFormatLocale();
@@ -48,7 +51,7 @@ export function MoneyKeypad({
 							}
 							style={({ pressed }) => ({
 								flex: 1,
-								minHeight: size.touchMin.phone + space[2],
+								minHeight: keyHeight ?? size.touchMin.phone + space[2],
 								alignItems: "center",
 								justifyContent: "center",
 								borderRadius: radius.ctl,

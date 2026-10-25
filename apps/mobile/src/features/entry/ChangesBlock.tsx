@@ -68,11 +68,18 @@ export function ChangesBlock({
 						gap: space[3],
 					}}
 				>
-					<Text style={{ color: color.fg, fontSize: type.body.size }}>
+					<Text
+						style={{
+							flexShrink: 1,
+							color: color.fg,
+							fontSize: type.body.size,
+						}}
+					>
 						{name(line.figure, false)}
 					</Text>
 					<Text
 						style={{
+							flexShrink: 1,
 							color: color.fg,
 							fontSize: type.body.size,
 							fontVariant: ["tabular-nums"],
