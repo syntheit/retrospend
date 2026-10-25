@@ -8,6 +8,7 @@ import {
 	type FiguresResponse,
 } from "../../helpers/figures";
 import { gotoReady } from "../../helpers/navigation";
+import { uncategorizedExpense } from "./viewer";
 
 // The redesigned Insights (uiV2, /activity/insights) on Sofía's seeded
 // ledger: one total, by category, month by month, year to date with Show in
@@ -280,4 +281,31 @@ test("Insights: a filter with no spending says so and clears; a phone has no sid
 		main.locator('#cashflow [data-figure="insights.monthlyAverage"]'),
 	).toBeVisible();
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+});
+
+test("Insights: the No category rows open Activity's No category", async ({
+	page,
+}) => {
+	test.setTimeout(120_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await gotoReady(page, "/activity/insights");
+	const title = `Sin categoría insights ${Date.now()}`;
+	const id = await uncategorizedExpense(page, title);
+	await openInsights(page);
+	const main = page.getByRole("main");
+	await main.locator('#by-category a[href*="cat=none"]').first().click();
+	await expect(page).toHaveURL(/\/activity\?.*cat=none/);
+	await expect(main.getByText(title)).toBeVisible();
+	await expect(
+		main.getByRole("button", { name: "No category", exact: true }),
+	).toBeVisible();
+
+	// Year to date links the same rows.
+	await openInsights(page);
+	await expect(main.locator('#ytd a[href*="cat=none"]').first()).toBeVisible();
+	const del = await page.request.post("/api/trpc/expense.deleteExpense", {
+		data: { json: { id } },
+		headers: { Origin: new URL(page.url()).origin },
+	});
+	expect(del.ok(), "cleanup").toBe(true);
 });

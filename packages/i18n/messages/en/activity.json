@@ -33,7 +33,8 @@
 			"refund": "Refunds",
 			"transfer": "Not spending",
 			"payment": "Payments"
-		}
+		},
+		"noCategory": "No category"
 	},
 	"row": {
 		"paidTo": "You paid {name}",

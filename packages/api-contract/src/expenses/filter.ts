@@ -6,7 +6,8 @@
  *   from=2026-10-01&to=2026-10-31&cat=ID,ID&kind=expense,in&q=coffee
  *
  * - `from`, `to`: YYYY-MM-DD, inclusive, in the caller's time zone.
- * - `cat`, `project`: comma-separated ids.
+ * - `cat`, `project`: comma-separated ids. `cat` also takes `none` (alone or
+ *   beside ids): spending and refunds with no category.
  * - `person`: comma-separated person keys (`user:ID`, `shadow:ID`, `guest:ID`).
  * - `paidby`: `me` and/or person keys.
  * - `kind`: comma-separated kinds (ACTIVITY_KINDS).
@@ -32,6 +33,9 @@ export const ACTIVITY_KINDS = [
 ] as const;
 
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
+
+/** The `cat` value for "No category"; the server mirrors it (g2-mirrors.test.ts). */
+export const NO_CATEGORY = "none";
 
 export const FILTER_LIST_MAX = 50;
 export const FILTER_TEXT_MAX = 100;
