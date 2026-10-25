@@ -7,6 +7,7 @@ import {
 	listContractRoutes,
 } from "./common/meta";
 import { moneySchema } from "./common/money";
+import { isSessionScope } from "./common/scopes";
 import { contract } from "./index";
 
 type JsonObject = Record<string, unknown>;
@@ -61,12 +62,13 @@ function errorResponses(entry: ContractEntry): JsonObject {
 
 function decorateOperation(op: JsonObject, entry: ContractEntry) {
 	const scope = entry.meta.scope;
+	// A session scope is never on an API key, so that scheme is not offered.
 	op.security =
 		scope === "public" || !scope
 			? []
 			: [
 					{ bearerAuth: [scope] },
-					{ apiKeyAuth: [scope] },
+					...(isSessionScope(scope) ? [] : [{ apiKeyAuth: [scope] }]),
 					{ cookieAuth: [scope] },
 				];
 	op["x-required-scope"] = scope ?? null;

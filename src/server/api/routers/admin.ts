@@ -9,7 +9,7 @@ import {
 	anonymizeAndDeleteUser,
 	anonymizeParticipantReferences,
 	DELETED_GUEST_SENTINEL,
-	DELETED_SHADOW_SENTINEL,
+	deletedShadowSentinel,
 } from "~/server/services/user-deletion.service";
 import {
 	getPasswordChangedAlertTemplate,
@@ -835,7 +835,7 @@ export const adminRouter = createTRPCRouter({
 			}
 
 			await db.$transaction(async (tx) => {
-				await anonymizeParticipantReferences(tx, "shadow", profile.id, DELETED_SHADOW_SENTINEL);
+				await anonymizeParticipantReferences(tx, "shadow", profile.id, deletedShadowSentinel(profile.id));
 				await tx.shadowProfile.delete({ where: { id: profile.id } });
 			});
 

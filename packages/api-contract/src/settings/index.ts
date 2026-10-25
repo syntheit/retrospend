@@ -3,6 +3,7 @@ import { v1 } from "../common/meta";
 import { currencyCodeSchema, moneySchema } from "../common/money";
 import { cursorQuerySchema, pageOf } from "../common/pagination";
 import { idSchema, languageSchema, okSchema } from "../core";
+import { settingsExtrasContract } from "./extras";
 import {
 	categoryPreferenceSchema,
 	favoriteRateSchema,
@@ -11,6 +12,7 @@ import {
 	pageSettingsSchema,
 } from "./schemas";
 
+export * from "./extras";
 export * from "./schemas";
 
 /** Three-letter fiat code, the rule the web settings form uses. */
@@ -68,6 +70,7 @@ const pageParamsSchema = z.object({ page: z.enum(PAGE_KEYS) });
 const TAG = ["Settings"];
 
 export const settingsContract = {
+	...settingsExtrasContract,
 	get: v1
 		.route({
 			method: "GET",

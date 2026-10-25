@@ -1,3 +1,4 @@
+import * as gap from "~/server/services/api-v1/gap-reads";
 import * as profile from "~/server/services/api-v1/profile";
 import { serve } from "../core/serve";
 import { signedIn, v1 } from "../middleware";
@@ -5,6 +6,9 @@ import { signedIn, v1 } from "../middleware";
 const p = v1.profile;
 
 export const profileRouter = {
+	stats: p.stats.handler(
+		serve(({ context }) => gap.readLifetimeStats(signedIn(context))),
+	),
 	get: p.get.handler(
 		serve(({ context }) => profile.readProfile(signedIn(context))),
 	),

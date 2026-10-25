@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
 import { figureSchema } from "../common/money";
+import { figuresExtrasContract } from "./extras";
 import { glanceSchema } from "./glance";
 
 export * from "./glance";
@@ -47,6 +48,7 @@ export const figuresResultSchema = z.object({
  * that honor it. Unknown ids are `not_found`.
  */
 export const figuresContract = {
+	...figuresExtrasContract,
 	read: v1
 		.route({
 			method: "GET",

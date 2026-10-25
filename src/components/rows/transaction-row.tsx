@@ -150,10 +150,10 @@ export function TransactionWith({ tx }: { tx: TransactionVM }) {
 
 /** Whether a row carries a status word (TransactionStatus renders something). */
 export function hasStatus(tx: TransactionVM): boolean {
-	return !tx.reviewed || tx.waiting != null;
+	return !tx.reviewed || tx.waiting != null || tx.notCounted === true;
 }
 
-/** The status words a row can carry: not reviewed, waiting on you, rejected. */
+/** The status words a row can carry: not reviewed, waiting on you, rejected, not counted. */
 export function TransactionStatus({ tx }: { tx: TransactionVM }) {
 	const t = useTranslations("rows.transaction");
 	return (
@@ -163,6 +163,7 @@ export function TransactionStatus({ tx }: { tx: TransactionVM }) {
 				<StatusDot kind="review" label={t("waiting")} size="sm" />
 			)}
 			{tx.waiting === "rejected" && <StatusDot kind="rejected" size="sm" />}
+			{tx.notCounted && <StatusDot kind="notCounted" size="sm" />}
 		</>
 	);
 }
