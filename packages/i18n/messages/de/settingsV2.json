@@ -335,6 +335,8 @@
 		"title": "Konto löschen",
 		"rowMeta": "Offene Zahlungen und Aufteilungen werden zuerst abgeschlossen",
 		"passwordBody": "Gib dein Passwort ein, um zu sehen, was als Nächstes passiert.",
+		"onlyAdmin": "Du bist der einzige Admin. Mach zuerst jemand anderen zum Admin, dann kannst du dein Konto löschen.",
+		"onlyAdminLink": "Nutzer öffnen",
 		"password": "Passwort",
 		"cancel": "Abbrechen",
 		"continue": "Weiter",

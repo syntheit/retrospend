@@ -84,7 +84,7 @@ export const accountContract = {
 			tags: TAG,
 			summary: "Delete your account for good",
 			description:
-				"Needs the account:delete scope (the app's own sign-in; never a token) and the password. Admins cannot delete their own account. Your data and files are removed; shared expenses keep your share as Deleted User. This cannot be undone and signs you out everywhere.",
+				"Needs the account:delete scope (the app's own sign-in; never a token) and the password. An admin can delete their own account while another active admin remains; the last admin is refused (403). Your data and files are removed; shared expenses keep your share as Deleted User. This cannot be undone and signs you out everywhere.",
 		})
 		.meta({ scope: "account:delete", event: "user.deleted" })
 		.input(deleteAccountSchema)

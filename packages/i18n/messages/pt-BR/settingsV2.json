@@ -335,6 +335,8 @@
 		"title": "Excluir conta",
 		"rowMeta": "Pagamentos e divisões pendentes são resolvidos antes",
 		"passwordBody": "Digite sua senha para ver o que acontece a seguir.",
+		"onlyAdmin": "Você é o único administrador. Torne outra pessoa administradora primeiro e depois você poderá excluir sua conta.",
+		"onlyAdminLink": "Abrir usuários",
 		"password": "Senha",
 		"cancel": "Cancelar",
 		"continue": "Continuar",

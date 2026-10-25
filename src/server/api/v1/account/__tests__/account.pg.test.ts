@@ -1,12 +1,13 @@
 /**
  * /api/v1/me/deletion on Postgres: the preview, the password every time, who
- * may delete (the app's own sessions, never a token), the admin refusal, the
+ * may delete (the app's own sessions, never a token), the last-admin refusal, the
  * try limit, and what the deletion leaves behind for other people.
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { contract, SCOPES } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { auth } from "~/server/better-auth";
+import { ONLY_ADMIN_MESSAGE } from "~/server/services/account-deletion.service";
 import { deleteFile } from "~/server/storage";
 import { arsUser, ref, seedProject, seedShare } from "../../__tests__/g3-fixtures";
 import {
@@ -45,6 +46,26 @@ async function passwordUser(role: "USER" | "ADMIN" = "USER") {
 	if (role === "ADMIN")
 		await adminDb.user.update({ where: { id: user.id }, data: { role } });
 	return user.id;
+}
+
+/** Runs with no other active admin on the shared test database, then restores them. */
+async function withNoOtherActiveAdmin(run: () => Promise<void>) {
+	const active = await adminDb.user.findMany({
+		where: { role: "ADMIN", isActive: true },
+		select: { id: true },
+	});
+	await adminDb.user.updateMany({
+		where: { id: { in: active.map((u) => u.id) } },
+		data: { isActive: false },
+	});
+	try {
+		await run();
+	} finally {
+		await adminDb.user.updateMany({
+			where: { id: { in: active.map((u) => u.id) } },
+			data: { isActive: true },
+		});
+	}
 }
 
 const exists = async (id: string) =>
@@ -173,15 +194,50 @@ describe("/api/v1/me/deletion", () => {
 		expect(await exists(id)).toBe(true);
 	});
 
-	it("refuses an admin, the last one included", async () => {
+	it("lets an admin delete their own account while another admin remains", async () => {
 		const admin = await passwordUser("ADMIN");
+		const other = await passwordUser("ADMIN");
 		const headers = { ...ip(), ...(await asMobile(admin)) };
-		await expectProblem(
+		await expectBody(
 			await del(headers, { password: PASSWORD }),
-			403,
-			"forbidden",
+			a.delete,
 		);
-		expect(await exists(admin)).toBe(true);
+		expect(await exists(admin)).toBe(false);
+		expect(await exists(other)).toBe(true);
+	});
+
+	it("refuses the last admin and says what to do", async () => {
+		await withNoOtherActiveAdmin(async () => {
+			const admin = await passwordUser("ADMIN");
+			const headers = { ...ip(), ...(await asMobile(admin)) };
+			const res = await del(headers, { password: PASSWORD });
+			expect(res.status).toBe(403);
+			expect(await res.json()).toMatchObject({
+				code: "forbidden",
+				detail: ONLY_ADMIN_MESSAGE,
+			});
+			expect(await exists(admin)).toBe(true);
+		});
+	});
+
+	it("keeps refusing the last admin when a disabled admin exists", async () => {
+		await withNoOtherActiveAdmin(async () => {
+			const admin = await passwordUser("ADMIN");
+			const disabled = await passwordUser("ADMIN");
+			await adminDb.user.update({
+				where: { id: disabled },
+				data: { isActive: false },
+			});
+			await expectProblem(
+				await del(
+					{ ...ip(), ...(await asMobile(admin)) },
+					{ password: PASSWORD },
+				),
+				403,
+				"forbidden",
+			);
+			expect(await exists(admin)).toBe(true);
+		});
 	});
 
 	it("limits tries per user, right or wrong", async () => {

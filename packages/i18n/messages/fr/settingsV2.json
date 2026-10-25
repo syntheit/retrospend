@@ -335,6 +335,8 @@
 		"title": "Supprimer le compte",
 		"rowMeta": "Les paiements et les dépenses partagées en attente sont réglés d’abord",
 		"passwordBody": "Saisis ton mot de passe pour voir la suite.",
+		"onlyAdmin": "Tu es le seul admin. Nomme d'abord un autre admin, puis tu pourras supprimer ton compte.",
+		"onlyAdminLink": "Ouvrir les utilisateurs",
 		"password": "Mot de passe",
 		"cancel": "Annuler",
 		"continue": "Continuer",
