@@ -196,6 +196,8 @@
 		"afford": "Posso comprar algo?",
 		"rail": "Dívida",
 		"total": "Dívida total",
-		"open": "Plano de quitação"
+		"open": "Plano de quitação",
+		"neverAtPayment": "Nunca com este pagamento",
+		"diverges": "Os juros são maiores que o pagamento mensal, então o saldo continua crescendo. Aumente o pagamento para ver uma data."
 	}
 }

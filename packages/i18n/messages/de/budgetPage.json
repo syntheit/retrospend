@@ -196,6 +196,8 @@
 		"afford": "Kann ich mir etwas leisten?",
 		"rail": "Schulden",
 		"total": "Gesamtschulden",
-		"open": "Tilgungsplan"
+		"open": "Tilgungsplan",
+		"neverAtPayment": "Nie mit dieser Zahlung",
+		"diverges": "Die Zinsen sind höher als deine Monatszahlung, daher wächst der Saldo weiter. Erhöhe die Zahlung, um ein Datum zu sehen."
 	}
 }

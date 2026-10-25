@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Money } from "~/components/money/money";
 import { MoneyInput } from "~/components/money/money-input";
 import { Row, RowList, RowSub } from "~/components/rows/row";
+import { Notice } from "~/components/ui/notice";
 import { Segmented } from "~/components/ui/segmented";
 import { Sheet } from "~/components/ui/sheet";
 import { SkeletonRows } from "~/components/ui/skeleton";
@@ -120,12 +121,19 @@ export function DebtSheet({ open, onClose, month }: SheetProps) {
 							value={extra.text}
 						/>
 					</Field>
+					{p?.diverges ? (
+						<Notice tone="attention">{t("diverges")}</Notice>
+					) : null}
 					{p ? (
 						<RowList label={t("result")} variant="flat">
 							<Row
 								end={
 									<span className="font-semibold">
-										{p.debtFreeMonth ? yearOf(p.debtFreeMonth) : t("never")}
+										{p.debtFreeMonth
+											? yearOf(p.debtFreeMonth)
+											: p.diverges
+												? t("neverAtPayment")
+												: t("never")}
 									</span>
 								}
 								title={t("debtFree")}

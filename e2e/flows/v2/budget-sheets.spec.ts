@@ -355,6 +355,24 @@ test("Debt payoff plan: the card, the projection, save, undo", async ({
 			.getByRole("button", { name: "Undo" })
 			.click(),
 	);
+	// A debt whose interest outruns the payment never ends: a clear state, not a date.
+	await trpcMutation(page, "wealth.createAsset", {
+		name: "E2E Shark",
+		type: "LIABILITY_CREDIT_CARD",
+		currency: "USD",
+		balance: 1000,
+		interestRate: 600,
+		minimumPayment: 10,
+		dueDate: 12,
+	});
+	await openBudget(page);
+	const hero = page.locator('[data-slot="budget-hero"]');
+	await expect(hero.getByText("Never at this payment")).toBeVisible();
+	await expect(hero.getByText(/interest is more than you pay/)).toBeVisible();
+	await hero.getByRole("button", { name: "Payoff plan" }).click();
+	const plan = page.getByRole("dialog", { name: "Debt payoff plan" });
+	await expect(plan.getByText(/interest is more than you pay/)).toBeVisible();
+	await plan.getByRole("button", { name: "Cancel" }).click();
 	await sql(
 		`UPDATE "budget_book" SET "style" = 'FLEX' WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`,
 		[TEST_USER.email],
@@ -502,6 +520,148 @@ test("Help: what the words mean", async ({ page }) => {
 	const sheet = page.getByRole("dialog", { name: "What the words mean" });
 	await expect(sheet).toBeVisible();
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+});
+
+test("Target: a new monthly amount for Groceries, preview, save, undo", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBudget(page);
+	await fromEnvelope(page, "Spending", "Groceries", "Edit target");
+	const sheet = page.getByRole("dialog", { name: "Target for Groceries" });
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole("textbox", { name: "Amount" }).fill("450");
+	const changes = sheet.getByRole("region", { name: "What this changes" });
+	await expect(changes).toContainText("USD 450.00");
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "envelope.setTarget", () =>
+		sheet.getByRole("button", { name: "Save target" }).click(),
+	);
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "envelope.undoChange", () =>
+		toast(page, "Target saved").getByRole("button", { name: "Undo" }).click(),
+	);
+});
+
+test("Add envelope: name, group, preview, save", async ({ page }) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBudget(page);
+	await fromMenu(page, "Add envelope");
+	const sheet = page.getByRole("dialog", { name: "Add envelope" });
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole("textbox", { name: "Name" }).fill("E2E Gym");
+	await expect(
+		sheet.getByRole("region", { name: "What this changes" }),
+	).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "envelope.createEnvelope", () =>
+		sheet.getByRole("button", { name: "Add envelope" }).click(),
+	);
+	await expect(sheet).toBeHidden();
+	await expect(toast(page, "Added E2E Gym")).toBeVisible();
+});
+
+test("Edit envelope: rename, preview, save, undo", async ({ page }) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBudget(page);
+	await fromEnvelope(
+		page,
+		"Bills",
+		"E2E Gym",
+		"Rename or edit categories",
+	);
+	const sheet = page.getByRole("dialog", { name: "Edit E2E Gym" });
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole("textbox", { name: "Name" }).fill("E2E Gym Club");
+	await expect(
+		sheet.getByRole("region", { name: "What this changes" }),
+	).toBeVisible();
+	await untilSaved(page, "envelope.updateEnvelope", () =>
+		sheet.getByRole("button", { name: "Save", exact: true }).click(),
+	);
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "envelope.undoChange", () =>
+		toast(page, "Saved E2E Gym Club")
+			.getByRole("button", { name: "Undo" })
+			.click(),
+	);
+});
+
+test("Combine envelopes: E2E Gym into Groceries, preview, save, undo", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBudget(page);
+	await fromMenu(page, "Combine envelopes");
+	const sheet = page.getByRole("dialog", { name: "Combine envelopes" });
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole("combobox", { name: "Keep this one" }).click();
+	await page.getByRole("option", { name: /Groceries/ }).click();
+	await sheet.getByRole("checkbox", { name: "E2E Gym" }).click();
+	await expect(
+		sheet.getByRole("region", { name: "What this changes" }),
+	).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "envelope.mergeEnvelopes", () =>
+		sheet.getByRole("button", { name: "Combine", exact: true }).click(),
+	);
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "envelope.undoChange", () =>
+		toast(page, "Combined").getByRole("button", { name: "Undo" }).click(),
+	);
+});
+
+test("Archive an envelope: its own preview, save, undo", async ({ page }) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBudget(page);
+	await fromEnvelope(
+		page,
+		"Bills",
+		"E2E Gym",
+		"Rename or edit categories",
+	);
+	await page.getByRole("button", { name: "Archive envelope" }).click();
+	const sheet = page.getByRole("dialog", { name: "Archive E2E Gym" });
+	await expect(sheet).toBeVisible();
+	await expect(
+		sheet.getByRole("region", { name: "What this changes" }),
+	).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await untilSaved(page, "envelope.archiveEnvelope", () =>
+		sheet.getByRole("button", { name: "Archive", exact: true }).click(),
+	);
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "envelope.undoChange", () =>
+		toast(page, "Archived E2E Gym")
+			.getByRole("button", { name: "Undo" })
+			.click(),
+	);
+});
+
+test("Can I afford it: one amount, one answer from the server", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBudget(page);
+	await page
+		.getByRole("main")
+		.getByRole("button", { name: "Can I afford something?" })
+		.click();
+	const sheet = page.getByRole("dialog", { name: "Can I afford it?" });
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole("textbox", { name: "Amount" }).fill("50");
+	await expect(
+		sheet.getByText(/Yes\.|Not quite\.|Not this month\.|It fits/).first(),
+	).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	await sheet.getByRole("button", { name: "Done" }).click();
+	await expect(sheet).toBeHidden();
 });
 
 test.describe("Set up your budget", () => {

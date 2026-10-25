@@ -196,6 +196,8 @@
 		"afford": "Can I afford something?",
 		"rail": "Debt",
 		"total": "Total debt",
-		"open": "Payoff plan"
+		"open": "Payoff plan",
+		"neverAtPayment": "Never at this payment",
+		"diverges": "The interest is more than you pay each month, so the balance keeps growing. Raise the payment to see a date."
 	}
 }

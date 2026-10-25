@@ -46,20 +46,26 @@ export function DebtHero({
 		<section aria-label={t("label")} className="mb-6" data-slot="budget-hero">
 			<div className="text-fg-2 text-small">{t("label")}</div>
 			<div className="text-hero text-fg mt-0.5 mb-1 block">
-				{p.debtFreeMonth ? label(p.debtFreeMonth) : t("never")}
+				{p.debtFreeMonth
+					? label(p.debtFreeMonth)
+					: p.diverges
+						? t("neverAtPayment")
+						: t("never")}
 			</div>
 			<p className="text-fg-2 text-body max-w-prose">
-				{p.incomplete
-					? t("incomplete", { currencies: missing.join(", ") })
-					: t.rich("sentence", {
-							total: () => (
-								<Money figure="budget.totalDebt" value={p.totalDebt} />
-							),
-							count: p.debts.length,
-							months: p.months,
-						})}
+				{p.diverges
+					? t("diverges")
+					: p.incomplete
+						? t("incomplete", { currencies: missing.join(", ") })
+						: t.rich("sentence", {
+								total: () => (
+									<Money figure="budget.totalDebt" value={p.totalDebt} />
+								),
+								count: p.debts.length,
+								months: p.months,
+							})}
 			</p>
-			{p.capped && !p.incomplete && (
+			{p.capped && !p.incomplete && !p.diverges && (
 				<p className="text-fg-2 text-body">{t("capped")}</p>
 			)}
 			<p className="text-fg-2 text-small mt-1">

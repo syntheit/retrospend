@@ -12,19 +12,23 @@ import { SettleSheet } from "~/features/settle/settle-sheet";
 import { api } from "~/trpc/react";
 import type { BudgetSheetArgs, BudgetSheetId } from "../sheet-ids";
 import type { BudgetSheetProps, BudgetSheets } from "../sheet-registry";
+import { AffordSheet } from "./afford-sheet";
 import { AssignSheet } from "./assign-sheet";
 import { CloseSheet } from "./close-sheet";
 import { ConfirmPaymentSheet } from "./confirm-payment-sheet";
 import { CoverAllSheet } from "./cover-all-sheet";
 import { CoverSheet } from "./cover-sheet";
 import { DebtSheet } from "./debt-sheet";
+import { EditEnvelopeSheet } from "./edit-envelope-sheet";
 import { ExplainSheet } from "./explain-sheet";
 import { FromWealthSheet } from "./from-wealth-sheet";
 import { FundNowSheet } from "./fund-now-sheet";
 import { HelpSheet } from "./help-sheet";
 import { IncomeSheet } from "./income-sheet";
 import { RaiseLimitSheet, SetLimitSheet } from "./limit-sheet";
+import { MergeEnvelopesSheet } from "./merge-envelopes-sheet";
 import { MoveSheet } from "./move-sheet";
+import { NewEnvelopeSheet } from "./new-envelope-sheet";
 import { OwedSheet } from "./owed-sheet";
 import { PayDebtSheet } from "./pay-debt-sheet";
 import { PlanApplySheet } from "./plan-apply-sheet";
@@ -34,8 +38,10 @@ import { ReconcileSheet } from "./reconcile-sheet";
 import { RulesSheet } from "./rules-sheet";
 import { SetupSheet } from "./setup-sheet";
 import { SplitsSheet } from "./splits-sheet";
+import { StartingMoneySheet } from "./starting-money-sheet";
 import { StyleSheet } from "./style-sheet";
 import { TakeBackSheet } from "./take-back-sheet";
+import { TargetSheet } from "./target-sheet";
 import { ToWealthSheet } from "./to-wealth-sheet";
 import type { SheetProps } from "./types";
 import { WelcomeBackSheet } from "./welcome-back-sheet";
@@ -161,4 +167,17 @@ export const SHEET_ADAPTERS: BudgetSheets = {
 	),
 	splits: adapt(SplitsSheet),
 	income: adapt(IncomeSheet),
+	target: adapt(TargetSheet, (a: BudgetSheetArgs["target"]) => ({
+		envelopeId: a.envelopeId,
+	})),
+	newEnvelope: adapt(NewEnvelopeSheet),
+	editEnvelope: adapt(
+		EditEnvelopeSheet,
+		(a: BudgetSheetArgs["editEnvelope"]) => ({
+			envelopeId: a.envelopeId,
+		}),
+	),
+	mergeEnvelopes: adapt(MergeEnvelopesSheet),
+	startingMoney: adapt(StartingMoneySheet),
+	afford: adapt(AffordSheet),
 };

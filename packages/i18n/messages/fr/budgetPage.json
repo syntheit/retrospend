@@ -196,6 +196,8 @@
 		"afford": "Puis-je me permettre quelque chose ?",
 		"rail": "Dette",
 		"total": "Dette totale",
-		"open": "Plan de remboursement"
+		"open": "Plan de remboursement",
+		"neverAtPayment": "Jamais avec ce paiement",
+		"diverges": "Les intérêts dépassent ce que tu paies chaque mois, le solde continue donc de grossir. Augmente le paiement pour voir une date."
 	}
 }

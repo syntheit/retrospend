@@ -196,6 +196,8 @@
 		"afford": "¿Me alcanza para algo?",
 		"rail": "Deuda",
 		"total": "Deuda total",
-		"open": "Plan de pago"
+		"open": "Plan de pago",
+		"neverAtPayment": "Nunca con este pago",
+		"diverges": "Los intereses son más de lo que pagas al mes, así que el saldo sigue creciendo. Sube el pago para ver una fecha."
 	}
 }
