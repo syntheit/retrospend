@@ -34,6 +34,7 @@ const STYLES: Style[] = [
 	"LIMITS",
 	"FIFTY_THIRTY_TWENTY",
 	"WEEKLY",
+	"DEBT_PAYOFF",
 	"TRACK",
 ];
 

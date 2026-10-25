@@ -4,11 +4,18 @@ import { draftFromMinor } from "@retrospend/domain/parse";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { minorOf } from "~/components/money/money-cell";
+import { dayKey } from "~/lib/time-zone";
 import { api, type RouterInputs, type RouterOutputs } from "~/trpc/react";
 import { useAmount } from "./use-amount";
 
 export type SetupInput = RouterInputs["envelope"]["setup"];
 export type SetupStyle = SetupInput["style"];
+export type PayFrequency = NonNullable<SetupInput["pay"]>["frequency"];
+export type PayoffStrategy = NonNullable<SetupInput["payoff"]>["strategy"];
+/** The preset's envelope that holds the payoff plan's extra each month. */
+export const EXTRA_DEBT_KEY = "extra-debt";
+/** How you get paid: no frequency until it is answered, so nothing is assumed. */
+export type PayAnswer = { frequency: PayFrequency | null; next: string };
 type Preset = RouterOutputs["envelope"]["setupPreset"];
 type PresetEnvelope = Preset["envelopes"][number];
 type Target = NonNullable<PresetEnvelope["target"]>;
@@ -35,6 +42,12 @@ export function useSetup(locale: string) {
 		{ style },
 		{ enabled: !done, retry: false },
 	);
+	const [pay, setPay] = useState<PayAnswer>(() => ({
+		frequency: null,
+		next: dayKey(new Date()),
+	}));
+	const [payoffStrategy, setPayoffStrategy] =
+		useState<PayoffStrategy>("AVALANCHE");
 	const [off, setOff] = useState<ReadonlySet<string>>(new Set());
 	const [texts, setTexts] = useState<Record<string, string>>({});
 	const p = preset.data ?? null;
@@ -124,8 +137,27 @@ export function useSetup(locale: string) {
 		};
 		if (style !== "LIMITS" && money.minor !== null)
 			out.startingMoneyMinor = money.minor;
+		if (pay.frequency)
+			out.pay = {
+				frequency: pay.frequency,
+				nextPay: pay.frequency === "VARIES" ? null : pay.next,
+			};
+		// The extra is what is typed on the extra envelope; the server saves the plan with the book.
+		if (
+			style === "DEBT_PAYOFF" &&
+			envelopes.some((e) => e.key === EXTRA_DEBT_KEY)
+		) {
+			const text = texts[EXTRA_DEBT_KEY] ?? "";
+			const extra = text ? minorOf(text, locale, p.currency) : 0;
+			if (extra === null) return null;
+			out.payoff = {
+				strategy: payoffStrategy,
+				extraMonthlyMinor: extra,
+				envelopeKey: EXTRA_DEBT_KEY,
+			};
+		}
 		return out;
-	}, [p, off, texts, style, money.minor, locale, name]);
+	}, [p, off, texts, style, money.minor, pay, payoffStrategy, locale, name]);
 
 	return {
 		setDone,
@@ -134,6 +166,10 @@ export function useSetup(locale: string) {
 		preset: p,
 		loading: preset.isLoading,
 		money,
+		pay,
+		setPay,
+		payoffStrategy,
+		setPayoffStrategy,
 		off,
 		toggle,
 		texts,

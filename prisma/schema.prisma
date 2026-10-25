@@ -385,6 +385,10 @@ model BudgetBook {
   planFundFrom             Int?
   // What the last style switch changed; its undo reads this, never the client.
   styleUndo                Json?
+  // How often you get paid, asked at setup; VARIES (or null) has no next pay.
+  payFrequency             PayFrequency?
+  // A pay date the cycle counts from (the next pay when it was typed).
+  payAnchor                DateTime?     @db.Date
   createdById              String
   createdAt                DateTime      @default(now())
   updatedAt                DateTime      @updatedAt
@@ -606,6 +610,13 @@ enum BudgetStyle {
   FIFTY_THIRTY_TWENTY
   WEEKLY
   DEBT_PAYOFF
+}
+
+enum PayFrequency {
+  MONTHLY
+  EVERY_TWO_WEEKS
+  WEEKLY
+  VARIES
 }
 
 enum FundingSource {
