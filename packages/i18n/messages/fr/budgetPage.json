@@ -1,0 +1,211 @@
+{
+	"title": "Budget",
+	"menu": {
+		"more": "Autres actions du budget",
+		"addIncome": "Ajouter une entrée d'argent",
+		"usePlan": "Utiliser mon plan",
+		"planNext": "Planifier le mois suivant",
+		"summary": "Résumé du mois",
+		"whatIf": "Et si je dépense…",
+		"addEnvelope": "Ajouter une enveloppe",
+		"combine": "Fusionner des enveloppes",
+		"rules": "Règles de revenus",
+		"style": "Style de budget",
+		"help": "Ce que veulent dire les mots",
+		"payoffPlan": "Plan de remboursement",
+		"payDebt": "Rembourser une dette"
+	},
+	"month": {
+		"label": "{month} {year}",
+		"previous": "Mois précédent",
+		"next": "Mois suivant",
+		"pick": "Choisir un mois",
+		"closedItem": "{month}, clôturé",
+		"planItem": "Planifier {month}"
+	},
+	"toolbar": {
+		"label": "Filtrer les enveloppes",
+		"search": "Rechercher des enveloppes",
+		"searchLimits": "Rechercher des plafonds",
+		"chips": "Filtrer par statut",
+		"overspent": "Dépassées {count}",
+		"underfunded": "Sous-approvisionnées {count}",
+		"plan": "Planifier {month}"
+	},
+	"hero": {
+		"why": "Comment c'est calculé",
+		"afford": "Puis-je me permettre quelque chose ?",
+		"incomplete": "Pas encore de taux pour {currencies}, donc ce n'est pas calculé."
+	},
+	"verdict": {
+		"label": {
+			"toAssign": "À affecter",
+			"week": "Reste cette semaine",
+			"limits": "Reste dans vos plafonds",
+			"overLimits": "Au-delà de vos plafonds",
+			"overBudget": "Budget dépassé en {month}",
+			"saveFirst": "Reste à dépenser après l'épargne",
+			"leftToSpend": "Reste à dépenser en {month}"
+		},
+		"plannedTooMuch": "Vous avez planifié <amount></amount> de plus que ce que vous avez, nous l'avons retiré de ce chiffre.",
+		"overBudget": "Vous avez dépensé <amount></amount> de plus que prévu pour {month}. Couvrez-le avec de l'argent non planifié, sinon il sera pris sur {next}.",
+		"billsShort": "Les factures ont encore besoin de <amount></amount>. Planifiez-les d'abord ; ce chiffre ne les inclut pas.",
+		"usedUp": "Vous avez tout utilisé des Dépenses de {month}. Le reste sera pris sur {next}.",
+		"faster": "Vous dépensez plus vite que prévu. Pour finir dans le budget, restez autour de <amount></amount> par jour.",
+		"someOver": "Environ <amount></amount> par jour pendant {days, plural, one {# jour restant} other {# jours restants}}, après le dépassement de {names} de <over></over>.",
+		"onTrack": "Vous êtes dans les clous : environ <amount></amount> par jour pendant {days, plural, one {# jour restant} other {# jours restants}}.",
+		"allAssigned": "Tout votre argent a une destination.",
+		"needsJob": "<amount></amount> n'ont pas encore de destination.",
+		"overAssigned": "Vous avez réparti <amount></amount> de plus que ce que vous avez.",
+		"weekLeft": "Environ <amount></amount> par jour. Remise à zéro : {resets}.",
+		"weekUsed": "Vous avez utilisé l'allocation de la semaine. Remise à zéro : {resets}.",
+		"limitsOver": "Vous dépassez vos plafonds de <amount></amount>.",
+		"limitsUsedUp": "Vous avez utilisé tous vos plafonds de {month}.",
+		"limitsFaster": "Vous utilisez vos plafonds plus vite que le mois n'avance. Environ <amount></amount> par jour vous gardent dedans.",
+		"limitsSomeOver": "{names} dépasse de <over></over>. Il reste environ <amount></amount> par jour dans vos plafonds.",
+		"limitsOnTrack": "Dans les clous : environ <amount></amount> par jour dans vos plafonds.",
+		"action": {
+			"FIX_PLAN": "Corriger mon plan",
+			"COVER": "Couvrir",
+			"PLAN_BILLS": "Planifier les factures",
+			"USE_PLAN": "Utiliser mon plan",
+			"TAKE_BACK": "Le reprendre",
+			"raiseLimit": "Relever ce plafond"
+		}
+	},
+	"notice": {
+		"welcomeBack": "Bon retour. Rattrapez les mois manqués.",
+		"welcomeBackAction": "Rattraper",
+		"summary": "{month} est clôturé. Lisez ce qui s'est passé.",
+		"summaryAction": "Résumé du mois",
+		"usePlan": "Utiliser mon plan",
+		"notPlanned": "<amount></amount> sont arrivés sans être planifiés. Ils ne comptent dans le reste à dépenser qu'une fois planifiés.",
+		"cover": "Couvrir",
+		"overspent": "{count, plural, one {{name} dépasse de <amount></amount>.} other {# enveloppes dépassent de <amount></amount>.}}"
+	},
+	"target": {
+		"none": "Pas d'objectif",
+		"noRate": "Pas encore de taux pour {currency}",
+		"perWeek": "<amount></amount> par semaine",
+		"perMonth": "<amount></amount> par mois",
+		"billDue": "<amount></amount> d'ici le {date}",
+		"goal": "Objectif de <amount></amount>",
+		"goalProgress": "<saved></saved> sur <amount></amount>",
+		"goalBy": "d'ici le {date}",
+		"moreNeeded": "il manque <amount></amount>",
+		"leftThisWeek": "<amount></amount> restants cette semaine"
+	},
+	"group": {
+		"role": {
+			"BILLS": "Factures",
+			"SPENDING": "Dépenses",
+			"SAVINGS": "Épargne"
+		},
+		"ungrouped": "Autres enveloppes",
+		"percents": "Planifié {planned} · dépensé {spent}",
+		"overBy": "{name} dépasse de <amount></amount>",
+		"needed": "{name} : il manque <amount></amount>",
+		"covered": "{name} : couvertes"
+	},
+	"table": {
+		"label": "Enveloppes",
+		"envelope": "Enveloppe",
+		"assigned": "Affecté",
+		"limit": "Plafond",
+		"spent": "Dépensé",
+		"left": "Reste",
+		"endOfMonth": "Fin de mois",
+		"actions": "Actions",
+		"paid": "Payé",
+		"noMatch": "Aucune enveloppe ne correspond."
+	},
+	"rail": {
+		"label": "En un coup d'œil",
+		"owed": {
+			"title": "On vous doit",
+			"open": "Qui vous doit",
+			"hint": "Argent que vous avez avancé. Il retourne dans {pool, select, TO_ASSIGN {À affecter} other {Pas encore planifié}} quand on vous rembourse.",
+			"pending": "<amount></amount> attendent votre accord",
+			"people": "{count, plural, =0 {Argent avancé} one {Dû par # personne} other {Dû par # personnes}}"
+		},
+		"moneyIn": {
+			"title": "Entrées d'argent",
+			"open": "Revenus et règles",
+			"hint": "Les règles de revenus décident où ça va",
+			"thisMonth": "Ce mois-ci"
+		},
+		"shares": {
+			"title": "Parts",
+			"open": "Vérifier les parts",
+			"line": "Des parts vous attendent",
+			"unresolved": "{count, plural, one {# part n'a pas d'enveloppe} other {# parts n'ont pas d'enveloppe}}",
+			"pending": "Attend votre accord"
+		}
+	},
+	"unavailable": {
+		"title": "Indisponible pour le moment",
+		"hint": "Votre budget n'a pas pu se charger.",
+		"retry": "Réessayer"
+	},
+	"empty": {
+		"title": "Pas encore d'enveloppes",
+		"hint": "Les enveloppes gardent l'argent pour ce qui compte pour vous. La configuration prend environ cinq minutes.",
+		"setup": "Configurer votre budget"
+	},
+	"paused": {
+		"title": "Votre budget est en pause",
+		"hint": "Rien n'est compté tant qu'il est en pause.",
+		"resume": "Reprendre le budget"
+	},
+	"closed": {
+		"label": "{month}, clôturé",
+		"cameIn": "Entré",
+		"line": "Affecté <assigned></assigned>{hasOver, select, yes { · Dépassé de <over></over>} other {}}",
+		"none": "Rien n'a été budgété ce mois-ci.",
+		"open": "Comment c'est calculé"
+	},
+	"plan": {
+		"discarded": "Plan abandonné",
+		"emptyHint": "Un plan est un brouillon. Rien ne bouge tant que vous ne l'appliquez pas.",
+		"emptyTitle": "Planifier {month}",
+		"fill": {
+			"TARGETS": "Partir de mes objectifs",
+			"SAME_AS_THIS_MONTH": "Comme ce mois-ci",
+			"THIS_MONTH_SPENT": "Ce que j'ai dépensé ce mois-ci"
+		},
+		"banner": "Planification de {month}. Rien ne change tant que vous n'appliquez pas le plan.",
+		"discard": "Abandonner",
+		"apply": "Appliquer le plan",
+		"after": "Pas encore planifié après ce plan",
+		"fillFrom": "Remplir à partir de…",
+		"table": "Plan",
+		"envelope": "Enveloppe",
+		"planned": "Planifié",
+		"left": "Reste",
+		"edit": "Planifier {name}",
+		"plannedSub": "Planifié <amount></amount>",
+		"fundNow": "Le financer maintenant"
+	},
+	"planRail": {
+		"label": "Coût du plan",
+		"title": "Plan",
+		"cost": "Coût du plan",
+		"typical": "Entrées habituelles",
+		"runway": "Votre budget et votre épargne durent {months} mois à ce coût."
+	},
+	"debt": {
+		"label": "Sans dette d'ici",
+		"never": "Hors de vue",
+		"sentence": "<total></total> sur {count, plural, one {# dette} other {# dettes}}. Environ {months, plural, one {# mois} other {# mois}} avec ce plan.",
+		"capped": "Aux minimums, les intérêts dépassent les paiements.",
+		"incomplete": "Pas encore de taux pour {currencies}, donc le total n'est pas calculé.",
+		"unavailable": "Vos dettes n'ont pas pu se charger.",
+		"leftToSpend": "Reste à dépenser <amount></amount>",
+		"plan": "Plan de remboursement",
+		"pay": "Rembourser une dette",
+		"afford": "Puis-je me permettre quelque chose ?",
+		"rail": "Dette",
+		"total": "Dette totale",
+		"open": "Plan de remboursement"
+	}
+}

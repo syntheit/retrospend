@@ -242,6 +242,16 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Budget sheets: Shares with no envelope | A read that lists your shares with no category (`getMonth.shares.unresolved` is a count) to pick an envelope for each with `setShareCategory` | `splits` reviews the shares waiting for your OK only | 4C2 follow-up |
 | Budget sheets: What moved (a migrated budget) | The migration's old-to-new list (P7 `envelope-migration`, not on main) | Not built | 4C2 follow-up, after P7 merges |
 | Budget sheets: Set up, Undo | `envelope.undoSetup`. Setup only creates a first book (a second is refused, and the sheet says so), so Save ends with a toast without Undo | Accepted for a new book | Owner |
+||||||| cb2000b0
+| Budget: table totals and group figures | Server totals for the month (Assigned, Activity, Left) and registry ids for a group's totals; only `toAssign.terms.assigned` exists | No footer row; each group row shows the server's group totals without a figure id | 2B |
+| Budget: Spending expands per category (Flex) | Activity per category inside an envelope that covers many (SPEC §6.1) | Spending is one envelope row with its target line | 2B |
+| Budget: "October plan" allocation by group | Shares of the month by group in basis points (`AllocationBar` needs the server's shares) | The rail shows Owed to you, Money in and Shares only | 2B |
+| Budget: closed month hero | A "saved or spent more than came in" verdict for a closed month (`closedVerdict`); `monthSummary` has money in, assigned and overspent | The closed month leads with Money in, then Assigned and Over by, and "How it adds up" | 2B |
+| Budget: Archive and Hide envelope | `envelope.archive` (D65): its leftover goes back to Not planned yet | The envelope menu has Move, Cover, Edit target, View activity, Rename or edit categories, What if; no Archive | 2B |
+| Budget: assigned in place | Inline edit of Assigned goes through the Assign sheet (it has the preview and Undo, R30), not the table | The Assigned column is read only | 4C sheets |
+| Budget: envelope detail panel and page | The panel (desktop) and pushed page (phone) with How it adds up, history and Often over (SPEC §6.3) | A row's View activity opens Activity filtered to the envelope's categories | 4C follow-up |
+| Budget: Import from YNAB and Export CSV | Their flows (SPEC §8.4) | Not in the header menu | S6 |
+| Budget: Welcome back and month summary sheets | The sheets behind `welcomeBack`, `monthSummary`, `setup`, `assign` and every other id in `src/features/budget/sheet-ids.ts` | The page shows the notice and the button; a sheet with no renderer in `sheet-registry.tsx` does nothing yet | 4C sheets |
 
 ## 8. Behavior gaps found by the e2e suite
 

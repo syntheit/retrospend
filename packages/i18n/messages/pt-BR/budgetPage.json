@@ -1,0 +1,211 @@
+{
+	"title": "Orçamento",
+	"menu": {
+		"more": "Mais ações do orçamento",
+		"addIncome": "Adicionar entrada",
+		"usePlan": "Usar meu plano",
+		"planNext": "Planejar o próximo mês",
+		"summary": "Resumo do mês",
+		"whatIf": "E se eu gastar…",
+		"addEnvelope": "Adicionar envelope",
+		"combine": "Combinar envelopes",
+		"rules": "Regras de renda",
+		"style": "Estilo de orçamento",
+		"help": "O que as palavras significam",
+		"payoffPlan": "Plano de quitação",
+		"payDebt": "Pagar uma dívida"
+	},
+	"month": {
+		"label": "{month} {year}",
+		"previous": "Mês anterior",
+		"next": "Próximo mês",
+		"pick": "Escolher um mês",
+		"closedItem": "{month}, fechado",
+		"planItem": "Planejar {month}"
+	},
+	"toolbar": {
+		"label": "Filtrar envelopes",
+		"search": "Buscar envelopes",
+		"searchLimits": "Buscar limites",
+		"chips": "Filtrar por situação",
+		"overspent": "Estourados {count}",
+		"underfunded": "Sem fundos suficientes {count}",
+		"plan": "Planejar {month}"
+	},
+	"hero": {
+		"why": "Como isso é calculado",
+		"afford": "Posso comprar algo?",
+		"incomplete": "Ainda não há cotação para {currencies}, então isso não foi calculado."
+	},
+	"verdict": {
+		"label": {
+			"toAssign": "A atribuir",
+			"week": "Resta esta semana",
+			"limits": "Resta nos seus limites",
+			"overLimits": "Acima dos seus limites",
+			"overBudget": "Acima do orçamento em {month}",
+			"saveFirst": "Resta para gastar após poupar",
+			"leftToSpend": "Resta para gastar em {month}"
+		},
+		"plannedTooMuch": "Você planejou <amount></amount> a mais do que tem, então tiramos isso deste número.",
+		"overBudget": "Você gastou <amount></amount> a mais do que planejou para {month}. Cubra com dinheiro não planejado, ou sai de {next}.",
+		"billsShort": "As contas ainda precisam de <amount></amount>. Planeje isso primeiro; este número não inclui.",
+		"usedUp": "Você usou todo o orçamento de Gastos de {month}. O que passar sai de {next}.",
+		"faster": "Você está gastando mais rápido do que planejou. Para fechar no orçamento, fique em cerca de <amount></amount> por dia.",
+		"someOver": "Cerca de <amount></amount> por dia durante {days, plural, one {# dia restante} other {# dias restantes}}, depois que {names} estourou em <over></over>.",
+		"onTrack": "Você está no caminho: cerca de <amount></amount> por dia durante {days, plural, one {# dia restante} other {# dias restantes}}.",
+		"allAssigned": "Todo o seu dinheiro tem uma função.",
+		"needsJob": "<amount></amount> ainda precisam de uma função.",
+		"overAssigned": "Você distribuiu <amount></amount> a mais do que tem.",
+		"weekLeft": "Cerca de <amount></amount> por dia. Reinicia em {resets}.",
+		"weekUsed": "Você usou a verba desta semana. Reinicia em {resets}.",
+		"limitsOver": "Você passou dos seus limites em <amount></amount>.",
+		"limitsUsedUp": "Você usou todos os seus limites de {month}.",
+		"limitsFaster": "Você está usando seus limites mais rápido do que o mês passa. Cerca de <amount></amount> por dia mantém você dentro.",
+		"limitsSomeOver": "{names} passou em <over></over>. Restam cerca de <amount></amount> por dia nos seus limites.",
+		"limitsOnTrack": "No caminho: cerca de <amount></amount> por dia nos seus limites.",
+		"action": {
+			"FIX_PLAN": "Corrigir meu plano",
+			"COVER": "Cobrir",
+			"PLAN_BILLS": "Planejar contas",
+			"USE_PLAN": "Usar meu plano",
+			"TAKE_BACK": "Recuperar",
+			"raiseLimit": "Aumentar este limite"
+		}
+	},
+	"notice": {
+		"welcomeBack": "Que bom ver você de volta. Atualize os meses que perdeu.",
+		"welcomeBackAction": "Atualizar",
+		"summary": "{month} fechou. Veja o que aconteceu.",
+		"summaryAction": "Resumo do mês",
+		"usePlan": "Usar meu plano",
+		"notPlanned": "<amount></amount> entraram e ainda não estão planejados. Só contam no que resta para gastar quando você planejar.",
+		"cover": "Cobrir",
+		"overspent": "{count, plural, one {{name} estourou em <amount></amount>.} other {# envelopes estouraram em <amount></amount>.}}"
+	},
+	"target": {
+		"none": "Sem meta",
+		"noRate": "Ainda não há cotação de {currency}",
+		"perWeek": "<amount></amount> por semana",
+		"perMonth": "<amount></amount> por mês",
+		"billDue": "<amount></amount> até {date}",
+		"goal": "Meta de <amount></amount>",
+		"goalProgress": "<saved></saved> de <amount></amount>",
+		"goalBy": "até {date}",
+		"moreNeeded": "faltam <amount></amount>",
+		"leftThisWeek": "restam <amount></amount> esta semana"
+	},
+	"group": {
+		"role": {
+			"BILLS": "Contas",
+			"SPENDING": "Gastos",
+			"SAVINGS": "Poupança"
+		},
+		"ungrouped": "Outros envelopes",
+		"percents": "Planejado {planned} · gasto {spent}",
+		"overBy": "{name} estourou em <amount></amount>",
+		"needed": "{name}: faltam <amount></amount>",
+		"covered": "{name}: cobertas"
+	},
+	"table": {
+		"label": "Envelopes",
+		"envelope": "Envelope",
+		"assigned": "Atribuído",
+		"limit": "Limite",
+		"spent": "Gasto",
+		"left": "Resta",
+		"endOfMonth": "Fim do mês",
+		"actions": "Ações",
+		"paid": "Pago",
+		"noMatch": "Nenhum envelope corresponde."
+	},
+	"rail": {
+		"label": "Num relance",
+		"owed": {
+			"title": "Devem a você",
+			"open": "Quem deve a você",
+			"hint": "Dinheiro que você adiantou. Volta para {pool, select, TO_ASSIGN {A atribuir} other {Ainda não planejado}} quando pagarem.",
+			"pending": "<amount></amount> esperam seu OK",
+			"people": "{count, plural, =0 {Dinheiro adiantado} one {Devido por # pessoa} other {Devido por # pessoas}}"
+		},
+		"moneyIn": {
+			"title": "Entradas",
+			"open": "Renda e regras",
+			"hint": "As regras de renda decidem para onde vai",
+			"thisMonth": "Este mês"
+		},
+		"shares": {
+			"title": "Partes",
+			"open": "Revisar partes",
+			"line": "Há partes esperando você",
+			"unresolved": "{count, plural, one {# parte não tem envelope} other {# partes não têm envelope}}",
+			"pending": "Esperando seu OK"
+		}
+	},
+	"unavailable": {
+		"title": "Indisponível no momento",
+		"hint": "Não foi possível carregar seu orçamento.",
+		"retry": "Tentar de novo"
+	},
+	"empty": {
+		"title": "Ainda não há envelopes",
+		"hint": "Envelopes guardam dinheiro para o que importa para você. Configurar leva cerca de cinco minutos.",
+		"setup": "Configurar seu orçamento"
+	},
+	"paused": {
+		"title": "Seu orçamento está em pausa",
+		"hint": "Nada é contado enquanto estiver em pausa.",
+		"resume": "Retomar orçamento"
+	},
+	"closed": {
+		"label": "{month}, fechado",
+		"cameIn": "Entrou",
+		"line": "Atribuído <assigned></assigned>{hasOver, select, yes { · Estourado em <over></over>} other {}}",
+		"none": "Nada foi orçado neste mês.",
+		"open": "Como isso é calculado"
+	},
+	"plan": {
+		"discarded": "Plano descartado",
+		"emptyHint": "Um plano é um rascunho. Nada se move até você aplicá-lo.",
+		"emptyTitle": "Planejar {month}",
+		"fill": {
+			"TARGETS": "Começar pelas minhas metas",
+			"SAME_AS_THIS_MONTH": "Igual a este mês",
+			"THIS_MONTH_SPENT": "O que gastei neste mês"
+		},
+		"banner": "Planejando {month}. Nada muda até você aplicar o plano.",
+		"discard": "Descartar",
+		"apply": "Aplicar plano",
+		"after": "Ainda não planejado depois deste plano",
+		"fillFrom": "Preencher a partir de…",
+		"table": "Plano",
+		"envelope": "Envelope",
+		"planned": "Planejado",
+		"left": "Resta",
+		"edit": "Planejar {name}",
+		"plannedSub": "Planejado <amount></amount>",
+		"fundNow": "Financiar agora"
+	},
+	"planRail": {
+		"label": "Custo do plano",
+		"title": "Plano",
+		"cost": "Custo do plano",
+		"typical": "Entradas habituais",
+		"runway": "Seu orçamento e sua poupança duram {months} meses com este custo."
+	},
+	"debt": {
+		"label": "Sem dívidas até",
+		"never": "Fora de vista",
+		"sentence": "<total></total> em {count, plural, one {# dívida} other {# dívidas}}. Cerca de {months, plural, one {# mês} other {# meses}} com este plano.",
+		"capped": "Nos mínimos, os juros superam os pagamentos.",
+		"incomplete": "Ainda não há cotação para {currencies}, então o total não foi calculado.",
+		"unavailable": "Não foi possível carregar suas dívidas.",
+		"leftToSpend": "Resta para gastar <amount></amount>",
+		"plan": "Plano de quitação",
+		"pay": "Pagar uma dívida",
+		"afford": "Posso comprar algo?",
+		"rail": "Dívida",
+		"total": "Dívida total",
+		"open": "Plano de quitação"
+	}
+}

@@ -289,6 +289,29 @@
 			"label": "Reconcile"
 		}
 	},
+	"envelope": {
+		"move": {
+			"label": "Move money"
+		},
+		"cover": {
+			"label": "Cover overspending"
+		},
+		"payDebt": {
+			"label": "Pay down a debt"
+		},
+		"target": {
+			"label": "Edit target"
+		},
+		"activity": {
+			"label": "View activity"
+		},
+		"edit": {
+			"label": "Rename or edit categories"
+		},
+		"whatIf": {
+			"label": "What if I spend…"
+		}
+	},
 	"import": {
 		"review": {
 			"label": "Review"

@@ -289,6 +289,29 @@
 			"label": "Conciliar"
 		}
 	},
+	"envelope": {
+		"move": {
+			"label": "Mover dinero"
+		},
+		"cover": {
+			"label": "Cubrir el exceso"
+		},
+		"payDebt": {
+			"label": "Pagar una deuda"
+		},
+		"target": {
+			"label": "Editar objetivo"
+		},
+		"activity": {
+			"label": "Ver actividad"
+		},
+		"edit": {
+			"label": "Renombrar o editar categorías"
+		},
+		"whatIf": {
+			"label": "¿Y si gasto…?"
+		}
+	},
 	"import": {
 		"review": {
 			"label": "Revisar"

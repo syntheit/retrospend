@@ -59,6 +59,7 @@ export const ACTION_IDS = {
 		"setRate",
 		"confirmStartingMoney",
 	],
+	envelope: ["move", "cover", "payDebt", "target", "activity", "edit", "whatIf"],
 	import: ["review"],
 	setup: ["addExpense", "chooseCurrency", "resendEmail", "import"],
 	incomeRule: ["moveUp", "moveDown", "applyToMonth", "remove"],

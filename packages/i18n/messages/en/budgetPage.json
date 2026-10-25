@@ -1,0 +1,211 @@
+{
+	"title": "Budget",
+	"menu": {
+		"more": "More budget actions",
+		"addIncome": "Add money in",
+		"usePlan": "Use my plan",
+		"planNext": "Plan next month",
+		"summary": "Month summary",
+		"whatIf": "What if I spend…",
+		"addEnvelope": "Add envelope",
+		"combine": "Combine envelopes",
+		"rules": "Income rules",
+		"style": "Budget style",
+		"help": "What the words mean",
+		"payoffPlan": "Payoff plan",
+		"payDebt": "Pay down a debt"
+	},
+	"month": {
+		"label": "{month} {year}",
+		"previous": "Previous month",
+		"next": "Next month",
+		"pick": "Choose a month",
+		"closedItem": "{month}, closed",
+		"planItem": "Plan {month}"
+	},
+	"toolbar": {
+		"label": "Filter envelopes",
+		"search": "Search envelopes",
+		"searchLimits": "Search limits",
+		"chips": "Filter by status",
+		"overspent": "Overspent {count}",
+		"underfunded": "Underfunded {count}",
+		"plan": "Plan {month}"
+	},
+	"hero": {
+		"why": "How this adds up",
+		"afford": "Can I afford something?",
+		"incomplete": "No rate yet for {currencies}, so this is not worked out."
+	},
+	"verdict": {
+		"label": {
+			"toAssign": "To assign",
+			"week": "Left this week",
+			"limits": "Left in your limits",
+			"overLimits": "Over your limits",
+			"overBudget": "Over budget in {month}",
+			"saveFirst": "Left to spend after saving",
+			"leftToSpend": "Left to spend in {month}"
+		},
+		"plannedTooMuch": "You planned <amount></amount> more than you have, so we took it off this number.",
+		"overBudget": "You've spent <amount></amount> more than you planned for {month}. Cover it from money you haven't planned, or it comes out of {next}.",
+		"billsShort": "Bills still need <amount></amount>. Plan that first; this number doesn't include it.",
+		"usedUp": "You've used all of {month}'s Spending. Anything more comes out of {next}.",
+		"faster": "You're spending faster than planned. To finish on budget, keep to about <amount></amount> a day.",
+		"someOver": "About <amount></amount> a day for the {days, plural, one {# day} other {# days}} left, after {names} went over by <over></over>.",
+		"onTrack": "You're on track: about <amount></amount> a day for the {days, plural, one {# day} other {# days}} left.",
+		"allAssigned": "All your money has a job.",
+		"needsJob": "<amount></amount> still needs a job.",
+		"overAssigned": "You gave out <amount></amount> more than you have.",
+		"weekLeft": "About <amount></amount> a day. It resets {resets}.",
+		"weekUsed": "You've used this week's allowance. It resets {resets}.",
+		"limitsOver": "You're over your limits by <amount></amount>.",
+		"limitsUsedUp": "You've used all your limits for {month}.",
+		"limitsFaster": "You're using your limits faster than the month goes. About <amount></amount> a day keeps you inside them.",
+		"limitsSomeOver": "{names} went over by <over></over>. About <amount></amount> a day is left across your limits.",
+		"limitsOnTrack": "On track: about <amount></amount> a day across your limits.",
+		"action": {
+			"FIX_PLAN": "Fix my plan",
+			"COVER": "Cover",
+			"PLAN_BILLS": "Plan bills",
+			"USE_PLAN": "Use my plan",
+			"TAKE_BACK": "Take it back",
+			"raiseLimit": "Raise this limit"
+		}
+	},
+	"notice": {
+		"welcomeBack": "Welcome back. Catch up on the months you missed.",
+		"welcomeBackAction": "Catch up",
+		"summary": "{month} closed. Read what happened.",
+		"summaryAction": "Month summary",
+		"usePlan": "Use my plan",
+		"notPlanned": "<amount></amount> came in that isn't planned yet. It isn't in your Left to spend until you plan it.",
+		"cover": "Cover",
+		"overspent": "{count, plural, one {{name} is over by <amount></amount>.} other {# envelopes are over by <amount></amount>.}}"
+	},
+	"target": {
+		"none": "No target",
+		"noRate": "No {currency} rate yet",
+		"perWeek": "<amount></amount> a week",
+		"perMonth": "<amount></amount> a month",
+		"billDue": "<amount></amount> by {date}",
+		"goal": "Goal <amount></amount>",
+		"goalProgress": "<saved></saved> of <amount></amount>",
+		"goalBy": "by {date}",
+		"moreNeeded": "<amount></amount> more needed",
+		"leftThisWeek": "<amount></amount> left this week"
+	},
+	"group": {
+		"role": {
+			"BILLS": "Bills",
+			"SPENDING": "Spending",
+			"SAVINGS": "Savings"
+		},
+		"ungrouped": "Other envelopes",
+		"percents": "Planned {planned} · spent {spent}",
+		"overBy": "{name} over by <amount></amount>",
+		"needed": "{name}: <amount></amount> still needed",
+		"covered": "{name}: covered"
+	},
+	"table": {
+		"label": "Envelopes",
+		"envelope": "Envelope",
+		"assigned": "Assigned",
+		"limit": "Limit",
+		"spent": "Spent",
+		"left": "Left",
+		"endOfMonth": "End of month",
+		"actions": "Actions",
+		"paid": "Paid",
+		"noMatch": "No envelope matches."
+	},
+	"rail": {
+		"label": "At a glance",
+		"owed": {
+			"title": "Owed to you",
+			"open": "Who owes you",
+			"hint": "Money you fronted. It returns to {pool, select, TO_ASSIGN {To assign} other {Not planned yet}} when they pay you back.",
+			"pending": "<amount></amount> waits for your OK",
+			"people": "{count, plural, =0 {Money you fronted} one {Owed by # person} other {Owed by # people}}"
+		},
+		"moneyIn": {
+			"title": "Money in",
+			"open": "Income and rules",
+			"hint": "Income rules decide where it goes",
+			"thisMonth": "This month"
+		},
+		"shares": {
+			"title": "Shares",
+			"open": "Review shares",
+			"line": "Shares need you",
+			"unresolved": "{count, plural, one {# share has no envelope} other {# shares have no envelope}}",
+			"pending": "Waiting for your OK"
+		}
+	},
+	"unavailable": {
+		"title": "Not available right now",
+		"hint": "Your budget could not load.",
+		"retry": "Try again"
+	},
+	"empty": {
+		"title": "No envelopes yet",
+		"hint": "Envelopes hold money for what you care about. Setting up takes about five minutes.",
+		"setup": "Set up your budget"
+	},
+	"paused": {
+		"title": "Your budget is paused",
+		"hint": "Nothing is counted while it is paused.",
+		"resume": "Resume budget"
+	},
+	"closed": {
+		"label": "{month}, closed",
+		"cameIn": "Came in",
+		"line": "Assigned <assigned></assigned>{hasOver, select, yes { · Over by <over></over>} other {}}",
+		"none": "Nothing was budgeted this month.",
+		"open": "How it adds up"
+	},
+	"plan": {
+		"discarded": "Plan discarded",
+		"emptyHint": "A plan is a draft. Nothing moves until you apply it.",
+		"emptyTitle": "Plan {month}",
+		"fill": {
+			"TARGETS": "Start from my targets",
+			"SAME_AS_THIS_MONTH": "Same as this month",
+			"THIS_MONTH_SPENT": "What this month spent"
+		},
+		"banner": "Planning {month}. Nothing changes until you apply it.",
+		"discard": "Discard",
+		"apply": "Apply plan",
+		"after": "Not planned yet after this plan",
+		"fillFrom": "Fill from…",
+		"table": "Plan",
+		"envelope": "Envelope",
+		"planned": "Planned",
+		"left": "Left",
+		"edit": "Plan {name}",
+		"plannedSub": "Planned <amount></amount>",
+		"fundNow": "Fund it now"
+	},
+	"planRail": {
+		"label": "Plan cost",
+		"title": "Plan",
+		"cost": "Plan cost",
+		"typical": "Usual money in",
+		"runway": "Your budget and savings last {months} months at this cost."
+	},
+	"debt": {
+		"label": "Debt-free by",
+		"never": "Not in sight",
+		"sentence": "<total></total> across {count, plural, one {# debt} other {# debts}}. About {months, plural, one {# month} other {# months}} at this plan.",
+		"capped": "At the minimums the interest outruns the payments.",
+		"incomplete": "No rate yet for {currencies}, so the total is not worked out.",
+		"unavailable": "Your debts could not load.",
+		"leftToSpend": "Left to spend <amount></amount>",
+		"plan": "Payoff plan",
+		"pay": "Pay down a debt",
+		"afford": "Can I afford something?",
+		"rail": "Debt",
+		"total": "Total debt",
+		"open": "Payoff plan"
+	}
+}

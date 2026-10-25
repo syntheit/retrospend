@@ -22,6 +22,9 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	projects: [],
 	wealth: [],
 	budget: [],
+	// S4C: the redesigned Budget on a Flex book: the lead number
+	// (the seed has no book; the flow sets one up for Martín).
+	budgetPage: ["budget.leftToSpend"],
 	settings: [],
 	// The redesigned project pages (uiV2) on the seed: Sofía's balance in
 	// each project on the list; the group total and her share on Depto

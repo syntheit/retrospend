@@ -23,6 +23,7 @@ export const figuresQuerySchema = z.object({
 	projectId: z.string().optional(),
 	personId: z.string().optional(),
 	accountId: z.string().optional(),
+	envelopeId: z.string().optional(),
 });
 
 export const figuresResultSchema = z.object({
@@ -32,7 +33,7 @@ export const figuresResultSchema = z.object({
 /**
  * GET /figures reads named numbers from the figures registry, the same
  * definitions the web shows and the e2e display audit compares against.
- * A narrowing (projectId, personId, accountId) applies only to figures
+ * A narrowing (projectId, personId, accountId, envelopeId) applies only to figures
  * that honor it. Unknown ids are `not_found`.
  */
 export const figuresContract = {

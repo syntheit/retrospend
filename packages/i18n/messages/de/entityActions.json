@@ -289,6 +289,29 @@
 			"label": "Abgleichen"
 		}
 	},
+	"envelope": {
+		"move": {
+			"label": "Geld verschieben"
+		},
+		"cover": {
+			"label": "Überziehung ausgleichen"
+		},
+		"payDebt": {
+			"label": "Schulden tilgen"
+		},
+		"target": {
+			"label": "Ziel bearbeiten"
+		},
+		"activity": {
+			"label": "Aktivität ansehen"
+		},
+		"edit": {
+			"label": "Umbenennen oder Kategorien ändern"
+		},
+		"whatIf": {
+			"label": "Was wäre, wenn ich ausgebe…"
+		}
+	},
 	"import": {
 		"review": {
 			"label": "Prüfen"

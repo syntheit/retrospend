@@ -10,6 +10,7 @@ import { BUDGET_ACTIONS, type BudgetTarget } from "./budget";
 import { CATEGORY_ACTIONS, type CategoryTarget } from "./category";
 import { CURRENCY_ACTIONS, type CurrencyTarget } from "./currency";
 import { DEVICE_ACTIONS, type DeviceTarget } from "./device";
+import { ENVELOPE_ACTIONS, type EnvelopeTarget } from "./envelope";
 import { EXPENSE_ACTIONS, type ExpenseTarget } from "./expense";
 import { IMPORT_ACTIONS, type ImportTarget } from "./import-batch";
 import { INCOME_RULE_ACTIONS, type IncomeRuleTarget } from "./income-rule";
@@ -39,6 +40,7 @@ export type EntityTargets = {
 	payment: PaymentTarget;
 	needsYou: NeedsYouTarget;
 	budget: BudgetTarget;
+	envelope: EnvelopeTarget;
 	import: ImportTarget;
 	setup: SetupTarget;
 	incomeRule: IncomeRuleTarget;
@@ -62,6 +64,7 @@ export const ACTIONS: {
 	payment: PAYMENT_ACTIONS,
 	needsYou: NEEDS_YOU_ACTIONS,
 	budget: BUDGET_ACTIONS,
+	envelope: ENVELOPE_ACTIONS,
 	import: IMPORT_ACTIONS,
 	setup: SETUP_ACTIONS,
 	incomeRule: INCOME_RULE_ACTIONS,
@@ -74,6 +77,7 @@ export type {
 	CategoryTarget,
 	CurrencyTarget,
 	DeviceTarget,
+	EnvelopeTarget,
 	ExpenseTarget,
 	ImportTarget,
 	IncomeRuleTarget,

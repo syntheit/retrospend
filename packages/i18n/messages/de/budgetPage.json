@@ -1,0 +1,211 @@
+{
+	"title": "Budget",
+	"menu": {
+		"more": "Weitere Budgetaktionen",
+		"addIncome": "Einnahme hinzufügen",
+		"usePlan": "Meinen Plan verwenden",
+		"planNext": "Nächsten Monat planen",
+		"summary": "Monatsübersicht",
+		"whatIf": "Was wäre, wenn ich ausgebe…",
+		"addEnvelope": "Umschlag hinzufügen",
+		"combine": "Umschläge zusammenführen",
+		"rules": "Einnahmeregeln",
+		"style": "Budgetstil",
+		"help": "Was die Begriffe bedeuten",
+		"payoffPlan": "Tilgungsplan",
+		"payDebt": "Schulden tilgen"
+	},
+	"month": {
+		"label": "{month} {year}",
+		"previous": "Vorheriger Monat",
+		"next": "Nächster Monat",
+		"pick": "Monat wählen",
+		"closedItem": "{month}, abgeschlossen",
+		"planItem": "{month} planen"
+	},
+	"toolbar": {
+		"label": "Umschläge filtern",
+		"search": "Umschläge suchen",
+		"searchLimits": "Limits suchen",
+		"chips": "Nach Status filtern",
+		"overspent": "Überzogen {count}",
+		"underfunded": "Unterdeckt {count}",
+		"plan": "{month} planen"
+	},
+	"hero": {
+		"why": "So setzt es sich zusammen",
+		"afford": "Kann ich mir etwas leisten?",
+		"incomplete": "Für {currencies} gibt es noch keinen Kurs, daher lässt sich das nicht berechnen."
+	},
+	"verdict": {
+		"label": {
+			"toAssign": "Zuzuweisen",
+			"week": "Diese Woche übrig",
+			"limits": "In deinen Limits übrig",
+			"overLimits": "Über deinen Limits",
+			"overBudget": "Über dem Budget im {month}",
+			"saveFirst": "Nach dem Sparen übrig",
+			"leftToSpend": "Zum Ausgeben im {month}"
+		},
+		"plannedTooMuch": "Du hast <amount></amount> mehr geplant, als du hast. Wir haben es von dieser Zahl abgezogen.",
+		"overBudget": "Du hast <amount></amount> mehr ausgegeben, als du für {month} geplant hast. Decke es mit ungeplantem Geld, sonst geht es vom {next} ab.",
+		"billsShort": "Für Rechnungen fehlen noch <amount></amount>. Plane das zuerst; diese Zahl enthält es nicht.",
+		"usedUp": "Du hast alles aus Ausgaben im {month} verbraucht. Alles Weitere geht vom {next} ab.",
+		"faster": "Du gibst schneller aus als geplant. Um im Budget zu bleiben, bleib bei etwa <amount></amount> pro Tag.",
+		"someOver": "Etwa <amount></amount> pro Tag für {days, plural, one {# verbleibenden Tag} other {# verbleibende Tage}}, nachdem {names} um <over></over> überzogen hat.",
+		"onTrack": "Du liegst im Plan: etwa <amount></amount> pro Tag für {days, plural, one {# verbleibenden Tag} other {# verbleibende Tage}}.",
+		"allAssigned": "Jedes Stück deines Geldes hat eine Aufgabe.",
+		"needsJob": "<amount></amount> brauchen noch eine Aufgabe.",
+		"overAssigned": "Du hast <amount></amount> mehr verteilt, als du hast.",
+		"weekLeft": "Etwa <amount></amount> pro Tag. Neustart: {resets}.",
+		"weekUsed": "Du hast das Wochenbudget verbraucht. Neustart: {resets}.",
+		"limitsOver": "Du bist um <amount></amount> über deinen Limits.",
+		"limitsUsedUp": "Du hast alle Limits für {month} verbraucht.",
+		"limitsFaster": "Du nutzt deine Limits schneller, als der Monat vergeht. Etwa <amount></amount> pro Tag halten dich darin.",
+		"limitsSomeOver": "{names} liegt um <over></over> drüber. Etwa <amount></amount> pro Tag bleiben in deinen Limits.",
+		"limitsOnTrack": "Im Plan: etwa <amount></amount> pro Tag in deinen Limits.",
+		"action": {
+			"FIX_PLAN": "Plan korrigieren",
+			"COVER": "Decken",
+			"PLAN_BILLS": "Rechnungen planen",
+			"USE_PLAN": "Meinen Plan verwenden",
+			"TAKE_BACK": "Zurücknehmen",
+			"raiseLimit": "Dieses Limit erhöhen"
+		}
+	},
+	"notice": {
+		"welcomeBack": "Willkommen zurück. Hol die verpassten Monate nach.",
+		"welcomeBackAction": "Nachholen",
+		"summary": "{month} ist abgeschlossen. Lies, was passiert ist.",
+		"summaryAction": "Monatsübersicht",
+		"usePlan": "Meinen Plan verwenden",
+		"notPlanned": "<amount></amount> sind eingegangen und noch nicht geplant. Sie zählen erst zum Übrigen, wenn du sie planst.",
+		"cover": "Decken",
+		"overspent": "{count, plural, one {{name} ist um <amount></amount> überzogen.} other {# Umschläge sind um <amount></amount> überzogen.}}"
+	},
+	"target": {
+		"none": "Kein Ziel",
+		"noRate": "Noch kein Kurs für {currency}",
+		"perWeek": "<amount></amount> pro Woche",
+		"perMonth": "<amount></amount> pro Monat",
+		"billDue": "<amount></amount> bis {date}",
+		"goal": "Ziel <amount></amount>",
+		"goalProgress": "<saved></saved> von <amount></amount>",
+		"goalBy": "bis {date}",
+		"moreNeeded": "es fehlen <amount></amount>",
+		"leftThisWeek": "<amount></amount> diese Woche übrig"
+	},
+	"group": {
+		"role": {
+			"BILLS": "Rechnungen",
+			"SPENDING": "Ausgaben",
+			"SAVINGS": "Sparen"
+		},
+		"ungrouped": "Weitere Umschläge",
+		"percents": "Geplant {planned} · ausgegeben {spent}",
+		"overBy": "{name} um <amount></amount> drüber",
+		"needed": "{name}: es fehlen <amount></amount>",
+		"covered": "{name}: gedeckt"
+	},
+	"table": {
+		"label": "Umschläge",
+		"envelope": "Umschlag",
+		"assigned": "Zugewiesen",
+		"limit": "Limit",
+		"spent": "Ausgegeben",
+		"left": "Übrig",
+		"endOfMonth": "Monatsende",
+		"actions": "Aktionen",
+		"paid": "Bezahlt",
+		"noMatch": "Kein Umschlag passt."
+	},
+	"rail": {
+		"label": "Auf einen Blick",
+		"owed": {
+			"title": "Dir geschuldet",
+			"open": "Wer dir etwas schuldet",
+			"hint": "Geld, das du vorgestreckt hast. Es geht zurück in {pool, select, TO_ASSIGN {Zuzuweisen} other {Noch nicht geplant}}, sobald es zurückkommt.",
+			"pending": "<amount></amount> warten auf dein OK",
+			"people": "{count, plural, =0 {Vorgestrecktes Geld} one {Geschuldet von # Person} other {Geschuldet von # Personen}}"
+		},
+		"moneyIn": {
+			"title": "Einnahmen",
+			"open": "Einnahmen und Regeln",
+			"hint": "Einnahmeregeln entscheiden, wohin es geht",
+			"thisMonth": "Diesen Monat"
+		},
+		"shares": {
+			"title": "Anteile",
+			"open": "Anteile prüfen",
+			"line": "Anteile warten auf dich",
+			"unresolved": "{count, plural, one {# Anteil hat keinen Umschlag} other {# Anteile haben keinen Umschlag}}",
+			"pending": "Wartet auf dein OK"
+		}
+	},
+	"unavailable": {
+		"title": "Gerade nicht verfügbar",
+		"hint": "Dein Budget konnte nicht geladen werden.",
+		"retry": "Erneut versuchen"
+	},
+	"empty": {
+		"title": "Noch keine Umschläge",
+		"hint": "Umschläge halten Geld für das, was dir wichtig ist. Die Einrichtung dauert etwa fünf Minuten.",
+		"setup": "Budget einrichten"
+	},
+	"paused": {
+		"title": "Dein Budget pausiert",
+		"hint": "Solange es pausiert, wird nichts gezählt.",
+		"resume": "Budget fortsetzen"
+	},
+	"closed": {
+		"label": "{month}, abgeschlossen",
+		"cameIn": "Eingegangen",
+		"line": "Zugewiesen <assigned></assigned>{hasOver, select, yes { · Überzogen um <over></over>} other {}}",
+		"none": "In diesem Monat wurde nichts budgetiert.",
+		"open": "So setzt es sich zusammen"
+	},
+	"plan": {
+		"discarded": "Plan verworfen",
+		"emptyHint": "Ein Plan ist ein Entwurf. Nichts bewegt sich, bis du ihn anwendest.",
+		"emptyTitle": "{month} planen",
+		"fill": {
+			"TARGETS": "Mit meinen Zielen beginnen",
+			"SAME_AS_THIS_MONTH": "Wie diesen Monat",
+			"THIS_MONTH_SPENT": "Was ich diesen Monat ausgegeben habe"
+		},
+		"banner": "Du planst {month}. Nichts ändert sich, bis du den Plan anwendest.",
+		"discard": "Verwerfen",
+		"apply": "Plan anwenden",
+		"after": "Noch nicht geplant nach diesem Plan",
+		"fillFrom": "Füllen aus…",
+		"table": "Plan",
+		"envelope": "Umschlag",
+		"planned": "Geplant",
+		"left": "Übrig",
+		"edit": "{name} planen",
+		"plannedSub": "Geplant <amount></amount>",
+		"fundNow": "Jetzt finanzieren"
+	},
+	"planRail": {
+		"label": "Plankosten",
+		"title": "Plan",
+		"cost": "Plankosten",
+		"typical": "Übliche Einnahmen",
+		"runway": "Dein Budget und deine Ersparnisse reichen bei diesen Kosten {months} Monate."
+	},
+	"debt": {
+		"label": "Schuldenfrei bis",
+		"never": "Nicht absehbar",
+		"sentence": "<total></total> bei {count, plural, one {# Schuld} other {# Schulden}}. Etwa {months, plural, one {# Monat} other {# Monate}} bei diesem Plan.",
+		"capped": "Mit den Mindestraten übersteigen die Zinsen die Zahlungen.",
+		"incomplete": "Für {currencies} gibt es noch keinen Kurs, daher ist die Summe nicht berechnet.",
+		"unavailable": "Deine Schulden konnten nicht geladen werden.",
+		"leftToSpend": "Zum Ausgeben übrig <amount></amount>",
+		"plan": "Tilgungsplan",
+		"pay": "Schulden tilgen",
+		"afford": "Kann ich mir etwas leisten?",
+		"rail": "Schulden",
+		"total": "Gesamtschulden",
+		"open": "Tilgungsplan"
+	}
+}
