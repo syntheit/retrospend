@@ -236,7 +236,7 @@ interface DataTableProps<TData extends DataTableRowData> {
 	 * The internal search bar is hidden and this value is used as the global filter.
 	 */
 	searchValue?: string;
-	/** Setter for controlled search — required when searchValue is provided */
+	/** Setter for controlled search, required when searchValue is provided */
 	onSearchChange?: (value: string) => void;
 	/**
 	 * Called whenever the post-search filtered row count changes.
@@ -533,14 +533,14 @@ export function DataTable<TData extends DataTableRowData>({
 				setIsShiftHeld(true);
 			}
 
-			// Escape — clear selection (skip if dialog open or input focused)
+			// Escape, clear selection (skip if dialog open or input focused)
 			if (e.key === "Escape" && selectedRows && selectedRows.size > 0 && onClearSelection) {
 				if (hasDialog()) return;
 				if (isEditable(e.target as HTMLElement)) return;
 				onClearSelection();
 			}
 
-			// Cmd/Ctrl+A — select all
+			// Cmd/Ctrl+A, select all
 			if (e.key === "a" && (e.ctrlKey || e.metaKey) && onRangeSelect) {
 				if (isEditable(e.target as HTMLElement)) return;
 				e.preventDefault();
@@ -550,7 +550,7 @@ export function DataTable<TData extends DataTableRowData>({
 				if (selectableIds.length > 0) onRangeSelect(selectableIds);
 			}
 
-			// E or Enter — edit single selected row
+			// E or Enter, edit single selected row
 			if (
 				(e.key === "e" || e.key === "E" || e.key === "Enter") &&
 				!e.ctrlKey && !e.metaKey && !e.altKey &&
@@ -565,7 +565,7 @@ export function DataTable<TData extends DataTableRowData>({
 				onEditRowRef.current(id);
 			}
 
-			// Delete / Backspace — delete selected rows
+			// Delete / Backspace, delete selected rows
 			if (
 				(e.key === "Delete" || e.key === "Backspace") &&
 				selectedRows && selectedRows.size > 0 &&

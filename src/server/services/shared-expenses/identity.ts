@@ -49,7 +49,7 @@ export async function resolveClaimAliases(
 	};
 
 	// Defensive: some lightweight test mocks omit the shadowProfile model. When it
-	// is unavailable there is nothing to resolve — every ref is its own identity.
+	// is unavailable there is nothing to resolve, every ref is its own identity.
 	if (!prisma?.shadowProfile?.findMany) {
 		return identity();
 	}

@@ -191,7 +191,7 @@ export function ExpandableSearch({
 			ref={containerRef}
 			className={cn("relative flex items-center justify-end", className)}
 		>
-			{/* Expanding input container — grows leftward */}
+			{/* Expanding input container, grows leftward */}
 			<div
 				className={cn(
 					"flex items-center overflow-hidden rounded-lg border transition-all duration-200 ease-in-out",

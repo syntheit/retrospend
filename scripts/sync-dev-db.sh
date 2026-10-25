@@ -24,7 +24,7 @@ if [ "$DEV_CONTAINER" = "$PROD_CONTAINER" ] || [ "$DEV_DB" = "postgres" ]; then
   exit 1
 fi
 if ! docker ps --format '{{.Names}}' | grep -qx "$PROD_CONTAINER"; then
-  echo "Production container '$PROD_CONTAINER' is not running — nothing to copy from." >&2
+  echo "Production container '$PROD_CONTAINER' is not running, nothing to copy from." >&2
   exit 1
 fi
 if ! docker ps --format '{{.Names}}' | grep -qx "$DEV_CONTAINER"; then
@@ -33,8 +33,8 @@ if ! docker ps --format '{{.Names}}' | grep -qx "$DEV_CONTAINER"; then
 fi
 
 # Prod uses a dedicated 'retrospend_app' role for row-level security. It's a
-# cluster role (not included in a single-db dump), so create it in dev first
-# — otherwise the restored GRANT/policy statements error. Harmless if it exists.
+# cluster role (not included in a single-db dump), so create it in dev first.
+# Otherwise the restored GRANT/policy statements error. Harmless if it exists.
 docker exec "$DEV_CONTAINER" psql -U "$DEV_USER" -d "$DEV_DB" \
   -c "CREATE ROLE retrospend_app;" >/dev/null 2>&1 || true
 

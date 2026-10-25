@@ -122,7 +122,7 @@ func main() {
 		}
 	}
 
-	// Check importer availability — use raw env vars, not config defaults.
+	// Check importer availability, use raw env vars, not config defaults.
 	// OllamaEndpoint always has a default, so checking the config value
 	// would make importerAvailable unconditionally true.
 	importerAvailable := os.Getenv("OLLAMA_ENDPOINT") != "" || cfg.OpenRouterAPIKey != ""

@@ -130,7 +130,7 @@ export const settlementRouter = createTRPCRouter({
 
 	/**
 	 * Sends a balance reminder notification to someone who owes you.
-	 * Does not create a settlement — just nudges them. Rate-limited: 1 per 24h.
+	 * Does not create a settlement, just nudges them. Rate-limited: 1 per 24h.
 	 */
 	requestPayment: protectedProcedure
 		.input(

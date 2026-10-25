@@ -11,11 +11,11 @@ import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
  * every polymorphic reference (splits, payments, settlements, audit, project
  * membership) is re-pointed from the shadow to the claiming user/guest, and the
  * now-empty shadow row is deleted. After a claim the history therefore shows the
- * real person's identity directly — a claimed split no longer displays the old
+ * real person's identity directly, a claimed split no longer displays the old
  * ghost name.
  *
- * (The email auto-claim once a user's email is verified — `claimShadowProfiles` in
- * guest-migration.service.ts — routes through `claimShadowProfile` so those
+ * (The email auto-claim once a user's email is verified, `claimShadowProfiles` in
+ * guest-migration.service.ts, routes through `claimShadowProfile` so those
  * claims also fully absorb the shadow rather than merely stamping claimedById.)
  *
  * All operations MUST use the global (RLS-bypassing) db: a user claiming a ghost
@@ -148,7 +148,7 @@ export async function claimShadowProfile(
 
 			if (existingUserMembership) {
 				// User already in project: KEEP their existing role unchanged and drop
-				// the shadow membership. Never upgrade to the shadow's role — claiming
+				// the shadow membership. Never upgrade to the shadow's role, claiming
 				// a ghost must not be a privilege-escalation vector.
 				await tx.projectParticipant.delete({
 					where: { id: shadowMembership.id },
@@ -359,7 +359,7 @@ export async function listUnclaimedProjectGhosts(
 /**
  * Merges a shadow profile into a guest session: a guest who just joined a
  * project recognises themselves as an existing ghost and links instead of
- * creating a duplicate. The guest "absorbs" the ghost — all of the ghost's
+ * creating a duplicate. The guest "absorbs" the ghost, all of the ghost's
  * historical refs (splits, settlements, payments, audit) are re-pointed to the
  * guest, the shadow's membership row is dropped (the guest keeps the role its
  * invite link granted), and the now-empty shadow row is deleted.

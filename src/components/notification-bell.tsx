@@ -94,7 +94,7 @@ function getNavigationUrl(notification: Notification): string | null {
 }
 
 /* ------------------------------------------------------------------ */
-/*  9.2 — Filter categories                                          */
+/*  9.2: Filter categories                                          */
 /* ------------------------------------------------------------------ */
 
 type FilterCategory = "all" | "expenses" | "settlements" | "projects";
@@ -128,7 +128,7 @@ const FILTER_KEYS: FilterCategory[] = [
 ];
 
 /* ------------------------------------------------------------------ */
-/*  9.1 — Notification grouping                                      */
+/*  9.1: Notification grouping                                      */
 /* ------------------------------------------------------------------ */
 
 function getGroupingKey(n: Notification): string {
@@ -288,7 +288,7 @@ export function NotificationBell() {
 	const unreadCount = countData?.count ?? 0;
 	const notifications = data?.items ?? [];
 
-	/* Filter state (9.2) — persisted in localStorage */
+	/* Filter state (9.2), persisted in localStorage */
 	const [filter, setFilter] = useState<FilterCategory>("all");
 	const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
 		new Set(),

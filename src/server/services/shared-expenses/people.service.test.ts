@@ -27,7 +27,7 @@ let spSeq = 0;
 /**
  * Insert a transaction directly into the in-memory stores. `paidBy` is the
  * payer; `splits` are the split-participant rows (which may or may not include
- * the payer — mirroring real data where a payer can take no share).
+ * the payer, mirroring real data where a payer can take no share).
  */
 function addTransaction(
 	db: Db,
@@ -87,7 +87,7 @@ function addTransaction(
 	return id;
 }
 
-describe("PeopleService.getPersonDetail — payer-or-split involvement", () => {
+describe("PeopleService.getPersonDetail, payer-or-split involvement", () => {
 	let db: Db;
 	const me = makeUserRef("me");
 	const them = makeUserRef("them");

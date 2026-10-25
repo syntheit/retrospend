@@ -1086,7 +1086,7 @@ export class PeopleService {
 	 * Validates that the participant exists and is accessible to the current user.
 	 * Throws NOT_FOUND if the participant doesn't exist.
 	 * Unlike the former assertContactAccessible, does NOT require a shared
-	 * transaction relationship — callers handle the no-history case themselves.
+	 * transaction relationship, callers handle the no-history case themselves.
 	 */
 	private async validateParticipantExists(ref: ParticipantRef): Promise<void> {
 		if (ref.participantType === "user") {
@@ -1147,7 +1147,7 @@ export class PeopleService {
 
 	/**
 	 * Builds a where clause matching transactions where the given participant is
-	 * *involved* — meaning they either paid for the transaction OR appear as a
+	 * *involved*, meaning they either paid for the transaction OR appear as a
 	 * split participant. Using payer-OR-split (rather than split-only) ensures a
 	 * transaction is visible in the person view even when one party paid the full
 	 * amount for the other and took no share themselves (so has no split row).
@@ -1251,7 +1251,7 @@ export class PeopleService {
 		// canonical merged entry is written back into `contactStats` under the
 		// canonical key, which may collide with a raw contact key (the user's own
 		// key). Reading originals first avoids overwriting a contact's stats before
-		// they have been folded in — the order-dependent loss this fixes.
+		// they have been folded in, the order-dependent loss this fixes.
 		const originalByKey = new Map<
 			string,
 			NonNullable<ReturnType<typeof contactStats.get>>

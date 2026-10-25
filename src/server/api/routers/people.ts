@@ -27,7 +27,7 @@ export const peopleRouter = createTRPCRouter({
 			// Search shadow profiles visible to this user: ones they created plus
 			// ones that share a project with them. The shadow_profile RLS policy
 			// enforces this scope at the DB layer (creator OR shared project), so we
-			// do NOT filter by createdById here — that would hide project ghosts
+			// do NOT filter by createdById here, that would hide project ghosts
 			// created by other members. Private (non-project) shadows of unrelated
 			// users are never returned because RLS excludes them.
 			//
@@ -176,7 +176,7 @@ export const peopleRouter = createTRPCRouter({
 		}),
 
 	/**
-	 * Rename (and optionally re-email) a shadow profile — the "ghost" someone set
+	 * Rename (and optionally re-email) a shadow profile, the "ghost" someone set
 	 * up to track a person without an account.
 	 *
 	 * Authorized exactly like claim.generateLink: the shadow is read through the

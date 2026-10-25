@@ -13,10 +13,10 @@
  *
  * Tested scenarios (see comments at bottom):
  *  1. Fresh user with unmodified defaults
- *  2. User who deleted "Transport" — Gas/Rideshare merge recreates it
- *  3. User who already has "Restaurants" — Dining Out expenses merge, no duplicate
- *  4. User who renamed "Misc" to something else — script skips (no "Misc" found)
- *  5. User who changed "Taxes" color — script does NOT overwrite custom color
+ *  2. User who deleted "Transport", Gas/Rideshare merge recreates it
+ *  3. User who already has "Restaurants", Dining Out expenses merge, no duplicate
+ *  4. User who renamed "Misc" to something else, script skips (no "Misc" found)
+ *  5. User who changed "Taxes" color, script does NOT overwrite custom color
  */
 
 import "dotenv/config";
@@ -89,7 +89,7 @@ async function mergeCategoryReferences(
 		data: { categoryId: targetId },
 	});
 
-	// 2. Budgets — handle unique(userId, categoryId, period) conflicts
+	// 2. Budgets, handle unique(userId, categoryId, period) conflicts
 	const conflictingBudgets = await tx.budget.findMany({
 		where: { categoryId: targetId, userId },
 		select: { period: true },
@@ -116,13 +116,13 @@ async function mergeCategoryReferences(
 		data: { categoryId: targetId },
 	});
 
-	// 4. SharedTransactions (no userId field — sourceId is globally unique)
+	// 4. SharedTransactions (no userId field, sourceId is globally unique)
 	await tx.sharedTransaction.updateMany({
 		where: { categoryId: sourceId },
 		data: { categoryId: targetId },
 	});
 
-	// 5. AnalyticsCategoryPreference — handle unique(userId, categoryId) conflicts
+	// 5. AnalyticsCategoryPreference, handle unique(userId, categoryId) conflicts
 	const existingTargetPref =
 		await tx.analyticsCategoryPreference.findUnique({
 			where: { userId_categoryId: { userId, categoryId: targetId } },
@@ -177,7 +177,7 @@ async function processUser(
 	// ── RENAMES ──────────────────────────────────────────────────────────
 	for (const { oldName, newName } of RENAMES) {
 		const oldCat = catByName.get(oldName);
-		if (!oldCat) continue; // User doesn't have the old category — skip
+		if (!oldCat) continue; // User doesn't have the old category, skip
 
 		const existingNewCat = catByName.get(newName);
 		if (existingNewCat) {
@@ -206,7 +206,7 @@ async function processUser(
 	// ── REMOVALS (merge into target) ─────────────────────────────────────
 	for (const { sourceName, targetName, targetColor } of REMOVALS) {
 		const sourceCat = catByName.get(sourceName);
-		if (!sourceCat) continue; // User doesn't have the source — skip
+		if (!sourceCat) continue; // User doesn't have the source, skip
 
 		let targetCat = catByName.get(targetName);
 
@@ -238,7 +238,7 @@ async function processUser(
 
 	// ── ADDITIONS ─────────────────────────────────────────────────────────
 	for (const { name, color } of ADDITIONS) {
-		if (catByName.has(name)) continue; // Already exists — skip
+		if (catByName.has(name)) continue; // Already exists, skip
 
 		if (!DRY_RUN) {
 			const created = await tx.category.create({
@@ -337,7 +337,7 @@ async function main() {
 
 	// ── Summary ──────────────────────────────────────────────────────────
 	console.log(`\n${"=".repeat(60)}`);
-	console.log(`SUMMARY${DRY_RUN ? " (DRY RUN — no changes written)" : ""}`);
+	console.log(`SUMMARY${DRY_RUN ? " (DRY RUN, no changes written)" : ""}`);
 	console.log("=".repeat(60));
 	console.log(`Users processed: ${stats.usersProcessed}`);
 
@@ -426,9 +426,9 @@ main()
 //    User renamed "Misc" to e.g. "Random Stuff".
 //    - catByName.get("Misc") returns undefined → skipped entirely
 //    - No "Other" category added because we only add in the ADDITIONS step
-//      (but "Other" is NOT in ADDITIONS — it's only created via rename)
+//      (but "Other" is NOT in ADDITIONS, it's only created via rename)
 //    Note: This means users who deleted/renamed "Misc" won't get "Other".
-//    This is intentional — we don't force categories on users.
+//    This is intentional, we don't force categories on users.
 //
 // 5. USER WHO CHANGED "TAXES" COLOR
 //    User changed Taxes from red to e.g. blue.

@@ -38,7 +38,7 @@ describe("API v1 completeness", () => {
 
 	it("writes no em dash in a reason", () => {
 		for (const [key, entry] of Object.entries(COMPLETENESS))
-			if ("why" in entry) expect(entry.why, key).not.toContain("—");
+			if ("why" in entry) expect(entry.why, key).not.toContain("\u2014");
 	});
 
 	it("keeps the platform rows to the ones the platform agent builds", () => {

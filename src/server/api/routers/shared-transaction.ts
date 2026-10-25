@@ -254,7 +254,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 
 			const hasVerifiedParticipants = tx.splitParticipants.some(
 				(sp) =>
-					// Only count other participants — the creator is auto-ACCEPTED on creation
+					// Only count other participants, the creator is auto-ACCEPTED on creation
 					!(sp.participantType === participantType && sp.participantId === participantId) &&
 					(sp.verificationStatus === "ACCEPTED" ||
 					sp.verificationStatus === "AUTO_ACCEPTED"),

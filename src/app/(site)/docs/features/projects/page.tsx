@@ -6,7 +6,7 @@ import { getAdjacentDocs } from "../../docs-config"
 
 export const metadata: Metadata = {
 	title: "Projects",
-	description: "Group shared expenses into a named project — with budgets, billing periods, and participant roles.",
+	description: "Group shared expenses into a named project, with budgets, billing periods, and participant roles.",
 }
 
 const slug = "features/projects"
@@ -28,7 +28,7 @@ export default function ProjectsPage() {
 				How projects work
 			</h2>
 			<p className="mb-4 text-muted-foreground leading-relaxed">
-				A project is a named container for expenses — nothing more, nothing less. There are no fixed
+				A project is a named container for expenses, nothing more and nothing less. There are no fixed
 				types. A solo project is one where you are the only participant. An ongoing project is one
 				where you use billing periods to segment time. A one-time purchase is just a project you
 				archive when the expense is settled. The features (billing periods, budgets, roles, sharing)

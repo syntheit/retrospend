@@ -125,7 +125,7 @@ func RunDataRetentionCleanup(database *db.DB) (RetentionReport, error) {
 
 		for _, guestID := range expiredIDs {
 			if err := anonymizeExpiredGuest(ctx, database, guestID); err != nil {
-				// Log and continue — partial cleanup is better than none.
+				// Log and continue, partial cleanup is better than none.
 				log.Printf("⚠️  cleanup: failed to anonymize guest session %s: %v", guestID, err)
 				continue
 			}

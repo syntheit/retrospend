@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 		template: "%s - Retrospend Releases",
 		default: "Release Notes - Retrospend Releases",
 	},
-	description: "See what's new in Retrospend — features, improvements, and fixes.",
+	description: "See what's new in Retrospend: features, improvements, and fixes.",
 }
 
 export default function ReleasesLayout({ children }: { children: ReactNode }) {

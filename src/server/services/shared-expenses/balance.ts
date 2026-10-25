@@ -203,7 +203,7 @@ async function computePairBalance(
 	const projectWhere = projectScopeWhere(opts);
 
 	// Expand each ref into all of its equivalent refs so a claimed shadow and
-	// its claiming user are treated as the same party — pre-claim and post-claim
+	// its claiming user are treated as the same party, pre-claim and post-claim
 	// history is summed rather than tracked separately (edge-case 8 fix).
 	const { aliasesByKey, canonicalKey } = await resolveClaimAliases(prisma, [
 		participantA,
@@ -342,7 +342,7 @@ async function computePairBalance(
 	// `shadow:S` and `user:U` where U claimed S). Summing every matching split row
 	// would double-count their share. Dedupe per (transactionId, canonical
 	// identity of the split participant) so each person counts once per
-	// transaction — summing is only valid ACROSS different transactions.
+	// transaction, summing is only valid ACROSS different transactions.
 	const seenSplits = new Set<string>();
 	const splitKey = (
 		transactionId: string,

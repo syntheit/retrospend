@@ -18,8 +18,8 @@ const ROLE_RANK: Record<string, number> = {
 /**
  * Builds a `projectId -> highest role` map for the caller across the given
  * projects. The caller is expressed as one or more participant refs
- * (`callerRefs`) so that all of a person's claim aliases — e.g. a claimed
- * shadow and the user who claimed it — are considered together. If the caller
+ * (`callerRefs`) so that all of a person's claim aliases, e.g. a claimed
+ * shadow and the user who claimed it, are considered together. If the caller
  * holds a membership under any alias, that role is returned; when multiple
  * aliases are members of the same project the highest-ranked role wins.
  *

@@ -1498,7 +1498,7 @@ describe("SharedTransactionService", () => {
 		});
 
 		// EXACT shares used to go stale when the amount changed (their sum no
-		// longer matched the amount — silent corruption). They are now rescaled
+		// longer matched the amount, silent corruption). They are now rescaled
 		// proportionally to the new amount.
 		function exactRescaleExisting(
 			oldAmount: number,

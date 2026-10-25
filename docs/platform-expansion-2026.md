@@ -8,9 +8,9 @@ This report synthesizes research across five areas to guide Retrospend's expansi
 
 - **Expo + React Native remains the right mobile stack.** The 2026 landscape confirms the original `react-native-port.md` analysis. New Architecture (Fabric + JSI) is now the default in Expo SDK 53, eliminating the opt-in friction that was a footnote in earlier planning.
 - **A hand-written REST `/api/v1/` layer is the correct public API path.** trpc-openapi forks have maintenance gaps; oRPC requires migrating 200 procedures. Route Handlers in Next.js 15 calling the existing services layer, with OpenAPI generated via `zod-to-openapi`, is the pragmatic choice.
-- **better-auth's `apiKey` plugin covers the auth gap cleanly.** Bearer tokens for the mobile client, personal access tokens (PATs) for third-party/script integrations — both are supported without adding OAuth complexity.
-- **Receipt storage now, OCR later.** Phase 1 is a nullable `receiptUrl` column and file storage — zero OCR complexity. Phase 2 adds PaddleOCR as a background sidecar. Phase 3 optionally delegates to a user-configured LLM endpoint, using the existing `ai-access.service.ts` infrastructure.
-- **A libadwaita desktop client is feasible but depends on the REST API.** Python + PyGObject is the fastest path to a prototype; Rust + relm4 is the right long-term investment. The libadwaita client should never speak tRPC directly — the REST API from Topic 2 is a prerequisite.
+- **better-auth's `apiKey` plugin covers the auth gap cleanly.** Bearer tokens for the mobile client, personal access tokens (PATs) for third-party/script integrations, both are supported without adding OAuth complexity.
+- **Receipt storage now, OCR later.** Phase 1 is a nullable `receiptUrl` column and file storage, zero OCR complexity. Phase 2 adds PaddleOCR as a background sidecar. Phase 3 optionally delegates to a user-configured LLM endpoint, using the existing `ai-access.service.ts` infrastructure.
+- **A libadwaita desktop client is feasible but depends on the REST API.** Python + PyGObject is the fastest path to a prototype; Rust + relm4 is the right long-term investment. The libadwaita client should never speak tRPC directly, the REST API from Topic 2 is a prerequisite.
 - **Build order: REST API + auth before mobile, mobile before desktop.** The REST API is load-bearing infrastructure for both the libadwaita client and third-party integrations.
 
 ---
@@ -19,15 +19,15 @@ This report synthesizes research across five areas to guide Retrospend's expansi
 
 ### Findings
 
-**Expo SDK 53 (May 2025)** made New Architecture (Fabric renderer + JSI + Hermes) the default for all new projects. React Native 0.76+ considers it fully stabilized. This is a meaningful change from the state of things when `react-native-port.md` was written — the "enable New Architecture" step is no longer required. There are no known friction points between New Architecture and `@trpc/react-query` as of 2026.
+**Expo SDK 53 (May 2025)** made New Architecture (Fabric renderer + JSI + Hermes) the default for all new projects. React Native 0.76+ considers it fully stabilized. This is a meaningful change from the state of things when `react-native-port.md` was written, the "enable New Architecture" step is no longer required. There are no known friction points between New Architecture and `@trpc/react-query` as of 2026.
 
-**Expo Router v4** is now stable and production-ready. Its file-based navigation model mirrors Next.js App Router closely — the mental model transfers directly for a developer already working in Next.js. This was listed as a future direction in earlier planning but can now be adopted without caveats.
+**Expo Router v4** is now stable and production-ready. Its file-based navigation model mirrors Next.js App Router closely, the mental model transfers directly for a developer already working in Next.js. This was listed as a future direction in earlier planning but can now be adopted without caveats.
 
 **EAS (Expo Application Services)** handles cloud builds (iOS + Android without requiring a Mac) and OTA updates. A monthly free tier exists but has usage limits. Paid plans start around $99/month for higher volume. For a self-hosted personal finance app with a small user base this is unlikely to be a cost concern at launch.
 
-**Server URL configuration:** The user-supplied server URL must be set at runtime, not build time — the app cannot know which Retrospend instance a user is connecting to. This is not a limitation specific to Expo; it is inherent to the self-hosted model.
+**Server URL configuration:** The user-supplied server URL must be set at runtime, not build time, the app cannot know which Retrospend instance a user is connecting to. This is not a limitation specific to Expo; it is inherent to the self-hosted model.
 
-**Self-hosted "connect to your instance" UX:** The Immich mobile app established this pattern clearly: the first screen is a server URL input, the app validates the endpoint, then proceeds to login. Nextcloud, Paperless Mobile, and Bitwarden all follow the same pattern. Apple App Store review does not prohibit this — the key requirement is that the app must have meaningful function independent of any specific server (i.e., not a blank screen). A "connect your server" onboarding screen with clear instructions and optional demo server satisfies this.
+**Self-hosted "connect to your instance" UX:** The Immich mobile app established this pattern clearly: the first screen is a server URL input, the app validates the endpoint, then proceeds to login. Nextcloud, Paperless Mobile, and Bitwarden all follow the same pattern. Apple App Store review does not prohibit this, the key requirement is that the app must have meaningful function independent of any specific server (i.e., not a blank screen). A "connect your server" onboarding screen with clear instructions and optional demo server satisfies this.
 
 **Alternatives evaluated and rejected:**
 
@@ -39,14 +39,14 @@ This report synthesizes research across five areas to guide Retrospend's expansi
 
 The original `react-native-port.md` analysis holds. **Use Expo + React Native.** No changes to the monorepo architecture or build order are needed. Concretely:
 
-- Initialize the Expo app with `create-expo-app` using SDK 53+ — New Architecture is enabled by default, nothing extra needed
+- Initialize the Expo app with `create-expo-app` using SDK 53+, New Architecture is enabled by default, nothing extra needed
 - Use Expo Router v4 for navigation
 - Use `expo-secure-store` for session token storage (already called out in the original analysis)
 - EAS Build for distributing to TestFlight and Google Play internal track
 
 ### Updates to `react-native-port.md`
 
-The original document mentions "better-auth supports bearer token mode — configure the client to send `Authorization: Bearer <token>` headers" — this is still correct but see Topic 3 for the complete auth picture, including the `apiKey` plugin for PATs.
+The original document mentions "better-auth supports bearer token mode, configure the client to send `Authorization: Bearer <token>` headers", this is still correct but see Topic 3 for the complete auth picture, including the `apiKey` plugin for PATs.
 
 The charts section lists `victory-native`, `react-native-chart-kit`, and `react-native-skia`. Of these, `react-native-skia`-based solutions have matured significantly by 2026 and are the highest-quality option if development time is available; `victory-native` remains the pragmatic choice for speed.
 
@@ -64,13 +64,13 @@ The charts section lists `victory-native`, `react-native-chart-kit`, and `react-
 
 **Immich approach:** Immich maintains a separate REST API layer with a hand-maintained OpenAPI YAML spec that generates TypeScript/Python SDKs. They treat the public API as a separate versioned product (v1, v2). The maintenance burden is real; they manage it with a team. Relevant reference point for what maturity looks like, not a direct template.
 
-**Actual Budget approach:** `@actual-app/api` is a Node.js wrapper around Actual's internal protocol — not REST, not curl-friendly. Works for programmatic access but not suitable as a general integration surface.
+**Actual Budget approach:** `@actual-app/api` is a Node.js wrapper around Actual's internal protocol, not REST, not curl-friendly. Works for programmatic access but not suitable as a general integration surface.
 
 ### Recommendation
 
 **Hand-written REST route handlers on top of the existing services layer.**
 
-Create `/api/v1/` routes using Next.js App Router Route Handlers. These handlers call the same service functions that tRPC procedures call — not the tRPC procedures themselves. Use Zod for input/output validation (already present throughout the codebase). Generate an OpenAPI spec from those Zod schemas using `@asteasolutions/zod-to-openapi`.
+Create `/api/v1/` routes using Next.js App Router Route Handlers. These handlers call the same service functions that tRPC procedures call, not the tRPC procedures themselves. Use Zod for input/output validation (already present throughout the codebase). Generate an OpenAPI spec from those Zod schemas using `@asteasolutions/zod-to-openapi`.
 
 This approach gives:
 - A versioned REST API that can evolve independently of internal tRPC procedures
@@ -88,11 +88,11 @@ This approach gives:
 
 ### Findings
 
-**better-auth `apiKey` plugin:** better-auth has an `apiKey` plugin available since v0.9+. It provides personal access tokens with: configurable prefix, optional expiry, per-key rate limiting, and metadata/scopes. This maps directly to the "Settings > API Keys" UX pattern common in developer tools (GitHub PATs, Grafana service accounts, etc.). The plugin stores a hashed version of the key — the project already has `hashToken()` in `src/server/lib/tokens.ts`, so the infrastructure is aligned.
+**better-auth `apiKey` plugin:** better-auth has an `apiKey` plugin available since v0.9+. It provides personal access tokens with: configurable prefix, optional expiry, per-key rate limiting, and metadata/scopes. This maps directly to the "Settings > API Keys" UX pattern common in developer tools (GitHub PATs, Grafana service accounts, etc.). The plugin stores a hashed version of the key, the project already has `hashToken()` in `src/server/lib/tokens.ts`, so the infrastructure is aligned.
 
 **Bearer token mode for mobile:** better-auth session tokens can be used as bearer tokens by configuring `useCookies: false` on the client. The mobile client then sends `Authorization: Bearer <session_token>` instead of relying on cookies. This is already documented in `react-native-port.md` and is the correct approach.
 
-**OAuth provider plugin:** better-auth has an `oAuthProvider` plugin (experimental in v1.x, trending toward stable in 2026). This allows acting as an OAuth 2.0 provider — i.e., "Sign in with Retrospend". For a personal finance app with a single owner, this adds complexity without clear benefit. Skip for now.
+**OAuth provider plugin:** better-auth has an `oAuthProvider` plugin (experimental in v1.x, trending toward stable in 2026). This allows acting as an OAuth 2.0 provider, i.e., "Sign in with Retrospend". For a personal finance app with a single owner, this adds complexity without clear benefit. Skip for now.
 
 **Device Authorization Grant:** Not natively supported in better-auth as of 2026. Would require a custom implementation or a separate OAuth library. Not needed given the simpler alternatives.
 
@@ -102,7 +102,7 @@ This approach gives:
 
 Two auth mechanisms, both using better-auth:
 
-1. **Mobile app:** Bearer token mode (`useCookies: false`). User logs in with username/password through the "connect to your server" onboarding flow; the session token is stored in `expo-secure-store`. Token expiry is 7 days (existing default) — handle refresh or re-login gracefully in the app.
+1. **Mobile app:** Bearer token mode (`useCookies: false`). User logs in with username/password through the "connect to your server" onboarding flow; the session token is stored in `expo-secure-store`. Token expiry is 7 days (existing default), handle refresh or re-login gracefully in the app.
 
 2. **Third-party integrations / scripts:** Add the `apiKey` plugin to `src/server/better-auth/config.ts`. Expose a "Developer" or "API Keys" section in Settings. Users generate named tokens with optional expiry; tokens are shown once at creation and hashed in storage. All REST `/api/v1/` endpoints accept either a session cookie or `Authorization: Bearer <api_key>`.
 
@@ -123,7 +123,7 @@ Skip the OAuth provider. It is not wrong, but it adds a meaningful surface area 
 | Tesseract v5 | ~70–80% on real receipts | Minimal | Poor on crumpled/angled receipts, handwriting |
 | PaddleOCR | ~90%+ on clean receipts | ~500MB–1GB sidecar | Python-based, handles rotated text and complex layouts |
 | docTR | Research-quality | Moderate | Less community tooling than PaddleOCR |
-| LLM Vision (local: Llama 3.2 Vision 11B, Qwen2.5-VL 7B) | High — structured JSON extraction | 8–16GB VRAM | 2–10s per image; Ollama-compatible |
+| LLM Vision (local: Llama 3.2 Vision 11B, Qwen2.5-VL 7B) | High, structured JSON extraction | 8–16GB VRAM | 2–10s per image; Ollama-compatible |
 | LLM Vision (API: GPT-4o / Claude 3.5 Sonnet) | 95%+ | ~$0.01–0.03/receipt | Fastest integration if user supplies API key |
 
 The project already has `src/server/services/ai-access.service.ts`, which implies there is an abstraction layer for AI provider configuration. This is the right hook for Phase 3.
@@ -137,20 +137,20 @@ The project already has `src/server/services/ai-access.service.ts`, which implie
 
 ### Recommendation (phased)
 
-**Phase 1 — Storage only (build now):**
+**Phase 1: Storage only (build now):**
 - Add nullable `receiptUrl String?` column to the Expense table in Prisma
 - Accept JPEG/PNG up to 10MB; store in `UPLOAD_DIR/receipts/`
 - Serve via the existing `/api/images/` endpoint
 - Add receipt photo capture to the mobile app (Expense create/edit screen) using `expo-image-picker`
 - Zero OCR complexity
 
-**Phase 2 — Background OCR (later):**
+**Phase 2: Background OCR (later):**
 - Add PaddleOCR as a Docker sidecar (already using Docker Compose; `docker-compose.yml` is present)
 - On receipt upload, queue a background job via the existing import queue
-- Return a structured suggestion: `{ merchant?, amount?, date?, currency? }` for user review and confirmation — never auto-fill silently
+- Return a structured suggestion: `{ merchant?, amount?, date?, currency? }` for user review and confirmation, never auto-fill silently
 - Default to PaddleOCR; optionally allow Tesseract fallback for lower-resource environments
 
-**Phase 3 — LLM vision (optional):**
+**Phase 3: LLM vision (optional):**
 - Extend settings to accept an Ollama URL or OpenAI-compatible endpoint
 - Route vision extraction through `ai-access.service.ts`
 - For users who supply an API key (e.g., OpenAI), offer the highest-quality extraction path
@@ -176,7 +176,7 @@ Loupe (GNOME image viewer) and Fractal (GNOME Matrix client) are production exam
 Blueprint (declarative GTK4 UI markup, compiles to XML) works with all four backends and is strongly recommended over hand-written XML.
 
 **API requirements from the client's perspective:**
-- REST with JSON — tRPC's HTTP encoding is too awkward for a non-JavaScript client
+- REST with JSON, tRPC's HTTP encoding is too awkward for a non-JavaScript client
 - Cursor-based or page-based pagination with `X-Total-Count` header
 - ISO 8601 dates in query parameters
 - OpenAPI spec for generating a typed client (`openapi-generator` for Rust or `openapi-python-client` for Python eliminates significant boilerplate)
@@ -193,7 +193,7 @@ This list makes it clear: **the libadwaita client cannot be built until Topic 2'
 - GTK4/Adwaita bindings are complete and stable
 - Async HTTP via aiohttp is well-understood
 - `openapi-python-client` can generate a typed Python client from the OpenAPI spec produced in Topic 2
-- If the developer later wants to rewrite in Rust for performance or distribution, the REST API contract stays the same — the rewrite doesn't require API changes
+- If the developer later wants to rewrite in Rust for performance or distribution, the REST API contract stays the same, the rewrite doesn't require API changes
 
 **Rust + relm4** is the right long-term investment if the developer plans to distribute the client through Flathub or maintain it seriously. Make this choice after the Python prototype validates the UX.
 
@@ -219,7 +219,7 @@ OpenAPI spec (Topic 2)  ─────────────► openapi-pytho
 ```
 Mobile app (Topic 1)
         │
-        ├── uses tRPC directly (@trpc/react-query) — no REST dependency
+        ├── uses tRPC directly (@trpc/react-query), no REST dependency
         ├── uses bearer token mode (Topic 3)
         └── uses receipt photo upload → receiptUrl (Topic 4, Phase 1)
 ```
@@ -227,7 +227,7 @@ Mobile app (Topic 1)
 Key implications:
 - **Do not start the libadwaita client before the REST API exists.** Without Topic 2 done, the desktop client has no viable API to consume.
 - **The mobile app is decoupled from the REST API.** It uses tRPC directly and is independently buildable once auth (Topic 3) is set up.
-- **Receipt OCR Phase 2 and Phase 3 are independent of all other topics** — they are backend-only changes that any client benefits from without any client-side changes.
+- **Receipt OCR Phase 2 and Phase 3 are independent of all other topics**: they are backend-only changes that any client benefits from without any client-side changes.
 
 ---
 
@@ -235,31 +235,31 @@ Key implications:
 
 This ordering minimizes rework and unblocks parallel workstreams as the project grows.
 
-### Stage 1 — Foundation (do first)
+### Stage 1: Foundation (do first)
 
-1. **better-auth `apiKey` plugin** — Add to `src/server/better-auth/config.ts`. Small change, high value: unblocks PATs and the REST API auth layer.
-2. **REST `/api/v1/` skeleton** — Create the Route Handler structure, wire up auth middleware (accept session cookie or `Authorization: Bearer <api_key>`), and set up `zod-to-openapi` generation. Start with 5 endpoints (expenses CRUD + list) to validate the pattern before expanding.
-3. **Receipt storage (Phase 1)** — Add `receiptUrl` to Prisma schema, wire up upload endpoint. Self-contained, low risk.
+1. **better-auth `apiKey` plugin**: Add to `src/server/better-auth/config.ts`. Small change, high value: unblocks PATs and the REST API auth layer.
+2. **REST `/api/v1/` skeleton**: Create the Route Handler structure, wire up auth middleware (accept session cookie or `Authorization: Bearer <api_key>`), and set up `zod-to-openapi` generation. Start with 5 endpoints (expenses CRUD + list) to validate the pattern before expanding.
+3. **Receipt storage (Phase 1)**: Add `receiptUrl` to Prisma schema, wire up upload endpoint. Self-contained, low risk.
 
-### Stage 2 — Mobile
+### Stage 2: Mobile
 
-4. **Monorepo restructure** — Follow the structure in `react-native-port.md` Section 5 (`apps/web`, `apps/mobile`, `packages/shared`, `packages/api`).
-5. **Expo app initialization** — SDK 53+, Expo Router v4. New Architecture is default.
-6. **Auth flow** — "Connect your server" onboarding screen → login → bearer token stored in `expo-secure-store`.
-7. **Core screens** — Follow the build order in `react-native-port.md` Section 7 (dashboard → transactions → expense CRUD → budget → wealth → people → projects).
-8. **Receipt photo capture** — Add to expense create/edit after Phase 1 storage is live.
+4. **Monorepo restructure**: Follow the structure in `react-native-port.md` Section 5 (`apps/web`, `apps/mobile`, `packages/shared`, `packages/api`).
+5. **Expo app initialization**: SDK 53+, Expo Router v4. New Architecture is default.
+6. **Auth flow**: "Connect your server" onboarding screen → login → bearer token stored in `expo-secure-store`.
+7. **Core screens**: Follow the build order in `react-native-port.md` Section 7 (dashboard → transactions → expense CRUD → budget → wealth → people → projects).
+8. **Receipt photo capture**: Add to expense create/edit after Phase 1 storage is live.
 
-### Stage 3 — REST API expansion + desktop
+### Stage 3: REST API expansion + desktop
 
-9. **Expand REST API to full initial scope** — 15–20 endpoints covering all primary resources.
-10. **OpenAPI spec** — Publish at `/api/v1/openapi.json`. Generate Python client.
-11. **libadwaita prototype** — Python + PyGObject, using the generated client. Target: expenses list, create expense, basic dashboard.
+9. **Expand REST API to full initial scope**: 15–20 endpoints covering all primary resources.
+10. **OpenAPI spec**: Publish at `/api/v1/openapi.json`. Generate Python client.
+11. **libadwaita prototype**: Python + PyGObject, using the generated client. Target: expenses list, create expense, basic dashboard.
 
-### Stage 4 — Enhancements
+### Stage 4: Enhancements
 
-12. **OCR Phase 2** — PaddleOCR sidecar, background job, suggestion UI.
-13. **Push notifications** — Mobile only; needs `notification.registerDevice` procedure (already noted in `react-native-port.md`).
-14. **OCR Phase 3** — LLM vision via `ai-access.service.ts`, user-configurable.
+12. **OCR Phase 2**: PaddleOCR sidecar, background job, suggestion UI.
+13. **Push notifications**: Mobile only; needs `notification.registerDevice` procedure (already noted in `react-native-port.md`).
+14. **OCR Phase 3**: LLM vision via `ai-access.service.ts`, user-configurable.
 
 ---
 
@@ -267,9 +267,9 @@ This ordering minimizes rework and unblocks parallel workstreams as the project 
 
 The original analysis holds well. Specific items to update:
 
-- **New Architecture note:** The document does not mention New Architecture. Add a note that Expo SDK 53+ enables it by default — no configuration needed.
+- **New Architecture note:** The document does not mention New Architecture. Add a note that Expo SDK 53+ enables it by default, no configuration needed.
 - **Expo Router:** The document mentions "Expo Router for file-based navigation" as a recommendation but does not call out v4 stability. Expo Router v4 is now production-ready; no caveats needed.
 - **Charts:** `react-native-skia`-based charting has matured significantly and is worth re-evaluating against `victory-native` before committing.
-- **Auth section (4D):** The bearer token description is correct. Add a reference to the `apiKey` plugin for PATs — the document only addresses the mobile session case, not third-party script access.
+- **Auth section (4D):** The bearer token description is correct. Add a reference to the `apiKey` plugin for PATs, the document only addresses the mobile session case, not third-party script access.
 - **Missing topics:** The original document does not address the public API surface or the libadwaita client path. This report fills those gaps.
 - **35–40% reuse estimate:** Still accurate. No research from any topic contradicts this figure.
