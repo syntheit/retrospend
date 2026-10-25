@@ -12,10 +12,10 @@
 	},
 	"empty": {
 		"none": "Aucune devise ne correspond",
-		"noneHint": "Essayez un autre nom ou code.",
+		"noneHint": "Essaie un autre nom ou code.",
 		"clear": "Effacer les filtres",
 		"noFavorites": "Aucun favori pour l'instant",
-		"noFavoritesHint": "Ajoutez une étoile à une devise pour la garder en tête, ici et dans le sélecteur de devises.",
+		"noFavoritesHint": "Ajoute une étoile à une devise pour la garder en tête, ici et dans le sélecteur de devises.",
 		"showAll": "Voir toutes les devises"
 	},
 	"missing": "Pas encore de taux pour {codes}. {count, plural, one {{names} est exclu} other {{names} sont exclus}} du patrimoine.",
@@ -48,18 +48,18 @@
 		"title": "Convertir",
 		"swap": "Inverser",
 		"into": "en {code}",
-		"failed": "Conversion impossible. Réessayez.",
+		"failed": "Conversion impossible. Réessaie.",
 		"quickTitle": "<amount></amount> en {to}"
 	},
 	"toast": {
 		"favorited": "{code} ajoutée aux favoris",
 		"unfavorited": "{code} retirée des favoris",
 		"copied": "{rate} copié",
-		"failed": "Impossible pour le moment. Réessayez."
+		"failed": "Impossible pour le moment. Réessaie."
 	},
 	"unavailable": {
 		"title": "Les taux ne sont pas disponibles pour le moment",
-		"hint": "Réessayez dans un instant.",
+		"hint": "Réessaie dans un instant.",
 		"retry": "Réessayer"
 	}
 }

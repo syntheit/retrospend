@@ -2,7 +2,7 @@
 	"sheet": {
 		"close": "Fermer",
 		"cancel": "Annuler",
-		"failed": "Enregistrement impossible. Réessayez."
+		"failed": "Enregistrement impossible. Réessaie."
 	},
 	"toast": {
 		"undo": "Annuler",

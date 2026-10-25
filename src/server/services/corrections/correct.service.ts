@@ -103,6 +103,28 @@ function assertCanCorrect(split: LoadedSplit, userId: string) {
 		throw bad("This expense is not settled. Edit it instead");
 }
 
+/** A creator removed from the project can no longer write rows into it. */
+async function assertStillInProject(
+	tx: Tx,
+	original: LoadedSplit["original"],
+	userId: string,
+) {
+	if (!original.projectId) return;
+	const member = await tx.projectParticipant.count({
+		where: {
+			projectId: original.projectId,
+			participantType: "user",
+			participantId: userId,
+		},
+	});
+	if (member === 0)
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message:
+				"You are no longer in this project, so you cannot correct this expense",
+		});
+}
+
 /** Today in the user's zone, stored the way expense rows are (the zone's midnight). */
 const todayRow = (now: Date, timeZone?: string) =>
 	parseDateOnlyIn(dayKey(now, timeZone), timeZone);
@@ -295,6 +317,7 @@ export async function correctSplit(
 	assertCanCorrect(split, userId);
 	const again = await existingCorrection(tx, split, input);
 	if (again) return again;
+	await assertStillInProject(tx, split.original, userId);
 
 	const desired = desiredOf(split, input);
 	const allowed = await allowedPeople(tx, split);

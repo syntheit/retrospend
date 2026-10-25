@@ -8,7 +8,7 @@
 		"6M": "6M",
 		"1Y": "1Y"
 	},
-	"emptyTrend": "Ajoutez un compte pour voir votre évolution.",
+	"emptyTrend": "Ajoute un compte pour voir ton évolution.",
 	"in30Days": "en 30 jours",
 	"assetsByGroup": "Actifs par groupe",
 	"groups": {
@@ -20,12 +20,12 @@
 	},
 	"liquidAssets": "Actifs liquides",
 	"runway": "Autonomie",
-	"runwayAt": "à vos dépenses moyennes de <amount></amount> par mois",
+	"runwayAt": "à tes dépenses moyennes de <amount></amount> par mois",
 	"months": "{months, plural, one {# mois} other {# mois}}",
 	"addAccount": "Ajouter un compte",
 	"empty": {
 		"title": "Aucun compte pour l'instant",
-		"hint": "Ajoutez un compte bancaire, un placement ou un prêt pour suivre votre patrimoine."
+		"hint": "Ajoute un compte bancaire, un placement ou un prêt pour suivre ton patrimoine."
 	},
 	"filters": {
 		"label": "Filtrer les comptes",
@@ -35,7 +35,7 @@
 		"foreign": "Devise étrangère",
 		"clear": "Effacer les filtres",
 		"none": "Aucun compte ne correspond",
-		"noneHint": "Essayez de retirer un filtre."
+		"noneHint": "Essaie de retirer un filtre."
 	},
 	"closed": {
 		"title": "Comptes clôturés",
@@ -46,7 +46,7 @@
 	"breakdown": {
 		"title": "Répartition",
 		"empty": "Rien à répartir",
-		"emptyHint": "Ajoutez d'abord un compte.",
+		"emptyHint": "Ajoute d'abord un compte.",
 		"item": "{label} · {share}",
 		"underOne": "<1%",
 		"byType": "Par type",
@@ -66,7 +66,7 @@
 	"exportCsv": "Exporter les comptes (CSV)",
 	"unavailable": {
 		"title": "Patrimoine n'est pas disponible pour le moment",
-		"hint": "Vos comptes sont en sécurité. Réessayez dans un instant.",
+		"hint": "Tes comptes sont en sécurité. Réessaie dans un instant.",
 		"retry": "Réessayer"
 	},
 	"toast": {
@@ -76,7 +76,7 @@
 		"updated": "{name} mis à jour",
 		"added": "{name} ajouté",
 		"saved": "{name} enregistré",
-		"failed": "Enregistrement impossible. Réessayez."
+		"failed": "Enregistrement impossible. Réessaie."
 	},
 	"rateTypes": {
 		"official": "Officiel",
@@ -115,22 +115,22 @@
 			"save": "Enregistrer",
 			"name": "Nom",
 			"namePlaceholder": "Compte épargne",
-			"nameMissing": "Donnez un nom au compte",
+			"nameMissing": "Donne un nom au compte",
 			"type": "Type",
 			"balance": "Solde",
 			"owed": "Montant dû",
-			"noRate": "Pas encore de taux pour {currency} : le compte ne peut pas être évalué. Choisissez une autre devise pour l'instant.",
+			"noRate": "Pas encore de taux pour {currency} : le compte ne peut pas être évalué. Choisis une autre devise pour l'instant.",
 			"liquid": "Liquide",
 			"apr": "Taux d'intérêt (TAEG, %)",
-			"aprInvalid": "Saisissez un nombre, comme 45 ou 45,5",
+			"aprInvalid": "Saisis un nombre, comme 45 ou 45,5",
 			"dueDay": "Jour d'échéance",
 			"minimum": "Paiement minimum"
 		},
 		"close": {
 			"title": "Clôturer {name} ?",
 			"submit": "Clôturer le compte",
-			"body": "{name} quitte vos comptes et votre patrimoine à partir d'aujourd'hui. Son historique de soldes est conservé et vous pouvez le rouvrir depuis Comptes clôturés.",
-			"left": "Il affiche encore <amount></amount>. Si l'argent est parti ailleurs, mettez d'abord le solde à zéro."
+			"body": "{name} quitte tes comptes et ton patrimoine à partir d'aujourd'hui. Son historique de soldes est conservé et tu peux le rouvrir depuis Comptes clôturés.",
+			"left": "Il affiche encore <amount></amount>. Si l'argent est parti ailleurs, mets d'abord le solde à zéro."
 		}
 	}
 }
