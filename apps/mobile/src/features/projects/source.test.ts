@@ -4,7 +4,6 @@ import {
 	matchesProject,
 	type ProjectItem,
 	summaryCache,
-	toneOf,
 } from "./source";
 
 const item = (
@@ -61,16 +60,6 @@ describe("balanceSides", () => {
 			owedToYou: [{ minor: 12000, currency: "BRL" }],
 			youOwe: [{ minor: 450000, currency: "ARS" }],
 		});
-	});
-});
-
-describe("toneOf", () => {
-	it("numbers a category color the way the design tokens do", () => {
-		expect(toneOf("emerald")).toBe(1);
-		expect(toneOf("sky")).toBe(3);
-		expect(toneOf("red")).toBe(21);
-		expect(toneOf("chartreuse")).toBeNull();
-		expect(toneOf(null)).toBeNull();
 	});
 });
 

@@ -5,7 +5,7 @@ import { CategoryTile, ListRow } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { dayDate } from "./dates";
-import { type ProjectExpense, toneOf } from "./source";
+import type { ProjectExpense } from "./source";
 
 /**
  * One expense of the project: what it was, who paid, when, the amount, and
@@ -44,7 +44,7 @@ export function ProjectExpenseRow({ expense }: { expense: ProjectExpense }) {
 		>
 			<CategoryTile
 				label={expense.title}
-				tone={toneOf(expense.category?.color)}
+				tone={expense.category?.tone ?? null}
 			/>
 			<View style={{ flex: 1, gap: 2 }}>
 				<Text

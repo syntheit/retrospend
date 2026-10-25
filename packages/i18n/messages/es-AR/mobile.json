@@ -411,7 +411,7 @@
 		"otherShort": "Otro",
 		"typeAmount": "Escribí un monto",
 		"amountInvalid": "Ese monto no es válido",
-		"overpay": "Eso es {amount} más de lo que se debe. Poné menos."
+		"overpay": "Eso es más de lo que se debe. Poné menos."
 	},
 	"review": {
 		"open": "Revisar",
@@ -420,13 +420,26 @@
 		"betweenYou": "Entre ustedes",
 		"effectThem": "Te debe {amount}",
 		"effectYou": "Debés {amount}",
-		"rejectNote": "Si lo rechazás, se lo avisamos a {name}.",
 		"accept": "Aceptar",
 		"reject": "Rechazar",
 		"saving": "Guardando",
 		"accepted": "Parte aceptada",
 		"rejected": "Parte rechazada, se lo avisamos a {name}",
-		"error": "No se pudo guardar tu respuesta. Probá de nuevo."
+		"error": "No se pudo guardar tu respuesta. Probá de nuevo.",
+		"answer": "Tu respuesta",
+		"askToFix": "Pedir arreglo",
+		"explain": {
+			"accept": "El gasto queda y cuenta para vos.",
+			"reject": "Se le avisa a {name} que no estás de acuerdo.",
+			"fix": "Se le pide a {name} que lo arregle. No cambia nada hasta que lo haga."
+		},
+		"message": "Mensaje (opcional)",
+		"noFigures": "Tus saldos quedan como están.",
+		"checking": "Revisando",
+		"previewError": "No se pudo revisar esto. Probá de nuevo.",
+		"asked": "Le pediste a {name} que lo arregle",
+		"undone": "Respuesta deshecha",
+		"undoError": "No se pudo deshacer la respuesta. Probá de nuevo."
 	},
 	"projects": {
 		"title": "Proyectos",
@@ -505,7 +518,7 @@
 		"settleAll": {
 			"open": "Saldar todo",
 			"title": "Saldar todo en {name}",
-			"explain": "Un pago por persona y moneda. No se convierte nada.",
+			"explain": "Un pago por persona y moneda, cada uno en la moneda en que se debe.",
 			"checking": "Revisando",
 			"nothing": "No hay nada para saldar en este proyecto",
 			"willRecord": "Se van a registrar estos pagos",
@@ -586,7 +599,26 @@
 		},
 		"account": {
 			"title": "Cuenta",
-			"signOut": "Cerrar sesión"
+			"signOut": "Cerrar sesión",
+			"delete": "Eliminar cuenta"
+		},
+		"delete": {
+			"title": "Eliminar cuenta",
+			"permanent": "Esto elimina tu cuenta y no se puede deshacer. Se cierra tu sesión en todos lados.",
+			"loadError": "No se pudo revisar qué cambia. Probá de nuevo.",
+			"checking": "Revisando",
+			"changes": "Qué cambia para otras personas",
+			"nothing": "No cambia nada para nadie más.",
+			"transfer": "{project} pasa a {name}",
+			"deleteProject": "{project} se elimina, nadie más puede llevarlo",
+			"confirm": "{count, plural, one {# pago que te espera se confirma} other {# pagos que te esperan se confirman}}",
+			"cancel": "{count, plural, one {# pago que nadie confirmó se cancela} other {# pagos que nadie confirmó se cancelan}}",
+			"accept": "{count, plural, one {# parte que espera tu respuesta se acepta} other {# partes que esperan tu respuesta se aceptan}}",
+			"anonymize": "{count, plural, one {# gasto compartido conserva tu parte como Usuario eliminado} other {# gastos compartidos conservan tu parte como Usuario eliminado}}",
+			"password": "Contraseña",
+			"delete": "Eliminar cuenta",
+			"deleting": "Eliminando",
+			"error": "No se pudo eliminar la cuenta. Revisá tu contraseña y probá de nuevo."
 		}
 	}
 }

@@ -90,9 +90,6 @@ export function SettleSheet({
 	useEffect(() => {
 		if (!custom) setDraft("");
 	}, [visible, custom]);
-	// More than everything owed is refused by the server unless overpay is
-	// allowed; the sheet does not offer it.
-	const overpays = custom && allocation?.overpay != null;
 
 	function changeDraft(next: string) {
 		setDraft(next);
@@ -263,14 +260,10 @@ export function SettleSheet({
 								</Text>
 							</View>
 						) : null}
-						{overpays && allocation?.overpay
-							? note(
-									t("overpay", { amount: format(allocation.overpay) }),
-									"attention",
-								)
-							: null}
 						{flow.preview ? (
 							<PreviewList name={first} preview={flow.preview} />
+						) : flow.overpaid ? (
+							note(t("overpay"), "attention")
 						) : flow.previewFailed ? (
 							note(t("previewError"), "attention")
 						) : nothingOwed || (custom && amountMinor === 0) ? null : (
@@ -278,7 +271,7 @@ export function SettleSheet({
 						)}
 						{flow.recordFailed ? note(t("error"), "attention") : null}
 						<Button
-							disabled={!flow.preview || flow.recording || overpays}
+							disabled={!flow.preview || flow.recording}
 							label={flow.recording ? t("recording") : t("record")}
 							onPress={record}
 						/>

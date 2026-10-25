@@ -411,7 +411,7 @@
 		"otherShort": "Anderer",
 		"typeAmount": "Gib einen Betrag ein",
 		"amountInvalid": "Dieser Betrag ist ungültig",
-		"overpay": "Das sind {amount} mehr als offen sind. Gib weniger ein."
+		"overpay": "Das ist mehr, als offen ist. Gib weniger ein."
 	},
 	"review": {
 		"open": "Prüfen",
@@ -420,13 +420,26 @@
 		"betweenYou": "Zwischen euch",
 		"effectThem": "Schuldet dir {amount}",
 		"effectYou": "Du schuldest {amount}",
-		"rejectNote": "Wenn du ablehnst, erfährt es {name}.",
 		"accept": "Annehmen",
 		"reject": "Ablehnen",
 		"saving": "Speichern",
 		"accepted": "Anteil angenommen",
 		"rejected": "Anteil abgelehnt, {name} erfährt es",
-		"error": "Deine Antwort konnte nicht gespeichert werden. Versuche es erneut."
+		"error": "Deine Antwort konnte nicht gespeichert werden. Versuche es erneut.",
+		"answer": "Deine Antwort",
+		"askToFix": "Korrektur erbitten",
+		"explain": {
+			"accept": "Die Ausgabe bleibt und zählt für dich.",
+			"reject": "{name} erfährt, dass du nicht einverstanden bist.",
+			"fix": "{name} wird gebeten, sie zu korrigieren. Bis dahin ändert sich nichts."
+		},
+		"message": "Nachricht (optional)",
+		"noFigures": "Deine Salden bleiben, wie sie sind.",
+		"checking": "Prüfen",
+		"previewError": "Das konnte nicht geprüft werden. Versuche es erneut.",
+		"asked": "{name} wurde um eine Korrektur gebeten",
+		"undone": "Antwort zurückgenommen",
+		"undoError": "Die Antwort konnte nicht zurückgenommen werden. Versuche es erneut."
 	},
 	"projects": {
 		"title": "Projekte",
@@ -505,7 +518,7 @@
 		"settleAll": {
 			"open": "Alles ausgleichen",
 			"title": "Alles ausgleichen in {name}",
-			"explain": "Eine Zahlung pro Person und Währung. Es wird nichts umgerechnet.",
+			"explain": "Eine Zahlung pro Person und Währung, jeweils in der Währung, in der sie geschuldet ist.",
 			"checking": "Prüfen",
 			"nothing": "In diesem Projekt ist nichts auszugleichen",
 			"willRecord": "Diese Zahlungen werden erfasst",
@@ -586,7 +599,26 @@
 		},
 		"account": {
 			"title": "Konto",
-			"signOut": "Abmelden"
+			"signOut": "Abmelden",
+			"delete": "Konto löschen"
+		},
+		"delete": {
+			"title": "Konto löschen",
+			"permanent": "Das löscht dein Konto und lässt sich nicht rückgängig machen. Du wirst überall abgemeldet.",
+			"loadError": "Was sich ändert, konnte nicht geprüft werden. Versuche es erneut.",
+			"checking": "Prüfen",
+			"changes": "Was sich für andere ändert",
+			"nothing": "Für niemanden sonst ändert sich etwas.",
+			"transfer": "{project} geht an {name}",
+			"deleteProject": "{project} wird gelöscht, niemand sonst kann es leiten",
+			"confirm": "{count, plural, one {# Zahlung, die auf dich wartet, wird bestätigt} other {# Zahlungen, die auf dich warten, werden bestätigt}}",
+			"cancel": "{count, plural, one {# unbestätigte Zahlung wird storniert} other {# unbestätigte Zahlungen werden storniert}}",
+			"accept": "{count, plural, one {# Anteil, der auf deine Antwort wartet, wird angenommen} other {# Anteile, die auf deine Antwort warten, werden angenommen}}",
+			"anonymize": "{count, plural, one {# geteilte Ausgabe behält deinen Anteil als Gelöschter Nutzer} other {# geteilte Ausgaben behalten deinen Anteil als Gelöschter Nutzer}}",
+			"password": "Passwort",
+			"delete": "Konto löschen",
+			"deleting": "Löschen",
+			"error": "Das Konto konnte nicht gelöscht werden. Prüfe dein Passwort und versuche es erneut."
 		}
 	}
 }

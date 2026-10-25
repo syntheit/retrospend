@@ -64,11 +64,14 @@ export interface ChangeRow {
 	currency: string;
 	before: Money | null;
 	after: Money | null;
+	/** A converted total: its amounts are estimates, shown with "≈". */
+	approx: boolean;
 }
 
 export interface KeptRow {
 	figure: SettleFigure;
 	lines: Money[];
+	approx: boolean;
 }
 
 function isFigure(id: string): id is SettleFigure {
@@ -98,6 +101,7 @@ export function previewRows(preview: PaymentPreview): {
 						currency: change.currency,
 						before: asMoney(change.before),
 						after: asMoney(change.after),
+						approx: change.approx === true,
 					},
 				]
 			: [],
@@ -108,6 +112,7 @@ export function previewRows(preview: PaymentPreview): {
 					{
 						figure: item.id,
 						lines: item.lines.flatMap((line) => asMoney(line) ?? []),
+						approx: item.approx === true,
 					},
 				]
 			: [],
@@ -123,13 +128,12 @@ export function previewRows(preview: PaymentPreview): {
  */
 export function allocationOf(
 	preview: PaymentPreview,
-): { amount: Money; converted: boolean; overpay: Money | null } | null {
+): { amount: Money; converted: boolean } | null {
 	const detail = preview.detail as
 		| {
 				allocation?: {
 					amount: Money;
 					rows?: { rate: unknown | null }[];
-					overpay?: Money | null;
 				} | null;
 		  }
 		| undefined;
@@ -138,6 +142,22 @@ export function allocationOf(
 	return {
 		amount: allocation.amount,
 		converted: (allocation.rows ?? []).some((row) => row.rate !== null),
-		overpay: allocation.overpay ?? null,
 	};
+}
+
+/** The problem the server answers for an amount above everything owed. */
+export function isOverpay(error: unknown): boolean {
+	return (error as { code?: string } | null)?.code === "overpay";
+}
+
+/**
+ * A dry run answers one request. It is shown, and recorded, only for the
+ * request it was made for; after any change to the request it is gone until
+ * the new one answers.
+ */
+export function answerFor<T extends { key: string }>(
+	answer: T | null,
+	key: string | null,
+): T | null {
+	return answer !== null && key !== null && answer.key === key ? answer : null;
 }

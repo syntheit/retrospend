@@ -411,7 +411,7 @@
 		"otherShort": "Autre",
 		"typeAmount": "Saisissez un montant",
 		"amountInvalid": "Ce montant n’est pas valide",
-		"overpay": "C’est {amount} de plus que ce qui est dû. Saisissez moins."
+		"overpay": "C’est plus que ce qui est dû. Saisissez moins."
 	},
 	"review": {
 		"open": "Vérifier",
@@ -420,13 +420,26 @@
 		"betweenYou": "Entre vous",
 		"effectThem": "Vous doit {amount}",
 		"effectYou": "Vous devez {amount}",
-		"rejectNote": "Si vous refusez, {name} en est informé.",
 		"accept": "Accepter",
 		"reject": "Refuser",
 		"saving": "Enregistrement",
 		"accepted": "Part acceptée",
 		"rejected": "Part refusée, {name} en est informé",
-		"error": "Impossible d’enregistrer votre réponse. Réessayez."
+		"error": "Impossible d’enregistrer votre réponse. Réessayez.",
+		"answer": "Votre réponse",
+		"askToFix": "Demander une correction",
+		"explain": {
+			"accept": "La dépense reste et compte pour vous.",
+			"reject": "{name} est prévenu que vous n’êtes pas d’accord.",
+			"fix": "{name} est invité à la corriger. Rien ne change tant qu’il ne l’a pas fait."
+		},
+		"message": "Message (facultatif)",
+		"noFigures": "Vos soldes restent tels quels.",
+		"checking": "Vérification",
+		"previewError": "Impossible de vérifier cela. Réessayez.",
+		"asked": "{name} a été invité à corriger",
+		"undone": "Réponse annulée",
+		"undoError": "Impossible d’annuler la réponse. Réessayez."
 	},
 	"projects": {
 		"title": "Projets",
@@ -505,7 +518,7 @@
 		"settleAll": {
 			"open": "Tout régler",
 			"title": "Tout régler dans {name}",
-			"explain": "Un paiement par personne et par devise. Rien n’est converti.",
+			"explain": "Un paiement par personne et par devise, chacun dans la devise où il est dû.",
 			"checking": "Vérification",
 			"nothing": "Rien à régler dans ce projet",
 			"willRecord": "Ces paiements seront enregistrés",
@@ -586,7 +599,26 @@
 		},
 		"account": {
 			"title": "Compte",
-			"signOut": "Se déconnecter"
+			"signOut": "Se déconnecter",
+			"delete": "Supprimer le compte"
+		},
+		"delete": {
+			"title": "Supprimer le compte",
+			"permanent": "Cela supprime votre compte et ne peut pas être annulé. Vous êtes déconnecté partout.",
+			"loadError": "Impossible de vérifier ce qui change. Réessayez.",
+			"checking": "Vérification",
+			"changes": "Ce qui change pour les autres",
+			"nothing": "Rien ne change pour les autres.",
+			"transfer": "{project} passe à {name}",
+			"deleteProject": "{project} est supprimé, personne d’autre ne peut le gérer",
+			"confirm": "{count, plural, one {# paiement qui vous attend est confirmé} other {# paiements qui vous attendent sont confirmés}}",
+			"cancel": "{count, plural, one {# paiement non confirmé est annulé} other {# paiements non confirmés sont annulés}}",
+			"accept": "{count, plural, one {# part qui attend votre réponse est acceptée} other {# parts qui attendent votre réponse sont acceptées}}",
+			"anonymize": "{count, plural, one {# dépense partagée garde votre part sous « Utilisateur supprimé »} other {# dépenses partagées gardent votre part sous « Utilisateur supprimé »}}",
+			"password": "Mot de passe",
+			"delete": "Supprimer le compte",
+			"deleting": "Suppression",
+			"error": "Impossible de supprimer le compte. Vérifiez votre mot de passe et réessayez."
 		}
 	}
 }

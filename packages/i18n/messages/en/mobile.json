@@ -411,7 +411,7 @@
 		"otherShort": "Other",
 		"typeAmount": "Type an amount",
 		"amountInvalid": "That amount isn't valid",
-		"overpay": "That is {amount} more than is owed. Enter less."
+		"overpay": "That is more than is owed. Enter less."
 	},
 	"review": {
 		"open": "Review",
@@ -420,13 +420,26 @@
 		"betweenYou": "Between you",
 		"effectThem": "Owes you {amount}",
 		"effectYou": "You owe {amount}",
-		"rejectNote": "Rejecting tells {name}.",
 		"accept": "Accept",
 		"reject": "Reject",
 		"saving": "Saving",
 		"accepted": "Share accepted",
 		"rejected": "Share rejected, {name} is told",
-		"error": "Couldn't save your answer. Try again."
+		"error": "Couldn't save your answer. Try again.",
+		"answer": "Your answer",
+		"askToFix": "Ask to fix",
+		"explain": {
+			"accept": "The expense stays and counts for you.",
+			"reject": "{name} is told you do not agree with it.",
+			"fix": "{name} is asked to fix it. Nothing changes until they do."
+		},
+		"message": "Message (optional)",
+		"noFigures": "Your balances stay as they are.",
+		"checking": "Checking",
+		"previewError": "Couldn't check this. Try again.",
+		"asked": "Asked {name} to fix it",
+		"undone": "Answer taken back",
+		"undoError": "Couldn't take the answer back. Try again."
 	},
 	"projects": {
 		"title": "Projects",
@@ -505,7 +518,7 @@
 		"settleAll": {
 			"open": "Settle all",
 			"title": "Settle all in {name}",
-			"explain": "One payment per person and currency. Nothing is converted.",
+			"explain": "One payment per person and currency, each in the currency it is owed in.",
 			"checking": "Checking",
 			"nothing": "Nothing to settle in this project",
 			"willRecord": "These payments will be recorded",
@@ -586,7 +599,26 @@
 		},
 		"account": {
 			"title": "Account",
-			"signOut": "Sign out"
+			"signOut": "Sign out",
+			"delete": "Delete account"
+		},
+		"delete": {
+			"title": "Delete account",
+			"permanent": "This deletes your account and cannot be undone. You are signed out everywhere.",
+			"loadError": "Couldn't check what this changes. Try again.",
+			"checking": "Checking",
+			"changes": "What changes for other people",
+			"nothing": "Nothing changes for anyone else.",
+			"transfer": "{project} goes to {name}",
+			"deleteProject": "{project} is deleted, nobody else can run it",
+			"confirm": "{count, plural, one {# payment waiting for you is confirmed} other {# payments waiting for you are confirmed}}",
+			"cancel": "{count, plural, one {# payment nobody confirmed is cancelled} other {# payments nobody confirmed are cancelled}}",
+			"accept": "{count, plural, one {# share waiting for your answer is accepted} other {# shares waiting for your answer are accepted}}",
+			"anonymize": "{count, plural, one {# shared expense keeps your share as Deleted User} other {# shared expenses keep your share as Deleted User}}",
+			"password": "Password",
+			"delete": "Delete account",
+			"deleting": "Deleting",
+			"error": "Couldn't delete the account. Check your password and try again."
 		}
 	}
 }

@@ -70,11 +70,18 @@ export function useSettleAll(projectId: string, active: boolean) {
 		api.projects
 			.previewSettleAll({ id: projectId, expect: plan.planned })
 			.then((result) => !cancelled && setPreview(result))
-			.catch(() => !cancelled && setPreviewFailed(true));
+			.catch((error) => {
+				if (cancelled) return;
+				// The balances moved since the plan: read what is open now.
+				if (isConflict(error)) {
+					setRecordFailed("moved");
+					read();
+				} else setPreviewFailed(true);
+			});
 		return () => {
 			cancelled = true;
 		};
-	}, [api, body, status, projectId]);
+	}, [api, body, status, projectId, read]);
 
 	const record = useCallback(async (): Promise<SettleAllDone | null> => {
 		if (!api || !plan) return null;

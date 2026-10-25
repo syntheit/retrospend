@@ -411,7 +411,7 @@
 		"otherShort": "Outro",
 		"typeAmount": "Digite um valor",
 		"amountInvalid": "Esse valor não é válido",
-		"overpay": "Isso é {amount} a mais do que o devido. Digite menos."
+		"overpay": "Isso é mais do que o devido. Digite menos."
 	},
 	"review": {
 		"open": "Revisar",
@@ -420,13 +420,26 @@
 		"betweenYou": "Entre vocês",
 		"effectThem": "Deve {amount} a você",
 		"effectYou": "Você deve {amount}",
-		"rejectNote": "Se você recusar, {name} é avisado.",
 		"accept": "Aceitar",
 		"reject": "Recusar",
 		"saving": "Salvando",
 		"accepted": "Parte aceita",
 		"rejected": "Parte recusada, {name} foi avisado",
-		"error": "Não foi possível salvar sua resposta. Tente de novo."
+		"error": "Não foi possível salvar sua resposta. Tente de novo.",
+		"answer": "Sua resposta",
+		"askToFix": "Pedir correção",
+		"explain": {
+			"accept": "A despesa fica e conta para você.",
+			"reject": "{name} é avisado de que você não concorda.",
+			"fix": "{name} é convidado a corrigir. Nada muda até que corrija."
+		},
+		"message": "Mensagem (opcional)",
+		"noFigures": "Seus saldos ficam como estão.",
+		"checking": "Verificando",
+		"previewError": "Não foi possível verificar isto. Tente de novo.",
+		"asked": "Você pediu a {name} que corrija",
+		"undone": "Resposta desfeita",
+		"undoError": "Não foi possível desfazer a resposta. Tente de novo."
 	},
 	"projects": {
 		"title": "Projetos",
@@ -505,7 +518,7 @@
 		"settleAll": {
 			"open": "Quitar tudo",
 			"title": "Quitar tudo em {name}",
-			"explain": "Um pagamento por pessoa e moeda. Nada é convertido.",
+			"explain": "Um pagamento por pessoa e moeda, cada um na moeda em que é devido.",
 			"checking": "Verificando",
 			"nothing": "Não há nada para quitar neste projeto",
 			"willRecord": "Estes pagamentos serão registrados",
@@ -586,7 +599,26 @@
 		},
 		"account": {
 			"title": "Conta",
-			"signOut": "Sair"
+			"signOut": "Sair",
+			"delete": "Excluir conta"
+		},
+		"delete": {
+			"title": "Excluir conta",
+			"permanent": "Isso exclui sua conta e não pode ser desfeito. Você é desconectado de todos os lugares.",
+			"loadError": "Não foi possível verificar o que muda. Tente de novo.",
+			"checking": "Verificando",
+			"changes": "O que muda para outras pessoas",
+			"nothing": "Nada muda para mais ninguém.",
+			"transfer": "{project} passa para {name}",
+			"deleteProject": "{project} é excluído, ninguém mais pode cuidar dele",
+			"confirm": "{count, plural, one {# pagamento que espera você é confirmado} other {# pagamentos que esperam você são confirmados}}",
+			"cancel": "{count, plural, one {# pagamento que ninguém confirmou é cancelado} other {# pagamentos que ninguém confirmou são cancelados}}",
+			"accept": "{count, plural, one {# parte que espera sua resposta é aceita} other {# partes que esperam sua resposta são aceitas}}",
+			"anonymize": "{count, plural, one {# despesa dividida guarda sua parte como Usuário excluído} other {# despesas divididas guardam sua parte como Usuário excluído}}",
+			"password": "Senha",
+			"delete": "Excluir conta",
+			"deleting": "Excluindo",
+			"error": "Não foi possível excluir a conta. Confira sua senha e tente de novo."
 		}
 	}
 }

@@ -17,6 +17,7 @@ import {
 	FormValueRow,
 } from "@/ui/Form";
 import { useToast } from "@/ui/Toast";
+import { DeleteAccountSheet } from "./DeleteAccountSheet";
 import { ProfileSheet } from "./ProfileSheet";
 import { RatesSheet } from "./RatesSheet";
 import {
@@ -45,7 +46,7 @@ import {
 export function SettingsScreen() {
 	const t = useTranslations("mobile.settings");
 	const tn = useTranslations("mobile.settings.notify");
-	const { api } = useSession();
+	const { api, local, refreshMe } = useSession();
 	const { connection } = useServerConnection();
 	const toast = useToast();
 	const confirmSignOut = useSignOut();
@@ -58,6 +59,7 @@ export function SettingsScreen() {
 	const [prefs, setPrefs] = useState<NotificationPreference[]>([]);
 	const [editing, setEditing] = useState(false);
 	const [showRates, setShowRates] = useState(false);
+	const [deleting, setDeleting] = useState(false);
 
 	// The switches follow the server's answer, and change at once when tapped.
 	useEffect(() => {
@@ -107,6 +109,13 @@ export function SettingsScreen() {
 				context: { idempotencyKey: newClientId() },
 			});
 			toast.show({ message: t("saved") });
+			// The currencies are read from the session's profile, and every
+			// cached figure was in the old home currency: read the profile again
+			// and drop what was cached, so screens read it fresh when shown.
+			if (patch.homeCurrency || patch.defaultCurrency) {
+				await refreshMe();
+				if (patch.homeCurrency) await local?.cache.clear();
+			}
 		} catch {
 			toast.show({ message: t("saveError") });
 		}
@@ -224,6 +233,11 @@ export function SettingsScreen() {
 						label={t("account.signOut")}
 						onPress={confirmSignOut}
 					/>
+					<FormActionRow
+						destructive
+						label={t("account.delete")}
+						onPress={() => setDeleting(true)}
+					/>
 				</FormSection>
 			</Form>
 			{me ? (
@@ -236,6 +250,10 @@ export function SettingsScreen() {
 					visible={editing}
 				/>
 			) : null}
+			<DeleteAccountSheet
+				onClose={() => setDeleting(false)}
+				visible={deleting}
+			/>
 			<RatesSheet
 				onChanged={rates.reload}
 				onClose={() => setShowRates(false)}

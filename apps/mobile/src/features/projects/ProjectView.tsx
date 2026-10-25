@@ -137,22 +137,26 @@ export function ProjectView({
 						name={page.name}
 					/>
 					<View style={{ flex: 1, gap: 2 }}>
+						{/* The name is the navigation bar's; the detail pane has none. */}
+						{listDetail ? (
+							<Text
+								accessibilityRole="header"
+								style={{
+									color: color.fg,
+									fontSize: type.title.size,
+									fontWeight: "600",
+								}}
+							>
+								{page.name}
+							</Text>
+						) : null}
 						<Text
-							accessibilityRole="header"
 							style={{
-								color: color.fg,
-								fontSize: type.title.size,
-								fontWeight: "600",
+								color: listDetail ? color.fg2 : color.fg,
+								fontSize: listDetail ? type.small.size : type.body.size,
 							}}
 						>
-							{page.name}
-						</Text>
-						<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-							{[
-								page.status === "ARCHIVED" ? t("archived") : null,
-								when,
-								t("expenseCount", { count: page.expenseCount }),
-							]
+							{[page.status === "ARCHIVED" ? t("archived") : null, when]
 								.filter(Boolean)
 								.join(" · ")}
 						</Text>

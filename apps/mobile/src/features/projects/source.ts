@@ -89,42 +89,6 @@ export function matchesProject(item: ProjectItem, query: string): boolean {
 	return query === "" || fold(item.name).includes(fold(query));
 }
 
-/**
- * Stored category colors in the order of the 21 category-n tokens. The
- * server's own table is src/server/services/expense-list/category-tone.ts;
- * the project page sends the color name, not the number, so the phone maps
- * it (the other lists send `tone`).
- */
-const CATEGORY_COLORS = [
-	"emerald",
-	"blue",
-	"sky",
-	"cyan",
-	"teal",
-	"orange",
-	"amber",
-	"violet",
-	"pink",
-	"fuchsia",
-	"indigo",
-	"slate",
-	"zinc",
-	"lime",
-	"neutral",
-	"gray",
-	"purple",
-	"yellow",
-	"stone",
-	"rose",
-	"red",
-];
-
-/** The category-n design token a category color name stands for (1 to 21). */
-export function toneOf(color: string | null | undefined): number | null {
-	const at = color ? CATEGORY_COLORS.indexOf(color) : -1;
-	return at < 0 ? null : at + 1;
-}
-
 export interface BalanceSides {
 	/** What the group owes you, per currency (positive amounts). */
 	owedToYou: Money[];
