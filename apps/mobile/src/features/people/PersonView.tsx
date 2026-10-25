@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { newClientId } from "@/data/ids";
 import { useFaces } from "@/features/read/faces";
 import { LinkButton, SectionHeader, StaleNote } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
@@ -97,7 +98,10 @@ export function PersonView({
 
 	async function remind() {
 		try {
-			await api?.people.remind({ type: person.type, id: person.id });
+			await api?.people.remind(
+				{ type: person.type, id: person.id },
+				{ context: { idempotencyKey: newClientId() } },
+			);
 			toast.show({ message: t("reminded") });
 		} catch {
 			toast.show({ message: t("remindFailed") });

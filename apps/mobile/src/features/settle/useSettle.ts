@@ -119,7 +119,10 @@ export function useSettle(person: PersonRef, active: boolean) {
 		async (token: string): Promise<boolean> => {
 			if (!api) return false;
 			try {
-				await api.payments.undo({ token });
+				await api.payments.undo(
+					{ token },
+					{ context: { idempotencyKey: newClientId() } },
+				);
 				return true;
 			} catch {
 				return false;

@@ -8,7 +8,5 @@ export default function PersonScreen() {
 		id: string;
 		settle?: string;
 	}>();
-	return (
-		<PersonView person={{ type, id }} startSettling={settle === "1"} />
-	);
+	return <PersonView person={{ type, id }} startSettling={settle === "1"} />;
 }
