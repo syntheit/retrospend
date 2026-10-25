@@ -1,6 +1,7 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { Platform } from "react-native";
 import { useTranslations } from "use-intl";
+import { PROJECTS_APART } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 
 interface TabsProps {
@@ -11,8 +12,9 @@ interface TabsProps {
 }
 
 /**
- * Destinations: Home, Activity, Budget, People and Projects (N65). On iPhone
- * the fifth slot goes to Add, so Projects is not in the bar there (see below).
+ * Four destinations on phones: Home, Activity, Budget and People (Projects is
+ * the second segment of People, see PeopleHub). The iPad sidebar lists all
+ * six, Projects and Wealth included.
  *
  * Add on iPhone is the system's detached trailing tab: react-native-screens
  * 4.29+ backs `role: "search"` with a UISearchTab, which iOS 26 and 27 detach
@@ -22,12 +24,11 @@ interface TabsProps {
  * the native side keeps the selected tab and reports the press, and that
  * press opens the composer. The bar holds five items including this tab; a
  * sixth tab sends the plus and the last destination into More (verified on
- * iOS 26.5 and 27.0), so iPhone shows four destinations and the plus.
+ * iOS 26.5 and 27.0), which is why phones stop at four destinations.
  *
- * iPad has a top bar that overflows behind a chevron with six destinations,
- * which hides the plus there, and Android has no such slot: both keep the
- * floating button (AddEntryProvider). iPad turns the bar into a sidebar.
- * Active nav is brand (GUIDELINE §2.1); the bar itself is a theme surface.
+ * Android has no such slot and keeps its extended FAB; the iPad has the plus
+ * in the toolbar (AddEntryProvider, TopBar). Active nav is brand
+ * (GUIDELINE §2.1); the bar itself is a theme surface.
  */
 export function Tabs({ onAdd, addLabel }: TabsProps) {
 	const t = useTranslations("mobile.tabs");
@@ -35,7 +36,7 @@ export function Tabs({ onAdd, addLabel }: TabsProps) {
 	// Android draws an M3 navigation bar in token colors; iOS keeps the
 	// system bar material and takes only the brand tint.
 	const m3 = Platform.OS === "android";
-	// The iPad sidebar shows all six destinations; the phone bar keeps five.
+	// The iPad sidebar shows all six destinations; phones show four.
 	const ipad = Platform.OS === "ios" && Platform.isPad;
 	const iphone = Platform.OS === "ios" && !Platform.isPad;
 	const tw = useTranslations("mobile.wealth");
@@ -81,12 +82,12 @@ export function Tabs({ onAdd, addLabel }: TabsProps) {
 				<NativeTabs.Trigger.Label>{t("people")}</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon md="group" sf="person.2" />
 			</NativeTabs.Trigger>
-			{iphone ? null : (
+			{PROJECTS_APART ? (
 				<NativeTabs.Trigger name="projects">
 					<NativeTabs.Trigger.Label>{t("projects")}</NativeTabs.Trigger.Label>
 					<NativeTabs.Trigger.Icon md="folder" sf="folder" />
 				</NativeTabs.Trigger>
-			)}
+			) : null}
 			{iphone ? (
 				<NativeTabs.Trigger
 					accessibilityLabel={addLabel}

@@ -47,3 +47,8 @@ Logs stay on the mini in `~/rs-ios/logs/`, with the API key's values scrubbed. D
 #### Requirements on the mini
 
 Xcode with an iOS simulator runtime, Nix (for Node), and CocoaPods (the script installs it with Homebrew when missing).
+
+## Known issues
+
+- iOS 26.x (seen on 26.5): with the detached "+" in the tab bar, the four destination titles are truncated ("Acti...", "Peo..."). It is react-native-screens issue 5015; iOS 27 is not affected. Accepted for now.
+- iPad has no Cmd+N: Expo UI offers no keyboard shortcut modifier for SwiftUI buttons, and React Native has no key command API. The toolbar plus opens the composer.

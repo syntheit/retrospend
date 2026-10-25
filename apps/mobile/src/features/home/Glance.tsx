@@ -145,14 +145,24 @@ export function Glance({
 			<Figure
 				approx={approx.owedToYou}
 				label={t("owedToYou")}
-				onPress={() => router.navigate("/people")}
+				onPress={() =>
+					router.navigate({
+						pathname: "/people",
+						params: { segment: "people" },
+					})
+				}
 				tone="positive"
 				value={glance.owedToYou.value}
 			/>
 			<Figure
 				approx={approx.youOwe}
 				label={t("youOwe")}
-				onPress={() => router.navigate("/people")}
+				onPress={() =>
+					router.navigate({
+						pathname: "/people",
+						params: { segment: "people" },
+					})
+				}
 				value={glance.youOwe.value}
 			/>
 			<Figure

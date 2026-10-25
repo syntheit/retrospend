@@ -87,7 +87,12 @@ export function PlanSummary({
 				<SummaryRow
 					detail={t("owed.people", { count: owed.people })}
 					label={t("owed.title")}
-					onPress={() => router.navigate("/people")}
+					onPress={() =>
+						router.navigate({
+							pathname: "/people",
+							params: { segment: "people" },
+						})
+					}
 					spoken={`${t("owed.title")}, ${t("owed.people", { count: owed.people })}, ${money(owed.held)}`}
 					value={money(owed.held)}
 				/>

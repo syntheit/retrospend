@@ -679,6 +679,7 @@
 		"unpriced": "{currencies}: no rate yet, not in the totals",
 		"needsYou": "{count, plural, one {# needs you} other {# need you}}",
 		"search": "Search people",
+		"segmentLabel": "People or projects",
 		"chip": {
 			"all": "Everyone",
 			"owesYou": "Owes you",
