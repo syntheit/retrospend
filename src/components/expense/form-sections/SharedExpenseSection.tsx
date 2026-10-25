@@ -19,7 +19,11 @@ import type { ExpenseFormData } from "~/hooks/use-expense-form";
 import { formatNumber } from "~/lib/currency-format";
 import { evenSharePerPerson } from "~/lib/even-split-display";
 import { currencyDecimals, fromMinorUnits, toMinorUnits } from "~/lib/money";
-import { resolveSentSplits } from "~/lib/shared-split-input";
+import {
+	resolveSentSplit,
+	type SplitState,
+	splitKey,
+} from "~/lib/shared-split-input";
 import { cn } from "~/lib/utils";
 
 type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
@@ -251,8 +255,8 @@ export function SharedExpenseSection({
 	};
 
 	// --- Compute per-person shares for display ---
-	// Uses the SAME pure resolveSplits() the server uses, so the preview shows
-	// exactly what gets saved (rounding remainder to the payer, etc). While the
+	// Uses the SAME pure resolveSplits() the server uses, on the rows Save sends,
+	// so the preview shows exactly what gets saved (rounding remainder to the payer, etc). While the
 	// user is mid-edit the inputs may be invalid (percentages not at 100, exact
 	// not summing to the amount); resolveSplits throws there, so we fall back to
 	// a best-effort per-row display and let the section's own validation flag it.
@@ -269,37 +273,30 @@ export function SharedExpenseSection({
 			});
 		}
 
-		// Build the participant input the same way the form submits it, so the
-		// preview and the saved split come from one code path.
-		const participants = allParticipants.map((p) => {
-			const key = `${p.participantType}:${p.participantId}`;
-			return {
-				participantType: p.participantType,
-				participantId: p.participantId,
-				shareAmount: exactAmounts[key] ?? 0,
-				sharePercentage: percentages[key] ?? 0,
-				shareUnits: shares[key] ?? 1,
-			};
-		});
-
+		// Resolve the rows the form submits (buildSplitInput), so the preview and
+		// the saved split come from one code path, unset fields included.
 		try {
-			const resolved = resolveSentSplits({
-				mode: splitMode,
-				amount,
-				currency: watchedCurrency,
-				participants,
-				paidBy: {
-					participantType: paidBy.participantType as
-						| "user"
-						| "guest"
-						| "shadow",
-					participantId: paidBy.participantId,
+			const resolved = resolveSentSplit(
+				{
+					mode: splitMode,
+					you: { participantType: "user", participantId: currentUser.id },
+					youIncluded,
+					others: splitWith,
+					paidBy: paidBy as SplitState["paidBy"],
+					fullAmount: false,
+					amount,
+					exact: exactAmounts,
+					percentages,
+					shares,
 				},
-			});
-			// resolveSplits preserves input order, so it lines up with allParticipants.
-			return allParticipants.map((p, i) => ({
+				watchedCurrency,
+			);
+			const amountOf = new Map(
+				resolved.map((r) => [splitKey(r), r.shareAmount]),
+			);
+			return allParticipants.map((p) => ({
 				...p,
-				amount: resolved[i]?.shareAmount ?? 0,
+				amount: amountOf.get(splitKey(p)) ?? 0,
 			}));
 		} catch {
 			// Invalid mid-edit state: show a best-effort per-row breakdown.
@@ -357,8 +354,10 @@ export function SharedExpenseSection({
 		shares,
 		isSinglePerson,
 		theyOweFullAmount,
-		paidBy.participantType,
-		paidBy.participantId,
+		currentUser.id,
+		youIncluded,
+		splitWith,
+		paidBy,
 	]);
 
 	// --- Validation ---

@@ -576,3 +576,193 @@ describe("expense.listV2 entry kinds (M1, M2)", () => {
 		await adminDb.user.delete({ where: { id: fresh.user.id } });
 	});
 });
+
+describe("expense.listV2 foreign shares", () => {
+	it("a BRL share converts its exact USD value in the row and in the day total, with no USD cents in between", async () => {
+		const owner = await createTestUser();
+		const guest = await createTestUser();
+		await adminDb.user.update({
+			where: { id: guest.user.id },
+			data: { homeCurrency: "ARS" },
+		});
+		const share = (id: string, amount: string) => ({
+			id: `${id}_${guest.user.id}`,
+			description: id,
+			amount,
+			currency: "BRL",
+			exchangeRate: "5.4",
+			date: day(12),
+			paidByType: "user" as const,
+			paidById: owner.user.id,
+			createdByType: "user" as const,
+			createdById: owner.user.id,
+			splitParticipants: {
+				create: [
+					{
+						participantType: "user" as const,
+						participantId: guest.user.id,
+						shareAmount: amount,
+						verificationStatus: "ACCEPTED" as const,
+					},
+				],
+			},
+		});
+		await adminDb.sharedTransaction.create({ data: share("brl_a", "123.45") });
+		await adminDb.sharedTransaction.create({ data: share("brl_b", "77.77") });
+		const r = await list(guest, OCT);
+		// 123.45 / 5.4 = 22.861111 USD, x 1000 = ARS 22,861.11
+		// 77.77 / 5.4 = 14.401852 USD, x 1000 = ARS 14,401.85
+		const shares = new Map(r.items.map((i) => [i.title, i.share?.minor]));
+		expect(shares.get("brl_a")).toBe(2286111);
+		expect(shares.get("brl_b")).toBe(1440185);
+		// Exact sum 37,262.96296, rounded once: ARS 37,262.96. Rounding each share
+		// to USD cents first (22.86 + 14.40) gave ARS 37,260.00.
+		expect(r.dayTotals?.["2026-10-12"]).toEqual({
+			minor: 3726296,
+			currency: "ARS",
+		});
+		expect(r.total?.value).toEqual({ minor: 3726296, currency: "ARS" });
+		await adminDb.sharedTransaction.deleteMany({
+			where: { id: { endsWith: guest.user.id } },
+		});
+		await adminDb.user.deleteMany({
+			where: { id: { in: [owner.user.id, guest.user.id] } },
+		});
+	});
+
+	it("rounds each row on its own and the day total once, so they can differ by a minor unit", async () => {
+		const owner = await createTestUser();
+		const guest = await createTestUser();
+		await adminDb.user.update({
+			where: { id: guest.user.id },
+			data: { homeCurrency: "ARS" },
+		});
+		for (const id of ["brl_one", "brl_two"])
+			await adminDb.sharedTransaction.create({
+				data: {
+					id: `${id}_${guest.user.id}`,
+					description: id,
+					amount: "1.00",
+					currency: "BRL",
+					exchangeRate: "5.4",
+					date: day(12),
+					paidByType: "user",
+					paidById: owner.user.id,
+					createdByType: "user",
+					createdById: owner.user.id,
+					splitParticipants: {
+						create: [
+							{
+								participantType: "user",
+								participantId: guest.user.id,
+								shareAmount: "1.00",
+								verificationStatus: "ACCEPTED",
+							},
+						],
+					},
+				},
+			});
+		const r = await list(guest, OCT);
+		// 1.00 / 5.4 = 0.185185 USD x 1000 = ARS 185.185185 per share.
+		// Each row rounds to 185.19, two rows read 370.38. The day total is
+		// spent(): the exact 370.37037 rounded once, ARS 370.37.
+		expect(r.items.map((i) => i.share?.minor)).toEqual([18519, 18519]);
+		expect(r.dayTotals?.["2026-10-12"]).toEqual({
+			minor: 37037,
+			currency: "ARS",
+		});
+		await adminDb.sharedTransaction.deleteMany({
+			where: { id: { endsWith: guest.user.id } },
+		});
+		await adminDb.user.deleteMany({
+			where: { id: { in: [owner.user.id, guest.user.id] } },
+		});
+	});
+});
+
+describe("expense.listV2 rows the footer leaves out", () => {
+	it("marks a row hidden from reports as not counted and names a rejected share, so the footer adds up", async () => {
+		const owner = await createTestUser();
+		const guest = await createTestUser();
+		await adminDb.user.update({
+			where: { id: guest.user.id },
+			data: { homeCurrency: "ARS" },
+		});
+		const food = await adminDb.category.create({
+			data: { name: "Food", color: "blue", userId: guest.user.id },
+		});
+		const row = (title: string, amount: string, hidden: boolean) => ({
+			userId: guest.user.id,
+			title,
+			amount,
+			currency: "ARS",
+			amountInUSD: String(Number(amount) / 1000),
+			exchangeRate: "1000",
+			pricingSource: "MANUAL" as const,
+			date: day(14),
+			categoryId: food.id,
+			excludeFromAnalytics: hidden,
+		});
+		await adminDb.expense.createMany({
+			data: [row("Counted", "1000", false), row("Hidden", "500", true)],
+		});
+		await adminDb.sharedTransaction.create({
+			data: {
+				id: `pgl_rejected_${guest.user.id}`,
+				description: "Declined split",
+				amount: "700",
+				currency: "ARS",
+				exchangeRate: "1000",
+				date: day(14),
+				paidByType: "user",
+				paidById: owner.user.id,
+				createdByType: "user",
+				createdById: owner.user.id,
+				splitParticipants: {
+					create: [
+						{
+							participantType: "user",
+							participantId: guest.user.id,
+							shareAmount: "350",
+							verificationStatus: "REJECTED",
+						},
+						{
+							participantType: "user",
+							participantId: owner.user.id,
+							shareAmount: "350",
+							verificationStatus: "ACCEPTED",
+						},
+					],
+				},
+			},
+		});
+		const byCategory = await list(guest, { ...OCT, categoryIds: [food.id] });
+		const all = await list(guest, OCT);
+		for (const r of [byCategory, all]) {
+			// Only "Counted" is in the footer: ARS 1,000.
+			expect(r.total?.value).toEqual({ minor: 100000, currency: "ARS" });
+			expect(r.dayTotals?.["2026-10-14"]).toEqual({
+				minor: 100000,
+				currency: "ARS",
+			});
+			const flags = new Map(
+				r.items.map((i) => [i.title, [i.notCounted, i.waiting]] as const),
+			);
+			expect(flags.get("Counted")).toEqual([undefined, undefined]);
+			expect(flags.get("Hidden")).toEqual([true, undefined]);
+		}
+		expect(byCategory.items.map((i) => i.title).sort()).toEqual([
+			"Counted",
+			"Hidden",
+		]);
+		expect(
+			all.items.find((i) => i.title === "Declined split")?.waiting,
+		).toBe("rejected");
+		await adminDb.sharedTransaction.deleteMany({
+			where: { id: `pgl_rejected_${guest.user.id}` },
+		});
+		await adminDb.user.deleteMany({
+			where: { id: { in: [owner.user.id, guest.user.id] } },
+		});
+	});
+});

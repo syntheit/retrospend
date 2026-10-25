@@ -205,6 +205,37 @@ describe("/api/v1/expenses", () => {
 		);
 	});
 
+	it("answers not_found for a category that is missing or someone else's, on create, preview and replace", async () => {
+		const before = await adminDb.expense.count({ where: { userId: alice } });
+		const theirs = (await category(bob)).id;
+		const mine = await add(body(food, { title: "Keeps its category" }));
+		const routes = [
+			["POST", "/expenses/preview"],
+			["POST", "/expenses"],
+			["PUT", `/expenses/${mine.expense.id}`],
+			["POST", `/expenses/${mine.expense.id}/preview`],
+		] as const;
+		for (const categoryId of [randomUUID(), theirs])
+			for (const [method, route] of routes)
+				await expectProblem(
+					await call(route, {
+						method,
+						headers: asAlice,
+						body: body(categoryId),
+						idempotent: true,
+					}),
+					404,
+					"not_found",
+				);
+		expect(await adminDb.expense.count({ where: { userId: alice } })).toBe(
+			before + 1,
+		);
+		const kept = await adminDb.expense.findUniqueOrThrow({
+			where: { id: mine.expense.id },
+		});
+		expect(kept.categoryId).toBe(food);
+	});
+
 	it("previews a create without writing, and the preview equals the result", async () => {
 		const before = await adminDb.expense.count({ where: { userId: alice } });
 		const data = body(food, { title: "Preview me", amount: "40" });
