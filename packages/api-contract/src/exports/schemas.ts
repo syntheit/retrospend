@@ -9,6 +9,7 @@ export const EXPORT_LINK_TTL_MS = 10 * 60 * 1000;
 
 export const EXPORT_KINDS = [
 	"data",
+	"expenses",
 	"project_expenses",
 	"project_settlement_plan",
 	"project_billing_period",
@@ -34,13 +35,20 @@ const person = {
 };
 
 /**
- * What to export. `data` is everything you own as a zip of CSV files; the
- * rest are the project and person documents the web app offers (CSV or
+ * What to export. `data` is everything you own as a zip of CSV files;
+ * `expenses` is your expenses as one CSV; the rest are the project and person documents the web app offers (CSV or
  * PDF). Ids only: no text goes in a request.
  */
 export const exportRequestSchema = z
 	.discriminatedUnion("kind", [
 		z.object({ kind: z.literal("data") }),
+		z.object({
+			kind: z.literal("expenses"),
+			expenseIds: z.array(idSchema).min(1).max(5000).optional().meta({
+				description:
+					"Only these expenses; every finalized expense when omitted.",
+			}),
+		}),
 		z.object({
 			kind: z.literal("project_expenses"),
 			projectId: idSchema,

@@ -7,7 +7,6 @@ import type {
 } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
-import { ImportQueueService } from "~/server/services/import-queue.service";
 import {
 	type CommitImportInput,
 	commitImport,
@@ -15,10 +14,11 @@ import {
 import { importReview } from "~/server/services/import/review";
 import { importRunner } from "~/server/services/import/runner";
 import { undoImport } from "~/server/services/import/undo.mutation";
+import { ImportQueueService } from "~/server/services/import-queue.service";
 import type { ImportJobStatus, ImportJobType, Prisma } from "~prisma";
+import { decodeCursor, toPage } from "./cursor";
 import type { LedgerCaller } from "./money-op";
 import { toPreviewDto } from "./money-write";
-import { decodeCursor, toPage } from "./cursor";
 import { type Wire, wire } from "./wire";
 
 /**
@@ -183,7 +183,10 @@ type FinalizeBody = {
 	rows: CommitImportInput["rows"];
 };
 
-const toCommit = (caller: LedgerCaller, b: FinalizeBody): CommitImportInput => ({
+const toCommit = (
+	caller: LedgerCaller,
+	b: FinalizeBody,
+): CommitImportInput => ({
 	jobId: b.id,
 	currency: b.currency,
 	rows: b.rows,

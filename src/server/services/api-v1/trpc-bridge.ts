@@ -1,8 +1,9 @@
-import { createCallerFactory } from "~/server/api/trpc";
 import { adminRouter } from "~/server/api/routers/admin";
+import { expenseRouter } from "~/server/api/routers/expense";
 import { exportRouter } from "~/server/api/routers/export";
 import { feedbackRouter } from "~/server/api/routers/feedback";
 import { inviteRouter } from "~/server/api/routers/invite";
+import { createCallerFactory } from "~/server/api/trpc";
 import { db } from "~/server/db";
 
 /**
@@ -44,6 +45,7 @@ async function contextFor(caller: BridgeCaller) {
 
 const adminFactory = createCallerFactory(adminRouter);
 const exportFactory = createCallerFactory(exportRouter);
+const expenseFactory = createCallerFactory(expenseRouter);
 const feedbackFactory = createCallerFactory(feedbackRouter);
 const inviteFactory = createCallerFactory(inviteRouter);
 
@@ -51,6 +53,8 @@ export const trpcAdmin = async (c: BridgeCaller) =>
 	adminFactory(await contextFor(c));
 export const trpcExport = async (c: BridgeCaller) =>
 	exportFactory(await contextFor(c));
+export const trpcExpense = async (c: BridgeCaller) =>
+	expenseFactory(await contextFor(c));
 export const trpcFeedback = async (c: BridgeCaller) =>
 	feedbackFactory(await contextFor(c));
 export const trpcInvite = async (c: BridgeCaller) =>

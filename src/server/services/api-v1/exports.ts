@@ -51,7 +51,9 @@ function stateOf(row: JobRow, now: Date): ExportJobDto["state"] {
 function toDto(row: JobRow, now = new Date()): ExportJobDto {
 	const state = stateOf(row, now);
 	const link =
-		state === "ready" ? signExportLink(row.id, row.userId, now.getTime()) : null;
+		state === "ready"
+			? signExportLink(row.id, row.userId, now.getTime())
+			: null;
 	return {
 		id: row.id,
 		kind: row.kind as ExportJobDto["kind"],
@@ -60,9 +62,7 @@ function toDto(row: JobRow, now = new Date()): ExportJobDto {
 		fileName: state === "ready" ? row.fileName : null,
 		sizeBytes: state === "ready" ? row.sizeBytes : null,
 		error:
-			state === "failed"
-				? (row.error ?? "The export did not finish")
-				: null,
+			state === "failed" ? (row.error ?? "The export did not finish") : null,
 		createdAt: row.createdAt.toISOString(),
 		completedAt: row.completedAt?.toISOString() ?? null,
 		expiresAt: row.expiresAt.toISOString(),
@@ -207,9 +207,11 @@ export async function downloadFile(
 		});
 	if (stateOf(row, new Date()) !== "ready" || !row.storagePath || !row.fileName)
 		throw notFound();
-	const bytes = await readAll(await getFileStream(row.storagePath).catch(() => {
-		throw notFound();
-	}));
+	const bytes = await readAll(
+		await getFileStream(row.storagePath).catch(() => {
+			throw notFound();
+		}),
+	);
 	return new File([new Uint8Array(bytes)], row.fileName, {
 		type: row.contentType ?? "application/octet-stream",
 	});

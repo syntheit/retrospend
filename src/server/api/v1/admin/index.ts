@@ -7,7 +7,9 @@ import { signedIn, v1 } from "../middleware";
 const a = v1.admin;
 
 export const adminRouter = {
-	stats: a.stats.handler(serve(({ context }) => admin.stats(signedIn(context)))),
+	stats: a.stats.handler(
+		serve(({ context }) => admin.stats(signedIn(context))),
+	),
 	listUsers: a.listUsers.handler(
 		serve(({ context, input }) => admin.listUsers(signedIn(context), input)),
 	),
@@ -35,7 +37,9 @@ export const adminRouter = {
 		),
 	),
 	deleteUser: a.deleteUser.handler(
-		serve(({ context, input }) => admin.deleteUser(signedIn(context), input.id)),
+		serve(({ context, input }) =>
+			admin.deleteUser(signedIn(context), input.id),
+		),
 	),
 	getSettings: a.getSettings.handler(
 		serve(({ context }) => admin.getSettings(signedIn(context))),

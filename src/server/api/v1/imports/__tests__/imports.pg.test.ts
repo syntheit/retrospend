@@ -51,7 +51,11 @@ describe("/api/v1/imports", () => {
 		asBob = await asMobile((await createTestUser()).user.id);
 	});
 
-	const upload = (headers: Record<string, string>, name = "bank.csv", text = CSV) =>
+	const upload = (
+		headers: Record<string, string>,
+		name = "bank.csv",
+		text = CSV,
+	) =>
 		call("/imports/jobs", {
 			method: "POST",
 			headers,
@@ -74,11 +78,7 @@ describe("/api/v1/imports", () => {
 	let jobId = "";
 
 	it("uploads a file, reads it in the background and lists it", async () => {
-		const created = await expectBody<Job>(
-			await upload(asAlice),
-			i.upload,
-			201,
-		);
+		const created = await expectBody<Job>(await upload(asAlice), i.upload, 201);
 		jobId = created.id;
 		expect(["queued", "reading", "ready"]).toContain(created.state);
 		const ready = await untilReady(jobId);
@@ -141,7 +141,10 @@ describe("/api/v1/imports", () => {
 		const review = await expectBody<{
 			rows: { index: number; title: string; amount: { minor: number } }[];
 			counts: { fileRows: number };
-		}>(await call(`/imports/jobs/${jobId}/review`, { headers: asAlice }), i.review);
+		}>(
+			await call(`/imports/jobs/${jobId}/review`, { headers: asAlice }),
+			i.review,
+		);
 		expect(review.rows.map((r) => [r.title, r.amount.minor])).toEqual([
 			["Coffee beans", 1250],
 			["Train ticket", 4000],
@@ -158,7 +161,9 @@ describe("/api/v1/imports", () => {
 
 	it("previews the finalize without writing, then writes what the preview showed", async () => {
 		const body = { rows: choices([true, false]) };
-		const preview = await expectBody<{ detail: { result: { created: number } } }>(
+		const preview = await expectBody<{
+			detail: { result: { created: number } };
+		}>(
 			await call(`/imports/jobs/${jobId}/finalize/preview`, {
 				method: "POST",
 				headers: asAlice,
@@ -167,7 +172,9 @@ describe("/api/v1/imports", () => {
 			i.previewFinalize,
 		);
 		expect(preview.detail.result.created).toBe(1);
-		await expect(adminDb.expense.count({ where: { userId: alice } })).resolves.toBe(0);
+		await expect(
+			adminDb.expense.count({ where: { userId: alice } }),
+		).resolves.toBe(0);
 
 		const key = "finalize-once-1";
 		const done = await expectBody<{ created: number; unchecked: number }>(
@@ -192,7 +199,9 @@ describe("/api/v1/imports", () => {
 		});
 		expect(replay.headers.get("idempotent-replayed")).toBe("true");
 		expect((await replay.json()).created).toBe(1);
-		await expect(adminDb.expense.count({ where: { userId: alice } })).resolves.toBe(1);
+		await expect(
+			adminDb.expense.count({ where: { userId: alice } }),
+		).resolves.toBe(1);
 
 		// A new key cannot import the same file twice.
 		await expectProblem(
@@ -208,7 +217,9 @@ describe("/api/v1/imports", () => {
 	});
 
 	it("undoes the import and makes the file reviewable again", async () => {
-		const preview = await expectBody<{ detail: { result: { removed: number } } }>(
+		const preview = await expectBody<{
+			detail: { result: { removed: number } };
+		}>(
 			await call(`/imports/jobs/${jobId}/undo/preview`, {
 				method: "POST",
 				headers: asAlice,
@@ -217,7 +228,9 @@ describe("/api/v1/imports", () => {
 			i.previewUndo,
 		);
 		expect(preview.detail.result.removed).toBe(1);
-		await expect(adminDb.expense.count({ where: { userId: alice } })).resolves.toBe(1);
+		await expect(
+			adminDb.expense.count({ where: { userId: alice } }),
+		).resolves.toBe(1);
 
 		const undone = await expectBody<{ removed: number }>(
 			await call(`/imports/jobs/${jobId}/undo`, {
@@ -229,7 +242,9 @@ describe("/api/v1/imports", () => {
 			i.undo,
 		);
 		expect(undone.removed).toBe(1);
-		await expect(adminDb.expense.count({ where: { userId: alice } })).resolves.toBe(0);
+		await expect(
+			adminDb.expense.count({ where: { userId: alice } }),
+		).resolves.toBe(0);
 		expect((await untilReady(jobId)).state).toBe("ready");
 	});
 

@@ -10483,6 +10483,49 @@
 											"minimum": 0,
 											"type": "integer"
 										},
+										"importQueue": {
+											"properties": {
+												"availableSlots": {
+													"maximum": 9007199254740991,
+													"minimum": -9007199254740991,
+													"type": "integer"
+												},
+												"currentProcessing": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												"maxConcurrent": {
+													"maximum": 9007199254740991,
+													"minimum": 1,
+													"type": "integer"
+												},
+												"totalQueued": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												"totalReadyForReview": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												"totalReviewing": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												}
+											},
+											"required": [
+												"maxConcurrent",
+												"currentProcessing",
+												"availableSlots",
+												"totalQueued",
+												"totalReadyForReview",
+												"totalReviewing"
+											],
+											"type": "object"
+										},
 										"storageSizeBytes": {
 											"maximum": 9007199254740991,
 											"minimum": 0,
@@ -10503,7 +10546,8 @@
 										"userCount",
 										"databaseSizeBytes",
 										"storageSizeBytes",
-										"uptimeSeconds"
+										"uptimeSeconds",
+										"importQueue"
 									],
 									"type": "object"
 								}
@@ -63270,6 +63314,7 @@
 													"kind": {
 														"enum": [
 															"data",
+															"expenses",
 															"project_expenses",
 															"project_settlement_plan",
 															"project_billing_period",
@@ -63438,6 +63483,28 @@
 										"properties": {
 											"kind": {
 												"const": "data"
+											}
+										},
+										"required": [
+											"kind"
+										],
+										"type": "object"
+									},
+									{
+										"properties": {
+											"expenseIds": {
+												"description": "Only these expenses; every finalized expense when omitted.",
+												"items": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"maxItems": 5000,
+												"minItems": 1,
+												"type": "array"
+											},
+											"kind": {
+												"const": "expenses"
 											}
 										},
 										"required": [
@@ -63702,6 +63769,7 @@
 										"kind": {
 											"enum": [
 												"data",
+												"expenses",
 												"project_expenses",
 												"project_settlement_plan",
 												"project_billing_period",
@@ -64046,6 +64114,7 @@
 										"kind": {
 											"enum": [
 												"data",
+												"expenses",
 												"project_expenses",
 												"project_settlement_plan",
 												"project_billing_period",

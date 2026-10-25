@@ -189,7 +189,8 @@ export const adminContract = {
 			path: "/admin/event-logs",
 			operationId: "listEventLogs",
 			tags: TAG,
-			summary: "Sign-ins, account changes and other security events, newest first",
+			summary:
+				"Sign-ins, account changes and other security events, newest first",
 		})
 		.meta({ scope: "admin" })
 		.input(eventLogQuerySchema)

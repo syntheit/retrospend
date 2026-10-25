@@ -45,7 +45,12 @@ export function checkExportLink(
 ): LinkCheck {
 	const [rawExpires, sig, extra] = token.split(".");
 	const expires = Number(rawExpires);
-	if (!rawExpires || !sig || extra !== undefined || !Number.isSafeInteger(expires))
+	if (
+		!rawExpires ||
+		!sig ||
+		extra !== undefined ||
+		!Number.isSafeInteger(expires)
+	)
 		return "invalid";
 	const want = Buffer.from(sigOf(jobId, userId, expires), "hex");
 	const got = Buffer.from(sig, "hex");

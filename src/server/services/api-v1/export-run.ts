@@ -1,7 +1,8 @@
 import type { ExportRequest } from "@retrospend/api-contract";
+import { dayKey } from "~/lib/time-zone";
 import { deleteFile, uploadFile } from "~/server/storage";
 import { scopedDbFor } from "./scoped-db";
-import { type BridgeCaller, trpcExport } from "./trpc-bridge";
+import { type BridgeCaller, trpcExpense, trpcExport } from "./trpc-bridge";
 
 /**
  * Builds one export in the background. The documents are the ones the web
@@ -40,6 +41,15 @@ async function build(who: BridgeCaller, req: ExportRequest): Promise<Built> {
 				fileName: r.filename,
 				contentType: "application/zip",
 			};
+		}
+		case "expenses": {
+			const r = await (await trpcExpense(who)).exportCsv({
+				expenseIds: req.expenseIds,
+			});
+			return csv({
+				csv: r.csv,
+				filename: `expenses-${dayKey(new Date(), who.timeZone)}.csv`,
+			});
 		}
 		case "project_expenses":
 			return csv(await t.exportProjectExpenses({ ...req, format: "csv" }));

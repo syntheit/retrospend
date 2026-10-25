@@ -8,9 +8,15 @@ import {
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
 import { db } from "~/server/db";
+import { ImportQueueService } from "~/server/services/import-queue.service";
 import type { AuditPrivacyMode } from "~prisma";
-import { InvalidCursorError, decodeCursor, encodeCursor, toPage } from "./cursor";
 import { isoDay } from "./caller";
+import {
+	decodeCursor,
+	encodeCursor,
+	InvalidCursorError,
+	toPage,
+} from "./cursor";
 import type { LedgerCaller } from "./money-op";
 import { trpcAdmin } from "./trpc-bridge";
 
@@ -34,7 +40,10 @@ async function admin(caller: LedgerCaller) {
 }
 
 async function requireUser(id: string) {
-	const found = await db.user.findUnique({ where: { id }, select: { id: true } });
+	const found = await db.user.findUnique({
+		where: { id },
+		select: { id: true },
+	});
 	if (!found)
 		throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
 }
@@ -44,8 +53,13 @@ const idKey = z.object({ id: z.string() });
 
 export async function stats(caller: LedgerCaller) {
 	const t = await admin(caller);
-	const [counts, server] = await Promise.all([t.getStats(), t.getServerStats()]);
+	const [counts, server, importQueue] = await Promise.all([
+		t.getStats(),
+		t.getServerStats(),
+		new ImportQueueService(db).getGlobalStats(),
+	]);
 	return {
+		importQueue,
 		userCount: counts.userCount,
 		databaseSizeBytes: server.databaseSize,
 		storageSizeBytes: server.storageSize,
@@ -89,7 +103,11 @@ export async function listUsers(caller: LedgerCaller, q: CursorQuery) {
 	);
 }
 
-export async function setActive(caller: LedgerCaller, id: string, active: boolean) {
+export async function setActive(
+	caller: LedgerCaller,
+	id: string,
+	active: boolean,
+) {
 	const t = await admin(caller);
 	await requireUser(id);
 	if (active) await t.enableUser({ userId: id });
@@ -175,7 +193,9 @@ export async function getAiSettings(caller: LedgerCaller): Promise<AiSettings> {
 
 export async function updateAiSettings(
 	caller: LedgerCaller,
-	input: Parameters<Awaited<ReturnType<typeof trpcAdmin>>["updateAiSettings"]>[0],
+	input: Parameters<
+		Awaited<ReturnType<typeof trpcAdmin>>["updateAiSettings"]
+	>[0],
 ): Promise<AiSettings> {
 	const t = await admin(caller);
 	await t.updateAiSettings(input);
@@ -238,7 +258,9 @@ export async function eventLogs(
 			ipAddress: l.ipAddress,
 			userAgent: l.userAgent,
 			metadata:
-				l.metadata && typeof l.metadata === "object" && !Array.isArray(l.metadata)
+				l.metadata &&
+				typeof l.metadata === "object" &&
+				!Array.isArray(l.metadata)
 					? (stripUserText(l.metadata) as Record<string, unknown>)
 					: null,
 		})),

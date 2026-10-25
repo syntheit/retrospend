@@ -15,6 +15,15 @@ export const adminStatsSchema = z
 		databaseSizeBytes: z.int().min(0),
 		storageSizeBytes: z.int().min(0),
 		uptimeSeconds: z.int().min(0),
+		/** The import queue across all users: files being read and waiting. */
+		importQueue: z.object({
+			maxConcurrent: z.int().min(1),
+			currentProcessing: z.int().min(0),
+			availableSlots: z.int(),
+			totalQueued: z.int().min(0),
+			totalReadyForReview: z.int().min(0),
+			totalReviewing: z.int().min(0),
+		}),
 	})
 	.meta({ id: "AdminStats" });
 

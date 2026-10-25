@@ -53,7 +53,10 @@ export async function listInbox(
 }
 
 async function requireFeedback(id: string) {
-	const found = await db.feedback.findUnique({ where: { id }, select: { id: true } });
+	const found = await db.feedback.findUnique({
+		where: { id },
+		select: { id: true },
+	});
 	if (!found)
 		throw new TRPCError({ code: "NOT_FOUND", message: "Feedback not found" });
 }

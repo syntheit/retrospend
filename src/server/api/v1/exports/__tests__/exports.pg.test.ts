@@ -67,7 +67,11 @@ describe("/api/v1/exports", () => {
 		asBob = await asMobile((await createTestUser()).user.id);
 	});
 
-	const request = (headers: Record<string, string>, body: unknown, key?: string) =>
+	const request = (
+		headers: Record<string, string>,
+		body: unknown,
+		key?: string,
+	) =>
 		call("/exports/jobs", {
 			method: "POST",
 			headers,
@@ -95,21 +99,72 @@ describe("/api/v1/exports", () => {
 			e.request,
 			202,
 		);
-		expect(queued).toMatchObject({ kind: "data", format: "zip", download: null });
+		expect(queued).toMatchObject({
+			kind: "data",
+			format: "zip",
+			download: null,
+		});
 		job = await untilDone(queued.id);
 		expect(job).toMatchObject({ state: "ready", format: "zip", error: null });
 		expect(job.fileName).toMatch(/^user-data-\d{4}-\d{2}-\d{2}\.zip$/);
-		expect(job.download?.url).toContain(`/api/v1/exports/jobs/${job.id}/download?token=`);
-		expect(Date.parse(job.download?.expiresAt ?? "")).toBeGreaterThan(Date.now());
+		expect(job.download?.url).toContain(
+			`/api/v1/exports/jobs/${job.id}/download?token=`,
+		);
+		expect(Date.parse(job.download?.expiresAt ?? "")).toBeGreaterThan(
+			Date.now(),
+		);
 	});
 
 	const pathOf = (url: string) => url.replace("/api/v1", "");
 
+	it("exports expenses as a CSV, all or only the ones named", async () => {
+		const make = (title: string) =>
+			adminDb.expense.create({
+				data: {
+					userId: alice,
+					title,
+					amount: 7,
+					currency: "USD",
+					date: new Date(),
+					amountInUSD: 7,
+					exchangeRate: 1,
+					pricingSource: "MANUAL",
+				},
+			});
+		const keep = await make("Sourdough loaf");
+		await make("Left out");
+		const queued = await expectBody<Job>(
+			await request(asAlice, { kind: "expenses", expenseIds: [keep.id] }),
+			e.request,
+			202,
+		);
+		expect(queued.format).toBe("csv");
+		const done = await untilDone(queued.id);
+		expect(done.fileName).toMatch(/^expenses-\d{4}-\d{2}-\d{2}\.csv$/);
+		const res = await call((done.download?.url ?? "").replace("/api/v1", ""), {
+			headers: asAlice,
+		});
+		expect(res.headers.get("content-type")).toContain("text/csv");
+		const text = await res.text();
+		expect(text).toContain("Sourdough loaf");
+		expect(text).not.toContain("Left out");
+		await adminDb.expense.deleteMany({ where: { userId: alice } });
+		await call(`/exports/jobs/${queued.id}`, {
+			method: "DELETE",
+			headers: asAlice,
+			idempotent: true,
+		});
+	});
+
 	it("downloads the file with its link", async () => {
-		const res = await call(pathOf(job.download?.url ?? ""), { headers: asAlice });
+		const res = await call(pathOf(job.download?.url ?? ""), {
+			headers: asAlice,
+		});
 		expect(res.status).toBe(200);
 		expect(res.headers.get("content-type")).toBe("application/zip");
-		expect(res.headers.get("content-disposition")).toContain(job.fileName ?? "");
+		expect(res.headers.get("content-disposition")).toContain(
+			job.fileName ?? "",
+		);
 		const bytes = Buffer.from(await res.arrayBuffer());
 		expect(bytes.subarray(0, 2).toString()).toBe("PK");
 	});
@@ -161,7 +216,9 @@ describe("/api/v1/exports", () => {
 		const live = signExportLink(job.id, alice).token;
 		const [expires] = live.split(".");
 		await expectProblem(
-			await call(`${path}?token=${expires}.${"0".repeat(64)}`, { headers: asAlice }),
+			await call(`${path}?token=${expires}.${"0".repeat(64)}`, {
+				headers: asAlice,
+			}),
 			403,
 			"forbidden",
 		);
@@ -201,14 +258,17 @@ describe("/api/v1/exports", () => {
 		const again = await request(asAlice, { kind: "data" }, "export-key-1");
 		expect(again.headers.get("idempotent-replayed")).toBe("true");
 		expect((await again.json()).id).toBe((await first.json()).id);
-		await expect(adminDb.exportJob.count({ where: { userId: alice } })).resolves.toBe(
-			before + 1,
-		);
+		await expect(
+			adminDb.exportJob.count({ where: { userId: alice } }),
+		).resolves.toBe(before + 1);
 	});
 
 	it("records a failure on the job instead of failing the request", async () => {
 		const queued = await expectBody<Job>(
-			await request(asAlice, { kind: "project_pdf", projectId: "no-such-project" }),
+			await request(asAlice, {
+				kind: "project_pdf",
+				projectId: "no-such-project",
+			}),
 			e.request,
 			202,
 		);
@@ -234,7 +294,9 @@ describe("/api/v1/exports", () => {
 	});
 
 	it("deletes the job and its file, and purges expired ones", async () => {
-		const row = await adminDb.exportJob.findUniqueOrThrow({ where: { id: job.id } });
+		const row = await adminDb.exportJob.findUniqueOrThrow({
+			where: { id: job.id },
+		});
 		expect(files.has(row.storagePath ?? "")).toBe(true);
 		const gone = await call(`/exports/jobs/${job.id}`, {
 			method: "DELETE",
