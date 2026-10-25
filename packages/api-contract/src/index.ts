@@ -1,11 +1,16 @@
 import { accountsContract } from "./accounts";
+import { adminContract } from "./admin";
 import { budgetContract } from "./budget";
 import { categoriesContract } from "./categories";
 import { currenciesContract } from "./currencies";
 import { eventsContract } from "./events";
 import { expensesContract } from "./expenses";
+import { exportsContract } from "./exports";
+import { feedbackContract } from "./feedback";
 import { figuresContract } from "./figures";
+import { importsContract } from "./imports";
 import { incomeContract } from "./income";
+import { inviteCodesContract } from "./invite-codes";
 import { needsYouContract } from "./needs-you";
 import { notificationsContract } from "./notifications";
 import { paymentsContract } from "./payments";
@@ -23,6 +28,7 @@ import { transfersContract } from "./transfers";
 import { webhooksContract } from "./webhooks";
 
 export * from "./accounts";
+export * from "./admin";
 export * from "./budget";
 export * from "./categories";
 export * from "./common";
@@ -30,8 +36,12 @@ export * from "./core";
 export * from "./currencies";
 export * from "./events";
 export * from "./expenses";
+export * from "./exports";
+export * from "./feedback";
 export * from "./figures";
+export * from "./imports";
 export * from "./income";
+export * from "./invite-codes";
 export * from "./ledger";
 export * from "./needs-you";
 export * from "./notifications";
@@ -55,13 +65,18 @@ export * from "./webhooks";
  */
 export const contract = {
 	accounts: accountsContract,
+	admin: adminContract,
 	budget: budgetContract,
 	categories: categoriesContract,
 	currencies: currenciesContract,
 	events: eventsContract,
 	expenses: expensesContract,
+	exports: exportsContract,
+	feedback: feedbackContract,
 	figures: figuresContract,
+	imports: importsContract,
 	income: incomeContract,
+	"invite-codes": inviteCodesContract,
 	"needs-you": needsYouContract,
 	notifications: notificationsContract,
 	payments: paymentsContract,

@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("~/server/storage", () => ({ deleteFile: vi.fn() }));
+const removeUserExports = vi.hoisted(() => vi.fn(async () => undefined));
+vi.mock("~/server/export-storage", () => ({ removeUserExports }));
 
+import { deleteFile } from "~/server/storage";
 import {
 	anonymizeAndDeleteUser,
 	previewAccountDeletion,
@@ -32,7 +35,7 @@ function makeTx(overrides: Record<string, Record<string, Fn>>) {
 			},
 		);
 	const tx = new Proxy(
-		{ $executeRaw: vi.fn(async () => 0) },
+		{ $executeRaw: vi.fn(async () => 0), $queryRaw: vi.fn(async () => []) },
 		{
 			get(target, prop: string) {
 				if (prop in target) return target[prop as keyof typeof target];
@@ -68,6 +71,38 @@ describe("anonymizeAndDeleteUser", () => {
 		// Detaching happens before the user (and its ghosts) are deleted.
 		const lastDetach = Math.max(...ppDeleteMany.mock.invocationCallOrder);
 		expect(lastDetach).toBeLessThan(userDelete.mock.invocationCallOrder[0]!);
+	});
+
+	it("removes the avatar and exports only after the delete committed", async () => {
+		vi.mocked(deleteFile).mockClear();
+		vi.mocked(deleteFile).mockResolvedValue(undefined);
+		removeUserExports.mockClear();
+		const userDelete = vi.fn(async () => ({}));
+		const { tx } = makeTx({ user: { delete: userDelete } });
+		const db = { $transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)) };
+
+		await anonymizeAndDeleteUser(db as never, "user-1", "u@x.test", "avatars/a.webp");
+
+		expect(deleteFile).toHaveBeenCalledWith("avatars/a.webp");
+		expect(removeUserExports).toHaveBeenCalledWith("user-1");
+		expect(vi.mocked(deleteFile).mock.invocationCallOrder[0]!).toBeGreaterThan(
+			userDelete.mock.invocationCallOrder[0]!,
+		);
+	});
+
+	it("keeps the avatar and exports when the last-admin guard refuses", async () => {
+		vi.mocked(deleteFile).mockClear();
+		removeUserExports.mockClear();
+		const { tx } = makeTx({});
+		(tx as unknown as { $queryRaw: Fn }).$queryRaw.mockResolvedValue([{ id: "user-1" }]);
+		const db = { $transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)) };
+
+		await expect(
+			anonymizeAndDeleteUser(db as never, "user-1", "u@x.test", "avatars/a.webp"),
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+		expect(deleteFile).not.toHaveBeenCalled();
+		expect(removeUserExports).not.toHaveBeenCalled();
 	});
 });
 
