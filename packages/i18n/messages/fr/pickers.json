@@ -19,7 +19,7 @@
 	"currency": {
 		"label": "Devise",
 		"find": "Trouver une devise",
-		"favorites": "Favorites",
+		"favorites": "Favoris",
 		"recent": "Récentes",
 		"all": "Toutes les devises",
 		"empty": "Aucun résultat",
