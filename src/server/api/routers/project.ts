@@ -6,13 +6,9 @@ import {
 	createTRPCRouter,
 	guestOrProtectedProcedure,
 	protectedProcedure,
-	publicProcedure,
 } from "~/server/api/trpc";
 import { userTransaction } from "~/server/db-tx";
-import {
-	listProjectExpenses,
-	listPublicProjectExpenses,
-} from "~/server/services/project/expenses.service";
+import { listProjectExpenses } from "~/server/services/project/expenses.service";
 import {
 	projectBalancesFromPerspective,
 	projectParticipantBalances,
@@ -36,11 +32,7 @@ import {
 	membersOn,
 	setMembershipDates,
 } from "~/server/services/project/membership.service";
-import {
-	getProjectDetail,
-	getPublicProjectDetail,
-	listProjects,
-} from "~/server/services/project/project-read.service";
+import { getProjectDetail, listProjects } from "~/server/services/project/project-read.service";
 import {
 	createProject,
 	deleteProject,
@@ -221,14 +213,6 @@ export const projectRouter = createTRPCRouter({
 		}),
 
 	// ── Public (no sign-in): PUBLIC projects only, no balances or emails ─────
-
-	publicDetail: publicProcedure
-		.input(projectInput.byId)
-		.query(({ ctx, input }) => getPublicProjectDetail(ctx.db, input.id)),
-
-	publicListExpenses: publicProcedure
-		.input(projectInput.publicListExpenses)
-		.query(({ ctx, input }) => listPublicProjectExpenses(ctx.db, input)),
 
 	// ── Group balances (read-only) ──────────────────────────────────────────
 

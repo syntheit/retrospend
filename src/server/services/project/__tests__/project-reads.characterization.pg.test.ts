@@ -240,56 +240,39 @@ describe("project.listExpenses", () => {
 	});
 });
 
-describe("public procedures", () => {
-	it("publicDetail shows totals and names without emails", async () => {
-		const d = await anonymousCaller().publicDetail({ id: trip.project.id });
-		expect(Object.keys(d ?? {}).sort()).toEqual(
-			[
-				"autoAcceptSplits",
-				"budgetAmount",
-				"budgetCurrency",
-				"categoryStats",
-				"createdAt",
-				"currentBillingPeriod",
-				"description",
-				"id",
-				"imagePath",
-				"name",
-				"participants",
-				"primaryCurrency",
-				"status",
-				"totalSpent",
-				"visibility",
-			].sort(),
+describe("project.publicPageView", () => {
+	it("shows totals and names without emails, balances or payments", async () => {
+		const d = await anonymousCaller().publicPageView({ id: trip.project.id });
+		expect(d?.name).toBe(trip.project.name);
+		expect(d?.myRole).toBeNull();
+		expect(d?.expenseCount).toBe(4);
+		// BRL 300 + 90 + 60 and USD 50: one line per currency, never summed across them.
+		expect(d?.total).toHaveLength(2);
+		expect(d?.total).toEqual(
+			expect.arrayContaining([
+				{ minor: 45_000, currency: "BRL" },
+				{ minor: 5_000, currency: "USD" },
+			]),
 		);
-		expect(d?.totalSpent).toBe(500);
-		expect(Object.keys(d?.participants[0] ?? {}).sort()).toEqual(
-			[
-				"avatarUrl",
-				"id",
-				"joinedAt",
-				"name",
-				"participantId",
-				"participantType",
-				"role",
-				"username",
-			].sort(),
-		);
+		expect(d?.myShare).toEqual([]);
+		expect(d?.payments).toEqual([]);
+		for (const m of d?.members ?? []) {
+			expect(m.withMe).toEqual([]);
+			expect(m.isMe).toBe(false);
+		}
+		const text = JSON.stringify(d);
+		expect(text).not.toContain("@");
 	});
 
-	it("publicListExpenses lists read-only rows", async () => {
-		const r = await anonymousCaller().publicListExpenses({
-			projectId: trip.project.id,
-		});
-		expect(r?.total).toBe(4);
-		expect(
-			r?.transactions.map((t) => [t.description, t.status, t.canEdit]),
-		).toEqual([
-			["Dinner", "active", false],
-			["Boat", "active", false],
-			["Car", "active", false],
-			["Hotel", "active", false],
-		]);
+	it("lists read-only rows with nobody's share", async () => {
+		const d = await anonymousCaller().publicPageView({ id: trip.project.id });
+		expect(d?.expenses.map((e) => e.title).sort()).toEqual(
+			["Boat", "Car", "Dinner", "Hotel"].sort(),
+		);
+		for (const e of d?.expenses ?? []) {
+			expect(e.share).toBeNull();
+			expect(e.mine).toBe(false);
+		}
 	});
 
 	it("returns null for a private project", async () => {
@@ -297,10 +280,7 @@ describe("public procedures", () => {
 			data: { name: "Private", createdById: trip.ana.user.id },
 		});
 		await expect(
-			anonymousCaller().publicDetail({ id: priv.id }),
-		).resolves.toBeNull();
-		await expect(
-			anonymousCaller().publicListExpenses({ projectId: priv.id }),
+			anonymousCaller().publicPageView({ id: priv.id }),
 		).resolves.toBeNull();
 	});
 });

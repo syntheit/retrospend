@@ -235,28 +235,6 @@ export async function getSharedExpenseShares(
 }
 
 /**
- * Computes aggregate USD total of user's shared expense shares.
- * Used for simple total computations (stats, dashboard).
- */
-export async function getSharedExpenseTotalInUSD(
-	db: AppDb,
-	userId: string,
-	dateFilter?: { gte?: Date; lte?: Date },
-	rateCache?: RateCache,
-	excludedProjectIds?: string[],
-): Promise<number> {
-	const shares = await getSharedExpenseShares(
-		db,
-		userId,
-		dateFilter,
-		rateCache,
-		excludedProjectIds,
-	);
-	// sumIn names every unpriced share's currency rather than adding NaN.
-	return sumIn(shares, USD, 1);
-}
-
-/**
  * Full shared participation details for the transactions page.
  * Returns enriched records with payer info and participant count.
  */

@@ -841,27 +841,6 @@ describe("participant emails in project responses", () => {
 		);
 	}
 
-	it("publicDetail returns no emails or member preferences", async () => {
-		const caller = createCaller({
-			session: null,
-			db: mockDb as never,
-			headers: new Headers(),
-		});
-
-		const result = await callAndFlush(() => caller.publicDetail({ id: "proj-1" }));
-
-		expect(result).not.toBeNull();
-		for (const p of result!.participants) {
-			expect(p).not.toHaveProperty("email");
-			expect(p).not.toHaveProperty("excludeFromAnalytics");
-		}
-		expect(result!.participants.map((p) => p.name)).toEqual([
-			"Org",
-			"Ghost",
-			"Guest",
-		]);
-	});
-
 	it("detail via an anonymous viewer link hides every email", async () => {
 		mockDb.magicLink.findUnique.mockResolvedValue(VIEWER_LINK);
 		const caller = createCaller({

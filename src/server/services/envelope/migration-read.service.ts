@@ -11,7 +11,6 @@ import type {
 	MigrationState,
 } from "~/lib/schemas/envelope-migration";
 import { dayKey } from "~/lib/time-zone";
-import type { Session } from "~/server/better-auth/config";
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";
@@ -85,14 +84,6 @@ export function getEnvelopeExport(
 			filename: `retrospend-budget-${day}.zip`,
 		};
 	});
-}
-
-/** The pace line for a dashboard request: envelope totals, null without a book. */
-export function pacingFor(ctx: {
-	session: { user: Session["user"] };
-	timeZone?: string;
-}): Promise<EnvelopePacing | null> {
-	return getPacing(ctx.session.user.id, new Date(), ctx.timeZone ?? null);
 }
 
 /** The dashboard's pace from envelope totals; null without a book (Just track). */

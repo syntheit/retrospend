@@ -47,31 +47,3 @@ type ActivityCategory = {
 	icon: string | null;
 };
 
-/**
- * A personal expense as a dashboard activity row: the booked home value goes
- * with it when it was booked in the currency the dashboard shows.
- */
-export function personalActivityItem(
-	e: Expense & { category: ActivityCategory | null },
-	homeCurrency: string,
-) {
-	const { category } = e;
-	return {
-		type: "personal" as const,
-		id: e.id,
-		title: e.title ?? "Untitled expense",
-		amount: Number(e.amount),
-		currency: e.currency,
-		amountInUSD: e.amountInUSD ? Number(e.amountInUSD) : null,
-		home: bookedHome(e, homeCurrency),
-		date: e.date,
-		category: category
-			? {
-					id: category.id,
-					name: category.name,
-					color: category.color,
-					icon: category.icon,
-				}
-			: null,
-	};
-}

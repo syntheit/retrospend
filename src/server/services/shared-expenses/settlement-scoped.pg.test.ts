@@ -8,6 +8,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { dayKey } from "~/lib/time-zone";
 import { createCallerFactory } from "~/server/api/trpc";
+import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { makeSession } from "~/test/trpc-test-utils";
@@ -136,7 +137,10 @@ describe("settlements between two users on the scoped client", () => {
 		});
 		const paymentId = created.settlement.paymentGroupId as string;
 
-		await callerFor(payee).confirm({ id: created.settlement.id });
+		await new SettlementService(
+			payee.db as never,
+			payee.user.id,
+		).confirmSettlement(created.settlement.id);
 
 		for (const side of [payer, payee]) {
 			const seen = await seenBy(side, paymentId);
