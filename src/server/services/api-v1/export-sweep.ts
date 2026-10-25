@@ -1,3 +1,4 @@
+import { env } from "~/env";
 import { db } from "~/server/db";
 import { removeExport } from "~/server/export-storage";
 
@@ -33,6 +34,7 @@ const started = Symbol.for("retrospend.exportSweep");
 
 /** Starts the hourly sweep once per server process. */
 export function startExportSweep(everyMs = EVERY_MS) {
+	if (env.NODE_ENV === "test") return;
 	const g = globalThis as Record<symbol, unknown>;
 	if (g[started]) return;
 	const timer = setInterval(() => {

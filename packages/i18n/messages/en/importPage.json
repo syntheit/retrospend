@@ -44,7 +44,7 @@
 		"reviewAction": "Review {count}",
 		"delete": "Delete",
 		"view": "View",
-		"cancelled": "Cancelled {name}",
+		"cancelled": "Canceled {name}",
 		"deleted": "Deleted {name}",
 		"couldNotLoad": "Couldn't load recent imports"
 	},

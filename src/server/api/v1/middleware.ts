@@ -12,6 +12,7 @@ import { scopedDbFor } from "~/server/services/api-v1/scoped-db";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { requestTimeZone } from "~/server/time-zone";
 import { problem } from "./errors";
+import { recordsEvent } from "./events/middleware";
 import { idempotency } from "./idempotency";
 import { ipRateLimit, tokenRateLimit } from "./rate-limit";
 import { hasScope } from "./scopes";
@@ -80,7 +81,8 @@ const authenticate = os
 export const v1Middleware = ipRateLimit
 	.concat(authenticate)
 	.concat(tokenRateLimit)
-	.concat(idempotency);
+	.concat(idempotency)
+	.concat(recordsEvent);
 
 /**
  * The implementer every v1 group builds on:

@@ -155,6 +155,12 @@ export const EVENT_TYPES = [
 	"import.uploaded",
 	"invite_code.created",
 	"invite_code.deleted",
+	// Platform (G5b)
+	"webhook.created",
+	"webhook.deleted",
+	"webhook.secret_rotated",
+	"webhook.tested",
+	"webhook.updated",
 ] as const satisfies readonly string[];
 
 export type EventType = (typeof EVENT_TYPES)[number];
