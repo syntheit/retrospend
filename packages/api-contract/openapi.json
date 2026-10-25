@@ -54892,7 +54892,7 @@
 		},
 		"/events": {
 			"get": {
-				"description": "Events for the signed-in user in commit order. Poll with `after` set to the last `cursor`; an event shows up a moment after its write commits, never out of order. Events are kept for 30 days and carry ids and amounts only.",
+				"description": "Events for the signed-in user in commit order. Poll with `after` set to the last `cursor`; an event shows up a moment after its write commits, never out of order. Events are kept for 30 days and carry ids and amounts only. An event appears once every older write transaction on the database server has finished, which is normally milliseconds but can be longer while any long write runs, whoever started it. Delivery order inside the feed is commit order.",
 				"operationId": "listEvents",
 				"parameters": [
 					{
@@ -88691,7 +88691,7 @@
 				"x-required-scope": "read"
 			},
 			"post": {
-				"description": "Deliveries are POSTs of an event, signed with HMAC-SHA256 in the Retrospend-Signature header, retried with backoff and switched off after repeated failures. The secret is in this response only; a replayed Idempotency-Key answers idempotency_replay_unavailable.",
+				"description": "Each delivery is a POST of one event (the body is the Event without its cursor), signed in the Retrospend-Signature header as `t=<unix seconds>,v1=<hex>`, where v1 is HMAC-SHA256 over `<t>.<raw body>` with the secret. Reject a timestamp more than 300 seconds from your clock. Delivery is at least once and not ordered: dedupe on the Retrospend-Event-Id header (the event id). A non-2xx answer or a timeout is retried after 1, 2, 4 ... minutes (at most 6 hours) for 10 attempts; a webhook whose last 5 deliveries ran out of retries is switched off. Redirects are not followed. Secrets are encrypted with a key derived from the server's BETTER_AUTH_SECRET: if the operator changes it, deliveries fail as `secret_unreadable` until you rotate the secret. The secret is in this response only; a replayed Idempotency-Key answers idempotency_replay_unavailable.",
 				"operationId": "createWebhook",
 				"parameters": [
 					{

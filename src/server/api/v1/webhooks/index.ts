@@ -1,10 +1,16 @@
+import { maskWebhookUrl } from "~/server/services/webhooks/dto";
 import * as webhooks from "~/server/services/webhooks/service";
 import { WebhookTargetError } from "~/server/services/webhooks/ssrf";
 import { serve } from "../core/serve";
 import { problem } from "../errors";
 import { signedIn, v1 } from "../middleware";
+import { hasScope } from "../scopes";
 
 const w = v1.webhooks;
+
+/** Only a credential that may change webhooks sees where they point. */
+const canSeeUrls = (scopes: Parameters<typeof hasScope>[0]) =>
+	hasScope(scopes, "write:settings");
 
 /** `serve`, plus a refused target answering validation_failed on the `url` field. */
 function handle<A extends unknown[], R>(fn: (...args: A) => Promise<R>) {
@@ -23,14 +29,20 @@ function handle<A extends unknown[], R>(fn: (...args: A) => Promise<R>) {
 
 export const webhooksRouter = {
 	list: w.list.handler(
-		handle(({ context, input }) =>
-			webhooks.listWebhookPage(signedIn(context), input),
-		),
+		handle(async ({ context, input }) => {
+			const user = signedIn(context);
+			const page = await webhooks.listWebhookPage(user, input);
+			return canSeeUrls(user.principal.scopes)
+				? page
+				: { ...page, items: page.items.map(maskWebhookUrl) };
+		}),
 	),
 	get: w.get.handler(
-		handle(({ context, input }) =>
-			webhooks.getWebhook(signedIn(context), input.id),
-		),
+		handle(async ({ context, input }) => {
+			const user = signedIn(context);
+			const hook = await webhooks.getWebhook(user, input.id);
+			return canSeeUrls(user.principal.scopes) ? hook : maskWebhookUrl(hook);
+		}),
 	),
 	create: w.create.handler(
 		handle(({ context, input }) =>

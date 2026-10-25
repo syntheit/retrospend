@@ -73,6 +73,7 @@ describe("/api/v1/webhooks", () => {
 	let url: string;
 	let received: Received[] = [];
 	let respondWith = 204;
+	let beforeRespond: (() => Promise<void>) | null = null;
 	let wasPrivateAllowed = false;
 
 	beforeAll(async () => {
@@ -85,11 +86,12 @@ describe("/api/v1/webhooks", () => {
 		server = createServer((req, res) => {
 			const chunks: Buffer[] = [];
 			req.on("data", (c: Buffer) => chunks.push(c));
-			req.on("end", () => {
+			req.on("end", async () => {
 				received.push({
 					headers: req.headers,
 					body: Buffer.concat(chunks).toString("utf8"),
 				});
+				await beforeRespond?.();
 				res.statusCode = respondWith;
 				res.end("a body the log must never keep");
 			});
@@ -304,7 +306,24 @@ describe("/api/v1/webhooks", () => {
 				403,
 				"missing_scope",
 			);
-			expect((await call("/webhooks", { headers: readOnly })).status).toBe(200);
+			const { webhook } = await create(asAlice, {
+				url: `${url}?token=abc123&x=1`,
+			});
+			const seen = await expectBody<Page<Hook>>(
+				await call("/webhooks", { headers: readOnly }),
+				contract.webhooks.list,
+			);
+			const origin = new URL(url).origin;
+			expect(seen.items.find((w) => w.id === webhook.id)?.url).toBe(
+				`${origin}/***`,
+			);
+			const one = await call(`/webhooks/${webhook.id}`, { headers: readOnly });
+			expect(JSON.stringify(await one.json())).not.toContain("abc123");
+			const full = await expectBody<Hook>(
+				await call(`/webhooks/${webhook.id}`, { headers: asAlice }),
+				contract.webhooks.get,
+			);
+			expect(full.url).toContain("token=abc123");
 			const writeOnly = await asKey(alice, ["write:expenses"]);
 			await expectProblem(
 				await call("/webhooks", { headers: writeOnly }),
@@ -558,10 +577,11 @@ describe("/api/v1/webhooks", () => {
 			expect((await delivery())?.nextAttemptAt?.getTime()).toBe(
 				t0 + MINUTE + 1 + 2 * MINUTE,
 			);
+			// Failed attempts that will be retried do not count against the webhook.
 			expect(
 				(await adminDb.webhook.findUniqueOrThrow({ where: { id: webhook.id } }))
 					.consecutiveFailures,
-			).toBe(2);
+			).toBe(0);
 
 			respondWith = 200;
 			await processDueDeliveries(at(10 * MINUTE));
@@ -597,39 +617,155 @@ describe("/api/v1/webhooks", () => {
 				nextAttemptAt: null,
 				lastError: "http_error",
 			});
+			expect(
+				(await adminDb.webhook.findUniqueOrThrow({ where: { id: webhook.id } }))
+					.consecutiveFailures,
+			).toBe(1);
 		});
 
-		it("switches a webhook off after repeated failures and stops its queue", async () => {
+		it("survives a short outage of the receiver: many failed first attempts, none lost", async () => {
+			received = [];
+			respondWith = 503;
+			const { id, webhook } = await fresh();
+			await adminDb.apiEvent.createMany({
+				data: Array.from({ length: 25 }, () => ({
+					userId: id,
+					type: "expense.created",
+					payload: {},
+				})),
+			});
+			const t0 = Date.now() + 10_000;
+			await sweepUntil(
+				async () => (await deliveriesOf(webhook.id)).length === 25,
+				{ now: new Date(t0) },
+			);
+			const failed = await deliveriesOf(webhook.id);
+			expect(
+				failed.every((d) => d.attempts === 1 && d.status === "PENDING"),
+			).toBe(true);
+			expect(
+				await adminDb.webhook.findUniqueOrThrow({ where: { id: webhook.id } }),
+			).toMatchObject({ enabled: true, consecutiveFailures: 0 });
+
+			// Two minutes later the receiver is back and every delivery goes out.
+			respondWith = 200;
+			await processDueDeliveries({ now: new Date(t0 + 2 * MINUTE + 1) });
+			await processDueDeliveries({ now: new Date(t0 + 2 * MINUTE + 1) });
+			const done = await deliveriesOf(webhook.id);
+			expect(done.every((d) => d.status === "SUCCEEDED")).toBe(true);
+			expect(
+				await adminDb.webhook.findUniqueOrThrow({ where: { id: webhook.id } }),
+			).toMatchObject({ enabled: true, consecutiveFailures: 0 });
+		});
+
+		it("fails a delivery whose secret cannot be read, and counts the attempt", async () => {
+			received = [];
+			respondWith = 204;
+			const { headers, webhook } = await fresh();
+			await adminDb.webhook.update({
+				where: { id: webhook.id },
+				data: { secretCipher: "v1.AAAA.AAAA.AAAA" },
+			});
+			await addCategory(headers);
+			await sweepUntil(
+				async () => (await deliveriesOf(webhook.id)).length === 1,
+				{ now: new Date(Date.now() + 10_000) },
+			);
+			expect((await deliveriesOf(webhook.id))[0]).toMatchObject({
+				status: "PENDING",
+				attempts: 1,
+				lastError: "secret_unreadable",
+			});
+			expect(received).toHaveLength(0);
+			const tested = await expectBody<Delivery>(
+				await call(`/webhooks/${webhook.id}/test`, {
+					method: "POST",
+					headers,
+					idempotent: true,
+				}),
+				contract.webhooks.test,
+			);
+			expect(tested).toMatchObject({
+				status: "failed",
+				lastError: "secret_unreadable",
+			});
+		});
+
+		it("does not overwrite a delivery another worker took over", async () => {
+			received = [];
+			respondWith = 204;
+			const { headers, webhook } = await fresh();
+			await addCategory(headers);
+			await sweepUntil(
+				async () => (await deliveriesOf(webhook.id)).length === 1,
+				{ now: new Date(Date.now() - 3_600_000) },
+			);
+			const [row] = await deliveriesOf(webhook.id);
+			const takenOver = new Date(Date.now() + 99 * MINUTE);
+			// While the send is in flight, the lease expires and a second worker claims it.
+			beforeRespond = async () => {
+				await adminDb.webhookDelivery.update({
+					where: { id: row?.id },
+					data: { nextAttemptAt: takenOver },
+				});
+			};
+			try {
+				await adminDb.webhookDelivery.update({
+					where: { id: row?.id },
+					data: { status: "PENDING", attempts: 0, nextAttemptAt: new Date(0) },
+				});
+				await processDueDeliveries({ now: new Date(Date.now() + 10_000) });
+			} finally {
+				beforeRespond = null;
+			}
+			expect((await deliveriesOf(webhook.id))[0]).toMatchObject({
+				status: "PENDING",
+				attempts: 0,
+				nextAttemptAt: takenOver,
+			});
+		});
+
+		it("switches a webhook off after five deliveries ran out of retries, and stops its queue", async () => {
 			received = [];
 			respondWith = 500;
 			const { headers, webhook } = await fresh();
 			await adminDb.webhook.update({
 				where: { id: webhook.id },
-				data: { consecutiveFailures: 19 },
+				data: { consecutiveFailures: 4 },
 			});
 			await addCategory(headers);
 			await addCategory(headers);
+			const now = () => ({ now: new Date(Date.now() + 10_000) });
 			await sweepUntil(
 				async () => (await deliveriesOf(webhook.id)).length === 2,
-				{ now: new Date(Date.now() + 10_000) },
+				now(),
 			);
-			const hook = await adminDb.webhook.findUniqueOrThrow({
-				where: { id: webhook.id },
-			});
-			expect(hook).toMatchObject({
-				enabled: false,
-				disabledReason: "too_many_failures",
-			});
-			const states = (await deliveriesOf(webhook.id)).map((d) => d.status);
-			expect(states.every((s) => s === "FAILED" || s === "PENDING")).toBe(true);
+			expect(
+				await adminDb.webhook.findUniqueOrThrow({ where: { id: webhook.id } }),
+			).toMatchObject({ enabled: true, consecutiveFailures: 4 });
 
-			// A later sweep marks anything left as failed, and sends nothing more.
-			const sent = received.length;
-			await processDueDeliveries({ now: new Date(Date.now() + 3_600_000) });
-			expect(received.length).toBe(sent);
+			// One delivery is on its last attempt; the other is still retrying.
+			const [last] = await deliveriesOf(webhook.id);
+			await adminDb.webhookDelivery.updateMany({
+				where: { webhookId: webhook.id },
+				data: { nextAttemptAt: new Date(0) },
+			});
+			await adminDb.webhookDelivery.update({
+				where: { id: last?.id },
+				data: { attempts: 9 },
+			});
+			await processDueDeliveries(now());
+			expect(
+				await adminDb.webhook.findUniqueOrThrow({ where: { id: webhook.id } }),
+			).toMatchObject({ enabled: false, disabledReason: "too_many_failures" });
 			expect(
 				(await deliveriesOf(webhook.id)).every((d) => d.status === "FAILED"),
 			).toBe(true);
+
+			// Nothing more is sent.
+			const sent = received.length;
+			await processDueDeliveries({ now: new Date(Date.now() + 3_600_000) });
+			expect(received.length).toBe(sent);
 
 			const shown = await expectBody<Hook>(
 				await call(`/webhooks/${webhook.id}`, { headers }),

@@ -42,6 +42,7 @@ export const webhookSchema = z
 	.object({
 		id: idSchema,
 		name: z.string(),
+		/** Only the origin (`https://host/***`) for a credential without `write:settings`: a URL often holds a token. */
 		url: z.string(),
 		eventTypes: z.array(z.string()),
 		enabled: z.boolean(),
@@ -49,7 +50,7 @@ export const webhookSchema = z
 		secretStart: z.string(),
 		disabledReason: z.enum(WEBHOOK_DISABLED_REASONS).nullable(),
 		disabledAt: timestampSchema.nullable(),
-		/** Failed attempts since the last success. */
+		/** Deliveries that ran out of retries since the last success; 5 switch the webhook off. */
 		consecutiveFailures: z.int(),
 		createdAt: timestampSchema,
 		updatedAt: timestampSchema,
@@ -112,6 +113,14 @@ export const webhookDeliverySchema = z
 export type WebhookDeliveryDto = z.infer<typeof webhookDeliverySchema>;
 
 const TAG = ["Webhooks"];
+const DELIVERY_NOTE = [
+	"Each delivery is a POST of one event (the body is the Event without its cursor), signed in the Retrospend-Signature header as `t=<unix seconds>,v1=<hex>`, where v1 is HMAC-SHA256 over `<t>.<raw body>` with the secret.",
+	"Reject a timestamp more than 300 seconds from your clock.",
+	"Delivery is at least once and not ordered: dedupe on the Retrospend-Event-Id header (the event id).",
+	"A non-2xx answer or a timeout is retried after 1, 2, 4 ... minutes (at most 6 hours) for 10 attempts; a webhook whose last 5 deliveries ran out of retries is switched off.",
+	"Redirects are not followed.",
+	"Secrets are encrypted with a key derived from the server's BETTER_AUTH_SECRET: if the operator changes it, deliveries fail as `secret_unreadable` until you rotate the secret.",
+].join(" ");
 const SECRET_NOTE =
 	"The secret is in this response only; a replayed Idempotency-Key answers idempotency_replay_unavailable.";
 
@@ -145,7 +154,7 @@ export const webhooksContract = {
 			operationId: "createWebhook",
 			tags: TAG,
 			summary: "Create a webhook",
-			description: `Deliveries are POSTs of an event, signed with HMAC-SHA256 in the Retrospend-Signature header, retried with backoff and switched off after repeated failures. ${SECRET_NOTE}`,
+			description: `${DELIVERY_NOTE} ${SECRET_NOTE}`,
 			successStatus: 201,
 		})
 		.meta({

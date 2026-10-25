@@ -32,9 +32,23 @@ export class WebhookTargetError extends Error {
 
 export type Resolver = (hostname: string) => Promise<string[]>;
 
+/** A name that does not answer in this long counts as not resolving. */
+const DNS_TIMEOUT_MS = 5000;
+
 export const resolveAll: Resolver = async (hostname) => {
-	const found = await lookup(hostname, { all: true, verbatim: true });
-	return found.map((a) => a.address);
+	let timer: NodeJS.Timeout | undefined;
+	const timeout = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => reject(new Error("DNS timeout")), DNS_TIMEOUT_MS);
+	});
+	try {
+		const found = await Promise.race([
+			lookup(hostname, { all: true, verbatim: true }),
+			timeout,
+		]);
+		return found.map((a) => a.address);
+	} finally {
+		clearTimeout(timer);
+	}
 };
 
 type V4 = readonly [number, number, number, number];
@@ -112,6 +126,8 @@ function blockedV6(g: number[]): boolean {
 	if (g.slice(0, 6).every((n) => n === 0)) return true; // ::, ::1, ::a.b.c.d
 	if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0xffff)
 		return blockedV4(v4OfGroups(g6, g7)); // IPv4-mapped
+	if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0xffff && g5 === 0)
+		return blockedV4(v4OfGroups(g6, g7)); // IPv4-translated (SIIT)
 	if (g0 === 0x64 && g1 === 0xff9b) {
 		// NAT64: the embedded IPv4 decides; the local-use prefix is private.
 		return (

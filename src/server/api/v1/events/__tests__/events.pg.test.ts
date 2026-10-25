@@ -132,31 +132,40 @@ describe("event outbox", () => {
 			expect(await adminDb.apiEvent.count({ where: { userId: user } })).toBe(0);
 		});
 
-		it("writes a row for each affected user the actor names, and no other user may forge one", async () => {
+		it("keeps the indexes the schema cannot express", async () => {
+			const rows = await adminDb.$queryRaw<
+				{ indexname: string; indexdef: string }[]
+			>`
+				SELECT indexname, indexdef FROM pg_indexes
+				WHERE tablename IN ('api_event', 'webhook_delivery')`;
+			const unfanned = rows.find(
+				(r) => r.indexname === "api_event_unfanned_idx",
+			);
+			expect(unfanned?.indexdef).toContain('"fannedOutAt" IS NULL');
+			expect(
+				rows.some((r) => r.indexname === "webhook_delivery_eventId_idx"),
+			).toBe(true);
+		});
+
+		it("lets the app role insert an event only into the actor's own feed", async () => {
 			const actor = (await createTestUser()).user.id;
 			const other = (await createTestUser()).user.id;
-			const stranger = (await createTestUser()).user.id;
-			await userTransaction(adminDb, actor, (tx) =>
-				appendEvent(tx, {
-					type: "payment.recorded",
-					actorUserId: actor,
-					userIds: [actor, other],
-					data: empty,
-				}),
-			);
-			expect(await adminDb.apiEvent.count({ where: { userId: other } })).toBe(
-				1,
-			);
+			// The writer has no recipient list; a hand-made row is refused by RLS.
 			await expect(
-				userTransaction(adminDb, stranger, (tx) =>
-					appendEvent(tx, {
-						type: "payment.recorded",
-						actorUserId: actor,
-						userIds: [other],
-						data: empty,
+				userTransaction(adminDb, actor, (tx) =>
+					tx.apiEvent.create({
+						data: {
+							userId: other,
+							actorUserId: actor,
+							type: "payment.recorded",
+							payload: empty,
+						},
 					}),
 				),
 			).rejects.toThrow();
+			expect(await adminDb.apiEvent.count({ where: { userId: other } })).toBe(
+				0,
+			);
 		});
 
 		it("gives the app role no way to change or delete an event", async () => {

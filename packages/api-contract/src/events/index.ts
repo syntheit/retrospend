@@ -93,7 +93,7 @@ export const eventsContract = {
 			tags: ["Events"],
 			summary: "The caller's change feed, oldest first",
 			description:
-				"Events for the signed-in user in commit order. Poll with `after` set to the last `cursor`; an event shows up a moment after its write commits, never out of order. Events are kept for 30 days and carry ids and amounts only.",
+				"Events for the signed-in user in commit order. Poll with `after` set to the last `cursor`; an event shows up a moment after its write commits, never out of order. Events are kept for 30 days and carry ids and amounts only. An event appears once every older write transaction on the database server has finished, which is normally milliseconds but can be longer while any long write runs, whoever started it. Delivery order inside the feed is commit order.",
 		})
 		.meta({ scope: "read" })
 		.input(eventsQuerySchema)

@@ -2214,6 +2214,10 @@ model PushDevice {
 // never skips a row that commits late (the feed only reads rows whose txid is
 // below the oldest open transaction). `payload` holds ids and amounts only,
 // never user text. `fannedOutAt` is set by the webhook worker.
+// The partial index `api_event_unfanned_idx` ("txid") WHERE "fannedOutAt" IS
+// NULL exists only in the migration (the schema cannot express it on an
+// xid8 column). A `prisma migrate dev` would propose dropping it: do not
+// accept that. events.pg.test.ts asserts it exists.
 model ApiEvent {
   id          String              @id @default(cuid())
   seq         BigInt              @unique @default(autoincrement())
@@ -2239,7 +2243,7 @@ model ApiEvent {
 model Webhook {
   id                  String            @id @default(cuid())
   userId              String
-  name                String            @db.VarChar(200)
+  name                String
   url                 String            @db.VarChar(2048)
   /// Exact types ("expense.created") or "<resource>.*"; empty means every type.
   eventTypes          String[]
@@ -2285,6 +2289,7 @@ model WebhookDelivery {
 
   @@unique([webhookId, eventId])
   @@index([webhookId, createdAt])
+  @@index([eventId])
   @@index([status, nextAttemptAt])
   @@index([userId])
   @@map("webhook_delivery")

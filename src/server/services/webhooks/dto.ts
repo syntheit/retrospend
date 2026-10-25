@@ -45,3 +45,15 @@ export function toDeliveryDto(row: WebhookDelivery): WebhookDeliveryDto {
 		createdAt: row.createdAt.toISOString(),
 	};
 }
+
+/**
+ * A webhook URL often carries a secret in its path or query (a chat
+ * integration's token), so a credential that can only read sees the origin.
+ */
+export function maskWebhookUrl(webhook: WebhookDto): WebhookDto {
+	try {
+		return { ...webhook, url: `${new URL(webhook.url).origin}/***` };
+	} catch {
+		return { ...webhook, url: "***" };
+	}
+}

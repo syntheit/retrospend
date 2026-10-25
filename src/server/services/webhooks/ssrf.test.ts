@@ -48,6 +48,8 @@ describe("isBlockedAddress", () => {
 		"::ffff:7f00:1",
 		"::ffff:169.254.169.254",
 		"::ffff:10.1.2.3",
+		"::ffff:0:127.0.0.1",
+		"::ffff:0:a9fe:a9fe",
 		"64:ff9b::7f00:1",
 		"64:ff9b::a9fe:a9fe",
 		"2002:7f00:1::1",
@@ -69,6 +71,7 @@ describe("isBlockedAddress", () => {
 		"2606:4700:4700::1111",
 		"2001:4860:4860::8888",
 		"::ffff:8.8.8.8",
+		"::ffff:0:8.8.8.8",
 		"64:ff9b::808:808",
 	])("allows %s", (ip) => {
 		expect(isBlockedAddress(ip)).toBe(false);
