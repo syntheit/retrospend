@@ -484,8 +484,9 @@
 			"WEEKLY": "Wöchentlich",
 			"VARIES": "Es schwankt",
 			"next": "Nächstes Gehalt",
-			"hint": "Was du jetzt nicht decken kannst, startet an diesem Tag.",
-			"variesHint": "Dein Plan startet, wenn dein Gehalt eintrifft."
+			"hint": "Wir zeigen dir dein nächstes Gehalt im Plan.",
+			"variesHint": "Dein Plan startet, wenn dein Gehalt eintrifft.",
+			"past": "Wähle heute oder einen späteren Tag."
 		},
 		"nextPay": "Nächstes Gehalt",
 		"usePayOn": "Mit meinem Gehalt am {date} den Rest decken. Weitere <short></short> starten dann.",

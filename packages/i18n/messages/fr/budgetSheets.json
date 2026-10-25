@@ -484,8 +484,9 @@
 			"WEEKLY": "Chaque semaine",
 			"VARIES": "Ça varie",
 			"next": "Prochaine paie",
-			"hint": "Ce que tu ne peux pas financer maintenant démarre ce jour-là.",
-			"variesHint": "Ton plan démarre à l'arrivée de ta paie."
+			"hint": "Nous afficherons ta prochaine paie dans le plan.",
+			"variesHint": "Ton plan démarre à l'arrivée de ta paie.",
+			"past": "Choisis aujourd'hui ou un jour plus tard."
 		},
 		"nextPay": "Prochaine paie",
 		"usePayOn": "Utiliser ma paie du {date} pour le reste. <short></short> de plus démarrent ce jour-là.",

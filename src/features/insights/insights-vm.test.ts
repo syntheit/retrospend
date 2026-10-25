@@ -81,6 +81,8 @@ describe("categoryItems", () => {
 			hrefOf,
 		});
 		expect(gone?.label).toBe("No category");
+		// A deleted category's id opens nothing in Activity.
+		expect(gone?.href).toBeUndefined();
 	});
 
 	it("a category with no value (a missing rate) stays, named, after the rows with amounts", () => {

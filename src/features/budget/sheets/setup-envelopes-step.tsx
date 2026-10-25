@@ -91,7 +91,8 @@ function useOwnLines(result: SetupResult | null) {
 					</span>
 				),
 			});
-			if (!debt.diverges)
+			// "Not in sight" has no interest to show; a diverging plan says so instead.
+			if (!debt.diverges && debt.debtFreeMonth)
 				lines.push({
 					key: "debtInterest",
 					label: t("debtInterest"),
@@ -125,6 +126,7 @@ export function SetupEnvelopesStep({
 	poolName: string;
 }) {
 	const t = useTranslations("budgetSheets.setup");
+	const td = useTranslations("budgetSheets.debt");
 	const dates = useDateFormat();
 	const own = useOwnLines(result);
 	const p = s.preset;
@@ -151,7 +153,7 @@ export function SetupEnvelopesStep({
 				</p>
 			</div>
 			{debt && !hasDebts ? <Notice tone="info">{t("noDebts")}</Notice> : null}
-			{debt ? (
+			{debt && !s.off.has(EXTRA_DEBT_KEY) ? (
 				<PayFirst onChange={s.setPayoffStrategy} value={s.payoffStrategy} />
 			) : null}
 			{groups.map(({ g, envelopes }) => (
@@ -228,6 +230,9 @@ export function SetupEnvelopesStep({
 						</Label>
 					</div>
 				</div>
+			) : null}
+			{result?.payoff?.incomplete ? (
+				<p className="text-fg-3 text-small">{td("incomplete")}</p>
 			) : null}
 			<FigureChanges
 				dry={dry}

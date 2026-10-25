@@ -555,6 +555,8 @@ describe("expense.listV2 entry kinds (M1, M2)", () => {
 		});
 		const r = await list(guest, { ...OCT, categoryIds: [NO_CATEGORY] });
 		expect(r.items.map((i) => i.title)).toEqual(["Other's category"]);
+		// The row shows no category: the creator's is not usable here (D19).
+		expect(r.items[0]?.category).toBeNull();
 		// The footer is the same row: the share, ARS 5,000.
 		expect(r.total?.value).toEqual({ minor: 500000, currency: "ARS" });
 		await adminDb.sharedTransaction.deleteMany({

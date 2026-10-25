@@ -1002,9 +1002,24 @@ test.describe("Set up your budget", () => {
 		await expect(
 			sheet.getByRole("heading", { name: "How do you get paid?" }),
 		).toBeVisible();
-		await expect(sheet.getByRole("radio", { checked: true })).toHaveCount(0);
-		await sheet.getByRole("radio", { name: "Monthly" }).click();
+		await expect(sheet.getByText("Next pay", { exact: true })).toHaveCount(0);
+		await sheet.getByRole("button", { name: "Pick Monthly" }).click();
+		// A dated cycle needs its next pay: no default, Continue waits for a pick.
 		await expect(sheet.getByText("Next pay", { exact: true })).toBeVisible();
+		const next = sheet.getByRole("button", { name: "Pick date" });
+		await expect(next).toBeVisible();
+		await expect(
+			sheet.getByRole("button", { name: "Continue" }),
+		).toBeDisabled();
+		await next.click();
+		const soon = new Date(Date.now() + 3 * 86_400_000);
+		await page
+			.getByRole("textbox", { name: "Date" })
+			.fill(
+				`${String(soon.getMonth() + 1).padStart(2, "0")}/${String(soon.getDate()).padStart(2, "0")}/${soon.getFullYear()}`,
+			);
+		await page.keyboard.press("Enter");
+		await expect(sheet.getByRole("button", { name: "Continue" })).toBeEnabled();
 		await sheet.getByRole("button", { name: "Continue" }).click();
 		await sheet
 			.getByRole("textbox", { name: "Amount", exact: true })
@@ -1048,7 +1063,7 @@ test.describe("Set up your budget", () => {
 		).toBeVisible();
 		await sheet.getByRole("button", { name: "Continue" }).click();
 		await expect(sheet.getByText("Step 2 of 4")).toBeVisible();
-		await sheet.getByRole("radio", { name: "It varies" }).click();
+		await sheet.getByRole("button", { name: "Pick It varies" }).click();
 		await sheet.getByRole("button", { name: "Continue" }).click();
 		await expect(sheet.getByText("Step 3 of 4")).toBeVisible();
 		await sheet

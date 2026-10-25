@@ -8,6 +8,7 @@ import { Sheet } from "~/components/ui/sheet";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
 import { Field } from "~/features/entry/shared-ui";
+import { dayKey } from "~/lib/time-zone";
 import { api } from "~/trpc/react";
 import { SetupEnvelopesStep } from "./setup-envelopes-step";
 import { SetupPayStep } from "./setup-pay-step";
@@ -15,7 +16,7 @@ import { type Choice, SetupStyleStep } from "./setup-style-step";
 import type { SheetProps } from "./types";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
-import { useSetup } from "./use-setup";
+import { payAnswered, useSetup } from "./use-setup";
 
 type Step = "style" | "pay" | "money" | "envelopes";
 
@@ -86,7 +87,8 @@ function SetupForm({ open, onClose }: SheetProps) {
 		}
 		onClose();
 	};
-	const ready = choice === "TRACK" || !last || (w.ready && !stopped);
+	const payOk = step !== "pay" || payAnswered(s.pay, dayKey(new Date()));
+	const ready = payOk && (choice === "TRACK" || !last || (w.ready && !stopped));
 	return (
 		<Sheet
 			detent="large"

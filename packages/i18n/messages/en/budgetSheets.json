@@ -484,8 +484,9 @@
 			"WEEKLY": "Weekly",
 			"VARIES": "It varies",
 			"next": "Next pay",
-			"hint": "What you cannot fund now starts on this day.",
-			"variesHint": "Your plan starts when your pay arrives."
+			"hint": "We'll show your next pay in the plan.",
+			"variesHint": "Your plan starts when your pay arrives.",
+			"past": "Pick today or a later day."
 		},
 		"nextPay": "Next pay",
 		"usePayOn": "Use my pay on {date} for the rest. <short></short> more starts then.",

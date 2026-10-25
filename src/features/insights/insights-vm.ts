@@ -58,10 +58,11 @@ function toItem(
 		category,
 		// The No category row has no figure id to narrow to, but its rows open
 		// in Activity under the same name.
+		// A category the viewer no longer has keeps its figure but opens nothing.
 		...(row.categoryId
 			? {
 					figure: `${row.figure}:${row.categoryId}`,
-					href: hrefOf(row.categoryId),
+					...(ref ? { href: hrefOf(row.categoryId) } : {}),
 				}
 			: { href: hrefOf(NO_CATEGORY) }),
 		...(row.note ? { note: row.note } : {}),

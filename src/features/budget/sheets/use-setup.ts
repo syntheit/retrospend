@@ -4,7 +4,6 @@ import { draftFromMinor } from "@retrospend/domain/parse";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { minorOf } from "~/components/money/money-cell";
-import { dayKey } from "~/lib/time-zone";
 import { api, type RouterInputs, type RouterOutputs } from "~/trpc/react";
 import { useAmount } from "./use-amount";
 
@@ -15,7 +14,16 @@ export type PayoffStrategy = NonNullable<SetupInput["payoff"]>["strategy"];
 /** The preset's envelope that holds the payoff plan's extra each month. */
 export const EXTRA_DEBT_KEY = "extra-debt";
 /** How you get paid: no frequency until it is answered, so nothing is assumed. */
-export type PayAnswer = { frequency: PayFrequency | null; next: string };
+export type PayAnswer = { frequency: PayFrequency | null; next: string | null };
+
+/**
+ * Whether the pay answer can go on: no answer is fine, "It varies" needs no
+ * date, and every dated cycle needs a pick that is today or later.
+ */
+export function payAnswered(pay: PayAnswer, today: string): boolean {
+	if (!pay.frequency || pay.frequency === "VARIES") return true;
+	return pay.next !== null && pay.next >= today;
+}
 type Preset = RouterOutputs["envelope"]["setupPreset"];
 type PresetEnvelope = Preset["envelopes"][number];
 type Target = NonNullable<PresetEnvelope["target"]>;
@@ -44,7 +52,7 @@ export function useSetup(locale: string) {
 	);
 	const [pay, setPay] = useState<PayAnswer>(() => ({
 		frequency: null,
-		next: dayKey(new Date()),
+		next: null,
 	}));
 	const [payoffStrategy, setPayoffStrategy] =
 		useState<PayoffStrategy>("AVALANCHE");
@@ -137,11 +145,10 @@ export function useSetup(locale: string) {
 		};
 		if (style !== "LIMITS" && money.minor !== null)
 			out.startingMoneyMinor = money.minor;
-		if (pay.frequency)
-			out.pay = {
-				frequency: pay.frequency,
-				nextPay: pay.frequency === "VARIES" ? null : pay.next,
-			};
+		if (pay.frequency === "VARIES")
+			out.pay = { frequency: "VARIES", nextPay: null };
+		else if (pay.frequency && pay.next)
+			out.pay = { frequency: pay.frequency, nextPay: pay.next };
 		// The extra is what is typed on the extra envelope; the server saves the plan with the book.
 		if (
 			style === "DEBT_PAYOFF" &&

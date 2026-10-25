@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import * as React from "react";
 
 import { Button } from "~/components/ui/button";
-import { Tip } from "~/components/ui/tooltip";
 import {
 	Popover,
 	PopoverAnchor,
@@ -13,6 +12,7 @@ import {
 } from "~/components/ui/popover";
 import { Segmented } from "~/components/ui/segmented";
 import { Sheet } from "~/components/ui/sheet";
+import { Tip } from "~/components/ui/tooltip";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { DateField } from "./date-field";
 import { addDays, firstOfMonth, type IsoDate, moveDay } from "./dates";
@@ -28,10 +28,13 @@ export function choiceOf(value: IsoDate, today: IsoDate): Choice {
 }
 
 export type DatePickerProps = {
-	value: IsoDate;
+	/** null: nothing is picked yet (only with `calendarOnly`). */
+	value: IsoDate | null;
 	/** Today in the user's time zone (ISO). */
 	today: IsoDate;
 	onChange: (iso: IsoDate) => void;
+	/** Leaves out Today and Yesterday: one "Pick date" control that opens the calendar. */
+	calendarOnly?: boolean;
 };
 
 /**
@@ -39,12 +42,21 @@ export type DatePickerProps = {
  * calendar or typed. The calendar opens in a popover on desktop and a
  * medium sheet on phones (nested when the picker sits in a sheet).
  */
-export function DatePicker({ value, today, onChange }: DatePickerProps) {
+export function DatePicker({
+	value,
+	today,
+	onChange,
+	calendarOnly = false,
+}: DatePickerProps) {
 	const t = useTranslations("pickers.date");
 	const f = useDateFormat();
 	const phone = useIsMobile();
 	const [open, setOpen] = React.useState(false);
-	const choice = choiceOf(value, today);
+	const choice: Choice | "" = value
+		? calendarOnly
+			? "other"
+			: choiceOf(value, today)
+		: "";
 
 	const pick = (iso: IsoDate) => {
 		onChange(iso);
@@ -60,14 +72,19 @@ export function DatePicker({ value, today, onChange }: DatePickerProps) {
 				else setOpen(true);
 			}}
 			options={[
-				{ value: "today", label: t("today") },
-				{ value: "yesterday", label: t("yesterday") },
+				...(calendarOnly
+					? []
+					: [
+							{ value: "today" as const, label: t("today") },
+							{ value: "yesterday" as const, label: t("yesterday") },
+						]),
 				{
 					value: "other",
-					label: choice === "other" ? f.label.long(value) : t("pick"),
+					label: value && choice === "other" ? f.label.long(value) : t("pick"),
 				},
 			]}
-			value={choice}
+			// Nothing picked: "" matches no segment.
+			value={choice as Choice}
 		/>
 	);
 
@@ -97,7 +114,7 @@ export function DatePicker({ value, today, onChange }: DatePickerProps) {
 			<PopoverContent
 				align="start"
 				aria-label={t("title")}
-				className="w-auto rounded-panel bg-surface p-4 shadow-menu"
+				className="rounded-panel bg-surface shadow-menu w-auto p-4"
 			>
 				{calendar}
 			</PopoverContent>
@@ -107,13 +124,13 @@ export function DatePicker({ value, today, onChange }: DatePickerProps) {
 
 /** One month and a typed field; arrows page through months as focus moves. */
 function DayCalendar(p: {
-	value: IsoDate;
+	value: IsoDate | null;
 	today: IsoDate;
 	onPick: (iso: IsoDate) => void;
 }) {
 	const t = useTranslations("pickers.date");
 	const f = useDateFormat();
-	const [focusDay, setFocusDay] = React.useState(p.value);
+	const [focusDay, setFocusDay] = React.useState(p.value ?? p.today);
 	const focus = useDayFocus(focusDay);
 	const month = firstOfMonth(focusDay);
 	const id = React.useId();
@@ -128,18 +145,18 @@ function DayCalendar(p: {
 				edit={f.field}
 				id={id}
 				label={t("typed")}
-				read={f.read}
 				onChange={(iso) => iso && p.onPick(iso)}
 				placeholder={t("placeholder")}
+				read={f.read}
 				value={p.value}
 			/>
 			<div className="flex items-center justify-between">
 				<Tip content={t("earlier")}>
 					<Button
 						aria-label={t("earlier")}
-						onClick={() => page("PageUp")}
 						icon
 						kind="ghost"
+						onClick={() => page("PageUp")}
 						size="sm"
 					>
 						<ChevronLeftIcon />
@@ -148,9 +165,9 @@ function DayCalendar(p: {
 				<Tip content={t("later")}>
 					<Button
 						aria-label={t("later")}
-						onClick={() => page("PageDown")}
 						icon
 						kind="ghost"
+						onClick={() => page("PageDown")}
 						size="sm"
 					>
 						<ChevronRightIcon />
@@ -171,8 +188,8 @@ function DayCalendar(p: {
 				onPick={p.onPick}
 				title={f.monthTitle(month)}
 				today={p.today}
-				weekStart={f.weekStart}
 				weekdays={f.weekdays}
+				weekStart={f.weekStart}
 			/>
 		</div>
 	);

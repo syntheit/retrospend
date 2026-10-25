@@ -484,8 +484,9 @@
 			"WEEKLY": "Semanal",
 			"VARIES": "Varía",
 			"next": "Próximo cobro",
-			"hint": "Lo que no puedes cubrir ahora empieza ese día.",
-			"variesHint": "Tu plan empieza cuando llegue tu cobro."
+			"hint": "Mostraremos tu próximo cobro en el plan.",
+			"variesHint": "Tu plan empieza cuando llegue tu cobro.",
+			"past": "Elige hoy o un día posterior."
 		},
 		"nextPay": "Próximo cobro",
 		"usePayOn": "Usar mi sueldo del {date} para el resto. Los <short></short> restantes empiezan entonces.",
