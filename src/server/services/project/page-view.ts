@@ -10,16 +10,17 @@
  * rows and reads its totals from aggregates.
  */
 import { getImageUrl } from "~/lib/image-url";
+import { currencyDecimals } from "@retrospend/domain/money";
 import { dayKey } from "@retrospend/domain/time-zone";
 import type { Money } from "~/server/figures/registry";
-import { sumMinor, toMinor } from "~/server/services/envelope/units";
+import { fromMinor, sumMinor, toMinor } from "~/server/services/envelope/units";
 import { categoryTone } from "~/server/services/expense-list/category-tone";
 import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { userTimeZone } from "~/server/services/user-time-zone";
-import type { PrismaClient } from "~prisma";
+import { Prisma, type PrismaClient } from "~prisma";
 import { batchResolveIdentities, type Identity } from "./identities";
 import { membershipOf } from "./membership";
 import { readProjectNumbers } from "./numbers";
@@ -112,19 +113,34 @@ function loadPayments(db: PrismaClient, projectId: string) {
 /**
  * What the public page shows of the whole project, from three aggregate
  * queries instead of every row: the count, the first day, the total and the
- * spending by category, per currency.
+ * spending by category, per currency. Each row is rounded to its currency's
+ * minor unit before it is summed, as the member page does, so the two never
+ * differ by a cent.
  */
 async function loadPublicTotals(db: PrismaClient, projectId: string) {
 	const where = { projectId };
-	const [count, first, groups] = await Promise.all([
+	const [count, first, currencies] = await Promise.all([
 		db.sharedTransaction.count({ where }),
 		db.sharedTransaction.aggregate({ where, _min: { date: true } }),
-		db.sharedTransaction.groupBy({
-			by: ["currency", "categoryId"],
-			where,
-			_sum: { amount: true },
-		}),
+		db.sharedTransaction.groupBy({ by: ["currency"], where }),
 	]);
+	const digits = currencies.length
+		? Prisma.join(
+				currencies.map(
+					(c) => Prisma.sql`(${c.currency}::text, ${currencyDecimals(c.currency)}::int)`,
+				),
+			)
+		: Prisma.sql`(''::text, 0::int)`;
+	const groups = await db.$queryRaw<
+		{ currency: string; categoryId: string | null; minor: bigint }[]
+	>(Prisma.sql`
+		SELECT t."currency", t."categoryId",
+			SUM(ROUND(t."amount" * POWER(10::numeric, d."digits")))::bigint AS "minor"
+		FROM "shared_transaction" t
+		JOIN (VALUES ${digits}) AS d("currency", "digits") ON d."currency" = t."currency"
+		WHERE t."projectId" = ${projectId}
+		GROUP BY t."currency", t."categoryId"
+	`);
 	const ids = groups.flatMap((g) => (g.categoryId ? [g.categoryId] : []));
 	const categories = ids.length
 		? await db.category.findMany({
@@ -135,13 +151,13 @@ async function loadPublicTotals(db: PrismaClient, projectId: string) {
 	const byId = new Map(categories.map((c) => [c.id, c]));
 	const perCurrency = new Map<string, number[]>();
 	const inputs: CategoryInput[] = groups.map((g) => {
-		const amount = g._sum.amount ?? 0;
+		const minor = Number(g.minor);
 		const list = perCurrency.get(g.currency) ?? [];
-		list.push(toMinor(amount.toString(), g.currency));
+		list.push(minor);
 		perCurrency.set(g.currency, list);
 		return {
 			currency: g.currency,
-			amount,
+			amount: fromMinor(minor, g.currency),
 			category: g.categoryId ? (byId.get(g.categoryId) ?? null) : null,
 			myShare: null,
 		};

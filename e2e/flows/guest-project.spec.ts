@@ -377,6 +377,11 @@ test.describe("screenshots", () => {
 							.fill("Taxi from the airport");
 						await sheet.getByRole("textbox", { name: "Amount" }).fill("30");
 						await expect(sheet).toContainText("split equally");
+						// Let the sheet finish sliding in before the picture.
+						await page.evaluate(() =>
+							Promise.all(document.getAnimations().map((a) => a.finished)),
+						);
+						await page.waitForTimeout(400);
 						await page.screenshot({ path: `${SHOTS}/guest-add-${tag}.png` });
 					},
 					guestStorage,

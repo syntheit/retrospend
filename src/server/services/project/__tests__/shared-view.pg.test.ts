@@ -171,6 +171,49 @@ describe("publicPageView", () => {
 		expect(v?.payments).toEqual([]);
 	});
 
+	it("rounds each row to the minor unit before summing, like a member's page", async () => {
+		const project = await adminDb.project.create({
+			data: {
+				name: "Sub-minor",
+				primaryCurrency: "USD",
+				visibility: "PUBLIC",
+				createdById: trip.ana.user.id,
+			},
+		});
+		// 3 x 0.004 USD: each row rounds to 0, so the total is 0.00, not 0.01.
+		// 2 x 1.006 USD: each rounds to 1.01, so 2.02. JPY has no minor digits.
+		const row = (amount: string, currency: string, i: number) => ({
+			description: `Odd ${i}`,
+			amount,
+			currency,
+			date: new Date("2026-03-01T12:00:00.000Z"),
+			paidByType: "user" as const,
+			paidById: trip.ana.user.id,
+			createdByType: "user" as const,
+			createdById: trip.ana.user.id,
+			projectId: project.id,
+		});
+		await adminDb.sharedTransaction.createMany({
+			data: [
+				...["0.004", "0.004", "0.004", "1.006", "1.006"].map((a, i) =>
+					row(a, "USD", i),
+				),
+				...["100.4", "100.4"].map((a, i) => row(a, "JPY", i + 5)),
+			],
+		});
+		const v = await anonymousCaller().publicPageView({ id: project.id });
+		expect(v?.total).toEqual([
+			{ minor: 200, currency: "JPY" },
+			{ minor: 202, currency: "USD" },
+		]);
+		expect(v?.byCategory.flatMap((c) => c.group)).toEqual(
+			expect.arrayContaining([
+				{ minor: 202, currency: "USD" },
+				{ minor: 200, currency: "JPY" },
+			]),
+		);
+	});
+
 	it("answers one address a limited number of times a minute", async () => {
 		const caller = anonymousCaller({ "x-forwarded-for": "203.0.113.77" });
 		const id = (

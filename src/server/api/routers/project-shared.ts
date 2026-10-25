@@ -9,7 +9,7 @@ import {
 	guestOrProtectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
-import { getClientIp, InMemoryRateLimiter } from "~/server/lib/rate-limiter";
+import { getClientIp, InMemoryRateLimiter, ipBucket } from "~/server/lib/rate-limiter";
 import { projectInput } from "~/server/services/project/inputs";
 import {
 	type PageViewer,
@@ -69,7 +69,7 @@ export const projectSharedProcedures = {
 	publicPageView: publicProcedure
 		.input(projectInput.byId)
 		.query(async ({ ctx, input }) => {
-			const clientIp = getClientIp(ctx.headers);
+			const clientIp = ipBucket(getClientIp(ctx.headers));
 			if (!publicLimiter.check(`publicProject_${clientIp}`, PUBLIC_READS_PER_MINUTE, 60_000))
 				throw new TRPCError({
 					code: "TOO_MANY_REQUESTS",
