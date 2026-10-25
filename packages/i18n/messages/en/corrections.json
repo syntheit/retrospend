@@ -3,8 +3,8 @@
 		"title": "Ask {name} to fix it",
 		"what": "What is wrong?",
 		"placeholder": "Say what looks off",
-		"hintOpen": "If {name} changes it, your balance with {name} updates to match. Nothing changes until then.",
-		"hintLocked": "This is settled. If {name} changes it, only the difference reopens your balance with {name}. Your payment stays as it was.",
+		"hintOpen": "Nothing changes until {name} fixes it.",
+		"hintLocked": "Only the difference reopens your balance with {name}.",
 		"empty": "Nothing to check yet.",
 		"send": "Send to {name}",
 		"sent": "Asked {name} to fix {title}"
@@ -25,7 +25,7 @@
 	"correct": {
 		"sheetTitle": "Correct {title}",
 		"loadingTitle": "Correct expense",
-		"settled": "Settled. A correction records only the difference, so the history stays true.",
+		"settled": "Settled, so a correction records only the difference.",
 		"correctionTitle": "Correction to {title}",
 		"record": "Record correction",
 		"saved": "Correction recorded on {title}",
@@ -34,7 +34,7 @@
 		"shareYou": "Your share",
 		"paidYou": "You paid",
 		"someone": "Someone",
-		"nothing": "Nothing to correct yet. Change the amount, who paid or the split.",
+		"nothing": "Change the amount, who paid or the split.",
 		"empty": "Fill in the amount and the split to see what changes.",
 		"failed": "Couldn't load this expense",
 		"loading": "Loading"
@@ -47,8 +47,7 @@
 			"PENDING": "You asked {name} to fix this on {date}.",
 			"ACCEPTED": "{name} said they will fix this.",
 			"DECLINED": "{name} declined to fix this.",
-			"FIXED": "{name} fixed this.",
-			"CANCELLED": "You canceled your request to {name}."
+			"FIXED": "{name} fixed this."
 		},
 		"respond": "Respond",
 		"edit": "Edit",

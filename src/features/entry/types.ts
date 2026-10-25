@@ -33,6 +33,11 @@ export type EntryRequest =
 			readonly prefill?: ExpensePrefill;
 	  }
 	| { readonly kind: "expense"; readonly mode: "edit"; readonly id: string }
-	| { readonly kind: "shared"; readonly id: string }
+	| {
+			readonly kind: "shared";
+			readonly id: string;
+			/** Open Ask to fix or Correct right away (a row menu); the read view otherwise. */
+			readonly start?: "ask" | "correct";
+	  }
 	| { readonly kind: "income"; readonly accountId?: string }
 	| { readonly kind: "transfer"; readonly fromAccountId?: string };

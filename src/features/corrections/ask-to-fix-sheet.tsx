@@ -67,7 +67,7 @@ export function AskToFixSheet({
 			onOpenChange={(o) => !o && onBack()}
 			onSubmit={submit}
 			open
-			submitDisabled={!!dry.error}
+			submitDisabled={!dry.fresh}
 			submitLabel={t("send", { name })}
 			title={t("title", { name })}
 		>

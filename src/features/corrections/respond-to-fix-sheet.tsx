@@ -39,6 +39,8 @@ export function RespondToFixSheet({
 	const toast = useToast();
 	const [reply, setReply] = useState("");
 	const [error, setError] = useState<string | null>(null);
+	/** The answer being written: its own button spins, both wait. */
+	const [busy, setBusy] = useState<"accept" | "decline" | null>(null);
 	const preview = api.corrections.respondToFix.preview.useMutation();
 	const respond = api.corrections.respondToFix.save.useMutation();
 	const restore = api.corrections.restoreFix.save.useMutation();
@@ -54,10 +56,12 @@ export function RespondToFixSheet({
 
 	const send = async (response: "accept" | "decline") => {
 		setError(null);
+		setBusy(response);
 		try {
 			await respond.mutateAsync(answer(response));
 		} catch (e) {
 			setError(e instanceof Error ? e.message : t("failed"));
+			setBusy(null);
 			return;
 		}
 		if (response === "accept") return onAccepted();
@@ -77,16 +81,18 @@ export function RespondToFixSheet({
 					</Button>
 					<span className="flex-1" />
 					<Button
+						disabled={!dry.fresh || busy !== null}
 						kind="secondary"
-						loading={respond.isPending}
+						loading={busy === "decline"}
 						onClick={() => void send("decline")}
 					>
 						{t("decline")}
 					</Button>
 					<Button
 						data-sheet-submit=""
+						disabled={!dry.fresh || busy !== null}
 						kind="primary"
-						loading={respond.isPending}
+						loading={busy === "accept"}
 						onClick={() => void send("accept")}
 					>
 						{t("accept")}

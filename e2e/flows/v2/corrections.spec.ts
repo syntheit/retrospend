@@ -276,11 +276,24 @@ test("Corrections: accepting on an open split opens Edit, and saving answers the
 			edit.getByRole("button", { name: "Save" }).click(),
 		);
 		await expect(edit).toBeHidden();
-		const status = await pool.query<{ status: string }>(
-			`SELECT status FROM fix_request WHERE "transactionId" = $1`,
-			[rowId],
+		const statuses = async () =>
+			(
+				await pool.query<{ status: string }>(
+					`SELECT status FROM fix_request WHERE "transactionId" = $1`,
+					[rowId],
+				)
+			).rows.map((r) => r.status);
+		expect(await statuses()).toEqual(["FIXED"]);
+
+		// Undo takes the edit back and opens the request again as it was (accepted).
+		await untilSaved(page, "entry.shared.revert.save", () =>
+			page
+				.locator("[data-sonner-toast]")
+				.filter({ hasText: `Saved ${title}` })
+				.getByRole("button", { name: "Undo" })
+				.dispatchEvent("click"),
 		);
-		expect(status.rows.map((r) => r.status)).toEqual(["FIXED"]);
+		expect(await statuses()).toEqual(["ACCEPTED"]);
 	} finally {
 		await cleanUp(pool, rowId);
 	}

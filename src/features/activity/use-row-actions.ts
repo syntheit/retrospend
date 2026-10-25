@@ -6,11 +6,15 @@ import { useCallback, useMemo } from "react";
 import type { ExpenseTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
 import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntrySheets } from "~/features/entry/context";
 import { useToast } from "~/components/ui/toast";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
 import { api } from "~/trpc/react";
 import { saveError } from "./error-code";
 import { opens } from "./to-vm";
+
+/** lockStates takes at most this many ids. */
+const LOCK_CHUNK = 200;
 
 /**
  * The expense registry's handlers for Activity rows (R8). Edit and Add go
@@ -24,6 +28,7 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 	const toast = useToast();
 	const utils = api.useUtils();
 	const modal = useExpenseModal();
+	const sheets = useEntrySheets();
 	const byId = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
 	const refresh = useCallback(() => utils.expense.listV2.invalidate(), [utils]);
 	// Personal rows go through the money mutation, which returns a signed
@@ -31,22 +36,28 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 	const deletePersonal = api.entry.expense.delete.save.useMutation();
 	const restorePersonal = api.entry.expense.restore.save.useMutation();
 	const deleteShared = api.sharedTransaction.delete.useMutation();
-	// Who may ask to fix or correct comes from the corrections router, once for the page.
-	const sharedIds = useMemo(
-		() =>
-			rows
-				.filter((r) => r.source === "shared" && opens(r))
-				.map((r) => r.entityId)
-				.slice(0, 200),
-		[rows],
+	// Who may ask to fix or correct comes from the corrections router, 200 rows a read.
+	const sharedChunks = useMemo(() => {
+		const ids = rows
+			.filter((r) => r.source === "shared" && opens(r))
+			.map((r) => r.entityId);
+		return Array.from({ length: Math.ceil(ids.length / LOCK_CHUNK) }, (_, i) =>
+			ids.slice(i * LOCK_CHUNK, (i + 1) * LOCK_CHUNK),
+		);
+	}, [rows]);
+	const locks = api.useQueries((t) =>
+		sharedChunks.map((transactionIds) =>
+			t.corrections.lockStates({ transactionIds }),
+		),
 	);
-	const locks = api.corrections.lockStates.useQuery(
-		{ transactionIds: sharedIds },
-		{ enabled: sharedIds.length > 0 },
-	);
+	const stamp = locks.map((q) => q.dataUpdatedAt).join(",");
+	// biome-ignore lint/correctness/useExhaustiveDependencies: keyed on when the answers arrived
 	const lockOf = useMemo(
-		() => new Map((locks.data ?? []).map((l) => [l.transactionId, l])),
-		[locks.data],
+		() =>
+			new Map(
+				locks.flatMap((q) => q.data ?? []).map((l) => [l.transactionId, l]),
+			),
+		[stamp],
 	);
 
 	const open = useCallback(
@@ -65,14 +76,15 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 				const r = row(target);
 				if (r) open(r);
 			},
-			// The read view holds Ask to fix and Correct; the menu only gets there.
+			// The sheet itself opens, with the read view behind it.
 			askFix: (target) => {
 				const r = row(target);
-				if (r) open(r);
+				if (r) sheets.open({ kind: "shared", id: r.entityId, start: "ask" });
 			},
 			correct: (target) => {
 				const r = row(target);
-				if (r) open(r);
+				if (r)
+					sheets.open({ kind: "shared", id: r.entityId, start: "correct" });
 			},
 			duplicate: (target) => {
 				const r = row(target);
@@ -110,6 +122,7 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 		byId,
 		open,
 		modal,
+		sheets,
 		deletePersonal,
 		restorePersonal,
 		deleteShared,

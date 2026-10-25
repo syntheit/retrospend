@@ -3,8 +3,8 @@
 		"title": "{name} um Korrektur bitten",
 		"what": "Was stimmt nicht?",
 		"placeholder": "Schreib, was nicht passt",
-		"hintOpen": "Wenn {name} es ändert, passt sich dein Saldo mit {name} an. Bis dahin ändert sich nichts.",
-		"hintLocked": "Das ist ausgeglichen. Wenn {name} es ändert, öffnet nur die Differenz deinen Saldo mit {name} wieder. Deine Zahlung bleibt, wie sie war.",
+		"hintOpen": "Bis {name} es korrigiert, ändert sich nichts.",
+		"hintLocked": "Nur die Differenz öffnet deinen Saldo mit {name} wieder.",
 		"empty": "Noch nichts zu prüfen.",
 		"send": "An {name} senden",
 		"sent": "{name} um Korrektur von {title} gebeten"
@@ -25,7 +25,7 @@
 	"correct": {
 		"sheetTitle": "{title} korrigieren",
 		"loadingTitle": "Ausgabe korrigieren",
-		"settled": "Ausgeglichen. Eine Korrektur hält nur die Differenz fest, damit der Verlauf stimmt.",
+		"settled": "Ausgeglichen, deshalb hält eine Korrektur nur die Differenz fest.",
 		"correctionTitle": "Korrektur zu {title}",
 		"record": "Korrektur erfassen",
 		"saved": "Korrektur zu {title} erfasst",
@@ -34,7 +34,7 @@
 		"shareYou": "Dein Anteil",
 		"paidYou": "Du hast bezahlt",
 		"someone": "Jemand",
-		"nothing": "Noch nichts zu korrigieren. Ändere den Betrag, wer bezahlt hat oder die Aufteilung.",
+		"nothing": "Ändere den Betrag, wer bezahlt hat oder die Aufteilung.",
 		"empty": "Gib Betrag und Aufteilung ein, um zu sehen, was sich ändert.",
 		"failed": "Diese Ausgabe konnte nicht geladen werden",
 		"loading": "Wird geladen"
@@ -47,8 +47,7 @@
 			"PENDING": "Du hast {name} am {date} gebeten, das zu korrigieren.",
 			"ACCEPTED": "{name} hat zugesagt, das zu korrigieren.",
 			"DECLINED": "{name} hat abgelehnt, das zu korrigieren.",
-			"FIXED": "{name} hat das korrigiert.",
-			"CANCELLED": "Du hast deine Bitte an {name} zurückgezogen."
+			"FIXED": "{name} hat das korrigiert."
 		},
 		"respond": "Antworten",
 		"edit": "Bearbeiten",

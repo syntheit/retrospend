@@ -32,9 +32,12 @@ const first = (name: string | undefined) => name?.split(" ")[0] ?? "";
 export function SharedEntrySheet({
 	id,
 	onClose,
+	start,
 }: {
 	id: string;
 	onClose: () => void;
+	/** A row menu's choice: open that sheet first, the read view behind it. */
+	start?: "ask" | "correct";
 }) {
 	const t = useTranslations("corrections.read");
 	const tr = useTranslations("entry.read");
@@ -45,14 +48,15 @@ export function SharedEntrySheet({
 	const tx = api.sharedTransaction.getById.useQuery({ id });
 	const author = api.entry.sharedAuthor.useQuery({ id });
 	const fix = useFixState(id, me);
-	const [view, setView] = useState<View>("read");
+	const [view, setView] = useState<View>(start ?? "read");
 	const cancel = api.corrections.cancelFix.save.useMutation();
 	const restore = api.corrections.restoreFix.save.useMutation();
 	const data: Tx | null = tx.data ?? null;
 	const lock = fix.lock;
 	const { asked, sent } = fix;
 
-	const ready = data !== null && !fix.loading;
+	// The creator's name is read too: no "Ask  to fix" with a blank name.
+	const ready = data !== null && !fix.loading && !!author.data;
 	if (ready) {
 		if (view === "edit" || (view === "read" && data.canEdit && !asked))
 			return (
@@ -200,7 +204,7 @@ export function SharedEntrySheet({
 	return (
 		<ReadView
 			actions={actions}
-			failed={tx.isError}
+			failed={tx.isError || author.isError}
 			me={me}
 			notice={notice}
 			onClose={onClose}

@@ -19,9 +19,13 @@ test("Entry: read view of someone else's expense, edit sheet for your own", asyn
 	await openV2(page, "/activity?range=all");
 	const main = page.getByRole("main");
 
-	// The row's menu offers Ask to fix (the corrections router allows it) and opens the read view.
+	// The row's menu offers Ask to fix (the corrections router allows it) and opens
+	// that sheet; Cancel goes back to the read view.
 	await main.getByText("Cena en La Esquina").first().click({ button: "right" });
 	await page.getByRole("menuitem", { name: "Ask to fix" }).click();
+	const ask = page.getByRole("dialog", { name: "Ask Lucía to fix it" });
+	await expect(ask).toBeVisible();
+	await ask.getByRole("button", { name: "Cancel" }).click();
 	const read = page.getByRole("dialog", { name: "Cena en La Esquina" });
 	await expect(read).toBeVisible();
 	await expect(

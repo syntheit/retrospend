@@ -3,8 +3,8 @@
 		"title": "Demander à {name} de corriger",
 		"what": "Qu'est-ce qui ne va pas ?",
 		"placeholder": "Dis ce qui cloche",
-		"hintOpen": "Si {name} le modifie, ton solde avec {name} se met à jour. Rien ne change d'ici là.",
-		"hintLocked": "C'est réglé. Si {name} le modifie, seule la différence rouvre ton solde avec {name}. Ton paiement reste tel quel.",
+		"hintOpen": "Rien ne change tant que {name} ne l'a pas corrigé.",
+		"hintLocked": "Seule la différence rouvre ton solde avec {name}.",
 		"empty": "Rien à vérifier pour l'instant.",
 		"send": "Envoyer à {name}",
 		"sent": "Tu as demandé à {name} de corriger {title}"
@@ -25,7 +25,7 @@
 	"correct": {
 		"sheetTitle": "Corriger {title}",
 		"loadingTitle": "Corriger la dépense",
-		"settled": "Réglée. Une correction n'enregistre que la différence, pour que l'historique reste fidèle.",
+		"settled": "Réglée, donc une correction n'enregistre que la différence.",
 		"correctionTitle": "Correction de {title}",
 		"record": "Enregistrer la correction",
 		"saved": "Correction enregistrée sur {title}",
@@ -34,7 +34,7 @@
 		"shareYou": "Ta part",
 		"paidYou": "Tu as payé",
 		"someone": "Quelqu'un",
-		"nothing": "Rien à corriger pour l'instant. Change le montant, qui a payé ou la répartition.",
+		"nothing": "Change le montant, qui a payé ou la répartition.",
 		"empty": "Indique le montant et la répartition pour voir ce qui change.",
 		"failed": "Impossible de charger cette dépense",
 		"loading": "Chargement"
@@ -47,8 +47,7 @@
 			"PENDING": "Tu as demandé à {name} de corriger ceci le {date}.",
 			"ACCEPTED": "{name} a dit qu'il ou elle le corrigera.",
 			"DECLINED": "{name} a refusé de le corriger.",
-			"FIXED": "{name} l'a corrigé.",
-			"CANCELLED": "Tu as annulé ta demande à {name}."
+			"FIXED": "{name} l'a corrigé."
 		},
 		"respond": "Répondre",
 		"edit": "Modifier",
