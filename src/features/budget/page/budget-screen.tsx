@@ -155,7 +155,7 @@ export function BudgetScreen() {
 				current={today}
 				data={data}
 				onMonth={setMonth}
-				today={current.data}
+				today={current.data ?? undefined}
 			/>
 		);
 	else if (current.isPending || (other && picked.isPending))
