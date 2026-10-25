@@ -26,7 +26,6 @@ import type {
 	SetDebtTermsInput,
 } from "~/lib/schemas/envelope-debt";
 import { Prisma } from "~prisma";
-import { LIABILITY_TYPES } from "./book.service";
 import { addDays } from "./calendar";
 import { EnvelopeError } from "./errors";
 import { findPersonalBook } from "./inputs";
@@ -34,6 +33,7 @@ import { forgetMonthViews } from "./month-read";
 import { budgetMonthOf, isoDateIn } from "./months";
 import { type PayoffDebt, projectPayoff } from "./payoff";
 import { RateBook } from "./rate-book";
+import { LIABILITY_TYPES } from "./target-write";
 import { dec, fromMinor, toMinor } from "./units";
 import {
 	convertToBook,
@@ -376,6 +376,7 @@ export async function projectIn(
 		debtFreeMonth: r.debtFreeMonth,
 		months: r.months,
 		capped: r.capped,
+		diverges: r.diverges,
 		totalDebt: own(total, H),
 		totalInterest: own(r.totalInterest, H),
 		debts: debts.map((d, i) => {

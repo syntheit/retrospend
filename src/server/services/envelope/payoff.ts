@@ -16,6 +16,13 @@ import { dec, fromMinor, sumMinor, toMinor } from "./units";
 
 export const PAYOFF_MAX_MONTHS = 600;
 
+/**
+ * A balance past this (in the debt's minor units, before converting to H) is
+ * growing faster than anything can pay down; the schedule stops there instead
+ * of overflowing a safe integer. Room for the interest sum and the rate.
+ */
+const DIVERGED = Number.MAX_SAFE_INTEGER / 1024;
+
 export interface PayoffDebt {
 	id: string;
 	currency: string;
@@ -58,6 +65,12 @@ export interface PayoffResult {
 	debtFreeMonth: MonthKey | null;
 	months: number;
 	capped: boolean;
+	/**
+	 * The balances grew without bound (the minimums do not cover the interest
+	 * by a wide margin), so the schedule stopped early: "never paid off at
+	 * this payment". Always with `capped`.
+	 */
+	diverges: boolean;
 	/** Σ interest in H at today's rate. */
 	totalInterest: Minor;
 	debts: DebtOutcome[];
@@ -176,13 +189,24 @@ function startLive(debts: readonly PayoffDebt[]): Live[] {
 	});
 }
 
+/** Some balance grew past what a safe integer can carry through the conversions. */
+function diverged(live: readonly Live[]): boolean {
+	return live.some(
+		(l) => l.balance > DIVERGED / Math.max(1, Math.ceil(l.rate.toNumber())),
+	);
+}
+
 /** Debt-free month, total interest, payoff month per debt and next month's payments. */
 export function projectPayoff(p: PayoffInput): PayoffResult {
 	const H = p.bookCurrency;
 	const live = startLive(p.debts);
 	let month = 0;
 	const schedule: PayoffResult["schedule"] = [];
-	while (live.some((l) => l.balance > 0) && month < PAYOFF_MAX_MONTHS) {
+	while (
+		live.some((l) => l.balance > 0) &&
+		month < PAYOFF_MAX_MONTHS &&
+		!diverged(live)
+	) {
 		month++;
 		const freed = chargeAndPayMinimums(live, month, H);
 		payFromPool(payOrder(live, p), p.extraMonthly + freed, month, H);
@@ -200,6 +224,7 @@ export function projectPayoff(p: PayoffInput): PayoffResult {
 	}
 	const capped = live.some((l) => l.balance > 0);
 	return {
+		diverges: capped && diverged(live),
 		debtFreeMonth: capped ? null : addMonths(p.startMonth, month),
 		months: month,
 		capped,

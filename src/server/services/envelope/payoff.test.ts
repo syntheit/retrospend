@@ -162,6 +162,38 @@ describe("projectPayoff (SPEC §5.11)", () => {
 		expect(out.debts[0]?.payoffMonth).toBeNull();
 	});
 
+	it("a minimum far below the interest ends the schedule instead of throwing (Visa, 118% APR, minimum 40,000)", () => {
+		// Month 1 by hand: 2,500,000 x 118 / 1200 = 245,833.33 interest, so a 40,000 payment
+		// leaves 2,705,833.33: the balance grows about 9.8% a month and never comes down.
+		const visa = debt("visa", 2_500_000, "118", 40_000);
+		const out = run({ debts: [visa] });
+		expect(out).toMatchObject({
+			capped: true,
+			diverges: true,
+			debtFreeMonth: null,
+		});
+		expect(out.months).toBeLessThan(600);
+		expect(out.schedule[0]?.balances[0]).toBe(m(2_705_833.33));
+		expect(out.debts[0]?.payoffMonth).toBeNull();
+		expect(Number.isSafeInteger(out.totalInterest)).toBe(true);
+	});
+
+	it("a slow shortfall reaches the 50-year cap without diverging", () => {
+		expect(run({ debts: [debt("payday", 10_000, "24", 100)] }).diverges).toBe(
+			false,
+		);
+	});
+
+	it("a foreign debt that diverges stays safe in the book currency", () => {
+		const usd = debt("usd-card", 5_000, "118", 100, {
+			currency: "USD",
+			bookPerUnit: "1465",
+		});
+		const out = run({ debts: [usd] });
+		expect(out.diverges).toBe(true);
+		expect(Number.isSafeInteger(out.totalInterest)).toBe(true);
+	});
+
 	it("no debts: debt-free now", () => {
 		expect(run({ debts: [] })).toMatchObject({
 			months: 0,
