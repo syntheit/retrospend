@@ -1,27 +1,33 @@
 "use client";
 
-import { Lock } from "lucide-react";
-import { useTranslations } from "next-intl";
-import { Money } from "~/components/money/money";
-import { useDateFormat } from "~/components/pickers/use-date-format";
-import { Face } from "~/components/ui/avatar-face";
-import { Button } from "~/components/ui/button";
-import { Notice } from "~/components/ui/notice";
-import { Sheet } from "~/components/ui/sheet";
-import { Skeleton } from "~/components/ui/skeleton";
-import { Tip } from "~/components/ui/tooltip";
-import { useSession } from "~/hooks/use-session";
-import { toMinorUnits } from "@retrospend/domain/money";
 import { dayKey } from "@retrospend/domain/time-zone";
-import { api, type RouterOutputs } from "~/trpc/react";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { useDateFormat } from "~/components/pickers/use-date-format";
+import { Button } from "~/components/ui/button";
+import { useToast } from "~/components/ui/toast";
+import { AskToFixSheet } from "~/features/corrections/ask-to-fix-sheet";
+import { CorrectSheet } from "~/features/corrections/correct-sheet";
+import { RespondToFixSheet } from "~/features/corrections/respond-to-fix-sheet";
+import {
+	isOpenRequest,
+	useFixState,
+} from "~/features/corrections/use-fix-state";
+import { useSession } from "~/hooks/use-session";
+import { api } from "~/trpc/react";
 import { ExpenseSheet } from "../expense/expense-sheet";
-import { ENTRY_SEAMS } from "./seams";
+import { type ReadNotice, ReadView, type Tx } from "./read-view";
+
+type View = "read" | "ask" | "respond" | "correct" | "edit";
+
+const first = (name: string | undefined) => name?.split(" ")[0] ?? "";
 
 /**
  * A shared expense from a row: you edit what you may edit (the sheet), and
- * anything else opens as a read view (owner Q1, RC11): amount and rate,
- * paid by, your share, category, date, project and state, with Ask to fix,
- * or Correct on a settled one you added.
+ * anything else opens as a read view (owner Q1, RC11) with the actions the
+ * corrections router allows: Ask to fix on someone else's split, Correct on
+ * a settled one you added, Respond when you were asked to fix it, Cancel
+ * request when you asked.
  */
 export function SharedEntrySheet({
 	id,
@@ -30,149 +36,174 @@ export function SharedEntrySheet({
 	id: string;
 	onClose: () => void;
 }) {
-	const tx = api.sharedTransaction.getById.useQuery({ id });
-	if (tx.data?.canEdit) {
-		return (
-			<ExpenseSheet
-				onClose={onClose}
-				onOpen={() => onClose()}
-				request={{ kind: "expense", mode: "editShared", id }}
-			/>
-		);
-	}
-	return (
-		<ReadView
-			id={id}
-			onClose={onClose}
-			tx={tx.data ?? null}
-			failed={tx.isError}
-		/>
-	);
-}
-
-type Tx = RouterOutputs["sharedTransaction"]["getById"];
-
-function ReadView({
-	id,
-	tx,
-	onClose,
-	failed,
-}: {
-	id: string;
-	tx: Tx | null;
-	onClose: () => void;
-	failed: boolean;
-}) {
-	const t = useTranslations("entry.read");
+	const t = useTranslations("corrections.read");
+	const tr = useTranslations("entry.read");
+	const toast = useToast();
 	const { label } = useDateFormat();
 	const { data: session } = useSession();
-	const author = api.entry.sharedAuthor.useQuery({ id });
 	const me = session?.user?.id;
-	const mine = tx?.splitParticipants.find(
-		(p) => p.participantType === "user" && p.participantId === me,
-	);
-	const name = author.data?.name.split(" ")[0] ?? "";
-	const money = (n: number) => ({
-		minor: toMinorUnits(n, tx?.currency ?? "USD"),
-		currency: tx?.currency ?? "USD",
-	});
-	// Until the server has the ask state and corrections, the action shows, disabled, and says why.
-	const action = (text: string, seam: { available: boolean }) =>
-		seam.available ? null : (
-			<Tip content={t("notAvailable")}>
-				<Button
-					aria-disabled="true"
-					className="cursor-not-allowed opacity-45"
-					kind="primary"
-				>
-					{text}
-				</Button>
-			</Tip>
-		);
-	return (
-		<Sheet
-			detent="medium"
-			footer={
-				<>
-					<Button kind="secondary" onClick={onClose}>
-						{t("close")}
-					</Button>
-					{tx?.isLocked && author.data?.you
-						? action(t("correct"), ENTRY_SEAMS.correct)
-						: author.data && !author.data.you
-							? action(t("ask", { name }), ENTRY_SEAMS.askToFix)
-							: null}
-				</>
-			}
-			onOpenChange={(o) => !o && onClose()}
-			open
-			title={tx?.description ?? t("amount")}
-		>
-			{!tx ? (
-				failed ? (
-					<p className="text-danger text-small" role="alert">
-						{t("notAvailable")}
-					</p>
-				) : (
-					<Skeleton className="h-40 w-full" />
-				)
-			) : (
-				<div className="flex flex-col gap-1" data-entry-read="">
-					{tx.isLocked ? (
-						<Notice>
-							<span className="inline-flex items-center gap-2">
-								<Lock aria-hidden="true" className="size-4" />
-								{t("locked")}
-							</span>
-						</Notice>
-					) : author.data && !author.data.you ? (
-						<Notice>
-							{mine?.verificationStatus === "PENDING"
-								? t("addedReview", { name })
-								: t("added", { name })}
-						</Notice>
-					) : null}
-					<Row k={t("amount")}>
-						<Money
-							figure={`entry.amount:shared:${tx.id}`}
-							value={money(tx.amount)}
-						/>
-					</Row>
-					<Row k={t("paidBy")}>
-						<Face
-							imageUrl={tx.paidBy.avatarUrl}
-							name={tx.paidBy.name}
-							size="xs"
-						/>
-						{tx.paidBy.name}
-					</Row>
-					{mine ? (
-						<Row k={t("yourShare")}>
-							<Money
-								figure={`entry.share:shared:${tx.id}`}
-								value={money(mine.shareAmount)}
-							/>
-						</Row>
-					) : null}
-					{tx.category ? <Row k={t("category")}>{tx.category.name}</Row> : null}
-					<Row k={t("date")}>{label.long(dayKey(new Date(tx.date)))}</Row>
-					{tx.projectName ? <Row k={t("project")}>{tx.projectName}</Row> : null}
-					{mine ? (
-						<Row k={t("state")}>{t(`states.${mine.verificationStatus}`)}</Row>
-					) : null}
-				</div>
-			)}
-		</Sheet>
-	);
-}
+	const tx = api.sharedTransaction.getById.useQuery({ id });
+	const author = api.entry.sharedAuthor.useQuery({ id });
+	const fix = useFixState(id, me);
+	const [view, setView] = useState<View>("read");
+	const cancel = api.corrections.cancelFix.save.useMutation();
+	const restore = api.corrections.restoreFix.save.useMutation();
+	const data: Tx | null = tx.data ?? null;
+	const lock = fix.lock;
+	const { asked, sent } = fix;
 
-function Row({ k, children }: { k: string; children: React.ReactNode }) {
+	const ready = data !== null && !fix.loading;
+	if (ready) {
+		if (view === "edit" || (view === "read" && data.canEdit && !asked))
+			return (
+				<ExpenseSheet
+					onClose={onClose}
+					onOpen={() => onClose()}
+					request={{ kind: "expense", mode: "editShared", id }}
+				/>
+			);
+		if (view === "correct")
+			return (
+				<CorrectSheet id={id} onBack={() => setView("read")} onDone={onClose} />
+			);
+	}
+
+	const person = (ref: { type: string; id: string } | undefined) => {
+		if (!data || !ref) return undefined;
+		return [data.paidBy, ...data.splitParticipants].find(
+			(p) => p.participantType === ref.type && p.participantId === ref.id,
+		);
+	};
+	const creator = first(author.data?.name);
+	const asker = person(asked?.requestedBy);
+	const askerName = first(asker?.name);
+
+	if (ready && view === "ask" && lock?.canAskToFix)
+		return (
+			<AskToFixSheet
+				name={creator}
+				onBack={() => setView("read")}
+				onDone={onClose}
+				transactionId={id}
+			/>
+		);
+	if (ready && view === "respond" && asked)
+		return (
+			<RespondToFixSheet
+				asker={{
+					name: askerName,
+					fullName: asker?.name ?? askerName,
+					imageUrl: asker?.avatarUrl ?? null,
+				}}
+				onAccepted={() => setView(lock?.canCorrect ? "correct" : "edit")}
+				onBack={() => setView("read")}
+				onDone={onClose}
+				request={asked}
+			/>
+		);
+
+	const cancelRequest = async () => {
+		if (!sent) return;
+		try {
+			const r = await cancel.mutateAsync({ id: sent.id });
+			toast.saved(t("canceled", { name: creator }), {
+				undo: () =>
+					restore.mutateAsync({
+						id: sent.id,
+						status:
+							r.value.previousStatus === "ACCEPTED" ? "ACCEPTED" : "PENDING",
+					}),
+			});
+		} catch (e) {
+			toast.failed(e instanceof Error ? e.message : t("failed"));
+		}
+	};
+
+	const day = (iso: string) => label.short(dayKey(new Date(iso)));
+	const sentOpen = sent && isOpenRequest(sent);
+	let notice: ReadNotice | null = null;
+	if (asked) {
+		notice = {
+			tone: "attention",
+			text:
+				asked.status === "PENDING"
+					? t("askedPending", { name: askerName })
+					: t(lock?.canCorrect ? "askedAcceptedCorrect" : "askedAcceptedEdit", {
+							name: askerName,
+						}),
+		};
+	} else if (sent && sent.status !== "CANCELLED") {
+		notice = {
+			tone: "info",
+			text: t(`sent.${sent.status}`, {
+				name: creator,
+				date: day(sent.createdAt),
+			}),
+		};
+	} else if (data?.isLocked) {
+		notice = { tone: "info", text: tr("locked"), lock: true };
+	} else if (author.data && !author.data.you) {
+		const waiting = data?.splitParticipants.find(
+			(p) => p.participantType === "user" && p.participantId === me,
+		)?.verificationStatus;
+		notice = {
+			tone: "info",
+			text: tr(waiting === "PENDING" ? "addedReview" : "added", {
+				name: creator,
+			}),
+		};
+	}
+
+	const go = (
+		v: View,
+		text: string,
+		kind: "primary" | "secondary" = "primary",
+	) => (
+		<Button kind={kind} onClick={() => setView(v)}>
+			{text}
+		</Button>
+	);
+	let actions: React.ReactNode = null;
+	if (asked)
+		actions =
+			asked.status === "PENDING"
+				? go("respond", t("respond"))
+				: lock?.canCorrect
+					? go("correct", tr("correct"))
+					: data?.canEdit
+						? go("edit", t("edit"))
+						: null;
+	else if (sentOpen)
+		actions = (
+			<Button
+				kind="secondary"
+				loading={cancel.isPending}
+				onClick={() => void cancelRequest()}
+			>
+				{t("cancel")}
+			</Button>
+		);
+	else if (lock?.canCorrect) actions = go("correct", tr("correct"));
+	else if (lock?.canAskToFix) actions = go("ask", tr("ask", { name: creator }));
+
+	const reply =
+		sent?.status === "DECLINED" && sent.reply
+			? {
+					name: person(sent.asked)?.name ?? creator,
+					imageUrl: person(sent.asked)?.avatarUrl ?? null,
+					text: sent.reply,
+				}
+			: null;
+
 	return (
-		<div className="flex min-h-ctl items-center justify-between gap-3 border-line border-b">
-			<span className="text-fg-2 text-small">{k}</span>
-			<span className="flex items-center gap-2 text-right font-medium text-body text-fg">
-				{children}
-			</span>
-		</div>
+		<ReadView
+			actions={actions}
+			failed={tx.isError}
+			me={me}
+			notice={notice}
+			onClose={onClose}
+			quote={reply}
+			tx={ready ? data : null}
+		/>
 	);
 }

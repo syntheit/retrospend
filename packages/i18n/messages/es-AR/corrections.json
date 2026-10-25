@@ -1,0 +1,58 @@
+{
+	"ask": {
+		"title": "Pedirle a {name} que lo corrija",
+		"what": "¿Qué está mal?",
+		"placeholder": "Contá qué no cierra",
+		"hint": "Si {name} lo cambia, solo la diferencia vuelve a abrir tu saldo. Tus pagos quedan como estaban.",
+		"empty": "Todavía no hay nada para revisar.",
+		"send": "Enviar",
+		"sent": "Enviado a {name}"
+	},
+	"respond": {
+		"title": "{name} te pidió que lo corrijas",
+		"noMessage": "Sin mensaje.",
+		"reply": "Respuesta (opcional)",
+		"replyPlaceholder": "Contá qué vas a hacer",
+		"hint": "Aceptar abre la corrección. Rechazar se lo avisa a {name} y deja el gasto como está.",
+		"back": "Volver",
+		"accept": "Aceptar",
+		"decline": "Rechazar",
+		"declined": "Rechazaste el pedido de {name}",
+		"failed": "No se pudo enviar tu respuesta",
+		"empty": "Todavía no hay nada para revisar."
+	},
+	"correct": {
+		"sheetTitle": "Corregir {title}",
+		"loadingTitle": "Corregir gasto",
+		"settled": "Saldado. Una corrección registra solo la diferencia, así el historial queda fiel.",
+		"correctionTitle": "Corrección de {title}",
+		"record": "Registrar corrección",
+		"saved": "Corrección registrada en {title}",
+		"share": "Parte de {name}",
+		"paid": "{name} pagó",
+		"shareYou": "Tu parte",
+		"paidYou": "Pagaste vos",
+		"someone": "Alguien",
+		"nothing": "Todavía no hay nada para corregir. Cambiá el monto, quién pagó o el reparto.",
+		"empty": "Completá el monto y el reparto para ver qué cambia.",
+		"failed": "No se pudo cargar este gasto",
+		"loading": "Cargando"
+	},
+	"read": {
+		"askedPending": "{name} te pidió que corrijas esto.",
+		"askedAcceptedCorrect": "Dijiste que lo ibas a corregir. Corregilo para responderle a {name}.",
+		"askedAcceptedEdit": "Dijiste que lo ibas a corregir. Editalo para responderle a {name}.",
+		"sent": {
+			"PENDING": "Le pediste a {name} que lo corrija el {date}.",
+			"ACCEPTED": "{name} dijo que lo va a corregir.",
+			"DECLINED": "{name} rechazó corregirlo.",
+			"FIXED": "{name} lo corrigió.",
+			"CANCELLED": "Cancelaste tu pedido a {name}."
+		},
+		"respond": "Responder",
+		"edit": "Editar",
+		"cancel": "Cancelar pedido",
+		"canceled": "Cancelaste tu pedido a {name}",
+		"failed": "No se pudo cancelar el pedido"
+	}
+}

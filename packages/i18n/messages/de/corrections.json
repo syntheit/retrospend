@@ -1,0 +1,58 @@
+{
+	"ask": {
+		"title": "{name} um Korrektur bitten",
+		"what": "Was stimmt nicht?",
+		"placeholder": "Schreib, was nicht passt",
+		"hint": "Wenn {name} es ändert, öffnet nur die Differenz deinen Saldo wieder. Deine Zahlungen bleiben, wie sie waren.",
+		"empty": "Noch nichts zu prüfen.",
+		"send": "Senden",
+		"sent": "An {name} gesendet"
+	},
+	"respond": {
+		"title": "{name} hat dich gebeten, das zu korrigieren",
+		"noMessage": "Keine Nachricht.",
+		"reply": "Antwort (optional)",
+		"replyPlaceholder": "Schreib, was du tun wirst",
+		"hint": "Annehmen öffnet die Korrektur. Ablehnen sagt {name} Bescheid und lässt die Ausgabe, wie sie ist.",
+		"back": "Zurück",
+		"accept": "Annehmen",
+		"decline": "Ablehnen",
+		"declined": "Bitte von {name} abgelehnt",
+		"failed": "Deine Antwort konnte nicht gesendet werden",
+		"empty": "Noch nichts zu prüfen."
+	},
+	"correct": {
+		"sheetTitle": "{title} korrigieren",
+		"loadingTitle": "Ausgabe korrigieren",
+		"settled": "Ausgeglichen. Eine Korrektur hält nur die Differenz fest, damit der Verlauf stimmt.",
+		"correctionTitle": "Korrektur zu {title}",
+		"record": "Korrektur erfassen",
+		"saved": "Korrektur zu {title} erfasst",
+		"share": "Anteil von {name}",
+		"paid": "{name} hat bezahlt",
+		"shareYou": "Dein Anteil",
+		"paidYou": "Du hast bezahlt",
+		"someone": "Jemand",
+		"nothing": "Noch nichts zu korrigieren. Ändere den Betrag, wer bezahlt hat oder die Aufteilung.",
+		"empty": "Gib Betrag und Aufteilung ein, um zu sehen, was sich ändert.",
+		"failed": "Diese Ausgabe konnte nicht geladen werden",
+		"loading": "Wird geladen"
+	},
+	"read": {
+		"askedPending": "{name} hat dich gebeten, das zu korrigieren.",
+		"askedAcceptedCorrect": "Du hast zugesagt, das zu korrigieren. Korrigiere es, um {name} zu antworten.",
+		"askedAcceptedEdit": "Du hast zugesagt, das zu korrigieren. Bearbeite es, um {name} zu antworten.",
+		"sent": {
+			"PENDING": "Du hast {name} am {date} gebeten, das zu korrigieren.",
+			"ACCEPTED": "{name} hat zugesagt, das zu korrigieren.",
+			"DECLINED": "{name} hat abgelehnt, das zu korrigieren.",
+			"FIXED": "{name} hat das korrigiert.",
+			"CANCELLED": "Du hast deine Bitte an {name} zurückgezogen."
+		},
+		"respond": "Antworten",
+		"edit": "Bearbeiten",
+		"cancel": "Bitte zurückziehen",
+		"canceled": "Bitte an {name} zurückgezogen",
+		"failed": "Die Bitte konnte nicht zurückgezogen werden"
+	}
+}

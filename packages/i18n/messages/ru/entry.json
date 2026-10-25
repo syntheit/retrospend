@@ -135,6 +135,7 @@
 			"notTracked": "Без учёта",
 			"budget_notPlannedYet": "Ещё не запланировано",
 			"budget_leftToSpend": "Можно потратить",
+			"budget_heldForOthers": "Удерживается для других",
 			"project_total": "Итого по проекту",
 			"envelope_left": "Конверт"
 		},
@@ -148,6 +149,7 @@
 			"notTracked": "без учёта",
 			"budget_notPlannedYet": "Ещё не запланировано",
 			"budget_leftToSpend": "доступно к тратам",
+			"budget_heldForOthers": "удерживаемое для других",
 			"project_total": "итог по проекту",
 			"envelope_left": "конверт"
 		}

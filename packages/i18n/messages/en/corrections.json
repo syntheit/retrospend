@@ -1,0 +1,58 @@
+{
+	"ask": {
+		"title": "Ask {name} to fix it",
+		"what": "What is wrong?",
+		"placeholder": "Say what looks off",
+		"hint": "If {name} changes it, only the difference reopens your balance. Your payments stay as they were.",
+		"empty": "Nothing to check yet.",
+		"send": "Send",
+		"sent": "Sent to {name}"
+	},
+	"respond": {
+		"title": "{name} asked you to fix this",
+		"noMessage": "No message.",
+		"reply": "Reply (optional)",
+		"replyPlaceholder": "Say what you will do",
+		"hint": "Accepting opens the fix. Declining tells {name} and leaves the expense as it is.",
+		"back": "Back",
+		"accept": "Accept",
+		"decline": "Decline",
+		"declined": "Declined {name}'s request",
+		"failed": "Couldn't send your answer",
+		"empty": "Nothing to check yet."
+	},
+	"correct": {
+		"sheetTitle": "Correct {title}",
+		"loadingTitle": "Correct expense",
+		"settled": "Settled. A correction records only the difference, so the history stays true.",
+		"correctionTitle": "Correction to {title}",
+		"record": "Record correction",
+		"saved": "Correction recorded on {title}",
+		"share": "{name}'s share",
+		"paid": "{name} paid",
+		"shareYou": "Your share",
+		"paidYou": "You paid",
+		"someone": "Someone",
+		"nothing": "Nothing to correct yet. Change the amount, who paid or the split.",
+		"empty": "Fill in the amount and the split to see what changes.",
+		"failed": "Couldn't load this expense",
+		"loading": "Loading"
+	},
+	"read": {
+		"askedPending": "{name} asked you to fix this.",
+		"askedAcceptedCorrect": "You said you would fix this. Correct it to answer {name}.",
+		"askedAcceptedEdit": "You said you would fix this. Edit it to answer {name}.",
+		"sent": {
+			"PENDING": "You asked {name} to fix this on {date}.",
+			"ACCEPTED": "{name} said they will fix this.",
+			"DECLINED": "{name} declined to fix this.",
+			"FIXED": "{name} fixed this.",
+			"CANCELLED": "You canceled your request to {name}."
+		},
+		"respond": "Respond",
+		"edit": "Edit",
+		"cancel": "Cancel request",
+		"canceled": "Canceled your request to {name}",
+		"failed": "Couldn't cancel the request"
+	}
+}
