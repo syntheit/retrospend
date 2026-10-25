@@ -23,7 +23,8 @@ export type Kind =
 	| "PLAN_APPLY"
 	| "CARRY_OVERSPEND"
 	| "FIX_NEGATIVE"
-	| "RESET";
+	| "RESET"
+	| "ARCHIVE";
 
 export interface NewMovement {
 	id: string;
