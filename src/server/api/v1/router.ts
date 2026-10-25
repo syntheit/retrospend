@@ -2,6 +2,7 @@ import { accountsRouter } from "./accounts";
 import { budgetRouter } from "./budget";
 import { categoriesRouter } from "./categories";
 import { currenciesRouter } from "./currencies";
+import { eventsRouter } from "./events";
 import { expensesRouter } from "./expenses";
 import { figuresRouter } from "./figures";
 import { incomeRouter } from "./income";
@@ -20,6 +21,7 @@ import { settingsRouter } from "./settings";
 import { sharedExpensesRouter } from "./shared-expenses";
 import { tokensRouter } from "./tokens";
 import { transfersRouter } from "./transfers";
+import { webhooksRouter } from "./webhooks";
 
 /**
  * The implemented /api/v1 router. Each resource group registers here with
@@ -30,6 +32,7 @@ export const v1Router = v1.router({
 	budget: budgetRouter,
 	categories: categoriesRouter,
 	currencies: currenciesRouter,
+	events: eventsRouter,
 	expenses: expensesRouter,
 	figures: figuresRouter,
 	income: incomeRouter,
@@ -47,4 +50,5 @@ export const v1Router = v1.router({
 	"shared-expenses": sharedExpensesRouter,
 	tokens: tokensRouter,
 	transfers: transfersRouter,
+	webhooks: webhooksRouter,
 });

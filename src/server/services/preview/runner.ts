@@ -22,6 +22,19 @@ export interface PreviewRunnerDeps<Tx> {
 	 */
 	readonly transaction: TransactionRunner<Tx>;
 	readonly actor: Actor;
+	/**
+	 * Runs inside the apply transaction after the mutation and its figure diff
+	 * succeeded, so what it writes commits or rolls back with the mutation (the
+	 * event outbox). Returns whether it wrote anything. Never runs for previews.
+	 */
+	readonly onApplied?: (
+		tx: Tx,
+		mutation: { readonly id: string },
+		result: ApplyResult<unknown>,
+		actor: Actor,
+	) => Promise<boolean>;
+	/** Called once after an apply whose `onApplied` wrote something has committed. */
+	readonly afterCommit?: () => void;
 }
 
 export interface PreviewRunner<Tx> {
@@ -81,6 +94,8 @@ export function createPreviewRunner<Tx>({
 	figures,
 	transaction,
 	actor,
+	onApplied,
+	afterCommit,
 }: PreviewRunnerDeps<Tx>): PreviewRunner<Tx> {
 	async function preview<Input, Value>(
 		mutation: MoneyMutation<Input, Value, Tx>,
@@ -115,10 +130,20 @@ export function createPreviewRunner<Tx>({
 		input: Input,
 	): Promise<ApplyResult<Value>> {
 		const definitions = figuresFor(figures, mutation.touches);
-		return transaction(
-			(tx) => runMeasured(tx, mutation, input, definitions, actor),
-			"apply",
-		);
+		let wrote = false;
+		const result = await transaction(async (tx) => {
+			const applied = await runMeasured(
+				tx,
+				mutation,
+				input,
+				definitions,
+				actor,
+			);
+			wrote = (await onApplied?.(tx, mutation, applied, actor)) ?? false;
+			return applied;
+		}, "apply");
+		if (wrote) afterCommit?.();
+		return result;
 	}
 
 	return { preview, apply };
