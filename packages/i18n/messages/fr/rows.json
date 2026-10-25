@@ -27,10 +27,10 @@
 		"people": "{count, plural, one {# personne} other {# personnes}}",
 		"spent": "dépensé",
 		"budgetUsed": "Budget utilisé",
-		"yourShare": "votre part",
+		"yourShare": "ta part",
 		"left": "reste <amount></amount>",
 		"over": "<amount></amount> de dépassement",
-		"justYou": "Vous seul"
+		"justYou": "Toi seul"
 	},
 	"account": {
 		"updated": "Mis à jour le {date}",
@@ -74,25 +74,25 @@
 		"selected": "{count, plural, one {# sélectionné} other {# sélectionnés}}",
 		"clear": "Effacer",
 		"total": "Total",
-		"yourShare": "Votre part",
+		"yourShare": "Ta part",
 		"paidBy": "Payé par",
 		"split": "Partage",
 		"between": "Entre vous",
-		"you": "Vous",
-		"waitsForYou": "Vous attend",
+		"you": "Toi",
+		"waitsForYou": "T'attend",
 		"none": "Aucune",
 		"rejected": "Refusé",
 		"noChange": "Aucun changement",
 		"wasSettled": "était <amount></amount> · réglé",
-		"paidYou": "vous a payé",
-		"youPaid": "vous avez payé"
+		"paidYou": "t'a payé",
+		"youPaid": "tu as payé"
 	},
 	"person": {
 		"new": "{count} nouveaux",
 		"needYou": "{count} à traiter",
 		"currencies": "{count} devises",
-		"youPaid": "vous avez payé",
-		"paidYou": "vous a payé",
+		"youPaid": "tu as payé",
+		"paidYou": "t'a payé",
 		"settleUp": "Régler"
 	}
 }
