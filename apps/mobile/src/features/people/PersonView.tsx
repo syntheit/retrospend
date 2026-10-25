@@ -8,6 +8,7 @@ import { newClientId } from "@/data/ids";
 import { useFaces } from "@/features/read/faces";
 import { LinkButton, SectionHeader, StaleNote } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { ConfirmSheet } from "@/features/settle/ConfirmSheet";
 import { SettleSheet } from "@/features/settle/SettleSheet";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
@@ -17,35 +18,11 @@ import { Screen } from "@/ui/Screen";
 import { useToast } from "@/ui/Toast";
 import { isApproximate, sideOf } from "./groups";
 import { NetAmount } from "./NetAmount";
+import { PersonNeeds } from "./PersonNeeds";
 import { PaymentRow, ScopeRow, SharedRow } from "./PersonSections";
 import type { PersonPage, PersonRef } from "./source";
 import { useLedgerMore } from "./useLedgerMore";
 import { usePerson } from "./usePeople";
-
-function Needs({ page }: { page: PersonPage }) {
-	const t = useTranslations("mobile.home.needs");
-	const { color, space, type } = useTheme();
-	if (page.needs.length === 0) return null;
-	const first = page.person.name.split(/\s+/)[0] ?? "";
-	return (
-		<View style={{ gap: space[1], paddingHorizontal: space[4] }}>
-			{page.needs.map((need) => (
-				<Text
-					key={`${need.kind}:${need.id}`}
-					style={{
-						color: color.attentionText,
-						fontSize: type.body.size,
-						fontWeight: "500",
-					}}
-				>
-					{need.kind === "confirmPayment"
-						? t("payment_confirm", { name: first })
-						: t("split_review", { name: first, title: need.title })}
-				</Text>
-			))}
-		</View>
-	);
-}
 
 /**
  * One person: the balance (never netted across currencies: the parts are
@@ -70,6 +47,10 @@ export function PersonView({
 	const { color, space, type } = useTheme();
 	const { state, reload } = usePerson(person);
 	const [settling, setSettling] = useState(startSettling);
+	const [confirming, setConfirming] = useState<{
+		id: string;
+		amount: { minor: number; currency: string };
+	} | null>(null);
 	const ledger = useLedgerMore(person);
 
 	if (state.status === "loading")
@@ -180,7 +161,7 @@ export function PersonView({
 				</View>
 			</View>
 
-			<Needs page={page} />
+			<PersonNeeds onConfirm={setConfirming} page={page} />
 
 			{page.scopes.length > 0 ? (
 				<>
@@ -224,6 +205,15 @@ export function PersonView({
 				<LinkButton label={t("showMore")} onPress={ledger.loadMore} />
 			) : null}
 
+			{confirming ? (
+				<ConfirmSheet
+					onClose={() => setConfirming(null)}
+					onDone={reload}
+					payment={confirming}
+					person={identity}
+					visible
+				/>
+			) : null}
 			<SettleSheet
 				onClose={() => setSettling(false)}
 				onDone={reload}

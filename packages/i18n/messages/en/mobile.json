@@ -295,6 +295,10 @@
 		"previewError": "Couldn't check this payment. Try again.",
 		"loadError": "Couldn't load what is owed. Try again.",
 		"everythingShort": "Everything",
-		"partShort": "{currency} part"
+		"partShort": "{currency} part",
+		"confirmTitle": "{name} says they paid you",
+		"confirm": "Confirm",
+		"confirmed": "Payment confirmed",
+		"confirmUndone": "Confirmation undone"
 	}
 }
