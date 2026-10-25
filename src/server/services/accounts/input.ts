@@ -26,7 +26,8 @@ const accountFields = {
 	type: z.enum(AssetType),
 	currency: z.string().length(3),
 	balance: z.number(),
-	exchangeRate: z.number().optional(),
+	/** A custom rate as decimal text, like every typed rate (never a float). */
+	exchangeRate: customRateSchema.optional(),
 	exchangeRateType: z.string().optional(),
 	isLiquid: z.boolean().default(false),
 	interestRate: z.number().optional(),
@@ -59,7 +60,7 @@ export const importAccountsSchema = z.object({
 export const legacyBalanceSchema = z.object({
 	assetId: z.cuid(),
 	newBalance: z.number(),
-	exchangeRate: z.number().optional(),
+	exchangeRate: customRateSchema.optional(),
 	exchangeRateType: z.string().optional(),
 });
 

@@ -23,7 +23,12 @@ const expenseInputSchema = z.object({
 	title: z.string().min(1).max(500),
 	amount: z.number().positive("Amount must be positive"),
 	currency: z.string().min(3).max(10).default(BASE_CURRENCY),
-	exchangeRate: z.number().positive().optional(),
+	/**
+	 * The entry leg's rate as decimal text (never a float). A typed rate goes
+	 * in `customRate`; this one is a table rate, which the server looks up
+	 * again, or the rate an unchanged edit keeps.
+	 */
+	exchangeRate: customRateSchema.optional(),
 	amountInUSD: z.number().positive().optional(),
 	pricingSource: z.string().max(200).optional(),
 	/** The pair's rate type (official, blue...) or "custom" with customRate. */
@@ -39,19 +44,38 @@ const expenseInputSchema = z.object({
 	excludeFromAnalytics: z.boolean().optional(),
 });
 
+/**
+ * The service's input from the wire's. The entry leg's rate is compared with
+ * the saved one or looked up again, so a number is enough; a typed rate keeps
+ * every digit in `customRate`.
+ */
+function serviceInput(input: z.infer<typeof expenseInputSchema>) {
+	const { exchangeRate, ...rest } = input;
+	return {
+		...rest,
+		...(exchangeRate === undefined ? {} : { exchangeRate: Number(exchangeRate) }),
+	};
+}
+
 export const expenseRouter = createTRPCRouter({
 	updateExpense: protectedProcedure
 		.input(expenseInputSchema)
 		.mutation(async ({ ctx, input }) => {
 			const service = new ExpenseService(ctx.db);
-			return await service.updateExpense(ctx.session.user.id, input);
+			return await service.updateExpense(
+				ctx.session.user.id,
+				serviceInput(input),
+			);
 		}),
 
 	createExpense: protectedProcedure
 		.input(expenseInputSchema)
 		.mutation(async ({ ctx, input }) => {
 			const service = new ExpenseService(ctx.db);
-			return await service.createExpense(ctx.session.user.id, input);
+			return await service.createExpense(
+				ctx.session.user.id,
+				serviceInput(input),
+			);
 		}),
 
 	listFinalized: protectedProcedure

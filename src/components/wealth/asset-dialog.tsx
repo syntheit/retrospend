@@ -48,6 +48,7 @@ import {
 } from "~/components/ui/select";
 import type { CurrencyCode } from "~/lib/currencies";
 import { formatNumber, isCrypto as checkIsCrypto } from "~/lib/currency-format";
+import { rateToText } from "~/features/entry/rate-text";
 import { useCurrencyInput } from "~/hooks/use-currency-input";
 import { AssetType } from "~/lib/db-enums";
 import { tryConvertAmount } from "~/lib/money";
@@ -219,7 +220,11 @@ export function AssetDialog({
 	});
 
 	const onSubmit = (data: FormValues) => {
-		const systemRate = exchangeRate;
+		// The server takes a rate as decimal text, never a float.
+		const systemRate =
+			exchangeRate === undefined
+				? undefined
+				: (rateToText(exchangeRate) ?? undefined);
 
 		if (isEdit && assetId) {
 			updateAsset.mutate({

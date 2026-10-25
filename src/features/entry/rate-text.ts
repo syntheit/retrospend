@@ -86,3 +86,16 @@ export function readRateText(
 		rate: read.rate,
 	};
 }
+
+/**
+ * A rate held as a number (a table rate, or a form that still keeps floats) as
+ * the plain decimal text the server takes: the digits of the number's exact
+ * binary value, never an exponent, rounded to 12 decimals half-even like a
+ * typed rate. Null when it is not a rate above zero.
+ */
+export function rateToText(rate: number): string | null {
+	if (!Number.isFinite(rate) || rate <= 0) return null;
+	// toFixed(100) is exact for every double a rate can be, so the rounding
+	// sees the true digits.
+	return parseRateText(rate.toFixed(100), "en-US");
+}

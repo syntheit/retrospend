@@ -9,6 +9,7 @@ import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
+import { parseRateText } from "~/features/entry/rate-text";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
 import type { ExpenseFormData } from "~/hooks/use-expense-form";
@@ -66,6 +67,7 @@ interface CurrencyAmountInputProps {
 		rate: number | undefined,
 		type?: string,
 		shouldDirty?: boolean,
+		customRate?: ExpenseFormData["customRate"],
 	) => void;
 	homeCurrency: string;
 	isCustomRateSet: boolean;
@@ -426,13 +428,17 @@ export function CurrencyAmountInput({
 		(inputValue: string) => {
 			customInputTouched.current = true;
 			setCustomInputValue(inputValue);
-			const numericValue = inputValue.trim()
-				? parseFloat(inputValue)
+			// The typed text is what gets booked (up to 12 decimals, no float);
+			// dots are the decimal mark here, as in the field's own display.
+			const typedText = inputValue.trim()
+				? parseRateText(inputValue, "en-US")
 				: undefined;
-			if (numericValue === undefined) {
+			if (typedText === undefined) {
 				handleExchangeRateChange(undefined, "custom");
 				return;
 			}
+			if (typedText === null) return;
+			const numericValue = Number(typedText);
 			if (!isValidRate(numericValue)) return;
 			const homeUsable = homeCurrency === USD || isValidRate(homeRate);
 			if (!homeUsable) return;
@@ -445,7 +451,14 @@ export function CurrencyAmountInput({
 							homeCurrency,
 							homeRate,
 						);
-			handleExchangeRateChange(stored, "custom");
+			handleExchangeRateChange(
+				stored,
+				"custom",
+				true,
+				stored === undefined
+					? undefined
+					: { base: customQuoteSides.base, value: typedText },
+			);
 		},
 		[
 			handleExchangeRateChange,
