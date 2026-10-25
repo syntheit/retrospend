@@ -2162,20 +2162,6 @@ model ApiRateLimit {
   @@map("api_rate_limit")
 }
 
-enum PushPlatform {
-  IOS
-  ANDROID
-}
-
-enum PushTransport {
-  APNS
-  FCM
-  UNIFIEDPUSH
-}
-
-// Push devices (M12): one row per user and address. APNs and FCM rows
-// hold a token; UnifiedPush rows an endpoint URL plus the Web Push keys.
-// `addressHash` is the SHA-256 of the token or endpoint.
 enum ExportJobStatus {
   QUEUED
   RUNNING
@@ -2184,8 +2170,8 @@ enum ExportJobStatus {
 }
 
 // API v1 exports (G5): an asynchronous export request and its file. `params`
-// holds ids only (project, period, person); the file lives in the upload
-// store at `storagePath` until `expiresAt`. `fileName` is derived from the
+// holds ids only (project, period, person); the file lives in the export
+// store (EXPORT_DIR, never the public upload store) at `storagePath` until `expiresAt`. `fileName` is derived from the
 // project or person name, in its own column.
 model ExportJob {
   id          String          @id @default(cuid())
@@ -2210,6 +2196,20 @@ model ExportJob {
   @@map("export_job")
 }
 
+enum PushPlatform {
+  IOS
+  ANDROID
+}
+
+enum PushTransport {
+  APNS
+  FCM
+  UNIFIEDPUSH
+}
+
+// Push devices (M12): one row per user and address. APNs and FCM rows
+// hold a token; UnifiedPush rows an endpoint URL plus the Web Push keys.
+// `addressHash` is the SHA-256 of the token or endpoint.
 model PushDevice {
   id          String        @id @default(cuid())
   userId      String

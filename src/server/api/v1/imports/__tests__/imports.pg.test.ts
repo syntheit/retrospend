@@ -104,6 +104,28 @@ describe("/api/v1/imports", () => {
 		await expectProblem(res, 400, "bad_request");
 	});
 
+	it("refuses an oversized upload at once and a file name that is too long", async () => {
+		// 12 MB of real bytes: refused on its Content-Length, before it is read.
+		const big = await call("/imports/jobs", {
+			method: "POST",
+			headers: asAlice,
+			form: uploadForm(
+				"big.csv",
+				`title,amount,currency,date\n${"a".repeat(12 * 1024 * 1024)}`,
+			),
+			idempotent: true,
+		});
+		await expectProblem(big, 413, "payload_too_large");
+		await expectProblem(
+			await upload(asAlice, `${"n".repeat(252)}.csv`),
+			400,
+			"bad_request",
+		);
+		await expect(
+			adminDb.importJob.count({ where: { userId: alice } }),
+		).resolves.toBe(1);
+	});
+
 	it("keeps another user's file out of every route", async () => {
 		await expectProblem(
 			await call(`/imports/jobs/${jobId}`, { headers: asBob }),

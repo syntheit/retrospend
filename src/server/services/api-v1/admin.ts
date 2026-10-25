@@ -25,7 +25,7 @@ import { trpcAdmin } from "./trpc-bridge";
  * (the admin tRPC router, called in-process), so audit events and the
  * self-protection rules (no disabling or deleting yourself) are the same.
  * Nothing here reads another user's titles or notes; event log metadata is
- * filtered for them as well (see stripUserText).
+ * filtered for them as well (see allowedMetadata).
  */
 
 /** The scope already demands `admin`; this checks the role itself again. */
@@ -211,23 +211,81 @@ export async function aiUsage(
 
 // ── event logs ──────────────────────────────────────────────────────────
 
-const TEXTY_KEY = /title|note|description|memo|merchant|comment/i;
-
 /**
- * Event metadata is ids, flags and account names today. A key that looks
- * like user text (a title, note or description) is dropped at any depth, so
- * a future event that adds one cannot leak it to an admin.
+ * The metadata keys the server's own events write (admin actions, sign-in,
+ * username changes, guest migration, imports): ids, flags, counts and
+ * account identifiers. Anything else is dropped, so an event that later
+ * carries a name a user typed (a shadow profile, a guest, a file) never
+ * reaches an admin here. Add a key only after checking it holds no user text.
  */
-export function stripUserText(value: unknown): unknown {
-	if (Array.isArray(value)) return value.map(stripUserText);
-	if (value && typeof value === "object") {
-		return Object.fromEntries(
-			Object.entries(value)
-				.filter(([key]) => !TEXTY_KEY.test(key))
-				.map(([key, v]) => [key, stripUserText(v)]),
-		);
+export const EVENT_METADATA_KEYS: ReadonlySet<string> = new Set([
+	"action",
+	"adminId",
+	"adminUsername",
+	"changedBy",
+	"changedByUsername",
+	"claimedShadowProfiles",
+	"deletedBy",
+	"deletedByUsername",
+	"disabledBy",
+	"disabledByUsername",
+	"duration_ms",
+	"email",
+	"enabledBy",
+	"enabledByUsername",
+	"field",
+	"fileSize",
+	"fileType",
+	"generatedBy",
+	"generatedByUsername",
+	"inviteCode",
+	"migratedSessions",
+	"newUsername",
+	"newValue",
+	"oldValue",
+	"previousUsername",
+	"projectIds",
+	"reason",
+	"resetBy",
+	"resetByUsername",
+	"role",
+	"sessionId",
+	"status",
+	"targetEmail",
+	"targetUsername",
+	"updatedBy",
+	"updatedByUsername",
+	"username",
+	"verifiedBy",
+	"verifiedByUsername",
+]);
+
+type Scalar = string | number | boolean | null;
+
+function scalarOf(value: unknown): Scalar | undefined {
+	if (value === null || typeof value === "boolean") return value;
+	if (typeof value === "number")
+		return Number.isFinite(value) ? value : undefined;
+	if (typeof value === "string") return value.length <= 200 ? value : undefined;
+	return undefined;
+}
+
+/** Allowed keys only, each a short scalar or a list of them; nothing nested. */
+export function allowedMetadata(
+	metadata: Record<string, unknown>,
+): Record<string, Scalar | Scalar[]> {
+	const out: Record<string, Scalar | Scalar[]> = {};
+	for (const [key, value] of Object.entries(metadata)) {
+		if (!EVENT_METADATA_KEYS.has(key)) continue;
+		if (Array.isArray(value)) {
+			const items = value.slice(0, 100).map(scalarOf);
+			if (items.every((i) => i !== undefined)) out[key] = items as Scalar[];
+			continue;
+		}
+		const scalar = scalarOf(value);
+		if (scalar !== undefined) out[key] = scalar;
 	}
-	return value;
+	return out;
 }
 
 const logCursor = z.object({ before: z.iso.datetime() });
@@ -261,7 +319,7 @@ export async function eventLogs(
 				l.metadata &&
 				typeof l.metadata === "object" &&
 				!Array.isArray(l.metadata)
-					? (stripUserText(l.metadata) as Record<string, unknown>)
+					? allowedMetadata(l.metadata as Record<string, unknown>)
 					: null,
 		})),
 		nextCursor: page.nextCursor

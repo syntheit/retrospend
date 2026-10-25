@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { env } from "~/env";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
+import { assertAnotherAdminRemains } from "~/server/services/admin-guard.service";
 import {
 	anonymizeAndDeleteUser,
 	anonymizeParticipantReferences,
@@ -180,9 +181,7 @@ export const adminRouter = createTRPCRouter({
 
 			const where = {
 				...(input.eventType ? { eventType: input.eventType } : {}),
-				...(input.cursor
-					? { timestamp: { lt: new Date(input.cursor) } }
-					: {}),
+				...(input.cursor ? { timestamp: { lt: new Date(input.cursor) } } : {}),
 			};
 
 			const logs = await db.eventLog.findMany({
@@ -331,15 +330,18 @@ export const adminRouter = createTRPCRouter({
 				});
 			}
 
-			const user = await db.user.update({
-				where: { id: input.userId },
-				data: { isActive: false },
-				select: { username: true },
-			});
-
-			// Sign the user out everywhere so the disable takes effect immediately
-			await db.session.deleteMany({
-				where: { userId: input.userId },
+			const user = await db.$transaction(async (tx) => {
+				await assertAnotherAdminRemains(tx, input.userId);
+				const updated = await tx.user.update({
+					where: { id: input.userId },
+					data: { isActive: false },
+					select: { username: true },
+				});
+				// Sign the user out everywhere so the disable takes effect immediately
+				await tx.session.deleteMany({
+					where: { userId: input.userId },
+				});
+				return updated;
 			});
 
 			// Log the account disable
@@ -484,9 +486,7 @@ export const adminRouter = createTRPCRouter({
 				inviteOnlyEnabled: z.boolean().optional(),
 				allowAllUsersToGenerateInvites: z.boolean().optional(),
 				enableEmail: z.boolean().optional(),
-				auditPrivacyMode: z
-					.enum(["MINIMAL", "ANONYMIZED", "FULL"])
-					.optional(),
+				auditPrivacyMode: z.enum(["MINIMAL", "ANONYMIZED", "FULL"]).optional(),
 				maxConcurrentImportJobs: z.number().int().min(1).max(50).optional(),
 				enableFeedback: z.boolean().optional(),
 			}),
@@ -839,11 +839,19 @@ export const adminRouter = createTRPCRouter({
 				select: { id: true, name: true },
 			});
 			if (!profile) {
-				throw new TRPCError({ code: "NOT_FOUND", message: "Shadow profile not found" });
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Shadow profile not found",
+				});
 			}
 
 			await db.$transaction(async (tx) => {
-				await anonymizeParticipantReferences(tx, "shadow", profile.id, DELETED_SHADOW_SENTINEL);
+				await anonymizeParticipantReferences(
+					tx,
+					"shadow",
+					profile.id,
+					DELETED_SHADOW_SENTINEL,
+				);
 				await tx.shadowProfile.delete({ where: { id: profile.id } });
 			});
 
@@ -870,11 +878,19 @@ export const adminRouter = createTRPCRouter({
 				select: { id: true, name: true, email: true },
 			});
 			if (!guest) {
-				throw new TRPCError({ code: "NOT_FOUND", message: "Guest session not found" });
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Guest session not found",
+				});
 			}
 
 			await db.$transaction(async (tx) => {
-				await anonymizeParticipantReferences(tx, "guest", guest.id, DELETED_GUEST_SENTINEL);
+				await anonymizeParticipantReferences(
+					tx,
+					"guest",
+					guest.id,
+					DELETED_GUEST_SENTINEL,
+				);
 				await tx.guestSession.delete({ where: { id: guest.id } });
 			});
 

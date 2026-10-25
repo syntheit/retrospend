@@ -17,6 +17,7 @@ const TITLES: Record<ProblemCode, string> = {
 	api_disabled: "API turned off",
 	not_found: "Not found",
 	conflict: "Conflict",
+	payload_too_large: "Upload too large",
 	idempotency_in_progress: "Request in progress",
 	idempotency_replay_unavailable: "Response not stored",
 	idempotency_key_reused: "Idempotency-Key reused",

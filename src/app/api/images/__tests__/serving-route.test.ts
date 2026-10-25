@@ -12,7 +12,9 @@ import { GET } from "../[...path]/route";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-function makeParams(segments: string[]): { params: Promise<{ path: string[] }> } {
+function makeParams(segments: string[]): {
+	params: Promise<{ path: string[] }>;
+} {
 	return { params: Promise.resolve({ path: segments }) };
 }
 
@@ -44,25 +46,28 @@ describe("valid paths", () => {
 	});
 
 	it("returns correct content-type for .jpeg", async () => {
-		const res = await GET(makeRequest(), makeParams(["receipts", "r-1.jpeg"]));
+		const res = await GET(makeRequest(), makeParams(["projects", "r-1.jpeg"]));
 		expect(res.status).toBe(200);
 		expect(res.headers.get("Content-Type")).toBe("image/jpeg");
 	});
 
 	it("returns correct content-type for .jpg", async () => {
-		const res = await GET(makeRequest(), makeParams(["receipts", "r-1.jpg"]));
+		const res = await GET(makeRequest(), makeParams(["projects", "r-1.jpg"]));
 		expect(res.status).toBe(200);
 		expect(res.headers.get("Content-Type")).toBe("image/jpeg");
 	});
 
 	it("returns correct content-type for .png", async () => {
-		const res = await GET(makeRequest(), makeParams(["receipts", "r-1.png"]));
+		const res = await GET(makeRequest(), makeParams(["projects", "r-1.png"]));
 		expect(res.status).toBe(200);
 		expect(res.headers.get("Content-Type")).toBe("image/png");
 	});
 
 	it("passes the joined file path to getFileStream", async () => {
-		await GET(makeRequest(), makeParams(["projects", "proj-abc-1234567890.webp"]));
+		await GET(
+			makeRequest(),
+			makeParams(["projects", "proj-abc-1234567890.webp"]),
+		);
 		expect(vi.mocked(getFileStream)).toHaveBeenCalledWith(
 			"projects/proj-abc-1234567890.webp",
 		);
@@ -70,9 +75,31 @@ describe("valid paths", () => {
 
 	it("returns 404 when the file does not exist in storage", async () => {
 		vi.mocked(getFileStream).mockRejectedValue(new Error("NoSuchKey"));
-		const res = await GET(makeRequest(), makeParams(["avatars", "missing.webp"]));
+		const res = await GET(
+			makeRequest(),
+			makeParams(["avatars", "missing.webp"]),
+		);
 		expect(res.status).toBe(404);
 	});
+});
+
+// ─── Only picture folders are public ───────────────────────────────────────
+
+describe("folders outside the allowlist → 404", () => {
+	const cases: string[][] = [
+		["exports", "user-1", "abcdef", "job-1"],
+		["exports", "x.webp"],
+		["receipts", "r-1.jpg"],
+		["uploads", "avatars", "u.webp"],
+		["avatars.evil", "u.webp"],
+	];
+	for (const segments of cases) {
+		it(`rejects ${segments.join("/")} without touching storage`, async () => {
+			const res = await GET(makeRequest(), makeParams(segments));
+			expect(res.status).toBe(404);
+			expect(vi.mocked(getFileStream)).not.toHaveBeenCalled();
+		});
+	}
 });
 
 // ─── Path traversal - SECURITY CRITICAL ───────────────────────────────────
@@ -124,12 +151,18 @@ describe("invalid characters in path → 404", () => {
 	});
 
 	it("rejects path with space", async () => {
-		const res = await GET(makeRequest(), makeParams(["avatars", "my file.webp"]));
+		const res = await GET(
+			makeRequest(),
+			makeParams(["avatars", "my file.webp"]),
+		);
 		expect(res.status).toBe(404);
 	});
 
 	it("rejects path with backslash", async () => {
-		const res = await GET(makeRequest(), makeParams(["avatars\\etc", "x.webp"]));
+		const res = await GET(
+			makeRequest(),
+			makeParams(["avatars\\etc", "x.webp"]),
+		);
 		expect(res.status).toBe(404);
 	});
 
@@ -153,7 +186,10 @@ describe("invalid characters in path → 404", () => {
 	it("rejects URL-encoded traversal (..%2F..%2Fetc)", async () => {
 		// Next.js URL-decodes path segments before passing to the handler,
 		// so %2F becomes "/" which makes the joined path contain ".."
-		const res = await GET(makeRequest(), makeParams(["..%2F..%2Fetc", "passwd"]));
+		const res = await GET(
+			makeRequest(),
+			makeParams(["..%2F..%2Fetc", "passwd"]),
+		);
 		expect(res.status).toBe(404);
 	});
 });

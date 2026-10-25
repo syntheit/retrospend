@@ -1,6 +1,11 @@
 import type { ExportRequest } from "@retrospend/api-contract";
 import { dayKey } from "~/lib/time-zone";
-import { deleteFile, uploadFile } from "~/server/storage";
+import {
+	newExportPath,
+	putExport,
+	removeExport,
+} from "~/server/export-storage";
+import { createLimiter } from "./limiter";
 import { scopedDbFor } from "./scoped-db";
 import { type BridgeCaller, trpcExpense, trpcExport } from "./trpc-bridge";
 
@@ -14,10 +19,6 @@ import { type BridgeCaller, trpcExpense, trpcExport } from "./trpc-bridge";
 type Built = { bytes: Buffer; fileName: string; contentType: string };
 
 const CSV = "text/csv; charset=utf-8";
-
-/** Where a job's file lives in the upload store. */
-export const storagePathFor = (userId: string, jobId: string) =>
-	`exports/${userId}/${jobId}`;
 
 const csv = (r: { csv: string; filename: string }): Built => ({
 	bytes: Buffer.from(r.csv, "utf8"),
@@ -73,7 +74,16 @@ function messageOf(error: unknown): string {
 	return text.slice(0, 500);
 }
 
-export async function runExportJob(jobId: string, userId: string) {
+/** At most this many documents are built at once; the rest wait as queued jobs. */
+export const MAX_CONCURRENT_BUILDS = 2;
+
+const limit = createLimiter(MAX_CONCURRENT_BUILDS);
+
+export function runExportJob(jobId: string, userId: string) {
+	return limit(() => buildAndStore(jobId, userId));
+}
+
+async function buildAndStore(jobId: string, userId: string) {
 	const db = scopedDbFor(userId);
 	// Claims the job, so a second runner never builds it again.
 	const claimed = await db.exportJob.updateMany({
@@ -89,8 +99,8 @@ export async function runExportJob(jobId: string, userId: string) {
 			{ principal: { userId }, timeZone: job.timeZone },
 			{ ...(job.params as object), kind: job.kind } as ExportRequest,
 		);
-		const path = storagePathFor(userId, jobId);
-		await uploadFile(path, built.bytes, built.contentType);
+		const path = newExportPath(userId, jobId);
+		await putExport(path, built.bytes);
 		const done = await db.exportJob.updateMany({
 			where: { id: jobId, userId },
 			data: {
@@ -103,7 +113,7 @@ export async function runExportJob(jobId: string, userId: string) {
 			},
 		});
 		// The owner deleted the job while it ran: nothing may keep the file.
-		if (done.count === 0) await deleteFile(path).catch(() => {});
+		if (done.count === 0) await removeExport(path).catch(() => {});
 	} catch (error) {
 		await db.exportJob
 			.updateMany({

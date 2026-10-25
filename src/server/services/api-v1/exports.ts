@@ -7,7 +7,8 @@ import {
 } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
-import { deleteFile, getFileStream } from "~/server/storage";
+import { after } from "next/server";
+import { openExport, removeExport } from "~/server/export-storage";
 import type { ExportJobStatus, Prisma } from "~prisma";
 import type { Caller } from "./caller";
 import { decodeCursor, toPage } from "./cursor";
@@ -22,6 +23,19 @@ import { runExportJob } from "./export-run";
  */
 
 const MAX_ACTIVE = 3;
+
+/**
+ * Runs `work` once the response is sent (Next's after, which keeps the
+ * server's work alive). Outside a request there is no response to wait for,
+ * as in tests and scripts, so it just starts.
+ */
+function afterResponse(work: () => Promise<void>) {
+	try {
+		after(work);
+	} catch {
+		void work();
+	}
+}
 
 /** A job that has not finished by now was lost with its process. */
 const STALE_MS = 15 * 60 * 1000;
@@ -93,7 +107,7 @@ async function purgeExpired(caller: Caller) {
 		select: { id: true, storagePath: true },
 	});
 	for (const job of expired) {
-		if (job.storagePath) await deleteFile(job.storagePath).catch(() => {});
+		if (job.storagePath) await removeExport(job.storagePath).catch(() => {});
 	}
 	if (expired.length > 0)
 		await caller.db.exportJob.deleteMany({
@@ -134,9 +148,11 @@ export async function requestExport(
 		},
 	});
 	// The request is answered now; the document is built after it.
-	void runExportJob(row.id, userId).catch((error) => {
-		console.error(`Export ${row.id} could not be recorded`, error);
-	});
+	afterResponse(() =>
+		runExportJob(row.id, userId).catch((error) => {
+			console.error(`Export ${row.id} could not be recorded`, error);
+		}),
+	);
 	return toDto(row);
 }
 
@@ -175,17 +191,11 @@ export async function getJob(caller: Caller, id: string) {
 
 export async function deleteJob(caller: Caller, id: string) {
 	const row = await readJob(caller, id);
-	if (row.storagePath) await deleteFile(row.storagePath).catch(() => {});
+	if (row.storagePath) await removeExport(row.storagePath).catch(() => {});
 	await caller.db.exportJob.deleteMany({
 		where: { id, userId: caller.principal.userId },
 	});
 	return { ok: true as const };
-}
-
-async function readAll(stream: NodeJS.ReadableStream): Promise<Buffer> {
-	const chunks: Buffer[] = [];
-	for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-	return Buffer.concat(chunks);
 }
 
 /** The finished file, for the job's owner with a link that is still valid. */
@@ -207,12 +217,11 @@ export async function downloadFile(
 		});
 	if (stateOf(row, new Date()) !== "ready" || !row.storagePath || !row.fileName)
 		throw notFound();
-	const bytes = await readAll(
-		await getFileStream(row.storagePath).catch(() => {
-			throw notFound();
-		}),
-	);
-	return new File([new Uint8Array(bytes)], row.fileName, {
+	// File-backed and lazy: the bytes are read as the response is sent, never held here.
+	const blob = await openExport(row.storagePath).catch(() => {
+		throw notFound();
+	});
+	return new File([blob], row.fileName, {
 		type: row.contentType ?? "application/octet-stream",
 	});
 }

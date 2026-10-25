@@ -245,6 +245,10 @@ describe("/api/v1/admin", () => {
 					metadata: {
 						field: "avatarPath",
 						title: SECRET,
+						shadowProfileName: SECRET,
+						guestName: SECRET,
+						guestEmail: `${SECRET}@x.test`,
+						fileName: `${SECRET}.csv`,
 						nested: { note: SECRET, kept: 1 },
 						targetUsername: "bob",
 					},
@@ -268,7 +272,6 @@ describe("/api/v1/admin", () => {
 		expect(first.items).toHaveLength(1);
 		expect(first.items[0]?.metadata).toEqual({
 			field: "avatarPath",
-			nested: { kept: 1 },
 			targetUsername: "bob",
 		});
 		const page = await read<{

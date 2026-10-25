@@ -150,6 +150,11 @@ export async function upload(
 	input: { file: File; source: ImportJobDto["source"] },
 ) {
 	const { file, source } = input;
+	if (file.name.length > 255)
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "The file name is longer than 255 characters",
+		});
 	const bytes = Buffer.from(await file.arrayBuffer());
 	const job = await new ImportQueueService(caller.db).createJob(
 		caller.principal.userId,

@@ -25,6 +25,9 @@ export const env = createEnv({
 		EMAIL_FROM: z.string().optional(),
 
 		UPLOAD_DIR: z.string().default("./uploads"),
+		// Finished API exports (zip, CSV, PDF). Never under UPLOAD_DIR, whose
+		// files /api/images serves without sign-in. Defaults to the OS temp dir.
+		EXPORT_DIR: z.string().optional(),
 
 		// Used to sign one-click unsubscribe tokens in notification emails
 		UNSUBSCRIBE_SECRET: z.string().optional(),
@@ -53,7 +56,10 @@ export const env = createEnv({
 		BETTER_AUTH_SECRET:
 			process.env.AUTH_SECRET ?? process.env.BETTER_AUTH_SECRET,
 		DATABASE_URL: process.env.DATABASE_URL,
-		SIDECAR_URL: process.env.SIDECAR_URL ?? process.env.WORKER_URL ?? process.env.IMPORTER_URL,
+		SIDECAR_URL:
+			process.env.SIDECAR_URL ??
+			process.env.WORKER_URL ??
+			process.env.IMPORTER_URL,
 		WORKER_API_KEY: process.env.WORKER_API_KEY,
 		NEXT_PUBLIC_SHOW_LANDING_PAGE:
 			process.env.SHOW_LANDING_PAGE ??
@@ -74,6 +80,7 @@ export const env = createEnv({
 		EMAIL_FROM: process.env.EMAIL_FROM,
 
 		UPLOAD_DIR: process.env.UPLOAD_DIR,
+		EXPORT_DIR: process.env.EXPORT_DIR,
 		UNSUBSCRIBE_SECRET: process.env.UNSUBSCRIBE_SECRET,
 		PUSH_ENDPOINT_ALLOW_HOSTS: process.env.PUSH_ENDPOINT_ALLOW_HOSTS,
 	},

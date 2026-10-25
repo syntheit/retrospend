@@ -3,9 +3,15 @@
  * carries a short-lived download link, the link opens only for its owner,
  * and an expired or foreign link, job or file opens nothing.
  */
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { GET as serveImage } from "~/app/api/images/[...path]/route";
+import { env } from "~/env";
 import { signExportLink } from "~/server/services/api-v1/export-link";
+import { sweepExpiredExports } from "~/server/services/api-v1/export-sweep";
+import { anonymizeAndDeleteUser } from "~/server/services/user-deletion.service";
 import {
 	adminDb,
 	asMobile,
@@ -16,27 +22,21 @@ import {
 	useApiV1,
 } from "../../core/__tests__/harness";
 
-// The upload store is a directory; the test keeps it in memory.
-const files = vi.hoisted(() => new Map<string, Buffer>());
-vi.mock("~/server/storage", async () => {
-	const { Readable } = await import("node:stream");
-	return {
-		uploadFile: vi.fn(async (path: string, buffer: Buffer) => {
-			files.set(path, buffer);
-			return path;
-		}),
-		deleteFile: vi.fn(async (path: string) => {
-			files.delete(path);
-		}),
-		getFileStream: vi.fn(async (path: string) => {
-			const found = files.get(path);
-			if (!found) throw new Error("missing");
-			return Readable.from(found);
-		}),
-		getStorageSize: vi.fn(async () => 0),
-		getImageUrl: vi.fn(() => null),
-	};
+// A real directory, outside the upload store, for this file's exports.
+const exportDir = await vi.hoisted(async () => {
+	const { mkdtempSync } = await import("node:fs");
+	const { tmpdir } = await import("node:os");
+	const { join } = await import("node:path");
+	const dir = mkdtempSync(join(tmpdir(), "g5a-exports-"));
+	process.env.EXPORT_DIR = dir;
+	return dir;
 });
+
+const onDisk = (path: string) => existsSync(join(exportDir, path));
+const putOnDisk = (path: string) => {
+	mkdirSync(dirname(join(exportDir, path)), { recursive: true });
+	writeFileSync(join(exportDir, path), "x");
+};
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -297,14 +297,14 @@ describe("/api/v1/exports", () => {
 		const row = await adminDb.exportJob.findUniqueOrThrow({
 			where: { id: job.id },
 		});
-		expect(files.has(row.storagePath ?? "")).toBe(true);
+		expect(onDisk(row.storagePath ?? "")).toBe(true);
 		const gone = await call(`/exports/jobs/${job.id}`, {
 			method: "DELETE",
 			headers: asAlice,
 			idempotent: true,
 		});
 		expect(gone.status).toBe(200);
-		expect(files.has(row.storagePath ?? "")).toBe(false);
+		expect(onDisk(row.storagePath ?? "")).toBe(false);
 		await expectProblem(
 			await call(`/exports/jobs/${job.id}`, { headers: asAlice }),
 			404,
@@ -320,11 +320,11 @@ describe("/api/v1/exports", () => {
 				timeZone: "UTC",
 				status: "READY",
 				fileName: "old.zip",
-				storagePath: "exports/old",
+				storagePath: `${alice}/oldrandom/old`,
 				expiresAt: new Date(Date.now() - 1000),
 			},
 		});
-		files.set("exports/old", Buffer.from("x"));
+		putOnDisk(`${alice}/oldrandom/old`);
 		const listed = await expectBody<{ items: Job[] }>(
 			await call("/exports/jobs", { headers: asAlice }),
 			e.listJobs,
@@ -334,6 +334,76 @@ describe("/api/v1/exports", () => {
 		await expect(
 			adminDb.exportJob.findUnique({ where: { id: old.id } }),
 		).resolves.toBeNull();
-		expect(files.has("exports/old")).toBe(false);
+		expect(onDisk(`${alice}/oldrandom/old`)).toBe(false);
+	});
+
+	it("keeps files out of the public image store and behind a random path", async () => {
+		const queued = await expectBody<Job>(
+			await request(asAlice, { kind: "data" }),
+			e.request,
+			202,
+		);
+		await untilDone(queued.id);
+		const row = await adminDb.exportJob.findUniqueOrThrow({
+			where: { id: queued.id },
+		});
+		expect(row.storagePath).toMatch(
+			new RegExp(`^${alice}/[0-9a-f]{32}/${queued.id}$`),
+		);
+		expect(onDisk(row.storagePath ?? "")).toBe(true);
+		// Not under UPLOAD_DIR, so /api/images could never reach it.
+		expect(relative(resolve(env.UPLOAD_DIR), exportDir).startsWith("..")).toBe(
+			true,
+		);
+		const res = await serveImage(new Request("http://localhost/api/images/x"), {
+			params: Promise.resolve({
+				path: ["exports", ...(row.storagePath ?? "").split("/")],
+			}),
+		});
+		expect(res.status).toBe(404);
+	});
+
+	it("sweeps every user's expired exports, not only the next requester's", async () => {
+		const bob = (await createTestUser()).user.id;
+		const make = async (userId: string, expiresAt: Date, tag: string) => {
+			const path = `${userId}/${tag}/job`;
+			putOnDisk(path);
+			return adminDb.exportJob.create({
+				data: {
+					userId,
+					kind: "data",
+					params: {},
+					timeZone: "UTC",
+					status: "READY",
+					fileName: "x.zip",
+					storagePath: path,
+					expiresAt,
+				},
+			});
+		};
+		const past = new Date(Date.now() - 60_000);
+		const future = new Date(Date.now() + 3_600_000);
+		const oldA = await make(alice, past, "sweepa");
+		const oldB = await make(bob, past, "sweepb");
+		const keep = await make(bob, future, "sweepkeep");
+		expect(await sweepExpiredExports()).toBeGreaterThanOrEqual(2);
+		for (const gone of [oldA, oldB]) {
+			await expect(
+				adminDb.exportJob.findUnique({ where: { id: gone.id } }),
+			).resolves.toBeNull();
+			expect(onDisk(gone.storagePath ?? "")).toBe(false);
+		}
+		await expect(
+			adminDb.exportJob.findUnique({ where: { id: keep.id } }),
+		).resolves.not.toBeNull();
+		expect(onDisk(keep.storagePath ?? "")).toBe(true);
+	});
+
+	it("removes a deleted user's export folder", async () => {
+		const gone = await createTestUser();
+		putOnDisk(`${gone.user.id}/rand/job`);
+		expect(onDisk(`${gone.user.id}/rand/job`)).toBe(true);
+		await anonymizeAndDeleteUser(adminDb, gone.user.id, gone.user.email, null);
+		expect(onDisk(gone.user.id)).toBe(false);
 	});
 });

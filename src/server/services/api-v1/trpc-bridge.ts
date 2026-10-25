@@ -3,7 +3,9 @@ import { expenseRouter } from "~/server/api/routers/expense";
 import { exportRouter } from "~/server/api/routers/export";
 import { feedbackRouter } from "~/server/api/routers/feedback";
 import { inviteRouter } from "~/server/api/routers/invite";
+import { TRPCError } from "@trpc/server";
 import { createCallerFactory } from "~/server/api/trpc";
+import type { Session } from "~/server/better-auth/config";
 import { db } from "~/server/db";
 
 /**
@@ -21,8 +23,14 @@ export type BridgeCaller = {
 	timeZone: string;
 };
 
+/** The part of a web session the procedures above read. */
+type BridgeUser = Pick<
+	Session["user"],
+	"id" | "name" | "email" | "username" | "role" | "isActive" | "timeZone"
+>;
+
 async function contextFor(caller: BridgeCaller) {
-	const user = await db.user.findUniqueOrThrow({
+	const row = await db.user.findUnique({
 		where: { id: caller.principal.userId },
 		select: {
 			id: true,
@@ -33,13 +41,14 @@ async function contextFor(caller: BridgeCaller) {
 			isActive: true,
 		},
 	});
+	// A user deleted while the request ran is a sign-in problem, not a crash.
+	if (!row) throw new TRPCError({ code: "UNAUTHORIZED" });
+	const user: BridgeUser = { ...row, timeZone: caller.timeZone };
 	return {
 		db,
 		headers: new Headers(),
-		// The shape protectedProcedure reads; the rest of a web session is unused.
-		session: {
-			user: { ...user, timeZone: caller.timeZone },
-		} as never,
+		// protectedProcedure reads only `user`; the session row is not needed.
+		session: { user } as unknown as Session,
 	};
 }
 

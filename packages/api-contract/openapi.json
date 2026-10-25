@@ -47,6 +47,7 @@
 							"api_disabled",
 							"not_found",
 							"conflict",
+							"payload_too_large",
 							"idempotency_in_progress",
 							"idempotency_replay_unavailable",
 							"idempotency_key_reused",

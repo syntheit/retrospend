@@ -108,6 +108,13 @@ const ENV_GROUPS: EnvGroup[] = [
 				description:
 					"Directory path for uploaded files. Mounted as a Docker volume.",
 			},
+			{
+				name: "EXPORT_DIR",
+				required: false,
+				default: "/data/exports",
+				description:
+					"Directory for finished data exports, kept 24 hours. Must not be inside UPLOAD_DIR, which is public.",
+			},
 		],
 	},
 	{
