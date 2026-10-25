@@ -1,5 +1,7 @@
 "use client";
 
+import { createRetrospendClient } from "@retrospend/api-client";
+import { ApiProvider } from "@retrospend/api-client/react";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchStreamLink, loggerLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
@@ -98,9 +100,21 @@ function TRPCProviderInner(props: {
 		}),
 	);
 
+	// The same-origin /api/v1 client: the browser's session cookie signs it in.
+	// ApiProvider invalidates v1 queries by event type after each v1 mutation.
+	const [v1Client] = useState(() =>
+		createRetrospendClient({
+			baseUrl: getBaseUrl(),
+			authHeaders: (): Record<string, string> => {
+				const timeZone = browserTimeZone();
+				return timeZone ? { "x-timezone": timeZone } : {};
+			},
+		}),
+	);
+
 	return (
 		<api.Provider client={trpcClient} queryClient={queryClient}>
-			{props.children}
+			<ApiProvider client={v1Client}>{props.children}</ApiProvider>
 		</api.Provider>
 	);
 }

@@ -400,5 +400,31 @@
 			"confirmBody": "Sie läuft nicht mehr auf neues Geld. Was sie schon zugewiesen hat, bleibt, wie es ist.",
 			"confirmButton": "Regel entfernen"
 		}
+	},
+	"webhook": {
+		"test": {
+			"label": "Testzustellung senden"
+		},
+		"deliveries": {
+			"label": "Zustellungen ansehen"
+		},
+		"turnOff": {
+			"label": "Ausschalten"
+		},
+		"turnOn": {
+			"label": "Einschalten"
+		},
+		"rotateSecret": {
+			"label": "Geheimnis erneuern",
+			"confirmTitle": "Geheimnis von {name} erneuern?",
+			"confirmBody": "Das alte Geheimnis funktioniert sofort nicht mehr. Damit signierte Zustellungen schlagen fehl, bis dein Empfänger das neue nutzt.",
+			"confirmButton": "Geheimnis erneuern"
+		},
+		"delete": {
+			"label": "Webhook löschen",
+			"confirmTitle": "{name} löschen?",
+			"confirmBody": "Er empfängt keine Ereignisse mehr und sein Zustellprotokoll wird gelöscht. Das lässt sich nicht rückgängig machen.",
+			"confirmButton": "Webhook löschen"
+		}
 	}
 }

@@ -37,12 +37,15 @@ export function useTokenWords() {
 export function TokenBlock({
 	title,
 	first,
+	action,
 	state,
 	empty,
 	children,
 }: {
 	title: string;
 	first?: boolean;
+	/** One small secondary Button at the end of the heading (New API key). */
+	action?: ReactNode;
 	state: {
 		isLoading: boolean;
 		isError: boolean;
@@ -54,14 +57,10 @@ export function TokenBlock({
 }) {
 	return (
 		<>
-			<h3
-				className={cn(
-					"mb-1 font-semibold text-fg-2 text-small",
-					!first && "mt-6",
-				)}
-			>
-				{title}
-			</h3>
+			<div className={cn("mb-1 flex min-h-ctl items-center gap-3", !first && "mt-6")}>
+				<h3 className="flex-1 font-semibold text-fg-2 text-small">{title}</h3>
+				{action}
+			</div>
 			{state.isLoading ? (
 				<SkeletonRows count={1} />
 			) : state.isError ? (
