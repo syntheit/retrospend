@@ -273,7 +273,7 @@ export const rejectPayment: MoneyMutation<RejectPaymentInput, RejectedPayment> =
 			await logGroupAction(tx, me, group, {
 				action: "REJECTED",
 				context: "settlement_rejected",
-				changes: { reason: input.reason ?? null },
+				// The reason is user text: it lives in settlement.rejectedReason, not in audit JSON.
 			});
 			await reopenUnsettledPeriods(
 				tx,

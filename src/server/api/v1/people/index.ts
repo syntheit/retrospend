@@ -1,12 +1,13 @@
 import * as people from "~/server/services/api-v1/people";
+import {
+	EMAIL_CHECKS,
+	emailCheckKey,
+} from "~/server/services/shadow-profile.service";
 import { serve } from "../core/serve";
 import { signedIn, v1 } from "../middleware";
 import { enforceRateLimit } from "../rate-limit";
 
 const p = v1.people;
-
-/** Adding a person with an email: at most 20 an hour per user. */
-const EMAIL_CHECKS = { limit: 20, windowMs: 60 * 60_000 } as const;
 
 export const peopleRouter = {
 	list: p.list.handler(
@@ -33,7 +34,7 @@ export const peopleRouter = {
 			// An email is a lookup against every account, so it is metered apart.
 			if (input.email)
 				await enforceRateLimit(
-					`people-email:${user.principal.userId}`,
+					emailCheckKey(user.principal.userId),
 					EMAIL_CHECKS,
 					context.resHeaders,
 				);

@@ -18,8 +18,10 @@ import {
 } from "~/server/services/entry/shared.mutation";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { VerificationService } from "~/server/services/shared-expenses/verification.service";
+import { exactAmount } from "./amounts";
 import type { Caller } from "./caller";
-import { applyWrite, previewWrite, undoFor } from "./money-write";
+import { applyWrite, previewWrite, spendUndo, undoFor } from "./money-write";
+import { guardedShared } from "./shared-guard";
 import { readUndo } from "./undo";
 
 /**
@@ -45,7 +47,9 @@ const refOf = (p: { type: "user" | "guest" | "shadow"; id: string }) => ({
 function splitOf(body: CreateBody | UpdateBody) {
 	return body.splitWith.map((s) => ({
 		...refOf(s),
-		...(s.shareAmount !== undefined && { shareAmount: Number(s.shareAmount) }),
+		...(s.shareAmount !== undefined && {
+			shareAmount: exactAmount(s.shareAmount, body.currency, "shareAmount"),
+		}),
 		...(s.sharePercentage !== undefined && {
 			sharePercentage: Number(s.sharePercentage),
 		}),
@@ -59,7 +63,7 @@ function createInput(
 ): CreateSharedInput {
 	return {
 		id: body.id,
-		amount: Number(body.amount),
+		amount: exactAmount(body.amount, body.currency),
 		currency: body.currency,
 		description: body.description,
 		categoryId: body.categoryId,
@@ -78,7 +82,7 @@ function updateInput(
 ): UpdateSharedInput {
 	return {
 		id: body.id,
-		amount: Number(body.amount),
+		amount: exactAmount(body.amount, body.currency),
 		currency: body.currency,
 		description: body.description,
 		categoryId: body.categoryId ?? null,
@@ -115,18 +119,20 @@ const dryRun = <I extends Deferred, V>(
 export async function addSharedExpense(caller: LedgerCaller, body: CreateBody) {
 	const value = await save(
 		caller,
-		createSharedExpense,
+		guardedShared(createSharedExpense),
 		createInput(caller, body),
 	);
 	return {
 		id: value.id,
 		backdatedPeriod: value.backdatedPeriod,
 		// Undoing right away is a retraction, like the web's: the debt it made goes
-		// with it (confirmUnsettled) and the people on it see nothing happen.
+		// with it (confirmUnsettled) and the people on it see nothing happen. It
+		// runs only while the expense is as this write left it.
 		undo: undoFor(caller, FAMILY, "shared.delete", {
 			id: value.id,
 			confirmUnsettled: true,
 			retract: true,
+			expectedUpdatedAt: value.updatedAt ?? undefined,
 		}),
 	};
 }
@@ -142,13 +148,16 @@ export async function replaceSharedExpense(
 ) {
 	const value = await save(
 		caller,
-		updateSharedExpense,
+		guardedShared(updateSharedExpense),
 		updateInput(caller, body),
 	);
 	return {
 		id: value.id,
 		backdatedPeriod: null,
-		undo: undoFor(caller, FAMILY, "shared.update", value.restore),
+		undo: undoFor(caller, FAMILY, "shared.update", {
+			restore: value.restore,
+			expectedUpdatedAt: value.updatedAt ?? undefined,
+		}),
 	};
 }
 
@@ -182,8 +191,9 @@ const invalidUndo = () =>
 /** A restore as the token carries it (JSON turns its date into text). */
 type StoredRestore = Omit<SharedRestore, "date"> & { date: string };
 
-function restoreOf(input: unknown): UpdateSharedInput {
-	const stored = input as StoredRestore;
+type Stamped = { expectedUpdatedAt?: string };
+
+function restoreOf(stored: StoredRestore): UpdateSharedInput {
 	return { ...stored, date: new Date(stored.date) };
 }
 
@@ -192,31 +202,43 @@ type Inverse = {
 	apply: () => Promise<{ id: string; redo: string | null }>;
 };
 
-/** The inverse call a token names, ready to preview or to apply. */
+/**
+ * The inverse call a token names, ready to preview or to apply. It runs only
+ * while the expense is as the write the token came from left it, so an old
+ * token can never put old values over a newer edit.
+ */
 function inverseOf(caller: Caller, op: string, input: unknown): Inverse {
 	if (op === "shared.delete") {
-		const args = input as {
+		const { expectedUpdatedAt, ...args } = input as {
 			id: string;
 			confirmUnsettled?: boolean;
 			retract?: boolean;
-		};
+		} & Stamped;
+		const mutation = guardedShared(deleteSharedExpense, expectedUpdatedAt);
 		return {
-			preview: () => dryRun(caller, deleteSharedExpense, args),
+			preview: () => dryRun(caller, mutation, args),
 			apply: async () => {
-				const value = await save(caller, deleteSharedExpense, args);
+				const value = await save(caller, mutation, args);
 				return { id: value.id, redo: null };
 			},
 		};
 	}
 	if (op === "shared.update") {
-		const args = restoreOf(input);
+		const { restore, expectedUpdatedAt } = input as {
+			restore: StoredRestore;
+		} & Stamped;
+		const args = restoreOf(restore);
+		const mutation = guardedShared(updateSharedExpense, expectedUpdatedAt);
 		return {
-			preview: () => dryRun(caller, updateSharedExpense, args),
+			preview: () => dryRun(caller, mutation, args),
 			apply: async () => {
-				const value = await save(caller, updateSharedExpense, args);
+				const value = await save(caller, mutation, args);
 				return {
 					id: value.id,
-					redo: undoFor(caller, FAMILY, "shared.update", value.restore),
+					redo: undoFor(caller, FAMILY, "shared.update", {
+						restore: value.restore,
+						expectedUpdatedAt: value.updatedAt ?? undefined,
+					}),
 				};
 			},
 		};
@@ -224,9 +246,10 @@ function inverseOf(caller: Caller, op: string, input: unknown): Inverse {
 	throw invalidUndo();
 }
 
+/** Each token works once, and only against the state it left. */
 export function undoSharedExpenseWrite(caller: Caller, token: string) {
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
-	return inverseOf(caller, op, input).apply();
+	return spendUndo(caller, token, () => inverseOf(caller, op, input).apply());
 }
 
 export function previewUndoSharedExpenseWrite(caller: Caller, token: string) {

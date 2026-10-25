@@ -365,6 +365,110 @@ describe("/api/v1/shared-expenses", () => {
 		expect(await owedToYou()).toBe(before - 4500);
 	});
 
+	it("refuses an undo that would wipe a newer edit, and spends a token once", async () => {
+		const made = await add({ description: "Dinner" });
+		const edit = (amount: string, description: string) => ({
+			...body({ amount, description }),
+			id: made.id,
+		});
+		const first = await expectBody<Write>(
+			await put(`/shared-expenses/${made.id}`, edit("120", "Edited")),
+			c.update,
+		);
+		const latest = await expectBody<Write>(
+			await put(`/shared-expenses/${made.id}`, edit("150", "Latest")),
+			c.update,
+		);
+		// The first edit's undo would restore 90 "Dinner" over the newer edit.
+		await expectProblem(
+			await post("/shared-expenses/undo", { token: first.undo }),
+			409,
+			"conflict",
+		);
+		await expectProblem(
+			await post("/shared-expenses/undo/preview", { token: first.undo }),
+			409,
+			"conflict",
+		);
+		expect(Number((await row(made.id))?.amount)).toBe(150);
+		expect((await row(made.id))?.description).toBe("Latest");
+
+		// The latest edit's undo works once; the same token again does not.
+		const before = await owedToYou();
+		await expectBody(
+			await post("/shared-expenses/undo", { token: latest.undo }),
+			c.undo,
+		);
+		expect(Number((await row(made.id))?.amount)).toBe(120);
+		const after = await owedToYou();
+		await expectProblem(
+			await post("/shared-expenses/undo", { token: latest.undo }),
+			409,
+			"conflict",
+		);
+		expect(await owedToYou()).toBe(after);
+		expect(after).toBe(before - 1500);
+	});
+
+	it("refuses more decimals than the currency has, and amounts a float cannot hold", async () => {
+		const usd = (over: Record<string, unknown>) =>
+			post("/shared-expenses", body({ currency: "USD", ...over }));
+		await expectProblem(await usd({ amount: "10.005" }), 400, "bad_request");
+		await expectProblem(
+			await post("/shared-expenses", body({ amount: "1234567890.12345678" })),
+			400,
+			"bad_request",
+		);
+		await expectProblem(
+			await usd({
+				amount: "10",
+				splitMode: "EXACT",
+				splitWith: [
+					{ type: "user", id: sofia.user.id, shareAmount: "5.005" },
+					{ type: "user", id: martin.user.id, shareAmount: "4.995" },
+				],
+			}),
+			400,
+			"bad_request",
+		);
+		await expectProblem(
+			await put(`/shared-expenses/x`, {
+				...body({ currency: "USD", amount: "0.001" }),
+				id: "x",
+			}),
+			400,
+			"bad_request",
+		);
+		// What the currency has is stored exactly.
+		const ok = await expectBody<Write>(
+			await usd({ amount: "10.01" }),
+			c.create,
+			201,
+		);
+		expect(Number((await row(ok.id))?.amount)).toBe(10.01);
+		const exact = await expectBody<Write>(
+			await post("/shared-expenses", body({ amount: "1234567890.12" })),
+			c.create,
+			201,
+		);
+		expect((await row(exact.id))?.amount.toString()).toBe("1234567890.12");
+	});
+
+	it("will not retract an add that someone already answered", async () => {
+		const made = await add({ description: "Answered" });
+		await waiting(made.id);
+		await expectBody(
+			await post(`/shared-expenses/${made.id}/accept`, {}, asMartin),
+			c.accept,
+		);
+		await expectProblem(
+			await post("/shared-expenses/undo", { token: made.undo }),
+			409,
+			"conflict",
+		);
+		expect(await row(made.id)).not.toBeNull();
+	});
+
 	it("needs write:expenses to write", async () => {
 		const readOnly = await asKey(sofia.user.id, ["read"]);
 		await expectProblem(

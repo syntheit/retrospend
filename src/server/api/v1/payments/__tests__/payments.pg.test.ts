@@ -157,6 +157,33 @@ describe("/api/v1/payments", () => {
 		).resolves.toBe(1);
 	});
 
+	it("refuses an amount with more decimals than the currency has", async () => {
+		await expectProblem(
+			await post("/payments/preview", pay({ amount: "400.005" })),
+			400,
+			"bad_request",
+		);
+		await expectProblem(
+			await post("/payments", pay({ amount: "400.005" })),
+			400,
+			"bad_request",
+		);
+		const sent = await record({ amount: "400.5" });
+		await expectProblem(
+			await post(
+				`/payments/${sent.id}/confirm`,
+				{ id: sent.id, amount: "1.005" },
+				asMartin,
+			),
+			400,
+			"bad_request",
+		);
+		await expectBody(
+			await post("/payments/undo", { token: sent.undo }),
+			c.undo,
+		);
+	});
+
 	it("uses a client-made id once", async () => {
 		const id = randomUUID();
 		const made = await record({ id, amount: "50" });
@@ -202,6 +229,14 @@ describe("/api/v1/payments", () => {
 		await expectBody(
 			await post("/payments/undo", { token: undone.redo }, asMartin),
 			c.undo,
+		);
+		await expect(status(sent.id)).resolves.toBe("FINALIZED");
+		// The first token is spent: using it again would unconfirm what was
+		// just confirmed again.
+		await expectProblem(
+			await post("/payments/undo", { token: confirmed.undo }, asMartin),
+			409,
+			"conflict",
 		);
 		await expect(status(sent.id)).resolves.toBe("FINALIZED");
 	});

@@ -35,8 +35,15 @@ import {
 	type GroupRow,
 	groupCounterparty,
 } from "~/server/services/shared-expenses/settlement-groups";
+import { assertMinorUnits } from "./amounts";
 import type { Caller } from "./caller";
-import { applyWrite, previewWrite, toPreviewDto, undoFor } from "./money-write";
+import {
+	applyWrite,
+	previewWrite,
+	spendUndo,
+	toPreviewDto,
+	undoFor,
+} from "./money-write";
 import { thaw } from "./thaw";
 import { readUndo } from "./undo";
 
@@ -54,6 +61,7 @@ type NotReceivedBody = z.infer<typeof notReceivedSchema>;
 const FAMILY = "payment" as const;
 
 function recordInput(body: RecordBody) {
+	assertMinorUnits(body.amount, body.currency);
 	return {
 		id: body.id,
 		person: {
@@ -167,7 +175,23 @@ const allocationOf = (a: AllocationView | null) => (a ? thaw(a) : null);
 
 // ── Confirm ─────────────────────────────────────────────────────────────────
 
+/** A received amount is checked against the payment's own currency. */
+async function checkConfirmAmount(caller: Caller, body: ConfirmBody) {
+	if (!body.amount) return;
+	const header =
+		(await caller.db.payment.findUnique({
+			where: { id: body.id },
+			select: { currency: true },
+		})) ??
+		(await caller.db.settlement.findUnique({
+			where: { id: body.id },
+			select: { currency: true },
+		}));
+	if (header) assertMinorUnits(body.amount, header.currency);
+}
+
 export async function confirmPaymentWrite(caller: Caller, body: ConfirmBody) {
+	await checkConfirmAmount(caller, body);
 	const input = confirmInput(body);
 	const { value } = await applyConfirm(
 		caller.db,
@@ -193,6 +217,7 @@ function confirmed(
 }
 
 export async function previewConfirmPayment(caller: Caller, body: ConfirmBody) {
+	await checkConfirmAmount(caller, body);
 	const preview = await previewConfirm(
 		caller.db,
 		caller.principal.userId,
@@ -235,7 +260,6 @@ export async function paymentNotReceived(
 		reason: body.reason,
 		person,
 	});
-	// The notice carries no reason: it is text the person typed (E2EE rule 3).
 	await new SettlementService(
 		caller.db,
 		caller.principal.userId,
@@ -348,9 +372,10 @@ function inverseOf(caller: Caller, op: string, input: unknown): Inverse {
 	throw invalidUndo();
 }
 
+/** Each token works once: a second use would undo what its redo just did. */
 export function undoPaymentWrite(caller: Caller, token: string) {
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
-	return inverseOf(caller, op, input).apply();
+	return spendUndo(caller, token, () => inverseOf(caller, op, input).apply());
 }
 
 export function previewUndoPaymentWrite(caller: Caller, token: string) {

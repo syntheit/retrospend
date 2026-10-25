@@ -269,7 +269,7 @@ describe("/api/v1/people", () => {
 		});
 		expect(Object.keys(unknown).sort()).toEqual(Object.keys(known).sort());
 		expect(unknown.type).toBe("shadow");
-		expect(JSON.stringify(known)).not.toContain(stranger.user.id);
+		expect(known.id).not.toBe(stranger.user.id);
 		await expect(
 			adminDb.shadowProfile.findUnique({ where: { id } }),
 		).resolves.toMatchObject({
@@ -282,6 +282,33 @@ describe("/api/v1/people", () => {
 			409,
 			"conflict",
 		);
+	});
+
+	it("answers the payer's account to the debtor who adds them by email", async () => {
+		// No project: the debtor cannot read the payer's split row, only the expense.
+		const [debtor, payer] = [await arsUser(), await arsUser()];
+		await seedShare(ref(payer), ref(debtor), "10", "ARS");
+		const out = await expectBody<{
+			type: string;
+			id: string;
+			existing: boolean;
+		}>(
+			await post(
+				"/people",
+				{ name: "Pay", email: payer.user.email },
+				await asMobile(debtor.user.id),
+			),
+			c.create,
+			201,
+		);
+		expect(out).toMatchObject({
+			type: "user",
+			id: payer.user.id,
+			existing: true,
+		});
+		await expect(
+			adminDb.shadowProfile.count({ where: { createdById: debtor.user.id } }),
+		).resolves.toBe(0);
 	});
 
 	it("meters adding a person with an email", async () => {

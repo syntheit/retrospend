@@ -306,6 +306,12 @@ describe("/api/v1/projects", () => {
 			c.undoSettleAll,
 		);
 		expect(undone).toEqual({ undone: 2, redo: null });
+		// A token works once, even when its payments are back by then.
+		await expectProblem(
+			await post(`/projects/${trip}/settle-all/undo`, { token: done.undo }),
+			409,
+			"conflict",
+		);
 		await expect(paymentCount()).resolves.toBe(0);
 		expect(await owed()).toEqual(before);
 	});

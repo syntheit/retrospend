@@ -16,7 +16,7 @@ import { undoSettleAllInProject } from "~/server/services/project/settle-all-und
 import { getProjectSummary } from "~/server/services/project/summary.service";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import type { Caller } from "./caller";
-import { toPreviewDto, undoFor } from "./money-write";
+import { spendUndo, toPreviewDto, undoFor } from "./money-write";
 import { thaw } from "./thaw";
 import { readUndo } from "./undo";
 
@@ -229,8 +229,11 @@ export async function undoSettleAllWrite(
 ) {
 	const args = undoInputOf(caller, id, token);
 	await asMember(caller, id, "CONTRIBUTOR");
-	const { value } = await undoSettleAll(caller.principal.userId, args);
-	return { undone: value.undone, redo: null };
+	// Each token works once.
+	return spendUndo(caller, token, async () => {
+		const { value } = await undoSettleAll(caller.principal.userId, args);
+		return { undone: value.undone, redo: null };
+	});
 }
 
 export async function previewUndoSettleAllWrite(

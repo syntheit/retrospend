@@ -34,15 +34,31 @@ export type AddShadowResult =
  */
 export type AccountPolicy = "reveal" | "protect";
 
-/** Whether the caller can already see this account through a shared split or project. */
+/**
+ * Whether the caller already shares expenses or a project with this account.
+ * Row level security hides other people's split rows (you see your own, and
+ * the others only in a project you share), so the expense itself is asked:
+ * its payer and creator are on it, and the caller can read every expense they
+ * are in.
+ */
 async function isConnected(
 	db: PrismaClient,
 	userId: string,
 	accountId: string,
 ) {
-	const [split, project] = await Promise.all([
-		db.splitParticipant.findFirst({
-			where: { participantType: "user", participantId: accountId },
+	const [shared, project] = await Promise.all([
+		db.sharedTransaction.findFirst({
+			where: {
+				OR: [
+					{ paidByType: "user", paidById: accountId },
+					{ createdByType: "user", createdById: accountId },
+					{
+						splitParticipants: {
+							some: { participantType: "user", participantId: accountId },
+						},
+					},
+				],
+			},
 			select: { id: true },
 		}),
 		db.projectParticipant.findFirst({
@@ -58,8 +74,15 @@ async function isConnected(
 			select: { id: true },
 		}),
 	]);
-	return split !== null || project !== null;
+	return shared !== null || project !== null;
 }
+
+/**
+ * Adding a person by email asks whether the email has an account, so it is
+ * metered per user, on every transport: 20 an hour.
+ */
+export const EMAIL_CHECKS = { limit: 20, windowMs: 60 * 60_000 } as const;
+export const emailCheckKey = (userId: string) => `people-email:${userId}`;
 
 export async function addShadow(
 	db: PrismaClient,

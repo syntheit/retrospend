@@ -4,7 +4,7 @@
  * taken back, voided or rejected by each leaves the same rows, the same
  * header and the same audit entry. Each case sets up two identical pairs.
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	arsUser,
 	ref,
@@ -122,6 +122,35 @@ describe("payment reversals: one implementation for tRPC and v1", () => {
 		const [logA, logB] = [await logged(rowA), await logged(rowB)];
 		expect(logA.map((e) => e[0])).toContain("REJECTED");
 		expect(logB).toEqual(logA);
+	});
+
+	it("keeps the typed reason out of the audit JSON and the notice", async () => {
+		const a = await pair();
+		const id = await pending(a);
+		const row = await leadRow(id);
+		const reason = "secret words nobody else should read";
+		await new SettlementService(a.payee.db, a.payee.user.id).rejectSettlement(
+			row,
+			reason,
+		);
+		// It is kept in its own column ...
+		await expect(
+			adminDb.settlement.findUnique({ where: { id: row } }),
+		).resolves.toMatchObject({ rejectedReason: reason });
+		// ... and in neither the audit JSON ...
+		const entries = await adminDb.auditLogEntry.findMany({
+			where: { targetId: row },
+		});
+		expect(JSON.stringify(entries)).not.toContain(reason);
+		// ... nor the notice the payer gets, which is built from the name and amount.
+		const notice = await vi.waitFor(async () => {
+			const found = await adminDb.notification.findFirst({
+				where: { userId: a.payer.user.id, type: "SETTLEMENT_REJECTED" },
+			});
+			if (!found) throw new Error("no notice yet");
+			return found;
+		});
+		expect(JSON.stringify(notice)).not.toContain(reason);
 	});
 
 	it("refuses the same people the same way", async () => {

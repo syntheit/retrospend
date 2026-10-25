@@ -386,7 +386,7 @@ export class SettlementService {
 			settlementId,
 			{ reason },
 		);
-		await this.notifyRejected([...rows], lead, reason);
+		await this.notifyRejected([...rows], lead);
 		return {
 			...lead,
 			status: "REJECTED" as const,
@@ -397,12 +397,12 @@ export class SettlementService {
 
 	/**
 	 * Tells the person who recorded a rejected payment, once for the whole
-	 * group. Without a reason the notice carries no typed text.
+	 * group. The text is built from the name and the amount only: the reason
+	 * is text the person typed, and it stays on the settlement row.
 	 */
 	async notifyRejected(
 		rows: Parameters<typeof describeGroupAmount>[0],
 		lead: { id: string; paymentGroupId: string | null },
-		reason?: string,
 	) {
 		const other = groupCounterparty(rows, this.userId);
 		if (other?.participantType !== "user") return;
@@ -411,7 +411,7 @@ export class SettlementService {
 			userId: other.participantId,
 			type: "SETTLEMENT_REJECTED",
 			title: "Settlement rejected",
-			body: `${myName} rejected your settlement of ${describeGroupAmount(rows, other.participantId)}${reason ? `: ${reason}` : ""}`,
+			body: `${myName} rejected your settlement of ${describeGroupAmount(rows, other.participantId)}`,
 			data: {
 				settlementId: lead.id,
 				paymentGroupId: lead.paymentGroupId,
