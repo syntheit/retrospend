@@ -403,10 +403,41 @@ model BudgetBook {
   incomeRules     IncomeRule[]
   incomeRuleRuns  IncomeRuleRun[]
   payoffPlan      PayoffPlan?
+  envelopeChanges EnvelopeChange[]
 
   @@index([createdById])
   @@index([currency])
   @@map("budget_book")
+}
+
+// What an envelope edit changed, kept server side so its undo is exact and a
+// client never supplies the old state. `id` is the client id of the edit, so a
+// retry is idempotent. `before` carries ids, amounts and flags only (E2EE rule
+// 10); the one user-text value, a name before a rename, has its own column.
+model EnvelopeChange {
+  id           String             @id
+  bookId       String
+  kind         EnvelopeChangeKind
+  // No foreign key: undoing a create deletes the envelope.
+  envelopeId   String?
+  previousName String?
+  before       Json
+  actorUserId  String
+  createdAt    DateTime           @default(now())
+  undoneAt     DateTime?
+  book         BudgetBook         @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId, createdAt])
+  @@map("envelope_change")
+}
+
+enum EnvelopeChangeKind {
+  SET_TARGET
+  CREATE
+  UPDATE
+  MERGE
+  ARCHIVE
+  CONFIRM_STARTING_MONEY
 }
 
 // Start day and rate type in force from a budget month on (SPEC §5.1, B7).

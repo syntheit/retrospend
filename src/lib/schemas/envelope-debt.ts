@@ -101,6 +101,8 @@ export const payoffProjectionSchema = z.object({
 	debtFreeMonth: monthKeySchema.nullable(),
 	months: z.number().int(),
 	capped: z.boolean(),
+	/** The minimums fall so far short of the interest that balances grow without bound: "never paid off at this payment". The schedule stops early; months and totals are where it stopped. */
+	diverges: z.boolean(),
 	/** In the book currency at today's rate. */
 	totalDebt: moneySchema,
 	totalInterest: moneySchema,

@@ -95,6 +95,13 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"envelope.unapplyDraft": ENVELOPE_DEPS,
 	"envelope.fundPlanNow": ENVELOPE_DEPS,
 	"envelope.setGroupTarget": ENVELOPE_DEPS,
+	"envelope.setTarget": ENVELOPE_DEPS,
+	"envelope.createEnvelope": ENVELOPE_DEPS,
+	"envelope.updateEnvelope": ENVELOPE_DEPS,
+	"envelope.mergeEnvelopes": ["dashboard", "stats", "project"],
+	"envelope.archiveEnvelope": ["dashboard", "stats", "project"],
+	"envelope.undoChange": ["dashboard", "stats", "project", "expense"],
+	"envelope.confirmStartingMoney": ["dashboard", "expense"],
 	// Style, period and routing change what reports group and the dashboard shows.
 	"envelope.setStyle": ["dashboard", "stats"],
 	"envelope.revertStyle": ["dashboard", "stats"],
