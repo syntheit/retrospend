@@ -201,7 +201,7 @@ describe("/api/v1/expenses", () => {
 		await expectProblem(
 			await create(asAlice, body(food, { id, title: "Again" })),
 			409,
-			"conflict",
+			"id_taken",
 		);
 	});
 

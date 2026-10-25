@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/auth/session";
 import { subscribeEntryChanges } from "./events";
-import { flushEntries } from "./queue";
+import { exclusive, flushEntries } from "./queue";
 import { type ParkedEntry, parkedFrom } from "./parked-entry";
 import { isEntryEntity } from "./send";
 
@@ -57,7 +57,8 @@ export function useParkedEntries() {
 	const discard = useCallback(
 		async (clientId: string) => {
 			if (!local) return;
-			await local.outbox.discard(clientId);
+			// Alone on the outbox, like a flush: not while a send is in flight.
+			await exclusive(local.outbox, () => local.outbox.discard(clientId));
 			refresh();
 		},
 		[local, refresh],

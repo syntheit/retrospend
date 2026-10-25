@@ -204,9 +204,9 @@ describe("saveEntry", () => {
 
 	it("treats an id the server already holds as sent", async () => {
 		const outbox = setup();
-		const taken = Object.assign(new Error("That id or name is already used"), {
+		const taken = Object.assign(new Error("That id is already used"), {
 			status: 409,
-			code: "conflict",
+			code: "id_taken",
 		});
 		const { api } = fakeServer({ refuse: taken });
 		const outcome = await saveEntry({ outbox, api, write: coffee });
@@ -301,6 +301,47 @@ describe("undoSaved", () => {
 		await saveEntry({ outbox, api: server.api, write: coffee });
 		const down = fakeServer({ refuse: offline() });
 		expect(await undoSaved({ outbox, api: down.api, clientId: ID })).toBe(
+			"failed",
+		);
+		expect(await outbox.all()).toHaveLength(1);
+	});
+
+	it("keeps a write whose replay the server can not give back, and says failed", async () => {
+		const outbox = setup();
+		const lost = fakeServer({ failFirst: offline });
+		await saveEntry({ outbox, api: lost.api, write: coffee });
+		// The key's stored answer is gone: the server may well hold the write.
+		const gone = fakeServer({
+			refuse: Object.assign(new Error("not stored"), {
+				status: 409,
+				code: "idempotency_replay_unavailable",
+			}),
+		});
+		expect(await undoSaved({ outbox, api: gone.api, clientId: ID })).toBe(
+			"failed",
+		);
+		const kept = await outbox.all();
+		expect(kept).toHaveLength(1);
+		// Parked, so Couldn't sync shows it.
+		expect(kept[0]).toMatchObject({
+			clientId: ID,
+			state: "conflict",
+			lastError: "idempotency_replay_unavailable",
+		});
+	});
+
+	it("keeps a write the server keeps answering 5xx for, and says failed", async () => {
+		const outbox = setup();
+		const lost = fakeServer({ failFirst: offline });
+		await saveEntry({ outbox, api: lost.api, write: coffee });
+		for (let i = 0; i < 3; i++) await outbox.markFailed(ID, "boom", "server");
+		const broken = fakeServer({
+			refuse: Object.assign(new Error("boom"), {
+				status: 500,
+				code: "internal",
+			}),
+		});
+		expect(await undoSaved({ outbox, api: broken.api, clientId: ID })).toBe(
 			"failed",
 		);
 		expect(await outbox.all()).toHaveLength(1);
@@ -403,12 +444,14 @@ describe("classify", () => {
 		expect(status(403, "forbidden")).toEqual({
 			status: "conflict",
 			reason: "forbidden",
+			http: 403,
 		});
 		expect(status(409, "conflict").status).toBe("conflict");
 		expect(status(422, "missing_rate").status).toBe("conflict");
 		expect(status(400, "validation_failed")).toEqual({
 			status: "conflict",
 			reason: "validation_failed",
+			http: 400,
 		});
 	});
 
@@ -417,6 +460,7 @@ describe("classify", () => {
 		expect(status(500, "internal", 3)).toEqual({
 			status: "conflict",
 			reason: "internal",
+			http: 500,
 		});
 		// Any number of offline tries never parks it.
 		expect(classify(new TypeError("offline"), 99).status).toBe("retry");

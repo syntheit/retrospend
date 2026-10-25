@@ -6,8 +6,11 @@ import type { Outbox, OutboxEntry } from "./outbox";
 
 export type SendResult =
 	| { status: "sent" }
-	/** The server holds a newer version of the row. Parked, not retried. */
-	| { status: "conflict"; reason: string }
+	/**
+	 * The server refused it, or holds a newer version. Parked, not retried.
+	 * `http` is the status it answered with, when it answered.
+	 */
+	| { status: "conflict"; reason: string; http?: number }
 	/**
 	 * No network or a server error: keep the entry and stop, to keep order.
 	 * `kind` says which; without it the try counts as a network failure.

@@ -6,6 +6,7 @@ import {
 	createEntrySender,
 	entryOutbox,
 	SEND_TIMEOUT_MS,
+	NOT_STORED_STATUSES,
 	type SenderOptions,
 	type UndoRef,
 	undoFor,
@@ -105,7 +106,8 @@ export type UndoResult = "undone" | "failed";
  * - It never left the phone (no send ever began): removed from the outbox.
  * - It may be on the server (a send began and its answer is missing): send it
  *   again with the same key, which replays the first answer and its token,
- *   then undo through the server. Never delete what the server may hold.
+ *   then undo through the server. Never delete what the server may hold: only
+ *   a 400, 403, 404 or 422 on the resend proves it was never stored.
  * "failed" means it could not be taken back now (offline); it stays queued.
  */
 export function undoSaved(input: {
@@ -134,10 +136,19 @@ export function undoSaved(input: {
 				await outbox.markFailed(clientId, sent.reason, sent.kind);
 				return "failed";
 			}
-			// Refused by the server: it never existed, so there is nothing to undo.
 			if (sent.status === "conflict") {
-				await outbox.discard(clientId);
-				return "undone";
+				// Refused outright: the server never held it, nothing to undo.
+				if (
+					sent.http !== undefined &&
+					NOT_STORED_STATUSES.includes(sent.http)
+				) {
+					await outbox.discard(clientId);
+					return "undone";
+				}
+				// Any other answer (a replay it can not give back, a 5xx) does not
+				// say it is not there. Keep it parked, where Couldn't sync shows it.
+				await outbox.markConflict(clientId, sent.reason);
+				return "failed";
 			}
 			await outbox.markSent(clientId);
 			const token = undoFor(clientId);

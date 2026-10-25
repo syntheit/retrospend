@@ -25,6 +25,12 @@ const TRPC_TO_PROBLEM: Partial<Record<TRPCError["code"], ProblemCode>> = {
 	NOT_IMPLEMENTED: "not_implemented",
 };
 
+/** Whether the unique key that failed is the row's id (its primary key). */
+function idIsTheKey(error: Prisma.PrismaClientKnownRequestError): boolean {
+	const meta = JSON.stringify(error.meta ?? {});
+	return /"id"|_pkey/.test(meta);
+}
+
 export function toProblem(error: unknown): unknown {
 	if (error instanceof ORPCError) return error;
 	if (error instanceof InvalidCursorError)
@@ -40,12 +46,16 @@ export function toProblem(error: unknown): unknown {
 		const code = TRPC_TO_PROBLEM[error.code];
 		if (code) return problem(code, error.message);
 	}
-	// A client-made id (or another unique key) that is already taken.
+	// A client-made id that is already taken: an earlier try of the same write
+	// got through. Clients treat it as sent, so it has a code of its own.
 	if (
 		error instanceof Prisma.PrismaClientKnownRequestError &&
 		error.code === "P2002"
-	)
-		return problem("conflict", "That id or name is already used");
+	) {
+		return idIsTheKey(error)
+			? problem("id_taken", "That id is already used")
+			: problem("conflict", "That id or name is already used");
+	}
 	// A number past what its column holds (an amount whose USD value needs
 	// more than 10 digits): the caller's input, not a server fault.
 	if (

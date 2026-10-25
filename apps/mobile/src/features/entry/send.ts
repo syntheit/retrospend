@@ -44,6 +44,13 @@ const MAX_SERVER_ERRORS = 3;
 /** No answer for this long counts as no network; the write waits in the outbox. */
 export const SEND_TIMEOUT_MS = 10_000;
 
+/**
+ * Answers that mean the server did not take the write, so a resend that gets
+ * one of them proves there is nothing to undo. A 409 (a replay it can not
+ * give back) or a 5xx says nothing about whether it holds the write.
+ */
+export const NOT_STORED_STATUSES: readonly number[] = [400, 403, 404, 422];
+
 /** What the server said the first time, kept so Undo can find the token. */
 const sentTokens = new Map<string, UndoRef>();
 const MAX_TOKENS = 50;
@@ -69,17 +76,7 @@ export function undoFor(clientId: string): UndoRef | undefined {
 
 /** A client-made id that the server already holds: an earlier try got through. */
 function idTaken(error: unknown): boolean {
-	const { status, code, message } = (error ?? {}) as {
-		status?: number;
-		code?: string;
-		message?: string;
-	};
-	return (
-		status === 409 &&
-		code === "conflict" &&
-		typeof message === "string" &&
-		message.includes("already used")
-	);
+	return (error as { code?: string } | null)?.code === "id_taken";
 }
 
 /**
@@ -105,11 +102,11 @@ export function classify(error: unknown, serverErrors = 0): SendResult {
 	}
 	if (status >= 500) {
 		return serverErrors >= MAX_SERVER_ERRORS
-			? { status: "conflict", reason }
+			? { status: "conflict", reason, http: status }
 			: { status: "retry", reason, kind: "server" };
 	}
 	// 400, 403, 404, 409, 422: the server read it and said no.
-	return { status: "conflict", reason };
+	return { status: "conflict", reason, http: status };
 }
 
 export interface SenderOptions {
