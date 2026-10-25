@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { Pool } from "pg";
 import {
 	ADMIN_STORAGE_STATE,
@@ -808,6 +808,50 @@ test("Starting money: a notice while it is unconfirmed, preview, save, undo", as
 	);
 });
 
+/**
+ * A Limits book: To assign and Not planned yet are hidden everywhere (the
+ * rail, the menus), Money in stays, and the groups' Left adds up to the
+ * hero's net Left in your limits (the server's figures, never summed on the page).
+ */
+async function expectLimitsPage(page: Page): Promise<void> {
+	const main = page.getByRole("main");
+	const rail = page.locator('[data-slot="budget-rail"]');
+	await expect(rail.getByText("Money in", { exact: true })).toBeVisible();
+	for (const word of [
+		/Not planned yet/,
+		/To assign/,
+		/Assign money/,
+		/Move from Wealth/,
+	])
+		await expect(main.getByText(word)).toHaveCount(0);
+	const minor = async (loc: Locator) =>
+		Number(await loc.getAttribute("data-minor"));
+	const hero = await minor(
+		page.locator('[data-slot="budget-hero"] [data-slot="money"]').first(),
+	);
+	const rows = main.locator("tr[data-envelope-group]");
+	let groups = 0;
+	for (const row of await rows.all())
+		groups += await minor(row.locator('[data-slot="money"]').nth(2));
+	expect(groups, "group Left adds up to the hero's net Left").toBe(hero);
+	// Menus carry no way into To assign.
+	await main.getByRole("button", { name: "More actions for Budget" }).click();
+	await expect(page.getByRole("menuitem", { name: "Use my plan" })).toHaveCount(
+		0,
+	);
+	await page.keyboard.press("Escape");
+	await main
+		.getByRole("button", { name: "More actions for Groceries" })
+		.click();
+	await expect(
+		page.getByRole("menuitem", { name: /^Assign money/ }),
+	).toHaveCount(0);
+	await expect(
+		page.getByRole("menuitem", { name: /^Move from Wealth/ }),
+	).toHaveCount(0);
+	await page.keyboard.press("Escape");
+}
+
 test("Set a limit: a Limits envelope with no limit gets one, undo", async ({
 	page,
 }) => {
@@ -820,6 +864,7 @@ test("Set a limit: a Limits envelope with no limit gets one, undo", async ({
 	try {
 		await openBudget(page);
 		const main = page.getByRole("main");
+		await expectLimitsPage(page);
 		// Limits groups start open; E2E Gym, added above, has no limit.
 		const row = main.locator("tr", { hasText: "E2E Gym" });
 		await row.getByRole("button", { name: "Set a limit" }).click();

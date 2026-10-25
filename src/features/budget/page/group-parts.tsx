@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { AvailablePill } from "~/components/money/available-pill";
+import { signOf } from "~/components/money/format";
 import { Money } from "~/components/money/money";
 import { usePercent } from "~/components/rows/percent";
 import type { Shrinkable } from "~/components/rows/row";
@@ -68,12 +69,22 @@ export function useGroupSub() {
 }
 
 /**
- * A group's Left: a plain amount, or the pill when something inside it is
- * over (the server's `over` total, never a sum here).
+ * A group's Left: a plain amount, or the pill when it is over. Limits books
+ * judge the group by its net Left over the envelopes with a limit (the
+ * hero's own figure); the others by the server's `over` total. Never a sum
+ * here.
  */
-export function GroupLeft({ group }: { group: EnvelopeGroupDto }) {
+export function GroupLeft({
+	group,
+	limits = false,
+}: {
+	group: EnvelopeGroupDto;
+	limits?: boolean;
+}) {
 	const { totals } = group;
-	if (totals.over.minor > 0)
-		return <AvailablePill amount={totals.over} status="overspent" />;
-	return <Money className="font-semibold" value={totals.left} />;
+	const left = limits ? (totals.limitLeft ?? totals.left) : totals.left;
+	const over = limits ? (signOf(left) < 0 ? left : null) : totals.over;
+	if (over && over.minor !== 0)
+		return <AvailablePill amount={over} status="overspent" />;
+	return <Money className="font-semibold" value={left} />;
 }

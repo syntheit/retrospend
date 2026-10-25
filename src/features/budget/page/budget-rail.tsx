@@ -7,7 +7,7 @@ import { Row, RowList, RowSub } from "~/components/rows/row";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import { api } from "~/trpc/react";
 import type { BudgetActions } from "./use-budget-actions";
-import { hasDebt } from "./view-model";
+import { hasDebt, isLimits } from "./view-model";
 
 /**
  * Total debt (budget.totalDebt) with the way into the payoff plan, for a
@@ -70,6 +70,8 @@ export function BudgetRail({
 	const t = useTranslations("budgetPage.rail");
 	const { owed, shares, toAssign } = data;
 	const month = data.month.key;
+	// A Limits book has no To assign (SPEC §5.6): its limits fund themselves.
+	const limits = isLimits(data.book.style);
 	const showOwed =
 		owed.held.minor !== 0 || owed.pending.minor !== 0 || owed.people > 0;
 	const showShares = shares.unresolved > 0 || shares.pending.minor !== 0;
@@ -111,7 +113,9 @@ export function BudgetRail({
 						/>
 					</RowList>
 					<p className="text-fg-3 text-meta mt-2">
-						{t("owed.hint", { pool: toAssign.poolName })}
+						{limits
+							? t("owed.hintLimits")
+							: t("owed.hint", { pool: toAssign.poolName })}
 					</p>
 				</Section>
 			)}

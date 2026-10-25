@@ -23,6 +23,11 @@ export function tracksOnly(r: Row, book: ViewBook): boolean {
 	);
 }
 
+/** A Limits envelope that has a limit, or money this month: it counts in "Left in your limits". */
+export function isLimited(r: Row): boolean {
+	return r.env.target !== null || r.m.assigned !== 0 || r.m.carryIn !== 0;
+}
+
 /**
  * Limits (SPEC §6.1): envelopes with a limit or money this month. A limit is
  * what the envelope got this month (carried in plus assigned, which plan
@@ -34,9 +39,7 @@ export function limitTotals(
 	p: MonthViewInput,
 ): LimitTotals | null {
 	if (p.book.style !== "LIMITS") return null;
-	const limited = rows.filter(
-		(r) => r.env.target !== null || r.m.assigned !== 0 || r.m.carryIn !== 0,
-	);
+	const limited = rows.filter(isLimited);
 	const limit = limited.reduce((t, r) => t + r.m.carryIn + r.m.assigned, 0);
 	const spent = -limited.reduce((t, r) => t + (r.m.activity - r.m.wealth), 0);
 	const left = limited.reduce((t, r) => t + r.m.left, 0);

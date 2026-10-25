@@ -210,7 +210,7 @@ export function GroupsTable({
 								</TableCell>
 								<TableCell className={NUM}>
 									<div className="flex justify-end">
-										<GroupLeft group={g} />
+										<GroupLeft group={g} limits={columns === "limits"} />
 									</div>
 								</TableCell>
 								<TableCell className="w-14" />

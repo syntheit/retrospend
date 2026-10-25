@@ -61,6 +61,7 @@ function group(
 			spent: ars(0),
 			left: ars(0),
 			over: ars(0),
+			limitLeft: null,
 			need: ars(0),
 			count: envelopes.length,
 		},
