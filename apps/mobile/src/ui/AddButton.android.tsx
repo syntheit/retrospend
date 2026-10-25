@@ -33,13 +33,13 @@ export function AddButton({
 			onClick={press}
 		>
 			<ExtendedFloatingActionButton.Text>
-				<Text>{label}</Text>
+				<Text color={color.brandFg}>{label}</Text>
 			</ExtendedFloatingActionButton.Text>
 		</ExtendedFloatingActionButton>
 	) : (
 		<FloatingActionButton containerColor={color.brand} onClick={press}>
 			<FloatingActionButton.Icon>
-				<Text>+</Text>
+				<Text color={color.brandFg}>+</Text>
 			</FloatingActionButton.Icon>
 		</FloatingActionButton>
 	);

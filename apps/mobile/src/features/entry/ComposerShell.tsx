@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from "react";
 import {
+	Keyboard,
 	KeyboardAvoidingView,
 	Platform,
 	Pressable,
@@ -39,6 +40,7 @@ export function ComposerShell({
 	typing,
 	amountError,
 	bottomInset = 0,
+	onKeypadRequest,
 	children,
 }: {
 	mode: EntryMode;
@@ -57,6 +59,8 @@ export function ComposerShell({
 	amountError: boolean;
 	/** Room for a bar that floats over the screen, like the iPhone tab bar. */
 	bottomInset?: number;
+	/** The amount was touched: stop typing in the text field. */
+	onKeypadRequest: () => void;
 	children: ReactNode;
 }) {
 	const t = useTranslations("mobile.entry");
@@ -123,7 +127,11 @@ export function ComposerShell({
 						accessibilityHint={padOpen ? undefined : t("showKeypad")}
 						accessibilityLabel={spoken}
 						accessibilityRole="button"
-						onPress={() => setPadOpen(true)}
+						onPress={() => {
+							Keyboard.dismiss();
+							onKeypadRequest();
+							setPadOpen(true);
+						}}
 						style={{ flex: 1 }}
 					>
 						<Text

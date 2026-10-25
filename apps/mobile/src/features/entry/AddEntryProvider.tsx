@@ -26,7 +26,9 @@ const AddEntryContext = createContext<AddEntryApi | null>(null);
 
 /** Height of the Material 3 navigation bar the Android FAB floats above. */
 const M3_NAVIGATION_BAR = 80;
-/** The share of the screen the composer sheet takes. */
+/** The sheet's handle and title above the composer, plus its padding. */
+const ANDROID_SHEET_CHROME = 112;
+/** The share of the screen the iPad form sheet takes. */
 const SHEET_SHARE = 0.88;
 
 export function useAddEntry(): AddEntryApi {
@@ -47,12 +49,24 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const t = useTranslations("mobile.entry");
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const { height } = useWindowDimensions();
+	const { height, width } = useWindowDimensions();
 	const { space } = useTheme();
 	const [sheet, setSheet] = useState<{ mode: EntryMode } | null>(null);
 	const [mode, setMode] = useState<EntryMode>("expense");
 	const iPhone = Platform.OS === "ios" && !Platform.isPad;
 	useOutboxFlush();
+
+	// The Compose sheet gives its content the window's width without its own
+	// side padding, and runs under the status and gesture bars.
+	const sheetSize =
+		Platform.OS === "android"
+			? {
+					width: width - 2 * space[4],
+					height: Math.round(
+						height - insets.top - insets.bottom - ANDROID_SHEET_CHROME,
+					),
+				}
+			: { height: Math.round(height * SHEET_SHARE) };
 
 	const open = useCallback(
 		(next: EntryMode = "expense") => {
@@ -93,7 +107,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 					title={mode === "expense" ? t("titleExpense") : t("titleIncome")}
 					visible={sheet !== null}
 				>
-					<View style={{ height: Math.round(height * SHEET_SHARE) }}>
+					<View style={sheetSize}>
 						{sheet ? (
 							<EntryComposer
 								initialMode={sheet.mode}

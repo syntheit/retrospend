@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Keyboard, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -117,6 +117,13 @@ function Form({
 	const [tried, setTried] = useState(false);
 	const [typing, setTyping] = useState(false);
 	const [busy, setBusy] = useState(false);
+	// Android keeps a field focused after the keyboard is dismissed.
+	useEffect(() => {
+		const hide = Keyboard.addListener("keyboardDidHide", () =>
+			setTyping(false),
+		);
+		return () => hide.remove();
+	}, []);
 
 	const expense = drafts.expense;
 	const income = drafts.income;
@@ -209,6 +216,7 @@ function Form({
 			onAdd={add}
 			onAmountChange={(amountText) => patchActive({ amountText })}
 			onCurrencyChange={(currency) => patchActive({ currency, amountText: "" })}
+			onKeypadRequest={() => setTyping(false)}
 			onModeChange={(next) => {
 				setMode(next);
 				setTried(false);
