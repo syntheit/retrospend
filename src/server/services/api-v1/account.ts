@@ -1,7 +1,5 @@
-import {
-	deleteOwnAccount,
-	previewAccountDeletion,
-} from "~/server/services/user-deletion.service";
+import { deleteOwnAccount } from "~/server/services/account-deletion.service";
+import { previewAccountDeletion } from "~/server/services/user-deletion.service";
 import type { Caller } from "./caller";
 
 /** v1 adapters for /me/deletion. The web's own service does the work. */

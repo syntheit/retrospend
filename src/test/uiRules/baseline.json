@@ -1158,7 +1158,7 @@
 		"src/server/services/shared-expenses/test-utils.ts": 1046,
 		"src/server/services/shared-expenses/transaction.service.ts": 765,
 		"src/server/services/shared-expenses/verification.service.ts": 332,
-		"src/server/services/user-deletion.service.ts": 69
+		"src/server/services/user-deletion.service.ts": 30
 	},
 	"UI-151": {
 		"src/app/api/import/process/route.ts": 1,

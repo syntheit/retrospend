@@ -1,12 +1,16 @@
-import { TRPCError } from "@trpc/server";
-import { verifyPassword } from "better-auth/crypto";
-import type { PrismaClient, ProjectRole } from "~prisma";
+import type { PrismaClient } from "~prisma";
 import { assertAnotherAdminRemains } from "./admin-guard.service";
+import {
+	countOtherUserOrganizers,
+	DELETED_USER_SENTINEL,
+	findSuccessorOrganizer,
+	handOverCreatedProjects,
+} from "./user-deletion-projects";
 import { removeUserFiles } from "./user-files.service";
 import { repointSettlementParty, syncPaymentHeaders } from "./payments/participants";
 import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
-export const DELETED_USER_SENTINEL = "DELETED_USER";
+export { DELETED_USER_SENTINEL };
 export const DELETED_USER_NAME = "Deleted User";
 
 export const DELETED_GUEST_SENTINEL = "DELETED_GUEST";
@@ -110,54 +114,6 @@ async function resolveParticipantDisplayName(
 	}
 
 	return "another member";
-}
-
-/**
- * Picks who takes over a project whose only organizer is deleting their
- * account: the longest-standing registered user, preferring EDITOR, then
- * CONTRIBUTOR, then VIEWER. Ghosts (shadows) and guests are never promoted:
- * neither can sign in, so an ORGANIZER ghost would leave the project with no
- * one able to run it. Returns null when no other registered user is a member.
- */
-async function findSuccessorOrganizer(
-	db: PrismaClient | PrismaTx,
-	projectId: string,
-	userId: string,
-	roles: readonly ProjectRole[] = ["EDITOR", "CONTRIBUTOR", "VIEWER"],
-) {
-	for (const role of roles) {
-		const candidate = await (db as PrismaClient).projectParticipant.findFirst({
-			where: {
-				projectId,
-				participantType: "user",
-				participantId: { notIn: [userId, DELETED_USER_SENTINEL] },
-				role,
-			},
-			orderBy: { joinedAt: "asc" },
-		});
-		if (candidate) return candidate;
-	}
-	return null;
-}
-
-/**
- * Counts the project's other registered-user organizers. A non-user
- * ORGANIZER row (which should not exist) does not count: it cannot run the
- * project.
- */
-async function countOtherUserOrganizers(
-	db: PrismaClient | PrismaTx,
-	projectId: string,
-	userId: string,
-): Promise<number> {
-	return (db as PrismaClient).projectParticipant.count({
-		where: {
-			projectId,
-			participantType: "user",
-			participantId: { notIn: [userId, DELETED_USER_SENTINEL] },
-			role: "ORGANIZER",
-		},
-	});
 }
 
 // ── Pre-deletion cleanup ──────────────────────────────────────────────────────
@@ -348,36 +304,6 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 			verifiedAt: new Date(),
 		},
 	});
-}
-
-/**
- * A project is deleted with the user who created it (project.createdById
- * cascades), so one that others still use is handed to a remaining
- * registered member first: the one who runs it now, else the longest-standing
- * by role. A project left with no registered member goes with its creator.
- * Runs after preDeletionCleanup, which has already promoted a new organizer.
- */
-async function handOverCreatedProjects(
-	tx: PrismaTx,
-	userId: string,
-): Promise<void> {
-	const created = await tx.project.findMany({
-		where: { createdById: userId },
-		select: { id: true },
-	});
-	for (const { id } of created) {
-		const heir = await findSuccessorOrganizer(tx, id, userId, [
-			"ORGANIZER",
-			"EDITOR",
-			"CONTRIBUTOR",
-			"VIEWER",
-		]);
-		if (heir)
-			await tx.project.update({
-				where: { id },
-				data: { createdById: heir.participantId },
-			});
-	}
 }
 
 // ── Preview (read-only) ───────────────────────────────────────────────────────
@@ -601,56 +527,4 @@ export async function anonymizeAndDeleteUser(
 	});
 	// Only once the guard passed and the delete committed; a failure leaves a file behind
 	await removeUserFiles(userId, avatarPath);
-}
-
-/**
- * The self-service delete, shared by the web (user.deleteAccount) and
- * /api/v1: an admin is refused (the server could be left with none; the
- * last-admin guard inside anonymizeAndDeleteUser holds the same line under
- * a race), then the account password is checked, then the account goes.
- * Re-authentication is the password, so an account with none (social
- * sign-in only) cannot be deleted here.
- */
-export async function deleteOwnAccount(
-	db: PrismaClient,
-	user: { id: string; role: string; email?: string },
-	password: string,
-): Promise<void> {
-	if (user.role === "ADMIN") {
-		throw new TRPCError({
-			code: "FORBIDDEN",
-			message: "Admins cannot delete their own account",
-		});
-	}
-
-	const credentialAccount = await db.account.findFirst({
-		where: { userId: user.id, providerId: "credential" },
-	});
-	if (!credentialAccount?.password) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "Cannot verify identity for this account type",
-		});
-	}
-	const isValid = await verifyPassword({
-		password,
-		hash: credentialAccount.password,
-	});
-	if (!isValid) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "Incorrect password",
-		});
-	}
-
-	const row = await db.user.findUnique({
-		where: { id: user.id },
-		select: { email: true, avatarPath: true },
-	});
-	await anonymizeAndDeleteUser(
-		db,
-		user.id,
-		row?.email ?? user.email ?? "",
-		row?.avatarPath ?? null,
-	);
 }

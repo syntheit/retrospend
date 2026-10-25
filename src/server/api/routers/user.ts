@@ -5,10 +5,8 @@ import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { getPasswordChangedAlertTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
-import {
-	deleteOwnAccount,
-	previewAccountDeletion,
-} from "~/server/services/user-deletion.service";
+import { deleteOwnAccount } from "~/server/services/account-deletion.service";
+import { previewAccountDeletion } from "~/server/services/user-deletion.service";
 import { validateAndProcessUsernameChange } from "~/server/services/username.service";
 
 export const userRouter = createTRPCRouter({
