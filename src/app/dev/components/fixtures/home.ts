@@ -134,6 +134,13 @@ export const NEEDS_YOU_MORE: NeedsYouItemVM[] = [
 		title: "Pizza night",
 		amount: m("18000"),
 	},
+	{
+		id: "nyf1",
+		kind: "fixRequested",
+		person: "Lucía",
+		title: "Cena en La Esquina",
+		face: P.lucia,
+	},
 	{ id: "nyb1", kind: "missingRate", currencies: ["BRL"] },
 	{ id: "nyb2", kind: "sharesNeedEnvelope", count: 3, href: "#budget" },
 	{

@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 import { AfterHydration } from "~/components/after-hydration";
+import { isUiV2On } from "~/server/ui-v2-redirect";
 import { HydrateClient, api } from "~/trpc/server";
 import Loading from "./loading";
 
@@ -28,7 +29,13 @@ async function Prefetched({ children }: { children: React.ReactNode }) {
 	);
 }
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+/** With uiV2 the page redirects, so the layout skips the prefetch. */
+export default async function Layout({
+	children,
+}: {
+	children: React.ReactNode;
+}) {
+	if (await isUiV2On()) return children;
 	return (
 		<Suspense fallback={<Loading />}>
 			<Prefetched>{children}</Prefetched>

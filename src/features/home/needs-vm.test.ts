@@ -151,6 +151,28 @@ describe("toNeedsVM", () => {
 		});
 	});
 
+	it("a fix request leads with the asker's face and names the expense", () => {
+		expect(
+			toNeedsVM(
+				item("split.fixRequested", {
+					people: ["user:lucia"],
+					title: "Pizza night",
+					actions: [
+						{ entity: "expense", id: "edit" },
+						{ entity: "expense", id: "correct" },
+					],
+				}),
+				W,
+			),
+		).toEqual({
+			id: "split.fixRequested:x",
+			kind: "fixRequested",
+			person: "Lucía",
+			title: "Pizza night",
+			face: { id: "user:lucia", name: "Lucía Fernández", imageUrl: null },
+		});
+	});
+
 	it("one envelope over is named; several are counted", () => {
 		expect(
 			toNeedsVM(

@@ -53,6 +53,12 @@ const storageVars: EnvVar[] = [
 		default: "/data/uploads",
 		description: "Directory path where uploaded files are stored. In Docker this is a named volume mounted at /data/uploads.",
 	},
+	{
+		name: "EXPORT_DIR",
+		required: false,
+		default: "/data/exports",
+		description: "Directory for finished data exports, kept 24 hours and served only to their owner. Must not be inside UPLOAD_DIR, which is public.",
+	},
 ]
 
 export default function StoragePage() {

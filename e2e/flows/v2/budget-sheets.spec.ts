@@ -41,6 +41,12 @@ async function sql<T>(text: string, values: unknown[] = []): Promise<T[]> {
 const BOOK_OF_TEST_USER = `(SELECT b.id FROM "budget_book" b JOIN "user" u ON u.id = b."createdById" WHERE u.email = $1)`;
 
 test.beforeAll(async ({ browser }) => {
+	// The older specs (e2e/expenses.spec.ts) spend as this same user and leave
+	// their rows behind, which would add to the 120.00 the book starts with.
+	await sql(
+		`DELETE FROM "expense" WHERE "userId" = (SELECT id FROM "user" WHERE email = $1)`,
+		[TEST_USER.email],
+	);
 	const admin = await browser.newContext({ storageState: ADMIN_STORAGE_STATE });
 	await setEnvelopeBudgetMode(admin.request, "ALL");
 	await admin.close();

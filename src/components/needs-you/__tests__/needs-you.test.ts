@@ -199,6 +199,12 @@ describe("NeedsYouList: setup, rejected and budget kinds", () => {
 			title: "Pizza night",
 			amount: ars(1800000),
 		},
+		{
+			id: "f1",
+			kind: "fixRequested",
+			person: "Lucía",
+			title: "Pizza night",
+		},
 		{ id: "b1", kind: "overspentMany", count: 2, amount: ars(8040000) },
 		{ id: "b2", kind: "overAssigned", amount: ars(1200000) },
 		{
@@ -230,6 +236,7 @@ describe("NeedsYouList: setup, rejected and budget kinds", () => {
 			"Verify your email",
 			"Import a statement",
 			"Martín rejected Pizza night",
+			"Lucía asked you to fix Pizza night",
 			"2 envelopes are over",
 			"You planned ARS 12,000 more than you have",
 			"Rent is due soon",
@@ -251,6 +258,7 @@ describe("NeedsYouList: setup, rejected and budget kinds", () => {
 			"Fund",
 			"Set rate",
 			"Remind",
+			"Respond",
 		])
 			expect(t).toContain(a);
 	});

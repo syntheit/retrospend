@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { env } from "~/env";
 import { adminProcedure, createTRPCRouter } from "~/server/api/trpc";
+import { disableUserKeepingAnAdmin } from "~/server/services/admin-guard.service";
 import {
 	anonymizeAndDeleteUser,
 	anonymizeParticipantReferences,
@@ -331,16 +332,7 @@ export const adminRouter = createTRPCRouter({
 				});
 			}
 
-			const user = await db.user.update({
-				where: { id: input.userId },
-				data: { isActive: false },
-				select: { username: true },
-			});
-
-			// Sign the user out everywhere so the disable takes effect immediately
-			await db.session.deleteMany({
-				where: { userId: input.userId },
-			});
+			const user = await disableUserKeepingAnAdmin(db, input.userId);
 
 			// Log the account disable
 			logEventAsync({

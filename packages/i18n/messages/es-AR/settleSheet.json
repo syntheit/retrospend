@@ -44,7 +44,7 @@
 	"rule": {
 		"empty": "Escribí un monto o elegí Todo.",
 		"overpay": "Elegí cómo registrar lo que sobra.",
-		"claim": "Confirma el pago de {name}. Definitivo.",
+		"claim": "Confirmá el pago de {name}. Definitivo.",
 		"received": "Definitivo: lo recibiste.",
 		"waits": "Espera que {name} confirme. Tu saldo ya lo muestra.",
 		"final": "Definitivo: {name} no usa Retrospend."

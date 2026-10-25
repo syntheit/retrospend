@@ -32,6 +32,10 @@ const config = {
 	],
 	experimental: {
 		externalDir: true,
+		// Next buffers a request body for proxy.ts and cuts it at 10 MB by default,
+		// so a 10 MB import would arrive truncated. Just above the v1 upload cap
+		// (MULTIPART_LIMIT, 11 MB), which then answers 413 itself.
+		proxyClientMaxBodySize: "12mb",
 		optimizePackageImports: ["recharts", "@tabler/icons-react", "lucide-react", "date-fns"],
 	},
 	devIndicators: {

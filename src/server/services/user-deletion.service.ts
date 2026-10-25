@@ -1,5 +1,6 @@
 import type { PrismaClient } from "~prisma";
-import { deleteFile } from "~/server/storage";
+import { assertAnotherAdminRemains } from "./admin-guard.service";
+import { removeUserFiles } from "./user-files.service";
 import { repointSettlementParty, syncPaymentHeaders } from "./payments/participants";
 import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
@@ -464,12 +465,8 @@ export async function anonymizeAndDeleteUser(
 	userEmail: string,
 	avatarPath: string | null,
 ): Promise<void> {
-	// Clean up avatar from storage before the transaction
-	if (avatarPath) {
-		await deleteFile(avatarPath).catch(() => {});
-	}
-
 	await db.$transaction(async (tx) => {
+		await assertAnotherAdminRemains(tx, userId);
 		// ── Pre-deletion cleanup: resolve functional dependencies ─────────────
 		await preDeletionCleanup(tx as unknown as PrismaTx, userId);
 
@@ -567,4 +564,6 @@ export async function anonymizeAndDeleteUser(
 		// Clean up GuestSessions that used this user's email (pre-signup guest access)
 		await tx.guestSession.deleteMany({ where: { email: userEmail } });
 	});
+	// Only once the guard passed and the delete committed; a failure leaves a file behind
+	await removeUserFiles(userId, avatarPath);
 }

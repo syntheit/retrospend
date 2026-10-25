@@ -35,6 +35,9 @@ const chromium = {
 		: {},
 };
 
+// The flows that turn envelopeBudgetMode on for the whole app.
+const ENVELOPE_SPECS = ["**/budget.spec.ts", "**/budget-sheets.spec.ts"];
+
 // Visual regression (e2e/visual). Only defined when E2E_VISUAL=1, so the
 // plain e2e run never compares screenshots taken by another renderer: the
 // baselines come from the pinned Playwright image, which the browser joins
@@ -66,6 +69,12 @@ export default defineConfig({
 	testDir: "./e2e",
 	timeout: 30_000,
 	retries: process.env.CI ? 1 : 0,
+	// One worker. Every flow signs in to the same seeded ledger (Sofía, Martín
+	// and Lucía share projects, payments and rates) and two app-wide flags, so
+	// a spec that saves, or flips a flag, changes the figures another spec is
+	// reading. The flows undo what they save, but only after the save has
+	// landed. E2E_WORKERS raises it for a run of specs that share nothing.
+	workers: Number(process.env.E2E_WORKERS ?? 1),
 	reporter: [["html", { open: "never" }], ["list"]],
 	use: {
 		baseURL: E2E_BASE_URL,
@@ -76,6 +85,9 @@ export default defineConfig({
 	// up to "flows" sees the old pages (the seed leaves the flag OFF), then
 	// "ui-v2-on" turns it on for "flows-v2" alone and its teardown turns it
 	// off. Nothing else runs while the flag is on.
+	// envelopeBudgetMode is a second app-wide row. It changes what every
+	// persona's Home, Activity and entry sheets say ("Not planned yet" lines),
+	// so the two Budget specs run last, in the one project that switches it on.
 	projects: [
 		// Logs in the blank test accounts and the personas and saves their sessions
 		{
@@ -125,8 +137,17 @@ export default defineConfig({
 			name: "flows-v2",
 			testDir: "./e2e/flows/v2",
 			testMatch: "**/*.spec.ts",
+			testIgnore: ENVELOPE_SPECS,
 			use: chromium,
 			dependencies: ["ui-v2-on"],
+		},
+		// The specs that switch the envelope budget on (see above)
+		{
+			name: "flows-v2-budget",
+			testDir: "./e2e/flows/v2",
+			testMatch: ENVELOPE_SPECS,
+			use: chromium,
+			dependencies: ["ui-v2-on", "flows-v2"],
 		},
 		...(process.env.E2E_VISUAL === "1" ? [visual] : []),
 	],

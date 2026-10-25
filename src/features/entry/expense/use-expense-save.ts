@@ -134,7 +134,14 @@ export function useExpenseSave(d: ExpenseDraft, o: Opts) {
 					id: editing.id,
 				});
 				toast.saved(t("saved", { title }), {
-					undo: () => m.sRevert.mutateAsync(r.value.restore),
+					// The requests to fix it that this edit answered open again with it.
+					undo: () =>
+						m.sRevert.mutateAsync({
+							...r.value.restore,
+							...(r.value.answered.length > 0
+								? { reopenFixRequests: [...r.value.answered] }
+								: {}),
+						}),
 				});
 				return;
 			}
