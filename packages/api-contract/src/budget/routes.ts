@@ -35,6 +35,8 @@ type WriteConfig<I extends z.ZodType, R extends z.ZodType> = {
 	status?: 200 | 201;
 	/** The route's scope; money writes are `write:money`. */
 	scope?: RouteScope;
+	/** Why this write answers `undo: null`, said on the route. */
+	noUndo?: string;
 };
 
 /**
@@ -53,6 +55,9 @@ export function moneyWrite<I extends z.ZodType, R extends z.ZodType>(
 			operationId: c.operationId,
 			tags: TAG,
 			summary: c.summary,
+			description: c.noUndo
+				? `Answers \`undo: null\`: ${c.noUndo}`
+				: "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 			successStatus: c.status ?? 200,
 		})
 		.meta({ scope: c.scope ?? "write:money", event: c.event })

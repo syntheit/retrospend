@@ -1,5 +1,6 @@
 /** Primitives and enums of the budget (months are YYYYMM numbers, money in is integer minor units of the book currency). Mirrors src/lib/schemas/envelope*.ts (a test keeps them equal). */
 import * as z from "zod";
+import { amountTextSchema } from "../ledger";
 
 export const minorSchema = z
 	.number()
@@ -77,11 +78,36 @@ export const missingRateSchema = z.object({
 });
 
 export const clientIdSchema = z.string().uuid();
-export const positiveMinor = minorSchema.refine(
-	(v) => v > 0,
-	"must be above 0",
-);
-export const nonNegativeMinor = minorSchema.refine(
-	(v) => v >= 0,
-	"must be 0 or more",
-);
+/**
+ * Money that goes in is decimal text in the currency's major units (the same
+ * as every other v1 write); the server turns it into minor units with the
+ * currency's own decimals and refuses a digit beyond them. Which currency is
+ * the object's `currency` when it has one, else the budget's.
+ */
+export const positiveAmount = amountTextSchema;
+
+export const nonNegativeAmount = z
+	.string()
+	.regex(
+		/^\d{1,11}(\.\d{1,8})?$/,
+		"Use digits and at most 8 decimals, like 50.25",
+	)
+	.meta({
+		id: "NonNegativeAmountText",
+		description:
+			"An amount of zero or more as decimal text, in the currency's major units.",
+		examples: ["0", "50.25"],
+	});
+
+export const signedAmount = z
+	.string()
+	.regex(
+		/^-?\d{1,11}(\.\d{1,8})?$/,
+		"Use digits and at most 8 decimals, like -50.25",
+	)
+	.meta({
+		id: "SignedAmountText",
+		description:
+			"An amount as decimal text in the currency's major units; below zero takes money back or is owed.",
+		examples: ["-50.25", "120"],
+	});

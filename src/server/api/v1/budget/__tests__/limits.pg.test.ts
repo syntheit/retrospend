@@ -16,7 +16,7 @@ import {
 	expectProblem,
 	useApiV1,
 } from "../../core/__tests__/harness";
-import { useBudgetV1, uuid, withoutStamps } from "./fixtures";
+import { toV1, useBudgetV1, uuid, withoutStamps } from "./fixtures";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -74,7 +74,7 @@ describe("/api/v1/budget set-up and Limits", () => {
 	let ids: Record<string, string>;
 
 	const post = (path: string, body: unknown, headers = as) =>
-		call(path, { method: "POST", headers, body, idempotent: true });
+		call(path, { method: "POST", headers, body: toV1(body), idempotent: true });
 	const left = async (name: string) =>
 		(
 			await expectBody<Month>(
@@ -214,7 +214,7 @@ describe("/api/v1/budget set-up and Limits", () => {
 				scope: "THIS_MONTH",
 			}),
 			400,
-			"validation_failed",
+			"bad_request",
 		);
 	});
 });

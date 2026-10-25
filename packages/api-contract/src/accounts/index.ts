@@ -74,6 +74,7 @@ const remove = moneyWrite({
 	event: "account.deleted",
 	input: accountIdParamsSchema,
 	result: accountRemovedSchema,
+	noUndo: "the history goes with the account, so there is nothing to put back.",
 });
 const updateBalance = moneyWrite({
 	path: "/accounts/{id}/balance",

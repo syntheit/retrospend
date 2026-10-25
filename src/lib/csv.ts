@@ -413,6 +413,7 @@ export const parseWealthCsv = (text: string) => {
  */
 export function escapeValue(raw: unknown): string {
 	if (raw === null || raw === undefined) return "";
+	if (raw instanceof CsvNumber) return raw.text;
 
 	// Track whether the raw value is numeric/date; formula injection prefix
 	// must not be applied to these, as "-100" is a valid negative number and
@@ -448,6 +449,15 @@ export function escapeValue(raw: unknown): string {
 
 	// Escape double quotes by doubling them and wrapping the entire value in quotes
 	return `"${value.replace(/"/g, '""')}"`;
+}
+
+/**
+ * An exact number the server computed, written as it is (a Decimal's text).
+ * The formula guard is for text a person typed; "-50" from a balance is a
+ * number, and prefixing it would turn it into text in a spreadsheet.
+ */
+export class CsvNumber {
+	constructor(readonly text: string) {}
 }
 
 /**

@@ -15,12 +15,7 @@ import {
 	revertStyleResultSchema,
 } from "./book-write";
 import { undoChangeResultSchema } from "./crud-edits";
-import {
-	debtTermsResultSchema,
-	payoffPlanResultSchema,
-	savePayoffPlanInputSchema,
-	setDebtTermsInputSchema,
-} from "./debt";
+import { debtTermsResultSchema, payoffPlanResultSchema } from "./debt";
 import { migrationStateSchema, resolveHiddenResultSchema } from "./migration";
 import {
 	draftIdInputSchema,
@@ -35,10 +30,7 @@ import {
 	ruleIdInputSchema,
 	updateRuleInputSchema,
 } from "./plan-rules";
-import {
-	groupTargetResultSchema,
-	setGroupTargetInputSchema,
-} from "./plan-year";
+import { groupTargetResultSchema } from "./plan-year";
 import { movementResultSchema } from "./read";
 import { planWrite, TAG } from "./routes";
 import {
@@ -131,44 +123,6 @@ export const budgetPlanWrites = {
 		input: draftIdInputSchema,
 		output: draftSchema,
 	}),
-	setGroupTarget: planWrite({
-		method: "PUT",
-		path: "/budget/groups/{groupId}/target",
-		operationId: "setBudgetGroupTarget",
-		summary: "Set a group's target",
-		description:
-			"Moves no money. The answer carries `previous`; sending it back puts the target back.",
-		event: "budget_group.target_set",
-		input: setGroupTargetInputSchema,
-		output: groupTargetResultSchema,
-	}),
-	setDebtTerms: planWrite({
-		method: "PUT",
-		path: "/budget/debts/{assetAccountId}/terms",
-		operationId: "setBudgetDebtTerms",
-		summary: "Set a debt's rate, minimum and due day",
-		description: "The answer carries `previous`; sending it back puts it back.",
-		event: "budget_debt.terms_set",
-		input: setDebtTermsInputSchema,
-		output: debtTermsResultSchema,
-	}),
-	savePayoffPlan: planWrite({
-		method: "PUT",
-		path: "/budget/payoff-plan",
-		operationId: "saveBudgetPayoffPlan",
-		summary: "Save the debt payoff plan",
-		event: "budget_payoff_plan.saved",
-		input: savePayoffPlanInputSchema,
-		output: payoffPlanResultSchema,
-	}),
-	revertPayoffPlan: planWrite({
-		path: "/budget/payoff-plan/revert",
-		operationId: "revertBudgetPayoffPlan",
-		summary: "Put the payoff plan back as it was before the last save",
-		event: "budget_payoff_plan.reverted",
-		input: emptySchema,
-		output: payoffPlanResultSchema,
-	}),
 	dismissMigrationNotice: planWrite({
 		path: "/budget/migration/dismiss",
 		operationId: "dismissBudgetMigrationNotice",
@@ -223,6 +177,18 @@ export const budgetUndoResultSchema = z
 			result: z.object({ paymentId: idSchema }),
 		}),
 		z.object({ kind: z.literal("period.set"), result: bookPeriodResultSchema }),
+		z.object({
+			kind: z.literal("group_target.set"),
+			result: groupTargetResultSchema,
+		}),
+		z.object({
+			kind: z.literal("debt_terms.set"),
+			result: debtTermsResultSchema,
+		}),
+		z.object({
+			kind: z.literal("payoff_plan.revert"),
+			result: payoffPlanResultSchema,
+		}),
 		z.object({ kind: z.literal("draft.unapply"), result: draftResultSchema }),
 		z.object({
 			kind: z.literal("hidden_rows.revert"),

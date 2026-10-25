@@ -12,6 +12,9 @@ export type UndoOp =
 	| "project_routing.set"
 	| "forgive.undo"
 	| "period.set"
+	| "group_target.set"
+	| "debt_terms.set"
+	| "payoff_plan.revert"
 	| "draft.unapply"
 	| "hidden_rows.revert"
 	| "debt_payment.delete";

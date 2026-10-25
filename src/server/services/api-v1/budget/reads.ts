@@ -31,6 +31,7 @@ import {
 } from "~/server/services/envelope/read.service";
 import { getUnroutedShares } from "~/server/services/envelope/unrouted-shares.service";
 import { wire } from "../wire";
+import { budgetCurrencyOf, draftOut, fromEngine, queryMinor } from "./amounts";
 import type { BudgetCaller } from "./serve";
 
 /**
@@ -43,7 +44,12 @@ const uid = (c: BudgetCaller) => c.principal.userId;
 
 export const budgetReadOps = {
 	setupPreset: async (c: BudgetCaller, q: Q<{ style: SetupInput["style"] }>) =>
-		wire(await getSetupPreset(uid(c), q.style)),
+		wire(
+			fromEngine(
+				await getSetupPreset(uid(c), q.style),
+				await budgetCurrencyOf(c),
+			),
+		),
 	month: async (c: BudgetCaller, q: Q<{ month?: number }>) =>
 		wire(await getMonth(uid(c), q.month, new Date(), c.timeZone)),
 	verdict: async (c: BudgetCaller, q: Q<{ month?: number }>) =>
@@ -52,8 +58,15 @@ export const budgetReadOps = {
 		wire(await getLeftToSpend(uid(c), q.month)),
 	fillFromTargets: async (
 		c: BudgetCaller,
-		q: Q<{ month?: number; amountMinor?: number }>,
-	) => wire(await getFillFromTargets(uid(c), q.month, q.amountMinor)),
+		q: Q<{ month?: number; amount?: string }>,
+	) =>
+		wire(
+			await getFillFromTargets(
+				uid(c),
+				q.month,
+				await queryMinor(c, q.amount, "amount"),
+			),
+		),
 	coverSources: async (
 		c: BudgetCaller,
 		q: Q<{ envelopeId: string; month?: number }>,
@@ -74,17 +87,43 @@ export const budgetReadOps = {
 	bankCheck: async (c: BudgetCaller) => wire(await getBankCheck(uid(c))),
 	afford: async (
 		c: BudgetCaller,
-		q: Q<{ month?: number; amountMinor: number; envelopeId?: string }>,
-	) => wire(await getAfford(uid(c), q)),
+		q: Q<{ month?: number; amount: string; envelopeId?: string }>,
+	) =>
+		wire(
+			await getAfford(uid(c), {
+				month: q.month,
+				envelopeId: q.envelopeId,
+				amountMinor: (await queryMinor(c, q.amount, "amount")) as number,
+			}),
+		),
 	unroutedShares: async (c: BudgetCaller, q: Q<{ limit: number }>) =>
 		wire(await getUnroutedShares(uid(c), q)),
 	rules: async (c: BudgetCaller) => wire(await rulesApi.list(uid(c))),
-	drafts: async (c: BudgetCaller, q: Q<{ kind: DraftKind; month?: number }>) =>
-		wire(await draftsApi.get(uid(c), q)),
+	drafts: async (
+		c: BudgetCaller,
+		q: Q<{ kind: DraftKind; month?: number }>,
+	) => {
+		const out = await draftsApi.get(uid(c), q);
+		const currency = await budgetCurrencyOf(c);
+		return wire({
+			...out,
+			open: out.open && draftOut(out.open, currency),
+			saved: out.saved && draftOut(out.saved, currency),
+		});
+	},
 	draftOutcome: async (c: BudgetCaller, q: Q<{ draftId: string }>) =>
 		wire(await draftsApi.preview(uid(c), q.draftId)),
-	planFill: async (c: BudgetCaller, q: Q<PlanFillInput>) =>
-		wire(await draftsApi.fill(uid(c), q)),
+	planFill: async (c: BudgetCaller, q: Q<PlanFillInput>) => {
+		const out = await draftsApi.fill(uid(c), q);
+		const currency = await budgetCurrencyOf(c);
+		return wire({
+			...out,
+			lines: out.lines.map(({ amountMinor, ...line }) => ({
+				...line,
+				amount: { minor: amountMinor, currency },
+			})),
+		});
+	},
 	planCost: async (
 		c: BudgetCaller,
 		q: Q<{ month?: number; essentialIds?: string[] }>,
@@ -96,10 +135,17 @@ export const budgetReadOps = {
 		c: BudgetCaller,
 		q: Q<{
 			strategy?: "SNOWBALL" | "AVALANCHE" | "CUSTOM";
-			extraMonthlyMinor?: number;
+			extraMonthly?: string;
 			customOrder?: string[];
 		}>,
-	) => wire(await debtsApi.project(uid(c), q)),
+	) =>
+		wire(
+			await debtsApi.project(uid(c), {
+				strategy: q.strategy,
+				customOrder: q.customOrder,
+				extraMonthlyMinor: await queryMinor(c, q.extraMonthly, "extraMonthly"),
+			}),
+		),
 	interestEstimate: async (c: BudgetCaller, q: Q<{ liabilityId: string }>) =>
 		wire(await debtsApi.interest(uid(c), q.liabilityId)),
 	migration: async (c: BudgetCaller) => wire(await getMigrationState(uid(c))),

@@ -8,6 +8,7 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { adminDb } from "~/test/pg-harness";
 import {
 	asMobile,
 	call,
@@ -15,7 +16,7 @@ import {
 	expectProblem,
 	useApiV1,
 } from "../../core/__tests__/harness";
-import { bookedUser, useBudgetV1, withoutStamps } from "./fixtures";
+import { bookedUser, toV1, useBudgetV1, withoutStamps } from "./fixtures";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -41,7 +42,12 @@ describe("/api/v1/budget debts", () => {
 	let visa: string;
 
 	const send = (method: string, path: string, body?: unknown, headers = as) =>
-		call(path, { method, headers, body, idempotent: method !== "GET" });
+		call(path, {
+			method,
+			headers,
+			body: toV1(body),
+			idempotent: method !== "GET",
+		});
 	const balance = async (id: string) =>
 		(
 			await expectBody<{ balance: Money }>(
@@ -74,25 +80,86 @@ describe("/api/v1/budget debts", () => {
 		visa = await open("Visa", "LIABILITY_CREDIT_CARD", "1200");
 	});
 
-	it("keeps a debt's terms and answers with the ones they replaced", async () => {
-		const terms = await expectBody<{
-			terms: { aprPercent: string | null };
-			previous: { aprPercent: string | null };
-		}>(
-			await send("PUT", `/budget/debts/${visa}/terms`, {
-				assetAccountId: visa,
-				aprPercent: "24",
-				minimumMinor: 5_000,
-				dueDay: 15,
-			}),
+	it("keeps a debt's terms with a preview, and puts the old ones back", async () => {
+		const path = `/budget/debts/${visa}/terms`;
+		const body = {
+			assetAccountId: visa,
+			aprPercent: "24",
+			minimumMinor: 5_000,
+			dueDay: 15,
+		};
+		const preview = await expectBody<Preview>(
+			await send("POST", `${path}/preview`, body),
+			c.previewSetDebtTerms,
+		);
+		const written = await expectBody<Write>(
+			await send("PUT", path, body),
 			c.setDebtTerms,
 		);
-		expect(terms.terms.aprPercent).toBe("24");
-		expect(terms.previous.aprPercent).toBeNull();
+		expect(withoutStamps(written.result)).toEqual(
+			withoutStamps(preview.detail?.result),
+		);
+		expect(written.result).toMatchObject({
+			terms: { aprPercent: "24" },
+			previous: { aprPercent: null },
+		});
+		const undone = await expectBody<{ result: { kind: string } }>(
+			await send("POST", "/budget/undo", { token: written.undo }),
+			c.undo,
+		);
+		expect(undone.result.kind).toBe("debt_terms.set");
+		await expectProblem(
+			await send("POST", "/budget/undo", { token: written.undo }),
+			409,
+			"conflict",
+		);
+		await expectBody(await send("PUT", path, body), c.setDebtTerms);
 	});
 
-	it("saves a payoff plan, projects it and reverts the save", async () => {
-		const saved = await expectBody<{ plan: { strategy: string } }>(
+	it("saves a payoff plan that sets an envelope's target, with a preview and an undo", async () => {
+		const target = async () =>
+			(
+				await adminDb.envelope.findUniqueOrThrow({
+					where: { id: ids.Dining },
+				})
+			).targetAmount?.toString();
+		expect(await target()).toBe("200");
+		const body = {
+			strategy: "AVALANCHE",
+			extraMonthlyMinor: 30_000,
+			customOrder: [],
+			envelopeId: ids.Dining,
+		};
+		const preview = await expectBody<Preview>(
+			await send("POST", "/budget/payoff-plan/preview", body),
+			c.previewSavePayoffPlan,
+		);
+		// The preview wrote nothing.
+		expect(await target()).toBe("200");
+		const saved = await expectBody<Write>(
+			await send("PUT", "/budget/payoff-plan", body),
+			c.savePayoffPlan,
+		);
+		expect(withoutStamps(saved.result)).toEqual(
+			withoutStamps(preview.detail?.result),
+		);
+		expect(await target()).toBe("300");
+
+		const undone = await expectBody<{ result: { kind: string } }>(
+			await send("POST", "/budget/undo", { token: saved.undo }),
+			c.undo,
+		);
+		expect(undone.result.kind).toBe("payoff_plan.revert");
+		expect(await target()).toBe("200");
+		await expectProblem(
+			await send("POST", "/budget/undo", { token: saved.undo }),
+			409,
+			"conflict",
+		);
+	});
+
+	it("saves a plan, projects it and reverts the save", async () => {
+		const saved = await expectBody<Write>(
 			await send("PUT", "/budget/payoff-plan", {
 				strategy: "AVALANCHE",
 				extraMonthlyMinor: 10_000,
@@ -101,7 +168,7 @@ describe("/api/v1/budget debts", () => {
 			}),
 			c.savePayoffPlan,
 		);
-		expect(saved.plan.strategy).toBe("AVALANCHE");
+		expect(saved.result).toMatchObject({ plan: { strategy: "AVALANCHE" } });
 		const plan = await expectBody<{ extraMonthly: Money }>(
 			await call("/budget/payoff-plan", { headers: as }),
 			c.payoffPlan,
@@ -112,17 +179,24 @@ describe("/api/v1/budget debts", () => {
 			totalDebt: Money;
 		}>(
 			await call(
-				"/budget/payoff-projection?strategy=SNOWBALL&extraMonthlyMinor=5000",
+				"/budget/payoff-projection?strategy=SNOWBALL&extraMonthly=50.00",
 				{ headers: as },
 			),
 			c.payoffProjection,
 		);
 		expect(projection.debts.map((d) => d.assetAccountId)).toEqual([visa]);
 		expect(projection.totalDebt).toEqual({ minor: 120_000, currency: "USD" });
-		await expectBody(
+		const dry = await expectBody<Preview>(
+			await send("POST", "/budget/payoff-plan/revert/preview", {}),
+			c.previewRevertPayoffPlan,
+		);
+		expect(dry.detail?.kind).toBe("envelope.revertPayoffPlan");
+		const reverted = await expectBody<Write>(
 			await send("POST", "/budget/payoff-plan/revert", {}),
 			c.revertPayoffPlan,
 		);
+		// An undo is not undone.
+		expect(reverted.undo).toBeNull();
 		const estimate = await expectBody<{ interest: Money | null }>(
 			await call(`/budget/debts/${visa}/interest-estimate`, { headers: as }),
 			c.interestEstimate,

@@ -1,3 +1,4 @@
+import * as z from "zod";
 import {
 	archiveEnvelopeInputSchema,
 	archiveEnvelopeResultSchema,
@@ -14,7 +15,14 @@ import {
 	updateEnvelopeInputSchema,
 	updateEnvelopeResultSchema,
 } from "./crud-edits";
-import { debtPaymentResultSchema, recordDebtPaymentInputSchema } from "./debt";
+import {
+	debtPaymentResultSchema,
+	debtTermsResultSchema,
+	payoffPlanResultSchema,
+	recordDebtPaymentInputSchema,
+	savePayoffPlanInputSchema,
+	setDebtTermsInputSchema,
+} from "./debt";
 import {
 	resolveHiddenInputSchema,
 	resolveHiddenResultSchema,
@@ -30,6 +38,10 @@ import {
 	applyRuleResultSchema,
 	applyRuleToMonthInputSchema,
 } from "./plan-rules";
+import {
+	groupTargetResultSchema,
+	setGroupTargetInputSchema,
+} from "./plan-year";
 import { moneyWrite } from "./routes";
 
 /** Envelope edits, rules and drafts that move money, Pay down a debt and the hidden-rows review. */
@@ -98,6 +110,7 @@ const undoChange = moneyWrite({
 	event: "budget_envelope.change_undone",
 	input: undoChangeInputSchema,
 	result: undoChangeResultSchema,
+	noUndo: "an undo is not undone; make the edit again.",
 });
 
 const applyRule = moneyWrite({
@@ -126,6 +139,7 @@ const unapplyDraft = moneyWrite({
 	event: "budget_draft.unapplied",
 	input: draftIdInputSchema,
 	result: draftResultSchema,
+	noUndo: "an undo is not undone; apply the plan again.",
 });
 const fundNow = moneyWrite({
 	path: "/budget/drafts/{draftId}/fund-now",
@@ -165,9 +179,64 @@ const revertHidden = moneyWrite({
 	event: "budget_hidden_rows.reverted",
 	input: revertHiddenInputSchema,
 	result: resolveHiddenResultSchema,
+	noUndo: "an undo is not undone; answer the rows again.",
+});
+
+/**
+ * Group targets, debt terms and the payoff plan move no money themselves, but
+ * they change what Use my plan asks of each month (and the payoff plan sets
+ * an envelope's target), so each previews and has an undo like Set a target.
+ */
+const groupTarget = moneyWrite({
+	method: "PUT",
+	path: "/budget/groups/{groupId}/target",
+	operationId: "setBudgetGroupTarget",
+	previewId: "previewSetBudgetGroupTarget",
+	summary: "Set a group's target",
+	event: "budget_group.target_set",
+	input: setGroupTargetInputSchema,
+	result: groupTargetResultSchema,
+});
+const debtTerms = moneyWrite({
+	method: "PUT",
+	path: "/budget/debts/{assetAccountId}/terms",
+	operationId: "setBudgetDebtTerms",
+	previewId: "previewSetBudgetDebtTerms",
+	summary: "Set a debt's rate, minimum and due day",
+	event: "budget_debt.terms_set",
+	input: setDebtTermsInputSchema,
+	result: debtTermsResultSchema,
+});
+const savePayoff = moneyWrite({
+	method: "PUT",
+	path: "/budget/payoff-plan",
+	operationId: "saveBudgetPayoffPlan",
+	previewId: "previewSaveBudgetPayoffPlan",
+	summary: "Save the debt payoff plan",
+	event: "budget_payoff_plan.saved",
+	input: savePayoffPlanInputSchema,
+	result: payoffPlanResultSchema,
+});
+const revertPayoff = moneyWrite({
+	path: "/budget/payoff-plan/revert",
+	operationId: "revertBudgetPayoffPlan",
+	previewId: "previewRevertBudgetPayoffPlan",
+	summary: "Put the payoff plan back as it was before the last save",
+	event: "budget_payoff_plan.reverted",
+	input: z.object({}),
+	result: payoffPlanResultSchema,
+	noUndo: "an undo is not undone; save the plan again.",
 });
 
 export const budgetMoneyPlan = {
+	setGroupTarget: groupTarget.write,
+	previewSetGroupTarget: groupTarget.preview,
+	setDebtTerms: debtTerms.write,
+	previewSetDebtTerms: debtTerms.preview,
+	savePayoffPlan: savePayoff.write,
+	previewSavePayoffPlan: savePayoff.preview,
+	revertPayoffPlan: revertPayoff.write,
+	previewRevertPayoffPlan: revertPayoff.preview,
 	setTarget: setTarget.write,
 	previewSetTarget: setTarget.preview,
 	createEnvelope: create.write,

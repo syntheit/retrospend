@@ -8,27 +8,27 @@ import {
 	envelopeKindSchema,
 	groupRoleSchema,
 	isoDateSchema,
-	minorSchema,
 	monthKeySchema,
-	nonNegativeMinor,
-	positiveMinor,
+	nonNegativeAmount,
+	positiveAmount,
 	setupStyleSchema,
+	signedAmount,
 	targetCadenceSchema,
 	targetModeSchema,
 } from "./basics";
 
-/** Amounts are minor units of `currency` (default: the book currency, D25). */
+/** Amounts are decimal text in `currency` (default: the book currency, D25). */
 export const targetInputSchema = z.discriminatedUnion("kind", [
 	z.object({
 		kind: z.literal("MONTHLY"),
-		amountMinor: nonNegativeMinor,
+		amount: nonNegativeAmount,
 		mode: targetModeSchema.default("REFILL"),
 		cadence: targetCadenceSchema.default("MONTH"),
 		currency: z.string().min(3).max(10).optional(),
 	}),
 	z.object({
 		kind: z.literal("BILL"),
-		amountMinor: positiveMinor,
+		amount: positiveAmount,
 		dueDate: isoDateSchema,
 		repeat: billRepeatSchema.nullable(),
 		currency: z.string().min(3).max(10).optional(),
@@ -44,9 +44,9 @@ export const targetInputSchema = z.discriminatedUnion("kind", [
 	}),
 	z.object({
 		kind: z.literal("SAVINGS"),
-		amountMinor: positiveMinor.optional(),
+		amount: positiveAmount.optional(),
 		dueDate: isoDateSchema.optional(),
-		monthlyMinor: positiveMinor.optional(),
+		monthly: positiveAmount.optional(),
 		currency: z.string().min(3).max(10).optional(),
 	}),
 ]);
@@ -54,7 +54,7 @@ export const targetInputSchema = z.discriminatedUnion("kind", [
 /** A group's target (SPEC §5.9): a fixed amount or a percent of money in (basis points). */
 export const groupTargetInputSchema = z.discriminatedUnion("kind", [
 	z.object({ kind: z.literal("NONE") }),
-	z.object({ kind: z.literal("AMOUNT"), amountMinor: positiveMinor }),
+	z.object({ kind: z.literal("AMOUNT"), amount: positiveAmount }),
 	z.object({
 		kind: z.literal("PERCENT_OF_INCOME"),
 		basisPoints: z.number().int().min(1).max(10_000),
@@ -81,7 +81,7 @@ export const ruleActionInputSchema = z.discriminatedUnion("kind", [
 		kind: z.literal("PERCENT"),
 		basisPoints: z.number().int().min(1).max(10_000),
 	}),
-	z.object({ kind: z.literal("AMOUNT"), amountMinor: positiveMinor }),
+	z.object({ kind: z.literal("AMOUNT"), amount: positiveAmount }),
 	z.object({ kind: z.literal("REMAINDER") }),
 ]);
 
@@ -107,7 +107,7 @@ export const setupInputSchema = z
 		currency: z.string().min(3).max(10).optional(),
 		weekStartDay: z.number().int().min(0).max(6).optional(),
 		/** "How much money do you have right now?" in the book currency (D34). */
-		startingMoneyMinor: nonNegativeMinor.optional(),
+		startingMoney: nonNegativeAmount.optional(),
 		groups: z
 			.array(
 				z.object({
@@ -143,7 +143,7 @@ export const setupInputSchema = z
 		"exactly one envelope is the default (Everything else)",
 	)
 	.refine(
-		(s) => s.style !== "LIMITS" || s.startingMoneyMinor === undefined,
+		(s) => s.style !== "LIMITS" || s.startingMoney === undefined,
 		"Limits does not ask for money now (SPEC §4.3)",
 	);
 
@@ -157,7 +157,7 @@ export const assignInputSchema = z.object({
 			z.object({
 				id: clientIdSchema,
 				envelopeId: idSchema,
-				amountMinor: minorSchema,
+				amount: signedAmount,
 			}),
 		)
 		.min(1)
@@ -178,7 +178,7 @@ export const moveInputSchema = z.object({
 	/** null = To assign. */
 	from: idSchema.nullable(),
 	to: idSchema.nullable(),
-	amountMinor: positiveMinor,
+	amount: positiveAmount,
 	kind: z.enum(["MOVE", "COVER", "UNASSIGN"]),
 });
 
@@ -188,7 +188,7 @@ export const coverInputSchema = z.object({
 	envelopeId: idSchema,
 	/** null = from To assign. */
 	from: idSchema.nullable(),
-	amountMinor: positiveMinor,
+	amount: positiveAmount,
 });
 
 export const undoInputSchema = z.object({

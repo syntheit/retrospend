@@ -17,7 +17,7 @@ import {
 	expectProblem,
 	useApiV1,
 } from "../../core/__tests__/harness";
-import { useBudgetV1, withoutStamps } from "./fixtures";
+import { toV1, useBudgetV1, withoutStamps } from "./fixtures";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -42,7 +42,7 @@ describe("/api/v1/budget migration", () => {
 	let userId: string;
 
 	const post = (path: string, body: unknown, headers = as) =>
-		call(path, { method: "POST", headers, body, idempotent: true });
+		call(path, { method: "POST", headers, body: toV1(body), idempotent: true });
 	const undo = (token: string | null) => post("/budget/undo", { token });
 	const dining = async () =>
 		(

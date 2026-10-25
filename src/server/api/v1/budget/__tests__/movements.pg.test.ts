@@ -17,6 +17,7 @@ import {
 import {
 	bookedUser,
 	setBudgetFlag,
+	toV1,
 	usd,
 	useBudgetV1,
 	uuid,
@@ -53,7 +54,12 @@ describe("/api/v1/budget movements", () => {
 	let userId: string;
 
 	const post = (path: string, body: unknown, headers = as, key?: string) =>
-		call(path, { method: "POST", headers, body, idempotent: key ?? true });
+		call(path, {
+			method: "POST",
+			headers,
+			body: toV1(body),
+			idempotent: key ?? true,
+		});
 	const month = async () =>
 		expectBody<Month>(await call("/budget/month", { headers: as }), c.month);
 	const left = async (name: string) =>
@@ -139,11 +145,8 @@ describe("/api/v1/budget movements", () => {
 	it("refuses an amount that is not whole minor units (400)", async () => {
 		const body = assignBody(10);
 		(body.items[0] as { amountMinor: number }).amountMinor = 10.5;
-		await expectProblem(
-			await post("/budget/assign", body),
-			400,
-			"validation_failed",
-		);
+		// 0.105 has a digit the currency does not.
+		await expectProblem(await post("/budget/assign", body), 400, "bad_request");
 	});
 
 	it("answers 404 for another person's envelope", async () => {

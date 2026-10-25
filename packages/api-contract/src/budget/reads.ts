@@ -1,6 +1,11 @@
 import * as z from "zod";
 import { idSchema } from "../core";
-import { monthKeySchema, positiveMinor, setupStyleSchema } from "./basics";
+import {
+	monthKeySchema,
+	nonNegativeAmount,
+	positiveAmount,
+	setupStyleSchema,
+} from "./basics";
 import {
 	bankSideSchema,
 	monthSummaryOutputSchema,
@@ -43,7 +48,6 @@ import { budgetRead, budgetReadAll } from "./routes";
  * separated. Each query is the matching tRPC input, written for a GET.
  */
 const monthParam = z.coerce.number().pipe(monthKeySchema);
-const amountParam = z.coerce.number().pipe(positiveMinor);
 const idList = z
 	.string()
 	.max(4000)
@@ -60,7 +64,7 @@ export const setupPresetQuerySchema = z.object({ style: setupStyleSchema });
 
 export const fillQuerySchema = z.object({
 	month: monthParam.optional(),
-	amountMinor: amountParam
+	amount: positiveAmount
 		.optional()
 		.meta({ description: "Plan only this much; default: all of To assign." }),
 });
@@ -83,7 +87,7 @@ export const monthRequiredQuerySchema = z.object({ month: monthParam });
 
 export const affordQuerySchema = z.object({
 	month: monthParam.optional(),
-	amountMinor: amountParam,
+	amount: positiveAmount,
 	envelopeId: idSchema.optional(),
 });
 
@@ -115,7 +119,7 @@ export const yearQuerySchema = z.object({
 
 export const payoffProjectionQuerySchema = z.object({
 	strategy: payoffStrategySchema.optional(),
-	extraMonthlyMinor: z.coerce.number().int().min(0).optional(),
+	extraMonthly: nonNegativeAmount.optional(),
 	customOrder: idList
 		.optional()
 		.meta({ description: "Comma-separated liability ids." }),

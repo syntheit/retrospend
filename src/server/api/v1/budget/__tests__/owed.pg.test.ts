@@ -17,7 +17,7 @@ import {
 	expectProblem,
 	useApiV1,
 } from "../../core/__tests__/harness";
-import { bookedUser, useBudgetV1, withoutStamps } from "./fixtures";
+import { bookedUser, toV1, useBudgetV1, withoutStamps } from "./fixtures";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -107,7 +107,7 @@ describe("/api/v1/budget owed and splits", () => {
 	let project: string;
 
 	const post = (path: string, body: unknown, headers = as) =>
-		call(path, { method: "POST", headers, body, idempotent: true });
+		call(path, { method: "POST", headers, body: toV1(body), idempotent: true });
 	const undo = (token: string | null) => post("/budget/undo", { token });
 	const owedTo = async (who: Party) =>
 		(await getOwed(userId))?.people.find((p) => p.participant.id === who.id)

@@ -89,3 +89,29 @@ export function withoutStamps<T>(value: T): T {
 }
 
 export const uuid = () => randomUUID();
+
+const minorText = (n: number) => {
+	if (!Number.isInteger(n)) return String(n / 100);
+	const abs = Math.abs(n);
+	const frac = String(abs % 100).padStart(2, "0");
+	return `${n < 0 ? "-" : ""}${Math.trunc(abs / 100)}.${frac}`;
+};
+
+/**
+ * The engine's request bodies in the form v1 takes: every \`<name>Minor\` number
+ * is \`<name>\` text in USD (all of these tests are USD books).
+ */
+export function toV1<T>(value: T): T {
+	const walk = (v: unknown): unknown => {
+		if (Array.isArray(v)) return v.map(walk);
+		if (v === null || typeof v !== "object") return v;
+		return Object.fromEntries(
+			Object.entries(v as Record<string, unknown>).map(([k, x]) =>
+				k.endsWith("Minor") && typeof x === "number"
+					? [k.slice(0, -5), minorText(x)]
+					: [k, walk(x)],
+			),
+		);
+	};
+	return walk(value) as T;
+}

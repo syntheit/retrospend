@@ -6,9 +6,9 @@ import {
 	budgetStyleSchema,
 	clientIdSchema,
 	isoDateSchema,
-	minorSchema,
 	monthKeySchema,
-	nonNegativeMinor,
+	nonNegativeAmount,
+	signedAmount,
 } from "./basics";
 import { leftoverRuleSchema } from "./close-owed";
 import { movementResultSchema } from "./read";
@@ -34,7 +34,7 @@ export const setStyleInputSchema = z.object({
 	id: clientIdSchema,
 	style: switchStyleSchema,
 	/** Leaving Limits: "How much do you have right now?" in the book currency. */
-	haveNowMinor: nonNegativeMinor.optional(),
+	haveNow: nonNegativeAmount.optional(),
 	/** STYLE_DEFAULT: Monthly envelopes on the old style's leftover default take the new one (listed first). */
 	leftovers: z.enum(["KEEP", "STYLE_DEFAULT"]).default("STYLE_DEFAULT"),
 });
@@ -93,7 +93,7 @@ export const welcomeBackInputSchema = z.discriminatedUnion("choice", [
 		/** Client id of the Adjustment. */
 		id: clientIdSchema,
 		/** Money now in the book currency; below 0 when debts outweigh cash. */
-		amountMinor: minorSchema,
+		amount: signedAmount,
 	}),
 	z.object({ choice: z.literal("START_FRESH"), batchId: clientIdSchema }),
 ]);
@@ -117,7 +117,7 @@ export const reconcileInputSchema = z.object({
 	/** Client id of the Adjustment row. */
 	id: clientIdSchema,
 	/** What the bank says now (signed: a card owing more than the cash is below 0). The server records the difference from what the budget holds, under the book lock; equal records that it matched. */
-	bankMinor: minorSchema,
+	bank: signedAmount,
 });
 
 export const removeAdjustmentInputSchema = z.object({ expenseId: idSchema });
@@ -167,7 +167,7 @@ export const setLimitInputSchema = z.object({
 	id: clientIdSchema,
 	envelopeId: idSchema,
 	/** The new limit in minor units of `currency`. */
-	amountMinor: nonNegativeMinor,
+	amount: nonNegativeAmount,
 	/** The currency the person typed (default: the book's); kept and converted each month (D25). */
 	currency: z.string().min(3).max(10).optional(),
 	/** "Only this month" or "From now on". */

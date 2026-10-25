@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { nonNegativeAmount } from "../budget/basics";
 import { currencyCodeSchema, moneySchema } from "../common/money";
 import { userText } from "../common/user-text";
 import { idSchema, timestampSchema } from "../core";
@@ -55,11 +56,6 @@ const percentTextSchema = z
 	.regex(/^\d{1,3}(\.\d{1,6})?$/, "A yearly rate like 24.5")
 	.meta({ id: "PercentText", examples: ["24.5"] });
 
-const minimumTextSchema = z
-	.string()
-	.regex(/^\d{1,11}(\.\d{1,8})?$/, "Use digits and at most 8 decimals")
-	.meta({ id: "NonNegativeAmountText", examples: ["50"] });
-
 const rateTypeNameSchema = z.string().min(1).max(32);
 
 /** What a person fills in when they add or edit an account. */
@@ -76,7 +72,7 @@ export const accountFieldsSchema = z.object({
 		.meta({ description: "Only for the custom rate type." }),
 	isLiquid: z.boolean().default(false),
 	interestRate: percentTextSchema.nullish(),
-	minimumPayment: minimumTextSchema.nullish(),
+	minimumPayment: nonNegativeAmount.nullish(),
 	dueDay: z.int().min(1).max(31).nullish(),
 	inBudget: z.boolean().nullish().meta({
 		description:

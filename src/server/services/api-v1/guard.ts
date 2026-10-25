@@ -21,6 +21,9 @@ export type GuardRef =
 	| { table: "envelope"; id: string }
 	| { table: "splitParticipant"; id: string }
 	| { table: "budgetDraft"; id: string }
+	| { table: "envelopeGroup"; id: string }
+	/** The caller's payoff plan, by the undo record its last save left. */
+	| { table: "payoffPlan" }
 	| { table: "payment"; id: string }
 	| { table: "projectParticipant"; id: string }
 	| { table: "expense"; ids: string[] }
@@ -104,6 +107,20 @@ export async function readStamp(
 					select: { updatedAt: true },
 				}),
 			);
+		case "envelopeGroup":
+			return at(
+				await tx.envelopeGroup.findUnique({
+					where: { id: ref.id },
+					select: { updatedAt: true },
+				}),
+			);
+		case "payoffPlan": {
+			const row = await tx.payoffPlan.findFirst({
+				where: { book: { createdById: userId, isPersonal: true } },
+				select: { undo: true },
+			});
+			return row ? digest(JSON.stringify(row.undo ?? null)) : GONE;
+		}
 		case "budgetDraft":
 			return at(
 				await tx.budgetDraft.findUnique({

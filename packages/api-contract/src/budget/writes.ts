@@ -5,7 +5,7 @@ import { idSchema } from "../core";
 import {
 	clientIdSchema,
 	monthKeySchema,
-	positiveMinor,
+	positiveAmount,
 	setupStyleSchema,
 } from "./basics";
 import {
@@ -76,8 +76,8 @@ export const forgiveInputSchema = z.object({
 	participant: participantRefSchema,
 	/** The balance's currency. */
 	currency: z.string().min(3).max(10),
-	/** Minor units of `currency`; at most what they owe you there. */
-	amountMinor: positiveMinor,
+	/** In `currency`, at most what they owe you there. */
+	amount: positiveAmount,
 	/** The envelope it is charged to; null: Everything else. */
 	envelopeId: idSchema.nullable(),
 });
@@ -97,7 +97,7 @@ export const carryOverspendInputSchema = z.object({
 	id: clientIdSchema,
 	/** The envelope that went over last month; it takes the overspend this month instead. */
 	envelopeId: idSchema,
-	amountMinor: positiveMinor,
+	amount: positiveAmount,
 });
 
 /** Fix a negative To assign, or start fresh (reset): one batch this month. */
@@ -109,7 +109,7 @@ export const fillFromTargetsInputSchema = z
 	.object({
 		month: monthKeySchema.optional(),
 		/** Plan only this much (an income that just arrived); default: all of To assign. */
-		amountMinor: positiveMinor.optional(),
+		amount: positiveAmount.optional(),
 	})
 	.default({});
 

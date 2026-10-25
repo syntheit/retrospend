@@ -7,8 +7,8 @@ import {
 	isoDateSchema,
 	minorSchema,
 	monthKeySchema,
-	nonNegativeMinor,
-	positiveMinor,
+	nonNegativeAmount,
+	positiveAmount,
 } from "./basics";
 
 export const aprSchema = z
@@ -22,7 +22,7 @@ export const setDebtTermsInputSchema = z.object({
 	/** Null clears it. */
 	aprPercent: aprSchema.nullable(),
 	/** In the liability's own currency; null clears it. */
-	minimumMinor: nonNegativeMinor.nullable(),
+	minimum: nonNegativeAmount.nullable(),
 	/** Day of the month the minimum is due (1 to 31; a short month uses its last day). */
 	dueDay: z.number().int().min(1).max(31).nullable(),
 });
@@ -47,7 +47,7 @@ export const payoffStrategySchema = z.enum(["SNOWBALL", "AVALANCHE", "CUSTOM"]);
 export const savePayoffPlanInputSchema = z.object({
 	strategy: payoffStrategySchema,
 	/** Each month on top of the minimums, in the book currency. */
-	extraMonthlyMinor: nonNegativeMinor,
+	extraMonthly: nonNegativeAmount,
 	/** CUSTOM: liability ids in payoff order. */
 	customOrder: z.array(idSchema).max(50).default([]),
 	/** "Extra debt payment": gets a Set aside target equal to the extra. */
@@ -71,7 +71,7 @@ export const payoffProjectInputSchema = z
 	.object({
 		/** Try another plan without saving it (the slider); default: the saved plan. */
 		strategy: payoffStrategySchema.optional(),
-		extraMonthlyMinor: nonNegativeMinor.optional(),
+		extraMonthly: nonNegativeAmount.optional(),
 		customOrder: z.array(idSchema).max(50).optional(),
 	})
 	.default({});
@@ -126,9 +126,9 @@ export const recordDebtPaymentInputSchema = z.object({
 	 * Toward the balance. For a credit card, only the old-debt part: new card
 	 * spending already came out of your envelopes (D3).
 	 */
-	principalMinor: positiveMinor,
+	principal: positiveAmount,
 	/** "Interest in this payment", recorded as spending (Fees). */
-	interestMinor: nonNegativeMinor,
+	interest: nonNegativeAmount,
 	/** Where the interest counts; default the Fees category. */
 	interestCategoryId: idSchema.nullable().optional(),
 	date: isoDateSchema.optional(),

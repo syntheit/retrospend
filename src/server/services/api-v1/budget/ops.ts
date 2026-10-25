@@ -51,6 +51,13 @@ import {
 	setShareCategoryMutation,
 	unforgiveMutation,
 } from "~/server/services/envelope/splits.mutation";
+import { draftOut, fromEngine, type Renamed, v1Mutation } from "./amounts";
+import {
+	revertPayoffPlanMutation,
+	savePayoffPlanMutation,
+	setDebtTermsMutation,
+	setGroupTargetMutation,
+} from "./plan-mutations";
 import { adjustmentPlan, changePlan, movementPlan } from "./plans";
 import { moneyOp } from "./write";
 
@@ -60,11 +67,15 @@ import { moneyOp } from "./write";
  */
 
 export const budgetOps = {
-	assign: moneyOp(assignEnvelopes, { plan: (_i, v) => movementPlan(v) }),
-	move: moneyOp(moveMoney, { plan: (_i, v) => movementPlan(v) }),
-	cover: moneyOp(coverEnvelope, { plan: (_i, v) => movementPlan(v) }),
+	assign: moneyOp(v1Mutation(assignEnvelopes), {
+		plan: (_i, v) => movementPlan(v),
+	}),
+	move: moneyOp(v1Mutation(moveMoney), { plan: (_i, v) => movementPlan(v) }),
+	cover: moneyOp(v1Mutation(coverEnvelope), {
+		plan: (_i, v) => movementPlan(v),
+	}),
 	undoMovement: moneyOp(undoMovements),
-	carryOverspend: moneyOp(carryOverspendMutation, {
+	carryOverspend: moneyOp(v1Mutation(carryOverspendMutation), {
 		plan: (_i, v) => movementPlan(v),
 	}),
 	fixNegative: moneyOp(fixNegativeMutation, {
@@ -94,7 +105,7 @@ export const budgetOps = {
 			guard: { table: "projectParticipant", id: v.participantId },
 		}),
 	}),
-	forgive: moneyOp(forgiveMutation, {
+	forgive: moneyOp(v1Mutation(forgiveMutation), {
 		plan: (_i, v) => ({
 			op: "forgive.undo",
 			args: { paymentId: v.paymentId },
@@ -103,13 +114,16 @@ export const budgetOps = {
 	}),
 	unforgive: moneyOp(unforgiveMutation),
 
-	setup: moneyOp(setupEnvelopeBook, {
-		prep: (caller, input: SetupInput): SetupMutationInput => ({
+	setup: moneyOp(v1Mutation(setupEnvelopeBook), {
+		prep: (
+			caller,
+			input: Renamed<SetupInput>,
+		): Renamed<SetupMutationInput> => ({
 			...input,
 			timeZone: caller.timeZone,
 		}),
 	}),
-	setStyle: moneyOp(setStyleMutation, {
+	setStyle: moneyOp(v1Mutation(setStyleMutation), {
 		plan: (_i, v) => ({
 			op: "style.revert",
 			args: {},
@@ -117,7 +131,7 @@ export const budgetOps = {
 		}),
 	}),
 	revertStyle: moneyOp(revertStyleMutation),
-	setLimit: moneyOp(setLimitMutation, {
+	setLimit: moneyOp(v1Mutation(setLimitMutation), {
 		plan: (i, v) =>
 			i.scope === "FROM_NOW_ON"
 				? {
@@ -141,7 +155,7 @@ export const budgetOps = {
 						guard: { table: "bookPeriod" },
 					},
 	}),
-	welcomeBack: moneyOp(welcomeBackMutation, {
+	welcomeBack: moneyOp(v1Mutation(welcomeBackMutation), {
 		plan: (_i, v) =>
 			v.choice === "SET_HAVE_NOW"
 				? adjustmentPlan(v.adjustment?.expenseId ?? null)
@@ -149,15 +163,15 @@ export const budgetOps = {
 					? movementPlan(v.movements)
 					: null,
 	}),
-	reconcile: moneyOp(reconcileMutation, {
+	reconcile: moneyOp(v1Mutation(reconcileMutation), {
 		plan: (_i, v) => adjustmentPlan(v.expenseId),
 	}),
 	removeAdjustment: moneyOp(removeAdjustmentMutation),
 
-	setTarget: moneyOp(setTargetMutation, {
+	setTarget: moneyOp(v1Mutation(setTargetMutation), {
 		plan: (_i, v) => changePlan(v.changeId),
 	}),
-	createEnvelope: moneyOp(createEnvelopeMutation, {
+	createEnvelope: moneyOp(v1Mutation(createEnvelopeMutation), {
 		plan: (_i, v) => changePlan(v.changeId),
 	}),
 	updateEnvelope: moneyOp(updateEnvelopeMutation, {
@@ -169,7 +183,7 @@ export const budgetOps = {
 	archiveEnvelope: moneyOp(archiveEnvelopeMutation, {
 		plan: (_i, v) => changePlan(v.changeId),
 	}),
-	confirmStartingMoney: moneyOp(confirmStartingMoneyMutation, {
+	confirmStartingMoney: moneyOp(v1Mutation(confirmStartingMoneyMutation), {
 		plan: (_i, v) => changePlan(v.changeId),
 	}),
 	undoChange: moneyOp(undoChangeMutation),
@@ -177,22 +191,70 @@ export const budgetOps = {
 	applyRule: moneyOp(applyRuleToMonthMutation, {
 		plan: (_i, v) => movementPlan(v.movement),
 	}),
-	applyDraft: moneyOp(applyDraftMutation, {
-		plan: (_i, v) =>
-			v.draft.kind === "PLAN"
-				? {
-						op: "draft.unapply",
-						args: { draftId: v.draft.id },
-						guard: { table: "budgetDraft", id: v.draft.id },
-					}
-				: movementPlan(v.movement),
-	}),
-	unapplyDraft: moneyOp(unapplyDraftMutation),
-	fundPlanNow: moneyOp(fundPlanNowMutation, {
-		plan: (_i, v) => movementPlan(v.movement),
-	}),
+	applyDraft: moneyOp(
+		v1Mutation(applyDraftMutation, (v, currency) => ({
+			...v,
+			draft: draftOut(v.draft, currency),
+		})),
+		{
+			plan: (_i, v) =>
+				v.draft.kind === "PLAN"
+					? {
+							op: "draft.unapply",
+							args: { draftId: v.draft.id },
+							guard: { table: "budgetDraft", id: v.draft.id },
+						}
+					: movementPlan(v.movement),
+		},
+	),
+	unapplyDraft: moneyOp(
+		v1Mutation(unapplyDraftMutation, (v, currency) => ({
+			...v,
+			draft: draftOut(v.draft, currency),
+		})),
+	),
+	fundPlanNow: moneyOp(
+		v1Mutation(fundPlanNowMutation, (v, currency) => ({
+			...v,
+			draft: draftOut(v.draft, currency),
+		})),
+		{
+			plan: (_i, v) => movementPlan(v.movement),
+		},
+	),
 
-	recordDebtPayment: moneyOp(recordDebtPaymentMutation, {
+	setGroupTarget: moneyOp(v1Mutation(setGroupTargetMutation, fromEngine), {
+		plan: (i, v) => ({
+			op: "group_target.set",
+			args: {
+				groupId: i.groupId,
+				target: v.previous.target,
+				mainEnvelopeId: v.previous.mainEnvelopeId,
+			},
+			guard: { table: "envelopeGroup", id: v.groupId },
+		}),
+	}),
+	setDebtTerms: moneyOp(v1Mutation(setDebtTermsMutation), {
+		plan: (i, v) => ({
+			op: "debt_terms.set",
+			args: {
+				assetAccountId: i.assetAccountId,
+				aprPercent: v.previous.aprPercent,
+				minimumMinor: v.previous.minimum?.minor ?? null,
+				dueDay: v.previous.dueDay,
+			},
+			guard: { table: "account", id: i.assetAccountId },
+		}),
+	}),
+	savePayoffPlan: moneyOp(v1Mutation(savePayoffPlanMutation), {
+		plan: () => ({
+			op: "payoff_plan.revert",
+			args: {},
+			guard: { table: "payoffPlan" },
+		}),
+	}),
+	revertPayoffPlan: moneyOp(v1Mutation(revertPayoffPlanMutation)),
+	recordDebtPayment: moneyOp(v1Mutation(recordDebtPaymentMutation), {
 		plan: (_i, v) => ({
 			op: "debt_payment.delete",
 			args: { transferId: v.transferId },

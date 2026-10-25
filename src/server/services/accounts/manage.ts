@@ -4,8 +4,10 @@
  * balance typed by hand goes through writeCheckpoint, so it records its Not
  * logged difference like Update balance.
  */
+import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { TRPCError } from "@trpc/server";
-import { generateCsv } from "~/lib/csv";
+import { CsvNumber, generateCsv } from "~/lib/csv";
+import { isCrypto } from "~/lib/currency-format";
 import { normalizeDate } from "~/lib/date";
 import { isValidRate, toUSD, USD } from "~/lib/money";
 import { toNumberOrNull } from "~/lib/utils";
@@ -302,6 +304,17 @@ export async function deleteAccountIn(
 export const deleteAccount = (db: Db, userId: string, id: string) =>
 	userTransaction(db, userId, (tx) => deleteAccountIn(tx, userId, id));
 
+/** Balance in USD from the stored rate, as a Decimal; null when there is no usable rate. */
+function usdValue(
+	balance: Decimal,
+	currency: string,
+	rate: number | null,
+): Decimal | null {
+	if (currency === USD) return balance;
+	if (!isValidRate(rate)) return null;
+	return isCrypto(currency) ? balance.mul(dec(rate)) : balance.div(dec(rate));
+}
+
 /** Open accounts only, like the wealth page; closed ones are in the full data export. */
 export async function exportAccountsCsv(db: Db, userId: string) {
 	const assets = await db.assetAccount.findMany({
@@ -313,6 +326,7 @@ export async function exportAccountsCsv(db: Db, userId: string) {
 	const balancesInUSD = await Promise.all(
 		assets.map(async (asset) => {
 			const stored = toNumberOrNull(asset.exchangeRate);
+			const balance = dec(asset.balance.toString());
 			try {
 				const { rate } = await service.resolveExchangeRate(
 					asset.currency,
@@ -322,12 +336,10 @@ export async function exportAccountsCsv(db: Db, userId: string) {
 						type: asset.exchangeRateType,
 					},
 				);
-				return toUSD(Number(asset.balance), asset.currency, rate);
+				return usdValue(balance, asset.currency, rate);
 			} catch {
 				// No table rate: the asset's own stored rate, else left blank
-				return isValidRate(stored)
-					? toUSD(Number(asset.balance), asset.currency, stored)
-					: null;
+				return usdValue(balance, asset.currency, stored);
 			}
 		}),
 	);
@@ -343,13 +355,15 @@ export async function exportAccountsCsv(db: Db, userId: string) {
 		"createdAt",
 		"updatedAt",
 	];
+	const exact = (value: { toString(): string } | null) =>
+		value === null ? null : new CsvNumber(value.toString());
 	const rows = assets.map((asset, i) => [
 		asset.name,
 		asset.type,
 		asset.currency,
-		asset.balance,
-		balancesInUSD[i],
-		asset.exchangeRate,
+		exact(asset.balance),
+		exact(balancesInUSD[i] ?? null),
+		exact(asset.exchangeRate),
 		asset.exchangeRateType,
 		asset.isLiquid,
 		asset.createdAt,

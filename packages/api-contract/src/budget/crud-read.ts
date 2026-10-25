@@ -2,14 +2,14 @@
 import * as z from "zod";
 import { moneySchema } from "../common/money";
 import { idSchema } from "../core";
-import { isoDateSchema, monthKeySchema, positiveMinor } from "./basics";
+import { isoDateSchema, monthKeySchema, positiveAmount } from "./basics";
 
 // ── Can I afford it? (SYNTHESIS-r6 §4) ──────────────────────────────────────
 
 export const affordInputSchema = z.object({
 	month: monthKeySchema.optional(),
 	/** In the book currency. */
-	amountMinor: positiveMinor,
+	amount: positiveAmount,
 	/** Every dollar and Limits answer from one envelope (default: Everything else). */
 	envelopeId: idSchema.optional(),
 });

@@ -5,8 +5,8 @@ import { idSchema, timestampSchema } from "../core";
 import {
 	clientIdSchema,
 	monthKeySchema,
-	nonNegativeMinor,
-	positiveMinor,
+	nonNegativeAmount,
+	positiveAmount,
 } from "./basics";
 import { movementResultSchema } from "./read";
 
@@ -18,7 +18,7 @@ export const draftStatusSchema = z.enum(["OPEN", "APPLIED", "DISCARDED"]);
 /** PLAN: what the envelope should have assigned in the month. */
 export const planLineSchema = z.object({
 	envelopeId: idSchema,
-	amountMinor: nonNegativeMinor,
+	amount: nonNegativeAmount,
 });
 
 /** WHAT_IF: a pretend move; Apply writes only these (D54). null = To assign. */
@@ -26,7 +26,7 @@ export const draftMoveSchema = z.object({
 	id: clientIdSchema,
 	from: idSchema.nullable(),
 	to: idSchema.nullable(),
-	amountMinor: positiveMinor,
+	amount: positiveAmount,
 });
 
 /** Expected money in: sizes the plan, never written as money in (D16). */
@@ -34,7 +34,7 @@ export const expectedInSchema = z.object({
 	id: clientIdSchema,
 	templateId: idSchema.nullable(),
 	categoryId: idSchema.nullable(),
-	amountMinor: positiveMinor,
+	amount: positiveAmount,
 });
 
 /** WHAT_IF: a pretend expense (OUT) or money in (IN), never written. */
@@ -44,7 +44,28 @@ export const pretendRowSchema = z.object({
 	categoryId: idSchema.nullable(),
 	/** OUT straight into one envelope ("What if I spend…" on an envelope). */
 	envelopeId: idSchema.nullable(),
-	amountMinor: positiveMinor,
+	amount: positiveAmount,
+});
+
+/** The same four rows as a draft answers them: amounts as Money in the book currency. */
+const withMoney = <S extends z.ZodRawShape>(shape: S) =>
+	z.object({ ...shape, amount: moneySchema });
+export const planLineOutSchema = withMoney({ envelopeId: idSchema });
+export const draftMoveOutSchema = withMoney({
+	id: clientIdSchema,
+	from: idSchema.nullable(),
+	to: idSchema.nullable(),
+});
+export const expectedInOutSchema = withMoney({
+	id: clientIdSchema,
+	templateId: idSchema.nullable(),
+	categoryId: idSchema.nullable(),
+});
+export const pretendRowOutSchema = withMoney({
+	id: clientIdSchema,
+	kind: z.enum(["OUT", "IN"]),
+	categoryId: idSchema.nullable(),
+	envelopeId: idSchema.nullable(),
 });
 
 export const saveDraftInputSchema = z
@@ -72,10 +93,10 @@ export const draftSchema = z.object({
 	kind: draftKindSchema,
 	month: monthKeySchema,
 	status: draftStatusSchema,
-	lines: z.array(planLineSchema),
-	moves: z.array(draftMoveSchema),
-	expectedIn: z.array(expectedInSchema),
-	pretend: z.array(pretendRowSchema),
+	lines: z.array(planLineOutSchema),
+	moves: z.array(draftMoveOutSchema),
+	expectedIn: z.array(expectedInOutSchema),
+	pretend: z.array(pretendRowOutSchema),
 	appliedAt: timestampSchema.nullable(),
 	fundedBatchId: idSchema.nullable(),
 	updatedAt: timestampSchema,
@@ -103,7 +124,7 @@ export const planFillInputSchema = z.object({
 
 export const planFillOutputSchema = z.object({
 	month: monthKeySchema,
-	lines: z.array(planLineSchema),
+	lines: z.array(planLineOutSchema),
 });
 
 export const beforeAfter = z.object({

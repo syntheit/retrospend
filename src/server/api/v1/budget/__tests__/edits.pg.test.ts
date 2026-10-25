@@ -13,7 +13,7 @@ import {
 	expectProblem,
 	useApiV1,
 } from "../../core/__tests__/harness";
-import { bookedUser, useBudgetV1, uuid, withoutStamps } from "./fixtures";
+import { bookedUser, toV1, useBudgetV1, uuid, withoutStamps } from "./fixtures";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -48,7 +48,12 @@ describe("/api/v1/budget edits", () => {
 	let stranger: Record<string, string>;
 
 	const send = (method: string, path: string, body?: unknown, headers = as) =>
-		call(path, { method, headers, body, idempotent: method !== "GET" });
+		call(path, {
+			method,
+			headers,
+			body: toV1(body),
+			idempotent: method !== "GET",
+		});
 	const month = async () =>
 		expectBody<Month>(await call("/budget/month", { headers: as }), c.month);
 	const names = async () =>
@@ -335,15 +340,39 @@ describe("/api/v1/budget edits", () => {
 		);
 	});
 
-	it("sets a group's target and pauses the budget", async () => {
-		const target = await expectBody<{ groupId: string }>(
-			await send("PUT", `/budget/groups/${spendingGroup}/target`, {
+	it("sets a group's target with a preview and takes it back; stale tokens answer 409", async () => {
+		const path = `/budget/groups/${spendingGroup}/target`;
+		const first = await twin(
+			path,
+			{
 				groupId: spendingGroup,
 				target: { kind: "AMOUNT", amountMinor: 40_000 },
-			}),
-			c.setGroupTarget,
+			},
+			{ write: c.setGroupTarget, preview: c.previewSetGroupTarget },
+			{ method: "PUT" },
 		);
-		expect(target.groupId).toBe(spendingGroup);
+		expect(first.written.result.groupId).toBe(spendingGroup);
+		const second = await twin(
+			path,
+			{
+				groupId: spendingGroup,
+				target: { kind: "AMOUNT", amountMinor: 45_000 },
+			},
+			{ write: c.setGroupTarget, preview: c.previewSetGroupTarget },
+			{ method: "PUT" },
+		);
+		await expectProblem(await undo(first.written.undo), 409, "conflict");
+		const undone = await expectBody<{
+			result: { kind: string; result: unknown };
+		}>(await undo(second.written.undo), c.undo);
+		expect(undone.result.kind).toBe("group_target.set");
+		expect(undone.result.result).toMatchObject({
+			target: { kind: "AMOUNT", amount: "400.00" },
+		});
+		await expectProblem(await undo(second.written.undo), 409, "conflict");
+	});
+
+	it("pauses and resumes the budget", async () => {
 		const paused = await expectBody<{ paused: boolean }>(
 			await send("POST", "/budget/pause", {}),
 			c.pause,
@@ -364,7 +393,7 @@ describe("/api/v1/budget edits", () => {
 			[`/budget/cover-sources?envelopeId=${ids.Rent}`, c.coverSources],
 			["/budget/owed", c.owed],
 			["/budget/welcome-back", c.welcomeBackState],
-			["/budget/afford?amountMinor=5000", c.afford],
+			["/budget/afford?amount=50.00", c.afford],
 			["/budget/unrouted-shares", c.unroutedShares],
 			["/budget/plan-fill?source=TARGETS", c.planFill],
 			["/budget/plan-cost", c.planCost],

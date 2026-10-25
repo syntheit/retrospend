@@ -43,10 +43,6 @@ export const budgetRouter = {
 	archiveRule: b.archiveRule.handler(h(edit.archiveRule)),
 	saveDraft: b.saveDraft.handler(h(edit.saveDraft)),
 	discardDraft: b.discardDraft.handler(h(edit.discardDraft)),
-	setGroupTarget: b.setGroupTarget.handler(h(edit.setGroupTarget)),
-	setDebtTerms: b.setDebtTerms.handler(h(edit.setDebtTerms)),
-	savePayoffPlan: b.savePayoffPlan.handler(h(edit.savePayoffPlan)),
-	revertPayoffPlan: b.revertPayoffPlan.handler(h(edit.revertPayoffPlan)),
 	dismissMigrationNotice: b.dismissMigrationNotice.handler(
 		h(edit.dismissMigrationNotice),
 	),

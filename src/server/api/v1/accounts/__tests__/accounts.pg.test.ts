@@ -359,4 +359,25 @@ describe("/api/v1/accounts", () => {
 		);
 		expect(csv.csv).toContain("name,type,currency,balance");
 	});
+
+	it("writes a negative balance in the CSV as a number, and keeps the guard on text", async () => {
+		await expectBody(
+			await send(
+				"POST",
+				"/accounts",
+				newAccount({ name: "=Overdrawn", balance: "-50" }),
+			),
+			c.create,
+			201,
+		);
+		const csv = (
+			await expectBody<{ csv: string }>(
+				await call("/accounts/export", { headers: as }),
+				c.export,
+			)
+		).csv;
+		// The name is text a person typed, so a formula guard prefixes it; the balance is a number.
+		expect(csv).toContain("'=Overdrawn,CASH,USD,-50,-50,");
+		expect(csv).not.toContain("'-50");
+	});
 });

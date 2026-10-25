@@ -78,6 +78,7 @@ const undoMovement = moneyWrite({
 	event: "budget_movement.undone",
 	input: movementUndoInputSchema,
 	result: movementResultSchema,
+	noUndo: "an undo is not undone; make the movement again.",
 });
 const carry = moneyWrite({
 	path: "/budget/carry-overspend",
@@ -142,6 +143,7 @@ const unforgive = moneyWrite({
 	event: "budget_owed.unforgiven",
 	input: unforgiveInputSchema,
 	result: unforgiveResultSchema,
+	noUndo: "forgive again to put it back.",
 });
 
 const setup = moneyWrite({
@@ -153,6 +155,7 @@ const setup = moneyWrite({
 	input: setupInputSchema,
 	result: setupResultSchema,
 	status: 201,
+	noUndo: "a first set-up cannot be taken back.",
 });
 const setStyle = moneyWrite({
 	path: "/budget/style",
@@ -171,6 +174,7 @@ const revertStyle = moneyWrite({
 	event: "budget_style.reverted",
 	input: revertStyleInputSchema,
 	result: revertStyleResultSchema,
+	noUndo: "an undo is not undone; switch the style again.",
 });
 const setLimit = moneyWrite({
 	path: "/budget/limits",
@@ -189,6 +193,7 @@ const revertLimit = moneyWrite({
 	event: "budget_limit.reverted",
 	input: revertLimitInputSchema,
 	result: revertLimitResultSchema,
+	noUndo: "an undo is not undone; set the limit again.",
 });
 const setPeriod = moneyWrite({
 	path: "/budget/period",
@@ -226,6 +231,7 @@ const removeAdjustment = moneyWrite({
 	event: "budget_book.adjustment_removed",
 	input: removeAdjustmentInputSchema,
 	result: adjustmentSchema,
+	noUndo: "removing an Adjustment is not undone; record the difference again.",
 });
 
 export const budgetMoneyBook = {

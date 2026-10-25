@@ -7,7 +7,7 @@ import {
 	clientIdSchema,
 	envelopeKindSchema,
 	isoDateSchema,
-	nonNegativeMinor,
+	nonNegativeAmount,
 } from "./basics";
 import { targetSnapshotSchema } from "./book-write";
 import { targetInputSchema } from "./inputs";
@@ -174,7 +174,7 @@ export const archiveEnvelopeResultSchema = movementResultSchema.extend({
 
 export const confirmStartingMoneyInputSchema = changeIdSchema.extend({
 	/** "How much do you have right now?" in the book currency; 0 is an answer. */
-	amountMinor: nonNegativeMinor,
+	amount: nonNegativeAmount,
 });
 
 export const confirmStartingMoneyResultSchema = z.object({

@@ -372,6 +372,7 @@
 				"x-required-scope": "read"
 			},
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "createAccount",
 				"parameters": [
 					{
@@ -468,8 +469,10 @@
 									"minimumPayment": {
 										"anyOf": [
 											{
+												"description": "An amount of zero or more as decimal text, in the currency's major units.",
 												"examples": [
-													"50"
+													"0",
+													"50.25"
 												],
 												"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
 												"type": "string"
@@ -1435,8 +1438,10 @@
 									"minimumPayment": {
 										"anyOf": [
 											{
+												"description": "An amount of zero or more as decimal text, in the currency's major units.",
 												"examples": [
-													"50"
+													"0",
+													"50.25"
 												],
 												"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
 												"type": "string"
@@ -3355,6 +3360,7 @@
 				"x-required-scope": "read"
 			},
 			"put": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "updateAccount",
 				"parameters": [
 					{
@@ -3456,8 +3462,10 @@
 									"minimumPayment": {
 										"anyOf": [
 											{
+												"description": "An amount of zero or more as decimal text, in the currency's major units.",
 												"examples": [
-													"50"
+													"0",
+													"50.25"
 												],
 												"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
 												"type": "string"
@@ -3748,6 +3756,7 @@
 		},
 		"/accounts/{id}/balance": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "updateAccountBalance",
 				"parameters": [
 					{
@@ -4538,6 +4547,7 @@
 		},
 		"/accounts/{id}/close": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "closeAccount",
 				"parameters": [
 					{
@@ -5243,6 +5253,7 @@
 		},
 		"/accounts/{id}/delete": {
 			"post": {
+				"description": "Answers `undo: null`: the history goes with the account, so there is nothing to put back.",
 				"operationId": "deleteAccount",
 				"parameters": [
 					{
@@ -5925,8 +5936,10 @@
 									"minimumPayment": {
 										"anyOf": [
 											{
+												"description": "An amount of zero or more as decimal text, in the currency's major units.",
 												"examples": [
-													"50"
+													"0",
+													"50.25"
 												],
 												"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
 												"type": "string"
@@ -6412,6 +6425,7 @@
 		},
 		"/accounts/{id}/rate-type": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "setAccountRateType",
 				"parameters": [
 					{
@@ -7119,6 +7133,7 @@
 		},
 		"/accounts/{id}/reopen": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "reopenAccount",
 				"parameters": [
 					{
@@ -7824,6 +7839,7 @@
 		},
 		"/budget/adjustments/{expenseId}": {
 			"delete": {
+				"description": "Answers `undo: null`: removing an Adjustment is not undone; record the difference again.",
 				"operationId": "removeBudgetAdjustment",
 				"parameters": [
 					{
@@ -8441,10 +8457,15 @@
 						"allowEmptyValue": true,
 						"allowReserved": true,
 						"in": "query",
-						"name": "amountMinor",
+						"name": "amount",
 						"required": true,
 						"schema": {
-							"type": "number"
+							"description": "A positive amount as decimal text, in the currency's major units.",
+							"examples": [
+								"1234.56"
+							],
+							"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+							"type": "string"
 						}
 					},
 					{
@@ -8715,6 +8736,7 @@
 		},
 		"/budget/assign": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "assignBudgetMoney",
 				"parameters": [
 					{
@@ -8739,10 +8761,14 @@
 									"items": {
 										"items": {
 											"properties": {
-												"amountMinor": {
-													"maximum": 9007199254740991,
-													"minimum": -9007199254740991,
-													"type": "integer"
+												"amount": {
+													"description": "An amount as decimal text in the currency's major units; below zero takes money back or is owed.",
+													"examples": [
+														"-50.25",
+														"120"
+													],
+													"pattern": "^-?\\d{1,11}(\\.\\d{1,8})?$",
+													"type": "string"
 												},
 												"envelopeId": {
 													"maxLength": 64,
@@ -8757,7 +8783,7 @@
 											"required": [
 												"id",
 												"envelopeId",
-												"amountMinor"
+												"amount"
 											],
 											"type": "object"
 										},
@@ -9065,10 +9091,14 @@
 									"items": {
 										"items": {
 											"properties": {
-												"amountMinor": {
-													"maximum": 9007199254740991,
-													"minimum": -9007199254740991,
-													"type": "integer"
+												"amount": {
+													"description": "An amount as decimal text in the currency's major units; below zero takes money back or is owed.",
+													"examples": [
+														"-50.25",
+														"120"
+													],
+													"pattern": "^-?\\d{1,11}(\\.\\d{1,8})?$",
+													"type": "string"
 												},
 												"envelopeId": {
 													"maxLength": 64,
@@ -9083,7 +9113,7 @@
 											"required": [
 												"id",
 												"envelopeId",
-												"amountMinor"
+												"amount"
 											],
 											"type": "object"
 										},
@@ -9740,6 +9770,7 @@
 		},
 		"/budget/carry-overspend": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "carryBudgetOverspend",
 				"parameters": [
 					{
@@ -9757,10 +9788,13 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"amountMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"amount": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"envelopeId": {
 										"maxLength": 64,
@@ -9775,7 +9809,7 @@
 								"required": [
 									"id",
 									"envelopeId",
-									"amountMinor"
+									"amount"
 								],
 								"type": "object"
 							}
@@ -10051,10 +10085,13 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"amountMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"amount": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"envelopeId": {
 										"maxLength": 64,
@@ -10069,7 +10106,7 @@
 								"required": [
 									"id",
 									"envelopeId",
-									"amountMinor"
+									"amount"
 								],
 								"type": "object"
 							}
@@ -10509,6 +10546,7 @@
 		},
 		"/budget/changes/{id}/undo": {
 			"post": {
+				"description": "Answers `undo: null`: an undo is not undone; make the edit again.",
 				"operationId": "undoBudgetChange",
 				"parameters": [
 					{
@@ -11269,6 +11307,7 @@
 		},
 		"/budget/cover": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "coverBudgetEnvelope",
 				"parameters": [
 					{
@@ -11286,10 +11325,13 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"amountMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"amount": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"envelopeId": {
 										"maxLength": 64,
@@ -11323,7 +11365,7 @@
 									"month",
 									"envelopeId",
 									"from",
-									"amountMinor"
+									"amount"
 								],
 								"type": "object"
 							}
@@ -11759,10 +11801,13 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"amountMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"amount": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"envelopeId": {
 										"maxLength": 64,
@@ -11796,7 +11841,7 @@
 									"month",
 									"envelopeId",
 									"from",
-									"amountMinor"
+									"amount"
 								],
 								"type": "object"
 							}
@@ -12236,6 +12281,7 @@
 		},
 		"/budget/debt-payments": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "recordBudgetDebtPayment",
 				"parameters": [
 					{
@@ -12285,6 +12331,15 @@
 										"format": "uuid",
 										"type": "string"
 									},
+									"interest": {
+										"description": "An amount of zero or more as decimal text, in the currency's major units.",
+										"examples": [
+											"0",
+											"50.25"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
+									},
 									"interestCategoryId": {
 										"anyOf": [
 											{
@@ -12297,20 +12352,18 @@
 											}
 										]
 									},
-									"interestMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
-									},
 									"liabilityId": {
 										"maxLength": 64,
 										"minLength": 1,
 										"type": "string"
 									},
-									"principalMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"principal": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									}
 								},
 								"required": [
@@ -12318,8 +12371,8 @@
 									"liabilityId",
 									"fromAccountId",
 									"envelopeId",
-									"principalMinor",
-									"interestMinor"
+									"principal",
+									"interest"
 								],
 								"type": "object"
 							}
@@ -12537,6 +12590,15 @@
 										"format": "uuid",
 										"type": "string"
 									},
+									"interest": {
+										"description": "An amount of zero or more as decimal text, in the currency's major units.",
+										"examples": [
+											"0",
+											"50.25"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
+									},
 									"interestCategoryId": {
 										"anyOf": [
 											{
@@ -12549,20 +12611,18 @@
 											}
 										]
 									},
-									"interestMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
-									},
 									"liabilityId": {
 										"maxLength": 64,
 										"minLength": 1,
 										"type": "string"
 									},
-									"principalMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"principal": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									}
 								},
 								"required": [
@@ -12570,8 +12630,8 @@
 									"liabilityId",
 									"fromAccountId",
 									"envelopeId",
-									"principalMinor",
-									"interestMinor"
+									"principal",
+									"interest"
 								],
 								"type": "object"
 							}
@@ -13011,7 +13071,7 @@
 		},
 		"/budget/debts/{assetAccountId}/terms": {
 			"put": {
-				"description": "The answer carries `previous`; sending it back puts it back.",
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "setBudgetDebtTerms",
 				"parameters": [
 					{
@@ -13062,12 +13122,16 @@
 											}
 										]
 									},
-									"minimumMinor": {
+									"minimum": {
 										"anyOf": [
 											{
-												"maximum": 9007199254740991,
-												"minimum": -9007199254740991,
-												"type": "integer"
+												"description": "An amount of zero or more as decimal text, in the currency's major units.",
+												"examples": [
+													"0",
+													"50.25"
+												],
+												"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+												"type": "string"
 											},
 											{
 												"type": "null"
@@ -13077,7 +13141,7 @@
 								},
 								"required": [
 									"aprPercent",
-									"minimumMinor",
+									"minimum",
 									"dueDay"
 								],
 								"type": "object"
@@ -13092,106 +13156,128 @@
 							"application/json": {
 								"schema": {
 									"properties": {
-										"previous": {
+										"result": {
 											"properties": {
-												"aprPercent": {
-													"anyOf": [
-														{
+												"previous": {
+													"properties": {
+														"aprPercent": {
+															"anyOf": [
+																{
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														},
+														"assetAccountId": {
+															"maxLength": 64,
+															"minLength": 1,
 															"type": "string"
 														},
-														{
-															"type": "null"
-														}
-													]
-												},
-												"assetAccountId": {
-													"maxLength": 64,
-													"minLength": 1,
-													"type": "string"
-												},
-												"dueDay": {
-													"anyOf": [
-														{
-															"maximum": 9007199254740991,
-															"minimum": -9007199254740991,
-															"type": "integer"
+														"dueDay": {
+															"anyOf": [
+																{
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																},
+																{
+																	"type": "null"
+																}
+															]
 														},
-														{
-															"type": "null"
+														"minimum": {
+															"anyOf": [
+																{
+																	"$ref": "#/components/schemas/Money"
+																},
+																{
+																	"type": "null"
+																}
+															]
 														}
-													]
+													},
+													"required": [
+														"assetAccountId",
+														"aprPercent",
+														"minimum",
+														"dueDay"
+													],
+													"type": "object"
 												},
-												"minimum": {
-													"anyOf": [
-														{
-															"$ref": "#/components/schemas/Money"
+												"terms": {
+													"properties": {
+														"aprPercent": {
+															"anyOf": [
+																{
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
 														},
-														{
-															"type": "null"
+														"assetAccountId": {
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														"dueDay": {
+															"anyOf": [
+																{
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														},
+														"minimum": {
+															"anyOf": [
+																{
+																	"$ref": "#/components/schemas/Money"
+																},
+																{
+																	"type": "null"
+																}
+															]
 														}
-													]
+													},
+													"required": [
+														"assetAccountId",
+														"aprPercent",
+														"minimum",
+														"dueDay"
+													],
+													"type": "object"
 												}
 											},
 											"required": [
-												"assetAccountId",
-												"aprPercent",
-												"minimum",
-												"dueDay"
+												"terms",
+												"previous"
 											],
 											"type": "object"
 										},
-										"terms": {
-											"properties": {
-												"aprPercent": {
-													"anyOf": [
-														{
-															"type": "string"
-														},
-														{
-															"type": "null"
-														}
-													]
-												},
-												"assetAccountId": {
-													"maxLength": 64,
+										"undo": {
+											"anyOf": [
+												{
+													"description": "Pass to the undo route to revert.",
 													"minLength": 1,
 													"type": "string"
 												},
-												"dueDay": {
-													"anyOf": [
-														{
-															"maximum": 9007199254740991,
-															"minimum": -9007199254740991,
-															"type": "integer"
-														},
-														{
-															"type": "null"
-														}
-													]
-												},
-												"minimum": {
-													"anyOf": [
-														{
-															"$ref": "#/components/schemas/Money"
-														},
-														{
-															"type": "null"
-														}
-													]
+												{
+													"type": "null"
 												}
-											},
-											"required": [
-												"assetAccountId",
-												"aprPercent",
-												"minimum",
-												"dueDay"
 											],
-											"type": "object"
+											"description": "Valid for 24 hours, once. Send it to POST /budget/undo. Null when this write cannot be taken back."
 										}
 									},
 									"required": [
-										"terms",
-										"previous"
+										"result",
+										"undo"
 									],
 									"type": "object"
 								}
@@ -13253,17 +13339,17 @@
 				"security": [
 					{
 						"bearerAuth": [
-							"write:settings"
+							"write:money"
 						]
 					},
 					{
 						"apiKeyAuth": [
-							"write:settings"
+							"write:money"
 						]
 					},
 					{
 						"cookieAuth": [
-							"write:settings"
+							"write:money"
 						]
 					}
 				],
@@ -13272,7 +13358,509 @@
 					"Budget"
 				],
 				"x-event-type": "budget_debt.terms_set",
-				"x-required-scope": "write:settings"
+				"x-required-scope": "write:money"
+			}
+		},
+		"/budget/debts/{assetAccountId}/terms/preview": {
+			"post": {
+				"description": "Runs PUT /budget/debts/{assetAccountId}/terms in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewSetBudgetDebtTerms",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "assetAccountId",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"aprPercent": {
+										"anyOf": [
+											{
+												"pattern": "^\\d{1,3}(\\.\\d{1,6})?$",
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"dueDay": {
+										"anyOf": [
+											{
+												"maximum": 31,
+												"minimum": 1,
+												"type": "integer"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"minimum": {
+										"anyOf": [
+											{
+												"description": "An amount of zero or more as decimal text, in the currency's major units.",
+												"examples": [
+													"0",
+													"50.25"
+												],
+												"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									}
+								},
+								"required": [
+									"aprPercent",
+									"minimum",
+									"dueDay"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:money"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:money"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:money"
+						]
+					}
+				],
+				"summary": "Preview PUT /budget/debts/{assetAccountId}/terms",
+				"tags": [
+					"Budget"
+				],
+				"x-required-scope": "write:money"
 			}
 		},
 		"/budget/debts/{liabilityId}/interest-estimate": {
@@ -13460,10 +14048,8 @@
 														"expectedIn": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"categoryId": {
 																		"anyOf": [
@@ -13498,7 +14084,7 @@
 																	"id",
 																	"templateId",
 																	"categoryId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -13531,10 +14117,8 @@
 														"lines": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"envelopeId": {
 																		"maxLength": 64,
@@ -13544,7 +14128,7 @@
 																},
 																"required": [
 																	"envelopeId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -13558,10 +14142,8 @@
 														"moves": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"from": {
 																		"anyOf": [
@@ -13596,7 +14178,7 @@
 																	"id",
 																	"from",
 																	"to",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -13605,10 +14187,8 @@
 														"pretend": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"categoryId": {
 																		"anyOf": [
@@ -13651,7 +14231,7 @@
 																	"kind",
 																	"categoryId",
 																	"envelopeId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -13708,10 +14288,8 @@
 														"expectedIn": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"categoryId": {
 																		"anyOf": [
@@ -13746,7 +14324,7 @@
 																	"id",
 																	"templateId",
 																	"categoryId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -13779,10 +14357,8 @@
 														"lines": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"envelopeId": {
 																		"maxLength": 64,
@@ -13792,7 +14368,7 @@
 																},
 																"required": [
 																	"envelopeId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -13806,10 +14382,8 @@
 														"moves": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"from": {
 																		"anyOf": [
@@ -13844,7 +14418,7 @@
 																	"id",
 																	"from",
 																	"to",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -13853,10 +14427,8 @@
 														"pretend": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"categoryId": {
 																		"anyOf": [
@@ -13899,7 +14471,7 @@
 																	"kind",
 																	"categoryId",
 																	"envelopeId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -14047,10 +14619,13 @@
 										"default": [],
 										"items": {
 											"properties": {
-												"amountMinor": {
-													"maximum": 9007199254740991,
-													"minimum": -9007199254740991,
-													"type": "integer"
+												"amount": {
+													"description": "A positive amount as decimal text, in the currency's major units.",
+													"examples": [
+														"1234.56"
+													],
+													"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+													"type": "string"
 												},
 												"categoryId": {
 													"anyOf": [
@@ -14085,7 +14660,7 @@
 												"id",
 												"templateId",
 												"categoryId",
-												"amountMinor"
+												"amount"
 											],
 											"type": "object"
 										},
@@ -14107,10 +14682,14 @@
 										"default": [],
 										"items": {
 											"properties": {
-												"amountMinor": {
-													"maximum": 9007199254740991,
-													"minimum": -9007199254740991,
-													"type": "integer"
+												"amount": {
+													"description": "An amount of zero or more as decimal text, in the currency's major units.",
+													"examples": [
+														"0",
+														"50.25"
+													],
+													"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+													"type": "string"
 												},
 												"envelopeId": {
 													"maxLength": 64,
@@ -14120,7 +14699,7 @@
 											},
 											"required": [
 												"envelopeId",
-												"amountMinor"
+												"amount"
 											],
 											"type": "object"
 										},
@@ -14136,10 +14715,13 @@
 										"default": [],
 										"items": {
 											"properties": {
-												"amountMinor": {
-													"maximum": 9007199254740991,
-													"minimum": -9007199254740991,
-													"type": "integer"
+												"amount": {
+													"description": "A positive amount as decimal text, in the currency's major units.",
+													"examples": [
+														"1234.56"
+													],
+													"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+													"type": "string"
 												},
 												"from": {
 													"anyOf": [
@@ -14174,7 +14756,7 @@
 												"id",
 												"from",
 												"to",
-												"amountMinor"
+												"amount"
 											],
 											"type": "object"
 										},
@@ -14185,10 +14767,13 @@
 										"default": [],
 										"items": {
 											"properties": {
-												"amountMinor": {
-													"maximum": 9007199254740991,
-													"minimum": -9007199254740991,
-													"type": "integer"
+												"amount": {
+													"description": "A positive amount as decimal text, in the currency's major units.",
+													"examples": [
+														"1234.56"
+													],
+													"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+													"type": "string"
 												},
 												"categoryId": {
 													"anyOf": [
@@ -14231,7 +14816,7 @@
 												"kind",
 												"categoryId",
 												"envelopeId",
-												"amountMinor"
+												"amount"
 											],
 											"type": "object"
 										},
@@ -14270,10 +14855,8 @@
 										"expectedIn": {
 											"items": {
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"$ref": "#/components/schemas/Money"
 													},
 													"categoryId": {
 														"anyOf": [
@@ -14308,7 +14891,7 @@
 													"id",
 													"templateId",
 													"categoryId",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
@@ -14341,10 +14924,8 @@
 										"lines": {
 											"items": {
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"$ref": "#/components/schemas/Money"
 													},
 													"envelopeId": {
 														"maxLength": 64,
@@ -14354,7 +14935,7 @@
 												},
 												"required": [
 													"envelopeId",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
@@ -14368,10 +14949,8 @@
 										"moves": {
 											"items": {
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"$ref": "#/components/schemas/Money"
 													},
 													"from": {
 														"anyOf": [
@@ -14406,7 +14985,7 @@
 													"id",
 													"from",
 													"to",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
@@ -14415,10 +14994,8 @@
 										"pretend": {
 											"items": {
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"$ref": "#/components/schemas/Money"
 													},
 													"categoryId": {
 														"anyOf": [
@@ -14461,7 +15038,7 @@
 													"kind",
 													"categoryId",
 													"envelopeId",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
@@ -14577,6 +15154,7 @@
 		},
 		"/budget/drafts/{draftId}/apply": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "applyBudgetDraft",
 				"parameters": [
 					{
@@ -14639,10 +15217,8 @@
 														"expectedIn": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"categoryId": {
 																		"anyOf": [
@@ -14677,7 +15253,7 @@
 																	"id",
 																	"templateId",
 																	"categoryId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -14710,10 +15286,8 @@
 														"lines": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"envelopeId": {
 																		"maxLength": 64,
@@ -14723,7 +15297,7 @@
 																},
 																"required": [
 																	"envelopeId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -14737,10 +15311,8 @@
 														"moves": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"from": {
 																		"anyOf": [
@@ -14775,7 +15347,7 @@
 																	"id",
 																	"from",
 																	"to",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -14784,10 +15356,8 @@
 														"pretend": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"categoryId": {
 																		"anyOf": [
@@ -14830,7 +15400,7 @@
 																	"kind",
 																	"categoryId",
 																	"envelopeId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -15650,10 +16220,8 @@
 										"expectedIn": {
 											"items": {
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"$ref": "#/components/schemas/Money"
 													},
 													"categoryId": {
 														"anyOf": [
@@ -15688,7 +16256,7 @@
 													"id",
 													"templateId",
 													"categoryId",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
@@ -15721,10 +16289,8 @@
 										"lines": {
 											"items": {
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"$ref": "#/components/schemas/Money"
 													},
 													"envelopeId": {
 														"maxLength": 64,
@@ -15734,7 +16300,7 @@
 												},
 												"required": [
 													"envelopeId",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
@@ -15748,10 +16314,8 @@
 										"moves": {
 											"items": {
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"$ref": "#/components/schemas/Money"
 													},
 													"from": {
 														"anyOf": [
@@ -15786,7 +16350,7 @@
 													"id",
 													"from",
 													"to",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
@@ -15795,10 +16359,8 @@
 										"pretend": {
 											"items": {
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"$ref": "#/components/schemas/Money"
 													},
 													"categoryId": {
 														"anyOf": [
@@ -15841,7 +16403,7 @@
 													"kind",
 													"categoryId",
 													"envelopeId",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
@@ -15957,6 +16519,7 @@
 		},
 		"/budget/drafts/{draftId}/fund-now": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "fundBudgetPlanNow",
 				"parameters": [
 					{
@@ -16022,10 +16585,8 @@
 														"expectedIn": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"categoryId": {
 																		"anyOf": [
@@ -16060,7 +16621,7 @@
 																	"id",
 																	"templateId",
 																	"categoryId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -16093,10 +16654,8 @@
 														"lines": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"envelopeId": {
 																		"maxLength": 64,
@@ -16106,7 +16665,7 @@
 																},
 																"required": [
 																	"envelopeId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -16120,10 +16679,8 @@
 														"moves": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"from": {
 																		"anyOf": [
@@ -16158,7 +16715,7 @@
 																	"id",
 																	"from",
 																	"to",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -16167,10 +16724,8 @@
 														"pretend": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"categoryId": {
 																		"anyOf": [
@@ -16213,7 +16768,7 @@
 																	"kind",
 																	"categoryId",
 																	"envelopeId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -17314,6 +17869,7 @@
 		},
 		"/budget/drafts/{draftId}/unapply": {
 			"post": {
+				"description": "Answers `undo: null`: an undo is not undone; apply the plan again.",
 				"operationId": "unapplyBudgetDraft",
 				"parameters": [
 					{
@@ -17360,10 +17916,8 @@
 														"expectedIn": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"categoryId": {
 																		"anyOf": [
@@ -17398,7 +17952,7 @@
 																	"id",
 																	"templateId",
 																	"categoryId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -17431,10 +17985,8 @@
 														"lines": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"envelopeId": {
 																		"maxLength": 64,
@@ -17444,7 +17996,7 @@
 																},
 																"required": [
 																	"envelopeId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -17458,10 +18010,8 @@
 														"moves": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"from": {
 																		"anyOf": [
@@ -17496,7 +18046,7 @@
 																	"id",
 																	"from",
 																	"to",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -17505,10 +18055,8 @@
 														"pretend": {
 															"items": {
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"$ref": "#/components/schemas/Money"
 																	},
 																	"categoryId": {
 																		"anyOf": [
@@ -17551,7 +18099,7 @@
 																	"kind",
 																	"categoryId",
 																	"envelopeId",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -18313,6 +18861,7 @@
 		},
 		"/budget/envelopes": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "createBudgetEnvelope",
 				"parameters": [
 					{
@@ -18379,10 +18928,14 @@
 										"anyOf": [
 											{
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"description": "An amount of zero or more as decimal text, in the currency's major units.",
+														"examples": [
+															"0",
+															"50.25"
+														],
+														"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+														"type": "string"
 													},
 													"cadence": {
 														"default": "MONTH",
@@ -18411,16 +18964,19 @@
 												},
 												"required": [
 													"kind",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
 											{
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"description": "A positive amount as decimal text, in the currency's major units.",
+														"examples": [
+															"1234.56"
+														],
+														"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+														"type": "string"
 													},
 													"currency": {
 														"maxLength": 10,
@@ -18452,7 +19008,7 @@
 												},
 												"required": [
 													"kind",
-													"amountMinor",
+													"amount",
 													"dueDate",
 													"repeat"
 												],
@@ -18494,10 +19050,13 @@
 											},
 											{
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"description": "A positive amount as decimal text, in the currency's major units.",
+														"examples": [
+															"1234.56"
+														],
+														"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+														"type": "string"
 													},
 													"currency": {
 														"maxLength": 10,
@@ -18511,10 +19070,13 @@
 													"kind": {
 														"const": "SAVINGS"
 													},
-													"monthlyMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"monthly": {
+														"description": "A positive amount as decimal text, in the currency's major units.",
+														"examples": [
+															"1234.56"
+														],
+														"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+														"type": "string"
 													}
 												},
 												"required": [
@@ -18933,10 +19495,14 @@
 										"anyOf": [
 											{
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"description": "An amount of zero or more as decimal text, in the currency's major units.",
+														"examples": [
+															"0",
+															"50.25"
+														],
+														"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+														"type": "string"
 													},
 													"cadence": {
 														"default": "MONTH",
@@ -18965,16 +19531,19 @@
 												},
 												"required": [
 													"kind",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
 											{
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"description": "A positive amount as decimal text, in the currency's major units.",
+														"examples": [
+															"1234.56"
+														],
+														"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+														"type": "string"
 													},
 													"currency": {
 														"maxLength": 10,
@@ -19006,7 +19575,7 @@
 												},
 												"required": [
 													"kind",
-													"amountMinor",
+													"amount",
 													"dueDate",
 													"repeat"
 												],
@@ -19048,10 +19617,13 @@
 											},
 											{
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"description": "A positive amount as decimal text, in the currency's major units.",
+														"examples": [
+															"1234.56"
+														],
+														"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+														"type": "string"
 													},
 													"currency": {
 														"maxLength": 10,
@@ -19065,10 +19637,13 @@
 													"kind": {
 														"const": "SAVINGS"
 													},
-													"monthlyMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"monthly": {
+														"description": "A positive amount as decimal text, in the currency's major units.",
+														"examples": [
+															"1234.56"
+														],
+														"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+														"type": "string"
 													}
 												},
 												"required": [
@@ -19522,6 +20097,7 @@
 		},
 		"/budget/envelopes/{envelopeId}": {
 			"patch": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "updateBudgetEnvelope",
 				"parameters": [
 					{
@@ -19994,6 +20570,7 @@
 		},
 		"/budget/envelopes/{envelopeId}/archive": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "archiveBudgetEnvelope",
 				"parameters": [
 					{
@@ -21350,6 +21927,7 @@
 		},
 		"/budget/envelopes/{envelopeId}/target": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "setBudgetEnvelopeTarget",
 				"parameters": [
 					{
@@ -21396,10 +21974,14 @@
 												"anyOf": [
 													{
 														"properties": {
-															"amountMinor": {
-																"maximum": 9007199254740991,
-																"minimum": -9007199254740991,
-																"type": "integer"
+															"amount": {
+																"description": "An amount of zero or more as decimal text, in the currency's major units.",
+																"examples": [
+																	"0",
+																	"50.25"
+																],
+																"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																"type": "string"
 															},
 															"cadence": {
 																"default": "MONTH",
@@ -21428,16 +22010,19 @@
 														},
 														"required": [
 															"kind",
-															"amountMinor"
+															"amount"
 														],
 														"type": "object"
 													},
 													{
 														"properties": {
-															"amountMinor": {
-																"maximum": 9007199254740991,
-																"minimum": -9007199254740991,
-																"type": "integer"
+															"amount": {
+																"description": "A positive amount as decimal text, in the currency's major units.",
+																"examples": [
+																	"1234.56"
+																],
+																"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																"type": "string"
 															},
 															"currency": {
 																"maxLength": 10,
@@ -21469,7 +22054,7 @@
 														},
 														"required": [
 															"kind",
-															"amountMinor",
+															"amount",
 															"dueDate",
 															"repeat"
 														],
@@ -21511,10 +22096,13 @@
 													},
 													{
 														"properties": {
-															"amountMinor": {
-																"maximum": 9007199254740991,
-																"minimum": -9007199254740991,
-																"type": "integer"
+															"amount": {
+																"description": "A positive amount as decimal text, in the currency's major units.",
+																"examples": [
+																	"1234.56"
+																],
+																"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																"type": "string"
 															},
 															"currency": {
 																"maxLength": 10,
@@ -21528,10 +22116,13 @@
 															"kind": {
 																"const": "SAVINGS"
 															},
-															"monthlyMinor": {
-																"maximum": 9007199254740991,
-																"minimum": -9007199254740991,
-																"type": "integer"
+															"monthly": {
+																"description": "A positive amount as decimal text, in the currency's major units.",
+																"examples": [
+																	"1234.56"
+																],
+																"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																"type": "string"
 															}
 														},
 														"required": [
@@ -22007,10 +22598,14 @@
 												"anyOf": [
 													{
 														"properties": {
-															"amountMinor": {
-																"maximum": 9007199254740991,
-																"minimum": -9007199254740991,
-																"type": "integer"
+															"amount": {
+																"description": "An amount of zero or more as decimal text, in the currency's major units.",
+																"examples": [
+																	"0",
+																	"50.25"
+																],
+																"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																"type": "string"
 															},
 															"cadence": {
 																"default": "MONTH",
@@ -22039,16 +22634,19 @@
 														},
 														"required": [
 															"kind",
-															"amountMinor"
+															"amount"
 														],
 														"type": "object"
 													},
 													{
 														"properties": {
-															"amountMinor": {
-																"maximum": 9007199254740991,
-																"minimum": -9007199254740991,
-																"type": "integer"
+															"amount": {
+																"description": "A positive amount as decimal text, in the currency's major units.",
+																"examples": [
+																	"1234.56"
+																],
+																"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																"type": "string"
 															},
 															"currency": {
 																"maxLength": 10,
@@ -22080,7 +22678,7 @@
 														},
 														"required": [
 															"kind",
-															"amountMinor",
+															"amount",
 															"dueDate",
 															"repeat"
 														],
@@ -22122,10 +22720,13 @@
 													},
 													{
 														"properties": {
-															"amountMinor": {
-																"maximum": 9007199254740991,
-																"minimum": -9007199254740991,
-																"type": "integer"
+															"amount": {
+																"description": "A positive amount as decimal text, in the currency's major units.",
+																"examples": [
+																	"1234.56"
+																],
+																"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																"type": "string"
 															},
 															"currency": {
 																"maxLength": 10,
@@ -22139,10 +22740,13 @@
 															"kind": {
 																"const": "SAVINGS"
 															},
-															"monthlyMinor": {
-																"maximum": 9007199254740991,
-																"minimum": -9007199254740991,
-																"type": "integer"
+															"monthly": {
+																"description": "A positive amount as decimal text, in the currency's major units.",
+																"examples": [
+																	"1234.56"
+																],
+																"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																"type": "string"
 															}
 														},
 														"required": [
@@ -22751,10 +23355,11 @@
 						"allowEmptyValue": true,
 						"allowReserved": true,
 						"in": "query",
-						"name": "amountMinor",
+						"name": "amount",
 						"schema": {
 							"description": "Plan only this much; default: all of To assign.",
-							"type": "number"
+							"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+							"type": "string"
 						}
 					}
 				],
@@ -22950,6 +23555,7 @@
 		},
 		"/budget/fix-negative": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "fixBudgetNegative",
 				"parameters": [
 					{
@@ -23695,6 +24301,7 @@
 		},
 		"/budget/forgive": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "forgiveBudgetDebt",
 				"parameters": [
 					{
@@ -23712,10 +24319,13 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"amountMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"amount": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"currency": {
 										"maxLength": 10,
@@ -23765,7 +24375,7 @@
 									"id",
 									"participant",
 									"currency",
-									"amountMinor",
+									"amount",
 									"envelopeId"
 								],
 								"type": "object"
@@ -23930,10 +24540,13 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"amountMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"amount": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"currency": {
 										"maxLength": 10,
@@ -23983,7 +24596,7 @@
 									"id",
 									"participant",
 									"currency",
-									"amountMinor",
+									"amount",
 									"envelopeId"
 								],
 								"type": "object"
@@ -24424,7 +25037,7 @@
 		},
 		"/budget/groups/{groupId}/target": {
 			"put": {
-				"description": "Moves no money. The answer carries `previous`; sending it back puts the target back.",
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "setBudgetGroupTarget",
 				"parameters": [
 					{
@@ -24479,10 +25092,13 @@
 											},
 											{
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"description": "A positive amount as decimal text, in the currency's major units.",
+														"examples": [
+															"1234.56"
+														],
+														"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+														"type": "string"
 													},
 													"kind": {
 														"const": "AMOUNT"
@@ -24490,7 +25106,7 @@
 												},
 												"required": [
 													"kind",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
@@ -24529,25 +25145,13 @@
 							"application/json": {
 								"schema": {
 									"properties": {
-										"groupId": {
-											"maxLength": 64,
-											"minLength": 1,
-											"type": "string"
-										},
-										"mainEnvelopeId": {
-											"anyOf": [
-												{
+										"result": {
+											"properties": {
+												"groupId": {
 													"maxLength": 64,
 													"minLength": 1,
 													"type": "string"
 												},
-												{
-													"type": "null"
-												}
-											]
-										},
-										"previous": {
-											"properties": {
 												"mainEnvelopeId": {
 													"anyOf": [
 														{
@@ -24559,6 +25163,79 @@
 															"type": "null"
 														}
 													]
+												},
+												"previous": {
+													"properties": {
+														"mainEnvelopeId": {
+															"anyOf": [
+																{
+																	"maxLength": 64,
+																	"minLength": 1,
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														},
+														"target": {
+															"anyOf": [
+																{
+																	"properties": {
+																		"kind": {
+																			"const": "NONE"
+																		}
+																	},
+																	"required": [
+																		"kind"
+																	],
+																	"type": "object"
+																},
+																{
+																	"properties": {
+																		"amount": {
+																			"description": "A positive amount as decimal text, in the currency's major units.",
+																			"examples": [
+																				"1234.56"
+																			],
+																			"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																			"type": "string"
+																		},
+																		"kind": {
+																			"const": "AMOUNT"
+																		}
+																	},
+																	"required": [
+																		"kind",
+																		"amount"
+																	],
+																	"type": "object"
+																},
+																{
+																	"properties": {
+																		"basisPoints": {
+																			"maximum": 10000,
+																			"minimum": 1,
+																			"type": "integer"
+																		},
+																		"kind": {
+																			"const": "PERCENT_OF_INCOME"
+																		}
+																	},
+																	"required": [
+																		"kind",
+																		"basisPoints"
+																	],
+																	"type": "object"
+																}
+															]
+														}
+													},
+													"required": [
+														"target",
+														"mainEnvelopeId"
+													],
+													"type": "object"
 												},
 												"target": {
 													"anyOf": [
@@ -24575,10 +25252,13 @@
 														},
 														{
 															"properties": {
-																"amountMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"amount": {
+																	"description": "A positive amount as decimal text, in the currency's major units.",
+																	"examples": [
+																		"1234.56"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																},
 																"kind": {
 																	"const": "AMOUNT"
@@ -24586,7 +25266,7 @@
 															},
 															"required": [
 																"kind",
-																"amountMinor"
+																"amount"
 															],
 															"type": "object"
 														},
@@ -24611,66 +25291,30 @@
 												}
 											},
 											"required": [
+												"groupId",
 												"target",
-												"mainEnvelopeId"
+												"mainEnvelopeId",
+												"previous"
 											],
 											"type": "object"
 										},
-										"target": {
+										"undo": {
 											"anyOf": [
 												{
-													"properties": {
-														"kind": {
-															"const": "NONE"
-														}
-													},
-													"required": [
-														"kind"
-													],
-													"type": "object"
+													"description": "Pass to the undo route to revert.",
+													"minLength": 1,
+													"type": "string"
 												},
 												{
-													"properties": {
-														"amountMinor": {
-															"maximum": 9007199254740991,
-															"minimum": -9007199254740991,
-															"type": "integer"
-														},
-														"kind": {
-															"const": "AMOUNT"
-														}
-													},
-													"required": [
-														"kind",
-														"amountMinor"
-													],
-													"type": "object"
-												},
-												{
-													"properties": {
-														"basisPoints": {
-															"maximum": 10000,
-															"minimum": 1,
-															"type": "integer"
-														},
-														"kind": {
-															"const": "PERCENT_OF_INCOME"
-														}
-													},
-													"required": [
-														"kind",
-														"basisPoints"
-													],
-													"type": "object"
+													"type": "null"
 												}
-											]
+											],
+											"description": "Valid for 24 hours, once. Send it to POST /budget/undo. Null when this write cannot be taken back."
 										}
 									},
 									"required": [
-										"groupId",
-										"target",
-										"mainEnvelopeId",
-										"previous"
+										"result",
+										"undo"
 									],
 									"type": "object"
 								}
@@ -24732,17 +25376,17 @@
 				"security": [
 					{
 						"bearerAuth": [
-							"write:settings"
+							"write:money"
 						]
 					},
 					{
 						"apiKeyAuth": [
-							"write:settings"
+							"write:money"
 						]
 					},
 					{
 						"cookieAuth": [
-							"write:settings"
+							"write:money"
 						]
 					}
 				],
@@ -24751,7 +25395,532 @@
 					"Budget"
 				],
 				"x-event-type": "budget_group.target_set",
-				"x-required-scope": "write:settings"
+				"x-required-scope": "write:money"
+			}
+		},
+		"/budget/groups/{groupId}/target/preview": {
+			"post": {
+				"description": "Runs PUT /budget/groups/{groupId}/target in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewSetBudgetGroupTarget",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"mainEnvelopeId": {
+										"anyOf": [
+											{
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"target": {
+										"anyOf": [
+											{
+												"properties": {
+													"kind": {
+														"const": "NONE"
+													}
+												},
+												"required": [
+													"kind"
+												],
+												"type": "object"
+											},
+											{
+												"properties": {
+													"amount": {
+														"description": "A positive amount as decimal text, in the currency's major units.",
+														"examples": [
+															"1234.56"
+														],
+														"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+														"type": "string"
+													},
+													"kind": {
+														"const": "AMOUNT"
+													}
+												},
+												"required": [
+													"kind",
+													"amount"
+												],
+												"type": "object"
+											},
+											{
+												"properties": {
+													"basisPoints": {
+														"maximum": 10000,
+														"minimum": 1,
+														"type": "integer"
+													},
+													"kind": {
+														"const": "PERCENT_OF_INCOME"
+													}
+												},
+												"required": [
+													"kind",
+													"basisPoints"
+												],
+												"type": "object"
+											}
+										]
+									}
+								},
+								"required": [
+									"target"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:money"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:money"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:money"
+						]
+					}
+				],
+				"summary": "Preview PUT /budget/groups/{groupId}/target",
+				"tags": [
+					"Budget"
+				],
+				"x-required-scope": "write:money"
 			}
 		},
 		"/budget/hidden-rows": {
@@ -24903,6 +26072,7 @@
 		},
 		"/budget/hidden-rows/resolve": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "resolveBudgetHiddenRows",
 				"parameters": [
 					{
@@ -25564,6 +26734,7 @@
 		},
 		"/budget/hidden-rows/revert": {
 			"post": {
+				"description": "Answers `undo: null`: an undo is not undone; answer the rows again.",
 				"operationId": "revertBudgetHiddenRows",
 				"parameters": [
 					{
@@ -26641,6 +27812,7 @@
 		},
 		"/budget/limits": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "setBudgetLimit",
 				"parameters": [
 					{
@@ -26658,10 +27830,14 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"amountMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"amount": {
+										"description": "An amount of zero or more as decimal text, in the currency's major units.",
+										"examples": [
+											"0",
+											"50.25"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"currency": {
 										"maxLength": 10,
@@ -26688,7 +27864,7 @@
 								"required": [
 									"id",
 									"envelopeId",
-									"amountMinor",
+									"amount",
 									"scope"
 								],
 								"type": "object"
@@ -27120,10 +28296,14 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"amountMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"amount": {
+										"description": "An amount of zero or more as decimal text, in the currency's major units.",
+										"examples": [
+											"0",
+											"50.25"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"currency": {
 										"maxLength": 10,
@@ -27150,7 +28330,7 @@
 								"required": [
 									"id",
 									"envelopeId",
-									"amountMinor",
+									"amount",
 									"scope"
 								],
 								"type": "object"
@@ -27591,6 +28771,7 @@
 		},
 		"/budget/limits/revert": {
 			"post": {
+				"description": "Answers `undo: null`: an undo is not undone; set the limit again.",
 				"operationId": "revertBudgetLimit",
 				"parameters": [
 					{
@@ -28354,6 +29535,7 @@
 		},
 		"/budget/merge-envelopes": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "mergeBudgetEnvelopes",
 				"parameters": [
 					{
@@ -31519,6 +32701,7 @@
 		},
 		"/budget/move": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "moveBudgetMoney",
 				"parameters": [
 					{
@@ -31536,10 +32719,13 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"amountMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"amount": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"from": {
 										"anyOf": [
@@ -31588,7 +32774,7 @@
 									"month",
 									"from",
 									"to",
-									"amountMinor",
+									"amount",
 									"kind"
 								],
 								"type": "object"
@@ -31865,10 +33051,13 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"amountMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"amount": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"from": {
 										"anyOf": [
@@ -31917,7 +33106,7 @@
 									"month",
 									"from",
 									"to",
-									"amountMinor",
+									"amount",
 									"kind"
 								],
 								"type": "object"
@@ -32358,6 +33547,7 @@
 		},
 		"/budget/movements/undo": {
 			"post": {
+				"description": "Answers `undo: null`: an undo is not undone; make the movement again.",
 				"operationId": "undoBudgetMovement",
 				"parameters": [
 					{
@@ -33835,6 +35025,7 @@
 				"x-required-scope": "read"
 			},
 			"put": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "saveBudgetPayoffPlan",
 				"parameters": [
 					{
@@ -33874,10 +35065,14 @@
 											}
 										]
 									},
-									"extraMonthlyMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"extraMonthly": {
+										"description": "An amount of zero or more as decimal text, in the currency's major units.",
+										"examples": [
+											"0",
+											"50.25"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"strategy": {
 										"enum": [
@@ -33890,7 +35085,7 @@
 								},
 								"required": [
 									"strategy",
-									"extraMonthlyMinor",
+									"extraMonthly",
 									"envelopeId"
 								],
 								"type": "object"
@@ -33905,51 +35100,9 @@
 							"application/json": {
 								"schema": {
 									"properties": {
-										"plan": {
+										"result": {
 											"properties": {
-												"customOrder": {
-													"items": {
-														"maxLength": 64,
-														"minLength": 1,
-														"type": "string"
-													},
-													"type": "array"
-												},
-												"envelopeId": {
-													"anyOf": [
-														{
-															"maxLength": 64,
-															"minLength": 1,
-															"type": "string"
-														},
-														{
-															"type": "null"
-														}
-													]
-												},
-												"extraMonthly": {
-													"$ref": "#/components/schemas/Money"
-												},
-												"strategy": {
-													"enum": [
-														"SNOWBALL",
-														"AVALANCHE",
-														"CUSTOM"
-													],
-													"type": "string"
-												}
-											},
-											"required": [
-												"strategy",
-												"extraMonthly",
-												"customOrder",
-												"envelopeId"
-											],
-											"type": "object"
-										},
-										"previous": {
-											"anyOf": [
-												{
+												"plan": {
 													"properties": {
 														"customOrder": {
 															"items": {
@@ -33991,15 +35144,79 @@
 													],
 													"type": "object"
 												},
+												"previous": {
+													"anyOf": [
+														{
+															"properties": {
+																"customOrder": {
+																	"items": {
+																		"maxLength": 64,
+																		"minLength": 1,
+																		"type": "string"
+																	},
+																	"type": "array"
+																},
+																"envelopeId": {
+																	"anyOf": [
+																		{
+																			"maxLength": 64,
+																			"minLength": 1,
+																			"type": "string"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
+																"extraMonthly": {
+																	"$ref": "#/components/schemas/Money"
+																},
+																"strategy": {
+																	"enum": [
+																		"SNOWBALL",
+																		"AVALANCHE",
+																		"CUSTOM"
+																	],
+																	"type": "string"
+																}
+															},
+															"required": [
+																"strategy",
+																"extraMonthly",
+																"customOrder",
+																"envelopeId"
+															],
+															"type": "object"
+														},
+														{
+															"type": "null"
+														}
+													]
+												}
+											},
+											"required": [
+												"plan",
+												"previous"
+											],
+											"type": "object"
+										},
+										"undo": {
+											"anyOf": [
+												{
+													"description": "Pass to the undo route to revert.",
+													"minLength": 1,
+													"type": "string"
+												},
 												{
 													"type": "null"
 												}
-											]
+											],
+											"description": "Valid for 24 hours, once. Send it to POST /budget/undo. Null when this write cannot be taken back."
 										}
 									},
 									"required": [
-										"plan",
-										"previous"
+										"result",
+										"undo"
 									],
 									"type": "object"
 								}
@@ -34061,17 +35278,17 @@
 				"security": [
 					{
 						"bearerAuth": [
-							"write:settings"
+							"write:money"
 						]
 					},
 					{
 						"apiKeyAuth": [
-							"write:settings"
+							"write:money"
 						]
 					},
 					{
 						"cookieAuth": [
-							"write:settings"
+							"write:money"
 						]
 					}
 				],
@@ -34080,11 +35297,502 @@
 					"Budget"
 				],
 				"x-event-type": "budget_payoff_plan.saved",
-				"x-required-scope": "write:settings"
+				"x-required-scope": "write:money"
+			}
+		},
+		"/budget/payoff-plan/preview": {
+			"post": {
+				"description": "Runs PUT /budget/payoff-plan in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewSaveBudgetPayoffPlan",
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"customOrder": {
+										"default": [],
+										"items": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"maxItems": 50,
+										"type": "array"
+									},
+									"envelopeId": {
+										"anyOf": [
+											{
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"extraMonthly": {
+										"description": "An amount of zero or more as decimal text, in the currency's major units.",
+										"examples": [
+											"0",
+											"50.25"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
+									},
+									"strategy": {
+										"enum": [
+											"SNOWBALL",
+											"AVALANCHE",
+											"CUSTOM"
+										],
+										"type": "string"
+									}
+								},
+								"required": [
+									"strategy",
+									"extraMonthly",
+									"envelopeId"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:money"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:money"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:money"
+						]
+					}
+				],
+				"summary": "Preview PUT /budget/payoff-plan",
+				"tags": [
+					"Budget"
+				],
+				"x-required-scope": "write:money"
 			}
 		},
 		"/budget/payoff-plan/revert": {
 			"post": {
+				"description": "Answers `undo: null`: an undo is not undone; save the plan again.",
 				"operationId": "revertBudgetPayoffPlan",
 				"parameters": [
 					{
@@ -34113,51 +35821,9 @@
 							"application/json": {
 								"schema": {
 									"properties": {
-										"plan": {
+										"result": {
 											"properties": {
-												"customOrder": {
-													"items": {
-														"maxLength": 64,
-														"minLength": 1,
-														"type": "string"
-													},
-													"type": "array"
-												},
-												"envelopeId": {
-													"anyOf": [
-														{
-															"maxLength": 64,
-															"minLength": 1,
-															"type": "string"
-														},
-														{
-															"type": "null"
-														}
-													]
-												},
-												"extraMonthly": {
-													"$ref": "#/components/schemas/Money"
-												},
-												"strategy": {
-													"enum": [
-														"SNOWBALL",
-														"AVALANCHE",
-														"CUSTOM"
-													],
-													"type": "string"
-												}
-											},
-											"required": [
-												"strategy",
-												"extraMonthly",
-												"customOrder",
-												"envelopeId"
-											],
-											"type": "object"
-										},
-										"previous": {
-											"anyOf": [
-												{
+												"plan": {
 													"properties": {
 														"customOrder": {
 															"items": {
@@ -34199,15 +35865,79 @@
 													],
 													"type": "object"
 												},
+												"previous": {
+													"anyOf": [
+														{
+															"properties": {
+																"customOrder": {
+																	"items": {
+																		"maxLength": 64,
+																		"minLength": 1,
+																		"type": "string"
+																	},
+																	"type": "array"
+																},
+																"envelopeId": {
+																	"anyOf": [
+																		{
+																			"maxLength": 64,
+																			"minLength": 1,
+																			"type": "string"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
+																"extraMonthly": {
+																	"$ref": "#/components/schemas/Money"
+																},
+																"strategy": {
+																	"enum": [
+																		"SNOWBALL",
+																		"AVALANCHE",
+																		"CUSTOM"
+																	],
+																	"type": "string"
+																}
+															},
+															"required": [
+																"strategy",
+																"extraMonthly",
+																"customOrder",
+																"envelopeId"
+															],
+															"type": "object"
+														},
+														{
+															"type": "null"
+														}
+													]
+												}
+											},
+											"required": [
+												"plan",
+												"previous"
+											],
+											"type": "object"
+										},
+										"undo": {
+											"anyOf": [
+												{
+													"description": "Pass to the undo route to revert.",
+													"minLength": 1,
+													"type": "string"
+												},
 												{
 													"type": "null"
 												}
-											]
+											],
+											"description": "Valid for 24 hours, once. Send it to POST /budget/undo. Null when this write cannot be taken back."
 										}
 									},
 									"required": [
-										"plan",
-										"previous"
+										"result",
+										"undo"
 									],
 									"type": "object"
 								}
@@ -34269,17 +35999,17 @@
 				"security": [
 					{
 						"bearerAuth": [
-							"write:settings"
+							"write:money"
 						]
 					},
 					{
 						"apiKeyAuth": [
-							"write:settings"
+							"write:money"
 						]
 					},
 					{
 						"cookieAuth": [
-							"write:settings"
+							"write:money"
 						]
 					}
 				],
@@ -34288,7 +36018,451 @@
 					"Budget"
 				],
 				"x-event-type": "budget_payoff_plan.reverted",
-				"x-required-scope": "write:settings"
+				"x-required-scope": "write:money"
+			}
+		},
+		"/budget/payoff-plan/revert/preview": {
+			"post": {
+				"description": "Runs POST /budget/payoff-plan/revert in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewRevertBudgetPayoffPlan",
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:money"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:money"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:money"
+						]
+					}
+				],
+				"summary": "Preview POST /budget/payoff-plan/revert",
+				"tags": [
+					"Budget"
+				],
+				"x-required-scope": "write:money"
 			}
 		},
 		"/budget/payoff-projection": {
@@ -34314,11 +36488,15 @@
 						"allowEmptyValue": true,
 						"allowReserved": true,
 						"in": "query",
-						"name": "extraMonthlyMinor",
+						"name": "extraMonthly",
 						"schema": {
-							"maximum": 9007199254740991,
-							"minimum": 0,
-							"type": "integer"
+							"description": "An amount of zero or more as decimal text, in the currency's major units.",
+							"examples": [
+								"0",
+								"50.25"
+							],
+							"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+							"type": "string"
 						}
 					},
 					{
@@ -34621,6 +36799,7 @@
 		},
 		"/budget/period": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "setBudgetPeriod",
 				"parameters": [
 					{
@@ -35571,10 +37750,8 @@
 										"lines": {
 											"items": {
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"$ref": "#/components/schemas/Money"
 													},
 													"envelopeId": {
 														"maxLength": 64,
@@ -35584,7 +37761,7 @@
 												},
 												"required": [
 													"envelopeId",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
@@ -35683,6 +37860,7 @@
 		},
 		"/budget/project-routing": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "setBudgetProjectRouting",
 				"parameters": [
 					{
@@ -36392,6 +38570,7 @@
 		},
 		"/budget/reconcile": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "reconcileBudget",
 				"parameters": [
 					{
@@ -36409,10 +38588,14 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"bankMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"bank": {
+										"description": "An amount as decimal text in the currency's major units; below zero takes money back or is owed.",
+										"examples": [
+											"-50.25",
+											"120"
+										],
+										"pattern": "^-?\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"id": {
 										"format": "uuid",
@@ -36421,7 +38604,7 @@
 								},
 								"required": [
 									"id",
-									"bankMinor"
+									"bank"
 								],
 								"type": "object"
 							}
@@ -36568,10 +38751,14 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"bankMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"bank": {
+										"description": "An amount as decimal text in the currency's major units; below zero takes money back or is owed.",
+										"examples": [
+											"-50.25",
+											"120"
+										],
+										"pattern": "^-?\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"id": {
 										"format": "uuid",
@@ -36580,7 +38767,7 @@
 								},
 								"required": [
 									"id",
-									"bankMinor"
+									"bank"
 								],
 								"type": "object"
 							}
@@ -37020,6 +39207,7 @@
 		},
 		"/budget/reset": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "resetBudgetEnvelopes",
 				"parameters": [
 					{
@@ -38184,10 +40372,13 @@
 											},
 											{
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"description": "A positive amount as decimal text, in the currency's major units.",
+														"examples": [
+															"1234.56"
+														],
+														"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+														"type": "string"
 													},
 													"kind": {
 														"const": "AMOUNT"
@@ -38195,7 +40386,7 @@
 												},
 												"required": [
 													"kind",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
@@ -39178,10 +41369,13 @@
 											},
 											{
 												"properties": {
-													"amountMinor": {
-														"maximum": 9007199254740991,
-														"minimum": -9007199254740991,
-														"type": "integer"
+													"amount": {
+														"description": "A positive amount as decimal text, in the currency's major units.",
+														"examples": [
+															"1234.56"
+														],
+														"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+														"type": "string"
 													},
 													"kind": {
 														"const": "AMOUNT"
@@ -39189,7 +41383,7 @@
 												},
 												"required": [
 													"kind",
-													"amountMinor"
+													"amount"
 												],
 												"type": "object"
 											},
@@ -39558,6 +41752,7 @@
 		},
 		"/budget/rules/{ruleId}/apply": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "applyBudgetRule",
 				"parameters": [
 					{
@@ -40390,6 +42585,7 @@
 		},
 		"/budget/setup": {
 			"post": {
+				"description": "Answers `undo: null`: a first set-up cannot be taken back.",
 				"operationId": "setUpBudget",
 				"parameters": [
 					{
@@ -40473,10 +42669,14 @@
 													"anyOf": [
 														{
 															"properties": {
-																"amountMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"amount": {
+																	"description": "An amount of zero or more as decimal text, in the currency's major units.",
+																	"examples": [
+																		"0",
+																		"50.25"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																},
 																"cadence": {
 																	"default": "MONTH",
@@ -40505,16 +42705,19 @@
 															},
 															"required": [
 																"kind",
-																"amountMinor"
+																"amount"
 															],
 															"type": "object"
 														},
 														{
 															"properties": {
-																"amountMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"amount": {
+																	"description": "A positive amount as decimal text, in the currency's major units.",
+																	"examples": [
+																		"1234.56"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																},
 																"currency": {
 																	"maxLength": 10,
@@ -40546,7 +42749,7 @@
 															},
 															"required": [
 																"kind",
-																"amountMinor",
+																"amount",
 																"dueDate",
 																"repeat"
 															],
@@ -40588,10 +42791,13 @@
 														},
 														{
 															"properties": {
-																"amountMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"amount": {
+																	"description": "A positive amount as decimal text, in the currency's major units.",
+																	"examples": [
+																		"1234.56"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																},
 																"currency": {
 																	"maxLength": 10,
@@ -40605,10 +42811,13 @@
 																"kind": {
 																	"const": "SAVINGS"
 																},
-																"monthlyMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"monthly": {
+																	"description": "A positive amount as decimal text, in the currency's major units.",
+																	"examples": [
+																		"1234.56"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																}
 															},
 															"required": [
@@ -40674,10 +42883,13 @@
 														},
 														{
 															"properties": {
-																"amountMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"amount": {
+																	"description": "A positive amount as decimal text, in the currency's major units.",
+																	"examples": [
+																		"1234.56"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																},
 																"kind": {
 																	"const": "AMOUNT"
@@ -40685,7 +42897,7 @@
 															},
 															"required": [
 																"kind",
-																"amountMinor"
+																"amount"
 															],
 															"type": "object"
 														},
@@ -40743,10 +42955,13 @@
 														},
 														{
 															"properties": {
-																"amountMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"amount": {
+																	"description": "A positive amount as decimal text, in the currency's major units.",
+																	"examples": [
+																		"1234.56"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																},
 																"kind": {
 																	"const": "AMOUNT"
@@ -40754,7 +42969,7 @@
 															},
 															"required": [
 																"kind",
-																"amountMinor"
+																"amount"
 															],
 															"type": "object"
 														},
@@ -40876,10 +43091,14 @@
 										"maxItems": 20,
 										"type": "array"
 									},
-									"startingMoneyMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"startingMoney": {
+										"description": "An amount of zero or more as decimal text, in the currency's major units.",
+										"examples": [
+											"0",
+											"50.25"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"style": {
 										"enum": [
@@ -41158,10 +43377,14 @@
 																"anyOf": [
 																	{
 																		"properties": {
-																			"amountMinor": {
-																				"maximum": 9007199254740991,
-																				"minimum": -9007199254740991,
-																				"type": "integer"
+																			"amount": {
+																				"description": "An amount of zero or more as decimal text, in the currency's major units.",
+																				"examples": [
+																					"0",
+																					"50.25"
+																				],
+																				"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																				"type": "string"
 																			},
 																			"cadence": {
 																				"default": "MONTH",
@@ -41190,16 +43413,19 @@
 																		},
 																		"required": [
 																			"kind",
-																			"amountMinor"
+																			"amount"
 																		],
 																		"type": "object"
 																	},
 																	{
 																		"properties": {
-																			"amountMinor": {
-																				"maximum": 9007199254740991,
-																				"minimum": -9007199254740991,
-																				"type": "integer"
+																			"amount": {
+																				"description": "A positive amount as decimal text, in the currency's major units.",
+																				"examples": [
+																					"1234.56"
+																				],
+																				"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																				"type": "string"
 																			},
 																			"currency": {
 																				"maxLength": 10,
@@ -41231,7 +43457,7 @@
 																		},
 																		"required": [
 																			"kind",
-																			"amountMinor",
+																			"amount",
 																			"dueDate",
 																			"repeat"
 																		],
@@ -41273,10 +43499,13 @@
 																	},
 																	{
 																		"properties": {
-																			"amountMinor": {
-																				"maximum": 9007199254740991,
-																				"minimum": -9007199254740991,
-																				"type": "integer"
+																			"amount": {
+																				"description": "A positive amount as decimal text, in the currency's major units.",
+																				"examples": [
+																					"1234.56"
+																				],
+																				"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																				"type": "string"
 																			},
 																			"currency": {
 																				"maxLength": 10,
@@ -41290,10 +43519,13 @@
 																			"kind": {
 																				"const": "SAVINGS"
 																			},
-																			"monthlyMinor": {
-																				"maximum": 9007199254740991,
-																				"minimum": -9007199254740991,
-																				"type": "integer"
+																			"monthly": {
+																				"description": "A positive amount as decimal text, in the currency's major units.",
+																				"examples": [
+																					"1234.56"
+																				],
+																				"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																				"type": "string"
 																			}
 																		},
 																		"required": [
@@ -41368,10 +43600,13 @@
 															},
 															{
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"description": "A positive amount as decimal text, in the currency's major units.",
+																		"examples": [
+																			"1234.56"
+																		],
+																		"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																		"type": "string"
 																	},
 																	"kind": {
 																		"const": "AMOUNT"
@@ -41379,7 +43614,7 @@
 																},
 																"required": [
 																	"kind",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -41467,10 +43702,13 @@
 															},
 															{
 																"properties": {
-																	"amountMinor": {
-																		"maximum": 9007199254740991,
-																		"minimum": -9007199254740991,
-																		"type": "integer"
+																	"amount": {
+																		"description": "A positive amount as decimal text, in the currency's major units.",
+																		"examples": [
+																			"1234.56"
+																		],
+																		"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																		"type": "string"
 																	},
 																	"kind": {
 																		"const": "AMOUNT"
@@ -41478,7 +43716,7 @@
 																},
 																"required": [
 																	"kind",
-																	"amountMinor"
+																	"amount"
 																],
 																"type": "object"
 															},
@@ -41772,10 +44010,14 @@
 													"anyOf": [
 														{
 															"properties": {
-																"amountMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"amount": {
+																	"description": "An amount of zero or more as decimal text, in the currency's major units.",
+																	"examples": [
+																		"0",
+																		"50.25"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																},
 																"cadence": {
 																	"default": "MONTH",
@@ -41804,16 +44046,19 @@
 															},
 															"required": [
 																"kind",
-																"amountMinor"
+																"amount"
 															],
 															"type": "object"
 														},
 														{
 															"properties": {
-																"amountMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"amount": {
+																	"description": "A positive amount as decimal text, in the currency's major units.",
+																	"examples": [
+																		"1234.56"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																},
 																"currency": {
 																	"maxLength": 10,
@@ -41845,7 +44090,7 @@
 															},
 															"required": [
 																"kind",
-																"amountMinor",
+																"amount",
 																"dueDate",
 																"repeat"
 															],
@@ -41887,10 +44132,13 @@
 														},
 														{
 															"properties": {
-																"amountMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"amount": {
+																	"description": "A positive amount as decimal text, in the currency's major units.",
+																	"examples": [
+																		"1234.56"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																},
 																"currency": {
 																	"maxLength": 10,
@@ -41904,10 +44152,13 @@
 																"kind": {
 																	"const": "SAVINGS"
 																},
-																"monthlyMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"monthly": {
+																	"description": "A positive amount as decimal text, in the currency's major units.",
+																	"examples": [
+																		"1234.56"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																}
 															},
 															"required": [
@@ -41973,10 +44224,13 @@
 														},
 														{
 															"properties": {
-																"amountMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"amount": {
+																	"description": "A positive amount as decimal text, in the currency's major units.",
+																	"examples": [
+																		"1234.56"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																},
 																"kind": {
 																	"const": "AMOUNT"
@@ -41984,7 +44238,7 @@
 															},
 															"required": [
 																"kind",
-																"amountMinor"
+																"amount"
 															],
 															"type": "object"
 														},
@@ -42042,10 +44296,13 @@
 														},
 														{
 															"properties": {
-																"amountMinor": {
-																	"maximum": 9007199254740991,
-																	"minimum": -9007199254740991,
-																	"type": "integer"
+																"amount": {
+																	"description": "A positive amount as decimal text, in the currency's major units.",
+																	"examples": [
+																		"1234.56"
+																	],
+																	"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																	"type": "string"
 																},
 																"kind": {
 																	"const": "AMOUNT"
@@ -42053,7 +44310,7 @@
 															},
 															"required": [
 																"kind",
-																"amountMinor"
+																"amount"
 															],
 															"type": "object"
 														},
@@ -42175,10 +44432,14 @@
 										"maxItems": 20,
 										"type": "array"
 									},
-									"startingMoneyMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"startingMoney": {
+										"description": "An amount of zero or more as decimal text, in the currency's major units.",
+										"examples": [
+											"0",
+											"50.25"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"style": {
 										"enum": [
@@ -42641,6 +44902,7 @@
 		},
 		"/budget/share-category": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "setBudgetShareCategory",
 				"parameters": [
 					{
@@ -43366,6 +45628,7 @@
 		},
 		"/budget/starting-money": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "confirmBudgetStartingMoney",
 				"parameters": [
 					{
@@ -43383,10 +45646,14 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"amountMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"amount": {
+										"description": "An amount of zero or more as decimal text, in the currency's major units.",
+										"examples": [
+											"0",
+											"50.25"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"id": {
 										"format": "uuid",
@@ -43395,7 +45662,7 @@
 								},
 								"required": [
 									"id",
-									"amountMinor"
+									"amount"
 								],
 								"type": "object"
 							}
@@ -43579,10 +45846,14 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"amountMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"amount": {
+										"description": "An amount of zero or more as decimal text, in the currency's major units.",
+										"examples": [
+											"0",
+											"50.25"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"id": {
 										"format": "uuid",
@@ -43591,7 +45862,7 @@
 								},
 								"required": [
 									"id",
-									"amountMinor"
+									"amount"
 								],
 								"type": "object"
 							}
@@ -44031,6 +46302,7 @@
 		},
 		"/budget/style": {
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "setBudgetStyle",
 				"parameters": [
 					{
@@ -44048,10 +46320,14 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"haveNowMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"haveNow": {
+										"description": "An amount of zero or more as decimal text, in the currency's major units.",
+										"examples": [
+											"0",
+											"50.25"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"id": {
 										"format": "uuid",
@@ -44390,10 +46666,14 @@
 						"application/json": {
 							"schema": {
 								"properties": {
-									"haveNowMinor": {
-										"maximum": 9007199254740991,
-										"minimum": -9007199254740991,
-										"type": "integer"
+									"haveNow": {
+										"description": "An amount of zero or more as decimal text, in the currency's major units.",
+										"examples": [
+											"0",
+											"50.25"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
 									},
 									"id": {
 										"format": "uuid",
@@ -44862,6 +47142,7 @@
 		},
 		"/budget/style/revert": {
 			"post": {
+				"description": "Answers `undo: null`: an undo is not undone; switch the style again.",
 				"operationId": "revertBudgetStyle",
 				"parameters": [
 					{
@@ -46468,6 +48749,400 @@
 												{
 													"properties": {
 														"kind": {
+															"const": "group_target.set"
+														},
+														"result": {
+															"properties": {
+																"groupId": {
+																	"maxLength": 64,
+																	"minLength": 1,
+																	"type": "string"
+																},
+																"mainEnvelopeId": {
+																	"anyOf": [
+																		{
+																			"maxLength": 64,
+																			"minLength": 1,
+																			"type": "string"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
+																"previous": {
+																	"properties": {
+																		"mainEnvelopeId": {
+																			"anyOf": [
+																				{
+																					"maxLength": 64,
+																					"minLength": 1,
+																					"type": "string"
+																				},
+																				{
+																					"type": "null"
+																				}
+																			]
+																		},
+																		"target": {
+																			"anyOf": [
+																				{
+																					"properties": {
+																						"kind": {
+																							"const": "NONE"
+																						}
+																					},
+																					"required": [
+																						"kind"
+																					],
+																					"type": "object"
+																				},
+																				{
+																					"properties": {
+																						"amount": {
+																							"description": "A positive amount as decimal text, in the currency's major units.",
+																							"examples": [
+																								"1234.56"
+																							],
+																							"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																							"type": "string"
+																						},
+																						"kind": {
+																							"const": "AMOUNT"
+																						}
+																					},
+																					"required": [
+																						"kind",
+																						"amount"
+																					],
+																					"type": "object"
+																				},
+																				{
+																					"properties": {
+																						"basisPoints": {
+																							"maximum": 10000,
+																							"minimum": 1,
+																							"type": "integer"
+																						},
+																						"kind": {
+																							"const": "PERCENT_OF_INCOME"
+																						}
+																					},
+																					"required": [
+																						"kind",
+																						"basisPoints"
+																					],
+																					"type": "object"
+																				}
+																			]
+																		}
+																	},
+																	"required": [
+																		"target",
+																		"mainEnvelopeId"
+																	],
+																	"type": "object"
+																},
+																"target": {
+																	"anyOf": [
+																		{
+																			"properties": {
+																				"kind": {
+																					"const": "NONE"
+																				}
+																			},
+																			"required": [
+																				"kind"
+																			],
+																			"type": "object"
+																		},
+																		{
+																			"properties": {
+																				"amount": {
+																					"description": "A positive amount as decimal text, in the currency's major units.",
+																					"examples": [
+																						"1234.56"
+																					],
+																					"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+																					"type": "string"
+																				},
+																				"kind": {
+																					"const": "AMOUNT"
+																				}
+																			},
+																			"required": [
+																				"kind",
+																				"amount"
+																			],
+																			"type": "object"
+																		},
+																		{
+																			"properties": {
+																				"basisPoints": {
+																					"maximum": 10000,
+																					"minimum": 1,
+																					"type": "integer"
+																				},
+																				"kind": {
+																					"const": "PERCENT_OF_INCOME"
+																				}
+																			},
+																			"required": [
+																				"kind",
+																				"basisPoints"
+																			],
+																			"type": "object"
+																		}
+																	]
+																}
+															},
+															"required": [
+																"groupId",
+																"target",
+																"mainEnvelopeId",
+																"previous"
+															],
+															"type": "object"
+														}
+													},
+													"required": [
+														"kind",
+														"result"
+													],
+													"type": "object"
+												},
+												{
+													"properties": {
+														"kind": {
+															"const": "debt_terms.set"
+														},
+														"result": {
+															"properties": {
+																"previous": {
+																	"properties": {
+																		"aprPercent": {
+																			"anyOf": [
+																				{
+																					"type": "string"
+																				},
+																				{
+																					"type": "null"
+																				}
+																			]
+																		},
+																		"assetAccountId": {
+																			"maxLength": 64,
+																			"minLength": 1,
+																			"type": "string"
+																		},
+																		"dueDay": {
+																			"anyOf": [
+																				{
+																					"maximum": 9007199254740991,
+																					"minimum": -9007199254740991,
+																					"type": "integer"
+																				},
+																				{
+																					"type": "null"
+																				}
+																			]
+																		},
+																		"minimum": {
+																			"anyOf": [
+																				{
+																					"$ref": "#/components/schemas/Money"
+																				},
+																				{
+																					"type": "null"
+																				}
+																			]
+																		}
+																	},
+																	"required": [
+																		"assetAccountId",
+																		"aprPercent",
+																		"minimum",
+																		"dueDay"
+																	],
+																	"type": "object"
+																},
+																"terms": {
+																	"properties": {
+																		"aprPercent": {
+																			"anyOf": [
+																				{
+																					"type": "string"
+																				},
+																				{
+																					"type": "null"
+																				}
+																			]
+																		},
+																		"assetAccountId": {
+																			"maxLength": 64,
+																			"minLength": 1,
+																			"type": "string"
+																		},
+																		"dueDay": {
+																			"anyOf": [
+																				{
+																					"maximum": 9007199254740991,
+																					"minimum": -9007199254740991,
+																					"type": "integer"
+																				},
+																				{
+																					"type": "null"
+																				}
+																			]
+																		},
+																		"minimum": {
+																			"anyOf": [
+																				{
+																					"$ref": "#/components/schemas/Money"
+																				},
+																				{
+																					"type": "null"
+																				}
+																			]
+																		}
+																	},
+																	"required": [
+																		"assetAccountId",
+																		"aprPercent",
+																		"minimum",
+																		"dueDay"
+																	],
+																	"type": "object"
+																}
+															},
+															"required": [
+																"terms",
+																"previous"
+															],
+															"type": "object"
+														}
+													},
+													"required": [
+														"kind",
+														"result"
+													],
+													"type": "object"
+												},
+												{
+													"properties": {
+														"kind": {
+															"const": "payoff_plan.revert"
+														},
+														"result": {
+															"properties": {
+																"plan": {
+																	"properties": {
+																		"customOrder": {
+																			"items": {
+																				"maxLength": 64,
+																				"minLength": 1,
+																				"type": "string"
+																			},
+																			"type": "array"
+																		},
+																		"envelopeId": {
+																			"anyOf": [
+																				{
+																					"maxLength": 64,
+																					"minLength": 1,
+																					"type": "string"
+																				},
+																				{
+																					"type": "null"
+																				}
+																			]
+																		},
+																		"extraMonthly": {
+																			"$ref": "#/components/schemas/Money"
+																		},
+																		"strategy": {
+																			"enum": [
+																				"SNOWBALL",
+																				"AVALANCHE",
+																				"CUSTOM"
+																			],
+																			"type": "string"
+																		}
+																	},
+																	"required": [
+																		"strategy",
+																		"extraMonthly",
+																		"customOrder",
+																		"envelopeId"
+																	],
+																	"type": "object"
+																},
+																"previous": {
+																	"anyOf": [
+																		{
+																			"properties": {
+																				"customOrder": {
+																					"items": {
+																						"maxLength": 64,
+																						"minLength": 1,
+																						"type": "string"
+																					},
+																					"type": "array"
+																				},
+																				"envelopeId": {
+																					"anyOf": [
+																						{
+																							"maxLength": 64,
+																							"minLength": 1,
+																							"type": "string"
+																						},
+																						{
+																							"type": "null"
+																						}
+																					]
+																				},
+																				"extraMonthly": {
+																					"$ref": "#/components/schemas/Money"
+																				},
+																				"strategy": {
+																					"enum": [
+																						"SNOWBALL",
+																						"AVALANCHE",
+																						"CUSTOM"
+																					],
+																					"type": "string"
+																				}
+																			},
+																			"required": [
+																				"strategy",
+																				"extraMonthly",
+																				"customOrder",
+																				"envelopeId"
+																			],
+																			"type": "object"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																}
+															},
+															"required": [
+																"plan",
+																"previous"
+															],
+															"type": "object"
+														}
+													},
+													"required": [
+														"kind",
+														"result"
+													],
+													"type": "object"
+												},
+												{
+													"properties": {
+														"kind": {
 															"const": "draft.unapply"
 														},
 														"result": {
@@ -46488,10 +49163,8 @@
 																		"expectedIn": {
 																			"items": {
 																				"properties": {
-																					"amountMinor": {
-																						"maximum": 9007199254740991,
-																						"minimum": -9007199254740991,
-																						"type": "integer"
+																					"amount": {
+																						"$ref": "#/components/schemas/Money"
 																					},
 																					"categoryId": {
 																						"anyOf": [
@@ -46526,7 +49199,7 @@
 																					"id",
 																					"templateId",
 																					"categoryId",
-																					"amountMinor"
+																					"amount"
 																				],
 																				"type": "object"
 																			},
@@ -46559,10 +49232,8 @@
 																		"lines": {
 																			"items": {
 																				"properties": {
-																					"amountMinor": {
-																						"maximum": 9007199254740991,
-																						"minimum": -9007199254740991,
-																						"type": "integer"
+																					"amount": {
+																						"$ref": "#/components/schemas/Money"
 																					},
 																					"envelopeId": {
 																						"maxLength": 64,
@@ -46572,7 +49243,7 @@
 																				},
 																				"required": [
 																					"envelopeId",
-																					"amountMinor"
+																					"amount"
 																				],
 																				"type": "object"
 																			},
@@ -46586,10 +49257,8 @@
 																		"moves": {
 																			"items": {
 																				"properties": {
-																					"amountMinor": {
-																						"maximum": 9007199254740991,
-																						"minimum": -9007199254740991,
-																						"type": "integer"
+																					"amount": {
+																						"$ref": "#/components/schemas/Money"
 																					},
 																					"from": {
 																						"anyOf": [
@@ -46624,7 +49293,7 @@
 																					"id",
 																					"from",
 																					"to",
-																					"amountMinor"
+																					"amount"
 																				],
 																				"type": "object"
 																			},
@@ -46633,10 +49302,8 @@
 																		"pretend": {
 																			"items": {
 																				"properties": {
-																					"amountMinor": {
-																						"maximum": 9007199254740991,
-																						"minimum": -9007199254740991,
-																						"type": "integer"
+																					"amount": {
+																						"$ref": "#/components/schemas/Money"
 																					},
 																					"categoryId": {
 																						"anyOf": [
@@ -46679,7 +49346,7 @@
 																					"kind",
 																					"categoryId",
 																					"envelopeId",
-																					"amountMinor"
+																					"amount"
 																				],
 																				"type": "object"
 																			},
@@ -47536,6 +50203,7 @@
 		},
 		"/budget/unforgive": {
 			"post": {
+				"description": "Answers `undo: null`: forgive again to put it back.",
 				"operationId": "unforgiveBudgetDebt",
 				"parameters": [
 					{
@@ -48924,6 +51592,7 @@
 				"x-required-scope": "read"
 			},
 			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "answerBudgetWelcomeBack",
 				"parameters": [
 					{
@@ -48954,10 +51623,14 @@
 									},
 									{
 										"properties": {
-											"amountMinor": {
-												"maximum": 9007199254740991,
-												"minimum": -9007199254740991,
-												"type": "integer"
+											"amount": {
+												"description": "An amount as decimal text in the currency's major units; below zero takes money back or is owed.",
+												"examples": [
+													"-50.25",
+													"120"
+												],
+												"pattern": "^-?\\d{1,11}(\\.\\d{1,8})?$",
+												"type": "string"
 											},
 											"choice": {
 												"const": "SET_HAVE_NOW"
@@ -48970,7 +51643,7 @@
 										"required": [
 											"choice",
 											"id",
-											"amountMinor"
+											"amount"
 										],
 										"type": "object"
 									},
@@ -49342,10 +52015,14 @@
 									},
 									{
 										"properties": {
-											"amountMinor": {
-												"maximum": 9007199254740991,
-												"minimum": -9007199254740991,
-												"type": "integer"
+											"amount": {
+												"description": "An amount as decimal text in the currency's major units; below zero takes money back or is owed.",
+												"examples": [
+													"-50.25",
+													"120"
+												],
+												"pattern": "^-?\\d{1,11}(\\.\\d{1,8})?$",
+												"type": "string"
 											},
 											"choice": {
 												"const": "SET_HAVE_NOW"
@@ -49358,7 +52035,7 @@
 										"required": [
 											"choice",
 											"id",
-											"amountMinor"
+											"amount"
 										],
 										"type": "object"
 									},

@@ -108,6 +108,20 @@ export const budgetMoneyRouter = {
 	),
 	revertHidden: b.revertHidden.handler(write(ops.revertHidden)),
 	previewRevertHidden: b.previewRevertHidden.handler(preview(ops.revertHidden)),
+	setGroupTarget: b.setGroupTarget.handler(write(ops.setGroupTarget)),
+	previewSetGroupTarget: b.previewSetGroupTarget.handler(
+		preview(ops.setGroupTarget),
+	),
+	setDebtTerms: b.setDebtTerms.handler(write(ops.setDebtTerms)),
+	previewSetDebtTerms: b.previewSetDebtTerms.handler(preview(ops.setDebtTerms)),
+	savePayoffPlan: b.savePayoffPlan.handler(write(ops.savePayoffPlan)),
+	previewSavePayoffPlan: b.previewSavePayoffPlan.handler(
+		preview(ops.savePayoffPlan),
+	),
+	revertPayoffPlan: b.revertPayoffPlan.handler(write(ops.revertPayoffPlan)),
+	previewRevertPayoffPlan: b.previewRevertPayoffPlan.handler(
+		preview(ops.revertPayoffPlan),
+	),
 	undo: b.undo.handler(
 		h((caller, input: { token: string }) =>
 			undoBudgetWrite(caller, input.token),

@@ -104,7 +104,16 @@ export const revertBalanceMutation: MoneyMutation<
 	touches: revertBalanceUpdate.touches,
 	scope: revertBalanceUpdate.scope,
 	run: async (tx, input, actor) => {
-		const done = await revertBalanceUpdate.run(tx, input, actor);
+		// Only today's update can be taken back; an older one is the state having moved on.
+		const done = await revertBalanceUpdate.run(tx, input, actor).catch((e) => {
+			if (e instanceof TRPCError && e.code === "BAD_REQUEST")
+				throw new TRPCError({
+					code: "CONFLICT",
+					message: e.message,
+					cause: e,
+				});
+			throw e;
+		});
 		const currency = await currencyOf(tx, actor.userId, input.accountId);
 		return {
 			value: {
