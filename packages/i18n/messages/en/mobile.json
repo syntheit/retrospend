@@ -250,6 +250,299 @@
 			"paymentReceived": "{name} paid you"
 		}
 	},
+	"budget": {
+		"title": "Budget",
+		"error": "Couldn't load the budget",
+		"errorDetail": "Check your connection and try again.",
+		"noBudget": "No budget yet",
+		"noBudgetDetail": "Set up your budget on the web. It shows here when it is ready.",
+		"paused": "Your budget is paused",
+		"pausedDetail": "Nothing is counted while it is paused. Resume it on the web.",
+		"wealth": "Net worth and accounts",
+		"webForNow": "Targets, rules, set up and more are on the web for now.",
+		"month": {
+			"previous": "Previous month",
+			"next": "Next month",
+			"pick": "Choose a month",
+			"closedItem": "{month}, closed",
+			"planItem": "Plan {month}",
+			"closed": "{month} is closed. What is here is read-only."
+		},
+		"verdict": {
+			"label": {
+				"toAssign": "To assign",
+				"week": "Left this week",
+				"limits": "Left in your limits",
+				"overLimits": "Over your limits",
+				"overBudget": "Over budget in {month}",
+				"saveFirst": "Left to spend after saving",
+				"leftToSpend": "Left to spend in {month}"
+			},
+			"plannedTooMuch": "You planned {amount} more than you have, so we took it off this number.",
+			"overBudget": "You've spent {amount} more than you planned for {month}. Cover it from money you haven't planned, or it comes out of {next}.",
+			"billsShort": "Bills still need {amount}. Plan that first; this number doesn't include it.",
+			"usedUp": "You've used all of {month}'s Spending. Anything more comes out of {next}.",
+			"faster": "You're spending faster than planned. To finish on budget, keep to about {amount} a day.",
+			"someOver": "About {amount} a day for the {days, plural, one {# day} other {# days}} left, after {names} went over by {over}.",
+			"onTrack": "You're on track: about {amount} a day for the {days, plural, one {# day} other {# days}} left.",
+			"allAssigned": "All your money has a job.",
+			"needsJob": "{amount} still needs a job.",
+			"overAssigned": "You gave out {amount} more than you have.",
+			"weekLeft": "About {amount} a day. It resets {resets}.",
+			"weekUsed": "You've used this week's allowance. It resets {resets}.",
+			"limitsOver": "You're over your limits by {amount}.",
+			"limitsUsedUp": "You've used all your limits for {month}.",
+			"limitsFaster": "You're using your limits faster than the month goes. About {amount} a day keeps you inside them.",
+			"limitsSomeOver": "{names} went over by {over}. About {amount} a day is left across your limits.",
+			"limitsOnTrack": "On track: about {amount} a day across your limits.",
+			"action": {
+				"FIX_PLAN": "Fix my plan",
+				"COVER": "Cover",
+				"PLAN_BILLS": "Plan bills",
+				"USE_PLAN": "Use my plan",
+				"TAKE_BACK": "Take it back",
+				"raiseLimit": "Raise this limit"
+			}
+		},
+		"hero": {
+			"incomplete": "No rate yet for {currencies}, so this is not worked out."
+		},
+		"notice": {
+			"notPlanned": "{amount} came in that isn't planned yet.",
+			"overspent": "{count, plural, one {{name} is over by {amount}.} other {# envelopes are over by {amount}.}}",
+			"usePlan": "Use my plan",
+			"cover": "Cover"
+		},
+		"pool": {
+			"NOT_PLANNED_YET": "Not planned yet",
+			"TO_ASSIGN": "To assign"
+		},
+		"owed": {
+			"title": "Owed to you",
+			"people": "{count, plural, one {# person} other {# people}}"
+		},
+		"group": {
+			"BILLS": "Bills",
+			"SPENDING": "Spending",
+			"SAVINGS": "Savings",
+			"ungrouped": "Other envelopes",
+			"count": "{count, plural, one {# envelope} other {# envelopes}}",
+			"overBy": "Over by {amount}",
+			"leftSpoken": "{amount} left",
+			"expand": "Show envelopes",
+			"collapse": "Hide envelopes"
+		},
+		"column": {
+			"assigned": "Assigned",
+			"limit": "Limit",
+			"spent": "Spent",
+			"left": "Left"
+		},
+		"row": {
+			"over": "Over by {amount}",
+			"needs": "Needs {amount}",
+			"funded": "Funded",
+			"noRate": "No {currency} rate yet",
+			"leftSpoken": "{amount} left"
+		},
+		"envelope": {
+			"assigned": "Assigned",
+			"limit": "Limit",
+			"spent": "Spent",
+			"left": "Left",
+			"closedHint": "This month is closed, so nothing here can change.",
+			"cover": "Cover",
+			"assign": "Assign money",
+			"move": "Move money",
+			"limitAction": "Change limit",
+			"back": "Back",
+			"assignTitle": "Assign to {name}",
+			"moveTitle": "Move money for {name}",
+			"coverTitle": "Cover {name}",
+			"limitTitle": "Limit for {name}"
+		},
+		"assign": {
+			"assignedNow": "Assigned now",
+			"mode": "How",
+			"add": "Add",
+			"set": "Set to",
+			"amountAdd": "Amount to add",
+			"amountSet": "New assigned amount",
+			"submit": "Assign",
+			"toastAdd": "Assigned {amount} to {name}",
+			"toastSet": "{name} now has {amount} assigned"
+		},
+		"move": {
+			"direction": "Direction",
+			"in": "Add money",
+			"out": "Take money out",
+			"from": "From",
+			"to": "To",
+			"place": "{name}, {amount}",
+			"amount": "Amount to move",
+			"submit": "Move",
+			"nothingToMove": "Nothing has money to move here. {pool} is empty.",
+			"toastIn": "Moved {amount} from {other} to {name}",
+			"toastOut": "Moved {amount} from {name} to {other}"
+		},
+		"cover": {
+			"lead": "{name} is over by {amount}. Covering moves money here from another place.",
+			"notOver": "{name} is not over, so there is nothing to cover.",
+			"from": "Take it from",
+			"pickSource": "Pick a source",
+			"source": "{name}, {amount}",
+			"sourceDue": "{source}, due {date}",
+			"sourceFallback": "Envelope",
+			"noSource": "Nothing has money to cover this.",
+			"amount": "Amount to cover",
+			"submit": "Cover",
+			"loadError": "Couldn't load where the money can come from.",
+			"toast": "Covered {name} with {amount} from {source}"
+		},
+		"limit": {
+			"now": "Limit now",
+			"scope": "Applies",
+			"thisMonth": "Only this month",
+			"fromNowOn": "From now on",
+			"amount": "New limit",
+			"submit": "Save limit",
+			"toast": "Limit for {name} is now {amount}"
+		},
+		"usePlan": {
+			"title": "Use my plan",
+			"lead": "Your plan gives {amount} from {pool} these jobs.",
+			"met": "Your targets are already met.",
+			"envelopeFallback": "Envelope",
+			"why": {
+				"PLAN": "from your saved plan",
+				"OVERSPENT": "covers overspending",
+				"BILL": "bill",
+				"GROUP": "group target",
+				"MONTHLY": "monthly target",
+				"SAVINGS": "savings goal",
+				"REST": "the rest"
+			},
+			"restTitle": "What is left: {amount}",
+			"restStays": "{amount} stays in {pool}.",
+			"leave": "Leave it",
+			"saveIt": "Save it in {name}",
+			"nextMonth": "Next month ({month})",
+			"use": "Use my plan",
+			"loadError": "Couldn't load your plan.",
+			"toast": "Plan used for {count, plural, one {# envelope} other {# envelopes}}"
+		},
+		"takeBack": {
+			"title": "Take it back",
+			"lead": "You planned {amount} more than you have. The shortfall comes back from your envelopes, Spending first, then Savings. Bills stay.",
+			"nothing": "You haven't planned more than you have.",
+			"submit": "Take it back",
+			"toast": "Took back {amount}"
+		},
+		"preview": {
+			"checking": "Checking",
+			"error": "Couldn't check this. Try again.",
+			"changes": "What changes",
+			"stays": "What stays",
+			"none": "nothing",
+			"beforeAfter": "{before} to {after}",
+			"leftOf": "{name} left",
+			"leftToSpend": "Left to spend",
+			"keeps": "{amount} stays",
+			"nothing": "This changes nothing.",
+			"envelopeFallback": "Envelope"
+		},
+		"write": {
+			"saving": "Saving",
+			"error": "Couldn't save. Try again.",
+			"undone": "Undone",
+			"undoError": "Couldn't undo. It may have changed already.",
+			"amountInvalid": "Use digits and the decimals this currency has."
+		}
+	},
+	"wealth": {
+		"title": "Wealth",
+		"netWorth": "Net worth",
+		"change": "{amount} in {days} days",
+		"range": "Chart range",
+		"ranges": {
+			"1M": "1M",
+			"3M": "3M",
+			"6M": "6M",
+			"1Y": "1Y"
+		},
+		"chart": {
+			"label": "Net worth, {range}",
+			"summary": "{label}. From {from} on {fromDate} to {to} on {toDate}.",
+			"pick": "{date}, {amount}",
+			"later": "Next day",
+			"earlier": "Previous day"
+		},
+		"whyTitle": "Why it changed in {days} days",
+		"whyTotal": "Change",
+		"parts": {
+			"income": "Income",
+			"spending": "Spending",
+			"exchange": "Exchanges",
+			"notLogged": "Not logged",
+			"revaluation": "Rates and prices",
+			"opened": "Accounts added",
+			"closed": "Accounts closed"
+		},
+		"groups": {
+			"cash": "Cash and bank",
+			"investments": "Investments",
+			"crypto": "Crypto",
+			"property": "Property",
+			"liabilities": "Liabilities"
+		},
+		"types": {
+			"CASH": "Cash and bank",
+			"INVESTMENT": "Investment",
+			"CRYPTO": "Crypto",
+			"REAL_ESTATE": "Real estate",
+			"VEHICLE": "Vehicle",
+			"LIABILITY_LOAN": "Loan",
+			"LIABILITY_CREDIT_CARD": "Credit card",
+			"LIABILITY_MORTGAGE": "Mortgage"
+		},
+		"owes": "You owe",
+		"closed": {
+			"title": "Closed accounts",
+			"badge": "Closed"
+		},
+		"withoutRate": "{count, plural, one {# account has no rate yet and is left out of net worth} other {# accounts have no rate yet and are left out of net worth}}",
+		"webForNow": "Adding accounts, rates and the rest are on the web for now.",
+		"error": "Couldn't load Wealth",
+		"errorDetail": "Check your connection and try again.",
+		"empty": "No accounts yet",
+		"emptyDetail": "Add a bank account, an investment or a loan on the web to track your net worth.",
+		"accountError": "Couldn't load this account",
+		"owedNow": "You owe",
+		"balance": "Balance",
+		"updatedOn": "Updated {date}",
+		"noRate": "No {currency} rate yet, so this account is left out of net worth.",
+		"history": "History",
+		"noHistory": "Nothing recorded yet",
+		"showMore": "Show more",
+		"leg": {
+			"INCOME": "Income",
+			"TRANSFER": "Transfer",
+			"FEE": "Fee",
+			"BALANCE_UPDATE": "Balance update",
+			"notLogged": "Not logged"
+		},
+		"update": {
+			"title": "Update balance",
+			"now": "{name} shows {amount} now.",
+			"amount": "What it holds today",
+			"submit": "Update balance",
+			"netWorth": "Net worth",
+			"notLogged": "Not logged",
+			"notLoggedHint": "The difference is recorded as Not logged, not as income or spending.",
+			"same": "That is already the balance, so nothing changes.",
+			"toast": "{name} is now {amount}"
+		}
+	},
 	"money": {
 		"noRate": "No rate yet",
 		"homeWithRate": "{amount} at {rate}",
