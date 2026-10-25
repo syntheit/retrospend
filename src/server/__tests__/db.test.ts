@@ -185,12 +185,12 @@ describe("createUserScopedDb", () => {
 	});
 
 	it("runs an interactive transaction on the base client, RLS set first", async () => {
-		const fakeDb = setupExtendsMock();
+		setupExtendsMock();
 		const tx = { $executeRaw: vi.fn().mockResolvedValue(1) };
 		mockTransaction.mockImplementation(
 			async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx),
 		);
-		const userDb = createUserScopedDb("user-1") as typeof fakeDb & {
+		const userDb = createUserScopedDb("user-1") as unknown as {
 			$transaction: (
 				fn: (t: typeof tx) => Promise<unknown>,
 				options?: unknown,
