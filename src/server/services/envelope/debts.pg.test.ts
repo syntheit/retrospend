@@ -407,6 +407,28 @@ describe("payments outside the budget, any-envelope minimums, caps (review round
 			envelopeId: null,
 		});
 	});
+
+	it("undo of a saved plan refuses when the envelope's target changed since", async () => {
+		const w = await world();
+		const extra = w.id("Rent");
+		await debtsApi.savePlan(w.user.id, {
+			strategy: "AVALANCHE",
+			extraMonthlyMinor: 10_000,
+			customOrder: [],
+			envelopeId: extra,
+		});
+		await adminDb.envelope.update({
+			where: { id: extra },
+			data: { targetAmount: 450 },
+		});
+		await expect(debtsApi.revertPlan(w.user.id)).rejects.toMatchObject({
+			code: "ALREADY_UNDONE",
+		});
+		const kept = await adminDb.envelope.findUniqueOrThrow({
+			where: { id: extra },
+		});
+		expect(kept.targetAmount?.toString()).toBe("450");
+	});
 });
 
 describe("a bill that follows the Visa minimum, and Debt payment due", () => {

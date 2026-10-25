@@ -165,6 +165,42 @@ describe("/api/v1/budget debts", () => {
 		);
 	});
 
+	it("refuses to undo a payoff plan once the envelope's target was set again (409)", async () => {
+		const saved = await expectBody<Write>(
+			await send("PUT", "/budget/payoff-plan", {
+				strategy: "AVALANCHE",
+				extraMonthlyMinor: 30_000,
+				customOrder: [],
+				envelopeId: ids.Dining,
+			}),
+			c.savePayoffPlan,
+		);
+		await expectBody(
+			await send("POST", `/budget/envelopes/${ids.Dining}/target`, {
+				id: randomUUID(),
+				envelopeId: ids.Dining,
+				kind: "MONTHLY",
+				target: { kind: "MONTHLY", amountMinor: 45_000 },
+			}),
+			c.setTarget,
+		);
+		await expectProblem(
+			await send("POST", "/budget/undo", { token: saved.undo }),
+			409,
+			"conflict",
+		);
+		const kept = await adminDb.envelope.findUniqueOrThrow({
+			where: { id: ids.Dining },
+		});
+		expect(kept.targetAmount?.toString()).toBe("450");
+		// The service refuses for the web too.
+		await expectProblem(
+			await send("POST", "/budget/payoff-plan/revert", {}),
+			409,
+			"conflict",
+		);
+	});
+
 	it("saves a plan, projects it and reverts the save", async () => {
 		const saved = await expectBody<Write>(
 			await send("PUT", "/budget/payoff-plan", {
