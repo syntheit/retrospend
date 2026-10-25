@@ -2,6 +2,7 @@ import { accountsContract } from "./accounts";
 import { budgetContract } from "./budget";
 import { categoriesContract } from "./categories";
 import { currenciesContract } from "./currencies";
+import { eventsContract } from "./events";
 import { expensesContract } from "./expenses";
 import { figuresContract } from "./figures";
 import { incomeContract } from "./income";
@@ -19,6 +20,7 @@ import { settingsContract } from "./settings";
 import { sharedExpensesContract } from "./shared-expenses";
 import { tokensContract } from "./tokens";
 import { transfersContract } from "./transfers";
+import { webhooksContract } from "./webhooks";
 
 export * from "./accounts";
 export * from "./budget";
@@ -26,6 +28,7 @@ export * from "./categories";
 export * from "./common";
 export * from "./core";
 export * from "./currencies";
+export * from "./events";
 export * from "./expenses";
 export * from "./figures";
 export * from "./income";
@@ -44,6 +47,7 @@ export * from "./settings";
 export * from "./shared-expenses";
 export * from "./tokens";
 export * from "./transfers";
+export * from "./webhooks";
 
 /**
  * The whole /api/v1 contract. Each resource group registers here with one
@@ -54,6 +58,7 @@ export const contract = {
 	budget: budgetContract,
 	categories: categoriesContract,
 	currencies: currenciesContract,
+	events: eventsContract,
 	expenses: expensesContract,
 	figures: figuresContract,
 	income: incomeContract,
@@ -71,6 +76,7 @@ export const contract = {
 	"shared-expenses": sharedExpensesContract,
 	tokens: tokensContract,
 	transfers: transfersContract,
+	webhooks: webhooksContract,
 };
 
 export type Contract = typeof contract;

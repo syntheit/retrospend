@@ -54890,6 +54890,268 @@
 				"x-required-scope": "read"
 			}
 		},
+		"/events": {
+			"get": {
+				"description": "Events for the signed-in user in commit order. Poll with `after` set to the last `cursor`; an event shows up a moment after its write commits, never out of order. Events are kept for 30 days and carry ids and amounts only. An event appears once every older write transaction on the database server has finished, which is normally milliseconds but can be longer while any long write runs, whoever started it. Delivery order inside the feed is commit order.",
+				"operationId": "listEvents",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "after",
+						"schema": {
+							"description": "The cursor of the last event you saw. Omit it to start from the oldest kept event.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 50,
+							"maximum": 200,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"cursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"hasMore": {
+											"type": "boolean"
+										},
+										"items": {
+											"items": {
+												"properties": {
+													"actorUserId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"cursor": {
+														"type": "string"
+													},
+													"data": {
+														"properties": {
+															"amounts": {
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		},
+																		"name": {
+																			"pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$",
+																			"type": "string"
+																		}
+																	},
+																	"required": [
+																		"name",
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"maxItems": 32,
+																"type": "array"
+															},
+															"ids": {
+																"additionalProperties": {
+																	"pattern": "^[A-Za-z0-9_-]{1,64}$",
+																	"type": "string"
+																},
+																"propertyNames": {
+																	"pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$",
+																	"type": "string"
+																},
+																"type": "object"
+															},
+															"truncated": {
+																"type": "boolean"
+															}
+														},
+														"required": [
+															"ids",
+															"amounts",
+															"truncated"
+														],
+														"type": "object"
+													},
+													"entity": {
+														"anyOf": [
+															{
+																"properties": {
+																	"id": {
+																		"type": "string"
+																	},
+																	"type": {
+																		"type": "string"
+																	}
+																},
+																"required": [
+																	"type",
+																	"id"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"occurredAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"type": {
+														"examples": [
+															"expense.created"
+														],
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"cursor",
+													"type",
+													"occurredAt",
+													"actorUserId",
+													"entity",
+													"data"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items",
+										"cursor",
+										"hasMore"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "The caller's change feed, oldest first",
+				"tags": [
+					"Events"
+				],
+				"x-required-scope": "read"
+			}
+		},
 		"/expenses": {
 			"get": {
 				"description": "Personal expenses, your shares of split expenses and payments, money in, refunds and own transfers. `filter` takes the web's grammar (see parseActivityFilter): from, to, cat, person, project, paidby, kind, q, range. With no dates it is this month in the caller's zone, as on the web, unless there is a q, a cat or range=all. The first page carries the count and your spending total for the filter.",
@@ -88213,6 +88475,1649 @@
 					"Transfers"
 				],
 				"x-required-scope": "write:money"
+			}
+		},
+		"/webhooks": {
+			"get": {
+				"operationId": "listWebhooks",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"description": "The nextCursor of the previous page.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 50,
+							"maximum": 200,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"consecutiveFailures": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"disabledAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"disabledReason": {
+														"anyOf": [
+															{
+																"enum": [
+																	"too_many_failures",
+																	"blocked_target",
+																	"manual"
+																],
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"enabled": {
+														"type": "boolean"
+													},
+													"eventTypes": {
+														"items": {
+															"type": "string"
+														},
+														"type": "array"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"name": {
+														"type": "string"
+													},
+													"secretStart": {
+														"type": "string"
+													},
+													"updatedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"url": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"name",
+													"url",
+													"eventTypes",
+													"enabled",
+													"secretStart",
+													"disabledReason",
+													"disabledAt",
+													"consecutiveFailures",
+													"createdAt",
+													"updatedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "The caller's webhooks, newest first",
+				"tags": [
+					"Webhooks"
+				],
+				"x-required-scope": "read"
+			},
+			"post": {
+				"description": "Each delivery is a POST of one event (the body is the Event without its cursor), signed in the Retrospend-Signature header as `t=<unix seconds>,v1=<hex>`, where v1 is HMAC-SHA256 over `<t>.<raw body>` with the secret. Reject a timestamp more than 300 seconds from your clock. Delivery is at least once and not ordered: dedupe on the Retrospend-Event-Id header (the event id). A non-2xx answer or a timeout is retried after 1, 2, 4 ... minutes (at most 6 hours) for 10 attempts; a webhook whose last 5 deliveries ran out of retries is switched off. Redirects are not followed. Secrets are encrypted with a key derived from the server's BETTER_AUTH_SECRET: if the operator changes it, deliveries fail as `secret_unreadable` until you rotate the secret. The secret is in this response only; a replayed Idempotency-Key answers idempotency_replay_unavailable.",
+				"operationId": "createWebhook",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"eventTypes": {
+										"default": [],
+										"description": "Event types to send: exact (`expense.created`) or per resource (`expense.*`). Empty means every type.",
+										"items": {
+											"pattern": "^[a-z][a-z0-9_]*\\.([a-z][a-z0-9_]*|\\*)$",
+											"type": "string"
+										},
+										"maxItems": 50,
+										"type": "array"
+									},
+									"name": {
+										"maxLength": 100,
+										"minLength": 1,
+										"type": "string"
+									},
+									"url": {
+										"description": "An https URL. It must resolve to a public address unless an admin allows private targets.",
+										"format": "uri",
+										"maxLength": 2048,
+										"type": "string"
+									}
+								},
+								"required": [
+									"name",
+									"url"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"secret": {
+											"type": "string"
+										},
+										"webhook": {
+											"properties": {
+												"consecutiveFailures": {
+													"maximum": 9007199254740991,
+													"minimum": -9007199254740991,
+													"type": "integer"
+												},
+												"createdAt": {
+													"format": "date-time",
+													"type": "string"
+												},
+												"disabledAt": {
+													"anyOf": [
+														{
+															"format": "date-time",
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"disabledReason": {
+													"anyOf": [
+														{
+															"enum": [
+																"too_many_failures",
+																"blocked_target",
+																"manual"
+															],
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"enabled": {
+													"type": "boolean"
+												},
+												"eventTypes": {
+													"items": {
+														"type": "string"
+													},
+													"type": "array"
+												},
+												"id": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"name": {
+													"type": "string"
+												},
+												"secretStart": {
+													"type": "string"
+												},
+												"updatedAt": {
+													"format": "date-time",
+													"type": "string"
+												},
+												"url": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"id",
+												"name",
+												"url",
+												"eventTypes",
+												"enabled",
+												"secretStart",
+												"disabledReason",
+												"disabledAt",
+												"consecutiveFailures",
+												"createdAt",
+												"updatedAt"
+											],
+											"type": "object"
+										}
+									},
+									"required": [
+										"webhook",
+										"secret"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Create a webhook",
+				"tags": [
+					"Webhooks"
+				],
+				"x-event-type": "webhook.created",
+				"x-required-scope": "write:settings"
+			}
+		},
+		"/webhooks/{id}": {
+			"delete": {
+				"operationId": "deleteWebhook",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Delete a webhook and its delivery log",
+				"tags": [
+					"Webhooks"
+				],
+				"x-event-type": "webhook.deleted",
+				"x-required-scope": "write:settings"
+			},
+			"get": {
+				"operationId": "getWebhook",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"consecutiveFailures": {
+											"maximum": 9007199254740991,
+											"minimum": -9007199254740991,
+											"type": "integer"
+										},
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"disabledAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"disabledReason": {
+											"anyOf": [
+												{
+													"enum": [
+														"too_many_failures",
+														"blocked_target",
+														"manual"
+													],
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"enabled": {
+											"type": "boolean"
+										},
+										"eventTypes": {
+											"items": {
+												"type": "string"
+											},
+											"type": "array"
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"name": {
+											"type": "string"
+										},
+										"secretStart": {
+											"type": "string"
+										},
+										"updatedAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"url": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"id",
+										"name",
+										"url",
+										"eventTypes",
+										"enabled",
+										"secretStart",
+										"disabledReason",
+										"disabledAt",
+										"consecutiveFailures",
+										"createdAt",
+										"updatedAt"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "One webhook",
+				"tags": [
+					"Webhooks"
+				],
+				"x-required-scope": "read"
+			},
+			"patch": {
+				"operationId": "updateWebhook",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"enabled": {
+										"description": "Turning a disabled webhook back on clears its failures.",
+										"type": "boolean"
+									},
+									"eventTypes": {
+										"description": "Event types to send: exact (`expense.created`) or per resource (`expense.*`). Empty means every type.",
+										"items": {
+											"pattern": "^[a-z][a-z0-9_]*\\.([a-z][a-z0-9_]*|\\*)$",
+											"type": "string"
+										},
+										"maxItems": 50,
+										"type": "array"
+									},
+									"name": {
+										"maxLength": 100,
+										"minLength": 1,
+										"type": "string"
+									},
+									"url": {
+										"description": "An https URL. It must resolve to a public address unless an admin allows private targets.",
+										"format": "uri",
+										"maxLength": 2048,
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": false
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"consecutiveFailures": {
+											"maximum": 9007199254740991,
+											"minimum": -9007199254740991,
+											"type": "integer"
+										},
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"disabledAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"disabledReason": {
+											"anyOf": [
+												{
+													"enum": [
+														"too_many_failures",
+														"blocked_target",
+														"manual"
+													],
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"enabled": {
+											"type": "boolean"
+										},
+										"eventTypes": {
+											"items": {
+												"type": "string"
+											},
+											"type": "array"
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"name": {
+											"type": "string"
+										},
+										"secretStart": {
+											"type": "string"
+										},
+										"updatedAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"url": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"id",
+										"name",
+										"url",
+										"eventTypes",
+										"enabled",
+										"secretStart",
+										"disabledReason",
+										"disabledAt",
+										"consecutiveFailures",
+										"createdAt",
+										"updatedAt"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Change a webhook's name, URL, event types or on/off state",
+				"tags": [
+					"Webhooks"
+				],
+				"x-event-type": "webhook.updated",
+				"x-required-scope": "write:settings"
+			}
+		},
+		"/webhooks/{id}/deliveries": {
+			"get": {
+				"operationId": "listWebhookDeliveries",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"description": "The nextCursor of the previous page.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 50,
+							"maximum": 200,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"attempts": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"deliveredAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"eventId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"eventType": {
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"lastAttemptAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"lastError": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"lastStatusCode": {
+														"anyOf": [
+															{
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"nextAttemptAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"status": {
+														"enum": [
+															"pending",
+															"succeeded",
+															"failed"
+														],
+														"type": "string"
+													},
+													"webhookId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"webhookId",
+													"eventId",
+													"eventType",
+													"status",
+													"attempts",
+													"nextAttemptAt",
+													"lastAttemptAt",
+													"lastStatusCode",
+													"lastError",
+													"deliveredAt",
+													"createdAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "The delivery log of a webhook, newest first",
+				"tags": [
+					"Webhooks"
+				],
+				"x-required-scope": "read"
+			}
+		},
+		"/webhooks/{id}/rotate-secret": {
+			"post": {
+				"description": "The old secret stops working at once. The secret is in this response only; a replayed Idempotency-Key answers idempotency_replay_unavailable.",
+				"operationId": "rotateWebhookSecret",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"secret": {
+											"type": "string"
+										},
+										"webhook": {
+											"properties": {
+												"consecutiveFailures": {
+													"maximum": 9007199254740991,
+													"minimum": -9007199254740991,
+													"type": "integer"
+												},
+												"createdAt": {
+													"format": "date-time",
+													"type": "string"
+												},
+												"disabledAt": {
+													"anyOf": [
+														{
+															"format": "date-time",
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"disabledReason": {
+													"anyOf": [
+														{
+															"enum": [
+																"too_many_failures",
+																"blocked_target",
+																"manual"
+															],
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"enabled": {
+													"type": "boolean"
+												},
+												"eventTypes": {
+													"items": {
+														"type": "string"
+													},
+													"type": "array"
+												},
+												"id": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"name": {
+													"type": "string"
+												},
+												"secretStart": {
+													"type": "string"
+												},
+												"updatedAt": {
+													"format": "date-time",
+													"type": "string"
+												},
+												"url": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"id",
+												"name",
+												"url",
+												"eventTypes",
+												"enabled",
+												"secretStart",
+												"disabledReason",
+												"disabledAt",
+												"consecutiveFailures",
+												"createdAt",
+												"updatedAt"
+											],
+											"type": "object"
+										}
+									},
+									"required": [
+										"webhook",
+										"secret"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Replace the signing secret",
+				"tags": [
+					"Webhooks"
+				],
+				"x-event-type": "webhook.secret_rotated",
+				"x-required-scope": "write:settings"
+			}
+		},
+		"/webhooks/{id}/test": {
+			"post": {
+				"description": "One signed `webhook.test` delivery, made before the response. It is logged, is not retried and does not count toward switching the webhook off.",
+				"operationId": "testWebhook",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"attempts": {
+											"maximum": 9007199254740991,
+											"minimum": -9007199254740991,
+											"type": "integer"
+										},
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"deliveredAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"eventId": {
+											"anyOf": [
+												{
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"eventType": {
+											"type": "string"
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"lastAttemptAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"lastError": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"lastStatusCode": {
+											"anyOf": [
+												{
+													"maximum": 9007199254740991,
+													"minimum": -9007199254740991,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"nextAttemptAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"status": {
+											"enum": [
+												"pending",
+												"succeeded",
+												"failed"
+											],
+											"type": "string"
+										},
+										"webhookId": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										}
+									},
+									"required": [
+										"id",
+										"webhookId",
+										"eventId",
+										"eventType",
+										"status",
+										"attempts",
+										"nextAttemptAt",
+										"lastAttemptAt",
+										"lastStatusCode",
+										"lastError",
+										"deliveredAt",
+										"createdAt"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Send a test event now",
+				"tags": [
+					"Webhooks"
+				],
+				"x-event-type": "webhook.tested",
+				"x-required-scope": "write:settings"
 			}
 		}
 	},

@@ -132,6 +132,12 @@ export const EVENT_TYPES = [
 	"budget_share.category_set",
 	"budget_style.reverted",
 	"budget_style.set",
+	// Platform (G5b)
+	"webhook.created",
+	"webhook.deleted",
+	"webhook.secret_rotated",
+	"webhook.tested",
+	"webhook.updated",
 ] as const satisfies readonly string[];
 
 export type EventType = (typeof EVENT_TYPES)[number];
