@@ -38,6 +38,15 @@ export function toProblem(error: unknown): unknown {
 		error.code === "P2002"
 	)
 		return problem("conflict", "That id or name is already used");
+	// A number past what its column holds (an amount whose USD value needs
+	// more than 10 digits): the caller's input, not a server fault.
+	if (
+		error instanceof Prisma.PrismaClientKnownRequestError &&
+		error.code === "P2020"
+	)
+		return problem("validation_failed", "A number is too large to store", {
+			errors: [{ path: "", message: "A number is too large to store" }],
+		});
 	return error;
 }
 

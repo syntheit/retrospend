@@ -247,6 +247,19 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		expect(await categoryOf(two.expense.id)).toBe(from);
 	});
 
+	it("answers an amount too large for the ledger as a 400, never a 500", async () => {
+		const big = body(food, { title: "Huge", amount: "50000000000" });
+		for (const path of ["/expenses", "/expenses/preview"]) {
+			const res = await post(path, big);
+			await expectProblem(res, 400, "validation_failed");
+		}
+		await expect(
+			adminDb.expense.count({ where: { userId, title: "Huge" } }),
+		).resolves.toBe(0);
+		// The largest amount that fits still saves.
+		await add(body(food, { title: "Big", amount: "9999999999" }));
+	});
+
 	it("lets one key preview and then write, and previews need no key", async () => {
 		const key = randomUUID();
 		const data = body(food, { title: "Same key", amount: "9" });

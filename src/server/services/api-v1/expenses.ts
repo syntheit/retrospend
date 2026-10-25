@@ -21,7 +21,7 @@ import {
 	type UpdateExpenseInput,
 	updateExpenseEntry,
 } from "~/server/services/entry/expense.mutation";
-import { unlessChanged } from "~/server/services/entry/guarded.mutation";
+import { guardedExpense } from "~/server/services/entry/guarded.mutation";
 import type { RestoreToken } from "~/server/services/entry/restore-token";
 import {
 	type CreateExpenseInput,
@@ -273,7 +273,7 @@ function stepOf(op: string, input: unknown): Step<unknown, unknown> {
 		case "expense.delete": {
 			const { id, expectedUpdatedAt } = input as { id: string } & Stamped;
 			return step({
-				mutation: unlessChanged(deleteExpenseEntry, expectedUpdatedAt),
+				mutation: guardedExpense(deleteExpenseEntry, expectedUpdatedAt),
 				input: { id },
 				redo: (v) => ({ op: "expense.restore", input: { token: v.restore } }),
 				idOf: (v) => v.id,
@@ -285,20 +285,23 @@ function stepOf(op: string, input: unknown): Step<unknown, unknown> {
 			} & Stamped;
 			// JSON turned the date into text.
 			return step({
-				mutation: unlessChanged(updateExpenseEntry, expectedUpdatedAt),
+				mutation: guardedExpense(updateExpenseEntry, expectedUpdatedAt),
 				input: { ...restore, date: new Date(restore.date) },
 				redo: (v) => ({
 					op: "expense.update",
-					input: { restore: v.restore },
+					input: { restore: v.restore, expectedUpdatedAt: v.updatedAt },
 				}),
 				idOf: (v) => v.id,
 			});
 		}
 		case "expense.restore":
 			return step({
-				mutation: restoreExpenseEntry,
+				mutation: guardedExpense(restoreExpenseEntry),
 				input: input as { token: RestoreToken },
-				redo: (v) => ({ op: "expense.delete", input: { id: v.id } }),
+				redo: (v) => ({
+					op: "expense.delete",
+					input: { id: v.id, expectedUpdatedAt: v.updatedAt },
+				}),
 				idOf: (v) => v.id,
 			});
 		case "expense.categorize":
@@ -319,35 +322,16 @@ function stepOf(op: string, input: unknown): Step<unknown, unknown> {
 	}
 }
 
-/** The redo guards against edits made after the undo, like the original token does. */
-async function stampedRedo(
-	caller: Caller,
-	redo: { op: string; input: unknown },
-	id: string | null,
-) {
-	if (!id || (redo.op !== "expense.update" && redo.op !== "expense.delete"))
-		return redo;
-	const row = await caller.db.expense.findFirst({
-		where: { id, userId: caller.principal.userId },
-		select: { updatedAt: true },
-	});
-	return {
-		op: redo.op,
-		input: {
-			...(redo.input as object),
-			expectedUpdatedAt: row?.updatedAt.toISOString(),
-		},
-	};
-}
-
 export async function undoExpenseWrite(caller: Caller, token: string) {
 	const { op, input } = readUndo(caller.principal.userId, "expense", token);
 	const inverse = stepOf(op, input);
 	return spendUndo(caller, token, async () => {
 		const value = await applyWrite(caller, inverse.mutation, inverse.input);
-		const id = inverse.idOf(value);
-		const redo = await stampedRedo(caller, inverse.redo(value), id);
-		return { id, redo: undoFor(caller, "expense", redo.op, redo.input) };
+		const redo = inverse.redo(value);
+		return {
+			id: inverse.idOf(value),
+			redo: undoFor(caller, "expense", redo.op, redo.input),
+		};
 	});
 }
 

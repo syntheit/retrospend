@@ -67,6 +67,22 @@ async function refuseForeignCategory(
 /** The day of month a schedule is anchored to, read off the typed day. */
 const anchorOf = (day: string) => Number(day.slice(8, 10));
 
+/**
+ * The stored due instant for a typed day. Recurring income keeps its day as
+ * UTC midnight, which is how the income code reads it (add.mutation,
+ * confirm-recurring); an expense template keeps the start of the day in the
+ * caller's zone.
+ */
+function dueInstant(
+	day: string,
+	direction: ExpenseDirection,
+	timeZone?: string,
+): Date {
+	return direction === "IN"
+		? new Date(`${day}T00:00:00.000Z`)
+		: parseDateOnlyIn(day, timeZone);
+}
+
 export async function createTemplate(
 	db: Db,
 	userId: string,
@@ -85,7 +101,7 @@ export async function createTemplate(
 			direction,
 			amountMode: input.amountMode ?? "FIXED",
 			frequency: input.frequency,
-			nextDueDate: parseDateOnlyIn(input.nextDueDate, timeZone),
+			nextDueDate: dueInstant(input.nextDueDate, direction, timeZone),
 			anchorDay: anchorOf(input.nextDueDate),
 			websiteUrl: input.websiteUrl,
 			paymentSource: input.paymentSource,
@@ -128,7 +144,11 @@ export async function updateTemplate(
 			frequency: changes.frequency,
 			// A due date the user sets is the new anchor for monthly steps.
 			...(changes.nextDueDate && {
-				nextDueDate: parseDateOnlyIn(changes.nextDueDate, timeZone),
+				nextDueDate: dueInstant(
+					changes.nextDueDate,
+					existing.direction,
+					timeZone,
+				),
 				anchorDay: anchorOf(changes.nextDueDate),
 			}),
 			websiteUrl: changes.websiteUrl,

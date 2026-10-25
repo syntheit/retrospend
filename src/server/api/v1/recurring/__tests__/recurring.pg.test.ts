@@ -402,6 +402,58 @@ describe("/api/v1/recurring", () => {
 		});
 	});
 
+	it("stores recurring income on its UTC day in a zone east of UTC", async () => {
+		const tokyo = { ...as, "x-timezone": "Asia/Tokyo" };
+		const tokyoDay = (daysBack: number) =>
+			new Date(Date.now() + 9 * 3_600_000 - daysBack * 86_400_000)
+				.toISOString()
+				.slice(0, 10);
+		const due = tokyoDay(1);
+		const item = await make(
+			{ name: "Tokyo pay", amount: "300", direction: "in", nextDueDate: due },
+			tokyo,
+		);
+		const stored = () =>
+			adminDb.recurringTemplate.findUniqueOrThrow({ where: { id: item.id } });
+		expect((await stored()).nextDueDate.toISOString()).toBe(
+			`${due}T00:00:00.000Z`,
+		);
+
+		// An edit keeps the same convention.
+		const moved = tokyoDay(2);
+		await expectBody<Item>(
+			await send(
+				"PATCH",
+				`/recurring/${item.id}`,
+				{ nextDueDate: moved },
+				tokyo,
+			),
+			c.update,
+		);
+		expect((await stored()).nextDueDate.toISOString()).toBe(
+			`${moved}T00:00:00.000Z`,
+		);
+
+		// The first period books on its own day, not the day before.
+		const done = await expectBody<Confirm>(
+			await send("POST", `/recurring/${item.id}/confirm`, {}, tokyo),
+			c.confirm,
+		);
+		const row = await adminDb.expense.findUniqueOrThrow({
+			where: { id: done.confirmed.expenseId },
+		});
+		expect(row.date.toISOString().slice(0, 10)).toBe(moved);
+
+		// An expense template keeps the start of the caller's own day.
+		const expense = await make({ name: "Tokyo bill", nextDueDate: due }, tokyo);
+		const bill = await adminDb.recurringTemplate.findUniqueOrThrow({
+			where: { id: expense.id },
+		});
+		expect(bill.nextDueDate.toISOString()).toBe(
+			new Date(`${due}T00:00:00.000+09:00`).toISOString(),
+		);
+	});
+
 	it("keeps templates to their owner", async () => {
 		const item = await make({ name: "Alice only" });
 		await expectProblem(
