@@ -77,12 +77,6 @@ export function computePeriodLabel(
 	}
 }
 
-/**
- * One transaction with RLS set for `userId`. On a scoped client the settings
- * here replace the client's own, so the whole transaction runs as `userId`,
- * not as the user the client was made for. Auto-close relies on that: it runs
- * as the project's creator, who owns the rows it writes.
- */
 async function runInBillingTransaction<T>(
 	db: PrismaClient,
 	userId: string,
