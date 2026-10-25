@@ -1284,7 +1284,7 @@ describe("migration corrections_fix_requests", () => {
 		const migration = readFileSync(
 			join(
 				process.cwd(),
-				"prisma/migrations/20261025500000_corrections_fix_requests/migration.sql",
+				"prisma/migrations/20261025700000_corrections_fix_requests/migration.sql",
 			),
 			"utf8",
 		);
