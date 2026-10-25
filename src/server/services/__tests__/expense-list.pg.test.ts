@@ -7,7 +7,7 @@
 import { fromWallTime } from "@retrospend/domain/time-zone";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { listActivity } from "~/server/services/expense-list";
-import { listV2Input } from "~/server/services/expense-list/types";
+import { listV2Input, NO_CATEGORY } from "~/server/services/expense-list/types";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 
 const TZ = "America/Argentina/Buenos_Aires";
@@ -361,6 +361,55 @@ describe("expense.listV2", () => {
 		expect((await list(me, { ...OCT, paidBy: ["me"] })).total).toBeNull();
 	});
 
+	it("lists spending with no category: the sentinel alone or beside an id", async () => {
+		const titles = async (categoryIds: string[]) =>
+			(await list(me, { ...OCT, categoryIds })).items.map(
+				(i) => i.title || i.kind,
+			);
+		// Almacén and the share have no category; Netflix has one; payments never do.
+		expect(await titles([NO_CATEGORY])).toEqual([
+			"Almacén Don José",
+			"Cena en La Esquina",
+		]);
+		expect(await titles([NO_CATEGORY, subs])).toEqual([
+			"Almacén Don José",
+			"Cena en La Esquina",
+			"Netflix",
+		]);
+		expect(await titles([subs])).toEqual(["Netflix"]);
+		// The footer counts the same rows: Almacén ARS 64,000 and your share of
+		// the dinner, 15,000 of 30,000, is ARS 79,000.
+		const none = await list(me, { ...OCT, categoryIds: [NO_CATEGORY] });
+		expect(none.total?.value).toEqual({ minor: 7900000, currency: "ARS" });
+		const both = await list(me, { ...OCT, categoryIds: [NO_CATEGORY, subs] });
+		// + Netflix USD 12.99 at 1,000 ARS per USD = ARS 12,990: 91,990 in all
+		expect(both.total?.value).toEqual({ minor: 9199000, currency: "ARS" });
+	});
+
+	it("leaves money in, own transfers and starting balances out of No category", async () => {
+		const titles = async (categoryIds: string[]) =>
+			(
+				await list(mover, { from: "2026-08-01", to: "2026-08-31", categoryIds })
+			).items.map((i) => i.title || i.kind);
+		// Spending and the refund have no category; Sueldo, A mi caja and the
+		// starting balance are not spending, and the hidden payment is not an expense.
+		expect(await titles([NO_CATEGORY])).toEqual([
+			"Hotel azul",
+			"Hotel",
+			"Чай",
+			"Super",
+			"Devolución",
+		]);
+		const r = await list(mover, {
+			from: "2026-08-01",
+			to: "2026-08-31",
+			categoryIds: [NO_CATEGORY],
+		});
+		// 100,000 + 100,000 + 500 + 10,000 - 2,000 = ARS 208,500
+		expect(r.total?.value).toEqual({ minor: 20850000, currency: "ARS" });
+		expect(r.count).toBe(5);
+	});
+
 	it("pages with a cursor that never repeats or skips a row", async () => {
 		const p1 = await list(me, { limit: 2 });
 		expect(p1.items).toHaveLength(2);
@@ -461,6 +510,61 @@ describe("expense.listV2 entry kinds (M1, M2)", () => {
 				(await list(mover, { q })).items.map((i) => i.title),
 				q,
 			).toEqual(["Чай"]);
+	});
+
+	it("No category counts a share in someone else's category, as spent() does", async () => {
+		const owner = await createTestUser();
+		const guest = await createTestUser();
+		await adminDb.user.update({
+			where: { id: guest.user.id },
+			data: { homeCurrency: "ARS" },
+		});
+		const theirs = await adminDb.category.create({
+			data: { name: "Theirs", color: "blue", userId: owner.user.id },
+		});
+		await adminDb.sharedTransaction.create({
+			data: {
+				id: `pgl_tx_theirs_${guest.user.id}`,
+				description: "Other's category",
+				amount: "20000",
+				currency: "ARS",
+				exchangeRate: "1000",
+				date: day(12),
+				categoryId: theirs.id,
+				paidByType: "user",
+				paidById: owner.user.id,
+				createdByType: "user",
+				createdById: owner.user.id,
+				splitParticipants: {
+					create: [
+						{
+							participantType: "user",
+							participantId: guest.user.id,
+							shareAmount: "5000",
+							verificationStatus: "ACCEPTED",
+						},
+						{
+							participantType: "user",
+							participantId: owner.user.id,
+							shareAmount: "15000",
+							verificationStatus: "ACCEPTED",
+						},
+					],
+				},
+			},
+		});
+		const r = await list(guest, { ...OCT, categoryIds: [NO_CATEGORY] });
+		expect(r.items.map((i) => i.title)).toEqual(["Other's category"]);
+		// The row shows no category: the creator's is not usable here (D19).
+		expect(r.items[0]?.category).toBeNull();
+		// The footer is the same row: the share, ARS 5,000.
+		expect(r.total?.value).toEqual({ minor: 500000, currency: "ARS" });
+		await adminDb.sharedTransaction.deleteMany({
+			where: { id: `pgl_tx_theirs_${guest.user.id}` },
+		});
+		await adminDb.user.deleteMany({
+			where: { id: { in: [owner.user.id, guest.user.id] } },
+		});
 	});
 
 	it("says when an empty month has rows elsewhere", async () => {

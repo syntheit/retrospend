@@ -199,6 +199,11 @@
 			"name": "Nur erfassen",
 			"sub": "Sieh, wohin das Geld geht, ohne Budget zu führen.",
 			"lead": "Diesen Monat ausgegeben, im Vergleich zum Üblichen."
+		},
+		"DEBT_PAYOFF": {
+			"name": "Schulden tilgen",
+			"sub": "Mindestraten pünktlich, der Rest auf eine Schuld nach der anderen.",
+			"lead": "Schuldenfrei bis, und was noch offen ist."
 		}
 	},
 	"takeBack": {
@@ -469,7 +474,29 @@
 		"usePay": "Mit meinem Gehalt den Rest decken. Weitere <short></short> starten, wenn es eintrifft.",
 		"moneyNow": "Geld zum Verplanen",
 		"failed": "Dein Budget konnte nicht gestartet werden. Es wurde nichts geändert.",
-		"stopNone": "Du startest mit <available></available>, daher bleibt nichts zum Verplanen."
+		"stopNone": "Du startest mit <available></available>, daher bleibt nichts zum Verplanen.",
+		"pay": {
+			"title": "Wie wirst du bezahlt?",
+			"sub": "Dein Plan kann mit deinem nächsten Gehalt starten.",
+			"frequency": "Wie oft",
+			"MONTHLY": "Monatlich",
+			"EVERY_TWO_WEEKS": "Alle zwei Wochen",
+			"WEEKLY": "Wöchentlich",
+			"VARIES": "Es schwankt",
+			"next": "Nächstes Gehalt",
+			"hint": "Wir zeigen dir dein nächstes Gehalt im Plan.",
+			"variesHint": "Dein Plan startet, wenn dein Gehalt eintrifft.",
+			"past": "Wähle heute oder einen späteren Tag."
+		},
+		"nextPay": "Nächstes Gehalt",
+		"usePayOn": "Mit meinem Gehalt am {date} den Rest decken. Weitere <short></short> starten dann.",
+		"payFirst": "Zuerst zahlen",
+		"extraSub": "Jeden Monat, zusätzlich zu den Mindestraten",
+		"noDebts": "Noch keine Schuld mit Mindestrate in Vermögen.",
+		"debtFreeBy": "Schuldenfrei bis",
+		"debtInterest": "Zinsen, die du zahlst",
+		"debtNever": "Nicht absehbar",
+		"debtDiverges": "Nie mit dieser Zahlung"
 	},
 	"debt": {
 		"title": "Schuldentilgungsplan",

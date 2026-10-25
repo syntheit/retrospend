@@ -672,6 +672,33 @@ export const monthInputSchema = z
 	.object({ month: monthKeySchema.optional() })
 	.default({});
 
+export const payFrequencySchema = z.enum([
+	"MONTHLY",
+	"EVERY_TWO_WEEKS",
+	"WEEKLY",
+	"VARIES",
+]);
+
+/** How you are paid (the pay step): a pay date the cycle counts from, unless it varies. */
+export const setupPaySchema = z
+	.object({
+		frequency: payFrequencySchema,
+		nextPay: isoDateSchema.nullable(),
+	})
+	.refine(
+		(p) => (p.frequency === "VARIES") === (p.nextPay === null),
+		"a pay date goes with every cycle except It varies",
+	);
+
+/** Pay off debt: the plan saved in the same write as the book (SPEC §5.11). */
+export const setupPayoffSchema = z.object({
+	strategy: z.enum(["AVALANCHE", "SNOWBALL"]),
+	/** Each month on top of the minimums; becomes the extra envelope's Set aside target. */
+	extraMonthlyMinor: nonNegativeMinor,
+	/** The envelope of this setup that holds the extra (Monthly). */
+	envelopeKey: z.string().min(1).max(32),
+});
+
 export const setupInputSchema = z
 	.object({
 		style: setupStyleSchema,
@@ -691,6 +718,10 @@ export const setupInputSchema = z
 			.max(20),
 		/** Income rules the style starts with (Save first), in order. */
 		rules: z.array(setupRuleSchema).max(20).optional(),
+		/** The pay step: how often you are paid, so the plan can start from the next pay. */
+		pay: setupPaySchema.optional(),
+		/** Pay off debt only. */
+		payoff: setupPayoffSchema.optional(),
 		envelopes: z
 			.array(
 				z.object({
@@ -716,6 +747,18 @@ export const setupInputSchema = z
 	.refine(
 		(s) => s.style !== "LIMITS" || s.startingMoneyMinor === undefined,
 		"Limits does not ask for money now (SPEC §4.3)",
+	)
+	.refine(
+		(s) => s.payoff === undefined || s.style === "DEBT_PAYOFF",
+		"a payoff plan goes with the Pay off debt style",
+	)
+	.refine(
+		(s) =>
+			s.payoff === undefined ||
+			s.envelopes.some(
+				(e) => e.key === s.payoff?.envelopeKey && e.kind === "MONTHLY",
+			),
+		"the payoff plan's extra goes to a Monthly envelope of this setup",
 	);
 
 export const assignInputSchema = z.object({
@@ -856,6 +899,20 @@ export const setupResultSchema = z.object({
 			available: moneySchema,
 			/** max(0, cost - available): what the plan costs beyond what you have. */
 			short: moneySchema,
+		})
+		.nullable(),
+	/** The first pay on or after today from the pay step; null when pay varies or was not asked. */
+	nextPay: isoDateSchema.nullable(),
+	/** Pay off debt: where the saved plan leads, from the same write. Null for any other style. */
+	payoff: z
+		.object({
+			debtFreeMonth: monthKeySchema.nullable(),
+			totalInterest: moneySchema,
+			/** The minimums fall short of the interest: balances grow at this payment. */
+			diverges: z.boolean(),
+			/** Debts left out for want of a rate today (R14). */
+			incomplete: z.boolean(),
+			debts: z.number().int(),
 		})
 		.nullable(),
 });

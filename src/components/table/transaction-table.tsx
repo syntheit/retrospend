@@ -6,6 +6,7 @@ import {
 	type ReactNode,
 	useCallback,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import { DataTable } from "~/components/data-table";
@@ -14,14 +15,12 @@ import { Money } from "~/components/money/money";
 import type { TransactionVM } from "~/components/rows/types";
 import { TableCell, TableRow } from "~/components/ui/table";
 import { BulkBar } from "./bulk-bar";
+import { useElementWidth } from "./column-fit";
 import { type TableGroups, withGroupRows } from "./group-rows";
 import { type LedgerColumns, useLedgerColumns } from "./ledger-columns";
+import { type Selection, SelectionContext } from "./select-column";
 import { TABLE_LOOK } from "./table-style";
-import {
-	type Selection,
-	SelectionContext,
-	useTransactionColumns,
-} from "./transaction-columns";
+import { useTransactionColumns } from "./transaction-columns";
 
 /** The footer total, computed by the server for the rows the filter shows (R9). */
 export type TableTotal = {
@@ -162,7 +161,9 @@ export function TransactionTable({
 		actions,
 		onOpen,
 	};
-	const activity = useTransactionColumns({ ...shape, hideProject });
+	const panel = useRef<HTMLDivElement>(null);
+	const space = useElementWidth(panel);
+	const activity = useTransactionColumns({ ...shape, hideProject, space });
 	const ledgerCols = useLedgerColumns({
 		...shape,
 		set: ledger ?? "project",
@@ -181,7 +182,7 @@ export function TransactionTable({
 					{bulk(ids, sel.clear)}
 				</BulkBar>
 			)}
-			<div className={TABLE_LOOK}>
+			<div className={TABLE_LOOK} ref={panel}>
 				<SelectionContext.Provider value={sel.context}>
 					<DataTable
 						columns={columns}

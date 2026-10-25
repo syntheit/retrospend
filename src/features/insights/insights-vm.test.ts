@@ -66,14 +66,14 @@ describe("categoryItems", () => {
 		expect(items.map((i) => i.note)).toEqual(["53%", "-13%", "new"]);
 	});
 
-	it("spending with no category (or a removed one) is a neutral row with no link or figure", () => {
+	it("spending with no category (or a removed one) is a neutral row that opens Activity's No category, with no figure", () => {
 		const [none] = categoryItems([row(null, 900, null)], REFS, {
 			compare: false,
 			words: WORDS,
 			hrefOf,
 		});
 		expect(none).toMatchObject({ id: "none", label: "No category" });
-		expect(none?.href).toBeUndefined();
+		expect(none?.href).toBe("/activity?cat=none");
 		expect(none?.figure).toBeUndefined();
 		const [gone] = categoryItems([row("deleted", 900, null)], REFS, {
 			compare: false,
@@ -81,6 +81,8 @@ describe("categoryItems", () => {
 			hrefOf,
 		});
 		expect(gone?.label).toBe("No category");
+		// A deleted category's id opens nothing in Activity.
+		expect(gone?.href).toBeUndefined();
 	});
 
 	it("a category with no value (a missing rate) stays, named, after the rows with amounts", () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { USER_TEXT_FIELDS } from "../common/user-text";
 import "../index";
 import { amountTextSchema, rateTextSchema } from "../ledger";
-import { parseActivityFilter, withDefaultRange } from "./filter";
+import { NO_CATEGORY, parseActivityFilter, withDefaultRange } from "./filter";
 
 describe("parseActivityFilter", () => {
 	it("reads the web's Activity URL grammar", () => {
@@ -31,6 +31,21 @@ describe("parseActivityFilter", () => {
 			ok: true,
 			value: { rangeAll: true },
 		});
+	});
+
+	it("reads cat=none as the No category id, alone or beside ids", () => {
+		expect(parseActivityFilter("cat=none")).toEqual({
+			ok: true,
+			value: { categoryIds: [NO_CATEGORY] },
+		});
+		expect(parseActivityFilter("cat=none,c1")).toEqual({
+			ok: true,
+			value: { categoryIds: [NO_CATEGORY, "c1"] },
+		});
+		// Like any category pick, it covers every month.
+		expect(
+			withDefaultRange({ categoryIds: [NO_CATEGORY] }, "2026-10-21"),
+		).toEqual({ categoryIds: [NO_CATEGORY] });
 	});
 
 	it("keeps the search text as sent", () => {

@@ -199,6 +199,11 @@
 			"name": "Só acompanhar",
 			"sub": "Veja para onde vai o dinheiro, sem orçamento para manter.",
 			"lead": "Gasto deste mês frente ao habitual."
+		},
+		"DEBT_PAYOFF": {
+			"name": "Quitar dívidas",
+			"sub": "Mínimos em dia e o extra para uma dívida por vez.",
+			"lead": "Sem dívidas em, e quanto você deve."
 		}
 	},
 	"takeBack": {
@@ -469,7 +474,29 @@
 		"usePay": "Usar meu salário para o resto. Mais <short></short> começam quando ele chegar.",
 		"moneyNow": "Dinheiro para planejar",
 		"failed": "Não foi possível começar seu orçamento. Nada foi alterado.",
-		"stopNone": "Você começa com <available></available>, então não sobra nada para planejar."
+		"stopNone": "Você começa com <available></available>, então não sobra nada para planejar.",
+		"pay": {
+			"title": "Como você recebe?",
+			"sub": "Seu plano pode começar com seu próximo pagamento.",
+			"frequency": "Com que frequência",
+			"MONTHLY": "Mensal",
+			"EVERY_TWO_WEEKS": "A cada duas semanas",
+			"WEEKLY": "Semanal",
+			"VARIES": "Varia",
+			"next": "Próximo pagamento",
+			"hint": "Vamos mostrar seu próximo pagamento no plano.",
+			"variesHint": "Seu plano começa quando o pagamento chegar.",
+			"past": "Escolha hoje ou um dia posterior."
+		},
+		"nextPay": "Próximo pagamento",
+		"usePayOn": "Usar meu salário de {date} para o resto. Mais <short></short> começam nesse dia.",
+		"payFirst": "Pagar primeiro",
+		"extraSub": "Por mês, além dos mínimos",
+		"noDebts": "Ainda não há dívida com mínimo em Patrimônio.",
+		"debtFreeBy": "Sem dívidas em",
+		"debtInterest": "Juros que você paga",
+		"debtNever": "Fora de vista",
+		"debtDiverges": "Nunca com este pagamento"
 	},
 	"debt": {
 		"title": "Plano para quitar dívidas",
