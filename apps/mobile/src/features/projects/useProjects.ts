@@ -39,7 +39,8 @@ export function useProjectSummary(
 		() => (api && enabled ? fetchSummary(api, id, periodId) : null),
 		[api, id, periodId, enabled],
 	);
-	return useCachedRead(summaryCache(id, periodId), fetch, {
+	// No key until the tab is open: the read starts when the key appears.
+	return useCachedRead(enabled ? summaryCache(id, periodId) : null, fetch, {
 		prefix: "project.",
 		keep: ENTITY_CACHE_LIMIT,
 	});

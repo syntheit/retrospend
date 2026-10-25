@@ -6,6 +6,7 @@ import { useServerConnection } from "@/auth/server-connection";
 import { absoluteImage, useFaces } from "@/features/read/faces";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { SectionHeader, StaleNote } from "@/features/read/parts";
+import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
 import { Button } from "@/ui/Button";
@@ -75,6 +76,7 @@ export function ProjectView({
 	const range = useDayRange();
 	const { connection } = useServerConnection();
 	const { color, size, space, type } = useTheme();
+	const { listDetail } = useLayoutClass();
 	const { state, reload } = useProject(id);
 	const [tab, setTab] = useState<Tab>("expenses");
 	const [period, setPeriod] = useState<Period>("all");
@@ -120,7 +122,9 @@ export function ProjectView({
 
 	return (
 		<Screen flush>
-			<Stack.Screen options={{ title: page.name, headerLargeTitle: false }} />
+			{listDetail ? null : (
+				<Stack.Screen options={{ title: page.name, headerLargeTitle: false }} />
+			)}
 			<StaleNote since={state.status === "ready" ? state.staleSince : null} />
 			<View style={{ gap: space[3], padding: space[4] }}>
 				<View
