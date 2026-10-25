@@ -29,7 +29,8 @@
 	},
 	"months": {
 		"title": "Mois par mois",
-		"list": "Ouvrir un mois dans Activité"
+		"list": "Ouvrir un mois dans Activité",
+		"caption": "Mêmes filtres. Touche un mois pour l'ouvrir dans Activité."
 	},
 	"ytd": {
 		"title": "Depuis le début de l'année et l'an dernier",

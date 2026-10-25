@@ -1,5 +1,6 @@
 "use client";
 
+import { SMART_NO_DECIMAL_CURRENCIES } from "@retrospend/domain/currency-format";
 import { useTranslations } from "next-intl";
 import { Section } from "~/components/layout/section";
 import { Money } from "~/components/money/money";
@@ -11,9 +12,23 @@ import type {
 } from "~/server/services/insights/types";
 import { type PartQuery, PartUnavailable, RankedSkeleton } from "./part-states";
 
-function Figure({ figure }: { figure: InsightsFigure }) {
+/**
+ * An average is approximate, so a currency that shows whole units by default
+ * (ARS) shows them here too, not the cents the division left over.
+ */
+function Figure({
+	figure,
+	whole = false,
+}: {
+	figure: InsightsFigure;
+	whole?: boolean;
+}) {
+	const currency = figure.value?.currency ?? "";
 	return (
 		<Money
+			cents={
+				whole && SMART_NO_DECIMAL_CURRENCIES.includes(currency) ? false : "auto"
+			}
 			className="font-semibold"
 			figure={figure.value ? figure.id : undefined}
 			missing="noRate"
@@ -68,11 +83,11 @@ export function CashflowSection({
 							title={t("saved")}
 						/>
 						<Row
-							end={<Figure figure={data.dailyAverage} />}
+							end={<Figure figure={data.dailyAverage} whole />}
 							title={t("perDay")}
 						/>
 						<Row
-							end={<Figure figure={data.monthlyAverage} />}
+							end={<Figure figure={data.monthlyAverage} whole />}
 							title={t("perMonth")}
 						/>
 					</RowList>

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-	ALL_TIME_FROM,
 	activityHref,
 	filterOf,
 	isNarrowed,
@@ -49,12 +48,18 @@ describe("the view in the URL", () => {
 });
 
 describe("what the reads take", () => {
-	it("All time starts at the start of history and ends today", () => {
-		expect(spanOf({ from: null, to: null }, TODAY)).toEqual({
-			from: ALL_TIME_FROM,
+	it("All time starts at the oldest spending's day and ends today; with none it is today", () => {
+		expect(spanOf({ from: null, to: null }, TODAY, "2025-03-04")).toEqual({
+			from: "2025-03-04",
 			to: TODAY,
 		});
-		expect(spanOf({ from: "2026-01-01", to: "2026-03-31" }, TODAY)).toEqual({
+		expect(spanOf({ from: null, to: null }, TODAY, null)).toEqual({
+			from: TODAY,
+			to: TODAY,
+		});
+		expect(
+			spanOf({ from: "2026-01-01", to: "2026-03-31" }, TODAY, "2025-03-04"),
+		).toEqual({
 			from: "2026-01-01",
 			to: "2026-03-31",
 		});

@@ -99,6 +99,11 @@ export interface YtdCategoryRow {
 	readonly usdFigure: string;
 	readonly value: HomeAndUsd;
 	readonly lastYear: HomeAndUsd;
+	/**
+	 * Place of this row when the rows are ranked by USD value, largest first,
+	 * from 0 (the rows come in home order). A row with no USD value ranks last.
+	 */
+	readonly usdRank: number;
 	/** Home change in whole percent; null reads "new". */
 	readonly changePct: number | null;
 	readonly usdChangePct: number | null;

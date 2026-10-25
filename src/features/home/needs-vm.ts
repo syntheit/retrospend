@@ -4,6 +4,7 @@
  * context line and where a link goes. Amounts pass through untouched (R9).
  */
 import type { NeedsYouItemVM } from "~/components/needs-you/types";
+import type { FacePerson } from "~/components/ui/avatar-face";
 import type {
 	NeedsYouFace,
 	NeedsYouItem,
@@ -48,6 +49,15 @@ function base(item: NeedsYouItem) {
 const firstPerson = (item: NeedsYouItem, w: Words) =>
 	item.people[0] ? w.name(item.people[0]) : "";
 
+/** The face an item leads with when it is about a person (rule 8). */
+function faceOf(item: NeedsYouItem, w: Words): { face?: FacePerson } {
+	const key = item.people[0];
+	const person = key ? w.person(key) : undefined;
+	return key && person
+		? { face: { id: key, name: person.name, imageUrl: person.imageUrl } }
+		: {};
+}
+
 /**
  * Owed for 60 days: leads with their face. Remind goes to people on
  * Retrospend; anyone else opens their page, where Settle up and Forgive are.
@@ -66,9 +76,7 @@ function owedAging(
 		kind: "owedAging",
 		person: firstPerson(item, w),
 		amount: item.amount,
-		...(face
-			? { face: { id: key, name: face.name, imageUrl: face.imageUrl } }
-			: {}),
+		...faceOf(item, w),
 		...(item.date
 			? { context: w.context("owedSince", { date: w.short(item.date) }) }
 			: {}),
@@ -106,6 +114,7 @@ export function toNeedsVM(item: NeedsYouItem, w: Words): NeedsYouItemVM | null {
 						...b,
 						kind: "confirmPayment",
 						person: firstPerson(item, w),
+						...faceOf(item, w),
 						amount,
 						...(date
 							? { context: w.context("paidOn", { date: w.short(date) }) }
@@ -118,6 +127,7 @@ export function toNeedsVM(item: NeedsYouItem, w: Words): NeedsYouItemVM | null {
 						...b,
 						kind: "verify",
 						person: firstPerson(item, w),
+						...faceOf(item, w),
 						title: item.title ?? "",
 						amount,
 						...(date
@@ -131,6 +141,7 @@ export function toNeedsVM(item: NeedsYouItem, w: Words): NeedsYouItemVM | null {
 						...b,
 						kind: "rejected",
 						person: firstPerson(item, w),
+						...faceOf(item, w),
 						title: item.title ?? "",
 						amount,
 						// The server's primary action (catalog: expense edit).

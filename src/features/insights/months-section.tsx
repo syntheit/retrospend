@@ -10,16 +10,18 @@ import { Section } from "~/components/layout/section";
 import { Money } from "~/components/money/money";
 import { useRowDates } from "~/components/rows/dates";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { cn } from "~/lib/cn";
 import type { MonthsDTO } from "~/server/services/insights/types";
 import { monthFigure, monthTotals } from "./insights-vm";
 import { ChartSkeleton, type PartQuery, PartUnavailable } from "./part-states";
+import { FIGURE_LINK } from "./period-was";
 
 const HEIGHT = { desktop: 180, phone: 160 };
 
 /**
  * Month by month: the last six months of the same filters, the month the
  * range ends in highlighted. A bar opens that month in Activity. The drawing
- * is for sight only, so the same targets follow as links (hidden visually)
+ * is for sight only, so the same targets follow as links (hidden until one has focus)
  * with each month's figure, for keyboards and screen readers.
  */
 export function MonthsSection({
@@ -52,10 +54,17 @@ export function MonthsSection({
 							if (bar) router.push(hrefOf(bar.span));
 						}}
 					/>
-					<ul aria-label={t("list")} className="sr-only">
+					<p className="text-fg-3 text-meta mt-2">{t("caption")}</p>
+					<ul
+						aria-label={t("list")}
+						className="sr-only focus-within:not-sr-only focus-within:mt-2 focus-within:flex focus-within:flex-wrap focus-within:gap-x-4 focus-within:gap-y-1"
+					>
 						{data.months.map((bar) => (
 							<li key={bar.month}>
-								<Link href={hrefOf(bar.span)}>
+								<Link
+									className={cn(FIGURE_LINK, "text-small text-fg-2")}
+									href={hrefOf(bar.span)}
+								>
 									{month(`${bar.month}-01`)}{" "}
 									<Money
 										figure={bar.total ? monthFigure(bar) : undefined}

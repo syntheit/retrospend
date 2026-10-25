@@ -29,13 +29,6 @@ const PARAM: Record<InsightsDim, string> = {
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const list = (v: string | null) => (v ? v.split(",").filter(Boolean) : []);
 
-/**
- * The reads need a concrete span, so All time starts here. Nothing in a
- * ledger is older; the server will offer the first expense's day later
- * (GAPS: Insights All time).
- */
-export const ALL_TIME_FROM = "2000-01-01";
-
 export function thisMonth(today: string): DateRangeValue {
 	return { from: firstOfMonth(today), to: lastOfMonth(today) };
 }
@@ -75,9 +68,16 @@ export function writeView(view: InsightsView, today: string): string {
 	return p.toString();
 }
 
-/** The span the reads take: All time runs from the start of history to today. */
-export function spanOf(range: DateRangeValue, today: string): Span {
-	return { from: range.from ?? ALL_TIME_FROM, to: range.to ?? today };
+/**
+ * The span the reads take. All time runs from the day of the oldest spending
+ * (a server read, `insights.firstDay`) to today; with no spending it is today.
+ */
+export function spanOf(
+	range: DateRangeValue,
+	today: string,
+	firstDay: string | null,
+): Span {
+	return { from: range.from ?? firstDay ?? today, to: range.to ?? today };
 }
 
 /** The server's filter for the page's chips; nothing picked is no filter. */

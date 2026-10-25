@@ -100,7 +100,9 @@ const ytd = (
 	dollars: number | null,
 	changePct: number | null,
 	usdChangePct: number | null,
+	usdRank = 0,
 ): YtdCategoryRow => ({
+	usdRank,
 	categoryId,
 	figure: "insights.ytdByCategory",
 	usdFigure: "insights.ytdByCategoryUsd",
@@ -114,7 +116,10 @@ const ytd = (
 });
 
 describe("ytdItems", () => {
-	const rows = [ytd("rent", 900, 10, 98, 5), ytd("food", 500, 40, null, 20)];
+	const rows = [
+		ytd("rent", 900, 10, 98, 5, 1),
+		ytd("food", 500, 40, null, 20, 0),
+	];
 	const o = { words: WORDS, hrefOf };
 
 	it("in the home currency: its figure, its change", () => {
@@ -125,7 +130,7 @@ describe("ytdItems", () => {
 		]);
 	});
 
-	it("in USD: the USD figure and change, ranked by USD", () => {
+	it("in USD: the USD figure and change, in the server's USD rank", () => {
 		const items = ytdItems(rows, REFS, { ...o, usd: true });
 		expect(items.map((i) => [i.id, i.value, i.figure, i.note])).toEqual([
 			["food", usd(40), "insights.ytdByCategoryUsd:food", "20%"],

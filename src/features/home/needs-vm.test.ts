@@ -61,6 +61,7 @@ describe("toNeedsVM", () => {
 			id: "payment.confirm:x",
 			kind: "confirmPayment",
 			person: "Lucía",
+			face: { id: "user:lucia", name: "Lucía Fernández", imageUrl: null },
 			amount: ars(2000000),
 			context: "paidOn(short 2026-10-20)",
 		});

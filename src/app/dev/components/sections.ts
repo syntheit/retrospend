@@ -318,6 +318,8 @@ export const CAP = {
 	itemSetup: "Setup prompt with a context line (new user)",
 	itemRejected: "Rejected split",
 	itemBudget: "Budget prompt (missing rate, named)",
+	itemShares: "Budget prompt (shares need an envelope)",
+	itemAging: "Owed for 60 days (leads with their face)",
 	allClear: "Empty, nothing needs you",
 	itemFace:
 		"People: the face of the person asking, Not received as a quiet second action",
@@ -340,6 +342,9 @@ export const CAP = {
 	allocation: "Allocation: assets by group",
 	pace: "Pace line, this month against last",
 	bars: "Monthly bars",
+	barsLinked: "Monthly bars, a bar opens its month",
+	barsPick: "Pick a month",
+	barsOpens: (month: string) => `Opens ${month} in Activity`,
 	area: "Net worth area: move across it to scrub",
 	ranked: "Ranked bars (category hue means only which category)",
 	balance: "Balance bar: who makes up owed and owe",

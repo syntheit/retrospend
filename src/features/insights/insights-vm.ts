@@ -99,8 +99,9 @@ export function categoryItems(
 
 /**
  * Year to date by category, in the home currency or USD at the value each
- * expense was saved with. Largest first in the chosen currency (the server's
- * order is by home). Every row shows its change against last year.
+ * expense was saved with. The server orders the rows by home value and gives
+ * each its place by USD value (`usdRank`), so no amounts are compared here.
+ * Every row shows its change against last year.
  */
 export function ytdItems(
 	rows: readonly YtdCategoryRow[],
@@ -111,7 +112,10 @@ export function ytdItems(
 		hrefOf: (categoryId: string) => string;
 	},
 ): RankedItem[] {
-	const items = rows.flatMap((row) => {
+	const ordered = o.usd
+		? [...rows].sort((a, b) => a.usdRank - b.usdRank)
+		: rows;
+	return ordered.flatMap((row) => {
 		const value = o.usd ? row.value.usd : row.value.home;
 		const item = toItem(
 			{
@@ -128,7 +132,6 @@ export function ytdItems(
 		);
 		return item ? [item] : [];
 	});
-	return items.sort((a, b) => b.value.minor - a.value.minor);
 }
 
 /**

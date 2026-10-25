@@ -21,11 +21,14 @@ import { SummaryLead } from "./summary-lead";
 import { useInsights } from "./use-insights";
 import { YtdSection } from "./ytd-section";
 
-/** The names of what the chips picked, "Groceries, Martín", for the sentence. */
+/**
+ * The names of what the chips picked, "Groceries, Martín", for the sentence.
+ * A pick the lists do not hold (yet, or any more) is left out, never shown as an id.
+ */
 function useNames(view: InsightsView): string {
 	const items = useDimItems();
 	const label = (dim: "cats" | "people" | "projects") =>
-		view[dim].map((id) => items[dim].find((i) => i.id === id)?.label ?? id);
+		view[dim].flatMap((id) => items[dim].find((i) => i.id === id)?.label ?? []);
 	return [...label("cats"), ...label("people"), ...label("projects")].join(
 		", ",
 	);
@@ -68,7 +71,9 @@ export function InsightsPage() {
 				title={t("header.title")}
 			/>
 			<InsightsToolbar setView={i.setView} today={today} view={view} />
-			{nothing ? (
+			{i.firstDayFailed ? (
+				<PartUnavailable onRetry={i.retryFirstDay} />
+			) : nothing ? (
 				<Empty
 					action={
 						narrowed ? (

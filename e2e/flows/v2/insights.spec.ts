@@ -225,6 +225,15 @@ test("Insights: figures match the reads, a range with Compare moves them, Show i
 		await moved.checkPage(page, "insights last month", "insightsCompare"),
 	).toEqual([]);
 
+	// The month links are for the keyboard: hidden until one has focus, then shown.
+	const monthLinks = main
+		.getByRole("list", { name: "Open a month in Activity" })
+		.getByRole("link");
+	await monthLinks.first().focus();
+	const shown = await monthLinks.first().boundingBox();
+	expect(shown?.width ?? 0).toBeGreaterThan(24);
+	await expect(main.getByText(/^Same filters\./)).toBeVisible();
+
 	// A figure opens the expenses behind it: Rent opens Activity on that
 	// range, filtered to the category.
 	await main.locator(`#by-category a[href*="cat=${RENT}"]`).first().click();
@@ -261,5 +270,14 @@ test("Insights: a filter with no spending says so and clears; a phone has no sid
 		() => document.documentElement.scrollWidth - window.innerWidth,
 	);
 	expect(after).toBeLessThanOrEqual(0);
+	// All time starts at the oldest spending, so it has averages and income too.
+	await expect(page).toHaveURL(/range=all/);
+	await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+	await expect(
+		main.getByRole("heading", { name: "Income and savings" }),
+	).toBeVisible();
+	await expect(
+		main.locator('#cashflow [data-figure="insights.monthlyAverage"]'),
+	).toBeVisible();
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 });

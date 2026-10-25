@@ -124,7 +124,7 @@ export const NEEDS_YOU_PEOPLE: NeedsYouItemVM[] = [
 	},
 ];
 
-/** One per new kind group: setup, rejected split, budget. */
+/** One per new kind group: setup, rejected split, budget, owed for 60 days. */
 export const NEEDS_YOU_MORE: NeedsYouItemVM[] = [
 	{ id: "nys1", kind: "firstExpense", context: "Takes about ten seconds" },
 	{
@@ -135,6 +135,16 @@ export const NEEDS_YOU_MORE: NeedsYouItemVM[] = [
 		amount: m("18000"),
 	},
 	{ id: "nyb1", kind: "missingRate", currencies: ["BRL"] },
+	{ id: "nyb2", kind: "sharesNeedEnvelope", count: 3, href: "#budget" },
+	{
+		id: "nyo1",
+		kind: "owedAging",
+		person: "Lucía",
+		amount: m("50000"),
+		face: P.lucia,
+		context: "Since Aug 12",
+		action: "remind",
+	},
 ];
 
 export const MONTHS: MonthTotal[] = [
@@ -156,7 +166,14 @@ export const NET_WORTH: AreaPoint[] = [
 ];
 
 export const RANKED: RankedItem[] = [
-	{ id: "rent", label: "Rent", value: m("650000"), category: CAT.rent },
+	{
+		id: "rent",
+		label: "Rent",
+		value: m("650000"),
+		category: CAT.rent,
+		href: "#activity",
+		note: "+8%",
+	},
 	{
 		id: "groceries",
 		label: "Groceries",

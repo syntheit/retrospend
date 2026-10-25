@@ -17,9 +17,9 @@ import {
 /**
  * The page's one view (URL-backed) and the four reads it feeds. Each read
  * keeps the previous answer on screen while the next one loads, so a chip
- * pick never blanks the page. Cashflow ignores the chips and All time (its
- * averages need a real span), so it is asked only for a bounded range with
- * no chips.
+ * pick never blanks the page. All time waits for the day of the oldest
+ * spending, which is where its span starts. Cashflow ignores the chips, so it
+ * is asked only with none picked.
  */
 export function useInsights() {
 	const params = useSearchParams();
@@ -39,9 +39,19 @@ export function useInsights() {
 		[router, pathname, today],
 	);
 
-	const span = useMemo(() => spanOf(view.range, today), [view.range, today]);
+	const allTime = view.range.from === null;
+	const first = api.insights.firstDay.useQuery(undefined, {
+		enabled: allTime,
+		staleTime: 60_000,
+	});
+	// All time has no span until the oldest day is known.
+	const ready = !allTime || first.isSuccess;
+	const span = useMemo(
+		() => spanOf(view.range, today, first.data?.day ?? null),
+		[view.range, today, first.data],
+	);
 	const filter = useMemo(() => filterOf(view), [view]);
-	const keep = { placeholderData: keepPreviousData };
+	const keep = { placeholderData: keepPreviousData, enabled: ready };
 	const summary = api.insights.summary.useQuery(
 		{ range: span, compare: view.compare, filter },
 		keep,
@@ -50,11 +60,14 @@ export function useInsights() {
 		{ to: span.to, count: 6, filter },
 		keep,
 	);
-	const ytd = api.insights.ytd.useQuery({ filter }, keep);
-	const showCashflow = !isNarrowed(view) && view.range.from !== null;
+	const ytd = api.insights.ytd.useQuery(
+		{ filter },
+		{ placeholderData: keepPreviousData },
+	);
+	const showCashflow = !isNarrowed(view);
 	const cashflow = api.insights.cashflow.useQuery(
 		{ range: span },
-		{ ...keep, enabled: showCashflow },
+		{ ...keep, enabled: ready && showCashflow },
 	);
 
 	return {
@@ -67,5 +80,7 @@ export function useInsights() {
 		ytd,
 		cashflow,
 		showCashflow,
+		firstDayFailed: first.isError,
+		retryFirstDay: () => void first.refetch(),
 	};
 }
