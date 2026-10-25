@@ -2,8 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Archive, Plus } from "lucide-react";
-import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -220,11 +219,7 @@ export function AssetDialog({
 	});
 
 	const onSubmit = (data: FormValues) => {
-		// The server takes a rate as decimal text, never a float.
-		const systemRate =
-			exchangeRate === undefined
-				? undefined
-				: (rateToText(exchangeRate) ?? undefined);
+		const systemRate = rateToText(exchangeRate) ?? undefined;
 
 		if (isEdit && assetId) {
 			updateAsset.mutate({

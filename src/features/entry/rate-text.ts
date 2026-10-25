@@ -87,15 +87,42 @@ export function readRateText(
 	};
 }
 
+/** A double as mantissa x 2^exponent, exactly (positive, finite input). */
+function binaryParts(x: number): { mantissa: bigint; exponent: number } {
+	const view = new DataView(new ArrayBuffer(8));
+	view.setFloat64(0, x);
+	const bits = view.getBigUint64(0);
+	const field = Number((bits >> 52n) & 0x7ffn);
+	const fraction = bits & ((1n << 52n) - 1n);
+	return field === 0
+		? { mantissa: fraction, exponent: -1074 }
+		: { mantissa: fraction | (1n << 52n), exponent: field - 1075 };
+}
+
 /**
  * A rate held as a number (a table rate, or a form that still keeps floats) as
  * the plain decimal text the server takes: the digits of the number's exact
  * binary value, never an exponent, rounded to 12 decimals half-even like a
- * typed rate. Null when it is not a rate above zero.
+ * typed rate. Null when it is not a rate above zero (or is not given).
  */
-export function rateToText(rate: number): string | null {
-	if (!Number.isFinite(rate) || rate <= 0) return null;
-	// toFixed(100) is exact for every double a rate can be, so the rounding
-	// sees the true digits.
-	return parseRateText(rate.toFixed(100), "en-US");
+export function rateToText(rate: number | undefined): string | null {
+	if (rate === undefined || !Number.isFinite(rate) || rate <= 0) return null;
+	const { mantissa, exponent } = binaryParts(rate);
+	const scale = 10n ** BigInt(MAX_DECIMALS);
+	let units: bigint;
+	if (exponent >= 0) {
+		units = (mantissa << BigInt(exponent)) * scale;
+	} else {
+		const whole = mantissa * scale;
+		const divisor = 1n << BigInt(-exponent);
+		units = whole / divisor;
+		const twice = (whole % divisor) * 2n;
+		if (twice > divisor || (twice === divisor && units % 2n === 1n)) units += 1n;
+	}
+	if (units === 0n) return null;
+	const digits = units.toString().padStart(MAX_DECIMALS + 1, "0");
+	const int = digits.slice(0, -MAX_DECIMALS);
+	if (int.length > 13) return null;
+	const frac = digits.slice(-MAX_DECIMALS).replace(/0+$/, "");
+	return frac ? `${int}.${frac}` : int;
 }

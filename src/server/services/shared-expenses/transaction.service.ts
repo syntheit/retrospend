@@ -14,7 +14,11 @@ import {
 	assertCanModifyTransaction,
 	requireProjectRole,
 } from "./project-permissions";
-import { type ParticipantRef, sameParticipant } from "./types";
+import {
+	compareParticipants,
+	type ParticipantRef,
+	sameParticipant,
+} from "./types";
 import { resolveVerification } from "./auto-accept";
 import {
 	allocateByWeights,
@@ -620,78 +624,39 @@ export class SharedTransactionService {
 					effectivePaidBy,
 				);
 			} else if (fieldUpdates.amount !== undefined) {
-				// Amount changed without explicit splitWith; auto-recalculate
-				// where the split mode supports it
-				const effectiveAmount = input.amount!;
-				// The database does not keep the order the rows were typed in, and the
-				// leftover units go by row order: sort so a re-split is the same
-				// every time.
-				const storedSplits = [...existing.splitParticipants].sort((a, b) => {
-					const x = `${a.participantType}:${a.participantId}`;
-					const y = `${b.participantType}:${b.participantId}`;
-					return x < y ? -1 : x > y ? 1 : 0;
-				});
-
-				if (effectiveSplitMode === "EQUAL") {
-					const existingSplit = storedSplits.map((sp) => ({
-						participantType: sp.participantType as "user" | "guest" | "shadow",
-						participantId: sp.participantId,
-					}));
-					newParticipants = this.computeSplits(
-						effectiveAmount,
-						effectiveCurrency,
-						existingSplit,
-						"EQUAL",
-						effectivePaidBy,
-					);
-				} else if (effectiveSplitMode === "PERCENTAGE") {
-					const existingSplit = storedSplits.map((sp) => ({
+				// Amount changed without explicit splitWith: re-split from what is
+				// stored. The database keeps no typing order and leftover units go by
+				// row order, so sort: a re-split is then the same every time.
+				const stored = [...existing.splitParticipants]
+					.sort(compareParticipants)
+					.map((sp) => ({
 						participantType: sp.participantType as "user" | "guest" | "shadow",
 						participantId: sp.participantId,
 						sharePercentage: sp.sharePercentage
 							? serializeDecimal(sp.sharePercentage)
 							: undefined,
-					}));
-					newParticipants = this.computeSplits(
-						effectiveAmount,
-						effectiveCurrency,
-						existingSplit,
-						"PERCENTAGE",
-						effectivePaidBy,
-					);
-				} else if (effectiveSplitMode === "SHARES") {
-					const existingSplit = storedSplits.map((sp) => ({
-						participantType: sp.participantType as "user" | "guest" | "shadow",
-						participantId: sp.participantId,
 						shareUnits: sp.shareUnits ?? undefined,
+						shareAmount: serializeDecimal(sp.shareAmount),
 					}));
-					newParticipants = this.computeSplits(
-						effectiveAmount,
-						effectiveCurrency,
-						existingSplit,
-						"SHARES",
-						effectivePaidBy,
-					);
-				} else if (effectiveSplitMode === "EXACT") {
-					// EXACT with the amount changed but splitWith unchanged: the stored
-					// exact shares would otherwise go stale (their sum no longer equals
-					// the amount, silently corrupting balances). Rescale each share
-					// proportionally to the new amount, keeping it cent-accurate.
-					newParticipants = this.rescaleExactSplits(
-						serializeDecimal(existing.amount),
-						effectiveAmount,
-						effectiveCurrency,
-						storedSplits.map((sp) => ({
-							participantType: sp.participantType as
-								| "user"
-								| "guest"
-								| "shadow",
-							participantId: sp.participantId,
-							shareAmount: serializeDecimal(sp.shareAmount),
-						})),
-						effectivePaidBy,
-					);
-				}
+				newParticipants =
+					effectiveSplitMode === "EXACT"
+						? // The stored exact shares would otherwise go stale (their sum no
+							// longer equals the amount, silently corrupting balances):
+							// rescale each proportionally, keeping it cent-accurate.
+							this.rescaleExactSplits(
+								serializeDecimal(existing.amount),
+								input.amount!,
+								effectiveCurrency,
+								stored,
+								effectivePaidBy,
+							)
+						: this.computeSplits(
+								input.amount!,
+								effectiveCurrency,
+								stored,
+								effectiveSplitMode,
+								effectivePaidBy,
+							);
 			}
 
 			// Compute split diff

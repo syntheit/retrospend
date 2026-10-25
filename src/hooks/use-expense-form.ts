@@ -10,6 +10,7 @@ import type { SplitParticipant } from "~/components/split-with-picker";
 import { useSession } from "~/hooks/use-session";
 import { useSettings } from "~/hooks/use-settings";
 import { legacyRateWire } from "~/features/entry/legacy-rate-wire";
+import { parseRateText } from "~/features/entry/rate-text";
 import { predictCategory } from "~/lib/category-matcher";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { CRYPTO_CURRENCIES, CURRENCIES } from "~/lib/currencies";
@@ -626,13 +627,21 @@ export function useExpenseForm({
 		rate: number | undefined,
 		type?: string,
 		shouldDirty = true,
-		customRate?: ExpenseFormData["customRate"],
+		typed?: { base: string; text: string },
 	) => {
 		setValue("exchangeRate", rate, { shouldDirty });
-		// Only a rate typed just now carries its text; any other pick drops it.
-		setValue("customRate", type === "custom" ? customRate : undefined, {
-			shouldDirty,
-		});
+		// Only a rate typed just now carries its text, and only when it is a
+		// plain decimal (what the preview number above was read from); any
+		// other pick drops it.
+		const text = typed?.text.trim() ?? "";
+		const plain = /^\d+(\.\d+)?$/.test(text) ? parseRateText(text, "en-US") : null;
+		setValue(
+			"customRate",
+			type === "custom" && rate !== undefined && plain && typed
+				? { base: typed.base, value: plain }
+				: undefined,
+			{ shouldDirty },
+		);
 		if (type) {
 			setValue("pricingSource", type, { shouldDirty });
 		}
