@@ -138,6 +138,8 @@ describe("preview", () => {
 			],
 			unchanged: [{ id: "netWorth", value: [ars(90_000_000)] }],
 			unavailable: [],
+			// No figure in this book is a converted total.
+			approx: [],
 		});
 		expect(database.book()).toEqual(START);
 		expect(database.commits()).toBe(0);
