@@ -16,7 +16,8 @@
 		"notOnRetrospend": "Nicht auf Retrospend",
 		"upcoming": "Anstehend",
 		"noRate": "Noch kein Kurs",
-		"rejected": "Abgelehnt"
+		"rejected": "Abgelehnt",
+		"notCounted": "Nicht gezählt"
 	},
 	"balance": {
 		"owesYou": "schuldet dir",

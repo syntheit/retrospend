@@ -46,6 +46,7 @@ export function toTransactionVM(
 		// Reviewed is an import state; listV2 has no unreviewed rows yet (GAPS).
 		reviewed: true,
 		...(row.waiting ? { waiting: row.waiting } : {}),
+		...(row.notCounted ? { notCounted: true } : {}),
 		...(row.pending ? { pending: true } : {}),
 		project: row.project,
 		...(row.people ? { people: row.people } : {}),

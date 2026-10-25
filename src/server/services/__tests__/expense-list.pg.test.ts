@@ -630,3 +630,90 @@ describe("expense.listV2 foreign shares", () => {
 		});
 	});
 });
+
+describe("expense.listV2 rows the footer leaves out", () => {
+	it("marks a row hidden from reports as not counted and names a rejected share, so the footer adds up", async () => {
+		const owner = await createTestUser();
+		const guest = await createTestUser();
+		await adminDb.user.update({
+			where: { id: guest.user.id },
+			data: { homeCurrency: "ARS" },
+		});
+		const food = await adminDb.category.create({
+			data: { name: "Food", color: "blue", userId: guest.user.id },
+		});
+		const row = (title: string, amount: string, hidden: boolean) => ({
+			userId: guest.user.id,
+			title,
+			amount,
+			currency: "ARS",
+			amountInUSD: String(Number(amount) / 1000),
+			exchangeRate: "1000",
+			pricingSource: "MANUAL" as const,
+			date: day(14),
+			categoryId: food.id,
+			excludeFromAnalytics: hidden,
+		});
+		await adminDb.expense.createMany({
+			data: [row("Counted", "1000", false), row("Hidden", "500", true)],
+		});
+		await adminDb.sharedTransaction.create({
+			data: {
+				id: `pgl_rejected_${guest.user.id}`,
+				description: "Declined split",
+				amount: "700",
+				currency: "ARS",
+				exchangeRate: "1000",
+				date: day(14),
+				paidByType: "user",
+				paidById: owner.user.id,
+				createdByType: "user",
+				createdById: owner.user.id,
+				splitParticipants: {
+					create: [
+						{
+							participantType: "user",
+							participantId: guest.user.id,
+							shareAmount: "350",
+							verificationStatus: "REJECTED",
+						},
+						{
+							participantType: "user",
+							participantId: owner.user.id,
+							shareAmount: "350",
+							verificationStatus: "ACCEPTED",
+						},
+					],
+				},
+			},
+		});
+		const byCategory = await list(guest, { ...OCT, categoryIds: [food.id] });
+		const all = await list(guest, OCT);
+		for (const r of [byCategory, all]) {
+			// Only "Counted" is in the footer: ARS 1,000.
+			expect(r.total?.value).toEqual({ minor: 100000, currency: "ARS" });
+			expect(r.dayTotals?.["2026-10-14"]).toEqual({
+				minor: 100000,
+				currency: "ARS",
+			});
+			const flags = new Map(
+				r.items.map((i) => [i.title, [i.notCounted, i.waiting]] as const),
+			);
+			expect(flags.get("Counted")).toEqual([undefined, undefined]);
+			expect(flags.get("Hidden")).toEqual([true, undefined]);
+		}
+		expect(byCategory.items.map((i) => i.title).sort()).toEqual([
+			"Counted",
+			"Hidden",
+		]);
+		expect(
+			all.items.find((i) => i.title === "Declined split")?.waiting,
+		).toBe("rejected");
+		await adminDb.sharedTransaction.deleteMany({
+			where: { id: `pgl_rejected_${guest.user.id}` },
+		});
+		await adminDb.user.deleteMany({
+			where: { id: { in: [owner.user.id, guest.user.id] } },
+		});
+	});
+});
