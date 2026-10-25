@@ -25,7 +25,7 @@ vi.mock("next/headers", () => ({
 	cookies: async () => ({ get: () => undefined }),
 }));
 
-const GROUPS = ["account", "corrections"];
+const GROUPS = ["account", "corrections", "billing-periods", "payment-methods"];
 
 const routes = listContractRoutes(contract).filter((r) =>
 	GROUPS.includes(r.key[0] ?? ""),

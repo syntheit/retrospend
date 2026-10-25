@@ -60,6 +60,13 @@ export function toProblem(error: unknown): unknown {
 			? problem("id_taken", "That id is already used")
 			: problem("conflict", "That id or name is already used");
 	}
+	// A row the caller named that is not theirs: their view of the table has no
+	// such row, which is what the web shows as "not found" too.
+	if (
+		error instanceof Prisma.PrismaClientKnownRequestError &&
+		error.code === "P2025"
+	)
+		return problem("not_found");
 	// A number past what its column holds (an amount whose USD value needs
 	// more than 10 digits): the caller's input, not a server fault.
 	if (

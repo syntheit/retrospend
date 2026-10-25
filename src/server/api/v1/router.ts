@@ -1,6 +1,7 @@
 import { accountRouter } from "./account";
 import { accountsRouter } from "./accounts";
 import { adminRouter } from "./admin";
+import { billingPeriodsRouter } from "./billing-periods";
 import { budgetRouter } from "./budget";
 import { categoriesRouter } from "./categories";
 import { correctionsRouter } from "./corrections";
@@ -16,6 +17,7 @@ import { inviteCodesRouter } from "./invite-codes";
 import { v1 } from "./middleware";
 import { needsYouRouter } from "./needs-you";
 import { notificationsRouter } from "./notifications";
+import { paymentMethodsRouter } from "./payment-methods";
 import { paymentsRouter } from "./payments";
 import { peopleRouter } from "./people";
 import { platformRouter } from "./platform";
@@ -38,6 +40,7 @@ export const v1Router = v1.router({
 	account: accountRouter,
 	accounts: accountsRouter,
 	admin: adminRouter,
+	"billing-periods": billingPeriodsRouter,
 	budget: budgetRouter,
 	categories: categoriesRouter,
 	corrections: correctionsRouter,
@@ -52,6 +55,7 @@ export const v1Router = v1.router({
 	"invite-codes": inviteCodesRouter,
 	"needs-you": needsYouRouter,
 	notifications: notificationsRouter,
+	"payment-methods": paymentMethodsRouter,
 	payments: paymentsRouter,
 	people: peopleRouter,
 	platform: platformRouter,

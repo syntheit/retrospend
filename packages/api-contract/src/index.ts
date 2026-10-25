@@ -1,6 +1,7 @@
 import { accountContract } from "./account";
 import { accountsContract } from "./accounts";
 import { adminContract } from "./admin";
+import { billingPeriodsContract } from "./billing-periods";
 import { budgetContract } from "./budget";
 import { categoriesContract } from "./categories";
 import { correctionsContract } from "./corrections";
@@ -16,6 +17,7 @@ import { inviteCodesContract } from "./invite-codes";
 import { needsYouContract } from "./needs-you";
 import { notificationsContract } from "./notifications";
 import { paymentsContract } from "./payments";
+import { paymentMethodsContract } from "./payment-methods";
 import { peopleContract } from "./people";
 import { platformContract } from "./platform";
 import { profileContract } from "./profile";
@@ -32,6 +34,7 @@ import { webhooksContract } from "./webhooks";
 export * from "./account";
 export * from "./accounts";
 export * from "./admin";
+export * from "./billing-periods";
 export * from "./budget";
 export * from "./categories";
 export * from "./common";
@@ -49,6 +52,7 @@ export * from "./invite-codes";
 export * from "./ledger";
 export * from "./needs-you";
 export * from "./notifications";
+export * from "./payment-methods";
 export * from "./payments";
 export * from "./people";
 export * from "./platform";
@@ -71,6 +75,7 @@ export const contract = {
 	account: accountContract,
 	accounts: accountsContract,
 	admin: adminContract,
+	"billing-periods": billingPeriodsContract,
 	budget: budgetContract,
 	categories: categoriesContract,
 	corrections: correctionsContract,
@@ -85,6 +90,7 @@ export const contract = {
 	"invite-codes": inviteCodesContract,
 	"needs-you": needsYouContract,
 	notifications: notificationsContract,
+	"payment-methods": paymentMethodsContract,
 	payments: paymentsContract,
 	people: peopleContract,
 	platform: platformContract,

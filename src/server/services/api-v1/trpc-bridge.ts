@@ -1,8 +1,10 @@
 import { adminRouter } from "~/server/api/routers/admin";
+import { billingPeriodRouter } from "~/server/api/routers/billingPeriod";
 import { expenseRouter } from "~/server/api/routers/expense";
 import { exportRouter } from "~/server/api/routers/export";
 import { feedbackRouter } from "~/server/api/routers/feedback";
 import { inviteRouter } from "~/server/api/routers/invite";
+import { paymentMethodRouter } from "~/server/api/routers/paymentMethod";
 import { projectRouter } from "~/server/api/routers/project";
 import { TRPCError } from "@trpc/server";
 import { createCallerFactory } from "~/server/api/trpc";
@@ -59,6 +61,8 @@ const expenseFactory = createCallerFactory(expenseRouter);
 const feedbackFactory = createCallerFactory(feedbackRouter);
 const inviteFactory = createCallerFactory(inviteRouter);
 const projectFactory = createCallerFactory(projectRouter);
+const billingPeriodFactory = createCallerFactory(billingPeriodRouter);
+const paymentMethodFactory = createCallerFactory(paymentMethodRouter);
 
 export const trpcAdmin = async (c: BridgeCaller) =>
 	adminFactory(await contextFor(c));
@@ -72,3 +76,7 @@ export const trpcInvite = async (c: BridgeCaller) =>
 	inviteFactory(await contextFor(c));
 export const trpcProject = async (c: BridgeCaller) =>
 	projectFactory(await contextFor(c));
+export const trpcBillingPeriod = async (c: BridgeCaller) =>
+	billingPeriodFactory(await contextFor(c));
+export const trpcPaymentMethod = async (c: BridgeCaller) =>
+	paymentMethodFactory(await contextFor(c));

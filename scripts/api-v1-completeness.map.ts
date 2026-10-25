@@ -45,7 +45,6 @@ const AUTH_MAIL =
 const CLAIM_TOKEN = "a claim token flow, opened from a link";
 const LEGACY_BUDGET =
 	"the per-category budget is replaced by the envelope budget (/budget/*)";
-const G3_PROJECTS = "G3 people and projects: no v1 route yet";
 
 /** The envelope budget: one entry per procedure, plus its Preview twin. */
 function envelope(): Record<string, Entry> {
@@ -217,11 +216,15 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"auth.verifyEmail": internal(AUTH_MAIL),
 
 	// ── billing periods ──────────────────────────────────────────────────
-	"billingPeriod.closeCurrent": gap(G3_PROJECTS),
-	"billingPeriod.detail": gap(G3_PROJECTS),
-	"billingPeriod.list": gap(G3_PROJECTS),
-	"billingPeriod.settlePeriod": gap(G3_PROJECTS),
-	"billingPeriod.updateLabel": gap(G3_PROJECTS),
+	"billingPeriod.closeCurrent": to("POST /projects/{id}/billing-periods/close"),
+	"billingPeriod.detail": to("GET /projects/{id}/billing-periods/{periodId}"),
+	"billingPeriod.list": to("GET /projects/{id}/billing-periods"),
+	"billingPeriod.settlePeriod": to(
+		"POST /projects/{id}/billing-periods/{periodId}/settle",
+	),
+	"billingPeriod.updateLabel": to(
+		"PATCH /projects/{id}/billing-periods/{periodId}",
+	),
 
 	// ── legacy per-category budget ───────────────────────────────────────
 	"budget.batchUpsertBudgets": superseded(LEGACY_BUDGET),
@@ -440,10 +443,10 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"notification.updatePreferences": to("PUT /notifications/preferences"),
 
 	// ── payment methods ──────────────────────────────────────────────────
-	"paymentMethod.getForUser": gap("G3: payment methods shown on a person"),
-	"paymentMethod.list": gap("G3: payment methods"),
-	"paymentMethod.match": gap("G3: payment methods"),
-	"paymentMethod.upsert": gap("G3: payment methods"),
+	"paymentMethod.getForUser": to("GET /people/{type}/{id}/payment-methods"),
+	"paymentMethod.list": to("GET /payment-methods"),
+	"paymentMethod.match": to("GET /people/{type}/{id}/payment-methods"),
+	"paymentMethod.upsert": to("PUT /payment-methods"),
 
 	// ── people ───────────────────────────────────────────────────────────
 	"people.balance": to("GET /people/{type}/{id}"),
