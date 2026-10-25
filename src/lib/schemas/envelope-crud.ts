@@ -195,7 +195,7 @@ export const confirmStartingMoneyResultSchema = z.object({
 	changeId: idSchema,
 	/** What you said you have right now. */
 	amount: moneySchema,
-	/** The money in row written: what you have plus what was already spent since the start, so the budget holds what you have. 0: no row. */
+	/** Signed: what you have minus what the budget held. Above 0 it is the money in row (what you have plus what was already spent since the start); below 0 the budget held more than you have and this is the OUT Adjustment. 0: no row. */
 	booked: moneySchema,
 	/** booked - amount: "Includes X already spent since <since>". Below 0 when money in was already recorded. */
 	alreadySpent: moneySchema,
@@ -203,6 +203,8 @@ export const confirmStartingMoneyResultSchema = z.object({
 	since: isoDateSchema,
 	/** The money in row written; null when none was needed. */
 	expenseId: idSchema.nullable(),
+	/** The OUT Adjustment written when the budget held more than you have. */
+	adjustmentId: idSchema.nullable(),
 	confirmedAt: z.date(),
 });
 

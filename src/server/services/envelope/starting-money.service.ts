@@ -9,12 +9,13 @@
  * still open, else of today, so a closed month never gains money after the
  * fact.
  */
+import { randomUUID } from "node:crypto";
 import type {
 	ConfirmStartingMoneyInput,
 	ConfirmStartingMoneyResult,
 } from "~/lib/schemas/envelope-crud";
 import type { Prisma } from "~prisma";
-import { writeEntryRow } from "./adjustment";
+import { writeAdjustment, writeEntryRow } from "./adjustment";
 import { holdsForAdjustment } from "./bank";
 import { assertNewChange, recordChange } from "./envelope-change";
 import { EnvelopeError } from "./errors";
@@ -46,16 +47,12 @@ export async function confirmStartingMoney(
 	await assertNewChange(tx, input.id);
 	const view = await monthViewIn(tx, userId, now);
 	if (!view) throw new EnvelopeError("NO_BOOK", "start a budget first");
+	// Positive: money in the budget does not hold yet. Negative: it holds more than you have.
 	const booked = input.amountMinor - holdsForAdjustment(view);
-	if (booked < 0)
-		throw new EnvelopeError(
-			"INVALID",
-			"the budget holds more than that: record the difference with Does this match your bank",
-		);
 	const firstMonthOpen = book.startMonth === s.current;
 	const since = isoDateIn(book.startDate, book.timeZone);
 	const money =
-		booked === 0
+		booked <= 0
 			? null
 			: await writeEntryRow(tx, userId, {
 					minor: booked,
@@ -68,6 +65,18 @@ export async function confirmStartingMoney(
 					direction: "IN",
 					entryKind: "STARTING_BALANCE",
 				});
+	// Like Set what I have now: the shortfall is an OUT Adjustment dated today, so the answer still confirms.
+	const adjustment =
+		booked < 0
+			? await writeAdjustment(tx, userId, {
+					id: randomUUID(),
+					signedMinor: booked,
+					currency: H,
+					rateType: s.loaded.valuation.defaultRateType,
+					date: now,
+					today: s.loaded.today,
+				})
+			: null;
 	await tx.budgetBook.update({
 		where: { id: book.id },
 		data: {
@@ -81,7 +90,10 @@ export async function confirmStartingMoney(
 		userId,
 		kind: "CONFIRM_STARTING_MONEY",
 		envelopeId: null,
-		before: { expenseId: money?.id ?? null },
+		before: {
+			expenseId: money?.id ?? null,
+			adjustmentId: adjustment?.expenseId ?? null,
+		},
 	});
 	forgetMonthViews(tx);
 	return {
@@ -91,6 +103,7 @@ export async function confirmStartingMoney(
 		alreadySpent: { minor: booked - input.amountMinor, currency: H },
 		since,
 		expenseId: money?.id ?? null,
+		adjustmentId: adjustment?.expenseId ?? null,
 		confirmedAt: now,
 	};
 }

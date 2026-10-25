@@ -70,6 +70,8 @@ export const beforeSchemas = {
 	}),
 	CONFIRM_STARTING_MONEY: z.object({
 		expenseId: idSchema.nullable(),
+		/** The OUT Adjustment written when the budget held more than you have. */
+		adjustmentId: idSchema.nullable().default(null),
 	}),
 } as const;
 

@@ -337,7 +337,9 @@ describe("starting money", () => {
 		expect((await getMonth(s.user.id))?.toAssign.amount).toEqual(usd(0));
 	});
 
-	it("less than the budget already holds is refused", async () => {
+	it("less than the budget already holds books the shortfall as an Adjustment, and the undo removes it", async () => {
+		// By hand: 500.00 of income in To assign (50,000) and nothing else held; you say you have 100.00.
+		// 10,000 - 50,000 = -40,000: an OUT Adjustment of 400.00, To assign 10,000, the answer confirmed.
 		const s = await seedUser();
 		await forUser(s.user.id).apply(setupEnvelopeBook, {
 			...setupInput(s),
@@ -345,12 +347,42 @@ describe("starting money", () => {
 			timeZone: "UTC",
 		});
 		await addRow(s.user.id, { amount: 500, direction: "IN", inType: "INCOME" });
+		const id = randomUUID();
+		const a = await forUser(s.user.id).apply(confirmStartingMoneyMutation, {
+			id,
+			amountMinor: 10_000,
+		});
+		expect(a.value).toMatchObject({
+			booked: usd(-40_000),
+			alreadySpent: usd(-50_000),
+			expenseId: null,
+		});
+		const adj = await adminDb.expense.findUniqueOrThrow({
+			where: { id: a.value.adjustmentId as string },
+		});
+		expect(adj).toMatchObject({ entryKind: "ADJUSTMENT", direction: "OUT" });
+		expect(adj.amount.toString()).toBe("400");
+		const book = await adminDb.budgetBook.findFirstOrThrow({
+			where: { createdById: s.user.id },
+		});
+		expect(book.startingMoneyConfirmedAt).not.toBeNull();
+		expect((await getMonth(s.user.id))?.toAssign.amount).toEqual(usd(10_000));
+		const sides = await invariantAt(s.user.id);
+		expect(sides.budget).toBe(sides.ledger);
+		expect(sides.budget).toBe(10_000);
+
+		await forUser(s.user.id).apply(undoChangeMutation, { id });
 		await expect(
-			forUser(s.user.id).preview(confirmStartingMoneyMutation, {
-				id: randomUUID(),
-				amountMinor: 100,
-			}),
-		).rejects.toMatchObject({ code: "INVALID" });
+			adminDb.expense.count({ where: { id: adj.id } }),
+		).resolves.toBe(0);
+		expect(
+			(
+				await adminDb.budgetBook.findFirstOrThrow({
+					where: { createdById: s.user.id },
+				})
+			).startingMoneyConfirmedAt,
+		).toBeNull();
+		expect((await getMonth(s.user.id))?.toAssign.amount).toEqual(usd(50_000));
 	});
 
 	it("0 is an answer with no row", async () => {

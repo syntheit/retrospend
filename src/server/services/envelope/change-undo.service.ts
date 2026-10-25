@@ -15,6 +15,7 @@ import type {
 	UndoChangeResult,
 } from "~/lib/schemas/envelope-crud";
 import type { Prisma } from "~prisma";
+import { removeAdjustment } from "./adjustment";
 import { restoreLinks, writeAndList } from "./crud-shared";
 import {
 	type Before,
@@ -207,6 +208,7 @@ async function undoMerge(
 /** The starting balance row goes, and the answer is open again. */
 async function undoStartingMoney(
 	tx: Tx,
+	userId: string,
 	bookId: string,
 	b: Before<"CONFIRM_STARTING_MONEY">,
 ) {
@@ -215,6 +217,7 @@ async function undoStartingMoney(
 		data: { startingBalanceExpenseId: null, startingMoneyConfirmedAt: null },
 	});
 	if (b.expenseId) await tx.expense.delete({ where: { id: b.expenseId } });
+	if (b.adjustmentId) await removeAdjustment(tx, userId, b.adjustmentId);
 	forgetMonthViews(tx);
 }
 
@@ -286,6 +289,7 @@ export async function undoChange(
 		case "CONFIRM_STARTING_MONEY":
 			await undoStartingMoney(
 				tx,
+				userId,
 				bookId,
 				parseBefore("CONFIRM_STARTING_MONEY", row.before),
 			);
