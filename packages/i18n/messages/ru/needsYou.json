@@ -15,6 +15,7 @@
 		"verifyEmail": "Подтвердите email",
 		"importStatement": "Импортируйте выписку",
 		"rejected": "{person} отклонил(а) {title}",
+		"fixRequested": "{person} просит вас исправить: {title}",
 		"overspentMany": "Перерасход в конвертах: {count}",
 		"overAssigned": "Запланировано на <amount></amount> больше, чем есть",
 		"billDue": "{title}: скоро срок оплаты",
@@ -39,6 +40,7 @@
 		"setRate": "Указать курс",
 		"notReceived": "Не получили?",
 		"remind": "Напомнить",
-		"open": "Открыть"
+		"open": "Открыть",
+		"respond": "Ответить"
 	}
 }

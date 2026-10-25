@@ -19,6 +19,20 @@ function invalidatedRouters(path: string[]): string[] {
 
 describe("handleMutationSuccess", () => {
 	it.each([
+		["corrections", "correct", "preview"],
+		["corrections", "askToFix", "preview"],
+		["settlement", "paymentRecord", "preview"],
+	])("%s.%s.%s invalidates nothing, a preview writes nothing", (...path) => {
+		expect(invalidatedRouters(path)).toEqual([]);
+	});
+
+	it("the save next to a preview still invalidates its router", () => {
+		expect(invalidatedRouters(["corrections", "askToFix", "save"])).toContain(
+			"corrections",
+		);
+	});
+
+	it.each([
 		"create",
 		"settleAll",
 		"confirm",

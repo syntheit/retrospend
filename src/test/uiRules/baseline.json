@@ -1156,7 +1156,7 @@
 		"src/server/services/shared-expenses/people.service.ts": 1003,
 		"src/server/services/shared-expenses/settlement.service.ts": 432,
 		"src/server/services/shared-expenses/test-utils.ts": 1046,
-		"src/server/services/shared-expenses/transaction.service.ts": 802,
+		"src/server/services/shared-expenses/transaction.service.ts": 795,
 		"src/server/services/shared-expenses/verification.service.ts": 332,
 		"src/server/services/user-deletion.service.ts": 70
 	},

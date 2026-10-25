@@ -359,6 +359,8 @@ export function handleMutationSuccess(
 ): void {
 	const path = getMutationPath(mutation.options.mutationKey);
 	if (!path) return;
+	// A preview is the write run and rolled back (R30): nothing it read has changed.
+	if (path.endsWith(".preview")) return;
 
 	const ownRouter = path.split(".")[0]!;
 	const additional = CROSS_ROUTER_INVALIDATIONS[path] ?? [];

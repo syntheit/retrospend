@@ -70,7 +70,8 @@ export function toExpenseTarget(
 	return {
 		id: row.id,
 		name,
-		mine: row.mine && row.canEdit,
+		// A settled row of yours has no edit, but it is yours to Correct.
+		mine: row.mine && (row.canEdit || row.locked),
 		locked: row.locked,
 		reviewed: true,
 		shared: row.source === "shared",

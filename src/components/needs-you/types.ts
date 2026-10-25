@@ -60,6 +60,8 @@ export type NeedsYouItemVM =
 			title: string;
 			amount: MoneyValue;
 	  })
+	/** Someone asked you to fix a split you added; Respond opens it (their face leads). */
+	| (Base & { kind: "fixRequested"; person: string; title: string })
 	/** More is planned than there is. */
 	| (Base & { kind: "overAssigned"; amount: MoneyValue })
 	/** Bills due soon that are not fully funded; a title when there is one. */

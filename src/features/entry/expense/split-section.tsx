@@ -107,7 +107,8 @@ export function SplitSection(p: {
 						</SelectContent>
 					</Select>
 				</div>
-				<div className="flex min-w-0 flex-1 flex-col gap-2">
+				{/* On a phone the options get their own row, so none is cut off. */}
+				<div className="flex min-w-0 flex-1 flex-col gap-2 max-md:basis-full">
 					<span className="text-fg-2 text-small font-medium">{t("split")}</span>
 					<Segmented
 						full

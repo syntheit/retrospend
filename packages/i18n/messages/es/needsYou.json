@@ -15,6 +15,7 @@
 		"verifyEmail": "Verifica tu correo",
 		"importStatement": "Importa un resumen",
 		"rejected": "{person} rechazó {title}",
+		"fixRequested": "{person} te pidió que corrijas {title}",
 		"overspentMany": "{count, plural, one {# sobre se pasó} other {# sobres se pasaron}}",
 		"overAssigned": "Planificaste <amount></amount> más de lo que tienes",
 		"billDue": "{title} vence pronto",
@@ -39,6 +40,7 @@
 		"setRate": "Fijar cotización",
 		"notReceived": "¿No lo has recibido?",
 		"remind": "Recordar",
-		"open": "Abrir"
+		"open": "Abrir",
+		"respond": "Responder"
 	}
 }

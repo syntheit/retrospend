@@ -6,8 +6,8 @@ import { openV2 } from "./viewer";
 
 // Someone else's shared expense opens as a read view (owner Q1, RC11):
 // Lucía added "Cena en La Esquina", so Sofía sees it, her share and its
-// state, and Ask Lucía to fix, which waits for the server's ask state
-// (docs/ui/GAPS.md) and says so. Her own expense opens in the edit sheet.
+// state, and Ask Lucía to fix (the sheets are in corrections.spec.ts). Her
+// own expense opens in the edit sheet.
 
 test.use({ storageState: personaStorageState(SOFIA.username) });
 
@@ -19,7 +19,13 @@ test("Entry: read view of someone else's expense, edit sheet for your own", asyn
 	await openV2(page, "/activity?range=all");
 	const main = page.getByRole("main");
 
-	await main.getByText("Cena en La Esquina").first().click();
+	// The row's menu offers Ask to fix (the corrections router allows it) and opens
+	// that sheet; Cancel goes back to the read view.
+	await main.getByText("Cena en La Esquina").first().click({ button: "right" });
+	await page.getByRole("menuitem", { name: "Ask to fix" }).click();
+	const ask = page.getByRole("dialog", { name: "Ask Lucía to fix it" });
+	await expect(ask).toBeVisible();
+	await ask.getByRole("button", { name: "Cancel" }).click();
 	const read = page.getByRole("dialog", { name: "Cena en La Esquina" });
 	await expect(read).toBeVisible();
 	await expect(
@@ -27,12 +33,9 @@ test("Entry: read view of someone else's expense, edit sheet for your own", asyn
 	).toBeVisible();
 	await expect(read).toContainText("ARS 64,000");
 	await expect(read).toContainText("ARS 32,000");
-	const ask = read.getByRole("button", { name: "Ask Lucía to fix" });
-	await expect(ask).toHaveAttribute("aria-disabled", "true");
-	await ask.hover();
 	await expect(
-		page.getByRole("tooltip", { name: "Not available yet" }),
-	).toBeVisible();
+		read.getByRole("button", { name: "Ask Lucía to fix" }),
+	).toBeEnabled();
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	await read.getByRole("button", { name: "Close" }).last().click();
 	await expect(read).toBeHidden();

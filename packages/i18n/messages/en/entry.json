@@ -135,6 +135,7 @@
 			"notTracked": "Not tracked",
 			"budget_notPlannedYet": "Not planned yet",
 			"budget_leftToSpend": "Left to spend",
+			"budget_heldForOthers": "Held for others",
 			"project_total": "Project total",
 			"envelope_left": "Envelope"
 		},
@@ -148,6 +149,7 @@
 			"notTracked": "not tracked",
 			"budget_notPlannedYet": "Not planned yet",
 			"budget_leftToSpend": "left to spend",
+			"budget_heldForOthers": "held for others",
 			"project_total": "the project total",
 			"envelope_left": "the envelope"
 		}

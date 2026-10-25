@@ -15,6 +15,7 @@
 		"verifyEmail": "Verify your email",
 		"importStatement": "Import a statement",
 		"rejected": "{person} rejected {title}",
+		"fixRequested": "{person} asked you to fix {title}",
 		"overspentMany": "{count, plural, one {# envelope is} other {# envelopes are}} over",
 		"overAssigned": "You planned <amount></amount> more than you have",
 		"billDue": "{title} is due soon",
@@ -39,6 +40,7 @@
 		"setRate": "Set rate",
 		"notReceived": "Not received?",
 		"remind": "Remind",
-		"open": "Open"
+		"open": "Open",
+		"respond": "Respond"
 	}
 }

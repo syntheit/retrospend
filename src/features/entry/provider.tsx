@@ -95,7 +95,13 @@ function EntryHost({
 				<ExpenseSheet onClose={onClose} onOpen={onOpen} request={request} />
 			);
 		case "shared":
-			return <SharedEntrySheet id={request.id} onClose={onClose} />;
+			return (
+				<SharedEntrySheet
+					id={request.id}
+					onClose={onClose}
+					start={request.start}
+				/>
+			);
 		case "income":
 			return <IncomeSheet accountId={request.accountId} onClose={onClose} />;
 		case "transfer":
