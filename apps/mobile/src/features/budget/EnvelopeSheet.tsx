@@ -110,14 +110,14 @@ export function EnvelopeSheet({
 						{status ? (
 							<Note tone={status.kind === "over" ? "attention" : "plain"}>
 								{status.kind === "over"
-									? tb("row.over", {
-											amount: money(status.amount, { sign: "never" }),
-										})
+									? tb("row.over")
 									: status.kind === "needs"
 										? tb("row.needs", { amount: money(status.amount) })
-										: status.kind === "funded"
-											? tb("row.funded")
-											: tb("row.noRate", { currency: status.currency })}
+										: status.kind === "week"
+											? tb("row.leftThisWeek", { amount: money(status.amount) })
+											: status.kind === "funded"
+												? tb("row.funded")
+												: tb("row.noRate", { currency: status.currency })}
 							</Note>
 						) : null}
 						{kind === "closed" ? <Note>{t("closedHint")}</Note> : null}

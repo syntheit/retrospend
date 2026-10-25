@@ -266,7 +266,8 @@
 			"pick": "Monat wählen",
 			"closedItem": "{month}, abgeschlossen",
 			"planItem": "{month} planen",
-			"closed": "{month} ist abgeschlossen. Was du hier siehst, ist schreibgeschützt."
+			"closed": "{month} ist abgeschlossen. Was du hier siehst, ist schreibgeschützt.",
+			"planning": "{month} planen gibt es vorerst im Web. Das hier ist nur zum Ansehen."
 		},
 		"verdict": {
 			"label": {
@@ -327,10 +328,11 @@
 			"SAVINGS": "Sparen",
 			"ungrouped": "Weitere Umschläge",
 			"count": "{count, plural, one {# Umschlag} other {# Umschläge}}",
-			"overBy": "Um {amount} drüber",
 			"leftSpoken": "{amount} übrig",
 			"expand": "Umschläge zeigen",
-			"collapse": "Umschläge ausblenden"
+			"collapse": "Umschläge ausblenden",
+			"percents": "Geplant {planned} · ausgegeben {spent}",
+			"overNames": "Drüber: {names}"
 		},
 		"column": {
 			"assigned": "Zugewiesen",
@@ -339,11 +341,14 @@
 			"left": "Übrig"
 		},
 		"row": {
-			"over": "Um {amount} drüber",
+			"over": "Drüber",
 			"needs": "Braucht {amount}",
 			"funded": "Finanziert",
 			"noRate": "Noch kein Kurs für {currency}",
-			"leftSpoken": "{amount} übrig"
+			"leftSpoken": "{amount} übrig",
+			"leftThisWeek": "{amount} diese Woche übrig",
+			"wideSpoken": "{assigned} zugewiesen, {spent} ausgegeben, {left} übrig",
+			"wideSpokenLimit": "Limit {assigned}, {spent} ausgegeben, {left} übrig"
 		},
 		"envelope": {
 			"assigned": "Zugewiesen",
@@ -406,7 +411,8 @@
 			"fromNowOn": "Ab jetzt",
 			"amount": "Neues Limit",
 			"submit": "Limit speichern",
-			"toast": "Das Limit für {name} ist jetzt {amount}"
+			"toast": "Das Limit für {name} ist jetzt {amount}",
+			"noLimit": "Kein Limit"
 		},
 		"usePlan": {
 			"title": "Meinen Plan verwenden",
@@ -442,15 +448,16 @@
 			"checking": "Wird geprüft",
 			"error": "Das ließ sich nicht prüfen. Versuche es erneut.",
 			"changes": "Was sich ändert",
-			"stays": "Was gleich bleibt",
-			"none": "nichts",
 			"beforeAfter": "{before} auf {after}",
 			"leftOf": "Übrig in {name}",
-			"leftToSpend": "Zum Ausgeben übrig",
-			"keeps": "{amount} bleibt",
 			"nothing": "Das ändert nichts.",
 			"envelopeFallback": "Umschlag",
-			"refused": "So geht das nicht. Ändere den Betrag."
+			"refused": "So geht das nicht. Ändere den Betrag.",
+			"nothingElse": "Sonst ändert sich nichts: {list} bleiben, wie sie sind.",
+			"nothingElseOne": "Sonst ändert sich nichts: {item} bleibt, wie es ist.",
+			"noneChange": "Keine Änderung: {list}.",
+			"unavailable": "{list} ließ sich nicht prüfen.",
+			"notAvailable": "Nicht verfügbar (noch kein Kurs)"
 		},
 		"write": {
 			"saving": "Wird gespeichert",
@@ -459,7 +466,72 @@
 			"undoError": "Das ließ sich nicht rückgängig machen. Es hat sich vielleicht schon geändert.",
 			"amountInvalid": "Nutze Ziffern und die Nachkommastellen dieser Währung."
 		},
-		"listAnd": "{head} und {last}"
+		"listAnd": "{head} und {last}",
+		"figures": {
+			"budget_notPlannedYet": "Noch nicht verplant",
+			"budget_leftToSpend": "Noch verfügbar",
+			"budget_leftThisWeek": "Diese Woche übrig",
+			"budget_leftInLimits": "Noch in deinen Limits",
+			"budget_holds": "Was das Budget hält",
+			"budget_heldForOthers": "Für andere gehalten",
+			"budget_planCost": "Plankosten",
+			"budget_typicalIncome": "Übliches Einkommen",
+			"envelope_left": "Umschlag",
+			"netWorth": "Vermögen",
+			"accounts_balance": "Kontostand",
+			"owed_owedToYou": "Dir geschuldet",
+			"owed_youOwe": "Du schuldest",
+			"balance_person": "Saldo mit dieser Person",
+			"other": "Eine andere Zahl",
+			"spent": "Deine Ausgaben",
+			"notTracked": "Nicht erfasst",
+			"netWorthChange_exchange": "Wechselergebnis",
+			"budget_totalDebt": "Gesamtschulden",
+			"netWorthChange_income": "Änderung durch Einnahmen",
+			"netWorthChange_spending": "Änderung durch Ausgaben",
+			"netWorthChange_notLogged": "Änderung durch Nicht erfasst",
+			"netWorthChange_revaluation": "Änderung durch Kurse und Preise",
+			"netWorthChange_opened": "Änderung durch neue Konten",
+			"netWorthChange_closed": "Änderung durch geschlossene Konten"
+		},
+		"figuresInline": {
+			"budget_notPlannedYet": "Noch nicht verplant",
+			"budget_leftToSpend": "was noch verfügbar ist",
+			"budget_leftThisWeek": "was diese Woche übrig ist",
+			"budget_leftInLimits": "was in deinen Limits übrig ist",
+			"budget_holds": "was das Budget hält",
+			"budget_heldForOthers": "was für andere gehalten wird",
+			"budget_planCost": "die Plankosten",
+			"budget_typicalIncome": "das übliche Einkommen",
+			"envelope_left": "der Umschlag",
+			"netWorth": "das Vermögen",
+			"accounts_balance": "der Kontostand",
+			"owed_owedToYou": "was dir geschuldet wird",
+			"owed_youOwe": "was du schuldest",
+			"balance_person": "dein Saldo mit dieser Person",
+			"other": "eine andere Zahl",
+			"spent": "deine Ausgaben",
+			"notTracked": "nicht Erfasstes",
+			"netWorthChange_exchange": "das Wechselergebnis",
+			"budget_totalDebt": "die Gesamtschulden",
+			"netWorthChange_income": "die Änderung durch Einnahmen",
+			"netWorthChange_spending": "die Änderung durch Ausgaben",
+			"netWorthChange_notLogged": "die Änderung durch Nicht erfasst",
+			"netWorthChange_revaluation": "die Änderung durch Kurse und Preise",
+			"netWorthChange_opened": "die Änderung durch neue Konten",
+			"netWorthChange_closed": "die Änderung durch geschlossene Konten"
+		},
+		"debt": {
+			"label": "Schuldenfrei bis",
+			"never": "Nicht absehbar",
+			"neverAtPayment": "Nie mit dieser Zahlung",
+			"diverges": "Die Zinsen sind höher als deine Monatszahlung, daher wächst der Saldo weiter. Erhöhe die Zahlung, um ein Datum zu sehen.",
+			"incomplete": "Für {currencies} gibt es noch keinen Kurs, daher ist die Summe nicht berechnet.",
+			"sentence": "{total} bei {count, plural, one {# Schuld} other {# Schulden}}. Etwa {months, plural, one {# Monat} other {# Monate}} bei diesem Plan.",
+			"capped": "Mit den Mindestraten übersteigen die Zinsen die Zahlungen.",
+			"leftToSpend": "Zum Ausgeben übrig {amount}",
+			"unavailable": "Deine Schulden konnten nicht geladen werden."
+		}
 	},
 	"wealth": {
 		"title": "Vermögen",
@@ -480,7 +552,6 @@
 			"earlier": "Vorheriger Tag"
 		},
 		"whyTitle": "Warum es sich in {days} Tagen geändert hat",
-		"whyTotal": "Änderung",
 		"parts": {
 			"income": "Einnahmen",
 			"spending": "Ausgaben",
@@ -540,7 +611,7 @@
 			"submit": "Saldo aktualisieren",
 			"netWorth": "Vermögen",
 			"notLogged": "Nicht erfasst",
-			"notLoggedHint": "Die Differenz wird als Nicht erfasst gebucht, nicht als Einnahme oder Ausgabe.",
+			"notLoggedHint": "Deine Einnahmen und Ausgaben bleiben, wie sie sind. Die Differenz wird als Nicht erfasst gebucht.",
 			"same": "Das ist schon der Saldo, es ändert sich also nichts.",
 			"toast": "{name} steht jetzt bei {amount}"
 		}

@@ -266,7 +266,8 @@
 			"pick": "Choisir un mois",
 			"closedItem": "{month}, clôturé",
 			"planItem": "Planifier {month}",
-			"closed": "{month} est clôturé. Ce qui s’affiche ici est en lecture seule."
+			"closed": "{month} est clôturé. Ce qui s’affiche ici est en lecture seule.",
+			"planning": "La planification de {month} est pour l’instant sur le web. Ceci est en lecture seule."
 		},
 		"verdict": {
 			"label": {
@@ -327,10 +328,11 @@
 			"SAVINGS": "Épargne",
 			"ungrouped": "Autres enveloppes",
 			"count": "{count, plural, one {# enveloppe} other {# enveloppes}}",
-			"overBy": "Dépassé de {amount}",
 			"leftSpoken": "reste {amount}",
 			"expand": "Afficher les enveloppes",
-			"collapse": "Masquer les enveloppes"
+			"collapse": "Masquer les enveloppes",
+			"percents": "Planifié {planned} · dépensé {spent}",
+			"overNames": "Dépassés : {names}"
 		},
 		"column": {
 			"assigned": "Attribué",
@@ -339,11 +341,14 @@
 			"left": "Reste"
 		},
 		"row": {
-			"over": "Dépassé de {amount}",
+			"over": "Dépassé",
 			"needs": "Besoin de {amount}",
 			"funded": "Financée",
 			"noRate": "Pas encore de taux pour {currency}",
-			"leftSpoken": "reste {amount}"
+			"leftSpoken": "reste {amount}",
+			"leftThisWeek": "{amount} restants cette semaine",
+			"wideSpoken": "{assigned} attribué, {spent} dépensé, reste {left}",
+			"wideSpokenLimit": "plafond {assigned}, {spent} dépensé, reste {left}"
 		},
 		"envelope": {
 			"assigned": "Attribué",
@@ -406,7 +411,8 @@
 			"fromNowOn": "À partir de maintenant",
 			"amount": "Nouveau plafond",
 			"submit": "Enregistrer le plafond",
-			"toast": "Le plafond de {name} est maintenant {amount}"
+			"toast": "Le plafond de {name} est maintenant {amount}",
+			"noLimit": "Pas de plafond"
 		},
 		"usePlan": {
 			"title": "Utiliser mon plan",
@@ -442,15 +448,16 @@
 			"checking": "Vérification",
 			"error": "Impossible de vérifier. Réessayez.",
 			"changes": "Ce qui change",
-			"stays": "Ce qui ne change pas",
-			"none": "rien",
 			"beforeAfter": "{before}, puis {after}",
 			"leftOf": "Reste dans {name}",
-			"leftToSpend": "Reste à dépenser",
-			"keeps": "{amount} reste",
 			"nothing": "Cela ne change rien.",
 			"envelopeFallback": "Enveloppe",
-			"refused": "Impossible en l’état. Changez le montant."
+			"refused": "Impossible en l’état. Changez le montant.",
+			"nothingElse": "Rien d'autre ne change : {list} restent tels quels.",
+			"nothingElseOne": "Rien d'autre ne change : {item} reste tel quel.",
+			"noneChange": "Aucun changement : {list}.",
+			"unavailable": "Impossible de vérifier {list}.",
+			"notAvailable": "Indisponible (pas encore de taux)"
 		},
 		"write": {
 			"saving": "Enregistrement",
@@ -459,7 +466,72 @@
 			"undoError": "Impossible d’annuler. Cela a peut-être déjà changé.",
 			"amountInvalid": "Utilisez des chiffres et les décimales de cette devise."
 		},
-		"listAnd": "{head} et {last}"
+		"listAnd": "{head} et {last}",
+		"figures": {
+			"budget_notPlannedYet": "Pas encore prévu",
+			"budget_leftToSpend": "Reste à dépenser",
+			"budget_leftThisWeek": "Reste cette semaine",
+			"budget_leftInLimits": "Reste dans tes limites",
+			"budget_holds": "Ce que contient le budget",
+			"budget_heldForOthers": "Gardé pour les autres",
+			"budget_planCost": "Coût du plan",
+			"budget_typicalIncome": "Revenu habituel",
+			"envelope_left": "Enveloppe",
+			"netWorth": "Patrimoine net",
+			"accounts_balance": "Solde du compte",
+			"owed_owedToYou": "On te doit",
+			"owed_youOwe": "Tu dois",
+			"balance_person": "Solde avec cette personne",
+			"other": "Un autre chiffre",
+			"spent": "Tes dépenses",
+			"notTracked": "Non suivi",
+			"netWorthChange_exchange": "Résultat du change",
+			"budget_totalDebt": "Dette totale",
+			"netWorthChange_income": "Variation due aux revenus",
+			"netWorthChange_spending": "Variation due aux dépenses",
+			"netWorthChange_notLogged": "Variation due au non enregistré",
+			"netWorthChange_revaluation": "Variation due aux taux et prix",
+			"netWorthChange_opened": "Variation due aux comptes ajoutés",
+			"netWorthChange_closed": "Variation due aux comptes clôturés"
+		},
+		"figuresInline": {
+			"budget_notPlannedYet": "Pas encore prévu",
+			"budget_leftToSpend": "le reste à dépenser",
+			"budget_leftThisWeek": "le reste de la semaine",
+			"budget_leftInLimits": "le reste dans tes limites",
+			"budget_holds": "ce que contient le budget",
+			"budget_heldForOthers": "ce qui est gardé pour les autres",
+			"budget_planCost": "le coût du plan",
+			"budget_typicalIncome": "le revenu habituel",
+			"envelope_left": "l'enveloppe",
+			"netWorth": "le patrimoine net",
+			"accounts_balance": "le solde du compte",
+			"owed_owedToYou": "ce qu'on te doit",
+			"owed_youOwe": "ce que tu dois",
+			"balance_person": "ton solde avec cette personne",
+			"other": "un autre chiffre",
+			"spent": "tes dépenses",
+			"notTracked": "le non suivi",
+			"netWorthChange_exchange": "le résultat du change",
+			"budget_totalDebt": "la dette totale",
+			"netWorthChange_income": "la variation due aux revenus",
+			"netWorthChange_spending": "la variation due aux dépenses",
+			"netWorthChange_notLogged": "la variation due au non enregistré",
+			"netWorthChange_revaluation": "la variation due aux taux et prix",
+			"netWorthChange_opened": "la variation due aux comptes ajoutés",
+			"netWorthChange_closed": "la variation due aux comptes clôturés"
+		},
+		"debt": {
+			"label": "Sans dette d'ici",
+			"never": "Hors de vue",
+			"neverAtPayment": "Jamais avec ce paiement",
+			"diverges": "Les intérêts dépassent ce que tu paies chaque mois, le solde continue donc de grossir. Augmente le paiement pour voir une date.",
+			"incomplete": "Pas encore de taux pour {currencies}, donc le total n'est pas calculé.",
+			"sentence": "{total} sur {count, plural, one {# dette} other {# dettes}}. Environ {months, plural, one {# mois} other {# mois}} avec ce plan.",
+			"capped": "Aux minimums, les intérêts dépassent les paiements.",
+			"leftToSpend": "Reste à dépenser {amount}",
+			"unavailable": "Vos dettes n'ont pas pu se charger."
+		}
 	},
 	"wealth": {
 		"title": "Patrimoine",
@@ -480,7 +552,6 @@
 			"earlier": "Jour précédent"
 		},
 		"whyTitle": "Pourquoi cela a changé en {days} jours",
-		"whyTotal": "Variation",
 		"parts": {
 			"income": "Revenus",
 			"spending": "Dépenses",
@@ -540,7 +611,7 @@
 			"submit": "Mettre à jour le solde",
 			"netWorth": "Patrimoine",
 			"notLogged": "Non enregistré",
-			"notLoggedHint": "La différence est classée dans Non enregistré, pas dans les revenus ni dans les dépenses.",
+			"notLoggedHint": "Vos revenus et dépenses ne changent pas. La différence est classée dans Non enregistré.",
 			"same": "C’est déjà le solde, rien ne change donc.",
 			"toast": "{name} est maintenant à {amount}"
 		}

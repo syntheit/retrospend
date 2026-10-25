@@ -72,6 +72,7 @@ export function BudgetView() {
 						kind={info.kind}
 						onOpen={setSheet}
 						onSelectMonth={setSelected}
+						payoff={state.data.payoff}
 						stale={state.staleSince}
 						wide={widthClass !== "compact"}
 					/>

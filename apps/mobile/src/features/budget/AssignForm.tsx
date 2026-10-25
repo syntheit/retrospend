@@ -6,7 +6,7 @@ import { minorOf, readAmount } from "./amount";
 import { BudgetChanges } from "./BudgetChanges";
 import { assignBody } from "./bodies";
 import { AmountField, Line, useAmountLocale } from "./parts";
-import { changesAnything, previewRows } from "./preview";
+import { changesAnything } from "./preview";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
 import { useUndoToast } from "./useUndoToast";
 import { type FormProps, noSession, useApi, WriteFrame } from "./WriteFrame";
@@ -82,7 +82,7 @@ export function AssignForm({
 	const ready =
 		flow.status === "ready" &&
 		flow.preview !== null &&
-		changesAnything(previewRows(flow.preview));
+		changesAnything(flow.preview);
 
 	return (
 		<WriteFrame

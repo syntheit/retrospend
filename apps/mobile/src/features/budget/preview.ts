@@ -1,32 +1,17 @@
 import type { Money } from "@retrospend/domain/money-minor";
+import { ENVELOPE_LEFT, figureLines } from "./figures";
 import type { BudgetPreview } from "./source";
 
 // What a budget write would change, from the server's own dry run of it (the
-// preview twin runs the real write and rolls it back). The sheet words the
-// rows; every amount in them is the server's.
+// preview twin runs the real write and rolls it back). The envelopes a write
+// moved come from the answer it would give; every figure comes from the
+// preview's own lists (figures.ts).
 
 export interface EnvelopeMove {
 	id: string;
 	before: Money;
 	after: Money;
 }
-
-export interface FigureMove {
-	before: Money | null;
-	after: Money | null;
-}
-
-export interface BudgetPreviewRows {
-	/** Each envelope the write moved, with its Left before and after. */
-	envelopes: EnvelopeMove[];
-	/** Not planned yet (or To assign) before and after; null when the write leaves it alone. */
-	pool: FigureMove | null;
-	/** Left to spend: changed, or the amount that stays. */
-	leftToSpend: { change: FigureMove } | { stays: Money[] } | null;
-}
-
-const POOL_FIGURE = "budget.notPlannedYet";
-const LEFT_FIGURE = "budget.leftToSpend";
 
 function isMoney(value: unknown): value is Money {
 	const m = value as Money | null;
@@ -38,13 +23,8 @@ function isMoney(value: unknown): value is Money {
 	);
 }
 
-/** A figure line that is money; a percent line is not and is left out. */
-function money(line: { minor: number; currency: string } | null): Money | null {
-	return line && line.currency !== "%" ? line : null;
-}
-
-/** The movement answer a write would give, when the write moves envelopes. */
-function envelopeMoves(preview: BudgetPreview): EnvelopeMove[] {
+/** The envelopes a write moved, with their Left before and after, when the answer lists them. */
+export function envelopeMoves(preview: BudgetPreview): EnvelopeMove[] {
 	const detail = preview.detail as
 		| { result?: { envelopes?: unknown } }
 		| undefined;
@@ -58,28 +38,16 @@ function envelopeMoves(preview: BudgetPreview): EnvelopeMove[] {
 	});
 }
 
-export function previewRows(preview: BudgetPreview): BudgetPreviewRows {
-	const pool = preview.changes.find((c) => c.id === POOL_FIGURE);
-	const left = preview.changes.find((c) => c.id === LEFT_FIGURE);
-	const kept = preview.unchanged.find((u) => u.id === LEFT_FIGURE);
-	return {
-		envelopes: envelopeMoves(preview),
-		pool: pool
-			? { before: money(pool.before), after: money(pool.after) }
-			: null,
-		leftToSpend: left
-			? { change: { before: money(left.before), after: money(left.after) } }
-			: kept
-				? { stays: kept.lines.flatMap((line) => money(line) ?? []) }
-				: null,
-	};
+/** Figure ids the envelope lines already say: not repeated once they are listed. */
+export function hiddenFor(moves: readonly EnvelopeMove[]): string[] {
+	return moves.length > 0 ? [ENVELOPE_LEFT] : [];
 }
 
 /** Whether the dry run says the write would do anything at all. */
-export function changesAnything(rows: BudgetPreviewRows): boolean {
+export function changesAnything(preview: BudgetPreview): boolean {
+	const moves = envelopeMoves(preview);
 	return (
-		rows.envelopes.some((e) => e.before.minor !== e.after.minor) ||
-		rows.pool !== null ||
-		(rows.leftToSpend !== null && "change" in rows.leftToSpend)
+		moves.some((e) => e.before.minor !== e.after.minor) ||
+		figureLines(preview, hiddenFor(moves)).changes.length > 0
 	);
 }

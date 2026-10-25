@@ -189,20 +189,23 @@ export interface ChangeRow {
 
 /**
  * What the write would change and what it would not, from the server's dry
- * run (R30). Rows arrive worded; this only lays them out and says "Checking"
- * until the dry run is in, so Save never runs ahead of it.
+ * run (R30). Rows and names arrive worded; this lays them out like the web's
+ * block: the figures that moved, then one sentence for what was checked and
+ * stays, then one for what could not be checked (a missing rate). It says
+ * "Checking" until the dry run is in, so Save never runs ahead of it.
  */
 export function ChangeList({
 	status,
 	changes,
 	stays,
-	nothing,
+	unavailable,
 }: {
 	status: PreviewStatus;
 	changes: ChangeRow[];
-	stays: ChangeRow[];
-	/** The dry run came back and the write would change nothing. */
-	nothing?: string;
+	/** Names of the figures checked that stay as they are. */
+	stays: string[];
+	/** Names of the figures that could not be checked. */
+	unavailable: string[];
 }) {
 	const t = useTranslations("mobile.budget.preview");
 	const { color, space, type } = useTheme();
@@ -210,23 +213,28 @@ export function ChangeList({
 	if (status === "loading") return <Note>{t("checking")}</Note>;
 	if (status === "failed") return <Note tone="attention">{t("error")}</Note>;
 	if (status === "refused") return <Note tone="attention">{t("refused")}</Note>;
-	const heading = (text: string) => (
-		<Text
-			accessibilityRole="header"
-			style={{
-				color: color.fg2,
-				fontSize: type.small.size,
-				fontWeight: "600",
-			}}
-		>
-			{text}
-		</Text>
-	);
+	const keeps =
+		stays.length === 0
+			? null
+			: changes.length === 0
+				? t("noneChange", { list: stays.join(", ") })
+				: stays.length === 1
+					? t("nothingElseOne", { item: stays[0] ?? "" })
+					: t("nothingElse", { list: stays.join(", ") });
 	return (
-		<View style={{ gap: space[3] }}>
+		<View style={{ gap: space[2] }}>
+			<Text
+				accessibilityRole="header"
+				style={{
+					color: color.fg2,
+					fontSize: type.small.size,
+					fontWeight: "600",
+				}}
+			>
+				{t("changes")}
+			</Text>
 			{changes.length > 0 ? (
 				<View>
-					{heading(t("changes"))}
 					{changes.map((row) => (
 						<Line
 							key={row.key}
@@ -236,21 +244,18 @@ export function ChangeList({
 						/>
 					))}
 				</View>
-			) : nothing ? (
-				<Note>{nothing}</Note>
+			) : keeps ? null : (
+				<Note>{t("nothing")}</Note>
+			)}
+			{keeps ? (
+				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					{keeps}
+				</Text>
 			) : null}
-			{stays.length > 0 ? (
-				<View>
-					{heading(t("stays"))}
-					{stays.map((row) => (
-						<Line
-							key={row.key}
-							label={row.label}
-							spoken={row.spoken}
-							value={row.value}
-						/>
-					))}
-				</View>
+			{unavailable.length > 0 ? (
+				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					{t("unavailable", { list: unavailable.join(", ") })}
+				</Text>
 			) : null}
 		</View>
 	);

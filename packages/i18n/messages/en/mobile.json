@@ -266,7 +266,8 @@
 			"pick": "Choose a month",
 			"closedItem": "{month}, closed",
 			"planItem": "Plan {month}",
-			"closed": "{month} is closed. What is here is read-only."
+			"closed": "{month} is closed. What is here is read-only.",
+			"planning": "Planning {month} is on the web for now. This is a read-only look."
 		},
 		"verdict": {
 			"label": {
@@ -327,10 +328,11 @@
 			"SAVINGS": "Savings",
 			"ungrouped": "Other envelopes",
 			"count": "{count, plural, one {# envelope} other {# envelopes}}",
-			"overBy": "Over by {amount}",
 			"leftSpoken": "{amount} left",
 			"expand": "Show envelopes",
-			"collapse": "Hide envelopes"
+			"collapse": "Hide envelopes",
+			"percents": "Planned {planned} · spent {spent}",
+			"overNames": "Over: {names}"
 		},
 		"column": {
 			"assigned": "Assigned",
@@ -339,11 +341,14 @@
 			"left": "Left"
 		},
 		"row": {
-			"over": "Over by {amount}",
+			"over": "Over",
 			"needs": "Needs {amount}",
 			"funded": "Funded",
 			"noRate": "No {currency} rate yet",
-			"leftSpoken": "{amount} left"
+			"leftSpoken": "{amount} left",
+			"leftThisWeek": "{amount} left this week",
+			"wideSpoken": "{assigned} assigned, {spent} spent, {left} left",
+			"wideSpokenLimit": "{assigned} limit, {spent} spent, {left} left"
 		},
 		"envelope": {
 			"assigned": "Assigned",
@@ -406,7 +411,8 @@
 			"fromNowOn": "From now on",
 			"amount": "New limit",
 			"submit": "Save limit",
-			"toast": "Limit for {name} is now {amount}"
+			"toast": "Limit for {name} is now {amount}",
+			"noLimit": "No limit"
 		},
 		"usePlan": {
 			"title": "Use my plan",
@@ -442,15 +448,16 @@
 			"checking": "Checking",
 			"error": "Couldn't check this. Try again.",
 			"changes": "What changes",
-			"stays": "What stays",
-			"none": "nothing",
 			"beforeAfter": "{before} to {after}",
 			"leftOf": "{name} left",
-			"leftToSpend": "Left to spend",
-			"keeps": "{amount} stays",
 			"nothing": "This changes nothing.",
 			"envelopeFallback": "Envelope",
-			"refused": "This can not be done as it is. Change the amount."
+			"refused": "This cannot be done as it is. Change the amount.",
+			"nothingElse": "Nothing else changes: {list} stay as they are.",
+			"nothingElseOne": "Nothing else changes: {item} stays as it is.",
+			"noneChange": "No change to {list}.",
+			"unavailable": "Could not check {list}.",
+			"notAvailable": "Not available (no rate yet)"
 		},
 		"write": {
 			"saving": "Saving",
@@ -459,7 +466,72 @@
 			"undoError": "Couldn't undo. It may have changed already.",
 			"amountInvalid": "Use digits and the decimals this currency has."
 		},
-		"listAnd": "{head} and {last}"
+		"listAnd": "{head} and {last}",
+		"figures": {
+			"budget_notPlannedYet": "Not planned yet",
+			"budget_leftToSpend": "Left to spend",
+			"budget_leftThisWeek": "Left this week",
+			"budget_leftInLimits": "Left in your limits",
+			"budget_holds": "What the budget holds",
+			"budget_heldForOthers": "Held for others",
+			"budget_planCost": "Plan cost",
+			"budget_typicalIncome": "Usual income",
+			"envelope_left": "Envelope",
+			"netWorth": "Net worth",
+			"accounts_balance": "Account balance",
+			"owed_owedToYou": "Owed to you",
+			"owed_youOwe": "You owe",
+			"balance_person": "Balance with this person",
+			"other": "Another figure",
+			"spent": "Your spending",
+			"notTracked": "Not tracked",
+			"netWorthChange_exchange": "Exchange result",
+			"budget_totalDebt": "Total debt",
+			"netWorthChange_income": "Change from income",
+			"netWorthChange_spending": "Change from spending",
+			"netWorthChange_notLogged": "Change from Not logged",
+			"netWorthChange_revaluation": "Change from rates and prices",
+			"netWorthChange_opened": "Change from accounts added",
+			"netWorthChange_closed": "Change from accounts closed"
+		},
+		"figuresInline": {
+			"budget_notPlannedYet": "Not planned yet",
+			"budget_leftToSpend": "left to spend",
+			"budget_leftThisWeek": "left this week",
+			"budget_leftInLimits": "left in your limits",
+			"budget_holds": "what the budget holds",
+			"budget_heldForOthers": "held for others",
+			"budget_planCost": "plan cost",
+			"budget_typicalIncome": "usual income",
+			"envelope_left": "the envelope",
+			"netWorth": "net worth",
+			"accounts_balance": "account balance",
+			"owed_owedToYou": "what people owe you",
+			"owed_youOwe": "what you owe",
+			"balance_person": "your balance with this person",
+			"other": "another figure",
+			"spent": "your spending",
+			"notTracked": "not tracked",
+			"netWorthChange_exchange": "the exchange result",
+			"budget_totalDebt": "total debt",
+			"netWorthChange_income": "the change from income",
+			"netWorthChange_spending": "the change from spending",
+			"netWorthChange_notLogged": "the change from Not logged",
+			"netWorthChange_revaluation": "the change from rates and prices",
+			"netWorthChange_opened": "the change from accounts added",
+			"netWorthChange_closed": "the change from accounts closed"
+		},
+		"debt": {
+			"label": "Debt-free by",
+			"never": "Not in sight",
+			"neverAtPayment": "Never at this payment",
+			"diverges": "The interest is more than you pay each month, so the balance keeps growing. Raise the payment to see a date.",
+			"incomplete": "No rate yet for {currencies}, so the total is not worked out.",
+			"sentence": "{total} across {count, plural, one {# debt} other {# debts}}. About {months, plural, one {# month} other {# months}} at this plan.",
+			"capped": "At the minimums the interest outruns the payments.",
+			"leftToSpend": "Left to spend {amount}",
+			"unavailable": "Your debts could not load."
+		}
 	},
 	"wealth": {
 		"title": "Wealth",
@@ -480,7 +552,6 @@
 			"earlier": "Previous day"
 		},
 		"whyTitle": "Why it changed in {days} days",
-		"whyTotal": "Change",
 		"parts": {
 			"income": "Income",
 			"spending": "Spending",
@@ -540,7 +611,7 @@
 			"submit": "Update balance",
 			"netWorth": "Net worth",
 			"notLogged": "Not logged",
-			"notLoggedHint": "The difference is recorded as Not logged, not as income or spending.",
+			"notLoggedHint": "Your income and spending stay as they are. The difference is recorded as Not logged.",
 			"same": "That is already the balance, so nothing changes.",
 			"toast": "{name} is now {amount}"
 		}

@@ -41,11 +41,6 @@ export function ChangeParts({
 						value={money(change.parts[part], { sign: "exceptZero" })}
 					/>
 				))}
-				<Line
-					emphasis
-					label={t("whyTotal")}
-					value={money(change.total, { sign: "exceptZero" })}
-				/>
 			</View>
 		</View>
 	);

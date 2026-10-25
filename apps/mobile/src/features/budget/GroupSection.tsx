@@ -1,11 +1,14 @@
+import { formatPercent } from "@retrospend/domain/format-percent";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useFormatLocale } from "@/lib/intl";
 import { useTheme } from "@/theme";
 import { EnvelopeRow, useColumnWidth } from "./EnvelopeRow";
-import { groupLeft, groupStartsOpen } from "./rows";
+import { groupLeft, groupStartsOpen, isLimits } from "./rows";
 import type { BudgetEnvelope, BudgetGroup, BudgetStyle } from "./source";
+import { joinNames } from "./verdict";
 
 /**
  * A group of envelopes under a header that carries the group's Left (and, on
@@ -25,20 +28,38 @@ export function GroupSection({
 	onOpenEnvelope: (envelope: BudgetEnvelope) => void;
 }) {
 	const t = useTranslations("mobile.budget.group");
+	const tb = useTranslations("mobile.budget");
 	const money = useMoneyText();
 	const column = useColumnWidth();
 	const { color, size, space, type } = useTheme();
 	const [open, setOpen] = useState(groupStartsOpen(style, group));
 	const name = group.name ?? t(group.role ?? "ungrouped");
 	const left = money(groupLeft(style, group));
-	const over = group.totals.over.minor > 0;
+	const locale = useFormatLocale();
 	const count = t("count", { count: group.totals.count });
+	// The envelopes over are named once here, without an amount: how far over is
+	// each row's Left and the page's notice. A % target (50/30/20) leads with
+	// what was planned and spent, the server's own basis points.
+	const overNames = joinNames(
+		group.envelopes.filter((e) => e.status === "OVERSPENT").map((e) => e.name),
+		(head, last) => tb("listAnd", { head, last }),
+	);
+	const target = group.target;
+	const percents =
+		target?.kind === "PERCENT_OF_INCOME" &&
+		!target.incomplete &&
+		target.plannedBp != null &&
+		target.spentBp != null
+			? t("percents", {
+					planned: formatPercent(target.plannedBp, { locale, digits: 0 }),
+					spent: formatPercent(target.spentBp, { locale, digits: 0 }),
+				})
+			: null;
 	const spoken = [
 		name,
+		percents,
 		count,
-		over
-			? t("overBy", { amount: money(group.totals.over, { sign: "never" }) })
-			: null,
+		overNames ? t("overNames", { names: overNames }) : null,
 		t("leftSpoken", { amount: left }),
 	]
 		.filter(Boolean)
@@ -90,10 +111,11 @@ export function GroupSection({
 						{name}
 					</Text>
 					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+						{percents ? `${percents} · ` : ""}
 						{count}
-						{over ? (
+						{overNames ? (
 							<Text style={{ color: color.attentionText }}>
-								{` · ${t("overBy", { amount: money(group.totals.over, { sign: "never" }) })}`}
+								{` · ${t("overNames", { names: overNames })}`}
 							</Text>
 						) : null}
 					</Text>
@@ -111,6 +133,7 @@ export function GroupSection({
 						<EnvelopeRow
 							envelope={envelope}
 							key={envelope.id}
+							limits={isLimits(style)}
 							onPress={() => onOpenEnvelope(envelope)}
 							wide={wide}
 						/>

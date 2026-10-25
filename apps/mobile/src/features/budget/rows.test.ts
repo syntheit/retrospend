@@ -58,13 +58,21 @@ describe("group folding", () => {
 });
 
 describe("the line under an envelope", () => {
-	it("says Over by with the amount it is over", () => {
+	it("says Over and leaves how far to the Left on the same row", () => {
 		expect(
 			statusLine(envelope({ status: "OVERSPENT", left: ars(-2530) })),
-		).toEqual({
-			kind: "over",
-			amount: ars(-2530),
+		).toEqual({ kind: "over" });
+	});
+
+	it("a Weekly envelope says what is left this week, but over beats it", () => {
+		const week = { amount: ars(7000) } as BudgetEnvelope["leftThisWeek"];
+		expect(statusLine(envelope({ leftThisWeek: week }))).toEqual({
+			kind: "week",
+			amount: ars(7000),
 		});
+		expect(
+			statusLine(envelope({ status: "OVERSPENT", leftThisWeek: week })),
+		).toEqual({ kind: "over" });
 	});
 
 	it("says what an underfunded envelope still needs", () => {
@@ -106,7 +114,7 @@ describe("what a tap on an envelope can do", () => {
 		});
 	});
 
-	it("an open month assigns, moves and covers what is over", () => {
+	it("only the open month assigns, moves and covers what is over", () => {
 		expect(envelopeActions(over, "FLEX", "open")).toEqual({
 			assign: true,
 			move: true,
@@ -116,10 +124,14 @@ describe("what a tap on an envelope can do", () => {
 		expect(envelopeActions(envelope(), "FLEX", "open").cover).toBe(false);
 	});
 
-	it("the next month can be planned but has nothing to cover", () => {
-		const next = envelopeActions(over, "FLEX", "next");
-		expect(next.assign).toBe(true);
-		expect(next.cover).toBe(false);
+	it("planning the next month is on the web for now", () => {
+		expect(envelopeActions(over, "FLEX", "next")).toEqual({
+			assign: false,
+			move: false,
+			cover: false,
+			limit: false,
+		});
+		expect(envelopeActions(over, "LIMITS", "next").limit).toBe(false);
 	});
 
 	it("Limits edits the limit and nothing else", () => {

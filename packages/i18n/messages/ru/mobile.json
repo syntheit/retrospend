@@ -266,7 +266,8 @@
 			"pick": "Выбрать месяц",
 			"closedItem": "{month}, закрыт",
 			"planItem": "Спланировать {month}",
-			"closed": "{month} закрыт. То, что здесь, только для чтения."
+			"closed": "{month} закрыт. То, что здесь, только для чтения.",
+			"planning": "Планирование {month} пока доступно только в веб-версии. Здесь только просмотр."
 		},
 		"verdict": {
 			"label": {
@@ -327,10 +328,11 @@
 			"SAVINGS": "Накопления",
 			"ungrouped": "Другие конверты",
 			"count": "{count, plural, one {# конверт} few {# конверта} many {# конвертов} other {# конверта}}",
-			"overBy": "Превышен на {amount}",
 			"leftSpoken": "осталось {amount}",
 			"expand": "Показать конверты",
-			"collapse": "Скрыть конверты"
+			"collapse": "Скрыть конверты",
+			"percents": "Запланировано {planned} · потрачено {spent}",
+			"overNames": "Превышены: {names}"
 		},
 		"column": {
 			"assigned": "Назначено",
@@ -339,11 +341,14 @@
 			"left": "Осталось"
 		},
 		"row": {
-			"over": "Превышен на {amount}",
+			"over": "Превышен",
 			"needs": "Нужно {amount}",
 			"funded": "Пополнен",
 			"noRate": "Пока нет курса для {currency}",
-			"leftSpoken": "осталось {amount}"
+			"leftSpoken": "осталось {amount}",
+			"leftThisWeek": "на этой неделе осталось {amount}",
+			"wideSpoken": "назначено {assigned}, потрачено {spent}, осталось {left}",
+			"wideSpokenLimit": "лимит {assigned}, потрачено {spent}, осталось {left}"
 		},
 		"envelope": {
 			"assigned": "Назначено",
@@ -406,7 +411,8 @@
 			"fromNowOn": "С этого момента",
 			"amount": "Новый лимит",
 			"submit": "Сохранить лимит",
-			"toast": "Лимит «{name}» теперь {amount}"
+			"toast": "Лимит «{name}» теперь {amount}",
+			"noLimit": "Без лимита"
 		},
 		"usePlan": {
 			"title": "Использовать мой план",
@@ -442,15 +448,16 @@
 			"checking": "Проверяем",
 			"error": "Не удалось проверить. Повторите.",
 			"changes": "Что изменится",
-			"stays": "Что останется",
-			"none": "ничего",
 			"beforeAfter": "{before}, затем {after}",
 			"leftOf": "Осталось в «{name}»",
-			"leftToSpend": "Осталось потратить",
-			"keeps": "{amount} остаётся",
 			"nothing": "Это ничего не меняет.",
 			"envelopeFallback": "Конверт",
-			"refused": "Так сделать нельзя. Измените сумму."
+			"refused": "Так сделать нельзя. Измените сумму.",
+			"nothingElse": "Больше ничего не меняется: {list} остаются как есть.",
+			"nothingElseOne": "Больше ничего не меняется: {item} остаётся как есть.",
+			"noneChange": "Без изменений: {list}.",
+			"unavailable": "Не удалось проверить: {list}.",
+			"notAvailable": "Недоступно (пока нет курса)"
 		},
 		"write": {
 			"saving": "Сохраняем",
@@ -459,7 +466,72 @@
 			"undoError": "Не удалось отменить. Возможно, всё уже изменилось.",
 			"amountInvalid": "Используйте цифры и столько знаков после запятой, сколько есть у этой валюты."
 		},
-		"listAnd": "{head} и {last}"
+		"listAnd": "{head} и {last}",
+		"figures": {
+			"budget_notPlannedYet": "Ещё не запланировано",
+			"budget_leftToSpend": "Можно потратить",
+			"budget_leftThisWeek": "Осталось на неделю",
+			"budget_leftInLimits": "Осталось в лимитах",
+			"budget_holds": "Что держит бюджет",
+			"budget_heldForOthers": "Удерживается для других",
+			"budget_planCost": "Стоимость плана",
+			"budget_typicalIncome": "Обычный доход",
+			"envelope_left": "Конверт",
+			"netWorth": "Капитал",
+			"accounts_balance": "Баланс счёта",
+			"owed_owedToYou": "Вам должны",
+			"owed_youOwe": "Вы должны",
+			"balance_person": "Баланс с этим человеком",
+			"other": "Другая цифра",
+			"spent": "Ваши расходы",
+			"notTracked": "Вне учёта",
+			"netWorthChange_exchange": "Результат обмена",
+			"budget_totalDebt": "Общий долг",
+			"netWorthChange_income": "Изменение из-за доходов",
+			"netWorthChange_spending": "Изменение из-за трат",
+			"netWorthChange_notLogged": "Изменение из-за «Не учтено»",
+			"netWorthChange_revaluation": "Изменение из-за курсов и цен",
+			"netWorthChange_opened": "Изменение из-за добавленных счетов",
+			"netWorthChange_closed": "Изменение из-за закрытых счетов"
+		},
+		"figuresInline": {
+			"budget_notPlannedYet": "Ещё не запланировано",
+			"budget_leftToSpend": "доступно к тратам",
+			"budget_leftThisWeek": "остаток на неделю",
+			"budget_leftInLimits": "остаток в лимитах",
+			"budget_holds": "то, что держит бюджет",
+			"budget_heldForOthers": "удерживаемое для других",
+			"budget_planCost": "стоимость плана",
+			"budget_typicalIncome": "обычный доход",
+			"envelope_left": "конверт",
+			"netWorth": "капитал",
+			"accounts_balance": "баланс счёта",
+			"owed_owedToYou": "то, что вам должны",
+			"owed_youOwe": "то, что вы должны",
+			"balance_person": "ваш баланс с этим человеком",
+			"other": "другая цифра",
+			"spent": "ваши расходы",
+			"notTracked": "то, что вне учёта",
+			"netWorthChange_exchange": "результат обмена",
+			"budget_totalDebt": "общий долг",
+			"netWorthChange_income": "изменение из-за доходов",
+			"netWorthChange_spending": "изменение из-за трат",
+			"netWorthChange_notLogged": "изменение из-за «Не учтено»",
+			"netWorthChange_revaluation": "изменение из-за курсов и цен",
+			"netWorthChange_opened": "изменение из-за добавленных счетов",
+			"netWorthChange_closed": "изменение из-за закрытых счетов"
+		},
+		"debt": {
+			"label": "Без долгов к",
+			"never": "Пока не видно",
+			"neverAtPayment": "Никогда при таком платеже",
+			"diverges": "Проценты больше ежемесячного платежа, поэтому долг продолжает расти. Увеличьте платёж, чтобы увидеть дату.",
+			"incomplete": "Для {currencies} ещё нет курса, поэтому сумма не рассчитана.",
+			"sentence": "Всего {total}, {count, plural, one {# долг} few {# долга} other {# долгов}}. Около {months, plural, one {# месяца} few {# месяцев} other {# месяцев}} при этом плане.",
+			"capped": "При минимальных платежах проценты растут быстрее выплат.",
+			"leftToSpend": "Осталось потратить {amount}",
+			"unavailable": "Не удалось загрузить долги."
+		}
 	},
 	"wealth": {
 		"title": "Капитал",
@@ -480,7 +552,6 @@
 			"earlier": "Предыдущий день"
 		},
 		"whyTitle": "Почему изменилось за {days} дн.",
-		"whyTotal": "Изменение",
 		"parts": {
 			"income": "Доходы",
 			"spending": "Траты",
@@ -540,7 +611,7 @@
 			"submit": "Обновить баланс",
 			"netWorth": "Капитал",
 			"notLogged": "Не учтено",
-			"notLoggedHint": "Разница записывается как «Не учтено», а не как доход или трата.",
+			"notLoggedHint": "Ваши доходы и траты не меняются. Разница записывается как «Не учтено».",
 			"same": "Это уже текущий баланс, поэтому ничего не изменится.",
 			"toast": "На счёте «{name}» теперь {amount}"
 		}

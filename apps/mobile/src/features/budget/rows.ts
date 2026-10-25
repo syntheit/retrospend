@@ -38,22 +38,28 @@ export function groupLeft(style: BudgetStyle, group: BudgetGroup): Money {
 }
 
 export type StatusLine =
-	| { kind: "over"; amount: Money }
+	| { kind: "over" }
+	| { kind: "week"; amount: Money }
 	| { kind: "needs"; amount: Money }
 	| { kind: "funded" }
 	| { kind: "noRate"; currency: string };
 
 /**
  * The line under an envelope's name. Words carry the status as well as the
- * color: an over envelope says "Over by", never only turns red.
+ * color: an over envelope says "Over", never only turns red. How far over is
+ * its Left, on the same row, and the notice says it once for the page.
+ * Weekly books say what is left this week (the server's own figure).
  */
 export function statusLine(e: BudgetEnvelope): StatusLine | null {
 	if (e.target?.incomplete) {
 		return { kind: "noRate", currency: e.target.foreign?.currency ?? "" };
 	}
+	if (e.status !== "OVERSPENT" && e.leftThisWeek) {
+		return { kind: "week", amount: e.leftThisWeek.amount };
+	}
 	switch (e.status) {
 		case "OVERSPENT":
-			return { kind: "over", amount: e.left };
+			return { kind: "over" };
 		case "UNDERFUNDED":
 			return e.target ? { kind: "needs", amount: e.target.need } : null;
 		case "FUNDED":
@@ -81,9 +87,10 @@ export interface EnvelopeActions {
 }
 
 /**
- * A closed month is read-only. A Limits book edits limits, not assigned
- * money, and has no pool to cover from. The month after the open one can be
- * planned but nothing is spent in it, so it has nothing to cover.
+ * Only the open month changes here. A closed month is read-only, and
+ * planning the month after is on the web for now (the sheets write the open
+ * month, so they would not match what the next month's page lists). A Limits
+ * book edits limits, not assigned money, and has no pool to cover from.
  */
 export function envelopeActions(
 	e: BudgetEnvelope,
@@ -91,12 +98,12 @@ export function envelopeActions(
 	month: "closed" | "open" | "next",
 ): EnvelopeActions {
 	const none = { assign: false, move: false, cover: false, limit: false };
-	if (month === "closed") return none;
+	if (month !== "open") return none;
 	if (isLimits(style)) return { ...none, limit: true };
 	return {
 		assign: true,
 		move: true,
-		cover: month === "open" && e.status === "OVERSPENT",
+		cover: e.status === "OVERSPENT",
 		limit: false,
 	};
 }

@@ -1,4 +1,4 @@
-import { changesAnything, previewRows } from "./preview";
+import { changesAnything, envelopeMoves, hiddenFor } from "./preview";
 import type { BudgetPreview } from "./source";
 
 const ars = (minor: number) => ({ minor, currency: "ARS" });
@@ -36,34 +36,14 @@ const assign = {
 	},
 } as unknown as BudgetPreview;
 
-describe("budget preview rows", () => {
-	it("lists the envelopes the write moved, the pool, and what stays", () => {
-		expect(previewRows(assign)).toEqual({
-			envelopes: [{ id: "e1", before: ars(-2530000), after: ars(-1530000) }],
-			pool: { before: ars(-206800000), after: ars(-207800000) },
-			leftToSpend: { stays: [ars(-164267100)] },
-		});
-	});
-
-	it("reads Left to spend as a change when the write moves it", () => {
-		const moved = {
-			...assign,
-			changes: [
-				{
-					id: "budget.leftToSpend",
-					currency: "ARS",
-					before: ars(100),
-					after: ars(90),
-					delta: ars(-10),
-					figureAfter: [ars(90)],
-				},
-			],
-			unchanged: [],
-		} as unknown as BudgetPreview;
-		expect(previewRows(moved).leftToSpend).toEqual({
-			change: { before: ars(100), after: ars(90) },
-		});
-		expect(previewRows(moved).pool).toBeNull();
+describe("budget preview", () => {
+	it("lists the envelopes the write moved, and hides their aggregate figure", () => {
+		const moves = envelopeMoves(assign);
+		expect(moves).toEqual([
+			{ id: "e1", before: ars(-2530000), after: ars(-1530000) },
+		]);
+		expect(hiddenFor(moves)).toEqual(["envelope.left"]);
+		expect(hiddenFor([])).toEqual([]);
 	});
 
 	it("survives an answer with no movement detail (Use my plan)", () => {
@@ -71,19 +51,25 @@ describe("budget preview rows", () => {
 			...assign,
 			detail: { kind: "envelope.usePlan", result: { batchId: "b", lines: [] } },
 		} as unknown as BudgetPreview;
-		expect(previewRows(plain).envelopes).toEqual([]);
+		expect(envelopeMoves(plain)).toEqual([]);
 		expect(
-			previewRows({ ...plain, detail: undefined } as BudgetPreview).envelopes,
+			envelopeMoves({ ...plain, detail: undefined } as BudgetPreview),
 		).toEqual([]);
 	});
 
 	it("says whether the write would do anything", () => {
-		expect(changesAnything(previewRows(assign))).toBe(true);
+		expect(changesAnything(assign)).toBe(true);
 		const nothing = {
 			...assign,
 			changes: [],
 			detail: { kind: "x", result: { envelopes: [] } },
 		} as unknown as BudgetPreview;
-		expect(changesAnything(previewRows(nothing))).toBe(false);
+		expect(changesAnything(nothing)).toBe(false);
+		// A figure that moved counts even when no envelope line is listed.
+		const figureOnly = {
+			...nothing,
+			changes: [assign.changes[0]],
+		} as unknown as BudgetPreview;
+		expect(changesAnything(figureOnly)).toBe(true);
 	});
 });

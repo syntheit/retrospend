@@ -4,19 +4,19 @@ import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { SyncIssues } from "@/features/entry/SyncIssues";
 import { ListRow, StaleNote } from "@/features/read/parts";
+import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";
 import { BudgetHero } from "./BudgetHero";
 import type { OpenSheet } from "./BudgetSheets";
+import { DebtHero } from "./DebtHero";
 import { ColumnTitles } from "./EnvelopeRow";
 import { GroupSection } from "./GroupSection";
 import { MonthBar } from "./MonthBar";
 import { type MonthBounds, type MonthKind, monthDate } from "./months";
 import { Notice, PlanSummary } from "./PlanSummary";
 import { isLimits, overEnvelopes } from "./rows";
-import { type BudgetMonth, envelopesOf } from "./source";
+import { type BudgetMonth, envelopesOf, type PayoffProjection } from "./source";
 import type { VerdictSheet } from "./verdict";
-
-const WEALTH = "/budget/wealth" as const;
 
 /**
  * The loaded Budget page: month switcher, hero and notice, the pool, then the
@@ -27,6 +27,7 @@ export function BudgetBody({
 	data,
 	kind,
 	bounds,
+	payoff,
 	wide,
 	stale,
 	onSelectMonth,
@@ -35,6 +36,8 @@ export function BudgetBody({
 	data: BudgetMonth;
 	kind: MonthKind;
 	bounds: MonthBounds;
+	/** Pay off debt books lead with the server's debt-free projection. */
+	payoff: PayoffProjection | null;
 	wide: boolean;
 	stale: string | null;
 	onSelectMonth: (month: number) => void;
@@ -64,7 +67,10 @@ export function BudgetBody({
 			});
 	};
 
-	const hero = closed ? (
+	// Only the open month acts: a closed one is read-only, and planning the
+	// next one is on the web for now (the sheets write the open month).
+	const open = kind === "open";
+	const note = (text: string) => (
 		<Text
 			style={{
 				color: color.fg2,
@@ -73,18 +79,32 @@ export function BudgetBody({
 				paddingTop: space[2],
 			}}
 		>
-			{t("month.closed", {
-				month: format.dateTime(monthDate(key), {
-					month: "long",
-					timeZone: "UTC",
-				}),
-			})}
+			{text}
 		</Text>
+	);
+	const monthName = format.dateTime(monthDate(key), {
+		month: "long",
+		timeZone: "UTC",
+	});
+	const lead =
+		style === "DEBT_PAYOFF" && !closed ? (
+			<DebtHero data={data} payoff={payoff} />
+		) : (
+			<BudgetHero
+				canAct={open}
+				data={data}
+				names={names}
+				onAction={openVerdict}
+			/>
+		);
+	const hero = closed ? (
+		note(t("month.closed", { month: monthName }))
 	) : (
 		<>
-			<BudgetHero canAct data={data} names={names} onAction={openVerdict} />
+			{lead}
+			{kind === "next" ? note(t("month.planning", { month: monthName })) : null}
 			<Notice
-				canAct
+				canAct={open}
 				data={data}
 				onCover={() => openVerdict("cover")}
 				onUsePlan={() => onOpen({ kind: "usePlan" })}
@@ -137,7 +157,7 @@ export function BudgetBody({
 			<View style={{ paddingTop: space[4] }}>
 				<ListRow
 					accessibilityLabel={t("wealth")}
-					onPress={() => router.navigate(WEALTH)}
+					onPress={() => router.navigate(wealthHref())}
 				>
 					<Text
 						style={{ flex: 1, color: color.brand, fontSize: type.body.size }}

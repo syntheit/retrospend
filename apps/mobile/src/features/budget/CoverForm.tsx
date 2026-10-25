@@ -9,7 +9,7 @@ import { minorOf, readAmount } from "./amount";
 import { BudgetChanges } from "./BudgetChanges";
 import { coverBody } from "./bodies";
 import { AmountField, Note, useAmountLocale } from "./parts";
-import { changesAnything, previewRows } from "./preview";
+import { changesAnything } from "./preview";
 import { type CoverOverview, envelopeById } from "./source";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
 import { useUndoToast } from "./useUndoToast";
@@ -118,7 +118,7 @@ export function CoverForm({
 	const ready =
 		flow.status === "ready" &&
 		flow.preview !== null &&
-		changesAnything(previewRows(flow.preview));
+		changesAnything(flow.preview);
 
 	const optionLabel = (s: CoverOverview["sources"][number]) => {
 		const base = t("source", {

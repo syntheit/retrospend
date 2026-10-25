@@ -21,9 +21,11 @@ export function useStatusText() {
 		if (!line) return null;
 		switch (line.kind) {
 			case "over":
+				return { text: t("over"), attention: true };
+			case "week":
 				return {
-					text: t("over", { amount: money(line.amount, { sign: "never" }) }),
-					attention: true,
+					text: t("leftThisWeek", { amount: money(line.amount) }),
+					attention: false,
 				};
 			case "needs":
 				return {
@@ -48,10 +50,13 @@ export function useStatusText() {
  */
 export function EnvelopeRow({
 	envelope,
+	limits,
 	wide,
 	onPress,
 }: {
 	envelope: BudgetEnvelope;
+	/** A Limits book calls Assigned "limit". */
+	limits: boolean;
 	wide: boolean;
 	onPress: () => void;
 }) {
@@ -65,7 +70,13 @@ export function EnvelopeRow({
 	const spoken = [
 		envelope.name,
 		status?.text,
-		t("leftSpoken", { amount: left }),
+		wide
+			? t(limits ? "wideSpokenLimit" : "wideSpoken", {
+					assigned: money(envelope.assigned),
+					spent: money(envelope.spent),
+					left,
+				})
+			: t("leftSpoken", { amount: left }),
 	]
 		.filter(Boolean)
 		.join(", ");

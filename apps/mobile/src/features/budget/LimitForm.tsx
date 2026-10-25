@@ -28,6 +28,9 @@ export function LimitForm({
 	const money = useMoneyText();
 	const locale = useAmountLocale();
 	const currency = data.book.currency;
+	// The limit now is the envelope's monthly target (the web's own start).
+	const current =
+		envelope.target?.kind === "MONTHLY" ? envelope.target.amount : null;
 	const [scope, setScope] = useState<LimitScope>("THIS_MONTH");
 	const [draft, setDraft] = useState("");
 	const entered = readAmount(draft, locale, currency);
@@ -88,7 +91,7 @@ export function LimitForm({
 			ready={flow.status === "ready"}
 			submitLabel={t("submit")}
 		>
-			<Line label={t("now")} value={money(envelope.assigned)} />
+			<Line label={t("now")} value={current ? money(current) : t("noLimit")} />
 			<Segmented
 				accessibilityLabel={t("scope")}
 				onChange={setScope}

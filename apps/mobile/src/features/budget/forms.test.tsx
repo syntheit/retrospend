@@ -86,8 +86,20 @@ const data = {
 	groups: [{ id: "g1", envelopes: [envelope] }],
 } as unknown as BudgetMonth;
 
-const preview = (before: number, after: number) => ({
+const preview = (before: number, after: number, extra = false) => ({
 	changes: [
+		...(extra
+			? [
+					{
+						id: "budget.leftInLimits",
+						currency: "ARS",
+						before: ars(500_000),
+						after: ars(450_000),
+						delta: ars(-50_000),
+						figureAfter: [],
+					},
+				]
+			: []),
 		{
 			id: "budget.notPlannedYet",
 			currency: "ARS",
@@ -98,7 +110,7 @@ const preview = (before: number, after: number) => ({
 		},
 	],
 	unchanged: [{ id: "budget.leftToSpend", lines: [ars(-18_090_000)] }],
-	unavailable: [],
+	unavailable: extra ? [{ id: "netWorth", before: [ars(1)], after: null }] : [],
 	detail: {
 		kind: "envelope.assign",
 		result: {
@@ -115,7 +127,11 @@ const preview = (before: number, after: number) => ({
 });
 
 function fakeApi(
-	options: { previewFails?: boolean; previewRefusedWith?: number } = {},
+	options: {
+		previewFails?: boolean;
+		previewRefusedWith?: number;
+		extra?: boolean;
+	} = {},
 ) {
 	const calls: { route: string; input: unknown; key?: string }[] = [];
 	const api = {
@@ -128,7 +144,7 @@ function fakeApi(
 						status: options.previewRefusedWith,
 					});
 				const minor = Math.round(Number(input.items[0]?.amount) * 100);
-				return preview(0, minor);
+				return preview(0, minor, options.extra);
 			},
 			assign: async (
 				input: unknown,
@@ -296,8 +312,30 @@ describe("Assign money", () => {
 				typeof n.props.children === "string" ? [n.props.children] : [],
 			)
 			.join("|");
-		expect(texts).toContain("This can not be done as it is");
+		expect(texts).toContain("This cannot be done as it is");
 		expect(calls.some((c) => c.route === "assign")).toBe(false);
+		act(() => tree.unmount());
+	});
+
+	it("lays out every figure the dry run lists, what stays and what could not be checked", async () => {
+		const { api } = fakeApi({ extra: true });
+		mockSession.api = api;
+		const { tree } = await open();
+		press(tree, "5");
+		await wait(400);
+		const texts = tree.root
+			.findAll(() => true)
+			.flatMap((n) =>
+				typeof n.props.children === "string" ? [n.props.children] : [],
+			)
+			.join("|");
+		// Not only the envelope and the pool: the hero figure of a Limits book moves too.
+		expect(texts).toContain("Left in your limits");
+		expect(texts).toContain("To assign");
+		expect(texts).toContain(
+			"Nothing else changes: left to spend stays as it is.",
+		);
+		expect(texts).toContain("Could not check net worth.");
 		act(() => tree.unmount());
 	});
 });

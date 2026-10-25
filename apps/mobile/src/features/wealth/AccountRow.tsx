@@ -6,11 +6,12 @@ import { ListRow } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { isLiability } from "./accounts";
+import { accountHref } from "./routes";
 import type { Account } from "./source";
 
 /** Where an account opens: its own screen, or the detail pane on a wide screen. */
 export function openAccount(id: string) {
-	router.navigate(`/budget/wealth/${id}`);
+	router.navigate(accountHref(id));
 }
 
 /**

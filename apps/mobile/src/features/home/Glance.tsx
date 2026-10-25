@@ -4,6 +4,7 @@ import { useTranslations } from "use-intl";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { ListRow } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";
 import { type Glance as GlanceData, heroOf } from "./source";
 
@@ -156,7 +157,7 @@ export function Glance({
 			/>
 			<Figure
 				label={t("netWorth")}
-				onPress={() => router.navigate("/budget/wealth")}
+				onPress={() => router.navigate(wealthHref())}
 				value={glance.netWorth.value}
 			/>
 			{glance.dollarToday ? (

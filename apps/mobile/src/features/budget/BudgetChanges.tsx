@@ -1,14 +1,18 @@
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { figureLines } from "./figures";
 import { ChangeList, type ChangeRow } from "./parts";
-import { previewRows } from "./preview";
+import { envelopeMoves, hiddenFor } from "./preview";
 import { type BudgetMonth, type BudgetPreview, envelopeById } from "./source";
+import { useFigureLabel } from "./useFigureLabel";
 import type { PreviewStatus } from "./useMoneyWrite";
 
 /**
- * The server's dry run of a budget write, worded: each envelope's Left, the
- * pool, and Left to spend (changed, or what stays). Nothing is added up here;
- * every amount is a field of the preview.
+ * The server's dry run of a budget write, laid out like the web's block:
+ * each envelope's Left, every figure that moved (the pool, Left to spend,
+ * Left in your limits, what the budget holds...), what was checked and stays,
+ * and what could not be checked. Nothing is added up here; every amount is a
+ * field of the preview.
  */
 export function BudgetChanges({
 	status,
@@ -21,58 +25,46 @@ export function BudgetChanges({
 }) {
 	const t = useTranslations("mobile.budget");
 	const money = useMoneyText();
-	const rows = preview ? previewRows(preview) : null;
-	const pairText = (before: string, after: string) =>
-		t("preview.beforeAfter", { before, after });
-	const none = t("preview.none");
+	const label = useFigureLabel(t(`pool.${data.toAssign.poolName}`));
+	const side = (value: { minor: number; currency: string } | null) =>
+		value ? money(value) : t("preview.notAvailable");
+	const pair = (
+		before: { minor: number; currency: string } | null,
+		after: { minor: number; currency: string } | null,
+	) => t("preview.beforeAfter", { before: side(before), after: side(after) });
 
-	const changes: ChangeRow[] = [];
-	const stays: ChangeRow[] = [];
-	if (rows) {
-		for (const move of rows.envelopes) {
-			if (move.before.minor === move.after.minor) continue;
-			const name =
-				envelopeById(data, move.id)?.name ?? t("preview.envelopeFallback");
-			const label = t("preview.leftOf", { name });
-			const value = pairText(money(move.before), money(move.after));
-			changes.push({
-				key: `e:${move.id}`,
-				label,
-				value,
-				spoken: `${label}, ${value}`,
-			});
-		}
-		// A Limits book has no pool on screen, so its movement is not a line either.
-		if (rows.pool && data.book.style !== "LIMITS") {
-			const label = t(`pool.${data.toAssign.poolName}`);
-			const value = pairText(
-				rows.pool.before ? money(rows.pool.before) : none,
-				rows.pool.after ? money(rows.pool.after) : none,
-			);
-			changes.push({ key: "pool", label, value, spoken: `${label}, ${value}` });
-		}
-		if (rows.leftToSpend && "change" in rows.leftToSpend) {
-			const { before, after } = rows.leftToSpend.change;
-			const label = t("preview.leftToSpend");
-			const value = pairText(
-				before ? money(before) : none,
-				after ? money(after) : none,
-			);
-			changes.push({ key: "left", label, value, spoken: `${label}, ${value}` });
-		} else if (rows.leftToSpend && rows.leftToSpend.stays.length > 0) {
-			const label = t("preview.leftToSpend");
-			const value = rows.leftToSpend.stays
-				.map((line) => t("preview.keeps", { amount: money(line) }))
-				.join(", ");
-			stays.push({ key: "left", label, value, spoken: `${label}, ${value}` });
-		}
+	const moves = preview ? envelopeMoves(preview) : [];
+	const lines = preview ? figureLines(preview, hiddenFor(moves)) : null;
+	const rows: ChangeRow[] = [];
+	for (const move of moves) {
+		if (move.before.minor === move.after.minor) continue;
+		const name =
+			envelopeById(data, move.id)?.name ?? t("preview.envelopeFallback");
+		const text = t("preview.leftOf", { name });
+		const value = pair(move.before, move.after);
+		rows.push({
+			key: `e:${move.id}`,
+			label: text,
+			value,
+			spoken: `${text}, ${value}`,
+		});
+	}
+	for (const change of lines?.changes ?? []) {
+		const name = label(change.id).name;
+		const value = pair(change.before, change.after);
+		rows.push({
+			key: change.key,
+			label: name,
+			value,
+			spoken: `${name}, ${value}`,
+		});
 	}
 	return (
 		<ChangeList
-			changes={changes}
-			nothing={t("preview.nothing")}
+			changes={rows}
 			status={status}
-			stays={stays}
+			stays={(lines?.stays ?? []).map((id) => label(id).inline)}
+			unavailable={(lines?.unavailable ?? []).map((id) => label(id).inline)}
 		/>
 	);
 }

@@ -41,10 +41,9 @@ const preview = {
 } as unknown as BalancePreview;
 
 describe("update balance preview", () => {
-	it("reads the balance, net worth and the Not logged difference", () => {
+	it("reads the account's own line and the Not logged difference", () => {
 		expect(balanceRows(preview)).toEqual({
 			balance: { before: ars(184000000), after: ars(190000000) },
-			netWorth: { before: ars(1196764895), after: ars(1202764895) },
 			notLogged: ars(6000000),
 		});
 		expect(isUnchanged(balanceRows(preview))).toBe(false);
@@ -61,25 +60,7 @@ describe("update balance preview", () => {
 		} as unknown as BalancePreview;
 		const rows = balanceRows(same);
 		expect(rows.notLogged).toBeNull();
-		expect(rows.netWorth).toBeNull();
 		expect(isUnchanged(rows)).toBe(true);
-	});
-
-	it("keeps a missing rate as null instead of a number", () => {
-		const noRate = {
-			...preview,
-			changes: [
-				{
-					id: "netWorth",
-					currency: "ARS",
-					before: null,
-					after: null,
-					delta: ars(0),
-					figureAfter: [],
-				},
-			],
-		} as unknown as BalancePreview;
-		expect(balanceRows(noRate).netWorth).toEqual({ before: null, after: null });
 	});
 
 	it("survives an answer with no detail", () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
 import { minorOf, readAmount, wireAmount } from "@/features/budget/amount";
+import { figureLines } from "@/features/budget/figures";
 import {
 	AmountField,
 	ChangeList,
@@ -9,12 +10,13 @@ import {
 	SheetBody,
 	useAmountLocale,
 } from "@/features/budget/parts";
+import { useFigureLabel } from "@/features/budget/useFigureLabel";
 import { useMoneyWrite, useWriteIds } from "@/features/budget/useMoneyWrite";
 import { useUndoToast } from "@/features/budget/useUndoToast";
 import { noSession, useApi, WriteFrame } from "@/features/budget/WriteFrame";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Sheet } from "@/ui/Sheet";
-import { balanceRows, isUnchanged } from "./balance";
+import { ACCOUNT_BALANCE, balanceRows, isUnchanged } from "./balance";
 import type { AccountDetail } from "./source";
 
 /**
@@ -71,22 +73,29 @@ export function UpdateBalanceSheet({
 	});
 
 	const rows = flow.preview ? balanceRows(flow.preview) : null;
-	const pair = (before: string, after: string) =>
-		tp("beforeAfter", { before, after });
+	const lines = flow.preview
+		? figureLines(flow.preview, [ACCOUNT_BALANCE])
+		: null;
+	const label = useFigureLabel();
+	const side = (value: { minor: number; currency: string } | null) =>
+		value ? money(value) : tp("notAvailable");
+	const pair = (
+		before: { minor: number; currency: string } | null,
+		after: { minor: number; currency: string } | null,
+	) => tp("beforeAfter", { before: side(before), after: side(after) });
 	const changes: ChangeRow[] = [];
 	if (rows?.balance) {
-		const value = pair(money(rows.balance.before), money(rows.balance.after));
-		changes.push({ key: "balance", label: account.name, value });
-	}
-	if (rows?.netWorth) {
-		const none = tp("none");
 		changes.push({
-			key: "net",
-			label: t("netWorth"),
-			value: pair(
-				rows.netWorth.before ? money(rows.netWorth.before) : none,
-				rows.netWorth.after ? money(rows.netWorth.after) : none,
-			),
+			key: "balance",
+			label: account.name,
+			value: pair(rows.balance.before, rows.balance.after),
+		});
+	}
+	for (const change of lines?.changes ?? []) {
+		changes.push({
+			key: change.key,
+			label: label(change.id).name,
+			value: pair(change.before, change.after),
 		});
 	}
 	if (rows?.notLogged) {
@@ -127,7 +136,14 @@ export function UpdateBalanceSheet({
 							<Note>{t("same")}</Note>
 						) : (
 							<>
-								<ChangeList changes={changes} status={flow.status} stays={[]} />
+								<ChangeList
+									changes={changes}
+									status={flow.status}
+									stays={(lines?.stays ?? []).map((id) => label(id).inline)}
+									unavailable={(lines?.unavailable ?? []).map(
+										(id) => label(id).inline,
+									)}
+								/>
 								{rows?.notLogged ? <Note>{t("notLoggedHint")}</Note> : null}
 							</>
 						)

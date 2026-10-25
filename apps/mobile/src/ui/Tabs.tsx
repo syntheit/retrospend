@@ -18,6 +18,9 @@ export function Tabs() {
 	// Android draws an M3 navigation bar in token colors; iOS keeps the
 	// system bar material and takes only the brand tint.
 	const m3 = Platform.OS === "android";
+	// The iPad sidebar shows all six destinations; the phone bar keeps five.
+	const ipad = Platform.OS === "ios" && Platform.isPad;
+	const tw = useTranslations("mobile.wealth");
 
 	return (
 		<NativeTabs
@@ -47,6 +50,15 @@ export function Tabs() {
 				<NativeTabs.Trigger.Label>{t("budget")}</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon md="donut_large" sf="chart.pie" />
 			</NativeTabs.Trigger>
+			{ipad ? (
+				<NativeTabs.Trigger name="wealth">
+					<NativeTabs.Trigger.Label>{tw("title")}</NativeTabs.Trigger.Label>
+					<NativeTabs.Trigger.Icon
+						md="account_balance"
+						sf="chart.line.uptrend.xyaxis"
+					/>
+				</NativeTabs.Trigger>
+			) : null}
 			<NativeTabs.Trigger name="people">
 				<NativeTabs.Trigger.Label>{t("people")}</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon md="group" sf="person.2" />

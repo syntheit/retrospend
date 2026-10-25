@@ -9,7 +9,7 @@ import { minorOf, readAmount } from "./amount";
 import { BudgetChanges } from "./BudgetChanges";
 import { type MoveDirection, moveRequest, type Peer } from "./bodies";
 import { AmountField, Note, useAmountLocale } from "./parts";
-import { changesAnything, previewRows } from "./preview";
+import { changesAnything } from "./preview";
 import { envelopesOf } from "./source";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
 import { useUndoToast } from "./useUndoToast";
@@ -125,7 +125,7 @@ export function MoveForm({
 	const ready =
 		flow.status === "ready" &&
 		flow.preview !== null &&
-		changesAnything(previewRows(flow.preview));
+		changesAnything(flow.preview);
 	const otherLabel = direction === "in" ? t("from") : t("to");
 
 	return (
