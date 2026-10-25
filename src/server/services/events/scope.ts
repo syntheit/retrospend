@@ -88,7 +88,7 @@ export async function appendRouteEvent(
 				data: fromOutput.data,
 			}),
 		);
-		notifyEventsCommitted();
+		notifyEventsCommitted(actor);
 	} catch (error) {
 		console.error(`Could not append the ${type} event:`, error);
 	}

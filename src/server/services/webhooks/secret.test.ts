@@ -85,8 +85,8 @@ describe("retry schedule", () => {
 		expect(retryDelayMs(MAX_ATTEMPTS)).toBeNull();
 	});
 
-	it("switches a webhook off after two exhausted deliveries", () => {
-		expect(AUTO_DISABLE_AFTER).toBe(2 * MAX_ATTEMPTS);
+	it("switches a webhook off after five deliveries ran out of retries", () => {
+		expect(AUTO_DISABLE_AFTER).toBe(5);
 	});
 });
 

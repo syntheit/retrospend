@@ -13,7 +13,9 @@ export type SendError =
 	| "connection_refused"
 	| "tls_error"
 	| "connection_error"
-	| "http_error";
+	| "http_error"
+	| "secret_unreadable"
+	| "internal_error";
 
 export type SendResult =
 	| { ok: true; statusCode: number }

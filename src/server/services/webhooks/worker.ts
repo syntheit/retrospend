@@ -1,7 +1,7 @@
 import { env } from "~/env";
 import { db } from "~/server/db";
 import { getAppSettings } from "~/server/services/settings";
-import type { Prisma, Webhook } from "~prisma";
+import type { Prisma } from "~prisma";
 import { type DeliveryOptions, deliverOnce, eventBody } from "./deliver";
 import {
 	AUTO_DISABLE_AFTER,
@@ -15,9 +15,14 @@ import type { Resolver } from "./ssrf";
 /**
  * The webhook worker. The app has no queue system, so this follows how the
  * import queue runs (in the web process, started after the work that needs
- * it) with one addition: a sweep any scheduler can call
- * (`POST /api/internal/webhooks`, authenticated by WORKER_API_KEY), so a
- * restart or a write that did not wake the worker never strands a delivery.
+ * it) and adds three things so a delivery is never stranded:
+ * - `startWebhookWorker` (called from instrumentation.ts at boot) sweeps
+ *   once and then every minute;
+ * - a sweep re-arms itself after 2 seconds while events remain that the
+ *   outbox horizon (see feed.ts) has not released yet, and at the next
+ *   retry time;
+ * - `POST /api/internal/webhooks` (WORKER_API_KEY) runs one sweep for any
+ *   scheduler.
  *
  * One sweep (`runWebhookWorker`) does three things, each safe to run from
  * several processes at once:
@@ -26,6 +31,14 @@ import type { Resolver } from "./ssrf";
  * 3. prunes what is past retention.
  * Webhook events themselves (`webhook.*`) are never delivered, so a webhook
  * cannot fire on its own changes.
+ *
+ * Delivery is at least once: a crash between a send and its record sends
+ * again. Receivers dedupe on Retrospend-Event-Id.
+ *
+ * Signing secrets are encrypted with a key derived from BETTER_AUTH_SECRET.
+ * Rotating that secret makes every stored webhook secret unreadable: each
+ * delivery then fails as `secret_unreadable` until its owner rotates the
+ * webhook's secret.
  */
 
 export type WorkerOptions = {
@@ -39,6 +52,9 @@ const FAN_OUT_BATCH = 200;
 const ATTEMPT_BATCH = 50;
 const PARALLEL = 5;
 const DAY_MS = 86_400_000;
+/** Wake-up while the horizon holds events back. */
+const HORIZON_RETRY_MS = 2000;
+const SWEEP_EVERY_MS = 60_000;
 
 /** `[]` matches everything; an entry is a full type or `<resource>.*`. */
 export function matchesEventFilter(filter: readonly string[], type: string) {
@@ -105,37 +121,45 @@ type DueDelivery = Prisma.WebhookDeliveryGetPayload<{
 	include: { webhook: true; event: true };
 }>;
 
-/** Takes a delivery for this worker; false when another worker got it first. */
-async function claim(delivery: DueDelivery, now: Date): Promise<boolean> {
+/**
+ * Takes a delivery for this worker by moving its next attempt to a lease
+ * time. Returns the lease, which the settle step must still find in place
+ * (so a worker that was slow past its lease cannot overwrite the worker
+ * that took over), or null when another worker got there first.
+ */
+async function claim(delivery: DueDelivery, now: Date): Promise<Date | null> {
+	const lease = new Date(now.getTime() + CLAIM_LEASE_MS);
 	const { count } = await db.webhookDelivery.updateMany({
 		where: {
 			id: delivery.id,
 			status: "PENDING",
 			nextAttemptAt: delivery.nextAttemptAt,
 		},
-		data: { nextAttemptAt: new Date(now.getTime() + CLAIM_LEASE_MS) },
+		data: { nextAttemptAt: lease },
 	});
-	return count === 1;
+	return count === 1 ? lease : null;
 }
 
-/** What a failed attempt does to the webhook: count it, and switch it off past the limit. */
-async function recordFailure(
-	hook: Webhook,
-	error: string,
+/**
+ * A delivery ran out of retries (or the target is blocked). Only these
+ * count against the webhook, so a short outage of the receiver, which fails
+ * many first attempts but then recovers, never switches it off.
+ */
+async function recordTerminalFailure(
+	webhookId: string,
+	blocked: boolean,
 	now: Date,
 ): Promise<void> {
-	const updated = await db.webhook.update({
-		where: { id: hook.id },
-		data: { consecutiveFailures: { increment: 1 } },
-	});
-	const blocked = error === "blocked_target";
-	if (
-		!updated.enabled ||
-		(!blocked && updated.consecutiveFailures < AUTO_DISABLE_AFTER)
-	)
-		return;
+	if (!blocked) {
+		const updated = await db.webhook.update({
+			where: { id: webhookId },
+			data: { consecutiveFailures: { increment: 1 } },
+		});
+		if (!updated.enabled || updated.consecutiveFailures < AUTO_DISABLE_AFTER)
+			return;
+	}
 	await db.webhook.update({
-		where: { id: hook.id },
+		where: { id: webhookId },
 		data: {
 			enabled: false,
 			disabledAt: now,
@@ -143,7 +167,7 @@ async function recordFailure(
 		},
 	});
 	await db.webhookDelivery.updateMany({
-		where: { webhookId: hook.id, status: "PENDING" },
+		where: { webhookId, status: "PENDING" },
 		data: {
 			status: "FAILED",
 			nextAttemptAt: null,
@@ -156,12 +180,18 @@ async function settle(
 	delivery: DueDelivery,
 	result: SendResult,
 	now: Date,
+	lease: Date,
 ): Promise<void> {
 	const attempts = delivery.attempts + 1;
 	const base = { attempts, lastAttemptAt: now };
+	const owned = {
+		id: delivery.id,
+		status: "PENDING" as const,
+		nextAttemptAt: lease,
+	};
 	if (result.ok) {
-		await db.webhookDelivery.update({
-			where: { id: delivery.id },
+		const { count } = await db.webhookDelivery.updateMany({
+			where: owned,
 			data: {
 				...base,
 				status: "SUCCEEDED",
@@ -171,16 +201,17 @@ async function settle(
 				deliveredAt: now,
 			},
 		});
-		await db.webhook.update({
-			where: { id: delivery.webhookId },
-			data: { consecutiveFailures: 0 },
-		});
+		if (count === 1)
+			await db.webhook.update({
+				where: { id: delivery.webhookId },
+				data: { consecutiveFailures: 0 },
+			});
 		return;
 	}
-	const wait =
-		result.error === "blocked_target" ? null : retryDelayMs(attempts);
-	await db.webhookDelivery.update({
-		where: { id: delivery.id },
+	const blocked = result.error === "blocked_target";
+	const wait = blocked ? null : retryDelayMs(attempts);
+	const { count } = await db.webhookDelivery.updateMany({
+		where: owned,
 		data: {
 			...base,
 			status: wait === null ? "FAILED" : "PENDING",
@@ -189,17 +220,19 @@ async function settle(
 			lastError: result.error,
 		},
 	});
-	await recordFailure(delivery.webhook, result.error, now);
+	if (count === 1 && wait === null)
+		await recordTerminalFailure(delivery.webhookId, blocked, now);
 }
 
 async function attempt(
 	delivery: DueDelivery,
 	opts: DeliveryOptions,
+	lease: Date,
 ): Promise<void> {
 	const now = opts.now ?? new Date();
 	if (!delivery.webhook.enabled || !delivery.event) {
-		await db.webhookDelivery.update({
-			where: { id: delivery.id },
+		await db.webhookDelivery.updateMany({
+			where: { id: delivery.id, status: "PENDING", nextAttemptAt: lease },
 			data: {
 				status: "FAILED",
 				nextAttemptAt: null,
@@ -218,7 +251,7 @@ async function attempt(
 		},
 		opts,
 	);
-	await settle(delivery, result, now);
+	await settle(delivery, result, now, lease);
 }
 
 /** Attempts the deliveries that are due. Returns how many it tried. */
@@ -238,13 +271,21 @@ export async function processDueDeliveries(
 	for (let i = 0; i < due.length; i += PARALLEL) {
 		await Promise.all(
 			due.slice(i, i + PARALLEL).map(async (delivery) => {
-				if (!(await claim(delivery, now))) return;
+				const lease = await claim(delivery, now);
+				if (!lease) return;
 				tried += 1;
 				try {
-					await attempt(delivery, { ...options, allowPrivate, now });
+					await attempt(delivery, { ...options, allowPrivate, now }, lease);
 				} catch (error) {
-					// Leave it claimed: the lease expires and it is tried again.
+					// Count it as a failed attempt, so a delivery that always throws
+					// runs out of retries instead of being picked up forever.
 					console.error(`Webhook delivery ${delivery.id} failed:`, error);
+					await settle(
+						delivery,
+						{ ok: false, error: "internal_error", statusCode: null },
+						now,
+						lease,
+					).catch(() => undefined);
 				}
 			}),
 		);
@@ -287,7 +328,12 @@ export async function runWebhookWorker(
 	return { fannedOut, attempted };
 }
 
-type WorkerState = { running: boolean; again: boolean; timer?: NodeJS.Timeout };
+type WorkerState = {
+	running: boolean;
+	again: boolean;
+	timer?: NodeJS.Timeout;
+	loop?: NodeJS.Timeout;
+};
 
 // One per server process, shared by Next's separately bundled route modules.
 const globalState = globalThis as unknown as {
@@ -299,17 +345,32 @@ function state(): WorkerState {
 	return globalState.retrospendWebhookWorker;
 }
 
-/** Wakes at the next delivery that is waiting on its retry time. */
+/**
+ * Wakes at the next time there is something to do: soon, while events
+ * remain that the horizon has not released; else at the next retry time.
+ */
 async function scheduleNext(): Promise<void> {
 	const s = state();
 	if (s.timer) clearTimeout(s.timer);
-	const next = await db.webhookDelivery.findFirst({
-		where: { status: "PENDING", nextAttemptAt: { not: null } },
-		orderBy: { nextAttemptAt: "asc" },
-		select: { nextAttemptAt: true },
-	});
-	if (!next?.nextAttemptAt) return;
-	const wait = Math.max(1000, next.nextAttemptAt.getTime() - Date.now());
+	const [held, next] = await Promise.all([
+		db.apiEvent.findFirst({
+			where: { fannedOutAt: null },
+			select: { id: true },
+		}),
+		db.webhookDelivery.findFirst({
+			where: { status: "PENDING", nextAttemptAt: { not: null } },
+			orderBy: { nextAttemptAt: "asc" },
+			select: { nextAttemptAt: true },
+		}),
+	]);
+	let wait: number | null = null;
+	if (held) wait = HORIZON_RETRY_MS;
+	if (next?.nextAttemptAt)
+		wait = Math.min(
+			wait ?? Number.POSITIVE_INFINITY,
+			Math.max(1000, next.nextAttemptAt.getTime() - Date.now()),
+		);
+	if (wait === null) return;
 	s.timer = setTimeout(kickWebhookDeliveries, Math.min(wait, 2 ** 30));
 	s.timer.unref();
 }
@@ -333,11 +394,25 @@ export function kickWebhookDeliveries(): void {
 				s.again = false;
 				await runWebhookWorker();
 			} while (s.again);
-			await scheduleNext();
 		} catch (error) {
 			console.error("Webhook worker failed:", error);
-		} finally {
-			s.running = false;
 		}
+		await scheduleNext().catch((error) =>
+			console.error("Webhook worker could not schedule:", error),
+		);
+		s.running = false;
 	});
+}
+
+/**
+ * Starts the fallback loop (a sweep now, then every minute) once per
+ * process. Called at boot from instrumentation.ts.
+ */
+export function startWebhookWorker(): void {
+	if (env.NODE_ENV === "test") return;
+	const s = state();
+	if (s.loop) return;
+	s.loop = setInterval(kickWebhookDeliveries, SWEEP_EVERY_MS);
+	s.loop.unref();
+	kickWebhookDeliveries();
 }

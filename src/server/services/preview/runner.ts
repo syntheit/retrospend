@@ -34,7 +34,7 @@ export interface PreviewRunnerDeps<Tx> {
 		actor: Actor,
 	) => Promise<boolean>;
 	/** Called once after an apply whose `onApplied` wrote something has committed. */
-	readonly afterCommit?: () => void;
+	readonly afterCommit?: (actor: Actor) => void;
 }
 
 export interface PreviewRunner<Tx> {
@@ -142,7 +142,7 @@ export function createPreviewRunner<Tx>({
 			wrote = (await onApplied?.(tx, mutation, applied, actor)) ?? false;
 			return applied;
 		}, "apply");
-		if (wrote) afterCommit?.();
+		if (wrote) afterCommit?.(actor);
 		return result;
 	}
 

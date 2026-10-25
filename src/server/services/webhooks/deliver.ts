@@ -58,6 +58,22 @@ export function deliverOnce(
 	options: DeliveryOptions,
 ): Promise<SendResult> {
 	const seconds = Math.floor((options.now ?? new Date()).getTime() / 1000);
+	let signature: string;
+	try {
+		signature = signWebhook(
+			decryptSecret(webhook.secretCipher),
+			delivery.body,
+			seconds,
+		);
+	} catch {
+		// The key the secret was encrypted with is gone (BETTER_AUTH_SECRET
+		// changed). Nothing can be sent until the owner rotates the secret.
+		return Promise.resolve({
+			ok: false,
+			error: "secret_unreadable",
+			statusCode: null,
+		});
+	}
 	return sendWebhook({
 		url: webhook.url,
 		body: delivery.body,
@@ -70,11 +86,7 @@ export function deliverOnce(
 			"Retrospend-Delivery-Id": delivery.id,
 			"Retrospend-Event-Id": delivery.eventId ?? delivery.id,
 			"Retrospend-Event-Type": delivery.eventType,
-			[WEBHOOK_SIGNATURE_HEADER]: signWebhook(
-				decryptSecret(webhook.secretCipher),
-				delivery.body,
-				seconds,
-			),
+			[WEBHOOK_SIGNATURE_HEADER]: signature,
 		},
 	});
 }
