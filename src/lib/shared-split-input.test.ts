@@ -81,7 +81,7 @@ describe("buildSplitInput", () => {
 		const three = { ...base, mode: "PERCENTAGE" as const, others: [lucia, paz] };
 		// Nothing set, or the tab's 33.33 / 33.33 / 33.34: untouched.
 		for (const percentages of [
-			{},
+			{} as Record<string, number>,
 			{ "user:me": 33.33, "user:lucia": 33.33, "shadow:paz": 33.34 },
 		]) {
 			expect(buildSplitInput({ ...three, percentages })).toEqual({
