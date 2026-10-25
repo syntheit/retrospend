@@ -37,6 +37,23 @@ export const EVENT_TYPES = [
 	"settings.updated",
 	"token.created",
 	"token.revoked",
+	// G2 ledger (S3b)
+	"expense.created",
+	"expense.deleted",
+	"expense.undone",
+	"expense.updated",
+	"expenses.categorized",
+	"income.created",
+	"income.deleted",
+	"income.undone",
+	"recurring.confirmed",
+	"recurring.created",
+	"recurring.deleted",
+	"recurring.undone",
+	"recurring.updated",
+	"transfer.created",
+	"transfer.deleted",
+	"transfer.undone",
 ] as const satisfies readonly string[];
 
 export type EventType = (typeof EVENT_TYPES)[number];
