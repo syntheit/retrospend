@@ -8,6 +8,7 @@ import { useFormatLocale } from "@/lib/intl";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
+import { Picker } from "@/ui/Picker";
 import { Segmented } from "@/ui/Segmented";
 import { Sheet } from "@/ui/Sheet";
 import { useToast } from "@/ui/Toast";
@@ -16,6 +17,31 @@ import { allocationOf } from "./plan";
 import { useSettle } from "./useSettle";
 
 const EVERYTHING = "everything";
+/** Segments past this many do not fit a phone's width (Everything, two parts, Other): a menu takes over. */
+const MAX_SEGMENTS = 3;
+
+function AmountControl({
+	label,
+	options,
+	value,
+	onChange,
+}: {
+	label: string;
+	options: { value: string; label: string }[];
+	value: string;
+	onChange: (value: string) => void;
+}) {
+	return options.length > MAX_SEGMENTS ? (
+		<Picker onChange={onChange} options={options} value={value} />
+	) : (
+		<Segmented
+			accessibilityLabel={label}
+			onChange={onChange}
+			options={options}
+			value={value}
+		/>
+	);
+}
 const CUSTOM = "custom";
 
 /**
@@ -145,8 +171,8 @@ export function SettleSheet({
 						/>
 						{nothingOwed ? note(t("nothingOwed")) : null}
 						{nothingOwed ? null : (
-							<Segmented
-								accessibilityLabel={t("amount")}
+							<AmountControl
+								label={t("amount")}
 								onChange={(value) => {
 									if (value === CUSTOM) pickCustom();
 									else
