@@ -83,7 +83,17 @@ describe("getSharedExpenseShares", () => {
 			participation(0.5, "ETH", null),
 		]);
 		const shares = await getSharedExpenseShares(db as never, "user-1");
-		expect(shares.map((s) => s.amountInUSD)).toEqual([60, 958.31]);
+		expect(shares[0]?.amountInUSD).toBe(60);
+		expect(shares[1]?.amountInUSD).toBeCloseTo(958.31, 1);
+	});
+
+	it("a share's USD value is exact: 123.45 BRL at 5.4 is not 22.86", async () => {
+		db.splitParticipant.findMany.mockResolvedValue([
+			participation(123.45, "BRL", 5.4),
+		]);
+		const [share] = await getSharedExpenseShares(db as never, "user-1");
+		// 123.45 / 5.4 = 22.8611111...
+		expect(share!.amountInUSD).toBeCloseTo(22.861111111, 9);
 	});
 
 	it("a currency with no rate at all is unpriced: it counts as entered, and a total elsewhere names it, never 0 or 1", async () => {

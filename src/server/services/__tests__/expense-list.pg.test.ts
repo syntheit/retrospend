@@ -576,3 +576,57 @@ describe("expense.listV2 entry kinds (M1, M2)", () => {
 		await adminDb.user.delete({ where: { id: fresh.user.id } });
 	});
 });
+
+describe("expense.listV2 foreign shares", () => {
+	it("a BRL share row and its day total agree to the minor unit (no USD cents in between)", async () => {
+		const owner = await createTestUser();
+		const guest = await createTestUser();
+		await adminDb.user.update({
+			where: { id: guest.user.id },
+			data: { homeCurrency: "ARS" },
+		});
+		const share = (id: string, amount: string) => ({
+			id: `${id}_${guest.user.id}`,
+			description: id,
+			amount,
+			currency: "BRL",
+			exchangeRate: "5.4",
+			date: day(12),
+			paidByType: "user" as const,
+			paidById: owner.user.id,
+			createdByType: "user" as const,
+			createdById: owner.user.id,
+			splitParticipants: {
+				create: [
+					{
+						participantType: "user" as const,
+						participantId: guest.user.id,
+						shareAmount: amount,
+						verificationStatus: "ACCEPTED" as const,
+					},
+				],
+			},
+		});
+		await adminDb.sharedTransaction.create({ data: share("brl_a", "123.45") });
+		await adminDb.sharedTransaction.create({ data: share("brl_b", "77.77") });
+		const r = await list(guest, OCT);
+		// 123.45 / 5.4 = 22.861111 USD, x 1000 = ARS 22,861.11
+		// 77.77 / 5.4 = 14.401852 USD, x 1000 = ARS 14,401.85
+		const shares = new Map(r.items.map((i) => [i.title, i.share?.minor]));
+		expect(shares.get("brl_a")).toBe(2286111);
+		expect(shares.get("brl_b")).toBe(1440185);
+		// Exact sum 37,262.96296, rounded once: ARS 37,262.96. Rounding each share
+		// to USD cents first (22.86 + 14.40) gave ARS 37,260.00.
+		expect(r.dayTotals?.["2026-10-12"]).toEqual({
+			minor: 3726296,
+			currency: "ARS",
+		});
+		expect(r.total?.value).toEqual({ minor: 3726296, currency: "ARS" });
+		await adminDb.sharedTransaction.deleteMany({
+			where: { id: { endsWith: guest.user.id } },
+		});
+		await adminDb.user.deleteMany({
+			where: { id: { in: [owner.user.id, guest.user.id] } },
+		});
+	});
+});
