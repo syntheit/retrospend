@@ -13,7 +13,11 @@ export function NativeHost({ children }: { children: ReactNode }) {
 	const { color } = useTheme();
 	const scheme = useColorScheme();
 	return (
-		<Host colorScheme={scheme} matchContents seedColor={color.brand}>
+		<Host
+			colorScheme={scheme === "dark" || scheme === "light" ? scheme : undefined}
+			matchContents
+			seedColor={color.brand}
+		>
 			{children}
 		</Host>
 	);

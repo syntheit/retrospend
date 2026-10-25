@@ -1,7 +1,7 @@
 // Which server the app talks to. The base URL is kept in the platform
 // keystore (expo-secure-store: iOS Keychain, Android Keystore, no Google
 // services), next to where the bearer token will live once sign-in lands.
-import * as SecureStore from "expo-secure-store";
+
 import {
 	createContext,
 	type ReactNode,
@@ -11,6 +11,7 @@ import {
 	useMemo,
 	useState,
 } from "react";
+import { secureStore } from "@/lib/secure-store";
 
 const SERVER_URL_KEY = "retrospend.serverUrl";
 
@@ -38,7 +39,8 @@ export function ServerConnectionProvider({
 	});
 
 	useEffect(() => {
-		SecureStore.getItemAsync(SERVER_URL_KEY)
+		secureStore
+			.getItemAsync(SERVER_URL_KEY)
 			.then((baseUrl) =>
 				setConnection(
 					baseUrl ? { status: "connected", baseUrl } : { status: "none" },
@@ -49,7 +51,7 @@ export function ServerConnectionProvider({
 	}, []);
 
 	const connect = useCallback(async (baseUrl: string) => {
-		await SecureStore.setItemAsync(SERVER_URL_KEY, baseUrl);
+		await secureStore.setItemAsync(SERVER_URL_KEY, baseUrl);
 		setConnection({ status: "connected", baseUrl });
 	}, []);
 

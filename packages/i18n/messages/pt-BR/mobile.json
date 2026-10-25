@@ -7,6 +7,15 @@
 		"projects": "Projetos",
 		"add": "Adicionar despesa"
 	},
+	"common": {
+		"cancel": "Cancelar",
+		"undo": "Desfazer",
+		"dismiss": "Dispensar"
+	},
+	"keypad": {
+		"delete": "Apagar",
+		"decimal": "Vírgula decimal"
+	},
 	"connect": {
 		"title": "Conecte-se a um servidor",
 		"intro": "Use o retrospend.app ou o endereço de um servidor próprio.",
@@ -20,5 +29,42 @@
 		"insecureWarning": "Este servidor não usa HTTPS. Sua senha e seus dados trafegam sem criptografia. Só continue em uma rede confiável.",
 		"continueAnyway": "Continuar mesmo assim",
 		"saveFailed": "Não foi possível salvar o servidor. Tente de novo."
+	},
+	"signIn": {
+		"title": "Entrar",
+		"intro": "Entre em {host}.",
+		"expired": "Sua sessão terminou. Entre novamente.",
+		"email": "E-mail",
+		"password": "Senha",
+		"code": "Código de autenticação",
+		"codeHint": "Digite os 6 dígitos do seu app autenticador ou um código de backup.",
+		"submit": "Entrar",
+		"verify": "Verificar",
+		"signingIn": "Entrando",
+		"error": {
+			"invalidCredentials": "O e-mail e a senha não conferem.",
+			"invalidCode": "Esse código não está certo. Tente de novo.",
+			"emailNotVerified": "Verifique seu e-mail primeiro e depois entre.",
+			"rateLimited": "Muitas tentativas. Aguarde um minuto e tente de novo.",
+			"network": "Não foi possível acessar o servidor. Verifique sua conexão.",
+			"unknown": "Não foi possível entrar. Tente de novo."
+		}
+	},
+	"account": {
+		"open": "Conta",
+		"signOut": "Sair",
+		"signOutDiscard": "Sair e descartar",
+		"unsynced": "{count, plural, one {# alteração não sincronizada. Ao sair, ela será descartada.} other {# alterações não sincronizadas. Ao sair, elas serão descartadas.}}"
+	},
+	"activity": {
+		"title": "Atividade",
+		"loading": "Carregando",
+		"empty": "Nenhuma despesa ainda",
+		"unavailable": "A atividade ainda não está neste servidor",
+		"unavailableDetail": "Atualize o servidor para ver suas despesas aqui.",
+		"error": "Não foi possível carregar a atividade",
+		"errorDetail": "Verifique sua conexão e tente de novo.",
+		"pick": "Escolha uma despesa",
+		"offlineSince": "Sem conexão desde {time}"
 	}
 }

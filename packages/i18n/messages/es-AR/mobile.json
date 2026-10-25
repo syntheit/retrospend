@@ -7,6 +7,15 @@
 		"projects": "Proyectos",
 		"add": "Agregar gasto"
 	},
+	"common": {
+		"cancel": "Cancelar",
+		"undo": "Deshacer",
+		"dismiss": "Descartar"
+	},
+	"keypad": {
+		"delete": "Borrar",
+		"decimal": "Coma decimal"
+	},
 	"connect": {
 		"title": "Conectate a un servidor",
 		"intro": "Usá retrospend.app o la dirección de un servidor propio.",
@@ -20,5 +29,42 @@
 		"insecureWarning": "Este servidor no usa HTTPS. Tu contraseña y tus datos viajan sin cifrar. Seguí solo en una red de confianza.",
 		"continueAnyway": "Continuar igual",
 		"saveFailed": "No pudimos guardar el servidor. Probá de nuevo."
+	},
+	"signIn": {
+		"title": "Iniciar sesión",
+		"intro": "Iniciá sesión en {host}.",
+		"expired": "Tu sesión terminó. Iniciá sesión de nuevo.",
+		"email": "Correo electrónico",
+		"password": "Contraseña",
+		"code": "Código de autenticación",
+		"codeHint": "Ingresá los 6 dígitos de tu app de autenticación o un código de respaldo.",
+		"submit": "Iniciar sesión",
+		"verify": "Verificar",
+		"signingIn": "Iniciando sesión",
+		"error": {
+			"invalidCredentials": "El correo y la contraseña no coinciden.",
+			"invalidCode": "Ese código no es correcto. Probá de nuevo.",
+			"emailNotVerified": "Verificá primero tu correo y después iniciá sesión.",
+			"rateLimited": "Demasiados intentos. Esperá un minuto y probá de nuevo.",
+			"network": "No se pudo conectar con el servidor. Revisá tu conexión.",
+			"unknown": "No se pudo iniciar sesión. Probá de nuevo."
+		}
+	},
+	"account": {
+		"open": "Cuenta",
+		"signOut": "Cerrar sesión",
+		"signOutDiscard": "Cerrar sesión y descartar",
+		"unsynced": "{count, plural, one {# cambio sin sincronizar. Al cerrar sesión se descarta.} other {# cambios sin sincronizar. Al cerrar sesión se descartan.}}"
+	},
+	"activity": {
+		"title": "Actividad",
+		"loading": "Cargando",
+		"empty": "Todavía no hay gastos",
+		"unavailable": "La actividad todavía no está en este servidor",
+		"unavailableDetail": "Actualizá el servidor para ver tus gastos acá.",
+		"error": "No se pudo cargar la actividad",
+		"errorDetail": "Revisá tu conexión y probá de nuevo.",
+		"pick": "Elegí un gasto",
+		"offlineSince": "Sin conexión desde {time}"
 	}
 }

@@ -1,8 +1,8 @@
 // Lets release builds reach plain http servers. Self-hosters often run
 // Retrospend on a LAN address without TLS; the owner's call is that they own
 // that risk, and the connect screen warns before it saves an http server.
-// Android gets a network security config (system CAs only, cleartext
-// allowed); the iOS side is NSAllowsArbitraryLoads in app.config.ts.
+// Android gets a network security config (system and user-installed CAs,
+// cleartext allowed); the iOS side is NSAllowsArbitraryLoads in app.config.ts.
 const fs = require("node:fs");
 const path = require("node:path");
 const {
@@ -16,6 +16,7 @@ const XML = `<?xml version="1.0" encoding="utf-8"?>
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
+            <certificates src="user" />
         </trust-anchors>
     </base-config>
 </network-security-config>

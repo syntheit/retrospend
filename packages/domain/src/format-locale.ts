@@ -16,6 +16,8 @@ export interface NumberSymbols {
 	symbolSpaced: boolean;
 }
 
+import { partsOf } from "./intl-parts";
+
 const cache = new Map<string, NumberSymbols>();
 const FALLBACK_LOCALE = "en-US";
 
@@ -43,19 +45,18 @@ export function numberSymbols(locale: string): NumberSymbols {
 
 function readSymbols(locale: string): NumberSymbols {
 	// 123456789.5 has enough digits to show a secondary group size.
-	const parts = new Intl.NumberFormat(locale, {
-		numberingSystem: "latn",
-	}).formatToParts(123456789.5);
+	const parts = partsOf(
+		new Intl.NumberFormat(locale, { numberingSystem: "latn" }),
+		123456789.5,
+	);
 	const groups = parts
 		.filter((p) => p.type === "integer")
 		.map((p) => p.value.length);
 	const primary = groups.length > 1 ? (groups[groups.length - 1] ?? 0) : 0;
-	const symbolSpaced = new Intl.NumberFormat(locale, {
-		style: "currency",
-		currency: "EUR",
-	})
-		.formatToParts(1)
-		.some((p) => p.type === "literal" && /\s/.test(p.value));
+	const symbolSpaced = partsOf(
+		new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }),
+		1,
+	).some((p) => p.type === "literal" && /\s/.test(p.value));
 	return {
 		decimal: parts.find((p) => p.type === "decimal")?.value ?? ".",
 		group: parts.find((p) => p.type === "group")?.value ?? "",
@@ -111,11 +112,14 @@ export function compactAffix(
 	const key = `${locale}|${exponent}`;
 	const hit = compactCache.get(key);
 	if (hit !== undefined) return hit;
-	const parts = new Intl.NumberFormat(resolveLocale(locale), {
-		notation: "compact",
-		compactDisplay: "short",
-		numberingSystem: "latn",
-	}).formatToParts(10 ** exponent);
+	const parts = partsOf(
+		new Intl.NumberFormat(resolveLocale(locale), {
+			notation: "compact",
+			compactDisplay: "short",
+			numberingSystem: "latn",
+		}),
+		10 ** exponent,
+	);
 	const at = parts.findIndex((p) => p.type === "compact");
 	const affix =
 		at < 0
@@ -140,13 +144,23 @@ export interface PercentAffix {
 
 const percentCache = new Map<string, PercentAffix>();
 
+/** Tests only: forget what was read from Intl, after switching the parts path. */
+export function clearLocaleCaches(): void {
+	cache.clear();
+	compactCache.clear();
+	percentCache.clear();
+}
+
 export function percentAffix(locale: string): PercentAffix {
 	const hit = percentCache.get(locale);
 	if (hit) return hit;
-	const parts = new Intl.NumberFormat(resolveLocale(locale), {
-		style: "percent",
-		numberingSystem: "latn",
-	}).formatToParts(0.5);
+	const parts = partsOf(
+		new Intl.NumberFormat(resolveLocale(locale), {
+			style: "percent",
+			numberingSystem: "latn",
+		}),
+		0.5,
+	);
 	const at = parts.findIndex((p) => p.type === "integer");
 	const text = (ps: Intl.NumberFormatPart[]) => ps.map((p) => p.value).join("");
 	const affix = {

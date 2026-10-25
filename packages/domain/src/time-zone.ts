@@ -68,16 +68,18 @@ export function wallTime(date: Date, timeZone?: string): WallTime {
 			millisecond: date.getMilliseconds(),
 		};
 	}
-	const parts = formatterFor(timeZone).formatToParts(date);
-	const get = (type: Intl.DateTimeFormatPartTypes) =>
-		Number(parts.find((p) => p.type === type)?.value);
+	// The formatter is fixed (en-US, h23, numeric): "10/24/2026, 18:55:03".
+	// Reading the numbers in order avoids DateTimeFormat.formatToParts,
+	// which not every engine has.
+	const fields = formatterFor(timeZone).format(date).match(/\d+/g) ?? [];
+	const [month, day, year, hour, minute, second] = fields.map(Number);
 	return {
-		year: get("year"),
-		month: get("month") - 1,
-		day: get("day"),
-		hour: get("hour") % 24,
-		minute: get("minute"),
-		second: get("second"),
+		year: year ?? Number.NaN,
+		month: (month ?? Number.NaN) - 1,
+		day: day ?? Number.NaN,
+		hour: (hour ?? Number.NaN) % 24,
+		minute: minute ?? Number.NaN,
+		second: second ?? Number.NaN,
 		millisecond: date.getUTCMilliseconds(),
 	};
 }
@@ -85,8 +87,15 @@ export function wallTime(date: Date, timeZone?: string): WallTime {
 function offsetAt(instant: number, timeZone: string): number {
 	const w = wallTime(new Date(instant), timeZone);
 	return (
-		Date.UTC(w.year, w.month, w.day, w.hour, w.minute, w.second, w.millisecond) -
-		instant
+		Date.UTC(
+			w.year,
+			w.month,
+			w.day,
+			w.hour,
+			w.minute,
+			w.second,
+			w.millisecond,
+		) - instant
 	);
 }
 

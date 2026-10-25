@@ -1,4 +1,5 @@
-import { CURRENCIES, CRYPTO_CURRENCIES } from "./currencies";
+import { CRYPTO_CURRENCIES, CURRENCIES } from "./currencies";
+import { partsOf } from "./intl-parts";
 
 /** Stablecoin tickers that should use 2 decimals instead of 8. */
 const STABLECOINS = ["USDC", "USDT", "DAI", "BUSD"] as const;
@@ -158,10 +159,10 @@ function formatSignedNumber(
 	options: Intl.NumberFormatOptions,
 	signDisplay: CurrencySignDisplay,
 ): { sign: string; digits: string } {
-	const parts = new Intl.NumberFormat(locale, {
-		...options,
-		signDisplay,
-	}).formatToParts(amount);
+	const parts = partsOf(
+		new Intl.NumberFormat(locale, { ...options, signDisplay }),
+		amount,
+	);
 	const isSign = (p: Intl.NumberFormatPart) =>
 		p.type === "minusSign" || p.type === "plusSign";
 	const digits = parts
