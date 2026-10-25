@@ -1,9 +1,10 @@
 import { router } from "expo-router";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { ListRow } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";
 import { type Glance as GlanceData, heroOf } from "./source";
 
@@ -92,9 +93,23 @@ export function Glance({
 				? [t("lastMonth", { amount: format(hero.lastToDate) })]
 				: [];
 
+	// Left to spend is the budget's own number, so a tap on it opens Budget.
+	const heroLabel = [
+		hero.kind === "left" ? t("leftToSpend") : t("spentThisMonth"),
+		hero.amount ? format(hero.amount) : noRate,
+		...sub,
+	].join(", ");
+
 	return (
 		<View>
-			<View style={{ gap: space[1], padding: space[4] }}>
+			<Pressable
+				accessibilityLabel={hero.kind === "left" ? heroLabel : undefined}
+				accessibilityRole={hero.kind === "left" ? "button" : undefined}
+				accessible={hero.kind === "left" ? true : undefined}
+				disabled={hero.kind !== "left"}
+				onPress={() => router.navigate("/budget")}
+				style={{ gap: space[1], padding: space[4] }}
+			>
 				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
 					{hero.kind === "left" ? t("leftToSpend") : t("spentThisMonth")}
 				</Text>
@@ -126,7 +141,7 @@ export function Glance({
 						{t("missingRates", { currencies: glance.missingRates.join(", ") })}
 					</Text>
 				) : null}
-			</View>
+			</Pressable>
 			<Figure
 				approx={approx.owedToYou}
 				label={t("owedToYou")}
@@ -140,7 +155,11 @@ export function Glance({
 				onPress={() => router.navigate("/people")}
 				value={glance.youOwe.value}
 			/>
-			<Figure label={t("netWorth")} value={glance.netWorth.value} />
+			<Figure
+				label={t("netWorth")}
+				onPress={() => router.navigate(wealthHref())}
+				value={glance.netWorth.value}
+			/>
 			{glance.dollarToday ? (
 				<Figure
 					caption={
