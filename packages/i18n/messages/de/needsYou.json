@@ -20,7 +20,9 @@
 		"billDue": "{title} ist bald fällig",
 		"billsDue": "{count, plural, one {# Rechnung ist} other {# Rechnungen sind}} bald fällig",
 		"missingRate": "Noch kein Kurs für {currencies}",
-		"startingMoney": "Bestätige dein Startguthaben"
+		"startingMoney": "Bestätige dein Startguthaben",
+		"owedAging": "{person} schuldet dir seit 60 Tagen Geld",
+		"sharesNeedEnvelope": "{count, plural, one {# Anteil braucht einen Umschlag} other {# Anteile brauchen einen Umschlag}}"
 	},
 	"action": {
 		"assign": "Zuweisen",
@@ -35,6 +37,8 @@
 		"takeBack": "Zurückholen",
 		"fund": "Auffüllen",
 		"setRate": "Kurs festlegen",
-		"notReceived": "Nicht erhalten?"
+		"notReceived": "Nicht erhalten?",
+		"remind": "Erinnern",
+		"open": "Öffnen"
 	}
 }

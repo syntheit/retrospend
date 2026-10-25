@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
 import type { MoneyValue } from "~/components/money/format";
 import { Money } from "~/components/money/money";
 import type { CategoryRef } from "~/components/rows/types";
 import { getCategoryIcon } from "~/lib/category-icons";
+import { cn } from "~/lib/cn";
 import { ChartEmpty, useMoneyText } from "./chart-frame";
 import { barShare, COLOR, categoryColor, seriesColor, THIN } from "./spec";
 
@@ -19,7 +21,15 @@ export type RankedItem = {
 	series?: number;
 	/** The amount's figures registry key (with its scope), for the e2e audit. */
 	figure?: string;
+	/** Opens the rows behind the amount (Activity, filtered). */
+	href?: string;
+	/** A short muted word after the label, from the server ("+53%", "new"). */
+	note?: string;
 };
+
+const ROW = "grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5";
+/** A linked row is a 44pt target on a phone (GUIDELINE §14). */
+const LINKED = "max-md:min-h-row max-md:content-center";
 
 /**
  * Ranked bars: the biggest first, one row each with the label, the amount
@@ -46,11 +56,8 @@ export function RankedBars({ items }: { items: RankedItem[] }) {
 				// category's glyph carries its identity in its own color.
 				const fill = item.series ? seriesColor(item.series) : COLOR.accent;
 				const glyph = item.category ? categoryColor(item.category.tone) : fill;
-				return (
-					<li
-						className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5"
-						key={item.id}
-					>
+				const body = (
+					<>
 						<span className="text-fg flex min-w-0 items-center gap-2">
 							{Icon && (
 								<Icon
@@ -61,6 +68,11 @@ export function RankedBars({ items }: { items: RankedItem[] }) {
 								/>
 							)}
 							<span className="truncate">{item.label}</span>
+							{item.note && (
+								<span className="text-fg-3 text-meta shrink-0">
+									{item.note}
+								</span>
+							)}
 						</span>
 						<Money figure={item.figure} value={item.value} />
 						<span
@@ -78,6 +90,24 @@ export function RankedBars({ items }: { items: RankedItem[] }) {
 								}
 							/>
 						</span>
+					</>
+				);
+				return (
+					<li key={item.id}>
+						{item.href ? (
+							<Link
+								className={cn(
+									ROW,
+									LINKED,
+									"rounded-ctl focus-visible:outline-brand can-hover:hover:*:first:underline focus-visible:outline-2 focus-visible:outline-offset-4",
+								)}
+								href={item.href}
+							>
+								{body}
+							</Link>
+						) : (
+							<div className={ROW}>{body}</div>
+						)}
 					</li>
 				);
 			})}

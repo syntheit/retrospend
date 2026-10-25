@@ -20,7 +20,9 @@
 		"billDue": "{title} vence em breve",
 		"billsDue": "{count, plural, one {# conta vence} other {# contas vencem}} em breve",
 		"missingRate": "Ainda não há cotação para {currencies}",
-		"startingMoney": "Confirme seu dinheiro inicial"
+		"startingMoney": "Confirme seu dinheiro inicial",
+		"owedAging": "{person} deve a você há 60 dias",
+		"sharesNeedEnvelope": "{count, plural, one {# parte precisa de um envelope} other {# partes precisam de um envelope}}"
 	},
 	"action": {
 		"assign": "Atribuir",
@@ -35,6 +37,8 @@
 		"takeBack": "Recuperar",
 		"fund": "Cobrir",
 		"setRate": "Definir cotação",
-		"notReceived": "Não recebeu?"
+		"notReceived": "Não recebeu?",
+		"remind": "Lembrar",
+		"open": "Abrir"
 	}
 }

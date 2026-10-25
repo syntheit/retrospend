@@ -20,7 +20,9 @@
 		"billDue": "{title}: скоро срок оплаты",
 		"billsDue": "Скоро срок оплаты счетов: {count}",
 		"missingRate": "Пока нет курса для {currencies}",
-		"startingMoney": "Подтвердите начальную сумму"
+		"startingMoney": "Подтвердите начальную сумму",
+		"owedAging": "{person}: долг перед вами уже 60 дней",
+		"sharesNeedEnvelope": "{count, plural, one {# доля требует конверта} few {# доли требуют конверта} many {# долей требуют конверта} other {# доли требуют конверта}}"
 	},
 	"action": {
 		"assign": "Распределить",
@@ -35,6 +37,8 @@
 		"takeBack": "Вернуть",
 		"fund": "Пополнить",
 		"setRate": "Указать курс",
-		"notReceived": "Не получили?"
+		"notReceived": "Не получили?",
+		"remind": "Напомнить",
+		"open": "Открыть"
 	}
 }

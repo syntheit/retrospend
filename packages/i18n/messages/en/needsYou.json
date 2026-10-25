@@ -20,7 +20,9 @@
 		"billDue": "{title} is due soon",
 		"billsDue": "{count, plural, one {# bill is} other {# bills are}} due soon",
 		"missingRate": "No rate for {currencies} yet",
-		"startingMoney": "Confirm your starting money"
+		"startingMoney": "Confirm your starting money",
+		"owedAging": "{person} has owed you for 60 days",
+		"sharesNeedEnvelope": "{count, plural, one {# share needs an envelope} other {# shares need an envelope}}"
 	},
 	"action": {
 		"assign": "Assign",
@@ -35,6 +37,8 @@
 		"takeBack": "Take back",
 		"fund": "Fund",
 		"setRate": "Set rate",
-		"notReceived": "Not received?"
+		"notReceived": "Not received?",
+		"remind": "Remind",
+		"open": "Open"
 	}
 }
