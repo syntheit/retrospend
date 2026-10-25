@@ -25,7 +25,7 @@ export function IncomeFields({
 	errors: IncomeErrors;
 	onTypingChange: (typing: boolean) => void;
 }) {
-	const t = useTranslations("mobile.entry");
+	const t = useTranslations("mobile.composer");
 	const { size, space } = useTheme();
 	return (
 		<>

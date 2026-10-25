@@ -18,8 +18,8 @@ export function ChangesBlock({
 	/** What to say before there is anything to preview. */
 	idle: string;
 }) {
-	const t = useTranslations("mobile.entry.changes");
-	const tl = useTranslations("mobile.entry.list");
+	const t = useTranslations("mobile.composer.changes");
+	const tl = useTranslations("mobile.composer.list");
 	const { color, space, type } = useTheme();
 	const { format } = useFormatMoney();
 	const lines: ChangeLines | null =

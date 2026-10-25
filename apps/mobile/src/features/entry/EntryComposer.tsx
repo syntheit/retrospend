@@ -42,7 +42,7 @@ interface ComposerProps {
  * closes whichever it is in.
  */
 export function EntryComposer(props: ComposerProps) {
-	const t = useTranslations("mobile.entry");
+	const t = useTranslations("mobile.composer");
 	const catalog = useEntryCatalog();
 	const { state } = useSession();
 	// The profile is cached on sign in; without it there is no "you" to split with.
@@ -74,7 +74,7 @@ function Form({
 	onModeChange,
 	surface,
 }: ComposerProps & { catalog: EntryCatalog }) {
-	const t = useTranslations("mobile.entry");
+	const t = useTranslations("mobile.composer");
 	const locale = useFormatLocale();
 	const toast = useToast();
 	const { api, local, state } = useSession();

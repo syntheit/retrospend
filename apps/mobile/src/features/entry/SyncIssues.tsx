@@ -11,8 +11,8 @@ import { useParkedEntries } from "./parked";
  * Try again and Discard. Nothing shows when nothing is parked, so Home,
  * Activity and the composer can all put it at their top.
  */
-export function SyncIssues() {
-	const t = useTranslations("mobile.entry");
+export function SyncIssues({ padded }: { padded?: boolean }) {
+	const t = useTranslations("mobile.composer");
 	const { color, size, space, type } = useTheme();
 	const { format } = useFormatMoney();
 	const toast = useToast();
@@ -26,7 +26,12 @@ export function SyncIssues() {
 	} as const;
 
 	return (
-		<View style={{ gap: space[2] }}>
+		<View
+			style={{
+				gap: space[2],
+				...(padded ? { padding: space[4] } : null),
+			}}
+		>
 			<Text
 				accessibilityRole="header"
 				style={{

@@ -1,5 +1,9 @@
 import { Button, Menu } from "@expo/ui/swift-ui";
-import { buttonStyle, labelStyle } from "@expo/ui/swift-ui/modifiers";
+import {
+	buttonStyle,
+	controlSize,
+	labelStyle,
+} from "@expo/ui/swift-ui/modifiers";
 import { NativeHost } from "./NativeHost";
 import type { AddButtonProps } from "./types";
 
@@ -10,7 +14,12 @@ import type { AddButtonProps } from "./types";
  * is chrome only (R17).
  */
 export function AddButton({ label, onPress, actions }: AddButtonProps) {
-	const modifiers = [buttonStyle("glassProminent"), labelStyle("iconOnly")];
+	// Large control size: the touch target reaches 44 pt (the regular one is 31).
+	const modifiers = [
+		buttonStyle("glassProminent"),
+		controlSize("large"),
+		labelStyle("iconOnly"),
+	];
 	return (
 		<NativeHost>
 			{actions && actions.length > 0 ? (

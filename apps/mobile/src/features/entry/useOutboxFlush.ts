@@ -16,7 +16,7 @@ import { flushEntries } from "./queue";
  * account changes the run stops: nothing of the old account is sent after.
  */
 export function useOutboxFlush(): void {
-	const t = useTranslations("mobile.entry");
+	const t = useTranslations("mobile.composer");
 	const toast = useToast();
 	const { api, local } = useSession();
 	const online = useNetworkState().isInternetReachable !== false;

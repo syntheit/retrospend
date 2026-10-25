@@ -18,7 +18,7 @@
 		"decimal": "Dezimalkomma",
 		"tripleZero": "Drei Nullen"
 	},
-	"entry": {
+	"composer": {
 		"mode": "Art des Eintrags",
 		"expense": "Ausgabe",
 		"income": "Einnahme",
@@ -134,6 +134,36 @@
 			"retryFailed": "Senden klappt noch nicht. Versuche es später noch einmal."
 		}
 	},
+	"entry": {
+		"title": "Eintrag",
+		"missing": "Öffne diesen Eintrag über Aktivität.",
+		"date": "Datum",
+		"category": "Kategorie",
+		"uncategorized": "Keine Kategorie",
+		"status": "Status",
+		"type": "Art",
+		"paidBy": "Bezahlt von",
+		"you": "Du",
+		"people": "Mit",
+		"project": "Projekt",
+		"rate": "Kurs",
+		"rateType": "Kurs {rate}",
+		"location": "Ort",
+		"notes": "Notizen",
+		"spread": "Verteilt auf",
+		"spreadMonths": "{months} Monate",
+		"excluded": "Aus Auswertungen ausgenommen",
+		"yes": "Ja",
+		"locked": "Durch eine Zahlung gesperrt",
+		"added": "Hinzugefügt",
+		"kind": {
+			"expense": "Ausgabe",
+			"income": "Einnahme",
+			"refund": "Erstattung",
+			"transfer": "Überweisung",
+			"payment": "Zahlung"
+		}
+	},
 	"connect": {
 		"title": "Mit einem Server verbinden",
 		"intro": "Nutzen Sie retrospend.app oder die Adresse eines eigenen Servers.",
@@ -225,36 +255,6 @@
 		"homeWithRate": "{amount} ({rate})",
 		"approx": "≈ {amount}",
 		"yourShare": "Dein Anteil: {amount}"
-	},
-	"entry": {
-		"title": "Eintrag",
-		"missing": "Öffne diesen Eintrag über Aktivität.",
-		"date": "Datum",
-		"category": "Kategorie",
-		"uncategorized": "Keine Kategorie",
-		"status": "Status",
-		"type": "Art",
-		"paidBy": "Bezahlt von",
-		"you": "Du",
-		"people": "Mit",
-		"project": "Projekt",
-		"rate": "Kurs",
-		"rateType": "Kurs {rate}",
-		"location": "Ort",
-		"notes": "Notizen",
-		"spread": "Verteilt auf",
-		"spreadMonths": "{months} Monate",
-		"excluded": "Aus Auswertungen ausgenommen",
-		"yes": "Ja",
-		"locked": "Durch eine Zahlung gesperrt",
-		"added": "Hinzugefügt",
-		"kind": {
-			"expense": "Ausgabe",
-			"income": "Einnahme",
-			"refund": "Erstattung",
-			"transfer": "Überweisung",
-			"payment": "Zahlung"
-		}
 	},
 	"home": {
 		"title": "Start",

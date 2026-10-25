@@ -18,7 +18,7 @@
 		"decimal": "Coma decimal",
 		"tripleZero": "Tres ceros"
 	},
-	"entry": {
+	"composer": {
 		"mode": "Tipo de entrada",
 		"expense": "Gasto",
 		"income": "Ingreso",
@@ -134,6 +134,36 @@
 			"retryFailed": "Todavía no se puede enviar. Probá más tarde."
 		}
 	},
+	"entry": {
+		"title": "Movimiento",
+		"missing": "Abrí este movimiento desde Actividad.",
+		"date": "Fecha",
+		"category": "Categoría",
+		"uncategorized": "Sin categoría",
+		"status": "Estado",
+		"type": "Tipo",
+		"paidBy": "Pagó",
+		"you": "Vos",
+		"people": "Con",
+		"project": "Proyecto",
+		"rate": "Cotización",
+		"rateType": "Cotización {rate}",
+		"location": "Lugar",
+		"notes": "Notas",
+		"spread": "Repartido en",
+		"spreadMonths": "{months} meses",
+		"excluded": "Fuera de los análisis",
+		"yes": "Sí",
+		"locked": "Bloqueado por un pago",
+		"added": "Agregado",
+		"kind": {
+			"expense": "Gasto",
+			"income": "Ingreso",
+			"refund": "Reintegro",
+			"transfer": "Transferencia",
+			"payment": "Pago"
+		}
+	},
 	"connect": {
 		"title": "Conectate a un servidor",
 		"intro": "Usá retrospend.app o la dirección de un servidor propio.",
@@ -225,36 +255,6 @@
 		"homeWithRate": "{amount} ({rate})",
 		"approx": "≈ {amount}",
 		"yourShare": "Tu parte: {amount}"
-	},
-	"entry": {
-		"title": "Movimiento",
-		"missing": "Abrí este movimiento desde Actividad.",
-		"date": "Fecha",
-		"category": "Categoría",
-		"uncategorized": "Sin categoría",
-		"status": "Estado",
-		"type": "Tipo",
-		"paidBy": "Pagó",
-		"you": "Vos",
-		"people": "Con",
-		"project": "Proyecto",
-		"rate": "Cotización",
-		"rateType": "Cotización {rate}",
-		"location": "Lugar",
-		"notes": "Notas",
-		"spread": "Repartido en",
-		"spreadMonths": "{months} meses",
-		"excluded": "Fuera de los análisis",
-		"yes": "Sí",
-		"locked": "Bloqueado por un pago",
-		"added": "Agregado",
-		"kind": {
-			"expense": "Gasto",
-			"income": "Ingreso",
-			"refund": "Reintegro",
-			"transfer": "Transferencia",
-			"payment": "Pago"
-		}
 	},
 	"home": {
 		"title": "Inicio",

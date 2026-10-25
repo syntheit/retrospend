@@ -18,7 +18,7 @@
 		"decimal": "Virgule décimale",
 		"tripleZero": "Trois zéros"
 	},
-	"entry": {
+	"composer": {
 		"mode": "Type de saisie",
 		"expense": "Dépense",
 		"income": "Revenu",
@@ -134,6 +134,36 @@
 			"retryFailed": "Envoi toujours impossible. Réessaie plus tard."
 		}
 	},
+	"entry": {
+		"title": "Opération",
+		"missing": "Ouvrez cette opération depuis Activité.",
+		"date": "Date",
+		"category": "Catégorie",
+		"uncategorized": "Sans catégorie",
+		"status": "Statut",
+		"type": "Type",
+		"paidBy": "Payé par",
+		"you": "Vous",
+		"people": "Avec",
+		"project": "Projet",
+		"rate": "Taux",
+		"rateType": "Taux {rate}",
+		"location": "Lieu",
+		"notes": "Notes",
+		"spread": "Étalé sur",
+		"spreadMonths": "{months} mois",
+		"excluded": "Exclu des analyses",
+		"yes": "Oui",
+		"locked": "Verrouillé par un paiement",
+		"added": "Ajouté",
+		"kind": {
+			"expense": "Dépense",
+			"income": "Rentrée",
+			"refund": "Remboursement",
+			"transfer": "Virement",
+			"payment": "Paiement"
+		}
+	},
 	"connect": {
 		"title": "Se connecter à un serveur",
 		"intro": "Utilisez retrospend.app ou l’adresse d’un serveur que vous hébergez.",
@@ -225,36 +255,6 @@
 		"homeWithRate": "{amount} ({rate})",
 		"approx": "≈ {amount}",
 		"yourShare": "Votre part : {amount}"
-	},
-	"entry": {
-		"title": "Opération",
-		"missing": "Ouvrez cette opération depuis Activité.",
-		"date": "Date",
-		"category": "Catégorie",
-		"uncategorized": "Sans catégorie",
-		"status": "Statut",
-		"type": "Type",
-		"paidBy": "Payé par",
-		"you": "Vous",
-		"people": "Avec",
-		"project": "Projet",
-		"rate": "Taux",
-		"rateType": "Taux {rate}",
-		"location": "Lieu",
-		"notes": "Notes",
-		"spread": "Étalé sur",
-		"spreadMonths": "{months} mois",
-		"excluded": "Exclu des analyses",
-		"yes": "Oui",
-		"locked": "Verrouillé par un paiement",
-		"added": "Ajouté",
-		"kind": {
-			"expense": "Dépense",
-			"income": "Rentrée",
-			"refund": "Remboursement",
-			"transfer": "Virement",
-			"payment": "Paiement"
-		}
 	},
 	"home": {
 		"title": "Accueil",

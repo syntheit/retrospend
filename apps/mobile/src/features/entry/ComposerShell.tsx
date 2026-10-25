@@ -66,7 +66,7 @@ export function ComposerShell({
 	onKeypadRequest: () => void;
 	children: ReactNode;
 }) {
-	const t = useTranslations("mobile.entry");
+	const t = useTranslations("mobile.composer");
 	const locale = useFormatLocale();
 	const { format } = useFormatMoney();
 	const { color, radius, size, space, type } = useTheme();

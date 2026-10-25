@@ -49,7 +49,7 @@ export function useAddEntry(): AddEntryApi {
  * returns.
  */
 export function AddEntryProvider({ children }: { children: ReactNode }) {
-	const t = useTranslations("mobile.entry");
+	const t = useTranslations("mobile.composer");
 	const insets = useSafeAreaInsets();
 	const { height, width } = useWindowDimensions();
 	const { space } = useTheme();

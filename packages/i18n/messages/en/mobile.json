@@ -18,7 +18,7 @@
 		"decimal": "Decimal point",
 		"tripleZero": "Three zeros"
 	},
-	"entry": {
+	"composer": {
 		"mode": "Entry type",
 		"expense": "Expense",
 		"income": "Income",
@@ -134,6 +134,36 @@
 			"retryFailed": "Still can't send it. Try again later."
 		}
 	},
+	"entry": {
+		"title": "Entry",
+		"missing": "Open this entry from Activity.",
+		"date": "Date",
+		"category": "Category",
+		"uncategorized": "No category",
+		"status": "Status",
+		"type": "Type",
+		"paidBy": "Paid by",
+		"you": "You",
+		"people": "With",
+		"project": "Project",
+		"rate": "Rate",
+		"rateType": "{rate} rate",
+		"location": "Location",
+		"notes": "Notes",
+		"spread": "Spread over",
+		"spreadMonths": "{months} months",
+		"excluded": "Left out of insights",
+		"yes": "Yes",
+		"locked": "Locked by a payment",
+		"added": "Added",
+		"kind": {
+			"expense": "Expense",
+			"income": "Money in",
+			"refund": "Refund",
+			"transfer": "Transfer",
+			"payment": "Payment"
+		}
+	},
 	"connect": {
 		"title": "Connect to a server",
 		"intro": "Use retrospend.app, or the address of a server you host.",
@@ -225,36 +255,6 @@
 		"homeWithRate": "{amount} at {rate}",
 		"approx": "≈ {amount}",
 		"yourShare": "Your share {amount}"
-	},
-	"entry": {
-		"title": "Entry",
-		"missing": "Open this entry from Activity.",
-		"date": "Date",
-		"category": "Category",
-		"uncategorized": "No category",
-		"status": "Status",
-		"type": "Type",
-		"paidBy": "Paid by",
-		"you": "You",
-		"people": "With",
-		"project": "Project",
-		"rate": "Rate",
-		"rateType": "{rate} rate",
-		"location": "Location",
-		"notes": "Notes",
-		"spread": "Spread over",
-		"spreadMonths": "{months} months",
-		"excluded": "Left out of insights",
-		"yes": "Yes",
-		"locked": "Locked by a payment",
-		"added": "Added",
-		"kind": {
-			"expense": "Expense",
-			"income": "Money in",
-			"refund": "Refund",
-			"transfer": "Transfer",
-			"payment": "Payment"
-		}
 	},
 	"home": {
 		"title": "Home",

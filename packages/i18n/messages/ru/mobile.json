@@ -18,7 +18,7 @@
 		"decimal": "Десятичный разделитель",
 		"tripleZero": "Три нуля"
 	},
-	"entry": {
+	"composer": {
 		"mode": "Тип записи",
 		"expense": "Расход",
 		"income": "Доход",
@@ -134,6 +134,36 @@
 			"retryFailed": "Пока не удаётся отправить. Попробуйте позже."
 		}
 	},
+	"entry": {
+		"title": "Запись",
+		"missing": "Откройте запись из раздела «Операции».",
+		"date": "Дата",
+		"category": "Категория",
+		"uncategorized": "Без категории",
+		"status": "Статус",
+		"type": "Тип",
+		"paidBy": "Платил",
+		"you": "Вы",
+		"people": "С",
+		"project": "Проект",
+		"rate": "Курс",
+		"rateType": "Курс: {rate}",
+		"location": "Место",
+		"notes": "Заметки",
+		"spread": "Распределено на",
+		"spreadMonths": "{months} мес.",
+		"excluded": "Не учитывается в аналитике",
+		"yes": "Да",
+		"locked": "Заблокировано платежом",
+		"added": "Добавлено",
+		"kind": {
+			"expense": "Расход",
+			"income": "Поступление",
+			"refund": "Возврат",
+			"transfer": "Перевод",
+			"payment": "Платёж"
+		}
+	},
 	"connect": {
 		"title": "Подключение к серверу",
 		"intro": "Используйте retrospend.app или адрес своего сервера.",
@@ -225,36 +255,6 @@
 		"homeWithRate": "{amount} ({rate})",
 		"approx": "≈ {amount}",
 		"yourShare": "Ваша доля: {amount}"
-	},
-	"entry": {
-		"title": "Запись",
-		"missing": "Откройте запись из раздела «Операции».",
-		"date": "Дата",
-		"category": "Категория",
-		"uncategorized": "Без категории",
-		"status": "Статус",
-		"type": "Тип",
-		"paidBy": "Платил",
-		"you": "Вы",
-		"people": "С",
-		"project": "Проект",
-		"rate": "Курс",
-		"rateType": "Курс: {rate}",
-		"location": "Место",
-		"notes": "Заметки",
-		"spread": "Распределено на",
-		"spreadMonths": "{months} мес.",
-		"excluded": "Не учитывается в аналитике",
-		"yes": "Да",
-		"locked": "Заблокировано платежом",
-		"added": "Добавлено",
-		"kind": {
-			"expense": "Расход",
-			"income": "Поступление",
-			"refund": "Возврат",
-			"transfer": "Перевод",
-			"payment": "Платёж"
-		}
 	},
 	"home": {
 		"title": "Главная",

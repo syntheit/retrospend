@@ -18,7 +18,7 @@
 		"decimal": "Vírgula decimal",
 		"tripleZero": "Três zeros"
 	},
-	"entry": {
+	"composer": {
 		"mode": "Tipo de lançamento",
 		"expense": "Gasto",
 		"income": "Receita",
@@ -134,6 +134,36 @@
 			"retryFailed": "Ainda não dá para enviar. Tente mais tarde."
 		}
 	},
+	"entry": {
+		"title": "Lançamento",
+		"missing": "Abra este lançamento pela aba Atividade.",
+		"date": "Data",
+		"category": "Categoria",
+		"uncategorized": "Sem categoria",
+		"status": "Situação",
+		"type": "Tipo",
+		"paidBy": "Pago por",
+		"you": "Você",
+		"people": "Com",
+		"project": "Projeto",
+		"rate": "Cotação",
+		"rateType": "Cotação {rate}",
+		"location": "Local",
+		"notes": "Notas",
+		"spread": "Dividido em",
+		"spreadMonths": "{months} meses",
+		"excluded": "Fora das análises",
+		"yes": "Sim",
+		"locked": "Bloqueado por um pagamento",
+		"added": "Adicionado",
+		"kind": {
+			"expense": "Despesa",
+			"income": "Entrada",
+			"refund": "Reembolso",
+			"transfer": "Transferência",
+			"payment": "Pagamento"
+		}
+	},
 	"connect": {
 		"title": "Conecte-se a um servidor",
 		"intro": "Use o retrospend.app ou o endereço de um servidor próprio.",
@@ -225,36 +255,6 @@
 		"homeWithRate": "{amount} ({rate})",
 		"approx": "≈ {amount}",
 		"yourShare": "Sua parte: {amount}"
-	},
-	"entry": {
-		"title": "Lançamento",
-		"missing": "Abra este lançamento pela aba Atividade.",
-		"date": "Data",
-		"category": "Categoria",
-		"uncategorized": "Sem categoria",
-		"status": "Situação",
-		"type": "Tipo",
-		"paidBy": "Pago por",
-		"you": "Você",
-		"people": "Com",
-		"project": "Projeto",
-		"rate": "Cotação",
-		"rateType": "Cotação {rate}",
-		"location": "Local",
-		"notes": "Notas",
-		"spread": "Dividido em",
-		"spreadMonths": "{months} meses",
-		"excluded": "Fora das análises",
-		"yes": "Sim",
-		"locked": "Bloqueado por um pagamento",
-		"added": "Adicionado",
-		"kind": {
-			"expense": "Despesa",
-			"income": "Entrada",
-			"refund": "Reembolso",
-			"transfer": "Transferência",
-			"payment": "Pagamento"
-		}
 	},
 	"home": {
 		"title": "Início",

@@ -97,7 +97,7 @@ export function ExpenseFields({
 	rows: SplitRow[];
 	onTypingChange: (typing: boolean) => void;
 }) {
-	const t = useTranslations("mobile.entry");
+	const t = useTranslations("mobile.composer");
 	const { format } = useFormatMoney();
 	const { color, size, space, type } = useTheme();
 	const recents = recentCategories(catalog, RECENTS, draft.categoryId);
