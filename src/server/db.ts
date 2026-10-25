@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { env } from "~/env";
-import { PrismaClient } from "~prisma";
+import { type Prisma, PrismaClient } from "~prisma";
 
 const pool = new Pool({
 	connectionString: env.DATABASE_URL,
@@ -33,9 +33,15 @@ if (env.NODE_ENV !== "production") globalForPrisma.prisma = db;
  * that sets `app.current_user_id` and temporarily drops to the
  * `retrospend_app` role so Postgres enforces RLS policies.
  *
- * NOTE: This interceptor only wraps individual model queries. Interactive
- * transactions (`$transaction(callback)`) must manually call set_config at
- * the start of their callback: the `tx` client is not intercepted.
+ * Interactive transactions (`$transaction(callback)`) must not use that
+ * per-query wrapper: Prisma's `tx` inherits the extension, so every model call
+ * inside would open its own batch transaction on another pool connection. The
+ * work would not be atomic, would not see its own writes, and would block on
+ * any row lock the real transaction holds (P2028 after 5 s). So the returned
+ * client overrides `$transaction`: a callback runs on the base client, in one
+ * transaction on one connection, with the RLS settings set once at its start
+ * (transaction-local, so they end with it). Every query in it, model or raw,
+ * then runs as `retrospend_app` for this user.
  */
 export function createUserScopedDb(userId: string): typeof db {
 	const extended = db.$extends({
@@ -51,6 +57,32 @@ export function createUserScopedDb(userId: string): typeof db {
 				},
 			},
 		},
+	}) as unknown as typeof db;
+
+	function scopedTransaction(first: unknown, ...rest: unknown[]) {
+		if (typeof first !== "function") {
+			// A batch of already-scoped queries: each one carries its own context.
+			return (extended.$transaction as (...args: unknown[]) => unknown)(
+				first,
+				...rest,
+			);
+		}
+		const work = first as (tx: Prisma.TransactionClient) => Promise<unknown>;
+		return (db.$transaction as (...args: unknown[]) => unknown)(
+			async (tx: Prisma.TransactionClient) => {
+				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true),
+				                            set_config('role', 'retrospend_app', true)`;
+				return work(tx);
+			},
+			...rest,
+		);
+	}
+
+	return new Proxy(extended, {
+		get(target, prop) {
+			if (prop === "$transaction") return scopedTransaction;
+			const value = Reflect.get(target, prop, target);
+			return typeof value === "function" ? value.bind(target) : value;
+		},
 	});
-	return extended as unknown as typeof db;
 }

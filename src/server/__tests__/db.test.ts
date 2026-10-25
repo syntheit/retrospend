@@ -16,16 +16,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // vi.mock factories are hoisted to the top of the file and execute BEFORE any
 // const/let declarations in the module body. vi.hoisted() runs even earlier.
 
-const { mockPrismaInstance, mockTransaction, mockExecuteRaw } = vi.hoisted(() => {
-	const mockTransaction = vi.fn();
-	const mockExecuteRaw = vi.fn();
-	const mockPrismaInstance = {
-		$extends: vi.fn(),
-		$transaction: mockTransaction,
-		$executeRaw: mockExecuteRaw,
-	};
-	return { mockPrismaInstance, mockTransaction, mockExecuteRaw };
-});
+const { mockPrismaInstance, mockTransaction, mockExecuteRaw } = vi.hoisted(
+	() => {
+		const mockTransaction = vi.fn();
+		const mockExecuteRaw = vi.fn();
+		const mockPrismaInstance = {
+			$extends: vi.fn(),
+			$transaction: mockTransaction,
+			$executeRaw: mockExecuteRaw,
+		};
+		return { mockPrismaInstance, mockTransaction, mockExecuteRaw };
+	},
+);
 
 // ── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -180,5 +182,31 @@ describe("createUserScopedDb", () => {
 
 		const userDb = createUserScopedDb("user-1") as typeof failingDb;
 		await expect(userDb.user.findMany({})).rejects.toThrow("DB error");
+	});
+
+	it("runs an interactive transaction on the base client, RLS set first", async () => {
+		setupExtendsMock();
+		const tx = { $executeRaw: vi.fn().mockResolvedValue(1) };
+		mockTransaction.mockImplementation(
+			async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx),
+		);
+		const userDb = createUserScopedDb("user-1") as unknown as {
+			$transaction: (
+				fn: (t: typeof tx) => Promise<unknown>,
+				options?: unknown,
+			) => Promise<unknown>;
+		};
+		const options = { timeout: 15_000 };
+
+		const result = await userDb.$transaction(async (inner) => {
+			expect(inner).toBe(tx);
+			expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+			return "done";
+		}, options);
+
+		expect(result).toBe("done");
+		expect(mockTransaction).toHaveBeenCalledTimes(1);
+		expect(mockTransaction).toHaveBeenCalledWith(expect.any(Function), options);
+		expect(tx.$executeRaw.mock.calls[0]?.[1]).toBe("user-1");
 	});
 });

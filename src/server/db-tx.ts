@@ -7,9 +7,14 @@ export interface UserTransactionOptions {
 
 /**
  * Runs `work` in one interactive transaction with RLS set for `userId`.
- * createUserScopedDb only intercepts single model calls; the `tx` client of
- * an interactive transaction is not intercepted, so the RLS settings must be
- * the first statement inside it (the pattern in routers/wealth.ts).
+ * The RLS settings are the first statement inside it. Pass the global `db` or a
+ * client from createUserScopedDb: the scoped client's `$transaction(callback)`
+ * runs on the base client (one connection), so `tx` is never the per-query
+ * wrapper that would split the work across connections.
+ *
+ * `userId` is who the whole transaction runs as, whatever scoped client was
+ * passed: `userTransaction(scopedForAlice, bobId, ...)` runs every query as
+ * Bob. Pass the caller's own id unless acting for someone else is intended.
  */
 export function userTransaction<T>(
 	client: Pick<PrismaClient, "$transaction">,
