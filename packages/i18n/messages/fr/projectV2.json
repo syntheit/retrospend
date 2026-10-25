@@ -8,14 +8,14 @@
 	},
 	"unavailable": {
 		"title": "Impossible de charger ce projet",
-		"hint": "Vérifiez votre connexion et réessayez.",
+		"hint": "Vérifie ta connexion et réessaie.",
 		"retry": "Réessayer"
 	},
 	"hero": {
 		"spent": "Dépensé",
 		"groupTotal": "Total du groupe",
 		"count": "{count, plural, one {# dépense} other {# dépenses}}",
-		"yourShare": "Votre part",
+		"yourShare": "Ta part",
 		"left": "Il reste <amount></amount>",
 		"over": "<amount></amount> au-delà du budget",
 		"ofBudget": "sur <amount></amount>",
@@ -27,21 +27,21 @@
 		"search": "Rechercher des dépenses",
 		"toReview": "À vérifier · {count}",
 		"paidBy": "Payé par {name}",
-		"paidByYou": "Payé par vous",
+		"paidByYou": "Payé par toi",
 		"paidByGroup": "Payé par",
-		"you": "Vous",
+		"you": "Toi",
 		"clear": "Effacer les filtres",
 		"noMatch": "Aucune dépense ne correspond",
 		"empty": "Aucune dépense pour l'instant",
-		"emptySolo": "Ajoutez la première dépense pour suivre ce projet.",
-		"emptyShared": "Ajoutez la première dépense, puis les personnes avec qui vous la partagez.",
+		"emptySolo": "Ajoute la première dépense pour suivre ce projet.",
+		"emptyShared": "Ajoute la première dépense, puis les personnes avec qui tu la partages.",
 		"add": "Ajouter une dépense",
 		"count": "{count, plural, one {# dépense} other {# dépenses}}",
 		"shownOf": "{shown} sur {count, plural, one {# dépense} other {# dépenses}}"
 	},
 	"summary": {
-		"you": "Vous",
-		"youObject": "vous",
+		"you": "Toi",
+		"youObject": "toi",
 		"empty": "Rien à résumer pour l'instant",
 		"emptyHint": "Les dépenses par personne et par catégorie apparaissent après la première dépense.",
 		"whoPaidWhat": "Qui a payé quoi",
@@ -55,8 +55,8 @@
 		"betweenYou": "entre vous",
 		"betweenThem": "entre eux",
 		"pays": "{from} paie {to}",
-		"youPay": "Vous payez {to}",
-		"youAndEach": "Vous et chaque personne",
+		"youPay": "Tu paies {to}",
+		"youAndEach": "Toi et chaque personne",
 		"settleAll": "Tout régler",
 		"roles": {
 			"ORGANIZER": "Propriétaire",
@@ -67,7 +67,7 @@
 		"byCategory": "Par catégorie",
 		"byCategoryGroup": "Ce que nous avons dépensé, par catégorie",
 		"group": "Groupe",
-		"yours": "Vous",
+		"yours": "Toi",
 		"uncategorized": "Autre",
 		"payments": "Paiements dans ce projet",
 		"noPayments": "Aucun paiement pour l'instant.",
@@ -76,7 +76,7 @@
 	"people": {
 		"title": "Personnes",
 		"add": "Ajouter une personne",
-		"you": "Vous",
+		"you": "Toi",
 		"membersAndSettings": "Membres et paramètres",
 		"since": "depuis le {date}",
 		"left": "parti le {date}",
@@ -89,7 +89,7 @@
 	},
 	"toast": {
 		"exportFailed": "Export impossible",
-		"accepted": "Votre part de {name} est acceptée"
+		"accepted": "Ta part de {name} est acceptée"
 	},
 	"preview": {
 		"checking": "Vérification de ce qui change",
@@ -98,42 +98,42 @@
 			"project_member_balance": "{name} dans le groupe",
 			"project_member_share": "Part de {name}",
 			"project_member_paid": "{name} a payé",
-			"owed_owedToYou": "On vous doit",
-			"owed_youOwe": "Vous devez",
-			"balance_person": "Vous et {name}"
+			"owed_owedToYou": "On te doit",
+			"owed_youOwe": "Tu dois",
+			"balance_person": "Toi et {name}"
 		},
 		"figuresInline": {
 			"project_total": "le total du groupe",
 			"project_member_balance": "le solde de {name} dans le groupe",
 			"project_member_share": "la part de {name}",
 			"project_member_paid": "ce que {name} a payé",
-			"owed_owedToYou": "ce qu'on vous doit",
-			"owed_youOwe": "ce que vous devez",
-			"balance_person": "votre solde avec {name}"
+			"owed_owedToYou": "ce qu'on te doit",
+			"owed_youOwe": "ce que tu dois",
+			"balance_person": "ton solde avec {name}"
 		}
 	},
 	"settleAll": {
 		"title": "Tout régler",
 		"submit": "{count, plural, =0 {Enregistrer les paiements} one {Enregistrer # paiement} other {Enregistrer # paiements}}",
 		"done": "{count, plural, one {# paiement enregistré} other {# paiements enregistrés}}",
-		"even": "Vous êtes quitte avec tout le monde dans ce projet.",
+		"even": "Tu es quitte avec tout le monde dans ce projet.",
 		"payments": "Paiements à enregistrer",
 		"someone": "Quelqu'un",
-		"paysYou": "{name} vous paie",
-		"youPay": "Vous payez {name}",
-		"recordedAsPaid": "Enregistré comme payé à vous",
+		"paysYou": "{name} te paie",
+		"youPay": "Tu paies {name}",
+		"recordedAsPaid": "Enregistré comme payé à toi",
 		"theyConfirm": "{name} le confirme",
 		"finalNow": "Définitif tout de suite",
-		"claimed": "{name} dit vous avoir payé. Confirmez-le sur sa page.",
-		"skippedOther": "Laissé de côté : réglez-le sur sa page."
+		"claimed": "{name} dit t'avoir payé. Confirme-le sur sa page.",
+		"skippedOther": "Laissé de côté : règle-le sur sa page."
 	},
 	"addPerson": {
 		"title": "Ajouter une personne à {project}",
 		"submit": "Ajouter au projet",
 		"name": "Nom",
 		"namePlaceholder": "Sol García",
-		"nameMissing": "Saisissez un nom",
-		"known": "Personnes avec qui vous partagez",
+		"nameMissing": "Saisis un nom",
+		"known": "Personnes avec qui tu partages",
 		"email": "E-mail (facultatif)",
 		"emailPlaceholder": "sol@exemple.fr",
 		"emailHint": "Si la personne est sur Retrospend, elle est liée, sinon elle reçoit une invitation.",
@@ -155,7 +155,7 @@
 		"since": "Depuis le {date}",
 		"fromStart": "Depuis le début",
 		"left": "Parti le {date}",
-		"you": "{name} (vous)",
+		"you": "{name} (toi)",
 		"datesHint": "Les dates choisissent qui les nouvelles dépenses incluent. Les dépenses enregistrées gardent leur répartition.",
 		"saved": "Paramètres du projet enregistrés"
 	},
@@ -172,7 +172,7 @@
 		"joins": "À partir du {date}, les nouvelles dépenses incluent {name} par défaut.",
 		"always": "Les nouvelles dépenses incluent {name} par défaut.",
 		"saved": "Dates de {name} enregistrées",
-		"you": "Vous"
+		"you": "Toi"
 	},
 	"share": {
 		"title": "Partager",
@@ -195,9 +195,9 @@
 		"nowPrivate": "La page du projet est privée"
 	},
 	"errors": {
-		"failed": "L'enregistrement a échoué. Réessayez.",
-		"changed": "Les soldes ont changé entre-temps. Vérifiez les nouveaux montants et enregistrez à nouveau.",
-		"previewFailed": "Impossible de vérifier ce qui change. Réessayez.",
+		"failed": "L'enregistrement a échoué. Réessaie.",
+		"changed": "Les soldes ont changé entre-temps. Vérifie les nouveaux montants et enregistre à nouveau.",
+		"previewFailed": "Impossible de vérifier ce qui change. Réessaie.",
 		"undoConflict": "Un paiement a été confirmé entre-temps, donc rien n'a été annulé."
 	}
 }

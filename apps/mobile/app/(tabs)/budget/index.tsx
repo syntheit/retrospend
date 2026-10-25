@@ -1,6 +1,5 @@
-import { Screen } from "@/ui/Screen";
+import { BudgetView } from "@/features/budget/BudgetView";
 
-// Placeholder until the screen's stream builds it: a real title, no data.
 export default function BudgetScreen() {
-	return <Screen />;
+	return <BudgetView />;
 }
