@@ -111,6 +111,7 @@ export const PHONE_GO_TO: readonly NavId[] = [
 	"currencies",
 	"import",
 	"recurring",
+	"insights",
 	"settings",
 ];
 
@@ -145,6 +146,7 @@ export const SHIPPED_ROUTES: ReadonlySet<string> = new Set<string>([
 	"/home",
 	"/activity",
 	"/activity/recurring",
+	"/activity/insights",
 ]);
 
 /** Where an entry links now; null when it has no page yet. */
