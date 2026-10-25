@@ -7837,6 +7837,3750 @@
 				"x-required-scope": "write:money"
 			}
 		},
+		"/admin/ai-settings": {
+			"get": {
+				"operationId": "getAdminAiSettings",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"defaultAiMode": {
+											"enum": [
+												"LOCAL",
+												"EXTERNAL"
+											],
+											"type": "string"
+										},
+										"externalAiAccessMode": {
+											"enum": [
+												"WHITELIST",
+												"BLACKLIST"
+											],
+											"type": "string"
+										},
+										"monthlyAiTokenQuota": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"monthlyExternalAiTokenQuota": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"monthlyLocalAiTokenQuota": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"openRouterConfigured": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"defaultAiMode",
+										"externalAiAccessMode",
+										"monthlyAiTokenQuota",
+										"monthlyLocalAiTokenQuota",
+										"monthlyExternalAiTokenQuota",
+										"openRouterConfigured"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "AI mode, access mode and token quotas",
+				"tags": [
+					"Admin"
+				],
+				"x-required-scope": "admin"
+			},
+			"patch": {
+				"operationId": "updateAdminAiSettings",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"defaultAiMode": {
+										"enum": [
+											"LOCAL",
+											"EXTERNAL"
+										],
+										"type": "string"
+									},
+									"externalAiAccessMode": {
+										"enum": [
+											"WHITELIST",
+											"BLACKLIST"
+										],
+										"type": "string"
+									},
+									"monthlyAiTokenQuota": {
+										"maximum": 9007199254740991,
+										"minimum": 0,
+										"type": "integer"
+									},
+									"monthlyExternalAiTokenQuota": {
+										"maximum": 9007199254740991,
+										"minimum": 0,
+										"type": "integer"
+									},
+									"monthlyLocalAiTokenQuota": {
+										"maximum": 9007199254740991,
+										"minimum": 0,
+										"type": "integer"
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"defaultAiMode": {
+											"enum": [
+												"LOCAL",
+												"EXTERNAL"
+											],
+											"type": "string"
+										},
+										"externalAiAccessMode": {
+											"enum": [
+												"WHITELIST",
+												"BLACKLIST"
+											],
+											"type": "string"
+										},
+										"monthlyAiTokenQuota": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"monthlyExternalAiTokenQuota": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"monthlyLocalAiTokenQuota": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"openRouterConfigured": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"defaultAiMode",
+										"externalAiAccessMode",
+										"monthlyAiTokenQuota",
+										"monthlyLocalAiTokenQuota",
+										"monthlyExternalAiTokenQuota",
+										"openRouterConfigured"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Change AI mode, access mode and token quotas",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "admin_ai_settings.updated",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/ai-usage": {
+			"get": {
+				"operationId": "getAdminAiUsage",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "yearMonth",
+						"schema": {
+							"pattern": "^\\d{4}-\\d{2}$",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"externalQuota": {
+											"maximum": 9007199254740991,
+											"minimum": -9007199254740991,
+											"type": "integer"
+										},
+										"localQuota": {
+											"maximum": 9007199254740991,
+											"minimum": -9007199254740991,
+											"type": "integer"
+										},
+										"quota": {
+											"maximum": 9007199254740991,
+											"minimum": -9007199254740991,
+											"type": "integer"
+										},
+										"usages": {
+											"items": {
+												"properties": {
+													"externalTokensUsed": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"localTokensUsed": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"tokensUsed": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
+													},
+													"userId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"username": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"yearMonth": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"userId",
+													"username",
+													"tokensUsed",
+													"localTokensUsed",
+													"externalTokensUsed",
+													"yearMonth"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"quota",
+										"localQuota",
+										"externalQuota",
+										"usages"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Tokens each account used in a month",
+				"tags": [
+					"Admin"
+				],
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/backups": {
+			"get": {
+				"description": "`available: false` when the sidecar cannot be reached.",
+				"operationId": "getBackupStatus",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"available": {
+											"type": "boolean"
+										},
+										"history": {
+											"items": {
+												"properties": {
+													"durationMs": {
+														"type": "number"
+													},
+													"error": {
+														"type": "string"
+													},
+													"filename": {
+														"type": "string"
+													},
+													"sizeBytes": {
+														"type": "number"
+													},
+													"success": {
+														"type": "boolean"
+													},
+													"timestamp": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"timestamp",
+													"filename",
+													"sizeBytes",
+													"durationMs",
+													"success"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"lastBackup": {
+											"properties": {
+												"durationMs": {
+													"type": "number"
+												},
+												"error": {
+													"type": "string"
+												},
+												"filename": {
+													"type": "string"
+												},
+												"sizeBytes": {
+													"type": "number"
+												},
+												"success": {
+													"type": "boolean"
+												},
+												"timestamp": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"timestamp",
+												"filename",
+												"sizeBytes",
+												"durationMs",
+												"success"
+											],
+											"type": "object"
+										},
+										"nextScheduled": {
+											"type": "string"
+										},
+										"retentionDays": {
+											"type": "number"
+										},
+										"running": {
+											"type": "boolean"
+										},
+										"totalBackups": {
+											"type": "number"
+										},
+										"totalSize": {
+											"type": "number"
+										}
+									},
+									"required": [
+										"available"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Database backup status from the sidecar",
+				"tags": [
+					"Admin"
+				],
+				"x-required-scope": "admin"
+			},
+			"post": {
+				"description": "Answers 202 once the sidecar accepted it.",
+				"operationId": "startBackup",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"202": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"message": {
+											"type": "string"
+										},
+										"status": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"status",
+										"message"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Start a database backup now",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "admin_backup.started",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/event-logs": {
+			"get": {
+				"operationId": "listEventLogs",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 50,
+							"maximum": 100,
+							"minimum": 1,
+							"type": "integer"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "eventType",
+						"schema": {
+							"enum": [
+								"FAILED_LOGIN",
+								"SUCCESSFUL_LOGIN",
+								"PASSWORD_RESET",
+								"PASSWORD_CHANGED",
+								"ACCOUNT_CREATED",
+								"ACCOUNT_DELETED",
+								"ACCOUNT_ENABLED",
+								"ACCOUNT_DISABLED",
+								"INVITE_USED",
+								"INVITE_CREATED",
+								"EMAIL_VERIFIED",
+								"TWO_FACTOR_ENABLED",
+								"TWO_FACTOR_DISABLED",
+								"SETTINGS_UPDATED",
+								"USER_UPDATED",
+								"USERNAME_CHANGED",
+								"EXPENSE_IMPORT",
+								"ADMIN_RESET_LINK_GENERATED",
+								"ADMIN_AI_ACCESS_CHANGED",
+								"EMAIL_CHANGE_REQUESTED",
+								"EMAIL_CHANGE_CONFIRMED",
+								"EMAIL_CHANGE_REVERTED",
+								"GUEST_UPGRADED",
+								"ADMIN_DELETE_SHADOW_PROFILE",
+								"ADMIN_DELETE_GUEST_SESSION"
+							],
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"eventType": {
+														"enum": [
+															"FAILED_LOGIN",
+															"SUCCESSFUL_LOGIN",
+															"PASSWORD_RESET",
+															"PASSWORD_CHANGED",
+															"ACCOUNT_CREATED",
+															"ACCOUNT_DELETED",
+															"ACCOUNT_ENABLED",
+															"ACCOUNT_DISABLED",
+															"INVITE_USED",
+															"INVITE_CREATED",
+															"EMAIL_VERIFIED",
+															"TWO_FACTOR_ENABLED",
+															"TWO_FACTOR_DISABLED",
+															"SETTINGS_UPDATED",
+															"USER_UPDATED",
+															"USERNAME_CHANGED",
+															"EXPENSE_IMPORT",
+															"ADMIN_RESET_LINK_GENERATED",
+															"ADMIN_AI_ACCESS_CHANGED",
+															"EMAIL_CHANGE_REQUESTED",
+															"EMAIL_CHANGE_CONFIRMED",
+															"EMAIL_CHANGE_REVERTED",
+															"GUEST_UPGRADED",
+															"ADMIN_DELETE_SHADOW_PROFILE",
+															"ADMIN_DELETE_GUEST_SESSION"
+														],
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"ipAddress": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"metadata": {
+														"anyOf": [
+															{
+																"additionalProperties": {},
+																"propertyNames": {
+																	"type": "string"
+																},
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"timestamp": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"user": {
+														"anyOf": [
+															{
+																"properties": {
+																	"email": {
+																		"type": "string"
+																	},
+																	"id": {
+																		"maxLength": 64,
+																		"minLength": 1,
+																		"type": "string"
+																	},
+																	"username": {
+																		"anyOf": [
+																			{
+																				"type": "string"
+																			},
+																			{
+																				"type": "null"
+																			}
+																		]
+																	}
+																},
+																"required": [
+																	"id",
+																	"username",
+																	"email"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"userAgent": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"id",
+													"timestamp",
+													"eventType",
+													"user",
+													"ipAddress",
+													"userAgent",
+													"metadata"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Sign-ins, account changes and other security events, newest first",
+				"tags": [
+					"Admin"
+				],
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/feedback": {
+			"get": {
+				"operationId": "listFeedback",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "status",
+						"schema": {
+							"enum": [
+								"unread",
+								"read",
+								"archived"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 20,
+							"maximum": 100,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"counts": {
+											"properties": {
+												"archived": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												"read": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												"total": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												"unread": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												}
+											},
+											"required": [
+												"total",
+												"unread",
+												"read",
+												"archived"
+											],
+											"type": "object"
+										},
+										"items": {
+											"items": {
+												"properties": {
+													"adminNote": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"appVersion": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"message": {
+														"type": "string"
+													},
+													"pageUrl": {
+														"type": "string"
+													},
+													"status": {
+														"enum": [
+															"unread",
+															"read",
+															"archived"
+														],
+														"type": "string"
+													},
+													"user": {
+														"properties": {
+															"email": {
+																"type": "string"
+															},
+															"id": {
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															"name": {
+																"type": "string"
+															}
+														},
+														"required": [
+															"id",
+															"name",
+															"email"
+														],
+														"type": "object"
+													},
+													"userAgent": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"viewportSize": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"id",
+													"message",
+													"status",
+													"adminNote",
+													"pageUrl",
+													"userAgent",
+													"viewportSize",
+													"appVersion",
+													"createdAt",
+													"user"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor",
+										"counts"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Feedback users sent, newest first, with counts by status",
+				"tags": [
+					"Admin"
+				],
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/feedback/{id}": {
+			"delete": {
+				"operationId": "deleteFeedback",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Delete feedback",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "feedback.deleted",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/feedback/{id}/note": {
+			"put": {
+				"operationId": "setFeedbackNote",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"note": {
+										"anyOf": [
+											{
+												"maxLength": 2000,
+												"minLength": 1,
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									}
+								},
+								"required": [
+									"note"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Write or clear the admin note on feedback",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "feedback.note_set",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/feedback/{id}/status": {
+			"put": {
+				"operationId": "setFeedbackStatus",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"status": {
+										"enum": [
+											"unread",
+											"read",
+											"archived"
+										],
+										"type": "string"
+									}
+								},
+								"required": [
+									"status"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Mark feedback unread, read or archived",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "feedback.status_set",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/invite-codes": {
+			"get": {
+				"operationId": "listAdminInviteCodes",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "status",
+						"schema": {
+							"default": "active",
+							"enum": [
+								"all",
+								"active",
+								"used"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 10,
+							"maximum": 100,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"code": {
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"createdBy": {
+														"properties": {
+															"name": {
+																"type": "string"
+															},
+															"username": {
+																"anyOf": [
+																	{
+																		"type": "string"
+																	},
+																	{
+																		"type": "null"
+																	}
+																]
+															}
+														},
+														"required": [
+															"username",
+															"name"
+														],
+														"type": "object"
+													},
+													"expiresAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"isActive": {
+														"type": "boolean"
+													},
+													"state": {
+														"enum": [
+															"active",
+															"used"
+														],
+														"type": "string"
+													},
+													"usedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"usedBy": {
+														"anyOf": [
+															{
+																"properties": {
+																	"name": {
+																		"type": "string"
+																	},
+																	"username": {
+																		"anyOf": [
+																			{
+																				"type": "string"
+																			},
+																			{
+																				"type": "null"
+																			}
+																		]
+																	}
+																},
+																"required": [
+																	"username",
+																	"name"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"id",
+													"code",
+													"state",
+													"isActive",
+													"createdAt",
+													"usedAt",
+													"expiresAt",
+													"createdBy",
+													"usedBy"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Every invite code, newest first",
+				"tags": [
+					"Admin"
+				],
+				"x-required-scope": "admin"
+			},
+			"post": {
+				"operationId": "createAdminInviteCode",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"code": {
+											"type": "string"
+										},
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"createdBy": {
+											"properties": {
+												"name": {
+													"type": "string"
+												},
+												"username": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												}
+											},
+											"required": [
+												"username",
+												"name"
+											],
+											"type": "object"
+										},
+										"expiresAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"isActive": {
+											"type": "boolean"
+										},
+										"state": {
+											"enum": [
+												"active",
+												"used"
+											],
+											"type": "string"
+										},
+										"usedAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"usedBy": {
+											"anyOf": [
+												{
+													"properties": {
+														"name": {
+															"type": "string"
+														},
+														"username": {
+															"anyOf": [
+																{
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														}
+													},
+													"required": [
+														"username",
+														"name"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"id",
+										"code",
+										"state",
+										"isActive",
+										"createdAt",
+										"usedAt",
+										"expiresAt",
+										"createdBy",
+										"usedBy"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Create an invite code",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "invite_code.created",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/invite-codes/{id}": {
+			"delete": {
+				"operationId": "deleteAdminInviteCode",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Delete any invite code",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "invite_code.deleted",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/settings": {
+			"get": {
+				"operationId": "getAdminSettings",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"allowAllUsersToGenerateInvites": {
+											"type": "boolean"
+										},
+										"auditPrivacyMode": {
+											"enum": [
+												"minimal",
+												"anonymized",
+												"full"
+											],
+											"type": "string"
+										},
+										"enableEmail": {
+											"type": "boolean"
+										},
+										"enableFeedback": {
+											"type": "boolean"
+										},
+										"inviteOnlyEnabled": {
+											"type": "boolean"
+										},
+										"maxConcurrentImportJobs": {
+											"maximum": 50,
+											"minimum": 1,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"inviteOnlyEnabled",
+										"allowAllUsersToGenerateInvites",
+										"enableEmail",
+										"auditPrivacyMode",
+										"maxConcurrentImportJobs",
+										"enableFeedback"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Server settings: sign-up, email, audit privacy, import limits",
+				"tags": [
+					"Admin"
+				],
+				"x-required-scope": "admin"
+			},
+			"patch": {
+				"operationId": "updateAdminSettings",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"allowAllUsersToGenerateInvites": {
+										"type": "boolean"
+									},
+									"auditPrivacyMode": {
+										"enum": [
+											"minimal",
+											"anonymized",
+											"full"
+										],
+										"type": "string"
+									},
+									"enableEmail": {
+										"type": "boolean"
+									},
+									"enableFeedback": {
+										"type": "boolean"
+									},
+									"inviteOnlyEnabled": {
+										"type": "boolean"
+									},
+									"maxConcurrentImportJobs": {
+										"maximum": 50,
+										"minimum": 1,
+										"type": "integer"
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"allowAllUsersToGenerateInvites": {
+											"type": "boolean"
+										},
+										"auditPrivacyMode": {
+											"enum": [
+												"minimal",
+												"anonymized",
+												"full"
+											],
+											"type": "string"
+										},
+										"enableEmail": {
+											"type": "boolean"
+										},
+										"enableFeedback": {
+											"type": "boolean"
+										},
+										"inviteOnlyEnabled": {
+											"type": "boolean"
+										},
+										"maxConcurrentImportJobs": {
+											"maximum": 50,
+											"minimum": 1,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"inviteOnlyEnabled",
+										"allowAllUsersToGenerateInvites",
+										"enableEmail",
+										"auditPrivacyMode",
+										"maxConcurrentImportJobs",
+										"enableFeedback"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Change server settings",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "admin_settings.updated",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/stats": {
+			"get": {
+				"operationId": "getAdminStats",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"databaseSizeBytes": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"storageSizeBytes": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"uptimeSeconds": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"userCount": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"userCount",
+										"databaseSizeBytes",
+										"storageSizeBytes",
+										"uptimeSeconds"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "User count, database and storage size, uptime",
+				"tags": [
+					"Admin"
+				],
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/users": {
+			"get": {
+				"description": "Counts and flags only: no titles, notes or amounts of any user.",
+				"operationId": "listAdminUsers",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"description": "The nextCursor of the previous page.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 50,
+							"maximum": 200,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"email": {
+														"type": "string"
+													},
+													"emailVerified": {
+														"type": "boolean"
+													},
+													"expenseCount": {
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
+													},
+													"externalAiAllowed": {
+														"anyOf": [
+															{
+																"type": "boolean"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"hasBudget": {
+														"type": "boolean"
+													},
+													"hasRecurring": {
+														"type": "boolean"
+													},
+													"hasWealth": {
+														"type": "boolean"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"inviteCodesCount": {
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
+													},
+													"isActive": {
+														"type": "boolean"
+													},
+													"lastExpenseDate": {
+														"anyOf": [
+															{
+																"format": "date",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"role": {
+														"enum": [
+															"USER",
+															"ADMIN"
+														],
+														"type": "string"
+													},
+													"twoFactorEnabled": {
+														"type": "boolean"
+													},
+													"username": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"id",
+													"username",
+													"email",
+													"emailVerified",
+													"twoFactorEnabled",
+													"role",
+													"isActive",
+													"createdAt",
+													"expenseCount",
+													"inviteCodesCount",
+													"lastExpenseDate",
+													"hasBudget",
+													"hasRecurring",
+													"hasWealth",
+													"externalAiAllowed"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Accounts, newest first, with counts of what each holds",
+				"tags": [
+					"Admin"
+				],
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/users/{id}": {
+			"delete": {
+				"description": "You cannot delete your own account.",
+				"operationId": "deleteUser",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Delete an account and anonymize what others share with it",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "admin_user.deleted",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/users/{id}/ai-access": {
+			"put": {
+				"operationId": "setUserAiAccess",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"allowed": {
+										"anyOf": [
+											{
+												"type": "boolean"
+											},
+											{
+												"type": "null"
+											}
+										],
+										"description": "true allows, false blocks, null follows the server default."
+									}
+								},
+								"required": [
+									"allowed"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Allow, block or reset an account's external AI access",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "admin_user.ai_access_set",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/users/{id}/avatar": {
+			"delete": {
+				"operationId": "removeUserAvatar",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Remove an account's uploaded picture",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "admin_user.avatar_removed",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/users/{id}/disable": {
+			"post": {
+				"description": "You cannot disable your own account.",
+				"operationId": "disableUser",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Disable an account and sign it out everywhere",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "admin_user.disabled",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/users/{id}/email-verified": {
+			"put": {
+				"operationId": "setUserEmailVerified",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"verified": {
+										"type": "boolean"
+									}
+								},
+								"required": [
+									"verified"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Mark an account's email verified or not",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "admin_user.email_verified_set",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/users/{id}/enable": {
+			"post": {
+				"operationId": "enableUser",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Enable a disabled account",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "admin_user.enabled",
+				"x-required-scope": "admin"
+			}
+		},
 		"/budget/adjustments/{expenseId}": {
 			"delete": {
 				"description": "Answers `undo: null`: removing an Adjustment is not undone; record the difference again.",
@@ -59410,6 +63154,1287 @@
 				"x-required-scope": "write:expenses"
 			}
 		},
+		"/exports/jobs": {
+			"get": {
+				"operationId": "listExportJobs",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"description": "The nextCursor of the previous page.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 50,
+							"maximum": 200,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"completedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"download": {
+														"anyOf": [
+															{
+																"properties": {
+																	"expiresAt": {
+																		"format": "date-time",
+																		"type": "string"
+																	},
+																	"url": {
+																		"type": "string"
+																	}
+																},
+																"required": [
+																	"url",
+																	"expiresAt"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"error": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"expiresAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"fileName": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"format": {
+														"enum": [
+															"zip",
+															"csv",
+															"pdf"
+														],
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"kind": {
+														"enum": [
+															"data",
+															"project_expenses",
+															"project_settlement_plan",
+															"project_billing_period",
+															"project_pdf",
+															"person_history",
+															"person_settlement_plan",
+															"person_pdf"
+														],
+														"type": "string"
+													},
+													"sizeBytes": {
+														"anyOf": [
+															{
+																"maximum": 9007199254740991,
+																"minimum": 0,
+																"type": "integer"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"state": {
+														"enum": [
+															"queued",
+															"running",
+															"ready",
+															"failed",
+															"expired"
+														],
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"kind",
+													"format",
+													"state",
+													"fileName",
+													"sizeBytes",
+													"error",
+													"createdAt",
+													"completedAt",
+													"expiresAt",
+													"download"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "Your export jobs, newest first",
+				"tags": [
+					"Exports"
+				],
+				"x-required-scope": "read"
+			},
+			"post": {
+				"description": "Answers at once with a queued job. At most 3 exports can wait or run at a time.",
+				"operationId": "requestExport",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"anyOf": [
+									{
+										"properties": {
+											"kind": {
+												"const": "data"
+											}
+										},
+										"required": [
+											"kind"
+										],
+										"type": "object"
+									},
+									{
+										"properties": {
+											"kind": {
+												"const": "project_expenses"
+											},
+											"periodId": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"projectId": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											}
+										},
+										"required": [
+											"kind",
+											"projectId"
+										],
+										"type": "object"
+									},
+									{
+										"properties": {
+											"kind": {
+												"const": "project_settlement_plan"
+											},
+											"periodId": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"projectId": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											}
+										},
+										"required": [
+											"kind",
+											"projectId"
+										],
+										"type": "object"
+									},
+									{
+										"properties": {
+											"kind": {
+												"const": "project_billing_period"
+											},
+											"periodId": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"projectId": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											}
+										},
+										"required": [
+											"kind",
+											"projectId",
+											"periodId"
+										],
+										"type": "object"
+									},
+									{
+										"properties": {
+											"kind": {
+												"const": "project_pdf"
+											},
+											"periodId": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"projectId": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											}
+										},
+										"required": [
+											"kind",
+											"projectId"
+										],
+										"type": "object"
+									},
+									{
+										"properties": {
+											"kind": {
+												"const": "person_history"
+											},
+											"participantId": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"participantType": {
+												"enum": [
+													"user",
+													"guest",
+													"shadow"
+												],
+												"type": "string"
+											}
+										},
+										"required": [
+											"kind",
+											"participantType",
+											"participantId"
+										],
+										"type": "object"
+									},
+									{
+										"properties": {
+											"kind": {
+												"const": "person_settlement_plan"
+											},
+											"participantId": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"participantType": {
+												"enum": [
+													"user",
+													"guest",
+													"shadow"
+												],
+												"type": "string"
+											}
+										},
+										"required": [
+											"kind",
+											"participantType",
+											"participantId"
+										],
+										"type": "object"
+									},
+									{
+										"properties": {
+											"kind": {
+												"const": "person_pdf"
+											},
+											"participantId": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"participantType": {
+												"enum": [
+													"user",
+													"guest",
+													"shadow"
+												],
+												"type": "string"
+											}
+										},
+										"required": [
+											"kind",
+											"participantType",
+											"participantId"
+										],
+										"type": "object"
+									}
+								]
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"202": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"completedAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"download": {
+											"anyOf": [
+												{
+													"properties": {
+														"expiresAt": {
+															"format": "date-time",
+															"type": "string"
+														},
+														"url": {
+															"type": "string"
+														}
+													},
+													"required": [
+														"url",
+														"expiresAt"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"error": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"expiresAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"fileName": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"format": {
+											"enum": [
+												"zip",
+												"csv",
+												"pdf"
+											],
+											"type": "string"
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"kind": {
+											"enum": [
+												"data",
+												"project_expenses",
+												"project_settlement_plan",
+												"project_billing_period",
+												"project_pdf",
+												"person_history",
+												"person_settlement_plan",
+												"person_pdf"
+											],
+											"type": "string"
+										},
+										"sizeBytes": {
+											"anyOf": [
+												{
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"state": {
+											"enum": [
+												"queued",
+												"running",
+												"ready",
+												"failed",
+												"expired"
+											],
+											"type": "string"
+										}
+									},
+									"required": [
+										"id",
+										"kind",
+										"format",
+										"state",
+										"fileName",
+										"sizeBytes",
+										"error",
+										"createdAt",
+										"completedAt",
+										"expiresAt",
+										"download"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Start an export",
+				"tags": [
+					"Exports"
+				],
+				"x-event-type": "export.requested",
+				"x-required-scope": "write:settings"
+			}
+		},
+		"/exports/jobs/{id}": {
+			"delete": {
+				"operationId": "deleteExportJob",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Delete an export and its file",
+				"tags": [
+					"Exports"
+				],
+				"x-event-type": "export.deleted",
+				"x-required-scope": "write:settings"
+			},
+			"get": {
+				"operationId": "getExportJob",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"completedAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"download": {
+											"anyOf": [
+												{
+													"properties": {
+														"expiresAt": {
+															"format": "date-time",
+															"type": "string"
+														},
+														"url": {
+															"type": "string"
+														}
+													},
+													"required": [
+														"url",
+														"expiresAt"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"error": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"expiresAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"fileName": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"format": {
+											"enum": [
+												"zip",
+												"csv",
+												"pdf"
+											],
+											"type": "string"
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"kind": {
+											"enum": [
+												"data",
+												"project_expenses",
+												"project_settlement_plan",
+												"project_billing_period",
+												"project_pdf",
+												"person_history",
+												"person_settlement_plan",
+												"person_pdf"
+											],
+											"type": "string"
+										},
+										"sizeBytes": {
+											"anyOf": [
+												{
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"state": {
+											"enum": [
+												"queued",
+												"running",
+												"ready",
+												"failed",
+												"expired"
+											],
+											"type": "string"
+										}
+									},
+									"required": [
+										"id",
+										"kind",
+										"format",
+										"state",
+										"fileName",
+										"sizeBytes",
+										"error",
+										"createdAt",
+										"completedAt",
+										"expiresAt",
+										"download"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "Where an export stands, with a fresh download link when ready",
+				"tags": [
+					"Exports"
+				],
+				"x-required-scope": "read"
+			}
+		},
+		"/exports/jobs/{id}/download": {
+			"get": {
+				"description": "The `token` query comes from the job's download link and expires after 10 minutes. The caller must be the job's owner as well.",
+				"operationId": "downloadExport",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "token",
+						"required": true,
+						"schema": {
+							"maxLength": 200,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"*/*": {
+								"schema": {
+									"contentMediaType": "*/*",
+									"type": "string"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "The finished file",
+				"tags": [
+					"Exports"
+				],
+				"x-required-scope": "read"
+			}
+		},
+		"/feedback": {
+			"post": {
+				"description": "Answers 409 after 5 entries in an hour. Admins are emailed when the server has email on.",
+				"operationId": "submitFeedback",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"appVersion": {
+										"maxLength": 32,
+										"type": "string"
+									},
+									"message": {
+										"maxLength": 5000,
+										"minLength": 1,
+										"type": "string"
+									},
+									"pageUrl": {
+										"maxLength": 2048,
+										"type": "string"
+									},
+									"userAgent": {
+										"maxLength": 512,
+										"type": "string"
+									},
+									"viewportSize": {
+										"maxLength": 32,
+										"type": "string"
+									}
+								},
+								"required": [
+									"message",
+									"pageUrl"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Send feedback to the admins",
+				"tags": [
+					"Feedback"
+				],
+				"x-event-type": "feedback.submitted",
+				"x-required-scope": "write:settings"
+			}
+		},
 		"/figures": {
 			"get": {
 				"operationId": "getFigures",
@@ -60459,6 +65484,2954 @@
 					"Figures"
 				],
 				"x-required-scope": "read"
+			}
+		},
+		"/imports/jobs": {
+			"get": {
+				"operationId": "listImportJobs",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"description": "The nextCursor of the previous page.",
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 50,
+							"maximum": 200,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"completedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"error": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"fileName": {
+														"type": "string"
+													},
+													"fileType": {
+														"enum": [
+															"csv",
+															"xlsx",
+															"pdf"
+														],
+														"type": "string"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"importedCount": {
+														"anyOf": [
+															{
+																"maximum": 9007199254740991,
+																"minimum": 0,
+																"type": "integer"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"message": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"percent": {
+														"anyOf": [
+															{
+																"maximum": 100,
+																"minimum": 0,
+																"type": "integer"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"rowCount": {
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
+													},
+													"skippedDuplicates": {
+														"anyOf": [
+															{
+																"maximum": 9007199254740991,
+																"minimum": 0,
+																"type": "integer"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"source": {
+														"enum": [
+															"csv",
+															"bank_statement"
+														],
+														"type": "string"
+													},
+													"state": {
+														"enum": [
+															"queued",
+															"reading",
+															"ready",
+															"reviewing",
+															"imported",
+															"failed",
+															"cancelled"
+														],
+														"type": "string"
+													},
+													"warnings": {
+														"items": {
+															"type": "string"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"fileName",
+													"fileType",
+													"source",
+													"state",
+													"percent",
+													"message",
+													"rowCount",
+													"importedCount",
+													"skippedDuplicates",
+													"warnings",
+													"error",
+													"createdAt",
+													"completedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "Import files, newest first",
+				"tags": [
+					"Imports"
+				],
+				"x-required-scope": "read"
+			},
+			"post": {
+				"description": "Answers at once with a queued job; the file is read in the background. At most 5 files can wait or be read at a time.",
+				"operationId": "uploadImport",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"file": {
+										"contentMediaType": "*/*",
+										"description": "A CSV, XLSX or PDF file of at most 10 MB (multipart/form-data, field file).",
+										"type": "string"
+									},
+									"source": {
+										"default": "csv",
+										"description": "csv for a spreadsheet of expenses, bank_statement for a bank statement (PDF or CSV).",
+										"enum": [
+											"csv",
+											"bank_statement"
+										],
+										"type": "string"
+									}
+								},
+								"required": [
+									"file"
+								],
+								"type": "object"
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"properties": {
+									"file": {
+										"contentMediaType": "*/*",
+										"description": "A CSV, XLSX or PDF file of at most 10 MB (multipart/form-data, field file).",
+										"type": "string"
+									},
+									"source": {
+										"default": "csv",
+										"description": "csv for a spreadsheet of expenses, bank_statement for a bank statement (PDF or CSV).",
+										"enum": [
+											"csv",
+											"bank_statement"
+										],
+										"type": "string"
+									}
+								},
+								"required": [
+									"file"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"completedAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"error": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"fileName": {
+											"type": "string"
+										},
+										"fileType": {
+											"enum": [
+												"csv",
+												"xlsx",
+												"pdf"
+											],
+											"type": "string"
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"importedCount": {
+											"anyOf": [
+												{
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"message": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"percent": {
+											"anyOf": [
+												{
+													"maximum": 100,
+													"minimum": 0,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"rowCount": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"skippedDuplicates": {
+											"anyOf": [
+												{
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"source": {
+											"enum": [
+												"csv",
+												"bank_statement"
+											],
+											"type": "string"
+										},
+										"state": {
+											"enum": [
+												"queued",
+												"reading",
+												"ready",
+												"reviewing",
+												"imported",
+												"failed",
+												"cancelled"
+											],
+											"type": "string"
+										},
+										"warnings": {
+											"items": {
+												"type": "string"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"id",
+										"fileName",
+										"fileType",
+										"source",
+										"state",
+										"percent",
+										"message",
+										"rowCount",
+										"importedCount",
+										"skippedDuplicates",
+										"warnings",
+										"error",
+										"createdAt",
+										"completedAt"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Upload a file to import (multipart/form-data)",
+				"tags": [
+					"Imports"
+				],
+				"x-event-type": "import.uploaded",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/imports/jobs/{id}": {
+			"delete": {
+				"description": "Not allowed while the file is queued or being read. Rows already imported stay.",
+				"operationId": "deleteImportJob",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Remove a file that is finished or waiting for review",
+				"tags": [
+					"Imports"
+				],
+				"x-event-type": "import.deleted",
+				"x-required-scope": "write:expenses"
+			},
+			"get": {
+				"operationId": "getImportJob",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"completedAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"error": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"fileName": {
+											"type": "string"
+										},
+										"fileType": {
+											"enum": [
+												"csv",
+												"xlsx",
+												"pdf"
+											],
+											"type": "string"
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"importedCount": {
+											"anyOf": [
+												{
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"message": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"percent": {
+											"anyOf": [
+												{
+													"maximum": 100,
+													"minimum": 0,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"rowCount": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"skippedDuplicates": {
+											"anyOf": [
+												{
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"source": {
+											"enum": [
+												"csv",
+												"bank_statement"
+											],
+											"type": "string"
+										},
+										"state": {
+											"enum": [
+												"queued",
+												"reading",
+												"ready",
+												"reviewing",
+												"imported",
+												"failed",
+												"cancelled"
+											],
+											"type": "string"
+										},
+										"warnings": {
+											"items": {
+												"type": "string"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"id",
+										"fileName",
+										"fileType",
+										"source",
+										"state",
+										"percent",
+										"message",
+										"rowCount",
+										"importedCount",
+										"skippedDuplicates",
+										"warnings",
+										"error",
+										"createdAt",
+										"completedAt"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "Where an import file stands",
+				"tags": [
+					"Imports"
+				],
+				"x-required-scope": "read"
+			}
+		},
+		"/imports/jobs/{id}/cancel": {
+			"post": {
+				"description": "Only a queued file can be cancelled.",
+				"operationId": "cancelImport",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"completedAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"error": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"fileName": {
+											"type": "string"
+										},
+										"fileType": {
+											"enum": [
+												"csv",
+												"xlsx",
+												"pdf"
+											],
+											"type": "string"
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"importedCount": {
+											"anyOf": [
+												{
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"message": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"percent": {
+											"anyOf": [
+												{
+													"maximum": 100,
+													"minimum": 0,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"rowCount": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"skippedDuplicates": {
+											"anyOf": [
+												{
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"source": {
+											"enum": [
+												"csv",
+												"bank_statement"
+											],
+											"type": "string"
+										},
+										"state": {
+											"enum": [
+												"queued",
+												"reading",
+												"ready",
+												"reviewing",
+												"imported",
+												"failed",
+												"cancelled"
+											],
+											"type": "string"
+										},
+										"warnings": {
+											"items": {
+												"type": "string"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"id",
+										"fileName",
+										"fileType",
+										"source",
+										"state",
+										"percent",
+										"message",
+										"rowCount",
+										"importedCount",
+										"skippedDuplicates",
+										"warnings",
+										"error",
+										"createdAt",
+										"completedAt"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Cancel a file that is still waiting",
+				"tags": [
+					"Imports"
+				],
+				"x-event-type": "import.cancelled",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/imports/jobs/{id}/finalize": {
+			"post": {
+				"description": "Writes the kept rows as one batch. Each row's amount, date and currency come from the stored file; the body only decides keep, category and kind per row. A file imports once. Undo with POST /imports/jobs/{id}/undo.",
+				"operationId": "finalizeImport",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"currency": {
+										"anyOf": [
+											{
+												"description": "ISO 4217 code, or the app's code for a crypto asset.",
+												"examples": [
+													"USD",
+													"ARS",
+													"BTC"
+												],
+												"pattern": "^[A-Z0-9]{2,10}$",
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"rows": {
+										"items": {
+											"properties": {
+												"categoryId": {
+													"anyOf": [
+														{
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"index": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												"keep": {
+													"type": "boolean"
+												},
+												"kind": {
+													"enum": [
+														"expense",
+														"income",
+														"refund",
+														"notSpending"
+													],
+													"type": "string"
+												}
+											},
+											"required": [
+												"index",
+												"keep",
+												"categoryId",
+												"kind"
+											],
+											"type": "object"
+										},
+										"maxItems": 5000,
+										"type": "array"
+									}
+								},
+								"required": [
+									"rows"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"byKind": {
+											"items": {
+												"properties": {
+													"count": {
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
+													},
+													"kind": {
+														"enum": [
+															"expense",
+															"income",
+															"refund",
+															"notSpending"
+														],
+														"type": "string"
+													},
+													"total": {
+														"anyOf": [
+															{
+																"$ref": "#/components/schemas/Money"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"withoutRate": {
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
+													}
+												},
+												"required": [
+													"kind",
+													"count",
+													"total",
+													"withoutRate"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"created": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"duplicates": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"fileName": {
+											"type": "string"
+										},
+										"fileRows": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"from": {
+											"anyOf": [
+												{
+													"format": "date",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"jobId": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"noRate": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"to": {
+											"anyOf": [
+												{
+													"format": "date",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"unchecked": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"unreadable": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"jobId",
+										"fileName",
+										"fileRows",
+										"created",
+										"byKind",
+										"duplicates",
+										"unchecked",
+										"unreadable",
+										"noRate",
+										"from",
+										"to"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Import the rows you kept",
+				"tags": [
+					"Imports"
+				],
+				"x-event-type": "import.finalized",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/imports/jobs/{id}/finalize/preview": {
+			"post": {
+				"description": "Runs POST /imports/jobs/{id}/finalize in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewFinalizeImport",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"currency": {
+										"anyOf": [
+											{
+												"description": "ISO 4217 code, or the app's code for a crypto asset.",
+												"examples": [
+													"USD",
+													"ARS",
+													"BTC"
+												],
+												"pattern": "^[A-Z0-9]{2,10}$",
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"rows": {
+										"items": {
+											"properties": {
+												"categoryId": {
+													"anyOf": [
+														{
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"index": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												"keep": {
+													"type": "boolean"
+												},
+												"kind": {
+													"enum": [
+														"expense",
+														"income",
+														"refund",
+														"notSpending"
+													],
+													"type": "string"
+												}
+											},
+											"required": [
+												"index",
+												"keep",
+												"categoryId",
+												"kind"
+											],
+											"type": "object"
+										},
+										"maxItems": 5000,
+										"type": "array"
+									}
+								},
+								"required": [
+									"rows"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Preview POST /imports/jobs/{id}/finalize",
+				"tags": [
+					"Imports"
+				],
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/imports/jobs/{id}/review": {
+			"get": {
+				"description": "Every row with its home value at the rate the import will save, whether it is already in Activity, the kind it is proposed as and its category. Only a file that is ready can be reviewed.",
+				"operationId": "reviewImport",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "currency",
+						"schema": {
+							"description": "Read every row as this currency instead of the file's own.",
+							"pattern": "^[A-Z0-9]{2,10}$",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"counts": {
+											"properties": {
+												"duplicates": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												"fileRows": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												"noRate": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												},
+												"unreadable": {
+													"maximum": 9007199254740991,
+													"minimum": 0,
+													"type": "integer"
+												}
+											},
+											"required": [
+												"fileRows",
+												"unreadable",
+												"duplicates",
+												"noRate"
+											],
+											"type": "object"
+										},
+										"currencies": {
+											"items": {
+												"description": "ISO 4217 code, or the app's code for a crypto asset.",
+												"examples": [
+													"USD",
+													"ARS",
+													"BTC"
+												],
+												"pattern": "^[A-Z0-9]{2,10}$",
+												"type": "string"
+											},
+											"type": "array"
+										},
+										"currency": {
+											"anyOf": [
+												{
+													"description": "ISO 4217 code, or the app's code for a crypto asset.",
+													"examples": [
+														"USD",
+														"ARS",
+														"BTC"
+													],
+													"pattern": "^[A-Z0-9]{2,10}$",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"fileName": {
+											"type": "string"
+										},
+										"homeCurrency": {
+											"description": "ISO 4217 code, or the app's code for a crypto asset.",
+											"examples": [
+												"USD",
+												"ARS",
+												"BTC"
+											],
+											"pattern": "^[A-Z0-9]{2,10}$",
+											"type": "string"
+										},
+										"jobId": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"rows": {
+											"items": {
+												"properties": {
+													"amount": {
+														"$ref": "#/components/schemas/Money"
+													},
+													"categoryId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"date": {
+														"format": "date",
+														"type": "string"
+													},
+													"duplicate": {
+														"type": "boolean"
+													},
+													"fileCategory": {
+														"type": "string"
+													},
+													"home": {
+														"anyOf": [
+															{
+																"$ref": "#/components/schemas/Money"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"index": {
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
+													},
+													"kind": {
+														"enum": [
+															"expense",
+															"income",
+															"refund",
+															"notSpending"
+														],
+														"type": "string"
+													},
+													"noRate": {
+														"type": "boolean"
+													},
+													"possible": {
+														"anyOf": [
+															{
+																"properties": {
+																	"date": {
+																		"format": "date",
+																		"type": "string"
+																	},
+																	"title": {
+																		"type": "string"
+																	}
+																},
+																"required": [
+																	"title",
+																	"date"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"rate": {
+														"anyOf": [
+															{
+																"properties": {
+																	"type": {
+																		"anyOf": [
+																			{
+																				"type": "string"
+																			},
+																			{
+																				"type": "null"
+																			}
+																		]
+																	},
+																	"unit": {
+																		"$ref": "#/components/schemas/Money"
+																	},
+																	"value": {
+																		"$ref": "#/components/schemas/Money"
+																	}
+																},
+																"required": [
+																	"unit",
+																	"value",
+																	"type"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"title": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"index",
+													"date",
+													"title",
+													"amount",
+													"home",
+													"rate",
+													"fileCategory",
+													"categoryId",
+													"kind",
+													"duplicate",
+													"possible",
+													"noRate"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"source": {
+											"enum": [
+												"csv",
+												"bank_statement"
+											],
+											"type": "string"
+										},
+										"unmatched": {
+											"items": {
+												"properties": {
+													"name": {
+														"type": "string"
+													},
+													"rows": {
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
+													},
+													"suggestionId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"name",
+													"rows",
+													"suggestionId"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"warnings": {
+											"items": {
+												"type": "string"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"jobId",
+										"fileName",
+										"source",
+										"homeCurrency",
+										"rows",
+										"counts",
+										"unmatched",
+										"currencies",
+										"currency",
+										"warnings"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "The rows of a read file, as the import would save them",
+				"tags": [
+					"Imports"
+				],
+				"x-required-scope": "read"
+			}
+		},
+		"/imports/jobs/{id}/undo": {
+			"post": {
+				"description": "Deletes every row the import created, edited since or not, and returns the file to ready so it can be reviewed again.",
+				"operationId": "undoImport",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"jobId": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"removed": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"jobId",
+										"removed"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Take an imported file back",
+				"tags": [
+					"Imports"
+				],
+				"x-event-type": "import.undone",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/imports/jobs/{id}/undo/preview": {
+			"post": {
+				"description": "Runs POST /imports/jobs/{id}/undo in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewUndoImport",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Preview POST /imports/jobs/{id}/undo",
+				"tags": [
+					"Imports"
+				],
+				"x-required-scope": "write:expenses"
 			}
 		},
 		"/income": {
@@ -62811,6 +70784,591 @@
 					"Income"
 				],
 				"x-required-scope": "write:money"
+			}
+		},
+		"/invite-codes": {
+			"get": {
+				"operationId": "listInviteCodes",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "status",
+						"schema": {
+							"default": "active",
+							"enum": [
+								"all",
+								"active",
+								"used"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 10,
+							"maximum": 100,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"code": {
+														"type": "string"
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"createdBy": {
+														"properties": {
+															"name": {
+																"type": "string"
+															},
+															"username": {
+																"anyOf": [
+																	{
+																		"type": "string"
+																	},
+																	{
+																		"type": "null"
+																	}
+																]
+															}
+														},
+														"required": [
+															"username",
+															"name"
+														],
+														"type": "object"
+													},
+													"expiresAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"isActive": {
+														"type": "boolean"
+													},
+													"state": {
+														"enum": [
+															"active",
+															"used"
+														],
+														"type": "string"
+													},
+													"usedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"usedBy": {
+														"anyOf": [
+															{
+																"properties": {
+																	"name": {
+																		"type": "string"
+																	},
+																	"username": {
+																		"anyOf": [
+																			{
+																				"type": "string"
+																			},
+																			{
+																				"type": "null"
+																			}
+																		]
+																	}
+																},
+																"required": [
+																	"username",
+																	"name"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"id",
+													"code",
+													"state",
+													"isActive",
+													"createdAt",
+													"usedAt",
+													"expiresAt",
+													"createdBy",
+													"usedBy"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "Invite codes you created, newest first",
+				"tags": [
+					"Invite codes"
+				],
+				"x-required-scope": "read"
+			},
+			"post": {
+				"operationId": "createInviteCode",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"code": {
+											"type": "string"
+										},
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"createdBy": {
+											"properties": {
+												"name": {
+													"type": "string"
+												},
+												"username": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												}
+											},
+											"required": [
+												"username",
+												"name"
+											],
+											"type": "object"
+										},
+										"expiresAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"isActive": {
+											"type": "boolean"
+										},
+										"state": {
+											"enum": [
+												"active",
+												"used"
+											],
+											"type": "string"
+										},
+										"usedAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"usedBy": {
+											"anyOf": [
+												{
+													"properties": {
+														"name": {
+															"type": "string"
+														},
+														"username": {
+															"anyOf": [
+																{
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														}
+													},
+													"required": [
+														"username",
+														"name"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"id",
+										"code",
+										"state",
+										"isActive",
+										"createdAt",
+										"usedAt",
+										"expiresAt",
+										"createdBy",
+										"usedBy"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Create an invite code",
+				"tags": [
+					"Invite codes"
+				],
+				"x-event-type": "invite_code.created",
+				"x-required-scope": "write:settings"
+			}
+		},
+		"/invite-codes/{id}": {
+			"delete": {
+				"operationId": "deleteInviteCode",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Delete one of your invite codes",
+				"tags": [
+					"Invite codes"
+				],
+				"x-event-type": "invite_code.deleted",
+				"x-required-scope": "write:settings"
 			}
 		},
 		"/me": {
