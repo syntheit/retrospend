@@ -6,6 +6,7 @@
 import { userTransaction } from "~/server/db-tx";
 import type { PrismaClient } from "~prisma";
 import { cashflowIn } from "./cashflow";
+import { firstDayIn } from "./first-day";
 import { monthsIn } from "./months";
 import { summaryIn } from "./summary";
 import type {
@@ -55,3 +56,11 @@ export const insightsCashflow = (
 	options?: Options,
 ): Promise<CashflowDTO> =>
 	userTransaction(db, userId, (tx) => cashflowIn(tx, userId, input, options));
+
+/** Where All time starts: the day of the oldest spending, or null with none. */
+export const insightsFirstDay = (
+	db: PrismaClient,
+	userId: string,
+	options?: Options,
+): Promise<{ readonly day: string | null }> =>
+	userTransaction(db, userId, (tx) => firstDayIn(tx, userId, options));

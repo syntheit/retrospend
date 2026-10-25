@@ -27,7 +27,8 @@
 	},
 	"money": {
 		"none": "Nenhum",
-		"noRate": "Sem cotação ainda"
+		"noRate": "Sem cotação ainda",
+		"unavailable": "Indisponível"
 	},
 	"filter": {
 		"menu": "Filtrar"

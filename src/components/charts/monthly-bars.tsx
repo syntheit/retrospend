@@ -35,12 +35,18 @@ export function MonthlyBars({
 	currency,
 	highlight,
 	height = 200,
+	onSelect,
 }: {
 	months: MonthTotal[];
 	currency: string;
 	/** Index of the month to highlight; the last one by default. */
 	highlight?: number;
 	height?: number;
+	/**
+	 * A bar was picked (a click or tap): its index. The drawing is hidden
+	 * from assistive tech, so the page offers the same targets as links.
+	 */
+	onSelect?: (index: number) => void;
 }) {
 	const t = useTranslations("charts");
 	const animate = useChartMotion();
@@ -108,7 +114,9 @@ export function MonthlyBars({
 						dataKey="value"
 						isAnimationActive={animate}
 						maxBarSize={BAR.maxSize}
+						onClick={onSelect ? (_, i) => onSelect(i) : undefined}
 						radius={BAR.radius}
+						style={onSelect ? { cursor: "pointer" } : undefined}
 					>
 						{data.map((d, i) => (
 							<Cell

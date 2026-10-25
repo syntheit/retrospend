@@ -84,7 +84,7 @@ describe("notifications", () => {
 });
 
 describe("palette Go to", () => {
-	it("lists each place's current route, without Insights (no page yet)", () => {
+	it("lists each place's current route, Insights and Recurring included", () => {
 		const items = goToItems(false);
 		expect(items.map((i) => i.href)).toEqual([
 			"/home",
@@ -97,6 +97,7 @@ describe("palette Go to", () => {
 			"/currencies",
 			"/settings",
 			"/activity/recurring",
+			"/activity/insights",
 		]);
 	});
 

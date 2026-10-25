@@ -323,3 +323,37 @@ describe("figure budget.leftInLimits", () => {
 		expect(f.get("budget.leftInLimits")).toBeNull();
 	});
 });
+
+describe("a Limits group's Left agrees with the hero", () => {
+	it("limitLeft is the limited envelopes' net Left; an unlimited envelope's spending stays out", async () => {
+		const s = await seedUser();
+		await forUser(s.user.id).apply(setupEnvelopeBook, {
+			...limitsInput(s),
+			timeZone: "UTC",
+		});
+		// Dining 200.00 limit, 250.00 spent: Left -5,000. Groceries untouched: 42,000.
+		await addRow(s.user.id, { amount: 250, categoryId: s.dining });
+		// 30.00 with no category lands in Everything else, which has no limit.
+		await addRow(s.user.id, { amount: 30 });
+		const m = await getMonth(s.user.id);
+		expect(m?.verdict.lead).toMatchObject({
+			kind: "LEFT_IN_LIMITS",
+			amount: usd(37_000),
+		});
+		const totals = m?.groups[0]?.totals;
+		expect(totals?.limitLeft).toEqual(usd(37_000));
+		expect(totals?.left).toEqual(usd(34_000));
+	});
+
+	it("is null in any other style", async () => {
+		const s = await seedUser();
+		await forUser(s.user.id).apply(setupEnvelopeBook, {
+			...limitsInput(s),
+			style: "FLEX",
+			startingMoneyMinor: 0,
+			timeZone: "UTC",
+		});
+		const m = await getMonth(s.user.id);
+		expect(m?.groups.every((g) => g.totals.limitLeft === null)).toBe(true);
+	});
+});

@@ -4,7 +4,9 @@
  * context line and where a link goes. Amounts pass through untouched (R9).
  */
 import type { NeedsYouItemVM } from "~/components/needs-you/types";
+import type { FacePerson } from "~/components/ui/avatar-face";
 import type {
+	NeedsYouFace,
 	NeedsYouItem,
 	NeedsYouList,
 } from "~/server/services/needs-you/types";
@@ -18,7 +20,8 @@ export type ContextKey =
 	| "arrived"
 	| "firstExpense"
 	| "homeCurrency"
-	| "importStatement";
+	| "importStatement"
+	| "owedSince";
 
 export type Words = {
 	context: (key: ContextKey, values?: Record<string, string>) => string;
@@ -26,6 +29,8 @@ export type Words = {
 	short: (iso: string) => string;
 	/** The first name of a person in the list's faces. */
 	name: (key: string) => string;
+	/** A person in the list's faces: their picture and whether they are on Retrospend. */
+	person: (key: string) => NeedsYouFace | undefined;
 	/** The signed-in address, for Verify your email. */
 	email: string | null;
 };
@@ -43,6 +48,43 @@ function base(item: NeedsYouItem) {
 
 const firstPerson = (item: NeedsYouItem, w: Words) =>
 	item.people[0] ? w.name(item.people[0]) : "";
+
+/** The face an item leads with when it is about a person (rule 8). */
+function faceOf(item: NeedsYouItem, w: Words): { face?: FacePerson } {
+	const key = item.people[0];
+	const person = key ? w.person(key) : undefined;
+	return key && person
+		? { face: { id: key, name: person.name, imageUrl: person.imageUrl } }
+		: {};
+}
+
+/**
+ * Owed for 60 days: leads with their face. Remind goes to people on
+ * Retrospend; anyone else opens their page, where Settle up and Forgive are.
+ */
+function owedAging(
+	item: NeedsYouItem,
+	b: { id: string },
+	w: Words,
+): NeedsYouItemVM | null {
+	const key = item.people[0];
+	if (!key) return null;
+	const face = w.person(key);
+	const [type, id] = key.split(":");
+	return {
+		...b,
+		kind: "owedAging",
+		person: firstPerson(item, w),
+		amount: item.amount,
+		...faceOf(item, w),
+		...(item.date
+			? { context: w.context("owedSince", { date: w.short(item.date) }) }
+			: {}),
+		...(face?.onRetrospend
+			? { action: "remind" }
+			: { action: "open", href: `/people/${type}/${id}` }),
+	};
+}
 
 /** One item, or null for a type the kit does not show yet (none today). */
 export function toNeedsVM(item: NeedsYouItem, w: Words): NeedsYouItemVM | null {
@@ -72,6 +114,7 @@ export function toNeedsVM(item: NeedsYouItem, w: Words): NeedsYouItemVM | null {
 						...b,
 						kind: "confirmPayment",
 						person: firstPerson(item, w),
+						...faceOf(item, w),
 						amount,
 						...(date
 							? { context: w.context("paidOn", { date: w.short(date) }) }
@@ -84,6 +127,7 @@ export function toNeedsVM(item: NeedsYouItem, w: Words): NeedsYouItemVM | null {
 						...b,
 						kind: "verify",
 						person: firstPerson(item, w),
+						...faceOf(item, w),
 						title: item.title ?? "",
 						amount,
 						...(date
@@ -97,6 +141,7 @@ export function toNeedsVM(item: NeedsYouItem, w: Words): NeedsYouItemVM | null {
 						...b,
 						kind: "rejected",
 						person: firstPerson(item, w),
+						...faceOf(item, w),
 						title: item.title ?? "",
 						amount,
 						// The server's primary action (catalog: expense edit).
@@ -173,6 +218,15 @@ export function toNeedsVM(item: NeedsYouItem, w: Words): NeedsYouItemVM | null {
 			};
 		case "budget.startingMoney":
 			return { ...b, kind: "startingMoney", href: "/budget" };
+		case "budget.sharesNeedEnvelope":
+			return {
+				...b,
+				kind: "sharesNeedEnvelope",
+				count: item.count ?? 0,
+				href: "/budget",
+			};
+		case "people.owedAging":
+			return owedAging(item, b, w);
 		case "setup.firstExpense":
 			return { ...b, kind: "firstExpense", context: w.context("firstExpense") };
 		case "setup.homeCurrency":

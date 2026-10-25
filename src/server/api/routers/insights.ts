@@ -7,6 +7,7 @@ import {
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
 	insightsCashflow,
+	insightsFirstDay,
 	insightsMonths,
 	insightsSummary,
 	insightsYtd,
@@ -25,6 +26,10 @@ export const insightsRouter = createTRPCRouter({
 				timeZone: ctx.timeZone,
 			}),
 		),
+	/** The day of the oldest spending: where All time starts. */
+	firstDay: protectedProcedure.query(({ ctx }) =>
+		insightsFirstDay(ctx.db, ctx.session.user.id, { timeZone: ctx.timeZone }),
+	),
 	/** The bars of Month by month. */
 	months: protectedProcedure
 		.input(insightsMonthsInputSchema)

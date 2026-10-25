@@ -49,6 +49,26 @@ function ScrubbedArea({ height, phone }: { height: number; phone?: boolean }) {
 	);
 }
 
+/** Monthly bars whose bars open their month: the pick shows under the chart. */
+function SelectableBars({ height }: { height?: number }) {
+	const [picked, setPicked] = useState<number | null>(null);
+	const { month } = useRowDates();
+	const at = picked === null ? undefined : MONTHS[picked];
+	return (
+		<div>
+			<MonthlyBars
+				currency="ARS"
+				height={height}
+				months={MONTHS}
+				onSelect={setPicked}
+			/>
+			<p className="text-fg-3 text-meta mt-2">
+				{at ? CAP.barsOpens(month(at.month)) : CAP.barsPick}
+			</p>
+		</div>
+	);
+}
+
 export function ChartSection() {
 	const { month } = useRowDates();
 	const name = month("2026-10-01");
@@ -75,6 +95,8 @@ export function ChartSection() {
 						/>
 						<Cap className="mt-6">{CAP.bars}</Cap>
 						<MonthlyBars currency="ARS" months={MONTHS} />
+						<Cap className="mt-6">{CAP.barsLinked}</Cap>
+						<SelectableBars />
 						<Cap className="mt-6">{CAP.area}</Cap>
 						<ScrubbedArea height={200} />
 					</>
@@ -90,6 +112,8 @@ export function ChartSection() {
 						/>
 						<div className="h-5" />
 						<MonthlyBars currency="ARS" height={180} months={MONTHS} />
+						<div className="h-5" />
+						<SelectableBars height={160} />
 						<div className="h-5" />
 						<ScrubbedArea height={160} phone />
 					</>

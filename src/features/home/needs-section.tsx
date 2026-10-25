@@ -1,8 +1,10 @@
 "use client";
 
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
+import type { NeedsYouTarget } from "~/components/actions/needs-you";
 import { Section } from "~/components/layout/section";
 import { NeedsYouList } from "~/components/needs-you/needs-you-list";
 import type { NeedsYouItemVM } from "~/components/needs-you/types";
@@ -31,6 +33,7 @@ function useWords(list: NeedsYouListDTO | undefined): Words {
 			context: (key, values) => t(key, values),
 			short,
 			name: (key) => firstName(list?.people[key]?.name ?? ""),
+			person: (key) => list?.people[key],
 			email: session?.user.email ?? null,
 		}),
 		[t, short, list, session],
@@ -57,6 +60,7 @@ export function NeedsSection({
 	const phone = useIsMobile();
 	const [more, setMore] = useState(false);
 	const words = useWords(list);
+	const router = useRouter();
 	const actions = useNeedsActions(list);
 	const entries = useMemo(
 		() => (list ? toNeedsVMs(list, words) : []),
@@ -73,6 +77,16 @@ export function NeedsSection({
 		if (item) actions.run(item);
 	};
 	const confirming = actions.recurring.confirming;
+	// The ⋯ menu, long press and iPhone swipe: Open is the item's own action.
+	const menu = {
+		open: ({ id }: NeedsYouTarget) => {
+			const entry = entries.find((e) => e.vm.id === id);
+			if (!entry) return;
+			if (entry.vm.href) router.push(entry.vm.href);
+			else actions.run(entry.item);
+		},
+		later: ({ id }: NeedsYouTarget) => void actions.later(id),
+	};
 
 	return (
 		<Section
@@ -88,6 +102,7 @@ export function NeedsSection({
 				<>
 					<NeedsYouList
 						items={shown.map((e) => e.vm)}
+						menu={menu}
 						onAction={onAction}
 						variant={phone ? "group" : "flat"}
 					/>

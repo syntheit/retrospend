@@ -1,15 +1,21 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { GlanceStrip } from "~/components/glance/glance-strip";
 import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useRowDates } from "~/components/rows/dates";
+import { useRateTypeName } from "~/features/people/rate-type";
 import type { GlanceDTO } from "~/server/services/figures/glance";
 import type { PeopleOverview } from "~/server/services/people/types";
 import { api } from "~/trpc/react";
-import { type OwedFaces, toGlanceVM, unnamedMissingRates } from "./glance-vm";
+import {
+	type DollarLabel,
+	type OwedFaces,
+	toGlanceVM,
+	unnamedMissingRates,
+} from "./glance-vm";
 import { HomeRail, type OwedTotals } from "./home-rail";
 import { GlanceSkeleton, PartUnavailable } from "./home-states";
 import { NeedsSection } from "./needs-section";
@@ -46,9 +52,19 @@ function GlancePart({
 	faces: OwedFaces;
 }) {
 	const t = useTranslations("homePage");
+	const rateName = useRateTypeName();
+	const { short } = useRowDates(data?.today);
+	// The rate's own day shows only when it is older than today.
+	const dollarLabel = useCallback<DollarLabel>(
+		(type, date, today) =>
+			date === today
+				? rateName(type)
+				: t("dollarOlder", { type: rateName(type), date: short(date) }),
+		[rateName, short, t],
+	);
 	const vm = useMemo(
-		() => (data ? toGlanceVM(data, { named, faces }) : null),
-		[data, named, faces],
+		() => (data ? toGlanceVM(data, { named, faces, dollarLabel }) : null),
+		[data, named, faces, dollarLabel],
 	);
 	if (pending) return <GlanceSkeleton />;
 	if (!data || !vm) return <PartUnavailable onRetry={onRetry} />;

@@ -27,7 +27,8 @@
 	},
 	"money": {
 		"none": "Aucun",
-		"noRate": "Pas encore de taux"
+		"noRate": "Pas encore de taux",
+		"unavailable": "Non disponible"
 	},
 	"filter": {
 		"menu": "Filtrer"

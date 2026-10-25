@@ -20,7 +20,9 @@
 		"billDue": "{title} vence pronto",
 		"billsDue": "{count, plural, one {# factura vence} other {# facturas vencen}} pronto",
 		"missingRate": "Aún no hay cotización para {currencies}",
-		"startingMoney": "Confirma tu dinero inicial"
+		"startingMoney": "Confirma tu dinero inicial",
+		"owedAging": "{person} te debe hace 60 días",
+		"sharesNeedEnvelope": "{count, plural, one {# parte necesita un sobre} other {# partes necesitan un sobre}}"
 	},
 	"action": {
 		"assign": "Asignar",
@@ -35,6 +37,8 @@
 		"takeBack": "Recuperar",
 		"fund": "Cubrir",
 		"setRate": "Fijar cotización",
-		"notReceived": "¿No lo has recibido?"
+		"notReceived": "¿No lo has recibido?",
+		"remind": "Recordar",
+		"open": "Abrir"
 	}
 }

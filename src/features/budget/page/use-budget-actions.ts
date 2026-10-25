@@ -7,7 +7,14 @@ import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import type { BudgetSheetId } from "../sheet-ids";
 import { useBudgetSheet } from "../use-budget-sheet";
 import type { VerdictAction } from "./use-verdict-copy";
-import type { PageNotice } from "./view-model";
+import { isLimits, type PageNotice } from "./view-model";
+
+/** A Limits book hides To assign (SPEC §5.6): nothing on the page starts a move out of it. */
+const NEEDS_TO_ASSIGN: ReadonlySet<BudgetSheetId> = new Set([
+	"assign",
+	"fromWealth",
+	"usePlan",
+]);
 
 /** Where "View activity" goes: the envelope's categories, in the month shown. */
 export function activityHref(
@@ -55,6 +62,7 @@ export function useBudgetActions(data: GetMonthOutput) {
 	const router = useRouter();
 	const month = data.month.key;
 	const { from, to } = data.month;
+	const limits = isLimits(data.book.style);
 	const rows = useMemo(
 		() =>
 			new Map(data.groups.flatMap((g) => g.envelopes).map((e) => [e.id, e])),
@@ -146,7 +154,8 @@ export function useBudgetActions(data: GetMonthOutput) {
 		};
 		const handlers: Record<string, (e: EnvelopeTarget) => void> = {};
 		for (const [action, id] of Object.entries(sheets))
-			if (sheet.has(id)) handlers[action] = open(id);
+			if (sheet.has(id) && !(limits && NEEDS_TO_ASSIGN.has(id)))
+				handlers[action] = open(id);
 		return {
 			...handlers,
 			activity: (e: EnvelopeTarget) => {
@@ -154,10 +163,11 @@ export function useBudgetActions(data: GetMonthOutput) {
 				if (row) router.push(activityHref(row, { from, to }));
 			},
 		};
-	}, [sheet, month, rows, router, from, to]);
+	}, [sheet, month, rows, router, from, to, limits]);
 
 	/** Whether a sheet exists; a button for one that does not is not shown. */
-	const can = (id: BudgetSheetId) => sheet.has(id);
+	const can = (id: BudgetSheetId) =>
+		sheet.has(id) && !(limits && NEEDS_TO_ASSIGN.has(id));
 
 	return {
 		sheet,

@@ -27,7 +27,8 @@
 	},
 	"money": {
 		"none": "None",
-		"noRate": "No rate yet"
+		"noRate": "No rate yet",
+		"unavailable": "Not available"
 	},
 	"filter": {
 		"menu": "Filter"

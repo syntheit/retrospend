@@ -16,8 +16,10 @@ import { SettleSection } from "./settle-section";
 import { figureFor, type PageView, type Summary } from "./types";
 
 /** Biggest first: a comparison of two amounts in one currency, not arithmetic. */
-const biggestFirst = (a: RankedItem, b: RankedItem) =>
-	a.value.minor === b.value.minor ? 0 : a.value.minor > b.value.minor ? -1 : 1;
+const biggestFirst = (a: RankedItem, b: RankedItem) => {
+	const [x, y] = [a.value?.minor ?? 0, b.value?.minor ?? 0];
+	return x === y ? 0 : x > y ? -1 : 1;
+};
 
 const inCur = <T extends { currency: string }>(
 	lines: readonly T[],

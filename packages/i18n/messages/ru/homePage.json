@@ -16,8 +16,11 @@
 			"arrived": "{title}, {date}",
 			"firstExpense": "Займёт около десяти секунд",
 			"homeCurrency": "В ней показываются все итоги",
-			"importStatement": "CSV или PDF из вашего банка"
-		}
+			"importStatement": "CSV или PDF из вашего банка",
+			"owedSince": "С {date}"
+		},
+		"later": "Скрыто до завтра",
+		"reminded": "Напоминание отправлено: {name}"
 	},
 	"recent": {
 		"title": "Недавние",
@@ -38,5 +41,6 @@
 		"title": "Сейчас недоступно",
 		"hint": "Эта часть главной не загрузилась.",
 		"retry": "Повторить"
-	}
+	},
+	"dollarOlder": "{type}, {date}"
 }
