@@ -13,7 +13,7 @@ import {
 	applyOutputSchema,
 	assignInputSchema,
 	coverInputSchema,
-	coverSourceSchema,
+	coverOverviewSchema,
 	coverSourcesInputSchema,
 	fillFromTargetsInputSchema,
 	fillFromTargetsOutputSchema,
@@ -63,6 +63,7 @@ import {
 	movementPreview,
 	preview,
 } from "./envelope-procedure";
+import { envelopeUsePlanProcedures } from "./envelope-use-plan";
 
 export const envelopeRouter = createTRPCRouter({
 	enabled: protectedProcedure
@@ -130,7 +131,7 @@ export const envelopeRouter = createTRPCRouter({
 
 	coverSources: envelopeProcedure
 		.input(coverSourcesInputSchema)
-		.output(z.array(coverSourceSchema))
+		.output(coverOverviewSchema)
 		.query(({ ctx, input }) =>
 			getCoverSources(ctx.session.user.id, input.envelopeId, input.month),
 		),
@@ -181,5 +182,6 @@ export const envelopeRouter = createTRPCRouter({
 	...envelopePlanProcedures,
 	...envelopeCrudProcedures,
 	...envelopeDebtProcedures,
+	...envelopeUsePlanProcedures,
 	...envelopeMigrationProcedures,
 });

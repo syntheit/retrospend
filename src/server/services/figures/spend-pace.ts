@@ -78,7 +78,7 @@ export interface SpendPace {
  * income, kept in Wealth or not, outside Hide from reports. Refunds are
  * spending's (they net there); own transfers and adjustments are nothing.
  */
-async function incomeItems(
+export async function incomeItems(
 	db: FigureDb,
 	userId: string,
 	range: { start: Date; end: Date },

@@ -53,6 +53,7 @@ model User {
   usedInviteCodes         InviteCode[]                  @relation("UsedInviteCodes")
   sessions                Session[]
   pageSettings            UserPageSetting[]
+  needsYouSnoozes         NeedsYouSnooze[]
   analyticsPreferences    AnalyticsCategoryPreference[]
 
   twoFactorEnabled Boolean?    @default(false)
@@ -1327,6 +1328,24 @@ enum AiMode {
 enum ExternalAiAccessMode {
   WHITELIST
   BLACKLIST
+}
+
+/// Home's "Later" on a Needs you item: it stays out of the list until `until`
+/// (the start of the viewer's next day). The id is made by the client and
+/// "updatedAt" is its version. "itemId" is the item's stable id
+/// ("<type>:<entity id>"): ids only, never a title.
+model NeedsYouSnooze {
+  id        String   @id
+  userId    String
+  itemId    String   @db.VarChar(255)
+  until     DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+  @@index([userId, until])
+  @@map("needs_you_snooze")
 }
 
 model UserPageSetting {

@@ -1,0 +1,730 @@
+{
+	"pool": {
+		"notPlannedYet": "Not planned yet",
+		"toAssign": "To assign"
+	},
+	"changes": {
+		"idle": "Fill this in to see what changes. Nothing changes until you save.",
+		"notAvailable": "Not available",
+		"loading": "Checking what changes",
+		"cannot": "This cannot be saved as typed. Nothing was changed."
+	},
+	"figures": {
+		"budget_notPlannedYet": "Not planned yet",
+		"budget_leftToSpend": "Left to spend",
+		"budget_leftThisWeek": "Left this week",
+		"budget_leftInLimits": "Left in your limits",
+		"budget_holds": "What the budget holds",
+		"budget_heldForOthers": "Held for others",
+		"budget_planCost": "Plan cost",
+		"budget_typicalIncome": "Usual income",
+		"envelope_left": "Envelope",
+		"netWorth": "Net worth",
+		"accounts_balance": "Account balance",
+		"owed_owedToYou": "Owed to you",
+		"owed_youOwe": "You owe",
+		"balance_person": "Balance with this person",
+		"other": "Another figure",
+		"spent": "Your spending",
+		"notTracked": "Not tracked",
+		"netWorthChange_exchange": "Exchange result",
+		"budget_totalDebt": "Total debt"
+	},
+	"figuresInline": {
+		"budget_notPlannedYet": "Not planned yet",
+		"budget_leftToSpend": "left to spend",
+		"budget_leftThisWeek": "left this week",
+		"budget_leftInLimits": "left in your limits",
+		"budget_holds": "what the budget holds",
+		"budget_heldForOthers": "held for others",
+		"budget_planCost": "plan cost",
+		"budget_typicalIncome": "usual income",
+		"envelope_left": "the envelope",
+		"netWorth": "net worth",
+		"accounts_balance": "account balance",
+		"owed_owedToYou": "what people owe you",
+		"owed_youOwe": "what you owe",
+		"balance_person": "your balance with this person",
+		"other": "another figure",
+		"spent": "your spending",
+		"notTracked": "not tracked",
+		"netWorthChange_exchange": "the exchange result",
+		"budget_totalDebt": "total debt"
+	},
+	"assign": {
+		"title": "Assign {amount}",
+		"left": "{pool}",
+		"coverTitle": "Cover overspending",
+		"planTitle": "Your plan",
+		"fundTitle": "Fund your targets",
+		"otherTitle": "Other envelopes",
+		"over": "Over by <amount></amount>",
+		"needs": "Needs <amount></amount>",
+		"funded": "Funded",
+		"noTarget": "No target",
+		"amountFor": "Assign to {name}",
+		"fillTargets": "Fill from targets",
+		"clear": "Clear",
+		"assign": "Assign",
+		"assignAnyway": "Assign anyway",
+		"toast": "Assigned {amount} to {count, plural, one {# envelope} other {# envelopes}}",
+		"toastShort": "Assigned to {count, plural, one {# envelope} other {# envelopes}}",
+		"envelopeFallback": "Envelope"
+	},
+	"cover": {
+		"title": "Cover {name}",
+		"cover": "Cover",
+		"lead": "{name} is over by <amount></amount>. Covering moves money here from another place.",
+		"from": "Take it from",
+		"pick": "Pick a source",
+		"amount": "Amount",
+		"billDue": "Bill due {date}",
+		"noFlexible": "Nothing flexible has money left. Pick a source above, or leave it.",
+		"leave": "Or leave it. If it is still open at month end, it comes out of next month's budget.",
+		"toast": "Covered {name} with {amount} from {source}",
+		"envelopeFallback": "Envelope"
+	},
+	"move": {
+		"title": "Move money",
+		"move": "Move",
+		"has": "Has <left></left> left",
+		"direction": "Direction",
+		"in": "Add money",
+		"out": "Take money out",
+		"from": "From",
+		"to": "To",
+		"amount": "Amount",
+		"gap": "<amount></amount> reaches this month's target.",
+		"toastIn": "Moved {amount} from {other} to {name}",
+		"toastOut": "Moved {amount} from {name} to {other}",
+		"envelopeFallback": "Envelope",
+		"envelope": "Envelope",
+		"pick": "Pick an envelope"
+	},
+	"plan": {
+		"title": "Use my plan",
+		"use": "Use my plan",
+		"lead": "Your plan gives <amount></amount> these jobs.",
+		"met": "Your targets are already met.",
+		"noGroup": "Other",
+		"envelopeFallback": "Envelope",
+		"why": {
+			"PLAN": "From your saved plan",
+			"OVERSPENT": "Covers overspending",
+			"BILL": "Bill",
+			"GROUP": "Group target",
+			"MONTHLY": "Monthly target",
+			"SAVINGS": "Savings goal",
+			"REST": "The rest"
+		},
+		"restTitle": "What is left: <amount></amount>",
+		"restLabel": "Where the rest goes",
+		"leave": "Leave it",
+		"saveIt": "Save it in {name}",
+		"change": "Change amounts",
+		"toast": "Plan used: {amount} to {count, plural, one {# envelope} other {# envelopes}}",
+		"toastShort": "Plan used for {count, plural, one {# envelope} other {# envelopes}}",
+		"nextMonth": "Next month ({month})",
+		"nextMonthGroup": "Assigned ahead to {month}",
+		"restStays": "<amount></amount> stays {pool}."
+	},
+	"limit": {
+		"raiseTitle": "Raise this limit",
+		"setTitle": "Set a limit",
+		"raise": "Raise limit",
+		"set": "Set limit",
+		"envelope": "Envelope",
+		"pick": "Pick an envelope",
+		"spent": "{name} has <spent></spent> spent of a <limit></limit> limit.",
+		"newLimit": "New limit",
+		"when": "When it applies",
+		"thisMonth": "Only this month",
+		"fromNowOn": "From now on",
+		"toastMonth": "{name} limit is {amount} this month",
+		"toastAlways": "{name} limit is now {amount}",
+		"envelopeFallback": "Envelope",
+		"others": "Your other limits stay as they are."
+	},
+	"style": {
+		"title": "Budget style",
+		"style": "Style",
+		"current": "current",
+		"lead": "Number at the top:",
+		"haveNow": "How much do you have right now?",
+		"same": "This is your style now.",
+		"pauses": "Your budget pauses. Nothing is deleted. You can come back anytime.",
+		"resumes": "Your budget starts again with what it held. A short Welcome back follows.",
+		"switch": "Switch",
+		"toast": "Switched to {style}. Your envelopes stayed",
+		"toastPaused": "Budget paused. Nothing was deleted",
+		"toastResumed": "Budget resumed",
+		"leftovers": "Leftovers in {name}",
+		"envelopeFallback": "Envelope",
+		"leftover": {
+			"CARRY": "Carries over",
+			"RETURN": "Goes back",
+			"SWEEP": "Moves on"
+		},
+		"FLEX": {
+			"name": "Flex",
+			"sub": "Bills and savings first. One Spending number for everything else.",
+			"lead": "Left to spend, and per day."
+		},
+		"EVERY_DOLLAR": {
+			"name": "Every dollar",
+			"sub": "An envelope for each category. You assign all money in.",
+			"lead": "To assign."
+		},
+		"SAVE_FIRST": {
+			"name": "Save first",
+			"sub": "A share of each paycheck goes to savings before anything else.",
+			"lead": "Left to spend after saving."
+		},
+		"LIMITS": {
+			"name": "Limits",
+			"sub": "Limits on what you care about. Everything else is tracked.",
+			"lead": "Left in your limits, with pace."
+		},
+		"FIFTY_THIRTY_TWENTY": {
+			"name": "50/30/20",
+			"sub": "Half to needs, 30% to wants, 20% to savings.",
+			"lead": "Needs, Wants and Savings as a share of money in."
+		},
+		"WEEKLY": {
+			"name": "Weekly",
+			"sub": "One spending number that resets every week.",
+			"lead": "Left this week, and per day."
+		},
+		"TRACK": {
+			"name": "Just track",
+			"sub": "See where money goes, with no budget to keep.",
+			"lead": "Spent this month against usual."
+		}
+	},
+	"takeBack": {
+		"title": "Take back {amount}",
+		"titleShort": "Take it back",
+		"takeBack": "Take back {amount}",
+		"takeBackShort": "Take back",
+		"lead": "You planned <amount></amount> more than you have. This takes it back from what has money left. Bills stay as they are.",
+		"nothing": "Nothing is planned beyond what you have.",
+		"toast": "Took back what you planned beyond what you have",
+		"envelopeFallback": "Envelope"
+	},
+	"fundNow": {
+		"title": "Fund {next} now",
+		"fund": "Fund {next}",
+		"lead": "This takes {next}'s plan out of what this month has not planned yet and puts it in {next}'s envelopes now.",
+		"toast": "Funded {next} from this month's money",
+		"envelopeFallback": "Envelope",
+		"noPlan": "There is no plan for next month yet. Plan it first, then fund it."
+	},
+	"reconcile": {
+		"title": "Does this match your bank?",
+		"lead": "Compares what the budget holds with the accounts that are part of it. A difference is recorded as one adjustment.",
+		"accounts": "Accounts in your budget",
+		"bank": "What your bank says",
+		"holds": "What the budget holds",
+		"held": "Owed to you, in neither",
+		"incomplete": "Some accounts have no rate today, so this is not complete.",
+		"record": "Record",
+		"toastRecorded": "Recorded an adjustment of {amount}",
+		"toastMatched": "It matched. Nothing to record"
+	},
+	"welcomeBack": {
+		"title": "Welcome back",
+		"lead": "{months} closed on their own.",
+		"leadNone": "No month closed on its own while you were away.",
+		"choice": "How to come back",
+		"catchUp": "Catch up",
+		"haveNow": "Set what I have",
+		"startFresh": "Start fresh",
+		"about": {
+			"CATCH_UP": "Opens the summaries of the months that closed, in order.",
+			"SET_HAVE_NOW": "Records one adjustment from the money you have now. Envelopes keep what they hold.",
+			"START_FRESH": "Returns every envelope's money to Not planned yet. Envelopes, targets, rules and history stay."
+		},
+		"haveLabel": "Money you have now",
+		"catchUpNothing": "Nothing changes. You are only reading.",
+		"go": {
+			"CATCH_UP": "Catch up",
+			"SET_HAVE_NOW": "Set what I have",
+			"START_FRESH": "Start fresh"
+		},
+		"toast": {
+			"CATCH_UP": "You are up to date",
+			"SET_HAVE_NOW": "Recorded what you have now",
+			"START_FRESH": "Started fresh. Every envelope's money is back in Not planned yet"
+		}
+	},
+	"close": {
+		"title": "{month} is closed",
+		"close": "Close",
+		"done": "Done",
+		"notClosed": "This month has not closed yet.",
+		"facts": "The month in numbers",
+		"moneyIn": "Money in",
+		"assigned": "Assigned",
+		"late": "Includes {count, plural, one {# late expense} other {# late expenses}}",
+		"overTitle": "Went over",
+		"takeInstead": "Take it from {month} instead",
+		"cameOut": "Came out of {pool} in {month}",
+		"leftTitle": "Leftovers",
+		"returned": "Went back to {pool}",
+		"swept": "Moved to {name}",
+		"envelopeFallback": "Envelope"
+	},
+	"carry": {
+		"title": "Take it from {month}'s {name}",
+		"lead": "{name} went over last month. This takes it from {name} in {month} instead of from the money you have not planned. {name} may start {month} below zero.",
+		"take": "Take it from {name}",
+		"toast": "{name} starts {month} with the overspend"
+	},
+	"forgive": {
+		"title": "Forgive {name}",
+		"forgive": "Forgive",
+		"nothing": "Nothing is owed to you here.",
+		"owes": "{name} owes you <amount></amount>",
+		"currency": "Currency",
+		"amount": "Forgive",
+		"chargeTo": "Charge it to",
+		"everythingElse": "Everything else",
+		"toast": "Forgave {name} {amount}",
+		"effect": "It comes off {name}'s balance. No money comes back, so Not planned yet does not change. Nothing is sent to {name}."
+	},
+	"owed": {
+		"title": "Owed to you",
+		"done": "Done",
+		"nobody": "Nobody owes you money the budget holds.",
+		"held": "The budget holds",
+		"people": "People who owe you",
+		"settle": "Settle up",
+		"forgive": "Forgive",
+		"age": "{days, plural, one {# day} other {# days}}",
+		"pending": "<amount></amount> waits for your OK",
+		"someone": "Someone",
+		"incomplete": "Some amounts have no rate today and are not counted."
+	},
+	"help": {
+		"title": "What the words mean",
+		"done": "Done",
+		"toAssign": {
+			"term": "To assign",
+			"meaning": "Money that came in and has no job yet. Give it a job with Assign. Nothing is blocked; it is just not planned."
+		},
+		"leftToSpend": {
+			"term": "Left to spend",
+			"meaning": "What is left in Spending this month. Money for bills, savings and money not planned yet is not in it."
+		},
+		"leftInLimits": {
+			"term": "Left in your limits",
+			"meaning": "What you can still spend before each limit, added up."
+		},
+		"envelope": {
+			"term": "Envelope",
+			"meaning": "Money set aside for one purpose, like Groceries or Rent. One envelope can cover several categories."
+		},
+		"target": {
+			"term": "Target",
+			"meaning": "What an envelope aims for: an amount each month, or a goal by a date."
+		},
+		"left": {
+			"term": "Left",
+			"meaning": "What an envelope still holds this month."
+		},
+		"overBy": {
+			"term": "Over by",
+			"meaning": "You spent more than the envelope held. Cover it from another envelope, or it comes out of next month."
+		},
+		"cover": {
+			"term": "Cover",
+			"meaning": "Move money from another envelope to fill a gap. Bills are never suggested."
+		},
+		"carries": {
+			"term": "Carries over",
+			"meaning": "What is left at month end stays in the envelope. You can change this for each envelope."
+		},
+		"moneyIn": {
+			"term": "Money in",
+			"meaning": "Salary, a client paying, a refund. It lands in Not planned yet."
+		},
+		"owed": {
+			"term": "Owed to you",
+			"meaning": "What people owe you for things you paid. It comes back when they pay."
+		}
+	},
+	"explain": {
+		"toAssignTitle": "How {pool} adds up",
+		"leftTitle": "How {name} adds up",
+		"done": "Done",
+		"carriedIn": "Carried in",
+		"assigned": "Assigned",
+		"spent": "Activity",
+		"left": "Left",
+		"moneyIn": "Money in",
+		"assignedTo": "Assigned to envelopes",
+		"assignedAhead": "Assigned to next month",
+		"assignedAheadHint": "It waits there until the month starts.",
+		"overspendTaken": "Overspending taken",
+		"overspendHint": "Envelopes that went over in closed months.",
+		"returned": "Leftovers returned",
+		"heldForOthers": "Held for others",
+		"heldHint": "Money you fronted that people still owe you. It returns when they pay.",
+		"groupTitle": "How {name} adds up",
+		"noGroup": "Other envelopes",
+		"leftToSpendTitle": "How Left to spend adds up",
+		"leftToSpend": "Left to spend"
+	},
+	"rules": {
+		"title": "Income rules",
+		"lead": "What happens when money arrives, in the order the rules run. Every move shows in history with Undo.",
+		"none": "No rules yet. Money that arrives stays Not planned yet until you assign it.",
+		"done": "Done",
+		"active": "Rule {name} is on",
+		"paused": "Paused",
+		"add": "Add rule",
+		"envelopeFallback": "Envelope",
+		"sentence": {
+			"percent": "{percent} of money in to {name}",
+			"amount": "<amount></amount> of money in to {name}",
+			"rest": "The rest to {name}"
+		},
+		"editor": {
+			"title": "Add rule",
+			"add": "Add rule",
+			"name": "Name",
+			"namePlaceholder": "Save first",
+			"kind": "What it does",
+			"percent": "Percent",
+			"amount": "Amount",
+			"rest": "The rest",
+			"percentLabel": "Percent of money in",
+			"amountLabel": "Amount from each money in",
+			"goesTo": "Goes to",
+			"pick": "Pick an envelope",
+			"note": "It runs on money that arrives from now on. Nothing moves today.",
+			"toast": "Added the rule {name}"
+		},
+		"apply": {
+			"title": "Apply {name} to this month",
+			"apply": "Apply",
+			"lead": "A rule only runs on money that arrives after it exists. This runs it once on money that already came in this month.",
+			"toast": "Applied {name} to this month's money in",
+			"envelopeFallback": "Envelope"
+		}
+	},
+	"whatIf": {
+		"title": "What if I spend in {name}",
+		"titleAny": "What if I spend",
+		"done": "Done",
+		"lead": "A pretend expense. Nothing is saved.",
+		"envelope": "Envelope",
+		"pick": "Pick an envelope",
+		"ifSpend": "If I spend",
+		"cannot": "This cannot be previewed as typed.",
+		"wouldHave": "{name} would have",
+		"coverIt": "Cover it",
+		"coverFrom": "From {name}",
+		"uncovered": "Nothing can cover this part",
+		"idle": "Type an amount to see what it would do."
+	},
+	"coverAll": {
+		"title": "Cover overspending",
+		"lead": "Each envelope that went over takes what it needs from {pool}.",
+		"nothing": "Nothing to cover from {pool} right now.",
+		"over": "Over by <amount></amount>",
+		"cover": "Cover all",
+		"envelopeFallback": "Envelope",
+		"toast": "Covered {count, plural, one {# envelope} other {# envelopes}} with {amount}",
+		"toastShort": "Covered {count, plural, one {# envelope} other {# envelopes}}"
+	},
+	"setup": {
+		"title": "Set up your budget",
+		"haveNow": "How much money can you budget right now?",
+		"amountFor": "Amount for {name}",
+		"keep": "Use {name}",
+		"followsRecurring": "Follows your recurring expense or debt",
+		"start": "Start my budget",
+		"toast": "Your budget is ready",
+		"ok": "Done",
+		"exists": "You already have a budget. Change its style from the menu.",
+		"step": "Step {at} of {total}",
+		"styleTitle": "How do you like to budget?",
+		"styleSub": "There is no wrong answer. You can change this anytime.",
+		"methods": "Or follow a method",
+		"recommended": "Recommended",
+		"pickStyle": "Pick {name}",
+		"continue": "Continue",
+		"back": "Back",
+		"cancel": "Cancel",
+		"startTracking": "Start tracking",
+		"startStopped": "Start anyway",
+		"moneyTitle": "How much money can you budget right now?",
+		"moneySub": "Count the money you will use for living. This is what you plan with now.",
+		"envelopesTitle": "Your envelopes",
+		"envelopesSub": "Started from your last 3 months. Change any amount, or uncheck what you do not need.",
+		"limitsTitle": "Pick your limits",
+		"limitsSub": "From your last 3 months. Everything else is tracked, with no limit.",
+		"stop": "Your plan costs <cost></cost> a month but you start with <available></available>.",
+		"usePay": "Use my pay for the rest. <short></short> more starts when it arrives.",
+		"moneyNow": "Money to plan",
+		"failed": "Could not start your budget. Nothing was changed.",
+		"stopNone": "You start with <available></available>, so nothing is left to plan."
+	},
+	"debt": {
+		"title": "Debt payoff plan",
+		"none": "You have no debts in Wealth. Add a card or a loan there first.",
+		"debts": "Your debts",
+		"debtFallback": "Debt",
+		"terms": "{apr}% a year · minimum <minimum></minimum>",
+		"freeBy": "clear by {month}",
+		"monthYear": "{month} {year}",
+		"first": "Pay first",
+		"avalanche": "Highest rate",
+		"snowball": "Smallest balance",
+		"about": {
+			"AVALANCHE": "Highest rate saves the most interest.",
+			"SNOWBALL": "Smallest balance clears one debt sooner."
+		},
+		"extra": "Extra each month, on top of minimums",
+		"result": "Result",
+		"debtFree": "Debt-free by",
+		"never": "Not at this pace",
+		"interest": "Interest you pay",
+		"incomplete": "A debt has no rate today and is left out.",
+		"note": "Minimums are bills. The extra is a target on its envelope. Saving the plan moves no money.",
+		"save": "Save plan",
+		"toast": "Payoff plan saved",
+		"diverges": "The interest is more than you pay each month, so the balance keeps growing. Raise the payment to see a date.",
+		"neverAtPayment": "Never at this payment"
+	},
+	"payDebt": {
+		"title": "Pay down a debt",
+		"none": "You have no debt in your home currency to pay down here.",
+		"debt": "Debt",
+		"from": "Paid from",
+		"notTracked": "Not tracked",
+		"envelope": "Out of envelope",
+		"principal": "Toward the balance",
+		"interest": "Interest in this payment",
+		"card": "New card spending already came out of your envelopes. Enter only the old debt.",
+		"balance": "{name} balance",
+		"pay": "Pay",
+		"toast": "Paid {amount} toward {name}"
+	},
+	"toWealth": {
+		"title": "Move {name} to Wealth",
+		"lead": "Money leaves {name} for an account outside the budget. Its goal progress does not change.",
+		"noAccount": "You have no Wealth account outside your budget yet. Add one in Wealth.",
+		"from": "Leaves from",
+		"notTracked": "Not tracked",
+		"into": "Into",
+		"amount": "Amount",
+		"got": "You get (optional)",
+		"move": "Move",
+		"toast": "Moved {amount} from {name} to {account}"
+	},
+	"fromWealth": {
+		"title": "Move from Wealth",
+		"none": "You have no Wealth account outside your budget to move from.",
+		"mode": "Did you move the money?",
+		"moved": "Yes, I moved it",
+		"count": "No, just count it",
+		"about": {
+			"moved": "The money goes from that account to one your budget counts. Both accounts change.",
+			"count": "The account keeps its money and the budget counts that much. Nothing moves in Wealth."
+		},
+		"from": "From",
+		"into": "Into",
+		"notTracked": "Not tracked",
+		"amount": "You moved",
+		"units": "Count this much",
+		"got": "You got (optional)",
+		"putIn": "Put it in",
+		"move": "Move in",
+		"toastMoved": "Moved {amount} in",
+		"toastCounted": "Counted money from {name}. {name} did not change"
+	},
+	"planEdit": {
+		"title": "Plan {name}",
+		"lead": "What this envelope gets in the plan. It is a draft until payday; nothing moves.",
+		"planned": "Planned",
+		"target": "Its target needs <amount></amount>.",
+		"save": "Save",
+		"toast": "Planned {name}"
+	},
+	"planApply": {
+		"title": "Apply the {month} plan",
+		"lead": "The plan is saved and funds itself when {month}'s money arrives. Nothing moves today.",
+		"none": "There is no plan to apply for this month.",
+		"lines": "Planned",
+		"apply": "Apply plan",
+		"toast": "{month} plan saved",
+		"envelopeFallback": "Envelope"
+	},
+	"confirmPayment": {
+		"title": "Confirm {name}'s payment",
+		"none": "There is no payment waiting for you.",
+		"says": "{name} says they paid you <amount></amount> on {date}.",
+		"confirm": "Confirm",
+		"toast": "Confirmed {name}'s payment"
+	},
+	"splits": {
+		"title": "Splits waiting for you",
+		"done": "Done",
+		"none": "No split is waiting for you.",
+		"addedBy": "{name} added you",
+		"unroutedTitle": "No envelope yet",
+		"unroutedLead": "These shares count in {name} until you pick a category.",
+		"noRate": "No rate",
+		"pickFor": "Pick a category for the share of {date}",
+		"paidBy": "Paid by {name}",
+		"shareTitle": "Your share",
+		"everythingElse": "Everything else",
+		"pickTitle": "Pick a category",
+		"pickLead": "The share moves to the envelope that covers it.",
+		"route": "Put it there",
+		"lands": "Counts in",
+		"routedToast": "Share moved"
+	},
+	"income": {
+		"title": "Money in, {month}",
+		"done": "Done",
+		"received": "Received",
+		"moneyIn": "Money in",
+		"expected": "Expected",
+		"next": "Next {date}",
+		"planCost": "Your plan costs <cost></cost> a month. You usually get <income></income>.",
+		"planCostOnly": "Your plan costs <cost></cost> a month.",
+		"incomplete": "Some amounts have no rate today and are left out."
+	},
+	"target": {
+		"titleShort": "Target",
+		"title": "Target for {name}",
+		"kind": "What is it for?",
+		"monthly": "Monthly",
+		"bill": "Bill",
+		"savings": "Savings goal",
+		"none": "No target",
+		"noneNote": "No target means nothing is planned for it.",
+		"followsDebt": "This bill follows a debt. Pick another kind to change it.",
+		"amount": "Amount",
+		"how": "How to fund it",
+		"refill": "Refill up to this",
+		"setAside": "Set aside this much",
+		"about": {
+			"REFILL": "Tops the envelope up to the amount each period.",
+			"SET_ASIDE": "Adds the amount each period, on top of what is left."
+		},
+		"cadence": "How often",
+		"eachMonth": "Each month",
+		"eachWeek": "Each week",
+		"due": "Due date",
+		"repeats": "Repeats",
+		"repeat": {
+			"MONTHLY": "Monthly",
+			"QUARTERLY": "Every 3 months",
+			"YEARLY": "Every year",
+			"ONCE": "Once"
+		},
+		"savingsNote": "Fill in any two: the goal, the date or how much each month.",
+		"goal": "Goal amount",
+		"by": "By",
+		"perMonth": "Each month",
+		"save": "Save target",
+		"toast": "Target saved for {name}",
+		"noRate": "No rate today for this currency, so what it needs reads 0.",
+		"line": "Target",
+		"lineNone": "None",
+		"lineInBook": "In your budget currency"
+	},
+	"envelopeEdit": {
+		"loadingTitle": "Envelope",
+		"title": "Edit {name}",
+		"name": "Name",
+		"group": "Group",
+		"noGroup": "No group",
+		"covers": "Categories it covers",
+		"coversNote": "A category lives in one envelope, so a checked one moves here from where it was.",
+		"noCategories": "You have no categories yet.",
+		"inEnvelope": "In {name}",
+		"noEnvelope": "No envelope",
+		"fallback": "Envelope",
+		"save": "Save",
+		"cancel": "Cancel",
+		"toast": "Saved {name}",
+		"archive": "Archive envelope",
+		"back": "Back",
+		"archiveTitle": "Archive {name}",
+		"archiveLead": "What is left in it goes back to {pool}. Past months keep it as it was.",
+		"archiveSave": "Archive",
+		"archivedToast": "Archived {name}",
+		"rulesLeftOut": "{count, plural, one {# income rule stops sending money here} other {# income rules stop sending money here}}",
+		"projectRoutes": "{count, plural, one {# project counts your shares by category now} other {# projects count your shares by category now}}"
+	},
+	"envelopeNew": {
+		"title": "Add envelope",
+		"add": "Add envelope",
+		"namePlaceholder": "Groceries",
+		"toast": "Added {name}",
+		"fallback": "New envelope"
+	},
+	"merge": {
+		"title": "Combine envelopes",
+		"lead": "The one you keep takes the money, categories, rules and targets of the others.",
+		"keep": "Keep this one",
+		"pick": "Pick an envelope",
+		"from": "Combine into it",
+		"name": "New name (optional)",
+		"namePlaceholder": "Keep the current name",
+		"save": "Combine",
+		"toast": "{count, plural, one {Combined # envelope into {name}} other {Combined # envelopes into {name}}}",
+		"dropped": "{count, plural, one {# target could not be added up and was left out} other {# targets could not be added up and were left out}}",
+		"payoff": "Your debt payoff plan follows the envelope you keep.",
+		"summed": "Targets",
+		"summedCount": "{count} added up",
+		"rules": "Income rules",
+		"rulesCount": "{count} move to it",
+		"fallback": "Envelope"
+	},
+	"startingMoney": {
+		"title": "Starting money",
+		"lead": "How much do you have right now? The budget starts counting from this.",
+		"have": "What you have right now",
+		"idle": "Type an amount to see what changes.",
+		"save": "Confirm",
+		"toast": "Starting money confirmed",
+		"moneyIn": "Money in",
+		"adjustment": "Adjustment",
+		"includes": "Includes <amount></amount> already spent since {date}",
+		"shortfall": "The budget held more than you have. <amount></amount> comes out as an adjustment.",
+		"nothing": "That matches what the budget holds. Nothing is added."
+	},
+	"afford": {
+		"title": "Can I afford it?",
+		"amount": "How much is it?",
+		"envelope": "Which envelope?",
+		"everythingElse": "Everything else",
+		"done": "Done",
+		"idle": "Type an amount and get one answer.",
+		"failed": "Could not check this. Try again.",
+		"state": {
+			"FITS": "Yes. It fits, and you would have <after></after> left.",
+			"FITS_TIGHT": "It fits, but it is tight: <after></after> would be left.",
+			"NO_LIMIT": "This envelope has no limit. It has spent <spent></spent> this month.",
+			"SHORT_MOVE": "Not quite. This envelope is <short></short> short. You can move it in.",
+			"SHORT_POOL_COVERS": "Not quite. It is <short></short> short, and {pool} holds <notPlanned></notPlanned> you can use.",
+			"SHORT_NOTHING_LEFT": "Not this month. It is <short></short> short and nothing unplanned is left to cover it.",
+			"WEEK_FITS": "Yes. It fits this week, with <after></after> left.",
+			"WEEK_NEXT_WEEK": "Not this week, but the month holds it. It comes out of next week, leaving <after></after> for the month."
+		},
+		"perDay": "About <perDay></perDay> a day for {days, plural, one {# day} other {# days}}.",
+		"usual": "You usually spend about <usual></usual> a day.",
+		"incomplete": "A rate is missing, so this answer may be off.",
+		"action": {
+			"ADD_TO_SPENDING": "Add <amount></amount> to Spending",
+			"MOVE_MONEY": "Move <amount></amount> in",
+			"PLAN_NEXT_MONTH": "Plan next month"
+		}
+	}
+}

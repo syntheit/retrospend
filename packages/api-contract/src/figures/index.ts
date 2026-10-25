@@ -26,6 +26,14 @@ export const figuresQuerySchema = z.object({
 	projectId: z.string().optional(),
 	personId: z.string().optional(),
 	accountId: z.string().optional(),
+	/** For insights.byCategory and the other per-category figures. */
+	categoryId: z.string().optional(),
+	/** For insights.byMonth: a fiscal month label such as 2026-10. */
+	month: z
+		.string()
+		.regex(/^\d{4}-\d{2}$/)
+		.optional(),
+	envelopeId: z.string().optional(),
 });
 
 export const figuresResultSchema = z.object({
@@ -35,7 +43,7 @@ export const figuresResultSchema = z.object({
 /**
  * GET /figures reads named numbers from the figures registry, the same
  * definitions the web shows and the e2e display audit compares against.
- * A narrowing (projectId, personId, accountId) applies only to figures
+ * A narrowing (projectId, personId, accountId, categoryId, month, envelopeId) applies only to figures
  * that honor it. Unknown ids are `not_found`.
  */
 export const figuresContract = {

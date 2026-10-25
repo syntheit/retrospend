@@ -9,6 +9,10 @@
  *   (D-owner-2026-10-22d).
  * - budget.leftThisWeek: Σ Left this week of weekly envelopes (SPEC §6.1).
  * - envelope.left: one envelope's Left, narrowed by `envelopeId`.
+ * - envelope.spent: what one envelope spent this month (positive), narrowed
+ *   by `envelopeId`; spending and shares minus refunds, never Wealth moves.
+ * - budget.moneyIn: this month's money in (income, starting money, moves from
+ *   Wealth), from the same terms To assign is.
  * - budget.leftInLimits: Limits, Σ Left of the envelopes with a limit.
  * - budget.holds: To assign + Σ Left + next month's assigned, what the
  *   bank should hold (reconcile).
@@ -116,6 +120,29 @@ export const envelopeLeftFigure: FigureDefinition = {
 	},
 };
 
+/** Money in this month: what came into the budget (income, starting money, moves from Wealth), the rail's Money in. */
+export const moneyInFigure: FigureDefinition = {
+	id: "budget.moneyIn",
+	scope: [],
+	compute: async (db, scope, pass) => {
+		const v = await current(db, scope.userId, pass);
+		return v ? v.dto.toAssign.terms.moneyIn : null;
+	},
+};
+
+export const envelopeSpentFigure: FigureDefinition = {
+	id: "envelope.spent",
+	scope: ["envelopeId"],
+	compute: async (db, scope, pass) => {
+		if (!scope.envelopeId) return null;
+		const v = await current(db, scope.userId, pass);
+		const row = v?.dto.groups
+			.flatMap((g) => g.envelopes)
+			.find((e) => e.id === scope.envelopeId);
+		return row ? row.spent : null;
+	},
+};
+
 export const heldForOthersFigure: FigureDefinition = {
 	id: FIGURE_HELD_FOR_OTHERS,
 	scope: [],
@@ -198,6 +225,8 @@ export const budgetFigures = [
 	leftThisWeekFigure,
 	leftInLimitsFigure,
 	envelopeLeftFigure,
+	envelopeSpentFigure,
+	moneyInFigure,
 	heldForOthersFigure,
 	budgetHoldsFigure,
 	planCostFigure,

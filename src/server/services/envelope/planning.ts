@@ -11,6 +11,7 @@
  * - Move caps (S15): a move out of an envelope takes at most max(0, Left).
  */
 import type {
+	CoverOverview,
 	CoverSource,
 	EnvelopeRowDto,
 	FillFromTargetsOutput,
@@ -127,13 +128,21 @@ export function fillFromTargets(
 		amount: { minor, currency },
 		step,
 	});
+	const all = [
+		...[...planned.lines].map(([id, minor]) => line(id, minor, "PLAN")),
+		...lines.map((l) => line(l.envelopeId, l.amount, l.step)),
+	];
+	const sums = new Map<string, Minor>();
+	for (const l of all)
+		sums.set(l.envelopeId, (sums.get(l.envelopeId) ?? 0) + l.amount.minor);
 	return {
 		month: view.month.key,
 		available: { minor: available, currency },
-		lines: [
-			...[...planned.lines].map(([id, minor]) => line(id, minor, "PLAN")),
-			...lines.map((l) => line(l.envelopeId, l.amount, l.step)),
-		],
+		lines: all,
+		totals: [...sums].map(([envelopeId, minor]) => ({
+			envelopeId,
+			amount: { minor, currency },
+		})),
 		rest: { minor: left, currency },
 		restOptions: restOptions(view),
 	};
@@ -207,6 +216,31 @@ export function coverSources(
 			}),
 		);
 	return [...pool, ...envelopes];
+}
+
+/**
+ * Covering one envelope: what it is over by and the source the sheet starts
+ * on (SPEC §6.5). A goal or a bill is never suggested by default: the first
+ * source that holds enough, else the first To assign or Monthly one.
+ */
+export function coverOverview(
+	view: GetMonthOutput,
+	envelopeId: string,
+): CoverOverview {
+	const currency = view.book.currency;
+	const row = rowsOf(view).find((r) => r.id === envelopeId);
+	const need = Math.max(0, -(row?.left.minor ?? 0));
+	const sources = coverSources(view, envelopeId);
+	const flexible = sources.filter(
+		(s) => s.kind === "POOL" || s.kind === "MONTHLY" || s.kind === "NONE",
+	);
+	const pick =
+		flexible.find((s) => s.available.minor >= need) ?? flexible[0] ?? null;
+	return {
+		need: { minor: need, currency },
+		suggested: pick ? { from: pick.from } : null,
+		sources,
+	};
 }
 
 /** The most a move can take out of an envelope (S15). */

@@ -401,6 +401,7 @@ export const PLAN_COMPONENTS: string[] = [
 	"SettleSheet",
 	"AssignSheet",
 	"MoneyInput",
+	"MoneyCell",
 	"CategoryPicker",
 	"PersonPicker",
 	"ProjectPicker",
@@ -442,6 +443,7 @@ const ACTIONS =
 const SHEETS = "AddExpenseSheet, SettleSheet, AssignSheet";
 const INPUTS =
 	"MoneyInput, CategoryPicker, PersonPicker, ProjectPicker, DatePicker";
+const CELLS = "MoneyCell";
 const SHELL = "Sidebar, BottomNav, AccountMenu, Palette";
 
 export const PLANNED: Planned[] = [
@@ -637,6 +639,15 @@ export const PLANNED: Planned[] = [
 		planRow: INPUTS,
 		target: "src/components/money/money-input.tsx",
 		use: "MoneyInput (new screens); CurrencyAmountInput stays in today's expense form",
+	},
+	{
+		name: "MoneyCell",
+		status: "built",
+		job: "Inline amount entry in a table row: the MoneyInput draft, parse, caret and numpad, right-aligned with tabular figures, no currency chip. A foreign amount leads with its ISO code and shows the server's home amount under it",
+		replaces: "Local amount fields in list sheets",
+		planRow: CELLS,
+		target: "src/components/money/money-cell.tsx",
+		use: "MoneyCell for an amount in a row (assign, setup); MoneyInput for the one amount a form asks for",
 	},
 	{
 		name: "CategoryPicker",

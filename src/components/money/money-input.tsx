@@ -214,8 +214,11 @@ export function MoneyInput(p: MoneyInputProps) {
 	);
 }
 
-/** The input's edit, paste, numpad and caret handling. */
-function useDraftField(p: MoneyInputProps, locale: string) {
+/** The input's edit, paste, numpad and caret handling (MoneyInput and MoneyCell). */
+export function useDraftField(
+	p: Pick<MoneyInputProps, "value" | "currency" | "onChange">,
+	locale: string,
+) {
 	const ref = React.useRef<HTMLInputElement>(null);
 	const pasted = React.useRef(false);
 	const caret = React.useRef<number | null>(null);

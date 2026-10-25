@@ -289,6 +289,82 @@
 			"label": "Rapprocher"
 		}
 	},
+	"budgetMenu": {
+		"summary": {
+			"label": "Résumé du mois"
+		},
+		"whatIf": {
+			"label": "Et si je dépense…"
+		},
+		"addEnvelope": {
+			"label": "Ajouter une enveloppe"
+		},
+		"combine": {
+			"label": "Fusionner des enveloppes"
+		},
+		"rules": {
+			"label": "Règles de revenus"
+		},
+		"style": {
+			"label": "Style de budget"
+		},
+		"help": {
+			"label": "Ce que veulent dire les mots"
+		},
+		"addIncome": {
+			"label": "Ajouter une entrée d'argent"
+		},
+		"usePlan": {
+			"label": "Utiliser mon plan"
+		},
+		"planNext": {
+			"label": "Planifier le mois suivant"
+		},
+		"payoffPlan": {
+			"label": "Plan de remboursement"
+		},
+		"payDebt": {
+			"label": "Rembourser une dette"
+		},
+		"reconcile": {
+			"label": "Comparer avec ta banque"
+		}
+	},
+	"envelope": {
+		"move": {
+			"label": "Déplacer de l'argent"
+		},
+		"cover": {
+			"label": "Couvrir le dépassement"
+		},
+		"payDebt": {
+			"label": "Rembourser une dette"
+		},
+		"target": {
+			"label": "Modifier l'objectif"
+		},
+		"activity": {
+			"label": "Voir l'activité"
+		},
+		"edit": {
+			"label": "Renommer ou modifier les catégories"
+		},
+		"whatIf": {
+			"label": "Et si je dépense…"
+		},
+		"assign": {
+			"label": "Attribuer de l'argent"
+		},
+		"setLimit": {
+			"label": "Fixer une limite"
+		},
+		"toWealth": {
+			"label": "Déplacer vers Patrimoine"
+		},
+		"fromWealth": {
+			"label": "Déplacer depuis Patrimoine"
+		}
+	},
 	"import": {
 		"review": {
 			"label": "Vérifier"
@@ -306,6 +382,23 @@
 		},
 		"import": {
 			"label": "Importer"
+		}
+	},
+	"incomeRule": {
+		"moveUp": {
+			"label": "Monter"
+		},
+		"moveDown": {
+			"label": "Descendre"
+		},
+		"applyToMonth": {
+			"label": "Appliquer aussi aux entrées de ce mois"
+		},
+		"remove": {
+			"label": "Retirer",
+			"confirmTitle": "Retirer {name} ?",
+			"confirmBody": "Elle ne s'applique plus à l'argent nouveau. Ce qu'elle a déjà attribué reste tel quel.",
+			"confirmButton": "Retirer la règle"
 		}
 	}
 }

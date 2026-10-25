@@ -209,10 +209,13 @@ const isKept = (p: unknown): p is Kept => isMarked(p, "keep");
 export function RowSub({
 	parts,
 	className,
+	wrap = false,
 }: {
 	/** Each part; falsy parts are left out. */
 	parts: (ReactNode | Shrinkable | Kept)[];
 	className?: string;
+	/** A sentence that must be read whole (a group's "over by"): wraps instead of giving way. */
+	wrap?: boolean;
 }) {
 	const empty = (p: unknown) => p == null || p === false || p === "";
 	// A shrinkable part with nothing in it is left out too (no stray separator).
@@ -224,12 +227,14 @@ export function RowSub({
 	return (
 		<div
 			className={cn(
-				"text-fg-3 text-meta mt-px flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap",
+				"text-fg-3 text-meta mt-px flex min-w-0 items-center gap-2",
+				wrap ? "flex-wrap" : "overflow-hidden whitespace-nowrap",
 				className,
 			)}
 		>
 			{shown.map((p, i) => {
-				const shrinks = isShrinkable(p) || (i === last && !isKept(p));
+				const shrinks =
+					!wrap && (isShrinkable(p) || (i === last && !isKept(p)));
 				const node = isShrinkable(p)
 					? p.shrink
 					: isKept(p)

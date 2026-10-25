@@ -19,6 +19,7 @@ import { guestRouter } from "~/server/api/routers/guest";
 import { homeRouter } from "~/server/api/routers/home";
 import { importQueueRouter } from "~/server/api/routers/import-queue";
 import { importV2Router } from "~/server/api/routers/import-v2";
+import { insightsRouter } from "~/server/api/routers/insights";
 import { inviteRouter } from "~/server/api/routers/invite";
 import { notificationRouter } from "~/server/api/routers/notification";
 import { paymentMethodRouter } from "~/server/api/routers/paymentMethod";
@@ -68,6 +69,7 @@ export const appRouter = createTRPCRouter({
 	home: homeRouter,
 	exportData: exportRouter,
 	importQueue: importAllRouter,
+	insights: insightsRouter,
 	invite: inviteRouter,
 	recurring: recurringAllRouter,
 	settings: settingsRouter,
