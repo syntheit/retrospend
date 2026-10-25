@@ -3,8 +3,8 @@
 import { draftFromMinor } from "@retrospend/domain/parse";
 import { useLocale } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { minorOf } from "~/components/money/money-cell";
 import type { RouterInputs, RouterOutputs } from "~/trpc/react";
-import { minorOf } from "./amount-cell";
 import { newId } from "./use-write";
 
 type FillTotals = RouterOutputs["envelope"]["fillFromTargets"]["totals"];

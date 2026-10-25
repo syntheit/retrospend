@@ -305,9 +305,10 @@ test("Pay down a debt: the card, preview with the balance, save, undo", async ({
 	test.setTimeout(180_000);
 	await page.setViewportSize({ width: 1440, height: 900 });
 	// A book that pays off debt offers the debt buttons on its hero.
-	await sql(`UPDATE "budget_book" SET "style" = 'DEBT_PAYOFF' WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`, [
-		TEST_USER.email,
-	]);
+	await sql(
+		`UPDATE "budget_book" SET "style" = 'DEBT_PAYOFF' WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`,
+		[TEST_USER.email],
+	);
 	await openBudget(page);
 	await page
 		.getByRole("main")
@@ -354,9 +355,10 @@ test("Debt payoff plan: the card, the projection, save, undo", async ({
 			.getByRole("button", { name: "Undo" })
 			.click(),
 	);
-	await sql(`UPDATE "budget_book" SET "style" = 'FLEX' WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`, [
-		TEST_USER.email,
-	]);
+	await sql(
+		`UPDATE "budget_book" SET "style" = 'FLEX' WHERE "createdById" = (SELECT id FROM "user" WHERE email = $1)`,
+		[TEST_USER.email],
+	);
 });
 
 test("Money in opens from the rail with what the server has", async ({
@@ -383,7 +385,10 @@ test("Plan next month opens the apply sheet with what the server has", async ({
 	test.setTimeout(180_000);
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await openBudget(page);
-	await page.getByRole("button", { name: /^Plan / }).first().click();
+	await page
+		.getByRole("button", { name: /^Plan / })
+		.first()
+		.click();
 	await expect(page.locator('[data-slot="plan-view"]')).toBeVisible();
 	await page.getByRole("button", { name: "Fill from targets" }).click();
 	await page.getByRole("button", { name: "Apply plan" }).click();

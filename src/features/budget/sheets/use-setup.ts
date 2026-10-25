@@ -3,8 +3,8 @@
 import { draftFromMinor } from "@retrospend/domain/parse";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { minorOf } from "~/components/money/money-cell";
 import { api, type RouterInputs, type RouterOutputs } from "~/trpc/react";
-import { minorOf } from "./amount-cell";
 import { useAmount } from "./use-amount";
 
 export type SetupInput = RouterInputs["envelope"]["setup"];

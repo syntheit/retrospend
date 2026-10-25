@@ -240,6 +240,16 @@ export const SECTIONS: GallerySection[] = [
 		replaces: "ad hoc amount inputs.",
 	},
 	{
+		id: "moneycell",
+		nav: "Inputs",
+		title: "MoneyCell",
+		components: ["MoneyCell"],
+		use: "entering an amount inside a table row, one cell per row (assign, setup). Right-aligned, no currency chip.",
+		never:
+			"the one amount a form asks for (MoneyInput), or a plain text field for money.",
+		replaces: "local amount fields in list sheets.",
+	},
+	{
 		id: "catpick",
 		nav: "Pickers",
 		title: "CategoryPicker, PersonPicker, ProjectPicker, DatePicker",

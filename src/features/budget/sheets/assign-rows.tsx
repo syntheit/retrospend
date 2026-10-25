@@ -4,13 +4,13 @@ import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Money } from "~/components/money/money";
+import { MoneyCell } from "~/components/money/money-cell";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "~/components/ui/collapsible";
-import { AmountCell } from "./amount-cell";
 import { EnvelopeTile } from "./envelope-tile";
 import type { EnvelopeInGroup } from "./use-month";
 
@@ -75,7 +75,7 @@ function AssignRow({
 	return (
 		<Row
 			end={
-				<AmountCell
+				<MoneyCell
 					currency={currency}
 					invalid={invalid}
 					label={t("amountFor", { name: e.name })}

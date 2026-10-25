@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Money } from "~/components/money/money";
+import { MoneyCell } from "~/components/money/money-cell";
 import { MoneyInput, useMoneyText } from "~/components/money/money-input";
 import {
 	CategoryPicker,
@@ -40,6 +41,11 @@ const S = {
 	rateLabel: "Rate",
 	project: "ProjectPicker",
 	disabled: "Disabled",
+	cellTyped: "Typed",
+	cellInvalid: "Invalid: unfinished sum",
+	cellForeign: "Foreign: ISO code, home amount under",
+	cellReadOnly: "Read-only",
+	cellLabel: "Amount for Groceries",
 	category: "CategoryPicker",
 	person: "PersonPicker",
 	date: "DatePicker",
@@ -160,6 +166,75 @@ export function MoneyInputSection() {
 								value={brl.text}
 							/>
 						</div>,
+					],
+				]}
+			/>
+		</Spec>
+	);
+}
+
+export function MoneyCellSection() {
+	const empty = useMoneyText(null, "ARS");
+	const typed = useMoneyText(40000, "ARS");
+	const bad = useMoneyText(null, "ARS");
+	const usd = useMoneyText(6340, "USD");
+	return (
+		<Spec id="moneycell">
+			<States
+				items={[
+					[
+						S.empty,
+						<MoneyCell
+							currency="ARS"
+							key="a"
+							label={S.cellLabel}
+							onChange={empty.onChange}
+							value={empty.text}
+						/>,
+					],
+					[
+						S.cellTyped,
+						<MoneyCell
+							currency="ARS"
+							key="b"
+							label={S.cellLabel}
+							onChange={typed.onChange}
+							value={typed.text}
+						/>,
+					],
+					[
+						S.cellInvalid,
+						<MoneyCell
+							currency="ARS"
+							key="c"
+							label={S.cellLabel}
+							onChange={bad.onChange}
+							showErrors
+							value={bad.text || "1+"}
+						/>,
+					],
+					[
+						S.cellForeign,
+						<MoneyCell
+							currency="USD"
+							home={{ minor: rateHome("blue"), currency: "ARS" }}
+							key="d"
+							label={S.cellLabel}
+							onChange={usd.onChange}
+							showCurrency
+							value={usd.text}
+						/>,
+					],
+					[
+						S.cellReadOnly,
+						<MoneyCell
+							currency="ARS"
+							key="e"
+							label={S.cellLabel}
+							onChange={() => {}}
+							readOnly
+							value="400"
+						/>,
 					],
 				]}
 			/>

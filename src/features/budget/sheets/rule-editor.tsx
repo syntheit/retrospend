@@ -2,13 +2,13 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
+import { minorOf } from "~/components/money/money-cell";
 import { MoneyInput } from "~/components/money/money-input";
 import { Input } from "~/components/ui/input";
 import { Segmented } from "~/components/ui/segmented";
 import { Sheet } from "~/components/ui/sheet";
 import { Field } from "~/features/entry/shared-ui";
 import { api, type RouterInputs } from "~/trpc/react";
-import { minorOf } from "./amount-cell";
 import { EnvelopeSelect, type Place } from "./envelope-select";
 import { useAmount } from "./use-amount";
 import type { EnvelopeInGroup } from "./use-month";

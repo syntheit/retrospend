@@ -2,11 +2,11 @@
 
 import { useTranslations } from "next-intl";
 import { Money } from "~/components/money/money";
+import { MoneyCell } from "~/components/money/money-cell";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Label } from "~/components/ui/label";
 import { Notice } from "~/components/ui/notice";
-import { AmountCell } from "./amount-cell";
 import { type Diff, FigureChanges } from "./figure-changes";
 import type { DryRun } from "./use-dry-run";
 import { hasAmount, type useSetup } from "./use-setup";
@@ -70,7 +70,7 @@ export function SetupEnvelopesStep({
 							<Row
 								end={
 									hasAmount(e.target) ? (
-										<AmountCell
+										<MoneyCell
 											currency={p.currency}
 											label={t("amountFor", {
 												name: s.name(e.nameKey, e.name),

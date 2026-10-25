@@ -3,7 +3,7 @@
 import { draftFromMinor } from "@retrospend/domain/parse";
 import { useLocale } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { minorOf } from "./amount-cell";
+import { minorOf } from "~/components/money/money-cell";
 
 /**
  * One typed amount in the book currency. It starts from a figure the server
