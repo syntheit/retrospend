@@ -2635,6 +2635,18 @@
 											},
 											"type": "array"
 										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
 										"unavailable": {
 											"items": {
 												"properties": {
@@ -3293,6 +3305,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {
@@ -4033,6 +4057,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {
@@ -5172,6 +5208,18 @@
 											},
 											"type": "array"
 										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
 										"unavailable": {
 											"items": {
 												"properties": {
@@ -5687,6 +5735,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {
@@ -7725,6 +7785,18 @@
 											},
 											"type": "array"
 										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
 										"unavailable": {
 											"items": {
 												"properties": {
@@ -8332,6 +8404,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {
@@ -8959,6 +9043,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {
@@ -11240,17 +11336,6 @@
 			"post": {
 				"description": "Runs POST /payments in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
 				"operationId": "previewRecordPayment",
-				"parameters": [
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
-					}
-				],
 				"requestBody": {
 					"content": {
 						"application/json": {
@@ -12051,17 +12136,6 @@
 			"post": {
 				"description": "Runs POST /payments/undo in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
 				"operationId": "previewUndoPaymentWrite",
-				"parameters": [
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
-					}
-				],
 				"requestBody": {
 					"content": {
 						"application/json": {
@@ -12878,15 +12952,6 @@
 							"minLength": 1,
 							"type": "string"
 						}
-					},
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
 					}
 				],
 				"requestBody": {
@@ -13526,15 +13591,6 @@
 						"schema": {
 							"maxLength": 64,
 							"minLength": 1,
-							"type": "string"
-						}
-					},
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
 							"type": "string"
 						}
 					}
@@ -19463,15 +19519,6 @@
 							"minLength": 1,
 							"type": "string"
 						}
-					},
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
 					}
 				],
 				"requestBody": {
@@ -20117,15 +20164,6 @@
 						"schema": {
 							"maxLength": 64,
 							"minLength": 1,
-							"type": "string"
-						}
-					},
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
 							"type": "string"
 						}
 					}
@@ -23862,6 +23900,18 @@
 											},
 											"type": "array"
 										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
 										"unavailable": {
 											"items": {
 												"properties": {
@@ -25556,6 +25606,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {
@@ -28662,17 +28724,6 @@
 			"post": {
 				"description": "Runs POST /shared-expenses in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
 				"operationId": "previewCreateSharedExpense",
-				"parameters": [
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
-					}
-				],
 				"requestBody": {
 					"content": {
 						"application/json": {
@@ -29410,17 +29461,6 @@
 			"post": {
 				"description": "Runs POST /shared-expenses/undo in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
 				"operationId": "previewUndoSharedExpenseWrite",
-				"parameters": [
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
-					}
-				],
 				"requestBody": {
 					"content": {
 						"application/json": {
@@ -30488,15 +30528,6 @@
 							"minLength": 1,
 							"type": "string"
 						}
-					},
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
-							"type": "string"
-						}
 					}
 				],
 				"requestBody": {
@@ -30965,15 +30996,6 @@
 						"schema": {
 							"maxLength": 64,
 							"minLength": 1,
-							"type": "string"
-						}
-					},
-					{
-						"in": "header",
-						"name": "Idempotency-Key",
-						"required": true,
-						"schema": {
-							"maxLength": 255,
 							"type": "string"
 						}
 					}
@@ -33201,6 +33223,18 @@
 											},
 											"type": "array"
 										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
 										"unavailable": {
 											"items": {
 												"properties": {
@@ -33809,6 +33843,18 @@
 											},
 											"type": "array"
 										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
 										"unavailable": {
 											"items": {
 												"properties": {
@@ -34398,6 +34444,18 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
 										},
 										"unavailable": {
 											"items": {
