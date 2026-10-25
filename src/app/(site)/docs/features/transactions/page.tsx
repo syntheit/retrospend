@@ -18,14 +18,14 @@ export default function TransactionsPage() {
 		<article>
 			<div className="mb-8">
 				<Badge variant="secondary" className="mb-3">Features</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Transactions</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Transactions</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					The transactions page is your complete expense history. Search, filter, sort, and
 					take bulk actions on any set of transactions.
 				</p>
 			</div>
 
-			<h2 id="data-table" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="data-table" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Data Table
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -34,7 +34,7 @@ export default function TransactionsPage() {
 				edit the expense.
 			</p>
 
-			<h2 id="filters" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="filters" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Filters
 			</h2>
 			<div className="grid gap-3 sm:grid-cols-2">
@@ -48,14 +48,14 @@ export default function TransactionsPage() {
 				))}
 			</div>
 
-			<h2 id="search" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="search" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Search
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
 				Full-text search across transaction titles. Results update as you type.
 			</p>
 
-			<h2 id="bulk-actions" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="bulk-actions" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Bulk Actions
 			</h2>
 			<p className="mb-4 text-muted-foreground leading-relaxed">
@@ -71,7 +71,7 @@ export default function TransactionsPage() {
 				))}
 			</div>
 
-			<h2 id="shared-indicators" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="shared-indicators" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Shared Indicators
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -84,7 +84,7 @@ export default function TransactionsPage() {
 				<li>Status badges: Active, Pending, Disputed, Settled.</li>
 			</ul>
 
-			<h2 id="edited-indicator" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="edited-indicator" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Edited Indicator
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -92,7 +92,7 @@ export default function TransactionsPage() {
 				you haven&apos;t seen yet. Click the indicator to open the revision history drawer.
 			</p>
 
-			<h2 id="exclude-from-analytics" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="exclude-from-analytics" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Exclude from Analytics
 			</h2>
 			<p className="mb-4 text-muted-foreground leading-relaxed">

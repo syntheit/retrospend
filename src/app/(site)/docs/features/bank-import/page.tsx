@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { Badge } from "~/components/ui/badge"
 import { DocItem } from "../../_components/doc-item"
 import { Callout } from "../../_components/callout"
@@ -19,7 +20,7 @@ export default function BankImportPage() {
 		<article>
 			<div className="mb-8">
 				<Badge variant="secondary" className="mb-3">Features</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Bank Import</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Bank Import</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Import transactions from bank statements or CSV files. AI handles categorization, and you review before importing.
 				</p>
@@ -27,7 +28,7 @@ export default function BankImportPage() {
 
 			<BankImportDemoEmbed />
 
-			<h2 id="two-import-modes" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="two-import-modes" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Two Import Modes
 			</h2>
 			<p className="mb-4 text-muted-foreground leading-relaxed">
@@ -41,7 +42,7 @@ export default function BankImportPage() {
 							Retrospend instance). Column mapping is automatic, so just upload and review.</DocItem>
 			</div>
 
-			<h2 id="review-before-importing" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="review-before-importing" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Review Before Importing
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -64,7 +65,7 @@ export default function BankImportPage() {
 				check it manually if you want to import it anyway.
 			</p>
 
-			<h2 id="ai-categorization" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="ai-categorization" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				AI Categorization
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -74,7 +75,7 @@ export default function BankImportPage() {
 				before importing.
 			</p>
 
-			<h2 id="tips" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="tips" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Tips
 			</h2>
 			<Callout variant="tip" title="Uncheck unwanted rows">
@@ -90,9 +91,9 @@ export default function BankImportPage() {
 			<Callout variant="info" title="Self-hosted AI">
 				Bank statement parsing requires an LLM. Self-hosted users can use a local Ollama
 				instance or configure an OpenRouter API key. See the{" "}
-				<a href="/docs/configuration/ai-import" className="underline underline-offset-2">
+				<Link href="/docs/configuration/ai-import" className="underline underline-offset-2">
 					AI Import configuration
-				</a>{" "}
+				</Link>{" "}
 				guide for setup details.
 			</Callout>
 

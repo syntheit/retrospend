@@ -1,5 +1,4 @@
 "use client";
-
 import { Archive, ChevronDown, Eye, EyeOff, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -164,13 +163,14 @@ function FeedbackEntry({
 		? getImageUrl(item.user.avatarPath)
 		: item.user.image;
 
-	const statusBadge = {
-		unread: (
-			<Badge className="bg-blue-500 text-white">{t("feedbackUnread")}</Badge>
-		),
-		read: <Badge variant="secondary">{t("feedbackRead")}</Badge>,
-		archived: <Badge variant="outline">{t("feedbackArchived")}</Badge>,
-	}[item.status] ?? <Badge variant="outline">{item.status}</Badge>;
+	const statusBadge =
+		item.status === "unread" ? (
+			<Badge label={t("feedbackUnread")} status="pending" />
+		) : item.status === "read" ? (
+			<Badge label={t("feedbackRead")} status="confirmed" />
+		) : (
+			<Badge label={t("feedbackArchived")} status="settled" />
+		);
 
 	return (
 		<article

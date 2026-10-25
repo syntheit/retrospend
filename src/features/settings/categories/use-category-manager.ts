@@ -112,7 +112,7 @@ export function useCategoryManager({
 		saveTimeoutRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
 	}, []);
 
-	// Core save — takes explicit id + values to avoid stale closures
+	// Core save: takes explicit id + values to avoid stale closures
 	const saveCategory = useCallback(
 		async (
 			id: string,
@@ -249,7 +249,7 @@ export function useCategoryManager({
 		(iconName: string) => {
 			setEditIcon(iconName);
 			editStateRef.current.icon = iconName;
-			// Clear pending name debounce — this save includes current name
+			// Clear pending name debounce, this save includes current name
 			if (nameDebounceRef.current) {
 				clearTimeout(nameDebounceRef.current);
 				nameDebounceRef.current = undefined;

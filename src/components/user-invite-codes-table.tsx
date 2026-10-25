@@ -114,12 +114,9 @@ export function UserInviteCodesTable({
 				header: t("status"),
 				cell: ({ row }) => (
 					<Badge
-						variant={
-							row.original.status === "Active" ? "default" : "secondary"
-						}
-					>
-						{row.original.status}
-					</Badge>
+						label={row.original.status}
+						status={row.original.status === "Active" ? "pending" : "confirmed"}
+					/>
 				),
 			},
 			{

@@ -2,12 +2,14 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { tryConvertAmount } from "@retrospend/domain/money";
-import { useTranslations } from "next-intl";
-import { useEffect } from "react";
+import { fromMinor, money, toMinor } from "@retrospend/domain/money-minor";
+import { draftFromMinor } from "@retrospend/domain/parse";
+import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CategoryPicker } from "~/components/category-picker";
-import { CurrencyPicker } from "~/components/currency-picker";
+import { MoneyInput } from "~/components/money/money-input";
 import { Button } from "~/components/ui/button";
 import { DatePicker } from "~/components/ui/date-picker";
 import { Input } from "~/components/ui/input";
@@ -24,10 +26,8 @@ import { Switch } from "~/components/ui/switch";
 import { useToast } from "~/components/ui/toast";
 import { useCurrency } from "~/hooks/use-currency";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import { useCurrencyInput } from "~/hooks/use-currency-input";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
 import { getSubscriptionMetadata } from "~/lib/subscription-metadata";
-import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 const recurringSchema = z.object({
@@ -56,6 +56,8 @@ export function RecurringModal({
 	onClose,
 }: RecurringModalProps) {
 	const t = useTranslations("recurring");
+	const locale = useLocale();
+	const [amountText, setAmountText] = useState("");
 	const toast = useToast();
 	const utils = api.useUtils();
 	const { data: settings } = api.settings.getGeneral.useQuery();
@@ -134,18 +136,19 @@ export function RecurringModal({
 				paymentSource: template.paymentSource ?? "",
 				autoPay: template.autoPay,
 			});
+			setAmountText(
+				draftFromMinor(
+					toMinor(String(template.amount), template.currency),
+					locale,
+					template.currency,
+				),
+			);
 		}
-	}, [template, reset]);
+	}, [template, reset, locale]);
 
 	const watchedCurrency = watch("currency");
 	const watchedAmount = watch("amount");
 	const homeCurrency = settings?.homeCurrency ?? "USD";
-
-	const amountInput = useCurrencyInput({
-		value: watchedAmount,
-		onChange: (n) => setValue("amount", n, { shouldDirty: true }),
-		currency: watchedCurrency,
-	});
 
 	const { getDefaultRate, isLoading: isRateLoading } = useExchangeRates({
 		currency: watchedCurrency,
@@ -220,29 +223,22 @@ export function RecurringModal({
 				{/* Amount and Currency */}
 				<div className="space-y-2">
 					<Label htmlFor="amount">{t("fieldAmount")}</Label>
-					<div
-						className={cn(
-							"border-input dark:bg-input/30 flex h-9 w-full overflow-hidden rounded-lg border bg-transparent shadow-xs",
-							"focus-within:border-ring focus-within:ring-ring/50 transition-[color,box-shadow] focus-within:ring-[3px]",
-							errors.amount && "border-destructive",
-						)}
-					>
-						<CurrencyPicker
-							onValueChange={(value) => setValue("currency", value)}
-							triggerClassName="h-full rounded-none border-r border-input px-3 shrink-0 focus-visible:ring-0"
-							triggerDisplay="flag+code"
-							triggerVariant="ghost"
-							value={watch("currency")}
-						/>
-						<div className="flex flex-1 items-center">
-							<Input
-								className="h-full w-full border-0 bg-transparent px-4 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
-								id="amount"
-								placeholder="0.00"
-								{...amountInput.inputProps}
-							/>
-						</div>
-					</div>
+					<MoneyInput
+						currency={watchedCurrency}
+						id="amount"
+						onChange={(text, result) => {
+							setAmountText(text);
+							setValue(
+								"amount",
+								result.ok
+									? Number(fromMinor(money(result.minor, watchedCurrency)))
+									: 0,
+								{ shouldDirty: true },
+							);
+						}}
+						onCurrencyChange={(value) => setValue("currency", value)}
+						value={amountText}
+					/>
 					<CurrencyEstimate
 						amount={watchedAmount}
 						currency={watchedCurrency}

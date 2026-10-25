@@ -18,14 +18,14 @@ export default function RecurringExpensesPage() {
 		<article>
 			<div className="mb-8">
 				<Badge variant="secondary" className="mb-3">Features</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Recurring Expenses</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Recurring Expenses</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Recurring expenses automate the transactions you log every week, month, or year.
 					Set up a template once and Retrospend generates the expense for you on schedule.
 				</p>
 			</div>
 
-			<h2 id="how-it-works" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="how-it-works" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				How It Works
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -34,7 +34,7 @@ export default function RecurringExpensesPage() {
 				generates an expense and advances the <code>nextDueDate</code> to the next occurrence.
 			</p>
 
-			<h2 id="frequencies" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="frequencies" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Frequencies
 			</h2>
 			<div className="grid gap-3 sm:grid-cols-3">
@@ -47,7 +47,7 @@ export default function RecurringExpensesPage() {
 				))}
 			</div>
 
-			<h2 id="creating-a-template" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="creating-a-template" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Creating a Template
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -73,7 +73,7 @@ export default function RecurringExpensesPage() {
 				Set the start date to when the next payment is due, not when the subscription started.
 			</Callout>
 
-			<h2 id="views" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="views" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Views
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -96,7 +96,7 @@ export default function RecurringExpensesPage() {
 				status. Use this when you need to quickly scan or edit your recurring expenses.
 			</p>
 
-			<h2 id="stats" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="stats" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Stats
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -104,7 +104,7 @@ export default function RecurringExpensesPage() {
 				and projected annual cost. These update automatically as you add, pause, or remove templates.
 			</p>
 
-			<h2 id="pausing" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="pausing" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Pausing
 			</h2>
 			<Callout variant="info" title="Pausing a template">

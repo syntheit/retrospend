@@ -19,7 +19,7 @@ export default function MultiCurrencyPage() {
 		<article>
 			<div className="mb-8">
 				<Badge variant="secondary" className="mb-3">Features</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Multi-Currency</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Multi-Currency</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Log expenses in any fiat or cryptocurrency. Retrospend converts everything to your
 					home currency automatically.
@@ -28,7 +28,7 @@ export default function MultiCurrencyPage() {
 
 			<CurrencyConverterDemoEmbed />
 
-			<h2 id="how-it-works" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="how-it-works" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				How It Works
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -42,7 +42,7 @@ export default function MultiCurrencyPage() {
 				<li><strong>Manual override</strong>: if the auto rate doesn&apos;t match your actual exchange, you can type a custom rate.</li>
 			</ul>
 
-			<h2 id="parallel-market-rates" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="parallel-market-rates" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Parallel Market Rates
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -52,7 +52,7 @@ export default function MultiCurrencyPage() {
 				useful for travelers and expats who exchange money at parallel market rates.
 			</p>
 
-			<h2 id="cryptocurrency" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="cryptocurrency" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Cryptocurrency
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -68,7 +68,7 @@ export default function MultiCurrencyPage() {
 				does the math.
 			</p>
 
-			<h2 id="currencies-page" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="currencies-page" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Currencies Page
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -87,7 +87,7 @@ export default function MultiCurrencyPage() {
 				transactions always use the rate that was active when they were logged.
 			</p>
 
-			<h2 id="tips" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="tips" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Tips
 			</h2>
 			<Callout variant="tip" title="Currency favorites">

@@ -21,7 +21,7 @@ export default function BudgetsPage() {
 				<Badge className="mb-3" variant="secondary">
 					Features
 				</Badge>
-				<h1 className="mb-3 text-3xl font-bold tracking-tight">
+				<h1 className="mb-3 text-3xl font-semibold">
 					Budget Tracking
 				</h1>
 				<p className="text-muted-foreground text-lg leading-relaxed">
@@ -35,7 +35,7 @@ export default function BudgetsPage() {
 			</div>
 
 			<h2
-				className="mt-10 mb-4 scroll-mt-20 text-xl font-bold tracking-tight"
+				className="mt-10 mb-4 scroll-mt-20 text-xl font-semibold"
 				id="how-budgets-work"
 			>
 				How Budgets Work
@@ -49,7 +49,7 @@ export default function BudgetsPage() {
 			</p>
 
 			<h2
-				className="mt-10 mb-4 scroll-mt-20 text-xl font-bold tracking-tight"
+				className="mt-10 mb-4 scroll-mt-20 text-xl font-semibold"
 				id="variable-vs-fixed"
 			>
 				Variable vs Fixed Categories
@@ -67,7 +67,7 @@ export default function BudgetsPage() {
 			</div>
 
 			<h2
-				className="mt-10 mb-4 scroll-mt-20 text-xl font-bold tracking-tight"
+				className="mt-10 mb-4 scroll-mt-20 text-xl font-semibold"
 				id="key-features"
 			>
 				Key Features
@@ -92,7 +92,7 @@ export default function BudgetsPage() {
 			</div>
 
 			<h2
-				className="mt-10 mb-4 scroll-mt-20 text-xl font-bold tracking-tight"
+				className="mt-10 mb-4 scroll-mt-20 text-xl font-semibold"
 				id="safe-to-spend"
 			>
 				Safe-to-Spend
@@ -105,7 +105,7 @@ export default function BudgetsPage() {
 			</p>
 
 			<h2
-				className="mt-10 mb-4 scroll-mt-20 text-xl font-bold tracking-tight"
+				className="mt-10 mb-4 scroll-mt-20 text-xl font-semibold"
 				id="plan"
 			>
 				Plan next month and What if
@@ -124,7 +124,7 @@ export default function BudgetsPage() {
 			</Callout>
 
 			<h2
-				className="mt-10 mb-4 scroll-mt-20 text-xl font-bold tracking-tight"
+				className="mt-10 mb-4 scroll-mt-20 text-xl font-semibold"
 				id="tips"
 			>
 				Tips

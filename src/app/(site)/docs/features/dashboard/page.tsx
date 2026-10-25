@@ -19,7 +19,7 @@ export default function DashboardPage() {
 		<article>
 			<div className="mb-8">
 				<Badge variant="secondary" className="mb-3">Features</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Dashboard</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Dashboard</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Your monthly spending overview: totals, trends, categories, and recent transactions in one view.
 				</p>
@@ -29,7 +29,7 @@ export default function DashboardPage() {
 				<ProductShot name="home" />
 			</div>
 
-			<h2 id="what-you-see" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="what-you-see" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				What You See
 			</h2>
 			<p className="mb-4 text-muted-foreground leading-relaxed">
@@ -46,7 +46,7 @@ export default function DashboardPage() {
 				))}
 			</div>
 
-			<h2 id="spend-composition" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="spend-composition" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Spend Composition
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -56,7 +56,7 @@ export default function DashboardPage() {
 				or dropping off compared to your recent history.
 			</p>
 
-			<h2 id="navigating-months" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="navigating-months" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Navigating Months
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -74,7 +74,7 @@ export default function DashboardPage() {
 				calculations will shift to use your chosen start date.
 			</p>
 
-			<h2 id="tips" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="tips" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Tips
 			</h2>
 			<Callout variant="tip" title="Donut interactions">

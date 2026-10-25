@@ -11,14 +11,15 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { use, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CurrencyPicker } from "~/components/currency-picker";
+import { MoneyInput } from "~/components/money/money-input";
+import { draftFromMinor } from "@retrospend/domain/parse";
+import { fromMinor, money, toMinor } from "@retrospend/domain/money-minor";
 import { Face } from "~/components/ui/avatar-face";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
 import type { CurrencyCode } from "@retrospend/domain/currencies";
@@ -31,7 +32,6 @@ import {
 	resolveMethodTypeId,
 	getMethodType,
 } from "~/lib/payment-method-registry";
-import { cn } from "~/lib/utils";
 
 import { api } from "~/trpc/react";
 
@@ -98,7 +98,7 @@ function CopyButton({
 function PaySkeleton() {
 	return (
 		<div className="flex min-h-dvh items-center justify-center p-4">
-			<div className="flex w-full max-w-[500px] flex-col gap-3">
+			<div className="flex w-full max-w-lg flex-col gap-3">
 				<div className="space-y-4 p-5 sm:p-6">
 						<div className="flex items-center gap-3">
 							<Skeleton className="h-12 w-12 rounded-full" />
@@ -195,9 +195,7 @@ function PaymentMethodCard({
 								{displayName}
 							</span>
 							{isFirst && (
-								<Badge className="text-[10px]" variant="secondary">
-									{t("preferred")}
-								</Badge>
+								<Badge label={t("preferred")} status="confirmed" />
 							)}
 						</div>
 						<div className="flex items-center gap-1 text-muted-foreground text-xs">
@@ -298,10 +296,22 @@ export default function PayPage({ params }: { params: PageParams }) {
 	const isDonate = searchParams.has("donate");
 	const isLockedByUrl = !!urlAmount && !!urlCurrency;
 
-	const [amount, setAmount] = useState(urlAmount ?? "");
+	const locale = useLocale();
 	const [currency, setCurrency] = useState<CurrencyCode>(
 		(urlCurrency as CurrencyCode) ?? "USD",
 	);
+	const startMinor = (() => {
+		if (!urlAmount) return null;
+		try {
+			return toMinor(urlAmount, urlCurrency ?? "USD");
+		} catch {
+			return null;
+		}
+	})();
+	const [amountText, setAmountText] = useState(() =>
+		startMinor ? draftFromMinor(startMinor, locale, urlCurrency ?? "USD") : "",
+	);
+	const [amountMinor, setAmountMinor] = useState<number | null>(startMinor);
 
 	const { data, isLoading, isError, error, refetch } =
 		api.profile.publicProfile.useQuery({ username }, { retry: false });
@@ -328,7 +338,7 @@ export default function PayPage({ params }: { params: PageParams }) {
 
 		return (
 			<div className="flex min-h-dvh items-center justify-center p-4">
-				<div className="w-full max-w-[500px] space-y-4 p-5 text-center sm:p-6">
+				<div className="w-full max-w-lg space-y-4 p-5 text-center sm:p-6">
 						<h1 className="font-bold text-xl">
 							{isNotFound ? t("profileNotFound") : t("somethingWentWrong")}
 						</h1>
@@ -353,12 +363,14 @@ export default function PayPage({ params }: { params: PageParams }) {
 		);
 	}
 
-	const parsedAmount = parseFloat(amount) || 0;
+	const parsedAmount = amountMinor
+		? Number(fromMinor(money(amountMinor, currency)))
+		: 0;
 	const firstName = data.displayName.split(" ")[0] ?? data.displayName;
 
 	return (
 		<div className="flex min-h-dvh items-center justify-center p-4">
-			<div className="flex w-full max-w-[500px] flex-col gap-3">
+			<div className="flex w-full max-w-lg flex-col gap-3">
 				<div className="p-5 sm:p-6">
 						{/* Header */}
 						<div className="flex items-center gap-3">
@@ -379,35 +391,18 @@ export default function PayPage({ params }: { params: PageParams }) {
 
 						{/* Amount field */}
 						<div className="space-y-2">
-							<Label>{t("amountOptional")}</Label>
-							<div
-								className={cn(
-									"flex h-9 w-full overflow-hidden rounded-md border border-input shadow-xs",
-									"transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
-									"dark:bg-input/30",
-									isLockedByUrl && "opacity-50",
-								)}
-							>
-								<CurrencyPicker
-									onValueChange={setCurrency}
-									triggerClassName={cn(
-										"h-full rounded-none border-r border-input px-2 shrink-0 focus-visible:ring-0",
-										isLockedByUrl && "pointer-events-none",
-									)}
-									triggerDisplay="flag+code"
-									triggerVariant="ghost"
-									value={currency}
-								/>
-								<Input
-									className="h-full flex-1 border-0 bg-transparent px-2 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
-									disabled={isLockedByUrl}
-									inputMode="decimal"
-									onChange={(e) => setAmount(e.target.value)}
-									placeholder="0.00"
-									type="number"
-									value={amount}
-								/>
-							</div>
+							<Label htmlFor="pay-amount">{t("amountOptional")}</Label>
+							<MoneyInput
+								currency={currency}
+								disabled={isLockedByUrl}
+								id="pay-amount"
+								onChange={(text, result) => {
+									setAmountText(text);
+									setAmountMinor(result.ok ? result.minor : null);
+								}}
+								onCurrencyChange={(code) => setCurrency(code as CurrencyCode)}
+								value={amountText}
+							/>
 							{isLockedByUrl && (
 								<p className="text-muted-foreground text-xs">
 									{t("amountSetBySender")}

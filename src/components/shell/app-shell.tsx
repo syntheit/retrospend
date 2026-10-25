@@ -123,7 +123,7 @@ export function AppShell({
 		<ShellActionsContext value={actions}>
 			<div className="bg-bg text-fg flex h-svh w-full overflow-hidden">
 				<a
-					className="rounded-ctl bg-surface text-body focus:outline-brand sr-only px-4 py-2 font-medium focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:outline-2"
+					className="rounded-ctl bg-surface text-body focus-visible:outline-brand sr-only px-4 py-2 font-medium focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:shadow-menu focus-visible:outline-2"
 					href="#main-content"
 				>
 					{t("skipToContent")}

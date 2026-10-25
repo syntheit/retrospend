@@ -19,7 +19,7 @@ export default function WealthPage() {
 		<article>
 			<div className="mb-8">
 				<Badge variant="secondary" className="mb-3">Features</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Wealth Tracking</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Wealth Tracking</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Track your full financial picture: assets, liabilities, net worth over time, and financial runway.
 				</p>
@@ -29,7 +29,7 @@ export default function WealthPage() {
 				<ProductShot name="wealth" />
 			</div>
 
-			<h2 id="what-you-track" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="what-you-track" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				What You Track
 			</h2>
 			<div className="grid gap-3 sm:grid-cols-2">
@@ -43,7 +43,7 @@ export default function WealthPage() {
 				))}
 			</div>
 
-			<h2 id="adding-assets" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="adding-assets" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Adding Assets
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -62,7 +62,7 @@ export default function WealthPage() {
 				You can update balances at any time; the history chart captures each change.
 			</p>
 
-			<h2 id="financial-runway" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="financial-runway" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Financial Runway
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -71,7 +71,7 @@ export default function WealthPage() {
 				updates automatically as your liquid asset balances and spending patterns change.
 			</p>
 
-			<h2 id="tips" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="tips" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Tips
 			</h2>
 			<Callout variant="tip" title="Liquid vs illiquid">

@@ -1,6 +1,5 @@
 "use client";
 
-import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -35,27 +34,22 @@ export default function ForgotPasswordPage() {
 	};
 
 	return (
-		<div className="bg-background flex min-h-screen items-center justify-center px-4">
-			<AuthPanel
-				description={t("resetPasswordDescription")}
-				title={t("resetPassword")}
-			>
-				{status === "success" ? (
-					<div className="flex flex-col items-center justify-center space-y-4 py-4">
-						<div className="rounded-full bg-emerald-100 p-3 dark:bg-emerald-900/30">
-							<CheckCircle className="h-10 w-10 text-emerald-600 dark:text-emerald-500" />
-						</div>
-						<div className="space-y-2 text-center">
-							<h3 className="font-semibold">{t("resetLinkSent")}</h3>
-							<p className="text-muted-foreground text-sm">
-								{t("resetLinkSentDescription")}
-							</p>
-						</div>
-						<Button asChild className="mt-4 w-full" variant="outline">
-							<Link href="/login">{t("returnToLogin")}</Link>
-						</Button>
-					</div>
-				) : (
+		<div className="bg-bg flex min-h-screen items-center justify-center px-4">
+			{status === "success" ? (
+				<AuthPanel
+					description={t("resetLinkSentDescription")}
+					title={t("resetLinkSent")}
+					tone="positive"
+				>
+					<Button asChild className="w-full" kind="secondary">
+						<Link href="/login">{t("returnToLogin")}</Link>
+					</Button>
+				</AuthPanel>
+			) : (
+				<AuthPanel
+					description={t("resetPasswordDescription")}
+					title={t("resetPassword")}
+				>
 					<form className="space-y-4" onSubmit={handleSubmit}>
 						<div className="space-y-2">
 							<Label htmlFor="email">{t("email")}</Label>
@@ -71,38 +65,32 @@ export default function ForgotPasswordPage() {
 						</div>
 
 						{status === "error" && (
-							<div className="text-destructive flex items-center gap-2 text-sm">
-								<AlertCircle className="h-4 w-4" />
-								<span>{t("failedToRequestReset")}</span>
-							</div>
+							<p className="text-danger text-small" role="alert">
+								{t("failedToRequestReset")}
+							</p>
 						)}
 
 						<Button
 							className="w-full"
 							disabled={status === "loading"}
+							kind="primary"
+							loading={status === "loading"}
 							type="submit"
 						>
-							{status === "loading" ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									{t("sendingLink")}
-								</>
-							) : (
-								t("sendResetLink")
-							)}
+							{t("sendResetLink")}
 						</Button>
 
 						<div className="mt-4 text-center">
 							<Link
-								className="text-muted-foreground text-sm hover:underline"
+								className="text-fg-2 text-small can-hover:hover:underline"
 								href="/login"
 							>
 								{t("backToLogin")}
 							</Link>
 						</div>
 					</form>
-				)}
-			</AuthPanel>
+				</AuthPanel>
+			)}
 		</div>
 	);
 }

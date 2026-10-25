@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -34,23 +34,16 @@ function ResetPasswordInner() {
 
 	if (!token) {
 		return (
-			<div className="bg-background flex min-h-screen items-center justify-center px-4">
-				<div className="flex w-full max-w-md flex-col items-center justify-center space-y-4 py-8">
-					<div className="rounded-full bg-red-100 p-3 dark:bg-red-900/30">
-						<AlertCircle className="text-destructive h-10 w-10" />
-					</div>
-					<div className="space-y-2 text-center">
-						<h3 className="text-destructive text-lg font-semibold">
-							{t("invalidLink")}
-						</h3>
-						<p className="text-muted-foreground text-sm">
-							{t("noResetTokenProvided")}
-						</p>
-					</div>
-					<Button asChild className="w-full">
+			<div className="bg-bg flex min-h-screen items-center justify-center px-4">
+				<AuthPanel
+					description={t("noResetTokenProvided")}
+					title={t("invalidLink")}
+					tone="danger"
+				>
+					<Button asChild className="w-full" kind="secondary">
 						<Link href="/login">{t("returnToLogin")}</Link>
 					</Button>
-				</div>
+				</AuthPanel>
 			</div>
 		);
 	}
@@ -79,7 +72,7 @@ function ResetPasswordInner() {
 	};
 
 	return (
-		<div className="bg-background flex min-h-screen items-center justify-center px-4">
+		<div className="bg-bg flex min-h-screen items-center justify-center px-4">
 			<AuthPanel
 				description={t("setNewPasswordDescription")}
 				title={t("setNewPassword")}
@@ -112,25 +105,19 @@ function ResetPasswordInner() {
 					</div>
 
 					{error && (
-						<div className="text-destructive flex items-center gap-2 text-sm">
-							<AlertCircle className="h-4 w-4 shrink-0" />
-							<span>{error}</span>
-						</div>
+						<p className="text-danger text-small" role="alert">
+							{error}
+						</p>
 					)}
 
 					<Button
 						className="w-full"
 						disabled={resetMutation.isPending}
+						kind="primary"
+						loading={resetMutation.isPending}
 						type="submit"
 					>
-						{resetMutation.isPending ? (
-							<>
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-								{t("resettingPassword")}
-							</>
-						) : (
-							t("confirmAndSave")
-						)}
+						{t("confirmAndSave")}
 					</Button>
 				</form>
 			</AuthPanel>
@@ -142,9 +129,9 @@ export default function ResetPasswordPage() {
 	return (
 		<Suspense
 			fallback={
-				<div className="bg-background flex min-h-screen items-center justify-center px-4">
+				<div className="bg-bg flex min-h-screen items-center justify-center px-4">
 					<div className="flex w-full max-w-md items-center justify-center p-12">
-						<Loader2 className="text-primary h-8 w-8 animate-spin" />
+						<Loader2 className="text-fg-3 size-8 animate-spin" />
 					</div>
 				</div>
 			}

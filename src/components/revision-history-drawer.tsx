@@ -55,30 +55,12 @@ const iconMap: Record<string, ComponentType<{ className?: string }>> = {
 };
 
 const colorStyles: Record<string, { bg: string; fg: string }> = {
-	green: {
-		bg: "bg-emerald-500/15",
-		fg: "text-emerald-600 dark:text-emerald-400",
-	},
-	amber: {
-		bg: "bg-amber-500/15",
-		fg: "text-amber-600 dark:text-amber-400",
-	},
-	blue: {
-		bg: "bg-blue-500/15",
-		fg: "text-blue-600 dark:text-blue-400",
-	},
-	red: {
-		bg: "bg-rose-500/15",
-		fg: "text-rose-600 dark:text-rose-400",
-	},
-	sky: {
-		bg: "bg-sky-500/15",
-		fg: "text-sky-600 dark:text-sky-400",
-	},
-	gray: {
-		bg: "bg-muted",
-		fg: "text-muted-foreground",
-	},
+	green: { bg: "bg-raised", fg: "text-positive" },
+	amber: { bg: "bg-attention-bg", fg: "text-attention-text" },
+	blue: { bg: "bg-info-bg", fg: "text-info" },
+	red: { bg: "bg-danger-bg", fg: "text-danger" },
+	sky: { bg: "bg-info-bg", fg: "text-info" },
+	gray: { bg: "bg-raised", fg: "text-fg-3" },
 };
 
 const defaultColor = colorStyles.gray!;
@@ -357,20 +339,10 @@ function RevisionHistoryHeader({ data }: { data: TransactionHistory }) {
 					{transaction.amount} {transaction.currency}
 				</span>
 				{transaction.isDeleted && (
-					<Badge
-						className="bg-rose-500/10 text-[10px] text-rose-600 dark:text-rose-400"
-						variant="outline"
-					>
-						{t("deleted")}
-					</Badge>
+					<Badge label={t("deleted")} status="error" />
 				)}
 				{transaction.isLocked && !transaction.isDeleted && (
-					<Badge
-						className="text-muted-foreground text-[10px]"
-						variant="outline"
-					>
-						{t("settled")}
-					</Badge>
+					<Badge label={t("settled")} status="settled" />
 				)}
 			</div>
 			{editCount > 0 && lastEdit && (

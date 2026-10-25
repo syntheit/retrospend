@@ -13,14 +13,15 @@ import { LandingHeader } from "./landing-header";
 export function LandingPage({ showLegalLinks }: { showLegalLinks: boolean }) {
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const t = useTranslations("landing");
+	const shell = useTranslations("shell");
 
 	return (
 		<div className="dark h-svh overflow-y-auto" ref={scrollRef}>
 			<a
-				className="focus:bg-background focus:ring-ring sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md focus:ring-2"
+				className="rounded-ctl bg-surface text-fg text-body focus-visible:outline-brand focus:shadow-menu sr-only px-4 py-2 font-medium focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus-visible:outline-2"
 				href="#main-content"
 			>
-				Skip to main content
+				{shell("skipToContent")}
 			</a>
 			<LandingHeader scrollContainerRef={scrollRef} />
 

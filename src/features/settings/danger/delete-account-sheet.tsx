@@ -147,7 +147,7 @@ export function DeleteAccountSheet({
 					</p>
 					<Link
 						className="rounded-ctl text-accent-strong focus-visible:outline-brand can-hover:hover:underline w-fit font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
-						href="/admin"
+						href="/admin#users"
 					>
 						{t("onlyAdminLink")}
 					</Link>

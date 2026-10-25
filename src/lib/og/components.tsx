@@ -1,8 +1,4 @@
-import {
-	AVATAR_COLORS,
-	OG,
-	PROJECT_DEFAULT_GRADIENT,
-} from "./brand";
+import { AVATAR_COLORS, OG } from "./brand";
 
 function getAvatarColor(name: string): string {
 	let sum = 0;
@@ -15,24 +11,9 @@ function getAvatarInitials(name: string): string {
 	if (parts.length === 0) return "?";
 	if (parts.length === 1) {
 		const p = parts[0]!;
-		return p.length >= 2
-			? (p[0]! + p[1]!).toUpperCase()
-			: p[0]!.toUpperCase();
+		return p.length >= 2 ? (p[0]! + p[1]!).toUpperCase() : p[0]!.toUpperCase();
 	}
 	return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
-
-function hashName(name: string): number {
-	let hash = 0;
-	for (let i = 0; i < name.length; i++) {
-		hash = (hash * 31 + name.charCodeAt(i)) | 0;
-	}
-	return hash;
-}
-
-function nameToHueRotate(name: string): number {
-	const h = hashName(name);
-	return (h % 31) - 15;
 }
 
 export function BrandMark({ size }: { size: number }) {
@@ -46,13 +27,12 @@ export function BrandMark({ size }: { size: number }) {
 				width: size,
 				height: size,
 				borderRadius: size / 2,
-				background: `linear-gradient(135deg, #8b7355, ${OG.PRIMARY})`,
-				boxShadow: `0 0 ${Math.round(size * 0.4)}px rgba(107,92,79,0.45)`,
+				backgroundColor: OG.PRIMARY,
 			}}
 		>
 			<span
 				style={{
-					color: "white",
+					color: OG.WHITE,
 					fontSize,
 					fontWeight: 700,
 					lineHeight: 1,
@@ -81,7 +61,7 @@ export function AvatarCircle({
 					width: size + 6,
 					height: size + 6,
 					borderRadius: (size + 6) / 2,
-					background: "rgba(255,255,255,0.15)",
+					backgroundColor: OG.DARK_RING,
 					alignItems: "center",
 					justifyContent: "center",
 				}}
@@ -106,7 +86,7 @@ export function AvatarCircle({
 				width: size + 6,
 				height: size + 6,
 				borderRadius: (size + 6) / 2,
-				background: "rgba(255,255,255,0.15)",
+				backgroundColor: OG.DARK_RING,
 				alignItems: "center",
 				justifyContent: "center",
 			}}
@@ -124,7 +104,7 @@ export function AvatarCircle({
 			>
 				<span
 					style={{
-						color: "white",
+						color: OG.WHITE,
 						fontSize,
 						fontWeight: 600,
 						lineHeight: 1,
@@ -133,48 +113,6 @@ export function AvatarCircle({
 					{initials}
 				</span>
 			</div>
-		</div>
-	);
-}
-
-export function ProjectBadge({
-	name,
-	imageUrl,
-	size,
-}: {
-	name: string;
-	imageUrl?: string | null;
-	size: number;
-}) {
-	if (imageUrl) {
-		return (
-			<img
-				alt=""
-				height={size}
-				src={imageUrl}
-				style={{ borderRadius: size / 2, objectFit: "cover" }}
-				width={size}
-			/>
-		);
-	}
-	const [from, to] = PROJECT_DEFAULT_GRADIENT;
-	const initials = name.slice(0, 2).toUpperCase();
-	const hue = nameToHueRotate(name);
-	const initialsSize = Math.round(size * 0.4);
-	return (
-		<div
-			style={{
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				width: size,
-				height: size,
-				borderRadius: size / 2,
-				backgroundImage: `linear-gradient(135deg, ${from}, ${to})`,
-				filter: `hue-rotate(${hue}deg)`,
-			}}
-		>
-			<span style={{ fontSize: initialsSize, lineHeight: 1, color: "rgba(255,255,255,0.7)" }}>{initials}</span>
 		</div>
 	);
 }
@@ -233,7 +171,7 @@ export function Footer() {
 	);
 }
 
-// A small pill badge — label/value pair used on dark hero cards
+// A small pill badge, a label/value pair used on dark hero cards
 export function StatPill({ label }: { label: string }) {
 	return (
 		<div

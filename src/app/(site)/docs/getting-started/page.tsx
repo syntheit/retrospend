@@ -23,7 +23,7 @@ export default function IntroductionPage() {
 				<Badge variant="secondary" className="mb-3">
 					Getting Started
 				</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Introduction</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Introduction</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Retrospend is a self-hostable personal finance tracker for expenses,
 					budgets, and wealth, built for people who want full control over
@@ -31,7 +31,7 @@ export default function IntroductionPage() {
 				</p>
 			</div>
 
-			<h2 id="what-is-retrospend" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="what-is-retrospend" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				What is Retrospend?
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -49,7 +49,7 @@ export default function IntroductionPage() {
 				vendor lock-in.
 			</p>
 
-			<h2 id="key-features" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="key-features" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Key Features
 			</h2>
 			<div className="grid gap-3 sm:grid-cols-2">
@@ -91,7 +91,7 @@ export default function IntroductionPage() {
 				))}
 			</div>
 
-			<h2 id="two-ways-to-use" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="two-ways-to-use" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Two Ways to Use Retrospend
 			</h2>
 			<div className="grid gap-4 sm:grid-cols-2">
@@ -125,7 +125,7 @@ export default function IntroductionPage() {
 				. No Docker, no config, no server needed.
 			</Callout>
 
-			<h2 id="open-source" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="open-source" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Open Source
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">

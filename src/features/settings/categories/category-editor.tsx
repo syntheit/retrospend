@@ -92,6 +92,7 @@ export function CategoryEditor({
 									aria-label={iconName}
 									aria-pressed={selected}
 									className={cn(
+										"max-md:size-11",
 										selected && "border-brand bg-brand-soft text-fg",
 									)}
 									icon
@@ -118,7 +119,7 @@ export function CategoryEditor({
 										aria-label={c}
 										aria-pressed={selected}
 										className={cn(
-											"can-hover:hover:bg-(--c) can-hover:hover:text-white bg-(--c) text-white",
+											"can-hover:hover:bg-(--c) can-hover:hover:text-white bg-(--c) text-white max-md:size-11",
 											selected && "outline-fg outline-2 outline-offset-2",
 										)}
 										icon

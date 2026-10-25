@@ -25,6 +25,7 @@ import { BackupStatus } from "./backup-status";
 import { InviteCodesTable } from "./invite-codes-table";
 import { ParticipantsTable } from "./participants-table";
 import { UsersTable } from "./users-table";
+import { useAdminTab } from "./use-admin-tab";
 
 type ExtendedUser = NonNullable<
 	ReturnType<typeof useSession>["data"]
@@ -56,7 +57,7 @@ export function AdminPanel() {
 	const t = useTranslations("admin");
 	const toast = useToast();
 	const tabsRef = useRef<HTMLDivElement>(null);
-	const defaultTab = "users";
+	const { tab, onTabChange } = useAdminTab(tabsRef);
 	const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [resetResult, setResetResult] = useState<{
@@ -356,18 +357,7 @@ export function AdminPanel() {
 				</section>
 
 				{/* Data Management Tabs */}
-				<Tabs
-					defaultValue={defaultTab}
-					onValueChange={() => {
-						requestAnimationFrame(() => {
-							tabsRef.current?.scrollIntoView({
-								behavior: "smooth",
-								block: "start",
-							});
-						});
-					}}
-					ref={tabsRef}
-				>
+				<Tabs onValueChange={onTabChange} ref={tabsRef} value={tab}>
 					<TabsList>
 						<TabsTrigger value="users">{t("tabUsers")}</TabsTrigger>
 						<TabsTrigger value="participants">

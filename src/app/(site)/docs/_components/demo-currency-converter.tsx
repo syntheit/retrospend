@@ -3,6 +3,7 @@
 import { ArrowUpDown } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { Button } from "~/components/ui/button"
+import { FilterChip } from "~/components/ui/chip"
 import { CurrencyFlag } from "~/components/ui/currency-flag"
 import { Input } from "~/components/ui/input"
 import {
@@ -168,19 +169,13 @@ export function DemoCurrencyConverter() {
 								{stripRateOptions.map((option) => {
 									const isSelected = selectedRateType === option.type
 									return (
-										<button
-											className={cn(
-												"rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
-												isSelected
-													? "bg-primary text-primary-foreground"
-													: "bg-muted/60 text-muted-foreground hover:bg-muted",
-											)}
+										<FilterChip
 											key={option.type}
 											onClick={() => handleRateTypeChange(option.type)}
-											type="button"
+											selected={isSelected}
 										>
 											{getRateTypeLabel(option.type)}
-										</button>
+										</FilterChip>
 									)
 								})}
 							</div>

@@ -5,7 +5,7 @@
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { contract, SCOPES } from "@retrospend/api-contract";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { auth } from "~/server/better-auth";
 import { ONLY_ADMIN_MESSAGE } from "~/server/services/account-deletion.service";
 import { deleteFile } from "~/server/storage";
@@ -53,25 +53,31 @@ async function passwordUser(role: "USER" | "ADMIN" = "USER") {
 	return user.id;
 }
 
-/** Runs with no other active admin on the shared test database, then restores them. */
+/** Admins the last-admin tests switched off; afterEach switches them back on. */
+let disabledAdmins: string[] = [];
+
+/** Runs with no other active admin on the shared test database. */
 async function withNoOtherActiveAdmin(run: () => Promise<void>) {
 	const active = await adminDb.user.findMany({
 		where: { role: "ADMIN", isActive: true },
 		select: { id: true },
 	});
+	disabledAdmins = active.map((u) => u.id);
 	await adminDb.user.updateMany({
-		where: { id: { in: active.map((u) => u.id) } },
+		where: { id: { in: disabledAdmins } },
 		data: { isActive: false },
 	});
-	try {
-		await run();
-	} finally {
-		await adminDb.user.updateMany({
-			where: { id: { in: active.map((u) => u.id) } },
-			data: { isActive: true },
-		});
-	}
+	await run();
 }
+
+afterEach(async () => {
+	if (disabledAdmins.length === 0) return;
+	await adminDb.user.updateMany({
+		where: { id: { in: disabledAdmins } },
+		data: { isActive: true },
+	});
+	disabledAdmins = [];
+});
 
 const exists = async (id: string) =>
 	(await adminDb.user.findUnique({ where: { id } })) !== null;

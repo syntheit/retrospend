@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
 import { Badge } from "~/components/ui/badge"
 import { DocItem } from "../../_components/doc-item"
 import { Callout } from "../../_components/callout"
@@ -18,32 +19,32 @@ type EnvVar = { name: string; required: boolean; default?: string; description: 
 function EnvTable({ vars }: { vars: EnvVar[] }) {
 	return (
 		<div className="my-4 overflow-x-auto rounded-lg border border-border">
-			<table className="w-full text-sm">
-				<thead>
-					<tr className="border-b border-border bg-muted/30">
-						<th className="px-4 py-2.5 text-left font-semibold text-xs">Variable</th>
-						<th className="px-4 py-2.5 text-left font-semibold text-xs">Required</th>
-						<th className="px-4 py-2.5 text-left font-semibold text-xs">Default</th>
-						<th className="px-4 py-2.5 text-left font-semibold text-xs">Description</th>
-					</tr>
-				</thead>
-				<tbody className="divide-y divide-border">
+			<Table className="w-full text-sm">
+				<TableHeader>
+					<TableRow className="border-b border-border bg-muted/30">
+						<TableHead className="px-4 py-2.5 text-left font-semibold text-xs">Variable</TableHead>
+						<TableHead className="px-4 py-2.5 text-left font-semibold text-xs">Required</TableHead>
+						<TableHead className="px-4 py-2.5 text-left font-semibold text-xs">Default</TableHead>
+						<TableHead className="px-4 py-2.5 text-left font-semibold text-xs">Description</TableHead>
+					</TableRow>
+				</TableHeader>
+				<TableBody className="divide-y divide-border">
 					{vars.map((v) => (
-						<tr key={v.name}>
-							<td className="px-4 py-3 font-mono text-xs font-semibold">{v.name}</td>
-							<td className="px-4 py-3">
+						<TableRow key={v.name}>
+							<TableCell className="px-4 py-3 font-mono text-xs font-semibold">{v.name}</TableCell>
+							<TableCell className="px-4 py-3">
 								{v.required ? (
 									<Badge variant="destructive" className="text-xs">required</Badge>
 								) : (
 									<Badge variant="secondary" className="text-xs">optional</Badge>
 								)}
-							</td>
-							<td className="px-4 py-3 font-mono text-muted-foreground text-xs">{v.default ?? "-"}</td>
-							<td className="px-4 py-3 text-muted-foreground text-xs leading-relaxed">{v.description}</td>
-						</tr>
+							</TableCell>
+							<TableCell className="px-4 py-3 font-mono text-muted-foreground text-xs">{v.default ?? "-"}</TableCell>
+							<TableCell className="px-4 py-3 text-muted-foreground text-xs leading-relaxed">{v.description}</TableCell>
+						</TableRow>
 					))}
-				</tbody>
-			</table>
+				</TableBody>
+			</Table>
 		</div>
 	)
 }
@@ -107,7 +108,7 @@ export default function AiImportPage() {
 				<Badge variant="secondary" className="mb-3">
 					Configuration
 				</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">AI Import</h1>
+				<h1 className="mb-3 font-semibold text-3xl">AI Import</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Configure local Ollama or cloud OpenRouter for AI-powered bank
 					statement import.
@@ -116,7 +117,7 @@ export default function AiImportPage() {
 
 			<h2
 				id="overview"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Overview
 			</h2>
@@ -128,7 +129,7 @@ export default function AiImportPage() {
 
 			<h2
 				id="providers"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Providers
 			</h2>
@@ -141,7 +142,7 @@ export default function AiImportPage() {
 
 			<h2
 				id="ollama-setup"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Ollama Setup
 			</h2>
@@ -157,7 +158,7 @@ export default function AiImportPage() {
 
 			<h2
 				id="openrouter-setup"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				OpenRouter Setup
 			</h2>
@@ -165,7 +166,7 @@ export default function AiImportPage() {
 
 			<h2
 				id="tuning"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Tuning
 			</h2>
@@ -177,7 +178,7 @@ export default function AiImportPage() {
 
 			<h2
 				id="access-control"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Access Control
 			</h2>
@@ -190,7 +191,7 @@ export default function AiImportPage() {
 
 			<h2
 				id="model-recommendation"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Model Recommendation
 			</h2>

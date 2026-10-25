@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { CategoryTile } from "~/components/ui/category-badge";
 import { Label } from "~/components/ui/label";
@@ -28,7 +28,6 @@ export function CategoryManager(props: CategoryManagerProps) {
 		setMobileView,
 		saveStatus,
 		categories,
-		createMutation,
 		deleteMutation,
 		selectedCategory,
 		editName,
@@ -50,7 +49,6 @@ export function CategoryManager(props: CategoryManagerProps) {
 		handleExcludeChange,
 		confirmDelete,
 		handleReassignAndDelete,
-		handleAddCategory,
 		handleOpenChange,
 		handleSelectCategory,
 		displayColors,
@@ -62,7 +60,6 @@ export function CategoryManager(props: CategoryManagerProps) {
 	return (
 		<>
 			<Sheet
-				description={t("categoryManagerDescription")}
 				detent="large"
 				footer={false}
 				onOpenChange={handleOpenChange}
@@ -70,7 +67,7 @@ export function CategoryManager(props: CategoryManagerProps) {
 				title={t("categoryManager")}
 				wide
 			>
-				<div className="min-h-ctl mb-3 flex items-center justify-between gap-3">
+				<div className="min-h-ctl mb-3 flex items-center gap-3">
 					<span
 						aria-live="polite"
 						className="text-fg-3 text-small flex items-center gap-1"
@@ -83,15 +80,6 @@ export function CategoryManager(props: CategoryManagerProps) {
 							</>
 						)}
 					</span>
-					<Button
-						disabled={createMutation.isPending}
-						kind="secondary"
-						onClick={handleAddCategory}
-						size="sm"
-					>
-						<Plus aria-hidden="true" />
-						{t("addCategory")}
-					</Button>
 				</div>
 
 				<div className="border-line flex h-120 min-h-0 border-t">

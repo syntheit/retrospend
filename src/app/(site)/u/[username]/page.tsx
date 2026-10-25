@@ -70,7 +70,7 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
 function ProfileSkeleton() {
 	return (
 		<div className="flex h-dvh items-center justify-center overflow-y-auto p-4">
-			<div className="flex w-full max-w-[500px] flex-col gap-3">
+			<div className="flex w-full max-w-lg flex-col gap-3">
 				<div className="space-y-4 p-5 sm:p-6">
 						<div className="flex flex-col items-center gap-2">
 							<Skeleton className="h-20 w-20 rounded-full" />
@@ -113,20 +113,19 @@ function PaymentMethodChip({
 	onSelect: () => void;
 }) {
 	const t = useTranslations("publicProfile");
-	const resolvedType = resolveMethodTypeId(method.type, method.currency);
-	const def = getMethodType(resolvedType);
 	const displayName = getPaymentMethodName(method.type, method.label, method.currency);
 
 	return (
-		<button
+		<Button
+			aria-pressed={isSelected}
+			className={isSelected ? "border-brand bg-brand-soft" : ""}
+			kind="secondary"
 			onClick={onSelect}
-			className="flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors hover:bg-muted/50"
-			style={isSelected ? { borderColor: def?.iconFallbackColor ?? "#6B7280", backgroundColor: `${def?.iconFallbackColor ?? "#6B7280"}10` } : {}}
 		>
 			<PaymentMethodIcon currency={method.currency} size="sm" typeId={method.type} />
-			<span className="font-medium text-sm">{displayName}</span>
-			{isFirst && <span className="text-amber-500 text-xs" title={t("preferred")}>★</span>}
-		</button>
+			<span className="text-small font-medium">{displayName}</span>
+			{isFirst && <Badge label={t("preferred")} status="confirmed" />}
+		</Button>
 	);
 }
 
@@ -182,7 +181,7 @@ function PaymentMethodDetail({
 				<div className="min-w-0">
 					<div className="flex items-center gap-1.5">
 						<span className="font-medium text-sm">{displayName}</span>
-						{isFirst && <Badge className="text-[10px]" variant="secondary">{t("preferred")}</Badge>}
+						{isFirst && <Badge label={t("preferred")} status="confirmed" />}
 					</div>
 					{networkDef && (
 						<p className="text-muted-foreground text-xs">{networkDef.shortName}</p>
@@ -247,7 +246,7 @@ export default function PublicProfilePage({
 
 		return (
 			<div className="flex h-dvh items-center justify-center overflow-y-auto p-4">
-				<div className="w-full max-w-[500px] space-y-4 p-5 text-center sm:p-6">
+				<div className="w-full max-w-lg space-y-4 p-5 text-center sm:p-6">
 						<h1 className="font-bold text-xl">
 							{isNotFound ? t("profileNotFound") : t("somethingWentWrong")}
 						</h1>
@@ -289,7 +288,7 @@ export default function PublicProfilePage({
 				symbolSets={data.backgroundSettings.symbolSets}
 			/>
 			<div className="relative z-10 flex min-h-dvh flex-col items-center justify-center gap-3 p-4">
-			<div className="flex w-full max-w-[500px] flex-col gap-3">
+			<div className="flex w-full max-w-lg flex-col gap-3">
 				{/* Main Profile Card */}
 				<div className="p-5 sm:p-6">
 						{/* Header */}
