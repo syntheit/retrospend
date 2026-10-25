@@ -29,7 +29,8 @@
     "submit": "Agregar gasto",
     "added": "Se agregó {title}",
     "split": "Lo pagaste vos, dividido en partes iguales entre {count, plural, one {# persona} other {# personas}}",
-    "staysPast": "Gastos y pagos anteriores",
+    "staysExpenses": "Gastos anteriores",
+    "staysPayments": "Pagos",
     "fillIn": "Completá para qué fue y el monto."
   },
   "errors": {

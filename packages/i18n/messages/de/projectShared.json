@@ -29,7 +29,8 @@
     "submit": "Ausgabe hinzufügen",
     "added": "{title} hinzugefügt",
     "split": "Von dir bezahlt, gleichmäßig aufgeteilt auf {count, plural, one {# Person} other {# Personen}}",
-    "staysPast": "Frühere Ausgaben und Zahlungen",
+    "staysExpenses": "Frühere Ausgaben",
+    "staysPayments": "Zahlungen",
     "fillIn": "Gib an, wofür es war, und den Betrag."
   },
   "errors": {

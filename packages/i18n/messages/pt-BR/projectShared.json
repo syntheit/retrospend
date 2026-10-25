@@ -29,7 +29,8 @@
     "submit": "Adicionar despesa",
     "added": "{title} foi adicionada",
     "split": "Pago por você, dividido igualmente entre {count, plural, one {# pessoa} other {# pessoas}}",
-    "staysPast": "Despesas e pagamentos anteriores",
+    "staysExpenses": "Despesas anteriores",
+    "staysPayments": "Pagamentos",
     "fillIn": "Preencha para que foi e o valor."
   },
   "errors": {

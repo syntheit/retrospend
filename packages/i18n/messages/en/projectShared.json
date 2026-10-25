@@ -29,7 +29,8 @@
     "submit": "Add expense",
     "added": "Added {title}",
     "split": "Paid by you, split equally between {count, plural, one {# person} other {# people}}",
-    "staysPast": "Past expenses and payments",
+    "staysExpenses": "Past expenses",
+    "staysPayments": "Payments",
     "fillIn": "Fill in what it was for and the amount."
   },
   "errors": {

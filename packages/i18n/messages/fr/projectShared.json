@@ -29,7 +29,8 @@
     "submit": "Ajouter la dépense",
     "added": "{title} ajoutée",
     "split": "Payée par toi, répartie à parts égales entre {count, plural, one {# personne} other {# personnes}}",
-    "staysPast": "Dépenses et paiements précédents",
+    "staysExpenses": "Dépenses précédentes",
+    "staysPayments": "Paiements",
     "fillIn": "Indique pour quoi c'était et le montant."
   },
   "errors": {

@@ -61,12 +61,12 @@ export function useAccess(projectId: string): {
 	// Resume link from the "you already joined" email: trade it for a fresh
 	// guest session token, then reload into the guest view. The ref keeps it
 	// to one call (the token is single-use) even if the effect runs twice.
-	const resume = api.guest.resume.useMutation();
+	const { mutate: resumeMutate } = api.guest.resume.useMutation();
 	const resumeStarted = useRef(false);
 	useEffect(() => {
 		if (!resumeToken || resumeStarted.current) return;
 		resumeStarted.current = true;
-		resume.mutate(
+		resumeMutate(
 			{ token: resumeToken },
 			{
 				onSuccess: (data) => {
@@ -77,7 +77,7 @@ export function useAccess(projectId: string): {
 				onError: () => setAccess({ kind: "resumeFailed" }),
 			},
 		);
-	}, [resumeToken, resume]);
+	}, [resumeToken, resumeMutate]);
 
 	const link = api.guest.validateLink.useQuery(
 		{ linkId: inviteLinkId ?? "" },
@@ -85,11 +85,15 @@ export function useAccess(projectId: string): {
 	);
 	// Signed-in people join with their own account (the server adds the
 	// account behind this session). The ref keeps it to one call.
-	const joinWithAccount = api.guest.joinWithAccount.useMutation();
+	const { mutate: joinMutate } = api.guest.joinWithAccount.useMutation();
 	const joinStarted = useRef(false);
+	// Once the join form is up, a refetch of the invite (a mutation refreshes the
+	// guest queries) must not swap it for the page under the person's hands.
+	const joinShown = useRef(false);
 
 	useEffect(() => {
-		if (!inviteLinkId || inviteHandled || link.isLoading) return;
+		if (!inviteLinkId || inviteHandled || link.isLoading || joinShown.current)
+			return;
 		if (link.isError || !link.data) {
 			setAccess({ kind: "inviteError" });
 			return;
@@ -110,7 +114,7 @@ export function useAccess(projectId: string): {
 		if (session.data?.user) {
 			if (joinStarted.current) return;
 			joinStarted.current = true;
-			joinWithAccount.mutate(
+			joinMutate(
 				{ linkId: inviteLinkId },
 				{
 					// The server renders the member's page on the next load.
@@ -125,6 +129,7 @@ export function useAccess(projectId: string): {
 			setInviteHandled(true);
 			return;
 		}
+		joinShown.current = true;
 		setAccess({ kind: "join", linkId: inviteLinkId, info });
 	}, [
 		inviteLinkId,
@@ -134,7 +139,7 @@ export function useAccess(projectId: string): {
 		link.data,
 		session.isPending,
 		session.data,
-		joinWithAccount,
+		joinMutate,
 		projectId,
 		t,
 	]);

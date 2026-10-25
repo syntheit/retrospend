@@ -1256,9 +1256,9 @@ export class SharedTransactionService {
 		callback: (tx: Prisma.TransactionClient) => Promise<T>,
 	): Promise<T> {
 		if (!("$transaction" in this.db)) return await callback(this.db);
+		const guest = this.actor.participantType !== "user"; // no RLS identity: write as the owner
 		return await this.db.$transaction(async (tx) => {
-			await tx.$executeRaw`SELECT set_config('app.current_user_id', ${this.actor.participantId}, true),
-			                            set_config('role', 'retrospend_app', true)`;
+			if (!guest) await tx.$executeRaw`SELECT set_config('app.current_user_id', ${this.actor.participantId}, true), set_config('role', 'retrospend_app', true)`;
 			return await callback(tx);
 		});
 	}

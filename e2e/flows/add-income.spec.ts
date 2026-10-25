@@ -1,16 +1,20 @@
 import { expect, test } from "@playwright/test";
 import { personaStorageState } from "../constants";
-import { SOFIA } from "../fixtures/personas";
+import { MARTIN, SOFIA } from "../fixtures/personas";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { untilSaved } from "../helpers/trpc";
 import { openV2 } from "./viewer";
 
-// Add income (owner N71: its own sheet, I) as Sofía. No account picked:
-// accounts and net worth do not change (N75). She has no envelope budget,
-// so Use my plan is not preselected and the money stays Not planned yet.
-// The toast's Undo takes the income back.
+// Add income (owner N71: its own sheet, I). No account picked: accounts and
+// net worth do not change (N75). The first flow is Martín, who has no
+// envelope budget (Sofía's old limits move into one on her first read), so
+// Use my plan is not preselected and the money stays Not planned yet. The
+// toast's Undo takes the income back.
 
 test.use({ storageState: personaStorageState(SOFIA.username) });
+
+test.describe("without a budget", () => {
+test.use({ storageState: personaStorageState(MARTIN.username) });
 
 test("Add income: no account, no plan without a budget, save and Undo", async ({
 	page,
@@ -55,6 +59,8 @@ test("Add income: no account, no plan without a budget, save and Undo", async ({
 			.getByRole("button", { name: "Undo" })
 			.click(),
 	);
+});
+
 });
 
 test("Add income: a pair with no rate asks for one, never 1", async ({

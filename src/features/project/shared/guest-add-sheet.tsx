@@ -74,7 +74,11 @@ export function GuestAddSheet({
 		onChanged();
 		toast.saved(t("added", { title: title.trim() }), {
 			undo: async () => {
-				await remove.mutateAsync({ id: created.transaction.id });
+				// The sheet showed what it adds, so taking it back needs no second question.
+				await remove.mutateAsync({
+					id: created.transaction.id,
+					confirmUnsettled: true,
+				});
 				onChanged();
 			},
 		});
@@ -137,7 +141,7 @@ export function GuestAddSheet({
 								]
 							: []
 					}
-					stays={[t("staysPast")]}
+					stays={[t("staysExpenses"), t("staysPayments")]}
 					status={minor && minor > 0 ? undefined : t("fillIn")}
 				>
 					{minor && minor > 0 ? (

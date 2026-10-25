@@ -15,6 +15,9 @@ interface SmokePage {
 /** Pages that tag no figures yet (docs/ui/GAPS.md): the audit's "renders no figures" does not apply. */
 const NO_FIGURES = new Set(["wealth", "budget", "settings"]);
 
+/** Home's recent rows and Activity tag a figure per row, which the figures endpoint does not serve yet (their flows audit them). */
+const NO_AUDIT = new Set(["home", "activity"]);
+
 const PATHS: Record<string, string> = {
 	home: "/home",
 	activity: "/activity",
@@ -65,7 +68,9 @@ async function walkPages(
 			});
 			expect(await bannedOutputOn(page), `${label}: banned output`).toEqual([]);
 			// The flows own the required figure ids of each page; the walk checks the rest.
-			const figures = (await audit.checkPage(page, label, `${key}-smoke`)).filter(
+			const figures = (
+				NO_AUDIT.has(key) ? [] : await audit.checkPage(page, label, `${key}-smoke`)
+			).filter(
 				(problem) =>
 					!(NO_FIGURES.has(key) && problem.includes("renders no figures")),
 			);

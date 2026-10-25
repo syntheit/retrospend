@@ -134,7 +134,7 @@ test.describe("a viewer link", () => {
 			main.getByRole("heading", { name: "Who paid what" }),
 		).toBeVisible();
 		await main.getByRole("link", { name: "People" }).click();
-		await expect(main.getByText("Nico")).toBeVisible();
+		await expect(main.getByText("Nico", { exact: true })).toBeVisible();
 	});
 
 	test("a link that never existed says so", async ({ page }) => {
@@ -154,13 +154,18 @@ test.describe("an invite that makes a guest", () => {
 		test.setTimeout(120_000);
 		await page.setViewportSize({ width: 1440, height: 900 });
 		await gotoReady(page, `/projects/${ids.project}?invite=${ids.guestLink}`);
+		// Nico has no account yet, so the invite first asks whether the visitor is Nico.
+		await expect(
+			page.getByRole("heading", { name: "Are you one of these people?" }),
+		).toBeVisible();
+		await page.getByRole("button", { name: "None of these, I am new" }).click();
 		await expect(
 			page.getByRole("heading", { name: `Join ${PROJECT}` }),
 		).toBeVisible();
 		await page.getByLabel("Your name").fill("Lucy Guest");
 		await page.getByLabel("Email", { exact: true }).fill("lucy.guest@example.com");
 		await page.getByRole("button", { name: "Join project" }).click();
-		await expect(page.getByRole("heading", { name: "You are in" })).toBeVisible();
+		await expect(page.getByText("You are in", { exact: true })).toBeVisible();
 		await page.getByRole("button", { name: "View project" }).click();
 
 		await openShared(page, `/projects/${ids.project}`);
