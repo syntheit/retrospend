@@ -13,6 +13,11 @@
  * otherwise to the last row for PERCENTAGE/SHARES or filled in row order for
  * EQUAL. This file preserves that exact behavior.
  *
+ * All division is BigInt over minor units: a float product like
+ * totalMinor * percent / 100 drops a cent above a few hundred dollars
+ * (100 - 50.01 is 49.989999..., not 49.99) and passes 2^53 near 1e12 minor
+ * units. Only the edges (toMinorUnits, fromMinorUnits) touch floats.
+ *
  * This module MUST stay free of server-only imports (Prisma, tRPC, env) so it
  * can run in the browser. Validation failures throw {@link SplitComputationError};
  * the server catches it and rethrows as a TRPCError.
@@ -69,10 +74,86 @@ export function resolveSplits(args: {
 	const { mode, amount, currency, participants, paidBy } = args;
 	if (mode === "EQUAL")
 		return computeEqualSplits(amount, currency, participants, paidBy);
-	if (mode === "EXACT") return computeExactSplits(amount, currency, participants);
+	if (mode === "EXACT")
+		return computeExactSplits(amount, currency, participants);
 	if (mode === "PERCENTAGE")
 		return computePercentageSplits(amount, currency, participants, paidBy);
 	return computeSharesSplits(amount, currency, participants, paidBy);
+}
+
+/** Percentages are read to 8 decimals (the DB keeps 2) as exact integers. */
+const PCT_SCALE = 100_000_000;
+const PCT_SCALE_BIG = BigInt(PCT_SCALE);
+const HUNDRED_PCT = 100n * PCT_SCALE_BIG;
+/** The sum tolerance the form has always allowed: 99.99 to 100.01. */
+const PCT_TOLERANCE = PCT_SCALE_BIG / 100n;
+
+/** floor(a / b) for b > 0, also for negative a (BigInt `/` truncates). */
+function floorDiv(a: bigint, b: bigint): bigint {
+	const q = a / b;
+	return a % b !== 0n && a < 0n ? q - 1n : q;
+}
+
+function safeMinor(totalMinor: number): bigint {
+	if (!Number.isSafeInteger(totalMinor)) {
+		throw new SplitComputationError("Amount is too large to split exactly");
+	}
+	return BigInt(totalMinor);
+}
+
+function indexOfRef(
+	rows: SplitParticipantRef[],
+	paidBy: SplitParticipantRef,
+): number {
+	return rows.findIndex((r) => sameRef(r, paidBy));
+}
+
+/** The row that takes leftover units: the payer's when they have one, else the last. */
+export function remainderRow(
+	rows: SplitParticipantRef[],
+	paidBy: SplitParticipantRef,
+): number {
+	const payerIdx = indexOfRef(rows, paidBy);
+	return payerIdx >= 0 ? payerIdx : rows.length - 1;
+}
+
+function allocate(
+	total: bigint,
+	weights: readonly bigint[],
+	remainderIdx: number,
+): bigint[] {
+	const sumWeights = weights.reduce((s, w) => s + w, 0n);
+	if (sumWeights <= 0n) {
+		throw new SplitComputationError("Split weights must add up to more than 0");
+	}
+	const out = weights.map((w) => floorDiv(total * w, sumWeights));
+	const remainder = total - out.reduce((s, c) => s + c, 0n);
+	const limit = BigInt(out.length);
+	if (remainder > limit || remainder < -limit) {
+		throw new SplitComputationError("Unexpected large rounding error in split");
+	}
+	out[remainderIdx] = out[remainderIdx]! + remainder;
+	return out;
+}
+
+/**
+ * Splits `totalMinor` (whole minor units) by whole-number weights: each row
+ * gets floor(total * weight / sum of weights), then the leftover units go to
+ * `remainderIdx` (callers pass the payer's row, else the last row). Exact for
+ * any safe-integer total and weights.
+ */
+export function allocateByWeights(
+	totalMinor: number,
+	weights: readonly number[],
+	remainderIdx: number,
+): number[] {
+	const big = weights.map((w) => {
+		if (!Number.isSafeInteger(w)) {
+			throw new SplitComputationError("Split weights must be whole numbers");
+		}
+		return BigInt(w);
+	});
+	return allocate(safeMinor(totalMinor), big, remainderIdx).map(Number);
 }
 
 function computeEqualSplits(
@@ -81,37 +162,32 @@ function computeEqualSplits(
 	splitWith: SplitParticipantInput[],
 	paidBy: SplitParticipantRef,
 ): ResolvedSplit[] {
-	const count = splitWith.length;
-	// Integer minor units ("cents") avoid floating point issues
-	const totalCents = toMinorUnits(amount, currency);
-	const baseCents = Math.floor(totalCents / count);
-	let remainder = totalCents - baseCents * count;
+	const count = BigInt(splitWith.length);
+	const total = safeMinor(toMinorUnits(amount, currency));
+	const base = floorDiv(total, count);
+	let remainder = Number(total - base * count);
 
-	const result = splitWith.map((p) => ({
-		participantType: p.participantType,
-		participantId: p.participantId,
-		cents: baseCents,
-	}));
+	const cents = splitWith.map(() => base);
 
-	// Assign extra cents: payer first, then others in order
+	// Assign extra units: payer first, then others in order
 	if (remainder > 0) {
-		const payerIdx = result.findIndex((r) => sameRef(r, paidBy));
+		const payerIdx = indexOfRef(splitWith, paidBy);
 		if (payerIdx >= 0) {
-			result[payerIdx]!.cents += 1;
+			cents[payerIdx] = cents[payerIdx]! + 1n;
 			remainder -= 1;
 		}
-		for (let i = 0; i < result.length && remainder > 0; i++) {
+		for (let i = 0; i < cents.length && remainder > 0; i++) {
 			if (i !== payerIdx) {
-				result[i]!.cents += 1;
+				cents[i] = cents[i]! + 1n;
 				remainder -= 1;
 			}
 		}
 	}
 
-	return result.map((r) => ({
-		participantType: r.participantType,
-		participantId: r.participantId,
-		shareAmount: fromMinorUnits(r.cents, currency),
+	return splitWith.map((p, i) => ({
+		participantType: p.participantType,
+		participantId: p.participantId,
+		shareAmount: fromMinorUnits(Number(cents[i]), currency),
 	}));
 }
 
@@ -120,18 +196,17 @@ function computeExactSplits(
 	currency: string,
 	splitWith: SplitParticipantInput[],
 ): ResolvedSplit[] {
-	const totalCents = toMinorUnits(amount, currency);
+	const totalCents = safeMinor(toMinorUnits(amount, currency));
 	const sumCents = splitWith.reduce(
-		(sum, p) => sum + toMinorUnits(p.shareAmount ?? 0, currency),
-		0,
+		(sum, p) => sum + safeMinor(toMinorUnits(p.shareAmount ?? 0, currency)),
+		0n,
 	);
 
 	if (sumCents !== totalCents) {
-		const got = fromMinorUnits(sumCents, currency);
-		const difference = fromMinorUnits(
-			Math.abs(totalCents - sumCents),
-			currency,
-		);
+		const gap =
+			sumCents > totalCents ? sumCents - totalCents : totalCents - sumCents;
+		const got = fromMinorUnits(Number(sumCents), currency);
+		const difference = fromMinorUnits(Number(gap), currency);
 		throw new SplitComputationError(
 			`Split amounts must sum to the transaction amount. Expected ${amount}, got ${got} (difference: ${difference})`,
 		);
@@ -159,50 +234,34 @@ function computePercentageSplits(
 		}
 	}
 
-	const rawSum = splitWith.reduce((s, p) => s + p.sharePercentage!, 0);
-	if (rawSum < 99.99 || rawSum > 100.01) {
+	// Percentages as exact integers of 1e-8 percent
+	const scaled = splitWith.map((p) =>
+		BigInt(Math.round(p.sharePercentage! * PCT_SCALE)),
+	);
+	const rawSum = scaled.reduce((s, v) => s + v, 0n);
+	const off =
+		rawSum > HUNDRED_PCT ? rawSum - HUNDRED_PCT : HUNDRED_PCT - rawSum;
+	if (off > PCT_TOLERANCE) {
 		throw new SplitComputationError(
-			`Percentages must sum to 100. Got ${rawSum.toFixed(4)}`,
+			`Percentages must sum to 100. Got ${(Number(rawSum) / PCT_SCALE).toFixed(4)}`,
 		);
 	}
 
 	// Adjust last participant so percentages sum to exactly 100
-	const participants = splitWith.map((p) => ({ ...p }));
-	const othersSum = participants
-		.slice(0, -1)
-		.reduce((s, p) => s + p.sharePercentage!, 0);
-	participants[participants.length - 1]!.sharePercentage = 100 - othersSum;
+	const othersSum = scaled.slice(0, -1).reduce((s, v) => s + v, 0n);
+	scaled[scaled.length - 1] = HUNDRED_PCT - othersSum;
 
-	// Compute amounts using integer minor units, floor each
-	const totalCents = toMinorUnits(amount, currency);
-	const result = participants.map((p) => ({
+	const cents = allocate(
+		safeMinor(toMinorUnits(amount, currency)),
+		scaled,
+		remainderRow(splitWith, paidBy),
+	);
+
+	return splitWith.map((p, i) => ({
 		participantType: p.participantType,
 		participantId: p.participantId,
-		sharePercentage: p.sharePercentage!,
-		cents: Math.floor((totalCents * p.sharePercentage!) / 100),
-	}));
-
-	const sumCents = result.reduce((s, r) => s + r.cents, 0);
-	const remainder = totalCents - sumCents;
-
-	if (Math.abs(remainder) > result.length) {
-		throw new SplitComputationError(
-			"Unexpected large rounding error in percentage split",
-		);
-	}
-
-	// Assign remainder cents to payer first
-	if (remainder !== 0) {
-		const payerIdx = result.findIndex((r) => sameRef(r, paidBy));
-		const idx = payerIdx >= 0 ? payerIdx : result.length - 1;
-		result[idx]!.cents += remainder;
-	}
-
-	return result.map((r) => ({
-		participantType: r.participantType,
-		participantId: r.participantId,
-		shareAmount: fromMinorUnits(r.cents, currency),
-		sharePercentage: r.sharePercentage,
+		shareAmount: fromMinorUnits(Number(cents[i]), currency),
+		sharePercentage: Number(scaled[i]) / PCT_SCALE,
 	}));
 }
 
@@ -214,43 +273,27 @@ function computeSharesSplits(
 ): ResolvedSplit[] {
 	// Validate all participants have positive integer shareUnits
 	for (const p of splitWith) {
-		if (!p.shareUnits || p.shareUnits < 1) {
+		if (
+			!p.shareUnits ||
+			p.shareUnits < 1 ||
+			!Number.isSafeInteger(p.shareUnits)
+		) {
 			throw new SplitComputationError(
 				`Participant ${p.participantId} must have shareUnits >= 1 for SHARES split mode`,
 			);
 		}
 	}
 
-	const totalUnits = splitWith.reduce((s, p) => s + p.shareUnits!, 0);
-	const totalCents = toMinorUnits(amount, currency);
+	const cents = allocate(
+		safeMinor(toMinorUnits(amount, currency)),
+		splitWith.map((p) => BigInt(p.shareUnits!)),
+		remainderRow(splitWith, paidBy),
+	);
 
-	const result = splitWith.map((p) => ({
+	return splitWith.map((p, i) => ({
 		participantType: p.participantType,
 		participantId: p.participantId,
+		shareAmount: fromMinorUnits(Number(cents[i]), currency),
 		shareUnits: p.shareUnits!,
-		cents: Math.floor((totalCents * p.shareUnits!) / totalUnits),
-	}));
-
-	const sumCents = result.reduce((s, r) => s + r.cents, 0);
-	const remainder = totalCents - sumCents;
-
-	if (Math.abs(remainder) > result.length) {
-		throw new SplitComputationError(
-			"Unexpected large rounding error in shares split",
-		);
-	}
-
-	// Assign remainder cents to payer first
-	if (remainder !== 0) {
-		const payerIdx = result.findIndex((r) => sameRef(r, paidBy));
-		const idx = payerIdx >= 0 ? payerIdx : result.length - 1;
-		result[idx]!.cents += remainder;
-	}
-
-	return result.map((r) => ({
-		participantType: r.participantType,
-		participantId: r.participantId,
-		shareAmount: fromMinorUnits(r.cents, currency),
-		shareUnits: r.shareUnits,
 	}));
 }

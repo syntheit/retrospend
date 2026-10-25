@@ -17,6 +17,8 @@ import {
 import { type ParticipantRef, sameParticipant } from "./types";
 import { resolveVerification } from "./auto-accept";
 import {
+	allocateByWeights,
+	remainderRow,
 	resolveSplits,
 	SplitComputationError,
 } from "~/lib/shared-split-computation";
@@ -1265,27 +1267,18 @@ export class SharedTransactionService {
 			return this.computeSplits(newAmount, currency, splits, "EQUAL", paidBy);
 		}
 
-		const result = splits.map((p) => {
-			const oldCents = toMinorUnits(p.shareAmount, currency);
-			return {
-				participantType: p.participantType,
-				participantId: p.participantId,
-				cents: Math.floor((newTotalCents * oldCents) / oldTotalCents),
-			};
-		});
+		// Exact BigInt allocation: newTotal * oldShare overflows a float near 1e12 units.
+		const oldShares = splits.map((p) => toMinorUnits(p.shareAmount, currency));
+		const cents = allocateByWeights(
+			newTotalCents,
+			oldShares,
+			remainderRow(splits, paidBy),
+		);
 
-		let remainder = newTotalCents - result.reduce((s, r) => s + r.cents, 0);
-		if (remainder !== 0) {
-			const payerIdx = result.findIndex((r) => sameParticipant(r, paidBy));
-			const idx = payerIdx >= 0 ? payerIdx : result.length - 1;
-			result[idx]!.cents += remainder;
-			remainder = 0;
-		}
-
-		return result.map((r) => ({
-			participantType: r.participantType,
-			participantId: r.participantId,
-			shareAmount: fromMinorUnits(r.cents, currency),
+		return splits.map((p, i) => ({
+			participantType: p.participantType,
+			participantId: p.participantId,
+			shareAmount: fromMinorUnits(cents[i]!, currency),
 		}));
 	}
 
