@@ -1,4 +1,6 @@
 import {
+	convertedIn,
+	FigurePass,
 	type FigureDefinition,
 	type FigureScope,
 	type FiguresRegistry,
@@ -84,10 +86,21 @@ async function runMeasured<Tx, Input, Value>(
 		...mutation.scope?.(input),
 		userId: actor.userId,
 	};
-	const before = await readFiguresIn(tx, definitions, scope);
+	// One read pass per side, so a figure that asks whether it is converted
+	// reuses what the reading loaded.
+	const beforePass = new FigurePass();
+	const before = await readFiguresIn(tx, definitions, scope, beforePass);
+	const estimatedBefore = await convertedIn(tx, definitions, scope, beforePass);
 	const { value, undo } = await mutation.run(tx, input, actor);
-	const after = await readFiguresIn(tx, definitions, scope);
-	return { value, undo, ...diffSnapshots(before, after) };
+	const afterPass = new FigurePass();
+	const after = await readFiguresIn(tx, definitions, scope, afterPass);
+	const estimatedAfter = await convertedIn(tx, definitions, scope, afterPass);
+	return {
+		value,
+		undo,
+		approx: [...new Set([...estimatedBefore, ...estimatedAfter])].sort(),
+		...diffSnapshots(before, after),
+	};
 }
 
 export function createPreviewRunner<Tx>({

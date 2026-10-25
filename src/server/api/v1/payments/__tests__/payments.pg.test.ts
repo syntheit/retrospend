@@ -252,10 +252,10 @@ describe("/api/v1/payments", () => {
 		// it moves none of yours; it gives the payer their debt back.
 		expect(preview.changes.filter((x) => x.id.startsWith("owed."))).toEqual([]);
 		expect(preview.unchanged.map((x) => x.id)).toContain("owed.owedToYou");
-		// Owed totals are converted into the home currency: an estimate, marked so.
+		// Only home-currency balances went into it: not an estimate, so not marked.
 		expect(
 			preview.unchanged.find((x) => x.id === "owed.owedToYou"),
-		).toMatchObject({ approx: true });
+		).not.toHaveProperty("approx");
 		const payerBefore = await youOwe();
 		await expect(status(sent.id)).resolves.toBe("PROPOSED");
 		const rejected = await expectBody<{ status: string }>(
@@ -270,6 +270,44 @@ describe("/api/v1/payments", () => {
 			400,
 			"bad_request",
 		);
+	});
+
+	it("marks owed totals as estimates only when another currency went into them", async () => {
+		const [creditor, debtor] = [await arsUser(), await arsUser()];
+		const asDebtor = await asMobile(debtor.user.id);
+		const owedLines = (preview: Preview) =>
+			[...preview.changes, ...preview.unchanged].filter((x) =>
+				x.id.startsWith("owed."),
+			);
+		const body = (currency: string) => ({
+			person: { type: "user", id: creditor.user.id },
+			direction: "outgoing",
+			currency,
+			amount: "10",
+		});
+
+		// A debt in the home currency (ARS): nothing is converted.
+		await seedShare(ref(creditor), ref(debtor), "500", "ARS");
+		const plain = await expectBody<Preview>(
+			await post("/payments/preview", body("ARS"), asDebtor),
+			c.previewRecord,
+		);
+		expect(owedLines(plain).length).toBeGreaterThan(0);
+		for (const line of owedLines(plain)) expect(line).not.toHaveProperty("approx");
+
+		// A debt in BRL is converted into ARS for the total: an estimate.
+		await seedShare(ref(creditor), ref(debtor), "50", "BRL");
+		const converted = await expectBody<Preview>(
+			await post("/payments/preview", body("BRL"), asDebtor),
+			c.previewRecord,
+		);
+		expect(owedLines(converted).length).toBeGreaterThan(0);
+		for (const line of owedLines(converted))
+			expect(line).toMatchObject({ approx: true });
+		// The figures of a payment with that person are never estimates.
+		expect(
+			converted.changes.find((x) => x.id === "balance.person"),
+		).not.toHaveProperty("approx");
 	});
 
 	it("takes back a payment you recorded, with a preview", async () => {

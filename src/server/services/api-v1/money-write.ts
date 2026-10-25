@@ -1,6 +1,5 @@
 import type { PreviewResult as PreviewDto } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
-import { isConvertedFigure } from "~/server/figures/registry";
 import { dec, toMinor } from "~/server/services/envelope/units";
 import { forUser } from "~/server/services/preview";
 import type {
@@ -24,7 +23,7 @@ import { mintUndo, type UndoFamily } from "./undo";
 export function toPreviewDto(result: PreviewResult<unknown>): PreviewDto {
 	// A converted total is an estimate: its lines say so, so no client has to know which figures those are.
 	const approx = (id: string) =>
-		isConvertedFigure(id) ? { approx: true as const } : {};
+		result.approx.includes(id) ? { approx: true as const } : {};
 	return {
 		changes: result.changes.map((c) => ({
 			...approx(c.id),
