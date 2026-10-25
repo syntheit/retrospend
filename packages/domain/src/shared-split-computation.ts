@@ -13,6 +13,12 @@
  * otherwise to the last row for PERCENTAGE/SHARES or filled in row order for
  * EQUAL. This file preserves that exact behavior.
  *
+ * A PERCENTAGE split that is the n-way even split to the precision the
+ * database stores (3, 6, 7, 9, ... ways, where 100 / n cannot be typed
+ * exactly) resolves as an EQUAL split, so an amount edit re-splits it exactly
+ * instead of from 33.33 each. Percentages that can be typed exactly (50 / 50,
+ * 25 x 4) and any others stay percentages.
+ *
  * All division is BigInt over minor units: a float product like
  * totalMinor * percent / 100 drops a cent above a few hundred dollars
  * (100 - 50.01 is 49.989999..., not 49.99) and passes 2^53 near 1e12 minor
@@ -219,6 +225,33 @@ function computeExactSplits(
 	}));
 }
 
+/** Percentages are stored to 4 decimals: units of 1e-4 percent in 100%. */
+const STORED_UNITS_PER_100 = 1_000_000n;
+
+/**
+ * Whether these percentages are an n-way even split that went through the
+ * database's rounding, so the person meant "even" and not those digits. That
+ * takes an n whose 100 / n has no short decimal (3, 6, 7, 9, ...): there a
+ * typed percentage cannot be exact, and every row within a hundredth of a
+ * percent of 100 / n is that split rounded. For 2, 4, 5, 10, ... the exact
+ * percentages are stored as typed, so they stay percentages.
+ */
+function isRoundedEvenSplit(scaled: readonly bigint[]): boolean {
+	const n = BigInt(scaled.length);
+	if (n < 3n || STORED_UNITS_PER_100 % n === 0n) return false;
+	return scaled.every((v) => {
+		const off = v * n - HUNDRED_PCT;
+		return (off < 0n ? -off : off) < n * PCT_TOLERANCE;
+	});
+}
+
+/** 100 / n in the 4-decimal units the database keeps, rounded to nearest. */
+function evenPercentage(n: number): number {
+	const count = BigInt(n);
+	const units = (STORED_UNITS_PER_100 * 2n + count) / (count * 2n);
+	return Number(units) / Number(STORED_UNITS_PER_100 / 100n);
+}
+
 function computePercentageSplits(
 	amount: number,
 	currency: string,
@@ -238,6 +271,17 @@ function computePercentageSplits(
 	const scaled = splitWith.map((p) =>
 		BigInt(Math.round(p.sharePercentage! * PCT_SCALE)),
 	);
+
+	// An even split keeps its exact n-way shares, whichever way it was rounded
+	// on the way through the database (before its sum is checked: seven 14.29
+	// add up to 100.03).
+	if (isRoundedEvenSplit(scaled)) {
+		const even = evenPercentage(splitWith.length);
+		return computeEqualSplits(amount, currency, splitWith, paidBy).map(
+			(row) => ({ ...row, sharePercentage: even }),
+		);
+	}
+
 	const rawSum = scaled.reduce((s, v) => s + v, 0n);
 	const off =
 		rawSum > HUNDRED_PCT ? rawSum - HUNDRED_PCT : HUNDRED_PCT - rawSum;

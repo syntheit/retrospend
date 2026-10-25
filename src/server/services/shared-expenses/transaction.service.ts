@@ -623,9 +623,17 @@ export class SharedTransactionService {
 				// Amount changed without explicit splitWith; auto-recalculate
 				// where the split mode supports it
 				const effectiveAmount = input.amount!;
+				// The database does not keep the order the rows were typed in, and the
+				// leftover units go by row order: sort so a re-split is the same
+				// every time.
+				const storedSplits = [...existing.splitParticipants].sort((a, b) => {
+					const x = `${a.participantType}:${a.participantId}`;
+					const y = `${b.participantType}:${b.participantId}`;
+					return x < y ? -1 : x > y ? 1 : 0;
+				});
 
 				if (effectiveSplitMode === "EQUAL") {
-					const existingSplit = existing.splitParticipants.map((sp) => ({
+					const existingSplit = storedSplits.map((sp) => ({
 						participantType: sp.participantType as "user" | "guest" | "shadow",
 						participantId: sp.participantId,
 					}));
@@ -637,7 +645,7 @@ export class SharedTransactionService {
 						effectivePaidBy,
 					);
 				} else if (effectiveSplitMode === "PERCENTAGE") {
-					const existingSplit = existing.splitParticipants.map((sp) => ({
+					const existingSplit = storedSplits.map((sp) => ({
 						participantType: sp.participantType as "user" | "guest" | "shadow",
 						participantId: sp.participantId,
 						sharePercentage: sp.sharePercentage
@@ -652,7 +660,7 @@ export class SharedTransactionService {
 						effectivePaidBy,
 					);
 				} else if (effectiveSplitMode === "SHARES") {
-					const existingSplit = existing.splitParticipants.map((sp) => ({
+					const existingSplit = storedSplits.map((sp) => ({
 						participantType: sp.participantType as "user" | "guest" | "shadow",
 						participantId: sp.participantId,
 						shareUnits: sp.shareUnits ?? undefined,
@@ -673,7 +681,7 @@ export class SharedTransactionService {
 						serializeDecimal(existing.amount),
 						effectiveAmount,
 						effectiveCurrency,
-						existing.splitParticipants.map((sp) => ({
+						storedSplits.map((sp) => ({
 							participantType: sp.participantType as
 								| "user"
 								| "guest"
