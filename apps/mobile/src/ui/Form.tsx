@@ -64,7 +64,7 @@ export function FormValueRow({
 			<Text textStyle={{ color: color.fg, fontSize: type.body.size }}>
 				{label}
 			</Text>
-			<Spacer />
+			<Spacer flexible />
 			<Text
 				numberOfLines={1}
 				textStyle={{
@@ -145,7 +145,7 @@ export function FormPickerRow<T extends string>({
 			<Text textStyle={{ color: color.fg, fontSize: type.body.size }}>
 				{label}
 			</Text>
-			<Spacer />
+			<Spacer flexible />
 			<Picker<string>
 				appearance="menu"
 				onValueChange={(next) => onChange(next as T)}
