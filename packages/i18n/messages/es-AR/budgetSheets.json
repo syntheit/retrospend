@@ -199,6 +199,11 @@
 			"name": "Solo registrar",
 			"sub": "Mirá a dónde va la plata, sin presupuesto que mantener.",
 			"lead": "Gastado este mes frente a lo habitual."
+		},
+		"DEBT_PAYOFF": {
+			"name": "Pagar deudas",
+			"sub": "Mínimos al día y el extra a una deuda por vez.",
+			"lead": "Sin deudas en, y cuánto debés."
 		}
 	},
 	"takeBack": {
@@ -469,7 +474,29 @@
 		"usePay": "Usar mi sueldo para el resto. Los <short></short> restantes arrancan cuando llegue.",
 		"moneyNow": "Plata para planificar",
 		"failed": "No se pudo empezar tu presupuesto. No se cambió nada.",
-		"stopNone": "Empezás con <available></available>, así que no queda nada para planificar."
+		"stopNone": "Empezás con <available></available>, así que no queda nada para planificar.",
+		"pay": {
+			"title": "¿Cómo cobrás?",
+			"sub": "Tu plan puede arrancar con tu próximo cobro.",
+			"frequency": "Cada cuánto",
+			"MONTHLY": "Mensual",
+			"EVERY_TWO_WEEKS": "Cada dos semanas",
+			"WEEKLY": "Semanal",
+			"VARIES": "Varía",
+			"next": "Próximo cobro",
+			"hint": "Vamos a mostrar tu próximo cobro en el plan.",
+			"variesHint": "Tu plan arranca cuando llegue tu cobro.",
+			"past": "Elegí hoy o un día posterior."
+		},
+		"nextPay": "Próximo cobro",
+		"usePayOn": "Usar mi sueldo del {date} para el resto. Los <short></short> restantes arrancan ese día.",
+		"payFirst": "Pagar primero",
+		"extraSub": "Cada mes, además de los mínimos",
+		"noDebts": "Todavía no hay deudas con mínimo en Patrimonio.",
+		"debtFreeBy": "Sin deudas en",
+		"debtInterest": "Intereses que pagás",
+		"debtNever": "No se ve la meta",
+		"debtDiverges": "Nunca con este pago"
 	},
 	"debt": {
 		"title": "Plan para pagar deudas",

@@ -33,7 +33,8 @@
 			"refund": "Remboursements",
 			"transfer": "Hors dépenses",
 			"payment": "Paiements"
-		}
+		},
+		"noCategory": "Sans catégorie"
 	},
 	"row": {
 		"paidTo": "Tu as payé {name}",

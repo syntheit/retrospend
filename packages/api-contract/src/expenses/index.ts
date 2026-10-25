@@ -63,7 +63,7 @@ export const expensesContract = {
 			tags: TAG,
 			summary: "Activity: your entries, newest first, filtered",
 			description:
-				"Personal expenses, your shares of split expenses and payments, money in, refunds and own transfers. `filter` takes the web's grammar (see parseActivityFilter): from, to, cat, person, project, paidby, kind, q, range. With no dates it is this month in the caller's zone, as on the web, unless there is a q, a cat or range=all. The first page carries the count and your spending total for the filter.",
+				"Personal expenses, your shares of split expenses and payments, money in, refunds and own transfers. `filter` takes the web's grammar (see parseActivityFilter): from, to, cat, person, project, paidby, kind, q, range. `cat` takes category ids and `none` (spending and refunds with no category, including shares in someone else's category); `none` can sit beside ids. With no dates it is this month in the caller's zone, as on the web, unless there is a q, a cat or range=all. The first page carries the count and your spending total for the filter.",
 		})
 		.meta({ scope: "read" })
 		.input(expenseListQuerySchema)

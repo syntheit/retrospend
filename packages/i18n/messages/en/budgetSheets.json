@@ -199,6 +199,11 @@
 			"name": "Just track",
 			"sub": "See where money goes, with no budget to keep.",
 			"lead": "Spent this month against usual."
+		},
+		"DEBT_PAYOFF": {
+			"name": "Debt payoff",
+			"sub": "Minimums on time, extra to one debt at a time.",
+			"lead": "Debt-free by, and what you owe."
 		}
 	},
 	"takeBack": {
@@ -469,7 +474,29 @@
 		"usePay": "Use my pay for the rest. <short></short> more starts when it arrives.",
 		"moneyNow": "Money to plan",
 		"failed": "Could not start your budget. Nothing was changed.",
-		"stopNone": "You start with <available></available>, so nothing is left to plan."
+		"stopNone": "You start with <available></available>, so nothing is left to plan.",
+		"pay": {
+			"title": "How do you get paid?",
+			"sub": "Your plan can start from your next pay.",
+			"frequency": "How often",
+			"MONTHLY": "Monthly",
+			"EVERY_TWO_WEEKS": "Every two weeks",
+			"WEEKLY": "Weekly",
+			"VARIES": "It varies",
+			"next": "Next pay",
+			"hint": "We'll show your next pay in the plan.",
+			"variesHint": "Your plan starts when your pay arrives.",
+			"past": "Pick today or a later day."
+		},
+		"nextPay": "Next pay",
+		"usePayOn": "Use my pay on {date} for the rest. <short></short> more starts then.",
+		"payFirst": "Pay first",
+		"extraSub": "Each month, on top of minimums",
+		"noDebts": "No debt with a minimum in Wealth yet.",
+		"debtFreeBy": "Debt-free by",
+		"debtInterest": "Interest you pay",
+		"debtNever": "Not in sight",
+		"debtDiverges": "Never at this payment"
 	},
 	"debt": {
 		"title": "Debt payoff plan",

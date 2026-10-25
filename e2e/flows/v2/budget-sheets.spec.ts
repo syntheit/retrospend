@@ -2,6 +2,7 @@ import { expect, type Locator, type Page, test } from "@playwright/test";
 import { Pool } from "pg";
 import {
 	ADMIN_STORAGE_STATE,
+	ADMIN_USER,
 	E2E_DATABASE_URL,
 	TEST_USER,
 	USER_STORAGE_STATE,
@@ -485,6 +486,35 @@ test("Style: Flex to Limits shows the preview, saves, and Undo switches back", a
 	);
 });
 
+test("Style: Flex to Debt payoff shows the preview, saves, and Undo switches back", async ({
+	page,
+}) => {
+	test.setTimeout(180_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openBudget(page);
+	await fromMenu(page, "Budget style");
+	const sheet = page.getByRole("dialog", { name: "Budget style" });
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole("combobox", { name: "Style" }).click();
+	await page.getByRole("option", { name: "Debt payoff" }).click();
+	await expect(
+		sheet.getByText("Debt-free by, and what you owe."),
+	).toBeVisible();
+	await expect(
+		sheet.getByRole("region", { name: "What this changes" }),
+	).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	const save = sheet.getByRole("button", { name: "Switch", exact: true });
+	await expect(save).toBeEnabled();
+	await untilSaved(page, "envelope.setStyle", () => save.click());
+	await expect(sheet).toBeHidden();
+	await untilSaved(page, "envelope.revertStyle", () =>
+		toast(page, "Switched to Debt payoff")
+			.getByRole("button", { name: "Undo" })
+			.click(),
+	);
+});
+
 test("What if: a pretend expense shows what the envelope would have", async ({
 	page,
 }) => {
@@ -947,7 +977,76 @@ test.describe("Set up your budget", () => {
 	// The admin account has no envelope book and no other flow uses it for money.
 	test.use({ storageState: ADMIN_STORAGE_STATE });
 
-	test("Flex: the stepped wizard, money now, envelopes, preview, start", async ({
+	test("Debt payoff: the debt plan and the next pay show in the preview", async ({
+		page,
+	}) => {
+		test.setTimeout(180_000);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		// A Visa owing 1,200.00 at 24% a year with a 50.00 minimum, in Wealth.
+		await sql(
+			`INSERT INTO "asset_account" ("id", "userId", "name", "type", "currency", "balance", "interestRate", "minimumPayment", "dueDate", "updatedAt")
+			 SELECT 'e2e_setup_visa', id, 'Visa e2e', 'LIABILITY_CREDIT_CARD', 'USD', 1200, 24, 50, 5, now()
+			 FROM "user" WHERE email = $1 ON CONFLICT ("id") DO NOTHING`,
+			[ADMIN_USER.email],
+		);
+		await gotoReady(page, "/budget");
+		await page
+			.getByRole("main")
+			.getByRole("button", { name: "Set up your budget" })
+			.click();
+		const sheet = page.getByRole("dialog", { name: "Set up your budget" });
+		await sheet.getByRole("button", { name: "Pick Debt payoff" }).click();
+		await sheet.getByRole("button", { name: "Continue" }).click();
+		// How you get paid: nothing is picked until you answer.
+		await expect(sheet.getByText("Step 2 of 4")).toBeVisible();
+		await expect(
+			sheet.getByRole("heading", { name: "How do you get paid?" }),
+		).toBeVisible();
+		await expect(sheet.getByText("Next pay", { exact: true })).toHaveCount(0);
+		await sheet.getByRole("button", { name: "Pick Monthly" }).click();
+		// A dated cycle needs its next pay: no default, Continue waits for a pick.
+		await expect(sheet.getByText("Next pay", { exact: true })).toBeVisible();
+		const next = sheet.getByRole("radio", { name: "Pick date" });
+		await expect(next).toBeVisible();
+		await expect(
+			sheet.getByRole("button", { name: "Continue" }),
+		).toBeDisabled();
+		await next.click();
+		const soon = new Date(Date.now() + 3 * 86_400_000);
+		await page
+			.getByRole("textbox", { name: "Date" })
+			.fill(
+				`${String(soon.getMonth() + 1).padStart(2, "0")}/${String(soon.getDate()).padStart(2, "0")}/${soon.getFullYear()}`,
+			);
+		await page.keyboard.press("Enter");
+		await expect(sheet.getByRole("button", { name: "Continue" })).toBeEnabled();
+		await sheet.getByRole("button", { name: "Continue" }).click();
+		await sheet
+			.getByRole("textbox", { name: "Amount", exact: true })
+			.fill("2000");
+		await sheet.getByRole("button", { name: "Continue" }).click();
+		await expect(sheet.getByText("Step 4 of 4")).toBeVisible();
+		await expect(sheet.getByText("Visa e2e")).toBeVisible();
+		await sheet
+			.getByRole("textbox", { name: "Amount for Extra debt payment" })
+			.fill("100");
+		await sheet.getByRole("radio", { name: "Smallest balance" }).click();
+		// The dry run of the same write: the plan's result and the pay date.
+		const changes = sheet.getByRole("region", { name: "What this changes" });
+		await expect(changes).toContainText("Debt-free by");
+		await expect(changes).toContainText("Interest you pay");
+		await expect(changes).toContainText("Next pay");
+		await expect(
+			sheet.getByRole("button", { name: "Start my budget" }),
+		).toBeEnabled();
+		expect(await bannedOutputOn(page), "banned output").toEqual([]);
+		// Nothing is written: the Flex test below starts this account's budget.
+		await page.keyboard.press("Escape");
+		await expect(sheet).toBeHidden();
+		await sql(`DELETE FROM "asset_account" WHERE "id" = 'e2e_setup_visa'`);
+	});
+
+	test("Flex: the stepped wizard, pay, money now, envelopes, preview, start", async ({
 		page,
 	}) => {
 		test.setTimeout(180_000);
@@ -958,20 +1057,25 @@ test.describe("Set up your budget", () => {
 			.getByRole("button", { name: "Set up your budget" })
 			.click();
 		const sheet = page.getByRole("dialog", { name: "Set up your budget" });
-		await expect(sheet.getByText("Step 1 of 3")).toBeVisible();
+		await expect(sheet.getByText("Step 1 of 4")).toBeVisible();
 		await expect(
 			sheet.getByRole("heading", { name: "How do you like to budget?" }),
 		).toBeVisible();
 		await sheet.getByRole("button", { name: "Continue" }).click();
-		await expect(sheet.getByText("Step 2 of 3")).toBeVisible();
+		await expect(sheet.getByText("Step 2 of 4")).toBeVisible();
+		await sheet.getByRole("button", { name: "Pick It varies" }).click();
+		await sheet.getByRole("button", { name: "Continue" }).click();
+		await expect(sheet.getByText("Step 3 of 4")).toBeVisible();
 		await sheet
 			.getByRole("textbox", { name: "Amount", exact: true })
 			.fill("2000");
 		await sheet.getByRole("button", { name: "Continue" }).click();
-		await expect(sheet.getByText("Step 3 of 3")).toBeVisible();
+		await expect(sheet.getByText("Step 4 of 4")).toBeVisible();
 		const changes = sheet.getByRole("region", { name: "What this changes" });
 		await expect(changes).toContainText("Money to plan");
 		await expect(changes).toContainText("USD 2,000.00");
+		// A pay that varies has no date to show.
+		await expect(changes).not.toContainText("Next pay");
 		expect(await bannedOutputOn(page), "banned output").toEqual([]);
 		// The stop (the plan costs more than you have) needs a history with bills;
 		// this account has none, so the server test covers it (setup.pg.test.ts).

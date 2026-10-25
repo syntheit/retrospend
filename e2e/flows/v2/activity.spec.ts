@@ -3,7 +3,12 @@ import { SOFIA } from "../../fixtures/personas";
 import { bannedOutputOn } from "../../helpers/banned-output";
 import { FigureAudit, type FiguresResponse } from "../../helpers/figures";
 import { untilSaved } from "../../helpers/trpc";
-import { openV2, realCategory, V2_VIEWER_SESSION } from "./viewer";
+import {
+	openV2,
+	realCategory,
+	uncategorizedExpense,
+	V2_VIEWER_SESSION,
+} from "./viewer";
 
 type Money = { minor: number; currency: string };
 type Row = { id: string; amount: Money; home?: Money | null; share?: Money };
@@ -127,6 +132,52 @@ test("Activity: shared rows, payments, accent search and Add expense", async ({
 	);
 	await expect(dialog).toBeHidden();
 	await expect(main.getByText("Café de prueba").first()).toBeVisible();
+	expect(errors, "uncaught page errors").toEqual([]);
+});
+
+test("Activity: No category lists spending without one, in the chip, the rows and the footer", async ({
+	page,
+}) => {
+	test.setTimeout(120_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const errors: string[] = [];
+	page.on("pageerror", (e) => errors.push(e.message));
+	await openV2(page, "/activity");
+	const title = `Sin categoría e2e ${Date.now()}`;
+	const id = await uncategorizedExpense(page, title);
+	const main = page.getByRole("main");
+
+	// A link from Insights: every month, the chip says what it is.
+	await openV2(page, "/activity?cat=none");
+	await expect(main.getByText(title)).toBeVisible();
+	await expect(
+		main.getByRole("button", { name: "No category", exact: true }),
+	).toBeVisible();
+
+	// The footer is spent() for the same filter (shares in another person's
+	// category count here, as in Insights); the new row is in the read.
+	const read = await trpcQuery<{ items: { id: string }[] }>(
+		page,
+		"expense.listV2",
+		{ categoryIds: ["none"], limit: 200 },
+	);
+	expect(read.items.map((r) => r.id)).toContain(id);
+	const audit = new FigureAudit(listFetcher(page, { categoryIds: ["none"] }));
+	expect(await audit.checkPage(page, "activity no category")).toEqual([]);
+
+	// The menu offers it: picking it from a clean Activity writes ?cat=none.
+	await openV2(page, "/activity?range=all");
+	await main.getByRole("button", { name: "Category", exact: true }).click();
+	await page.getByRole("option", { name: "No category" }).click();
+	await expect(page).toHaveURL(/cat=none/);
+	await expect(main.getByText(title)).toBeVisible();
+	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+
+	const del = await page.request.post("/api/trpc/expense.deleteExpense", {
+		data: { json: { id } },
+		headers: { Origin: new URL(page.url()).origin },
+	});
+	expect(del.ok(), "cleanup").toBe(true);
 	expect(errors, "uncaught page errors").toEqual([]);
 });
 

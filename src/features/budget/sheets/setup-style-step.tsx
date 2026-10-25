@@ -7,7 +7,7 @@ import type { SetupStyle } from "./use-setup";
 
 export type Choice = SetupStyle | "TRACK";
 
-/** The five answers, then the three methods (the mockup's first question). */
+/** The five answers, then the methods (the mockup's first question). */
 const ANSWERS: Choice[] = [
 	"TRACK",
 	"LIMITS",
@@ -15,7 +15,7 @@ const ANSWERS: Choice[] = [
 	"EVERY_DOLLAR",
 	"SAVE_FIRST",
 ];
-const METHODS: Choice[] = ["FIFTY_THIRTY_TWENTY", "WEEKLY"];
+const METHODS: Choice[] = ["FIFTY_THIRTY_TWENTY", "WEEKLY", "DEBT_PAYOFF"];
 
 /**
  * "How do you like to budget?": one question, five answers and the methods

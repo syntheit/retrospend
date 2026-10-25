@@ -34,7 +34,7 @@ export type ShapeContext = {
 };
 
 const categorySelect = {
-	select: { id: true, name: true, color: true, icon: true },
+	select: { id: true, userId: true, name: true, color: true, icon: true },
 } as const;
 
 /** The home value only when it differs from the amount's currency. */
@@ -198,7 +198,10 @@ function sharedRow(
 		entityId: t.id,
 		kind: "expense",
 		title: t.description,
-		category: categoryRef(t.category),
+		// Another person's category is not usable here (D19): spent() and Insights
+		// count the share as No category, so the row shows none too.
+		category:
+			t.category?.userId === x.c.userId ? categoryRef(t.category) : null,
 		amount: decimalMoney(t.amount, t.currency),
 		...homeField(t.currency, home, x.c.rates),
 		share,

@@ -234,6 +234,10 @@ async function createBook(
 				style: input.style,
 				fundingSource: fundingSourceFor(input.style),
 				weekStartDay: input.weekStartDay ?? 1,
+				payFrequency: input.pay?.frequency ?? null,
+				payAnchor: input.pay?.nextPay
+					? new Date(`${input.pay.nextPay}T00:00:00.000Z`)
+					: null,
 				monthStartDay: b.startDay,
 				timeZone: b.timeZone,
 				timeZoneConfirmed: ctx.timeZone !== null,
@@ -311,7 +315,14 @@ export async function setupBook(
 	userId: string,
 	input: SetupInput,
 	ctx: SetupContext,
-): Promise<{ bookId: string; startingBalanceExpenseId: string | null }> {
+): Promise<{
+	bookId: string;
+	startingBalanceExpenseId: string | null;
+	/** The new envelopes' ids by the keys the setup gave them. */
+	envelopeIds: ReadonlyMap<string, string>;
+	/** The book's today: the pay cycle counts from it. */
+	today: string;
+}> {
 	if (await findPersonalBook(tx, userId))
 		throw new EnvelopeError("BOOK_EXISTS", "you already have a budget");
 	await validate(tx, input);
@@ -352,5 +363,10 @@ export async function setupBook(
 	// "Your limits start now" (SPEC §4.3 step 5): this month is funded at setup.
 	if (fundingSourceFor(input.style) === "TARGETS")
 		await planFund(tx, userId, ctx.now);
-	return { bookId, startingBalanceExpenseId: money?.id ?? null };
+	return {
+		bookId,
+		startingBalanceExpenseId: money?.id ?? null,
+		envelopeIds,
+		today: b.today,
+	};
 }
