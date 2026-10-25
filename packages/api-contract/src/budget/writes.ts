@@ -4,6 +4,7 @@ import { moneySchema } from "../common/money";
 import { idSchema } from "../core";
 import {
 	clientIdSchema,
+	isoDateSchema,
 	monthKeySchema,
 	positiveAmount,
 	setupStyleSchema,
@@ -36,6 +37,20 @@ export const setupResultSchema = z.object({
 			available: moneySchema,
 			/** max(0, cost - available): what the plan costs beyond what you have. */
 			short: moneySchema,
+		})
+		.nullable(),
+	/** The first pay on or after today from the pay step; null when pay varies or was not asked. */
+	nextPay: isoDateSchema.nullable(),
+	/** Pay off debt: where the saved plan leads, from the same write. Null for any other style. */
+	payoff: z
+		.object({
+			debtFreeMonth: monthKeySchema.nullable(),
+			totalInterest: moneySchema,
+			/** The minimums fall short of the interest: balances grow at this payment. */
+			diverges: z.boolean(),
+			/** Debts left out for want of a rate today (R14). */
+			incomplete: z.boolean(),
+			debts: z.number().int(),
 		})
 		.nullable(),
 });

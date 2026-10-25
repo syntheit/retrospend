@@ -46,6 +46,8 @@ export interface SpentFilter {
 	/** Inclusive bounds on the entry date; either may be left open. */
 	date?: DateRange;
 	categoryIds?: readonly string[];
+	/** Also counts spending and refunds with no category (with or without categoryIds). */
+	uncategorized?: boolean;
 	/**
 	 * "report" (default): stats, dashboard, Insights; honors Hide from reports
 	 * and hidden projects. "budget": the envelope engine; counts hidden rows
@@ -104,6 +106,28 @@ type GroupRow = {
 	_count: { _all: number };
 };
 
+function categoryWhere(filter: SpentFilter): Prisma.ExpenseWhereInput {
+	const ids = filter.categoryIds ? [...filter.categoryIds] : undefined;
+	if (!filter.uncategorized) return ids ? { categoryId: { in: ids } } : {};
+	return {
+		AND: [
+			{
+				OR: [
+					{ categoryId: null },
+					...(ids ? [{ categoryId: { in: ids } }] : []),
+				],
+			},
+		],
+	};
+}
+
+/** Whether a share's category passes the category part of the filter. */
+function categoryPasses(filter: SpentFilter, id: string | null): boolean {
+	if (!filter.categoryIds && !filter.uncategorized) return true;
+	if (id === null) return filter.uncategorized === true;
+	return filter.categoryIds?.includes(id) === true;
+}
+
 function rowWhere(
 	filter: SpentFilter,
 	kind: "spending" | "refund",
@@ -121,9 +145,7 @@ function rowWhere(
 		...build(filter.userId, filter.date),
 		// An import or an old client can still file a row under an income category.
 		NOT: { category: { is: { kind: "INCOME" } } },
-		...(filter.categoryIds
-			? { categoryId: { in: [...filter.categoryIds] } }
-			: {}),
+		...categoryWhere(filter),
 	};
 }
 
@@ -180,12 +202,7 @@ async function sharesFor(db: AppDb, filter: SpentFilter) {
 				withPeople: filter.withPeople,
 			})
 		: getSharedExpenseShares(...base));
-	return filter.categoryIds
-		? shares.filter(
-				(s) =>
-					s.categoryId !== null && filter.categoryIds?.includes(s.categoryId),
-			)
-		: shares;
+	return shares.filter((s) => categoryPasses(filter, s.categoryId));
 }
 
 /** Your spending matching `filter`, as items to total with sumIn. */

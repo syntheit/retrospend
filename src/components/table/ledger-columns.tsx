@@ -12,9 +12,9 @@ import {
 } from "~/components/rows/transaction-row";
 import type { TransactionVM } from "~/components/rows/types";
 import { FaceStack } from "~/components/ui/avatar-face";
+import { selectColumn } from "./select-column";
 import {
 	actionsColumn,
-	selectColumn,
 	Title,
 	TitleWords,
 	useDateColumn,

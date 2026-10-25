@@ -5,6 +5,8 @@
  * through resolveSplits; this only shapes the rows and the mode.
  */
 
+import { resolveSplits } from "./shared-split-computation";
+
 export type SplitRefType = "user" | "guest" | "shadow";
 
 export interface SplitRef {
@@ -78,6 +80,44 @@ export function isFullAmount(s: SplitState): boolean {
 	return s.fullAmount && s.youIncluded && s.others.length === 1;
 }
 
+/**
+ * What the Percentage tab starts with for `n` people, in hundredths of a
+ * percent: each gets the rounded-down share and the last one the rest
+ * (33.33, 33.33, 33.34). The form fills these in when the tab opens.
+ */
+function defaultHundredths(n: number): number[] {
+	const base = Math.floor(10000 / n);
+	return Array.from({ length: n }, (_, i) =>
+		i === n - 1 ? 10000 - base * (n - 1) : base,
+	);
+}
+
+/**
+ * Whether no percentage was changed from the tab's starting values (or none
+ * was set): the split is then "even", and is sent as EQUAL, so an amount edit
+ * re-splits it exactly instead of from rounded percentages.
+ */
+function percentagesUntouched(
+	typed: readonly (number | undefined)[],
+	start: readonly number[],
+): boolean {
+	return typed.every((t, i) => t === undefined || Math.round(t * 100) === start[i]);
+}
+
+/**
+ * resolveSplits for what the form sends, so a preview shows what Save stores:
+ * a Percentage tab left at its starting values is the even split.
+ */
+export function resolveSentSplits(
+	args: Parameters<typeof resolveSplits>[0],
+): ReturnType<typeof resolveSplits> {
+	const typed = args.participants.map((p) => p.sharePercentage);
+	const untouched =
+		args.mode === "PERCENTAGE" &&
+		percentagesUntouched(typed, defaultHundredths(typed.length));
+	return resolveSplits({ ...args, mode: untouched ? "EQUAL" : args.mode });
+}
+
 /** The rows and mode to send. */
 export function buildSplitInput(s: SplitState): {
 	splitWith: SplitRow[];
@@ -91,14 +131,16 @@ export function buildSplitInput(s: SplitState): {
 			splitMode: "EXACT",
 		};
 	}
-	const rows = members.map((p): SplitRow => {
+	const start = defaultHundredths(members.length);
+	const typed = members.map((p) => s.percentages[splitKey(p)]);
+	if (s.mode === "PERCENTAGE" && percentagesUntouched(typed, start)) {
+		return { splitWith: members, splitMode: "EQUAL" };
+	}
+	const rows = members.map((p, i): SplitRow => {
 		const key = splitKey(p);
 		if (s.mode === "EXACT") return { ...p, shareAmount: s.exact[key] ?? 0 };
 		if (s.mode === "PERCENTAGE")
-			return {
-				...p,
-				sharePercentage: s.percentages[key] ?? 100 / members.length,
-			};
+			return { ...p, sharePercentage: s.percentages[key] ?? start[i]! / 100 };
 		if (s.mode === "SHARES") return { ...p, shareUnits: s.shares[key] ?? 1 };
 		return p;
 	});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rateInput } from "./rate-input";
+import { customAccountRate, rateInput } from "./rate-input";
 import type { WealthAccount } from "./types";
 
 const account = (valuation: WealthAccount["valuation"]): WealthAccount => ({
@@ -27,12 +27,25 @@ describe("rateInput", () => {
 		// Only the name changed: no rate type picked in the sheet.
 		expect(rateInput(custom, "EUR", null)).toEqual({
 			exchangeRateType: "custom",
-			exchangeRate: 0.92,
+			exchangeRate: "0.92",
 		});
 		expect(rateInput(custom, "EUR", "custom")).toEqual({
 			exchangeRateType: "custom",
-			exchangeRate: 0.92,
+			exchangeRate: "0.92",
 		});
+	});
+
+	it("sends the stored rate as decimal text, never through a number", () => {
+		// 1,234,567.123456 is 13 digits: as a float it would stay, but the text
+		// must be what the column holds, with its trailing zeros dropped.
+		const long = account({ type: "custom", customRate: "1234567.123456" });
+		expect(rateInput(long, "EUR", null).exchangeRate).toBe("1234567.123456");
+		const padded = account({ type: "custom", customRate: "1468.500000" });
+		expect(rateInput(padded, "EUR", null).exchangeRate).toBe("1468.5");
+		// A rate this reader refuses goes as stored, so the server says so
+		// instead of looking a table rate up behind the user's back.
+		const odd = account({ type: "custom", customRate: "12345678901234.5" });
+		expect(rateInput(odd, "EUR", null).exchangeRate).toBe("12345678901234.5");
 	});
 
 	it("keeps a table rate's type, so the server looks the same type up", () => {
@@ -52,5 +65,19 @@ describe("rateInput", () => {
 			exchangeRateType: "blue",
 		});
 		expect(rateInput(null, "EUR", null)).toEqual({});
+	});
+});
+
+describe("customAccountRate: the legacy dialog's rate for the column", () => {
+	it("sends a custom rate with the digits shown, at most 6 decimals", () => {
+		expect(customAccountRate("custom", 25345.67)).toBe("25345.67");
+		expect(customAccountRate("custom", 8192.37)).toBe("8192.37");
+		expect(customAccountRate("custom", 0.1234565)).toBe("0.123456");
+	});
+
+	it("sends nothing for a table type or no rate: the server looks the table up", () => {
+		expect(customAccountRate("official", 1412)).toBeUndefined();
+		expect(customAccountRate(undefined, 1412)).toBeUndefined();
+		expect(customAccountRate("custom", undefined)).toBeUndefined();
 	});
 });

@@ -1,76 +1,69 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { Money } from "@retrospend/domain/money-minor";
+import type { ActivityRowDto } from "@retrospend/api-contract";
 import type { ReadCache } from "@/data/cache";
+import { loadCached, type ReadState } from "@/features/read/loadCached";
+import { type ActivityFilter, filterString } from "./filter";
 
-// The Activity list reads from API v1. The v1 expense routes (G2) are not on
-// this build's contract yet, so the source reports "unavailable" instead of
-// inventing data. When G2 lands, only `createActivitySource` changes: call the
-// list route, map each row to ActivityItem, return the page. The screen, the
-// cache and the row already work with that shape.
+// The Activity list reads GET /expenses (cursor pages, newest first). The
+// first page of the unfiltered list is cached so the phone opens offline;
+// later pages and filtered lists are read live.
 
-export interface ActivityItem {
-	id: string;
-	/** Free text the person typed; shown as is (the server treats it as opaque). */
-	title: string;
-	/** What and when, for example "Groceries, Oct 21". */
-	subline: string;
-	/** The original amount, in its own currency. */
-	amount: Money;
-	/** The row version for offline edits (`updatedAt`). */
-	version: string;
-}
+export type ActivityItem = ActivityRowDto;
 
-export type ActivityPage =
-	| { status: "ok"; items: ActivityItem[]; nextCursor: string | null }
-	| { status: "unavailable" };
+export type ActivityPage = Awaited<
+	ReturnType<RetrospendClient["expenses"]["list"]>
+>;
 
 export interface ActivitySource {
-	list(cursor?: string): Promise<ActivityPage>;
+	list(query: { cursor?: string; filter?: string }): Promise<ActivityPage>;
 }
 
-export const ACTIVITY_CACHE = { name: "activity", schema: 1 } as const;
+export const ACTIVITY_CACHE = { name: "activity", schema: 2 } as const;
 
-export function createActivitySource(_api: RetrospendClient): ActivitySource {
-	return { list: async () => ({ status: "unavailable" }) };
+export function createActivitySource(api: RetrospendClient): ActivitySource {
+	return {
+		list: ({ cursor, filter }) =>
+			api.expenses.list({ cursor, filter: filter || undefined }),
+	};
 }
 
-export type ActivityState =
-	| { status: "loading" }
-	| {
-			status: "ready";
-			items: ActivityItem[] /** When the rows were fetched, if they are from the cache. */;
-			staleSince: string | null;
-	  }
-	| { status: "unavailable" }
-	| { status: "error" };
+export type ActivityState = ReadState<ActivityPage>;
 
 /**
- * Cached rows first (the phone is offline-first), then the server. A failed
- * refresh keeps showing the cache, marked stale; with no cache it is an error.
+ * The first page. The default filter shows the cache first (offline-first);
+ * a chosen filter is read live, and an error with nothing to show.
  */
 export async function loadActivity(
 	source: ActivitySource,
-	cache: ReadCache,
+	cache: ReadCache | null,
+	filter: ActivityFilter,
 	onCached: (state: ActivityState) => void,
 ): Promise<ActivityState> {
-	const cached = await cache.read<ActivityItem[]>(
-		ACTIVITY_CACHE.name,
-		ACTIVITY_CACHE.schema,
-	);
-	if (cached)
-		onCached({
-			status: "ready",
-			items: cached.data,
-			staleSince: cached.fetchedAt,
-		});
-	try {
-		const page = await source.list();
-		if (page.status === "unavailable") return { status: "unavailable" };
-		await cache.write(ACTIVITY_CACHE.name, ACTIVITY_CACHE.schema, page.items);
-		return { status: "ready", items: page.items, staleSince: null };
-	} catch {
-		return cached
-			? { status: "ready", items: cached.data, staleSince: cached.fetchedAt }
-			: { status: "error" };
+	const text = filterString(filter);
+	if (text === "") {
+		return loadCached(cache, ACTIVITY_CACHE, () => source.list({}), onCached);
 	}
+	try {
+		const data = await source.list({ filter: text });
+		return { status: "ready", data, staleSince: null, refreshing: false };
+	} catch {
+		return { status: "error" };
+	}
+}
+
+/** The next page joins the list; the first page's count and total stay. */
+export function appendPage(
+	prev: ActivityPage,
+	next: ActivityPage,
+): ActivityPage {
+	const seen = new Set(prev.items.map((item) => item.id));
+	return {
+		...prev,
+		items: [...prev.items, ...next.items.filter((item) => !seen.has(item.id))],
+		nextCursor: next.nextCursor,
+		dayTotals:
+			prev.dayTotals && next.dayTotals
+				? { ...prev.dayTotals, ...next.dayTotals }
+				: null,
+	};
 }

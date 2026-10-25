@@ -199,6 +199,11 @@
 			"name": "Juste suivre",
 			"sub": "Vois où va l'argent, sans budget à tenir.",
 			"lead": "Dépensé ce mois-ci par rapport à l'habitude."
+		},
+		"DEBT_PAYOFF": {
+			"name": "Rembourser ses dettes",
+			"sub": "Minimums à jour, l'extra sur une dette à la fois.",
+			"lead": "Sans dette en, et ce qu'il te reste à devoir."
 		}
 	},
 	"takeBack": {
@@ -469,7 +474,29 @@
 		"usePay": "Utiliser ma paie pour le reste. <short></short> de plus démarrent à son arrivée.",
 		"moneyNow": "Argent à planifier",
 		"failed": "Impossible de démarrer ton budget. Rien n'a été modifié.",
-		"stopNone": "Tu démarres avec <available></available>, il ne reste donc rien à planifier."
+		"stopNone": "Tu démarres avec <available></available>, il ne reste donc rien à planifier.",
+		"pay": {
+			"title": "Comment es-tu payé ?",
+			"sub": "Ton plan peut démarrer avec ta prochaine paie.",
+			"frequency": "À quelle fréquence",
+			"MONTHLY": "Chaque mois",
+			"EVERY_TWO_WEEKS": "Toutes les deux semaines",
+			"WEEKLY": "Chaque semaine",
+			"VARIES": "Ça varie",
+			"next": "Prochaine paie",
+			"hint": "Nous afficherons ta prochaine paie dans le plan.",
+			"variesHint": "Ton plan démarre à l'arrivée de ta paie.",
+			"past": "Choisis aujourd'hui ou un jour plus tard."
+		},
+		"nextPay": "Prochaine paie",
+		"usePayOn": "Utiliser ma paie du {date} pour le reste. <short></short> de plus démarrent ce jour-là.",
+		"payFirst": "Payer en premier",
+		"extraSub": "Chaque mois, en plus des minimums",
+		"noDebts": "Pas encore de dette avec minimum dans Patrimoine.",
+		"debtFreeBy": "Sans dette en",
+		"debtInterest": "Intérêts que tu paies",
+		"debtNever": "Hors de vue",
+		"debtDiverges": "Jamais avec ce paiement"
 	},
 	"debt": {
 		"title": "Plan de remboursement",

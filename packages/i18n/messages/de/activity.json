@@ -33,7 +33,8 @@
 			"refund": "Erstattungen",
 			"transfer": "Keine Ausgaben",
 			"payment": "Zahlungen"
-		}
+		},
+		"noCategory": "Ohne Kategorie"
 	},
 	"row": {
 		"paidTo": "Du hast {name} bezahlt",

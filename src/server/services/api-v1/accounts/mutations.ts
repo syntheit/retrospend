@@ -2,8 +2,8 @@ import type {
 	createAccountSchema,
 	updateAccountSchema,
 } from "@retrospend/api-contract";
-import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
+import { exactRate } from "~/server/services/accounts/exact-rate";
 import {
 	type AccountFields,
 	closeAccountIn,
@@ -35,17 +35,6 @@ const FIGURES = [
 type CreateBody = z.infer<typeof createAccountSchema>;
 type UpdateBody = z.infer<typeof updateAccountSchema>;
 type Fields = Omit<CreateBody, "id">;
-
-/** A typed rate is stored as a number, so it must survive being one. */
-export function exactRate(text: string, field: string): number {
-	const n = Number(text);
-	if (!dec(String(n)).eq(dec(text)))
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: `${field} ${text} has too many digits to keep exactly`,
-		});
-	return n;
-}
 
 /** The service's fields from the contract's text ones. Nothing is rounded: too many decimals is a 400. */
 export function toAccountFields(input: Fields): AccountFields {

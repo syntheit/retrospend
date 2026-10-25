@@ -12,7 +12,7 @@ import {
 	FOLD_TO,
 	likePattern,
 } from "./search";
-import type { ActivityKind, ListV2Filter } from "./types";
+import { type ActivityKind, type ListV2Filter, NO_CATEGORY } from "./types";
 
 type Db = Prisma.TransactionClient;
 
@@ -66,6 +66,36 @@ const PERSONAL_KIND_SQL: Partial<Record<ActivityKind, Prisma.Sql>> = {
 	refund: Prisma.sql`(e.direction = 'IN' AND e."entryKind" = 'STANDARD' AND e."inType" = 'REFUND')`,
 	transfer: Prisma.sql`e."entryKind" = 'NOT_SPENDING'`,
 };
+
+/**
+ * The category filter on `col`: the picked ids, and with NO_CATEGORY the
+ * rows `none` says have no category.
+ */
+function categoryPart(
+	col: Prisma.Sql,
+	picked: readonly string[],
+	none: Prisma.Sql,
+): Prisma.Sql {
+	const ids = picked.filter((id) => id !== NO_CATEGORY);
+	const ors: Prisma.Sql[] = [];
+	if (ids.length) ors.push(Prisma.sql`${col} = ANY(${ids}::text[])`);
+	if (picked.includes(NO_CATEGORY)) ors.push(none);
+	return Prisma.sql`(${Prisma.join(ors, " OR ")})`;
+}
+
+/**
+ * Personal spending and refunds with no category (money in and transfers
+ * never have one, so they are not "no category").
+ */
+const PERSONAL_NONE = Prisma.sql`(e."categoryId" IS NULL AND e."entryKind" = 'STANDARD' AND (e.direction = 'OUT' OR e."inType" = 'REFUND'))`;
+
+/**
+ * A share with no category as spent() counts it: the expense has none, or
+ * its category is another person's (their categories cannot be used here,
+ * D19), so Insights' No category and this filter name the same rows.
+ */
+const sharedNone = (userId: string) =>
+	Prisma.sql`(st."categoryId" IS NULL OR NOT EXISTS (SELECT 1 FROM category c WHERE c.id = st."categoryId" AND c."userId" = ${userId}))`;
 
 /**
  * Which personal rows a Type filter lists. No pick lists every kind a person
@@ -127,8 +157,10 @@ function personal(k: KeyQuery, page?: Page): Prisma.Sql {
 	];
 	const kinds = personalKinds(f.kinds ?? []);
 	if (kinds) parts.push(kinds);
-	if (has(f.categoryIds))
-		parts.push(Prisma.sql`e."categoryId" = ANY(${f.categoryIds}::text[])`);
+	if (f.categoryIds && has(f.categoryIds))
+		parts.push(
+			categoryPart(Prisma.sql`e."categoryId"`, f.categoryIds, PERSONAL_NONE),
+		);
 	const s = searchPart(
 		f.q,
 		[
@@ -159,8 +191,14 @@ function shared(k: KeyQuery, page?: Page): Prisma.Sql {
 		Prisma.sql`(st."projectId" IS NULL OR NOT (st."projectId" = ANY(${k.excludedProjectIds}::text[])))`,
 		...dateParts(Prisma.sql`st.date`, k.bounds),
 	];
-	if (has(f.categoryIds))
-		parts.push(Prisma.sql`st."categoryId" = ANY(${f.categoryIds}::text[])`);
+	if (f.categoryIds && has(f.categoryIds))
+		parts.push(
+			categoryPart(
+				Prisma.sql`st."categoryId"`,
+				f.categoryIds,
+				sharedNone(k.userId),
+			),
+		);
 	if (has(f.projectIds))
 		parts.push(Prisma.sql`st."projectId" = ANY(${f.projectIds}::text[])`);
 	// The payer counts too: RLS can hide the other split rows (rows.ts peopleOf).

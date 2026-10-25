@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRateText, readRateText } from "./rate-text";
+import { parseRateText, rateToText, readRateText } from "./rate-text";
 
 describe("parseRateText: a typed rate, not money", () => {
 	it("reads four or more decimals that no home currency's minor units allow", () => {
@@ -80,5 +80,55 @@ describe("parseRateText: a typed rate, not money", () => {
 			rate: "1.083412345678",
 		});
 		expect(readRateText("abc", "en-US")).toEqual({ text: "abc", rate: null });
+	});
+});
+
+describe("rateToText: a rate held as a number, as the text the server takes", () => {
+	it("writes the digits the number shows, with no exponent and no trailing zeros", () => {
+		expect(rateToText(1468.5)).toBe("1468.5");
+		expect(rateToText(1.0834)).toBe("1.0834");
+		expect(rateToText(150)).toBe("150");
+		// String(6.8e-7) is "6.8e-7": the text must be plain digits.
+		expect(rateToText(6.8e-7)).toBe("0.00000068");
+		expect(rateToText(0.000000000001)).toBe("0.000000000001");
+	});
+
+	it("writes the digits the number shows, not its binary expansion", () => {
+		// The exact binary values are 25345.669999999998..., 8192.370000000001...
+		// and 89500.449999999997...: a text like that is not the rate shown.
+		expect(rateToText(25345.67)).toBe("25345.67");
+		expect(rateToText(8192.37)).toBe("8192.37");
+		expect(rateToText(89500.45)).toBe("89500.45");
+		expect(rateToText(67890.12)).toBe("67890.12");
+		expect(rateToText(1e-7)).toBe("0.0000001");
+		expect(rateToText(1e21)).toBeNull();
+	});
+
+	it("keeps the decimals a column keeps: half-even at 6", () => {
+		expect(rateToText(1412.5, 6)).toBe("1412.5");
+		expect(rateToText(0.1234565, 6)).toBe("0.123456");
+		expect(rateToText(0.1234575, 6)).toBe("0.123458");
+		expect(rateToText(1e-7, 6)).toBeNull();
+	});
+
+	it("rounds past 12 decimals half-even, like a typed rate", () => {
+		// 2^-13 is exactly 0.0001220703125: a tie at the 13th decimal, so the
+		// even neighbor ...312 is kept, not ...313.
+		expect(rateToText(2 ** -13)).toBe("0.000122070312");
+		// 2^-12 is exactly 0.000244140625 (12 decimals): kept as is.
+		expect(rateToText(2 ** -12)).toBe("0.000244140625");
+	});
+
+	it("refuses what is not a rate above zero", () => {
+		for (const n of [
+			0,
+			-1,
+			Number.NaN,
+			Number.POSITIVE_INFINITY,
+			1e13,
+			1e-13,
+		]) {
+			expect(rateToText(n), String(n)).toBeNull();
+		}
 	});
 });

@@ -19,6 +19,14 @@ export const ACTIVITY_KINDS = [
 ] as const;
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 
+/**
+ * The category filter's id for "No category": spending and refunds with no
+ * category (money in and own transfers never have one). It travels in
+ * `categoryIds` and in the v1 filter's `cat=`, alone or beside real ids; the
+ * contract package mirrors it (g2-mirrors.test.ts).
+ */
+export const NO_CATEGORY = "none";
+
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 /** A person as `<participantType>:<participantId>` (user, shadow, guest). */
 const personKey = z
@@ -30,6 +38,7 @@ const ids = z.array(z.string().min(1).max(64)).max(50);
 export const listV2Input = z.object({
 	from: isoDate.optional(),
 	to: isoDate.optional(),
+	/** Category ids; NO_CATEGORY also lists the rows that have none. */
 	categoryIds: ids.optional(),
 	projectIds: ids.optional(),
 	people: z.array(personKey).max(50).optional(),

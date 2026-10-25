@@ -33,7 +33,8 @@
 			"refund": "Reintegros",
 			"transfer": "No es gasto",
 			"payment": "Pagos"
-		}
+		},
+		"noCategory": "Sin categoría"
 	},
 	"row": {
 		"paidTo": "Le pagaste a {name}",

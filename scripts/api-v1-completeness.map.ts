@@ -623,10 +623,6 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 		"POST /accounts/{id}/rate-type/preview",
 	),
 	"wealth.accounts.setRateType.save": to("POST /accounts/{id}/rate-type"),
-	"wealth.accounts.updateBalance.preview": to(
-		"POST /accounts/{id}/balance/preview",
-	),
-	"wealth.accounts.updateBalance.save": to("POST /accounts/{id}/balance"),
 	"wealth.accounts.view": to("GET /accounts/{id}"),
 	"wealth.closeAsset": to("POST /accounts/{id}/close"),
 	"wealth.createAsset": to("POST /accounts"),

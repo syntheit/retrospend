@@ -8,28 +8,31 @@ import { Sheet } from "~/components/ui/sheet";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
 import { Field } from "~/features/entry/shared-ui";
+import { dayKey } from "~/lib/time-zone";
 import { api } from "~/trpc/react";
 import { SetupEnvelopesStep } from "./setup-envelopes-step";
+import { SetupPayStep } from "./setup-pay-step";
 import { type Choice, SetupStyleStep } from "./setup-style-step";
 import type { SheetProps } from "./types";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
-import { useSetup } from "./use-setup";
+import { payAnswered, useSetup } from "./use-setup";
 
-type Step = "style" | "money" | "envelopes";
+type Step = "style" | "pay" | "money" | "envelopes";
 
-/** The questions each answer asks: Track stops at the first, Limits asks for no money now. */
+/** The questions each answer asks: Track stops at the first, Limits asks for no money now or pay. */
 function stepsOf(choice: Choice): Step[] {
 	if (choice === "TRACK") return ["style"];
 	if (choice === "LIMITS") return ["style", "envelopes"];
-	return ["style", "money", "envelopes"];
+	return ["style", "pay", "money", "envelopes"];
 }
 
 /**
  * Set up your budget (the first run, the mockup's wizard): how do you like
- * to budget, how much can you budget now, your envelopes, and a clear stop
- * when the plan costs more than you have. One question a step; nothing is
- * written until the last. The server previews exactly what is created.
+ * to budget, how you get paid, how much can you budget now, your envelopes,
+ * and a clear stop when the plan costs more than you have. One question a
+ * step; nothing is written until the last. The server previews exactly what
+ * is created, a Pay off debt plan and the pay cycle included.
  */
 function SetupForm({ open, onClose }: SheetProps) {
 	const t = useTranslations("budgetSheets.setup");
@@ -60,7 +63,8 @@ function SetupForm({ open, onClose }: SheetProps) {
 		},
 		toast: () => t("toast"),
 	});
-	const plan = w.dry.preview?.value.plan ?? null;
+	const result = w.dry.preview?.value ?? null;
+	const plan = result?.plan ?? null;
 	const stopped = !!plan && plan.short.minor > 0 && !covered;
 	const p = s.preset;
 
@@ -83,7 +87,8 @@ function SetupForm({ open, onClose }: SheetProps) {
 		}
 		onClose();
 	};
-	const ready = choice === "TRACK" || !last || (w.ready && !stopped);
+	const payOk = step !== "pay" || payAnswered(s.pay, dayKey(new Date()));
+	const ready = payOk && (choice === "TRACK" || !last || (w.ready && !stopped));
 	return (
 		<Sheet
 			detent="large"
@@ -122,6 +127,8 @@ function SetupForm({ open, onClose }: SheetProps) {
 				</p>
 				{step === "style" ? (
 					<SetupStyleStep onChange={pick} value={choice} />
+				) : step === "pay" ? (
+					<SetupPayStep onChange={s.setPay} value={s.pay} />
 				) : !p || s.loading ? (
 					<SkeletonRows count={4} />
 				) : step === "money" ? (
@@ -144,10 +151,10 @@ function SetupForm({ open, onClose }: SheetProps) {
 						covered={covered}
 						dry={w.dry}
 						onCovered={setCovered}
-						plan={plan}
 						poolName={tp(
 							s.style === "EVERY_DOLLAR" ? "toAssign" : "notPlannedYet",
 						)}
+						result={result}
 						s={s}
 					/>
 				)}

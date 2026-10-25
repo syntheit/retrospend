@@ -19,6 +19,7 @@ import { resolveVerification } from "./auto-accept";
 import {
 	allocateByWeights,
 	remainderRow,
+	compareParticipants,
 	resolveSplits,
 	SplitComputationError,
 } from "~/lib/shared-split-computation";
@@ -620,70 +621,39 @@ export class SharedTransactionService {
 					effectivePaidBy,
 				);
 			} else if (fieldUpdates.amount !== undefined) {
-				// Amount changed without explicit splitWith; auto-recalculate
-				// where the split mode supports it
-				const effectiveAmount = input.amount!;
-
-				if (effectiveSplitMode === "EQUAL") {
-					const existingSplit = existing.splitParticipants.map((sp) => ({
-						participantType: sp.participantType as "user" | "guest" | "shadow",
-						participantId: sp.participantId,
-					}));
-					newParticipants = this.computeSplits(
-						effectiveAmount,
-						effectiveCurrency,
-						existingSplit,
-						"EQUAL",
-						effectivePaidBy,
-					);
-				} else if (effectiveSplitMode === "PERCENTAGE") {
-					const existingSplit = existing.splitParticipants.map((sp) => ({
+				// Amount changed without explicit splitWith: re-split from what is
+				// stored. resolveSplits orders its own leftover units; the EXACT
+				// rescale gives them to the last row, so sort for it.
+				const stored = [...existing.splitParticipants]
+					.sort(compareParticipants)
+					.map((sp) => ({
 						participantType: sp.participantType as "user" | "guest" | "shadow",
 						participantId: sp.participantId,
 						sharePercentage: sp.sharePercentage
 							? serializeDecimal(sp.sharePercentage)
 							: undefined,
-					}));
-					newParticipants = this.computeSplits(
-						effectiveAmount,
-						effectiveCurrency,
-						existingSplit,
-						"PERCENTAGE",
-						effectivePaidBy,
-					);
-				} else if (effectiveSplitMode === "SHARES") {
-					const existingSplit = existing.splitParticipants.map((sp) => ({
-						participantType: sp.participantType as "user" | "guest" | "shadow",
-						participantId: sp.participantId,
 						shareUnits: sp.shareUnits ?? undefined,
+						shareAmount: serializeDecimal(sp.shareAmount),
 					}));
-					newParticipants = this.computeSplits(
-						effectiveAmount,
-						effectiveCurrency,
-						existingSplit,
-						"SHARES",
-						effectivePaidBy,
-					);
-				} else if (effectiveSplitMode === "EXACT") {
-					// EXACT with the amount changed but splitWith unchanged: the stored
-					// exact shares would otherwise go stale (their sum no longer equals
-					// the amount, silently corrupting balances). Rescale each share
-					// proportionally to the new amount, keeping it cent-accurate.
-					newParticipants = this.rescaleExactSplits(
-						serializeDecimal(existing.amount),
-						effectiveAmount,
-						effectiveCurrency,
-						existing.splitParticipants.map((sp) => ({
-							participantType: sp.participantType as
-								| "user"
-								| "guest"
-								| "shadow",
-							participantId: sp.participantId,
-							shareAmount: serializeDecimal(sp.shareAmount),
-						})),
-						effectivePaidBy,
-					);
-				}
+				newParticipants =
+					effectiveSplitMode === "EXACT"
+						? // The stored exact shares would otherwise go stale (their sum no
+							// longer equals the amount, silently corrupting balances):
+							// rescale each proportionally, keeping it cent-accurate.
+							this.rescaleExactSplits(
+								serializeDecimal(existing.amount),
+								input.amount!,
+								effectiveCurrency,
+								stored,
+								effectivePaidBy,
+							)
+						: this.computeSplits(
+								input.amount!,
+								effectiveCurrency,
+								stored,
+								effectiveSplitMode,
+								effectivePaidBy,
+							);
 			}
 
 			// Compute split diff

@@ -19,7 +19,7 @@ import type { ExpenseFormData } from "~/hooks/use-expense-form";
 import { formatNumber } from "~/lib/currency-format";
 import { evenSharePerPerson } from "~/lib/even-split-display";
 import { currencyDecimals, fromMinorUnits, toMinorUnits } from "~/lib/money";
-import { resolveSplits } from "~/lib/shared-split-computation";
+import { resolveSentSplits } from "~/lib/shared-split-input";
 import { cn } from "~/lib/utils";
 
 type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
@@ -283,7 +283,7 @@ export function SharedExpenseSection({
 		});
 
 		try {
-			const resolved = resolveSplits({
+			const resolved = resolveSentSplits({
 				mode: splitMode,
 				amount,
 				currency: watchedCurrency,

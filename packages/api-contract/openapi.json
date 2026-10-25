@@ -46814,6 +46814,66 @@
 										"maxItems": 20,
 										"type": "array"
 									},
+									"pay": {
+										"properties": {
+											"frequency": {
+												"enum": [
+													"MONTHLY",
+													"EVERY_TWO_WEEKS",
+													"WEEKLY",
+													"VARIES"
+												],
+												"type": "string"
+											},
+											"nextPay": {
+												"anyOf": [
+													{
+														"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+														"type": "string"
+													},
+													{
+														"type": "null"
+													}
+												]
+											}
+										},
+										"required": [
+											"frequency",
+											"nextPay"
+										],
+										"type": "object"
+									},
+									"payoff": {
+										"properties": {
+											"envelopeKey": {
+												"maxLength": 32,
+												"minLength": 1,
+												"type": "string"
+											},
+											"extraMonthly": {
+												"description": "An amount of zero or more as decimal text, in the currency's major units.",
+												"examples": [
+													"0",
+													"50.25"
+												],
+												"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+												"type": "string"
+											},
+											"strategy": {
+												"enum": [
+													"AVALANCHE",
+													"SNOWBALL"
+												],
+												"type": "string"
+											}
+										},
+										"required": [
+											"strategy",
+											"extraMonthly",
+											"envelopeKey"
+										],
+										"type": "object"
+									},
 									"rules": {
 										"items": {
 											"properties": {
@@ -47025,6 +47085,17 @@
 													"minLength": 1,
 													"type": "string"
 												},
+												"nextPay": {
+													"anyOf": [
+														{
+															"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"openBalances": {
 													"items": {
 														"properties": {
@@ -47062,6 +47133,51 @@
 													},
 													"type": "array"
 												},
+												"payoff": {
+													"anyOf": [
+														{
+															"properties": {
+																"debtFreeMonth": {
+																	"anyOf": [
+																		{
+																			"maximum": 299912,
+																			"minimum": 190001,
+																			"type": "integer"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
+																"debts": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																},
+																"diverges": {
+																	"type": "boolean"
+																},
+																"incomplete": {
+																	"type": "boolean"
+																},
+																"totalInterest": {
+																	"$ref": "#/components/schemas/Money"
+																}
+															},
+															"required": [
+																"debtFreeMonth",
+																"totalInterest",
+																"diverges",
+																"incomplete",
+																"debts"
+															],
+															"type": "object"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"plan": {
 													"anyOf": [
 														{
@@ -47092,7 +47208,9 @@
 											"required": [
 												"bookId",
 												"openBalances",
-												"plan"
+												"plan",
+												"nextPay",
+												"payoff"
 											],
 											"type": "object"
 										},
@@ -48181,6 +48299,66 @@
 										},
 										"maxItems": 20,
 										"type": "array"
+									},
+									"pay": {
+										"properties": {
+											"frequency": {
+												"enum": [
+													"MONTHLY",
+													"EVERY_TWO_WEEKS",
+													"WEEKLY",
+													"VARIES"
+												],
+												"type": "string"
+											},
+											"nextPay": {
+												"anyOf": [
+													{
+														"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+														"type": "string"
+													},
+													{
+														"type": "null"
+													}
+												]
+											}
+										},
+										"required": [
+											"frequency",
+											"nextPay"
+										],
+										"type": "object"
+									},
+									"payoff": {
+										"properties": {
+											"envelopeKey": {
+												"maxLength": 32,
+												"minLength": 1,
+												"type": "string"
+											},
+											"extraMonthly": {
+												"description": "An amount of zero or more as decimal text, in the currency's major units.",
+												"examples": [
+													"0",
+													"50.25"
+												],
+												"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+												"type": "string"
+											},
+											"strategy": {
+												"enum": [
+													"AVALANCHE",
+													"SNOWBALL"
+												],
+												"type": "string"
+											}
+										},
+										"required": [
+											"strategy",
+											"extraMonthly",
+											"envelopeKey"
+										],
+										"type": "object"
 									},
 									"rules": {
 										"items": {
@@ -58944,7 +59122,7 @@
 		},
 		"/expenses": {
 			"get": {
-				"description": "Personal expenses, your shares of split expenses and payments, money in, refunds and own transfers. `filter` takes the web's grammar (see parseActivityFilter): from, to, cat, person, project, paidby, kind, q, range. With no dates it is this month in the caller's zone, as on the web, unless there is a q, a cat or range=all. The first page carries the count and your spending total for the filter.",
+				"description": "Personal expenses, your shares of split expenses and payments, money in, refunds and own transfers. `filter` takes the web's grammar (see parseActivityFilter): from, to, cat, person, project, paidby, kind, q, range. `cat` takes category ids and `none` (spending and refunds with no category, including shares in someone else's category); `none` can sit beside ids. With no dates it is this month in the caller's zone, as on the web, unless there is a q, a cat or range=all. The first page carries the count and your spending total for the filter.",
 				"operationId": "listExpenses",
 				"parameters": [
 					{

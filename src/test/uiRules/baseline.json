@@ -1106,7 +1106,7 @@
 		"src/components/expense-actions-sheet.tsx": 103,
 		"src/components/expense-form.tsx": 326,
 		"src/components/expense/form-sections/CategoryChipSelector.tsx": 87,
-		"src/components/expense/form-sections/CurrencyAmountInput.tsx": 574,
+		"src/components/expense/form-sections/CurrencyAmountInput.tsx": 573,
 		"src/components/expense/form-sections/SharedExpenseSection.tsx": 560,
 		"src/components/favorite-currency-cards.tsx": 124,
 		"src/components/notification-bell.tsx": 227,
@@ -1156,9 +1156,9 @@
 		"src/server/services/shared-expenses/people.service.ts": 1003,
 		"src/server/services/shared-expenses/settlement.service.ts": 432,
 		"src/server/services/shared-expenses/test-utils.ts": 1046,
-		"src/server/services/shared-expenses/transaction.service.ts": 795,
+		"src/server/services/shared-expenses/transaction.service.ts": 765,
 		"src/server/services/shared-expenses/verification.service.ts": 332,
-		"src/server/services/user-deletion.service.ts": 70
+		"src/server/services/user-deletion.service.ts": 69
 	},
 	"UI-151": {
 		"src/app/api/import/process/route.ts": 1,

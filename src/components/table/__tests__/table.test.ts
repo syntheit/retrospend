@@ -1,6 +1,7 @@
 import { createElement as h } from "react";
 import { describe, expect, it } from "vitest";
 import type { TransactionVM } from "~/components/rows/types";
+import { fitColumns } from "~/components/table/column-fit";
 import { TableSkeleton } from "~/components/table/table-skeleton";
 import { TransactionTable } from "~/components/table/transaction-table";
 import { render } from "~/components/ui/__tests__/render";
@@ -220,6 +221,35 @@ describe("TransactionTable layouts", () => {
 		expect(t).toContain("Between you");
 		expect(t).toContain("owes you ARS 12,000");
 		expect(t).toContain("Waits for you");
+	});
+});
+
+describe("fitColumns", () => {
+	const optional = [
+		{ id: "category", size: 148 },
+		{ id: "project", size: 150 },
+		{ id: "with", size: 150 },
+	];
+	// Select 40, amount 140 and the ⋯ column 40 always show, then the Title's
+	// 192: 412 before any optional column.
+	const fixed = 220;
+	const at = (space: number | null) => [...fitColumns(space, fixed, optional)];
+
+	it("shows every column until the width is measured", () => {
+		expect(at(null)).toEqual(["category", "project", "with"]);
+	});
+
+	it("drops With first, then Project, then Category", () => {
+		expect(at(860)).toEqual(["category", "project", "with"]);
+		expect(at(859)).toEqual(["category", "project"]);
+		expect(at(710)).toEqual(["category", "project"]);
+		expect(at(709)).toEqual(["category"]);
+		expect(at(560)).toEqual(["category"]);
+		expect(at(559)).toEqual([]);
+	});
+
+	it("keeps the Title its minimum when nothing else fits", () => {
+		expect(at(300)).toEqual([]);
 	});
 });
 

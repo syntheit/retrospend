@@ -7,8 +7,11 @@
 import type { SetupInput, SetupResult } from "~/lib/schemas/envelope";
 import type { MoneyMutation } from "../preview/types";
 import { setupBook } from "./book.service";
+import { projectIn, savePayoffPlan } from "./debt.service";
+import { EnvelopeError } from "./errors";
 import { loadBook } from "./inputs";
 import { forgetMonthViews, monthViewIn } from "./month-read";
+import { nextPay } from "./pay-cycle";
 import { planCostIn } from "./plan-read";
 import { replaySplits } from "./splits-replay";
 import { FIGURE_LEFT_TO_SPEND, FIGURE_NOT_PLANNED_YET } from "./verdict";
@@ -22,11 +25,25 @@ export const setupEnvelopeBook: MoneyMutation<SetupMutationInput, SetupResult> =
 		run: async (tx, { timeZone, ...input }, actor) => {
 			const now = new Date();
 			const made = await setupBook(tx, actor.userId, input, { now, timeZone });
+			// Before the plan's cost is read: the extra is the Extra debt payment's target.
+			const payoff = await savePayoffAtSetup(
+				tx,
+				actor.userId,
+				input,
+				made,
+				now,
+			);
 			return {
 				value: {
 					bookId: made.bookId,
 					openBalances: await openBalancesAtStart(tx, actor.userId, now),
 					plan: await planAtStart(tx, actor.userId, now),
+					nextPay: nextPay(
+						input.pay?.frequency ?? null,
+						input.pay?.nextPay ?? null,
+						made.today,
+					),
+					payoff,
 				},
 				undo: {
 					kind: "revert",
@@ -41,6 +58,42 @@ export const setupEnvelopeBook: MoneyMutation<SetupMutationInput, SetupResult> =
 			};
 		},
 	};
+
+/**
+ * Pay off debt: the payoff plan is saved in the same write as the book (the
+ * extra lands on the new Extra debt payment envelope) and the result says
+ * where it leads, from the projection the plan screen reads.
+ */
+async function savePayoffAtSetup(
+	tx: Parameters<typeof loadBook>[0],
+	userId: string,
+	input: SetupInput,
+	made: { envelopeIds: ReadonlyMap<string, string> },
+	now: Date,
+): Promise<SetupResult["payoff"]> {
+	const plan = input.payoff;
+	if (!plan) return null;
+	const envelopeId = made.envelopeIds.get(plan.envelopeKey);
+	if (!envelopeId)
+		throw new EnvelopeError(
+			"INVALID",
+			"the payoff plan names an unknown envelope",
+		);
+	await savePayoffPlan(tx, userId, {
+		strategy: plan.strategy,
+		extraMonthlyMinor: plan.extraMonthlyMinor,
+		customOrder: [],
+		envelopeId,
+	});
+	const p = await projectIn(tx, userId, {}, now);
+	return {
+		debtFreeMonth: p.debtFreeMonth,
+		totalInterest: p.totalInterest,
+		diverges: p.diverges,
+		incomplete: p.incomplete,
+		debts: p.debts.length,
+	};
+}
 
 /**
  * What the new plan costs a month against what the book starts with, so the

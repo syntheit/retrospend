@@ -11,7 +11,7 @@ import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
-import type { ExpenseFormData } from "~/hooks/use-expense-form";
+import type { ExpenseFormData, useExpenseForm } from "~/hooks/use-expense-form";
 import {
 	formatNumber,
 	getDecimalDigits,
@@ -62,11 +62,7 @@ function evaluateExpression(expr: string): number | null {
 interface CurrencyAmountInputProps {
 	handleAmountChange: (value: number) => void;
 	handleCurrencyChange: (currency: string) => void;
-	handleExchangeRateChange: (
-		rate: number | undefined,
-		type?: string,
-		shouldDirty?: boolean,
-	) => void;
+	handleExchangeRateChange: ReturnType<typeof useExpenseForm>["handleExchangeRateChange"];
 	homeCurrency: string;
 	isCustomRateSet: boolean;
 	setIsCustomRateSet: (v: boolean) => void;
@@ -445,7 +441,10 @@ export function CurrencyAmountInput({
 							homeCurrency,
 							homeRate,
 						);
-			handleExchangeRateChange(stored, "custom");
+			handleExchangeRateChange(stored, "custom", true, {
+				base: customQuoteSides.base,
+				text: inputValue,
+			});
 		},
 		[
 			handleExchangeRateChange,

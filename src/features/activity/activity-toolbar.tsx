@@ -14,8 +14,14 @@ import {
 	type FilterMenuGroup,
 } from "~/components/ui/chip";
 import { Input } from "~/components/ui/input";
-import { categoryTone } from "~/server/services/expense-list/category-tone";
-import type { ActivityKind } from "~/server/services/expense-list/types";
+import {
+	categoryTone,
+	NO_CATEGORY_TONE,
+} from "~/server/services/expense-list/category-tone";
+import {
+	type ActivityKind,
+	NO_CATEGORY,
+} from "~/server/services/expense-list/types";
 import { api } from "~/trpc/react";
 import { DimChip, type DimItem } from "./dim-chip";
 import { type ActivityFilter, type Dim, toggled } from "./filters";
@@ -29,8 +35,20 @@ const KINDS: ActivityKind[] = [
 	"payment",
 ];
 
-/** The choices of every filter chip, with identity in the lead (Insights reads them too). */
-export function useDimItems() {
+/** The glyph of "No category": the neutral tag Insights gives those rows. */
+const NO_CATEGORY_REF = {
+	id: NO_CATEGORY,
+	name: "",
+	icon: "Tag",
+	tone: NO_CATEGORY_TONE,
+};
+
+/**
+ * The choices of every filter chip, with identity in the lead (Insights reads
+ * them too). `noCategory` adds "No category" to the categories: Activity's
+ * list takes it, Insights' reads do not.
+ */
+export function useDimItems({ noCategory = false } = {}) {
 	const t = useTranslations("activity.filters");
 	const categories = api.categories.getAll.useQuery(undefined, {
 		staleTime: 60_000,
@@ -43,20 +61,27 @@ export function useDimItems() {
 			label: p.name,
 			lead: <Face imageUrl={p.avatarUrl} name={p.name} size="xs" />,
 		}));
+		const cats = (categories.data ?? []).map((c): DimItem => {
+			const ref = {
+				id: c.id,
+				name: c.name,
+				icon: c.icon,
+				tone: categoryTone(c.color),
+			};
+			return {
+				id: c.id,
+				label: c.name,
+				lead: <CategoryGlyph category={ref} />,
+			};
+		});
+		if (noCategory)
+			cats.push({
+				id: NO_CATEGORY,
+				label: t("noCategory"),
+				lead: <CategoryGlyph category={NO_CATEGORY_REF} />,
+			});
 		return {
-			cats: (categories.data ?? []).map((c): DimItem => {
-				const ref = {
-					id: c.id,
-					name: c.name,
-					icon: c.icon,
-					tone: categoryTone(c.color),
-				};
-				return {
-					id: c.id,
-					label: c.name,
-					lead: <CategoryGlyph category={ref} />,
-				};
-			}),
+			cats,
 			people: persons,
 			projects: (projects.data ?? []).map(
 				(p): DimItem => ({ id: p.id, label: p.name }),
@@ -64,7 +89,7 @@ export function useDimItems() {
 			paidBy: [{ id: "me", label: t("you") }, ...persons],
 			kinds: KINDS.map((k): DimItem => ({ id: k, label: t(`kind.${k}`) })),
 		} satisfies Record<Dim, DimItem[]>;
-	}, [categories.data, people.data, projects.data, t]);
+	}, [categories.data, people.data, projects.data, noCategory, t]);
 }
 
 /** "/" focuses the search, outside fields and open layers (the mockup's key). */
@@ -104,7 +129,7 @@ export function ActivityToolbar({
 	today: string;
 }) {
 	const t = useTranslations("activity.filters");
-	const items = useDimItems();
+	const items = useDimItems({ noCategory: true });
 	const searchRef = useRef<HTMLInputElement>(null);
 	useSlashFocus(searchRef);
 	const set = (dim: Dim) => (value: string[]) =>

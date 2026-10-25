@@ -9,10 +9,13 @@ import { z } from "zod";
 import type { SplitParticipant } from "~/components/split-with-picker";
 import { useSession } from "~/hooks/use-session";
 import { useSettings } from "~/hooks/use-settings";
+import { legacyRateWire } from "~/features/entry/legacy-rate-wire";
+import { parseRateText } from "~/features/entry/rate-text";
 import { predictCategory } from "~/lib/category-matcher";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { CRYPTO_CURRENCIES, CURRENCIES } from "~/lib/currencies";
 import { expenseAmounts, USD } from "~/lib/money";
+import { customRateSchema } from "~/lib/schemas/rate";
 import {
 	buildSharedExpensePrefill,
 	type PrefillPerson,
@@ -33,6 +36,12 @@ export const expenseSchema = z.object({
 	exchangeRate: z
 		.number()
 		.positive("Exchange rate must be positive")
+		.optional(),
+	// A rate typed by hand, as the decimal text the user entered ("1 base =
+	// value of the other currency"). It is what the server books; exchangeRate
+	// above is then only the number the form previews with.
+	customRate: z
+		.object({ base: z.string().min(3).max(10), value: customRateSchema })
 		.optional(),
 	// Display and transport only: the server recomputes it. Tiny amounts can
 	// round to 0 USD, which must not block saving.
@@ -595,6 +604,7 @@ export function useExpenseForm({
 	const handleCurrencyChange = (currency: string) => {
 		setValue("currency", currency, { shouldDirty: true });
 		setIsCustomRateSet(false);
+		setValue("customRate", undefined, { shouldDirty: true });
 
 		if (currency === USD) {
 			setValue("exchangeRate", 1, { shouldDirty: true });
@@ -617,8 +627,21 @@ export function useExpenseForm({
 		rate: number | undefined,
 		type?: string,
 		shouldDirty = true,
+		typed?: { base: string; text: string },
 	) => {
 		setValue("exchangeRate", rate, { shouldDirty });
+		// Only a rate typed just now carries its text, and only when it is a
+		// plain decimal (what the preview number above was read from); any
+		// other pick drops it.
+		const text = typed?.text.trim() ?? "";
+		const plain = /^\d+(\.\d+)?$/.test(text) ? parseRateText(text, "en-US") : null;
+		setValue(
+			"customRate",
+			type === "custom" && rate !== undefined && plain && typed
+				? { base: typed.base, value: plain }
+				: undefined,
+			{ shouldDirty },
+		);
 		if (type) {
 			setValue("pricingSource", type, { shouldDirty });
 		}
@@ -863,10 +886,11 @@ export function useExpenseForm({
 				if (!saveAndNewRef.current) toast.success("Shared expense created!");
 			} else {
 				// --- Personal expense path ---
+				const { customRate: _typed, exchangeRate: _preview, ...formData } = data;
 				const submitData = {
-					...data,
+					...formData,
 					title: data.title || "",
-					exchangeRate: data.exchangeRate || undefined,
+					...legacyRateWire(data),
 					amountInUSD: data.amountInUSD || undefined,
 					description: data.description || undefined,
 					amortizeOver: data.spreadOverTime ? data.amortizeOver : undefined,

@@ -4,6 +4,7 @@
  * float: the services read it as typed (I21). The legacy account forms keep
  * their number fields until stream 4 rebuilds them.
  */
+import { accountRateTextSchema } from "@retrospend/api-contract";
 import { z } from "zod";
 import { restChoiceSchema } from "~/lib/schemas/envelope";
 import { customRateSchema } from "~/lib/schemas/rate";
@@ -26,7 +27,8 @@ const accountFields = {
 	type: z.enum(AssetType),
 	currency: z.string().length(3),
 	balance: z.number(),
-	exchangeRate: z.number().optional(),
+	/** A custom rate as decimal text (never a float), within the column: DECIMAL(18,6). */
+	exchangeRate: accountRateTextSchema.optional(),
 	exchangeRateType: z.string().optional(),
 	isLiquid: z.boolean().default(false),
 	interestRate: z.number().optional(),
@@ -59,15 +61,8 @@ export const importAccountsSchema = z.object({
 export const legacyBalanceSchema = z.object({
 	assetId: z.cuid(),
 	newBalance: z.number(),
-	exchangeRate: z.number().optional(),
+	exchangeRate: accountRateTextSchema.optional(),
 	exchangeRateType: z.string().optional(),
-});
-
-export const updateBalanceSchema = z.object({
-	accountId: id,
-	balance: decimal,
-	rateType: rateType.nullish(),
-	exchangeRate: z.number().positive().nullish(),
 });
 
 export const revertBalanceUpdateSchema = z.object({

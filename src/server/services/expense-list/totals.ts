@@ -14,7 +14,7 @@ import type { Prisma } from "~prisma";
 import { type SpentFilter, type SpentItem, spentItems } from "../figures/spent";
 import { numberMoney } from "./money";
 import type { ListBounds, RowKey } from "./query";
-import type { ActivityTotalDTO, ListV2Filter } from "./types";
+import { type ActivityTotalDTO, type ListV2Filter, NO_CATEGORY } from "./types";
 
 type Db = Prisma.TransactionClient;
 
@@ -57,11 +57,15 @@ function spentFilter(
 	filter: ListV2Filter,
 	bounds: ListBounds,
 ): SpentFilter {
+	const ids = (filter.categoryIds ?? []).filter((id) => id !== NO_CATEGORY);
 	return {
 		userId: c.userId,
 		date: inclusive(bounds),
 		excludedProjectIds: c.excludedProjectIds,
-		...(filter.categoryIds?.length ? { categoryIds: filter.categoryIds } : {}),
+		...(ids.length ? { categoryIds: ids } : {}),
+		...(filter.categoryIds?.includes(NO_CATEGORY)
+			? { uncategorized: true }
+			: {}),
 	};
 }
 

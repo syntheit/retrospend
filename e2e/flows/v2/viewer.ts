@@ -30,3 +30,23 @@ export async function openV2(page: Page, path: string): Promise<void> {
 	await gotoReady(page, path);
 	await expect(page.locator('[data-ui="v2"]')).toBeVisible();
 }
+
+/** An expense with no category, through the app's own write; returns its id. */
+export async function uncategorizedExpense(page: Page, title: string) {
+	const id = crypto.randomUUID();
+	const res = await page.request.post("/api/trpc/expense.createExpense", {
+		data: {
+			json: {
+				id,
+				title,
+				amount: 777,
+				currency: "ARS",
+				date: new Date().toISOString(),
+			},
+			meta: { values: { date: ["Date"] } },
+		},
+		headers: { Origin: new URL(page.url()).origin },
+	});
+	expect(res.ok(), `createExpense answered ${res.status()}`).toBe(true);
+	return id;
+}
