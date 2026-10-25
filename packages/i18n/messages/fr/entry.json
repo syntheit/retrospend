@@ -74,7 +74,7 @@
 			"splitAmount": "Le partage ne correspond pas au montant",
 			"splitPct": "Les pourcentages ne font pas 100 %",
 			"save": "Impossible d'enregistrer. Vérifie les champs et réessaie.",
-			"projectMembers": "Impossible de charger les personnes du projet. Réessayez."
+			"projectMembers": "Impossible de charger les personnes du projet. Réessaie."
 		},
 		"toast": {
 			"added": "{title} ajoutée",
@@ -117,7 +117,7 @@
 			"custom": "Personnalisé"
 		},
 		"label": "Taux",
-		"youSpent": "Vous avez dépensé"
+		"youSpent": "Tu as dépensé"
 	},
 	"changes": {
 		"titleEdit": "Ce que cette modification change",
@@ -195,7 +195,7 @@
 			"planned": "{amount} ajouté. {count, plural, one {# enveloppe remplie} other {# enveloppes remplies}}"
 		},
 		"someoneElse": "Quelqu'un d'autre",
-		"received": "Vous avez reçu",
+		"received": "Tu as reçu",
 		"countsAs": "Équivaut à"
 	},
 	"transfer": {
