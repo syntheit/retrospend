@@ -1332,7 +1332,6 @@ export function createStatefulDb() {
 			},
 		),
 	};
-
 	// ── user model ───────────────────────────────────────────────────────────
 
 	const userModel = {
@@ -1369,6 +1368,7 @@ export function createStatefulDb() {
 		settlement: settlementModel,
 		payment: paymentModel,
 		auditLogEntry: auditLogEntryModel,
+		fixRequest: { findMany: vi.fn(() => []), updateMany: vi.fn() }, // no fix requests in memory
 		shadowProfile: shadowProfileModel,
 		project: projectModel,
 		billingPeriod: billingPeriodModel,

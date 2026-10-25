@@ -7,6 +7,7 @@ import {
 	resolveParticipantName,
 } from "~/server/services/notifications";
 import type { Prisma, PrismaClient, SplitMode } from "~prisma";
+import { answerFixRequestsOnEdit } from "../corrections/fix-request.service";
 import { logAudit } from "./audit-log";
 import { serializeDecimal, serializeTransaction } from "./serialize";
 import {
@@ -61,6 +62,7 @@ interface UpdateSharedTransactionInput {
 	projectId?: string | null;
 	notes?: string | null;
 	receiptUrl?: string | null;
+	reopenFixRequests?: readonly { id: string; previousStatus: "PENDING" | "ACCEPTED" }[]; // undo of an edit that answered fix requests (2C.2)
 }
 
 /**
@@ -369,7 +371,6 @@ export class SharedTransactionService {
 			currency: string;
 		} | null = null;
 		let capturedDiff: Record<string, { old: unknown; new: unknown }> = {};
-
 		const updated = await this.runInTransaction(async (tx) => {
 			const existing = await assertCanModifyTransaction(
 				tx,
@@ -377,14 +378,12 @@ export class SharedTransactionService {
 				this.actor.participantType,
 				this.actor.participantId,
 			);
-
 			// Capture before-state for notification
 				existingSnapshot = {
 				description: existing.description,
 				amount: existing.amount,
 				currency: existing.currency,
 			};
-
 			// Compute field-level diff
 			const diff: Record<string, { old: unknown; new: unknown }> = {};
 
@@ -850,6 +849,7 @@ export class SharedTransactionService {
 						: (existing.projectId ?? undefined),
 			});
 
+			await answerFixRequestsOnEdit(tx, this.actorUserId(), input, Object.keys(diff).length > 0);
 			// Capture diff for notification
 			capturedDiff = diff;
 

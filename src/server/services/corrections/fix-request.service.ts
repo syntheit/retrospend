@@ -312,20 +312,23 @@ export interface AnsweredFix {
 
 /**
  * A plain edit of an unlocked split by the person asked to fix it answers
- * their open requests (FIXED); the undo of that edit puts them back. A
- * correction does the same for a settled split (correct.service.ts).
+ * their open requests (FIXED); the undo of that edit passes them back as
+ * `reopenFixRequests` and they are put back. Called by
+ * SharedTransactionService.update, so every edit path runs it. A correction
+ * does the same for a settled split (correct.service.ts).
  */
 export async function answerFixRequestsOnEdit(
 	tx: Tx,
-	userId: string,
-	args: {
-		readonly transactionId: string;
-		readonly edited: boolean;
-		readonly reopen?: readonly AnsweredFix[];
+	userId: string | null,
+	input: {
+		readonly id: string;
+		readonly reopenFixRequests?: readonly AnsweredFix[];
 	},
+	edited: boolean,
 ): Promise<AnsweredFix[]> {
-	if (args.reopen) {
-		for (const r of args.reopen) {
+	if (!userId) return [];
+	if (input.reopenFixRequests) {
+		for (const r of input.reopenFixRequests) {
 			await tx.fixRequest.updateMany({
 				where: {
 					id: r.id,
@@ -341,10 +344,10 @@ export async function answerFixRequestsOnEdit(
 		}
 		return [];
 	}
-	if (!args.edited) return [];
+	if (!edited) return [];
 	const open = await tx.fixRequest.findMany({
 		where: {
-			transactionId: args.transactionId,
+			transactionId: input.id,
 			askedType: "user",
 			askedId: userId,
 			status: { in: OPEN },

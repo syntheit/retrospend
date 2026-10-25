@@ -49,6 +49,7 @@ import { forUser } from "~/server/services/preview";
 import { rebalanceExpenses } from "~/server/services/project/rebalance.mutation";
 import { computeBalance } from "~/server/services/shared-expenses/balance";
 import { assertCanModifyTransaction } from "~/server/services/shared-expenses/project-permissions";
+import { SharedTransactionService } from "~/server/services/shared-expenses/transaction.service";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { adminDb } from "~/test/pg-harness";
 import {
@@ -1227,6 +1228,52 @@ describe("review: a plain edit answers the fix request, and its undo reopens it"
 			...restore,
 			splitWith: restore.splitWith,
 			reopenFixRequests: done.value.answered,
+		});
+		expect(await status()).toBe("ACCEPTED");
+	});
+});
+
+describe("review: the web form's edit path (SharedTransactionService.update) answers fix requests too", () => {
+	it("a changed edit marks the request FIXED, an unchanged one does not, and the undo reopens it", async () => {
+		await seedRate();
+		const sofia = await seedUser();
+		const martin = await seedUser();
+		const made = await as(sofia).apply(createSharedExpense, {
+			amount: 6000,
+			currency: "PEN",
+			description: "Dinner",
+			date: new Date(`${today}T12:00:00.000Z`),
+			paidBy: ref(sofia),
+			splitWith: [ref(sofia), ref(martin)],
+			splitMode: "EQUAL",
+		});
+		const askId = randomUUID();
+		await as(martin).apply(askToFixMutation, {
+			id: askId,
+			transactionId: made.value.id,
+		});
+		await as(sofia).apply(respondToFixMutation, {
+			id: askId,
+			response: "accept",
+		});
+		const status = async () =>
+			(await adminDb.fixRequest.findUniqueOrThrow({ where: { id: askId } }))
+				.status;
+		// Straight through the service, as routers/shared-transaction.ts calls it.
+		const edit = (extra: object) =>
+			userTransaction(adminDb, sofia.user.id, (tx) =>
+				new SharedTransactionService(tx, ref(sofia)).update({
+					id: made.value.id,
+					...extra,
+				}),
+			);
+		await edit({});
+		expect(await status()).toBe("ACCEPTED");
+		await edit({ description: "Dinner at Pepe's" });
+		expect(await status()).toBe("FIXED");
+		await edit({
+			description: "Dinner",
+			reopenFixRequests: [{ id: askId, previousStatus: "ACCEPTED" }],
 		});
 		expect(await status()).toBe("ACCEPTED");
 	});
