@@ -679,6 +679,7 @@
 		"unpriced": "{currencies} : pas encore de taux, hors des totaux",
 		"needsYou": "{count, plural, one {# t’attend} other {# t’attendent}}",
 		"search": "Rechercher des personnes",
+		"segmentLabel": "Personnes ou projets",
 		"chip": {
 			"all": "Tout le monde",
 			"owesYou": "Te doit",

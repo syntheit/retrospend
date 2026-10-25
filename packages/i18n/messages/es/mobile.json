@@ -679,6 +679,7 @@
 		"unpriced": "{currencies}: todavía sin cotización, fuera de los totales",
 		"needsYou": "{count, plural, one {# te necesita} other {# te necesitan}}",
 		"search": "Buscar personas",
+		"segmentLabel": "Personas o proyectos",
 		"chip": {
 			"all": "Todos",
 			"owesYou": "Te debe",

@@ -679,6 +679,7 @@
 		"unpriced": "{currencies}: курса пока нет, не входит в итоги",
 		"needsYou": "{count, plural, one {# ждёт вас} few {# ждут вас} many {# ждут вас} other {# ждут вас}}",
 		"search": "Поиск людей",
+		"segmentLabel": "Люди или проекты",
 		"chip": {
 			"all": "Все",
 			"owesYou": "Должен вам",
