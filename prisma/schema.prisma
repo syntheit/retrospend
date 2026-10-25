@@ -95,6 +95,7 @@ model User {
   deviceCodes             DeviceCode[]
   idempotencyKeys         IdempotencyKey[]
   pushDevices             PushDevice[]
+  exportJobs              ExportJob[]
   apiEvents               ApiEvent[]
   webhooks                Webhook[]
 
@@ -2174,6 +2175,40 @@ model ApiRateLimit {
 
   @@index([windowStart])
   @@map("api_rate_limit")
+}
+
+enum ExportJobStatus {
+  QUEUED
+  RUNNING
+  READY
+  FAILED
+}
+
+// API v1 exports (G5): an asynchronous export request and its file. `params`
+// holds ids only (project, period, person); the file lives in the export
+// store (EXPORT_DIR, never the public upload store) at `storagePath` until `expiresAt`. `fileName` is derived from the
+// project or person name, in its own column.
+model ExportJob {
+  id          String          @id @default(cuid())
+  userId      String
+  kind        String          @db.VarChar(40)
+  params      Json
+  timeZone    String          @db.VarChar(64)
+  status      ExportJobStatus @default(QUEUED)
+  fileName    String?         @db.VarChar(255)
+  contentType String?         @db.VarChar(100)
+  sizeBytes   Int?
+  storagePath String?         @db.VarChar(512)
+  error       String?         @db.VarChar(500)
+  createdAt   DateTime        @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  expiresAt   DateTime
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("export_job")
 }
 
 enum PushPlatform {

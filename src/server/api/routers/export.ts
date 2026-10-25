@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { generateCsv } from "~/lib/csv";
+import { csvMeta, generateCsv } from "~/lib/csv";
 import { dayKey } from "~/lib/time-zone";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { ExportService } from "~/server/services/export.service";
@@ -96,10 +96,6 @@ async function fetchEditCounts(
 		_count: { _all: true },
 	});
 	return new Map(entries.map((e) => [e.targetId, e._count._all]));
-}
-
-function csvMeta(lines: string[]): string {
-	return lines.join("\n") + "\n";
 }
 
 // Fetch transactions + counted settlements (BALANCE_SETTLEMENT_STATUSES) for a

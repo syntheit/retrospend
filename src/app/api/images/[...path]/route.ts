@@ -1,6 +1,14 @@
 import { Readable } from "node:stream";
 import { getFileStream } from "~/server/storage";
 
+/**
+ * This route is public and cached for a year, so it serves only the folders
+ * that hold pictures meant to be seen: avatars and project images (the only
+ * two uploadFile callers). Anything else under the upload store, and anything
+ * that ever lands there by mistake, is a 404.
+ */
+const PUBLIC_PREFIXES = ["avatars", "projects"];
+
 export async function GET(
 	_request: Request,
 	{ params }: { params: Promise<{ path: string[] }> },
@@ -17,6 +25,9 @@ export async function GET(
 		filePath.startsWith("/") ||
 		filePath.includes("//")
 	) {
+		return new Response("Not found", { status: 404 });
+	}
+	if (!PUBLIC_PREFIXES.includes(filePath.split("/")[0] ?? "")) {
 		return new Response("Not found", { status: 404 });
 	}
 

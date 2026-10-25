@@ -11,6 +11,7 @@ services:
       SIDECAR_URL: "http://sidecar:8080"
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       UPLOAD_DIR: /data/uploads
+      EXPORT_DIR: /data/exports
       # Optional: restrict accepted origins (e.g. if behind a tunnel with a different hostname)
       # TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-}
       # SMTP settings (required for email notifications and password reset)
@@ -24,6 +25,7 @@ services:
       - "1997:1997"
     volumes:
       - uploads:/data/uploads
+      - exports:/data/exports
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,3 +89,4 @@ volumes:
   sidecar_data:
   backup_data:
   uploads:
+  exports:

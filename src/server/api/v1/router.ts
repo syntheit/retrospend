@@ -1,11 +1,16 @@
 import { accountsRouter } from "./accounts";
+import { adminRouter } from "./admin";
 import { budgetRouter } from "./budget";
 import { categoriesRouter } from "./categories";
 import { currenciesRouter } from "./currencies";
 import { eventsRouter } from "./events";
 import { expensesRouter } from "./expenses";
+import { exportsRouter } from "./exports";
+import { feedbackRouter } from "./feedback";
 import { figuresRouter } from "./figures";
+import { importsRouter } from "./imports";
 import { incomeRouter } from "./income";
+import { inviteCodesRouter } from "./invite-codes";
 import { v1 } from "./middleware";
 import { needsYouRouter } from "./needs-you";
 import { notificationsRouter } from "./notifications";
@@ -29,13 +34,18 @@ import { webhooksRouter } from "./webhooks";
  */
 export const v1Router = v1.router({
 	accounts: accountsRouter,
+	admin: adminRouter,
 	budget: budgetRouter,
 	categories: categoriesRouter,
 	currencies: currenciesRouter,
 	events: eventsRouter,
 	expenses: expensesRouter,
+	exports: exportsRouter,
+	feedback: feedbackRouter,
 	figures: figuresRouter,
+	imports: importsRouter,
 	income: incomeRouter,
+	"invite-codes": inviteCodesRouter,
 	"needs-you": needsYouRouter,
 	notifications: notificationsRouter,
 	payments: paymentsRouter,

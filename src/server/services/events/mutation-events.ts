@@ -5,11 +5,12 @@ import type { EventType } from "@retrospend/api-contract";
  * web's tRPC procedures). Inside a v1 route the route's own event type wins
  * (see scope.ts), so both transports name an event the same way.
  *
- * Mutations missing here append nothing from tRPC: imports (G5 adds their
- * event types), fix requests, corrections and the income move-in family have
- * no registered type yet. Add the type to EVENT_TYPES and the row here.
+ * Mutations missing here append nothing from tRPC: fix requests,
+ * corrections and the income move-in family have no registered type yet. Add the type to EVENT_TYPES and the row here.
  */
 export const MUTATION_EVENTS: Readonly<Record<string, EventType>> = {
+	"import.commit": "import.finalized",
+	"import.undo": "import.undone",
 	"recurring.confirm": "recurring.confirmed",
 	"recurring.unconfirm": "recurring.undone",
 	"income.add": "income.created",
