@@ -8,6 +8,7 @@ import { TRPCError } from "@trpc/server";
 import { SHARED_FIGURES } from "~/server/services/entry/shared.mutation";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { SplitParticipant } from "~prisma";
+import { logAudit } from "./audit-log";
 import { removeSelfIn } from "./remove-self";
 
 export interface RemoveSelfInput {
@@ -57,16 +58,24 @@ export const removeSelfMutation: MoneyMutation<RemoveSelfInput, SelfRemoved> = {
 	id: "sharedExpense.removeSelf",
 	touches: SHARED_FIGURES,
 	run: async (tx, input, actor) => {
+		// Read the stamp first: without a project, the expense is visible to you only
+		// through your own share, which the write removes. Removing a share leaves
+		// the expense's own row, and so its stamp, as it is.
+		const row = await tx.sharedTransaction.findUnique({
+			where: { id: input.transactionId },
+			select: { updatedAt: true },
+		});
+		if (!row)
+			throw new TRPCError({
+				code: "NOT_FOUND",
+				message: "Transaction not found or has been deleted",
+			});
 		const { removed } = await removeSelfIn(
 			tx,
 			{ participantType: "user", participantId: actor.userId },
 			input.transactionId,
 			input.confirmBalanceChange ?? false,
 		);
-		const row = await tx.sharedTransaction.findUniqueOrThrow({
-			where: { id: input.transactionId },
-			select: { updatedAt: true },
-		});
 		return {
 			value: {
 				transactionId: input.transactionId,
@@ -95,21 +104,10 @@ export const restoreSelfMutation: MoneyMutation<
 > = {
 	id: "sharedExpense.restoreSelf",
 	touches: SHARED_FIGURES,
-	run: async (tx, input) => {
-		const txn = await tx.sharedTransaction.findUnique({
-			where: { id: input.transactionId },
-			select: { updatedAt: true, isLocked: true },
-		});
-		if (!txn)
-			throw new TRPCError({
-				code: "NOT_FOUND",
-				message: "Transaction not found or has been deleted",
-			});
-		if (txn.isLocked || txn.updatedAt.toISOString() !== input.expectedUpdatedAt)
-			throw new TRPCError({
-				code: "CONFLICT",
-				message: "This expense changed since. Undo is no longer safe.",
-			});
+	run: async (tx, input, actor) => {
+		// Your own rows are visible to you, so these checks work. The expense itself
+		// is not visible without a project until your share is back, so it is read
+		// after the insert and the restore rolls back if it fails.
 		const back = await tx.splitParticipant.count({
 			where: {
 				transactionId: input.transactionId,
@@ -154,6 +152,33 @@ export const restoreSelfMutation: MoneyMutation<
 				categorySource:
 					r.categoryId && kept.has(r.categoryId) ? r.categorySource : null,
 			})),
+		});
+		const txn = await tx.sharedTransaction.findUnique({
+			where: { id: input.transactionId },
+			select: { updatedAt: true, isLocked: true, projectId: true },
+		});
+		if (!txn)
+			throw new TRPCError({
+				code: "NOT_FOUND",
+				message: "Transaction not found or has been deleted",
+			});
+		if (txn.isLocked || txn.updatedAt.toISOString() !== input.expectedUpdatedAt)
+			throw new TRPCError({
+				code: "CONFLICT",
+				message: "This expense changed since. Undo is no longer safe.",
+			});
+		await logAudit(tx, {
+			actor: { participantType: "user", participantId: actor.userId },
+			action: "PARTICIPANT_ADDED",
+			targetType: "SPLIT_PARTICIPANT",
+			targetId: input.transactionId,
+			changes: {
+				participantType: "user",
+				participantId: actor.userId,
+				restoredSplitIds: input.removed.map((r) => r.id),
+				selfRestored: true,
+			},
+			projectId: txn.projectId ?? undefined,
 		});
 		return {
 			value: {

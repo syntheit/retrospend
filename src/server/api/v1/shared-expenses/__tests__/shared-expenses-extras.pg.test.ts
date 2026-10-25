@@ -8,6 +8,7 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { trpcVerification } from "~/server/services/api-v1/trpc-bridge";
 import { adminDb } from "~/test/pg-harness";
 import {
 	arsUser,
@@ -246,5 +247,77 @@ describe("shared expense reads and verification", () => {
 			"conflict",
 		);
 		expect(await rows()).toHaveLength(2);
+	});
+
+	describe("without a project", () => {
+		// Outside a project an expense is visible to you only through your own share.
+		async function loose(people: TestUser[]) {
+			const share = String(900 / people.length);
+			const made = await adminDb.sharedTransaction.create({
+				data: {
+					description: "Taxi",
+					amount: "900",
+					currency: "ARS",
+					date: new Date("2026-10-10"),
+					paidByType: "user",
+					paidById: sofia.user.id,
+					createdByType: "user",
+					createdById: sofia.user.id,
+					splitParticipants: {
+						create: people.map((u) => ({
+							participantType: "user" as const,
+							participantId: u.user.id,
+							shareAmount: share,
+							verificationStatus: "ACCEPTED" as const,
+						})),
+					},
+				},
+			});
+			return made.id;
+		}
+		const shares = (id: string) =>
+			adminDb.splitParticipant.count({ where: { transactionId: id } });
+
+		it.each([
+			["two people", () => [sofia, martin]],
+			["three people", () => [sofia, martin, lucia]],
+		])("removes you and undoes it through v1: %s", async (_name, who) => {
+			const id = await loose(who());
+			const total = who().length;
+			const preview = await send("POST", `/shared-expenses/${id}/remove-me/preview`, asMartin, {});
+			expect(preview.status, await preview.clone().text()).toBe(200);
+			expect(await shares(id)).toBe(total);
+
+			const removed = await expectBody<{ undo: string }>(
+				await send("POST", `/shared-expenses/${id}/remove-me`, asMartin, {}),
+				c.removeMe,
+			);
+			expect(await shares(id)).toBe(total - 1);
+
+			await expectBody(
+				await send("POST", "/shared-expenses/undo", asMartin, { token: removed.undo }),
+				c.undo,
+			);
+			expect(await shares(id)).toBe(total);
+			// The restore is on the record, next to the removal.
+			const trail = await adminDb.auditLogEntry.findMany({
+				where: { targetType: "SPLIT_PARTICIPANT", targetId: id },
+				orderBy: { timestamp: "asc" },
+			});
+			expect(trail.map((t) => t.action)).toEqual(["PARTICIPANT_REMOVED", "PARTICIPANT_ADDED"]);
+		});
+
+		it.each([
+			["two people", () => [sofia, martin]],
+			["three people", () => [sofia, martin, lucia]],
+		])("removes you through the web procedure: %s", async (_name, who) => {
+			const id = await loose(who());
+			const web = await trpcVerification({
+				principal: { userId: martin.user.id },
+				timeZone: "UTC",
+			});
+			await web.removeSelf({ txnId: id });
+			expect(await shares(id)).toBe(who().length - 1);
+		});
 	});
 });
