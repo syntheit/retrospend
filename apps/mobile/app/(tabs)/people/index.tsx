@@ -172,7 +172,7 @@ export default function PeopleScreen() {
 							/>
 						</View>
 					</View>
-				) : null
+				) : undefined
 			}
 			onRefresh={reload}
 			refreshing={false}

@@ -5,11 +5,7 @@ import { UpdateBalanceSheet } from "./UpdateBalanceSheet";
 // Update balance with real presses on the real keypad: the dry run comes
 // first, the write carries the typed balance as decimal text under one
 // idempotency key, and the toast undoes it with the accounts undo token.
-const renderer = require(
-	require.resolve("react-test-renderer", {
-		paths: [require.resolve("jest-expo/package.json")],
-	}),
-);
+const renderer = require("react-test-renderer");
 const { act, create } = renderer;
 
 interface TestNode {

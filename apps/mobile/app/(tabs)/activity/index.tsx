@@ -131,7 +131,7 @@ export default function ActivityScreen() {
 					>
 						{t("loading")}
 					</Text>
-				) : null
+				) : undefined
 			}
 			ListHeaderComponent={
 				<View>
