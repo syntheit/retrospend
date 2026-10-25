@@ -1,0 +1,64 @@
+{
+	"metaTitle": "Análisis",
+	"header": {
+		"title": "Actividad"
+	},
+	"toolbar": {
+		"label": "Filtrar análisis"
+	},
+	"summary": {
+		"lead": "Tu gasto, {range}",
+		"leadOn": "Tu gasto en {names}, {range}",
+		"leadAll": "Tu gasto, todo el período",
+		"leadAllOn": "Tu gasto en {names}, todo el período",
+		"count": "{count, plural, one {# gasto} other {# gastos}}",
+		"missingRates": "Sin cotización para {currencies}, no se cuenta"
+	},
+	"was": {
+		"amount": "<period></period> fue <amount></amount> <change></change>",
+		"none": "<period></period> no tuvo gastos"
+	},
+	"rank": {
+		"none": "Sin categoría",
+		"new": "nueva"
+	},
+	"category": {
+		"title": "Por categoría",
+		"showMore": "Mostrar {count} más",
+		"showFewer": "Mostrar menos"
+	},
+	"months": {
+		"title": "Mes a mes",
+		"list": "Abrir un mes en Actividad",
+		"caption": "Mismos filtros. Tocá un mes para abrirlo en Actividad."
+	},
+	"ytd": {
+		"title": "Este año hasta hoy y el año pasado",
+		"showUsd": "Ver en USD",
+		"usdNote": "Cada gasto en USD a la cotización con la que se guardó.",
+		"none": "Sin gastos este año con estos filtros.",
+		"missingRates": "Sin cotización para {currencies}, no se cuenta"
+	},
+	"cashflow": {
+		"title": "Ingresos y ahorro",
+		"income": "Ingresos",
+		"saved": "Ahorrado",
+		"perDay": "Por día",
+		"perMonth": "Por mes",
+		"missingRates": "Sin cotización para {currencies}, no se cuenta",
+		"rate": "{percent} de tus ingresos"
+	},
+	"empty": {
+		"range": "Sin gastos en este período",
+		"rangeHint": "Elegí otro período o agregá un gasto.",
+		"filtered": "Ningún gasto coincide con estos filtros",
+		"filteredHint": "Sacá un filtro o elegí otro período.",
+		"clear": "Sacar filtros",
+		"add": "Agregar gasto"
+	},
+	"unavailable": {
+		"title": "No disponible por ahora",
+		"hint": "Esta parte de Análisis no se pudo cargar.",
+		"retry": "Reintentar"
+	}
+}

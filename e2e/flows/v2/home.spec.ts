@@ -148,6 +148,29 @@ test("Home: glance, Needs you, Recent and the rail; confirm a payment and undo",
 		toast.getByRole("button", { name: "Undo" }).click(),
 	);
 	await expect(item).toBeVisible();
+
+	// Later: the overdue club fee leaves the list until tomorrow, and Undo
+	// brings it back. Dollar today is on the glance with its rate type.
+	const overdue = needs
+		.getByRole("listitem")
+		.filter({ hasText: "Cuota club de tenis is overdue" });
+	await expect(overdue).toBeVisible();
+	await overdue.getByRole("button", { name: /^More actions for / }).click();
+	await untilSaved(page, "home.snoozeNeedsYou", () =>
+		page.getByRole("menuitem", { name: "Later" }).click(),
+	);
+	const later = page
+		.locator("[data-sonner-toast]")
+		.filter({ hasText: "Hidden until tomorrow" });
+	await expect(later).toBeVisible();
+	await expect(overdue).toHaveCount(0);
+	await untilSaved(page, "home.unsnoozeNeedsYou", () =>
+		later.getByRole("button", { name: "Undo" }).click(),
+	);
+	await expect(overdue).toBeVisible();
+	await expect(
+		main.getByRole("link", { name: /^Dollar today, / }),
+	).toBeVisible();
 	expect(errors).toEqual([]);
 });
 

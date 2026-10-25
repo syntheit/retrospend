@@ -1,0 +1,64 @@
+{
+	"metaTitle": "Auswertungen",
+	"header": {
+		"title": "Aktivität"
+	},
+	"toolbar": {
+		"label": "Auswertungen filtern"
+	},
+	"summary": {
+		"lead": "Deine Ausgaben, {range}",
+		"leadOn": "Deine Ausgaben für {names}, {range}",
+		"leadAll": "Deine Ausgaben, gesamter Zeitraum",
+		"leadAllOn": "Deine Ausgaben für {names}, gesamter Zeitraum",
+		"count": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
+		"missingRates": "Kein Kurs für {currencies}, nicht mitgezählt"
+	},
+	"was": {
+		"amount": "<period></period>: <amount></amount> <change></change>",
+		"none": "<period></period>: keine Ausgaben"
+	},
+	"rank": {
+		"none": "Ohne Kategorie",
+		"new": "neu"
+	},
+	"category": {
+		"title": "Nach Kategorie",
+		"showMore": "{count} weitere zeigen",
+		"showFewer": "Weniger zeigen"
+	},
+	"months": {
+		"title": "Monat für Monat",
+		"list": "Monat in Aktivität öffnen",
+		"caption": "Gleiche Filter. Tippe auf einen Monat, um ihn in Aktivität zu öffnen."
+	},
+	"ytd": {
+		"title": "Dieses Jahr bis heute und letztes Jahr",
+		"showUsd": "In USD zeigen",
+		"usdNote": "Jede Ausgabe in USD zu dem Kurs, mit dem sie gespeichert wurde.",
+		"none": "Keine Ausgaben in diesem Jahr mit diesen Filtern.",
+		"missingRates": "Kein Kurs für {currencies}, nicht mitgezählt"
+	},
+	"cashflow": {
+		"title": "Einnahmen und Sparen",
+		"income": "Einnahmen",
+		"saved": "Gespart",
+		"perDay": "Pro Tag",
+		"perMonth": "Pro Monat",
+		"missingRates": "Kein Kurs für {currencies}, nicht mitgezählt",
+		"rate": "{percent} der Einnahmen"
+	},
+	"empty": {
+		"range": "Keine Ausgaben in diesem Zeitraum",
+		"rangeHint": "Wähle einen anderen Zeitraum oder erfasse eine Ausgabe.",
+		"filtered": "Keine Ausgaben passen zu diesen Filtern",
+		"filteredHint": "Entferne einen Filter oder wähle einen anderen Zeitraum.",
+		"clear": "Filter entfernen",
+		"add": "Ausgabe erfassen"
+	},
+	"unavailable": {
+		"title": "Gerade nicht verfügbar",
+		"hint": "Dieser Teil der Auswertungen konnte nicht geladen werden.",
+		"retry": "Erneut versuchen"
+	}
+}

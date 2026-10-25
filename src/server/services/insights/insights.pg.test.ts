@@ -421,6 +421,38 @@ describe("insights year to date", () => {
 		expect(y.missingRates).toEqual([]);
 	});
 
+	it("rows come in home order and say their place in USD order, so the page never compares amounts", async () => {
+		const eva = await insightsUser();
+		const a = await category(eva, "Rent");
+		const b = await category(eva, "Fun");
+		const c = await category(eva, "Gym");
+		await row(eva, {
+			at: "2026-03-03T12:00:00-03:00",
+			amount: "100",
+			usd: "5",
+			categoryId: a,
+		});
+		await row(eva, {
+			at: "2026-03-04T12:00:00-03:00",
+			amount: "50",
+			usd: "9",
+			categoryId: b,
+		});
+		await row(eva, {
+			at: "2026-03-05T12:00:00-03:00",
+			amount: "30",
+			usd: "7",
+			categoryId: c,
+		});
+		const y = await insightsYtd(adminDb, eva, {}, at);
+		// Home: Rent 100, Fun 50, Gym 30. USD: Fun 9, Gym 7, Rent 5.
+		expect(y.categories.map((r) => [r.categoryId, r.usdRank])).toEqual([
+			[a, 2],
+			[b, 0],
+			[c, 1],
+		]);
+	});
+
 	it("February 29 compares with February 28 of the year before", async () => {
 		const leap = await insightsUser();
 		await row(leap, {

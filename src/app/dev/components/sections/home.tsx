@@ -95,6 +95,8 @@ export function NeedsSection() {
 					[CAP.itemSetup, one(0, NEEDS_YOU_MORE)],
 					[CAP.itemRejected, one(1, NEEDS_YOU_MORE)],
 					[CAP.itemBudget, one(2, NEEDS_YOU_MORE)],
+					[CAP.itemShares, one(3, NEEDS_YOU_MORE)],
+					[CAP.itemAging, one(4, NEEDS_YOU_MORE)],
 					[
 						CAP.itemFace,
 						<div className="w-105 max-w-full" key="f">

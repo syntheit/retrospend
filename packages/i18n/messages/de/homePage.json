@@ -16,8 +16,11 @@
 			"arrived": "{title}, {date}",
 			"firstExpense": "Dauert etwa zehn Sekunden",
 			"homeCurrency": "Alle Summen werden darin angezeigt",
-			"importStatement": "CSV oder PDF von deiner Bank"
-		}
+			"importStatement": "CSV oder PDF von deiner Bank",
+			"owedSince": "Seit {date}"
+		},
+		"later": "Bis morgen ausgeblendet",
+		"reminded": "{name} erinnert"
 	},
 	"recent": {
 		"title": "Zuletzt",
@@ -38,5 +41,6 @@
 		"title": "Gerade nicht verfügbar",
 		"hint": "Dieser Teil der Startseite konnte nicht geladen werden.",
 		"retry": "Erneut versuchen"
-	}
+	},
+	"dollarOlder": "{type}, {date}"
 }

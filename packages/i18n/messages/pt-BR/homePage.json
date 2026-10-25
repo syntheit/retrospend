@@ -16,8 +16,11 @@
 			"arrived": "{title}, {date}",
 			"firstExpense": "Leva uns dez segundos",
 			"homeCurrency": "Todos os totais aparecem nela",
-			"importStatement": "CSV ou PDF do seu banco"
-		}
+			"importStatement": "CSV ou PDF do seu banco",
+			"owedSince": "Desde {date}"
+		},
+		"later": "Oculto até amanhã",
+		"reminded": "Lembrete enviado para {name}"
 	},
 	"recent": {
 		"title": "Recentes",
@@ -38,5 +41,6 @@
 		"title": "Indisponível no momento",
 		"hint": "Esta parte do Início não carregou.",
 		"retry": "Tentar de novo"
-	}
+	},
+	"dollarOlder": "{type}, {date}"
 }

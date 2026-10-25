@@ -45,6 +45,8 @@ const ICON: Record<NeedsYouKind, LucideIcon> = {
 	billDue: CalendarClock,
 	missingRate: Coins,
 	startingMoney: Landmark,
+	sharesNeedEnvelope: Wallet,
+	owedAging: AlarmClock,
 	firstExpense: Plus,
 	homeCurrency: Coins,
 	verifyEmail: Mail,
@@ -66,6 +68,8 @@ const ACTION: Record<NeedsYouKind, string> = {
 	billDue: "fund",
 	missingRate: "setRate",
 	startingMoney: "confirm",
+	sharesNeedEnvelope: "choose",
+	owedAging: "remind",
 	firstExpense: "addExpense",
 	homeCurrency: "choose",
 	verifyEmail: "resend",
@@ -107,6 +111,10 @@ function useSentence() {
 					: t("billsDue", { count: item.count });
 			case "missingRate":
 				return t("missingRate", { currencies: item.currencies.join(", ") });
+			case "sharesNeedEnvelope":
+				return t("sharesNeedEnvelope", { count: item.count });
+			case "owedAging":
+				return t("owedAging", { person: item.person });
 			case "startingMoney":
 			case "firstExpense":
 			case "homeCurrency":
@@ -164,7 +172,7 @@ export function NeedsYouItem({
 			node: (
 				<Button
 					// 24px on desktop, 44pt on touch (UI-133), still a quiet link.
-					className="text-fg-3 text-meta can-hover:hover:bg-transparent h-auto min-h-6 px-0 whitespace-nowrap underline underline-offset-2 max-md:min-h-row"
+					className="text-fg-3 text-meta can-hover:hover:bg-transparent max-md:min-h-row h-auto min-h-6 px-0 whitespace-nowrap underline underline-offset-2"
 					kind="ghost"
 					onClick={() => onSecondary(item)}
 				>

@@ -96,9 +96,39 @@ export type OwedFaces = {
 const series = (values: readonly number[] | null) =>
 	values?.some((v) => v !== 0) ? [...values] : [];
 
+/** The row's rate name in the viewer's words, with the day when the rate is older than today. */
+export type DollarLabel = (
+	rateType: string,
+	rateDate: string,
+	today: string,
+) => string;
+
+/**
+ * Dollar today: the price of USD 1 at the person's default rate type. The
+ * row is left out for a USD or crypto home (the server sends none) and while
+ * home has no rate at all (R14: the glance never shows a guess).
+ */
+function dollarRow(dto: GlanceDTO, label?: DollarLabel): GlanceRow[] {
+	const d = dto.dollarToday;
+	if (!d?.value || !d.rateType || !d.rateDate) return [];
+	return [
+		{
+			id: "dollarToday",
+			amount: d.value,
+			href: GLANCE_HREF.dollarToday,
+			figure: d.id,
+			rateLabel: label ? label(d.rateType, d.rateDate, dto.today) : d.rateType,
+		},
+	];
+}
+
 export function toGlanceVM(
 	dto: GlanceDTO,
-	options: { named?: readonly string[]; faces?: OwedFaces } = {},
+	options: {
+		named?: readonly string[];
+		faces?: OwedFaces;
+		dollarLabel?: DollarLabel;
+	} = {},
 ): GlanceVM {
 	const budget = dto.budget?.state === "ready" ? dto.budget : null;
 	const current = series(dto.pace.this);
@@ -125,6 +155,7 @@ export function toGlanceVM(
 			...row("netWorth", dto.netWorth),
 			// Just track: money in beside spent (only sent without a budget part).
 			...(dto.moneyIn ? row("moneyIn", dto.moneyIn) : []),
+			...dollarRow(dto, options.dollarLabel),
 		],
 	};
 }

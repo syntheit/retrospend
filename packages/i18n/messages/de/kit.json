@@ -27,7 +27,8 @@
 	},
 	"money": {
 		"none": "Keine",
-		"noRate": "Noch kein Kurs"
+		"noRate": "Noch kein Kurs",
+		"unavailable": "Nicht verfügbar"
 	},
 	"filter": {
 		"menu": "Filtern"

@@ -48,9 +48,10 @@ describe("nav definition", () => {
 		expect(hrefOf(byId("activity"), none)).toBe("/transactions");
 		expect(hrefOf(byId("recurring"), none)).toBe("/recurring");
 		expect(hrefOf(byId("budget"), none)).toBe("/budget");
-		// Shipped (S4B): Activity and its Recurring tab.
+		// Shipped: Activity with its Recurring and Insights tabs.
 		expect(hrefOf(byId("activity"))).toBe("/activity");
 		expect(hrefOf(byId("recurring"))).toBe("/activity/recurring");
+		expect(hrefOf(byId("insights"))).toBe("/activity/insights");
 		expect(hrefOf(byId("home"), new Set(["/home"]))).toBe("/home");
 		expect(hrefOf(byId("recurring"), new Set(["/activity/recurring"]))).toBe(
 			"/activity/recurring",
@@ -58,7 +59,7 @@ describe("nav definition", () => {
 	});
 
 	it("hides a place that has no page yet", () => {
-		expect(hrefOf(byId("insights"))).toBeNull();
+		expect(hrefOf(byId("insights"), new Set<string>())).toBeNull();
 		expect(hrefOf(byId("insights"), new Set(["/activity/insights"]))).toBe(
 			"/activity/insights",
 		);
@@ -145,12 +146,13 @@ describe("ADD_ACTIONS", () => {
 });
 
 describe("phone Go to", () => {
-	it("reaches Wealth, the tools, Recurring and Settings from the account sheet", () => {
+	it("reaches Wealth, the tools, Recurring, Insights and Settings from the account sheet", () => {
 		expect(PHONE_GO_TO.map((id) => hrefOf(entryOf(id)))).toEqual([
 			"/wealth",
 			"/currencies",
 			"/import",
 			"/activity/recurring",
+			"/activity/insights",
 			"/settings",
 		]);
 	});

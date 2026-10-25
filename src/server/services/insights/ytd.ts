@@ -89,17 +89,26 @@ function rows(current: Side, last: Side): readonly YtdCategoryRow[] {
 			usdFigure: INSIGHTS.ytdByCategoryUsd,
 			value,
 			lastYear: before,
+			usdRank: 0,
 			changePct: change(value, before, "home"),
 			usdChangePct: change(value, before, "usd"),
 		});
 	}
-	return out.sort(
+	const byHome = out.sort(
 		(a, b) =>
 			(b.value.home?.minor ?? Number.NEGATIVE_INFINITY) -
 				(a.value.home?.minor ?? Number.NEGATIVE_INFINITY) ||
 			(b.value.usd?.minor ?? 0) - (a.value.usd?.minor ?? 0) ||
 			(a.categoryId ?? "").localeCompare(b.categoryId ?? ""),
 	);
+	// The page shows USD in this order, so the client never compares amounts.
+	const byUsd = [...byHome].sort(
+		(a, b) =>
+			(b.value.usd?.minor ?? Number.NEGATIVE_INFINITY) -
+				(a.value.usd?.minor ?? Number.NEGATIVE_INFINITY) ||
+			(a.categoryId ?? "").localeCompare(b.categoryId ?? ""),
+	);
+	return byHome.map((row) => ({ ...row, usdRank: byUsd.indexOf(row) }));
 }
 
 export async function ytdIn(

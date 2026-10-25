@@ -20,7 +20,9 @@
 		"billDue": "{title} arrive bientôt à échéance",
 		"billsDue": "{count, plural, one {# facture arrive} other {# factures arrivent}} bientôt à échéance",
 		"missingRate": "Pas encore de taux pour {currencies}",
-		"startingMoney": "Confirme ton argent de départ"
+		"startingMoney": "Confirme ton argent de départ",
+		"owedAging": "{person} te doit de l'argent depuis 60 jours",
+		"sharesNeedEnvelope": "{count, plural, one {# part a besoin d'une enveloppe} other {# parts ont besoin d'une enveloppe}}"
 	},
 	"action": {
 		"assign": "Attribuer",
@@ -35,6 +37,8 @@
 		"takeBack": "Reprendre",
 		"fund": "Financer",
 		"setRate": "Définir le taux",
-		"notReceived": "Pas reçu ?"
+		"notReceived": "Pas reçu ?",
+		"remind": "Relancer",
+		"open": "Ouvrir"
 	}
 }

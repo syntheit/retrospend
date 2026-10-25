@@ -211,6 +211,15 @@ describe("NeedsYouList: setup, rejected and budget kinds", () => {
 		{ id: "b4", kind: "billDue", title: null, count: 3, amount: ars(9000000) },
 		{ id: "b5", kind: "missingRate", currencies: ["BRL", "CLP"] },
 		{ id: "b6", kind: "startingMoney" },
+		{ id: "b7", kind: "sharesNeedEnvelope", count: 3 },
+		{
+			id: "p1",
+			kind: "owedAging",
+			person: "Lucía",
+			amount: ars(5000000),
+			action: "remind",
+		},
+		{ id: "p2", kind: "owedAging", person: "Paz", amount: null },
 	];
 
 	it("writes one sentence and one action per new kind", () => {
@@ -227,6 +236,9 @@ describe("NeedsYouList: setup, rejected and budget kinds", () => {
 			"3 bills are due soon",
 			"No rate for BRL, CLP yet",
 			"Confirm your starting money",
+			"3 shares need an envelope",
+			"Lucía has owed you for 60 days",
+			"Paz has owed you for 60 days",
 		])
 			expect(t).toContain(s);
 		for (const a of [
@@ -238,6 +250,7 @@ describe("NeedsYouList: setup, rejected and budget kinds", () => {
 			"Take back",
 			"Fund",
 			"Set rate",
+			"Remind",
 		])
 			expect(t).toContain(a);
 	});

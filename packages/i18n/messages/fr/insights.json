@@ -1,0 +1,64 @@
+{
+	"metaTitle": "Analyses",
+	"header": {
+		"title": "Activité"
+	},
+	"toolbar": {
+		"label": "Filtrer les analyses"
+	},
+	"summary": {
+		"lead": "Tes dépenses, {range}",
+		"leadOn": "Tes dépenses pour {names}, {range}",
+		"leadAll": "Tes dépenses, depuis toujours",
+		"leadAllOn": "Tes dépenses pour {names}, depuis toujours",
+		"count": "{count, plural, one {# dépense} other {# dépenses}}",
+		"missingRates": "Pas de taux pour {currencies}, non compté"
+	},
+	"was": {
+		"amount": "<period></period> : <amount></amount> <change></change>",
+		"none": "<period></period> : aucune dépense"
+	},
+	"rank": {
+		"none": "Sans catégorie",
+		"new": "nouvelle"
+	},
+	"category": {
+		"title": "Par catégorie",
+		"showMore": "Afficher {count} de plus",
+		"showFewer": "Afficher moins"
+	},
+	"months": {
+		"title": "Mois par mois",
+		"list": "Ouvrir un mois dans Activité",
+		"caption": "Mêmes filtres. Touche un mois pour l'ouvrir dans Activité."
+	},
+	"ytd": {
+		"title": "Depuis le début de l'année et l'an dernier",
+		"showUsd": "Afficher en USD",
+		"usdNote": "Chaque dépense en USD au taux de son enregistrement.",
+		"none": "Aucune dépense cette année avec ces filtres.",
+		"missingRates": "Pas de taux pour {currencies}, non compté"
+	},
+	"cashflow": {
+		"title": "Revenus et épargne",
+		"income": "Revenus",
+		"saved": "Épargné",
+		"perDay": "Par jour",
+		"perMonth": "Par mois",
+		"missingRates": "Pas de taux pour {currencies}, non compté",
+		"rate": "{percent} des revenus"
+	},
+	"empty": {
+		"range": "Aucune dépense sur cette période",
+		"rangeHint": "Choisis une autre période ou ajoute une dépense.",
+		"filtered": "Aucune dépense ne correspond à ces filtres",
+		"filteredHint": "Retire un filtre ou choisis une autre période.",
+		"clear": "Retirer les filtres",
+		"add": "Ajouter une dépense"
+	},
+	"unavailable": {
+		"title": "Indisponible pour le moment",
+		"hint": "Cette partie des analyses n'a pas pu se charger.",
+		"retry": "Réessayer"
+	}
+}

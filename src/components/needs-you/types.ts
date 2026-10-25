@@ -73,6 +73,13 @@ export type NeedsYouItemVM =
 	| (Base & { kind: "missingRate"; currencies: string[] })
 	/** The budget's starting money waits for a confirm. */
 	| (Base & { kind: "startingMoney" })
+	/** Shares of shared expenses with no category, kept in Everything else. */
+	| (Base & { kind: "sharesNeedEnvelope"; count: number })
+	/**
+	 * Someone has owed you for 60 days (the item leads with their face). The
+	 * amount is null when they owe in several currencies with nothing held.
+	 */
+	| (Base & { kind: "owedAging"; person: string; amount: MoneyValue | null })
 	/** New-user setup prompts (no amount). */
 	| (Base & { kind: "firstExpense" })
 	| (Base & { kind: "homeCurrency" })

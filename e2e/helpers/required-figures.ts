@@ -4,17 +4,24 @@
  * missing, so deleting a tag cannot hide a mismatch. Today's pages carry no
  * figures yet; S4 adds each page's ids here as it tags them.
  */
-import { MARTIN, PROJECT_IDS, SOFIA } from "../fixtures/personas";
+import { MARTIN, PROJECT_IDS, SOFIA, seedId } from "../fixtures/personas";
 
 const DEPTO = PROJECT_IDS.depto;
 const FLORIPA = PROJECT_IDS.floripa;
 const ME = `user:${SOFIA.id}`;
+const RENT = seedId("cat", "sofia", "rent");
 
 export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	dashboard: [],
 	// S4A: the redesigned Home on Sofía's seed. The pool (budget.notPlannedYet)
 	// shows only with an envelope book, which the seed does not have.
-	home: ["glance.spent", "owed.owedToYou", "owed.youOwe", "netWorth"],
+	home: [
+		"glance.spent",
+		"owed.owedToYou",
+		"owed.youOwe",
+		"netWorth",
+		"rate.dollarToday",
+	],
 	transactions: [],
 	people: [],
 	// S4D: the redesigned People page (the smoke walk opens the old one).
@@ -47,6 +54,21 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	activity: ["entry.amount:shared:e2e_tx_dp_calefon"],
 	activityMonth: ["spent"],
 	recurring: ["recurring.cost.out.month"],
+	// S4A part 2: Insights on Sofía's seed, as the flow opens it: this month's
+	// total, rent, the year to date and the cashflow; in USD at the rate each
+	// expense was saved with; and a range with Compare.
+	insights: [
+		"insights.spent",
+		`insights.byCategory:${RENT}`,
+		"insights.ytd",
+		`insights.ytdByCategory:${RENT}`,
+		"insights.income",
+		"insights.saved",
+		"insights.dailyAverage",
+		"insights.monthlyAverage",
+	],
+	insightsUsd: ["insights.ytdUsd", `insights.ytdByCategoryUsd:${RENT}`],
+	insightsCompare: ["insights.spent", "insights.spentPrevious"],
 	// S4G: the Add expense sheet with a foreign amount, audited inside the
 	// sheet: the booked home value and the preview's spending line.
 	addExpense: ["entry.home", "preview.spent.delta"],

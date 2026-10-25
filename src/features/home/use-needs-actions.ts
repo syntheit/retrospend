@@ -6,6 +6,7 @@ import { useExpenseModal } from "~/components/expense-modal-provider";
 import { useToast } from "~/components/ui/toast";
 import { firstName } from "~/features/people/filter";
 import { canConfirm, useRecurring } from "~/features/recurring/use-recurring";
+import { generateId } from "~/lib/id";
 import type {
 	NeedsYouItem,
 	NeedsYouList,
@@ -56,6 +57,9 @@ export function useNeedsActions(list: NeedsYouList | undefined) {
 	const confirm = api.settlement.paymentConfirm.useMutation();
 	const unconfirm = api.settlement.paymentUnconfirm.useMutation();
 	const resend = api.auth.resendVerificationEmail.useMutation();
+	const remind = api.settlement.requestPayment.useMutation();
+	const snooze = api.home.snoozeNeedsYou.useMutation();
+	const unsnooze = api.home.unsnoozeNeedsYou.useMutation();
 	const [review, setReview] = useState<NeedsItemDTO | null>(null);
 	const failed = useCallback(
 		(e: unknown) => toast.failed(e instanceof Error ? e.message : t("failed")),
@@ -78,6 +82,40 @@ export function useNeedsActions(list: NeedsYouList | undefined) {
 			}
 		},
 		[list, confirm, unconfirm, toast, t, failed],
+	);
+
+	const remindPerson = useCallback(
+		async (item: NeedsYouItem) => {
+			const key = item.people[0];
+			if (!key || !list) return;
+			const [participantType, participantId] = key.split(":") as [
+				ParticipantKind,
+				string,
+			];
+			const name = firstName(list.people[key]?.name ?? "");
+			try {
+				await remind.mutateAsync({ participantType, participantId });
+				toast.saved(t("reminded", { name }));
+			} catch (e) {
+				failed(e);
+			}
+		},
+		[list, remind, toast, t, failed],
+	);
+
+	/** Later: the item leaves until tomorrow, and Undo brings it back (not a money action). */
+	const later = useCallback(
+		async (itemId: string) => {
+			try {
+				await snooze.mutateAsync({ id: generateId(), itemId });
+				toast.saved(t("later"), {
+					undo: () => unsnooze.mutateAsync({ itemId }),
+				});
+			} catch (e) {
+				failed(e);
+			}
+		},
+		[snooze, unsnooze, toast, t, failed],
 	);
 
 	const confirmRecurring = useCallback(
@@ -104,6 +142,8 @@ export function useNeedsActions(list: NeedsYouList | undefined) {
 				case "recurring.due":
 				case "recurring.overdue":
 					return confirmRecurring(item);
+				case "people.owedAging":
+					return void remindPerson(item);
 				case "setup.firstExpense":
 					return modal.openNewExpense();
 				case "setup.verifyEmail":
@@ -113,11 +153,22 @@ export function useNeedsActions(list: NeedsYouList | undefined) {
 					});
 			}
 		},
-		[list, confirmPayment, confirmRecurring, modal, resend, toast, t, failed],
+		[
+			list,
+			confirmPayment,
+			confirmRecurring,
+			remindPerson,
+			modal,
+			resend,
+			toast,
+			t,
+			failed,
+		],
 	);
 
 	return {
 		run,
+		later,
 		review,
 		closeReview: () => setReview(null),
 		recurring,
