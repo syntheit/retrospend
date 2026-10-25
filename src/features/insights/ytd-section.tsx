@@ -24,9 +24,12 @@ import { useCategoryRefs, useRankWords } from "./use-rank-words";
 export function YtdSection({
 	query,
 	today,
+	named,
 	hrefOf,
 }: {
 	query: PartQuery<YtdDTO>;
+	/** Currencies the lead already names (a fact appears once). */
+	named: readonly string[];
 	today: string;
 	/** Activity's link for this page's filters over a span, narrowed to a category. */
 	hrefOf: (span: Span, categoryId?: string) => string;
@@ -65,6 +68,7 @@ export function YtdSection({
 					hrefOf={hrefOf}
 					items={items}
 					label={label}
+					named={named}
 					usd={usd}
 				/>
 			)}
@@ -74,12 +78,14 @@ export function YtdSection({
 
 function YtdBody({
 	data,
+	named,
 	items,
 	usd,
 	label,
 	hrefOf,
 }: {
 	data: YtdDTO;
+	named: readonly string[];
 	items: ReturnType<typeof ytdItems>;
 	usd: boolean;
 	label: (range: Span) => string;
@@ -90,6 +96,7 @@ function YtdBody({
 	const total = data.total[key];
 	const last = data.lastYearTotal[key];
 	const change = usd ? data.total.usdChangePct : data.total.changePct;
+	const unnamed = data.missingRates.filter((c) => !named.includes(c));
 	return (
 		<>
 			{usd && <p className="text-fg-3 text-meta mb-2">{t("usdNote")}</p>}
@@ -126,9 +133,9 @@ function YtdBody({
 			) : (
 				<p className="text-fg-3 text-small">{t("none")}</p>
 			)}
-			{data.missingRates.length > 0 && (
+			{unnamed.length > 0 && (
 				<p className="text-fg-3 text-small mt-3">
-					{t("missingRates", { currencies: data.missingRates.join(", ") })}
+					{t("missingRates", { currencies: unnamed.join(", ") })}
 				</p>
 			)}
 		</>

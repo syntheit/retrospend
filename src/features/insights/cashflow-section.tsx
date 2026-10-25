@@ -28,10 +28,18 @@ function Figure({ figure }: { figure: InsightsFigure }) {
  * ignores the chips, because income has no category, so the page shows it
  * only when no chip is set.
  */
-export function CashflowSection({ query }: { query: PartQuery<CashflowDTO> }) {
+export function CashflowSection({
+	query,
+	named,
+}: {
+	query: PartQuery<CashflowDTO>;
+	/** Currencies the lead already names (a fact appears once). */
+	named: readonly string[];
+}) {
 	const t = useTranslations("insights.cashflow");
 	const percent = usePercent();
 	const data = query.data;
+	const unnamed = (data?.missingRates ?? []).filter((c) => !named.includes(c));
 	return (
 		<Section id="cashflow" title={t("title")}>
 			{query.isPending ? (
@@ -68,9 +76,9 @@ export function CashflowSection({ query }: { query: PartQuery<CashflowDTO> }) {
 							title={t("perMonth")}
 						/>
 					</RowList>
-					{data.missingRates.length > 0 && (
+					{unnamed.length > 0 && (
 						<p className="text-fg-3 text-small mt-3">
-							{t("missingRates", { currencies: data.missingRates.join(", ") })}
+							{t("missingRates", { currencies: unnamed.join(", ") })}
 						</p>
 					)}
 				</>
