@@ -327,6 +327,7 @@
     "never": "Nunca",
     "syncing": "Sincronizando...",
     "syncNow": "Sincronizar agora",
+    "syncFailed": "Falha na sincronização",
     "syncUnavailable": "A sincronização de câmbio não está disponível neste servidor."
   },
   "recurring": {
@@ -1158,7 +1159,14 @@
     "aiUsernameLabel": "Nome de usuário",
     "externalLimitReached": "Limite externo atingido",
     "localLimitReached": "Limite local atingido",
-    "perUser": "por usuário"
+    "perUser": "por usuário",
+    "health": "Integridade",
+    "ago": "há {time}",
+    "copyPassword": "Copiar senha",
+    "backupDuration": "Levou {seconds} s",
+    "tokensOllama": "Tokens por mês, Ollama",
+    "tokensOpenRouter": "Tokens por mês, OpenRouter",
+    "feedbackTitle": "Feedback"
   },
   "auditLog": {
     "title": "Logs de auditoria",
@@ -1625,6 +1633,9 @@
     "navSplitting": "Divisão",
     "navWealth": "Patrimônio",
     "navDocs": "Documentação",
+    "navMain": "Navegação principal",
+    "openMenu": "Abrir menu",
+    "docsMenu": "Documentação",
     "madeBy": "Feito por",
     "termsAndConditions": "Termos e Condições",
     "privacyPolicy": "Política de Privacidade",

@@ -1,19 +1,11 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
-import { Button } from "~/components/ui/button";
-import {
-	ResponsiveDialog,
-	ResponsiveDialogContent,
-	ResponsiveDialogDescription,
-	ResponsiveDialogFooter,
-	ResponsiveDialogHeader,
-	ResponsiveDialogTitle,
-} from "~/components/ui/responsive-dialog";
+import { Sheet } from "~/components/ui/sheet";
 import { Textarea } from "~/components/ui/textarea";
+import { useToast } from "~/components/ui/toast";
 import { APP_VERSION } from "~/lib/version";
 import { api } from "~/trpc/react";
 
@@ -24,101 +16,69 @@ interface FeedbackModalProps {
 	onOpenChange: (open: boolean) => void;
 }
 
+/** Send feedback to the admin: one sheet, one text box, one Send. */
 export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
 	const t = useTranslations("feedback");
+	const toast = useToast();
 	const [message, setMessage] = useState("");
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const pathname = usePathname();
-
-	const submitMutation = api.feedback.submit.useMutation({
-		onSuccess: () => {
-			toast.success(t("success"));
-			setMessage("");
-			onOpenChange(false);
-		},
-		onError: (error) => {
-			toast.error(error.message || t("error"));
-		},
-	});
+	const submit = api.feedback.submit.useMutation();
 
 	useEffect(() => {
-		if (open) {
-			setMessage("");
-			// Auto-focus textarea when modal opens
-			requestAnimationFrame(() => {
-				textareaRef.current?.focus();
-			});
-		}
+		if (!open) return;
+		setMessage("");
+		requestAnimationFrame(() => textareaRef.current?.focus());
 	}, [open]);
 
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-		if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-			handleSubmit();
+	const handleSubmit = async () => {
+		if (!message.trim()) return false;
+		try {
+			await submit.mutateAsync({
+				message: message.trim(),
+				pageUrl: pathname,
+				userAgent:
+					typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+				viewportSize:
+					typeof window !== "undefined"
+						? `${window.innerWidth}x${window.innerHeight}`
+						: undefined,
+				appVersion: APP_VERSION,
+			});
+		} catch (error) {
+			toast.failed(error instanceof Error ? error.message : t("error"));
+			return false;
 		}
-	};
-
-	const handleSubmit = () => {
-		if (!message.trim()) return;
-
-		submitMutation.mutate({
-			message: message.trim(),
-			pageUrl: pathname,
-			userAgent:
-				typeof navigator !== "undefined"
-					? navigator.userAgent
-					: undefined,
-			viewportSize:
-				typeof window !== "undefined"
-					? `${window.innerWidth}x${window.innerHeight}`
-					: undefined,
-			appVersion: APP_VERSION,
-		});
+		toast.saved(t("success"));
+		setMessage("");
 	};
 
 	return (
-		<ResponsiveDialog onOpenChange={onOpenChange} open={open}>
-			<ResponsiveDialogContent className="sm:max-w-md">
-				<ResponsiveDialogHeader>
-					<ResponsiveDialogTitle>{t("title")}</ResponsiveDialogTitle>
-					<ResponsiveDialogDescription>
-						{t("description")}
-					</ResponsiveDialogDescription>
-				</ResponsiveDialogHeader>
-				<div className="relative">
-					<Textarea
-						className="min-h-[120px] resize-none"
-						disabled={submitMutation.isPending}
-						maxLength={MAX_LENGTH}
-						onChange={(e) => setMessage(e.target.value)}
-						onKeyDown={handleKeyDown}
-						placeholder={t("placeholder")}
-						ref={textareaRef}
-						value={message}
-					/>
-					{message.length > 0 && (
-						<span className="absolute right-2 bottom-2 tabular-nums text-muted-foreground text-xs">
-							{message.length} / {MAX_LENGTH}
-						</span>
-					)}
-				</div>
-				<ResponsiveDialogFooter>
-					<Button
-						disabled={submitMutation.isPending}
-						onClick={() => onOpenChange(false)}
-						variant="ghost"
-					>
-						{t("cancel")}
-					</Button>
-					<Button
-						disabled={!message.trim() || submitMutation.isPending}
-						onClick={handleSubmit}
-					>
-						{submitMutation.isPending
-							? t("submitting")
-							: t("submit")}
-					</Button>
-				</ResponsiveDialogFooter>
-			</ResponsiveDialogContent>
-		</ResponsiveDialog>
+		<Sheet
+			description={t("description")}
+			onOpenChange={onOpenChange}
+			onSubmit={handleSubmit}
+			open={open}
+			submitDisabled={!message.trim()}
+			submitLabel={t("submit")}
+			title={t("title")}
+		>
+			<div className="relative">
+				<Textarea
+					className="min-h-30 resize-none"
+					disabled={submit.isPending}
+					maxLength={MAX_LENGTH}
+					onChange={(e) => setMessage(e.target.value)}
+					placeholder={t("placeholder")}
+					ref={textareaRef}
+					value={message}
+				/>
+				{message.length > 0 && (
+					<span className="text-fg-3 text-meta absolute right-2 bottom-2 tabular-nums">
+						{message.length} / {MAX_LENGTH}
+					</span>
+				)}
+			</div>
+		</Sheet>
 	);
 }

@@ -1,17 +1,15 @@
+"use client";
+
 import { Check, Copy } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
-import {
-	ResponsiveDialog,
-	ResponsiveDialogContent,
-	ResponsiveDialogDescription,
-	ResponsiveDialogFooter,
-	ResponsiveDialogHeader,
-	ResponsiveDialogTitle,
-} from "~/components/ui/responsive-dialog";
+import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
 import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import { Sheet } from "~/components/ui/sheet";
+import { useToast } from "~/components/ui/toast";
+import { Tip } from "~/components/ui/tooltip";
 
 interface ActionDialogProps {
 	open: boolean;
@@ -28,6 +26,10 @@ interface ActionDialogProps {
 	};
 }
 
+/**
+ * An admin action that needs a yes: a confirmation naming the person, and,
+ * after a password reset, a sheet that shows the new password once.
+ */
 export function ActionDialog({
 	open,
 	onOpenChange,
@@ -42,84 +44,77 @@ export function ActionDialog({
 }: ActionDialogProps) {
 	const t = useTranslations("admin");
 
+	if (resetResult) {
+		return (
+			<Sheet
+				description={description}
+				footer={
+					<Button kind="secondary" onClick={onCancel}>
+						{t("close")}
+					</Button>
+				}
+				onOpenChange={onOpenChange}
+				open={open}
+				title={title}
+			>
+				<PasswordReveal password={resetResult.newPassword} />
+			</Sheet>
+		);
+	}
+
 	return (
-		<ResponsiveDialog onOpenChange={onOpenChange} open={open}>
-			<ResponsiveDialogContent>
-				<ResponsiveDialogHeader>
-					<ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
-					<ResponsiveDialogDescription>{description}</ResponsiveDialogDescription>
-				</ResponsiveDialogHeader>
-
-				{resetResult && <PasswordReveal password={resetResult.newPassword} />}
-
-				<ResponsiveDialogFooter>
-					{resetResult ? (
-						<Button onClick={onCancel}>{t("close")}</Button>
-					) : (
-						<>
-							<Button disabled={isLoading} onClick={onCancel} variant="outline">
-								{t("cancel")}
-							</Button>
-							<Button
-								disabled={isLoading}
-								onClick={onConfirm}
-								variant={variant}
-							>
-								{isLoading ? t("processing") : confirmLabel}
-							</Button>
-						</>
-					)}
-				</ResponsiveDialogFooter>
-			</ResponsiveDialogContent>
-		</ResponsiveDialog>
+		<ConfirmationDialog
+			confirmLabel={confirmLabel}
+			description={description}
+			isLoading={isLoading}
+			onCancel={onCancel}
+			onConfirm={onConfirm}
+			onOpenChange={onOpenChange}
+			open={open}
+			title={title}
+			variant={variant}
+		/>
 	);
 }
 
 function PasswordReveal({ password }: { password: string }) {
 	const t = useTranslations("admin");
+	const toast = useToast();
 	const [copied, setCopied] = useState(false);
 
 	const handleCopyPassword = async () => {
 		try {
 			await navigator.clipboard.writeText(password);
 			setCopied(true);
-			toast.success(t("passwordCopied"));
+			toast.saved(t("passwordCopied"));
 			setTimeout(() => setCopied(false), 2000);
 		} catch (_error) {
-			toast.error(t("passwordCopyFailed"));
+			toast.failed(t("passwordCopyFailed"));
 		}
 	};
 
 	return (
-		<div className="space-y-4">
-			<div>
-				<label className="font-medium text-sm" htmlFor="new-password">
-					{t("newPassword")}
-				</label>
-				<div className="mt-1 flex gap-2">
-					<Input
-						className="font-mono"
-						id="new-password"
-						readOnly
-						value={password}
-					/>
+		<div className="flex flex-col gap-2">
+			<Label htmlFor="new-password">{t("newPassword")}</Label>
+			<div className="flex gap-2">
+				<Input
+					className="font-mono"
+					id="new-password"
+					readOnly
+					value={password}
+				/>
+				<Tip content={t("copyPassword")}>
 					<Button
-						className="shrink-0"
+						aria-label={t("copyPassword")}
+						icon
+						kind="secondary"
 						onClick={handleCopyPassword}
-						size="icon"
-						variant="outline"
 					>
-						{copied ? (
-							<Check className="h-4 w-4 text-green-600" />
-						) : (
-							<Copy className="h-4 w-4" />
-						)}
+						{copied ? <Check /> : <Copy />}
 					</Button>
-				</div>
-				<p className="mt-2 text-muted-foreground text-sm">
-					{t("passwordShareNote")}
-				</p>
+				</Tip>
 			</div>
+			<p className="text-fg-3 text-small">{t("passwordShareNote")}</p>
 		</div>
 	);
 }

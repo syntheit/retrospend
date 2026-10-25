@@ -15,10 +15,9 @@ import { useTranslations } from "next-intl";
 import { use, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CurrencyPicker } from "~/components/currency-picker";
-import { UserAvatar } from "~/components/ui/user-avatar";
+import { Face } from "~/components/ui/avatar-face";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -100,8 +99,7 @@ function PaySkeleton() {
 	return (
 		<div className="flex min-h-dvh items-center justify-center p-4">
 			<div className="flex w-full max-w-[500px] flex-col gap-3">
-				<Card>
-					<CardContent className="space-y-4 p-5 sm:p-6">
+				<div className="space-y-4 p-5 sm:p-6">
 						<div className="flex items-center gap-3">
 							<Skeleton className="h-12 w-12 rounded-full" />
 							<div className="space-y-2">
@@ -114,8 +112,7 @@ function PaySkeleton() {
 							<Skeleton className="h-24 w-full rounded-lg" />
 							<Skeleton className="h-24 w-full rounded-lg" />
 						</div>
-					</CardContent>
-				</Card>
+					</div>
 				<Skeleton className="h-24 w-full rounded-xl" />
 			</div>
 		</div>
@@ -185,8 +182,7 @@ function PaymentMethodCard({
 	};
 
 	return (
-		<Card>
-			<CardContent className="space-y-2 px-3 py-2.5">
+		<div className="border-line rounded-panel space-y-2 border px-3 py-2.5">
 				<div className="flex items-center gap-2">
 					<PaymentMethodIcon
 						currency={method.currency}
@@ -283,8 +279,7 @@ function PaymentMethodCard({
 						/>
 					)}
 				</div>
-			</CardContent>
-		</Card>
+			</div>
 	);
 }
 
@@ -333,8 +328,7 @@ export default function PayPage({ params }: { params: PageParams }) {
 
 		return (
 			<div className="flex min-h-dvh items-center justify-center p-4">
-				<Card className="w-full max-w-[500px]">
-					<CardContent className="space-y-4 p-5 text-center sm:p-6">
+				<div className="w-full max-w-[500px] space-y-4 p-5 text-center sm:p-6">
 						<h1 className="font-bold text-xl">
 							{isNotFound ? t("profileNotFound") : t("somethingWentWrong")}
 						</h1>
@@ -354,8 +348,7 @@ export default function PayPage({ params }: { params: PageParams }) {
 								<Link href="/">{t("goToRetrospend")}</Link>
 							</Button>
 						</div>
-					</CardContent>
-				</Card>
+					</div>
 			</div>
 		);
 	}
@@ -366,15 +359,10 @@ export default function PayPage({ params }: { params: PageParams }) {
 	return (
 		<div className="flex min-h-dvh items-center justify-center p-4">
 			<div className="flex w-full max-w-[500px] flex-col gap-3">
-				<Card>
-					<CardContent className="p-5 sm:p-6">
+				<div className="p-5 sm:p-6">
 						{/* Header */}
 						<div className="flex items-center gap-3">
-							<UserAvatar
-								avatarUrl={data.avatar}
-								name={data.displayName}
-								size="md"
-							/>
+							<Face imageUrl={data.avatar} name={data.displayName} size="md" />
 							<div className="min-w-0">
 								<h1 className="font-bold text-xl">{isDonate ? t("donateTo", { name: data.displayName }) : t("payTo", { name: data.displayName })}</h1>
 								<Link
@@ -456,12 +444,10 @@ export default function PayPage({ params }: { params: PageParams }) {
 								</p>
 							</div>
 						)}
-					</CardContent>
-				</Card>
+					</div>
 
 				{/* Branded Footer */}
-				<Card className="bg-muted/30">
-					<CardContent className="flex flex-col items-center gap-2 p-4 text-center">
+				<div className="flex flex-col items-center gap-2 p-4 text-center">
 						<div className="flex items-center gap-2">
 							<Image
 								alt="Retrospend"
@@ -483,8 +469,7 @@ export default function PayPage({ params }: { params: PageParams }) {
 								<ChevronRight className="h-3.5 w-3.5" />
 							</Link>
 						</Button>
-					</CardContent>
-				</Card>
+					</div>
 			</div>
 		</div>
 	);

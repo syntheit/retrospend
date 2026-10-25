@@ -327,6 +327,7 @@
     "never": "Никогда",
     "syncing": "Синхронизация...",
     "syncNow": "Синхронизировать",
+    "syncFailed": "Не удалось синхронизировать",
     "syncUnavailable": "Синхронизация курсов недоступна на этом сервере."
   },
   "recurring": {
@@ -1158,7 +1159,14 @@
     "aiUsernameLabel": "Имя пользователя",
     "externalLimitReached": "Лимит внешнего ИИ исчерпан",
     "localLimitReached": "Лимит локального ИИ исчерпан",
-    "perUser": "на пользователя"
+    "perUser": "на пользователя",
+    "health": "Состояние",
+    "ago": "{time} назад",
+    "copyPassword": "Копировать пароль",
+    "backupDuration": "Заняло {seconds} с",
+    "tokensOllama": "Токенов в месяц, Ollama",
+    "tokensOpenRouter": "Токенов в месяц, OpenRouter",
+    "feedbackTitle": "Отзывы"
   },
   "auditLog": {
     "title": "Журналы аудита",
@@ -1625,6 +1633,9 @@
     "navSplitting": "Совместные расходы",
     "navWealth": "Капитал",
     "navDocs": "Документация",
+    "navMain": "Основная навигация",
+    "openMenu": "Открыть меню",
+    "docsMenu": "Документация",
     "madeBy": "Автор:",
     "termsAndConditions": "Условия использования",
     "privacyPolicy": "Политика конфиденциальности",

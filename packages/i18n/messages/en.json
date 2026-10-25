@@ -327,6 +327,7 @@
     "never": "Never",
     "syncing": "Syncing...",
     "syncNow": "Sync Now",
+    "syncFailed": "Sync failed",
     "syncUnavailable": "Rate sync is not available on this server."
   },
   "recurring": {
@@ -1158,7 +1159,14 @@
     "aiUsernameLabel": "Username",
     "externalLimitReached": "External limit reached",
     "localLimitReached": "Local limit reached",
-    "perUser": "per user"
+    "perUser": "per user",
+    "health": "Health",
+    "ago": "{time} ago",
+    "copyPassword": "Copy password",
+    "backupDuration": "Took {seconds}s",
+    "tokensOllama": "Tokens per month, Ollama",
+    "tokensOpenRouter": "Tokens per month, OpenRouter",
+    "feedbackTitle": "Feedback"
   },
   "auditLog": {
     "title": "Audit Logs",
@@ -1625,6 +1633,9 @@
     "navSplitting": "Splitting",
     "navWealth": "Wealth",
     "navDocs": "Docs",
+    "navMain": "Main navigation",
+    "openMenu": "Open menu",
+    "docsMenu": "Docs",
     "madeBy": "Made by",
     "termsAndConditions": "Terms & Conditions",
     "privacyPolicy": "Privacy Policy",

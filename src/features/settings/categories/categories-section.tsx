@@ -6,16 +6,16 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { ActionMenu } from "~/components/actions/action-menu";
 import { Row, RowList, RowSub } from "~/components/rows/row";
-import { CategoryManagerDialog } from "~/components/settings/category-manager-dialog";
 import { Button } from "~/components/ui/button";
 import { CategoryTile } from "~/components/ui/category-badge";
 import { Empty } from "~/components/ui/empty-state";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useCategoryName } from "~/hooks/use-category-name";
+import { categoryTone } from "~/lib/category-tone";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { useAutosave } from "../autosave";
 import { SectionShell, SectionUnavailable } from "../section-shell";
-import { categoryTone } from "~/lib/category-tone";
+import { CategoryManager } from "./category-manager";
 
 type Category = RouterOutputs["categories"]["getAll"][number];
 type Manager = { id: string | null; intent: "add" | "delete" | null } | null;
@@ -97,7 +97,7 @@ export function CategoriesSection() {
 					)}
 				</>
 			)}
-			<CategoryManagerDialog
+			<CategoryManager
 				initialCategoryId={manager?.id ?? null}
 				intent={manager?.intent ?? null}
 				onOpenChange={(open) => {

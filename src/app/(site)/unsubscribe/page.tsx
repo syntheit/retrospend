@@ -1,18 +1,12 @@
 "use client";
 
-import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Suspense, useState } from "react";
+import { AuthPanel } from "~/app/(site)/_components/auth-panel";
 import { Button } from "~/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "~/components/ui/card";
 import { api } from "~/trpc/react";
 
 type State = "idle" | "loading" | "success" | "error" | "invalid";
@@ -46,66 +40,59 @@ function UnsubscribeInner() {
 
 	if (!token || !userId || !type) {
 		return (
-			<Card className="w-full max-w-md">
-				<CardHeader className="space-y-1">
-					<AlertCircle className="mx-auto h-10 w-10 text-destructive" />
-					<CardTitle className="text-center">{t("invalidLink")}</CardTitle>
-					<CardDescription className="text-center">
-						{t("invalidLinkDescription")}
-					</CardDescription>
-				</CardHeader>
-			</Card>
+			<AuthPanel
+				description={t("invalidLinkDescription")}
+				title={t("invalidLink")}
+			/>
 		);
 	}
 
 	if (state === "success") {
 		return (
-			<Card className="w-full max-w-md">
-				<CardHeader className="space-y-1">
-					<CheckCircle className="mx-auto h-10 w-10 text-emerald-500" />
-					<CardTitle className="text-center">{t("unsubscribed")}</CardTitle>
-					<CardDescription className="text-center">
-						{t("unsubscribedFrom", { type: typeLabel })}{" "}
-						{t("manageInSettings")}{" "}
+			<AuthPanel
+				description={
+					<>
+						{t("unsubscribedFrom", { type: typeLabel })} {t("manageInSettings")}{" "}
 						<Link
-							className="text-primary hover:underline"
+							className="text-accent-strong rounded-ctl focus-visible:outline-brand text-small can-hover:hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
 							href="/settings"
 						>
 							{t("settings")}
 						</Link>
 						.
-					</CardDescription>
-				</CardHeader>
-			</Card>
+					</>
+				}
+				title={t("unsubscribed")}
+			/>
 		);
 	}
 
 	if (state === "error") {
 		return (
-			<Card className="w-full max-w-md">
-				<CardHeader className="space-y-1">
-					<AlertCircle className="mx-auto h-10 w-10 text-destructive" />
-					<CardTitle className="text-center">{t("invalidLink")}</CardTitle>
-					<CardDescription className="text-center">
-						{errorMessage || t("errorDescription")}
-					</CardDescription>
-				</CardHeader>
-				<CardContent className="text-center">
+			<AuthPanel
+				description={errorMessage || t("errorDescription")}
+				title={t("invalidLink")}
+			>
+				<div className="text-center">
 					<Link
-						className="text-sm text-primary hover:underline"
+						className="text-accent-strong rounded-ctl focus-visible:outline-brand text-small can-hover:hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
 						href="/settings"
 					>
 						{t("managePreferencesLink")}
 					</Link>
-				</CardContent>
-			</Card>
+				</div>
+			</AuthPanel>
 		);
 	}
 
 	const handleUnsubscribe = async () => {
 		setState("loading");
 		try {
-			await unsubscribe.mutateAsync({ token, userId, type: type as Parameters<typeof unsubscribe.mutateAsync>[0]["type"] });
+			await unsubscribe.mutateAsync({
+				token,
+				userId,
+				type: type as Parameters<typeof unsubscribe.mutateAsync>[0]["type"],
+			});
 			setState("success");
 		} catch (err) {
 			setState("error");
@@ -120,58 +107,51 @@ function UnsubscribeInner() {
 	};
 
 	return (
-		<Card className="w-full max-w-md">
-			<CardHeader className="space-y-1">
-				<CardTitle className="text-center">{t("pageTitle")}</CardTitle>
-				<CardDescription className="text-center">
-					{t("description", { type: typeLabel })}
-				</CardDescription>
-			</CardHeader>
-			<CardContent className="flex flex-col gap-3">
+		<AuthPanel
+			description={t("description", { type: typeLabel })}
+			title={t("pageTitle")}
+		>
+			<div className="flex flex-col gap-3">
 				<Button
 					className="w-full"
 					disabled={state === "loading"}
+					kind="primary"
+					loading={state === "loading"}
 					onClick={handleUnsubscribe}
 				>
-					{state === "loading" ? (
-						<>
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-							{t("unsubscribing")}
-						</>
-					) : (
-						t("unsubscribeFromType", { type: typeLabel })
-					)}
+					{t("unsubscribeFromType", { type: typeLabel })}
 				</Button>
 				<Button
 					className="w-full"
 					disabled={state === "loading"}
+					kind="secondary"
 					onClick={handleUnsubscribeAll}
-					variant="outline"
 				>
 					{t("unsubscribeFromAll")}
 				</Button>
-				<p className="text-center text-muted-foreground text-xs">
+				<p className="text-fg-3 text-small text-center">
 					{t("manageInSettings")}{" "}
-					<Link className="text-primary hover:underline" href="/settings">
+					<Link
+						className="text-accent-strong rounded-ctl focus-visible:outline-brand text-small can-hover:hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+						href="/settings"
+					>
 						{t("settings")}
 					</Link>
 					.
 				</p>
-			</CardContent>
-		</Card>
+			</div>
+		</AuthPanel>
 	);
 }
 
 export default function UnsubscribePage() {
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-background px-4">
+		<div className="bg-bg flex min-h-screen items-center justify-center px-4">
 			<Suspense
 				fallback={
-					<Card className="w-full max-w-md">
-						<CardContent className="flex items-center justify-center p-8">
-							<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-						</CardContent>
-					</Card>
+					<div className="flex items-center justify-center p-8">
+						<Loader2 className="text-fg-3 size-8 animate-spin" />
+					</div>
 				}
 			>
 				<UnsubscribeInner />

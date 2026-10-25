@@ -21,10 +21,9 @@ import {
 	PaymentMethodIcon,
 	getPaymentMethodName,
 } from "~/components/ui/payment-method-icon";
-import { UserAvatar } from "~/components/ui/user-avatar";
+import { Face } from "~/components/ui/avatar-face";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { env } from "~/env";
 import { buildPaymentLink } from "~/lib/payment-links";
@@ -72,8 +71,7 @@ function ProfileSkeleton() {
 	return (
 		<div className="flex h-dvh items-center justify-center overflow-y-auto p-4">
 			<div className="flex w-full max-w-[500px] flex-col gap-3">
-				<Card>
-					<CardContent className="space-y-4 p-5 sm:p-6">
+				<div className="space-y-4 p-5 sm:p-6">
 						<div className="flex flex-col items-center gap-2">
 							<Skeleton className="h-20 w-20 rounded-full" />
 							<Skeleton className="h-6 w-40" />
@@ -86,8 +84,7 @@ function ProfileSkeleton() {
 							<Skeleton className="h-16 w-full rounded-lg" />
 							<Skeleton className="h-16 w-full rounded-lg" />
 						</div>
-					</CardContent>
-				</Card>
+					</div>
 				<Skeleton className="h-24 w-full rounded-xl" />
 			</div>
 		</div>
@@ -250,8 +247,7 @@ export default function PublicProfilePage({
 
 		return (
 			<div className="flex h-dvh items-center justify-center overflow-y-auto p-4">
-				<Card className="w-full max-w-[500px]">
-					<CardContent className="space-y-4 p-5 text-center sm:p-6">
+				<div className="w-full max-w-[500px] space-y-4 p-5 text-center sm:p-6">
 						<h1 className="font-bold text-xl">
 							{isNotFound ? t("profileNotFound") : t("somethingWentWrong")}
 						</h1>
@@ -274,8 +270,7 @@ export default function PublicProfilePage({
 								</Link>
 							</Button>
 						</div>
-					</CardContent>
-				</Card>
+					</div>
 			</div>
 		);
 	}
@@ -296,15 +291,10 @@ export default function PublicProfilePage({
 			<div className="relative z-10 flex min-h-dvh flex-col items-center justify-center gap-3 p-4">
 			<div className="flex w-full max-w-[500px] flex-col gap-3">
 				{/* Main Profile Card */}
-				<Card className="border-border/40 bg-card/60 backdrop-blur-xl">
-					<CardContent className="p-5 sm:p-6">
+				<div className="p-5 sm:p-6">
 						{/* Header */}
 						<div className="flex flex-col items-center gap-1 text-center">
-							<UserAvatar
-								avatarUrl={data.avatar}
-								name={data.displayName}
-								size="xl"
-							/>
+							<Face imageUrl={data.avatar} name={data.displayName} size="lg" />
 							<h1 className="mt-2 font-bold text-2xl">{data.displayName}</h1>
 							<p className="text-muted-foreground text-sm">
 								@{data.username} · {t("memberSince", {
@@ -386,12 +376,10 @@ export default function PublicProfilePage({
 								{isDonate ? t("scanToDonate") : t("scanToPay")}
 							</p>
 						</div>
-					</CardContent>
-				</Card>
+					</div>
 
 				{/* Branded Footer */}
-				<Card className="border-border/40 bg-muted/20 backdrop-blur-xl">
-					<CardContent className="flex flex-col items-center gap-2 p-4 text-center">
+				<div className="flex flex-col items-center gap-2 p-4 text-center">
 						<div className="flex items-center gap-2">
 							<Image
 								alt="Retrospend"
@@ -413,8 +401,7 @@ export default function PublicProfilePage({
 								<ChevronRight className="h-3.5 w-3.5" />
 							</Link>
 						</Button>
-					</CardContent>
-				</Card>
+					</div>
 			</div>
 			</div>
 		</div>

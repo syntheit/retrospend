@@ -1,40 +1,19 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+import { BackButton, PageFrame } from "~/components/layout/page-frame";
+import { PageHeader } from "~/components/layout/page-header";
 import { PrivacyContent } from "~/components/legal/privacy-content";
-import { PageContent } from "~/components/page-content";
-import { SiteHeader } from "~/components/site-header";
-import {
-	Breadcrumb,
-	BreadcrumbItem,
-	BreadcrumbLink,
-	BreadcrumbList,
-	BreadcrumbPage,
-	BreadcrumbSeparator,
-} from "~/components/ui/breadcrumb";
 
 export default function SettingsPrivacyPage() {
+	const t = useTranslations("settingsV2");
 	return (
-		<>
-			<SiteHeader
-				title={
-					<Breadcrumb>
-						<BreadcrumbList>
-							<BreadcrumbItem>
-								<BreadcrumbLink href="/settings">Settings</BreadcrumbLink>
-							</BreadcrumbItem>
-							<BreadcrumbSeparator />
-							<BreadcrumbItem>
-								<BreadcrumbPage>Privacy Policy</BreadcrumbPage>
-							</BreadcrumbItem>
-						</BreadcrumbList>
-					</Breadcrumb>
-				}
+		<PageFrame>
+			<PageHeader
+				lead={<BackButton href="/settings" label={t("title")} />}
+				title={t("title")}
 			/>
-			<PageContent>
-				<div className="mx-auto w-full max-w-4xl">
-					<PrivacyContent />
-				</div>
-			</PageContent>
-		</>
+			<PrivacyContent />
+		</PageFrame>
 	);
 }

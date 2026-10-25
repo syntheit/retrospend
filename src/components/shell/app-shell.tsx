@@ -1,17 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import {
-	type CSSProperties,
-	useEffect,
-	useMemo,
-	useState,
-	useSyncExternalStore,
-} from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { FeedbackModal } from "~/components/feedback-modal";
 import { PageTransition } from "~/components/page-transition";
 import { Sheet } from "~/components/ui/sheet";
-import { SidebarProvider, useSidebar } from "~/components/ui/sidebar";
 import { useToast } from "~/components/ui/toast";
 import { useEntrySheets } from "~/features/entry/context";
 import { ADD_ACTIONS, type AddId, type NavBadges } from "~/lib/nav";
@@ -25,22 +18,6 @@ import { ShortcutsSheet } from "./shortcuts-sheet";
 import { ShellSidebar } from "./sidebar";
 
 type Layer = "palette" | "shortcuts" | "account" | "notifications" | "feedback";
-
-/**
- * Today's pages still draw SiteHeader, whose menu button opens the old
- * phone sidebar. In the new shell that button opens the account sheet
- * instead (the places without a tab live there), and it is hidden on
- * desktop, where the sidebar is always shown. Goes away with SiteHeader (S4).
- */
-function LegacyMenuBridge({ onOpen }: { onOpen: () => void }) {
-	const { openMobile, setOpenMobile } = useSidebar();
-	useEffect(() => {
-		if (!openMobile) return;
-		setOpenMobile(false);
-		onOpen();
-	}, [openMobile, setOpenMobile, onOpen]);
-	return null;
-}
 
 type SetLayer = React.Dispatch<React.SetStateAction<Layer | null>>;
 
@@ -81,11 +58,6 @@ function useDesktop(): boolean {
 		() => true,
 	);
 }
-
-// Today's SiteHeader reads --header-height from DashboardLayout's provider.
-const PROVIDER_STYLE = {
-	"--header-height": "calc(var(--spacing) * 12)",
-} as CSSProperties;
 
 /** Phone toasts sit above the bottom bar and the floating Add. */
 function useToastOffset() {
@@ -149,11 +121,7 @@ export function AppShell({
 
 	return (
 		<ShellActionsContext value={actions}>
-			<SidebarProvider
-				className="bg-bg text-fg h-svh overflow-hidden"
-				style={PROVIDER_STYLE}
-			>
-				<LegacyMenuBridge onOpen={actions.openAccountSheet} />
+			<div className="bg-bg text-fg flex h-svh w-full overflow-hidden">
 				<a
 					className="rounded-ctl bg-surface text-body focus:outline-brand sr-only px-4 py-2 font-medium focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:outline-2"
 					href="#main-content"
@@ -162,14 +130,14 @@ export function AppShell({
 				</a>
 				{desktop && <ShellSidebar badges={badges} className="hidden md:flex" />}
 				<main
-					className="bg-bg flex min-w-0 flex-1 flex-col overflow-hidden pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0 md:[&_[data-sidebar=trigger]]:hidden md:[&_[data-sidebar=trigger]+[data-orientation=vertical]]:hidden"
+					className="bg-bg flex min-w-0 flex-1 flex-col overflow-hidden pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
 					id="main-content"
 				>
 					<PageTransition>{children}</PageTransition>
 				</main>
 				<BottomNav badges={badges} className="md:hidden" />
 				<FloatingAdd className="md:hidden" />
-			</SidebarProvider>
+			</div>
 			<ShellPalette {...layerProps("palette")} />
 			<ShortcutsSheet {...layerProps("shortcuts")} />
 			<AccountSheet {...layerProps("account")} />

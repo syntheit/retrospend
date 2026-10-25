@@ -1,19 +1,9 @@
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "~/components/ui/card";
-
 export function PrivacyContent() {
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="font-bold text-3xl">Privacy Policy</CardTitle>
-				<CardDescription>Effective Date: March 4, 2026</CardDescription>
-			</CardHeader>
-			<CardContent className="space-y-6 text-muted-foreground">
+		<article>
+			<h1 className="text-fg text-title">Privacy Policy</h1>
+			<p className="text-fg-3 text-small mt-1">Effective Date: March 4, 2026</p>
+			<div className="text-fg-2 mt-6 space-y-6">
 				<p>
 					This policy explains how Daniel Miller (&ldquo;we,&rdquo;
 					&ldquo;us&rdquo;) collects, uses, and protects your information when
@@ -21,7 +11,7 @@ export function PrivacyContent() {
 				</p>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						1. What We Collect
 					</h2>
 					<ul className="list-disc space-y-1 pl-6">
@@ -38,7 +28,7 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						2. No Tracking
 					</h2>
 					<p>
@@ -49,7 +39,7 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						3. How We Use and Store Your Data
 					</h2>
 					<p className="mb-2">
@@ -64,7 +54,7 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						4. Third-Party Providers
 					</h2>
 					<p className="mb-2">
@@ -81,7 +71,7 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						5. Open Source
 					</h2>
 					<p>
@@ -100,7 +90,7 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						6. Your Rights
 					</h2>
 					<p className="mb-2">You can, at any time:</p>
@@ -125,7 +115,7 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						7. Security
 					</h2>
 					<p>
@@ -136,7 +126,7 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						8. Children
 					</h2>
 					<p>
@@ -146,7 +136,7 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						9. Changes
 					</h2>
 					<p>
@@ -156,7 +146,7 @@ export function PrivacyContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						10. Contact
 					</h2>
 					<p>
@@ -170,7 +160,7 @@ export function PrivacyContent() {
 						.
 					</p>
 				</section>
-			</CardContent>
-		</Card>
+			</div>
+		</article>
 	);
 }

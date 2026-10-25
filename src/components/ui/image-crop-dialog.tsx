@@ -2,16 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Cropper, { type Area, type MediaSize } from "react-easy-crop";
-import { toast } from "sonner";
-import { Button } from "~/components/ui/button";
-import {
-	ResponsiveDialog,
-	ResponsiveDialogContent,
-	ResponsiveDialogDescription,
-	ResponsiveDialogFooter,
-	ResponsiveDialogHeader,
-	ResponsiveDialogTitle,
-} from "~/components/ui/responsive-dialog";
+import { Sheet } from "~/components/ui/sheet";
 import { Slider } from "~/components/ui/slider";
 
 interface ImageCropDialogProps {
@@ -105,16 +96,15 @@ export function ImageCropDialog({
 		setCroppedAreaPixels(pixels);
 	}, []);
 
+	// The sheet closes itself after a good crop; a failure keeps it open.
 	const handleConfirm = async () => {
-		if (!imageSrc || !croppedAreaPixels) return;
+		if (!imageSrc || !croppedAreaPixels) return false;
 		setIsProcessing(true);
 		try {
 			const blob = await getCroppedBlob(imageSrc, croppedAreaPixels);
-			const file = new File([blob], "image.webp", { type: "image/webp" });
-			onCrop(file);
-			onOpenChange(false);
+			onCrop(new File([blob], "image.webp", { type: "image/webp" }));
 		} catch {
-			toast.error("Failed to process image. Please try a different file.");
+			throw new Error("Failed to process image. Please try a different file.");
 		} finally {
 			setIsProcessing(false);
 		}
@@ -123,30 +113,31 @@ export function ImageCropDialog({
 	if (!imageSrc) return null;
 
 	return (
-		<ResponsiveDialog open={open} onOpenChange={onOpenChange}>
-			<ResponsiveDialogContent className="gap-5 sm:max-w-sm">
-				<ResponsiveDialogHeader>
-					<ResponsiveDialogTitle>{title}</ResponsiveDialogTitle>
-					<ResponsiveDialogDescription className="sr-only">Crop and resize your image</ResponsiveDialogDescription>
-				</ResponsiveDialogHeader>
-
+		<Sheet
+			onOpenChange={onOpenChange}
+			onSubmit={handleConfirm}
+			open={open}
+			submitDisabled={isProcessing || !croppedAreaPixels}
+			submitLabel="Apply crop"
+			title={title}
+		>
+			<div className="flex flex-col gap-4">
 				<div
+					className="rounded-panel relative mx-auto aspect-square w-full max-w-64 overflow-hidden bg-black/90"
 					ref={cropContainerRef}
-					className="relative mx-auto aspect-square w-full max-w-64 max-h-[50dvh] overflow-hidden rounded-2xl bg-black/90"
 				>
 					<Cropper
-						image={imageSrc}
-						crop={crop}
-						zoom={zoom}
 						aspect={1}
+						crop={crop}
 						cropShape="round"
-						objectFit="cover"
 						cropSize={cropSize}
-						showGrid={false}
+						image={imageSrc}
+						objectFit="cover"
 						onCropChange={setCrop}
-						onZoomChange={setZoom}
 						onCropComplete={onCropComplete}
 						onMediaLoaded={onMediaLoaded}
+						onZoomChange={setZoom}
+						showGrid={false}
 						style={{
 							containerStyle: { borderRadius: "1rem" },
 							cropAreaStyle: {
@@ -154,34 +145,21 @@ export function ImageCropDialog({
 								boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)",
 							},
 						}}
+						zoom={zoom}
 					/>
 				</div>
 
 				<div className="space-y-2 px-1">
-					<p className="text-muted-foreground text-xs font-medium tracking-wide">
-						Zoom
-					</p>
+					<p className="text-fg-2 text-small">Zoom</p>
 					<Slider
-						min={1}
 						max={3}
+						min={1}
+						onValueChange={([v]) => v !== undefined && setZoom(v)}
 						step={0.01}
 						value={[zoom]}
-						onValueChange={([v]) => v !== undefined && setZoom(v)}
 					/>
 				</div>
-
-				<ResponsiveDialogFooter>
-					<Button variant="ghost" onClick={() => onOpenChange(false)}>
-						Cancel
-					</Button>
-					<Button
-						onClick={handleConfirm}
-						disabled={isProcessing || !croppedAreaPixels}
-					>
-						{isProcessing ? "Applying..." : "Apply Crop"}
-					</Button>
-				</ResponsiveDialogFooter>
-			</ResponsiveDialogContent>
-		</ResponsiveDialog>
+			</div>
+		</Sheet>
 	);
 }

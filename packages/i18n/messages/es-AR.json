@@ -327,6 +327,7 @@
     "never": "Nunca",
     "syncing": "Sincronizando...",
     "syncNow": "Sincronizar Ahora",
+    "syncFailed": "Falló la sincronización",
     "syncUnavailable": "La sincronización de cotizaciones no está disponible en este servidor."
   },
   "recurring": {
@@ -1158,7 +1159,14 @@
     "aiUsernameLabel": "Usuario",
     "externalLimitReached": "Límite externo alcanzado",
     "localLimitReached": "Límite local alcanzado",
-    "perUser": "por usuario"
+    "perUser": "por usuario",
+    "health": "Estado",
+    "ago": "hace {time}",
+    "copyPassword": "Copiar contraseña",
+    "backupDuration": "Tardó {seconds} s",
+    "tokensOllama": "Tokens por mes, Ollama",
+    "tokensOpenRouter": "Tokens por mes, OpenRouter",
+    "feedbackTitle": "Comentarios"
   },
   "auditLog": {
     "title": "Registros de Auditoría",
@@ -1625,6 +1633,9 @@
     "navSplitting": "División",
     "navWealth": "Patrimonio",
     "navDocs": "Documentación",
+    "navMain": "Navegación principal",
+    "openMenu": "Abrir menú",
+    "docsMenu": "Documentación",
     "madeBy": "Hecho por",
     "termsAndConditions": "Términos y Condiciones",
     "privacyPolicy": "Política de Privacidad",

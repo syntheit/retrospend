@@ -102,33 +102,33 @@ export function DeleteAccountSheet({
 			{t("cancel")}
 		</Button>
 	) : step === "password" ? (
-			<>
-				<Button kind="secondary" onClick={() => onOpenChange(false)}>
-					{t("cancel")}
-				</Button>
-				<Button
-					disabled={!password}
-					kind="secondary"
-					onClick={() => setStep("confirm")}
-				>
-					{t("continue")}
-				</Button>
-			</>
-		) : (
-			<>
-				<Button kind="secondary" onClick={() => onOpenChange(false)}>
-					{t("cancel")}
-				</Button>
-				<Button
-					disabled={!preview.data}
-					kind="danger"
-					loading={remove.isPending}
-					onClick={() => void destroy()}
-				>
-					{t("confirm")}
-				</Button>
-			</>
-		);
+		<>
+			<Button kind="secondary" onClick={() => onOpenChange(false)}>
+				{t("cancel")}
+			</Button>
+			<Button
+				disabled={!password}
+				kind="secondary"
+				onClick={() => setStep("confirm")}
+			>
+				{t("continue")}
+			</Button>
+		</>
+	) : (
+		<>
+			<Button kind="secondary" onClick={() => onOpenChange(false)}>
+				{t("cancel")}
+			</Button>
+			<Button
+				disabled={!preview.data}
+				kind="danger"
+				loading={remove.isPending}
+				onClick={() => void destroy()}
+			>
+				{t("confirm")}
+			</Button>
+		</>
+	);
 
 	return (
 		<Sheet

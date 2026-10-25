@@ -327,6 +327,7 @@
     "never": "Jamais",
     "syncing": "Synchronisation...",
     "syncNow": "Synchroniser maintenant",
+    "syncFailed": "Échec de la synchronisation",
     "syncUnavailable": "La synchronisation des taux n'est pas disponible sur ce serveur."
   },
   "recurring": {
@@ -1158,7 +1159,14 @@
     "aiUsernameLabel": "Nom d'utilisateur",
     "externalLimitReached": "Limite externe atteinte",
     "localLimitReached": "Limite locale atteinte",
-    "perUser": "par utilisateur"
+    "perUser": "par utilisateur",
+    "health": "État",
+    "ago": "il y a {time}",
+    "copyPassword": "Copier le mot de passe",
+    "backupDuration": "Durée {seconds} s",
+    "tokensOllama": "Jetons par mois, Ollama",
+    "tokensOpenRouter": "Jetons par mois, OpenRouter",
+    "feedbackTitle": "Retours"
   },
   "auditLog": {
     "title": "Journaux d’audit",
@@ -1625,6 +1633,9 @@
     "navSplitting": "Partage des dépenses",
     "navWealth": "Patrimoine",
     "navDocs": "Documentation",
+    "navMain": "Navigation principale",
+    "openMenu": "Ouvrir le menu",
+    "docsMenu": "Documentation",
     "madeBy": "Créé par",
     "termsAndConditions": "Conditions générales",
     "privacyPolicy": "Politique de confidentialité",

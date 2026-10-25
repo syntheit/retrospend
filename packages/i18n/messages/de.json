@@ -327,6 +327,7 @@
     "never": "Nie",
     "syncing": "Wird synchronisiert …",
     "syncNow": "Jetzt synchronisieren",
+    "syncFailed": "Synchronisierung fehlgeschlagen",
     "syncUnavailable": "Die Kurssynchronisierung ist auf diesem Server nicht verfügbar."
   },
   "recurring": {
@@ -1158,7 +1159,14 @@
     "aiUsernameLabel": "Benutzername",
     "externalLimitReached": "Externes Limit erreicht",
     "localLimitReached": "Lokales Limit erreicht",
-    "perUser": "pro Benutzer"
+    "perUser": "pro Benutzer",
+    "health": "Zustand",
+    "ago": "vor {time}",
+    "copyPassword": "Passwort kopieren",
+    "backupDuration": "Dauer {seconds} s",
+    "tokensOllama": "Tokens pro Monat, Ollama",
+    "tokensOpenRouter": "Tokens pro Monat, OpenRouter",
+    "feedbackTitle": "Feedback"
   },
   "auditLog": {
     "title": "Überwachungsprotokolle",
@@ -1625,6 +1633,9 @@
     "navSplitting": "Aufteilen",
     "navWealth": "Vermögen",
     "navDocs": "Dokumentation",
+    "navMain": "Hauptnavigation",
+    "openMenu": "Menü öffnen",
+    "docsMenu": "Dokumentation",
     "madeBy": "Erstellt von",
     "termsAndConditions": "Allgemeine Geschäftsbedingungen",
     "privacyPolicy": "Datenschutzerklärung",
