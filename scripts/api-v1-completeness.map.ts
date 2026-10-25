@@ -202,9 +202,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	// ── auth ─────────────────────────────────────────────────────────────
 	"auth.confirmEmailChange": internal(AUTH_MAIL),
 	"auth.getAppFeatures": to("GET /server-info"),
-	"auth.recordConsent": gap(
-		"consent after sign-up, needed by a mobile sign-up when legal pages are on",
-	),
+	"auth.recordConsent": to("POST /me/consent"),
 	"auth.requestPasswordReset": internal(AUTH_MAIL),
 	"auth.resendVerificationEmail": internal(AUTH_MAIL),
 	"auth.resetPassword": internal(AUTH_MAIL),
@@ -295,10 +293,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	),
 
 	// ── add sheets ───────────────────────────────────────────────────────
-	"entry.catalog": gap(
-		"the Add sheets read categories, recents and places in one call",
-	),
-	"entry.defaultRateTypes": gap("default rate type per home currency"),
+	"entry.catalog": to("GET /entry/catalog"),
+	"entry.defaultRateTypes": to("GET /entry/default-rate-types"),
 	"entry.expense.create.preview": to("POST /expenses/preview"),
 	"entry.expense.create.save": to("POST /expenses"),
 	"entry.expense.delete.preview": to("POST /expenses/{id}/delete/preview"),
@@ -311,8 +307,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"entry.expense.update.preview": to("POST /expenses/{id}/preview"),
 	"entry.expense.update.save": to("PUT /expenses/{id}"),
 	"entry.projectMembers": to("GET /projects/{id}/members"),
-	"entry.rateOptions": gap("the rate strip: every rate type a pair offers"),
-	"entry.setDefaultRateType": gap("default rate type per home currency"),
+	"entry.rateOptions": to("GET /entry/rate-options"),
+	"entry.setDefaultRateType": to("PUT /entry/default-rate-types/{homeCurrency}"),
 	"entry.shared.create.preview": to("POST /shared-expenses/preview"),
 	"entry.shared.create.save": to("POST /shared-expenses"),
 	"entry.shared.delete.preview": to(
@@ -323,7 +319,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"entry.shared.revert.save": to("POST /shared-expenses/undo"),
 	"entry.shared.update.preview": to("POST /shared-expenses/{id}/preview"),
 	"entry.shared.update.save": to("PUT /shared-expenses/{id}"),
-	"entry.sharedAuthor": gap("who added a shared expense"),
+	"entry.sharedAuthor": to("GET /shared-expenses/{id}"),
 	"entry.transfer.preview": to("POST /transfers/preview"),
 	"entry.transfer.save": to("POST /transfers"),
 
@@ -387,8 +383,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	// ── home ─────────────────────────────────────────────────────────────
 	"home.glance": to("GET /figures/glance"),
 	"home.needsYou": to("GET /needs-you"),
-	"home.snoozeNeedsYou": gap("Later on a Needs you item"),
-	"home.unsnoozeNeedsYou": gap("Later on a Needs you item"),
+	"home.snoozeNeedsYou": to("POST /needs-you/snoozes"),
+	"home.unsnoozeNeedsYou": to("DELETE /needs-you/snoozes/{itemId}"),
 
 	// ── imports ──────────────────────────────────────────────────────────
 	"importQueue.cancelJob": to("POST /imports/jobs/{id}/cancel"),
@@ -412,7 +408,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 
 	// ── insights ─────────────────────────────────────────────────────────
 	"insights.cashflow": to("GET /figures"),
-	"insights.firstDay": gap("the day where All time starts"),
+	"insights.firstDay": to("GET /figures/first-day"),
 	"insights.months": to("GET /figures"),
 	"insights.summary": to("GET /figures"),
 	"insights.ytd": to("GET /figures"),
@@ -450,7 +446,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"people.createShadow": to("POST /people"),
 	"people.detail": to("GET /people/{type}/{id}"),
 	"people.detailCursor": to("GET /people/{type}/{id}/ledger"),
-	"people.frequentSplitPartners": gap("the people a split suggests first"),
+	"people.frequentSplitPartners": to("GET /people/frequent"),
 	"people.list": to("GET /people"),
 	"people.overview": to("GET /people"),
 	"people.page": to("GET /people/{type}/{id}"),
@@ -489,7 +485,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 		"passwords are changed through the better-auth endpoints",
 	),
 	"profile.getBackgroundSettings": to("GET /profile/background"),
-	"profile.getLifetimeStats": gap("lifetime totals on the profile page"),
+	"profile.getLifetimeStats": to("GET /profile/stats"),
 	"profile.getMyAvatar": to("GET /profile"),
 	"profile.getPendingEmail": to("GET /profile"),
 	"profile.publicProfile": webOnly("the public profile web page"),
@@ -554,7 +550,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"recurring.update": to("PATCH /recurring/{id}"),
 
 	// ── settings ─────────────────────────────────────────────────────────
-	"settings.getAiStatus": gap("whether AI features are available to this user"),
+	"settings.getAiStatus": to("GET /settings/ai-status"),
 	"settings.getGeneral": to("GET /settings"),
 	"settings.getInviteOnlyEnabled": to("GET /server-info"),
 	"settings.updateGeneral": to("PATCH /settings"),
@@ -562,8 +558,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	// ── settle up ────────────────────────────────────────────────────────
 	"settlement.confirm": to("POST /payments/{id}/confirm"),
 	"settlement.create": superseded("replaced by POST /payments"),
-	"settlement.deletePending": gap("G3: withdraw a pending payment"),
-	"settlement.history": gap("G3: payment history with a person"),
+	"settlement.deletePending": to("DELETE /payments/{id}", "POST /payments/{id}/preview"),
+	"settlement.history": to("GET /people/{type}/{id}"),
 	"settlement.paymentConfirm": to("POST /payments/{id}/confirm"),
 	"settlement.paymentConfirmPreview": to("POST /payments/{id}/confirm/preview"),
 	"settlement.paymentPreview": to("POST /payments/preview"),
@@ -575,18 +571,18 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"settlement.reject": to("POST /payments/{id}/not-received"),
 	"settlement.requestPayment": to("POST /people/{type}/{id}/remind"),
 	"settlement.sendReminder": to("POST /payments/{id}/remind"),
-	"settlement.settleAll": gap("G3: settle everything with one person"),
-	"settlement.squareUp": gap("G3: square up across projects"),
-	"settlement.squareUpOptions": gap("G3: square up across projects"),
-	"settlement.void": gap("G3: void a payment to a person without an account"),
+	"settlement.settleAll": superseded(
+		"POST /payments with amount null pays everything owed to the person, allocated across projects and currencies in one payment",
+	),
+	"settlement.squareUp": withPreview("POST /payments/square-up"),
+	"settlement.squareUpOptions": to("GET /people/{type}/{id}/square-up"),
+	"settlement.void": to("DELETE /payments/{id}", "POST /payments/{id}/preview"),
 
 	// ── shared expenses ──────────────────────────────────────────────────
-	"sharedTransaction.canModify": gap(
-		"G3: whether a split expense can be edited",
-	),
+	"sharedTransaction.canModify": to("GET /shared-expenses/{id}"),
 	"sharedTransaction.create": to("POST /shared-expenses"),
 	"sharedTransaction.delete": to("DELETE /shared-expenses/{id}"),
-	"sharedTransaction.getById": gap("G3: read one split expense"),
+	"sharedTransaction.getById": to("GET /shared-expenses/{id}"),
 	"sharedTransaction.update": to("PUT /shared-expenses/{id}"),
 
 	// ── old stats ────────────────────────────────────────────────────────
@@ -617,11 +613,11 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 
 	// ── verification of shared expenses ──────────────────────────────────
 	"verification.accept": to("POST /shared-expenses/{id}/accept"),
-	"verification.bulkAccept": gap("G3: accept many shares at once"),
-	"verification.outgoing": gap("G3: shares others have not answered yet"),
+	"verification.bulkAccept": to("POST /shared-expenses/accept"),
+	"verification.outgoing": to("GET /shared-expenses/outgoing"),
 	"verification.queue": to("GET /needs-you"),
 	"verification.reject": to("POST /shared-expenses/{id}/reject"),
-	"verification.removeSelf": gap("G3: remove yourself from a split expense"),
+	"verification.removeSelf": to("POST /shared-expenses/{id}/remove-me"),
 
 	// ── wealth ───────────────────────────────────────────────────────────
 	"wealth.accounts.defaults": to("GET /accounts/defaults"),
@@ -643,8 +639,10 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"wealth.exportCsv": to("GET /accounts/export"),
 	"wealth.figures": to("GET /accounts/net-worth"),
 	"wealth.getDashboard": to("GET /accounts", "GET /accounts/net-worth"),
-	"wealth.getRunwayStats": gap("how long the money lasts at the current pace"),
-	"wealth.importAssets": gap("import accounts from a CSV file"),
+	"wealth.getRunwayStats": to("GET /accounts/runway"),
+	"wealth.importAssets": superseded(
+		"a web CSV helper that creates or edits each account without a preview or an undo; the app does the same row by row with POST /accounts and PUT /accounts/{id}, which preview and undo",
+	),
 	"wealth.income.add.preview": to("POST /income/preview"),
 	"wealth.income.add.save": to("POST /income"),
 	"wealth.income.confirmRecurring.preview": to(
@@ -653,16 +651,16 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"wealth.income.confirmRecurring.save": to("POST /recurring/{id}/confirm"),
 	"wealth.income.delete.preview": to("POST /income/{id}/preview"),
 	"wealth.income.delete.save": to("DELETE /income/{id}"),
-	"wealth.income.moveIn.preview": gap("move income into an account"),
-	"wealth.income.moveIn.save": gap("move income into an account"),
+	"wealth.income.moveIn.preview": to("POST /income/move-in/preview"),
+	"wealth.income.moveIn.save": to("POST /income/move-in"),
 	"wealth.income.recreate.preview": to("POST /income/undo/preview"),
 	"wealth.income.recreate.save": to("POST /income/undo"),
 	"wealth.income.unconfirmRecurring.preview": to(
 		"POST /recurring/undo/preview",
 	),
 	"wealth.income.unconfirmRecurring.save": to("POST /recurring/undo"),
-	"wealth.income.undoMoveIn.preview": gap("move income into an account"),
-	"wealth.income.undoMoveIn.save": gap("move income into an account"),
+	"wealth.income.undoMoveIn.preview": to("POST /income/undo/preview"),
+	"wealth.income.undoMoveIn.save": to("POST /income/undo"),
 	"wealth.reopenAsset": to("POST /accounts/{id}/reopen"),
 	"wealth.transfers.create.preview": to("POST /transfers/preview"),
 	"wealth.transfers.create.save": to("POST /transfers"),

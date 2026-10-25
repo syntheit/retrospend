@@ -3,6 +3,7 @@ import { moneyWrite } from "../budget/routes";
 import { v1 } from "../common/meta";
 import { undoTokenSchema } from "../common/preview";
 import { previewTwin, undoInputSchema } from "../ledger";
+import { accountsExtrasContract } from "./extras";
 import {
 	accountBalanceRevertedSchema,
 	accountDetailSchema,
@@ -24,6 +25,7 @@ import {
 	updateBalanceSchema,
 } from "./schemas";
 
+export * from "./extras";
 export * from "./schemas";
 
 const TAG = ["Accounts"];
@@ -124,6 +126,7 @@ export const accountUndoResultSchema = z
  * /income.
  */
 export const accountsContract = {
+	...accountsExtrasContract,
 	list: v1
 		.route({
 			method: "GET",

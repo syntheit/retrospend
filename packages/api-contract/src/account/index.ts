@@ -36,6 +36,14 @@ export const deleteAccountSchema = z
 	})
 	.meta({ id: "DeleteAccount" });
 
+export const recordConsentSchema = z
+	.object({
+		consentVersion: z.string().min(1).max(20).meta({
+			description: "The version of the terms and privacy policy that was shown.",
+		}),
+	})
+	.meta({ id: "RecordConsent" });
+
 /**
  * Deleting your own account, which the App Store requires inside the app.
  * Only a signed-in web or mobile session may do it (scope `account:delete`):
@@ -43,6 +51,19 @@ export const deleteAccountSchema = z
  * The password is asked again every time.
  */
 export const accountContract = {
+	recordConsent: v1
+		.route({
+			method: "POST",
+			path: "/me/consent",
+			operationId: "recordConsent",
+			tags: TAG,
+			summary: "Record that you accepted the terms and privacy policy",
+			description:
+				"Call it right after sign-up when the server shows legal pages. Stores the time, the version and your address.",
+		})
+		.meta({ scope: "write:settings", event: "profile.consent_recorded" })
+		.input(recordConsentSchema)
+		.output(okSchema),
 	deletionPreview: v1
 		.route({
 			method: "GET",

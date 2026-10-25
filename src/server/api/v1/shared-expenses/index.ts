@@ -1,10 +1,29 @@
 import * as shared from "~/server/services/api-v1/shared-expenses";
+import * as extras from "~/server/services/api-v1/shared-expenses-extras";
 import { serve } from "../core/serve";
 import { signedIn, v1 } from "../middleware";
 
 const s = v1["shared-expenses"];
 
 export const sharedExpensesRouter = {
+	get: s.get.handler(
+		serve(({ context, input }) =>
+			extras.readSharedExpense(signedIn(context), input.id),
+		),
+	),
+	outgoing: s.outgoing.handler(
+		serve(({ context }) => extras.listOutgoingPending(signedIn(context))),
+	),
+	bulkAccept: s.bulkAccept.handler(
+		serve(({ context, input }) =>
+			extras.acceptSharedExpenses(signedIn(context), input.ids),
+		),
+	),
+	removeMe: s.removeMe.handler(
+		serve(({ context, input }) =>
+			extras.removeMeFromSharedExpense(signedIn(context), input),
+		),
+	),
 	create: s.create.handler(
 		serve(({ context, input }) =>
 			shared.addSharedExpense(signedIn(context), input),

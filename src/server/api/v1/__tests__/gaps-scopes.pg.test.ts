@@ -31,6 +31,7 @@ const GROUPS = [
 	"billing-periods",
 	"payment-methods",
 	"activity",
+	"entry",
 ];
 
 const routes = listContractRoutes(contract).filter((r) =>

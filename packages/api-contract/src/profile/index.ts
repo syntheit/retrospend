@@ -1,6 +1,9 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
 import { idSchema, okSchema, timestampSchema } from "../core";
+import { profileExtrasContract } from "./extras";
+
+export * from "./extras";
 
 export const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 
@@ -64,6 +67,7 @@ export const avatarUploadSchema = z.object({
 const TAG = ["Profile"];
 
 export const profileContract = {
+	...profileExtrasContract,
 	get: v1
 		.route({
 			method: "GET",

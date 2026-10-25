@@ -7,6 +7,7 @@ import { budgetRouter } from "./budget";
 import { categoriesRouter } from "./categories";
 import { correctionsRouter } from "./corrections";
 import { currenciesRouter } from "./currencies";
+import { entryRouter } from "./entry";
 import { eventsRouter } from "./events";
 import { expensesRouter } from "./expenses";
 import { exportsRouter } from "./exports";
@@ -47,6 +48,7 @@ export const v1Router = v1.router({
 	categories: categoriesRouter,
 	corrections: correctionsRouter,
 	currencies: currenciesRouter,
+	entry: entryRouter,
 	events: eventsRouter,
 	expenses: expensesRouter,
 	exports: exportsRouter,

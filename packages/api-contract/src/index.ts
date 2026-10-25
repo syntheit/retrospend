@@ -7,6 +7,7 @@ import { budgetContract } from "./budget";
 import { categoriesContract } from "./categories";
 import { correctionsContract } from "./corrections";
 import { currenciesContract } from "./currencies";
+import { entryContract } from "./entry";
 import { eventsContract } from "./events";
 import { expensesContract } from "./expenses";
 import { exportsContract } from "./exports";
@@ -43,6 +44,7 @@ export * from "./common";
 export * from "./core";
 export * from "./corrections";
 export * from "./currencies";
+export * from "./entry";
 export * from "./events";
 export * from "./expenses";
 export * from "./exports";
@@ -83,6 +85,7 @@ export const contract = {
 	categories: categoriesContract,
 	corrections: correctionsContract,
 	currencies: currenciesContract,
+	entry: entryContract,
 	events: eventsContract,
 	expenses: expensesContract,
 	exports: exportsContract,

@@ -25,6 +25,16 @@ export const incomeRouter = {
 			income.previewRemoveIncome(signedIn(context), input.id, input.templateId),
 		),
 	),
+	moveIn: i.moveIn.handler(
+		serve(({ context, input }) =>
+			income.moveInIncome(signedIn(context), input),
+		),
+	),
+	previewMoveIn: i.previewMoveIn.handler(
+		serve(({ context, input }) =>
+			income.previewMoveInIncome(signedIn(context), input),
+		),
+	),
 	undo: i.undo.handler(
 		serve(({ context, input }) =>
 			income.undoIncomeWrite(signedIn(context), input.token),

@@ -1,12 +1,16 @@
 import { MAX_FIGURE_IDS, parseFigureIds } from "@retrospend/api-contract";
 import { readFigures } from "~/server/figures/read";
 import { FigureRegistryError } from "~/server/figures/registry";
+import * as gap from "~/server/services/api-v1/gap-reads";
 import { readGlance } from "~/server/services/api-v1/home";
 import { serve } from "../core/serve";
 import { problem } from "../errors";
 import { signedIn, v1 } from "../middleware";
 
 export const figuresRouter = {
+	firstDay: v1.figures.firstDay.handler(
+		serve(({ context }) => gap.readFirstDay(signedIn(context))),
+	),
 	glance: v1.figures.glance.handler(
 		serve(({ context }) => readGlance(signedIn(context))),
 	),

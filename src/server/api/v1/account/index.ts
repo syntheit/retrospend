@@ -1,4 +1,5 @@
 import * as account from "~/server/services/api-v1/account";
+import * as gap from "~/server/services/api-v1/gap-reads";
 import { serve } from "../core/serve";
 import { signedIn, v1 } from "../middleware";
 import { enforceRateLimit } from "../rate-limit";
@@ -13,6 +14,15 @@ const p = v1.account;
 const DELETE_TRIES = { limit: 5, windowMs: 15 * 60_000 } as const;
 
 export const accountRouter = {
+	recordConsent: p.recordConsent.handler(
+		serve(({ context, input }) =>
+			gap.recordConsent(
+				signedIn(context),
+				context.headers,
+				input.consentVersion,
+			),
+		),
+	),
 	deletionPreview: p.deletionPreview.handler(
 		serve(({ context }) => account.readAccountDeletion(signedIn(context))),
 	),

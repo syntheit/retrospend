@@ -155,6 +155,52 @@ export const incomeUndoResultSchema = z
 	})
 	.meta({ id: "IncomeUndo" });
 
+const putInSchema = idSchema.nullish().meta({
+	description: "The envelope to put it in. Left out: Not planned yet.",
+});
+
+/** Count Wealth money in the budget without selling it: a kept income, or units of an account. */
+export const moveInSchema = z
+	.union([
+		z.object({
+			expenseId: idSchema.meta({ description: "A kept income." }),
+			putIn: putInSchema,
+			date: daySchema.nullish(),
+		}),
+		z.object({
+			id: z.uuid().meta({
+				description:
+					"A client-made id. Sending the same id twice does not count the money twice.",
+			}),
+			accountId: idSchema,
+			units: amountTextSchema.meta({
+				description: "How much of the account to count, in its own currency.",
+			}),
+			putIn: putInSchema,
+			date: daySchema.nullish(),
+		}),
+	])
+	.meta({ id: "MoveIn" });
+
+export const movedInSchema = z
+	.object({
+		accountId: idSchema,
+		expenseId: idSchema.nullable(),
+		/** What the budget counts, in the home currency. */
+		amount: moneySchema,
+		/** Units of the account now counted in the budget. */
+		countedUnits: z.string(),
+		budgetSide: z.object({
+			recorded: z.boolean(),
+			reason: z.enum(["no_envelope_budget", "other_currency"]).nullable(),
+		}),
+	})
+	.meta({ id: "MovedIn" });
+
+export const moveInWriteSchema = z
+	.object({ moved: movedInSchema, ...undoField })
+	.meta({ id: "MoveInWrite" });
+
 /**
  * Money in. Reading an income entry is GET /expenses/{id}, listing them is
  * GET /expenses?filter=kind=in. The writes are money writes: each has a
@@ -203,6 +249,28 @@ export const incomeContract = {
 		tags: TAG,
 		scope: "write:money",
 		input: deleteIncomeSchema,
+	}),
+	moveIn: v1
+		.route({
+			method: "POST",
+			path: "/income/move-in",
+			operationId: "moveInIncome",
+			tags: TAG,
+			summary: "Count money you keep in Wealth in your budget",
+			description:
+				"No account moves: the money stays where it is and the budget gets its value. The undo token takes it out of the budget again.",
+			successStatus: 201,
+		})
+		.meta({ scope: "write:money", event: "income.moved_in" })
+		.input(moveInSchema)
+		.output(moveInWriteSchema),
+	previewMoveIn: previewTwin({
+		path: "/income/move-in",
+		of: "POST /income/move-in",
+		operationId: "previewMoveInIncome",
+		tags: TAG,
+		scope: "write:money",
+		input: moveInSchema,
 	}),
 	undo: v1
 		.route({
