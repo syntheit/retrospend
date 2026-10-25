@@ -15,6 +15,7 @@
 		"verifyEmail": "Bestätige deine E-Mail",
 		"importStatement": "Importiere einen Kontoauszug",
 		"rejected": "{person} hat {title} abgelehnt",
+		"fixRequested": "{person} bittet dich, {title} zu korrigieren",
 		"overspentMany": "{count, plural, one {# Umschlag ist} other {# Umschläge sind}} überzogen",
 		"overAssigned": "Du hast <amount></amount> mehr verplant, als du hast",
 		"billDue": "{title} ist bald fällig",
@@ -39,6 +40,7 @@
 		"setRate": "Kurs festlegen",
 		"notReceived": "Nicht erhalten?",
 		"remind": "Erinnern",
-		"open": "Öffnen"
+		"open": "Öffnen",
+		"respond": "Antworten"
 	}
 }

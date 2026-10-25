@@ -151,6 +151,17 @@ test("Corrections: ask, respond, correct, undo", async ({
 		).toBeVisible();
 		await lucia.close();
 
+		// Martín finds the request in Needs you on Home, and Respond opens the split.
+		await openV2(page, "/home");
+		const card = page
+			.getByRole("region", { name: /^Needs you/ })
+			.getByRole("listitem")
+			.filter({ hasText: `Lucía asked you to fix ${TITLE}` });
+		await expect(card).toBeVisible();
+		await card.getByRole("button", { name: "Respond" }).click();
+		await expect(page.getByRole("dialog", { name: TITLE })).toBeVisible();
+		await page.keyboard.press("Escape");
+
 		// Martín answers: Decline, Undo, then the row still asks him to respond.
 		read = await openRow(page);
 		await expect(read.getByText("Lucía asked you to fix this.")).toBeVisible();

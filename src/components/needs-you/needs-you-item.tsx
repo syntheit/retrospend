@@ -11,6 +11,7 @@ import {
 	ListChecks,
 	type LucideIcon,
 	Mail,
+	MessageCircle,
 	Plus,
 	Repeat,
 	Scale,
@@ -41,6 +42,7 @@ const ICON: Record<NeedsYouKind, LucideIcon> = {
 	overspent: CircleAlert,
 	overspentMany: CircleAlert,
 	rejected: UserX,
+	fixRequested: MessageCircle,
 	overAssigned: Scale,
 	billDue: CalendarClock,
 	missingRate: Coins,
@@ -64,6 +66,7 @@ const ACTION: Record<NeedsYouKind, string> = {
 	overspent: "cover",
 	overspentMany: "cover",
 	rejected: "edit",
+	fixRequested: "respond",
 	overAssigned: "takeBack",
 	billDue: "fund",
 	missingRate: "setRate",
@@ -101,6 +104,8 @@ function useSentence() {
 				return t("overspentMany", { count: item.count });
 			case "rejected":
 				return t("rejected", { person: item.person, title: item.title });
+			case "fixRequested":
+				return t("fixRequested", { person: item.person, title: item.title });
 			case "overAssigned":
 				return t.rich("overAssigned", {
 					amount: () => <Money value={item.amount} />,

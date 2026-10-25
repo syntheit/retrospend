@@ -509,7 +509,7 @@ export const PLANNED: Planned[] = [
 		replaces: "Stacked tinted banners",
 		planRow: NEEDS_YOU,
 		target: "src/components/needs-you/needs-you-item.tsx",
-		use: "NeedsYouItem inside NeedsYouList; add a kind to NeedsYouItemVM, never a banner. A person's item leads with their `face` and may offer a `secondary` action; `menu` handlers add the ⋯ menu (needsYou entity: Open, Later). Kinds: assign, review, confirmPayment, verify, due, overdue, overspent, overspentMany, rejected, overAssigned, billDue, missingRate, startingMoney, sharesNeedEnvelope, owedAging (leads with the person's face) and the setup prompts (firstExpense, homeCurrency, verifyEmail, importStatement); an optional context line under the sentence",
+		use: "NeedsYouItem inside NeedsYouList; add a kind to NeedsYouItemVM, never a banner. A person's item leads with their `face` and may offer a `secondary` action; `menu` handlers add the ⋯ menu (needsYou entity: Open, Later). Kinds: assign, review, confirmPayment, verify, due, overdue, overspent, overspentMany, rejected, fixRequested (leads with the asker's face), overAssigned, billDue, missingRate, startingMoney, sharesNeedEnvelope, owedAging (leads with the person's face) and the setup prompts (firstExpense, homeCurrency, verifyEmail, importStatement); an optional context line under the sentence",
 	},
 	{
 		name: "TransactionRow",

@@ -31,6 +31,23 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 	const deletePersonal = api.entry.expense.delete.save.useMutation();
 	const restorePersonal = api.entry.expense.restore.save.useMutation();
 	const deleteShared = api.sharedTransaction.delete.useMutation();
+	// Who may ask to fix or correct comes from the corrections router, once for the page.
+	const sharedIds = useMemo(
+		() =>
+			rows
+				.filter((r) => r.source === "shared" && opens(r))
+				.map((r) => r.entityId)
+				.slice(0, 200),
+		[rows],
+	);
+	const locks = api.corrections.lockStates.useQuery(
+		{ transactionIds: sharedIds },
+		{ enabled: sharedIds.length > 0 },
+	);
+	const lockOf = useMemo(
+		() => new Map((locks.data ?? []).map((l) => [l.transactionId, l])),
+		[locks.data],
+	);
 
 	const open = useCallback(
 		(row: ActivityRowDTO) => {
@@ -45,6 +62,15 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 		const row = (target: ExpenseTarget) => byId.get(target.id);
 		return {
 			edit: (target) => {
+				const r = row(target);
+				if (r) open(r);
+			},
+			// The read view holds Ask to fix and Correct; the menu only gets there.
+			askFix: (target) => {
+				const r = row(target);
+				if (r) open(r);
+			},
+			correct: (target) => {
 				const r = row(target);
 				if (r) open(r);
 			},
@@ -99,9 +125,18 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 
 	/** Rows whose menu has these actions; payments get none. */
 	const handlersFor = useCallback(
-		(r: ActivityRowDTO): ActionHandlers<ExpenseTarget> =>
-			r.source === "payment" ? {} : opens(r) ? handlers : deleteOnly,
-		[handlers, deleteOnly],
+		(r: ActivityRowDTO): ActionHandlers<ExpenseTarget> => {
+			if (r.source === "payment") return {};
+			if (!opens(r)) return deleteOnly;
+			const { askFix, correct, ...base } = handlers;
+			const lock = lockOf.get(r.entityId);
+			return {
+				...base,
+				...(lock?.canAskToFix ? { askFix } : {}),
+				...(lock?.canCorrect ? { correct } : {}),
+			};
+		},
+		[handlers, deleteOnly, lockOf],
 	);
 
 	return { handlersFor, open };
