@@ -31686,6 +31686,16 @@
 																	"left": {
 																		"$ref": "#/components/schemas/Money"
 																	},
+																	"limitLeft": {
+																		"anyOf": [
+																			{
+																				"$ref": "#/components/schemas/Money"
+																			},
+																			{
+																				"type": "null"
+																			}
+																		]
+																	},
 																	"need": {
 																		"$ref": "#/components/schemas/Money"
 																	},
@@ -31703,6 +31713,7 @@
 																	"spent",
 																	"left",
 																	"over",
+																	"limitLeft",
 																	"need",
 																	"count"
 																],

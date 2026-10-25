@@ -91,6 +91,12 @@ export const groupTotalsSchema = z.object({
 	left: moneySchema,
 	/** Σ overspending inside the group ("Over by X" on a Flex row). */
 	over: moneySchema,
+	/**
+	 * Limits books only (null elsewhere): Σ Left of the group's envelopes that
+	 * have a limit, the same rows as the hero's "Left in your limits". An
+	 * envelope with no limit only tracks what was spent and is not in it.
+	 */
+	limitLeft: moneySchema.nullable(),
 	need: moneySchema,
 	count: z.number().int(),
 });
