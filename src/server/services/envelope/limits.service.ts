@@ -50,26 +50,28 @@ const limitUndoSchema = z.object({
 const firstOf = (month: number) =>
 	`${Math.floor(month / 100)}-${String(month % 100).padStart(2, "0")}-01`;
 
-/** Spending per category over the last 3 full calendar months, in `currency` minor units. */
-export async function recentSpending(
+export interface SpendRange {
+	gte: Date;
+	lte: Date;
+}
+
+/**
+ * Spending per category inside `range`, valued in `currency` minor units at
+ * the nearest rate of `rateType` (else official). A row with no rate is left
+ * out and listed, never valued at 1. `uncategorized` also counts rows with no
+ * category, under the key null.
+ */
+export async function spendingByCategory(
 	tx: Tx,
-	userId: string,
 	currency: string,
 	rateType: string,
-	now: Date,
-): Promise<{ spent: Map<string, number>; missingRates: MissingRate[] }> {
-	const zone = await userTimeZone(tx, userId);
-	const thisMonth = calendarMonthOf(isoDateIn(now, zone));
-	const from = firstOf(addMonths(thisMonth, -3));
+	range: SpendRange,
+	opts: { userId: string; uncategorized?: boolean },
+): Promise<{ spent: Map<string | null, number>; missingRates: MissingRate[] }> {
 	const rows = await tx.expense.findMany({
 		where: {
-			...budgetSpendingWhere(userId, {
-				gte: new Date(`${from}T00:00:00Z`),
-				lte: new Date(
-					new Date(`${firstOf(thisMonth)}T00:00:00Z`).getTime() - 1,
-				),
-			}),
-			categoryId: { not: null },
+			...budgetSpendingWhere(opts.userId, range),
+			...(opts.uncategorized ? {} : { categoryId: { not: null } }),
 		},
 		select: {
 			id: true,
@@ -83,9 +85,9 @@ export async function recentSpending(
 	const rates = await RateBook.load(tx, {
 		bookCurrency: currency,
 		rateTypes: [rateType, "official"],
-		since: from,
+		since: range.gte.toISOString().slice(0, 10),
 	});
-	const spent = new Map<string, number>();
+	const spent = new Map<string | null, number>();
 	const missingRates: MissingRate[] = [];
 	for (const r of rows) {
 		const date = r.date.toISOString().slice(0, 10);
@@ -109,10 +111,34 @@ export async function recentSpending(
 			missingRates.push(v.missing);
 			continue;
 		}
-		const id = r.categoryId as string;
-		spent.set(id, (spent.get(id) ?? 0) + v.minor);
+		spent.set(r.categoryId, (spent.get(r.categoryId) ?? 0) + v.minor);
 	}
 	return { spent, missingRates };
+}
+
+/** Spending per category over the last 3 full calendar months, in `currency` minor units. */
+export async function recentSpending(
+	tx: Tx,
+	userId: string,
+	currency: string,
+	rateType: string,
+	now: Date,
+): Promise<{ spent: Map<string, number>; missingRates: MissingRate[] }> {
+	const zone = await userTimeZone(tx, userId);
+	const thisMonth = calendarMonthOf(isoDateIn(now, zone));
+	const from = firstOf(addMonths(thisMonth, -3));
+	const { spent, missingRates } = await spendingByCategory(
+		tx,
+		currency,
+		rateType,
+		{
+			gte: new Date(`${from}T00:00:00Z`),
+			lte: new Date(new Date(`${firstOf(thisMonth)}T00:00:00Z`).getTime() - 1),
+		},
+		{ userId },
+	);
+	// Rows without a category were left out of the query.
+	return { spent: spent as Map<string, number>, missingRates };
 }
 
 /** The Limits envelope a limit edit acts on, under the book lock. */

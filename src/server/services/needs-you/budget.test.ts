@@ -415,6 +415,14 @@ describe("budget Needs you items (SPEC §5.14)", () => {
 		).toEqual(["budget.reconcile"]);
 	});
 
+	it("hidden expenses waiting after a move from the old budget: one item with the count, none at zero", () => {
+		const items = budgetItems({ ...facts(month({})), hiddenRows: 3 });
+		expect(items.map((i) => [i.type, i.count, i.group])).toEqual([
+			["budget.hiddenReview", 3, "budget"],
+		]);
+		expect(budgetItems({ ...facts(month({})), hiddenRows: 0 })).toEqual([]);
+	});
+
 	it("addDays crosses months and years", () => {
 		expect(addDays("2026-10-28", 7)).toBe("2026-11-04");
 		expect(addDays("2026-12-30", 3)).toBe("2027-01-02");

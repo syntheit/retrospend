@@ -3,11 +3,25 @@
  * with pace, Left this week, and Left to spend. Pure, over the view's rows.
  */
 import { daysBetween } from "./calendar";
-import type { MonthViewInput, Row } from "./month-view";
+import type { MonthViewInput, Row, ViewBook } from "./month-view";
 import { monthRange } from "./months";
 import { type LeftToSpend, leftToSpend, perDay } from "./pace";
 import type { Minor } from "./types";
 import type { LimitTotals } from "./verdict";
+
+/**
+ * A Limits envelope with no limit (kind None, no target): a pegged budget
+ * moved from the old app, or Everything else with no global budget. It shows
+ * what was spent, as negative Left, but has nothing to be over: no money is
+ * written to cover it (Left and the invariant stay as computed).
+ */
+export function tracksOnly(r: Row, book: ViewBook): boolean {
+	return (
+		book.fundingSource === "TARGETS" &&
+		r.env.kind === "NONE" &&
+		r.env.target === null
+	);
+}
 
 /**
  * Limits (SPEC §6.1): envelopes with a limit or money this month. A limit is
@@ -71,6 +85,7 @@ export function leftToSpendFor(
 			activity: r.m.activity,
 			left: r.m.left,
 			wealth: r.m.wealth,
+			tracksOnly: tracksOnly(r, p.book),
 		})),
 		toAssign,
 		billNeeds: rows

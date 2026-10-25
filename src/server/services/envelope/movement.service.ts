@@ -415,6 +415,20 @@ export async function undo(
 		throw new EnvelopeError("NOT_FOUND", "nothing to undo");
 	if (originals.some((o) => o.kind === "UNDO"))
 		throw new EnvelopeError("INVALID", "an undo cannot be undone");
+	// An envelope edit also moved categories, rules or targets: only its own undo puts all of that back.
+	const edits = await tx.envelopeChange.count({
+		where: {
+			bookId: s.loaded.row.id,
+			id: {
+				in: originals.flatMap((o) => (o.batchId ? [o.batchId] : [])),
+			},
+		},
+	});
+	if (edits > 0)
+		throw new EnvelopeError(
+			"INVALID",
+			"this belongs to an envelope edit: undo the edit instead (envelope.undoChange)",
+		);
 	const undone = await tx.budgetMovement.count({
 		where: { revertsId: { in: originals.map((o) => o.id) } },
 	});

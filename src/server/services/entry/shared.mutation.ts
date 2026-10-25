@@ -13,6 +13,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
+import type { AnsweredFix } from "../corrections/fix-request.service";
 import type { MoneyMutation } from "../preview/types";
 import { SharedTransactionService } from "../shared-expenses/transaction.service";
 import { RETRACT_WINDOW_MS, retractSplitNotices } from "./notices";
@@ -135,6 +136,8 @@ export const createSharedExpense: MoneyMutation<
 export interface UpdatedShared {
 	readonly id: string;
 	readonly restore: SharedRestore;
+	/** Requests to fix it that this edit answered (2C.2); the undo passes them back as `reopenFixRequests`. */
+	readonly answered: readonly AnsweredFix[];
 }
 
 export const updateSharedExpense: MoneyMutation<
@@ -145,9 +148,30 @@ export const updateSharedExpense: MoneyMutation<
 	touches: SHARED_FIGURES,
 	run: async (tx, { notify, ...input }, actor) => {
 		const restore = await restoreOf(tx, input.id);
+		const open = await tx.fixRequest.findMany({
+			where: {
+				transactionId: input.id,
+				askedType: "user",
+				askedId: actor.userId,
+				status: { in: ["PENDING", "ACCEPTED"] },
+			},
+			select: { id: true, status: true },
+		});
 		await serviceFor(tx, actor.userId, { notify }).update(input);
+		// The service answers them on a real edit; report the ones it did.
+		const now = await tx.fixRequest.findMany({
+			where: { id: { in: open.map((r) => r.id) }, status: "FIXED" },
+			select: { id: true },
+		});
+		const fixed = new Set(now.map((r) => r.id));
+		const answered: AnsweredFix[] = open
+			.filter((r) => fixed.has(r.id))
+			.map((r) => ({
+				id: r.id,
+				previousStatus: r.status as AnsweredFix["previousStatus"],
+			}));
 		return {
-			value: { id: input.id, restore },
+			value: { id: input.id, restore, answered },
 			undo: {
 				kind: "revert",
 				mutation: "sharedExpense.update",

@@ -10,6 +10,9 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// The in-memory database has no lock query (see ~/test/locks-stub).
+vi.mock("~/server/services/corrections/locks", () => import("~/test/locks-stub"));
+
 // Must mock notifications before importing services
 vi.mock("~/server/services/notifications", () => ({
 	createNotification: vi.fn().mockResolvedValue(undefined),

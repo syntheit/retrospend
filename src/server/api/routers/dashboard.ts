@@ -3,17 +3,19 @@ import { z } from "zod";
 import { toUSD } from "~/lib/money";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
+import { pacingFor } from "~/server/services/envelope/migration-read.service";
 import { personalActivityItem } from "~/server/services/expense-dto";
 import {
+	getEarliestBudgetMonth,
 	getOverviewSettings,
 	getOverviewStats,
 } from "~/server/services/overview.service";
 import { RateCache } from "~/server/services/rate-cache";
-import { listedEntryWhere } from "~/server/services/spending";
 import {
 	getExcludedProjectIds,
 	listSharedParticipationsForUser,
 } from "~/server/services/shared-expense-integration";
+import { listedEntryWhere } from "~/server/services/spending";
 import { StatsService } from "~/server/services/stats.service";
 
 export const dashboardRouter = createTRPCRouter({
@@ -39,6 +41,7 @@ export const dashboardRouter = createTRPCRouter({
 				excludedProjectIds,
 				rateCache: new RateCache(db),
 				timeZone: ctx.timeZone,
+				envelopePacing: await pacingFor(ctx),
 			});
 		}),
 	getOverviewData: protectedProcedure
@@ -107,14 +110,9 @@ export const dashboardRouter = createTRPCRouter({
 					excludedProjectIds,
 					rateCache,
 					timeZone: ctx.timeZone,
+					envelopePacing: await pacingFor(ctx),
 				}),
-				db.budget
-					.findFirst({
-						where: { userId },
-						orderBy: { period: "asc" },
-						select: { period: true },
-					})
-					.then((b) => b?.period ?? null),
+				getEarliestBudgetMonth(db, userId),
 				statsService.getSummaryStats(
 					userId,
 					month,

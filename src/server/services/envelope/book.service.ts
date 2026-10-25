@@ -5,12 +5,8 @@
  * the caller's transaction (RLS set), so `setup.mutation.ts` previews it.
  */
 import { randomUUID } from "node:crypto";
-import type {
-	SetupInput,
-	SetupPresetOutput,
-	TargetInput,
-} from "~/lib/schemas/envelope";
-import { Prisma } from "~prisma";
+import type { SetupInput, SetupPresetOutput } from "~/lib/schemas/envelope";
+import type { Prisma } from "~prisma";
 import { userTimeZone } from "../user-time-zone";
 import { writeEntryRow } from "./adjustment";
 import { EnvelopeError } from "./errors";
@@ -26,17 +22,12 @@ import {
 	writeSetupExtras,
 } from "./setup-p5";
 import { REPEAT_MONTHS } from "./target-input";
+import { KIND_FOR, LIABILITY_TYPES, targetColumns } from "./target-write";
 import { savingsShape } from "./targets";
 import { TargetConfigError } from "./types";
-import { fromMinor, toMinor } from "./units";
+import { toMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
-
-export const LIABILITY_TYPES = [
-	"LIABILITY_LOAN",
-	"LIABILITY_CREDIT_CARD",
-	"LIABILITY_MORTGAGE",
-] as const;
 
 export async function setupPreset(
 	tx: Tx,
@@ -96,14 +87,6 @@ export interface SetupContext {
 	/** The request's zone; null falls back to userTimeZone and stays unconfirmed. */
 	timeZone: string | null;
 }
-
-const KIND_FOR: Record<TargetInput["kind"], string> = {
-	MONTHLY: "MONTHLY",
-	BILL: "BILL",
-	BILL_TEMPLATE: "BILL",
-	BILL_LIABILITY: "BILL",
-	SAVINGS: "SAVINGS",
-};
 
 function invalid(message: string): never {
 	throw new EnvelopeError("INVALID", message);
@@ -176,47 +159,6 @@ async function validate(tx: Tx, input: SetupInput) {
 		invalid(
 			"a bill follows a recurring expense that repeats monthly, quarterly or yearly",
 		);
-}
-
-function targetColumns(
-	t: TargetInput | undefined,
-	H: string,
-	startMonth: number,
-) {
-	if (!t) return {};
-	if (t.kind === "BILL_TEMPLATE")
-		return { targetTemplateId: t.templateId, targetStartMonth: startMonth };
-	if (t.kind === "BILL_LIABILITY")
-		return { targetLiabilityId: t.liabilityId, targetStartMonth: startMonth };
-	const currency = t.currency ?? H;
-	const foreign = currency === H ? null : currency;
-	const amount = (minor: number | undefined) =>
-		minor === undefined
-			? null
-			: new Prisma.Decimal(fromMinor(minor, currency).toString());
-	const day = (d: string | undefined) =>
-		d ? new Date(`${d}T00:00:00Z`) : null;
-	const base = { targetCurrency: foreign, targetStartMonth: startMonth };
-	if (t.kind === "MONTHLY")
-		return {
-			...base,
-			targetAmount: amount(t.amountMinor),
-			targetMode: t.mode,
-			targetCadence: t.cadence,
-		};
-	if (t.kind === "BILL")
-		return {
-			...base,
-			targetAmount: amount(t.amountMinor),
-			targetDueDate: day(t.dueDate),
-			targetRepeat: t.repeat,
-		};
-	return {
-		...base,
-		targetAmount: amount(t.amountMinor),
-		targetDueDate: day(t.dueDate),
-		targetMonthlyAmount: amount(t.monthlyMinor),
-	};
 }
 
 export async function rateTypeFor(tx: Tx, userId: string, currency: string) {

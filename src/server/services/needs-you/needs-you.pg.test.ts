@@ -466,8 +466,9 @@ describe("needsYou query budget", () => {
 		expect(three).toBe(one);
 		// The budget source reads its book in a fixed set of queries, splits
 		// included (budget P3), frozen row values (P4) and the income rules'
-		// idle check (P5): the count never grows with the items.
-		expect(one).toBeLessThanOrEqual(26);
+		// idle check (P5) and the fix requests asked of you (2C.2): the count
+		// never grows with the items.
+		expect(one).toBeLessThanOrEqual(27);
 	});
 
 	it("p95 under 150 ms", async () => {

@@ -17,6 +17,8 @@ function loadProject(db: PrismaClient, projectId: string) {
 				date: true,
 				splitMode: true,
 				isLocked: true,
+				correctsId: true,
+				_count: { select: { corrections: true } },
 				splitParticipants: {
 					select: { participantType: true, participantId: true },
 				},
@@ -88,7 +90,10 @@ export async function rebalanceableExpenses(
 	);
 
 	return expenses
-		.filter((e) => !e.isLocked)
+		// A correction row, or a split with corrections, is never re-split (2C.2).
+		.filter(
+			(e) => !e.isLocked && !e.correctsId && (e._count?.corrections ?? 0) === 0,
+		)
 		.filter(
 			(e) =>
 				!e.splitParticipants.some((sp) => canonicalKey(sp) === newcomerKey),

@@ -9,6 +9,7 @@
  * - a key whose first request is still running is
  *   `idempotency_in_progress` (409); retry after a moment;
  * - a failed request does not keep its key, so the client may retry it.
+ * Preview twins (`previewOf`) write nothing and take no key.
  * Routes whose response holds a secret shown once (a new API key) keep
  * only the fact that the key was used; a replay is
  * `idempotency_replay_unavailable` (409).

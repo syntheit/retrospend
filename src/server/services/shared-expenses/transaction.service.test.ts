@@ -46,6 +46,7 @@ function createMockDb() {
 		auditLogEntry: {
 			create: vi.fn().mockResolvedValue({ id: "audit-1" }),
 		},
+		fixRequest: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn() },
 	};
 
 	const db = {
@@ -1678,6 +1679,7 @@ describe("SharedTransactionService", () => {
 					updateMany: vi.fn(),
 					findMany: vi.fn().mockResolvedValue([]),
 				},
+				fixRequest: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn() },
 				projectParticipant: {
 					// Used both by assertCanModifyTransaction (actor role) and by the
 					// shadow auto-add dedupe check.

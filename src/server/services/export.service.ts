@@ -2,6 +2,7 @@ import JSZip from "jszip";
 import { generateCsv } from "~/lib/csv";
 import { dayKey } from "~/lib/time-zone";
 import type { PrismaClient } from "~prisma";
+import { envelopeExportFiles } from "./envelope/envelope-export";
 
 export class ExportService {
 	constructor(private db: PrismaClient) {}
@@ -350,6 +351,12 @@ export class ExportService {
 				budget.updatedAt,
 			]);
 			zip.file("budgets.csv", generateCsv(budgetHeader, budgetRows));
+		}
+
+		// 8b. The envelope budget (envelopes, movements, rules, months). The old
+		// budgets.csv above goes with the legacy table (M14).
+		for (const file of await envelopeExportFiles(db, userId)) {
+			zip.file(`envelope-budget/${file.name}`, file.content);
 		}
 
 		// 9. Recurring Templates

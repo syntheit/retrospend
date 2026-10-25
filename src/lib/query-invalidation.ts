@@ -29,6 +29,7 @@ const SHARED_TX_DEPS = [
 // The envelope budget reads every expense, share and settlement (build plan 02 §5.4).
 const EXPENSE_DEPS = ["dashboard", "budget", "stats", "envelope"] as const;
 
+// A payment can lock the splits it settled (2C.2), which Activity and the entry views show.
 const SETTLEMENT_DEPS = [
 	"people",
 	"project",
@@ -36,6 +37,8 @@ const SETTLEMENT_DEPS = [
 	"dashboard",
 	"stats",
 	"envelope",
+	"expense",
+	"sharedTransaction",
 ] as const;
 
 const CATEGORY_DEPS = [
@@ -92,6 +95,13 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"envelope.unapplyDraft": ENVELOPE_DEPS,
 	"envelope.fundPlanNow": ENVELOPE_DEPS,
 	"envelope.setGroupTarget": ENVELOPE_DEPS,
+	"envelope.setTarget": ENVELOPE_DEPS,
+	"envelope.createEnvelope": ENVELOPE_DEPS,
+	"envelope.updateEnvelope": ENVELOPE_DEPS,
+	"envelope.mergeEnvelopes": ["dashboard", "stats", "project"],
+	"envelope.archiveEnvelope": ["dashboard", "stats", "project"],
+	"envelope.undoChange": ["dashboard", "stats", "project", "expense"],
+	"envelope.confirmStartingMoney": ["dashboard", "expense"],
 	// Style, period and routing change what reports group and the dashboard shows.
 	"envelope.setStyle": ["dashboard", "stats"],
 	"envelope.revertStyle": ["dashboard", "stats"],
@@ -104,12 +114,51 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"envelope.welcomeBack": ["dashboard", "expense"],
 	// Debts: terms and the plan change the Wealth liability view and bills;
 	// a payment moves accounts, the liability and the budget.
+	// A hidden-rows answer changes the row's flags: lists, stats and the budget.
+	"envelope.resolveHidden": ["dashboard", "expense", "stats"],
+	"envelope.revertHidden": ["dashboard", "expense", "stats"],
+	"envelope.dismissMigrationNotice": [],
 	"envelope.setDebtTerms": ["wealth", "dashboard"],
 	"envelope.savePayoffPlan": ENVELOPE_DEPS,
 	"envelope.revertPayoffPlan": ENVELOPE_DEPS,
 	"envelope.recordDebtPayment": ["wealth", "expense", "dashboard", "stats"],
-	"envelope.forgive": ["people", "dashboard"],
-	"envelope.unforgive": ["people", "dashboard"],
+	"envelope.forgive": [
+		"people",
+		"dashboard",
+		"home",
+		"expense",
+		"sharedTransaction",
+	],
+	"envelope.unforgive": [
+		"people",
+		"dashboard",
+		"home",
+		"expense",
+		"sharedTransaction",
+	],
+
+	// ── Corrections, Ask to fix and Forgive (2C.2) ───────────────────────
+	// A correction moves balances, spending and the budget, and answers fix requests.
+	"corrections.correct.save": [
+		...SHARED_TX_DEPS,
+		"sharedTransaction",
+		"verification",
+		"home",
+	],
+	"corrections.undoCorrection.save": [
+		...SHARED_TX_DEPS,
+		"sharedTransaction",
+		"verification",
+		"home",
+	],
+	// Fix requests change the asked person's Needs you list and the split's read view.
+	"corrections.askToFix.save": ["home", "people", "sharedTransaction"],
+	"corrections.respondToFix.save": ["home", "people", "sharedTransaction"],
+	"corrections.cancelFix.save": ["home", "people", "sharedTransaction"],
+	"corrections.withdrawFix.save": ["home", "people", "sharedTransaction"],
+	"corrections.restoreFix.save": ["home", "people", "sharedTransaction"],
+	"corrections.forgive.save": [...SETTLEMENT_DEPS, "home"],
+	"corrections.unforgive.save": [...SETTLEMENT_DEPS, "home"],
 
 	// ── Personal expenses ───────────────────────────────────────────────
 	"expense.createExpense": EXPENSE_DEPS,

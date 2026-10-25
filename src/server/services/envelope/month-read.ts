@@ -193,6 +193,17 @@ export async function historyIn(
 			})
 		).map((r) => r.revertsId),
 	);
+	const edits = new Set(
+		(
+			await tx.envelopeChange.findMany({
+				where: {
+					bookId: loaded.row.id,
+					id: { in: page.flatMap((r) => (r.batchId ? [r.batchId] : [])) },
+				},
+				select: { id: true },
+			})
+		).map((c) => c.id),
+	);
 	const H = loaded.book.currency;
 	return {
 		items: page.map((r) => ({
@@ -208,6 +219,8 @@ export async function historyIn(
 			canUndo:
 				r.kind !== "UNDO" &&
 				!reverted.has(r.id) &&
+				// An envelope edit is undone as a whole, by envelope.undoChange.
+				!(r.batchId && edits.has(r.batchId)) &&
 				r.month >= loaded.input.currentMonth,
 		})),
 		nextCursor: rows.length > input.limit ? (page.at(-1)?.id ?? null) : null,

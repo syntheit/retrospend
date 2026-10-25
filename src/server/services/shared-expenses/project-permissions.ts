@@ -163,6 +163,7 @@ export async function requireProjectRole(
  *
  * Permission rules:
  * - Settled (isLocked) transactions: nobody can modify
+ * - Correction rows, and expenses that have corrections: nobody can modify
  * - Standalone (no projectId): only the creator
  * - Project-scoped:
  *   - ORGANIZER / EDITOR: can modify any transaction
@@ -179,7 +180,10 @@ export async function assertCanModifyTransaction(
 ): Promise<TransactionWithParticipants> {
 	const transaction = await (db as PrismaClient).sharedTransaction.findUnique({
 		where: { id: transactionId },
-		include: { splitParticipants: true },
+		include: {
+			splitParticipants: true,
+			_count: { select: { corrections: true } },
+		},
 	});
 
 	if (!transaction) {
@@ -193,6 +197,22 @@ export async function assertCanModifyTransaction(
 		throw new TRPCError({
 			code: "FORBIDDEN",
 			message: "Settled transactions cannot be modified",
+		});
+	}
+
+	// A correction is undone, not edited (2C.2); an expense that has
+	// corrections stays as it was, since they are the difference from it.
+	if (transaction.correctsId) {
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message: "A correction cannot be edited. Undo it instead",
+		});
+	}
+	const corrections = transaction._count?.corrections ?? 0;
+	if (corrections > 0) {
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message: "This expense has corrections. Undo them first",
 		});
 	}
 

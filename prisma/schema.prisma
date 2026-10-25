@@ -254,6 +254,7 @@ model Expense {
   @@index([userId, isAmortizedParent, date])
   @@index([userId, direction, date])
   @@index([userId, importFingerprint])
+  @@index([budgetEnvelopeId])
   @@map("expense")
 }
 
@@ -367,6 +368,10 @@ model BudgetBook {
   startingMoneyConfirmedAt DateTime?
   legacyMigrationRunId     String?       @db.VarChar(64)
   legacyMigratedAt         DateTime?
+  // The "your limits moved" notice was dismissed.
+  legacyNoticeSeenAt       DateTime?
+  // The hidden expenses found at the move, ids only: the review answers stay inside this set and a rollback hides them again.
+  legacyHiddenIds          String[]      @default([])
   // Last budget read; 35 days away with closes waiting opens Welcome back (S26).
   lastOpenedAt             DateTime?
   // Welcome back waits from this instant until the person picks a choice.
@@ -398,10 +403,41 @@ model BudgetBook {
   incomeRules     IncomeRule[]
   incomeRuleRuns  IncomeRuleRun[]
   payoffPlan      PayoffPlan?
+  envelopeChanges EnvelopeChange[]
 
   @@index([createdById])
   @@index([currency])
   @@map("budget_book")
+}
+
+// What an envelope edit changed, kept server side so its undo is exact and a
+// client never supplies the old state. `id` is the client id of the edit, so a
+// retry is idempotent. `before` carries ids, amounts and flags only (E2EE rule
+// 10); the one user-text value, a name before a rename, has its own column.
+model EnvelopeChange {
+  id           String             @id
+  bookId       String
+  kind         EnvelopeChangeKind
+  // No foreign key: undoing a create deletes the envelope.
+  envelopeId   String?
+  previousName String?
+  before       Json
+  actorUserId  String
+  createdAt    DateTime           @default(now())
+  undoneAt     DateTime?
+  book         BudgetBook         @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId, createdAt])
+  @@map("envelope_change")
+}
+
+enum EnvelopeChangeKind {
+  SET_TARGET
+  CREATE
+  UPDATE
+  MERGE
+  ARCHIVE
+  CONFIRM_STARTING_MONEY
 }
 
 // Start day and rate type in force from a budget month on (SPEC §5.1, B7).
@@ -1465,6 +1501,13 @@ model SharedTransaction {
   notes           String?   @db.Text
   receiptUrl      String?   @db.VarChar(2048)
   isLocked        Boolean   @default(false)
+  // The payment that settled this split and locked it (null: a period close
+  // locked it, or it is not locked). Undoing or rejecting that payment unlocks.
+  lockedByPaymentId String?
+  // Set on a correction entry (MONEY-MOVES 1.11): the split it corrects. A
+  // correction holds only the per-person difference, so its shares may be
+  // negative; the original is never rewritten.
+  correctsId      String?
 
   paidByType      ParticipantType
   paidById        String
@@ -1482,9 +1525,14 @@ model SharedTransaction {
   project         Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
   billingPeriod   BillingPeriod?     @relation(fields: [billingPeriodId], references: [id], onDelete: SetNull)
   splitParticipants SplitParticipant[]
+  corrects        SharedTransaction?  @relation("Correction", fields: [correctsId], references: [id], onDelete: SetNull)
+  corrections     SharedTransaction[] @relation("Correction")
+  fixRequests     FixRequest[]
 
   @@index([paidByType, paidById])
   @@index([createdByType, createdById])
+  @@index([correctsId])
+  @@index([lockedByPaymentId])
   @@index([projectId])
   @@index([billingPeriodId])
   @@index([billingPeriodId, date])
@@ -1637,6 +1685,43 @@ model Payment {
   @@map("payment")
 }
 
+enum FixRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  FIXED
+  CANCELLED
+}
+
+/// Ask to fix (MONEY-MOVES 1.11): a person on a split asks its creator to fix
+/// it. The id is made by the client, `updatedAt` is its version. The message
+/// is the asker's own text (end-to-end encryption rule 10: its own column);
+/// notifications and audit carry the ids only.
+model FixRequest {
+  id              String           @id
+  transactionId   String
+  requestedByType ParticipantType
+  requestedById   String
+  /// Who is asked: the split's creator when it was asked.
+  askedType       ParticipantType
+  askedId         String
+  message         String?          @db.Text
+  reply           String?          @db.Text
+  status          FixRequestStatus @default(PENDING)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @default(now()) @updatedAt
+  answeredAt      DateTime?
+  /// The first correction entry that fixed it.
+  fixedById       String?
+
+  transaction SharedTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId, status])
+  @@index([askedType, askedId, status])
+  @@index([requestedByType, requestedById])
+  @@map("fix_request")
+}
+
 model AuditLogEntry {
   id         String          @id @default(cuid())
   timestamp  DateTime        @default(now())
@@ -1685,6 +1770,12 @@ enum SettlementStatus {
 }
 
 enum AuditAction {
+  FORGIVEN
+  UNFORGIVEN
+  CORRECTED
+  CORRECTION_UNDONE
+  FIX_REQUESTED
+  FIX_ANSWERED
   CREATED
   EDITED
   DELETED

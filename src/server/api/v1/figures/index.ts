@@ -1,10 +1,15 @@
 import { MAX_FIGURE_IDS, parseFigureIds } from "@retrospend/api-contract";
 import { readFigures } from "~/server/figures/read";
 import { FigureRegistryError } from "~/server/figures/registry";
+import { readGlance } from "~/server/services/api-v1/home";
+import { serve } from "../core/serve";
 import { problem } from "../errors";
 import { signedIn, v1 } from "../middleware";
 
 export const figuresRouter = {
+	glance: v1.figures.glance.handler(
+		serve(({ context }) => readGlance(signedIn(context))),
+	),
 	read: v1.figures.read.handler(async ({ context, input }) => {
 		const user = signedIn(context);
 		const ids = parseFigureIds(input.ids);

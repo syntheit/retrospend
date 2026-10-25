@@ -1,6 +1,9 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
 import { figureSchema } from "../common/money";
+import { glanceSchema } from "./glance";
+
+export * from "./glance";
 
 export const MAX_FIGURE_IDS = 50;
 
@@ -48,4 +51,16 @@ export const figuresContract = {
 		.meta({ scope: "read" })
 		.input(figuresQuerySchema)
 		.output(figuresResultSchema),
+	glance: v1
+		.route({
+			method: "GET",
+			path: "/figures/glance",
+			operationId: "getGlance",
+			tags: ["Figures"],
+			summary: "Home's glance",
+			description:
+				"Spent this period against the last by the same day, the budget verdict and Left to spend when a book exists, Owed to you and You owe (never netted) and net worth. Spent for any filter is the `total` of GET /expenses; spent alone is GET /figures?ids=spent.",
+		})
+		.meta({ scope: "read" })
+		.output(glanceSchema),
 };

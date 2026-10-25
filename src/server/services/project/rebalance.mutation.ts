@@ -62,6 +62,8 @@ function loadCandidates(tx: Prisma.TransactionClient, input: RebalanceInput) {
 			date: true,
 			splitMode: true,
 			isLocked: true,
+			correctsId: true,
+			_count: { select: { corrections: true } },
 			paidByType: true,
 			paidById: true,
 			splitParticipants: {
@@ -98,7 +100,8 @@ async function pickExpenses(
 	const chosen: Candidate[] = [];
 	const skipped: RebalanceResult["skipped"] = [];
 	for (const e of candidates) {
-		if (e.isLocked) {
+		// A correction row, or a split with corrections, is never re-split (2C.2).
+		if (e.isLocked || e.correctsId || (e._count?.corrections ?? 0) > 0) {
 			skipped.push({ id: e.id, reason: "locked" });
 		} else if (
 			e.splitParticipants.some((sp) => canonicalKey(sp) === newcomerKey)
