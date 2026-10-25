@@ -64,7 +64,7 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 		redirectParam.startsWith("/") &&
 		!redirectParam.startsWith("//")
 			? redirectParam
-			: "/dashboard";
+			: "/home";
 
 	const [inviteCode, setInviteCode] = useState("");
 	const [inviteState, setInviteState] = useState<InviteState>("idle");
@@ -459,7 +459,7 @@ function SignupFormInner({ enableLegalPages }: { enableLegalPages: boolean }) {
 								className="h-auto p-0 font-medium text-primary hover:underline"
 								onClick={() =>
 									router.push(
-										signupRedirectTo === "/dashboard"
+										signupRedirectTo === "/home"
 											? "/login"
 											: `/login?redirect=${encodeURIComponent(signupRedirectTo)}`,
 									)

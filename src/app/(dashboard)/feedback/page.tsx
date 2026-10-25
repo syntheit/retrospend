@@ -13,7 +13,7 @@ export default async function FeedbackPage() {
 	}
 
 	if ((session.user as { role?: string }).role !== "ADMIN") {
-		redirect("/dashboard");
+		redirect("/home");
 	}
 
 	return (

@@ -20,7 +20,7 @@ describe("safeRedirect", () => {
 			"/\tevil",
 			"javascript:alert(1)",
 		]) {
-			expect(safeRedirect(raw)).toBe("/dashboard");
+			expect(safeRedirect(raw)).toBe("/home");
 		}
 	});
 });

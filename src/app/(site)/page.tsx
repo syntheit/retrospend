@@ -8,7 +8,7 @@ export default async function RootPage() {
 	const showLandingPage = env.NEXT_PUBLIC_SHOW_LANDING_PAGE === "true";
 
 	if (!showLandingPage) {
-		redirect("/dashboard");
+		redirect("/home");
 	}
 
 	return (

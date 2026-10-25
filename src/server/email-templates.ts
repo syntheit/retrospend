@@ -230,7 +230,7 @@ export function notificationEmail({
 }) {
 	const appUrl = env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "";
 	const settingsUrl = appUrl ? `${appUrl}/settings` : null;
-	const buttonUrl = ctaUrl ?? (appUrl ? appUrl + "/dashboard" : null);
+	const buttonUrl = ctaUrl ?? (appUrl ? appUrl + "/home" : null);
 	const buttonLabel = ctaLabel ?? "View in Retrospend";
 
 	const content = `

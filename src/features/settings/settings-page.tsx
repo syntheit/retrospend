@@ -6,7 +6,7 @@ import { BackButton } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { useSession } from "~/hooks/use-session";
-import { entryOf, hrefOf } from "~/lib/nav";
+import { entryOf } from "~/lib/nav";
 import { AboutFooter } from "./about-footer";
 import { CategoriesSection } from "./categories/categories-section";
 import { DangerSection } from "./danger/danger-section";
@@ -39,7 +39,7 @@ export function SettingsPage() {
 		[isAdmin],
 	);
 	const { current, go } = useSectionSpy(scroller, ids);
-	const home = hrefOf(entryOf("home")) ?? "/dashboard";
+	const home = entryOf("home").href;
 
 	return (
 		<div
