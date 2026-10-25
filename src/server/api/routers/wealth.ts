@@ -6,6 +6,7 @@ import {
 	defaultAccounts,
 	setDefaultAccount,
 } from "~/server/services/accounts/defaults";
+import { exactRate, withRateNumber } from "~/server/services/accounts/exact-rate";
 import * as schema from "~/server/services/accounts/input";
 import {
 	closeAccount,
@@ -89,10 +90,15 @@ export const wealthRouter = createTRPCRouter({
 	createAsset: protectedProcedure
 		.input(schema.createAccountSchema)
 		.mutation(({ ctx, input }) =>
-			createAccount(ctx.db, ctx.session.user.id, input, ctx.timeZone),
+			createAccount(
+				ctx.db,
+				ctx.session.user.id,
+				withRateNumber(input),
+				ctx.timeZone,
+			),
 		),
 
-	/** The old Update balance dialog; the same mutation as accounts.updateBalance. */
+	/** The old Update balance dialog; the same mutation as the API's account.updateBalance. */
 	updateAssetBalance: protectedProcedure
 		.input(schema.legacyBalanceSchema)
 		.mutation(async ({ ctx, input }) => {
@@ -104,7 +110,10 @@ export const wealthRouter = createTRPCRouter({
 					...(input.exchangeRateType
 						? { rateType: input.exchangeRateType }
 						: {}),
-					exchangeRate: input.exchangeRate ?? null,
+					exchangeRate:
+						input.exchangeRate === undefined
+							? null
+							: exactRate(input.exchangeRate, "exchangeRate"),
 					timeZone: ctx.timeZone,
 				},
 			);
@@ -114,7 +123,13 @@ export const wealthRouter = createTRPCRouter({
 	updateAsset: protectedProcedure
 		.input(schema.editAccountSchema)
 		.mutation(({ ctx, input: { id, ...fields } }) =>
-			editAccount(ctx.db, ctx.session.user.id, id, fields, ctx.timeZone),
+			editAccount(
+				ctx.db,
+				ctx.session.user.id,
+				id,
+				withRateNumber(fields),
+				ctx.timeZone,
+			),
 		),
 
 	getDashboard: protectedProcedure
@@ -176,9 +191,6 @@ export const wealthRouter = createTRPCRouter({
 			.query(({ ctx, input }) =>
 				accountView(ctx.db, ctx.session.user.id, input.accountId),
 			),
-		updateBalance: createTRPCRouter(
-			money(schema.updateBalanceSchema, updateBalance),
-		),
 		revertBalanceUpdate: createTRPCRouter(
 			money(schema.revertBalanceUpdateSchema, revertBalanceUpdate),
 		),

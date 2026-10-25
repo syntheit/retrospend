@@ -1582,7 +1582,7 @@ model SplitParticipant {
   participantType    ParticipantType
   participantId      String
   shareAmount        Decimal            @db.Decimal(19, 8)
-  sharePercentage    Decimal?           @db.Decimal(5, 2)
+  sharePercentage    Decimal?           @db.Decimal(7, 4)
   shareUnits         Int?
   verificationStatus VerificationStatus @default(PENDING)
   verifiedAt         DateTime?

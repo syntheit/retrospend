@@ -25,11 +25,11 @@ const ROUNDS = 4000;
 function people(n: number): SplitParticipantRef[] {
 	return Array.from({ length: n }, (_, i) => ({
 		participantType: "user" as const,
-		participantId: `p${i}`,
+		participantId: `p${String(i).padStart(2, "0")}`,
 	}));
 }
 
-/** The rule: the payer's row takes the leftover, else the last row. */
+/** The rule: the payer's row takes the leftover, else the last row (ids are padded so key order is row order). */
 function leftoverIndex(n: number, payerIdx: number): number {
 	return payerIdx >= 0 ? payerIdx : n - 1;
 }

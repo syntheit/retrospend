@@ -2,8 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Archive, Plus } from "lucide-react";
-import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -48,6 +47,7 @@ import {
 } from "~/components/ui/select";
 import type { CurrencyCode } from "~/lib/currencies";
 import { formatNumber, isCrypto as checkIsCrypto } from "~/lib/currency-format";
+import { customAccountRate } from "~/features/wealth/rate-input";
 import { useCurrencyInput } from "~/hooks/use-currency-input";
 import { AssetType } from "~/lib/db-enums";
 import { tryConvertAmount } from "~/lib/money";
@@ -219,7 +219,7 @@ export function AssetDialog({
 	});
 
 	const onSubmit = (data: FormValues) => {
-		const systemRate = exchangeRate;
+		const systemRate = customAccountRate(exchangeRateType, exchangeRate);
 
 		if (isEdit && assetId) {
 			updateAsset.mutate({

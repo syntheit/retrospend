@@ -37,34 +37,39 @@ function canonicalOf(text: string, locale: string): string | null {
 	return raw;
 }
 
-/** `int.frac` at 12 decimals, half-even, on the digits themselves. */
-function roundHalfEven(int: string, frac: string): [string, string] {
-	const kept = BigInt(int + frac.slice(0, MAX_DECIMALS));
-	const rest = frac.slice(MAX_DECIMALS);
+/** `int.frac` at `decimals` decimals, half-even, on the digits themselves. */
+function roundHalfEven(
+	int: string,
+	frac: string,
+	decimals: number,
+): [string, string] {
+	const kept = BigInt(int + frac.slice(0, decimals));
+	const rest = frac.slice(decimals);
 	const head = rest.charAt(0);
 	const above = head > "5" || (head === "5" && /[1-9]/.test(rest.slice(1)));
 	const tie = head === "5" && !above;
 	const up = above || (tie && kept % 2n === 1n);
 	const digits = (kept + (up ? 1n : 0n))
 		.toString()
-		.padStart(MAX_DECIMALS + 1, "0");
+		.padStart(decimals + 1, "0");
 	return [
-		digits.slice(0, -MAX_DECIMALS),
-		digits.slice(-MAX_DECIMALS).replace(/0+$/, ""),
+		digits.slice(0, -decimals),
+		digits.slice(-decimals).replace(/0+$/, ""),
 	];
 }
 
 function readRate(
 	text: string,
 	locale: string,
+	decimals = MAX_DECIMALS,
 ): { rate: string; rounded: boolean } | null {
 	const canonical = canonicalOf(text, locale);
 	const m = canonical && /^(\d{1,13})(?:\.(\d+))?$/.exec(canonical);
 	if (!m) return null;
 	let int = m[1] ?? "";
 	let frac = (m[2] ?? "").replace(/0+$/, "");
-	const rounded = frac.length > MAX_DECIMALS;
-	if (rounded) [int, frac] = roundHalfEven(int, frac);
+	const rounded = frac.length > decimals;
+	if (rounded) [int, frac] = roundHalfEven(int, frac, decimals);
 	int = int.replace(/^0+(?=\d)/, "");
 	if (/^0+$/.test(int) && frac === "") return null;
 	return { rate: frac ? `${int}.${frac}` : int, rounded };
@@ -85,4 +90,30 @@ export function readRateText(
 		text: read.rate.replace(".", decimalSeparator(locale)),
 		rate: read.rate,
 	};
+}
+
+/** The number's shortest round-trip digits as plain text: String(x) with any exponent written out. */
+function plainDigits(x: number): string {
+	const m = /^(\d+)(?:\.(\d+))?e([+-]\d+)$/.exec(String(x));
+	if (!m) return String(x);
+	const digits = `${m[1]}${m[2] ?? ""}`;
+	const point = (m[1] ?? "").length + Number(m[3]);
+	if (point <= 0) return `0.${"0".repeat(-point)}${digits}`;
+	if (point >= digits.length) return digits + "0".repeat(point - digits.length);
+	return `${digits.slice(0, point)}.${digits.slice(point)}`;
+}
+
+/**
+ * A rate held as a number (a table rate, or a form that still keeps floats) as
+ * the plain decimal text the server takes: the digits the number shows (25345.67
+ * stays 25345.67, not its binary expansion), never an exponent, rounded half-even
+ * to `decimals` like a typed rate. Null when it is not a rate above zero (or is
+ * not given).
+ */
+export function rateToText(
+	rate: number | undefined,
+	decimals = MAX_DECIMALS,
+): string | null {
+	if (rate === undefined || !Number.isFinite(rate) || rate <= 0) return null;
+	return readRate(plainDigits(rate), "en-US", decimals)?.rate ?? null;
 }

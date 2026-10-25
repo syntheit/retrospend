@@ -77,6 +77,45 @@ describe("buildSplitInput", () => {
 		]);
 	});
 
+	it("Percentage tab left at its starting values is the even split: sent as EQUAL", () => {
+		const three = { ...base, mode: "PERCENTAGE" as const, others: [lucia, paz] };
+		// Nothing set, or the tab's 33.33 / 33.33 / 33.34: untouched.
+		for (const percentages of [
+			{} as Record<string, number>,
+			{ "user:me": 33.33, "user:lucia": 33.33, "shadow:paz": 33.34 },
+		]) {
+			expect(buildSplitInput({ ...three, percentages })).toEqual({
+				splitMode: "EQUAL",
+				splitWith: [you, lucia, paz],
+			});
+		}
+		// 50 / 50 for two people is the starting value too.
+		expect(
+			buildSplitInput({
+				...base,
+				mode: "PERCENTAGE",
+				percentages: { "user:me": 50, "user:lucia": 50 },
+			}).splitMode,
+		).toBe("EQUAL");
+	});
+
+	it("one percentage changed keeps every row as typed", () => {
+		const three = {
+			...base,
+			mode: "PERCENTAGE" as const,
+			others: [lucia, paz],
+			percentages: { "user:me": 33.33, "user:lucia": 33.34, "shadow:paz": 33.33 },
+		};
+		expect(buildSplitInput(three)).toEqual({
+			splitMode: "PERCENTAGE",
+			splitWith: [
+				{ ...you, sharePercentage: 33.33 },
+				{ ...lucia, sharePercentage: 33.34 },
+				{ ...paz, sharePercentage: 33.33 },
+			],
+		});
+	});
+
 	it("a person listed twice is sent once", () => {
 		expect(
 			buildSplitInput({ ...base, others: [lucia, lucia] }).splitWith,
