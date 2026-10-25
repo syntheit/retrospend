@@ -30,14 +30,54 @@ export const usePlanMutation: MoneyMutation<UsePlanInput, UsePlanResult> = {
 		const now = new Date();
 		const read = await monthViewIn(tx, actor.userId, now);
 		if (!read) throw new EnvelopeError("NO_BOOK", "start a budget first");
-		const amount =
-			input.amountMinor ?? Math.max(0, read.dto.toAssign.amount.minor);
-		if (amount <= 0)
-			throw new EnvelopeError("INVALID", "there is nothing to plan");
-		const plan = await applyPlan(tx, actor.userId, now, {
-			amount,
-			rest: input.rest,
+		const currency = read.dto.book.currency;
+		// A retry of a batch already written returns it, never plans again.
+		const written = await tx.budgetMovement.findMany({
+			where: { batchId: input.batchId, actorUserId: actor.userId },
+			select: { id: true },
 		});
+		if (written.length > 0)
+			return {
+				value: {
+					batchId: input.batchId,
+					lines: [],
+					rest: read.dto.toAssign.amount,
+					restChoice: input.rest,
+					capped: null,
+					replayed: true,
+				},
+				undo: {
+					kind: "revert",
+					mutation: "envelope.undo",
+					rows: written.map((r) => ({ table: "budget_movement", id: r.id })),
+				},
+			};
+		// Never plan beyond what Not planned yet holds.
+		const held = Math.max(0, read.dto.toAssign.amount.minor);
+		const asked = input.amountMinor ?? held;
+		const amount = Math.min(asked, held);
+		if (amount <= 0 && input.amountMinor === undefined)
+			throw new EnvelopeError("INVALID", "there is nothing to plan");
+		const capped =
+			asked > held
+				? {
+						asked: { minor: asked, currency },
+						held: { minor: held, currency },
+					}
+				: null;
+		const plan =
+			amount > 0
+				? await applyPlan(tx, actor.userId, now, {
+						amount,
+						rest: input.rest,
+						batchId: input.batchId,
+					})
+				: {
+						batchId: null,
+						lines: [],
+						rest: { minor: 0, currency },
+						restChoice: input.rest,
+					};
 		if (!plan) throw new EnvelopeError("NO_BOOK", "start a budget first");
 		const rows = plan.batchId
 			? await tx.budgetMovement.findMany({
@@ -51,6 +91,8 @@ export const usePlanMutation: MoneyMutation<UsePlanInput, UsePlanResult> = {
 				lines: plan.lines,
 				rest: plan.rest,
 				restChoice: plan.restChoice,
+				capped,
+				replayed: false,
 			},
 			undo: {
 				kind: "revert",

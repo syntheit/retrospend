@@ -53,6 +53,7 @@ describe("envelope.usePlan", () => {
 		expect(await toAssign(s)).toBe(100_000);
 		const before = await adminDb.budgetMovement.count();
 		const p = await forUser(s.user.id).preview(usePlanMutation, {
+			batchId: crypto.randomUUID(),
 			rest: "LEAVE",
 		});
 		const byEnvelope = Object.fromEntries(
@@ -67,6 +68,7 @@ describe("envelope.usePlan", () => {
 		await expect(adminDb.budgetMovement.count()).resolves.toBe(before);
 
 		const done = await forUser(s.user.id).apply(usePlanMutation, {
+			batchId: crypto.randomUUID(),
 			rest: "LEAVE",
 		});
 		expect(done.value.batchId).not.toBeNull();
@@ -80,6 +82,7 @@ describe("envelope.usePlan", () => {
 
 	it("Next month: the rest is assigned ahead or stays, never lost; undo gives 100,000 back", async () => {
 		const p = await forUser(s.user.id).preview(usePlanMutation, {
+			batchId: crypto.randomUUID(),
 			rest: "NEXT_MONTH",
 		});
 		const ahead = p.value.lines
@@ -87,6 +90,7 @@ describe("envelope.usePlan", () => {
 			.reduce((t, l) => t + l.amount.minor, 0);
 		expect(ahead + p.value.rest.minor).toBe(30_000);
 		const done = await forUser(s.user.id).apply(usePlanMutation, {
+			batchId: crypto.randomUUID(),
 			rest: "NEXT_MONTH",
 		});
 		expect(await toAssign(s)).toBe(done.value.rest.minor);
@@ -97,12 +101,84 @@ describe("envelope.usePlan", () => {
 		expect(await toAssign(s)).toBe(100_000);
 	});
 
-	it("an amount above Not planned yet plans no more than there is", async () => {
+	it("an amount above Not planned yet plans no more than there is, and says so", async () => {
+		const asked = 10_000_000;
 		const p = await forUser(s.user.id).preview(usePlanMutation, {
+			batchId: crypto.randomUUID(),
+			rest: "LEAVE",
+			amountMinor: asked,
+		});
+		// Not planned yet holds 100,000: the targets take 70,000, 30,000 stays.
+		expect(p.value.lines.reduce((t, l) => t + l.amount.minor, 0)).toBe(70_000);
+		expect(p.value.rest.minor).toBe(30_000);
+		expect(p.value.capped).toEqual({
+			asked: { minor: asked, currency: "USD" },
+			held: { minor: 100_000, currency: "USD" },
+		});
+	});
+
+	it("an amount within Not planned yet is not capped", async () => {
+		const p = await forUser(s.user.id).preview(usePlanMutation, {
+			batchId: crypto.randomUUID(),
 			rest: "LEAVE",
 			amountMinor: 40_000,
 		});
-		const planned = p.value.lines.reduce((t, l) => t + l.amount.minor, 0);
-		expect(planned + p.value.rest.minor).toBe(40_000);
+		expect(p.value.capped).toBeNull();
+		expect(p.value.lines.reduce((t, l) => t + l.amount.minor, 0)).toBe(40_000);
+		expect(p.value.rest.minor).toBe(0);
+	});
+
+	it("a retry with the same batch id returns the batch, never plans twice", async () => {
+		const batchId = crypto.randomUUID();
+		const first = await forUser(s.user.id).apply(usePlanMutation, {
+			batchId,
+			rest: "LEAVE",
+		});
+		expect(first.value.batchId).toBe(batchId);
+		const after = await toAssign(s);
+		const again = await forUser(s.user.id).apply(usePlanMutation, {
+			batchId,
+			rest: "LEAVE",
+		});
+		expect(again.value.replayed).toBe(true);
+		expect(again.value.batchId).toBe(batchId);
+		expect(await toAssign(s)).toBe(after);
+		await forUser(s.user.id).apply(undoMovements, {
+			id: crypto.randomUUID(),
+			target: { batchId },
+		});
+		expect(await toAssign(s)).toBe(100_000);
+	});
+});
+
+describe("envelope.usePlan with nothing in Not planned yet", () => {
+	it("asking for more plans nothing and reports nothing staying", async () => {
+		const s = await seedUser();
+		await forUser(s.user.id).apply(setupEnvelopeBook, {
+			...setupInput(s),
+			startingMoneyMinor: 0,
+			timeZone: "UTC",
+		});
+		expect(await toAssign(s)).toBe(0);
+		const asked = 10_000_000;
+		const p = await forUser(s.user.id).preview(usePlanMutation, {
+			batchId: crypto.randomUUID(),
+			rest: "LEAVE",
+			amountMinor: asked,
+		});
+		expect(p.value.lines).toEqual([]);
+		expect(p.value.rest.minor).toBe(0);
+		expect(p.value.batchId).toBeNull();
+		expect(p.value.capped).toEqual({
+			asked: { minor: asked, currency: "USD" },
+			held: { minor: 0, currency: "USD" },
+		});
+		const before = await adminDb.budgetMovement.count();
+		await forUser(s.user.id).apply(usePlanMutation, {
+			batchId: crypto.randomUUID(),
+			rest: "LEAVE",
+			amountMinor: asked,
+		});
+		expect(await adminDb.budgetMovement.count()).toBe(before);
 	});
 });

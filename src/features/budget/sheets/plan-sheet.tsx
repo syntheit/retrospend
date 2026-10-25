@@ -7,6 +7,7 @@ import { Money } from "~/components/money/money";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import { Button } from "~/components/ui/button";
 import { FilterChip, FilterChips } from "~/components/ui/chip";
+import { Notice } from "~/components/ui/notice";
 import { Sheet } from "~/components/ui/sheet";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { api, type RouterInputs, type RouterOutputs } from "~/trpc/react";
@@ -18,7 +19,7 @@ import type { SheetProps } from "./types";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
 import { useMonthName } from "./use-month-name";
-import { useBudgetWrite } from "./use-write";
+import { newId, useBudgetWrite } from "./use-write";
 
 type UsePlan = RouterInputs["envelope"]["usePlan"];
 type Fill = RouterOutputs["envelope"]["fillFromTargets"];
@@ -54,6 +55,7 @@ export function PlanSheet({
 		{ enabled: m.data !== null, placeholderData: keepPreviousData },
 	);
 	const [choice, setChoice] = useState<Choice>("LEAVE");
+	const [batchId] = useState(newId);
 	const data = fill.data ?? null;
 	// Nothing to plan and nothing left over: the server refuses it, so do not ask.
 	const nothing =
@@ -62,7 +64,7 @@ export function PlanSheet({
 		!data.lines.some((l) => l.amount.minor > 0);
 	const input: UsePlan | null =
 		data && !nothing
-			? { rest: choice, ...(amountMinor ? { amountMinor } : {}) }
+			? { batchId, rest: choice, ...(amountMinor ? { amountMinor } : {}) }
 			: null;
 	const preview = api.envelope.usePlanPreview.useMutation();
 	const commit = api.envelope.usePlan.useMutation();
@@ -200,6 +202,16 @@ export function PlanSheet({
 								</p>
 							) : null}
 						</section>
+					) : null}
+					{w.dry.preview?.value.capped ? (
+						<Notice tone="info">
+							{t.rich("capped", {
+								held: () => (
+									<Money value={w.dry.preview?.value.capped?.held ?? null} />
+								),
+								pool,
+							})}
+						</Notice>
 					) : null}
 					{nothing ? null : <FigureChanges dry={w.dry} poolName={pool} />}
 					<div>

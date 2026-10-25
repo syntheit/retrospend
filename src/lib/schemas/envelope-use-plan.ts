@@ -13,7 +13,9 @@ import {
 } from "./envelope";
 
 export const usePlanInputSchema = z.object({
-	/** Plan only this much; default: all of Not planned yet. */
+	/** Client id of the batch: a retry returns the batch it wrote instead of planning again. */
+	batchId: z.string().uuid(),
+	/** Plan only this much, never more than Not planned yet holds; default: all of it. */
 	amountMinor: minorSchema.refine((v) => v > 0, "must be above 0").optional(),
 	rest: restChoiceSchema.default("LEAVE"),
 });
@@ -26,6 +28,10 @@ export const usePlanResultSchema = z.object({
 	rest: moneySchema,
 	/** Where the rest went (Leave it when it stayed or was not offered). */
 	restChoice: restChoiceSchema,
+	/** More was asked for than Not planned yet holds: this much was planned at most. */
+	capped: z.object({ asked: moneySchema, held: moneySchema }).nullable(),
+	/** A retry of a batch already written: its id only, the lines were listed the first time. */
+	replayed: z.boolean(),
 });
 
 export type UsePlanInput = z.infer<typeof usePlanInputSchema>;
