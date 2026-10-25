@@ -303,3 +303,61 @@ export async function lockStates(
 		};
 	});
 }
+
+/** A request to fix a split, answered by the creator's edit, with the status it had. */
+export interface AnsweredFix {
+	readonly id: string;
+	readonly previousStatus: "PENDING" | "ACCEPTED";
+}
+
+/**
+ * A plain edit of an unlocked split by the person asked to fix it answers
+ * their open requests (FIXED); the undo of that edit puts them back. A
+ * correction does the same for a settled split (correct.service.ts).
+ */
+export async function answerFixRequestsOnEdit(
+	tx: Tx,
+	userId: string,
+	args: {
+		readonly transactionId: string;
+		readonly edited: boolean;
+		readonly reopen?: readonly AnsweredFix[];
+	},
+): Promise<AnsweredFix[]> {
+	if (args.reopen) {
+		for (const r of args.reopen) {
+			await tx.fixRequest.updateMany({
+				where: {
+					id: r.id,
+					askedType: "user",
+					askedId: userId,
+					status: "FIXED",
+				},
+				data: {
+					status: r.previousStatus,
+					...(r.previousStatus === "PENDING" ? { answeredAt: null } : {}),
+				},
+			});
+		}
+		return [];
+	}
+	if (!args.edited) return [];
+	const open = await tx.fixRequest.findMany({
+		where: {
+			transactionId: args.transactionId,
+			askedType: "user",
+			askedId: userId,
+			status: { in: OPEN },
+		},
+		select: { id: true, status: true },
+	});
+	if (open.length === 0) return [];
+	await tx.fixRequest.updateMany({
+		where: { id: { in: open.map((r) => r.id) } },
+		data: { status: "FIXED", answeredAt: new Date() },
+	});
+	return open.map((r) => ({
+		id: r.id,
+		previousStatus: r.status as "PENDING" | "ACCEPTED",
+	}));
+}

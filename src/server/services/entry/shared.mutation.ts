@@ -13,6 +13,10 @@
  */
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
+import {
+	type AnsweredFix,
+	answerFixRequestsOnEdit,
+} from "../corrections/fix-request.service";
 import type { MoneyMutation } from "../preview/types";
 import { SharedTransactionService } from "../shared-expenses/transaction.service";
 import { RETRACT_WINDOW_MS, retractSplitNotices } from "./notices";
@@ -135,19 +139,29 @@ export const createSharedExpense: MoneyMutation<
 export interface UpdatedShared {
 	readonly id: string;
 	readonly restore: SharedRestore;
+	/** Requests to fix it that this edit answered (2C.2); the undo passes them back as `reopenFixRequests`. */
+	readonly answered: readonly AnsweredFix[];
 }
 
 export const updateSharedExpense: MoneyMutation<
-	UpdateSharedInput & Deferred,
+	UpdateSharedInput &
+		Deferred & { readonly reopenFixRequests?: readonly AnsweredFix[] },
 	UpdatedShared
 > = {
 	id: "sharedExpense.update",
 	touches: SHARED_FIGURES,
-	run: async (tx, { notify, ...input }, actor) => {
+	run: async (tx, { notify, reopenFixRequests, ...input }, actor) => {
 		const restore = await restoreOf(tx, input.id);
 		await serviceFor(tx, actor.userId, { notify }).update(input);
+		const edited =
+			JSON.stringify(restore) !== JSON.stringify(await restoreOf(tx, input.id));
+		const answered = await answerFixRequestsOnEdit(tx, actor.userId, {
+			transactionId: input.id,
+			edited,
+			reopen: reopenFixRequests,
+		});
 		return {
-			value: { id: input.id, restore },
+			value: { id: input.id, restore, answered },
 			undo: {
 				kind: "revert",
 				mutation: "sharedExpense.update",

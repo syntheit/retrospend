@@ -28,7 +28,7 @@ import type {
 	UnforgiveInput,
 } from "~/lib/schemas/envelope";
 import type { Prisma } from "~prisma";
-import { lockSettledSplits } from "../corrections/locks";
+import { lockSettledSplits, relockPair } from "../corrections/locks";
 import { lockPair } from "../payments/access";
 import { allocatePayment } from "../payments/allocate";
 import { ledgerLines, payerLines } from "../payments/ledger";
@@ -360,6 +360,11 @@ export async function unforgive(
 		targetId: header.id,
 		changes: { paymentId: header.id },
 	});
+	await relockPair(
+		tx,
+		{ participantType: "user", participantId: userId },
+		{ participantType: header.payerType, participantId: header.payerId },
+	);
 	forgetMonthViews(tx);
 	return { paymentId: header.id };
 }

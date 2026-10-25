@@ -17,7 +17,7 @@ import {
 } from "~/server/services/shared-expenses/settlement-groups";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import type { Prisma } from "~prisma";
-import { lockSettledSplits } from "../corrections/locks";
+import { lockSettledSplits, relockPair } from "../corrections/locks";
 import { lockPair } from "./access";
 import { type Allocation, allocatePayment } from "./allocate";
 import {
@@ -421,6 +421,9 @@ export const unconfirmPayment: MoneyMutation<
 			action: "EDITED",
 			context: "settlement_unconfirmed",
 		});
+		// The database released this payment's locks and those of later ones
+		// with this person; what is still settled locks again.
+		await relockPair(tx, me, input.person);
 		return {
 			value: { paymentId: header.id },
 			undo: {

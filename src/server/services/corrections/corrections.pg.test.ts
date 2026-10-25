@@ -2,17 +2,17 @@
  * Corrections, locks, Ask to fix and the Forgive audit on a real Postgres,
  * through RLS (2C.2, MONEY-MOVES 1.11, 1.12). Amounts worked out by hand.
  *
- * Electricidad: ARS 45,000 paid by Sofía (ARS home), shared with Martín (USD
- * home) and Juan (a ghost Sofía keeps), ARS 15,000 each, rate ARS 1,000 per
+ * Electricidad: PEN 45,000 paid by Sofía (PEN home), shared with Martín (USD
+ * home) and Juan (a ghost Sofía keeps), PEN 15,000 each, rate PEN 1,000 per
  * USD. Both pay Sofía 15,000, so the split is settled and locked. The bill
  * was 48,000:
  *
  *   correction  +3,000 paid by Sofía, +1,000 on each of the three
  *   Sofía       owed +2,000 (Martín 1,000 and Juan 1,000); SplitsNet +2,000
  *               (fronted 32,000, returned 30,000); her Dining spending +1,000
- *   Martín      owes Sofía 1,000 (USD 1.00); SplitsNet 0; spending ARS 15,000 to 16,000 (USD 15 to 16)
+ *   Martín      owes Sofía 1,000 (USD 1.00); SplitsNet 0; spending PEN 15,000 to 16,000
  *
- * Amounts are minor units: ARS 1,000 is 100,000, USD 1.00 is 100.
+ * Amounts are minor units: PEN 1,000 is 100,000, USD 1.00 is 100.
  */
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -24,6 +24,10 @@ import type { CorrectInput } from "~/lib/schemas/corrections";
 import { dayKey } from "~/lib/time-zone";
 import { userTransaction } from "~/server/db-tx";
 import { readFigures } from "~/server/figures/read";
+import {
+	createSharedExpense,
+	updateSharedExpense,
+} from "~/server/services/entry/shared.mutation";
 import {
 	invariantAt,
 	seedUser,
@@ -42,6 +46,7 @@ import {
 } from "~/server/services/payments/confirm.mutation";
 import { recordPayment } from "~/server/services/payments/record.mutation";
 import { forUser } from "~/server/services/preview";
+import { rebalanceExpenses } from "~/server/services/project/rebalance.mutation";
 import { computeBalance } from "~/server/services/shared-expenses/balance";
 import { assertCanModifyTransaction } from "~/server/services/shared-expenses/project-permissions";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
@@ -58,6 +63,7 @@ import {
 	withdrawFixMutation,
 } from "./fix-request.mutation";
 import { lockStates } from "./fix-request.service";
+import { removeSelfFromSplit } from "./guards";
 
 type Seed = Awaited<ReturnType<typeof seedUser>>;
 
@@ -69,9 +75,9 @@ const ref = (u: Seed): ParticipantRef => ({
 const as = (u: Seed) => forUser(u.user.id);
 
 /**
- * ARS at 1,000 per USD around today (the server zone and the book's zone can
- * be a day apart). Only rows nobody else has seeded are created, and removed
- * afterwards, so the other files' rates are never changed.
+ * PEN at 1,000 per USD around today (the server zone and the book's zone can
+ * be a day apart). PEN is a currency no other file uses, so no rate of
+ * another test is read or changed; the rows are removed afterwards.
  */
 const seeded: { date: Date; currency: string; type: string }[] = [];
 async function seedRate() {
@@ -79,7 +85,7 @@ async function seedRate() {
 		const date = new Date(`${today}T00:00:00.000Z`);
 		date.setUTCDate(date.getUTCDate() + offset);
 		for (const type of ["blue", "official"]) {
-			const key = { date, currency: "ARS", type };
+			const key = { date, currency: "PEN", type };
 			if (await adminDb.exchangeRate.findFirst({ where: key })) continue;
 			await adminDb.exchangeRate.create({ data: { ...key, rate: "1000" } });
 			seeded.push(key);
@@ -91,20 +97,7 @@ afterAll(async () => {
 		await adminDb.exchangeRate.deleteMany({ where: { OR: seeded } });
 });
 
-/** ARS per USD the server reads for today (blue, the default type). */
-async function blueRate() {
-	const row = await adminDb.exchangeRate.findFirstOrThrow({
-		where: {
-			currency: "ARS",
-			type: "blue",
-			date: { lte: new Date(`${today}T00:00:00.000Z`) },
-		},
-		orderBy: { date: "desc" },
-	});
-	return Number(row.rate);
-}
-
-async function book(u: Seed, currency: "ARS" | "USD") {
+async function book(u: Seed, currency: "PEN" | "USD") {
 	await adminDb.user.update({
 		where: { id: u.user.id },
 		data: { homeCurrency: currency },
@@ -124,7 +117,7 @@ async function settledWorld(): Promise<World> {
 	await seedRate();
 	const sofia = await seedUser();
 	const martin = await seedUser();
-	await book(sofia, "ARS");
+	await book(sofia, "PEN");
 	await book(martin, "USD");
 	const juan: ParticipantRef = {
 		participantType: "shadow",
@@ -139,7 +132,7 @@ async function settledWorld(): Promise<World> {
 			data: {
 				description: "Electricidad",
 				amount: "45000",
-				currency: "ARS",
+				currency: "PEN",
 				exchangeRate: "1000",
 				date: new Date(`${today}T12:00:00.000Z`),
 				categoryId: sofia.dining,
@@ -160,13 +153,13 @@ async function settledWorld(): Promise<World> {
 	await as(sofia).apply(recordPayment, {
 		person: juan,
 		direction: "incoming",
-		currency: "ARS",
+		currency: "PEN",
 		amount: "15000",
 	});
 	const sent = await as(martin).apply(recordPayment, {
 		person: ref(sofia),
 		direction: "outgoing",
-		currency: "ARS",
+		currency: "PEN",
 		amount: "15000",
 	});
 	if (!sent.value.recorded) throw new Error("payment not recorded");
@@ -183,7 +176,7 @@ const split = (id: string) =>
 		include: { splitParticipants: true },
 	});
 
-/** The correction to ARS 48,000, equal over the same three. */
+/** The correction to PEN 48,000, equal over the same three. */
 const toFortyEight = (w: World): CorrectInput => ({
 	id: randomUUID(),
 	transactionId: w.electricidad,
@@ -305,7 +298,7 @@ describe("a settled split is locked", () => {
 			data: {
 				description: "Open",
 				amount: "20000",
-				currency: "ARS",
+				currency: "PEN",
 				date: new Date(`${today}T12:00:00.000Z`),
 				paidByType: "user",
 				paidById: sofia.user.id,
@@ -324,7 +317,7 @@ describe("a settled split is locked", () => {
 		const sent = await as(martin).apply(recordPayment, {
 			person: ref(sofia),
 			direction: "outgoing",
-			currency: "ARS",
+			currency: "PEN",
 			amount: "4000",
 		});
 		if (!sent.value.recorded) throw new Error("not recorded");
@@ -415,40 +408,40 @@ describe("correct a settled split", () => {
 	});
 
 	it("the scope reopens by the difference only", async () => {
-		expect(await balance(w.sofia, ref(w.martin))).toEqual({ ARS: 1000 });
-		expect(await balance(w.martin, ref(w.sofia))).toEqual({ ARS: -1000 });
-		expect(await balance(w.sofia, w.juan)).toEqual({ ARS: 1000 });
+		expect(await balance(w.sofia, ref(w.martin))).toEqual({ PEN: 1000 });
+		expect(await balance(w.martin, ref(w.sofia))).toEqual({ PEN: -1000 });
+		expect(await balance(w.sofia, w.juan)).toEqual({ PEN: 1000 });
 	});
 
 	it("Sofía's budget: SplitsNet +2,000, Dining -1,000, owed matches People", async () => {
 		const m = await getMonth(w.sofia.user.id);
 		expect(m?.toAssign.terms.splitsNet).toEqual({
 			minor: 200_000,
-			currency: "ARS",
+			currency: "PEN",
 		});
 		expect(dining(m)).toBe(-1_600_000);
 		const owed = await getOwed(w.sofia.user.id);
 		expect(owed?.people.flatMap((p) => p.lines.map((l) => l.amount))).toEqual(
-			expect.arrayContaining([{ minor: 100_000, currency: "ARS" }]),
+			expect.arrayContaining([{ minor: 100_000, currency: "PEN" }]),
 		);
 		const figures = await readFigures(w.sofia.user.id, [
 			"owed.owedToYou",
 			"budget.heldForOthers",
 		]);
 		expect(figures.get("owed.owedToYou")).toEqual([
-			{ minor: 200_000, currency: "ARS" },
+			{ minor: 200_000, currency: "PEN" },
 		]);
 		expect(figures.get("budget.heldForOthers")).toEqual([
-			{ minor: 200_000, currency: "ARS" },
+			{ minor: 200_000, currency: "PEN" },
 		]);
 	});
 
-	it("Martín's budget: SplitsNet 0, he owes USD 1.00 as People says, spending ARS 15,000 to 16,000 (USD 15 to 16)", async () => {
+	it("Martín's budget: SplitsNet 0, he owes USD 1.00 as People says, spending PEN 15,000 to 16,000 ", async () => {
 		const m = await getMonth(w.martin.user.id);
 		expect(m?.toAssign.terms.splitsNet).toEqual({ minor: 0, currency: "USD" });
 		const owed = await getOwed(w.martin.user.id);
 		expect(owed?.people.flatMap((p) => p.lines.map((l) => l.amount))).toEqual([
-			{ minor: -100_000, currency: "ARS" },
+			{ minor: -100_000, currency: "PEN" },
 		]);
 		const figures = await readFigures(w.martin.user.id, [
 			"owed.youOwe",
@@ -460,10 +453,10 @@ describe("correct a settled split", () => {
 		const spent = (
 			before.martin as { figures: Record<string, { minor: number }[]> }
 		).figures.spent;
-		// The figure keeps the share's own currency; at ARS 1,000 per USD it is USD 15, then 16.
-		expect(spent).toEqual([{ minor: 1_500_000, currency: "ARS" }]);
+		// The figure keeps the share's own currency; at PEN 1,000 per USD it is USD 15, then 16.
+		expect(spent).toEqual([{ minor: 1_500_000, currency: "PEN" }]);
 		expect(figures.get("spent")).toEqual([
-			{ minor: 1_600_000, currency: "ARS" },
+			{ minor: 1_600_000, currency: "PEN" },
 		]);
 	});
 
@@ -480,7 +473,7 @@ describe("correct a settled split", () => {
 		expect(review).toMatchObject({
 			entity: { kind: "sharedExpense", id: input.id },
 			title: "Correction to Electricidad",
-			amount: { minor: 100_000, currency: "ARS" },
+			amount: { minor: 100_000, currency: "PEN" },
 		});
 	});
 
@@ -488,7 +481,7 @@ describe("correct a settled split", () => {
 		const sent = await as(w.martin).apply(recordPayment, {
 			person: ref(w.sofia),
 			direction: "outgoing",
-			currency: "ARS",
+			currency: "PEN",
 			amount: "1000",
 		});
 		if (!sent.value.recorded) throw new Error("not recorded");
@@ -613,8 +606,8 @@ describe("wrong payer and category: the old bucket reverses, the new one arrives
 		// Sofía's share is 15,000 of what Martín paid, and the 15,000 Martín sent
 		// her went to someone who never paid the bill: she owes him 30,000.
 		// Juan paid Sofía 15,000 for nothing, and owes Martín 15,000 himself.
-		expect(await balance(w.martin, ref(w.sofia))).toEqual({ ARS: 30_000 });
-		expect(await balance(w.martin, w.juan)).toEqual({ ARS: 15_000 });
+		expect(await balance(w.martin, ref(w.sofia))).toEqual({ PEN: 30_000 });
+		expect(await balance(w.martin, w.juan)).toEqual({ PEN: 15_000 });
 	});
 });
 
@@ -809,7 +802,7 @@ describe("correct: access", () => {
 			data: {
 				description: "Open",
 				amount: "100",
-				currency: "ARS",
+				currency: "PEN",
 				date: new Date(),
 				paidByType: "user",
 				paidById: w.sofia.user.id,
@@ -874,7 +867,7 @@ describe("Forgive leaves an audit record", () => {
 		const forgiven = await as(w.sofia).apply(forgiveMutation, {
 			id,
 			participant: { type: "user", id: w.martin.user.id },
-			currency: "ARS",
+			currency: "PEN",
 			amountMinor: 100_000,
 			envelopeId: null,
 		});
@@ -890,7 +883,7 @@ describe("Forgive leaves an audit record", () => {
 			changes: {
 				paymentId: id,
 				counterparty: `user:${w.martin.user.id}`,
-				currency: "ARS",
+				currency: "PEN",
 				amountMinor: 100_000,
 			},
 		});
@@ -910,7 +903,332 @@ describe("Forgive leaves an audit record", () => {
 				where: { action: "UNFORGIVEN", targetId: id },
 			}),
 		).toBe(1);
-		expect(await balance(w.sofia, ref(w.martin))).toEqual({ ARS: 1000 });
+		expect(await balance(w.sofia, ref(w.martin))).toEqual({ PEN: 1000 });
+	});
+});
+
+describe("review: nobody leaves a correction", () => {
+	it("removeSelf is refused on a correction row and on a split that has corrections", async () => {
+		const w = await settledWorld();
+		const input = toFortyEight(w);
+		await as(w.sofia).apply(correctSplitMutation, input);
+		const removeSelf = (id: string) =>
+			removeSelfFromSplit(adminDb, ref(w.martin), id, true);
+		// Martín's share on the correction is PENDING and unlocked: leaving it
+		// would make his 1,000 vanish.
+		await expect(removeSelf(input.id)).rejects.toThrow("has a correction");
+		expect(await balance(w.sofia, ref(w.martin))).toEqual({ PEN: 1000 });
+		await expect(removeSelf(w.electricidad)).rejects.toThrow(
+			"has a correction",
+		);
+	});
+
+	it("rebalance never re-splits a correction row or a split with corrections", async () => {
+		const w = await settledWorld();
+		const paz: ParticipantRef = {
+			participantType: "shadow",
+			participantId: (
+				await adminDb.shadowProfile.create({
+					data: { createdById: w.sofia.user.id, name: "Paz" },
+				})
+			).id,
+		};
+		const project = await adminDb.project.create({
+			data: {
+				name: "Depto",
+				createdById: w.sofia.user.id,
+				participants: {
+					create: [
+						{ ...ref(w.sofia), role: "ORGANIZER" },
+						{ ...ref(w.martin) },
+						{ ...paz },
+					],
+				},
+			},
+		});
+		await adminDb.sharedTransaction.update({
+			where: { id: w.electricidad },
+			data: { projectId: project.id, isLocked: false, lockedByPaymentId: null },
+		});
+		const input = toFortyEight(w);
+		// A correction needs a settled split: lock it again for the write.
+		await adminDb.sharedTransaction.update({
+			where: { id: w.electricidad },
+			data: { isLocked: true },
+		});
+		await as(w.sofia).apply(correctSplitMutation, input);
+		await adminDb.sharedTransaction.update({
+			where: { id: w.electricidad },
+			data: { isLocked: false },
+		});
+		const result = await userTransaction(adminDb, w.sofia.user.id, (tx) =>
+			rebalanceExpenses(
+				tx,
+				{ userId: w.sofia.user.id, timeZone: "UTC" },
+				{
+					projectId: project.id,
+					participantType: paz.participantType,
+					participantId: paz.participantId,
+					expenseIds: [w.electricidad, input.id],
+				},
+			),
+		);
+		expect(result.rebalancedCount).toBe(0);
+		expect(result.skipped.map((s) => s.id).sort()).toEqual(
+			[w.electricidad, input.id].sort(),
+		);
+	});
+});
+
+describe("review: a lock does not outlive the payment that earned it", () => {
+	/**
+	 * Sofía paid A (45,000 over three, today, outside projects) and B (6,000
+	 * with Martín, yesterday, in the Trip project): two scopes.
+	 */
+	async function twoSplits() {
+		await seedRate();
+		const sofia = await seedUser();
+		const martin = await seedUser();
+		const juan: ParticipantRef = {
+			participantType: "shadow",
+			participantId: (
+				await adminDb.shadowProfile.create({
+					data: { createdById: sofia.user.id, name: "Juan" },
+				})
+			).id,
+		};
+		const trip = await adminDb.project.create({
+			data: {
+				name: "Trip",
+				createdById: sofia.user.id,
+				participants: {
+					create: [{ ...ref(sofia), role: "ORGANIZER" }, { ...ref(martin) }],
+				},
+			},
+		});
+		const make = (
+			description: string,
+			day: string,
+			shares: [ParticipantRef, string][],
+			amount: string,
+			projectId: string | null = null,
+		) =>
+			adminDb.sharedTransaction.create({
+				data: {
+					description,
+					amount,
+					projectId,
+					currency: "PEN",
+					date: new Date(`${day}T12:00:00.000Z`),
+					paidByType: "user",
+					paidById: sofia.user.id,
+					createdByType: "user",
+					createdById: sofia.user.id,
+					splitParticipants: {
+						create: shares.map(([p, share]) => ({
+							...p,
+							shareAmount: share,
+							verificationStatus: "ACCEPTED" as const,
+						})),
+					},
+				},
+			});
+		const yesterday = new Date(`${today}T12:00:00.000Z`);
+		yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+		const b = await make(
+			"B",
+			yesterday.toISOString().slice(0, 10),
+			[
+				[ref(sofia), "3000"],
+				[ref(martin), "3000"],
+			],
+			"6000",
+			trip.id,
+		);
+		const a = await make(
+			"A",
+			today,
+			[
+				[ref(sofia), "15000"],
+				[ref(martin), "15000"],
+				[juan, "15000"],
+			],
+			"45000",
+		);
+		await as(sofia).apply(recordPayment, {
+			person: juan,
+			direction: "incoming",
+			currency: "PEN",
+			amount: "15000",
+		});
+		const pays = async (amount: string) => {
+			const sent = await as(martin).apply(recordPayment, {
+				person: ref(sofia),
+				direction: "outgoing",
+				currency: "PEN",
+				amount,
+			});
+			if (!sent.value.recorded) throw new Error("not recorded");
+			await as(sofia).apply(confirmPayment, {
+				paymentId: sent.value.paymentId,
+				person: ref(martin),
+			});
+			return sent.value.paymentId;
+		};
+		return { sofia, martin, a: a.id, b: b.id, pays };
+	}
+
+	it("Martín pays 3,000 (B), 10,000, then 5,000 (A locks); undoing the 10,000 reopens A and keeps the Trip split locked", async () => {
+		const t = await twoSplits();
+		const p0 = await t.pays("3000");
+		const p1 = await t.pays("10000");
+		expect((await split(t.a)).isLocked).toBe(false);
+		await t.pays("5000");
+		expect((await split(t.a)).isLocked).toBe(true);
+		// The 3,000 brought the Trip scope to zero, outside projects was still open.
+		expect((await split(t.b)).lockedByPaymentId).toBe(p0);
+
+		await as(t.sofia).apply(unconfirmPayment, {
+			paymentId: p1,
+			person: ref(t.martin),
+		});
+		// The 10,000 is owed again, so A is open and may be edited.
+		expect(await balance(t.sofia, ref(t.martin))).toEqual({ PEN: 10_000 });
+		const a = await split(t.a);
+		expect(a.isLocked).toBe(false);
+		expect(a.lockedByPaymentId).toBeNull();
+		// B is in another scope and its payment is still there: it stays locked.
+		expect((await split(t.b)).lockedByPaymentId).toBe(p0);
+
+		// Confirming the 10,000 again settles A again.
+		await as(t.sofia).apply(confirmPayment, {
+			paymentId: p1,
+			person: ref(t.martin),
+		});
+		expect((await split(t.a)).isLocked).toBe(true);
+	});
+
+	it("deleting the payment that settled it (unforgive) reopens it too", async () => {
+		const t = await twoSplits();
+		await t.pays("3000");
+		await t.pays("10000");
+		const id = randomUUID();
+		await as(t.sofia).apply(forgiveMutation, {
+			id,
+			participant: { type: "user", id: t.martin.user.id },
+			currency: "PEN",
+			amountMinor: 500_000,
+			envelopeId: null,
+		});
+		expect((await split(t.a)).isLocked).toBe(true);
+		await as(t.sofia).apply(unforgiveMutation, { paymentId: id });
+		expect((await split(t.a)).isLocked).toBe(false);
+		expect(await balance(t.sofia, ref(t.martin))).toEqual({ PEN: 5000 });
+	});
+});
+
+describe("review: undo only the latest correction, and only while nothing settled on it", () => {
+	it("an earlier correction cannot be undone before the later one", async () => {
+		const w = await settledWorld();
+		const first = toFortyEight(w);
+		await as(w.sofia).apply(correctSplitMutation, first);
+		const second: CorrectInput = {
+			...toFortyEight(w),
+			amount: "46500",
+		};
+		const done = await as(w.sofia).apply(correctSplitMutation, second);
+		await expect(
+			as(w.sofia).apply(undoCorrectionMutation, {
+				transactionIds: [first.id],
+				resolvedRequests: [],
+			}),
+		).rejects.toThrow("Undo the latest correction first");
+		await as(w.sofia).apply(undoCorrectionMutation, {
+			transactionIds: done.value.transactionIds,
+			resolvedRequests: [],
+		});
+		await as(w.sofia).apply(undoCorrectionMutation, {
+			transactionIds: [first.id],
+			resolvedRequests: [],
+		});
+		expect(await balance(w.sofia, ref(w.martin))).toEqual({});
+	});
+
+	it("a payment recorded after the correction blocks its undo", async () => {
+		const w = await settledWorld();
+		const input = toFortyEight(w);
+		await as(w.sofia).apply(correctSplitMutation, input);
+		await as(w.martin).apply(recordPayment, {
+			person: ref(w.sofia),
+			direction: "outgoing",
+			currency: "PEN",
+			amount: "400",
+		});
+		await expect(
+			as(w.sofia).apply(undoCorrectionMutation, {
+				transactionIds: [input.id],
+				resolvedRequests: [],
+			}),
+		).rejects.toThrow("payment was recorded after");
+		expect(
+			await adminDb.sharedTransaction.count({ where: { id: input.id } }),
+		).toBe(1);
+	});
+});
+
+describe("review: a plain edit answers the fix request, and its undo reopens it", () => {
+	it("marks it FIXED and puts it back to what it was", async () => {
+		await seedRate();
+		const sofia = await seedUser();
+		const martin = await seedUser();
+		const made = await as(sofia).apply(createSharedExpense, {
+			amount: 6000,
+			currency: "PEN",
+			description: "Dinner",
+			date: new Date(`${today}T12:00:00.000Z`),
+			paidBy: ref(sofia),
+			splitWith: [ref(sofia), ref(martin)],
+			splitMode: "EQUAL",
+		});
+		const askId = randomUUID();
+		await as(martin).apply(askToFixMutation, {
+			id: askId,
+			transactionId: made.value.id,
+		});
+		await as(sofia).apply(respondToFixMutation, {
+			id: askId,
+			response: "accept",
+		});
+		const edit = {
+			id: made.value.id,
+			amount: 6200,
+			currency: "PEN",
+			description: "Dinner",
+			date: new Date(`${today}T12:00:00.000Z`),
+			paidBy: ref(sofia),
+			splitWith: [ref(sofia), ref(martin)],
+			splitMode: "EQUAL" as const,
+		};
+		// Nothing changed: the request stays.
+		await as(sofia).apply(updateSharedExpense, { ...edit, amount: 6000 });
+		const status = async () =>
+			(await adminDb.fixRequest.findUniqueOrThrow({ where: { id: askId } }))
+				.status;
+		expect(await status()).toBe("ACCEPTED");
+
+		const done = await as(sofia).apply(updateSharedExpense, edit);
+		expect(done.value.answered).toEqual([
+			{ id: askId, previousStatus: "ACCEPTED" },
+		]);
+		expect(await status()).toBe("FIXED");
+
+		const { restore } = done.value;
+		await as(sofia).apply(updateSharedExpense, {
+			...restore,
+			splitWith: restore.splitWith,
+			reopenFixRequests: done.value.answered,
+		});
+		expect(await status()).toBe("ACCEPTED");
 	});
 });
 

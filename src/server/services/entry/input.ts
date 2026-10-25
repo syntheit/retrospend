@@ -139,6 +139,16 @@ export const sharedRestoreSchema = z.object({
 	notes: z.string().max(5000).nullable(),
 	projectId: z.string().nullable(),
 	...splitFields,
+	// The fix requests the edit being undone had answered (`answered` of its result).
+	reopenFixRequests: z
+		.array(
+			z.object({
+				id: z.string(),
+				previousStatus: z.enum(["PENDING", "ACCEPTED"]),
+			}),
+		)
+		.max(50)
+		.optional(),
 });
 
 export const sharedDeleteSchema = z.object({

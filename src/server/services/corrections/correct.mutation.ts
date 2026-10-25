@@ -12,11 +12,8 @@ import type {
 	UndoCorrectionInput,
 } from "~/lib/schemas/corrections";
 import type { MoneyMutation, UndoToken } from "../preview/types";
-import {
-	type CorrectContext,
-	correctSplit,
-	undoCorrection,
-} from "./correct.service";
+import { type CorrectContext, correctSplit } from "./correct.service";
+import { undoCorrection } from "./undo-correction";
 
 /** A correction moves what people owe, your spending and what the budget holds for others. */
 export const CORRECTION_FIGURES = [

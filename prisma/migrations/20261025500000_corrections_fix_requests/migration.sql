@@ -6,8 +6,9 @@
 --    shares may be negative), so the original is never rewritten.
 -- 2. shared_transaction."lockedByPaymentId": the payment that settled a split
 --    and locked it. NULL for a split a period close locked. A trigger on
---    "payment" unlocks the splits a payment locked when it is deleted (undo,
---    not received, unforgive) or stops being final.
+--    "payment" unlocks the splits a payment locked, and those of any later
+--    payment between the same two people in its scopes, when it is deleted
+--    (undo, not received, unforgive) or stops being final.
 -- 3. lock_settled_splits(): the one way a party to a payment locks the splits it
 --    settled. SECURITY DEFINER because the other person's split is theirs to
 --    write; it checks the caller is a party and that the payment's other party
@@ -67,24 +68,33 @@ DECLARE
   pay RECORD;
   locked INTEGER;
 BEGIN
-  -- The app role always runs with a user set. A session without one is the
-  -- owner or an admin job, which RLS does not restrain either.
-  IF COALESCE(me, '') = '' AND session_user <> 'retrospend_app' THEN
-    SELECT * INTO pay FROM "payment" p WHERE p."id" = p_payment_id;
+  -- The app sets the role per transaction (set_config('role', ...)), so that
+  -- is what tells its sessions from an admin job, which RLS does not restrain.
+  IF COALESCE(me, '') = '' AND COALESCE(current_setting('role', true), '') = 'retrospend_app' THEN
+    RAISE EXCEPTION 'not a party to that payment' USING ERRCODE = '42501';
+  END IF;
+  IF COALESCE(me, '') = '' THEN
+    SELECT * INTO pay FROM "payment" p WHERE p."id" = p_payment_id AND p."status" = 'FINALIZED';
   ELSE
     SELECT * INTO pay FROM "payment" p
-    WHERE p."id" = p_payment_id
+    WHERE p."id" = p_payment_id AND p."status" = 'FINALIZED'
       AND ((p."payerType" = 'user' AND p."payerId" = me)
         OR (p."payeeType" = 'user' AND p."payeeId" = me));
   END IF;
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'not a party to that payment' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'not a party to that final payment' USING ERRCODE = '42501';
   END IF;
   UPDATE "shared_transaction" st
   SET "isLocked" = true, "lockedByPaymentId" = p_payment_id, "updatedAt" = CURRENT_TIMESTAMP
   WHERE st."id" = ANY (p_transaction_ids)
     AND st."isLocked" = false
     AND st."correctsId" IS NULL
+    -- Only the scopes the payment paid into.
+    AND EXISTS (
+      SELECT 1 FROM "settlement" s
+      WHERE s."paymentGroupId" = p_payment_id
+        AND s."projectId" IS NOT DISTINCT FROM st."projectId"
+    )
     AND (
       (st."paidByType" = pay."payerType" AND st."paidById" = pay."payerId"
         AND EXISTS (SELECT 1 FROM "split_participant" sp WHERE sp."transactionId" = st."id"
@@ -98,23 +108,46 @@ BEGIN
 END;
 $$;
 
--- A payment that is gone or no longer final settles nothing: its locks go.
+-- A payment that is gone or no longer final settles nothing. Its locks go, and
+-- so do the locks of any later payment between the same two people in the
+-- scopes it paid into: they counted this one, so the splits may be owed again.
+-- The app locks again what is still settled (lockSettledSplits). Runs before a
+-- delete (the rows of the payment may already be gone, then every scope is
+-- released) and after a status change.
 CREATE OR REPLACE FUNCTION release_payment_locks() RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  scoped BOOLEAN;
 BEGIN
-  UPDATE "shared_transaction"
+  SELECT EXISTS (SELECT 1 FROM "settlement" s WHERE s."paymentGroupId" = OLD."id") INTO scoped;
+  UPDATE "shared_transaction" st
   SET "isLocked" = false, "lockedByPaymentId" = NULL, "updatedAt" = CURRENT_TIMESTAMP
-  WHERE "lockedByPaymentId" = OLD."id";
-  RETURN NULL;
+  WHERE st."lockedByPaymentId" = OLD."id"
+    OR (
+      st."lockedByPaymentId" IN (
+        SELECT p2."id" FROM "payment" p2
+        WHERE p2."paidOn" >= OLD."paidOn"
+          AND ((p2."payerType" = OLD."payerType" AND p2."payerId" = OLD."payerId"
+                AND p2."payeeType" = OLD."payeeType" AND p2."payeeId" = OLD."payeeId")
+            OR (p2."payerType" = OLD."payeeType" AND p2."payerId" = OLD."payeeId"
+                AND p2."payeeType" = OLD."payerType" AND p2."payeeId" = OLD."payerId"))
+      )
+      AND (NOT scoped OR EXISTS (
+        SELECT 1 FROM "settlement" s
+        WHERE s."paymentGroupId" = OLD."id"
+          AND s."projectId" IS NOT DISTINCT FROM st."projectId"
+      ))
+    );
+  RETURN OLD;
 END;
 $$;
 
 DROP TRIGGER IF EXISTS payment_release_locks_delete ON "payment";
 CREATE TRIGGER payment_release_locks_delete
-  AFTER DELETE ON "payment"
+  BEFORE DELETE ON "payment"
   FOR EACH ROW EXECUTE FUNCTION release_payment_locks();
 
 DROP TRIGGER IF EXISTS payment_release_locks_status ON "payment";

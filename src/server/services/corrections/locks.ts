@@ -135,3 +135,35 @@ export async function lockSettledSplits(
 		SELECT lock_settled_splits(${paymentId}, ${settled}::text[]) AS locked`;
 	return Number(locked);
 }
+
+const between = (
+	payer: ParticipantRef,
+	payee: ParticipantRef,
+): Prisma.PaymentWhereInput => ({
+	payerType: payer.participantType,
+	payerId: payer.participantId,
+	payeeType: payee.participantType,
+	payeeId: payee.participantId,
+});
+
+/**
+ * After a payment between two people went away or stopped being final: the
+ * database released the locks of that payment and of the later ones between
+ * the same two people. The latest payment still final settles again what it
+ * settled; what is owed again stays open.
+ */
+export async function relockPair(
+	tx: Tx,
+	me: ParticipantRef,
+	counterpart: ParticipantRef,
+): Promise<number> {
+	const latest = await tx.payment.findFirst({
+		where: {
+			status: "FINALIZED",
+			OR: [between(me, counterpart), between(counterpart, me)],
+		},
+		orderBy: [{ paidOn: "desc" }, { createdAt: "desc" }],
+		select: { id: true },
+	});
+	return latest ? lockSettledSplits(tx, me, latest.id) : 0;
+}

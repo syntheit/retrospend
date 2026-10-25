@@ -11,11 +11,7 @@
  */
 import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
-import type {
-	CorrectInput,
-	CorrectResult,
-	UndoCorrectionInput,
-} from "~/lib/schemas/corrections";
+import type { CorrectInput, CorrectResult } from "~/lib/schemas/corrections";
 import {
 	resolveSplits,
 	SplitComputationError,
@@ -372,60 +368,6 @@ export async function correctSplit(
 			previousStatus: r.status,
 		})),
 	};
-}
-
-/** Deletes exactly the rows a correction wrote and reopens the requests it answered. */
-export async function undoCorrection(
-	tx: Tx,
-	userId: string,
-	input: UndoCorrectionInput,
-): Promise<{ transactionIds: string[] }> {
-	const rows = await tx.sharedTransaction.findMany({
-		where: { id: { in: input.transactionIds } },
-		select: {
-			id: true,
-			correctsId: true,
-			createdByType: true,
-			createdById: true,
-			projectId: true,
-		},
-	});
-	const mine = rows.filter(
-		(r) =>
-			r.correctsId !== null &&
-			r.createdByType === "user" &&
-			r.createdById === userId,
-	);
-	if (mine.length !== input.transactionIds.length) {
-		throw new TRPCError({
-			code: "CONFLICT",
-			message: "That correction is already undone",
-		});
-	}
-	await tx.sharedTransaction.deleteMany({
-		where: { id: { in: input.transactionIds } },
-	});
-	for (const r of input.resolvedRequests) {
-		await tx.fixRequest.updateMany({
-			where: { id: r.id, status: "FIXED" },
-			data: {
-				status: r.previousStatus,
-				fixedById: null,
-				...(r.previousStatus === "PENDING" ? { answeredAt: null } : {}),
-			},
-		});
-	}
-	const first = mine[0];
-	await logAudit(tx, {
-		actor: partyOf("user", userId),
-		action: "CORRECTION_UNDONE",
-		targetType: "SHARED_TRANSACTION",
-		targetId: first?.correctsId as string,
-		projectId: first?.projectId ?? undefined,
-		changes: { correctionIds: input.transactionIds },
-	});
-	forgetMonthViews(tx);
-	return { transactionIds: [...input.transactionIds] };
 }
 
 const MAX_ROWS = 6;
