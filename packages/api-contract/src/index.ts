@@ -1,3 +1,5 @@
+import { accountsContract } from "./accounts";
+import { budgetContract } from "./budget";
 import { categoriesContract } from "./categories";
 import { currenciesContract } from "./currencies";
 import { expensesContract } from "./expenses";
@@ -18,6 +20,8 @@ import { sharedExpensesContract } from "./shared-expenses";
 import { tokensContract } from "./tokens";
 import { transfersContract } from "./transfers";
 
+export * from "./accounts";
+export * from "./budget";
 export * from "./categories";
 export * from "./common";
 export * from "./core";
@@ -46,6 +50,8 @@ export * from "./transfers";
  * line (S3b to S3d own their folders: `src/<group>/*`).
  */
 export const contract = {
+	accounts: accountsContract,
+	budget: budgetContract,
 	categories: categoriesContract,
 	currencies: currenciesContract,
 	expenses: expensesContract,

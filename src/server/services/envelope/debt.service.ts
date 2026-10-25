@@ -241,6 +241,24 @@ export async function revertPayoffPlan(
 	const row = await tx.payoffPlan.findUnique({ where: { bookId: book.id } });
 	const undo = row?.undo ? undoSchema.parse(row.undo) : null;
 	if (!row || !undo) invalid("nothing to undo");
+	// The save set the extra envelope's target; a later edit of it is not ours to overwrite.
+	if (undo.target) {
+		const env = await tx.envelope.findUnique({
+			where: { id: undo.target.envelopeId },
+		});
+		const unchanged =
+			env !== null &&
+			env.targetAmount !== null &&
+			env.targetAmount.equals(row.extraMonthly) &&
+			env.targetMode === "SET_ASIDE" &&
+			env.targetCadence === "MONTH" &&
+			env.targetCurrency === null;
+		if (!unchanged)
+			throw new EnvelopeError(
+				"ALREADY_UNDONE",
+				"the extra envelope's target changed since the save, so undoing it would overwrite that",
+			);
+	}
 	const p = undo.plan;
 	const restored = await tx.payoffPlan.update({
 		where: { id: row.id },
