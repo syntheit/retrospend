@@ -11,9 +11,7 @@
 		"cancel": "Cancel",
 		"undo": "Undo",
 		"dismiss": "Dismiss",
-		"retry": "Try again",
-		"close": "Close",
-		"loadingMore": "Loading more"
+		"retry": "Try again"
 	},
 	"keypad": {
 		"delete": "Delete",
@@ -75,7 +73,6 @@
 		"today": "Today",
 		"yesterday": "Yesterday",
 		"chip": {
-			"period": "Period",
 			"kind": "Type",
 			"category": "Category",
 			"person": "Person",
@@ -103,9 +100,7 @@
 			"refund": "Refund",
 			"transfer": "Transfer",
 			"paymentSent": "Paid {name}",
-			"paymentReceived": "{name} paid you",
-			"payment": "Payment",
-			"with": "with {names}"
+			"paymentReceived": "{name} paid you"
 		}
 	},
 	"money": {
@@ -142,12 +137,6 @@
 			"refund": "Refund",
 			"transfer": "Transfer",
 			"payment": "Payment"
-		},
-		"state": {
-			"ok": "Counted",
-			"review": "To review",
-			"rejected": "Rejected",
-			"pending": "Waiting to be confirmed"
 		}
 	},
 	"home": {
@@ -237,7 +226,6 @@
 		"remindFailed": "Couldn't send the reminder",
 		"stats": "Sharing since {date}, {expenses, plural, one {# expense} other {# expenses}}, {projects, plural, one {# project} other {# projects}}",
 		"statsNoDate": "{expenses, plural, one {# expense} other {# expenses}}, {projects, plural, one {# project} other {# projects}}",
-		"needsYou": "{count, plural, one {# needs you} other {# need you}}",
 		"projects": "Projects",
 		"outside": "Outside projects",
 		"scopeSettled": "Settled",
@@ -266,7 +254,6 @@
 		"errorDetail": "Check your connection and try again."
 	},
 	"settle": {
-		"title": "Settle up",
 		"with": "Settle up with {name}",
 		"direction": "Who paid",
 		"iPaid": "I paid {name}",
