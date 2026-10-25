@@ -6,10 +6,18 @@ import { isApproximate } from "./groups";
 import type { PersonSummary } from "./source";
 
 type Part = PersonSummary["parts"][number];
+type Net = { minor: number; currency: string } | null;
 
-/** The size of a balance; its side (owes you, you owe) is said in words beside it. */
-function sizeOf(minor: number) {
-	return Math.abs(minor);
+/** A balance worded: "≈ ARS 1,000", or "No rate yet" when it cannot be had. */
+export function useNetText() {
+	const t = useTranslations("mobile.money");
+	const format = useMoneyText();
+	// The size of a balance; its side (owes you, you owe) is said in words.
+	return (net: Net, parts: { amount: Part["amount"] }[], home: string) => {
+		if (!net) return t("noRate");
+		const text = format({ minor: Math.abs(net.minor), currency: net.currency });
+		return isApproximate(parts, home) ? t("approx", { amount: text }) : text;
+	};
 }
 
 /**
@@ -26,7 +34,7 @@ export function NetAmount({
 	align = "right",
 	showCount = true,
 }: {
-	net: { minor: number; currency: string } | null;
+	net: Net;
 	parts: Part[];
 	home: string;
 	tone: "positive" | "default";
@@ -35,33 +43,23 @@ export function NetAmount({
 	/** Says how many currencies it spans; off for a total of many people. */
 	showCount?: boolean;
 }) {
-	const t = useTranslations("mobile.money");
 	const tp = useTranslations("mobile.people");
-	const format = useMoneyText();
+	const netText = useNetText();
 	const { color, type } = useTheme();
 	const hero = size === "hero";
-	const text = net
-		? format({ minor: sizeOf(net.minor), currency: net.currency })
-		: null;
-	const shown =
-		text === null
-			? t("noRate")
-			: isApproximate(parts, home)
-				? t("approx", { amount: text })
-				: text;
 	return (
 		<View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
 			<Text
 				numberOfLines={1}
 				style={{
-					color: tone === "positive" && text ? color.positive : color.fg,
+					color: tone === "positive" && net ? color.positive : color.fg,
 					fontSize: hero ? type.hero.size : type.body.size,
 					fontVariant: ["tabular-nums"],
 					fontWeight: hero ? "600" : "500",
 					textAlign: align,
 				}}
 			>
-				{shown}
+				{netText(net, parts, home)}
 			</Text>
 			{showCount && !hero && parts.length > 1 ? (
 				<Text

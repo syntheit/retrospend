@@ -26,12 +26,12 @@ export function useActivity(filter: ActivityFilter) {
 	filterRef.current = filter;
 
 	const reload = useCallback(async () => {
-		if (!source || !local) return;
+		if (!source) return;
 		const mine = ++request.current;
 		const current = () => request.current === mine;
 		const next = await loadActivity(
 			source,
-			local.cache,
+			local?.cache ?? null,
 			filterRef.current,
 			(cached) => {
 				if (current()) setState(cached);
@@ -54,7 +54,13 @@ export function useActivity(filter: ActivityFilter) {
 
 	const loadMore = useCallback(async () => {
 		// Rows from the cache are not paged on: refresh first.
-		if (!source || state.status !== "ready" || state.staleSince || loadingMore)
+		if (
+			!source ||
+			state.status !== "ready" ||
+			state.refreshing ||
+			state.staleSince ||
+			loadingMore
+		)
 			return;
 		const cursor = state.data.nextCursor;
 		if (!cursor) return;

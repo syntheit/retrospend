@@ -14,6 +14,7 @@ import { Screen } from "@/ui/Screen";
 
 export default function HomeScreen() {
 	const t = useTranslations("mobile.home");
+	const loading = useTranslations("mobile.activity")("loading");
 	const { api } = useSession();
 	const fetch = useMemo(() => (api ? fetchHome(api) : null), [api]);
 	const { state } = useCachedRead(HOME_CACHE, fetch);
@@ -25,7 +26,7 @@ export default function HomeScreen() {
 				{state.status === "ready" ? (
 					<>
 						<StaleNote since={state.staleSince} />
-						<Glance glance={state.data.glance} />
+						<Glance approx={state.data.approx} glance={state.data.glance} />
 						<NeedsYou list={state.data.needs} />
 						<SectionHeader
 							actionLabel={t("recent.seeAll")}
@@ -51,7 +52,9 @@ export default function HomeScreen() {
 					</>
 				) : state.status === "error" ? (
 					<EmptyState detail={t("errorDetail")} title={t("error")} />
-				) : null}
+				) : (
+					<EmptyState title={loading} />
+				)}
 			</Screen>
 		</>
 	);

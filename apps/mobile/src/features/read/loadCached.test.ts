@@ -8,6 +8,48 @@ const fail = async (): Promise<string> => {
 };
 
 describe("loadCached", () => {
+	it("reads straight from the server when there is no store", async () => {
+		expect(
+			await loadCached(
+				null,
+				KEY,
+				async () => "now",
+				() => {},
+			),
+		).toEqual({
+			status: "ready",
+			data: "now",
+			staleSince: null,
+			refreshing: false,
+		});
+		expect(await loadCached(null, KEY, fail, () => {})).toEqual({
+			status: "error",
+		});
+	});
+
+	it("keeps only the newest entries of a family when asked to prune", async () => {
+		let tick = 0;
+		const store = createMemoryStore();
+		const cache = createReadCache(
+			store,
+			"a",
+			() => new Date(Date.UTC(2026, 0, 1, 0, 0, tick++)),
+		);
+		for (const id of ["1", "2", "3"]) {
+			await loadCached(
+				cache,
+				{ name: `person.${id}`, schema: 1 },
+				async () => id,
+				() => {},
+				{ prefix: "person.", keep: 2 },
+			);
+		}
+		expect(await store.keys("cache:a:person.")).toEqual([
+			"cache:a:person.2",
+			"cache:a:person.3",
+		]);
+	});
+
 	it("caches a fresh read and shows the cache first next time", async () => {
 		const cache = createReadCache(createMemoryStore(), "a");
 		expect(
@@ -21,6 +63,7 @@ describe("loadCached", () => {
 			status: "ready",
 			data: [1],
 			staleSince: null,
+			refreshing: false,
 		});
 		const early: unknown[] = [];
 		await loadCached(
@@ -33,7 +76,8 @@ describe("loadCached", () => {
 			{
 				status: "ready",
 				data: [1],
-				staleSince: expect.stringMatching(/^\d{4}-/),
+				staleSince: null,
+				refreshing: true,
 			},
 		]);
 	});
@@ -45,6 +89,7 @@ describe("loadCached", () => {
 			status: "ready",
 			data: "old",
 			staleSince: expect.stringMatching(/^\d{4}-/),
+			refreshing: false,
 		});
 	});
 

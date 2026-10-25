@@ -72,7 +72,14 @@ export function ActivityRow({
 			accessibilityLabel={[
 				title,
 				status,
+				...sub,
+				others.length > 0 ? others.map((p) => p.name).join(", ") : null,
 				format(item.amount),
+				item.home
+					? format(item.home)
+					: item.home === null
+						? tm("noRate")
+						: null,
 				share ? tm("yourShare", { amount: share }) : null,
 			]
 				.filter(Boolean)

@@ -190,7 +190,7 @@
 		"title": "Personas",
 		"owedToYou": "Te deben",
 		"youOwe": "Debes",
-		"unpriced": "Aún no hay cotización para {currencies}. Esas deudas no están en estos totales.",
+		"unpriced": "{currencies}: todavía sin cotización, fuera de los totales",
 		"needsYou": "{count, plural, one {# te necesita} other {# te necesitan}}",
 		"search": "Buscar personas",
 		"chip": {
@@ -259,7 +259,7 @@
 		"iPaid": "Pagué a {name}",
 		"theyPaid": "{name} me pagó",
 		"amount": "Monto",
-		"unpriced": "Aún no hay cotización para {currencies}. Esas deudas quedan fuera de Todo.",
+		"unpriced": "{currencies}: todavía sin cotización, no entra en Todo",
 		"nothingOwed": "No hay nada pendiente ahora",
 		"changes": "Qué cambia",
 		"stays": "Qué sigue igual",
@@ -271,7 +271,7 @@
 		"beforeAfter": "{before} a {after}",
 		"none": "nada",
 		"keeps": "{amount} se mantiene",
-		"checking": "Comprobando",
+		"checking": "Verificando",
 		"record": "Registrar pago",
 		"recording": "Registrando",
 		"recorded": "Pago registrado",
@@ -279,13 +279,14 @@
 		"undone": "Pago deshecho",
 		"error": "No se pudo registrar el pago. Inténtalo de nuevo.",
 		"undoError": "No se pudo deshacer el pago. Inténtalo de nuevo.",
-		"previewError": "No se pudo comprobar este pago. Inténtalo de nuevo.",
+		"previewError": "No se pudo verificar este pago. Inténtalo de nuevo.",
 		"loadError": "No se pudo cargar lo que se debe. Inténtalo de nuevo.",
 		"everythingShort": "Todo",
 		"partShort": "Parte en {currency}",
 		"confirmTitle": "{name} dice que te pagó",
 		"confirm": "Confirmar",
 		"confirmed": "Pago confirmado",
-		"confirmUndone": "Confirmación deshecha"
+		"confirmUndone": "Confirmación deshecha",
+		"confirmError": "No se pudo confirmar el pago. Inténtalo de nuevo."
 	}
 }

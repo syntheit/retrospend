@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useSession } from "@/auth/session";
+import { ENTITY_CACHE_LIMIT } from "@/features/read/loadCached";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import {
 	fetchOverview,
@@ -23,5 +24,8 @@ export function usePerson(ref: PersonRef) {
 		() => (api ? fetchPerson(api, { type: ref.type, id: ref.id }) : null),
 		[api, ref.type, ref.id],
 	);
-	return useCachedRead(personCache(ref), fetch);
+	return useCachedRead(personCache(ref), fetch, {
+		prefix: "person.",
+		keep: ENTITY_CACHE_LIMIT,
+	});
 }

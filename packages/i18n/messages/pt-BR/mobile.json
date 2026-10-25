@@ -190,7 +190,7 @@
 		"title": "Pessoas",
 		"owedToYou": "Devem a você",
 		"youOwe": "Você deve",
-		"unpriced": "Ainda não há cotação para {currencies}. Essas dívidas não entram nestes totais.",
+		"unpriced": "{currencies}: ainda sem cotação, fora dos totais",
 		"needsYou": "{count, plural, one {# precisa de você} other {# precisam de você}}",
 		"search": "Buscar pessoas",
 		"chip": {
@@ -259,7 +259,7 @@
 		"iPaid": "Paguei {name}",
 		"theyPaid": "{name} me pagou",
 		"amount": "Valor",
-		"unpriced": "Ainda não há cotação para {currencies}. Essas dívidas ficam fora de Tudo.",
+		"unpriced": "{currencies}: ainda sem cotação, por isso fora de Tudo",
 		"nothingOwed": "Nada pendente agora",
 		"changes": "O que muda",
 		"stays": "O que continua igual",
@@ -286,6 +286,7 @@
 		"confirmTitle": "{name} diz que pagou você",
 		"confirm": "Confirmar",
 		"confirmed": "Pagamento confirmado",
-		"confirmUndone": "Confirmação desfeita"
+		"confirmUndone": "Confirmação desfeita",
+		"confirmError": "Não foi possível confirmar o pagamento. Tente de novo."
 	}
 }

@@ -190,7 +190,7 @@
 		"title": "Personnes",
 		"owedToYou": "On vous doit",
 		"youOwe": "Vous devez",
-		"unpriced": "Pas encore de taux pour {currencies}. Ces dettes ne sont pas dans ces totaux.",
+		"unpriced": "{currencies} : pas encore de taux, hors des totaux",
 		"needsYou": "{count, plural, one {# vous attend} other {# vous attendent}}",
 		"search": "Rechercher des personnes",
 		"chip": {
@@ -259,7 +259,7 @@
 		"iPaid": "J’ai payé {name}",
 		"theyPaid": "{name} m’a payé",
 		"amount": "Montant",
-		"unpriced": "Pas encore de taux pour {currencies}. Ces dettes sont exclues de Tout.",
+		"unpriced": "{currencies} : pas encore de taux, donc hors de Tout",
 		"nothingOwed": "Rien à régler pour l’instant",
 		"changes": "Ce qui change",
 		"stays": "Ce qui ne change pas",
@@ -286,6 +286,7 @@
 		"confirmTitle": "{name} dit vous avoir payé",
 		"confirm": "Confirmer",
 		"confirmed": "Paiement confirmé",
-		"confirmUndone": "Confirmation annulée"
+		"confirmUndone": "Confirmation annulée",
+		"confirmError": "Impossible de confirmer le paiement. Réessayez."
 	}
 }

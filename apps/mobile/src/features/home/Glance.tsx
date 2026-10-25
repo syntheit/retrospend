@@ -13,18 +13,33 @@ function Figure({
 	value,
 	caption,
 	tone,
+	approx,
 	onPress,
 }: {
 	label: string;
 	value: GlanceData["owedToYou"]["value"];
 	caption?: string;
 	tone?: "positive" | "default";
+	/** A total converted at reference rates. */
+	approx?: boolean;
 	onPress?: () => void;
 }) {
 	const t = useTranslations("mobile.money");
+	const format = useMoneyText();
 	const { color, type } = useTheme();
+	const spoken = [
+		label,
+		caption,
+		value
+			? approx
+				? t("approx", { amount: format(value) })
+				: format(value)
+			: t("noRate"),
+	]
+		.filter(Boolean)
+		.join(", ");
 	return (
-		<ListRow accessibilityLabel={label} onPress={onPress}>
+		<ListRow accessibilityLabel={spoken} onPress={onPress}>
 			<View style={{ flex: 1 }}>
 				<Text style={{ color: color.fg, fontSize: type.body.size }}>
 					{label}
@@ -36,7 +51,7 @@ function Figure({
 				) : null}
 			</View>
 			{value ? (
-				<MoneyAmount tone={tone} value={value} />
+				<MoneyAmount approx={approx} tone={tone} value={value} />
 			) : (
 				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
 					{t("noRate")}
@@ -51,7 +66,13 @@ function Figure({
  * month), then Owed to you and You owe as separate lines (never netted),
  * Net worth and the dollar. Every number is the server's figure.
  */
-export function Glance({ glance }: { glance: GlanceData }) {
+export function Glance({
+	glance,
+	approx,
+}: {
+	glance: GlanceData;
+	approx: { owedToYou: boolean; youOwe: boolean };
+}) {
 	const t = useTranslations("mobile.home");
 	const format = useMoneyText();
 	const { color, space, type } = useTheme();
@@ -107,12 +128,14 @@ export function Glance({ glance }: { glance: GlanceData }) {
 				) : null}
 			</View>
 			<Figure
+				approx={approx.owedToYou}
 				label={t("owedToYou")}
 				onPress={() => router.navigate("/people")}
 				tone="positive"
 				value={glance.owedToYou.value}
 			/>
 			<Figure
+				approx={approx.youOwe}
 				label={t("youOwe")}
 				onPress={() => router.navigate("/people")}
 				value={glance.youOwe.value}

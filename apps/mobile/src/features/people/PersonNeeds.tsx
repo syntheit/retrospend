@@ -1,8 +1,10 @@
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { LinkButton, ListRow } from "@/features/read/parts";
+import { ListRow } from "@/features/read/parts";
+import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
+import { Button } from "@/ui/Button";
 import type { NeedsItem, PersonPage } from "./source";
 
 /**
@@ -19,7 +21,8 @@ export function PersonNeeds({
 }) {
 	const t = useTranslations("mobile.home.needs");
 	const ts = useTranslations("mobile.settle");
-	const { color, type } = useTheme();
+	const format = useMoneyText();
+	const { color, space, type } = useTheme();
 	const first = page.person.name.split(/\s+/)[0] ?? "";
 	return (
 		<View>
@@ -30,7 +33,7 @@ export function PersonNeeds({
 						: t("split_review", { name: first, title: need.title });
 				return (
 					<View key={`${need.kind}:${need.id}`}>
-						<ListRow accessibilityLabel={message}>
+						<ListRow accessibilityLabel={`${message}, ${format(need.amount)}`}>
 							<Text
 								style={{
 									flex: 1,
@@ -44,10 +47,19 @@ export function PersonNeeds({
 							<MoneyAmount value={need.amount} />
 						</ListRow>
 						{need.kind === "confirmPayment" ? (
-							<LinkButton
-								label={ts("confirm")}
-								onPress={() => onConfirm(need)}
-							/>
+							<View
+								style={{
+									alignItems: "flex-start",
+									paddingHorizontal: space[4],
+									paddingVertical: space[2],
+								}}
+							>
+								<Button
+									label={ts("confirm")}
+									onPress={() => onConfirm(need)}
+									variant="outlined"
+								/>
+							</View>
 						) : null}
 					</View>
 				);

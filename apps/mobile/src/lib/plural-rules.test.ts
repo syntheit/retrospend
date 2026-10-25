@@ -9,6 +9,14 @@ describe("pluralCategory", () => {
 		}
 	});
 
+	it("counts the size of a number, not its sign, and has many for round millions", () => {
+		expect(pluralCategory("en", -1)).toBe("one");
+		expect(pluralCategory("es", 1_000_000)).toBe("many");
+		expect(pluralCategory("fr", 2_000_000)).toBe("many");
+		expect(pluralCategory("es", 0)).toBe("other");
+		expect(pluralCategory("en", 1_000_000)).toBe("other");
+	});
+
 	it("French and Portuguese count 0 and 1 as one", () => {
 		expect(pluralCategory("fr", 0)).toBe("one");
 		expect(pluralCategory("pt-BR", 1)).toBe("one");

@@ -10,8 +10,12 @@ const isInteger = (n: number) => Number.isInteger(n);
 const RULES: Record<string, (n: number) => Category> = {
 	// One for exactly 1: English, German, Spanish.
 	one: (n) => (n === 1 ? "one" : "other"),
+	// Spanish and French also have "many" for 1,000,000 and its multiples.
+	millions: (n) =>
+		n === 1 ? "one" : n !== 0 && n % 1_000_000 === 0 ? "many" : "other",
 	// Portuguese (Brazil) and French count 0 and 1 as one.
-	zeroOrOne: (n) => (n >= 0 && n < 2 ? "one" : "other"),
+	zeroOrOne: (n) =>
+		n >= 0 && n < 2 ? "one" : n !== 0 && n % 1_000_000 === 0 ? "many" : "other",
 	ru: (n) => {
 		if (!isInteger(n)) return "other";
 		const tens = n % 100;
@@ -22,11 +26,13 @@ const RULES: Record<string, (n: number) => Category> = {
 	},
 };
 
-export function pluralCategory(locale: string, n: number): Category {
+export function pluralCategory(locale: string, count: number): Category {
+	const n = Math.abs(count);
 	const language = locale.toLowerCase().split(/[-_]/)[0] ?? "";
 	if (language === "ru") return RULES.ru?.(n) ?? "other";
-	if (language === "pt" || language === "fr")
-		return RULES.zeroOrOne?.(n) ?? "other";
+	if (language === "es") return RULES.millions?.(n) ?? "other";
+	if (language === "fr") return RULES.zeroOrOne?.(n) ?? "other";
+	if (language === "pt") return RULES.zeroOrOne?.(n) ?? "other";
 	return RULES.one?.(n) ?? "other";
 }
 

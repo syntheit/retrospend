@@ -55,6 +55,7 @@ describe("loadActivity", () => {
 			status: "ready",
 			data: page([row("e1")]),
 			staleSince: null,
+			refreshing: false,
 		});
 		const early: unknown[] = [];
 		await loadActivity(fresh, cache, DEFAULT_FILTER, (s) => early.push(s));
@@ -62,7 +63,8 @@ describe("loadActivity", () => {
 			{
 				status: "ready",
 				data: page([row("e1")]),
-				staleSince: expect.stringMatching(/^\d{4}-/),
+				staleSince: null,
+				refreshing: true,
 			},
 		]);
 	});
@@ -80,6 +82,7 @@ describe("loadActivity", () => {
 			status: "ready",
 			data: page([row("e1")]),
 			staleSince: expect.stringMatching(/^\d{4}-/),
+			refreshing: false,
 		});
 	});
 

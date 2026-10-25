@@ -33,7 +33,9 @@ export function useSettle(person: PersonRef, active: boolean) {
 	const [previewFailed, setPreviewFailed] = useState(false);
 	const [recording, setRecording] = useState(false);
 	const [recordFailed, setRecordFailed] = useState(false);
-	const writeId = useRef(newClientId());
+	// One id (also the idempotency key) per distinct request: a retry of the
+	// same body replays, a changed body is a different payment.
+	const write = useRef({ body: "", id: newClientId() });
 
 	const read = useCallback(
 		async (next: Direction | undefined) => {
@@ -60,16 +62,20 @@ export function useSettle(person: PersonRef, active: boolean) {
 	// Each opening starts from what the server suggests, with a fresh write id.
 	useEffect(() => {
 		if (!active) return;
-		writeId.current = newClientId();
+		write.current = { body: "", id: newClientId() };
 		setRecordFailed(false);
 		read(undefined);
 	}, [active, read]);
 
-	const input =
+	const draft =
 		context && direction
-			? recordInput(person, context, direction, choice, writeId.current)
+			? recordInput(person, context, direction, choice, "")
 			: null;
-	const inputKey = input ? JSON.stringify({ ...input, id: undefined }) : null;
+	const inputKey = draft ? JSON.stringify({ ...draft, id: undefined }) : null;
+	if (inputKey !== null && write.current.body !== inputKey) {
+		write.current = { body: inputKey, id: newClientId() };
+	}
+	const input = draft ? { ...draft, id: write.current.id } : null;
 
 	// The preview is a dry run of this very input; it follows every change.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `inputKey` stands for `input`

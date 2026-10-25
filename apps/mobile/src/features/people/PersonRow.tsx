@@ -4,7 +4,7 @@ import { useFaces } from "@/features/read/faces";
 import { ListRow } from "@/features/read/parts";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
-import { NetAmount } from "./NetAmount";
+import { NetAmount, useNetText } from "./NetAmount";
 import type { PersonSummary } from "./source";
 
 /**
@@ -23,6 +23,8 @@ export function PersonRow({
 	selected?: boolean;
 }) {
 	const t = useTranslations("mobile.people");
+	const tp = useTranslations("mobile.person");
+	const netText = useNetText();
 	const format = useFormatter();
 	const faces = useFaces();
 	const { color, type } = useTheme();
@@ -48,7 +50,14 @@ export function PersonRow({
 
 	return (
 		<ListRow
-			accessibilityLabel={[person.name, status, last]
+			accessibilityLabel={[
+				person.name,
+				status,
+				last,
+				summary.group === "settled"
+					? null
+					: `${summary.group === "owed" ? tp("owesYou") : tp("youOweThem")} ${netText(summary.net, summary.parts, home)}`,
+			]
 				.filter(Boolean)
 				.join(", ")}
 			onPress={onPress}

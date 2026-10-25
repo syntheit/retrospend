@@ -1,15 +1,14 @@
-import { Button } from "@expo/ui";
 import { ScrollView, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import type { PersonIdentity } from "@/features/people/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
-import { NativeHost } from "@/ui/NativeHost";
+import { Button } from "@/ui/Button";
 import { Segmented } from "@/ui/Segmented";
 import { Sheet } from "@/ui/Sheet";
 import { useToast } from "@/ui/Toast";
 import { PreviewList } from "./PreviewList";
-import { allocationAmount } from "./plan";
+import { allocationOf } from "./plan";
 import { useSettle } from "./useSettle";
 
 const EVERYTHING = "everything";
@@ -34,6 +33,7 @@ export function SettleSheet({
 }) {
 	const t = useTranslations("mobile.settle");
 	const tc = useTranslations("mobile.common");
+	const tm = useTranslations("mobile.money");
 	const toast = useToast();
 	const format = useMoneyText();
 	const { color, space, type } = useTheme();
@@ -41,7 +41,7 @@ export function SettleSheet({
 	const name = person.name;
 	const first = name.split(/\s+/)[0] ?? name;
 	const { context } = flow;
-	const amount = flow.preview ? allocationAmount(flow.preview) : null;
+	const allocation = flow.preview ? allocationOf(flow.preview) : null;
 	const nothingOwed = context !== null && context.parts.length === 0;
 
 	async function record() {
@@ -90,13 +90,11 @@ export function SettleSheet({
 				{flow.status === "loadError" ? (
 					<>
 						{note(t("loadError"), "attention")}
-						<NativeHost>
-							<Button
-								label={tc("retry")}
-								onPress={flow.retryLoad}
-								variant="outlined"
-							/>
-						</NativeHost>
+						<Button
+							label={tc("retry")}
+							onPress={flow.retryLoad}
+							variant="outlined"
+						/>
 					</>
 				) : context && flow.direction ? (
 					<>
@@ -140,7 +138,7 @@ export function SettleSheet({
 									"attention",
 								)
 							: null}
-						{amount ? (
+						{allocation ? (
 							<View style={{ gap: space[1] }}>
 								<Text style={{ color: color.fg2, fontSize: type.small.size }}>
 									{t("amount")}
@@ -153,7 +151,9 @@ export function SettleSheet({
 										fontWeight: "600",
 									}}
 								>
-									{format(amount)}
+									{allocation.converted
+										? tm("approx", { amount: format(allocation.amount) })
+										: format(allocation.amount)}
 								</Text>
 							</View>
 						) : null}
@@ -165,12 +165,11 @@ export function SettleSheet({
 							note(t("checking"))
 						)}
 						{flow.recordFailed ? note(t("error"), "attention") : null}
-						<NativeHost>
-							<Button
-								label={flow.recording ? t("recording") : t("record")}
-								onPress={flow.preview && !flow.recording ? record : undefined}
-							/>
-						</NativeHost>
+						<Button
+							disabled={!flow.preview || flow.recording}
+							label={flow.recording ? t("recording") : t("record")}
+							onPress={record}
+						/>
 					</>
 				) : (
 					note(t("checking"))

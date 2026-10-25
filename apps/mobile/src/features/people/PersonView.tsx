@@ -1,4 +1,3 @@
-import { Button } from "@expo/ui";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
@@ -12,15 +11,15 @@ import { ConfirmSheet } from "@/features/settle/ConfirmSheet";
 import { SettleSheet } from "@/features/settle/SettleSheet";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
+import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
-import { NativeHost } from "@/ui/NativeHost";
 import { Screen } from "@/ui/Screen";
 import { useToast } from "@/ui/Toast";
 import { isApproximate, sideOf } from "./groups";
 import { NetAmount } from "./NetAmount";
 import { PersonNeeds } from "./PersonNeeds";
 import { PaymentRow, ScopeRow, SharedRow } from "./PersonSections";
-import type { PersonPage, PersonRef } from "./source";
+import type { PersonRef } from "./source";
 import { useLedgerMore } from "./useLedgerMore";
 import { usePerson } from "./usePeople";
 
@@ -154,14 +153,10 @@ export function PersonView({
 					style={{ flexDirection: "row", gap: space[3], paddingTop: space[2] }}
 				>
 					{page.settled.nothingShared ? null : (
-						<NativeHost>
-							<Button label={t("settleUp")} onPress={() => setSettling(true)} />
-						</NativeHost>
+						<Button label={t("settleUp")} onPress={() => setSettling(true)} />
 					)}
 					{remindable ? (
-						<NativeHost>
-							<Button label={t("remind")} onPress={remind} variant="outlined" />
-						</NativeHost>
+						<Button label={t("remind")} onPress={remind} variant="outlined" />
 					) : null}
 				</View>
 			</View>

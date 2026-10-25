@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useFaces } from "@/features/read/faces";
+import { ENTITY_CACHE_LIMIT } from "@/features/read/loadCached";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { StaleNote } from "@/features/read/parts";
 import { useCachedRead } from "@/features/read/useCachedRead";
@@ -72,7 +73,7 @@ export function EntryView({ item }: { item: ActivityItem }) {
 	const money = useMoneyText();
 	const faces = useFaces();
 	const { api, state: session } = useSession();
-	const { color, space, type } = useTheme();
+	const { color, size, space, type } = useTheme();
 	const me = session.status === "signedIn" ? session.me : null;
 
 	const personal = item.source === "personal";
@@ -84,6 +85,7 @@ export function EntryView({ item }: { item: ActivityItem }) {
 	const detail = useCachedRead(
 		personal ? { name: `expense.${item.entityId}`, schema: 1 } : null,
 		fetch,
+		{ prefix: "expense.", keep: ENTITY_CACHE_LIMIT },
 	);
 	const extra = detail.state.status === "ready" ? detail.state.data : null;
 
@@ -158,7 +160,7 @@ export function EntryView({ item }: { item: ActivityItem }) {
 							flexDirection: "row",
 							alignItems: "center",
 							justifyContent: "space-between",
-							minHeight: 44,
+							minHeight: size.row.phone,
 							paddingVertical: space[2],
 							borderBottomWidth: 1,
 							borderBottomColor: color.line,

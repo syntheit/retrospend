@@ -102,12 +102,26 @@ export function previewRows(preview: PaymentPreview): {
 }
 
 /**
- * What the payment pays, in the payment currency: the allocation the server
- * answers with in the preview's detail (the same one the write returns).
+ * What the payment pays, in the payment currency, from the allocation the
+ * server answers with in the preview's detail (the same one the write
+ * returns). `converted` is true when a debt in another currency was turned
+ * into the payment currency at a rate, so the amount is an estimate.
  */
-export function allocationAmount(preview: PaymentPreview): Money | null {
+export function allocationOf(
+	preview: PaymentPreview,
+): { amount: Money; converted: boolean } | null {
 	const detail = preview.detail as
-		| { allocation?: { amount: Money } | null }
+		| {
+				allocation?: {
+					amount: Money;
+					rows?: { rate: unknown | null }[];
+				} | null;
+		  }
 		| undefined;
-	return detail?.allocation?.amount ?? null;
+	const allocation = detail?.allocation;
+	if (!allocation) return null;
+	return {
+		amount: allocation.amount,
+		converted: (allocation.rows ?? []).some((row) => row.rate !== null),
+	};
 }

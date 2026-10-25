@@ -38,6 +38,9 @@ function Totals({ overview }: { overview: PeopleOverview }) {
 	const t = useTranslations("mobile.people");
 	const { color, space, type } = useTheme();
 	const parts = overview.people.flatMap((p) => p.parts);
+	// Each total is an estimate only from the parts on its own side.
+	const owedParts = parts.filter((p) => p.amount.minor > 0);
+	const oweParts = parts.filter((p) => p.amount.minor < 0);
 	return (
 		<View style={{ gap: space[1], padding: space[4] }}>
 			<Text style={{ color: color.fg2, fontSize: type.body.size }}>
@@ -47,7 +50,7 @@ function Totals({ overview }: { overview: PeopleOverview }) {
 				align="left"
 				home={overview.home}
 				net={overview.owedToYou}
-				parts={parts}
+				parts={owedParts}
 				showCount={false}
 				size="hero"
 				tone="positive"
@@ -67,7 +70,7 @@ function Totals({ overview }: { overview: PeopleOverview }) {
 					align="left"
 					home={overview.home}
 					net={overview.youOwe}
-					parts={parts}
+					parts={oweParts}
 					showCount={false}
 					tone="default"
 				/>
@@ -94,7 +97,7 @@ function NeedsStrip({ overview }: { overview: PeopleOverview }) {
 	];
 	return (
 		<ListRow
-			accessibilityLabel={t("needsYou", { count: overview.needs.length })}
+			accessibilityLabel={`${t("needsYou", { count: overview.needs.length })}, ${people.map((p) => p.name).join(", ")}`}
 			onPress={ref ? () => openPerson(ref) : undefined}
 		>
 			<AvatarStack faces={faces(people)} />

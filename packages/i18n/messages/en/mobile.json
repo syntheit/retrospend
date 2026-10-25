@@ -190,7 +190,7 @@
 		"title": "People",
 		"owedToYou": "Owed to you",
 		"youOwe": "You owe",
-		"unpriced": "No rate yet for {currencies}. Those debts are not in these totals.",
+		"unpriced": "{currencies}: no rate yet, not in the totals",
 		"needsYou": "{count, plural, one {# needs you} other {# need you}}",
 		"search": "Search people",
 		"chip": {
@@ -259,7 +259,7 @@
 		"iPaid": "I paid {name}",
 		"theyPaid": "{name} paid me",
 		"amount": "Amount",
-		"unpriced": "No rate yet for {currencies}. Those debts are left out of Everything.",
+		"unpriced": "{currencies}: no rate yet, so it is not in Everything",
 		"nothingOwed": "Nothing is owed right now",
 		"changes": "What changes",
 		"stays": "What stays the same",
@@ -286,6 +286,7 @@
 		"confirmTitle": "{name} says they paid you",
 		"confirm": "Confirm",
 		"confirmed": "Payment confirmed",
-		"confirmUndone": "Confirmation undone"
+		"confirmUndone": "Confirmation undone",
+		"confirmError": "Couldn't confirm the payment. Try again."
 	}
 }

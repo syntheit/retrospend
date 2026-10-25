@@ -21,6 +21,7 @@ export function MoneyAmount({
 	strong,
 	align = "right",
 	size = "body",
+	approx,
 }: {
 	value: Money;
 	home?: Money | null;
@@ -31,6 +32,8 @@ export function MoneyAmount({
 	strong?: boolean;
 	align?: "left" | "right";
 	size?: "body" | "section" | "hero";
+	/** The amount is a total converted at reference rates, so it reads "≈". */
+	approx?: boolean;
 }) {
 	const t = useTranslations("mobile.money");
 	const { color, type } = useTheme();
@@ -39,6 +42,10 @@ export function MoneyAmount({
 		home === undefined
 			? { original: format(value, { sign }), home: null }
 			: pair(value, home, { sign });
+	const shown = approx ? t("approx", { amount: original ?? "" }) : original;
+	// A home value in the entry's own currency adds nothing: one line.
+	const showHome =
+		home !== undefined && !(home && home.currency === value.currency);
 	const textAlign = align;
 	const fontSize =
 		size === "hero"
@@ -64,9 +71,9 @@ export function MoneyAmount({
 					textAlign,
 				}}
 			>
-				{original}
+				{shown}
 			</Text>
-			{home === undefined ? null : (
+			{showHome ? (
 				<Text
 					numberOfLines={1}
 					style={{
@@ -76,13 +83,13 @@ export function MoneyAmount({
 						textAlign,
 					}}
 				>
-					{homeText === null
+					{home === null || homeText === null
 						? t("noRate")
 						: rateType
 							? t("homeWithRate", { amount: homeText, rate: rateType })
 							: homeText}
 				</Text>
-			)}
+			) : null}
 		</View>
 	);
 }

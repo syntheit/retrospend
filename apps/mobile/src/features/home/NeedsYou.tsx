@@ -6,6 +6,7 @@ import { useSession } from "@/auth/session";
 import { useFaces } from "@/features/read/faces";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { LinkButton, ListRow, SectionHeader } from "@/features/read/parts";
+import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
 import { SwipeRow } from "@/ui/SwipeRow";
@@ -45,7 +46,8 @@ function NeedsRow({
 }) {
 	const t = useTranslations("mobile.home.needs");
 	const faces = useFaces();
-	const { color, type } = useTheme();
+	const money = useMoneyText();
+	const { color, size, type } = useTheme();
 	const line = needsLine(item, list);
 	const target = needsTarget(item);
 	const people = item.people.flatMap((key) => {
@@ -78,10 +80,16 @@ function NeedsRow({
 			onPress={target ? () => openItem(item) : undefined}
 			trailing={{ label: t("later"), onPress: () => onLater(item) }}
 		>
-			<ListRow accessibilityLabel={message}>
+			<ListRow
+				accessibilityLabel={
+					item.amount ? `${message}, ${money(item.amount)}` : message
+				}
+			>
 				{people.length > 0 ? (
 					<AvatarStack faces={faces(people)} size="default" />
-				) : null}
+				) : (
+					<View style={{ width: size.avatar.default }} />
+				)}
 				<View style={{ flex: 1 }}>
 					<Text
 						numberOfLines={2}

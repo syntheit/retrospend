@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Image, Text, View } from "react-native";
 import { useTheme } from "@/theme";
 
@@ -43,6 +43,8 @@ export function Avatar({
 }) {
 	const { color, size: sizes, type } = useTheme();
 	const [failed, setFailed] = useState(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a new address resets
+	useEffect(() => setFailed(false), [face.imageUri]);
 	const diameter = sizes.avatar[size];
 	const palette = color as unknown as Record<string, string>;
 	return (

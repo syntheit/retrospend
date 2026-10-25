@@ -1,6 +1,7 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { Money } from "@retrospend/domain/money-minor";
 import type { ActivityPage } from "@/features/activity/source";
+import { approxSides } from "@/features/people/groups";
 import type { CacheKey } from "@/features/read/loadCached";
 import type { NeedsYouList } from "./needs";
 
@@ -11,20 +12,28 @@ export interface HomeData {
 	needs: NeedsYouList;
 	/** The newest few entries, for Recent. */
 	recent: ActivityPage;
+	/** Which owed totals are converted at reference rates (shown with "≈"). */
+	approx: { owedToYou: boolean; youOwe: boolean };
 }
 
-export const HOME_CACHE: CacheKey = { name: "home", schema: 1 };
+export const HOME_CACHE: CacheKey = { name: "home", schema: 2 };
 export const SNOOZE_CACHE: CacheKey = { name: "home.later", schema: 1 };
 export const RECENT_COUNT = 5;
 
 export function fetchHome(api: RetrospendClient) {
 	return async (): Promise<HomeData> => {
-		const [glance, needs, recent] = await Promise.all([
+		const [glance, needs, recent, people] = await Promise.all([
 			api.figures.glance(),
 			api["needs-you"].list(),
 			api.expenses.list({ limit: RECENT_COUNT }),
+			api.people.list(),
 		]);
-		return { glance, needs, recent };
+		return {
+			glance,
+			needs,
+			recent,
+			approx: approxSides(people.people, people.home),
+		};
 	};
 }
 

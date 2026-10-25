@@ -1,4 +1,5 @@
 import {
+	approxSides,
 	chipKeeps,
 	isApproximate,
 	matchesName,
@@ -77,6 +78,26 @@ describe("sideOf", () => {
 		);
 		expect(sideOf(ars(0), [])).toBe("settled");
 		expect(sideOf(null, [])).toBe("settled");
+	});
+});
+
+describe("approxSides", () => {
+	it("looks at the parts owed to you for Owed to you and the others for You owe", () => {
+		const withParts = (parts: { minor: number; currency: string }[]) => ({
+			...person("X", "owed"),
+			parts: parts.map((amount) => ({ amount, home: null, rate: null })),
+		});
+		const people = [
+			withParts([
+				{ minor: 500, currency: "ARS" },
+				{ minor: -200, currency: "BRL" },
+			]),
+		];
+		expect(approxSides(people, "ARS")).toEqual({
+			owedToYou: false,
+			youOwe: true,
+		});
+		expect(approxSides([], "ARS")).toEqual({ owedToYou: false, youOwe: false });
 	});
 });
 

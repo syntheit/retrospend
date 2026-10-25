@@ -190,7 +190,7 @@
 		"title": "Personen",
 		"owedToYou": "Dir geschuldet",
 		"youOwe": "Du schuldest",
-		"unpriced": "Noch kein Kurs für {currencies}. Diese Schulden sind in den Summen nicht enthalten.",
+		"unpriced": "{currencies}: noch kein Kurs, nicht in den Summen",
 		"needsYou": "{count, plural, one {# braucht dich} other {# brauchen dich}}",
 		"search": "Personen suchen",
 		"chip": {
@@ -259,7 +259,7 @@
 		"iPaid": "Ich habe {name} bezahlt",
 		"theyPaid": "{name} hat mich bezahlt",
 		"amount": "Betrag",
-		"unpriced": "Noch kein Kurs für {currencies}. Diese Schulden sind in Alles nicht enthalten.",
+		"unpriced": "{currencies}: noch kein Kurs, darum nicht in Alles",
 		"nothingOwed": "Gerade ist nichts offen",
 		"changes": "Was sich ändert",
 		"stays": "Was gleich bleibt",
@@ -286,6 +286,7 @@
 		"confirmTitle": "{name} meldet eine Zahlung an dich",
 		"confirm": "Bestätigen",
 		"confirmed": "Zahlung bestätigt",
-		"confirmUndone": "Bestätigung rückgängig gemacht"
+		"confirmUndone": "Bestätigung rückgängig gemacht",
+		"confirmError": "Die Zahlung konnte nicht bestätigt werden. Versuche es erneut."
 	}
 }

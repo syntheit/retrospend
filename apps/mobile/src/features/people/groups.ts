@@ -65,6 +65,28 @@ export function sideOf(
 }
 
 /**
+ * Which of the two totals is an estimate: Owed to you counts the parts that
+ * are owed to you, You owe the parts that you owe, each at reference rates
+ * when it is in another currency. One currency is exact.
+ */
+export function approxSides(
+	people: PersonSummary[],
+	home: string,
+): { owedToYou: boolean; youOwe: boolean } {
+	const parts = people.flatMap((p) => p.parts);
+	return {
+		owedToYou: isApproximate(
+			parts.filter((p) => p.amount.minor > 0),
+			home,
+		),
+		youOwe: isApproximate(
+			parts.filter((p) => p.amount.minor < 0),
+			home,
+		),
+	};
+}
+
+/**
  * A home-currency net is an estimate when any part is in another currency
  * (it was converted at the reference rates); one currency is exact.
  */

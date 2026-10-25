@@ -1,4 +1,3 @@
-import { Button } from "@expo/ui";
 import { useEffect, useRef, useState } from "react";
 import { ScrollView, Text } from "react-native";
 import { useTranslations } from "use-intl";
@@ -7,7 +6,7 @@ import { newClientId } from "@/data/ids";
 import type { PersonIdentity } from "@/features/people/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
-import { NativeHost } from "@/ui/NativeHost";
+import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
 import { useToast } from "@/ui/Toast";
 import { PreviewList } from "./PreviewList";
@@ -39,6 +38,7 @@ export function ConfirmSheet({
 	const { color, space, type } = useTheme();
 	const [preview, setPreview] = useState<PaymentPreview | null>(null);
 	const [failed, setFailed] = useState(false);
+	const [confirmFailed, setConfirmFailed] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const key = useRef(newClientId());
 	const first = person.name.split(/\s+/)[0] ?? person.name;
@@ -49,6 +49,7 @@ export function ConfirmSheet({
 		key.current = newClientId();
 		setPreview(null);
 		setFailed(false);
+		setConfirmFailed(false);
 		api.payments
 			.previewConfirm({ id: payment.id })
 			.then((result) => !cancelled && setPreview(result))
@@ -61,6 +62,7 @@ export function ConfirmSheet({
 	async function confirm() {
 		if (!api || busy) return;
 		setBusy(true);
+		setConfirmFailed(false);
 		try {
 			const result = await api.payments.confirm(
 				{ id: payment.id },
@@ -87,7 +89,7 @@ export function ConfirmSheet({
 				},
 			});
 		} catch {
-			setFailed(true);
+			setConfirmFailed(true);
 		} finally {
 			setBusy(false);
 		}
@@ -120,12 +122,18 @@ export function ConfirmSheet({
 						{failed ? t("previewError") : t("checking")}
 					</Text>
 				)}
-				<NativeHost>
-					<Button
-						label={busy ? t("recording") : t("confirm")}
-						onPress={preview && !busy ? confirm : undefined}
-					/>
-				</NativeHost>
+				{confirmFailed ? (
+					<Text
+						style={{ color: color.attentionText, fontSize: type.body.size }}
+					>
+						{t("confirmError")}
+					</Text>
+				) : null}
+				<Button
+					disabled={!preview || busy}
+					label={busy ? t("recording") : t("confirm")}
+					onPress={confirm}
+				/>
 			</ScrollView>
 		</Sheet>
 	);

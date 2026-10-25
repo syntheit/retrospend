@@ -35,7 +35,7 @@ export type ActivityState = ReadState<ActivityPage>;
  */
 export async function loadActivity(
 	source: ActivitySource,
-	cache: ReadCache,
+	cache: ReadCache | null,
 	filter: ActivityFilter,
 	onCached: (state: ActivityState) => void,
 ): Promise<ActivityState> {
@@ -45,7 +45,7 @@ export async function loadActivity(
 	}
 	try {
 		const data = await source.list({ filter: text });
-		return { status: "ready", data, staleSince: null };
+		return { status: "ready", data, staleSince: null, refreshing: false };
 	} catch {
 		return { status: "error" };
 	}
