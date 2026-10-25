@@ -12,7 +12,19 @@ import {
  * minor units.
  */
 
-const ids = ["alice", "bob", "carol", "dan", "erin", "fay", "gus", "hal", "ivy"];
+// Sorted, so row order is key order; the 32-way cases use u00 to u22 after them.
+const ids = [
+	"alice",
+	"bob",
+	"carol",
+	"dan",
+	"erin",
+	"fay",
+	"gus",
+	"hal",
+	"ivy",
+	...Array.from({ length: 23 }, (_, i) => `u${String(i).padStart(2, "0")}`),
+];
 const people = (n: number): SplitParticipantInput[] =>
 	ids.slice(0, n).map((participantId) => ({
 		participantType: "user" as const,
@@ -70,15 +82,24 @@ describe("an even split sent as percentages stays the exact even split", () => {
 		]);
 	});
 
-	it("rows stored at 2 decimals (33.33 each, or 33.33 / 33.33 / 33.34) re-split the same way", () => {
+	it("rows stored at 2 decimals (33.33 each, or 33.34 each) re-split the same way", () => {
 		for (const stored of [
 			[33.33, 33.33, 33.33],
-			[33.33, 33.33, 33.34],
+			[33.34, 33.34, 33.34],
 		]) {
 			expect(amounts(percentSplit(stored, 100.01, "USD", "alice"))).toEqual([
 				33.34, 33.34, 33.33,
 			]);
 		}
+	});
+
+	it("32 ways stored at 2 decimals (3.13 each, sum 100.16): 10000 = 32 x 312 + 16", () => {
+		// The payer (u00 here, row 0) and the next 15 rows take a cent.
+		const rows = percentSplit(Array(32).fill(3.13), 100, "USD", "alice");
+		expect(amounts(rows)).toEqual([
+			...Array(16).fill(3.13),
+			...Array(16).fill(3.12),
+		]);
 	});
 
 	it("7 ways: 14.29 each (sum 100.03) is accepted and splits 100.00 as 4 x 14.29 and 3 x 14.28", () => {
@@ -170,5 +191,83 @@ describe("typed percentages keep their rule", () => {
 		expect(
 			amounts(percentSplit([33.4, 33.3, 33.3], 100, "USD", "zed")),
 		).toEqual([33.4, 33.3, 33.3]);
+	});
+});
+
+describe("a typed, unequal set is always the typed rule", () => {
+	it("33.33 / 33.33 / 33.34 of 30,000.00 books 9,999 + 9,999 + 10,002", () => {
+		// 3000000 cents: floor(3000000 * 3333 / 10000) = 999900 twice, the last
+		// row is the rest of the whole, 1000200.
+		expect(
+			amounts(percentSplit([33.33, 33.33, 33.34], 30000, "USD", "alice")),
+		).toEqual([9999, 9999, 10002]);
+	});
+
+	it("32 x 3.125 is typed exactly: the leftover goes to the last row when the payer is outside", () => {
+		// 10000 cents: floor(10000 * 3.125 / 100) = 312 each, 32 x 312 = 9984,
+		// 16 left for the last row: 312 + 16 = 328.
+		expect(
+			amounts(percentSplit(Array(32).fill(3.125), 100, "USD", "zed")),
+		).toEqual([...Array(31).fill(3.12), 3.28]);
+	});
+});
+
+describe("leftover units go by a fixed order, not the order rows arrive in", () => {
+	const refs = (...names: string[]) =>
+		names.map((participantId) => ({
+			participantType: "user" as const,
+			participantId,
+		}));
+
+	it("EQUAL: 100.01 over carol, alice, bob with bob paying gives bob and alice the extra cents", () => {
+		// Sorted: alice, bob, carol. 10001 = 3 x 3333 + 2: bob (payer), then alice.
+		const rows = resolveSplits({
+			mode: "EQUAL",
+			amount: 100.01,
+			currency: "USD",
+			participants: refs("carol", "alice", "bob"),
+			paidBy: ref("bob"),
+		});
+		expect(rows.map((r) => [r.participantId, r.shareAmount])).toEqual([
+			["carol", 33.33],
+			["alice", 33.34],
+			["bob", 33.34],
+		]);
+	});
+
+	it("PERCENTAGE with the payer outside: the last row by key takes the cent", () => {
+		// Sorted: alice, carol. 3333 = 2 x 1666 + 1: the cent goes to carol.
+		const rows = resolveSplits({
+			mode: "PERCENTAGE",
+			amount: 33.33,
+			currency: "USD",
+			participants: refs("carol", "alice").map((r) => ({
+				...r,
+				sharePercentage: 50,
+			})),
+			paidBy: ref("zed"),
+		});
+		expect(rows.map((r) => [r.participantId, r.shareAmount])).toEqual([
+			["carol", 16.67],
+			["alice", 16.66],
+		]);
+	});
+
+	it("the same split in any row order gives each person the same amount", () => {
+		const names = ["erin", "bob", "dan", "alice", "carol"];
+		const run = (order: string[]) =>
+			Object.fromEntries(
+				resolveSplits({
+					mode: "SHARES",
+					amount: 100.03,
+					currency: "USD",
+					participants: refs(...order).map((r, i) => ({
+						...r,
+						shareUnits: 1 + (r.participantId.length % 3),
+					})),
+					paidBy: ref("dan"),
+				}).map((r) => [r.participantId, r.shareAmount]),
+			);
+		expect(run([...names].reverse())).toEqual(run(names));
 	});
 });

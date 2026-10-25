@@ -14,15 +14,12 @@ import {
 	assertCanModifyTransaction,
 	requireProjectRole,
 } from "./project-permissions";
-import {
-	compareParticipants,
-	type ParticipantRef,
-	sameParticipant,
-} from "./types";
+import { type ParticipantRef, sameParticipant } from "./types";
 import { resolveVerification } from "./auto-accept";
 import {
 	allocateByWeights,
 	remainderRow,
+	compareParticipants,
 	resolveSplits,
 	SplitComputationError,
 } from "~/lib/shared-split-computation";
@@ -625,8 +622,8 @@ export class SharedTransactionService {
 				);
 			} else if (fieldUpdates.amount !== undefined) {
 				// Amount changed without explicit splitWith: re-split from what is
-				// stored. The database keeps no typing order and leftover units go by
-				// row order, so sort: a re-split is then the same every time.
+				// stored. resolveSplits orders its own leftover units; the EXACT
+				// rescale gives them to the last row, so sort for it.
 				const stored = [...existing.splitParticipants]
 					.sort(compareParticipants)
 					.map((sp) => ({

@@ -9,8 +9,9 @@
  * - 7 ways, ARS 100.00: 10000 = 7 x 1428 + 4 -> four rows of 14.29, three of
  *   14.28. At 100.01 (7 x 1428 + 5): five of 14.29, two of 14.28. The Undo of
  *   that edit puts the 100.00 split back.
- * - After an edit the rows have no typing order: the payer takes the first
- *   leftover unit, then the others by id.
+ * - Leftover units go to the payer first, then the others by key, so a create,
+ *   an edit and an Undo of the same split give the same cents to the same
+ *   people.
  * - ARS 1,234,567.91 over 3: 123456791 = 3 x 41152263 + 2 -> 411,522.64 twice,
  *   411,522.63. At 1,234,568.00 (3 x 41152266 + 2): 411,522.67 twice, .66.
  * - 0.004 ETH over 3, carol pays: 400000 = 3 x 133333 + 1 -> carol 0.00133334.
@@ -79,9 +80,9 @@ async function shares(g: Group, id: string) {
 }
 
 /**
- * After an edit the stored rows have no typing order, so the leftover units go
- * to the payer first, then the others by id. `count` rows hold `high`, the
- * rest `low`.
+ * The database keeps no typing order, so the leftover units go to the payer
+ * first, then the others by key, on every path (create, edit, Undo). `count`
+ * rows hold `high`, the rest `low`.
  */
 async function expectLeftovers(
 	g: Group,
@@ -116,30 +117,27 @@ describe("an even split after an amount edit", () => {
 		const g = await group(7);
 		const made = await create(g, 100, "ARS", Array(7).fill(100 / 7));
 		const id = made.value.id;
-		const at100 = ["14.29", "14.29", "14.29", "14.29", "14.28", "14.28", "14.28"];
-		expect((await shares(g, id)).amounts).toEqual(at100);
+		await expectLeftovers(g, id, { high: "14.29", low: "14.28", count: 4 });
+		const at100 = (await shares(g, id)).amounts;
 
 		const edited = await editAmount(g, id, 100.01);
 		await expectLeftovers(g, id, { high: "14.29", low: "14.28", count: 5 });
 
-		// The Undo sends back what the expense held before: PERCENTAGE rows at
-		// the 4 decimals the database keeps.
+		// The Undo sends back what the expense held before, rows in whatever
+		// order the database gave them: the same cents to the same people.
 		await forUser(g.user.id).apply(updateSharedExpense, edited.value.restore);
-		const back = (await shares(g, id)).amounts;
-		expect(back.filter((a) => a === "14.29")).toHaveLength(4);
-		expect(back.filter((a) => a === "14.28")).toHaveLength(3);
-		expect(back[0]).toBe("14.29"); // the payer
+		expect((await shares(g, id)).amounts).toEqual(at100);
 	});
 
 	it("ARS 1,234,567.91 over 3, then 1,234,568.00", async () => {
 		const g = await group(3);
 		const made = await create(g, 1234567.91, "ARS", Array(3).fill(100 / 3));
 		const id = made.value.id;
-		expect((await shares(g, id)).amounts).toEqual([
-			"411522.64",
-			"411522.64",
-			"411522.63",
-		]);
+		await expectLeftovers(g, id, {
+			high: "411522.64",
+			low: "411522.63",
+			count: 2,
+		});
 		await editAmount(g, id, 1234568);
 		await expectLeftovers(g, id, {
 			high: "411522.67",

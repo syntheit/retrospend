@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rateInput } from "./rate-input";
+import { customAccountRate, rateInput } from "./rate-input";
 import type { WealthAccount } from "./types";
 
 const account = (valuation: WealthAccount["valuation"]): WealthAccount => ({
@@ -65,5 +65,19 @@ describe("rateInput", () => {
 			exchangeRateType: "blue",
 		});
 		expect(rateInput(null, "EUR", null)).toEqual({});
+	});
+});
+
+describe("customAccountRate: the legacy dialog's rate for the column", () => {
+	it("sends a custom rate with the digits shown, at most 6 decimals", () => {
+		expect(customAccountRate("custom", 25345.67)).toBe("25345.67");
+		expect(customAccountRate("custom", 8192.37)).toBe("8192.37");
+		expect(customAccountRate("custom", 0.1234565)).toBe("0.123456");
+	});
+
+	it("sends nothing for a table type or no rate: the server looks the table up", () => {
+		expect(customAccountRate("official", 1412)).toBeUndefined();
+		expect(customAccountRate(undefined, 1412)).toBeUndefined();
+		expect(customAccountRate("custom", undefined)).toBeUndefined();
 	});
 });

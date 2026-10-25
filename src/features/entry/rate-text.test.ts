@@ -93,6 +93,24 @@ describe("rateToText: a rate held as a number, as the text the server takes", ()
 		expect(rateToText(0.000000000001)).toBe("0.000000000001");
 	});
 
+	it("writes the digits the number shows, not its binary expansion", () => {
+		// The exact binary values are 25345.669999999998..., 8192.370000000001...
+		// and 89500.449999999997...: a text like that is not the rate shown.
+		expect(rateToText(25345.67)).toBe("25345.67");
+		expect(rateToText(8192.37)).toBe("8192.37");
+		expect(rateToText(89500.45)).toBe("89500.45");
+		expect(rateToText(67890.12)).toBe("67890.12");
+		expect(rateToText(1e-7)).toBe("0.0000001");
+		expect(rateToText(1e21)).toBeNull();
+	});
+
+	it("keeps the decimals a column keeps: half-even at 6", () => {
+		expect(rateToText(1412.5, 6)).toBe("1412.5");
+		expect(rateToText(0.1234565, 6)).toBe("0.123456");
+		expect(rateToText(0.1234575, 6)).toBe("0.123458");
+		expect(rateToText(1e-7, 6)).toBeNull();
+	});
+
 	it("rounds past 12 decimals half-even, like a typed rate", () => {
 		// 2^-13 is exactly 0.0001220703125: a tie at the 13th decimal, so the
 		// even neighbor ...312 is kept, not ...313.

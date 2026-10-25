@@ -10,8 +10,8 @@
  * - A wealth account saved with a custom rate "1560.123456" keeps those six
  *   decimals (the column's scale); an edit that sends the stored text back
  *   (what the account sheet does) keeps them; a number is refused; a rate
- *   with more digits than a double holds (22 significant digits) is a 400,
- *   never stored altered.
+ *   with more digits than the column (12 integer, 6 decimals) or than a
+ *   double holds (18 significant digits) is a 400, never stored altered.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { createCallerFactory } from "~/server/api/trpc";
@@ -131,11 +131,15 @@ describe("a wealth account's rate", () => {
 				exchangeRate: 1560.5 as unknown as string,
 			}),
 		).rejects.toThrow();
+		// Past the column (DECIMAL(18,6)): 13 integer digits, 7 decimals.
+		for (const exchangeRate of ["1234567890123.5", "1.1234567"]) {
+			await expect(
+				wealth.createAsset({ ...fields, exchangeRate }),
+			).rejects.toThrow();
+		}
+		// Inside the column, but 18 significant digits: more than a double holds.
 		await expect(
-			wealth.createAsset({
-				...fields,
-				exchangeRate: "1234567890123456.123456",
-			}),
+			wealth.createAsset({ ...fields, exchangeRate: "123456789012.123457" }),
 		).rejects.toThrow("too many digits");
 		await expect(
 			wealth.updateAssetBalance({

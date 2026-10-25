@@ -1,4 +1,4 @@
-import { parseRateText } from "~/features/entry/rate-text";
+import { parseRateText, rateToText } from "~/features/entry/rate-text";
 import type { WealthAccount } from "./types";
 
 /**
@@ -31,4 +31,16 @@ export function rateInput(
 			? { exchangeRate: parseRateText(v.customRate, "en-US") ?? v.customRate }
 			: {}),
 	};
+}
+
+/**
+ * The legacy account dialog's rate, as decimal text for the column
+ * (DECIMAL(18,6)). Only a custom rate is read by the server; a table type is
+ * looked up again, so nothing is sent for it.
+ */
+export function customAccountRate(
+	type: string | undefined,
+	rate: number | undefined,
+): string | undefined {
+	return type === "custom" ? (rateToText(rate, 6) ?? undefined) : undefined;
 }

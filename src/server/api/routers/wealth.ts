@@ -98,7 +98,7 @@ export const wealthRouter = createTRPCRouter({
 			),
 		),
 
-	/** The old Update balance dialog; the same mutation as accounts.updateBalance. */
+	/** The old Update balance dialog; the same mutation as the API's account.updateBalance. */
 	updateAssetBalance: protectedProcedure
 		.input(schema.legacyBalanceSchema)
 		.mutation(async ({ ctx, input }) => {
@@ -191,9 +191,6 @@ export const wealthRouter = createTRPCRouter({
 			.query(({ ctx, input }) =>
 				accountView(ctx.db, ctx.session.user.id, input.accountId),
 			),
-		updateBalance: createTRPCRouter(
-			money(schema.updateBalanceSchema, updateBalance),
-		),
 		revertBalanceUpdate: createTRPCRouter(
 			money(schema.revertBalanceUpdateSchema, revertBalanceUpdate),
 		),
