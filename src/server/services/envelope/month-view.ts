@@ -22,7 +22,12 @@ import {
 } from "./group-view";
 import type { GroupTarget } from "./groups";
 import { leftToSpendDto, verdictDto } from "./month-dto";
-import { leftToSpendFor, limitTotals, weekTotals } from "./month-totals";
+import {
+	leftToSpendFor,
+	limitTotals,
+	tracksOnly,
+	weekTotals,
+} from "./month-totals";
 import { budgetMonthOf, type MonthBoundary, monthRange } from "./months";
 import {
 	type EnvelopeTarget,
@@ -222,20 +227,6 @@ function memberOf(r: Row): GroupMemberView {
 		// Spent and shares minus refunds; moves to Wealth are not spending.
 		spending: -(r.m.activity - r.m.wealth),
 	};
-}
-
-/**
- * A Limits envelope with no limit (kind None, no target): a pegged budget
- * moved from the old app, or Everything else with no global budget. It shows
- * what was spent, as negative Left, but has nothing to be over: no money is
- * written to cover it (Left and the invariant stay as computed).
- */
-function tracksOnly(r: Row, book: ViewBook): boolean {
-	return (
-		book.fundingSource === "TARGETS" &&
-		r.env.kind === "NONE" &&
-		r.env.target === null
-	);
 }
 
 /** Left below zero that counts as overspending. */

@@ -500,6 +500,23 @@ describe("Dara: pegged and unlimited envelopes are never overspent", () => {
 		expect(await items(nextNoon)).toEqual([]);
 	});
 
+	it("Home's numbers: over counts only Groceries, and a day's allowance comes from the limits", async () => {
+		const one = await getMonth(dara.user.id, undefined, new Date(), "UTC");
+		// Month 1: Groceries 100.00 over; Dining pegged and Everything else (-40.00) are not.
+		expect(one?.leftToSpend.over.minor).toBe(10_000);
+		expect(one?.verdict.over.minor).toBe(10_000);
+		// Left in the limits is 0 + (-100.00): nothing to spend per day.
+		expect(one?.verdict.perDay.minor).toBe(0);
+		const two = await getMonth(dara.user.id, undefined, nextNoon, "UTC");
+		// Month 2: only Groceries has a limit (400.00, untouched); Dining -80.00 and Everything else -25.00 are not over.
+		expect(two?.leftToSpend.over.minor).toBe(0);
+		expect(two?.verdict.over.minor).toBe(0);
+		expect(two?.verdict.lead.amount.minor).toBe(40_000);
+		const days = two?.verdict.daysLeft ?? 0;
+		expect(days).toBeGreaterThan(0);
+		expect(two?.verdict.perDay.minor).toBe(Math.floor(40_000 / days));
+	});
+
 	it("the invariant holds in both months", async () => {
 		for (const now of [new Date(), nextNoon]) {
 			const s = await invariantAt(dara.user.id, now);

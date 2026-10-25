@@ -26,6 +26,11 @@
  * would write. A person with a book, without budgets, or needing a currency
  * that has no rate is left alone and listed; the old rows are never changed.
  * Run `prisma migrate deploy` first (this needs the P7 migration).
+ *
+ * Cut-over order: dry run, review, `--apply`, and only then set
+ * envelopeBudgetMode to ALL. Anyone the script skipped or that failed sits in
+ * the lazy retry wait (10 to 30 minutes) after the flag turns on, so run
+ * `--apply` again and fix the skips first.
  */
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
