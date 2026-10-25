@@ -12,9 +12,7 @@ import { GET } from "../[...path]/route";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-function makeParams(segments: string[]): {
-	params: Promise<{ path: string[] }>;
-} {
+function makeParams(segments: string[]): { params: Promise<{ path: string[] }> } {
 	return { params: Promise.resolve({ path: segments }) };
 }
 
@@ -64,10 +62,7 @@ describe("valid paths", () => {
 	});
 
 	it("passes the joined file path to getFileStream", async () => {
-		await GET(
-			makeRequest(),
-			makeParams(["projects", "proj-abc-1234567890.webp"]),
-		);
+		await GET(makeRequest(), makeParams(["projects", "proj-abc-1234567890.webp"]));
 		expect(vi.mocked(getFileStream)).toHaveBeenCalledWith(
 			"projects/proj-abc-1234567890.webp",
 		);
@@ -75,10 +70,7 @@ describe("valid paths", () => {
 
 	it("returns 404 when the file does not exist in storage", async () => {
 		vi.mocked(getFileStream).mockRejectedValue(new Error("NoSuchKey"));
-		const res = await GET(
-			makeRequest(),
-			makeParams(["avatars", "missing.webp"]),
-		);
+		const res = await GET(makeRequest(), makeParams(["avatars", "missing.webp"]));
 		expect(res.status).toBe(404);
 	});
 });
@@ -151,18 +143,12 @@ describe("invalid characters in path → 404", () => {
 	});
 
 	it("rejects path with space", async () => {
-		const res = await GET(
-			makeRequest(),
-			makeParams(["avatars", "my file.webp"]),
-		);
+		const res = await GET(makeRequest(), makeParams(["avatars", "my file.webp"]));
 		expect(res.status).toBe(404);
 	});
 
 	it("rejects path with backslash", async () => {
-		const res = await GET(
-			makeRequest(),
-			makeParams(["avatars\\etc", "x.webp"]),
-		);
+		const res = await GET(makeRequest(), makeParams(["avatars\\etc", "x.webp"]));
 		expect(res.status).toBe(404);
 	});
 
@@ -186,10 +172,7 @@ describe("invalid characters in path → 404", () => {
 	it("rejects URL-encoded traversal (..%2F..%2Fetc)", async () => {
 		// Next.js URL-decodes path segments before passing to the handler,
 		// so %2F becomes "/" which makes the joined path contain ".."
-		const res = await GET(
-			makeRequest(),
-			makeParams(["..%2F..%2Fetc", "passwd"]),
-		);
+		const res = await GET(makeRequest(), makeParams(["..%2F..%2Fetc", "passwd"]));
 		expect(res.status).toBe(404);
 	});
 });

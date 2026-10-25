@@ -32,7 +32,7 @@ function makeTx(overrides: Record<string, Record<string, Fn>>) {
 			},
 		);
 	const tx = new Proxy(
-		{ $executeRaw: vi.fn(async () => 0) },
+		{ $executeRaw: vi.fn(async () => 0), $queryRaw: vi.fn(async () => []) },
 		{
 			get(target, prop: string) {
 				if (prop in target) return target[prop as keyof typeof target];

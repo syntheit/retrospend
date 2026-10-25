@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import type { Prisma } from "~prisma";
+import type { Prisma, PrismaClient } from "~prisma";
 
 /**
  * The server must always keep an active admin. Disabling or deleting an
@@ -25,4 +25,25 @@ export async function assertAnotherAdminRemains(
 			message: "The last active admin cannot be disabled or deleted",
 		});
 	}
+}
+
+/**
+ * Disables an account and signs it out everywhere, unless it is the last
+ * active admin. Returns the username for the audit event.
+ */
+export async function disableUserKeepingAnAdmin(
+	db: PrismaClient,
+	userId: string,
+): Promise<{ username: string | null }> {
+	return db.$transaction(async (tx) => {
+		await assertAnotherAdminRemains(tx, userId);
+		const user = await tx.user.update({
+			where: { id: userId },
+			data: { isActive: false },
+			select: { username: true },
+		});
+		// Sign the user out everywhere so the disable takes effect immediately
+		await tx.session.deleteMany({ where: { userId } });
+		return user;
+	});
 }

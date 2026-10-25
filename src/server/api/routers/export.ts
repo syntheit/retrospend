@@ -4,10 +4,7 @@ import { csvMeta, generateCsv } from "~/lib/csv";
 import { dayKey } from "~/lib/time-zone";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { ExportService } from "~/server/services/export.service";
-import {
-	generatePersonPdf,
-	generateProjectPdf,
-} from "~/server/services/pdf.service";
+import { generatePersonPdf, generateProjectPdf } from "~/server/services/pdf.service";
 import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import { computeSettlementPlan } from "~/server/services/shared-expenses/group-settlement";
 import { canonicalizeProjectLedger } from "~/server/services/shared-expenses/identity";
@@ -38,17 +35,13 @@ async function resolveParticipantNames(
 	const DELETED_GUEST = "DELETED_GUEST";
 
 	const userIds = uniqueArr
-		.filter(
-			(r) => r.participantType === "user" && r.participantId !== DELETED_USER,
-		)
+		.filter((r) => r.participantType === "user" && r.participantId !== DELETED_USER)
 		.map((r) => r.participantId);
 	const shadowIds = uniqueArr
 		.filter((r) => r.participantType === "shadow")
 		.map((r) => r.participantId);
 	const guestIds = uniqueArr
-		.filter(
-			(r) => r.participantType === "guest" && r.participantId !== DELETED_GUEST,
-		)
+		.filter((r) => r.participantType === "guest" && r.participantId !== DELETED_GUEST)
 		.map((r) => r.participantId);
 
 	const [users, shadows, guests] = await Promise.all([
@@ -202,7 +195,10 @@ const participantTypeSchema = z.enum(["user", "guest", "shadow"]);
 export const exportRouter = createTRPCRouter({
 	allData: protectedProcedure.mutation(async ({ ctx }) => {
 		const exportService = new ExportService(ctx.db);
-		return await exportService.exportAllData(ctx.session.user.id, ctx.timeZone);
+		return await exportService.exportAllData(
+			ctx.session.user.id,
+			ctx.timeZone,
+		);
 	}),
 
 	/**
@@ -437,9 +433,7 @@ export const exportRouter = createTRPCRouter({
 				nameMap.get(`${input.participantType}:${input.participantId}`) ??
 				"Unknown";
 
-			const editCountsPerson = await fetchEditCounts(
-				transactions.map((tx) => tx.id),
-			);
+			const editCountsPerson = await fetchEditCounts(transactions.map((tx) => tx.id));
 
 			const headers = [
 				"Date",
@@ -555,7 +549,10 @@ export const exportRouter = createTRPCRouter({
 			}
 
 			// Compute net balance per currency
-			const balanceMap = new Map<string, number>();
+			const balanceMap = new Map<
+				string,
+				number
+			>();
 			for (const tx of transactions) {
 				const myShare = tx.splitParticipants.find(
 					(sp) => sp.participantType === "user" && sp.participantId === userId,
@@ -607,14 +604,10 @@ export const exportRouter = createTRPCRouter({
 			}
 
 			const nameMap = await resolveParticipantNames(ctx.db, [
-				{
-					participantType: input.participantType,
-					participantId: input.participantId,
-				},
+				{ participantType: input.participantType, participantId: input.participantId },
 			]);
 			const theirName =
-				nameMap.get(`${input.participantType}:${input.participantId}`) ??
-				"Unknown";
+				nameMap.get(`${input.participantType}:${input.participantId}`) ?? "Unknown";
 
 			const headers = ["Currency", "Amount", "Direction"];
 			const rows: unknown[][] = [];
@@ -623,7 +616,9 @@ export const exportRouter = createTRPCRouter({
 				rows.push([
 					currency,
 					Math.abs(balance).toFixed(2),
-					balance > 0 ? `${theirName} owes you` : `You owe ${theirName}`,
+					balance > 0
+						? `${theirName} owes you`
+						: `You owe ${theirName}`,
 				]);
 			}
 
@@ -714,8 +709,7 @@ export const exportRouter = createTRPCRouter({
 			]);
 
 			const theirName =
-				nameMap.get(`${input.participantType}:${input.participantId}`) ??
-				"Unknown";
+				nameMap.get(`${input.participantType}:${input.participantId}`) ?? "Unknown";
 
 			// Resolve project names
 			const projectIds = [
@@ -784,9 +778,7 @@ export const exportRouter = createTRPCRouter({
 			}
 
 			const balances = [...balanceMap.entries()]
-				.filter(
-					([, amount]) => Math.abs(amount) >= 0.005 || balanceMap.size === 1,
-				)
+				.filter(([, amount]) => Math.abs(amount) >= 0.005 || balanceMap.size === 1)
 				.map(([currency, amount]) => ({
 					currency,
 					amount,
@@ -812,17 +804,10 @@ export const exportRouter = createTRPCRouter({
 				}));
 
 			// Category breakdown
-			const catMap = new Map<
-				string,
-				{ count: number; total: number; currency: string }
-			>();
+			const catMap = new Map<string, { count: number; total: number; currency: string }>();
 			for (const tx of transactions) {
 				const cat = tx.category?.name ?? "Uncategorized";
-				const existing = catMap.get(cat) ?? {
-					count: 0,
-					total: 0,
-					currency: tx.currency,
-				};
+				const existing = catMap.get(cat) ?? { count: 0, total: 0, currency: tx.currency };
 				existing.count += 1;
 				existing.total += Number(tx.amount);
 				catMap.set(cat, existing);
@@ -837,10 +822,9 @@ export const exportRouter = createTRPCRouter({
 				}));
 
 			// Relationship stats
-			const firstDate =
-				transactions.length > 0
-					? transactions[transactions.length - 1]!.date
-					: null;
+			const firstDate = transactions.length > 0
+				? transactions[transactions.length - 1]!.date
+				: null;
 
 			const pdfBuffer = await generatePersonPdf({
 				timeZone: ctx.timeZone,
@@ -851,9 +835,9 @@ export const exportRouter = createTRPCRouter({
 					transactionCount: transactions.length,
 					projectCount: projectIds.length,
 					firstTransactionDate: firstDate
-						? firstDate instanceof Date
-							? firstDate.toISOString().slice(0, 10)
-							: String(firstDate)
+						? (firstDate instanceof Date
+								? firstDate.toISOString().slice(0, 10)
+								: String(firstDate))
 						: null,
 				},
 				projectBreakdown,
@@ -877,10 +861,13 @@ export const exportRouter = createTRPCRouter({
 						amount: Number(tx.amount),
 						currency: tx.currency,
 						category: tx.category?.name ?? "",
-						paidBy: nameMap.get(`${tx.paidByType}:${tx.paidById}`) ?? "Unknown",
+						paidBy:
+							nameMap.get(`${tx.paidByType}:${tx.paidById}`) ?? "Unknown",
 						yourShare: myPart ? Number(myPart.shareAmount) : 0,
 						theirShare: theirPart ? Number(theirPart.shareAmount) : 0,
-						project: tx.projectId ? (projectMap.get(tx.projectId) ?? "") : "",
+						project: tx.projectId
+							? (projectMap.get(tx.projectId) ?? "")
+							: "",
 					};
 				}),
 			});
@@ -1208,8 +1195,9 @@ export const exportRouter = createTRPCRouter({
 
 			const participants = rawParticipants.map((p) => ({
 				name:
-					participantNameMap.get(`${p.participantType}:${p.participantId}`) ??
-					"Unknown",
+					participantNameMap.get(
+						`${p.participantType}:${p.participantId}`,
+					) ?? "Unknown",
 				role: p.role,
 			}));
 
@@ -1240,7 +1228,10 @@ export const exportRouter = createTRPCRouter({
 			const payerNameMap = await resolveParticipantNames(ctx.db, payerRefs);
 
 			// Category breakdown
-			const catMap = new Map<string, { count: number; total: number }>();
+			const catMap = new Map<
+				string,
+				{ count: number; total: number }
+			>();
 			for (const tx of transactions) {
 				const cat = tx.category?.name ?? "Uncategorized";
 				const existing = catMap.get(cat) ?? { count: 0, total: 0 };
@@ -1279,7 +1270,11 @@ export const exportRouter = createTRPCRouter({
 
 			if (!isSolo) {
 				const { transactions: txsForPlan, settlements: existingSettlements } =
-					await fetchTxAndSettlements(ctx.db, input.projectId, input.periodId);
+					await fetchTxAndSettlements(
+						ctx.db,
+						input.projectId,
+						input.periodId,
+					);
 				const plan = computeSettlementPlan(txsForPlan, existingSettlements);
 
 				// Flatten balances across currencies
