@@ -11,7 +11,9 @@
 		"cancel": "Cancelar",
 		"undo": "Deshacer",
 		"dismiss": "Descartar",
-		"retry": "Reintentar"
+		"retry": "Reintentar",
+		"save": "Guardar",
+		"saving": "Guardando"
 	},
 	"keypad": {
 		"delete": "Borrar",
@@ -202,7 +204,8 @@
 		"open": "Cuenta",
 		"signOut": "Cerrar sesión",
 		"signOutDiscard": "Cerrar sesión y descartar",
-		"unsynced": "{count, plural, one {# cambio sin sincronizar. Al cerrar sesión se descarta.} other {# cambios sin sincronizar. Al cerrar sesión se descartan.}}"
+		"unsynced": "{count, plural, one {# cambio sin sincronizar. Al cerrar sesión se descarta.} other {# cambios sin sincronizar. Al cerrar sesión se descartan.}}",
+		"settings": "Ajustes"
 	},
 	"activity": {
 		"title": "Actividad",
@@ -404,6 +407,186 @@
 		"confirm": "Confirmar",
 		"confirmed": "Pago confirmado",
 		"confirmUndone": "Confirmación deshecha",
-		"confirmError": "No se pudo confirmar el pago. Inténtalo de nuevo."
+		"confirmError": "No se pudo confirmar el pago. Inténtalo de nuevo.",
+		"otherShort": "Otro",
+		"typeAmount": "Escribe un monto",
+		"amountInvalid": "Ese monto no es válido",
+		"overpay": "Eso es {amount} más de lo que se debe. Pon menos."
+	},
+	"review": {
+		"open": "Revisar",
+		"title": "{name} te añadió a un gasto compartido",
+		"yourShare": "Tu parte",
+		"betweenYou": "Entre ustedes",
+		"effectThem": "Te debe {amount}",
+		"effectYou": "Debes {amount}",
+		"rejectNote": "Si lo rechazas, se lo avisamos a {name}.",
+		"accept": "Aceptar",
+		"reject": "Rechazar",
+		"saving": "Guardando",
+		"accepted": "Parte aceptada",
+		"rejected": "Parte rechazada, se lo avisamos a {name}",
+		"error": "No se pudo guardar tu respuesta. Inténtalo de nuevo."
+	},
+	"projects": {
+		"title": "Proyectos",
+		"search": "Buscar proyectos",
+		"pick": "Elige un proyecto",
+		"empty": "Todavía no hay proyectos",
+		"emptyDetail": "Aquí aparecen los proyectos que compartes con otras personas.",
+		"noMatch": "Ningún proyecto coincide",
+		"error": "No se pudieron cargar los proyectos",
+		"errorOne": "No se pudo cargar este proyecto",
+		"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
+		"group": {
+			"active": "Activos"
+		},
+		"settled": "Al día",
+		"owesYou": "Te debe",
+		"youOwe": "Debes",
+		"owesYouAmount": "El grupo te debe {amount}",
+		"youOweAmount": "Debes {amount}",
+		"expenseCount": "{count, plural, one {# gasto} other {# gastos}}",
+		"peopleCount": "{count, plural, one {# persona} other {# personas}}",
+		"soloShort": "Solo tú",
+		"spent": "Gastado",
+		"totalSpoken": "Total {amount}",
+		"budgetLeft": "Quedan {amount}",
+		"budgetOver": "Te pasaste {amount}",
+		"range": "{from} al {to}",
+		"archived": "Archivado",
+		"groupTotal": "Total del grupo",
+		"yourShareLabel": "Tu parte",
+		"yourShare": "Tu parte: {amount}",
+		"tabs": "Secciones del proyecto",
+		"tab": {
+			"expenses": "Gastos",
+			"summary": "Resumen",
+			"people": "Personas"
+		},
+		"period": {
+			"label": "Período",
+			"all": "Todo el proyecto",
+			"current": "Período actual"
+		},
+		"expenses": "Gastos",
+		"noExpenses": "Todavía no hay gastos",
+		"newestOnly": "Mostrando los {count} más nuevos",
+		"waiting": {
+			"review": "Para revisar",
+			"rejected": "Rechazado"
+		},
+		"paidByMe": "Pagaste tú",
+		"paidByName": "Pagó {name}",
+		"you": "Tú",
+		"role": {
+			"ORGANIZER": "Organizador",
+			"EDITOR": "Editor",
+			"CONTRIBUTOR": "Colaborador",
+			"VIEWER": "Lector"
+		},
+		"leftOn": "Salió el {date}",
+		"summary": {
+			"members": "Personas",
+			"error": "No se pudo cargar el resumen",
+			"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
+			"imbalance": "Estos saldos no cierran: {amounts}",
+			"isOwed": "le deben {amount}",
+			"owes": "debe {amount}",
+			"paidShare": "Pagó {paid}, parte {share}",
+			"left": "Ya no está en el proyecto",
+			"even": "Sin saldo",
+			"isOwedShort": "Le deben",
+			"owesShort": "Debe",
+			"transfers": "Menos transferencias",
+			"transfersNote": "Es solo una guía. Saldar todo registra los pagos.",
+			"pays": "{from} le paga a {to}"
+		},
+		"settleAll": {
+			"open": "Saldar todo",
+			"title": "Saldar todo en {name}",
+			"explain": "Un pago por persona y moneda. No se convierte nada.",
+			"checking": "Revisando",
+			"nothing": "No hay nada para saldar en este proyecto",
+			"willRecord": "Se van a registrar estos pagos",
+			"youPay": "Pagas a {name}",
+			"paidYou": "{name} te pagó",
+			"waiting": "Esperando que {name} lo confirme",
+			"skipped": {
+				"matches_claim": "{name} ya dice que pagó {amount}. Confírmalo en su página.",
+				"overpay": "{name}: {amount} es más de lo que se debe, queda para que lo resuelvas tú",
+				"nothing_owed": "No se le debe nada a {name} en {amount}"
+			},
+			"record": "Registrar pagos",
+			"recording": "Registrando",
+			"recorded": "{count, plural, one {# pago registrado} other {# pagos registrados}}",
+			"undone": "Pagos deshechos",
+			"undoError": "No se pudieron deshacer los pagos. Inténtalo de nuevo.",
+			"previewError": "No se pudieron revisar estos pagos. Inténtalo de nuevo.",
+			"loadError": "No se pudo cargar lo pendiente. Inténtalo de nuevo.",
+			"moved": "Los saldos cambiaron. Revisa la lista e inténtalo de nuevo.",
+			"error": "No se pudieron registrar los pagos. Inténtalo de nuevo."
+		}
+	},
+	"settings": {
+		"title": "Ajustes",
+		"saved": "Guardado",
+		"saveError": "No se pudo guardar. Inténtalo de nuevo.",
+		"error": "No se pudieron cargar los ajustes",
+		"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
+		"notAvailable": "Todavía no disponible",
+		"profile": {
+			"title": "Perfil",
+			"name": "Nombre",
+			"username": "Usuario",
+			"email": "Email",
+			"edit": "Editar perfil",
+			"usernameRule": "Usa solo letras y números.",
+			"error": "No se pudo guardar tu perfil. Inténtalo de nuevo."
+		},
+		"money": {
+			"title": "Dinero",
+			"footer": "Los totales y los informes usan tu moneda principal.",
+			"home": "Moneda principal",
+			"default": "Predeterminada para gastos nuevos",
+			"monthStart": "El mes empieza el día"
+		},
+		"rates": {
+			"section": "Cotizaciones",
+			"footer": "Por ahora, el tipo de cotización predeterminado solo se cambia desde la web.",
+			"defaultType": "Tipo de cotización predeterminado",
+			"pinned": "Cotizaciones fijadas",
+			"title": "Cotizaciones fijadas",
+			"none": "No hay cotizaciones fijadas",
+			"unpin": "Soltar",
+			"unpinned": "Cotización suelta",
+			"error": "No se pudo soltar la cotización. Inténtalo de nuevo.",
+			"line": "1 USD = {rate} {currency}",
+			"spoken": "{currency} {type}, 1 USD vale {rate} {currency}"
+		},
+		"notifications": {
+			"inApp": "En la app",
+			"email": "Por email"
+		},
+		"notify": {
+			"EXPENSE_SPLIT": "Alguien te suma a un gasto compartido",
+			"VERIFICATION_REQUEST": "Un gasto compartido necesita tu revisión",
+			"EXPENSE_EDITED": "Cambia un gasto compartido",
+			"EXPENSE_DELETED": "Se borra un gasto compartido",
+			"SETTLEMENT_RECEIVED": "Un pago espera tu confirmación",
+			"SETTLEMENT_CONFIRMED": "Se confirma un pago",
+			"SETTLEMENT_REJECTED": "Se rechaza un pago",
+			"PERIOD_CLOSED": "Se cierra un período",
+			"PARTICIPANT_ADDED": "Te suman a un proyecto",
+			"PAYMENT_REMINDER": "Alguien te recuerda un pago"
+		},
+		"server": {
+			"title": "Servidor",
+			"connected": "Conectado a"
+		},
+		"account": {
+			"title": "Cuenta",
+			"signOut": "Cerrar sesión"
+		}
 	}
 }
