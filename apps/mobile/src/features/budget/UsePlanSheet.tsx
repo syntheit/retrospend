@@ -5,8 +5,8 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Picker } from "@/ui/Picker";
 import { Sheet } from "@/ui/Sheet";
-import { type RestChoice, usePlanBody } from "./bodies";
 import { BudgetChanges } from "./BudgetChanges";
+import { planBody, type RestChoice } from "./bodies";
 import { monthDate } from "./months";
 import { Line, Note } from "./parts";
 import { type BudgetMonth, envelopeById, type FillPlan } from "./source";
@@ -70,16 +70,17 @@ export function UsePlanSheet({
 	useEffect(() => {
 		if (visible) reset();
 	}, [visible]);
-	const input = bodyKey ? usePlanBody({ batchId: idFor("batch"), rest }) : null;
+	const input = bodyKey ? planBody({ batchId: idFor("batch"), rest }) : null;
 
 	const flow = useMoneyWrite({
 		input: visible ? input : null,
 		idempotencyKey: input?.batchId ?? null,
 		preview: (body) => (api ? api.budget.previewUsePlan(body) : noSession()),
-		write: (body, key) =>
-			api
-				? api.budget.usePlan(body, { context: { idempotencyKey: key } })
-				: noSession(),
+		write: (body, key) => {
+			if (!api) return noSession();
+			// biome-ignore lint/correctness/useHookAtTopLevel: `usePlan` is the API route's name, not a hook
+			return api.budget.usePlan(body, { context: { idempotencyKey: key } });
+		},
 	});
 
 	async function submit() {
@@ -141,13 +142,15 @@ export function UsePlanSheet({
 						ready={flow.status === "ready"}
 						submitLabel={t("use")}
 					>
-						<Note>{t("lead", { amount: money(plan.available), pool: poolName })}</Note>
+						<Note>{t("lead", { amount: money(plan.available) })}</Note>
 						<View>
 							{jobs.map((job) => {
 								const name =
 									envelopeById(data, job.envelopeId)?.name ??
 									t("envelopeFallback");
-								const why = t(`why.${reasonOf(plan, job.envelopeId)}` as "why.PLAN");
+								const why = t(
+									`why.${reasonOf(plan, job.envelopeId)}` as "why.PLAN",
+								);
 								return (
 									<Line
 										key={job.envelopeId}
@@ -172,7 +175,9 @@ export function UsePlanSheet({
 								/>
 							</View>
 						) : plan.rest.minor > 0 ? (
-							<Note>{t("restStays", { amount: money(plan.rest), pool: poolName })}</Note>
+							<Note>
+								{t("restStays", { amount: money(plan.rest), pool: poolName })}
+							</Note>
 						) : null}
 					</WriteFrame>
 				)}

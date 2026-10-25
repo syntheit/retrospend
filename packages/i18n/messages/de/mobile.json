@@ -250,6 +250,300 @@
 			"paymentReceived": "{name} hat dich bezahlt"
 		}
 	},
+	"budget": {
+		"title": "Budget",
+		"error": "Das Budget konnte nicht geladen werden",
+		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+		"noBudget": "Noch kein Budget",
+		"noBudgetDetail": "Richte dein Budget im Web ein. Hier erscheint es, sobald es bereit ist.",
+		"paused": "Dein Budget ist pausiert",
+		"pausedDetail": "Solange es pausiert ist, wird nichts gezählt. Setze es im Web fort.",
+		"wealth": "Vermögen und Konten",
+		"webForNow": "Ziele, Regeln, die Einrichtung und mehr gibt es vorerst im Web.",
+		"month": {
+			"previous": "Vorheriger Monat",
+			"next": "Nächster Monat",
+			"pick": "Monat wählen",
+			"closedItem": "{month}, abgeschlossen",
+			"planItem": "{month} planen",
+			"closed": "{month} ist abgeschlossen. Was du hier siehst, ist schreibgeschützt."
+		},
+		"verdict": {
+			"label": {
+				"toAssign": "Zuzuweisen",
+				"week": "Diese Woche übrig",
+				"limits": "In deinen Limits übrig",
+				"overLimits": "Über deinen Limits",
+				"overBudget": "Über dem Budget im {month}",
+				"saveFirst": "Nach dem Sparen übrig",
+				"leftToSpend": "Zum Ausgeben im {month}"
+			},
+			"plannedTooMuch": "Du hast {amount} mehr geplant, als du hast. Wir haben es von dieser Zahl abgezogen.",
+			"overBudget": "Du hast {amount} mehr ausgegeben, als du für {month} geplant hast. Decke es mit ungeplantem Geld, sonst geht es vom {next} ab.",
+			"billsShort": "Für Rechnungen fehlen noch {amount}. Plane das zuerst; diese Zahl enthält es nicht.",
+			"usedUp": "Du hast alles aus Ausgaben im {month} verbraucht. Alles Weitere geht vom {next} ab.",
+			"faster": "Du gibst schneller aus als geplant. Um im Budget zu bleiben, bleib bei etwa {amount} pro Tag.",
+			"someOver": "Etwa {amount} pro Tag für {days, plural, one {# verbleibenden Tag} other {# verbleibende Tage}}, nachdem {names} um {over} überzogen hat.",
+			"onTrack": "Du liegst im Plan: etwa {amount} pro Tag für {days, plural, one {# verbleibenden Tag} other {# verbleibende Tage}}.",
+			"allAssigned": "Jedes Stück deines Geldes hat eine Aufgabe.",
+			"needsJob": "{amount} brauchen noch eine Aufgabe.",
+			"overAssigned": "Du hast {amount} mehr verteilt, als du hast.",
+			"weekLeft": "Etwa {amount} pro Tag. Neustart: {resets}.",
+			"weekUsed": "Du hast das Wochenbudget verbraucht. Neustart: {resets}.",
+			"limitsOver": "Du bist um {amount} über deinen Limits.",
+			"limitsUsedUp": "Du hast alle Limits für {month} verbraucht.",
+			"limitsFaster": "Du nutzt deine Limits schneller, als der Monat vergeht. Etwa {amount} pro Tag halten dich darin.",
+			"limitsSomeOver": "{names} liegt um {over} drüber. Etwa {amount} pro Tag bleiben in deinen Limits.",
+			"limitsOnTrack": "Im Plan: etwa {amount} pro Tag in deinen Limits.",
+			"action": {
+				"FIX_PLAN": "Plan korrigieren",
+				"COVER": "Decken",
+				"PLAN_BILLS": "Rechnungen planen",
+				"USE_PLAN": "Meinen Plan verwenden",
+				"TAKE_BACK": "Zurücknehmen",
+				"raiseLimit": "Dieses Limit erhöhen"
+			}
+		},
+		"hero": {
+			"incomplete": "Noch kein Kurs für {currencies}, darum ist das nicht berechnet."
+		},
+		"notice": {
+			"notPlanned": "{amount} sind eingegangen und noch nicht geplant.",
+			"overspent": "{count, plural, one {{name} ist um {amount} überzogen.} other {# Umschläge sind um {amount} überzogen.}}",
+			"usePlan": "Meinen Plan verwenden",
+			"cover": "Decken"
+		},
+		"pool": {
+			"NOT_PLANNED_YET": "Noch nicht verplant",
+			"TO_ASSIGN": "Zuzuweisen"
+		},
+		"owed": {
+			"title": "Dir geschuldet",
+			"people": "{count, plural, one {# Person} other {# Personen}}"
+		},
+		"group": {
+			"BILLS": "Rechnungen",
+			"SPENDING": "Ausgaben",
+			"SAVINGS": "Sparen",
+			"ungrouped": "Weitere Umschläge",
+			"count": "{count, plural, one {# Umschlag} other {# Umschläge}}",
+			"overBy": "Um {amount} drüber",
+			"leftSpoken": "{amount} übrig",
+			"expand": "Umschläge zeigen",
+			"collapse": "Umschläge ausblenden"
+		},
+		"column": {
+			"assigned": "Zugewiesen",
+			"limit": "Limit",
+			"spent": "Ausgegeben",
+			"left": "Übrig"
+		},
+		"row": {
+			"over": "Um {amount} drüber",
+			"needs": "Braucht {amount}",
+			"funded": "Finanziert",
+			"noRate": "Noch kein Kurs für {currency}",
+			"leftSpoken": "{amount} übrig"
+		},
+		"envelope": {
+			"assigned": "Zugewiesen",
+			"limit": "Limit",
+			"spent": "Ausgegeben",
+			"left": "Übrig",
+			"closedHint": "Dieser Monat ist abgeschlossen, daher kann sich hier nichts ändern.",
+			"cover": "Decken",
+			"assign": "Geld zuweisen",
+			"move": "Geld verschieben",
+			"limitAction": "Limit ändern",
+			"back": "Zurück",
+			"assignTitle": "{name} zuweisen",
+			"moveTitle": "Geld verschieben für {name}",
+			"coverTitle": "{name} decken",
+			"limitTitle": "Limit für {name}"
+		},
+		"assign": {
+			"assignedNow": "Jetzt zugewiesen",
+			"mode": "Wie",
+			"add": "Dazu",
+			"set": "Festlegen auf",
+			"amountAdd": "Betrag zum Dazugeben",
+			"amountSet": "Neuer zugewiesener Betrag",
+			"submit": "Zuweisen",
+			"toastAdd": "{amount} an {name} zugewiesen",
+			"toastSet": "{name} hat jetzt {amount} zugewiesen"
+		},
+		"move": {
+			"direction": "Richtung",
+			"in": "Geld hinzufügen",
+			"out": "Geld entnehmen",
+			"from": "Von",
+			"to": "Nach",
+			"place": "{name}, {amount}",
+			"amount": "Betrag zum Verschieben",
+			"submit": "Verschieben",
+			"nothingToMove": "Nichts hat hier Geld zum Verschieben. {pool} ist leer.",
+			"toastIn": "{amount} von {other} nach {name} verschoben",
+			"toastOut": "{amount} von {name} nach {other} verschoben"
+		},
+		"cover": {
+			"lead": "{name} ist um {amount} überzogen. Decken holt Geld von einem anderen Ort.",
+			"notOver": "{name} ist nicht überzogen, es gibt also nichts zu decken.",
+			"from": "Nehmen aus",
+			"pickSource": "Quelle wählen",
+			"source": "{name}, {amount}",
+			"sourceDue": "{source}, fällig {date}",
+			"sourceFallback": "Umschlag",
+			"noSource": "Nichts hat Geld, um das zu decken.",
+			"amount": "Betrag zum Decken",
+			"submit": "Decken",
+			"loadError": "Es konnte nicht geladen werden, woher das Geld kommen kann.",
+			"toast": "{name} mit {amount} aus {source} gedeckt"
+		},
+		"limit": {
+			"now": "Limit jetzt",
+			"scope": "Gilt",
+			"thisMonth": "Nur diesen Monat",
+			"fromNowOn": "Ab jetzt",
+			"amount": "Neues Limit",
+			"submit": "Limit speichern",
+			"toast": "Das Limit für {name} ist jetzt {amount}"
+		},
+		"usePlan": {
+			"title": "Meinen Plan verwenden",
+			"lead": "Dein Plan gibt diesen Aufgaben {amount}.",
+			"met": "Deine Ziele sind schon erreicht.",
+			"envelopeFallback": "Umschlag",
+			"why": {
+				"PLAN": "aus deinem gespeicherten Plan",
+				"OVERSPENT": "deckt Überziehungen",
+				"BILL": "Rechnung",
+				"GROUP": "Gruppenziel",
+				"MONTHLY": "Monatsziel",
+				"SAVINGS": "Sparziel",
+				"REST": "der Rest"
+			},
+			"restTitle": "Was übrig bleibt: {amount}",
+			"restStays": "{amount} bleiben in {pool}.",
+			"leave": "Lassen",
+			"saveIt": "In {name} sparen",
+			"nextMonth": "Nächster Monat ({month})",
+			"use": "Meinen Plan verwenden",
+			"loadError": "Dein Plan konnte nicht geladen werden.",
+			"toast": "Plan für {count, plural, one {# Umschlag} other {# Umschläge}} verwendet"
+		},
+		"takeBack": {
+			"title": "Zurückholen",
+			"lead": "Du hast {amount} mehr verplant, als du hast. Das Fehlende kommt aus deinen Umschlägen zurück, zuerst Ausgaben, dann Sparen. Rechnungen bleiben, wie sie sind.",
+			"nothing": "Du hast nicht mehr verplant, als du hast.",
+			"submit": "Zurückholen",
+			"toast": "{amount} zurückgeholt"
+		},
+		"preview": {
+			"checking": "Wird geprüft",
+			"error": "Das ließ sich nicht prüfen. Versuche es erneut.",
+			"changes": "Was sich ändert",
+			"stays": "Was gleich bleibt",
+			"none": "nichts",
+			"beforeAfter": "{before} auf {after}",
+			"leftOf": "Übrig in {name}",
+			"leftToSpend": "Zum Ausgeben übrig",
+			"keeps": "{amount} bleibt",
+			"nothing": "Das ändert nichts.",
+			"envelopeFallback": "Umschlag"
+		},
+		"write": {
+			"saving": "Wird gespeichert",
+			"error": "Das ließ sich nicht speichern. Versuche es erneut.",
+			"undone": "Rückgängig gemacht",
+			"undoError": "Das ließ sich nicht rückgängig machen. Es hat sich vielleicht schon geändert.",
+			"amountInvalid": "Nutze Ziffern und die Nachkommastellen dieser Währung."
+		},
+		"listAnd": "{head} und {last}"
+	},
+	"wealth": {
+		"title": "Vermögen",
+		"netWorth": "Vermögen",
+		"change": "{amount} in {days} Tagen",
+		"range": "Zeitraum des Diagramms",
+		"ranges": {
+			"1M": "1M",
+			"3M": "3M",
+			"6M": "6M",
+			"1Y": "1J"
+		},
+		"chart": {
+			"label": "Vermögen, {range}",
+			"summary": "{label}. Von {from} am {fromDate} bis {to} am {toDate}.",
+			"pick": "{date}, {amount}",
+			"later": "Nächster Tag",
+			"earlier": "Vorheriger Tag"
+		},
+		"whyTitle": "Warum es sich in {days} Tagen geändert hat",
+		"whyTotal": "Änderung",
+		"parts": {
+			"income": "Einnahmen",
+			"spending": "Ausgaben",
+			"exchange": "Umtausch",
+			"notLogged": "Nicht erfasst",
+			"revaluation": "Kurse und Preise",
+			"opened": "Neue Konten",
+			"closed": "Geschlossene Konten"
+		},
+		"groups": {
+			"cash": "Bargeld und Bank",
+			"investments": "Anlagen",
+			"crypto": "Krypto",
+			"property": "Sachwerte",
+			"liabilities": "Schulden"
+		},
+		"types": {
+			"CASH": "Bargeld und Bank",
+			"INVESTMENT": "Anlage",
+			"CRYPTO": "Krypto",
+			"REAL_ESTATE": "Immobilie",
+			"VEHICLE": "Fahrzeug",
+			"LIABILITY_LOAN": "Kredit",
+			"LIABILITY_CREDIT_CARD": "Kreditkarte",
+			"LIABILITY_MORTGAGE": "Hypothek"
+		},
+		"owes": "Du schuldest",
+		"closed": {
+			"title": "Geschlossene Konten",
+			"badge": "Geschlossen"
+		},
+		"withoutRate": "{count, plural, one {# Konto hat noch keinen Kurs und bleibt außerhalb des Vermögens} other {# Konten haben noch keinen Kurs und bleiben außerhalb des Vermögens}}",
+		"webForNow": "Konten, Kurse und den Rest legst du vorerst im Web an.",
+		"error": "Das Vermögen konnte nicht geladen werden",
+		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+		"empty": "Noch keine Konten",
+		"emptyDetail": "Füge im Web ein Bankkonto, eine Anlage oder einen Kredit hinzu, um dein Vermögen zu verfolgen.",
+		"accountError": "Dieses Konto konnte nicht geladen werden",
+		"owedNow": "Du schuldest",
+		"balance": "Saldo",
+		"updatedOn": "Aktualisiert am {date}",
+		"noRate": "Noch kein Kurs für {currency}, darum bleibt dieses Konto außerhalb des Vermögens.",
+		"history": "Verlauf",
+		"noHistory": "Noch nichts erfasst",
+		"showMore": "Mehr zeigen",
+		"leg": {
+			"INCOME": "Einnahme",
+			"TRANSFER": "Überweisung",
+			"FEE": "Gebühr",
+			"BALANCE_UPDATE": "Saldo-Aktualisierung",
+			"notLogged": "Nicht erfasst"
+		},
+		"update": {
+			"title": "Saldo aktualisieren",
+			"now": "{name} zeigt jetzt {amount}.",
+			"amount": "Was es heute enthält",
+			"submit": "Saldo aktualisieren",
+			"netWorth": "Vermögen",
+			"notLogged": "Nicht erfasst",
+			"notLoggedHint": "Die Differenz wird als Nicht erfasst gebucht, nicht als Einnahme oder Ausgabe.",
+			"same": "Das ist schon der Saldo, es ändert sich also nichts.",
+			"toast": "{name} steht jetzt bei {amount}"
+		}
+	},
 	"money": {
 		"noRate": "Kein Kurs",
 		"homeWithRate": "{amount} ({rate})",

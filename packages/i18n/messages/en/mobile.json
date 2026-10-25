@@ -410,7 +410,7 @@
 		},
 		"usePlan": {
 			"title": "Use my plan",
-			"lead": "Your plan gives {amount} from {pool} these jobs.",
+			"lead": "Your plan gives these jobs {amount}.",
 			"met": "Your targets are already met.",
 			"envelopeFallback": "Envelope",
 			"why": {
@@ -457,7 +457,8 @@
 			"undone": "Undone",
 			"undoError": "Couldn't undo. It may have changed already.",
 			"amountInvalid": "Use digits and the decimals this currency has."
-		}
+		},
+		"listAnd": "{head} and {last}"
 	},
 	"wealth": {
 		"title": "Wealth",

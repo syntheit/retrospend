@@ -70,7 +70,9 @@ export function PlanSummary({
 	const poolText = money(data.toAssign.amount);
 	return (
 		<View>
-			{data.book.style === "LIMITS" ? null : (
+			{/* The pool is the hero's own number when To assign leads: said once. */}
+			{data.book.style === "LIMITS" ||
+			data.verdict.lead.kind === "TO_ASSIGN" ? null : (
 				<SummaryRow
 					label={pool}
 					onPress={

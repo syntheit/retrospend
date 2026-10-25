@@ -250,6 +250,300 @@
 			"paymentReceived": "{name} te pagó"
 		}
 	},
+	"budget": {
+		"title": "Presupuesto",
+		"error": "No se pudo cargar el presupuesto",
+		"errorDetail": "Revisá tu conexión y probá de nuevo.",
+		"noBudget": "Todavía no hay presupuesto",
+		"noBudgetDetail": "Armá tu presupuesto en la web. Acá aparece cuando esté listo.",
+		"paused": "Tu presupuesto está en pausa",
+		"pausedDetail": "No se cuenta nada mientras esté en pausa. Reanudalo en la web.",
+		"wealth": "Patrimonio y cuentas",
+		"webForNow": "Objetivos, reglas, la configuración y más están por ahora en la web.",
+		"month": {
+			"previous": "Mes anterior",
+			"next": "Mes siguiente",
+			"pick": "Elegir un mes",
+			"closedItem": "{month}, cerrado",
+			"planItem": "Planificar {month}",
+			"closed": "{month} está cerrado. Lo que ves acá es solo de lectura."
+		},
+		"verdict": {
+			"label": {
+				"toAssign": "Por asignar",
+				"week": "Queda esta semana",
+				"limits": "Queda en tus límites",
+				"overLimits": "Pasaste tus límites",
+				"overBudget": "Pasado de presupuesto en {month}",
+				"saveFirst": "Queda para gastar después de ahorrar",
+				"leftToSpend": "Queda para gastar en {month}"
+			},
+			"plannedTooMuch": "Planificaste {amount} más de lo que tenés, así que lo sacamos de este número.",
+			"overBudget": "Gastaste {amount} más de lo que planificaste para {month}. Cubrilo con plata que no planificaste, o sale de {next}.",
+			"billsShort": "A las facturas todavía les faltan {amount}. Planificá eso primero; este número no lo incluye.",
+			"usedUp": "Usaste todo el presupuesto de Gastos de {month}. Cualquier gasto más sale de {next}.",
+			"faster": "Estás gastando más rápido de lo planificado. Para terminar dentro del presupuesto, mantenete en unos {amount} por día.",
+			"someOver": "Unos {amount} por día durante {days, plural, one {# día} other {# días}}, después de que {names} se pasara por {over}.",
+			"onTrack": "Vas bien: unos {amount} por día durante {days, plural, one {# día} other {# días}}.",
+			"allAssigned": "Todo tu dinero tiene un destino.",
+			"needsJob": "A {amount} todavía le falta un destino.",
+			"overAssigned": "Repartiste {amount} más de lo que tenés.",
+			"weekLeft": "Unos {amount} por día. Se reinicia el {resets}.",
+			"weekUsed": "Usaste lo de esta semana. Se reinicia el {resets}.",
+			"limitsOver": "Pasaste tus límites por {amount}.",
+			"limitsUsedUp": "Usaste todos tus límites de {month}.",
+			"limitsFaster": "Estás usando tus límites más rápido que el mes. Unos {amount} por día te mantienen adentro.",
+			"limitsSomeOver": "{names} se pasó por {over}. Quedan unos {amount} por día en tus límites.",
+			"limitsOnTrack": "Vas bien: unos {amount} por día en tus límites.",
+			"action": {
+				"FIX_PLAN": "Arreglar mi plan",
+				"COVER": "Cubrir",
+				"PLAN_BILLS": "Planificar facturas",
+				"USE_PLAN": "Usar mi plan",
+				"TAKE_BACK": "Recuperarlo",
+				"raiseLimit": "Subir este límite"
+			}
+		},
+		"hero": {
+			"incomplete": "Todavía no hay cotización de {currencies}, así que esto no se calcula."
+		},
+		"notice": {
+			"notPlanned": "Entraron {amount} que todavía no están planificados.",
+			"overspent": "{count, plural, one {{name} se pasó por {amount}.} other {# sobres se pasaron por {amount}.}}",
+			"usePlan": "Usar mi plan",
+			"cover": "Cubrir"
+		},
+		"pool": {
+			"NOT_PLANNED_YET": "Sin planear aún",
+			"TO_ASSIGN": "Para asignar"
+		},
+		"owed": {
+			"title": "Te deben",
+			"people": "{count, plural, one {# persona} other {# personas}}"
+		},
+		"group": {
+			"BILLS": "Facturas",
+			"SPENDING": "Gastos",
+			"SAVINGS": "Ahorros",
+			"ungrouped": "Otros sobres",
+			"count": "{count, plural, one {# sobre} other {# sobres}}",
+			"overBy": "Pasado por {amount}",
+			"leftSpoken": "queda {amount}",
+			"expand": "Mostrar sobres",
+			"collapse": "Ocultar sobres"
+		},
+		"column": {
+			"assigned": "Asignado",
+			"limit": "Límite",
+			"spent": "Gastado",
+			"left": "Queda"
+		},
+		"row": {
+			"over": "Pasado por {amount}",
+			"needs": "Necesita {amount}",
+			"funded": "Con fondos",
+			"noRate": "Todavía no hay cotización de {currency}",
+			"leftSpoken": "queda {amount}"
+		},
+		"envelope": {
+			"assigned": "Asignado",
+			"limit": "Límite",
+			"spent": "Gastado",
+			"left": "Queda",
+			"closedHint": "Este mes está cerrado, así que no se puede cambiar nada.",
+			"cover": "Cubrir",
+			"assign": "Asignar plata",
+			"move": "Mover plata",
+			"limitAction": "Cambiar límite",
+			"back": "Volver",
+			"assignTitle": "Asignar a {name}",
+			"moveTitle": "Mover plata de {name}",
+			"coverTitle": "Cubrir {name}",
+			"limitTitle": "Límite de {name}"
+		},
+		"assign": {
+			"assignedNow": "Asignado ahora",
+			"mode": "Cómo",
+			"add": "Sumar",
+			"set": "Fijar en",
+			"amountAdd": "Monto a sumar",
+			"amountSet": "Nuevo monto asignado",
+			"submit": "Asignar",
+			"toastAdd": "Asignaste {amount} a {name}",
+			"toastSet": "{name} ahora tiene {amount} asignados"
+		},
+		"move": {
+			"direction": "Dirección",
+			"in": "Sumar plata",
+			"out": "Sacar plata",
+			"from": "Desde",
+			"to": "Hacia",
+			"place": "{name}, {amount}",
+			"amount": "Monto a mover",
+			"submit": "Mover",
+			"nothingToMove": "Nada tiene plata para mover acá. {pool} está vacío.",
+			"toastIn": "Moviste {amount} de {other} a {name}",
+			"toastOut": "Moviste {amount} de {name} a {other}"
+		},
+		"cover": {
+			"lead": "{name} se pasó por {amount}. Cubrir trae plata de otro lugar.",
+			"notOver": "{name} no se pasó, así que no hay nada para cubrir.",
+			"from": "Sacalo de",
+			"pickSource": "Elegí de dónde",
+			"source": "{name}, {amount}",
+			"sourceDue": "{source}, vence el {date}",
+			"sourceFallback": "Sobre",
+			"noSource": "Nada tiene plata para cubrir esto.",
+			"amount": "Monto a cubrir",
+			"submit": "Cubrir",
+			"loadError": "No se pudo cargar de dónde puede salir la plata.",
+			"toast": "Cubriste {name} con {amount} de {source}"
+		},
+		"limit": {
+			"now": "Límite ahora",
+			"scope": "Se aplica",
+			"thisMonth": "Solo este mes",
+			"fromNowOn": "De ahora en adelante",
+			"amount": "Nuevo límite",
+			"submit": "Guardar límite",
+			"toast": "El límite de {name} ahora es {amount}"
+		},
+		"usePlan": {
+			"title": "Usar mi plan",
+			"lead": "Tu plan le da {amount} a estos destinos.",
+			"met": "Tus objetivos ya están cumplidos.",
+			"envelopeFallback": "Sobre",
+			"why": {
+				"PLAN": "de tu plan guardado",
+				"OVERSPENT": "cubre excesos",
+				"BILL": "factura",
+				"GROUP": "objetivo del grupo",
+				"MONTHLY": "objetivo mensual",
+				"SAVINGS": "meta de ahorro",
+				"REST": "el resto"
+			},
+			"restTitle": "Lo que sobra: {amount}",
+			"restStays": "{amount} quedan en {pool}.",
+			"leave": "Dejarlo",
+			"saveIt": "Guardarlo en {name}",
+			"nextMonth": "Mes que viene ({month})",
+			"use": "Usar mi plan",
+			"loadError": "No se pudo cargar tu plan.",
+			"toast": "Plan usado en {count, plural, one {# sobre} other {# sobres}}"
+		},
+		"takeBack": {
+			"title": "Recuperarlo",
+			"lead": "Planificaste {amount} más de lo que tenés. Lo que falta vuelve desde tus sobres, primero Gastos y después Ahorros. Las facturas quedan como están.",
+			"nothing": "No planificaste más de lo que tenés.",
+			"submit": "Recuperarlo",
+			"toast": "Recuperaste {amount}"
+		},
+		"preview": {
+			"checking": "Verificando",
+			"error": "No se pudo verificar. Probá de nuevo.",
+			"changes": "Qué cambia",
+			"stays": "Qué sigue igual",
+			"none": "nada",
+			"beforeAfter": "{before} a {after}",
+			"leftOf": "Queda en {name}",
+			"leftToSpend": "Queda para gastar",
+			"keeps": "{amount} se mantiene",
+			"nothing": "Esto no cambia nada.",
+			"envelopeFallback": "Sobre"
+		},
+		"write": {
+			"saving": "Guardando",
+			"error": "No se pudo guardar. Probá de nuevo.",
+			"undone": "Deshecho",
+			"undoError": "No se pudo deshacer. Puede que ya haya cambiado.",
+			"amountInvalid": "Usá dígitos y los decimales que tiene esta moneda."
+		},
+		"listAnd": "{head} y {last}"
+	},
+	"wealth": {
+		"title": "Patrimonio",
+		"netWorth": "Patrimonio",
+		"change": "{amount} en {days} días",
+		"range": "Período del gráfico",
+		"ranges": {
+			"1M": "1M",
+			"3M": "3M",
+			"6M": "6M",
+			"1Y": "1A"
+		},
+		"chart": {
+			"label": "Patrimonio, {range}",
+			"summary": "{label}. De {from} el {fromDate} a {to} el {toDate}.",
+			"pick": "{date}, {amount}",
+			"later": "Día siguiente",
+			"earlier": "Día anterior"
+		},
+		"whyTitle": "Por qué cambió en {days} días",
+		"whyTotal": "Cambio",
+		"parts": {
+			"income": "Ingresos",
+			"spending": "Gastos",
+			"exchange": "Cambios de moneda",
+			"notLogged": "Sin registrar",
+			"revaluation": "Cotizaciones y precios",
+			"opened": "Cuentas agregadas",
+			"closed": "Cuentas cerradas"
+		},
+		"groups": {
+			"cash": "Efectivo y bancos",
+			"investments": "Inversiones",
+			"crypto": "Cripto",
+			"property": "Bienes",
+			"liabilities": "Deudas"
+		},
+		"types": {
+			"CASH": "Efectivo y bancos",
+			"INVESTMENT": "Inversión",
+			"CRYPTO": "Cripto",
+			"REAL_ESTATE": "Inmueble",
+			"VEHICLE": "Vehículo",
+			"LIABILITY_LOAN": "Préstamo",
+			"LIABILITY_CREDIT_CARD": "Tarjeta de crédito",
+			"LIABILITY_MORTGAGE": "Hipoteca"
+		},
+		"owes": "Debés",
+		"closed": {
+			"title": "Cuentas cerradas",
+			"badge": "Cerrada"
+		},
+		"withoutRate": "{count, plural, one {# cuenta todavía no tiene cotización y queda fuera del patrimonio} other {# cuentas todavía no tienen cotización y quedan fuera del patrimonio}}",
+		"webForNow": "Agregar cuentas, cotizaciones y el resto están por ahora en la web.",
+		"error": "No se pudo cargar el patrimonio",
+		"errorDetail": "Revisá tu conexión y probá de nuevo.",
+		"empty": "Todavía no hay cuentas",
+		"emptyDetail": "Agregá en la web una cuenta bancaria, una inversión o un préstamo para seguir tu patrimonio.",
+		"accountError": "No se pudo cargar esta cuenta",
+		"owedNow": "Debés",
+		"balance": "Saldo",
+		"updatedOn": "Actualizada el {date}",
+		"noRate": "Todavía no hay cotización de {currency}, así que esta cuenta queda fuera del patrimonio.",
+		"history": "Historial",
+		"noHistory": "Todavía no hay movimientos",
+		"showMore": "Mostrar más",
+		"leg": {
+			"INCOME": "Ingreso",
+			"TRANSFER": "Transferencia",
+			"FEE": "Comisión",
+			"BALANCE_UPDATE": "Actualización de saldo",
+			"notLogged": "Sin registrar"
+		},
+		"update": {
+			"title": "Actualizar saldo",
+			"now": "{name} muestra {amount} ahora.",
+			"amount": "Cuánto tiene hoy",
+			"submit": "Actualizar saldo",
+			"netWorth": "Patrimonio",
+			"notLogged": "Sin registrar",
+			"notLoggedHint": "La diferencia se guarda como sin registrar, no como ingreso ni gasto.",
+			"same": "Ese ya es el saldo, así que no cambia nada.",
+			"toast": "{name} ahora tiene {amount}"
+		}
+	},
 	"money": {
 		"noRate": "Sin cotización",
 		"homeWithRate": "{amount} ({rate})",

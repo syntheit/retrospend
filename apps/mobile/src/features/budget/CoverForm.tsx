@@ -6,19 +6,14 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Picker } from "@/ui/Picker";
 import { minorOf, readAmount } from "./amount";
-import { coverBody } from "./bodies";
 import { BudgetChanges } from "./BudgetChanges";
+import { coverBody } from "./bodies";
 import { AmountField, Note, useAmountLocale } from "./parts";
 import { changesAnything, previewRows } from "./preview";
 import { type CoverOverview, envelopeById } from "./source";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
 import { useUndoToast } from "./useUndoToast";
-import {
-	type FormProps,
-	noSession,
-	useApi,
-	WriteFrame,
-} from "./WriteFrame";
+import { type FormProps, noSession, useApi, WriteFrame } from "./WriteFrame";
 
 const POOL = "pool";
 
@@ -27,7 +22,13 @@ const POOL = "pool";
  * is over by, where the money can come from and where it suggests (never a
  * goal or a bill by default); the person can change both before Cover.
  */
-export function CoverForm({ data, envelope, month, onDone, onClose }: FormProps) {
+export function CoverForm({
+	data,
+	envelope,
+	month,
+	onDone,
+	onClose,
+}: FormProps) {
 	const t = useTranslations("mobile.budget.cover");
 	const tb = useTranslations("mobile.budget");
 	const format = useFormatter();
@@ -140,7 +141,11 @@ export function CoverForm({ data, envelope, month, onDone, onClose }: FormProps)
 		<WriteFrame
 			busy={flow.committing}
 			changes={
-				<BudgetChanges data={data} preview={flow.preview} status={flow.status} />
+				<BudgetChanges
+					data={data}
+					preview={flow.preview}
+					status={flow.status}
+				/>
 			}
 			failed={flow.commitFailed}
 			onSubmit={submit}
@@ -169,9 +174,7 @@ export function CoverForm({ data, envelope, month, onDone, onClose }: FormProps)
 							<Picker
 								onChange={setPick}
 								options={[
-									...(source
-										? []
-										: [{ value: "", label: t("pickSource") }]),
+									...(source ? [] : [{ value: "", label: t("pickSource") }]),
 									...sources.map((s) => ({
 										value: s.from ?? POOL,
 										label: optionLabel(s),

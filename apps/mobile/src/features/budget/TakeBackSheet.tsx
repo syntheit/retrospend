@@ -4,8 +4,8 @@ import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Sheet } from "@/ui/Sheet";
-import { takeBackBody } from "./bodies";
 import { BudgetChanges } from "./BudgetChanges";
+import { takeBackBody } from "./bodies";
 import { Note } from "./parts";
 import type { BudgetMonth } from "./source";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
@@ -47,7 +47,8 @@ export function TakeBackSheet({
 	const flow = useMoneyWrite({
 		input: visible ? input : null,
 		idempotencyKey: input?.batchId ?? null,
-		preview: (body) => (api ? api.budget.previewFixNegative(body) : noSession()),
+		preview: (body) =>
+			api ? api.budget.previewFixNegative(body) : noSession(),
 		write: (body, key) =>
 			api
 				? api.budget.fixNegative(body, { context: { idempotencyKey: key } })

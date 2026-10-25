@@ -69,7 +69,14 @@ describe("update balance preview", () => {
 		const noRate = {
 			...preview,
 			changes: [
-				{ id: "netWorth", currency: "ARS", before: null, after: null, delta: ars(0), figureAfter: [] },
+				{
+					id: "netWorth",
+					currency: "ARS",
+					before: null,
+					after: null,
+					delta: ars(0),
+					figureAfter: [],
+				},
 			],
 		} as unknown as BalancePreview;
 		expect(balanceRows(noRate).netWorth).toEqual({ before: null, after: null });

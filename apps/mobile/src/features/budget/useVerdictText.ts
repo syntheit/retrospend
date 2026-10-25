@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { monthDate } from "./months";
-import type { VerdictLine, VerdictValue } from "./verdict";
+import { joinNames, type VerdictLine, type VerdictValue } from "./verdict";
 
 /**
  * Turns a verdict line (a message key and the verdict's own values) into
@@ -13,6 +13,7 @@ import type { VerdictLine, VerdictValue } from "./verdict";
 export function useVerdictText(names: ReadonlyMap<string, string>) {
 	const t = useTranslations("mobile.budget.verdict");
 	const format = useFormatter();
+	const tb = useTranslations("mobile.budget");
 	const money = useMoneyText();
 
 	const value = useCallback(
@@ -35,15 +36,15 @@ export function useVerdictText(names: ReadonlyMap<string, string>) {
 							})
 						: "";
 				case "names":
-					return format.list(
+					return joinNames(
 						v.ids.map((id) => names.get(id) ?? "").filter((n) => n !== ""),
-						{ type: "conjunction" },
+						(head, last) => tb("listAnd", { head, last }),
 					);
 				case "number":
 					return v.value;
 			}
 		},
-		[format, money, names],
+		[format, money, names, tb],
 	);
 
 	return useCallback(

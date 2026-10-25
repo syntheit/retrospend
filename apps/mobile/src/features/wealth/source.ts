@@ -13,7 +13,9 @@ export type NetWorth = Awaited<ReturnType<Client["netWorth"]>>;
 export type SeriesPoint = NetWorth["series"][number];
 export type AccountDetail = Awaited<ReturnType<Client["get"]>>;
 export type AccountLeg = AccountDetail["legs"][number];
-export type BalancePreview = Awaited<ReturnType<Client["previewUpdateBalance"]>>;
+export type BalancePreview = Awaited<
+	ReturnType<Client["previewUpdateBalance"]>
+>;
 
 export interface WealthData {
 	list: AccountList;

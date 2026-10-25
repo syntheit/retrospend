@@ -3,8 +3,8 @@ import {
 	coverBody,
 	limitBody,
 	moveRequest,
+	planBody,
 	takeBackBody,
-	usePlanBody,
 } from "./bodies";
 
 const ids = { batchId: "batch-1", itemId: "item-1" };
@@ -19,9 +19,9 @@ describe("budget request bodies", () => {
 			items: [{ id: "item-1", envelopeId: "env-a", amount: "15000.50" }],
 		});
 		// Setting to zero takes everything back.
-		expect(assignBody({ ...base, mode: "set", minor: 0 }).items[0]?.amount).toBe(
-			"0.00",
-		);
+		expect(
+			assignBody({ ...base, mode: "set", minor: 0 }).items[0]?.amount,
+		).toBe("0.00");
 		expect(
 			assignBody({ ...base, currency: "JPY", mode: "add", minor: 800 }).items[0]
 				?.amount,
@@ -99,7 +99,7 @@ describe("budget request bodies", () => {
 	});
 
 	it("Use my plan sends only the batch and where the rest goes", () => {
-		expect(usePlanBody({ batchId: "b", rest: "LEAVE" })).toEqual({
+		expect(planBody({ batchId: "b", rest: "LEAVE" })).toEqual({
 			batchId: "b",
 			rest: "LEAVE",
 		});

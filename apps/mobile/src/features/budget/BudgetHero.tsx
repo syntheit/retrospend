@@ -6,12 +6,12 @@ import { Button } from "@/ui/Button";
 import type { BudgetMonth } from "./source";
 import { useVerdictText } from "./useVerdictText";
 import {
+	type VerdictSheet,
 	verdictActionKey,
 	verdictIsOver,
 	verdictLabel,
 	verdictSentence,
 	verdictSheet,
-	type VerdictSheet,
 } from "./verdict";
 
 /**
@@ -49,16 +49,14 @@ export function BudgetHero({
 		? null
 		: money(v.lead.amount, over ? { sign: "never" } : undefined);
 	const shown =
-		amount !== null && data.approximate
-			? tm("approx", { amount })
-			: amount;
+		amount !== null && data.approximate ? tm("approx", { amount }) : amount;
 	const sheet = canAct && !incomplete && v.action ? verdictSheet(v) : null;
 
 	return (
 		<View style={{ gap: space[1], paddingHorizontal: space[4] }}>
 			<View
-				accessible
 				accessibilityLabel={`${label}, ${shown ?? tm("noRate")}. ${sentence}`}
+				accessible
 				style={{ gap: space[1] }}
 			>
 				<Text style={{ color: color.fg2, fontSize: type.body.size }}>

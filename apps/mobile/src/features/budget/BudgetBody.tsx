@@ -9,8 +9,8 @@ import { BudgetHero } from "./BudgetHero";
 import type { OpenSheet } from "./BudgetSheets";
 import { ColumnTitles } from "./EnvelopeRow";
 import { GroupSection } from "./GroupSection";
-import { type MonthBounds, type MonthKind, monthDate } from "./months";
 import { MonthBar } from "./MonthBar";
+import { type MonthBounds, type MonthKind, monthDate } from "./months";
 import { Notice, PlanSummary } from "./PlanSummary";
 import { isLimits, overEnvelopes } from "./rows";
 import { type BudgetMonth, envelopesOf } from "./source";
@@ -82,12 +82,7 @@ export function BudgetBody({
 		</Text>
 	) : (
 		<>
-			<BudgetHero
-				canAct
-				data={data}
-				names={names}
-				onAction={openVerdict}
-			/>
+			<BudgetHero canAct data={data} names={names} onAction={openVerdict} />
 			<Notice
 				canAct
 				data={data}
@@ -126,17 +121,19 @@ export function BudgetBody({
 				</>
 			)}
 			{wide ? <ColumnTitles style={style} /> : null}
-			{data.groups.map((group) => (
-				<GroupSection
-					group={group}
-					key={group.id ?? "none"}
-					onOpenEnvelope={(e) =>
-						onOpen({ kind: "envelope", id: e.id, mode: "overview" })
-					}
-					style={style}
-					wide={wide}
-				/>
-			))}
+			{data.groups
+				.filter((group) => group.envelopes.length > 0)
+				.map((group) => (
+					<GroupSection
+						group={group}
+						key={group.id ?? "none"}
+						onOpenEnvelope={(e) =>
+							onOpen({ kind: "envelope", id: e.id, mode: "overview" })
+						}
+						style={style}
+						wide={wide}
+					/>
+				))}
 			<View style={{ paddingTop: space[4] }}>
 				<ListRow
 					accessibilityLabel={t("wealth")}

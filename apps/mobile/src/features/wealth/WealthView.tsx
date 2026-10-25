@@ -9,8 +9,8 @@ import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { Screen } from "@/ui/Screen";
-import { closedAccounts, sectionsOf, unvalued } from "./accounts";
 import { AccountRow, openAccount } from "./AccountRow";
+import { closedAccounts, sectionsOf, unvalued } from "./accounts";
 import { ChangeParts } from "./ChangeParts";
 import { NetWorthHero } from "./NetWorthHero";
 import { fetchWealth, WEALTH_CACHE, type WealthData } from "./source";
@@ -117,7 +117,9 @@ export function WealthView() {
 		<View>
 			<StaleNote since={state.staleSince} />
 			<NetWorthHero netWorth={data.netWorth} />
-			{data.netWorth.change ? <ChangeParts change={data.netWorth.change} /> : null}
+			{data.netWorth.change ? (
+				<ChangeParts change={data.netWorth.change} />
+			) : null}
 		</View>
 	);
 	if (data.list.accounts.length === 0) {
@@ -151,4 +153,3 @@ export function WealthView() {
 		</>
 	);
 }
-

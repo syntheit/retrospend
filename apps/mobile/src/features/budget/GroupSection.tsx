@@ -112,7 +112,6 @@ export function GroupSection({
 							envelope={envelope}
 							key={envelope.id}
 							onPress={() => onOpenEnvelope(envelope)}
-							style={style}
 							wide={wide}
 						/>
 					))
@@ -120,4 +119,3 @@ export function GroupSection({
 		</View>
 	);
 }
-

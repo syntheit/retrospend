@@ -48,14 +48,16 @@ describe("month keys", () => {
 			kind: "next",
 			bounds: { first: 202608, open: 202610 },
 		});
-		expect(monthInfo({ key: 202609, state: "CLOSED" }, 202608, 202610)).toEqual({
-			kind: "closed",
-			bounds: { first: 202608, open: 202610 },
-		});
-		// A closed month seen before the open one: the open month is the next one.
-		expect(monthInfo({ key: 202609, state: "CLOSED" }, 202608, null).bounds.open).toBe(
-			202610,
+		expect(monthInfo({ key: 202609, state: "CLOSED" }, 202608, 202610)).toEqual(
+			{
+				kind: "closed",
+				bounds: { first: 202608, open: 202610 },
+			},
 		);
+		// A closed month seen before the open one: the open month is the next one.
+		expect(
+			monthInfo({ key: 202609, state: "CLOSED" }, 202608, null).bounds.open,
+		).toBe(202610);
 	});
 
 	it("tells closed, open and next apart", () => {

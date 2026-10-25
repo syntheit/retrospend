@@ -1,7 +1,17 @@
-import { closedAccounts, groupOf, isLiability, sectionsOf, unvalued } from "./accounts";
+import {
+	closedAccounts,
+	groupOf,
+	isLiability,
+	sectionsOf,
+	unvalued,
+} from "./accounts";
 import type { Account } from "./source";
 
-function account(id: string, type: Account["type"], over: Partial<Account> = {}): Account {
+function account(
+	id: string,
+	type: Account["type"],
+	over: Partial<Account> = {},
+): Account {
 	return {
 		id,
 		name: id,
@@ -40,7 +50,9 @@ describe("account groups", () => {
 	});
 
 	it("lists closed accounts apart, out of the sections", () => {
-		const closed = account("old", "CASH", { closedAt: "2026-01-01T00:00:00.000Z" });
+		const closed = account("old", "CASH", {
+			closedAt: "2026-01-01T00:00:00.000Z",
+		});
 		expect(sectionsOf([closed])).toEqual([]);
 		expect(closedAccounts([closed, account("open", "CASH")])).toEqual([closed]);
 	});
@@ -49,7 +61,12 @@ describe("account groups", () => {
 		const noRate = account("usd", "CASH", { value: null });
 		expect(unvalued([noRate, account("ars", "CASH")])).toEqual([noRate]);
 		expect(
-			unvalued([account("x", "CASH", { value: null, closedAt: "2026-01-01T00:00:00.000Z" })]),
+			unvalued([
+				account("x", "CASH", {
+					value: null,
+					closedAt: "2026-01-01T00:00:00.000Z",
+				}),
+			]),
 		).toEqual([]);
 	});
 });

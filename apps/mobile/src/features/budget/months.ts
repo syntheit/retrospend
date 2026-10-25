@@ -76,7 +76,12 @@ export function monthInfo(
 				? addMonths(month.key, -1)
 				: (seenOpen ?? addMonths(month.key, 1));
 	return {
-		kind: month.state === "OPEN" ? "open" : month.state === "NEXT" ? "next" : "closed",
+		kind:
+			month.state === "OPEN"
+				? "open"
+				: month.state === "NEXT"
+					? "next"
+					: "closed",
 		bounds: { first, open },
 	};
 }

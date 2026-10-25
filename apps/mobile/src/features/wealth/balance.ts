@@ -24,7 +24,9 @@ function isMoney(value: unknown): value is Money {
 	);
 }
 
-function asMoney(line: { minor: number; currency: string } | null): Money | null {
+function asMoney(
+	line: { minor: number; currency: string } | null,
+): Money | null {
 	return line && line.currency !== "%" ? line : null;
 }
 
@@ -52,5 +54,8 @@ export function balanceRows(preview: BalancePreview): BalanceRows {
 
 /** The balance is already what was typed: nothing to write. */
 export function isUnchanged(rows: BalanceRows): boolean {
-	return rows.balance !== null && rows.balance.before.minor === rows.balance.after.minor;
+	return (
+		rows.balance !== null &&
+		rows.balance.before.minor === rows.balance.after.minor
+	);
 }

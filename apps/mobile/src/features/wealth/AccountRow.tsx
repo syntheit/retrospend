@@ -36,7 +36,8 @@ export function AccountRow({
 	const closed = account.closedAt !== null;
 	// A foreign balance shows the rate type it is valued at (GUIDELINE 7).
 	const foreign =
-		account.value !== null && account.value.currency !== account.balance.currency;
+		account.value !== null &&
+		account.value.currency !== account.balance.currency;
 	const kind = [
 		t(`types.${account.type}`),
 		liability ? t("owes") : null,

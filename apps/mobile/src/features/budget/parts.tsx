@@ -46,8 +46,8 @@ export function Line({
 	const { color, space, type } = useTheme();
 	return (
 		<View
-			accessible
 			accessibilityLabel={spoken ?? `${label}, ${value}`}
+			accessible
 			style={{
 				flexDirection: "row",
 				justifyContent: "space-between",
@@ -116,9 +116,7 @@ export function AmountField({
 					minHeight: size.moneyInput.phone,
 				}}
 			>
-				<Text
-					style={{ color: color.fg2, fontSize: type.section.size }}
-				>
+				<Text style={{ color: color.fg2, fontSize: type.section.size }}>
 					{currency}
 				</Text>
 				<Text

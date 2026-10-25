@@ -3,18 +3,13 @@ import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Segmented } from "@/ui/Segmented";
 import { minorOf, readAmount } from "./amount";
-import { assignBody } from "./bodies";
 import { BudgetChanges } from "./BudgetChanges";
+import { assignBody } from "./bodies";
 import { AmountField, Line, useAmountLocale } from "./parts";
 import { changesAnything, previewRows } from "./preview";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
 import { useUndoToast } from "./useUndoToast";
-import {
-	type FormProps,
-	noSession,
-	useApi,
-	WriteFrame,
-} from "./WriteFrame";
+import { type FormProps, noSession, useApi, WriteFrame } from "./WriteFrame";
 
 type Mode = "add" | "set";
 
@@ -62,8 +57,7 @@ export function AssignForm({
 	const flow = useMoneyWrite({
 		input,
 		idempotencyKey: input?.batchId ?? null,
-		preview: (body) =>
-			api ? api.budget.previewAssign(body) : noSession(),
+		preview: (body) => (api ? api.budget.previewAssign(body) : noSession()),
 		write: (body, key) =>
 			api
 				? api.budget.assign(body, { context: { idempotencyKey: key } })
@@ -94,17 +88,18 @@ export function AssignForm({
 		<WriteFrame
 			busy={flow.committing}
 			changes={
-				<BudgetChanges data={data} preview={flow.preview} status={flow.status} />
+				<BudgetChanges
+					data={data}
+					preview={flow.preview}
+					status={flow.status}
+				/>
 			}
 			failed={flow.commitFailed}
 			onSubmit={submit}
 			ready={ready}
 			submitLabel={t("submit")}
 		>
-			<Line
-				label={t("assignedNow")}
-				value={money(envelope.assigned)}
-			/>
+			<Line label={t("assignedNow")} value={money(envelope.assigned)} />
 			<Line
 				label={tb(`pool.${data.toAssign.poolName}`)}
 				value={money(data.toAssign.amount)}

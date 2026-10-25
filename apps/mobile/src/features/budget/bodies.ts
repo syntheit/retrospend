@@ -103,7 +103,7 @@ export function coverBody(input: {
 }
 
 /** Use my plan on all of the pool; the rest goes where the person chose. */
-export function usePlanBody(input: {
+export function planBody(input: {
 	batchId: string;
 	rest: RestChoice;
 }): UsePlanInput {

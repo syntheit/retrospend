@@ -40,8 +40,7 @@ export function ScrubChart({
 	const [index, setIndex] = useState<number | null>(null);
 
 	const columns = useMemo(
-		() =>
-			downsample(points, Math.max(1, Math.floor(width / COLUMN_WIDTH))),
+		() => downsample(points, Math.max(1, Math.floor(width / COLUMN_WIDTH))),
 		[points, width],
 	);
 	const heights = useMemo(
@@ -86,7 +85,10 @@ export function ScrubChart({
 					toDate: day(last.date),
 				})
 			: label;
-	const cursor = index === null || width === 0 ? null : (index + 0.5) * (width / columns.length);
+	const cursor =
+		index === null || width === 0
+			? null
+			: (index + 0.5) * (width / columns.length);
 
 	const move = (delta: number) => {
 		const from = index ?? columns.length - 1;
@@ -104,10 +106,12 @@ export function ScrubChart({
 					accessibilityLabel={spoken}
 					accessibilityRole="adjustable"
 					accessibilityValue={{
-						text:
-							picked?.value
-								? t("pick", { date: day(picked.date), amount: money(picked.value) })
-								: undefined,
+						text: picked?.value
+							? t("pick", {
+									date: day(picked.date),
+									amount: money(picked.value),
+								})
+							: undefined,
 					}}
 					accessible
 					onAccessibilityAction={(event) => {

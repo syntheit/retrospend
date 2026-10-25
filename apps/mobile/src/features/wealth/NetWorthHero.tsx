@@ -4,8 +4,8 @@ import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Segmented } from "@/ui/Segmented";
-import { RANGES, sliceRange, type WealthRange } from "./series";
 import { ScrubChart } from "./ScrubChart";
+import { RANGES, sliceRange, type WealthRange } from "./series";
 import type { NetWorth, SeriesPoint } from "./source";
 
 const CHART_HEIGHT = 160;
@@ -47,11 +47,11 @@ export function NetWorthHero({ netWorth }: { netWorth: NetWorth }) {
 	return (
 		<View style={{ gap: space[3], padding: space[4] }}>
 			<View
-				accessible
 				accessibilityLabel={[t("netWorth"), amount, line]
 					.filter(Boolean)
 					.join(", ")}
 				accessibilityLiveRegion="polite"
+				accessible
 				style={{ gap: space[1] }}
 			>
 				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
@@ -69,7 +69,13 @@ export function NetWorthHero({ netWorth }: { netWorth: NetWorth }) {
 				>
 					{amount}
 				</Text>
-				<Text style={{ color: color.fg2, fontSize: type.body.size, minHeight: type.body.size * type.body.lineHeight }}>
+				<Text
+					style={{
+						color: color.fg2,
+						fontSize: type.body.size,
+						minHeight: type.body.size * type.body.lineHeight,
+					}}
+				>
 					{line ?? " "}
 				</Text>
 			</View>

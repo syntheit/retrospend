@@ -1,5 +1,5 @@
-import { type MonthKind } from "./months";
 import { type EnvelopeMode, EnvelopeSheet } from "./EnvelopeSheet";
+import type { MonthKind } from "./months";
 import { type BudgetMonth, envelopeById } from "./source";
 import { TakeBackSheet } from "./TakeBackSheet";
 import { UsePlanSheet } from "./UsePlanSheet";

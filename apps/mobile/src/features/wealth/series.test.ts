@@ -83,7 +83,11 @@ describe("heights", () => {
 
 	it("draws a flat series at half height and an all-gap series as gaps", () => {
 		expect(
-			columnHeights([point(1, 5), point(2, 5)].map((p) => p.value), 40, 4),
+			columnHeights(
+				[point(1, 5), point(2, 5)].map((p) => p.value),
+				40,
+				4,
+			),
 		).toEqual([20, 20]);
 		expect(columnHeights([null, null], 40, 4)).toEqual([null, null]);
 	});
@@ -100,7 +104,12 @@ describe("heights", () => {
 
 describe("ends", () => {
 	it("skips days with no value at either end", () => {
-		const ends = endsOf([point(1, null), point(2, 5), point(3, 9), point(4, null)]);
+		const ends = endsOf([
+			point(1, null),
+			point(2, 5),
+			point(3, 9),
+			point(4, null),
+		]);
 		expect(ends.first?.date).toBe(day(2));
 		expect(ends.last?.date).toBe(day(3));
 		expect(endsOf([])).toEqual({ first: null, last: null });

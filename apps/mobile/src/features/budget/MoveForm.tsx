@@ -6,19 +6,14 @@ import { useTheme } from "@/theme";
 import { Picker } from "@/ui/Picker";
 import { Segmented } from "@/ui/Segmented";
 import { minorOf, readAmount } from "./amount";
-import { type MoveDirection, moveRequest, type Peer } from "./bodies";
 import { BudgetChanges } from "./BudgetChanges";
+import { type MoveDirection, moveRequest, type Peer } from "./bodies";
 import { AmountField, Note, useAmountLocale } from "./parts";
 import { changesAnything, previewRows } from "./preview";
 import { envelopesOf } from "./source";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
 import { useUndoToast } from "./useUndoToast";
-import {
-	type FormProps,
-	noSession,
-	useApi,
-	WriteFrame,
-} from "./WriteFrame";
+import { type FormProps, noSession, useApi, WriteFrame } from "./WriteFrame";
 
 const POOL = "pool";
 
@@ -28,7 +23,13 @@ const POOL = "pool";
  * other move is a move (the same split as the web). Previewed, then undone
  * from the toast.
  */
-export function MoveForm({ data, envelope, month, onDone, onClose }: FormProps) {
+export function MoveForm({
+	data,
+	envelope,
+	month,
+	onDone,
+	onClose,
+}: FormProps) {
 	const t = useTranslations("mobile.budget.move");
 	const tb = useTranslations("mobile.budget");
 	const api = useApi();
@@ -131,7 +132,11 @@ export function MoveForm({ data, envelope, month, onDone, onClose }: FormProps) 
 		<WriteFrame
 			busy={flow.committing}
 			changes={
-				<BudgetChanges data={data} preview={flow.preview} status={flow.status} />
+				<BudgetChanges
+					data={data}
+					preview={flow.preview}
+					status={flow.status}
+				/>
 			}
 			failed={flow.commitFailed}
 			onSubmit={submit}

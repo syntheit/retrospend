@@ -10,10 +10,10 @@ import { AssignForm } from "./AssignForm";
 import { CoverForm } from "./CoverForm";
 import { LimitForm } from "./LimitForm";
 import { MoveForm } from "./MoveForm";
+import type { MonthKind } from "./months";
 import { Line, Note } from "./parts";
 import { envelopeActions, isLimits, statusLine } from "./rows";
 import type { BudgetEnvelope, BudgetMonth } from "./source";
-import type { MonthKind } from "./months";
 
 export type EnvelopeMode = "overview" | "assign" | "move" | "cover" | "limit";
 
@@ -66,7 +66,10 @@ export function EnvelopeSheet({
 	const form = (child: (e: BudgetEnvelope) => React.ReactNode) =>
 		envelope ? (
 			<View style={{ gap: space[3] }}>
-				<LinkButton label={t("back")} onPress={() => setMode("overview")} />
+				{/* The link pads itself to a row's gutter; the sheet already has one. */}
+				<View style={{ alignItems: "flex-start", marginLeft: -space[4] }}>
+					<LinkButton label={t("back")} onPress={() => setMode("overview")} />
+				</View>
 				{child(envelope)}
 			</View>
 		) : null;
@@ -105,16 +108,14 @@ export function EnvelopeSheet({
 								value={money(envelope.assigned)}
 							/>
 							<Line label={t("spent")} value={money(envelope.spent)} />
-							<Line
-								emphasis
-								label={t("left")}
-								value={money(envelope.left)}
-							/>
+							<Line emphasis label={t("left")} value={money(envelope.left)} />
 						</View>
 						{status ? (
 							<Note tone={status.kind === "over" ? "attention" : "plain"}>
 								{status.kind === "over"
-									? tb("row.over", { amount: money(status.amount, { sign: "never" }) })
+									? tb("row.over", {
+											amount: money(status.amount, { sign: "never" }),
+										})
 									: status.kind === "needs"
 										? tb("row.needs", { amount: money(status.amount) })
 										: status.kind === "funded"

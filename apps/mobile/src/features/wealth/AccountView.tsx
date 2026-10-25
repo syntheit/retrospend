@@ -3,11 +3,16 @@ import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
-import { LinkButton, ListRow, SectionHeader, StaleNote } from "@/features/read/parts";
+import { ENTITY_CACHE_LIMIT } from "@/features/read/loadCached";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
+import {
+	LinkButton,
+	ListRow,
+	SectionHeader,
+	StaleNote,
+} from "@/features/read/parts";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { ENTITY_CACHE_LIMIT } from "@/features/read/loadCached";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
@@ -15,8 +20,8 @@ import { Screen } from "@/ui/Screen";
 import { isLiability } from "./accounts";
 import {
 	ACCOUNT_CACHE_PREFIX,
-	accountCache,
 	type AccountLeg,
+	accountCache,
 	fetchAccount,
 } from "./source";
 import { UpdateBalanceSheet } from "./UpdateBalanceSheet";
@@ -93,7 +98,8 @@ export function AccountView({ id }: { id: string }) {
 	const closed = account.closedAt !== null;
 	const liability = isLiability(account.type);
 	const foreign =
-		account.value !== null && account.value.currency !== account.balance.currency;
+		account.value !== null &&
+		account.value.currency !== account.balance.currency;
 	const updated = format.dateTime(new Date(account.updatedAt), {
 		dateStyle: "medium",
 	});
@@ -121,14 +127,21 @@ export function AccountView({ id }: { id: string }) {
 						].join(" · ")}
 					</Text>
 					{account.value === null ? (
-						<Text style={{ color: color.attentionText, fontSize: type.small.size }}>
+						<Text
+							style={{ color: color.attentionText, fontSize: type.small.size }}
+						>
 							{t("noRate", { currency: account.balance.currency })}
 						</Text>
 					) : null}
 				</View>
 				{closed ? null : (
-					<View style={{ alignItems: "flex-start", paddingHorizontal: space[4] }}>
-						<Button label={t("update.title")} onPress={() => setUpdating(true)} />
+					<View
+						style={{ alignItems: "flex-start", paddingHorizontal: space[4] }}
+					>
+						<Button
+							label={t("update.title")}
+							onPress={() => setUpdating(true)}
+						/>
 					</View>
 				)}
 				<SectionHeader title={t("history")} />

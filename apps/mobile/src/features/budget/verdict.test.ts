@@ -1,5 +1,6 @@
 import type { Verdict } from "./source";
 import {
+	joinNames,
 	verdictActionKey,
 	verdictIsOver,
 	verdictLabel,
@@ -13,7 +14,11 @@ function verdict(over: Partial<Verdict> = {}): Verdict {
 	return {
 		style: "FLEX",
 		month: 202610,
-		lead: { kind: "LEFT_TO_SPEND", figureId: "budget.leftToSpend", amount: ars(500000) },
+		lead: {
+			kind: "LEFT_TO_SPEND",
+			figureId: "budget.leftToSpend",
+			amount: ars(500000),
+		},
 		state: "ON_TRACK",
 		perDay: ars(20000),
 		daysLeft: 6,
@@ -57,8 +62,10 @@ describe("verdict label", () => {
 			"label.limits",
 		);
 		expect(
-			verdictLabel(verdict({ ...lead("LEFT_IN_LIMITS"), state: "OVER_BUDGET" }), false)
-				.key,
+			verdictLabel(
+				verdict({ ...lead("LEFT_IN_LIMITS"), state: "OVER_BUDGET" }),
+				false,
+			).key,
 		).toBe("label.overLimits");
 	});
 });
@@ -93,13 +100,15 @@ describe("verdict sentence", () => {
 	});
 
 	it("Limits has its own sentences", () => {
-		const limits = { lead: { kind: "LEFT_IN_LIMITS" as const, figureId: "x", amount: ars(1) } };
+		const limits = {
+			lead: { kind: "LEFT_IN_LIMITS" as const, figureId: "x", amount: ars(1) },
+		};
 		expect(verdictSentence(verdict({ ...limits, state: "USED_UP" })).key).toBe(
 			"limitsUsedUp",
 		);
-		expect(verdictSentence(verdict({ ...limits, state: "SOME_OVER" })).key).toBe(
-			"limitsSomeOver",
-		);
+		expect(
+			verdictSentence(verdict({ ...limits, state: "SOME_OVER" })).key,
+		).toBe("limitsSomeOver");
 	});
 
 	it("lists the envelopes that went over by id, in the server's order", () => {
@@ -124,6 +133,16 @@ describe("verdict sentence", () => {
 			key: "weekLeft",
 			values: { resets: { kind: "date", iso: "2026-10-26" } },
 		});
+	});
+});
+
+describe("joining names", () => {
+	it("uses the catalog's and between the last two", () => {
+		const and = (head: string, last: string) => `${head} and ${last}`;
+		expect(joinNames([], and)).toBe("");
+		expect(joinNames(["Cafe"], and)).toBe("Cafe");
+		expect(joinNames(["Cafe", "Transport"], and)).toBe("Cafe and Transport");
+		expect(joinNames(["A", "B", "C"], and)).toBe("A, B and C");
 	});
 });
 

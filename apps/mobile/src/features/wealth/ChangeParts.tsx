@@ -20,7 +20,11 @@ const ORDER = [
  * Why net worth moved: the server's parts, which add up to the total to the
  * minor unit. Parts that are zero stay out; each is signed.
  */
-export function ChangeParts({ change }: { change: NonNullable<NetWorth["change"]> }) {
+export function ChangeParts({
+	change,
+}: {
+	change: NonNullable<NetWorth["change"]>;
+}) {
 	const t = useTranslations("mobile.wealth");
 	const money = useMoneyText();
 	const { space } = useTheme();
@@ -28,9 +32,7 @@ export function ChangeParts({ change }: { change: NonNullable<NetWorth["change"]
 	if (rows.length === 0) return null;
 	return (
 		<View>
-			<SectionHeader
-				title={t("whyTitle", { days: change.days })}
-			/>
+			<SectionHeader title={t("whyTitle", { days: change.days })} />
 			<View style={{ paddingHorizontal: space[4] }}>
 				{rows.map((part) => (
 					<Line

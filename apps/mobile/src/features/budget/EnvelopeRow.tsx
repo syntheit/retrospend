@@ -26,7 +26,10 @@ export function useStatusText() {
 					attention: true,
 				};
 			case "needs":
-				return { text: t("needs", { amount: money(line.amount) }), attention: false };
+				return {
+					text: t("needs", { amount: money(line.amount) }),
+					attention: false,
+				};
 			case "funded":
 				return { text: t("funded"), attention: false };
 			case "noRate":
@@ -45,12 +48,10 @@ export function useStatusText() {
  */
 export function EnvelopeRow({
 	envelope,
-	style,
 	wide,
 	onPress,
 }: {
 	envelope: BudgetEnvelope;
-	style: BudgetStyle;
 	wide: boolean;
 	onPress: () => void;
 }) {

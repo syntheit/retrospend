@@ -19,6 +19,17 @@ export interface VerdictLine {
 	values: Record<string, VerdictValue>;
 }
 
+/** "A", "A and B", "A, B and C": the language's own "and" comes from the catalog. */
+export function joinNames(
+	names: string[],
+	and: (head: string, last: string) => string,
+): string {
+	const last = names[names.length - 1];
+	if (last === undefined) return "";
+	if (names.length === 1) return last;
+	return and(names.slice(0, -1).join(", "), last);
+}
+
 export type VerdictAction = NonNullable<Verdict["action"]>;
 
 const money = (m: Money): VerdictValue => ({ kind: "money", money: m });
@@ -82,7 +93,10 @@ export function verdictSentence(v: Verdict): VerdictLine {
 				values: { amount: unsigned(v.billsShort) },
 			};
 		case "USED_UP":
-			return { key: limits ? "limitsUsedUp" : "usedUp", values: { month, next } };
+			return {
+				key: limits ? "limitsUsedUp" : "usedUp",
+				values: { month, next },
+			};
 		case "FASTER_THAN_PLANNED":
 			return { key: limits ? "limitsFaster" : "faster", values: { amount } };
 		case "SOME_OVER":
@@ -121,7 +135,9 @@ export function verdictActionKey(
 	action: VerdictAction,
 	limits: boolean,
 ): string {
-	return limits && action === "COVER" ? "action.raiseLimit" : `action.${action}`;
+	return limits && action === "COVER"
+		? "action.raiseLimit"
+		: `action.${action}`;
 }
 
 /** The sheet a verdict button opens on this phone. */

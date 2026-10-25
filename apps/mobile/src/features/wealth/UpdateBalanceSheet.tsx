@@ -47,7 +47,8 @@ export function UpdateBalanceSheet({
 	const entered = readAmount(draft, locale, currency);
 	// Zero is a real balance: an empty account, a paid-off card.
 	const minor = minorOf(entered, true);
-	const bodyKey = minor === null ? null : JSON.stringify({ minor, id: account.id });
+	const bodyKey =
+		minor === null ? null : JSON.stringify({ minor, id: account.id });
 	const { idFor, reset } = useWriteIds(bodyKey);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening starts empty and fresh
 	useEffect(() => {
@@ -131,11 +132,7 @@ export function UpdateBalanceSheet({
 							<Note>{t("same")}</Note>
 						) : (
 							<>
-								<ChangeList
-									changes={changes}
-									stays={[]}
-									status={flow.status}
-								/>
+								<ChangeList changes={changes} status={flow.status} stays={[]} />
 								{rows?.notLogged ? <Note>{t("notLoggedHint")}</Note> : null}
 							</>
 						)
@@ -145,7 +142,9 @@ export function UpdateBalanceSheet({
 					ready={flow.status === "ready" && !same}
 					submitLabel={t("submit")}
 				>
-					<Note>{t("now", { name: account.name, amount: money(account.balance) })}</Note>
+					<Note>
+						{t("now", { name: account.name, amount: money(account.balance) })}
+					</Note>
 					<AmountField
 						allowZero
 						currency={currency}

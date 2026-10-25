@@ -1,8 +1,8 @@
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { type ChangeRow, ChangeList } from "./parts";
+import { ChangeList, type ChangeRow } from "./parts";
 import { previewRows } from "./preview";
-import { envelopeById, type BudgetMonth, type BudgetPreview } from "./source";
+import { type BudgetMonth, type BudgetPreview, envelopeById } from "./source";
 import type { PreviewStatus } from "./useMoneyWrite";
 
 /**
@@ -42,7 +42,8 @@ export function BudgetChanges({
 				spoken: `${label}, ${value}`,
 			});
 		}
-		if (rows.pool) {
+		// A Limits book has no pool on screen, so its movement is not a line either.
+		if (rows.pool && data.book.style !== "LIMITS") {
 			const label = t(`pool.${data.toAssign.poolName}`);
 			const value = pairText(
 				rows.pool.before ? money(rows.pool.before) : none,

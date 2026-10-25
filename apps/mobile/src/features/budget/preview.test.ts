@@ -72,7 +72,9 @@ describe("budget preview rows", () => {
 			detail: { kind: "envelope.usePlan", result: { batchId: "b", lines: [] } },
 		} as unknown as BudgetPreview;
 		expect(previewRows(plain).envelopes).toEqual([]);
-		expect(previewRows({ ...plain, detail: undefined } as BudgetPreview).envelopes).toEqual([]);
+		expect(
+			previewRows({ ...plain, detail: undefined } as BudgetPreview).envelopes,
+		).toEqual([]);
 	});
 
 	it("says whether the write would do anything", () => {
