@@ -67,7 +67,8 @@ export async function deleteOwnAccount(
 		TRIES.limit,
 		TRIES.windowMs,
 	);
-	if (!tries.allowed) throw new DeleteTriesExceededError(tries.retryAfterSeconds);
+	if (!tries.allowed)
+		throw new DeleteTriesExceededError(tries.retryAfterSeconds);
 
 	const credentialAccount = await db.account.findFirst({
 		where: { userId: user.id, providerId: "credential" },

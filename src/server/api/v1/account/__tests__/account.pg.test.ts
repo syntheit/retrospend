@@ -9,7 +9,12 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { auth } from "~/server/better-auth";
 import { ONLY_ADMIN_MESSAGE } from "~/server/services/account-deletion.service";
 import { deleteFile } from "~/server/storage";
-import { arsUser, ref, seedProject, seedShare } from "../../__tests__/g3-fixtures";
+import {
+	arsUser,
+	ref,
+	seedProject,
+	seedShare,
+} from "../../__tests__/g3-fixtures";
 import {
 	adminDb,
 	apiKeyFor,
@@ -144,7 +149,10 @@ describe("/api/v1/me/deletion", () => {
 	it("refuses an account with no password to confirm with", async () => {
 		const social = await arsUser();
 		await expectProblem(
-			await del({ ...ip(), ...(await asMobile(social.user.id)) }, { password: PASSWORD }),
+			await del(
+				{ ...ip(), ...(await asMobile(social.user.id)) },
+				{ password: PASSWORD },
+			),
 			400,
 			"bad_request",
 		);
@@ -198,10 +206,7 @@ describe("/api/v1/me/deletion", () => {
 		const admin = await passwordUser("ADMIN");
 		const other = await passwordUser("ADMIN");
 		const headers = { ...ip(), ...(await asMobile(admin)) };
-		await expectBody(
-			await del(headers, { password: PASSWORD }),
-			a.delete,
-		);
+		await expectBody(await del(headers, { password: PASSWORD }), a.delete);
 		expect(await exists(admin)).toBe(false);
 		expect(await exists(other)).toBe(true);
 	});
@@ -276,10 +281,7 @@ describe("/api/v1/me/deletion", () => {
 		);
 
 		const headers = { ...ip(), ...(await asMobile(id)) };
-		await expectBody(
-			await del(headers, { password: PASSWORD }),
-			a.delete,
-		);
+		await expectBody(await del(headers, { password: PASSWORD }), a.delete);
 
 		expect(await exists(id)).toBe(false);
 		expect(vi.mocked(deleteFile)).toHaveBeenCalledWith(`avatars/${id}.webp`);
