@@ -69,6 +69,8 @@ export type TransactionVM = {
 	reviewed: boolean;
 	/** A shared expense waiting on you, or one you rejected. */
 	waiting?: "review" | "rejected";
+	/** Hidden from reports: listed, but left out of every total. */
+	notCounted?: boolean;
 	/** A payment that the other side has not confirmed yet. */
 	pending?: boolean;
 	/** The project, with its cover (photo or illustrated scene) when it has one. */

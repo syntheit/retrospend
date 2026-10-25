@@ -1107,7 +1107,7 @@
 		"src/components/expense-form.tsx": 326,
 		"src/components/expense/form-sections/CategoryChipSelector.tsx": 87,
 		"src/components/expense/form-sections/CurrencyAmountInput.tsx": 573,
-		"src/components/expense/form-sections/SharedExpenseSection.tsx": 560,
+		"src/components/expense/form-sections/SharedExpenseSection.tsx": 559,
 		"src/components/favorite-currency-cards.tsx": 124,
 		"src/components/notification-bell.tsx": 227,
 		"src/components/people/people-timeline-columns.tsx": 206,

@@ -53,7 +53,7 @@
 		"spreadOne": "Einmalig",
 		"spreadMonths": "{count} Monate",
 		"exclude": "Von Ausgaben ausschließen",
-		"excludeTip": "Sie bleibt in Aktivität, zählt aber nicht in Budgets, Kategorien oder Ausgabentrends.",
+		"excludeTip": "Sie bleibt in Aktivität und im Budget, fehlt aber in Berichten und Insights.",
 		"excludeAuto": "Automatisch ausgeschlossen, laut Kategorie",
 		"note": "Notiz",
 		"notePlaceholder": "Weitere Details",

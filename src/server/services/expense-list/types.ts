@@ -97,6 +97,12 @@ export type ActivityRowDTO = {
 	/** Home minor units for the amount column's sort; null without a rate. */
 	sortKey: number | null;
 	waiting?: "review" | "rejected";
+	/**
+	 * Set on an expense or refund hidden from reports: the list shows it, the
+	 * footer and day totals leave it out, so the row says so (a rejected share
+	 * says Rejected through `waiting`).
+	 */
+	notCounted?: boolean;
 	pending?: boolean;
 	project: { id: string; name: string } | null;
 	people?: PersonDTO[];

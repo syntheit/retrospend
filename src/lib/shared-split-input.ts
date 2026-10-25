@@ -104,20 +104,6 @@ function percentagesUntouched(
 	return typed.every((t, i) => t === undefined || Math.round(t * 100) === start[i]);
 }
 
-/**
- * resolveSplits for what the form sends, so a preview shows what Save stores:
- * a Percentage tab left at its starting values is the even split.
- */
-export function resolveSentSplits(
-	args: Parameters<typeof resolveSplits>[0],
-): ReturnType<typeof resolveSplits> {
-	const typed = args.participants.map((p) => p.sharePercentage);
-	const untouched =
-		args.mode === "PERCENTAGE" &&
-		percentagesUntouched(typed, defaultHundredths(typed.length));
-	return resolveSplits({ ...args, mode: untouched ? "EQUAL" : args.mode });
-}
-
 /** The rows and mode to send. */
 export function buildSplitInput(s: SplitState): {
 	splitWith: SplitRow[];
@@ -145,4 +131,21 @@ export function buildSplitInput(s: SplitState): {
 		return p;
 	});
 	return { splitWith: rows, splitMode: s.mode };
+}
+
+/**
+ * The split's amounts as Save stores them: the rows and mode buildSplitInput
+ * sends, resolved by the same resolveSplits the server runs. A preview calls
+ * this so an unset percentage reads as the tab's starting value, not 0.
+ * Throws SplitComputationError while the inputs do not add up.
+ */
+export function resolveSentSplit(s: SplitState, currency: string) {
+	const { splitWith, splitMode } = buildSplitInput(s);
+	return resolveSplits({
+		mode: splitMode,
+		amount: s.amount,
+		currency,
+		participants: splitWith,
+		paidBy: s.paidBy,
+	});
 }

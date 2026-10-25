@@ -16,7 +16,8 @@
 		"notOnRetrospend": "Pas sur Retrospend",
 		"upcoming": "À venir",
 		"noRate": "Pas encore de taux",
-		"rejected": "Refusé"
+		"rejected": "Refusé",
+		"notCounted": "Non compté"
 	},
 	"balance": {
 		"owesYou": "vous doit",

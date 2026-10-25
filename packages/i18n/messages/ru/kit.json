@@ -16,7 +16,8 @@
 		"notOnRetrospend": "Не в Retrospend",
 		"upcoming": "Предстоит",
 		"noRate": "Курса пока нет",
-		"rejected": "Отклонено"
+		"rejected": "Отклонено",
+		"notCounted": "Не учитывается"
 	},
 	"balance": {
 		"owesYou": "должен вам",

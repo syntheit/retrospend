@@ -76,17 +76,22 @@ async function personalRows(db: Db, ids: string[], c: ShapeContext) {
 				: homeFromUSD(Number(e.amountInUSD), c.rates);
 		const named =
 			foreign && e.rateType !== null && e.rateType !== c.defaultRateType;
+		const kind = personalKind(e);
 		return {
 			id: e.id,
 			source: "personal",
 			entityId: e.id,
-			kind: personalKind(e),
+			kind,
 			title: e.title,
 			category: categoryRef(e.category),
 			amount,
 			...homeField(e.currency, home, c.rates),
 			...(named && e.rateType ? { rateType: e.rateType } : {}),
 			sortKey: home?.minor ?? null,
+			// Money in and transfers add nothing to a total either way.
+			...(e.excludeFromAnalytics && (kind === "expense" || kind === "refund")
+				? { notCounted: true }
+				: {}),
 			project: null,
 			date: dayKey(e.date, c.timeZone),
 			mine: true,
