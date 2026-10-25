@@ -19,8 +19,7 @@
 	"type": {
 		"label": "What to import",
 		"expenses": "Expenses",
-		"accounts": "Accounts",
-		"budgets": "Budgets"
+		"accounts": "Accounts"
 	},
 	"drop": {
 		"label": "File to import",

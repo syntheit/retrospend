@@ -3,7 +3,7 @@
 import { SearchX } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { Section } from "~/components/layout/section";
 import { Toolbar } from "~/components/layout/toolbar";
 import { useRowDates } from "~/components/rows/dates";
@@ -42,7 +42,7 @@ export function Ledger({
 }) {
 	const t = useTranslations("personPage.ledger");
 	const { month } = useRowDates();
-	const { openSharedExpense } = useExpenseModal();
+	const { openSharedExpense } = useEntryActions();
 	const items = useMemo(
 		() => ledgerItems(page.rows, page.payments),
 		[page.rows, page.payments],

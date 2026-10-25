@@ -3,7 +3,7 @@
 import { Plus, Receipt } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { Section } from "~/components/layout/section";
 import { RowList } from "~/components/rows/row";
 import { TransactionRow } from "~/components/rows/transaction-row";
@@ -39,7 +39,7 @@ export function RecentSection({
 	const t = useTranslations("homePage.recent");
 	const row = useTranslations("activity.row");
 	const types = useTranslations("activity.rateTypes");
-	const modal = useExpenseModal();
+	const modal = useEntryActions();
 	const { handlersFor, open } = useRowActions(rows ?? []);
 	const has = !!rows?.length;
 

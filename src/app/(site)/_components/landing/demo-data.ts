@@ -1,9 +1,7 @@
 import type { CategorySegment } from "~/app/(dashboard)/_components/category-donut-legend";
 import type { Asset } from "~/components/wealth/wealth-table-columns";
 import { AssetType } from "~/lib/db-enums";
-import type { RouterOutputs } from "~/trpc/react";
-
-type DemoActivityItem = RouterOutputs["dashboard"]["getRecentActivity"][number];
+import type { ActivityItem as DemoActivityItem } from "~/app/(dashboard)/_components/activity-item";
 
 // -- StatCards --
 export const DEMO_STAT_CARDS = {

@@ -3,7 +3,7 @@
 import { Banknote, Bell, Plus, Receipt } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { PageFrame } from "~/components/layout/page-frame";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
@@ -33,7 +33,7 @@ export function PersonScreen({
 }) {
 	const t = useTranslations("personPage");
 	const toast = useToast();
-	const { openNewExpense } = useExpenseModal();
+	const { openNewExpense } = useEntryActions();
 	const [filters, setFilters] = useState<LedgerFilters>(NO_LEDGER_FILTERS);
 	const [settling, setSettling] = useState(false);
 	const remind = api.settlement.requestPayment.useMutation();

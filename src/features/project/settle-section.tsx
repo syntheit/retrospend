@@ -2,16 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { PersonTarget } from "~/components/actions/registry";
 import { Section } from "~/components/layout/section";
 import { Money } from "~/components/money/money";
 import { PersonRow } from "~/components/rows/person-row";
 import { Row, RowList, RowSub } from "~/components/rows/row";
-import { SettleUpDialog } from "~/components/settle-up-dialog";
 import { FaceStack } from "~/components/ui/avatar-face";
 import { Button } from "~/components/ui/button";
+import { SettleSheet } from "~/features/settle/settle-sheet";
 import {
 	figureFor,
 	lineIn,
@@ -123,8 +123,8 @@ function YouAndEach({
 /**
  * Settle up, below the spending (owner, Summary tab 2026-08-04): who pays
  * whom for the whole group, then you and each person with your balance in
- * this project. A row's menu settles with them (today's settle dialog until
- * 4D's sheet). Settle all records every one of your lines at once. Viewers
+ * this project. A row's menu settles with them (the Settle up sheet, scoped to
+ * this project). Settle all records every one of your lines at once. Viewers
  * see the balances and record nothing.
  */
 export function SettleSection({
@@ -140,6 +140,19 @@ export function SettleSection({
 }) {
 	const t = useTranslations("projectV2.summary");
 	const [settling, setSettling] = useState<Member | null>(null);
+	const identity = useMemo(
+		() =>
+			settling && {
+				key: settling.id,
+				type: settling.participantType,
+				id: settling.participantId,
+				name: settling.name,
+				username: null,
+				imageUrl: settling.imageUrl,
+				onRetrospend: settling.onRetrospend,
+			},
+		[settling],
+	);
 	const canRecord = view.myRole !== "VIEWER" && view.myRole != null;
 	const open =
 		canRecord && view.members.some((m) => !m.isMe && m.withMe.length > 0);
@@ -158,17 +171,11 @@ export function SettleSection({
 				) : null}
 			</div>
 			<YouAndEach canRecord={canRecord} onSettle={setSettling} view={view} />
-			{settling ? (
-				<SettleUpDialog
-					onClose={() => setSettling(null)}
-					open
-					participantId={settling.participantId}
-					participantType={settling.participantType}
-					personAvatarUrl={settling.imageUrl}
-					personName={settling.name}
-					projectId={view.id}
-				/>
-			) : null}
+			<SettleSheet
+				onClose={() => setSettling(null)}
+				person={identity}
+				scope={view.id}
+			/>
 		</Section>
 	);
 }

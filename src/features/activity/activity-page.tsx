@@ -11,7 +11,7 @@ import {
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Money } from "~/components/money/money";
@@ -63,7 +63,7 @@ export function ActivityPage() {
 	const t = useTranslations("activity");
 	const a = useActivity();
 	const actions = useRowActions(a.rows);
-	const modal = useExpenseModal();
+	const modal = useEntryActions();
 	// Saves elsewhere (today's expense modal, shared expense actions) refresh
 	// this list through the router invalidation map (src/lib/query-invalidation).
 	const [compare, setCompare] = useState(false);

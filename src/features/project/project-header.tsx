@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { ActionMenu } from "~/components/actions/action-menu";
 import type { ProjectTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { BackButton } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useProjectDates } from "~/components/rows/project-row";
@@ -49,7 +49,7 @@ export function ProjectHeader({
 	const t = useTranslations("projectV2");
 	const nav = useTranslations("shell.nav");
 	const sub = useProjectSub(view);
-	const { openNewExpense } = useExpenseModal();
+	const { openNewExpense } = useEntryActions();
 	const archived = view.status === "ARCHIVED";
 	const add = () =>
 		openNewExpense({

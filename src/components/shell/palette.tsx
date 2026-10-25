@@ -13,7 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { Money } from "~/components/money/money";
 import { ProjectVisual } from "~/components/project/project-visual";
 import { useRecurringModal } from "~/components/recurring-modal-provider";
@@ -88,7 +88,7 @@ function RecentGroup({
 	run: (fn: () => void) => () => void;
 }) {
 	const t = useTranslations("shell.palette");
-	const { openExpense } = useExpenseModal();
+	const { openExpense } = useEntryActions();
 	const projects = usePinnedProjects().slice(0, RECENT_PROJECTS);
 	const { data: expenses = [] } = api.expense.listFinalized.useQuery(
 		{ limit: RECENT_EXPENSES },

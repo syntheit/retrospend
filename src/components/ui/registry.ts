@@ -40,12 +40,6 @@ export const REGISTRY: Primitive[] = [
 		job: "Expand and collapse sections of long reference content (docs, FAQ)",
 	},
 	{
-		file: "alert",
-		status: "legacy",
-		job: "Old bordered alert on today's pages; new code uses notice",
-		use: "notice",
-	},
-	{
 		file: "alert-dialog",
 		status: "internal",
 		job: "Radix building block of ConfirmationDialog",
@@ -63,20 +57,9 @@ export const REGISTRY: Primitive[] = [
 		job: "Face: one person's picture or initials on their avatar color (mod 8, sizes 22 to 48); FaceStack: a set of people, payer first, spreads on hover, +N (R20)",
 	},
 	{
-		file: "avatar-stack",
-		status: "legacy",
-		job: "Old faces stack on today's split rows; new code uses FaceStack from avatar-face",
-		use: "avatar-face (FaceStack)",
-	},
-	{
 		file: "badge",
 		status: "core",
 		job: "A status kind from the one status map as a pill (`status` prop, R5). Never decoration, never a count, never around money",
-	},
-	{
-		file: "BrandIcon",
-		status: "core",
-		job: "Third-party brand mark (payment apps, banks)",
 	},
 	{
 		file: "breadcrumb",
@@ -161,12 +144,6 @@ export const REGISTRY: Primitive[] = [
 		use: "sheet (Sheet) or confirmation-dialog",
 	},
 	{
-		file: "drawer",
-		status: "internal",
-		job: "Vaul drawer building block",
-		use: "sheet (Sheet)",
-	},
-	{
 		file: "dropdown-menu",
 		status: "core",
 		job: "Overflow menu and pickers; items come from the action registry (R8)",
@@ -243,12 +220,6 @@ export const REGISTRY: Primitive[] = [
 		status: "core",
 		plan: ["Segmented"],
 		job: "Segmented: switch views of the same data in place, 2 to 4 options (R7, R21)",
-	},
-	{
-		file: "segmented-toggle",
-		status: "legacy",
-		job: "Old pill toggle on today's pages; new code uses segmented",
-		use: "segmented",
 	},
 	{
 		file: "select",
@@ -353,11 +324,6 @@ export const REGISTRY: Primitive[] = [
 		file: "tooltip",
 		status: "core",
 		job: "Name of an icon-only control, a face or a rate (Tip); one clause",
-	},
-	{
-		file: "transaction-status-badge",
-		status: "core",
-		job: "Shared expense status word on a Badge (Confirmed, Needs review, Settled) from one map (R5)",
 	},
 	{
 		file: "unsaved-changes-dialog",
@@ -611,7 +577,7 @@ export const PLANNED: Planned[] = [
 		planRow: SHEETS,
 		target:
 			"src/features/entry/expense/expense-sheet.tsx (with Add income, Transfer and the read view in src/features/entry)",
-		use: "Open it through useEntrySheets (src/features/entry/context) or the expense modal context, which the v2 shell routes to it",
+		use: "Open it through useEntrySheets (src/features/entry/context) or useEntryActions (src/features/entry/entry-actions) for the page-level calls",
 	},
 	{
 		name: "SettleSheet",
@@ -620,7 +586,7 @@ export const PLANNED: Planned[] = [
 		replaces: "The settle-up dialog",
 		planRow: SHEETS,
 		target: "src/features/settle/settle-sheet.tsx (IMPLEMENTATION §1.2, 4D)",
-		use: "SettleSheet from src/features/settle/settle-sheet (uiV2 pages); settle-up-dialog stays on today's pages",
+		use: "SettleSheet from src/features/settle/settle-sheet",
 	},
 	{
 		name: "AssignSheet",
@@ -691,7 +657,7 @@ export const PLANNED: Planned[] = [
 	{
 		name: "Sidebar",
 		status: "built",
-		job: "Desktop and tablet sidebar: split Add, the six destinations, Tools, pinned projects, account (behind uiV2Mode)",
+		job: "Desktop and tablet sidebar: split Add, the six destinations, Tools, pinned projects, account",
 		replaces: "app-sidebar, nav-main and nav-secondary",
 		planRow: SHELL,
 		target: "src/components/shell/sidebar.tsx (items from src/lib/nav.ts)",
