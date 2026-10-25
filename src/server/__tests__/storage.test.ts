@@ -1,13 +1,25 @@
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	rmSync,
+} from "node:fs";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-const TEST_UPLOAD_DIR = join(__dirname, ".test-uploads");
+// A private directory outside the source tree: other test files scan src/, and
+// removing a shared directory under it mid-scan made them fail.
+const TEST_UPLOAD_DIR = await vi.hoisted(async () => {
+	const fs = await import("node:fs");
+	const os = await import("node:os");
+	const path = await import("node:path");
+	return fs.mkdtempSync(path.join(os.tmpdir(), "retrospend-storage-test-"));
+});
 
 vi.mock("~/env", () => ({
 	env: {
-		UPLOAD_DIR: join(__dirname, ".test-uploads"),
+		UPLOAD_DIR: TEST_UPLOAD_DIR,
 	},
 }));
 
