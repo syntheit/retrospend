@@ -47,7 +47,13 @@ export function RuleEditor({
 	const [id] = useState(newId);
 
 	const places = useMemo<Place[]>(
-		() => envelopes.map((e) => ({ value: e.id, name: e.name, amount: null })),
+		() =>
+			envelopes.map((e) => ({
+				value: e.id,
+				name: e.name,
+				identity: e,
+				amount: null,
+			})),
 		[envelopes],
 	);
 	// Hundredths of a percent are typed as a plain two-decimal number ("12.5").

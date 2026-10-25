@@ -102,6 +102,7 @@ export function PayDebtSheet({
 			...m.envelopes.map((e) => ({
 				value: e.id,
 				name: e.name,
+				identity: e,
 				amount: e.left,
 			})),
 		],

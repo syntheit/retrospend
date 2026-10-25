@@ -1,6 +1,7 @@
 "use client";
 
 import { Money } from "~/components/money/money";
+import { CategoryGlyph } from "~/components/pickers/category-picker";
 import {
 	Select,
 	SelectContent,
@@ -8,6 +9,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
+import { categoryTone } from "~/lib/category-tone";
+import type { EnvelopeInGroup } from "./use-month";
 
 type Amount = { minor: number; currency: string };
 
@@ -20,6 +23,8 @@ export type Place = {
 	name: string;
 	/** What it holds (its Left, or To assign): the server's figure. */
 	amount: Amount | null;
+	/** The envelope it is: its bare glyph leads the name (rule 8). */
+	identity?: Pick<EnvelopeInGroup, "name" | "icon" | "color">;
 	/** A word under the name: "Bill due Nov 5". */
 	note?: string;
 	/** Holds nothing to take (an Add money source with no Left). */
@@ -52,6 +57,18 @@ export function EnvelopeSelect({
 			<SelectContent>
 				{places.map((p) => (
 					<SelectItem disabled={p.disabled} key={p.value} value={p.value}>
+						{p.identity ? (
+							<span aria-hidden="true" className="inline-flex shrink-0">
+								<CategoryGlyph
+									category={{
+										id: p.value,
+										name: p.identity.name,
+										icon: p.identity.icon,
+										tone: categoryTone(p.identity.color ?? ""),
+									}}
+								/>
+							</span>
+						) : null}
 						<span className="flex min-w-0 flex-col">
 							<span className="truncate">{p.name}</span>
 							{p.note ? (

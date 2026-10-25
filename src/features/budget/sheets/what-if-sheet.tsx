@@ -75,7 +75,12 @@ export function WhatIfSheet({
 
 	const places = useMemo<Place[]>(
 		() =>
-			m.envelopes.map((e) => ({ value: e.id, name: e.name, amount: e.left })),
+			m.envelopes.map((e) => ({
+				value: e.id,
+				name: e.name,
+				identity: e,
+				amount: e.left,
+			})),
 		[m.envelopes],
 	);
 	const mine = dry.preview?.envelopes.find((e) => e.envelopeId === envelopeId);

@@ -69,7 +69,12 @@ export function ForgiveSheet({
 			},
 			...m.envelopes
 				.filter((e) => e.id !== m.data?.book.defaultEnvelopeId)
-				.map((e) => ({ value: e.id, name: e.name, amount: e.left })),
+				.map((e) => ({
+					value: e.id,
+					name: e.name,
+					identity: e,
+					amount: e.left,
+				})),
 		],
 		[m.envelopes, m.byId, m.data, t],
 	);

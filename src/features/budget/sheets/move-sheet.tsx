@@ -78,6 +78,7 @@ export function MoveSheet({
 				list.push({
 					value: e.id,
 					name: e.name,
+					identity: e,
 					amount: e.left,
 					disabled: direction === "in" && e.left.minor <= 0,
 				});
@@ -165,6 +166,7 @@ export function MoveSheet({
 								places={m.envelopes.map((e) => ({
 									value: e.id,
 									name: e.name,
+									identity: e,
 									amount: e.left,
 								}))}
 								value={picked}

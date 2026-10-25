@@ -114,6 +114,7 @@ export function FromWealthSheet({
 			...m.envelopes.map((e) => ({
 				value: e.id,
 				name: e.name,
+				identity: e,
 				amount: e.left,
 			})),
 		],

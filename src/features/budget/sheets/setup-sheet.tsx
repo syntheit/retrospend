@@ -1,54 +1,52 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useRef } from "react";
-import { Money } from "~/components/money/money";
+import { useRef, useState } from "react";
 import { MoneyInput } from "~/components/money/money-input";
-import { Row, RowList, RowSub } from "~/components/rows/row";
-import { Checkbox } from "~/components/ui/checkbox";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "~/components/ui/select";
+import { Button } from "~/components/ui/button";
 import { Sheet } from "~/components/ui/sheet";
 import { SkeletonRows } from "~/components/ui/skeleton";
+import { useToast } from "~/components/ui/toast";
 import { Field } from "~/features/entry/shared-ui";
 import { api } from "~/trpc/react";
-import { AmountCell } from "./amount-cell";
-import { FigureChanges } from "./figure-changes";
+import { SetupEnvelopesStep } from "./setup-envelopes-step";
+import { type Choice, SetupStyleStep } from "./setup-style-step";
 import type { SheetProps } from "./types";
 import { useMoneyWrite } from "./use-money-write";
 import { useMonth } from "./use-month";
-import { hasAmount, type SetupStyle, useSetup } from "./use-setup";
+import { useSetup } from "./use-setup";
 
-const STYLES: SetupStyle[] = [
-	"FLEX",
-	"EVERY_DOLLAR",
-	"SAVE_FIRST",
-	"LIMITS",
-	"FIFTY_THIRTY_TWENTY",
-	"WEEKLY",
-];
+type Step = "style" | "money" | "envelopes";
+
+/** The questions each answer asks: Track stops at the first, Limits asks for no money now. */
+function stepsOf(choice: Choice): Step[] {
+	if (choice === "TRACK") return ["style"];
+	if (choice === "LIMITS") return ["style", "envelopes"];
+	return ["style", "money", "envelopes"];
+}
 
 /**
- * Set up your budget (the first run): pick how you like to budget, say how
- * much you have now, keep or drop the proposed envelopes and change their
- * amounts. The server previews exactly what is created and Save writes it.
- * Limits asks no money now: its limits fund themselves.
+ * Set up your budget (the first run, the mockup's wizard): how do you like
+ * to budget, how much can you budget now, your envelopes, and a clear stop
+ * when the plan costs more than you have. One question a step; nothing is
+ * written until the last. The server previews exactly what is created.
  */
 function SetupForm({ open, onClose }: SheetProps) {
 	const t = useTranslations("budgetSheets.setup");
-	const ts = useTranslations("budgetSheets.style");
-	const locale = useLocale();
 	const tp = useTranslations("budgetSheets.pool");
+	const locale = useLocale();
 	const s = useSetup(locale);
+	const toast = useToast();
+	const [choice, setChoice] = useState<Choice>("FLEX");
+	const [at, setAt] = useState(0);
+	const [covered, setCovered] = useState(false);
+	const steps = stepsOf(choice);
+	const step = steps[at] ?? "style";
+	const last = at === steps.length - 1;
 	const preview = api.envelope.setupPreview.useMutation();
 	const commit = api.envelope.setup.useMutation();
 	const w = useMoneyWrite({
-		input: s.input,
+		input: choice === "TRACK" ? null : s.input,
 		preview: preview.mutateAsync,
 		commit: async (input) => {
 			// The proposal is refused once the budget exists: stop reading it first.
@@ -62,123 +60,96 @@ function SetupForm({ open, onClose }: SheetProps) {
 		},
 		toast: () => t("toast"),
 	});
+	const plan = w.dry.preview?.value.plan ?? null;
+	const stopped = !!plan && plan.short.minor > 0 && !covered;
 	const p = s.preset;
-	const groups = (p?.groups ?? []).map((g) => ({
-		g,
-		envelopes: (p?.envelopes ?? []).filter((e) => e.groupKey === g.key),
-	}));
+
+	const pick = (c: Choice) => {
+		setChoice(c);
+		setCovered(false);
+		if (c !== "TRACK") s.setStyle(c);
+	};
+	/** Continue goes to the next question; the last step writes (Track writes nothing). */
+	const go = async () => {
+		if (!last) {
+			setAt(at + 1);
+			return;
+		}
+		try {
+			if (choice !== "TRACK") await w.submit();
+		} catch {
+			toast.failed(t("failed"));
+			return;
+		}
+		onClose();
+	};
+	const ready = choice === "TRACK" || !last || (w.ready && !stopped);
 	return (
 		<Sheet
 			detent="large"
+			footer={
+				<>
+					<Button
+						kind="secondary"
+						onClick={() => (at === 0 ? onClose() : setAt(at - 1))}
+					>
+						{at === 0 ? t("cancel") : t("back")}
+					</Button>
+					<Button
+						data-sheet-submit=""
+						disabled={!ready}
+						kind="primary"
+						onClick={() => void go()}
+					>
+						{!last
+							? t("continue")
+							: choice === "TRACK"
+								? t("startTracking")
+								: stopped
+									? t("startStopped")
+									: t("start")}
+					</Button>
+				</>
+			}
 			onOpenChange={(o) => !o && onClose()}
-			onSubmit={w.submit}
 			open={open}
-			submitDisabled={!w.ready}
-			submitLabel={t("start")}
 			title={t("title")}
 			wide
 		>
 			<div className="flex flex-col gap-4 pb-4">
-				<p className="text-fg-2 text-small">{t("lead")}</p>
-				<Field label={t("style")}>
-					<Select
-						kit
-						onValueChange={(v) => s.setStyle(v as SetupStyle)}
-						value={s.style}
-					>
-						<SelectTrigger aria-label={t("style")} className="w-full">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							{STYLES.map((x) => (
-								<SelectItem key={x} value={x}>
-									{ts(`${x}.name`)}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				</Field>
-				<p className="text-fg-3 text-small">{ts(`${s.style}.sub`)}</p>
-				{!p || s.loading ? (
+				<p className="text-fg-3 text-meta">
+					{t("step", { at: at + 1, total: steps.length })}
+				</p>
+				{step === "style" ? (
+					<SetupStyleStep onChange={pick} value={choice} />
+				) : !p || s.loading ? (
 					<SkeletonRows count={4} />
+				) : step === "money" ? (
+					<div className="flex flex-col gap-4">
+						<div>
+							<h2 className="text-fg text-section">{t("moneyTitle")}</h2>
+							<p className="text-fg-2 text-small">{t("moneySub")}</p>
+						</div>
+						<Field label={t("haveNow")}>
+							<MoneyInput
+								autoFocus
+								currency={p.currency}
+								onChange={(text) => s.money.set(text)}
+								value={s.money.text}
+							/>
+						</Field>
+					</div>
 				) : (
-					<>
-						{s.style === "LIMITS" ? null : (
-							<Field label={t("haveNow")}>
-								<MoneyInput
-									currency={p.currency}
-									onChange={(text) => s.money.set(text)}
-									value={s.money.text}
-								/>
-							</Field>
+					<SetupEnvelopesStep
+						covered={covered}
+						dry={w.dry}
+						onCovered={setCovered}
+						plan={plan}
+						poolName={tp(
+							s.style === "EVERY_DOLLAR" ? "toAssign" : "notPlannedYet",
 						)}
-						{groups.map(({ g, envelopes }) => (
-							<section aria-label={s.name(g.nameKey, null)} key={g.key}>
-								<h3 className="text-fg text-small mb-1 font-semibold">
-									{s.name(g.nameKey, null)}
-								</h3>
-								<RowList variant="flat">
-									{envelopes.map((e) => (
-										<Row
-											end={
-												hasAmount(e.target) ? (
-													<AmountCell
-														currency={p.currency}
-														label={t("amountFor", {
-															name: s.name(e.nameKey, e.name),
-														})}
-														onChange={(text) => s.setText(e.key, text)}
-														value={s.texts[e.key] ?? ""}
-													/>
-												) : null
-											}
-											key={e.key}
-											lead={
-												<Checkbox
-													aria-label={t("keep", {
-														name: s.name(e.nameKey, e.name),
-													})}
-													checked={e.isDefault || !s.off.has(e.key)}
-													disabled={e.isDefault}
-													onCheckedChange={() => s.toggle(e.key)}
-												/>
-											}
-											sub={
-												e.target && !hasAmount(e.target) ? (
-													<RowSub parts={[t("followsRecurring")]} />
-												) : undefined
-											}
-											title={s.name(e.nameKey, e.name)}
-										/>
-									))}
-								</RowList>
-							</section>
-						))}
-						<FigureChanges
-							dry={w.dry}
-							own={() =>
-								s.money.minor
-									? [
-											{
-												key: "start",
-												label: t("moneyNow"),
-												value: (
-													<Money
-														value={{
-															minor: s.money.minor,
-															currency: p.currency,
-														}}
-													/>
-												),
-											},
-										]
-									: []
-							}
-							poolName={tp(
-								s.style === "EVERY_DOLLAR" ? "toAssign" : "notPlannedYet",
-							)}
-						/>
-					</>
+						s={s}
+					/>
 				)}
 			</div>
 		</Sheet>

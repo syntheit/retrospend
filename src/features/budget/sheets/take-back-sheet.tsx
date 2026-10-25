@@ -25,19 +25,19 @@ export function TakeBackSheet({ open, onClose, month }: SheetProps) {
 	const pool = usePoolName(m.data);
 	const { money, undoOf } = useBudgetWrite();
 	const [batchId] = useState(newId);
-	const short = m.data?.toAssign.amount ?? null;
+	// How much more was planned than there is: the server's figure, never a negation here.
+	const planned = m.data?.verdict.plannedTooMuch ?? null;
+	const owed = planned && planned.minor > 0 ? planned : null;
 	const input = batchId ? { batchId } : null;
 	const preview = api.envelope.fixNegativePreview.useMutation();
 	const commit = api.envelope.fixNegative.useMutation();
 	const w = useMoneyWrite({
-		input: short && short.minor < 0 ? input : null,
+		input: owed ? input : null,
 		preview: preview.mutateAsync,
 		commit: commit.mutateAsync,
 		toast: () => t("toast"),
 		undo: (_r, i) => undoOf({ batchId: i.batchId }),
 	});
-	const owed =
-		short && short.minor < 0 ? { ...short, minor: -short.minor } : null;
 	return (
 		<Sheet
 			detent="large"

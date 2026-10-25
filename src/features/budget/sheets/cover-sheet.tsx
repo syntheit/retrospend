@@ -39,36 +39,33 @@ export function CoverSheet({
 	const pool = usePoolName(m.data);
 	const { refresh, saved, undoOf, money } = useBudgetWrite();
 	const env = m.byId.get(envelopeId) ?? null;
-	const over = env && env.left.minor < 0 ? -env.left.minor : 0;
 	const currency = m.data?.book.currency ?? "";
-	const sources = api.envelope.coverSources.useQuery(
+	// What it is over by and where to start are the server's (SPEC §6.5).
+	const cover = api.envelope.coverSources.useQuery(
 		{ envelopeId, ...(m.monthKey ? { month: m.monthKey } : {}) },
 		{ enabled: m.data !== null },
 	);
-	const amount = useAmount(currency, over);
+	const sources = cover.data?.sources;
+	const amount = useAmount(currency, cover.data?.need.minor ?? null);
 	const [picked, setPicked] = useState<string | null>(null);
 	const [id] = useState(newId);
 
 	const places = useMemo<Place[]>(
 		() =>
-			(sources.data ?? []).map((s) => ({
+			(sources ?? []).map((s) => ({
 				value: s.from ?? POOL,
 				name: s.from ? (m.byId.get(s.from)?.name ?? "") : pool,
 				amount: s.available,
+				identity: s.from ? m.byId.get(s.from) : undefined,
 				note:
 					s.kind === "BILL" && s.dueDate
 						? t("billDue", { date: short(s.dueDate) })
 						: undefined,
 			})),
-		[sources.data, m.byId, pool, short, t],
+		[sources, m.byId, pool, short, t],
 	);
-	// Not a goal and not a bill by default; the first with enough, else the first.
-	const flexible = (sources.data ?? []).filter(
-		(s) => s.kind === "POOL" || s.kind === "MONTHLY",
-	);
-	const best =
-		flexible.find((s) => s.available.minor >= over) ?? flexible[0] ?? null;
-	const value = picked ?? (best ? (best.from ?? POOL) : null);
+	const suggested = cover.data?.suggested ?? null;
+	const value = picked ?? (suggested ? (suggested.from ?? POOL) : null);
 	const from = value === null || value === POOL ? null : value;
 
 	const input: CoverInput | null =
@@ -136,7 +133,7 @@ export function CoverSheet({
 							value={amount.text}
 						/>
 					</Field>
-					{sources.data && flexible.length === 0 ? (
+					{cover.data && !cover.data.suggested ? (
 						<p className="text-fg-3 text-small">{t("noFlexible")}</p>
 					) : null}
 					<MovementChanges

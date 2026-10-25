@@ -7,25 +7,26 @@ import type { RouterInputs, RouterOutputs } from "~/trpc/react";
 import { minorOf } from "./amount-cell";
 import { newId } from "./use-write";
 
-type FillLines = RouterOutputs["envelope"]["fillFromTargets"]["lines"];
+type FillTotals = RouterOutputs["envelope"]["fillFromTargets"]["totals"];
 export type AssignInput = RouterInputs["envelope"]["assign"];
 type Texts = Record<string, string>;
 
 /**
  * The amounts typed on the assign sheet, one text per envelope. They start
- * from the server's fill from targets once it arrives (unless you already
- * typed), and `items` is the write they make: only envelopes with an amount
- * above zero, each with an id of its own so a retry is a no-op. `invalid`
- * names a text that cannot be read (the dry run waits until it is fixed).
+ * from the server's fill from targets once it arrives (its total per
+ * envelope, unless you already typed), and `items` is the write they make:
+ * only envelopes with an amount above zero, each with an id of its own so a
+ * retry is a no-op. `invalid` names a text that cannot be read (the dry run
+ * waits until it is fixed).
  */
 export function useAssignDraft({
 	currency,
 	month,
-	lines,
+	totals,
 }: {
 	currency: string;
 	month: number | null;
-	lines: FillLines | undefined;
+	totals: FillTotals | undefined;
 }) {
 	const locale = useLocale();
 	const [texts, setTexts] = useState<Texts>({});
@@ -33,23 +34,25 @@ export function useAssignDraft({
 	const [batchId] = useState(newId);
 	const ids = useRef(new Map<string, string>());
 
-	const fromLines = useCallback(
-		(source: FillLines): Texts => {
-			const sums = new Map<string, number>();
-			for (const l of source)
-				sums.set(l.envelopeId, (sums.get(l.envelopeId) ?? 0) + l.amount.minor);
+	const fromTotals = useCallback(
+		(source: FillTotals): Texts => {
 			const out: Texts = {};
-			for (const [id, minor] of sums)
-				if (minor > 0) out[id] = draftFromMinor(minor, locale, currency);
+			for (const row of source)
+				if (row.amount.minor > 0)
+					out[row.envelopeId] = draftFromMinor(
+						row.amount.minor,
+						locale,
+						currency,
+					);
 			return out;
 		},
 		[locale, currency],
 	);
 
 	useEffect(() => {
-		if (typed || !lines || !currency) return;
-		setTexts(fromLines(lines));
-	}, [lines, typed, currency, fromLines]);
+		if (typed || !totals || !currency) return;
+		setTexts(fromTotals(totals));
+	}, [totals, typed, currency, fromTotals]);
 
 	const set = useCallback((envelopeId: string, text: string) => {
 		setTyped(true);

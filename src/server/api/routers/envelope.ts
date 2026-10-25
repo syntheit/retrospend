@@ -13,7 +13,7 @@ import {
 	applyOutputSchema,
 	assignInputSchema,
 	coverInputSchema,
-	coverSourceSchema,
+	coverOverviewSchema,
 	coverSourcesInputSchema,
 	fillFromTargetsInputSchema,
 	fillFromTargetsOutputSchema,
@@ -122,7 +122,7 @@ export const envelopeRouter = createTRPCRouter({
 
 	coverSources: envelopeProcedure
 		.input(coverSourcesInputSchema)
-		.output(z.array(coverSourceSchema))
+		.output(coverOverviewSchema)
 		.query(({ ctx, input }) =>
 			getCoverSources(ctx.session.user.id, input.envelopeId, input.month),
 		),

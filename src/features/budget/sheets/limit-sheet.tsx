@@ -51,7 +51,12 @@ function LimitSheet({
 		() =>
 			m.envelopes
 				.filter((e) => e.kind === "MONTHLY")
-				.map((e) => ({ value: e.id, name: e.name, amount: e.left })),
+				.map((e) => ({
+					value: e.id,
+					name: e.name,
+					identity: e,
+					amount: e.left,
+				})),
 		[m.envelopes],
 	);
 	const preview = api.envelope.setLimitPreview.useMutation();

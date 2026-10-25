@@ -36,7 +36,7 @@ export function AssignSheet({ open, onClose, month }: SheetProps) {
 	const draft = useAssignDraft({
 		currency,
 		month: m.monthKey,
-		lines: fill.data?.lines,
+		totals: fill.data?.totals,
 	});
 	const previewMutation = api.envelope.assignPreview.useMutation();
 	const commit = api.envelope.assign.useMutation();

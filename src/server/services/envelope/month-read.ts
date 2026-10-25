@@ -5,7 +5,7 @@
  * read.service.ts opens one per request for the transports.
  */
 import type {
-	CoverSource,
+	CoverOverview,
 	FillFromTargetsOutput,
 	HistoryInput,
 	HistoryOutput,
@@ -19,7 +19,7 @@ import { groupBaseFor, hasPercentGroup } from "./income-history";
 import { type LoadedBook, loadBook } from "./inputs";
 import { buildMonthView, type MonthView } from "./month-view";
 import { owedSummary } from "./owed";
-import { coverSources, fillFromTargets } from "./planning";
+import { coverOverview, fillFromTargets } from "./planning";
 import type { Minor, MonthKey } from "./types";
 import { toMinor } from "./units";
 
@@ -138,9 +138,9 @@ export async function coverSourcesIn(
 	now: Date,
 	envelopeId: string,
 	month?: MonthKey,
-): Promise<CoverSource[]> {
+): Promise<CoverOverview> {
 	const view = await requireView(tx, userId, now, month);
-	return coverSources(view.dto, envelopeId);
+	return coverOverview(view.dto, envelopeId);
 }
 
 /** Movements newest first, with whether each can still be undone (D28). */

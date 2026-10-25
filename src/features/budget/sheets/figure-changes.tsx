@@ -21,13 +21,14 @@ export type Diff = {
 		after: Amount | null;
 	}[];
 	unchanged: readonly { id: string }[];
-	unavailable: readonly { id: string }[];
+	unavailable: readonly { id: string; before?: unknown; after?: unknown }[];
 };
-
-const zero = (currency: string): Amount => ({ minor: 0, currency });
 
 /** A figure id as a translation key: "budget.leftToSpend" is "budget_leftToSpend". */
 const keyOf = (id: string) => id.replace(/\./g, "_");
+
+/** Figures only some styles have: null on both sides means not applicable here, not unknown. */
+const STYLE_ONLY = new Set(["budget.leftInLimits", "budget.leftThisWeek"]);
 
 /** Figures the sheet's own lines already name; they are not repeated. */
 const OWN = new Set(["envelope.left"]);
@@ -82,8 +83,20 @@ export function FigureChanges<P extends Diff>({
 						: label(c.id).name,
 				value: (
 					<ChangeValue
-						from={<Money figure={c.id} value={c.before ?? zero(c.currency)} />}
-						to={<Money figure={c.id} value={c.after ?? zero(c.currency)} />}
+						from={
+							c.before ? (
+								<Money figure={c.id} value={c.before} />
+							) : (
+								<span>{t("notAvailable")}</span>
+							)
+						}
+						to={
+							c.after ? (
+								<Money figure={c.id} value={c.after} />
+							) : (
+								<span>{t("notAvailable")}</span>
+							)
+						}
 					/>
 				),
 			})),
@@ -97,6 +110,12 @@ export function FigureChanges<P extends Diff>({
 					.filter((u) => !skip.has(u.id))
 					.map((u) => label(u.id).inline)}
 				unavailable={p.unavailable
+					// A figure that reads null on both sides does not apply to this book
+					// (Left in your limits outside Limits): not applicable, not unknown.
+					.filter(
+						(u) =>
+							!(STYLE_ONLY.has(u.id) && u.before == null && u.after == null),
+					)
 					.filter((u) => !skip.has(u.id))
 					.map((u) => label(u.id).inline)}
 			/>

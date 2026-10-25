@@ -489,6 +489,8 @@ export const fillFromTargetsOutputSchema = z.object({
 	month: monthKeySchema,
 	available: moneySchema,
 	lines: z.array(fillLineSchema),
+	/** Each envelope's total over its lines (the plan's and the targets'), in the order of first appearance. */
+	totals: z.array(z.object({ envelopeId: idSchema, amount: moneySchema })),
 	/** What stays Not planned yet after the lines (D-owner-2026-10-22e). */
 	rest: moneySchema,
 	/** The choices for the rest; Leave it is the default. */
@@ -502,6 +504,15 @@ export const coverSourceSchema = z.object({
 	available: moneySchema,
 	/** Bills come last with their due date ("Due Nov 5"). */
 	dueDate: isoDateSchema.nullable(),
+});
+
+/** Covering one envelope: how much it is over by, where it can come from, and where the server suggests. */
+export const coverOverviewSchema = z.object({
+	/** What the envelope is over by (0 when it is not over). */
+	need: moneySchema,
+	/** The suggested source: never a goal or a bill by default. Null = none fits. */
+	suggested: z.object({ from: idSchema.nullable() }).nullable(),
+	sources: z.array(coverSourceSchema),
 });
 
 export const movementSchema = z.object({
@@ -828,6 +839,19 @@ export const setupResultSchema = z.object({
 	openBalances: z.array(
 		z.object({ participant: participantRefSchema, amount: moneySchema }),
 	),
+	/**
+	 * What the plan costs a month against what you start with (the stop when
+	 * it costs more than you have). Null for a style that funds itself
+	 * (Limits asks for no money now).
+	 */
+	plan: z
+		.object({
+			cost: moneySchema,
+			available: moneySchema,
+			/** max(0, cost - available): what the plan costs beyond what you have. */
+			short: moneySchema,
+		})
+		.nullable(),
 });
 
 export const setShareCategoryInputSchema = z.object({
@@ -927,6 +951,7 @@ export type VerdictDto = z.infer<typeof verdictSchema>;
 export type GetMonthOutput = z.infer<typeof getMonthOutputSchema>;
 export type FillFromTargetsOutput = z.infer<typeof fillFromTargetsOutputSchema>;
 export type CoverSource = z.infer<typeof coverSourceSchema>;
+export type CoverOverview = z.infer<typeof coverOverviewSchema>;
 export type MovementDto = z.infer<typeof movementSchema>;
 export type HistoryOutput = z.infer<typeof historyOutputSchema>;
 export type MovementResult = z.infer<typeof movementResultSchema>;

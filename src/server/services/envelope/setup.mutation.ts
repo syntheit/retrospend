@@ -8,7 +8,8 @@ import type { SetupInput, SetupResult } from "~/lib/schemas/envelope";
 import type { MoneyMutation } from "../preview/types";
 import { setupBook } from "./book.service";
 import { loadBook } from "./inputs";
-import { forgetMonthViews } from "./month-read";
+import { forgetMonthViews, monthViewIn } from "./month-read";
+import { planCostIn } from "./plan-read";
 import { replaySplits } from "./splits-replay";
 import { FIGURE_LEFT_TO_SPEND, FIGURE_NOT_PLANNED_YET } from "./verdict";
 
@@ -25,6 +26,7 @@ export const setupEnvelopeBook: MoneyMutation<SetupMutationInput, SetupResult> =
 				value: {
 					bookId: made.bookId,
 					openBalances: await openBalancesAtStart(tx, actor.userId, now),
+					plan: await planAtStart(tx, actor.userId, now),
 				},
 				undo: {
 					kind: "revert",
@@ -39,6 +41,31 @@ export const setupEnvelopeBook: MoneyMutation<SetupMutationInput, SetupResult> =
 			};
 		},
 	};
+
+/**
+ * What the new plan costs a month against what the book starts with, so the
+ * setup can stop when the plan costs more than there is. A style that funds
+ * itself (Limits) has no money to compare with.
+ */
+async function planAtStart(
+	tx: Parameters<typeof loadBook>[0],
+	userId: string,
+	now: Date,
+): Promise<SetupResult["plan"]> {
+	forgetMonthViews(tx);
+	const read = await monthViewIn(tx, userId, now);
+	if (!read || read.dto.book.fundingSource === "TARGETS") return null;
+	const cost = (await planCostIn(tx, userId, {}, now)).cost;
+	const available = read.dto.toAssign.amount;
+	return {
+		cost,
+		available,
+		short: {
+			minor: Math.max(0, cost.minor - available.minor),
+			currency: cost.currency,
+		},
+	};
+}
 
 /** Balances with each person from before the start, per currency, never netted. */
 async function openBalancesAtStart(
