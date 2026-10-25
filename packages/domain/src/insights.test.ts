@@ -3,7 +3,8 @@ import {
 	addDays,
 	averageMinor,
 	daysIn,
-	monthsTouched,
+	fiscalMonthOf,
+	fiscalPeriodsTouched,
 	percentChange,
 	previousSpan,
 	savingsRatePercent,
@@ -86,9 +87,28 @@ describe("day math", () => {
 		expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
 		expect(shiftMonthStart("2026-01-20", -1)).toBe("2025-12-01");
 		expect(shiftMonthStart("2026-11-05", 3)).toBe("2027-02-01");
-		expect(monthsTouched({ from: "2026-10-24", to: "2026-11-02" })).toBe(2);
-		expect(monthsTouched({ from: "2026-01-01", to: "2026-10-24" })).toBe(10);
-		expect(monthsTouched({ from: "2025-11-30", to: "2026-01-01" })).toBe(3);
+	});
+
+	it("a fiscal month is named by the month it starts in", () => {
+		expect(fiscalMonthOf("2026-10-14", 15)).toBe("2026-09");
+		expect(fiscalMonthOf("2026-10-15", 15)).toBe("2026-10");
+		expect(fiscalMonthOf("2026-11-14", 15)).toBe("2026-10");
+		expect(fiscalMonthOf("2026-01-10", 15)).toBe("2025-12");
+		expect(fiscalMonthOf("2026-10-01", 1)).toBe("2026-10");
+	});
+
+	it("counts the fiscal periods a span touches, not calendar months", () => {
+		const day1 = (from: string, to: string) =>
+			fiscalPeriodsTouched({ from, to }, 1);
+		expect(day1("2026-10-24", "2026-11-02")).toBe(2);
+		expect(day1("2026-01-01", "2026-10-24")).toBe(10);
+		expect(day1("2025-11-30", "2026-01-01")).toBe(3);
+		// One fiscal month from the 15th spans two calendar months: still one period.
+		const mid = (from: string, to: string) =>
+			fiscalPeriodsTouched({ from, to }, 15);
+		expect(mid("2026-10-15", "2026-11-14")).toBe(1);
+		expect(mid("2026-10-15", "2026-12-14")).toBe(2);
+		expect(mid("2026-10-14", "2026-10-15")).toBe(2);
 	});
 });
 

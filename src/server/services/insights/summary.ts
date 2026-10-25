@@ -5,20 +5,17 @@
  * definition, the same rows as Activity, Home and Budget) totaled by the
  * totals rule, so the header, the total and the categories agree.
  *
- * The previous period is the whole calendar month before for a whole month,
- * else the same number of days right before it (previousSpan), in the
- * viewer's calendar days.
+ * The previous period is the fiscal period before for a fiscal period, the
+ * whole calendar month before for a whole month, else the same number of days
+ * right before it (previousPeriod), in the viewer's calendar days.
  */
-import {
-	percentChange,
-	previousSpan,
-	type Span,
-} from "@retrospend/domain/insights";
+import { percentChange, type Span } from "@retrospend/domain/insights";
 import type { FigureDb } from "~/server/figures/registry";
 import { type SpentItem, spentItems } from "~/server/services/figures/spent";
 import {
 	type InsightsContext,
 	insightsContext,
+	previousPeriod,
 	spanRate,
 	spentFilterFor,
 	type Valued,
@@ -115,7 +112,7 @@ export async function summaryIn(
 	options: { timeZone?: string; now?: Date } = {},
 ): Promise<SummaryDTO> {
 	const ctx = await insightsContext(db, userId, options);
-	const previousRange = input.compare ? previousSpan(input.range) : null;
+	const previousRange = input.compare ? previousPeriod(ctx, input.range) : null;
 	const current = await readSpan(db, ctx, input.range, input.filter);
 	const previous = previousRange
 		? await readSpan(db, ctx, previousRange, input.filter)

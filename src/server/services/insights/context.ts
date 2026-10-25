@@ -7,7 +7,7 @@
  * A figure is unavailable (null, with the currencies named) when a row
  * cannot be valued: a missing rate is never 1 (R14).
  */
-import type { Span } from "@retrospend/domain/insights";
+import { previousSpan, type Span } from "@retrospend/domain/insights";
 import {
 	type MoneyItem,
 	missingRatesIn,
@@ -16,9 +16,15 @@ import {
 } from "@retrospend/domain/money";
 import { type Money, toMinor } from "@retrospend/domain/money-minor";
 import {
+	dayKey,
 	parseDateOnlyIn,
 	startOfNextDayIn,
 } from "@retrospend/domain/time-zone";
+import {
+	getCurrentFiscalMonth,
+	getFiscalMonthRange,
+	shiftMonth,
+} from "~/lib/fiscal-month";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import type { FigureDb } from "~/server/figures/registry";
 import type { SpentFilter } from "~/server/services/figures/spent";
@@ -56,6 +62,33 @@ export async function insightsContext(
 		now: options.now ?? new Date(),
 		homeRateAt: (date) => lookup(home, date)?.rate ?? null,
 	};
+}
+
+/**
+ * What Compare to previous period compares with. A span that is exactly one
+ * of the user's fiscal periods meets the fiscal period before it, as Home's
+ * last period does (with a start day of 15, Oct 15 to Nov 14 meets Sep 15 to
+ * Oct 14). Any other span follows previousSpan.
+ */
+export function previousPeriod(ctx: InsightsContext, span: Span): Span {
+	const { zone, startDay } = ctx;
+	const label = getCurrentFiscalMonth(
+		parseDateOnlyIn(span.from, zone),
+		startDay,
+		zone,
+	);
+	const period = getFiscalMonthRange(label, startDay, zone);
+	if (
+		dayKey(period.start, zone) !== span.from ||
+		dayKey(period.end, zone) !== span.to
+	)
+		return previousSpan(span);
+	const before = getFiscalMonthRange(
+		shiftMonth(label, -1, zone),
+		startDay,
+		zone,
+	);
+	return { from: dayKey(before.start, zone), to: dayKey(before.end, zone) };
 }
 
 /** The instants a span covers in the viewer's zone: its first midnight to its last millisecond. */

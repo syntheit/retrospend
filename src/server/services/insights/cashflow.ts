@@ -6,12 +6,12 @@
  *
  * - Daily average: spending over the days elapsed, so a range that runs
  *   past today is not diluted by days that have not happened yet.
- * - Monthly average: spending over the calendar months the range touches.
+ * - Monthly average: spending over the fiscal periods the range touches.
  */
 import {
 	averageMinor,
 	daysBetween,
-	monthsTouched,
+	fiscalPeriodsTouched,
 	type Span,
 	savingsRatePercent,
 } from "@retrospend/domain/insights";
@@ -114,7 +114,7 @@ export async function cashflowIn(
 		),
 		monthlyAverage: figure(
 			INSIGHTS.monthlyAverage,
-			averageOf(read.spent, monthsTouched(input.range)),
+			averageOf(read.spent, fiscalPeriodsTouched(input.range, ctx.startDay)),
 		),
 		missingRates: read.missing,
 	};

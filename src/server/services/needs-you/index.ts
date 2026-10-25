@@ -17,10 +17,17 @@ import {
 import { isoDateIn, monthRange } from "~/server/services/envelope/months";
 import { owedPeople } from "~/server/services/envelope/owed";
 import { runPendingRules } from "~/server/services/envelope/rule.service";
+import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
+import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import type { Prisma, PrismaClient } from "~prisma";
 import { activityItems, setupItems } from "./activity";
-import { budgetItems, type CloseFacts, type MoneyInFact } from "./budget";
+import {
+	type BudgetFacts,
+	budgetItems,
+	type CloseFacts,
+	type MoneyInFact,
+} from "./budget";
 import { compareItems, countByGroup } from "./catalog";
 import { loadFaces } from "./faces";
 import { peopleItems } from "./people";
@@ -58,7 +65,7 @@ async function budgetSource(
 		startingMoneyUnconfirmed: row.startingMoneyConfirmedAt === null,
 		closes: closeFacts(view.loaded, now),
 		hiddenRows: await hiddenRowCount(tx, userId, row),
-		owed: owedPeople(owedInputOf(view.loaded)),
+		...(await agingFacts(tx, userId, view.loaded)),
 		reconcileDue:
 			row.reconciledAt !== null &&
 			isoDateIn(row.reconciledAt, row.timeZone) < view.dto.month.from,
@@ -71,6 +78,36 @@ async function budgetSource(
 			row.timeZone,
 		),
 	});
+}
+
+/**
+ * The people the budget's replay calls aging, with what each owes you in
+ * People's ledger: one batched read (computeBalanceBatch, the one behind
+ * owed.owedToYou), and none when nobody is aging.
+ */
+async function agingFacts(
+	tx: Tx,
+	userId: string,
+	loaded: LoadedBook,
+): Promise<Pick<BudgetFacts, "owed" | "balances">> {
+	const owed = owedPeople(owedInputOf(loaded));
+	const aging = owed.filter((p) => p.aging);
+	if (aging.length === 0) return { owed };
+	const me: ParticipantRef = { participantType: "user", participantId: userId };
+	const people: ParticipantRef[] = aging.map((p) => ({
+		participantType: p.participant.type,
+		participantId: p.participant.id,
+	}));
+	const rows = await computeBalanceBatch(tx, me, people);
+	return {
+		owed,
+		balances: new Map(
+			aging.map((p, i) => [
+				`${p.participant.type}:${p.participant.id}`,
+				rows[i]?.minorByCurrency ?? {},
+			]),
+		),
+	};
 }
 
 /** A summary waits this long after its close unless acknowledged (SPEC §5.14). */

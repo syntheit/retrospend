@@ -7,14 +7,14 @@
  * names one definition whatever the filter.
  *
  * - insights.spent, insights.spentPrevious: your spending this period and
- *   the one before (previousSpan), in the home currency.
+ *   the one before (previousPeriod), in the home currency.
  * - insights.byCategory [categoryId]: one category of it (0 when nothing).
  * - insights.byMonth [month]: one fiscal month ("2026-10"; this one when
  *   omitted).
  * - insights.income, insights.saved: money in this period, and money in
  *   minus spending (signed).
  * - insights.dailyAverage, insights.monthlyAverage: spending per elapsed
- *   day, and per calendar month the period touches.
+ *   day, and per fiscal period the range touches.
  * - insights.ytd, insights.ytdLastYear, insights.ytdByCategory
  *   [categoryId]: January 1 to today against the same span last year, in
  *   the home currency; the Usd twins total the same rows at their frozen
@@ -23,8 +23,7 @@
  * Each is unavailable (null, currencies named) while a rate is missing.
  */
 import {
-	monthsTouched,
-	previousSpan,
+	fiscalPeriodsTouched,
 	type Span,
 	yearToDate,
 } from "@retrospend/domain/insights";
@@ -38,7 +37,7 @@ import type {
 } from "~/server/figures/registry";
 import { FigureUnavailable } from "~/server/figures/unavailable";
 import { averageOf, daysElapsed, readCashflow, savedOf } from "./cashflow";
-import { insightsContext } from "./context";
+import { insightsContext, previousPeriod } from "./context";
 import { fiscalMonthLabel, loadMonths } from "./months";
 import { readSpan } from "./summary";
 import { INSIGHTS } from "./types";
@@ -167,7 +166,7 @@ const ytdFigure = (
 
 export const insightsFigures: FigureDefinition[] = [
 	spanFigure(INSIGHTS.spent, (v) => v.period),
-	spanFigure(INSIGHTS.spentPrevious, (v) => previousSpan(v.period)),
+	spanFigure(INSIGHTS.spentPrevious, (v) => previousPeriod(v.ctx, v.period)),
 	byCategoryFigure,
 	byMonthFigure,
 	cashflowFigure(INSIGHTS.income, (r) => r.income),
@@ -176,7 +175,7 @@ export const insightsFigures: FigureDefinition[] = [
 		averageOf(r.spent, daysElapsed(v.period, dayKey(v.ctx.now, v.ctx.zone))),
 	),
 	cashflowFigure(INSIGHTS.monthlyAverage, (r, v) =>
-		averageOf(r.spent, monthsTouched(v.period)),
+		averageOf(r.spent, fiscalPeriodsTouched(v.period, v.ctx.startDay)),
 	),
 	ytdFigure(INSIGHTS.ytd, "thisYear", "home"),
 	ytdFigure(INSIGHTS.ytdLastYear, "lastYear", "home"),
