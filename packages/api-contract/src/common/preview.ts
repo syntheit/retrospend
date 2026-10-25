@@ -42,11 +42,24 @@ export const figureUnavailableSchema = z
 	})
 	.meta({ id: "FigureUnavailable" });
 
+/**
+ * What the write would do beyond moving figures, for the writes that decide
+ * something the figures cannot say: which debts a payment pays and cancels,
+ * which payments Settle all would record. `kind` names the write
+ * (`payment.record`, `payment.confirm`, `project.settleAll`); the rest of the
+ * object is that write's own shape, documented on its route. Absent for
+ * writes whose figures say it all.
+ */
+export const previewDetailSchema = z
+	.looseObject({ kind: z.string() })
+	.meta({ id: "PreviewDetail" });
+
 export const previewResultSchema = z
 	.object({
 		changes: z.array(figureChangeSchema),
 		unchanged: z.array(figureUnchangedSchema),
 		unavailable: z.array(figureUnavailableSchema),
+		detail: previewDetailSchema.optional(),
 	})
 	.meta({ id: "PreviewResult" });
 

@@ -13,7 +13,14 @@ import {
  */
 export const UNDO_TTL_MS = 24 * 60 * 60 * 1000;
 
-export type UndoFamily = "expense" | "income" | "transfer" | "recurring";
+export type UndoFamily =
+	| "expense"
+	| "income"
+	| "transfer"
+	| "recurring"
+	| "shared"
+	| "payment"
+	| "project";
 
 type Payload = {
 	v: 1;

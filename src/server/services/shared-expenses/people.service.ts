@@ -8,6 +8,7 @@ import { type PersonSettled, settledOf } from "~/server/services/payments/ledger
 import { buildContactVisibility, redactContact } from "./contact-visibility";
 import { resolveClaimAliases } from "./identity";
 import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
+import { encodeLedgerCursor, ledgerCursorWhere, peopleOn } from "./ledger-cursor";
 import type { ParticipantRef } from "./types";
 
 type AppDb = PrismaClient;
@@ -127,6 +128,19 @@ function toDirection(
 	return "settled";
 }
 
+/** What the People list counts per person, before claimed shadows are merged in. */
+type ContactStats = {
+	participantType: ParticipantType;
+	participantId: string;
+	mostRecentDate: Date;
+	mostRecentDescription: string | null;
+	mostRecentProjectName: string | null;
+	pendingVerificationCount: number;
+	unseenChangesCount: number;
+	transactionCount: number;
+	projectIds: Set<string>;
+};
+
 export class PeopleService {
 	private currentUserRef: ParticipantRef;
 
@@ -168,6 +182,8 @@ export class PeopleService {
 			select: {
 				date: true,
 				description: true,
+				paidByType: true,
+				paidById: true,
 				project: { select: { id: true, name: true } },
 				splitParticipants: {
 					select: {
@@ -182,20 +198,7 @@ export class PeopleService {
 
 		if (transactions.length === 0) return [];
 
-		const contactStats = new Map<
-			string,
-			{
-				participantType: ParticipantType;
-				participantId: string;
-				mostRecentDate: Date;
-				mostRecentDescription: string | null;
-				mostRecentProjectName: string | null;
-				pendingVerificationCount: number;
-				unseenChangesCount: number;
-				transactionCount: number;
-				projectIds: Set<string>;
-			}
-		>();
+		const contactStats = new Map<string, ContactStats>();
 
 		for (const tx of transactions) {
 			const myEntry = tx.splitParticipants.find(
@@ -208,7 +211,7 @@ export class PeopleService {
 			const myVerificationIsPending = myEntry.verificationStatus === "PENDING";
 			const myHasUnseen = myEntry.hasUnseenChanges;
 
-			for (const sp of tx.splitParticipants) {
+			for (const sp of peopleOn(tx, tx.splitParticipants)) {
 				if (
 					sp.participantType === this.currentUserRef.participantType &&
 					sp.participantId === this.currentUserRef.participantId
@@ -685,7 +688,7 @@ export class PeopleService {
 			andClauses.push({ projectId });
 		}
 		if (cursor) {
-			andClauses.push({ date: { lt: new Date(cursor) } });
+			andClauses.push(ledgerCursorWhere(cursor));
 		}
 
 		const where: Prisma.SharedTransactionWhereInput = { AND: andClauses };
@@ -719,7 +722,7 @@ export class PeopleService {
 					},
 				},
 			},
-			orderBy: { date: "desc" },
+			orderBy: [{ date: "desc" }, { id: "desc" }],
 			take: limit + 1,
 		});
 
@@ -773,7 +776,7 @@ export class PeopleService {
 					: rawTransactions;
 			if (rawTransactions.length > limit) {
 				const lastItem = slicedTransactions[slicedTransactions.length - 1]!;
-				nextCursor = lastItem.date.toISOString();
+				nextCursor = encodeLedgerCursor(lastItem);
 			}
 
 			const transactions = await this.mapTransactions(
@@ -818,7 +821,7 @@ export class PeopleService {
 				: rawTransactions;
 		if (rawTransactions.length > limit) {
 			const lastItem = slicedTransactions[slicedTransactions.length - 1]!;
-			nextCursor = lastItem.date.toISOString();
+			nextCursor = encodeLedgerCursor(lastItem);
 		}
 
 		const transactions = await this.mapTransactions(
@@ -1237,20 +1240,7 @@ export class PeopleService {
 		T extends { participantType: ParticipantType; participantId: string },
 	>(
 		contacts: T[],
-		contactStats: Map<
-			string,
-			{
-				participantType: ParticipantType;
-				participantId: string;
-				mostRecentDate: Date;
-				mostRecentDescription: string | null;
-				mostRecentProjectName: string | null;
-				pendingVerificationCount: number;
-				unseenChangesCount: number;
-				transactionCount: number;
-				projectIds: Set<string>;
-			}
-		>,
+		contactStats: Map<string, ContactStats>,
 	): Promise<T[]> {
 		const { canonicalKey } = await resolveClaimAliases(this.db, contacts);
 

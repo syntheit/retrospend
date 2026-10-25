@@ -194,6 +194,29 @@ export interface DeleteSharedInput extends Deferred {
 	readonly retract?: boolean;
 }
 
+/**
+ * A retraction takes back what an add told people, so it is only for an add
+ * nobody has answered. Once someone accepted or rejected their share, the
+ * split is theirs too and the undo must not delete it silently: they delete
+ * it the ordinary way, which asks to confirm.
+ */
+async function assertNobodyAnswered(tx: Tx, id: string, userId: string) {
+	const answered = await tx.splitParticipant.count({
+		where: {
+			transactionId: id,
+			verificationStatus: { in: ["ACCEPTED", "REJECTED"] },
+			NOT: { participantType: "user", participantId: userId },
+		},
+	});
+	if (answered > 0) {
+		throw new TRPCError({
+			code: "CONFLICT",
+			message:
+				"Someone already answered this expense, so it cannot be taken back. Delete it instead.",
+		});
+	}
+}
+
 export const deleteSharedExpense: MoneyMutation<
 	DeleteSharedInput,
 	{ id: string }
@@ -201,6 +224,7 @@ export const deleteSharedExpense: MoneyMutation<
 	id: "sharedExpense.delete",
 	touches: SHARED_FIGURES,
 	run: async (tx, input, actor) => {
+		if (input.retract) await assertNobodyAnswered(tx, input.id, actor.userId);
 		const row = await tx.sharedTransaction.findUnique({
 			where: { id: input.id },
 			select: { createdAt: true, createdByType: true, createdById: true },

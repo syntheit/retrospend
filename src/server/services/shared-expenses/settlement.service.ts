@@ -18,10 +18,15 @@ import {
 	type RecordPaymentValue,
 	recordPayment,
 } from "~/server/services/payments/record.mutation";
-import { logGroupAction, updateGroup } from "~/server/services/payments/write";
-import type { Prisma, PrismaClient, SettlementStatus } from "~prisma";
+import {
+	paymentPerson,
+	type ReversePaymentInput,
+	rejectPayment,
+	removeRecordedPayment,
+} from "~/server/services/payments/reverse.mutation";
+import type { MoneyMutation } from "~/server/services/preview/types";
+import type { Prisma, PrismaClient } from "~prisma";
 import { computePairLedger } from "./balance";
-import { reopenUnsettledPeriods } from "./billing-period-settle";
 import {
 	describeGroupAmount,
 	groupCounterparty,
@@ -339,48 +344,7 @@ export class SettlementService {
 	 * it cannot be deleted.
 	 */
 	async deletePendingSettlement(settlementId: string) {
-		await this.db.$transaction(async (tx) => {
-			const { rows } = await this.loadGroup(tx, settlementId);
-			const roles = groupRoles(rows, this.userId);
-
-			if (!roles.isParty) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Only the payer can delete this settlement",
-				});
-			}
-			if (roles.status === "FINALIZED") {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Cannot delete a confirmed settlement",
-				});
-			}
-			if (!roles.recordedByMe) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Only the payer can delete this settlement",
-				});
-			}
-
-			await this.deleteGroup(tx, rows, ["PROPOSED", "REJECTED"]);
-			await logGroupAction(tx, this.currentUserRef, rows, {
-				action: "DELETED",
-				context: "settlement_deleted",
-				changes: {
-					status: roles.status,
-					initiatedAt: rows[0]?.initiatedAt.toISOString(),
-				},
-			});
-			// A pending payment counted toward balances; without it a period it
-			// settled may be open again.
-			await reopenUnsettledPeriods(
-				tx,
-				rows.map((r) => r.projectId),
-				this.currentUserRef,
-				{ reason: "settlement_deleted", settlementIds: rows.map((r) => r.id) },
-			);
-		});
-
+		await this.reverse(removeRecordedPayment, settlementId, { mode: "delete" });
 		return { success: true };
 	}
 
@@ -407,55 +371,7 @@ export class SettlementService {
 	 * - A PROPOSED payment (use deletePendingSettlement instead).
 	 */
 	async voidAutoFinalizedSettlement(settlementId: string) {
-		await this.db.$transaction(async (tx) => {
-			const { rows } = await this.loadGroup(tx, settlementId);
-			const roles = groupRoles(rows, this.userId);
-
-			if (!roles.isParty) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Only the payer can void this settlement",
-				});
-			}
-			if (!roles.canVoid) {
-				const otherIsUser =
-					groupCounterparty(rows, this.userId)?.participantType === "user";
-				const autoFinalized =
-					roles.status === "FINALIZED" &&
-					rows.every((r) => r.autoConfirmedReason !== null);
-				if (otherIsUser && !roles.recordedByMe) {
-					throw new TRPCError({
-						code: "FORBIDDEN",
-						message:
-							"Cannot void a settlement to a registered user. It can only be reversed by mutual agreement.",
-					});
-				}
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: autoFinalized
-						? "This settlement cannot be voided"
-						: "Only an auto-finalized settlement can be voided",
-				});
-			}
-
-			await this.deleteGroup(tx, rows, ["FINALIZED"]);
-			await logGroupAction(tx, this.currentUserRef, rows, {
-				action: "DELETED",
-				context: "settlement_voided",
-				changes: {
-					status: roles.status,
-					autoConfirmedReason: rows[0]?.autoConfirmedReason,
-					initiatedAt: rows[0]?.initiatedAt.toISOString(),
-				},
-			});
-			await reopenUnsettledPeriods(
-				tx,
-				rows.map((r) => r.projectId),
-				this.currentUserRef,
-				{ reason: "settlement_voided", settlementIds: rows.map((r) => r.id) },
-			);
-		});
-
+		await this.reverse(removeRecordedPayment, settlementId, { mode: "void" });
 		return { success: true };
 	}
 
@@ -465,85 +381,69 @@ export class SettlementService {
 	 * everywhere, and a billing period the payment had settled reopens.
 	 */
 	async rejectSettlement(settlementId: string, reason?: string) {
-		const now = new Date();
-		const { lead, rows } = await this.db.$transaction(async (tx) => {
-			const { lead, rows } = await this.loadGroup(tx, settlementId);
-			const roles = groupRoles(rows, this.userId);
-
-			if (!roles.isParty) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Only the payee can reject this settlement",
-				});
-			}
-			if (roles.status === "FINALIZED") {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "Settlement is already confirmed",
-				});
-			}
-			if (roles.status === "REJECTED") {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "Settlement is already rejected",
-				});
-			}
-			if (!roles.awaitingMe) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Only the payee can reject this settlement",
-				});
-			}
-
-			await updateGroup(tx, rows, ["PROPOSED"], {
-				status: "REJECTED",
-				rejectedAt: now,
-				rejectedReason: reason ?? null,
-			});
-			await tx.payment.updateMany({
-				where: { id: { in: groupIdsOf(rows) } },
-				data: { status: "REJECTED" },
-			});
-			await logGroupAction(tx, this.currentUserRef, rows, {
-				action: "REJECTED",
-				context: "settlement_rejected",
-				changes: { reason: reason ?? null },
-			});
-			await reopenUnsettledPeriods(
-				tx,
-				rows.map((r) => r.projectId),
-				this.currentUserRef,
-				{ reason: "settlement_rejected", settlementIds: rows.map((r) => r.id) },
-			);
-			return { lead, rows };
-		});
-
-		// Notify the person who recorded it, once for the whole group.
-		const other = groupCounterparty(rows, this.userId);
-		if (other?.participantType === "user") {
-			const myName = await resolveParticipantName("user", this.userId);
-			createNotification({
-				userId: other.participantId,
-				type: "SETTLEMENT_REJECTED",
-				title: "Settlement rejected",
-				body: `${myName} rejected your settlement of ${describeGroupAmount(rows, other.participantId)}${reason ? `: ${reason}` : ""}`,
-				data: {
-					settlementId: lead.id,
-					paymentGroupId: lead.paymentGroupId,
-					toParticipantType: "user",
-					toParticipantId: this.userId,
-				},
-			}).catch((err) =>
-				console.error("[Notification Error] SETTLEMENT_REJECTED:", err),
-			);
-		}
-
+		const { lead, rows, rejectedAt } = await this.reverse(
+			rejectPayment,
+			settlementId,
+			{ reason },
+		);
+		await this.notifyRejected([...rows], lead);
 		return {
 			...lead,
 			status: "REJECTED" as const,
-			rejectedAt: now,
+			rejectedAt,
 			rejectedReason: reason ?? null,
 		};
+	}
+
+	/**
+	 * Tells the person who recorded a rejected payment, once for the whole
+	 * group. The text is built from the name and the amount only: the reason
+	 * is text the person typed, and it stays on the settlement row.
+	 */
+	async notifyRejected(
+		rows: Parameters<typeof describeGroupAmount>[0],
+		lead: { id: string; paymentGroupId: string | null },
+	) {
+		const other = groupCounterparty(rows, this.userId);
+		if (other?.participantType !== "user") return;
+		const myName = await resolveParticipantName("user", this.userId);
+		createNotification({
+			userId: other.participantId,
+			type: "SETTLEMENT_REJECTED",
+			title: "Settlement rejected",
+			body: `${myName} rejected your settlement of ${describeGroupAmount(rows, other.participantId)}`,
+			data: {
+				settlementId: lead.id,
+				paymentGroupId: lead.paymentGroupId,
+				toParticipantType: "user",
+				toParticipantId: this.userId,
+			},
+		}).catch((err) =>
+			console.error("[Notification Error] SETTLEMENT_REJECTED:", err),
+		);
+	}
+
+	/**
+	 * Runs one of the payment reversals (payments/reverse.mutation.ts) in a
+	 * transaction. A caller who is not on the payment locks on themselves; the
+	 * mutation then refuses them.
+	 */
+	private async reverse<I extends ReversePaymentInput, V>(
+		mutation: MoneyMutation<I, V>,
+		settlementId: string,
+		extra: Omit<I, keyof ReversePaymentInput>,
+	): Promise<V> {
+		return this.db.$transaction(async (tx) => {
+			const person =
+				(await paymentPerson(tx, settlementId, this.userId)) ??
+				this.currentUserRef;
+			const { value } = await mutation.run(
+				tx,
+				{ ...extra, paymentId: settlementId, person } as unknown as I,
+				{ userId: this.userId },
+			);
+			return value;
+		});
 	}
 
 	/**
@@ -1017,28 +917,6 @@ export class SettlementService {
 			orderBy: { initiatedAt: "asc" },
 		});
 		return { lead, rows: rows.length > 0 ? rows : [lead] };
-	}
-
-	/** Deletes a group's rows (only while they have `fromStatuses`) and its header. */
-	private async deleteGroup(
-		tx: Prisma.TransactionClient,
-		rows: Array<{ id: string; paymentGroupId: string | null }>,
-		fromStatuses: SettlementStatus[],
-	) {
-		const { count } = await tx.settlement.deleteMany({
-			where: {
-				id: { in: rows.map((r) => r.id) },
-				status: { in: fromStatuses },
-			},
-		});
-		if (count !== rows.length) {
-			throw new TRPCError({
-				code: "CONFLICT",
-				message:
-					"This payment was changed in the meantime. Refresh and try again.",
-			});
-		}
-		await tx.payment.deleteMany({ where: { id: { in: groupIdsOf(rows) } } });
 	}
 }
 
