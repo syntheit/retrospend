@@ -11,7 +11,13 @@ const W: Words = {
 	context: (key, values) =>
 		values ? `${key}(${Object.values(values).join("|")})` : key,
 	short: (iso) => `short ${iso}`,
-	name: (key) => (key === "user:lucia" ? "Lucía" : "?"),
+	name: (key) => (key === "user:lucia" ? "Lucía" : "Paz"),
+	person: (key) =>
+		key === "user:lucia"
+			? { key, name: "Lucía Fernández", imageUrl: null, onRetrospend: true }
+			: key === "shadow:paz"
+				? { key, name: "Paz Ibarra", imageUrl: null, onRetrospend: false }
+				: undefined,
 	email: "sofia@example.com",
 };
 
@@ -179,15 +185,69 @@ describe("toNeedsVM", () => {
 		});
 	});
 
-	it("seams no source produces yet are left out, the order is the server's", () => {
+	it("owed for 60 days leads with their face; Remind for people on Retrospend", () => {
+		expect(
+			toNeedsVM(
+				item("people.owedAging", {
+					entity: { kind: "person", id: "user:lucia" },
+					people: ["user:lucia"],
+					amount: ars(5000000),
+					date: "2026-08-12",
+					actions: [{ entity: "person", id: "remind" }],
+				}),
+				W,
+			),
+		).toEqual({
+			id: "people.owedAging:x",
+			kind: "owedAging",
+			person: "Lucía",
+			amount: ars(5000000),
+			face: { id: "user:lucia", name: "Lucía Fernández", imageUrl: null },
+			context: "owedSince(short 2026-08-12)",
+			action: "remind",
+		});
+	});
+
+	it("owed for 60 days by someone not on Retrospend opens their page, with no amount when none is held", () => {
+		expect(
+			toNeedsVM(
+				item("people.owedAging", {
+					people: ["shadow:paz"],
+					amount: null,
+				}),
+				W,
+			),
+		).toEqual({
+			id: "people.owedAging:x",
+			kind: "owedAging",
+			person: "Paz",
+			amount: null,
+			face: { id: "shadow:paz", name: "Paz Ibarra", imageUrl: null },
+			action: "open",
+			href: "/people/shadow/paz",
+		});
+	});
+
+	it("shares that need an envelope count and link to Budget", () => {
+		expect(
+			toNeedsVM(item("budget.sharesNeedEnvelope", { count: 3 }), W),
+		).toEqual({
+			id: "budget.sharesNeedEnvelope:x",
+			kind: "sharesNeedEnvelope",
+			count: 3,
+			href: "/budget",
+		});
+	});
+
+	it("types the kit does not show are left out, the order is the server's", () => {
 		const list: NeedsYouList = {
 			today: "2026-10-21",
 			items: [
 				item("budget.missingRate", { currencies: ["BRL"] }),
-				item("people.owedAging"),
+				item("budget.monthSummary"),
 				item("setup.importStatement"),
 			],
-			counts: { people: 1, activity: 0, budget: 1, setup: 1, total: 3 },
+			counts: { people: 0, activity: 0, budget: 2, setup: 1, total: 3 },
 			people: {},
 		};
 		expect(toNeedsVMs(list, W).map((x) => x.vm.kind)).toEqual([

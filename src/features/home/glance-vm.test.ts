@@ -137,6 +137,31 @@ describe("toGlanceVM", () => {
 		});
 	});
 
+	it("Dollar today is the last row, named for its rate type; without a rate it is left out", () => {
+		const dollar = {
+			id: "rate.dollarToday" as const,
+			value: ars(141200),
+			rateType: "blue",
+			rateDate: "2026-10-20",
+			home: "ARS",
+		};
+		const vm = toGlanceVM(
+			{ ...BASE, dollarToday: dollar },
+			{ dollarLabel: (type, date, today) => `${type} ${date} ${today}` },
+		);
+		expect(vm.rows.at(-1)).toEqual({
+			id: "dollarToday",
+			amount: ars(141200),
+			href: "/currencies",
+			figure: "rate.dollarToday",
+			rateLabel: "blue 2026-10-20 2026-10-21",
+		});
+		const none = { ...dollar, value: null, rateType: null, rateDate: null };
+		expect(
+			toGlanceVM({ ...BASE, dollarToday: none }).rows.map((r) => r.id),
+		).not.toContain("dollarToday");
+	});
+
 	it("a ready budget: the per-day line, the pace word and Not planned yet first", () => {
 		const vm = toGlanceVM({ ...BASE, budget: ready({}) });
 		expect(vm.line).toEqual({

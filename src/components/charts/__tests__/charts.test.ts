@@ -124,6 +124,27 @@ describe("chart summaries (accessible names)", () => {
 		expect(html).toContain("var(--ds-accent)");
 	});
 
+	it("a ranked row with a link opens it, and a note sits after the label", () => {
+		const html = render(
+			h(RankedBars, {
+				items: [
+					{
+						id: "g",
+						label: "Groceries",
+						value: ars(46320000),
+						href: "/activity?cat=g",
+						note: "+7%",
+					},
+					{ id: "r", label: "Rent", value: ars(32500000) },
+				],
+			}),
+		);
+		expect(html).toContain('href="/activity?cat=g"');
+		expect(html).toContain("+7%");
+		// Only the linked row is a link.
+		expect(html.match(/<a /g)).toHaveLength(1);
+	});
+
 	it("allocation shows the server's shares, not recomputed ones", () => {
 		const html = render(
 			h(AllocationBar, {

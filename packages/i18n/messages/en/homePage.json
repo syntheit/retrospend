@@ -16,8 +16,11 @@
 			"arrived": "{title}, {date}",
 			"firstExpense": "Takes about ten seconds",
 			"homeCurrency": "Every total is shown in it",
-			"importStatement": "CSV or PDF from your bank"
-		}
+			"importStatement": "CSV or PDF from your bank",
+			"owedSince": "Since {date}"
+		},
+		"later": "Hidden until tomorrow",
+		"reminded": "Reminded {name}"
 	},
 	"recent": {
 		"title": "Recent",
@@ -38,5 +41,6 @@
 		"title": "Not available right now",
 		"hint": "This part of Home could not load.",
 		"retry": "Try again"
-	}
+	},
+	"dollarOlder": "{type}, {date}"
 }
