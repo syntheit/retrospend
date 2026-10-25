@@ -21,7 +21,7 @@ import { TRPCError } from "@trpc/server";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CorrectInput } from "~/lib/schemas/corrections";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
 import { readFigures } from "~/server/figures/read";
 import {

@@ -6,7 +6,7 @@
  * with the context set once.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { createCallerFactory } from "~/server/api/trpc";
 import { SettlementService } from "~/server/services/shared-expenses/settlement.service";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";

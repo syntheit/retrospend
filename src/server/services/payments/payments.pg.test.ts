@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
 import { figures, readFiguresIn } from "~/server/figures/registry";
 import { forUser, userTransactionRunner } from "~/server/services/preview";

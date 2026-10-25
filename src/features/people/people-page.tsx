@@ -1,6 +1,6 @@
 import "server-only";
 
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { api } from "~/trpc/server";
 import { PeopleScreen } from "./people-screen";
 import { PeopleUnavailable } from "./people-states";

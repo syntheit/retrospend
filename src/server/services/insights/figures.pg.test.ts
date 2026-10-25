@@ -24,7 +24,7 @@ import {
 	getCurrentFiscalMonth,
 	getFiscalMonthRange,
 	shiftMonth,
-} from "~/lib/fiscal-month";
+} from "@retrospend/domain/fiscal-month";
 import { readFigures } from "~/server/figures/read";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { adminDb } from "~/test/pg-harness";

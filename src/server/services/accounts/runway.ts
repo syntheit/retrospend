@@ -4,8 +4,8 @@
  * as every other total: finalized, not excluded, amortized purchases counted
  * once through their monthly parts.
  */
-import { sumIn } from "~/lib/money";
-import { addMonthsClamped } from "~/lib/recurring";
+import { sumIn } from "@retrospend/domain/money";
+import { addMonthsClamped } from "@retrospend/domain/recurring";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { spentItems } from "~/server/services/figures/spent";
 import { getExcludedProjectIds } from "~/server/services/shared-expense-integration";

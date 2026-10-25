@@ -20,7 +20,7 @@ import {
 	getCurrentFiscalMonth,
 	getFiscalMonthRange,
 	shiftMonth,
-} from "~/lib/fiscal-month";
+} from "@retrospend/domain/fiscal-month";
 import { homeRouter } from "~/server/api/routers/home";
 import { createCallerFactory } from "~/server/api/trpc";
 import { readFigures } from "~/server/figures/read";

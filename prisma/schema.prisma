@@ -230,7 +230,7 @@ model Expense {
   // currency (a cross rate, not exchangeRate's per-USD convention) and
   // homeAmount is the value it gave. All three are set or all null (CHECK
   // expense_home_leg_check); null rows (before M2, imports, the sidecar)
-  // follow the totals rule in ~/lib/money.
+  // follow the totals rule in @retrospend/domain/money.
   rateType     String?  @db.VarChar(32)
   homeCurrency String?  @db.VarChar(10)
   homeRate     Decimal? @db.Decimal(28, 12)

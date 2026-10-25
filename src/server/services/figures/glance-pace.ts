@@ -1,7 +1,7 @@
 /**
  * Pure pieces of Home's spending glance (kit `pace()` and `cumulative()`):
  * spending per day of a period in the home currency under the totals rule
- * (~/lib/money sumIn), the running total day by day in minor units, and
+ * (@retrospend/domain/money sumIn), the running total day by day in minor units, and
  * whether this period runs faster than the last by the same day.
  *
  * Sums stay unrounded until each running total is turned into minor units

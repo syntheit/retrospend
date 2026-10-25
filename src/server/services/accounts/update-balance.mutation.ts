@@ -4,7 +4,7 @@
  * Undo (account.revertBalanceUpdate) puts today's balance and type back.
  */
 import { TRPCError } from "@trpc/server";
-import { isValidRate, USD } from "~/lib/money";
+import { isValidRate, USD } from "@retrospend/domain/money";
 import { dec } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { WealthService } from "~/server/services/wealth.service";

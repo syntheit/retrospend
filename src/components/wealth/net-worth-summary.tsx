@@ -7,7 +7,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { EmptyState } from "~/components/ui/empty-state";
 import { StatCard } from "~/components/ui/stat-card";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
-import { formatPercent } from "~/lib/currency-format";
+import { formatPercent } from "@retrospend/domain/currency-format";
 import { maskAmount } from "~/lib/masking";
 import { netWorthChange, netWorthPercentChange } from "~/lib/wealth-stats";
 

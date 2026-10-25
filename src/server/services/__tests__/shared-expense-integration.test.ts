@@ -3,7 +3,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "~/test/mock-db";
-import { MissingRateError, missingRatesIn, sumIn } from "~/lib/money";
+import { MissingRateError, missingRatesIn, sumIn } from "@retrospend/domain/money";
 import { RATE_DATE, useRateTable } from "~/test/rate-table";
 import {
 	createStatefulDb,

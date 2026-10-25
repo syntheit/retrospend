@@ -11,7 +11,7 @@ import { createHash } from "node:crypto";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 
-import { MissingRateError } from "~/lib/money";
+import { MissingRateError } from "@retrospend/domain/money";
 import { errorFormatter } from "~/server/api/error-formatter";
 import type { Session } from "~/server/better-auth/config";
 import { getWebSession } from "~/server/better-auth/web-session";

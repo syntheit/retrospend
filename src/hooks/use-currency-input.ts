@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { formatNumber, getDecimalDigits } from "~/lib/currency-format";
+import { formatNumber, getDecimalDigits } from "@retrospend/domain/currency-format";
 
 interface UseCurrencyInputOptions {
 	value: number;

@@ -32,7 +32,7 @@ import { useCurrency } from "~/hooks/use-currency";
 import { useCurrencyInput } from "~/hooks/use-currency-input";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
-import { tryConvertAmount } from "~/lib/money";
+import { tryConvertAmount } from "@retrospend/domain/money";
 import { getSubscriptionMetadata } from "~/lib/subscription-metadata";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";

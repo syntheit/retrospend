@@ -26,7 +26,7 @@ import {
 	getCurrentFiscalMonth,
 	getFiscalMonthRange,
 	shiftMonth,
-} from "~/lib/fiscal-month";
+} from "@retrospend/domain/fiscal-month";
 import { findExchangeRate } from "~/server/exchange-rates";
 import type {
 	FigureDb,

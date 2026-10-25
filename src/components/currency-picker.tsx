@@ -14,7 +14,7 @@ import {
 	CRYPTO_CURRENCIES,
 	CURRENCIES,
 	type CurrencyCode,
-} from "~/lib/currencies";
+} from "@retrospend/domain/currencies";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 import { CurrencyFlag } from "./ui/currency-flag";

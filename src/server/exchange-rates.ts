@@ -1,13 +1,13 @@
 /**
  * Server-side exchange rate lookups. The selection rules live in
- * `pickBestRate` (~/lib/money); this module only fetches the rows.
+ * `pickBestRate` (@retrospend/domain/money); this module only fetches the rows.
  *
  * Every lookup falls back to the nearest available rate: the latest one on or
  * before the date, otherwise the earliest one after it. Only a currency with
  * no rate rows at all yields null (or a BAD_REQUEST from requireExchangeRate).
  */
 import { TRPCError } from "@trpc/server";
-import { type PickedRate, pickBestRate, USD } from "~/lib/money";
+import { type PickedRate, pickBestRate, USD } from "@retrospend/domain/money";
 import type { Prisma, PrismaClient } from "~prisma";
 
 type RateDb = Pick<PrismaClient | Prisma.TransactionClient, "exchangeRate">;

@@ -11,7 +11,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { toMinor } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { computePairLedger } from "~/server/services/shared-expenses/balance";

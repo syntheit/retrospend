@@ -13,20 +13,20 @@
  *   that is not there throws MissingRateError; it is never 0 or 1.
  *
  * The entry leg keeps today's stored convention and float math
- * (exchangeRate per USD, amountInUSD rounded to cents, ~/lib/money).
+ * (exchangeRate per USD, amountInUSD rounded to cents, @retrospend/domain/money).
  */
 
 import { Decimal } from "@prisma/client/runtime/index-browser";
 import { type Money, money, toMinor } from "@retrospend/domain/money-minor";
 import { TRPCError } from "@trpc/server";
-import { isCrypto } from "~/lib/currency-format";
+import { isCrypto } from "@retrospend/domain/currency-format";
 import {
 	computeAmountInUSD,
 	currencyDecimals,
 	MissingRateError,
 	rateFromUsdPerUnit,
 	USD,
-} from "~/lib/money";
+} from "@retrospend/domain/money";
 import {
 	CUSTOM_RATE_TYPE,
 	isRateTypeKey,

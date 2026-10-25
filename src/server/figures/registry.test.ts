@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { MissingRateError } from "~/lib/money";
+import { MissingRateError } from "@retrospend/domain/money";
 import {
 	createFiguresRegistry,
 	type FigureDefinition,

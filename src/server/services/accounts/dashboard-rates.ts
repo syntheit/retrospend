@@ -4,7 +4,7 @@
  * rates in the stored convention (fiat per USD, USD per coin); the new
  * figures use accounts/valuation.ts, which follows the same rule in Decimal.
  */
-import { isValidRate, toUSD, USD } from "~/lib/money";
+import { isValidRate, toUSD, USD } from "@retrospend/domain/money";
 import { toNumberOrNull } from "~/lib/utils";
 import type { AssetType } from "~prisma";
 import { CUSTOM_RATE_TYPE, type RatePick } from "./valuation";

@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { fromMinorUnits, toMinorUnits } from "~/lib/money";
+import { fromMinorUnits, toMinorUnits } from "@retrospend/domain/money";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { addGhostMembers } from "~/server/services/project/joining";
 import {
@@ -22,7 +22,7 @@ import {
 	compareParticipants,
 	resolveSplits,
 	SplitComputationError,
-} from "~/lib/shared-split-computation";
+} from "@retrospend/domain/shared-split-computation";
 import { type DeleteOptions, guardDelete } from "./delete-guard";
 
 type AppDb = PrismaClient;

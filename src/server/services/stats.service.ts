@@ -1,11 +1,11 @@
-import { sumIn } from "~/lib/money";
+import { sumIn } from "@retrospend/domain/money";
 import type { PrismaClient } from "~prisma";
 import { getBestExchangeRate } from "../api/routers/shared-currency";
 import { spentItems } from "./figures/spent";
 
 /**
  * Lifetime spending in the home currency. The total follows the totals rule
- * in ~/lib/money: home-currency expenses count as entered, the rest convert
+ * in @retrospend/domain/money: home-currency expenses count as entered, the rest convert
  * from amountInUSD at today's home rate.
  */
 export class StatsService {

@@ -15,7 +15,7 @@ import type { CorrectInput, CorrectResult } from "~/lib/schemas/corrections";
 import {
 	resolveSplits,
 	SplitComputationError,
-} from "~/lib/shared-split-computation";
+} from "@retrospend/domain/shared-split-computation";
 import type { Prisma } from "~prisma";
 import { forgetMonthViews } from "../envelope/month-read";
 import { fromMinor, toMinor } from "../envelope/units";

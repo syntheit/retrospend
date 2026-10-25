@@ -11,7 +11,7 @@
 
 import { TRPCError } from "@trpc/server";
 import type { RestChoice } from "~/lib/schemas/envelope";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import type { Money } from "~/server/figures/registry";
 import { forgetMonthViews } from "~/server/services/envelope/month-read";
 import { dec, toMinor } from "~/server/services/envelope/units";

@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import { CurrencyFlag } from "~/components/ui/currency-flag";
-import { CRYPTO_CURRENCIES, CURRENCIES } from "~/lib/currencies";
+import { CRYPTO_CURRENCIES, CURRENCIES } from "@retrospend/domain/currencies";
 import { PickerGroup, PickerItem, PickerList } from "./picker-list";
 
 export type PickerCurrency = { id: string; name: string };

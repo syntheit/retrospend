@@ -9,7 +9,7 @@
  * also leaves out the payments.
  */
 import { getImageUrl } from "~/lib/image-url";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import type { Money } from "~/server/figures/registry";
 import { toMinor } from "~/server/services/envelope/units";
 import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";

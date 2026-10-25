@@ -34,7 +34,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { PrismaClient } from "../generated/prisma/client";
-import { currencyDecimals } from "../src/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 import {
 	migrateUsers,
 	needsAttention,

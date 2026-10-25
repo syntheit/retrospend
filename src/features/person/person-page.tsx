@@ -3,7 +3,7 @@ import "server-only";
 import { TRPCError } from "@trpc/server";
 import { notFound } from "next/navigation";
 import { PeopleUnavailable } from "~/features/people/people-states";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { api } from "~/trpc/server";
 import { PersonScreen } from "./person-screen";
 

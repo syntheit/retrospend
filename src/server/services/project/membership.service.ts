@@ -2,7 +2,7 @@
  * Reading and changing project membership dates. `membersOn` is what the
  * expense sheet preselects for a project expense on a given day (RC-11).
  */
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
 import { forUser } from "~/server/services/preview";
 import { userTimeZone } from "~/server/services/user-time-zone";

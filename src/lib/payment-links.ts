@@ -1,5 +1,5 @@
-import { formatCurrency } from "./currency-format";
-import { toAmountString } from "./money";
+import { formatCurrency } from "@retrospend/domain/currency-format";
+import { toAmountString } from "@retrospend/domain/money";
 
 export type PaymentLinkResult = {
 	url: string | null;

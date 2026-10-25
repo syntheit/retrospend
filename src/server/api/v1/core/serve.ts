@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import type { ProblemCode } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
-import { MissingRateError } from "~/lib/money";
+import { MissingRateError } from "@retrospend/domain/money";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import { Prisma } from "~prisma";
 import { problem } from "../errors";

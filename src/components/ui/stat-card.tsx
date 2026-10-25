@@ -5,7 +5,7 @@ import { type LucideIcon, TrendingDown, TrendingUp } from "lucide-react";
 import type * as React from "react";
 import { Card, CardContent } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
-import { formatPercent } from "~/lib/currency-format";
+import { formatPercent } from "@retrospend/domain/currency-format";
 import { cn } from "~/lib/utils";
 
 const statCardVariants = cva(

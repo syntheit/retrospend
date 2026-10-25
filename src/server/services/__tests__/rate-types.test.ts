@@ -9,7 +9,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MissingRateError } from "~/lib/money";
+import { MissingRateError } from "@retrospend/domain/money";
 import { createMockDb } from "~/test/mock-db";
 import { useRateTable } from "~/test/rate-table";
 import {

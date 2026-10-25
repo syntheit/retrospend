@@ -8,7 +8,7 @@ import { Sheet } from "~/components/ui/sheet";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
 import { Field } from "~/features/entry/shared-ui";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { api } from "~/trpc/react";
 import { SetupEnvelopesStep } from "./setup-envelopes-step";
 import { SetupPayStep } from "./setup-pay-step";

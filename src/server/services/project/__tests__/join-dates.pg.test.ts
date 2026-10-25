@@ -4,7 +4,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { guestRouter } from "~/server/api/routers/guest";
 import { createCallerFactory } from "~/server/api/trpc";
 import { createUserScopedDb } from "~/server/db";

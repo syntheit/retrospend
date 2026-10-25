@@ -19,7 +19,7 @@ import {
 	type RateQuote,
 	rateFromQuote,
 	USD,
-} from "~/lib/money";
+} from "@retrospend/domain/money";
 import { autoRateSelection } from "~/lib/rate-selection";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";

@@ -29,7 +29,7 @@ import {
 } from "@retrospend/domain/insights";
 import type { Money } from "@retrospend/domain/money-minor";
 import { dayKey } from "@retrospend/domain/time-zone";
-import { getCurrentFiscalMonth, getFiscalMonthRange } from "~/lib/fiscal-month";
+import { getCurrentFiscalMonth, getFiscalMonthRange } from "@retrospend/domain/fiscal-month";
 import type {
 	FigureDb,
 	FigureDefinition,

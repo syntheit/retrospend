@@ -7,7 +7,7 @@
  * IMPORTANT: These functions return the CURRENT USER'S SHARE only,
  * never the full transaction amount.
  */
-import { computeAmountInUSD, sumIn, toUSD, USD } from "~/lib/money";
+import { computeAmountInUSD, sumIn, toUSD, USD } from "@retrospend/domain/money";
 import type { Prisma, PrismaClient } from "~prisma";
 import { findExchangeRatesForDates } from "../exchange-rates";
 import type { RateCache } from "./rate-cache";

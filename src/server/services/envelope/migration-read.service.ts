@@ -10,7 +10,7 @@ import type {
 	HiddenRowsOutput,
 	MigrationState,
 } from "~/lib/schemas/envelope-migration";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma } from "~prisma";

@@ -5,7 +5,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { currencyDecimals } from "~/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 import {
 	createNotification,
 	resolveParticipantName,

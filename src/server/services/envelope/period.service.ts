@@ -11,7 +11,7 @@
  * what was in force removes the pending row instead (that is the undo).
  */
 
-import { USD } from "~/lib/money";
+import { USD } from "@retrospend/domain/money";
 import type {
 	BookPeriodResult,
 	SetBookPeriodInput,
