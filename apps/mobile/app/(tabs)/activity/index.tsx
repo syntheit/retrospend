@@ -1,97 +1,210 @@
+import { router, Stack } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { FlatList, Text, View } from "react-native";
+import { SectionList, Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
-import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
+import { ActivityFilters } from "@/features/activity/ActivityFilters";
 import { ActivityRow } from "@/features/activity/ActivityRow";
-import {
-	type ActivityState,
-	createActivitySource,
-	loadActivity,
-} from "@/features/activity/source";
+import { groupByDay } from "@/features/activity/days";
+import { EntryView } from "@/features/activity/EntryView";
+import { DEFAULT_FILTER, isDefaultFilter } from "@/features/activity/filter";
+import type { ActivityItem, ActivityPage } from "@/features/activity/source";
+import { useActivity } from "@/features/activity/useActivity";
+import { MoneyAmount } from "@/features/read/MoneyAmount";
+import { StaleNote } from "@/features/read/parts";
+import { useMoneyText } from "@/features/read/useMoneyText";
+import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListDetail } from "@/ui/ListDetail";
 import { Screen } from "@/ui/Screen";
 
+const SEARCH_DELAY_MS = 300;
+
+/** "Wed, Oct 21": a day the server named, shown in the phone's language. */
+function useDayLabel() {
+	const t = useTranslations("mobile.activity");
+	const format = useFormatter();
+	return (day: string, relative: "today" | "yesterday" | null) => {
+		if (relative) return t(relative);
+		const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+		return format.dateTime(new Date(y, m - 1, d, 12), {
+			weekday: "short",
+			month: "short",
+			day: "numeric",
+		});
+	};
+}
+
+function Summary({ page }: { page: ActivityPage }) {
+	const t = useTranslations("mobile.activity");
+	const format = useMoneyText();
+	const { color, space, type } = useTheme();
+	if (page.count === null) return null;
+	const spent = page.total ? format(page.total.value) : null;
+	return (
+		<Text
+			style={{
+				color: color.fg2,
+				fontSize: type.small.size,
+				paddingHorizontal: space[4],
+				paddingVertical: space[2],
+			}}
+		>
+			{spent
+				? t("summarySpent", { count: page.count, amount: spent })
+				: t("summary", { count: page.count })}
+		</Text>
+	);
+}
+
 export default function ActivityScreen() {
 	const t = useTranslations("mobile.activity");
-	const { api, local } = useSession();
+	const dayLabel = useDayLabel();
 	const { color, space, type } = useTheme();
-	const format = useFormatter();
-	const [state, setState] = useState<ActivityState>({ status: "loading" });
-	const source = useMemo(() => (api ? createActivitySource(api) : null), [api]);
+	const { listDetail } = useLayoutClass();
+	const [filter, setFilter] = useState(DEFAULT_FILTER);
+	const [search, setSearch] = useState("");
+	const [selected, setSelected] = useState<ActivityItem | null>(null);
+	const { state, reload, loadMore, loadingMore } = useActivity(filter);
 
+	// The search bar sends text as it is typed; the list asks once it pauses.
 	useEffect(() => {
-		if (!source || !local) return;
-		let cancelled = false;
-		loadActivity(source, local.cache, (cached) => {
-			if (!cancelled) setState(cached);
-		}).then((next) => {
-			if (!cancelled) setState(next);
-		});
-		return () => {
-			cancelled = true;
-		};
-	}, [source, local]);
-
-	const list =
-		state.status === "ready" && state.items.length > 0 ? (
-			<FlatList
-				contentInsetAdjustmentBehavior="automatic"
-				data={state.items}
-				keyExtractor={(item) => item.id}
-				ListHeaderComponent={
-					state.staleSince ? (
-						<Text
-							style={{
-								color: color.fg2,
-								fontSize: type.small.size,
-								padding: space[4],
-							}}
-						>
-							{t("offlineSince", {
-								time: format.dateTime(new Date(state.staleSince), {
-									dateStyle: "medium",
-									timeStyle: "short",
-								}),
-							})}
-						</Text>
-					) : null
-				}
-				renderItem={({ item }) => <ActivityRow item={item} />}
-				style={{ backgroundColor: color.bg }}
-			/>
-		) : (
-			<Screen>
-				<EmptyState
-					detail={
-						state.status === "unavailable"
-							? t("unavailableDetail")
-							: state.status === "error"
-								? t("errorDetail")
-								: undefined
-					}
-					title={
-						state.status === "loading"
-							? t("loading")
-							: state.status === "unavailable"
-								? t("unavailable")
-								: state.status === "error"
-									? t("error")
-									: t("empty")
-					}
-				/>
-			</Screen>
+		const timer = setTimeout(
+			() => setFilter((f) => (f.q === search ? f : { ...f, q: search })),
+			SEARCH_DELAY_MS,
 		);
+		return () => clearTimeout(timer);
+	}, [search]);
+
+	const page = state.status === "ready" ? state.data : null;
+	const sections = useMemo(
+		() =>
+			page
+				? groupByDay(page.items, page.dayTotals, page.today).map((s) => ({
+						...s,
+						data: s.items,
+					}))
+				: [],
+		[page],
+	);
+
+	function open(item: ActivityItem) {
+		if (listDetail) {
+			setSelected(item);
+			return;
+		}
+		router.push({
+			pathname: "/activity/[id]",
+			params: { id: item.id, row: JSON.stringify(item) },
+		});
+	}
+
+	const empty =
+		state.status === "loading" ? (
+			<EmptyState title={t("loading")} />
+		) : state.status === "error" ? (
+			<EmptyState detail={t("errorDetail")} title={t("error")} />
+		) : page?.elsewhere ? (
+			<EmptyState title={t("emptyElsewhere")} />
+		) : (
+			<EmptyState
+				title={isDefaultFilter(filter) ? t("empty") : t("emptyFiltered")}
+			/>
+		);
+
+	const list = (
+		<SectionList
+			contentInsetAdjustmentBehavior="automatic"
+			keyboardDismissMode="on-drag"
+			keyExtractor={(item) => item.id}
+			ListEmptyComponent={empty}
+			ListFooterComponent={
+				loadingMore ? (
+					<Text
+						style={{
+							color: color.fg2,
+							fontSize: type.small.size,
+							padding: space[4],
+							textAlign: "center",
+						}}
+					>
+						{t("loading")}
+					</Text>
+				) : null
+			}
+			ListHeaderComponent={
+				<View>
+					<StaleNote
+						since={state.status === "ready" ? state.staleSince : null}
+					/>
+					<ActivityFilters filter={filter} onChange={setFilter} />
+					{page ? <Summary page={page} /> : null}
+				</View>
+			}
+			onEndReached={loadMore}
+			onEndReachedThreshold={0.6}
+			onRefresh={reload}
+			refreshing={false}
+			renderItem={({ item }) => (
+				<ActivityRow
+					item={item}
+					onPress={() => open(item)}
+					selected={listDetail && selected?.id === item.id}
+				/>
+			)}
+			renderSectionHeader={({ section }) => (
+				<View
+					style={{
+						flexDirection: "row",
+						alignItems: "baseline",
+						justifyContent: "space-between",
+						paddingHorizontal: space[4],
+						paddingTop: space[4],
+						paddingBottom: space[1],
+						backgroundColor: color.bg,
+					}}
+				>
+					<Text
+						accessibilityRole="header"
+						style={{
+							color: color.fg2,
+							fontSize: type.small.size,
+							fontWeight: "600",
+						}}
+					>
+						{dayLabel(section.day, section.relative)}
+					</Text>
+					{section.total ? (
+						<MoneyAmount tone="muted" value={section.total} />
+					) : null}
+				</View>
+			)}
+			sections={sections}
+			stickySectionHeadersEnabled={false}
+			style={{ backgroundColor: color.bg }}
+		/>
+	);
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
 			<AccountTopBar title={t("title")} />
+			<Stack.Screen
+				options={{
+					headerSearchBarOptions: {
+						placeholder: t("search"),
+						onChangeText: (event) => setSearch(event.nativeEvent.text),
+					},
+				}}
+			/>
 			<ListDetail
 				detail={
 					<Screen>
-						<EmptyState title={t("pick")} />
+						{selected ? (
+							<EntryView item={selected} />
+						) : (
+							<EmptyState title={t("pick")} />
+						)}
 					</Screen>
 				}
 				list={list}

@@ -25,6 +25,12 @@ export interface ReadCache {
 		data: T,
 		serverTime?: string | null,
 	): Promise<void>;
+	/**
+	 * Keeps the `keep` newest entries whose name starts with `prefix` (one per
+	 * person, one per expense) and drops the rest, so a phone that browses a
+	 * lot does not grow without bound.
+	 */
+	prune(prefix: string, keep: number): Promise<void>;
 	/** Sign out: nothing from this account stays on the phone. */
 	clear(): Promise<void>;
 }
@@ -63,6 +69,25 @@ export function createReadCache(
 				data,
 			};
 			await store.set(prefix + name, JSON.stringify(entry));
+		},
+		async prune(namePrefix, keep) {
+			const keys = await store.keys(prefix + namePrefix);
+			if (keys.length <= keep) return;
+			const dated = await Promise.all(
+				keys.map(async (key) => {
+					let at = "";
+					try {
+						at =
+							(JSON.parse((await store.get(key)) ?? "{}") as Entry<unknown>)
+								.fetchedAt ?? "";
+					} catch {
+						// Unreadable: it sorts oldest and goes first.
+					}
+					return { key, at };
+				}),
+			);
+			dated.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+			for (const { key } of dated.slice(keep)) await store.delete(key);
 		},
 		async clear() {
 			for (const key of await store.keys(prefix)) await store.delete(key);
