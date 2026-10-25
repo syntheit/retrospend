@@ -23,6 +23,7 @@ import {
 import type { GroupTarget } from "./groups";
 import { leftToSpendDto, verdictDto } from "./month-dto";
 import {
+	isLimited,
 	leftToSpendFor,
 	limitTotals,
 	tracksOnly,
@@ -366,6 +367,10 @@ function groupsDto(
 					spent: sum((r) => r.m.wealth - r.m.activity),
 					left: sum((r) => r.m.left),
 					over: sum((r) => overBy(r, p.book)),
+					limitLeft:
+						p.book.style === "LIMITS"
+							? sum((r) => (isLimited(r) ? r.m.left : 0))
+							: null,
 					need: sum((r) => r.target?.need ?? 0),
 					count: mine.length,
 				},

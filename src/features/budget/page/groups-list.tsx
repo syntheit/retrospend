@@ -59,7 +59,7 @@ export function GroupsList({
 								</span>
 								{!open && <RowSub parts={sub(g)} wrap />}
 							</Button>
-							<GroupLeft group={g} />
+							<GroupLeft group={g} limits={columns === "limits"} />
 						</div>
 						{open && (
 							<RowList className="mt-2" label={name(g)} variant="group">

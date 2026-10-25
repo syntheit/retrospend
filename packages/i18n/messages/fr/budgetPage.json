@@ -117,6 +117,7 @@
 			"title": "On vous doit",
 			"open": "Qui vous doit",
 			"hint": "Argent que vous avez avancé. Il retourne dans {pool, select, TO_ASSIGN {À affecter} other {Pas encore planifié}} quand on vous rembourse.",
+			"hintLimits": "Argent que vous avez avancé. Il retourne dans votre budget quand on vous rembourse.",
 			"pending": "<amount></amount> attendent votre accord",
 			"people": "{count, plural, =0 {Argent avancé} one {Dû par # personne} other {Dû par # personnes}}"
 		},

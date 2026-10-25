@@ -20,6 +20,7 @@ import { useMonthLabel } from "./month-switch";
 import { monthStartIso } from "./months";
 import { PlanList, PlanTable } from "./plan-rows";
 import type { BudgetActions } from "./use-budget-actions";
+import { isLimits } from "./view-model";
 
 type Source = "TARGETS" | "SAME_AS_THIS_MONTH" | "THIS_MONTH_SPENT";
 const SOURCES: Source[] = ["TARGETS", "SAME_AS_THIS_MONTH", "THIS_MONTH_SPENT"];
@@ -219,19 +220,23 @@ export function PlanView({
 					})}
 				</span>
 			</Notice>
-			<div className="mt-6 mb-4">
-				<div className="text-fg-2 text-small">
-					{t("after", { month: monthName(monthStartIso(month)) })}
+			{isLimits(data.book.style) ? (
+				<div className="mt-6" />
+			) : (
+				<div className="mt-6 mb-4">
+					<div className="text-fg-2 text-small">
+						{t("after", { month: monthName(monthStartIso(month)) })}
+					</div>
+					{preview.data ? (
+						<Money
+							className="text-hero text-fg block"
+							value={preview.data.toAssign.after}
+						/>
+					) : (
+						<Skeleton className="h-8 w-48" shape="money" />
+					)}
 				</div>
-				{preview.data ? (
-					<Money
-						className="text-hero text-fg block"
-						value={preview.data.toAssign.after}
-					/>
-				) : (
-					<Skeleton className="h-8 w-48" shape="money" />
-				)}
-			</div>
+			)}
 			<div className="mb-4">{fillChips}</div>
 			{isMobile ? (
 				<PlanList
