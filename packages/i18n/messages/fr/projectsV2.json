@@ -6,7 +6,7 @@
 	"pastIn": "Projets passés de {year}",
 	"unavailable": {
 		"title": "Impossible de charger les projets",
-		"hint": "Vérifiez votre connexion et réessayez.",
+		"hint": "Vérifie ta connexion et réessaie.",
 		"retry": "Réessayer"
 	},
 	"empty": {
@@ -15,7 +15,7 @@
 	},
 	"noMatch": {
 		"title": "Aucun projet ne correspond",
-		"hint": "Essayez un autre nom.",
+		"hint": "Essaie un autre nom.",
 		"clear": "Effacer la recherche"
 	},
 	"toast": {
@@ -24,14 +24,14 @@
 		"linkCopied": "Lien copié",
 		"deleted": "{name} supprimé",
 		"created": "{name} créé",
-		"failed": "L'enregistrement a échoué. Réessayez."
+		"failed": "L'enregistrement a échoué. Réessaie."
 	},
 	"new": {
 		"title": "Nouveau projet",
 		"submit": "Créer le projet",
 		"name": "Nom",
 		"namePlaceholder": "Voyage, appartement, travaux",
-		"nameMissing": "Saisissez un nom",
+		"nameMissing": "Saisis un nom",
 		"note": "Note (facultatif)",
 		"budget": "Devise et budget",
 		"budgetHint": "Le budget est facultatif. Les dépenses dans d'autres devises n'y comptent pas.",
@@ -40,6 +40,6 @@
 		"withOthers": "Avec d'autres"
 	},
 	"errors": {
-		"failed": "L'enregistrement a échoué. Réessayez."
+		"failed": "L'enregistrement a échoué. Réessaie."
 	}
 }

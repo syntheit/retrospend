@@ -129,7 +129,7 @@
 		"delete": {
 			"label": "Supprimer définitivement",
 			"confirmTitle": "Supprimer {name} définitivement ?",
-			"confirmBody": "Le compte et tout son historique de soldes sont supprimés, et votre patrimoine passé change aussi. Pour garder l'historique, clôturez plutôt le compte.",
+			"confirmBody": "Le compte et tout son historique de soldes sont supprimés, et ton patrimoine passé change aussi. Pour garder l'historique, clôture plutôt le compte.",
 			"confirmButton": "Supprimer définitivement"
 		}
 	},
@@ -236,7 +236,7 @@
 		"notReceived": {
 			"label": "Pas reçu",
 			"confirmTitle": "Paiement de {name} pas reçu ?",
-			"confirmBody": "Le paiement est marqué comme non reçu et votre solde reste inchangé.",
+			"confirmBody": "Le paiement est marqué comme non reçu et ton solde reste inchangé.",
 			"confirmButton": "Pas reçu"
 		}
 	},

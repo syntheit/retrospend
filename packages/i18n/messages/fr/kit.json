@@ -1,7 +1,7 @@
 {
 	"status": {
-		"owed": "On vous doit",
-		"owe": "Vous devez",
+		"owed": "On te doit",
+		"owe": "Tu dois",
 		"settled": "Réglé",
 		"funded": "Financé",
 		"underfunded": "Sous-financé",
@@ -20,11 +20,11 @@
 		"notCounted": "Non compté"
 	},
 	"balance": {
-		"owesYou": "vous doit",
-		"peopleOweYou": "vous doivent",
-		"owedToYou": "en votre faveur",
-		"youOwe": "vous devez",
-		"youOwePeople": "vous devez à d'autres"
+		"owesYou": "te doit",
+		"peopleOweYou": "te doivent",
+		"owedToYou": "en ta faveur",
+		"youOwe": "tu dois",
+		"youOwePeople": "tu dois à d'autres"
 	},
 	"money": {
 		"none": "Aucun",
@@ -35,7 +35,7 @@
 		"menu": "Filtrer"
 	},
 	"faces": {
-		"you": "Vous",
+		"you": "Toi",
 		"paid": "A payé",
 		"someAndMore": "{first}, {second} et {count} de plus",
 		"paidBy": "{names}. Payé par {payer}"
