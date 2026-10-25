@@ -33,7 +33,10 @@ type Entry = {
 	action: { type: string };
 	actor: { name: string };
 	summary: string;
-	detail: { type: string } | null;
+	summaryKey?: string | null;
+	params?: Record<string, string> | null;
+	amounts?: Record<string, { minor: number; currency: string }>;
+	changes: Record<string, unknown> | null;
 };
 type Page = { items: Entry[]; nextCursor: string | null; totalCount: number };
 
@@ -123,6 +126,28 @@ describe("/api/v1 activity", () => {
 		);
 	});
 
+	it("gives facts to word, not formatted text: a key, raw parts and Money", async () => {
+		const edits = await expectBody<Page>(
+			await call(`/projects/${trip}/activity?actions=EDITED`, {
+				headers: asSofia,
+			}),
+			c.feed,
+		);
+		const amountEdit = edits.items.find(
+			(e) => e.summaryKey?.startsWith("activityEditedAmount"),
+		);
+		expect(amountEdit?.amounts).toEqual({
+			from: { minor: 100_000, currency: "ARS" },
+			to: { minor: 120_000, currency: "ARS" },
+		});
+		// The title is whole and unquoted; the amounts are not in the text params.
+		expect(amountEdit?.params).toEqual({
+			actor: expect.any(String),
+			description: "Dinner",
+		});
+		expect(amountEdit?.changes).toMatchObject({ amount: { old: 1000, new: 1200 } });
+	});
+
 	it("filters by action and by who acted, and refuses what it does not know", async () => {
 		const edits = await expectBody<Page>(
 			await call(`/projects/${trip}/activity?actions=EDITED`, {
@@ -200,9 +225,10 @@ describe("/api/v1 activity", () => {
 		expect(live.entries.map((e) => e.action.type)).toEqual(
 			expect.arrayContaining(["created", "edited"]),
 		);
-		expect(live.entries.find((e) => e.action.type === "edited")?.detail?.type).toBe(
-			"field_changes",
-		);
+		// The stored change record, not a formatted one: amounts as numbers.
+		expect(
+			live.entries.find((e) => e.action.type === "edited")?.changes,
+		).toMatchObject({ amount: { old: 1000, new: 1200 } });
 		await expectProblem(
 			await call(`/shared-expenses/${dinner}/history`, { headers: asStranger }),
 			403,

@@ -1,80 +1,27 @@
 import type { PrismaClient } from "~prisma";
 import { assertAnotherAdminRemains } from "./admin-guard.service";
 import {
-	countOtherUserOrganizers,
+	DELETED_USER_NAME,
 	DELETED_USER_SENTINEL,
+} from "./deleted-sentinels";
+import {
+	type PrismaTx,
+	retireGhosts,
+} from "./user-deletion-ghosts";
+import {
+	countOtherUserOrganizers,
 	findSuccessorOrganizer,
 	handOverCreatedProjects,
 } from "./user-deletion-projects";
 import { removeUserFiles } from "./user-files.service";
-import { repointSettlementParty, syncPaymentHeaders } from "./payments/participants";
+import {
+	repointSettlementParty,
+	syncPaymentHeaders,
+} from "./payments/participants";
 import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
-export { DELETED_USER_SENTINEL };
-export const DELETED_USER_NAME = "Deleted User";
-
-export const DELETED_GUEST_SENTINEL = "DELETED_GUEST";
-export const DELETED_GUEST_NAME = "Deleted Guest";
-
-export const DELETED_SHADOW_SENTINEL = "DELETED_SHADOW";
-export const DELETED_SHADOW_NAME = "Deleted Participant";
-
-// Transaction client type - same capabilities as PrismaClient minus lifecycle methods
-type PrismaTx = Omit<
-	PrismaClient,
-	"$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
->;
-
-/**
- * Anonymizes all shared-expense references for a participant, replacing their ID
- * with a sentinel value. Handles the split_participant unique constraint by merging
- * share amounts when a sentinel row already exists for the same transaction.
- *
- * Must be called within a transaction. Does NOT delete the participant entity itself.
- */
-export async function anonymizeParticipantReferences(
-	tx: PrismaTx,
-	participantType: "guest" | "shadow",
-	participantId: string,
-	sentinelId: string,
-): Promise<void> {
-	// Merge split_participant shares where sentinel already exists (unique
-	// constraint), then delete the merged rows (now duplicates)
-	await mergeOverlappingSplitRows(
-		tx,
-		{ participantType, participantId },
-		{ participantType, participantId: sentinelId },
-	);
-	// Update remaining split_participant rows
-	await tx.splitParticipant.updateMany({
-		where: { participantType, participantId },
-		data: { participantId: sentinelId },
-	});
-
-	// Anonymize SharedTransaction paidBy/createdBy
-	await tx.sharedTransaction.updateMany({
-		where: { paidByType: participantType, paidById: participantId },
-		data: { paidById: sentinelId },
-	});
-	await tx.sharedTransaction.updateMany({
-		where: { createdByType: participantType, createdById: participantId },
-		data: { createdById: sentinelId },
-	});
-
-	// Anonymize Settlement from/to and payment headers
-	await repointSettlementParty(tx, { participantType, participantId }, { participantType, participantId: sentinelId });
-
-	// Anonymize AuditLogEntry actor
-	await tx.auditLogEntry.updateMany({
-		where: { actorType: participantType, actorId: participantId },
-		data: { actorId: sentinelId },
-	});
-
-	// Remove ProjectParticipant records
-	await tx.projectParticipant.deleteMany({
-		where: { participantType, participantId },
-	});
-}
+export * from "./deleted-sentinels";
+export { anonymizeParticipantReferences } from "./user-deletion-ghosts";
 
 // ── Preview types ─────────────────────────────────────────────────────────────
 
@@ -502,22 +449,9 @@ export async function anonymizeAndDeleteUser(
 		// UPDATE ... SET changes = replace(changes::text, userId, DELETED_USER_SENTINEL)::jsonb
 		// query can be added here.
 
-		// Ghosts this user created are cascade-deleted with the user. Detach them
-		// from shared records first (same as an admin deleting a ghost), so no
-		// project membership, split or settlement is left pointing at a shadow
-		// row that no longer exists.
-		const ownedShadows = await tx.shadowProfile.findMany({
-			where: { createdById: userId },
-			select: { id: true },
-		});
-		for (const shadow of ownedShadows) {
-			await anonymizeParticipantReferences(
-				tx as unknown as PrismaTx,
-				"shadow",
-				shadow.id,
-				DELETED_SHADOW_SENTINEL,
-			);
-		}
+		// Ghosts this user created: the ones in a project that goes on belong to its
+		// heir, the rest are detached before the cascade deletes them.
+		await retireGhosts(tx as unknown as PrismaTx, userId);
 
 		// Delete the user - cascades all personal data (expenses, budgets, sessions, etc.)
 		await tx.user.delete({ where: { id: userId } });

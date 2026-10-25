@@ -24,6 +24,11 @@ export const sharedExpensesRouter = {
 			extras.removeMeFromSharedExpense(signedIn(context), input),
 		),
 	),
+	previewRemoveMe: s.previewRemoveMe.handler(
+		serve(({ context, input }) =>
+			extras.previewRemoveMe(signedIn(context), input),
+		),
+	),
 	create: s.create.handler(
 		serve(({ context, input }) =>
 			shared.addSharedExpense(signedIn(context), input),

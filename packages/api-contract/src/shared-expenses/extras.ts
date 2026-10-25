@@ -2,7 +2,7 @@ import * as z from "zod";
 import { v1 } from "../common/meta";
 import { moneySchema } from "../common/money";
 import { idSchema } from "../core";
-import { daySchema } from "../ledger";
+import { daySchema, previewTwin, undoField } from "../ledger";
 import { participantTypeSchema } from "../people/schemas";
 
 const TAG = ["Shared expenses"];
@@ -88,6 +88,10 @@ export const removeMeSchema = z
 	})
 	.meta({ id: "RemoveMeFromSharedExpense" });
 
+export const removedMeSchema = z
+	.object({ id: idSchema, ...undoField })
+	.meta({ id: "RemovedMe" });
+
 /** Reading one split expense, and the verification calls the Needs you list leads to. */
 export const sharedExpenseExtrasContract = {
 	get: v1
@@ -135,9 +139,17 @@ export const sharedExpenseExtrasContract = {
 			tags: TAG,
 			summary: "Take yourself off a split expense",
 			description:
-				"Only your own share goes; the others stay. Not for the person who added it (delete it instead), and not once it is settled. When your share is already paid it needs confirmBalanceChange.",
+				"Only your own share goes; the others stay. Not for the person who added it (delete it instead), and not once it is settled. When your share is already paid it needs confirmBalanceChange. Answers an undo token for POST /shared-expenses/undo; the preview shows what changes.",
 		})
 		.meta({ scope: "write:expenses", event: "shared_expense.self_removed" })
 		.input(removeMeSchema)
-		.output(z.object({ ok: z.literal(true) })),
+		.output(removedMeSchema),
+	previewRemoveMe: previewTwin({
+		path: "/shared-expenses/{id}/remove-me",
+		of: "POST /shared-expenses/{id}/remove-me",
+		operationId: "previewRemoveMeFromSharedExpense",
+		tags: TAG,
+		scope: "write:expenses",
+		input: removeMeSchema,
+	}),
 };

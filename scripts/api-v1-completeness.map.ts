@@ -499,7 +499,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	),
 	"project.create": to("POST /projects"),
 	"project.createMagicLink": to("POST /projects/{id}/magic-links"),
-	"project.delete": to("DELETE /projects/{id}"),
+	"project.delete": to("DELETE /projects/{id}", "POST /projects/{id}/preview"),
 	"project.detail": to("GET /projects/{id}"),
 	"project.list": to("GET /projects"),
 	"project.listExpenses": to("GET /projects/{id}/expenses"),
@@ -617,7 +617,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"verification.outgoing": to("GET /shared-expenses/outgoing"),
 	"verification.queue": to("GET /needs-you"),
 	"verification.reject": to("POST /shared-expenses/{id}/reject"),
-	"verification.removeSelf": to("POST /shared-expenses/{id}/remove-me"),
+	"verification.removeSelf": withPreview("POST /shared-expenses/{id}/remove-me"),
 
 	// ── wealth ───────────────────────────────────────────────────────────
 	"wealth.accounts.defaults": to("GET /accounts/defaults"),

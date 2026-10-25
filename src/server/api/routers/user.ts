@@ -5,8 +5,10 @@ import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { getPasswordChangedAlertTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
-import { deleteOwnAccount } from "~/server/services/account-deletion.service";
-import { previewAccountDeletion } from "~/server/services/user-deletion.service";
+import {
+	deleteOwnAccount,
+	previewOwnAccountDeletion,
+} from "~/server/services/account-deletion.service";
 import { validateAndProcessUsernameChange } from "~/server/services/username.service";
 
 export const userRouter = createTRPCRouter({
@@ -149,10 +151,9 @@ export const userRouter = createTRPCRouter({
 			return updatedUser;
 		}),
 
-	previewAccountDeletion: protectedProcedure.query(async ({ ctx }) => {
-		const { session, db } = ctx;
-		return previewAccountDeletion(db, session.user.id);
-	}),
+	previewAccountDeletion: protectedProcedure.query(({ ctx }) =>
+		previewOwnAccountDeletion(ctx.session.user.id),
+	),
 
 	deleteAccount: protectedProcedure
 		.input(
@@ -161,8 +162,7 @@ export const userRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-			await deleteOwnAccount(db, session.user, input.password);
+			await deleteOwnAccount(ctx.session.user, input.password);
 
 			return { success: true };
 		}),

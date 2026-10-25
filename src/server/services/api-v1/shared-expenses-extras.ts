@@ -1,9 +1,11 @@
 import type { removeMeSchema } from "@retrospend/api-contract";
 import type * as z from "zod";
 import { sharedAuthor } from "~/server/services/entry/shared-read";
+import { removeSelfMutation } from "~/server/services/shared-expenses/remove-self.mutation";
 import { toMinor } from "~/server/services/envelope/units";
 import { isoDay } from "./caller";
 import type { LedgerCaller } from "./money-op";
+import { applyWrite, previewWrite, undoFor } from "./money-write";
 import { trpcSharedTransaction, trpcVerification } from "./trpc-bridge";
 
 /**
@@ -89,13 +91,27 @@ export async function acceptSharedExpenses(caller: LedgerCaller, ids: string[]) 
 	return (await trpcVerification(caller)).bulkAccept({ txnIds: ids });
 }
 
+const removeInput = (body: z.infer<typeof removeMeSchema>) => ({
+	transactionId: body.id,
+	confirmBalanceChange: body.confirmBalanceChange,
+});
+
 export async function removeMeFromSharedExpense(
 	caller: LedgerCaller,
 	body: z.infer<typeof removeMeSchema>,
 ) {
-	await (await trpcVerification(caller)).removeSelf({
-		txnId: body.id,
-		confirmBalanceChange: body.confirmBalanceChange,
-	});
-	return { ok: true as const };
+	const done = await applyWrite(caller, removeSelfMutation, removeInput(body));
+	return {
+		id: done.transactionId,
+		undo: undoFor(caller, "shared", "shared.restoreSelf", {
+			transactionId: done.transactionId,
+			removed: done.removed,
+			expectedUpdatedAt: done.updatedAt,
+		}),
+	};
 }
+
+export const previewRemoveMe = (
+	caller: LedgerCaller,
+	body: z.infer<typeof removeMeSchema>,
+) => previewWrite(caller, removeSelfMutation, removeInput(body));

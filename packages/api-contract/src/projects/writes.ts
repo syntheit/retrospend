@@ -94,6 +94,8 @@ export const updateProjectSchema = z
 	})
 	.meta({ id: "UpdateProject" });
 
+const deleteProjectSchema = z.object({ id: idSchema });
+
 export const analyticsExclusionSchema = z
 	.object({ id: idSchema, exclude: z.boolean() })
 	.meta({ id: "ProjectAnalyticsExclusion" });
@@ -337,11 +339,19 @@ export const projectWritesContract = {
 			tags: TAG,
 			summary: "Delete a project",
 			description:
-				"Only the person who created it. Its expenses and payments go with it.",
+				"Only the person who created it. Its expenses and payments go with it and everyone's balances change, so this is a money write: preview first. There is no undo.",
 		})
-		.meta({ scope: SCOPE, event: "project.deleted" })
-		.input(z.object({ id: idSchema }))
+		.meta({ scope: "write:money", event: "project.deleted" })
+		.input(deleteProjectSchema)
 		.output(okSchema),
+	previewDelete: previewTwin({
+		path: "/projects/{id}",
+		of: "DELETE /projects/{id}",
+		operationId: "previewDeleteProject",
+		tags: TAG,
+		scope: "write:money",
+		input: deleteProjectSchema,
+	}),
 	setAnalyticsExclusion: v1
 		.route({
 			method: "PUT",

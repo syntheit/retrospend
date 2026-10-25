@@ -4,9 +4,7 @@
  * (a project is deleted with its creator, so it must be handed on first).
  */
 import type { PrismaClient, ProjectRole } from "~prisma";
-
-/** The stand-in for a deleted account on the shared records it leaves behind. */
-export const DELETED_USER_SENTINEL = "DELETED_USER";
+import { DELETED_USER_SENTINEL } from "./deleted-sentinels";
 
 type PrismaTx = Omit<
 	PrismaClient,

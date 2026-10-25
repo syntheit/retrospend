@@ -339,6 +339,26 @@ describe("project writes", () => {
 			(await adminDb.magicLink.findUniqueOrThrow({ where: { id: link.id } }))
 				.isActive,
 		).toBe(false);
+		// The link is the secret: it is in no event, so not in the feed or a webhook.
+		const events = await adminDb.apiEvent.findMany({
+			where: { userId: martin.user.id, type: { startsWith: "project.magic_link" } },
+		});
+		expect(events.map((e) => e.type).sort()).toEqual([
+			"project.magic_link_created",
+			"project.magic_link_reset",
+		]);
+		for (const e of events) {
+			expect(e.entityId).toBe(trip);
+			expect(JSON.stringify(e, (_k, v) => (typeof v === "bigint" ? String(v) : v))).not.toContain(link.id);
+			expect(JSON.stringify(e, (_k, v) => (typeof v === "bigint" ? String(v) : v))).not.toContain(fresh.id);
+		}
+		const feed = await call("/events", {
+			headers: await asKey(martin.user.id, ["read"]),
+		});
+		const feedText = await feed.text();
+		expect(feed.status, feedText).toBe(200);
+		expect(feedText).not.toContain(link.id);
+		expect(feedText).not.toContain(fresh.id);
 		await expectBody(
 			await send("DELETE", `${base}/${fresh.id}`, asMartin),
 			c.revokeMagicLink,
@@ -456,8 +476,26 @@ describe("project writes", () => {
 		);
 	});
 
-	it("deletes a project only for the person who created it", async () => {
+	it("deletes a project only for the person who created it, after a preview that writes nothing", async () => {
 		const doomed = await seedProject(sofia, [{ user: martin, role: "EDITOR" }]);
+		await seedShare(ref(sofia), ref(martin), "500", "ARS", { projectId: doomed });
+		const preview = await send("POST", `/projects/${doomed}/preview`, asSofia, {});
+		expect(preview.status, await preview.clone().text()).toBe(200);
+		expect(await adminDb.project.count({ where: { id: doomed } })).toBe(1);
+		expect(
+			await adminDb.sharedTransaction.count({ where: { projectId: doomed } }),
+		).toBe(1);
+		// It is a money write: the expenses scope alone is not enough.
+		await expectProblem(
+			await send("DELETE", `/projects/${doomed}`, await asKey(sofia.user.id, ["read", "write:expenses"])),
+			403,
+			"missing_scope",
+		);
+		await expectProblem(
+			await send("POST", `/projects/${doomed}/preview`, asMartin, {}),
+			403,
+			"forbidden",
+		);
 		await expectProblem(
 			await send("DELETE", `/projects/${doomed}`, asMartin),
 			403,

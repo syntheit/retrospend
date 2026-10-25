@@ -198,15 +198,53 @@ describe("shared expense reads and verification", () => {
 			404,
 			"not_found",
 		);
-		await expectBody(
+		const rows = () =>
+			adminDb.splitParticipant.findMany({ where: { transactionId: id } });
+		// The preview shows what changes and writes nothing.
+		const preview = await expectBody<{ changes: unknown[]; unchanged: unknown[] }>(
+			await send("POST", `/shared-expenses/${id}/remove-me/preview`, asLucia, {}),
+			c.previewRemoveMe,
+		);
+		expect(preview.changes.length + preview.unchanged.length).toBeGreaterThan(0);
+		expect(await rows()).toHaveLength(3);
+
+		const removed = await expectBody<{ id: string; undo: string }>(
 			await send("POST", `/shared-expenses/${id}/remove-me`, asLucia, {}),
 			c.removeMe,
 		);
-		const left = await adminDb.splitParticipant.findMany({
-			where: { transactionId: id },
-		});
-		expect(left.map((s) => s.participantId).sort()).toEqual(
+		expect((await rows()).map((s) => s.participantId).sort()).toEqual(
 			[sofia.user.id, martin.user.id].sort(),
 		);
+
+		// Undo puts the share back exactly, once.
+		const back = await expectBody<{ id: string; redo: string | null }>(
+			await send("POST", "/shared-expenses/undo", asLucia, { token: removed.undo }),
+			c.undo,
+		);
+		expect(back.id).toBe(id);
+		const restored = (await rows()).find((s) => s.participantId === lucia.user.id);
+		expect(restored).toMatchObject({ verificationStatus: "PENDING" });
+		expect(Number(restored?.shareAmount)).toBe(300);
+		await expectProblem(
+			await send("POST", "/shared-expenses/undo", asLucia, { token: removed.undo }),
+			409,
+			"conflict",
+		);
+
+		// An edit after the removal makes its undo unsafe.
+		const again = await expectBody<{ undo: string }>(
+			await send("POST", `/shared-expenses/${id}/remove-me`, asLucia, {}),
+			c.removeMe,
+		);
+		await adminDb.sharedTransaction.update({
+			where: { id },
+			data: { notes: "edited since" },
+		});
+		await expectProblem(
+			await send("POST", "/shared-expenses/undo", asLucia, { token: again.undo }),
+			409,
+			"conflict",
+		);
+		expect(await rows()).toHaveLength(2);
 	});
 });

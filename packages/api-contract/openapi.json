@@ -88483,239 +88483,23 @@
 																],
 																"type": "object"
 															},
-															"detail": {
+															"amounts": {
+																"additionalProperties": {
+																	"$ref": "#/components/schemas/Money"
+																},
+																"propertyNames": {
+																	"type": "string"
+																},
+																"type": "object"
+															},
+															"changes": {
 																"anyOf": [
 																	{
-																		"anyOf": [
-																			{
-																				"properties": {
-																					"changes": {
-																						"items": {
-																							"properties": {
-																								"field": {
-																									"type": "string"
-																								},
-																								"label": {
-																									"type": "string"
-																								},
-																								"newValue": {
-																									"type": "string"
-																								},
-																								"oldValue": {
-																									"type": "string"
-																								}
-																							},
-																							"required": [
-																								"field",
-																								"label",
-																								"oldValue",
-																								"newValue"
-																							],
-																							"type": "object"
-																						},
-																						"type": "array"
-																					},
-																					"type": {
-																						"const": "field_changes"
-																					}
-																				},
-																				"required": [
-																					"type",
-																					"changes"
-																				],
-																				"type": "object"
-																			},
-																			{
-																				"properties": {
-																					"snapshot": {
-																						"properties": {
-																							"amount": {
-																								"type": "string"
-																							},
-																							"category": {
-																								"anyOf": [
-																									{
-																										"type": "string"
-																									},
-																									{
-																										"type": "null"
-																									}
-																								]
-																							},
-																							"currency": {
-																								"type": "string"
-																							},
-																							"date": {
-																								"type": "string"
-																							},
-																							"description": {
-																								"type": "string"
-																							},
-																							"paidBy": {
-																								"type": "string"
-																							},
-																							"participants": {
-																								"items": {
-																									"properties": {
-																										"name": {
-																											"type": "string"
-																										},
-																										"share": {
-																											"type": "string"
-																										}
-																									},
-																									"required": [
-																										"name",
-																										"share"
-																									],
-																									"type": "object"
-																								},
-																								"type": "array"
-																							},
-																							"splitMode": {
-																								"type": "string"
-																							}
-																						},
-																						"required": [
-																							"amount",
-																							"currency",
-																							"description",
-																							"category",
-																							"date",
-																							"splitMode",
-																							"paidBy",
-																							"participants"
-																						],
-																						"type": "object"
-																					},
-																					"type": {
-																						"const": "creation_snapshot"
-																					}
-																				},
-																				"required": [
-																					"type",
-																					"snapshot"
-																				],
-																				"type": "object"
-																			},
-																			{
-																				"properties": {
-																					"snapshot": {
-																						"properties": {
-																							"amount": {
-																								"type": "string"
-																							},
-																							"category": {
-																								"anyOf": [
-																									{
-																										"type": "string"
-																									},
-																									{
-																										"type": "null"
-																									}
-																								]
-																							},
-																							"currency": {
-																								"type": "string"
-																							},
-																							"date": {
-																								"type": "string"
-																							},
-																							"description": {
-																								"type": "string"
-																							},
-																							"paidBy": {
-																								"type": "string"
-																							},
-																							"participants": {
-																								"items": {
-																									"properties": {
-																										"name": {
-																											"type": "string"
-																										},
-																										"share": {
-																											"type": "string"
-																										}
-																									},
-																									"required": [
-																										"name",
-																										"share"
-																									],
-																									"type": "object"
-																								},
-																								"type": "array"
-																							},
-																							"splitMode": {
-																								"type": "string"
-																							}
-																						},
-																						"required": [
-																							"amount",
-																							"currency",
-																							"description",
-																							"category",
-																							"date",
-																							"splitMode",
-																							"paidBy",
-																							"participants"
-																						],
-																						"type": "object"
-																					},
-																					"type": {
-																						"const": "deletion_snapshot"
-																					}
-																				},
-																				"required": [
-																					"type",
-																					"snapshot"
-																				],
-																				"type": "object"
-																			},
-																			{
-																				"properties": {
-																					"reason": {
-																						"anyOf": [
-																							{
-																								"type": "string"
-																							},
-																							{
-																								"type": "null"
-																							}
-																						]
-																					},
-																					"type": {
-																						"const": "rejection"
-																					}
-																				},
-																				"required": [
-																					"type",
-																					"reason"
-																				],
-																				"type": "object"
-																			},
-																			{
-																				"properties": {
-																					"note": {
-																						"anyOf": [
-																							{
-																								"type": "string"
-																							},
-																							{
-																								"type": "null"
-																							}
-																						]
-																					},
-																					"type": {
-																						"const": "verification"
-																					}
-																				},
-																				"required": [
-																					"type",
-																					"note"
-																				],
-																				"type": "object"
-																			}
-																		]
+																		"additionalProperties": {},
+																		"propertyNames": {
+																			"type": "string"
+																		},
+																		"type": "object"
 																	},
 																	{
 																		"type": "null"
@@ -88727,20 +88511,7 @@
 																"minLength": 1,
 																"type": "string"
 															},
-															"summary": {
-																"type": "string"
-															},
-															"summaryKey": {
-																"anyOf": [
-																	{
-																		"type": "string"
-																	},
-																	{
-																		"type": "null"
-																	}
-																]
-															},
-															"summaryParams": {
+															"params": {
 																"anyOf": [
 																	{
 																		"additionalProperties": {
@@ -88750,6 +88521,19 @@
 																			"type": "string"
 																		},
 																		"type": "object"
+																	},
+																	{
+																		"type": "null"
+																	}
+																]
+															},
+															"summary": {
+																"type": "string"
+															},
+															"summaryKey": {
+																"anyOf": [
+																	{
+																		"type": "string"
 																	},
 																	{
 																		"type": "null"
@@ -88792,11 +88576,12 @@
 															"timestamp",
 															"actor",
 															"action",
-															"summary",
 															"summaryKey",
-															"summaryParams",
+															"params",
+															"amounts",
+															"summary",
 															"target",
-															"detail"
+															"changes"
 														],
 														"type": "object"
 													},
@@ -88901,7 +88686,7 @@
 		},
 		"/projects/{id}": {
 			"delete": {
-				"description": "Only the person who created it. Its expenses and payments go with it.",
+				"description": "Only the person who created it. Its expenses and payments go with it and everyone's balances change, so this is a money write: preview first. There is no undo.",
 				"operationId": "deleteProject",
 				"parameters": [
 					{
@@ -88997,17 +88782,17 @@
 				"security": [
 					{
 						"bearerAuth": [
-							"write:expenses"
+							"write:money"
 						]
 					},
 					{
 						"apiKeyAuth": [
-							"write:expenses"
+							"write:money"
 						]
 					},
 					{
 						"cookieAuth": [
-							"write:expenses"
+							"write:money"
 						]
 					}
 				],
@@ -89016,7 +88801,7 @@
 					"Projects"
 				],
 				"x-event-type": "project.deleted",
-				"x-required-scope": "write:expenses"
+				"x-required-scope": "write:money"
 			},
 			"get": {
 				"operationId": "getProject",
@@ -90228,239 +90013,23 @@
 														],
 														"type": "object"
 													},
-													"detail": {
+													"amounts": {
+														"additionalProperties": {
+															"$ref": "#/components/schemas/Money"
+														},
+														"propertyNames": {
+															"type": "string"
+														},
+														"type": "object"
+													},
+													"changes": {
 														"anyOf": [
 															{
-																"anyOf": [
-																	{
-																		"properties": {
-																			"changes": {
-																				"items": {
-																					"properties": {
-																						"field": {
-																							"type": "string"
-																						},
-																						"label": {
-																							"type": "string"
-																						},
-																						"newValue": {
-																							"type": "string"
-																						},
-																						"oldValue": {
-																							"type": "string"
-																						}
-																					},
-																					"required": [
-																						"field",
-																						"label",
-																						"oldValue",
-																						"newValue"
-																					],
-																					"type": "object"
-																				},
-																				"type": "array"
-																			},
-																			"type": {
-																				"const": "field_changes"
-																			}
-																		},
-																		"required": [
-																			"type",
-																			"changes"
-																		],
-																		"type": "object"
-																	},
-																	{
-																		"properties": {
-																			"snapshot": {
-																				"properties": {
-																					"amount": {
-																						"type": "string"
-																					},
-																					"category": {
-																						"anyOf": [
-																							{
-																								"type": "string"
-																							},
-																							{
-																								"type": "null"
-																							}
-																						]
-																					},
-																					"currency": {
-																						"type": "string"
-																					},
-																					"date": {
-																						"type": "string"
-																					},
-																					"description": {
-																						"type": "string"
-																					},
-																					"paidBy": {
-																						"type": "string"
-																					},
-																					"participants": {
-																						"items": {
-																							"properties": {
-																								"name": {
-																									"type": "string"
-																								},
-																								"share": {
-																									"type": "string"
-																								}
-																							},
-																							"required": [
-																								"name",
-																								"share"
-																							],
-																							"type": "object"
-																						},
-																						"type": "array"
-																					},
-																					"splitMode": {
-																						"type": "string"
-																					}
-																				},
-																				"required": [
-																					"amount",
-																					"currency",
-																					"description",
-																					"category",
-																					"date",
-																					"splitMode",
-																					"paidBy",
-																					"participants"
-																				],
-																				"type": "object"
-																			},
-																			"type": {
-																				"const": "creation_snapshot"
-																			}
-																		},
-																		"required": [
-																			"type",
-																			"snapshot"
-																		],
-																		"type": "object"
-																	},
-																	{
-																		"properties": {
-																			"snapshot": {
-																				"properties": {
-																					"amount": {
-																						"type": "string"
-																					},
-																					"category": {
-																						"anyOf": [
-																							{
-																								"type": "string"
-																							},
-																							{
-																								"type": "null"
-																							}
-																						]
-																					},
-																					"currency": {
-																						"type": "string"
-																					},
-																					"date": {
-																						"type": "string"
-																					},
-																					"description": {
-																						"type": "string"
-																					},
-																					"paidBy": {
-																						"type": "string"
-																					},
-																					"participants": {
-																						"items": {
-																							"properties": {
-																								"name": {
-																									"type": "string"
-																								},
-																								"share": {
-																									"type": "string"
-																								}
-																							},
-																							"required": [
-																								"name",
-																								"share"
-																							],
-																							"type": "object"
-																						},
-																						"type": "array"
-																					},
-																					"splitMode": {
-																						"type": "string"
-																					}
-																				},
-																				"required": [
-																					"amount",
-																					"currency",
-																					"description",
-																					"category",
-																					"date",
-																					"splitMode",
-																					"paidBy",
-																					"participants"
-																				],
-																				"type": "object"
-																			},
-																			"type": {
-																				"const": "deletion_snapshot"
-																			}
-																		},
-																		"required": [
-																			"type",
-																			"snapshot"
-																		],
-																		"type": "object"
-																	},
-																	{
-																		"properties": {
-																			"reason": {
-																				"anyOf": [
-																					{
-																						"type": "string"
-																					},
-																					{
-																						"type": "null"
-																					}
-																				]
-																			},
-																			"type": {
-																				"const": "rejection"
-																			}
-																		},
-																		"required": [
-																			"type",
-																			"reason"
-																		],
-																		"type": "object"
-																	},
-																	{
-																		"properties": {
-																			"note": {
-																				"anyOf": [
-																					{
-																						"type": "string"
-																					},
-																					{
-																						"type": "null"
-																					}
-																				]
-																			},
-																			"type": {
-																				"const": "verification"
-																			}
-																		},
-																		"required": [
-																			"type",
-																			"note"
-																		],
-																		"type": "object"
-																	}
-																]
+																"additionalProperties": {},
+																"propertyNames": {
+																	"type": "string"
+																},
+																"type": "object"
 															},
 															{
 																"type": "null"
@@ -90472,20 +90041,7 @@
 														"minLength": 1,
 														"type": "string"
 													},
-													"summary": {
-														"type": "string"
-													},
-													"summaryKey": {
-														"anyOf": [
-															{
-																"type": "string"
-															},
-															{
-																"type": "null"
-															}
-														]
-													},
-													"summaryParams": {
+													"params": {
 														"anyOf": [
 															{
 																"additionalProperties": {
@@ -90495,6 +90051,19 @@
 																	"type": "string"
 																},
 																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"summary": {
+														"type": "string"
+													},
+													"summaryKey": {
+														"anyOf": [
+															{
+																"type": "string"
 															},
 															{
 																"type": "null"
@@ -90537,11 +90106,12 @@
 													"timestamp",
 													"actor",
 													"action",
-													"summary",
 													"summaryKey",
-													"summaryParams",
+													"params",
+													"amounts",
+													"summary",
 													"target",
-													"detail"
+													"changes"
 												],
 												"type": "object"
 											},
@@ -94769,6 +94339,452 @@
 				],
 				"x-event-type": "project.ownership_transferred",
 				"x-required-scope": "write:expenses"
+			}
+		},
+		"/projects/{id}/preview": {
+			"post": {
+				"description": "Runs DELETE /projects/{id} in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewDeleteProject",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:money"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:money"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:money"
+						]
+					}
+				],
+				"summary": "Preview DELETE /projects/{id}",
+				"tags": [
+					"Projects"
+				],
+				"x-required-scope": "write:money"
 			}
 		},
 		"/projects/{id}/rebalance": {
@@ -110677,239 +110693,14 @@
 														],
 														"type": "object"
 													},
-													"detail": {
+													"changes": {
 														"anyOf": [
 															{
-																"anyOf": [
-																	{
-																		"properties": {
-																			"changes": {
-																				"items": {
-																					"properties": {
-																						"field": {
-																							"type": "string"
-																						},
-																						"label": {
-																							"type": "string"
-																						},
-																						"newValue": {
-																							"type": "string"
-																						},
-																						"oldValue": {
-																							"type": "string"
-																						}
-																					},
-																					"required": [
-																						"field",
-																						"label",
-																						"oldValue",
-																						"newValue"
-																					],
-																					"type": "object"
-																				},
-																				"type": "array"
-																			},
-																			"type": {
-																				"const": "field_changes"
-																			}
-																		},
-																		"required": [
-																			"type",
-																			"changes"
-																		],
-																		"type": "object"
-																	},
-																	{
-																		"properties": {
-																			"snapshot": {
-																				"properties": {
-																					"amount": {
-																						"type": "string"
-																					},
-																					"category": {
-																						"anyOf": [
-																							{
-																								"type": "string"
-																							},
-																							{
-																								"type": "null"
-																							}
-																						]
-																					},
-																					"currency": {
-																						"type": "string"
-																					},
-																					"date": {
-																						"type": "string"
-																					},
-																					"description": {
-																						"type": "string"
-																					},
-																					"paidBy": {
-																						"type": "string"
-																					},
-																					"participants": {
-																						"items": {
-																							"properties": {
-																								"name": {
-																									"type": "string"
-																								},
-																								"share": {
-																									"type": "string"
-																								}
-																							},
-																							"required": [
-																								"name",
-																								"share"
-																							],
-																							"type": "object"
-																						},
-																						"type": "array"
-																					},
-																					"splitMode": {
-																						"type": "string"
-																					}
-																				},
-																				"required": [
-																					"amount",
-																					"currency",
-																					"description",
-																					"category",
-																					"date",
-																					"splitMode",
-																					"paidBy",
-																					"participants"
-																				],
-																				"type": "object"
-																			},
-																			"type": {
-																				"const": "creation_snapshot"
-																			}
-																		},
-																		"required": [
-																			"type",
-																			"snapshot"
-																		],
-																		"type": "object"
-																	},
-																	{
-																		"properties": {
-																			"snapshot": {
-																				"properties": {
-																					"amount": {
-																						"type": "string"
-																					},
-																					"category": {
-																						"anyOf": [
-																							{
-																								"type": "string"
-																							},
-																							{
-																								"type": "null"
-																							}
-																						]
-																					},
-																					"currency": {
-																						"type": "string"
-																					},
-																					"date": {
-																						"type": "string"
-																					},
-																					"description": {
-																						"type": "string"
-																					},
-																					"paidBy": {
-																						"type": "string"
-																					},
-																					"participants": {
-																						"items": {
-																							"properties": {
-																								"name": {
-																									"type": "string"
-																								},
-																								"share": {
-																									"type": "string"
-																								}
-																							},
-																							"required": [
-																								"name",
-																								"share"
-																							],
-																							"type": "object"
-																						},
-																						"type": "array"
-																					},
-																					"splitMode": {
-																						"type": "string"
-																					}
-																				},
-																				"required": [
-																					"amount",
-																					"currency",
-																					"description",
-																					"category",
-																					"date",
-																					"splitMode",
-																					"paidBy",
-																					"participants"
-																				],
-																				"type": "object"
-																			},
-																			"type": {
-																				"const": "deletion_snapshot"
-																			}
-																		},
-																		"required": [
-																			"type",
-																			"snapshot"
-																		],
-																		"type": "object"
-																	},
-																	{
-																		"properties": {
-																			"reason": {
-																				"anyOf": [
-																					{
-																						"type": "string"
-																					},
-																					{
-																						"type": "null"
-																					}
-																				]
-																			},
-																			"type": {
-																				"const": "rejection"
-																			}
-																		},
-																		"required": [
-																			"type",
-																			"reason"
-																		],
-																		"type": "object"
-																	},
-																	{
-																		"properties": {
-																			"note": {
-																				"anyOf": [
-																					{
-																						"type": "string"
-																					},
-																					{
-																						"type": "null"
-																					}
-																				]
-																			},
-																			"type": {
-																				"const": "verification"
-																			}
-																		},
-																		"required": [
-																			"type",
-																			"note"
-																		],
-																		"type": "object"
-																	}
-																]
+																"additionalProperties": {},
+																"propertyNames": {
+																	"type": "string"
+																},
+																"type": "object"
 															},
 															{
 																"type": "null"
@@ -110935,7 +110726,7 @@
 													"actor",
 													"action",
 													"summary",
-													"detail"
+													"changes"
 												],
 												"type": "object"
 											},
@@ -111858,7 +111649,7 @@
 		},
 		"/shared-expenses/{id}/remove-me": {
 			"post": {
-				"description": "Only your own share goes; the others stay. Not for the person who added it (delete it instead), and not once it is settled. When your share is already paid it needs confirmBalanceChange.",
+				"description": "Only your own share goes; the others stay. Not for the person who added it (delete it instead), and not once it is settled. When your share is already paid it needs confirmBalanceChange. Answers an undo token for POST /shared-expenses/undo; the preview shows what changes.",
 				"operationId": "removeMeFromSharedExpense",
 				"parameters": [
 					{
@@ -111903,12 +111694,20 @@
 							"application/json": {
 								"schema": {
 									"properties": {
-										"ok": {
-											"const": true
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"undo": {
+											"description": "Valid for 24 hours. Send it to the group's undo route to revert this write.",
+											"minLength": 1,
+											"type": "string"
 										}
 									},
 									"required": [
-										"ok"
+										"id",
+										"undo"
 									],
 									"type": "object"
 								}
@@ -111989,6 +111788,468 @@
 					"Shared expenses"
 				],
 				"x-event-type": "shared_expense.self_removed",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/shared-expenses/{id}/remove-me/preview": {
+			"post": {
+				"description": "Runs POST /shared-expenses/{id}/remove-me in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewRemoveMeFromSharedExpense",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"confirmBalanceChange": {
+										"description": "Remove yourself even though your share is already paid, so the payer then owes you. Without it that is a conflict.",
+										"type": "boolean"
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": false
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Preview POST /shared-expenses/{id}/remove-me",
+				"tags": [
+					"Shared expenses"
+				],
 				"x-required-scope": "write:expenses"
 			}
 		},

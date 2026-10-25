@@ -41,7 +41,9 @@ export const recordsEvent = os
 				{ userId: user.principal.userId },
 				meta.event,
 				input,
-				result.output,
+				// A secret response (an invite link, a token) is shown once: its id can be
+				// the secret itself, so the event is built from the request alone.
+				meta.secretResponse ? undefined : result.output,
 			);
 		return result;
 	});

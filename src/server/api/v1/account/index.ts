@@ -1,17 +1,11 @@
 import * as account from "~/server/services/api-v1/account";
 import * as gap from "~/server/services/api-v1/gap-reads";
+import { DeleteTriesExceededError } from "~/server/services/account-deletion.service";
 import { serve } from "../core/serve";
+import { problem } from "../errors";
 import { signedIn, v1 } from "../middleware";
-import { enforceRateLimit } from "../rate-limit";
 
 const p = v1.account;
-
-/**
- * Wrong passwords are the one thing here an attacker with a stolen session
- * can try, so tries are counted per user, right ones included: five in 15
- * minutes, whatever token they come from.
- */
-const DELETE_TRIES = { limit: 5, windowMs: 15 * 60_000 } as const;
 
 export const accountRouter = {
 	recordConsent: p.recordConsent.handler(
@@ -28,13 +22,18 @@ export const accountRouter = {
 	),
 	delete: p.delete.handler(
 		serve(async ({ context, input }) => {
-			const user = signedIn(context);
-			await enforceRateLimit(
-				`acctdel:${user.principal.userId}`,
-				DELETE_TRIES,
-				context.resHeaders,
-			);
-			return account.deleteAccount(user, input.password);
+			try {
+				return await account.deleteAccount(signedIn(context), input.password);
+			} catch (error) {
+				// The service counts the tries (the web has the same limit): a 429 here.
+				if (error instanceof DeleteTriesExceededError) {
+					context.resHeaders?.set("Retry-After", String(error.retryAfterSeconds));
+					throw problem("rate_limited", undefined, {
+						retryAfter: error.retryAfterSeconds,
+					});
+				}
+				throw error;
+			}
 		}),
 	),
 };

@@ -1,3 +1,4 @@
+import * as money from "~/server/services/api-v1/project-money";
 import * as w from "~/server/services/api-v1/project-writes";
 import { serve } from "../core/serve";
 import { signedIn, type V1Context, v1 } from "../middleware";
@@ -15,7 +16,10 @@ const h = <I, R>(
 export const projectWritesRouter = {
 	create: p.create.handler(h(w.createProject)),
 	update: p.update.handler(h(w.updateProject)),
-	delete: p.delete.handler(h((c, input: { id: string }) => w.deleteProject(c, input.id))),
+	delete: p.delete.handler(h((c, input: { id: string }) => money.deleteProject(c, input.id))),
+	previewDelete: p.previewDelete.handler(
+		h((c, input: { id: string }) => money.previewDeleteProject(c, input.id)),
+	),
 	setAnalyticsExclusion: p.setAnalyticsExclusion.handler(
 		h((c, input: { id: string; exclude: boolean }) =>
 			w.setAnalyticsExclusion(c, input.id, input.exclude),
@@ -27,9 +31,9 @@ export const projectWritesRouter = {
 	previewSetMemberDates: p.previewSetMemberDates.handler(h(w.previewMemberDates)),
 	removeMember: p.removeMember.handler(h(w.removeMember)),
 	transferOwnership: p.transferOwnership.handler(h(w.transferOwnership)),
-	rebalanceable: p.rebalanceable.handler(h(w.listRebalanceable)),
-	rebalance: p.rebalance.handler(h(w.rebalance)),
-	previewRebalance: p.previewRebalance.handler(h(w.previewRebalance)),
+	rebalanceable: p.rebalanceable.handler(h(money.listRebalanceable)),
+	rebalance: p.rebalance.handler(h(money.rebalance)),
+	previewRebalance: p.previewRebalance.handler(h(money.previewRebalance)),
 	magicLinks: p.magicLinks.handler(
 		h((c, input: { id: string }) => w.listMagicLinks(c, input.id)),
 	),

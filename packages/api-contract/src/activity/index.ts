@@ -33,11 +33,13 @@ export const auditActionSchema = z
 	.meta({ id: "AuditAction" });
 
 /**
- * The words of an activity entry are written by the server in English from
- * what happened: `summary` for a client that does not translate, and
- * `summaryKey` with `summaryParams` for one that does. Amounts inside the
- * text are already formatted; the figures themselves are in the routes for
- * expenses and payments.
+ * What happened, as facts. `summaryKey` names the sentence and `params` hold
+ * its parts as stored: names and titles whole and unquoted (text a person
+ * typed), roles and visibility as their values. Amounts are Money in
+ * `amounts`, by the parameter they belong to. The client words and formats
+ * it. `summary` is the server's English sentence, kept as a deprecated
+ * fallback for a client that does not translate; do not parse it.
+ * `changes` is the stored change record of the entry.
  */
 const actorSchema = z.object({
 	name: z.string(),
@@ -48,45 +50,11 @@ const actorSchema = z.object({
 const actionSchema = z.object({
 	/** The AuditAction in lower case, for example `edited`. */
 	type: z.string(),
+	/** Deprecated English label; use `type`. */
 	label: z.string(),
 });
 
-const fieldChangeSchema = z.object({
-	field: z.string(),
-	label: z.string(),
-	oldValue: z.string(),
-	newValue: z.string(),
-});
-
-const snapshotSchema = z.object({
-	amount: z.string(),
-	currency: z.string(),
-	description: z.string(),
-	category: z.string().nullable(),
-	date: z.string(),
-	splitMode: z.string(),
-	paidBy: z.string(),
-	participants: z.array(z.object({ name: z.string(), share: z.string() })),
-});
-
-export const activityDetailSchema = z
-	.discriminatedUnion("type", [
-		z.object({
-			type: z.literal("field_changes"),
-			changes: z.array(fieldChangeSchema),
-		}),
-		z.object({
-			type: z.literal("creation_snapshot"),
-			snapshot: snapshotSchema,
-		}),
-		z.object({
-			type: z.literal("deletion_snapshot"),
-			snapshot: snapshotSchema,
-		}),
-		z.object({ type: z.literal("rejection"), reason: z.string().nullable() }),
-		z.object({ type: z.literal("verification"), note: z.string().nullable() }),
-	])
-	.meta({ id: "ActivityDetail" });
+const changesSchema = z.record(z.string(), z.unknown());
 
 export const activityEntrySchema = z
 	.object({
@@ -94,15 +62,18 @@ export const activityEntrySchema = z
 		timestamp: timestampSchema,
 		actor: actorSchema.extend({ avatarUrl: z.string().nullable() }),
 		action: actionSchema,
-		summary: z.string(),
 		summaryKey: z.string().nullable(),
-		summaryParams: z.record(z.string(), z.string()).nullable(),
+		params: z.record(z.string(), z.string()).nullable(),
+		amounts: z.record(z.string(), moneySchema),
+		/** Deprecated English fallback. */
+		summary: z.string(),
 		target: z.object({
 			type: z.string(),
 			id: z.string(),
+			/** The expense title, whole, when the entry is about an expense. */
 			label: z.string().nullable(),
 		}),
-		detail: activityDetailSchema.nullable(),
+		changes: changesSchema.nullable(),
 	})
 	.meta({ id: "ActivityEntry" });
 
@@ -176,8 +147,9 @@ export const expenseHistorySchema = z
 				timestamp: timestampSchema,
 				actor: actorSchema,
 				action: actionSchema,
+				/** Deprecated English fallback. */
 				summary: z.string(),
-				detail: activityDetailSchema.nullable(),
+				changes: changesSchema.nullable(),
 			}),
 		),
 		totalEntries: z.int().min(0),

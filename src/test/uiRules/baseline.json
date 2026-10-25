@@ -1137,7 +1137,7 @@
 		"src/components/wealth/asset-dialog.tsx": 226,
 		"src/components/wealth/wealth-portfolio-breakdown.tsx": 83,
 		"src/server/api/routers/admin.ts": 601,
-		"src/server/api/routers/audit-log.ts": 1047,
+		"src/server/api/routers/audit-log.ts": 722,
 		"src/server/api/routers/auth.ts": 146,
 		"src/server/api/routers/billingPeriod.ts": 433,
 		"src/server/api/routers/budget.ts": 252,
@@ -1157,8 +1157,7 @@
 		"src/server/services/shared-expenses/settlement.service.ts": 432,
 		"src/server/services/shared-expenses/test-utils.ts": 1046,
 		"src/server/services/shared-expenses/transaction.service.ts": 765,
-		"src/server/services/shared-expenses/verification.service.ts": 332,
-		"src/server/services/user-deletion.service.ts": 30
+		"src/server/services/shared-expenses/verification.service.ts": 220
 	},
 	"UI-151": {
 		"src/app/api/import/process/route.ts": 1,

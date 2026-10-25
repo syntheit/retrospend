@@ -218,13 +218,13 @@ export async function updateProject(
 	});
 }
 
-/** Caller must be an owner; only the creator may delete. */
-export async function deleteProject(
-	db: PrismaClient,
-	{ userId }: ProjectActor,
+/** The delete itself, on the caller's transaction, so a preview can roll it back. */
+export async function deleteProjectIn(
+	tx: Prisma.TransactionClient,
+	userId: string,
 	id: string,
 ) {
-	const project = await db.project.findUniqueOrThrow({
+	const project = await tx.project.findUniqueOrThrow({
 		where: { id },
 		select: { createdById: true, name: true },
 	});
@@ -234,18 +234,25 @@ export async function deleteProject(
 			message: "Only the project creator can delete a project",
 		});
 	}
-	return userTransaction(db, userId, async (tx) => {
-		await logAudit(tx, {
-			actor: { participantType: "user", participantId: userId },
-			action: "DELETED",
-			targetType: "PROJECT",
-			targetId: id,
-			changes: { name: project.name },
-			projectId: id,
-		});
-		await tx.project.delete({ where: { id } });
-		return { success: true };
+	await logAudit(tx, {
+		actor: { participantType: "user", participantId: userId },
+		action: "DELETED",
+		targetType: "PROJECT",
+		targetId: id,
+		changes: { name: project.name },
+		projectId: id,
 	});
+	await tx.project.delete({ where: { id } });
+	return { success: true };
+}
+
+/** Caller must be an owner; only the creator may delete. */
+export async function deleteProject(
+	db: PrismaClient,
+	{ userId }: ProjectActor,
+	id: string,
+) {
+	return userTransaction(db, userId, (tx) => deleteProjectIn(tx, userId, id));
 }
 
 /** The caller's own "leave this project out of my analytics" switch. */
