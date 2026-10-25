@@ -43,6 +43,7 @@ import {
 	setGroupTargetInputSchema,
 } from "./plan-year";
 import { moneyWrite } from "./routes";
+import { usePlanInputSchema, usePlanResultSchema } from "./use-plan";
 
 /** Envelope edits, rules and drafts that move money, Pay down a debt and the hidden-rows review. */
 
@@ -149,6 +150,16 @@ const fundNow = moneyWrite({
 	event: "budget_draft.funded",
 	input: fundNowInputSchema,
 	result: draftResultSchema,
+});
+
+const usePlan = moneyWrite({
+	path: "/budget/use-plan",
+	operationId: "useBudgetPlan",
+	previewId: "previewUseBudgetPlan",
+	summary: "Use my plan on money already in Not planned yet",
+	event: "budget_plan.used",
+	input: usePlanInputSchema,
+	result: usePlanResultSchema,
 });
 
 const debtPayment = moneyWrite({
@@ -259,6 +270,8 @@ export const budgetMoneyPlan = {
 	previewUnapplyDraft: unapplyDraft.preview,
 	fundPlanNow: fundNow.write,
 	previewFundPlanNow: fundNow.preview,
+	usePlan: usePlan.write,
+	previewUsePlan: usePlan.preview,
 	recordDebtPayment: debtPayment.write,
 	previewRecordDebtPayment: debtPayment.preview,
 	resolveHidden: resolveHidden.write,

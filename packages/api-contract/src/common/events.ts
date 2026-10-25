@@ -121,6 +121,7 @@ export const EVENT_TYPES = [
 	"budget_owed.forgiven",
 	"budget_owed.unforgiven",
 	"budget_payoff_plan.reverted",
+	"budget_plan.used",
 	"budget_payoff_plan.saved",
 	"budget_project.routing_set",
 	"budget_rule.applied",

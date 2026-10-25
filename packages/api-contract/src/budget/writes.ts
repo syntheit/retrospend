@@ -25,6 +25,19 @@ export const setupResultSchema = z.object({
 	openBalances: z.array(
 		z.object({ participant: participantRefSchema, amount: moneySchema }),
 	),
+	/**
+	 * What the plan costs a month against what you start with (the stop when
+	 * it costs more than you have). Null for a style that funds itself
+	 * (Limits asks for no money now).
+	 */
+	plan: z
+		.object({
+			cost: moneySchema,
+			available: moneySchema,
+			/** max(0, cost - available): what the plan costs beyond what you have. */
+			short: moneySchema,
+		})
+		.nullable(),
 });
 
 export const setShareCategoryInputSchema = z.object({

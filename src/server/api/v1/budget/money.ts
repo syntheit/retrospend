@@ -98,6 +98,8 @@ export const budgetMoneyRouter = {
 	previewUnapplyDraft: b.previewUnapplyDraft.handler(preview(ops.unapplyDraft)),
 	fundPlanNow: b.fundPlanNow.handler(write(ops.fundPlanNow)),
 	previewFundPlanNow: b.previewFundPlanNow.handler(preview(ops.fundPlanNow)),
+	usePlan: b.usePlan.handler(write(ops.usePlan)),
+	previewUsePlan: b.previewUsePlan.handler(preview(ops.usePlan)),
 	recordDebtPayment: b.recordDebtPayment.handler(write(ops.recordDebtPayment)),
 	previewRecordDebtPayment: b.previewRecordDebtPayment.handler(
 		preview(ops.recordDebtPayment),

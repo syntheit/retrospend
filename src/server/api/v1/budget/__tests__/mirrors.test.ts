@@ -7,6 +7,7 @@ import * as crud from "~/lib/schemas/envelope-crud";
 import * as debt from "~/lib/schemas/envelope-debt";
 import * as migration from "~/lib/schemas/envelope-migration";
 import * as plan from "~/lib/schemas/envelope-plan";
+import * as usePlan from "~/lib/schemas/envelope-use-plan";
 
 /**
  * The contract package cannot import the app, so it carries its own copy of
@@ -29,6 +30,7 @@ const sources: Record<string, unknown> = {
 	...debt,
 	...migration,
 	...plan,
+	...usePlan,
 };
 const mirrors = budgetSchemas as unknown as Record<string, unknown>;
 

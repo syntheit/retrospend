@@ -11664,54 +11664,94 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"items": {
-										"properties": {
-											"available": {
-												"$ref": "#/components/schemas/Money"
-											},
-											"dueDate": {
-												"anyOf": [
-													{
-														"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-														"type": "string"
-													},
-													{
-														"type": "null"
-													}
-												]
-											},
-											"from": {
-												"anyOf": [
-													{
-														"maxLength": 64,
-														"minLength": 1,
-														"type": "string"
-													},
-													{
-														"type": "null"
-													}
-												]
-											},
-											"kind": {
-												"enum": [
-													"POOL",
-													"MONTHLY",
-													"SAVINGS",
-													"BILL",
-													"NONE"
-												],
-												"type": "string"
-											}
+									"properties": {
+										"need": {
+											"$ref": "#/components/schemas/Money"
 										},
-										"required": [
-											"from",
-											"kind",
-											"available",
-											"dueDate"
-										],
-										"type": "object"
+										"sources": {
+											"items": {
+												"properties": {
+													"available": {
+														"$ref": "#/components/schemas/Money"
+													},
+													"dueDate": {
+														"anyOf": [
+															{
+																"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"from": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"kind": {
+														"enum": [
+															"POOL",
+															"MONTHLY",
+															"SAVINGS",
+															"BILL",
+															"NONE"
+														],
+														"type": "string"
+													}
+												},
+												"required": [
+													"from",
+													"kind",
+													"available",
+													"dueDate"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"suggested": {
+											"anyOf": [
+												{
+													"properties": {
+														"from": {
+															"anyOf": [
+																{
+																	"maxLength": 64,
+																	"minLength": 1,
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														}
+													},
+													"required": [
+														"from"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
 									},
-									"type": "array"
+									"required": [
+										"need",
+										"suggested",
+										"sources"
+									],
+									"type": "object"
 								}
 							}
 						},
@@ -23463,12 +23503,33 @@
 												"type": "object"
 											},
 											"type": "array"
+										},
+										"totals": {
+											"items": {
+												"properties": {
+													"amount": {
+														"$ref": "#/components/schemas/Money"
+													},
+													"envelopeId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													}
+												},
+												"required": [
+													"envelopeId",
+													"amount"
+												],
+												"type": "object"
+											},
+											"type": "array"
 										}
 									},
 									"required": [
 										"month",
 										"available",
 										"lines",
+										"totals",
 										"rest",
 										"restOptions"
 									],
@@ -31214,6 +31275,21 @@
 																			"minimum": -9007199254740991,
 																			"type": "integer"
 																		},
+																		"spent": {
+																			"$ref": "#/components/schemas/Money"
+																		},
+																		"spentBasis": {
+																			"anyOf": [
+																				{
+																					"maximum": 10000,
+																					"minimum": 0,
+																					"type": "integer"
+																				},
+																				{
+																					"type": "null"
+																				}
+																			]
+																		},
 																		"status": {
 																			"enum": [
 																				"OVERSPENT",
@@ -31410,6 +31486,8 @@
 																		"carryIn",
 																		"assigned",
 																		"activity",
+																		"spent",
+																		"spentBasis",
 																		"left",
 																		"pending",
 																		"status",
@@ -31613,12 +31691,16 @@
 																	},
 																	"over": {
 																		"$ref": "#/components/schemas/Money"
+																	},
+																	"spent": {
+																		"$ref": "#/components/schemas/Money"
 																	}
 																},
 																"required": [
 																	"carryIn",
 																	"assigned",
 																	"activity",
+																	"spent",
 																	"left",
 																	"over",
 																	"need",
@@ -43178,11 +43260,38 @@
 														"type": "object"
 													},
 													"type": "array"
+												},
+												"plan": {
+													"anyOf": [
+														{
+															"properties": {
+																"available": {
+																	"$ref": "#/components/schemas/Money"
+																},
+																"cost": {
+																	"$ref": "#/components/schemas/Money"
+																},
+																"short": {
+																	"$ref": "#/components/schemas/Money"
+																}
+															},
+															"required": [
+																"cost",
+																"available",
+																"short"
+															],
+															"type": "object"
+														},
+														{
+															"type": "null"
+														}
+													]
 												}
 											},
 											"required": [
 												"bookId",
-												"openBalances"
+												"openBalances",
+												"plan"
 											],
 											"type": "object"
 										},
@@ -51025,6 +51134,731 @@
 					"Budget"
 				],
 				"x-required-scope": "read"
+			}
+		},
+		"/budget/use-plan": {
+			"post": {
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
+				"operationId": "useBudgetPlan",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"amount": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
+									},
+									"batchId": {
+										"format": "uuid",
+										"type": "string"
+									},
+									"rest": {
+										"default": "LEAVE",
+										"enum": [
+											"LEAVE",
+											"SAVE",
+											"NEXT_MONTH"
+										],
+										"type": "string"
+									}
+								},
+								"required": [
+									"batchId"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"result": {
+											"properties": {
+												"batchId": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"capped": {
+													"anyOf": [
+														{
+															"properties": {
+																"asked": {
+																	"$ref": "#/components/schemas/Money"
+																},
+																"held": {
+																	"$ref": "#/components/schemas/Money"
+																}
+															},
+															"required": [
+																"asked",
+																"held"
+															],
+															"type": "object"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"lines": {
+													"items": {
+														"properties": {
+															"amount": {
+																"$ref": "#/components/schemas/Money"
+															},
+															"envelopeId": {
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															"month": {
+																"maximum": 299912,
+																"minimum": 190001,
+																"type": "integer"
+															},
+															"step": {
+																"enum": [
+																	"PLAN",
+																	"OVERSPENT",
+																	"BILL",
+																	"GROUP",
+																	"MONTHLY",
+																	"SAVINGS",
+																	"REST"
+																],
+																"type": "string"
+															}
+														},
+														"required": [
+															"envelopeId",
+															"month",
+															"amount",
+															"step"
+														],
+														"type": "object"
+													},
+													"type": "array"
+												},
+												"replayed": {
+													"type": "boolean"
+												},
+												"rest": {
+													"$ref": "#/components/schemas/Money"
+												},
+												"restChoice": {
+													"enum": [
+														"LEAVE",
+														"SAVE",
+														"NEXT_MONTH"
+													],
+													"type": "string"
+												}
+											},
+											"required": [
+												"batchId",
+												"lines",
+												"rest",
+												"restChoice",
+												"capped",
+												"replayed"
+											],
+											"type": "object"
+										},
+										"undo": {
+											"anyOf": [
+												{
+													"description": "Pass to the undo route to revert.",
+													"minLength": 1,
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											],
+											"description": "Valid for 24 hours, once. Send it to POST /budget/undo. Null when this write cannot be taken back."
+										}
+									},
+									"required": [
+										"result",
+										"undo"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:money"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:money"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:money"
+						]
+					}
+				],
+				"summary": "Use my plan on money already in Not planned yet",
+				"tags": [
+					"Budget"
+				],
+				"x-event-type": "budget_plan.used",
+				"x-required-scope": "write:money"
+			}
+		},
+		"/budget/use-plan/preview": {
+			"post": {
+				"description": "Runs POST /budget/use-plan in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewUseBudgetPlan",
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"amount": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
+									},
+									"batchId": {
+										"format": "uuid",
+										"type": "string"
+									},
+									"rest": {
+										"default": "LEAVE",
+										"enum": [
+											"LEAVE",
+											"SAVE",
+											"NEXT_MONTH"
+										],
+										"type": "string"
+									}
+								},
+								"required": [
+									"batchId"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:money"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:money"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:money"
+						]
+					}
+				],
+				"summary": "Preview POST /budget/use-plan",
+				"tags": [
+					"Budget"
+				],
+				"x-required-scope": "write:money"
 			}
 		},
 		"/budget/verdict": {

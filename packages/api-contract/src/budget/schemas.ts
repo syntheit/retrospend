@@ -13,4 +13,5 @@ export * from "./plan-drafts";
 export * from "./plan-rules";
 export * from "./plan-year";
 export * from "./read";
+export * from "./use-plan";
 export * from "./writes";

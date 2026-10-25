@@ -268,6 +268,56 @@ describe("/api/v1/budget month-following writes", () => {
 		});
 	});
 
+	describe("use my plan on the pool", () => {
+		let as: Record<string, string>;
+		let b: Awaited<ReturnType<typeof bookedUser>>;
+
+		beforeAll(async () => {
+			b = await bookedUser();
+			as = await asMobile(b.user.id);
+		});
+
+		it("plans 300.00 by the targets, previews first, and the token takes the batch back", async () => {
+			const before = await monthOf(as);
+			const body = { batchId: uuid(), amountMinor: 30_000, rest: "LEAVE" };
+			const preview = await expectBody<Preview>(
+				await post("/budget/use-plan/preview", body, as),
+				c.previewUsePlan,
+			);
+			expect(await monthOf(as)).toEqual(before);
+			const written = await expectBody<Write>(
+				await post("/budget/use-plan", body, as),
+				c.usePlan,
+			);
+			const lines = (r: unknown) => (r as { lines: unknown[] }).lines;
+			expect(lines(written.result)).toEqual(lines(preview.detail?.result));
+			expect(written.result.capped).toBeNull();
+			const after = await monthOf(as);
+			expect(after.toAssign.amount.minor).toBe(
+				before.toAssign.amount.minor - 30_000,
+			);
+			await expectBody(
+				await post("/budget/undo", { token: written.undo }, as),
+				c.undo,
+			);
+			expect((await monthOf(as)).toAssign).toEqual(before.toAssign);
+		});
+
+		it("says where to cover an envelope from, with the amount and the suggested source", async () => {
+			const cover = await expectBody<{
+				need: { minor: number };
+				sources: { from: string | null }[];
+			}>(
+				await call(`/budget/cover-sources?envelopeId=${b.ids.Rent}`, {
+					headers: as,
+				}),
+				c.coverSources,
+			);
+			expect(cover.need).toEqual({ minor: 0, currency: "USD" });
+			expect(cover.sources.length).toBeGreaterThan(0);
+		});
+	});
+
 	describe("fund a saved plan now", () => {
 		let as: Record<string, string>;
 		let b: Awaited<ReturnType<typeof bookedUser>>;

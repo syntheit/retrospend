@@ -94,6 +94,8 @@ export const fillFromTargetsOutputSchema = z.object({
 	month: monthKeySchema,
 	available: moneySchema,
 	lines: z.array(fillLineSchema),
+	/** Each envelope's total over its lines (the plan's and the targets'), in the order of first appearance. */
+	totals: z.array(z.object({ envelopeId: idSchema, amount: moneySchema })),
 	/** What stays Not planned yet after the lines (D-owner-2026-10-22e). */
 	rest: moneySchema,
 	/** The choices for the rest; Leave it is the default. */
@@ -107,6 +109,15 @@ export const coverSourceSchema = z.object({
 	available: moneySchema,
 	/** Bills come last with their due date ("Due Nov 5"). */
 	dueDate: isoDateSchema.nullable(),
+});
+
+/** Covering one envelope: how much it is over by, where it can come from, and where the server suggests. */
+export const coverOverviewSchema = z.object({
+	/** What the envelope is over by (0 when it is not over). */
+	need: moneySchema,
+	/** The suggested source: never a goal or a bill by default. Null = none fits. */
+	suggested: z.object({ from: idSchema.nullable() }).nullable(),
+	sources: z.array(coverSourceSchema),
 });
 
 export const movementSchema = z.object({

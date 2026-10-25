@@ -35,7 +35,7 @@ import {
 import { incomeRuleSchema } from "./plan-rules";
 import { planCostSchema, yearViewSchema } from "./plan-year";
 import {
-	coverSourceSchema,
+	coverOverviewSchema,
 	fillFromTargetsOutputSchema,
 	getMonthOutputSchema,
 	historyOutputSchema,
@@ -174,7 +174,7 @@ export const budgetReads = {
 		operationId: "getBudgetCoverSources",
 		summary: "Where money to cover an envelope can come from",
 		input: coverSourcesQuerySchema,
-		output: z.array(coverSourceSchema),
+		output: coverOverviewSchema,
 	}),
 	history: budgetRead({
 		path: "/budget/history",

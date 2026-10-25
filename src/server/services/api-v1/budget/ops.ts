@@ -51,6 +51,7 @@ import {
 	setShareCategoryMutation,
 	unforgiveMutation,
 } from "~/server/services/envelope/splits.mutation";
+import { usePlanMutation } from "~/server/services/envelope/use-plan.mutation";
 import {
 	draftResultOut,
 	fromEngine,
@@ -242,6 +243,17 @@ export const budgetOps = {
 		}),
 	}),
 	revertPayoffPlan: moneyOp(v1Mutation(revertPayoffPlanMutation)),
+	usePlan: moneyOp(v1Mutation(usePlanMutation), {
+		plan: (_i, v) =>
+			v.batchId && !v.replayed
+				? {
+						op: "movement.undo",
+						args: {
+							items: [{ id: randomUUID(), target: { batchId: v.batchId } }],
+						},
+					}
+				: null,
+	}),
 	recordDebtPayment: moneyOp(v1Mutation(recordDebtPaymentMutation), {
 		plan: (_i, v) => ({
 			op: "debt_payment.delete",
