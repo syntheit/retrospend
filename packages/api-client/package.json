@@ -2,11 +2,14 @@
 	"name": "@retrospend/api-client",
 	"version": "0.0.0",
 	"private": true,
-	"description": "Typed /api/v1 client built from @retrospend/api-contract. TanStack Query hooks land with S3 milestone 7.",
+	"description": "Typed /api/v1 client built from @retrospend/api-contract, with TanStack Query options for every route and event-driven invalidation.",
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./invalidation": "./src/invalidation.ts",
+		"./query": "./src/query.ts",
+		"./react": "./src/react.ts"
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit"
@@ -15,9 +18,26 @@
 		"@orpc/client": "1.15.7",
 		"@orpc/contract": "1.15.7",
 		"@orpc/openapi-client": "1.15.7",
-		"@retrospend/api-contract": "workspace:*"
+		"@orpc/tanstack-query": "1.15.7",
+		"@retrospend/api-contract": "workspace:*",
+		"@tanstack/query-core": "5.104.5"
+	},
+	"peerDependencies": {
+		"@tanstack/react-query": ">=5.80.2",
+		"react": ">=18"
+	},
+	"peerDependenciesMeta": {
+		"@tanstack/react-query": {
+			"optional": true
+		},
+		"react": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
+		"@tanstack/react-query": "^5.104.5",
+		"@types/react": "^19.3.0",
+		"react": "^19.3.1",
 		"typescript": "^7.0.2",
 		"vitest": "^5.0.5"
 	}

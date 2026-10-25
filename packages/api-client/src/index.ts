@@ -6,6 +6,7 @@ import {
 	type Contract,
 	contract,
 	IDEMPOTENCY_HEADER,
+	isWriteMethod,
 	PROBLEM_CONTENT_TYPE,
 	type Problem,
 } from "@retrospend/api-contract";
@@ -13,6 +14,9 @@ import {
 /**
  * Per-call options. Writes need an idempotency key; keep the same key when
  * retrying one logical write so the server replays instead of writing twice.
+ * A write called without one gets a fresh key, which is right for a user
+ * action that is not retried (a button press) and wrong for a queued write:
+ * an outbox passes its own stable key.
  */
 export type CallContext = { idempotencyKey?: string };
 
@@ -24,7 +28,23 @@ export type ClientOptions = {
 	/** Credentials per request: `{ authorization: "Bearer ..." }` or `{ "x-api-key": ... }`. */
 	authHeaders?: () => Record<string, string> | Promise<Record<string, string>>;
 	fetch?: typeof globalThis.fetch;
+	/**
+	 * A fresh Idempotency-Key for a write called without one. Defaults to
+	 * `crypto.randomUUID()` where it exists (browsers, Node); React Native
+	 * has none, so pass one (expo-crypto) or give every write its own key.
+	 */
+	newIdempotencyKey?: () => string;
 };
+
+/** Whether the route at this router path is a write (POST, PUT, PATCH, DELETE). */
+function isWriteRoute(path: readonly string[]): boolean {
+	let node: unknown = contract;
+	for (const key of path) node = (node as Record<string, unknown>)?.[key];
+	const route = (node as { "~orpc"?: { route?: { method?: string } } })?.[
+		"~orpc"
+	]?.route;
+	return isWriteMethod(route?.method ?? "POST");
+}
 
 function isProblem(body: unknown): body is Problem {
 	return (
@@ -66,14 +86,20 @@ function problemAwareFetch(
 export function createRetrospendClient(
 	options: ClientOptions,
 ): RetrospendClient {
+	const newKey: () => string | undefined =
+		options.newIdempotencyKey ??
+		(() => globalThis.crypto?.randomUUID?.() ?? undefined);
 	const link = new OpenAPILink<CallContext>(contract, {
 		url: `${options.baseUrl.replace(/\/$/, "")}${API_PREFIX}`,
-		headers: async ({ context }) => ({
-			...(await options.authHeaders?.()),
-			...(context.idempotencyKey
-				? { [IDEMPOTENCY_HEADER]: context.idempotencyKey }
-				: {}),
-		}),
+		headers: async ({ context }, path) => {
+			const key =
+				context.idempotencyKey ??
+				(isWriteRoute(path) ? newKey() : undefined);
+			return {
+				...(await options.authHeaders?.()),
+				...(key ? { [IDEMPOTENCY_HEADER]: key } : {}),
+			};
+		},
 		fetch: problemAwareFetch(options.fetch ?? globalThis.fetch),
 		customErrorResponseBodyDecoder: (body, response) =>
 			isProblem(body)
