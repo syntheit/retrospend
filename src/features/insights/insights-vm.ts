@@ -38,7 +38,7 @@ const noteOf = (pct: number | null, words: RankWords) =>
 type Ranked = {
 	categoryId: string | null;
 	figure: string;
-	value: RankedItem["value"] | null;
+	value: RankedItem["value"];
 	note: string | undefined;
 };
 
@@ -47,8 +47,7 @@ function toItem(
 	refs: CategoryRefs,
 	words: RankWords,
 	hrefOf: (categoryId: string) => string,
-): RankedItem | null {
-	if (!row.value) return null;
+): RankedItem {
 	const ref = row.categoryId ? refs.get(row.categoryId) : undefined;
 	const category = ref ?? { name: words.none, icon: "Tag", tone: NEUTRAL_TONE };
 	return {
@@ -67,9 +66,18 @@ function toItem(
 }
 
 /**
- * By category: largest first as the server sent them. A category whose value
- * is unavailable (a missing rate) is left out; the page names the currencies
- * once, in the summary line. The change shows with Compare on.
+ * Rows that have an amount first, then the ones that cannot be worked out (a
+ * missing rate): they stay, named, with "Not available" (R14). The order within
+ * each part is the server's. A partition, not a comparison of amounts.
+ */
+function amountsFirst(items: RankedItem[]): RankedItem[] {
+	return [...items.filter((i) => i.value), ...items.filter((i) => !i.value)];
+}
+
+/**
+ * By category: largest first as the server sent them, rows without an amount
+ * last. The page names the missing currencies once, in the summary line. The
+ * change shows with Compare on.
  */
 export function categoryItems(
 	rows: readonly CategoryRow[],
@@ -80,21 +88,22 @@ export function categoryItems(
 		hrefOf: (categoryId: string) => string;
 	},
 ): RankedItem[] {
-	return rows.flatMap((row) => {
-		const item = toItem(
-			{
-				categoryId: row.categoryId,
-				figure: row.figure,
-				value: row.value,
-				note:
-					o.compare && row.value ? noteOf(row.changePct, o.words) : undefined,
-			},
-			refs,
-			o.words,
-			o.hrefOf,
-		);
-		return item ? [item] : [];
-	});
+	return amountsFirst(
+		rows.map((row) =>
+			toItem(
+				{
+					categoryId: row.categoryId,
+					figure: row.figure,
+					value: row.value,
+					note:
+						o.compare && row.value ? noteOf(row.changePct, o.words) : undefined,
+				},
+				refs,
+				o.words,
+				o.hrefOf,
+			),
+		),
+	);
 }
 
 /**
@@ -115,23 +124,24 @@ export function ytdItems(
 	const ordered = o.usd
 		? [...rows].sort((a, b) => a.usdRank - b.usdRank)
 		: rows;
-	return ordered.flatMap((row) => {
-		const value = o.usd ? row.value.usd : row.value.home;
-		const item = toItem(
-			{
-				categoryId: row.categoryId,
-				figure: o.usd ? row.usdFigure : row.figure,
-				value,
-				note: value
-					? noteOf(o.usd ? row.usdChangePct : row.changePct, o.words)
-					: undefined,
-			},
-			refs,
-			o.words,
-			o.hrefOf,
-		);
-		return item ? [item] : [];
-	});
+	return amountsFirst(
+		ordered.map((row) => {
+			const value = o.usd ? row.value.usd : row.value.home;
+			return toItem(
+				{
+					categoryId: row.categoryId,
+					figure: o.usd ? row.usdFigure : row.figure,
+					value,
+					note: value
+						? noteOf(o.usd ? row.usdChangePct : row.changePct, o.words)
+						: undefined,
+				},
+				refs,
+				o.words,
+				o.hrefOf,
+			);
+		}),
+	);
 }
 
 /**

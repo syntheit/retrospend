@@ -14,8 +14,11 @@ import {
 
 type Format = Omit<FormatMoneyOptions, "locale">;
 
-/** What a missing amount says: "None", or "No rate yet" for a missing conversion. */
-type Missing = "none" | "noRate";
+/**
+ * What a missing amount says: "None", "No rate yet" for a missing conversion,
+ * or "Not available" for a row kept in a list whose amount cannot be worked out.
+ */
+type Missing = "none" | "noRate" | "unavailable";
 
 type MoneyProps = Format & {
 	/** The amount the server computed (R9). Null: no amount, a muted word. */

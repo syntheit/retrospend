@@ -14,7 +14,8 @@ import { barShare, COLOR, categoryColor, seriesColor, THIN } from "./spec";
 export type RankedItem = {
 	id: string;
 	label: string;
-	value: MoneyValue;
+	/** Null: the amount cannot be worked out (a missing rate); the row stays and says so. */
+	value: MoneyValue | null;
 	/** A category: its bare glyph and color carry identity (category charts only). */
 	category?: CategoryRef;
 	/** A series slot for non-category rankings. */
@@ -39,12 +40,15 @@ const LINKED = "max-md:min-h-row max-md:content-center";
 export function RankedBars({ items }: { items: RankedItem[] }) {
 	const t = useTranslations("charts");
 	const text = useMoneyText();
-	const max = Math.max(0, ...items.map((i) => i.value.minor));
+	const unavailable = useTranslations("kit.money")("unavailable");
+	const max = Math.max(0, ...items.map((i) => i.value?.minor ?? 0));
 	if (!items.length) return <ChartEmpty height={THIN.ranked * 8} />;
 	return (
 		<ul
 			aria-label={t("ranked.summary", {
-				list: items.map((i) => `${i.label} ${text(i.value)}`).join(", "),
+				list: items
+					.map((i) => `${i.label} ${i.value ? text(i.value) : unavailable}`)
+					.join(", "),
 			})}
 			className="text-small flex flex-col gap-3"
 		>
@@ -74,7 +78,11 @@ export function RankedBars({ items }: { items: RankedItem[] }) {
 								</span>
 							)}
 						</span>
-						<Money figure={item.figure} value={item.value} />
+						<Money
+							figure={item.value ? item.figure : undefined}
+							missing="unavailable"
+							value={item.value}
+						/>
 						<span
 							aria-hidden="true"
 							className="rounded-chip bg-raised col-span-2 block overflow-hidden"
@@ -84,7 +92,7 @@ export function RankedBars({ items }: { items: RankedItem[] }) {
 								className="rounded-chip block h-full"
 								style={
 									{
-										width: `${barShare(item.value.minor, max)}%`,
+										width: `${item.value ? barShare(item.value.minor, max) : 0}%`,
 										background: fill,
 									} as CSSProperties
 								}

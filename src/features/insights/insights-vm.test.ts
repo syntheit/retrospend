@@ -83,14 +83,17 @@ describe("categoryItems", () => {
 		expect(gone?.label).toBe("No category");
 	});
 
-	it("a category with no value (a missing rate) is left out, not shown as zero", () => {
-		expect(
-			categoryItems([row("rent", null, null)], REFS, {
-				compare: true,
-				words: WORDS,
-				hrefOf,
-			}),
-		).toEqual([]);
+	it("a category with no value (a missing rate) stays, named, after the rows with amounts", () => {
+		const items = categoryItems(
+			[row("rent", null, null), row("food", 500, null)],
+			REFS,
+			{ compare: true, words: WORDS, hrefOf },
+		);
+		expect(items.map((i) => [i.label, i.value, i.figure])).toEqual([
+			["Groceries", ars(500), "insights.byCategory:food"],
+			["Rent", null, "insights.byCategory:rent"],
+		]);
+		expect(items[1]?.note).toBeUndefined();
 	});
 });
 
@@ -138,12 +141,16 @@ describe("ytdItems", () => {
 		]);
 	});
 
-	it("a row with no USD value is left out of the USD list, never shown as zero", () => {
-		const items = ytdItems([ytd("rent", 900, null, 98, null)], REFS, {
-			...o,
-			usd: true,
-		});
-		expect(items).toEqual([]);
+	it("a row with no USD value stays last in the USD list, never shown as zero", () => {
+		const items = ytdItems(
+			[ytd("rent", 900, null, 98, null, 0), ytd("food", 500, 40, null, 20, 1)],
+			REFS,
+			{ ...o, usd: true },
+		);
+		expect(items.map((i) => [i.id, i.value])).toEqual([
+			["food", usd(40)],
+			["rent", null],
+		]);
 	});
 });
 
