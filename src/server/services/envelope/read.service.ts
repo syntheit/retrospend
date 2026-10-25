@@ -4,7 +4,7 @@
  * through the money mutations instead (preview + apply).
  */
 import type {
-	CoverSource,
+	CoverOverview,
 	FillFromTargetsOutput,
 	GetMonthOutput,
 	HistoryInput,
@@ -176,7 +176,7 @@ export function getCoverSources(
 	envelopeId: string,
 	month?: MonthKey,
 	now = new Date(),
-): Promise<CoverSource[]> {
+): Promise<CoverOverview> {
 	return read(userId, (tx) =>
 		coverSourcesIn(tx, userId, now, envelopeId, month),
 	);

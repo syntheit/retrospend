@@ -16,7 +16,7 @@ export const figuresRouter = {
 		if (ids.length > MAX_FIGURE_IDS)
 			throw problem("bad_request", `At most ${MAX_FIGURE_IDS} figure ids`);
 
-		const { projectId, personId, accountId, categoryId, month } = input;
+		const { projectId, personId, accountId, categoryId, month, envelopeId } = input;
 		let readings: Awaited<ReturnType<typeof readFigures>>;
 		try {
 			readings = await readFigures(user.principal.userId, ids, {
@@ -25,6 +25,7 @@ export const figuresRouter = {
 				accountId,
 				categoryId,
 				month,
+				envelopeId,
 			});
 		} catch (error) {
 			if (error instanceof FigureRegistryError)

@@ -274,6 +274,21 @@ function targetDto(
 	};
 }
 
+/**
+ * How much of what the envelope holds this month it spent, in hundredths of
+ * a percent capped at 10000 (the row's bar). What it holds is carried in plus
+ * assigned. Null for a savings goal, which fills up instead of being spent.
+ */
+export function spentBasis(r: Row): number | null {
+	if (r.env.kind === "SAVINGS") return null;
+	const spent = BigInt(-(r.m.activity - r.m.wealth));
+	const held = BigInt(r.m.carryIn + r.m.assigned);
+	if (spent <= 0n) return 0;
+	if (held <= 0n) return 10_000;
+	const share = (spent * 10_000n) / held;
+	return Number(share > 10_000n ? 10_000n : share);
+}
+
 function rowDto(
 	r: Row,
 	p: MonthViewInput,
@@ -292,6 +307,9 @@ function rowDto(
 		carryIn: money(r.m.carryIn),
 		assigned: money(r.m.assigned),
 		activity: money(r.m.activity),
+		// The same spending the group targets read: Wealth moves are not spending.
+		spent: money(r.m.wealth - r.m.activity),
+		spentBasis: spentBasis(r),
 		left: money(r.m.left),
 		pending: money(r.m.pending),
 		status: statusOf(r, p.book),
@@ -345,6 +363,7 @@ function groupsDto(
 					carryIn: sum((r) => r.m.carryIn),
 					assigned: sum((r) => r.m.assigned),
 					activity: sum((r) => r.m.activity),
+					spent: sum((r) => r.m.wealth - r.m.activity),
 					left: sum((r) => r.m.left),
 					over: sum((r) => overBy(r, p.book)),
 					need: sum((r) => r.target?.need ?? 0),

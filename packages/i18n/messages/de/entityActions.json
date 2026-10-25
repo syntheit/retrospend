@@ -289,6 +289,82 @@
 			"label": "Abgleichen"
 		}
 	},
+	"budgetMenu": {
+		"summary": {
+			"label": "Monatsübersicht"
+		},
+		"whatIf": {
+			"label": "Was wäre, wenn ich ausgebe…"
+		},
+		"addEnvelope": {
+			"label": "Umschlag hinzufügen"
+		},
+		"combine": {
+			"label": "Umschläge zusammenführen"
+		},
+		"rules": {
+			"label": "Einnahmeregeln"
+		},
+		"style": {
+			"label": "Budgetstil"
+		},
+		"help": {
+			"label": "Was die Begriffe bedeuten"
+		},
+		"addIncome": {
+			"label": "Einnahme hinzufügen"
+		},
+		"usePlan": {
+			"label": "Meinen Plan verwenden"
+		},
+		"planNext": {
+			"label": "Nächsten Monat planen"
+		},
+		"payoffPlan": {
+			"label": "Tilgungsplan"
+		},
+		"payDebt": {
+			"label": "Schulden tilgen"
+		},
+		"reconcile": {
+			"label": "Mit deiner Bank abgleichen"
+		}
+	},
+	"envelope": {
+		"move": {
+			"label": "Geld verschieben"
+		},
+		"cover": {
+			"label": "Überziehung ausgleichen"
+		},
+		"payDebt": {
+			"label": "Schulden tilgen"
+		},
+		"target": {
+			"label": "Ziel bearbeiten"
+		},
+		"activity": {
+			"label": "Aktivität ansehen"
+		},
+		"edit": {
+			"label": "Umbenennen oder Kategorien ändern"
+		},
+		"whatIf": {
+			"label": "Was wäre, wenn ich ausgebe…"
+		},
+		"assign": {
+			"label": "Geld zuweisen"
+		},
+		"setLimit": {
+			"label": "Limit setzen"
+		},
+		"toWealth": {
+			"label": "Nach Vermögen verschieben"
+		},
+		"fromWealth": {
+			"label": "Aus Vermögen verschieben"
+		}
+	},
 	"import": {
 		"review": {
 			"label": "Prüfen"
@@ -306,6 +382,23 @@
 		},
 		"import": {
 			"label": "Importieren"
+		}
+	},
+	"incomeRule": {
+		"moveUp": {
+			"label": "Nach oben"
+		},
+		"moveDown": {
+			"label": "Nach unten"
+		},
+		"applyToMonth": {
+			"label": "Auch auf die Einnahmen dieses Monats anwenden"
+		},
+		"remove": {
+			"label": "Entfernen",
+			"confirmTitle": "{name} entfernen?",
+			"confirmBody": "Sie läuft nicht mehr auf neues Geld. Was sie schon zugewiesen hat, bleibt, wie es ist.",
+			"confirmButton": "Regel entfernen"
 		}
 	}
 }

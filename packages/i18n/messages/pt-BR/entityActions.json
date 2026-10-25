@@ -289,6 +289,82 @@
 			"label": "Conciliar"
 		}
 	},
+	"budgetMenu": {
+		"summary": {
+			"label": "Resumo do mês"
+		},
+		"whatIf": {
+			"label": "E se eu gastar…"
+		},
+		"addEnvelope": {
+			"label": "Adicionar envelope"
+		},
+		"combine": {
+			"label": "Combinar envelopes"
+		},
+		"rules": {
+			"label": "Regras de renda"
+		},
+		"style": {
+			"label": "Estilo de orçamento"
+		},
+		"help": {
+			"label": "O que as palavras significam"
+		},
+		"addIncome": {
+			"label": "Adicionar entrada"
+		},
+		"usePlan": {
+			"label": "Usar meu plano"
+		},
+		"planNext": {
+			"label": "Planejar o próximo mês"
+		},
+		"payoffPlan": {
+			"label": "Plano de quitação"
+		},
+		"payDebt": {
+			"label": "Pagar uma dívida"
+		},
+		"reconcile": {
+			"label": "Conferir com o banco"
+		}
+	},
+	"envelope": {
+		"move": {
+			"label": "Mover dinheiro"
+		},
+		"cover": {
+			"label": "Cobrir o estouro"
+		},
+		"payDebt": {
+			"label": "Pagar uma dívida"
+		},
+		"target": {
+			"label": "Editar meta"
+		},
+		"activity": {
+			"label": "Ver atividade"
+		},
+		"edit": {
+			"label": "Renomear ou editar categorias"
+		},
+		"whatIf": {
+			"label": "E se eu gastar…"
+		},
+		"assign": {
+			"label": "Atribuir dinheiro"
+		},
+		"setLimit": {
+			"label": "Definir um limite"
+		},
+		"toWealth": {
+			"label": "Mover para Patrimônio"
+		},
+		"fromWealth": {
+			"label": "Mover do Patrimônio"
+		}
+	},
 	"import": {
 		"review": {
 			"label": "Revisar"
@@ -306,6 +382,23 @@
 		},
 		"import": {
 			"label": "Importar"
+		}
+	},
+	"incomeRule": {
+		"moveUp": {
+			"label": "Subir"
+		},
+		"moveDown": {
+			"label": "Descer"
+		},
+		"applyToMonth": {
+			"label": "Aplicar também às entradas deste mês"
+		},
+		"remove": {
+			"label": "Remover",
+			"confirmTitle": "Remover {name}?",
+			"confirmBody": "Ela deixa de rodar no dinheiro novo. O que já atribuiu fica como está.",
+			"confirmButton": "Remover regra"
 		}
 	}
 }

@@ -22,6 +22,7 @@ import { IdentitySection, MenuSection } from "./sections/menus";
 import { MotionSection } from "./sections/motion";
 import {
 	DateRangeSection,
+	MoneyCellSection,
 	MoneyInputSection,
 	PickersSection,
 } from "./sections/overlays";
@@ -125,6 +126,7 @@ export function Gallery() {
 					<MenuSection />
 					<SheetSection />
 					<MoneyInputSection />
+					<MoneyCellSection />
 					<PickersSection />
 					<ChartSection />
 					<FeedbackSection />

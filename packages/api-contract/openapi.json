@@ -6062,6 +6062,16 @@
 							"pattern": "^\\d{4}-\\d{2}$",
 							"type": "string"
 						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "envelopeId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
 					}
 				],
 				"responses": {

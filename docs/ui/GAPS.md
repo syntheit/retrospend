@@ -244,6 +244,24 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 | Home: net worth sparkline | A net worth series read in Money (`netWorthSeries`, 6 months) | The Net worth row shows the number only | 2D |
 | Home: Coming up total | A server total of the next 3 weeks of recurring items (`due({days: 21})` with its sum) | Coming up lists the items with no total line | 2E |
 | Home: Needs you amounts as figures | Registry ids for item amounts | Item amounts carry no `data-figure`; Give it a job carries `budget.notPlannedYet` | 2E figures |
+| Budget sheets: Assign, share of money in per row | A server percent of this month's money in per proposed amount, and the "Rules assigned X. Undo" line when rules already ran | Rows show amounts and target need only | 4C2 follow-up |
+| Budget sheets: Month summary, Spent and Not planned yet at close | `monthSummary` has money in, assigned, overspent, returned and per-envelope close values, but no month Spent total and no To assign at close | The summary lists money in, assigned, what went over (with "Take it from next month instead") and each leftover rule's result | 4C2 follow-up |
+| Budget sheets: What moved (a migrated budget) | The migration's old-to-new list (P7 `envelope-migration`, not on main) | Not built | 4C2 follow-up, after P7 merges |
+| Budget sheets: Set up, Pay off debt method | `envelope.setup` and `envelope.setStyle` accept DEBT_PAYOFF (`SETUP_STYLES` and `SWITCH_STYLES` leave it out); the payoff plan procedures (`payoffProject`, `savePayoffPlan`) exist and could be saved in the same write | The wizard lists the five answers and the 50/30/20 and Weekly methods, no Pay off debt | 4C2 follow-up |
+| Budget sheets: Set up, pay step | A pay-cycle input on `envelope.setup` (pay day and how often) so the plan can start from the next pay | No pay step; the wizard asks style, money now and envelopes | 4C2 follow-up |
+| Budget sheets: Set up, Undo | `envelope.undoSetup`. Setup only creates a first book (a second is refused, and the sheet says so), so Save ends with a toast without Undo | Accepted for a new book | Owner |
+| Budget plan: "If you apply this" block | A plan summary read: planned spending, to savings, savings rate and saved in a year (`planCost` has the cost, the typical income and the runway only) | The plan rail shows Plan cost, Usual money in and the runway | 2B |
+| Budget plan: group subtotals and "November plan" allocation bar | Group totals and shares in basis points in `previewDraft` (it lists envelopes only) | The plan table lists envelopes under a group name, with no subtotal and no bar | 2B |
+| Budget plan: hero line and change count | The expected money in for the month, the total planned, and "N changes from your targets" in the draft read | The hero is Left to plan; the banner says what Apply does | 2B |
+| Budget: Assigned and group figure ids | `budget.assigned` and a group narrowing (`groupId`) on `GET /api/v1/figures`; only `budget.moneyIn` exists for the terms | The Assigned column and the group totals carry no `data-figure` | 2B |
+| Budget: table totals and group figures | Server totals for the month (Assigned, Activity, Left) and registry ids for a group's totals; only `toAssign.terms.assigned` exists | No footer row; each group row shows the server's group totals without a figure id | 2B |
+| Budget: Spending expands per category (Flex) | Activity per category inside an envelope that covers many (SPEC §6.1) | Spending is one envelope row with its target line | 2B |
+| Budget: "October plan" allocation by group | Shares of the month by group in basis points (`AllocationBar` needs the server's shares) | The rail shows Owed to you, Money in and Shares only | 2B |
+| Budget: closed month hero | A "saved or spent more than came in" verdict for a closed month (`closedVerdict`); `monthSummary` has money in, assigned and overspent | The closed month leads with Money in, then Assigned and Over by, and "How it adds up" | 2B |
+| Budget: assigned in place | Inline edit of Assigned goes through the Assign sheet (it has the preview and Undo, R30), not the table | The Assigned column is read only | 4C sheets |
+| Budget: envelope detail panel and page | The panel (desktop) and pushed page (phone) with How it adds up, history and Often over (SPEC §6.3) | A row's View activity opens Activity filtered to the envelope's categories | 4C follow-up |
+| Budget: Import from YNAB and Export CSV | Their flows (SPEC §8.4) | Not in the header menu | S6 |
+| Budget: Welcome back and month summary sheets | The sheets behind `welcomeBack`, `monthSummary`, `setup`, `assign` and every other id in `src/features/budget/sheet-ids.ts` | The page shows the notice and the button; a sheet with no renderer in `sheet-registry.tsx` does nothing yet | 4C sheets |
 
 ## 8. Behavior gaps found by the e2e suite
 

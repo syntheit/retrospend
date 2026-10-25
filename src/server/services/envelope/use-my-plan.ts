@@ -121,7 +121,13 @@ export async function applyPlan(
 	tx: Prisma.TransactionClient,
 	userId: string,
 	now: Date,
-	choice: { amount: Minor; rest: RestChoice; sourceExpenseId?: string },
+	choice: {
+		amount: Minor;
+		rest: RestChoice;
+		sourceExpenseId?: string;
+		/** A client id for the batch, so a retry finds it (default: a fresh one). */
+		batchId?: string;
+	},
 ): Promise<(PlanProposal & { batchId: string | null }) | null> {
 	let ruled = 0;
 	if (choice.sourceExpenseId)
@@ -137,7 +143,7 @@ export async function applyPlan(
 		saved,
 	);
 	if (plan.lines.length === 0) return { ...plan, batchId: null };
-	const batchId = randomUUID();
+	const batchId = choice.batchId ?? randomUUID();
 	await assignPlan(
 		tx,
 		userId,

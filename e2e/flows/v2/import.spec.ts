@@ -122,7 +122,9 @@ test("Import: a CSV is read, reviewed with kinds, matched, imported and undone",
 	await match.getByRole("button", { name: "Apply" }).click();
 	await expect(match).toBeHidden();
 	await expect(page.getByText(/Matched 2 categories, created/)).toBeVisible();
-	await expect(main.getByRole("button", { name: "Match categories" })).toHaveCount(0);
+	await expect(
+		main.getByRole("button", { name: "Match categories" }),
+	).toHaveCount(0);
 
 	// Import previews the commit: what it creates per kind, what it skips.
 	await main.getByRole("button", { name: "Import 5 rows" }).click();
