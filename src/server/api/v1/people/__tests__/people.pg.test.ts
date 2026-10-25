@@ -280,7 +280,7 @@ describe("/api/v1/people", () => {
 		await expectProblem(
 			await post("/people", { id, name: "Sam again" }),
 			409,
-			"conflict",
+			"id_taken",
 		);
 	});
 

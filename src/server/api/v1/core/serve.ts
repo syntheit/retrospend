@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import type { ProblemCode } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
+import { MissingRateError } from "~/lib/money";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import { Prisma } from "~prisma";
 import { problem } from "../errors";
@@ -24,20 +25,37 @@ const TRPC_TO_PROBLEM: Partial<Record<TRPCError["code"], ProblemCode>> = {
 	NOT_IMPLEMENTED: "not_implemented",
 };
 
+/** Whether the unique key that failed is the row's id (its primary key). */
+function idIsTheKey(error: Prisma.PrismaClientKnownRequestError): boolean {
+	const meta = JSON.stringify(error.meta ?? {});
+	return /"id"|_pkey/.test(meta);
+}
+
 export function toProblem(error: unknown): unknown {
 	if (error instanceof ORPCError) return error;
 	if (error instanceof InvalidCursorError)
 		return problem("bad_request", error.message);
+	// A conversion with no stored rate: the write is fine but cannot be booked
+	// (a missing rate is never 1). Clients show "No rate yet" and offer a rate.
+	const missing = [error, (error as { cause?: unknown } | null)?.cause].find(
+		(e) => e instanceof MissingRateError,
+	);
+	if (missing instanceof MissingRateError)
+		return problem("missing_rate", missing.message);
 	if (error instanceof TRPCError) {
 		const code = TRPC_TO_PROBLEM[error.code];
 		if (code) return problem(code, error.message);
 	}
-	// A client-made id (or another unique key) that is already taken.
+	// A client-made id that is already taken: an earlier try of the same write
+	// got through. Clients treat it as sent, so it has a code of its own.
 	if (
 		error instanceof Prisma.PrismaClientKnownRequestError &&
 		error.code === "P2002"
-	)
-		return problem("conflict", "That id or name is already used");
+	) {
+		return idIsTheKey(error)
+			? problem("id_taken", "That id is already used")
+			: problem("conflict", "That id or name is already used");
+	}
 	// A number past what its column holds (an amount whose USD value needs
 	// more than 10 digits): the caller's input, not a server fault.
 	if (

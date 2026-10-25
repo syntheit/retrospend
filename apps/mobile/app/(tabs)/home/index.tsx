@@ -1,9 +1,11 @@
 import { router } from "expo-router";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ActivityRow } from "@/features/activity/ActivityRow";
+import { subscribeEntryChanges } from "@/features/entry/events";
+import { SyncIssues } from "@/features/entry/SyncIssues";
 import { Glance } from "@/features/home/Glance";
 import { NeedsYou } from "@/features/home/NeedsYou";
 import { fetchHome, HOME_CACHE } from "@/features/home/source";
@@ -17,7 +19,9 @@ export default function HomeScreen() {
 	const loading = useTranslations("mobile.activity")("loading");
 	const { api } = useSession();
 	const fetch = useMemo(() => (api ? fetchHome(api) : null), [api]);
-	const { state } = useCachedRead(HOME_CACHE, fetch);
+	const { state, reload } = useCachedRead(HOME_CACHE, fetch);
+	// An entry added, undone or sent from the outbox changes what Home shows.
+	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
 
 	return (
 		<>
@@ -27,6 +31,7 @@ export default function HomeScreen() {
 					<>
 						<StaleNote since={state.staleSince} />
 						<Glance approx={state.data.approx} glance={state.data.glance} />
+						<SyncIssues padded />
 						<NeedsYou list={state.data.needs} />
 						<SectionHeader
 							actionLabel={t("recent.seeAll")}

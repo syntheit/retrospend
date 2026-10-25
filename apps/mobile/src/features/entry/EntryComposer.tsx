@@ -1,0 +1,252 @@
+import { dayKey } from "@retrospend/domain/time-zone";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Keyboard, View } from "react-native";
+import { useTranslations } from "use-intl";
+import { useSession } from "@/auth/session";
+import { newClientId } from "@/data/ids";
+import { useFormatLocale } from "@/lib/intl";
+import { useTheme } from "@/theme";
+import { EmptyState } from "@/ui/EmptyState";
+import { useToast } from "@/ui/Toast";
+import { ChangesBlock } from "./ChangesBlock";
+import { ComposerShell, type EntryMode } from "./ComposerShell";
+import {
+	buildExpenseWrite,
+	buildIncomeWrite,
+	expenseErrors,
+	incomeErrors,
+	newExpenseDraft,
+	newIncomeDraft,
+	splitRows,
+} from "./draft";
+import { announceEntryChange } from "./events";
+import { ExpenseFields } from "./ExpenseFields";
+import { useEntryCatalog, useEntryPreview } from "./hooks";
+import { IncomeFields } from "./IncomeFields";
+import { type SaveOutcome, saveEntry, undoSaved } from "./queue";
+import { SyncIssues } from "./SyncIssues";
+import type { EntryCatalog } from "./types";
+
+interface ComposerProps {
+	onDone: () => void;
+	initialMode?: EntryMode;
+	/** The host shows the mode in its title. */
+	onModeChange?: (mode: EntryMode) => void;
+	/** The composer sits on a sheet: it takes the sheet's surface, not the page's. */
+	surface?: boolean;
+}
+
+/**
+ * Add expense and Add income in one frame. The same component sits in the
+ * iPhone tab, the iPad form sheet and the Android bottom sheet; `onDone`
+ * closes whichever it is in.
+ */
+export function EntryComposer(props: ComposerProps) {
+	const t = useTranslations("mobile.composer");
+	const catalog = useEntryCatalog();
+	const { state } = useSession();
+	// The profile is cached on sign in; without it there is no "you" to split with.
+	if (state.status !== "signedIn" || !state.me) {
+		return <Notice detail={t("loadErrorDetail")} title={t("loadError")} />;
+	}
+	if (catalog.status === "loading") {
+		return <Notice title={t("loading")} />;
+	}
+	if (catalog.status === "error") {
+		return <Notice detail={t("loadErrorDetail")} title={t("loadError")} />;
+	}
+	return <Form {...props} catalog={catalog.catalog} />;
+}
+
+function Notice({ title, detail }: { title: string; detail?: string }) {
+	const { color } = useTheme();
+	return (
+		<View style={{ flex: 1, backgroundColor: color.bg }}>
+			<EmptyState detail={detail} title={title} />
+		</View>
+	);
+}
+
+function Form({
+	catalog,
+	initialMode = "expense",
+	onDone,
+	onModeChange,
+	surface,
+}: ComposerProps & { catalog: EntryCatalog }) {
+	const t = useTranslations("mobile.composer");
+	const locale = useFormatLocale();
+	const toast = useToast();
+	const { api, local, state } = useSession();
+	const { space } = useTheme();
+	const me = state.status === "signedIn" ? state.me : null;
+	const today = () => dayKey(new Date());
+	const fresh = useCallback(
+		() => ({
+			expense: newExpenseDraft({
+				id: newClientId(),
+				currency: me?.defaultCurrency ?? "USD",
+				date: today(),
+			}),
+			income: newIncomeDraft({
+				id: newClientId(),
+				currency: me?.homeCurrency ?? "USD",
+				date: today(),
+				usePlan: catalog.hasBudget === true,
+			}),
+		}),
+		[me?.defaultCurrency, me?.homeCurrency, catalog.hasBudget],
+	);
+	const [mode, setMode] = useState(initialMode);
+	const [drafts, setDrafts] = useState(fresh);
+	const [tried, setTried] = useState(false);
+	const [typing, setTyping] = useState(false);
+	const [busy, setBusy] = useState(false);
+
+	// Android keeps a field focused after the keyboard is dismissed.
+	useEffect(() => {
+		const hide = Keyboard.addListener("keyboardDidHide", () =>
+			setTyping(false),
+		);
+		return () => hide.remove();
+	}, []);
+
+	const expense = drafts.expense;
+	const income = drafts.income;
+	const meId = me?.id ?? "";
+	const expenseWrite = useMemo(
+		() => buildExpenseWrite(expense, { locale, meId, catalog }),
+		[expense, locale, meId, catalog],
+	);
+	const incomeWrite = useMemo(
+		() => buildIncomeWrite(income, { locale, hasBudget: catalog.hasBudget }),
+		[income, locale, catalog.hasBudget],
+	);
+	const write = mode === "expense" ? expenseWrite : incomeWrite;
+	const preview = useEntryPreview(write);
+	// Save waits for the dry run of exactly what it will send. Offline there is
+	// none and the write waits on the phone; a refused one can not be saved.
+	const blocked =
+		write !== null &&
+		preview.status !== "ready" &&
+		preview.status !== "offline";
+	const rows = useMemo(
+		() =>
+			splitRows(expense, {
+				locale,
+				meId,
+				people: catalog.people,
+				youLabel: t("you"),
+			}),
+		[expense, locale, meId, catalog.people, t],
+	);
+	const expenseProblems = expenseErrors(expense, locale);
+	const incomeProblems = incomeErrors(income, locale);
+	const amountProblem =
+		mode === "expense" ? expenseProblems.amount : incomeProblems.amount;
+
+	const patchExpense = (patch: Partial<typeof expense>) =>
+		setDrafts((d) => ({ ...d, expense: { ...d.expense, ...patch } }));
+	const patchIncome = (patch: Partial<typeof income>) =>
+		setDrafts((d) => ({ ...d, income: { ...d.income, ...patch } }));
+	const active = mode === "expense" ? expense : income;
+	const patchActive = mode === "expense" ? patchExpense : patchIncome;
+
+	async function add() {
+		setTried(true);
+		if (!write || !api || !local || busy || blocked) return;
+		setBusy(true);
+		let outcome: SaveOutcome;
+		try {
+			outcome = await saveEntry({ outbox: local.outbox, api, write });
+		} finally {
+			setBusy(false);
+		}
+		announceEntryChange();
+		const clientId = String(write.body.id);
+		showSaved(outcome, write.label, async () => {
+			const result = await undoSaved({ outbox: local.outbox, api, clientId });
+			announceEntryChange();
+			toast.show({
+				message:
+					result === "undone"
+						? t("toast.undone", { title: write.label })
+						: t("toast.undoFailed"),
+			});
+		});
+		setDrafts(fresh());
+		setTried(false);
+		onDone();
+	}
+
+	function showSaved(outcome: SaveOutcome, title: string, onUndo: () => void) {
+		const message =
+			outcome.status === "synced"
+				? t("toast.added", { title })
+				: outcome.status === "queued"
+					? t("toast.queued", { title })
+					: t("toast.parked", { title });
+		const undoable =
+			outcome.status === "queued" ||
+			(outcome.status === "synced" && outcome.undo !== null);
+		toast.show({
+			message,
+			undo: undoable ? { label: t("undo"), onUndo } : undefined,
+		});
+	}
+
+	return (
+		<ComposerShell
+			addDescription={mode === "expense" ? t("addExpense") : t("addIncome")}
+			addLabel={t("add")}
+			amountError={tried && amountProblem === true}
+			amountText={active.amountText}
+			blocked={blocked}
+			busy={busy}
+			currencies={catalog.currencies}
+			currency={active.currency}
+			mode={mode}
+			onAdd={add}
+			onAmountChange={(amountText) => patchActive({ amountText })}
+			onCurrencyChange={(currency) => patchActive({ currency, amountText: "" })}
+			onKeypadRequest={() => setTyping(false)}
+			onModeChange={(next) => {
+				setMode(next);
+				setTried(false);
+				onModeChange?.(next);
+			}}
+			surface={surface}
+			typing={typing}
+		>
+			<View style={{ gap: space[4] }}>
+				<SyncIssues />
+				{mode === "expense" ? (
+					<ExpenseFields
+						catalog={catalog}
+						draft={expense}
+						errors={tried ? expenseProblems : {}}
+						onChange={patchExpense}
+						onTypingChange={setTyping}
+						rows={rows}
+					/>
+				) : (
+					<IncomeFields
+						catalog={catalog}
+						draft={income}
+						errors={tried ? incomeProblems : {}}
+						onChange={patchIncome}
+						onTypingChange={setTyping}
+					/>
+				)}
+				<ChangesBlock
+					idle={
+						mode === "expense"
+							? t("changes.emptyExpense")
+							: t("changes.emptyIncome")
+					}
+					state={preview}
+				/>
+			</View>
+		</ComposerShell>
+	);
+}

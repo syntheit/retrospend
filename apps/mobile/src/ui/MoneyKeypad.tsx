@@ -2,7 +2,7 @@ import { Pressable, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatLocale } from "@/lib/intl";
 import { useTheme } from "@/theme";
-import { applyKey, BACKSPACE, keypadLayout } from "./keypad";
+import { applyKey, BACKSPACE, keypadLayout, TRIPLE_ZERO } from "./keypad";
 
 /**
  * The amount keypad for the composer: big touch targets, the locale's
@@ -14,10 +14,13 @@ export function MoneyKeypad({
 	draft,
 	currency,
 	onDraftChange,
+	keyHeight,
 }: {
 	draft: string;
 	currency: string;
 	onDraftChange: (draft: string) => void;
+	/** Shorter keys for screens that also need room for fields; default is touch minimum plus a gap. */
+	keyHeight?: number;
 }) {
 	const t = useTranslations("mobile.keypad");
 	const locale = useFormatLocale();
@@ -28,6 +31,7 @@ export function MoneyKeypad({
 	function labelOf(key: string) {
 		if (key === BACKSPACE) return t("delete");
 		if (key === decimal) return t("decimal");
+		if (key === TRIPLE_ZERO) return t("tripleZero");
 		return key;
 	}
 
@@ -48,7 +52,7 @@ export function MoneyKeypad({
 							}
 							style={({ pressed }) => ({
 								flex: 1,
-								minHeight: size.touchMin.phone + space[2],
+								minHeight: keyHeight ?? size.touchMin.phone + space[2],
 								alignItems: "center",
 								justifyContent: "center",
 								borderRadius: radius.ctl,

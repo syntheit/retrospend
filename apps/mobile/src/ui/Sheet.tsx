@@ -1,4 +1,4 @@
-import { BottomSheet } from "@expo/ui";
+import { BottomSheet, RNHostView } from "@expo/ui";
 import type { ReactNode } from "react";
 import { Platform, Text, View } from "react-native";
 import { useTheme } from "@/theme";
@@ -27,6 +27,31 @@ export function Sheet({
 	children,
 }: SheetProps) {
 	const { color, space, type } = useTheme();
+	// Compose hosts React Native views only inside RNHostView; without it they
+	// draw but never receive a touch.
+	const content = (
+		<View
+			style={{
+				alignSelf: "stretch",
+				gap: space[3],
+				paddingBottom: Platform.OS === "android" ? space[6] : space[4],
+			}}
+		>
+			{title ? (
+				<Text
+					accessibilityRole="header"
+					style={{
+						color: color.fg,
+						fontSize: type.section.size,
+						fontWeight: "600",
+					}}
+				>
+					{title}
+				</Text>
+			) : null}
+			{children}
+		</View>
+	);
 	return (
 		<BottomSheet
 			containerColor={color.surface}
@@ -35,27 +60,7 @@ export function Sheet({
 			scrimColor={color.scrim}
 			snapPoints={detents?.map((d) => (d === "medium" ? "half" : "full"))}
 		>
-			<View
-				style={{
-					alignSelf: "stretch",
-					gap: space[3],
-					paddingBottom: Platform.OS === "android" ? space[6] : space[4],
-				}}
-			>
-				{title ? (
-					<Text
-						accessibilityRole="header"
-						style={{
-							color: color.fg,
-							fontSize: type.section.size,
-							fontWeight: "600",
-						}}
-					>
-						{title}
-					</Text>
-				) : null}
-				{children}
-			</View>
+			<RNHostView matchContents={{ vertical: true }}>{content}</RNHostView>
 		</BottomSheet>
 	);
 }

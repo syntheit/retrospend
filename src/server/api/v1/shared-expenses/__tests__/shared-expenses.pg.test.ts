@@ -157,7 +157,7 @@ describe("/api/v1/shared-expenses", () => {
 		await expectProblem(
 			await post("/shared-expenses", body({ id })),
 			409,
-			"conflict",
+			"id_taken",
 		);
 	});
 

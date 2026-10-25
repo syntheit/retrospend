@@ -6,7 +6,12 @@ import type { KeyValueStore } from "./store";
 // is no conflict UI yet: a conflicting entry is parked, never dropped.
 
 export type OutboxKind = "create" | "update" | "delete";
-export type OutboxState = "pending" | "failed" | "conflict";
+/**
+ * pending: never tried. sending: a send began (kept after a crash, so a write
+ * that may have reached the server is never mistaken for one that did not).
+ * failed: the last try did not get through. conflict: parked, never retried.
+ */
+export type OutboxState = "pending" | "sending" | "failed" | "conflict";
 
 export interface OutboxEntry {
 	/** Also the Idempotency-Key and, for a create, the new row's id. */
@@ -21,7 +26,12 @@ export interface OutboxEntry {
 	/** Plain JSON for the API call. User text stays opaque (owner rule 11). */
 	payload: unknown;
 	createdAt: string;
+	/** Sends begun, counted before the request leaves: 0 means it never left. */
 	attempts: number;
+	/** Tries that never got an answer (offline, timeout). Not held against the write. */
+	networkFailures: number;
+	/** Tries the server answered with a 5xx. */
+	serverErrors: number;
 	state: OutboxState;
 	lastError: string | null;
 }
@@ -37,9 +47,20 @@ export interface Outbox {
 	pending(): Promise<OutboxEntry[]>;
 	/** Everything, for the "waiting to sync" count and a future conflict UI. */
 	all(): Promise<OutboxEntry[]>;
+	/** A send is about to leave: counted first, so a crash leaves the trace. */
+	markSending(clientId: string): Promise<void>;
 	markSent(clientId: string): Promise<void>;
-	markFailed(clientId: string, error: string): Promise<void>;
+	/** `network`: no answer. `server`: a 5xx. */
+	markFailed(
+		clientId: string,
+		error: string,
+		kind?: "network" | "server",
+	): Promise<void>;
 	markConflict(clientId: string, error: string): Promise<void>;
+	/** Removes an entry the person took back before the server had it. */
+	discard(clientId: string): Promise<void>;
+	/** Puts a parked entry back in line, with its server-error count cleared. */
+	requeue(clientId: string): Promise<void>;
 	/** Sign out. */
 	clear(): Promise<void>;
 }
@@ -68,7 +89,14 @@ export function createOutbox(
 
 	async function read(key: string): Promise<OutboxEntry | null> {
 		const raw = await store.get(key);
-		return raw ? (JSON.parse(raw) as OutboxEntry) : null;
+		if (!raw) return null;
+		// Entries written before the counters existed read as zero.
+		const entry = JSON.parse(raw) as OutboxEntry;
+		return {
+			...entry,
+			networkFailures: entry.networkFailures ?? 0,
+			serverErrors: entry.serverErrors ?? 0,
+		};
 	}
 
 	async function update(
@@ -99,6 +127,8 @@ export function createOutbox(
 					...input,
 					createdAt: now().toISOString(),
 					attempts: 0,
+					networkFailures: 0,
+					serverErrors: 0,
 					state: "pending",
 					lastError: null,
 				};
@@ -108,28 +138,45 @@ export function createOutbox(
 			}),
 		all: () => serial(load),
 		pending: () =>
-			serial(async () =>
-				(await load()).filter(
-					(e) => e.state === "pending" || e.state === "failed",
-				),
+			serial(async () => (await load()).filter((e) => e.state !== "conflict")),
+		markSending: (clientId) =>
+			serial(() =>
+				update(clientId, (e) => ({
+					state: "sending",
+					attempts: e.attempts + 1,
+				})),
 			),
 		markSent: (clientId) =>
 			serial(async () => {
 				const key = await keyFor(clientId);
 				if (key) await store.delete(key);
 			}),
-		markFailed: (clientId, error) =>
+		markFailed: (clientId, error, kind = "network") =>
 			serial(() =>
 				update(clientId, (e) => ({
 					state: "failed",
 					lastError: error,
-					attempts: e.attempts + 1,
+					networkFailures: e.networkFailures + (kind === "network" ? 1 : 0),
+					serverErrors: e.serverErrors + (kind === "server" ? 1 : 0),
 				})),
 			),
 		markConflict: (clientId, error) =>
 			serial(() =>
 				update(clientId, () => ({ state: "conflict", lastError: error })),
 			),
+		requeue: (clientId) =>
+			serial(() =>
+				update(clientId, () => ({
+					state: "pending",
+					lastError: null,
+					serverErrors: 0,
+				})),
+			),
+		discard: (clientId) =>
+			serial(async () => {
+				const key = await keyFor(clientId);
+				if (key) await store.delete(key);
+			}),
 		clear: () =>
 			serial(async () => {
 				for (const key of await store.keys(prefix)) await store.delete(key);

@@ -13,6 +13,8 @@ export interface MenuItem {
 export interface MenuProps {
 	/** The trigger's text, also its accessibility label. */
 	label: string;
+	/** What a screen reader says when it differs from the text ("Currency, ARS"). */
+	accessibilityLabel?: string;
 	items: MenuItem[];
 }
 

@@ -51,6 +51,8 @@
 							"idempotency_in_progress",
 							"idempotency_replay_unavailable",
 							"idempotency_key_reused",
+							"missing_rate",
+							"id_taken",
 							"rate_limited",
 							"internal",
 							"not_implemented"

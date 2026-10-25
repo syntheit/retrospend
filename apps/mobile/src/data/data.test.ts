@@ -89,4 +89,52 @@ describe("outbox", () => {
 		expect(report.stopped).toBe(true);
 		expect((await outbox.all())[0]?.lastError).toContain("network");
 	});
+	it("counts a send before it leaves and keeps network and server failures apart", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(create("x"));
+		expect((await outbox.all())[0]).toMatchObject({
+			attempts: 0,
+			networkFailures: 0,
+			serverErrors: 0,
+		});
+		await outbox.markSending("x");
+		expect((await outbox.all())[0]).toMatchObject({
+			state: "sending",
+			attempts: 1,
+		});
+		await outbox.markFailed("x", "offline");
+		await outbox.markFailed("x", "boom", "server");
+		expect((await outbox.all())[0]).toMatchObject({
+			state: "failed",
+			attempts: 1,
+			networkFailures: 1,
+			serverErrors: 1,
+		});
+		// A send that began and has no answer yet is still sent again later.
+		await outbox.markSending("x");
+		expect((await outbox.pending()).map((e) => e.state)).toEqual(["sending"]);
+	});
+
+	it("puts a parked entry back in line", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(create("x"));
+		await outbox.markConflict("x", "forbidden");
+		expect(await outbox.pending()).toEqual([]);
+		await outbox.requeue("x");
+		expect((await outbox.pending())[0]).toMatchObject({
+			clientId: "x",
+			state: "pending",
+			lastError: null,
+		});
+	});
+
+	it("discards one entry and leaves the rest", async () => {
+		const outbox = createOutbox(createMemoryStore(), "a");
+		await outbox.enqueue(create("one"));
+		await outbox.enqueue(create("two"));
+		await outbox.discard("one");
+		expect((await outbox.all()).map((e) => e.clientId)).toEqual(["two"]);
+		await outbox.discard("missing");
+		expect(await outbox.all()).toHaveLength(1);
+	});
 });

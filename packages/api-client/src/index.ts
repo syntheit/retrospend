@@ -48,7 +48,9 @@ function problemAwareFetch(
 		if (!type.startsWith(PROBLEM_CONTENT_TYPE)) return response;
 		const headers = new Headers(response.headers);
 		headers.set("content-type", "application/json");
-		return new Response(response.body, {
+		// React Native's fetch has no `response.body` stream: copying it would
+		// send an empty body, and every problem would read as "cannot parse".
+		return new Response(await response.text(), {
 			status: response.status,
 			statusText: response.statusText,
 			headers,

@@ -1,6 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/auth/session";
+import { subscribeEntryChanges } from "@/features/entry/events";
 import { type ActivityFilter, filterString } from "./filter";
 import {
 	type ActivityState,
@@ -39,6 +40,9 @@ export function useActivity(filter: ActivityFilter) {
 		);
 		if (current()) setState(next);
 	}, [source, local]);
+
+	// An entry added, undone or sent from the outbox changes the list.
+	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `text` is the trigger
 	useEffect(() => {

@@ -20,6 +20,8 @@ export const PROBLEM_STATUS = {
 	idempotency_in_progress: 409,
 	idempotency_replay_unavailable: 409,
 	idempotency_key_reused: 422,
+	missing_rate: 422,
+	id_taken: 409,
 	rate_limited: 429,
 	internal: 500,
 	not_implemented: 501,
