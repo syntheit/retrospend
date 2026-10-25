@@ -17,6 +17,7 @@ import {
 	unconfirmPayment,
 } from "~/server/services/payments/confirm.mutation";
 import {
+	OverpayError,
 	applyConfirm,
 	applyPayment,
 	previewConfirm,
@@ -117,6 +118,7 @@ async function assertRecorded(caller: Caller, value: RecordPaymentValue) {
 			);
 		}
 	}
+	if (value.reason === "overpay") throw new OverpayError(NOT_RECORDED.overpay);
 	throw new TRPCError({
 		code: "BAD_REQUEST",
 		message:

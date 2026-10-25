@@ -135,6 +135,11 @@ export const verificationSchema = z
 	})
 	.meta({ id: "SharedExpenseVerification" });
 
+/** The answer and the token that takes it back (POST /shared-expenses/undo). */
+export const answeredSharedExpenseSchema = verificationSchema
+	.extend(undoField)
+	.meta({ id: "SharedExpenseAnswered" });
+
 export const rejectSharedExpenseSchema = z
 	.object({
 		id: idSchema,
@@ -223,7 +228,7 @@ export const sharedExpensesContract = {
 			tags: TAG,
 			summary: "Revert a split expense write from its undo token",
 			description:
-				"Tokens from create and update. Undoing an add right away takes the notices back. A token is for its user and expires after 24 hours.",
+				"Tokens from create, update, accept and reject. Undoing an add right away takes the notices back. A token is for its user and expires after 24 hours.",
 		})
 		.meta({ scope: "write:expenses", event: "shared_expense.undone" })
 		.input(undoInputSchema)
@@ -243,11 +248,20 @@ export const sharedExpensesContract = {
 			operationId: "acceptSharedExpense",
 			tags: TAG,
 			summary: "Accept your share of a split expense",
-			description: "Accepting twice answers the current state.",
+			description:
+				"Accepting twice answers the current state. Answers an undo token for POST /shared-expenses/undo; the preview shows what changes.",
 		})
 		.meta({ scope: "write:expenses", event: "shared_expense.accepted" })
 		.input(z.object({ id: idSchema }))
-		.output(verificationSchema),
+		.output(answeredSharedExpenseSchema),
+	previewAccept: previewTwin({
+		path: "/shared-expenses/{id}/accept",
+		of: "POST /shared-expenses/{id}/accept",
+		operationId: "previewAcceptSharedExpense",
+		tags: TAG,
+		scope: "write:expenses",
+		input: z.object({ id: idSchema }),
+	}),
 	reject: v1
 		.route({
 			method: "POST",
@@ -255,9 +269,18 @@ export const sharedExpensesContract = {
 			operationId: "rejectSharedExpense",
 			tags: TAG,
 			summary: "Reject your share of a split expense",
-			description: "The person who added it is told.",
+			description:
+				"The person who added it is told. Answers an undo token for POST /shared-expenses/undo; the preview shows what changes.",
 		})
 		.meta({ scope: "write:expenses", event: "shared_expense.rejected" })
 		.input(rejectSharedExpenseSchema)
-		.output(verificationSchema),
+		.output(answeredSharedExpenseSchema),
+	previewReject: previewTwin({
+		path: "/shared-expenses/{id}/reject",
+		of: "POST /shared-expenses/{id}/reject",
+		operationId: "previewRejectSharedExpense",
+		tags: TAG,
+		scope: "write:expenses",
+		input: rejectSharedExpenseSchema,
+	}),
 };

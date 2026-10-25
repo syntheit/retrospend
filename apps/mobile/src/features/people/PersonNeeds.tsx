@@ -5,22 +5,26 @@ import { ListRow } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
+import type { ReviewNeed } from "./ReviewSheet";
 import type { NeedsItem, PersonPage } from "./source";
 
 /**
  * What waits for you on this person. A payment they say they made has a
- * Confirm action (with its preview); a split to review is told, and is
- * answered where it was added.
+ * Confirm action and a split somebody added you to has a Review action;
+ * each opens its sheet with the details before anything is written.
  */
 export function PersonNeeds({
 	page,
 	onConfirm,
+	onReview,
 }: {
 	page: PersonPage;
 	onConfirm: (need: Extract<NeedsItem, { kind: "confirmPayment" }>) => void;
+	onReview: (need: ReviewNeed) => void;
 }) {
 	const t = useTranslations("mobile.home.needs");
 	const ts = useTranslations("mobile.settle");
+	const tr = useTranslations("mobile.review");
 	const format = useMoneyText();
 	const { color, space, type } = useTheme();
 	const first = page.person.name.split(/\s+/)[0] ?? "";
@@ -46,21 +50,27 @@ export function PersonNeeds({
 							</Text>
 							<MoneyAmount value={need.amount} />
 						</ListRow>
-						{need.kind === "confirmPayment" ? (
-							<View
-								style={{
-									alignItems: "flex-start",
-									paddingHorizontal: space[4],
-									paddingVertical: space[2],
-								}}
-							>
+						<View
+							style={{
+								alignItems: "flex-start",
+								paddingHorizontal: space[4],
+								paddingVertical: space[2],
+							}}
+						>
+							{need.kind === "confirmPayment" ? (
 								<Button
 									label={ts("confirm")}
 									onPress={() => onConfirm(need)}
 									variant="outlined"
 								/>
-							</View>
-						) : null}
+							) : (
+								<Button
+									label={tr("open")}
+									onPress={() => onReview(need)}
+									variant="outlined"
+								/>
+							)}
+						</View>
 					</View>
 				);
 			})}

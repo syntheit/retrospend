@@ -78,6 +78,8 @@ const projectExpenseRowSchema = z
 				name: z.string(),
 				icon: z.string().nullable(),
 				color: z.string(),
+				/** The category-n design token number, as in the other lists. */
+				tone: z.int(),
 			})
 			.nullable(),
 		amount: moneySchema,

@@ -1,3 +1,4 @@
+import type { Money } from "@retrospend/domain/money-minor";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
@@ -18,7 +19,11 @@ export function PreviewList({
 	name: string;
 }) {
 	const t = useTranslations("mobile.settle");
-	const format = useMoneyText();
+	const tm = useTranslations("mobile.money");
+	const money = useMoneyText();
+	// A converted total is an estimate at reference rates: it reads "≈".
+	const format = (amount: Money, approx: boolean) =>
+		approx ? tm("approx", { amount: money(amount) }) : money(amount);
 	const { color, space, type } = useTheme();
 	const { changes, kept } = previewRows(preview);
 
@@ -74,8 +79,8 @@ export function PreviewList({
 							`${c.figure}:${c.currency}`,
 							label(c.figure),
 							t("beforeAfter", {
-								before: c.before ? format(c.before) : t("none"),
-								after: c.after ? format(c.after) : t("none"),
+								before: c.before ? format(c.before, c.approx) : t("none"),
+								after: c.after ? format(c.after, c.approx) : t("none"),
 							}),
 						),
 					)}
@@ -99,7 +104,9 @@ export function PreviewList({
 							label(k.figure),
 							k.lines.length > 0
 								? k.lines
-										.map((line) => t("keeps", { amount: format(line) }))
+										.map((line) =>
+											t("keeps", { amount: format(line, k.approx) }),
+										)
 										.join(", ")
 								: t("none"),
 						),

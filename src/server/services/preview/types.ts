@@ -95,6 +95,8 @@ export interface FiguresDiff {
 
 export interface PreviewResult<Value> extends FiguresDiff {
 	readonly value: Value;
+	/** Figures that were converted totals (estimates) before or after the write. */
+	readonly approx: readonly string[];
 }
 
 export interface ApplyResult<Value> extends PreviewResult<Value> {

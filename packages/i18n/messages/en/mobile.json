@@ -11,7 +11,9 @@
 		"cancel": "Cancel",
 		"undo": "Undo",
 		"dismiss": "Dismiss",
-		"retry": "Try again"
+		"retry": "Try again",
+		"save": "Save",
+		"saving": "Saving"
 	},
 	"keypad": {
 		"delete": "Delete",
@@ -202,7 +204,8 @@
 		"open": "Account",
 		"signOut": "Sign out",
 		"signOutDiscard": "Sign out and discard",
-		"unsynced": "{count, plural, one {# change isn't synced yet. Signing out discards it.} other {# changes aren't synced yet. Signing out discards them.}}"
+		"unsynced": "{count, plural, one {# change isn't synced yet. Signing out discards it.} other {# changes aren't synced yet. Signing out discards them.}}",
+		"settings": "Settings"
 	},
 	"activity": {
 		"title": "Activity",
@@ -770,6 +773,218 @@
 		"confirm": "Confirm",
 		"confirmed": "Payment confirmed",
 		"confirmUndone": "Confirmation undone",
-		"confirmError": "Couldn't confirm the payment. Try again."
+		"confirmError": "Couldn't confirm the payment. Try again.",
+		"otherShort": "Other",
+		"typeAmount": "Type an amount",
+		"amountInvalid": "That amount isn't valid",
+		"overpay": "That is more than is owed. Enter less."
+	},
+	"review": {
+		"open": "Review",
+		"title": "{name} added you to a split",
+		"yourShare": "Your share",
+		"betweenYou": "Between you",
+		"effectThem": "Owes you {amount}",
+		"effectYou": "You owe {amount}",
+		"accept": "Accept",
+		"reject": "Reject",
+		"saving": "Saving",
+		"accepted": "Share accepted",
+		"rejected": "Share rejected, {name} is told",
+		"error": "Couldn't save your answer. Try again.",
+		"answer": "Your answer",
+		"askToFix": "Ask to fix",
+		"explain": {
+			"accept": "The expense stays and counts for you.",
+			"reject": "{name} is told you do not agree with it.",
+			"fix": "{name} is asked to fix it. Nothing changes until they do."
+		},
+		"message": "Message (optional)",
+		"noFigures": "Your balances stay as they are.",
+		"checking": "Checking",
+		"previewError": "Couldn't check this. Try again.",
+		"asked": "Asked {name} to fix it",
+		"undone": "Answer taken back",
+		"undoError": "Couldn't take the answer back. Try again."
+	},
+	"projects": {
+		"title": "Projects",
+		"search": "Search projects",
+		"pick": "Pick a project",
+		"empty": "No projects yet",
+		"emptyDetail": "Projects you share with people show up here.",
+		"noMatch": "No project matches",
+		"error": "Couldn't load projects",
+		"errorOne": "Couldn't load this project",
+		"errorDetail": "Check your connection and try again.",
+		"group": {
+			"active": "Active"
+		},
+		"settled": "Settled",
+		"owesYou": "Owes you",
+		"youOwe": "You owe",
+		"owesYouAmount": "Group owes you {amount}",
+		"youOweAmount": "You owe {amount}",
+		"expenseCount": "{count, plural, one {# expense} other {# expenses}}",
+		"peopleCount": "{count, plural, one {# person} other {# people}}",
+		"soloShort": "Just you",
+		"spent": "Spent",
+		"totalSpoken": "Total {amount}",
+		"budgetLeft": "{amount} left",
+		"budgetOver": "{amount} over",
+		"range": "{from} to {to}",
+		"archived": "Archived",
+		"groupTotal": "Group total",
+		"yourShareLabel": "Your share",
+		"yourShare": "Your share {amount}",
+		"tabs": "Project sections",
+		"tab": {
+			"expenses": "Expenses",
+			"summary": "Summary",
+			"people": "People"
+		},
+		"period": {
+			"label": "Period",
+			"all": "Whole project",
+			"current": "Current period"
+		},
+		"expenses": "Expenses",
+		"noExpenses": "No expenses yet",
+		"newestOnly": "Showing the newest {count}",
+		"waiting": {
+			"review": "To review",
+			"rejected": "Rejected"
+		},
+		"paidByMe": "You paid",
+		"paidByName": "{name} paid",
+		"you": "You",
+		"role": {
+			"ORGANIZER": "Organizer",
+			"EDITOR": "Editor",
+			"CONTRIBUTOR": "Contributor",
+			"VIEWER": "Viewer"
+		},
+		"leftOn": "Left {date}",
+		"summary": {
+			"members": "People",
+			"error": "Couldn't load the summary",
+			"errorDetail": "Check your connection and try again.",
+			"imbalance": "These balances don't add up: {amounts}",
+			"isOwed": "is owed {amount}",
+			"owes": "owes {amount}",
+			"paidShare": "Paid {paid}, share {share}",
+			"left": "No longer in the project",
+			"even": "Even",
+			"isOwedShort": "Is owed",
+			"owesShort": "Owes",
+			"transfers": "Fewest transfers",
+			"transfersNote": "A guide only. Settle all records the payments.",
+			"pays": "{from} pays {to}"
+		},
+		"settleAll": {
+			"open": "Settle all",
+			"title": "Settle all in {name}",
+			"explain": "One payment per person and currency, each in the currency it is owed in.",
+			"checking": "Checking",
+			"nothing": "Nothing to settle in this project",
+			"willRecord": "These payments will be recorded",
+			"youPay": "You pay {name}",
+			"paidYou": "{name} paid you",
+			"waiting": "Waiting for {name} to confirm",
+			"skipped": {
+				"matches_claim": "{name} already says they paid {amount}. Confirm it on their page.",
+				"overpay": "{name}: {amount} is more than is owed, left for you to handle",
+				"nothing_owed": "Nothing is owed to {name} in {amount}"
+			},
+			"record": "Record payments",
+			"recording": "Recording",
+			"recorded": "{count, plural, one {# payment recorded} other {# payments recorded}}",
+			"undone": "Payments undone",
+			"undoError": "Couldn't undo the payments. Try again.",
+			"previewError": "Couldn't check these payments. Try again.",
+			"loadError": "Couldn't load what is open. Try again.",
+			"moved": "The balances changed. Check the list and try again.",
+			"error": "Couldn't record the payments. Try again."
+		}
+	},
+	"settings": {
+		"title": "Settings",
+		"saved": "Saved",
+		"saveError": "Couldn't save. Try again.",
+		"error": "Couldn't load settings",
+		"errorDetail": "Check your connection and try again.",
+		"notAvailable": "Not available yet",
+		"profile": {
+			"title": "Profile",
+			"name": "Name",
+			"username": "Username",
+			"email": "Email",
+			"edit": "Edit profile",
+			"usernameRule": "Use letters and numbers only.",
+			"error": "Couldn't save your profile. Try again."
+		},
+		"money": {
+			"title": "Money",
+			"footer": "Totals and reports use your home currency.",
+			"home": "Home currency",
+			"default": "Default for new expenses",
+			"monthStart": "Month starts on day"
+		},
+		"rates": {
+			"section": "Rates",
+			"footer": "The default rate type can only be changed on the web for now.",
+			"defaultType": "Default rate type",
+			"pinned": "Pinned rates",
+			"title": "Pinned rates",
+			"none": "No pinned rates",
+			"unpin": "Unpin",
+			"unpinned": "Rate unpinned",
+			"error": "Couldn't unpin the rate. Try again.",
+			"line": "1 USD = {rate} {currency}",
+			"spoken": "{currency} {type}, 1 USD is {rate} {currency}"
+		},
+		"notifications": {
+			"inApp": "In the app",
+			"email": "By email"
+		},
+		"notify": {
+			"EXPENSE_SPLIT": "Someone adds you to a split",
+			"VERIFICATION_REQUEST": "A split needs your check",
+			"EXPENSE_EDITED": "A shared expense changes",
+			"EXPENSE_DELETED": "A shared expense is deleted",
+			"SETTLEMENT_RECEIVED": "A payment waits for you to confirm",
+			"SETTLEMENT_CONFIRMED": "A payment is confirmed",
+			"SETTLEMENT_REJECTED": "A payment is rejected",
+			"PERIOD_CLOSED": "A billing period closes",
+			"PARTICIPANT_ADDED": "You are added to a project",
+			"PAYMENT_REMINDER": "Someone reminds you to pay"
+		},
+		"server": {
+			"title": "Server",
+			"connected": "Connected to"
+		},
+		"account": {
+			"title": "Account",
+			"signOut": "Sign out",
+			"delete": "Delete account"
+		},
+		"delete": {
+			"title": "Delete account",
+			"permanent": "This deletes your account and cannot be undone. You are signed out everywhere.",
+			"loadError": "Couldn't check what this changes. Try again.",
+			"checking": "Checking",
+			"changes": "What changes for other people",
+			"nothing": "Nothing changes for anyone else.",
+			"transfer": "{project} goes to {name}",
+			"deleteProject": "{project} is deleted, nobody else can run it",
+			"confirm": "{count, plural, one {# payment waiting for you is confirmed} other {# payments waiting for you are confirmed}}",
+			"cancel": "{count, plural, one {# payment nobody confirmed is cancelled} other {# payments nobody confirmed are cancelled}}",
+			"accept": "{count, plural, one {# share waiting for your answer is accepted} other {# shares waiting for your answer are accepted}}",
+			"anonymize": "{count, plural, one {# shared expense keeps your share as Deleted User} other {# shared expenses keep your share as Deleted User}}",
+			"password": "Password",
+			"delete": "Delete account",
+			"deleting": "Deleting",
+			"error": "Couldn't delete the account. Check your password and try again."
+		}
 	}
 }

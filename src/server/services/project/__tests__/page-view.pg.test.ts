@@ -186,6 +186,31 @@ describe("project.pageView", () => {
 		expect(groceries?.payerIsMe).toBe(true);
 	});
 
+	it("sends the category token on an expense row, like the other lists", async () => {
+		const sky = await adminDb.category.create({
+			data: { name: "Sky blue", color: "sky", userId: ana.user.id },
+		});
+		const groceries = await adminDb.sharedTransaction.findFirstOrThrow({
+			where: { projectId: pid, description: "Groceries" },
+		});
+		await adminDb.sharedTransaction.update({
+			where: { id: groceries.id },
+			data: { categoryId: sky.id },
+		});
+		const v = await callerFor(ana.user).pageView({ id: pid });
+		expect(v.expenses.find((e) => e.id === groceries.id)?.category).toEqual({
+			id: sky.id,
+			name: "Sky blue",
+			icon: null,
+			color: "sky",
+			tone: 3,
+		});
+		await adminDb.sharedTransaction.update({
+			where: { id: groceries.id },
+			data: { categoryId: null },
+		});
+	});
+
 	it("is for members only", async () => {
 		const olga = await namedUser("Olga");
 		await expect(callerFor(olga.user).pageView({ id: pid })).rejects.toThrow();

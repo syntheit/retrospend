@@ -1,6 +1,8 @@
 import type { SettleContext } from "@/features/people/source";
 import {
 	allocationOf,
+	answerFor,
+	isOverpay,
 	type PaymentPreview,
 	previewRows,
 	recordInput,
@@ -60,6 +62,31 @@ describe("recordInput", () => {
 		});
 	});
 
+	it("sends a typed amount as decimal text with no scope", () => {
+		// ARS has 2 decimals: 25050 minor is "250.50".
+		expect(
+			recordInput(
+				ref,
+				context,
+				"outgoing",
+				{ kind: "custom", minor: 25050 },
+				"id4",
+			),
+		).toEqual({
+			id: "id4",
+			person: ref,
+			direction: "outgoing",
+			currency: "ARS",
+			amount: "250.50",
+		});
+	});
+
+	it("has no request for an amount that is not typed yet", () => {
+		expect(
+			recordInput(ref, context, "outgoing", { kind: "custom", minor: 0 }, "x"),
+		).toBeNull();
+	});
+
 	it("refuses a part the server did not offer", () => {
 		expect(() =>
 			recordInput(
@@ -91,6 +118,7 @@ describe("previewRows", () => {
 				after: { minor: 94693469, currency: "ARS" },
 				delta: { minor: -30518139, currency: "ARS" },
 				figureAfter: [{ minor: 94693469, currency: "ARS" }],
+				approx: true,
 			},
 			{
 				id: "budget.other",
@@ -102,7 +130,11 @@ describe("previewRows", () => {
 			},
 		],
 		unchanged: [
-			{ id: "owed.youOwe", lines: [{ minor: 1796981, currency: "ARS" }] },
+			{
+				id: "owed.youOwe",
+				lines: [{ minor: 1796981, currency: "ARS" }],
+				approx: true,
+			},
 		],
 		unavailable: [],
 	};
@@ -110,13 +142,17 @@ describe("previewRows", () => {
 	it("keeps the figures the sheet words, in the server's order", () => {
 		const { changes, kept } = previewRows(preview);
 		expect(
-			changes.map((c) => [c.figure, c.before?.minor, c.after?.minor]),
+			changes.map((c) => [c.figure, c.before?.minor, c.after?.minor, c.approx]),
 		).toEqual([
-			["balance.person", 16230000, undefined],
-			["owed.owedToYou", 125211608, 94693469],
+			["balance.person", 16230000, undefined, false],
+			["owed.owedToYou", 125211608, 94693469, true],
 		]);
 		expect(kept).toEqual([
-			{ figure: "owed.youOwe", lines: [{ minor: 1796981, currency: "ARS" }] },
+			{
+				figure: "owed.youOwe",
+				lines: [{ minor: 1796981, currency: "ARS" }],
+				approx: true,
+			},
 		]);
 	});
 
@@ -141,5 +177,25 @@ describe("previewRows", () => {
 			allocationOf(detail([{ rate: null }, { rate: { rateType: "official" } }]))
 				?.converted,
 		).toBe(true);
+	});
+});
+
+describe("answerFor", () => {
+	const answer = { key: "a", preview: "p" };
+
+	it("shows a dry run only for the request it answered", () => {
+		expect(answerFor(answer, "a")).toBe(answer);
+		expect(answerFor(answer, "b")).toBeNull();
+		expect(answerFor(answer, null)).toBeNull();
+		expect(answerFor(null, "a")).toBeNull();
+	});
+});
+
+describe("isOverpay", () => {
+	it("knows the server's problem for more than is owed", () => {
+		expect(isOverpay({ code: "overpay", status: 422 })).toBe(true);
+		expect(isOverpay({ code: "bad_request", status: 400 })).toBe(false);
+		expect(isOverpay(new Error("offline"))).toBe(false);
+		expect(isOverpay(null)).toBe(false);
 	});
 });
