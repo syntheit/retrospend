@@ -77,14 +77,19 @@
                   android_sdk.accept_license = true;
                 };
               };
-              # The versions React Native 0.81+ (Expo SDK 54+) builds with.
+              # The versions React Native 0.88 (Expo SDK 58) builds with: compileSdk 37,
+              # build-tools 37.0.0 (targetSdk stays 36).
               # Build-tools 35 too: Android libraries that set no
               # buildToolsVersion get AGP 8.12's default (35.0.0), and Gradle
               # cannot install it into the read-only store.
               sdk =
                 (androidPkgs.androidenv.composeAndroidPackages {
-                  platformVersions = [ "36" ];
+                  platformVersions = [
+                    "36"
+                    "37"
+                  ];
                   buildToolsVersions = [
+                    "37.0.0"
                     "36.0.0"
                     "35.0.0"
                   ];

@@ -2,7 +2,7 @@
 # The Mac mini half of ios-build.sh: install, prebuild, xcodebuild, then
 # install and launch. Runs on the mini from the copied repo:
 #
-#   bash ~/rs-ios/retrospend/apps/mobile/scripts/ios-mini.sh [all|device|simulator]
+#   bash ~/rs-ios/retrospend/apps/mobile/scripts/ios-mini.sh [all|device|simulator|sim-build]
 #
 # Signing is Xcode automatic signing driven by the App Store Connect API key
 # in ~/.appstoreconnect/env (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_PATH), so the
@@ -19,7 +19,7 @@ bundle_id=app.retrospend
 
 app=$(cd "$(dirname "$0")/.." && pwd)
 repo=$(cd "$app/../.." && pwd)
-work=$HOME/rs-ios
+work=${RS_WORK:-$HOME/rs-ios}
 derived=$work/DerivedData
 logs=$work/logs
 mkdir -p "$logs" "$work/shots"
@@ -173,6 +173,13 @@ simulator() {
 	xcrun simctl shutdown "$udid"
 }
 
+# Build only, for any simulator: the caller installs the app on the
+# simulators it drives (UI test runs).
+sim_build() {
+	build simulator -destination "generic/platform=iOS Simulator"
+	echo "$derived/Build/Products/Debug-iphonesimulator/$scheme.app"
+}
+
 # Plain statements, not an && chain: set -e does not apply inside functions
 # called from one.
 case "$target" in
@@ -181,11 +188,12 @@ device)
 	device_run
 	;;
 simulator) simulator ;;
+sim-build) sim_build ;;
 all)
 	device_build
 	simulator
 	# The phone goes last: it is the step most likely to need the owner.
 	device_run
 	;;
-*) echo "usage: $0 [device|simulator|all]" >&2 && exit 2 ;;
+*) echo "usage: $0 [device|simulator|sim-build|all]" >&2 && exit 2 ;;
 esac

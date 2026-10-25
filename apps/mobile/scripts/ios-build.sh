@@ -14,7 +14,7 @@
 set -euo pipefail
 
 target=${1:-all}
-case "$target" in device | simulator | all) ;; *)
+case "$target" in device | simulator | sim-build | all) ;; *)
 	echo "usage: $0 [all|device|simulator]" >&2
 	exit 2
 	;;
@@ -22,7 +22,7 @@ esac
 
 mini=${MINI:-mini}
 repo=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
-remote=rs-ios/retrospend
+remote=${RS_REMOTE:-rs-ios/retrospend}
 
 ssh "$mini" "mkdir -p ~/$remote"
 
