@@ -28,6 +28,7 @@ import { Prisma, type PrismaClient } from "~prisma";
 import {
 	getExcludedProjectIds,
 	getSharedExpenseShares,
+	type ShareNarrowing,
 } from "../shared-expense-integration";
 import {
 	budgetRefundWhere,
@@ -58,6 +59,13 @@ export interface SpentFilter {
 	 * (lifetime totals and budget suggestions), so their numbers stay put.
 	 */
 	personalOnly?: boolean;
+	/**
+	 * Insights filters: only shares in these projects, or in expenses with
+	 * these people. A personal row has neither a project nor a person, so
+	 * either filter leaves personal rows out.
+	 */
+	projectIds?: readonly string[];
+	withPeople?: ShareNarrowing["withPeople"];
 }
 
 /** How personal rows are grouped: per currency, per category, or per entry date and category. */
@@ -119,18 +127,23 @@ function rowWhere(
 	};
 }
 
+const sharesOnly = (filter: SpentFilter) =>
+	filter.projectIds !== undefined || filter.withPeople !== undefined;
+
 async function groupRows(
 	db: AppDb,
-	where: Prisma.ExpenseWhereInput,
+	filter: SpentFilter,
+	kind: "spending" | "refund",
 	by: SpentGrouping,
 ): Promise<GroupRow[]> {
+	if (sharesOnly(filter)) return [];
 	// groupBy's types cannot follow a `by` chosen at runtime.
 	const groupBy = (db as PrismaClient).expense.groupBy as unknown as (
 		args: unknown,
 	) => Promise<GroupRow[]>;
 	return groupBy({
 		by: [...GROUP_KEYS[by]],
-		where,
+		where: rowWhere(filter, kind),
 		_sum: { amount: true, amountInUSD: true, homeAmount: true },
 		_count: { _all: true },
 	});
@@ -160,13 +173,13 @@ async function sharesFor(db: AppDb, filter: SpentFilter) {
 			? []
 			: (filter.excludedProjectIds ??
 				(await getExcludedProjectIds(db, filter.userId)));
-	const shares = await getSharedExpenseShares(
-		db,
-		filter.userId,
-		filter.date,
-		undefined,
-		hidden,
-	);
+	const base = [db, filter.userId, filter.date, undefined, hidden] as const;
+	const shares = await (sharesOnly(filter)
+		? getSharedExpenseShares(...base, {
+				projectIds: filter.projectIds,
+				withPeople: filter.withPeople,
+			})
+		: getSharedExpenseShares(...base));
 	return filter.categoryIds
 		? shares.filter(
 				(s) =>
@@ -182,8 +195,8 @@ export async function spentItems(
 	by: SpentGrouping = "currency",
 ): Promise<SpentItem[]> {
 	const [spending, refunds, shares] = await Promise.all([
-		groupRows(db, rowWhere(filter, "spending"), by),
-		groupRows(db, rowWhere(filter, "refund"), by),
+		groupRows(db, filter, "spending", by),
+		groupRows(db, filter, "refund", by),
 		sharesFor(db, filter),
 	]);
 	return [
@@ -228,8 +241,8 @@ export async function spentByCurrency(
 	filter: SpentFilter,
 ): Promise<Money[]> {
 	const [spending, refunds, shares] = await Promise.all([
-		groupRows(db, rowWhere(filter, "spending"), "currency"),
-		groupRows(db, rowWhere(filter, "refund"), "currency"),
+		groupRows(db, filter, "spending", "currency"),
+		groupRows(db, filter, "refund", "currency"),
 		sharesFor(db, filter),
 	]);
 	const minor = new Map<string, number>();

@@ -19,6 +19,7 @@ import { accountFigures } from "~/server/services/accounts/figures";
 import { budgetFigures } from "~/server/services/envelope/figures";
 import { glanceFigures } from "~/server/services/figures/spend-pace";
 import { spentFigure } from "~/server/services/figures/spent";
+import { insightsFigures } from "~/server/services/insights/figures";
 import {
 	balancePersonFigure,
 	owedToYouFigure,
@@ -46,11 +47,18 @@ export type FigureValue = Money | readonly Money[];
 export type FigureReading = readonly Money[] | null;
 
 /** The optional narrowings a snapshot can carry on top of its user. */
-export type ScopeKey = "projectId" | "personId" | "accountId" | "envelopeId";
+export type ScopeKey =
+	| "projectId"
+	| "personId"
+	| "accountId"
+	| "envelopeId"
+	| "categoryId"
+	/** A fiscal month label, "2026-10". */
+	| "month";
 
 export type FigureNarrowing = Partial<Record<ScopeKey, string>>;
 
-/** A figure is always read for one user, optionally narrowed to one project, person, account or envelope. */
+/** A figure is always read for one user, optionally narrowed to one project, person, account, envelope, category or month. */
 export type FigureScope = FigureNarrowing & { readonly userId: string };
 
 /**
@@ -273,4 +281,5 @@ export const figures = createFiguresRegistry<FigureDb>([
 	...accountFigures,
 	...budgetFigures,
 	...glanceFigures,
+	...insightsFigures,
 ]);
