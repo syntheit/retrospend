@@ -20,6 +20,26 @@ export function groupStartsOpen(
 	}
 }
 
+/**
+ * A group with a % target (50/30/20) says what was planned and spent as a
+ * share of income, in the server's basis points; null until the server has an
+ * income to judge by, or when a rate is missing (not shown as fact).
+ */
+export function groupPercents(
+	group: Pick<BudgetGroup, "target">,
+): { plannedBp: number; spentBp: number } | null {
+	const target = group.target;
+	if (
+		target?.kind === "PERCENT_OF_INCOME" &&
+		!target.incomplete &&
+		target.plannedBp != null &&
+		target.spentBp != null
+	) {
+		return { plannedBp: target.plannedBp, spentBp: target.spentBp };
+	}
+	return null;
+}
+
 /** A group's own key: its id, or "none" for envelopes without one. */
 export function groupKey(group: Pick<BudgetGroup, "id">): string {
 	return group.id ?? "none";

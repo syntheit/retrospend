@@ -6,7 +6,7 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useFormatLocale } from "@/lib/intl";
 import { useTheme } from "@/theme";
 import { EnvelopeRow, useColumnWidth } from "./EnvelopeRow";
-import { groupLeft, groupStartsOpen, isLimits } from "./rows";
+import { groupLeft, groupPercents, groupStartsOpen, isLimits } from "./rows";
 import type { BudgetEnvelope, BudgetGroup, BudgetStyle } from "./source";
 import { joinNames } from "./verdict";
 
@@ -44,17 +44,13 @@ export function GroupSection({
 		group.envelopes.filter((e) => e.status === "OVERSPENT").map((e) => e.name),
 		(head, last) => tb("listAnd", { head, last }),
 	);
-	const target = group.target;
-	const percents =
-		target?.kind === "PERCENT_OF_INCOME" &&
-		!target.incomplete &&
-		target.plannedBp != null &&
-		target.spentBp != null
-			? t("percents", {
-					planned: formatPercent(target.plannedBp, { locale, digits: 0 }),
-					spent: formatPercent(target.spentBp, { locale, digits: 0 }),
-				})
-			: null;
+	const share = groupPercents(group);
+	const percents = share
+		? t("percents", {
+				planned: formatPercent(share.plannedBp, { locale, digits: 0 }),
+				spent: formatPercent(share.spentBp, { locale, digits: 0 }),
+			})
+		: null;
 	const spoken = [
 		name,
 		percents,

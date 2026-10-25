@@ -2,6 +2,7 @@ import {
 	envelopeActions,
 	groupKey,
 	groupLeft,
+	groupPercents,
 	groupStartsOpen,
 	overEnvelopes,
 	statusLine,
@@ -54,6 +55,33 @@ describe("group folding", () => {
 			totals: { left: ars(900), limitLeft: null },
 		} as unknown as BudgetGroup;
 		expect(groupLeft("LIMITS", noLimit)).toEqual(ars(900));
+	});
+});
+
+describe("a % target group", () => {
+	const target = (over: object) =>
+		({
+			target: {
+				kind: "PERCENT_OF_INCOME",
+				incomplete: false,
+				plannedBp: 3000,
+				spentBp: 3100,
+				...over,
+			},
+		}) as unknown as BudgetGroup;
+
+	it("says planned and spent as the server's basis points", () => {
+		expect(groupPercents(target({}))).toEqual({
+			plannedBp: 3000,
+			spentBp: 3100,
+		});
+	});
+
+	it("says nothing without an income to judge by or with a missing rate", () => {
+		expect(groupPercents(target({ plannedBp: null }))).toBeNull();
+		expect(groupPercents(target({ incomplete: true }))).toBeNull();
+		expect(groupPercents({ target: null })).toBeNull();
+		expect(groupPercents(target({ kind: "AMOUNT" }))).toBeNull();
 	});
 });
 
