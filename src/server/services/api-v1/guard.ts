@@ -24,6 +24,8 @@ export type GuardRef =
 	| { table: "payment"; id: string }
 	| { table: "projectParticipant"; id: string }
 	| { table: "expense"; ids: string[] }
+	/** An account: its row, balance and how much has been written against it. */
+	| { table: "account"; id: string }
 	/** The newest period row of the caller's book. */
 	| { table: "bookPeriod" };
 
@@ -56,6 +58,31 @@ async function stampOfExpenses(tx: Tx, ids: string[]) {
 		orderBy: { id: "asc" },
 	});
 	return digest(rows.map((r) => `${r.id}:${r.updatedAt.toISOString()}`).join());
+}
+
+async function stampOfAccount(tx: Tx, id: string) {
+	const row = await tx.assetAccount.findUnique({
+		where: { id },
+		select: {
+			updatedAt: true,
+			balance: true,
+			closedAt: true,
+			exchangeRateType: true,
+			_count: { select: { legs: true, snapshots: true, rateTypes: true } },
+		},
+	});
+	if (!row) return GONE;
+	return digest(
+		[
+			row.updatedAt.toISOString(),
+			row.balance.toString(),
+			row.closedAt?.toISOString() ?? "",
+			row.exchangeRateType ?? "",
+			row._count.legs,
+			row._count.snapshots,
+			row._count.rateTypes,
+		].join("|"),
+	);
 }
 
 export async function readStamp(
@@ -93,6 +120,8 @@ export async function readStamp(
 			);
 		case "expense":
 			return stampOfExpenses(tx, ref.ids);
+		case "account":
+			return stampOfAccount(tx, ref.id);
 		case "projectParticipant": {
 			const row = await tx.projectParticipant.findUnique({
 				where: { id: ref.id },

@@ -258,4 +258,63 @@ describe("/api/v1/budget movements", () => {
 		);
 		expect(await left("Dining")).not.toBe(before);
 	});
+
+	it("starts fresh: takes every envelope's money back, and the token gives it again", async () => {
+		await expectBody(
+			await post("/budget/assign", assignBody(7_000, "Rent")),
+			c.assign,
+		);
+		const before = { rent: await left("Rent"), dining: await left("Dining") };
+		const body = { batchId: uuid() };
+		const preview = await expectBody<Preview>(
+			await post("/budget/reset/preview", body),
+			c.previewReset,
+		);
+		expect(preview.detail?.kind).toBe("envelope.reset");
+		const written = await expectBody<Write>(
+			await post("/budget/reset", body),
+			c.reset,
+		);
+		// The engine makes the ids of a reset's rows, so a dry run and the write differ there.
+		const rows = (r: unknown) =>
+			(r as { movements: { id: string }[] }).movements.map(
+				({ id: _id, createdAt: _at, ...rest }) => rest,
+			);
+		expect(rows(written.result)).toEqual(rows(preview.detail?.result));
+		expect(await left("Rent")).toBe(0);
+		expect(await left("Dining")).toBe(0);
+		expect((await month()).toAssign.amount).toEqual(usd(100_000));
+
+		await expectBody(
+			await post("/budget/undo", { token: written.undo }),
+			c.undo,
+		);
+		expect(await left("Rent")).toBe(before.rent);
+		expect(await left("Dining")).toBe(before.dining);
+	});
+
+	it("fixes nothing when To assign is not negative, and carries only a real overspend", async () => {
+		await expectProblem(
+			await post("/budget/fix-negative", { batchId: uuid() }),
+			400,
+			"bad_request",
+		);
+		await expectProblem(
+			await post("/budget/carry-overspend", {
+				id: uuid(),
+				envelopeId: ids.Dining,
+				amountMinor: 500,
+			}),
+			400,
+			"bad_request",
+		);
+	});
+
+	it("reads a month's summary: null until it closes", async () => {
+		const summary = await expectBody(
+			await call(`/budget/month-summary?month=${monthKey}`, { headers: as }),
+			c.monthSummary,
+		);
+		expect(summary).toBeNull();
+	});
 });

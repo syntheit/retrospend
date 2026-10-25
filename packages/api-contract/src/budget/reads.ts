@@ -104,11 +104,9 @@ export const planFillQuerySchema = z.object({
 
 export const planCostQuerySchema = z.object({
 	month: monthParam.optional(),
-	essentialIds: idList
-		.optional()
-		.meta({
-			description: "Comma-separated envelope ids counted as essential.",
-		}),
+	essentialIds: idList.optional().meta({
+		description: "Comma-separated envelope ids counted as essential.",
+	}),
 });
 
 export const yearQuerySchema = z.object({

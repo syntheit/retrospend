@@ -66,46 +66,55 @@ const otherFields = (input: AccountFields) => ({
 const checkpointDay = (timeZone?: string) =>
 	moveDay(null, new Date(), timeZone);
 
-export async function createAccount(
-	db: Db,
+export async function createAccountIn(
+	tx: Prisma.TransactionClient,
 	userId: string,
-	input: AccountFields,
+	input: AccountFields & { readonly id?: string },
 	timeZone?: string,
 ) {
 	const today = checkpointDay(timeZone);
-	const service = new WealthService(db);
+	const service = new WealthService(tx);
 	const { rate, rateType } = await accountRate(service, input, today);
 	const balanceInUSD = service.calculateBalanceInUSD(
 		input.balance,
 		rate,
 		input.currency,
 	);
-	return userTransaction(db, userId, async (tx) => {
-		const account = await tx.assetAccount.create({
-			data: {
-				userId,
-				...otherFields(input),
-				balance: input.balance,
-				exchangeRate: rate,
-				exchangeRateType: rateType,
-			},
-		});
-		await service.recordAssetSnapshot(
-			tx,
-			account.id,
-			today,
-			input.balance,
-			balanceInUSD,
+	const account = await tx.assetAccount.create({
+		data: {
+			...(input.id ? { id: input.id } : {}),
 			userId,
-			{
-				currency: input.currency,
-				type: input.type,
-				exchangeRateType: rateType,
-			},
-		);
-		return account;
+			...otherFields(input),
+			balance: input.balance,
+			exchangeRate: rate,
+			exchangeRateType: rateType,
+		},
 	});
+	await service.recordAssetSnapshot(
+		tx,
+		account.id,
+		today,
+		input.balance,
+		balanceInUSD,
+		userId,
+		{
+			currency: input.currency,
+			type: input.type,
+			exchangeRateType: rateType,
+		},
+	);
+	return account;
 }
+
+export const createAccount = (
+	db: Db,
+	userId: string,
+	input: AccountFields,
+	timeZone?: string,
+) =>
+	userTransaction(db, userId, (tx) =>
+		createAccountIn(tx, userId, input, timeZone),
+	);
 
 /** Edits an open account. A new rate type is a dated switch (D3); a new balance a checkpoint. */
 /**
@@ -172,7 +181,11 @@ export const editAccount = (
 		editAccountIn(tx, userId, id, input, timeZone),
 	);
 
-async function ownAccount(db: Db, userId: string, id: string) {
+async function ownAccount(
+	db: Db | Prisma.TransactionClient,
+	userId: string,
+	id: string,
+) {
 	const asset = await db.assetAccount.findFirst({ where: { id, userId } });
 	if (!asset) {
 		throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
@@ -195,40 +208,48 @@ const snapshotMeta = (asset: {
  * from today on, but its past balances stay. The balance is kept on the
  * account so reopening brings it back.
  */
-export async function closeAccount(db: Db, userId: string, id: string) {
+export async function closeAccountIn(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	id: string,
+) {
 	const now = new Date();
-	const asset = await ownAccount(db, userId, id);
+	const asset = await ownAccount(tx, userId, id);
 	if (asset.closedAt) return { success: true };
-	const service = new WealthService(db);
-	await userTransaction(db, userId, async (tx) => {
-		await tx.assetAccount.update({
-			where: { id: asset.id },
-			data: { closedAt: now },
-		});
-		// A zero point on the closing day, so the chart drops there.
-		await service.recordAssetSnapshot(
-			tx,
-			asset.id,
-			normalizeDate(now),
-			0,
-			0,
-			userId,
-			snapshotMeta(asset),
-		);
+	await tx.assetAccount.update({
+		where: { id: asset.id },
+		data: { closedAt: now },
 	});
+	// A zero point on the closing day, so the chart drops there.
+	await new WealthService(tx).recordAssetSnapshot(
+		tx,
+		asset.id,
+		normalizeDate(now),
+		0,
+		0,
+		userId,
+		snapshotMeta(asset),
+	);
 	return { success: true };
 }
+
+export const closeAccount = (db: Db, userId: string, id: string) =>
+	userTransaction(db, userId, (tx) => closeAccountIn(tx, userId, id));
 
 /**
  * Reopens a closed account with the balance it had. That balance is recorded
  * for today, so the history picks the account up again from the day it was
  * reopened (the closed days stay at 0).
  */
-export async function reopenAccount(db: Db, userId: string, id: string) {
+export async function reopenAccountIn(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	id: string,
+) {
 	const today = normalizeDate(new Date());
-	const asset = await ownAccount(db, userId, id);
+	const asset = await ownAccount(tx, userId, id);
 	if (!asset.closedAt) return { success: true };
-	const service = new WealthService(db);
+	const service = new WealthService(tx);
 	const balance = Number(asset.balance);
 	const stored = toNumberOrNull(asset.exchangeRate);
 	let rate: number | null;
@@ -242,36 +263,44 @@ export async function reopenAccount(db: Db, userId: string, id: string) {
 		rate = isValidRate(stored) ? stored : null;
 	}
 	const balanceInUSD = rate === null ? 0 : toUSD(balance, asset.currency, rate);
-	await userTransaction(db, userId, async (tx) => {
-		await tx.assetAccount.update({
-			where: { id: asset.id },
-			data: { closedAt: null },
-		});
-		await service.recordAssetSnapshot(
-			tx,
-			asset.id,
-			today,
-			balance,
-			balanceInUSD,
-			userId,
-			snapshotMeta(asset),
-		);
+	await tx.assetAccount.update({
+		where: { id: asset.id },
+		data: { closedAt: null },
 	});
+	await service.recordAssetSnapshot(
+		tx,
+		asset.id,
+		today,
+		balance,
+		balanceInUSD,
+		userId,
+		snapshotMeta(asset),
+	);
 	return { success: true };
 }
+
+export const reopenAccount = (db: Db, userId: string, id: string) =>
+	userTransaction(db, userId, (tx) => reopenAccountIn(tx, userId, id));
 
 /**
  * Deletes an account and its whole history (snapshots, legs) as if it never
  * existed. Past net worth changes; closing is the way to keep it. A move to
  * or from it keeps its other leg.
  */
-export async function deleteAccount(db: Db, userId: string, id: string) {
-	const result = await db.assetAccount.deleteMany({ where: { id, userId } });
+export async function deleteAccountIn(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	id: string,
+) {
+	const result = await tx.assetAccount.deleteMany({ where: { id, userId } });
 	if (result.count === 0) {
 		throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
 	}
 	return { success: true };
 }
+
+export const deleteAccount = (db: Db, userId: string, id: string) =>
+	userTransaction(db, userId, (tx) => deleteAccountIn(tx, userId, id));
 
 /** Open accounts only, like the wealth page; closed ones are in the full data export. */
 export async function exportAccountsCsv(db: Db, userId: string) {

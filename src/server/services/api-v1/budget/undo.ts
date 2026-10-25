@@ -19,16 +19,12 @@ import {
 	FIGURE_LEFT_TO_SPEND,
 	FIGURE_NOT_PLANNED_YET,
 } from "~/server/services/envelope/verdict";
-import { forUser } from "~/server/services/preview";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { deleteTransfer } from "~/server/services/transfers/delete.mutation";
-import { accountChangeDto, spendUndo, toPreviewDto } from "../money-write";
-import { staleAsConflict } from "../stale";
-import { readUndo } from "../undo";
-import { type GuardRef, guardedUndo } from "./guard";
+import { type AnyMutation, createUndoer } from "../money-op";
+import { accountChangeDto } from "../money-write";
 import type { BudgetCaller } from "./serve";
-import { wire } from "./wire";
-import type { TokenInput, UndoOp } from "./write";
+import type { UndoOp } from "./write";
 
 type Tx = Parameters<typeof undoMovement>[0];
 
@@ -86,9 +82,6 @@ const deleteDebtPayment: MoneyMutation<
 	},
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: each inverse has its own input and answer
-type AnyMutation = MoneyMutation<any, any>;
-
 /** Each inverse a token can name, as the mutation that runs it. */
 const INVERSES: Record<UndoOp, AnyMutation> = {
 	"movement.undo": undoMovementTargets,
@@ -105,47 +98,10 @@ const INVERSES: Record<UndoOp, AnyMutation> = {
 	"debt_payment.delete": deleteDebtPayment,
 };
 
-const invalid = () =>
-	new TRPCError({
-		code: "BAD_REQUEST",
-		message: "This undo is not valid anymore",
-	});
+const undoer = createUndoer<UndoOp, BudgetCaller>("budget", INVERSES);
 
-function open(caller: BudgetCaller, token: string) {
-	const { op, input } = readUndo(caller.principal.userId, "budget", token);
-	const mutation = INVERSES[op as UndoOp];
-	if (!mutation) throw invalid();
-	const { args, guard, stamp } = input as TokenInput;
-	return {
-		kind: op as UndoOp,
-		args,
-		mutation: guardedUndo(mutation, guard as GuardRef | null, stamp),
-	};
-}
+export const undoBudgetWrite = (caller: BudgetCaller, token: string) =>
+	undoer.undo(caller, token);
 
-export async function undoBudgetWrite(caller: BudgetCaller, token: string) {
-	const { kind, args, mutation } = open(caller, token);
-	return spendUndo(caller, token, () =>
-		staleAsConflict(async () => {
-			const { value } = await forUser(caller.principal.userId).apply(
-				mutation,
-				args,
-			);
-			return { result: { kind, result: wire(value) }, redo: null };
-		}),
-	);
-}
-
-export async function previewUndoBudgetWrite(
-	caller: BudgetCaller,
-	token: string,
-) {
-	const { kind, args, mutation } = open(caller, token);
-	const preview = await staleAsConflict(() =>
-		forUser(caller.principal.userId).preview(mutation, args),
-	);
-	return {
-		...toPreviewDto(preview),
-		detail: { kind, result: wire(preview.value) },
-	};
-}
+export const previewUndoBudgetWrite = (caller: BudgetCaller, token: string) =>
+	undoer.preview(caller, token);

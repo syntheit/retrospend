@@ -112,7 +112,7 @@ export const setupInputSchema = z
 			.array(
 				z.object({
 					key: z.string().min(1).max(32),
-					name: z.string().min(1).max(64),
+					name: userText("budgetGroup.name", 64),
 					role: groupRoleSchema.nullable(),
 					target: groupTargetInputSchema.optional(),
 				}),
@@ -124,7 +124,7 @@ export const setupInputSchema = z
 			.array(
 				z.object({
 					key: z.string().min(1).max(32),
-					name: z.string().min(1).max(64),
+					name: userText("envelope.name", 64),
 					groupKey: z.string().min(1).max(32).nullable(),
 					kind: envelopeKindSchema,
 					isDefault: z.boolean().default(false),

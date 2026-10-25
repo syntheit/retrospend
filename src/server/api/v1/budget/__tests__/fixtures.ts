@@ -20,10 +20,13 @@ export const usd = (minor: number) => ({ minor, currency: "USD" });
 export function useBudgetV1() {
 	let before = { api: "OFF", budget: "OFF" } as Record<string, string>;
 	beforeAll(async () => {
-		const settings = await getAppSettings();
+		await getAppSettings();
+		const settings = await adminDb.appSettings.findUniqueOrThrow({
+			where: { id: "app_settings_singleton" },
+		});
 		before = {
 			api: settings.apiV1Mode,
-			budget: settings.envelopeBudgetMode ?? "OFF",
+			budget: settings.envelopeBudgetMode,
 		};
 		await adminDb.appSettings.update({
 			where: { id: "app_settings_singleton" },
@@ -68,7 +71,15 @@ export async function bookedUser() {
 }
 
 /** What differs between a dry run and the real write: clocks and ids the database makes. */
-const VOLATILE = new Set(["createdAt", "updatedAt", "appliedAt", "periodId"]);
+const VOLATILE = new Set([
+	"createdAt",
+	"updatedAt",
+	"appliedAt",
+	"periodId",
+	"bookId",
+	"interestExpenseId",
+	"wealthTransferId",
+]);
 
 /** A body without the volatile fields, so a preview's answer can equal a write's. */
 export function withoutStamps<T>(value: T): T {

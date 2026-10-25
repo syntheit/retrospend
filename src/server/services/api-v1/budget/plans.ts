@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { MovementResult } from "~/lib/schemas/envelope";
-import type { UndoPlan } from "./write";
+import type { BudgetUndoPlan as UndoPlan } from "./write";
 
 /**
  * How each budget write is taken back (an UndoPlan), kept apart from the

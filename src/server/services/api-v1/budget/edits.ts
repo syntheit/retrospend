@@ -20,8 +20,8 @@ import {
 	putGroupTarget,
 	rulesApi,
 } from "~/server/services/envelope/plan-api.service";
+import { wire } from "../wire";
 import type { BudgetCaller } from "./serve";
-import { wire } from "./wire";
 
 /**
  * v1 adapters for the budget writes that move no money (rules, drafts,

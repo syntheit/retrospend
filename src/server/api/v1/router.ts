@@ -1,3 +1,4 @@
+import { accountsRouter } from "./accounts";
 import { budgetRouter } from "./budget";
 import { categoriesRouter } from "./categories";
 import { currenciesRouter } from "./currencies";
@@ -25,6 +26,7 @@ import { transfersRouter } from "./transfers";
  * one line, matching the contract index in packages/api-contract.
  */
 export const v1Router = v1.router({
+	accounts: accountsRouter,
 	budget: budgetRouter,
 	categories: categoriesRouter,
 	currencies: currenciesRouter,
