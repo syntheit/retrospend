@@ -155,7 +155,6 @@ export const SEAMS: Readonly<Partial<Record<NeedsYouType, string>>> = {
 	"split.fixRequested": "2C.2 Ask to fix: the ask state is not stored yet",
 	"budget.sharesNeedEnvelope":
 		"D19 share routing: splits-replay does not flag unresolved shares yet",
-	"budget.hiddenReview": "P7 migration of hidden legacy rows",
 	"people.owedAging":
 		"per-person age of the oldest open balance (SPEC §5.8) is not read anywhere yet",
 };

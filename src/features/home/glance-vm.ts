@@ -48,6 +48,14 @@ export function lineOf(
 			),
 		};
 	const left = budget.leftToSpend;
+	// A Limits book has no spending pool: its line reads the limits (the
+	// verdict), not Left to spend, which would add the hidden To assign.
+	if (budget.verdict.style === "LIMITS") {
+		const v = budget.verdict;
+		if (v.over.minor > 0) return { kind: "over", over: v.over };
+		if (v.daysLeft <= 1) return { kind: "leftToday", left: v.lead.amount };
+		return { kind: "perDay", perDay: v.perDay, daysLeft: v.daysLeft };
+	}
 	if (left.over.minor > 0) return { kind: "over", over: left.over };
 	if (left.daysLeft <= 1) return { kind: "leftToday", left: left.left };
 	return { kind: "perDay", perDay: left.perDay, daysLeft: left.daysLeft };

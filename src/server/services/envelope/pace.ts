@@ -144,6 +144,8 @@ export interface LeftToSpendEnvelope {
 	left: Minor;
 	/** The part of `activity` that moved to or from Wealth: not spending (D24). */
 	wealth?: Minor;
+	/** A Limits envelope with no limit: its spending shows, but it is never over (month-totals.ts). */
+	tracksOnly?: boolean;
 }
 
 export interface LeftToSpend {
@@ -206,7 +208,9 @@ export function leftToSpend(p: {
 	recurringSpent?: Minor;
 }): LeftToSpend {
 	const envs = p.envelopes;
-	const spendingLeft = roleSum(envs, "SPENDING", (e) => e.left);
+	// Tracked-only envelopes have no limit to leave or exceed.
+	const limited = envs.filter((e) => !e.tracksOnly);
+	const spendingLeft = roleSum(limited, "SPENDING", (e) => e.left);
 	const carry = roleSum(envs, "SPENDING", (e) => e.carryIn);
 	// A move to Wealth takes money out of the plan, it is not spending (D24):
 	// it lowers the pool, never the spent side or the pace.
@@ -239,7 +243,7 @@ export function leftToSpend(p: {
 		spent,
 		spendingLeft,
 		plannedTooMuch: Math.max(0, -p.toAssign),
-		over: roleSum(envs, "SPENDING", (e) => Math.max(0, -e.left)),
+		over: roleSum(limited, "SPENDING", (e) => Math.max(0, -e.left)),
 		billsHeld: Math.max(
 			0,
 			roleSum(envs, "BILLS", (e) => e.left),

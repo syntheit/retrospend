@@ -22,7 +22,12 @@ import {
 } from "./group-view";
 import type { GroupTarget } from "./groups";
 import { leftToSpendDto, verdictDto } from "./month-dto";
-import { leftToSpendFor, limitTotals, weekTotals } from "./month-totals";
+import {
+	leftToSpendFor,
+	limitTotals,
+	tracksOnly,
+	weekTotals,
+} from "./month-totals";
 import { budgetMonthOf, type MonthBoundary, monthRange } from "./months";
 import {
 	type EnvelopeTarget,
@@ -224,8 +229,13 @@ function memberOf(r: Row): GroupMemberView {
 	};
 }
 
-function statusOf(r: Row): EnvelopeRowDto["status"] {
-	if (r.m.left < 0) return "OVERSPENT";
+/** Left below zero that counts as overspending. */
+function overBy(r: Row, book: ViewBook): Minor {
+	return r.m.left < 0 && !tracksOnly(r, book) ? -r.m.left : 0;
+}
+
+function statusOf(r: Row, book: ViewBook): EnvelopeRowDto["status"] {
+	if (overBy(r, book) > 0) return "OVERSPENT";
 	if (!r.target && !(r.env.targetIncomplete && r.open)) return "NO_TARGET";
 	return (r.target?.need ?? 0) > 0 ? "UNDERFUNDED" : "FUNDED";
 }
@@ -284,7 +294,7 @@ function rowDto(
 		activity: money(r.m.activity),
 		left: money(r.m.left),
 		pending: money(r.m.pending),
-		status: statusOf(r),
+		status: statusOf(r, p.book),
 		target: targetDto(r, money),
 		leftThisWeek: r.week
 			? {
@@ -336,7 +346,7 @@ function groupsDto(
 					assigned: sum((r) => r.m.assigned),
 					activity: sum((r) => r.m.activity),
 					left: sum((r) => r.m.left),
-					over: sum((r) => Math.max(0, -r.m.left)),
+					over: sum((r) => overBy(r, p.book)),
 					need: sum((r) => r.target?.need ?? 0),
 					count: mine.length,
 				},
@@ -368,8 +378,8 @@ export function buildMonthView(p: MonthViewInput): MonthView {
 		toAssign: terms.total,
 		leftToSpend: lts,
 		overspent: rows
-			.filter((r) => r.m.left < 0)
-			.map((r) => ({ id: r.env.id, over: -r.m.left })),
+			.filter((r) => overBy(r, p.book) > 0)
+			.map((r) => ({ id: r.env.id, over: overBy(r, p.book) })),
 		week: weekTotals(rows),
 		limits: limitTotals(rows, p),
 	});

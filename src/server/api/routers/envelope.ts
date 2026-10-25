@@ -52,6 +52,7 @@ import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { forUser } from "~/server/services/preview";
 import { envelopeBookProcedures } from "./envelope-book";
 import { envelopeDebtProcedures } from "./envelope-debt";
+import { envelopeMigrationProcedures } from "./envelope-migration";
 import { envelopeMoneyProcedures } from "./envelope-money";
 import { envelopePlanProcedures } from "./envelope-plan";
 import {
@@ -98,7 +99,14 @@ export const envelopeRouter = createTRPCRouter({
 	getMonth: envelopeProcedure
 		.input(monthInputSchema)
 		.output(getMonthOutputSchema.nullable())
-		.query(({ ctx, input }) => getMonth(ctx.session.user.id, input.month)),
+		.query(({ ctx, input }) =>
+			getMonth(
+				ctx.session.user.id,
+				input.month,
+				new Date(),
+				ctx.timeZone ?? null,
+			),
+		),
 
 	verdict: envelopeProcedure
 		.input(monthInputSchema)
@@ -171,4 +179,5 @@ export const envelopeRouter = createTRPCRouter({
 	...envelopeBookProcedures,
 	...envelopePlanProcedures,
 	...envelopeDebtProcedures,
+	...envelopeMigrationProcedures,
 });

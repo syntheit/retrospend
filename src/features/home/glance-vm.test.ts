@@ -53,6 +53,50 @@ function ready(left: Partial<Ready["leftToSpend"]>, notPlanned = 85000000) {
 	} as Ready;
 }
 
+describe("lineOf in a Limits book", () => {
+	// Left to spend adds the hidden To assign (the whole plan, negative): 0 a day.
+	// The line reads the limits: 310.00 left in them over 10 days is 31.00 a day.
+	const limits = (verdict: Record<string, unknown>) =>
+		({
+			...ready({
+				left: ars(0),
+				perDay: ars(0),
+				daysLeft: 10,
+				over: ars(8000),
+			}),
+			verdict: {
+				style: "LIMITS",
+				daysLeft: 10,
+				perDay: ars(3100),
+				over: ars(0),
+				lead: { amount: ars(31000) },
+				...verdict,
+			} as Ready["verdict"],
+		}) as Ready;
+
+	it("per day comes from the verdict, not from Left to spend", () => {
+		expect(lineOf({ ...BASE, budget: limits({}) })).toEqual({
+			kind: "perDay",
+			perDay: ars(3100),
+			daysLeft: 10,
+		});
+	});
+
+	it("over is the verdict's: tracked-only spending of 80.00 is not over", () => {
+		expect(lineOf({ ...BASE, budget: limits({ over: ars(2500) }) })).toEqual({
+			kind: "over",
+			over: ars(2500),
+		});
+	});
+
+	it("the last day says what is left in the limits", () => {
+		expect(lineOf({ ...BASE, budget: limits({ daysLeft: 1 }) })).toEqual({
+			kind: "leftToday",
+			left: ars(31000),
+		});
+	});
+});
+
 describe("toGlanceVM", () => {
 	it("no book: the pace in words, money in, and no pace yet says No budget", () => {
 		expect(toGlanceVM(BASE).line).toEqual({

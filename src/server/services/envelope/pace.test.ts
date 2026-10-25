@@ -241,6 +241,21 @@ describe("leftToSpend (D-owner-2026-10-22d, kit BudgetPlan.leftToSpend)", () => 
 			recurringSpent: m(o.recurringSpent ?? 0),
 		});
 
+	it("a tracked-only Limits envelope (no limit) shows its spending but is never over and not in Left", () => {
+		// Groceries 400.00 limit, 100.00 over; pegged Dining spent 80.00; Everything else spent 40.00.
+		const groceries = env("SPENDING", 0, 400, -500);
+		const dining = { ...env("SPENDING", 0, 0, -80), tracksOnly: true };
+		const rest = { ...env("SPENDING", 0, 0, -40), tracksOnly: true };
+		const r = run({ toAssign: 0, envelopes: [groceries, dining, rest] });
+		expect(r.over).toBe(m(100));
+		expect(r.spendingLeft).toBe(m(-100));
+		// Spending still counts them: 500 + 80 + 40.
+		expect(r.spent).toBe(m(620));
+		const onlyTracked = run({ toAssign: 0, envelopes: [dining, rest] });
+		expect(onlyTracked.over).toBe(0);
+		expect(onlyTracked.spendingLeft).toBe(0);
+	});
+
 	it("D-owner-2026-10-22d the Spending group only: bills, savings and Not planned yet stay out", () => {
 		expect(run({ toAssign: 850_000, billNeeds: [40_000, 0] })).toEqual({
 			left: m(59_161),

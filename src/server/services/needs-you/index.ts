@@ -7,7 +7,9 @@
  */
 import { dayKey } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
+import { hiddenRowCount } from "~/server/services/envelope/hidden-rows";
 import type { LoadedBook } from "~/server/services/envelope/inputs";
+import { ensureLegacyBook } from "~/server/services/envelope/legacy-lazy";
 import { monthViewIn } from "~/server/services/envelope/month-read";
 import { isoDateIn, monthRange } from "~/server/services/envelope/months";
 import { runPendingRules } from "~/server/services/envelope/rule.service";
@@ -50,6 +52,7 @@ async function budgetSource(
 		paused: row.pausedAt !== null,
 		startingMoneyUnconfirmed: row.startingMoneyConfirmedAt === null,
 		closes: closeFacts(view.loaded, now),
+		hiddenRows: await hiddenRowCount(tx, userId, row),
 		reconcileDue:
 			row.reconciledAt !== null &&
 			isoDateIn(row.reconciledAt, row.timeZone) < view.dto.month.from,
@@ -146,10 +149,19 @@ export async function needsYouIn(
 	};
 }
 
-export function needsYou(
+export async function needsYou(
 	db: PrismaClient,
 	userId: string,
 	options: NeedsYouOptions,
 ): Promise<NeedsYouList> {
+	// A person with old limits and no book moves in on this first read (02 §6),
+	// before the read's own transaction opens and without ever failing it.
+	if (options.budget)
+		await ensureLegacyBook(
+			db,
+			userId,
+			options.now ?? new Date(),
+			options.timeZone ?? null,
+		);
 	return userTransaction(db, userId, (tx) => needsYouIn(tx, userId, options));
 }

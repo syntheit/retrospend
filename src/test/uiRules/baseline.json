@@ -1149,7 +1149,7 @@
 		"src/server/api/routers/billingPeriod.ts": 433,
 		"src/server/api/routers/budget.ts": 252,
 		"src/server/api/routers/claim.ts": 88,
-		"src/server/api/routers/dashboard.ts": 40,
+		"src/server/api/routers/dashboard.ts": 38,
 		"src/server/api/routers/export.ts": 1080,
 		"src/server/api/routers/guest.ts": 146,
 		"src/server/api/routers/invite.ts": 25,
