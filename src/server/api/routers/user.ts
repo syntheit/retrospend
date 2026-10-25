@@ -6,9 +6,9 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { getPasswordChangedAlertTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
 import {
-	anonymizeAndDeleteUser,
-	previewAccountDeletion,
-} from "~/server/services/user-deletion.service";
+	deleteOwnAccount,
+	previewOwnAccountDeletion,
+} from "~/server/services/account-deletion.service";
 import { validateAndProcessUsernameChange } from "~/server/services/username.service";
 
 export const userRouter = createTRPCRouter({
@@ -151,10 +151,9 @@ export const userRouter = createTRPCRouter({
 			return updatedUser;
 		}),
 
-	previewAccountDeletion: protectedProcedure.query(async ({ ctx }) => {
-		const { session, db } = ctx;
-		return previewAccountDeletion(db, session.user.id);
-	}),
+	previewAccountDeletion: protectedProcedure.query(({ ctx }) =>
+		previewOwnAccountDeletion(ctx.session.user.id),
+	),
 
 	deleteAccount: protectedProcedure
 		.input(
@@ -163,55 +162,7 @@ export const userRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			// An admin cannot delete their own account: the server could be left
-			// with no admin. Settings hides the Danger zone for admins; this is
-			// the check that holds.
-			if (session.user.role === "ADMIN") {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "Admins cannot delete their own account",
-				});
-			}
-
-			const credentialAccount = await db.account.findFirst({
-				where: {
-					userId: session.user.id,
-					providerId: "credential",
-				},
-			});
-
-			if (!credentialAccount?.password) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "Cannot verify identity for this account type",
-				});
-			}
-
-			const isValid = await verifyPassword({
-				password: input.password,
-				hash: credentialAccount.password,
-			});
-
-			if (!isValid) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "Incorrect password",
-				});
-			}
-
-			const user = await db.user.findUnique({
-				where: { id: session.user.id },
-				select: { email: true, avatarPath: true },
-			});
-
-			await anonymizeAndDeleteUser(
-				db,
-				session.user.id,
-				user?.email ?? session.user.email,
-				user?.avatarPath ?? null,
-			);
+			await deleteOwnAccount(ctx.session.user, input.password);
 
 			return { success: true };
 		}),

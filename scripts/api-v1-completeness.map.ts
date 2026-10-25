@@ -45,9 +45,6 @@ const AUTH_MAIL =
 const CLAIM_TOKEN = "a claim token flow, opened from a link";
 const LEGACY_BUDGET =
 	"the per-category budget is replaced by the envelope budget (/budget/*)";
-const G3_PROJECTS = "G3 people and projects: no v1 route yet";
-const G3_CORRECTIONS =
-	"G3 corrections (ask to fix, correct, forgive): no v1 route yet";
 
 /** The envelope budget: one entry per procedure, plus its Preview twin. */
 function envelope(): Record<string, Entry> {
@@ -195,23 +192,17 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"admin.updateSettings": to("PATCH /admin/settings"),
 
 	// ── auditLog (shared expense history and project activity) ───────────
-	"auditLog.markTransactionSeen": gap(
-		"G3: seen marks on shared expense changes have no v1 route",
-	),
-	"auditLog.projectActivityFeed": gap("G3: the project activity feed"),
-	"auditLog.projectActivityFilters": gap("G3: the project activity feed"),
-	"auditLog.projectsLastActivity": gap("G3: the project activity feed"),
-	"auditLog.transactionHistory": gap("G2/G3: revision history of an expense"),
-	"auditLog.transactionRevisionSummary": gap(
-		"G2/G3: revision history of an expense",
-	),
+	"auditLog.markTransactionSeen": to("POST /shared-expenses/{id}/seen"),
+	"auditLog.projectActivityFeed": to("GET /projects/{id}/activity"),
+	"auditLog.projectActivityFilters": to("GET /projects/{id}/activity/filters"),
+	"auditLog.projectsLastActivity": to("GET /projects/last-activity"),
+	"auditLog.transactionHistory": to("GET /shared-expenses/{id}/history"),
+	"auditLog.transactionRevisionSummary": to("GET /shared-expenses/revisions"),
 
 	// ── auth ─────────────────────────────────────────────────────────────
 	"auth.confirmEmailChange": internal(AUTH_MAIL),
 	"auth.getAppFeatures": to("GET /server-info"),
-	"auth.recordConsent": gap(
-		"consent after sign-up, needed by a mobile sign-up when legal pages are on",
-	),
+	"auth.recordConsent": to("POST /me/consent"),
 	"auth.requestPasswordReset": internal(AUTH_MAIL),
 	"auth.resendVerificationEmail": internal(AUTH_MAIL),
 	"auth.resetPassword": internal(AUTH_MAIL),
@@ -219,11 +210,15 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"auth.verifyEmail": internal(AUTH_MAIL),
 
 	// ── billing periods ──────────────────────────────────────────────────
-	"billingPeriod.closeCurrent": gap(G3_PROJECTS),
-	"billingPeriod.detail": gap(G3_PROJECTS),
-	"billingPeriod.list": gap(G3_PROJECTS),
-	"billingPeriod.settlePeriod": gap(G3_PROJECTS),
-	"billingPeriod.updateLabel": gap(G3_PROJECTS),
+	"billingPeriod.closeCurrent": to("POST /projects/{id}/billing-periods/close"),
+	"billingPeriod.detail": to("GET /projects/{id}/billing-periods/{periodId}"),
+	"billingPeriod.list": to("GET /projects/{id}/billing-periods"),
+	"billingPeriod.settlePeriod": to(
+		"POST /projects/{id}/billing-periods/{periodId}/settle",
+	),
+	"billingPeriod.updateLabel": to(
+		"PATCH /projects/{id}/billing-periods/{periodId}",
+	),
 
 	// ── legacy per-category budget ───────────────────────────────────────
 	"budget.batchUpsertBudgets": superseded(LEGACY_BUDGET),
@@ -253,26 +248,32 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"claim.projectGhosts": internal(GUEST),
 
 	// ── corrections ──────────────────────────────────────────────────────
-	"corrections.askToFix.preview": gap(G3_CORRECTIONS),
-	"corrections.askToFix.save": gap(G3_CORRECTIONS),
-	"corrections.cancelFix.preview": gap(G3_CORRECTIONS),
-	"corrections.cancelFix.save": gap(G3_CORRECTIONS),
-	"corrections.correct.preview": gap(G3_CORRECTIONS),
-	"corrections.correct.save": gap(G3_CORRECTIONS),
-	"corrections.fixRequests": gap(G3_CORRECTIONS),
-	"corrections.forgive.preview": gap(G3_CORRECTIONS),
-	"corrections.forgive.save": gap(G3_CORRECTIONS),
-	"corrections.lockStates": gap(G3_CORRECTIONS),
-	"corrections.respondToFix.preview": gap(G3_CORRECTIONS),
-	"corrections.respondToFix.save": gap(G3_CORRECTIONS),
-	"corrections.restoreFix.preview": gap(G3_CORRECTIONS),
-	"corrections.restoreFix.save": gap(G3_CORRECTIONS),
-	"corrections.undoCorrection.preview": gap(G3_CORRECTIONS),
-	"corrections.undoCorrection.save": gap(G3_CORRECTIONS),
-	"corrections.unforgive.preview": gap(G3_CORRECTIONS),
-	"corrections.unforgive.save": gap(G3_CORRECTIONS),
-	"corrections.withdrawFix.preview": gap(G3_CORRECTIONS),
-	"corrections.withdrawFix.save": gap(G3_CORRECTIONS),
+	"corrections.askToFix.preview": to(
+		"POST /shared-expenses/{id}/fix-requests/preview",
+	),
+	"corrections.askToFix.save": to("POST /shared-expenses/{id}/fix-requests"),
+	"corrections.cancelFix.preview": to("POST /fix-requests/{id}/cancel/preview"),
+	"corrections.cancelFix.save": to("POST /fix-requests/{id}/cancel"),
+	"corrections.correct.preview": to(
+		"POST /shared-expenses/{id}/corrections/preview",
+	),
+	"corrections.correct.save": to("POST /shared-expenses/{id}/corrections"),
+	"corrections.fixRequests": to("GET /shared-expenses/{id}/fix-requests"),
+	// Forgive is one mutation that the budget routes already carry.
+	"corrections.forgive.preview": to("POST /budget/forgive/preview"),
+	"corrections.forgive.save": to("POST /budget/forgive"),
+	"corrections.lockStates": to("GET /shared-expenses/lock-states"),
+	"corrections.respondToFix.preview": to("POST /fix-requests/{id}/respond/preview"),
+	"corrections.respondToFix.save": to("POST /fix-requests/{id}/respond"),
+	// The undo twins of the three writes above share one token route.
+	"corrections.restoreFix.preview": to("POST /corrections/undo/preview"),
+	"corrections.restoreFix.save": to("POST /corrections/undo"),
+	"corrections.undoCorrection.preview": to("POST /corrections/undo/preview"),
+	"corrections.undoCorrection.save": to("POST /corrections/undo"),
+	"corrections.unforgive.preview": to("POST /budget/unforgive/preview"),
+	"corrections.unforgive.save": to("POST /budget/unforgive"),
+	"corrections.withdrawFix.preview": to("POST /corrections/undo/preview"),
+	"corrections.withdrawFix.save": to("POST /corrections/undo"),
 
 	// ── old home dashboard ───────────────────────────────────────────────
 	"dashboard.getOverviewData": superseded(
@@ -292,10 +293,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	),
 
 	// ── add sheets ───────────────────────────────────────────────────────
-	"entry.catalog": gap(
-		"the Add sheets read categories, recents and places in one call",
-	),
-	"entry.defaultRateTypes": gap("default rate type per home currency"),
+	"entry.catalog": to("GET /entry/catalog"),
+	"entry.defaultRateTypes": to("GET /entry/default-rate-types"),
 	"entry.expense.create.preview": to("POST /expenses/preview"),
 	"entry.expense.create.save": to("POST /expenses"),
 	"entry.expense.delete.preview": to("POST /expenses/{id}/delete/preview"),
@@ -308,8 +307,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"entry.expense.update.preview": to("POST /expenses/{id}/preview"),
 	"entry.expense.update.save": to("PUT /expenses/{id}"),
 	"entry.projectMembers": to("GET /projects/{id}/members"),
-	"entry.rateOptions": gap("the rate strip: every rate type a pair offers"),
-	"entry.setDefaultRateType": gap("default rate type per home currency"),
+	"entry.rateOptions": to("GET /entry/rate-options"),
+	"entry.setDefaultRateType": to("PUT /entry/default-rate-types/{homeCurrency}"),
 	"entry.shared.create.preview": to("POST /shared-expenses/preview"),
 	"entry.shared.create.save": to("POST /shared-expenses"),
 	"entry.shared.delete.preview": to(
@@ -320,7 +319,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"entry.shared.revert.save": to("POST /shared-expenses/undo"),
 	"entry.shared.update.preview": to("POST /shared-expenses/{id}/preview"),
 	"entry.shared.update.save": to("PUT /shared-expenses/{id}"),
-	"entry.sharedAuthor": gap("who added a shared expense"),
+	"entry.sharedAuthor": to("GET /shared-expenses/{id}"),
 	"entry.transfer.preview": to("POST /transfers/preview"),
 	"entry.transfer.save": to("POST /transfers"),
 
@@ -384,8 +383,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	// ── home ─────────────────────────────────────────────────────────────
 	"home.glance": to("GET /figures/glance"),
 	"home.needsYou": to("GET /needs-you"),
-	"home.snoozeNeedsYou": gap("Later on a Needs you item"),
-	"home.unsnoozeNeedsYou": gap("Later on a Needs you item"),
+	"home.snoozeNeedsYou": to("POST /needs-you/snoozes"),
+	"home.unsnoozeNeedsYou": to("DELETE /needs-you/snoozes/{itemId}"),
 
 	// ── imports ──────────────────────────────────────────────────────────
 	"importQueue.cancelJob": to("POST /imports/jobs/{id}/cancel"),
@@ -409,7 +408,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 
 	// ── insights ─────────────────────────────────────────────────────────
 	"insights.cashflow": to("GET /figures"),
-	"insights.firstDay": gap("the day where All time starts"),
+	"insights.firstDay": to("GET /figures/first-day"),
 	"insights.months": to("GET /figures"),
 	"insights.summary": to("GET /figures"),
 	"insights.ytd": to("GET /figures"),
@@ -436,10 +435,10 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"notification.updatePreferences": to("PUT /notifications/preferences"),
 
 	// ── payment methods ──────────────────────────────────────────────────
-	"paymentMethod.getForUser": gap("G3: payment methods shown on a person"),
-	"paymentMethod.list": gap("G3: payment methods"),
-	"paymentMethod.match": gap("G3: payment methods"),
-	"paymentMethod.upsert": gap("G3: payment methods"),
+	"paymentMethod.getForUser": to("GET /people/{type}/{id}/payment-methods"),
+	"paymentMethod.list": to("GET /payment-methods"),
+	"paymentMethod.match": to("GET /people/{type}/{id}/payment-methods"),
+	"paymentMethod.upsert": to("PUT /payment-methods"),
 
 	// ── people ───────────────────────────────────────────────────────────
 	"people.balance": to("GET /people/{type}/{id}"),
@@ -447,7 +446,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"people.createShadow": to("POST /people"),
 	"people.detail": to("GET /people/{type}/{id}"),
 	"people.detailCursor": to("GET /people/{type}/{id}/ledger"),
-	"people.frequentSplitPartners": gap("the people a split suggests first"),
+	"people.frequentSplitPartners": to("GET /people/frequent"),
 	"people.list": to("GET /people"),
 	"people.overview": to("GET /people"),
 	"people.page": to("GET /people/{type}/{id}"),
@@ -486,7 +485,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 		"passwords are changed through the better-auth endpoints",
 	),
 	"profile.getBackgroundSettings": to("GET /profile/background"),
-	"profile.getLifetimeStats": gap("lifetime totals on the profile page"),
+	"profile.getLifetimeStats": to("GET /profile/stats"),
 	"profile.getMyAvatar": to("GET /profile"),
 	"profile.getPendingEmail": to("GET /profile"),
 	"profile.publicProfile": webOnly("the public profile web page"),
@@ -494,37 +493,51 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"profile.update": to("PATCH /profile"),
 
 	// ── projects ─────────────────────────────────────────────────────────
-	"project.addParticipant": gap(G3_PROJECTS),
-	"project.balancesFromPerspective": gap(G3_PROJECTS),
-	"project.create": gap(G3_PROJECTS),
-	"project.createMagicLink": gap(G3_PROJECTS),
-	"project.delete": gap(G3_PROJECTS),
+	"project.addParticipant": to("POST /projects/{id}/members"),
+	"project.balancesFromPerspective": superseded(
+		"the legacy People and Balances tabs; GET /projects/{id}/summary has every member's Paid, Share, Received, Sent and Balance, and GET /people/{type}/{id}/ledger the pairwise expenses",
+	),
+	"project.create": to("POST /projects"),
+	"project.createMagicLink": to("POST /projects/{id}/magic-links"),
+	"project.delete": to("DELETE /projects/{id}", "POST /projects/{id}/preview"),
 	"project.detail": to("GET /projects/{id}"),
 	"project.list": to("GET /projects"),
-	"project.listExpenses": gap(G3_PROJECTS),
-	"project.listMagicLinks": gap(G3_PROJECTS),
+	"project.listExpenses": to("GET /projects/{id}/expenses"),
+	"project.listMagicLinks": to("GET /projects/{id}/magic-links"),
 	"project.listView": to("GET /projects"),
 	"project.membersOn": to("GET /projects/{id}/members"),
-	"project.membershipDatesPreview": gap(G3_PROJECTS),
+	"project.membershipDatesPreview": to(
+		"POST /projects/{id}/members/{type}/{personId}/dates/preview",
+	),
 	"project.pageView": to("GET /projects/{id}"),
 	"project.participantBalances": to("GET /projects/{id}/summary"),
 	"project.publicDetail": internal(GUEST),
 	"project.publicListExpenses": internal(GUEST),
-	"project.rebalanceExpenses": gap(G3_PROJECTS),
-	"project.rebalanceableExpenses": gap(G3_PROJECTS),
-	"project.removeParticipant": gap(G3_PROJECTS),
-	"project.resetMagicLink": gap(G3_PROJECTS),
-	"project.revokeMagicLink": gap(G3_PROJECTS),
-	"project.setMembershipDates": gap(G3_PROJECTS),
+	"project.rebalanceExpenses": withPreview("POST /projects/{id}/rebalance"),
+	"project.rebalanceableExpenses": to("GET /projects/{id}/rebalance"),
+	"project.removeParticipant": to(
+		"DELETE /projects/{id}/members/{type}/{personId}",
+	),
+	"project.resetMagicLink": to("POST /projects/{id}/magic-links/reset"),
+	"project.revokeMagicLink": to(
+		"DELETE /projects/{id}/magic-links/{linkId}",
+	),
+	"project.setMembershipDates": to(
+		"PUT /projects/{id}/members/{type}/{personId}/dates",
+	),
 	"project.settleAll": to("POST /projects/{id}/settle-all"),
 	"project.settleAllPreview": to("POST /projects/{id}/settle-all/preview"),
 	"project.settleAllUndo": to("POST /projects/{id}/settle-all/undo"),
 	"project.settlementPlan": to("GET /projects/{id}/settle-all/plan"),
 	"project.summary": to("GET /projects/{id}/summary"),
-	"project.transferOwnership": gap(G3_PROJECTS),
-	"project.update": gap(G3_PROJECTS),
-	"project.updateAnalyticsExclusion": gap(G3_PROJECTS),
-	"project.updateParticipantRole": gap(G3_PROJECTS),
+	"project.transferOwnership": to("POST /projects/{id}/ownership"),
+	"project.update": to("PATCH /projects/{id}"),
+	"project.updateAnalyticsExclusion": to(
+		"PUT /projects/{id}/analytics-exclusion",
+	),
+	"project.updateParticipantRole": to(
+		"PUT /projects/{id}/members/{type}/{personId}/role",
+	),
 
 	// ── recurring ────────────────────────────────────────────────────────
 	"recurring.confirmAndCreate": withPreview("POST /recurring/{id}/confirm"),
@@ -537,7 +550,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"recurring.update": to("PATCH /recurring/{id}"),
 
 	// ── settings ─────────────────────────────────────────────────────────
-	"settings.getAiStatus": gap("whether AI features are available to this user"),
+	"settings.getAiStatus": to("GET /settings/ai-status"),
 	"settings.getGeneral": to("GET /settings"),
 	"settings.getInviteOnlyEnabled": to("GET /server-info"),
 	"settings.updateGeneral": to("PATCH /settings"),
@@ -545,8 +558,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	// ── settle up ────────────────────────────────────────────────────────
 	"settlement.confirm": to("POST /payments/{id}/confirm"),
 	"settlement.create": superseded("replaced by POST /payments"),
-	"settlement.deletePending": gap("G3: withdraw a pending payment"),
-	"settlement.history": gap("G3: payment history with a person"),
+	"settlement.deletePending": to("DELETE /payments/{id}", "POST /payments/{id}/preview"),
+	"settlement.history": to("GET /people/{type}/{id}"),
 	"settlement.paymentConfirm": to("POST /payments/{id}/confirm"),
 	"settlement.paymentConfirmPreview": to("POST /payments/{id}/confirm/preview"),
 	"settlement.paymentPreview": to("POST /payments/preview"),
@@ -558,18 +571,18 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"settlement.reject": to("POST /payments/{id}/not-received"),
 	"settlement.requestPayment": to("POST /people/{type}/{id}/remind"),
 	"settlement.sendReminder": to("POST /payments/{id}/remind"),
-	"settlement.settleAll": gap("G3: settle everything with one person"),
-	"settlement.squareUp": gap("G3: square up across projects"),
-	"settlement.squareUpOptions": gap("G3: square up across projects"),
-	"settlement.void": gap("G3: void a payment to a person without an account"),
+	"settlement.settleAll": superseded(
+		"POST /payments with amount null pays everything owed to the person, allocated across projects and currencies in one payment",
+	),
+	"settlement.squareUp": withPreview("POST /payments/square-up"),
+	"settlement.squareUpOptions": to("GET /people/{type}/{id}/square-up"),
+	"settlement.void": to("DELETE /payments/{id}", "POST /payments/{id}/preview"),
 
 	// ── shared expenses ──────────────────────────────────────────────────
-	"sharedTransaction.canModify": gap(
-		"G3: whether a split expense can be edited",
-	),
+	"sharedTransaction.canModify": to("GET /shared-expenses/{id}"),
 	"sharedTransaction.create": to("POST /shared-expenses"),
 	"sharedTransaction.delete": to("DELETE /shared-expenses/{id}"),
-	"sharedTransaction.getById": gap("G3: read one split expense"),
+	"sharedTransaction.getById": to("GET /shared-expenses/{id}"),
 	"sharedTransaction.update": to("PUT /shared-expenses/{id}"),
 
 	// ── old stats ────────────────────────────────────────────────────────
@@ -594,21 +607,17 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"system.getWorkerStatus": webOnly("a diagnostic banner in the web app"),
 
 	// ── account ──────────────────────────────────────────────────────────
-	"user.deleteAccount": gap(
-		"self-service account deletion, which an iOS app must offer in the app",
-	),
-	"user.previewAccountDeletion": gap(
-		"self-service account deletion, which an iOS app must offer in the app",
-	),
+	"user.deleteAccount": to("POST /me/deletion"),
+	"user.previewAccountDeletion": to("GET /me/deletion"),
 	"user.updateProfile": to("PATCH /profile"),
 
 	// ── verification of shared expenses ──────────────────────────────────
 	"verification.accept": to("POST /shared-expenses/{id}/accept"),
-	"verification.bulkAccept": gap("G3: accept many shares at once"),
-	"verification.outgoing": gap("G3: shares others have not answered yet"),
+	"verification.bulkAccept": to("POST /shared-expenses/accept"),
+	"verification.outgoing": to("GET /shared-expenses/outgoing"),
 	"verification.queue": to("GET /needs-you"),
 	"verification.reject": to("POST /shared-expenses/{id}/reject"),
-	"verification.removeSelf": gap("G3: remove yourself from a split expense"),
+	"verification.removeSelf": withPreview("POST /shared-expenses/{id}/remove-me"),
 
 	// ── wealth ───────────────────────────────────────────────────────────
 	"wealth.accounts.defaults": to("GET /accounts/defaults"),
@@ -630,8 +639,10 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"wealth.exportCsv": to("GET /accounts/export"),
 	"wealth.figures": to("GET /accounts/net-worth"),
 	"wealth.getDashboard": to("GET /accounts", "GET /accounts/net-worth"),
-	"wealth.getRunwayStats": gap("how long the money lasts at the current pace"),
-	"wealth.importAssets": gap("import accounts from a CSV file"),
+	"wealth.getRunwayStats": to("GET /accounts/runway"),
+	"wealth.importAssets": superseded(
+		"a web CSV helper that creates or edits each account without a preview or an undo; the app does the same row by row with POST /accounts and PUT /accounts/{id}, which preview and undo",
+	),
 	"wealth.income.add.preview": to("POST /income/preview"),
 	"wealth.income.add.save": to("POST /income"),
 	"wealth.income.confirmRecurring.preview": to(
@@ -640,16 +651,16 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"wealth.income.confirmRecurring.save": to("POST /recurring/{id}/confirm"),
 	"wealth.income.delete.preview": to("POST /income/{id}/preview"),
 	"wealth.income.delete.save": to("DELETE /income/{id}"),
-	"wealth.income.moveIn.preview": gap("move income into an account"),
-	"wealth.income.moveIn.save": gap("move income into an account"),
+	"wealth.income.moveIn.preview": to("POST /income/move-in/preview"),
+	"wealth.income.moveIn.save": to("POST /income/move-in"),
 	"wealth.income.recreate.preview": to("POST /income/undo/preview"),
 	"wealth.income.recreate.save": to("POST /income/undo"),
 	"wealth.income.unconfirmRecurring.preview": to(
 		"POST /recurring/undo/preview",
 	),
 	"wealth.income.unconfirmRecurring.save": to("POST /recurring/undo"),
-	"wealth.income.undoMoveIn.preview": gap("move income into an account"),
-	"wealth.income.undoMoveIn.save": gap("move income into an account"),
+	"wealth.income.undoMoveIn.preview": to("POST /income/undo/preview"),
+	"wealth.income.undoMoveIn.save": to("POST /income/undo"),
 	"wealth.reopenAsset": to("POST /accounts/{id}/reopen"),
 	"wealth.transfers.create.preview": to("POST /transfers/preview"),
 	"wealth.transfers.create.save": to("POST /transfers"),

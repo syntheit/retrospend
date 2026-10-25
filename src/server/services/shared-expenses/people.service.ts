@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { ParticipantType, Prisma, PrismaClient } from "~prisma";
 import { getImageUrl } from "~/server/storage";
-import { DELETED_GUEST_SENTINEL, DELETED_SHADOW_SENTINEL, DELETED_USER_SENTINEL } from "~/server/services/user-deletion.service";
+import { DELETED_GUEST_SENTINEL, DELETED_USER_SENTINEL, isDeletedShadow } from "~/server/services/deleted-sentinels";
 import { computeBalance, computeBalanceWithProjects } from "./balance";
 import { computeBalanceBatch } from "./balance-batch";
 import { type PersonSettled, settledOf } from "~/server/services/payments/ledger";
@@ -1107,7 +1107,7 @@ export class PeopleService {
 				});
 			}
 		} else if (ref.participantType === "shadow") {
-			if (ref.participantId === DELETED_SHADOW_SENTINEL) {
+			if (isDeletedShadow(ref.participantId)) {
 				throw new TRPCError({
 					code: "NOT_FOUND",
 					message: "Person not found",

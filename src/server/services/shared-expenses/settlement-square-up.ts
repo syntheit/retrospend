@@ -19,6 +19,7 @@ import { confirmationFor } from "~/server/services/payments/confirmation";
 import { ledgerLines, payerLines } from "~/server/services/payments/ledger";
 import { paidOnDate } from "~/server/services/payments/record.mutation";
 import { writePayment } from "~/server/services/payments/write";
+import type { FigureDb } from "~/server/figures/registry";
 import type { PrismaClient } from "~prisma";
 import { computeBalanceByProject, computePairLedger } from "./balance";
 import { type ParticipantRef, sameParticipant } from "./types";
@@ -107,21 +108,25 @@ export async function getSquareUpOptions(
 	}));
 }
 
+export interface SquareUpInput {
+	toParticipant: ParticipantRef;
+	currency: string;
+}
+
+type Tx = FigureDb;
+
 /**
- * "Square up projects": when the overall balance with `toParticipant` in a
- * currency is even but projects are not, records only offset rows (no
- * cash) so every project scope ends at zero: allocatePayment with nothing
- * to pay and everything to offset. Handled like a payment the current
- * user sends: a registered user confirms or rejects it, a ghost or guest
- * is auto-confirmed. Same pair lock as a payment.
+ * The write of "Square up projects", on the caller's transaction: records
+ * only offset rows (no cash) so every project scope ends at zero:
+ * allocatePayment with nothing to pay and everything to offset. Handled like
+ * a payment the current user sends: a registered user confirms or rejects
+ * it, a ghost or guest is auto-confirmed. Same pair lock as a payment. The
+ * notice goes out after the commit (notifySquaredUp).
  */
-export async function squareUpProjects(
-	db: PrismaClient,
+export async function squareUpIn(
+	tx: Tx,
 	me: ParticipantRef,
-	input: {
-		toParticipant: ParticipantRef;
-		currency: string;
-	},
+	input: SquareUpInput,
 ) {
 	if (sameParticipant(me, input.toParticipant)) {
 		throw new TRPCError({
@@ -129,73 +134,87 @@ export async function squareUpProjects(
 			message: "Cannot create a settlement with yourself",
 		});
 	}
-	await assertRelationship(db, me, input.toParticipant);
+	await assertRelationship(tx, me, input.toParticipant);
 	const other = input.toParticipant;
 
-	const { settlements, paymentGroupId, offset } = await db.$transaction(
-		async (tx) => {
-			await lockPair(tx, me, other);
-			const byProject = await computeBalanceByProject(tx, me, other);
-			const option = squareUpCandidates(byProject).find(
-				(o) => o.currency === input.currency,
-			);
-			if (!option) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: `There are no ${input.currency} project balances to square up with this person.`,
-				});
-			}
-			const events = await computePairLedger(tx, me, other, { viewer: me });
-			const allocation = allocatePayment({
-				lines: payerLines(ledgerLines(events), true),
-				currency: input.currency,
-				amount: 0,
-				quotes: new Map(),
-				applyTo: [{ currency: input.currency }],
-			});
-			const id = randomUUID();
-			const now = new Date();
-			const created = await writePayment(tx, {
-				id,
-				parties: { payer: me, payee: other, recorder: me },
-				allocation,
-				confirmation: confirmationFor(false, other.participantType),
-				paidOn: paidOnDate(null, now),
-				now,
-				paymentMethod: null,
-				note: null,
-				auditTags: { squareUp: true },
-			});
-			return {
-				settlements: created,
-				paymentGroupId: id,
-				offset: option.amount,
-			};
-		},
+	await lockPair(tx, me, other);
+	const byProject = await computeBalanceByProject(tx, me, other);
+	const option = squareUpCandidates(byProject).find(
+		(o) => o.currency === input.currency,
 	);
-
-	if (input.toParticipant.participantType === "user") {
-		const myName = await resolveParticipantName("user", me.participantId);
-		const formatted = `${input.currency} ${formatAmount(offset, input.currency)}`;
-		createNotification({
-			userId: input.toParticipant.participantId,
-			type: "SETTLEMENT_RECEIVED",
-			title: "Project balances squared up",
-			body: `${myName} squared up your project balances (an offset of ${formatted}, no money moved)`,
-			data: {
-				settlementId: settlements[0]?.id,
-				paymentGroupId,
-				fromParticipantType: "user",
-				fromParticipantId: me.participantId,
-			},
-		}).catch((err) =>
-			console.error("[Notification Error] SETTLEMENT_RECEIVED:", err),
-		);
+	if (!option) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: `There are no ${input.currency} project balances to square up with this person.`,
+		});
 	}
-
+	const events = await computePairLedger(tx, me, other, { viewer: me });
+	const allocation = allocatePayment({
+		lines: payerLines(ledgerLines(events), true),
+		currency: input.currency,
+		amount: 0,
+		quotes: new Map(),
+		applyTo: [{ currency: input.currency }],
+	});
+	const id = randomUUID();
+	const now = new Date();
+	const created = await writePayment(tx, {
+		id,
+		parties: { payer: me, payee: other, recorder: me },
+		allocation,
+		confirmation: confirmationFor(false, other.participantType),
+		paidOn: paidOnDate(null, now),
+		now,
+		paymentMethod: null,
+		note: null,
+		auditTags: { squareUp: true },
+	});
 	return {
-		settlements,
-		paymentGroupId,
-		requiresPayeeConfirmation: settlements[0]?.status === "PROPOSED",
+		settlements: created,
+		paymentGroupId: id,
+		offset: option.amount,
+		requiresPayeeConfirmation: created[0]?.status === "PROPOSED",
+	};
+}
+
+export type SquaredUp = Awaited<ReturnType<typeof squareUpIn>>;
+
+/** Tells the other person, from the name and the amount only. */
+export async function notifySquaredUp(
+	me: ParticipantRef,
+	input: SquareUpInput,
+	done: SquaredUp,
+) {
+	if (input.toParticipant.participantType !== "user") return;
+	const myName = await resolveParticipantName("user", me.participantId);
+	const formatted = `${input.currency} ${formatAmount(done.offset, input.currency)}`;
+	createNotification({
+		userId: input.toParticipant.participantId,
+		type: "SETTLEMENT_RECEIVED",
+		title: "Project balances squared up",
+		body: `${myName} squared up your project balances (an offset of ${formatted}, no money moved)`,
+		data: {
+			settlementId: done.settlements[0]?.id,
+			paymentGroupId: done.paymentGroupId,
+			fromParticipantType: "user",
+			fromParticipantId: me.participantId,
+		},
+	}).catch((err) =>
+		console.error("[Notification Error] SETTLEMENT_RECEIVED:", err),
+	);
+}
+
+/** "Square up projects" as the web runs it: the write, then the notice. */
+export async function squareUpProjects(
+	db: PrismaClient,
+	me: ParticipantRef,
+	input: SquareUpInput,
+) {
+	const done = await db.$transaction((tx) => squareUpIn(tx, me, input));
+	await notifySquaredUp(me, input, done);
+	return {
+		settlements: done.settlements,
+		paymentGroupId: done.paymentGroupId,
+		requiresPayeeConfirmation: done.requiresPayeeConfirmation,
 	};
 }

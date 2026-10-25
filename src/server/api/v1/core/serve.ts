@@ -31,7 +31,7 @@ function idIsTheKey(error: Prisma.PrismaClientKnownRequestError): boolean {
 	return /"id"|_pkey/.test(meta);
 }
 
-export function toProblem(error: unknown): unknown {
+export function toProblem(error: unknown, route?: string): unknown {
 	if (error instanceof ORPCError) return error;
 	if (error instanceof InvalidCursorError)
 		return problem("bad_request", error.message);
@@ -45,6 +45,10 @@ export function toProblem(error: unknown): unknown {
 	if (error instanceof TRPCError) {
 		const code = TRPC_TO_PROBLEM[error.code];
 		if (code) return problem(code, error.message);
+		// tRPC wraps what a procedure throws; a known database error inside
+		// (a taken client id) is answered as it would be from a service.
+		if (error.cause instanceof Prisma.PrismaClientKnownRequestError)
+			return toProblem(error.cause, route);
 	}
 	// A client-made id that is already taken: an earlier try of the same write
 	// got through. Clients treat it as sent, so it has a code of its own.
@@ -55,6 +59,18 @@ export function toProblem(error: unknown): unknown {
 		return idIsTheKey(error)
 			? problem("id_taken", "That id is already used")
 			: problem("conflict", "That id or name is already used");
+	}
+	// A row the caller named that is not theirs: their view of the table has no
+	// such row, which is what the web shows as "not found" too.
+	if (
+		error instanceof Prisma.PrismaClientKnownRequestError &&
+		error.code === "P2025"
+	) {
+		// Expected for another user's id; worth a line when it is not. No user data in it.
+		console.warn(
+			`[api v1] ${route ?? "route"}: ${String(error.meta?.modelName ?? "a row")} not found, answered 404`,
+		);
+		return problem("not_found");
 	}
 	// A number past what its column holds (an amount whose USD value needs
 	// more than 10 digits): the caller's input, not a server fault.
@@ -68,6 +84,12 @@ export function toProblem(error: unknown): unknown {
 	return error;
 }
 
+/** The route a handler runs for (`payments.record`), from oRPC's handler options. */
+function routeOf(args: unknown[]): string | undefined {
+	const path = (args[0] as { path?: readonly string[] } | undefined)?.path;
+	return Array.isArray(path) ? path.join(".") : undefined;
+}
+
 /**
  * Wraps a v1 handler so a service error leaves as its problem+json. Use on
  * every G1 handler: `v1.x.y.handler(serve(async ({ context, input }) => ...))`.
@@ -79,7 +101,7 @@ export function serve<A extends unknown[], R>(
 		try {
 			return await fn(...args);
 		} catch (error) {
-			throw toProblem(error);
+			throw toProblem(error, routeOf(args));
 		}
 	};
 }

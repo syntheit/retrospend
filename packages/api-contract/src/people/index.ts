@@ -3,6 +3,7 @@ import { v1 } from "../common/meta";
 import { cursorQuerySchema, pageOf } from "../common/pagination";
 import { userText } from "../common/user-text";
 import { idSchema } from "../core";
+import { peopleExtrasContract } from "./extras";
 import {
 	ledgerRowSchema,
 	participantTypeSchema,
@@ -13,6 +14,7 @@ import {
 	settleContextSchema,
 } from "./schemas";
 
+export * from "./extras";
 export * from "./schemas";
 
 const TAG = ["People"];
@@ -77,6 +79,7 @@ export const personLedgerQuerySchema = personParamsSchema
  * netted across people or currencies. Settling up is under /payments.
  */
 export const peopleContract = {
+	...peopleExtrasContract,
 	list: v1
 		.route({
 			method: "GET",

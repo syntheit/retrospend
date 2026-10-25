@@ -1,4 +1,4 @@
-import type { addIncomeSchema } from "@retrospend/api-contract";
+import type { addIncomeSchema, moveInSchema } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
 import {
@@ -7,6 +7,12 @@ import {
 	type IncomeValue,
 } from "~/server/services/income/add.mutation";
 import { deleteIncome } from "~/server/services/income/delete.mutation";
+import {
+	type MoveInInput,
+	type MovedIn,
+	moveIn,
+	undoMoveIn,
+} from "~/server/services/income/move-in.mutation";
 import type { PlanResult } from "~/server/services/income/plan-seam";
 import type { Caller } from "./caller";
 import {
@@ -92,6 +98,35 @@ export const previewRemoveIncome = (
 	templateId?: string,
 ) => previewWrite(caller, deleteIncome, deleteInput(caller, id, templateId));
 
+// ── Move in ─────────────────────────────────────────────────────────────────
+
+type MoveInBody = z.infer<typeof moveInSchema>;
+
+const moveInInput = (caller: LedgerCaller, body: MoveInBody): MoveInInput => ({
+	...body,
+	timeZone: caller.timeZone,
+});
+
+const movedDto = (v: MovedIn) => ({
+	accountId: v.accountId,
+	expenseId: v.expenseId,
+	amount: v.amount,
+	countedUnits: v.countedUnits,
+	budgetSide: { ...v.budgetSide },
+});
+
+export async function moveInIncome(caller: LedgerCaller, body: MoveInBody) {
+	const input = moveInInput(caller, body);
+	const value = await applyWrite(caller, moveIn, input);
+	return {
+		moved: movedDto(value),
+		undo: undoFor(caller, FAMILY, "income.undoMoveIn", input),
+	};
+}
+
+export const previewMoveInIncome = (caller: LedgerCaller, body: MoveInBody) =>
+	previewWrite(caller, moveIn, moveInInput(caller, body));
+
 // ── Undo ────────────────────────────────────────────────────────────────────
 
 type Delete = { expenseId: string; templateId?: string | null };
@@ -126,6 +161,22 @@ function inverseOf(caller: LedgerCaller, op: string, input: unknown) {
 						expenseId: value.expenseId,
 						templateId: value.templateId,
 					}),
+				};
+			},
+		};
+	}
+	if (op === "income.undoMoveIn" || op === "income.moveIn") {
+		const mutation = op === "income.undoMoveIn" ? undoMoveIn : moveIn;
+		const back = op === "income.undoMoveIn" ? "income.moveIn" : "income.undoMoveIn";
+		const args = { ...(input as MoveInInput), ...zone };
+		return {
+			preview: () => previewWrite(caller, mutation, args),
+			apply: async () => {
+				const value = await applyWrite(caller, mutation, args);
+				return {
+					id: value.expenseId ?? value.accountId,
+					accounts: [],
+					redo: undoFor(caller, FAMILY, back, args),
 				};
 			},
 		};

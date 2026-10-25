@@ -166,7 +166,9 @@ export async function completeIdempotentRequest(
 	const keep =
 		json !== undefined &&
 		Buffer.byteLength(json, "utf8") <= MAX_STORED_RESPONSE_BYTES;
-	await userDb.idempotencyKey.update({
+	// updateMany: deleting the account removes its own key row, and the delete
+	// has committed by now, so a missing row is not an error.
+	await userDb.idempotencyKey.updateMany({
 		where: { id },
 		data: {
 			completedAt: new Date(),
