@@ -175,6 +175,7 @@ const facts = (
 		starting: boolean;
 		moneyIn: BudgetFacts["moneyIn"];
 		owed: BudgetFacts["owed"];
+		balances: BudgetFacts["balances"];
 	}> = {},
 ): BudgetFacts => ({
 	dto,
@@ -182,6 +183,7 @@ const facts = (
 	startingMoneyUnconfirmed: o.starting ?? false,
 	moneyIn: o.moneyIn ?? [],
 	owed: o.owed,
+	balances: o.balances,
 });
 
 describe("budget Needs you items (SPEC §5.14)", () => {
@@ -482,6 +484,7 @@ describe("shares that need an envelope (D19)", () => {
 });
 
 describe("owed for 60 days (SPEC 5.8, C15)", () => {
+	// The replay says who is aging; People's ledger says how much they owe.
 	const aging = [
 		person("shadow", "paz", {
 			aging: true,
@@ -489,7 +492,6 @@ describe("owed for 60 days (SPEC 5.8, C15)", () => {
 		}),
 		person("user", "lu", {
 			aging: true,
-			held: 90_000,
 			lines: [
 				{ amount: 5_000, currency: "USD", oldestOpen: "2026-08-01" },
 				{ amount: 60_000, currency: "ARS", oldestOpen: "2026-07-01" },
@@ -497,54 +499,55 @@ describe("owed for 60 days (SPEC 5.8, C15)", () => {
 		}),
 		person("user", "ana", {
 			aging: true,
-			lines: [
-				{ amount: 1_000, currency: "USD", oldestOpen: "2026-08-20" },
-				{ amount: 2_000, currency: "EUR", oldestOpen: null },
-			],
+			lines: [{ amount: 1_000, currency: "USD", oldestOpen: null }],
 		}),
 		person("user", "recent", {
 			aging: false,
 			lines: [{ amount: 100, currency: "ARS", oldestOpen: "2026-10-01" }],
 		}),
 	];
+	const balances = new Map<string, Record<string, number>>([
+		// People's ledger: Paz owes ARS 2,100.00, not the replay's 2,000.00.
+		["shadow:paz", { ARS: 210_000 }],
+		["user:lu", { USD: 5_000, ARS: 60_000 }],
+		// People shows Ana as even: no item.
+		["user:ana", {}],
+		["user:recent", { ARS: 100 }],
+	]);
 
-	it("one item per person who is aging, none for the rest", () => {
-		const items = budgetItems(facts(month({}), { owed: aging }));
+	it("one item per aging person, with People's amount, none for the rest", () => {
+		const items = budgetItems(facts(month({}), { owed: aging, balances }));
 		expect(items.map((i) => i.id)).toEqual([
 			"people.owedAging:shadow:paz",
 			"people.owedAging:user:lu",
-			"people.owedAging:user:ana",
 		]);
 		expect(items[0]).toMatchObject({
 			type: "people.owedAging",
 			group: "people",
 			entity: { kind: "person", id: "shadow:paz" },
 			people: ["shadow:paz"],
-			// One currency: what they owe, in it.
-			amount: { minor: 200_000, currency: "ARS" },
+			amount: { minor: 210_000, currency: "ARS" },
 			date: "2026-07-15",
 			attention: true,
 			actions: [{ entity: "person", id: "remind" }],
 		});
 	});
 
-	it("several currencies show the value the budget holds, or no amount when it holds none", () => {
-		const [, lu, ana] = budgetItems(facts(month({}), { owed: aging }));
-		expect(lu).toMatchObject({
-			amount: ars(90_000),
-			// The oldest open part of any currency.
-			date: "2026-07-01",
-		});
-		expect(ana).toMatchObject({ amount: null, date: "2026-08-20" });
+	it("several currencies show no single amount; the date is the oldest open part", () => {
+		const [, lu] = budgetItems(facts(month({}), { owed: aging, balances }));
+		expect(lu).toMatchObject({ amount: null, date: "2026-07-01" });
+	});
+
+	it("without People's balances nothing is guessed", () => {
+		expect(budgetItems(facts(month({}), { owed: aging }))).toEqual([]);
 	});
 
 	it("People items stay when a missing rate blanks the budget amounts", () => {
 		const types = budgetItems(
-			facts(month({ missing: ["BRL"] }), { owed: aging }),
+			facts(month({ missing: ["BRL"] }), { owed: aging, balances }),
 		).map((i) => i.type);
 		expect(types).toEqual([
 			"budget.missingRate",
-			"people.owedAging",
 			"people.owedAging",
 			"people.owedAging",
 		]);
@@ -552,7 +555,7 @@ describe("owed for 60 days (SPEC 5.8, C15)", () => {
 
 	it("a paused book (Just track) asks nothing", () => {
 		expect(
-			budgetItems(facts(month({}), { paused: true, owed: aging })),
+			budgetItems(facts(month({}), { paused: true, owed: aging, balances })),
 		).toEqual([]);
 	});
 });

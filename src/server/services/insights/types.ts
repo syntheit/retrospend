@@ -136,7 +136,7 @@ export interface CashflowDTO {
 	readonly savingsRatePct: number | null;
 	/** Spending per day up to today (the whole range once it is over). */
 	readonly dailyAverage: InsightsFigure;
-	/** Spending per calendar month the range touches. */
+	/** Spending per fiscal period the range touches. */
 	readonly monthlyAverage: InsightsFigure;
 	readonly missingRates: readonly string[];
 }

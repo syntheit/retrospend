@@ -66,11 +66,20 @@ export function shiftMonthStart(day: DayKey, months: number): DayKey {
 	return key(Math.floor(index / 12), (index % 12) + 1, 1);
 }
 
-/** Whole calendar months a span touches (October 24 to November 2 touches 2). */
-export function monthsTouched(span: Span): number {
-	const a = parts(span.from);
-	const b = parts(span.to);
-	return (b.y - a.y) * 12 + (b.m - a.m) + 1;
+/** "2026-09" for the fiscal month a day is in: the month it started in (start day 1 to 28). */
+export function fiscalMonthOf(day: DayKey, startDay: number): string {
+	const { y, m, d } = parts(day);
+	const index = y * 12 + (m - 1) - (startDay > 1 && d < startDay ? 1 : 0);
+	return `${pad(Math.floor(index / 12), 4)}-${pad((index % 12) + 1, 2)}`;
+}
+
+/** Fiscal periods a span touches (with start day 15, Oct 15 to Nov 14 is one). */
+export function fiscalPeriodsTouched(span: Span, startDay: number): number {
+	const a = fiscalMonthOf(span.from, startDay);
+	const b = fiscalMonthOf(span.to, startDay);
+	const index = (label: string) =>
+		Number(label.slice(0, 4)) * 12 + Number(label.slice(5, 7));
+	return index(b) - index(a) + 1;
 }
 
 /**

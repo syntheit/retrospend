@@ -29,6 +29,12 @@ export interface BudgetFacts {
 	readonly hiddenRows?: number;
 	/** Who owes you, from the splits replay (owedPeople): the aging ones become items. */
 	readonly owed?: readonly OwedPerson[];
+	/**
+	 * What each of them owes you as People shows it (the ledger behind
+	 * `owed.owedToYou` and `balance.person`: minor units per currency, by
+	 * person key). The item's amount is read from here.
+	 */
+	readonly balances?: ReadonlyMap<string, Readonly<Record<string, number>>>;
 }
 
 export type OwedPerson = OwedDto["people"][number];
@@ -269,27 +275,39 @@ function debtDueItem(dto: GetMonthOutput): NeedsYouItem[] {
 
 /**
  * "Owed for 60 days" (SPEC 5.8, C15): one item per person whose oldest open
- * part is 60 days old with no payment from them in 60 days. It feeds People.
- * The amount is what they owe in their one currency; with several it is the
- * book's held value, or none when the budget holds nothing for it.
+ * part is 60 days old with no payment from them in 60 days (the budget's
+ * splits replay decides). The amount is People's: what they owe you per
+ * currency in the payments ledger, so the card and the Person page agree. One
+ * currency shows its amount, several show none (the client lists them from
+ * the Person page's figure), and a person People shows as owing nothing is
+ * not an item.
  */
-function agingItems(owed: readonly OwedPerson[]): NeedsYouItem[] {
+function agingItems(
+	owed: readonly OwedPerson[],
+	balances: BudgetFacts["balances"],
+): NeedsYouItem[] {
 	return owed
 		.filter((person) => person.aging)
-		.map((person) => {
+		.flatMap((person) => {
 			const key = `${person.participant.type}:${person.participant.id}`;
-			const [only, ...more] = person.lines;
-			const held = person.held.minor > 0 ? person.held : null;
-			return item("people.owedAging", {
-				key,
-				entity: { kind: "person", id: key },
-				people: [key],
-				amount: only && more.length === 0 ? only.amount : held,
-				date:
-					person.lines.flatMap((line) => line.oldestOpen ?? []).sort()[0] ??
-					null,
-				attention: true,
-			});
+			const lines = Object.entries(balances?.get(key) ?? {}).filter(
+				([, minor]) => minor > 0,
+			);
+			const [only, ...more] = lines;
+			if (!only) return [];
+			return [
+				item("people.owedAging", {
+					key,
+					entity: { kind: "person", id: key },
+					people: [key],
+					amount:
+						more.length === 0 ? { minor: only[1], currency: only[0] } : null,
+					date:
+						person.lines.flatMap((line) => line.oldestOpen ?? []).sort()[0] ??
+						null,
+					attention: true,
+				}),
+			];
 		});
 }
 
@@ -326,7 +344,7 @@ export function budgetItems(facts: BudgetFacts): NeedsYouItem[] {
 			...starting,
 			// The summary item carries no amount; a change does, so it waits.
 			...(facts.closes ? summaryItem(dto, facts.closes) : []),
-			...agingItems(facts.owed ?? []),
+			...agingItems(facts.owed ?? [], facts.balances),
 		];
 	const reconcile = facts.reconcileDue
 		? [item("budget.reconcile", { entity: { kind: "book", id: dto.book.id } })]
@@ -344,7 +362,7 @@ export function budgetItems(facts: BudgetFacts): NeedsYouItem[] {
 		...(limits ? [] : poolItems(dto, facts.moneyIn)),
 		...overspentItem(dto),
 		...sharesItem(dto),
-		...agingItems(facts.owed ?? []),
+		...agingItems(facts.owed ?? [], facts.balances),
 		...debtDueItem(dto),
 		...billDueItem(dto),
 		...starting,
