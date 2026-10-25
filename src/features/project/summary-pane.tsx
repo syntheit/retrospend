@@ -27,7 +27,7 @@ const inCur = <T extends { currency: string }>(
 ) => lines.find((l) => l.currency === cur);
 
 /** Who paid what: each person's Paid or Share in the project's currency. */
-function WhoPaidWhat({
+export function WhoPaidWhat({
 	view,
 	s,
 	me,
@@ -84,7 +84,7 @@ function WhoPaidWhat({
 }
 
 /** Spending by category, the group's or yours, in the project's currency. */
-function ByCategory({ view }: { view: PageView }) {
+export function ByCategory({ view }: { view: PageView }) {
 	const t = useTranslations("projectV2.summary");
 	const [cats, setCats] = useState<"group" | "mine">("group");
 	const cur = view.primaryCurrency;
@@ -123,7 +123,7 @@ function ByCategory({ view }: { view: PageView }) {
 }
 
 /** The payments recorded in this project. */
-function Payments({ view, me }: { view: PageView; me: string }) {
+export function Payments({ view, me }: { view: PageView; me: string }) {
 	const t = useTranslations("projectV2.summary");
 	return (
 		<Section count={view.payments.length} id="payments" title={t("payments")}>

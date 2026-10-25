@@ -1,0 +1,65 @@
+{
+  "signIn": "Sign in",
+  "private": {
+    "title": "This project is private",
+    "hint": "Ask the owner to share it with you."
+  },
+  "expired": {
+    "title": "This link no longer works",
+    "hint": "Open your invite link again, or sign in."
+  },
+  "invalidInvite": {
+    "title": "This invite does not work",
+    "hint": "Ask the owner for a new link."
+  },
+  "otherProject": "This invite is for a different project.",
+  "notice": {
+    "guest": "Viewing as {name}, guest",
+    "viewer": "View only",
+    "public": "Public view. Balances and payments stay private.",
+    "create": "Create account"
+  },
+  "expenses": {
+    "emptyHint": "Nothing has been added yet."
+  },
+  "add": {
+    "title": "Add expense to {project}",
+    "what": "What was it for",
+    "date": "Date",
+    "submit": "Add expense",
+    "added": "Added {title}",
+    "split": "Paid by you, split equally between {count, plural, one {# person} other {# people}}",
+    "staysPast": "Past expenses and payments",
+    "fillIn": "Fill in what it was for and the amount."
+  },
+  "errors": {
+    "failed": "That did not save. Try again."
+  },
+  "join": {
+    "title": "Join {project}",
+    "sub": "{count, plural, one {# person} other {# people}} · joining as {role}",
+    "back": "Back to the list",
+    "elsewhere": "{name} is also in other projects, so this invite cannot take over their history. Join as yourself, then ask an owner for a link to merge it.",
+    "name": "Your name",
+    "email": "Email",
+    "emailHint": "Used to recognize you in this project. Not shared publicly.",
+    "submit": "Join project",
+    "joining": "Joining",
+    "failed": "We could not add you. Try again.",
+    "haveAccount": "Already have an account? <link>Sign in</link>"
+  },
+  "chooser": {
+    "title": "Are you one of these people?",
+    "hint": "Someone may have added you to {project}. Pick yourself to keep your history, or join as someone new.",
+    "none": "None of these, I am new"
+  },
+  "resume": {
+    "title": "Check your email",
+    "hint": "This email already joined {project}. We sent a link so you can continue where you left off. It works once and expires in one hour."
+  },
+  "done": {
+    "title": "You are in",
+    "hint": "You joined {project} as {role}.",
+    "view": "View project"
+  }
+}

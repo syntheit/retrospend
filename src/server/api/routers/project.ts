@@ -3,7 +3,6 @@
  * where the logic and the input schemas (inputs.ts) live.
  */
 import {
-	assertGuestProjectScope,
 	createTRPCRouter,
 	guestOrProtectedProcedure,
 	protectedProcedure,
@@ -54,26 +53,16 @@ import { getProjectSummary } from "~/server/services/project/summary.service";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import { requestTimeZone } from "~/server/time-zone";
 import { projectPageProcedures } from "./project-pages";
+import { assertReader, projectSharedProcedures } from "./project-shared";
 
 type Db = Parameters<typeof requireProjectRole>[0];
 type Zoned = { timeZone?: string };
 type SignedIn = { db: Db; session: { user: { id: string } } } & Zoned;
-type Reader = {
-	db: Db;
-	participant: Parameters<typeof assertGuestProjectScope>[0];
-};
 type MinimumRole = Parameters<typeof requireProjectRole>[4];
 
 /** The signed-in user's role in the project, or FORBIDDEN / NOT_FOUND. */
 const roleOf = (ctx: SignedIn, projectId: string, minimum: MinimumRole) =>
 	requireProjectRole(ctx.db, projectId, "user", ctx.session.user.id, minimum);
-
-/** Scope check and membership check for any reader: user, guest or viewer link. */
-function assertReader(ctx: Reader, projectId: string) {
-	assertGuestProjectScope(ctx.participant, projectId);
-	const { participantType: type, participantId } = ctx.participant;
-	return requireProjectRole(ctx.db, projectId, type, participantId, "VIEWER");
-}
 
 const actor = (ctx: SignedIn) => ({
 	userId: ctx.session.user.id,
@@ -84,6 +73,7 @@ const actor = (ctx: SignedIn) => ({
 
 export const projectRouter = createTRPCRouter({
 	...projectPageProcedures,
+	...projectSharedProcedures,
 
 	create: protectedProcedure
 		.input(projectInput.create)

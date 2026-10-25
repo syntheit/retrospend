@@ -1,10 +1,12 @@
 /**
- * The project page (uiV2) for a signed-in member: the header facts, the
- * hero figures, the members with your balance with each, spending by
- * category, the payments and the expense rows, all in minor units. The
- * Summary tab's group table and who pays whom come from getProjectSummary
- * (summary.service.ts); this read never recomputes them. Callers check that
- * the user is a member first.
+ * The project page: the header facts, the hero figures, the members with
+ * your balance with each, spending by category, the payments and the expense
+ * rows, all in minor units. The Summary tab's group table and who pays whom
+ * come from getProjectSummary (summary.service.ts); this read never
+ * recomputes them. Callers check access first: a member (user or guest), a
+ * viewer link, or the public page of a PUBLIC project. A viewer link and
+ * the public page have no "you": no balances, no share. The public page
+ * also leaves out the payments.
  */
 import { getImageUrl } from "~/lib/image-url";
 import { dayKey } from "~/lib/time-zone";
@@ -13,6 +15,7 @@ import { toMinor } from "~/server/services/envelope/units";
 import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
+import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import type { PrismaClient } from "~prisma";
 import { batchResolveIdentities, type Identity } from "./identities";
@@ -148,8 +151,28 @@ function expenseRow(
 
 export type ProjectExpenseRow = ReturnType<typeof expenseRow>;
 
-async function myRefs(db: PrismaClient, userId: string) {
-	const me = { participantType: "user" as const, participantId: userId };
+/** Who reads the page. A link or the public has no "you". */
+export type PageViewer =
+	| { kind: "user"; userId: string }
+	| { kind: "guest"; guestId: string }
+	| { kind: "link" }
+	| { kind: "public" };
+
+/** The participant a viewer is, or null for a link and the public. */
+function refOf(viewer: PageViewer): ParticipantRef | null {
+	switch (viewer.kind) {
+		case "user":
+			return { participantType: "user", participantId: viewer.userId };
+		case "guest":
+			return { participantType: "guest", participantId: viewer.guestId };
+		default:
+			return null;
+	}
+}
+
+/** Whether a reference is the viewer (a user's claimed names count as them). */
+async function isMeFor(db: PrismaClient, me: ParticipantRef | null) {
+	if (!me) return (_: Ref) => false;
 	const { aliasesByKey } = await resolveClaimAliases(db, [me]);
 	const key = (r: Ref) => `${r.participantType}:${r.participantId}`;
 	const keys = new Set((aliasesByKey.get(key(me)) ?? [me]).map(key));
@@ -163,15 +186,37 @@ export async function readProjectPage(
 	/** The request's zone, for today. */
 	timeZone?: string,
 ) {
+	return readPage(db, projectId, { kind: "user", userId }, timeZone);
+}
+
+/** The page for a guest, a viewer link or the public (callers checked access). */
+export async function readSharedProjectPage(
+	db: PrismaClient,
+	projectId: string,
+	viewer: Exclude<PageViewer, { kind: "user" }>,
+	timeZone?: string,
+) {
+	return readPage(db, projectId, viewer, timeZone);
+}
+
+async function readPage(
+	db: PrismaClient,
+	projectId: string,
+	viewer: PageViewer,
+	timeZone?: string,
+) {
+	const me = refOf(viewer);
+	const isPublic = viewer.kind === "public";
 	const [project, expenses, payments, isMe, numbers] = await Promise.all([
 		loadProject(db, projectId),
 		loadExpenses(db, projectId),
-		loadPayments(db, projectId),
-		myRefs(db, userId),
-		readProjectNumbers(db, projectId, {
-			participantType: "user",
-			participantId: userId,
-		}),
+		isPublic ? Promise.resolve([]) : loadPayments(db, projectId),
+		isMeFor(db, me),
+		readProjectNumbers(
+			db,
+			projectId,
+			me ?? { participantType: "viewerLink", participantId: "" },
+		),
 	]);
 	const others = project.participants.filter((p) => !isMe(p));
 	const [people, balances] = await Promise.all([
@@ -192,19 +237,17 @@ export async function readProjectPage(
 				},
 			]),
 		]),
-		computeBalanceBatch(
-			db,
-			{ participantType: "user", participantId: userId },
-			others,
-			{ projectScope: projectId },
-		),
+		me && !isPublic
+			? computeBalanceBatch(db, me, others, { projectScope: projectId })
+			: Promise.resolve([]),
 	]);
 	const meRow = project.participants.find(isMe);
-	const myKey = `user:${userId}`;
+	const myKey = me ? refKey(me) : null;
 	const myLine = numbers.members.find((m) => m.key === myKey)?.lines ?? [];
 	const rows = expenses
 		.slice(0, PAGE_ROWS)
 		.map((e) => expenseRow(e, isMe, people));
+	const userId = viewer.kind === "user" ? viewer.userId : null;
 
 	return {
 		id: project.id,
@@ -217,10 +260,10 @@ export async function readProjectPage(
 		primaryCurrency: project.primaryCurrency,
 		autoAcceptSplits: project.autoAcceptSplits,
 		billingCycleLength: project.billingCycleLength,
-		myRole: meRow?.role ?? null,
+		myRole: viewer.kind === "link" ? ("VIEWER" as const) : (meRow?.role ?? null),
 		excludeFromAnalytics: meRow?.excludeFromAnalytics ?? false,
-		solo: others.length === 0,
-		/** Today in the user's zone, for "Today" and the date pickers. */
+		solo: meRow ? others.length === 0 : project.participants.length <= 1,
+		/** Today in the reader's zone, for "Today" and the date pickers. */
 		today: dayKey(new Date(), await userTimeZone(db, userId, timeZone)),
 		expenseCount: expenses.length,
 		firstExpense: expenses.length

@@ -21,7 +21,7 @@ import {
 } from "./types";
 
 /** The group's fewest transfers (from the summary read). */
-function WhoPaysWhom({ summary, me }: { summary: Summary; me: string }) {
+export function WhoPaysWhom({ summary, me }: { summary: Summary; me: string }) {
 	const t = useTranslations("projectV2.summary");
 	if (summary.transfers.length === 0)
 		return <p className="text-fg-2 text-small">{t("even")}</p>;

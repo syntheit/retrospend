@@ -1,0 +1,65 @@
+{
+  "signIn": "Entrar",
+  "private": {
+    "title": "Este projeto é privado",
+    "hint": "Peça ao dono para compartilhá-lo com você."
+  },
+  "expired": {
+    "title": "Este link não funciona mais",
+    "hint": "Abra o link do convite de novo, ou entre na sua conta."
+  },
+  "invalidInvite": {
+    "title": "Este convite não funciona",
+    "hint": "Peça ao dono um link novo."
+  },
+  "otherProject": "Este convite é de outro projeto.",
+  "notice": {
+    "guest": "Vendo como {name}, convidado",
+    "viewer": "Somente leitura",
+    "public": "Visão pública. Os saldos e os pagamentos continuam privados.",
+    "create": "Criar conta"
+  },
+  "expenses": {
+    "emptyHint": "Nada foi adicionado ainda."
+  },
+  "add": {
+    "title": "Adicionar despesa a {project}",
+    "what": "Para que foi",
+    "date": "Data",
+    "submit": "Adicionar despesa",
+    "added": "{title} foi adicionada",
+    "split": "Pago por você, dividido igualmente entre {count, plural, one {# pessoa} other {# pessoas}}",
+    "staysPast": "Despesas e pagamentos anteriores",
+    "fillIn": "Preencha para que foi e o valor."
+  },
+  "errors": {
+    "failed": "Não foi salvo. Tente de novo."
+  },
+  "join": {
+    "title": "Entrar em {project}",
+    "sub": "{count, plural, one {# pessoa} other {# pessoas}} · você entra como {role}",
+    "back": "Voltar para a lista",
+    "elsewhere": "{name} também está em outros projetos, então este convite não pode assumir o histórico. Entre como você mesmo e depois peça a um dono um link para unir os dois.",
+    "name": "Seu nome",
+    "email": "E-mail",
+    "emailHint": "Usado para reconhecer você neste projeto. Não é compartilhado publicamente.",
+    "submit": "Entrar no projeto",
+    "joining": "Entrando",
+    "failed": "Não conseguimos adicionar você. Tente de novo.",
+    "haveAccount": "Já tem uma conta? <link>Entre</link>"
+  },
+  "chooser": {
+    "title": "Você é uma destas pessoas?",
+    "hint": "Alguém pode ter adicionado você a {project}. Escolha você mesmo para manter seu histórico, ou entre como uma pessoa nova.",
+    "none": "Nenhuma delas, sou novo"
+  },
+  "resume": {
+    "title": "Confira seu e-mail",
+    "hint": "Este e-mail já entrou em {project}. Enviamos um link para você continuar de onde parou. Ele funciona uma vez e expira em uma hora."
+  },
+  "done": {
+    "title": "Você entrou",
+    "hint": "Você entrou em {project} como {role}.",
+    "view": "Ver projeto"
+  }
+}

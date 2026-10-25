@@ -15,6 +15,21 @@ import { PageTabs } from "~/components/ui/page-tabs";
 import { ProjectCover } from "~/features/projects/project-cover";
 import type { PageView, ProjectTab } from "./types";
 
+/** "Solo · Oct 9 to Oct 18 · EUR": what the sub line under a project's title says. */
+export function useProjectSub(view: PageView) {
+	const t = useTranslations("projectV2");
+	const dates = useProjectDates();
+	const span = view.firstExpense
+		? dates({
+				start: view.firstExpense,
+				end: view.status === "ARCHIVED" ? view.lastExpense : null,
+			})
+		: null;
+	return [view.solo ? t("solo") : null, span, view.primaryCurrency]
+		.filter(Boolean)
+		.join(" · ");
+}
+
 /**
  * Title, the people as faces and one sub line (dates and currency), Add
  * expense as the one primary, the overflow from the project registry, and
@@ -33,7 +48,7 @@ export function ProjectHeader({
 }) {
 	const t = useTranslations("projectV2");
 	const nav = useTranslations("shell.nav");
-	const dates = useProjectDates();
+	const sub = useProjectSub(view);
 	const { openNewExpense } = useExpenseModal();
 	const archived = view.status === "ARCHIVED";
 	const add = () =>
@@ -43,15 +58,6 @@ export function ProjectHeader({
 			projectDefaultCurrency: view.primaryCurrency,
 			isSolo: view.solo,
 		});
-	const span = view.firstExpense
-		? dates({
-				start: view.firstExpense,
-				end: archived ? view.lastExpense : null,
-			})
-		: null;
-	const sub = [view.solo ? t("solo") : null, span, view.primaryCurrency]
-		.filter(Boolean)
-		.join(" · ");
 	const base = `/projects/${view.id}`;
 	const tabs = [
 		{ id: "expenses", href: base, label: t("tabs.expenses") },
