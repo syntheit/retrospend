@@ -289,6 +289,44 @@
 			"label": "Rapprocher"
 		}
 	},
+	"budgetMenu": {
+		"summary": {
+			"label": "Résumé du mois"
+		},
+		"whatIf": {
+			"label": "Et si je dépense…"
+		},
+		"addEnvelope": {
+			"label": "Ajouter une enveloppe"
+		},
+		"combine": {
+			"label": "Fusionner des enveloppes"
+		},
+		"rules": {
+			"label": "Règles de revenus"
+		},
+		"style": {
+			"label": "Style de budget"
+		},
+		"help": {
+			"label": "Ce que veulent dire les mots"
+		},
+		"addIncome": {
+			"label": "Ajouter une entrée d'argent"
+		},
+		"usePlan": {
+			"label": "Utiliser mon plan"
+		},
+		"planNext": {
+			"label": "Planifier le mois suivant"
+		},
+		"payoffPlan": {
+			"label": "Plan de remboursement"
+		},
+		"payDebt": {
+			"label": "Rembourser une dette"
+		}
+	},
 	"envelope": {
 		"move": {
 			"label": "Déplacer de l'argent"

@@ -7,6 +7,7 @@ import { Button } from "~/components/ui/button";
 import { Notice } from "~/components/ui/notice";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import { monthStartIso } from "./months";
+import type { BudgetActions } from "./use-budget-actions";
 import type { PageNotice } from "./view-model";
 
 /**
@@ -16,20 +17,22 @@ import type { PageNotice } from "./view-model";
 export function BudgetNotice({
 	notice,
 	data,
-	onAction,
+	actions,
 }: {
 	notice: PageNotice;
 	data: GetMonthOutput;
-	onAction: (n: PageNotice) => void;
+	actions: BudgetActions;
 }) {
 	const t = useTranslations("budgetPage.notice");
 	const { month } = useRowDates();
 	const v = data.verdict;
-	const action = (label: string) => (
-		<Button kind="secondary" onClick={() => onAction(notice)} size="sm">
-			{label}
-		</Button>
-	);
+	// The sentence says what happened; its button only shows once its sheet exists.
+	const action = (label: string) =>
+		actions.can(actions.noticeSheet(notice)) ? (
+			<Button kind="secondary" onClick={() => actions.notice(notice)} size="sm">
+				{label}
+			</Button>
+		) : undefined;
 	switch (notice.kind) {
 		case "welcomeBack":
 			return (

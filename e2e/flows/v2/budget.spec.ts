@@ -21,6 +21,7 @@ import {
 	httpFigureFetcher,
 } from "../../helpers/figures";
 import { gotoReady } from "../../helpers/navigation";
+import { untilSaved } from "../../helpers/trpc";
 
 // The redesigned Budget (uiV2 with the envelope budget on). The envelope
 // budget is a second app-wide flag and the seed has no book, so this flow
@@ -210,9 +211,13 @@ test("Budget: one number, the groups, and every figure matches the server", asyn
 		main.getByRole("heading", { name: "Budget", level: 1 }),
 	).toBeVisible();
 	await expect(main.getByText(/^Left to spend in /)).toBeVisible();
+	// Every button opens a sheet, and a sheet that does not exist yet hides
+	// its button: the header menu still offers Plan next month.
+	await main.getByRole("button", { name: "More actions for Budget" }).click();
 	await expect(
-		main.getByRole("button", { name: "Can I afford something?" }),
+		page.getByRole("menuitem", { name: "Plan next month" }),
 	).toBeVisible();
+	await page.keyboard.press("Escape");
 	// The three groups, each folded to one row (Flex).
 	const table = main.getByRole("table", { name: "Envelopes" });
 	for (const name of ["Bills", "Spending", "Savings"])
@@ -261,6 +266,18 @@ test("Budget: open next month, then come back; the URL names the month", async (
 	// Next month is the plan: a draft, nothing moves until it is applied.
 	await expect(main.locator('[data-slot="plan-view"]')).toBeVisible();
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+
+	// Start the plan from the targets, then type one envelope's plan in place.
+	await untilSaved(page, "envelope.saveDraft", () =>
+		main.getByRole("button", { name: "Fill from targets" }).click(),
+	);
+	const rent = main.getByRole("textbox", { name: "Plan for Rent" });
+	await rent.fill("400,000");
+	await untilSaved(page, "envelope.saveDraft", () => rent.blur());
+	await openBudget(page, page.url().replace(/^.*\/budget/, "/budget"));
+	await expect(
+		main.getByRole("textbox", { name: "Plan for Rent" }),
+	).toHaveValue("400,000");
 
 	await switcher.getByRole("button", { name: "Previous month" }).click();
 	await expect(page).not.toHaveURL(/month=/);

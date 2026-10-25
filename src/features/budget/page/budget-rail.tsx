@@ -37,10 +37,14 @@ function DebtBlock({
 							/>
 						)
 					}
-					open={{
-						label: t("open"),
-						onOpen: () => actions.sheet.open("debt", { month }),
-					}}
+					open={
+						actions.can("debt")
+							? {
+									label: t("open"),
+									onOpen: () => actions.sheet.open("debt", { month }),
+								}
+							: undefined
+					}
 					title={t("total")}
 				/>
 			</RowList>
@@ -83,10 +87,14 @@ export function BudgetRail({
 									value={owed.held}
 								/>
 							}
-							open={{
-								label: t("owed.open"),
-								onOpen: () => actions.sheet.open("owed", { month }),
-							}}
+							open={
+								actions.can("owed")
+									? {
+											label: t("owed.open"),
+											onOpen: () => actions.sheet.open("owed", { month }),
+										}
+									: undefined
+							}
 							sub={
 								owed.pending.minor !== 0 ? (
 									<RowSub
@@ -95,6 +103,7 @@ export function BudgetRail({
 												amount: () => <Money value={owed.pending} />,
 											}),
 										]}
+										wrap
 									/>
 								) : undefined
 							}
@@ -113,13 +122,18 @@ export function BudgetRail({
 							end={
 								<Money
 									className="text-positive font-semibold"
+									figure="budget.moneyIn"
 									value={toAssign.terms.moneyIn}
 								/>
 							}
-							open={{
-								label: t("moneyIn.open"),
-								onOpen: () => actions.sheet.open("income", { month }),
-							}}
+							open={
+								actions.can("income")
+									? {
+											label: t("moneyIn.open"),
+											onOpen: () => actions.sheet.open("income", { month }),
+										}
+									: undefined
+							}
 							title={t("moneyIn.thisMonth")}
 						/>
 					</RowList>
@@ -138,10 +152,14 @@ export function BudgetRail({
 									<Money value={shares.pending} />
 								) : undefined
 							}
-							open={{
-								label: t("shares.open"),
-								onOpen: () => actions.sheet.open("splits", { month }),
-							}}
+							open={
+								actions.can("splits")
+									? {
+											label: t("shares.open"),
+											onOpen: () => actions.sheet.open("splits", { month }),
+										}
+									: undefined
+							}
 							sub={
 								<RowSub
 									parts={[
@@ -150,6 +168,7 @@ export function BudgetRail({
 											: null,
 										shares.pending.minor !== 0 ? t("shares.pending") : null,
 									]}
+									wrap
 								/>
 							}
 							title={t("shares.line")}

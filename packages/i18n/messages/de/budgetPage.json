@@ -1,20 +1,5 @@
 {
 	"title": "Budget",
-	"menu": {
-		"more": "Weitere Budgetaktionen",
-		"addIncome": "Einnahme hinzufügen",
-		"usePlan": "Meinen Plan verwenden",
-		"planNext": "Nächsten Monat planen",
-		"summary": "Monatsübersicht",
-		"whatIf": "Was wäre, wenn ich ausgebe…",
-		"addEnvelope": "Umschlag hinzufügen",
-		"combine": "Umschläge zusammenführen",
-		"rules": "Einnahmeregeln",
-		"style": "Budgetstil",
-		"help": "Was die Begriffe bedeuten",
-		"payoffPlan": "Tilgungsplan",
-		"payDebt": "Schulden tilgen"
-	},
 	"month": {
 		"label": "{month} {year}",
 		"previous": "Vorheriger Monat",
@@ -93,7 +78,8 @@
 		"goalProgress": "<saved></saved> von <amount></amount>",
 		"goalBy": "bis {date}",
 		"moreNeeded": "es fehlen <amount></amount>",
-		"leftThisWeek": "<amount></amount> diese Woche übrig"
+		"leftThisWeek": "<amount></amount> diese Woche übrig",
+		"noLimit": "Kein Limit"
 	},
 	"group": {
 		"role": {
@@ -117,7 +103,8 @@
 		"endOfMonth": "Monatsende",
 		"actions": "Aktionen",
 		"paid": "Bezahlt",
-		"noMatch": "Kein Umschlag passt."
+		"noMatch": "Kein Umschlag passt.",
+		"noLimitCell": "Kein Limit"
 	},
 	"rail": {
 		"label": "Auf einen Blick",
@@ -169,22 +156,25 @@
 		"emptyHint": "Ein Plan ist ein Entwurf. Nichts bewegt sich, bis du ihn anwendest.",
 		"emptyTitle": "{month} planen",
 		"fill": {
-			"TARGETS": "Mit meinen Zielen beginnen",
-			"SAME_AS_THIS_MONTH": "Wie diesen Monat",
-			"THIS_MONTH_SPENT": "Was ich diesen Monat ausgegeben habe"
+			"TARGETS": "Aus den Zielen füllen",
+			"SAME_AS_THIS_MONTH": "Wie im {month}",
+			"THIS_MONTH_SPENT": "Was im {month} ausgegeben wurde"
 		},
-		"banner": "Du planst {month}. Nichts ändert sich, bis du den Plan anwendest.",
 		"discard": "Verwerfen",
 		"apply": "Plan anwenden",
-		"after": "Noch nicht geplant nach diesem Plan",
-		"fillFrom": "Füllen aus…",
+		"after": "Noch zu planen im {month}",
 		"table": "Plan",
 		"envelope": "Umschlag",
 		"planned": "Geplant",
-		"left": "Übrig",
 		"edit": "{name} planen",
 		"plannedSub": "Geplant <amount></amount>",
-		"fundNow": "Jetzt finanzieren"
+		"fundNow": "Jetzt finanzieren…",
+		"spentIn": "Ausgegeben im {month}",
+		"startsWith": "Startet im {month} mit",
+		"bannerTitle": "Entwurf: Plan für {month}",
+		"bannerSub": "Anwenden speichert den Plan. {current} ändert sich nicht. Er finanziert sich selbst, wenn das Geld für {month} eintrifft.",
+		"fillLabel": "Plan füllen",
+		"input": "Plan für {name}"
 	},
 	"planRail": {
 		"label": "Plankosten",

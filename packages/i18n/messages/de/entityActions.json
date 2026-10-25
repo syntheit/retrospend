@@ -289,6 +289,44 @@
 			"label": "Abgleichen"
 		}
 	},
+	"budgetMenu": {
+		"summary": {
+			"label": "Monatsübersicht"
+		},
+		"whatIf": {
+			"label": "Was wäre, wenn ich ausgebe…"
+		},
+		"addEnvelope": {
+			"label": "Umschlag hinzufügen"
+		},
+		"combine": {
+			"label": "Umschläge zusammenführen"
+		},
+		"rules": {
+			"label": "Einnahmeregeln"
+		},
+		"style": {
+			"label": "Budgetstil"
+		},
+		"help": {
+			"label": "Was die Begriffe bedeuten"
+		},
+		"addIncome": {
+			"label": "Einnahme hinzufügen"
+		},
+		"usePlan": {
+			"label": "Meinen Plan verwenden"
+		},
+		"planNext": {
+			"label": "Nächsten Monat planen"
+		},
+		"payoffPlan": {
+			"label": "Tilgungsplan"
+		},
+		"payDebt": {
+			"label": "Schulden tilgen"
+		}
+	},
 	"envelope": {
 		"move": {
 			"label": "Geld verschieben"

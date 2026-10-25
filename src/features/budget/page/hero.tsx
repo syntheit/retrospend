@@ -6,7 +6,8 @@ import { Money } from "~/components/money/money";
 import { Button } from "~/components/ui/button";
 import { Tip } from "~/components/ui/tooltip";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
-import { useVerdictCopy, type VerdictAction } from "./use-verdict-copy";
+import type { BudgetActions } from "./use-budget-actions";
+import { useVerdictCopy } from "./use-verdict-copy";
 
 /** The sheet a verdict button opens (use-budget-actions maps it). */
 export type HeroProps = {
@@ -15,9 +16,7 @@ export type HeroProps = {
 	/** "October" and "November". */
 	month: string;
 	next: string;
-	onAction: (action: VerdictAction) => void;
-	onAfford: () => void;
-	onExplain: () => void;
+	actions: BudgetActions;
 	/** The currencies a missing rate leaves out (R14). */
 	missing: string[];
 };
@@ -32,9 +31,7 @@ export function BudgetHero({
 	names,
 	month,
 	next,
-	onAction,
-	onAfford,
-	onExplain,
+	actions,
 	missing,
 }: HeroProps) {
 	const t = useTranslations("budgetPage.hero");
@@ -43,23 +40,29 @@ export function BudgetHero({
 	const limits = v.lead.kind === "LEFT_IN_LIMITS";
 	const label = copy.label(v, data.book.style === "SAVE_FIRST");
 	const incomplete = data.incomplete || v.incomplete;
+	const key = data.month.key;
 	const over = v.state === "OVER_BUDGET" || v.state === "OVER_ASSIGNED";
 	return (
 		<section aria-label={label} className="mb-6" data-slot="budget-hero">
 			<div className="text-fg-2 text-small flex items-center gap-1">
 				<span>{label}</span>
-				<Tip content={t("why")}>
-					<Button
-						aria-label={t("why")}
-						className="size-6 min-w-0 px-0"
-						icon
-						kind="ghost"
-						onClick={onExplain}
-						size="sm"
-					>
-						<CircleHelp aria-hidden="true" className="size-3.5" />
-					</Button>
-				</Tip>
+				{actions.can("explain") && (
+					<Tip content={t("why")}>
+						<Button
+							aria-label={t("why")}
+							icon
+							kind="ghost"
+							onClick={() =>
+								actions.sheet.open("explain", {
+									month: key,
+									figure: v.lead.figureId,
+								})
+							}
+						>
+							<CircleHelp aria-hidden="true" />
+						</Button>
+					</Tip>
+				)}
 			</div>
 			<Money
 				approx={data.approximate && !incomplete}
@@ -75,23 +78,29 @@ export function BudgetHero({
 					: copy.sentence(v)}
 			</p>
 			<div className="mt-3 flex flex-wrap items-center gap-3">
-				{v.action && !incomplete && (
+				{v.action &&
+					!incomplete &&
+					actions.can(actions.verdictSheet(v.action)) && (
+						<Button
+							kind="secondary"
+							onClick={() =>
+								actions.verdict(v.action as NonNullable<typeof v.action>)
+							}
+							size="sm"
+						>
+							{copy.actionLabel(v.action, limits)}
+						</Button>
+					)}
+				{actions.can("afford") && (
 					<Button
-						kind="secondary"
-						onClick={() => onAction(v.action as VerdictAction)}
+						className="text-accent-strong"
+						kind="ghost"
+						onClick={() => actions.openMonth("afford")}
 						size="sm"
 					>
-						{copy.actionLabel(v.action, limits)}
+						{t("afford")}
 					</Button>
 				)}
-				<Button
-					className="text-accent-strong"
-					kind="ghost"
-					onClick={onAfford}
-					size="sm"
-				>
-					{t("afford")}
-				</Button>
 			</div>
 		</section>
 	);

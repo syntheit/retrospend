@@ -25,7 +25,8 @@ export function GroupsList({
 	actions,
 	readOnly,
 	filtering,
-}: Omit<GroupsProps, "columns">) {
+	columns,
+}: GroupsProps) {
 	const name = useGroupName();
 	const sub = useGroupSub();
 	const parts = useTargetParts();
@@ -56,7 +57,7 @@ export function GroupsList({
 										)}
 									/>
 								</span>
-								{!open && <RowSub parts={sub(g)} />}
+								{!open && <RowSub parts={sub(g)} wrap />}
 							</Button>
 							<GroupLeft group={g} />
 						</div>
@@ -83,8 +84,9 @@ export function GroupsList({
 											data-envelope={e.id}
 											envelope={toEnvelopeVM(e)}
 											key={e.id}
+											noAmount={columns === "limits" && !e.target}
 											plain
-											target={parts(e)}
+											target={parts(e, { limits: columns === "limits" })}
 										/>
 									);
 									return readOnly ? (

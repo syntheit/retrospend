@@ -71,32 +71,27 @@ export function MonthContent({
 			{closed ? (
 				<ClosedHero
 					month={key}
-					onOpenSummary={() =>
-						actions.sheet.open("monthSummary", { month: key })
+					onOpenSummary={
+						actions.can("monthSummary")
+							? () => actions.sheet.open("monthSummary", { month: key })
+							: undefined
 					}
 				/>
 			) : data.book.style === "DEBT_PAYOFF" ? (
 				<DebtHero actions={actions} data={data} />
 			) : (
 				<BudgetHero
+					actions={actions}
 					data={data}
 					missing={missing}
 					month={monthName(monthStartIso(key))}
 					names={names}
 					next={monthName(monthStartIso(shiftMonth(key, 1)))}
-					onAction={actions.verdict}
-					onAfford={() => actions.sheet.open("afford", { month: key })}
-					onExplain={() =>
-						actions.sheet.open("explain", {
-							month: key,
-							figure: data.verdict.lead.figureId,
-						})
-					}
 				/>
 			)}
 			{notice && (
 				<div className="mb-6">
-					<BudgetNotice data={data} notice={notice} onAction={actions.notice} />
+					<BudgetNotice actions={actions} data={data} notice={notice} />
 				</div>
 			)}
 			<div className="lg:flex lg:items-start lg:gap-12">
@@ -106,7 +101,7 @@ export function MonthContent({
 							{t("table.noMatch")}
 						</p>
 					) : isMobile ? (
-						<GroupsList {...list} />
+						<GroupsList {...list} columns={columns} />
 					) : (
 						<GroupsTable {...list} columns={columns} />
 					)}
