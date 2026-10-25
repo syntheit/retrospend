@@ -79,6 +79,12 @@ export interface FigureDefinition<Db = FigureDb> {
 	 * the whole user's net worth.
 	 */
 	readonly scope: readonly ScopeKey[];
+	/**
+	 * The figure is a total in the home currency made by converting what is
+	 * held in other currencies at reference rates, so it is an estimate: a
+	 * preview marks its lines `approx` and a client shows them with "≈".
+	 */
+	readonly converted?: boolean;
 	/** Checked by every preview, declared or not, so a sheet can say "Your accounts and net worth: no change" (R30). */
 	readonly inEveryPreview?: boolean;
 	/** Returns null when the number is unavailable (for example a missing rate, R14). Throws only on bugs. */
@@ -285,3 +291,12 @@ export const figures = createFiguresRegistry<FigureDb>([
 	dollarTodayFigure,
 	...insightsFigures,
 ]);
+
+/** Whether a figure is a converted total (an estimate); false for an id nobody registered. */
+export function isConvertedFigure(id: string): boolean {
+	try {
+		return figures.get(id).converted === true;
+	} catch {
+		return false;
+	}
+}

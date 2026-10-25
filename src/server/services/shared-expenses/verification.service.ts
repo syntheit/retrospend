@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient, VerificationStatus } from "~prisma";
 import { getImageUrl } from "~/server/storage";
+import { answerShareIn } from "./answer-share";
 import { logAudit } from "./audit-log";
 import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
 import { removeSelfIn } from "./remove-self";
@@ -295,76 +296,8 @@ export class VerificationService {
 	 */
 	async accept(txnId: string) {
 		return await this.runInTransaction(async (tx) => {
-			const txn = await tx.sharedTransaction.findUnique({
-				where: { id: txnId },
-				include: { splitParticipants: true },
-			});
-
-			if (!txn) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Transaction not found or has been deleted",
-				});
-			}
-
-			const myParticipants = txn.splitParticipants.filter(
-				(p) =>
-					p.participantType === this.actor.participantType &&
-					p.participantId === this.actor.participantId,
-			);
-
-			if (myParticipants.length === 0) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "You are not a participant on this transaction",
-				});
-			}
-
-			// Defensive: unique constraint should prevent this, but guard anyway
-			if (myParticipants.length > 1) {
-				throw new TRPCError({
-					code: "INTERNAL_SERVER_ERROR",
-					message:
-						"Duplicate participant records detected; please contact support",
-				});
-			}
-
-			const sp = myParticipants[0]!;
-
-			// Already accepted: return current state without error
-			if (
-				sp.verificationStatus === "ACCEPTED" ||
-				sp.verificationStatus === "AUTO_ACCEPTED"
-			) {
-				return buildTransactionResult(txn);
-			}
-
-			await tx.splitParticipant.update({
-				where: { id: sp.id },
-				data: { verificationStatus: "ACCEPTED", verifiedAt: new Date() },
-			});
-
-			const actor = this.actor;
-
-			await logAudit(tx, {
-				actor,
-				action: "VERIFIED",
-				targetType: "SHARED_TRANSACTION",
-				targetId: txnId,
-				changes: {
-					participantId: sp.id,
-					participantType: sp.participantType,
-					participantRef: sp.participantId,
-				},
-				projectId: txn.projectId ?? undefined,
-			});
-
-			const updated = await tx.sharedTransaction.findUniqueOrThrow({
-				where: { id: txnId },
-				include: { splitParticipants: true },
-			});
-
-			return buildTransactionResult(updated);
+			const { txn } = await answerShareIn(tx, this.actor, txnId, "accept");
+			return buildTransactionResult(txn);
 		});
 	}
 
@@ -376,91 +309,24 @@ export class VerificationService {
 	 */
 	async reject(txnId: string, reason?: string) {
 		return await this.runInTransaction(async (tx) => {
-			const txn = await tx.sharedTransaction.findUnique({
-				where: { id: txnId },
-				include: { splitParticipants: true },
-			});
-
-			if (!txn) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Transaction not found or has been deleted",
-				});
-			}
-
-			const myParticipants = txn.splitParticipants.filter(
-				(p) =>
-					p.participantType === this.actor.participantType &&
-					p.participantId === this.actor.participantId,
+			const { txn, changed } = await answerShareIn(
+				tx,
+				this.actor,
+				txnId,
+				"reject",
+				reason,
 			);
-
-			if (myParticipants.length === 0) {
-				throw new TRPCError({
-					code: "FORBIDDEN",
-					message: "You are not a participant on this transaction",
-				});
-			}
-
-			if (myParticipants.length > 1) {
-				throw new TRPCError({
-					code: "INTERNAL_SERVER_ERROR",
-					message:
-						"Duplicate participant records detected; please contact support",
-				});
-			}
-
-			const sp = myParticipants[0]!;
-
-			// Already rejected: idempotent return
-			if (sp.verificationStatus === "REJECTED") {
-				return buildTransactionResult(txn, {
-					creatorId: txn.createdById,
-					creatorType: txn.createdByType,
-					rejectionPendingNotification: false,
-				});
-			}
-
-			await tx.splitParticipant.update({
-				where: { id: sp.id },
-				data: {
-					verificationStatus: "REJECTED",
-					verifiedAt: new Date(),
-					rejectionReason: reason ?? null,
-				},
-			});
-
-			const actor = this.actor;
-
-			await logAudit(tx, {
-				actor,
-				action: "REJECTED",
-				targetType: "SHARED_TRANSACTION",
-				targetId: txnId,
-				changes: {
-					participantId: sp.id,
-					participantType: sp.participantType,
-					participantRef: sp.participantId,
-					reason: reason ?? null,
-				},
-				projectId: txn.projectId ?? undefined,
-			});
-
-			const updated = await tx.sharedTransaction.findUniqueOrThrow({
-				where: { id: txnId },
-				include: { splitParticipants: true },
-			});
-
-			// Include creator info and a flag so Chunk 3D (notification system)
-			// can send the rejection notification to the transaction creator.
-			return buildTransactionResult(updated, {
+			// Include creator info and a flag so the notification system can send
+			// the rejection notice to the creator; answering again sends nothing.
+			return buildTransactionResult(txn, {
 				creatorId: txn.createdById,
 				creatorType: txn.createdByType,
-				rejectionPendingNotification: true,
+				rejectionPendingNotification: changed,
 			});
 		});
 	}
 
-/**
+	/**
  * Remove the caller's own split from a shared transaction ("Remove me").
  *
  * YNAB-style: deletes ONLY the caller's own SplitParticipant row. Does not

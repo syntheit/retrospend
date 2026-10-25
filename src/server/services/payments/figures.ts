@@ -174,6 +174,7 @@ export const balancePersonFigure: FigureDefinition = {
 export const owedToYouFigure: FigureDefinition = {
 	id: "owed.owedToYou",
 	scope: [],
+	converted: true,
 	compute: async (db, scope, pass) => {
 		const owed = await owedOnce(db, scope.userId, pass);
 		if (owed instanceof FigureUnavailable) return owed;
@@ -184,6 +185,7 @@ export const owedToYouFigure: FigureDefinition = {
 export const youOweFigure: FigureDefinition = {
 	id: "owed.youOwe",
 	scope: [],
+	converted: true,
 	compute: async (db, scope, pass) => {
 		const owed = await owedOnce(db, scope.userId, pass);
 		if (owed instanceof FigureUnavailable) return owed;

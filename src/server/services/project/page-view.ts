@@ -10,6 +10,7 @@ import { getImageUrl } from "~/lib/image-url";
 import { dayKey } from "~/lib/time-zone";
 import type { Money } from "~/server/figures/registry";
 import { toMinor } from "~/server/services/envelope/units";
+import { categoryTone } from "~/server/services/expense-list/category-tone";
 import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
@@ -122,7 +123,9 @@ function expenseRow(
 		id: e.id,
 		title: e.description,
 		date: day(e.date),
-		category: e.category,
+		category: e.category
+			? { ...e.category, tone: categoryTone(e.category.color) }
+			: null,
 		amount: {
 			minor: toMinor(e.amount.toString(), e.currency),
 			currency: e.currency,

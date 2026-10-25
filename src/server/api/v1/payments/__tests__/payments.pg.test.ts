@@ -252,6 +252,10 @@ describe("/api/v1/payments", () => {
 		// it moves none of yours; it gives the payer their debt back.
 		expect(preview.changes.filter((x) => x.id.startsWith("owed."))).toEqual([]);
 		expect(preview.unchanged.map((x) => x.id)).toContain("owed.owedToYou");
+		// Owed totals are converted into the home currency: an estimate, marked so.
+		expect(
+			preview.unchanged.find((x) => x.id === "owed.owedToYou"),
+		).toMatchObject({ approx: true });
 		const payerBefore = await youOwe();
 		await expect(status(sent.id)).resolves.toBe("PROPOSED");
 		const rejected = await expectBody<{ status: string }>(
@@ -306,12 +310,8 @@ describe("/api/v1/payments", () => {
 			direction: "incoming",
 			amount: "25000",
 		});
-		await expectProblem(
-			await post("/payments/preview", over),
-			400,
-			"bad_request",
-		);
-		await expectProblem(await post("/payments", over), 400, "bad_request");
+		await expectProblem(await post("/payments/preview", over), 422, "overpay");
+		await expectProblem(await post("/payments", over), 422, "overpay");
 		const allowed = await expectBody<Write>(
 			await post("/payments", { ...over, allowOverpay: true }),
 			c.record,
