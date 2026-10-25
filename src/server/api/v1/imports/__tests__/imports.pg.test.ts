@@ -105,14 +105,11 @@ describe("/api/v1/imports", () => {
 	});
 
 	it("refuses an oversized upload at once and a file name that is too long", async () => {
-		// 12 MB of real bytes: refused on its Content-Length, before it is read.
+		// A declared 12 MB body is refused on its Content-Length, before it is read.
 		const big = await call("/imports/jobs", {
 			method: "POST",
-			headers: asAlice,
-			form: uploadForm(
-				"big.csv",
-				`title,amount,currency,date\n${"a".repeat(12 * 1024 * 1024)}`,
-			),
+			headers: { ...asAlice, "content-length": String(12 * 1024 * 1024) },
+			form: uploadForm("big.csv", "title,amount,currency,date\n"),
 			idempotent: true,
 		});
 		await expectProblem(big, 413, "payload_too_large");

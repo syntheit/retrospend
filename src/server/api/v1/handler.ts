@@ -18,27 +18,37 @@ export const MULTIPART_LIMIT = IMPORT_MAX_BYTES + 1024 * 1024;
  * Content-Length over the limit is refused at once (413); a body that does
  * not declare one is counted as it streams and cut off at the limit.
  */
-function capUpload(request: Request): Request | Response {
+function capUpload(
+	request: Request,
+): { request: Request; exceeded: () => boolean } | Response {
 	const type = request.headers.get("content-type") ?? "";
 	if (!type.toLowerCase().startsWith("multipart/form-data") || !request.body)
-		return request;
+		return { request, exceeded: () => false };
 	const declared = Number(request.headers.get("content-length"));
 	if (Number.isFinite(declared) && declared > MULTIPART_LIMIT)
 		return Response.json(encodeProblem(problem("payload_too_large")), {
 			status: 413,
 		});
 	let seen = 0;
+	let over = false;
 	const counted = request.body.pipeThrough(
 		new TransformStream<Uint8Array, Uint8Array>({
 			transform(chunk, controller) {
 				seen += chunk.byteLength;
-				if (seen > MULTIPART_LIMIT)
+				if (seen > MULTIPART_LIMIT) {
+					over = true;
 					controller.error(new Error("Upload too large"));
-				else controller.enqueue(chunk);
+				} else controller.enqueue(chunk);
 			},
 		}),
 	);
-	return new Request(request, { body: counted, duplex: "half" } as RequestInit);
+	return {
+		request: new Request(request, {
+			body: counted,
+			duplex: "half",
+		} as RequestInit),
+		exceeded: () => over,
+	};
 }
 
 /** Errors are problem+json (RFC 9457); nothing here may be cached. */
@@ -62,11 +72,17 @@ export function createV1Handler(
 	return async function handle(incoming: Request): Promise<Response> {
 		const capped = capUpload(incoming);
 		if (capped instanceof Response) return withProblemHeaders(capped);
-		const request = capped;
+		const { request, exceeded } = capped;
 		const { matched, response } = await handler.handle(request, {
 			prefix: API_PREFIX,
 			context: { headers: request.headers },
 		});
+		if (exceeded())
+			return withProblemHeaders(
+				Response.json(encodeProblem(problem("payload_too_large")), {
+					status: 413,
+				}),
+			);
 		const res = matched
 			? response
 			: Response.json(encodeProblem(problem("not_found")), { status: 404 });
