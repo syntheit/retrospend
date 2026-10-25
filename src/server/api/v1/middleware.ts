@@ -15,7 +15,7 @@ import { problem } from "./errors";
 import { recordsEvent } from "./events/middleware";
 import { idempotency } from "./idempotency";
 import { ipRateLimit, tokenRateLimit } from "./rate-limit";
-import { hasScope } from "./scopes";
+import { mayCall } from "./scopes";
 
 /** What the route handler passes in for each request. */
 export type V1InitialContext = ResponseHeadersPluginContext & {
@@ -54,7 +54,7 @@ const authenticate = os
 			if (!principal) throw problem("unauthenticated");
 			if (!(await isFlagEnabled("apiV1", { role: principal.role })))
 				throw problem("api_disabled");
-			if (!hasScope(principal.scopes, scope))
+			if (!mayCall(principal, scope))
 				throw problem("missing_scope", `This route needs the ${scope} scope`, {
 					requiredScope: scope,
 				});

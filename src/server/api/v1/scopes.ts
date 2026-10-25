@@ -1,9 +1,12 @@
 import {
+	isSessionScope,
 	MOBILE_SCOPES,
 	parseScopeList,
 	type RouteScope,
 	SCOPES,
+	SESSION_SCOPES,
 	type Scope,
+	type SessionScope,
 } from "@retrospend/api-contract/common";
 
 /**
@@ -102,7 +105,40 @@ export function capDeviceScopes(requested: string | undefined, role: string) {
 	return capped.length > 0 ? capped : [...DEFAULT_TOKEN_SCOPES];
 }
 
-/** `public` needs nothing; any other route needs its scope. */
-export function hasScope(scopes: readonly Scope[], required: RouteScope) {
+/** `public` needs nothing; any other token scope must be held. */
+export function hasScope(
+	scopes: readonly Scope[],
+	required: Exclude<RouteScope, SessionScope>,
+) {
 	return required === "public" || scopes.includes(required);
+}
+
+/**
+ * The session-only scopes a principal holds (account deletion). Only the web
+ * app's own cookie session and the Expo app's session have them, never a
+ * device session or an API key, whatever their stored scopes say. A mobile
+ * session with narrowed stored scopes keeps them only with `write:settings`,
+ * since deleting the account is at least as sensitive as changing settings.
+ */
+export function sessionScopesOf(input: {
+	kind: PrincipalKind;
+	granted: readonly Scope[] | null;
+}): SessionScope[] {
+	if (input.kind === "web") return [...SESSION_SCOPES];
+	if (input.kind === "mobile" && input.granted?.includes("write:settings"))
+		return [...SESSION_SCOPES];
+	return [];
+}
+
+/** Whether the principal may call a route that needs `required`. */
+export function mayCall(
+	principal: {
+		scopes: readonly Scope[];
+		sessionScopes: readonly SessionScope[];
+	},
+	required: RouteScope,
+) {
+	return isSessionScope(required)
+		? principal.sessionScopes.includes(required)
+		: hasScope(principal.scopes, required);
 }

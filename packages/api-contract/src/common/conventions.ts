@@ -2,9 +2,9 @@ import type { AnyContractRouter } from "@orpc/contract";
 import { EVENT_TYPES } from "./events";
 import { listContractRoutes } from "./meta";
 import { PREVIEW_SUFFIX, previewPathOf, previewResultSchema } from "./preview";
-import { SCOPES } from "./scopes";
+import { SCOPES, SESSION_SCOPES } from "./scopes";
 
-const ROUTE_SCOPES: readonly string[] = [...SCOPES, "public"];
+const ROUTE_SCOPES: readonly string[] = [...SCOPES, ...SESSION_SCOPES, "public"];
 
 /**
  * Checks the v1 rules a contract must follow and returns one message per

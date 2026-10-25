@@ -594,12 +594,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"system.getWorkerStatus": webOnly("a diagnostic banner in the web app"),
 
 	// ── account ──────────────────────────────────────────────────────────
-	"user.deleteAccount": gap(
-		"self-service account deletion, which an iOS app must offer in the app",
-	),
-	"user.previewAccountDeletion": gap(
-		"self-service account deletion, which an iOS app must offer in the app",
-	),
+	"user.deleteAccount": to("POST /me/deletion"),
+	"user.previewAccountDeletion": to("GET /me/deletion"),
 	"user.updateProfile": to("PATCH /profile"),
 
 	// ── verification of shared expenses ──────────────────────────────────

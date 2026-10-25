@@ -1,3 +1,4 @@
+import { accountRouter } from "./account";
 import { accountsRouter } from "./accounts";
 import { adminRouter } from "./admin";
 import { budgetRouter } from "./budget";
@@ -33,6 +34,7 @@ import { webhooksRouter } from "./webhooks";
  * one line, matching the contract index in packages/api-contract.
  */
 export const v1Router = v1.router({
+	account: accountRouter,
 	accounts: accountsRouter,
 	admin: adminRouter,
 	budget: budgetRouter,

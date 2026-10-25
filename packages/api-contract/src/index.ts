@@ -1,3 +1,4 @@
+import { accountContract } from "./account";
 import { accountsContract } from "./accounts";
 import { adminContract } from "./admin";
 import { budgetContract } from "./budget";
@@ -27,6 +28,7 @@ import { tokensContract } from "./tokens";
 import { transfersContract } from "./transfers";
 import { webhooksContract } from "./webhooks";
 
+export * from "./account";
 export * from "./accounts";
 export * from "./admin";
 export * from "./budget";
@@ -64,6 +66,7 @@ export * from "./webhooks";
  * line (S3b to S3d own their folders: `src/<group>/*`).
  */
 export const contract = {
+	account: accountContract,
 	accounts: accountsContract,
 	admin: adminContract,
 	budget: budgetContract,

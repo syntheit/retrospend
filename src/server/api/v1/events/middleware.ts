@@ -29,6 +29,9 @@ export const recordsEvent = os
 			!isWriteMethod((route.method ?? "POST").toUpperCase())
 		)
 			return next();
+		// The caller's outbox, webhooks and push devices go with the account,
+		// so an event for its own deletion has no one to reach.
+		if (meta.scope === "account:delete") return next();
 
 		const intent: EventIntent = { type: meta.event, recorded: false };
 		const result = await withEventIntent(intent, async () => await next());

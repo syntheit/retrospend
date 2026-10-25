@@ -72109,6 +72109,294 @@
 				"x-required-scope": "read"
 			}
 		},
+		"/me/deletion": {
+			"get": {
+				"description": "Reads only. Show it before asking for the password: projects handed over or deleted, and payments and shares settled on your way out.",
+				"operationId": "previewMyAccountDeletion",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"projectsToDelete": {
+											"items": {
+												"properties": {
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"name": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"name"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"projectsToTransfer": {
+											"items": {
+												"properties": {
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"name": {
+														"type": "string"
+													},
+													"newOrganizerName": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"name",
+													"newOrganizerName"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"settlementsToAutoConfirm": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"settlementsToCancel": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"sharedTransactionsToAnonymize": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"verificationsToAutoAccept": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"projectsToTransfer",
+										"projectsToDelete",
+										"settlementsToAutoConfirm",
+										"settlementsToCancel",
+										"verificationsToAutoAccept",
+										"sharedTransactionsToAnonymize"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "What deleting your account would change for other people",
+				"tags": [
+					"Account"
+				],
+				"x-required-scope": "read"
+			},
+			"post": {
+				"description": "Needs the account:delete scope (the app's own sign-in; never a token) and the password. Admins cannot delete their own account. Your data and files are removed; shared expenses keep your share as Deleted User. This cannot be undone and signs you out everywhere.",
+				"operationId": "deleteMyAccount",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"password": {
+										"description": "Your account password. An account without one (social sign-in only) cannot be deleted here.",
+										"maxLength": 255,
+										"minLength": 1,
+										"type": "string"
+									}
+								},
+								"required": [
+									"password"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"account:delete"
+						]
+					},
+					{
+						"cookieAuth": [
+							"account:delete"
+						]
+					}
+				],
+				"summary": "Delete your account for good",
+				"tags": [
+					"Account"
+				],
+				"x-event-type": "user.deleted",
+				"x-required-scope": "account:delete"
+			}
+		},
 		"/needs-you": {
 			"get": {
 				"description": "Splits to review, payments to confirm, recurring entries due, import review, fix requests, budget prompts (with the envelope budget on) and setup prompts. The server sends facts; the client words each item.",
