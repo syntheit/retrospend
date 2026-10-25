@@ -4,6 +4,7 @@ import {
 	createTRPCRouter,
 	guestOrProtectedProcedure,
 } from "~/server/api/trpc";
+import { removeSelfFromSplit } from "~/server/services/corrections/guards";
 import { VerificationService } from "~/server/services/shared-expenses/verification.service";
 
 export const verificationRouter = createTRPCRouter({
@@ -104,8 +105,9 @@ export const verificationRouter = createTRPCRouter({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const actor = assertWritableParticipant(ctx.participant);
-			const service = new VerificationService(ctx.db, actor);
-			return await service.removeSelf(
+			return await removeSelfFromSplit(
+				ctx.db,
+				actor,
 				input.txnId,
 				input.confirmBalanceChange ?? false,
 			);

@@ -19,6 +19,7 @@ import {
 	type ParticipantRef,
 	sameParticipant,
 } from "~/server/services/shared-expenses/types";
+import { lockSettledSplits } from "../corrections/locks";
 import {
 	assertProjectInvolvement,
 	assertRelationship,
@@ -362,6 +363,9 @@ export const recordPayment: MoneyMutation<
 			note: input.note ?? null,
 			auditTags: input.auditTags,
 		});
+		// A final payment that brought a scope to zero locks the splits it settled.
+		if (confirmation.status === "FINALIZED")
+			await lockSettledSplits(tx, me, id);
 		return {
 			value: {
 				recorded: true,

@@ -3,7 +3,10 @@
  * Valentina, Florianópolis), each its own named test. Payments are recorded
  * through the production allocator, confirmation and counting rules.
  */
-import { describe, expect, it } from "vitest";
+import { vi, describe, expect, it } from "vitest";
+
+// The in-memory database has no lock query (see ~/test/locks-stub).
+vi.mock("~/server/services/corrections/locks", () => import("~/test/locks-stub"));
 import { computeBalance } from "~/server/services/shared-expenses/balance";
 import { computeSettlementPlan } from "~/server/services/shared-expenses/group-settlement";
 import { createStatefulDb } from "~/server/services/shared-expenses/test-utils";

@@ -5,6 +5,7 @@ import { billingPeriodRouter } from "~/server/api/routers/billingPeriod";
 import { budgetRouter } from "~/server/api/routers/budget";
 import { categoriesRouter } from "~/server/api/routers/categories";
 import { claimRouter } from "~/server/api/routers/claim";
+import { correctionsRouter } from "~/server/api/routers/corrections";
 import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { deviceSessionRouter } from "~/server/api/routers/device-session";
 import { entryRouter } from "~/server/api/routers/entry";
@@ -52,6 +53,7 @@ export const appRouter = createTRPCRouter({
 	guest: guestRouter,
 	auth: authRouter,
 	claim: claimRouter,
+	corrections: correctionsRouter,
 	billingPeriod: billingPeriodRouter,
 	budget: budgetRouter,
 	categories: categoriesRouter,

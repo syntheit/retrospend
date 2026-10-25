@@ -1,8 +1,10 @@
 /**
  * People items: payments someone says they made to you (confirm), splits
- * someone added you to (review) and splits of yours someone rejected (fix
- * the split, SPEC §5.14 "Your split was rejected"). Three queries plus the
- * alias lookup, whatever the number of items.
+ * someone added you to (review), splits of yours someone rejected (fix
+ * the split, SPEC §5.14 "Your split was rejected") and splits of yours
+ * someone asked you to fix (2C.2, from the request's ids; the message is read
+ * with the request, never put in the item). Four queries plus the alias
+ * lookup, whatever the number of items.
  *
  * Confirm and review follow peopleWaiting (people/needs.ts), the People
  * page's list; the pg test holds the two to the same ids.
@@ -68,6 +70,21 @@ function readRows(tx: Tx, me: ParticipantRef) {
 				transaction: { select: SHARED_TX },
 			},
 		}),
+		tx.fixRequest.findMany({
+			where: {
+				askedType: me.participantType,
+				askedId: me.participantId,
+				status: { in: ["PENDING", "ACCEPTED"] },
+			},
+			select: {
+				id: true,
+				requestedByType: true,
+				requestedById: true,
+				createdAt: true,
+				transaction: { select: SHARED_TX },
+			},
+			orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+		}),
 	]);
 }
 
@@ -86,7 +103,7 @@ interface Who {
 	readonly day: (d: Date) => string;
 }
 
-function refsOf([payments, pending, rejected]: Rows): ParticipantRef[] {
+function refsOf([payments, pending, rejected, asked]: Rows): ParticipantRef[] {
 	const refs: ParticipantRef[] = [];
 	for (const p of payments)
 		refs.push(
@@ -102,6 +119,7 @@ function refsOf([payments, pending, rejected]: Rows): ParticipantRef[] {
 	}
 	for (const s of rejected)
 		refs.push(refOf(s.participantType, s.participantId));
+	for (const f of asked) refs.push(refOf(f.requestedByType, f.requestedById));
 	return refs;
 }
 
@@ -124,13 +142,16 @@ export async function peopleItems(
 		day: (d) => dayKey(d, timeZone),
 	};
 	const projectIds = [
-		...new Set(rows[2].flatMap((r) => r.transaction.projectId ?? [])),
+		...new Set(
+			[...rows[2], ...rows[3]].flatMap((r) => r.transaction.projectId ?? []),
+		),
 	];
 	const roles = await buildCallerRoleMap(tx, [me], projectIds);
 	const items = [
 		...confirmItems(rows[0], who),
 		...reviewItems(rows[1], who),
 		...rejectedItems(rows[2], who, roles),
+		...fixItems(rows[3], who, roles),
 	];
 	return { items, faces };
 }
@@ -234,6 +255,35 @@ function rejectedItems(
 				),
 				currency: t.currency,
 			},
+			date: who.day(t.date),
+			title: t.description,
+			actions: fixActions(t, roles),
+		});
+	});
+}
+
+type AskedRow = Rows[3][number];
+
+/** One item per split someone asked you to fix, with everyone who asked, oldest ask first. */
+function fixItems(
+	rows: Rows[3],
+	who: Who,
+	roles: Map<string, string>,
+): NeedsYouItem[] {
+	const byTx = new Map<string, AskedRow[]>();
+	for (const r of rows) {
+		byTx.set(r.transaction.id, [...(byTx.get(r.transaction.id) ?? []), r]);
+	}
+	return [...byTx.values()].map((list) => {
+		const t = (list[0] as AskedRow).transaction;
+		return item("split.fixRequested", {
+			key: t.id,
+			entity: { kind: "sharedExpense", id: t.id },
+			entityIds: list.map((r) => r.id),
+			people: list.map((r) =>
+				who.face(refOf(r.requestedByType, r.requestedById)),
+			),
+			count: list.length,
 			date: who.day(t.date),
 			title: t.description,
 			actions: fixActions(t, roles),
