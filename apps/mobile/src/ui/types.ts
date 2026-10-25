@@ -59,3 +59,11 @@ export interface RowMenuProps {
 	onPress?: () => void;
 	children: React.ReactNode;
 }
+
+export interface ButtonProps {
+	label: string;
+	onPress?: () => void;
+	/** Filled is the one primary action on a screen; outlined is the rest. */
+	variant?: "filled" | "outlined";
+	disabled?: boolean;
+}

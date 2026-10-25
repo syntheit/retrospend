@@ -24,6 +24,7 @@ import { createOutbox, type Outbox } from "@/data/outbox";
 import { createSqliteStore } from "@/data/sqlite-store";
 import { type AuthApi, createAuthApi, type SignInStep } from "./auth-api";
 import { isSessionEnded } from "./errors";
+import { clearStaleTokenOnFirstRun } from "./first-run";
 import { type FetchMe, ME_CACHE, restoreSession } from "./restore";
 import { createTokenStore } from "./token-store";
 
@@ -137,9 +138,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			return;
 		}
 		let cancelled = false;
-		restoreSession({ tokens, fetchMe, profileCache }).then((restored) => {
-			if (!cancelled) setState(restored);
-		});
+		clearStaleTokenOnFirstRun(store, tokens)
+			.then(() => restoreSession({ tokens, fetchMe, profileCache }))
+			.then((restored) => {
+				if (!cancelled) setState(restored);
+			});
 		return () => {
 			cancelled = true;
 		};

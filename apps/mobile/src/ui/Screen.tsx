@@ -10,12 +10,23 @@ import { useTheme } from "@/theme";
  * (landscape cutouts, 3-button nav on the side); the native SafeAreaView
  * measures what is actually covered, so a tab screen whose container
  * already sits above the navigation bar gets no extra bottom padding.
+ * `flush` leaves out the side padding, for lists whose rows pad themselves.
  */
-export function Screen({ children }: { children?: ReactNode }) {
+export function Screen({
+	children,
+	flush,
+}: {
+	children?: ReactNode;
+	flush?: boolean;
+}) {
 	const { color, space } = useTheme();
 	const body = (
 		<ScrollView
-			contentContainerStyle={{ padding: space[4], gap: space[4] }}
+			contentContainerStyle={
+				flush
+					? { paddingBottom: space[8] }
+					: { padding: space[4], gap: space[4] }
+			}
 			contentInsetAdjustmentBehavior="automatic"
 			keyboardShouldPersistTaps="handled"
 			style={{ flex: 1, backgroundColor: color.bg }}

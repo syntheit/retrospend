@@ -1,3 +1,4 @@
+import "./plural-rules";
 import { useCalendars, useLocales } from "expo-localization";
 import { type ReactNode, useMemo } from "react";
 import { IntlProvider } from "use-intl";

@@ -22,10 +22,18 @@ import { TopBar } from "@/ui/TopBar";
 
 const SAMPLE: ActivityItem = {
 	id: "sample",
+	source: "personal",
+	entityId: "sample",
+	kind: "expense",
 	title: "Coffee with Lucia",
-	subline: "Food, Oct 21",
+	category: { id: "sample", name: "Food", icon: null, tone: 3 },
 	amount: { minor: 1250000, currency: "ARS" },
-	version: "sample",
+	sortKey: 1250000,
+	project: null,
+	date: "2026-10-21",
+	mine: true,
+	locked: false,
+	canEdit: true,
 };
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
