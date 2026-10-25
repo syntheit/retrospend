@@ -1,5 +1,5 @@
 # Local development database for Retrospend.
-# Fully isolated from production — a throwaway Postgres on 127.0.0.1:5434.
+# Fully isolated from production: a throwaway Postgres on 127.0.0.1:5434.
 #   pnpm db:up          start it
 #   pnpm db:sync-prod   copy the production data into it (read-only on prod)
 #   pnpm db:down        stop it

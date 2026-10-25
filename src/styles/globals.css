@@ -456,7 +456,7 @@ input[type="number"]::-webkit-outer-spin-button {
  *
  * There is NO header-scoped CSS workaround that restores the live blur here:
  *   - A ::before/::after blur layer is still a descendant of the same rounded+overflow
- *     ancestor, so Firefox clips it identically — no blur.
+ *     ancestor, so Firefox clips it identically, no blur.
  *   - transform/translateZ/will-change on the sticky element only promotes a
  *     compositing layer; it does not remove the ancestor rounded-clip that causes the
  *     drop (we shipped `will-change: transform` before and it stayed broken).
@@ -469,23 +469,23 @@ input[type="number"]::-webkit-outer-spin-button {
  * So the guarantee is a SOLID, opaque, decently-dark base (no alpha, no bleed-through)
  * that is identical in every engine. backdrop-filter is layered on purely as progressive
  * enhancement for Chrome/Safari (which render it fine); Firefox simply keeps the solid
- * base. No color-mix(in oklab, …) here — some Firefox builds silently drop it.
+ * base. No color-mix(in oklab, …) here, some Firefox builds silently drop it.
  */
 .glass-surface {
 	/* Solid, opaque, clearly-dark. L 0.82 (= --border) sits well below --accent (0.88)
-	   and --muted (0.91) — both of which read as "too light" — so the header is a
+	   and --muted (0.91), both of which read as "too light", so the header is a
 	   distinct darker bar. Warm hue family of --accent/--border. Dark foreground text
 	   (L 0.25) / muted-foreground labels (L 0.45) stay legible. Fully opaque → zero
 	   bleed-through in Firefox. */
 	background-color: oklch(0.82 0.02 55);
 	/* Progressive enhancement only (Chrome/Safari). Firefox drops this for the sticky
-	   header per bug 1803813 above and falls back to the solid base — which is fine. */
+	   header per bug 1803813 above and falls back to the solid base, which is fine. */
 	backdrop-filter: blur(10px) saturate(1.4);
 	-webkit-backdrop-filter: blur(10px) saturate(1.4);
 }
 
 .dark .glass-surface {
-	/* Solid, opaque, genuinely dark — L 0.17 is BELOW the card/row surface (0.2134) and
+	/* Solid, opaque, genuinely dark, L 0.17 is BELOW the card/row surface (0.2134) and
 	   the page (0.1776), so the header reads as a distinct dark bar, not a lighter
 	   "elevated" strip. Darker than --muted (0.252)/--accent (0.285), both of which the
 	   owner rejected as too light. Light header labels (L 0.77+) stay legible. */

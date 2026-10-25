@@ -12,7 +12,7 @@ import type { ParticipantRef } from "./types";
  *
  * YNAB-style: deletes ONLY the caller's own SplitParticipant row. Does not
  * delete other participants' splits and does not delete the transaction.
- * The remaining shares are intentionally left as-is — the unassigned amount
+ * The remaining shares are intentionally left as-is, the unassigned amount
  * becomes the creator's "hole". Balances recompute from the surviving split
  * rows automatically (see shared-expenses/balance.ts), so no balance code
  * needs to change.
@@ -61,7 +61,7 @@ export async function removeSelfIn(
 		});
 	}
 
-	// The creator can't remove just themselves — that would hide the
+	// The creator can't remove just themselves, that would hide the
 	// expense from their own view while leaving it live for everyone else
 	// with them still the payer. They should delete it instead.
 	if (
@@ -123,7 +123,7 @@ export async function removeSelfIn(
 	});
 
 	// Audit the removal. Reuses the existing PARTICIPANT_REMOVED action and
-	// SPLIT_PARTICIPANT target type — no new enum value / migration needed.
+	// SPLIT_PARTICIPANT target type, no new enum value / migration needed.
 	await logAudit(tx, {
 		actor: actor,
 		action: "PARTICIPANT_REMOVED",

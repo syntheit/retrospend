@@ -29,7 +29,7 @@ interface DataTableSelectionBarProps {
 	deleteLabel?: string;
 	onRecategorize?: (categoryId: string) => void;
 	/**
-	 * When false, the single-selection Edit affordance is hidden — used to keep
+	 * When false, the single-selection Edit affordance is hidden, used to keep
 	 * a shared expense the caller can't edit from offering a saveable editor.
 	 * Defaults to true (personal rows are always editable by their owner).
 	 */

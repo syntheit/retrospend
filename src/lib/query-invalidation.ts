@@ -4,7 +4,7 @@ import type { QueryClient } from "@tanstack/react-query";
  * Centralized mutation → query invalidation map.
  *
  * Every tRPC mutation automatically invalidates its own router's queries.
- * This map declares ADDITIONAL cross-router invalidations — the routers
+ * This map declares ADDITIONAL cross-router invalidations, the routers
  * whose queries should also be refreshed when a given mutation succeeds.
  *
  * Adding a new mutation? If it only affects its own router, no entry needed.

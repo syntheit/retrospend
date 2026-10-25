@@ -426,7 +426,7 @@ describe("Edge Case 8: Shadow profile claimed by existing user: balance merge", 
 	});
 
 	it("counts a person's share ONCE when one expense lists them as both shadow and user", async () => {
-		// Regression: an expense can list the SAME person under two alias refs —
+		// Regression: an expense can list the SAME person under two alias refs,
 		// `shadow:S` and `user:U` where U claimed S. Expanding each party to its
 		// aliases and summing every matching split row would double-count that
 		// person's share. The balance layer must dedupe per (transaction, canonical
@@ -446,7 +446,7 @@ describe("Edge Case 8: Shadow profile claimed by existing user: balance merge", 
 		const marcusUserRef = makeUserRef("marcus-user");
 
 		// Alice pays $100. Marcus's $50 share ends up on the SAME expense under BOTH
-		// his shadow ref and his (post-claim) user ref — the double-participant
+		// his shadow ref and his (post-claim) user ref, the double-participant
 		// state the dedupe must collapse.
 		const txId = "tx-double";
 		db._stores.transactions.set(txId, {
@@ -500,7 +500,7 @@ describe("Edge Case 8: Shadow profile claimed by existing user: balance merge", 
 			mkSplit("sp-marcus-user", "user", "marcus-user", 50),
 		);
 
-		// Marcus's share is $50, counted once — NOT $100 (both rows summed).
+		// Marcus's share is $50, counted once, NOT $100 (both rows summed).
 		const shadowBalance = await computeBalance(
 			db as never,
 			aliceRef,

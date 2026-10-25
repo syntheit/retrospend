@@ -51,7 +51,7 @@ export async function getFileStream(
 	path: string,
 ): Promise<NodeJS.ReadableStream> {
 	const fullPath = join(UPLOAD_DIR, path);
-	// Verify the file exists before creating a stream — createReadStream
+	// Verify the file exists before creating a stream, createReadStream
 	// doesn't throw until you try to read, which causes unhandled errors.
 	await access(fullPath);
 	return createReadStream(fullPath);
@@ -75,7 +75,7 @@ async function getDirectorySize(dir: string): Promise<number> {
 			}
 		}
 	} catch {
-		// Directory doesn't exist yet — size is 0
+		// Directory doesn't exist yet, size is 0
 	}
 	return total;
 }

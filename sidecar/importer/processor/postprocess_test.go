@@ -232,7 +232,7 @@ func TestValidateTransaction_ValidDate(t *testing.T) {
 }
 
 func TestValidateTransaction_DateWithSingleDigitMonthDay(t *testing.T) {
-	// LLMs sometimes emit "2024-6-5" — should be accepted
+	// LLMs sometimes emit "2024-6-5", should be accepted
 	tx := validTx()
 	tx.Date = "2024-6-5"
 	if err := ValidateTransaction(tx); err != nil {
@@ -255,7 +255,7 @@ func TestValidateTransaction_DateAllowed7DaysAhead(t *testing.T) {
 	tx := validTx()
 	sevenDays := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
 	tx.Date = sevenDays
-	// Should not error (or may be right on the boundary — acceptable either way)
+	// Should not error (or may be right on the boundary, acceptable either way)
 	// We just verify it doesn't crash; the exact boundary is implementation-defined.
 	_ = ValidateTransaction(tx)
 }
@@ -376,7 +376,7 @@ func TestFilterPayments_RemovesMobilePymt(t *testing.T) {
 }
 
 func TestFilterPayments_DoesNotRemovePaymentWordAlone(t *testing.T) {
-	// "payment" alone should NOT be filtered — only exact keywords like "autopay", "mobile pymt"
+	// "payment" alone should NOT be filtered, only exact keywords like "autopay", "mobile pymt"
 	txs := []models.NormalizedTransaction{
 		{Title: "Uber Payment", Amount: 25, AmountInUSD: 25, Currency: "USD", Date: "2024-06-01"},
 	}

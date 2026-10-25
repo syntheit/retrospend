@@ -117,7 +117,7 @@ export const claimRouter = createTRPCRouter({
 	/**
 	 * Organizer action: mint a signed claim link for a ghost. The caller must be
 	 * able to see the shadow (RLS: creator or shares a project with it), so we
-	 * read it through the user-scoped ctx.db — an unrelated user gets NOT_FOUND.
+	 * read it through the user-scoped ctx.db, an unrelated user gets NOT_FOUND.
 	 *
 	 * A claim link grants the holder the shadow's identity and, on claim, a
 	 * membership in EVERY project the shadow is in. So the caller must be an

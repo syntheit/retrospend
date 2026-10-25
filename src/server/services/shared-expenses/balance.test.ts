@@ -33,7 +33,7 @@ function createMockDb(
 	}[],
 ) {
 	// Participant/paidBy conditions may be expressed either flat
-	// (`participantType`/`participantId`) or as an `OR` list of refs — the claimed
+	// (`participantType`/`participantId`) or as an `OR` list of refs, the claimed
 	// -shadow alias expansion emits the latter. Normalise to a matcher.
 	const participantMatcher = (w: Record<string, unknown>) => {
 		const or = w.OR as
@@ -420,7 +420,7 @@ describe("computeBalance", () => {
 	});
 
 	it("optimistic settlements: both FINALIZED and PROPOSED statuses are queried", async () => {
-		// Settlements are optimistic — PROPOSED settlements count toward balance
+		// Settlements are optimistic, PROPOSED settlements count toward balance
 		// immediately. The query must include both FINALIZED and PROPOSED.
 		const db = createMockDb(
 			[{ payer: alice, participant: bob, shareAmount: 50, currency: "USD" }],

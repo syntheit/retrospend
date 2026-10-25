@@ -331,7 +331,7 @@ export class VerificationService {
  *
  * YNAB-style: deletes ONLY the caller's own SplitParticipant row. Does not
  * delete other participants' splits and does not delete the transaction.
- * The remaining shares are intentionally left as-is — the unassigned amount
+ * The remaining shares are intentionally left as-is, the unassigned amount
  * becomes the creator's "hole". Balances recompute from the surviving split
  * rows automatically (see shared-expenses/balance.ts), so no balance code
  * needs to change.
