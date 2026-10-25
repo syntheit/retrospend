@@ -3,10 +3,19 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockDb = vi.hoisted(() => ({
-	user: { update: vi.fn() },
-	session: { deleteMany: vi.fn() },
-}));
+const mockDb = vi.hoisted(() => {
+	const db = {
+		user: { update: vi.fn() },
+		session: { deleteMany: vi.fn() },
+		// disableUser runs in a transaction that first locks the active admins.
+		$queryRaw: vi.fn(async () => [] as unknown[]),
+		$transaction: vi.fn(),
+	};
+	db.$transaction.mockImplementation(async (cb: (tx: typeof db) => unknown) =>
+		cb(db),
+	);
+	return db;
+});
 
 vi.mock("~/env", () => ({
 	env: {

@@ -18,12 +18,14 @@ services:
       SIDECAR_URL: "http://sidecar:8080"
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       UPLOAD_DIR: /data/uploads
+      EXPORT_DIR: /data/exports
       SHOW_LANDING_PAGE: "true"
       ENABLE_LEGAL_PAGES: "true"
     ports:
       - "1997:1997"
     volumes:
       - uploads:/data/uploads
+      - exports:/data/exports
     depends_on:
       postgres:
         condition: service_healthy
@@ -107,3 +109,4 @@ volumes:
   sidecar_data:
   backup_data:
   uploads:
+  exports:
