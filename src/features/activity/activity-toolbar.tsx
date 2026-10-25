@@ -29,7 +29,8 @@ const KINDS: ActivityKind[] = [
 	"payment",
 ];
 
-function useDimItems() {
+/** The choices of every filter chip, with identity in the lead (Insights reads them too). */
+export function useDimItems() {
 	const t = useTranslations("activity.filters");
 	const categories = api.categories.getAll.useQuery(undefined, {
 		staleTime: 60_000,

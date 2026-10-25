@@ -1,0 +1,63 @@
+{
+	"metaTitle": "Insights",
+	"header": {
+		"title": "Activity"
+	},
+	"toolbar": {
+		"label": "Filter insights"
+	},
+	"summary": {
+		"lead": "Your spending in {range}",
+		"leadOn": "Your spending on {names} in {range}",
+		"leadAll": "Your spending, all time",
+		"leadAllOn": "Your spending on {names}, all time",
+		"count": "{count, plural, one {# expense} other {# expenses}}",
+		"missingRates": "No rate for {currencies}, not counted"
+	},
+	"was": {
+		"amount": "<period></period> was <amount></amount> <change></change>",
+		"none": "<period></period> had no spending"
+	},
+	"rank": {
+		"none": "No category",
+		"new": "new"
+	},
+	"category": {
+		"title": "By category",
+		"showMore": "Show {count} more",
+		"showFewer": "Show fewer"
+	},
+	"months": {
+		"title": "Month by month",
+		"list": "Open a month in Activity"
+	},
+	"ytd": {
+		"title": "Year to date vs last year",
+		"showUsd": "Show in USD",
+		"usdNote": "Each expense in USD at the rate it was saved with.",
+		"none": "No spending this year with these filters.",
+		"missingRates": "No rate for {currencies}, not counted"
+	},
+	"cashflow": {
+		"title": "Income and savings",
+		"income": "Income",
+		"saved": "Saved",
+		"perDay": "Per day",
+		"perMonth": "Per month",
+		"missingRates": "No rate for {currencies}, not counted",
+		"rate": "{percent} of income"
+	},
+	"empty": {
+		"range": "No expenses in this range",
+		"rangeHint": "Pick another range, or add an expense.",
+		"filtered": "No spending matches these filters",
+		"filteredHint": "Clear a filter or pick another range.",
+		"clear": "Clear filters",
+		"add": "Add expense"
+	},
+	"unavailable": {
+		"title": "Not available right now",
+		"hint": "This part of Insights could not load.",
+		"retry": "Try again"
+	}
+}

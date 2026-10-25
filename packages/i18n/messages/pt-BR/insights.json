@@ -1,0 +1,63 @@
+{
+	"metaTitle": "Análises",
+	"header": {
+		"title": "Atividade"
+	},
+	"toolbar": {
+		"label": "Filtrar análises"
+	},
+	"summary": {
+		"lead": "Seus gastos, {range}",
+		"leadOn": "Seus gastos com {names}, {range}",
+		"leadAll": "Seus gastos, todo o período",
+		"leadAllOn": "Seus gastos com {names}, todo o período",
+		"count": "{count, plural, one {# gasto} other {# gastos}}",
+		"missingRates": "Sem cotação para {currencies}, não contado"
+	},
+	"was": {
+		"amount": "<period></period> foi <amount></amount> <change></change>",
+		"none": "<period></period>: nenhum gasto"
+	},
+	"rank": {
+		"none": "Sem categoria",
+		"new": "nova"
+	},
+	"category": {
+		"title": "Por categoria",
+		"showMore": "Mostrar mais {count}",
+		"showFewer": "Mostrar menos"
+	},
+	"months": {
+		"title": "Mês a mês",
+		"list": "Abrir um mês em Atividade"
+	},
+	"ytd": {
+		"title": "Este ano até hoje e o ano passado",
+		"showUsd": "Mostrar em USD",
+		"usdNote": "Cada gasto em USD pela cotação de quando foi salvo.",
+		"none": "Nenhum gasto este ano com esses filtros.",
+		"missingRates": "Sem cotação para {currencies}, não contado"
+	},
+	"cashflow": {
+		"title": "Receitas e economia",
+		"income": "Receitas",
+		"saved": "Economizado",
+		"perDay": "Por dia",
+		"perMonth": "Por mês",
+		"missingRates": "Sem cotação para {currencies}, não contado",
+		"rate": "{percent} da receita"
+	},
+	"empty": {
+		"range": "Nenhum gasto neste período",
+		"rangeHint": "Escolha outro período ou adicione um gasto.",
+		"filtered": "Nenhum gasto corresponde a esses filtros",
+		"filteredHint": "Remova um filtro ou escolha outro período.",
+		"clear": "Remover filtros",
+		"add": "Adicionar gasto"
+	},
+	"unavailable": {
+		"title": "Indisponível no momento",
+		"hint": "Esta parte das Análises não carregou.",
+		"retry": "Tentar de novo"
+	}
+}

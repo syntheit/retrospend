@@ -44,6 +44,7 @@ export const insightsCashflowInputSchema = z.object({
 	range: insightsRangeSchema,
 });
 
+export type InsightsFilterInput = z.infer<typeof insightsFilterSchema>;
 export type InsightsSummaryInput = z.infer<typeof insightsSummaryInputSchema>;
 export type InsightsMonthsInput = z.infer<typeof insightsMonthsInputSchema>;
 export type InsightsYtdInput = z.infer<typeof insightsYtdInputSchema>;
