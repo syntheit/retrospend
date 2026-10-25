@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { EnvelopeRowDto, GetMonthOutput } from "~/lib/schemas/envelope";
-import { addDays, type BudgetFacts, budgetItems } from "./budget";
+import {
+	addDays,
+	type BudgetFacts,
+	budgetItems,
+	type OwedPerson,
+} from "./budget";
 
 const ars = (minor: number) => ({ minor, currency: "ARS" });
 
@@ -67,6 +72,7 @@ function month(o: {
 	envelopes?: EnvelopeRowDto[];
 	over?: { id: string; over: number }[];
 	missing?: string[];
+	unresolved?: number;
 }): GetMonthOutput {
 	const over = o.over ?? [];
 	return {
@@ -151,7 +157,7 @@ function month(o: {
 			incomplete: (o.missing ?? []).length > 0,
 		},
 		owed: { held: zero, pending: zero, people: 0, aging: 0 },
-		shares: { unresolved: 0, pending: zero },
+		shares: { unresolved: o.unresolved ?? 0, pending: zero },
 		incomplete: (o.missing ?? []).length > 0,
 		approximate: false,
 		missingRates: (o.missing ?? []).map((currency) => ({
@@ -168,12 +174,14 @@ const facts = (
 		paused: boolean;
 		starting: boolean;
 		moneyIn: BudgetFacts["moneyIn"];
+		owed: BudgetFacts["owed"];
 	}> = {},
 ): BudgetFacts => ({
 	dto,
 	paused: o.paused ?? false,
 	startingMoneyUnconfirmed: o.starting ?? false,
 	moneyIn: o.moneyIn ?? [],
+	owed: o.owed,
 });
 
 describe("budget Needs you items (SPEC §5.14)", () => {
@@ -423,5 +431,128 @@ describe("budget Needs you items (SPEC §5.14)", () => {
 	it("addDays crosses months and years", () => {
 		expect(addDays("2026-10-28", 7)).toBe("2026-11-04");
 		expect(addDays("2026-12-30", 3)).toBe("2027-01-02");
+	});
+});
+
+const person = (
+	type: "user" | "shadow",
+	id: string,
+	o: {
+		aging: boolean;
+		lines?: { amount: number; currency: string; oldestOpen: string | null }[];
+		held?: number;
+	},
+): OwedPerson => ({
+	participant: { type, id },
+	name: null,
+	lines: (o.lines ?? []).map((l) => ({
+		amount: { minor: l.amount, currency: l.currency },
+		held: ars(0),
+		oldestOpen: l.oldestOpen,
+		ageDays: null,
+	})),
+	held: ars(o.held ?? 0),
+	pending: ars(0),
+	lastPaidOn: null,
+	ageDays: null,
+	aging: o.aging,
+});
+
+describe("shares that need an envelope (D19)", () => {
+	it("three shares with no category are one item with the count", () => {
+		const [only, ...rest] = budgetItems(facts(month({ unresolved: 3 })));
+		expect(rest).toEqual([]);
+		expect(only).toMatchObject({
+			id: "budget.sharesNeedEnvelope",
+			group: "budget",
+			entity: { kind: "book", id: "book1" },
+			count: 3,
+			amount: null,
+			actions: [{ entity: "budget", id: "pickEnvelope" }],
+		});
+	});
+
+	it("none unresolved, no item; a missing rate leaves it out with the other amounts", () => {
+		expect(budgetItems(facts(month({})))).toEqual([]);
+		const types = budgetItems(
+			facts(month({ unresolved: 2, missing: ["BRL"] })),
+		).map((i) => i.type);
+		expect(types).toEqual(["budget.missingRate"]);
+	});
+});
+
+describe("owed for 60 days (SPEC 5.8, C15)", () => {
+	const aging = [
+		person("shadow", "paz", {
+			aging: true,
+			lines: [{ amount: 200_000, currency: "ARS", oldestOpen: "2026-07-15" }],
+		}),
+		person("user", "lu", {
+			aging: true,
+			held: 90_000,
+			lines: [
+				{ amount: 5_000, currency: "USD", oldestOpen: "2026-08-01" },
+				{ amount: 60_000, currency: "ARS", oldestOpen: "2026-07-01" },
+			],
+		}),
+		person("user", "ana", {
+			aging: true,
+			lines: [
+				{ amount: 1_000, currency: "USD", oldestOpen: "2026-08-20" },
+				{ amount: 2_000, currency: "EUR", oldestOpen: null },
+			],
+		}),
+		person("user", "recent", {
+			aging: false,
+			lines: [{ amount: 100, currency: "ARS", oldestOpen: "2026-10-01" }],
+		}),
+	];
+
+	it("one item per person who is aging, none for the rest", () => {
+		const items = budgetItems(facts(month({}), { owed: aging }));
+		expect(items.map((i) => i.id)).toEqual([
+			"people.owedAging:shadow:paz",
+			"people.owedAging:user:lu",
+			"people.owedAging:user:ana",
+		]);
+		expect(items[0]).toMatchObject({
+			type: "people.owedAging",
+			group: "people",
+			entity: { kind: "person", id: "shadow:paz" },
+			people: ["shadow:paz"],
+			// One currency: what they owe, in it.
+			amount: { minor: 200_000, currency: "ARS" },
+			date: "2026-07-15",
+			attention: true,
+			actions: [{ entity: "person", id: "remind" }],
+		});
+	});
+
+	it("several currencies show the value the budget holds, or no amount when it holds none", () => {
+		const [, lu, ana] = budgetItems(facts(month({}), { owed: aging }));
+		expect(lu).toMatchObject({
+			amount: ars(90_000),
+			// The oldest open part of any currency.
+			date: "2026-07-01",
+		});
+		expect(ana).toMatchObject({ amount: null, date: "2026-08-20" });
+	});
+
+	it("People items stay when a missing rate blanks the budget amounts", () => {
+		const types = budgetItems(
+			facts(month({ missing: ["BRL"] }), { owed: aging }),
+		).map((i) => i.type);
+		expect(types).toEqual([
+			"budget.missingRate",
+			"people.owedAging",
+			"people.owedAging",
+			"people.owedAging",
+		]);
+	});
+
+	it("a paused book (Just track) asks nothing", () => {
+		expect(
+			budgetItems(facts(month({}), { paused: true, owed: aging })),
+		).toEqual([]);
 	});
 });

@@ -27,7 +27,7 @@ export type IsoDate = string;
  * Every item type the spec names: the people and activity prompts of the
  * kit ledger, budget SPEC §5.14 (14 types) and the new-user setup prompts
  * of the Home mockup. Types not produced yet are listed in SEAMS
- * (catalog.ts) with what they wait for.
+ * (catalog.ts) with what they wait for; today none is.
  */
 export type NeedsYouType =
 	| "payment.confirm"
@@ -63,7 +63,9 @@ export type NeedsYouEntityKind =
 	| "importJob"
 	| "envelope"
 	| "book"
-	| "user";
+	| "user"
+	/** A person key (`user:<id>`, `shadow:<id>`, `guest:<id>`): Remind or Forgive acts on them. */
+	| "person";
 
 /**
  * An action the item supports, by entity and id. Where the entity is in

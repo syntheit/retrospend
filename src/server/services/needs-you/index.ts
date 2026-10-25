@@ -10,8 +10,12 @@ import { userTransaction } from "~/server/db-tx";
 import { hiddenRowCount } from "~/server/services/envelope/hidden-rows";
 import type { LoadedBook } from "~/server/services/envelope/inputs";
 import { ensureLegacyBook } from "~/server/services/envelope/legacy-lazy";
-import { monthViewIn } from "~/server/services/envelope/month-read";
+import {
+	monthViewIn,
+	owedInputOf,
+} from "~/server/services/envelope/month-read";
 import { isoDateIn, monthRange } from "~/server/services/envelope/months";
+import { owedPeople } from "~/server/services/envelope/owed";
 import { runPendingRules } from "~/server/services/envelope/rule.service";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import type { Prisma, PrismaClient } from "~prisma";
@@ -20,6 +24,7 @@ import { budgetItems, type CloseFacts, type MoneyInFact } from "./budget";
 import { compareItems, countByGroup } from "./catalog";
 import { loadFaces } from "./faces";
 import { peopleItems } from "./people";
+import { snoozedIds } from "./snooze";
 import type { NeedsYouItem, NeedsYouList } from "./types";
 
 type Tx = Prisma.TransactionClient;
@@ -53,6 +58,7 @@ async function budgetSource(
 		startingMoneyUnconfirmed: row.startingMoneyConfirmedAt === null,
 		closes: closeFacts(view.loaded, now),
 		hiddenRows: await hiddenRowCount(tx, userId, row),
+		owed: owedPeople(owedInputOf(view.loaded)),
 		reconcileDue:
 			row.reconciledAt !== null &&
 			isoDateIn(row.reconciledAt, row.timeZone) < view.dto.month.from,
@@ -135,17 +141,21 @@ export async function needsYouIn(
 		{ participantType: "user", participantId: userId },
 		timeZone,
 	);
-	const items = [
+	const all = [
 		...people.items,
 		...(await activityItems(tx, userId, now, timeZone)),
 		...(options.budget ? await budgetSource(tx, userId, now) : []),
 		...(await setupItems(tx, user, options.emailEnabled ?? true)),
 	].sort(compareItems);
+	// Later: what the person pushed to tomorrow is out of the list and the counts.
+	const later = await snoozedIds(tx, userId, now);
+	const items = all.filter((item) => !later.has(item.id));
+	const faces = new Set([...people.faces, ...items.flatMap((i) => i.people)]);
 	return {
 		today: dayKey(now, timeZone),
 		items,
 		counts: countByGroup(items),
-		people: await loadFaces(tx, people.faces),
+		people: await loadFaces(tx, faces),
 	};
 }
 

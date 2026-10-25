@@ -9,7 +9,7 @@
  * reaches the list (R14). A Limits book hides To assign, so it has no pool
  * or starting money items (SPEC §5.6).
  */
-import type { GetMonthOutput } from "~/lib/schemas/envelope";
+import type { GetMonthOutput, OwedDto } from "~/lib/schemas/envelope";
 import { item } from "./catalog";
 import type { IsoDate, NeedsYouItem, NeedsYouSource } from "./types";
 
@@ -27,7 +27,11 @@ export interface BudgetFacts {
 	readonly reconcileDue?: boolean;
 	/** Hidden expenses of a migrated book's first month still to answer (SPEC §8.3). */
 	readonly hiddenRows?: number;
+	/** Who owes you, from the splits replay (owedPeople): the aging ones become items. */
+	readonly owed?: readonly OwedPerson[];
 }
+
+export type OwedPerson = OwedDto["people"][number];
 
 export interface CloseFacts {
 	/** Summaries closed in the last 7 days and not acknowledged, oldest first. */
@@ -263,6 +267,43 @@ function debtDueItem(dto: GetMonthOutput): NeedsYouItem[] {
 	];
 }
 
+/**
+ * "Owed for 60 days" (SPEC 5.8, C15): one item per person whose oldest open
+ * part is 60 days old with no payment from them in 60 days. It feeds People.
+ * The amount is what they owe in their one currency; with several it is the
+ * book's held value, or none when the budget holds nothing for it.
+ */
+function agingItems(owed: readonly OwedPerson[]): NeedsYouItem[] {
+	return owed
+		.filter((person) => person.aging)
+		.map((person) => {
+			const key = `${person.participant.type}:${person.participant.id}`;
+			const [only, ...more] = person.lines;
+			const held = person.held.minor > 0 ? person.held : null;
+			return item("people.owedAging", {
+				key,
+				entity: { kind: "person", id: key },
+				people: [key],
+				amount: only && more.length === 0 ? only.amount : held,
+				date:
+					person.lines.flatMap((line) => line.oldestOpen ?? []).sort()[0] ??
+					null,
+				attention: true,
+			});
+		});
+}
+
+/** Your shares this month with no category, in Everything else until you pick one (D19). */
+function sharesItem(dto: GetMonthOutput): NeedsYouItem[] {
+	if (dto.shares.unresolved === 0) return [];
+	return [
+		item("budget.sharesNeedEnvelope", {
+			entity: { kind: "book", id: dto.book.id },
+			count: dto.shares.unresolved,
+		}),
+	];
+}
+
 export function budgetItems(facts: BudgetFacts): NeedsYouItem[] {
 	if (facts.paused) return [];
 	const { dto } = facts;
@@ -285,6 +326,7 @@ export function budgetItems(facts: BudgetFacts): NeedsYouItem[] {
 			...starting,
 			// The summary item carries no amount; a change does, so it waits.
 			...(facts.closes ? summaryItem(dto, facts.closes) : []),
+			...agingItems(facts.owed ?? []),
 		];
 	const reconcile = facts.reconcileDue
 		? [item("budget.reconcile", { entity: { kind: "book", id: dto.book.id } })]
@@ -301,6 +343,8 @@ export function budgetItems(facts: BudgetFacts): NeedsYouItem[] {
 	return [
 		...(limits ? [] : poolItems(dto, facts.moneyIn)),
 		...overspentItem(dto),
+		...sharesItem(dto),
+		...agingItems(facts.owed ?? []),
 		...debtDueItem(dto),
 		...billDueItem(dto),
 		...starting,

@@ -150,13 +150,13 @@ export const CATALOG: Readonly<Record<NeedsYouType, TypeSpec>> = {
 	},
 };
 
-/** Types no source produces yet, and what each waits for (report and GAPS). */
-export const SEAMS: Readonly<Partial<Record<NeedsYouType, string>>> = {
-	"budget.sharesNeedEnvelope":
-		"D19 share routing: splits-replay does not flag unresolved shares yet",
-	"people.owedAging":
-		"per-person age of the oldest open balance (SPEC §5.8) is not read anywhere yet",
-};
+/**
+ * Types no source produces yet, and what each waits for (report and GAPS).
+ * Empty: every type has a source. people.owedAging and
+ * budget.sharesNeedEnvelope read the month view the budget source loads, so
+ * they appear only for a person with a budget book.
+ */
+export const SEAMS: Readonly<Partial<Record<NeedsYouType, string>>> = {};
 
 /** Urgency, then the oldest date first (undated last), then id: the same input reads the same way. */
 export function compareItems(a: NeedsYouItem, b: NeedsYouItem): number {
