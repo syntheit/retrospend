@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import {
 	createContext,
 	type ReactNode,
@@ -14,22 +13,24 @@ import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
 import { Sheet } from "@/ui/Sheet";
 import type { EntryMode } from "./ComposerShell";
-import { EntryComposer, type ModeRequest } from "./EntryComposer";
+import { EntryComposer } from "./EntryComposer";
 import { useOutboxFlush } from "./useOutboxFlush";
 
 interface AddEntryApi {
-	/** Opens the composer: the Add tab on iPhone, a sheet on iPad and Android. */
+	/** Opens the composer sheet. */
 	open(mode?: EntryMode): void;
 }
 
 const AddEntryContext = createContext<AddEntryApi | null>(null);
 
-/** Height of the Material 3 navigation bar the Android FAB floats above. */
+/** Height of the Material 3 navigation bar the Android button floats above. */
 const M3_NAVIGATION_BAR = 80;
+/** The floating glass tab bar's height above the home indicator on iPhone. */
+const IPHONE_TAB_BAR = 49;
 /** The sheet's handle and title above the composer, plus its padding. */
-const ANDROID_SHEET_CHROME = 112;
+const SHEET_CHROME = Platform.OS === "ios" ? 76 : 112;
 /** The share of the screen the iPad form sheet takes. */
-const SHEET_SHARE = 0.88;
+const IPAD_SHEET_SHARE = 0.88;
 
 export function useAddEntry(): AddEntryApi {
 	const value = useContext(AddEntryContext);
@@ -38,91 +39,73 @@ export function useAddEntry(): AddEntryApi {
 }
 
 /**
- * Where "add" lives on each device (IMPLEMENTATION S5). iPhone: the tab bar's
- * own plus selects the Add tab, so `open` only navigates there. Android: the
- * extended FAB and the composer as an M3 bottom sheet (Income is the mode row
- * inside it). iPad: a glass plus and the composer as a sheet. It also keeps the
- * outbox flowing, since an entry added offline needs a sender when the
- * network returns.
+ * Where "add" lives (IMPLEMENTATION S5). The tab bar holds the five
+ * destinations: iOS keeps five slots, and react-native-screens 4.26 builds a
+ * search-role tab as a plain sixth tab, which folds Projects into More. So
+ * add is its own control floating above the bar: the extended FAB on Android
+ * (M3), a glass plus on iPhone and iPad. All open the composer in a sheet
+ * with detents (Income is the mode row inside it). It also keeps the outbox
+ * flowing, since an entry added offline needs a sender when the network
+ * returns.
  */
 export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const t = useTranslations("mobile.entry");
-	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { height, width } = useWindowDimensions();
 	const { space } = useTheme();
-	const [sheet, setSheet] = useState<ModeRequest | null>(null);
+	const [open, setOpen] = useState<EntryMode | null>(null);
 	const [mode, setMode] = useState<EntryMode>("expense");
-	const iPhone = Platform.OS === "ios" && !Platform.isPad;
+	const iPad = Platform.OS === "ios" && Platform.isPad;
 	useOutboxFlush();
 
-	// The Compose sheet gives its content the window's width without its own
-	// side padding, and runs under the status and gesture bars.
-	const sheetSize =
-		Platform.OS === "android"
-			? {
-					width: width - 2 * space[4],
-					height: Math.round(
-						height - insets.top - insets.bottom - ANDROID_SHEET_CHROME,
-					),
-				}
-			: { height: Math.round(height * SHEET_SHARE) };
+	// The sheet gives its content the window's width without its own side
+	// padding, and on phones runs under the status and gesture bars.
+	const sheetSize = iPad
+		? { height: Math.round(height * IPAD_SHEET_SHARE) }
+		: {
+				width: width - 2 * space[4],
+				height: Math.round(height - insets.top - insets.bottom - SHEET_CHROME),
+			};
+	const barHeight =
+		Platform.OS === "android" ? M3_NAVIGATION_BAR : iPad ? 0 : IPHONE_TAB_BAR;
 
-	const open = useCallback(
-		(next: EntryMode = "expense") => {
-			if (iPhone) {
-				// `at` makes a second request for the same mode count again.
-				router.navigate({
-					pathname: "/add",
-					params: { mode: next, at: String(Date.now()) },
-				});
-				return;
-			}
-			setMode(next);
-			setSheet({ mode: next, at: Date.now() });
-		},
-		[iPhone, router],
-	);
-	const api = useMemo(() => ({ open }), [open]);
-	const close = useCallback(() => setSheet(null), []);
+	const show = useCallback((next: EntryMode = "expense") => {
+		setMode(next);
+		setOpen(next);
+	}, []);
+	const api = useMemo(() => ({ open: show }), [show]);
+	const close = useCallback(() => setOpen(null), []);
 
 	return (
 		<AddEntryContext.Provider value={api}>
 			{children}
-			{iPhone ? null : (
-				<View
-					pointerEvents="box-none"
-					style={{
-						position: "absolute",
-						right: space[4],
-						bottom:
-							insets.bottom +
-							space[4] +
-							(Platform.OS === "android" ? M3_NAVIGATION_BAR : 0),
-					}}
-				>
-					<AddButton label={t("addExpense")} onPress={() => open("expense")} />
+			<View
+				pointerEvents="box-none"
+				style={{
+					position: "absolute",
+					right: space[4],
+					bottom: insets.bottom + space[4] + barHeight,
+				}}
+			>
+				<AddButton label={t("addExpense")} onPress={() => show("expense")} />
+			</View>
+			<Sheet
+				detents={["large"]}
+				onClose={close}
+				title={mode === "expense" ? t("titleExpense") : t("titleIncome")}
+				visible={open !== null}
+			>
+				<View style={sheetSize}>
+					{open ? (
+						<EntryComposer
+							initialMode={open}
+							onDone={close}
+							onModeChange={setMode}
+							surface
+						/>
+					) : null}
 				</View>
-			)}
-			{iPhone ? null : (
-				<Sheet
-					detents={["large"]}
-					onClose={close}
-					title={mode === "expense" ? t("titleExpense") : t("titleIncome")}
-					visible={sheet !== null}
-				>
-					<View style={sheetSize}>
-						{sheet ? (
-							<EntryComposer
-								initialMode={sheet.mode}
-								onDone={close}
-								onModeChange={setMode}
-								surface
-							/>
-						) : null}
-					</View>
-				</Sheet>
-			)}
+			</Sheet>
 		</AddEntryContext.Provider>
 	);
 }

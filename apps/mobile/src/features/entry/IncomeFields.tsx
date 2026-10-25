@@ -1,7 +1,6 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
-import { Segmented } from "@/ui/Segmented";
 import { Chip } from "./Chip";
 import type { IncomeDraft, IncomeErrors } from "./draft";
 import { Face } from "./Face";
@@ -67,15 +66,22 @@ export function IncomeFields({
 			{catalog.hasBudget ? (
 				<View style={{ gap: space[2] }}>
 					<FieldLabel>{t("afterSaving")}</FieldLabel>
-					<Segmented
+					<View
 						accessibilityLabel={t("afterSaving")}
-						onChange={(value) => onChange({ usePlan: value === "plan" })}
-						options={[
-							{ value: "later", label: t("notPlannedYet") },
-							{ value: "plan", label: t("usePlan") },
-						]}
-						value={draft.usePlan ? "plan" : "later"}
-					/>
+						accessibilityRole="radiogroup"
+						style={{ flexDirection: "row", flexWrap: "wrap", gap: space[2] }}
+					>
+						<Chip
+							label={t("notPlannedYet")}
+							onPress={() => onChange({ usePlan: false })}
+							selected={!draft.usePlan}
+						/>
+						<Chip
+							label={t("usePlan")}
+							onPress={() => onChange({ usePlan: true })}
+							selected={draft.usePlan}
+						/>
+					</View>
 				</View>
 			) : null}
 		</>

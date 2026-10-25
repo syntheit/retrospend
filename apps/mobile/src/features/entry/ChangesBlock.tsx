@@ -80,41 +80,47 @@ export function ChangesBlock({
 				</Text>
 			) : null}
 			{lines?.moved.map((line) => (
-				<View
-					accessible
-					key={line.key}
-					style={{
-						flexDirection: "row",
-						justifyContent: "space-between",
-						gap: space[3],
-					}}
-				>
-					<Text
+				<View accessible key={line.key}>
+					<View
 						style={{
-							flexShrink: 1,
-							color: color.fg,
-							fontSize: type.body.size,
+							flexDirection: "row",
+							justifyContent: "space-between",
+							gap: space[3],
 						}}
 					>
-						{name(line.figure, false)}
-					</Text>
-					<Text
-						style={{
-							flexShrink: 1,
-							color: color.fg,
-							fontSize: type.body.size,
-							fontVariant: ["tabular-nums"],
-							fontWeight: "500",
-							textAlign: "right",
-						}}
-					>
-						{money(line.delta, "exceptZero")}
-						{line.after ? (
-							<Text style={{ color: color.fg2, fontWeight: "400" }}>
-								{` ${t("to", { amount: money(line.after) })}`}
-							</Text>
-						) : null}
-					</Text>
+						<Text
+							style={{
+								flexShrink: 1,
+								color: color.fg,
+								fontSize: type.body.size,
+							}}
+						>
+							{name(line.figure, false)}
+						</Text>
+						<Text
+							style={{
+								color: color.fg,
+								fontSize: type.body.size,
+								fontVariant: ["tabular-nums"],
+								fontWeight: "500",
+								textAlign: "right",
+							}}
+						>
+							{money(line.delta, "exceptZero")}
+						</Text>
+					</View>
+					{line.after ? (
+						<Text
+							style={{
+								color: color.fg2,
+								fontSize: type.small.size,
+								fontVariant: ["tabular-nums"],
+								textAlign: "right",
+							}}
+						>
+							{t("to", { amount: money(line.after) })}
+						</Text>
+					) : null}
 				</View>
 			))}
 			{lines && lines.stays.length > 0 ? (

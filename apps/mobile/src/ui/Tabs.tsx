@@ -5,17 +5,16 @@ import { useTheme } from "@/theme";
 
 /**
  * Five destinations on every device (N65): Home, Activity, Budget, People,
- * Projects. iPhone gets a trailing "+" item: iOS 26 sets the search-role
- * item apart at the trailing end, so the "+" uses that slot with its own
- * icon, and its accessibility label replaces the system "Search". Android
- * adds with an extended FAB and iPad with a toolbar button instead (platform
- * UI layer), so the item is hidden there. iPad turns the bar into a sidebar.
- * Active nav is brand (GUIDELINE §2.1); the bar itself is a theme surface.
+ * Projects. Add is not a tab: iOS holds five slots, and react-native-screens
+ * 4.26 builds a "search" tab as a plain sixth tab (a UITabBarItem system
+ * item, not a UISearchTab), which folds Projects into More. The Add route
+ * stays here, hidden, and AddEntryProvider floats the add button above the bar.
+ * iPad turns the bar into a sidebar. Active nav is brand (GUIDELINE §2.1);
+ * the bar itself is a theme surface.
  */
 export function Tabs() {
 	const t = useTranslations("mobile.tabs");
 	const { color } = useTheme();
-	const iPhone = Platform.OS === "ios" && !Platform.isPad;
 	// Android draws an M3 navigation bar in token colors; iOS keeps the
 	// system bar material and takes only the brand tint.
 	const m3 = Platform.OS === "android";
@@ -33,7 +32,7 @@ export function Tabs() {
 					: undefined
 			}
 			rippleColor={color.brandSoft}
-			sidebarAdaptable={!iPhone}
+			sidebarAdaptable
 			tintColor={color.brand}
 		>
 			<NativeTabs.Trigger name="home">
@@ -55,15 +54,6 @@ export function Tabs() {
 			<NativeTabs.Trigger name="projects">
 				<NativeTabs.Trigger.Label>{t("projects")}</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon md="folder" sf="folder" />
-			</NativeTabs.Trigger>
-			<NativeTabs.Trigger
-				accessibilityLabel={t("add")}
-				hidden={!iPhone}
-				name="add"
-				role="search"
-			>
-				<NativeTabs.Trigger.Label>{t("add")}</NativeTabs.Trigger.Label>
-				<NativeTabs.Trigger.Icon md="add" sf="plus" />
 			</NativeTabs.Trigger>
 		</NativeTabs>
 	);

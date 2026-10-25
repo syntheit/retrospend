@@ -40,7 +40,6 @@ export function ComposerShell({
 	blocked,
 	typing,
 	amountError,
-	bottomInset = 0,
 	surface,
 	onKeypadRequest,
 	children,
@@ -61,8 +60,6 @@ export function ComposerShell({
 	blocked: boolean;
 	typing: boolean;
 	amountError: boolean;
-	/** Room for a bar that floats over the screen, like the iPhone tab bar. */
-	bottomInset?: number;
 	/** On a sheet: the sheet's own surface, with no panel of the page's color. */
 	surface?: boolean;
 	/** The amount was touched: stop typing in the text field. */
@@ -115,7 +112,7 @@ export function ComposerShell({
 					gap: space[2],
 					paddingHorizontal: space[4],
 					paddingTop: space[2],
-					paddingBottom: space[2] + bottomInset,
+					paddingBottom: space[2],
 					borderTopWidth: 1,
 					borderTopColor: color.line,
 				}}

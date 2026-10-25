@@ -60,11 +60,7 @@ export function Sheet({
 			scrimColor={color.scrim}
 			snapPoints={detents?.map((d) => (d === "medium" ? "half" : "full"))}
 		>
-			{Platform.OS === "android" ? (
-				<RNHostView matchContents={{ vertical: true }}>{content}</RNHostView>
-			) : (
-				content
-			)}
+			<RNHostView matchContents={{ vertical: true }}>{content}</RNHostView>
 		</BottomSheet>
 	);
 }

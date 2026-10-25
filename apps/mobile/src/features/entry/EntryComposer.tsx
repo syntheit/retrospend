@@ -27,21 +27,11 @@ import { type SaveOutcome, saveEntry, undoSaved } from "./queue";
 import { SyncIssues } from "./SyncIssues";
 import type { EntryCatalog } from "./types";
 
-/** A request to open in a mode; `at` changes on every request, even for the same mode. */
-export interface ModeRequest {
-	mode: EntryMode;
-	at: number;
-}
-
 interface ComposerProps {
 	onDone: () => void;
 	initialMode?: EntryMode;
-	/** The mode to switch to when it changes, for a screen that stays mounted. */
-	modeRequest?: ModeRequest;
 	/** The host shows the mode in its title. */
 	onModeChange?: (mode: EntryMode) => void;
-	/** Room for a bar that floats over the screen, like the iPhone tab bar. */
-	bottomInset?: number;
 	/** The composer sits on a sheet: it takes the sheet's surface, not the page's. */
 	surface?: boolean;
 }
@@ -80,10 +70,8 @@ function Notice({ title, detail }: { title: string; detail?: string }) {
 function Form({
 	catalog,
 	initialMode = "expense",
-	modeRequest,
 	onDone,
 	onModeChange,
-	bottomInset,
 	surface,
 }: ComposerProps & { catalog: EntryCatalog }) {
 	const t = useTranslations("mobile.entry");
@@ -109,21 +97,11 @@ function Form({
 		}),
 		[me?.defaultCurrency, me?.homeCurrency, catalog.hasBudget],
 	);
-	const [mode, setMode] = useState(modeRequest?.mode ?? initialMode);
+	const [mode, setMode] = useState(initialMode);
 	const [drafts, setDrafts] = useState(fresh);
 	const [tried, setTried] = useState(false);
 	const [typing, setTyping] = useState(false);
 	const [busy, setBusy] = useState(false);
-
-	// The Add tab stays mounted; a later "Add income" request switches it.
-	const requestedAt = modeRequest?.at;
-	useEffect(() => {
-		if (requestedAt === undefined || !modeRequest) return;
-		setMode(modeRequest.mode);
-		setTried(false);
-		onModeChange?.(modeRequest.mode);
-		// Only a new request counts, not a new callback.
-	}, [requestedAt]);
 
 	// Android keeps a field focused after the keyboard is dismissed.
 	useEffect(() => {
@@ -224,7 +202,6 @@ function Form({
 			amountError={tried && amountProblem === true}
 			amountText={active.amountText}
 			blocked={blocked}
-			bottomInset={bottomInset}
 			busy={busy}
 			currencies={catalog.currencies}
 			currency={active.currency}
