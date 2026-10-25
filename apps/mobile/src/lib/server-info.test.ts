@@ -10,7 +10,7 @@ const INFO: ServerInfo = {
 	version: "0.5.0",
 	apiVersion: "v1",
 	minClientVersion: "0.1.0",
-	features: { apiV1: true, uiV2: false, envelopeBudget: false },
+	features: {},
 	auth: { methods: ["password", "totp", "bearer"], signUp: "inviteOnly" },
 	push: { transports: ["unifiedpush"] },
 };

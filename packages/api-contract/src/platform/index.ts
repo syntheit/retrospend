@@ -15,7 +15,7 @@ export const PUSH_TRANSPORTS = ["apns", "fcm", "unifiedpush"] as const;
 export const serverInfoSchema = z
 	.object({
 		name: z.literal("Retrospend"),
-		version: z.string().meta({ examples: ["0.4.5"] }),
+		version: z.string().meta({ examples: ["0.5.0"] }),
 		apiVersion: z.literal("v1"),
 		minClientVersion: z.string().meta({
 			description: "Older app builds must ask the user to update.",
