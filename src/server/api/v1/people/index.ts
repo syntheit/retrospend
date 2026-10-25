@@ -1,3 +1,4 @@
+import * as gap from "~/server/services/api-v1/gap-reads";
 import * as people from "~/server/services/api-v1/people";
 import {
 	EMAIL_CHECKS,
@@ -10,6 +11,9 @@ import { enforceRateLimit } from "../rate-limit";
 const p = v1.people;
 
 export const peopleRouter = {
+	frequent: p.frequent.handler(
+		serve(({ context }) => gap.listFrequentPartners(signedIn(context))),
+	),
 	list: p.list.handler(
 		serve(({ context }) => people.listPeople(signedIn(context))),
 	),

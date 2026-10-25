@@ -41,10 +41,25 @@ export const DEVICE_CLIENT_IDS: readonly string[] = [
 ];
 
 /**
+ * Scopes that only a signed-in web or mobile session holds. They are not in
+ * SCOPES on purpose: no personal access token, API key or device session can
+ * be given one (parseScopeList does not know them), so the token sheet, the
+ * device approval and `GET /me` never list them.
+ * - `account:delete`: delete the signed-in user's own account.
+ */
+export const SESSION_SCOPES = ["account:delete"] as const;
+
+export type SessionScope = (typeof SESSION_SCOPES)[number];
+
+/**
  * What a route needs. `public` routes skip authentication, the apiV1 flag
  * and the scope check; only `GET /server-info` is public today.
  */
-export type RouteScope = Scope | "public";
+export type RouteScope = Scope | SessionScope | "public";
+
+export function isSessionScope(value: string): value is SessionScope {
+	return (SESSION_SCOPES as readonly string[]).includes(value);
+}
 
 export function isScope(value: string): value is Scope {
 	return (SCOPES as readonly string[]).includes(value);

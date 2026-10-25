@@ -12,6 +12,9 @@ import {
 	undoInputSchema,
 } from "../ledger";
 import { personRefSchema } from "../people/schemas";
+import { sharedExpenseExtrasContract } from "./extras";
+
+export * from "./extras";
 
 const TAG = ["Shared expenses"];
 
@@ -146,6 +149,7 @@ export const rejectSharedExpenseSchema = z
  * them: GET /people/{type}/{id}/ledger, GET /projects/{id} and GET /expenses.
  */
 export const sharedExpensesContract = {
+	...sharedExpenseExtrasContract,
 	create: v1
 		.route({
 			method: "POST",

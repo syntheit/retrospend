@@ -1,3 +1,4 @@
+import * as gap from "~/server/services/api-v1/gap-reads";
 import {
 	accountOps as ops,
 	previewUndoAccountWrite,
@@ -20,6 +21,11 @@ const preview = <I, V>(op: MoneyOp<I, V>) =>
 	h((caller, input: I) => op.preview(caller, input));
 
 export const accountsRouter = {
+	runway: a.runway.handler(
+		h((caller, input: { currency?: string }) =>
+			gap.readRunway(caller, input.currency),
+		),
+	),
 	list: a.list.handler(h(read.list)),
 	netWorth: a.netWorth.handler(h(read.netWorth)),
 	defaults: a.defaults.handler(h(read.defaults)),

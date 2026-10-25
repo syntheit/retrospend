@@ -1,3 +1,4 @@
+import * as gap from "~/server/services/api-v1/gap-reads";
 import * as settings from "~/server/services/api-v1/settings";
 import { serve } from "../core/serve";
 import { signedIn, v1 } from "../middleware";
@@ -5,6 +6,9 @@ import { signedIn, v1 } from "../middleware";
 const s = v1.settings;
 
 export const settingsRouter = {
+	aiStatus: s.aiStatus.handler(
+		serve(({ context }) => gap.readAiStatus(signedIn(context))),
+	),
 	get: s.get.handler(
 		serve(({ context }) => settings.readGeneralSettings(signedIn(context))),
 	),
