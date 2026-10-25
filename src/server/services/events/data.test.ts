@@ -52,14 +52,40 @@ describe("extractEventData", () => {
 
 	it("ignores keys that are not plain identifiers, so user text cannot become a name", () => {
 		const { entityId, data } = extractEventData({
-			byCategory: {
+			items: {
 				"Coffee and snacks": { id: "c1", otherId: "x1" },
 				"a.b": { id: "c2", otherId: "x2" },
 				ok: { id: "c3", otherId: "x3" },
 			},
 		});
-		expect(entityId).toBe("c3");
-		expect(data.ids).toEqual({ "byCategory.ok.otherId": "x3" });
+		expect(entityId).toBeNull();
+		expect(data.ids).toEqual({});
+	});
+
+	it("does not let a key a person typed into a name, in ids or amounts", () => {
+		const { entityId, data } = extractEventData({
+			byName: { Groceries: { minor: 5, currency: "USD" } },
+			tags: { RentForAna: { personId: "u9", id: "t1" } },
+			amount: { minor: 7, currency: "USD" },
+		});
+		expect(entityId).toBeNull();
+		expect(data.amounts).toEqual([
+			{ name: "amount", minor: 7, currency: "USD" },
+		]);
+		expect(data.ids).toEqual({});
+		expect(JSON.stringify(data)).not.toMatch(
+			/Groceries|RentForAna|byName|tags/,
+		);
+	});
+
+	it("still walks arrays of known fields by position", () => {
+		const { data } = extractEventData({
+			items: [{ categoryId: "c1", amount: { minor: 1, currency: "USD" } }],
+		});
+		expect(data.ids).toEqual({ "items.0.categoryId": "c1" });
+		expect(data.amounts).toEqual([
+			{ name: "items.0.amount", minor: 1, currency: "USD" },
+		]);
 	});
 
 	it("skips dates, decimals and class instances, and a non-integer Money", () => {

@@ -19,6 +19,30 @@ const MAX_DEPTH = 4;
 const SKIP_KEYS = new Set(["plan", "stamp", "undo", "args", "guard", "userId"]);
 /** A key that is safe to put in a name: no free text can have this shape and a dot. */
 const NAME_SEGMENT = /^[A-Za-z][A-Za-z0-9_-]{0,31}$/;
+/**
+ * The only field names the walker descends through. They come from the
+ * contract's own DTOs. A key outside this list could be a map keyed by what
+ * a person typed (`{ byName: { Groceries: ... } }`), and a typed key must
+ * never become part of a name. Array positions are numbers, not keys, so
+ * they always pass. Add a name here when a DTO adds a nested field.
+ */
+const KNOWN_SEGMENTS: ReadonlySet<string> = new Set(
+	`value result results entry entries item items row rows change changes
+	expense expenses income transfer transfers payment payments person people
+	project projects account accounts category categories envelope envelopes
+	shared sharedExpense share shares movement draft rule group debt book
+	month settlement participant participants leg legs fee source target
+	from to before after delta current next previous original home foreign
+	amount amounts total balance available assigned spent left limit paid
+	owed received sent held holds need interest principal minimum savings
+	worth part mine rest short over carry cost price base typed suggested
+	activity booked charged confirmStartingMoney difference effect imbalance
+	lines moneyIn netWorth owedToYou youOwe withMe myShare myBalance
+	toAssign uncovered usualPerDay perDay perMonth year quarter progress
+	revaluation returned pending full everything net`
+		.split(/\s+/)
+		.filter(Boolean),
+);
 const ID_KEY = /^(id|[a-z][A-Za-z0-9]*Id)$/;
 
 type Walked = {
@@ -80,7 +104,11 @@ export function extractEventData(value: unknown): Walked {
 					}
 					if (Object.keys(ids).length >= EVENT_DATA_LIMIT) truncated = true;
 					else ids[[...path, key].join(".")] = child;
-				} else if (typeof child === "object" && child !== null) {
+				} else if (
+					typeof child === "object" &&
+					child !== null &&
+					KNOWN_SEGMENTS.has(key)
+				) {
 					next.push({ path: [...path, key], node: child });
 				}
 			}

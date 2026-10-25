@@ -1,8 +1,10 @@
 -- API v1 platform (G5b): the event outbox, webhooks and their delivery log.
 -- 1. api_event: one row per event per user who sees it, inserted in the same
 --    transaction as the change. The app role may read its own rows and insert
---    rows it caused (the actor may also write a row for another user it
---    affects); it can never update or delete one. `txid` (the writing
+--    rows for itself only (a shared write that must reach another person's
+--    feed needs recipients computed from membership first, so no policy lets
+--    an actor write into someone else's feed); it can never update or delete
+--    one. `txid` (the writing
 --    transaction) and `seq` order the feed: readers only see rows whose txid
 --    is below the oldest open transaction, so a late commit is never skipped.
 --    The owner connection (the webhook worker, retention) bypasses RLS: RLS
@@ -37,7 +39,7 @@ CREATE INDEX        IF NOT EXISTS "api_event_unfanned_idx"        ON "api_event"
 CREATE TABLE IF NOT EXISTS "webhook" (
   "id"                  TEXT          NOT NULL,
   "userId"              TEXT          NOT NULL,
-  "name"                VARCHAR(200)  NOT NULL,
+  "name"                TEXT          NOT NULL,
   "url"                 VARCHAR(2048) NOT NULL,
   "eventTypes"          TEXT[]        NOT NULL DEFAULT ARRAY[]::TEXT[],
   "secretCipher"        VARCHAR(512)  NOT NULL,
@@ -80,6 +82,7 @@ CREATE TABLE IF NOT EXISTS "webhook_delivery" (
 CREATE UNIQUE INDEX IF NOT EXISTS "webhook_delivery_webhookId_eventId_key" ON "webhook_delivery"("webhookId", "eventId");
 CREATE INDEX IF NOT EXISTS "webhook_delivery_webhookId_createdAt_idx"ON "webhook_delivery"("webhookId", "createdAt");
 CREATE INDEX IF NOT EXISTS "webhook_delivery_status_nextAttemptAt_idx" ON "webhook_delivery"("status", "nextAttemptAt");
+CREATE INDEX IF NOT EXISTS "webhook_delivery_eventId_idx" ON "webhook_delivery"("eventId");
 CREATE INDEX IF NOT EXISTS "webhook_delivery_userId_idx" ON "webhook_delivery"("userId");
 
 DO $$ BEGIN
@@ -115,10 +118,7 @@ CREATE POLICY api_event_read ON "api_event"
 DROP POLICY IF EXISTS api_event_insert ON "api_event";
 CREATE POLICY api_event_insert ON "api_event"
   AS PERMISSIVE FOR INSERT TO retrospend_app
-  WITH CHECK (
-    "userId" = current_setting('app.current_user_id', TRUE)
-    OR "actorUserId" = current_setting('app.current_user_id', TRUE)
-  );
+  WITH CHECK ("userId" = current_setting('app.current_user_id', TRUE));
 
 -- Default privileges give the app role every verb on new tables; events are
 -- append-only for it.
