@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
+import { DocItem } from "../../_components/doc-item"
 import { Callout } from "../../_components/callout"
 import { BankImportDemoEmbed } from "../../_components/demo-embeds"
 import { DocsNav } from "../../_components/docs-nav"
@@ -34,25 +34,11 @@ export default function BankImportPage() {
 				Retrospend supports two ways to import transactions:
 			</p>
 			<div className="grid gap-3 sm:grid-cols-2">
-				<Card className="border-primary/20 bg-primary/5">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Bank Statement (AI)</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							Upload a PDF or XLSX bank statement. Retrospend&apos;s AI extracts transactions,
+				<DocItem title="Bank Statement (AI)">Upload a PDF or XLSX bank statement. Retrospend&apos;s AI extracts transactions,
 							parses amounts and dates, and assigns categories automatically. Best for
-							statements with complex formatting.
-						</p>
-					</CardContent>
-				</Card>
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Retrospend CSV</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							Import a CSV file matching Retrospend&apos;s format (or exported from another
-							Retrospend instance). Column mapping is automatic, so just upload and review.
-						</p>
-					</CardContent>
-				</Card>
+							statements with complex formatting.</DocItem>
+				<DocItem title="Retrospend CSV">Import a CSV file matching Retrospend&apos;s format (or exported from another
+							Retrospend instance). Column mapping is automatic, so just upload and review.</DocItem>
 			</div>
 
 			<h2 id="review-before-importing" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">

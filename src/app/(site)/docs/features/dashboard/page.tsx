@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
+import { DocItem } from "../../_components/doc-item"
 import { Callout } from "../../_components/callout"
-import { DashboardDemoEmbed } from "../../_components/demo-embeds"
+import { ProductShot } from "../../../_components/product-shot"
 import { DocsNav } from "../../_components/docs-nav"
 import { getAdjacentDocs } from "../../docs-config"
 
@@ -25,7 +25,9 @@ export default function DashboardPage() {
 				</p>
 			</div>
 
-			<DashboardDemoEmbed />
+			<div className="my-6">
+				<ProductShot name="home" />
+			</div>
 
 			<h2 id="what-you-see" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
 				What You See
@@ -40,12 +42,7 @@ export default function DashboardPage() {
 					{ title: "Category Donut", desc: "Visual breakdown of where your money goes. Click a slice to highlight it; click the legend to hide categories." },
 					{ title: "Recent Expenses", desc: "The last 5 transactions with amount, category badge, and date. Click any to edit." },
 				].map((card) => (
-					<Card key={card.title} className="border-border bg-card">
-						<CardContent className="p-4">
-							<p className="font-semibold text-sm">{card.title}</p>
-							<p className="mt-1 text-muted-foreground text-sm">{card.desc}</p>
-						</CardContent>
-					</Card>
+					<DocItem key={card.title} title={card.title}>{card.desc}</DocItem>
 				))}
 			</div>
 

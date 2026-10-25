@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
+import { DocItem } from "../../_components/doc-item"
 import { Callout } from "../../_components/callout"
 import { SplitCalculatorDemoEmbed } from "../../_components/demo-embeds"
 import { DocsNav } from "../../_components/docs-nav"
@@ -49,12 +49,7 @@ export default function SharedExpensesPage() {
 					{ title: "Percentage", desc: "Assign a percentage to each person. Percentages must total 100%." },
 					{ title: "Shares", desc: "Assign share units (e.g. 2, 1, 1). Useful when one person should pay double." },
 				].map((card) => (
-					<Card key={card.title} className="border-border bg-card">
-						<CardContent className="p-4">
-							<p className="font-semibold text-sm">{card.title}</p>
-							<p className="mt-1 text-muted-foreground text-sm">{card.desc}</p>
-						</CardContent>
-					</Card>
+					<DocItem key={card.title} title={card.title}>{card.desc}</DocItem>
 				))}
 			</div>
 

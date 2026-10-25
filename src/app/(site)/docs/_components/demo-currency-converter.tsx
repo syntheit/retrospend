@@ -3,7 +3,6 @@
 import { ArrowUpDown } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
 import { CurrencyFlag } from "~/components/ui/currency-flag"
 import { Input } from "~/components/ui/input"
 import {
@@ -147,8 +146,7 @@ export function DemoCurrencyConverter() {
 	}
 
 	return (
-		<Card>
-			<CardContent className="space-y-0 p-4">
+		<div>
 				{/* Top row */}
 				<div className="flex items-center gap-3">
 					<CurrencySelect onChange={setTopCurrency} value={topCurrency} />
@@ -223,8 +221,7 @@ export function DemoCurrencyConverter() {
 						value={bottomAmount}
 					/>
 				</div>
-			</CardContent>
-		</Card>
+			</div>
 	)
 }
 

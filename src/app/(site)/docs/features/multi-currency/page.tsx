@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
+import { DocItem } from "../../_components/doc-item"
 import { Callout } from "../../_components/callout"
 import { CurrencyConverterDemoEmbed } from "../../_components/demo-embeds"
 import { DocsNav } from "../../_components/docs-nav"
@@ -60,22 +60,8 @@ export default function MultiCurrencyPage() {
 				and wealth asset currencies. Crypto rates work slightly differently:
 			</p>
 			<div className="grid gap-3 sm:grid-cols-2">
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Fiat Rates</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							Stored as units per USD (e.g. 1 USD = 149.5 JPY). To convert JPY to USD, divide by the rate.
-						</p>
-					</CardContent>
-				</Card>
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Crypto Rates</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							Stored as USD per unit (e.g. 1 BTC = $97,500). To convert BTC to USD, multiply by the rate.
-						</p>
-					</CardContent>
-				</Card>
+				<DocItem title="Fiat Rates">Stored as units per USD (e.g. 1 USD = 149.5 JPY). To convert JPY to USD, divide by the rate.</DocItem>
+				<DocItem title="Crypto Rates">Stored as USD per unit (e.g. 1 BTC = $97,500). To convert BTC to USD, multiply by the rate.</DocItem>
 			</div>
 			<p className="mt-3 text-muted-foreground leading-relaxed">
 				This distinction is handled automatically; you just enter the amount and Retrospend

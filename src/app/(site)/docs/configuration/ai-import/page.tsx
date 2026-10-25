@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
+import { DocItem } from "../../_components/doc-item"
 import { Callout } from "../../_components/callout"
 import { CodeBlock } from "../../_components/code-block"
 import { DocsNav } from "../../_components/docs-nav"
@@ -133,24 +133,10 @@ export default function AiImportPage() {
 				Providers
 			</h2>
 			<div className="grid gap-3 sm:grid-cols-2">
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Ollama (Local)</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							Free, runs on your hardware. Requires Docker or a local install.
-							GPU is optional but speeds up processing.
-						</p>
-					</CardContent>
-				</Card>
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">OpenRouter (Cloud)</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							Pay-per-token API. No local setup. Faster for large batches.
-							Requires an API key from openrouter.ai.
-						</p>
-					</CardContent>
-				</Card>
+				<DocItem title="Ollama (Local)">Free, runs on your hardware. Requires Docker or a local install.
+							GPU is optional but speeds up processing.</DocItem>
+				<DocItem title="OpenRouter (Cloud)">Pay-per-token API. No local setup. Faster for large batches.
+							Requires an API key from openrouter.ai.</DocItem>
 			</div>
 
 			<h2

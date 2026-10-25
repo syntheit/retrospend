@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
+import { DocItem } from "../../_components/doc-item"
 import { DocsNav } from "../../_components/docs-nav"
 import { getAdjacentDocs } from "../../docs-config"
 
@@ -120,30 +120,9 @@ export default function StoragePage() {
 				Uploaded images are automatically resized and converted to WebP.
 			</p>
 			<div className="grid gap-3 sm:grid-cols-3">
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Avatars</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							400x400 WebP. Cropped on upload via the avatar editor.
-						</p>
-					</CardContent>
-				</Card>
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Project Images</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							400x400 WebP. Used as project cover images.
-						</p>
-					</CardContent>
-				</Card>
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="font-semibold text-sm">Receipts</p>
-						<p className="mt-1 text-muted-foreground text-sm">
-							Max 1200px wide, WebP. Original aspect ratio preserved.
-						</p>
-					</CardContent>
-				</Card>
+				<DocItem title="Avatars">400x400 WebP. Cropped on upload via the avatar editor.</DocItem>
+				<DocItem title="Project Images">400x400 WebP. Used as project cover images.</DocItem>
+				<DocItem title="Receipts">Max 1200px wide, WebP. Original aspect ratio preserved.</DocItem>
 			</div>
 
 			<h2

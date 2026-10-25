@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
+import { DocItem } from "../../_components/doc-item"
 import { Callout } from "../../_components/callout"
-import { WealthDemoEmbed } from "../../_components/demo-embeds"
+import { ProductShot } from "../../../_components/product-shot"
 import { DocsNav } from "../../_components/docs-nav"
 import { getAdjacentDocs } from "../../docs-config"
 
@@ -25,7 +25,9 @@ export default function WealthPage() {
 				</p>
 			</div>
 
-			<WealthDemoEmbed />
+			<div className="my-6">
+				<ProductShot name="wealth" />
+			</div>
 
 			<h2 id="what-you-track" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
 				What You Track
@@ -37,12 +39,7 @@ export default function WealthPage() {
 					{ title: "Net Worth History", desc: "A 365-day chart showing how your net worth evolves. Automatic daily snapshots capture every change." },
 					{ title: "Portfolio Composition", desc: "Horizontal breakdown bars showing allocation by asset type, currency exposure, and liquidity split." },
 				].map((card) => (
-					<Card key={card.title} className="border-border bg-card">
-						<CardContent className="p-4">
-							<p className="font-semibold text-sm">{card.title}</p>
-							<p className="mt-1 text-muted-foreground text-sm">{card.desc}</p>
-						</CardContent>
-					</Card>
+					<DocItem key={card.title} title={card.title}>{card.desc}</DocItem>
 				))}
 			</div>
 
