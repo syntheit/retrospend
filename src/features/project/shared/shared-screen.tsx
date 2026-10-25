@@ -173,7 +173,8 @@ export function SharedScreen({
 	const view = isPublic ? open.data : own.data;
 	const summary = api.project.summary.useQuery(
 		{ projectId: id },
-		{ enabled: !isPublic && !!view && !view.solo, retry: false },
+		// A viewer link is refused the money between people, as the public is.
+		{ enabled: access === "guest" && !!view && !view.solo, retry: false },
 	);
 	useEffect(() => {
 		if (access === "viewer" && own.isError) onViewerFailed();
@@ -212,7 +213,7 @@ export function SharedScreen({
 				) : null}
 				{shown === "summary" ? (
 					<SharedSummary
-						isPublic={isPublic}
+						byCategoryOnly={access !== "guest"}
 						me={me?.id ?? ""}
 						summary={summary.data}
 						view={view}

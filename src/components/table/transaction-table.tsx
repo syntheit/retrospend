@@ -108,6 +108,7 @@ export function TransactionTable({
 	hideProject,
 	ledger,
 	solo,
+	noShare,
 	groups,
 	selectable = true,
 	canSelect = ALL,
@@ -129,6 +130,8 @@ export function TransactionTable({
 	ledger?: LedgerColumns;
 	/** A solo project: no Paid by, Split or Your share. */
 	solo?: boolean;
+	/** No row is yours (a viewer link, the public): no Your share column. */
+	noShare?: boolean;
 	groups?: TableGroups;
 	selectable?: boolean;
 	/** Rows that can be selected; the others keep a disabled box. */
@@ -168,6 +171,7 @@ export function TransactionTable({
 		...shape,
 		set: ledger ?? "project",
 		solo,
+		noShare,
 	});
 	const columns = ledger ? ledgerCols : activity;
 	const span = columns.length;

@@ -164,6 +164,8 @@ export class SharedTransactionService {
 
 	async create(input: CreateSharedTransactionInput) {
 		const { amount, splitWith, splitMode, paidBy } = input;
+		if (!input.projectId && this.actor.participantType === "guest")
+			throw new TRPCError({ code: "FORBIDDEN", message: "A guest writes in their project" });
 
 		// Validate no duplicate participants in the split
 		const seen = new Set<string>();
@@ -178,10 +180,8 @@ export class SharedTransactionService {
 			seen.add(key);
 		}
 
-		// The payer is intentionally NOT required to be one of the split
-		// participants. A payer outside the split simply gets no split row: they
-		// owe nothing and are owed the full amount ("I fronted a cost I'm not
-		// part of"). computeBalance already treats this correctly.
+		// The payer need not be in the split: no split row, they owe nothing and
+		// are owed the full amount (computeBalance treats this correctly).
 
 		const participants = this.computeSplits(
 			amount,

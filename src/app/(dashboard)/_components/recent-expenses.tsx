@@ -106,7 +106,7 @@ export function RecentExpenses({
 		);
 	}, [recentActivity, filter]);
 
-	const viewAllHref = filter === "shared" ? "/projects" : "/transactions";
+	const viewAllHref = filter === "shared" ? "/projects" : "/activity";
 
 	if (activityLoading) {
 		return (

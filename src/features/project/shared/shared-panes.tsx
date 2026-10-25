@@ -76,6 +76,7 @@ export function SharedExpenses({ view, me }: { view: PageView; me: string }) {
 				ledger="project"
 				rows={txs}
 				selectable={false}
+				noShare={!view.members.some((m) => m.isMe)}
 				solo={view.solo}
 				sort={[{ id: "date", desc: true }]}
 				today={view.today}
@@ -125,24 +126,24 @@ function YouAndEach({ view }: { view: PageView }) {
 
 /**
  * Summary for a guest or a viewer link: who paid what, who pays whom, your
- * balances (a guest has them, a viewer link has none), spending by category
- * and the payments. The public page shows spending by category only.
+ * balances, spending by category and the payments, for a guest. A viewer link
+ * and the public page show spending by category only.
  */
 export function SharedSummary({
 	view,
 	summary,
 	me,
-	isPublic,
+	byCategoryOnly,
 }: {
 	view: PageView;
 	summary: Summary | undefined;
 	me: string;
-	isPublic: boolean;
+	byCategoryOnly: boolean;
 }) {
 	const t = useTranslations("projectV2.summary");
 	if (view.expenseCount === 0)
 		return <Empty hint={t("emptyHint")} icon={ChartPie} title={t("empty")} />;
-	if (isPublic || view.solo) return <ByCategory view={view} />;
+	if (byCategoryOnly || view.solo) return <ByCategory view={view} />;
 	if (!summary) return <SkeletonRows count={6} />;
 	const hasMe = view.members.some((m) => m.isMe);
 	return (

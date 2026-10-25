@@ -45,7 +45,11 @@ import { getProjectSummary } from "~/server/services/project/summary.service";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import { requestTimeZone } from "~/server/time-zone";
 import { projectPageProcedures } from "./project-pages";
-import { assertReader, projectSharedProcedures } from "./project-shared";
+import {
+	assertMember,
+	assertReader,
+	projectSharedProcedures,
+} from "./project-shared";
 
 type Db = Parameters<typeof requireProjectRole>[0];
 type Zoned = { timeZone?: string };
@@ -220,7 +224,7 @@ export const projectRouter = createTRPCRouter({
 	settlementPlan: guestOrProtectedProcedure
 		.input(projectInput.group)
 		.query(async ({ ctx, input }) => {
-			await assertReader(ctx, input.projectId);
+			await assertMember(ctx, input.projectId);
 			return projectSettlementPlan(ctx.db, input.projectId, input.periodId);
 		}),
 
@@ -231,7 +235,7 @@ export const projectRouter = createTRPCRouter({
 	summary: guestOrProtectedProcedure
 		.input(projectInput.group)
 		.query(async ({ ctx, input }) => {
-			await assertReader(ctx, input.projectId);
+			await assertMember(ctx, input.projectId);
 			return getProjectSummary(
 				ctx.db,
 				input.projectId,
@@ -244,7 +248,7 @@ export const projectRouter = createTRPCRouter({
 	participantBalances: guestOrProtectedProcedure
 		.input(projectInput.group)
 		.query(async ({ ctx, input }) => {
-			await assertReader(ctx, input.projectId);
+			await assertMember(ctx, input.projectId);
 			return projectParticipantBalances(
 				ctx.db,
 				input.projectId,
@@ -260,7 +264,7 @@ export const projectRouter = createTRPCRouter({
 	balancesFromPerspective: guestOrProtectedProcedure
 		.input(projectInput.perspective)
 		.query(async ({ ctx, input }) => {
-			await assertReader(ctx, input.projectId);
+			await assertMember(ctx, input.projectId);
 			return projectBalancesFromPerspective(
 				ctx.db,
 				input.projectId,

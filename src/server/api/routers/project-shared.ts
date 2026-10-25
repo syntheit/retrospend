@@ -3,11 +3,13 @@
  * link and the public page. Thin: the access check, then one read from
  * src/server/services/project. Spread into projectRouter.
  */
+import { TRPCError } from "@trpc/server";
 import {
 	assertGuestProjectScope,
 	guestOrProtectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
+import { getClientIp, InMemoryRateLimiter } from "~/server/lib/rate-limiter";
 import { projectInput } from "~/server/services/project/inputs";
 import {
 	type PageViewer,
@@ -29,6 +31,24 @@ export function assertReader(ctx: Reader, projectId: string) {
 	return requireProjectRole(ctx.db, projectId, type, participantId, "VIEWER");
 }
 
+/**
+ * Like assertReader, for what shows who owes whom (the summary, the plan,
+ * the balances): a viewer link may read the expenses and the total, never the
+ * money between people.
+ */
+export function assertMember(ctx: Reader, projectId: string) {
+	if (ctx.participant.participantType === "viewerLink")
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message: "A viewer link cannot read balances",
+		});
+	return assertReader(ctx, projectId);
+}
+
+/** The public page answers anyone, so one address gets this many reads a minute. */
+const PUBLIC_READS_PER_MINUTE = 60;
+const publicLimiter = new InMemoryRateLimiter();
+
 export const projectSharedProcedures = {
 	/** The page for a guest or a viewer link (a signed-in member gets the full page). */
 	sharedPageView: guestOrProtectedProcedure
@@ -49,6 +69,12 @@ export const projectSharedProcedures = {
 	publicPageView: publicProcedure
 		.input(projectInput.byId)
 		.query(async ({ ctx, input }) => {
+			const clientIp = getClientIp(ctx.headers);
+			if (!publicLimiter.check(`publicProject_${clientIp}`, PUBLIC_READS_PER_MINUTE, 60_000))
+				throw new TRPCError({
+					code: "TOO_MANY_REQUESTS",
+					message: "Rate limit exceeded",
+				});
 			const project = await ctx.db.project.findUnique({
 				where: { id: input.id },
 				select: { visibility: true },

@@ -1,5 +1,6 @@
 import {
 	type APIRequestContext,
+	type Browser,
 	expect,
 	type Page,
 	test,
@@ -7,7 +8,7 @@ import {
 import { E2E_BASE_URL, USER_STORAGE_STATE } from "../constants";
 import { bannedOutputOn } from "../helpers/banned-output";
 import { gotoReady } from "../helpers/navigation";
-import { contextFor, THEMES, useTheme, WIDTHS } from "../visual/matrix";
+import { contextFor, THEMES, useTheme as applyTheme, WIDTHS } from "../visual/matrix";
 
 // A project page opened without an account on it: through a viewer link, an
 // invite that makes a guest, and the public page of a public project. The
@@ -129,10 +130,11 @@ test.describe("a viewer link", () => {
 		await expect(page).not.toHaveURL(/invite=/);
 		expect(await bannedOutputOn(page), "banned output").toEqual([]);
 
+		// A viewer link reads the spending by category, never the money between people.
 		await main.getByRole("link", { name: "Summary" }).click();
-		await expect(
-			main.getByRole("heading", { name: "Who paid what" }),
-		).toBeVisible();
+		await expect(main.getByText("By category").first()).toBeVisible();
+		await expect(main.getByText("Who paid what")).toHaveCount(0);
+		await expect(main.getByText("You and each person")).toHaveCount(0);
 		await main.getByRole("link", { name: "People" }).click();
 		await expect(main.getByText("Nico", { exact: true })).toBeVisible();
 	});
@@ -255,58 +257,185 @@ test.describe("the owner", () => {
 	});
 });
 
-// Screenshots of the three views in light and dark at 1440 and 390, written
-// where E2E_SHOTS_DIR points (the owner's review folder). Off by default.
+// Screenshots in light and dark at 1440 and 390, written where E2E_SHOTS_DIR
+// points (the owner's review folder). Off by default.
 const SHOTS = process.env.E2E_SHOTS_DIR;
+
+const PAGES = [
+	["summary", "?tab=summary"],
+	["people", "?tab=people"],
+] as const;
 
 test.describe("screenshots", () => {
 	test.skip(!SHOTS, "set E2E_SHOTS_DIR to write them");
 
-	for (const view of ["guest", "viewer", "public"] as const) {
-		for (const theme of THEMES) {
-			for (const width of WIDTHS) {
-				test(`${view} ${theme} ${width}`, async ({ browser }) => {
-					test.setTimeout(120_000);
-					if (view === "public")
-						await trpc("project.update", {
-							id: ids.project,
-							visibility: "PUBLIC",
-						});
-					const context = await browser.newContext({
-						...contextFor(width, theme),
-						baseURL: E2E_BASE_URL,
-						locale: "en-US",
-					});
-					const page = await context.newPage();
-					await useTheme(page, theme);
-					try {
-						if (view === "guest")
-							await page.addInitScript((tokens) => {
-								for (const [k, v] of Object.entries(tokens))
-									localStorage.setItem(k, v);
-							}, guestStorage);
-						const path =
-							view === "viewer"
-								? `/projects/${ids.project}?invite=${ids.viewerLink}`
-								: `/projects/${ids.project}`;
-						await openShared(page, path);
-						await expect(
-							page.getByRole("main").getByText("Dinner").first(),
-						).toBeVisible();
-						await page.screenshot({
-							path: `${SHOTS}/${view}-${theme}-${width}.png`,
-							fullPage: true,
-						});
-					} finally {
-						await context.close();
-						if (view === "public")
-							await trpc("project.update", {
-								id: ids.project,
-								visibility: "PRIVATE",
-							});
+	/** One signed-out browser for one theme and width; closes it afterwards. */
+	async function withPage(
+		browser: Browser,
+		theme: (typeof THEMES)[number],
+		width: (typeof WIDTHS)[number],
+		run: (page: Page) => Promise<void>,
+		guest?: Record<string, string>,
+	) {
+		const context = await browser.newContext({
+			...contextFor(width, theme),
+			baseURL: E2E_BASE_URL,
+			locale: "en-US",
+		});
+		const page = await context.newPage();
+		await applyTheme(page, theme);
+		try {
+			if (guest)
+				await page.addInitScript((tokens) => {
+					for (const [k, v] of Object.entries(tokens))
+						localStorage.setItem(k, v);
+				}, guest);
+			await run(page);
+		} finally {
+			await context.close();
+		}
+	}
+	const shot = (page: Page, name: string) =>
+		page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
+
+	for (const theme of THEMES) {
+		for (const width of WIDTHS) {
+			const tag = `${theme}-${width}`;
+
+			test(`expenses, summary and people ${tag}`, async ({ browser }) => {
+				test.setTimeout(240_000);
+				const dinner = (page: Page) =>
+					expect(
+						page.getByRole("main").getByText("Dinner").first(),
+					).toBeVisible();
+				// The guest: Expenses, Summary and People.
+				await withPage(
+					browser,
+					theme,
+					width,
+					async (page) => {
+						await openShared(page, `/projects/${ids.project}`);
+						await dinner(page);
+						await shot(page, `guest-${tag}`);
+						for (const [name, query] of PAGES) {
+							await openShared(page, `/projects/${ids.project}${query}`);
+							await shot(page, `guest-${name}-${tag}`);
+						}
+					},
+					guestStorage,
+				);
+				// The viewer link: Expenses, Summary (by category only) and People.
+				await withPage(browser, theme, width, async (page) => {
+					await openShared(
+						page,
+						`/projects/${ids.project}?invite=${ids.viewerLink}`,
+					);
+					await dinner(page);
+					await shot(page, `viewer-${tag}`);
+					for (const [name, query] of PAGES) {
+						await openShared(page, `/projects/${ids.project}${query}`);
+						await shot(page, `viewer-${name}-${tag}`);
 					}
 				});
-			}
+				// The public page.
+				await trpc("project.update", { id: ids.project, visibility: "PUBLIC" });
+				try {
+					await withPage(browser, theme, width, async (page) => {
+						await openShared(page, `/projects/${ids.project}`);
+						await dinner(page);
+						await shot(page, `public-${tag}`);
+						await openShared(page, `/projects/${ids.project}?tab=summary`);
+						await shot(page, `public-summary-${tag}`);
+					});
+				} finally {
+					await trpc("project.update", {
+						id: ids.project,
+						visibility: "PRIVATE",
+					});
+				}
+			});
+
+			test(`guest add sheet, private and link expired ${tag}`, async ({
+				browser,
+			}) => {
+				test.setTimeout(180_000);
+				await withPage(
+					browser,
+					theme,
+					width,
+					async (page) => {
+						await openShared(page, `/projects/${ids.project}`);
+						await page
+							.getByRole("main")
+							.getByRole("button", { name: "Add expense" })
+							.click();
+						const sheet = page.getByRole("dialog", {
+							name: `Add expense to ${PROJECT}`,
+						});
+						await sheet
+							.getByLabel("What was it for")
+							.fill("Taxi from the airport");
+						await sheet.getByRole("textbox", { name: "Amount" }).fill("30");
+						await expect(sheet).toContainText("split equally");
+						await page.screenshot({ path: `${SHOTS}/guest-add-${tag}.png` });
+					},
+					guestStorage,
+				);
+				await withPage(browser, theme, width, async (page) => {
+					await gotoReady(page, `/projects/${ids.project}`);
+					await expect(page.getByText("This project is private")).toBeVisible();
+					await shot(page, `private-${tag}`);
+				});
+				await withPage(
+					browser,
+					theme,
+					width,
+					async (page) => {
+						await gotoReady(page, `/projects/${ids.project}`);
+						await expect(page.getByText("This link no longer works")).toBeVisible();
+						await shot(page, `link-expired-${tag}`);
+					},
+					{ guest_session_token: "expired", guest_project_id: ids.project },
+				);
+			});
+		}
+	}
+
+	// Last: each join makes a guest, so the pages above are shot before it.
+	for (const theme of THEMES) {
+		for (const width of WIDTHS) {
+			const tag = `${theme}-${width}`;
+			test(`join flow ${tag}`, async ({ browser }) => {
+				test.setTimeout(180_000);
+				await withPage(browser, theme, width, async (page) => {
+					await gotoReady(
+						page,
+						`/projects/${ids.project}?invite=${ids.guestLink}`,
+					);
+					await expect(
+						page.getByRole("heading", {
+							name: "Are you one of these people?",
+						}),
+					).toBeVisible();
+					await shot(page, `join-chooser-${tag}`);
+					await page
+						.getByRole("button", { name: "None of these, I am new" })
+						.click();
+					await expect(
+						page.getByRole("heading", { name: `Join ${PROJECT}` }),
+					).toBeVisible();
+					await page.getByLabel("Your name").fill("Sam Visitor");
+					await page
+						.getByLabel("Email", { exact: true })
+						.fill(`sam.${tag}.${Date.now()}@example.com`);
+					await shot(page, `join-form-${tag}`);
+					await page.getByRole("button", { name: "Join project" }).click();
+					await expect(
+						page.getByText("You are in", { exact: true }),
+					).toBeVisible();
+					await shot(page, `join-done-${tag}`);
+				});
+			});
 		}
 	}
 });
