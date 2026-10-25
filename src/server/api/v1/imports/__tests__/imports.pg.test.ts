@@ -3,17 +3,20 @@
  * finalize it, undo it, and what must stay closed (another user's file is a
  * 404, a replayed key writes once, a file imports once).
  */
+import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	adminDb,
 	asMobile,
+	BASE,
 	call,
 	createTestUser,
 	expectBody,
 	expectProblem,
 	useApiV1,
 } from "../../core/__tests__/harness";
+import { handleV1Request } from "../../handler";
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -121,6 +124,43 @@ describe("/api/v1/imports", () => {
 		await expect(
 			adminDb.importJob.count({ where: { userId: alice } }),
 		).resolves.toBe(1);
+	});
+
+	it("lets a 10.5 MB body reach the file check and cuts a 12 MB one off with 413", async () => {
+		const header = "title,amount,currency,date\n";
+		const mb = (n: number) => "a".repeat(Math.floor(n * 1024 * 1024));
+		// Under the 11 MB body cap: read, then refused by the 10 MB file limit.
+		const near = await upload(asAlice, "near.csv", header + mb(10.5));
+		await expectProblem(near, 400, "validation_failed");
+		// Over it, with no Content-Length: counted as it streams. A hand-made
+		// stream, so cutting it off leaves nothing writing into a closed body.
+		const boundary = "----g5a";
+		const head = new TextEncoder().encode(
+			`--${boundary}\r\ncontent-disposition: form-data; name="file"; filename="big.csv"\r\ncontent-type: text/csv\r\n\r\n${header}`,
+		);
+		const chunk = new TextEncoder().encode("a".repeat(1024 * 1024));
+		let sent = 0;
+		const body = new ReadableStream<Uint8Array>({
+			pull(controller) {
+				if (sent === 0) controller.enqueue(head);
+				if (sent < 12) controller.enqueue(chunk);
+				else controller.close();
+				sent++;
+			},
+		});
+		const res = await handleV1Request(
+			new Request(`${BASE}/imports/jobs`, {
+				method: "POST",
+				headers: {
+					...asAlice,
+					"content-type": `multipart/form-data; boundary=${boundary}`,
+					"idempotency-key": randomUUID(),
+				},
+				body,
+				duplex: "half",
+			} as RequestInit),
+		);
+		await expectProblem(res, 413, "payload_too_large");
 	});
 
 	it("keeps another user's file out of every route", async () => {

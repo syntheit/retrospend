@@ -54,6 +54,13 @@ export async function openExport(path: string): Promise<Blob> {
 	return openAsBlob(full);
 }
 
+export async function exportExists(path: string): Promise<boolean> {
+	return stat(fullPath(path)).then(
+		() => true,
+		() => false,
+	);
+}
+
 /** Removes one file and the random folder around it. */
 export async function removeExport(path: string): Promise<void> {
 	await rm(dirname(fullPath(path)), { recursive: true, force: true });

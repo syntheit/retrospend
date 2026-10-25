@@ -3,7 +3,7 @@
  * carries a short-lived download link, the link opens only for its owner,
  * and an expired or foreign link, job or file opens nothing.
  */
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -150,6 +150,43 @@ describe("/api/v1/exports", () => {
 		expect(text).not.toContain("Left out");
 		await adminDb.expense.deleteMany({ where: { userId: alice } });
 		await call(`/exports/jobs/${queued.id}`, {
+			method: "DELETE",
+			headers: asAlice,
+			idempotent: true,
+		});
+	});
+
+	it("answers a ready job whose file is gone as an expired one", async () => {
+		const made = await expectBody<Job>(
+			await request(asAlice, { kind: "data" }),
+			e.request,
+			202,
+		);
+		const ready = await untilDone(made.id);
+		const row = await adminDb.exportJob.findUniqueOrThrow({
+			where: { id: made.id },
+		});
+		// The store was cleared (a container's /tmp after a restart).
+		rmSync(join(exportDir, dirname(row.storagePath ?? "")), {
+			recursive: true,
+			force: true,
+		});
+		const url = (ready.download?.url ?? "").replace("/api/v1", "");
+		await expectProblem(await call(url, { headers: asAlice }), 404, "not_found");
+		const after = await expectBody<Job>(
+			await call(`/exports/jobs/${made.id}`, { headers: asAlice }),
+			e.getJob,
+		);
+		expect(after).toMatchObject({
+			state: "expired",
+			download: null,
+			fileName: null,
+		});
+		const stored = await adminDb.exportJob.findUniqueOrThrow({
+			where: { id: made.id },
+		});
+		expect(stored.expiresAt.getTime()).toBeLessThanOrEqual(Date.now());
+		await call(`/exports/jobs/${made.id}`, {
 			method: "DELETE",
 			headers: asAlice,
 			idempotent: true,

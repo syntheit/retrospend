@@ -8,7 +8,11 @@ import {
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
 import { after } from "next/server";
-import { openExport, removeExport } from "~/server/export-storage";
+import {
+	exportExists,
+	openExport,
+	removeExport,
+} from "~/server/export-storage";
 import type { ExportJobStatus, Prisma } from "~prisma";
 import type { Caller } from "./caller";
 import { decodeCursor, toPage } from "./cursor";
@@ -177,16 +181,38 @@ export async function listJobs(caller: Caller, q: CursorQuery) {
 		take: q.limit + 1,
 	});
 	const now = new Date();
+	const checked = await Promise.all(
+		rows.map((r) => expireIfFileMissing(caller, r)),
+	);
 	return toPage(
-		rows,
+		checked,
 		q.limit,
 		(r) => ({ createdAt: r.createdAt.toISOString(), id: r.id }),
 		(r) => toDto(r, now),
 	);
 }
 
+/**
+ * A ready job whose file is gone (the store was cleared, as a container's
+ * /tmp is on restart) is an expired job: marked so here and answered as one,
+ * never "ready" with a download that cannot work.
+ */
+async function expireIfFileMissing(
+	caller: Caller,
+	row: JobRow,
+): Promise<JobRow> {
+	if (stateOf(row, new Date()) !== "ready") return row;
+	if (row.storagePath && (await exportExists(row.storagePath))) return row;
+	const now = new Date();
+	await caller.db.exportJob.updateMany({
+		where: { id: row.id, userId: row.userId, status: "READY" },
+		data: { expiresAt: now },
+	});
+	return { ...row, expiresAt: now };
+}
+
 export async function getJob(caller: Caller, id: string) {
-	return toDto(await readJob(caller, id));
+	return toDto(await expireIfFileMissing(caller, await readJob(caller, id)));
 }
 
 export async function deleteJob(caller: Caller, id: string) {
@@ -205,7 +231,10 @@ export async function downloadFile(
 ): Promise<File> {
 	const userId = caller.principal.userId;
 	// The job first, so another user's id is a 404 whatever the token says.
-	const row = await readJob(caller, input.id);
+	const row = await expireIfFileMissing(
+		caller,
+		await readJob(caller, input.id),
+	);
 	const check = checkExportLink(row.id, userId, input.token);
 	if (check !== "ok")
 		throw new TRPCError({

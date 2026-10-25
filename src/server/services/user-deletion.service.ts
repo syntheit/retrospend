@@ -465,9 +465,6 @@ export async function anonymizeAndDeleteUser(
 	userEmail: string,
 	avatarPath: string | null,
 ): Promise<void> {
-	// Avatar and exports leave storage first; a failure only leaves a file behind
-	await removeUserFiles(userId, avatarPath);
-
 	await db.$transaction(async (tx) => {
 		await assertAnotherAdminRemains(tx, userId);
 		// ── Pre-deletion cleanup: resolve functional dependencies ─────────────
@@ -567,4 +564,6 @@ export async function anonymizeAndDeleteUser(
 		// Clean up GuestSessions that used this user's email (pre-signup guest access)
 		await tx.guestSession.deleteMany({ where: { email: userEmail } });
 	});
+	// Only once the guard passed and the delete committed; a failure leaves a file behind
+	await removeUserFiles(userId, avatarPath);
 }

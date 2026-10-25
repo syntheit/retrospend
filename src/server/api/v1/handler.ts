@@ -37,7 +37,7 @@ function capUpload(
 				seen += chunk.byteLength;
 				if (seen > MULTIPART_LIMIT) {
 					over = true;
-					controller.error(new Error("Upload too large"));
+					controller.terminate();
 				} else controller.enqueue(chunk);
 			},
 		}),
