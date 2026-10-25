@@ -10,13 +10,20 @@ import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { adminDb } from "~/test/pg-harness";
 import {
-	asMobile,
 	call,
 	expectBody,
 	expectProblem,
 	useApiV1,
 } from "../../core/__tests__/harness";
-import { bookedUser, toV1, useBudgetV1, withoutStamps } from "./fixtures";
+import {
+	bookedUser,
+	mobileFrom,
+	toV1,
+	useBudgetV1,
+	withoutStamps,
+} from "./fixtures";
+
+const asMobile = mobileFrom("198.51.100.85");
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),

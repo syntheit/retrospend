@@ -10,13 +10,14 @@ import type { SetupInput } from "~/lib/schemas/envelope";
 import { seedUser } from "~/server/services/envelope/__tests__/pg-fixture";
 import { adminDb } from "~/test/pg-harness";
 import {
-	asMobile,
 	call,
 	expectBody,
 	expectProblem,
 	useApiV1,
 } from "../../core/__tests__/harness";
-import { toV1, useBudgetV1, uuid, withoutStamps } from "./fixtures";
+import { mobileFrom, toV1, useBudgetV1, uuid, withoutStamps } from "./fixtures";
+
+const asMobile = mobileFrom("198.51.100.83");
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),

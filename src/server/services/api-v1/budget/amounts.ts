@@ -170,3 +170,9 @@ export async function queryMinor(
 	if (text === undefined) return undefined;
 	return minorOf(text, await budgetCurrencyOf(caller), field);
 }
+
+/** A draft write's answer with the draft's rows as Money. */
+export const draftResultOut = <V extends { draft: DraftDto }>(
+	value: V,
+	currency: string,
+) => ({ ...value, draft: draftOut(value.draft, currency) });

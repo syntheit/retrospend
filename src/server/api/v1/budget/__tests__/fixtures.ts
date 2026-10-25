@@ -13,6 +13,7 @@ import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { forUser } from "~/server/services/preview";
 import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import { adminDb } from "~/test/pg-harness";
+import { asMobile as sessionHeaders } from "../../core/__tests__/harness";
 
 export const usd = (minor: number) => ({ minor, currency: "USD" });
 
@@ -115,3 +116,35 @@ export function toV1<T>(value: T): T {
 	};
 	return walk(value) as T;
 }
+
+/** A movement answer without the ids and order the engine makes for each run. */
+export function movementShape(result: unknown): unknown {
+	const r = result as {
+		movements?: {
+			id?: string;
+			createdAt?: string;
+			amount: { minor: number };
+		}[];
+		envelopes?: { id: string; after: { minor: number } }[];
+		toAssign?: unknown;
+	};
+	const rows = (r.movements ?? [])
+		.map(({ id: _id, createdAt: _at, ...rest }) => rest)
+		.sort((a, b) => a.amount.minor - b.amount.minor);
+	return {
+		movements: rows,
+		envelopes: [...(r.envelopes ?? [])].sort(
+			(a, b) => a.after.minor - b.after.minor,
+		),
+		toAssign: r.toAssign,
+	};
+}
+
+/**
+ * Mobile headers from an address of the file's own: these files send hundreds
+ * of requests a minute, and the per-IP limit is shared by every v1 test file.
+ */
+export const mobileFrom = (ip: string) => async (userId: string) => ({
+	...(await sessionHeaders(userId)),
+	"x-forwarded-for": ip,
+});

@@ -51,7 +51,12 @@ import {
 	setShareCategoryMutation,
 	unforgiveMutation,
 } from "~/server/services/envelope/splits.mutation";
-import { draftOut, fromEngine, type Renamed, v1Mutation } from "./amounts";
+import {
+	draftResultOut,
+	fromEngine,
+	type Renamed,
+	v1Mutation,
+} from "./amounts";
 import {
 	revertPayoffPlanMutation,
 	savePayoffPlanMutation,
@@ -191,37 +196,20 @@ export const budgetOps = {
 	applyRule: moneyOp(applyRuleToMonthMutation, {
 		plan: (_i, v) => movementPlan(v.movement),
 	}),
-	applyDraft: moneyOp(
-		v1Mutation(applyDraftMutation, (v, currency) => ({
-			...v,
-			draft: draftOut(v.draft, currency),
-		})),
-		{
-			plan: (_i, v) =>
-				v.draft.kind === "PLAN"
-					? {
-							op: "draft.unapply",
-							args: { draftId: v.draft.id },
-							guard: { table: "budgetDraft", id: v.draft.id },
-						}
-					: movementPlan(v.movement),
-		},
-	),
-	unapplyDraft: moneyOp(
-		v1Mutation(unapplyDraftMutation, (v, currency) => ({
-			...v,
-			draft: draftOut(v.draft, currency),
-		})),
-	),
-	fundPlanNow: moneyOp(
-		v1Mutation(fundPlanNowMutation, (v, currency) => ({
-			...v,
-			draft: draftOut(v.draft, currency),
-		})),
-		{
-			plan: (_i, v) => movementPlan(v.movement),
-		},
-	),
+	applyDraft: moneyOp(v1Mutation(applyDraftMutation, draftResultOut), {
+		plan: (_i, v) =>
+			v.draft.kind === "PLAN"
+				? {
+						op: "draft.unapply",
+						args: { draftId: v.draft.id },
+						guard: { table: "budgetDraft", id: v.draft.id },
+					}
+				: movementPlan(v.movement),
+	}),
+	unapplyDraft: moneyOp(v1Mutation(unapplyDraftMutation, draftResultOut)),
+	fundPlanNow: moneyOp(v1Mutation(fundPlanNowMutation, draftResultOut), {
+		plan: (_i, v) => movementPlan(v.movement),
+	}),
 
 	setGroupTarget: moneyOp(v1Mutation(setGroupTargetMutation, fromEngine), {
 		plan: (i, v) => ({

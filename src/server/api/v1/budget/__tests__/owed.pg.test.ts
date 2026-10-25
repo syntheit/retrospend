@@ -11,13 +11,20 @@ import { getOwed } from "~/server/services/envelope/read.service";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { Prisma } from "~prisma";
 import {
-	asMobile,
 	call,
 	expectBody,
 	expectProblem,
 	useApiV1,
 } from "../../core/__tests__/harness";
-import { bookedUser, toV1, useBudgetV1, withoutStamps } from "./fixtures";
+import {
+	bookedUser,
+	mobileFrom,
+	toV1,
+	useBudgetV1,
+	withoutStamps,
+} from "./fixtures";
+
+const asMobile = mobileFrom("198.51.100.84");
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),

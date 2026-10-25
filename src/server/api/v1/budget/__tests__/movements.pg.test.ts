@@ -8,7 +8,6 @@ import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { adminDb } from "~/test/pg-harness";
 import {
-	asMobile,
 	call,
 	expectBody,
 	expectProblem,
@@ -16,6 +15,7 @@ import {
 } from "../../core/__tests__/harness";
 import {
 	bookedUser,
+	mobileFrom,
 	setBudgetFlag,
 	toV1,
 	usd,
@@ -23,6 +23,8 @@ import {
 	uuid,
 	withoutStamps,
 } from "./fixtures";
+
+const asMobile = mobileFrom("198.51.100.81");
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -283,7 +285,12 @@ describe("/api/v1/budget movements", () => {
 			(r as { movements: { id: string; createdAt: string }[] }).movements.map(
 				({ id: _id, createdAt: _at, ...rest }) => rest,
 			);
-		expect(rows(written.result)).toEqual(rows(preview.detail?.result));
+		expect(rows(written.result)).toEqual(
+			expect.arrayContaining(rows(preview.detail?.result)),
+		);
+		expect(rows(written.result)).toHaveLength(
+			rows(preview.detail?.result).length,
+		);
 		expect(await left("Rent")).toBe(0);
 		expect(await left("Dining")).toBe(0);
 		expect((await month()).toAssign.amount).toEqual(usd(100_000));

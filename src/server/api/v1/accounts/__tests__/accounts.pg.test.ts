@@ -10,12 +10,17 @@ import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
-	asMobile,
 	call,
 	expectBody,
 	expectProblem,
+	asMobile as sessionHeaders,
 	useApiV1,
 } from "../../core/__tests__/harness";
+
+const asMobile = async (userId: string) => ({
+	...(await sessionHeaders(userId)),
+	"x-forwarded-for": "198.51.100.88",
+});
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),

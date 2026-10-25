@@ -23,7 +23,7 @@ import type { MoneyMutation } from "~/server/services/preview/types";
 import { deleteTransfer } from "~/server/services/transfers/delete.mutation";
 import { type AnyMutation, createUndoer } from "../money-op";
 import { accountChangeDto } from "../money-write";
-import { fromEngine, v1Mutation } from "./amounts";
+import { draftResultOut, fromEngine, v1Mutation } from "./amounts";
 import {
 	revertPayoffPlanMutation,
 	setDebtTermsMutation,
@@ -102,7 +102,7 @@ const INVERSES: Record<UndoOp, AnyMutation> = {
 	"group_target.set": v1Mutation(setGroupTargetMutation, fromEngine),
 	"debt_terms.set": setDebtTermsMutation,
 	"payoff_plan.revert": revertPayoffPlanMutation,
-	"draft.unapply": unapplyDraftMutation,
+	"draft.unapply": v1Mutation(unapplyDraftMutation, draftResultOut),
 	"hidden_rows.revert": revertHiddenMutation,
 	"debt_payment.delete": deleteDebtPayment,
 };

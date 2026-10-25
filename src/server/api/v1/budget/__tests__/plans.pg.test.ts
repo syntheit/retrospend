@@ -18,13 +18,14 @@ import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { forUser } from "~/server/services/preview";
 import { adminDb } from "~/test/pg-harness";
 import {
-	asMobile,
 	call,
 	expectBody,
 	expectProblem,
 	useApiV1,
 } from "../../core/__tests__/harness";
-import { toV1, useBudgetV1, uuid, withoutStamps } from "./fixtures";
+import { mobileFrom, movementShape, toV1, useBudgetV1, uuid } from "./fixtures";
+
+const asMobile = mobileFrom("198.51.100.87");
 
 vi.mock("next/headers", () => ({
 	headers: async () => new Headers(),
@@ -145,8 +146,8 @@ describe("/api/v1/budget month-following writes", () => {
 				await post("/budget/carry-overspend", body, as),
 				c.carryOverspend,
 			);
-			expect(withoutStamps(written.result)).toEqual(
-				withoutStamps(preview.detail?.result),
+			expect(movementShape(written.result)).toEqual(
+				movementShape(preview.detail?.result),
 			);
 			const after = await monthOf(as);
 			expect(after.toAssign.amount.minor).toBe(
@@ -222,8 +223,17 @@ describe("/api/v1/budget month-following writes", () => {
 				await post(`/budget/rules/${rule.id}/apply`, body, as),
 				c.applyRule,
 			);
-			expect(withoutStamps(written.result)).toEqual(
-				withoutStamps(preview.detail?.result),
+			const runs = (r: unknown) =>
+				(r as { runs: { lines: unknown }[]; movement: unknown }).runs.map(
+					(x) => x.lines,
+				);
+			expect(runs(written.result)).toEqual(runs(preview.detail?.result));
+			expect(
+				movementShape((written.result as { movement: unknown }).movement),
+			).toEqual(
+				movementShape(
+					(preview.detail as { result: { movement: unknown } }).result.movement,
+				),
 			);
 			const after = await monthOf(as);
 			expect(leftOf(after, b.ids.Dining as string)).toBe(
@@ -304,14 +314,9 @@ describe("/api/v1/budget month-following writes", () => {
 				c.fundPlanNow,
 			);
 			// The write's rows carry ids and clocks the dry run made for itself.
-			const shape = (r: Record<string, unknown>) =>
-				(r.movement as { toAssign: unknown; envelopes: unknown } | null) && {
-					toAssign: (r.movement as { toAssign: unknown }).toAssign,
-					envelopes: (r.movement as { envelopes: unknown }).envelopes,
-				};
-			expect(shape(written.result)).toEqual(
-				shape(preview.detail?.result as Record<string, unknown>),
-			);
+			const shape = (r: unknown) =>
+				movementShape((r as { movement: unknown }).movement);
+			expect(shape(written.result)).toEqual(shape(preview.detail?.result));
 			expect(shape(written.result)).toMatchObject({
 				toAssign: {
 					before: { minor: 100_000, currency: "USD" },
