@@ -17,6 +17,7 @@
 import { MissingRateError } from "~/lib/money";
 import { accountFigures } from "~/server/services/accounts/figures";
 import { budgetFigures } from "~/server/services/envelope/figures";
+import { dollarTodayFigure } from "~/server/services/figures/dollar-today";
 import { glanceFigures } from "~/server/services/figures/spend-pace";
 import { spentFigure } from "~/server/services/figures/spent";
 import { insightsFigures } from "~/server/services/insights/figures";
@@ -281,5 +282,6 @@ export const figures = createFiguresRegistry<FigureDb>([
 	...accountFigures,
 	...budgetFigures,
 	...glanceFigures,
+	dollarTodayFigure,
 	...insightsFigures,
 ]);

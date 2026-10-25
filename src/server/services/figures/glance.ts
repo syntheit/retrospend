@@ -19,6 +19,7 @@ import {
 import { monthViewIn } from "~/server/services/envelope/month-read";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import type { PrismaClient } from "~prisma";
+import { type DollarToday, dollarTodayIn } from "./dollar-today";
 import { fasterThanLast, type IsoDate, type PeriodSpan } from "./glance-pace";
 import {
 	GLANCE_MONEY_IN,
@@ -64,6 +65,8 @@ export interface GlanceDTO {
 	 * `spent`. Only without a budget part, and only when income exists.
 	 */
 	readonly moneyIn: GlanceFigure | null;
+	/** Dollar today (rate.dollarToday); null for a USD or crypto home, where the row does not apply. */
+	readonly dollarToday: DollarToday | null;
 	/** Currencies whose missing rate keeps a glance number out, named (R14). */
 	readonly missingRates: readonly string[];
 }
@@ -149,6 +152,7 @@ export async function glanceIn(
 			budget === null && pace.moneyIn !== 0
 				? { id: GLANCE_MONEY_IN, value: money(pace.moneyIn) }
 				: null,
+		dollarToday: await dollarTodayIn(db, userId, now, options.timeZone),
 		missingRates: [...missing].sort(),
 	};
 }

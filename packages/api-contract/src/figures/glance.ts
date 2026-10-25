@@ -149,6 +149,20 @@ export const glanceSchema = z
 		budget: glanceBudgetSchema.nullable(),
 		/** Without a budget part only, and only when income exists. */
 		moneyIn: figureValueSchema.nullable(),
+		/**
+		 * Dollar today: the price of USD 1 in the home currency at the default
+		 * rate type. Null for a USD or crypto home, where the row does not apply.
+		 */
+		dollarToday: z
+			.object({
+				id: z.string(),
+				/** Null while the home currency has no rate at all. */
+				value: moneySchema.nullable(),
+				rateType: z.string().nullable(),
+				rateDate: daySchema.nullable(),
+				home: currencyCodeSchema,
+			})
+			.nullable(),
 		/** Currencies whose missing rate keeps a number out. */
 		missingRates: z.array(currencyCodeSchema),
 	})
