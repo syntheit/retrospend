@@ -55,6 +55,8 @@ function openFirstPeriod(
 }
 
 export interface CreateProjectInput {
+	/** A client-made id (offline create); a second create with it is a conflict. */
+	id?: string;
 	name: string;
 	description?: string;
 	budgetAmount?: number;
@@ -69,6 +71,7 @@ export interface CreateProjectInput {
 }
 
 const projectData = (userId: string, input: CreateProjectInput) => ({
+	...(input.id ? { id: input.id } : {}),
 	name: input.name,
 	description: input.description ?? null,
 	budgetAmount: input.budgetAmount ?? null,

@@ -9,7 +9,7 @@ import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import type { PrismaClient } from "~prisma";
 import type { ProjectActor, ProjectRoleName } from "./types";
 
-const inviteUrl = (projectId: string, linkId: string) =>
+export const inviteUrl = (projectId: string, linkId: string) =>
 	`${env.PUBLIC_URL || env.NEXT_PUBLIC_APP_URL || "http://localhost:1997"}/projects/${projectId}?invite=${linkId}`;
 
 /** Runs before the role check, so asking for an Owner link fails the same way for everyone. */

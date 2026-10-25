@@ -3,6 +3,7 @@ import { expenseRouter } from "~/server/api/routers/expense";
 import { exportRouter } from "~/server/api/routers/export";
 import { feedbackRouter } from "~/server/api/routers/feedback";
 import { inviteRouter } from "~/server/api/routers/invite";
+import { projectRouter } from "~/server/api/routers/project";
 import { TRPCError } from "@trpc/server";
 import { createCallerFactory } from "~/server/api/trpc";
 import type { Session } from "~/server/better-auth/config";
@@ -57,6 +58,7 @@ const exportFactory = createCallerFactory(exportRouter);
 const expenseFactory = createCallerFactory(expenseRouter);
 const feedbackFactory = createCallerFactory(feedbackRouter);
 const inviteFactory = createCallerFactory(inviteRouter);
+const projectFactory = createCallerFactory(projectRouter);
 
 export const trpcAdmin = async (c: BridgeCaller) =>
 	adminFactory(await contextFor(c));
@@ -68,3 +70,5 @@ export const trpcFeedback = async (c: BridgeCaller) =>
 	feedbackFactory(await contextFor(c));
 export const trpcInvite = async (c: BridgeCaller) =>
 	inviteFactory(await contextFor(c));
+export const trpcProject = async (c: BridgeCaller) =>
+	projectFactory(await contextFor(c));

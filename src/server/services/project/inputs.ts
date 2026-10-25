@@ -32,6 +32,7 @@ const group = z.object({ projectId: id, periodId: z.string().optional() });
 
 export const projectInput = {
 	create: z.object({
+		id: z.uuid().optional(),
 		name: z.string().min(1).max(191),
 		description: z.string().max(500).optional(),
 		budgetAmount: z.number().positive().optional(),

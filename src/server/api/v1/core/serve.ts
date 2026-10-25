@@ -45,6 +45,10 @@ export function toProblem(error: unknown): unknown {
 	if (error instanceof TRPCError) {
 		const code = TRPC_TO_PROBLEM[error.code];
 		if (code) return problem(code, error.message);
+		// tRPC wraps what a procedure throws; a known database error inside
+		// (a taken client id) is answered as it would be from a service.
+		if (error.cause instanceof Prisma.PrismaClientKnownRequestError)
+			return toProblem(error.cause);
 	}
 	// A client-made id that is already taken: an earlier try of the same write
 	// got through. Clients treat it as sent, so it has a code of its own.

@@ -6,19 +6,14 @@ import { undoTokenSchema } from "../common/preview";
 import { idSchema } from "../core";
 import { daySchema, previewTwin, undoField, undoInputSchema } from "../ledger";
 import { participantTypeSchema } from "../people/schemas";
+import { projectRoleSchema } from "./roles";
+import { projectWritesContract } from "./writes";
+
+export * from "./writes";
 
 const TAG = ["Projects"];
 
-export const PROJECT_ROLES = [
-	"ORGANIZER",
-	"EDITOR",
-	"CONTRIBUTOR",
-	"VIEWER",
-] as const;
-
-export const projectRoleSchema = z
-	.enum(PROJECT_ROLES)
-	.meta({ id: "ProjectRole" });
+export { PROJECT_ROLES, projectRoleSchema } from "./roles";
 
 export const projectIdParamsSchema = z.object({ id: idSchema });
 
@@ -329,9 +324,11 @@ export const settleAllUndoResultSchema = z
 /**
  * Projects you are a member of. The page, the summary and the members come
  * from the same reads as the web, so they agree with it. Writes that change
- * a project itself (create, roles, links, periods) are not in v1 yet.
+ * a project itself (create, roles, links) are in writes.ts; billing periods
+ * are under /projects/{id}/billing-periods.
  */
 export const projectsContract = {
+	...projectWritesContract,
 	list: v1
 		.route({
 			method: "GET",

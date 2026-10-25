@@ -83254,9 +83254,446 @@
 					"Projects"
 				],
 				"x-required-scope": "read"
+			},
+			"post": {
+				"description": "You become its Owner. A billing cycle opens the first billing period.",
+				"operationId": "createProject",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"billingAutoClose": {
+										"default": false,
+										"type": "boolean"
+									},
+									"billingClosePermission": {
+										"default": "ORGANIZER_ONLY",
+										"enum": [
+											"ORGANIZER_ONLY",
+											"ANY_PARTICIPANT"
+										],
+										"type": "string"
+									},
+									"billingCloseReminderDays": {
+										"default": 3,
+										"maximum": 9007199254740991,
+										"minimum": 0,
+										"type": "integer"
+									},
+									"billingCycleDays": {
+										"exclusiveMinimum": 0,
+										"maximum": 9007199254740991,
+										"minimum": -9007199254740991,
+										"type": "integer"
+									},
+									"billingCycleLength": {
+										"enum": [
+											"WEEKLY",
+											"BIWEEKLY",
+											"MONTHLY",
+											"CUSTOM"
+										],
+										"type": "string"
+									},
+									"budgetAmount": {
+										"description": "A positive amount as decimal text, in the currency's major units.",
+										"examples": [
+											"1234.56"
+										],
+										"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+										"type": "string"
+									},
+									"budgetCurrency": {
+										"description": "ISO 4217 code, or the app's code for a crypto asset.",
+										"examples": [
+											"USD",
+											"ARS",
+											"BTC"
+										],
+										"pattern": "^[A-Z0-9]{2,10}$",
+										"type": "string"
+									},
+									"description": {
+										"maxLength": 500,
+										"minLength": 1,
+										"type": "string"
+									},
+									"id": {
+										"description": "A client-made id. Sending the same id twice is a conflict, not a second project.",
+										"format": "uuid",
+										"type": "string"
+									},
+									"name": {
+										"maxLength": 191,
+										"minLength": 1,
+										"type": "string"
+									},
+									"primaryCurrency": {
+										"default": "USD",
+										"description": "ISO 4217 code, or the app's code for a crypto asset.",
+										"examples": [
+											"USD",
+											"ARS",
+											"BTC"
+										],
+										"pattern": "^[A-Z0-9]{2,10}$",
+										"type": "string"
+									},
+									"visibility": {
+										"default": "PRIVATE",
+										"enum": [
+											"PRIVATE",
+											"PUBLIC"
+										],
+										"type": "string"
+									}
+								},
+								"required": [
+									"name"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"autoAcceptSplits": {
+											"type": "boolean"
+										},
+										"billingAutoClose": {
+											"type": "boolean"
+										},
+										"billingClosePermission": {
+											"enum": [
+												"ORGANIZER_ONLY",
+												"ANY_PARTICIPANT"
+											],
+											"type": "string"
+										},
+										"billingCloseReminderDays": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"billingCycleDays": {
+											"anyOf": [
+												{
+													"exclusiveMinimum": 0,
+													"maximum": 9007199254740991,
+													"minimum": -9007199254740991,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"billingCycleLength": {
+											"anyOf": [
+												{
+													"enum": [
+														"WEEKLY",
+														"BIWEEKLY",
+														"MONTHLY",
+														"CUSTOM"
+													],
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"budget": {
+											"anyOf": [
+												{
+													"$ref": "#/components/schemas/Money"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"description": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"name": {
+											"type": "string"
+										},
+										"primaryCurrency": {
+											"type": "string"
+										},
+										"status": {
+											"enum": [
+												"ACTIVE",
+												"ARCHIVED"
+											],
+											"type": "string"
+										},
+										"updatedAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"visibility": {
+											"enum": [
+												"PRIVATE",
+												"PUBLIC"
+											],
+											"type": "string"
+										}
+									},
+									"required": [
+										"id",
+										"name",
+										"description",
+										"status",
+										"visibility",
+										"primaryCurrency",
+										"budget",
+										"billingCycleLength",
+										"billingCycleDays",
+										"billingAutoClose",
+										"billingCloseReminderDays",
+										"billingClosePermission",
+										"autoAcceptSplits",
+										"createdAt",
+										"updatedAt"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Create a project",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.created",
+				"x-required-scope": "write:expenses"
 			}
 		},
 		"/projects/{id}": {
+			"delete": {
+				"description": "Only the person who created it. Its expenses and payments go with it.",
+				"operationId": "deleteProject",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Delete a project",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.deleted",
+				"x-required-scope": "write:expenses"
+			},
 			"get": {
 				"operationId": "getProject",
 				"parameters": [
@@ -83958,6 +84395,1575 @@
 					"Projects"
 				],
 				"x-required-scope": "read"
+			},
+			"patch": {
+				"description": "Needs the Editor role. Only the fields sent change. Archiving, restoring and deleting are for Owners.",
+				"operationId": "updateProject",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"autoAcceptSplits": {
+										"type": "boolean"
+									},
+									"billingAutoClose": {
+										"type": "boolean"
+									},
+									"billingClosePermission": {
+										"enum": [
+											"ORGANIZER_ONLY",
+											"ANY_PARTICIPANT"
+										],
+										"type": "string"
+									},
+									"billingCloseReminderDays": {
+										"maximum": 9007199254740991,
+										"minimum": 0,
+										"type": "integer"
+									},
+									"billingCycleDays": {
+										"anyOf": [
+											{
+												"exclusiveMinimum": 0,
+												"maximum": 9007199254740991,
+												"minimum": -9007199254740991,
+												"type": "integer"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"billingCycleLength": {
+										"anyOf": [
+											{
+												"enum": [
+													"WEEKLY",
+													"BIWEEKLY",
+													"MONTHLY",
+													"CUSTOM"
+												],
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"budgetAmount": {
+										"anyOf": [
+											{
+												"description": "A positive amount as decimal text, in the currency's major units.",
+												"examples": [
+													"1234.56"
+												],
+												"pattern": "^\\d{1,11}(\\.\\d{1,8})?$",
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"budgetCurrency": {
+										"anyOf": [
+											{
+												"description": "ISO 4217 code, or the app's code for a crypto asset.",
+												"examples": [
+													"USD",
+													"ARS",
+													"BTC"
+												],
+												"pattern": "^[A-Z0-9]{2,10}$",
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"description": {
+										"anyOf": [
+											{
+												"maxLength": 500,
+												"minLength": 1,
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
+									"name": {
+										"maxLength": 191,
+										"minLength": 1,
+										"type": "string"
+									},
+									"primaryCurrency": {
+										"description": "ISO 4217 code, or the app's code for a crypto asset.",
+										"examples": [
+											"USD",
+											"ARS",
+											"BTC"
+										],
+										"pattern": "^[A-Z0-9]{2,10}$",
+										"type": "string"
+									},
+									"status": {
+										"enum": [
+											"ACTIVE",
+											"ARCHIVED"
+										],
+										"type": "string"
+									},
+									"visibility": {
+										"enum": [
+											"PRIVATE",
+											"PUBLIC"
+										],
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": false
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"autoAcceptSplits": {
+											"type": "boolean"
+										},
+										"billingAutoClose": {
+											"type": "boolean"
+										},
+										"billingClosePermission": {
+											"enum": [
+												"ORGANIZER_ONLY",
+												"ANY_PARTICIPANT"
+											],
+											"type": "string"
+										},
+										"billingCloseReminderDays": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"billingCycleDays": {
+											"anyOf": [
+												{
+													"exclusiveMinimum": 0,
+													"maximum": 9007199254740991,
+													"minimum": -9007199254740991,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"billingCycleLength": {
+											"anyOf": [
+												{
+													"enum": [
+														"WEEKLY",
+														"BIWEEKLY",
+														"MONTHLY",
+														"CUSTOM"
+													],
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"budget": {
+											"anyOf": [
+												{
+													"$ref": "#/components/schemas/Money"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"description": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"name": {
+											"type": "string"
+										},
+										"primaryCurrency": {
+											"type": "string"
+										},
+										"status": {
+											"enum": [
+												"ACTIVE",
+												"ARCHIVED"
+											],
+											"type": "string"
+										},
+										"updatedAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"visibility": {
+											"enum": [
+												"PRIVATE",
+												"PUBLIC"
+											],
+											"type": "string"
+										}
+									},
+									"required": [
+										"id",
+										"name",
+										"description",
+										"status",
+										"visibility",
+										"primaryCurrency",
+										"budget",
+										"billingCycleLength",
+										"billingCycleDays",
+										"billingAutoClose",
+										"billingCloseReminderDays",
+										"billingClosePermission",
+										"autoAcceptSplits",
+										"createdAt",
+										"updatedAt"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Change a project's settings",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.updated",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/projects/{id}/analytics-exclusion": {
+			"put": {
+				"description": "Yours alone: other members are not affected.",
+				"operationId": "setProjectAnalyticsExclusion",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"exclude": {
+										"type": "boolean"
+									}
+								},
+								"required": [
+									"exclude"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"exclude": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"exclude"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Leave this project out of your own reports, or put it back",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.analytics_exclusion_set",
+				"x-required-scope": "write:settings"
+			}
+		},
+		"/projects/{id}/expenses": {
+			"get": {
+				"description": "Newest first, one billing period when asked. Each row says whether you can edit it and where it stands.",
+				"operationId": "listProjectExpenses",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "billingPeriodId",
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 50,
+							"maximum": 200,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"amount": {
+														"$ref": "#/components/schemas/Money"
+													},
+													"canEdit": {
+														"type": "boolean"
+													},
+													"category": {
+														"anyOf": [
+															{
+																"properties": {
+																	"color": {
+																		"type": "string"
+																	},
+																	"icon": {
+																		"anyOf": [
+																			{
+																				"type": "string"
+																			},
+																			{
+																				"type": "null"
+																			}
+																		]
+																	},
+																	"id": {
+																		"maxLength": 64,
+																		"minLength": 1,
+																		"type": "string"
+																	},
+																	"name": {
+																		"type": "string"
+																	}
+																},
+																"required": [
+																	"id",
+																	"name",
+																	"color",
+																	"icon"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"date": {
+														"format": "date",
+														"type": "string"
+													},
+													"hasUnseenChanges": {
+														"type": "boolean"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"locked": {
+														"type": "boolean"
+													},
+													"paidBy": {
+														"properties": {
+															"id": {
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															"imageUrl": {
+																"anyOf": [
+																	{
+																		"type": "string"
+																	},
+																	{
+																		"type": "null"
+																	}
+																]
+															},
+															"isMe": {
+																"type": "boolean"
+															},
+															"name": {
+																"type": "string"
+															},
+															"type": {
+																"enum": [
+																	"user",
+																	"guest",
+																	"shadow"
+																],
+																"type": "string"
+															}
+														},
+														"required": [
+															"type",
+															"id",
+															"name",
+															"imageUrl",
+															"isMe"
+														],
+														"type": "object"
+													},
+													"splitMode": {
+														"enum": [
+															"EQUAL",
+															"EXACT",
+															"PERCENTAGE",
+															"SHARES"
+														],
+														"type": "string"
+													},
+													"splits": {
+														"items": {
+															"properties": {
+																"id": {
+																	"maxLength": 64,
+																	"minLength": 1,
+																	"type": "string"
+																},
+																"imageUrl": {
+																	"anyOf": [
+																		{
+																			"type": "string"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
+																"name": {
+																	"type": "string"
+																},
+																"share": {
+																	"$ref": "#/components/schemas/Money"
+																},
+																"type": {
+																	"enum": [
+																		"user",
+																		"guest",
+																		"shadow"
+																	],
+																	"type": "string"
+																},
+																"verification": {
+																	"enum": [
+																		"PENDING",
+																		"ACCEPTED",
+																		"REJECTED",
+																		"AUTO_ACCEPTED"
+																	],
+																	"type": "string"
+																}
+															},
+															"required": [
+																"type",
+																"id",
+																"name",
+																"imageUrl",
+																"share",
+																"verification"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"status": {
+														"enum": [
+															"pending",
+															"disputed",
+															"active",
+															"settled"
+														],
+														"type": "string"
+													},
+													"title": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"title",
+													"date",
+													"amount",
+													"category",
+													"splitMode",
+													"locked",
+													"status",
+													"paidBy",
+													"canEdit",
+													"hasUnseenChanges",
+													"splits"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"total": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor",
+										"total"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "A project's expenses, a page at a time",
+				"tags": [
+					"Projects"
+				],
+				"x-required-scope": "read"
+			}
+		},
+		"/projects/{id}/magic-links": {
+			"get": {
+				"description": "Each link is a secret that lets whoever holds it join with its role, so listing needs the write:expenses scope, like creating one. Needs the Editor role.",
+				"operationId": "listMagicLinks",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"expiresAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"isActive": {
+														"type": "boolean"
+													},
+													"maxUses": {
+														"anyOf": [
+															{
+																"exclusiveMinimum": 0,
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"roleGranted": {
+														"enum": [
+															"ORGANIZER",
+															"EDITOR",
+															"CONTRIBUTOR",
+															"VIEWER"
+														],
+														"type": "string"
+													},
+													"url": {
+														"type": "string"
+													},
+													"useCount": {
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
+													}
+												},
+												"required": [
+													"id",
+													"roleGranted",
+													"url",
+													"isActive",
+													"expiresAt",
+													"maxUses",
+													"useCount",
+													"createdAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "The active invite links of a project",
+				"tags": [
+					"Projects"
+				],
+				"x-required-scope": "write:expenses"
+			},
+			"post": {
+				"description": "One active link per role, never for Owner. The link is not kept in the idempotency store: replaying the key answers that the response is unavailable, so list the links instead.",
+				"operationId": "createMagicLink",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"expiresAt": {
+										"format": "date-time",
+										"type": "string"
+									},
+									"maxUses": {
+										"exclusiveMinimum": 0,
+										"maximum": 9007199254740991,
+										"minimum": -9007199254740991,
+										"type": "integer"
+									},
+									"roleGranted": {
+										"default": "CONTRIBUTOR",
+										"description": "Never Owner.",
+										"enum": [
+											"EDITOR",
+											"CONTRIBUTOR",
+											"VIEWER"
+										],
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": false
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"expiresAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"isActive": {
+											"type": "boolean"
+										},
+										"maxUses": {
+											"anyOf": [
+												{
+													"exclusiveMinimum": 0,
+													"maximum": 9007199254740991,
+													"minimum": -9007199254740991,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"roleGranted": {
+											"enum": [
+												"ORGANIZER",
+												"EDITOR",
+												"CONTRIBUTOR",
+												"VIEWER"
+											],
+											"type": "string"
+										},
+										"url": {
+											"type": "string"
+										},
+										"useCount": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"id",
+										"roleGranted",
+										"url",
+										"isActive",
+										"expiresAt",
+										"maxUses",
+										"useCount",
+										"createdAt"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Make an invite link, or get the active one for that role",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.magic_link_created",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/projects/{id}/magic-links/reset": {
+			"post": {
+				"description": "Every active link for that role stops working. Like creating one, the response is not kept for replay.",
+				"operationId": "resetMagicLink",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"role": {
+										"enum": [
+											"EDITOR",
+											"CONTRIBUTOR",
+											"VIEWER"
+										],
+										"type": "string"
+									}
+								},
+								"required": [
+									"role"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"createdAt": {
+											"format": "date-time",
+											"type": "string"
+										},
+										"expiresAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"isActive": {
+											"type": "boolean"
+										},
+										"maxUses": {
+											"anyOf": [
+												{
+													"exclusiveMinimum": 0,
+													"maximum": 9007199254740991,
+													"minimum": -9007199254740991,
+													"type": "integer"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"roleGranted": {
+											"enum": [
+												"ORGANIZER",
+												"EDITOR",
+												"CONTRIBUTOR",
+												"VIEWER"
+											],
+											"type": "string"
+										},
+										"url": {
+											"type": "string"
+										},
+										"useCount": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"id",
+										"roleGranted",
+										"url",
+										"isActive",
+										"expiresAt",
+										"maxUses",
+										"useCount",
+										"createdAt"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Replace the active invite link of a role with a new one",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.magic_link_reset",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/projects/{id}/magic-links/{linkId}": {
+			"delete": {
+				"operationId": "revokeMagicLink",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "linkId",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Turn an invite link off",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.magic_link_revoked",
+				"x-required-scope": "write:expenses"
 			}
 		},
 		"/projects/{id}/members": {
@@ -84154,6 +86160,2364 @@
 					"Projects"
 				],
 				"x-required-scope": "read"
+			},
+			"post": {
+				"description": "A user on Retrospend is told. A person you added by name gets an invite email when they have an address. Ghosts never hold Editor or Owner. Only an Owner adds an Owner.",
+				"operationId": "addProjectMember",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"joinedOn": {
+										"description": "When they join. Left out: the project's default.",
+										"format": "date",
+										"type": "string"
+									},
+									"person": {
+										"properties": {
+											"id": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"type": {
+												"enum": [
+													"user",
+													"guest",
+													"shadow"
+												],
+												"type": "string"
+											}
+										},
+										"required": [
+											"type",
+											"id"
+										],
+										"type": "object"
+									},
+									"role": {
+										"default": "CONTRIBUTOR",
+										"enum": [
+											"ORGANIZER",
+											"EDITOR",
+											"CONTRIBUTOR",
+											"VIEWER"
+										],
+										"type": "string"
+									}
+								},
+								"required": [
+									"person"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"joinedOn": {
+											"anyOf": [
+												{
+													"format": "date",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"leftOn": {
+											"anyOf": [
+												{
+													"format": "date",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"person": {
+											"properties": {
+												"id": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"type": {
+													"enum": [
+														"user",
+														"guest",
+														"shadow"
+													],
+													"type": "string"
+												}
+											},
+											"required": [
+												"type",
+												"id"
+											],
+											"type": "object"
+										},
+										"role": {
+											"enum": [
+												"ORGANIZER",
+												"EDITOR",
+												"CONTRIBUTOR",
+												"VIEWER"
+											],
+											"type": "string"
+										}
+									},
+									"required": [
+										"person",
+										"role",
+										"joinedOn",
+										"leftOn"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Add someone to a project",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.member_added",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/projects/{id}/members/{type}/{personId}": {
+			"delete": {
+				"description": "Not the person who created it. Only an Owner removes an Owner. Their past expenses stay.",
+				"operationId": "removeProjectMember",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "type",
+						"required": true,
+						"schema": {
+							"enum": [
+								"user",
+								"guest",
+								"shadow"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "personId",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Remove someone from a project",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.member_removed",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/projects/{id}/members/{type}/{personId}/dates": {
+			"put": {
+				"description": "The dates only choose who a new expense includes by default. A split already saved never changes.",
+				"operationId": "setProjectMemberDates",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "type",
+						"required": true,
+						"schema": {
+							"enum": [
+								"user",
+								"guest",
+								"shadow"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "personId",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"joinedOn": {
+										"anyOf": [
+											{
+												"format": "date",
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										],
+										"description": "Left out: kept. Null: from the start."
+									},
+									"leftOn": {
+										"anyOf": [
+											{
+												"format": "date",
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										],
+										"description": "Left out: kept. Null: still a member."
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": false
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"joinedOn": {
+											"anyOf": [
+												{
+													"format": "date",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"leftOn": {
+											"anyOf": [
+												{
+													"format": "date",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"person": {
+											"properties": {
+												"id": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"type": {
+													"enum": [
+														"user",
+														"guest",
+														"shadow"
+													],
+													"type": "string"
+												}
+											},
+											"required": [
+												"type",
+												"id"
+											],
+											"type": "object"
+										},
+										"role": {
+											"enum": [
+												"ORGANIZER",
+												"EDITOR",
+												"CONTRIBUTOR",
+												"VIEWER"
+											],
+											"type": "string"
+										}
+									},
+									"required": [
+										"person",
+										"role",
+										"joinedOn",
+										"leftOn"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Set when someone joined or left",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.member_dates_set",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/projects/{id}/members/{type}/{personId}/dates/preview": {
+			"post": {
+				"description": "Runs PUT /projects/{id}/members/{type}/{personId}/dates in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewSetProjectMemberDates",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "type",
+						"required": true,
+						"schema": {
+							"enum": [
+								"user",
+								"guest",
+								"shadow"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "personId",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"joinedOn": {
+										"anyOf": [
+											{
+												"format": "date",
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										],
+										"description": "Left out: kept. Null: from the start."
+									},
+									"leftOn": {
+										"anyOf": [
+											{
+												"format": "date",
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										],
+										"description": "Left out: kept. Null: still a member."
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": false
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Preview PUT /projects/{id}/members/{type}/{personId}/dates",
+				"tags": [
+					"Projects"
+				],
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/projects/{id}/members/{type}/{personId}/role": {
+			"put": {
+				"description": "Not your own. Only an Owner changes an Owner. The person who created the project stays an Owner.",
+				"operationId": "setProjectMemberRole",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "type",
+						"required": true,
+						"schema": {
+							"enum": [
+								"user",
+								"guest",
+								"shadow"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "personId",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"role": {
+										"enum": [
+											"ORGANIZER",
+											"EDITOR",
+											"CONTRIBUTOR",
+											"VIEWER"
+										],
+										"type": "string"
+									}
+								},
+								"required": [
+									"role"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"joinedOn": {
+											"anyOf": [
+												{
+													"format": "date",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"leftOn": {
+											"anyOf": [
+												{
+													"format": "date",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"person": {
+											"properties": {
+												"id": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"type": {
+													"enum": [
+														"user",
+														"guest",
+														"shadow"
+													],
+													"type": "string"
+												}
+											},
+											"required": [
+												"type",
+												"id"
+											],
+											"type": "object"
+										},
+										"role": {
+											"enum": [
+												"ORGANIZER",
+												"EDITOR",
+												"CONTRIBUTOR",
+												"VIEWER"
+											],
+											"type": "string"
+										}
+									},
+									"required": [
+										"person",
+										"role",
+										"joinedOn",
+										"leftOn"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Change a member's role",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.member_role_set",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/projects/{id}/ownership": {
+			"post": {
+				"description": "Only the person who created it. You become an Editor. The name is typed again to confirm.",
+				"operationId": "transferProjectOwnership",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"confirmProjectName": {
+										"description": "The project's name, typed again to confirm.",
+										"maxLength": 191,
+										"minLength": 1,
+										"type": "string"
+									},
+									"newOwnerId": {
+										"description": "The user id of a member who becomes the owner.",
+										"maxLength": 64,
+										"minLength": 1,
+										"type": "string"
+									}
+								},
+								"required": [
+									"newOwnerId",
+									"confirmProjectName"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:expenses"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:expenses"
+						]
+					}
+				],
+				"summary": "Hand the project to another member",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.ownership_transferred",
+				"x-required-scope": "write:expenses"
+			}
+		},
+		"/projects/{id}/rebalance": {
+			"get": {
+				"description": "Leaves out settled expenses and the ones they are already in. Needs the Editor role.",
+				"operationId": "listRebalanceableExpenses",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "type",
+						"required": true,
+						"schema": {
+							"enum": [
+								"user",
+								"guest",
+								"shadow"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "personId",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"amount": {
+														"$ref": "#/components/schemas/Money"
+													},
+													"beforeJoin": {
+														"type": "boolean"
+													},
+													"currentParticipantCount": {
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
+													},
+													"date": {
+														"format": "date",
+														"type": "string"
+													},
+													"eligible": {
+														"type": "boolean"
+													},
+													"hasAllOtherMembers": {
+														"type": "boolean"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"splitMode": {
+														"enum": [
+															"EQUAL",
+															"EXACT",
+															"PERCENTAGE",
+															"SHARES"
+														],
+														"type": "string"
+													},
+													"title": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"title",
+													"amount",
+													"date",
+													"splitMode",
+													"eligible",
+													"currentParticipantCount",
+													"beforeJoin",
+													"hasAllOtherMembers"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "Past expenses a new member could be included in",
+				"tags": [
+					"Projects"
+				],
+				"x-required-scope": "read"
+			},
+			"post": {
+				"description": "Recomputes the equal shares with the new member. Other split modes and settled expenses are skipped and listed. The people on them verify again unless the project accepts splits by itself. There is no undo: preview first.",
+				"operationId": "rebalanceProjectExpenses",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"expenseIds": {
+										"description": "Left out: every eligible expense.",
+										"items": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"maxItems": 500,
+										"type": "array"
+									},
+									"person": {
+										"properties": {
+											"id": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"type": {
+												"enum": [
+													"user",
+													"guest",
+													"shadow"
+												],
+												"type": "string"
+											}
+										},
+										"required": [
+											"type",
+											"id"
+										],
+										"type": "object"
+									}
+								},
+								"required": [
+									"person"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"rebalancedCount": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"rebalancedIds": {
+											"items": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"type": "array"
+										},
+										"skipped": {
+											"items": {
+												"properties": {
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"reason": {
+														"enum": [
+															"locked",
+															"already_included",
+															"non_equal_split",
+															"before_join"
+														],
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"reason"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"rebalancedCount",
+										"rebalancedIds",
+										"skipped"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:money"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:money"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:money"
+						]
+					}
+				],
+				"summary": "Include a member in past equal-split expenses",
+				"tags": [
+					"Projects"
+				],
+				"x-event-type": "project.rebalanced",
+				"x-required-scope": "write:money"
+			}
+		},
+		"/projects/{id}/rebalance/preview": {
+			"post": {
+				"description": "Runs POST /projects/{id}/rebalance in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
+				"operationId": "previewRebalanceProjectExpenses",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"expenseIds": {
+										"description": "Left out: every eligible expense.",
+										"items": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"maxItems": 500,
+										"type": "array"
+									},
+									"person": {
+										"properties": {
+											"id": {
+												"maxLength": 64,
+												"minLength": 1,
+												"type": "string"
+											},
+											"type": {
+												"enum": [
+													"user",
+													"guest",
+													"shadow"
+												],
+												"type": "string"
+											}
+										},
+										"required": [
+											"type",
+											"id"
+										],
+										"type": "object"
+									}
+								},
+								"required": [
+									"person"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"changes": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"properties": {
+																	"currency": {
+																		"anyOf": [
+																			{
+																				"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																				"examples": [
+																					"USD",
+																					"ARS",
+																					"BTC"
+																				],
+																				"pattern": "^[A-Z0-9]{2,10}$",
+																				"type": "string"
+																			},
+																			{
+																				"const": "%"
+																			}
+																		]
+																	},
+																	"minor": {
+																		"maximum": 9007199254740991,
+																		"minimum": -9007199254740991,
+																		"type": "integer"
+																	}
+																},
+																"required": [
+																	"minor",
+																	"currency"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"currency": {
+														"type": "string"
+													},
+													"delta": {
+														"properties": {
+															"currency": {
+																"anyOf": [
+																	{
+																		"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																		"examples": [
+																			"USD",
+																			"ARS",
+																			"BTC"
+																		],
+																		"pattern": "^[A-Z0-9]{2,10}$",
+																		"type": "string"
+																	},
+																	{
+																		"const": "%"
+																	}
+																]
+															},
+															"minor": {
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															}
+														},
+														"required": [
+															"minor",
+															"currency"
+														],
+														"type": "object"
+													},
+													"figureAfter": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"currency",
+													"before",
+													"after",
+													"delta",
+													"figureAfter"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"detail": {
+											"additionalProperties": {},
+											"properties": {
+												"kind": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind"
+											],
+											"type": "object"
+										},
+										"unavailable": {
+											"items": {
+												"properties": {
+													"after": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"before": {
+														"anyOf": [
+															{
+																"items": {
+																	"properties": {
+																		"currency": {
+																			"anyOf": [
+																				{
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				{
+																					"const": "%"
+																				}
+																			]
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency"
+																	],
+																	"type": "object"
+																},
+																"type": "array"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"before",
+													"after"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"unchanged": {
+											"items": {
+												"properties": {
+													"id": {
+														"examples": [
+															"owed.owedToYou",
+															"spent"
+														],
+														"pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$",
+														"type": "string"
+													},
+													"lines": {
+														"items": {
+															"properties": {
+																"currency": {
+																	"anyOf": [
+																		{
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		{
+																			"const": "%"
+																		}
+																	]
+																},
+																"minor": {
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																}
+															},
+															"required": [
+																"minor",
+																"currency"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"id",
+													"lines"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"changes",
+										"unchanged",
+										"unavailable"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:money"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:money"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:money"
+						]
+					}
+				],
+				"summary": "Preview POST /projects/{id}/rebalance",
+				"tags": [
+					"Projects"
+				],
+				"x-required-scope": "write:money"
 			}
 		},
 		"/projects/{id}/settle-all": {
