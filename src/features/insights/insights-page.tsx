@@ -98,13 +98,15 @@ export function InsightsPage() {
 			) : (
 				<>
 					{summary ? (
-						<SummaryLead
-							href={(span) => hrefOf(span)}
-							names={names}
-							range={view.range}
-							summary={summary}
-							today={today}
-						/>
+						<div aria-busy={i.summary.isPlaceholderData || undefined}>
+							<SummaryLead
+								href={(span) => hrefOf(span)}
+								names={names}
+								range={view.range}
+								summary={summary}
+								today={today}
+							/>
+						</div>
 					) : i.summary.isError ? (
 						<div className="mb-8">
 							<PartUnavailable onRetry={() => void i.summary.refetch()} />

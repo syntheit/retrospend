@@ -47,7 +47,7 @@ export function CashflowSection({
 			) : query.isError || !data ? (
 				<PartUnavailable onRetry={() => void query.refetch()} />
 			) : (
-				<>
+				<div aria-busy={query.isPlaceholderData || undefined}>
 					<RowList label={t("title")}>
 						<Row end={<Figure figure={data.income} />} title={t("income")} />
 						<Row
@@ -81,7 +81,7 @@ export function CashflowSection({
 							{t("missingRates", { currencies: unnamed.join(", ") })}
 						</p>
 					)}
-				</>
+				</div>
 			)}
 		</Section>
 	);

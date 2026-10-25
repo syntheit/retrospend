@@ -10,6 +10,8 @@ import { Skeleton } from "~/components/ui/skeleton";
 export type PartQuery<T> = {
 	data: T | undefined;
 	isPending: boolean;
+	/** The answer on screen is the previous one while the next loads. */
+	isPlaceholderData: boolean;
 	isError: boolean;
 	refetch: () => unknown;
 };

@@ -51,7 +51,7 @@ export function CategorySection({
 			) : query.isError ? (
 				<PartUnavailable onRetry={() => void query.refetch()} />
 			) : (
-				<>
+				<div aria-busy={query.isPlaceholderData || undefined}>
 					<RankedBars items={shown} />
 					{items.length > FIRST && (
 						<Button
@@ -70,7 +70,7 @@ export function CategorySection({
 								: t("showMore", { count: items.length - FIRST })}
 						</Button>
 					)}
-				</>
+				</div>
 			)}
 		</Section>
 	);

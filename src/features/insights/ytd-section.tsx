@@ -63,14 +63,16 @@ export function YtdSection({
 			) : query.isError || !data ? (
 				<PartUnavailable onRetry={() => void query.refetch()} />
 			) : (
-				<YtdBody
-					data={data}
-					hrefOf={hrefOf}
-					items={items}
-					label={label}
-					named={named}
-					usd={usd}
-				/>
+				<div aria-busy={query.isPlaceholderData || undefined}>
+					<YtdBody
+						data={data}
+						hrefOf={hrefOf}
+						items={items}
+						label={label}
+						named={named}
+						usd={usd}
+					/>
+				</div>
 			)}
 		</Section>
 	);

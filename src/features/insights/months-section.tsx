@@ -42,7 +42,7 @@ export function MonthsSection({
 			) : query.isError || !data ? (
 				<PartUnavailable onRetry={() => void query.refetch()} />
 			) : (
-				<>
+				<div aria-busy={query.isPlaceholderData || undefined}>
 					<MonthlyBars
 						currency={data.home}
 						height={phone ? HEIGHT.phone : HEIGHT.desktop}
@@ -66,7 +66,7 @@ export function MonthsSection({
 							</li>
 						))}
 					</ul>
-				</>
+				</div>
 			)}
 		</Section>
 	);
