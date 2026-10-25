@@ -52,7 +52,14 @@ function Needs({ page }: { page: PersonPage }) {
  * expenses between you. Shown as a screen on a phone and as the detail pane
  * of People on iPad and wide Android windows.
  */
-export function PersonView({ person }: { person: PersonRef }) {
+export function PersonView({
+	person,
+	startSettling = false,
+}: {
+	person: PersonRef;
+	/** A link that says "settle up" (a reminder, a deep link) opens the sheet. */
+	startSettling?: boolean;
+}) {
 	const t = useTranslations("mobile.person");
 	const format = useFormatter();
 	const money = useMoneyText();
@@ -61,7 +68,7 @@ export function PersonView({ person }: { person: PersonRef }) {
 	const { api } = useSession();
 	const { color, space, type } = useTheme();
 	const { state, reload } = usePerson(person);
-	const [settling, setSettling] = useState(false);
+	const [settling, setSettling] = useState(startSettling);
 	const ledger = useLedgerMore(person);
 
 	if (state.status === "loading")
