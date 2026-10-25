@@ -4,7 +4,7 @@ import {
 	DELETED_GUEST_NAME,
 	DELETED_GUEST_SENTINEL,
 	DELETED_SHADOW_NAME,
-	DELETED_SHADOW_SENTINEL,
+	isDeletedShadow,
 	DELETED_USER_NAME,
 	DELETED_USER_SENTINEL,
 } from "~/server/services/user-deletion.service";
@@ -130,7 +130,7 @@ export async function resolveActorName(
 	if (actorId === SYSTEM_SENTINEL) return "System";
 	if (actorId === DELETED_USER_SENTINEL) return DELETED_USER_NAME;
 	if (actorId === DELETED_GUEST_SENTINEL) return DELETED_GUEST_NAME;
-	if (actorId === DELETED_SHADOW_SENTINEL) return DELETED_SHADOW_NAME;
+	if (isDeletedShadow(actorId)) return DELETED_SHADOW_NAME;
 
 	const key = `${actorType}:${actorId}`;
 	const hit = cache.get(key);

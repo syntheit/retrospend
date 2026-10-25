@@ -32,6 +32,7 @@ export const STATUS = {
 	upcoming: { tone: "quiet", word: "upcoming" },
 	noRate: { tone: "attention", word: "noRate" },
 	rejected: { tone: "muted", word: "rejected" },
+	notCounted: { tone: "muted", word: "notCounted" },
 } as const satisfies Record<string, { tone: StatusTone; word: string }>;
 
 export type StatusKind = keyof typeof STATUS;

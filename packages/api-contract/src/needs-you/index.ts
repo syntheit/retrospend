@@ -3,6 +3,9 @@ import { v1 } from "../common/meta";
 import { currencyCodeSchema, moneySchema } from "../common/money";
 import { idSchema } from "../core";
 import { daySchema } from "../ledger";
+import { needsYouExtrasContract } from "./extras";
+
+export * from "./extras";
 
 const TAG = ["Needs you"];
 
@@ -123,6 +126,7 @@ export const needsYouListSchema = z
 	.meta({ id: "NeedsYouList" });
 
 export const needsYouContract = {
+	...needsYouExtrasContract,
 	list: v1
 		.route({
 			method: "GET",

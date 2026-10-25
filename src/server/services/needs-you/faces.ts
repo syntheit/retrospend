@@ -6,7 +6,7 @@
 import { parsePersonKey } from "~/server/services/payments/view";
 import {
 	DELETED_GUEST_SENTINEL,
-	DELETED_SHADOW_SENTINEL,
+	isDeletedShadow,
 	DELETED_USER_SENTINEL,
 } from "~/server/services/user-deletion.service";
 import { getImageUrl } from "~/server/storage";
@@ -32,7 +32,7 @@ export async function loadFaces(
 		(id) => id !== DELETED_USER_SENTINEL,
 	);
 	const shadowIds = idsOf(refs, "shadow").filter(
-		(id) => id !== DELETED_SHADOW_SENTINEL,
+		(id) => !isDeletedShadow(id),
 	);
 	const guestIds = idsOf(refs, "guest").filter(
 		(id) => id !== DELETED_GUEST_SENTINEL,

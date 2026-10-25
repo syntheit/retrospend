@@ -67,7 +67,15 @@ test("Add income: a pair with no rate asks for one, never 1", async ({
 	// UYU has no rate in the seed: the home row needs one, and Enter rate opens it.
 	await sheet.getByRole("button", { name: "Currency, ARS" }).click();
 	await page.keyboard.type("UYU");
-	await page.getByRole("option", { name: /^UYU/ }).first().click();
+	// The list filters as you type; click once it has settled on the one match,
+	// not on an option the next keystroke is about to move.
+	const uyu = page.getByRole("option");
+	await expect(uyu).toHaveCount(1);
+	await uyu.click();
+	// The picker closes on the choice; type the amount once the currency shows.
+	await expect(
+		sheet.getByRole("button", { name: "Currency, UYU" }),
+	).toBeVisible();
 	await sheet.getByRole("textbox", { name: "Amount" }).fill("1000");
 	await expect(sheet.getByText("Needs a rate")).toBeVisible();
 	await sheet.getByRole("button", { name: "Enter rate" }).click();

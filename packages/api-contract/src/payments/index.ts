@@ -17,6 +17,9 @@ import {
 	undoInputSchema,
 } from "../ledger";
 import { personRefSchema } from "../people/schemas";
+import { paymentExtrasContract } from "./extras";
+
+export * from "./extras";
 
 const TAG = ["Payments"];
 
@@ -186,6 +189,7 @@ export const paymentUndoResultSchema = z
  * again). Reading the payments with a person: GET /people/{type}/{id}.
  */
 export const paymentsContract = {
+	...paymentExtrasContract,
 	record: v1
 		.route({
 			method: "POST",

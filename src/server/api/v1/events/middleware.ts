@@ -29,6 +29,9 @@ export const recordsEvent = os
 			!isWriteMethod((route.method ?? "POST").toUpperCase())
 		)
 			return next();
+		// The caller's outbox, webhooks and push devices go with the account,
+		// so an event for its own deletion has no one to reach.
+		if (meta.scope === "account:delete") return next();
 
 		const intent: EventIntent = { type: meta.event, recorded: false };
 		const result = await withEventIntent(intent, async () => await next());
@@ -38,7 +41,9 @@ export const recordsEvent = os
 				{ userId: user.principal.userId },
 				meta.event,
 				input,
-				result.output,
+				// A secret response (an invite link, a token) is shown once: its id can be
+				// the secret itself, so the event is built from the request alone.
+				meta.secretResponse ? undefined : result.output,
 			);
 		return result;
 	});

@@ -1,9 +1,14 @@
-import { parseScopeList, type Scope } from "@retrospend/api-contract/common";
+import {
+	parseScopeList,
+	type Scope,
+	type SessionScope,
+} from "@retrospend/api-contract/common";
 import type { PrincipalKind } from "~/server/api/v1/scopes";
 import {
 	apiKeyScopes,
 	effectiveScopes,
 	sessionKind,
+	sessionScopesOf,
 } from "~/server/api/v1/scopes";
 import { auth } from "~/server/better-auth";
 import {
@@ -21,6 +26,8 @@ export type Principal = {
 	userId: string;
 	role: string;
 	scopes: Scope[];
+	/** Session-only scopes (account deletion): web and mobile sessions, never a token. */
+	sessionScopes: SessionScope[];
 	/** Session id or API key id: the rate limit and audit key. */
 	tokenId: string;
 	expiresAt: Date | null;
@@ -58,6 +65,7 @@ async function fromApiKey(key: string): Promise<PrincipalResult> {
 				granted: apiKeyScopes(result.key.permissions),
 				role: user.role,
 			}),
+			sessionScopes: [],
 			tokenId: result.key.id,
 			expiresAt: result.key.expiresAt ? new Date(result.key.expiresAt) : null,
 			clientId: null,
@@ -96,17 +104,15 @@ export async function resolvePrincipal(
 	// A web session token is only good as the web app's cookie: one sent as
 	// a bearer was copied out of the browser, so it is refused, not upgraded.
 	if (kind === "web" && hasBearer) return { ok: false, reason: "invalid" };
+	const granted = stored === null ? null : parseScopeList(stored).scopes;
 	return {
 		ok: true,
 		principal: {
 			kind,
 			userId: session.user.id,
 			role: session.user.role,
-			scopes: effectiveScopes({
-				kind,
-				granted: stored === null ? null : parseScopeList(stored).scopes,
-				role: session.user.role,
-			}),
+			scopes: effectiveScopes({ kind, granted, role: session.user.role }),
+			sessionScopes: sessionScopesOf({ kind, granted }),
 			tokenId: session.session.id,
 			expiresAt: new Date(session.session.expiresAt),
 			clientId,

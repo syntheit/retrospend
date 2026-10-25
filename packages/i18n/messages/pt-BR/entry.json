@@ -53,7 +53,7 @@
 		"spreadOne": "Uma vez só",
 		"spreadMonths": "{count} meses",
 		"exclude": "Excluir dos gastos",
-		"excludeTip": "Continua em Atividade, mas não conta em orçamentos, categorias nem tendências de gasto.",
+		"excludeTip": "Continua em Atividade e no orçamento, mas fica fora dos relatórios e do Insights.",
 		"excludeAuto": "Excluído automaticamente pela categoria",
 		"note": "Nota",
 		"notePlaceholder": "Mais detalhes",

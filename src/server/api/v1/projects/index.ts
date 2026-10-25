@@ -1,10 +1,12 @@
 import * as projects from "~/server/services/api-v1/projects";
 import { serve } from "../core/serve";
 import { signedIn, v1 } from "../middleware";
+import { projectWritesRouter } from "./writes";
 
 const p = v1.projects;
 
 export const projectsRouter = {
+	...projectWritesRouter,
 	list: p.list.handler(
 		serve(({ context }) => projects.listProjects(signedIn(context))),
 	),

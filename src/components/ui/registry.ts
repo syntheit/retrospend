@@ -680,7 +680,7 @@ export const PLANNED: Planned[] = [
 	{
 		name: "DatePicker",
 		status: "built",
-		job: "Pick a day: Today, Yesterday, then a month calendar or a typed date. Date filters use DateRange (presets, two months, typed, Compare) in the same folder",
+		job: "Pick a day: Today, Yesterday, then a month calendar or a typed date; calendarOnly drops Today and Yesterday for a date with nothing picked yet. Date filters use DateRange (presets, two months, typed, Compare) in the same folder",
 		replaces:
 			"4 date pickers, the by-month grid and the custom from and to fields",
 		planRow: INPUTS,

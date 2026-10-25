@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildSplitInput, type SplitState } from "./shared-split-input";
+import {
+	buildSplitInput,
+	resolveSentSplit,
+	type SplitState,
+} from "./shared-split-input";
 
 const you = { participantType: "user" as const, participantId: "me" };
 const lucia = { participantType: "user" as const, participantId: "lucia" };
@@ -120,5 +124,41 @@ describe("buildSplitInput", () => {
 		expect(
 			buildSplitInput({ ...base, others: [lucia, lucia] }).splitWith,
 		).toEqual([you, lucia]);
+	});
+});
+
+describe("resolveSentSplit: the preview resolves what Save sends", () => {
+	const three = {
+		...base,
+		mode: "PERCENTAGE" as const,
+		others: [lucia, paz],
+		paidBy: paz,
+		amount: 100,
+	};
+
+	it("an unset percentage reads as the tab's starting value, as Save does, not as 0", () => {
+		// Two typed at 33.33, the third unset (starts at 33.34): all at their
+		// starting values, so Save sends the even split. 100.00 ARS / 3 = 33.33
+		// each and the odd cent goes to the payer (Paz).
+		const rows = resolveSentSplit(
+			{ ...three, percentages: { "user:me": 33.33, "user:lucia": 33.33 } },
+			"ARS",
+		);
+		expect(rows.map((r) => [r.participantId, r.shareAmount])).toEqual([
+			["me", 33.33],
+			["lucia", 33.33],
+			["paz", 33.34],
+		]);
+	});
+
+	it("a changed percentage resolves from the typed values", () => {
+		const rows = resolveSentSplit(
+			{
+				...three,
+				percentages: { "user:me": 50, "user:lucia": 30, "shadow:paz": 20 },
+			},
+			"ARS",
+		);
+		expect(rows.map((r) => r.shareAmount)).toEqual([50, 30, 20]);
 	});
 });

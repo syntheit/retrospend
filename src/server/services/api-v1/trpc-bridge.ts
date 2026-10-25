@@ -1,8 +1,17 @@
 import { adminRouter } from "~/server/api/routers/admin";
+import { auditLogRouter } from "~/server/api/routers/audit-log";
+import { billingPeriodRouter } from "~/server/api/routers/billingPeriod";
 import { expenseRouter } from "~/server/api/routers/expense";
 import { exportRouter } from "~/server/api/routers/export";
 import { feedbackRouter } from "~/server/api/routers/feedback";
 import { inviteRouter } from "~/server/api/routers/invite";
+import { authRouter } from "~/server/api/routers/auth";
+import { paymentMethodRouter } from "~/server/api/routers/paymentMethod";
+import { profileRouter } from "~/server/api/routers/profile";
+import { settingsRouter } from "~/server/api/routers/settings";
+import { sharedTransactionRouter } from "~/server/api/routers/shared-transaction";
+import { verificationRouter } from "~/server/api/routers/verification";
+import { projectRouter } from "~/server/api/routers/project";
 import { TRPCError } from "@trpc/server";
 import { createCallerFactory } from "~/server/api/trpc";
 import type { Session } from "~/server/better-auth/config";
@@ -21,6 +30,8 @@ import { db } from "~/server/db";
 export type BridgeCaller = {
 	principal: { userId: string };
 	timeZone: string;
+	/** The request's headers, for the few procedures that read the caller's address. */
+	headers?: Headers;
 };
 
 /** The part of a web session the procedures above read. */
@@ -46,7 +57,7 @@ async function contextFor(caller: BridgeCaller) {
 	const user: BridgeUser = { ...row, timeZone: caller.timeZone };
 	return {
 		db,
-		headers: new Headers(),
+		headers: caller.headers ?? new Headers(),
 		// protectedProcedure reads only `user`; the session row is not needed.
 		session: { user } as unknown as Session,
 	};
@@ -57,6 +68,15 @@ const exportFactory = createCallerFactory(exportRouter);
 const expenseFactory = createCallerFactory(expenseRouter);
 const feedbackFactory = createCallerFactory(feedbackRouter);
 const inviteFactory = createCallerFactory(inviteRouter);
+const projectFactory = createCallerFactory(projectRouter);
+const billingPeriodFactory = createCallerFactory(billingPeriodRouter);
+const paymentMethodFactory = createCallerFactory(paymentMethodRouter);
+const auditLogFactory = createCallerFactory(auditLogRouter);
+const authFactory = createCallerFactory(authRouter);
+const profileFactory = createCallerFactory(profileRouter);
+const settingsFactory = createCallerFactory(settingsRouter);
+const sharedTransactionFactory = createCallerFactory(sharedTransactionRouter);
+const verificationFactory = createCallerFactory(verificationRouter);
 
 export const trpcAdmin = async (c: BridgeCaller) =>
 	adminFactory(await contextFor(c));
@@ -68,3 +88,21 @@ export const trpcFeedback = async (c: BridgeCaller) =>
 	feedbackFactory(await contextFor(c));
 export const trpcInvite = async (c: BridgeCaller) =>
 	inviteFactory(await contextFor(c));
+export const trpcProject = async (c: BridgeCaller) =>
+	projectFactory(await contextFor(c));
+export const trpcBillingPeriod = async (c: BridgeCaller) =>
+	billingPeriodFactory(await contextFor(c));
+export const trpcPaymentMethod = async (c: BridgeCaller) =>
+	paymentMethodFactory(await contextFor(c));
+export const trpcAuditLog = async (c: BridgeCaller) =>
+	auditLogFactory(await contextFor(c));
+export const trpcAuth = async (c: BridgeCaller) =>
+	authFactory(await contextFor(c));
+export const trpcProfile = async (c: BridgeCaller) =>
+	profileFactory(await contextFor(c));
+export const trpcSettings = async (c: BridgeCaller) =>
+	settingsFactory(await contextFor(c));
+export const trpcSharedTransaction = async (c: BridgeCaller) =>
+	sharedTransactionFactory(await contextFor(c));
+export const trpcVerification = async (c: BridgeCaller) =>
+	verificationFactory(await contextFor(c));

@@ -17,6 +17,10 @@ import {
 	updateSharedExpense,
 } from "~/server/services/entry/shared.mutation";
 import type { MoneyMutation } from "~/server/services/preview/types";
+import {
+	type RestoreSelfInput,
+	restoreSelfMutation,
+} from "~/server/services/shared-expenses/remove-self.mutation";
 import { VerificationService } from "~/server/services/shared-expenses/verification.service";
 import { exactAmount } from "./amounts";
 import type { Caller } from "./caller";
@@ -240,6 +244,16 @@ function inverseOf(caller: Caller, op: string, input: unknown): Inverse {
 						expectedUpdatedAt: value.updatedAt ?? undefined,
 					}),
 				};
+			},
+		};
+	}
+	if (op === "shared.restoreSelf") {
+		const args = input as RestoreSelfInput;
+		return {
+			preview: () => previewWrite(caller, restoreSelfMutation, args),
+			apply: async () => {
+				const done = await applyWrite(caller, restoreSelfMutation, args);
+				return { id: done.transactionId, redo: null };
 			},
 		};
 	}

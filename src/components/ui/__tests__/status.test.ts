@@ -8,7 +8,7 @@ import { kit, render } from "./render";
 const kinds = Object.keys(STATUS) as StatusKind[];
 
 describe("the one status map (R5)", () => {
-	it("has the 17 kinds", () => {
+	it("has the 18 kinds", () => {
 		expect(kinds).toEqual([
 			"owed",
 			"owe",
@@ -27,6 +27,7 @@ describe("the one status map (R5)", () => {
 			"upcoming",
 			"noRate",
 			"rejected",
+			"notCounted",
 		]);
 	});
 

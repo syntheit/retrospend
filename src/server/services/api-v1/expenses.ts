@@ -150,7 +150,38 @@ export function updateInput(
 	return toServiceInput(id, fields, caller.timeZone);
 }
 
+/**
+ * An expense category must be one of the caller's expense categories. The
+ * service answers FORBIDDEN, which reads as a permission problem; here a
+ * category that is missing or someone else's is just not found, as every
+ * other id in the path or body is. An edit that keeps the expense's own
+ * category is left alone, as the service does (an old row can sit in a
+ * category that no longer takes new expenses).
+ */
+async function requireCategory(
+	caller: LedgerCaller,
+	categoryId: string | undefined,
+	editing?: string,
+) {
+	if (!categoryId) return;
+	const { db, principal } = caller;
+	if (editing) {
+		const current = await db.expense.findFirst({
+			where: { id: editing, userId: principal.userId },
+			select: { categoryId: true },
+		});
+		if (current?.categoryId === categoryId) return;
+	}
+	const found = await db.category.findFirst({
+		where: { id: categoryId, userId: principal.userId, kind: "EXPENSE" },
+		select: { id: true },
+	});
+	if (!found)
+		throw new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
+}
+
 export async function addExpense(caller: LedgerCaller, input: Fields) {
+	await requireCategory(caller, input.categoryId);
 	const args = createInput(caller, input);
 	const created = await applyWrite(caller, createExpense, args);
 	const expense = await readExpense(caller, created.id);
@@ -163,13 +194,16 @@ export async function addExpense(caller: LedgerCaller, input: Fields) {
 	};
 }
 
-export const previewAddExpense = (caller: LedgerCaller, input: Fields) =>
-	previewWrite(caller, createExpense, createInput(caller, input));
+export async function previewAddExpense(caller: LedgerCaller, input: Fields) {
+	await requireCategory(caller, input.categoryId);
+	return previewWrite(caller, createExpense, createInput(caller, input));
+}
 
 export async function replaceExpense(
 	caller: LedgerCaller,
 	input: z.infer<typeof updateExpenseSchema>,
 ) {
+	await requireCategory(caller, input.categoryId, input.id);
 	const done = await applyWrite(
 		caller,
 		updateExpenseEntry,
@@ -185,10 +219,13 @@ export async function replaceExpense(
 	};
 }
 
-export const previewReplaceExpense = (
+export async function previewReplaceExpense(
 	caller: LedgerCaller,
 	input: z.infer<typeof updateExpenseSchema>,
-) => previewWrite(caller, updateExpenseEntry, updateInput(caller, input));
+) {
+	await requireCategory(caller, input.categoryId, input.id);
+	return previewWrite(caller, updateExpenseEntry, updateInput(caller, input));
+}
 
 export async function removeExpense(caller: LedgerCaller, id: string) {
 	const done = await applyWrite(caller, deleteExpenseEntry, { id });
