@@ -279,18 +279,37 @@ export async function unconfirmRecurringIncomeIn(
 			message: "Undo the Move in first",
 		});
 	}
+	const template = await tx.recurringTemplate.findFirst({
+		where: { id: row.recurringTemplateId, userId },
+		select: { nextDueDate: true, frequency: true, anchorDay: true },
+	});
+	// Only the newest confirm can be undone: the template must sit exactly one
+	// period after this entry. Rewinding past a later confirm would book those
+	// periods again.
+	if (
+		template &&
+		template.nextDueDate.getTime() !==
+			nextDueDay(row.date, template.frequency, template.anchorDay).getTime()
+	) {
+		throw new TRPCError({
+			code: "CONFLICT",
+			message: "Undo the later confirm first",
+		});
+	}
 	if (row.planBatchId) await undoPlan(tx, userId, row.planBatchId);
 	const accounts = await reverseLegs(tx, { expenseId: row.id });
 	await tx.expense.delete({ where: { id: row.id } });
 	forgetMonthViews(tx);
-	await tx.recurringTemplate.updateMany({
-		where: {
-			id: row.recurringTemplateId,
-			userId,
-			nextDueDate: { gt: row.date },
-		},
-		data: { nextDueDate: row.date },
-	});
+	if (template) {
+		await tx.recurringTemplate.updateMany({
+			where: {
+				id: row.recurringTemplateId,
+				userId,
+				nextDueDate: template.nextDueDate,
+			},
+			data: { nextDueDate: row.date },
+		});
+	}
 	return { expenseId: row.id, templateId: row.recurringTemplateId, accounts };
 }
 

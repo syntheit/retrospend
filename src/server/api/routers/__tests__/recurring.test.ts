@@ -301,7 +301,8 @@ describe("recurring money in and amounts that vary", () => {
 		await confirm(123_456);
 		// ARS 123,456 at 1,560 per USD
 		expect(state.expenses[0]).toMatchObject({
-			amount: 123_456,
+			// Stored as typed: the amount travels as decimal text.
+			amount: "123456",
 			amountInUSD: 79.14,
 		});
 	});

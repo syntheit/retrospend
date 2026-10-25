@@ -1,11 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { convertAmount } from "~/lib/money";
-import { nextRecurringDate } from "~/lib/recurring";
 import { startOfNextDayIn } from "~/lib/time-zone";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { recurringEntryData } from "~/server/services/money-in.service";
+import { userTransaction } from "~/server/db-tx";
 import { RateCache } from "~/server/services/rate-cache";
+import { confirmRecurringExpense } from "~/server/services/recurring-confirm.mutation";
 
 export const recurringRouter = createTRPCRouter({
 	list: protectedProcedure
@@ -346,7 +346,9 @@ export const recurringRouter = createTRPCRouter({
 	}),
 
 	/**
-	 * Confirm a pending recurring template and create the expense
+	 * Confirm a pending recurring template and create the expense. The same
+	 * mutation /api/v1 and the confirm preview run (recurring-confirm.mutation.ts),
+	 * so this is the only place the money is written.
 	 */
 	confirmAndCreate: protectedProcedure
 		.input(
@@ -361,70 +363,22 @@ export const recurringRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			const template = await db.recurringTemplate.findFirst({
-				where: {
-					id: input.id,
-					userId: session.user.id,
-					isActive: true,
-				},
-			});
-
-			if (!template) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Recurring template not found",
-				});
-			}
-
-			if (
-				(input.dueDate &&
-					input.dueDate.getTime() !== template.nextDueDate.getTime()) ||
-				template.nextDueDate >= startOfNextDayIn(new Date(), ctx.timeZone)
-			) {
-				throw new TRPCError({
-					code: "CONFLICT",
-					message: "This payment was already confirmed",
-				});
-			}
-
-			// Direction, amount and the due date's rate (never 1) for the row.
-			const entry = await recurringEntryData(db, template, input.amount);
-
-			const nextDueDate = nextRecurringDate(
-				template.nextDueDate,
-				template.frequency,
-				template.anchorDay,
+			const userId = ctx.session.user.id;
+			// The amount as text, so it is stored as typed and never goes through float math.
+			const amount =
+				input.amount === undefined ? undefined : String(input.amount);
+			const done = await userTransaction(ctx.db, userId, (tx) =>
+				confirmRecurringExpense.run(
+					tx,
+					{
+						templateId: input.id,
+						dueDate: input.dueDate,
+						amount,
+						timeZone: ctx.timeZone,
+					},
+					{ userId },
+				),
 			);
-
-			// Advance the template and create the expense in one transaction.
-			// The advance only succeeds while nextDueDate is still the one read
-			// above, so two confirms racing each other create a single expense.
-			const expense = await db.$transaction(async (tx) => {
-				await tx.$executeRaw`SELECT set_config('app.current_user_id', ${session.user.id}, true),
-				                            set_config('role', 'retrospend_app', true)`;
-				const advanced = await tx.recurringTemplate.updateMany({
-					where: {
-						id: template.id,
-						userId: session.user.id,
-						nextDueDate: template.nextDueDate,
-					},
-					data: {
-						nextDueDate,
-						anchorDay: template.anchorDay ?? template.nextDueDate.getDate(),
-					},
-				});
-				if (advanced.count === 0) {
-					throw new TRPCError({
-						code: "CONFLICT",
-						message: "This payment was already confirmed",
-					});
-				}
-
-				return await tx.expense.create({ data: entry });
-			});
-
-			return expense;
+			return done.value;
 		}),
 });

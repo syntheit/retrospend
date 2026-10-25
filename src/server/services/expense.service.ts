@@ -1,3 +1,8 @@
+import {
+	dayKey,
+	parseDateOnlyIn,
+	startOfNextDayIn,
+} from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { isValidRate, USD } from "~/lib/money";
 import {
@@ -7,6 +12,7 @@ import {
 import type { Prisma, PrismaClient } from "~prisma";
 import { refuseLegMoneyEdit } from "./accounts/leg-edits";
 import { AmortizationService } from "./amortization.service";
+import { findDuplicateExpense } from "./expense-duplicate";
 import {
 	type BookedRate,
 	bookRate,
@@ -376,26 +382,12 @@ export class ExpenseService {
 		});
 	}
 
-	/** An expense with the same title (any case), amount and day, for the duplicate warning. */
+	/** See findDuplicateExpense. */
 	async findDuplicate(
 		userId: string,
-		input: { title: string; amount: number; date: Date },
+		input: Parameters<typeof findDuplicateExpense>[2],
 	) {
-		const startOfDay = new Date(input.date);
-		startOfDay.setHours(0, 0, 0, 0);
-		const endOfDay = new Date(input.date);
-		endOfDay.setHours(23, 59, 59, 999);
-
-		return await (this.db as PrismaClient).expense.findFirst({
-			where: {
-				// Money in never makes an expense look like a duplicate.
-				...listedEntryWhere(userId),
-				title: { equals: input.title, mode: "insensitive" },
-				amount: { equals: input.amount },
-				date: { gte: startOfDay, lte: endOfDay },
-			},
-			select: { id: true, title: true },
-		});
+		return findDuplicateExpense(this.db as PrismaClient, userId, input);
 	}
 
 	async getExpensesByDate(userId: string, date: Date) {
