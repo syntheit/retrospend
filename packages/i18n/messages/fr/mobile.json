@@ -374,8 +374,8 @@
 		},
 		"move": {
 			"direction": "Sens",
-			"in": "Ajouter de l’argent",
-			"out": "Retirer de l’argent",
+			"in": "Ajouter",
+			"out": "Retirer",
 			"from": "De",
 			"to": "Vers",
 			"place": "{name}, {amount}",
@@ -449,7 +449,8 @@
 			"leftToSpend": "Reste à dépenser",
 			"keeps": "{amount} reste",
 			"nothing": "Cela ne change rien.",
-			"envelopeFallback": "Enveloppe"
+			"envelopeFallback": "Enveloppe",
+			"refused": "Impossible en l’état. Changez le montant."
 		},
 		"write": {
 			"saving": "Enregistrement",

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
@@ -8,7 +8,7 @@ import { Sheet } from "@/ui/Sheet";
 import { BudgetChanges } from "./BudgetChanges";
 import { planBody, type RestChoice } from "./bodies";
 import { monthDate } from "./months";
-import { Line, Note } from "./parts";
+import { Line, Note, SheetBody } from "./parts";
 import { type BudgetMonth, envelopeById, type FillPlan } from "./source";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
 import { useUndoToast } from "./useUndoToast";
@@ -118,9 +118,7 @@ export function UsePlanSheet({
 			title={t("title")}
 			visible={visible}
 		>
-			<ScrollView
-				contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
-			>
+			<SheetBody>
 				{loadFailed ? (
 					<Note tone="attention">{t("loadError")}</Note>
 				) : !plan ? (
@@ -181,7 +179,7 @@ export function UsePlanSheet({
 						) : null}
 					</WriteFrame>
 				)}
-			</ScrollView>
+			</SheetBody>
 		</Sheet>
 	);
 }

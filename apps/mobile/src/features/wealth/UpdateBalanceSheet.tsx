@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { ScrollView } from "react-native";
 import { useTranslations } from "use-intl";
 import { minorOf, readAmount, wireAmount } from "@/features/budget/amount";
 import {
@@ -7,13 +6,13 @@ import {
 	ChangeList,
 	type ChangeRow,
 	Note,
+	SheetBody,
 	useAmountLocale,
 } from "@/features/budget/parts";
 import { useMoneyWrite, useWriteIds } from "@/features/budget/useMoneyWrite";
 import { useUndoToast } from "@/features/budget/useUndoToast";
 import { noSession, useApi, WriteFrame } from "@/features/budget/WriteFrame";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { useTheme } from "@/theme";
 import { Sheet } from "@/ui/Sheet";
 import { balanceRows, isUnchanged } from "./balance";
 import type { AccountDetail } from "./source";
@@ -41,7 +40,6 @@ export function UpdateBalanceSheet({
 	const announce = useUndoToast("accounts");
 	const money = useMoneyText();
 	const locale = useAmountLocale();
-	const { space } = useTheme();
 	const currency = account.balance.currency;
 	const [draft, setDraft] = useState("");
 	const entered = readAmount(draft, locale, currency);
@@ -121,10 +119,7 @@ export function UpdateBalanceSheet({
 			title={t("title")}
 			visible={visible}
 		>
-			<ScrollView
-				contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
-				keyboardShouldPersistTaps="handled"
-			>
+			<SheetBody>
 				<WriteFrame
 					busy={flow.committing}
 					changes={
@@ -154,7 +149,7 @@ export function UpdateBalanceSheet({
 						onDraftChange={setDraft}
 					/>
 				</WriteFrame>
-			</ScrollView>
+			</SheetBody>
 		</Sheet>
 	);
 }

@@ -1,12 +1,10 @@
 import { useEffect } from "react";
-import { ScrollView } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { useTheme } from "@/theme";
 import { Sheet } from "@/ui/Sheet";
 import { BudgetChanges } from "./BudgetChanges";
 import { takeBackBody } from "./bodies";
-import { Note } from "./parts";
+import { Note, SheetBody } from "./parts";
 import type { BudgetMonth } from "./source";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
 import { useUndoToast } from "./useUndoToast";
@@ -33,7 +31,6 @@ export function TakeBackSheet({
 	const api = useApi();
 	const announce = useUndoToast("budget");
 	const money = useMoneyText();
-	const { space } = useTheme();
 	// How much more was planned than there is: the server's figure.
 	const owed = data.verdict.plannedTooMuch;
 	const needed = owed.minor > 0;
@@ -73,9 +70,7 @@ export function TakeBackSheet({
 			title={t("title")}
 			visible={visible}
 		>
-			<ScrollView
-				contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
-			>
+			<SheetBody>
 				{needed ? (
 					<WriteFrame
 						busy={flow.committing}
@@ -96,7 +91,7 @@ export function TakeBackSheet({
 				) : (
 					<Note>{t("nothing")}</Note>
 				)}
-			</ScrollView>
+			</SheetBody>
 		</Sheet>
 	);
 }

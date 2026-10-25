@@ -114,13 +114,19 @@ const preview = (before: number, after: number) => ({
 	},
 });
 
-function fakeApi(options: { previewFails?: boolean } = {}) {
+function fakeApi(
+	options: { previewFails?: boolean; previewRefusedWith?: number } = {},
+) {
 	const calls: { route: string; input: unknown; key?: string }[] = [];
 	const api = {
 		budget: {
 			previewAssign: async (input: { items: { amount: string }[] }) => {
 				calls.push({ route: "previewAssign", input });
 				if (options.previewFails) throw new Error("down");
+				if (options.previewRefusedWith)
+					throw Object.assign(new Error("refused"), {
+						status: options.previewRefusedWith,
+					});
 				const minor = Math.round(Number(input.items[0]?.amount) * 100);
 				return preview(0, minor);
 			},
@@ -273,6 +279,24 @@ describe("Assign money", () => {
 			)
 			.join("|");
 		expect(texts).toContain("Couldn't check this");
+		expect(calls.some((c) => c.route === "assign")).toBe(false);
+		act(() => tree.unmount());
+	});
+
+	it("says the server refused it (a 4xx) instead of offering a retry", async () => {
+		const { api, calls } = fakeApi({ previewRefusedWith: 400 });
+		mockSession.api = api;
+		const { tree } = await open();
+		press(tree, "9");
+		await wait(400);
+		expect(disabled(tree, "Assign")?.disabled).toBe(true);
+		const texts = tree.root
+			.findAll(() => true)
+			.flatMap((n) =>
+				typeof n.props.children === "string" ? [n.props.children] : [],
+			)
+			.join("|");
+		expect(texts).toContain("This can not be done as it is");
 		expect(calls.some((c) => c.route === "assign")).toBe(false);
 		act(() => tree.unmount());
 	});

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { LinkButton } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
@@ -11,7 +11,7 @@ import { CoverForm } from "./CoverForm";
 import { LimitForm } from "./LimitForm";
 import { MoveForm } from "./MoveForm";
 import type { MonthKind } from "./months";
-import { Line, Note } from "./parts";
+import { Line, Note, SheetBody } from "./parts";
 import { envelopeActions, isLimits, statusLine } from "./rows";
 import type { BudgetEnvelope, BudgetMonth } from "./source";
 
@@ -88,10 +88,7 @@ export function EnvelopeSheet({
 			title={title}
 			visible={envelope !== null}
 		>
-			<ScrollView
-				contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
-				keyboardShouldPersistTaps="handled"
-			>
+			<SheetBody>
 				{mode === "assign" ? (
 					form((e) => <AssignForm {...props(e)} />)
 				) : mode === "move" ? (
@@ -153,7 +150,7 @@ export function EnvelopeSheet({
 						) : null}
 					</>
 				) : null}
-			</ScrollView>
+			</SheetBody>
 		</Sheet>
 	);
 }

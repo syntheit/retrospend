@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Text, View } from "react-native";
+import { ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatLocale } from "@/lib/intl";
 import { useFormatMoney } from "@/lib/money";
@@ -7,6 +7,28 @@ import { useTheme } from "@/theme";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { type Entered, minorOf } from "./amount";
 import type { PreviewStatus } from "./useMoneyWrite";
+
+/**
+ * The scrolling body of a full-height sheet. The platform sheet centers short
+ * content in its detent, so the body asks for most of the window's height and
+ * the content starts at the top, where a form belongs.
+ */
+export function SheetBody({ children }: { children: ReactNode }) {
+	const { height } = useWindowDimensions();
+	const { space } = useTheme();
+	return (
+		<ScrollView
+			contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
+			keyboardShouldPersistTaps="handled"
+			style={{ minHeight: height * SHEET_FILL }}
+		>
+			{children}
+		</ScrollView>
+	);
+}
+
+/** How much of the window a sheet body claims: enough to pin the top, short of the status bar. */
+const SHEET_FILL = 0.8;
 
 /** One plain sentence in a sheet, or an attention note when it needs the person. */
 export function Note({
@@ -187,6 +209,7 @@ export function ChangeList({
 	if (status === "idle") return null;
 	if (status === "loading") return <Note>{t("checking")}</Note>;
 	if (status === "failed") return <Note tone="attention">{t("error")}</Note>;
+	if (status === "refused") return <Note tone="attention">{t("refused")}</Note>;
 	const heading = (text: string) => (
 		<Text
 			accessibilityRole="header"

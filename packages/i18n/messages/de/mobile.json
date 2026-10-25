@@ -374,8 +374,8 @@
 		},
 		"move": {
 			"direction": "Richtung",
-			"in": "Geld hinzufügen",
-			"out": "Geld entnehmen",
+			"in": "Hinzufügen",
+			"out": "Entnehmen",
 			"from": "Von",
 			"to": "Nach",
 			"place": "{name}, {amount}",
@@ -449,7 +449,8 @@
 			"leftToSpend": "Zum Ausgeben übrig",
 			"keeps": "{amount} bleibt",
 			"nothing": "Das ändert nichts.",
-			"envelopeFallback": "Umschlag"
+			"envelopeFallback": "Umschlag",
+			"refused": "So geht das nicht. Ändere den Betrag."
 		},
 		"write": {
 			"saving": "Wird gespeichert",

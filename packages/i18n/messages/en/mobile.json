@@ -374,8 +374,8 @@
 		},
 		"move": {
 			"direction": "Direction",
-			"in": "Add money",
-			"out": "Take money out",
+			"in": "Add",
+			"out": "Take out",
 			"from": "From",
 			"to": "To",
 			"place": "{name}, {amount}",
@@ -449,7 +449,8 @@
 			"leftToSpend": "Left to spend",
 			"keeps": "{amount} stays",
 			"nothing": "This changes nothing.",
-			"envelopeFallback": "Envelope"
+			"envelopeFallback": "Envelope",
+			"refused": "This can not be done as it is. Change the amount."
 		},
 		"write": {
 			"saving": "Saving",

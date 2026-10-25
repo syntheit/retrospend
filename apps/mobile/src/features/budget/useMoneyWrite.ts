@@ -6,7 +6,13 @@ import { newClientId } from "@/data/ids";
 // until it is in, the write carries one idempotency key per request body, and
 // the answer ends in an Undo toast. Nothing here knows a figure.
 
-export type PreviewStatus = "idle" | "loading" | "ready" | "failed";
+/** `refused`: the server answered that this body can not be done (a 4xx), so retrying the same thing is pointless. */
+export type PreviewStatus = "idle" | "loading" | "ready" | "failed" | "refused";
+
+function isRefusal(error: unknown): boolean {
+	const status = (error as { status?: unknown } | null)?.status;
+	return typeof status === "number" && status >= 400 && status < 500;
+}
 
 export interface MoneyWrite<P, W> {
 	preview: P | null;
@@ -61,8 +67,8 @@ export function useMoneyWrite<I, P, W>(options: {
 					setPreview(result);
 					setStatus("ready");
 				})
-				.catch(() => {
-					if (!cancelled) setStatus("failed");
+				.catch((error: unknown) => {
+					if (!cancelled) setStatus(isRefusal(error) ? "refused" : "failed");
 				});
 		}, debounceMs);
 		return () => {

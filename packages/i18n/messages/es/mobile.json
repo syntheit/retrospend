@@ -374,8 +374,8 @@
 		},
 		"move": {
 			"direction": "Dirección",
-			"in": "Añadir dinero",
-			"out": "Sacar dinero",
+			"in": "Sumar",
+			"out": "Sacar",
 			"from": "Desde",
 			"to": "Hacia",
 			"place": "{name}, {amount}",
@@ -449,7 +449,8 @@
 			"leftToSpend": "Queda para gastar",
 			"keeps": "{amount} se mantiene",
 			"nothing": "Esto no cambia nada.",
-			"envelopeFallback": "Sobre"
+			"envelopeFallback": "Sobre",
+			"refused": "Esto no se puede hacer así. Cambia el monto."
 		},
 		"write": {
 			"saving": "Guardando",
