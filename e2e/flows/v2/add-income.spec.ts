@@ -68,6 +68,10 @@ test("Add income: a pair with no rate asks for one, never 1", async ({
 	await sheet.getByRole("button", { name: "Currency, ARS" }).click();
 	await page.keyboard.type("UYU");
 	await page.getByRole("option", { name: /^UYU/ }).first().click();
+	// The picker closes on the choice; type the amount once the currency shows.
+	await expect(
+		sheet.getByRole("button", { name: "Currency, UYU" }),
+	).toBeVisible();
 	await sheet.getByRole("textbox", { name: "Amount" }).fill("1000");
 	await expect(sheet.getByText("Needs a rate")).toBeVisible();
 	await sheet.getByRole("button", { name: "Enter rate" }).click();
