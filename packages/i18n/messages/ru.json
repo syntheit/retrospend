@@ -1166,7 +1166,14 @@
     "backupDuration": "Заняло {seconds} с",
     "tokensOllama": "Токенов в месяц, Ollama",
     "tokensOpenRouter": "Токенов в месяц, OpenRouter",
-    "feedbackTitle": "Отзывы"
+    "feedbackTitle": "Отзывы",
+    "webhookPrivateTargets": "Разрешить частные адреса для вебхуков",
+    "webhookPrivateTargetsDescription": "Позволяет вебхукам отправлять на адреса вашей сети, например localhost или 192.168.x.x, и по http. По умолчанию выключено.",
+    "webhookPrivateTargetsOn": "Частные адреса для вебхуков разрешены",
+    "webhookPrivateTargetsOff": "Частные адреса для вебхуков заблокированы",
+    "webhookPrivateTargetsConfirmTitle": "Разрешить частные адреса для вебхуков?",
+    "webhookPrivateTargetsConfirmBody": "Вебхуки всех пользователей смогут обращаться к службам в сети этого сервера. Включайте, только если доверяете всем, у кого есть аккаунт.",
+    "webhookPrivateTargetsConfirm": "Разрешить частные адреса"
   },
   "auditLog": {
     "title": "Журналы аудита",

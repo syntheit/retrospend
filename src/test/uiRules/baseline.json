@@ -292,11 +292,6 @@
 	"UI-101": {
 		"src/styles/globals.css": 1
 	},
-	"UI-120": {
-		"src/app/(site)/docs/features/projects/page.tsx": 2,
-		"src/app/(site)/releases/layout.tsx": 1,
-		"src/lib/format.ts": 2
-	},
 	"UI-121": {
 		"packages/i18n/messages/en.json": 16,
 		"src/app/(site)/docs/configuration/email/page.tsx": 1,
@@ -419,7 +414,7 @@
 		"src/components/ui/chart.tsx": 72,
 		"src/components/ui/rate-selector.tsx": 3,
 		"src/components/user-invite-codes-table.tsx": 61,
-		"src/server/api/routers/admin.ts": 601,
+		"src/server/api/routers/admin.ts": 590,
 		"src/server/api/routers/audit-log.ts": 722,
 		"src/server/api/routers/auth.ts": 146,
 		"src/server/api/routers/billingPeriod.ts": 433,
