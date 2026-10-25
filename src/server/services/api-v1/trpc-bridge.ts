@@ -1,4 +1,5 @@
 import { adminRouter } from "~/server/api/routers/admin";
+import { auditLogRouter } from "~/server/api/routers/audit-log";
 import { billingPeriodRouter } from "~/server/api/routers/billingPeriod";
 import { expenseRouter } from "~/server/api/routers/expense";
 import { exportRouter } from "~/server/api/routers/export";
@@ -63,6 +64,7 @@ const inviteFactory = createCallerFactory(inviteRouter);
 const projectFactory = createCallerFactory(projectRouter);
 const billingPeriodFactory = createCallerFactory(billingPeriodRouter);
 const paymentMethodFactory = createCallerFactory(paymentMethodRouter);
+const auditLogFactory = createCallerFactory(auditLogRouter);
 
 export const trpcAdmin = async (c: BridgeCaller) =>
 	adminFactory(await contextFor(c));
@@ -80,3 +82,5 @@ export const trpcBillingPeriod = async (c: BridgeCaller) =>
 	billingPeriodFactory(await contextFor(c));
 export const trpcPaymentMethod = async (c: BridgeCaller) =>
 	paymentMethodFactory(await contextFor(c));
+export const trpcAuditLog = async (c: BridgeCaller) =>
+	auditLogFactory(await contextFor(c));

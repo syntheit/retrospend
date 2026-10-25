@@ -93,6 +93,7 @@ export const EVENT_TYPES = [
 	"shared_expense.created",
 	"shared_expense.deleted",
 	"shared_expense.rejected",
+	"shared_expense.seen",
 	"shared_expense.undone",
 	"shared_expense.updated",
 	// G4 budget and wealth (S3d)

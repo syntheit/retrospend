@@ -1,5 +1,6 @@
 import { accountContract } from "./account";
 import { accountsContract } from "./accounts";
+import { activityContract } from "./activity";
 import { adminContract } from "./admin";
 import { billingPeriodsContract } from "./billing-periods";
 import { budgetContract } from "./budget";
@@ -33,6 +34,7 @@ import { webhooksContract } from "./webhooks";
 
 export * from "./account";
 export * from "./accounts";
+export * from "./activity";
 export * from "./admin";
 export * from "./billing-periods";
 export * from "./budget";
@@ -74,6 +76,7 @@ export * from "./webhooks";
 export const contract = {
 	account: accountContract,
 	accounts: accountsContract,
+	activity: activityContract,
 	admin: adminContract,
 	"billing-periods": billingPeriodsContract,
 	budget: budgetContract,

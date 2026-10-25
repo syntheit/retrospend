@@ -84435,6 +84435,510 @@
 				"x-required-scope": "write:expenses"
 			}
 		},
+		"/projects/last-activity": {
+			"get": {
+				"description": "Projects you are not in are left out.",
+				"operationId": "getProjectsLastActivity",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "ids",
+						"required": true,
+						"schema": {
+							"description": "Comma-separated project ids, at most 500.",
+							"maxLength": 40000,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"entry": {
+														"properties": {
+															"action": {
+																"properties": {
+																	"label": {
+																		"type": "string"
+																	},
+																	"type": {
+																		"type": "string"
+																	}
+																},
+																"required": [
+																	"type",
+																	"label"
+																],
+																"type": "object"
+															},
+															"actor": {
+																"properties": {
+																	"avatarUrl": {
+																		"anyOf": [
+																			{
+																				"type": "string"
+																			},
+																			{
+																				"type": "null"
+																			}
+																		]
+																	},
+																	"id": {
+																		"anyOf": [
+																			{
+																				"type": "string"
+																			},
+																			{
+																				"type": "null"
+																			}
+																		]
+																	},
+																	"name": {
+																		"type": "string"
+																	},
+																	"type": {
+																		"enum": [
+																			"user",
+																			"guest",
+																			"system",
+																			"unknown"
+																		],
+																		"type": "string"
+																	}
+																},
+																"required": [
+																	"name",
+																	"type",
+																	"id",
+																	"avatarUrl"
+																],
+																"type": "object"
+															},
+															"detail": {
+																"anyOf": [
+																	{
+																		"anyOf": [
+																			{
+																				"properties": {
+																					"changes": {
+																						"items": {
+																							"properties": {
+																								"field": {
+																									"type": "string"
+																								},
+																								"label": {
+																									"type": "string"
+																								},
+																								"newValue": {
+																									"type": "string"
+																								},
+																								"oldValue": {
+																									"type": "string"
+																								}
+																							},
+																							"required": [
+																								"field",
+																								"label",
+																								"oldValue",
+																								"newValue"
+																							],
+																							"type": "object"
+																						},
+																						"type": "array"
+																					},
+																					"type": {
+																						"const": "field_changes"
+																					}
+																				},
+																				"required": [
+																					"type",
+																					"changes"
+																				],
+																				"type": "object"
+																			},
+																			{
+																				"properties": {
+																					"snapshot": {
+																						"properties": {
+																							"amount": {
+																								"type": "string"
+																							},
+																							"category": {
+																								"anyOf": [
+																									{
+																										"type": "string"
+																									},
+																									{
+																										"type": "null"
+																									}
+																								]
+																							},
+																							"currency": {
+																								"type": "string"
+																							},
+																							"date": {
+																								"type": "string"
+																							},
+																							"description": {
+																								"type": "string"
+																							},
+																							"paidBy": {
+																								"type": "string"
+																							},
+																							"participants": {
+																								"items": {
+																									"properties": {
+																										"name": {
+																											"type": "string"
+																										},
+																										"share": {
+																											"type": "string"
+																										}
+																									},
+																									"required": [
+																										"name",
+																										"share"
+																									],
+																									"type": "object"
+																								},
+																								"type": "array"
+																							},
+																							"splitMode": {
+																								"type": "string"
+																							}
+																						},
+																						"required": [
+																							"amount",
+																							"currency",
+																							"description",
+																							"category",
+																							"date",
+																							"splitMode",
+																							"paidBy",
+																							"participants"
+																						],
+																						"type": "object"
+																					},
+																					"type": {
+																						"const": "creation_snapshot"
+																					}
+																				},
+																				"required": [
+																					"type",
+																					"snapshot"
+																				],
+																				"type": "object"
+																			},
+																			{
+																				"properties": {
+																					"snapshot": {
+																						"properties": {
+																							"amount": {
+																								"type": "string"
+																							},
+																							"category": {
+																								"anyOf": [
+																									{
+																										"type": "string"
+																									},
+																									{
+																										"type": "null"
+																									}
+																								]
+																							},
+																							"currency": {
+																								"type": "string"
+																							},
+																							"date": {
+																								"type": "string"
+																							},
+																							"description": {
+																								"type": "string"
+																							},
+																							"paidBy": {
+																								"type": "string"
+																							},
+																							"participants": {
+																								"items": {
+																									"properties": {
+																										"name": {
+																											"type": "string"
+																										},
+																										"share": {
+																											"type": "string"
+																										}
+																									},
+																									"required": [
+																										"name",
+																										"share"
+																									],
+																									"type": "object"
+																								},
+																								"type": "array"
+																							},
+																							"splitMode": {
+																								"type": "string"
+																							}
+																						},
+																						"required": [
+																							"amount",
+																							"currency",
+																							"description",
+																							"category",
+																							"date",
+																							"splitMode",
+																							"paidBy",
+																							"participants"
+																						],
+																						"type": "object"
+																					},
+																					"type": {
+																						"const": "deletion_snapshot"
+																					}
+																				},
+																				"required": [
+																					"type",
+																					"snapshot"
+																				],
+																				"type": "object"
+																			},
+																			{
+																				"properties": {
+																					"reason": {
+																						"anyOf": [
+																							{
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						]
+																					},
+																					"type": {
+																						"const": "rejection"
+																					}
+																				},
+																				"required": [
+																					"type",
+																					"reason"
+																				],
+																				"type": "object"
+																			},
+																			{
+																				"properties": {
+																					"note": {
+																						"anyOf": [
+																							{
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						]
+																					},
+																					"type": {
+																						"const": "verification"
+																					}
+																				},
+																				"required": [
+																					"type",
+																					"note"
+																				],
+																				"type": "object"
+																			}
+																		]
+																	},
+																	{
+																		"type": "null"
+																	}
+																]
+															},
+															"id": {
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															"summary": {
+																"type": "string"
+															},
+															"summaryKey": {
+																"anyOf": [
+																	{
+																		"type": "string"
+																	},
+																	{
+																		"type": "null"
+																	}
+																]
+															},
+															"summaryParams": {
+																"anyOf": [
+																	{
+																		"additionalProperties": {
+																			"type": "string"
+																		},
+																		"propertyNames": {
+																			"type": "string"
+																		},
+																		"type": "object"
+																	},
+																	{
+																		"type": "null"
+																	}
+																]
+															},
+															"target": {
+																"properties": {
+																	"id": {
+																		"type": "string"
+																	},
+																	"label": {
+																		"anyOf": [
+																			{
+																				"type": "string"
+																			},
+																			{
+																				"type": "null"
+																			}
+																		]
+																	},
+																	"type": {
+																		"type": "string"
+																	}
+																},
+																"required": [
+																	"type",
+																	"id",
+																	"label"
+																],
+																"type": "object"
+															},
+															"timestamp": {
+																"format": "date-time",
+																"type": "string"
+															}
+														},
+														"required": [
+															"id",
+															"timestamp",
+															"actor",
+															"action",
+															"summary",
+															"summaryKey",
+															"summaryParams",
+															"target",
+															"detail"
+														],
+														"type": "object"
+													},
+													"projectId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													}
+												},
+												"required": [
+													"projectId",
+													"entry"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "The latest entry of each project, for the projects list",
+				"tags": [
+					"Activity"
+				],
+				"x-required-scope": "read"
+			}
+		},
 		"/projects/{id}": {
 			"delete": {
 				"description": "Only the person who created it. Its expenses and payments go with it.",
@@ -85616,6 +86120,757 @@
 				],
 				"x-event-type": "project.updated",
 				"x-required-scope": "write:expenses"
+			}
+		},
+		"/projects/{id}/activity": {
+			"get": {
+				"description": "Any member can read it.",
+				"operationId": "listProjectActivity",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 50,
+							"maximum": 100,
+							"minimum": 1,
+							"type": "integer"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "actions",
+						"schema": {
+							"description": "Comma-separated AuditAction values to keep.",
+							"examples": [
+								"CREATED,EDITED"
+							],
+							"maxLength": 400,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "actorType",
+						"schema": {
+							"enum": [
+								"user",
+								"guest",
+								"shadow"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "actorId",
+						"schema": {
+							"description": "With actorType: only what that person did.",
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"action": {
+														"properties": {
+															"label": {
+																"type": "string"
+															},
+															"type": {
+																"type": "string"
+															}
+														},
+														"required": [
+															"type",
+															"label"
+														],
+														"type": "object"
+													},
+													"actor": {
+														"properties": {
+															"avatarUrl": {
+																"anyOf": [
+																	{
+																		"type": "string"
+																	},
+																	{
+																		"type": "null"
+																	}
+																]
+															},
+															"id": {
+																"anyOf": [
+																	{
+																		"type": "string"
+																	},
+																	{
+																		"type": "null"
+																	}
+																]
+															},
+															"name": {
+																"type": "string"
+															},
+															"type": {
+																"enum": [
+																	"user",
+																	"guest",
+																	"system",
+																	"unknown"
+																],
+																"type": "string"
+															}
+														},
+														"required": [
+															"name",
+															"type",
+															"id",
+															"avatarUrl"
+														],
+														"type": "object"
+													},
+													"detail": {
+														"anyOf": [
+															{
+																"anyOf": [
+																	{
+																		"properties": {
+																			"changes": {
+																				"items": {
+																					"properties": {
+																						"field": {
+																							"type": "string"
+																						},
+																						"label": {
+																							"type": "string"
+																						},
+																						"newValue": {
+																							"type": "string"
+																						},
+																						"oldValue": {
+																							"type": "string"
+																						}
+																					},
+																					"required": [
+																						"field",
+																						"label",
+																						"oldValue",
+																						"newValue"
+																					],
+																					"type": "object"
+																				},
+																				"type": "array"
+																			},
+																			"type": {
+																				"const": "field_changes"
+																			}
+																		},
+																		"required": [
+																			"type",
+																			"changes"
+																		],
+																		"type": "object"
+																	},
+																	{
+																		"properties": {
+																			"snapshot": {
+																				"properties": {
+																					"amount": {
+																						"type": "string"
+																					},
+																					"category": {
+																						"anyOf": [
+																							{
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						]
+																					},
+																					"currency": {
+																						"type": "string"
+																					},
+																					"date": {
+																						"type": "string"
+																					},
+																					"description": {
+																						"type": "string"
+																					},
+																					"paidBy": {
+																						"type": "string"
+																					},
+																					"participants": {
+																						"items": {
+																							"properties": {
+																								"name": {
+																									"type": "string"
+																								},
+																								"share": {
+																									"type": "string"
+																								}
+																							},
+																							"required": [
+																								"name",
+																								"share"
+																							],
+																							"type": "object"
+																						},
+																						"type": "array"
+																					},
+																					"splitMode": {
+																						"type": "string"
+																					}
+																				},
+																				"required": [
+																					"amount",
+																					"currency",
+																					"description",
+																					"category",
+																					"date",
+																					"splitMode",
+																					"paidBy",
+																					"participants"
+																				],
+																				"type": "object"
+																			},
+																			"type": {
+																				"const": "creation_snapshot"
+																			}
+																		},
+																		"required": [
+																			"type",
+																			"snapshot"
+																		],
+																		"type": "object"
+																	},
+																	{
+																		"properties": {
+																			"snapshot": {
+																				"properties": {
+																					"amount": {
+																						"type": "string"
+																					},
+																					"category": {
+																						"anyOf": [
+																							{
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						]
+																					},
+																					"currency": {
+																						"type": "string"
+																					},
+																					"date": {
+																						"type": "string"
+																					},
+																					"description": {
+																						"type": "string"
+																					},
+																					"paidBy": {
+																						"type": "string"
+																					},
+																					"participants": {
+																						"items": {
+																							"properties": {
+																								"name": {
+																									"type": "string"
+																								},
+																								"share": {
+																									"type": "string"
+																								}
+																							},
+																							"required": [
+																								"name",
+																								"share"
+																							],
+																							"type": "object"
+																						},
+																						"type": "array"
+																					},
+																					"splitMode": {
+																						"type": "string"
+																					}
+																				},
+																				"required": [
+																					"amount",
+																					"currency",
+																					"description",
+																					"category",
+																					"date",
+																					"splitMode",
+																					"paidBy",
+																					"participants"
+																				],
+																				"type": "object"
+																			},
+																			"type": {
+																				"const": "deletion_snapshot"
+																			}
+																		},
+																		"required": [
+																			"type",
+																			"snapshot"
+																		],
+																		"type": "object"
+																	},
+																	{
+																		"properties": {
+																			"reason": {
+																				"anyOf": [
+																					{
+																						"type": "string"
+																					},
+																					{
+																						"type": "null"
+																					}
+																				]
+																			},
+																			"type": {
+																				"const": "rejection"
+																			}
+																		},
+																		"required": [
+																			"type",
+																			"reason"
+																		],
+																		"type": "object"
+																	},
+																	{
+																		"properties": {
+																			"note": {
+																				"anyOf": [
+																					{
+																						"type": "string"
+																					},
+																					{
+																						"type": "null"
+																					}
+																				]
+																			},
+																			"type": {
+																				"const": "verification"
+																			}
+																		},
+																		"required": [
+																			"type",
+																			"note"
+																		],
+																		"type": "object"
+																	}
+																]
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"summary": {
+														"type": "string"
+													},
+													"summaryKey": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"summaryParams": {
+														"anyOf": [
+															{
+																"additionalProperties": {
+																	"type": "string"
+																},
+																"propertyNames": {
+																	"type": "string"
+																},
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"target": {
+														"properties": {
+															"id": {
+																"type": "string"
+															},
+															"label": {
+																"anyOf": [
+																	{
+																		"type": "string"
+																	},
+																	{
+																		"type": "null"
+																	}
+																]
+															},
+															"type": {
+																"type": "string"
+															}
+														},
+														"required": [
+															"type",
+															"id",
+															"label"
+														],
+														"type": "object"
+													},
+													"timestamp": {
+														"format": "date-time",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"timestamp",
+													"actor",
+													"action",
+													"summary",
+													"summaryKey",
+													"summaryParams",
+													"target",
+													"detail"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"totalCount": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor",
+										"totalCount"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "A project's activity, newest first",
+				"tags": [
+					"Activity"
+				],
+				"x-required-scope": "read"
+			}
+		},
+		"/projects/{id}/activity/filters": {
+			"get": {
+				"operationId": "getProjectActivityFilters",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"actionTypes": {
+											"items": {
+												"properties": {
+													"count": {
+														"maximum": 9007199254740991,
+														"minimum": 0,
+														"type": "integer"
+													},
+													"label": {
+														"type": "string"
+													},
+													"value": {
+														"enum": [
+															"FORGIVEN",
+															"UNFORGIVEN",
+															"CORRECTED",
+															"CORRECTION_UNDONE",
+															"FIX_REQUESTED",
+															"FIX_ANSWERED",
+															"CREATED",
+															"EDITED",
+															"DELETED",
+															"VERIFIED",
+															"REJECTED",
+															"AUTO_VERIFIED",
+															"SETTLED",
+															"PERIOD_CLOSED",
+															"PERIOD_REOPENED",
+															"PARTICIPANT_ADDED",
+															"PARTICIPANT_REMOVED",
+															"ROLE_CHANGED"
+														],
+														"type": "string"
+													}
+												},
+												"required": [
+													"value",
+													"label",
+													"count"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"actors": {
+											"items": {
+												"properties": {
+													"avatarUrl": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"type": "string"
+													},
+													"name": {
+														"type": "string"
+													},
+													"type": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"type",
+													"id",
+													"name",
+													"avatarUrl"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"actors",
+										"actionTypes"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "Who acted and what kinds of change a project's feed has",
+				"tags": [
+					"Activity"
+				],
+				"x-required-scope": "read"
 			}
 		},
 		"/projects/{id}/analytics-exclusion": {
@@ -100845,6 +102100,161 @@
 				"x-required-scope": "write:expenses"
 			}
 		},
+		"/shared-expenses/revisions": {
+			"get": {
+				"description": "Expenses never edited are left out.",
+				"operationId": "getSharedExpenseRevisions",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "ids",
+						"required": true,
+						"schema": {
+							"description": "Comma-separated expense ids, at most 100.",
+							"maxLength": 8000,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"editCount": {
+														"maximum": 9007199254740991,
+														"minimum": 1,
+														"type": "integer"
+													},
+													"expenseId": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"lastEditedAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"lastEditedBy": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"expenseId",
+													"editCount",
+													"lastEditedAt",
+													"lastEditedBy"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "How often split expenses were edited, and by whom last",
+				"tags": [
+					"Activity"
+				],
+				"x-required-scope": "read"
+			}
+		},
 		"/shared-expenses/undo": {
 			"post": {
 				"description": "Tokens from create and update. Undoing an add right away takes the notices back. A token is for its user and expires after 24 hours.",
@@ -104407,6 +105817,474 @@
 				"x-required-scope": "write:expenses"
 			}
 		},
+		"/shared-expenses/{id}/history": {
+			"get": {
+				"description": "For people on it and members of its project. Still readable after it was deleted. Marks its changes as seen for you.",
+				"operationId": "getSharedExpenseHistory",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"entries": {
+											"items": {
+												"properties": {
+													"action": {
+														"properties": {
+															"label": {
+																"type": "string"
+															},
+															"type": {
+																"type": "string"
+															}
+														},
+														"required": [
+															"type",
+															"label"
+														],
+														"type": "object"
+													},
+													"actor": {
+														"properties": {
+															"id": {
+																"anyOf": [
+																	{
+																		"type": "string"
+																	},
+																	{
+																		"type": "null"
+																	}
+																]
+															},
+															"name": {
+																"type": "string"
+															},
+															"type": {
+																"enum": [
+																	"user",
+																	"guest",
+																	"system",
+																	"unknown"
+																],
+																"type": "string"
+															}
+														},
+														"required": [
+															"name",
+															"type",
+															"id"
+														],
+														"type": "object"
+													},
+													"detail": {
+														"anyOf": [
+															{
+																"anyOf": [
+																	{
+																		"properties": {
+																			"changes": {
+																				"items": {
+																					"properties": {
+																						"field": {
+																							"type": "string"
+																						},
+																						"label": {
+																							"type": "string"
+																						},
+																						"newValue": {
+																							"type": "string"
+																						},
+																						"oldValue": {
+																							"type": "string"
+																						}
+																					},
+																					"required": [
+																						"field",
+																						"label",
+																						"oldValue",
+																						"newValue"
+																					],
+																					"type": "object"
+																				},
+																				"type": "array"
+																			},
+																			"type": {
+																				"const": "field_changes"
+																			}
+																		},
+																		"required": [
+																			"type",
+																			"changes"
+																		],
+																		"type": "object"
+																	},
+																	{
+																		"properties": {
+																			"snapshot": {
+																				"properties": {
+																					"amount": {
+																						"type": "string"
+																					},
+																					"category": {
+																						"anyOf": [
+																							{
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						]
+																					},
+																					"currency": {
+																						"type": "string"
+																					},
+																					"date": {
+																						"type": "string"
+																					},
+																					"description": {
+																						"type": "string"
+																					},
+																					"paidBy": {
+																						"type": "string"
+																					},
+																					"participants": {
+																						"items": {
+																							"properties": {
+																								"name": {
+																									"type": "string"
+																								},
+																								"share": {
+																									"type": "string"
+																								}
+																							},
+																							"required": [
+																								"name",
+																								"share"
+																							],
+																							"type": "object"
+																						},
+																						"type": "array"
+																					},
+																					"splitMode": {
+																						"type": "string"
+																					}
+																				},
+																				"required": [
+																					"amount",
+																					"currency",
+																					"description",
+																					"category",
+																					"date",
+																					"splitMode",
+																					"paidBy",
+																					"participants"
+																				],
+																				"type": "object"
+																			},
+																			"type": {
+																				"const": "creation_snapshot"
+																			}
+																		},
+																		"required": [
+																			"type",
+																			"snapshot"
+																		],
+																		"type": "object"
+																	},
+																	{
+																		"properties": {
+																			"snapshot": {
+																				"properties": {
+																					"amount": {
+																						"type": "string"
+																					},
+																					"category": {
+																						"anyOf": [
+																							{
+																								"type": "string"
+																							},
+																							{
+																								"type": "null"
+																							}
+																						]
+																					},
+																					"currency": {
+																						"type": "string"
+																					},
+																					"date": {
+																						"type": "string"
+																					},
+																					"description": {
+																						"type": "string"
+																					},
+																					"paidBy": {
+																						"type": "string"
+																					},
+																					"participants": {
+																						"items": {
+																							"properties": {
+																								"name": {
+																									"type": "string"
+																								},
+																								"share": {
+																									"type": "string"
+																								}
+																							},
+																							"required": [
+																								"name",
+																								"share"
+																							],
+																							"type": "object"
+																						},
+																						"type": "array"
+																					},
+																					"splitMode": {
+																						"type": "string"
+																					}
+																				},
+																				"required": [
+																					"amount",
+																					"currency",
+																					"description",
+																					"category",
+																					"date",
+																					"splitMode",
+																					"paidBy",
+																					"participants"
+																				],
+																				"type": "object"
+																			},
+																			"type": {
+																				"const": "deletion_snapshot"
+																			}
+																		},
+																		"required": [
+																			"type",
+																			"snapshot"
+																		],
+																		"type": "object"
+																	},
+																	{
+																		"properties": {
+																			"reason": {
+																				"anyOf": [
+																					{
+																						"type": "string"
+																					},
+																					{
+																						"type": "null"
+																					}
+																				]
+																			},
+																			"type": {
+																				"const": "rejection"
+																			}
+																		},
+																		"required": [
+																			"type",
+																			"reason"
+																		],
+																		"type": "object"
+																	},
+																	{
+																		"properties": {
+																			"note": {
+																				"anyOf": [
+																					{
+																						"type": "string"
+																					},
+																					{
+																						"type": "null"
+																					}
+																				]
+																			},
+																			"type": {
+																				"const": "verification"
+																			}
+																		},
+																		"required": [
+																			"type",
+																			"note"
+																		],
+																		"type": "object"
+																	}
+																]
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"summary": {
+														"type": "string"
+													},
+													"timestamp": {
+														"format": "date-time",
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"timestamp",
+													"actor",
+													"action",
+													"summary",
+													"detail"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"expense": {
+											"properties": {
+												"amount": {
+													"anyOf": [
+														{
+															"$ref": "#/components/schemas/Money"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
+												"currency": {
+													"type": "string"
+												},
+												"id": {
+													"maxLength": 64,
+													"minLength": 1,
+													"type": "string"
+												},
+												"isDeleted": {
+													"type": "boolean"
+												},
+												"isLocked": {
+													"type": "boolean"
+												},
+												"title": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"id",
+												"title",
+												"amount",
+												"currency",
+												"isDeleted",
+												"isLocked"
+											],
+											"type": "object"
+										},
+										"totalEntries": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"expense",
+										"entries",
+										"totalEntries"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "Every revision of a split expense, oldest first",
+				"tags": [
+					"Activity"
+				],
+				"x-required-scope": "read"
+			}
+		},
 		"/shared-expenses/{id}/preview": {
 			"post": {
 				"description": "Runs PUT /shared-expenses/{id} in a transaction that always rolls back and answers what it would change and what it would not. Nothing is written.",
@@ -105188,6 +107066,126 @@
 				],
 				"x-event-type": "shared_expense.rejected",
 				"x-required-scope": "write:expenses"
+			}
+		},
+		"/shared-expenses/{id}/seen": {
+			"post": {
+				"description": "Does nothing when there is nothing unseen.",
+				"operationId": "markSharedExpenseSeen",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Mark the changes to a split expense as seen",
+				"tags": [
+					"Activity"
+				],
+				"x-event-type": "shared_expense.seen",
+				"x-required-scope": "write:settings"
 			}
 		},
 		"/tokens": {

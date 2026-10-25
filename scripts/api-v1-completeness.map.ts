@@ -192,16 +192,12 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"admin.updateSettings": to("PATCH /admin/settings"),
 
 	// ── auditLog (shared expense history and project activity) ───────────
-	"auditLog.markTransactionSeen": gap(
-		"G3: seen marks on shared expense changes have no v1 route",
-	),
-	"auditLog.projectActivityFeed": gap("G3: the project activity feed"),
-	"auditLog.projectActivityFilters": gap("G3: the project activity feed"),
-	"auditLog.projectsLastActivity": gap("G3: the project activity feed"),
-	"auditLog.transactionHistory": gap("G2/G3: revision history of an expense"),
-	"auditLog.transactionRevisionSummary": gap(
-		"G2/G3: revision history of an expense",
-	),
+	"auditLog.markTransactionSeen": to("POST /shared-expenses/{id}/seen"),
+	"auditLog.projectActivityFeed": to("GET /projects/{id}/activity"),
+	"auditLog.projectActivityFilters": to("GET /projects/{id}/activity/filters"),
+	"auditLog.projectsLastActivity": to("GET /projects/last-activity"),
+	"auditLog.transactionHistory": to("GET /shared-expenses/{id}/history"),
+	"auditLog.transactionRevisionSummary": to("GET /shared-expenses/revisions"),
 
 	// ── auth ─────────────────────────────────────────────────────────────
 	"auth.confirmEmailChange": internal(AUTH_MAIL),

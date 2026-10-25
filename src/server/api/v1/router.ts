@@ -1,5 +1,6 @@
 import { accountRouter } from "./account";
 import { accountsRouter } from "./accounts";
+import { activityRouter } from "./activity";
 import { adminRouter } from "./admin";
 import { billingPeriodsRouter } from "./billing-periods";
 import { budgetRouter } from "./budget";
@@ -39,6 +40,7 @@ import { webhooksRouter } from "./webhooks";
 export const v1Router = v1.router({
 	account: accountRouter,
 	accounts: accountsRouter,
+	activity: activityRouter,
 	admin: adminRouter,
 	"billing-periods": billingPeriodsRouter,
 	budget: budgetRouter,
