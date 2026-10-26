@@ -69,8 +69,13 @@ export type TransactionVM = {
 	reviewed: boolean;
 	/** A shared expense waiting on you, or one you rejected. */
 	waiting?: "review" | "rejected";
-	/** Hidden from reports: listed, but left out of every total. */
+	/** Hidden from reports or filed under an income category: listed, but left out of every total. */
 	notCounted?: boolean;
+	/**
+	 * An amortized purchase: counted through its monthly parts, which the list
+	 * hides, so the totals place it on other days than this row.
+	 */
+	spread?: { months: number };
 	/** A payment that the other side has not confirmed yet. */
 	pending?: boolean;
 	/** The project, with its cover (photo or illustrated scene) when it has one. */

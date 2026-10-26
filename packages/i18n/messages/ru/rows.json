@@ -17,6 +17,7 @@
 		"yourShare": "ваша доля",
 		"paid": "Оплатил(а) {name}",
 		"waiting": "Ждёт вас",
+		"spread": "Распределено на {count, plural, one {# месяц} few {# месяца} many {# месяцев} other {# месяца}}",
 		"other": "Другое"
 	},
 	"project": {

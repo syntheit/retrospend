@@ -17,7 +17,8 @@
 		"upcoming": "Upcoming",
 		"noRate": "No rate yet",
 		"rejected": "Rejected",
-		"notCounted": "Not counted"
+		"notCounted": "Not counted",
+		"spread": "Spread over time"
 	},
 	"balance": {
 		"owesYou": "owes you",
