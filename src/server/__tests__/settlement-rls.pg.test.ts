@@ -9,13 +9,17 @@
  * receiver, and FINALIZED back to PROPOSED by the receiver (the confirm undo).
  * Audit entries of a payment are written in your own name, and a SETTLED entry
  * (the record confirm-restore restores from) only by the receiver.
+ *
+ * A payment is checked as a whole at commit (a header has rows, the rows share
+ * its status), so the tests write it the way the app does: in one transaction.
+ * settlement-probes.pg.test.ts holds the attacks on that.
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { readPrevious } from "~/server/services/payments/confirm-restore";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import type { SettlementStatus } from "~prisma";
+import type { Prisma, SettlementStatus } from "~prisma";
 
 type TestUser = Awaited<ReturnType<typeof createTestUser>>;
 
@@ -88,6 +92,12 @@ async function went(run: () => Promise<unknown>): Promise<boolean> {
 		return false;
 	}
 }
+
+/** One transaction as `who`, the way the app writes a payment. */
+const inTx = <T>(
+	who: TestUser,
+	run: (tx: Prisma.TransactionClient) => Promise<T>,
+) => who.db.$transaction(run);
 
 const rowOf = (id: string) =>
 	adminDb.settlement.findUniqueOrThrow({ where: { id } });
@@ -267,30 +277,38 @@ describe("status moves only the legal way", () => {
 			),
 		).toBe(false);
 		expect((await rowOf(mine.row.id)).status).toBe("PROPOSED");
-		await ben.db.settlement.update({
-			where: { id: mine.row.id },
-			data: confirmed,
+		await inTx(ben, async (tx) => {
+			await tx.settlement.update({
+				where: { id: mine.row.id },
+				data: confirmed,
+			});
+			await tx.payment.update({
+				where: { id: mine.paymentId },
+				data: { status: "FINALIZED" },
+			});
 		});
 		expect((await rowOf(mine.row.id)).status).toBe("FINALIZED");
 	});
 
 	it("lets the receiver confirm with a new method and header, as payment.confirm does", async () => {
 		const p = await payment("pending");
-		await ben.db.settlement.updateMany({
-			where: { id: p.row.id, status: "PROPOSED" },
-			data: confirmed,
-		});
-		await ben.db.payment.update({
-			where: { id: p.paymentId },
-			data: {
-				status: "FINALIZED",
-				paidOn: new Date("2026-10-11"),
-				paymentMethod: "Cash",
-			},
-		});
-		await ben.db.settlement.updateMany({
-			where: { paymentGroupId: p.paymentId },
-			data: { paymentMethod: "Cash" },
+		await inTx(ben, async (tx) => {
+			await tx.settlement.updateMany({
+				where: { id: p.row.id, status: "PROPOSED" },
+				data: confirmed,
+			});
+			await tx.payment.update({
+				where: { id: p.paymentId },
+				data: {
+					status: "FINALIZED",
+					paidOn: new Date("2026-10-11"),
+					paymentMethod: "Cash",
+				},
+			});
+			await tx.settlement.updateMany({
+				where: { paymentGroupId: p.paymentId },
+				data: { paymentMethod: "Cash" },
+			});
 		});
 		expect((await rowOf(p.row.id)).paymentMethod).toBe("Cash");
 	});
@@ -307,10 +325,12 @@ describe("status moves only the legal way", () => {
 				ana.db.settlement.update({ where: { id: p.row.id }, data: rejected }),
 			),
 		).toBe(false);
-		await ben.db.settlement.update({ where: { id: p.row.id }, data: rejected });
-		await ben.db.payment.update({
-			where: { id: p.paymentId },
-			data: { status: "REJECTED" },
+		await inTx(ben, async (tx) => {
+			await tx.settlement.update({ where: { id: p.row.id }, data: rejected });
+			await tx.payment.update({
+				where: { id: p.paymentId },
+				data: { status: "REJECTED" },
+			});
 		});
 		expect((await rowOf(p.row.id)).status).toBe("REJECTED");
 	});
@@ -401,10 +421,12 @@ describe("status moves only the legal way", () => {
 				ana.db.settlement.update({ where: { id: p.row.id }, data: back }),
 			),
 		).toBe(false);
-		await ben.db.settlement.update({ where: { id: p.row.id }, data: back });
-		await ben.db.payment.update({
-			where: { id: p.paymentId },
-			data: { status: "PROPOSED" },
+		await inTx(ben, async (tx) => {
+			await tx.settlement.update({ where: { id: p.row.id }, data: back });
+			await tx.payment.update({
+				where: { id: p.paymentId },
+				data: { status: "PROPOSED" },
+			});
 		});
 		expect((await rowOf(p.row.id)).status).toBe("PROPOSED");
 	});
@@ -474,32 +496,45 @@ describe("inserting a payment", () => {
 		recordedById: recorder.user.id,
 		status: "PROPOSED" as const,
 	});
+	/** A pending header with no rows yet, made by the owner connection (a setup only). */
+	const bareHeader = (payer: TestUser, payee: TestUser, id: string) =>
+		adminDb.payment.create({ data: header(payer, payer, payee, id) });
 
 	it("lets the payer record a pending payment, and the payee record one received", async () => {
 		const id = randomUUID();
-		await ana.db.payment.create({ data: header(ana, ana, ben, id) });
-		await ana.db.settlement.create({
-			data: {
-				...base(ana, ben, id),
-				status: "PROPOSED",
-				confirmedByPayer: true,
-				confirmedByPayee: false,
-			},
+		await inTx(ana, async (tx) => {
+			await tx.payment.create({ data: header(ana, ana, ben, id) });
+			await tx.settlement.create({
+				data: {
+					...base(ana, ben, id),
+					status: "PROPOSED",
+					confirmedByPayer: true,
+					confirmedByPayee: false,
+				},
+			});
 		});
 		const idB = randomUUID();
-		await ben.db.payment.create({
-			data: { ...header(ben, ana, ben, idB), status: "FINALIZED" },
+		await inTx(ben, async (tx) => {
+			await tx.payment.create({
+				data: { ...header(ben, ana, ben, idB), status: "FINALIZED" },
+			});
+			await tx.settlement.create({
+				data: {
+					...base(ana, ben, idB),
+					status: "FINALIZED",
+					confirmedByPayer: false,
+					confirmedByPayee: true,
+					autoConfirmedReason: "Recorded by the payee as a payment received",
+					settledAt: new Date(),
+				},
+			});
 		});
-		await ben.db.settlement.create({
-			data: {
-				...base(ana, ben, idB),
-				status: "FINALIZED",
-				confirmedByPayer: false,
-				confirmedByPayee: true,
-				autoConfirmedReason: "Recorded by the payee as a payment received",
-				settledAt: new Date(),
-			},
-		});
+		expect(
+			await adminDb.settlement.count({ where: { paymentGroupId: id } }),
+		).toBe(1);
+		expect(
+			await adminDb.settlement.count({ where: { paymentGroupId: idB } }),
+		).toBe(1);
 	});
 
 	it("lets the payer record a payment to a shadow person as final at once", async () => {
@@ -507,31 +542,36 @@ describe("inserting a payment", () => {
 			data: { name: "Gus", createdById: ana.user.id },
 		});
 		const id = randomUUID();
-		await ana.db.payment.create({
-			data: {
-				...header(ana, ana, ben, id),
-				payeeType: "shadow",
-				payeeId: shadow.id,
-				status: "FINALIZED",
-			},
+		await inTx(ana, async (tx) => {
+			await tx.payment.create({
+				data: {
+					...header(ana, ana, ben, id),
+					payeeType: "shadow",
+					payeeId: shadow.id,
+					status: "FINALIZED",
+				},
+			});
+			await tx.settlement.create({
+				data: {
+					...base(ana, ben, id),
+					toParticipantType: "shadow",
+					toParticipantId: shadow.id,
+					status: "FINALIZED",
+					confirmedByPayer: true,
+					confirmedByPayee: true,
+					autoConfirmedReason: "Recipient is a shadow and cannot confirm",
+					settledAt: new Date(),
+				},
+			});
 		});
-		await ana.db.settlement.create({
-			data: {
-				...base(ana, ben, id),
-				toParticipantType: "shadow",
-				toParticipantId: shadow.id,
-				status: "FINALIZED",
-				confirmedByPayer: true,
-				confirmedByPayee: true,
-				autoConfirmedReason: "Recipient is a shadow and cannot confirm",
-				settledAt: new Date(),
-			},
-		});
+		expect(
+			await adminDb.settlement.count({ where: { paymentGroupId: id } }),
+		).toBe(1);
 	});
 
 	it("refuses a payer making a payment to a real user final without them", async () => {
 		const id = randomUUID();
-		await ana.db.payment.create({ data: header(ana, ana, ben, id) });
+		await bareHeader(ana, ben, id);
 		for (const extra of [
 			{
 				status: "FINALIZED" as const,
@@ -570,7 +610,7 @@ describe("inserting a payment", () => {
 	});
 
 	it("refuses recording a payment in someone else's name", async () => {
-		// A header recorded by Ben, written by Ana, who then adds rows to it.
+		// A header recorded by Ben, written by Ana.
 		expect(
 			await went(() => ana.db.payment.create({ data: header(ben, ana, ben) })),
 		).toBe(false);
@@ -580,9 +620,15 @@ describe("inserting a payment", () => {
 		).toBe(false);
 	});
 
+	it("refuses the payee recording a payment as waiting for the payer", async () => {
+		expect(
+			await went(() => ben.db.payment.create({ data: header(ben, ana, ben) })),
+		).toBe(false);
+	});
+
 	it("refuses a row that names other people than its payment", async () => {
 		const id = randomUUID();
-		await ana.db.payment.create({ data: header(ana, ana, ben, id) });
+		await bareHeader(ana, ben, id);
 		expect(
 			await went(() =>
 				ana.db.settlement.create({
@@ -611,29 +657,91 @@ describe("inserting a payment", () => {
 			),
 		).toBe(false);
 	});
+
+	it("refuses a header written alone, and rows written without their header's status", async () => {
+		expect(
+			await went(() => ana.db.payment.create({ data: header(ana, ana, ben) })),
+		).toBe(false);
+		const mutual = await payment("mutual");
+		expect(
+			await went(() =>
+				ben.db.settlement.create({
+					data: {
+						...base(ana, ben, mutual.paymentId),
+						status: "PROPOSED",
+						confirmedByPayer: true,
+						confirmedByPayee: false,
+					},
+				}),
+			),
+		).toBe(false);
+	});
 });
 
 describe("deleting a payment", () => {
 	it("lets the recorder delete a pending one, rows then header", async () => {
 		const p = await payment("pending");
-		await ana.db.settlement.deleteMany({
-			where: { id: p.row.id, status: { in: ["PROPOSED", "REJECTED"] } },
+		await inTx(ana, async (tx) => {
+			await tx.settlement.deleteMany({
+				where: { id: p.row.id, status: { in: ["PROPOSED", "REJECTED"] } },
+			});
+			await tx.payment.deleteMany({ where: { id: p.paymentId } });
 		});
-		await ana.db.payment.deleteMany({ where: { id: p.paymentId } });
 		expect(await exists(p.row.id)).toBe(false);
+		expect(await adminDb.payment.count({ where: { id: p.paymentId } })).toBe(0);
 	});
 
 	it("lets the receiver replace the rows of a pending payment (confirm with a new amount)", async () => {
 		const p = await payment("pending");
-		await ben.db.settlement.deleteMany({
-			where: { paymentGroupId: p.paymentId },
+		await inTx(ben, async (tx) => {
+			await tx.settlement.deleteMany({
+				where: { paymentGroupId: p.paymentId },
+			});
+			await tx.settlement.create({
+				data: {
+					paymentGroupId: p.paymentId,
+					fromParticipantType: "user",
+					fromParticipantId: ana.user.id,
+					toParticipantType: "user",
+					toParticipantId: ben.user.id,
+					amount: "60",
+					currency: "USD",
+					status: "FINALIZED",
+					confirmedByPayer: true,
+					confirmedByPayee: true,
+					settledAt: new Date(),
+				},
+			});
+			await tx.payment.update({
+				where: { id: p.paymentId },
+				data: { status: "FINALIZED", amount: "60" },
+			});
 		});
 		expect(await exists(p.row.id)).toBe(false);
+		const rows = await adminDb.settlement.findMany({
+			where: { paymentGroupId: p.paymentId },
+		});
+		expect(rows.map((r) => r.amount.toString())).toEqual(["60"]);
+	});
+
+	it("refuses the receiver deleting the rows of a payment and leaving it empty", async () => {
+		const p = await payment("pending");
+		expect(
+			await went(() =>
+				ben.db.settlement.deleteMany({
+					where: { paymentGroupId: p.paymentId },
+				}),
+			),
+		).toBe(false);
+		expect(await exists(p.row.id)).toBe(true);
 	});
 
 	it("lets the recorder void a payment that became final without the other side", async () => {
 		const p = await payment("received");
-		await ben.db.settlement.deleteMany({ where: { id: p.row.id } });
+		await inTx(ben, async (tx) => {
+			await tx.settlement.deleteMany({ where: { id: p.row.id } });
+			await tx.payment.deleteMany({ where: { id: p.paymentId } });
+		});
 		expect(await exists(p.row.id)).toBe(false);
 	});
 
@@ -674,37 +782,97 @@ describe("deleting a payment", () => {
 
 	it("lets the receiver undo their own confirm: delete and put the claim back", async () => {
 		const p = await payment("mutual");
-		await ben.db.settlement.deleteMany({
-			where: { paymentGroupId: p.paymentId },
-		});
-		expect(await exists(p.row.id)).toBe(false);
-		await ben.db.settlement.createMany({
-			data: [
-				{
-					id: p.row.id,
-					paymentGroupId: p.paymentId,
-					fromParticipantType: "user",
-					fromParticipantId: ana.user.id,
-					toParticipantType: "user",
-					toParticipantId: ben.user.id,
-					amount: "100",
-					currency: "USD",
-					status: "PROPOSED",
-					confirmedByPayer: true,
-					confirmedByPayee: false,
-				},
-			],
+		await inTx(ben, async (tx) => {
+			await tx.settlement.deleteMany({
+				where: { paymentGroupId: p.paymentId },
+			});
+			await tx.settlement.createMany({
+				data: [
+					{
+						id: p.row.id,
+						paymentGroupId: p.paymentId,
+						fromParticipantType: "user",
+						fromParticipantId: ana.user.id,
+						toParticipantType: "user",
+						toParticipantId: ben.user.id,
+						amount: "100",
+						currency: "USD",
+						status: "PROPOSED",
+						confirmedByPayer: true,
+						confirmedByPayee: false,
+					},
+				],
+			});
+			await tx.payment.update({
+				where: { id: p.paymentId },
+				data: { status: "PROPOSED" },
+			});
 		});
 		expect(await exists(p.row.id)).toBe(true);
+		expect((await rowOf(p.row.id)).status).toBe("PROPOSED");
 	});
 
 	it("lets the recorder clear a payment the other side rejected", async () => {
 		const p = await payment("rejected");
+		await inTx(ana, async (tx) => {
+			await tx.settlement.deleteMany({ where: { id: p.row.id } });
+			await tx.payment.deleteMany({ where: { id: p.paymentId } });
+		});
+		expect(await exists(p.row.id)).toBe(false);
+	});
+
+	it("refuses the receiver deleting a payment's header, even once its rows are gone", async () => {
+		const p = await payment("rejected");
 		expect(
 			await went(() =>
-				ana.db.settlement.deleteMany({ where: { id: p.row.id } }),
+				inTx(ben, async (tx) => {
+					await tx.settlement.deleteMany({ where: { id: p.row.id } });
+					await tx.payment.deleteMany({ where: { id: p.paymentId } });
+				}),
 			),
-		).toBe(true);
+		).toBe(false);
+		expect(await exists(p.row.id)).toBe(true);
+	});
+
+	it("lets a user void a payment a guest recorded as received", async () => {
+		const guestId = randomUUID();
+		const id = randomUUID();
+		await adminDb.payment.create({
+			data: {
+				id,
+				payerType: "user",
+				payerId: ana.user.id,
+				payeeType: "guest",
+				payeeId: guestId,
+				amount: "10",
+				currency: "USD",
+				paidOn: new Date("2026-10-10"),
+				recordedByType: "guest",
+				recordedById: guestId,
+				status: "FINALIZED",
+			},
+		});
+		const row = await adminDb.settlement.create({
+			data: {
+				paymentGroupId: id,
+				fromParticipantType: "user",
+				fromParticipantId: ana.user.id,
+				toParticipantType: "guest",
+				toParticipantId: guestId,
+				amount: "10",
+				currency: "USD",
+				status: "FINALIZED",
+				confirmedByPayer: false,
+				confirmedByPayee: true,
+				autoConfirmedReason: "Recorded by the payee as a payment received",
+				settledAt: new Date(),
+			},
+		});
+		await inTx(ana, async (tx) => {
+			await tx.settlement.deleteMany({ where: { id: row.id } });
+			await tx.payment.deleteMany({ where: { id } });
+		});
+		expect(await exists(row.id)).toBe(false);
 	});
 });
 

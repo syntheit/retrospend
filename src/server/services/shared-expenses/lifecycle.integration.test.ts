@@ -11,7 +11,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // The in-memory database has no lock query (see ~/test/locks-stub).
-vi.mock("~/server/services/corrections/locks", () => import("~/test/locks-stub"));
+vi.mock(
+	"~/server/services/corrections/locks",
+	() => import("~/test/locks-stub"),
+);
 
 // Must mock notifications before importing services
 vi.mock("~/server/services/notifications", () => ({
@@ -1421,7 +1424,9 @@ describe("Suite 1I: Project-scoped settlements", () => {
 		// Bob is represented by his project membership ref (user:bob).
 		expect(
 			ledger.transactions.flatMap((tx) =>
-				tx.splitParticipants.map((sp) => `${sp.participantType}:${sp.participantId}`),
+				tx.splitParticipants.map(
+					(sp) => `${sp.participantType}:${sp.participantId}`,
+				),
 			),
 		).toEqual(["user:bob", "user:alice"]);
 	});
@@ -1659,6 +1664,14 @@ describe("Suite 1J: Auto-accept expiry counts from the last re-verification", ()
 		expect(db._stores.splits.get("sp-bob")?.verificationStatus).toBe(
 			"AUTO_ACCEPTED",
 		);
+		expect(db._stores.audits).toEqual([
+			expect.objectContaining({
+				actorId: "__system__",
+				action: "AUTO_VERIFIED",
+				targetType: "SPLIT_PARTICIPANT",
+				targetId: "sp-bob",
+			}),
+		]);
 	});
 
 	it("keeps an old expense edited yesterday pending (reset in place)", async () => {

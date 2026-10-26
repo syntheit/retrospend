@@ -18,39 +18,55 @@
 --
 --   payment
 --     SELECT  unchanged (a party, or a user who shares a project with both).
---     INSERT  the recorder, who is one of the two people. Final at once only
---             when the recorder is the payee (money received) or the payee
---             cannot confirm (shadow, guest).
+--     INSERT  the recorder, who is one of the two people. Pending only when the
+--             recorder is the payer. Final at once only when the recorder is
+--             the payee (money received) or the payee cannot confirm (shadow,
+--             guest).
 --     UPDATE  a party. Nobody changes the people, the currency, the id or the
 --             recorder. The receiver moves the status (PROPOSED to FINALIZED or
---             REJECTED; FINALIZED back to PROPOSED when both agreed) and, with
---             that move, sets amount, rate, date and method. Note: any party.
---     DELETE  a party, once no settlement row is left (the foreign key would
---             otherwise cascade around the row rules).
+--             REJECTED; FINALIZED back to PROPOSED when no row is final any
+--             more) and, with that move, sets amount, rate, date and method.
+--     DELETE  the recorder (or a user, when the recorder is a shadow or guest),
+--             once no settlement row is left.
 --   settlement
 --     SELECT  unchanged.
---     INSERT  a party, onto an existing payment of the same two people. The
---             recorder writes PROPOSED rows with only their own flag set, or
---             FINAL rows (with an auto-confirm reason) when the payee is the
---             recorder or cannot confirm. The receiver writes only what a
---             confirm with a new amount writes (final rows, payment pending)
---             or what the confirm undo puts back (claim rows, payment final).
---             Cash rows go payer to payee.
+--     INSERT  a party, onto an existing payment of the same two people, into a
+--             project one of them is in. The recorder writes PROPOSED rows with
+--             only their own flag set, or FINAL rows (with an auto-confirm
+--             reason) when the payee is the recorder or cannot confirm. The
+--             receiver writes only PAYMENT rows, and only what a confirm with a
+--             new amount writes (final rows, payment pending) or what the
+--             confirm undo puts back (claim rows, payment final). Cash rows go
+--             payer to payee.
 --     UPDATE  a party. People, amounts, currency, project, kind and rate never
---             change (trigger). Reminder, note and method may. Status moves as
---             on the payment; flags and dates move only with it.
+--             change (trigger). Note and method may. A reminder only from the
+--             recorder, one at a time, up to three, while pending. Status moves
+--             as on the payment; flags and dates move only with it.
 --     DELETE  a party: a row that is pending or rejected; a final row the
---             recorder made final alone (void); a final row both agreed to, by
---             the receiver only (confirm undo).
+--             recorder made final alone (void; a user may void one a shadow or
+--             guest recorded); a final row both agreed to, by the receiver only
+--             (confirm undo).
+--   a payment as a whole (constraint triggers, checked at commit, so a payment
+--   is written in one transaction)
+--     A payment has rows and its rows share its status. Rows are not negative.
+--     Offset rows balance in the payment currency (within rounding and the
+--     rate precision the rows store), and carry a rate exactly when their
+--     currency is not the payment's. A FORGIVE payment is all FORGIVE rows, from
+--     the payer to the payee who recorded it, final at once, with an envelope
+--     of the payee's (or none); no PAYMENT row carries an envelope.
 --   audit_log_entry
---     INSERT  in your own name, or the system's. A SETTLED entry of a payment
+--     INSERT  in your own name; the system's only for the AUTO_VERIFIED entry
+--             of your own auto-accepted split. A SETTLED entry of a payment
 --             only by its receiver, once it is final: it is what the confirm
---             undo restores from. Another party's name only on CREATED (the
---             receiver rewriting rows under the recorder's name).
+--             undo restores from. The recorder's name, by a party, only on the
+--             CREATED entry of a row that has none yet (the receiver rewriting
+--             rows under the recorder's name).
 
 -- ------------------------------------------------------------
 -- Helpers. SECURITY DEFINER so a policy or trigger can read the payment
--- without going through its own policy; only the app role may call them.
+-- without going through its own policy. Each answers only about a payment the
+-- caller is a party to (anyone else gets false), so none of them can be asked
+-- about other people's payments; only the app role may call them.
 -- ------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION payment_recorded_by(p_payment_id TEXT, p_user_id TEXT)
@@ -65,19 +81,11 @@ AS $$
     WHERE p."id" = p_payment_id
       AND p."recordedByType" = 'user'
       AND p."recordedById" = p_user_id
+      AND (
+        (p."payerType" = 'user' AND p."payerId" = current_setting('app.current_user_id', true))
+        OR (p."payeeType" = 'user' AND p."payeeId" = current_setting('app.current_user_id', true))
+      )
   )
-$$;
-
--- "type:id" of the person who recorded the payment; NULL when there is none.
-CREATE OR REPLACE FUNCTION payment_recorder_key(p_payment_id TEXT)
-RETURNS TEXT
-LANGUAGE SQL
-SECURITY DEFINER
-STABLE
-SET search_path = public, pg_temp
-AS $$
-  SELECT p."recordedByType"::text || ':' || p."recordedById"
-  FROM "payment" p WHERE p."id" = p_payment_id
 $$;
 
 CREATE OR REPLACE FUNCTION payment_has_rows(p_payment_id TEXT)
@@ -87,12 +95,18 @@ SECURITY DEFINER
 STABLE
 SET search_path = public, pg_temp
 AS $$
-  SELECT EXISTS (SELECT 1 FROM "settlement" s WHERE s."paymentGroupId" = p_payment_id)
+  SELECT EXISTS (
+    SELECT 1 FROM "payment" p
+    WHERE p."id" = p_payment_id
+      AND (
+        (p."payerType" = 'user' AND p."payerId" = current_setting('app.current_user_id', true))
+        OR (p."payeeType" = 'user' AND p."payeeId" = current_setting('app.current_user_id', true))
+      )
+  ) AND EXISTS (SELECT 1 FROM "settlement" s WHERE s."paymentGroupId" = p_payment_id)
 $$;
 
--- A row of the payment became final without the other side (money received,
--- or paid to someone who cannot confirm).
-CREATE OR REPLACE FUNCTION payment_has_auto_rows(p_payment_id TEXT)
+-- A row of the payment is final. A payment cannot go back to waiting while one is.
+CREATE OR REPLACE FUNCTION payment_has_final_rows(p_payment_id TEXT)
 RETURNS BOOLEAN
 LANGUAGE SQL
 SECURITY DEFINER
@@ -100,9 +114,36 @@ STABLE
 SET search_path = public, pg_temp
 AS $$
   SELECT EXISTS (
+    SELECT 1 FROM "payment" p
+    WHERE p."id" = p_payment_id
+      AND (
+        (p."payerType" = 'user' AND p."payerId" = current_setting('app.current_user_id', true))
+        OR (p."payeeType" = 'user' AND p."payeeId" = current_setting('app.current_user_id', true))
+      )
+  ) AND EXISTS (
     SELECT 1 FROM "settlement" s
-    WHERE s."paymentGroupId" = p_payment_id AND s."autoConfirmedReason" IS NOT NULL
+    WHERE s."paymentGroupId" = p_payment_id AND s."status" = 'FINALIZED'
   )
+$$;
+
+-- The smallest unit money in the currency is kept to (packages/domain money.ts:
+-- 0, 3 or 4 decimals for the listed currencies, 2 for the rest; crypto is
+-- treated as 2, which only makes the offset tolerance below looser).
+CREATE OR REPLACE FUNCTION currency_step(p_currency TEXT)
+RETURNS NUMERIC
+LANGUAGE SQL
+IMMUTABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT CASE
+    WHEN upper(p_currency) IN ('BIF', 'CLP', 'DJF', 'GNF', 'ISK', 'JPY', 'KMF', 'KRW',
+                               'PYG', 'RWF', 'UGX', 'UYI', 'VND', 'VUV', 'XAF', 'XOF', 'XPF')
+      THEN 1::numeric
+    WHEN upper(p_currency) IN ('BHD', 'IQD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND')
+      THEN 0.001::numeric
+    WHEN upper(p_currency) IN ('CLF', 'UYW') THEN 0.0001::numeric
+    ELSE 0.01::numeric
+  END
 $$;
 
 -- Whether the user may write this settlement row as a new row.
@@ -115,7 +156,9 @@ CREATE OR REPLACE FUNCTION settlement_insert_ok(
   p_confirmed_payer BOOLEAN,
   p_confirmed_payee BOOLEAN,
   p_reason TEXT,
-  p_is_offset BOOLEAN
+  p_is_offset BOOLEAN,
+  p_kind TEXT,
+  p_project_id TEXT
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -142,9 +185,21 @@ BEGIN
   ) THEN
     RETURN FALSE;
   END IF;
-  -- Cash goes from the payer to the payee; only an offset row goes back.
+  -- Cash goes from the payer to the payee; only an offset row goes back (the
+  -- payment as a whole must then balance, see payment_group_check).
   IF NOT COALESCE(p_is_offset, FALSE) AND NOT (
     h."payerType"::text = p_from_type AND h."payerId" = p_from_id
+  ) THEN
+    RETURN FALSE;
+  END IF;
+  -- Into a project one of the two people is in.
+  IF p_project_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM "project_participant" pp
+    WHERE pp."projectId" = p_project_id
+      AND (
+        (pp."participantType"::text = p_from_type AND pp."participantId" = p_from_id)
+        OR (pp."participantType"::text = p_to_type AND pp."participantId" = p_to_id)
+      )
   ) THEN
     RETURN FALSE;
   END IF;
@@ -154,10 +209,11 @@ BEGIN
   other_flag := CASE WHEN from_is_recorder THEN p_confirmed_payee ELSE p_confirmed_payer END;
 
   IF h."recordedByType" = 'user' AND h."recordedById" = p_user_id THEN
-    -- The recorder: pending with only their flag, or final alone when the
-    -- payee is the recorder or cannot confirm.
+    -- The recorder: pending with only their flag (they are the payer), or
+    -- final alone when the payee is the recorder or cannot confirm.
     IF p_status = 'PROPOSED' THEN
-      RETURN p_reason IS NULL AND recorder_flag AND NOT other_flag;
+      RETURN p_reason IS NULL AND recorder_flag AND NOT other_flag
+        AND h."payerType" = 'user' AND h."payerId" = p_user_id;
     ELSIF p_status = 'FINALIZED' THEN
       RETURN p_reason IS NOT NULL AND recorder_flag AND (
         (h."payeeType" = 'user' AND h."payeeId" = p_user_id) OR h."payeeType" <> 'user'
@@ -166,7 +222,10 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  -- The other party rewrites rows in two cases only.
+  -- The other party rewrites payment rows in two cases only, never a forgive.
+  IF p_kind <> 'PAYMENT' THEN
+    RETURN FALSE;
+  END IF;
   IF p_status = 'FINALIZED' AND h."status" = 'PROPOSED' THEN
     -- Confirming with a new amount: final rows, both agreed, no auto reason.
     RETURN p_reason IS NULL AND p_confirmed_payer AND p_confirmed_payee;
@@ -186,17 +245,31 @@ CREATE OR REPLACE FUNCTION settlement_delete_ok(
   p_reason TEXT
 )
 RETURNS BOOLEAN
-LANGUAGE SQL
+LANGUAGE plpgsql
 SECURITY DEFINER
 STABLE
 SET search_path = public, pg_temp
 AS $$
-  SELECT CASE
-    WHEN p_status IN ('PROPOSED', 'REJECTED') THEN TRUE
-    WHEN p_reason IS NOT NULL THEN payment_recorded_by(p_payment_id, p_user_id)
-    ELSE EXISTS (SELECT 1 FROM "payment" p WHERE p."id" = p_payment_id)
-         AND NOT payment_recorded_by(p_payment_id, p_user_id)
-  END
+DECLARE
+  h "payment"%ROWTYPE;
+  by_user BOOLEAN;
+BEGIN
+  IF p_status IN ('PROPOSED', 'REJECTED') THEN
+    RETURN TRUE;
+  END IF;
+  SELECT * INTO h FROM "payment" WHERE "id" = p_payment_id;
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
+  by_user := h."recordedByType" = 'user' AND h."recordedById" = p_user_id;
+  IF p_reason IS NOT NULL THEN
+    -- Final without the other side: the recorder voids it; so does the user
+    -- when a shadow or guest recorded it (the other side cannot).
+    RETURN by_user OR h."recordedByType" <> 'user';
+  END IF;
+  -- Final with both sides' agreement: the receiver takes their confirm back.
+  RETURN NOT by_user;
+END
 $$;
 
 -- The user is a party to this final row and did not record it: the one who
@@ -221,6 +294,31 @@ AS $$
   )
 $$;
 
+-- The user is a party to this row, the actor recorded its payment, and no
+-- CREATED entry names the row yet: the receiver recording a rewrite under the
+-- recorder's name, once.
+CREATE OR REPLACE FUNCTION settlement_created_for(p_row_id TEXT, p_actor_id TEXT, p_user_id TEXT)
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM "settlement" s
+    JOIN "payment" p ON p."id" = s."paymentGroupId"
+    WHERE s."id" = p_row_id
+      AND (
+        (s."fromParticipantType" = 'user' AND s."fromParticipantId" = p_user_id)
+        OR (s."toParticipantType" = 'user' AND s."toParticipantId" = p_user_id)
+      )
+      AND p."recordedByType" = 'user' AND p."recordedById" = p_actor_id
+  ) AND NOT EXISTS (
+    SELECT 1 FROM "audit_log_entry" a
+    WHERE a."targetType" = 'SETTLEMENT' AND a."targetId" = p_row_id AND a."action" = 'CREATED'
+  )
+$$;
+
 -- ------------------------------------------------------------
 -- Update guards (triggers, because a policy cannot compare old and new).
 -- They bind the app role only; the owner connection is not limited.
@@ -236,7 +334,8 @@ DECLARE
   free TEXT[] := ARRAY['paymentMethod', 'note', 'reminderSentAt', 'reminderCount'];
   moving TEXT[] := ARRAY['status', 'confirmedByPayer', 'confirmedByPayee', 'settledAt',
                          'rejectedAt', 'rejectedReason'];
-  recorder TEXT := payment_recorder_key(OLD."paymentGroupId");
+  h "payment"%ROWTYPE;
+  recorder TEXT;
   recorder_is_from BOOLEAN;
   legal BOOLEAN := FALSE;
 BEGIN
@@ -247,6 +346,25 @@ BEGIN
     RAISE EXCEPTION 'row-level security: a payment keeps its people, amounts and currency'
       USING ERRCODE = '42501';
   END IF;
+
+  SELECT * INTO h FROM "payment" WHERE "id" = OLD."paymentGroupId";
+  IF FOUND THEN
+    recorder := h."recordedByType"::text || ':' || h."recordedById";
+  END IF;
+
+  -- A reminder: only the recorder, one more at a time, up to three, while pending.
+  IF NEW."reminderCount" IS DISTINCT FROM OLD."reminderCount"
+     OR NEW."reminderSentAt" IS DISTINCT FROM OLD."reminderSentAt" THEN
+    IF recorder IS DISTINCT FROM 'user:' || COALESCE(uid, '')
+       OR OLD."status" <> 'PROPOSED' OR NEW."status" <> 'PROPOSED'
+       OR NEW."reminderCount" <> OLD."reminderCount" + 1
+       OR NEW."reminderCount" > 3
+       OR NEW."reminderSentAt" IS NULL THEN
+      RAISE EXCEPTION 'row-level security: only the person who recorded a pending payment reminds, up to three times'
+        USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
   IF (to_jsonb(NEW) - free) IS NOT DISTINCT FROM (to_jsonb(OLD) - free) THEN
     RETURN NEW;
   END IF;
@@ -320,7 +438,9 @@ BEGIN
   ELSIF OLD."status" = 'PROPOSED' AND NEW."status" = 'REJECTED' THEN
     legal := (to_jsonb(NEW) - free - 'status') IS NOT DISTINCT FROM (to_jsonb(OLD) - free - 'status');
   ELSIF OLD."status" = 'FINALIZED' AND NEW."status" = 'PROPOSED' THEN
-    legal := NOT payment_has_auto_rows(OLD."id");
+    -- Back to waiting only once no row is final any more (they were put back
+    -- first), so a final row is never left under a waiting payment.
+    legal := NOT payment_has_final_rows(OLD."id");
   END IF;
   IF NOT legal THEN
     RAISE EXCEPTION 'row-level security: that is not a way a payment can move'
@@ -334,6 +454,220 @@ DROP TRIGGER IF EXISTS payment_guard_update ON "payment";
 CREATE TRIGGER payment_guard_update
   BEFORE UPDATE ON "payment"
   FOR EACH ROW EXECUTE FUNCTION payment_guard_update();
+
+-- ------------------------------------------------------------
+-- A payment as a whole, checked at commit (constraint triggers). The app
+-- writes a header, its rows and any rewrite in one transaction, so the state
+-- it leaves behind is what is checked; a single statement that would leave a
+-- payment half written is refused.
+--
+--   always  the payment has rows, and every row has the payment's status
+--           (a forged final row cannot sit under a waiting or rejected payment)
+--   on rows just written
+--           no row is negative; offset rows balance and carry a rate exactly
+--           when their currency is not the payment's; a forgive is whole
+--
+-- Offset rows move no cash: payee-to-payer rows cancel what the payee owed,
+-- payer-to-payee rows what the payer owed, and the two sides are worth the
+-- same in the payment currency (allocate.ts, I2). A row's worth is its
+-- amount times the rate it stores (6 decimals), so the sides may differ by the
+-- rounding of each row, the rate precision, and the payment's dust (one unit
+-- for ARS, else one minor unit). The rate itself is not checked against a
+-- market quote: the database has none.
+--
+-- The triggers queue an event only for the app role (WHEN), so the owner
+-- connection (sweeps, claims, migrations) neither pays for them nor is
+-- blocked by them.
+-- ------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION payment_group_check(p_id TEXT, p_full BOOLEAN)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  uid TEXT := current_setting('app.current_user_id', true);
+  h "payment"%ROWTYPE;
+  step NUMERIC;
+  tol NUMERIC;
+  theirs NUMERIC;
+  mine NUMERIC;
+  offsets INTEGER;
+  rate_term NUMERIC;
+BEGIN
+  SELECT * INTO h FROM "payment" WHERE "id" = p_id;
+  -- Gone (its rows with it), or not the caller's to ask about.
+  IF NOT FOUND OR NOT (
+    (h."payerType" = 'user' AND h."payerId" = uid)
+    OR (h."payeeType" = 'user' AND h."payeeId" = uid)
+  ) THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM "settlement" s WHERE s."paymentGroupId" = p_id) THEN
+    RAISE EXCEPTION 'row-level security: a payment keeps at least one row'
+      USING ERRCODE = '42501';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM "settlement" s WHERE s."paymentGroupId" = p_id AND s."status" <> h."status"
+  ) THEN
+    RAISE EXCEPTION 'row-level security: the rows of a payment share its status'
+      USING ERRCODE = '42501';
+  END IF;
+  IF NOT p_full THEN
+    RETURN;
+  END IF;
+
+  IF h."amount" < 0 OR EXISTS (
+    SELECT 1 FROM "settlement" s
+    WHERE s."paymentGroupId" = p_id
+      AND (s."amount" < 0 OR s."convertedAmount" < 0 OR s."exchangeRateUsed" < 0)
+  ) THEN
+    RAISE EXCEPTION 'row-level security: amounts and rates are not negative'
+      USING ERRCODE = '42501';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM "settlement" s WHERE s."paymentGroupId" = p_id AND s."kind" = 'FORGIVE') THEN
+    -- A forgive: the payee lets a balance go, final at once, all rows alike.
+    IF h."amount" <> 0
+       OR NOT (h."recordedByType" = 'user' AND h."payeeType" = 'user' AND h."recordedById" = h."payeeId")
+       OR EXISTS (
+         SELECT 1 FROM "settlement" s
+         WHERE s."paymentGroupId" = p_id
+           AND NOT (
+             s."kind" = 'FORGIVE'
+             AND NOT s."isOffset"
+             AND s."status" = 'FINALIZED'
+             AND s."autoConfirmedReason" IS NOT NULL
+             AND s."confirmedByPayer" AND s."confirmedByPayee"
+             AND s."fromParticipantType" = h."payerType" AND s."fromParticipantId" = h."payerId"
+             AND s."toParticipantType" = h."payeeType" AND s."toParticipantId" = h."payeeId"
+             AND (
+               s."forgiveEnvelopeId" IS NULL
+               OR EXISTS (
+                 SELECT 1 FROM "envelope" e
+                 JOIN "budget_book" b ON b."id" = e."bookId"
+                 WHERE e."id" = s."forgiveEnvelopeId" AND b."createdById" = h."payeeId"
+               )
+             )
+           )
+       ) THEN
+      RAISE EXCEPTION 'row-level security: that is not a forgive the payee can make'
+        USING ERRCODE = '42501';
+    END IF;
+    RETURN;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM "settlement" s WHERE s."paymentGroupId" = p_id AND s."forgiveEnvelopeId" IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'row-level security: only a forgive is charged to an envelope'
+      USING ERRCODE = '42501';
+  END IF;
+
+  -- Offsets: a rate exactly when the currency is not the payment's, and the
+  -- two sides worth the same.
+  IF EXISTS (
+    SELECT 1 FROM "settlement" s
+    WHERE s."paymentGroupId" = p_id AND s."isOffset"
+      AND (
+        (s."currency" = h."currency" AND s."exchangeRateUsed" IS NOT NULL AND s."exchangeRateUsed" <> 1)
+        OR (s."currency" <> h."currency" AND s."exchangeRateUsed" IS NULL)
+      )
+  ) THEN
+    RAISE EXCEPTION 'row-level security: an offset in another currency needs its rate'
+      USING ERRCODE = '42501';
+  END IF;
+
+  SELECT
+    COALESCE(SUM(s."amount" * COALESCE(s."exchangeRateUsed", 1))
+      FILTER (WHERE s."fromParticipantType" = h."payeeType" AND s."fromParticipantId" = h."payeeId"), 0),
+    COALESCE(SUM(s."amount" * COALESCE(s."exchangeRateUsed", 1))
+      FILTER (WHERE s."fromParticipantType" = h."payerType" AND s."fromParticipantId" = h."payerId"), 0),
+    COUNT(*),
+    COALESCE(SUM(s."amount") FILTER (WHERE s."exchangeRateUsed" IS NOT NULL), 0) * 0.0000005
+  INTO theirs, mine, offsets, rate_term
+  FROM "settlement" s
+  WHERE s."paymentGroupId" = p_id AND s."isOffset";
+
+  step := currency_step(h."currency");
+  tol := CASE WHEN upper(h."currency") = 'ARS' THEN 1 ELSE step END
+         + offsets * step / 2 + rate_term;
+  IF abs(theirs - mine) > tol THEN
+    RAISE EXCEPTION 'row-level security: the offsets of a payment cancel the same value on both sides'
+      USING ERRCODE = '42501';
+  END IF;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION settlement_group_trigger()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF current_user <> 'retrospend_app' THEN
+    RETURN NULL;
+  END IF;
+  IF TG_OP = 'DELETE' THEN
+    IF OLD."paymentGroupId" IS NOT NULL THEN
+      PERFORM payment_group_check(OLD."paymentGroupId", FALSE);
+    END IF;
+  ELSIF NEW."paymentGroupId" IS NOT NULL THEN
+    PERFORM payment_group_check(NEW."paymentGroupId", TG_OP = 'INSERT');
+  END IF;
+  RETURN NULL;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION payment_group_trigger()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF current_user = 'retrospend_app' THEN
+    PERFORM payment_group_check(NEW."id", FALSE);
+  END IF;
+  RETURN NULL;
+END
+$$;
+
+DROP TRIGGER IF EXISTS settlement_group_insert ON "settlement";
+CREATE CONSTRAINT TRIGGER settlement_group_insert
+  AFTER INSERT ON "settlement"
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW WHEN (current_user = 'retrospend_app')
+  EXECUTE FUNCTION settlement_group_trigger();
+
+DROP TRIGGER IF EXISTS settlement_group_status ON "settlement";
+CREATE CONSTRAINT TRIGGER settlement_group_status
+  AFTER UPDATE OF "status" ON "settlement"
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW WHEN (current_user = 'retrospend_app')
+  EXECUTE FUNCTION settlement_group_trigger();
+
+DROP TRIGGER IF EXISTS settlement_group_delete ON "settlement";
+CREATE CONSTRAINT TRIGGER settlement_group_delete
+  AFTER DELETE ON "settlement"
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW WHEN (current_user = 'retrospend_app')
+  EXECUTE FUNCTION settlement_group_trigger();
+
+DROP TRIGGER IF EXISTS payment_group_insert ON "payment";
+CREATE CONSTRAINT TRIGGER payment_group_insert
+  AFTER INSERT ON "payment"
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW WHEN (current_user = 'retrospend_app')
+  EXECUTE FUNCTION payment_group_trigger();
+
+DROP TRIGGER IF EXISTS payment_group_status ON "payment";
+CREATE CONSTRAINT TRIGGER payment_group_status
+  AFTER UPDATE OF "status" ON "payment"
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW WHEN (current_user = 'retrospend_app')
+  EXECUTE FUNCTION payment_group_trigger();
 
 -- ------------------------------------------------------------
 -- settlement policies
@@ -383,7 +717,7 @@ CREATE POLICY "settlement_insert" ON "settlement"
         "fromParticipantType"::text, "fromParticipantId",
         "toParticipantType"::text, "toParticipantId",
         "status", "confirmedByPayer", "confirmedByPayee",
-        "autoConfirmedReason", "isOffset"
+        "autoConfirmedReason", "isOffset", "kind"::text, "projectId"
       )
     );
 
@@ -455,7 +789,11 @@ CREATE POLICY "payment_insert" ON "payment"
         OR ("payeeType" = 'user' AND "payeeId" = current_setting('app.current_user_id', true))
       )
       AND (
-        "status" = 'PROPOSED'
+        -- Waiting for the payee: the payer's claim, never the payee's own.
+        (
+          "status" = 'PROPOSED'
+          AND "payerType" = 'user' AND "payerId" = current_setting('app.current_user_id', true)
+        )
         OR (
           "status" = 'FINALIZED'
           AND (
@@ -477,6 +815,8 @@ CREATE POLICY "payment_update" ON "payment"
       OR ("payeeType" = 'user' AND "payeeId" = current_setting('app.current_user_id', true))
     );
 
+-- The recorder takes a payment away, once its rows are gone; the other person
+-- can only reject it. A user also clears one a shadow or guest recorded.
 CREATE POLICY "payment_delete" ON "payment"
     AS PERMISSIVE FOR DELETE TO retrospend_app
     USING (
@@ -484,13 +824,15 @@ CREATE POLICY "payment_delete" ON "payment"
         ("payerType" = 'user' AND "payerId" = current_setting('app.current_user_id', true))
         OR ("payeeType" = 'user' AND "payeeId" = current_setting('app.current_user_id', true))
       )
+      AND ("recordedByType" <> 'user' OR "recordedById" = current_setting('app.current_user_id', true))
       AND NOT payment_has_rows("id")
     );
 
 -- ------------------------------------------------------------
--- audit_log_entry: your own name or the system's; the SETTLED entry of a
--- payment only from the person who confirmed it; another party's name only on
--- CREATED.
+-- audit_log_entry: your own name; the SETTLED entry of a payment only from the
+-- person who confirmed it; the system's only for the AUTO_VERIFIED entry of
+-- your own auto-accepted split; the recorder's name only on the CREATED entry
+-- of a row that has none.
 -- ------------------------------------------------------------
 
 DROP POLICY IF EXISTS "audit_log_entry_insert" ON "audit_log_entry";
@@ -509,25 +851,25 @@ CREATE POLICY "audit_log_entry_insert" ON "audit_log_entry"
         )
         OR (
           "actorId" = '__system__'
-          AND NOT ("targetType" = 'SETTLEMENT' AND "action" = 'SETTLED')
+          AND "action" = 'AUTO_VERIFIED'
+          AND "targetType" = 'SPLIT_PARTICIPANT'
+          AND EXISTS (
+            SELECT 1 FROM "split_participant" sp
+            JOIN "shared_transaction" st ON st."id" = sp."transactionId"
+            WHERE sp."id" = "audit_log_entry"."targetId"
+              AND sp."participantType" = 'user'
+              AND sp."participantId" = current_setting('app.current_user_id', true)
+              AND sp."verificationStatus" = 'AUTO_ACCEPTED'
+              AND st."projectId" IS NOT DISTINCT FROM "audit_log_entry"."projectId"
+          )
         )
         -- Confirming a payment with a new amount rewrites the rows and records
-        -- them (CREATED) under the person who first recorded them: the other
-        -- party of a settlement the user is also a party to.
+        -- them (CREATED) under the person who first recorded them.
         OR (
           "targetType" = 'SETTLEMENT'
           AND "action" = 'CREATED'
-          AND EXISTS (
-            SELECT 1 FROM "settlement" s
-            WHERE s."id" = "audit_log_entry"."targetId"
-              AND (
-                (s."fromParticipantType" = 'user' AND s."fromParticipantId" = current_setting('app.current_user_id', true))
-                OR (s."toParticipantType" = 'user' AND s."toParticipantId" = current_setting('app.current_user_id', true))
-              )
-              AND (
-                (s."fromParticipantType" = 'user' AND s."fromParticipantId" = "audit_log_entry"."actorId")
-                OR (s."toParticipantType" = 'user' AND s."toParticipantId" = "audit_log_entry"."actorId")
-              )
+          AND settlement_created_for(
+            "targetId", "actorId", current_setting('app.current_user_id', true)
           )
         )
       )
@@ -538,21 +880,27 @@ CREATE POLICY "audit_log_entry_insert" ON "audit_log_entry"
 -- ------------------------------------------------------------
 
 REVOKE ALL ON FUNCTION payment_recorded_by(TEXT, TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION payment_recorder_key(TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION payment_has_rows(TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION payment_has_auto_rows(TEXT) FROM PUBLIC;
-REVOKE ALL ON FUNCTION settlement_insert_ok(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, "SettlementStatus", BOOLEAN, BOOLEAN, TEXT, BOOLEAN) FROM PUBLIC;
+REVOKE ALL ON FUNCTION payment_has_final_rows(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION currency_step(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION settlement_insert_ok(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, "SettlementStatus", BOOLEAN, BOOLEAN, TEXT, BOOLEAN, TEXT, TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION settlement_delete_ok(TEXT, TEXT, "SettlementStatus", TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION settlement_confirmed_by(TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION settlement_created_for(TEXT, TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION payment_group_check(TEXT, BOOLEAN) FROM PUBLIC;
+REVOKE ALL ON FUNCTION settlement_group_trigger() FROM PUBLIC;
+REVOKE ALL ON FUNCTION payment_group_trigger() FROM PUBLIC;
 REVOKE ALL ON FUNCTION settlement_guard_update() FROM PUBLIC;
 REVOKE ALL ON FUNCTION payment_guard_update() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION payment_recorded_by(TEXT, TEXT) TO retrospend_app;
-GRANT EXECUTE ON FUNCTION payment_recorder_key(TEXT) TO retrospend_app;
 GRANT EXECUTE ON FUNCTION payment_has_rows(TEXT) TO retrospend_app;
-GRANT EXECUTE ON FUNCTION payment_has_auto_rows(TEXT) TO retrospend_app;
-GRANT EXECUTE ON FUNCTION settlement_insert_ok(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, "SettlementStatus", BOOLEAN, BOOLEAN, TEXT, BOOLEAN) TO retrospend_app;
+GRANT EXECUTE ON FUNCTION payment_has_final_rows(TEXT) TO retrospend_app;
+GRANT EXECUTE ON FUNCTION currency_step(TEXT) TO retrospend_app;
+GRANT EXECUTE ON FUNCTION settlement_insert_ok(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, "SettlementStatus", BOOLEAN, BOOLEAN, TEXT, BOOLEAN, TEXT, TEXT) TO retrospend_app;
 GRANT EXECUTE ON FUNCTION settlement_delete_ok(TEXT, TEXT, "SettlementStatus", TEXT) TO retrospend_app;
 GRANT EXECUTE ON FUNCTION settlement_confirmed_by(TEXT, TEXT) TO retrospend_app;
+GRANT EXECUTE ON FUNCTION settlement_created_for(TEXT, TEXT, TEXT) TO retrospend_app;
+GRANT EXECUTE ON FUNCTION payment_group_check(TEXT, BOOLEAN) TO retrospend_app;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON "settlement" TO retrospend_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON "payment" TO retrospend_app;

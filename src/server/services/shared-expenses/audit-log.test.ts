@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { logAudit } from "./audit-log";
+import { logAudit, logAuditMany } from "./audit-log";
 
 function createMockDb() {
 	return {
 		auditLogEntry: {
 			create: vi.fn().mockResolvedValue({ id: "audit-1" }),
+			createMany: vi.fn().mockResolvedValue({ count: 2 }),
 		},
 	};
 }
@@ -92,5 +93,43 @@ describe("logAudit", () => {
 			amount: { old: 50, new: 55 },
 			description: { old: "Dinner", new: "Dinner at Sotto" },
 		});
+	});
+});
+
+describe("logAuditMany", () => {
+	const entry = (id: string) => ({
+		actor: { participantType: "user" as const, participantId: "__system__" },
+		action: "AUTO_VERIFIED" as const,
+		targetType: "SPLIT_PARTICIPANT" as const,
+		targetId: id,
+		projectId: "project-1",
+	});
+
+	it("writes every entry in one insert, without reading any back", async () => {
+		const db = createMockDb();
+		await logAuditMany(db as never, [entry("sp-1"), entry("sp-2")]);
+
+		expect(db.auditLogEntry.create).not.toHaveBeenCalled();
+		expect(db.auditLogEntry.createMany).toHaveBeenCalledTimes(1);
+		expect(db.auditLogEntry.createMany).toHaveBeenCalledWith({
+			data: [
+				expect.objectContaining({ targetId: "sp-1", actorId: "__system__" }),
+				expect.objectContaining({ targetId: "sp-2", projectId: "project-1" }),
+			],
+		});
+	});
+
+	it("writes nothing for no entries", async () => {
+		const db = createMockDb();
+		await logAuditMany(db as never, []);
+		expect(db.auditLogEntry.createMany).not.toHaveBeenCalled();
+	});
+
+	it("throws when the insert fails", async () => {
+		const db = createMockDb();
+		db.auditLogEntry.createMany.mockRejectedValue(new Error("DB error"));
+		await expect(logAuditMany(db as never, [entry("sp-1")])).rejects.toThrow(
+			"DB error",
+		);
 	});
 });
