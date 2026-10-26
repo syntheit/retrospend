@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import * as React from "react";
 
 import {
+	initialFocus,
 	isSingleLineField,
 	isToastTarget,
 	menuTriggerOf,
@@ -115,13 +116,15 @@ export function useSheetState(props: SheetProps) {
 		// Close: the header button would also pop its tooltip on every open.
 		onOpenAutoFocus: (e: Event) => {
 			const root = contentRef.current;
-			const first =
-				root?.querySelector<HTMLElement>(
-					`[data-sheet-body] :is(${FOCUSABLE})`,
-				) ?? root?.querySelector<HTMLElement>("[data-sheet-submit]");
-			if (!first) return;
+			if (!root) return;
+			// A sheet that opens before its content loads has no field yet.
+			const target = initialFocus(
+				root.querySelector<HTMLElement>(`[data-sheet-body] :is(${FOCUSABLE})`),
+				root.querySelector<HTMLElement>("[data-sheet-submit]"),
+				root,
+			);
 			e.preventDefault();
-			first.focus({ preventScroll: true });
+			target?.focus({ preventScroll: true });
 		},
 		onCloseAutoFocus: (e: Event) => {
 			e.preventDefault();

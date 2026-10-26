@@ -75,9 +75,13 @@ export function decryptWebPush(
 export function newVapidEnv(subject = "mailto:ops@example.test") {
 	const ecdh = createECDH("prime256v1");
 	ecdh.generateKeys();
+	// getPrivateKey drops leading zero bytes (1 run in 256); keys are 32 bytes.
+	const d = ecdh.getPrivateKey();
 	return {
 		VAPID_PUBLIC_KEY: ecdh.getPublicKey().toString("base64url"),
-		VAPID_PRIVATE_KEY: ecdh.getPrivateKey().toString("base64url"),
+		VAPID_PRIVATE_KEY: Buffer.concat([Buffer.alloc(32 - d.length), d]).toString(
+			"base64url",
+		),
 		VAPID_SUBJECT: subject,
 	};
 }

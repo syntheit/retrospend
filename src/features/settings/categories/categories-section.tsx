@@ -29,7 +29,9 @@ const FIRST = 8;
  * the manager on it (name, icon, color, delete with a move); its menu
  * toggles the default with Undo. Add category opens the manager's add form;
  * so does arriving with ?add=category (the palette command), once: the
- * param is dropped from the URL, so a reload does not add again.
+ * param is dropped from the URL, so a reload does not add again. The manager
+ * waits for the list: a sheet that opens with no field to focus puts focus
+ * on Close, whose tooltip then takes the first Escape.
  */
 export function CategoriesSection() {
 	const t = useTranslations("settingsV2.categories");
@@ -103,7 +105,7 @@ export function CategoriesSection() {
 				onOpenChange={(open) => {
 					if (!open) setManager(null);
 				}}
-				open={manager != null}
+				open={manager != null && !isLoading}
 			/>
 		</SectionShell>
 	);

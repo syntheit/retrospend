@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	DETENT_SNAP,
 	detentOf,
+	initialFocus,
 	isSingleLineField,
 	isToastTarget,
 	keyboardInset,
@@ -196,6 +197,20 @@ describe("Sheet focus return", () => {
 		expect(menuTriggerOf({ closest: () => null }, () => el())).toBeNull();
 		expect(menuTriggerOf(null, () => el())).toBeNull();
 		expect(returnFocus(null, el(false), undefined)).toBe(false);
+	});
+});
+
+describe("Sheet initial focus", () => {
+	it("takes the first field, then the verb", () => {
+		const [field, submit, root] = [el(), el(), el()];
+		expect(initialFocus(field, submit, root)).toBe(field);
+		expect(initialFocus(null, submit, root)).toBe(submit);
+	});
+
+	it("falls back to the sheet itself, never to Close", () => {
+		const root = el();
+		expect(initialFocus(null, null, root)).toBe(root);
+		expect(initialFocus(null, null, null)).toBeNull();
 	});
 });
 
