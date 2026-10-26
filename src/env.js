@@ -35,6 +35,22 @@ export const env = createEnv({
 		// Push endpoint hosts allowed although they are IP literals or
 		// localhost names (a LAN ntfy server), comma-separated.
 		PUSH_ENDPOINT_ALLOW_HOSTS: z.string().optional(),
+
+		// Push senders. A sender with missing settings is off; nothing else
+		// changes. See docs/self-hosting for how to get each value.
+		APNS_KEY_ID: z.string().optional(),
+		APNS_TEAM_ID: z.string().optional(),
+		APNS_BUNDLE_ID: z.string().optional(),
+		// The .p8 key text (newlines may be written as \n), or a path to it.
+		APNS_KEY: z.string().optional(),
+		APNS_KEY_FILE: z.string().optional(),
+		VAPID_PUBLIC_KEY: z.string().optional(),
+		VAPID_PRIVATE_KEY: z.string().optional(),
+		VAPID_SUBJECT: z.string().optional(),
+		FCM_PROJECT_ID: z.string().optional(),
+		// The Google service account JSON, or a path to it.
+		FCM_SERVICE_ACCOUNT: z.string().optional(),
+		FCM_SERVICE_ACCOUNT_FILE: z.string().optional(),
 	},
 
 	/**
@@ -56,7 +72,10 @@ export const env = createEnv({
 		BETTER_AUTH_SECRET:
 			process.env.AUTH_SECRET ?? process.env.BETTER_AUTH_SECRET,
 		DATABASE_URL: process.env.DATABASE_URL,
-		SIDECAR_URL: process.env.SIDECAR_URL ?? process.env.WORKER_URL ?? process.env.IMPORTER_URL,
+		SIDECAR_URL:
+			process.env.SIDECAR_URL ??
+			process.env.WORKER_URL ??
+			process.env.IMPORTER_URL,
 		WORKER_API_KEY: process.env.WORKER_API_KEY,
 		NEXT_PUBLIC_SHOW_LANDING_PAGE:
 			process.env.SHOW_LANDING_PAGE ??
@@ -80,6 +99,17 @@ export const env = createEnv({
 		EXPORT_DIR: process.env.EXPORT_DIR,
 		UNSUBSCRIBE_SECRET: process.env.UNSUBSCRIBE_SECRET,
 		PUSH_ENDPOINT_ALLOW_HOSTS: process.env.PUSH_ENDPOINT_ALLOW_HOSTS,
+		APNS_KEY_ID: process.env.APNS_KEY_ID,
+		APNS_TEAM_ID: process.env.APNS_TEAM_ID,
+		APNS_BUNDLE_ID: process.env.APNS_BUNDLE_ID,
+		APNS_KEY: process.env.APNS_KEY,
+		APNS_KEY_FILE: process.env.APNS_KEY_FILE,
+		VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
+		VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+		VAPID_SUBJECT: process.env.VAPID_SUBJECT,
+		FCM_PROJECT_ID: process.env.FCM_PROJECT_ID,
+		FCM_SERVICE_ACCOUNT: process.env.FCM_SERVICE_ACCOUNT,
+		FCM_SERVICE_ACCOUNT_FILE: process.env.FCM_SERVICE_ACCOUNT_FILE,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

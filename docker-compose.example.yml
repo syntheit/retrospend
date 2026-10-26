@@ -21,6 +21,15 @@ services:
       # SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       # EMAIL_FROM: ${EMAIL_FROM:-}
       # UNSUBSCRIBE_SECRET: ${UNSUBSCRIBE_SECRET:-}
+      # Push notifications (see .env.example): each sender needs all of its settings
+      # VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      # VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      # PUSH_ENDPOINT_ALLOW_HOSTS: ${PUSH_ENDPOINT_ALLOW_HOSTS:-}
+      # APNS_KEY_ID: ${APNS_KEY_ID:-}
+      # APNS_TEAM_ID: ${APNS_TEAM_ID:-}
+      # APNS_BUNDLE_ID: ${APNS_BUNDLE_ID:-}
+      # APNS_KEY: ${APNS_KEY:-}
+      # FCM_SERVICE_ACCOUNT: ${FCM_SERVICE_ACCOUNT:-}
     ports:
       - "1997:1997"
     volumes:
