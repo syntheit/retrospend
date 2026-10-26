@@ -3,17 +3,12 @@
  * where the logic and the input schemas (inputs.ts) live.
  */
 import {
-	assertGuestProjectScope,
 	createTRPCRouter,
 	guestOrProtectedProcedure,
 	protectedProcedure,
-	publicProcedure,
 } from "~/server/api/trpc";
 import { userTransaction } from "~/server/db-tx";
-import {
-	listProjectExpenses,
-	listPublicProjectExpenses,
-} from "~/server/services/project/expenses.service";
+import { listProjectExpenses } from "~/server/services/project/expenses.service";
 import {
 	projectBalancesFromPerspective,
 	projectParticipantBalances,
@@ -37,11 +32,7 @@ import {
 	membersOn,
 	setMembershipDates,
 } from "~/server/services/project/membership.service";
-import {
-	getProjectDetail,
-	getPublicProjectDetail,
-	listProjects,
-} from "~/server/services/project/project-read.service";
+import { getProjectDetail, listProjects } from "~/server/services/project/project-read.service";
 import {
 	createProject,
 	deleteProject,
@@ -54,26 +45,20 @@ import { getProjectSummary } from "~/server/services/project/summary.service";
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import { requestTimeZone } from "~/server/time-zone";
 import { projectPageProcedures } from "./project-pages";
+import {
+	assertMember,
+	assertReader,
+	projectSharedProcedures,
+} from "./project-shared";
 
 type Db = Parameters<typeof requireProjectRole>[0];
 type Zoned = { timeZone?: string };
 type SignedIn = { db: Db; session: { user: { id: string } } } & Zoned;
-type Reader = {
-	db: Db;
-	participant: Parameters<typeof assertGuestProjectScope>[0];
-};
 type MinimumRole = Parameters<typeof requireProjectRole>[4];
 
 /** The signed-in user's role in the project, or FORBIDDEN / NOT_FOUND. */
 const roleOf = (ctx: SignedIn, projectId: string, minimum: MinimumRole) =>
 	requireProjectRole(ctx.db, projectId, "user", ctx.session.user.id, minimum);
-
-/** Scope check and membership check for any reader: user, guest or viewer link. */
-function assertReader(ctx: Reader, projectId: string) {
-	assertGuestProjectScope(ctx.participant, projectId);
-	const { participantType: type, participantId } = ctx.participant;
-	return requireProjectRole(ctx.db, projectId, type, participantId, "VIEWER");
-}
 
 const actor = (ctx: SignedIn) => ({
 	userId: ctx.session.user.id,
@@ -84,6 +69,7 @@ const actor = (ctx: SignedIn) => ({
 
 export const projectRouter = createTRPCRouter({
 	...projectPageProcedures,
+	...projectSharedProcedures,
 
 	create: protectedProcedure
 		.input(projectInput.create)
@@ -232,21 +218,13 @@ export const projectRouter = createTRPCRouter({
 
 	// ── Public (no sign-in): PUBLIC projects only, no balances or emails ─────
 
-	publicDetail: publicProcedure
-		.input(projectInput.byId)
-		.query(({ ctx, input }) => getPublicProjectDetail(ctx.db, input.id)),
-
-	publicListExpenses: publicProcedure
-		.input(projectInput.publicListExpenses)
-		.query(({ ctx, input }) => listPublicProjectExpenses(ctx.db, input)),
-
 	// ── Group balances (read-only) ──────────────────────────────────────────
 
 	/** The fewest payments that settle the project (or one billing period), per currency. */
 	settlementPlan: guestOrProtectedProcedure
 		.input(projectInput.group)
 		.query(async ({ ctx, input }) => {
-			await assertReader(ctx, input.projectId);
+			await assertMember(ctx, input.projectId);
 			return projectSettlementPlan(ctx.db, input.projectId, input.periodId);
 		}),
 
@@ -257,7 +235,7 @@ export const projectRouter = createTRPCRouter({
 	summary: guestOrProtectedProcedure
 		.input(projectInput.group)
 		.query(async ({ ctx, input }) => {
-			await assertReader(ctx, input.projectId);
+			await assertMember(ctx, input.projectId);
 			return getProjectSummary(
 				ctx.db,
 				input.projectId,
@@ -270,7 +248,7 @@ export const projectRouter = createTRPCRouter({
 	participantBalances: guestOrProtectedProcedure
 		.input(projectInput.group)
 		.query(async ({ ctx, input }) => {
-			await assertReader(ctx, input.projectId);
+			await assertMember(ctx, input.projectId);
 			return projectParticipantBalances(
 				ctx.db,
 				input.projectId,
@@ -286,7 +264,7 @@ export const projectRouter = createTRPCRouter({
 	balancesFromPerspective: guestOrProtectedProcedure
 		.input(projectInput.perspective)
 		.query(async ({ ctx, input }) => {
-			await assertReader(ctx, input.projectId);
+			await assertMember(ctx, input.projectId);
 			return projectBalancesFromPerspective(
 				ctx.db,
 				input.projectId,

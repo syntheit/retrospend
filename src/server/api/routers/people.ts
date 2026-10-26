@@ -1,12 +1,5 @@
 import { z } from "zod";
-import {
-	assertGuestProjectScope,
-	assertWritableParticipant,
-	createTRPCRouter,
-	guestOrProtectedProcedure,
-	protectedProcedure,
-} from "~/server/api/trpc";
-import { db as globalDb } from "~/server/db";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { getImageUrl } from "~/server/storage";
 import { addShadow, assertEmailCheck, renameShadow } from "~/server/services/shadow-profile.service";
 import { frequentSplitPartners } from "~/server/services/people/frequent-partners";
@@ -34,7 +27,7 @@ export const peopleRouter = createTRPCRouter({
 			// Search shadow profiles visible to this user: ones they created plus
 			// ones that share a project with them. The shadow_profile RLS policy
 			// enforces this scope at the DB layer (creator OR shared project), so we
-			// do NOT filter by createdById here — that would hide project ghosts
+			// do NOT filter by createdById here, that would hide project ghosts
 			// created by other members. Private (non-project) shadows of unrelated
 			// users are never returned because RLS excludes them.
 			//
@@ -183,7 +176,7 @@ export const peopleRouter = createTRPCRouter({
 		}),
 
 	/**
-	 * Rename (and optionally re-email) a shadow profile — the "ghost" someone set
+	 * Rename (and optionally re-email) a shadow profile, the "ghost" someone set
 	 * up to track a person without an account.
 	 *
 	 * Authorized exactly like claim.generateLink: the shadow is read through the
@@ -210,18 +203,6 @@ export const peopleRouter = createTRPCRouter({
 		),
 
 	/**
-	 * Returns the number of shadow profiles claimed by the current user.
-	 * Used on the dashboard to show a tailored welcome banner for users
-	 * who had shared expenses linked on signup.
-	 * Uses global db since RLS on shadow_profile only allows access by createdById.
-	 */
-	claimedShadowCount: protectedProcedure.query(async ({ ctx }) => {
-		return globalDb.shadowProfile.count({
-			where: { claimedById: ctx.session.user.id },
-		});
-	}),
-
-	/**
 	 * Returns all people the current user has a shared financial relationship with.
 	 *
 	 * A relationship exists when there is at least one SharedTransaction where both
@@ -242,67 +223,6 @@ export const peopleRouter = createTRPCRouter({
 	}),
 
 	/**
-	 * Returns full detail for a specific person: identity, net balance, and
-	 * paginated transaction history shared with the current user (or guest).
-	 *
-	 * The participant is identified by type ("user" | "guest" | "shadow") + id,
-	 * which maps to: User.id, GuestSession.id, or ShadowProfile.id respectively.
-	 *
-	 * Supports filtering by status, projectId, and pagination.
-	 * Guests must filter by their projectId scope.
-	 */
-	detail: guestOrProtectedProcedure
-		.input(
-			participantRefSchema.extend({
-				status: z.enum(["active", "pending", "settled"]).optional(),
-				projectId: z.cuid().optional(),
-				page: z.number().int().positive().default(1),
-				limit: z.number().int().positive().max(100).default(20),
-			}),
-		)
-		.query(async ({ ctx, input }) => {
-			const actor = assertWritableParticipant(ctx.participant);
-			// Guests must scope their query to their project
-			if (actor.participantType === "guest") {
-				const projectId = input.projectId ?? actor.projectScope;
-				assertGuestProjectScope(actor, projectId);
-			}
-			const service = new PeopleService(ctx.db, actor);
-			const { participantType, participantId, ...options } = input;
-			return service.getPersonDetail(
-				{ participantType, participantId },
-				options,
-			);
-		}),
-
-	/**
-	 * Cursor-based variant of `detail` for infinite scrolling.
-	 * First page returns identity, balances, stats, breakdown + transactions.
-	 * Subsequent pages return only transactions + nextCursor.
-	 */
-	detailCursor: guestOrProtectedProcedure
-		.input(
-			participantRefSchema.extend({
-				limit: z.number().int().positive().max(100).default(30),
-				cursor: z.string().optional(),
-				projectId: z.cuid().optional(),
-			}),
-		)
-		.query(async ({ ctx, input }) => {
-			const actor = assertWritableParticipant(ctx.participant);
-			if (actor.participantType === "guest") {
-				const projectId = input.projectId ?? actor.projectScope;
-				assertGuestProjectScope(actor, projectId);
-			}
-			const service = new PeopleService(ctx.db, actor);
-			const { participantType, participantId, ...options } = input;
-			return service.getPersonDetailCursor(
-				{ participantType, participantId },
-				options,
-			);
-		}),
-
-	/**
 	 * Returns the top 5 people the current user splits expenses with most frequently.
 	 * Excludes the current user and guest participants.
 	 */
@@ -311,24 +231,4 @@ export const peopleRouter = createTRPCRouter({
 	),
 	...peopleV2Procedures,
 
-	/**
-	 * Lightweight endpoint returning only the net balance between the current
-	 * participant and the specified person.
-	 *
-	 * Returns one entry per currency: no cross-currency netting is performed.
-	 * An empty array means the balance is fully settled across all currencies.
-	 *
-	 * Guests may only query balances for participants within their project scope.
-	 */
-	balance: guestOrProtectedProcedure
-		.input(participantRefSchema)
-		.query(async ({ ctx, input }) => {
-			const actor = assertWritableParticipant(ctx.participant);
-			// Enforce guest project scope for defence-in-depth
-			if (actor.participantType === "guest") {
-				assertGuestProjectScope(actor, actor.projectScope);
-			}
-			const service = new PeopleService(ctx.db, actor);
-			return service.getBalance(input);
-		}),
 });

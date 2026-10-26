@@ -21,7 +21,7 @@ export default function QuickStartPage() {
 				<Badge variant="secondary" className="mb-3">
 					Getting Started
 				</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">
+				<h1 className="mb-3 font-semibold text-3xl">
 					Hosted Quick Start
 				</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
@@ -30,7 +30,7 @@ export default function QuickStartPage() {
 				</p>
 			</div>
 
-			<h2 id="sign-up" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="sign-up" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				1. Create an account
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -41,7 +41,7 @@ export default function QuickStartPage() {
 				and create a free account. No credit card required.
 			</p>
 
-			<h2 id="add-first-expense" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="add-first-expense" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				2. Add your first expense
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -51,7 +51,7 @@ export default function QuickStartPage() {
 				dashboard will update immediately.
 			</p>
 
-			<h2 id="set-up-a-budget" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="set-up-a-budget" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				3. Set up a budget
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -61,7 +61,7 @@ export default function QuickStartPage() {
 				Retrospend will calculate your daily safe-to-spend automatically.
 			</p>
 
-			<h2 id="import-transactions" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="import-transactions" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				4. Import from your bank (optional)
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -77,7 +77,7 @@ export default function QuickStartPage() {
 				and XLSX files.
 			</Callout>
 
-			<h2 id="configure-settings" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="configure-settings" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				5. Configure your preferences
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">

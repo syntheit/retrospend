@@ -1,5 +1,5 @@
 /**
- * Project procedures of the redesigned pages (uiV2): the list and page
+ * Project procedures of the redesigned pages: the list and page
  * reads, and the previewed money actions (R30). Thin: access checks and a
  * call into src/server/services/project. Spread into projectRouter.
  */

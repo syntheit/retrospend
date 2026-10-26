@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveSplits } from "./shared-split-computation";
+import { resolveSplits } from "@retrospend/domain/shared-split-computation";
 import {
 	buildSharedExpensePrefill,
 	type SharedTxForPrefill,

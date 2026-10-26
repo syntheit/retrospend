@@ -14,7 +14,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 import { handleV1Request } from "../../handler";
 
@@ -43,7 +42,6 @@ function uploadForm(name: string, text: string) {
 }
 
 describe("/api/v1/imports", () => {
-	useApiV1();
 	let alice: string;
 	let asAlice: Record<string, string>;
 	let asBob: Record<string, string>;

@@ -4,7 +4,7 @@ import type { Span } from "@retrospend/domain/insights";
 import { ChartPie, SearchX } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Button } from "~/components/ui/button";
@@ -43,7 +43,7 @@ function useNames(view: InsightsView): string {
 export function InsightsPage() {
 	const t = useTranslations("insights");
 	const i = useInsights();
-	const modal = useExpenseModal();
+	const modal = useEntryActions();
 	const { view, today } = i;
 	const names = useNames(view);
 	const hrefOf = useCallback(

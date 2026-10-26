@@ -10,7 +10,7 @@
  */
 import type { Decimal } from "@prisma/client/runtime/index-browser";
 
-export { MissingRateError } from "~/lib/money";
+export { MissingRateError } from "@retrospend/domain/money";
 
 /** Integer minor units (cents, satoshis, fils). Always a safe integer. */
 export type Minor = number;

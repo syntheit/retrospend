@@ -86,7 +86,6 @@ export const projectInput = {
 		billingPeriodId: z.string().optional(),
 		...page,
 	}),
-	publicListExpenses: z.object({ projectId: id, ...page }),
 	createMagicLink: z.object({
 		projectId: id,
 		roleGranted: role.default("CONTRIBUTOR"),

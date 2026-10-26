@@ -3,7 +3,7 @@
 import { ArrowUpDown } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
+import { FilterChip } from "~/components/ui/chip"
 import { CurrencyFlag } from "~/components/ui/currency-flag"
 import { Input } from "~/components/ui/input"
 import {
@@ -13,7 +13,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select"
-import { convertAmount as convert, toAmountString } from "~/lib/money"
+import { convertAmount as convert, toAmountString } from "@retrospend/domain/money"
 import { getRateTypeLabel } from "~/lib/exchange-rates-shared"
 import { cn } from "~/lib/utils"
 
@@ -147,8 +147,7 @@ export function DemoCurrencyConverter() {
 	}
 
 	return (
-		<Card>
-			<CardContent className="space-y-0 p-4">
+		<div>
 				{/* Top row */}
 				<div className="flex items-center gap-3">
 					<CurrencySelect onChange={setTopCurrency} value={topCurrency} />
@@ -170,19 +169,13 @@ export function DemoCurrencyConverter() {
 								{stripRateOptions.map((option) => {
 									const isSelected = selectedRateType === option.type
 									return (
-										<button
-											className={cn(
-												"rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
-												isSelected
-													? "bg-primary text-primary-foreground"
-													: "bg-muted/60 text-muted-foreground hover:bg-muted",
-											)}
+										<FilterChip
 											key={option.type}
 											onClick={() => handleRateTypeChange(option.type)}
-											type="button"
+											selected={isSelected}
 										>
 											{getRateTypeLabel(option.type)}
-										</button>
+										</FilterChip>
 									)
 								})}
 							</div>
@@ -223,8 +216,7 @@ export function DemoCurrencyConverter() {
 						value={bottomAmount}
 					/>
 				</div>
-			</CardContent>
-		</Card>
+			</div>
 	)
 }
 

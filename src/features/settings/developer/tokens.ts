@@ -1,29 +1,25 @@
+import type { AccessTokenDto } from "@retrospend/api-contract";
 import {
-	parseScopeList,
 	SCOPES,
 	type Scope,
-} from "@retrospend/api-contract/common";
-import { authClient } from "~/lib/auth-client";
+	TOKEN_DEFAULT_DAYS,
+} from "@retrospend/api-contract";
 import type { RouterOutputs } from "~/trpc/react";
 
 /**
- * The Developer section's one seam to the server (IMPLEMENTATION §2.3).
- *
- * Personal access tokens are better-auth api-key rows (rsk_ prefix, hashed,
- * always expiring). Their scopes live in `permissions` and the plugin only
- * lets the server set them, so until POST /api/v1/tokens (S3 platform)
- * exists a key made here gets the plugin default, `read`. createToken takes
- * the scopes already, so the route swaps in here and nothing else changes.
- * docs/ui/GAPS.md, "Developer: token scopes".
+ * The Developer section's token model (IMPLEMENTATION §2.3). Tokens come
+ * from GET /api/v1/tokens and are made and revoked through the same route
+ * family, called with the web session (the routes refuse any other
+ * credential). The key itself is in the create response only.
  */
 
-/** Scopes this server can put on a new key today. */
-export const CREATABLE_SCOPES: readonly Scope[] = ["read"];
-
-/** Expiry choices in days; the plugin allows 1 to 365, and keys always expire. */
+/** Expiry choices in days; the route allows 1 to 365, and keys always expire. */
 export const EXPIRY_DAYS = [30, 90, 365] as const;
 export type ExpiryDays = (typeof EXPIRY_DAYS)[number];
-export const DEFAULT_EXPIRY: ExpiryDays = 90;
+export const DEFAULT_EXPIRY: ExpiryDays = TOKEN_DEFAULT_DAYS as ExpiryDays;
+
+/** A new key starts with read access only. */
+export const DEFAULT_SCOPES: readonly Scope[] = ["read"];
 
 export type ApiToken = {
 	id: string;
@@ -31,34 +27,24 @@ export type ApiToken = {
 	/** The first characters (rsk_…), to tell keys apart. */
 	start: string | null;
 	scopes: Scope[];
+	enabled: boolean;
 	createdAt: Date;
 	expiresAt: Date | null;
 	lastUsedAt: Date | null;
 };
 
-type KeyRow = {
-	id: string;
-	name?: string | null;
-	start?: string | null;
-	permissions?: Record<string, string[]> | null;
-	createdAt: Date | string;
-	expiresAt?: Date | string | null;
-	lastRequest?: Date | string | null;
-};
+const asDate = (v: string | null) => (v ? new Date(v) : null);
 
-const asDate = (v: Date | string | null | undefined) =>
-	v ? new Date(v) : null;
-
-/** A plugin row as the section shows it; unknown scopes are dropped. */
-export function toToken(row: KeyRow): ApiToken {
+export function toToken(dto: AccessTokenDto): ApiToken {
 	return {
-		id: row.id,
-		name: row.name ?? "",
-		start: row.start ?? null,
-		scopes: parseScopeList((row.permissions?.scopes ?? []).join(" ")).scopes,
-		createdAt: new Date(row.createdAt),
-		expiresAt: asDate(row.expiresAt),
-		lastUsedAt: asDate(row.lastRequest),
+		id: dto.id,
+		name: dto.name,
+		start: dto.start,
+		scopes: dto.scopes,
+		enabled: dto.enabled,
+		createdAt: new Date(dto.createdAt),
+		expiresAt: asDate(dto.expiresAt),
+		lastUsedAt: asDate(dto.lastUsedAt),
 	};
 }
 
@@ -67,48 +53,22 @@ export function orderScopes(scopes: readonly Scope[]): Scope[] {
 	return SCOPES.filter((s) => scopes.includes(s));
 }
 
+/** The scopes a person can put on a key: everything they hold, so admin only for admins. */
+export function grantableScopes(isAdmin: boolean): Scope[] {
+	return SCOPES.filter((s) => s !== "admin" || isAdmin);
+}
+
 /** The message key for a scope under device.scopes (shared with /device). */
 export function scopeKey(scope: Scope): string {
 	return scope.replace(/:(\w)/, (_, c: string) => c.toUpperCase());
 }
 
-export async function listTokens(): Promise<ApiToken[]> {
-	const { data, error } = await authClient.apiKey.list();
-	if (error) throw new Error(error.message);
-	const rows = (data as { apiKeys?: KeyRow[] } | KeyRow[] | null) ?? [];
-	const list = Array.isArray(rows) ? rows : (rows.apiKeys ?? []);
-	return list
-		.map(toToken)
-		.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+/** When a key made now with this lifetime stops working. */
+export function expiryFrom(days: number, now: Date = new Date()): Date {
+	return new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
-export type CreateTokenInput = {
-	name: string;
-	expiresInDays: ExpiryDays;
-	scopes: readonly Scope[];
-};
-
-/** Makes a key and returns its secret, which is shown once and never again. */
-export async function createToken(
-	input: CreateTokenInput,
-): Promise<{ key: string; token: ApiToken }> {
-	const unavailable = input.scopes.filter((s) => !CREATABLE_SCOPES.includes(s));
-	if (unavailable.length > 0)
-		throw new Error(unavailable.join(" "));
-	const { data, error } = await authClient.apiKey.create({
-		name: input.name,
-		expiresIn: input.expiresInDays * 24 * 60 * 60,
-	});
-	if (error || !data) throw new Error(error?.message);
-	return { key: data.key, token: toToken(data as KeyRow) };
-}
-
-export async function revokeToken(id: string): Promise<void> {
-	const { error } = await authClient.apiKey.delete({ keyId: id });
-	if (error) throw new Error(error.message);
-}
-
-/** Whether a key has passed its expiry (the plugin refuses it from then on). */
+/** Whether a key has passed its expiry (the server refuses it from then on). */
 export function isExpired(token: ApiToken, now: Date = new Date()): boolean {
 	return token.expiresAt != null && token.expiresAt.getTime() <= now.getTime();
 }

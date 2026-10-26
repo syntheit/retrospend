@@ -1,0 +1,66 @@
+{
+  "signIn": "Iniciar sesión",
+  "private": {
+    "title": "Este proyecto es privado",
+    "hint": "Pedile al dueño que lo comparta con vos."
+  },
+  "expired": {
+    "title": "Este enlace ya no funciona",
+    "hint": "Abrí tu enlace de invitación de nuevo, o iniciá sesión."
+  },
+  "invalidInvite": {
+    "title": "Esta invitación no funciona",
+    "hint": "Pedile al dueño un enlace nuevo."
+  },
+  "otherProject": "Esta invitación es de otro proyecto.",
+  "notice": {
+    "guest": "Mirando como {name}, invitado",
+    "viewer": "Solo lectura",
+    "public": "Vista pública. Los saldos y los pagos siguen siendo privados.",
+    "create": "Crear cuenta"
+  },
+  "expenses": {
+    "emptyHint": "Todavía no se agregó nada."
+  },
+  "add": {
+    "title": "Agregar gasto a {project}",
+    "what": "Para qué fue",
+    "date": "Fecha",
+    "submit": "Agregar gasto",
+    "added": "Se agregó {title}",
+    "split": "Lo pagaste vos, dividido en partes iguales entre {count, plural, one {# persona} other {# personas}}",
+    "staysExpenses": "Gastos anteriores",
+    "staysPayments": "Pagos",
+    "fillIn": "Completá para qué fue y el monto."
+  },
+  "errors": {
+    "failed": "No se guardó. Probá de nuevo."
+  },
+  "join": {
+    "title": "Unirte a {project}",
+    "sub": "{count, plural, one {# persona} other {# personas}} · te unís como {role}",
+    "back": "Volver a la lista",
+    "elsewhere": "{name} también está en otros proyectos, así que esta invitación no puede tomar su historial. Unite como vos mismo y después pedile a un dueño un enlace para fusionarlo.",
+    "name": "Tu nombre",
+    "email": "Correo electrónico",
+    "emailHint": "Se usa para reconocerte en este proyecto. No se comparte públicamente.",
+    "submit": "Unirme al proyecto",
+    "joining": "Uniéndote",
+    "failed": "No pudimos agregarte. Probá de nuevo.",
+    "haveAccount": "¿Ya tenés una cuenta? <link>Iniciá sesión</link>"
+  },
+  "chooser": {
+    "title": "¿Sos una de estas personas?",
+    "hint": "Puede que alguien ya te haya agregado a {project}. Elegite para conservar tu historial, o unite como alguien nuevo.",
+    "none": "Ninguna de estas, soy nuevo"
+  },
+  "resume": {
+    "title": "Revisá tu correo",
+    "hint": "Este correo ya se unió a {project}. Enviamos un enlace para que sigas donde lo dejaste. Funciona una vez y vence en una hora."
+  },
+  "done": {
+    "title": "Ya estás adentro",
+    "hint": "Te uniste a {project} como {role}.",
+    "view": "Ver proyecto"
+  }
+}

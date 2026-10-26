@@ -82,7 +82,7 @@ function GlancePart({
 }
 
 /**
- * Home (uiV2): the glance (one hero, spent this month), then Needs you and
+ * Home: the glance (one hero, spent this month), then Needs you and
  * Recent, with a rail of people and what is coming up on wide screens
  * (R26). Every number is the server's; each part loads and fails alone.
  */

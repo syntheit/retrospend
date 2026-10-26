@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { BASE_CURRENCY } from "~/lib/constants";
-import { pickBestRate } from "~/lib/money";
+import { pickBestRate } from "@retrospend/domain/money";
 import { api } from "~/trpc/react";
 import { useUserSettings } from "./use-user-settings";
 

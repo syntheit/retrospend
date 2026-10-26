@@ -13,8 +13,6 @@ vi.mock("~/server/better-auth", () => ({
 import {
 	EXPECTED_LISTED,
 	EXPECTED_READINGS,
-	EXPECTED_RECENT,
-	TREND_STEPS,
 } from "./spending-expected";
 import { NOW, seedSpendingFixture } from "./spending-fixture";
 import { readAllSpendingReaders } from "./spending-readers";
@@ -39,18 +37,5 @@ describe("spending readers today (characterization)", () => {
 
 	it("pins the lists", () => {
 		expect(readings.listed).toEqual(EXPECTED_LISTED);
-		expect(readings.recent).toEqual(EXPECTED_RECENT);
-	});
-
-	it("pins the daily trend", () => {
-		expect(readings.trend).toHaveLength(31);
-		for (const [day, [total, fixed, variable]] of Object.entries(TREND_STEPS)) {
-			expect(readings.trend.find((d) => d[0] === day)).toEqual([
-				day,
-				total,
-				fixed,
-				variable,
-			]);
-		}
 	});
 });

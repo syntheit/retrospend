@@ -44,7 +44,6 @@
 							"unauthenticated",
 							"forbidden",
 							"missing_scope",
-							"api_disabled",
 							"not_found",
 							"conflict",
 							"payload_too_large",
@@ -10392,6 +10391,10 @@
 											"maximum": 50,
 											"minimum": 1,
 											"type": "integer"
+										},
+										"webhooksAllowPrivateTargets": {
+											"description": "Let webhooks send to addresses on a private network (localhost, 10.x, 192.168.x). Off by default; turn it on only for a self-hosted server whose receivers sit on the same network.",
+											"type": "boolean"
 										}
 									},
 									"required": [
@@ -10400,7 +10403,8 @@
 										"enableEmail",
 										"auditPrivacyMode",
 										"maxConcurrentImportJobs",
-										"enableFeedback"
+										"enableFeedback",
+										"webhooksAllowPrivateTargets"
 									],
 									"type": "object"
 								}
@@ -10524,6 +10528,10 @@
 										"maximum": 50,
 										"minimum": 1,
 										"type": "integer"
+									},
+									"webhooksAllowPrivateTargets": {
+										"description": "Let webhooks send to addresses on a private network (localhost, 10.x, 192.168.x). Off by default; turn it on only for a self-hosted server whose receivers sit on the same network.",
+										"type": "boolean"
 									}
 								},
 								"type": "object"
@@ -10562,6 +10570,10 @@
 											"maximum": 50,
 											"minimum": 1,
 											"type": "integer"
+										},
+										"webhooksAllowPrivateTargets": {
+											"description": "Let webhooks send to addresses on a private network (localhost, 10.x, 192.168.x). Off by default; turn it on only for a self-hosted server whose receivers sit on the same network.",
+											"type": "boolean"
 										}
 									},
 									"required": [
@@ -10570,7 +10582,8 @@
 										"enableEmail",
 										"auditPrivacyMode",
 										"maxConcurrentImportJobs",
-										"enableFeedback"
+										"enableFeedback",
+										"webhooksAllowPrivateTargets"
 									],
 									"type": "object"
 								}
@@ -76967,7 +76980,7 @@
 				"x-required-scope": "read"
 			},
 			"post": {
-				"description": "Needs the account:delete scope (the app's own sign-in; never a token) and the password. Admins cannot delete their own account. Your data and files are removed; shared expenses keep your share as Deleted User. This cannot be undone and signs you out everywhere.",
+				"description": "Needs the account:delete scope (the app's own sign-in; never a token) and the password. An admin can delete their own account while another active admin remains; the last admin is refused (403). Your data and files are removed; shared expenses keep your share as Deleted User. This cannot be undone and signs you out everywhere.",
 				"operationId": "deleteMyAccount",
 				"parameters": [
 					{
@@ -103450,22 +103463,7 @@
 											"type": "object"
 										},
 										"features": {
-											"properties": {
-												"apiV1": {
-													"type": "boolean"
-												},
-												"envelopeBudget": {
-													"type": "boolean"
-												},
-												"uiV2": {
-													"type": "boolean"
-												}
-											},
-											"required": [
-												"apiV1",
-												"uiV2",
-												"envelopeBudget"
-											],
+											"description": "Optional server capabilities. Empty today: clients still read the object, so it stays.",
 											"type": "object"
 										},
 										"minClientVersion": {
@@ -103496,7 +103494,7 @@
 										},
 										"version": {
 											"examples": [
-												"0.4.5"
+												"0.5.0"
 											],
 											"type": "string"
 										}

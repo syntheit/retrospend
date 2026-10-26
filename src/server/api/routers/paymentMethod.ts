@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import { sharesExpenseWith } from "~/server/services/people/co-participants";
 
 const participantRefSchema = z.object({
 	participantType: z.enum(["user", "guest", "shadow"]),
@@ -124,19 +125,10 @@ export const paymentMethodRouter = createTRPCRouter({
 			// FRIENDS_ONLY and PAYMENT_ONLY identifiers (bank accounts, wallet
 			// addresses, etc.) must only be visible to users with a shared
 			// transaction history: same rule enforced by paymentMethod.getForUser.
-			const relationship = await ctx.db.splitParticipant.findFirst({
-				where: {
-					participantType: "user",
-					participantId: userId,
-					transaction: {
-						splitParticipants: {
-							some: { participantType: "user", participantId: otherUserId },
-						},
-					},
-				},
-				select: { id: true },
+			const hasRelationship = await sharesExpenseWith(ctx.db, {
+				participantType: "user",
+				participantId: otherUserId,
 			});
-			const hasRelationship = !!relationship;
 
 			// Fetch other user's methods using global db (bypasses RLS: we apply
 			// app-level visibility filtering below)
@@ -200,54 +192,5 @@ export const paymentMethodRouter = createTRPCRouter({
 			);
 
 			return { compatible, yourMethods, theirMethods };
-		}),
-
-	/**
-	 * Returns another user's payment methods filtered by visibility.
-	 * Used by the Person Detail page sidebar (Chunk 3B).
-	 *
-	 * Financial relationship exists → show PUBLIC + FRIENDS_ONLY + PAYMENT_ONLY.
-	 * No relationship → show only PUBLIC.
-	 */
-	getForUser: protectedProcedure
-		.input(z.object({ userId: z.string() }))
-		.query(async ({ ctx, input }) => {
-			const currentUserId = ctx.session.user.id;
-
-			// Check for a financial relationship (split_participant has no RLS,
-			// so ctx.db can see all participants under retrospend_app role)
-			const relationship = await ctx.db.splitParticipant.findFirst({
-				where: {
-					participantType: "user",
-					participantId: currentUserId,
-					transaction: {
-						splitParticipants: {
-							some: {
-								participantType: "user",
-								participantId: input.userId,
-							},
-						},
-					},
-				},
-				select: { id: true },
-			});
-
-			const hasRelationship = !!relationship;
-
-			// Fetch with global db (bypasses RLS)
-			const allMethods = await db.paymentMethod.findMany({
-				where: { userId: input.userId },
-				orderBy: { rank: "asc" },
-			});
-
-			return allMethods.filter((m) => {
-				if (m.visibility === "PUBLIC") return true;
-				if (
-					hasRelationship &&
-					(m.visibility === "FRIENDS_ONLY" || m.visibility === "PAYMENT_ONLY")
-				)
-					return true;
-				return false;
-			});
 		}),
 });

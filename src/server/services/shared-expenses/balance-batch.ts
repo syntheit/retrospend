@@ -55,7 +55,7 @@ export async function computeBalanceBatch(
 	);
 
 	// Collect the union of all counterpart alias refs (excluding any that
-	// resolve to A itself — those are self, no balance).
+	// resolve to A itself, those are self, no balance).
 	const counterpartRefs: ParticipantRef[] = [];
 	const seen = new Set<string>();
 	for (const c of counterparts) {
@@ -218,7 +218,7 @@ export async function computeBalanceBatch(
 	// A person can appear on ONE transaction/settlement under multiple alias refs
 	// (e.g. both `shadow:S` and `user:U` where U claimed S). Summing every
 	// matching row would double-count. Dedupe per (row, canonical identity) so a
-	// person is counted at most once per transaction/settlement — summing is only
+	// person is counted at most once per transaction/settlement, summing is only
 	// valid ACROSS different transactions/settlements.
 	const seenRows = new Set<string>();
 	const once = (k: string): boolean => {

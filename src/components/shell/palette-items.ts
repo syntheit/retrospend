@@ -1,7 +1,6 @@
 import { Settings, type LucideIcon } from "lucide-react";
 import {
 	DESTINATIONS,
-	hrefOf,
 	PLACES,
 	SETTINGS_SECTIONS,
 	type SettingsSection,
@@ -24,19 +23,12 @@ export type GoToItem = {
  * join once the person types, so the empty palette stays short.
  */
 export function goToItems(typed: boolean): GoToItem[] {
-	const places = [...DESTINATIONS, ...TOOLS, ...PLACES].flatMap((entry) => {
-		const href = hrefOf(entry);
-		return href
-			? [
-					{
-						id: entry.id,
-						icon: entry.icon,
-						href,
-						label: { key: `nav.${entry.id}` },
-					},
-				]
-			: [];
-	});
+	const places = [...DESTINATIONS, ...TOOLS, ...PLACES].map((entry) => ({
+		id: entry.id,
+		icon: entry.icon,
+		href: entry.href,
+		label: { key: `nav.${entry.id}` },
+	}));
 	if (!typed) return places;
 	const sections = SETTINGS_SECTIONS.map((section) => ({
 		id: `settings-${section}`,

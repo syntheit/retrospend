@@ -9,7 +9,7 @@
  * ARS 1,355 and BRL 5, so BRL 1 = ARS 271.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { unconfirmPayment } from "~/server/services/payments/confirm.mutation";
 import {
 	applyPayment,

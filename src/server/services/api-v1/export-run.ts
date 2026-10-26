@@ -1,19 +1,31 @@
 import type { ExportRequest } from "@retrospend/api-contract";
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import {
 	newExportPath,
 	putExport,
 	removeExport,
 } from "~/server/export-storage";
+import { exportAccountZip } from "~/server/services/export/account-zip";
+import type { ExportContext } from "~/server/services/export/context";
+import {
+	exportPersonHistory,
+	exportPersonSettlementPlan,
+} from "~/server/services/export/person-csv";
+import { exportPersonPdf } from "~/server/services/export/person-pdf";
+import {
+	exportBillingPeriodSummary,
+	exportProjectExpenses,
+	exportSettlementPlan,
+} from "~/server/services/export/project-csv";
+import { exportProjectPdf } from "~/server/services/export/project-pdf";
 import { createLimiter } from "./limiter";
 import { scopedDbFor } from "./scoped-db";
-import { type BridgeCaller, trpcExpense, trpcExport } from "./trpc-bridge";
+import { type BridgeCaller, trpcExpense } from "./trpc-bridge";
 
 /**
  * Builds one export in the background. The documents are the ones the web
- * app downloads (the export tRPC procedures); this only stores their bytes.
- * A failure is recorded on the job and never thrown at the request that
- * started it.
+ * app downloads (services/export); this only stores their bytes. A failure
+ * is recorded on the job and never thrown at the request that started it.
  */
 
 type Built = { bytes: Buffer; fileName: string; contentType: string };
@@ -26,19 +38,22 @@ const csv = (r: { csv: string; filename: string }): Built => ({
 	contentType: CSV,
 });
 
-const pdf = (r: { pdf: string; filename: string }): Built => ({
-	bytes: Buffer.from(r.pdf, "base64"),
+const pdf = (r: { pdf: Buffer; filename: string }): Built => ({
+	bytes: r.pdf,
 	fileName: r.filename,
 	contentType: "application/pdf",
 });
 
-async function build(who: BridgeCaller, req: ExportRequest): Promise<Built> {
-	const t = await trpcExport(who);
+async function build(
+	ctx: ExportContext,
+	who: BridgeCaller,
+	req: ExportRequest,
+): Promise<Built> {
 	switch (req.kind) {
 		case "data": {
-			const r = await t.allData();
+			const r = await exportAccountZip(ctx.db, ctx.userId, ctx.timeZone);
 			return {
-				bytes: Buffer.from(r.zipData, "base64"),
+				bytes: r.bytes,
 				fileName: r.filename,
 				contentType: "application/zip",
 			};
@@ -53,19 +68,19 @@ async function build(who: BridgeCaller, req: ExportRequest): Promise<Built> {
 			});
 		}
 		case "project_expenses":
-			return csv(await t.exportProjectExpenses({ ...req, format: "csv" }));
+			return csv(await exportProjectExpenses(ctx, req));
 		case "project_settlement_plan":
-			return csv(await t.exportSettlementPlan({ ...req, format: "csv" }));
+			return csv(await exportSettlementPlan(ctx, req));
 		case "project_billing_period":
-			return csv(await t.exportBillingPeriodSummary({ ...req, format: "csv" }));
+			return csv(await exportBillingPeriodSummary(ctx, req));
 		case "project_pdf":
-			return pdf(await t.exportProjectPdf(req));
+			return pdf(await exportProjectPdf(ctx, req));
 		case "person_history":
-			return csv(await t.exportPersonHistory({ ...req, format: "csv" }));
+			return csv(await exportPersonHistory(ctx, req));
 		case "person_settlement_plan":
-			return csv(await t.exportPersonSettlementPlan({ ...req, format: "csv" }));
+			return csv(await exportPersonSettlementPlan(ctx, req));
 		case "person_pdf":
-			return pdf(await t.exportPersonPdf(req));
+			return pdf(await exportPersonPdf(ctx, req));
 	}
 }
 
@@ -96,6 +111,7 @@ async function buildAndStore(jobId: string, userId: string) {
 			where: { id: jobId, userId },
 		});
 		const built = await build(
+			{ db, userId, timeZone: job.timeZone },
 			{ principal: { userId }, timeZone: job.timeZone },
 			{ ...(job.params as object), kind: job.kind } as ExportRequest,
 		);

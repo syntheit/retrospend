@@ -4,7 +4,7 @@
  * chip). Which rows are already in Activity is match.ts. Both call these, so the review
  * cannot promise a count the commit does not keep.
  */
-import { parseDateOnlyIn } from "~/lib/time-zone";
+import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import type { ImportRateInput } from "./book";
 import { type ImportKind, proposeKind, type StoredRow } from "./rows";
 

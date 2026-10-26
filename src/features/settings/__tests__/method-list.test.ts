@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Method } from "~/components/settings/payment-methods-card";
+import type { Method } from "../payment/types";
 import {
 	makePrimary,
 	moveMethod,

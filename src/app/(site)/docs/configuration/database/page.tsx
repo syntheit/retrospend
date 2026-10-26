@@ -21,7 +21,7 @@ export default function DatabasePage() {
 				<Badge variant="secondary" className="mb-3">
 					Configuration
 				</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Database</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Database</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					PostgreSQL setup, connection pooling, Row-Level Security, migrations, and backups.
 				</p>
@@ -29,7 +29,7 @@ export default function DatabasePage() {
 
 			<h2
 				id="postgresql"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				PostgreSQL
 			</h2>
@@ -41,7 +41,7 @@ export default function DatabasePage() {
 
 			<h2
 				id="connection-settings"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Connection Settings
 			</h2>
@@ -59,7 +59,7 @@ export default function DatabasePage() {
 
 			<h2
 				id="row-level-security"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Row-Level Security
 			</h2>
@@ -75,7 +75,7 @@ export default function DatabasePage() {
 
 			<h2
 				id="migrations"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Migrations
 			</h2>
@@ -93,7 +93,7 @@ export default function DatabasePage() {
 
 			<h2
 				id="backups"
-				className="mt-10 mb-2 font-bold text-xl tracking-tight scroll-mt-20"
+				className="mt-10 mb-2 font-semibold text-xl scroll-mt-20"
 			>
 				Backups
 			</h2>

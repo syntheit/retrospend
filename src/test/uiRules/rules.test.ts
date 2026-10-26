@@ -187,33 +187,33 @@ describe("decoration (R31)", () => {
 
 describe("components", () => {
 	it("UI-041 legacy and internal primitives", () => {
-		hit("UI-041", `import { Card } from "~/components/ui/card";`);
 		hit("UI-041", `import { Dialog } from "~/components/ui/dialog";`);
+		hit("UI-041", `import { Calendar } from "~/components/ui/calendar";`);
 		miss("UI-041", `import { Button } from "~/components/ui/button";`);
 		miss(
 			"UI-041",
 			`import { Dialog } from "~/components/ui/dialog";`,
-			"src/components/ui/responsive-dialog.tsx",
+			"src/components/ui/sheet.tsx",
 		);
 	});
 	it("UI-041 sees re-exports, dynamic imports and deep relative paths", () => {
-		hit("UI-041", `export { Card } from "~/components/ui/card";`);
-		hit("UI-041", `export * from "~/components/ui/dialog";`);
-		hit("UI-041", `export const L = () => import("~/components/ui/card");`);
+		hit("UI-041", `export { Dialog } from "~/components/ui/dialog";`);
+		hit("UI-041", `export * from "~/components/ui/calendar";`);
+		hit("UI-041", `export const L = () => import("~/components/ui/dialog");`);
 		hit(
 			"UI-041",
-			`import { Card } from "../../../components/ui/card";`,
+			`import { Dialog } from "../../../components/ui/dialog";`,
 			"src/app/(dashboard)/x/page.tsx",
 		);
 		hit(
 			"UI-041",
-			`import { Sheet } from "../ui/edge-panel";`,
+			`import { Calendar } from "../ui/calendar";`,
 			"src/components/people/x.tsx",
 		);
 		miss("UI-041", `export { Button } from "~/components/ui/button";`);
 		miss(
 			"UI-041",
-			`import { Card } from "../ui/card";`,
+			`import { Dialog } from "../ui/dialog";`,
 			"src/app/(dashboard)/x/page.tsx",
 		);
 	});

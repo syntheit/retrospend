@@ -1,0 +1,66 @@
+{
+  "signIn": "Anmelden",
+  "private": {
+    "title": "Dieses Projekt ist privat",
+    "hint": "Bitte den Inhaber, es mit dir zu teilen."
+  },
+  "expired": {
+    "title": "Dieser Link funktioniert nicht mehr",
+    "hint": "Öffne deinen Einladungslink noch einmal oder melde dich an."
+  },
+  "invalidInvite": {
+    "title": "Diese Einladung funktioniert nicht",
+    "hint": "Bitte den Inhaber um einen neuen Link."
+  },
+  "otherProject": "Diese Einladung gehört zu einem anderen Projekt.",
+  "notice": {
+    "guest": "Ansicht als {name}, Gast",
+    "viewer": "Nur lesen",
+    "public": "Öffentliche Ansicht. Salden und Zahlungen bleiben privat.",
+    "create": "Konto erstellen"
+  },
+  "expenses": {
+    "emptyHint": "Noch nichts hinzugefügt."
+  },
+  "add": {
+    "title": "Ausgabe zu {project} hinzufügen",
+    "what": "Wofür war das",
+    "date": "Datum",
+    "submit": "Ausgabe hinzufügen",
+    "added": "{title} hinzugefügt",
+    "split": "Von dir bezahlt, gleichmäßig aufgeteilt auf {count, plural, one {# Person} other {# Personen}}",
+    "staysExpenses": "Frühere Ausgaben",
+    "staysPayments": "Zahlungen",
+    "fillIn": "Gib an, wofür es war, und den Betrag."
+  },
+  "errors": {
+    "failed": "Das wurde nicht gespeichert. Versuche es noch einmal."
+  },
+  "join": {
+    "title": "{project} beitreten",
+    "sub": "{count, plural, one {# Person} other {# Personen}} · du trittst bei als {role}",
+    "back": "Zurück zur Liste",
+    "elsewhere": "{name} ist auch in anderen Projekten, deshalb kann diese Einladung den Verlauf nicht übernehmen. Tritt als du selbst bei und bitte dann einen Inhaber um einen Link zum Zusammenführen.",
+    "name": "Dein Name",
+    "email": "E-Mail",
+    "emailHint": "Damit erkennen wir dich in diesem Projekt. Wird nicht öffentlich geteilt.",
+    "submit": "Projekt beitreten",
+    "joining": "Trete bei",
+    "failed": "Wir konnten dich nicht hinzufügen. Versuche es noch einmal.",
+    "haveAccount": "Du hast schon ein Konto? <link>Melde dich an</link>"
+  },
+  "chooser": {
+    "title": "Bist du eine dieser Personen?",
+    "hint": "Vielleicht hat dich jemand schon zu {project} hinzugefügt. Wähle dich aus, um deinen Verlauf zu behalten, oder tritt als neue Person bei.",
+    "none": "Keine davon, ich bin neu"
+  },
+  "resume": {
+    "title": "Prüfe dein Postfach",
+    "hint": "Diese E-Mail ist {project} schon beigetreten. Wir haben einen Link geschickt, damit du dort weitermachen kannst, wo du aufgehört hast. Er funktioniert einmal und läuft in einer Stunde ab."
+  },
+  "done": {
+    "title": "Du bist dabei",
+    "hint": "Du bist {project} als {role} beigetreten.",
+    "view": "Projekt ansehen"
+  }
+}

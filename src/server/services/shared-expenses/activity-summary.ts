@@ -3,7 +3,7 @@
  * clients get the raw parts (see SUMMARY_FORMATS) and format and translate
  * them themselves.
  */
-import { formatCurrency } from "~/lib/currency-format";
+import { formatCurrency } from "@retrospend/domain/currency-format";
 
 function safeFormatAmount(amount: unknown, currency: unknown): string {
 	try {

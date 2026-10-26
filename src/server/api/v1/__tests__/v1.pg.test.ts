@@ -9,14 +9,12 @@ import { implement } from "@orpc/server";
 import { contract } from "@retrospend/api-contract";
 import { v1 as probe } from "@retrospend/api-contract/common";
 import { makeSignature } from "better-auth/crypto";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import * as z from "zod";
 import { env } from "~/env";
 import { auth } from "~/server/better-auth";
 import { pruneExpiredKeys } from "~/server/services/api-v1/idempotency.service";
-import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import { adminDb, createTestUser } from "~/test/pg-harness";
-import type { FeatureFlagMode } from "~prisma";
 import { createV1Handler, handleV1Request } from "../handler";
 import { signedIn, type V1InitialContext, v1Middleware } from "../middleware";
 import { RATE_LIMITS } from "../rate-limit";
@@ -187,18 +185,8 @@ describe("/api/v1 on Postgres", () => {
 	let alice: TestUser;
 	let bob: TestUser;
 	let admin: TestUser;
-	let initialMode: FeatureFlagMode = "OFF";
-
-	// Test files share one database: leave the flag as this file found it.
-	afterAll(async () => {
-		await updateAppSettings({ apiV1Mode: initialMode });
-	});
 
 	beforeAll(async () => {
-		// updateAppSettings' upsert drops the flag columns when it has to
-		// create the row, so make sure the row exists first.
-		initialMode = (await getAppSettings()).apiV1Mode;
-		await updateAppSettings({ apiV1Mode: "ALL" });
 		alice = await createTestUser();
 		bob = await createTestUser();
 		admin = await createTestUser({ role: "ADMIN" });
@@ -218,7 +206,7 @@ describe("/api/v1 on Postgres", () => {
 			expect(body).toMatchObject({
 				name: "Retrospend",
 				apiVersion: "v1",
-				features: { apiV1: true },
+				features: {},
 				auth: { signUp: "open" },
 				push: { transports: [] },
 			});
@@ -450,29 +438,10 @@ describe("/api/v1 on Postgres", () => {
 			).resolves.toBe(0);
 		});
 
-		it("gates everything but server-info on apiV1Mode", async () => {
-			const userToken = await sessionFor(alice.user.id);
-			const adminToken = await sessionFor(admin.user.id);
-			const as = (token: string) => ({
-				headers: { authorization: `Bearer ${token}` },
-			});
-			try {
-				await updateAppSettings({ apiV1Mode: "OFF" });
-				const off = await call("/me", as(adminToken));
-				expect(off.status).toBe(403);
-				expect((await off.json()).code).toBe("api_disabled");
-				const info = await call("/server-info");
-				expect(info.status).toBe(200);
-				expect((await info.json()).features.apiV1).toBe(false);
-
-				await updateAppSettings({ apiV1Mode: "ADMINS" });
-				expect((await call("/me", as(userToken))).status).toBe(403);
-				expect((await call("/me", as(adminToken))).status).toBe(200);
-				const adminInfo = await call("/server-info", as(adminToken));
-				expect((await adminInfo.json()).features.apiV1).toBe(true);
-			} finally {
-				await updateAppSettings({ apiV1Mode: "ALL" });
-			}
+		it("answers server-info without credentials", async () => {
+			const info = await call("/server-info");
+			expect(info.status).toBe(200);
+			expect((await info.json()).features).toEqual({});
 		});
 	});
 

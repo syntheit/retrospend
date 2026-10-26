@@ -58,7 +58,7 @@ export interface GlanceDTO {
 	readonly owedToYou: GlanceFigure;
 	readonly youOwe: GlanceFigure;
 	readonly netWorth: GlanceFigure;
-	/** Null without a book, with the book paused (Just track) or the budget flag off. */
+	/** Null without a book, or with the book paused (Just track). */
 	readonly budget: GlanceBudget | null;
 	/**
 	 * Just track's budget row (SPEC §6.11): money in this period beside
@@ -72,7 +72,6 @@ export interface GlanceDTO {
 }
 
 export interface GlanceOptions {
-	readonly budget: boolean;
 	readonly timeZone?: string;
 	readonly now?: Date;
 }
@@ -121,7 +120,7 @@ export async function glanceIn(
 		id,
 		value: readings.get(id)?.[0] ?? null,
 	});
-	const budget = options.budget ? await budgetPart(db, userId, now) : null;
+	const budget = await budgetPart(db, userId, now);
 	const then = lastToDate(pace);
 	const missing = new Set([...pace.missingRates, ...pass.missingRates()]);
 	if (budget?.state === "incomplete")

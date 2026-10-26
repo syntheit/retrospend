@@ -9,11 +9,7 @@ import {
 	setAnalyticsCategoryPreference,
 	updatePageSettings,
 } from "~/server/services/user-settings";
-import {
-	listFavoriteRates,
-	reorderFavoriteRates,
-	toggleFavoriteRate,
-} from "~/server/services/rate-favorites.service";
+import { listFavoriteRates, toggleFavoriteRate } from "~/server/services/rate-favorites.service";
 
 export const preferencesRouter = createTRPCRouter({
 	getPageSettings: protectedProcedure
@@ -141,21 +137,6 @@ export const preferencesRouter = createTRPCRouter({
 			rate: f.exchangeRate,
 		}));
 	}),
-
-	reorderFavorites: protectedProcedure
-		.input(
-			z.object({
-				exchangeRateIds: z.array(z.cuid()).max(100),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			await reorderFavoriteRates(
-				ctx.db,
-				ctx.session.user.id,
-				input.exchangeRateIds,
-			);
-			return { success: true };
-		}),
 
 	getFavoriteExchangeRateIds: protectedProcedure.query(async ({ ctx }) => {
 		const favorites = await listFavoriteRates(ctx.db, ctx.session.user.id);

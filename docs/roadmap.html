@@ -162,7 +162,7 @@
 	<div class="hero-inner">
 		<div class="kicker">Product Roadmap</div>
 		<h1>Retrospend<br /><span class="accent">The Immich of finance</span></h1>
-		<p class="sub">One well-integrated financial superapp — budgeting, shared expenses, and wealth tracking — that respects your privacy, costs nothing, and runs on your own hardware. Hosted at retrospend.app, or self-host it.</p>
+		<p class="sub">One well-integrated financial superapp, budgeting, shared expenses, and wealth tracking, that respects your privacy, costs nothing, and runs on your own hardware. Hosted at retrospend.app, or self-host it.</p>
 		<div class="meta">Drafted July 2026 · living document · versions beyond 0.5 are directional, not promises</div>
 	</div>
 </div>
@@ -181,7 +181,7 @@
 		<div class="circle"></div>
 		<h3>The wedge nobody else has</h3>
 		<p class="big">When you split an expense, only <em>your share</em> hits your budget. When a friend owes you, the receivable is visible next to your envelopes. When you settle up, everything reconciles itself.</p>
-		<p class="small">People today run YNAB <em>and</em> Splitwise side-by-side and manually reconcile between them. Actual Budget has no splitting. Splitwise has no budgeting. SplitPro and Sure each own half the picture. Budget ⇄ split integration is Retrospend's flagship differentiator — every release below feeds it.</p>
+		<p class="small">People today run YNAB <em>and</em> Splitwise side-by-side and manually reconcile between them. Actual Budget has no splitting. Splitwise has no budgeting. SplitPro and Sure each own half the picture. Budget ⇄ split integration is Retrospend's flagship differentiator, every release below feeds it.</p>
 	</div>
 
 	<!-- ================= NOW ================= -->
@@ -201,7 +201,7 @@
 				<div class="fcard"><div class="t"><b>Stop the 2-week logouts</b><span class="tag tag-fix">Fix</span></div><p>Session hard-expires after 7 idle days. Raise to 60 days with daily sliding refresh.</p><span class="file">src/server/better-auth/config.ts:43</span></div>
 				<div class="fcard"><div class="t"><b>Opaque sticky table headers</b><span class="tag tag-fix">Fix</span></div><p>bg-muted/50 lets row text ghost through the sticky header. One-line change.</p><span class="file">src/components/ui/table.tsx:26</span></div>
 				<div class="fcard"><div class="t"><b>Person view: purchases for you</b><span class="tag tag-fix">Fix</span></div><p>Expenses someone paid on your behalf without taking a share are invisible today. Widen the participant filter.</p><span class="file">people.service.ts</span></div>
-				<div class="fcard"><div class="t"><b>Dependency bumps</b><span class="tag tag-infra">Chore</span></div><p>Next 16.2, Prisma 7.8, tRPC 11.17, better-auth 1.6 — currently stashed, land them.</p></div>
+				<div class="fcard"><div class="t"><b>Dependency bumps</b><span class="tag tag-infra">Chore</span></div><p>Next 16.2, Prisma 7.8, tRPC 11.17, better-auth 1.6: currently stashed, land them.</p></div>
 			</div>
 		</div>
 
@@ -211,13 +211,13 @@
 			<div class="release-head">
 				<h3>The Web Experience</h3><span class="ver">v0.5.0</span><span class="badge b-next">Next</span>
 			</div>
-			<p class="theme">Polish and perfect what exists. The web app is the reference implementation every future client gets measured against — make it feel premium everywhere, on every screen size.</p>
+			<p class="theme">Polish and perfect what exists. The web app is the reference implementation every future client gets measured against, make it feel premium everywhere, on every screen size.</p>
 			<div class="cards">
 				<div class="fcard"><div class="t"><b>Mobile &amp; small-screen pass</b><span class="tag tag-feat">Feature</span></div><p>Tables collapse to cards below md, dialogs become drawers, dense pages get mobile layouts. Groundwork for the native apps' UX.</p></div>
 				<div class="fcard"><div class="t"><b>Person page v2</b><span class="tag tag-feat">Feature</span></div><p>Full relationship ledger: everything between you and them (paid-for-you included), running balance timeline, quicker settle-up.</p></div>
 				<div class="fcard"><div class="t"><b>Faster shared-expense flow</b><span class="tag tag-feat">Feature</span></div><p>Fewer steps to split: smart defaults (last-used split &amp; participants), inline participant creation, save-and-new.</p></div>
 				<div class="fcard"><div class="t"><b>Context menus everywhere</b><span class="tag tag-feat">Feature</span></div><p>Right-click on any row, card, widget, or pill does what you expect. Audit the gaps, standardize the pattern.</p></div>
-				<div class="fcard"><div class="t"><b>Page transitions</b><span class="tag tag-feat">Feature</span></div><p>Slide/fade via the View Transitions API instead of skeleton flashes — skeletons only after a real delay.</p></div>
+				<div class="fcard"><div class="t"><b>Page transitions</b><span class="tag tag-feat">Feature</span></div><p>Slide/fade via the View Transitions API instead of skeleton flashes, skeletons only after a real delay.</p></div>
 				<div class="fcard"><div class="t"><b>OpenGraph previews v2</b><span class="tag tag-feat">Feature</span></div><p>Rich, branded previews for profiles, payment links, and shared pages.</p></div>
 			</div>
 		</div>
@@ -228,10 +228,10 @@
 			<div class="release-head">
 				<h3>Envelope Budgeting</h3><span class="ver">v0.6.0</span><span class="badge b-planned">Planned</span>
 			</div>
-			<p class="theme">The flagship release. YNAB's philosophy — assign money you actually have, every dollar gets a job — rebuilt natively around Retrospend's splitting and multi-currency, and without YNAB's traps. It cannot be messy: simple by default, powerful on demand.</p>
+			<p class="theme">The flagship release. YNAB's philosophy, assign money you actually have, every dollar gets a job, rebuilt natively around Retrospend's splitting and multi-currency, and without YNAB's traps. It cannot be messy: simple by default, powerful on demand.</p>
 			<div class="cards">
 				<div class="fcard"><div class="t"><b>Income → “Ready to Assign”</b><span class="tag tag-flag">Flagship</span></div><p>Record income, then decide its jobs right there: what's saved, what's spent on what. Assign only money that exists.</p></div>
-				<div class="fcard"><div class="t"><b>Envelopes with real rollover</b><span class="tag tag-flag">Flagship</span></div><p>Unspent balances carry forward automatically. Overspending pulls from next month's Ready to Assign — visible, never shameful.</p></div>
+				<div class="fcard"><div class="t"><b>Envelopes with real rollover</b><span class="tag tag-flag">Flagship</span></div><p>Unspent balances carry forward automatically. Overspending pulls from next month's Ready to Assign, visible, never shameful.</p></div>
 				<div class="fcard"><div class="t"><b>Split-aware budgets</b><span class="tag tag-flag">Flagship</span></div><p>Only your share of a shared expense hits your envelope. Receivables and settlements reconcile automatically. The YNAB+Splitwise killer.</p></div>
 				<div class="fcard"><div class="t"><b>Targets &amp; sinking funds</b><span class="tag tag-feat">Feature</span></div><p>Monthly targets, save-by-date goals, true-expenses smoothing for irregular bills.</p></div>
 				<div class="fcard"><div class="t"><b>Move money freely</b><span class="tag tag-feat">Feature</span></div><p>Roll with the punches: cover overspending from another envelope in two clicks.</p></div>
@@ -247,9 +247,9 @@
 			</div>
 			<p class="theme">Getting data in and documents out. Every path into Retrospend gets easier; projects learn to produce paper.</p>
 			<div class="cards">
-				<div class="fcard"><div class="t"><b>Receipt uploads</b><span class="tag tag-feat">Feature</span></div><p>Attach photos to any expense — personal or shared. Schema field and storage layer already exist; build the UI and viewer.</p></div>
+				<div class="fcard"><div class="t"><b>Receipt uploads</b><span class="tag tag-feat">Feature</span></div><p>Attach photos to any expense, personal or shared. Schema field and storage layer already exist; build the UI and viewer.</p></div>
 				<div class="fcard"><div class="t"><b>Import v2</b><span class="tag tag-feat">Feature</span></div><p>Rethought pipeline: better column mapping memory, dedupe, category learning, more formats (OFX/QIF), review UX.</p></div>
-				<div class="fcard"><div class="t"><b>Invoice generation</b><span class="tag tag-feat">Feature</span></div><p>Generate a polished PDF invoice/statement from a project or billing period — pdfkit infrastructure already in place.</p></div>
+				<div class="fcard"><div class="t"><b>Invoice generation</b><span class="tag tag-feat">Feature</span></div><p>Generate a polished PDF invoice/statement from a project or billing period, pdfkit infrastructure already in place.</p></div>
 				<div class="fcard"><div class="t"><b>Receipt OCR (optional)</b><span class="tag tag-infra">Later</span></div><p>Phase 2: self-hostable OCR sidecar or LLM-vision via the existing AI access service. Suggests merchant/amount/date, never auto-fills.</p></div>
 			</div>
 		</div>
@@ -260,11 +260,11 @@
 			<div class="release-head">
 				<h3>The Public API</h3><span class="ver">v0.8.0</span><span class="badge b-planned">Planned</span>
 			</div>
-			<p class="theme">Retrospend becomes a platform. REST + OpenAPI over the existing service layer — the door for the GNOME client, community integrations, and scripts.</p>
+			<p class="theme">Retrospend becomes a platform. REST + OpenAPI over the existing service layer, the door for the GNOME client, community integrations, and scripts.</p>
 			<div class="cards">
 				<div class="fcard"><div class="t"><b>REST /api/v1</b><span class="tag tag-infra">Infra</span></div><p>Hand-written route handlers over the service layer (not tRPC annotations). Start with ~20 endpoints: expenses, budgets, people, projects.</p></div>
 				<div class="fcard"><div class="t"><b>API keys</b><span class="tag tag-infra">Infra</span></div><p>Personal access tokens via better-auth's apiKey plugin: scoped, rate-limited, expiring. A Developer section in Settings.</p></div>
-				<div class="fcard"><div class="t"><b>OpenAPI spec + docs</b><span class="tag tag-infra">Infra</span></div><p>Generated from the existing Zod schemas. Typed client SDKs fall out for free — the Immich move.</p></div>
+				<div class="fcard"><div class="t"><b>OpenAPI spec + docs</b><span class="tag tag-infra">Infra</span></div><p>Generated from the existing Zod schemas. Typed client SDKs fall out for free, the Immich move.</p></div>
 				<div class="fcard"><div class="t"><b>OIDC / SSO login</b><span class="tag tag-feat">Feature</span></div><p>The most-requested self-hoster auth feature. better-auth supports generic OIDC today.</p></div>
 			</div>
 		</div>
@@ -275,12 +275,12 @@
 			<div class="release-head">
 				<h3>Mobile</h3><span class="ver">v0.9.0</span><span class="badge b-planned">Planned</span>
 			</div>
-			<p class="theme">Native Android &amp; iOS via Expo + React Native — the tRPC types carry over intact. The killer mobile loop: snap a receipt, split it, done in ten seconds.</p>
+			<p class="theme">Native Android &amp; iOS via Expo + React Native, the tRPC types carry over intact. The killer mobile loop: snap a receipt, split it, done in ten seconds.</p>
 			<div class="cards">
 				<div class="fcard"><div class="t"><b>Expo app: the core loop</b><span class="tag tag-flag">Flagship</span></div><p>Auth, dashboard (widgets!), transactions, quick expense entry with receipt capture, budget view, people &amp; settle-up.</p></div>
 				<div class="fcard"><div class="t"><b>Connect-to-your-server UX</b><span class="tag tag-feat">Feature</span></div><p>Bitwarden-style: one server URL, connection probe, then login. retrospend.app prefilled as the default.</p></div>
-				<div class="fcard"><div class="t"><b>Push notifications</b><span class="tag tag-feat">Feature</span></div><p>Splits to verify, settlements, reminders — the notification system already exists server-side.</p></div>
-				<div class="fcard"><div class="t"><b>Demo mode</b><span class="tag tag-infra">Infra</span></div><p>Sample-data mode for App Store review and for the curious — doubles as the public demo.</p></div>
+				<div class="fcard"><div class="t"><b>Push notifications</b><span class="tag tag-feat">Feature</span></div><p>Splits to verify, settlements, reminders, the notification system already exists server-side.</p></div>
+				<div class="fcard"><div class="t"><b>Demo mode</b><span class="tag tag-infra">Infra</span></div><p>Sample-data mode for App Store review and for the curious, doubles as the public demo.</p></div>
 			</div>
 		</div>
 
@@ -294,8 +294,8 @@
 			<div class="cards">
 				<div class="fcard"><div class="t"><b>Launch</b><span class="tag tag-flag">Milestone</span></div><p>demo.retrospend.app, docs site, Show HN / r/selfhosted. The “expect bugs” banner comes down ceremonially.</p></div>
 				<div class="fcard"><div class="t"><b>Compatibility guarantee</b><span class="tag tag-infra">Infra</span></div><p>Any 1.x mobile app works with any 1.x server. Semver from here on.</p></div>
-				<div class="fcard"><div class="t"><b>Bank sync</b><span class="tag tag-feat">Post-1.0</span></div><p>SimpleFIN (US/CA) and Enable Banking (EU) — kills manual-entry fatigue, the #2 reason people quit YNAB.</p></div>
-				<div class="fcard"><div class="t"><b>GNOME / libadwaita client</b><span class="tag tag-feat">Post-1.0</span></div><p>First consumer of the public API. There is no client-server finance app in the GNOME ecosystem — a genuine gap.</p></div>
+				<div class="fcard"><div class="t"><b>Bank sync</b><span class="tag tag-feat">Post-1.0</span></div><p>SimpleFIN (US/CA) and Enable Banking (EU), kills manual-entry fatigue, the #2 reason people quit YNAB.</p></div>
+				<div class="fcard"><div class="t"><b>GNOME / libadwaita client</b><span class="tag tag-feat">Post-1.0</span></div><p>First consumer of the public API. There is no client-server finance app in the GNOME ecosystem, a genuine gap.</p></div>
 			</div>
 		</div>
 
@@ -310,13 +310,13 @@
 		<div class="pb"><span class="n">04</span><b>Ten-minute deploy</b><p>One docker-compose, one .env, published hardware minimums, and the top three misconfigurations documented up front.</p></div>
 		<div class="pb"><span class="n">05</span><b>Demo everything</b><p>A live demo instance converts skeptics and satisfies app-store reviewers. Sample-data mode ships with the mobile app.</p></div>
 		<div class="pb"><span class="n">06</span><b>Mission-first messaging</b><p>Every announcement leads with privacy and ownership, not feature lists. Year-in-review posts with real numbers build trust.</p></div>
-		<div class="pb"><span class="n">07</span><b>Don't repeat YNAB's sins</b><p>No credit-card-handling homework, no overspending shame, no pricing rug-pulls — the three things that make YNAB users quit.</p></div>
+		<div class="pb"><span class="n">07</span><b>Don't repeat YNAB's sins</b><p>No credit-card-handling homework, no overspending shame, no pricing rug-pulls, the three things that make YNAB users quit.</p></div>
 		<div class="pb"><span class="n">08</span><b>Free means free</b><p>Splitwise's 3-expenses-a-day paywall created this market. The hosted tier can charge for convenience, never for features.</p></div>
 	</div>
 
 	<footer>
 		<span>Retrospend · roadmap drafted 2026-07-14</span>
-		<span>budgets ⇄ splits ⇄ wealth — one app, your server</span>
+		<span>budgets ⇄ splits ⇄ wealth, one app, your server</span>
 	</footer>
 
 </div>

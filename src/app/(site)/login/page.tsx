@@ -9,7 +9,7 @@ export default async function LoginPage() {
 	// A disabled account's leftover session must not bounce back to the
 	// dashboard (which rejects inactive users), or the two would redirect-loop.
 	if (session?.user.isActive) {
-		redirect("/dashboard");
+		redirect("/home");
 	}
 
 	return <LoginForm />;

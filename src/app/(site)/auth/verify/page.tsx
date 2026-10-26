@@ -1,17 +1,11 @@
 "use client";
 
-import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { AuthPanel } from "~/app/(site)/_components/auth-panel";
 import { Button } from "~/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "~/components/ui/card";
 import { api } from "~/trpc/react";
 
 function VerifyEmailInner() {
@@ -50,65 +44,36 @@ function VerifyEmailInner() {
 	}, [token, verifyMutation, status]);
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-background px-4">
-			<Card className="w-full max-w-md">
-				<CardHeader className="space-y-1">
-					<CardTitle className="text-center font-bold text-2xl">
-						Email Verification
-					</CardTitle>
-					<CardDescription className="text-center">
-						Verifying your Retrospend account email address
-					</CardDescription>
-				</CardHeader>
-				<CardContent className="flex flex-col items-center justify-center space-y-6 py-6">
-					{status === "loading" && (
-						<>
-							<Loader2 className="h-12 w-12 animate-spin text-primary" />
-							<p className="text-muted-foreground">Verifying your email...</p>
-						</>
-					)}
-
-					{status === "success" && (
-						<>
-							<div className="rounded-full bg-emerald-100 p-3 dark:bg-emerald-900/30">
-								<CheckCircle className="h-12 w-12 text-emerald-600 dark:text-emerald-500" />
-							</div>
-							<div className="space-y-2 text-center">
-								<h3 className="font-semibold text-lg">
-									Email Verified Successfully!
-								</h3>
-								<p className="text-muted-foreground text-sm">
-									Your account is now fully verified and ready to use.
-								</p>
-							</div>
-							<Button asChild className="w-full">
-								<Link href="/">Continue to App</Link>
-							</Button>
-						</>
-					)}
-
-					{status === "error" && (
-						<>
-							<div className="rounded-full bg-red-100 p-3 dark:bg-red-900/30">
-								<AlertCircle className="h-12 w-12 text-destructive" />
-							</div>
-							<div className="space-y-2 text-center">
-								<h3 className="font-semibold text-lg text-destructive">
-									Verification Failed
-								</h3>
-								<p className="text-muted-foreground text-sm">
-									{errorMsg || "An unknown error occurred."}
-								</p>
-							</div>
-							<div className="flex w-full flex-col gap-2">
-								<Button asChild className="w-full" variant="outline">
-									<Link href="/">Return to App</Link>
-								</Button>
-							</div>
-						</>
-					)}
-				</CardContent>
-			</Card>
+		<div className="bg-bg flex min-h-screen items-center justify-center px-4">
+			{status === "loading" && (
+				<AuthPanel
+					busy
+					description="Verifying your Retrospend account email address"
+					title="Email verification"
+				/>
+			)}
+			{status === "success" && (
+				<AuthPanel
+					description="Your account is now fully verified and ready to use."
+					title="Email verified"
+					tone="positive"
+				>
+					<Button asChild className="w-full" kind="primary">
+						<Link href="/">Continue to app</Link>
+					</Button>
+				</AuthPanel>
+			)}
+			{status === "error" && (
+				<AuthPanel
+					description={errorMsg || "An unknown error occurred."}
+					title="Verification failed"
+					tone="danger"
+				>
+					<Button asChild className="w-full" kind="secondary">
+						<Link href="/">Return to app</Link>
+					</Button>
+				</AuthPanel>
+			)}
 		</div>
 	);
 }
@@ -117,12 +82,10 @@ export default function VerifyEmailPage() {
 	return (
 		<Suspense
 			fallback={
-				<div className="flex min-h-screen items-center justify-center bg-background px-4">
-					<Card className="w-full max-w-md">
-						<CardContent className="flex items-center justify-center p-12">
-							<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						</CardContent>
-					</Card>
+				<div className="bg-bg flex min-h-screen items-center justify-center px-4">
+					<div className="flex w-full max-w-md items-center justify-center p-12">
+						<Loader2 className="text-fg-3 size-8 animate-spin" />
+					</div>
 				</div>
 			}
 		>

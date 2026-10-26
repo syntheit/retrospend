@@ -17,7 +17,8 @@
 		"upcoming": "Próximo",
 		"noRate": "Sin cotización aún",
 		"rejected": "Rechazado",
-		"notCounted": "No cuenta"
+		"notCounted": "No cuenta",
+		"spread": "Repartido en el tiempo"
 	},
 	"balance": {
 		"owesYou": "te debe",

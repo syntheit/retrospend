@@ -231,7 +231,7 @@ async function migrateSplitParticipants(
 /**
  * Auto-claims unclaimed ShadowProfiles whose email matches a newly-verified
  * user, fully absorbing each one (re-points splits/payments/settlements/audit
- * and promotes memberships) via the shared claim service — the same treatment
+ * and promotes memberships) via the shared claim service, the same treatment
  * as an explicit claim-link claim, so email-matched history shows the real user
  * rather than the old ghost name.
  *

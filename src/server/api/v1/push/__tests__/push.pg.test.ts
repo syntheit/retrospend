@@ -16,7 +16,6 @@ import {
 	expectBody,
 	expectProblem,
 	sessionFor,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -45,7 +44,6 @@ type Device = {
 };
 
 describe("/api/v1/push-devices", () => {
-	useApiV1();
 	let alice: string;
 	let asAlice: Record<string, string>;
 	let asBob: Record<string, string>;

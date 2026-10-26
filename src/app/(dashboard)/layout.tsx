@@ -2,16 +2,12 @@ import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { CommandPalette } from "~/components/command-palette";
-import { DashboardLayout } from "~/components/dashboard-layout";
 import { LocaleSync } from "~/i18n/locale-sync";
 import { RecurringModalProvider } from "~/components/recurring-modal-provider";
 import { RevisionHistoryProvider } from "~/components/revision-history-provider";
 import { AppShell } from "~/components/shell/app-shell";
-import { ShellModeProvider } from "~/components/shell/shell-context";
-import { ExpenseSheetsSwitch } from "~/features/entry/sheets-switch";
+import { EntrySheetsProvider } from "~/features/entry/provider";
 import { db } from "~/server/db";
-import { isFlagEnabled } from "~/server/flags";
 import { HydrateClient, api } from "~/trpc/server";
 import { getWebSession } from "~/server/better-auth/web-session";
 
@@ -43,31 +39,19 @@ export default async function Layout({ children }: { children: ReactNode }) {
 	// with the same settings the server rendered with.
 	await api.settings.getGeneral.prefetch();
 
-	// uiV2Mode picks the shell per viewer; off renders today's shell as it was.
-	const uiV2 = await isFlagEnabled("uiV2", session.user);
-
 	return (
 		<HydrateClient>
 			<LocaleSync
 				cookieLocale={currentCookie}
 				dbLocale={user?.language ?? "en"}
 			/>
-			<ShellModeProvider mode={uiV2 ? "v2" : "legacy"}>
-				<ExpenseSheetsSwitch>
-					<RecurringModalProvider>
-						<RevisionHistoryProvider>
-							{uiV2 ? (
-								<AppShell>{children}</AppShell>
-							) : (
-								<>
-									<DashboardLayout>{children}</DashboardLayout>
-									<CommandPalette />
-								</>
-							)}
-						</RevisionHistoryProvider>
-					</RecurringModalProvider>
-				</ExpenseSheetsSwitch>
-			</ShellModeProvider>
+			<EntrySheetsProvider>
+				<RecurringModalProvider>
+					<RevisionHistoryProvider>
+						<AppShell>{children}</AppShell>
+					</RevisionHistoryProvider>
+				</RecurringModalProvider>
+			</EntrySheetsProvider>
 		</HydrateClient>
 	);
 }

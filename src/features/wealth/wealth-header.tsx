@@ -25,7 +25,7 @@ import {
 import { useToast } from "~/components/ui/toast";
 import { Tip } from "~/components/ui/tooltip";
 import { useIsMobile } from "~/hooks/use-mobile";
-import { entryOf, hrefOf } from "~/lib/nav";
+import { entryOf } from "~/lib/nav";
 import { api } from "~/trpc/react";
 import type { WealthView } from "./types";
 
@@ -148,7 +148,7 @@ export function WealthHeader({
 			<PageHeader
 				lead={
 					<BackButton
-						href={hrefOf(entryOf("home")) ?? "/"}
+						href={entryOf("home").href}
 						label={nav("home")}
 					/>
 				}

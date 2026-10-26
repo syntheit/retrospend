@@ -43,8 +43,6 @@ const GUEST = "guest sessions and public project pages stay on tRPC";
 const AUTH_MAIL =
 	"an auth email flow, handled by better-auth and the web pages";
 const CLAIM_TOKEN = "a claim token flow, opened from a link";
-const LEGACY_BUDGET =
-	"the per-category budget is replaced by the envelope budget (/budget/*)";
 
 /** The envelope budget: one entry per procedure, plus its Preview twin. */
 function envelope(): Record<string, Entry> {
@@ -98,7 +96,6 @@ function envelope(): Record<string, Entry> {
 		discardDraft: to("POST /budget/drafts/{draftId}/discard"),
 		dismissMigrationNotice: to("POST /budget/migration/dismiss"),
 		drafts: to("GET /budget/drafts"),
-		enabled: to("GET /server-info"),
 		exportBudget: to("GET /budget/export"),
 		fillFromTargets: to("GET /budget/fill-from-targets"),
 		getMonth: to("GET /budget/month"),
@@ -106,10 +103,8 @@ function envelope(): Record<string, Entry> {
 		history: to("GET /budget/history"),
 		interestEstimate: to("GET /budget/debts/{liabilityId}/interest-estimate"),
 		leftToSpend: to("GET /budget/left-to-spend"),
-		migrationState: to("GET /budget/migration"),
 		monthSummary: to("GET /budget/month-summary"),
 		owed: to("GET /budget/owed"),
-		pacing: to("GET /budget/pacing"),
 		pause: to("POST /budget/pause"),
 		payoffPlan: to("GET /budget/payoff-plan"),
 		payoffProject: to("GET /budget/payoff-projection"),
@@ -221,18 +216,6 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	),
 
 	// ── legacy per-category budget ───────────────────────────────────────
-	"budget.batchUpsertBudgets": superseded(LEGACY_BUDGET),
-	"budget.copyFromLastMonth": superseded(LEGACY_BUDGET),
-	"budget.deleteBudget": superseded(LEGACY_BUDGET),
-	"budget.deleteGlobalBudget": superseded(LEGACY_BUDGET),
-	"budget.exportCsv": superseded(LEGACY_BUDGET),
-	"budget.getBudgetSuggestions": superseded(LEGACY_BUDGET),
-	"budget.getBudgets": superseded(LEGACY_BUDGET),
-	"budget.getEarliestBudgetMonth": superseded(LEGACY_BUDGET),
-	"budget.hasBudgetsBeforeMonth": superseded(LEGACY_BUDGET),
-	"budget.importBudgets": superseded(LEGACY_BUDGET),
-	"budget.upsertBudget": superseded(LEGACY_BUDGET),
-	"budget.upsertGlobalBudget": superseded(LEGACY_BUDGET),
 
 	// ── categories ───────────────────────────────────────────────────────
 	"categories.create": to("POST /categories"),
@@ -276,11 +259,6 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"corrections.withdrawFix.save": to("POST /corrections/undo"),
 
 	// ── old home dashboard ───────────────────────────────────────────────
-	"dashboard.getOverviewData": superseded(
-		"replaced by GET /figures/glance and GET /needs-you",
-	),
-	"dashboard.getOverviewStats": superseded("replaced by GET /figures"),
-	"dashboard.getRecentActivity": superseded("replaced by GET /expenses"),
 
 	// ── approved devices (platform) ──────────────────────────────────────
 	"deviceSession.disconnect": because(
@@ -392,18 +370,9 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"importQueue.commitPreview": to("POST /imports/jobs/{id}/finalize/preview"),
 	"importQueue.createJob": to("POST /imports/jobs"),
 	"importQueue.deleteJob": to("DELETE /imports/jobs/{id}"),
-	"importQueue.finalizeImport": superseded(
-		"the old finalize took rows from the client; POST /imports/jobs/{id}/finalize decides per stored row",
-	),
 	"importQueue.getGlobalStats": to("GET /admin/stats"),
-	"importQueue.getJob": to("GET /imports/jobs/{id}"),
-	"importQueue.getQueueStatus": to("GET /imports/jobs"),
-	"importQueue.listJobs": to("GET /imports/jobs"),
 	"importQueue.recent": to("GET /imports/jobs"),
 	"importQueue.review": to("GET /imports/jobs/{id}/review"),
-	"importQueue.startReview": superseded(
-		"review is a read (GET /imports/jobs/{id}/review) and finalize accepts a ready file",
-	),
 	"importQueue.undo": to("POST /imports/jobs/{id}/undo"),
 
 	// ── insights ─────────────────────────────────────────────────────────
@@ -435,17 +404,12 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"notification.updatePreferences": to("PUT /notifications/preferences"),
 
 	// ── payment methods ──────────────────────────────────────────────────
-	"paymentMethod.getForUser": to("GET /people/{type}/{id}/payment-methods"),
 	"paymentMethod.list": to("GET /payment-methods"),
 	"paymentMethod.match": to("GET /people/{type}/{id}/payment-methods"),
 	"paymentMethod.upsert": to("PUT /payment-methods"),
 
 	// ── people ───────────────────────────────────────────────────────────
-	"people.balance": to("GET /people/{type}/{id}"),
-	"people.claimedShadowCount": webOnly("a welcome banner on the web dashboard"),
 	"people.createShadow": to("POST /people"),
-	"people.detail": to("GET /people/{type}/{id}"),
-	"people.detailCursor": to("GET /people/{type}/{id}/ledger"),
 	"people.frequentSplitPartners": to("GET /people/frequent"),
 	"people.list": to("GET /people"),
 	"people.overview": to("GET /people"),
@@ -469,7 +433,6 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"preferences.getFavoriteExchangeRateIds": to("GET /settings/favorite-rates"),
 	"preferences.getFavoriteExchangeRates": to("GET /settings/favorite-rates"),
 	"preferences.getPageSettings": to("GET /settings/pages/{page}"),
-	"preferences.reorderFavorites": to("PUT /settings/favorite-rates/order"),
 	"preferences.toggleFavoriteExchangeRate": to(
 		"POST /settings/favorite-rates",
 		"DELETE /settings/favorite-rates/{exchangeRateId}",
@@ -511,8 +474,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	),
 	"project.pageView": to("GET /projects/{id}"),
 	"project.participantBalances": to("GET /projects/{id}/summary"),
-	"project.publicDetail": internal(GUEST),
-	"project.publicListExpenses": internal(GUEST),
+	"project.publicPageView": internal(GUEST),
 	"project.rebalanceExpenses": withPreview("POST /projects/{id}/rebalance"),
 	"project.rebalanceableExpenses": to("GET /projects/{id}/rebalance"),
 	"project.removeParticipant": to(
@@ -528,6 +490,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"project.settleAll": to("POST /projects/{id}/settle-all"),
 	"project.settleAllPreview": to("POST /projects/{id}/settle-all/preview"),
 	"project.settleAllUndo": to("POST /projects/{id}/settle-all/undo"),
+	"project.sharedPageView": internal(GUEST),
 	"project.settlementPlan": to("GET /projects/{id}/settle-all/plan"),
 	"project.summary": to("GET /projects/{id}/summary"),
 	"project.transferOwnership": to("POST /projects/{id}/ownership"),
@@ -556,27 +519,18 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"settings.updateGeneral": to("PATCH /settings"),
 
 	// ── settle up ────────────────────────────────────────────────────────
-	"settlement.confirm": to("POST /payments/{id}/confirm"),
 	"settlement.create": superseded("replaced by POST /payments"),
-	"settlement.deletePending": to("DELETE /payments/{id}", "POST /payments/{id}/preview"),
-	"settlement.history": to("GET /people/{type}/{id}"),
 	"settlement.paymentConfirm": to("POST /payments/{id}/confirm"),
 	"settlement.paymentConfirmPreview": to("POST /payments/{id}/confirm/preview"),
 	"settlement.paymentPreview": to("POST /payments/preview"),
 	"settlement.paymentRecord": to("POST /payments"),
 	"settlement.paymentUnconfirm": to("POST /payments/undo"),
 	"settlement.paymentUnconfirmPreview": to("POST /payments/undo/preview"),
-	"settlement.pendingForMe": to("GET /needs-you"),
-	"settlement.plan": to("GET /people/{type}/{id}/settle"),
 	"settlement.reject": to("POST /payments/{id}/not-received"),
 	"settlement.requestPayment": to("POST /people/{type}/{id}/remind"),
-	"settlement.sendReminder": to("POST /payments/{id}/remind"),
 	"settlement.settleAll": superseded(
 		"POST /payments with amount null pays everything owed to the person, allocated across projects and currencies in one payment",
 	),
-	"settlement.squareUp": withPreview("POST /payments/square-up"),
-	"settlement.squareUpOptions": to("GET /people/{type}/{id}/square-up"),
-	"settlement.void": to("DELETE /payments/{id}", "POST /payments/{id}/preview"),
 
 	// ── shared expenses ──────────────────────────────────────────────────
 	"sharedTransaction.canModify": to("GET /shared-expenses/{id}"),
@@ -586,24 +540,11 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"sharedTransaction.update": to("PUT /shared-expenses/{id}"),
 
 	// ── old stats ────────────────────────────────────────────────────────
-	"stats.getCategoryBreakdown": superseded(
-		"replaced by the insights figures (GET /figures)",
-	),
-	"stats.getDailyTrend": superseded(
-		"replaced by the insights figures (GET /figures)",
-	),
-	"stats.getLifetimeStats": superseded(
-		"replaced by the insights figures (GET /figures)",
-	),
-	"stats.getSummary": superseded(
-		"replaced by the insights figures (GET /figures)",
-	),
 
 	// ── system ───────────────────────────────────────────────────────────
 	"system.checkImporterStatus": webOnly("a diagnostic banner in the web app"),
 	"system.checkSidecarStatus": webOnly("a diagnostic banner in the web app"),
 	"system.getFeatureFlags": to("GET /server-info"),
-	"system.getServerTime": webOnly("clock check for the web app"),
 	"system.getWorkerStatus": webOnly("a diagnostic banner in the web app"),
 
 	// ── account ──────────────────────────────────────────────────────────

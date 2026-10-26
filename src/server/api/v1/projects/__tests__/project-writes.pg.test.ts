@@ -23,7 +23,6 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -50,7 +49,6 @@ type Member = {
 type Link = { id: string; url: string; roleGranted: string; isActive: boolean };
 
 describe("project writes", () => {
-	useApiV1();
 	let sofia: TestUser;
 	let martin: TestUser;
 	let lucia: TestUser;

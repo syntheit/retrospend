@@ -26,6 +26,7 @@ const config = {
 	// @retrospend/i18n loads catalogs with import.meta.glob, which only
 	// Turbopack supports: `next build --webpack` (and ANALYZE=true) loses translations.
 	transpilePackages: [
+		"@retrospend/api-client",
 		"@retrospend/api-contract",
 		"@retrospend/domain",
 		"@retrospend/i18n",
@@ -37,6 +38,19 @@ const config = {
 		// (MULTIPART_LIMIT, 11 MB), which then answers 413 itself.
 		proxyClientMaxBodySize: "12mb",
 		optimizePackageImports: ["recharts", "@tabler/icons-react", "lucide-react", "date-fns"],
+	},
+	// Routes of the old UI. Bookmarks, emails and old links land on the new
+	// pages, with the query string kept.
+	redirects() {
+		return [
+			{ source: "/dashboard", destination: "/home", permanent: true },
+			{ source: "/transactions", destination: "/activity", permanent: true },
+			{
+				source: "/recurring",
+				destination: "/activity/recurring",
+				permanent: true,
+			},
+		];
 	},
 	devIndicators: {
 		position: "bottom-right",

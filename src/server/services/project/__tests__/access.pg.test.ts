@@ -53,14 +53,13 @@ describe("an anonymous viewer link", () => {
 		expect(r.transactions.some((t) => t.canEdit || t.canDelete)).toBe(false);
 	});
 
-	it("reads the summary and the plan", async () => {
-		const s = await link().summary({ projectId: trip.project.id });
-		expect(s.total).toEqual([
-			{ minor: 45000, currency: "BRL" },
-			{ minor: 5000, currency: "USD" },
-		]);
-		const plan = await link().settlementPlan({ projectId: trip.project.id });
-		expect(plan.participantCount).toBe(4);
+	it("is refused the summary and the plan: who owes whom is for members", async () => {
+		await expect(
+			link().summary({ projectId: trip.project.id }),
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
+		await expect(
+			link().settlementPlan({ projectId: trip.project.id }),
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
 	});
 
 	it("is refused for another project and for any write", async () => {

@@ -23,7 +23,7 @@ const withActions = (node: ReactNode) =>
 
 describe("BottomNav", () => {
 	it("has the five tabs, shipped pages on their new routes, the current one marked", () => {
-		pathname = "/recurring";
+		pathname = "/activity/recurring";
 		const html = render(h(BottomNav, { badges: { people: 2 } }));
 		const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
 		expect(hrefs).toEqual([

@@ -1,6 +1,32 @@
 import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient } from "~prisma";
 
+/** The last active admin was about to be disabled or deleted. */
+export class LastAdminError extends TRPCError {
+	constructor() {
+		super({
+			code: "FORBIDDEN",
+			message: "The last active admin cannot be disabled or deleted",
+		});
+	}
+}
+
+/**
+ * Whether this user is the only active admin. A plain read for a screen or an
+ * early refusal; the locked check below is what a delete relies on.
+ */
+export async function isOnlyActiveAdmin(
+	db: Pick<PrismaClient, "user">,
+	userId: string,
+): Promise<boolean> {
+	const admins = await db.user.findMany({
+		where: { role: "ADMIN", isActive: true },
+		select: { id: true },
+		take: 2,
+	});
+	return admins.length === 1 && admins[0]?.id === userId;
+}
+
 /**
  * The server must always keep an active admin. Disabling or deleting an
  * account (the web admin and /api/v1/admin both end here) first locks the
@@ -20,10 +46,7 @@ export async function assertAnotherAdminRemains(
 	`;
 	const others = admins.filter((a) => a.id !== targetUserId);
 	if (admins.some((a) => a.id === targetUserId) && others.length === 0) {
-		throw new TRPCError({
-			code: "FORBIDDEN",
-			message: "The last active admin cannot be disabled or deleted",
-		});
+		throw new LastAdminError();
 	}
 }
 

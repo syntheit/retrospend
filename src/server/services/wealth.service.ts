@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { normalizeDate } from "~/lib/date";
-import { fromUSD, isValidRate, toUSD, USD } from "~/lib/money";
+import { fromUSD, isValidRate, toUSD, USD } from "@retrospend/domain/money";
 import { toNumberOrNull, toNumberWithDefault } from "~/lib/utils";
 import type { AssetType, Prisma, PrismaClient } from "~prisma";
 import { findExchangeRate, findExchangeRatesForDates } from "../exchange-rates";
@@ -32,7 +32,7 @@ function endOfSnapshotDay(dateStr: string): Date {
 /**
  * WealthService - Encapsulates business logic for wealth/asset management
  *
- * Asset rates follow the money convention (~/lib/money). An asset keeps the
+ * Asset rates follow the money convention (@retrospend/domain/money). An asset keeps the
  * rate type it was saved with (blue, official, ...) and every valuation looks
  * that type up in the rate table for the date being valued. Only a custom
  * rate (type "custom") is used as typed.

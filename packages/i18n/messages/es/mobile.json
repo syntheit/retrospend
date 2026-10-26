@@ -277,7 +277,7 @@
 				"toAssign": "Por asignar",
 				"week": "Queda esta semana",
 				"limits": "Queda en tus límites",
-				"overLimits": "Pasaste tus límites",
+				"overLimits": "Por encima de tus límites",
 				"overBudget": "Pasado de presupuesto en {month}",
 				"saveFirst": "Queda para gastar después de ahorrar",
 				"leftToSpend": "Queda para gastar en {month}"
@@ -285,7 +285,7 @@
 			"plannedTooMuch": "Planificaste {amount} más de lo que tienes, así que lo sacamos de este número.",
 			"overBudget": "Gastaste {amount} más de lo que planificaste para {month}. Cúbrelo con dinero que no planificaste, o sale de {next}.",
 			"billsShort": "A las facturas todavía les faltan {amount}. Planifica eso primero; este número no lo incluye.",
-			"usedUp": "Usaste todo el presupuesto de Gastos de {month}. Cualquier gasto más sale de {next}.",
+			"usedUp": "Usaste todo el presupuesto de Gastos de {month}. Cualquier gasto adicional sale de {next}.",
 			"faster": "Estás gastando más rápido de lo planificado. Para terminar dentro del presupuesto, mantente en unos {amount} por día.",
 			"someOver": "Unos {amount} por día durante {days, plural, one {# día} other {# días}}, después de que {names} se pasara por {over}.",
 			"onTrack": "Vas bien: unos {amount} por día durante {days, plural, one {# día} other {# días}}.",
@@ -492,7 +492,7 @@
 			"budget_totalDebt": "Deuda total",
 			"netWorthChange_income": "Cambio por ingresos",
 			"netWorthChange_spending": "Cambio por gastos",
-			"netWorthChange_notLogged": "Cambio por sin registrar",
+			"netWorthChange_notLogged": "Cambio por lo no registrado",
 			"netWorthChange_revaluation": "Cambio por tipos de cambio y precios",
 			"netWorthChange_opened": "Cambio por cuentas añadidas",
 			"netWorthChange_closed": "Cambio por cuentas cerradas"
@@ -519,7 +519,7 @@
 			"budget_totalDebt": "la deuda total",
 			"netWorthChange_income": "el cambio por ingresos",
 			"netWorthChange_spending": "el cambio por gastos",
-			"netWorthChange_notLogged": "el cambio por sin registrar",
+			"netWorthChange_notLogged": "el cambio por lo no registrado",
 			"netWorthChange_revaluation": "el cambio por tipos de cambio y precios",
 			"netWorthChange_opened": "el cambio por cuentas añadidas",
 			"netWorthChange_closed": "el cambio por cuentas cerradas"
@@ -614,7 +614,7 @@
 			"submit": "Actualizar saldo",
 			"netWorth": "Patrimonio",
 			"notLogged": "Sin registrar",
-			"notLoggedHint": "Tus ingresos y gastos siguen igual. La diferencia se guarda como sin registrar.",
+			"notLoggedHint": "Tus ingresos y gastos siguen igual. La diferencia se guarda como «Sin registrar».",
 			"same": "Ese ya es el saldo, así que no cambia nada.",
 			"toast": "{name} ahora tiene {amount}"
 		}
@@ -938,9 +938,9 @@
 			"pinned": "Cotizaciones fijadas",
 			"title": "Cotizaciones fijadas",
 			"none": "No hay cotizaciones fijadas",
-			"unpin": "Soltar",
-			"unpinned": "Cotización suelta",
-			"error": "No se pudo soltar la cotización. Inténtalo de nuevo.",
+			"unpin": "Desfijar",
+			"unpinned": "Cotización desfijada",
+			"error": "No se pudo desfijar la cotización. Inténtalo de nuevo.",
 			"line": "1 USD = {rate} {currency}",
 			"spoken": "{currency} {type}, 1 USD vale {rate} {currency}"
 		},

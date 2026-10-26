@@ -2,14 +2,15 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
-import { PageContent } from "~/components/page-content";
-import { SiteHeader } from "~/components/site-header";
+import { PageFrame } from "~/components/layout/page-frame";
+import { PageHeader } from "~/components/layout/page-header";
+import { useToast } from "~/components/ui/toast";
 import { UserInviteCodesTable } from "~/components/user-invite-codes-table";
 import { api } from "~/trpc/react";
 
 export default function InviteCodesPage() {
 	const t = useTranslations("inviteCodes");
+	const toast = useToast();
 	const utils = api.useUtils();
 	const [status, setStatus] = useState<"active" | "used">("active");
 
@@ -34,30 +35,26 @@ export default function InviteCodesPage() {
 			{ id: inviteCodeId },
 			{
 				onSuccess: () => {
-					toast.success(t("deleted", { code }));
+					toast.saved(t("deleted", { code }));
 				},
 				onError: (error) => {
-					toast.error(error.message || t("deleteFailed"));
+					toast.failed(error.message || t("deleteFailed"));
 				},
 			},
 		);
 	};
 
 	return (
-		<>
-			<SiteHeader title={t("title")} />
-			<PageContent>
-				<div className="mx-auto w-full max-w-4xl space-y-6">
-					<UserInviteCodesTable
-						inviteCodes={data?.items || []}
-						isLoading={isLoading}
-						onDeleteCode={handleDeleteCode}
-						onGenerateCode={handleRefetch}
-						onStatusChange={setStatus}
-						status={status}
-					/>
-				</div>
-			</PageContent>
-		</>
+		<PageFrame>
+			<PageHeader title={t("title")} />
+			<UserInviteCodesTable
+				inviteCodes={data?.items || []}
+				isLoading={isLoading}
+				onDeleteCode={handleDeleteCode}
+				onGenerateCode={handleRefetch}
+				onStatusChange={setStatus}
+				status={status}
+			/>
+		</PageFrame>
 	);
 }

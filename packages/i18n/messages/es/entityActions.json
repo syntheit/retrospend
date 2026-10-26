@@ -400,5 +400,31 @@
 			"confirmBody": "Deja de correr con el dinero nuevo. Lo que ya asignó queda como está.",
 			"confirmButton": "Quitar regla"
 		}
+	},
+	"webhook": {
+		"test": {
+			"label": "Enviar entrega de prueba"
+		},
+		"deliveries": {
+			"label": "Ver entregas"
+		},
+		"turnOff": {
+			"label": "Apagar"
+		},
+		"turnOn": {
+			"label": "Encender"
+		},
+		"rotateSecret": {
+			"label": "Renovar secreto",
+			"confirmTitle": "¿Renovar el secreto de {name}?",
+			"confirmBody": "El secreto anterior deja de funcionar al instante. Las entregas firmadas con él fallan hasta que tu receptor use el nuevo.",
+			"confirmButton": "Renovar secreto"
+		},
+		"delete": {
+			"label": "Eliminar webhook",
+			"confirmTitle": "¿Eliminar {name}?",
+			"confirmBody": "Deja de recibir eventos y se borra su registro de entregas. No se puede deshacer.",
+			"confirmButton": "Eliminar webhook"
+		}
 	}
 }

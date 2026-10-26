@@ -4,14 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Suspense, useState } from "react";
+import { AuthPanel } from "~/app/(site)/_components/auth-panel";
 import { Button } from "~/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import {
 	InputOTP,
@@ -22,7 +16,6 @@ import { Label } from "~/components/ui/label";
 import { authClient } from "~/lib/auth-client";
 import { safeRedirect } from "~/lib/safe-redirect";
 import { api } from "~/trpc/react";
-
 
 function LoginFormInner() {
 	const t = useTranslations("auth");
@@ -62,7 +55,8 @@ function LoginFormInner() {
 				if (
 					result.error.message?.toLowerCase().includes("two factor") ||
 					result.error.message?.toLowerCase().includes("2fa") ||
-					(result.error.status === 403 && result.error.message?.toLowerCase().includes("two"))
+					(result.error.status === 403 &&
+						result.error.message?.toLowerCase().includes("two"))
 				) {
 					setShow2FA(true);
 					setError("");
@@ -87,13 +81,16 @@ function LoginFormInner() {
 		}
 	};
 
-	const handleVerify2FA = async (e?: React.FormEvent, codeToVerify?: string) => {
+	const handleVerify2FA = async (
+		e?: React.FormEvent,
+		codeToVerify?: string,
+	) => {
 		if (e) e.preventDefault();
 		if (isLoading) return;
 
 		const code = codeToVerify || totpCode;
 		if (code.length !== 6) return;
-		
+
 		setIsLoading(true);
 		setError("");
 
@@ -148,228 +145,195 @@ function LoginFormInner() {
 
 	if (show2FA && useBackupCode) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-background px-4">
-				<Card className="w-full max-w-md">
-					<CardHeader className="space-y-1">
-						<CardTitle className="text-center font-bold text-2xl">
-							{t("twoFactorAuth")}
-						</CardTitle>
-						<CardDescription className="text-center">
-							{t("backupCodeDescription")}
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<form className="space-y-6" onSubmit={handleVerifyBackupCode}>
-							<div className="space-y-2">
-								<Label htmlFor="backup-code">{t("backupCode")}</Label>
-								<Input
-									autoCapitalize="none"
-									autoComplete="one-time-code"
-									autoCorrect="off"
-									autoFocus
-									className="font-mono"
-									disabled={isLoading}
-									id="backup-code"
-									onChange={(e) => setBackupCode(e.target.value)}
-									placeholder={t("enterBackupCode")}
-									spellCheck={false}
-									value={backupCode}
-								/>
-							</div>
+			<div className="bg-background flex min-h-screen items-center justify-center px-4">
+				<AuthPanel
+					description={t("backupCodeDescription")}
+					title={t("twoFactorAuth")}
+				>
+					<form className="space-y-6" onSubmit={handleVerifyBackupCode}>
+						<div className="space-y-2">
+							<Label htmlFor="backup-code">{t("backupCode")}</Label>
+							<Input
+								autoCapitalize="none"
+								autoComplete="one-time-code"
+								autoCorrect="off"
+								autoFocus
+								className="font-mono"
+								disabled={isLoading}
+								id="backup-code"
+								onChange={(e) => setBackupCode(e.target.value)}
+								placeholder={t("enterBackupCode")}
+								spellCheck={false}
+								value={backupCode}
+							/>
+						</div>
 
-							{error && (
-								<div className="text-destructive text-sm">
-									{error}
-								</div>
-							)}
+						{error && <div className="text-destructive text-sm">{error}</div>}
 
+						<Button
+							className="w-full"
+							disabled={isLoading || !backupCode.trim()}
+							type="submit"
+						>
+							{isLoading ? t("verifying") : t("verifyCode")}
+						</Button>
+
+						<div className="flex flex-col items-center gap-2 text-sm">
 							<Button
-								className="w-full"
-								disabled={isLoading || !backupCode.trim()}
-								type="submit"
+								className="text-muted-foreground h-auto p-0 hover:underline"
+								onClick={() => switch2FAMethod(false)}
+								type="button"
+								variant="link"
 							>
-								{isLoading ? t("verifying") : t("verifyCode")}
+								{t("useAuthenticatorCode")}
 							</Button>
-
-							<div className="flex flex-col items-center gap-2 text-sm">
-								<Button
-									className="h-auto p-0 text-muted-foreground hover:underline"
-									onClick={() => switch2FAMethod(false)}
-									type="button"
-									variant="link"
-								>
-									{t("useAuthenticatorCode")}
-								</Button>
-								<Button
-									className="h-auto p-0 text-muted-foreground hover:underline"
-									onClick={() => {
-										switch2FAMethod(false);
-										setShow2FA(false);
-									}}
-									type="button"
-									variant="link"
-								>
-									{t("backToLogin")}
-								</Button>
-							</div>
-						</form>
-					</CardContent>
-				</Card>
+							<Button
+								className="text-muted-foreground h-auto p-0 hover:underline"
+								onClick={() => {
+									switch2FAMethod(false);
+									setShow2FA(false);
+								}}
+								type="button"
+								variant="link"
+							>
+								{t("backToLogin")}
+							</Button>
+						</div>
+					</form>
+				</AuthPanel>
 			</div>
 		);
 	}
 
 	if (show2FA) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-background px-4">
-				<Card className="w-full max-w-md">
-					<CardHeader className="space-y-1">
-						<CardTitle className="text-center font-bold text-2xl">
-							{t("twoFactorAuth")}
-						</CardTitle>
-						<CardDescription className="text-center">
-							{t("twoFactorDescription")}
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<form
-							className="flex flex-col items-center space-y-6"
-							onSubmit={handleVerify2FA}
-						>
-							<div className="space-y-2">
-								<InputOTP 
-									maxLength={6} 
-									onChange={setTotpCode} 
-									value={totpCode}
-									onComplete={(code) => handleVerify2FA(undefined, code)}
-								>
-									<InputOTPGroup>
-										<InputOTPSlot index={0} />
-										<InputOTPSlot index={1} />
-										<InputOTPSlot index={2} />
-										<InputOTPSlot index={3} />
-										<InputOTPSlot index={4} />
-										<InputOTPSlot index={5} />
-									</InputOTPGroup>
-								</InputOTP>
-							</div>
-
-							{error && (
-								<div className="text-destructive text-sm">
-									{error}
-								</div>
-							)}
-
-							<Button
-								className="w-full"
-								disabled={isLoading || totpCode.length !== 6}
-								type="submit"
+			<div className="bg-background flex min-h-screen items-center justify-center px-4">
+				<AuthPanel
+					description={t("twoFactorDescription")}
+					title={t("twoFactorAuth")}
+				>
+					<form
+						className="flex flex-col items-center space-y-6"
+						onSubmit={handleVerify2FA}
+					>
+						<div className="space-y-2">
+							<InputOTP
+								maxLength={6}
+								onChange={setTotpCode}
+								onComplete={(code) => handleVerify2FA(undefined, code)}
+								value={totpCode}
 							>
-								{isLoading ? t("verifying") : t("verifyCode")}
-							</Button>
+								<InputOTPGroup>
+									<InputOTPSlot index={0} />
+									<InputOTPSlot index={1} />
+									<InputOTPSlot index={2} />
+									<InputOTPSlot index={3} />
+									<InputOTPSlot index={4} />
+									<InputOTPSlot index={5} />
+								</InputOTPGroup>
+							</InputOTP>
+						</div>
 
-							<div className="mt-4 flex flex-col items-center gap-2 text-sm">
-								<Button
-									className="h-auto p-0 text-muted-foreground hover:underline"
-									onClick={() => switch2FAMethod(true)}
-									type="button"
-									variant="link"
-								>
-									{t("useBackupCode")}
-								</Button>
-								<Button
-									className="h-auto p-0 text-muted-foreground hover:underline"
-									onClick={() => {
-										setShow2FA(false);
-										setTotpCode("");
-									}}
-									type="button"
-									variant="link"
-								>
-									{t("backToLogin")}
-								</Button>
-							</div>
-						</form>
-					</CardContent>
-				</Card>
+						{error && <div className="text-destructive text-sm">{error}</div>}
+
+						<Button
+							className="w-full"
+							disabled={isLoading || totpCode.length !== 6}
+							type="submit"
+						>
+							{isLoading ? t("verifying") : t("verifyCode")}
+						</Button>
+
+						<div className="mt-4 flex flex-col items-center gap-2 text-sm">
+							<Button
+								className="text-muted-foreground h-auto p-0 hover:underline"
+								onClick={() => switch2FAMethod(true)}
+								type="button"
+								variant="link"
+							>
+								{t("useBackupCode")}
+							</Button>
+							<Button
+								className="text-muted-foreground h-auto p-0 hover:underline"
+								onClick={() => {
+									setShow2FA(false);
+									setTotpCode("");
+								}}
+								type="button"
+								variant="link"
+							>
+								{t("backToLogin")}
+							</Button>
+						</div>
+					</form>
+				</AuthPanel>
 			</div>
 		);
 	}
 
 	return (
-		<div className="flex min-h-screen items-center justify-center bg-background px-4">
-			<Card className="w-full max-w-md">
-				<CardHeader className="space-y-1">
-					<CardTitle className="text-center font-bold text-2xl">
-						{t("welcomeToRetrospend")}
-					</CardTitle>
-					<CardDescription className="text-center">
-						{t("signInDescription")}
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<form className="space-y-4" onSubmit={handleSubmit}>
-						<div className="space-y-2">
-							<Label htmlFor="email">{t("email")}</Label>
-							<Input
-								disabled={isLoading}
-								id="email"
-								onChange={(e) => setEmail(e.target.value)}
-								placeholder={t("enterYourEmail")}
-								required
-								type="email"
-								value={email}
-							/>
-						</div>
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<Label htmlFor="password">{t("password")}</Label>
-								{appFeatures?.isEmailEnabled && (
-									<Link
-										className="font-medium text-primary text-sm hover:underline"
-										href="/auth/forgot-password"
-										tabIndex={-1}
-									>
-										{t("forgotYourPassword")}
-									</Link>
-								)}
-							</div>
-							<Input
-								disabled={isLoading}
-								id="password"
-								onChange={(e) => setPassword(e.target.value)}
-								placeholder={t("enterYourPassword")}
-								required
-								type="password"
-								value={password}
-							/>
-						</div>
-						{error && (
-							<div className="text-destructive text-sm">
-								{error}
-							</div>
-						)}
-						<Button className="w-full" disabled={isLoading} type="submit">
-							{isLoading ? t("signingIn") : t("signIn")}
-						</Button>
-					</form>
-					<div className="mt-4 text-center">
-						<p className="text-muted-foreground text-sm">
-							{t("dontHaveAccount")}{" "}
-							<Link
-								className="font-medium text-primary hover:underline"
-								href={
-									redirectTo === "/dashboard"
-										? "/signup"
-										: `/signup?redirect=${encodeURIComponent(redirectTo)}`
-								}
-							>
-								{t("signUp")}
-							</Link>
-						</p>
+		<div className="bg-background flex min-h-screen items-center justify-center px-4">
+			<AuthPanel
+				description={t("signInDescription")}
+				title={t("welcomeToRetrospend")}
+			>
+				<form className="space-y-4" onSubmit={handleSubmit}>
+					<div className="space-y-2">
+						<Label htmlFor="email">{t("email")}</Label>
+						<Input
+							disabled={isLoading}
+							id="email"
+							onChange={(e) => setEmail(e.target.value)}
+							placeholder={t("enterYourEmail")}
+							required
+							type="email"
+							value={email}
+						/>
 					</div>
-				</CardContent>
-			</Card>
+					<div className="space-y-2">
+						<div className="flex items-center justify-between">
+							<Label htmlFor="password">{t("password")}</Label>
+							{appFeatures?.isEmailEnabled && (
+								<Link
+									className="text-primary text-sm font-medium hover:underline"
+									href="/auth/forgot-password"
+									tabIndex={-1}
+								>
+									{t("forgotYourPassword")}
+								</Link>
+							)}
+						</div>
+						<Input
+							disabled={isLoading}
+							id="password"
+							onChange={(e) => setPassword(e.target.value)}
+							placeholder={t("enterYourPassword")}
+							required
+							type="password"
+							value={password}
+						/>
+					</div>
+					{error && <div className="text-destructive text-sm">{error}</div>}
+					<Button className="w-full" disabled={isLoading} type="submit">
+						{isLoading ? t("signingIn") : t("signIn")}
+					</Button>
+				</form>
+				<div className="mt-4 text-center">
+					<p className="text-muted-foreground text-sm">
+						{t("dontHaveAccount")}{" "}
+						<Link
+							className="text-primary font-medium hover:underline"
+							href={
+								redirectTo === "/home"
+									? "/signup"
+									: `/signup?redirect=${encodeURIComponent(redirectTo)}`
+							}
+						>
+							{t("signUp")}
+						</Link>
+					</p>
+				</div>
+			</AuthPanel>
 		</div>
 	);
 }
@@ -378,12 +342,10 @@ export function LoginForm() {
 	return (
 		<Suspense
 			fallback={
-				<div className="flex min-h-screen items-center justify-center bg-background px-4">
-					<Card className="w-full max-w-md">
-						<CardContent className="flex items-center justify-center p-12">
-							<div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-						</CardContent>
-					</Card>
+				<div className="bg-background flex min-h-screen items-center justify-center px-4">
+					<div className="flex w-full max-w-md items-center justify-center p-12">
+						<div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
+					</div>
 				</div>
 			}
 		>

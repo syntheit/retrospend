@@ -18,7 +18,6 @@ type Client = Pick<
 	PrismaClient,
 	| "$transaction"
 	| "user"
-	| "appSettings"
 	| "budgetBook"
 	| "budgetMovement"
 	| "envelope"
@@ -120,8 +119,6 @@ export function needsAttention(reports: readonly MigrationReport[]): number {
 export interface RollbackReport {
 	/** The run id, or "lazy" for every first-read move. */
 	target: string;
-	/** The envelope flag was on and nothing was done (the next read would move them again). */
-	blockedByFlag: string | null;
 	removed: string[];
 	/** Books left alone: what the person did since, which force would lose. */
 	refused: { userId: string; changes: string[] }[];
@@ -189,9 +186,9 @@ async function changesSince(client: Client, b: BookRow): Promise<string[]> {
  * rows were never touched, and the hidden expenses the review answered are
  * hidden again, so the person is back where the old budget left them.
  *
- * Refused (nothing done) while the envelope flag is on: the next read would
- * move the person again. A book the person changed since stays unless
- * `force`, and the report lists what force would lose.
+ * The next budget read moves a person with old budgets in again. A book the
+ * person changed since stays unless `force`, and the report lists what force
+ * would lose.
  */
 export async function rollbackRun(
 	client: Client,
@@ -200,19 +197,10 @@ export async function rollbackRun(
 ): Promise<RollbackReport> {
 	const out: RollbackReport = {
 		target,
-		blockedByFlag: null,
 		removed: [],
 		refused: [],
 		lost: [],
 	};
-	const settings = await client.appSettings.findFirst({
-		select: { envelopeBudgetMode: true },
-	});
-	const mode = settings?.envelopeBudgetMode ?? "OFF";
-	if (mode !== "OFF" && !opts.force) {
-		out.blockedByFlag = mode;
-		return out;
-	}
 	const books: BookRow[] = await client.budgetBook.findMany({
 		where:
 			target === "lazy"

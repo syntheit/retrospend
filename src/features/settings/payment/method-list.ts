@@ -1,7 +1,4 @@
-import type {
-	Method,
-	Visibility,
-} from "~/components/settings/payment-methods-card";
+import type { Method, Visibility } from "./types";
 
 /** The list with item `index` moved by `delta` places; unchanged at the ends. */
 export function moveMethod<T>(

@@ -25,7 +25,7 @@ export default async function NotFound() {
 					</p>
 				</div>
 				<Button asChild className="select-none">
-					<Link href="/dashboard">{t("goToDashboard")}</Link>
+					<Link href="/home">{t("goToDashboard")}</Link>
 				</Button>
 			</div>
 		</div>

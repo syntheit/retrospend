@@ -1,9 +1,8 @@
 import { implement, os } from "@orpc/server";
 import type { ResponseHeadersPluginContext } from "@orpc/server/plugins";
 import { contract } from "@retrospend/api-contract";
-import type { ApiMeta } from "@retrospend/api-contract/common";
+import { type ApiMeta, isWriteMethod } from "@retrospend/api-contract/common";
 import type { db as globalDb } from "~/server/db";
-import { isFlagEnabled } from "~/server/flags";
 import {
 	type Principal,
 	resolvePrincipal,
@@ -11,6 +10,7 @@ import {
 import { scopedDbFor } from "~/server/services/api-v1/scoped-db";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import { requestTimeZone } from "~/server/time-zone";
+import { appOriginFrom, isCrossSiteWrite } from "./csrf";
 import { problem } from "./errors";
 import { recordsEvent } from "./events/middleware";
 import { idempotency } from "./idempotency";
@@ -36,10 +36,9 @@ export type V1User = {
 export type V1Context = V1InitialContext & { user: V1User | null };
 
 /**
- * Resolves the principal and enforces, in order: credentials (401), the
- * apiV1Mode flag (403 api_disabled) and the route's scope (403
- * missing_scope). Public routes (server-info) skip all three but still see
- * the caller when valid credentials are sent.
+ * Resolves the principal and enforces, in order: credentials (401) and the
+ * route's scope (403 missing_scope). Public routes (server-info) skip both
+ * but still see the caller when valid credentials are sent.
  */
 const authenticate = os
 	.$context<V1InitialContext>()
@@ -50,10 +49,22 @@ const authenticate = os
 		const resolved = await resolvePrincipal(context.headers);
 		const principal = resolved.ok ? resolved.principal : null;
 
+		// A cookie session is attached by the browser to any site's request, so
+		// a write from another site is refused (csrf.ts). Tokens are not.
+		if (
+			principal?.kind === "web" &&
+			isWriteMethod(procedure["~orpc"].route.method ?? "POST") &&
+			isCrossSiteWrite(
+				context.headers,
+				appOriginFrom(
+					process.env.PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL,
+				),
+			)
+		)
+			throw problem("forbidden", "This request came from another site");
+
 		if (scope !== "public") {
 			if (!principal) throw problem("unauthenticated");
-			if (!(await isFlagEnabled("apiV1", { role: principal.role })))
-				throw problem("api_disabled");
 			if (!mayCall(principal, scope))
 				throw problem("missing_scope", `This route needs the ${scope} scope`, {
 					requiredScope: scope,

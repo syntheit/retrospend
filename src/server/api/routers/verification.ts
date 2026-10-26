@@ -55,7 +55,7 @@ export const verificationRouter = createTRPCRouter({
 	 *
 	 * Accepts multiple pending verifications in a single atomic transaction.
 	 * Idempotent: already-accepted items are silently skipped.
-	 * Returns { accepted: number } — the count of newly accepted items.
+	 * Returns { accepted: number }, the count of newly accepted items.
 	 */
 	bulkAccept: guestOrProtectedProcedure
 		.input(z.object({ txnIds: z.array(z.string().min(1)).min(1).max(100) }))
@@ -90,7 +90,7 @@ export const verificationRouter = createTRPCRouter({
 	 * POST /api/verification/:txnId/remove-self
 	 *
 	 * Removes the caller's OWN split from a shared transaction ("Remove me").
-	 * Deletes only the caller's SplitParticipant row — never other participants'
+	 * Deletes only the caller's SplitParticipant row, never other participants'
 	 * splits and never the transaction itself. Forbidden once the transaction is
 	 * locked (settled). Remaining shares are left as-is by design.
 	 */

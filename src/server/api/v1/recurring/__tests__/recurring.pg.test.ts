@@ -14,7 +14,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -50,7 +49,6 @@ const daysAgo = (n: number) =>
 	new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 
 describe("/api/v1/recurring", () => {
-	useApiV1();
 	let userId: string;
 	let otherId: string;
 	let as: Record<string, string>;

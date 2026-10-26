@@ -14,7 +14,7 @@
  */
 import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { TRPCError } from "@trpc/server";
-import { currencyDecimals } from "~/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 import { dec, toMinor } from "~/server/services/envelope/units";
 import type { AssetType, TransferKind } from "~prisma";
 import { placeInBudget } from "../accounts/places";

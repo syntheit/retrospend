@@ -1,4 +1,4 @@
-import { currencyDecimals, roundMoney } from "~/lib/money";
+import { currencyDecimals, roundMoney } from "@retrospend/domain/money";
 import type { ParticipantType } from "~prisma";
 
 // ── input types ───────────────────────────────────────────────────────────────

@@ -112,55 +112,6 @@ export const settlementRouter = createTRPCRouter({
 		}),
 
 	/**
-	 * POST /api/settlements/:id/confirm
-	 *
-	 * Confirms receipt of a payment. Only the person it waits for (the payee)
-	 * can call this. Every row of its payment group turns FINALIZED together
-	 * and is immutable after confirmation.
-	 */
-	confirm: protectedProcedure
-		.input(z.object({ id: z.string().min(1) }))
-		.mutation(async ({ ctx, input }) => {
-			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.confirmSettlement(input.id);
-		}),
-
-	/**
-	 * DELETE /api/settlements/:id
-	 *
-	 * Deletes an unconfirmed (pending) payment with all its rows. Only the payer can delete.
-	 * Confirmed settlements cannot be deleted: they are permanent records.
-	 */
-	deletePending: protectedProcedure
-		.input(z.object({ id: z.string().min(1) }))
-		.mutation(async ({ ctx, input }) => {
-			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.deletePendingSettlement(input.id);
-		}),
-
-	/**
-	 * POST /api/settlements/:id/void
-	 *
-	 * Voids (undoes) an auto-finalized settlement whose payee is a non-user
-	 * (shadow or guest). Only the payer can call this. The payee can also void
-	 * a payment they recorded themselves as received (direction "incoming").
-	 *
-	 * A settlement to a shadow/guest auto-finalizes on creation (the payee can
-	 * never authenticate to confirm), which would otherwise permanently rewrite a
-	 * balance with no recourse. Voiding hard-deletes every row of its payment group, restoring the balance
-	 * (balances are recomputed from the remaining settlement rows).
-	 *
-	 * Settlements to a real user payee, genuinely confirmed settlements, and
-	 * pending (PROPOSED) settlements are NOT voidable via this endpoint.
-	 */
-	void: protectedProcedure
-		.input(z.object({ id: z.string().min(1) }))
-		.mutation(async ({ ctx, input }) => {
-			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.voidAutoFinalizedSettlement(input.id);
-		}),
-
-	/**
 	 * POST /api/settlements/:id/reject
 	 *
 	 * Rejects a pending payment, its whole payment group. Only the payee can call this.
@@ -178,32 +129,8 @@ export const settlementRouter = createTRPCRouter({
 		}),
 
 	/**
-	 * POST /api/settlements/:id/remind
-	 *
-	 * Sends a reminder notification for a pending settlement.
-	 * Rate-limited: max 3 reminders, minimum 24h between each.
-	 */
-	sendReminder: protectedProcedure
-		.input(z.object({ id: z.string().min(1) }))
-		.mutation(async ({ ctx, input }) => {
-			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.sendReminder(input.id);
-		}),
-
-	/**
-	 * GET /api/settlements/pending-for-me
-	 *
-	 * Returns the pending payments waiting for the current user to confirm,
-	 * one entry per payment group.
-	 */
-	pendingForMe: protectedProcedure.query(async ({ ctx }) => {
-		const service = new SettlementService(ctx.db, ctx.session.user.id);
-		return service.getPendingForMe();
-	}),
-
-	/**
 	 * Sends a balance reminder notification to someone who owes you.
-	 * Does not create a settlement — just nudges them. Rate-limited: 1 per 24h.
+	 * Does not create a settlement, just nudges them. Rate-limited: 1 per 24h.
 	 */
 	requestPayment: protectedProcedure
 		.input(
@@ -217,79 +144,4 @@ export const settlementRouter = createTRPCRouter({
 			return service.sendBalanceReminder(input);
 		}),
 
-	/**
-	 * GET /api/settlements/plan/:personRef
-	 *
-	 * Returns per-currency balances and suggested settlement amounts between the
-	 * current user and the specified person. Read-only, no side effects.
-	 *
-	 * Each entry includes:
-	 * - currency: the currency code
-	 * - balance: absolute value of the net balance
-	 * - direction: "they_owe_you" | "you_owe_them" | "settled"
-	 * - suggestedAmount: same as balance (the full settlement amount to zero out)
-	 */
-	plan: protectedProcedure
-		.input(
-			participantRefSchema.extend({
-				// See create.projectId: scopes the returned balances/plan. Omitted =>
-				// global balances (the default for the cross-project People view).
-				projectId: z.string().min(1).nullish(),
-			}),
-		)
-		.query(async ({ ctx, input }) => {
-			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.getSettlementPlan(
-				{
-					participantType: input.participantType,
-					participantId: input.participantId,
-				},
-				input.projectId,
-			);
-		}),
-
-	/**
-	 * GET /api/settlements/history/:personRef
-	 *
-	 * Returns the payments between the current user and the specified person,
-	 * one entry per payment group, sorted by initiatedAt descending.
-	 *
-	 * Includes: amount, currency, parts (per project, offsets marked),
-	 * paymentMethod, note, status, direction, initiatedAt, settledAt and the
-	 * action flags for the whole group.
-	 */
-	history: protectedProcedure
-		.input(participantRefSchema)
-		.query(async ({ ctx, input }) => {
-			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.getSettlementHistory(input);
-		}),
-
-	/**
-	 * Currencies where the overall balance with the person is even but their
-	 * project balances point in opposite directions. Read-only.
-	 */
-	squareUpOptions: protectedProcedure
-		.input(participantRefSchema)
-		.query(async ({ ctx, input }) => {
-			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.getSquareUpOptions(input);
-		}),
-
-	/**
-	 * Records offset rows only (no cash) so every project ends at zero when
-	 * the overall balance in that currency is already even. The other person
-	 * confirms or rejects it like a payment.
-	 */
-	squareUp: protectedProcedure
-		.input(
-			z.object({
-				toParticipant: participantRefSchema,
-				currency: z.string().min(1).max(10),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const service = new SettlementService(ctx.db, ctx.session.user.id);
-			return service.squareUpProjects(input);
-		}),
 });

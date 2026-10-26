@@ -70,6 +70,10 @@ export const adminSettingsSchema = z
 		auditPrivacyMode: z.enum(AUDIT_PRIVACY_MODES),
 		maxConcurrentImportJobs: z.int().min(1).max(50),
 		enableFeedback: z.boolean(),
+		webhooksAllowPrivateTargets: z.boolean().meta({
+			description:
+				"Let webhooks send to addresses on a private network (localhost, 10.x, 192.168.x). Off by default; turn it on only for a self-hosted server whose receivers sit on the same network.",
+		}),
 	})
 	.meta({ id: "AdminSettings" });
 

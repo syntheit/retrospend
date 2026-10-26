@@ -230,7 +230,7 @@ model Expense {
   // currency (a cross rate, not exchangeRate's per-USD convention) and
   // homeAmount is the value it gave. All three are set or all null (CHECK
   // expense_home_leg_check); null rows (before M2, imports, the sidecar)
-  // follow the totals rule in ~/lib/money.
+  // follow the totals rule in @retrospend/domain/money.
   rateType     String?  @db.VarChar(32)
   homeCurrency String?  @db.VarChar(10)
   homeRate     Decimal? @db.Decimal(28, 12)
@@ -1136,19 +1136,7 @@ model AppSettings {
   // Webhooks may target private, loopback and link-local addresses (self-hosters).
   webhooksAllowPrivateTargets Boolean         @default(false)
 
-  // Rollout of the UI overhaul, read through src/server/flags.ts
-  uiV2Mode  FeatureFlagMode @default(OFF)
-  apiV1Mode FeatureFlagMode @default(OFF)
-  // New budget page, setup and envelope procedures (M6, budget build plan §8)
-  envelopeBudgetMode FeatureFlagMode @default(OFF)
-
   @@map("app_settings")
-}
-
-enum FeatureFlagMode {
-  OFF
-  ADMINS
-  ALL
 }
 
 enum AuditPrivacyMode {

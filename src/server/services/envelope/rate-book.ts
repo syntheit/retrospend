@@ -5,7 +5,7 @@
  * nearest-rate rule (src/server/exchange-rates.ts). A currency or type with
  * no rows at all has no rate, and the row that needed it is left out.
  */
-import { USD } from "~/lib/money";
+import { USD } from "@retrospend/domain/money";
 import type { Prisma } from "~prisma";
 import type { IsoDate } from "./types";
 import type { UsdRateLookup } from "./valuation";

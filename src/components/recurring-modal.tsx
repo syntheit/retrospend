@@ -1,23 +1,17 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { tryConvertAmount } from "@retrospend/domain/money";
+import { fromMinor, money, toMinor } from "@retrospend/domain/money-minor";
+import { draftFromMinor } from "@retrospend/domain/parse";
+import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useTranslations } from "next-intl";
-import { toast } from "sonner";
 import { z } from "zod";
 import { CategoryPicker } from "~/components/category-picker";
-import { CurrencyPicker } from "~/components/currency-picker";
+import { MoneyInput } from "~/components/money/money-input";
 import { Button } from "~/components/ui/button";
 import { DatePicker } from "~/components/ui/date-picker";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -27,14 +21,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
+import { Sheet } from "~/components/ui/sheet";
 import { Switch } from "~/components/ui/switch";
+import { useToast } from "~/components/ui/toast";
 import { useCurrency } from "~/hooks/use-currency";
-import { useCurrencyInput } from "~/hooks/use-currency-input";
 import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
-import { tryConvertAmount } from "~/lib/money";
 import { getSubscriptionMetadata } from "~/lib/subscription-metadata";
-import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 const recurringSchema = z.object({
@@ -63,6 +56,9 @@ export function RecurringModal({
 	onClose,
 }: RecurringModalProps) {
 	const t = useTranslations("recurring");
+	const locale = useLocale();
+	const [amountText, setAmountText] = useState("");
+	const toast = useToast();
 	const utils = api.useUtils();
 	const { data: settings } = api.settings.getGeneral.useQuery();
 
@@ -74,22 +70,20 @@ export function RecurringModal({
 	const createMutation = api.recurring.create.useMutation({
 		onSuccess: () => {
 			utils.recurring.list.invalidate();
-			toast.success(t("subscriptionCreated"));
-			onClose();
+			toast.saved(t("subscriptionCreated"));
 		},
 		onError: () => {
-			toast.error(t("subscriptionCreateFailed"));
+			toast.failed(t("subscriptionCreateFailed"));
 		},
 	});
 
 	const updateMutation = api.recurring.update.useMutation({
 		onSuccess: () => {
 			utils.recurring.list.invalidate();
-			toast.success(t("subscriptionUpdated"));
-			onClose();
+			toast.saved(t("subscriptionUpdated"));
 		},
 		onError: () => {
-			toast.error(t("subscriptionUpdateFailed"));
+			toast.failed(t("subscriptionUpdateFailed"));
 		},
 	});
 
@@ -142,18 +136,19 @@ export function RecurringModal({
 				paymentSource: template.paymentSource ?? "",
 				autoPay: template.autoPay,
 			});
+			setAmountText(
+				draftFromMinor(
+					toMinor(String(template.amount), template.currency),
+					locale,
+					template.currency,
+				),
+			);
 		}
-	}, [template, reset]);
+	}, [template, reset, locale]);
 
 	const watchedCurrency = watch("currency");
 	const watchedAmount = watch("amount");
 	const homeCurrency = settings?.homeCurrency ?? "USD";
-
-	const amountInput = useCurrencyInput({
-		value: watchedAmount,
-		onChange: (n) => setValue("amount", n, { shouldDirty: true }),
-		currency: watchedCurrency,
-	});
 
 	const { getDefaultRate, isLoading: isRateLoading } = useExchangeRates({
 		currency: watchedCurrency,
@@ -182,190 +177,174 @@ export function RecurringModal({
 		}
 	};
 
+	// The sheet closes itself after a good save; an invalid form keeps it open.
+	const submitSheet = async () => {
+		let saved = false;
+		try {
+			await handleSubmit(async (data) => {
+				await onSubmit(data);
+				saved = true;
+			})();
+		} catch {
+			return false;
+		}
+		return saved;
+	};
+
 	return (
-		<Dialog onOpenChange={onClose} open={open}>
-			<DialogContent
-				className="top-4 left-1/2 h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] w-[calc(100%-1rem)] max-w-[calc(100%-1rem)] translate-x-[-50%] translate-y-0 overflow-y-auto sm:top-1/2 sm:left-1/2 sm:h-auto sm:max-h-none sm:w-full sm:max-w-md sm:-translate-y-1/2"
-				onOpenAutoFocus={(e) => {
-					if (window.innerWidth < 640) {
-						e.preventDefault();
-					}
-				}}
-			>
-				<DialogHeader>
-					<DialogTitle>
-						{templateId ? t("editSubscription") : t("newSubscription")}
-					</DialogTitle>
-					<DialogDescription>
-						{templateId
-							? t("editSubscriptionDescription")
-							: t("newSubscriptionDescription")}
-					</DialogDescription>
-				</DialogHeader>
+		<Sheet
+			description={
+				templateId
+					? t("editSubscriptionDescription")
+					: t("newSubscriptionDescription")
+			}
+			onOpenChange={(next) => !next && onClose()}
+			onSubmit={submitSheet}
+			open={open}
+			submitLabel={
+				templateId ? t("updateSubscription") : t("createSubscription")
+			}
+			title={templateId ? t("editSubscription") : t("newSubscription")}
+		>
+			<div className="space-y-4">
+				{/* Name */}
+				<div className="space-y-2">
+					<Label htmlFor="name">{t("fieldName")}</Label>
+					<Input
+						id="name"
+						{...register("name")}
+						placeholder={t("fieldNamePlaceholder")}
+					/>
+					{errors.name && (
+						<p className="text-destructive text-sm">{errors.name.message}</p>
+					)}
+				</div>
 
-				<form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-					{/* Name */}
-					<div className="space-y-2">
-						<Label htmlFor="name">{t("fieldName")}</Label>
-						<Input
-							id="name"
-							{...register("name")}
-							placeholder={t("fieldNamePlaceholder")}
-						/>
-						{errors.name && (
-							<p className="text-destructive text-sm">{errors.name.message}</p>
-						)}
+				{/* Amount and Currency */}
+				<div className="space-y-2">
+					<Label htmlFor="amount">{t("fieldAmount")}</Label>
+					<MoneyInput
+						currency={watchedCurrency}
+						id="amount"
+						onChange={(text, result) => {
+							setAmountText(text);
+							setValue(
+								"amount",
+								result.ok
+									? Number(fromMinor(money(result.minor, watchedCurrency)))
+									: 0,
+								{ shouldDirty: true },
+							);
+						}}
+						onCurrencyChange={(value) => setValue("currency", value)}
+						value={amountText}
+					/>
+					<CurrencyEstimate
+						amount={watchedAmount}
+						currency={watchedCurrency}
+						homeCurrency={homeCurrency}
+						isLoading={isRateLoading}
+						rate={activeRate?.rate}
+					/>
+					{errors.amount && (
+						<p className="text-destructive text-sm">{errors.amount.message}</p>
+					)}
+				</div>
+
+				{/* Payment Source */}
+				<div className="space-y-2">
+					<Label htmlFor="paymentSource">{t("fieldPaymentSource")}</Label>
+					<Input
+						id="paymentSource"
+						{...register("paymentSource")}
+						placeholder={t("fieldPaymentSourcePlaceholder")}
+					/>
+					{errors.paymentSource && (
+						<p className="text-destructive text-sm">
+							{errors.paymentSource.message}
+						</p>
+					)}
+				</div>
+
+				{/* Website URL */}
+				<div className="space-y-2">
+					<Label htmlFor="websiteUrl">{t("fieldWebsiteUrl")}</Label>
+					<Input
+						id="websiteUrl"
+						type="url"
+						{...register("websiteUrl")}
+						placeholder="https://..."
+					/>
+					{errors.websiteUrl && (
+						<p className="text-destructive text-sm">
+							{errors.websiteUrl.message}
+						</p>
+					)}
+				</div>
+
+				{/* Category */}
+				<div className="space-y-2">
+					<Label>{t("fieldCategory")}</Label>
+					<CategoryPicker
+						onValueChange={(value) => setValue("categoryId", value)}
+						placeholder={t("fieldCategoryPlaceholder")}
+						value={watch("categoryId")}
+					/>
+					{errors.categoryId && (
+						<p className="text-destructive text-sm">
+							{errors.categoryId.message}
+						</p>
+					)}
+				</div>
+
+				{/* Frequency */}
+				<div className="space-y-2">
+					<Label htmlFor="recurring-frequency">{t("fieldFrequency")}</Label>
+					<Select
+						onValueChange={(value) =>
+							setValue("frequency", value as RecurringFormData["frequency"])
+						}
+						value={watch("frequency")}
+					>
+						<SelectTrigger id="recurring-frequency">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="WEEKLY">{t("frequencyWeekly")}</SelectItem>
+							<SelectItem value="BIWEEKLY">{t("frequencyBiweekly")}</SelectItem>
+							<SelectItem value="MONTHLY">{t("frequencyMonthly")}</SelectItem>
+							<SelectItem value="QUARTERLY">
+								{t("frequencyQuarterly")}
+							</SelectItem>
+							<SelectItem value="YEARLY">{t("frequencyYearly")}</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+
+				{/* Next Due Date */}
+				<div className="space-y-2">
+					<Label>{t("fieldNextDueDate")}</Label>
+					<DatePicker
+						date={watch("nextDueDate")}
+						onSelect={(date) => date && setValue("nextDueDate", date)}
+					/>
+				</div>
+
+				{/* Auto Pay */}
+				<div className="flex items-center justify-between rounded-lg border p-4">
+					<div className="space-y-0.5">
+						<Label>{t("fieldAutoPay")}</Label>
+						<p className="text-muted-foreground text-sm">
+							{t("fieldAutoPayDescription")}
+						</p>
 					</div>
-
-					{/* Amount and Currency */}
-					<div className="space-y-2">
-						<Label htmlFor="amount">{t("fieldAmount")}</Label>
-						<div
-							className={cn(
-								"flex h-9 w-full overflow-hidden rounded-lg border border-input bg-transparent shadow-xs dark:bg-input/30",
-								"transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
-								errors.amount && "border-destructive",
-							)}
-						>
-							<CurrencyPicker
-								onValueChange={(value) => setValue("currency", value)}
-								triggerClassName="h-full rounded-none border-r border-input px-3 shrink-0 focus-visible:ring-0"
-								triggerDisplay="flag+code"
-								triggerVariant="ghost"
-								value={watch("currency")}
-							/>
-							<div className="flex flex-1 items-center">
-								<Input
-									className="h-full w-full border-0 bg-transparent px-4 py-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
-									id="amount"
-									placeholder="0.00"
-									{...amountInput.inputProps}
-								/>
-							</div>
-						</div>
-						<CurrencyEstimate
-							amount={watchedAmount}
-							currency={watchedCurrency}
-							homeCurrency={homeCurrency}
-							isLoading={isRateLoading}
-							rate={activeRate?.rate}
-						/>
-						{errors.amount && (
-							<p className="text-destructive text-sm">
-								{errors.amount.message}
-							</p>
-						)}
-					</div>
-
-					{/* Payment Source */}
-					<div className="space-y-2">
-						<Label htmlFor="paymentSource">{t("fieldPaymentSource")}</Label>
-						<Input
-							id="paymentSource"
-							{...register("paymentSource")}
-							placeholder={t("fieldPaymentSourcePlaceholder")}
-						/>
-						{errors.paymentSource && (
-							<p className="text-destructive text-sm">
-								{errors.paymentSource.message}
-							</p>
-						)}
-					</div>
-
-					{/* Website URL */}
-					<div className="space-y-2">
-						<Label htmlFor="websiteUrl">{t("fieldWebsiteUrl")}</Label>
-						<Input
-							id="websiteUrl"
-							type="url"
-							{...register("websiteUrl")}
-							placeholder="https://..."
-						/>
-						{errors.websiteUrl && (
-							<p className="text-destructive text-sm">
-								{errors.websiteUrl.message}
-							</p>
-						)}
-					</div>
-
-					{/* Category */}
-					<div className="space-y-2">
-						<Label>{t("fieldCategory")}</Label>
-						<CategoryPicker
-							onValueChange={(value) => setValue("categoryId", value)}
-							placeholder={t("fieldCategoryPlaceholder")}
-							value={watch("categoryId")}
-						/>
-						{errors.categoryId && (
-							<p className="text-destructive text-sm">
-								{errors.categoryId.message}
-							</p>
-						)}
-					</div>
-
-					{/* Frequency */}
-					<div className="space-y-2">
-						<Label htmlFor="recurring-frequency">{t("fieldFrequency")}</Label>
-						<Select
-							onValueChange={(value) =>
-								setValue("frequency", value as RecurringFormData["frequency"])
-							}
-							value={watch("frequency")}
-						>
-							<SelectTrigger id="recurring-frequency">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="WEEKLY">{t("frequencyWeekly")}</SelectItem>
-								<SelectItem value="BIWEEKLY">{t("frequencyBiweekly")}</SelectItem>
-								<SelectItem value="MONTHLY">{t("frequencyMonthly")}</SelectItem>
-								<SelectItem value="QUARTERLY">{t("frequencyQuarterly")}</SelectItem>
-								<SelectItem value="YEARLY">{t("frequencyYearly")}</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
-
-					{/* Next Due Date */}
-					<div className="space-y-2">
-						<Label>{t("fieldNextDueDate")}</Label>
-						<DatePicker
-							date={watch("nextDueDate")}
-							onSelect={(date) => date && setValue("nextDueDate", date)}
-						/>
-					</div>
-
-					{/* Auto Pay */}
-					<div className="flex items-center justify-between rounded-lg border p-4">
-						<div className="space-y-0.5">
-							<Label>{t("fieldAutoPay")}</Label>
-							<p className="text-muted-foreground text-sm">
-								{t("fieldAutoPayDescription")}
-							</p>
-						</div>
-						<Switch
-							checked={watch("autoPay")}
-							onCheckedChange={(checked) => setValue("autoPay", checked)}
-						/>
-					</div>
-
-					<DialogFooter>
-						<Button onClick={onClose} type="button" variant="ghost">
-							{t("cancel")}
-						</Button>
-						<Button
-							disabled={createMutation.isPending || updateMutation.isPending}
-							type="submit"
-						>
-							{createMutation.isPending || updateMutation.isPending
-								? t("saving")
-								: templateId
-									? t("updateSubscription")
-									: t("createSubscription")}
-						</Button>
-					</DialogFooter>
-				</form>
-			</DialogContent>
-		</Dialog>
+					<Switch
+						checked={watch("autoPay")}
+						onCheckedChange={(checked) => setValue("autoPay", checked)}
+					/>
+				</div>
+			</div>
+		</Sheet>
 	);
 }
 

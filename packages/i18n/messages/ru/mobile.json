@@ -895,7 +895,7 @@
 			"skipped": {
 				"matches_claim": "{name} уже сообщил(а), что заплатил(а) {amount}. Подтвердите на его странице.",
 				"overpay": "{name}: {amount} больше долга, решайте сами",
-				"nothing_owed": "{name} ничего не должны в {amount}"
+				"nothing_owed": "Долга перед {name} в {amount} нет"
 			},
 			"record": "Записать платежи",
 			"recording": "Запись",

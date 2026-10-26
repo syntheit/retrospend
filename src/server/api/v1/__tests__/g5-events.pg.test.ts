@@ -11,7 +11,6 @@ import {
 	call,
 	createTestUser,
 	expectBody,
-	useApiV1,
 } from "../core/__tests__/harness";
 
 await vi.hoisted(async () => {
@@ -31,7 +30,6 @@ const FILE_NAME = "secret-bank-statement.csv";
 const TITLE = "Coffee beans q7";
 
 describe("G5 write events", () => {
-	useApiV1();
 	let userId: string;
 	let as: Record<string, string>;
 

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { isCrypto } from "~/lib/currency-format";
+import { isCrypto } from "@retrospend/domain/currency-format";
 import { getBestExchangeRate } from "~/server/api/routers/shared-currency";
 import { db as prisma } from "~/server/db";
 

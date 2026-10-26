@@ -415,36 +415,10 @@ async function writeWealth(db: Db, anchor: Anchor): Promise<void> {
 	}
 }
 
-const UI_V2_MODES = ["OFF", "ADMINS", "ALL"] as const;
-type UiV2Mode = (typeof UI_V2_MODES)[number];
-
-/** The new shell's rollout for this database: E2E_UI_V2_MODE, else OFF. */
-function uiV2ModeFromEnv(): UiV2Mode {
-	const mode = process.env.E2E_UI_V2_MODE ?? "OFF";
-	if (!UI_V2_MODES.includes(mode as UiV2Mode)) {
-		throw new Error(`E2E_UI_V2_MODE must be one of ${UI_V2_MODES.join(", ")}`);
-	}
-	return mode as UiV2Mode;
-}
-
-/**
- * The settings row, written with the reset. Global setup's sign-ups are the
- * server's first settings read after the seed, so its 60 second cache holds
- * this row from the start and no test waits for the flag.
- */
-async function writeAppSettings(db: Db, uiV2Mode: UiV2Mode): Promise<void> {
-	await db.appSettings.create({
-		// apiV1 on: the figure audit reads every tagged number back from
-		// /api/v1/figures, whatever order the flows run in.
-		data: { id: "app_settings_singleton", uiV2Mode, apiV1Mode: "ALL" },
-	});
-}
-
 /** Wipes the e2e DB and writes the personas. Same input, same rows. */
 export async function seedE2eDatabase(
 	databaseUrl: string,
 	anchor: Anchor = seedAnchor(),
-	uiV2Mode: UiV2Mode = uiV2ModeFromEnv(),
 ): Promise<void> {
 	assertE2eDatabase(databaseUrl);
 	const db = new PrismaClient({
@@ -452,7 +426,6 @@ export async function seedE2eDatabase(
 	});
 	try {
 		await resetDatabase(db);
-		await writeAppSettings(db, uiV2Mode);
 		await writeUsers(db);
 		await writeRates(db, anchor);
 		await writeExpenses(db, anchor);

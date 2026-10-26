@@ -3,7 +3,7 @@
 import { SearchX, UserPlus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Toolbar } from "~/components/layout/toolbar";
@@ -48,7 +48,7 @@ function useSlashFocus(ref: React.RefObject<HTMLInputElement | null>) {
 	}, [ref]);
 }
 
-/** The People page (uiV2): header, standing, Needs you, toolbar, the groups. */
+/** The People page: header, standing, Needs you, toolbar, the groups. */
 export function PeopleScreen({
 	view,
 	today,
@@ -59,7 +59,7 @@ export function PeopleScreen({
 	const t = useTranslations("peoplePage");
 	const locale = useLocale();
 	const phone = useIsMobile();
-	const { openNewExpense } = useExpenseModal();
+	const { openNewExpense } = useEntryActions();
 	const search = useRef<HTMLInputElement>(null);
 	useSlashFocus(search);
 	const [filters, setFilters] = useState<PeopleFilters>(NO_PEOPLE_FILTERS);

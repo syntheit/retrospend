@@ -6,7 +6,7 @@
  * the payment's quote), within 2% of the amount and within 7 days.
  */
 import { TRPCError } from "@trpc/server";
-import { currencyDecimals } from "~/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 import { fromMinor } from "~/server/services/envelope/units";
 import type { IsoDate, Minor } from "./types";
 

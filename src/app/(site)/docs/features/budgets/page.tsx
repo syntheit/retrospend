@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Badge } from "~/components/ui/badge";
-import { Card, CardContent } from "~/components/ui/card";
+import { DocItem } from "../../_components/doc-item"
 import { Callout } from "../../_components/callout";
-import { BudgetDemoEmbed } from "../../_components/demo-embeds";
+import { ProductShot } from "../../../_components/product-shot"
 import { DocsNav } from "../../_components/docs-nav";
 import { getAdjacentDocs } from "../../docs-config";
 
@@ -21,7 +21,7 @@ export default function BudgetsPage() {
 				<Badge className="mb-3" variant="secondary">
 					Features
 				</Badge>
-				<h1 className="mb-3 text-3xl font-bold tracking-tight">
+				<h1 className="mb-3 text-3xl font-semibold">
 					Budget Tracking
 				</h1>
 				<p className="text-muted-foreground text-lg leading-relaxed">
@@ -30,10 +30,12 @@ export default function BudgetsPage() {
 				</p>
 			</div>
 
-			<BudgetDemoEmbed />
+			<div className="my-6">
+				<ProductShot name="budget" />
+			</div>
 
 			<h2
-				className="mt-10 mb-4 scroll-mt-20 text-xl font-bold tracking-tight"
+				className="mt-10 mb-4 scroll-mt-20 text-xl font-semibold"
 				id="how-budgets-work"
 			>
 				How Budgets Work
@@ -47,7 +49,7 @@ export default function BudgetsPage() {
 			</p>
 
 			<h2
-				className="mt-10 mb-4 scroll-mt-20 text-xl font-bold tracking-tight"
+				className="mt-10 mb-4 scroll-mt-20 text-xl font-semibold"
 				id="variable-vs-fixed"
 			>
 				Variable vs Fixed Categories
@@ -56,30 +58,16 @@ export default function BudgetsPage() {
 				Budget categories are split into two groups:
 			</p>
 			<div className="grid gap-3 sm:grid-cols-2">
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="text-sm font-semibold">Variable / Managed</p>
-						<p className="text-muted-foreground mt-1 text-sm">
-							Categories where you actively control spending: groceries, dining,
+				<DocItem title="Variable / Managed">Categories where you actively control spending: groceries, dining,
 							entertainment. You set a target limit and Retrospend calculates a
-							daily safe-to-spend pace.
-						</p>
-					</CardContent>
-				</Card>
-				<Card className="border-border bg-card">
-					<CardContent className="p-4">
-						<p className="text-sm font-semibold">Fixed / Pegged to Actual</p>
-						<p className="text-muted-foreground mt-1 text-sm">
-							Categories with predictable costs: rent, subscriptions, insurance.
+							daily safe-to-spend pace.</DocItem>
+				<DocItem title="Fixed / Pegged to Actual">Categories with predictable costs: rent, subscriptions, insurance.
 							Toggle &quot;Peg to actual&quot; and the budget automatically
-							matches what you spend, keeping the focus on variable categories.
-						</p>
-					</CardContent>
-				</Card>
+							matches what you spend, keeping the focus on variable categories.</DocItem>
 			</div>
 
 			<h2
-				className="mt-10 mb-4 scroll-mt-20 text-xl font-bold tracking-tight"
+				className="mt-10 mb-4 scroll-mt-20 text-xl font-semibold"
 				id="key-features"
 			>
 				Key Features
@@ -99,17 +87,12 @@ export default function BudgetsPage() {
 						desc: "Start a new month by copying last month's budget allocation with one click, then adjust as needed.",
 					},
 				].map((f) => (
-					<Card className="border-border bg-card" key={f.title}>
-						<CardContent className="p-4">
-							<p className="text-sm font-semibold">{f.title}</p>
-							<p className="text-muted-foreground mt-1 text-sm">{f.desc}</p>
-						</CardContent>
-					</Card>
+					<DocItem key={f.title} title={f.title}>{f.desc}</DocItem>
 				))}
 			</div>
 
 			<h2
-				className="mt-10 mb-4 scroll-mt-20 text-xl font-bold tracking-tight"
+				className="mt-10 mb-4 scroll-mt-20 text-xl font-semibold"
 				id="safe-to-spend"
 			>
 				Safe-to-Spend
@@ -122,7 +105,7 @@ export default function BudgetsPage() {
 			</p>
 
 			<h2
-				className="mt-10 mb-4 scroll-mt-20 text-xl font-bold tracking-tight"
+				className="mt-10 mb-4 scroll-mt-20 text-xl font-semibold"
 				id="plan"
 			>
 				Plan next month and What if
@@ -141,7 +124,7 @@ export default function BudgetsPage() {
 			</Callout>
 
 			<h2
-				className="mt-10 mb-4 scroll-mt-20 text-xl font-bold tracking-tight"
+				className="mt-10 mb-4 scroll-mt-20 text-xl font-semibold"
 				id="tips"
 			>
 				Tips

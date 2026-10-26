@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { currencyDecimals } from "~/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 
 /**
  * Amounts come in as decimal text and are never rounded on the way in. A

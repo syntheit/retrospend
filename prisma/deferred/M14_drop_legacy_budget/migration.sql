@@ -1,10 +1,13 @@
 -- M14: drop the legacy budget (budget build plan 02 §6; IMPLEMENTATION M14).
 --
 -- NOT APPLIED. This folder sits outside prisma/migrations on purpose, so
--- `prisma migrate deploy` never runs it. It runs 30 days after P7 went live
--- (envelopeBudgetMode = ALL, everyone moved), because until then the old
--- `budget` rows are the only way back: `scripts/migrate-to-envelopes.ts
+-- `prisma migrate deploy` never runs it. It runs after release 0.5 has been
+-- live for 30 days (every person moved to an envelope book), because until
+-- then the old `budget` rows are the only way back: `scripts/migrate-to-envelopes.ts
 -- --rollback <runId>` deletes a book and the person returns to them.
+-- Release 0.5 already removed the budget router, page, components, hooks, the
+-- dashboard overview that read the old rows, the budget importer and the
+-- budgets CSV export.
 --
 -- To run it (one commit, then the usual deploy):
 --   1. Check nobody still needs the old rows:
@@ -13,17 +16,19 @@
 --                            WHERE k."createdById" = b."userId" AND k."isPersonal");
 --      Zero means every person with old budgets has a book. Take a pg_dump.
 --   2. Move this folder to prisma/migrations/<timestamp>_drop_legacy_budget/.
---   3. In the same commit remove what reads the table:
+--   3. In the same commit remove what still reads the table:
 --        - prisma/schema.prisma: model Budget, its relations on User and
 --          Category, enum BudgetType;
 --        - src/server/services/envelope/legacy-plan.ts, legacy-migrate.service.ts,
---          legacy-migrate.batch.ts and their tests; `ensureLegacyBook` in
---          read.service.ts and needs-you/index.ts; scripts/migrate-to-envelopes.ts;
---        - src/server/services/budget.service.ts and its test (the overview
---          service reads envelope totals once the flag is ALL);
---        - the `budget` block in export.service.ts (budgets.csv) and
---          `earliestBudgetMonth` in routers/dashboard.ts;
---        - src/types/budget-types.ts and src/lib/csv.ts ParsedBudgetRow.
+--          legacy-migrate.batch.ts, legacy-lazy.ts and their tests; the
+--          `movedFirst` and `ensureLegacyBook` calls in read.service.ts and
+--          needs-you/index.ts; scripts/migrate-to-envelopes.ts; the budget_book
+--          columns "legacyMigrationRunId", "legacyMigratedAt",
+--          "legacyNoticeSeenAt" and "legacyHiddenIds" stay (they record where a
+--          book came from);
+--        - the `budget` reads in category.service.ts (merge and delete), the
+--          budgets.csv block in export.service.ts, scripts/migrate-default-categories.ts
+--          and the budget seeds in e2e/fixtures/seed.ts and the pg tests.
 -- Idempotent; dropping the table drops its row level security policies and
 -- grants with it.
 

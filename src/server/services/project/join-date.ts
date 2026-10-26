@@ -1,4 +1,4 @@
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { userTimeZone } from "~/server/services/user-time-zone";
 import type { Prisma, PrismaClient } from "~prisma";
 import { fromIsoDate } from "./membership";

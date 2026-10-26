@@ -25,7 +25,6 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -62,7 +61,6 @@ type Sheet = {
 };
 
 describe("/api/v1/people", () => {
-	useApiV1();
 	let sofia: TestUser;
 	let martin: TestUser;
 	let as: Record<string, string>;

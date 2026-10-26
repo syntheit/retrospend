@@ -3,7 +3,7 @@
  * ARS home users, a Blue rate for ARS and BRL, and shares written straight
  * to the database so each test starts from a balance worked out by hand.
  */
-import { dayKey } from "~/lib/time-zone";
+import { dayKey } from "@retrospend/domain/time-zone";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 

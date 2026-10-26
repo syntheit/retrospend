@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "~/components/ui/button";
 import { useSession } from "~/hooks/use-session";
 
@@ -13,35 +13,23 @@ export function HeroSection() {
 	return (
 		<section className="py-24 lg:py-32">
 			<div className="relative mx-auto max-w-3xl text-center">
-				<div
-					aria-hidden="true"
-					className="pointer-events-none absolute -top-16 left-1/2 h-64 w-96 -translate-x-2/3 rounded-full bg-primary/20 blur-3xl"
-				/>
-				<div
-					aria-hidden="true"
-					className="pointer-events-none absolute -top-8 left-1/2 h-48 w-72 -translate-x-1/3 rounded-full bg-chart-2/15 blur-3xl"
-				/>
-				<h1 className="font-bold text-5xl tracking-tight sm:text-6xl lg:text-7xl">
-					Retrospend
-				</h1>
-				<p className="mt-4 text-lg text-muted-foreground sm:text-xl">
-					{t("heroTagline")}
-				</p>
-				<p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground/70 leading-7">
+				<h1 className="text-fg text-hero">Retrospend</h1>
+				<p className="text-fg-2 text-section mt-4">{t("heroTagline")}</p>
+				<p className="text-fg-3 text-body mx-auto mt-4 max-w-xl">
 					{t("heroDescription")}
 				</p>
 				{!isPending && (
 					<div className="mt-10 flex items-center justify-center gap-4">
 						{isLoggedIn ? (
-							<Button asChild size="lg">
-								<Link href="/dashboard">{t("goToDashboard")}</Link>
+							<Button asChild kind="primary">
+								<Link href="/home">{t("goToDashboard")}</Link>
 							</Button>
 						) : (
 							<>
-								<Button asChild size="lg">
+								<Button asChild kind="primary">
 									<Link href="/signup">{t("getStarted")}</Link>
 								</Button>
-								<Button asChild size="lg" variant="outline">
+								<Button asChild kind="secondary">
 									<Link href="/login">{t("login")}</Link>
 								</Button>
 							</>

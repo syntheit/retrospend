@@ -35,10 +35,7 @@ describe("handleMutationSuccess", () => {
 	it.each([
 		"create",
 		"settleAll",
-		"confirm",
 		"reject",
-		"deletePending",
-		"void",
 	])("settlement.%s refreshes project and people views", (procedure) => {
 		const routers = invalidatedRouters(["settlement", procedure]);
 		expect(routers).toEqual(
@@ -58,59 +55,39 @@ describe("handleMutationSuccess", () => {
  * Removing a reader here should be a deliberate decision.
  */
 const REQUIRED_READERS: Record<string, string[]> = {
-	// The dashboard overview shows budget totals.
-	"budget.upsertBudget": ["budget", "dashboard"],
-	"budget.batchUpsertBudgets": ["budget", "dashboard"],
-	"budget.deleteBudget": ["budget", "dashboard"],
-	"budget.copyFromLastMonth": ["budget", "dashboard"],
-
 	// Category edits change names, colors and exclusions shown everywhere.
-	"categories.update": ["categories", "budget", "dashboard", "expense"],
+	"categories.update": ["categories", "expense"],
 	"categories.delete": [
 		"categories",
-		"budget",
-		"dashboard",
 		"expense",
 		"insights",
 	],
-	"expense.bulkUpdateCategory": ["expense", "budget", "dashboard", "stats"],
+	"expense.bulkUpdateCategory": ["expense"],
 
 	// The fiscal month start day moves every month boundary.
 	"settings.updateGeneral": [
 		"settings",
-		"dashboard",
-		"budget",
-		"stats",
 		"expense",
 		"insights",
 	],
 
-	// Personal expenses feed the overview, budgets and stats.
-	"expense.createExpense": ["expense", "dashboard", "budget", "stats"],
-	"expense.updateExpense": ["expense", "dashboard", "budget", "stats"],
-	"expense.deleteExpense": ["expense", "dashboard", "budget", "stats"],
+	// Personal expenses feed Insights and the envelope budget.
+	"expense.createExpense": ["expense"],
+	"expense.updateExpense": ["expense"],
+	"expense.deleteExpense": ["expense"],
 
 	// Shared expenses also move balances.
 	"sharedTransaction.create": [
 		"project",
 		"people",
-		"dashboard",
-		"budget",
-		"stats",
 	],
 	"sharedTransaction.update": [
 		"project",
 		"people",
-		"dashboard",
-		"budget",
-		"stats",
 	],
 	"sharedTransaction.delete": [
 		"project",
 		"people",
-		"dashboard",
-		"budget",
-		"stats",
 	],
 
 	// Insights reads the same spending, money in and categories.

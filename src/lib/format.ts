@@ -60,7 +60,7 @@ export function formatUptime(seconds: number): string {
 
 /**
  * Builds a plain-text summary of an expense for clipboard copy.
- * Example: "Groceries — $45.20 — Mar 28, 2026"
+ * Example: "Groceries - $45.20 - Mar 28, 2026"
  */
 export function formatExpenseAsText(
 	title: string | null | undefined,
@@ -76,7 +76,7 @@ export function formatExpenseAsText(
 		day: "numeric",
 		year: "numeric",
 	});
-	return `${name} — ${formatCurrency(amount, currency)} — ${formattedDate}`;
+	return `${name} - ${formatCurrency(amount, currency)} - ${formattedDate}`;
 }
 
 /**

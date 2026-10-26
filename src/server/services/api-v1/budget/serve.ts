@@ -1,6 +1,5 @@
 import { TRPCError } from "@trpc/server";
 import type { TRPC_ERROR_CODE_KEY } from "@trpc/server/rpc";
-import { isFlagEnabled } from "~/server/flags";
 import {
 	EnvelopeError,
 	type EnvelopeErrorCode,
@@ -34,13 +33,4 @@ export async function withEnvelopeErrors<T>(run: () => Promise<T>): Promise<T> {
 			});
 		throw error;
 	}
-}
-
-/** The budget sits behind the same flag as on the web. */
-export async function assertBudgetOn(caller: Caller) {
-	if (!(await isFlagEnabled("envelopeBudget", { role: caller.principal.role })))
-		throw new TRPCError({
-			code: "FORBIDDEN",
-			message: "The new budget is not available yet",
-		});
 }

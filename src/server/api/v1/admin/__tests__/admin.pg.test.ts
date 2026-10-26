@@ -14,7 +14,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -26,7 +25,6 @@ const a = contract.admin;
 const SECRET = "SECRET-TITLE-Q7";
 
 describe("/api/v1/admin", () => {
-	useApiV1();
 	let admin: string;
 	let bob: string;
 	let asAdmin: Record<string, string>;
@@ -64,6 +62,7 @@ describe("/api/v1/admin", () => {
 			auditPrivacyMode: initial.auditPrivacyMode,
 			maxConcurrentImportJobs: initial.maxConcurrentImportJobs,
 			enableFeedback: initial.enableFeedback,
+			webhooksAllowPrivateTargets: initial.webhooksAllowPrivateTargets,
 			defaultAiMode: initial.defaultAiMode,
 			externalAiAccessMode: initial.externalAiAccessMode,
 			monthlyAiTokenQuota: initial.monthlyAiTokenQuota,
@@ -206,6 +205,7 @@ describe("/api/v1/admin", () => {
 			auditPrivacyMode: "anonymized",
 			maxConcurrentImportJobs: 4,
 			enableFeedback: true,
+			webhooksAllowPrivateTargets: true,
 		});
 		const after = await expectBody<{ auditPrivacyMode: string }>(
 			res,
@@ -215,6 +215,7 @@ describe("/api/v1/admin", () => {
 			auditPrivacyMode: "anonymized",
 			maxConcurrentImportJobs: 4,
 			enableFeedback: true,
+			webhooksAllowPrivateTargets: true,
 		});
 		await expectProblem(
 			await write("/admin/settings", "PATCH", { maxConcurrentImportJobs: 99 }),

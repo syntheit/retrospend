@@ -4,30 +4,30 @@
 
 ### Entire Backend (~200 procedures)
 
-The server is already a standalone API — nothing needs to change:
+The server is already a standalone API, nothing needs to change:
 
-- **30 tRPC routers, ~200 procedures** — all business logic lives server-side
-- **Services layer** (expense, wealth, budget, csv, settlement, etc.) — pure Node.js
-- **Database + RLS** — completely decoupled from the frontend
-- **Auth (better-auth)** — supports token-based auth, works with mobile clients
-- **Image serving** (`/api/images/[...path]`) — already HTTP-based, works from any client
-- **Notification system** — server-side creation, just need a mobile consumer
+- **30 tRPC routers, ~200 procedures**: all business logic lives server-side
+- **Services layer** (expense, wealth, budget, csv, settlement, etc.), pure Node.js
+- **Database + RLS**: completely decoupled from the frontend
+- **Auth (better-auth)**: supports token-based auth, works with mobile clients
+- **Image serving** (`/api/images/[...path]`), already HTTP-based, works from any client
+- **Notification system**: server-side creation, just need a mobile consumer
 
 ### Pure Logic in `src/lib/` (~20 files)
 
 All of these are platform-agnostic and can be shared directly:
 
-- `money.ts`, `currencies.ts`, `currency-format.ts` — all currency conversion
-- `csv.ts` — parsing/generation
-- `date.ts`, `fiscal-month.ts` — date utilities
-- `balance-utils.ts`, `recurring.ts` — business calculations
+- `money.ts`, `currencies.ts`, `currency-format.ts`, all currency conversion
+- `csv.ts`: parsing/generation
+- `date.ts`, `fiscal-month.ts`, date utilities
+- `balance-utils.ts`, `recurring.ts`, business calculations
 - `category-matcher.ts`, `category-colors.ts`, `category-icons.ts`
 - `db-enums.ts`, `constants.ts`, `payment-links.ts`
 - All Zod schemas (validation)
 
 ### tRPC Client
 
-`@trpc/react-query` works in React Native — just swap the HTTP transport URL. All typed API calls, cache invalidation helpers (`query-invalidation.ts`), and React Query patterns transfer directly.
+`@trpc/react-query` works in React Native, just swap the HTTP transport URL. All typed API calls, cache invalidation helpers (`query-invalidation.ts`), and React Query patterns transfer directly.
 
 **Estimated reuse: ~35-40% of total codebase effort.**
 
@@ -35,10 +35,10 @@ All of these are platform-agnostic and can be shared directly:
 
 ## 2. What Needs to Be Rebuilt
 
-- **All 194+ UI components** — shadcn/ui (Radix primitives) is web-only. Every component needs a native equivalent.
-- **All hooks that touch browser APIs** — `localStorage`, `window.matchMedia`, `document.title`, `beforeunload`, etc.
-- **Navigation** — Next.js app router → React Navigation / Expo Router
-- **Charts** — Recharts (SVG/DOM) → `victory-native`, `react-native-chart-kit`, or `react-native-skia`
+- **All 194+ UI components**: shadcn/ui (Radix primitives) is web-only. Every component needs a native equivalent.
+- **All hooks that touch browser APIs**: `localStorage`, `window.matchMedia`, `document.title`, `beforeunload`, etc.
+- **Navigation**: Next.js app router → React Navigation / Expo Router
+- **Charts**: Recharts (SVG/DOM) → `victory-native`, `react-native-chart-kit`, or `react-native-skia`
 
 ---
 
@@ -55,10 +55,10 @@ All of these are platform-agnostic and can be shared directly:
 | **People detail** | Easy-Medium | Activity list, balance breakdown |
 | **Recurring** | Medium | Calendar view is non-trivial in RN, plus projections |
 | **Projects list** | Easy-Medium | Card grid, context menus |
-| **Project detail** | Hard | Most complex page — tabs, expense table, participants, settlements, activity feed, budget cards, billing periods |
+| **Project detail** | Hard | Most complex page, tabs, expense table, participants, settlements, activity feed, budget cards, billing periods |
 | **Currencies** | Easy | Rate list, favorites |
 | **Settings** | Medium | Many form sections, avatar crop/upload, category management |
-| **Import (CSV/bank)** | Hard | File picker, editable preview table, job queue — may defer for mobile |
+| **Import (CSV/bank)** | Hard | File picker, editable preview table, job queue, may defer for mobile |
 | **Admin panel** | Skip | Admin tasks are better on desktop |
 | **Docs / Landing / Legal** | Skip | Not needed in mobile app |
 | **Command palette** | Medium | Could become a search bar instead of Cmd+K |
@@ -81,9 +81,9 @@ Heaviest UI pattern. TanStack Table + shadcn works beautifully on web but has no
 
 ~15 chart components (area, donut, line, bullet, bar, allocation). Options:
 
-- `victory-native` — mature, good API
-- `react-native-chart-kit` — simpler
-- `react-native-skia` + custom — most flexible, most work
+- `victory-native`: mature, good API
+- `react-native-chart-kit`: simpler
+- `react-native-skia` + custom, most flexible, most work
 
 ### C. Image Cropping / Upload
 
@@ -94,7 +94,7 @@ Heaviest UI pattern. TanStack Table + shadcn works beautifully on web but has no
 Web uses cookies via better-auth. Mobile needs:
 
 - `expo-secure-store` or `react-native-keychain` for token storage
-- Better-auth supports bearer token mode — configure the client to send `Authorization: Bearer <token>` headers instead of cookies
+- Better-auth supports bearer token mode, configure the client to send `Authorization: Bearer <token>` headers instead of cookies
 
 ### E. Push Notifications
 
@@ -149,12 +149,12 @@ retrospend/
 
 **Why this structure:**
 
-- `packages/shared/` — pure logic used by both web and mobile
-- `packages/api/` — tRPC `AppRouter` type export so mobile gets full type safety
+- `packages/shared/`: pure logic used by both web and mobile
+- `packages/api/`: tRPC `AppRouter` type export so mobile gets full type safety
 - Server stays deployed as the same Next.js app (or extracted to standalone if needed later)
 - Mobile connects to the same API endpoint
 
-**Tooling:** Expo (managed workflow) — handles builds, OTA updates, and native modules. Expo Router for file-based navigation mirrors the Next.js mental model.
+**Tooling:** Expo (managed workflow), handles builds, OTA updates, and native modules. Expo Router for file-based navigation mirrors the Next.js mental model.
 
 ---
 
@@ -173,7 +173,7 @@ retrospend/
 
 **Already done: ~35-40%** of the total effort (entire backend, business logic, type safety, API contracts).
 
-**New work: ~60-65%** is UI — but it's "known" work (translating existing designs to native components), not new feature development.
+**New work: ~60-65%** is UI, but it's "known" work (translating existing designs to native components), not new feature development.
 
 ---
 

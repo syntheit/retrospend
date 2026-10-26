@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
+import { DocItem } from "../_components/doc-item"
 import { DocsNav } from "../_components/docs-nav"
 import { getAdjacentDocs } from "../docs-config"
 
@@ -79,7 +79,7 @@ export default function FeaturesPage() {
 				<Badge variant="secondary" className="mb-3">
 					Features
 				</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">
+				<h1 className="mb-3 font-semibold text-3xl">
 					Features Overview
 				</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
@@ -89,15 +89,12 @@ export default function FeaturesPage() {
 
 			<div className="mt-8 grid gap-3 sm:grid-cols-2">
 				{FEATURES.map((f) => (
-					<Link key={f.slug} href={`/docs/${f.slug}`}>
-						<Card className="h-full border-border bg-card transition-colors hover:border-primary/40 hover:bg-muted/30">
-							<CardContent className="p-5">
-								<p className="font-semibold text-sm">{f.title}</p>
-								<p className="mt-1.5 text-muted-foreground text-sm leading-relaxed">
-									{f.desc}
-								</p>
-							</CardContent>
-						</Card>
+					<Link
+						className="rounded-ctl focus-visible:outline-brand can-hover:hover:underline block focus-visible:outline-2 focus-visible:outline-offset-2"
+						key={f.slug}
+						href={`/docs/${f.slug}`}
+					>
+						<DocItem title={f.title}>{f.desc}</DocItem>
 					</Link>
 				))}
 			</div>

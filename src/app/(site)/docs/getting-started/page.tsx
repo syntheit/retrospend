@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent } from "~/components/ui/card"
+import { DocItem } from "../_components/doc-item"
 import { Callout } from "../_components/callout"
 import { DocsNav } from "../_components/docs-nav"
 import { getAdjacentDocs } from "../docs-config"
@@ -23,7 +23,7 @@ export default function IntroductionPage() {
 				<Badge variant="secondary" className="mb-3">
 					Getting Started
 				</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Introduction</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Introduction</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Retrospend is a self-hostable personal finance tracker for expenses,
 					budgets, and wealth, built for people who want full control over
@@ -31,7 +31,7 @@ export default function IntroductionPage() {
 				</p>
 			</div>
 
-			<h2 id="what-is-retrospend" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="what-is-retrospend" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				What is Retrospend?
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -49,7 +49,7 @@ export default function IntroductionPage() {
 				vendor lock-in.
 			</p>
 
-			<h2 id="key-features" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="key-features" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Key Features
 			</h2>
 			<div className="grid gap-3 sm:grid-cols-2">
@@ -87,43 +87,34 @@ export default function IntroductionPage() {
 						desc: "Subscriptions and fixed costs tracked automatically.",
 					},
 				].map((f) => (
-					<Card key={f.title} className="border-border bg-card">
-						<CardContent className="p-4">
-							<p className="font-semibold text-sm">{f.title}</p>
-							<p className="mt-1 text-muted-foreground text-sm">{f.desc}</p>
-						</CardContent>
-					</Card>
+					<DocItem key={f.title} title={f.title}>{f.desc}</DocItem>
 				))}
 			</div>
 
-			<h2 id="two-ways-to-use" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="two-ways-to-use" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Two Ways to Use Retrospend
 			</h2>
 			<div className="grid gap-4 sm:grid-cols-2">
-				<Card className="border-primary/20 bg-primary/5">
-					<CardContent className="p-5">
-						<p className="font-semibold">Hosted Instance</p>
-						<p className="mt-1.5 text-muted-foreground text-sm leading-relaxed">
-							Sign up at retrospend.app. Free, no setup required, runs in
-							seconds. Best if you just want to start tracking.
-						</p>
-						<Button asChild size="sm" className="mt-4">
-							<Link href="/signup">Get Started Free →</Link>
-						</Button>
-					</CardContent>
-				</Card>
-				<Card className="border-border bg-card">
-					<CardContent className="p-5">
-						<p className="font-semibold">Self-Hosted</p>
-						<p className="mt-1.5 text-muted-foreground text-sm leading-relaxed">
-							Run on your own server with Docker. Full control over your data,
-							bring your own domain, customize as needed.
-						</p>
-						<Button asChild size="sm" variant="outline" className="mt-4">
-							<Link href="/docs/self-hosting">Deployment Guide →</Link>
-						</Button>
-					</CardContent>
-				</Card>
+				<div className="py-2">
+					<p className="text-fg text-body font-semibold">Hosted Instance</p>
+					<p className="text-fg-2 text-small mt-1">
+						Sign up at retrospend.app. Free, no setup required, runs in
+						seconds. Best if you just want to start tracking.
+					</p>
+					<Button asChild size="sm" className="mt-4">
+						<Link href="/signup">Get Started Free →</Link>
+					</Button>
+				</div>
+				<div className="py-2">
+					<p className="text-fg text-body font-semibold">Self-Hosted</p>
+					<p className="text-fg-2 text-small mt-1">
+						Run on your own server with Docker. Full control over your data,
+						bring your own domain, customize as needed.
+					</p>
+					<Button asChild size="sm" variant="outline" className="mt-4">
+						<Link href="/docs/self-hosting">Deployment Guide →</Link>
+					</Button>
+				</div>
 			</div>
 
 			<Callout variant="tip" title="Just want to try it?">
@@ -134,7 +125,7 @@ export default function IntroductionPage() {
 				. No Docker, no config, no server needed.
 			</Callout>
 
-			<h2 id="open-source" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="open-source" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Open Source
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">

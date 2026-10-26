@@ -1,5 +1,5 @@
 /**
- * Pure figures of the project pages (uiV2), in integer minor units. No I/O:
+ * Pure figures of the project pages, in integer minor units. No I/O:
  * the read services load the rows and pass them in. Currencies are never
  * converted or netted against each other.
  */

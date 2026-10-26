@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { ExpenseTarget } from "~/components/actions/registry";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { TransactionRow } from "~/components/rows/transaction-row";
 import type { TransactionVM } from "~/components/rows/types";
 import { TransactionTable } from "~/components/table/transaction-table";
@@ -26,7 +26,7 @@ import { useExpenseActions } from "./use-expense-actions";
 /** No expenses yet, with Add expense unless the project is archived. */
 function NoExpenses({ view }: { view: PageView }) {
 	const t = useTranslations("projectV2.expenses");
-	const { openNewExpense } = useExpenseModal();
+	const { openNewExpense } = useEntryActions();
 	const add = () =>
 		openNewExpense({
 			projectId: view.id,
@@ -89,7 +89,7 @@ function useRowMenus(view: PageView) {
 export function ExpensesPane({ view, me }: { view: PageView; me: string }) {
 	const t = useTranslations("projectV2.expenses");
 	const phone = useIsMobile();
-	const { openSharedExpense } = useExpenseModal();
+	const { openSharedExpense } = useEntryActions();
 	const [f, setF] = useState<Filters>(NO_FILTERS);
 	const { menu, area } = useRowMenus(view);
 	const rows = useMemo(

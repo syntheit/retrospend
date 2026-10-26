@@ -11,7 +11,7 @@ test.describe("smoke", () => {
 	test("unauthenticated access to protected routes redirects to login", async ({
 		page,
 	}) => {
-		await page.goto("/transactions");
+		await page.goto("/activity");
 		await expect(page).toHaveURL(/\/login/);
 	});
 

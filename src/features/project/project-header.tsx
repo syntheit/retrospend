@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { ActionMenu } from "~/components/actions/action-menu";
 import type { ProjectTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { BackButton } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { useProjectDates } from "~/components/rows/project-row";
@@ -14,6 +14,21 @@ import { Button } from "~/components/ui/button";
 import { PageTabs } from "~/components/ui/page-tabs";
 import { ProjectCover } from "~/features/projects/project-cover";
 import type { PageView, ProjectTab } from "./types";
+
+/** "Solo · Oct 9 to Oct 18 · EUR": what the sub line under a project's title says. */
+export function useProjectSub(view: PageView) {
+	const t = useTranslations("projectV2");
+	const dates = useProjectDates();
+	const span = view.firstExpense
+		? dates({
+				start: view.firstExpense,
+				end: view.status === "ARCHIVED" ? view.lastExpense : null,
+			})
+		: null;
+	return [view.solo ? t("solo") : null, span, view.primaryCurrency]
+		.filter(Boolean)
+		.join(" · ");
+}
 
 /**
  * Title, the people as faces and one sub line (dates and currency), Add
@@ -33,8 +48,8 @@ export function ProjectHeader({
 }) {
 	const t = useTranslations("projectV2");
 	const nav = useTranslations("shell.nav");
-	const dates = useProjectDates();
-	const { openNewExpense } = useExpenseModal();
+	const sub = useProjectSub(view);
+	const { openNewExpense } = useEntryActions();
 	const archived = view.status === "ARCHIVED";
 	const add = () =>
 		openNewExpense({
@@ -43,15 +58,6 @@ export function ProjectHeader({
 			projectDefaultCurrency: view.primaryCurrency,
 			isSolo: view.solo,
 		});
-	const span = view.firstExpense
-		? dates({
-				start: view.firstExpense,
-				end: archived ? view.lastExpense : null,
-			})
-		: null;
-	const sub = [view.solo ? t("solo") : null, span, view.primaryCurrency]
-		.filter(Boolean)
-		.join(" · ");
 	const base = `/projects/${view.id}`;
 	const tabs = [
 		{ id: "expenses", href: base, label: t("tabs.expenses") },

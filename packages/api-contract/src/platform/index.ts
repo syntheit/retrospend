@@ -15,15 +15,14 @@ export const PUSH_TRANSPORTS = ["apns", "fcm", "unifiedpush"] as const;
 export const serverInfoSchema = z
 	.object({
 		name: z.literal("Retrospend"),
-		version: z.string().meta({ examples: ["0.4.5"] }),
+		version: z.string().meta({ examples: ["0.5.0"] }),
 		apiVersion: z.literal("v1"),
 		minClientVersion: z.string().meta({
 			description: "Older app builds must ask the user to update.",
 		}),
-		features: z.object({
-			apiV1: z.boolean(),
-			uiV2: z.boolean(),
-			envelopeBudget: z.boolean(),
+		features: z.object({}).meta({
+			description:
+				"Optional server capabilities. Empty today: clients still read the object, so it stays.",
 		}),
 		auth: z.object({
 			methods: z.array(z.enum(AUTH_METHODS)),

@@ -288,9 +288,9 @@
 			"usedUp": "Você usou todo o orçamento de Gastos de {month}. O que passar sai de {next}.",
 			"faster": "Você está gastando mais rápido do que planejou. Para fechar no orçamento, fique em cerca de {amount} por dia.",
 			"someOver": "Cerca de {amount} por dia durante {days, plural, one {# dia restante} other {# dias restantes}}, depois que {names} estourou em {over}.",
-			"onTrack": "Você está no caminho: cerca de {amount} por dia durante {days, plural, one {# dia restante} other {# dias restantes}}.",
+			"onTrack": "Você está no caminho certo: cerca de {amount} por dia durante {days, plural, one {# dia restante} other {# dias restantes}}.",
 			"allAssigned": "Todo o seu dinheiro tem uma função.",
-			"needsJob": "{amount} ainda precisam de uma função.",
+			"needsJob": "{amount} ainda precisa de uma função.",
 			"overAssigned": "Você distribuiu {amount} a mais do que tem.",
 			"weekLeft": "Cerca de {amount} por dia. Reinicia em {resets}.",
 			"weekUsed": "Você usou a verba desta semana. Reinicia em {resets}.",
@@ -492,7 +492,7 @@
 			"budget_totalDebt": "Dívida total",
 			"netWorthChange_income": "Variação por receitas",
 			"netWorthChange_spending": "Variação por gastos",
-			"netWorthChange_notLogged": "Variação por sem registro",
+			"netWorthChange_notLogged": "Variação por valores não registrados",
 			"netWorthChange_revaluation": "Variação por cotações e preços",
 			"netWorthChange_opened": "Variação por contas adicionadas",
 			"netWorthChange_closed": "Variação por contas encerradas"
@@ -519,14 +519,14 @@
 			"budget_totalDebt": "a dívida total",
 			"netWorthChange_income": "a variação por receitas",
 			"netWorthChange_spending": "a variação por gastos",
-			"netWorthChange_notLogged": "a variação por sem registro",
+			"netWorthChange_notLogged": "a variação por valores não registrados",
 			"netWorthChange_revaluation": "a variação por cotações e preços",
 			"netWorthChange_opened": "a variação por contas adicionadas",
 			"netWorthChange_closed": "a variação por contas encerradas"
 		},
 		"debt": {
 			"label": "Sem dívidas até",
-			"never": "Fora de vista",
+			"never": "Sem previsão",
 			"neverAtPayment": "Nunca com este pagamento",
 			"diverges": "Os juros são maiores que o pagamento mensal, então o saldo continua crescendo. Aumente o pagamento para ver uma data.",
 			"incomplete": "Ainda não há cotação para {currencies}, então o total não foi calculado.",
@@ -614,7 +614,7 @@
 			"submit": "Atualizar saldo",
 			"netWorth": "Patrimônio",
 			"notLogged": "Sem registro",
-			"notLoggedHint": "Suas receitas e gastos ficam como estão. A diferença é guardada como sem registro.",
+			"notLoggedHint": "Suas receitas e gastos ficam como estão. A diferença é guardada como “Sem registro”.",
 			"same": "Esse já é o saldo, então nada muda.",
 			"toast": "{name} agora tem {amount}"
 		}

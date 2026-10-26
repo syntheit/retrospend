@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import type { ExpenseTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { useToast } from "~/components/ui/toast";
 import { api } from "~/trpc/react";
 
@@ -22,7 +22,7 @@ export function useExpenseActions(
 	const t = useTranslations("projectV2.toast");
 	const toast = useToast();
 	const utils = api.useUtils();
-	const { openSharedExpense } = useExpenseModal();
+	const { openSharedExpense } = useEntryActions();
 	const accept = api.verification.accept.useMutation({
 		onSuccess: () => {
 			void utils.project.pageView.invalidate({ id: projectId });

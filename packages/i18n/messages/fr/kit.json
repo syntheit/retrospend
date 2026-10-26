@@ -17,7 +17,8 @@
 		"upcoming": "À venir",
 		"noRate": "Pas encore de taux",
 		"rejected": "Refusé",
-		"notCounted": "Non compté"
+		"notCounted": "Non compté",
+		"spread": "Étalé dans le temps"
 	},
 	"balance": {
 		"owesYou": "te doit",

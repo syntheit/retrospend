@@ -6,7 +6,7 @@ import { getAdjacentDocs } from "../../docs-config"
 
 export const metadata: Metadata = {
 	title: "Projects",
-	description: "Group shared expenses into a named project — with budgets, billing periods, and participant roles.",
+	description: "Group shared expenses into a named project, with budgets, billing periods, and participant roles.",
 }
 
 const slug = "features/projects"
@@ -17,25 +17,25 @@ export default function ProjectsPage() {
 		<article>
 			<div className="mb-8">
 				<Badge variant="secondary" className="mb-3">Features</Badge>
-				<h1 className="mb-3 font-bold text-3xl tracking-tight">Projects</h1>
+				<h1 className="mb-3 font-semibold text-3xl">Projects</h1>
 				<p className="text-lg text-muted-foreground leading-relaxed">
 					Projects are containers for organizing shared expenses. Use them for a vacation,
 					a household, a group gift, or any situation where multiple people share costs over time.
 				</p>
 			</div>
 
-			<h2 id="how-projects-work" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="how-projects-work" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				How projects work
 			</h2>
 			<p className="mb-4 text-muted-foreground leading-relaxed">
-				A project is a named container for expenses — nothing more, nothing less. There are no fixed
+				A project is a named container for expenses, nothing more and nothing less. There are no fixed
 				types. A solo project is one where you are the only participant. An ongoing project is one
 				where you use billing periods to segment time. A one-time purchase is just a project you
 				archive when the expense is settled. The features (billing periods, budgets, roles, sharing)
 				are there when you need them; you do not have to use any of them.
 			</p>
 
-			<h2 id="creating-a-project" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="creating-a-project" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Creating a Project
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -49,7 +49,7 @@ export default function ProjectsPage() {
 				<li><strong>Description</strong>: a short note about the project&apos;s purpose.</li>
 			</ul>
 
-			<h2 id="participants" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="participants" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Participants
 			</h2>
 			<p className="mb-3 text-muted-foreground leading-relaxed">
@@ -62,7 +62,7 @@ export default function ProjectsPage() {
 				<li><strong>Viewer</strong>: Read-only access. Can see expenses and balances but cannot add or change anything.</li>
 			</ul>
 
-			<h2 id="billing-periods" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="billing-periods" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Billing Periods
 			</h2>
 			<p className="mb-4 text-muted-foreground leading-relaxed">
@@ -74,7 +74,7 @@ export default function ProjectsPage() {
 				For roommates, use monthly billing periods to settle up at the end of each month.
 			</Callout>
 
-			<h2 id="budgets-and-categories" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="budgets-and-categories" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Budgets and Categories
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -82,7 +82,7 @@ export default function ProjectsPage() {
 				of spending within the project, separate from your personal budget.
 			</p>
 
-			<h2 id="activity-feed" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="activity-feed" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Activity Feed
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -90,7 +90,7 @@ export default function ProjectsPage() {
 				participants joined, settlements recorded. This is the audit trail for the group.
 			</p>
 
-			<h2 id="sharing" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="sharing" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Sharing
 			</h2>
 			<p className="text-muted-foreground leading-relaxed">
@@ -98,7 +98,7 @@ export default function ProjectsPage() {
 				person. You can configure the default role for new participants joining via the link.
 			</p>
 
-			<h2 id="archiving" className="mt-10 mb-4 font-bold text-xl tracking-tight scroll-mt-20">
+			<h2 id="archiving" className="mt-10 mb-4 font-semibold text-xl scroll-mt-20">
 				Archiving
 			</h2>
 			<p className="mb-4 text-muted-foreground leading-relaxed">

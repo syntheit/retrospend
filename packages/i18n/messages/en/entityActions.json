@@ -400,5 +400,31 @@
 			"confirmBody": "It stops running on new money. What it already assigned stays as it is.",
 			"confirmButton": "Remove rule"
 		}
+	},
+	"webhook": {
+		"test": {
+			"label": "Send test delivery"
+		},
+		"deliveries": {
+			"label": "View deliveries"
+		},
+		"turnOff": {
+			"label": "Turn off"
+		},
+		"turnOn": {
+			"label": "Turn on"
+		},
+		"rotateSecret": {
+			"label": "Rotate secret",
+			"confirmTitle": "Rotate the secret of {name}?",
+			"confirmBody": "The old secret stops working at once. Deliveries signed with it fail until your receiver uses the new one.",
+			"confirmButton": "Rotate secret"
+		},
+		"delete": {
+			"label": "Delete webhook",
+			"confirmTitle": "Delete {name}?",
+			"confirmBody": "It stops receiving events and its delivery log is deleted. This can't be undone.",
+			"confirmButton": "Delete webhook"
+		}
 	}
 }

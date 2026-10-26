@@ -1,26 +1,26 @@
 "use client";
 
-import { ExpenseSheetsSwitch } from "~/features/entry/sheets-switch";
 import { RecurringModalProvider } from "~/components/recurring-modal-provider";
 import { RevisionHistoryProvider } from "~/components/revision-history-provider";
-import { ShellSwitch } from "~/components/shell/shell-switch";
+import { AppShell } from "~/components/shell/app-shell";
+import { EntrySheetsProvider } from "~/features/entry/provider";
 import { ProjectScreen } from "./project-screen";
 
 /**
- * The redesigned project page (uiV2) for a signed-in member. The route sits
- * outside the dashboard layout, so like today's page it brings its own
- * shell and the expense, recurring and history providers.
+ * The project page for a signed-in member. The route sits outside the
+ * dashboard layout (it also serves guests and public links), so it brings
+ * its own shell and the expense, recurring and history providers.
  */
 export function ProjectPage({ id }: { id: string }) {
 	return (
-		<ExpenseSheetsSwitch>
+		<EntrySheetsProvider>
 			<RecurringModalProvider>
 				<RevisionHistoryProvider>
-					<ShellSwitch>
+					<AppShell>
 						<ProjectScreen id={id} />
-					</ShellSwitch>
+					</AppShell>
 				</RevisionHistoryProvider>
 			</RecurringModalProvider>
-		</ExpenseSheetsSwitch>
+		</EntrySheetsProvider>
 	);
 }

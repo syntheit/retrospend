@@ -10,8 +10,8 @@
  * (Wise valued at Official: USD 1 = ARS 1,412).
  */
 import type { Decimal } from "@prisma/client/runtime/index-browser";
-import { isCrypto } from "~/lib/currency-format";
-import { type PickedRate, USD } from "~/lib/money";
+import { isCrypto } from "@retrospend/domain/currency-format";
+import { type PickedRate, USD } from "@retrospend/domain/money";
 import { dec } from "~/server/services/envelope/units";
 
 export const CUSTOM_RATE_TYPE = "custom";

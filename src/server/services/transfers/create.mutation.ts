@@ -9,7 +9,7 @@
 import { randomUUID } from "node:crypto";
 import type { Decimal } from "@prisma/client/runtime/index-browser";
 import { TRPCError } from "@trpc/server";
-import { currencyDecimals } from "~/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 import type { Money } from "~/server/figures/registry";
 import { dec, toMinor } from "~/server/services/envelope/units";
 import { createExpenseIn } from "~/server/services/expense.service";

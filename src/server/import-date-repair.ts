@@ -7,7 +7,7 @@
  * user's zone. Pure; scripts/repair-import-dates.ts runs it.
  */
 // Relative import: scripts run this file with tsx, without the ~ alias.
-import { fromWallTime } from "../lib/time-zone";
+import { fromWallTime } from "@retrospend/domain/time-zone";
 
 export const IMPORT_PRICING_SOURCES = ["IMPORT", "IMPORTED"] as const;
 

@@ -15,11 +15,25 @@ export async function loadFonts() {
 		]);
 
 		cached = [
-			{ name: "DM Sans", data: regular.buffer.slice(regular.byteOffset, regular.byteOffset + regular.byteLength) as ArrayBuffer, weight: 400 },
-			{ name: "DM Sans", data: bold.buffer.slice(bold.byteOffset, bold.byteOffset + bold.byteLength) as ArrayBuffer, weight: 700 },
+			{
+				name: "DM Sans",
+				data: regular.buffer.slice(
+					regular.byteOffset,
+					regular.byteOffset + regular.byteLength,
+				) as ArrayBuffer,
+				weight: 400,
+			},
+			{
+				name: "DM Sans",
+				data: bold.buffer.slice(
+					bold.byteOffset,
+					bold.byteOffset + bold.byteLength,
+				) as ArrayBuffer,
+				weight: 700,
+			},
 		];
 	} catch {
-		// Font files not present (e.g. local dev) — fall back to the runtime's
+		// Font files not present (e.g. local dev), fall back to the runtime's
 		// default font so OG images still render instead of 500ing.
 		cached = [];
 	}

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
 	parseRawCsv,
 	parseCsv,
-	parseBudgetCsv,
 	parseWealthCsv,
 	escapeValue,
 	generateCsv,
@@ -178,96 +177,6 @@ describe("parseCsv", () => {
 		const { rows, errors } = parseCsv("");
 		expect(rows).toHaveLength(0);
 		expect(errors.length).toBeGreaterThan(0);
-	});
-});
-
-describe("parseBudgetCsv", () => {
-	const validRow = "amount,period\n500,2024-03-01";
-
-	it("parses a valid budget row", () => {
-		const { rows, errors } = parseBudgetCsv(validRow);
-		expect(errors).toHaveLength(0);
-		expect(rows[0]?.amount).toBe(500);
-		expect(rows[0]?.period).toBeInstanceOf(Date);
-	});
-
-	it("reads the currency column", () => {
-		const { rows, errors } = parseBudgetCsv(
-			"amount,currency,period\n250000,ars,2024-03-01",
-		);
-		expect(errors).toHaveLength(0);
-		expect(rows[0]?.currency).toBe("ARS");
-	});
-
-	it("leaves currency unset for exports without the column", () => {
-		const { rows } = parseBudgetCsv(validRow);
-		expect(rows[0]).not.toHaveProperty("currency");
-	});
-
-	it("rejects a malformed currency", () => {
-		const { rows, errors } = parseBudgetCsv(
-			"amount,currency,period\n500,dollars,2024-03-01",
-		);
-		expect(rows).toHaveLength(0);
-		expect(errors[0]).toMatch(/currency/);
-	});
-
-	it("accepts 'date' column instead of 'period'", () => {
-		const csv = "amount,date\n500,2024-03-01";
-		const { rows, errors } = parseBudgetCsv(csv);
-		expect(errors).toHaveLength(0);
-		expect(rows[0]?.amount).toBe(500);
-	});
-
-	it("parses isRollover=true from string 'true'", () => {
-		const csv = "amount,period,isRollover\n500,2024-03-01,true";
-		const { rows } = parseBudgetCsv(csv);
-		expect(rows[0]?.isRollover).toBe(true);
-	});
-
-	it("parses isRollover=true from string 'yes'", () => {
-		const csv = "amount,period,isRollover\n500,2024-03-01,yes";
-		const { rows } = parseBudgetCsv(csv);
-		expect(rows[0]?.isRollover).toBe(true);
-	});
-
-	it("parses isRollover=true from string '1'", () => {
-		const csv = "amount,period,isRollover\n500,2024-03-01,1";
-		const { rows } = parseBudgetCsv(csv);
-		expect(rows[0]?.isRollover).toBe(true);
-	});
-
-	it("parses isRollover=false from string 'false'", () => {
-		const csv = "amount,period,isRollover\n500,2024-03-01,false";
-		const { rows } = parseBudgetCsv(csv);
-		expect(rows[0]?.isRollover).toBe(false);
-	});
-
-	it("errors when both amount and period columns are missing", () => {
-		const csv = "categoryName\nFood";
-		const { errors } = parseBudgetCsv(csv);
-		expect(errors.length).toBeGreaterThan(0);
-	});
-
-	it("errors on invalid period date", () => {
-		const csv = "amount,period\n500,not-a-date";
-		const { rows, errors } = parseBudgetCsv(csv);
-		expect(rows).toHaveLength(0);
-		expect(errors[0]).toMatch(/period|date/i);
-	});
-
-	it("accepts zero amount (non-negative threshold)", () => {
-		const csv = "amount,period\n0,2024-03-01";
-		const { rows, errors } = parseBudgetCsv(csv);
-		expect(errors).toHaveLength(0);
-		expect(rows[0]?.amount).toBe(0);
-	});
-
-	it("errors on negative amount", () => {
-		const csv = "amount,period\n-100,2024-03-01";
-		const { rows, errors } = parseBudgetCsv(csv);
-		expect(rows).toHaveLength(0);
-		expect(errors[0]).toMatch(/amount/i);
 	});
 });
 

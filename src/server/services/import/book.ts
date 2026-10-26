@@ -13,7 +13,7 @@ import {
 	MissingRateError,
 	rateFromUsdPerUnit,
 	USD,
-} from "~/lib/money";
+} from "@retrospend/domain/money";
 import { findExchangeRate } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient } from "~prisma";
 import { type BookedRate, bookRate, type RateContext } from "../rate-types";

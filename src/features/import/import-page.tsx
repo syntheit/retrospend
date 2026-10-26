@@ -4,7 +4,6 @@ import { Archive, Download, EllipsisIcon, Settings2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { BudgetsImporterTab } from "~/components/data-management/budgets-importer-tab";
 import { WealthImporterTab } from "~/components/data-management/wealth-importer-tab";
 import { BackButton, PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
@@ -30,7 +29,7 @@ import { ReviewStep } from "./review-step";
 import { Stepper } from "./stepper";
 import { type Flow, useImportFlow } from "./use-import-flow";
 
-type ImportType = "expenses" | "accounts" | "budgets";
+type ImportType = "expenses" | "accounts";
 
 const STEP_OF: Record<Flow["step"], number> = {
 	choose: 1,
@@ -84,7 +83,7 @@ function Overflow() {
 /**
  * Import (import.html): one flat page in four steps. Choose a file (or open
  * one from Recent imports), read it, review its rows and import them as one
- * batch that Undo takes back. Accounts and Budgets keep today's importers.
+ * batch that Undo takes back. Accounts keep today's importer.
  */
 export function ImportPage() {
 	const t = useTranslations("importPage");
@@ -186,15 +185,12 @@ export function ImportPage() {
 						options={[
 							{ value: "expenses", label: t("type.expenses") },
 							{ value: "accounts", label: t("type.accounts") },
-							{ value: "budgets", label: t("type.budgets") },
 						]}
 						value={type}
 					/>
 				</div>
 				{type === "accounts" ? (
 					<WealthImporterTab />
-				) : type === "budgets" ? (
-					<BudgetsImporterTab />
 				) : (
 					<>
 						<DropZone

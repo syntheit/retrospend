@@ -15,7 +15,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 	webCookieFor,
 } from "../../core/__tests__/harness";
 
@@ -31,7 +30,6 @@ type Created = {
 };
 
 describe("/api/v1/tokens", () => {
-	useApiV1();
 	let alice: string;
 	let web: Record<string, string>;
 
@@ -174,6 +172,10 @@ describe("/api/v1/tokens", () => {
 		);
 		expect(bobsList.items).toEqual([]);
 
+		// Use the key first, so any cache of a verified key is warm.
+		expect(
+			(await call("/me", { headers: { "x-api-key": made.key } })).status,
+		).toBe(200);
 		await expectBody(
 			await call(`/tokens/${made.token.id}`, {
 				method: "DELETE",
@@ -182,6 +184,7 @@ describe("/api/v1/tokens", () => {
 			}),
 			t.revoke,
 		);
+		// The very next request is refused.
 		await expectProblem(
 			await call("/me", { headers: { "x-api-key": made.key } }),
 			401,

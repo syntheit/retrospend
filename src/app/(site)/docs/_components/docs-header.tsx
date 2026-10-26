@@ -5,13 +5,16 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "~/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/edge-panel"
+import { useTranslations } from "next-intl"
+import { Sheet } from "~/components/ui/sheet"
+import { Tip } from "~/components/ui/tooltip"
 import { useSession } from "~/hooks/use-session"
 import { DocsSidebar } from "./docs-sidebar"
 
 const REFERRER_KEY = "docs-referrer"
 
 export function DocsHeader() {
+	const t = useTranslations("landing")
 	const [open, setOpen] = useState(false)
 	const { data: session } = useSession()
 	const searchParams = useSearchParams()
@@ -36,23 +39,24 @@ export function DocsHeader() {
 		<header className="sticky top-0 z-50 border-b border-border/60 bg-background/90 backdrop-blur-md">
 			<div className="flex h-14 items-center gap-3 px-4 lg:px-6">
 				{/* Mobile sidebar trigger */}
-				<Sheet open={open} onOpenChange={setOpen}>
-					<SheetTrigger asChild>
-						<Button
-							variant="ghost"
-							size="icon"
-							className="shrink-0 lg:hidden"
-						>
-							<Menu className="h-5 w-5" />
-						</Button>
-					</SheetTrigger>
-					<SheetContent side="left" className="w-72 p-0">
-						<div className="flex h-14 items-center gap-2 border-b px-4">
-							<BookOpen className="h-4 w-4 text-primary" />
-							<span className="font-semibold text-sm">Retrospend Docs</span>
-						</div>
-						<DocsSidebar onNavigate={() => setOpen(false)} />
-					</SheetContent>
+				<Tip content={t("openMenu")}>
+					<Button
+						aria-label={t("openMenu")}
+						className="shrink-0 lg:hidden"
+						icon
+						kind="ghost"
+						onClick={() => setOpen(true)}
+					>
+						<Menu />
+					</Button>
+				</Tip>
+				<Sheet
+					footer={false}
+					onOpenChange={setOpen}
+					open={open}
+					title={t("docsMenu")}
+				>
+					<DocsSidebar onNavigate={() => setOpen(false)} />
 				</Sheet>
 
 				{/* Brand */}
@@ -69,7 +73,7 @@ export function DocsHeader() {
 
 				{referrer === "app" && (
 					<Link
-						href="/dashboard"
+						href="/home"
 						className="hidden text-muted-foreground text-sm transition-colors hover:text-foreground sm:block"
 					>
 						← Back to app
@@ -84,9 +88,9 @@ export function DocsHeader() {
 					</Link>
 				)}
 
-				<Button asChild size="sm">
+				<Button asChild kind="primary">
 					{isLoggedIn ? (
-						<Link href="/dashboard">Open App</Link>
+						<Link href="/home">Open App</Link>
 					) : (
 						<Link href="/signup">Get Started</Link>
 					)}

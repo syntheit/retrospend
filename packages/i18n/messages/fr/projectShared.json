@@ -1,0 +1,66 @@
+{
+  "signIn": "Se connecter",
+  "private": {
+    "title": "Ce projet est privé",
+    "hint": "Demande au propriétaire de le partager avec toi."
+  },
+  "expired": {
+    "title": "Ce lien ne fonctionne plus",
+    "hint": "Rouvre ton lien d'invitation, ou connecte-toi."
+  },
+  "invalidInvite": {
+    "title": "Cette invitation ne fonctionne pas",
+    "hint": "Demande un nouveau lien au propriétaire."
+  },
+  "otherProject": "Cette invitation concerne un autre projet.",
+  "notice": {
+    "guest": "Affichage en tant que {name}, invité",
+    "viewer": "Lecture seule",
+    "public": "Vue publique. Les soldes et les paiements restent privés.",
+    "create": "Créer un compte"
+  },
+  "expenses": {
+    "emptyHint": "Rien n'a encore été ajouté."
+  },
+  "add": {
+    "title": "Ajouter une dépense à {project}",
+    "what": "C'était pour quoi",
+    "date": "Date",
+    "submit": "Ajouter la dépense",
+    "added": "{title} ajoutée",
+    "split": "Payée par toi, répartie à parts égales entre {count, plural, one {# personne} other {# personnes}}",
+    "staysExpenses": "Dépenses précédentes",
+    "staysPayments": "Paiements",
+    "fillIn": "Indique pour quoi c'était et le montant."
+  },
+  "errors": {
+    "failed": "Ça n'a pas été enregistré. Réessaie."
+  },
+  "join": {
+    "title": "Rejoindre {project}",
+    "sub": "{count, plural, one {# personne} other {# personnes}} · tu rejoins en tant que {role}",
+    "back": "Retour à la liste",
+    "elsewhere": "{name} est aussi dans d'autres projets, donc cette invitation ne peut pas reprendre son historique. Rejoins en ton nom, puis demande un lien de fusion à un propriétaire.",
+    "name": "Ton nom",
+    "email": "E-mail",
+    "emailHint": "Sert à te reconnaître dans ce projet. Pas partagé publiquement.",
+    "submit": "Rejoindre le projet",
+    "joining": "Un instant",
+    "failed": "Nous n'avons pas pu t'ajouter. Réessaie.",
+    "haveAccount": "Tu as déjà un compte ? <link>Connecte-toi</link>"
+  },
+  "chooser": {
+    "title": "Es-tu l'une de ces personnes ?",
+    "hint": "Quelqu'un t'a peut-être déjà ajouté à {project}. Choisis-toi pour garder ton historique, ou rejoins en tant que nouvelle personne.",
+    "none": "Aucune d'elles, je suis nouveau"
+  },
+  "resume": {
+    "title": "Vérifie ta boîte mail",
+    "hint": "Cette adresse a déjà rejoint {project}. Nous avons envoyé un lien pour que tu reprennes là où tu en étais. Il ne fonctionne qu'une fois et expire dans une heure."
+  },
+  "done": {
+    "title": "Tu es dedans",
+    "hint": "Tu as rejoint {project} en tant que {role}.",
+    "view": "Voir le projet"
+  }
+}

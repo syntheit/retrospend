@@ -1,25 +1,35 @@
 /**
- * The project page (uiV2) for a signed-in member: the header facts, the
- * hero figures, the members with your balance with each, spending by
- * category, the payments and the expense rows, all in minor units. The
- * Summary tab's group table and who pays whom come from getProjectSummary
- * (summary.service.ts); this read never recomputes them. Callers check that
- * the user is a member first.
+ * The project page: the header facts, the hero figures, the members with
+ * your balance with each, spending by category, the payments and the expense
+ * rows, all in minor units. The Summary tab's group table and who pays whom
+ * come from getProjectSummary (summary.service.ts); this read never
+ * recomputes them. Callers check access first: a member (user or guest), a
+ * viewer link, or the public page of a PUBLIC project. A viewer link and
+ * the public page have no "you": no balances, no share, no payments. The
+ * public page, open to the internet, also loads only the newest PAGE_ROWS
+ * rows and reads its totals from aggregates.
  */
 import { getImageUrl } from "~/lib/image-url";
-import { dayKey } from "~/lib/time-zone";
+import { currencyDecimals } from "@retrospend/domain/money";
+import { dayKey } from "@retrospend/domain/time-zone";
 import type { Money } from "~/server/figures/registry";
-import { toMinor } from "~/server/services/envelope/units";
+import { fromMinor, sumMinor, toMinor } from "~/server/services/envelope/units";
 import { categoryTone } from "~/server/services/expense-list/category-tone";
 import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
+import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { userTimeZone } from "~/server/services/user-time-zone";
-import type { PrismaClient } from "~prisma";
+import { Prisma, type PrismaClient } from "~prisma";
 import { batchResolveIdentities, type Identity } from "./identities";
 import { membershipOf } from "./membership";
 import { readProjectNumbers } from "./numbers";
-import { budgetOf, byCategory, linesOf } from "./page-figures";
+import {
+	budgetOf,
+	byCategory,
+	type CategoryInput,
+	linesOf,
+} from "./page-figures";
 import { refKey } from "./summary";
 
 /** The most expense rows the page loads at once; the count says when there are more. */
@@ -39,10 +49,15 @@ function loadProject(db: PrismaClient, projectId: string) {
 	});
 }
 
-/** Every expense: the category lines need all of them; the rows show the newest PAGE_ROWS. */
-function loadExpenses(db: PrismaClient, projectId: string) {
+/**
+ * The expenses: a member's page loads every one (the category lines need them
+ * all) and shows the newest PAGE_ROWS; the public page, which anyone on the
+ * internet can ask for, loads only the newest `take`.
+ */
+function loadExpenses(db: PrismaClient, projectId: string, take?: number) {
 	return db.sharedTransaction.findMany({
 		where: { projectId },
+		...(take ? { take } : {}),
 		orderBy: [{ date: "desc" }, { createdAt: "desc" }],
 		select: {
 			id: true,
@@ -93,6 +108,71 @@ function loadPayments(db: PrismaClient, projectId: string) {
 			payment: { select: { paidOn: true } },
 		},
 	});
+}
+
+/**
+ * What the public page shows of the whole project, from three aggregate
+ * queries instead of every row: the count, the first day, the total and the
+ * spending by category, per currency. Each row is rounded to its currency's
+ * minor unit before it is summed, as the member page does, so the two never
+ * differ by a cent.
+ */
+async function loadPublicTotals(db: PrismaClient, projectId: string) {
+	const where = { projectId };
+	const [count, first, currencies] = await Promise.all([
+		db.sharedTransaction.count({ where }),
+		db.sharedTransaction.aggregate({ where, _min: { date: true } }),
+		db.sharedTransaction.groupBy({ by: ["currency"], where }),
+	]);
+	const digits = currencies.length
+		? Prisma.join(
+				currencies.map(
+					(c) => Prisma.sql`(${c.currency}::text, ${currencyDecimals(c.currency)}::int)`,
+				),
+			)
+		: Prisma.sql`(''::text, 0::int)`;
+	const groups = await db.$queryRaw<
+		{ currency: string; categoryId: string | null; minor: bigint }[]
+	>(Prisma.sql`
+		SELECT t."currency", t."categoryId",
+			SUM(ROUND(t."amount" * POWER(10::numeric, d."digits")))::bigint AS "minor"
+		FROM "shared_transaction" t
+		JOIN (VALUES ${digits}) AS d("currency", "digits") ON d."currency" = t."currency"
+		WHERE t."projectId" = ${projectId}
+		GROUP BY t."currency", t."categoryId"
+	`);
+	const ids = groups.flatMap((g) => (g.categoryId ? [g.categoryId] : []));
+	const categories = ids.length
+		? await db.category.findMany({
+				where: { id: { in: ids } },
+				select: { id: true, name: true, icon: true, color: true },
+			})
+		: [];
+	const byId = new Map(categories.map((c) => [c.id, c]));
+	const perCurrency = new Map<string, number[]>();
+	const inputs: CategoryInput[] = groups.map((g) => {
+		const minor = Number(g.minor);
+		const list = perCurrency.get(g.currency) ?? [];
+		list.push(minor);
+		perCurrency.set(g.currency, list);
+		return {
+			currency: g.currency,
+			amount: fromMinor(minor, g.currency),
+			category: g.categoryId ? (byId.get(g.categoryId) ?? null) : null,
+			myShare: null,
+		};
+	});
+	return {
+		count,
+		first: first._min.date ? day(first._min.date) : null,
+		total: [...perCurrency.entries()]
+			.map(([currency, parts]): Money => ({
+				minor: sumMinor(parts),
+				currency,
+			}))
+			.sort((a, b) => (a.currency < b.currency ? -1 : 1)),
+		byCategory: byCategory(inputs),
+	};
 }
 
 function person(key: string, people: Map<string, Identity>) {
@@ -151,8 +231,28 @@ function expenseRow(
 
 export type ProjectExpenseRow = ReturnType<typeof expenseRow>;
 
-async function myRefs(db: PrismaClient, userId: string) {
-	const me = { participantType: "user" as const, participantId: userId };
+/** Who reads the page. A link or the public has no "you". */
+export type PageViewer =
+	| { kind: "user"; userId: string }
+	| { kind: "guest"; guestId: string }
+	| { kind: "link" }
+	| { kind: "public" };
+
+/** The participant a viewer is, or null for a link and the public. */
+function refOf(viewer: PageViewer): ParticipantRef | null {
+	switch (viewer.kind) {
+		case "user":
+			return { participantType: "user", participantId: viewer.userId };
+		case "guest":
+			return { participantType: "guest", participantId: viewer.guestId };
+		default:
+			return null;
+	}
+}
+
+/** Whether a reference is the viewer (a user's claimed names count as them). */
+async function isMeFor(db: PrismaClient, me: ParticipantRef | null) {
+	if (!me) return (_: Ref) => false;
 	const { aliasesByKey } = await resolveClaimAliases(db, [me]);
 	const key = (r: Ref) => `${r.participantType}:${r.participantId}`;
 	const keys = new Set((aliasesByKey.get(key(me)) ?? [me]).map(key));
@@ -166,16 +266,44 @@ export async function readProjectPage(
 	/** The request's zone, for today. */
 	timeZone?: string,
 ) {
-	const [project, expenses, payments, isMe, numbers] = await Promise.all([
-		loadProject(db, projectId),
-		loadExpenses(db, projectId),
-		loadPayments(db, projectId),
-		myRefs(db, userId),
-		readProjectNumbers(db, projectId, {
-			participantType: "user",
-			participantId: userId,
-		}),
-	]);
+	return readPage(db, projectId, { kind: "user", userId }, timeZone);
+}
+
+/** The page for a guest, a viewer link or the public (callers checked access). */
+export async function readSharedProjectPage(
+	db: PrismaClient,
+	projectId: string,
+	viewer: Exclude<PageViewer, { kind: "user" }>,
+	timeZone?: string,
+) {
+	return readPage(db, projectId, viewer, timeZone);
+}
+
+async function readPage(
+	db: PrismaClient,
+	projectId: string,
+	viewer: PageViewer,
+	timeZone?: string,
+) {
+	const me = refOf(viewer);
+	const isPublic = viewer.kind === "public";
+	// A viewer link and the public page see no payments and no balances.
+	const noMoneyBetween = isPublic || viewer.kind === "link";
+	const [project, expenses, payments, isMe, numbers, publicTotals] =
+		await Promise.all([
+			loadProject(db, projectId),
+			loadExpenses(db, projectId, isPublic ? PAGE_ROWS : undefined),
+			noMoneyBetween ? Promise.resolve([]) : loadPayments(db, projectId),
+			isMeFor(db, me),
+			isPublic
+				? Promise.resolve(null)
+				: readProjectNumbers(
+						db,
+						projectId,
+						me ?? { participantType: "viewerLink", participantId: "" },
+					),
+			isPublic ? loadPublicTotals(db, projectId) : Promise.resolve(null),
+		]);
 	const others = project.participants.filter((p) => !isMe(p));
 	const [people, balances] = await Promise.all([
 		batchResolveIdentities(db, [
@@ -195,19 +323,18 @@ export async function readProjectPage(
 				},
 			]),
 		]),
-		computeBalanceBatch(
-			db,
-			{ participantType: "user", participantId: userId },
-			others,
-			{ projectScope: projectId },
-		),
+		me && !isPublic
+			? computeBalanceBatch(db, me, others, { projectScope: projectId })
+			: Promise.resolve([]),
 	]);
 	const meRow = project.participants.find(isMe);
-	const myKey = `user:${userId}`;
-	const myLine = numbers.members.find((m) => m.key === myKey)?.lines ?? [];
+	const myKey = me ? refKey(me) : null;
+	const myLine = numbers?.members.find((m) => m.key === myKey)?.lines ?? [];
+	const total = publicTotals?.total ?? numbers?.total ?? [];
 	const rows = expenses
 		.slice(0, PAGE_ROWS)
 		.map((e) => expenseRow(e, isMe, people));
+	const userId = viewer.kind === "user" ? viewer.userId : null;
 
 	return {
 		id: project.id,
@@ -220,21 +347,23 @@ export async function readProjectPage(
 		primaryCurrency: project.primaryCurrency,
 		autoAcceptSplits: project.autoAcceptSplits,
 		billingCycleLength: project.billingCycleLength,
-		myRole: meRow?.role ?? null,
+		myRole: viewer.kind === "link" ? ("VIEWER" as const) : (meRow?.role ?? null),
 		excludeFromAnalytics: meRow?.excludeFromAnalytics ?? false,
-		solo: others.length === 0,
-		/** Today in the user's zone, for "Today" and the date pickers. */
+		solo: meRow ? others.length === 0 : project.participants.length <= 1,
+		/** Today in the reader's zone, for "Today" and the date pickers. */
 		today: dayKey(new Date(), await userTimeZone(db, userId, timeZone)),
-		expenseCount: expenses.length,
-		firstExpense: expenses.length
-			? day((expenses.at(-1) as Expense).date)
-			: null,
+		expenseCount: publicTotals?.count ?? expenses.length,
+		firstExpense: publicTotals
+			? publicTotals.first
+			: expenses.length
+				? day((expenses.at(-1) as Expense).date)
+				: null,
 		lastExpense: rows[0]?.date ?? null,
-		total: numbers.total,
+		total,
 		myShare: myLine.map(
 			(l): Money => ({ minor: l.share, currency: l.currency }),
 		),
-		budget: budgetOf(project, numbers.total),
+		budget: budgetOf(project, total),
 		/** Everyone, you first, then in join order. */
 		members: [...(meRow ? [meRow] : []), ...others].map((p) => {
 			const i = others.indexOf(p);
@@ -250,7 +379,7 @@ export async function readProjectPage(
 				withMe: i === -1 ? [] : linesOf(balances[i]?.minorByCurrency ?? {}),
 			};
 		}),
-		byCategory: byCategory(
+		byCategory: publicTotals?.byCategory ?? byCategory(
 			expenses.map((e) => ({
 				currency: e.currency,
 				amount: e.amount,

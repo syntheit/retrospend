@@ -9,7 +9,7 @@
 import { shiftMonthStart } from "@retrospend/domain/insights";
 import { periodRateDate } from "@retrospend/domain/money";
 import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
-import { getCurrentFiscalMonth, getFiscalMonthRange } from "~/lib/fiscal-month";
+import { getCurrentFiscalMonth, getFiscalMonthRange } from "@retrospend/domain/fiscal-month";
 import type { FigureDb } from "~/server/figures/registry";
 import { spentItems } from "~/server/services/figures/spent";
 import {

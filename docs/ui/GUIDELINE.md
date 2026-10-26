@@ -266,7 +266,7 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 **The server computes every money figure** (original, home, rate, rate date, totals). The client never converts, sums or rounds money; it formats what it gets. [R9] A missing exchange rate is an error, never 1.
 
 **Every amount goes through one formatter** keyed on currency and the user's locale [R10]:
-- Today: `useCurrencyFormatter()` (`src/hooks/use-currency-formatter.ts`) on the client, `formatCurrency` and `formatNumber` in `src/lib/currency-format.ts`. Dates: `src/lib/date-locale.ts`. `toFixed`, `toLocaleString` and `Intl.NumberFormat` belong only in `packages/domain` (the one formatter, after the move) and `src/server/services`; anywhere else, today's `src/lib` formatters included, they fail UI-070, as does date formatting outside the date helpers. Writing a symbol next to a value (`` `$${x}` ``, `` `${x} €` ``) fails UI-071. Arithmetic on money fields is banned in the same places but is review-only (UI-152).
+- Today: `useCurrencyFormatter()` (`src/hooks/use-currency-formatter.ts`) on the client, `formatCurrency` and `formatNumber` in `@retrospend/domain/currency-format`. Dates: `src/lib/date-locale.ts`. `toFixed`, `toLocaleString` and `Intl.NumberFormat` belong only in `packages/domain` (the one formatter, after the move) and `src/server/services`; anywhere else, today's `src/lib` formatters included, they fail UI-070, as does date formatting outside the date helpers. Writing a symbol next to a value (`` `$${x}` ``, `` `${x} €` ``) fails UI-071. Arithmetic on money fields is banned in the same places but is review-only (UI-152).
 - ISO minor units (JPY 0 decimals). Crypto up to 8 significant digits. Whole ARS shows no cents (smart formatting).
 - Leading minus: "-ARS 2,000", never "ARS -2,000".
 - A foreign amount always shows the ISO code ("BRL 51.90", "USD 2.99"). A symbol shows only for the home currency when it is unambiguous; every "$" currency shows its code ("ARS 1,234,567").
@@ -351,7 +351,7 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 | Expense (a row), Activity (the page) | transaction (except in import and bank wording) |
 | Person; "Not on Retrospend" as a status | contact, participant, member, guest, ghost, shadow profile |
 | Project | group (except "a project groups shared expenses") |
-| Settle up (verb); Payment (the record) | square up, pay off, record payment |
+| Settle up (verb); Payment (the record); Record payment (the button for a payment made outside the app) | square up, pay off |
 | Owes you / You owe; Owed to you | receivable, payable, debt |
 | Recurring expense | subscription, bill, template |
 | Net worth (the number); Wealth (the page) | portfolio |

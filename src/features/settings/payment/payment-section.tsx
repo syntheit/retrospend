@@ -4,12 +4,6 @@ import { Link2, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { RowList } from "~/components/rows/row";
-import {
-	type Method,
-	MethodModal,
-	newLocalId,
-	type Visibility,
-} from "~/components/settings/payment-methods-card";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import { SkeletonRows } from "~/components/ui/skeleton";
@@ -29,7 +23,9 @@ import {
 	withVisibility,
 } from "./method-list";
 import { MethodRow } from "./method-row";
+import { MethodSheet } from "./method-sheet";
 import { PayLinksMenu } from "./pay-links-menu";
+import { type Method, newLocalId, type Visibility } from "./types";
 
 function fromServer(rows: RouterOutputs["paymentMethod"]["list"]): Method[] {
 	return rows.map((m) => ({
@@ -49,7 +45,7 @@ function fromServer(rows: RouterOutputs["paymentMethod"]["list"]): Method[] {
  * Payment methods: the list people pay you with, first one primary. One
  * menu per method (Edit, Make primary, Visible to, Move up, Move down,
  * Remove); every change saves the list with Undo. Adding and editing use
- * today's two-step method sheet.
+ * the two-step method sheet.
  */
 export function PaymentSection() {
 	const t = useTranslations("settingsV2.payment");
@@ -152,7 +148,7 @@ export function PaymentSection() {
 					</div>
 				</>
 			)}
-			<MethodModal
+			<MethodSheet
 				editing={editing === "new" ? null : editing}
 				onClose={() => setEditing(null)}
 				onSave={onModalSave}

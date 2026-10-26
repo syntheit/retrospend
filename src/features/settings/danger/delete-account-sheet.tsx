@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -94,45 +95,64 @@ export function DeleteAccountSheet({
 		}
 	};
 
-	const footer =
-		step === "password" ? (
-			<>
-				<Button kind="secondary" onClick={() => onOpenChange(false)}>
-					{t("cancel")}
-				</Button>
-				<Button
-					disabled={!password}
-					kind="secondary"
-					onClick={() => setStep("confirm")}
-				>
-					{t("continue")}
-				</Button>
-			</>
-		) : (
-			<>
-				<Button kind="secondary" onClick={() => onOpenChange(false)}>
-					{t("cancel")}
-				</Button>
-				<Button
-					disabled={!preview.data}
-					kind="danger"
-					loading={remove.isPending}
-					onClick={() => void destroy()}
-				>
-					{t("confirm")}
-				</Button>
-			</>
-		);
+	const onlyAdmin = preview.data?.onlyAdmin === true;
+
+	const footer = onlyAdmin ? (
+		<Button kind="secondary" onClick={() => onOpenChange(false)}>
+			{t("cancel")}
+		</Button>
+	) : step === "password" ? (
+		<>
+			<Button kind="secondary" onClick={() => onOpenChange(false)}>
+				{t("cancel")}
+			</Button>
+			<Button
+				disabled={!password}
+				kind="secondary"
+				onClick={() => setStep("confirm")}
+			>
+				{t("continue")}
+			</Button>
+		</>
+	) : (
+		<>
+			<Button kind="secondary" onClick={() => onOpenChange(false)}>
+				{t("cancel")}
+			</Button>
+			<Button
+				disabled={!preview.data}
+				kind="danger"
+				loading={remove.isPending}
+				onClick={() => void destroy()}
+			>
+				{t("confirm")}
+			</Button>
+		</>
+	);
 
 	return (
 		<Sheet
-			description={step === "password" ? t("passwordBody") : undefined}
+			description={
+				step === "password" && !onlyAdmin ? t("passwordBody") : undefined
+			}
 			footer={footer}
 			onOpenChange={onOpenChange}
 			open={open}
 			title={t("title")}
 		>
-			{step === "password" ? (
+			{onlyAdmin ? (
+				<div className="text-small flex flex-col gap-2">
+					<p className="text-fg" role="alert">
+						{t("onlyAdmin")}
+					</p>
+					<Link
+						className="rounded-ctl text-accent-strong focus-visible:outline-brand can-hover:hover:underline w-fit font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
+						href="/admin#users"
+					>
+						{t("onlyAdminLink")}
+					</Link>
+				</div>
+			) : step === "password" ? (
 				<div className="flex flex-col gap-2">
 					<Label htmlFor="del-pw">{t("password")}</Label>
 					<Input

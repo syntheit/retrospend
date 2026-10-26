@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { currencyDecimals } from "~/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 import { db as globalDb } from "~/server/db";
 import { fromMinor } from "~/server/services/envelope/units";
 import {
@@ -555,7 +555,7 @@ export class SettlementService {
 
 	/**
 	 * Sends a balance reminder notification to someone who owes you money.
-	 * Does not create a settlement — just nudges the other person.
+	 * Does not create a settlement, just nudges the other person.
 	 * Rate-limited: one reminder per person per 24 hours.
 	 */
 	async sendBalanceReminder(input: {

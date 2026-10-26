@@ -30,7 +30,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -64,7 +63,6 @@ type Received = { headers: IncomingHttpHeaders; body: string };
 const MINUTE = 60_000;
 
 describe("/api/v1/webhooks", () => {
-	useApiV1();
 	let alice: string;
 	let bob: string;
 	let asAlice: Record<string, string>;

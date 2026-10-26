@@ -36,15 +36,15 @@ function zip(base64: string) {
 }
 
 /**
- * Data: the four exports today's Data card has (expenses, budgets and
- * wealth as CSV, everything as a ZIP), one Download each, and the way to
- * Import. Same calls and file names as today.
+ * Data: the four exports (expenses and wealth as CSV; the budget's
+ * envelopes, movements, rules and months, and everything, as ZIPs), one
+ * Download each, and the way to Import.
  */
 export function DataSection() {
 	const t = useTranslations("settingsV2.data");
 	const toast = useToast();
 	const expenses = api.expense.exportCsv.useMutation();
-	const budgets = api.budget.exportCsv.useMutation();
+	const utils = api.useUtils();
 	const wealth = api.wealth.exportCsv.useMutation();
 	const all = api.exportData.allData.useMutation();
 	const [busy, setBusy] = useState<Kind | null>(null);
@@ -55,8 +55,11 @@ export function DataSection() {
 		try {
 			if (kind === "expenses")
 				save(csv((await expenses.mutateAsync({})).csv), `expenses-${day}.csv`);
-			if (kind === "budgets")
-				save(csv((await budgets.mutateAsync()).csv), `budgets-${day}.csv`);
+			if (kind === "budgets") {
+				const { zipData, filename } = await utils.envelope.exportBudget.fetch();
+				if (!zipData) throw new Error("no budget to export");
+				save(zip(zipData), filename);
+			}
 			if (kind === "wealth")
 				save(csv((await wealth.mutateAsync()).csv), `wealth-${day}.csv`);
 			if (kind === "all") {
@@ -94,7 +97,7 @@ export function DataSection() {
 		<SectionShell id="data" title={t("title")}>
 			<SettingRows>
 				{row("expenses", "csv")}
-				{row("budgets", "csv")}
+				{row("budgets", "zip")}
 				{row("wealth", "csv")}
 				{row("all", "zip")}
 				<SettingRow label={t("import")} meta={t("importMeta")}>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickBestRate } from "~/lib/money";
+import { pickBestRate } from "@retrospend/domain/money";
 import { resolveImportRate } from "../csv.service";
 
 describe("resolveImportRate (CSV import and import finalize)", () => {

@@ -1,8 +1,8 @@
 /**
  * Settings v2 saves one field at a time: a write names only what changed,
  * so an Undo or a quick second change never sends another field's older
- * value (the home currency, the username). Admins cannot delete their own
- * account, whatever the page shows.
+ * value (the home currency, the username). The last admin cannot delete their
+ * own account, whatever the page shows.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "~/test/mock-db";
@@ -33,6 +33,7 @@ vi.mock("~/server/services/username.service", () => ({
 }));
 
 import { createCallerFactory } from "~/server/api/trpc";
+import { ONLY_ADMIN_MESSAGE } from "~/server/services/account-deletion.service";
 import {
 	callAndFlush,
 	makeAdminSession,
@@ -107,13 +108,17 @@ describe("profile.update", () => {
 });
 
 describe("user.deleteAccount", () => {
-	it("refuses an admin before it checks the password", async () => {
+	it("refuses the only admin before it checks the password", async () => {
+		mockDb.user.findMany.mockResolvedValue([{ id: "admin-1" }]);
 		const caller = createCallerFactory(userRouter)(
 			ctx(makeAdminSession({ id: "admin-1" })),
 		);
 		await expect(
 			callAndFlush(() => caller.deleteAccount({ password: "whatever" })),
-		).rejects.toMatchObject({ code: "FORBIDDEN" });
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+			message: ONLY_ADMIN_MESSAGE,
+		});
 		const db = mockDb as unknown as { account: { findFirst: unknown } };
 		expect(db.account.findFirst).not.toHaveBeenCalled();
 	});

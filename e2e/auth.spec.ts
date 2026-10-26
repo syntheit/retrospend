@@ -9,7 +9,7 @@ test.describe("login", () => {
 	// Each test in this block starts with no session
 	test.use({ storageState: { cookies: [], origins: [] } });
 
-	test("login with valid credentials redirects to dashboard", async ({
+	test("login with valid credentials lands on Home", async ({
 		page,
 	}) => {
 		await gotoReady(page, "/login");
@@ -17,7 +17,7 @@ test.describe("login", () => {
 		await page.fill("#password", TEST_USER.password);
 		await page.click('button[type="submit"]');
 
-		await expect(page).toHaveURL(/\/dashboard/);
+		await expect(page).toHaveURL(/\/home/);
 	});
 
 	test("login with wrong password shows error", async ({ page }) => {
@@ -47,19 +47,19 @@ test.describe("logout", () => {
 	test.use({ storageState: { cookies: [], origins: [] } });
 
 	test("logout redirects to login and clears session", async ({ page }) => {
-		// Log in first (returns once the dashboard has hydrated)
+		// Log in first (returns once Home has hydrated)
 		await loginAsTestUser(page);
-		await expect(page).toHaveURL(/\/dashboard/);
+		await expect(page).toHaveURL(/\/home/);
 
-		// Open the user menu in the sidebar
-		await page.getByRole("button", { name: "User menu" }).click();
-		await page.getByRole("menuitem", { name: "Log out" }).click();
+		// Open the account menu at the bottom of the sidebar
+		await page.getByRole("button", { name: /Account menu/ }).click();
+		await page.getByRole("menuitem", { name: "Sign out" }).click();
 
 		// Should redirect to login
 		await expect(page).toHaveURL(/\/login/);
 
 		// Navigating to a protected route should redirect back to login (session is gone)
-		await page.goto("/transactions");
+		await page.goto("/activity");
 		await expect(page).toHaveURL(/\/login/);
 	});
 });

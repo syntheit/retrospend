@@ -1,21 +1,9 @@
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "~/components/ui/card";
-
 export function TermsContent() {
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="font-bold text-3xl">
-					Terms and Conditions
-				</CardTitle>
-				<CardDescription>Effective Date: March 4, 2026</CardDescription>
-			</CardHeader>
-			<CardContent className="space-y-6 text-muted-foreground">
+		<article>
+			<h1 className="text-fg text-title">Terms and Conditions</h1>
+			<p className="text-fg-3 text-small mt-1">Effective Date: March 4, 2026</p>
+			<div className="text-fg-2 mt-6 space-y-6">
 				<p>
 					By using Retrospend, you agree to these terms. Our data practices are
 					described in our{" "}
@@ -29,7 +17,7 @@ export function TermsContent() {
 				</p>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						1. The Service
 					</h2>
 					<p>
@@ -51,7 +39,7 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						2. Not Financial Advice
 					</h2>
 					<p>
@@ -64,7 +52,7 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						3. Your Account
 					</h2>
 					<p>
@@ -74,7 +62,7 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						4. Acceptable Use
 					</h2>
 					<p className="mb-2">You agree not to:</p>
@@ -91,7 +79,7 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						5. Limitation of Liability
 					</h2>
 					<p>
@@ -104,7 +92,7 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						6. Termination
 					</h2>
 					<p>
@@ -115,7 +103,7 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						7. Governing Law
 					</h2>
 					<p>
@@ -126,7 +114,7 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						8. Changes
 					</h2>
 					<p>
@@ -137,7 +125,7 @@ export function TermsContent() {
 				</section>
 
 				<section>
-					<h2 className="mb-2 font-semibold text-foreground text-xl">
+					<h2 className="text-foreground mb-2 text-xl font-semibold">
 						9. Contact
 					</h2>
 					<p>
@@ -151,7 +139,7 @@ export function TermsContent() {
 						.
 					</p>
 				</section>
-			</CardContent>
-		</Card>
+			</div>
+		</article>
 	);
 }

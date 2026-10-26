@@ -21,7 +21,6 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -32,7 +31,6 @@ vi.mock("next/headers", () => ({
 type Money = { minor: number; currency: string };
 
 describe("gap-closing reads and small writes", () => {
-	useApiV1();
 	let userId: string;
 	let otherId: string;
 	let savings: string;

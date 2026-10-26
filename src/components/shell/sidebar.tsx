@@ -11,7 +11,6 @@ import { cn } from "~/lib/cn";
 import {
 	currentNav,
 	DESTINATIONS,
-	hrefOf,
 	type NavBadges,
 	type NavEntry,
 	pinnedProjects,
@@ -57,14 +56,12 @@ function EntryLinks({
 	return (
 		<nav aria-label={label} className="flex flex-col gap-0.5">
 			{entries.map((entry) => {
-				const href = hrefOf(entry);
-				if (!href) return null;
 				const Icon = entry.icon;
 				return (
 					<SidebarLink
 						badge={badges?.[entry.id as keyof NavBadges]}
 						current={current === entry.id}
-						href={href}
+						href={entry.href}
 						key={entry.id}
 						label={t(entry.id)}
 						lead={<Icon aria-hidden="true" className="size-4" />}

@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { useToast } from "~/components/ui/toast";
 import { firstName } from "~/features/people/filter";
 import { canConfirm, useRecurring } from "~/features/recurring/use-recurring";
@@ -52,7 +52,7 @@ export function toVerify(
 export function useNeedsActions(list: NeedsYouList | undefined) {
 	const t = useTranslations("homePage.needs");
 	const toast = useToast();
-	const modal = useExpenseModal();
+	const modal = useEntryActions();
 	const recurring = useRecurring();
 	const confirm = api.settlement.paymentConfirm.useMutation();
 	const unconfirm = api.settlement.paymentUnconfirm.useMutation();

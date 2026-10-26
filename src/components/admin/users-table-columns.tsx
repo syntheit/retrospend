@@ -152,19 +152,15 @@ export function createUserColumns(
 				const isDormant = daysSinceLastExpense > 14;
 
 				if (!row.original.isActive) {
-					return <Badge variant="destructive">{t("statusDisabled")}</Badge>;
+					return <Badge label={t("statusDisabled")} status="error" />;
 				}
 				if (isDormant) {
 					return (
-						<Badge className="border-transparent bg-yellow-500/10 text-yellow-500 shadow-none hover:bg-yellow-500/20">
-							{t("statusDormant")}
-						</Badge>
+						<Badge label={t("statusDormant")} status="upcoming" />
 					);
 				}
 				return (
-					<Badge className="border-transparent bg-emerald-500/10 text-emerald-500 shadow-none hover:bg-emerald-500/20">
-						{t("statusActive")}
-					</Badge>
+					<Badge label={t("statusActive")} status="funded" />
 				);
 			},
 		},

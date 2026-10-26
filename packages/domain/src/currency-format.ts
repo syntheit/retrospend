@@ -19,7 +19,7 @@ export function getDecimalDigits(currency: string, smart = true): number {
 
 /**
  * Formats a number with thousands separators and fixed decimals.
- * Symbol-free — use for input formatting and display-only numbers.
+ * Symbol-free: use for input formatting and display-only numbers.
  */
 export function formatNumber(value: number, decimals = 2): string {
 	return new Intl.NumberFormat("en-US", {

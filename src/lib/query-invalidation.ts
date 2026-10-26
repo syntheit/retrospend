@@ -4,7 +4,7 @@ import type { QueryClient } from "@tanstack/react-query";
  * Centralized mutation → query invalidation map.
  *
  * Every tRPC mutation automatically invalidates its own router's queries.
- * This map declares ADDITIONAL cross-router invalidations — the routers
+ * This map declares ADDITIONAL cross-router invalidations, the routers
  * whose queries should also be refreshed when a given mutation succeeds.
  *
  * Adding a new mutation? If it only affects its own router, no entry needed.
@@ -18,9 +18,6 @@ import type { QueryClient } from "@tanstack/react-query";
 const SHARED_TX_DEPS = [
 	"project",
 	"people",
-	"budget",
-	"dashboard",
-	"stats",
 	"insights",
 	"billingPeriod",
 	"expense",
@@ -29,9 +26,6 @@ const SHARED_TX_DEPS = [
 
 // The envelope budget reads every expense, share and settlement (build plan 02 §5.4).
 const EXPENSE_DEPS = [
-	"dashboard",
-	"budget",
-	"stats",
 	"insights",
 	"envelope",
 ] as const;
@@ -41,8 +35,6 @@ const SETTLEMENT_DEPS = [
 	"people",
 	"project",
 	"billingPeriod",
-	"dashboard",
-	"stats",
 	"insights",
 	"envelope",
 	"expense",
@@ -54,26 +46,15 @@ const CATEGORY_DEPS = [
 	"expense",
 	"sharedTransaction",
 	"project",
-	"dashboard",
-	"budget",
 	"envelope",
 ] as const;
 
-// Budgets feed the dashboard overview (budget totals, remaining).
-const BUDGET_DEPS = ["dashboard"] as const;
-
 // Fiscal month start and home currency shift every month-scoped reader.
 const GENERAL_SETTINGS_DEPS = [
-	"dashboard",
-	"budget",
-	"stats",
 	"insights",
 	"expense",
 	"envelope",
 ] as const;
-
-// Envelope writes move the budget figures the dashboard shows.
-const ENVELOPE_DEPS = ["dashboard"] as const;
 
 export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	// ── Shared transactions (project expenses) ──────────────────────────
@@ -83,77 +64,45 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 
 	// ── Envelope budget ─────────────────────────────────────────────────
 	// Setup writes the starting balance row.
-	"envelope.setup": ["dashboard", "expense"],
-	"envelope.assign": ENVELOPE_DEPS,
-	"envelope.move": ENVELOPE_DEPS,
-	"envelope.cover": ENVELOPE_DEPS,
-	"envelope.undo": ENVELOPE_DEPS,
-	"envelope.carryOverspend": ENVELOPE_DEPS,
-	"envelope.fixNegative": ENVELOPE_DEPS,
-	"envelope.reset": ENVELOPE_DEPS,
-	"envelope.setLimit": ENVELOPE_DEPS,
-	"envelope.revertLimit": ENVELOPE_DEPS,
-	"envelope.acknowledgeMonth": ENVELOPE_DEPS,
-	"envelope.pause": ENVELOPE_DEPS,
-	"envelope.resume": ENVELOPE_DEPS,
-	"envelope.applyRuleToMonth": ENVELOPE_DEPS,
-	"envelope.createRule": ENVELOPE_DEPS,
-	"envelope.updateRule": ENVELOPE_DEPS,
-	"envelope.reorderRules": ENVELOPE_DEPS,
-	"envelope.archiveRule": ENVELOPE_DEPS,
-	"envelope.applyDraft": ENVELOPE_DEPS,
-	"envelope.unapplyDraft": ENVELOPE_DEPS,
-	"envelope.fundPlanNow": ENVELOPE_DEPS,
-	"envelope.setGroupTarget": ENVELOPE_DEPS,
-	"envelope.setTarget": ENVELOPE_DEPS,
-	"envelope.createEnvelope": ENVELOPE_DEPS,
-	"envelope.updateEnvelope": ENVELOPE_DEPS,
-	"envelope.mergeEnvelopes": ["dashboard", "stats", "insights", "project"],
-	"envelope.archiveEnvelope": ["dashboard", "stats", "insights", "project"],
+	"envelope.setup": ["expense"],
+	"envelope.mergeEnvelopes": ["insights", "project"],
+	"envelope.archiveEnvelope": ["insights", "project"],
 	"envelope.undoChange": [
-		"dashboard",
-		"stats",
 		"insights",
 		"project",
 		"expense",
 	],
-	"envelope.confirmStartingMoney": ["dashboard", "expense"],
+	"envelope.confirmStartingMoney": ["expense"],
 	// Style, period and routing change what reports group and the dashboard shows.
-	"envelope.setStyle": ["dashboard", "stats", "insights"],
-	"envelope.revertStyle": ["dashboard", "stats", "insights"],
-	"envelope.setBookPeriod": ["dashboard", "stats", "insights"],
-	"envelope.setProjectRouting": ["dashboard", "stats", "insights", "project"],
-	"envelope.setShareCategory": ["expense", "stats", "insights"],
+	"envelope.setStyle": ["insights"],
+	"envelope.revertStyle": ["insights"],
+	"envelope.setBookPeriod": ["insights"],
+	"envelope.setProjectRouting": ["insights", "project"],
+	"envelope.setShareCategory": ["expense", "insights"],
 	// These write Adjustment money-in rows.
-	"envelope.reconcile": ["dashboard", "expense"],
-	"envelope.removeAdjustment": ["dashboard", "expense"],
-	"envelope.welcomeBack": ["dashboard", "expense"],
+	"envelope.reconcile": ["expense"],
+	"envelope.removeAdjustment": ["expense"],
+	"envelope.welcomeBack": ["expense"],
 	// Debts: terms and the plan change the Wealth liability view and bills;
 	// a payment moves accounts, the liability and the budget.
 	// A hidden-rows answer changes the row's flags: lists, stats and the budget.
-	"envelope.resolveHidden": ["dashboard", "expense", "stats", "insights"],
-	"envelope.revertHidden": ["dashboard", "expense", "stats", "insights"],
+	"envelope.resolveHidden": ["expense", "insights"],
+	"envelope.revertHidden": ["expense", "insights"],
 	"envelope.dismissMigrationNotice": [],
-	"envelope.setDebtTerms": ["wealth", "dashboard"],
-	"envelope.savePayoffPlan": ENVELOPE_DEPS,
-	"envelope.revertPayoffPlan": ENVELOPE_DEPS,
+	"envelope.setDebtTerms": ["wealth"],
 	"envelope.recordDebtPayment": [
 		"wealth",
 		"expense",
-		"dashboard",
-		"stats",
 		"insights",
 	],
 	"envelope.forgive": [
 		"people",
-		"dashboard",
 		"home",
 		"expense",
 		"sharedTransaction",
 	],
 	"envelope.unforgive": [
 		"people",
-		"dashboard",
 		"home",
 		"expense",
 		"sharedTransaction",
@@ -187,7 +136,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"expense.updateExpense": EXPENSE_DEPS,
 	"expense.deleteExpense": EXPENSE_DEPS,
 	"expense.importExpenses": EXPENSE_DEPS,
-	"expense.bulkUpdateCategory": ["dashboard", "stats", "insights", "budget"],
+	"expense.bulkUpdateCategory": ["insights"],
 
 	// ── Add family (4G): the same writes through the entry router ─────────
 	"entry.expense.create.save": [...EXPENSE_DEPS, "expense"],
@@ -207,34 +156,26 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 		"verification",
 	],
 	"entry.shared.delete.save": [...SHARED_TX_DEPS, "sharedTransaction"],
-	"entry.transfer.save": ["wealth", "expense", "envelope", "dashboard"],
+	"entry.transfer.save": ["wealth", "expense", "envelope"],
 	// Income feeds Insights' money in and savings rate.
 	"wealth.income.add.save": [
 		"insights",
 		"expense",
 		"envelope",
-		"dashboard",
-		"budget",
 		"recurring",
 	],
 	"wealth.income.delete.save": [
 		"insights",
 		"expense",
 		"envelope",
-		"dashboard",
-		"budget",
 		"recurring",
 	],
-	"wealth.transfers.delete.save": ["expense", "envelope", "dashboard", "entry"],
+	"wealth.transfers.delete.save": ["expense", "envelope", "entry"],
 
 	// ── Settlements ─────────────────────────────────────────────────────
 	"settlement.create": SETTLEMENT_DEPS,
 	"settlement.settleAll": SETTLEMENT_DEPS,
-	"settlement.confirm": SETTLEMENT_DEPS,
 	"settlement.reject": SETTLEMENT_DEPS,
-	"settlement.deletePending": SETTLEMENT_DEPS,
-	"settlement.void": SETTLEMENT_DEPS,
-	"settlement.squareUp": SETTLEMENT_DEPS,
 	// Settle all in one project (and its Undo) records or removes payments.
 	"project.settleAll": SETTLEMENT_DEPS,
 	"project.settleAllUndo": SETTLEMENT_DEPS,
@@ -244,26 +185,15 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 		"project",
 		"sharedTransaction",
 		"people",
-		"stats",
 		"insights",
 	],
 	"billingPeriod.settlePeriod": [
 		"project",
 		"settlement",
 		"people",
-		"stats",
 		"insights",
 	],
 	"billingPeriod.updateLabel": ["project"],
-
-	// ── Budgets ─────────────────────────────────────────────────────────
-	"budget.upsertBudget": BUDGET_DEPS,
-	"budget.batchUpsertBudgets": BUDGET_DEPS,
-	"budget.deleteBudget": BUDGET_DEPS,
-	"budget.copyFromLastMonth": BUDGET_DEPS,
-	"budget.upsertGlobalBudget": BUDGET_DEPS,
-	"budget.deleteGlobalBudget": BUDGET_DEPS,
-	"budget.importBudgets": BUDGET_DEPS,
 
 	// ── Categories ──────────────────────────────────────────────────────
 	"categories.update": CATEGORY_DEPS,
@@ -272,9 +202,6 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	// ── Recurring ───────────────────────────────────────────────────────
 	"recurring.confirmAndCreate": [
 		"expense",
-		"dashboard",
-		"budget",
-		"stats",
 		"insights",
 		"sharedTransaction",
 	],
@@ -284,33 +211,24 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"verification.reject": ["project", "people", "sharedTransaction"],
 
 	// ── Import ──────────────────────────────────────────────────────────
-	"importQueue.finalizeImport": [
-		"expense",
-		"dashboard",
-		"budget",
-		"stats",
-		"insights",
-	],
-	// The Import page (uiV2): one batch in, or the batch out again.
+	// The Import page: one batch in, or the batch out again.
 	"importQueue.commit": [...EXPENSE_DEPS, "expense", "entry"],
 	"importQueue.undo": [...EXPENSE_DEPS, "expense", "entry"],
 
 	// ── Project ─────────────────────────────────────────────────────────
-	"project.create": ["dashboard"],
-	"project.update": ["dashboard"],
-	"project.delete": ["dashboard"],
+	"project.create": [],
+	"project.update": [],
+	"project.delete": [],
 	// Hide from reports moves every spending total, Insights included.
-	"project.updateAnalyticsExclusion": ["dashboard", "insights"],
+	"project.updateAnalyticsExclusion": ["insights"],
 	"project.addParticipant": ["people"],
 	"project.removeParticipant": ["people"],
 
 	// ── Exchange rates ──────────────────────────────────────────────────
 	"exchangeRate.syncNow": [
-		"dashboard",
 		"wealth",
 		"project",
 		"people",
-		"stats",
 		"insights",
 	],
 
@@ -321,8 +239,8 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 	"user.updateProfile": ["profile"],
 
 	// ── Preferences (favorites affect dashboard) ────────────────────────
-	"preferences.updateAnalyticsCategoryPreference": ["dashboard"],
-	"preferences.deleteAnalyticsCategoryPreference": ["dashboard"],
+	"preferences.updateAnalyticsCategoryPreference": [],
+	"preferences.deleteAnalyticsCategoryPreference": [],
 
 	// ── Audit log ───────────────────────────────────────────────────────
 	"auditLog.markTransactionSeen": ["project", "sharedTransaction"],
@@ -361,6 +279,8 @@ export function handleMutationSuccess(
 	if (!path) return;
 	// A preview is the write run and rolled back (R30): nothing it read has changed.
 	if (path.endsWith(".preview")) return;
+	// /api/v1 mutations (@retrospend/api-client) invalidate by their event type.
+	if (path.startsWith("v1.")) return;
 
 	const ownRouter = path.split(".")[0]!;
 	const additional = CROSS_ROUTER_INVALIDATIONS[path] ?? [];

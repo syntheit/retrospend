@@ -256,11 +256,11 @@
 	"budget": {
 		"title": "Budget",
 		"error": "Impossible de charger le budget",
-		"errorDetail": "Vérifiez votre connexion et réessayez.",
+		"errorDetail": "Vérifie ta connexion et réessaie.",
 		"noBudget": "Pas encore de budget",
-		"noBudgetDetail": "Créez votre budget sur le web. Il s’affiche ici quand il est prêt.",
-		"paused": "Votre budget est en pause",
-		"pausedDetail": "Rien n’est compté pendant la pause. Reprenez-le sur le web.",
+		"noBudgetDetail": "Crée ton budget sur le web. Il s’affiche ici quand il est prêt.",
+		"paused": "Ton budget est en pause",
+		"pausedDetail": "Rien n’est compté pendant la pause. Reprends-le sur le web.",
 		"wealth": "Patrimoine et comptes",
 		"webForNow": "Les objectifs, les règles, la configuration et le reste sont pour l’instant sur le web.",
 		"month": {
@@ -276,29 +276,29 @@
 			"label": {
 				"toAssign": "À affecter",
 				"week": "Reste cette semaine",
-				"limits": "Reste dans vos plafonds",
-				"overLimits": "Au-delà de vos plafonds",
+				"limits": "Reste dans tes plafonds",
+				"overLimits": "Au-delà de tes plafonds",
 				"overBudget": "Budget dépassé en {month}",
 				"saveFirst": "Reste à dépenser après l’épargne",
 				"leftToSpend": "Reste à dépenser en {month}"
 			},
-			"plannedTooMuch": "Vous avez planifié {amount} de plus que ce que vous avez, nous l’avons retiré de ce chiffre.",
-			"overBudget": "Vous avez dépensé {amount} de plus que prévu pour {month}. Couvrez-le avec de l’argent non planifié, sinon il sera pris sur {next}.",
-			"billsShort": "Les factures ont encore besoin de {amount}. Planifiez-les d’abord ; ce chiffre ne les inclut pas.",
-			"usedUp": "Vous avez tout utilisé des Dépenses de {month}. Le reste sera pris sur {next}.",
-			"faster": "Vous dépensez plus vite que prévu. Pour finir dans le budget, restez autour de {amount} par jour.",
+			"plannedTooMuch": "Tu as planifié {amount} de plus que ce que tu as, nous l’avons retiré de ce chiffre.",
+			"overBudget": "Tu as dépensé {amount} de plus que prévu pour {month}. Couvre-le avec de l’argent non planifié, sinon il sera pris sur {next}.",
+			"billsShort": "Les factures ont encore besoin de {amount}. Planifie-les d’abord ; ce chiffre ne les inclut pas.",
+			"usedUp": "Tu as tout utilisé des Dépenses de {month}. Le reste sera pris sur {next}.",
+			"faster": "Tu dépenses plus vite que prévu. Pour finir dans le budget, reste autour de {amount} par jour.",
 			"someOver": "Environ {amount} par jour pendant {days, plural, one {# jour restant} other {# jours restants}}, après le dépassement de {names} de {over}.",
-			"onTrack": "Vous êtes dans les clous : environ {amount} par jour pendant {days, plural, one {# jour restant} other {# jours restants}}.",
-			"allAssigned": "Tout votre argent a une destination.",
+			"onTrack": "Tu es dans les clous : environ {amount} par jour pendant {days, plural, one {# jour restant} other {# jours restants}}.",
+			"allAssigned": "Tout ton argent a une destination.",
 			"needsJob": "{amount} n’ont pas encore de destination.",
-			"overAssigned": "Vous avez réparti {amount} de plus que ce que vous avez.",
+			"overAssigned": "Tu as réparti {amount} de plus que ce que tu as.",
 			"weekLeft": "Environ {amount} par jour. Remise à zéro : {resets}.",
-			"weekUsed": "Vous avez utilisé l’allocation de la semaine. Remise à zéro : {resets}.",
-			"limitsOver": "Vous dépassez vos plafonds de {amount}.",
-			"limitsUsedUp": "Vous avez utilisé tous vos plafonds de {month}.",
-			"limitsFaster": "Vous utilisez vos plafonds plus vite que le mois n’avance. Environ {amount} par jour vous gardent dedans.",
-			"limitsSomeOver": "{names} dépasse de {over}. Il reste environ {amount} par jour dans vos plafonds.",
-			"limitsOnTrack": "Dans les clous : environ {amount} par jour dans vos plafonds.",
+			"weekUsed": "Tu as utilisé l’allocation de la semaine. Remise à zéro : {resets}.",
+			"limitsOver": "Tu dépasses tes plafonds de {amount}.",
+			"limitsUsedUp": "Tu as utilisé tous tes plafonds de {month}.",
+			"limitsFaster": "Tu utilises tes plafonds plus vite que le mois n’avance. Environ {amount} par jour te gardent dedans.",
+			"limitsSomeOver": "{names} dépasse de {over}. Il reste environ {amount} par jour dans tes plafonds.",
+			"limitsOnTrack": "Dans les clous : environ {amount} par jour dans tes plafonds.",
 			"action": {
 				"FIX_PLAN": "Corriger mon plan",
 				"COVER": "Couvrir",
@@ -322,7 +322,7 @@
 			"TO_ASSIGN": "À attribuer"
 		},
 		"owed": {
-			"title": "On vous doit",
+			"title": "On te doit",
 			"people": "{count, plural, one {# personne} other {# personnes}}"
 		},
 		"group": {
@@ -397,7 +397,7 @@
 			"lead": "{name} dépasse de {amount}. Couvrir ramène de l’argent d’ailleurs.",
 			"notOver": "{name} ne dépasse pas, il n’y a donc rien à couvrir.",
 			"from": "Prendre sur",
-			"pickSource": "Choisissez une source",
+			"pickSource": "Choisis une source",
 			"source": "{name}, {amount}",
 			"sourceDue": "{source}, échéance le {date}",
 			"sourceFallback": "Enveloppe",
@@ -419,11 +419,11 @@
 		},
 		"usePlan": {
 			"title": "Utiliser mon plan",
-			"lead": "Votre plan donne {amount} à ces destinations.",
-			"met": "Vos objectifs sont déjà atteints.",
+			"lead": "Ton plan donne {amount} à ces destinations.",
+			"met": "Tes objectifs sont déjà atteints.",
 			"envelopeFallback": "Enveloppe",
 			"why": {
-				"PLAN": "de votre plan enregistré",
+				"PLAN": "de ton plan enregistré",
 				"OVERSPENT": "couvre les dépassements",
 				"BILL": "facture",
 				"GROUP": "objectif du groupe",
@@ -437,25 +437,25 @@
 			"saveIt": "L’épargner dans {name}",
 			"nextMonth": "Mois suivant ({month})",
 			"use": "Utiliser mon plan",
-			"loadError": "Impossible de charger votre plan.",
+			"loadError": "Impossible de charger ton plan.",
 			"toast": "Plan utilisé pour {count, plural, one {# enveloppe} other {# enveloppes}}"
 		},
 		"takeBack": {
 			"title": "Le reprendre",
-			"lead": "Vous avez planifié {amount} de plus que ce que vous avez. Le manque revient de vos enveloppes, d’abord les Dépenses, puis l’Épargne. Les factures restent telles quelles.",
-			"nothing": "Vous n’avez rien planifié au-delà de ce que vous avez.",
+			"lead": "Tu as planifié {amount} de plus que ce que tu as. Le manque revient de tes enveloppes, d’abord les Dépenses, puis l’Épargne. Les factures restent telles quelles.",
+			"nothing": "Tu n’as rien planifié au-delà de ce que tu as.",
 			"submit": "Le reprendre",
 			"toast": "{amount} repris"
 		},
 		"preview": {
 			"checking": "Vérification",
-			"error": "Impossible de vérifier. Réessayez.",
+			"error": "Impossible de vérifier. Réessaie.",
 			"changes": "Ce qui change",
 			"beforeAfter": "{before}, puis {after}",
 			"leftOf": "Reste dans {name}",
 			"nothing": "Cela ne change rien.",
 			"envelopeFallback": "Enveloppe",
-			"refused": "Impossible en l’état. Changez le montant.",
+			"refused": "Impossible en l’état. Change le montant.",
 			"nothingElse": "Rien d'autre ne change : {list} restent tels quels.",
 			"nothingElseOne": "Rien d'autre ne change : {item} reste tel quel.",
 			"noneChange": "Aucun changement : {list}.",
@@ -464,10 +464,10 @@
 		},
 		"write": {
 			"saving": "Enregistrement",
-			"error": "Impossible d’enregistrer. Réessayez.",
+			"error": "Impossible d’enregistrer. Réessaie.",
 			"undone": "Annulé",
 			"undoError": "Impossible d’annuler. Cela a peut-être déjà changé.",
-			"amountInvalid": "Utilisez des chiffres et les décimales de cette devise."
+			"amountInvalid": "Utilise des chiffres et les décimales de cette devise."
 		},
 		"listAnd": "{head} et {last}",
 		"figures": {
@@ -533,7 +533,7 @@
 			"sentence": "{total} sur {count, plural, one {# dette} other {# dettes}}. Environ {months, plural, one {# mois} other {# mois}} avec ce plan.",
 			"capped": "Aux minimums, les intérêts dépassent les paiements.",
 			"leftToSpend": "Reste à dépenser {amount}",
-			"unavailable": "Vos dettes n'ont pas pu se charger."
+			"unavailable": "Tes dettes n’ont pas pu se charger."
 		}
 	},
 	"wealth": {
@@ -581,7 +581,7 @@
 			"LIABILITY_CREDIT_CARD": "Carte de crédit",
 			"LIABILITY_MORTGAGE": "Prêt immobilier"
 		},
-		"owes": "Vous devez",
+		"owes": "Tu dois",
 		"closed": {
 			"title": "Comptes clôturés",
 			"badge": "Clôturé"
@@ -589,11 +589,11 @@
 		"withoutRate": "{count, plural, one {# compte n’a pas encore de taux et reste hors du patrimoine} other {# comptes n’ont pas encore de taux et restent hors du patrimoine}}",
 		"webForNow": "Ajouter des comptes, des taux et le reste se fait pour l’instant sur le web.",
 		"error": "Impossible de charger le patrimoine",
-		"errorDetail": "Vérifiez votre connexion et réessayez.",
+		"errorDetail": "Vérifie ta connexion et réessaie.",
 		"empty": "Pas encore de comptes",
-		"emptyDetail": "Ajoutez sur le web un compte bancaire, un placement ou un prêt pour suivre votre patrimoine.",
+		"emptyDetail": "Ajoute sur le web un compte bancaire, un placement ou un prêt pour suivre ton patrimoine.",
 		"accountError": "Impossible de charger ce compte",
-		"owedNow": "Vous devez",
+		"owedNow": "Tu dois",
 		"balance": "Solde",
 		"updatedOn": "Mis à jour le {date}",
 		"noRate": "Pas encore de taux pour {currency}, ce compte reste donc hors du patrimoine.",
@@ -614,7 +614,7 @@
 			"submit": "Mettre à jour le solde",
 			"netWorth": "Patrimoine",
 			"notLogged": "Non enregistré",
-			"notLoggedHint": "Vos revenus et dépenses ne changent pas. La différence est classée dans Non enregistré.",
+			"notLoggedHint": "Tes revenus et dépenses ne changent pas. La différence est classée dans Non enregistré.",
 			"same": "C’est déjà le solde, rien ne change donc.",
 			"toast": "{name} est maintenant à {amount}"
 		}

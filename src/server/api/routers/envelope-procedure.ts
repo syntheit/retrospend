@@ -12,7 +12,6 @@ import {
 	previewOutputSchema,
 } from "~/lib/schemas/envelope";
 import { protectedProcedure } from "~/server/api/trpc";
-import { isFlagEnabled } from "~/server/flags";
 import {
 	EnvelopeError,
 	type EnvelopeErrorCode,
@@ -30,14 +29,9 @@ const CODES: Record<EnvelopeErrorCode, TRPC_ERROR_CODE_KEY> = {
 	ALREADY_UNDONE: "CONFLICT",
 };
 
-/** Signed in, flag on; domain errors leave as tRPC codes in one place. */
+/** Signed in; domain errors leave as tRPC codes in one place. */
 export const envelopeProcedure = protectedProcedure.use(
 	async ({ ctx, next }) => {
-		if (!(await isFlagEnabled("envelopeBudget", ctx.session.user)))
-			throw new TRPCError({
-				code: "FORBIDDEN",
-				message: "The new budget is not available yet",
-			});
 		const result = await next();
 		if (!result.ok && result.error.cause instanceof EnvelopeError) {
 			throw new TRPCError({

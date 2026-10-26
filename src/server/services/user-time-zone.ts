@@ -1,4 +1,4 @@
-import { normalizeTimeZone } from "~/lib/time-zone";
+import { normalizeTimeZone } from "@retrospend/domain/time-zone";
 import type { Prisma, PrismaClient } from "~prisma";
 
 /** The zone when a user has none stored and DEFAULT_TIME_ZONE is unset. */

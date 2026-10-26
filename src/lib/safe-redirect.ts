@@ -5,11 +5,11 @@
  * dashboard.
  */
 export function safeRedirect(raw: string | null | undefined): string {
-	if (!raw?.startsWith("/")) return "/dashboard";
-	if (raw.startsWith("//") || raw.includes("\\")) return "/dashboard";
+	if (!raw?.startsWith("/")) return "/home";
+	if (raw.startsWith("//") || raw.includes("\\")) return "/home";
 	for (const ch of raw) {
 		const code = ch.charCodeAt(0);
-		if (code < 0x20 || code === 0x7f) return "/dashboard";
+		if (code < 0x20 || code === 0x7f) return "/home";
 	}
 	return raw;
 }

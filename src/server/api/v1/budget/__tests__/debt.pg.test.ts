@@ -13,13 +13,11 @@ import {
 	call,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 import {
 	bookedUser,
 	mobileFrom,
 	toV1,
-	useBudgetV1,
 	withoutStamps,
 } from "./fixtures";
 
@@ -40,8 +38,6 @@ type Preview = {
 };
 
 describe("/api/v1/budget debts", () => {
-	useApiV1();
-	useBudgetV1();
 	let as: Record<string, string>;
 	let stranger: Record<string, string>;
 	let ids: Record<string, string>;

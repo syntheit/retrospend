@@ -16,12 +16,10 @@ import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
 	EXPECTED_LISTED,
 	EXPECTED_READINGS,
-	EXPECTED_RECENT,
 } from "./spending-expected";
 import {
 	at,
 	expenseData,
-	MARCH as MARCH_LABEL,
 	NOW,
 	type Row,
 	type SpendingFixture,
@@ -59,7 +57,7 @@ async function addMoneyIn(fixture: SpendingFixture) {
 			direction: "IN",
 			inType: "INCOME",
 		},
-		// Inside the dashboard's last 24 hours.
+		// Inside the last 24 hours.
 		{
 			title: "Salary",
 			amount: 1_000_000,
@@ -207,11 +205,7 @@ describe("money in never reaches a spending reader", () => {
 		expect(plain).toMatchObject(EXPECTED_READINGS);
 	});
 
-	for (const reader of Object.keys(EXPECTED_READINGS).concat(
-		"trend",
-		"listed",
-		"recent",
-	)) {
+	for (const reader of Object.keys(EXPECTED_READINGS).concat("listed")) {
 		if (reader === "categories") continue;
 		it(`leaves ${reader} unchanged with income, transfers and adjustments`, () => {
 			expect(withMoneyIn[reader as keyof Readings]).toEqual(
@@ -250,40 +244,10 @@ describe("money in never reaches a spending reader", () => {
 	describe("a refund", () => {
 		// March spending 422,000 less the 1,500 Groceries refund.
 		const MARCH = 420_500;
-		const summary = {
-			totalThisMonth: MARCH,
-			changeVsLastMonth: ((MARCH - 60_000) / 60_000) * 100,
-			dailyAverage: MARCH / 31,
-			projectedSpend: 45_000,
-		};
-		const breakdown = [
-			["Rent", 300_000],
-			["Groceries", 60_500],
-			["Uncategorized", 60_000],
-		];
 
 		it("nets against spending in its month and category", () => {
 			expect(withRefund).toMatchObject({
-				summary,
-				breakdown,
-				statsSummary: summary,
 				spendingTotalMarch: MARCH,
-				budgets: [
-					["Groceries", 60_500, 60_500],
-					["Rent", 300_000, 300_000],
-				],
-				overviewMarch: {
-					monthTotal: MARCH,
-					dailyBudgetPace: { totalSpent: 360_500, variableSpent: 60_500 },
-					workEquivalent: { totalSpent: MARCH },
-				},
-				dashboard: { monthTotal: MARCH, summary, categories: breakdown },
-				// Groceries by month: 30,000, 20,000, 60,500
-				suggestions: {
-					suggestedAmount: 30_000,
-					averageSpend: 36_833.33,
-					lastMonthSpend: 60_500,
-				},
 				// The refund lowers the total but is not a transaction, as in totalEntries.
 				lifetime: { totalSpent: 536_500, totalTransactions: 10 },
 				profileLifetime: { lifetimeSpend: 536_500, totalEntries: 12 },
@@ -296,16 +260,8 @@ describe("money in never reaches a spending reader", () => {
 			});
 		});
 
-		it("lowers the trend from its own day", () => {
-			const day = (label: string) =>
-				withRefund.trend.find((d) => d[0] === label);
-			expect(day("Mar 24")).toEqual(["Mar 24", 422_000, 300_000, 122_000]);
-			expect(day("Mar 25")).toEqual(["Mar 25", MARCH, 300_000, 120_500]);
-		});
-
 		it("is not listed by the screens that cannot label it yet", () => {
 			expect(withRefund.listed).toEqual(EXPECTED_LISTED);
-			expect(withRefund.recent).toEqual(EXPECTED_RECENT);
 			expect(withRefund.csvLines).toBe(EXPECTED_READINGS.csvLines);
 		});
 	});
@@ -318,7 +274,7 @@ describe("a user with only money in", () => {
 	});
 	afterAll(() => vi.useRealTimers());
 
-	it("has no expenses: the dashboard empty state and the lists stay empty", async () => {
+	it("has no expenses: the lists stay empty", async () => {
 		const { user } = await createTestUser();
 		await adminDb.expense.createMany({
 			data: [
@@ -346,14 +302,6 @@ describe("a user with only money in", () => {
 		await addSidecarIncome(user.id);
 		const c = callers(user.id);
 
-		const overview = await c.dashboard.getOverviewData({
-			month: MARCH_LABEL,
-			homeCurrency: "ARS",
-		});
-		expect(overview.hasExpenses).toBe(false);
-		await expect(
-			c.dashboard.getRecentActivity({ homeCurrency: "ARS" }),
-		).resolves.toEqual([]);
 		await expect(c.expense.listFinalized()).resolves.toEqual([]);
 		await expect(c.profile.getLifetimeStats()).resolves.toMatchObject({
 			totalEntries: 0,

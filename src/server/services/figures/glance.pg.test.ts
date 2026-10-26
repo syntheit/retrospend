@@ -20,7 +20,7 @@ import {
 	getCurrentFiscalMonth,
 	getFiscalMonthRange,
 	shiftMonth,
-} from "~/lib/fiscal-month";
+} from "@retrospend/domain/fiscal-month";
 import { homeRouter } from "~/server/api/routers/home";
 import { createCallerFactory } from "~/server/api/trpc";
 import { readFigures } from "~/server/figures/read";
@@ -202,7 +202,7 @@ describe("figure glance.spent", () => {
 		await expect(readFigures(user.id, ["glance.spent"])).resolves.toEqual(
 			new Map([["glance.spent", null]]),
 		);
-		const g = await glance(adminDb, user.id, { budget: false });
+		const g = await glance(adminDb, user.id, {});
 		expect(g.spent.value).toBeNull();
 		expect(g.pace.this).toBeNull();
 		expect(g.missingRates).toEqual(["ISK"]);
@@ -224,7 +224,7 @@ describe("figure glance.spent", () => {
 			where: { id: t.id },
 			data: { currency: "ISK" },
 		});
-		const g = await glance(adminDb, user.id, { budget: false });
+		const g = await glance(adminDb, user.id, {});
 		expect(g.spent.value).toBeNull();
 		// Last period has no ISK row, so it still totals.
 		expect(g.spentLast.value).toEqual(mxn(0));
@@ -274,7 +274,7 @@ describe("figure glance.spentLastToDate", () => {
 
 describe("glance()", () => {
 	it("reads the same numbers the registry serves, owed both ways, net worth", async () => {
-		const g = await glance(adminDb, sofia, { budget: true });
+		const g = await glance(adminDb, sofia, {});
 		const r = await readFigures(sofia, [
 			"glance.spent",
 			"glance.spentLast",
@@ -304,7 +304,7 @@ describe("glance()", () => {
 	});
 
 	it("the pace line: day by day this period to today, the last in full", async () => {
-		const g = await glance(adminDb, sofia, { budget: false });
+		const g = await glance(adminDb, sofia, {});
 		expect(g.period).toMatchObject({ from: thisFirst, day: dayIndex });
 		expect(g.lastPeriod).toMatchObject({
 			from: lastFirst,
@@ -329,7 +329,7 @@ describe("glance()", () => {
 			...setupInput(s),
 			timeZone: "UTC",
 		});
-		const g = await glance(adminDb, s.user.id, { budget: true });
+		const g = await glance(adminDb, s.user.id, {});
 		expect(g.budget).toMatchObject({
 			state: "ready",
 			verdict: {
@@ -346,8 +346,6 @@ describe("glance()", () => {
 		expect([g.budget.leftToSpend.left]).toEqual(r.get("budget.leftToSpend"));
 		// With a book, the budget row stands in for money in.
 		expect(g.moneyIn).toBeNull();
-		const off = await glance(adminDb, s.user.id, { budget: false });
-		expect(off.budget).toBeNull();
 	});
 
 	it("is served as home.glance", async () => {

@@ -18,7 +18,6 @@ import {
 	createTestUser,
 	expectBody,
 	expectProblem,
-	useApiV1,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -64,7 +63,6 @@ async function passwordUser() {
 }
 
 describe("/api/v1/profile", () => {
-	useApiV1();
 	let lucia: { id: string; email: string };
 	let asLucia: Record<string, string>;
 

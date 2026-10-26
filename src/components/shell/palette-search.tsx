@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { List, Receipt, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { useExpenseModal } from "~/components/expense-modal-provider";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { Money } from "~/components/money/money";
 import { CategoryGlyph } from "~/components/pickers/category-picker";
 import { ProjectVisual } from "~/components/project/project-visual";
@@ -51,7 +51,7 @@ function HitItem({
 	run: (fn: () => void) => () => void;
 }) {
 	const t = useTranslations("shell.palette");
-	const { openExpense } = useExpenseModal();
+	const { openExpense } = useEntryActions();
 	// The server matched it (accents included), so the palette's own filter
 	// must keep it: the value carries the query.
 	const value = `search ${hit.type} ${hit.id} ${query}`;

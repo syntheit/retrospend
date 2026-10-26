@@ -8,7 +8,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { makeSignature } from "better-auth/crypto";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { env } from "~/env";
-import { dayKey, fromWallTime } from "~/lib/time-zone";
+import { dayKey, fromWallTime } from "@retrospend/domain/time-zone";
 import { appRouter } from "~/server/api/root";
 import { createCallerFactory, createTRPCContext } from "~/server/api/trpc";
 import { spentFigure } from "~/server/services/figures/spent";

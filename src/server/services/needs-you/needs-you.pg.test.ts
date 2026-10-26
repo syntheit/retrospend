@@ -28,7 +28,6 @@ import {
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { peopleOverview } from "~/server/services/people/overview";
 import { forUser } from "~/server/services/preview";
-import { updateAppSettings } from "~/server/services/settings";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
@@ -152,7 +151,7 @@ async function seedBudget(s: Awaited<ReturnType<typeof seedUser>>) {
 }
 
 const now = new Date();
-const opts = { budget: true, timeZone: "UTC", now } as const;
+const opts = { timeZone: "UTC", now } as const;
 
 let sofia: Awaited<ReturnType<typeof seedUser>>;
 let lucia: TestUser;
@@ -300,15 +299,6 @@ describe("needsYou on Postgres", () => {
 			.map((i) => i.entity?.id)
 			.sort();
 		expect(people.needs.map((n) => n.id).sort()).toEqual(mine);
-	});
-
-	it("with the budget off there are no budget items", async () => {
-		const list = await needsYou(adminDb, sofia.user.id, {
-			...opts,
-			budget: false,
-		});
-		expect(list.items.some((i) => i.group === "budget")).toBe(false);
-		expect(list.counts.budget).toBe(0);
 	});
 
 	it("RLS: read as Martín, Sofía's recurring, imports, claims and budget never show", async () => {
@@ -495,25 +485,9 @@ describe("home.needsYou procedure", () => {
 			headers: new Headers({ "x-timezone": "UTC" }),
 		} as never);
 
-	it("budget items only with envelopeBudgetMode on", async () => {
+	it("carries the budget items", async () => {
 		const c = caller(sofia.user);
-		const off = await c.needsYou();
-		expect(off.counts.budget).toBe(0);
-		await adminDb.appSettings.update({
-			where: { id: "app_settings_singleton" },
-			data: { envelopeBudgetMode: "ALL" },
-		});
-		await updateAppSettings({});
-		try {
-			const on = await c.needsYou();
-			expect(on.counts.budget).toBe(3);
-			expect(on.counts.total).toBe(off.counts.total + 3);
-		} finally {
-			await adminDb.appSettings.update({
-				where: { id: "app_settings_singleton" },
-				data: { envelopeBudgetMode: "OFF" },
-			});
-			await updateAppSettings({});
-		}
+		const list = await c.needsYou();
+		expect(list.counts.budget).toBe(3);
 	});
 });

@@ -4,7 +4,6 @@ import type { ColumnVisibilityState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { DataTableColumnDef } from "~/components/data-table-features";
-import { Badge } from "~/components/ui/badge";
 import { DataTable } from "~/components/data-table";
 import { MonthStepper } from "~/components/date/MonthStepper";
 import { useIsMobile } from "~/hooks/use-mobile";
@@ -62,9 +61,9 @@ export function AiUsageTable() {
 						{localTokensUsed > 0 ? (
 							<span className="inline-flex items-center gap-1.5">
 								{localTokensUsed.toLocaleString()}
-								<Badge className="tabular-nums text-[10px]" variant="outline">
+								<span className="text-fg-3 text-meta tabular-nums">
 									{localPct}%
-								</Badge>
+								</span>
 							</span>
 						) : (
 							<span className="text-muted-foreground">-</span>
@@ -83,12 +82,11 @@ export function AiUsageTable() {
 						{externalTokensUsed > 0 ? (
 							<span className="inline-flex items-center gap-1.5">
 								{externalTokensUsed.toLocaleString()}
-								<Badge
-									className={`tabular-nums text-[10px] ${extPct >= 100 ? "border-destructive text-destructive" : ""}`}
-									variant="outline"
+								<span
+									className={`text-meta tabular-nums ${extPct >= 100 ? "text-danger" : "text-fg-3"}`}
 								>
 									{extPct}%
-								</Badge>
+								</span>
 							</span>
 						) : (
 							<span className="text-muted-foreground">-</span>

@@ -7,7 +7,7 @@
  * so the pure modules have no dependency on work in flight.
  */
 import { Decimal } from "@prisma/client/runtime/index-browser";
-import { currencyDecimals } from "~/lib/money";
+import { currencyDecimals } from "@retrospend/domain/money";
 import type { DecimalLike, Minor } from "./types";
 
 /** Decimal with enough precision for amount x rate x 10^8 without loss. */

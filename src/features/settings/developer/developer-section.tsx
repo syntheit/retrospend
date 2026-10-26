@@ -1,49 +1,35 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import Link from "next/link";
 import { Button } from "~/components/ui/button";
+import { API_DOCS_HREF } from "~/features/api-docs/hrefs";
 import { useToast } from "~/components/ui/toast";
 import { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
+import { SettingRow, SettingRows } from "../setting-row";
 import { SectionShell } from "../section-shell";
-import { CreateTokenSheet } from "./create-token-sheet";
-import { DeviceRow, KeyRow, TokenBlock, useTokenWords } from "./token-rows";
-import { type ApiToken, listTokens, revokeToken } from "./tokens";
-
-const KEYS = ["settings", "apiKeys"] as const;
+import { DeviceRow, TokenBlock, useTokenWords } from "./token-rows";
+import { TokensBlock } from "./tokens-block";
+import { WebhooksBlock } from "./webhooks-block";
 
 /**
- * Developer (IMPLEMENTATION §2.3): personal API keys (list, create shown
- * once, revoke) and the devices approved at /device, read by session id
- * from deviceSession (no token reaches the page). Revoking either one
- * cannot be undone, so the menu asks first with a named button.
+ * Developer (IMPLEMENTATION §2.3): personal API keys and webhooks on the
+ * v1 API, the devices approved at /device (read by session id from
+ * deviceSession; no token reaches the page) and a link to the API
+ * reference. Anything that cannot be undone asks first with a named button.
  */
 export function DeveloperSection() {
 	const t = useTranslations("settingsV2.developer");
 	const words = useTokenWords();
 	const toast = useToast();
-	const client = useQueryClient();
 	const utils = api.useUtils();
 	const { data: session } = useSession();
-	const keys = useQuery({ queryKey: KEYS, queryFn: listTokens });
 	const devices = api.deviceSession.list.useQuery();
 	const disconnect = api.deviceSession.disconnect.useMutation();
-	const [creating, setCreating] = useState(false);
 	const isAdmin =
 		(session?.user as { role?: string } | undefined)?.role === "ADMIN";
 
-	const revoke = async (k: ApiToken) => {
-		try {
-			await revokeToken(k.id);
-			toast.saved(t("revoked", { name: k.name }));
-		} catch {
-			toast.failed(t("failed"));
-		}
-		await client.invalidateQueries({ queryKey: KEYS });
-	};
 	const unplug = async (id: string, name: string) => {
 		try {
 			await disconnect.mutateAsync({ id });
@@ -54,34 +40,10 @@ export function DeveloperSection() {
 		await utils.deviceSession.list.invalidate();
 	};
 
-	const add = (
-		<Button kind="secondary" onClick={() => setCreating(true)} size="sm">
-			<Plus aria-hidden="true" />
-			{t("newKey")}
-		</Button>
-	);
-
 	return (
-		<SectionShell action={add} id="developer" title={t("title")}>
-			<TokenBlock
-				empty={{ title: t("noKeys"), hint: t("noKeysHint") }}
-				first
-				state={{
-					isLoading: keys.isLoading,
-					isError: keys.isError,
-					count: keys.data?.length ?? 0,
-					retry: () => void keys.refetch(),
-				}}
-				title={t("keys")}
-			>
-				{keys.data?.map((k) => (
-					<KeyRow
-						key={k.id}
-						onRevoke={() => void revoke(k)}
-						token={k}
-					/>
-				))}
-			</TokenBlock>
+		<SectionShell id="developer" title={t("title")}>
+			<TokensBlock isAdmin={isAdmin} />
+			<WebhooksBlock />
 			<TokenBlock
 				empty={{ title: t("noDevices"), hint: t("noDevicesHint") }}
 				state={{
@@ -100,12 +62,13 @@ export function DeveloperSection() {
 					/>
 				))}
 			</TokenBlock>
-			<CreateTokenSheet
-				isAdmin={isAdmin}
-				onCreated={() => client.invalidateQueries({ queryKey: KEYS })}
-				onOpenChange={setCreating}
-				open={creating}
-			/>
+			<SettingRows className="mt-6" label={t("reference")}>
+				<SettingRow label={t("reference")} meta={t("referenceHint")}>
+					<Button asChild kind="secondary" size="sm">
+						<Link href={API_DOCS_HREF}>{t("openReference")}</Link>
+					</Button>
+				</SettingRow>
+			</SettingRows>
 		</SectionShell>
 	);
 }
