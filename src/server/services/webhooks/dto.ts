@@ -16,6 +16,12 @@ export function toWebhookDto(row: Webhook): WebhookDto {
 		eventTypes: row.eventTypes,
 		enabled: row.enabled,
 		secretStart: row.secretStart,
+		previousSecretExpiresAt:
+			row.previousSecretCipher &&
+			row.previousSecretExpiresAt &&
+			row.previousSecretExpiresAt.getTime() > Date.now()
+				? iso(row.previousSecretExpiresAt)
+				: null,
 		disabledReason: reason ?? null,
 		disabledAt: iso(row.disabledAt),
 		consecutiveFailures: row.consecutiveFailures,

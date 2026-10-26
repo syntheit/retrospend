@@ -1,6 +1,7 @@
 import { env } from "~/env";
 import { db } from "~/server/db";
 import { getAppSettings } from "~/server/services/settings";
+import { capHostOf, runWithLimits } from "~/server/services/webhooks/pool";
 import type { Resolver } from "~/server/services/webhooks/ssrf";
 import type { PushDelivery, PushTransport } from "~prisma";
 import { enabledTransports, type PushConfig, pushConfig } from "./config";
@@ -9,10 +10,8 @@ import { FAN_OUT_BATCH, fanOutPushEvents, STALE_MS } from "./fanout";
 import { PUSH_KINDS } from "./kinds";
 import { buildPushMessage, PUSH_TTL_SECONDS, parsePushData } from "./message";
 import { raiseRecurringDue } from "./recurring";
-import { runWithLimits } from "./pool";
 import {
 	CLAIM_LEASE_MS,
-	capHostOf,
 	isUnreachable,
 	PARALLEL_ATTEMPTS,
 	PER_HOST_ATTEMPTS,
@@ -236,10 +235,28 @@ async function pickDue(now: Date): Promise<Due[]> {
 	return picked.flatMap((p) => byId.get(p.id) ?? []);
 }
 
-/** Sends the deliveries that are due. Returns how many it tried. */
+/** Batches one call to processDuePushes works through before it stops. */
+const MAX_ROUNDS = 20;
+
+/**
+ * Sends the deliveries that are due. Returns how many it tried. A batch
+ * holds a few deliveries per account, so the call takes batch after batch
+ * until nothing is due: a person with a long queue is served in turns with
+ * everyone else instead of all at once.
+ */
 export async function processDuePushes(
 	options: PushWorkerOptions = {},
 ): Promise<number> {
+	let total = 0;
+	for (let round = 0; round < MAX_ROUNDS; round++) {
+		const tried = await processBatch(options);
+		total += tried;
+		if (tried === 0) break;
+	}
+	return total;
+}
+
+async function processBatch(options: PushWorkerOptions): Promise<number> {
 	const now = options.now ?? new Date();
 	const config = options.config ?? pushConfig();
 	const due = await pickDue(now);

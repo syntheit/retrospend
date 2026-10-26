@@ -1,14 +1,29 @@
 /**
  * A small concurrency pool with three caps: in flight overall, per user and
- * per host. The push worker sends through it so that one account, or one
- * slow endpoint, cannot take the slots every other person's push needs (a
- * UnifiedPush endpoint is an address a user chose, and one that answers
- * after ten seconds, or never, costs a slot for that long).
+ * per host. The webhook and push workers send through it so that one
+ * account, or one slow endpoint, cannot take the slots every other person's
+ * delivery needs (a webhook URL or a UnifiedPush endpoint is an address a
+ * user chose, and one that answers after ten seconds, or never, costs a slot
+ * for that long).
  *
  * A job that cannot start yet (its user or host is at its cap) waits and
  * lets later jobs go ahead; it starts as soon as something it was waiting
  * on frees up. Otherwise jobs start in the order given.
  */
+
+/** The host a cap counts a user-chosen URL under: its last two labels, or null when it is not a URL. */
+export function capHostOf(endpoint: string | null): string | null {
+	if (!endpoint) return null;
+	let hostname: string;
+	try {
+		hostname = new URL(endpoint).hostname.toLowerCase().replace(/\.$/, "");
+	} catch {
+		return null;
+	}
+	// An address (or a bracketed IPv6 one) is its own host.
+	if (/^[\d.]+$/.test(hostname) || hostname.startsWith("[")) return hostname;
+	return hostname.split(".").slice(-2).join(".");
+}
 
 export type Limits = { total: number; perUser: number; perHost: number };
 

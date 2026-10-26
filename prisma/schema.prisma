@@ -2289,6 +2289,9 @@ model Webhook {
   eventTypes          String[]
   secretCipher        String            @db.VarChar(512)
   secretStart         String            @db.VarChar(16)
+  /// The secret before the last rotation, kept only while `previousSecretExpiresAt` is in the future: deliveries are signed with both.
+  previousSecretCipher    String?       @db.VarChar(512)
+  previousSecretExpiresAt DateTime?
   enabled             Boolean           @default(true)
   consecutiveFailures Int               @default(0)
   disabledAt          DateTime?

@@ -3,7 +3,7 @@ import {
 	WEBHOOK_SIGNATURE_HEADER,
 } from "@retrospend/api-contract";
 import type { ApiEvent, Webhook } from "~prisma";
-import { decryptSecret, signWebhook } from "./secret";
+import { decryptSecret, signWebhookWith } from "./secret";
 import { type SendResult, sendWebhook } from "./send";
 import type { Resolver } from "./ssrf";
 
@@ -46,9 +46,29 @@ export function testEventBody(id: string, at: Date): string {
 	});
 }
 
+type SignedWebhook = Pick<Webhook, "url" | "secretCipher"> &
+	Partial<Pick<Webhook, "previousSecretCipher" | "previousSecretExpiresAt">>;
+
+/**
+ * The secrets a delivery is signed with: the current one, and the one it
+ * replaced while the owner's grace period for it runs. A previous secret
+ * that cannot be read is skipped; the current one decides.
+ */
+function signingSecrets(webhook: SignedWebhook, now: Date): string[] {
+	const current = decryptSecret(webhook.secretCipher);
+	const { previousSecretCipher: cipher, previousSecretExpiresAt: until } =
+		webhook;
+	if (!cipher || !until || until.getTime() <= now.getTime()) return [current];
+	try {
+		return [current, decryptSecret(cipher)];
+	} catch {
+		return [current];
+	}
+}
+
 /** One signed attempt against the webhook's URL. */
 export function deliverOnce(
-	webhook: Pick<Webhook, "url" | "secretCipher">,
+	webhook: SignedWebhook,
 	delivery: {
 		id: string;
 		eventId: string | null;
@@ -57,11 +77,12 @@ export function deliverOnce(
 	},
 	options: DeliveryOptions,
 ): Promise<SendResult> {
-	const seconds = Math.floor((options.now ?? new Date()).getTime() / 1000);
+	const now = options.now ?? new Date();
+	const seconds = Math.floor(now.getTime() / 1000);
 	let signature: string;
 	try {
-		signature = signWebhook(
-			decryptSecret(webhook.secretCipher),
+		signature = signWebhookWith(
+			signingSecrets(webhook, now),
 			delivery.body,
 			seconds,
 		);

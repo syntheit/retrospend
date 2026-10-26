@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Limits, runWithLimits, type Slot } from "./pool";
+import { capHostOf, type Limits, runWithLimits, type Slot } from "./pool";
 
 type Job = Slot & { name: string };
 
@@ -146,5 +146,23 @@ describe("runWithLimits", () => {
 			{ total: 1, perUser: 1, perHost: 1 },
 			async () => {},
 		);
+	});
+});
+
+describe("capHostOf", () => {
+	it("counts subdomains under their registered domain", () => {
+		expect(capHostOf("https://a.evil.example/up/1")).toBe("evil.example");
+		expect(capHostOf("https://B.Evil.Example./up/2")).toBe("evil.example");
+		expect(capHostOf("https://ntfy.sh/topic")).toBe("ntfy.sh");
+	});
+
+	it("keeps an address as it is", () => {
+		expect(capHostOf("http://10.0.0.5:8080/x")).toBe("10.0.0.5");
+		expect(capHostOf("http://[2001:db8::1]/x")).toBe("[2001:db8::1]");
+	});
+
+	it("has no host for something that is not a URL", () => {
+		expect(capHostOf(null)).toBeNull();
+		expect(capHostOf("not a url")).toBeNull();
 	});
 });

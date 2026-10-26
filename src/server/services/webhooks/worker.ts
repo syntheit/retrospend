@@ -3,9 +3,14 @@ import { db } from "~/server/db";
 import { getAppSettings } from "~/server/services/settings";
 import type { Prisma } from "~prisma";
 import { type DeliveryOptions, deliverOnce, eventBody } from "./deliver";
+import { capHostOf, runWithLimits } from "./pool";
 import {
 	AUTO_DISABLE_AFTER,
 	CLAIM_LEASE_MS,
+	PARALLEL_ATTEMPTS,
+	PER_HOST_ATTEMPTS,
+	PER_USER_ATTEMPTS,
+	PER_USER_BATCH,
 	RETENTION_DAYS,
 	retryDelayMs,
 } from "./schedule";
@@ -50,7 +55,6 @@ export type WorkerOptions = {
 
 const FAN_OUT_BATCH = 200;
 const ATTEMPT_BATCH = 50;
-const PARALLEL = 5;
 const DAY_MS = 86_400_000;
 /** Wake-up while the horizon holds events back. */
 const HORIZON_RETRY_MS = 2000;
@@ -254,42 +258,92 @@ async function attempt(
 	await settle(delivery, result, now, lease);
 }
 
-/** Attempts the deliveries that are due. Returns how many it tried. */
+/**
+ * The due deliveries to work on now: at most PER_USER_BATCH per account,
+ * oldest first, interleaved across accounts (everyone's oldest, then
+ * everyone's second oldest). Plain "oldest first" would let one account with
+ * a backlog fill the batch for as long as the backlog lasts.
+ */
+async function pickDue(now: Date): Promise<DueDelivery[]> {
+	const picked = await db.$queryRaw<{ id: string }[]>`
+		SELECT "id" FROM (
+			SELECT "id", "nextAttemptAt",
+				row_number() OVER (PARTITION BY "userId" ORDER BY "nextAttemptAt", "id") AS "rank"
+			FROM "webhook_delivery"
+			WHERE "status" = 'PENDING' AND "nextAttemptAt" <= ${now}
+		) due
+		WHERE "rank" <= ${PER_USER_BATCH}
+		ORDER BY "rank", "nextAttemptAt", "id"
+		LIMIT ${ATTEMPT_BATCH}`;
+	if (picked.length === 0) return [];
+	const rows = await db.webhookDelivery.findMany({
+		where: { id: { in: picked.map((p) => p.id) } },
+		include: { webhook: true, event: true },
+	});
+	const byId = new Map(rows.map((r) => [r.id, r]));
+	return picked.flatMap((p) => byId.get(p.id) ?? []);
+}
+
+/** Batches one call to processDueDeliveries works through before it stops. */
+const MAX_ROUNDS = 20;
+
+/**
+ * Attempts the deliveries that are due. Returns how many it tried. A batch
+ * holds a few deliveries per account, so the call takes batch after batch
+ * until nothing is due: a person with a long queue is served in turns with
+ * everyone else instead of all at once.
+ */
 export async function processDueDeliveries(
 	options: WorkerOptions = {},
 ): Promise<number> {
-	const now = options.now ?? new Date();
-	const due = await db.webhookDelivery.findMany({
-		where: { status: "PENDING", nextAttemptAt: { lte: now } },
-		orderBy: { nextAttemptAt: "asc" },
-		take: ATTEMPT_BATCH,
-		include: { webhook: true, event: true },
-	});
+	let total = 0;
+	for (let round = 0; round < MAX_ROUNDS; round++) {
+		const tried = await processBatch(options);
+		total += tried;
+		if (tried === 0) break;
+	}
+	return total;
+}
+
+async function processBatch(options: WorkerOptions): Promise<number> {
+	const due = await pickDue(options.now ?? new Date());
 	if (due.length === 0) return 0;
 	const allowPrivate = await allowPrivateTargets(options);
 	let tried = 0;
-	for (let i = 0; i < due.length; i += PARALLEL) {
-		await Promise.all(
-			due.slice(i, i + PARALLEL).map(async (delivery) => {
-				const lease = await claim(delivery, now);
-				if (!lease) return;
-				tried += 1;
-				try {
-					await attempt(delivery, { ...options, allowPrivate, now }, lease);
-				} catch (error) {
-					// Count it as a failed attempt, so a delivery that always throws
-					// runs out of retries instead of being picked up forever.
-					console.error(`Webhook delivery ${delivery.id} failed:`, error);
-					await settle(
-						delivery,
-						{ ok: false, error: "internal_error", statusCode: null },
-						now,
-						lease,
-					).catch(() => undefined);
-				}
-			}),
-		);
-	}
+	await runWithLimits(
+		due,
+		(delivery) => ({
+			user: delivery.userId,
+			host: capHostOf(delivery.webhook.url),
+		}),
+		{
+			total: PARALLEL_ATTEMPTS,
+			perUser: PER_USER_ATTEMPTS,
+			perHost: PER_HOST_ATTEMPTS,
+		},
+		async (delivery) => {
+			// A fresh time per claim: a batch can take a while, and a lease
+			// measured from the start of the sweep would already be short (or
+			// over) for the later deliveries.
+			const now = options.now ?? new Date();
+			const lease = await claim(delivery, now);
+			if (!lease) return;
+			tried += 1;
+			try {
+				await attempt(delivery, { ...options, allowPrivate, now }, lease);
+			} catch (error) {
+				// Count it as a failed attempt, so a delivery that always throws
+				// runs out of retries instead of being picked up forever.
+				console.error(`Webhook delivery ${delivery.id} failed:`, error);
+				await settle(
+					delivery,
+					{ ok: false, error: "internal_error", statusCode: null },
+					now,
+					lease,
+				).catch(() => undefined);
+			}
+		},
+	);
 	return tried;
 }
 

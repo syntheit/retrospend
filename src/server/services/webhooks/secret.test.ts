@@ -10,6 +10,7 @@ import {
 	encryptSecret,
 	generateWebhookSecret,
 	signWebhook,
+	signWebhookWith,
 	verifyWebhookSignature,
 } from "./secret";
 import { matchesEventFilter } from "./worker";
@@ -66,6 +67,39 @@ describe("webhook signature", () => {
 		expect(verifyWebhookSignature(secret, "v1=abc", body, now)).toBe(false);
 		expect(verifyWebhookSignature(secret, "t=x,v1=abc", body, now)).toBe(false);
 		expect(verifyWebhookSignature(secret, `t=${t},v1=short`, body, now)).toBe(
+			false,
+		);
+	});
+});
+
+describe("webhook signature while a secret is being replaced", () => {
+	const body = '{"id":"evt_1"}';
+	const t = 1_800_000_000;
+	const now = { nowSeconds: t + 5 };
+
+	it("carries one v1 entry per secret, the new one first", () => {
+		const header = signWebhookWith(["whsec_new", "whsec_old"], body, t);
+		const parts = header.split(",");
+		expect(parts[0]).toBe(`t=${t}`);
+		expect(parts).toHaveLength(3);
+		expect(parts[1]).toBe(signWebhook("whsec_new", body, t).split(",")[1]);
+		expect(parts[2]).toBe(signWebhook("whsec_old", body, t).split(",")[1]);
+	});
+
+	it("is the plain header when there is one secret", () => {
+		expect(signWebhookWith(["whsec_a"], body, t)).toBe(
+			signWebhook("whsec_a", body, t),
+		);
+	});
+
+	it("verifies for either secret, and for no other", () => {
+		const header = signWebhookWith(["whsec_new", "whsec_old"], body, t);
+		expect(verifyWebhookSignature("whsec_new", header, body, now)).toBe(true);
+		expect(verifyWebhookSignature("whsec_old", header, body, now)).toBe(true);
+		expect(verifyWebhookSignature("whsec_other", header, body, now)).toBe(
+			false,
+		);
+		expect(verifyWebhookSignature("whsec_old", header, `${body} `, now)).toBe(
 			false,
 		);
 	});

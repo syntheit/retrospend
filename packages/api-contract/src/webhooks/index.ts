@@ -6,6 +6,8 @@ import { idParamsSchema, idSchema, okSchema, timestampSchema } from "../core";
 
 export const MAX_WEBHOOKS_PER_USER = 10;
 export const MAX_WEBHOOK_EVENT_TYPES = 50;
+/** The longest a replaced signing secret may keep signing: seven days. */
+export const MAX_SECRET_GRACE_SECONDS = 7 * 24 * 60 * 60;
 
 /** `expense.created`, or `expense.*` for every event of one resource. */
 export const WEBHOOK_EVENT_FILTER_PATTERN =
@@ -48,6 +50,8 @@ export const webhookSchema = z
 		enabled: z.boolean(),
 		/** The first characters of the secret, to tell secrets apart. */
 		secretStart: z.string(),
+		/** While in the future, deliveries are also signed with the secret this one replaced. */
+		previousSecretExpiresAt: timestampSchema.nullable(),
 		disabledReason: z.enum(WEBHOOK_DISABLED_REASONS).nullable(),
 		disabledAt: timestampSchema.nullable(),
 		/** Deliveries that ran out of retries since the last success; 5 switch the webhook off. */
@@ -81,6 +85,18 @@ export const updateWebhookSchema = z
 export const updateWebhookInputSchema = idParamsSchema.extend(
 	updateWebhookSchema.shape,
 );
+
+export const rotateWebhookSecretInputSchema = idParamsSchema.extend({
+	graceSeconds: z
+		.int()
+		.min(0)
+		.max(MAX_SECRET_GRACE_SECONDS)
+		.default(0)
+		.meta({
+			description:
+				"Seconds the old secret keeps signing next to the new one (at most 7 days). 0, the default, stops it at once: use that when the secret leaked.",
+		}),
+});
 
 /** The webhook plus its signing secret, shown this once. */
 export const webhookWithSecretSchema = z
@@ -116,6 +132,7 @@ const TAG = ["Webhooks"];
 const DELIVERY_NOTE = [
 	"Each delivery is a POST of one event (the body is the Event without its cursor), signed in the Retrospend-Signature header as `t=<unix seconds>,v1=<hex>`, where v1 is HMAC-SHA256 over `<t>.<raw body>` with the secret.",
 	"Reject a timestamp more than 300 seconds from your clock.",
+	"While a rotated secret is in its grace period the header holds one v1 entry per secret (`t=<seconds>,v1=<new>,v1=<old>`): accept the delivery when any of them matches.",
 	"Delivery is at least once and not ordered: dedupe on the Retrospend-Event-Id header (the event id).",
 	"A non-2xx answer or a timeout is retried after 1, 2, 4 ... minutes (at most 6 hours) for 10 attempts; a webhook whose last 5 deliveries ran out of retries is switched off.",
 	"Redirects are not followed.",
@@ -193,14 +210,14 @@ export const webhooksContract = {
 			operationId: "rotateWebhookSecret",
 			tags: TAG,
 			summary: "Replace the signing secret",
-			description: `The old secret stops working at once. ${SECRET_NOTE}`,
+			description: `The old secret stops working at once, unless graceSeconds asks to keep it signing for a while (deliveries then carry both signatures). Rotating again inside the grace period drops the older secret. ${SECRET_NOTE}`,
 		})
 		.meta({
 			scope: "write:settings",
 			event: "webhook.secret_rotated",
 			secretResponse: true,
 		})
-		.input(idParamsSchema)
+		.input(rotateWebhookSecretInputSchema)
 		.output(webhookWithSecretSchema),
 	test: v1
 		.route({

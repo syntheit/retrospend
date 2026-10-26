@@ -595,7 +595,7 @@ describe("push worker", () => {
 			};
 		}
 
-		it("picks fairly: a backlog of one person does not push everyone else out of the batch", async () => {
+		it("picks fairly: a backlog of one person does not make everyone else wait for all of it", async () => {
 			const { device: hers } = await addDevice(sofia.user.id, "APNS");
 			const { device: his } = await addDevice(martin.user.id, "APNS");
 			for (let n = 0; n < 60; n++)
@@ -605,11 +605,13 @@ describe("push worker", () => {
 			const late = await queue(sofia.user.id, hers.id, { nextAttemptAt: T0 });
 			const { sent, senders } = recordingSenders();
 
-			const tried = await processDuePushes({ config, senders, now: T0 });
+			expect(await processDuePushes({ config, senders, now: T0 })).toBe(61);
 
-			expect(sent.map((s) => s.target.id)).toContain(hers.id);
+			// Her one push goes out among the first batch, not after his 60.
+			const order = sent.map((s) => s.target.id);
+			expect(order.indexOf(hers.id)).toBeGreaterThanOrEqual(0);
+			expect(order.indexOf(hers.id)).toBeLessThan(PER_USER_BATCH);
 			expect((await fresh(late.id)).status).toBe("SENT");
-			expect(tried).toBeLessThanOrEqual(PER_USER_BATCH + 1);
 		});
 
 		it("sends to at most two of one person's endpoints at a time", async () => {

@@ -15,6 +15,24 @@ export const ATTEMPT_TIMEOUT_MS = 10_000;
 export const CLAIM_LEASE_MS = 2 * ATTEMPT_TIMEOUT_MS + 30_000;
 export const RETENTION_DAYS = 30;
 
+/**
+ * How much of a sending worker one person, or one place, may use. A webhook
+ * URL (and a UnifiedPush endpoint, see push/schedule.ts) is an address a
+ * user chose, so it can be one that answers after the full timeout every
+ * time. Without these caps a few such addresses, each retried, hold every
+ * slot for minutes and nobody else's delivery goes out.
+ * - at most PARALLEL_ATTEMPTS sends at once, PER_USER_ATTEMPTS of them for
+ *   one account and PER_HOST_ATTEMPTS to one registered domain, whoever
+ *   owns the addresses (the cap on the domain covers a wildcard DNS name
+ *   handing out a new host for every address, and several accounts);
+ * - a sweep takes at most PER_USER_BATCH due deliveries per account, oldest
+ *   first and interleaved, so a backlog cannot push others out of the batch.
+ */
+export const PARALLEL_ATTEMPTS = 5;
+export const PER_USER_ATTEMPTS = 2;
+export const PER_HOST_ATTEMPTS = 2;
+export const PER_USER_BATCH = 10;
+
 /** The wait after the `attempt`-th failed attempt (1 for the first), or null when none is left. */
 export function retryDelayMs(attempt: number): number | null {
 	if (attempt >= MAX_ATTEMPTS) return null;
