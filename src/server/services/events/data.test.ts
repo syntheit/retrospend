@@ -1,7 +1,5 @@
-import { EVENT_TYPES, isEventTypeName } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import { amountsOfChanges, extractEventData } from "./data";
-import { MUTATION_EVENTS } from "./mutation-events";
 
 describe("extractEventData", () => {
 	it("keeps ids and Money and drops every other string", () => {
@@ -125,15 +123,5 @@ describe("amountsOfChanges", () => {
 				{ id: "netWorth", delta: { minor: 0, currency: "ARS" } },
 			]),
 		).toEqual([{ name: "owed.owedToYou", minor: -500, currency: "ARS" }]);
-	});
-});
-
-describe("MUTATION_EVENTS", () => {
-	it("names only registered event types", () => {
-		const registered = new Set<string>(EVENT_TYPES);
-		for (const [mutation, type] of Object.entries(MUTATION_EVENTS)) {
-			expect(isEventTypeName(type), mutation).toBe(true);
-			expect(registered.has(type), `${mutation} -> ${type}`).toBe(true);
-		}
 	});
 });

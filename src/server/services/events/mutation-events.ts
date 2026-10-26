@@ -3,12 +3,17 @@ import type { EventType } from "@retrospend/api-contract";
 /**
  * The event a money mutation appends when it runs outside a v1 route (the
  * web's tRPC procedures). Inside a v1 route the route's own event type wins
- * (see scope.ts), so both transports name an event the same way.
+ * (see scope.ts), so both transports name an event the same way: an undo
+ * names what the route's undo names (`correction.undone` for fix requests
+ * and corrections, `shared_expense.undone` for a share answer).
  *
- * Mutations missing here append nothing from tRPC: fix requests,
- * corrections and the income move-in family have no registered type yet. Add the type to EVENT_TYPES and the row here.
+ * A mutation missing here appends nothing from tRPC;
+ * mutation-events.test.ts fails for a new mutation that is not listed.
+ * One mutation that does two things names its event from its result.
  */
-export const MUTATION_EVENTS: Readonly<Record<string, EventType>> = {
+type EventName = EventType | ((value: unknown) => EventType);
+
+export const MUTATION_EVENTS: Readonly<Record<string, EventName>> = {
 	"import.commit": "import.finalized",
 	"import.undo": "import.undone",
 	"recurring.confirm": "recurring.confirmed",
@@ -78,4 +83,36 @@ export const MUTATION_EVENTS: Readonly<Record<string, EventType>> = {
 	"envelope.revertPayoffPlan": "budget_payoff_plan.reverted",
 	"envelope.resolveHidden": "budget_hidden_rows.resolved",
 	"envelope.revertHidden": "budget_hidden_rows.reverted",
+	"income.moveIn": "income.moved_in",
+	"income.undoMoveIn": "income.undone",
+	"income.confirmRecurring": "recurring.confirmed",
+	"income.unconfirmRecurring": "recurring.undone",
+	"correction.apply": "shared_expense.corrected",
+	"correction.undo": "correction.undone",
+	"fixRequest.ask": "fix_request.created",
+	"fixRequest.respond": "fix_request.answered",
+	"fixRequest.cancel": "fix_request.cancelled",
+	"fixRequest.withdraw": "correction.undone",
+	"fixRequest.restore": "correction.undone",
+	"project.membershipDates": "project.member_dates_set",
+	"project.delete": "project.deleted",
+	"project.rebalance": "project.rebalanced",
+	"payment.squareUp": "payment.squared_up",
+	"sharedExpense.answerShare": (value) =>
+		(value as { answer?: unknown } | undefined)?.answer === "reject"
+			? "shared_expense.rejected"
+			: "shared_expense.accepted",
+	"sharedExpense.restoreAnswer": "shared_expense.undone",
+	"sharedExpense.removeSelf": "shared_expense.self_removed",
+	"sharedExpense.restoreSelf": "shared_expense.undone",
 };
+
+/** The event `mutationId` appends for the result it produced, or null when it has none. */
+export function eventTypeOfMutation(
+	mutationId: string,
+	value: unknown,
+): EventType | null {
+	if (!Object.hasOwn(MUTATION_EVENTS, mutationId)) return null;
+	const name = MUTATION_EVENTS[mutationId] as EventName;
+	return typeof name === "function" ? name(value) : name;
+}
