@@ -5,7 +5,7 @@
  * server and decrypts what arrives.
  */
 import { randomUUID } from "node:crypto";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
 	arsUser,
 	ref,
@@ -25,7 +25,7 @@ import {
 	sweepUntilPushed,
 } from "./pg-fixtures";
 import { raiseRecurringDue } from "./recurring";
-import { BASE_DELAY_MS, MAX_ATTEMPTS } from "./schedule";
+import { BASE_DELAY_MS, CLAIM_LEASE_MS, MAX_ATTEMPTS } from "./schedule";
 import { decryptWebPush, mockHttp, NO_PUSH, newVapidEnv } from "./test-helpers";
 import { processDuePushes, prunePushData, runPushWorker } from "./worker";
 
@@ -66,6 +66,12 @@ const fresh = (id: string) =>
 describe("push worker", () => {
 	let martin: TestUser;
 	let sofia: TestUser;
+
+	// The database is shared by every pg test file, and the worker takes any
+	// due delivery, so other files' leftovers would be counted and sent here.
+	beforeEach(async () => {
+		await adminDb.pushDelivery.deleteMany({});
+	});
 
 	beforeAll(async () => {
 		[martin, sofia] = [await arsUser(), await arsUser()];
@@ -123,6 +129,47 @@ describe("push worker", () => {
 		});
 		// Nothing left to do.
 		expect(await processDuePushes({ config, senders, now: T0 })).toBe(0);
+	});
+
+	it("measures each lease from its own claim, not from the start of the sweep", async () => {
+		const { device } = await addDevice(martin.user.id, "APNS");
+		const ids = (
+			await Promise.all(
+				Array.from({ length: 12 }, () =>
+					queue(martin.user.id, device.id, {
+						nextAttemptAt: new Date(Date.now() - 1000),
+						createdAt: new Date(),
+					}),
+				),
+			)
+		).map((d) => d.id);
+		// While a chunk is sent, its deliveries are the only pending rows with
+		// a lease in the future; read how much of the lease is left.
+		const remaining: number[] = [];
+		const watching = {
+			close() {},
+			async send() {
+				const rows = await adminDb.pushDelivery.findMany({
+					where: { id: { in: ids }, status: "PENDING" },
+					select: { nextAttemptAt: true },
+				});
+				remaining.push(
+					Math.max(...rows.map((r) => r.nextAttemptAt?.getTime() ?? 0)) -
+						Date.now(),
+				);
+				await new Promise((r) => setTimeout(r, 250));
+				return { kind: "sent" as const, statusCode: 200 };
+			},
+		};
+		await processDuePushes({
+			config,
+			senders: { ...recordingSenders().senders, APNS: watching },
+		});
+		expect(remaining).toHaveLength(12);
+		// Three chunks of five, 250 ms each: the last claims come half a second
+		// after the first. A lease measured from the start of the sweep would
+		// be that much shorter by then.
+		expect(Math.min(...remaining)).toBeGreaterThan(CLAIM_LEASE_MS - 250);
 	});
 
 	it("waits when a delivery is not due yet", async () => {
