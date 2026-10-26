@@ -427,9 +427,9 @@
 		"src/server/services/shared-expenses/balances-perspective.service.ts": 102,
 		"src/server/services/shared-expenses/people.service.ts": 1003,
 		"src/server/services/shared-expenses/settlement.service.ts": 432,
-		"src/server/services/shared-expenses/test-utils.ts": 1046,
+		"src/server/services/shared-expenses/test-utils.ts": 1045,
 		"src/server/services/shared-expenses/transaction.service.ts": 765,
-		"src/server/services/shared-expenses/verification.service.ts": 86
+		"src/server/services/shared-expenses/verification.service.ts": 62
 	},
 	"UI-151": {
 		"src/app/api/import/process/route.ts": 1,

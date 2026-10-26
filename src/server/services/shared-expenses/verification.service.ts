@@ -2,20 +2,13 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma, PrismaClient, VerificationStatus } from "~prisma";
 import { getImageUrl } from "~/server/storage";
 import { answerShareIn } from "./answer-share";
-import { logAudit, logAuditMany } from "./audit-log";
+import { logAudit } from "./audit-log";
 import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
 import { removeSelfIn } from "./remove-self";
+import { autoAcceptSplits } from "./split-sweep";
 import type { ParticipantRef } from "./types";
 
 type AppDb = PrismaClient;
-
-// Convention for system-generated audit entries. Uses "user" type with a
-// sentinel ID. Since all real IDs are CUID-generated (alphanumeric), the
-// "__system__" prefix is guaranteed to never collide.
-const SYSTEM_ACTOR: ParticipantRef = {
-	participantType: "user",
-	participantId: "__system__",
-};
 
 const AUTO_ACCEPT_DAYS_DEFAULT = 7;
 
@@ -99,30 +92,9 @@ export class VerificationService {
 
 		const now = new Date();
 
-		// One transaction: the accept and its record stand or fall together. The
-		// system actor's entries are not readable by the user, so they are
-		// written without a read-back (logAuditMany).
-		await this.runInTransaction(async (tx) => {
-			await tx.splitParticipant.updateMany({
-				where: { id: { in: expired.map((sp) => sp.id) } },
-				data: { verificationStatus: "AUTO_ACCEPTED", verifiedAt: now },
-			});
-			await logAuditMany(
-				tx,
-				expired.map((sp) => ({
-					actor: SYSTEM_ACTOR,
-					action: "AUTO_VERIFIED" as const,
-					targetType: "SPLIT_PARTICIPANT" as const,
-					targetId: sp.id,
-					changes: {
-						participantType: sp.participantType,
-						participantId: sp.participantId,
-						autoAcceptedAfterDays: days,
-					},
-					projectId: sp.transaction.projectId ?? undefined,
-				})),
-			);
-		});
+		await this.runInTransaction((tx) =>
+			autoAcceptSplits(tx, expired, days, now),
+		);
 
 		return expired.length;
 	}
@@ -331,24 +303,24 @@ export class VerificationService {
 	}
 
 	/**
-	 * Remove the caller's own split from a shared transaction ("Remove me").
-	 *
-	 * YNAB-style: deletes ONLY the caller's own SplitParticipant row. Does not
-	 * delete other participants' splits and does not delete the transaction.
-	 * The remaining shares are intentionally left as-is, the unassigned amount
-	 * becomes the creator's "hole". Balances recompute from the surviving split
-	 * rows automatically (see shared-expenses/balance.ts), so no balance code
-	 * needs to change.
-	 *
-	 * Guards:
-	 * - Caller must actually be a participant on the transaction.
-	 * - Forbidden when the transaction is locked (settled).
-	 * - When the caller's share is already paid (settlements recorded against
-	 *   it) or offset by other expenses, removing it would leave the payer
-	 *   owing the caller. That needs `confirmBalanceChange`. Erasing a share
-	 *   the caller still owes is the point of "Remove me" and needs no
-	 *   confirmation.
-	 */
+ * Remove the caller's own split from a shared transaction ("Remove me").
+ *
+ * YNAB-style: deletes ONLY the caller's own SplitParticipant row. Does not
+ * delete other participants' splits and does not delete the transaction.
+ * The remaining shares are intentionally left as-is, the unassigned amount
+ * becomes the creator's "hole". Balances recompute from the surviving split
+ * rows automatically (see shared-expenses/balance.ts), so no balance code
+ * needs to change.
+ *
+ * Guards:
+ * - Caller must actually be a participant on the transaction.
+ * - Forbidden when the transaction is locked (settled).
+ * - When the caller's share is already paid (settlements recorded against
+ *   it) or offset by other expenses, removing it would leave the payer
+ *   owing the caller. That needs `confirmBalanceChange`. Erasing a share
+ *   the caller still owes is the point of "Remove me" and needs no
+ *   confirmation.
+ */
 	async removeSelf(
 		txnId: string,
 		confirmBalanceChange = false,
@@ -456,7 +428,9 @@ export class VerificationService {
 		for (const u of users) {
 			nameMap.set(`user:${u.id}`, {
 				name: u.name ?? u.username ?? "Unknown",
-				avatarUrl: u.avatarPath ? getImageUrl(u.avatarPath) : (u.image ?? null),
+				avatarUrl: u.avatarPath
+					? getImageUrl(u.avatarPath)
+					: (u.image ?? null),
 			});
 		}
 		for (const s of shadows) {

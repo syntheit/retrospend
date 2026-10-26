@@ -332,8 +332,8 @@ describe("offset rows balance", () => {
 	// offsets cancel the same value.
 	const settle = (
 		over: {
-			theirs?: Prisma.SettlementUncheckedCreateInput;
-			mine?: Prisma.SettlementUncheckedCreateInput;
+			theirs?: Partial<Prisma.SettlementUncheckedCreateInput>;
+			mine?: Partial<Prisma.SettlementUncheckedCreateInput>;
 			head?: Partial<Prisma.PaymentUncheckedCreateInput>;
 		} = {},
 	) => {
