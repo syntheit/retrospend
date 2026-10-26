@@ -153,10 +153,12 @@ export const restoreSelfMutation: MoneyMutation<
 					r.categoryId && kept.has(r.categoryId) ? r.categorySource : null,
 			})),
 		});
-		const txn = await tx.sharedTransaction.findUnique({
-			where: { id: input.transactionId },
-			select: { updatedAt: true, isLocked: true, projectId: true },
-		});
+		// Locked while it is read: an edit that commits after this check but before
+		// ours would otherwise leave the share back on an expense that changed. An
+		// edit still running makes this wait, and then it reads the new stamp.
+		const [txn] = await tx.$queryRaw<
+			{ updatedAt: Date; isLocked: boolean; projectId: string | null }[]
+		>`SELECT "updatedAt", "isLocked", "projectId" FROM "shared_transaction" WHERE "id" = ${input.transactionId} FOR UPDATE`;
 		if (!txn)
 			throw new TRPCError({
 				code: "NOT_FOUND",
