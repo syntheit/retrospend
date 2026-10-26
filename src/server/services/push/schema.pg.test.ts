@@ -4,17 +4,21 @@
  * in-app switch, the new type, and a second run changing nothing).
  */
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { updateNotificationPreferences } from "~/server/services/notifications";
 import { adminDb, createTestUser } from "./pg-fixtures";
 
+// Found by name: the folder's timestamp is assigned when it is merged.
+const MIGRATIONS = join(process.cwd(), "prisma/migrations");
+const folder = readdirSync(MIGRATIONS).find((name) =>
+	name.endsWith("_push_preference"),
+);
+if (!folder) throw new Error("The push_preference migration is missing");
 const MIGRATION = readFileSync(
-	join(
-		process.cwd(),
-		"prisma/migrations/20261029000000_push_preference/migration.sql",
-	),
+	join(MIGRATIONS, folder, "migration.sql"),
 	"utf8",
 );
 
@@ -46,6 +50,36 @@ describe("push schema", () => {
 			data: { userId, type: "RECURRING_DUE" },
 		});
 		expect(row).toMatchObject({ push: true, inApp: true });
+	});
+
+	it("starts push on a new row as the in-app switch says, when a write leaves it out", async () => {
+		await updateNotificationPreferences(adminDb, userId, [
+			{ type: "PERIOD_CLOSED", inApp: false, email: false, digestMode: false },
+			{
+				type: "PARTICIPANT_ADDED",
+				inApp: true,
+				email: false,
+				digestMode: false,
+			},
+			{
+				type: "EXPENSE_DELETED",
+				inApp: false,
+				push: true,
+				email: false,
+				digestMode: false,
+			},
+		]);
+		const rows = await adminDb.notificationPreference.findMany({
+			where: {
+				userId,
+				type: { in: ["PERIOD_CLOSED", "PARTICIPANT_ADDED", "EXPENSE_DELETED"] },
+			},
+		});
+		expect(Object.fromEntries(rows.map((r) => [r.type, r.push]))).toEqual({
+			PERIOD_CLOSED: false,
+			PARTICIPANT_ADDED: true,
+			EXPENSE_DELETED: true,
+		});
 	});
 
 	it("starts each existing row with its in-app value, once", async () => {

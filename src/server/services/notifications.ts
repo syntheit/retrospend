@@ -270,7 +270,7 @@ export async function updateNotificationPreferences(
 	preferences: {
 		type: NotificationType;
 		inApp: boolean;
-		/** Left out: unchanged on an existing row, on for a new one. */
+		/** Left out: unchanged on an existing row, the in-app value for a new one. */
 		push?: boolean;
 		email: boolean;
 		digestMode: boolean;
@@ -279,7 +279,9 @@ export async function updateNotificationPreferences(
 	for (const { push, ...pref } of preferences) {
 		await userDb.notificationPreference.upsert({
 			where: { userId_type: { userId, type: pref.type } },
-			create: { userId, ...pref, ...(push !== undefined && { push }) },
+			// A new row starts push as the in-app switch says, the rule the
+			// push_preference migration used for existing rows.
+			create: { userId, ...pref, push: push ?? pref.inApp },
 			update: {
 				inApp: pref.inApp,
 				email: pref.email,

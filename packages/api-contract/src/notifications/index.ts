@@ -148,7 +148,7 @@ export const notificationsContract = {
 			tags: TAG,
 			summary: "Change how notification types reach the caller",
 			description:
-				"Types left out keep their current setting, and so does `push` when it is left out of a type.",
+				"Types left out keep their current setting, and so does `push` when it is left out of a type (a new row then starts `push` as `inApp`). `inApp`, `email` and `digestMode` do nothing for RECURRING_DUE, which is only a push.",
 		})
 		.meta({
 			scope: "write:settings",
