@@ -15,7 +15,9 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 import type { AnsweredFix } from "../corrections/fix-request.service";
 import type { MoneyMutation } from "../preview/types";
+import { peopleToTell } from "../shared-expenses/delete-tell";
 import { SharedTransactionService } from "../shared-expenses/transaction.service";
+import type { ParticipantRef } from "../shared-expenses/types";
 import { RETRACT_WINDOW_MS, retractSplitNotices } from "./notices";
 
 type Tx = Prisma.TransactionClient;
@@ -217,9 +219,18 @@ async function assertNobodyAnswered(tx: Tx, id: string, userId: string) {
 	}
 }
 
+export interface DeletedShared {
+	readonly id: string;
+	/**
+	 * The other people who were on it, for the event that tells them (it is
+	 * written once the rows are gone).
+	 */
+	readonly tell: readonly ParticipantRef[];
+}
+
 export const deleteSharedExpense: MoneyMutation<
 	DeleteSharedInput,
-	{ id: string }
+	DeletedShared
 > = {
 	id: "sharedExpense.delete",
 	touches: SHARED_FIGURES,
@@ -235,6 +246,11 @@ export const deleteSharedExpense: MoneyMutation<
 			row.createdByType === "user" &&
 			row.createdById === actor.userId &&
 			Date.now() - row.createdAt.getTime() < RETRACT_WINDOW_MS;
+		// A retraction still tells: the add's feed copy has usually reached them.
+		const tell = await peopleToTell(tx, input.id, {
+			participantType: "user",
+			participantId: actor.userId,
+		});
 		// Retracting: the service's own notices are dropped, the retraction queued instead.
 		await serviceFor(tx, actor.userId, retract ? { notify: [] } : input).delete(
 			input.id,
@@ -245,7 +261,7 @@ export const deleteSharedExpense: MoneyMutation<
 		);
 		if (retract) input.notify?.push(() => retractSplitNotices(input.id));
 		return {
-			value: { id: input.id },
+			value: { id: input.id, tell },
 			undo: {
 				kind: "revert",
 				mutation: "sharedExpense.create",

@@ -18,6 +18,9 @@ import { MissingRateError } from "@retrospend/domain/money";
 import { accountFigures } from "~/server/services/accounts/figures";
 import { budgetFigures } from "~/server/services/envelope/figures";
 import { dollarTodayFigure } from "~/server/services/figures/dollar-today";
+import { correctionFigures } from "~/server/services/corrections/figures";
+import { entryFigures } from "~/server/services/figures/entry";
+import { recurringFigures } from "~/server/services/figures/recurring";
 import { glanceFigures } from "~/server/services/figures/spend-pace";
 import { spentFigure } from "~/server/services/figures/spent";
 import { insightsFigures } from "~/server/services/insights/figures";
@@ -28,6 +31,7 @@ import {
 } from "~/server/services/payments/figures";
 import { projectFigures } from "~/server/services/project/figures";
 import type { Prisma } from "~prisma";
+import { FigureNarrowingError } from "./narrowing";
 import { FigureUnavailable } from "./unavailable";
 
 /** The money DTO used everywhere (§2.2): integer minor units, never a float amount. */
@@ -54,6 +58,14 @@ export type ScopeKey =
 	| "accountId"
 	| "envelopeId"
 	| "categoryId"
+	/** A billing period of a project. */
+	| "periodId"
+	/** An Activity row by its id: a personal expense id, `shared:<id>` or `payment:<key>`. */
+	| "entryId"
+	/** A recurring template. */
+	| "recurringId"
+	/** A shared expense, for what its corrections changed. */
+	| "transactionId"
 	/** A fiscal month label, "2026-10". */
 	| "month";
 
@@ -102,7 +114,7 @@ export interface FigureDefinition<Db = FigureDb> {
 	) => Promise<FigureValue | FigureUnavailable | null>;
 }
 
-export { FigureUnavailable };
+export { FigureNarrowingError, FigureUnavailable };
 
 /**
  * One read pass (one `readFiguresIn` call): figures computed from the same
@@ -258,6 +270,7 @@ export async function readFigure<Db>(
 			pass,
 		);
 	} catch (error) {
+		if (error instanceof FigureNarrowingError) throw error;
 		if (!(error instanceof MissingRateError))
 			throw new FigureError(definition.id, "compute failed", { cause: error });
 		value = new FigureUnavailable(error.currencies);
@@ -294,6 +307,9 @@ export const figures = createFiguresRegistry<FigureDb>([
 	...accountFigures,
 	...budgetFigures,
 	...glanceFigures,
+	...entryFigures,
+	...recurringFigures,
+	...correctionFigures,
 	dollarTodayFigure,
 	...insightsFigures,
 ]);

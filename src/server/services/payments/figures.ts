@@ -9,6 +9,7 @@
  * All read through the transaction they are given, so a preview sees its
  * own uncommitted rows.
  */
+import { FigureNarrowingError } from "~/server/figures/narrowing";
 import type {
 	FigureDb,
 	FigureDefinition,
@@ -37,7 +38,9 @@ async function balanceWithPerson(
 ): Promise<Money[]> {
 	const person = scope.personId ? parsePersonKey(scope.personId) : null;
 	if (!person) {
-		throw new Error('balance.person needs a personId narrowing ("type:id")');
+		throw new FigureNarrowingError(
+			'balance.person needs a personId narrowing ("type:id")',
+		);
 	}
 	const me = meOf(scope);
 	const events = await computePairLedger(db, me, person, {

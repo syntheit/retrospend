@@ -235,17 +235,68 @@ test.describe("Developer", () => {
 				.click();
 			await expect(row.getByText("Off")).toHaveCount(0);
 
-			// Rotating the secret cannot be undone: it asks first, shows the new one once.
+			// Edit: only what changes is listed, Save ends with Undo, the secret stays.
+			await row.getByRole("button", { name: "More actions for E2E hook" }).click();
+			await page.getByRole("menuitem", { name: "Edit webhook" }).click();
+			const edit = page.getByRole("dialog", { name: "Edit E2E hook" });
+			const editChanges = edit.getByRole("region", { name: "What this changes" });
+			await expect(editChanges).toContainText("Nothing changed yet");
+			await expect(edit.getByRole("button", { name: "Save changes" })).toBeDisabled();
+			await edit
+				.getByLabel("URL", { exact: true })
+				.fill(`http://127.0.0.1:${port}/hook?token=changed`);
+			await edit.getByLabel("Send events to this URL").uncheck();
+			await expect(editChanges).toContainText("Off");
+			await expect(editChanges).toContainText("your signing secret");
+			await expect(editChanges).not.toContainText("token=changed");
+			const updated = page.waitForResponse(
+				(r) => r.request().method() === "PATCH" && /\/api\/v1\/webhooks\//.test(r.url()),
+			);
+			await edit.getByRole("button", { name: "Save changes" }).click();
+			expect((await updated).status()).toBe(200);
+			await expect(row.getByText("Off")).toBeVisible();
+			await page
+				.locator("[data-sonner-toast]")
+				.filter({ hasText: "Updated E2E hook" })
+				.getByRole("button", { name: "Undo" })
+				.click();
+			await expect(row.getByText("Off")).toHaveCount(0);
+			// The Undo put back the address too, not only the switch (read from the API).
+			await expect(async () => {
+				const listed = await page.request.get("/api/v1/webhooks");
+				const mine = (await listed.json()).items.find(
+					(w: { name: string }) => w.name === "E2E hook",
+				);
+				expect(mine.url).toBe(`http://127.0.0.1:${port}/hook?token=abc`);
+				expect(mine.enabled).toBe(true);
+			}).toPass();
+
+			// Rotating the secret cannot be undone: the sheet says what changes and
+			// lets the old secret keep signing for a while; the new one shows once.
 			await row.getByRole("button", { name: "More actions for E2E hook" }).click();
 			await page.getByRole("menuitem", { name: "Rotate secret" }).click();
-			await page
-				.getByRole("alertdialog", { name: "Rotate the secret of E2E hook?" })
-				.getByRole("button", { name: "Rotate secret" })
-				.click();
+			const rotate = page.getByRole("dialog", {
+				name: "Rotate the secret of E2E hook",
+			});
+			const rotateChanges = rotate.getByRole("region", { name: "What this changes" });
+			// The default stops the old secret at once.
+			await expect(rotateChanges).toContainText("Stops at once");
+			await rotate.getByRole("radio", { name: "1 hour" }).click();
+			await expect(rotateChanges).toContainText("Works for 1 hour");
+			await rotate.getByRole("button", { name: "Rotate secret" }).click();
 			const rotated = page.getByRole("dialog", { name: "New secret for E2E hook" });
 			const next = await rotated.getByLabel("Signing secret").inputValue();
 			expect(next).not.toBe(secret);
 			await rotated.getByRole("button", { name: "Done" }).click();
+			// The API shows the old secret signing for the hour the sheet chose.
+			const listed = await page.request.get("/api/v1/webhooks");
+			const mine = (await listed.json()).items.find(
+				(w: { name: string }) => w.name === "E2E hook",
+			);
+			const left =
+				new Date(mine.previousSecretExpiresAt).getTime() - Date.now();
+			expect(left).toBeGreaterThan(55 * 60_000);
+			expect(left).toBeLessThanOrEqual(60 * 60_000);
 
 			// Delete asks first, then the row is gone.
 			await row.getByRole("button", { name: "More actions for E2E hook" }).click();

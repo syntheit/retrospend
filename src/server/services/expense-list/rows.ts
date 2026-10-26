@@ -282,9 +282,21 @@ async function paymentRows(db: Db, keys: string[], c: ShapeContext) {
 			isOffset: false,
 			kind: "PAYMENT",
 			status: { not: "REJECTED" },
-			OR: [
-				{ paymentGroupId: { in: groups } },
-				{ id: { in: groups }, paymentGroupId: null },
+			AND: [
+				{
+					OR: [
+						{ paymentGroupId: { in: groups } },
+						{ id: { in: groups }, paymentGroupId: null },
+					],
+				},
+				// Only your own payments, as the list: RLS also shows a project's
+				// other members' payments, which are not rows of yours.
+				{
+					OR: [
+						{ fromParticipantType: "user", fromParticipantId: c.userId },
+						{ toParticipantType: "user", toParticipantId: c.userId },
+					],
+				},
 			],
 		},
 		select: {

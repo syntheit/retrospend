@@ -316,7 +316,9 @@
 			"otherWebhooks": "tus otros webhooks",
 			"sendsTo": "Envía a",
 			"noUrl": "Todavía sin URL",
-			"events": "Eventos"
+			"events": "Eventos",
+			"log": "tu registro de entregas",
+			"secret": "tu secreto de firma"
 		},
 		"webhooks": "Webhooks",
 		"newWebhook": "Nuevo webhook",
@@ -338,7 +340,12 @@
 			"all": "Todos los eventos",
 			"some": "Eventos elegidos",
 			"allHint": "Todos los eventos que ocurren en tu cuenta.",
-			"tooMany": "Elegiste demasiadas áreas. Usá Todos los eventos."
+			"tooMany": "Elegiste demasiadas áreas. Usá Todos los eventos.",
+			"scope": {
+				"all": "{area}: todos los eventos",
+				"some": "{area}: algunos eventos",
+				"count": "{area}: {count, plural, one {1 evento} other {# eventos}}"
+			}
 		},
 		"webhookState": {
 			"manual": "Apagado",
@@ -401,6 +408,43 @@
 			"internal_error": "Error del servidor",
 			"webhook_disabled": "El webhook estaba apagado",
 			"event_gone": "El evento ya no se conserva"
+		},
+		"edit": {
+			"title": "Editar {name}",
+			"save": "Guardar cambios",
+			"enabled": "Mandar eventos a esta URL",
+			"saved": "Se actualizó {name}",
+			"noChanges": "Todavía no cambió nada",
+			"status": "Estado",
+			"on": "Encendido",
+			"off": "Apagado"
+		},
+		"rotate": {
+			"title": "Renovar el secreto de {name}",
+			"submit": "Renovar secreto",
+			"graceLabel": "Dejar andando el secreto anterior",
+			"grace": {
+				"now": "Cortar en el acto",
+				"hour": "1 hora",
+				"day": "1 día",
+				"week": "7 días"
+			},
+			"graceHint": {
+				"now": "Usalo si el secreto se filtró. Las entregas firmadas con el anterior fallan hasta que tu receptor use el nuevo.",
+				"hour": "Las entregas llevan las dos firmas durante 1 hora, así tu receptor puede cambiar sin cortes.",
+				"day": "Las entregas llevan las dos firmas durante 1 día, así tu receptor puede cambiar sin cortes.",
+				"week": "Las entregas llevan las dos firmas durante 7 días, así tu receptor puede cambiar sin cortes."
+			},
+			"signing": "Secreto de firma",
+			"replaced": "Reemplazado por uno nuevo",
+			"oldSecret": "Secreto anterior",
+			"oldEnds": {
+				"now": "Termina en el acto",
+				"hour": "Anda 1 hora más",
+				"day": "Anda 1 día más",
+				"week": "Anda 7 días más"
+			},
+			"permanent": "El secreto anterior no se puede recuperar."
 		}
 	},
 	"data": {

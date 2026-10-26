@@ -18,7 +18,15 @@ export function directionOf(page: PersonPage): "owed" | "owe" | null {
 }
 
 /** One currency line: its amount, then what it is worth at home and at which rate. */
-function PartLine({ part, mixed }: { part: BalancePart; mixed: boolean }) {
+function PartLine({
+	part,
+	mixed,
+	figure,
+}: {
+	part: BalancePart;
+	mixed: boolean;
+	figure?: string;
+}) {
 	const t = useTranslations("personPage.balance");
 	const typeName = useRateTypeName();
 	const owed = part.amount.minor > 0;
@@ -34,7 +42,7 @@ function PartLine({ part, mixed }: { part: BalancePart; mixed: boolean }) {
 					owed ? "text-positive" : "text-owe",
 				)}
 			>
-				<Money sign="never" value={part.amount} />
+				<Money figure={figure} sign="never" value={part.amount} />
 				{mixed && (
 					<span className="text-fg-2 font-normal">
 						{" "}
@@ -88,6 +96,11 @@ export function BalanceBlock({
 	const foreign =
 		page.parts.length > 1 ||
 		(page.parts[0] && page.parts[0].amount.currency !== page.home);
+	// Each currency line is a line of the registry's balance.person. The hero
+	// is the same balance only when it is one line in the home currency;
+	// otherwise it is a net converted at today's rates, which has no id.
+	const figure = `balance.person:${p.key}`;
+	const heroFigure = page.parts.length === 1 && !foreign ? figure : undefined;
 	if (!dir)
 		return (
 			<div>
@@ -115,6 +128,7 @@ export function BalanceBlock({
 			<Money
 				// A net across currencies is converted at today's rates (person.html).
 				approx={!!foreign}
+				figure={heroFigure}
 				className={cn(
 					"text-hero mt-1 block",
 					dir === "owed" ? "text-positive" : "text-owe",
@@ -126,7 +140,12 @@ export function BalanceBlock({
 			{foreign && (
 				<div className="mt-3 max-w-120">
 					{page.parts.map((part) => (
-						<PartLine key={part.amount.currency} mixed={mixed} part={part} />
+						<PartLine
+							figure={figure}
+							key={part.amount.currency}
+							mixed={mixed}
+							part={part}
+						/>
 					))}
 				</div>
 			)}

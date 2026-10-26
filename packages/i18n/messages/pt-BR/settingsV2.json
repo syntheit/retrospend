@@ -316,7 +316,9 @@
 			"otherWebhooks": "seus outros webhooks",
 			"sendsTo": "Envia para",
 			"noUrl": "Ainda sem URL",
-			"events": "Eventos"
+			"events": "Eventos",
+			"log": "seu registro de entregas",
+			"secret": "seu segredo de assinatura"
 		},
 		"webhooks": "Webhooks",
 		"newWebhook": "Novo webhook",
@@ -338,7 +340,12 @@
 			"all": "Todos os eventos",
 			"some": "Eventos escolhidos",
 			"allHint": "Todos os eventos que acontecem na sua conta.",
-			"tooMany": "Áreas demais escolhidas. Use Todos os eventos."
+			"tooMany": "Áreas demais escolhidas. Use Todos os eventos.",
+			"scope": {
+				"all": "{area}: todos os eventos",
+				"some": "{area}: alguns eventos",
+				"count": "{area}: {count, plural, one {1 evento} other {# eventos}}"
+			}
 		},
 		"webhookState": {
 			"manual": "Desligado",
@@ -401,6 +408,43 @@
 			"internal_error": "Erro do servidor",
 			"webhook_disabled": "O webhook estava desligado",
 			"event_gone": "Evento não é mais mantido"
+		},
+		"edit": {
+			"title": "Editar {name}",
+			"save": "Salvar alterações",
+			"enabled": "Enviar eventos para esta URL",
+			"saved": "Atualizamos {name}",
+			"noChanges": "Nada mudou ainda",
+			"status": "Status",
+			"on": "Ligado",
+			"off": "Desligado"
+		},
+		"rotate": {
+			"title": "Trocar o segredo de {name}",
+			"submit": "Trocar segredo",
+			"graceLabel": "Manter o segredo antigo funcionando",
+			"grace": {
+				"now": "Parar na hora",
+				"hour": "1 hora",
+				"day": "1 dia",
+				"week": "7 dias"
+			},
+			"graceHint": {
+				"now": "Use se o segredo vazou. As entregas assinadas com o antigo falham até seu receptor usar o novo.",
+				"hour": "As entregas levam as duas assinaturas por 1 hora, para seu receptor trocar sem falhas.",
+				"day": "As entregas levam as duas assinaturas por 1 dia, para seu receptor trocar sem falhas.",
+				"week": "As entregas levam as duas assinaturas por 7 dias, para seu receptor trocar sem falhas."
+			},
+			"signing": "Segredo de assinatura",
+			"replaced": "Trocado por um novo",
+			"oldSecret": "Segredo antigo",
+			"oldEnds": {
+				"now": "Para na hora",
+				"hour": "Vale por mais 1 hora",
+				"day": "Vale por mais 1 dia",
+				"week": "Vale por mais 7 dias"
+			},
+			"permanent": "Não dá para recuperar o segredo antigo."
 		}
 	},
 	"data": {

@@ -108,6 +108,12 @@ export async function createWebhook(
 	return { webhook: toWebhookDto(row), secret };
 }
 
+/** When a webhook went off: as a client puts it back, but never later than now. */
+function sinceOf(at: string | undefined, now = new Date()): Date {
+	const given = at ? new Date(at) : now;
+	return given.getTime() > now.getTime() ? now : given;
+}
+
 export async function updateWebhook(
 	caller: Caller,
 	input: UpdateInput,
@@ -136,7 +142,11 @@ export async function updateWebhook(
 					}
 				: {}),
 			...(disabling
-				? { enabled: false, disabledAt: new Date(), disabledReason: "manual" }
+				? {
+						enabled: false,
+						disabledAt: sinceOf(input.disabledAt),
+						disabledReason: input.disabledReason ?? "manual",
+					}
 				: {}),
 		},
 	});

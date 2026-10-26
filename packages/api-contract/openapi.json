@@ -67111,6 +67111,16 @@
 						"allowEmptyValue": true,
 						"allowReserved": true,
 						"in": "query",
+						"name": "periodId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
 						"name": "personId",
 						"required": false,
 						"schema": {
@@ -67153,6 +67163,36 @@
 						"allowReserved": true,
 						"in": "query",
 						"name": "envelopeId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "entryId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "recurringId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "transactionId",
 						"required": false,
 						"schema": {
 							"type": "string"
@@ -117748,6 +117788,20 @@
 						"application/json": {
 							"schema": {
 								"properties": {
+									"disabledAt": {
+										"description": "With `enabled: false`: since when it is off. Defaults to now. Ignored otherwise.",
+										"format": "date-time",
+										"type": "string"
+									},
+									"disabledReason": {
+										"description": "With `enabled: false`: why it is off, so a client can put back the state a turn-on replaced. Defaults to `manual`. Ignored otherwise.",
+										"enum": [
+											"too_many_failures",
+											"blocked_target",
+											"manual"
+										],
+										"type": "string"
+									},
 									"enabled": {
 										"description": "Turning a disabled webhook back on clears its failures.",
 										"type": "boolean"

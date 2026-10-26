@@ -2,15 +2,16 @@ import { expect, test } from "@playwright/test";
 import { personaStorageState } from "../constants";
 import { PAZ, SOFIA } from "../fixtures/personas";
 import { bannedOutputOn } from "../helpers/banned-output";
+import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
 import { gotoReady } from "../helpers/navigation";
 
 // The Person page for Paz, who is not on Retrospend: the
 // balance with its currency parts, the projects with her, and Between you
 // with its chips and project scope.
 //
-// No figure audit: the page's numbers are per person (balance.person needs
-// a personId narrowing), which a data-figure id cannot carry yet
-// (docs/ui/GAPS.md, "People: per-person figure ids").
+// Each currency line of the balance with Paz carries balance.person and the
+// audit reads it back from the figures endpoint by her key. The net across
+// currencies is converted at today's rates and has no id (docs/ui/GAPS.md).
 
 // Sofía's saved session; the flows project saved it (auth.setup.ts).
 test.use({ storageState: personaStorageState(SOFIA.username) });
@@ -35,6 +36,9 @@ test("Person: balance, projects, Between you filters", async ({ page }) => {
 		main.getByRole("button", { name: "Settle up" }).first(),
 	).toBeVisible();
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
+	const audit = new FigureAudit(httpFigureFetcher(page.request));
+	expect(await audit.checkPage(page, "person")).toEqual([]);
+	expect(audit.figureCount).toBeGreaterThan(0);
 
 	const ledger = main.getByRole("region", { name: "Between you" });
 	await expect(ledger.getByText("Pasajes a Florianópolis")).toBeVisible();

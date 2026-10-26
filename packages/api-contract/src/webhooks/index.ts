@@ -79,6 +79,14 @@ export const updateWebhookSchema = z
 		enabled: z.boolean().optional().meta({
 			description: "Turning a disabled webhook back on clears its failures.",
 		}),
+		disabledReason: z.enum(WEBHOOK_DISABLED_REASONS).optional().meta({
+			description:
+				"With `enabled: false`: why it is off, so a client can put back the state a turn-on replaced. Defaults to `manual`. Ignored otherwise.",
+		}),
+		disabledAt: timestampSchema.optional().meta({
+			description:
+				"With `enabled: false`: since when it is off. Defaults to now. Ignored otherwise.",
+		}),
 	})
 	.meta({ id: "UpdateWebhook" });
 

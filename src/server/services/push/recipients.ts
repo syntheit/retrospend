@@ -130,6 +130,24 @@ async function users(
 	return [...out.values()];
 }
 
+/**
+ * The users to tell about something that is gone, from the people it named
+ * when it was deleted (the event carries them as ids): a claimed profile
+ * becomes its account, and the actor and non-users are dropped.
+ */
+export async function usersOfPeople(
+	db: Reader,
+	people: Person[],
+	actorUserId: string,
+): Promise<string[]> {
+	const told = await users(
+		db,
+		people.map((person) => ({ person, amount: null })),
+		actorUserId,
+	);
+	return told.map((r) => r.userId);
+}
+
 /** How far an audit entry may sit from the event that goes with it. */
 const AUDIT_WINDOW_MS = 10 * 60 * 1000;
 

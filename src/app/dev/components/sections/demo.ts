@@ -48,6 +48,7 @@ export const ACTION_IDS = {
 	apiKey: ["revoke"],
 	device: ["disconnect"],
 	webhook: [
+		"edit",
 		"test",
 		"deliveries",
 		"turnOff",

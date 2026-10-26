@@ -402,6 +402,9 @@
 		}
 	},
 	"webhook": {
+		"edit": {
+			"label": "Editar webhook"
+		},
 		"test": {
 			"label": "Enviar entrega de teste"
 		},
@@ -415,10 +418,7 @@
 			"label": "Ligar"
 		},
 		"rotateSecret": {
-			"label": "Trocar segredo",
-			"confirmTitle": "Trocar o segredo de {name}?",
-			"confirmBody": "O segredo antigo para de funcionar na hora. As entregas assinadas com ele falham até seu receptor usar o novo.",
-			"confirmButton": "Trocar segredo"
+			"label": "Trocar segredo"
 		},
 		"delete": {
 			"label": "Excluir webhook",

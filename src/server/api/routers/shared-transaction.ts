@@ -7,6 +7,7 @@ import {
 	guestOrProtectedProcedure,
 } from "~/server/api/trpc";
 import { getImageUrl } from "~/server/storage";
+import { deleteSharedAndRecord } from "~/server/services/shared-expenses/delete-tell";
 import { SharedTransactionService } from "~/server/services/shared-expenses/transaction.service";
 
 const participantRefSchema = z.object({
@@ -96,8 +97,7 @@ export const sharedTransactionRouter = createTRPCRouter({
 		)
 		.mutation(async ({ ctx, input }) => {
 			const actor = assertWritableParticipant(ctx.participant);
-			const service = new SharedTransactionService(ctx.db, actor);
-			await service.delete(input.id, input);
+			await deleteSharedAndRecord(ctx.db, actor, input.id, input);
 			return { success: true };
 		}),
 

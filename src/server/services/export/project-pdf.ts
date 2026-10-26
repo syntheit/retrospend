@@ -99,7 +99,7 @@ export async function exportProjectPdf(
 			currency: t.amount.currency,
 		})),
 		expenses: transactions.map((tx) => ({
-			date: isoDay(tx.date),
+			date: isoDay(tx.date, ctx.timeZone),
 			description: tx.description,
 			amount: amountText(tx.amount, tx.currency),
 			currency: tx.currency,

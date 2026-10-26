@@ -154,6 +154,92 @@ async function loggedThisMonth(
 	);
 }
 
+/** The view without the logged rows: the templates, their Money and the costs. */
+export type RecurringBody = Omit<RecurringView, "logged">;
+
+/**
+ * The templates and costs of `userId` through an open transaction: what the
+ * recurring figures read, so the page and the figures share one computation.
+ */
+export async function readRecurringBody(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	timeZone: string | undefined,
+	now: Date,
+): Promise<RecurringBody & { rates: HomeRates }> {
+	const today = dayKey(now, timeZone);
+	const [user, templates] = await Promise.all([
+		tx.user.findUnique({
+			where: { id: userId },
+			select: { homeCurrency: true },
+		}),
+		tx.recurringTemplate.findMany({
+			where: { userId },
+			orderBy: [{ nextDueDate: "asc" }, { id: "asc" }],
+			include: {
+				category: {
+					select: { id: true, name: true, color: true, icon: true },
+				},
+			},
+		}),
+	]);
+	const home = user?.homeCurrency ?? USD;
+	const lookup = await findExchangeRatesForDates(tx, [
+		home,
+		...templates.map((t) => t.currency),
+	]);
+	const rates: HomeRates = {
+		home,
+		homeRate: lookup(home, now)?.rate ?? null,
+	};
+	const costs: Record<"out" | "in", CostLine[]> = { out: [], in: [] };
+	const items = templates.map((t): RecurringItemDTO => {
+		const amount = decimalMoney(t.amount, t.currency);
+		const rate = lookup(t.currency, now)?.rate ?? null;
+		const major = homeMajor(Number(t.amount), t.currency, rate, rates);
+		const homeValue = major === null ? null : numberMoney(major, home);
+		const direction = t.direction === "IN" ? "in" : "out";
+		const next = dayKey(t.nextDueDate, timeZone);
+		if (t.isActive)
+			costs[direction].push({
+				missing: missingRates(t.currency, rate, rates),
+				perMonth: major === null ? null : major * PER_MONTH[t.frequency],
+			});
+		return {
+			id: t.id,
+			title: t.name,
+			category: categoryRef(t.category) ?? {
+				id: null,
+				name: null,
+				icon: null,
+				tone: NO_CATEGORY_TONE,
+			},
+			frequency: t.frequency.toLowerCase() as RecurringFrequencyDTO,
+			next,
+			dueAt: t.nextDueDate.toISOString(),
+			nextAfter: dayKey(
+				nextRecurringDate(t.nextDueDate, t.frequency, t.anchorDay),
+				timeZone,
+			),
+			state: stateOf(next, today),
+			paused: !t.isActive,
+			autoPay: t.autoPay,
+			direction,
+			amountMode: t.amountMode === "ASK" ? "ask" : "fixed",
+			amount,
+			...(t.currency === home ? {} : { home: homeValue }),
+		};
+	});
+	return {
+		today,
+		homeCurrency: home,
+		items,
+		out: costOf(costs.out, home),
+		in: costs.in.length ? costOf(costs.in, home) : null,
+		rates,
+	};
+}
+
 export async function listRecurringView(
 	db: Db,
 	userId: string,
@@ -161,76 +247,15 @@ export async function listRecurringView(
 	now: Date = new Date(),
 ): Promise<RecurringView> {
 	const timeZone = normalizeTimeZone(requestZone);
-	const today = dayKey(now, timeZone);
 	return userTransaction(db as PrismaClient, userId, async (tx) => {
-		const [user, templates] = await Promise.all([
-			tx.user.findUnique({
-				where: { id: userId },
-				select: { homeCurrency: true },
-			}),
-			tx.recurringTemplate.findMany({
-				where: { userId },
-				orderBy: [{ nextDueDate: "asc" }, { id: "asc" }],
-				include: {
-					category: {
-						select: { id: true, name: true, color: true, icon: true },
-					},
-				},
-			}),
-		]);
-		const home = user?.homeCurrency ?? USD;
-		const lookup = await findExchangeRatesForDates(tx, [
-			home,
-			...templates.map((t) => t.currency),
-		]);
-		const rates: HomeRates = {
-			home,
-			homeRate: lookup(home, now)?.rate ?? null,
-		};
-		const costs: Record<"out" | "in", CostLine[]> = { out: [], in: [] };
-		const items = templates.map((t): RecurringItemDTO => {
-			const amount = decimalMoney(t.amount, t.currency);
-			const rate = lookup(t.currency, now)?.rate ?? null;
-			const major = homeMajor(Number(t.amount), t.currency, rate, rates);
-			const homeValue = major === null ? null : numberMoney(major, home);
-			const direction = t.direction === "IN" ? "in" : "out";
-			const next = dayKey(t.nextDueDate, timeZone);
-			if (t.isActive)
-				costs[direction].push({
-					missing: missingRates(t.currency, rate, rates),
-					perMonth: major === null ? null : major * PER_MONTH[t.frequency],
-				});
-			return {
-				id: t.id,
-				title: t.name,
-				category: categoryRef(t.category) ?? {
-					id: null,
-					name: null,
-					icon: null,
-					tone: NO_CATEGORY_TONE,
-				},
-				frequency: t.frequency.toLowerCase() as RecurringFrequencyDTO,
-				next,
-				dueAt: t.nextDueDate.toISOString(),
-				nextAfter: dayKey(
-					nextRecurringDate(t.nextDueDate, t.frequency, t.anchorDay),
-					timeZone,
-				),
-				state: stateOf(next, today),
-				paused: !t.isActive,
-				autoPay: t.autoPay,
-				direction,
-				amountMode: t.amountMode === "ASK" ? "ask" : "fixed",
-				amount,
-				...(t.currency === home ? {} : { home: homeValue }),
-			};
-		});
+		const { rates, ...body } = await readRecurringBody(
+			tx,
+			userId,
+			timeZone,
+			now,
+		);
 		return {
-			today,
-			homeCurrency: home,
-			items,
-			out: costOf(costs.out, home),
-			in: costs.in.length ? costOf(costs.in, home) : null,
+			...body,
 			logged: await loggedThisMonth(tx, userId, rates, timeZone, now),
 		};
 	});

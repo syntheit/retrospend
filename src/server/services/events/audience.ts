@@ -2,8 +2,10 @@ import { type EventData, eventDataSchema } from "@retrospend/api-contract";
 import {
 	otherParties,
 	type PartiesReader,
+	usersOfPeople,
 } from "~/server/services/push/recipients";
 import type { Prisma } from "~prisma";
+import { toldPeople } from "./data";
 
 /**
  * Who else sees an event. An event is written into the feed of the person
@@ -23,8 +25,10 @@ import type { Prisma } from "~prisma";
  * names, and an event whose actor has no part in that entity reaches
  * nobody, so a forged entity id cannot aim an event at strangers.
  *
- * Gone entities (a deleted expense) reach nobody: there is nothing left to
- * read the people from (docs/ui/GAPS.md, push delivery).
+ * A deleted expense has nothing left to read the people from, so its delete
+ * names them in the event's ids when it is written (`tell.user.0`, see
+ * data.ts), and those people get the copy. Only the types in TELL_TYPES
+ * honor those names.
  */
 
 /** The resources whose events are copied to the others on them. */
@@ -33,6 +37,9 @@ const SHARED_RESOURCES: ReadonlySet<string> = new Set([
 	"fix_request",
 	"payment",
 ]);
+
+/** Events about a thing that is gone, whose ids name the people to tell. */
+const TELL_TYPES: ReadonlySet<string> = new Set(["shared_expense.deleted"]);
 
 export type AudienceEvent = {
 	id: string;
@@ -62,7 +69,26 @@ export function eventEntityId(event: {
 	return parsed.success ? (parsed.data.ids.paymentId ?? null) : null;
 }
 
+function namedPeople(payload: unknown) {
+	const parsed = eventDataSchema.safeParse(payload);
+	return parsed.success ? toldPeople(parsed.data.ids) : [];
+}
+
+/** The ids that are still accounts: a named person may have left since the delete. */
+async function stillHere(
+	tx: Pick<AudienceWriter, "user">,
+	userIds: string[],
+): Promise<string[]> {
+	if (userIds.length === 0) return [];
+	const rows = await tx.user.findMany({
+		where: { id: { in: userIds } },
+		select: { id: true },
+	});
+	return rows.map((r) => r.id);
+}
+
 export type AudienceWriter = PartiesReader & {
+	user: Pick<Prisma.TransactionClient["user"], "findMany">;
 	apiEvent: Pick<Prisma.TransactionClient["apiEvent"], "createMany">;
 };
 
@@ -87,12 +113,19 @@ export async function copyToOtherParties(
 		)
 			continue;
 		const actor = event.userId;
-		for (const userId of await otherParties(tx, {
+		const named = TELL_TYPES.has(event.type)
+			? await stillHere(
+					tx,
+					await usersOfPeople(tx, namedPeople(event.payload), actor),
+				)
+			: [];
+		const others = await otherParties(tx, {
 			type: event.type,
 			actorUserId: actor,
 			entityId,
 			at: event.createdAt,
-		}))
+		});
+		for (const userId of new Set([...others, ...named]))
 			rows.push({
 				userId,
 				actorUserId: actor,

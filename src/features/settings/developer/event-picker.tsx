@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Label } from "~/components/ui/label";
 import { Segmented } from "~/components/ui/segmented";
-import { eventAreas } from "./webhooks";
+import { areasOfFilters, eventAreas, toggleArea } from "./webhooks";
 
 /** Whether a choice is more filters than a webhook may hold (use All events instead). */
 export function tooManyEvents(filters: readonly string[]): boolean {
@@ -21,10 +21,13 @@ export function tooManyEvents(filters: readonly string[]): boolean {
 export function EventPicker({
 	value,
 	onChange,
+	original,
 }: {
 	/** The chosen filters; empty means every event. */
 	value: string[];
 	onChange: (filters: string[]) => void;
+	/** What the webhook has now, so checking an area again gives back its own filters. */
+	original?: readonly string[];
 }) {
 	const t = useTranslations("settingsV2.developer.events");
 	const tArea = useTranslations("settingsV2.developer.areas");
@@ -52,17 +55,19 @@ export function EventPicker({
 						<legend className="sr-only">{t("label")}</legend>
 						{areas.map((a) => {
 							const id = `wh-area-${a.id}`;
-							const on = a.filters.every((f) => value.includes(f));
+							// The area a filter falls in, as the row and the summary name it:
+							// a webhook made through the API may hold only `expense.created`.
+							const on = areasOfFilters(value).includes(a.id);
 							return (
 								<div className="flex items-center gap-3" key={a.id}>
 									<Checkbox
 										checked={on}
 										id={id}
 										onCheckedChange={(next) => {
-											const rest = value.filter((f) => !a.filters.includes(f));
+											const filters = toggleArea(value, a, next === true, original);
 											// The last one stays: no filters would mean every event.
-											if (next !== true && rest.length === 0) return;
-											onChange(next === true ? [...rest, ...a.filters] : rest);
+											if (filters.length === 0) return;
+											onChange(filters);
 										}}
 									/>
 									<Label className="font-normal" htmlFor={id}>

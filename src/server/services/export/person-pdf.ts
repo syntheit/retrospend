@@ -78,7 +78,7 @@ export async function exportPersonPdf(
 		relationshipStats: {
 			transactionCount: transactions.length,
 			projectCount: projectIds.length,
-			firstTransactionDate: oldest ? isoDay(oldest) : null,
+			firstTransactionDate: oldest ? isoDay(oldest, ctx.timeZone) : null,
 		},
 		projectBreakdown: [...perProject]
 			.sort((a, b) => b[1] - a[1])
@@ -100,7 +100,7 @@ export async function exportPersonPdf(
 				return row ? amountText(row.shareAmount, tx.currency) : "";
 			};
 			return {
-				date: isoDay(tx.date),
+				date: isoDay(tx.date, ctx.timeZone),
 				description: tx.description,
 				amount: amountText(tx.amount, tx.currency),
 				currency: tx.currency,

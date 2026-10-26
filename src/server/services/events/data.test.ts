@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { amountsOfChanges, extractEventData } from "./data";
+import { amountsOfChanges, extractEventData, toldPeople } from "./data";
 
 describe("extractEventData", () => {
 	it("keeps ids and Money and drops every other string", () => {
@@ -123,5 +123,59 @@ describe("amountsOfChanges", () => {
 				{ id: "netWorth", delta: { minor: 0, currency: "ARS" } },
 			]),
 		).toEqual([{ name: "owed.owedToYou", minor: -500, currency: "ARS" }]);
+	});
+});
+
+describe("the people a gone entity's event is for", () => {
+	const tell = [
+		{ participantType: "user", participantId: "u_ben" },
+		{ participantType: "shadow", participantId: "s_sam" },
+		{ participantType: "guest", participantId: "g_gus" },
+		{ participantType: "user", participantId: "u_cam" },
+	];
+
+	it("keeps users and shadow people as ids by kind, and no guests", () => {
+		const { entityId, data } = extractEventData({ id: "exp_1", tell });
+		expect(entityId).toBe("exp_1");
+		expect(data.ids).toEqual({
+			"tell.user.0": "u_ben",
+			"tell.shadow.0": "s_sam",
+			"tell.user.1": "u_cam",
+		});
+	});
+
+	it("reads them back from an event's ids", () => {
+		const { data } = extractEventData({ id: "exp_1", tell });
+		expect(toldPeople(data.ids)).toEqual([
+			{ type: "user", id: "u_ben" },
+			{ type: "shadow", id: "s_sam" },
+			{ type: "user", id: "u_cam" },
+		]);
+		expect(
+			toldPeople({ "tell.user": "x", categoryId: "c1", "tell.x.0": "y" }),
+		).toEqual([]);
+	});
+
+	it("drops an entry that is not a person with an id-shaped id", () => {
+		const { data } = extractEventData({
+			id: "exp_1",
+			tell: [
+				{ participantType: "user", participantId: "Ben Smith at the bar" },
+				{ participantType: "user" },
+				"u_ben",
+				null,
+			],
+		});
+		expect(data.ids).toEqual({});
+	});
+
+	it("keeps them ahead of other ids when the cap is reached", () => {
+		const many = Object.fromEntries(
+			Array.from({ length: 40 }, (_, i) => [`k${i}Id`, `id${i}`]),
+		);
+		const { data } = extractEventData({ ...many, tell });
+		expect(data.ids["tell.user.0"]).toBe("u_ben");
+		expect(Object.keys(data.ids)).toHaveLength(32);
+		expect(data.truncated).toBe(true);
 	});
 });

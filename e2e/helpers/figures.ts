@@ -235,7 +235,29 @@ export class FigureAudit {
 		return problems.map((p) => `${page}: ${p}`);
 	}
 
+	/**
+	 * Asks the API about `values`. A fetcher answers one currency per id, so an
+	 * id tagged in several currencies (a balance with someone owed in ARS and
+	 * BRL) goes out in one round per currency.
+	 */
 	private async apiProblems(values: FigureValue[]): Promise<string[]> {
+		const rounds: FigureValue[][] = [];
+		const currenciesOf = new Map<string, string[]>();
+		for (const v of values) {
+			const seen = currenciesOf.get(v.id) ?? [];
+			currenciesOf.set(v.id, seen);
+			let round = seen.indexOf(v.currency ?? "");
+			if (round < 0) round = seen.push(v.currency ?? "") - 1;
+			const inRound = rounds[round] ?? [];
+			rounds[round] = inRound;
+			inRound.push(v);
+		}
+		const problems: string[] = [];
+		for (const round of rounds) problems.push(...(await this.askApi(round)));
+		return problems;
+	}
+
+	private async askApi(values: FigureValue[]): Promise<string[]> {
 		const ids = [...new Set(values.map((v) => v.id))];
 		const currencies = new Map(
 			values.flatMap((v) => (v.currency ? [[v.id, v.currency] as const] : [])),
@@ -277,14 +299,19 @@ export class FigureAudit {
 		);
 	}
 
-	/** Every id seen on more than one page (or twice on one) must be identical. */
+	/**
+	 * Every id seen on more than one page (or twice on one) must be identical.
+	 * A figure with a line per currency (a balance with someone) is one value
+	 * per currency: its ARS and BRL lines are not compared with each other.
+	 */
 	crossPage(): string[] {
 		const problems: string[] = [];
 		const first = new Map<string, SeenFigure>();
 		for (const value of this.seen) {
-			const earlier = first.get(value.id);
+			const key = `${value.id}|${value.currency ?? value.unit}`;
+			const earlier = first.get(key);
 			if (!earlier) {
-				first.set(value.id, value);
+				first.set(key, value);
 				continue;
 			}
 			const mismatch = compareValues(earlier, value);
@@ -339,6 +366,47 @@ export function parseScopedId(
 }
 
 /**
+ * The query a scoped tag asks of GET /api/v1/figures: the figure id and its
+ * narrowing parameters, or null for a bare id. Beyond the project forms
+ * (`parseScopedId`, and an envelope id for envelope figures):
+ * - `entry.*` and `recurring.amount`: everything after the id is the row's or
+ *   template's id (a row id holds colons and bars: `shared:<id>`,
+ *   `payment:<key>|ARS`);
+ * - `correction.*`: `<transactionId>:<personKey>`;
+ * - `balance.person:<personKey>`: a person's balance with no project (the
+ *   key has two parts, a project-scoped tag three).
+ */
+export function scopeQueryOf(
+	tag: string,
+): { id: string; query: Record<string, string> } | null {
+	const at = tag.indexOf(":");
+	if (at < 1) return null;
+	const id = tag.slice(0, at);
+	const rest = tag.slice(at + 1);
+	if (id.startsWith("entry.")) return { id, query: { entryId: rest } };
+	if (id === "recurring.amount") return { id, query: { recurringId: rest } };
+	if (id.startsWith("correction.")) {
+		const [transactionId, ...person] = rest.split(":");
+		return {
+			id,
+			query: { transactionId: transactionId ?? "", personId: person.join(":") },
+		};
+	}
+	if (id === "balance.person" && rest.split(":").length === 2)
+		return { id, query: { personId: rest } };
+	const scope = parseScopedId(tag);
+	if (!scope) return null;
+	return {
+		id: scope.id,
+		query: {
+			[scope.id.startsWith("envelope.") ? "envelopeId" : "projectId"]:
+				scope.projectId,
+			...(scope.personId ? { personId: scope.personId } : {}),
+		},
+	};
+}
+
+/**
  * Fetcher for the real endpoint (S3), authenticated by the page's cookies.
  * Bare ids go in one request; a scoped tag is asked on its own with its
  * narrowing as query parameters and compared on the line in its currency.
@@ -356,7 +424,7 @@ export function httpFigureFetcher(request: APIRequestContext): FigureFetcher {
 	return async (ids, currencies) => {
 		const figures: ApiFigure[] = [];
 		const missing: string[] = [];
-		const bare = ids.filter((id) => !parseScopedId(id));
+		const bare = ids.filter((id) => !scopeQueryOf(id));
 		if (bare.length) {
 			const read = fromV1(
 				await get(`ids=${bare.map(encodeURIComponent).join(",")}`),
@@ -365,15 +433,9 @@ export function httpFigureFetcher(request: APIRequestContext): FigureFetcher {
 			missing.push(...(read.missing ?? []));
 		}
 		for (const tag of ids) {
-			const scope = parseScopedId(tag);
+			const scope = scopeQueryOf(tag);
 			if (!scope) continue;
-			// An envelope figure's tag carries the envelope id where a project's carries the project's.
-			const query = new URLSearchParams({
-				ids: scope.id,
-				[scope.id.startsWith("envelope.") ? "envelopeId" : "projectId"]:
-					scope.projectId,
-			});
-			if (scope.personId) query.set("personId", scope.personId);
+			const query = new URLSearchParams({ ids: scope.id, ...scope.query });
 			const body = await get(query.toString());
 			const read = fromV1Scoped(
 				tag,

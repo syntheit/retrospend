@@ -4,6 +4,12 @@ import { Pool } from "pg";
 import { E2E_DATABASE_URL, personaStorageState } from "../constants";
 import { LUCIA, MARTIN, SEED_TIME_ZONE } from "../fixtures/personas";
 import { bannedOutputOn } from "../helpers/banned-output";
+import {
+	collectFigureTags,
+	FigureAudit,
+	type FigureFetcher,
+} from "../helpers/figures";
+import { requiredFiguresFor } from "../helpers/required-figures";
 import { untilSaved } from "../helpers/trpc";
 import { openV2 } from "./viewer";
 
@@ -217,6 +223,43 @@ test("Corrections: ask, respond, correct, undo", async ({
 		await expect(changes).toContainText("You paid");
 		await expect(changes).toContainText("-ARS 16,000");
 		await expect(changes).toContainText("Lucía's share");
+		// The difference lines are tagged and read back as worked out by hand:
+		// each share drops by ARS 8,000 and Martín paid ARS 16,000 less (minor
+		// units). The preview serves them, not the registry.
+		const hand: Record<string, { minor: number; currency: string }> = {
+			[`preview.correction.share.delta:user:${MARTIN.id}`]: {
+				minor: -800_000,
+				currency: "ARS",
+			},
+			[`preview.correction.paid.delta:user:${MARTIN.id}`]: {
+				minor: -1_600_000,
+				currency: "ARS",
+			},
+			[`preview.correction.share.delta:user:${LUCIA.id}`]: {
+				minor: -800_000,
+				currency: "ARS",
+			},
+		};
+		const byHand: FigureFetcher = async (ids) => ({
+			figures: ids.flatMap((id) => {
+				const m = hand[id];
+				return m ? [{ id, unit: "money" as const, ...m }] : [];
+			}),
+			missing: ids.filter((id) => !hand[id]),
+		});
+		const rendered = await collectFigureTags(page);
+		expect(
+			await new FigureAudit(byHand).checkRendered(
+				"correct",
+				{
+					...rendered,
+					tags: rendered.tags.filter((t) =>
+						t.id?.startsWith("preview.correction."),
+					),
+				},
+				requiredFiguresFor("correct"),
+			),
+		).toEqual([]);
 		expect(await bannedOutputOn(page), "banned output").toEqual([]);
 		await expect(record).toBeEnabled();
 		await untilSaved(page, "corrections.correct.save", () => record.click());

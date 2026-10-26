@@ -224,6 +224,23 @@ describe("/api/v1 on Postgres", () => {
 			expect((await res.json()).code).toBe("not_found");
 		});
 
+		it("answers bad_request, not a server error, for a figure read without the narrowing it needs", async () => {
+			const token = await sessionFor(alice.user.id);
+			for (const query of [
+				"ids=entry.amount",
+				"ids=recurring.amount",
+				"ids=project.total&periodId=p1",
+				"ids=correction.paid&transactionId=t1",
+				"ids=balance.person",
+			]) {
+				const res = await call(`/figures?${query}`, {
+					headers: { authorization: `Bearer ${token}` },
+				});
+				expect(res.status, query).toBe(400);
+				expect((await res.json()).code, query).toBe("bad_request");
+			}
+		});
+
 		it("lists the bad field when validation fails", async () => {
 			const token = await sessionFor(alice.user.id);
 			const res = await call("/figures?ids=Bad%20Id", {

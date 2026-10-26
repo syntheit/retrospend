@@ -316,7 +316,9 @@
 			"otherWebhooks": "tes autres webhooks",
 			"sendsTo": "Envoie à",
 			"noUrl": "Pas encore d’URL",
-			"events": "Événements"
+			"events": "Événements",
+			"log": "ton journal d’envois",
+			"secret": "ton secret de signature"
 		},
 		"webhooks": "Webhooks",
 		"newWebhook": "Nouveau webhook",
@@ -338,7 +340,12 @@
 			"all": "Tous les événements",
 			"some": "Événements choisis",
 			"allHint": "Tous les événements de ton compte.",
-			"tooMany": "Trop de domaines choisis. Utilise Tous les événements."
+			"tooMany": "Trop de domaines choisis. Utilise Tous les événements.",
+			"scope": {
+				"all": "{area} : tous les événements",
+				"some": "{area} : certains événements",
+				"count": "{area} : {count, plural, one {1 événement} other {# événements}}"
+			}
 		},
 		"webhookState": {
 			"manual": "Désactivé",
@@ -401,6 +408,43 @@
 			"internal_error": "Erreur du serveur",
 			"webhook_disabled": "Le webhook était désactivé",
 			"event_gone": "Événement plus conservé"
+		},
+		"edit": {
+			"title": "Modifier {name}",
+			"save": "Enregistrer les modifications",
+			"enabled": "Envoyer les événements à cette URL",
+			"saved": "{name} mis à jour",
+			"noChanges": "Rien n’a encore changé",
+			"status": "État",
+			"on": "Activé",
+			"off": "Désactivé"
+		},
+		"rotate": {
+			"title": "Renouveler le secret de {name}",
+			"submit": "Renouveler le secret",
+			"graceLabel": "Garder l’ancien secret actif",
+			"grace": {
+				"now": "Arrêter aussitôt",
+				"hour": "1 heure",
+				"day": "1 jour",
+				"week": "7 jours"
+			},
+			"graceHint": {
+				"now": "À utiliser si le secret a fuité. Les envois signés avec l’ancien échouent tant que ton récepteur n’utilise pas le nouveau.",
+				"hour": "Les envois portent les deux signatures pendant 1 heure, pour que ton récepteur change sans coupure.",
+				"day": "Les envois portent les deux signatures pendant 1 jour, pour que ton récepteur change sans coupure.",
+				"week": "Les envois portent les deux signatures pendant 7 jours, pour que ton récepteur change sans coupure."
+			},
+			"signing": "Secret de signature",
+			"replaced": "Remplacé par un nouveau",
+			"oldSecret": "Ancien secret",
+			"oldEnds": {
+				"now": "S’arrête aussitôt",
+				"hour": "Actif encore 1 heure",
+				"day": "Actif encore 1 jour",
+				"week": "Actif encore 7 jours"
+			},
+			"permanent": "L’ancien secret ne peut pas revenir."
 		}
 	},
 	"data": {

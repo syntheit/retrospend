@@ -1,5 +1,6 @@
 import type { renameBillingPeriodSchema } from "@retrospend/api-contract";
 import type * as z from "zod";
+import { readFigures } from "~/server/figures/read";
 import { sumMinor, toMinor } from "~/server/services/envelope/units";
 import type { LedgerCaller } from "./money-op";
 import { trpcBillingPeriod } from "./trpc-bridge";
@@ -8,7 +9,10 @@ import { trpcBillingPeriod } from "./trpc-bridge";
  * v1 adapters for /projects/{id}/billing-periods. The rules (who may close,
  * the auto-close, settle only when every balance is paid) are the web's:
  * the billingPeriod procedures run in-process. The detail adds up per
- * currency, where the web's detail adds raw numbers across currencies.
+ * currency, where the web's detail adds raw numbers across currencies. Its
+ * total is the registry's `project.total` narrowed to the period, the figure
+ * the project page reads; by category and by person are still added up here
+ * (no registry figure for them yet, docs/ui/GAPS.md).
  */
 
 type Rename = z.infer<typeof renameBillingPeriodSchema>;
@@ -108,10 +112,14 @@ export async function readBillingPeriod(
 		}
 	}
 
+	const read = await readFigures(caller.principal.userId, ["project.total"], {
+		projectId: id,
+		periodId,
+	});
 	return {
 		...periodOf(period),
 		expenseCount: expenses.length,
-		total: totalsOf(expenses),
+		total: (read.get("project.total") ?? []).map((m) => ({ ...m })),
 		byCategory: [...categories].map(([categoryId, c]) => ({
 			categoryId,
 			name: c.name,
