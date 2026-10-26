@@ -131,7 +131,14 @@ test.describe("Developer", () => {
 		await page.getByRole("menuitem", { name: "Revoke key" }).click();
 		const confirm = page.getByRole("alertdialog", { name: "Revoke E2E key?" });
 		await expect(confirm).toContainText("stops working at once");
+		// Wait for the server's answer before looking at anything else.
+		const revoked = page.waitForResponse(
+			(r) =>
+				r.request().method() === "DELETE" &&
+				/\/api\/v1\/tokens\//.test(r.url()),
+		);
 		await confirm.getByRole("button", { name: "Revoke key" }).click();
+		expect((await revoked).status()).toBe(200);
 		await expect(row).toHaveCount(0);
 		expect((await api.get("/api/v1/me")).status()).toBe(401);
 		await api.dispose();

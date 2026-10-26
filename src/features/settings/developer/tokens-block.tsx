@@ -43,7 +43,8 @@ export function TokensBlock({ isAdmin }: { isAdmin: boolean }) {
 				first
 				state={{
 					isLoading: keys.isLoading,
-					isError: keys.isError,
+					// A failed refetch keeps the rows it has: a row goes only when the server drops it.
+					isError: keys.isError && rows.length === 0,
 					count: rows.length,
 					retry: () => void keys.refetch(),
 				}}

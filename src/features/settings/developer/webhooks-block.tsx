@@ -99,7 +99,8 @@ export function WebhooksBlock() {
 				empty={{ title: t("noWebhooks"), hint: t("noWebhooksHint") }}
 				state={{
 					isLoading: hooks.isLoading,
-					isError: hooks.isError,
+					// A failed refetch keeps the rows it has: a row goes only when the server drops it.
+					isError: hooks.isError && !hooks.data,
 					count: hooks.data?.items.length ?? 0,
 					retry: () => void hooks.refetch(),
 				}}
