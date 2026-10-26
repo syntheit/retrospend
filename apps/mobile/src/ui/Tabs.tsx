@@ -1,7 +1,7 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { Platform } from "react-native";
 import { useTranslations } from "use-intl";
-import { PROJECTS_APART } from "@/layout/destinations";
+import { ADD_CONTROL, PROJECTS_APART } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 
 interface TabsProps {
@@ -26,8 +26,9 @@ interface TabsProps {
  * sixth tab sends the plus and the last destination into More (verified on
  * iOS 26.5 and 27.0), which is why phones stop at four destinations.
  *
- * Android has no such slot and keeps its extended FAB; the iPad has the plus
- * in the toolbar (AddEntryProvider, TopBar). Active nav is brand
+ * Android has no such slot and keeps its extended FAB; below iOS 26 the
+ * iPhone gets the floating button too (the search tab is not detached there);
+ * the iPad has the plus in the toolbar (AddEntryProvider, TopBar). Active nav is brand
  * (GUIDELINE §2.1); the bar itself is a theme surface.
  */
 export function Tabs({ onAdd, addLabel }: TabsProps) {
@@ -38,7 +39,6 @@ export function Tabs({ onAdd, addLabel }: TabsProps) {
 	const m3 = Platform.OS === "android";
 	// The iPad sidebar shows all six destinations; phones show four.
 	const ipad = Platform.OS === "ios" && Platform.isPad;
-	const iphone = Platform.OS === "ios" && !Platform.isPad;
 	const tw = useTranslations("mobile.wealth");
 
 	return (
@@ -88,7 +88,7 @@ export function Tabs({ onAdd, addLabel }: TabsProps) {
 					<NativeTabs.Trigger.Icon md="folder" sf="folder" />
 				</NativeTabs.Trigger>
 			) : null}
-			{iphone ? (
+			{ADD_CONTROL === "tab" ? (
 				<NativeTabs.Trigger
 					accessibilityLabel={addLabel}
 					disabled

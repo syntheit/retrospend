@@ -9,6 +9,7 @@ import {
 import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
+import { ADD_CONTROL } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
 import { Sheet } from "@/ui/Sheet";
@@ -23,8 +24,8 @@ interface AddEntryApi {
 
 const AddEntryContext = createContext<AddEntryApi | null>(null);
 
-/** Height of the Material 3 navigation bar the Android button floats above. */
-const M3_NAVIGATION_BAR = 80;
+/** Height of the bar the floating button sits above: the M3 navigation bar, or the iOS tab bar. */
+const BAR_HEIGHT = Platform.OS === "android" ? 80 : 49;
 /** The sheet's handle and title above the composer, plus its padding. */
 const SHEET_CHROME = Platform.OS === "ios" ? 76 : 112;
 /** The share of the screen the iPad form sheet takes. */
@@ -44,7 +45,8 @@ export function useOptionalAddEntry(): AddEntryApi | null {
 /**
  * Where "add" lives (IMPLEMENTATION S5). The iPhone has the system's detached
  * plus at the end of the tab bar (Tabs.tsx), which calls `open`. Android has
- * no such slot (the extended FAB floats above the M3 navigation bar), and the
+ * no such slot (the extended FAB floats above the M3 navigation bar), nor has
+ * an iPhone below iOS 26 (the same button floats above the tab bar), and the
  * iPad has a plus in the top bar's toolbar (TopBar.ios). All open
  * the composer in a sheet with detents (Income is the mode row inside it).
  * It also keeps the outbox flowing, since an entry added offline needs a
@@ -79,13 +81,13 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	return (
 		<AddEntryContext.Provider value={api}>
 			{children}
-			{Platform.OS === "android" ? (
+			{ADD_CONTROL === "floating" ? (
 				<View
 					pointerEvents="box-none"
 					style={{
 						position: "absolute",
 						right: space[4],
-						bottom: insets.bottom + space[4] + M3_NAVIGATION_BAR,
+						bottom: insets.bottom + space[4] + BAR_HEIGHT,
 					}}
 				>
 					<AddButton label={t("addExpense")} onPress={() => show("expense")} />

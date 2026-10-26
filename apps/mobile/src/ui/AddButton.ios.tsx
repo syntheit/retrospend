@@ -5,6 +5,8 @@ import {
 	foregroundColor,
 	labelStyle,
 } from "@expo/ui/swift-ui/modifiers";
+import { Platform } from "react-native";
+import { iosMajor } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
 import type { AddButtonProps } from "./types";
@@ -17,9 +19,12 @@ import type { AddButtonProps } from "./types";
  */
 export function AddButton({ label, onPress, actions }: AddButtonProps) {
 	const { color } = useTheme();
+	// Glass is iOS 26; the floating button on older iPhones is a plain prominent one.
+	const glass =
+		iosMajor({ os: "ios", isPad: false, version: Platform.Version }) >= 26;
 	// Large control size: the touch target reaches 44 pt (the regular one is 31).
 	const modifiers = [
-		buttonStyle("glassProminent"),
+		buttonStyle(glass ? "glassProminent" : "borderedProminent"),
 		controlSize("large"),
 		labelStyle("iconOnly"),
 		// The plus reads on the brand glass in both themes (cream glass, dark plus).
