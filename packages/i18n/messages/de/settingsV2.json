@@ -183,6 +183,7 @@
 		"event": "Ereignis",
 		"channels": {
 			"inApp": "In der App",
+			"push": "Push",
 			"email": "E-Mail",
 			"digestMode": "Zusammenfassung"
 		},
@@ -198,7 +199,8 @@
 			"SETTLEMENT_REJECTED": "Eine Zahlung wird abgelehnt",
 			"PERIOD_CLOSED": "Ein Abrechnungszeitraum endet",
 			"PARTICIPANT_ADDED": "Du wirst zu einem Projekt hinzugefügt",
-			"PAYMENT_REMINDER": "Jemand erinnert dich ans Bezahlen"
+			"PAYMENT_REMINDER": "Jemand erinnert dich ans Bezahlen",
+			"RECURRING_DUE": "Eine wiederkehrende Ausgabe ist fällig"
 		}
 	},
 	"security": {

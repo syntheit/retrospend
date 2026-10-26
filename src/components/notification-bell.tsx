@@ -36,9 +36,9 @@ import { api } from "~/trpc/react";
 type Notification = RouterOutputs["notification"]["list"]["items"][number];
 type NotificationType = Notification["type"];
 
-const TYPE_CONFIG: Record<
-	NotificationType,
-	{ icon: React.ComponentType<{ className?: string }>; color: string }
+// No RECURRING_DUE entry: it is only a push, so no inbox row has that type.
+const TYPE_CONFIG: Partial<
+	Record<NotificationType, { icon: React.ComponentType<{ className?: string }>; color: string }>
 > = {
 	EXPENSE_SPLIT: { icon: CircleDollarSign, color: "text-blue-500" },
 	VERIFICATION_REQUEST: { icon: ClipboardCheck, color: "text-orange-500" },

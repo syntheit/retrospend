@@ -209,12 +209,20 @@ describe("/api/v1/notifications", () => {
 
 	it("creates preference defaults once and updates them", async () => {
 		const prefs = await expectBody<{
-			preferences: { type: string; email: boolean; inApp: boolean }[];
+			preferences: {
+				type: string;
+				email: boolean;
+				inApp: boolean;
+				push: boolean;
+			}[];
 		}>(
 			await call("/notifications/preferences", { headers: asAlice }),
 			n.getPreferences,
 		);
-		expect(prefs.preferences).toHaveLength(10);
+		expect(prefs.preferences).toHaveLength(11);
+		// Push is on for every type until the caller turns it off.
+		expect(prefs.preferences.every((p) => p.push)).toBe(true);
+		expect(prefs.preferences.map((p) => p.type)).toContain("RECURRING_DUE");
 		expect(
 			prefs.preferences
 				.filter((p) => p.email)
@@ -222,7 +230,7 @@ describe("/api/v1/notifications", () => {
 				.sort(),
 		).toEqual(["PERIOD_CLOSED", "VERIFICATION_REQUEST"]);
 		const updated = await expectBody<{
-			preferences: { type: string; inApp: boolean }[];
+			preferences: { type: string; inApp: boolean; push: boolean }[];
 		}>(
 			await call("/notifications/preferences", {
 				method: "PUT",
@@ -232,6 +240,7 @@ describe("/api/v1/notifications", () => {
 						{
 							type: "EXPENSE_SPLIT",
 							inApp: false,
+							push: false,
 							email: true,
 							digestMode: true,
 						},
@@ -245,9 +254,34 @@ describe("/api/v1/notifications", () => {
 			updated.preferences.find((p) => p.type === "EXPENSE_SPLIT"),
 		).toMatchObject({
 			inApp: false,
+			push: false,
 		});
+		// A write that leaves push out keeps what it was, in app or not.
+		const kept = await expectBody<{
+			preferences: { type: string; inApp: boolean; push: boolean }[];
+		}>(
+			await call("/notifications/preferences", {
+				method: "PUT",
+				headers: asAlice,
+				body: {
+					preferences: [
+						{
+							type: "EXPENSE_SPLIT",
+							inApp: true,
+							email: true,
+							digestMode: true,
+						},
+					],
+				},
+				idempotent: true,
+			}),
+			n.updatePreferences,
+		);
+		expect(
+			kept.preferences.find((p) => p.type === "EXPENSE_SPLIT"),
+		).toMatchObject({ inApp: true, push: false });
 		await expect(
 			adminDb.notificationPreference.count({ where: { userId: alice } }),
-		).resolves.toBe(10);
+		).resolves.toBe(11);
 	});
 });

@@ -7,8 +7,20 @@ import {
 } from "./source";
 
 const prefs: NotificationPreference[] = [
-	{ type: "EXPENSE_SPLIT", inApp: true, email: false, digestMode: false },
-	{ type: "PAYMENT_REMINDER", inApp: true, email: true, digestMode: true },
+	{
+		type: "EXPENSE_SPLIT",
+		inApp: true,
+		push: true,
+		email: false,
+		digestMode: false,
+	},
+	{
+		type: "PAYMENT_REMINDER",
+		inApp: true,
+		push: false,
+		email: true,
+		digestMode: true,
+	},
 ];
 
 describe("withChannel", () => {
@@ -17,6 +29,7 @@ describe("withChannel", () => {
 		expect(next[0]).toEqual({
 			type: "EXPENSE_SPLIT",
 			inApp: true,
+			push: true,
 			email: true,
 			digestMode: false,
 		});

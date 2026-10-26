@@ -15,7 +15,29 @@ export const NOTIFICATION_TYPES = [
 	"PERIOD_CLOSED",
 	"PARTICIPANT_ADDED",
 	"PAYMENT_REMINDER",
+	"RECURRING_DUE",
 ] as const;
+
+/**
+ * The types that make an inbox notification or an email. RECURRING_DUE is
+ * only a push, so only its `push` switch means anything.
+ */
+export const INBOX_NOTIFICATION_TYPES = NOTIFICATION_TYPES.filter(
+	(type) => type !== "RECURRING_DUE",
+);
+
+/** The types that have a push; the others ignore the `push` switch. */
+export const PUSH_NOTIFICATION_TYPES: readonly (typeof NOTIFICATION_TYPES)[number][] =
+	[
+		"EXPENSE_SPLIT",
+		"VERIFICATION_REQUEST",
+		"EXPENSE_EDITED",
+		"SETTLEMENT_RECEIVED",
+		"SETTLEMENT_CONFIRMED",
+		"SETTLEMENT_REJECTED",
+		"PAYMENT_REMINDER",
+		"RECURRING_DUE",
+	];
 
 export const notificationTypeSchema = z
 	.enum(NOTIFICATION_TYPES)
@@ -38,11 +60,22 @@ export const notificationPreferenceSchema = z
 	.object({
 		type: notificationTypeSchema,
 		inApp: z.boolean(),
+		/**
+		 * A push to the caller's phones and browsers, independent of `inApp`.
+		 * Only the types that have a push (not EXPENSE_DELETED, PERIOD_CLOSED or
+		 * PARTICIPANT_ADDED) act on it.
+		 */
+		push: z.boolean(),
 		email: z.boolean(),
 		/** Email arrives in a digest instead of one message each. */
 		digestMode: z.boolean(),
 	})
 	.meta({ id: "NotificationPreference" });
+
+/** What a write takes: `push` may be left out, which keeps its current value. */
+export const notificationPreferenceInputSchema = notificationPreferenceSchema
+	.extend({ push: z.boolean().optional() })
+	.meta({ id: "NotificationPreferenceInput" });
 
 export const notificationPreferencesSchema = z
 	.object({ preferences: z.array(notificationPreferenceSchema) })
@@ -114,7 +147,8 @@ export const notificationsContract = {
 			operationId: "updateNotificationPreferences",
 			tags: TAG,
 			summary: "Change how notification types reach the caller",
-			description: "Types left out keep their current setting.",
+			description:
+				"Types left out keep their current setting, and so does `push` when it is left out of a type (a new row then starts `push` as `inApp`). `inApp`, `email` and `digestMode` do nothing for RECURRING_DUE, which is only a push.",
 		})
 		.meta({
 			scope: "write:settings",
@@ -122,7 +156,7 @@ export const notificationsContract = {
 		})
 		.input(
 			z.object({
-				preferences: z.array(notificationPreferenceSchema).min(1).max(50),
+				preferences: z.array(notificationPreferenceInputSchema).min(1).max(50),
 			}),
 		)
 		.output(notificationPreferencesSchema),

@@ -183,6 +183,7 @@
 		"event": "Event",
 		"channels": {
 			"inApp": "In app",
+			"push": "Push",
 			"email": "Email",
 			"digestMode": "Digest"
 		},
@@ -198,7 +199,8 @@
 			"SETTLEMENT_REJECTED": "A payment is declined",
 			"PERIOD_CLOSED": "A billing period closes",
 			"PARTICIPANT_ADDED": "You are added to a project",
-			"PAYMENT_REMINDER": "Someone reminds you to pay"
+			"PAYMENT_REMINDER": "Someone reminds you to pay",
+			"RECURRING_DUE": "A recurring expense is due"
 		}
 	},
 	"security": {

@@ -14,11 +14,8 @@ export type PushChannel = (typeof PUSH_CHANNELS)[number];
 
 export type PushKindInfo = {
 	channel: PushChannel;
-	/**
-	 * The in-app preference that also governs the push, or null when the kind
-	 * has no preference row (recurring items are always pushed).
-	 */
-	preference: NotificationType | null;
+	/** The type whose `push` preference switch governs this kind. */
+	preference: NotificationType;
 };
 
 /**
@@ -46,7 +43,7 @@ export const PUSH_KINDS = {
 		preference: "SETTLEMENT_REJECTED",
 	},
 	"payment.reminded": { channel: "reminders", preference: "PAYMENT_REMINDER" },
-	"recurring.due": { channel: "recurring", preference: null },
+	"recurring.due": { channel: "recurring", preference: "RECURRING_DUE" },
 } as const satisfies Record<string, PushKindInfo>;
 
 export type PushKind = keyof typeof PUSH_KINDS;

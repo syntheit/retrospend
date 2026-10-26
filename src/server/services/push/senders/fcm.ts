@@ -1,5 +1,6 @@
 import type { FcmConfig } from "../config";
 import { signJwt } from "./jwt";
+import { parseRetryAfter } from "./retry-after";
 import type { PushMessage, PushSender, SendOutcome } from "./types";
 
 /**
@@ -37,11 +38,6 @@ async function errorCodeOf(res: Response): Promise<string | null> {
 	} catch {
 		return null;
 	}
-}
-
-function retryAfterMs(res: Response): number | undefined {
-	const seconds = Number(res.headers.get("retry-after"));
-	return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : undefined;
 }
 
 function outcomeOf({ status, code, retryAfterMs: wait }: Failure): SendOutcome {
@@ -151,7 +147,10 @@ export function createFcmSender(
 				return outcomeOf({
 					status: res.status,
 					code: await errorCodeOf(res),
-					retryAfterMs: retryAfterMs(res),
+					retryAfterMs: parseRetryAfter(
+						res.headers.get("retry-after"),
+						new Date(clock()),
+					),
 				});
 			} catch (error) {
 				if (error instanceof TokenError)

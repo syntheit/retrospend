@@ -183,6 +183,7 @@
 		"event": "Evento",
 		"channels": {
 			"inApp": "No app",
+			"push": "Push",
 			"email": "E-mail",
 			"digestMode": "Resumo"
 		},
@@ -198,7 +199,8 @@
 			"SETTLEMENT_REJECTED": "Um pagamento é recusado",
 			"PERIOD_CLOSED": "Um período de cobrança é fechado",
 			"PARTICIPANT_ADDED": "Você é adicionado a um projeto",
-			"PAYMENT_REMINDER": "Alguém lembra você de pagar"
+			"PAYMENT_REMINDER": "Alguém lembra você de pagar",
+			"RECURRING_DUE": "Uma despesa recorrente vence"
 		}
 	},
 	"security": {

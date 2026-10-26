@@ -74,6 +74,7 @@ export const notificationRouter = createTRPCRouter({
 					z.object({
 						type: notificationTypeSchema,
 						inApp: z.boolean(),
+						push: z.boolean().optional(),
 						email: z.boolean(),
 						digestMode: z.boolean(),
 					}),

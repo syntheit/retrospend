@@ -39,7 +39,7 @@ export const PUSH_ENV_GROUP: {
 			name: "PUSH_ENDPOINT_ALLOW_HOSTS",
 			required: false,
 			description:
-				"Comma-separated hosts (names or IPs) that may receive push although they are on a private network, such as a ntfy server on your LAN. Without it, an endpoint on a private address is refused.",
+				"Comma-separated hosts (names or IPs) that may receive push although they are on a private network, such as a ntfy server on your LAN. Without it, an endpoint on a private address is refused, unless an admin has turned on Allow private webhook targets, which also allows private UnifiedPush endpoints.",
 		},
 		{
 			name: "APNS_KEY_ID",

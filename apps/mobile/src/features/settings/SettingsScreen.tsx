@@ -1,4 +1,4 @@
-import { NOTIFICATION_TYPES } from "@retrospend/api-contract";
+import { INBOX_NOTIFICATION_TYPES } from "@retrospend/api-contract";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
@@ -200,7 +200,7 @@ export function SettingsScreen() {
 				{prefs.length > 0 ? (
 					<>
 						<FormSection title={t("notifications.inApp")}>
-							{NOTIFICATION_TYPES.filter((type) =>
+							{INBOX_NOTIFICATION_TYPES.filter((type) =>
 								preferenceOf(prefs, type),
 							).map((type) => (
 								<FormSwitchRow
@@ -212,7 +212,7 @@ export function SettingsScreen() {
 							))}
 						</FormSection>
 						<FormSection title={t("notifications.email")}>
-							{NOTIFICATION_TYPES.filter((type) =>
+							{INBOX_NOTIFICATION_TYPES.filter((type) =>
 								preferenceOf(prefs, type),
 							).map((type) => (
 								<FormSwitchRow

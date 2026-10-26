@@ -183,6 +183,7 @@
 		"event": "Evento",
 		"channels": {
 			"inApp": "En la app",
+			"push": "Push",
 			"email": "Email",
 			"digestMode": "Resumen"
 		},
@@ -198,7 +199,8 @@
 			"SETTLEMENT_REJECTED": "Se rechaza un pago",
 			"PERIOD_CLOSED": "Se cierra un período de facturación",
 			"PARTICIPANT_ADDED": "Te agregan a un proyecto",
-			"PAYMENT_REMINDER": "Alguien te recuerda que pagues"
+			"PAYMENT_REMINDER": "Alguien te recuerda que pagues",
+			"RECURRING_DUE": "Vence un gasto recurrente"
 		}
 	},
 	"security": {

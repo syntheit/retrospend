@@ -19,7 +19,13 @@ export type SendError =
 
 export type SendResult =
 	| { ok: true; statusCode: number }
-	| { ok: false; error: SendError; statusCode: number | null };
+	| {
+			ok: false;
+			error: SendError;
+			statusCode: number | null;
+			/** The `Retry-After` header of a non-2xx answer, as sent. */
+			retryAfter?: string;
+	  };
 
 export type SendInput = {
 	url: string;
@@ -117,10 +123,16 @@ export async function sendWebhook(input: SendInput): Promise<SendResult> {
 				// The answer is never read: stop a receiver that streams forever.
 				res.destroy();
 				const statusCode = res.statusCode ?? 0;
+				const retryAfter = res.headers["retry-after"];
 				finish(
 					statusCode >= 200 && statusCode < 300
 						? { ok: true, statusCode }
-						: { ok: false, error: "http_error", statusCode },
+						: {
+								ok: false,
+								error: "http_error",
+								statusCode,
+								...(typeof retryAfter === "string" && { retryAfter }),
+							},
 				);
 			},
 		);

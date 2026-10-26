@@ -2,6 +2,7 @@ import { sendWebhook } from "~/server/services/webhooks/send";
 import type { Resolver } from "~/server/services/webhooks/ssrf";
 import type { WebPushConfig } from "../config";
 import { signJwt } from "./jwt";
+import { parseRetryAfter } from "./retry-after";
 import type { PushMessage, PushSender, PushTarget, SendOutcome } from "./types";
 import { encryptWebPush, WebPushKeyError } from "./webpush-crypto";
 
@@ -52,6 +53,7 @@ function vapidHeader(
 
 function outcomeOf(
 	result: Awaited<ReturnType<typeof sendWebhook>>,
+	now: Date,
 ): SendOutcome {
 	if (result.ok) return { kind: "sent", statusCode: result.statusCode };
 	const { statusCode, error } = result;
@@ -60,8 +62,15 @@ function outcomeOf(
 	if (
 		statusCode !== null &&
 		(statusCode === 429 || statusCode === 408 || statusCode >= 500)
-	)
-		return { kind: "retry", statusCode, code: `http_${statusCode}` };
+	) {
+		const retryAfterMs = parseRetryAfter(result.retryAfter, now);
+		return {
+			kind: "retry",
+			statusCode,
+			code: `http_${statusCode}`,
+			...(retryAfterMs !== undefined && { retryAfterMs }),
+		};
+	}
 	if (statusCode !== null)
 		return { kind: "failed", statusCode, code: `http_${statusCode}` };
 	if (error === "blocked_target" || error === "internal_error")
@@ -103,6 +112,7 @@ export function createWebPushSender(
 			const allowPrivate =
 				options.allowHosts.has(hostOf(endpoint)) ||
 				(await options.allowPrivateTargets());
+			const now = options.now?.() ?? new Date();
 			const result = await sendWebhook({
 				url: endpoint,
 				body,
@@ -110,18 +120,14 @@ export function createWebPushSender(
 				resolve: options.resolve,
 				timeoutMs: options.timeoutMs,
 				headers: {
-					Authorization: vapidHeader(
-						config,
-						endpoint,
-						options.now?.() ?? new Date(),
-					),
+					Authorization: vapidHeader(config, endpoint, now),
 					"Content-Encoding": "aes128gcm",
 					"Content-Type": "application/octet-stream",
 					TTL: String(message.ttlSeconds),
 					Urgency: "normal",
 				},
 			});
-			return outcomeOf(result);
+			return outcomeOf(result, now);
 		},
 	};
 }
