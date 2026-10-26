@@ -1,3 +1,4 @@
+import { dayKey } from "@retrospend/domain/time-zone";
 import type { PrismaClient } from "~prisma";
 
 /** Who an export is for and on which client: the web router and API v1 both pass these. */
@@ -27,7 +28,10 @@ export function slug(text: string, max: number): string {
 		.slice(0, max);
 }
 
-/** The date a pdf or csv row shows for a stored day. */
-export function isoDay(date: Date | string): string {
-	return date instanceof Date ? date.toISOString().slice(0, 10) : String(date);
+/**
+ * The day a pdf or csv row shows for a stored moment: the day on the user's
+ * screen, so a late-evening expense is not pushed to tomorrow (UTC).
+ */
+export function isoDay(date: Date | string, timeZone?: string): string {
+	return date instanceof Date ? dayKey(date, timeZone) : String(date);
 }

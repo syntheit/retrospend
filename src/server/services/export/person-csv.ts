@@ -2,7 +2,12 @@
 import { dayKey } from "@retrospend/domain/time-zone";
 import { csvMeta, generateCsv } from "~/lib/csv";
 import { exactCell } from "./amounts";
-import { type CsvDocument, type ExportContext, slug } from "./context";
+import {
+	type CsvDocument,
+	type ExportContext,
+	isoDay,
+	slug,
+} from "./context";
 import {
 	fetchEditCounts,
 	nameOf,
@@ -87,7 +92,7 @@ export async function exportPersonHistory(
 				sp.participantId === them.participantId,
 		);
 		return [
-			tx.date,
+			isoDay(tx.date, ctx.timeZone),
 			tx.description,
 			exactCell(tx.amount),
 			tx.currency,

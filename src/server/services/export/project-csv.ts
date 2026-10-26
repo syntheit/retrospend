@@ -16,7 +16,12 @@ import {
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import type { PrismaClient } from "~prisma";
 import { amountText, exactCell, minorCell, totalsText } from "./amounts";
-import { type CsvDocument, type ExportContext, slug } from "./context";
+import {
+	type CsvDocument,
+	type ExportContext,
+	isoDay,
+	slug,
+} from "./context";
 import {
 	fetchEditCounts,
 	nameOf,
@@ -150,7 +155,7 @@ export async function exportProjectExpenses(
 		"Edits",
 	];
 	const rows = transactions.map((tx) => [
-		tx.date,
+		isoDay(tx.date, ctx.timeZone),
 		tx.description,
 		exactCell(tx.amount),
 		tx.currency,
@@ -244,7 +249,7 @@ export async function exportBillingPeriodSummary(
 		"Edits",
 	];
 	const expenseRows = transactions.map((tx) => [
-		tx.date,
+		isoDay(tx.date, ctx.timeZone),
 		tx.description,
 		exactCell(tx.amount),
 		tx.currency,
