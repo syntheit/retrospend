@@ -45,7 +45,7 @@ describe("editing a webhook", () => {
 		).toEqual({});
 	});
 
-	it("sends only the fields that differ, with the typed text trimmed", () => {
+	it("sends only the fields that differ; the URL is trimmed, the name is sent as typed", () => {
 		expect(
 			editPatch(hook, {
 				...hook,
@@ -53,8 +53,12 @@ describe("editing a webhook", () => {
 				url: " https://home.example.com/other ",
 			}),
 		).toEqual({
-			name: "Home server 2",
+			name: "  Home server 2 ",
 			url: "https://home.example.com/other",
+		});
+		// A name is user text (opaque): spaces alone are a change, and are kept.
+		expect(editPatch(hook, { ...hook, name: "Home server " })).toEqual({
+			name: "Home server ",
 		});
 		expect(editPatch(hook, { ...hook, enabled: false })).toEqual({
 			enabled: false,
@@ -68,6 +72,22 @@ describe("editing a webhook", () => {
 		expect(editPatch(hook, { ...hook, eventTypes: [] })).toEqual({
 			eventTypes: [],
 		});
+	});
+
+	it("puts back why a webhook was off when the edit turned it on", () => {
+		const off = {
+			...hook,
+			enabled: false,
+			disabledReason: "too_many_failures" as const,
+			disabledAt: "2026-10-26T10:00:00.000Z",
+		};
+		expect(undoPatch(off, { enabled: true })).toEqual({
+			enabled: false,
+			disabledReason: "too_many_failures",
+			disabledAt: "2026-10-26T10:00:00.000Z",
+		});
+		// Turning one off needs no reason: the owner chose it.
+		expect(undoPatch(hook, { enabled: false })).toEqual({ enabled: true });
 	});
 
 	it("undoes an edit with the values it replaced", () => {

@@ -17,6 +17,7 @@ import { RotateSecretSheet } from "./rotate-secret-sheet";
 import { SecretSheet } from "./secret-sheet";
 import { TokenBlock } from "./token-rows";
 import { WebhookRow } from "./webhook-rows";
+import { undoPatch } from "./webhooks";
 
 type Named = { id: string; name: string };
 
@@ -52,13 +53,17 @@ export function WebhooksBlock() {
 
 	const handlers = useMemo<ActionHandlers<WebhookTarget>>(() => {
 		const fail = () => toast.failed(t("failed"));
-		const setEnabled = (w: Named, enabled: boolean) =>
-			update.mutateAsync({ id: w.id, enabled });
 		const turn = (enabled: boolean) => async (w: WebhookTarget) => {
 			try {
-				await setEnabled(w, enabled);
+				// The undo puts back the state it replaced, including why a webhook
+				// that failed was off (not "turned off by you").
+				const before = byId.get(w.id);
+				const back = before
+					? undoPatch(before, { enabled })
+					: { enabled: !enabled };
+				await update.mutateAsync({ id: w.id, enabled });
 				toast.saved(t(enabled ? "turnedOn" : "turnedOff", { name: w.name }), {
-					undo: () => setEnabled(w, !enabled),
+					undo: () => update.mutateAsync({ id: w.id, ...back }),
 				});
 			} catch {
 				fail();

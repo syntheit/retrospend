@@ -136,7 +136,13 @@ export async function updateWebhook(
 					}
 				: {}),
 			...(disabling
-				? { enabled: false, disabledAt: new Date(), disabledReason: "manual" }
+				? {
+						enabled: false,
+						disabledAt: input.disabledAt
+							? new Date(input.disabledAt)
+							: new Date(),
+						disabledReason: input.disabledReason ?? "manual",
+					}
 				: {}),
 		},
 	});

@@ -46,6 +46,7 @@ type Hook = {
 	secretStart: string;
 	previousSecretExpiresAt: string | null;
 	disabledReason: string | null;
+	disabledAt: string | null;
 	consecutiveFailures: number;
 };
 type Created = { webhook: Hook; secret: string };
@@ -789,6 +790,48 @@ describe("/api/v1/webhooks", () => {
 				enabled: true,
 				disabledReason: null,
 				consecutiveFailures: 0,
+			});
+
+			// Putting it back off (the Undo of turning it on) can restore why it
+			// was off and since when, instead of reading as the owner's choice.
+			const again = await expectBody<Hook>(
+				await call(`/webhooks/${webhook.id}`, {
+					method: "PATCH",
+					headers,
+					idempotent: true,
+					body: {
+						enabled: false,
+						disabledReason: shown.disabledReason,
+						disabledAt: shown.disabledAt,
+					},
+				}),
+				contract.webhooks.update,
+			);
+			expect(again).toMatchObject({
+				enabled: false,
+				disabledReason: "too_many_failures",
+				disabledAt: shown.disabledAt,
+			});
+			// Without them it is the owner's choice, as before.
+			const patchHook = async (body: object) =>
+				expectBody<Hook>(
+					await call(`/webhooks/${webhook.id}`, {
+						method: "PATCH",
+						headers,
+						idempotent: true,
+						body,
+					}),
+					contract.webhooks.update,
+				);
+			await patchHook({ enabled: true });
+			expect(await patchHook({ enabled: false })).toMatchObject({
+				enabled: false,
+				disabledReason: "manual",
+			});
+			// A reason sent while turning it on is ignored.
+			await patchHook({ enabled: true, disabledReason: "blocked_target" });
+			expect(await patchHook({ enabled: false })).toMatchObject({
+				disabledReason: "manual",
 			});
 		});
 	});

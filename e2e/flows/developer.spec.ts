@@ -261,6 +261,15 @@ test.describe("Developer", () => {
 				.getByRole("button", { name: "Undo" })
 				.click();
 			await expect(row.getByText("Off")).toHaveCount(0);
+			// The Undo put back the address too, not only the switch (read from the API).
+			await expect(async () => {
+				const listed = await page.request.get("/api/v1/webhooks");
+				const mine = (await listed.json()).items.find(
+					(w: { name: string }) => w.name === "E2E hook",
+				);
+				expect(mine.url).toBe(`http://127.0.0.1:${port}/hook?token=abc`);
+				expect(mine.enabled).toBe(true);
+			}).toPass();
 
 			// Rotating the secret cannot be undone: the sheet says what changes and
 			// lets the old secret keep signing for a while; the new one shows once.

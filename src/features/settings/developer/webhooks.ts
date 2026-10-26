@@ -122,15 +122,18 @@ export type WebhookEdit = Pick<
 const sameEvents = (a: readonly string[], b: readonly string[]) =>
 	a.length === b.length && a.every((f) => b.includes(f));
 
-/** The fields of `next` that differ from `w`, for the update call (typed text trimmed). */
+/**
+ * The fields of `next` that differ from `w`, for the update call. The URL is
+ * trimmed (pasted addresses carry spaces); the name is user text and goes as
+ * typed, compared as typed.
+ */
 export function editPatch(
 	w: WebhookEdit,
 	next: WebhookEdit,
 ): Partial<WebhookEdit> {
 	const patch: Partial<WebhookEdit> = {};
-	const name = next.name.trim();
 	const url = next.url.trim();
-	if (name !== w.name) patch.name = name;
+	if (next.name !== w.name) patch.name = next.name;
 	if (url !== w.url) patch.url = url;
 	if (!sameEvents(w.eventTypes, next.eventTypes))
 		patch.eventTypes = next.eventTypes;
@@ -138,16 +141,32 @@ export function editPatch(
 	return patch;
 }
 
-/** The update that puts back what `patch` replaced. */
+/** What the update call takes beyond an edit: why a webhook is off, and since when. */
+export type WebhookRestore = Partial<WebhookEdit> & {
+	disabledReason?: NonNullable<WebhookDto["disabledReason"]>;
+	disabledAt?: NonNullable<WebhookDto["disabledAt"]>;
+};
+
+/**
+ * The update that puts back what `patch` replaced. Turning a webhook on
+ * clears why it was off; putting it back off restores that reason (it may
+ * have been switched off after failures, not by its owner).
+ */
 export function undoPatch(
-	w: WebhookEdit,
+	w: WebhookEdit & Partial<Pick<WebhookDto, "disabledReason" | "disabledAt">>,
 	patch: Partial<WebhookEdit>,
-): Partial<WebhookEdit> {
-	const back: Partial<WebhookEdit> = {};
+): WebhookRestore {
+	const back: WebhookRestore = {};
 	if (patch.name !== undefined) back.name = w.name;
 	if (patch.url !== undefined) back.url = w.url;
 	if (patch.eventTypes !== undefined) back.eventTypes = w.eventTypes;
-	if (patch.enabled !== undefined) back.enabled = w.enabled;
+	if (patch.enabled !== undefined) {
+		back.enabled = w.enabled;
+		if (!w.enabled && w.disabledReason && w.disabledAt) {
+			back.disabledReason = w.disabledReason;
+			back.disabledAt = w.disabledAt;
+		}
+	}
 	return back;
 }
 
