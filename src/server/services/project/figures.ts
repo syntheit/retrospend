@@ -1,6 +1,8 @@
 /**
  * The project summary's figures (IMPLEMENTATION §2.4). Read for one user,
- * narrowed to a project and, for member figures, to one person
+ * narrowed to a project, optionally to one of its billing periods
+ * (`periodId`: the period's expenses and the payments recorded against it),
+ * and, for member figures, to one person
  * (`personId` = `<participantType>:<participantId>`, as summary.refKey).
  * Every value is a per-currency list in minor units; nothing is converted.
  */
@@ -21,15 +23,17 @@ function projectOf(scope: FigureScope): string {
 }
 
 const numbersFor = (db: FigureDb, scope: FigureScope) =>
-	readProjectNumbers(db, projectOf(scope), {
-		participantType: "user",
-		participantId: scope.userId,
-	});
+	readProjectNumbers(
+		db,
+		projectOf(scope),
+		{ participantType: "user", participantId: scope.userId },
+		scope.periodId,
+	);
 
-/** Group total: every expense in the project, per currency. */
+/** Group total: every expense in the project (or the period), per currency. */
 const projectTotal: FigureDefinition = {
 	id: "project.total",
-	scope: ["projectId"],
+	scope: ["projectId", "periodId"],
 	compute: async (db, scope) => (await numbersFor(db, scope)).total,
 };
 
@@ -38,7 +42,7 @@ function memberFigure(
 ): FigureDefinition {
 	return {
 		id: `project.member.${field}`,
-		scope: ["projectId", "personId"],
+		scope: ["projectId", "personId", "periodId"],
 		compute: async (db, scope) => {
 			if (!scope.personId) {
 				throw new Error(`project.member.${field} needs a personId narrowing`);

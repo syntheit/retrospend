@@ -67111,6 +67111,16 @@
 						"allowEmptyValue": true,
 						"allowReserved": true,
 						"in": "query",
+						"name": "periodId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
 						"name": "personId",
 						"required": false,
 						"schema": {
@@ -67153,6 +67163,36 @@
 						"allowReserved": true,
 						"in": "query",
 						"name": "envelopeId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "entryId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "recurringId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "transactionId",
 						"required": false,
 						"schema": {
 							"type": "string"

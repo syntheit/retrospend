@@ -25,6 +25,8 @@ export const figuresQuerySchema = z.object({
 			examples: ["owed.owedToYou,owed.youOwe"],
 		}),
 	projectId: z.string().optional(),
+	/** With projectId, for project.total and project.member.*: one billing period of the project. */
+	periodId: z.string().optional(),
 	personId: z.string().optional(),
 	accountId: z.string().optional(),
 	/** For insights.byCategory and the other per-category figures. */
@@ -35,6 +37,12 @@ export const figuresQuerySchema = z.object({
 		.regex(/^\d{4}-\d{2}$/)
 		.optional(),
 	envelopeId: z.string().optional(),
+	/** For entry.amount and entry.share: an Activity row's id (a personal expense id, `shared:<id>` or `payment:<key>`). */
+	entryId: z.string().optional(),
+	/** For recurring.amount. */
+	recurringId: z.string().optional(),
+	/** With personId, for correction.paid and correction.share: the corrected shared expense. */
+	transactionId: z.string().optional(),
 });
 
 export const figuresResultSchema = z.object({
@@ -44,7 +52,8 @@ export const figuresResultSchema = z.object({
 /**
  * GET /figures reads named numbers from the figures registry, the same
  * definitions the web shows and the e2e display audit compares against.
- * A narrowing (projectId, personId, accountId, categoryId, month, envelopeId) applies only to figures
+ * A narrowing (projectId, periodId, personId, accountId, categoryId, month,
+ * envelopeId, entryId, recurringId, transactionId) applies only to figures
  * that honor it. Unknown ids are `not_found`.
  */
 export const figuresContract = {
