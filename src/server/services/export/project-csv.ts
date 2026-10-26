@@ -20,6 +20,7 @@ import { type CsvDocument, type ExportContext, slug } from "./context";
 import {
 	fetchEditCounts,
 	nameOf,
+	refKeyOf,
 	resolveParticipantNames,
 	txStatus,
 } from "./names";
@@ -64,6 +65,12 @@ async function planRows(
 	]);
 }
 
+const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+/**
+ * One string per expense: the shares by name, then by who they belong to, so
+ * the file reads the same however the rows are stored.
+ */
 const splitDetails = (
 	tx: {
 		currency: string;
@@ -77,10 +84,15 @@ const splitDetails = (
 	withCurrency: boolean,
 ) =>
 	tx.splitParticipants
-		.map((sp) => {
-			const share = amountText(sp.shareAmount, tx.currency);
-			return `${nameOf(names, sp)}: ${share}${withCurrency ? ` ${tx.currency}` : ""}`;
-		})
+		.map((sp) => ({
+			name: nameOf(names, sp),
+			key: refKeyOf(sp),
+			share: amountText(sp.shareAmount, tx.currency),
+		}))
+		.sort((a, b) => compareText(a.name, b.name) || compareText(a.key, b.key))
+		.map(
+			(sp) => `${sp.name}: ${sp.share}${withCurrency ? ` ${tx.currency}` : ""}`,
+		)
 		.join("; ");
 
 const expenseInclude = {
@@ -114,7 +126,7 @@ export async function exportProjectExpenses(
 			...(input.periodId ? { billingPeriodId: input.periodId } : {}),
 		},
 		include: expenseInclude,
-		orderBy: { date: "desc" },
+		orderBy: [{ date: "desc" }, { id: "asc" }],
 	});
 	const names = await resolveParticipantNames(
 		ctx.db,
@@ -186,7 +198,7 @@ export async function exportBillingPeriodSummary(
 			include: {
 				sharedTransactions: {
 					include: expenseInclude,
-					orderBy: { date: "desc" },
+					orderBy: [{ date: "desc" }, { id: "asc" }],
 				},
 			},
 		}),

@@ -40,7 +40,7 @@ export async function exportPersonHistory(
 				},
 			},
 		},
-		orderBy: { date: "desc" },
+		orderBy: [{ date: "desc" }, { id: "asc" }],
 	});
 
 	const names = await resolveParticipantNames(ctx.db, [

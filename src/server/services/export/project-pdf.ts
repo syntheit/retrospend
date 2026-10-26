@@ -46,7 +46,7 @@ export async function exportProjectPdf(
 			...(input.periodId ? { billingPeriodId: input.periodId } : {}),
 		},
 		include: { category: { select: { name: true } } },
-		orderBy: { date: "desc" },
+		orderBy: [{ date: "desc" }, { id: "asc" }],
 	});
 	const isSolo = rawParticipants.length <= 1;
 	const numbers = isSolo
