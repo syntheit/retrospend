@@ -16,7 +16,8 @@ const num = (value: DecimalLike | null | undefined) =>
 
 /**
  * Everything the account holds as one ZIP of CSV files (the full backup).
- * `timeZone` dates the file name in the user's zone (undefined = server zone).
+ * `timeZone` dates the file name, and an expense's day, in the user's zone
+ * (undefined = server zone).
  */
 export async function exportAccountZip(
 	db: PrismaClient,
@@ -147,7 +148,8 @@ export async function exportAccountZip(
 				expense.currency,
 				num(expense.exchangeRate),
 				num(expense.amountInUSD),
-				expense.date,
+				// The day on the user's screen, not the UTC day.
+				dayKey(expense.date, timeZone),
 				expense.location,
 				expense.description,
 				expense.pricingSource,
