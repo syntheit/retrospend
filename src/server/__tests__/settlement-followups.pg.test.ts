@@ -198,9 +198,9 @@ describe("offset rate band", () => {
 		expect(await offsetting({ currency: "RON", rate: "1", mine: "100" })).toBe(
 			false,
 		);
-		expect(await offsetting({ currency: "RON", rate: "0.22", mine: "22" })).toBe(
-			false,
-		);
+		expect(
+			await offsetting({ currency: "RON", rate: "0.22", mine: "22" }),
+		).toBe(false);
 	});
 
 	it("takes a typed rate only when the payment carries it", async () => {
@@ -349,7 +349,10 @@ describe("offset rate band", () => {
 						settledAt: new Date(),
 					},
 				});
-				await tx.payment.update({ where: { id }, data: { status: "FINALIZED" } });
+				await tx.payment.update({
+					where: { id },
+					data: { status: "FINALIZED" },
+				});
 			}),
 		);
 		expect(confirmed).toBe(true);
@@ -468,44 +471,37 @@ describe("the SETTLED entry", () => {
 	});
 
 	it("is refused with a snapshot whose rows are not the claim's", async () => {
-		const snapshot = (p: Claim, mutate: (rows: Record<string, unknown>[]) => void) => {
-			const previous = JSON.parse(JSON.stringify(honest(p)));
-			mutate(previous.rows);
-			return previous;
-		};
+		/** The honest snapshot with its rows changed by `change`. */
+		const forged =
+			(
+				change: (rows: Record<string, unknown>[]) => Record<string, unknown>[],
+			) =>
+			(p: Claim) => ({
+				...honest(p),
+				rows: change(JSON.parse(JSON.stringify(honest(p).rows))),
+			});
+		const first = (rows: Record<string, unknown>[]) => rows[0] ?? {};
 		const attempts: [string, (p: Claim) => unknown][] = [
-			[
-				"another amount",
-				(p) => snapshot(p, (rows) => void (rows[0] && (rows[0].amount = "1"))),
-			],
+			["another amount", forged((rows) => [{ ...first(rows), amount: "1" }])],
 			[
 				"another person",
-				(p) =>
-					snapshot(
-						p,
-						(rows) => void (rows[0] && (rows[0].toParticipantId = "someone")),
-					),
+				forged((rows) => [{ ...first(rows), toParticipantId: "someone" }]),
 			],
 			[
 				"another currency",
-				(p) =>
-					snapshot(p, (rows) => void (rows[0] && (rows[0].currency = "ARS"))),
+				forged((rows) => [{ ...first(rows), currency: "ARS" }]),
 			],
 			[
 				"an extra row",
-				(p) =>
-					snapshot(p, (rows) =>
-						rows.push({ ...rows[0], id: randomUUID(), amount: "5" }),
-					),
+				forged((rows) => [
+					...rows,
+					{ ...first(rows), id: randomUUID(), amount: "5" },
+				]),
 			],
-			["no rows", (p) => snapshot(p, (rows) => void rows.splice(0))],
+			["no rows", forged(() => [])],
 			[
 				"a row of another payment",
-				(p) =>
-					snapshot(
-						p,
-						(rows) => void (rows[0] && (rows[0].id = "other-row")),
-					),
+				forged((rows) => [{ ...first(rows), id: "other-row" }]),
 			],
 		];
 		for (const [name, forge] of attempts) {
@@ -574,7 +570,6 @@ describe("the SETTLED entry", () => {
 			).toBe(false);
 		}
 	});
-
 });
 
 describe("putting a confirmed claim back (the undo)", () => {
@@ -591,7 +586,9 @@ describe("putting a confirmed claim back (the undo)", () => {
 	/** The undo as restoreClaim writes it: rows out, rows in, header back. */
 	const undo = (
 		p: Claim,
-		rows: (original: Prisma.SettlementUncheckedCreateInput[]) => Prisma.SettlementUncheckedCreateInput[],
+		rows: (
+			original: Prisma.SettlementUncheckedCreateInput[],
+		) => Prisma.SettlementUncheckedCreateInput[],
 		headerBack: Prisma.PaymentUncheckedUpdateInput = {},
 	) =>
 		went(() =>
@@ -761,7 +758,10 @@ describe("the marker of a rewrite", () => {
 						amount: "9",
 					}),
 				});
-				await tx.payment.update({ where: { id }, data: { status: "FINALIZED" } });
+				await tx.payment.update({
+					where: { id },
+					data: { status: "FINALIZED" },
+				});
 			}),
 		);
 		expect(rewritten).toBe(true);
@@ -769,11 +769,10 @@ describe("the marker of a rewrite", () => {
 
 	it("is kept in a table the app role cannot read, write or call", async () => {
 		// Raw statements are only scoped to the app role inside a transaction.
-		const asApp = (sql: string) =>
-			inTx(ben, (tx) => tx.$queryRawUnsafe(sql));
-		await expect(
-			asApp("SELECT count(*) FROM payment_tx_note"),
-		).rejects.toThrow(/permission denied/);
+		const asApp = (sql: string) => inTx(ben, (tx) => tx.$queryRawUnsafe(sql));
+		await expect(asApp("SELECT count(*) FROM payment_tx_note")).rejects.toThrow(
+			/permission denied/,
+		);
 		await expect(
 			asApp(
 				`INSERT INTO payment_tx_note ("txid", "kind", "key") VALUES (txid_current(), 'ins', 'x')`,

@@ -47,14 +47,12 @@ const planned = (
 	from: opts.isOffset ? "payee" : "payer",
 	isOffset: opts.isOffset ?? false,
 	paid: 0,
-	quote: rate ? { perUnit: dec(rate), rateType: opts.rateType ?? "custom" } : null,
+	quote: rate
+		? { perUnit: dec(rate), rateType: opts.rateType ?? "custom" }
+		: null,
 });
 
-const check = (
-	currency: string,
-	rate: string,
-	rows: PlannedSettlement[],
-) =>
+const check = (currency: string, rate: string, rows: PlannedSettlement[]) =>
 	assertTypedRate(adminDb, {
 		into: "USD",
 		custom: { rate, currency },
@@ -110,7 +108,9 @@ describe("assertTypedRate", () => {
 	it("does nothing when the rows did not use the typed rate", async () => {
 		await expect(check("PLN", "0.000001", [])).resolves.toBeUndefined();
 		await expect(
-			check("PLN", "0.000001", [planned("PLN", "0.25", { rateType: "official" })]),
+			check("PLN", "0.000001", [
+				planned("PLN", "0.25", { rateType: "official" }),
+			]),
 		).resolves.toBeUndefined();
 	});
 
@@ -187,11 +187,11 @@ describe("payment.record with a typed rate", () => {
 		const header = await adminDb.payment.findUniqueOrThrow({
 			where: { id: done.value.paymentId },
 		});
-		expect([header.rateType, header.rate?.toString(), header.rateCurrency]).toEqual([
-			"custom",
-			"0.25",
-			"PLN",
-		]);
+		expect([
+			header.rateType,
+			header.rate?.toString(),
+			header.rateCurrency,
+		]).toEqual(["custom", "0.25", "PLN"]);
 	});
 
 	it("refuses a rate outside the band, and writes nothing", async () => {

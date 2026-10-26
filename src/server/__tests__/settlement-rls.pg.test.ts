@@ -149,7 +149,11 @@ async function confirmWithEntry(p: { paymentId: string; row: { id: string } }) {
 				changes: {
 					paymentGroupId: p.paymentId,
 					amount: 100,
-					previous: previousOf(before, rows, "[]") as unknown as Prisma.InputJsonValue,
+					previous: previousOf(
+						before,
+						rows,
+						"[]",
+					) as unknown as Prisma.InputJsonValue,
 				},
 			},
 		});
@@ -541,8 +545,7 @@ describe("inserting a payment", () => {
 		payer: TestUser,
 		payee: TestUser,
 		id: ReturnType<typeof randomUUID>,
-	) =>
-		adminDb.payment.create({ data: header(payer, payer, payee, id) });
+	) => adminDb.payment.create({ data: header(payer, payer, payee, id) });
 
 	it("lets the payer record a pending payment, and the payee record one received", async () => {
 		const id = randomUUID();
@@ -573,8 +576,12 @@ describe("inserting a payment", () => {
 				},
 			});
 		});
-		expect(await adminDb.settlement.count({ where: { paymentGroupId: id } })).toBe(1);
-		expect(await adminDb.settlement.count({ where: { paymentGroupId: idB } })).toBe(1);
+		expect(
+			await adminDb.settlement.count({ where: { paymentGroupId: id } }),
+		).toBe(1);
+		expect(
+			await adminDb.settlement.count({ where: { paymentGroupId: idB } }),
+		).toBe(1);
 	});
 
 	it("lets the payer record a payment to a shadow person as final at once", async () => {
@@ -604,7 +611,9 @@ describe("inserting a payment", () => {
 				},
 			});
 		});
-		expect(await adminDb.settlement.count({ where: { paymentGroupId: id } })).toBe(1);
+		expect(
+			await adminDb.settlement.count({ where: { paymentGroupId: id } }),
+		).toBe(1);
 	});
 
 	it("refuses a payer making a payment to a real user final without them", async () => {
@@ -766,7 +775,9 @@ describe("deleting a payment", () => {
 		const p = await payment("pending");
 		expect(
 			await went(() =>
-				ben.db.settlement.deleteMany({ where: { paymentGroupId: p.paymentId } }),
+				ben.db.settlement.deleteMany({
+					where: { paymentGroupId: p.paymentId },
+				}),
 			),
 		).toBe(false);
 		expect(await exists(p.row.id)).toBe(true);

@@ -291,7 +291,8 @@ describe("/api/v1/payments", () => {
 			c.previewRecord,
 		);
 		expect(owedLines(plain).length).toBeGreaterThan(0);
-		for (const line of owedLines(plain)) expect(line).not.toHaveProperty("approx");
+		for (const line of owedLines(plain))
+			expect(line).not.toHaveProperty("approx");
 
 		// A debt in BRL is converted into ARS for the total: an estimate.
 		await seedShare(ref(creditor), ref(debtor), "50", "BRL");
@@ -356,7 +357,11 @@ describe("/api/v1/payments", () => {
 			422,
 			"rate_out_of_range",
 		);
-		await expectProblem(await post("/payments", slip), 422, "rate_out_of_range");
+		await expectProblem(
+			await post("/payments", slip),
+			422,
+			"rate_out_of_range",
+		);
 		const fine = await expectBody<Write>(
 			await post("/payments", typed("0.0007")),
 			c.record,

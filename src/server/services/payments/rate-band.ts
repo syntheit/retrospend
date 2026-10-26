@@ -129,7 +129,10 @@ export async function assertTypedRate(
 		// The payment keeps the rate as typed; an offset row keeps six decimals.
 		const typed = dec(custom.rate);
 		const stored = typed.toDecimalPlaces(6);
-		if (outside(typed, band) || (used.some((r) => r.isOffset) && outside(stored, band))) {
+		if (
+			outside(typed, band) ||
+			(used.some((r) => r.isOffset) && outside(stored, band))
+		) {
 			throw new RateOutOfRangeError(
 				`That ${custom.currency} rate is too far from the stored rate. Check it and try again.`,
 			);

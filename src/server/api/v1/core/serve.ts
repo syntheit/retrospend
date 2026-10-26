@@ -45,8 +45,7 @@ export function toProblem(error: unknown, route?: string): unknown {
 	if (missing instanceof MissingRateError)
 		return problem("missing_rate", missing.message);
 	// More than everything owed: a code of its own, so a client can say so.
-	if (error instanceof OverpayError)
-		return problem("overpay", error.message);
+	if (error instanceof OverpayError) return problem("overpay", error.message);
 	// A typed rate far from the stored one: a slip, with a code a client can show.
 	if (error instanceof RateOutOfRangeError)
 		return problem("rate_out_of_range", error.message);

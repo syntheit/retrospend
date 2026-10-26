@@ -128,7 +128,9 @@ export const restoreSelfMutation: MoneyMutation<
 				await tx.category.findMany({
 					where: {
 						id: {
-							in: input.removed.flatMap((r) => (r.categoryId ? [r.categoryId] : [])),
+							in: input.removed.flatMap((r) =>
+								r.categoryId ? [r.categoryId] : [],
+							),
 						},
 					},
 					select: { id: true },
@@ -148,7 +150,8 @@ export const restoreSelfMutation: MoneyMutation<
 				verifiedAt: r.verifiedAt ? new Date(r.verifiedAt) : null,
 				rejectionReason: r.rejectionReason,
 				hasUnseenChanges: r.hasUnseenChanges,
-				categoryId: r.categoryId && kept.has(r.categoryId) ? r.categoryId : null,
+				categoryId:
+					r.categoryId && kept.has(r.categoryId) ? r.categoryId : null,
 				categorySource:
 					r.categoryId && kept.has(r.categoryId) ? r.categorySource : null,
 			})),
@@ -190,7 +193,10 @@ export const restoreSelfMutation: MoneyMutation<
 			undo: {
 				kind: "revert",
 				mutation: "sharedExpense.removeSelf",
-				rows: input.removed.map((r) => ({ table: "split_participant", id: r.id })),
+				rows: input.removed.map((r) => ({
+					table: "split_participant",
+					id: r.id,
+				})),
 			},
 		};
 	},
