@@ -17,7 +17,8 @@ export const costFigure = (dir: "out" | "in", period: Period) =>
  * One summary line with a Monthly / Quarterly / Yearly switch (replaces
  * the stat cards and the projections sidebar). Every number is the
  * server's per period; a currency without a rate is named and left out,
- * never counted as zero (B16).
+ * never counted as zero (B16). A line that left one out is a partial sum,
+ * which the figure is not, so it carries no figure id.
  */
 export function RecurringSummary({
 	out,
@@ -31,7 +32,7 @@ export function RecurringSummary({
 	const amount = (cost: RecurringCost, dir: "out" | "in") => (
 		<Money
 			className="text-fg font-semibold"
-			figure={costFigure(dir, period)}
+			figure={cost.missingRate.length === 0 ? costFigure(dir, period) : undefined}
 			value={cost[period]}
 		/>
 	);

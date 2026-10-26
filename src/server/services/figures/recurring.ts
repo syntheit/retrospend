@@ -5,9 +5,10 @@
  *   by `recurringId`.
  * - `recurring.cost.<out|in>.<month|quarter|year>`: what the active
  *   templates of one direction cost (or bring in) per period, in the home
- *   currency at today's rates. A template in a currency with no rate stays
- *   out of the total, as it does on the page, where it is named (R14); an
- *   "in" figure is empty when no active template brings money in.
+ *   currency at today's rates. A template in a currency with no rate makes
+ *   the figure unavailable (R14): never a sum of the rest, zero or a rate of
+ *   1. The page names the currencies and shows its partial line untagged.
+ *   An "in" figure is empty when no active template brings money in.
  */
 import type {
 	FigureDb,
@@ -15,6 +16,7 @@ import type {
 	FigurePass,
 	FigureScope,
 } from "~/server/figures/registry";
+import { FigureUnavailable } from "~/server/figures/unavailable";
 import {
 	type RecurringBody,
 	readRecurringBody,
@@ -52,7 +54,10 @@ const costFigures = DIRECTIONS.flatMap((dir) =>
 			scope: [],
 			compute: async (db, scope, pass) => {
 				const cost = (await bodyOnce(db, scope, pass))[dir];
-				return cost ? [cost[period]] : [];
+				if (!cost) return [];
+				if (cost.missingRate.length > 0)
+					return new FigureUnavailable(cost.missingRate);
+				return [cost[period]];
 			},
 		}),
 	),

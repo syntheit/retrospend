@@ -5,9 +5,11 @@
  * - Gym HRK 620 monthly, Netflix USD 12.99 monthly (HRK 129.90 at home),
  *   Club HRK 300 weekly (300 x 52 / 12 = 1,300 a month): out costs HRK
  *   2,049.90 a month, 6,149.70 a quarter, 24,598.80 a year.
- * - A paused template and one in a currency with no rate stay out of the
- *   cost: the rate-less one is named by recurring.listView, never counted
- *   as zero or as 1 (R14).
+ * - A paused template stays out of the cost.
+ * - A cost with a template in a currency with no rate is unavailable, never
+ *   a partial sum, zero or a rate of 1 (R14); recurring.listView names the
+ *   currency. A home currency with no rate makes every foreign template
+ *   rate-less, so its cost is unavailable too.
  * - Salary HRK 5,000 monthly in: 5,000 a month, 15,000 a quarter, 60,000 a year.
  * Someone with no template that brings money in has no "in" cost at all.
  */
@@ -19,15 +21,24 @@ const hrk = (minor: number) => ({ minor, currency: "HRK" });
 
 let me: Awaited<ReturnType<typeof createTestUser>>;
 let other: Awaited<ReturnType<typeof createTestUser>>;
+let partial: Awaited<ReturnType<typeof createTestUser>>;
+let rateless: Awaited<ReturnType<typeof createTestUser>>;
 
 beforeAll(async () => {
 	me = await createTestUser();
 	other = await createTestUser();
-	for (const u of [me, other])
+	partial = await createTestUser();
+	rateless = await createTestUser();
+	for (const u of [me, other, partial])
 		await adminDb.user.update({
 			where: { id: u.user.id },
 			data: { homeCurrency: "HRK" },
 		});
+	// MVR is priced nowhere: a home currency with no rate.
+	await adminDb.user.update({
+		where: { id: rateless.user.id },
+		data: { homeCurrency: "MVR" },
+	});
 	const date = new Date("2026-10-02T00:00:00Z");
 	await adminDb.exchangeRate.upsert({
 		where: { date_currency_type: { date, currency: "HRK", type: "official" } },
@@ -59,8 +70,13 @@ beforeAll(async () => {
 			t("rf_netflix", "Netflix", "12.99", "USD", "MONTHLY"),
 			t("rf_club", "Club", "300", "HRK", "WEEKLY"),
 			t("rf_paused", "Paused", "1000", "HRK", "YEARLY", { isActive: false }),
-			t("rf_xyz", "Token", "10", "XYZ", "MONTHLY"),
 			t("rf_salary", "Salary", "5000", "HRK", "MONTHLY", { direction: "IN" }),
+			{ ...t("rf_p_gym", "Gym", "620", "HRK", "MONTHLY"), userId: partial.user.id },
+			{ ...t("rf_p_xyz", "Token", "10", "XYZ", "MONTHLY"), userId: partial.user.id },
+			{
+				...t("rf_r_usd", "Netflix", "12.99", "USD", "MONTHLY"),
+				userId: rateless.user.id,
+			},
 		],
 	});
 });
@@ -87,8 +103,17 @@ describe("figure recurring.amount", () => {
 });
 
 describe("figure recurring.cost.out.month", () => {
-	it("adds the active templates at today's rates, leaving the rate-less one out", async () => {
+	it("adds the active templates at today's rates", async () => {
 		expect(await read("recurring.cost.out.month")).toEqual([hrk(204990)]);
+	});
+
+	it("is unavailable, not a partial sum, when a template has no rate", async () => {
+		expect(await read("recurring.cost.out.month", {}, partial)).toBeNull();
+		expect(await read("recurring.cost.out.year", {}, partial)).toBeNull();
+	});
+
+	it("is unavailable when the home currency has no rate", async () => {
+		expect(await read("recurring.cost.out.month", {}, rateless)).toBeNull();
 	});
 });
 

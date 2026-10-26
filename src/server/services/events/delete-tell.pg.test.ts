@@ -3,7 +3,8 @@
  * result names them (user and shadow people, never the actor), the event
  * carries them as ids, and the fan-out writes each account a feed copy that
  * names the expense and the actor and nothing else. A retraction (the Undo of
- * an add, right after) names nobody, as its notices are taken back too.
+ * an add, right after) names them too, since the add's copy has usually reached
+ * them already; its notices are still taken back.
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -106,7 +107,7 @@ describe("deleting a shared expense", () => {
 		});
 	});
 
-	it("names nobody when it only takes back an add", async () => {
+	it("names the same people when it only takes back an add", async () => {
 		const b = await book();
 		await forUser(b.user.id).apply(deleteSharedExpense, {
 			id: b.id,
@@ -114,7 +115,9 @@ describe("deleting a shared expense", () => {
 			retract: true,
 		});
 		const [event] = await eventsOf(b.user.id, "shared_expense.deleted");
-		expect(event?.payload).toMatchObject({ ids: {} });
+		expect(event?.payload).toMatchObject({
+			ids: { "tell.user.0": b.ben.id, "tell.shadow.0": b.sam.id },
+		});
 	});
 });
 

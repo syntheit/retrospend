@@ -223,7 +223,7 @@ export interface DeletedShared {
 	readonly id: string;
 	/**
 	 * The other people who were on it, for the event that tells them (it is
-	 * written once the rows are gone). Empty for a retraction.
+	 * written once the rows are gone).
 	 */
 	readonly tell: readonly ParticipantRef[];
 }
@@ -246,13 +246,12 @@ export const deleteSharedExpense: MoneyMutation<
 			row.createdByType === "user" &&
 			row.createdById === actor.userId &&
 			Date.now() - row.createdAt.getTime() < RETRACT_WINDOW_MS;
+		// A retraction still tells: the add's feed copy has usually reached them.
+		const tell = await peopleToTell(tx, input.id, {
+			participantType: "user",
+			participantId: actor.userId,
+		});
 		// Retracting: the service's own notices are dropped, the retraction queued instead.
-		const tell = retract
-			? []
-			: await peopleToTell(tx, input.id, {
-					participantType: "user",
-					participantId: actor.userId,
-				});
 		await serviceFor(tx, actor.userId, retract ? { notify: [] } : input).delete(
 			input.id,
 			{
