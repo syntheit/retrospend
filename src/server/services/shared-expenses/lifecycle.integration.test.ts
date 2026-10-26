@@ -1603,6 +1603,13 @@ describe("Suite 1J: Auto-accept expiry counts from the last re-verification", ()
 
 	beforeEach(() => {
 		db = createStatefulDb();
+		// The in-memory db has no bulk audit insert, which the sweep writes with.
+		Object.assign(db.auditLogEntry, {
+			createMany: ({ data }: { data: never[] }) => {
+				db._stores.audits.push(...data);
+				return { count: data.length };
+			},
+		});
 	});
 
 	function seedPendingSplit(dates: {
@@ -1659,6 +1666,14 @@ describe("Suite 1J: Auto-accept expiry counts from the last re-verification", ()
 		expect(db._stores.splits.get("sp-bob")?.verificationStatus).toBe(
 			"AUTO_ACCEPTED",
 		);
+		expect(db._stores.audits).toEqual([
+			expect.objectContaining({
+				actorId: "__system__",
+				action: "AUTO_VERIFIED",
+				targetType: "SPLIT_PARTICIPANT",
+				targetId: "sp-bob",
+			}),
+		]);
 	});
 
 	it("keeps an old expense edited yesterday pending (reset in place)", async () => {

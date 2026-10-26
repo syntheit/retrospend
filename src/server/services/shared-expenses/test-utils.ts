@@ -9,7 +9,11 @@
  */
 
 import { vi } from "vitest";
-import { DEFAULT_RATES, queryRateRows, type TestRateRow } from "~/test/rate-table";
+import {
+	DEFAULT_RATES,
+	queryRateRows,
+	type TestRateRow,
+} from "~/test/rate-table";
 import {
 	createSettlementModels,
 	type PaymentRecord,
@@ -158,10 +162,7 @@ export function createStatefulDb() {
 	const nextId = () => `mock-id-${++seq}`;
 
 	// Helper: check if a split matches a filter condition
-	const matchesSplitCond = (
-		sp: SplitRecord,
-		cond: Record<string, unknown>,
-	) =>
+	const matchesSplitCond = (sp: SplitRecord, cond: Record<string, unknown>) =>
 		(cond.participantType === undefined ||
 			sp.participantType === cond.participantType) &&
 		(cond.participantId === undefined ||
@@ -172,10 +173,7 @@ export function createStatefulDb() {
 	// Helper: check if a transaction matches a where clause. Supports the subset
 	// of Prisma filters the services use: AND, OR, splitParticipants.some/none,
 	// paidByType/paidById, isLocked and projectId.
-	const matchesTx = (
-		tx: TxRecord,
-		where: Record<string, unknown>,
-	): boolean => {
+	const matchesTx = (tx: TxRecord, where: Record<string, unknown>): boolean => {
 		if (where.splitParticipants) {
 			const spFilter = where.splitParticipants as {
 				some?: Record<string, unknown>;
@@ -203,10 +201,7 @@ export function createStatefulDb() {
 			const orClauses = where.OR as Array<Record<string, unknown>>;
 			if (!orClauses.some((clause) => matchesTx(tx, clause))) return false;
 		}
-		if (
-			where.paidByType !== undefined &&
-			tx.paidByType !== where.paidByType
-		)
+		if (where.paidByType !== undefined && tx.paidByType !== where.paidByType)
 			return false;
 		if (where.paidById !== undefined && tx.paidById !== where.paidById)
 			return false;
@@ -362,14 +357,12 @@ export function createStatefulDb() {
 			return tx;
 		}),
 
-		findFirst: vi.fn(
-			(args: { where?: Record<string, unknown> } = {}) => {
-				for (const tx of transactions.values()) {
-					if (!args.where || matchesTx(tx, args.where)) return tx;
-				}
-				return null;
-			},
-		),
+		findFirst: vi.fn((args: { where?: Record<string, unknown> } = {}) => {
+			for (const tx of transactions.values()) {
+				if (!args.where || matchesTx(tx, args.where)) return tx;
+			}
+			return null;
+		}),
 
 		count: vi.fn((args: { where?: Record<string, unknown> } = {}) => {
 			if (!args.where) return transactions.size;
@@ -558,8 +551,7 @@ export function createStatefulDb() {
 									(c) =>
 										(c.paidByType === undefined ||
 											tx.paidByType === c.paidByType) &&
-										(c.paidById === undefined ||
-											tx.paidById === c.paidById),
+										(c.paidById === undefined || tx.paidById === c.paidById),
 								)
 							)
 								return false;
@@ -594,11 +586,8 @@ export function createStatefulDb() {
 							// Project scope (computeBalance projectScope). Key absent =>
 							// no filter; string => that project; null => null-project only.
 							if ("projectId" in txFilter) {
-								const wantProjectId = txFilter.projectId as
-									| string
-									| null;
-								if ((tx.projectId ?? null) !== wantProjectId)
-									return false;
+								const wantProjectId = txFilter.projectId as string | null;
+								if ((tx.projectId ?? null) !== wantProjectId) return false;
 							}
 						}
 
@@ -616,8 +605,9 @@ export function createStatefulDb() {
 						if (sel.transactionId) out.transactionId = sp.transactionId;
 						if (sel.transaction) {
 							// Honor the nested transaction.select (currency, paidBy…).
-							const txSel = (sel.transaction as { select?: Record<string, unknown> })
-								.select;
+							const txSel = (
+								sel.transaction as { select?: Record<string, unknown> }
+							).select;
 							if (txSel) {
 								const txOut: Record<string, unknown> = {};
 								if (txSel.currency) txOut.currency = tx?.currency ?? "USD";
@@ -771,7 +761,8 @@ export function createStatefulDb() {
 						verificationStatus: item.verificationStatus ?? "PENDING",
 						verifiedAt: item.verifiedAt ?? null,
 						rejectionReason: null,
-						hasUnseenChanges: (item.hasUnseenChanges as boolean | undefined) ?? false,
+						hasUnseenChanges:
+							(item.hasUnseenChanges as boolean | undefined) ?? false,
 						createdAt: new Date(),
 					});
 				}
@@ -837,6 +828,12 @@ export function createStatefulDb() {
 			const entry = { id: nextId(), ...args.data, createdAt: new Date() };
 			audits.push(entry);
 			return entry;
+		}),
+		createMany: vi.fn((args: { data: Record<string, unknown>[] }) => {
+			for (const data of args.data) {
+				audits.push({ id: nextId(), ...data, createdAt: new Date() });
+			}
+			return { count: args.data.length };
 		}),
 	};
 
@@ -1154,7 +1151,9 @@ export function createStatefulDb() {
 					if (Array.isArray(pid.in))
 						results = results.filter((pp) => pid.in!.includes(pp.projectId));
 					if (Array.isArray(pid.notIn))
-						results = results.filter((pp) => !pid.notIn!.includes(pp.projectId));
+						results = results.filter(
+							(pp) => !pid.notIn!.includes(pp.projectId),
+						);
 				} else {
 					results = results.filter((pp) => pp.projectId === pid);
 				}

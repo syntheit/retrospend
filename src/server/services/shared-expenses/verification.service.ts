@@ -5,17 +5,10 @@ import { answerShareIn } from "./answer-share";
 import { logAudit } from "./audit-log";
 import { buildCallerRoleMap, deriveCanModify } from "./project-permissions";
 import { removeSelfIn } from "./remove-self";
+import { autoAcceptSplits } from "./split-sweep";
 import type { ParticipantRef } from "./types";
 
 type AppDb = PrismaClient;
-
-// Convention for system-generated audit entries. Uses "user" type with a
-// sentinel ID. Since all real IDs are CUID-generated (alphanumeric), the
-// "__system__" prefix is guaranteed to never collide.
-const SYSTEM_ACTOR: ParticipantRef = {
-	participantType: "user",
-	participantId: "__system__",
-};
 
 const AUTO_ACCEPT_DAYS_DEFAULT = 7;
 
@@ -99,26 +92,9 @@ export class VerificationService {
 
 		const now = new Date();
 
-		await this.db.splitParticipant.updateMany({
-			where: { id: { in: expired.map((sp) => sp.id) } },
-			data: { verificationStatus: "AUTO_ACCEPTED", verifiedAt: now },
-		});
-
-		// Log each auto-accept (best-effort: logAudit has its own error handling)
-		for (const sp of expired) {
-			await logAudit(this.db, {
-				actor: SYSTEM_ACTOR,
-				action: "AUTO_VERIFIED",
-				targetType: "SPLIT_PARTICIPANT",
-				targetId: sp.id,
-				changes: {
-					participantType: sp.participantType,
-					participantId: sp.participantId,
-					autoAcceptedAfterDays: days,
-				},
-				projectId: sp.transaction.projectId ?? undefined,
-			});
-		}
+		await this.runInTransaction((tx) =>
+			autoAcceptSplits(tx, expired, days, now),
+		);
 
 		return expired.length;
 	}
