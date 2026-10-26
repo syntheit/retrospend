@@ -36,7 +36,7 @@ const KNOWN_SEGMENTS: ReadonlySet<string> = new Set(
 	amount amounts total balance available assigned spent left limit paid
 	owed received sent held holds need interest principal minimum savings
 	worth part mine rest short over carry cost price base typed suggested
-	activity booked charged confirmStartingMoney difference effect imbalance
+	request activity booked charged confirmStartingMoney difference effect imbalance
 	lines moneyIn netWorth owedToYou youOwe withMe myShare myBalance
 	toAssign uncovered usualPerDay perDay perMonth year quarter progress
 	revaluation returned pending full everything net`

@@ -103476,6 +103476,7 @@
 										"push": {
 											"properties": {
 												"transports": {
+													"description": "The transports this server can send through. Empty when no push sender is configured.",
 													"items": {
 														"enum": [
 															"apns",
@@ -103485,6 +103486,10 @@
 														"type": "string"
 													},
 													"type": "array"
+												},
+												"vapidPublicKey": {
+													"description": "The server's VAPID public key (base64url). Present with unifiedpush: the app gives it to the distributor as the application server key.",
+													"type": "string"
 												}
 											},
 											"required": [

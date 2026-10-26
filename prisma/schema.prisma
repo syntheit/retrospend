@@ -2235,6 +2235,7 @@ model PushDevice {
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   session     Session?      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   apiKey      Apikey?       @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  deliveries  PushDelivery[]
 
   @@unique([userId, transport, addressHash])
   @@index([userId])
@@ -2264,8 +2265,11 @@ model ApiEvent {
   payload     Json
   createdAt   DateTime            @default(now())
   fannedOutAt DateTime?
+  /// When the push fan-out last looked at the event (it may have found nobody to tell).
+  pushedAt    DateTime?
   user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   deliveries  WebhookDelivery[]
+  pushDeliveries PushDelivery[]
 
   @@index([userId, txid, seq])
   @@index([createdAt])
@@ -2327,4 +2331,42 @@ model WebhookDelivery {
   @@index([status, nextAttemptAt])
   @@index([userId])
   @@map("webhook_delivery")
+}
+
+enum PushDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// One push to one device. Self-contained: `payload` holds the type, the ids and
+// the amount (never a title or a note), and the text is built from it when the
+// push is sent, in the device owner's language. Written and read only by the
+// owner connection (the push worker); the app role has no access.
+model PushDelivery {
+  id             String             @id @default(cuid())
+  userId         String
+  deviceId       String
+  eventId        String?
+  eventType      String             @db.VarChar(64)
+  channel        String             @db.VarChar(16)
+  /// What a delivery is for, so a repeat sweep cannot send it twice: the event id, or a recurring item and day.
+  dedupeKey      String             @db.VarChar(200)
+  payload        Json
+  status         PushDeliveryStatus @default(PENDING)
+  attempts       Int                @default(0)
+  nextAttemptAt  DateTime?
+  lastAttemptAt  DateTime?
+  lastStatusCode Int?
+  lastError      String?            @db.VarChar(64)
+  sentAt         DateTime?
+  createdAt      DateTime           @default(now())
+  device         PushDevice         @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  event          ApiEvent?          @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@unique([deviceId, dedupeKey])
+  @@index([status, nextAttemptAt])
+  @@index([userId, createdAt])
+  @@index([eventId])
+  @@map("push_delivery")
 }

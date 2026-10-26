@@ -23,7 +23,7 @@ export type SendResult =
 
 export type SendInput = {
 	url: string;
-	body: string;
+	body: string | Buffer;
 	headers: Record<string, string>;
 	allowPrivate: boolean;
 	resolve?: Resolver;
