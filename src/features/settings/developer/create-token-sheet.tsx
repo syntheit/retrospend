@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useDateFormat } from "~/components/pickers/use-date-format";
+import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -66,9 +67,10 @@ export function CreateTokenSheet({
 	const toggle = (s: Scope, on: boolean) =>
 		setScopes((cur) => (on ? [...cur, s] : cur.filter((x) => x !== s)));
 
-	const submit = async () => {
-		if (made) {
-			// Done: the key can still be taken back from the toast.
+	// Every way out of the secret step (Done, X, Escape, swipe) ends here, so
+	// the toast with Undo always shows: the key can still be taken back.
+	const handleOpenChange = (next: boolean) => {
+		if (!next && made) {
 			const { id } = made;
 			toast.saved(t("created", { name: made.name }), {
 				undo: async () => {
@@ -76,8 +78,12 @@ export function CreateTokenSheet({
 					await invalidateForEvent(queryClient, "token.revoked");
 				},
 			});
-			return true;
 		}
+		onOpenChange(next);
+	};
+
+	const submit = async () => {
+		if (made) return true;
 		// Called on the client, not through a mutation hook: a mutation keeps
 		// its result in the cache, and this result holds the key.
 		const out = await client.tokens.create({
@@ -96,7 +102,14 @@ export function CreateTokenSheet({
 	return (
 		<Sheet
 			detent="large"
-			onOpenChange={onOpenChange}
+			footer={
+				made ? (
+					<Button kind="primary" onClick={() => handleOpenChange(false)}>
+						{t("done")}
+					</Button>
+				) : undefined
+			}
+			onOpenChange={handleOpenChange}
 			onSubmit={submit}
 			open={open}
 			submitDisabled={!made && (!name.trim() || scopes.length === 0)}

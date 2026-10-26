@@ -1,4 +1,6 @@
+import { EVENT_TYPES } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
+import en from "../../../../packages/i18n/messages/en/settingsV2.json";
 import {
 	DEFAULT_EXPIRY,
 	DEFAULT_SCOPES,
@@ -10,8 +12,12 @@ import {
 	toToken,
 } from "../developer/tokens";
 import {
+	areaOfResource,
+	areasOfFilters,
+	DELIVERY_ERRORS,
 	deliveryStatus,
-	eventResources,
+	EVENT_AREAS,
+	eventAreas,
 	isWebhookUrl,
 	stateOf,
 	targetOf,
@@ -81,25 +87,42 @@ describe("API tokens model", () => {
 });
 
 describe("webhooks model", () => {
-	it("lists every event resource once, as a filter the server accepts", () => {
-		const list = eventResources();
-		expect(list.length).toBeGreaterThan(20);
-		expect(new Set(list.map((r) => r.resource)).size).toBe(list.length);
-		for (const r of list) {
-			expect(r.filter).toMatch(/^[a-z][a-z0-9_]*\.\*$/);
-			expect(r.verbs.length).toBeGreaterThan(0);
-		}
-		const expense = list.find((r) => r.resource === "expense");
-		expect(expense?.verbs).toContain("created");
+	it("gives every event resource of the contract an area", () => {
+		const resources = new Set(EVENT_TYPES.map((t) => t.split(".")[0] ?? ""));
+		const orphans = [...resources].filter((r) => areaOfResource(r) === null);
+		expect(orphans, "event resources with no area").toEqual([]);
 	});
 
-	it("groups verbs under their resource", () => {
+	it("names every area and every delivery error in the English catalog", () => {
+		const dev = en.developer as {
+			areas: Record<string, string>;
+			deliveryError: Record<string, string>;
+		};
+		for (const id of Object.keys(EVENT_AREAS)) expect(dev.areas[id], id).toBeTruthy();
+		for (const code of DELIVERY_ERRORS)
+			expect(dev.deliveryError[code], code).toBeTruthy();
+	});
+
+	it("selects an area by the filters of all its resources, budget included", () => {
+		const areas = eventAreas();
+		const expenses = areas.find((a) => a.id === "expenses");
+		expect(expenses?.filters).toEqual(["expense.*", "expenses.*"]);
+		const budget = areas.find((a) => a.id === "budget");
+		expect(budget?.filters).toContain("budget_envelope.*");
+		expect(budget?.filters).toContain("budget.*");
+		// No raw resource is its own entry: a resource shows under one area only.
+		const all = areas.flatMap((a) => a.filters);
+		expect(new Set(all).size).toBe(all.length);
+	});
+
+	it("folds a webhook's filters, exact or per resource, into area names", () => {
 		expect(
-			eventResources(["a.created", "a.deleted", "b.moved", "nodot"]),
-		).toEqual([
-			{ resource: "a", filter: "a.*", verbs: ["created", "deleted"] },
-			{ resource: "b", filter: "b.*", verbs: ["moved"] },
-		]);
+			areasOfFilters(["payment.*", "expense.created", "expenses.*"]),
+		).toEqual(["expenses", "payments"]);
+		expect(areasOfFilters([])).toEqual([]);
+		expect(areaOfResource("budget_whatever")).toBe("budget");
+		expect(areaOfResource("admin_whatever")).toBe("admin");
+		expect(areaOfResource("hologram")).toBeNull();
 	});
 
 	it("shows only the origin of a target", () => {

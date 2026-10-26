@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Button } from "~/components/ui/button";
 import { Sheet } from "~/components/ui/sheet";
 import { SecretPanel } from "./secret-panel";
 
@@ -17,6 +18,11 @@ export function SecretSheet({
 	const t = useTranslations("settingsV2.developer");
 	return (
 		<Sheet
+			footer={
+				<Button kind="primary" onClick={onClose}>
+					{t("done")}
+				</Button>
+			}
 			onOpenChange={(open) => {
 				if (!open) onClose();
 			}}

@@ -5,14 +5,15 @@ import { useApi } from "@retrospend/api-client/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { SheetChanges } from "~/components/ui/sheet-changes";
 import { useToast } from "~/components/ui/toast";
-import { EventPicker } from "./event-picker";
+import { EventPicker, tooManyEvents } from "./event-picker";
 import { SecretPanel } from "./secret-panel";
-import { isWebhookUrl, targetOf } from "./webhooks";
+import { areasOfFilters, isWebhookUrl, targetOf } from "./webhooks";
 
 /**
  * New webhook: a name, the URL it posts to and the events it gets, with what
@@ -27,6 +28,7 @@ export function CreateWebhookSheet({
 	onOpenChange: (open: boolean) => void;
 }) {
 	const t = useTranslations("settingsV2.developer");
+	const tArea = useTranslations("settingsV2.developer.areas");
 	const toast = useToast();
 	const queryClient = useQueryClient();
 	const { client } = useApi();
@@ -47,8 +49,10 @@ export function CreateWebhookSheet({
 		setMade(null);
 	}, [open]);
 
-	const submit = async () => {
-		if (made) {
+	// Every way out of the secret step (Done, X, Escape, swipe) ends here, so
+	// the toast with Undo always shows: the webhook can still be taken back.
+	const handleOpenChange = (next: boolean) => {
+		if (!next && made) {
 			const { id } = made;
 			toast.saved(t("webhookCreated", { name: made.name }), {
 				undo: async () => {
@@ -56,8 +60,12 @@ export function CreateWebhookSheet({
 					await invalidateForEvent(queryClient, "webhook.deleted");
 				},
 			});
-			return true;
 		}
+		onOpenChange(next);
+	};
+
+	const submit = async () => {
+		if (made) return true;
 		// Called on the client, not through a mutation hook: a mutation keeps
 		// its result in the cache, and this result holds the secret.
 		const out = await client.webhooks.create({
@@ -70,13 +78,22 @@ export function CreateWebhookSheet({
 		return false;
 	};
 
-	const valid = name.trim() !== "" && isWebhookUrl(url);
+	const valid =
+		name.trim() !== "" && isWebhookUrl(url) && !tooManyEvents(filters);
+	const areaWords = areasOfFilters(filters).map((a) => tArea(a));
 	const urlBad = url.trim() !== "" && !isWebhookUrl(url);
 
 	return (
 		<Sheet
 			detent="large"
-			onOpenChange={onOpenChange}
+			footer={
+				made ? (
+					<Button kind="primary" onClick={() => handleOpenChange(false)}>
+						{t("done")}
+					</Button>
+				) : undefined
+			}
+			onOpenChange={handleOpenChange}
 			onSubmit={submit}
 			open={open}
 			submitDisabled={!made && !valid}
@@ -153,7 +170,7 @@ export function CreateWebhookSheet({
 									<span>
 										{filters.length === 0
 											? t("events.all")
-											: t("changes.eventCount", { count: filters.length })}
+											: areaWords.join(", ")}
 									</span>
 								),
 							},

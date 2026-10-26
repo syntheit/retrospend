@@ -314,8 +314,7 @@
 			"otherWebhooks": "your other webhooks",
 			"sendsTo": "Sends to",
 			"noUrl": "No URL yet",
-			"events": "Events",
-			"eventCount": "{count, plural, one {# kind of event} other {# kinds of events}}"
+			"events": "Events"
 		},
 		"webhooks": "Webhooks",
 		"newWebhook": "New webhook",
@@ -337,7 +336,7 @@
 			"all": "All events",
 			"some": "Chosen events",
 			"allHint": "Every event that happens in your account.",
-			"count": "{count, plural, one {1 kind of event} other {# kinds of events}}"
+			"tooMany": "Too many areas chosen. Use All events instead."
 		},
 		"webhookState": {
 			"manual": "Off",
@@ -364,7 +363,43 @@
 		},
 		"reference": "API reference",
 		"referenceHint": "Every route, with its scope and fields.",
-		"openReference": "Open"
+		"openReference": "Open",
+		"areas": {
+			"expenses": "Expenses",
+			"income": "Income",
+			"transfers": "Transfers",
+			"recurring": "Recurring expenses",
+			"categories": "Categories",
+			"rates": "Exchange rates",
+			"people": "People",
+			"sharedExpenses": "Shared expenses and corrections",
+			"payments": "Payments",
+			"projects": "Projects",
+			"accounts": "Accounts",
+			"budget": "Budget",
+			"notifications": "Notifications",
+			"settings": "Settings",
+			"profile": "Profile",
+			"devices": "Devices",
+			"keys": "API keys",
+			"webhooks": "Webhooks",
+			"imports": "Imports",
+			"exports": "Exports",
+			"admin": "Admin"
+		},
+		"deliveryError": {
+			"blocked_target": "Address blocked",
+			"dns_failed": "Host name not found",
+			"timeout": "Timed out",
+			"connection_refused": "Connection refused",
+			"tls_error": "Certificate problem",
+			"connection_error": "Connection failed",
+			"http_error": "Receiver answered with an error",
+			"secret_unreadable": "Secret can't be read, rotate it",
+			"internal_error": "Server error",
+			"webhook_disabled": "Webhook was off",
+			"event_gone": "Event no longer kept"
+		}
 	},
 	"data": {
 		"title": "Data",

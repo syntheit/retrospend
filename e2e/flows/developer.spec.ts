@@ -80,8 +80,15 @@ test.describe("Developer", () => {
 		const key = await reveal.getByLabel("API key").inputValue();
 		expect(key).toMatch(/^rsk_/);
 		await expect(reveal.getByText("You won't see it again")).toBeVisible();
-		await reveal.getByRole("button", { name: "Done" }).click();
-		await expect(page.getByText("Created E2E key")).toBeVisible();
+		// The secret step has Done only, and every way out shows the Undo toast.
+		await expect(reveal.getByRole("button", { name: "Cancel" })).toHaveCount(0);
+		// Escape is ignored while the create call is still finishing.
+		await expect(async () => {
+			await page.keyboard.press("Escape");
+			await expect(page.getByText("Created E2E key")).toBeVisible({
+				timeout: 1_500,
+			});
+		}).toPass();
 
 		// The key reaches the API with exactly the scopes it was given.
 		const api = await playwright.request.newContext({
@@ -100,6 +107,17 @@ test.describe("Developer", () => {
 			data: { name: "x", scopes: ["read"] },
 		});
 		expect(refused.status()).toBe(403);
+
+		// A cookie-session write that came from another site is refused.
+		const forged = await page.request.post("/api/v1/tokens", {
+			headers: {
+				"idempotency-key": "e2e-forged",
+				"sec-fetch-site": "cross-site",
+				origin: "https://evil.example",
+			},
+			data: { name: "forged", scopes: ["read"] },
+		});
+		expect(forged.status()).toBe(403);
 
 		// The list shows the key by name, start and scopes, never the secret.
 		const keys = page.getByRole("list", { name: "API keys" });
@@ -159,9 +177,10 @@ test.describe("Developer", () => {
 			await sheet.getByLabel("URL").fill(`http://127.0.0.1:${port}/hook?token=abc`);
 			// Choose events: one resource, the last one cannot be unchecked.
 			await sheet.getByRole("radio", { name: "Chosen events" }).click();
-			await sheet.getByRole("checkbox", { name: /^expense\.\*/ }).check();
+			await sheet.getByRole("checkbox", { name: "Expenses", exact: true }).check();
 			const changes = sheet.getByRole("region", { name: "What this changes" });
 			await expect(changes).toContainText("E2E hook");
+			await expect(changes).toContainText("Expenses");
 			// Only the origin is shown: a URL's path often holds a secret.
 			await expect(changes).toContainText(`http://127.0.0.1:${port}`);
 			await expect(changes).not.toContainText("token=abc");

@@ -314,8 +314,7 @@
 			"otherWebhooks": "ваши другие вебхуки",
 			"sendsTo": "Отправка на",
 			"noUrl": "URL пока нет",
-			"events": "События",
-			"eventCount": "{count, plural, one {# тип события} few {# типа событий} many {# типов событий} other {# типа событий}}"
+			"events": "События"
 		},
 		"webhooks": "Вебхуки",
 		"newWebhook": "Новый вебхук",
@@ -337,7 +336,7 @@
 			"all": "Все события",
 			"some": "Выбранные события",
 			"allHint": "Все события в вашем аккаунте.",
-			"count": "{count, plural, one {1 тип события} few {# типа событий} many {# типов событий} other {# типа событий}}"
+			"tooMany": "Выбрано слишком много областей. Используйте «Все события»."
 		},
 		"webhookState": {
 			"manual": "Выключен",
@@ -364,7 +363,43 @@
 		},
 		"reference": "Справочник API",
 		"referenceHint": "Все маршруты с областью доступа и полями.",
-		"openReference": "Открыть"
+		"openReference": "Открыть",
+		"areas": {
+			"expenses": "Расходы",
+			"income": "Доходы",
+			"transfers": "Переводы",
+			"recurring": "Регулярные расходы",
+			"categories": "Категории",
+			"rates": "Курсы валют",
+			"people": "Люди",
+			"sharedExpenses": "Общие расходы и исправления",
+			"payments": "Платежи",
+			"projects": "Проекты",
+			"accounts": "Счета",
+			"budget": "Бюджет",
+			"notifications": "Уведомления",
+			"settings": "Настройки",
+			"profile": "Профиль",
+			"devices": "Устройства",
+			"keys": "Ключи API",
+			"webhooks": "Вебхуки",
+			"imports": "Импорт",
+			"exports": "Экспорт",
+			"admin": "Администрирование"
+		},
+		"deliveryError": {
+			"blocked_target": "Адрес заблокирован",
+			"dns_failed": "Имя хоста не найдено",
+			"timeout": "Время ожидания истекло",
+			"connection_refused": "Соединение отклонено",
+			"tls_error": "Проблема с сертификатом",
+			"connection_error": "Не удалось соединиться",
+			"http_error": "Получатель ответил ошибкой",
+			"secret_unreadable": "Секрет не читается, смените его",
+			"internal_error": "Ошибка сервера",
+			"webhook_disabled": "Вебхук был выключен",
+			"event_gone": "Событие больше не хранится"
+		}
 	},
 	"data": {
 		"title": "Данные",

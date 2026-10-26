@@ -314,8 +314,7 @@
 			"otherWebhooks": "tes autres webhooks",
 			"sendsTo": "Envoie à",
 			"noUrl": "Pas encore d’URL",
-			"events": "Événements",
-			"eventCount": "{count, plural, one {# type d’événement} other {# types d’événements}}"
+			"events": "Événements"
 		},
 		"webhooks": "Webhooks",
 		"newWebhook": "Nouveau webhook",
@@ -337,7 +336,7 @@
 			"all": "Tous les événements",
 			"some": "Événements choisis",
 			"allHint": "Tous les événements de ton compte.",
-			"count": "{count, plural, one {1 type d’événement} other {# types d’événements}}"
+			"tooMany": "Trop de domaines choisis. Utilise Tous les événements."
 		},
 		"webhookState": {
 			"manual": "Désactivé",
@@ -364,7 +363,43 @@
 		},
 		"reference": "Référence de l’API",
 		"referenceHint": "Toutes les routes, avec leur portée et leurs champs.",
-		"openReference": "Ouvrir"
+		"openReference": "Ouvrir",
+		"areas": {
+			"expenses": "Dépenses",
+			"income": "Revenus",
+			"transfers": "Virements",
+			"recurring": "Dépenses récurrentes",
+			"categories": "Catégories",
+			"rates": "Taux de change",
+			"people": "Personnes",
+			"sharedExpenses": "Dépenses partagées et corrections",
+			"payments": "Paiements",
+			"projects": "Projets",
+			"accounts": "Comptes",
+			"budget": "Budget",
+			"notifications": "Notifications",
+			"settings": "Paramètres",
+			"profile": "Profil",
+			"devices": "Appareils",
+			"keys": "Clés API",
+			"webhooks": "Webhooks",
+			"imports": "Imports",
+			"exports": "Exports",
+			"admin": "Administration"
+		},
+		"deliveryError": {
+			"blocked_target": "Adresse bloquée",
+			"dns_failed": "Nom d’hôte introuvable",
+			"timeout": "Délai dépassé",
+			"connection_refused": "Connexion refusée",
+			"tls_error": "Problème de certificat",
+			"connection_error": "Échec de la connexion",
+			"http_error": "Le récepteur a répondu par une erreur",
+			"secret_unreadable": "Secret illisible, renouvelle-le",
+			"internal_error": "Erreur du serveur",
+			"webhook_disabled": "Le webhook était désactivé",
+			"event_gone": "Événement plus conservé"
+		}
 	},
 	"data": {
 		"title": "Données",

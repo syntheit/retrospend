@@ -8,7 +8,7 @@ import type { ActionHandlers } from "~/components/actions/types";
 import type { WebhookTarget } from "~/components/actions/webhook";
 import { IconTile, Row, RowSub } from "~/components/rows/row";
 import { StatusDot } from "~/components/ui/status-dot";
-import { stateOf, targetOf } from "./webhooks";
+import { areasOfFilters, stateOf, targetOf } from "./webhooks";
 
 /** One webhook: its name and state, where it posts and which events it gets. */
 export function WebhookRow({
@@ -19,6 +19,7 @@ export function WebhookRow({
 	handlers: ActionHandlers<WebhookTarget>;
 }) {
 	const t = useTranslations("settingsV2.developer");
+	const tArea = useTranslations("settingsV2.developer.areas");
 	const state = stateOf(w);
 	return (
 		<Row
@@ -38,7 +39,9 @@ export function WebhookRow({
 						</span>,
 						w.eventTypes.length === 0
 							? t("events.all")
-							: t("events.count", { count: w.eventTypes.length }),
+							: areasOfFilters(w.eventTypes)
+								.map((a) => tArea(a))
+								.join(", "),
 					]}
 				/>
 			}

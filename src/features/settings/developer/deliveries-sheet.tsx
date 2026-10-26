@@ -86,11 +86,11 @@ function DeliveryRow({ delivery: d }: { delivery: WebhookDeliveryDto }) {
 						format.dateTime(when, { dateStyle: "medium", timeStyle: "short" }),
 						t("attempts", { count: d.attempts }),
 						d.lastStatusCode != null ? `HTTP ${d.lastStatusCode}` : null,
-						d.lastError ? (
-							<span className="font-mono" key="error">
-								{d.lastError}
-							</span>
-						) : null,
+						d.lastError
+							? t.has(`deliveryError.${d.lastError}`)
+								? t(`deliveryError.${d.lastError}`)
+								: d.lastError
+							: null,
 					]}
 				/>
 			}

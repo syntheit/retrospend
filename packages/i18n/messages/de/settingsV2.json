@@ -314,8 +314,7 @@
 			"otherWebhooks": "deine anderen Webhooks",
 			"sendsTo": "Sendet an",
 			"noUrl": "Noch keine URL",
-			"events": "Ereignisse",
-			"eventCount": "{count, plural, one {# Ereignisart} other {# Ereignisarten}}"
+			"events": "Ereignisse"
 		},
 		"webhooks": "Webhooks",
 		"newWebhook": "Neuer Webhook",
@@ -337,7 +336,7 @@
 			"all": "Alle Ereignisse",
 			"some": "Ausgewählte Ereignisse",
 			"allHint": "Jedes Ereignis in deinem Konto.",
-			"count": "{count, plural, one {1 Ereignisart} other {# Ereignisarten}}"
+			"tooMany": "Zu viele Bereiche gewählt. Nimm stattdessen Alle Ereignisse."
 		},
 		"webhookState": {
 			"manual": "Aus",
@@ -364,7 +363,43 @@
 		},
 		"reference": "API-Referenz",
 		"referenceHint": "Alle Routen mit ihrem Zugriffsbereich und ihren Feldern.",
-		"openReference": "Öffnen"
+		"openReference": "Öffnen",
+		"areas": {
+			"expenses": "Ausgaben",
+			"income": "Einnahmen",
+			"transfers": "Überweisungen",
+			"recurring": "Wiederkehrende Ausgaben",
+			"categories": "Kategorien",
+			"rates": "Wechselkurse",
+			"people": "Personen",
+			"sharedExpenses": "Geteilte Ausgaben und Korrekturen",
+			"payments": "Zahlungen",
+			"projects": "Projekte",
+			"accounts": "Konten",
+			"budget": "Budget",
+			"notifications": "Benachrichtigungen",
+			"settings": "Einstellungen",
+			"profile": "Profil",
+			"devices": "Geräte",
+			"keys": "API-Schlüssel",
+			"webhooks": "Webhooks",
+			"imports": "Importe",
+			"exports": "Exporte",
+			"admin": "Admin"
+		},
+		"deliveryError": {
+			"blocked_target": "Adresse blockiert",
+			"dns_failed": "Hostname nicht gefunden",
+			"timeout": "Zeitüberschreitung",
+			"connection_refused": "Verbindung abgelehnt",
+			"tls_error": "Zertifikatsproblem",
+			"connection_error": "Verbindung fehlgeschlagen",
+			"http_error": "Empfänger antwortete mit einem Fehler",
+			"secret_unreadable": "Geheimnis nicht lesbar, erneuere es",
+			"internal_error": "Serverfehler",
+			"webhook_disabled": "Webhook war aus",
+			"event_gone": "Ereignis nicht mehr gespeichert"
+		}
 	},
 	"data": {
 		"title": "Daten",

@@ -314,8 +314,7 @@
 			"otherWebhooks": "seus outros webhooks",
 			"sendsTo": "Envia para",
 			"noUrl": "Ainda sem URL",
-			"events": "Eventos",
-			"eventCount": "{count, plural, one {# tipo de evento} other {# tipos de eventos}}"
+			"events": "Eventos"
 		},
 		"webhooks": "Webhooks",
 		"newWebhook": "Novo webhook",
@@ -337,7 +336,7 @@
 			"all": "Todos os eventos",
 			"some": "Eventos escolhidos",
 			"allHint": "Todos os eventos que acontecem na sua conta.",
-			"count": "{count, plural, one {1 tipo de evento} other {# tipos de eventos}}"
+			"tooMany": "Áreas demais escolhidas. Use Todos os eventos."
 		},
 		"webhookState": {
 			"manual": "Desligado",
@@ -364,7 +363,43 @@
 		},
 		"reference": "Referência da API",
 		"referenceHint": "Todas as rotas, com seu escopo e seus campos.",
-		"openReference": "Abrir"
+		"openReference": "Abrir",
+		"areas": {
+			"expenses": "Despesas",
+			"income": "Receitas",
+			"transfers": "Transferências",
+			"recurring": "Despesas recorrentes",
+			"categories": "Categorias",
+			"rates": "Taxas de câmbio",
+			"people": "Pessoas",
+			"sharedExpenses": "Despesas compartilhadas e correções",
+			"payments": "Pagamentos",
+			"projects": "Projetos",
+			"accounts": "Contas",
+			"budget": "Orçamento",
+			"notifications": "Notificações",
+			"settings": "Configurações",
+			"profile": "Perfil",
+			"devices": "Dispositivos",
+			"keys": "Chaves de API",
+			"webhooks": "Webhooks",
+			"imports": "Importações",
+			"exports": "Exportações",
+			"admin": "Administração"
+		},
+		"deliveryError": {
+			"blocked_target": "Endereço bloqueado",
+			"dns_failed": "Nome do host não encontrado",
+			"timeout": "Tempo esgotado",
+			"connection_refused": "Conexão recusada",
+			"tls_error": "Problema no certificado",
+			"connection_error": "Falha na conexão",
+			"http_error": "O receptor respondeu com erro",
+			"secret_unreadable": "Segredo ilegível, troque-o",
+			"internal_error": "Erro do servidor",
+			"webhook_disabled": "O webhook estava desligado",
+			"event_gone": "Evento não é mais mantido"
+		}
 	},
 	"data": {
 		"title": "Dados",
