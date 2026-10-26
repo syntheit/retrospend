@@ -43,11 +43,20 @@ type Reader = Pick<
 	| "payment"
 	| "projectParticipant"
 	| "shadowProfile"
+	| "auditLogEntry"
 >;
 export type PartiesReader = Reader;
 
 /** What the planners read: who made the change and what it is about. */
 type Subject = Omit<PushEvent, "type">;
+
+/** How a feed copy differs from a push (see otherParties). */
+type Mode = {
+	/** The event is someone taking themselves off an expense, written at this time. */
+	removedSelf?: Date;
+	/** A fix request concerns the person who asked as well as the one asked. */
+	withRequester?: boolean;
+};
 
 type Person = { type: string; id: string };
 
@@ -121,9 +130,42 @@ async function users(
 	return [...out.values()];
 }
 
+/** How far an audit entry may sit from the event that goes with it. */
+const AUDIT_WINDOW_MS = 10 * 60 * 1000;
+
+/**
+ * Whether `userId` took themselves off the expense just now. After that they
+ * have no share, so membership cannot vouch for them; the removal's own
+ * audit entry does (it is written in the same transaction as the event).
+ */
+async function removedThemselves(
+	db: Reader,
+	userId: string,
+	transactionId: string,
+	at: Date,
+): Promise<boolean> {
+	return (
+		(await db.auditLogEntry.count({
+			where: {
+				actorType: "user",
+				actorId: userId,
+				action: "PARTICIPANT_REMOVED",
+				targetType: "SPLIT_PARTICIPANT",
+				targetId: transactionId,
+				changes: { path: ["selfRemoved"], equals: true },
+				timestamp: {
+					gte: new Date(at.getTime() - AUDIT_WINDOW_MS),
+					lte: new Date(at.getTime() + AUDIT_WINDOW_MS),
+				},
+			},
+		})) > 0
+	);
+}
+
 async function sharedExpense(
 	db: Reader,
 	event: Subject,
+	mode: Mode = {},
 ): Promise<PushPlan | null> {
 	const row = await db.sharedTransaction.findUnique({
 		where: { id: event.entityId },
@@ -153,18 +195,24 @@ async function sharedExpense(
 				participantId: event.actorUserId,
 			},
 		})) > 0;
-	if (
-		!inProject &&
-		!(await takesPart(db, event.actorUserId, [
+	const involved =
+		inProject ||
+		(await takesPart(db, event.actorUserId, [
 			{ type: row.createdByType, id: row.createdById },
 			{ type: row.paidByType, id: row.paidById },
 			...row.splitParticipants.map((p) => ({
 				type: p.participantType,
 				id: p.participantId,
 			})),
-		]))
-	)
-		return null;
+		])) ||
+		(mode.removedSelf !== undefined &&
+			(await removedThemselves(
+				db,
+				event.actorUserId,
+				event.entityId,
+				mode.removedSelf,
+			)));
+	if (!involved) return null;
 	return {
 		entity: { type: "shared_expense", id: event.entityId },
 		ids: {},
@@ -188,6 +236,7 @@ async function sharedExpense(
 async function fixRequest(
 	db: Reader,
 	event: Subject,
+	mode: Mode = {},
 ): Promise<PushPlan | null> {
 	const row = await db.fixRequest.findUnique({
 		where: { id: event.entityId },
@@ -212,13 +261,30 @@ async function fixRequest(
 		ids: { transactionId: row.transactionId },
 		recipients: await users(
 			db,
-			[{ person: { type: row.askedType, id: row.askedId }, amount: null }],
+			[
+				{ person: { type: row.askedType, id: row.askedId }, amount: null },
+				...(mode.withRequester
+					? [
+							{
+								person: {
+									type: row.requestedByType,
+									id: row.requestedById,
+								},
+								amount: null,
+							},
+						]
+					: []),
+			],
 			event.actorUserId,
 		),
 	};
 }
 
-async function payment(db: Reader, event: Subject): Promise<PushPlan | null> {
+async function payment(
+	db: Reader,
+	event: Subject,
+	_mode: Mode = {},
+): Promise<PushPlan | null> {
 	const row = await db.payment.findUnique({
 		where: { id: event.entityId },
 		select: {
@@ -256,7 +322,11 @@ async function payment(db: Reader, event: Subject): Promise<PushPlan | null> {
 	};
 }
 
-type Planner = (db: Reader, event: Subject) => Promise<PushPlan | null>;
+type Planner = (
+	db: Reader,
+	event: Subject,
+	mode?: Mode,
+) => Promise<PushPlan | null>;
 
 const PLANNERS: Partial<Record<PushKind, Planner>> = {
 	"shared_expense.created": sharedExpense,
@@ -285,14 +355,26 @@ const BY_RESOURCE: Readonly<Record<string, Planner>> = {
 
 /**
  * The other users on the thing an event of any type is about (a split
- * expense, a fix request, a payment), found the way a push finds them. Empty
- * for an unknown resource, a gone entity, or an actor who has no part in it.
+ * expense, a fix request, a payment), found the way a push finds them, for
+ * the copies of the event in their feeds. Unlike a push, a fix request
+ * concerns both sides (the requester hears the answer or the cancel), and a
+ * person who took themselves off an expense still counts as having been on
+ * it, so the others hear that they left. Empty for an unknown resource, a
+ * gone entity, or an actor who has no part in it. `at` is when the event was
+ * written.
  */
 export async function otherParties(
 	db: Reader,
-	event: Subject & { type: string },
+	event: Subject & { type: string; at: Date },
 ): Promise<string[]> {
 	const planner = BY_RESOURCE[event.type.split(".")[0] ?? ""];
-	const plan = planner ? await planner(db, event) : null;
+	const plan = planner
+		? await planner(db, event, {
+				withRequester: true,
+				...(event.type === "shared_expense.self_removed" && {
+					removedSelf: event.at,
+				}),
+			})
+		: null;
 	return plan?.recipients.map((r) => r.userId) ?? [];
 }

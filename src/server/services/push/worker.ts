@@ -50,9 +50,21 @@ export type PushWorkerOptions = {
 	timeoutMs?: number;
 	/** Also raise recurring items that fell due. */
 	recurring?: boolean;
+	/** How long a sweep may start new attempts (milliseconds). */
+	budgetMs?: number;
+	/** Runs before each pull of due work, so new events are fanned out mid-sweep. */
+	beforePick?: () => Promise<void>;
+	/** Replaces the fan-out (tests). */
+	fanOut?: (config: PushConfig, now?: Date) => Promise<number>;
 };
 
-const ATTEMPT_BATCH = 50;
+const ATTEMPT_BATCH = 200;
+/**
+ * A sweep stops starting attempts after this long. What is running (at most
+ * ten seconds each) still finishes, and the next sweep takes the rest, so
+ * one person's black-hole endpoints delay everyone by seconds, never minutes.
+ */
+const SWEEP_BUDGET_MS = 15_000;
 const DAY_MS = 86_400_000;
 const HORIZON_RETRY_MS = 2000;
 const SWEEP_EVERY_MS = 60_000;
@@ -235,41 +247,17 @@ async function pickDue(now: Date): Promise<Due[]> {
 	return picked.flatMap((p) => byId.get(p.id) ?? []);
 }
 
-/** Batches one call to processDuePushes works through before it stops. */
-const MAX_ROUNDS = 20;
-
 /**
- * Sends the deliveries that are due. Returns how many it tried. A batch
- * holds a few deliveries per account, so the call takes batch after batch
- * until nothing is due: a person with a long queue is served in turns with
- * everyone else instead of all at once.
+ * Sends the deliveries that are due, for at most the sweep budget. Returns
+ * how many it tried. The pool pulls more work whenever slots are free and
+ * nothing it holds can use them (a batch holds a few deliveries per
+ * account), so a person with a long or slow queue is served in turns with
+ * everyone else and never makes the rest wait for the end of a batch.
  */
 export async function processDuePushes(
 	options: PushWorkerOptions = {},
 ): Promise<number> {
-	let total = 0;
-	for (let round = 0; round < MAX_ROUNDS; round++) {
-		const tried = await processBatch(options);
-		total += tried;
-		if (tried === 0) break;
-	}
-	return total;
-}
-
-async function processBatch(options: PushWorkerOptions): Promise<number> {
-	const now = options.now ?? new Date();
 	const config = options.config ?? pushConfig();
-	const due = await pickDue(now);
-	if (due.length === 0) return 0;
-	const devices = new Map(
-		(
-			await db.pushDevice.findMany({
-				where: { id: { in: [...new Set(due.map((d) => d.deviceId))] } },
-				select: { id: true, transport: true, endpoint: true },
-			})
-		).map((d) => [d.id, d]),
-	);
-
 	const senders =
 		options.senders ??
 		createSenders(config, {
@@ -282,10 +270,14 @@ async function processBatch(options: PushWorkerOptions): Promise<number> {
 					(await getAppSettings()).webhooksAllowPrivateTargets,
 			},
 		});
+	const devices = new Map<
+		string,
+		{ transport: PushTransport; endpoint: string | null }
+	>();
 	let tried = 0;
 	try {
-		await runWithLimits(
-			due,
+		await runWithLimits<Due>(
+			[],
 			(delivery) => {
 				const device = devices.get(delivery.deviceId);
 				return {
@@ -302,10 +294,10 @@ async function processBatch(options: PushWorkerOptions): Promise<number> {
 				perHost: PER_HOST_ATTEMPTS,
 			},
 			async (delivery) => {
-				// A fresh time per claim: a batch can take a while, and a lease
-				// measured from the start of the sweep would already be short
-				// (or over) for the later deliveries, letting another instance
-				// take them while they are still being sent.
+				// A fresh time per claim: a sweep can take a while, and a lease
+				// measured from its start would already be short (or over) for the
+				// later deliveries, letting another instance take them while they
+				// are still being sent.
 				const at = options.now ?? new Date();
 				const lease = await claim(delivery, at);
 				if (!lease) return;
@@ -324,6 +316,24 @@ async function processBatch(options: PushWorkerOptions): Promise<number> {
 						lease,
 					).catch(() => undefined);
 				}
+			},
+			{
+				keyOf: (delivery) => delivery.id,
+				deadline: Date.now() + (options.budgetMs ?? SWEEP_BUDGET_MS),
+				refill: async () => {
+					await options.beforePick?.();
+					const due = await pickDue(options.now ?? new Date());
+					const unknown = due
+						.map((d) => d.deviceId)
+						.filter((id) => !devices.has(id));
+					if (unknown.length > 0)
+						for (const d of await db.pushDevice.findMany({
+							where: { id: { in: [...new Set(unknown)] } },
+							select: { id: true, transport: true, endpoint: true },
+						}))
+							devices.set(d.id, d);
+					return due;
+				},
 			},
 		);
 	} finally {
@@ -345,20 +355,51 @@ export async function prunePushData(now = new Date()): Promise<void> {
 	});
 }
 
+/**
+ * Fans out until a batch comes back short. A failure is logged and ends the
+ * fan-out for now: the events stay queued and the next sweep tries again, and
+ * deliveries already due are still sent.
+ */
+async function fanOutAll(
+	fanOut: (config: PushConfig, now?: Date) => Promise<number>,
+	config: PushConfig,
+	now: Date | undefined,
+	counted: { fannedOut: number },
+): Promise<void> {
+	try {
+		// A full batch means more is waiting.
+		for (let n = FAN_OUT_BATCH; n === FAN_OUT_BATCH; ) {
+			n = await fanOut(config, now);
+			counted.fannedOut += n;
+		}
+	} catch (error) {
+		console.error("Push fan-out failed:", error);
+	}
+}
+
 export async function runPushWorker(
 	options: PushWorkerOptions = {},
 ): Promise<{ fannedOut: number; attempted: number }> {
 	const config = options.config ?? pushConfig();
 	if (enabledTransports(config).length === 0)
 		return { fannedOut: 0, attempted: 0 };
-	let fannedOut = 0;
-	// A full batch means more is waiting.
-	for (let n = FAN_OUT_BATCH; n === FAN_OUT_BATCH; ) {
-		n = await fanOutPushEvents(config, options.now);
-		fannedOut += n;
-	}
-	if (options.recurring) await raiseRecurringDue(config, options.now);
-	const attempted = await processDuePushes({ ...options, config });
+	const counted = { fannedOut: 0 };
+	const fanOut = () =>
+		fanOutAll(options.fanOut ?? fanOutPushEvents, config, options.now, counted);
+	await fanOut();
+	if (options.recurring)
+		try {
+			await raiseRecurringDue(config, options.now);
+		} catch (error) {
+			console.error("Push recurring reminders failed:", error);
+		}
+	const attempted = await processDuePushes({
+		...options,
+		config,
+		// Events written while the sweep runs are fanned out before its next pull.
+		beforePick: fanOut,
+	});
+	const fannedOut = counted.fannedOut;
 	const now = options.now ?? new Date();
 	if (now.getTime() - lastPrune > 60 * 60 * 1000) {
 		lastPrune = now.getTime();

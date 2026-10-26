@@ -5,7 +5,15 @@
  * server and decrypts what arrives.
  */
 import { randomUUID } from "node:crypto";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import {
 	arsUser,
 	ref,
@@ -631,14 +639,14 @@ describe("push worker", () => {
 			expect(stats.peak).toBe(PER_USER_ATTEMPTS);
 		});
 
-		it("sends to at most two endpoints of one domain at a time, whoever owns them", async () => {
+		it("sends to at most two endpoints of one host at a time, whoever owns them", async () => {
 			for (const [user, from] of [
 				[martin, 0],
 				[sofia, 3],
 			] as const)
 				for (let n = from; n < from + 3; n++) {
 					const { device } = await addDevice(user.user.id, "UNIFIEDPUSH", {
-						address: push(`s${n}.evil.example`, n),
+						address: push("evil.example", n),
 					});
 					await queue(user.user.id, device.id);
 				}
@@ -742,6 +750,103 @@ describe("push worker", () => {
 			await processDuePushes({ config, senders, now: later });
 			expect(sent).toHaveLength(1);
 			expect((await fresh(probe.id)).status).toBe("SENT");
+		});
+	});
+
+	describe("a sweep is not held by one person's slow endpoints", () => {
+		/** UnifiedPush endpoints are slow, everything else answers at once. */
+		function mixedSenders(slowMs = 300) {
+			const done: { transport: string; at: number }[] = [];
+			const sender: PushSender = {
+				close() {},
+				async send(target) {
+					await new Promise((r) =>
+						setTimeout(r, target.transport === "UNIFIEDPUSH" ? slowMs : 5),
+					);
+					done.push({ transport: target.transport, at: Date.now() });
+					return { kind: "sent", statusCode: 200 };
+				},
+			};
+			return {
+				done,
+				senders: {
+					APNS: sender,
+					FCM: sender,
+					UNIFIEDPUSH: sender,
+				} as Record<PushTransport, PushSender>,
+			};
+		}
+
+		it("serves everyone else while ten slow deliveries of one person wait their turns", async () => {
+			for (let n = 0; n < 10; n++) {
+				const { device } = await addDevice(martin.user.id, "UNIFIEDPUSH", {
+					address: `https://slow${n}.example/up/${n}`,
+				});
+				await queue(martin.user.id, device.id);
+			}
+			for (let n = 0; n < 30; n++) {
+				const other = await arsUser();
+				const { device } = await addDevice(other.user.id, "APNS");
+				await queue(other.user.id, device.id);
+			}
+			const { done, senders } = mixedSenders();
+
+			expect(await processDuePushes({ config, senders, now: T0 })).toBe(40);
+
+			const fast = done.filter((d) => d.transport === "APNS");
+			const slow = done.filter((d) => d.transport === "UNIFIEDPUSH");
+			expect(fast).toHaveLength(30);
+			expect(slow).toHaveLength(10);
+			// Two slow ones at a time, 300 ms each: five rounds. Everyone else
+			// was done long before the last of them.
+			expect(Math.max(...fast.map((d) => d.at))).toBeLessThan(
+				Math.max(...slow.map((d) => d.at)) - 400,
+			);
+		}, 30_000);
+
+		it("stops starting attempts at the budget, and the next sweep takes the rest", async () => {
+			const ids: string[] = [];
+			for (let n = 0; n < 6; n++) {
+				const { device } = await addDevice(martin.user.id, "UNIFIEDPUSH", {
+					address: `https://slow${n}.budget.example/up/${n}`,
+				});
+				ids.push((await queue(martin.user.id, device.id)).id);
+			}
+			const { senders } = mixedSenders();
+			expect(
+				await processDuePushes({ config, senders, now: T0, budgetMs: 100 }),
+			).toBe(2);
+			expect(
+				await adminDb.pushDelivery.count({
+					where: { id: { in: ids }, status: "PENDING", attempts: 0 },
+				}),
+			).toBe(4);
+			expect(await processDuePushes({ config, senders, now: T0 })).toBe(4);
+		}, 30_000);
+
+		it("still sends what is due when the fan-out fails, and says so", async () => {
+			const { device } = await addDevice(sofia.user.id, "APNS");
+			const delivery = await queue(sofia.user.id, device.id);
+			const { senders } = recordingSenders();
+			const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+			try {
+				const out = await runPushWorker({
+					config,
+					senders,
+					now: T0,
+					fanOut: async () => {
+						throw new Error("fan-out broke");
+					},
+				});
+				expect(out.attempted).toBe(1);
+				expect(logged).toHaveBeenCalledWith(
+					"Push fan-out failed:",
+					expect.any(Error),
+				);
+			} finally {
+				logged.mockRestore();
+			}
+			expect((await fresh(delivery.id)).status).toBe("SENT");
 		});
 	});
 

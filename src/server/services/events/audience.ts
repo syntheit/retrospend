@@ -76,14 +76,22 @@ export async function copyToOtherParties(
 	for (const event of events) {
 		const resource = event.type.split(".")[0] ?? "";
 		const entityId = eventEntityId(event);
-		// A copy is never copied, and only shared things have other people.
-		if (event.sourceEventId || !entityId || !SHARED_RESOURCES.has(resource))
+		// A copy is never copied, only shared things have other people, and
+		// only the actor's own row is a change to tell about (a row that
+		// names someone else as the actor is not one the app writes).
+		if (
+			event.sourceEventId ||
+			!entityId ||
+			!SHARED_RESOURCES.has(resource) ||
+			(event.actorUserId !== null && event.actorUserId !== event.userId)
+		)
 			continue;
-		const actor = event.actorUserId ?? event.userId;
+		const actor = event.userId;
 		for (const userId of await otherParties(tx, {
 			type: event.type,
 			actorUserId: actor,
 			entityId,
+			at: event.createdAt,
 		}))
 			rows.push({
 				userId,

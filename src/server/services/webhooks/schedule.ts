@@ -22,11 +22,13 @@ export const RETENTION_DAYS = 30;
  * time. Without these caps a few such addresses, each retried, hold every
  * slot for minutes and nobody else's delivery goes out.
  * - at most PARALLEL_ATTEMPTS sends at once, PER_USER_ATTEMPTS of them for
- *   one account and PER_HOST_ATTEMPTS to one registered domain, whoever
- *   owns the addresses (the cap on the domain covers a wildcard DNS name
- *   handing out a new host for every address, and several accounts);
+ *   one account and PER_HOST_ATTEMPTS to one host name, whoever owns the
+ *   addresses (one account's many names are held by its own cap);
  * - a sweep takes at most PER_USER_BATCH due deliveries per account, oldest
- *   first and interleaved, so a backlog cannot push others out of the batch.
+ *   first and interleaved, so a backlog cannot push others out of the batch;
+ * - a sweep keeps pulling more due work while slots are free, and stops
+ *   starting attempts after SWEEP_BUDGET_MS (worker.ts), so one account's
+ *   black-hole URLs cost everyone else seconds, not minutes.
  */
 export const PARALLEL_ATTEMPTS = 5;
 export const PER_USER_ATTEMPTS = 2;

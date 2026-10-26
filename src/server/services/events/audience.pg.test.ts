@@ -249,3 +249,119 @@ describe("events reach the other people on a shared entity", () => {
 		).toBe(before);
 	});
 });
+
+describe("both sides of a fix request, and a person who left", () => {
+	const copiesOf = (entityId: string, type: string) =>
+		adminDb.apiEvent.findMany({
+			where: { entityId, type, sourceEventId: { not: null } },
+			select: { userId: true, actorUserId: true },
+		});
+
+	it("tells the requester the answer, and the person asked the cancel", async () => {
+		const request = randomUUID();
+		await adminDb.fixRequest.create({
+			data: {
+				id: request,
+				transactionId: dinner,
+				requestedByType: "user",
+				requestedById: martin.user.id,
+				askedType: "user",
+				askedId: sofia.user.id,
+				message: "Wrong total",
+			},
+		});
+		await write(sofia, "fix_request.answered", request);
+		expect(await copiesOf(request, "fix_request.answered")).toEqual([
+			{ userId: martin.user.id, actorUserId: sofia.user.id },
+		]);
+		await write(martin, "fix_request.cancelled", request);
+		expect(await copiesOf(request, "fix_request.cancelled")).toEqual([
+			{ userId: sofia.user.id, actorUserId: martin.user.id },
+		]);
+	});
+
+	async function leave(at: Date, withAudit: boolean) {
+		const expense = (await seedShare(ref(sofia), ref(martin), "300", "ARS")).id;
+		if (withAudit)
+			await adminDb.auditLogEntry.create({
+				data: {
+					actorType: "user",
+					actorId: lucia.user.id,
+					action: "PARTICIPANT_REMOVED",
+					targetType: "SPLIT_PARTICIPANT",
+					targetId: expense,
+					changes: { selfRemoved: true },
+					timestamp: at,
+				},
+			});
+		await write(lucia, "shared_expense.self_removed", expense);
+		return expense;
+	}
+
+	it("tells the remaining people that someone took themselves off, once the removal is on record", async () => {
+		const expense = await leave(new Date(), true);
+		const told = (await copiesOf(expense, "shared_expense.self_removed")).map(
+			(c) => c.userId,
+		);
+		expect(told.sort()).toEqual([sofia.user.id, martin.user.id].sort());
+	});
+
+	it("tells nobody when there is no removal on record, or it is not from just now", async () => {
+		const none = await leave(new Date(), false);
+		expect(await copiesOf(none, "shared_expense.self_removed")).toHaveLength(0);
+		const old = await leave(new Date(Date.now() - 3600_000), true);
+		expect(await copiesOf(old, "shared_expense.self_removed")).toHaveLength(0);
+	});
+});
+
+describe("who may write an event", () => {
+	it("copies nothing for a row that names someone else as the actor", async () => {
+		const event = await adminDb.apiEvent.create({
+			data: {
+				userId: sofia.user.id,
+				actorUserId: martin.user.id,
+				type: "shared_expense.updated",
+				entityType: "shared_expense",
+				entityId: dinner,
+				payload: SECRET_AMOUNTS,
+			},
+		});
+		for (let n = 0; n < 50; n++) {
+			await fanOutEvents();
+			const row = await adminDb.apiEvent.findUniqueOrThrow({
+				where: { id: event.id },
+			});
+			if (row.fannedOutAt) break;
+			await new Promise((r) => setTimeout(r, 100));
+		}
+		expect(
+			await adminDb.apiEvent.count({ where: { sourceEventId: event.id } }),
+		).toBe(0);
+	});
+
+	const draft = (over: Record<string, unknown>) => ({
+		userId: sofia.user.id,
+		actorUserId: sofia.user.id,
+		type: "expense.created",
+		payload: { ids: {}, amounts: [], truncated: false },
+		...over,
+	});
+
+	it("lets the app role append its own first-hand event", async () => {
+		await expect(
+			sofia.db.apiEvent.create({ data: draft({}), select: { id: true } }),
+		).resolves.toBeDefined();
+	});
+
+	it("refuses the app role a copy, an event in someone else's name, and one without an actor", async () => {
+		for (const over of [
+			{ sourceEventId: "some-event" },
+			{ actorUserId: martin.user.id },
+			{ actorUserId: null },
+			{ userId: martin.user.id },
+		])
+			await expect(
+				sofia.db.apiEvent.create({ data: draft(over), select: { id: true } }),
+			).rejects.toThrow();
+	});
+});

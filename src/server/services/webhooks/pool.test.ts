@@ -150,19 +150,165 @@ describe("runWithLimits", () => {
 });
 
 describe("capHostOf", () => {
-	it("counts subdomains under their registered domain", () => {
-		expect(capHostOf("https://a.evil.example/up/1")).toBe("evil.example");
-		expect(capHostOf("https://B.Evil.Example./up/2")).toBe("evil.example");
+	it("counts each host name on its own, lowercased, without a trailing dot", () => {
+		expect(capHostOf("https://a.evil.example/up/1")).toBe("a.evil.example");
+		expect(capHostOf("https://B.Evil.Example./up/2")).toBe("b.evil.example");
 		expect(capHostOf("https://ntfy.sh/topic")).toBe("ntfy.sh");
+		// Shared suffixes are not one place: two sites on github.io are two hosts.
+		expect(capHostOf("https://a.github.io/x")).not.toBe(
+			capHostOf("https://b.github.io/x"),
+		);
 	});
 
-	it("keeps an address as it is", () => {
+	it("keeps an address as it is, an IPv6 one in its short form", () => {
 		expect(capHostOf("http://10.0.0.5:8080/x")).toBe("10.0.0.5");
 		expect(capHostOf("http://[2001:db8::1]/x")).toBe("[2001:db8::1]");
+		expect(capHostOf("http://[2001:0DB8:0:0:0:0:0:1]/x")).toBe("[2001:db8::1]");
 	});
 
 	it("has no host for something that is not a URL", () => {
 		expect(capHostOf(null)).toBeNull();
 		expect(capHostOf("not a url")).toBeNull();
+	});
+});
+
+describe("runWithLimits keeps itself fed", () => {
+	const limits = { total: 3, perUser: 1, perHost: 3 };
+	type Item = Slot & { name: string };
+	const item = (name: string, user: string): Item => ({
+		name,
+		user,
+		host: null,
+	});
+
+	it("pulls other people's work while one person's jobs are blocked and slow", async () => {
+		const started: string[] = [];
+		const gates = new Map<string, () => void>();
+		let pulls = 0;
+		const done = runWithLimits(
+			[item("a1", "A"), item("a2", "A"), item("a3", "A")],
+			(j) => j,
+			limits,
+			(j) => {
+				started.push(j.name);
+				return new Promise<void>((resolve) => gates.set(j.name, resolve));
+			},
+			{
+				keyOf: (j) => j.name,
+				refill: async () => {
+					pulls += 1;
+					return pulls === 1 ? [item("b1", "B"), item("c1", "C")] : [];
+				},
+			},
+		);
+		await tick();
+		await tick();
+		// A holds one slot (a1 is slow); the others got the rest at once.
+		expect(started).toEqual(["a1", "b1", "c1"]);
+		for (const open of gates.values()) open();
+		await tick();
+		for (const open of gates.values()) open();
+		await tick();
+		for (const open of gates.values()) open();
+		await done;
+		expect(started).toEqual(["a1", "b1", "c1", "a2", "a3"]);
+	});
+
+	it("never runs a job twice when a pull returns what it already holds", async () => {
+		const ran: string[] = [];
+		let pulls = 0;
+		await runWithLimits(
+			[item("a1", "A"), item("a2", "A")],
+			(j) => j,
+			limits,
+			async (j) => {
+				ran.push(j.name);
+			},
+			{
+				keyOf: (j) => j.name,
+				refill: async () => {
+					pulls += 1;
+					return pulls < 4 ? [item("a1", "A"), item("a2", "A")] : [];
+				},
+			},
+		);
+		expect(ran.sort()).toEqual(["a1", "a2"]);
+	});
+
+	it("starts nothing new after the deadline, finishes what runs, and leaves the rest", async () => {
+		const ran: string[] = [];
+		let release: (() => void) | undefined;
+		const done = runWithLimits(
+			[item("a1", "A"), item("a2", "A")],
+			(j) => j,
+			limits,
+			(j) => {
+				ran.push(j.name);
+				return new Promise<void>((resolve) => {
+					release = resolve;
+				});
+			},
+			{ deadline: Date.now() + 30 },
+		);
+		await new Promise((r) => setTimeout(r, 60));
+		release?.();
+		await done;
+		expect(ran).toEqual(["a1"]);
+	});
+
+	it("stops pulling once a pull finds nothing, and tries again after a job finishes", async () => {
+		let pulls = 0;
+		const gates: (() => void)[] = [];
+		const done = runWithLimits(
+			[item("a1", "A")],
+			(j) => j,
+			limits,
+			() => new Promise<void>((resolve) => gates.push(resolve)),
+			{
+				keyOf: (j) => j.name,
+				refill: async () => {
+					pulls += 1;
+					return [];
+				},
+			},
+		);
+		await tick();
+		await tick();
+		expect(pulls).toBe(1);
+		gates[0]?.();
+		await done;
+		expect(pulls).toBe(2);
+	});
+
+	it("reports a failing pull and a failing slot, and still runs the rest", async () => {
+		const ran: string[] = [];
+		await expect(
+			runWithLimits(
+				[item("ok", "A"), { name: "bad" } as unknown as Item],
+				(j) => {
+					if (j.name === "bad") throw new Error("no slot");
+					return j;
+				},
+				limits,
+				async (j) => {
+					ran.push(j.name);
+				},
+			),
+		).rejects.toThrow("no slot");
+		expect(ran).toEqual(["ok"]);
+
+		await expect(
+			runWithLimits(
+				[],
+				(j: Item) => j,
+				limits,
+				async () => {},
+				{
+					refill: async () => {
+						throw new Error("no pull");
+					},
+				},
+			),
+		).rejects.toThrow("no pull");
 	});
 });

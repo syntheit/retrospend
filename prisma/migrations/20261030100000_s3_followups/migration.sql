@@ -9,8 +9,10 @@
 --
 -- 2. api_event."sourceEventId": a copy of one person's event written into the
 --    feed of each other person on a shared thing (split expense, fix request,
---    payment). The worker writes copies with the owner connection; the app
---    role keeps its append-only, own-rows-only policies below, unchanged.
+--    payment). The worker writes copies with the owner connection. The app
+--    role stays append-only and own-rows-only, and its insert policy now also
+--    requires itself as the actor and no sourceEventId, so it can write neither
+--    a copy nor an event in another person's name.
 --    The unique index makes a copy once per person however often the fan-out
 --    runs (NULLs do not collide, so ordinary events are unaffected).
 --
@@ -35,6 +37,17 @@ ALTER TABLE "api_event" ADD COLUMN IF NOT EXISTS "sourceEventId" TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS "api_event_userId_sourceEventId_key"
   ON "api_event"("userId", "sourceEventId");
 ALTER TABLE "api_event" ENABLE ROW LEVEL SECURITY;
+-- The app role writes only its own, first-hand events: its own feed, itself as
+-- the actor, and never a copy. Copies are written by the fan-out with the owner
+-- connection, which bypasses RLS.
+DROP POLICY IF EXISTS api_event_insert ON "api_event";
+CREATE POLICY api_event_insert ON "api_event"
+  AS PERMISSIVE FOR INSERT TO retrospend_app
+  WITH CHECK (
+    "userId" = current_setting('app.current_user_id', TRUE)
+    AND "actorUserId" = "userId"
+    AND "sourceEventId" IS NULL
+  );
 GRANT SELECT, INSERT ON "api_event" TO retrospend_app;
 REVOKE UPDATE, DELETE ON "api_event" FROM retrospend_app;
 
