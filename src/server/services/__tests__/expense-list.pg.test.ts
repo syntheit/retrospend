@@ -755,14 +755,111 @@ describe("expense.listV2 rows the footer leaves out", () => {
 			"Counted",
 			"Hidden",
 		]);
-		expect(
-			all.items.find((i) => i.title === "Declined split")?.waiting,
-		).toBe("rejected");
+		expect(all.items.find((i) => i.title === "Declined split")?.waiting).toBe(
+			"rejected",
+		);
 		await adminDb.sharedTransaction.deleteMany({
 			where: { id: `pgl_rejected_${guest.user.id}` },
 		});
 		await adminDb.user.deleteMany({
 			where: { id: { in: [owner.user.id, guest.user.id] } },
 		});
+	});
+
+	it("says an amortized purchase is spread and an income-category expense is not counted, so the footer is the counted rows plus the parts", async () => {
+		const u = await createTestUser();
+		await adminDb.user.update({
+			where: { id: u.user.id },
+			data: { homeCurrency: "ARS" },
+		});
+		const [food, salary] = await Promise.all([
+			adminDb.category.create({
+				data: { name: "Food", color: "blue", userId: u.user.id },
+			}),
+			adminDb.category.create({
+				data: {
+					name: "Salary",
+					color: "violet",
+					userId: u.user.id,
+					kind: "INCOME",
+				},
+			}),
+		]);
+		const row = (
+			title: string,
+			amount: string,
+			date: Date,
+			extra: object = {},
+		) => ({
+			userId: u.user.id,
+			title,
+			amount,
+			currency: "ARS",
+			amountInUSD: String(Number(amount) / 1000),
+			exchangeRate: "1000",
+			pricingSource: "MANUAL" as const,
+			date,
+			...extra,
+		});
+		// Phone: ARS 3,000 over three months. The parent is listed; its three
+		// parts of ARS 1,000 (Oct 14, Nov 14, Dec 14) are hidden and counted.
+		const phone = await adminDb.expense.create({
+			data: row("Phone", "3000", day(14), {
+				isAmortizedParent: true,
+				categoryId: food.id,
+			}),
+		});
+		await adminDb.expense.createMany({
+			data: [10, 11, 12].map((m) =>
+				row("Phone", "1000", day(14, m), {
+					isAmortizedChild: true,
+					parentId: phone.id,
+					categoryId: food.id,
+				}),
+			),
+		});
+		await adminDb.expense.createMany({
+			data: [
+				row("Groceries", "1000", day(14), { categoryId: food.id }),
+				row("Filed as income", "700", day(14), { categoryId: salary.id }),
+			],
+		});
+
+		const oct = await list(u, OCT);
+		const byTitle = new Map(oct.items.map((i) => [i.title, i] as const));
+		expect(oct.items.map((i) => i.title).sort()).toEqual([
+			"Filed as income",
+			"Groceries",
+			"Phone",
+		]);
+		expect(byTitle.get("Groceries")).not.toHaveProperty("notCounted");
+		expect(byTitle.get("Groceries")).not.toHaveProperty("spread");
+		// Counted, spread over time: never "Not counted".
+		expect(byTitle.get("Phone")?.spread).toEqual({ months: 3 });
+		expect(byTitle.get("Phone")).not.toHaveProperty("notCounted");
+		// spent() skips a row filed under an income category.
+		expect(byTitle.get("Filed as income")?.notCounted).toBe(true);
+		expect(byTitle.get("Filed as income")).not.toHaveProperty("spread");
+
+		// Rows with no marker add up to ARS 1,000 (Groceries). The footer also
+		// holds October's part of the Phone, ARS 1,000, which the parent row
+		// names. Nothing else is in it: the 700 and the parent's 3,000 are not.
+		const counted = oct.items
+			.filter((i) => !i.notCounted && !i.spread && i.waiting !== "rejected")
+			.reduce((sum, i) => sum + i.amount.minor, 0);
+		const octoberPart = 100000;
+		expect(counted).toBe(100000);
+		expect(oct.total?.value.minor).toBe(counted + octoberPart);
+		expect(oct.total?.value).toEqual({ minor: 200000, currency: "ARS" });
+		expect(oct.dayTotals?.["2026-10-14"]).toEqual({
+			minor: 200000,
+			currency: "ARS",
+		});
+
+		// November lists nothing of the Phone, yet its second part is spent then.
+		const nov = await list(u, { from: "2026-11-01", to: "2026-11-30" });
+		expect(nov.items).toEqual([]);
+		expect(nov.total?.value).toEqual({ minor: 100000, currency: "ARS" });
+		await adminDb.user.deleteMany({ where: { id: u.user.id } });
 	});
 });

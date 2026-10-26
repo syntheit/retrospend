@@ -17,7 +17,8 @@
 		"upcoming": "Anstehend",
 		"noRate": "Noch kein Kurs",
 		"rejected": "Abgelehnt",
-		"notCounted": "Nicht gezählt"
+		"notCounted": "Nicht gezählt",
+		"spread": "Über die Zeit verteilt"
 	},
 	"balance": {
 		"owesYou": "schuldet dir",

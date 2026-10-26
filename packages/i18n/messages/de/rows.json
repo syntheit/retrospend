@@ -17,6 +17,7 @@
 		"yourShare": "dein Anteil",
 		"paid": "{name} hat bezahlt",
 		"waiting": "Wartet auf dich",
+		"spread": "Verteilt auf {count, plural, one {# Monat} other {# Monate}}",
 		"other": "Sonstiges"
 	},
 	"project": {
