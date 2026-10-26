@@ -1,25 +1,24 @@
+import { TRPCError } from "@trpc/server";
 import { adminRouter } from "~/server/api/routers/admin";
 import { auditLogRouter } from "~/server/api/routers/audit-log";
+import { authRouter } from "~/server/api/routers/auth";
 import { billingPeriodRouter } from "~/server/api/routers/billingPeriod";
 import { expenseRouter } from "~/server/api/routers/expense";
-import { exportRouter } from "~/server/api/routers/export";
 import { feedbackRouter } from "~/server/api/routers/feedback";
 import { inviteRouter } from "~/server/api/routers/invite";
-import { authRouter } from "~/server/api/routers/auth";
 import { paymentMethodRouter } from "~/server/api/routers/paymentMethod";
 import { profileRouter } from "~/server/api/routers/profile";
+import { projectRouter } from "~/server/api/routers/project";
 import { settingsRouter } from "~/server/api/routers/settings";
 import { sharedTransactionRouter } from "~/server/api/routers/shared-transaction";
 import { verificationRouter } from "~/server/api/routers/verification";
-import { projectRouter } from "~/server/api/routers/project";
-import { TRPCError } from "@trpc/server";
 import { createCallerFactory } from "~/server/api/trpc";
 import type { Session } from "~/server/better-auth/config";
 import { db } from "~/server/db";
 
 /**
- * Admin, export, feedback and invite code logic lives inside tRPC
- * procedures (rate limits, role checks, audit events, documents), not in
+ * Admin, feedback and invite code logic lives inside tRPC
+ * procedures (rate limits, role checks, audit events), not in
  * services. v1 calls those same procedures in-process, so both transports
  * run one implementation. The procedures check the role and the active
  * flag again from the session below, which comes from the user row, never
@@ -64,7 +63,6 @@ async function contextFor(caller: BridgeCaller) {
 }
 
 const adminFactory = createCallerFactory(adminRouter);
-const exportFactory = createCallerFactory(exportRouter);
 const expenseFactory = createCallerFactory(expenseRouter);
 const feedbackFactory = createCallerFactory(feedbackRouter);
 const inviteFactory = createCallerFactory(inviteRouter);
@@ -80,8 +78,6 @@ const verificationFactory = createCallerFactory(verificationRouter);
 
 export const trpcAdmin = async (c: BridgeCaller) =>
 	adminFactory(await contextFor(c));
-export const trpcExport = async (c: BridgeCaller) =>
-	exportFactory(await contextFor(c));
 export const trpcExpense = async (c: BridgeCaller) =>
 	expenseFactory(await contextFor(c));
 export const trpcFeedback = async (c: BridgeCaller) =>

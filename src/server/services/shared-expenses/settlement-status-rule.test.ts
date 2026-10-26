@@ -16,7 +16,6 @@ const BALANCE_QUERY_FILES = [
 	"src/server/services/project/ledger.ts",
 	"src/server/services/project/project-read.service.ts",
 	"src/server/services/shared-expenses/billing-period-settle.ts",
-	"src/server/api/routers/export.ts",
 ];
 
 describe("project delete", () => {
