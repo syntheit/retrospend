@@ -99,6 +99,68 @@ describe("push fan-out", () => {
 		expect(JSON.stringify([forMartin, forLucia])).not.toContain("Chez");
 	});
 
+	describe("a person who joined after being added by name", () => {
+		let owner: TestUser;
+		let joined: TestUser;
+		let unclaimed: TestUser;
+		let expense: string;
+		beforeAll(async () => {
+			[owner, joined, unclaimed] = [
+				await arsUser(),
+				await arsUser(),
+				await arsUser(),
+			];
+			for (const u of [owner, joined, unclaimed])
+				await addDevice(u.user.id, "APNS");
+			const claimed = await adminDb.shadowProfile.create({
+				data: {
+					createdById: owner.user.id,
+					name: "Sam",
+					claimedById: joined.user.id,
+					claimedAt: new Date(),
+				},
+			});
+			const open = await adminDb.shadowProfile.create({
+				data: { createdById: owner.user.id, name: "Pat" },
+			});
+			const tx = await seedShare(
+				ref(owner),
+				{ participantType: "shadow", participantId: claimed.id },
+				"600",
+				"ARS",
+			);
+			await adminDb.splitParticipant.create({
+				data: {
+					transactionId: tx.id,
+					participantType: "shadow",
+					participantId: open.id,
+					shareAmount: "100",
+					verificationStatus: "ACCEPTED",
+				},
+			});
+			expense = tx.id;
+		});
+
+		it("follows a claimed profile to its account, and tells nobody for an unclaimed one", async () => {
+			await appendOutboxEvent(owner.user.id, "shared_expense.created", expense);
+			await fanOut();
+			const told = await deliveriesOf(joined.user.id);
+			expect(told).toHaveLength(1);
+			expect(told[0]?.payload).toMatchObject({
+				entity: { type: "shared_expense", id: expense },
+				amount: { minor: 60000, currency: "ARS" },
+			});
+			expect(await deliveriesOf(unclaimed.user.id)).toHaveLength(0);
+		});
+
+		it("lets the account act on the profile's expense: an event by it reaches the owner", async () => {
+			const before = (await deliveriesOf(owner.user.id)).length;
+			await appendOutboxEvent(joined.user.id, "shared_expense.updated", expense);
+			await fanOut();
+			expect((await deliveriesOf(owner.user.id)).length).toBe(before + 1);
+		});
+	});
+
 	it("looks at an event once", async () => {
 		const event = await appendOutboxEvent(
 			sofia.user.id,

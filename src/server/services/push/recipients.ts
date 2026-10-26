@@ -10,7 +10,8 @@ import type { PushData } from "./message";
  * from membership as it is when the push worker runs, reading the entity
  * the event names (never its text). The actor is never told about their own
  * change. People who are not users (guests, shadow profiles) have no
- * device, so they are skipped.
+ * device, so they are skipped, except a shadow profile that has been claimed:
+ * that is its account.
  *
  * A write whose entity is gone by now (a deleted expense) reaches nobody:
  * the push is for what is still there to open. An event whose actor has no
@@ -37,7 +38,11 @@ export type PushPlan = {
 
 type Reader = Pick<
 	Prisma.TransactionClient,
-	"sharedTransaction" | "fixRequest" | "payment" | "projectParticipant"
+	| "sharedTransaction"
+	| "fixRequest"
+	| "payment"
+	| "projectParticipant"
+	| "shadowProfile"
 >;
 export type PartiesReader = Reader;
 
@@ -58,15 +63,54 @@ function amountOf(
 	}
 }
 
-function takesPart(actorUserId: string, people: Person[]): boolean {
-	return people.some((p) => p.type === "user" && p.id === actorUserId);
+/**
+ * A person added by name who later joined (a claimed shadow profile) is
+ * their account for everything here: their pushes go to the account, and
+ * what the account does counts as theirs.
+ */
+async function withClaims(db: Reader, people: Person[]): Promise<Person[]> {
+	const shadows = [
+		...new Set(people.filter((p) => p.type === "shadow").map((p) => p.id)),
+	];
+	if (shadows.length === 0) return people;
+	const claimed = new Map(
+		(
+			await db.shadowProfile.findMany({
+				where: { id: { in: shadows }, claimedById: { not: null } },
+				select: { id: true, claimedById: true },
+			})
+		).map((r) => [r.id, r.claimedById as string]),
+	);
+	return people.map((p) => {
+		const account = p.type === "shadow" ? claimed.get(p.id) : undefined;
+		return account ? { type: "user", id: account } : p;
+	});
+}
+
+async function takesPart(
+	db: Reader,
+	actorUserId: string,
+	people: Person[],
+): Promise<boolean> {
+	return (await withClaims(db, people)).some(
+		(p) => p.type === "user" && p.id === actorUserId,
+	);
 }
 
 /** One recipient per user: the actor and non-users dropped. */
-function users(
-	people: { person: Person; amount: Money | null }[],
+async function users(
+	db: Reader,
+	entries: { person: Person; amount: Money | null }[],
 	actorUserId: string,
-): PushRecipient[] {
+): Promise<PushRecipient[]> {
+	const resolved = await withClaims(
+		db,
+		entries.map((e) => e.person),
+	);
+	const people = entries.map((e, i) => ({
+		person: resolved[i] as Person,
+		amount: e.amount,
+	}));
 	const out = new Map<string, PushRecipient>();
 	for (const { person, amount } of people) {
 		if (person.type !== "user" || person.id === actorUserId) continue;
@@ -111,20 +155,21 @@ async function sharedExpense(
 		})) > 0;
 	if (
 		!inProject &&
-		!takesPart(event.actorUserId, [
+		!(await takesPart(db, event.actorUserId, [
 			{ type: row.createdByType, id: row.createdById },
 			{ type: row.paidByType, id: row.paidById },
 			...row.splitParticipants.map((p) => ({
 				type: p.participantType,
 				id: p.participantId,
 			})),
-		])
+		]))
 	)
 		return null;
 	return {
 		entity: { type: "shared_expense", id: event.entityId },
 		ids: {},
-		recipients: users(
+		recipients: await users(
+			db,
 			[
 				...row.splitParticipants.map((p) => ({
 					person: { type: p.participantType, id: p.participantId },
@@ -156,16 +201,17 @@ async function fixRequest(
 	});
 	if (
 		!row ||
-		!takesPart(event.actorUserId, [
+		!(await takesPart(db, event.actorUserId, [
 			{ type: row.askedType, id: row.askedId },
 			{ type: row.requestedByType, id: row.requestedById },
-		])
+		]))
 	)
 		return null;
 	return {
 		entity: { type: "fix_request", id: event.entityId },
 		ids: { transactionId: row.transactionId },
-		recipients: users(
+		recipients: await users(
+			db,
 			[{ person: { type: row.askedType, id: row.askedId }, amount: null }],
 			event.actorUserId,
 		),
@@ -188,18 +234,19 @@ async function payment(db: Reader, event: Subject): Promise<PushPlan | null> {
 	});
 	if (
 		!row ||
-		!takesPart(event.actorUserId, [
+		!(await takesPart(db, event.actorUserId, [
 			{ type: row.payerType, id: row.payerId },
 			{ type: row.payeeType, id: row.payeeId },
 			{ type: row.recordedByType, id: row.recordedById },
-		])
+		]))
 	)
 		return null;
 	const amount = amountOf(row.amount, row.currency);
 	return {
 		entity: { type: "payment", id: event.entityId },
 		ids: {},
-		recipients: users(
+		recipients: await users(
+			db,
 			[
 				{ person: { type: row.payerType, id: row.payerId }, amount },
 				{ person: { type: row.payeeType, id: row.payeeId }, amount },
