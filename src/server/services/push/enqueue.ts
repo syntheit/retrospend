@@ -81,7 +81,7 @@ async function withinRateLimit(
  * account for an address.
  */
 async function usableDevices(
-	tx: Writer,
+	tx: Pick<Writer, "pushDevice">,
 	userIds: string[],
 	transports: PushDevice["transport"][],
 	now: Date,
@@ -123,6 +123,26 @@ async function usableDevices(
 	return devices.filter(
 		(d) => newest.get(`${d.transport}:${d.addressHash}`)?.id === d.id,
 	);
+}
+
+/**
+ * Whether `device` would still be chosen today: its user active, its session
+ * or key not lapsed, and no other account having used its address more
+ * recently. The worker asks this before every attempt, so a retry never
+ * reaches a phone that has changed hands.
+ */
+export async function isDeviceUsable(
+	tx: Pick<Writer, "pushDevice">,
+	device: Pick<PushDevice, "id" | "userId" | "transport">,
+	now: Date,
+): Promise<boolean> {
+	const usable = await usableDevices(
+		tx,
+		[device.userId],
+		[device.transport],
+		now,
+	);
+	return usable.some((d) => d.id === device.id);
 }
 
 /** Writes the deliveries for `drafts`. Returns how many it created. */

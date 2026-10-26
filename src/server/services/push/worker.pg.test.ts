@@ -420,6 +420,94 @@ describe("push worker", () => {
 			expect((await fresh(delivery.id)).status).toBe("SENT");
 		});
 
+		it("drops a retry when someone else has since registered the same address", async () => {
+			const address = randomUUID().replaceAll("-", "").repeat(2);
+			const first = await addDevice(martin.user.id, "APNS", { address });
+			const delivery = await queue(martin.user.id, first.device.id);
+			const flaky = recordingSenders(() => ({
+				kind: "retry",
+				statusCode: 503,
+				code: "http_503",
+			}));
+			await processDuePushes({ config, senders: flaky.senders, now: T0 });
+			const waiting = await fresh(delivery.id);
+
+			// The phone changed hands: the new account used the address last.
+			await addDevice(sofia.user.id, "APNS", {
+				address,
+				lastSeenAt: new Date(T0.getTime() + 1000),
+			});
+			const { sent, senders } = recordingSenders();
+			await processDuePushes({
+				config,
+				senders,
+				now: waiting.nextAttemptAt as Date,
+			});
+
+			expect(sent).toHaveLength(0);
+			expect(await fresh(delivery.id)).toMatchObject({
+				status: "FAILED",
+				lastError: "device_unusable",
+			});
+		});
+
+		it("drops a retry when the session behind the device has expired", async () => {
+			const { device } = await addDevice(martin.user.id, "APNS");
+			const session = await adminDb.session.create({
+				data: {
+					id: randomUUID(),
+					token: randomUUID(),
+					userId: martin.user.id,
+					expiresAt: new Date(T0.getTime() + 60_000),
+				},
+			});
+			await adminDb.pushDevice.update({
+				where: { id: device.id },
+				data: { sessionId: session.id },
+			});
+			const delivery = await queue(martin.user.id, device.id, {
+				nextAttemptAt: new Date(T0.getTime() + 120_000),
+			});
+			const { sent, senders } = recordingSenders();
+			await processDuePushes({
+				config,
+				senders,
+				now: new Date(T0.getTime() + 120_000),
+			});
+			expect(sent).toHaveLength(0);
+			expect((await fresh(delivery.id)).lastError).toBe("device_unusable");
+		});
+
+		it("drops a retry when the type was switched off in the meantime", async () => {
+			const { device } = await addDevice(martin.user.id, "APNS");
+			// queue() makes a payment.recorded push: SETTLEMENT_RECEIVED.
+			const delivery = await queue(martin.user.id, device.id);
+			await adminDb.notificationPreference.upsert({
+				where: {
+					userId_type: { userId: martin.user.id, type: "SETTLEMENT_RECEIVED" },
+				},
+				create: {
+					userId: martin.user.id,
+					type: "SETTLEMENT_RECEIVED",
+					push: false,
+				},
+				update: { push: false },
+			});
+			const { sent, senders } = recordingSenders();
+			await processDuePushes({ config, senders, now: T0 });
+			expect(sent).toHaveLength(0);
+			expect(await fresh(delivery.id)).toMatchObject({
+				status: "FAILED",
+				lastError: "push_off",
+			});
+			await adminDb.notificationPreference.update({
+				where: {
+					userId_type: { userId: martin.user.id, type: "SETTLEMENT_RECEIVED" },
+				},
+				data: { push: true },
+			});
+		});
+
 		it("does not send for a device that was deleted, and takes its deliveries along", async () => {
 			const { device } = await addDevice(martin.user.id, "APNS");
 			const delivery = await queue(martin.user.id, device.id);

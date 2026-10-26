@@ -4,7 +4,9 @@ import { getAppSettings } from "~/server/services/settings";
 import type { Resolver } from "~/server/services/webhooks/ssrf";
 import type { PushDelivery, PushTransport } from "~prisma";
 import { enabledTransports, type PushConfig, pushConfig } from "./config";
+import { isDeviceUsable } from "./enqueue";
 import { FAN_OUT_BATCH, fanOutPushEvents, STALE_MS } from "./fanout";
+import { PUSH_KINDS } from "./kinds";
 import { buildPushMessage, PUSH_TTL_SECONDS, parsePushData } from "./message";
 import { raiseRecurringDue } from "./recurring";
 import { CLAIM_LEASE_MS, RETENTION_DAYS, retryDelayMs } from "./schedule";
@@ -131,9 +133,9 @@ async function attempt(
 	lease: Date,
 ): Promise<void> {
 	// Read the device again, on every attempt and so on every retry: it may
-	// have been deleted, re-registered with a new address, or belong to
-	// someone who has since been deactivated, in the minutes or hours since
-	// the push was queued.
+	// have been deleted, re-registered with a new address, handed to another
+	// account, or belong to someone who has since been deactivated, in the
+	// minutes or hours since the push was queued.
 	const device = await db.pushDevice.findUnique({
 		where: { id: delivery.deviceId },
 		include: { user: { select: { language: true, isActive: true } } },
@@ -142,10 +144,23 @@ async function attempt(
 	if (!device) return;
 	if (!device.user.isActive)
 		return failWithout(delivery, lease, "user_inactive");
+	// Session or key lapsed, or the address now belongs to a newer account.
+	if (!(await isDeviceUsable(db, device, now)))
+		return failWithout(delivery, lease, "device_unusable");
 	const sender = senders[device.transport];
 	if (!sender) return failWithout(delivery, lease, "no_sender");
 	const data = parsePushData(delivery.payload);
 	if (!data) return failWithout(delivery, lease, "bad_payload");
+	// The person may have switched this type off since the push was queued.
+	const muted = await db.notificationPreference.findFirst({
+		where: {
+			userId: device.userId,
+			type: PUSH_KINDS[data.type].preference,
+			push: false,
+		},
+		select: { id: true },
+	});
+	if (muted) return failWithout(delivery, lease, "push_off");
 	if (now.getTime() - delivery.createdAt.getTime() > PUSH_TTL_SECONDS * 1000)
 		return failWithout(delivery, lease, "expired");
 	const message = await buildPushMessage(data, device.user.language);
