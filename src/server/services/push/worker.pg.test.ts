@@ -422,7 +422,12 @@ describe("push worker", () => {
 
 		it("drops a retry when someone else has since registered the same address", async () => {
 			const address = randomUUID().replaceAll("-", "").repeat(2);
-			const first = await addDevice(martin.user.id, "APNS", { address });
+			// Both last-seen times are pinned to T0: the default is the wall clock,
+			// which after T0 would make the first device the newest.
+			const first = await addDevice(martin.user.id, "APNS", {
+				address,
+				lastSeenAt: T0,
+			});
 			const delivery = await queue(martin.user.id, first.device.id);
 			const flaky = recordingSenders(() => ({
 				kind: "retry",
