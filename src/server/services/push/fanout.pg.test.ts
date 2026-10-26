@@ -155,7 +155,11 @@ describe("push fan-out", () => {
 
 		it("lets the account act on the profile's expense: an event by it reaches the owner", async () => {
 			const before = (await deliveriesOf(owner.user.id)).length;
-			await appendOutboxEvent(joined.user.id, "shared_expense.updated", expense);
+			await appendOutboxEvent(
+				joined.user.id,
+				"shared_expense.updated",
+				expense,
+			);
 			await fanOut();
 			expect((await deliveriesOf(owner.user.id)).length).toBe(before + 1);
 		});

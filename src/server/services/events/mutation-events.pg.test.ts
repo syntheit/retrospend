@@ -13,12 +13,9 @@ const result = (value: unknown): ApplyResult<unknown> =>
 
 async function run(userId: string, mutationId: string, value: unknown) {
 	return userTransaction(adminDb, userId, (tx) =>
-		recordMutationEvent(
-			tx,
-			{ id: mutationId },
-			result(value),
-			{ userId } as never,
-		),
+		recordMutationEvent(tx, { id: mutationId }, result(value), {
+			userId,
+		} as never),
 	);
 }
 

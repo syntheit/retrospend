@@ -50,8 +50,7 @@ export async function recordMutationEvent(
 	const intent = storage.getStore();
 	// One request, one event: later mutations of the same route add none.
 	if (intent?.recorded) return false;
-	const type =
-		intent?.type ?? eventTypeOfMutation(mutation.id, result.value);
+	const type = intent?.type ?? eventTypeOfMutation(mutation.id, result.value);
 	if (!type) return false;
 	const { entityId, data } = extractEventData(result.value);
 	const amounts = amountsOfChanges(result.changes);

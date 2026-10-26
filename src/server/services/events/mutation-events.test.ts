@@ -10,10 +10,7 @@ function mutationIds(dir = join(process.cwd(), "src")): string[] {
 	for (const entry of readdirSync(dir, { withFileTypes: true })) {
 		const path = join(dir, entry.name);
 		if (entry.isDirectory()) ids.push(...mutationIds(path));
-		else if (
-			entry.name.endsWith(".ts") &&
-			!entry.name.endsWith(".test.ts")
-		) {
+		else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
 			const text = readFileSync(path, "utf8");
 			// Only files that define a mutation: other files have ids of figures.
 			if (/MoneyMutation</.test(text))
@@ -57,9 +54,9 @@ describe("MUTATION_EVENTS", () => {
 	it("does not keep a mutation on the list that no longer exists", () => {
 		const known = new Set(mutationIds());
 		expect(Object.keys(NO_EVENT).filter((id) => !known.has(id))).toEqual([]);
-		expect(
-			Object.keys(MUTATION_EVENTS).filter((id) => !known.has(id)),
-		).toEqual([]);
+		expect(Object.keys(MUTATION_EVENTS).filter((id) => !known.has(id))).toEqual(
+			[],
+		);
 	});
 
 	it("names accepting and rejecting a share differently", () => {

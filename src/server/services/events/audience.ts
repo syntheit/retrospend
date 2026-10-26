@@ -1,5 +1,8 @@
 import { type EventData, eventDataSchema } from "@retrospend/api-contract";
-import { otherParties, type PartiesReader } from "~/server/services/push/recipients";
+import {
+	otherParties,
+	type PartiesReader,
+} from "~/server/services/push/recipients";
 import type { Prisma } from "~prisma";
 
 /**

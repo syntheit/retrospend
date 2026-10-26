@@ -165,8 +165,9 @@ describe("events reach the other people on a shared entity", () => {
 		for (let n = 0; n < 50; n++) {
 			await fanOutEvents();
 			if (
-				(await adminDb.webhookDelivery.count({ where: { webhookId: hook.id } })) >
-				0
+				(await adminDb.webhookDelivery.count({
+					where: { webhookId: hook.id },
+				})) > 0
 			)
 				break;
 			await new Promise((r) => setTimeout(r, 100));

@@ -571,8 +571,10 @@ describe("push worker", () => {
 			const sender: PushSender = {
 				close() {},
 				async send(target) {
-					const domain = new URL(target.endpoint ?? "https://none.invalid")
-						.hostname.split(".")
+					const domain = new URL(
+						target.endpoint ?? "https://none.invalid",
+					).hostname
+						.split(".")
 						.slice(-2)
 						.join(".");
 					stats.running += 1;

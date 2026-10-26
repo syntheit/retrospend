@@ -10,8 +10,12 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { adminDb, createTestUser } from "~/test/pg-harness";
+import {
+	PER_HOST_ATTEMPTS,
+	PER_USER_ATTEMPTS,
+	PER_USER_BATCH,
+} from "./schedule";
 import { encryptSecret } from "./secret";
-import { PER_HOST_ATTEMPTS, PER_USER_ATTEMPTS, PER_USER_BATCH } from "./schedule";
 import { processDueDeliveries } from "./worker";
 
 const NOW = new Date("2026-10-26T15:00:00Z");

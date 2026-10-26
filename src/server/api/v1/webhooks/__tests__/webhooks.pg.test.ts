@@ -44,6 +44,7 @@ type Hook = {
 	eventTypes: string[];
 	enabled: boolean;
 	secretStart: string;
+	previousSecretExpiresAt: string | null;
 	disabledReason: string | null;
 	consecutiveFailures: number;
 };
@@ -886,10 +887,7 @@ describe("/api/v1/webhooks", () => {
 					body: graceSeconds === undefined ? undefined : { graceSeconds },
 					idempotent: true,
 				});
-			const sendTest = async (
-				headers: Record<string, string>,
-				id: string,
-			) => {
+			const sendTest = async (headers: Record<string, string>, id: string) => {
 				received = [];
 				await call(`/webhooks/${id}/test`, {
 					method: "POST",
@@ -917,8 +915,12 @@ describe("/api/v1/webhooks", () => {
 
 				const both = await sendTest(headers, webhook.id);
 				expect(both.header.match(/v1=/g)).toHaveLength(2);
-				expect(verifyWebhookSignature(rotated.secret, both.header, both.body)).toBe(true);
-				expect(verifyWebhookSignature(secret, both.header, both.body)).toBe(true);
+				expect(
+					verifyWebhookSignature(rotated.secret, both.header, both.body),
+				).toBe(true);
+				expect(verifyWebhookSignature(secret, both.header, both.body)).toBe(
+					true,
+				);
 
 				// The grace period runs out: the old secret stops signing.
 				await adminDb.webhook.update({
@@ -927,9 +929,15 @@ describe("/api/v1/webhooks", () => {
 				});
 				const after = await sendTest(headers, webhook.id);
 				expect(after.header.match(/v1=/g)).toHaveLength(1);
-				expect(verifyWebhookSignature(rotated.secret, after.header, after.body)).toBe(true);
-				expect(verifyWebhookSignature(secret, after.header, after.body)).toBe(false);
-				const read = await expectBody<{ previousSecretExpiresAt: string | null }>(
+				expect(
+					verifyWebhookSignature(rotated.secret, after.header, after.body),
+				).toBe(true);
+				expect(verifyWebhookSignature(secret, after.header, after.body)).toBe(
+					false,
+				);
+				const read = await expectBody<{
+					previousSecretExpiresAt: string | null;
+				}>(
 					await call(`/webhooks/${webhook.id}`, { headers }),
 					contract.webhooks.get,
 				);
@@ -948,9 +956,15 @@ describe("/api/v1/webhooks", () => {
 					contract.webhooks.rotateSecret,
 				);
 				const sent = await sendTest(headers, webhook.id);
-				expect(verifyWebhookSignature(third.secret, sent.header, sent.body)).toBe(true);
-				expect(verifyWebhookSignature(second.secret, sent.header, sent.body)).toBe(true);
-				expect(verifyWebhookSignature(first, sent.header, sent.body)).toBe(false);
+				expect(
+					verifyWebhookSignature(third.secret, sent.header, sent.body),
+				).toBe(true);
+				expect(
+					verifyWebhookSignature(second.secret, sent.header, sent.body),
+				).toBe(true);
+				expect(verifyWebhookSignature(first, sent.header, sent.body)).toBe(
+					false,
+				);
 			});
 
 			it("is over at once when a plain rotation follows a graceful one", async () => {
@@ -964,7 +978,9 @@ describe("/api/v1/webhooks", () => {
 				expect(plain.webhook.previousSecretExpiresAt).toBeNull();
 				const sent = await sendTest(headers, webhook.id);
 				expect(sent.header.match(/v1=/g)).toHaveLength(1);
-				expect(verifyWebhookSignature(secret, sent.header, sent.body)).toBe(false);
+				expect(verifyWebhookSignature(secret, sent.header, sent.body)).toBe(
+					false,
+				);
 			});
 
 			it("refuses a grace period over seven days or below zero", async () => {
