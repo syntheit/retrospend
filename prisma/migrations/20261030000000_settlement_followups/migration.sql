@@ -191,10 +191,30 @@ CREATE TRIGGER settlement_mark_insert
   FOR EACH ROW WHEN (current_user = 'retrospend_app')
   EXECUTE FUNCTION settlement_mark_insert();
 
--- A delete drops rows only with the whole payment, or when the payment's status
--- moved in this same transaction: confirmed with a new amount (rows out, final
--- rows in), or put back to waiting (the undo, whose rows payment_back_check
--- holds to the claim). Rows written in the transaction are no excuse.
+-- Whether the payment is waiting for its receiver, as the caller (a party) sees it.
+CREATE OR REPLACE FUNCTION payment_is_waiting(p_payment_id TEXT)
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM "payment" p
+    WHERE p."id" = p_payment_id AND p."status" = 'PROPOSED'
+      AND (
+        (p."payerType" = 'user' AND p."payerId" = current_setting('app.current_user_id', true))
+        OR (p."payeeType" = 'user' AND p."payeeId" = current_setting('app.current_user_id', true))
+      )
+  )
+$$;
+
+-- A delete drops rows only with the whole payment, or by one of the two ways a
+-- payment is rewritten: a waiting row goes while the payment is confirmed with a
+-- new amount (its status moved, 'hdr'), or a final row goes while the payment is
+-- put back to waiting (the undo, 'back', whose rows payment_back_check holds to
+-- the claim). Where the payment ends decides it, so a payment put back and
+-- confirmed again in one transaction cannot lose a final row.
 CREATE OR REPLACE FUNCTION settlement_group_trigger()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -208,8 +228,12 @@ BEGIN
     IF OLD."paymentGroupId" IS NOT NULL THEN
       IF payment_has_rows(OLD."paymentGroupId")
          AND NOT (
-           payment_tx_note_has('hdr', OLD."paymentGroupId")
-           OR payment_tx_note_has('back', OLD."paymentGroupId")
+           (OLD."status" = 'PROPOSED' AND payment_tx_note_has('hdr', OLD."paymentGroupId"))
+           OR (
+             OLD."status" = 'FINALIZED'
+             AND payment_tx_note_has('back', OLD."paymentGroupId")
+             AND payment_is_waiting(OLD."paymentGroupId")
+           )
          ) THEN
         RAISE EXCEPTION 'row-level security: a payment loses rows only as a whole or when rewritten'
           USING ERRCODE = '42501';
@@ -824,6 +848,8 @@ REVOKE ALL ON FUNCTION settlement_mark_insert() FROM PUBLIC;
 REVOKE ALL ON FUNCTION settlement_note_claim() FROM PUBLIC;
 REVOKE ALL ON FUNCTION payment_note_header() FROM PUBLIC;
 REVOKE ALL ON FUNCTION payment_note_back() FROM PUBLIC;
+REVOKE ALL ON FUNCTION payment_is_waiting(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION payment_is_waiting(TEXT) TO retrospend_app;
 REVOKE ALL ON FUNCTION payment_back_check(TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION settlement_group_trigger() FROM PUBLIC;
 REVOKE ALL ON FUNCTION rate_is_crypto(TEXT) FROM PUBLIC;

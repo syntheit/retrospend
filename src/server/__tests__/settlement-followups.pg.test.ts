@@ -716,6 +716,29 @@ describe("putting a confirmed claim back (the undo)", () => {
 		}
 	});
 
+	it("cannot lose a final row by putting the payment back and confirming it again", async () => {
+		const p = await confirmed(["6", "4"]);
+		const six = p.rows.find((r) => r.amount.toString() === "6");
+		const ok = await went(() =>
+			inTx(ben, async (tx) => {
+				await tx.settlement.deleteMany({ where: { paymentGroupId: p.id } });
+				await tx.settlement.createMany({
+					data: p.rows.map((r) => ({ ...r, amount: r.amount.toString() })),
+				});
+				await tx.payment.update({
+					where: { id: p.id },
+					data: { status: "PROPOSED" },
+				});
+				await finalize(tx, p.id);
+				await tx.settlement.delete({ where: { id: six?.id } });
+			}),
+		);
+		expect(ok).toBe(false);
+		expect(
+			await adminDb.settlement.count({ where: { paymentGroupId: p.id } }),
+		).toBe(2);
+	});
+
 	it("refuses an undo that puts back only some of the claim's rows", async () => {
 		const p = await confirmed(["6", "4"]);
 		expect(await undo(p, (rows) => rows.filter((r) => r.amount === "6"))).toBe(
