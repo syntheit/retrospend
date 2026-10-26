@@ -413,7 +413,7 @@
 		"src/components/ui/chart.tsx": 72,
 		"src/components/ui/rate-selector.tsx": 3,
 		"src/components/user-invite-codes-table.tsx": 61,
-		"src/server/api/routers/admin.ts": 601,
+		"src/server/api/routers/admin.ts": 590,
 		"src/server/api/routers/audit-log.ts": 722,
 		"src/server/api/routers/auth.ts": 146,
 		"src/server/api/routers/billingPeriod.ts": 433,

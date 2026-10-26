@@ -6,6 +6,7 @@ import { SelectField } from "~/features/settings/select-field";
 import { SettingRow, SettingRows } from "~/features/settings/setting-row";
 import type { RouterInputs, RouterOutputs } from "~/trpc/react";
 import { NumberField } from "./admin-number-field";
+import { PrivateTargetsRow } from "./admin-webhook-targets";
 
 export type SettingsUpdate = RouterInputs["admin"]["updateSettings"];
 export type AdminSettings = RouterOutputs["admin"]["getSettings"];
@@ -98,7 +99,7 @@ export function RegistrationSection({
 	);
 }
 
-/** Import concurrency and audit log privacy. */
+/** Import concurrency, audit log privacy and webhook targets. */
 export function SystemSection({
 	settings,
 	isUpdating,
@@ -156,6 +157,11 @@ export function SystemSection({
 						value={settings?.maxConcurrentImportJobs}
 					/>
 				</SettingRow>
+				<PrivateTargetsRow
+					isUpdating={isUpdating}
+					onSave={onSave}
+					settings={settings}
+				/>
 			</SettingRows>
 		</div>
 	);

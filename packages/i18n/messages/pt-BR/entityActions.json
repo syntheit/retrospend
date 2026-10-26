@@ -400,5 +400,31 @@
 			"confirmBody": "Ela deixa de rodar no dinheiro novo. O que já atribuiu fica como está.",
 			"confirmButton": "Remover regra"
 		}
+	},
+	"webhook": {
+		"test": {
+			"label": "Enviar entrega de teste"
+		},
+		"deliveries": {
+			"label": "Ver entregas"
+		},
+		"turnOff": {
+			"label": "Desligar"
+		},
+		"turnOn": {
+			"label": "Ligar"
+		},
+		"rotateSecret": {
+			"label": "Trocar segredo",
+			"confirmTitle": "Trocar o segredo de {name}?",
+			"confirmBody": "O segredo antigo para de funcionar na hora. As entregas assinadas com ele falham até seu receptor usar o novo.",
+			"confirmButton": "Trocar segredo"
+		},
+		"delete": {
+			"label": "Excluir webhook",
+			"confirmTitle": "Excluir {name}?",
+			"confirmBody": "Ele para de receber eventos e o registro de entregas é apagado. Não dá para desfazer.",
+			"confirmButton": "Excluir webhook"
+		}
 	}
 }
