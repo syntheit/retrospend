@@ -5,6 +5,7 @@ import { Callout } from "../../_components/callout"
 import { CodeBlock } from "../../_components/code-block"
 import { DocsNav } from "../../_components/docs-nav"
 import { getAdjacentDocs } from "../../docs-config"
+import { PUSH_ENV_GROUP } from "./push-env-vars"
 export const metadata: Metadata = {
 	title: "Environment Variables",
 	description: "Full reference for all Retrospend configuration options.",
@@ -12,18 +13,9 @@ export const metadata: Metadata = {
 
 const slug = "configuration/environment-variables"
 
-type EnvVar = {
-	name: string
-	required: boolean
-	default?: string
-	description: string
-}
+type EnvVar = { name: string; required: boolean; default?: string; description: string }
 
-type EnvGroup = {
-	title: string
-	id: string
-	vars: EnvVar[]
-}
+type EnvGroup = { title: string; id: string; vars: EnvVar[] }
 
 const ENV_GROUPS: EnvGroup[] = [
 	{
@@ -198,6 +190,7 @@ const ENV_GROUPS: EnvGroup[] = [
 			},
 		],
 	},
+	PUSH_ENV_GROUP,
 	{
 		title: "App Behavior",
 		id: "app",
