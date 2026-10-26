@@ -61,6 +61,7 @@
 		"@radix-ui/react-toggle": "^1.2.1",
 		"@radix-ui/react-toggle-group": "^1.2.1",
 		"@radix-ui/react-tooltip": "^1.4.1",
+		"@retrospend/api-client": "workspace:*",
 		"@retrospend/api-contract": "workspace:*",
 		"@retrospend/domain": "workspace:*",
 		"@retrospend/i18n": "workspace:*",

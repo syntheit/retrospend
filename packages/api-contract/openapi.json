@@ -10391,6 +10391,10 @@
 											"maximum": 50,
 											"minimum": 1,
 											"type": "integer"
+										},
+										"webhooksAllowPrivateTargets": {
+											"description": "Let webhooks send to addresses on a private network (localhost, 10.x, 192.168.x). Off by default; turn it on only for a self-hosted server whose receivers sit on the same network.",
+											"type": "boolean"
 										}
 									},
 									"required": [
@@ -10399,7 +10403,8 @@
 										"enableEmail",
 										"auditPrivacyMode",
 										"maxConcurrentImportJobs",
-										"enableFeedback"
+										"enableFeedback",
+										"webhooksAllowPrivateTargets"
 									],
 									"type": "object"
 								}
@@ -10523,6 +10528,10 @@
 										"maximum": 50,
 										"minimum": 1,
 										"type": "integer"
+									},
+									"webhooksAllowPrivateTargets": {
+										"description": "Let webhooks send to addresses on a private network (localhost, 10.x, 192.168.x). Off by default; turn it on only for a self-hosted server whose receivers sit on the same network.",
+										"type": "boolean"
 									}
 								},
 								"type": "object"
@@ -10561,6 +10570,10 @@
 											"maximum": 50,
 											"minimum": 1,
 											"type": "integer"
+										},
+										"webhooksAllowPrivateTargets": {
+											"description": "Let webhooks send to addresses on a private network (localhost, 10.x, 192.168.x). Off by default; turn it on only for a self-hosted server whose receivers sit on the same network.",
+											"type": "boolean"
 										}
 									},
 									"required": [
@@ -10569,7 +10582,8 @@
 										"enableEmail",
 										"auditPrivacyMode",
 										"maxConcurrentImportJobs",
-										"enableFeedback"
+										"enableFeedback",
+										"webhooksAllowPrivateTargets"
 									],
 									"type": "object"
 								}

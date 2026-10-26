@@ -98,6 +98,17 @@ export const DOCS_CONFIG: DocSection[] = [
 		],
 	},
 	{
+		title: "API",
+		slug: "api",
+		items: [
+			{
+				title: "API reference",
+				slug: "api",
+				description: "Every route of the Retrospend API",
+			},
+		],
+	},
+	{
 		title: "FAQ",
 		slug: "faq",
 		items: [

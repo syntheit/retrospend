@@ -1166,7 +1166,14 @@
     "backupDuration": "Levou {seconds} s",
     "tokensOllama": "Tokens por mês, Ollama",
     "tokensOpenRouter": "Tokens por mês, OpenRouter",
-    "feedbackTitle": "Feedback"
+    "feedbackTitle": "Feedback",
+    "webhookPrivateTargets": "Permitir destinos privados de webhooks",
+    "webhookPrivateTargetsDescription": "Permite que os webhooks enviem para endereços da sua própria rede, como localhost ou 192.168.x.x, e por http. Desativado por padrão.",
+    "webhookPrivateTargetsOn": "Destinos privados de webhooks permitidos",
+    "webhookPrivateTargetsOff": "Destinos privados de webhooks bloqueados",
+    "webhookPrivateTargetsConfirmTitle": "Permitir destinos privados de webhooks?",
+    "webhookPrivateTargetsConfirmBody": "Os webhooks de todos os usuários poderão alcançar serviços da rede deste servidor. Ative só se você confia em todas as pessoas com conta.",
+    "webhookPrivateTargetsConfirm": "Permitir destinos privados"
   },
   "auditLog": {
     "title": "Logs de auditoria",

@@ -23,7 +23,11 @@ import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migrati
 import { deleteFile, getStorageSize } from "~/server/storage";
 import { logEventAsync } from "~/server/services/audit.service";
 import { IntegrationService } from "~/server/services/integration.service";
-import { getAppSettings, updateAppSettings } from "~/server/services/settings";
+import {
+	adminSettingsView,
+	getAppSettings,
+	updateAppSettings,
+} from "~/server/services/settings";
 
 export const adminRouter = createTRPCRouter({
 	getStats: adminProcedure.query(async ({ ctx }) => {
@@ -459,15 +463,7 @@ export const adminRouter = createTRPCRouter({
 		}),
 
 	getSettings: adminProcedure.query(async () => {
-		const settings = await getAppSettings();
-		return {
-			inviteOnlyEnabled: settings.inviteOnlyEnabled,
-			allowAllUsersToGenerateInvites: settings.allowAllUsersToGenerateInvites,
-			enableEmail: settings.enableEmail,
-			auditPrivacyMode: settings.auditPrivacyMode,
-			maxConcurrentImportJobs: settings.maxConcurrentImportJobs,
-			enableFeedback: settings.enableFeedback,
-		};
+		return adminSettingsView(await getAppSettings());
 	}),
 
 	updateSettings: adminProcedure
@@ -481,18 +477,11 @@ export const adminRouter = createTRPCRouter({
 					.optional(),
 				maxConcurrentImportJobs: z.number().int().min(1).max(50).optional(),
 				enableFeedback: z.boolean().optional(),
+				webhooksAllowPrivateTargets: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ input }) => {
-			const settings = await updateAppSettings(input);
-			return {
-				inviteOnlyEnabled: settings.inviteOnlyEnabled,
-				allowAllUsersToGenerateInvites: settings.allowAllUsersToGenerateInvites,
-				enableEmail: settings.enableEmail,
-				auditPrivacyMode: settings.auditPrivacyMode,
-				maxConcurrentImportJobs: settings.maxConcurrentImportJobs,
-				enableFeedback: settings.enableFeedback,
-			};
+			return adminSettingsView(await updateAppSettings(input));
 		}),
 
 	getAiSettings: adminProcedure.query(async () => {

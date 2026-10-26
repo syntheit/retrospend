@@ -1166,7 +1166,14 @@
     "backupDuration": "Durée {seconds} s",
     "tokensOllama": "Jetons par mois, Ollama",
     "tokensOpenRouter": "Jetons par mois, OpenRouter",
-    "feedbackTitle": "Retours"
+    "feedbackTitle": "Retours",
+    "webhookPrivateTargets": "Autoriser les cibles privées des webhooks",
+    "webhookPrivateTargetsDescription": "Permet aux webhooks d’envoyer vers des adresses de ton propre réseau, comme localhost ou 192.168.x.x, et en http. Désactivé par défaut.",
+    "webhookPrivateTargetsOn": "Cibles privées des webhooks autorisées",
+    "webhookPrivateTargetsOff": "Cibles privées des webhooks bloquées",
+    "webhookPrivateTargetsConfirmTitle": "Autoriser les cibles privées des webhooks ?",
+    "webhookPrivateTargetsConfirmBody": "Les webhooks de tous les utilisateurs pourront joindre des services du réseau de ce serveur. Active ceci seulement si tu fais confiance à chaque personne ayant un compte.",
+    "webhookPrivateTargetsConfirm": "Autoriser les cibles privées"
   },
   "auditLog": {
     "title": "Journaux d’audit",
