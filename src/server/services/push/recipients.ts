@@ -39,6 +39,10 @@ type Reader = Pick<
 	Prisma.TransactionClient,
 	"sharedTransaction" | "fixRequest" | "payment" | "projectParticipant"
 >;
+export type PartiesReader = Reader;
+
+/** What the planners read: who made the change and what it is about. */
+type Subject = Omit<PushEvent, "type">;
 
 type Person = { type: string; id: string };
 
@@ -75,7 +79,7 @@ function users(
 
 async function sharedExpense(
 	db: Reader,
-	event: PushEvent,
+	event: Subject,
 ): Promise<PushPlan | null> {
 	const row = await db.sharedTransaction.findUnique({
 		where: { id: event.entityId },
@@ -138,7 +142,7 @@ async function sharedExpense(
 
 async function fixRequest(
 	db: Reader,
-	event: PushEvent,
+	event: Subject,
 ): Promise<PushPlan | null> {
 	const row = await db.fixRequest.findUnique({
 		where: { id: event.entityId },
@@ -168,7 +172,7 @@ async function fixRequest(
 	};
 }
 
-async function payment(db: Reader, event: PushEvent): Promise<PushPlan | null> {
+async function payment(db: Reader, event: Subject): Promise<PushPlan | null> {
 	const row = await db.payment.findUnique({
 		where: { id: event.entityId },
 		select: {
@@ -205,9 +209,9 @@ async function payment(db: Reader, event: PushEvent): Promise<PushPlan | null> {
 	};
 }
 
-const PLANNERS: Partial<
-	Record<PushKind, (db: Reader, event: PushEvent) => Promise<PushPlan | null>>
-> = {
+type Planner = (db: Reader, event: Subject) => Promise<PushPlan | null>;
+
+const PLANNERS: Partial<Record<PushKind, Planner>> = {
 	"shared_expense.created": sharedExpense,
 	"shared_expense.updated": sharedExpense,
 	"fix_request.created": fixRequest,
@@ -224,4 +228,24 @@ export function planPush(
 ): Promise<PushPlan | null> {
 	const plan = PLANNERS[event.type];
 	return plan ? plan(db, event) : Promise.resolve(null);
+}
+
+const BY_RESOURCE: Readonly<Record<string, Planner>> = {
+	shared_expense: sharedExpense,
+	fix_request: fixRequest,
+	payment,
+};
+
+/**
+ * The other users on the thing an event of any type is about (a split
+ * expense, a fix request, a payment), found the way a push finds them. Empty
+ * for an unknown resource, a gone entity, or an actor who has no part in it.
+ */
+export async function otherParties(
+	db: Reader,
+	event: Subject & { type: string },
+): Promise<string[]> {
+	const planner = BY_RESOURCE[event.type.split(".")[0] ?? ""];
+	const plan = planner ? await planner(db, event) : null;
+	return plan?.recipients.map((r) => r.userId) ?? [];
 }

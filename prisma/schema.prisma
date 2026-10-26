@@ -2269,10 +2269,13 @@ model ApiEvent {
   fannedOutAt DateTime?
   /// When the push fan-out last looked at the event (it may have found nobody to tell).
   pushedAt    DateTime?
+  /// Set on a copy of another person's event written for the others on a shared thing (events/audience.ts); a copy is never copied.
+  sourceEventId String?
   user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   deliveries  WebhookDelivery[]
   pushDeliveries PushDelivery[]
 
+  @@unique([userId, sourceEventId])
   @@index([userId, txid, seq])
   @@index([createdAt])
   @@map("api_event")

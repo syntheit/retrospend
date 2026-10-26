@@ -2,6 +2,7 @@ import { env } from "~/env";
 import { db } from "~/server/db";
 import { getAppSettings } from "~/server/services/settings";
 import type { Prisma } from "~prisma";
+import { type AudienceEvent, copyToOtherParties } from "~/server/services/events/audience";
 import { type DeliveryOptions, deliverOnce, eventBody } from "./deliver";
 import { capHostOf, runWithLimits } from "./pool";
 import {
@@ -72,7 +73,7 @@ async function allowPrivateTargets(options: WorkerOptions): Promise<boolean> {
 	return (await getAppSettings()).webhooksAllowPrivateTargets;
 }
 
-type OutboxRow = { id: string; userId: string; type: string; createdAt: Date };
+type OutboxRow = AudienceEvent;
 
 /** Turns new events into deliveries. Returns how many events it handled. */
 export async function fanOutEvents(): Promise<number> {
@@ -80,7 +81,8 @@ export async function fanOutEvents(): Promise<number> {
 		// Only events whose transaction is behind the oldest open one, so a
 		// late commit is not missed; SKIP LOCKED lets two workers split a batch.
 		const events = await tx.$queryRaw<OutboxRow[]>`
-			SELECT "id", "userId", "type", "createdAt" FROM "api_event"
+			SELECT "id", "userId", "actorUserId", "type", "entityId", "payload",
+			       "createdAt", "sourceEventId" FROM "api_event"
 			WHERE "fannedOutAt" IS NULL
 			  AND "txid" < pg_snapshot_xmin(pg_current_snapshot())
 			ORDER BY "txid", "seq"
@@ -113,6 +115,9 @@ export async function fanOutEvents(): Promise<number> {
 					});
 			}
 		await tx.webhookDelivery.createMany({ data: rows, skipDuplicates: true });
+		// The others on a shared thing get the event in their own feeds; the
+		// copies are fanned out to their webhooks on a later pass.
+		await copyToOtherParties(tx, events, now);
 		await tx.apiEvent.updateMany({
 			where: { id: { in: events.map((e) => e.id) } },
 			data: { fannedOutAt: now },

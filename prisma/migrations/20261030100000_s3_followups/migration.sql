@@ -7,7 +7,14 @@
 --    unchanged (the owner reads and writes their own rows); they are restated
 --    below so this file stands on its own.
 --
--- 2. shared_expense_ids_with(type, id): the ids of the expenses the caller and
+-- 2. api_event."sourceEventId": a copy of one person's event written into the
+--    feed of each other person on a shared thing (split expense, fix request,
+--    payment). The worker writes copies with the owner connection; the app
+--    role keeps its append-only, own-rows-only policies below, unchanged.
+--    The unique index makes a copy once per person however often the fan-out
+--    runs (NULLs do not collide, so ordinary events are unaffected).
+--
+-- 3. shared_expense_ids_with(type, id): the ids of the expenses the caller and
 --    one other person both have a split row on. Outside a project a debtor
 --    sees only their own split row (split_participant_select), so the filter
 --    "both people have a row" that the person exports used came back empty for
@@ -23,6 +30,13 @@ ALTER TABLE "webhook"
 
 ALTER TABLE "webhook" ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON "webhook" TO retrospend_app;
+
+ALTER TABLE "api_event" ADD COLUMN IF NOT EXISTS "sourceEventId" TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS "api_event_userId_sourceEventId_key"
+  ON "api_event"("userId", "sourceEventId");
+ALTER TABLE "api_event" ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT ON "api_event" TO retrospend_app;
+REVOKE UPDATE, DELETE ON "api_event" FROM retrospend_app;
 
 CREATE OR REPLACE FUNCTION shared_expense_ids_with(p_other_type TEXT, p_other_id TEXT)
 RETURNS TABLE ("transactionId" TEXT)
