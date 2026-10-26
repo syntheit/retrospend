@@ -52,4 +52,3 @@ Xcode with an iOS simulator runtime, Nix (for Node), and CocoaPods (the script i
 
 - iOS 26.x (seen on 26.5): with the detached "+" in the tab bar, the four destination titles are truncated ("Acti...", "Peo..."). It is react-native-screens issue 5015; iOS 27 is not affected. Accepted for now.
 - iPad has no Cmd+N: Expo UI offers no keyboard shortcut modifier for SwiftUI buttons, and React Native has no key command API. The toolbar plus opens the composer.
-- Android 15 (API 35, seen on the AOSP emulator): the system Back button leaves the app from a pushed screen (Settings, a project) and from non-Home tabs instead of going back. Android 16 (API 36) goes back correctly. React Native 0.88 registers its back callback only on API 36+ for apps targeting 36, and the manifest opts in to predictive back. The header back arrow works on both.
