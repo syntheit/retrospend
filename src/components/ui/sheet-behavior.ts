@@ -152,6 +152,19 @@ export function returnFocus(
 	return true;
 }
 
+/**
+ * Where focus lands when a sheet opens: the first field, else the verb, else
+ * the sheet itself (Radix content takes focus, tabIndex -1). Never Close: its
+ * tooltip opens on focus and then takes the first Escape.
+ */
+export function initialFocus<T extends Focusable>(
+	field: T | null | undefined,
+	submit: T | null | undefined,
+	root: T | null | undefined,
+): T | null {
+	return field ?? submit ?? root ?? null;
+}
+
 type MenuLike = { id?: string } | null;
 type Lookup = (selector: string) => Focusable | null;
 
