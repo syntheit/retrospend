@@ -3,18 +3,22 @@ import {
 	SingleChoiceSegmentedButtonRow,
 	Text,
 } from "@expo/ui/jetpack-compose";
+import { semantics } from "@expo/ui/jetpack-compose/modifiers";
 import { NativeHost } from "./NativeHost";
 import type { SegmentedProps } from "./types";
 
-/** An M3 single-choice segmented button row. */
+/** An M3 single-choice segmented button row; the label is what TalkBack reads for the group. */
 export function Segmented<T extends string>({
 	options,
 	value,
 	onChange,
+	accessibilityLabel,
 }: SegmentedProps<T>) {
 	return (
 		<NativeHost>
-			<SingleChoiceSegmentedButtonRow>
+			<SingleChoiceSegmentedButtonRow
+				modifiers={[semantics({ contentDescription: accessibilityLabel })]}
+			>
 				{options.map((option) => (
 					<SegmentedButton
 						key={option.value}
