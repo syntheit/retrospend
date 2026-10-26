@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Builds the iOS app on the Mac mini from this checkout, run from harbor:
 #
-#   bash apps/mobile/scripts/ios-build.sh [all|device|simulator]
+#   bash apps/mobile/scripts/ios-build.sh [all|device|simulator|sim-build]
 #
 # all (the default): the signed device build, the simulator run with a
 # screenshot, then one install and launch on the iPhone. device: build,
 # install and launch on the iPhone only. simulator: the simulator run only.
+# sim-build: build the simulator app only (no install), for UI test runs.
 #
 # The repo is copied to mini:~/rs-ios/retrospend (no git, no env files, no
 # build output), then apps/mobile/scripts/ios-mini.sh does the rest there.
@@ -15,7 +16,7 @@ set -euo pipefail
 
 target=${1:-all}
 case "$target" in device | simulator | sim-build | all) ;; *)
-	echo "usage: $0 [all|device|simulator]" >&2
+	echo "usage: $0 [all|device|simulator|sim-build]" >&2
 	exit 2
 	;;
 esac
