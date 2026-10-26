@@ -67,5 +67,6 @@
 		"pending": "Pendente até {name} confirmar. Seu saldo já mostra.",
 		"final": "Definitivo."
 	},
-	"amountShortcuts": "Valores rápidos"
+	"amountShortcuts": "Valores rápidos",
+	"rateOutOfRange": "Essa taxa está muito distante da taxa salva. Confira e tente de novo."
 }

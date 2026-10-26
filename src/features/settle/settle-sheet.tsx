@@ -171,6 +171,12 @@ function SettleSheetFor({
 						s={s}
 					/>
 					<SettlePreview person={person} s={s} />
+					{s.previewError?.data?.problem === "rate_out_of_range" ||
+					record.error?.data?.problem === "rate_out_of_range" ? (
+						<p className="text-danger text-small" role="alert">
+							{t("rateOutOfRange")}
+						</p>
+					) : null}
 					<p className="text-fg-3 text-meta">{ruleOf(t, s, person)}</p>
 				</div>
 			)}

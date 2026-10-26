@@ -26,6 +26,17 @@
 --    A note is keyed by the transaction id, so it can never be read by another
 --    transaction; notes of finished transactions are swept by the next write.
 --
+-- 4. A payment that goes back to waiting must hold exactly the rows of the
+--    newest SETTLED entry (checked at commit), and a payment whose header
+--    survives loses a row only when its status moved in the transaction
+--    (confirmed with a new amount, or put back). Rows written and deleted
+--    again inside one transaction no longer count as a rewrite.
+--
+-- The rate band is a sanity bound against slips and app bugs, not a closure
+-- against raw SQL: a party who writes SQL directly can still choose any rate
+-- inside 0.2x to 5x of the stored one, and the stored rates are the only
+-- reference the database has.
+--
 -- The app role only. The owner connection (guests, claims, user deletion, the
 -- sweeps) is not subject to RLS or the triggers.
 
@@ -152,6 +163,27 @@ CREATE TRIGGER payment_note_header
   )
   EXECUTE FUNCTION payment_note_header();
 
+-- A final payment goes back to waiting (the confirm undo).
+CREATE OR REPLACE FUNCTION payment_note_back()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  PERFORM payment_tx_note_put('back', OLD."id", NULL);
+  RETURN NEW;
+END
+$$;
+
+DROP TRIGGER IF EXISTS payment_note_back ON "payment";
+CREATE TRIGGER payment_note_back
+  BEFORE UPDATE OF "status" ON "payment"
+  FOR EACH ROW WHEN (
+    current_user = 'retrospend_app' AND OLD."status" = 'FINALIZED' AND NEW."status" = 'PROPOSED'
+  )
+  EXECUTE FUNCTION payment_note_back();
+
 -- settlement_mark_insert keeps its trigger (AFTER INSERT, app role only).
 DROP TRIGGER IF EXISTS settlement_mark_insert ON "settlement";
 CREATE TRIGGER settlement_mark_insert
@@ -159,8 +191,10 @@ CREATE TRIGGER settlement_mark_insert
   FOR EACH ROW WHEN (current_user = 'retrospend_app')
   EXECUTE FUNCTION settlement_mark_insert();
 
--- A delete drops rows only with the whole payment, or when rows were written
--- into it in this same transaction (a rewrite).
+-- A delete drops rows only with the whole payment, or when the payment's status
+-- moved in this same transaction: confirmed with a new amount (rows out, final
+-- rows in), or put back to waiting (the undo, whose rows payment_back_check
+-- holds to the claim). Rows written in the transaction are no excuse.
 CREATE OR REPLACE FUNCTION settlement_group_trigger()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -173,7 +207,10 @@ BEGIN
   IF TG_OP = 'DELETE' THEN
     IF OLD."paymentGroupId" IS NOT NULL THEN
       IF payment_has_rows(OLD."paymentGroupId")
-         AND NOT payment_tx_note_has('ins', OLD."paymentGroupId") THEN
+         AND NOT (
+           payment_tx_note_has('hdr', OLD."paymentGroupId")
+           OR payment_tx_note_has('back', OLD."paymentGroupId")
+         ) THEN
         RAISE EXCEPTION 'row-level security: a payment loses rows only as a whole or when rewritten'
           USING ERRCODE = '42501';
       END IF;
@@ -317,6 +354,42 @@ BEGIN
 END
 $$;
 
+-- A payment put back to waiting holds the rows of the newest SETTLED entry, no
+-- more and no fewer. An entry that recorded no rows (the undo then only flips
+-- statuses in place) asks nothing.
+CREATE OR REPLACE FUNCTION payment_back_check(p_id TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  snap JSONB;
+BEGIN
+  SELECT a."changes" -> 'previous' -> 'rows' INTO snap
+  FROM "audit_log_entry" a
+  WHERE a."targetType" = 'SETTLEMENT' AND a."action" = 'SETTLED'
+    AND a."changes" ->> 'paymentGroupId' = p_id
+  ORDER BY a."timestamp" DESC, a."id" DESC
+  LIMIT 1;
+  IF jsonb_typeof(snap) IS DISTINCT FROM 'array' THEN
+    RETURN;
+  END IF;
+  IF (SELECT count(*) FROM "settlement" s WHERE s."paymentGroupId" = p_id) <> jsonb_array_length(snap)
+     OR EXISTS (
+       SELECT 1 FROM "settlement" s
+       WHERE s."paymentGroupId" = p_id
+         AND NOT EXISTS (
+           SELECT 1 FROM jsonb_array_elements(snap) r
+           WHERE settlement_snapshot_matches(r, to_jsonb(s))
+         )
+     ) THEN
+    RAISE EXCEPTION 'row-level security: a payment goes back to waiting with the rows its claim had'
+      USING ERRCODE = '42501';
+  END IF;
+END
+$$;
+
 -- payment_group_check of 20261029100000 with the rate check added.
 CREATE OR REPLACE FUNCTION payment_group_check(p_id TEXT, p_full BOOLEAN)
 RETURNS VOID
@@ -355,6 +428,10 @@ BEGIN
   END IF;
   IF NOT p_full THEN
     RETURN;
+  END IF;
+
+  IF h."status" = 'PROPOSED' AND payment_tx_note_has('back', p_id) THEN
+    PERFORM payment_back_check(p_id);
   END IF;
 
   IF h."amount" < 0 OR EXISTS (
@@ -591,7 +668,19 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   prev JSONB;
+  uid TEXT := current_setting('app.current_user_id', true);
 BEGIN
+  -- Only a party to the payment can ask about it.
+  IF NOT EXISTS (
+    SELECT 1 FROM "payment" p
+    WHERE p."id" = p_payment_id
+      AND (
+        (p."payerType" = 'user' AND p."payerId" = uid)
+        OR (p."payeeType" = 'user' AND p."payeeId" = uid)
+      )
+  ) THEN
+    RETURN FALSE;
+  END IF;
   SELECT a."changes" -> 'previous' INTO prev
   FROM "audit_log_entry" a
   WHERE a."targetType" = 'SETTLEMENT' AND a."action" = 'SETTLED'
@@ -734,6 +823,8 @@ REVOKE ALL ON FUNCTION payment_tx_note_has(TEXT, TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION settlement_mark_insert() FROM PUBLIC;
 REVOKE ALL ON FUNCTION settlement_note_claim() FROM PUBLIC;
 REVOKE ALL ON FUNCTION payment_note_header() FROM PUBLIC;
+REVOKE ALL ON FUNCTION payment_note_back() FROM PUBLIC;
+REVOKE ALL ON FUNCTION payment_back_check(TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION settlement_group_trigger() FROM PUBLIC;
 REVOKE ALL ON FUNCTION rate_is_crypto(TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION rate_usd_range(TEXT, TIMESTAMP) FROM PUBLIC;

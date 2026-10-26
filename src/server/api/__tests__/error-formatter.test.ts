@@ -2,6 +2,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
 import { errorFormatter, zodErrorData } from "../error-formatter";
 
 const t = initTRPC.create({ errorFormatter });
@@ -22,6 +23,11 @@ const router = t.router({
 				}),
 		)
 		.mutation(() => "ok"),
+	slip: t.procedure.mutation(() => {
+		throw new RateOutOfRangeError(
+			"That ARS rate is too far from the stored rate.",
+		);
+	}),
 	fail: t.procedure.mutation(() => {
 		throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 	}),
@@ -75,6 +81,13 @@ describe("tRPC error formatter", () => {
 		expect(status).toBe(404);
 		expect(body.error.message).toBe("Project not found");
 		expect(body.error.data.zodError).toBeNull();
+	});
+
+	it("names the refusals the web shows in its own words", async () => {
+		const slip = await call("slip");
+		expect(slip.status).toBe(400);
+		expect(slip.body.error.data.problem).toBe("rate_out_of_range");
+		expect((await call("fail")).body.error.data.problem).toBeNull();
 	});
 
 	it("only reads ZodError causes", () => {

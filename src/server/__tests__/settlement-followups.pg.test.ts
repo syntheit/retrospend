@@ -367,13 +367,16 @@ describe("offset rate band", () => {
 });
 
 /** A pending claim of USD 10 and the rows and header it has before anyone touches it. */
-async function pendingClaim() {
-	const head = header("PROPOSED", { amount: "10" });
+async function pendingClaim(amounts: string[] = ["10"]) {
+	const total = amounts.reduce((sum, a) => sum + Number(a), 0);
+	const head = header("PROPOSED", { amount: String(total) });
 	const id = head.id as string;
 	await adminDb.payment.create({ data: head });
-	await adminDb.settlement.create({
-		data: row(id, ana, ben, { ...claim, amount: "10" }),
-	});
+	for (const amount of amounts) {
+		await adminDb.settlement.create({
+			data: row(id, ana, ben, { ...claim, amount }),
+		});
+	}
 	const [before, rows] = await Promise.all([
 		adminDb.payment.findUniqueOrThrow({ where: { id } }),
 		adminDb.settlement.findMany({ where: { paymentGroupId: id } }),
@@ -581,8 +584,8 @@ describe("the SETTLED entry", () => {
 
 describe("putting a confirmed claim back (the undo)", () => {
 	/** The receiver confirms, with the entry the app writes. */
-	async function confirmed() {
-		const p = await pendingClaim();
+	async function confirmed(amounts: string[] = ["10"]) {
+		const p = await pendingClaim(amounts);
 		await inTx(ben, async (tx) => {
 			await finalize(tx, p.id);
 			await tx.auditLogEntry.create({ data: settled(p, honest(p)) });
@@ -683,6 +686,59 @@ describe("putting a confirmed claim back (the undo)", () => {
 				await undo(p, (rows) => rows.map((r) => ({ ...r, ...over }))),
 			).toBe(false);
 		}
+	});
+
+	it("cannot erase one row of a confirmed payment by putting it back and deleting it", async () => {
+		// USD 6 and 4 confirmed. Delete the 6, insert it back as the claim row (it
+		// matches the snapshot, which makes it a rewrite), delete it again.
+		for (const moveHeader of [false, true]) {
+			const p = await confirmed(["6", "4"]);
+			const six = p.rows.find((r) => r.amount.toString() === "6");
+			const ok = await went(() =>
+				inTx(ben, async (tx) => {
+					await tx.settlement.delete({ where: { id: six?.id } });
+					await tx.settlement.create({
+						data: { ...(six as (typeof p.rows)[number]), amount: "6" },
+					});
+					await tx.settlement.delete({ where: { id: six?.id } });
+					if (moveHeader) {
+						await tx.payment.update({
+							where: { id: p.id },
+							data: { status: "PROPOSED" },
+						});
+					}
+				}),
+			);
+			expect(ok, moveHeader ? "header moved" : "header kept").toBe(false);
+			expect(
+				await adminDb.settlement.count({ where: { paymentGroupId: p.id } }),
+			).toBe(2);
+		}
+	});
+
+	it("refuses an undo that puts back only some of the claim's rows", async () => {
+		const p = await confirmed(["6", "4"]);
+		expect(await undo(p, (rows) => rows.filter((r) => r.amount === "6"))).toBe(
+			false,
+		);
+		// All of them is the undo.
+		expect(await undo(p, (rows) => rows)).toBe(true);
+	});
+
+	it("keeps claim_header_back_ok to the people of the payment", async () => {
+		const p = await confirmed();
+		const stranger = await createTestUser();
+		const ask = (who: TestUser) =>
+			inTx(who, async (tx) => {
+				const rows = await tx.$queryRawUnsafe<{ ok: boolean }[]>(
+					`SELECT claim_header_back_ok($1, $2::jsonb, $2::jsonb) AS ok`,
+					p.id,
+					JSON.stringify({ ...honest(p), status: "PROPOSED" }),
+				);
+				return rows[0]?.ok;
+			});
+		expect(await ask(stranger)).toBe(false);
+		expect(await ask(ben)).toBe(true);
 	});
 
 	it("refuses when no entry of the confirm exists to restore from", async () => {

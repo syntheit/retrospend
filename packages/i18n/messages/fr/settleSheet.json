@@ -67,5 +67,6 @@
 		"pending": "En attente jusqu'à la confirmation de {name}. Ton solde l'indique déjà.",
 		"final": "Définitif."
 	},
-	"amountShortcuts": "Montants rapides"
+	"amountShortcuts": "Montants rapides",
+	"rateOutOfRange": "Ce taux est trop éloigné du taux enregistré. Vérifie-le et réessaie."
 }
