@@ -8,6 +8,7 @@ import {
 	fromV1,
 	fromV1Scoped,
 	parseScopedId,
+	scopeQueryOf,
 	readTag,
 	toleranceFor,
 } from "./figures";
@@ -296,6 +297,43 @@ describe("FigureAudit", () => {
 		expect(audit.figureCount).toBe(3);
 	});
 
+	it("keeps one id's lines in different currencies apart, and compares each on its own", async () => {
+		// An endpoint that answers on the currency it is asked for.
+		const asked: string[] = [];
+		const audit = new FigureAudit(async (ids, currencies) => {
+			asked.push(`${ids.join()}|${currencies?.get("balance.person")}`);
+			return {
+				figures: ids.map((id) => ({
+					id,
+					unit: "money" as const,
+					minor: "100",
+					currency: currencies?.get(id),
+				})),
+			};
+		});
+		const brl = (minor: string): FigureTag => ({
+			id: "balance.person",
+			minor,
+			currency: "BRL",
+			unit: null,
+			text: "BRL 1.00",
+		});
+		expect(
+			await audit.checkRendered(
+				"person",
+				page([ars("balance.person", "100", "ARS 1.00"), brl("100")]),
+			),
+		).toEqual([]);
+		// One round per currency of the same id.
+		expect(asked).toEqual(["balance.person|ARS", "balance.person|BRL"]);
+		// Another currency's line is not a mismatch of the ARS one.
+		expect(audit.crossPage()).toEqual([]);
+		await audit.checkRendered("person again", page([brl("200")]));
+		expect(audit.crossPage()).toEqual([
+			"balance.person: person again vs person: 200 BRL vs 100 BRL",
+		]);
+	});
+
 	it("reports bad tags and keeps checking the rest", async () => {
 		const audit = new FigureAudit(
 			fixtureFetcher({ "spent.month": { minor: "500000", currency: "ARS" } }),
@@ -365,5 +403,52 @@ describe("scoped figure tags", () => {
 		]);
 		expect(fromV1Scoped("t", null, "ARS").missing).toEqual(["t"]);
 		expect(fromV1Scoped("t", lines).missing).toEqual(["t"]);
+	});
+});
+
+describe("the figures query a tag asks", () => {
+	it("asks a bare id with no narrowing", () => {
+		expect(scopeQueryOf("recurring.cost.out.month")).toBeNull();
+	});
+
+	it("keeps the old forms: project first, an envelope id for envelope figures", () => {
+		expect(scopeQueryOf("project.total:p1")).toEqual({
+			id: "project.total",
+			query: { projectId: "p1" },
+		});
+		expect(scopeQueryOf("balance.person:p1:user:u9")).toEqual({
+			id: "balance.person",
+			query: { projectId: "p1", personId: "user:u9" },
+		});
+		expect(scopeQueryOf("envelope.left:e1")).toEqual({
+			id: "envelope.left",
+			query: { envelopeId: "e1" },
+		});
+	});
+
+	it("takes everything after the id as a row id, colons and bars included", () => {
+		expect(scopeQueryOf("entry.amount:shared:tx1")).toEqual({
+			id: "entry.amount",
+			query: { entryId: "shared:tx1" },
+		});
+		expect(scopeQueryOf("entry.share:payment:g1|ARS")).toEqual({
+			id: "entry.share",
+			query: { entryId: "payment:g1|ARS" },
+		});
+		expect(scopeQueryOf("recurring.amount:t1")).toEqual({
+			id: "recurring.amount",
+			query: { recurringId: "t1" },
+		});
+	});
+
+	it("reads a person's balance with no project, and a correction's split and person", () => {
+		expect(scopeQueryOf("balance.person:shadow:s1")).toEqual({
+			id: "balance.person",
+			query: { personId: "shadow:s1" },
+		});
+		expect(scopeQueryOf("correction.share:tx1:user:u2")).toEqual({
+			id: "correction.share",
+			query: { transactionId: "tx1", personId: "user:u2" },
+		});
 	});
 });

@@ -39,6 +39,7 @@ function Differences({
 				: [
 						{
 							key: `${key}-share`,
+							figure: `preview.correction.share.delta:${key}`,
 							label: you ? t("shareYou") : t("share", { name }),
 							minor: d.shareMinor,
 						},
@@ -48,6 +49,7 @@ function Differences({
 				: [
 						{
 							key: `${key}-paid`,
+							figure: `preview.correction.paid.delta:${key}`,
 							label: you ? t("paidYou") : t("paid", { name }),
 							minor: d.paidMinor,
 						},
@@ -62,7 +64,11 @@ function Differences({
 					key={l.key}
 				>
 					<span className="text-fg-2">{l.label}</span>
-					<Money sign="exceptZero" value={{ minor: l.minor, currency }} />
+					<Money
+						figure={l.figure}
+						sign="exceptZero"
+						value={{ minor: l.minor, currency }}
+					/>
 				</div>
 			))}
 		</>

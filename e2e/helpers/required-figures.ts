@@ -4,7 +4,14 @@
  * missing, so deleting a tag cannot hide a mismatch. A page with no entry
  * here (the smoke walk's pages) has no required ids.
  */
-import { MARTIN, PROJECT_IDS, SOFIA, seedId } from "../fixtures/personas";
+import {
+	LUCIA,
+	MARTIN,
+	PAZ,
+	PROJECT_IDS,
+	SOFIA,
+	seedId,
+} from "../fixtures/personas";
 
 const DEPTO = PROJECT_IDS.depto;
 const FLORIPA = PROJECT_IDS.floripa;
@@ -64,6 +71,18 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 	// S4G: the Add expense sheet with a foreign amount, audited inside the
 	// sheet: the booked home value and the preview's spending line.
 	addExpense: ["entry.home", "preview.spent.delta"],
+	// The Person page for Paz, whose balance with Sofía is in one currency:
+	// the balance with her, read back by person.
+	person: [`balance.person:shadow:${PAZ.id}`],
+	// The Correct sheet on Martín's 64,000 split with Lucía, corrected to
+	// 48,000 (as the corrections flow does): the difference per person, each
+	// worked out by hand from the plan (the preview serves these, not the
+	// registry: they are what a write will change).
+	correct: [
+		`preview.correction.share.delta:user:${MARTIN.id}`,
+		`preview.correction.paid.delta:user:${MARTIN.id}`,
+		`preview.correction.share.delta:user:${LUCIA.id}`,
+	],
 	// S4B part 2: the Import review of the flow's CSV, whose first row is a
 	// foreign amount: the original and the home value the import saves.
 	import: ["import.amount:0", "import.home:0"],

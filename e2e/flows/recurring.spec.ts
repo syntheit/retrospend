@@ -1,39 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
 import { bannedOutputOn } from "../helpers/banned-output";
-import { FigureAudit, type FiguresResponse } from "../helpers/figures";
+import { FigureAudit, httpFigureFetcher } from "../helpers/figures";
 import { untilSaved } from "../helpers/trpc";
 import { openV2, realCategory, V2_VIEWER_SESSION } from "./viewer";
 
-type Money = { minor: number; currency: string };
-type Cost = { month: Money; quarter: Money; year: Money };
-type View = {
-	items: { id: string; amount: Money }[];
-	out: Cost;
-	in: Cost | null;
-};
-
-/** The audit's API side: recurring.listView, as the page reads it. */
-function viewFetcher(page: Page) {
-	return async (ids: string[]): Promise<FiguresResponse> => {
-		const res = await page.request.get("/api/trpc/recurring.listView");
-		expect(res.ok()).toBe(true);
-		const view = (await res.json()).result.data.json as View;
-		const byId = new Map<string, Money>();
-		for (const r of view.items) byId.set(`recurring.amount:${r.id}`, r.amount);
-		for (const dir of ["out", "in"] as const)
-			for (const period of ["month", "quarter", "year"] as const) {
-				const cost = view[dir];
-				if (cost) byId.set(`recurring.cost.${dir}.${period}`, cost[period]);
-			}
-		const figures = ids.flatMap((id) => {
-			const m = byId.get(id);
-			return m
-				? [{ id, unit: "money" as const, minor: m.minor, currency: m.currency }]
-				: [];
-		});
-		return { figures, missing: ids.filter((id) => !byId.has(id)) };
-	};
-}
+// The audit reads the figures endpoint: recurring.amount and recurring.cost.*
+// are registry figures, the same computation the page shows.
 
 /** An overdue template made through the app's own create call. */
 async function dueTemplate(page: Page, name: string): Promise<void> {
@@ -100,7 +72,7 @@ test("Recurring: add one, see it grouped and summed, confirm it", async ({
 		"Your recurring expenses cost",
 	);
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
-	const audit = new FigureAudit(viewFetcher(page));
+	const audit = new FigureAudit(httpFigureFetcher(page.request));
 	expect(await audit.checkPage(page, "recurring")).toEqual([]);
 
 	// Enter on a focused row opens it like a click (today's edit modal).

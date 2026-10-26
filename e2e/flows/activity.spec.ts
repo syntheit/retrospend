@@ -1,7 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
 import { SOFIA } from "../fixtures/personas";
 import { bannedOutputOn } from "../helpers/banned-output";
-import { FigureAudit, type FiguresResponse } from "../helpers/figures";
+import {
+	FigureAudit,
+	type FigureFetcher,
+	type FiguresResponse,
+	httpFigureFetcher,
+} from "../helpers/figures";
 import { untilSaved } from "../helpers/trpc";
 import {
 	openV2,
@@ -31,36 +36,54 @@ async function trpcQuery<T>(
 	return (await res.json()).result.data.json as T;
 }
 
+const NONE: FiguresResponse = { figures: [] };
+
 /**
- * The figures endpoint does not serve row ids yet (GAPS), so the audit
- * compares each tagged amount with the same rows read from expense.listV2.
+ * Row amounts and shares are registry figures (entry.amount, entry.share), so
+ * the endpoint serves them by row id. The footer and day totals are spent()
+ * for the page's own filter, which the endpoint has no narrowing for, so
+ * those compare with the same listV2 read the page makes.
  */
-function listFetcher(page: Page, input: object) {
-	return async (ids: string[]): Promise<FiguresResponse> => {
-		const { items, total, dayTotals } = await trpcQuery<ListPage>(
+function listFetcher(page: Page, input: object): FigureFetcher {
+	const served = httpFigureFetcher(page.request);
+	const totals = async (ids: string[]): Promise<FiguresResponse> => {
+		const { total, dayTotals } = await trpcQuery<ListPage>(
 			page,
 			"expense.listV2",
-			{
-				...input,
-				limit: 200,
-			},
+			{ ...input, limit: 200 },
 		);
 		const byId = new Map<string, Money>();
-		for (const r of items) {
-			byId.set(`entry.amount:${r.id}`, r.amount);
-			if (r.share) byId.set(`entry.share:${r.id}`, r.share);
-		}
-		// The footer and day totals are spent() for the same filter.
 		if (total) byId.set(total.figure, total.value);
 		for (const [day, m] of Object.entries(dayTotals ?? {}))
 			byId.set(`spent.day:${day}`, m);
-		const figures = ids.flatMap((id) => {
-			const m = byId.get(id);
-			return m
-				? [{ id, unit: "money" as const, minor: m.minor, currency: m.currency }]
-				: [];
-		});
-		return { figures, missing: ids.filter((id) => !byId.has(id)) };
+		return {
+			figures: ids.flatMap((id) => {
+				const m = byId.get(id);
+				return m
+					? [
+							{
+								id,
+								unit: "money" as const,
+								minor: m.minor,
+								currency: m.currency,
+							},
+						]
+					: [];
+			}),
+			missing: ids.filter((id) => !byId.has(id)),
+		};
+	};
+	return async (ids, currencies) => {
+		const rows = ids.filter((id) => id.startsWith("entry."));
+		const rest = ids.filter((id) => !id.startsWith("entry."));
+		const [a, b] = await Promise.all([
+			rows.length ? served(rows, currencies) : NONE,
+			rest.length ? totals(rest) : NONE,
+		]);
+		return {
+			figures: [...a.figures, ...b.figures],
+			missing: [...(a.missing ?? []), ...(b.missing ?? [])],
+		};
 	};
 }
 
