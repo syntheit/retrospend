@@ -10,7 +10,7 @@
 --    the owner role matched no policies and was denied access.
 --
 -- 2. The project_access RLS policy only allowed access when the
---    current user was the creator or a participant, no clause
+--    current user was the creator or a participant — no clause
 --    for public visibility.
 --
 -- Fix:
