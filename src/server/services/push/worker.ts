@@ -176,11 +176,16 @@ export async function processDuePushes(
 		for (let i = 0; i < due.length; i += PARALLEL) {
 			await Promise.all(
 				due.slice(i, i + PARALLEL).map(async (delivery) => {
-					const lease = await claim(delivery, now);
+					// A fresh time per claim: a batch can take a while, and a lease
+					// measured from the start of the sweep would already be short
+					// (or over) for the later deliveries, letting another instance
+					// take them while they are still being sent.
+					const at = options.now ?? new Date();
+					const lease = await claim(delivery, at);
 					if (!lease) return;
 					tried += 1;
 					try {
-						await attempt(delivery, senders, now, lease);
+						await attempt(delivery, senders, at, lease);
 					} catch (error) {
 						// Count it as a failed attempt, so a delivery that always
 						// throws runs out of retries instead of looping forever.
@@ -188,7 +193,7 @@ export async function processDuePushes(
 						await settle(
 							delivery,
 							{ kind: "retry", statusCode: null, code: "internal_error" },
-							now,
+							at,
 							lease,
 						).catch(() => undefined);
 					}
