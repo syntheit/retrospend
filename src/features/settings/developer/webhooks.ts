@@ -93,6 +93,64 @@ export const DELIVERY_ERRORS = [
 	"event_gone",
 ] as const;
 
+/**
+ * How long Rotate secret keeps the old secret signing next to the new one:
+ * not at all (the default, for a leaked secret), or one of these (seconds).
+ * The API takes 0 to seven days; four choices is what Segmented holds.
+ */
+export const GRACE_CHOICES = [0, 3600, 86_400, 604_800] as const;
+export type GraceSeconds = (typeof GRACE_CHOICES)[number];
+
+const GRACE_KEYS = {
+	0: "now",
+	3600: "hour",
+	86400: "day",
+	604800: "week",
+} as const satisfies Record<GraceSeconds, string>;
+
+/** The message key of a grace choice (`settingsV2.developer.rotate.grace.<key>`). */
+export function graceKey(seconds: GraceSeconds) {
+	return GRACE_KEYS[seconds];
+}
+
+/** What the edit sheet changes about a webhook. */
+export type WebhookEdit = Pick<
+	WebhookDto,
+	"name" | "url" | "eventTypes" | "enabled"
+>;
+
+const sameEvents = (a: readonly string[], b: readonly string[]) =>
+	a.length === b.length && a.every((f) => b.includes(f));
+
+/** The fields of `next` that differ from `w`, for the update call (typed text trimmed). */
+export function editPatch(
+	w: WebhookEdit,
+	next: WebhookEdit,
+): Partial<WebhookEdit> {
+	const patch: Partial<WebhookEdit> = {};
+	const name = next.name.trim();
+	const url = next.url.trim();
+	if (name !== w.name) patch.name = name;
+	if (url !== w.url) patch.url = url;
+	if (!sameEvents(w.eventTypes, next.eventTypes))
+		patch.eventTypes = next.eventTypes;
+	if (next.enabled !== w.enabled) patch.enabled = next.enabled;
+	return patch;
+}
+
+/** The update that puts back what `patch` replaced. */
+export function undoPatch(
+	w: WebhookEdit,
+	patch: Partial<WebhookEdit>,
+): Partial<WebhookEdit> {
+	const back: Partial<WebhookEdit> = {};
+	if (patch.name !== undefined) back.name = w.name;
+	if (patch.url !== undefined) back.url = w.url;
+	if (patch.eventTypes !== undefined) back.eventTypes = w.eventTypes;
+	if (patch.enabled !== undefined) back.enabled = w.enabled;
+	return back;
+}
+
 /** A webhook's target for display: the origin only, since a URL path often holds a secret. */
 export function targetOf(url: string): string {
 	try {

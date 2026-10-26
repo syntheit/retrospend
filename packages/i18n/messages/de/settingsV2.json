@@ -316,7 +316,9 @@
 			"otherWebhooks": "deine anderen Webhooks",
 			"sendsTo": "Sendet an",
 			"noUrl": "Noch keine URL",
-			"events": "Ereignisse"
+			"events": "Ereignisse",
+			"log": "dein Zustellprotokoll",
+			"secret": "dein Signaturgeheimnis"
 		},
 		"webhooks": "Webhooks",
 		"newWebhook": "Neuer Webhook",
@@ -401,6 +403,43 @@
 			"internal_error": "Serverfehler",
 			"webhook_disabled": "Webhook war aus",
 			"event_gone": "Ereignis nicht mehr gespeichert"
+		},
+		"edit": {
+			"title": "{name} bearbeiten",
+			"save": "Änderungen speichern",
+			"enabled": "Ereignisse an diese URL senden",
+			"saved": "{name} aktualisiert",
+			"noChanges": "Noch nichts geändert",
+			"status": "Status",
+			"on": "An",
+			"off": "Aus"
+		},
+		"rotate": {
+			"title": "Geheimnis von {name} erneuern",
+			"submit": "Geheimnis erneuern",
+			"graceLabel": "Altes Geheimnis weiter gültig lassen",
+			"grace": {
+				"now": "Sofort beenden",
+				"hour": "1 Stunde",
+				"day": "1 Tag",
+				"week": "7 Tage"
+			},
+			"graceHint": {
+				"now": "Nimm das, wenn das Geheimnis in falsche Hände geraten ist. Zustellungen mit dem alten Geheimnis schlagen fehl, bis dein Empfänger das neue nutzt.",
+				"hour": "Zustellungen tragen 1 Stunde lang beide Signaturen, damit dein Empfänger ohne Lücke wechseln kann.",
+				"day": "Zustellungen tragen 1 Tag lang beide Signaturen, damit dein Empfänger ohne Lücke wechseln kann.",
+				"week": "Zustellungen tragen 7 Tage lang beide Signaturen, damit dein Empfänger ohne Lücke wechseln kann."
+			},
+			"signing": "Signaturgeheimnis",
+			"replaced": "Durch ein neues ersetzt",
+			"oldSecret": "Altes Geheimnis",
+			"oldEnds": {
+				"now": "Endet sofort",
+				"hour": "Gilt noch 1 Stunde",
+				"day": "Gilt noch 1 Tag",
+				"week": "Gilt noch 7 Tage"
+			},
+			"permanent": "Das alte Geheimnis lässt sich nicht zurückholen."
 		}
 	},
 	"data": {

@@ -402,6 +402,9 @@
 		}
 	},
 	"webhook": {
+		"edit": {
+			"label": "Edit webhook"
+		},
 		"test": {
 			"label": "Send test delivery"
 		},
@@ -415,10 +418,7 @@
 			"label": "Turn on"
 		},
 		"rotateSecret": {
-			"label": "Rotate secret",
-			"confirmTitle": "Rotate the secret of {name}?",
-			"confirmBody": "The old secret stops working at once. Deliveries signed with it fail until your receiver uses the new one.",
-			"confirmButton": "Rotate secret"
+			"label": "Rotate secret"
 		},
 		"delete": {
 			"label": "Delete webhook",

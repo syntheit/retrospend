@@ -316,7 +316,9 @@
 			"otherWebhooks": "your other webhooks",
 			"sendsTo": "Sends to",
 			"noUrl": "No URL yet",
-			"events": "Events"
+			"events": "Events",
+			"log": "your delivery log",
+			"secret": "your signing secret"
 		},
 		"webhooks": "Webhooks",
 		"newWebhook": "New webhook",
@@ -401,6 +403,43 @@
 			"internal_error": "Server error",
 			"webhook_disabled": "Webhook was off",
 			"event_gone": "Event no longer kept"
+		},
+		"edit": {
+			"title": "Edit {name}",
+			"save": "Save changes",
+			"enabled": "Send events to this URL",
+			"saved": "Updated {name}",
+			"noChanges": "Nothing changed yet",
+			"status": "Status",
+			"on": "On",
+			"off": "Off"
+		},
+		"rotate": {
+			"title": "Rotate the secret of {name}",
+			"submit": "Rotate secret",
+			"graceLabel": "Keep the old secret working",
+			"grace": {
+				"now": "Stop at once",
+				"hour": "1 hour",
+				"day": "1 day",
+				"week": "7 days"
+			},
+			"graceHint": {
+				"now": "Use this if the secret leaked. Deliveries signed with the old one fail until your receiver uses the new one.",
+				"hour": "Deliveries carry both signatures for 1 hour, so your receiver can switch without a gap.",
+				"day": "Deliveries carry both signatures for 1 day, so your receiver can switch without a gap.",
+				"week": "Deliveries carry both signatures for 7 days, so your receiver can switch without a gap."
+			},
+			"signing": "Signing secret",
+			"replaced": "Replaced by a new one",
+			"oldSecret": "Old secret",
+			"oldEnds": {
+				"now": "Stops at once",
+				"hour": "Works for 1 hour",
+				"day": "Works for 1 day",
+				"week": "Works for 7 days"
+			},
+			"permanent": "The old secret can't be brought back."
 		}
 	},
 	"data": {

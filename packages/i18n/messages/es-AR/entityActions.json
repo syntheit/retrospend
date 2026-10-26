@@ -402,6 +402,9 @@
 		}
 	},
 	"webhook": {
+		"edit": {
+			"label": "Editar webhook"
+		},
 		"test": {
 			"label": "Mandar entrega de prueba"
 		},
@@ -415,10 +418,7 @@
 			"label": "Encender"
 		},
 		"rotateSecret": {
-			"label": "Renovar secreto",
-			"confirmTitle": "¿Querés renovar el secreto de {name}?",
-			"confirmBody": "El secreto anterior deja de funcionar en el acto. Las entregas firmadas con él fallan hasta que tu receptor use el nuevo.",
-			"confirmButton": "Renovar secreto"
+			"label": "Renovar secreto"
 		},
 		"delete": {
 			"label": "Eliminar webhook",
