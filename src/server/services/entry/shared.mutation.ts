@@ -15,6 +15,7 @@ import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 import type { AnsweredFix } from "../corrections/fix-request.service";
 import type { MoneyMutation } from "../preview/types";
+import { peopleToTell } from "../shared-expenses/delete-tell";
 import { SharedTransactionService } from "../shared-expenses/transaction.service";
 import type { ParticipantRef } from "../shared-expenses/types";
 import { RETRACT_WINDOW_MS, retractSplitNotices } from "./notices";
@@ -246,17 +247,22 @@ export const deleteSharedExpense: MoneyMutation<
 			row.createdById === actor.userId &&
 			Date.now() - row.createdAt.getTime() < RETRACT_WINDOW_MS;
 		// Retracting: the service's own notices are dropped, the retraction queued instead.
-		const { tell } = await serviceFor(
-			tx,
-			actor.userId,
-			retract ? { notify: [] } : input,
-		).delete(input.id, {
-			confirmUnsettled: input.confirmUnsettled ?? false,
-			settled: input.settled,
-		});
+		const tell = retract
+			? []
+			: await peopleToTell(tx, input.id, {
+					participantType: "user",
+					participantId: actor.userId,
+				});
+		await serviceFor(tx, actor.userId, retract ? { notify: [] } : input).delete(
+			input.id,
+			{
+				confirmUnsettled: input.confirmUnsettled ?? false,
+				settled: input.settled,
+			},
+		);
 		if (retract) input.notify?.push(() => retractSplitNotices(input.id));
 		return {
-			value: { id: input.id, tell: retract ? [] : tell },
+			value: { id: input.id, tell },
 			undo: {
 				kind: "revert",
 				mutation: "sharedExpense.create",

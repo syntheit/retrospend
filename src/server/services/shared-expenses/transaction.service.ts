@@ -892,17 +892,9 @@ export class SharedTransactionService {
 		}
 	}
 
-	/**
-	 * Deletes a split; a change to who owes whom needs a choice
-	 * (delete-guard.ts). Returns the other people who were on it, for the
-	 * event that tells them: the rows are gone by the time it is read.
-	 */
-	async delete(
-		id: string,
-		options: DeleteOptions = false,
-	): Promise<{ tell: ParticipantRef[] }> {
+	/** Deletes a split; a change to who owes whom needs a choice (delete-guard.ts). */
+	async delete(id: string, options: DeleteOptions = false) {
 		const actor = this.actor;
-		let tell: ParticipantRef[] = [];
 		let deletedSnapshot: {
 			id: string;
 			description: string;
@@ -923,20 +915,6 @@ export class SharedTransactionService {
 			);
 
 			await guardDelete(tx, existing, actor, options);
-
-			tell = [
-				{ participantType: existing.paidByType, participantId: existing.paidById },
-				...existing.splitParticipants,
-			]
-				.map((p) => ({
-					participantType: p.participantType,
-					participantId: p.participantId,
-				}))
-				.filter(
-					(p, i, all) =>
-						!sameParticipant(p, actor) &&
-						all.findIndex((q) => sameParticipant(p, q)) === i,
-				);
 
 			// Capture snapshot for notification before deleting
 				deletedSnapshot = {
@@ -968,7 +946,6 @@ export class SharedTransactionService {
 		// Notify user-type participants (excluding actor) that the expense was deleted
 		const gone = deletedSnapshot;
 		if (gone) this.notify("EXPENSE_DELETED", () => this.notifyExpenseDeleted(gone));
-		return { tell };
 	}
 
 	private async notifyExpenseDeleted(existing: {

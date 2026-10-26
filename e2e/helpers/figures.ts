@@ -248,7 +248,9 @@ export class FigureAudit {
 			currenciesOf.set(v.id, seen);
 			let round = seen.indexOf(v.currency ?? "");
 			if (round < 0) round = seen.push(v.currency ?? "") - 1;
-			(rounds[round] ??= []).push(v);
+			const inRound = rounds[round] ?? [];
+			rounds[round] = inRound;
+			inRound.push(v);
 		}
 		const problems: string[] = [];
 		for (const round of rounds) problems.push(...(await this.askApi(round)));
