@@ -400,5 +400,31 @@
 			"confirmBody": "Elle ne s'applique plus à l'argent nouveau. Ce qu'elle a déjà attribué reste tel quel.",
 			"confirmButton": "Retirer la règle"
 		}
+	},
+	"webhook": {
+		"test": {
+			"label": "Envoyer un test"
+		},
+		"deliveries": {
+			"label": "Voir les envois"
+		},
+		"turnOff": {
+			"label": "Désactiver"
+		},
+		"turnOn": {
+			"label": "Activer"
+		},
+		"rotateSecret": {
+			"label": "Renouveler le secret",
+			"confirmTitle": "Renouveler le secret de {name} ?",
+			"confirmBody": "L’ancien secret cesse de fonctionner aussitôt. Les envois signés avec lui échouent tant que ton récepteur n’utilise pas le nouveau.",
+			"confirmButton": "Renouveler le secret"
+		},
+		"delete": {
+			"label": "Supprimer le webhook",
+			"confirmTitle": "Supprimer {name} ?",
+			"confirmBody": "Il ne reçoit plus d’événements et son journal d’envois est supprimé. Impossible d’annuler.",
+			"confirmButton": "Supprimer le webhook"
+		}
 	}
 }

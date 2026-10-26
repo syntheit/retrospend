@@ -26,6 +26,7 @@ import { PROJECT_ACTIONS, type ProjectTarget } from "./project";
 import { RECURRING_ACTIONS, type RecurringTarget } from "./recurring";
 import { SETUP_ACTIONS, type SetupTarget } from "./setup";
 import type { ActionDef } from "./types";
+import { WEBHOOK_ACTIONS, type WebhookTarget } from "./webhook";
 
 export type EntityTargets = {
 	expense: ExpenseTarget;
@@ -37,6 +38,7 @@ export type EntityTargets = {
 	paymentMethod: PaymentMethodTarget;
 	apiKey: ApiKeyTarget;
 	device: DeviceTarget;
+	webhook: WebhookTarget;
 	currency: CurrencyTarget;
 	payment: PaymentTarget;
 	needsYou: NeedsYouTarget;
@@ -62,6 +64,7 @@ export const ACTIONS: {
 	paymentMethod: PAYMENT_METHOD_ACTIONS,
 	apiKey: API_KEY_ACTIONS,
 	device: DEVICE_ACTIONS,
+	webhook: WEBHOOK_ACTIONS,
 	currency: CURRENCY_ACTIONS,
 	payment: PAYMENT_ACTIONS,
 	needsYou: NEEDS_YOU_ACTIONS,
@@ -92,4 +95,5 @@ export type {
 	ProjectTarget,
 	RecurringTarget,
 	SetupTarget,
+	WebhookTarget,
 };

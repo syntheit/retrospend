@@ -98,11 +98,18 @@ export type ActivityRowDTO = {
 	sortKey: number | null;
 	waiting?: "review" | "rejected";
 	/**
-	 * Set on an expense or refund hidden from reports: the list shows it, the
-	 * footer and day totals leave it out, so the row says so (a rejected share
-	 * says Rejected through `waiting`).
+	 * Set on an expense or refund the list shows and the footer and day
+	 * totals leave out: hidden from reports, or filed under an income
+	 * category. The row says so (a rejected share says Rejected through
+	 * `waiting`).
 	 */
 	notCounted?: boolean;
+	/**
+	 * Set on an amortized purchase: it is counted, through its monthly parts,
+	 * which the list hides and the totals place on their own days. The row
+	 * says "Spread over N months", never "Not counted".
+	 */
+	spread?: { months: number };
 	pending?: boolean;
 	project: { id: string; name: string } | null;
 	people?: PersonDTO[];

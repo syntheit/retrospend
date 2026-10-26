@@ -1,11 +1,7 @@
-import { inflateSync } from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
-import {
-	generatePersonPdf,
-	generateProjectPdf,
-	type PersonPdfData,
-	type ProjectPdfData,
-} from "../pdf.service";
+import { generatePersonPdf, type PersonPdfData } from "../person-pdf-render";
+import { generateProjectPdf, type ProjectPdfData } from "../project-pdf-render";
+import { pdfText as pdfRuns } from "./pdf-text";
 
 function inspectPdf(buffer: Buffer) {
 	const text = buffer.toString("latin1");
@@ -25,7 +21,7 @@ function expenses(n: number) {
 	return Array.from({ length: n }, (_, i) => ({
 		date: `2026-01-${String((i % 28) + 1).padStart(2, "0")}`,
 		description: `Expense ${i + 1} with a reasonably long description`,
-		amount: 10 + i,
+		amount: `${10 + i}.00`,
 		currency: "EUR",
 		category: i % 2 ? "Food" : "Travel",
 		paidBy: i % 2 ? "Alice" : "Bob",
@@ -42,25 +38,37 @@ const project: ProjectPdfData = {
 		{ name: "Alice", role: "ORGANIZER" },
 		{ name: "Bob", role: "EDITOR" },
 	],
-	totalSpent: 1234.5,
+	totals: ["1234.50 EUR"],
 	expenseCount: 120,
-	budgetAmount: 2000,
+	budget: "2000.00 EUR",
 	categoryBreakdown: [
-		{ category: "Food", count: 60, total: 600 },
-		{ category: "Travel", count: 60, total: 634.5 },
+		{ category: "Food", count: 60, currency: "EUR", total: "600.00" },
+		{ category: "Travel", count: 60, currency: "EUR", total: "634.50" },
 	],
 	balances: [
-		{ name: "Alice", paid: 700, fairShare: 617.25, net: 82.75 },
-		{ name: "Bob", paid: 534.5, fairShare: 617.25, net: -82.75 },
+		{
+			name: "Alice",
+			currency: "EUR",
+			paid: "700.00",
+			fairShare: "617.25",
+			net: "+82.75",
+		},
+		{
+			name: "Bob",
+			currency: "EUR",
+			paid: "534.50",
+			fairShare: "617.25",
+			net: "-82.75",
+		},
 	],
-	settlements: [{ from: "Bob", to: "Alice", amount: 82.75, currency: "EUR" }],
+	settlements: [{ from: "Bob", to: "Alice", amount: "82.75", currency: "EUR" }],
 	expenses: expenses(120),
 };
 
 const person: PersonPdfData = {
 	personName: "Alice",
 	participantType: "user",
-	balances: [{ currency: "EUR", amount: 42, direction: "they_owe_you" }],
+	balances: [{ currency: "EUR", amount: "42.00", direction: "they_owe_you" }],
 	relationshipStats: {
 		transactionCount: 3,
 		projectCount: 1,
@@ -68,17 +76,17 @@ const person: PersonPdfData = {
 	},
 	projectBreakdown: [{ projectName: "Lisbon trip", transactionCount: 3 }],
 	categoryBreakdown: [
-		{ category: "Food", count: 3, total: 90, currency: "EUR" },
+		{ category: "Food", count: 3, total: "90.00", currency: "EUR" },
 	],
 	expenses: expenses(3).map((e) => ({
 		...e,
-		yourShare: e.amount / 2,
-		theirShare: e.amount / 2,
+		yourShare: "5.00",
+		theirShare: "5.00",
 		project: "Lisbon trip",
 	})),
 };
 
-describe("pdf.service (pdfkit)", () => {
+describe("export PDFs (pdfkit)", () => {
 	it("generates a valid multi-page project PDF", async () => {
 		const pdf = await generateProjectPdf(project);
 		const info = inspectPdf(pdf);
@@ -116,25 +124,5 @@ describe("pdf.service (pdfkit)", () => {
 	});
 });
 
-/** The text drawn on the pages, read from pdfkit's compressed content streams. */
-function pdfText(buffer: Buffer): string {
-	const raw = buffer.toString("latin1");
-	const chunks: string[] = [];
-	for (const match of raw.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)) {
-		let content: string;
-		try {
-			content = inflateSync(Buffer.from(match[1] ?? "", "latin1")).toString("latin1");
-		} catch {
-			continue;
-		}
-		// Each TJ array holds hex strings split by kerning numbers
-		for (const tj of content.matchAll(/\[([^\]]*)\]\s*TJ/g)) {
-			chunks.push(
-				[...(tj[1] ?? "").matchAll(/<([0-9a-fA-F]*)>/g)]
-					.map((hex) => Buffer.from(hex[1] ?? "", "hex").toString("latin1"))
-					.join(""),
-			);
-		}
-	}
-	return chunks.join("\n");
-}
+/** The text drawn on the pages, one run per line. */
+const pdfText = (buffer: Buffer) => pdfRuns(buffer).join("\n");

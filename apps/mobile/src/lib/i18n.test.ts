@@ -21,7 +21,7 @@ describe("loadMessages", () => {
 			const messages = loadMessages(locale);
 			expect(typeof messages.mobile.tabs.home).toBe("string");
 			expect(typeof messages.mobile.connect.title).toBe("string");
-			expect(typeof messages.common.cancel).toBe("string");
+			expect(typeof messages.mobile.common.cancel).toBe("string");
 		}
 	});
 

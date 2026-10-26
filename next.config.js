@@ -26,6 +26,7 @@ const config = {
 	// @retrospend/i18n loads catalogs with import.meta.glob, which only
 	// Turbopack supports: `next build --webpack` (and ANALYZE=true) loses translations.
 	transpilePackages: [
+		"@retrospend/api-client",
 		"@retrospend/api-contract",
 		"@retrospend/domain",
 		"@retrospend/i18n",

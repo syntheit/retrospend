@@ -21,6 +21,19 @@ export interface AppSettings {
 	updatedAt: Date;
 }
 
+/** The settings an admin sees and changes (the admin panel and GET /admin/settings). */
+export function adminSettingsView(settings: AppSettings) {
+	return {
+		inviteOnlyEnabled: settings.inviteOnlyEnabled,
+		allowAllUsersToGenerateInvites: settings.allowAllUsersToGenerateInvites,
+		enableEmail: settings.enableEmail,
+		auditPrivacyMode: settings.auditPrivacyMode,
+		maxConcurrentImportJobs: settings.maxConcurrentImportJobs,
+		enableFeedback: settings.enableFeedback,
+		webhooksAllowPrivateTargets: settings.webhooksAllowPrivateTargets,
+	};
+}
+
 // Next bundles route handlers and pages separately, each with its own copy
 // of this module, so a module-level cache let an admin write refresh only
 // the copy that served it: pages kept the old flags for up to a minute. The

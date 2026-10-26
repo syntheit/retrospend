@@ -279,6 +279,8 @@ export function handleMutationSuccess(
 	if (!path) return;
 	// A preview is the write run and rolled back (R30): nothing it read has changed.
 	if (path.endsWith(".preview")) return;
+	// /api/v1 mutations (@retrospend/api-client) invalidate by their event type.
+	if (path.startsWith("v1.")) return;
 
 	const ownRouter = path.split(".")[0]!;
 	const additional = CROSS_ROUTER_INVALIDATIONS[path] ?? [];

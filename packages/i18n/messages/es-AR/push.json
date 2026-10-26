@@ -1,0 +1,46 @@
+{
+	"sharedExpenseCreated": {
+		"title": "Nuevo gasto compartido",
+		"body": "Abrí Retrospend para verlo",
+		"bodyWithAmount": "Tu parte es {amount}"
+	},
+	"sharedExpenseUpdated": {
+		"title": "Gasto compartido modificado",
+		"body": "Abrí Retrospend para ver qué cambió",
+		"bodyWithAmount": "Tu parte ahora es {amount}"
+	},
+	"fixRequestCreated": {
+		"title": "Corrección solicitada",
+		"body": "Alguien te pidió que corrijas un gasto"
+	},
+	"paymentRecorded": {
+		"title": "Pago registrado",
+		"body": "Se registró un pago",
+		"bodyWithAmount": "Se registró un pago de {amount}"
+	},
+	"paymentConfirmed": {
+		"title": "Pago confirmado",
+		"body": "Tu pago fue confirmado",
+		"bodyWithAmount": "Tu pago de {amount} fue confirmado"
+	},
+	"paymentNotReceived": {
+		"title": "Pago no recibido",
+		"body": "Tu pago se marcó como no recibido",
+		"bodyWithAmount": "Tu pago de {amount} se marcó como no recibido"
+	},
+	"paymentReminded": {
+		"title": "Recordatorio de pago",
+		"body": "Un pago espera tu confirmación",
+		"bodyWithAmount": "Un pago de {amount} espera tu confirmación"
+	},
+	"recurringDueOut": {
+		"title": "Gasto recurrente pendiente",
+		"body": "Vence un gasto recurrente",
+		"bodyWithAmount": "Vence {amount}"
+	},
+	"recurringDueIn": {
+		"title": "Ingreso recurrente pendiente",
+		"body": "Tenés que registrar un ingreso recurrente",
+		"bodyWithAmount": "Tenés que registrar {amount}"
+	}
+}

@@ -1166,7 +1166,14 @@
     "backupDuration": "Took {seconds}s",
     "tokensOllama": "Tokens per month, Ollama",
     "tokensOpenRouter": "Tokens per month, OpenRouter",
-    "feedbackTitle": "Feedback"
+    "feedbackTitle": "Feedback",
+    "webhookPrivateTargets": "Allow private webhook targets",
+    "webhookPrivateTargetsDescription": "Lets webhooks send to addresses on your own network, such as localhost or 192.168.x.x, and over http. Off by default.",
+    "webhookPrivateTargetsOn": "Private webhook targets allowed",
+    "webhookPrivateTargetsOff": "Private webhook targets blocked",
+    "webhookPrivateTargetsConfirmTitle": "Allow private webhook targets?",
+    "webhookPrivateTargetsConfirmBody": "Every user's webhooks will be able to reach services on this server's network. Turn it on only if you trust everyone with an account.",
+    "webhookPrivateTargetsConfirm": "Allow private targets"
   },
   "auditLog": {
     "title": "Audit Logs",

@@ -10391,6 +10391,10 @@
 											"maximum": 50,
 											"minimum": 1,
 											"type": "integer"
+										},
+										"webhooksAllowPrivateTargets": {
+											"description": "Let webhooks send to addresses on a private network (localhost, 10.x, 192.168.x). Off by default; turn it on only for a self-hosted server whose receivers sit on the same network.",
+											"type": "boolean"
 										}
 									},
 									"required": [
@@ -10399,7 +10403,8 @@
 										"enableEmail",
 										"auditPrivacyMode",
 										"maxConcurrentImportJobs",
-										"enableFeedback"
+										"enableFeedback",
+										"webhooksAllowPrivateTargets"
 									],
 									"type": "object"
 								}
@@ -10523,6 +10528,10 @@
 										"maximum": 50,
 										"minimum": 1,
 										"type": "integer"
+									},
+									"webhooksAllowPrivateTargets": {
+										"description": "Let webhooks send to addresses on a private network (localhost, 10.x, 192.168.x). Off by default; turn it on only for a self-hosted server whose receivers sit on the same network.",
+										"type": "boolean"
 									}
 								},
 								"type": "object"
@@ -10561,6 +10570,10 @@
 											"maximum": 50,
 											"minimum": 1,
 											"type": "integer"
+										},
+										"webhooksAllowPrivateTargets": {
+											"description": "Let webhooks send to addresses on a private network (localhost, 10.x, 192.168.x). Off by default; turn it on only for a self-hosted server whose receivers sit on the same network.",
+											"type": "boolean"
 										}
 									},
 									"required": [
@@ -10569,7 +10582,8 @@
 										"enableEmail",
 										"auditPrivacyMode",
 										"maxConcurrentImportJobs",
-										"enableFeedback"
+										"enableFeedback",
+										"webhooksAllowPrivateTargets"
 									],
 									"type": "object"
 								}
@@ -103462,6 +103476,7 @@
 										"push": {
 											"properties": {
 												"transports": {
+													"description": "The transports this server can send through. Empty when no push sender is configured.",
 													"items": {
 														"enum": [
 															"apns",
@@ -103471,6 +103486,10 @@
 														"type": "string"
 													},
 													"type": "array"
+												},
+												"vapidPublicKey": {
+													"description": "The server's VAPID public key (base64url). Present with unifiedpush: the app gives it to the distributor as the application server key.",
+													"type": "string"
 												}
 											},
 											"required": [

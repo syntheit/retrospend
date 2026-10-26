@@ -29,7 +29,14 @@ export const serverInfoSchema = z
 			signUp: z.enum(["open", "inviteOnly"]),
 		}),
 		push: z.object({
-			transports: z.array(z.enum(PUSH_TRANSPORTS)),
+			transports: z.array(z.enum(PUSH_TRANSPORTS)).meta({
+				description:
+					"The transports this server can send through. Empty when no push sender is configured.",
+			}),
+			vapidPublicKey: z.string().optional().meta({
+				description:
+					"The server's VAPID public key (base64url). Present with unifiedpush: the app gives it to the distributor as the application server key.",
+			}),
 		}),
 	})
 	.meta({ id: "ServerInfo" });

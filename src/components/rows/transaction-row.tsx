@@ -150,10 +150,15 @@ export function TransactionWith({ tx }: { tx: TransactionVM }) {
 
 /** Whether a row carries a status word (TransactionStatus renders something). */
 export function hasStatus(tx: TransactionVM): boolean {
-	return !tx.reviewed || tx.waiting != null || tx.notCounted === true;
+	return (
+		!tx.reviewed ||
+		tx.waiting != null ||
+		tx.notCounted === true ||
+		tx.spread != null
+	);
 }
 
-/** The status words a row can carry: not reviewed, waiting on you, rejected, not counted. */
+/** The status words a row can carry: not reviewed, waiting on you, rejected, not counted, spread. */
 export function TransactionStatus({ tx }: { tx: TransactionVM }) {
 	const t = useTranslations("rows.transaction");
 	return (
@@ -164,6 +169,13 @@ export function TransactionStatus({ tx }: { tx: TransactionVM }) {
 			)}
 			{tx.waiting === "rejected" && <StatusDot kind="rejected" size="sm" />}
 			{tx.notCounted && <StatusDot kind="notCounted" size="sm" />}
+			{tx.spread && (
+				<StatusDot
+					kind="spread"
+					label={t("spread", { count: tx.spread.months })}
+					size="sm"
+				/>
+			)}
 		</>
 	);
 }
