@@ -114,14 +114,34 @@ function NeedsStrip({ overview }: { overview: PeopleOverview }) {
 	);
 }
 
-/** The People list (and its detail pane on wide windows), without a top bar. */
-export function PeopleList({ top }: { top?: ReactNode }) {
+/** Search text and chip a parent keeps for the list (PeopleHub), so a segment switch does not reset them. */
+export interface PeopleFilters {
+	query: string;
+	chip: PeopleChip;
+	onChip(chip: PeopleChip): void;
+}
+
+/**
+ * The People list (and its detail pane on wide windows), without a top bar.
+ * With `filters` the parent owns the search text and the chip, and the search
+ * bar; alone, the list keeps its own.
+ */
+export function PeopleList({
+	top,
+	filters,
+}: {
+	top?: ReactNode;
+	filters?: PeopleFilters;
+}) {
 	const t = useTranslations("mobile.people");
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const { state, reload } = usePeopleOverview();
-	const [chip, setChip] = useState<PeopleChip>("all");
-	const [query, setQuery] = useState("");
+	const [ownChip, setOwnChip] = useState<PeopleChip>("all");
+	const [ownQuery, setQuery] = useState("");
+	const chip = filters ? filters.chip : ownChip;
+	const setChip = filters ? filters.onChip : setOwnChip;
+	const query = filters ? filters.query : ownQuery;
 	const [selected, setSelected] = useState<PersonRef | null>(null);
 
 	const overview = state.status === "ready" ? state.data : null;
@@ -212,14 +232,16 @@ export function PeopleList({ top }: { top?: ReactNode }) {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
-			<Stack.Screen
-				options={{
-					headerSearchBarOptions: {
-						placeholder: t("search"),
-						onChangeText: (event) => setQuery(event.nativeEvent.text),
-					},
-				}}
-			/>
+			{filters ? null : (
+				<Stack.Screen
+					options={{
+						headerSearchBarOptions: {
+							placeholder: t("search"),
+							onChangeText: (event) => setQuery(event.nativeEvent.text),
+						},
+					}}
+				/>
+			)}
 			<ListDetail
 				detail={
 					selected ? (

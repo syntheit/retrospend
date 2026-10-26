@@ -18,13 +18,23 @@ function openProject(id: string) {
 	router.push(projectRoute(id));
 }
 
-/** The Projects list (and its detail pane on wide windows), without a top bar. */
-export function ProjectsList({ top }: { top?: ReactNode }) {
+/**
+ * The Projects list (and its detail pane on wide windows), without a top bar.
+ * With `query` the parent (PeopleHub) owns the search text and the search bar.
+ */
+export function ProjectsList({
+	top,
+	query: sharedQuery,
+}: {
+	top?: ReactNode;
+	query?: string;
+}) {
 	const t = useTranslations("mobile.projects");
 	const { color } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const { state, reload } = useProjectList();
-	const [query, setQuery] = useState("");
+	const [ownQuery, setQuery] = useState("");
+	const query = sharedQuery ?? ownQuery;
 	const [selected, setSelected] = useState<string | null>(null);
 
 	const items = state.status === "ready" ? state.data.items : null;
@@ -94,14 +104,16 @@ export function ProjectsList({ top }: { top?: ReactNode }) {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
-			<Stack.Screen
-				options={{
-					headerSearchBarOptions: {
-						placeholder: t("search"),
-						onChangeText: (event) => setQuery(event.nativeEvent.text),
-					},
-				}}
-			/>
+			{sharedQuery === undefined ? (
+				<Stack.Screen
+					options={{
+						headerSearchBarOptions: {
+							placeholder: t("search"),
+							onChangeText: (event) => setQuery(event.nativeEvent.text),
+						},
+					}}
+				/>
+			) : null}
 			<ListDetail
 				detail={
 					selected ? (
