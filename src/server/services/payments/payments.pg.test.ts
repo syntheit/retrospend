@@ -600,7 +600,7 @@ describe("M3 payments_corrections backfill", () => {
 			]);
 		} finally {
 			// The old migration brings back its single payment policy; the write
-			// rules (20261028000000_settlement_write_rls) replaced it, and later
+			// rules (the settlement_write_rls migration) replaced it, and later
 			// files of this run need them.
 			await client.query('DROP POLICY IF EXISTS "payment_access" ON "payment"');
 			await client.end();
