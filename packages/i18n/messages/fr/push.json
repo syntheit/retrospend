@@ -1,0 +1,46 @@
+{
+	"sharedExpenseCreated": {
+		"title": "Nouvelle dépense partagée",
+		"body": "Ouvre Retrospend pour la voir",
+		"bodyWithAmount": "Ta part est de {amount}"
+	},
+	"sharedExpenseUpdated": {
+		"title": "Dépense partagée modifiée",
+		"body": "Ouvre Retrospend pour voir ce qui a changé",
+		"bodyWithAmount": "Ta part est maintenant de {amount}"
+	},
+	"fixRequestCreated": {
+		"title": "Correction demandée",
+		"body": "Quelqu'un te demande de corriger une dépense"
+	},
+	"paymentRecorded": {
+		"title": "Paiement enregistré",
+		"body": "Un paiement a été enregistré",
+		"bodyWithAmount": "Un paiement de {amount} a été enregistré"
+	},
+	"paymentConfirmed": {
+		"title": "Paiement confirmé",
+		"body": "Ton paiement a été confirmé",
+		"bodyWithAmount": "Ton paiement de {amount} a été confirmé"
+	},
+	"paymentNotReceived": {
+		"title": "Paiement non reçu",
+		"body": "Ton paiement a été marqué comme non reçu",
+		"bodyWithAmount": "Ton paiement de {amount} a été marqué comme non reçu"
+	},
+	"paymentReminded": {
+		"title": "Rappel de paiement",
+		"body": "Un paiement attend ta confirmation",
+		"bodyWithAmount": "Un paiement de {amount} attend ta confirmation"
+	},
+	"recurringDueOut": {
+		"title": "Dépense récurrente à régler",
+		"body": "Une dépense récurrente est due",
+		"bodyWithAmount": "{amount} à régler"
+	},
+	"recurringDueIn": {
+		"title": "Revenu récurrent attendu",
+		"body": "Un revenu récurrent est attendu",
+		"bodyWithAmount": "{amount} attendus"
+	}
+}

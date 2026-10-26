@@ -1,0 +1,46 @@
+{
+	"sharedExpenseCreated": {
+		"title": "Новый общий расход",
+		"body": "Откройте Retrospend, чтобы посмотреть",
+		"bodyWithAmount": "Ваша доля: {amount}"
+	},
+	"sharedExpenseUpdated": {
+		"title": "Общий расход изменён",
+		"body": "Откройте Retrospend, чтобы увидеть изменения",
+		"bodyWithAmount": "Ваша доля теперь: {amount}"
+	},
+	"fixRequestCreated": {
+		"title": "Просьба исправить",
+		"body": "Вас попросили исправить расход"
+	},
+	"paymentRecorded": {
+		"title": "Платёж записан",
+		"body": "Записан платёж",
+		"bodyWithAmount": "Записан платёж на {amount}"
+	},
+	"paymentConfirmed": {
+		"title": "Платёж подтверждён",
+		"body": "Ваш платёж подтверждён",
+		"bodyWithAmount": "Ваш платёж на {amount} подтверждён"
+	},
+	"paymentNotReceived": {
+		"title": "Платёж не получен",
+		"body": "Ваш платёж отмечен как не полученный",
+		"bodyWithAmount": "Ваш платёж на {amount} отмечен как не полученный"
+	},
+	"paymentReminded": {
+		"title": "Напоминание о платеже",
+		"body": "Платёж ждёт вашего подтверждения",
+		"bodyWithAmount": "Платёж на {amount} ждёт вашего подтверждения"
+	},
+	"recurringDueOut": {
+		"title": "Подходит срок регулярного расхода",
+		"body": "Подходит срок регулярного расхода",
+		"bodyWithAmount": "Срок: {amount}"
+	},
+	"recurringDueIn": {
+		"title": "Ожидается регулярный доход",
+		"body": "Ожидается регулярный доход",
+		"bodyWithAmount": "Ожидается {amount}"
+	}
+}

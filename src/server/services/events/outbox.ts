@@ -24,14 +24,12 @@ export type EventDraft = {
  * The outbox writer (IMPLEMENTATION §2.2): appends one ApiEvent to the
  * actor's feed. Call it with the same `tx` as the write itself; a rollback
  * then leaves no event, and a commit can never lose one. Webhooks read the
- * table afterwards (src/server/services/webhooks); a push fan-out is the next
- * reader (docs/ui/GAPS.md).
- *
- * Follow-up: a shared write (a payment, a shared expense) should also reach
- * the other people involved. That needs recipients computed from membership
- * and a row written outside the actor's RLS context; until then the RLS
- * policy lets a user insert only rows for themselves, so no write can put an
- * event into someone else's feed.
+ * table afterwards (src/server/services/webhooks), and so does the push
+ * fan-out (src/server/services/push), which works out the other people a
+ * shared write concerns from membership when it reads the event, so the
+ * event itself stays in the actor's feed only: the RLS policy lets a user
+ * insert rows for themselves only, and a person's feed never shows a write
+ * they did not make.
  */
 export async function appendEvent(
 	tx: EventWriter,

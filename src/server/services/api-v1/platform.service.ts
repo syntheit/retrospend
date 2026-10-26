@@ -1,8 +1,9 @@
 import type { Me, ServerInfo } from "@retrospend/api-contract";
 import { APP_VERSION } from "~/lib/version";
 import type { db as globalDb } from "~/server/db";
-import { getImageUrl } from "~/server/storage";
+import { type PushConfig, pushConfig } from "~/server/services/push/config";
 import { isInviteOnlyEnabled } from "~/server/services/settings";
+import { getImageUrl } from "~/server/storage";
 import type { Principal } from "./principal.service";
 
 /**
@@ -12,10 +13,13 @@ import type { Principal } from "./principal.service";
 export const MIN_CLIENT_VERSION = "0.0.0";
 
 /**
- * GET /server-info. Push transports stay empty until the
- * push fan-out ships (S3 wave 3); listing them earlier would be fake data.
+ * GET /server-info. The push transports are the senders this server has
+ * settings for (src/server/services/push/config.ts), so an app never offers
+ * a transport the server cannot use.
  */
-export async function getServerInfo(): Promise<ServerInfo> {
+export async function getServerInfo(
+	push: PushConfig = pushConfig(),
+): Promise<ServerInfo> {
 	const inviteOnly = await isInviteOnlyEnabled();
 	return {
 		name: "Retrospend",
@@ -27,7 +31,14 @@ export async function getServerInfo(): Promise<ServerInfo> {
 			methods: ["password", "totp", "bearer", "apiKey", "deviceAuthorization"],
 			signUp: inviteOnly ? "inviteOnly" : "open",
 		},
-		push: { transports: [] },
+		push: {
+			transports: [
+				...(push.apns ? (["apns"] as const) : []),
+				...(push.fcm ? (["fcm"] as const) : []),
+				...(push.webPush ? (["unifiedpush"] as const) : []),
+			],
+			...(push.webPush && { vapidPublicKey: push.webPush.publicKey }),
+		},
 	};
 }
 

@@ -392,7 +392,7 @@
 		"src/components/table-search.tsx": 3
 	},
 	"UI-150": {
-		"src/app/(site)/docs/configuration/environment-variables/page.tsx": 9,
+		"src/app/(site)/docs/configuration/environment-variables/page.tsx": 2,
 		"src/app/(site)/docs/self-hosting/page.tsx": 112,
 		"src/app/(site)/login/_components/login-form.tsx": 55,
 		"src/app/(site)/pay/[username]/page.tsx": 171,

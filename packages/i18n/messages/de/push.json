@@ -1,0 +1,46 @@
+{
+	"sharedExpenseCreated": {
+		"title": "Neue geteilte Ausgabe",
+		"body": "Öffne Retrospend, um sie zu sehen",
+		"bodyWithAmount": "Dein Anteil ist {amount}"
+	},
+	"sharedExpenseUpdated": {
+		"title": "Geteilte Ausgabe geändert",
+		"body": "Öffne Retrospend, um zu sehen, was sich geändert hat",
+		"bodyWithAmount": "Dein Anteil ist jetzt {amount}"
+	},
+	"fixRequestCreated": {
+		"title": "Korrektur erbeten",
+		"body": "Jemand hat dich gebeten, eine Ausgabe zu korrigieren"
+	},
+	"paymentRecorded": {
+		"title": "Zahlung erfasst",
+		"body": "Eine Zahlung wurde erfasst",
+		"bodyWithAmount": "Eine Zahlung über {amount} wurde erfasst"
+	},
+	"paymentConfirmed": {
+		"title": "Zahlung bestätigt",
+		"body": "Deine Zahlung wurde bestätigt",
+		"bodyWithAmount": "Deine Zahlung über {amount} wurde bestätigt"
+	},
+	"paymentNotReceived": {
+		"title": "Zahlung nicht erhalten",
+		"body": "Deine Zahlung wurde als nicht erhalten markiert",
+		"bodyWithAmount": "Deine Zahlung über {amount} wurde als nicht erhalten markiert"
+	},
+	"paymentReminded": {
+		"title": "Zahlungserinnerung",
+		"body": "Eine Zahlung wartet auf deine Bestätigung",
+		"bodyWithAmount": "Eine Zahlung über {amount} wartet auf deine Bestätigung"
+	},
+	"recurringDueOut": {
+		"title": "Wiederkehrende Ausgabe fällig",
+		"body": "Eine wiederkehrende Ausgabe ist fällig",
+		"bodyWithAmount": "{amount} sind fällig"
+	},
+	"recurringDueIn": {
+		"title": "Wiederkehrende Einnahme erwartet",
+		"body": "Eine wiederkehrende Einnahme wird erwartet",
+		"bodyWithAmount": "{amount} werden erwartet"
+	}
+}

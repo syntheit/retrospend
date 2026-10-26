@@ -286,10 +286,13 @@ Parts of the new UI that wait for a server source. Each one is left out or shown
 
 ## 10. Push delivery (M12)
 
-Registration (`src/server/services/push-device.service.ts`) is built; the sender is not. What the sender must do:
+Built: registration (`src/server/services/push-device.service.ts`) and the fan-out and senders (`src/server/services/push/`): APNs, Web Push for UnifiedPush and FCM, each off until its env settings are complete (README, "Push notifications"). The sender resolves the endpoint's host, refuses private addresses unless the admin setting or `PUSH_ENDPOINT_ALLOW_HOSTS` allows them, connects to the address it checked and never follows redirects (the webhook sender's check, `src/server/services/webhooks/send.ts`). It skips devices whose session or key lapsed and users who are not active. What is left:
 
-- **Resolve and pin the endpoint's IP.** Registration refuses IP literals, `localhost` and `*.localhost` (unless listed in `PUSH_ENDPOINT_ALLOW_HOSTS`), but a public name can resolve to a private address, or change between check and send. The sender resolves the host once, refuses loopback, private (RFC 1918, `fc00::/7`), link-local (`169.254.0.0/16`, `fe80::/10`), CGNAT, unspecified and multicast addresses (and IPv4-mapped forms of them), connects to the address it checked, and never follows redirects. Allowlisted hosts skip the range check only.
-- **Skip devices whose credential lapsed.** A row goes when its session or API key is deleted (sign out, session revoke, admin deactivation, token revoke) or its key is disabled. An expired session or key keeps its row until the session cleanup removes it, so the sender joins `session` or `apikey` and skips rows whose credential has expired, and skips users who are not active.
+- **No separate push switch.** A type pushes unless the person turned its in-app notification off (`NotificationPreference.inApp`). A person who wants the in-app notification without the push has no way to say so. Fix: a `push` column on `NotificationPreference`, in the v1 notification preferences contract, and a switch per type in Settings.
+- **Recurring items have no preference row**, so they always push. Fix: a `NotificationType` for them.
+- **Deleted expenses and removed people do not push.** The event is written after the rows are gone, so the fan-out cannot find who was on the split. Fix: the delete mutation records the people to tell, as ids, on the event.
+- **Shadow profiles that were claimed** are not followed to their account: a claimed person is told through their account only for splits that name the account itself.
+- **Corrections, fix answers, payment squared up and project settle-all** have no push yet; add the kind to `PUSH_KINDS` (`src/server/services/push/kinds.ts`), a planner in `recipients.ts`, and the text in `packages/i18n/messages/<locale>/push.json`.
 
 ## 11. Guest, viewer link and public project page (release 0.5)
 
