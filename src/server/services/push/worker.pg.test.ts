@@ -13,6 +13,7 @@ import {
 	type TestUser,
 } from "~/server/api/v1/__tests__/g3-fixtures";
 import { getServerInfo } from "~/server/services/api-v1/platform.service";
+import type { PushTransport } from "~prisma";
 import { loadPushConfig } from "./config";
 import { newPushData } from "./message";
 import {
@@ -25,7 +26,17 @@ import {
 	sweepUntilPushed,
 } from "./pg-fixtures";
 import { raiseRecurringDue } from "./recurring";
-import { BASE_DELAY_MS, CLAIM_LEASE_MS, MAX_ATTEMPTS } from "./schedule";
+import {
+	BASE_DELAY_MS,
+	CLAIM_LEASE_MS,
+	MAX_ATTEMPTS,
+	PER_HOST_ATTEMPTS,
+	PER_USER_ATTEMPTS,
+	PER_USER_BATCH,
+	UNREACHABLE_CIRCUIT_FAILURES,
+	UNREACHABLE_MAX_ATTEMPTS,
+} from "./schedule";
+import type { PushSender } from "./senders";
 import { decryptWebPush, mockHttp, NO_PUSH, newVapidEnv } from "./test-helpers";
 import { processDuePushes, prunePushData, runPushWorker } from "./worker";
 
@@ -132,17 +143,24 @@ describe("push worker", () => {
 	});
 
 	it("measures each lease from its own claim, not from the start of the sweep", async () => {
-		const { device } = await addDevice(martin.user.id, "APNS");
 		const ids = (
 			await Promise.all(
-				Array.from({ length: 12 }, () =>
-					queue(martin.user.id, device.id, {
-						nextAttemptAt: new Date(Date.now() - 1000),
-						createdAt: new Date(),
-					}),
+				[martin, sofia].flatMap((user) =>
+					addDevice(user.user.id, "APNS").then(({ device }) =>
+						Promise.all(
+							Array.from({ length: 5 }, () =>
+								queue(user.user.id, device.id, {
+									nextAttemptAt: new Date(Date.now() - 1000),
+									createdAt: new Date(),
+								}),
+							),
+						),
+					),
 				),
 			)
-		).map((d) => d.id);
+		)
+			.flat()
+			.map((d) => d.id);
 		// While a chunk is sent, its deliveries are the only pending rows with
 		// a lease in the future; read how much of the lease is left.
 		const remaining: number[] = [];
@@ -165,9 +183,9 @@ describe("push worker", () => {
 			config,
 			senders: { ...recordingSenders().senders, APNS: watching },
 		});
-		expect(remaining).toHaveLength(12);
-		// Three chunks of five, 250 ms each: the last claims come half a second
-		// after the first. A lease measured from the start of the sweep would
+		expect(remaining).toHaveLength(10);
+		// Two people, two sends each at a time, 250 ms each: the last claims
+		// come half a second after the first. A lease measured from the start of the sweep would
 		// be that much shorter by then.
 		expect(Math.min(...remaining)).toBeGreaterThan(CLAIM_LEASE_MS - 250);
 	});
@@ -537,6 +555,190 @@ describe("push worker", () => {
 		expect(results.reduce((a, b) => a + b, 0)).toBe(1);
 		expect(sent.filter((s) => s.target.id === device.id)).toHaveLength(1);
 		expect((await fresh(delivery.id)).attempts).toBe(1);
+	});
+
+	describe("an endpoint that never answers cannot hold the worker", () => {
+		const push = (host: string, n: number) => `https://${host}/up/${n}`;
+		/** A sender that stays busy a moment, and records how many ran at once. */
+		function slowSenders(delayMs = 15) {
+			const stats = {
+				running: 0,
+				peak: 0,
+				sent: [] as string[],
+				runningOn: new Map<string, number>(),
+				peakOn: new Map<string, number>(),
+			};
+			const sender: PushSender = {
+				close() {},
+				async send(target) {
+					const domain = new URL(target.endpoint ?? "https://none.invalid")
+						.hostname.split(".")
+						.slice(-2)
+						.join(".");
+					stats.running += 1;
+					stats.peak = Math.max(stats.peak, stats.running);
+					const on = (stats.runningOn.get(domain) ?? 0) + 1;
+					stats.runningOn.set(domain, on);
+					stats.peakOn.set(domain, Math.max(stats.peakOn.get(domain) ?? 0, on));
+					await new Promise((r) => setTimeout(r, delayMs));
+					stats.running -= 1;
+					stats.runningOn.set(domain, (stats.runningOn.get(domain) ?? 1) - 1);
+					stats.sent.push(target.id);
+					return { kind: "sent", statusCode: 201 };
+				},
+			};
+			return {
+				stats,
+				senders: { UNIFIEDPUSH: sender } as Partial<
+					Record<PushTransport, PushSender>
+				>,
+			};
+		}
+
+		it("picks fairly: a backlog of one person does not push everyone else out of the batch", async () => {
+			const { device: hers } = await addDevice(sofia.user.id, "APNS");
+			const { device: his } = await addDevice(martin.user.id, "APNS");
+			for (let n = 0; n < 60; n++)
+				await queue(martin.user.id, his.id, {
+					nextAttemptAt: new Date(T0.getTime() - (100 - n) * 1000),
+				});
+			const late = await queue(sofia.user.id, hers.id, { nextAttemptAt: T0 });
+			const { sent, senders } = recordingSenders();
+
+			const tried = await processDuePushes({ config, senders, now: T0 });
+
+			expect(sent.map((s) => s.target.id)).toContain(hers.id);
+			expect((await fresh(late.id)).status).toBe("SENT");
+			expect(tried).toBeLessThanOrEqual(PER_USER_BATCH + 1);
+		});
+
+		it("sends to at most two of one person's endpoints at a time", async () => {
+			for (let n = 0; n < 6; n++) {
+				const { device } = await addDevice(martin.user.id, "UNIFIEDPUSH", {
+					address: push(`h${n}.one.example`, n),
+				});
+				await queue(martin.user.id, device.id);
+			}
+			const { stats, senders } = slowSenders();
+
+			expect(await processDuePushes({ config, senders, now: T0 })).toBe(6);
+
+			expect(stats.sent).toHaveLength(6);
+			expect(stats.peak).toBe(PER_USER_ATTEMPTS);
+		});
+
+		it("sends to at most two endpoints of one domain at a time, whoever owns them", async () => {
+			for (const [user, from] of [
+				[martin, 0],
+				[sofia, 3],
+			] as const)
+				for (let n = from; n < from + 3; n++) {
+					const { device } = await addDevice(user.user.id, "UNIFIEDPUSH", {
+						address: push(`s${n}.evil.example`, n),
+					});
+					await queue(user.user.id, device.id);
+				}
+			const { stats, senders } = slowSenders();
+
+			expect(await processDuePushes({ config, senders, now: T0 })).toBe(6);
+
+			expect(stats.sent).toHaveLength(6);
+			expect(stats.peakOn.get("evil.example")).toBe(PER_HOST_ATTEMPTS);
+		});
+
+		it("stops after three tries when an endpoint cannot be reached, while a phone service keeps trying", async () => {
+			const { device } = await addDevice(martin.user.id, "UNIFIEDPUSH", {
+				address: push("down.example", 1),
+			});
+			const { device: apple } = await addDevice(sofia.user.id, "APNS");
+			const gone = await queue(martin.user.id, device.id);
+			const slow = await queue(sofia.user.id, apple.id);
+			const { senders } = recordingSenders(() => ({
+				kind: "retry",
+				statusCode: null,
+				code: "timeout",
+			}));
+			let now = T0;
+			for (let n = 0; n < UNREACHABLE_MAX_ATTEMPTS; n++) {
+				await processDuePushes({ config, senders, now });
+				const row = await fresh(gone.id);
+				if (row.nextAttemptAt) now = row.nextAttemptAt;
+			}
+			expect(await fresh(gone.id)).toMatchObject({
+				status: "FAILED",
+				attempts: UNREACHABLE_MAX_ATTEMPTS,
+				nextAttemptAt: null,
+				lastError: "unreachable",
+			});
+			expect(await fresh(slow.id)).toMatchObject({
+				status: "PENDING",
+				attempts: UNREACHABLE_MAX_ATTEMPTS,
+				lastError: "timeout",
+			});
+		});
+
+		it("keeps trying an endpoint that answers with an error, up to the usual limit", async () => {
+			const { device } = await addDevice(martin.user.id, "UNIFIEDPUSH", {
+				address: push("busy.example", 1),
+			});
+			const delivery = await queue(martin.user.id, device.id);
+			const { senders } = recordingSenders(() => ({
+				kind: "retry",
+				statusCode: 503,
+				code: "http_503",
+			}));
+			let now = T0;
+			for (let n = 0; n < UNREACHABLE_MAX_ATTEMPTS + 1; n++) {
+				await processDuePushes({ config, senders, now });
+				const row = await fresh(delivery.id);
+				if (row.nextAttemptAt) now = row.nextAttemptAt;
+			}
+			expect(await fresh(delivery.id)).toMatchObject({
+				status: "PENDING",
+				attempts: UNREACHABLE_MAX_ATTEMPTS + 1,
+			});
+		});
+
+		it("does not even try a device that failed to answer three times in the last hour", async () => {
+			const { device } = await addDevice(martin.user.id, "UNIFIEDPUSH", {
+				address: push("flaky.example", 1),
+			});
+			for (let n = 0; n < UNREACHABLE_CIRCUIT_FAILURES; n++)
+				await adminDb.pushDelivery.create({
+					data: {
+						userId: martin.user.id,
+						deviceId: device.id,
+						eventType: "payment.recorded",
+						channel: "payments",
+						dedupeKey: randomUUID(),
+						payload: {},
+						status: "FAILED",
+						attempts: UNREACHABLE_MAX_ATTEMPTS,
+						lastError: "unreachable",
+						lastAttemptAt: new Date(T0.getTime() - 10 * 60_000),
+						createdAt: new Date(T0.getTime() - 30 * 60_000),
+					},
+				});
+			const fresher = await queue(martin.user.id, device.id);
+			const { sent, senders } = recordingSenders();
+
+			await processDuePushes({ config, senders, now: T0 });
+			expect(sent).toHaveLength(0);
+			expect(await fresh(fresher.id)).toMatchObject({
+				status: "FAILED",
+				lastError: "device_unreachable",
+			});
+
+			// An hour on, one push goes out to find out whether it is back.
+			const later = new Date(T0.getTime() + 2 * 3600_000);
+			const probe = await queue(martin.user.id, device.id, {
+				nextAttemptAt: later,
+				createdAt: later,
+			});
+			await processDuePushes({ config, senders, now: later });
+			expect(sent).toHaveLength(1);
+			expect((await fresh(probe.id)).status).toBe("SENT");
+		});
 	});
 
 	describe("recurring items", () => {

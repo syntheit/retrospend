@@ -9,7 +9,21 @@ import { FAN_OUT_BATCH, fanOutPushEvents, STALE_MS } from "./fanout";
 import { PUSH_KINDS } from "./kinds";
 import { buildPushMessage, PUSH_TTL_SECONDS, parsePushData } from "./message";
 import { raiseRecurringDue } from "./recurring";
-import { CLAIM_LEASE_MS, RETENTION_DAYS, retryDelayMs } from "./schedule";
+import { runWithLimits } from "./pool";
+import {
+	CLAIM_LEASE_MS,
+	capHostOf,
+	isUnreachable,
+	PARALLEL_ATTEMPTS,
+	PER_HOST_ATTEMPTS,
+	PER_USER_ATTEMPTS,
+	PER_USER_BATCH,
+	RETENTION_DAYS,
+	retryDelayMs,
+	UNREACHABLE_CIRCUIT_FAILURES,
+	UNREACHABLE_CIRCUIT_WINDOW_MS,
+	UNREACHABLE_MAX_ATTEMPTS,
+} from "./schedule";
 import { createSenders, type PushSender, type SendOutcome } from "./senders";
 
 /**
@@ -40,7 +54,6 @@ export type PushWorkerOptions = {
 };
 
 const ATTEMPT_BATCH = 50;
-const PARALLEL = 5;
 const DAY_MS = 86_400_000;
 const HORIZON_RETRY_MS = 2000;
 const SWEEP_EVERY_MS = 60_000;
@@ -68,6 +81,7 @@ async function claim(delivery: Due, now: Date): Promise<Date | null> {
 
 async function settle(
 	delivery: Due,
+	transport: PushTransport | undefined,
 	outcome: SendOutcome,
 	now: Date,
 	lease: Date,
@@ -99,10 +113,18 @@ async function settle(
 		await db.pushDevice.deleteMany({ where: { id: delivery.deviceId } });
 		return;
 	}
+	// An endpoint a user chose that nothing answers is not worth the full
+	// run of retries (see the caps in schedule.ts).
+	const unreachable =
+		outcome.kind === "retry" &&
+		outcome.statusCode === null &&
+		transport === "UNIFIEDPUSH" &&
+		isUnreachable(outcome.code);
 	const wait =
-		outcome.kind === "retry"
-			? retryDelayMs(attempts, outcome.retryAfterMs)
-			: null;
+		outcome.kind !== "retry" ||
+		(unreachable && attempts >= UNREACHABLE_MAX_ATTEMPTS)
+			? null
+			: retryDelayMs(attempts, outcome.retryAfterMs);
 	await db.pushDelivery.updateMany({
 		where: owned,
 		data: {
@@ -110,7 +132,7 @@ async function settle(
 			status: wait === null ? "FAILED" : "PENDING",
 			nextAttemptAt: wait === null ? null : new Date(now.getTime() + wait),
 			lastStatusCode: outcome.statusCode,
-			lastError: outcome.code,
+			lastError: wait === null && unreachable ? "unreachable" : outcome.code,
 		},
 	});
 }
@@ -163,9 +185,55 @@ async function attempt(
 	if (muted) return failWithout(delivery, lease, "push_off");
 	if (now.getTime() - delivery.createdAt.getTime() > PUSH_TTL_SECONDS * 1000)
 		return failWithout(delivery, lease, "expired");
+	if (device.transport === "UNIFIEDPUSH" && (await circuitOpen(device.id, now)))
+		return failWithout(delivery, lease, "device_unreachable");
 	const message = await buildPushMessage(data, device.user.language);
 	const outcome = await sender.send(device, message);
-	await settle(delivery, outcome, now, lease);
+	await settle(delivery, device.transport, outcome, now, lease);
+}
+
+/**
+ * Whether this endpoint has failed to answer too often lately to be worth
+ * another try. The window slides, so an hour after the last drops one push
+ * goes out and finds out whether the endpoint is back.
+ */
+async function circuitOpen(deviceId: string, now: Date): Promise<boolean> {
+	const drops = await db.pushDelivery.count({
+		where: {
+			deviceId,
+			status: "FAILED",
+			lastError: "unreachable",
+			lastAttemptAt: {
+				gt: new Date(now.getTime() - UNREACHABLE_CIRCUIT_WINDOW_MS),
+			},
+		},
+	});
+	return drops >= UNREACHABLE_CIRCUIT_FAILURES;
+}
+
+/**
+ * The due deliveries to work on now: at most PER_USER_BATCH per account,
+ * oldest first, interleaved across accounts (everyone's oldest, then
+ * everyone's second oldest). Plain "oldest first" would let one account with
+ * a backlog fill the batch for as long as the backlog lasts.
+ */
+async function pickDue(now: Date): Promise<Due[]> {
+	const picked = await db.$queryRaw<{ id: string }[]>`
+		SELECT "id" FROM (
+			SELECT "id", "nextAttemptAt",
+				row_number() OVER (PARTITION BY "userId" ORDER BY "nextAttemptAt", "id") AS "rank"
+			FROM "push_delivery"
+			WHERE "status" = 'PENDING' AND "nextAttemptAt" <= ${now}
+		) due
+		WHERE "rank" <= ${PER_USER_BATCH}
+		ORDER BY "rank", "nextAttemptAt", "id"
+		LIMIT ${ATTEMPT_BATCH}`;
+	if (picked.length === 0) return [];
+	const rows = await db.pushDelivery.findMany({
+		where: { id: { in: picked.map((p) => p.id) } },
+	});
+	const byId = new Map(rows.map((r) => [r.id, r]));
+	return picked.flatMap((p) => byId.get(p.id) ?? []);
 }
 
 /** Sends the deliveries that are due. Returns how many it tried. */
@@ -174,12 +242,16 @@ export async function processDuePushes(
 ): Promise<number> {
 	const now = options.now ?? new Date();
 	const config = options.config ?? pushConfig();
-	const due = await db.pushDelivery.findMany({
-		where: { status: "PENDING", nextAttemptAt: { lte: now } },
-		orderBy: { nextAttemptAt: "asc" },
-		take: ATTEMPT_BATCH,
-	});
+	const due = await pickDue(now);
 	if (due.length === 0) return 0;
+	const devices = new Map(
+		(
+			await db.pushDevice.findMany({
+				where: { id: { in: [...new Set(due.map((d) => d.deviceId))] } },
+				select: { id: true, transport: true, endpoint: true },
+			})
+		).map((d) => [d.id, d]),
+	);
 
 	const senders =
 		options.senders ??
@@ -195,33 +267,48 @@ export async function processDuePushes(
 		});
 	let tried = 0;
 	try {
-		for (let i = 0; i < due.length; i += PARALLEL) {
-			await Promise.all(
-				due.slice(i, i + PARALLEL).map(async (delivery) => {
-					// A fresh time per claim: a batch can take a while, and a lease
-					// measured from the start of the sweep would already be short
-					// (or over) for the later deliveries, letting another instance
-					// take them while they are still being sent.
-					const at = options.now ?? new Date();
-					const lease = await claim(delivery, at);
-					if (!lease) return;
-					tried += 1;
-					try {
-						await attempt(delivery, senders, at, lease);
-					} catch (error) {
-						// Count it as a failed attempt, so a delivery that always
-						// throws runs out of retries instead of looping forever.
-						console.error(`Push delivery ${delivery.id} failed:`, error);
-						await settle(
-							delivery,
-							{ kind: "retry", statusCode: null, code: "internal_error" },
-							at,
-							lease,
-						).catch(() => undefined);
-					}
-				}),
-			);
-		}
+		await runWithLimits(
+			due,
+			(delivery) => {
+				const device = devices.get(delivery.deviceId);
+				return {
+					user: delivery.userId,
+					host:
+						device?.transport === "UNIFIEDPUSH"
+							? capHostOf(device.endpoint)
+							: null,
+				};
+			},
+			{
+				total: PARALLEL_ATTEMPTS,
+				perUser: PER_USER_ATTEMPTS,
+				perHost: PER_HOST_ATTEMPTS,
+			},
+			async (delivery) => {
+				// A fresh time per claim: a batch can take a while, and a lease
+				// measured from the start of the sweep would already be short
+				// (or over) for the later deliveries, letting another instance
+				// take them while they are still being sent.
+				const at = options.now ?? new Date();
+				const lease = await claim(delivery, at);
+				if (!lease) return;
+				tried += 1;
+				try {
+					await attempt(delivery, senders, at, lease);
+				} catch (error) {
+					// Count it as a failed attempt, so a delivery that always
+					// throws runs out of retries instead of looping forever.
+					console.error(`Push delivery ${delivery.id} failed:`, error);
+					await settle(
+						delivery,
+						devices.get(delivery.deviceId)?.transport,
+						{ kind: "retry", statusCode: null, code: "internal_error" },
+						at,
+						lease,
+					).catch(() => undefined);
+				}
+			},
+		);
 	} finally {
 		if (!options.senders)
 			for (const sender of Object.values(senders)) sender.close();
