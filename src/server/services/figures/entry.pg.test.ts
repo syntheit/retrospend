@@ -6,7 +6,8 @@
  * - Dinner, shared, ARS 9,000.00 paid by Ben, split Ana 3,000.00 and Ben
  *   6,000.00: Ana's row amount ARS 900000 minor, her share ARS 300000.
  * - Ben's ARS 500.00 payment to Ana: the payment row's amount ARS 50000.
- * A person who is not on a row reads nothing of it (RLS).
+ * A person who is not on a row reads nothing of it (RLS); a payment between
+ * two other members of a project Ana shares is not hers to read either.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { readFigures } from "~/server/figures/read";
@@ -17,6 +18,7 @@ let ben: Awaited<ReturnType<typeof createTestUser>>;
 let cafe: string;
 let dinner: string;
 let payment: string;
+let betweenOthers: string;
 
 beforeAll(async () => {
 	ana = await createTestUser();
@@ -80,6 +82,34 @@ beforeAll(async () => {
 		},
 	});
 	payment = `payment:${paid.id}|ARS`;
+	// Ben pays Cam inside a project Ana is a member of: Ana can see the rows
+	// (project members do) but is not a party to the payment.
+	const cam = await createTestUser();
+	const project = await adminDb.project.create({
+		data: { name: "Trip", primaryCurrency: "ARS", createdById: ana.user.id },
+	});
+	for (const u of [ana, ben, cam])
+		await adminDb.projectParticipant.create({
+			data: {
+				projectId: project.id,
+				participantType: "user",
+				participantId: u.user.id,
+				role: "CONTRIBUTOR",
+			},
+		});
+	const other = await adminDb.settlement.create({
+		data: {
+			fromParticipantType: "user",
+			fromParticipantId: ben.user.id,
+			toParticipantType: "user",
+			toParticipantId: cam.user.id,
+			amount: "700",
+			currency: "ARS",
+			status: "FINALIZED",
+			projectId: project.id,
+		},
+	});
+	betweenOthers = `payment:${other.id}|ARS`;
 });
 
 const read = async (id: string, entryId: string, user = ana) =>
@@ -95,6 +125,13 @@ describe("figure entry.amount", () => {
 		]);
 		expect(await read("entry.amount", payment)).toEqual([
 			{ minor: 50000, currency: "ARS" },
+		]);
+	});
+
+	it("reads nothing of a payment between two other people, as the list shows none", async () => {
+		expect(await read("entry.amount", betweenOthers)).toEqual([]);
+		expect(await read("entry.amount", betweenOthers, ben)).toEqual([
+			{ minor: 70000, currency: "ARS" },
 		]);
 	});
 
