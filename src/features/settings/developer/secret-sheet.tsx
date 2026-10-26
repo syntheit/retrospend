@@ -20,6 +20,7 @@ export function SecretSheet({
 			onOpenChange={(open) => {
 				if (!open) onClose();
 			}}
+			onSubmit={() => true}
 			open={secret !== null}
 			submitLabel={t("done")}
 			title={t("rotatedTitle", { name })}

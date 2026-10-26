@@ -166,7 +166,7 @@ test.describe("Settings v2", () => {
 		await expect(page.getByLabel("Time zone")).toContainText("Buenos Aires");
 	});
 
-	test("an API key is shown once, listed read-only, and revoked with a named button", async ({
+	test("an API key is shown once, listed with its scopes, and revoked with a named button", async ({
 		page,
 	}) => {
 		test.setTimeout(120_000);
@@ -176,9 +176,9 @@ test.describe("Settings v2", () => {
 		await page.getByRole("button", { name: "New API key" }).click();
 		const sheet = page.getByRole("dialog", { name: "New API key" });
 		await sheet.getByLabel("Name").fill("e2e script");
-		// Only read can be set until POST /api/v1/tokens exists.
+		// A new key starts at read access; the write scopes can be chosen.
 		await expect(sheet.getByRole("checkbox").first()).toBeChecked();
-		await expect(sheet.getByRole("checkbox").nth(1)).toBeDisabled();
+		await expect(sheet.getByRole("checkbox").nth(1)).toBeEnabled();
 		await sheet.getByRole("button", { name: "Create key" }).click();
 
 		const shown = page.getByRole("dialog", { name: "Your new key" });

@@ -33,7 +33,7 @@ export async function FieldTable({
 				<TableBody>
 					{rows.map((r) => (
 						<TableRow key={`${"where" in r ? r.where : "body"}:${r.path}`}>
-							<TableCell className="align-top font-mono text-small">
+							<TableCell className="whitespace-normal break-words align-top font-mono text-small">
 								{r.path}
 								{"where" in r ? (
 									<span className="ml-2 font-sans text-fg-3 text-meta">
@@ -41,13 +41,13 @@ export async function FieldTable({
 									</span>
 								) : null}
 							</TableCell>
-							<TableCell className="align-top font-mono text-fg-2 text-small">
+							<TableCell className="whitespace-normal break-words align-top font-mono text-fg-2 text-small">
 								{r.type}
 							</TableCell>
 							<TableCell className="align-top text-small">
 								{r.required ? t("required") : t("optional")}
 							</TableCell>
-							<TableCell className="whitespace-normal align-top text-fg-2 text-small">
+							<TableCell className="min-w-48 whitespace-normal break-words align-top text-fg-2 text-small">
 								{r.description}
 							</TableCell>
 						</TableRow>
