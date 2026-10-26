@@ -327,7 +327,7 @@ describe("Suite 5B: delete - project role permission matrix", () => {
 		const svc = new SharedTransactionService(db as never, aliceRef);
 		// The expense carries an unsettled balance, so acknowledge it to exercise
 		// the permission path (this suite covers who can delete, not the balance guard).
-		await expect(svc.delete(tx.id, true)).resolves.toBeUndefined();
+		await expect(svc.delete(tx.id, true)).resolves.toHaveProperty("tell");
 		expect(db._stores.transactions.has(tx.id)).toBe(false);
 	});
 
@@ -340,7 +340,7 @@ describe("Suite 5B: delete - project role permission matrix", () => {
 			paidBy: bobRef,
 		});
 		const svc = new SharedTransactionService(db as never, aliceRef);
-		await expect(svc.delete(tx.id, true)).resolves.toBeUndefined();
+		await expect(svc.delete(tx.id, true)).resolves.toHaveProperty("tell");
 		expect(db._stores.transactions.has(tx.id)).toBe(false);
 	});
 
@@ -353,7 +353,7 @@ describe("Suite 5B: delete - project role permission matrix", () => {
 			paidBy: bobRef,
 		});
 		const svc = new SharedTransactionService(db as never, bobRef);
-		await expect(svc.delete(tx.id, true)).resolves.toBeUndefined();
+		await expect(svc.delete(tx.id, true)).resolves.toHaveProperty("tell");
 		expect(db._stores.transactions.has(tx.id)).toBe(false);
 		// Split records also deleted (cascade)
 		expect(getSplits(db, tx.id)).toHaveLength(0);
@@ -415,7 +415,7 @@ describe("Suite 5B: delete - project role permission matrix", () => {
 	it("creator can delete a standalone expense", async () => {
 		const tx = await createStandaloneExpense(db, aliceRef);
 		const svc = new SharedTransactionService(db as never, aliceRef);
-		await expect(svc.delete(tx.id, true)).resolves.toBeUndefined();
+		await expect(svc.delete(tx.id, true)).resolves.toHaveProperty("tell");
 		expect(db._stores.transactions.has(tx.id)).toBe(false);
 	});
 
@@ -446,7 +446,7 @@ describe("Suite 5B: delete - project role permission matrix", () => {
 		});
 		await expect(
 			guestSvc.delete(result.transaction.id, true),
-		).resolves.toBeUndefined();
+		).resolves.toHaveProperty("tell");
 		expect(db._stores.transactions.has(result.transaction.id)).toBe(false);
 	});
 

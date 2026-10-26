@@ -16,6 +16,7 @@ import type { Prisma } from "~prisma";
 import type { AnsweredFix } from "../corrections/fix-request.service";
 import type { MoneyMutation } from "../preview/types";
 import { SharedTransactionService } from "../shared-expenses/transaction.service";
+import type { ParticipantRef } from "../shared-expenses/types";
 import { RETRACT_WINDOW_MS, retractSplitNotices } from "./notices";
 
 type Tx = Prisma.TransactionClient;
@@ -217,9 +218,18 @@ async function assertNobodyAnswered(tx: Tx, id: string, userId: string) {
 	}
 }
 
+export interface DeletedShared {
+	readonly id: string;
+	/**
+	 * The other people who were on it, for the event that tells them (it is
+	 * written once the rows are gone). Empty for a retraction.
+	 */
+	readonly tell: readonly ParticipantRef[];
+}
+
 export const deleteSharedExpense: MoneyMutation<
 	DeleteSharedInput,
-	{ id: string }
+	DeletedShared
 > = {
 	id: "sharedExpense.delete",
 	touches: SHARED_FIGURES,
@@ -236,16 +246,17 @@ export const deleteSharedExpense: MoneyMutation<
 			row.createdById === actor.userId &&
 			Date.now() - row.createdAt.getTime() < RETRACT_WINDOW_MS;
 		// Retracting: the service's own notices are dropped, the retraction queued instead.
-		await serviceFor(tx, actor.userId, retract ? { notify: [] } : input).delete(
-			input.id,
-			{
-				confirmUnsettled: input.confirmUnsettled ?? false,
-				settled: input.settled,
-			},
-		);
+		const { tell } = await serviceFor(
+			tx,
+			actor.userId,
+			retract ? { notify: [] } : input,
+		).delete(input.id, {
+			confirmUnsettled: input.confirmUnsettled ?? false,
+			settled: input.settled,
+		});
 		if (retract) input.notify?.push(() => retractSplitNotices(input.id));
 		return {
-			value: { id: input.id },
+			value: { id: input.id, tell: retract ? [] : tell },
 			undo: {
 				kind: "revert",
 				mutation: "sharedExpense.create",

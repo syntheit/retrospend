@@ -66,12 +66,52 @@ function isMoney(v: Record<string, unknown>): boolean {
 	);
 }
 
-/** Ids and Money found in `value`, shallowest first, capped. */
+/** The other people on a thing that is gone, as the event names them: `tell.user.0`, `tell.shadow.1`. */
+const TELL_KEY = /^tell\.(user|shadow)\.\d+$/;
+
+/**
+ * The people a delete or removal result says to tell (`tell`, each with a
+ * participant type and id). Guests have no feed and no device, and an entry
+ * without an id-shaped id is dropped like any other text.
+ */
+function tellIds(value: unknown): Record<string, string> {
+	const out: Record<string, string> = {};
+	const tell = isPlainObject(value) ? value.tell : null;
+	if (!Array.isArray(tell)) return out;
+	const seen = { user: 0, shadow: 0 };
+	for (const person of tell) {
+		if (!isPlainObject(person)) continue;
+		const { participantType: kind, participantId: id } = person;
+		if (kind !== "user" && kind !== "shadow") continue;
+		if (typeof id !== "string" || !EVENT_ID_PATTERN.test(id)) continue;
+		out[`tell.${kind}.${seen[kind]++}`] = id;
+	}
+	return out;
+}
+
+/** The people `tellIds` wrote into an event's ids. */
+export function toldPeople(
+	ids: Record<string, string>,
+): { type: "user" | "shadow"; id: string }[] {
+	return Object.entries(ids).flatMap(([name, id]) =>
+		TELL_KEY.test(name)
+			? [{ type: name.split(".")[1] as "user" | "shadow", id }]
+			: [],
+	);
+}
+
+/**
+ * Ids and Money found in `value`, shallowest first, capped. The people to
+ * tell come first, so a cap never drops the ones the event is for.
+ */
 export function extractEventData(value: unknown): Walked {
-	const ids: Record<string, string> = {};
+	const told = Object.entries(tellIds(value));
+	const ids: Record<string, string> = Object.fromEntries(
+		told.slice(0, EVENT_DATA_LIMIT),
+	);
 	const amounts: EventData["amounts"] = [];
 	let entityId: string | null = null;
-	let truncated = false;
+	let truncated = told.length > EVENT_DATA_LIMIT;
 
 	let level: { path: string[]; node: unknown }[] = [{ path: [], node: value }];
 	for (let depth = 0; depth <= MAX_DEPTH && level.length > 0; depth++) {

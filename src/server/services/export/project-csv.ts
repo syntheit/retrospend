@@ -16,12 +16,7 @@ import {
 import { requireProjectRole } from "~/server/services/shared-expenses/project-permissions";
 import type { PrismaClient } from "~prisma";
 import { amountText, exactCell, minorCell, totalsText } from "./amounts";
-import {
-	type CsvDocument,
-	type ExportContext,
-	isoDay,
-	slug,
-} from "./context";
+import { type CsvDocument, type ExportContext, isoDay, slug } from "./context";
 import {
 	fetchEditCounts,
 	nameOf,

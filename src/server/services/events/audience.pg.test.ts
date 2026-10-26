@@ -314,6 +314,96 @@ describe("both sides of a fix request, and a person who left", () => {
 	});
 });
 
+describe("a deleted expense still reaches the people who were on it", () => {
+	const told = (n: number, type: "user" | "shadow", id: string) => ({
+		[`tell.${type}.${n}`]: id,
+	});
+
+	/** The delete event as the mutation writes it: the expense is gone, the people ride in the ids. */
+	async function deleted(
+		ids: Record<string, string>,
+		type = "shared_expense.deleted",
+	) {
+		const gone = randomUUID();
+		const event = await adminDb.apiEvent.create({
+			data: {
+				userId: sofia.user.id,
+				actorUserId: sofia.user.id,
+				type,
+				entityType: "shared_expense",
+				entityId: gone,
+				payload: { ids, amounts: [], truncated: false },
+			},
+		});
+		for (let n = 0; n < 50; n++) {
+			await fanOutEvents();
+			const row = await adminDb.apiEvent.findUniqueOrThrow({
+				where: { id: event.id },
+			});
+			if (row.fannedOutAt) break;
+			await new Promise((r) => setTimeout(r, 100));
+		}
+		return { gone, event };
+	}
+
+	const copies = (sourceEventId: string) =>
+		adminDb.apiEvent.findMany({
+			where: { sourceEventId },
+			select: {
+				userId: true,
+				actorUserId: true,
+				entityId: true,
+				payload: true,
+			},
+		});
+
+	it("copies it to the users named, a claimed profile's account included, and not to the actor or anyone else", async () => {
+		const sam = await adminDb.shadowProfile.create({
+			data: {
+				createdById: sofia.user.id,
+				name: "Sam",
+				email: `sam-${randomUUID()}@pg-test.invalid`,
+				claimedById: lucia.user.id,
+			},
+		});
+		const unclaimed = await adminDb.shadowProfile.create({
+			data: {
+				createdById: sofia.user.id,
+				name: "Una",
+				email: `una-${randomUUID()}@pg-test.invalid`,
+			},
+		});
+		const { gone, event } = await deleted({
+			...told(0, "user", martin.user.id),
+			...told(1, "user", sofia.user.id),
+			...told(0, "shadow", sam.id),
+			...told(1, "shadow", unclaimed.id),
+		});
+		const rows = await copies(event.id);
+		expect(rows.map((r) => r.userId).sort()).toEqual(
+			[martin.user.id, lucia.user.id].sort(),
+		);
+		for (const row of rows) {
+			expect(row.actorUserId).toBe(sofia.user.id);
+			expect(row.entityId).toBe(gone);
+			expect(row.payload).toEqual({ ids: {}, amounts: [], truncated: false });
+		}
+	});
+
+	it("copies a deleted expense with nobody named to nobody", async () => {
+		const { event } = await deleted({});
+		expect(await copies(event.id)).toHaveLength(0);
+	});
+
+	it("honors the names on a delete only, not on an event that merely carries them", async () => {
+		const { event } = await deleted(
+			told(0, "user", martin.user.id),
+			"shared_expense.updated",
+		);
+		expect(await copies(event.id)).toHaveLength(0);
+	});
+});
+
 describe("who may write an event", () => {
 	it("copies nothing for a row that names someone else as the actor", async () => {
 		const event = await adminDb.apiEvent.create({

@@ -7,6 +7,7 @@ import {
 	guestOrProtectedProcedure,
 } from "~/server/api/trpc";
 import { getImageUrl } from "~/server/storage";
+import { appendRouteEvent } from "~/server/services/events/scope";
 import { SharedTransactionService } from "~/server/services/shared-expenses/transaction.service";
 
 const participantRefSchema = z.object({
@@ -97,7 +98,17 @@ export const sharedTransactionRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const actor = assertWritableParticipant(ctx.participant);
 			const service = new SharedTransactionService(ctx.db, actor);
-			await service.delete(input.id, input);
+			const { tell } = await service.delete(input.id, input);
+			// This path has no preview, so the event is appended after the delete.
+			// A guest has no feed of their own to write it in.
+			if (actor.participantType === "user")
+				await appendRouteEvent(
+					ctx.db,
+					{ userId: actor.participantId },
+					"shared_expense.deleted",
+					{ id: input.id },
+					{ id: input.id, tell },
+				);
 			return { success: true };
 		}),
 
