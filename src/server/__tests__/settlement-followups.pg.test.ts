@@ -17,7 +17,7 @@
  * dates of their own, because the test database is shared by the whole run.
  */
 import { randomUUID } from "node:crypto";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { previousOf } from "~/server/services/payments/confirm-restore";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
@@ -28,6 +28,13 @@ let ana: TestUser; // pays, records
 let ben: TestUser; // receives
 
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+
+// The rates are taken away again: the database is shared by the whole run.
+afterAll(async () => {
+	await adminDb.exchangeRate.deleteMany({
+		where: { currency: { in: ["PLN", "CZK", "HUF"] } },
+	});
+});
 
 beforeAll(async () => {
 	ana = await createTestUser();

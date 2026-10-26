@@ -7,7 +7,7 @@
  * the band is 0.05 to 1.25; BGN 3 per USD is 0.333... USD per BGN, band
  * 0.0666... to 1.6666.... The currencies are ones no other test file uses.
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { forUser } from "~/server/services/preview";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import type { PlannedSettlement } from "./allocate";
@@ -16,6 +16,13 @@ import { recordPayment } from "./record.mutation";
 import { dec } from "~/server/services/envelope/units";
 
 const DAY = new Date("2026-06-15T00:00:00.000Z");
+
+// The rates are taken away again: the database is shared by the whole run.
+afterAll(async () => {
+	await adminDb.exchangeRate.deleteMany({
+		where: { currency: { in: ["PLN", "CZK", "BGN"] } },
+	});
+});
 
 beforeAll(async () => {
 	const rates: [string, string, string, string][] = [
