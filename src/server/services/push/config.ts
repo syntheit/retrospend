@@ -127,8 +127,10 @@ function loadWebPush(source: PushEnv): WebPushConfig | undefined {
 		return undefined;
 	}
 	try {
-		const d = Buffer.from(raw, "base64url");
-		if (d.length !== 32) throw new Error("length");
+		const short = Buffer.from(raw, "base64url");
+		if (short.length === 0 || short.length > 32) throw new Error("length");
+		// Some tools drop leading zero bytes; the JWK needs all 32.
+		const d = Buffer.concat([Buffer.alloc(32 - short.length), short]);
 		const ecdh = createECDH("prime256v1");
 		ecdh.setPrivateKey(d);
 		const point = ecdh.getPublicKey();
@@ -142,7 +144,7 @@ function loadWebPush(source: PushEnv): WebPushConfig | undefined {
 			key: {
 				kty: "EC",
 				crv: "P-256",
-				d: raw,
+				d: d.toString("base64url"),
 				x: point.subarray(1, 33).toString("base64url"),
 				y: point.subarray(33, 65).toString("base64url"),
 			},

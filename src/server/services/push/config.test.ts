@@ -54,6 +54,18 @@ describe("loadPushConfig", () => {
 		expect(fromFile.apns?.keyId).toBe("KEY1234567");
 	});
 
+	it("reads a VAPID key whose leading zero byte was dropped", () => {
+		let env = newVapidEnv();
+		while (Buffer.from(env.VAPID_PRIVATE_KEY, "base64url")[0] !== 0)
+			env = newVapidEnv();
+		const short = Buffer.from(env.VAPID_PRIVATE_KEY, "base64url").subarray(1);
+		const config = loadPushConfig({
+			...env,
+			VAPID_PRIVATE_KEY: short.toString("base64url"),
+		});
+		expect(config.webPush?.publicKey).toBe(env.VAPID_PUBLIC_KEY);
+	});
+
 	it("turns a half-set or broken sender off, naming the setting but not its value", () => {
 		const half = loadPushConfig({ APNS_KEY_ID: "KEY1234567" });
 		expect(half.apns).toBeUndefined();
