@@ -422,11 +422,12 @@ export async function exportAccountZip(
 	});
 
 	if (notificationPrefs.length > 0) {
-		const prefHeader = ["id", "type", "inApp", "email", "digestMode"];
+		const prefHeader = ["id", "type", "inApp", "push", "email", "digestMode"];
 		const prefRows = notificationPrefs.map((p) => [
 			p.id,
 			p.type,
 			p.inApp,
+			p.push,
 			p.email,
 			p.digestMode,
 		]);

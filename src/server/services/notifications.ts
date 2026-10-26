@@ -151,6 +151,7 @@ export const NOTIFICATION_TYPES: NotificationType[] = [
 	"PERIOD_CLOSED",
 	"PARTICIPANT_ADDED",
 	"PAYMENT_REMINDER",
+	"RECURRING_DUE",
 ];
 
 /**
@@ -250,6 +251,7 @@ export async function getNotificationPreferences(
 				userId,
 				type,
 				inApp: true,
+				push: true,
 				email: PREFERENCE_EMAIL_DEFAULTS.has(type),
 				digestMode: false,
 			})),
@@ -268,18 +270,21 @@ export async function updateNotificationPreferences(
 	preferences: {
 		type: NotificationType;
 		inApp: boolean;
+		/** Left out: unchanged on an existing row, on for a new one. */
+		push?: boolean;
 		email: boolean;
 		digestMode: boolean;
 	}[],
 ) {
-	for (const pref of preferences) {
+	for (const { push, ...pref } of preferences) {
 		await userDb.notificationPreference.upsert({
 			where: { userId_type: { userId, type: pref.type } },
-			create: { userId, ...pref },
+			create: { userId, ...pref, ...(push !== undefined && { push }) },
 			update: {
 				inApp: pref.inApp,
 				email: pref.email,
 				digestMode: pref.digestMode,
+				...(push !== undefined && { push }),
 			},
 		});
 	}

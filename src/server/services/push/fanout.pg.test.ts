@@ -154,7 +154,7 @@ describe("push fan-out", () => {
 			data: {
 				userId: martin.user.id,
 				type: "EXPENSE_EDITED",
-				inApp: false,
+				push: false,
 				email: false,
 				digestMode: false,
 			},
@@ -169,6 +169,74 @@ describe("push fan-out", () => {
 		await appendOutboxEvent(sofia.user.id, "shared_expense.created", split);
 		await fanOut();
 		expect((await deliveriesOf(martin.user.id)).length).toBe(martinBefore + 1);
+	});
+
+	it("follows the push switch, not the in-app one", async () => {
+		await adminDb.notificationPreference.create({
+			data: {
+				userId: lucia.user.id,
+				type: "VERIFICATION_REQUEST",
+				inApp: false,
+				push: true,
+			},
+		});
+		await adminDb.notificationPreference.create({
+			data: {
+				userId: stranger.user.id,
+				type: "VERIFICATION_REQUEST",
+				inApp: true,
+				push: false,
+			},
+		});
+		const drafts = (userId: string): PushDraft => ({
+			userId,
+			eventId: null,
+			dedupeKey: `follows-the-push-switch:${userId}`,
+			data: newPushData("fix_request.created", {
+				entity: { type: "fix_request", id: "f1" },
+			}),
+		});
+		const mine = [lucia, stranger].map((u) => drafts(u.user.id));
+		await adminDb.$transaction((tx) =>
+			enqueuePushes(tx, config, mine, new Date()),
+		);
+		expect(
+			(await deliveriesOf(lucia.user.id)).filter((d) =>
+				d.dedupeKey.startsWith("follows-the-push-switch"),
+			),
+		).toHaveLength(1);
+		expect(
+			(await deliveriesOf(stranger.user.id)).filter((d) =>
+				d.dedupeKey.startsWith("follows-the-push-switch"),
+			),
+		).toHaveLength(0);
+	});
+
+	it("lets a person turn off recurring reminders", async () => {
+		const quiet = await arsUser();
+		const loud = await arsUser();
+		for (const u of [quiet, loud]) await addDevice(u.user.id, "APNS");
+		await adminDb.notificationPreference.create({
+			data: { userId: quiet.user.id, type: "RECURRING_DUE", push: false },
+		});
+		const draft = (userId: string): PushDraft => ({
+			userId,
+			eventId: null,
+			dedupeKey: `recurring:r1:2026-10-26`,
+			data: newPushData("recurring.due", {
+				entity: { type: "recurring", id: "r1" },
+			}),
+		});
+		await adminDb.$transaction((tx) =>
+			enqueuePushes(
+				tx,
+				config,
+				[quiet, loud].map((u) => draft(u.user.id)),
+				new Date(),
+			),
+		);
+		expect(await deliveriesOf(quiet.user.id)).toHaveLength(0);
+		expect(await deliveriesOf(loud.user.id)).toHaveLength(1);
 	});
 
 	describe("payments", () => {

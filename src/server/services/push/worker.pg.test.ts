@@ -361,6 +361,78 @@ describe("push worker", () => {
 		});
 	});
 
+	describe("every attempt, retries included, re-checks who it is for", () => {
+		it("drops a pending retry when the person is no longer active", async () => {
+			const leaver = await arsUser();
+			const { device } = await addDevice(leaver.user.id, "APNS");
+			const delivery = await queue(leaver.user.id, device.id);
+			const flaky = recordingSenders(() => ({
+				kind: "retry",
+				statusCode: 503,
+				code: "http_503",
+			}));
+			await processDuePushes({ config, senders: flaky.senders, now: T0 });
+			const waiting = await fresh(delivery.id);
+			expect(waiting).toMatchObject({ status: "PENDING", attempts: 1 });
+
+			await adminDb.user.update({
+				where: { id: leaver.user.id },
+				data: { isActive: false },
+			});
+			const { sent, senders } = recordingSenders();
+			await processDuePushes({
+				config,
+				senders,
+				now: waiting.nextAttemptAt as Date,
+			});
+
+			expect(sent).toHaveLength(0);
+			expect(await fresh(delivery.id)).toMatchObject({
+				status: "FAILED",
+				nextAttemptAt: null,
+				lastError: "user_inactive",
+			});
+		});
+
+		it("sends to the device as it is now, not as it was when queued", async () => {
+			const { device } = await addDevice(martin.user.id, "APNS");
+			const delivery = await queue(martin.user.id, device.id);
+			const flaky = recordingSenders(() => ({
+				kind: "retry",
+				statusCode: 503,
+				code: "http_503",
+			}));
+			await processDuePushes({ config, senders: flaky.senders, now: T0 });
+			const waiting = await fresh(delivery.id);
+
+			// The app registered a new token for the same device row.
+			await adminDb.pushDevice.update({
+				where: { id: device.id },
+				data: { token: "ab".repeat(32) },
+			});
+			const { sent, senders } = recordingSenders();
+			await processDuePushes({
+				config,
+				senders,
+				now: waiting.nextAttemptAt as Date,
+			});
+			expect(sent.map((s) => s.target.token)).toEqual(["ab".repeat(32)]);
+			expect((await fresh(delivery.id)).status).toBe("SENT");
+		});
+
+		it("does not send for a device that was deleted, and takes its deliveries along", async () => {
+			const { device } = await addDevice(martin.user.id, "APNS");
+			const delivery = await queue(martin.user.id, device.id);
+			await adminDb.pushDevice.delete({ where: { id: device.id } });
+			const { sent, senders } = recordingSenders();
+			expect(await processDuePushes({ config, senders, now: T0 })).toBe(0);
+			expect(sent).toHaveLength(0);
+			expect(
+				await adminDb.pushDelivery.findUnique({ where: { id: delivery.id } }),
+			).toBeNull();
+		});
+	});
+
 	it("sends a delivery once when two workers race for it", async () => {
 		const { device } = await addDevice(martin.user.id, "APNS");
 		const delivery = await queue(martin.user.id, device.id);

@@ -122,6 +122,49 @@ describe("Web Push sender", () => {
 		expect(await run(401)).toMatchObject({ kind: "failed", statusCode: 401 });
 	});
 
+	it("passes on how long the push service asked to wait", async () => {
+		const sub = newSubscription();
+		let reply: { status: number; headers?: Record<string, string> } = {
+			status: 429,
+		};
+		const server = await mockHttp(() => reply);
+		closeServer = server.close;
+		const now = new Date("2026-10-26T15:00:00Z");
+		const sender = createWebPushSender(config, {
+			allowPrivateTargets: async () => true,
+			allowHosts: new Set(),
+			now: () => now,
+		});
+		const run = (status: number, retryAfter?: string) => {
+			reply = {
+				status,
+				headers: retryAfter ? { "Retry-After": retryAfter } : undefined,
+			};
+			return sender.send(targetFor(server.url, sub), message);
+		};
+
+		expect(await run(429, "120")).toEqual({
+			kind: "retry",
+			statusCode: 429,
+			code: "http_429",
+			retryAfterMs: 120_000,
+		});
+		expect(await run(503, "Mon, 26 Oct 2026 15:10:00 GMT")).toMatchObject({
+			kind: "retry",
+			statusCode: 503,
+			retryAfterMs: 600_000,
+		});
+		// No header, or one that means nothing: the scheduler's own backoff.
+		expect(await run(429)).not.toHaveProperty("retryAfterMs");
+		expect(await run(503, "later")).not.toHaveProperty("retryAfterMs");
+		// A hint on an answer that is not retried changes nothing.
+		expect(await run(413, "120")).toEqual({
+			kind: "failed",
+			statusCode: 413,
+			code: "http_413",
+		});
+	});
+
 	it("drops a subscription whose keys cannot work", async () => {
 		const sender = createWebPushSender(config, {
 			allowPrivateTargets: async () => true,

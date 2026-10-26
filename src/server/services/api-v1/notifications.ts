@@ -85,6 +85,7 @@ async function preferences(caller: Caller) {
 		preferences: rows.map((p) => ({
 			type: p.type,
 			inApp: p.inApp,
+			push: p.push,
 			email: p.email,
 			digestMode: p.digestMode,
 		})),
@@ -98,6 +99,7 @@ export async function writePreferences(
 	prefs: {
 		type: NotificationType;
 		inApp: boolean;
+		push?: boolean;
 		email: boolean;
 		digestMode: boolean;
 	}[],

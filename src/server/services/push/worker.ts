@@ -2,7 +2,7 @@ import { env } from "~/env";
 import { db } from "~/server/db";
 import { getAppSettings } from "~/server/services/settings";
 import type { Resolver } from "~/server/services/webhooks/ssrf";
-import type { Prisma, PushTransport } from "~prisma";
+import type { PushDelivery, PushTransport } from "~prisma";
 import { enabledTransports, type PushConfig, pushConfig } from "./config";
 import { FAN_OUT_BATCH, fanOutPushEvents, STALE_MS } from "./fanout";
 import { buildPushMessage, PUSH_TTL_SECONDS, parsePushData } from "./message";
@@ -44,9 +44,7 @@ const HORIZON_RETRY_MS = 2000;
 const SWEEP_EVERY_MS = 60_000;
 const RECURRING_EVERY_MS = 5 * 60_000;
 
-type Due = Prisma.PushDeliveryGetPayload<{
-	include: { device: { include: { user: { select: { language: true } } } } };
-}>;
+type Due = PushDelivery;
 
 /**
  * Takes a delivery for this worker by moving its next attempt to a lease
@@ -132,14 +130,26 @@ async function attempt(
 	now: Date,
 	lease: Date,
 ): Promise<void> {
-	const sender = senders[delivery.device.transport];
+	// Read the device again, on every attempt and so on every retry: it may
+	// have been deleted, re-registered with a new address, or belong to
+	// someone who has since been deactivated, in the minutes or hours since
+	// the push was queued.
+	const device = await db.pushDevice.findUnique({
+		where: { id: delivery.deviceId },
+		include: { user: { select: { language: true, isActive: true } } },
+	});
+	// A deleted device takes its deliveries with it, so there is nothing to settle.
+	if (!device) return;
+	if (!device.user.isActive)
+		return failWithout(delivery, lease, "user_inactive");
+	const sender = senders[device.transport];
 	if (!sender) return failWithout(delivery, lease, "no_sender");
 	const data = parsePushData(delivery.payload);
 	if (!data) return failWithout(delivery, lease, "bad_payload");
 	if (now.getTime() - delivery.createdAt.getTime() > PUSH_TTL_SECONDS * 1000)
 		return failWithout(delivery, lease, "expired");
-	const message = await buildPushMessage(data, delivery.device.user.language);
-	const outcome = await sender.send(delivery.device, message);
+	const message = await buildPushMessage(data, device.user.language);
+	const outcome = await sender.send(device, message);
 	await settle(delivery, outcome, now, lease);
 }
 
@@ -153,9 +163,6 @@ export async function processDuePushes(
 		where: { status: "PENDING", nextAttemptAt: { lte: now } },
 		orderBy: { nextAttemptAt: "asc" },
 		take: ATTEMPT_BATCH,
-		include: {
-			device: { include: { user: { select: { language: true } } } },
-		},
 	});
 	if (due.length === 0) return 0;
 

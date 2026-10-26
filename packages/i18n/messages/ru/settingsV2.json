@@ -183,6 +183,7 @@
 		"event": "Событие",
 		"channels": {
 			"inApp": "В приложении",
+			"push": "Push",
 			"email": "Эл. почта",
 			"digestMode": "Сводка"
 		},
@@ -198,7 +199,8 @@
 			"SETTLEMENT_REJECTED": "Платёж отклонён",
 			"PERIOD_CLOSED": "Расчётный период закрыт",
 			"PARTICIPANT_ADDED": "Вас добавили в проект",
-			"PAYMENT_REMINDER": "Вам напомнили об оплате"
+			"PAYMENT_REMINDER": "Вам напомнили об оплате",
+			"RECURRING_DUE": "Подходит срок регулярного расхода"
 		}
 	},
 	"security": {

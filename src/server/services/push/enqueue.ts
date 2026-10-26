@@ -7,8 +7,8 @@ import type { PushData } from "./message";
  * Turns "this person should hear about this" into one delivery per device.
  * Shared by the outbox fan-out and the recurring reminders. It applies, in
  * order:
- * 1. the person's preferences: a type whose in-app notification is off does
- *    not push either (there is no separate push switch);
+ * 1. the person's preferences: a type whose push switch is off does not push
+ *    (a type with no stored row pushes);
  * 2. a cap on how many different pushes one person gets per hour, so a bulk
  *    write or a loop cannot flood a phone;
  * 3. the devices: only transports that have a sender, only active users and
@@ -38,20 +38,20 @@ async function withoutMutedTypes(
 	tx: Writer,
 	drafts: PushDraft[],
 ): Promise<PushDraft[]> {
-	const pairs = drafts.flatMap((d) => {
-		const type = PUSH_KINDS[d.data.type].preference;
-		return type ? [{ userId: d.userId, type }] : [];
-	});
-	if (pairs.length === 0) return drafts;
 	const muted = await tx.notificationPreference.findMany({
-		where: { inApp: false, OR: pairs },
+		where: {
+			push: false,
+			OR: drafts.map((d) => ({
+				userId: d.userId,
+				type: PUSH_KINDS[d.data.type].preference,
+			})),
+		},
 		select: { userId: true, type: true },
 	});
 	const mutedKeys = new Set(muted.map((m) => `${m.userId}:${m.type}`));
-	return drafts.filter((d) => {
-		const type = PUSH_KINDS[d.data.type].preference;
-		return !type || !mutedKeys.has(`${d.userId}:${type}`);
-	});
+	return drafts.filter(
+		(d) => !mutedKeys.has(`${d.userId}:${PUSH_KINDS[d.data.type].preference}`),
+	);
 }
 
 async function withinRateLimit(

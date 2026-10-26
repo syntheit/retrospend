@@ -77898,7 +77898,8 @@
 															"SETTLEMENT_REJECTED",
 															"PERIOD_CLOSED",
 															"PARTICIPANT_ADDED",
-															"PAYMENT_REMINDER"
+															"PAYMENT_REMINDER",
+															"RECURRING_DUE"
 														],
 														"type": "string"
 													}
@@ -78033,6 +78034,9 @@
 													"inApp": {
 														"type": "boolean"
 													},
+													"push": {
+														"type": "boolean"
+													},
 													"type": {
 														"enum": [
 															"EXPENSE_SPLIT",
@@ -78044,7 +78048,8 @@
 															"SETTLEMENT_REJECTED",
 															"PERIOD_CLOSED",
 															"PARTICIPANT_ADDED",
-															"PAYMENT_REMINDER"
+															"PAYMENT_REMINDER",
+															"RECURRING_DUE"
 														],
 														"type": "string"
 													}
@@ -78052,6 +78057,7 @@
 												"required": [
 													"type",
 													"inApp",
+													"push",
 													"email",
 													"digestMode"
 												],
@@ -78144,7 +78150,7 @@
 				"x-required-scope": "read"
 			},
 			"put": {
-				"description": "Types left out keep their current setting.",
+				"description": "Types left out keep their current setting, and so does `push` when it is left out of a type.",
 				"operationId": "updateNotificationPreferences",
 				"parameters": [
 					{
@@ -78174,6 +78180,9 @@
 												"inApp": {
 													"type": "boolean"
 												},
+												"push": {
+													"type": "boolean"
+												},
 												"type": {
 													"enum": [
 														"EXPENSE_SPLIT",
@@ -78185,7 +78194,8 @@
 														"SETTLEMENT_REJECTED",
 														"PERIOD_CLOSED",
 														"PARTICIPANT_ADDED",
-														"PAYMENT_REMINDER"
+														"PAYMENT_REMINDER",
+														"RECURRING_DUE"
 													],
 													"type": "string"
 												}
@@ -78230,6 +78240,9 @@
 													"inApp": {
 														"type": "boolean"
 													},
+													"push": {
+														"type": "boolean"
+													},
 													"type": {
 														"enum": [
 															"EXPENSE_SPLIT",
@@ -78241,7 +78254,8 @@
 															"SETTLEMENT_REJECTED",
 															"PERIOD_CLOSED",
 															"PARTICIPANT_ADDED",
-															"PAYMENT_REMINDER"
+															"PAYMENT_REMINDER",
+															"RECURRING_DUE"
 														],
 														"type": "string"
 													}
@@ -78249,6 +78263,7 @@
 												"required": [
 													"type",
 													"inApp",
+													"push",
 													"email",
 													"digestMode"
 												],

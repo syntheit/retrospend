@@ -2008,6 +2008,7 @@ enum NotificationType {
   PERIOD_CLOSED
   PARTICIPANT_ADDED
   PAYMENT_REMINDER
+  RECURRING_DUE
 }
 
 model Notification {
@@ -2031,6 +2032,7 @@ model NotificationPreference {
   userId     String
   type       NotificationType
   inApp      Boolean          @default(true)
+  push       Boolean          @default(true)
   email      Boolean          @default(false)
   digestMode Boolean          @default(false)
 

@@ -22,6 +22,7 @@ import {
 } from "../section-shell";
 import {
 	type Channel,
+	channelsOf,
 	DEFAULT_PREF,
 	flip,
 	NOTIFICATION_TYPES,
@@ -30,12 +31,12 @@ import {
 	samePref,
 } from "./prefs";
 
-const CHANNELS: Channel[] = ["inApp", "email", "digestMode"];
+const CHANNELS: Channel[] = ["inApp", "push", "email", "digestMode"];
 type Prefs = Partial<Record<NotificationType, Pref>>;
 
 /**
- * Notifications: each event by In app, Email and Digest. A matrix of
- * switches on desktop; on phones each event is a row with three toggles.
+ * Notifications: each event by In app, Push, Email and Digest. A matrix of
+ * switches on desktop; on phones each event is a row with its toggles.
  * Each flip saves that event's row with Undo. Digest needs Email.
  */
 export function NotificationsSection() {
@@ -53,7 +54,12 @@ export function NotificationsSection() {
 			Object.fromEntries(
 				query.data.map((p) => [
 					p.type,
-					{ inApp: p.inApp, email: p.email, digestMode: p.digestMode },
+					{
+						inApp: p.inApp,
+						push: p.push,
+						email: p.email,
+						digestMode: p.digestMode,
+					},
 				]),
 			),
 		);
@@ -98,7 +104,7 @@ export function NotificationsSection() {
 									role="group"
 									aria-label={t(`events.${type}`)}
 								>
-									{CHANNELS.map((c) => (
+									{channelsOf(type).map((c) => (
 										<Chip
 											active={pref[c]}
 											aria-pressed={pref[c]}
@@ -141,15 +147,17 @@ export function NotificationsSection() {
 									</TableCell>
 									{CHANNELS.map((c) => (
 										<TableCell className="text-center" key={c}>
-											<Switch
-												aria-label={t("switchLabel", {
-													channel: t(`channels.${c}`),
-													event: t(`events.${type}`),
-												})}
-												checked={pref[c]}
-												disabled={c === "digestMode" && !pref.email}
-												onCheckedChange={(on) => set(type, c, on)}
-											/>
+											{channelsOf(type).includes(c) ? (
+												<Switch
+													aria-label={t("switchLabel", {
+														channel: t(`channels.${c}`),
+														event: t(`events.${type}`),
+													})}
+													checked={pref[c]}
+													disabled={c === "digestMode" && !pref.email}
+													onCheckedChange={(on) => set(type, c, on)}
+												/>
+											) : null}
 										</TableCell>
 									))}
 								</TableRow>

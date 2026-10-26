@@ -50,6 +50,8 @@ const TYPE_CONFIG: Record<
 	PERIOD_CLOSED: { icon: ClipboardCheck, color: "text-purple-500" },
 	PARTICIPANT_ADDED: { icon: UserPlus, color: "text-indigo-500" },
 	PAYMENT_REMINDER: { icon: CircleDollarSign, color: "text-red-600" },
+	// Only a push: no inbox row of this type is ever written.
+	RECURRING_DUE: { icon: CircleDollarSign, color: "text-fg-3" },
 };
 
 function getNavigationUrl(notification: Notification): string | null {
