@@ -34,7 +34,14 @@ export type ShapeContext = {
 };
 
 const categorySelect = {
-	select: { id: true, userId: true, name: true, color: true, icon: true },
+	select: {
+		id: true,
+		userId: true,
+		name: true,
+		color: true,
+		icon: true,
+		kind: true,
+	},
 } as const;
 
 /** The home value only when it differs from the amount's currency. */
@@ -52,6 +59,33 @@ type PersonalRow = {
 	inType: string | null;
 };
 
+/**
+ * Why the footer and day totals leave a personal row out, as the row says
+ * it. spent() counts spending and refunds except these: a row hidden from
+ * reports and a row filed under an income category are "Not counted"; an
+ * amortized purchase is counted through its monthly parts, which the list
+ * hides, so the parent says it is "Spread over N months" instead. Money in
+ * and transfers add nothing either way, so they say nothing.
+ */
+function leftOut(
+	e: {
+		excludeFromAnalytics: boolean;
+		isAmortizedParent: boolean;
+		category: { kind: string } | null;
+		_count: { children: number };
+	},
+	kind: ActivityRowDTO["kind"],
+): Pick<ActivityRowDTO, "notCounted" | "spread"> {
+	if (kind !== "expense" && kind !== "refund") return {};
+	// Parts inherit the parent's hiding and category: nothing is counted then.
+	if (e.excludeFromAnalytics || e.category?.kind === "INCOME")
+		return { notCounted: true };
+	if (!e.isAmortizedParent) return {};
+	return e._count.children > 0
+		? { spread: { months: e._count.children } }
+		: { notCounted: true };
+}
+
 /** How a personal row reads: money in, a refund, an own transfer or spending. */
 function personalKind(e: PersonalRow): ActivityRowDTO["kind"] {
 	if (e.entryKind === "NOT_SPENDING") return "transfer";
@@ -63,7 +97,10 @@ async function personalRows(db: Db, ids: string[], c: ShapeContext) {
 	if (!ids.length) return [];
 	const rows = await db.expense.findMany({
 		where: { id: { in: ids }, userId: c.userId },
-		include: { category: categorySelect },
+		include: {
+			category: categorySelect,
+			_count: { select: { children: true } },
+		},
 	});
 	return rows.map((e): ActivityRowDTO => {
 		const amount = decimalMoney(e.amount, e.currency);
@@ -88,10 +125,7 @@ async function personalRows(db: Db, ids: string[], c: ShapeContext) {
 			...homeField(e.currency, home, c.rates),
 			...(named && e.rateType ? { rateType: e.rateType } : {}),
 			sortKey: home?.minor ?? null,
-			// Money in and transfers add nothing to a total either way.
-			...(e.excludeFromAnalytics && (kind === "expense" || kind === "refund")
-				? { notCounted: true }
-				: {}),
+			...leftOut(e, kind),
 			project: null,
 			date: dayKey(e.date, c.timeZone),
 			mine: true,

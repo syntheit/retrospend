@@ -5,33 +5,11 @@
  */
 import { getImageUrl } from "~/server/storage";
 import type { PrismaClient } from "~prisma";
+import { coParticipantCounts } from "./co-participants";
 
 export async function frequentSplitPartners(db: PrismaClient, userId: string) {
-	const userParticipations = await db.splitParticipant.findMany({
-		where: { participantType: "user", participantId: userId },
-		select: { transactionId: true },
-	});
-
-	if (userParticipations.length === 0) return [];
-	const txIds = userParticipations.map((p) => p.transactionId);
-
-	// Group co-participants by frequency (take extra to filter out self in JS)
-	const allPartnerGroups = await db.splitParticipant.groupBy({
-		by: ["participantType", "participantId"],
-		where: {
-			transactionId: { in: txIds },
-			participantType: { in: ["user", "shadow"] },
-		},
-		_count: { transactionId: true },
-		orderBy: { _count: { transactionId: "desc" } },
-		take: 10,
-	});
-
-	const partnerGroups = allPartnerGroups
-		.filter(
-			(g) => !(g.participantType === "user" && g.participantId === userId),
-		)
-		.slice(0, 5);
+	// Counted by the database: a debtor cannot read the other split rows.
+	const partnerGroups = await coParticipantCounts(db, 5);
 
 	if (partnerGroups.length === 0) return [];
 

@@ -47,6 +47,7 @@ export function toTransactionVM(
 		reviewed: true,
 		...(row.waiting ? { waiting: row.waiting } : {}),
 		...(row.notCounted ? { notCounted: true } : {}),
+		...(row.spread ? { spread: row.spread } : {}),
 		...(row.pending ? { pending: true } : {}),
 		project: row.project,
 		...(row.people ? { people: row.people } : {}),
