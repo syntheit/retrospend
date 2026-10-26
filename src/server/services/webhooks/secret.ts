@@ -62,16 +62,34 @@ export function decryptSecret(stored: string): string {
 	]).toString("utf8");
 }
 
+const mac = (secret: string, body: string, timestampSeconds: number) =>
+	createHmac("sha256", secret)
+		.update(`${timestampSeconds}.${body}`)
+		.digest("hex");
+
 /** The signature header: `t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<body>">`. */
 export function signWebhook(
 	secret: string,
 	body: string,
 	timestampSeconds: number,
 ): string {
-	const mac = createHmac("sha256", secret)
-		.update(`${timestampSeconds}.${body}`)
-		.digest("hex");
-	return `t=${timestampSeconds},v1=${mac}`;
+	return signWebhookWith([secret], body, timestampSeconds);
+}
+
+/**
+ * The header for several secrets at once: one `v1` entry each, the current
+ * secret first. While a rotated secret is in its grace period a delivery is
+ * signed with both, so a receiver that has either one verifies it.
+ */
+export function signWebhookWith(
+	secrets: readonly string[],
+	body: string,
+	timestampSeconds: number,
+): string {
+	return [
+		`t=${timestampSeconds}`,
+		...secrets.map((s) => `v1=${mac(s, body, timestampSeconds)}`),
+	].join(",");
 }
 
 /**
@@ -87,16 +105,17 @@ export function verifyWebhookSignature(
 ): boolean {
 	const { toleranceSeconds = 300, nowSeconds = Math.floor(Date.now() / 1000) } =
 		options;
-	const parts = Object.fromEntries(
-		header.split(",").map((p) => p.trim().split("=") as [string, string]),
-	);
-	const t = Number(parts.t);
-	if (!Number.isInteger(t) || typeof parts.v1 !== "string") return false;
+	const parts = header.split(",").map((p) => p.trim().split("="));
+	const t = Number(parts.find(([k]) => k === "t")?.[1]);
+	if (!Number.isInteger(t)) return false;
 	if (Math.abs(nowSeconds - t) > toleranceSeconds) return false;
-	const expected = signWebhook(secret, body, t).split("v1=")[1] ?? "";
-	const given = parts.v1;
-	return (
-		given.length === expected.length &&
-		timingSafeEqual(Buffer.from(given), Buffer.from(expected))
+	const expected = Buffer.from(mac(secret, body, t));
+	// Any v1 entry may match: the header holds two while a secret is replaced.
+	return parts.some(
+		([k, v]) =>
+			k === "v1" &&
+			typeof v === "string" &&
+			v.length === expected.length &&
+			timingSafeEqual(Buffer.from(v), expected),
 	);
 }

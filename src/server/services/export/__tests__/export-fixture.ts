@@ -304,6 +304,20 @@ async function seedPersonalBook(userId: string, categoryId: string) {
 			pricingSource: "manual",
 		},
 	});
+	// 23:30 on Oct 7 in Buenos Aires (UTC-3) is already Oct 8 in UTC.
+	await adminDb.expense.create({
+		data: {
+			userId,
+			title: "Cena tarde",
+			amount: "9000",
+			currency: "ARS",
+			date: new Date("2026-10-08T02:30:00Z"),
+			categoryId,
+			amountInUSD: "6",
+			exchangeRate: "1500",
+			pricingSource: "manual",
+		},
+	});
 	const card = await adminDb.assetAccount.create({
 		data: {
 			userId,

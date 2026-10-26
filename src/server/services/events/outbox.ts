@@ -26,10 +26,10 @@ export type EventDraft = {
  * then leaves no event, and a commit can never lose one. Webhooks read the
  * table afterwards (src/server/services/webhooks), and so does the push
  * fan-out (src/server/services/push), which works out the other people a
- * shared write concerns from membership when it reads the event, so the
- * event itself stays in the actor's feed only: the RLS policy lets a user
- * insert rows for themselves only, and a person's feed never shows a write
- * they did not make.
+ * shared write concerns from membership when it reads the event. The event
+ * itself is the actor's row only: the RLS policy lets a user insert rows
+ * for themselves only. The others on a shared thing get a bare copy of it
+ * from the webhook fan-out, written with the owner connection (audience.ts).
  */
 export async function appendEvent(
 	tx: EventWriter,

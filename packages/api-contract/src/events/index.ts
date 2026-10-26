@@ -53,7 +53,7 @@ export const apiEventSchema = z
 		cursor: z.string(),
 		type: z.string().meta({ examples: ["expense.created"] }),
 		occurredAt: timestampSchema,
-		/** The user who made the change; may be someone else for a shared write. */
+		/** The user who made the change; someone else for a shared write you did not make. */
 		actorUserId: idSchema.nullable(),
 		entity: z.object({ type: z.string(), id: z.string() }).nullable(),
 		data: eventDataSchema,
@@ -93,7 +93,7 @@ export const eventsContract = {
 			tags: ["Events"],
 			summary: "The caller's change feed, oldest first",
 			description:
-				"Events for the signed-in user in commit order. Poll with `after` set to the last `cursor`; an event shows up a moment after its write commits, never out of order. Events are kept for 30 days and carry ids and amounts only. An event appears once every older write transaction on the database server has finished, which is normally milliseconds but can be longer while any long write runs, whoever started it. Delivery order inside the feed is commit order.",
+				"Events for the signed-in user in commit order. Poll with `after` set to the last `cursor`; an event shows up a moment after its write commits, never out of order. When someone else changes a thing you share (a split expense, a fix request, a payment), your feed gets that event too, a moment later: its actorUserId is theirs, its entity is the thing, and it carries no ids or amounts (read the entity for what changed). Events are kept for 30 days and carry ids and amounts only. An event appears once every older write transaction on the database server has finished, which is normally milliseconds but can be longer while any long write runs, whoever started it. Delivery order inside the feed is commit order.",
 		})
 		.meta({ scope: "read" })
 		.input(eventsQuerySchema)

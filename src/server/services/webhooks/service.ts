@@ -149,15 +149,33 @@ export async function deleteWebhook(caller: Caller, id: string) {
 	return { ok: true as const };
 }
 
+/**
+ * Replaces the signing secret. With `graceSeconds` the old one keeps signing
+ * next to the new one for that long (a delivery then carries two v1 entries),
+ * so the receiver can switch without dropping events in between. The default
+ * is none, because a secret is often rotated for having leaked, and a leaked
+ * secret must stop working at once. Rotating again inside a grace period
+ * replaces the older secret: only one previous secret is kept.
+ */
 export async function rotateWebhookSecret(
 	caller: Caller,
 	id: string,
+	graceSeconds = 0,
+	now = new Date(),
 ): Promise<{ webhook: WebhookDto; secret: string }> {
 	const current = await ownWebhook(caller, id);
 	const { secret, start } = generateWebhookSecret();
+	const keep = graceSeconds > 0;
 	const row = await caller.db.webhook.update({
 		where: { id: current.id },
-		data: { secretCipher: encryptSecret(secret), secretStart: start },
+		data: {
+			secretCipher: encryptSecret(secret),
+			secretStart: start,
+			previousSecretCipher: keep ? current.secretCipher : null,
+			previousSecretExpiresAt: keep
+				? new Date(now.getTime() + graceSeconds * 1000)
+				: null,
+		},
 	});
 	return { webhook: toWebhookDto(row), secret };
 }

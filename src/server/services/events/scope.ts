@@ -3,7 +3,7 @@ import type { db as globalDb } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import type { Actor, ApplyResult } from "~/server/services/preview/types";
 import { amountsOfChanges, extractEventData } from "./data";
-import { MUTATION_EVENTS } from "./mutation-events";
+import { eventTypeOfMutation } from "./mutation-events";
 import { notifyEventsCommitted } from "./notify";
 import { appendEvent, type EventWriter } from "./outbox";
 
@@ -23,7 +23,7 @@ import { appendEvent, type EventWriter } from "./outbox";
  *    closes it (docs/ui/GAPS.md).
  *
  * The web's tRPC procedures have no intent: a mutation then uses its entry
- * in MUTATION_EVENTS, or appends nothing.
+ * in MUTATION_EVENTS (mutation-events.ts).
  */
 export type EventIntent = { type: string; recorded: boolean };
 
@@ -50,7 +50,7 @@ export async function recordMutationEvent(
 	const intent = storage.getStore();
 	// One request, one event: later mutations of the same route add none.
 	if (intent?.recorded) return false;
-	const type = intent?.type ?? MUTATION_EVENTS[mutation.id];
+	const type = intent?.type ?? eventTypeOfMutation(mutation.id, result.value);
 	if (!type) return false;
 	const { entityId, data } = extractEventData(result.value);
 	const amounts = amountsOfChanges(result.changes);

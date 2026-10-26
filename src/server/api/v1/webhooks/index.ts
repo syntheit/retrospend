@@ -61,7 +61,11 @@ export const webhooksRouter = {
 	),
 	rotateSecret: w.rotateSecret.handler(
 		handle(({ context, input }) =>
-			webhooks.rotateWebhookSecret(signedIn(context), input.id),
+			webhooks.rotateWebhookSecret(
+				signedIn(context),
+				input.id,
+				input.graceSeconds,
+			),
 		),
 	),
 	test: w.test.handler(

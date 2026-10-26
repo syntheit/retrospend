@@ -1,8 +1,8 @@
-import { eventDataSchema } from "@retrospend/api-contract";
 import { db } from "~/server/db";
+import { eventEntityId } from "~/server/services/events/audience";
 import type { PushConfig } from "./config";
 import { enqueuePushes, type PushDraft } from "./enqueue";
-import { type PushKind, pushKindOf } from "./kinds";
+import { pushKindOf } from "./kinds";
 import { newPushData } from "./message";
 import { planPush } from "./recipients";
 
@@ -32,17 +32,6 @@ type OutboxRow = {
 	createdAt: Date;
 };
 
-/**
- * The entity an event is about. Most writes name it as the event's entity;
- * a payment's result calls it `paymentId`, so it arrives in the ids.
- */
-function entityOf(event: OutboxRow, type: PushKind): string | null {
-	if (event.entityId) return event.entityId;
-	if (!type.startsWith("payment.")) return null;
-	const parsed = eventDataSchema.safeParse(event.payload);
-	return parsed.success ? (parsed.data.ids.paymentId ?? null) : null;
-}
-
 /** Returns how many events it handled. */
 export async function fanOutPushEvents(
 	config: PushConfig,
@@ -63,7 +52,7 @@ export async function fanOutPushEvents(
 			const drafts: PushDraft[] = [];
 			for (const event of events) {
 				const type = pushKindOf(event.type);
-				const entityId = type && entityOf(event, type);
+				const entityId = type && eventEntityId(event);
 				if (
 					!type ||
 					!entityId ||

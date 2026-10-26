@@ -3,9 +3,15 @@ import { db } from "~/server/db";
 import { getAppSettings } from "~/server/services/settings";
 import type { Prisma } from "~prisma";
 import { type DeliveryOptions, deliverOnce, eventBody } from "./deliver";
+import { FAN_OUT_BATCH, fanOutEvents } from "./fanout";
+import { capHostOf, runWithLimits } from "./pool";
 import {
 	AUTO_DISABLE_AFTER,
 	CLAIM_LEASE_MS,
+	PARALLEL_ATTEMPTS,
+	PER_HOST_ATTEMPTS,
+	PER_USER_ATTEMPTS,
+	PER_USER_BATCH,
 	RETENTION_DAYS,
 	retryDelayMs,
 } from "./schedule";
@@ -46,75 +52,29 @@ export type WorkerOptions = {
 	allowPrivate?: boolean;
 	resolve?: Resolver;
 	timeoutMs?: number;
+	/** How long a sweep may start new attempts (milliseconds). */
+	budgetMs?: number;
+	/** Runs before each pull of due work, so new events are fanned out mid-sweep. */
+	beforePick?: () => Promise<void>;
+	/** Replaces the fan-out (tests). */
+	fanOut?: () => Promise<number>;
 };
 
-const FAN_OUT_BATCH = 200;
-const ATTEMPT_BATCH = 50;
-const PARALLEL = 5;
+const ATTEMPT_BATCH = 200;
+/**
+ * A sweep stops starting attempts after this long. What is running (at most
+ * ten seconds each) still finishes, and the next sweep takes the rest, so
+ * one person's black-hole URLs delay everyone by seconds, never minutes.
+ */
+const SWEEP_BUDGET_MS = 15_000;
 const DAY_MS = 86_400_000;
 /** Wake-up while the horizon holds events back. */
 const HORIZON_RETRY_MS = 2000;
 const SWEEP_EVERY_MS = 60_000;
 
-/** `[]` matches everything; an entry is a full type or `<resource>.*`. */
-export function matchesEventFilter(filter: readonly string[], type: string) {
-	if (filter.length === 0) return true;
-	const resource = type.split(".")[0];
-	return filter.some((f) => f === type || f === `${resource}.*`);
-}
-
 async function allowPrivateTargets(options: WorkerOptions): Promise<boolean> {
 	if (options.allowPrivate !== undefined) return options.allowPrivate;
 	return (await getAppSettings()).webhooksAllowPrivateTargets;
-}
-
-type OutboxRow = { id: string; userId: string; type: string; createdAt: Date };
-
-/** Turns new events into deliveries. Returns how many events it handled. */
-export async function fanOutEvents(): Promise<number> {
-	return db.$transaction(async (tx) => {
-		// Only events whose transaction is behind the oldest open one, so a
-		// late commit is not missed; SKIP LOCKED lets two workers split a batch.
-		const events = await tx.$queryRaw<OutboxRow[]>`
-			SELECT "id", "userId", "type", "createdAt" FROM "api_event"
-			WHERE "fannedOutAt" IS NULL
-			  AND "txid" < pg_snapshot_xmin(pg_current_snapshot())
-			ORDER BY "txid", "seq"
-			LIMIT ${FAN_OUT_BATCH}
-			FOR UPDATE SKIP LOCKED`;
-		if (events.length === 0) return 0;
-
-		const deliverable = events.filter((e) => !e.type.startsWith("webhook."));
-		const hooks = await tx.webhook.findMany({
-			where: {
-				enabled: true,
-				userId: { in: [...new Set(deliverable.map((e) => e.userId))] },
-			},
-		});
-		const now = new Date();
-		const rows: Prisma.WebhookDeliveryCreateManyInput[] = [];
-		for (const event of deliverable)
-			for (const hook of hooks) {
-				if (
-					hook.userId === event.userId &&
-					hook.createdAt <= event.createdAt &&
-					matchesEventFilter(hook.eventTypes, event.type)
-				)
-					rows.push({
-						webhookId: hook.id,
-						userId: hook.userId,
-						eventId: event.id,
-						eventType: event.type,
-						nextAttemptAt: now,
-					});
-			}
-		await tx.webhookDelivery.createMany({ data: rows, skipDuplicates: true });
-		await tx.apiEvent.updateMany({
-			where: { id: { in: events.map((e) => e.id) } },
-			data: { fannedOutAt: now },
-		});
-		return events.length;
-	});
 }
 
 type DueDelivery = Prisma.WebhookDeliveryGetPayload<{
@@ -254,42 +214,91 @@ async function attempt(
 	await settle(delivery, result, now, lease);
 }
 
-/** Attempts the deliveries that are due. Returns how many it tried. */
+/**
+ * The due deliveries to work on now: at most PER_USER_BATCH per account,
+ * oldest first, interleaved across accounts (everyone's oldest, then
+ * everyone's second oldest). Plain "oldest first" would let one account with
+ * a backlog fill the batch for as long as the backlog lasts.
+ */
+async function pickDue(now: Date): Promise<DueDelivery[]> {
+	const picked = await db.$queryRaw<{ id: string }[]>`
+		SELECT "id" FROM (
+			SELECT "id", "nextAttemptAt",
+				row_number() OVER (PARTITION BY "userId" ORDER BY "nextAttemptAt", "id") AS "rank"
+			FROM "webhook_delivery"
+			WHERE "status" = 'PENDING' AND "nextAttemptAt" <= ${now}
+		) due
+		WHERE "rank" <= ${PER_USER_BATCH}
+		ORDER BY "rank", "nextAttemptAt", "id"
+		LIMIT ${ATTEMPT_BATCH}`;
+	if (picked.length === 0) return [];
+	const rows = await db.webhookDelivery.findMany({
+		where: { id: { in: picked.map((p) => p.id) } },
+		include: { webhook: true, event: true },
+	});
+	const byId = new Map(rows.map((r) => [r.id, r]));
+	return picked.flatMap((p) => byId.get(p.id) ?? []);
+}
+
+/**
+ * Attempts the deliveries that are due, for at most the sweep budget.
+ * Returns how many it tried. The pool pulls more work whenever slots are
+ * free and nothing it holds can use them (a batch holds a few deliveries
+ * per account), so a person with a long or slow queue is served in turns
+ * with everyone else and never makes the rest wait for the end of a batch.
+ */
 export async function processDueDeliveries(
 	options: WorkerOptions = {},
 ): Promise<number> {
-	const now = options.now ?? new Date();
-	const due = await db.webhookDelivery.findMany({
-		where: { status: "PENDING", nextAttemptAt: { lte: now } },
-		orderBy: { nextAttemptAt: "asc" },
-		take: ATTEMPT_BATCH,
-		include: { webhook: true, event: true },
-	});
-	if (due.length === 0) return 0;
-	const allowPrivate = await allowPrivateTargets(options);
+	let allowPrivate: Promise<boolean> | undefined;
 	let tried = 0;
-	for (let i = 0; i < due.length; i += PARALLEL) {
-		await Promise.all(
-			due.slice(i, i + PARALLEL).map(async (delivery) => {
-				const lease = await claim(delivery, now);
-				if (!lease) return;
-				tried += 1;
-				try {
-					await attempt(delivery, { ...options, allowPrivate, now }, lease);
-				} catch (error) {
-					// Count it as a failed attempt, so a delivery that always throws
-					// runs out of retries instead of being picked up forever.
-					console.error(`Webhook delivery ${delivery.id} failed:`, error);
-					await settle(
-						delivery,
-						{ ok: false, error: "internal_error", statusCode: null },
-						now,
-						lease,
-					).catch(() => undefined);
-				}
-			}),
-		);
-	}
+	await runWithLimits<DueDelivery>(
+		[],
+		(delivery) => ({
+			user: delivery.userId,
+			host: capHostOf(delivery.webhook.url),
+		}),
+		{
+			total: PARALLEL_ATTEMPTS,
+			perUser: PER_USER_ATTEMPTS,
+			perHost: PER_HOST_ATTEMPTS,
+		},
+		async (delivery) => {
+			// A fresh time per claim: a sweep can take a while, and a lease
+			// measured from its start would already be short (or over) for the
+			// later deliveries.
+			const now = options.now ?? new Date();
+			const lease = await claim(delivery, now);
+			if (!lease) return;
+			tried += 1;
+			try {
+				allowPrivate ??= allowPrivateTargets(options);
+				await attempt(
+					delivery,
+					{ ...options, allowPrivate: await allowPrivate, now },
+					lease,
+				);
+			} catch (error) {
+				// Count it as a failed attempt, so a delivery that always throws
+				// runs out of retries instead of being picked up forever.
+				console.error(`Webhook delivery ${delivery.id} failed:`, error);
+				await settle(
+					delivery,
+					{ ok: false, error: "internal_error", statusCode: null },
+					now,
+					lease,
+				).catch(() => undefined);
+			}
+		},
+		{
+			keyOf: (delivery) => delivery.id,
+			deadline: Date.now() + (options.budgetMs ?? SWEEP_BUDGET_MS),
+			refill: async () => {
+				await options.beforePick?.();
+				return pickDue(options.now ?? new Date());
+			},
+		},
+	);
 	return tried;
 }
 
@@ -310,16 +319,38 @@ export async function pruneWebhookData(now = new Date()): Promise<void> {
 	});
 }
 
+/**
+ * Fans out until a batch comes back short. A failure is logged and ends the
+ * fan-out for now: the events stay queued and the next sweep tries again, and
+ * deliveries already due are still sent.
+ */
+async function fanOutAll(
+	fanOut: () => Promise<number>,
+	counted: { fannedOut: number },
+): Promise<void> {
+	try {
+		// A full batch means more is waiting.
+		for (let n = FAN_OUT_BATCH; n === FAN_OUT_BATCH; ) {
+			n = await fanOut();
+			counted.fannedOut += n;
+		}
+	} catch (error) {
+		console.error("Webhook fan-out failed:", error);
+	}
+}
+
 export async function runWebhookWorker(
 	options: WorkerOptions = {},
 ): Promise<{ fannedOut: number; attempted: number }> {
-	let fannedOut = 0;
-	// A full batch means more is waiting.
-	for (let n = FAN_OUT_BATCH; n === FAN_OUT_BATCH; ) {
-		n = await fanOutEvents();
-		fannedOut += n;
-	}
-	const attempted = await processDueDeliveries(options);
+	const counted = { fannedOut: 0 };
+	const fanOut = options.fanOut ?? fanOutEvents;
+	await fanOutAll(fanOut, counted);
+	const attempted = await processDueDeliveries({
+		...options,
+		// Events written while the sweep runs are fanned out before its next pull.
+		beforePick: () => fanOutAll(fanOut, counted),
+	});
+	const fannedOut = counted.fannedOut;
 	const now = options.now ?? new Date();
 	if (now.getTime() - lastPrune > 60 * 60 * 1000) {
 		lastPrune = now.getTime();
@@ -416,3 +447,5 @@ export function startWebhookWorker(): void {
 	s.loop.unref();
 	kickWebhookDeliveries();
 }
+
+export { fanOutEvents, matchesEventFilter } from "./fanout";

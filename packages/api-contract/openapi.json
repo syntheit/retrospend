@@ -60950,7 +60950,7 @@
 		},
 		"/events": {
 			"get": {
-				"description": "Events for the signed-in user in commit order. Poll with `after` set to the last `cursor`; an event shows up a moment after its write commits, never out of order. Events are kept for 30 days and carry ids and amounts only. An event appears once every older write transaction on the database server has finished, which is normally milliseconds but can be longer while any long write runs, whoever started it. Delivery order inside the feed is commit order.",
+				"description": "Events for the signed-in user in commit order. Poll with `after` set to the last `cursor`; an event shows up a moment after its write commits, never out of order. When someone else changes a thing you share (a split expense, a fix request, a payment), your feed gets that event too, a moment later: its actorUserId is theirs, its entity is the thing, and it carries no ids or amounts (read the entity for what changed). Events are kept for 30 days and carry ids and amounts only. An event appears once every older write transaction on the database server has finished, which is normally milliseconds but can be longer while any long write runs, whoever started it. Delivery order inside the feed is commit order.",
 				"operationId": "listEvents",
 				"parameters": [
 					{
@@ -117039,6 +117039,17 @@
 													"name": {
 														"type": "string"
 													},
+													"previousSecretExpiresAt": {
+														"anyOf": [
+															{
+																"format": "date-time",
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
 													"secretStart": {
 														"type": "string"
 													},
@@ -117057,6 +117068,7 @@
 													"eventTypes",
 													"enabled",
 													"secretStart",
+													"previousSecretExpiresAt",
 													"disabledReason",
 													"disabledAt",
 													"consecutiveFailures",
@@ -117163,7 +117175,7 @@
 				"x-required-scope": "read"
 			},
 			"post": {
-				"description": "Each delivery is a POST of one event (the body is the Event without its cursor), signed in the Retrospend-Signature header as `t=<unix seconds>,v1=<hex>`, where v1 is HMAC-SHA256 over `<t>.<raw body>` with the secret. Reject a timestamp more than 300 seconds from your clock. Delivery is at least once and not ordered: dedupe on the Retrospend-Event-Id header (the event id). A non-2xx answer or a timeout is retried after 1, 2, 4 ... minutes (at most 6 hours) for 10 attempts; a webhook whose last 5 deliveries ran out of retries is switched off. Redirects are not followed. Secrets are encrypted with a key derived from the server's BETTER_AUTH_SECRET: if the operator changes it, deliveries fail as `secret_unreadable` until you rotate the secret. The secret is in this response only; a replayed Idempotency-Key answers idempotency_replay_unavailable.",
+				"description": "Each delivery is a POST of one event (the body is the Event without its cursor), signed in the Retrospend-Signature header as `t=<unix seconds>,v1=<hex>`, where v1 is HMAC-SHA256 over `<t>.<raw body>` with the secret. Reject a timestamp more than 300 seconds from your clock. While a rotated secret is in its grace period the header holds one v1 entry per secret (`t=<seconds>,v1=<new>,v1=<old>`): accept the delivery when any of them matches. Delivery is at least once and not ordered: dedupe on the Retrospend-Event-Id header (the event id). A non-2xx answer or a timeout is retried after 1, 2, 4 ... minutes (at most 6 hours) for 10 attempts; a webhook whose last 5 deliveries ran out of retries is switched off. Redirects are not followed. Secrets are encrypted with a key derived from the server's BETTER_AUTH_SECRET: if the operator changes it, deliveries fail as `secret_unreadable` until you rotate the secret. The secret is in this response only; a replayed Idempotency-Key answers idempotency_replay_unavailable.",
 				"operationId": "createWebhook",
 				"parameters": [
 					{
@@ -117276,6 +117288,17 @@
 												"name": {
 													"type": "string"
 												},
+												"previousSecretExpiresAt": {
+													"anyOf": [
+														{
+															"format": "date-time",
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"secretStart": {
 													"type": "string"
 												},
@@ -117294,6 +117317,7 @@
 												"eventTypes",
 												"enabled",
 												"secretStart",
+												"previousSecretExpiresAt",
 												"disabledReason",
 												"disabledAt",
 												"consecutiveFailures",
@@ -117579,6 +117603,17 @@
 										"name": {
 											"type": "string"
 										},
+										"previousSecretExpiresAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
 										"secretStart": {
 											"type": "string"
 										},
@@ -117597,6 +117632,7 @@
 										"eventTypes",
 										"enabled",
 										"secretStart",
+										"previousSecretExpiresAt",
 										"disabledReason",
 										"disabledAt",
 										"consecutiveFailures",
@@ -117800,6 +117836,17 @@
 										"name": {
 											"type": "string"
 										},
+										"previousSecretExpiresAt": {
+											"anyOf": [
+												{
+													"format": "date-time",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
 										"secretStart": {
 											"type": "string"
 										},
@@ -117818,6 +117865,7 @@
 										"eventTypes",
 										"enabled",
 										"secretStart",
+										"previousSecretExpiresAt",
 										"disabledReason",
 										"disabledAt",
 										"consecutiveFailures",
@@ -118168,7 +118216,7 @@
 		},
 		"/webhooks/{id}/rotate-secret": {
 			"post": {
-				"description": "The old secret stops working at once. The secret is in this response only; a replayed Idempotency-Key answers idempotency_replay_unavailable.",
+				"description": "The old secret stops working at once, unless graceSeconds asks to keep it signing for a while (deliveries then carry both signatures). Rotating again inside the grace period drops the older secret. The secret is in this response only; a replayed Idempotency-Key answers idempotency_replay_unavailable.",
 				"operationId": "rotateWebhookSecret",
 				"parameters": [
 					{
@@ -118191,6 +118239,25 @@
 						}
 					}
 				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"graceSeconds": {
+										"default": 0,
+										"description": "Seconds the old secret keeps signing next to the new one (at most 7 days). 0, the default, stops it at once: use that when the secret leaked.",
+										"maximum": 604800,
+										"minimum": 0,
+										"type": "integer"
+									}
+								},
+								"type": "object"
+							}
+						}
+					},
+					"required": false
+				},
 				"responses": {
 					"200": {
 						"content": {
@@ -118254,6 +118321,17 @@
 												"name": {
 													"type": "string"
 												},
+												"previousSecretExpiresAt": {
+													"anyOf": [
+														{
+															"format": "date-time",
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"secretStart": {
 													"type": "string"
 												},
@@ -118272,6 +118350,7 @@
 												"eventTypes",
 												"enabled",
 												"secretStart",
+												"previousSecretExpiresAt",
 												"disabledReason",
 												"disabledAt",
 												"consecutiveFailures",

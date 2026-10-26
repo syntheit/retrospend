@@ -11,6 +11,42 @@ export const MAX_DELAY_MS = 30 * 60 * 1000;
 export const ATTEMPT_TIMEOUT_MS = 10_000;
 /** How long a claimed delivery stays claimed if its worker dies mid-attempt. */
 export const CLAIM_LEASE_MS = 3 * ATTEMPT_TIMEOUT_MS + 30_000;
+
+export {
+	PARALLEL_ATTEMPTS,
+	PER_HOST_ATTEMPTS,
+	PER_USER_ATTEMPTS,
+	PER_USER_BATCH,
+} from "~/server/services/webhooks/schedule";
+
+/**
+ * Beyond the caps every sender shares (webhooks/schedule.ts), a UnifiedPush
+ * endpoint is an address a user chose, so it can be one that never answers.
+ * - A delivery to one that could not be reached (timeout, refused, no DNS
+ *   answer, TLS) is dropped after UNREACHABLE_MAX_ATTEMPTS tries instead of
+ *   MAX_ATTEMPTS.
+ * - A device with UNREACHABLE_CIRCUIT_FAILURES such drops within
+ *   UNREACHABLE_CIRCUIT_WINDOW_MS gets no more attempts until the window has
+ *   passed (then one push finds out whether it is back).
+ * Apple and Google are not user-chosen addresses; neither applies to them.
+ */
+export const UNREACHABLE_MAX_ATTEMPTS = 3;
+export const UNREACHABLE_CIRCUIT_FAILURES = 3;
+export const UNREACHABLE_CIRCUIT_WINDOW_MS = 60 * 60 * 1000;
+
+/** Send errors that mean "nothing answered", as the senders name them. */
+const UNREACHABLE_CODES: ReadonlySet<string> = new Set([
+	"timeout",
+	"connection_refused",
+	"connection_error",
+	"dns_failed",
+	"tls_error",
+]);
+
+export function isUnreachable(code: string): boolean {
+	return UNREACHABLE_CODES.has(code);
+}
+
 /** Finished deliveries are kept this long for debugging, then deleted. */
 export const RETENTION_DAYS = 7;
 

@@ -1,6 +1,7 @@
 import { env } from "~/env";
 import { db } from "~/server/db";
 import { getAppSettings } from "~/server/services/settings";
+import { capHostOf, runWithLimits } from "~/server/services/webhooks/pool";
 import type { Resolver } from "~/server/services/webhooks/ssrf";
 import type { PushDelivery, PushTransport } from "~prisma";
 import { enabledTransports, type PushConfig, pushConfig } from "./config";
@@ -8,8 +9,18 @@ import { isDeviceUsable } from "./enqueue";
 import { FAN_OUT_BATCH, fanOutPushEvents, STALE_MS } from "./fanout";
 import { PUSH_KINDS } from "./kinds";
 import { buildPushMessage, PUSH_TTL_SECONDS, parsePushData } from "./message";
+import { circuitOpen, pickDue } from "./pick";
 import { raiseRecurringDue } from "./recurring";
-import { CLAIM_LEASE_MS, RETENTION_DAYS, retryDelayMs } from "./schedule";
+import {
+	CLAIM_LEASE_MS,
+	isUnreachable,
+	PARALLEL_ATTEMPTS,
+	PER_HOST_ATTEMPTS,
+	PER_USER_ATTEMPTS,
+	RETENTION_DAYS,
+	retryDelayMs,
+	UNREACHABLE_MAX_ATTEMPTS,
+} from "./schedule";
 import { createSenders, type PushSender, type SendOutcome } from "./senders";
 
 /**
@@ -37,10 +48,20 @@ export type PushWorkerOptions = {
 	timeoutMs?: number;
 	/** Also raise recurring items that fell due. */
 	recurring?: boolean;
+	/** How long a sweep may start new attempts (milliseconds). */
+	budgetMs?: number;
+	/** Runs before each pull of due work, so new events are fanned out mid-sweep. */
+	beforePick?: () => Promise<void>;
+	/** Replaces the fan-out (tests). */
+	fanOut?: (config: PushConfig, now?: Date) => Promise<number>;
 };
 
-const ATTEMPT_BATCH = 50;
-const PARALLEL = 5;
+/**
+ * A sweep stops starting attempts after this long. What is running (at most
+ * ten seconds each) still finishes, and the next sweep takes the rest, so
+ * one person's black-hole endpoints delay everyone by seconds, never minutes.
+ */
+const SWEEP_BUDGET_MS = 15_000;
 const DAY_MS = 86_400_000;
 const HORIZON_RETRY_MS = 2000;
 const SWEEP_EVERY_MS = 60_000;
@@ -68,6 +89,7 @@ async function claim(delivery: Due, now: Date): Promise<Date | null> {
 
 async function settle(
 	delivery: Due,
+	transport: PushTransport | undefined,
 	outcome: SendOutcome,
 	now: Date,
 	lease: Date,
@@ -99,10 +121,18 @@ async function settle(
 		await db.pushDevice.deleteMany({ where: { id: delivery.deviceId } });
 		return;
 	}
+	// An endpoint a user chose that nothing answers is not worth the full
+	// run of retries (see the caps in schedule.ts).
+	const unreachable =
+		outcome.kind === "retry" &&
+		outcome.statusCode === null &&
+		transport === "UNIFIEDPUSH" &&
+		isUnreachable(outcome.code);
 	const wait =
-		outcome.kind === "retry"
-			? retryDelayMs(attempts, outcome.retryAfterMs)
-			: null;
+		outcome.kind !== "retry" ||
+		(unreachable && attempts >= UNREACHABLE_MAX_ATTEMPTS)
+			? null
+			: retryDelayMs(attempts, outcome.retryAfterMs);
 	await db.pushDelivery.updateMany({
 		where: owned,
 		data: {
@@ -110,7 +140,7 @@ async function settle(
 			status: wait === null ? "FAILED" : "PENDING",
 			nextAttemptAt: wait === null ? null : new Date(now.getTime() + wait),
 			lastStatusCode: outcome.statusCode,
-			lastError: outcome.code,
+			lastError: wait === null && unreachable ? "unreachable" : outcome.code,
 		},
 	});
 }
@@ -163,24 +193,24 @@ async function attempt(
 	if (muted) return failWithout(delivery, lease, "push_off");
 	if (now.getTime() - delivery.createdAt.getTime() > PUSH_TTL_SECONDS * 1000)
 		return failWithout(delivery, lease, "expired");
+	if (device.transport === "UNIFIEDPUSH" && (await circuitOpen(device.id, now)))
+		return failWithout(delivery, lease, "device_unreachable");
 	const message = await buildPushMessage(data, device.user.language);
 	const outcome = await sender.send(device, message);
-	await settle(delivery, outcome, now, lease);
+	await settle(delivery, device.transport, outcome, now, lease);
 }
 
-/** Sends the deliveries that are due. Returns how many it tried. */
+/**
+ * Sends the deliveries that are due, for at most the sweep budget. Returns
+ * how many it tried. The pool pulls more work whenever slots are free and
+ * nothing it holds can use them (a batch holds a few deliveries per
+ * account), so a person with a long or slow queue is served in turns with
+ * everyone else and never makes the rest wait for the end of a batch.
+ */
 export async function processDuePushes(
 	options: PushWorkerOptions = {},
 ): Promise<number> {
-	const now = options.now ?? new Date();
 	const config = options.config ?? pushConfig();
-	const due = await db.pushDelivery.findMany({
-		where: { status: "PENDING", nextAttemptAt: { lte: now } },
-		orderBy: { nextAttemptAt: "asc" },
-		take: ATTEMPT_BATCH,
-	});
-	if (due.length === 0) return 0;
-
 	const senders =
 		options.senders ??
 		createSenders(config, {
@@ -193,35 +223,72 @@ export async function processDuePushes(
 					(await getAppSettings()).webhooksAllowPrivateTargets,
 			},
 		});
+	const devices = new Map<
+		string,
+		{ transport: PushTransport; endpoint: string | null }
+	>();
 	let tried = 0;
 	try {
-		for (let i = 0; i < due.length; i += PARALLEL) {
-			await Promise.all(
-				due.slice(i, i + PARALLEL).map(async (delivery) => {
-					// A fresh time per claim: a batch can take a while, and a lease
-					// measured from the start of the sweep would already be short
-					// (or over) for the later deliveries, letting another instance
-					// take them while they are still being sent.
-					const at = options.now ?? new Date();
-					const lease = await claim(delivery, at);
-					if (!lease) return;
-					tried += 1;
-					try {
-						await attempt(delivery, senders, at, lease);
-					} catch (error) {
-						// Count it as a failed attempt, so a delivery that always
-						// throws runs out of retries instead of looping forever.
-						console.error(`Push delivery ${delivery.id} failed:`, error);
-						await settle(
-							delivery,
-							{ kind: "retry", statusCode: null, code: "internal_error" },
-							at,
-							lease,
-						).catch(() => undefined);
-					}
-				}),
-			);
-		}
+		await runWithLimits<Due>(
+			[],
+			(delivery) => {
+				const device = devices.get(delivery.deviceId);
+				return {
+					user: delivery.userId,
+					host:
+						device?.transport === "UNIFIEDPUSH"
+							? capHostOf(device.endpoint)
+							: null,
+				};
+			},
+			{
+				total: PARALLEL_ATTEMPTS,
+				perUser: PER_USER_ATTEMPTS,
+				perHost: PER_HOST_ATTEMPTS,
+			},
+			async (delivery) => {
+				// A fresh time per claim: a sweep can take a while, and a lease
+				// measured from its start would already be short (or over) for the
+				// later deliveries, letting another instance take them while they
+				// are still being sent.
+				const at = options.now ?? new Date();
+				const lease = await claim(delivery, at);
+				if (!lease) return;
+				tried += 1;
+				try {
+					await attempt(delivery, senders, at, lease);
+				} catch (error) {
+					// Count it as a failed attempt, so a delivery that always
+					// throws runs out of retries instead of looping forever.
+					console.error(`Push delivery ${delivery.id} failed:`, error);
+					await settle(
+						delivery,
+						devices.get(delivery.deviceId)?.transport,
+						{ kind: "retry", statusCode: null, code: "internal_error" },
+						at,
+						lease,
+					).catch(() => undefined);
+				}
+			},
+			{
+				keyOf: (delivery) => delivery.id,
+				deadline: Date.now() + (options.budgetMs ?? SWEEP_BUDGET_MS),
+				refill: async () => {
+					await options.beforePick?.();
+					const due = await pickDue(options.now ?? new Date());
+					const unknown = due
+						.map((d) => d.deviceId)
+						.filter((id) => !devices.has(id));
+					if (unknown.length > 0)
+						for (const d of await db.pushDevice.findMany({
+							where: { id: { in: [...new Set(unknown)] } },
+							select: { id: true, transport: true, endpoint: true },
+						}))
+							devices.set(d.id, d);
+					return due;
+				},
+			},
+		);
 	} finally {
 		if (!options.senders)
 			for (const sender of Object.values(senders)) sender.close();
@@ -241,20 +308,51 @@ export async function prunePushData(now = new Date()): Promise<void> {
 	});
 }
 
+/**
+ * Fans out until a batch comes back short. A failure is logged and ends the
+ * fan-out for now: the events stay queued and the next sweep tries again, and
+ * deliveries already due are still sent.
+ */
+async function fanOutAll(
+	fanOut: (config: PushConfig, now?: Date) => Promise<number>,
+	config: PushConfig,
+	now: Date | undefined,
+	counted: { fannedOut: number },
+): Promise<void> {
+	try {
+		// A full batch means more is waiting.
+		for (let n = FAN_OUT_BATCH; n === FAN_OUT_BATCH; ) {
+			n = await fanOut(config, now);
+			counted.fannedOut += n;
+		}
+	} catch (error) {
+		console.error("Push fan-out failed:", error);
+	}
+}
+
 export async function runPushWorker(
 	options: PushWorkerOptions = {},
 ): Promise<{ fannedOut: number; attempted: number }> {
 	const config = options.config ?? pushConfig();
 	if (enabledTransports(config).length === 0)
 		return { fannedOut: 0, attempted: 0 };
-	let fannedOut = 0;
-	// A full batch means more is waiting.
-	for (let n = FAN_OUT_BATCH; n === FAN_OUT_BATCH; ) {
-		n = await fanOutPushEvents(config, options.now);
-		fannedOut += n;
-	}
-	if (options.recurring) await raiseRecurringDue(config, options.now);
-	const attempted = await processDuePushes({ ...options, config });
+	const counted = { fannedOut: 0 };
+	const fanOut = () =>
+		fanOutAll(options.fanOut ?? fanOutPushEvents, config, options.now, counted);
+	await fanOut();
+	if (options.recurring)
+		try {
+			await raiseRecurringDue(config, options.now);
+		} catch (error) {
+			console.error("Push recurring reminders failed:", error);
+		}
+	const attempted = await processDuePushes({
+		...options,
+		config,
+		// Events written while the sweep runs are fanned out before its next pull.
+		beforePick: fanOut,
+	});
+	const fannedOut = counted.fannedOut;
 	const now = options.now ?? new Date();
 	if (now.getTime() - lastPrune > 60 * 60 * 1000) {
 		lastPrune = now.getTime();

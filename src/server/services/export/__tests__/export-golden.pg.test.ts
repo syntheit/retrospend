@@ -379,4 +379,13 @@ describe("account zip", () => {
 			",Gym,25000.75,ARS,",
 		);
 	});
+
+	it("dates an expense by the day the user lived it, in their time zone", async () => {
+		const out = await ana.allData();
+		const zip = await JSZip.loadAsync(Buffer.from(out.zipData, "base64"));
+		const csv = (await zip.files["expenses.csv"]?.async("string")) ?? "";
+		// Stored 2026-10-08T02:30Z: still the evening of Oct 7 in Buenos Aires.
+		expect(csv).toContain(",Cena tarde,9000,ARS,1500,6,2026-10-07,");
+		expect(csv).toContain(",Alquiler,1500000.5,ARS,1499.5,1000.33,2026-10-01,");
+	});
 });

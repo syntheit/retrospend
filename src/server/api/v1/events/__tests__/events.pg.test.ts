@@ -218,7 +218,7 @@ describe("event outbox", () => {
 
 		it("appends nothing for a mutation with no event, and nothing for a preview", async () => {
 			const user = (await createTestUser()).user.id;
-			await forUser(user).apply(mutation("fixRequest.ask"), { id: "f1" });
+			await forUser(user).apply(mutation("nothing.listed"), { id: "f1" });
 			await forUser(user).preview(mutation("payment.record"), { id: "pay-2" });
 			expect(await adminDb.apiEvent.count({ where: { userId: user } })).toBe(0);
 		});

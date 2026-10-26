@@ -1,6 +1,8 @@
 /**
  * What the person exports share: the expenses two people are both on, and
- * the balance between them. The balance is the People page's own (the pair
+ * the balance between them. A share the signed-in person cannot see (the
+ * other person's, when they owe and the other paid) reads empty in a file,
+ * never 0. The balance is the People page's own (the pair
  * ledger in minor units, claim aliases merged, a payment someone has not yet
  * confirmed counted only for the person who recorded it), so the file and
  * the screen cannot disagree.
@@ -19,25 +21,21 @@ export interface PersonRef {
 	participantId: string;
 }
 
-/** Expenses where both the user and `them` have a split row. */
-export function sharedWith(userId: string, them: PersonRef) {
-	return {
-		AND: [
-			{
-				splitParticipants: {
-					some: { participantType: "user" as const, participantId: userId },
-				},
-			},
-			{
-				splitParticipants: {
-					some: {
-						participantType: them.participantType,
-						participantId: them.participantId,
-					},
-				},
-			},
-		],
-	};
+/**
+ * Expenses where both the user and `them` have a split row, as a where
+ * clause. The database answers with the ids: outside a project a debtor
+ * sees only their own split row, so a filter on the other person's row
+ * would find nothing for exactly the person who owes (migration
+ * s3_followups, shared_expense_ids_with). Runs as the signed-in user.
+ */
+export async function sharedWith(db: PrismaClient, them: PersonRef) {
+	const rows = await db.$transaction(
+		(tx) =>
+			tx.$queryRaw<
+				{ transactionId: string }[]
+			>`SELECT "transactionId" FROM shared_expense_ids_with(${them.participantType}, ${them.participantId})`,
+	);
+	return { id: { in: rows.map((r) => r.transactionId) } };
 }
 
 export function noSharedExpenses(): TRPCError {
