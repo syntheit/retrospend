@@ -31,6 +31,7 @@ import {
 } from "~/server/services/payments/figures";
 import { projectFigures } from "~/server/services/project/figures";
 import type { Prisma } from "~prisma";
+import { FigureNarrowingError } from "./narrowing";
 import { FigureUnavailable } from "./unavailable";
 
 /** The money DTO used everywhere (§2.2): integer minor units, never a float amount. */
@@ -113,7 +114,7 @@ export interface FigureDefinition<Db = FigureDb> {
 	) => Promise<FigureValue | FigureUnavailable | null>;
 }
 
-export { FigureUnavailable };
+export { FigureNarrowingError, FigureUnavailable };
 
 /**
  * One read pass (one `readFiguresIn` call): figures computed from the same
@@ -269,6 +270,7 @@ export async function readFigure<Db>(
 			pass,
 		);
 	} catch (error) {
+		if (error instanceof FigureNarrowingError) throw error;
 		if (!(error instanceof MissingRateError))
 			throw new FigureError(definition.id, "compute failed", { cause: error });
 		value = new FigureUnavailable(error.currencies);

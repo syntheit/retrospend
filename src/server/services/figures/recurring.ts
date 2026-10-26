@@ -10,6 +10,7 @@
  *   1. The page names the currencies and shows its partial line untagged.
  *   An "in" figure is empty when no active template brings money in.
  */
+import { FigureNarrowingError } from "~/server/figures/narrowing";
 import type {
 	FigureDb,
 	FigureDefinition,
@@ -37,7 +38,9 @@ const recurringAmount: FigureDefinition = {
 	scope: ["recurringId"],
 	compute: async (db, scope, pass) => {
 		if (!scope.recurringId)
-			throw new Error("recurring.amount needs a recurringId narrowing");
+			throw new FigureNarrowingError(
+				"recurring.amount needs a recurringId narrowing",
+			);
 		const body = await bodyOnce(db, scope, pass);
 		const item = body.items.find((i) => i.id === scope.recurringId);
 		return item ? [item.amount] : [];

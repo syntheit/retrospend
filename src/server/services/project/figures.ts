@@ -6,6 +6,7 @@
  * (`personId` = `<participantType>:<participantId>`, as summary.refKey).
  * Every value is a per-currency list in minor units; nothing is converted.
  */
+import { FigureNarrowingError } from "~/server/figures/narrowing";
 import type {
 	FigureDb,
 	FigureDefinition,
@@ -17,7 +18,9 @@ import type { MemberLine } from "./summary";
 
 function projectOf(scope: FigureScope): string {
 	if (!scope.projectId) {
-		throw new Error("a project figure needs a projectId narrowing");
+		throw new FigureNarrowingError(
+			"a project figure needs a projectId narrowing",
+		);
 	}
 	return scope.projectId;
 }
@@ -45,7 +48,9 @@ function memberFigure(
 		scope: ["projectId", "personId", "periodId"],
 		compute: async (db, scope) => {
 			if (!scope.personId) {
-				throw new Error(`project.member.${field} needs a personId narrowing`);
+				throw new FigureNarrowingError(
+					`project.member.${field} needs a personId narrowing`,
+				);
 			}
 			const member = (await numbersFor(db, scope)).members.find(
 				(m) => m.key === scope.personId,

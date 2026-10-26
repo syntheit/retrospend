@@ -9,6 +9,7 @@
  * - `entry.share`: your share of a shared expense (home currency when it
  *   has a rate, the expense's own otherwise). Empty for any other row.
  */
+import { FigureNarrowingError } from "~/server/figures/narrowing";
 import { findExchangeRate } from "~/server/exchange-rates";
 import type {
 	FigureDb,
@@ -36,7 +37,8 @@ async function rowOf(
 	scope: FigureScope,
 	figure: string,
 ): Promise<ActivityRowDTO | null> {
-	if (!scope.entryId) throw new Error(`${figure} needs an entryId narrowing`);
+	if (!scope.entryId)
+		throw new FigureNarrowingError(`${figure} needs an entryId narrowing`);
 	const user = await db.user.findUnique({
 		where: { id: scope.userId },
 		select: { homeCurrency: true },

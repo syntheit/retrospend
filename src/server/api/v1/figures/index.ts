@@ -1,6 +1,9 @@
 import { MAX_FIGURE_IDS, parseFigureIds } from "@retrospend/api-contract";
 import { readFigures } from "~/server/figures/read";
-import { FigureRegistryError } from "~/server/figures/registry";
+import {
+	FigureNarrowingError,
+	FigureRegistryError,
+} from "~/server/figures/registry";
 import * as gap from "~/server/services/api-v1/gap-reads";
 import { readGlance } from "~/server/services/api-v1/home";
 import { serve } from "../core/serve";
@@ -49,6 +52,8 @@ export const figuresRouter = {
 		} catch (error) {
 			if (error instanceof FigureRegistryError)
 				throw problem("not_found", error.message);
+			if (error instanceof FigureNarrowingError)
+				throw problem("bad_request", error.message);
 			throw error;
 		}
 		return {

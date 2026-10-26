@@ -10,6 +10,7 @@
  * expense. A reader sees the correction rows RLS shows them: everything for
  * the person who made the corrections, their own share for anyone else.
  */
+import { FigureNarrowingError } from "~/server/figures/narrowing";
 import type {
 	FigureDb,
 	FigureDefinition,
@@ -28,9 +29,12 @@ async function changed(
 ): Promise<Money[]> {
 	const id = `correction.${part}`;
 	if (!scope.transactionId || !scope.personId)
-		throw new Error(`${id} needs transactionId and personId narrowings`);
+		throw new FigureNarrowingError(
+			`${id} needs transactionId and personId narrowings`,
+		);
 	const person = parsePersonKey(scope.personId);
-	if (!person) throw new Error(`${id} needs a personId like "user:<id>"`);
+	if (!person)
+		throw new FigureNarrowingError(`${id} needs a personId like "user:<id>"`);
 	const rows = await db.sharedTransaction.findMany({
 		where: { correctsId: scope.transactionId },
 		select: {

@@ -71,8 +71,14 @@ beforeAll(async () => {
 			t("rf_club", "Club", "300", "HRK", "WEEKLY"),
 			t("rf_paused", "Paused", "1000", "HRK", "YEARLY", { isActive: false }),
 			t("rf_salary", "Salary", "5000", "HRK", "MONTHLY", { direction: "IN" }),
-			{ ...t("rf_p_gym", "Gym", "620", "HRK", "MONTHLY"), userId: partial.user.id },
-			{ ...t("rf_p_xyz", "Token", "10", "XYZ", "MONTHLY"), userId: partial.user.id },
+			{
+				...t("rf_p_gym", "Gym", "620", "HRK", "MONTHLY"),
+				userId: partial.user.id,
+			},
+			{
+				...t("rf_p_xyz", "Token", "10", "XYZ", "MONTHLY"),
+				userId: partial.user.id,
+			},
 			{
 				...t("rf_r_usd", "Netflix", "12.99", "USD", "MONTHLY"),
 				userId: rateless.user.id,
