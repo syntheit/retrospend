@@ -578,6 +578,84 @@ BEGIN
 END
 $$;
 
+-- The header an undo puts back is the header of the newest SETTLED entry
+-- (amount, date, method and rate), so a payment is not left saying something its
+-- claim never did. With no entry that recorded a claim (the undo then only flips
+-- statuses) the header must stay as it was.
+CREATE OR REPLACE FUNCTION claim_header_back_ok(p_payment_id TEXT, p_header JSONB, p_old JSONB)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  prev JSONB;
+BEGIN
+  SELECT a."changes" -> 'previous' INTO prev
+  FROM "audit_log_entry" a
+  WHERE a."targetType" = 'SETTLEMENT' AND a."action" = 'SETTLED'
+    AND a."changes" ->> 'paymentGroupId' = p_payment_id
+  ORDER BY a."timestamp" DESC, a."id" DESC
+  LIMIT 1;
+  IF jsonb_typeof(prev) IS DISTINCT FROM 'object' THEN
+    RETURN (p_header - 'status' - 'note' - 'updatedAt') IS NOT DISTINCT FROM (p_old - 'status' - 'note' - 'updatedAt');
+  END IF;
+  RETURN (prev ->> 'amount')::numeric IS NOT DISTINCT FROM (p_header ->> 'amount')::numeric
+    AND (prev ->> 'paidOn') IS NOT DISTINCT FROM (p_header ->> 'paidOn')
+    AND (prev ->> 'paymentMethod') IS NOT DISTINCT FROM (p_header ->> 'paymentMethod')
+    AND (prev ->> 'rateType') IS NOT DISTINCT FROM (p_header ->> 'rateType')
+    AND (prev ->> 'rate')::numeric IS NOT DISTINCT FROM (p_header ->> 'rate')::numeric
+    AND (prev ->> 'rateCurrency') IS NOT DISTINCT FROM (p_header ->> 'rateCurrency');
+END
+$$;
+
+-- payment_guard_update of 20261029100000: back to waiting also needs the header
+-- to be the claim the newest SETTLED entry recorded.
+CREATE OR REPLACE FUNCTION payment_guard_update()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  uid TEXT := current_setting('app.current_user_id', true);
+  free TEXT[] := ARRAY['note', 'updatedAt'];
+  moved TEXT[] := ARRAY['status', 'amount', 'paidOn', 'paymentMethod', 'rateType', 'rate', 'rateCurrency'];
+  legal BOOLEAN := FALSE;
+BEGIN
+  IF current_user <> 'retrospend_app' THEN
+    RETURN NEW;
+  END IF;
+  IF (to_jsonb(NEW) - free - moved) IS DISTINCT FROM (to_jsonb(OLD) - free - moved) THEN
+    RAISE EXCEPTION 'row-level security: a payment keeps its people and currency'
+      USING ERRCODE = '42501';
+  END IF;
+  IF (to_jsonb(NEW) - free) IS NOT DISTINCT FROM (to_jsonb(OLD) - free) THEN
+    RETURN NEW;
+  END IF;
+
+  IF OLD."recordedByType" = 'user' AND OLD."recordedById" IS NOT DISTINCT FROM uid THEN
+    RAISE EXCEPTION 'row-level security: only the other person moves a payment on'
+      USING ERRCODE = '42501';
+  END IF;
+  IF OLD."status" = 'PROPOSED' AND NEW."status" = 'FINALIZED' THEN
+    legal := TRUE;
+  ELSIF OLD."status" = 'PROPOSED' AND NEW."status" = 'REJECTED' THEN
+    legal := (to_jsonb(NEW) - free - 'status') IS NOT DISTINCT FROM (to_jsonb(OLD) - free - 'status');
+  ELSIF OLD."status" = 'FINALIZED' AND NEW."status" = 'PROPOSED' THEN
+    -- Back to waiting only once no row is final any more (they were put back
+    -- first), so a final row is never left under a waiting payment.
+    legal := NOT payment_has_final_rows(OLD."id")
+      AND claim_header_back_ok(OLD."id", to_jsonb(NEW), to_jsonb(OLD));
+  END IF;
+  IF NOT legal THEN
+    RAISE EXCEPTION 'row-level security: that is not a way a payment can move'
+      USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END
+$$;
+
 CREATE INDEX IF NOT EXISTS "audit_log_entry_settled_payment_idx"
   ON "audit_log_entry" ((("changes" ->> 'paymentGroupId')), "timestamp")
   WHERE "action" = 'SETTLED' AND "targetType" = 'SETTLEMENT';
@@ -665,9 +743,13 @@ REVOKE ALL ON FUNCTION payment_group_check(TEXT, BOOLEAN) FROM PUBLIC;
 REVOKE ALL ON FUNCTION settlement_snapshot_matches(JSONB, JSONB) FROM PUBLIC;
 REVOKE ALL ON FUNCTION settled_entry_ok(TEXT, TEXT, JSONB) FROM PUBLIC;
 REVOKE ALL ON FUNCTION claim_put_back_ok(TEXT, "SettlementStatus", JSONB) FROM PUBLIC;
+REVOKE ALL ON FUNCTION claim_header_back_ok(TEXT, JSONB, JSONB) FROM PUBLIC;
+REVOKE ALL ON FUNCTION payment_guard_update() FROM PUBLIC;
 REVOKE ALL ON FUNCTION settlement_guard_insert() FROM PUBLIC;
 -- payment_tx_note_has is read by settlement_group_trigger (an invoker trigger),
 -- settled_entry_ok by the audit policy, payment_group_check by the group triggers.
 GRANT EXECUTE ON FUNCTION payment_tx_note_has(TEXT, TEXT) TO retrospend_app;
 GRANT EXECUTE ON FUNCTION settled_entry_ok(TEXT, TEXT, JSONB) TO retrospend_app;
 GRANT EXECUTE ON FUNCTION payment_group_check(TEXT, BOOLEAN) TO retrospend_app;
+-- claim_header_back_ok is called by payment_guard_update, an invoker trigger.
+GRANT EXECUTE ON FUNCTION claim_header_back_ok(TEXT, JSONB, JSONB) TO retrospend_app;

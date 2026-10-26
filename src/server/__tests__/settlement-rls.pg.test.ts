@@ -149,7 +149,7 @@ async function confirmWithEntry(p: { paymentId: string; row: { id: string } }) {
 				changes: {
 					paymentGroupId: p.paymentId,
 					amount: 100,
-					previous: previousOf(before, rows, "[]"),
+					previous: previousOf(before, rows, "[]") as unknown as Prisma.InputJsonValue,
 				},
 			},
 		});

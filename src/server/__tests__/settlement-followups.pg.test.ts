@@ -374,7 +374,11 @@ async function pendingClaim() {
 type Claim = Awaited<ReturnType<typeof pendingClaim>>;
 
 /** The receiver's confirm, as confirm.mutation.ts writes it. */
-async function finalize(tx: Prisma.TransactionClient, id: string) {
+async function finalize(
+	tx: Prisma.TransactionClient,
+	id: string,
+	header: Prisma.PaymentUncheckedUpdateInput = {},
+) {
 	await tx.settlement.updateMany({
 		where: { paymentGroupId: id, status: "PROPOSED" },
 		data: {
@@ -384,7 +388,10 @@ async function finalize(tx: Prisma.TransactionClient, id: string) {
 			settledAt: new Date(),
 		},
 	});
-	await tx.payment.update({ where: { id }, data: { status: "FINALIZED" } });
+	await tx.payment.update({
+		where: { id },
+		data: { status: "FINALIZED", ...header },
+	});
 }
 
 const settled = (
@@ -585,6 +592,7 @@ describe("putting a confirmed claim back (the undo)", () => {
 	const undo = (
 		p: Claim,
 		rows: (original: Prisma.SettlementUncheckedCreateInput[]) => Prisma.SettlementUncheckedCreateInput[],
+		headerBack: Prisma.PaymentUncheckedUpdateInput = {},
 	) =>
 		went(() =>
 			inTx(ben, async (tx) => {
@@ -599,7 +607,7 @@ describe("putting a confirmed claim back (the undo)", () => {
 				});
 				await tx.payment.update({
 					where: { id: p.id },
-					data: { status: "PROPOSED" },
+					data: { status: "PROPOSED", ...headerBack },
 				});
 			}),
 		);
@@ -613,6 +621,34 @@ describe("putting a confirmed claim back (the undo)", () => {
 		expect(after.map((r) => [r.status, r.amount.toString()])).toEqual([
 			["PROPOSED", "10"],
 		]);
+	});
+
+	it("refuses a header that is not the claim's", async () => {
+		for (const back of [
+			{ amount: "1000" },
+			{ paidOn: day("2026-01-01") },
+			{ paymentMethod: "Cash" },
+			{ rate: "2", rateType: "custom", rateCurrency: "PLN" },
+		]) {
+			const p = await confirmed();
+			expect(await undo(p, (rows) => rows, back)).toBe(false);
+		}
+	});
+
+	it("puts the claim's own header back after a confirm changed it", async () => {
+		// The receiver confirmed for USD 9 and the date of the 2nd; the claim was USD 10.
+		const p = await pendingClaim();
+		await inTx(ben, async (tx) => {
+			await finalize(tx, p.id, { amount: "9", paidOn: day("2026-06-02") });
+			await tx.auditLogEntry.create({ data: settled(p, honest(p)) });
+		});
+		expect(await undo(p, (rows) => rows)).toBe(false);
+		expect(
+			await undo(p, (rows) => rows, {
+				amount: p.before.amount.toString(),
+				paidOn: p.before.paidOn,
+			}),
+		).toBe(true);
 	});
 
 	it("refuses a row with another amount", async () => {
