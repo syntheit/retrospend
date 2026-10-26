@@ -87,15 +87,10 @@ export const updateWebhookInputSchema = idParamsSchema.extend(
 );
 
 export const rotateWebhookSecretInputSchema = idParamsSchema.extend({
-	graceSeconds: z
-		.int()
-		.min(0)
-		.max(MAX_SECRET_GRACE_SECONDS)
-		.default(0)
-		.meta({
-			description:
-				"Seconds the old secret keeps signing next to the new one (at most 7 days). 0, the default, stops it at once: use that when the secret leaked.",
-		}),
+	graceSeconds: z.int().min(0).max(MAX_SECRET_GRACE_SECONDS).default(0).meta({
+		description:
+			"Seconds the old secret keeps signing next to the new one (at most 7 days). 0, the default, stops it at once: use that when the secret leaked.",
+	}),
 });
 
 /** The webhook plus its signing secret, shown this once. */
