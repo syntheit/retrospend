@@ -67,5 +67,6 @@
 		"pending": "Pending until {name} confirms. Your balance already shows it.",
 		"final": "Final."
 	},
-	"amountShortcuts": "Quick amounts"
+	"amountShortcuts": "Quick amounts",
+	"rateOutOfRange": "That rate is too far from the stored rate. Check it and try again."
 }

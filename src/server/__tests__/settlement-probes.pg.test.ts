@@ -12,7 +12,7 @@
  * list (P1 to P11) from the settlement RLS review.
  */
 import { randomUUID } from "node:crypto";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import type { Prisma } from "~prisma";
 
@@ -26,6 +26,7 @@ let projectId: string; // ana and ben
 let foreignProject: string; // cam only
 let benEnvelope: string;
 let anaEnvelope: string;
+const seededRates: string[] = [];
 
 /** Runs a write and reports whether it went through (an error or zero rows is a refusal). */
 async function went(run: () => Promise<unknown>): Promise<boolean> {
@@ -139,7 +140,31 @@ const statusesOf = async (id: string) =>
 		.map((r) => r.status)
 		.sort();
 
+afterAll(async () => {
+	await adminDb.exchangeRate.deleteMany({ where: { id: { in: seededRates } } });
+});
+
 beforeAll(async () => {
+	// The offsets below are in ARS, EUR, KRW and USD at rates close to these (per
+	// USD, official, the payments' day); an offset's rate is held to 0.2x to 5x
+	// of the stored one, and a missing rate is never 1. They are taken away
+	// again in afterAll: the database is shared by the whole run, and other files
+	// read the ARS rates of their own dates.
+	for (const [currency, rate] of [
+		["ARS", "1000"],
+		["EUR", "0.92"],
+		["KRW", "1350"],
+	] as const) {
+		const date = new Date("2026-10-10T00:00:00.000Z");
+		const there = await adminDb.exchangeRate.findUnique({
+			where: { date_currency_type: { date, currency, type: "official" } },
+		});
+		if (there) continue;
+		const made = await adminDb.exchangeRate.create({
+			data: { date, currency, type: "official", rate },
+		});
+		seededRates.push(made.id);
+	}
 	ana = await createTestUser();
 	ben = await createTestUser();
 	cam = await createTestUser();

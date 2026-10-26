@@ -67,5 +67,6 @@
 		"pending": "Pendiente hasta que {name} confirme. Tu saldo ya lo muestra.",
 		"final": "Definitivo."
 	},
-	"amountShortcuts": "Importes rápidos"
+	"amountShortcuts": "Importes rápidos",
+	"rateOutOfRange": "Esa cotización está muy lejos de la guardada. Revísala e inténtalo de nuevo."
 }

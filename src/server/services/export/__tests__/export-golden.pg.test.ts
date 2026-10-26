@@ -38,6 +38,7 @@
  */
 import JSZip from "jszip";
 import { beforeAll, describe, expect, it } from "vitest";
+import { adminDb } from "~/test/pg-harness";
 import {
 	type Cordoba,
 	exportCallerFor,
@@ -96,6 +97,30 @@ describe("project CSVs", () => {
 				"2026-10-05,Asado,1234567.89,ARS,Food,Ana,EQUAL,Ana: 411522.63 ARS; Ben: 411522.63 ARS; Cam: 411522.63 ARS,Verified,0",
 			),
 		);
+	});
+
+	it("lists split details by name, whatever order the rows are stored in", async () => {
+		// Writing Ana's rows again puts them behind Ben's and Cam's in the table,
+		// so an unordered read lists her last. The order is by name, then by id.
+		const hers = await adminDb.splitParticipant.findMany({
+			where: {
+				participantType: "user",
+				participantId: book.ana.user.id,
+				transaction: { projectId: book.project.id },
+			},
+		});
+		await adminDb.splitParticipant.deleteMany({
+			where: { id: { in: hers.map((r) => r.id) } },
+		});
+		await adminDb.splitParticipant.createMany({ data: hers });
+		const out = await ana.exportProjectExpenses({
+			projectId: book.project.id,
+			format: "csv",
+		});
+		expect(out.csv).toContain(
+			"Ana: 411522.63 ARS; Ben: 411522.63 ARS; Cam: 411522.63 ARS",
+		);
+		expect(out.csv).toContain("Ana: 33.33 BRL; Ben: 33.33 BRL; Cam: 33.34 BRL");
 	});
 
 	it("scopes to a billing period", async () => {

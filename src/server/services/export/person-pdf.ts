@@ -29,7 +29,7 @@ export async function exportPersonPdf(
 				},
 			},
 		},
-		orderBy: { date: "desc" },
+		orderBy: [{ date: "desc" }, { id: "asc" }],
 	});
 	if (transactions.length === 0) throw noSharedExpenses();
 

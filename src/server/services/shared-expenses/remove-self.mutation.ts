@@ -128,7 +128,9 @@ export const restoreSelfMutation: MoneyMutation<
 				await tx.category.findMany({
 					where: {
 						id: {
-							in: input.removed.flatMap((r) => (r.categoryId ? [r.categoryId] : [])),
+							in: input.removed.flatMap((r) =>
+								r.categoryId ? [r.categoryId] : [],
+							),
 						},
 					},
 					select: { id: true },
@@ -148,15 +150,18 @@ export const restoreSelfMutation: MoneyMutation<
 				verifiedAt: r.verifiedAt ? new Date(r.verifiedAt) : null,
 				rejectionReason: r.rejectionReason,
 				hasUnseenChanges: r.hasUnseenChanges,
-				categoryId: r.categoryId && kept.has(r.categoryId) ? r.categoryId : null,
+				categoryId:
+					r.categoryId && kept.has(r.categoryId) ? r.categoryId : null,
 				categorySource:
 					r.categoryId && kept.has(r.categoryId) ? r.categorySource : null,
 			})),
 		});
-		const txn = await tx.sharedTransaction.findUnique({
-			where: { id: input.transactionId },
-			select: { updatedAt: true, isLocked: true, projectId: true },
-		});
+		// Locked while it is read: an edit that commits after this check but before
+		// ours would otherwise leave the share back on an expense that changed. An
+		// edit still running makes this wait, and then it reads the new stamp.
+		const [txn] = await tx.$queryRaw<
+			{ updatedAt: Date; isLocked: boolean; projectId: string | null }[]
+		>`SELECT "updatedAt", "isLocked", "projectId" FROM "shared_transaction" WHERE "id" = ${input.transactionId} FOR UPDATE`;
 		if (!txn)
 			throw new TRPCError({
 				code: "NOT_FOUND",
@@ -188,7 +193,10 @@ export const restoreSelfMutation: MoneyMutation<
 			undo: {
 				kind: "revert",
 				mutation: "sharedExpense.removeSelf",
-				rows: input.removed.map((r) => ({ table: "split_participant", id: r.id })),
+				rows: input.removed.map((r) => ({
+					table: "split_participant",
+					id: r.id,
+				})),
 			},
 		};
 	},

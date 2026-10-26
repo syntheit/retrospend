@@ -22,6 +22,7 @@ const TITLES: Record<ProblemCode, string> = {
 	idempotency_key_reused: "Idempotency-Key reused",
 	missing_rate: "No rate for that currency",
 	overpay: "More than is owed",
+	rate_out_of_range: "Rate too far from the stored rate",
 	id_taken: "That id is already used",
 	rate_limited: "Too many requests",
 	internal: "Server error",

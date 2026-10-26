@@ -16,7 +16,10 @@
  */
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
-import { readPrevious } from "~/server/services/payments/confirm-restore";
+import {
+	previousOf,
+	readPrevious,
+} from "~/server/services/payments/confirm-restore";
 import { logAudit } from "~/server/services/shared-expenses/audit-log";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import type { Prisma, SettlementStatus } from "~prisma";
@@ -116,6 +119,47 @@ const entry = (
 	targetId,
 	changes: { amount: 100 },
 });
+
+/**
+ * The receiver's confirm as the app writes it: rows and header final, then the
+ * SETTLED entry with the claim as it was, all in one transaction.
+ */
+async function confirmWithEntry(p: { paymentId: string; row: { id: string } }) {
+	const [before, rows] = await Promise.all([
+		adminDb.payment.findUniqueOrThrow({ where: { id: p.paymentId } }),
+		adminDb.settlement.findMany({ where: { paymentGroupId: p.paymentId } }),
+	]);
+	await inTx(ben, async (tx) => {
+		await tx.settlement.updateMany({
+			where: { paymentGroupId: p.paymentId },
+			data: {
+				status: "FINALIZED",
+				confirmedByPayer: true,
+				confirmedByPayee: true,
+				settledAt: new Date(),
+			},
+		});
+		await tx.payment.update({
+			where: { id: p.paymentId },
+			data: { status: "FINALIZED" },
+		});
+		await tx.auditLogEntry.create({
+			data: {
+				...entry(ben, p.row.id, "SETTLED"),
+				changes: {
+					paymentGroupId: p.paymentId,
+					amount: 100,
+					previous: previousOf(
+						before,
+						rows,
+						"[]",
+					) as unknown as Prisma.InputJsonValue,
+				},
+			},
+		});
+	});
+	return { before, rows };
+}
 
 beforeAll(async () => {
 	ana = await createTestUser();
@@ -501,8 +545,7 @@ describe("inserting a payment", () => {
 		payer: TestUser,
 		payee: TestUser,
 		id: ReturnType<typeof randomUUID>,
-	) =>
-		adminDb.payment.create({ data: header(payer, payer, payee, id) });
+	) => adminDb.payment.create({ data: header(payer, payer, payee, id) });
 
 	it("lets the payer record a pending payment, and the payee record one received", async () => {
 		const id = randomUUID();
@@ -533,8 +576,12 @@ describe("inserting a payment", () => {
 				},
 			});
 		});
-		expect(await adminDb.settlement.count({ where: { paymentGroupId: id } })).toBe(1);
-		expect(await adminDb.settlement.count({ where: { paymentGroupId: idB } })).toBe(1);
+		expect(
+			await adminDb.settlement.count({ where: { paymentGroupId: id } }),
+		).toBe(1);
+		expect(
+			await adminDb.settlement.count({ where: { paymentGroupId: idB } }),
+		).toBe(1);
 	});
 
 	it("lets the payer record a payment to a shadow person as final at once", async () => {
@@ -564,7 +611,9 @@ describe("inserting a payment", () => {
 				},
 			});
 		});
-		expect(await adminDb.settlement.count({ where: { paymentGroupId: id } })).toBe(1);
+		expect(
+			await adminDb.settlement.count({ where: { paymentGroupId: id } }),
+		).toBe(1);
 	});
 
 	it("refuses a payer making a payment to a real user final without them", async () => {
@@ -726,7 +775,9 @@ describe("deleting a payment", () => {
 		const p = await payment("pending");
 		expect(
 			await went(() =>
-				ben.db.settlement.deleteMany({ where: { paymentGroupId: p.paymentId } }),
+				ben.db.settlement.deleteMany({
+					where: { paymentGroupId: p.paymentId },
+				}),
 			),
 		).toBe(false);
 		expect(await exists(p.row.id)).toBe(true);
@@ -777,7 +828,8 @@ describe("deleting a payment", () => {
 	});
 
 	it("lets the receiver undo their own confirm: delete and put the claim back", async () => {
-		const p = await payment("mutual");
+		const p = await payment("pending");
+		await confirmWithEntry(p);
 		await inTx(ben, async (tx) => {
 			await tx.settlement.deleteMany({
 				where: { paymentGroupId: p.paymentId },
@@ -897,11 +949,25 @@ describe("audit entries of a payment", () => {
 		).toBe(false);
 	});
 
-	it("lets the receiver log SETTLED in their own name", async () => {
+	it("lets the receiver log SETTLED in their own name, as they confirm", async () => {
+		const p = await payment("pending");
+		await confirmWithEntry(p);
+		expect(
+			await adminDb.auditLogEntry.count({
+				where: { targetId: p.row.id, action: "SETTLED" },
+			}),
+		).toBe(1);
+	});
+
+	it("refuses SETTLED for a payment that was confirmed in an earlier transaction", async () => {
 		const p = await payment("mutual");
-		await ben.db.auditLogEntry.create({
-			data: entry(ben, p.row.id, "SETTLED"),
-		});
+		expect(
+			await went(() =>
+				ben.db.auditLogEntry.create({
+					data: entry(ben, p.row.id, "SETTLED"),
+				}),
+			),
+		).toBe(false);
 	});
 
 	it("refuses a SETTLED entry from someone who is not a party", async () => {
@@ -937,20 +1003,8 @@ describe("audit entries of a payment", () => {
 	});
 
 	it("cannot feed a forged SETTLED entry to the confirm undo", async () => {
-		const p = await payment("mutual");
-		await ben.db.auditLogEntry.create({
-			data: {
-				...entry(ben, p.row.id, "SETTLED"),
-				changes: {
-					previous: {
-						amount: "100",
-						paidOn: "2026-10-10",
-						ledger: "[]",
-						rows: [{ id: p.row.id }],
-					},
-				},
-			},
-		});
+		const p = await payment("pending");
+		await confirmWithEntry(p);
 		const forged = {
 			previous: {
 				amount: "1",

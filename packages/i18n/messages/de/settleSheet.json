@@ -67,5 +67,6 @@
 		"pending": "Ausstehend, bis {name} bestätigt. Dein Saldo zeigt es schon.",
 		"final": "Endgültig."
 	},
-	"amountShortcuts": "Schnellbeträge"
+	"amountShortcuts": "Schnellbeträge",
+	"rateOutOfRange": "Dieser Kurs weicht zu stark vom gespeicherten Kurs ab. Prüf ihn und versuch es nochmal."
 }

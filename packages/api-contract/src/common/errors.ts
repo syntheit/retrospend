@@ -21,6 +21,7 @@ export const PROBLEM_STATUS = {
 	idempotency_key_reused: 422,
 	missing_rate: 422,
 	overpay: 422,
+	rate_out_of_range: 422,
 	id_taken: 409,
 	rate_limited: 429,
 	internal: 500,
