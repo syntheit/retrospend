@@ -56,9 +56,11 @@ const config: ExpoConfig = {
 	},
 	android: {
 		package: "app.retrospend",
-		// Edge-to-edge is always on (React Native 0.86, targetSdk 36); screens
+		// Edge-to-edge is always on (React Native 0.88, targetSdk 36); screens
 		// pad with safe-area insets.
-		predictiveBackGestureEnabled: true,
+		// Off: with it on, React Native 0.88 registers its back callback only on
+		// Android 16+, and on Android 15 the system Back leaves the app.
+		predictiveBackGestureEnabled: false,
 	},
 	plugins: [
 		"expo-router",

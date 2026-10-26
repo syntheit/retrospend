@@ -13,7 +13,7 @@ export type { Theme };
  * Material You dynamic color is off in v1 so the identity and the money
  * colors never change with the wallpaper.
  */
-export function themeFor(scheme: ColorSchemeName): Theme {
+export function themeFor(scheme: ColorSchemeName | null): Theme {
 	return scheme === "dark" ? dark : light;
 }
 
@@ -22,7 +22,9 @@ export function useTheme(): Theme {
 }
 
 /** Navigation chrome colors (headers, tab bar, screen background) from the same tokens. */
-export function navigationTheme(scheme: ColorSchemeName): NavigationTheme {
+export function navigationTheme(
+	scheme: ColorSchemeName | null,
+): NavigationTheme {
 	const base = scheme === "dark" ? DarkTheme : DefaultTheme;
 	const { color } = themeFor(scheme);
 	return {

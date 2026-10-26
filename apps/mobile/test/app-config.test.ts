@@ -20,7 +20,7 @@ describe("app config", () => {
 		expect(config.ios?.bundleIdentifier).toBe("app.retrospend");
 		expect(config.android?.package).toBe("app.retrospend");
 		expect(config.scheme).toBe("retrospend");
-		expect(config.android?.predictiveBackGestureEnabled).toBe(true);
+		expect(config.android?.predictiveBackGestureEnabled).toBe(false);
 	});
 
 	describe("assertBuildProfile", () => {

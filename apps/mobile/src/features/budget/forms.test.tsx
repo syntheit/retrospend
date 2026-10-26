@@ -5,13 +5,8 @@ import type { BudgetEnvelope, BudgetMonth } from "./source";
 // The money form end to end with real presses on its real keypad: Assign is
 // off until the server's dry run of the exact body is in, the write carries
 // that body and one idempotency key, and the toast hands back the server's
-// undo token. jest-expo ships react-test-renderer without exposing it to the
-// app, so it is resolved through jest-expo.
-const renderer = require(
-	require.resolve("react-test-renderer", {
-		paths: [require.resolve("jest-expo/package.json")],
-	}),
-);
+// undo token. react-test-renderer is a dev dependency of the app.
+const renderer = require("react-test-renderer");
 const { act, create } = renderer;
 
 interface TestNode {

@@ -9,13 +9,8 @@ import { forgetUndoTokens } from "./send";
 // The composer end to end, with real presses on its real components: the
 // milestone "coffee split with Lucía in 4 taps + 5 keys". The tab press that
 // opens the composer is the first tap, so the composer itself takes three
-// presses and five keys. jest-expo ships react-test-renderer without
-// exposing it to the app, so it is resolved through jest-expo.
-const renderer = require(
-	require.resolve("react-test-renderer", {
-		paths: [require.resolve("jest-expo/package.json")],
-	}),
-);
+// presses and five keys. react-test-renderer is a dev dependency of the app.
+const renderer = require("react-test-renderer");
 const { act, create } = renderer;
 
 interface TestNode {
