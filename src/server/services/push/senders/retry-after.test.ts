@@ -13,6 +13,14 @@ describe("Retry-After", () => {
 		expect(parseRetryAfter("Mon, 26 Oct 2026 15:05:00 GMT", NOW)).toBe(300_000);
 	});
 
+	it("reads the two older HTTP date forms", () => {
+		expect(parseRetryAfter("Monday, 26-Oct-26 15:05:00 GMT", NOW)).toBe(
+			300_000,
+		);
+		// asctime names no zone and means GMT, whatever zone the server is in.
+		expect(parseRetryAfter("Mon Oct 26 15:05:00 2026", NOW)).toBe(300_000);
+	});
+
 	it("has no hint for a date in the past, zero, or anything else", () => {
 		expect(parseRetryAfter("Mon, 26 Oct 2026 14:00:00 GMT", NOW)).toBe(
 			undefined,
