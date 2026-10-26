@@ -18,7 +18,7 @@ export async function exportPersonPdf(
 	them: PersonRef,
 ): Promise<PdfDocument> {
 	const transactions = await ctx.db.sharedTransaction.findMany({
-		where: sharedWith(ctx.userId, them),
+		where: await sharedWith(ctx.db, them),
 		include: {
 			category: { select: { name: true } },
 			splitParticipants: {
@@ -90,15 +90,14 @@ export async function exportPersonPdf(
 			})),
 		categoryBreakdown: categoryRows(transactions),
 		expenses: transactions.map((tx) => {
+			// A share the signed-in person cannot see reads empty, not 0.
 			const shareOf = (sp: PersonRef) => {
 				const row = tx.splitParticipants.find(
 					(s) =>
 						s.participantType === sp.participantType &&
 						s.participantId === sp.participantId,
 				);
-				return row
-					? amountText(row.shareAmount, tx.currency)
-					: amountText("0", tx.currency);
+				return row ? amountText(row.shareAmount, tx.currency) : "";
 			};
 			return {
 				date: isoDay(tx.date),

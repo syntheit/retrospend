@@ -23,7 +23,7 @@ export async function exportPersonHistory(
 	ctx: ExportContext,
 	them: PersonRef,
 ): Promise<CsvDocument> {
-	const where = sharedWith(ctx.userId, them);
+	const where = await sharedWith(ctx.db, them);
 	if ((await ctx.db.sharedTransaction.count({ where })) === 0) {
 		throw noSharedExpenses();
 	}
@@ -97,7 +97,8 @@ export async function exportPersonHistory(
 				participantId: tx.paidById,
 			}),
 			mine ? exactCell(mine.shareAmount) : 0,
-			theirs ? exactCell(theirs.shareAmount) : 0,
+			// Hidden from a debtor: empty, not 0.
+			theirs ? exactCell(theirs.shareAmount) : "",
 			tx.projectId ? (projectName.get(tx.projectId) ?? "") : "",
 			txStatus(tx.isLocked, tx.splitParticipants),
 			editCounts.get(tx.id) ?? 0,
@@ -124,7 +125,7 @@ export async function exportPersonSettlementPlan(
 	them: PersonRef,
 ): Promise<CsvDocument> {
 	const shared = await ctx.db.sharedTransaction.findMany({
-		where: sharedWith(ctx.userId, them),
+		where: await sharedWith(ctx.db, them),
 		select: { currency: true },
 	});
 	if (shared.length === 0) throw noSharedExpenses();
