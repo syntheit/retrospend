@@ -1,0 +1,46 @@
+{
+	"sharedExpenseCreated": {
+		"title": "Nova despesa compartilhada",
+		"body": "Abra o Retrospend para ver",
+		"bodyWithAmount": "Sua parte é {amount}"
+	},
+	"sharedExpenseUpdated": {
+		"title": "Despesa compartilhada alterada",
+		"body": "Abra o Retrospend para ver o que mudou",
+		"bodyWithAmount": "Sua parte agora é {amount}"
+	},
+	"fixRequestCreated": {
+		"title": "Correção pedida",
+		"body": "Alguém pediu que você corrija uma despesa"
+	},
+	"paymentRecorded": {
+		"title": "Pagamento registrado",
+		"body": "Um pagamento foi registrado",
+		"bodyWithAmount": "Um pagamento de {amount} foi registrado"
+	},
+	"paymentConfirmed": {
+		"title": "Pagamento confirmado",
+		"body": "Seu pagamento foi confirmado",
+		"bodyWithAmount": "Seu pagamento de {amount} foi confirmado"
+	},
+	"paymentNotReceived": {
+		"title": "Pagamento não recebido",
+		"body": "Seu pagamento foi marcado como não recebido",
+		"bodyWithAmount": "Seu pagamento de {amount} foi marcado como não recebido"
+	},
+	"paymentReminded": {
+		"title": "Lembrete de pagamento",
+		"body": "Um pagamento aguarda sua confirmação",
+		"bodyWithAmount": "Um pagamento de {amount} aguarda sua confirmação"
+	},
+	"recurringDueOut": {
+		"title": "Despesa recorrente vencendo",
+		"body": "Uma despesa recorrente vence",
+		"bodyWithAmount": "{amount} vence"
+	},
+	"recurringDueIn": {
+		"title": "Receita recorrente esperada",
+		"body": "Uma receita recorrente está esperada",
+		"bodyWithAmount": "{amount} está esperado"
+	}
+}

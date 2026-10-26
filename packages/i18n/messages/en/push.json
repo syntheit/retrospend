@@ -1,0 +1,46 @@
+{
+	"sharedExpenseCreated": {
+		"title": "New shared expense",
+		"body": "Open Retrospend to see it",
+		"bodyWithAmount": "Your share is {amount}"
+	},
+	"sharedExpenseUpdated": {
+		"title": "Shared expense changed",
+		"body": "Open Retrospend to see what changed",
+		"bodyWithAmount": "Your share is now {amount}"
+	},
+	"fixRequestCreated": {
+		"title": "Fix requested",
+		"body": "Someone asked you to fix an expense"
+	},
+	"paymentRecorded": {
+		"title": "Payment recorded",
+		"body": "A payment was recorded",
+		"bodyWithAmount": "A payment of {amount} was recorded"
+	},
+	"paymentConfirmed": {
+		"title": "Payment confirmed",
+		"body": "Your payment was confirmed",
+		"bodyWithAmount": "Your payment of {amount} was confirmed"
+	},
+	"paymentNotReceived": {
+		"title": "Payment not received",
+		"body": "Your payment was marked as not received",
+		"bodyWithAmount": "Your payment of {amount} was marked as not received"
+	},
+	"paymentReminded": {
+		"title": "Payment reminder",
+		"body": "A payment is waiting for you to confirm",
+		"bodyWithAmount": "A payment of {amount} is waiting for you to confirm"
+	},
+	"recurringDueOut": {
+		"title": "Recurring expense due",
+		"body": "A recurring expense is due",
+		"bodyWithAmount": "{amount} is due"
+	},
+	"recurringDueIn": {
+		"title": "Recurring income due",
+		"body": "A recurring income is due",
+		"bodyWithAmount": "{amount} is due"
+	}
+}
