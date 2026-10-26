@@ -2,9 +2,12 @@ import { MAX_SECRET_GRACE_SECONDS } from "@retrospend/api-contract";
 import { describe, expect, it } from "vitest";
 import en from "../../../../packages/i18n/messages/en/settingsV2.json";
 import {
+	areaScopes,
 	editPatch,
+	eventAreas,
 	GRACE_CHOICES,
 	graceKey,
+	toggleArea,
 	undoPatch,
 } from "../developer/webhooks";
 
@@ -102,5 +105,80 @@ describe("editing a webhook", () => {
 			eventTypes: ["expense.*", "payment.*"],
 			enabled: true,
 		});
+	});
+});
+
+describe("choosing event areas in the picker", () => {
+	const area = (id: string) => {
+		const found = eventAreas().find((a) => a.id === id);
+		if (!found) throw new Error(`no area ${id}`);
+		return found;
+	};
+	const narrow = ["expense.created", "payment.*"];
+
+	it("gives a fresh area all its events", () => {
+		expect(toggleArea(["payment.*"], area("expenses"), true, [])).toEqual([
+			"payment.*",
+			"expense.*",
+			"expenses.*",
+		]);
+	});
+
+	it("takes an area's filters off, exact ones included", () => {
+		expect(toggleArea(narrow, area("expenses"), false, narrow)).toEqual([
+			"payment.*",
+		]);
+	});
+
+	it("puts back what the webhook had for an area when it is checked again", () => {
+		const off = toggleArea(narrow, area("expenses"), false, narrow);
+		const again = toggleArea(off, area("expenses"), true, narrow);
+		expect(again).toEqual(["payment.*", "expense.created"]);
+		// So the round trip is no change at all.
+		expect(
+			editPatch(
+				{ name: "A", url: "https://a.example", eventTypes: narrow, enabled: true },
+				{ name: "A", url: "https://a.example", eventTypes: again, enabled: true },
+			),
+		).toEqual({});
+	});
+
+	it("still widens a narrow area when the webhook never had it", () => {
+		expect(toggleArea(["payment.*"], area("expenses"), true, narrow)).toEqual([
+			"payment.*",
+			"expense.created",
+		]);
+		expect(toggleArea(["payment.*"], area("income"), true, narrow)).toEqual([
+			"payment.*",
+			"income.*",
+		]);
+	});
+});
+
+describe("how a change line names an area's events", () => {
+	it("says all, some or how many", () => {
+		expect(areaScopes(["expense.*", "expenses.*", "payment.*"])).toEqual([
+			{ id: "expenses", scope: "all" },
+			{ id: "payments", scope: "all" },
+		]);
+		expect(areaScopes(["expense.created", "payment.*"])).toEqual([
+			{ id: "expenses", scope: { count: 1 } },
+			{ id: "payments", scope: "all" },
+		]);
+		expect(areaScopes(["expense.created", "expense.updated"])).toEqual([
+			{ id: "expenses", scope: { count: 2 } },
+		]);
+		// A wildcard that covers only part of the area.
+		expect(areaScopes(["expense.*"])).toEqual([
+			{ id: "expenses", scope: "some" },
+		]);
+		expect(areaScopes([])).toEqual([]);
+	});
+
+	it("has the words in the English catalog", () => {
+		const scope = (en.developer.events as { scope: Record<string, string> })
+			.scope;
+		for (const key of ["all", "some", "count"])
+			expect(scope[key], key).toContain("{area}");
 	});
 });

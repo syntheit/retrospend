@@ -794,6 +794,10 @@ describe("/api/v1/webhooks", () => {
 
 			// Putting it back off (the Undo of turning it on) can restore why it
 			// was off and since when, instead of reading as the owner's choice.
+			// (This test's clock ran ahead, so the time is one the server accepts.)
+			const since = new Date(
+				Date.parse(shown.disabledAt as string) - 3_600_000,
+			).toISOString();
 			const again = await expectBody<Hook>(
 				await call(`/webhooks/${webhook.id}`, {
 					method: "PATCH",
@@ -802,7 +806,7 @@ describe("/api/v1/webhooks", () => {
 					body: {
 						enabled: false,
 						disabledReason: shown.disabledReason,
-						disabledAt: shown.disabledAt,
+						disabledAt: since,
 					},
 				}),
 				contract.webhooks.update,
@@ -810,7 +814,7 @@ describe("/api/v1/webhooks", () => {
 			expect(again).toMatchObject({
 				enabled: false,
 				disabledReason: "too_many_failures",
-				disabledAt: shown.disabledAt,
+				disabledAt: since,
 			});
 			// Without them it is the owner's choice, as before.
 			const patchHook = async (body: object) =>
@@ -828,6 +832,14 @@ describe("/api/v1/webhooks", () => {
 				enabled: false,
 				disabledReason: "manual",
 			});
+			// A time in the future is capped at now.
+			await patchHook({ enabled: true });
+			const future = new Date(Date.now() + 86_400_000).toISOString();
+			const capped = await patchHook({ enabled: false, disabledAt: future });
+			expect(
+				new Date(capped.disabledAt as string).getTime(),
+			).toBeLessThanOrEqual(Date.now());
+			await patchHook({ enabled: true });
 			// A reason sent while turning it on is ignored.
 			await patchHook({ enabled: true, disabledReason: "blocked_target" });
 			expect(await patchHook({ enabled: false })).toMatchObject({

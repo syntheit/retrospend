@@ -14,7 +14,7 @@ import { ChangeValue, SheetChanges } from "~/components/ui/sheet-changes";
 import { useToast } from "~/components/ui/toast";
 import { EventPicker, tooManyEvents } from "./event-picker";
 import {
-	areasOfFilters,
+	areaScopes,
 	editPatch,
 	isWebhookUrl,
 	targetOf,
@@ -77,8 +77,15 @@ export function EditWebhookSheet({
 	const words = (filters: readonly string[]) =>
 		filters.length === 0
 			? t("events.all")
-			: areasOfFilters(filters)
-					.map((a) => tArea(a))
+			: areaScopes(filters)
+					.map(({ id, scope }) =>
+						scope === "all" || scope === "some"
+							? t(`events.scope.${scope}`, { area: tArea(id) })
+							: t("events.scope.count", {
+									area: tArea(id),
+									count: scope.count,
+								}),
+					)
 					.join(", ");
 
 	const submit = async () => {
@@ -182,6 +189,7 @@ export function EditWebhookSheet({
 						{t("eventsHeading")}
 					</span>
 					<EventPicker
+						original={current.eventTypes}
 						onChange={(eventTypes) => set({ eventTypes })}
 						value={draft.eventTypes}
 					/>

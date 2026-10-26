@@ -340,7 +340,12 @@
 			"all": "Alle Ereignisse",
 			"some": "Ausgewählte Ereignisse",
 			"allHint": "Jedes Ereignis in deinem Konto.",
-			"tooMany": "Zu viele Bereiche gewählt. Nimm stattdessen Alle Ereignisse."
+			"tooMany": "Zu viele Bereiche gewählt. Nimm stattdessen Alle Ereignisse.",
+			"scope": {
+				"all": "{area}: alle Ereignisse",
+				"some": "{area}: einige Ereignisse",
+				"count": "{area}: {count, plural, one {1 Ereignis} other {# Ereignisse}}"
+			}
 		},
 		"webhookState": {
 			"manual": "Aus",

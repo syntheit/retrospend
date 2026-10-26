@@ -68,6 +68,49 @@ export function eventAreas(
 	}));
 }
 
+const inArea = (id: EventAreaId, filter: string) =>
+	areaOfResource(filter.split(".")[0] ?? "") === id;
+
+/**
+ * The filters after checking or unchecking one area in the picker. Checking
+ * puts back what the webhook had for that area when it had any (a narrow
+ * `expense.created` stays narrow), and gives an area it never had all its
+ * events, so a round trip of uncheck and check changes nothing.
+ */
+export function toggleArea(
+	value: readonly string[],
+	area: EventArea,
+	on: boolean,
+	original: readonly string[] = [],
+): string[] {
+	const rest = value.filter((f) => !inArea(area.id, f));
+	if (!on) return rest;
+	const had = original.filter((f) => inArea(area.id, f));
+	return [...rest, ...(had.length > 0 ? had : area.filters)];
+}
+
+export type AreaScope = "all" | "some" | { count: number };
+
+/**
+ * How much of each area a webhook's filters cover: all of it, a few exact
+ * events (a count), or part of it through a wildcard that does not reach the
+ * whole area. So a change line can show a real widening.
+ */
+export function areaScopes(
+	filters: readonly string[],
+): { id: EventAreaId; scope: AreaScope }[] {
+	const whole = new Map(eventAreas().map((a) => [a.id, a.filters]));
+	return areasOfFilters(filters).map((id) => {
+		const mine = filters.filter((f) => inArea(id, f));
+		const all = (whole.get(id) ?? []).every((f) => mine.includes(f));
+		const exact = mine.every((f) => !f.endsWith(".*"));
+		return {
+			id,
+			scope: all ? "all" : exact ? { count: mine.length } : "some",
+		};
+	});
+}
+
 /** The areas a webhook's filters (`expense.*` or `expense.created`) fall in. */
 export function areasOfFilters(filters: readonly string[]): EventAreaId[] {
 	const seen = new Set<EventAreaId>();

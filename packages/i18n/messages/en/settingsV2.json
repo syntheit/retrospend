@@ -340,7 +340,12 @@
 			"all": "All events",
 			"some": "Chosen events",
 			"allHint": "Every event that happens in your account.",
-			"tooMany": "Too many areas chosen. Use All events instead."
+			"tooMany": "Too many areas chosen. Use All events instead.",
+			"scope": {
+				"all": "{area}: all events",
+				"some": "{area}: some events",
+				"count": "{area}: {count, plural, one {1 event} other {# events}}"
+			}
 		},
 		"webhookState": {
 			"manual": "Off",

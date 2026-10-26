@@ -340,7 +340,12 @@
 			"all": "Todos los eventos",
 			"some": "Eventos elegidos",
 			"allHint": "Todos los eventos que ocurren en tu cuenta.",
-			"tooMany": "Elegiste demasiadas áreas. Usá Todos los eventos."
+			"tooMany": "Elegiste demasiadas áreas. Usá Todos los eventos.",
+			"scope": {
+				"all": "{area}: todos los eventos",
+				"some": "{area}: algunos eventos",
+				"count": "{area}: {count, plural, one {1 evento} other {# eventos}}"
+			}
 		},
 		"webhookState": {
 			"manual": "Apagado",
