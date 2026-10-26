@@ -69,25 +69,6 @@
 -- about other people's payments; only the app role may call them.
 -- ------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION payment_recorded_by(p_payment_id TEXT, p_user_id TEXT)
-RETURNS BOOLEAN
-LANGUAGE SQL
-SECURITY DEFINER
-STABLE
-SET search_path = public, pg_temp
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM "payment" p
-    WHERE p."id" = p_payment_id
-      AND p."recordedByType" = 'user'
-      AND p."recordedById" = p_user_id
-      AND (
-        (p."payerType" = 'user' AND p."payerId" = current_setting('app.current_user_id', true))
-        OR (p."payeeType" = 'user' AND p."payeeId" = current_setting('app.current_user_id', true))
-      )
-  )
-$$;
-
 CREATE OR REPLACE FUNCTION payment_has_rows(p_payment_id TEXT)
 RETURNS BOOLEAN
 LANGUAGE SQL
@@ -126,9 +107,9 @@ AS $$
   )
 $$;
 
--- The smallest unit money in the currency is kept to (packages/domain money.ts:
--- 0, 3 or 4 decimals for the listed currencies, 2 for the rest; crypto is
--- treated as 2, which only makes the offset tolerance below looser).
+-- The smallest unit money in the currency is kept to (packages/domain money.ts
+-- and currency-format.ts): 0, 3 or 4 decimals for the listed fiat currencies,
+-- 8 for crypto (2 for stablecoins), 2 for the rest.
 CREATE OR REPLACE FUNCTION currency_step(p_currency TEXT)
 RETURNS NUMERIC
 LANGUAGE SQL
@@ -142,6 +123,9 @@ AS $$
     WHEN upper(p_currency) IN ('BHD', 'IQD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND')
       THEN 0.001::numeric
     WHEN upper(p_currency) IN ('CLF', 'UYW') THEN 0.0001::numeric
+    WHEN upper(p_currency) IN ('BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'AVAX', 'POL',
+                               'LTC', 'DOT', 'LINK', 'TON', 'UNI', 'NEAR', 'SUI', 'BCH')
+      THEN 0.00000001::numeric
     ELSE 0.01::numeric
   END
 $$;
@@ -461,19 +445,25 @@ CREATE TRIGGER payment_guard_update
 -- it leaves behind is what is checked; a single statement that would leave a
 -- payment half written is refused.
 --
---   always  the payment has rows, and every row has the payment's status
---           (a forged final row cannot sit under a waiting or rejected payment)
---   on rows just written
---           no row is negative; offset rows balance and carry a rate exactly
---           when their currency is not the payment's; a forgive is whole
+--   every event (insert, status move, delete) re-checks the whole payment:
+--           it has rows, every row has its status (a forged final row cannot
+--           sit under a waiting or rejected payment), no row is negative,
+--           offset rows balance and carry a positive rate exactly when their
+--           currency is not the payment's, and a forgive is whole.
+--   a delete  also needs the payment gone with its rows, or rows written into
+--           it in the same transaction (a rewrite); one side of a balanced
+--           pair cannot be taken away alone.
 --
 -- Offset rows move no cash: payee-to-payer rows cancel what the payee owed,
 -- payer-to-payee rows what the payer owed, and the two sides are worth the
 -- same in the payment currency (allocate.ts, I2). A row's worth is its
 -- amount times the rate it stores (6 decimals), so the sides may differ by the
--- rounding of each row, the rate precision, and the payment's dust (one unit
--- for ARS, else one minor unit). The rate itself is not checked against a
--- market quote: the database has none.
+-- rounding of each row, the rate precision, the payment's dust (one unit for
+-- ARS, else one minor unit), and, for each cash row in another currency, half
+-- a unit of the payment currency plus one unit of the row's currency at its
+-- rate (the allocator rounds the cleared debt in the row's currency, so the
+-- debt left over for the offset moves by that much). The rate itself is not
+-- checked against a market quote: the database has none.
 --
 -- The triggers queue an event only for the app role (WHEN), so the owner
 -- connection (sweeps, claims, migrations) neither pays for them nor is
@@ -574,6 +564,7 @@ BEGIN
       AND (
         (s."currency" = h."currency" AND s."exchangeRateUsed" IS NOT NULL AND s."exchangeRateUsed" <> 1)
         OR (s."currency" <> h."currency" AND s."exchangeRateUsed" IS NULL)
+        OR s."exchangeRateUsed" <= 0
       )
   ) THEN
     RAISE EXCEPTION 'row-level security: an offset in another currency needs its rate'
@@ -593,7 +584,12 @@ BEGIN
 
   step := currency_step(h."currency");
   tol := CASE WHEN upper(h."currency") = 'ARS' THEN 1 ELSE step END
-         + offsets * step / 2 + rate_term;
+         + offsets * step / 2 + rate_term
+         + COALESCE((
+             SELECT SUM(step / 2 + currency_step(s."currency") * s."exchangeRateUsed")
+             FROM "settlement" s
+             WHERE s."paymentGroupId" = p_id AND NOT s."isOffset" AND s."exchangeRateUsed" IS NOT NULL
+           ), 0);
   IF abs(theirs - mine) > tol THEN
     RAISE EXCEPTION 'row-level security: the offsets of a payment cancel the same value on both sides'
       USING ERRCODE = '42501';
@@ -601,6 +597,25 @@ BEGIN
 END
 $$;
 
+-- A row of a payment is written in this transaction: remembered, so a delete
+-- can tell a rewrite (rows put back) from rows simply taken away. Immediate,
+-- not deferred, and per payment.
+CREATE OR REPLACE FUNCTION settlement_mark_insert()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF NEW."paymentGroupId" IS NOT NULL THEN
+    PERFORM set_config('rs.ins_' || md5(NEW."paymentGroupId"), '1', true);
+  END IF;
+  RETURN NULL;
+END
+$$;
+
+-- Every event checks the whole payment, not only the row it touched. A delete
+-- also needs the payment gone with its rows, or rows written into it in the
+-- same transaction: otherwise a party could drop one side of a balanced pair.
 CREATE OR REPLACE FUNCTION settlement_group_trigger()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -612,10 +627,15 @@ BEGIN
   END IF;
   IF TG_OP = 'DELETE' THEN
     IF OLD."paymentGroupId" IS NOT NULL THEN
-      PERFORM payment_group_check(OLD."paymentGroupId", FALSE);
+      IF payment_has_rows(OLD."paymentGroupId")
+         AND current_setting('rs.ins_' || md5(OLD."paymentGroupId"), true) IS DISTINCT FROM '1' THEN
+        RAISE EXCEPTION 'row-level security: a payment loses rows only as a whole or when rewritten'
+          USING ERRCODE = '42501';
+      END IF;
+      PERFORM payment_group_check(OLD."paymentGroupId", TRUE);
     END IF;
   ELSIF NEW."paymentGroupId" IS NOT NULL THEN
-    PERFORM payment_group_check(NEW."paymentGroupId", TG_OP = 'INSERT');
+    PERFORM payment_group_check(NEW."paymentGroupId", TRUE);
   END IF;
   RETURN NULL;
 END
@@ -628,11 +648,17 @@ SET search_path = public, pg_temp
 AS $$
 BEGIN
   IF current_user = 'retrospend_app' THEN
-    PERFORM payment_group_check(NEW."id", FALSE);
+    PERFORM payment_group_check(NEW."id", TRUE);
   END IF;
   RETURN NULL;
 END
 $$;
+
+DROP TRIGGER IF EXISTS settlement_mark_insert ON "settlement";
+CREATE TRIGGER settlement_mark_insert
+  AFTER INSERT ON "settlement"
+  FOR EACH ROW WHEN (current_user = 'retrospend_app')
+  EXECUTE FUNCTION settlement_mark_insert();
 
 DROP TRIGGER IF EXISTS settlement_group_insert ON "settlement";
 CREATE CONSTRAINT TRIGGER settlement_group_insert
@@ -879,7 +905,6 @@ CREATE POLICY "audit_log_entry_insert" ON "audit_log_entry"
 -- Function privileges: the app role only.
 -- ------------------------------------------------------------
 
-REVOKE ALL ON FUNCTION payment_recorded_by(TEXT, TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION payment_has_rows(TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION payment_has_final_rows(TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION currency_step(TEXT) FROM PUBLIC;
@@ -892,7 +917,6 @@ REVOKE ALL ON FUNCTION settlement_group_trigger() FROM PUBLIC;
 REVOKE ALL ON FUNCTION payment_group_trigger() FROM PUBLIC;
 REVOKE ALL ON FUNCTION settlement_guard_update() FROM PUBLIC;
 REVOKE ALL ON FUNCTION payment_guard_update() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION payment_recorded_by(TEXT, TEXT) TO retrospend_app;
 GRANT EXECUTE ON FUNCTION payment_has_rows(TEXT) TO retrospend_app;
 GRANT EXECUTE ON FUNCTION payment_has_final_rows(TEXT) TO retrospend_app;
 GRANT EXECUTE ON FUNCTION currency_step(TEXT) TO retrospend_app;

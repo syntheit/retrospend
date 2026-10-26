@@ -925,9 +925,14 @@ describe("helpers answer only about your own payments", () => {
 			);
 		expect(await ask(ana)).toEqual([{ rows: true, final: true }]);
 		expect(await ask(cam)).toEqual([{ rows: false, final: false }]);
-		await expect(
-			inTx(cam, (tx) => tx.$queryRaw`SELECT payment_recorder_key(${p.id})`),
-		).rejects.toThrow();
+		// Nobody can ask who recorded a payment.
+		for (const fn of ["payment_recorder_key", "payment_recorded_by"]) {
+			await expect(
+				inTx(ana, (tx) =>
+					tx.$queryRawUnsafe(`SELECT ${fn}('${p.id}', '${ana.user.id}')`),
+				),
+			).rejects.toThrow();
+		}
 	});
 });
 
@@ -1030,5 +1035,253 @@ describe("logAudit rethrow callers", () => {
 		expect(entries[0]).toMatchObject({ actorId: "__system__", projectId });
 		// Nothing left to sweep.
 		expect(await svc.findAndAutoAcceptExpired()).toBe(0);
+	});
+});
+
+describe("a payment keeps balancing on every later event", () => {
+	/** A pending USD 10 payment of Ana's with offsets of USD 5 each way. */
+	const withOffsets = () =>
+		seed(header(ana, ana, ben, "PROPOSED"), (id) => [
+			row(id, ana, ben, claim),
+			row(id, ben, ana, {
+				status: "PROPOSED",
+				confirmedByPayee: true,
+				isOffset: true,
+				amount: "5",
+			}),
+			row(id, ana, ben, { ...claim, isOffset: true, amount: "5" }),
+		]);
+	const confirmAll = (id: string, dropOffset: boolean) =>
+		inTx(ben, async (tx) => {
+			if (dropOffset) {
+				await tx.settlement.deleteMany({
+					where: {
+						paymentGroupId: id,
+						isOffset: true,
+						fromParticipantId: ana.user.id,
+					},
+				});
+			}
+			await tx.settlement.updateMany({
+				where: { paymentGroupId: id },
+				data: {
+					status: "FINALIZED",
+					confirmedByPayer: true,
+					confirmedByPayee: true,
+					settledAt: new Date(),
+				},
+			});
+			await tx.payment.update({ where: { id }, data: { status: "FINALIZED" } });
+		});
+
+	it("A1 the payee cannot void only the payer's side of balanced final offsets", async () => {
+		const id = await record(ben, header(ben, ana, ben, "FINALIZED"), (id) => [
+			row(id, ana, ben, received()),
+			row(id, ben, ana, {
+				...received(),
+				isOffset: true,
+				confirmedByPayer: true,
+				amount: "5",
+			}),
+			row(id, ana, ben, { ...received(), isOffset: true, amount: "5" }),
+		]);
+		const payerSide = await adminDb.settlement.findFirstOrThrow({
+			where: {
+				paymentGroupId: id,
+				isOffset: true,
+				fromParticipantId: ana.user.id,
+			},
+		});
+		expect(
+			await went(() =>
+				ben.db.settlement.delete({ where: { id: payerSide.id } }),
+			),
+		).toBe(false);
+		expect(
+			await adminDb.settlement.count({ where: { paymentGroupId: id } }),
+		).toBe(3);
+	});
+
+	it("A2 the receiver cannot drop the pending payer-side offset and confirm the rest", async () => {
+		const p = await withOffsets();
+		expect(await went(() => confirmAll(p.id, true))).toBe(false);
+		expect(await statusesOf(p.id)).toEqual([
+			"PROPOSED",
+			"PROPOSED",
+			"PROPOSED",
+		]);
+		// Confirming all three rows is what the app does.
+		const whole = await withOffsets();
+		expect(await went(() => confirmAll(whole.id, false))).toBe(true);
+		expect(await statusesOf(whole.id)).toEqual([
+			"FINALIZED",
+			"FINALIZED",
+			"FINALIZED",
+		]);
+	});
+
+	it("A4 the receiver cannot delete one of two confirmed cash rows and leave the payment final", async () => {
+		const p = await seed(header(ana, ana, ben, "FINALIZED"), (id) => [
+			row(id, ana, ben, { ...mutual(), amount: "6" }),
+			row(id, ana, ben, { ...mutual(), amount: "4" }),
+		]);
+		const four = p.rows[1];
+		expect(
+			await went(() =>
+				ben.db.settlement.delete({ where: { id: four?.id as string } }),
+			),
+		).toBe(false);
+		expect(
+			await adminDb.settlement.count({ where: { paymentGroupId: p.id } }),
+		).toBe(2);
+	});
+
+	it("A3 refuses an offset with a zero rate, which would be worth nothing", async () => {
+		expect(
+			await went(() =>
+				record(ana, header(ana, ana, ben, "PROPOSED"), (id) => [
+					row(id, ana, ben, claim),
+					row(id, ben, ana, {
+						status: "PROPOSED",
+						confirmedByPayee: true,
+						isOffset: true,
+						amount: "1000000",
+						currency: "EUR",
+						exchangeRateUsed: "0",
+					}),
+				]),
+			),
+		).toBe(false);
+	});
+});
+
+describe("rounding of a cash row in another currency", () => {
+	/**
+	 * Ana pays in the payment currency P: cash in USD at `usd` P per USD, and
+	 * offsets Ben's EUR 5 (at `eur` P per EUR) against `mine` USD.
+	 */
+	const cross = (o: {
+		currency: string;
+		paid: string;
+		cashUsd: string;
+		usd: string;
+		eur: string;
+		mine: string;
+	}) =>
+		went(() =>
+			record(
+				ana,
+				header(ana, ana, ben, "PROPOSED", {
+					currency: o.currency,
+					amount: o.paid,
+				}),
+				(id) => [
+					row(id, ana, ben, {
+						...claim,
+						amount: o.cashUsd,
+						convertedAmount: o.paid,
+						convertedCurrency: o.currency,
+						exchangeRateUsed: o.usd,
+						projectId,
+					}),
+					row(id, ben, ana, {
+						status: "PROPOSED",
+						confirmedByPayee: true,
+						isOffset: true,
+						amount: "5",
+						currency: "EUR",
+						exchangeRateUsed: o.eur,
+						projectId,
+					}),
+					row(id, ana, ben, {
+						...claim,
+						isOffset: true,
+						amount: o.mine,
+						exchangeRateUsed: o.usd,
+						projectId,
+					}),
+				],
+			),
+		);
+
+	it("lets an ARS payment's leftover offset be one USD cent x the rate off", async () => {
+		// Cash USD 4.58 x 1200 = ARS 5,496. EUR 5 x 1300 = 6,500 against USD 5.42 x 1200 = 6,504:
+		// 4 apart. Tolerance: dust 1 + 2 x 0.005 + cash row (0.005 + 0.01 x 1200) = 13.02.
+		const base = {
+			currency: "ARS",
+			paid: "5496",
+			cashUsd: "4.58",
+			usd: "1200",
+			eur: "1300",
+		};
+		expect(await cross({ ...base, mine: "5.42" })).toBe(true);
+		// USD 6 x 1200 = 7,200: 700 apart.
+		expect(await cross({ ...base, mine: "6" })).toBe(false);
+	});
+
+	it("does the same for a KRW payment", async () => {
+		// Cash USD 3.33 x 1350 = KRW 4,495.5, stored 4,496. EUR 5 x 1500 = 7,500 against
+		// USD 5.56 x 1350 = 7,506: 6 apart. Tolerance: dust 1 + 2 x 0.5 + cash (0.5 + 0.01 x 1350) = 16.
+		const base = {
+			currency: "KRW",
+			paid: "4496",
+			cashUsd: "3.33",
+			usd: "1350",
+			eur: "1500",
+		};
+		expect(await cross({ ...base, mine: "5.56" })).toBe(true);
+		// USD 5.70 x 1350 = 7,695: 195 apart.
+		expect(await cross({ ...base, mine: "5.70" })).toBe(false);
+	});
+});
+
+describe("the smallest unit of the payment currency", () => {
+	const oneEach = (
+		currency: string,
+		theirs: string | null,
+		mine: string | null,
+	) =>
+		went(() =>
+			record(
+				ana,
+				header(ana, ana, ben, "PROPOSED", { currency, amount: "1" }),
+				(id) => [
+					row(id, ana, ben, { ...claim, amount: "1", currency }),
+					...(theirs
+						? [
+								row(id, ben, ana, {
+									status: "PROPOSED" as const,
+									confirmedByPayee: true,
+									isOffset: true,
+									amount: theirs,
+									currency,
+								}),
+							]
+						: []),
+					...(mine
+						? [
+								row(id, ana, ben, {
+									...claim,
+									isOffset: true,
+									amount: mine,
+									currency,
+								}),
+							]
+						: []),
+				],
+			),
+		);
+
+	it("holds a payment in ETH to 1e-8, not to cents", async () => {
+		// Tolerance: dust 1e-8 + 2 offsets x 0.5e-8 = 2e-8.
+		expect(await oneEach("ETH", "0.0005", "0.0005")).toBe(true);
+		expect(await oneEach("ETH", "0.004", null)).toBe(false);
+		expect(await oneEach("ETH", "0.0005", "0.0005001")).toBe(false);
+	});
+
+	it("keeps cents for a stablecoin", async () => {
+		// Tolerance: dust 0.01 + 2 x 0.005 = 0.02.
+		expect(await oneEach("USDC", "1", "1.015")).toBe(true);
+		expect(await oneEach("USDC", "1", "1.03")).toBe(false);
 	});
 });
