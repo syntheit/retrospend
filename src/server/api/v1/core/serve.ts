@@ -3,6 +3,7 @@ import type { ProblemCode } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import { MissingRateError } from "@retrospend/domain/money";
 import { OverpayError } from "~/server/services/payments/procedures";
+import { RateOutOfRangeError } from "~/server/services/payments/rate-band";
 import { InvalidCursorError } from "~/server/services/api-v1/cursor";
 import { Prisma } from "~prisma";
 import { problem } from "../errors";
@@ -46,6 +47,9 @@ export function toProblem(error: unknown, route?: string): unknown {
 	// More than everything owed: a code of its own, so a client can say so.
 	if (error instanceof OverpayError)
 		return problem("overpay", error.message);
+	// A typed rate far from the stored one: a slip, with a code a client can show.
+	if (error instanceof RateOutOfRangeError)
+		return problem("rate_out_of_range", error.message);
 	if (error instanceof TRPCError) {
 		const code = TRPC_TO_PROBLEM[error.code];
 		if (code) return problem(code, error.message);

@@ -140,6 +140,22 @@ const statusesOf = async (id: string) =>
 		.sort();
 
 beforeAll(async () => {
+	// The offsets below are in ARS, EUR, KRW and USD at rates close to these (per
+	// USD, official, the payments' day); an offset's rate is held to 0.2x to 5x
+	// of the stored one, and a missing rate is never 1.
+	await adminDb.exchangeRate.createMany({
+		data: [
+			["ARS", "1000"],
+			["EUR", "0.92"],
+			["KRW", "1350"],
+		].map(([currency, rate]) => ({
+			date: new Date("2026-10-10T00:00:00.000Z"),
+			currency: currency as string,
+			type: "official",
+			rate: rate as string,
+		})),
+		skipDuplicates: true,
+	});
 	ana = await createTestUser();
 	ben = await createTestUser();
 	cam = await createTestUser();

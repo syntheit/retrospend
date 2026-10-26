@@ -52,6 +52,7 @@
 							"idempotency_key_reused",
 							"missing_rate",
 							"overpay",
+							"rate_out_of_range",
 							"id_taken",
 							"rate_limited",
 							"internal",

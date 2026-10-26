@@ -340,6 +340,34 @@ describe("/api/v1/payments", () => {
 		expect((await page(lucia)).net?.minor).toBe(2_000_000);
 	});
 
+	it("refuses a typed rate far from the stored one, in the preview too", async () => {
+		// Sofia pays USD 5 against her ARS 18,000, at the rate she typed. ARS is 1355
+		// per USD (blue) or less, so a USD per ARS between about 0.00015 and 0.005 is
+		// plausible; 0.000001 would clear ARS 5,000,000 for USD 5.
+		const typed = (rate: string) =>
+			pay({
+				currency: "USD",
+				amount: "5",
+				customRate: { rate, currency: "ARS" },
+			});
+		const slip = typed("0.000001");
+		await expectProblem(
+			await post("/payments/preview", slip),
+			422,
+			"rate_out_of_range",
+		);
+		await expectProblem(await post("/payments", slip), 422, "rate_out_of_range");
+		const fine = await expectBody<Write>(
+			await post("/payments", typed("0.0007")),
+			c.record,
+			201,
+		);
+		await expectBody(
+			await post("/payments/undo", { token: fine.undo }),
+			c.undo,
+		);
+	});
+
 	it("refuses more than is owed unless allowed, in the preview too", async () => {
 		const over = pay({
 			person: { type: "user", id: lucia.user.id },

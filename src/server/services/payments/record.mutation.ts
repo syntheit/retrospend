@@ -25,12 +25,17 @@ import {
 	assertRelationship,
 	lockPair,
 } from "./access";
-import { allocatePayment, toPaymentCurrency } from "./allocate";
+import {
+	allocatePayment,
+	plannedSettlements,
+	toPaymentCurrency,
+} from "./allocate";
 import { type ClaimMatch, findClaimMatch } from "./claim-match";
 import { confirmClaim } from "./confirm.mutation";
 import { confirmationFor } from "./confirmation";
 import { ledgerLines, payerLines } from "./ledger";
 import { loadQuotes } from "./quotes";
+import { assertTypedRate } from "./rate-band";
 import type { ApplyTo, Quote } from "./types";
 import { type AllocationView, personKey, viewAllocation } from "./view";
 import { writePayment } from "./write";
@@ -299,6 +304,16 @@ export const recordPayment: MoneyMutation<
 				code: "CONFLICT",
 				message:
 					"The balance changed since you opened this. Check the new Everything and record again.",
+			});
+		}
+		// Before anything else is said about the payment: a typed rate far from the
+		// stored one is a slip, and the database refuses it too.
+		if (input.customRate) {
+			await assertTypedRate(tx, {
+				into: input.currency,
+				custom: input.customRate,
+				date: paidOn,
+				planned: plannedSettlements(allocation),
 			});
 		}
 		const view = viewAllocation(allocation);
