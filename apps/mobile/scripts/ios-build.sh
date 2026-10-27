@@ -15,8 +15,8 @@
 set -euo pipefail
 
 target=${1:-all}
-case "$target" in device | simulator | sim-build | all) ;; *)
-	echo "usage: $0 [all|device|simulator|sim-build]" >&2
+case "$target" in device | simulator | sim-build | testflight | all) ;; *)
+	echo "usage: $0 [all|device|simulator|sim-build|testflight]" >&2
 	exit 2
 	;;
 esac
@@ -47,11 +47,12 @@ rsync -a --delete \
 # owner stays logged in on the mini). timeout bounds a stuck run.
 status=0
 ssh "$mini" "timeout 3600 sudo launchctl asuser \$(id -u) sudo -H -u \$(id -un) \
-	env IPHONE='${IPHONE:-}' bash -l ~/$remote/apps/mobile/scripts/ios-mini.sh $target" ||
+	env IPHONE='${IPHONE:-}' RS_WORK='${RS_WORK:-}' \
+	RETROSPEND_BUILD_NUMBER='${RETROSPEND_BUILD_NUMBER:-}' bash -l ~/$remote/apps/mobile/scripts/ios-mini.sh $target" ||
 	status=$?
 
 # The screenshot comes back even when the phone step at the end failed.
-if [[ "$target" != device ]] && ssh "$mini" "ls rs-ios/shots/*.png" >/dev/null 2>&1; then
+if [[ "$target" != device && "$target" != testflight ]] && ssh "$mini" "ls rs-ios/shots/*.png" >/dev/null 2>&1; then
 	shots=${SHOTS:-/home/matv/Projects/retrospend/docs/ui-overhaul/impl/shots/ios}
 	mkdir -p "$shots"
 	scp -q "$mini:rs-ios/shots/*.png" "$shots/"

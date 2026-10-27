@@ -48,6 +48,38 @@ Logs stay on the mini in `~/rs-ios/logs/`, with the API key's values scrubbed. D
 
 Xcode with an iOS simulator runtime, Nix (for Node), and CocoaPods (the script installs it with Homebrew when missing).
 
+## Install and update without a cable
+
+Both channels number builds with the commit count (`RETROSPEND_BUILD_NUMBER` in `app.config.ts`), so each commit that ships is newer than the last.
+
+### Android: private F-Droid repo "Retrospend dev"
+
+On harbor, `retrospend-fdroid-release` (a NixOS command, `hosts/harbor/retrospend-fdroid.nix` in `~/nix`) builds, signs and publishes the main checkout. It is a wrapper around:
+
+```sh
+export FDROID_DIR=/var/lib/retrospend-fdroid    # repo working dir, created on first run, NOT in git
+export KEYSTORE_FILE=... KEYSTORE_PASSWORD_FILE=... KEY_PASSWORD_FILE=... KEY_ALIAS=retrospend
+nix develop .#android -c bash apps/mobile/scripts/android-release.sh
+```
+
+What it does: `expo prebuild`, Gradle `assembleRelease` (arm64-v8a only; `RETROSPEND_ABIS` to change), signed with the app key by `plugins/with-android-release-signing.js` (the key and passwords come from the environment and never enter the generated project), the Google-free check, `apksigner verify`, then `fdroid update`. The first run also creates the repo's own signing key (`repo-keystore.p12`, separate from the app key) and `config.yml` in `$FDROID_DIR`.
+
+- Repo: `https://fdroid.retrospend.app/repo` (override with `FDROID_REPO_URL` before the first run), nginx on `127.0.0.1:1999`, Basic auth (user `daniel`), served through the harbor tunnel. It is a separate host because `dev.retrospend.app` is the Next.js container.
+- Phones: Droid-ify or F-Droid, Repositories, add the URL, enter the Basic-auth user and password. Check the repo fingerprint the script prints. Later releases arrive as updates.
+- Back up the app key. Losing it means uninstalling the app on every phone to install a differently signed one. The repo key lives in `$FDROID_DIR`; losing it means re-adding the repo on every phone.
+
+### iOS: TestFlight
+
+```sh
+bash apps/mobile/scripts/ios-testflight.sh
+```
+
+From harbor, like `ios-build.sh`. It takes the simulator lock on the mini, copies the checkout to `~/rs-ios-plus/retrospend`, prebuilds, archives Release (production JS embedded), exports an `.ipa` for App Store Connect (`~/rs-ios-plus/archive/export`) and uploads it with `altool` and the API key in `~/.appstoreconnect/env`. The key never leaves the mini and logs are scrubbed. It stops if the mini has under 8 GB free.
+
+- Needs the app record for `app.retrospend` in App Store Connect and an API key with the role App Manager or Admin. Both are web UI steps; without the record the script still ends with a signed `.ipa` and says so.
+- `ITSAppUsesNonExemptEncryption` is false (`app.config.ts`), so builds skip the export compliance question.
+- Install: TestFlight app on the iPhone and iPad, accept the internal tester invite. New builds update from there.
+
 ## Known issues
 
 - iOS 26.x (seen on 26.5): with the detached "+" in the tab bar, the four destination titles are truncated ("Acti...", "Peo..."). It is react-native-screens issue 5015; iOS 27 is not affected. Accepted for now.

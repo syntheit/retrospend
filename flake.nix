@@ -118,6 +118,10 @@
                 pnpm_10
                 jdk17
                 sdk
+                # Release channel (apps/mobile/scripts/android-release.sh).
+                fdroidserver
+                apksigner
+                openssl
               ];
               env = {
                 JAVA_HOME = androidPkgs.jdk17.home;
