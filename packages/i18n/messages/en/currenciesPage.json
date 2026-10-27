@@ -1,6 +1,6 @@
 {
 	"title": "Currencies",
-	"pricesIn": "Prices in {home}.",
+	"pricesIn": "Price of 1 {home}.",
 	"updated": "Updated {date}.",
 	"newUse": "New foreign amounts use {type}.",
 	"filters": {
@@ -19,7 +19,6 @@
 		"showAll": "Show all currencies"
 	},
 	"missing": "No rate yet for {codes}. {count, plural, one {{names} is} other {{names} are}} left out of net worth.",
-	"priceOf": "Price of 1 unit in {home}",
 	"favorite": "Favorite",
 	"currency": "Currency",
 	"actions": "Actions",
@@ -36,10 +35,10 @@
 	"detail": {
 		"label": "Selected currency",
 		"sheetTitle": "{code} rates",
-		"sub": "{code} · 1 {code} in {home}, {date}",
+		"sub": "{code} · 1 {home} in {code}, {date}",
 		"noRate": "No {code} rate. Accounts and expenses in {code} are left out of totals.",
 		"usedBy": "Used by {names}",
-		"rates": "Rates",
+		"rates": "1 {home} in {code}",
 		"default": "Default",
 		"defaultTitle": "Default for new expenses",
 		"defaultFixed": "The built-in default for now."

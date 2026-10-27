@@ -1,11 +1,12 @@
-import { currencyDecimals } from "@retrospend/domain/money";
-import type { MoneyValue } from "~/components/money/format";
+import type { RatePrice } from "./types";
 
 /**
- * How a price shows: whole units from 100 up (ARS 1,468), cents below
- * (ARS 35.20), as the mockup reads. A comparison only: the formatter rounds.
+ * How a price shows: whole units from 100 up (ARS 1,555), the currency's
+ * digits below (BRL 5.35, KWD 0.307), and every digit the server sent for a
+ * rate under one minor unit (USD 0.00064, BTC 0.00001493). A comparison
+ * only: the formatter rounds.
  */
-export function priceCents(price: MoneyValue): false | "auto" {
-	const hundred = 100 * 10 ** currencyDecimals(price.currency);
+export function priceCents(price: RatePrice): false | "auto" {
+	const hundred = 100 * 10 ** price.places;
 	return Math.abs(price.minor) >= hundred ? false : "auto";
 }

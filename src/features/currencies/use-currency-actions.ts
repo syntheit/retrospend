@@ -75,7 +75,12 @@ export function useCurrencyActions(
 			const row = byCode.get(x.id);
 			const price = row?.defaultType ? row.prices[row.defaultType] : null;
 			if (!row || !price) return;
-			const text = formatMoney(price, { locale, display: "none" }) ?? "";
+			const text =
+				formatMoney(price, {
+					locale,
+					display: "none",
+					places: price.places,
+				}) ?? "";
 			void navigator.clipboard
 				?.writeText(text)
 				.then(() => toast.info(t("toast.copied", { rate: text })))

@@ -167,11 +167,11 @@ export function MoneyInput(p: MoneyInputProps) {
 					p.disabled && "opacity-50",
 				)}
 			>
-				{/* kit .moneyinput: the currency chip inside the field, the amount on the right */}
-				<div className="h-money flex items-center gap-2 p-1">
+				{/* The currency as plain text at the start, a hairline, the amount on the right */}
+				<div className="h-money flex items-center">
 					<CurrencyChip {...p} />
 					{p.label ? (
-						<span className="text-fg-3 text-small shrink-0 max-md:hidden">
+						<span className="text-fg-3 text-small shrink-0 pl-3 max-md:hidden">
 							{p.label}
 						</span>
 					) : null}
@@ -181,7 +181,7 @@ export function MoneyInput(p: MoneyInputProps) {
 						aria-label={t("amount")}
 						autoComplete="off"
 						autoFocus={p.autoFocus}
-						className="text-fg placeholder:text-fg-3 h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 pr-2 text-right text-base font-medium tabular-nums shadow-none focus-visible:ring-0 dark:bg-transparent"
+						className="text-fg placeholder:text-fg-3 h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 text-right text-base font-medium tabular-nums shadow-none focus-visible:ring-0 dark:bg-transparent"
 						disabled={p.disabled}
 						id={id}
 						inputMode="decimal"

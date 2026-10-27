@@ -49,21 +49,20 @@ function RateCell({
 		<Money
 			cents={priceCents(price)}
 			className={cn(type === row.defaultType && "font-semibold")}
-			display="none"
+			places={price.places}
 			value={price}
 		/>
 	);
 }
 
 /**
- * Desktop: one table, a column per rate type priced in the home currency,
+ * Desktop: one table, a column per rate type, each cell what 1 home unit buys,
  * the default type in bold. A row click selects the currency for the
  * detail panel; right-click and ⋯ open the registry menu.
  */
 export function RatesTable({
 	rows,
 	columns,
-	home,
 	selected,
 	handlers,
 	onSelect,
@@ -72,7 +71,6 @@ export function RatesTable({
 }: {
 	rows: CurrencyRow[];
 	columns: string[];
-	home: string;
 	selected: string | null;
 	handlers: ActionHandlers<CurrencyTarget>;
 	onSelect: (code: string) => void;
@@ -83,7 +81,6 @@ export function RatesTable({
 	const label = useRateLabel();
 	return (
 		<div>
-			<div className="text-fg-3 text-meta mb-2">{t("priceOf", { home })}</div>
 			<Table look="panel">
 				<TableHeader>
 					<TableRow>

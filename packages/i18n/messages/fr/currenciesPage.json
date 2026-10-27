@@ -1,6 +1,6 @@
 {
 	"title": "Devises",
-	"pricesIn": "Prix en {home}.",
+	"pricesIn": "Prix de 1 {home}.",
 	"updated": "Mis à jour le {date}.",
 	"newUse": "Les nouveaux montants en devise utilisent {type}.",
 	"filters": {
@@ -19,7 +19,6 @@
 		"showAll": "Voir toutes les devises"
 	},
 	"missing": "Pas encore de taux pour {codes}. {count, plural, one {{names} est exclu} other {{names} sont exclus}} du patrimoine.",
-	"priceOf": "Prix d'une unité en {home}",
 	"favorite": "Favori",
 	"currency": "Devise",
 	"actions": "Actions",
@@ -36,10 +35,10 @@
 	"detail": {
 		"label": "Devise sélectionnée",
 		"sheetTitle": "Taux de {code}",
-		"sub": "{code} · 1 {code} en {home}, {date}",
+		"sub": "{code} · 1 {home} en {code}, {date}",
 		"noRate": "Pas de taux pour {code}. Les comptes et dépenses en {code} sont exclus des totaux.",
 		"usedBy": "Utilisée par {names}",
-		"rates": "Taux",
+		"rates": "1 {home} en {code}",
 		"default": "Par défaut",
 		"defaultTitle": "Par défaut pour les nouvelles dépenses",
 		"defaultFixed": "Le réglage par défaut pour l'instant."

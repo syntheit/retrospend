@@ -142,7 +142,6 @@ export function CurrenciesScreen({
 			columns={view.columns}
 			favoriteBusy={favoriteBusy}
 			handlers={handlers}
-			home={view.home}
 			onFavorite={setFavorite}
 			onSelect={select}
 			rows={rows}

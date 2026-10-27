@@ -37,13 +37,29 @@ test("Add expense: USD at the Official rate, preview, save and Undo", async ({
 	await expect(sheet.locator('[data-figure="entry.home"]')).toHaveText(
 		"ARS 17,400",
 	);
-	// The currency chip carries its flag; the home row carries the home one.
-	await expect(
-		sheet
-			.getByRole("button", { name: "Currency, USD" })
-			.locator('img[alt="USD flag"]'),
-	).toBeVisible();
-	await expect(sheet.locator('img[alt="ARS flag"]')).toBeVisible();
+	// The currency is plain text with a chevron and one divider: no pill, no
+	// flag, so the field keeps a single outline.
+	const trigger = sheet.getByRole("button", { name: "Currency, USD" });
+	await expect(trigger).toHaveText("USD");
+	await expect(sheet.locator('img[alt$=" flag"]')).toHaveCount(0);
+	const edges = await trigger.evaluate((el) => {
+		const css = getComputedStyle(el);
+		return {
+			top: css.borderTopWidth,
+			left: css.borderLeftWidth,
+			right: css.borderRightWidth,
+			background: css.backgroundColor,
+			height: el.getBoundingClientRect().height,
+			field: el.parentElement?.getBoundingClientRect().height,
+		};
+	});
+	expect(edges).toMatchObject({
+		top: "0px",
+		left: "0px",
+		right: "1px",
+		background: "rgba(0, 0, 0, 0)",
+	});
+	expect(edges.height).toBe(edges.field);
 	// Every rate type the pair offers sits beside the amount, the default pressed.
 	const rates = sheet.getByRole("group", { name: "Rate" });
 	await expect(

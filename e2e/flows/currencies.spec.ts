@@ -6,16 +6,17 @@ import { bannedOutputOn } from "../helpers/banned-output";
 import { gotoReady } from "../helpers/navigation";
 import { untilSaved } from "../helpers/trpc";
 
-// The Currencies page, in Sofía's saved session. The seed has ARS at 1,450
-// per USD (official) and BRL at 5.4, so 1 USD is ARS 1,450, 1 BRL is
-// ARS 268.52 and USD 100 converts to ARS 145,000.
+// The Currencies page, in Sofía's saved session (ARS home). The seed has
+// ARS at 1,450 per USD (official) and BRL at 5.4, so each row reads what
+// 1 ARS buys: USD 0.00069 (1 / 1450), BRL 0.0037 (5.4 / 1450). Converting
+// 100 ARS gives USD 0.07; swapped, USD 100 converts to ARS 145,000.
 //
 // No figure audit yet: rates are not in the figures registry (GAPS,
 // "Wealth and Currencies: figure ids").
 //
 // The favorite step needs a currency the seed has no rate for, so this flow
-// adds one EUR rate with a cuid-shaped id (0.9 per USD: 1 EUR is
-// ARS 1,611.11).
+// adds one EUR rate with a cuid-shaped id (0.9 per USD: 1 ARS buys
+// EUR 0.00062).
 
 /** The EUR rate the favorite step needs. */
 async function addEurRate(): Promise<void> {
@@ -44,7 +45,7 @@ test.beforeAll(async () => {
 	await addEurRate();
 });
 
-test("Currencies: prices in ARS, convert, search converter, favorite", async ({
+test("Currencies: 1 ARS in each currency, convert, search converter, favorite", async ({
 	page,
 }) => {
 	test.setTimeout(180_000);
@@ -52,18 +53,30 @@ test("Currencies: prices in ARS, convert, search converter, favorite", async ({
 	await openCurrencies(page);
 	const main = page.getByRole("main");
 
+	await expect(main).toContainText("Price of 1 ARS.");
 	const table = main.getByRole("table");
-	await expect(table.getByRole("row").filter({ hasText: "USD" })).toContainText(
-		"1,450",
+	// Each row is what 1 home unit buys in that currency, with its own code.
+	const usd = table.getByRole("row").filter({ hasText: "USD" });
+	await expect(usd).toContainText("USD 0.00069");
+	await expect(usd.locator("[data-minor='69']").first()).toHaveAttribute(
+		"data-currency",
+		"USD",
 	);
-	// Whole units from ARS 100 up; the server's price keeps its cents.
 	const brl = table.getByRole("row").filter({ hasText: "BRL" });
-	await expect(brl).toContainText("269");
-	await expect(brl.locator("[data-minor='26852']").first()).toBeVisible();
+	await expect(brl).toContainText("BRL 0.0037");
+	await expect(brl.locator("[data-minor='37']").first()).toBeVisible();
 
-	// The detail panel converts USD 100 on the server, one result per type.
-	await table.getByRole("row").filter({ hasText: "USD" }).first().click();
+	// The detail panel reads the same direction and converts on the server.
+	await usd.first().click();
 	const detail = main.getByRole("complementary", { name: "Selected currency" });
+	await expect(detail).toContainText("1 ARS in USD");
+	await expect(detail).toContainText("USD 0.00069");
+	// Home to foreign by default: ARS 100 into USD (100 / 1,450 = 0.069).
+	await expect(detail.getByRole("textbox", { name: "Amount" })).toHaveValue(
+		"100",
+	);
+	await expect(detail).toContainText("USD 0.07");
+	await detail.getByRole("button", { name: "Swap direction" }).click();
 	await expect(detail).toContainText("ARS 145,000");
 
 	// The search field doubles as a converter.
@@ -83,7 +96,7 @@ test("Currencies: prices in ARS, convert, search converter, favorite", async ({
 
 	// Favorite EUR through today's favorites; it sorts first.
 	await expect(table.getByRole("row").filter({ hasText: "EUR" })).toContainText(
-		"1,611",
+		"EUR 0.00062",
 	);
 	await untilSaved(page, "preferences.toggleFavoriteExchangeRate", () =>
 		table.getByRole("button", { name: "Add EUR to favorites" }).click(),
@@ -107,6 +120,9 @@ test("Currencies at 390: rows open the rates sheet", async ({ page }) => {
 	await openCurrencies(page, "?currency=USD");
 	const sheet = page.getByRole("dialog", { name: "USD rates" });
 	await expect(sheet).toBeVisible();
+	await expect(sheet).toContainText("1 ARS in USD");
+	await expect(sheet).toContainText("USD 0.07");
+	await sheet.getByRole("button", { name: "Swap direction" }).click();
 	await expect(sheet).toContainText("ARS 145,000");
 	await page.keyboard.press("Escape");
 	const overflow = await page

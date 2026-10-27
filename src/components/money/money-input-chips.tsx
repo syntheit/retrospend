@@ -1,13 +1,12 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import * as React from "react";
 
 import { CurrencyPicker } from "~/components/pickers/currency-picker";
 import { PickerPopover } from "~/components/pickers/picker-popover";
 import { Button } from "~/components/ui/button";
-import { FilterChip } from "~/components/ui/chip";
-import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { cn } from "~/lib/utils";
 import type { MoneyInputProps } from "./money-input";
 
@@ -32,7 +31,7 @@ export type MoneyRates = {
 	onChange: (value: string) => void;
 };
 
-/** The converted amount: the home currency with its flag and the server's figure. */
+/** The converted amount: the home currency and the server's figure. */
 export type MoneyHome = {
 	currency: string;
 	/** The booked home amount (a Money), or the word for its state. */
@@ -41,41 +40,39 @@ export type MoneyHome = {
 	label: string;
 };
 
-/** Flag and code: the identity of a currency on every chip (R25). The code names it; the flag is decoration for readers. */
-function CurrencyMark({ code }: { code: string }) {
-	return (
-		<>
-			<span aria-hidden="true" className="inline-flex shrink-0">
-				<CurrencyFlag className="size-4" currencyCode={code} />
-			</span>
-			{code}
-		</>
-	);
-}
+/**
+ * The line between the currency and the amount, the field's only inner
+ * line. Same color as the field's outline.
+ */
+const divider = "border-r border-line-strong";
 
-const fixedChip =
-	"inline-flex h-ctl shrink-0 items-center gap-2 rounded-chip border border-line-strong px-3 font-medium text-body text-fg-2";
+/** A fixed currency reads as the same plain code, without the chevron. */
+const fixedCode = `inline-flex h-full min-w-12 shrink-0 items-center px-3 font-medium text-body text-fg-2 ${divider}`;
 
-/** The currency chip: flag and code; opens the CurrencyPicker when the currency can change. */
+/**
+ * The currency trigger inside a money field: the code and a chevron as
+ * plain text at the start of the field, a hairline between it and the
+ * amount. No pill, no flag (the field has one outline). Opens the
+ * CurrencyPicker when the currency can change.
+ */
 export function CurrencyChip(p: MoneyInputProps) {
 	const t = useTranslations("pickers.money");
 	const [open, setOpen] = React.useState(false);
-	// A fixed currency still shows as the chip, without the chevron (kit .chip).
 	if (!p.onCurrencyChange)
-		return (
-			<span className={fixedChip}>
-				<CurrencyMark code={p.currency} />
-			</span>
-		);
+		return <span className={fixedCode}>{p.currency}</span>;
 	const button = (
-		<FilterChip
+		<Button
 			aria-label={t("currency", { code: p.currency })}
-			className="text-fg bg-transparent font-medium"
+			className={cn(
+				"text-fg h-full min-w-12 gap-1 rounded-none border-0 px-3 focus-visible:-outline-offset-2",
+				divider,
+			)}
 			disabled={p.disabled}
-			value
+			kind="ghost"
 		>
-			<CurrencyMark code={p.currency} />
-		</FilterChip>
+			{p.currency}
+			<ChevronDown aria-hidden="true" className="text-fg-3 size-3.5" />
+		</Button>
 	);
 	return (
 		<PickerPopover
@@ -143,9 +140,9 @@ export function RateStrip({ rates }: { rates: MoneyRates }) {
 /** The home row (kit .aex-hr): what the amount counts as, in the home currency. */
 export function HomeRow({ home }: { home: MoneyHome }) {
 	return (
-		<div className="h-money border-line-strong bg-bg flex items-center gap-2 border-t p-1">
-			<span className={cn(fixedChip, "border-transparent")}>
-				<CurrencyMark code={home.currency} />
+		<div className="h-money border-line-strong bg-bg flex items-center gap-2 border-t">
+			<span className="text-body text-fg-2 min-w-12 shrink-0 px-3 font-medium">
+				{home.currency}
 			</span>
 			<span className="text-fg-3 text-small min-w-0 flex-1 truncate">
 				{home.label}

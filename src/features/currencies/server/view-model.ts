@@ -14,6 +14,7 @@ import {
 	priceAll,
 	type RateRow,
 	toMoney,
+	toRate,
 } from "./prices";
 import { CAN_SET_DEFAULT, defaultRateType } from "./rate-default-seam";
 
@@ -35,7 +36,7 @@ function row(p: Priced, input: CurrenciesInput): CurrencyRow {
 		crypto: p.crypto,
 		types: p.types,
 		prices: Object.fromEntries(
-			[...p.prices].map(([type, v]) => [type, toMoney(v, input.home)]),
+			[...p.perHome].map(([type, v]) => [type, toRate(v, p.code)]),
 		),
 		derived: p.types.filter((type) => p.derived.has(type)),
 		defaultType: p.crypto ? (p.types[0] ?? null) : defaultRateType(p.types),

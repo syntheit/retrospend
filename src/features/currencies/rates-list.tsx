@@ -54,7 +54,11 @@ export function RatesList({
 							end={
 								price && row.defaultType ? (
 									<>
-										<Money cents={priceCents(price)} value={price} />
+										<Money
+											cents={priceCents(price)}
+											places={price.places}
+											value={price}
+										/>
 										<span className="text-fg-3 text-meta">
 											{label(row.defaultType)}
 										</span>

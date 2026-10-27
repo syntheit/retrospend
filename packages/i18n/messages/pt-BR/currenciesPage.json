@@ -1,6 +1,6 @@
 {
 	"title": "Moedas",
-	"pricesIn": "Preços em {home}.",
+	"pricesIn": "Preço de 1 {home}.",
 	"updated": "Atualizado em {date}.",
 	"newUse": "Novos valores em moeda estrangeira usam {type}.",
 	"filters": {
@@ -19,7 +19,6 @@
 		"showAll": "Ver todas as moedas"
 	},
 	"missing": "Ainda não há cotação de {codes}. {count, plural, one {{names} fica} other {{names} ficam}} fora do patrimônio.",
-	"priceOf": "Preço de 1 unidade em {home}",
 	"favorite": "Favorita",
 	"currency": "Moeda",
 	"actions": "Ações",
@@ -36,10 +35,10 @@
 	"detail": {
 		"label": "Moeda selecionada",
 		"sheetTitle": "Cotações de {code}",
-		"sub": "{code} · 1 {code} em {home}, {date}",
+		"sub": "{code} · 1 {home} em {code}, {date}",
 		"noRate": "Sem cotação de {code}. Contas e despesas em {code} ficam fora dos totais.",
 		"usedBy": "Usada por {names}",
-		"rates": "Cotações",
+		"rates": "1 {home} em {code}",
 		"default": "Padrão",
 		"defaultTitle": "Padrão para novas despesas",
 		"defaultFixed": "O padrão do sistema, por enquanto."
