@@ -64,7 +64,7 @@ nix develop .#android -c bash apps/mobile/scripts/android-release.sh
 
 What it does: `expo prebuild`, Gradle `assembleRelease` (arm64-v8a only; `RETROSPEND_ABIS` to change), signed with the app key by `plugins/with-android-release-signing.js` (the key and passwords come from the environment and never enter the generated project), the Google-free check, `apksigner verify`, then `fdroid update`. The first run also creates the repo's own signing key (`repo-keystore.p12`, separate from the app key) and `config.yml` in `$FDROID_DIR`.
 
-- Repo: `https://fdroid.retrospend.app/repo` (override with `FDROID_REPO_URL` before the first run), nginx on `127.0.0.1:1999`, Basic auth (user `daniel`), served through the harbor tunnel. It is a separate host because `dev.retrospend.app` is the Next.js container.
+- Repo: `https://fdroid.retrospend.app/repo` (override with `FDROID_REPO_URL` before the first run), nginx on `127.0.0.1:1999`, public (APKs and index are signed; clients check the repo fingerprint), served through the harbor tunnel. It is a separate host because `dev.retrospend.app` is the Next.js container.
 - Phones: Droid-ify or F-Droid, Repositories, add the URL, enter the Basic-auth user and password. Check the repo fingerprint the script prints. Later releases arrive as updates.
 - Back up the app key. Losing it means uninstalling the app on every phone to install a differently signed one. The repo key lives in `$FDROID_DIR`; losing it means re-adding the repo on every phone.
 
