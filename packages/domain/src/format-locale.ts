@@ -22,12 +22,76 @@ const cache = new Map<string, NumberSymbols>();
 const FALLBACK_LOCALE = "en-US";
 
 /**
+ * The account's number format setting: null follows the language. Each
+ * choice names the group and the decimal separator, in that order. It keeps
+ * the language's pattern (where the sign and the symbol go, how digits
+ * group) and swaps only these two marks.
+ */
+export const NUMBER_FORMATS = [
+	"comma_dot",
+	"dot_comma",
+	"space_comma",
+] as const;
+export type NumberFormatChoice = (typeof NUMBER_FORMATS)[number];
+
+/** What each choice writes. U+202F is the narrow no-break space French uses. */
+const SEPARATORS: Record<
+	NumberFormatChoice,
+	{ group: string; decimal: string }
+> = {
+	comma_dot: { group: ",", decimal: "." },
+	dot_comma: { group: ".", decimal: "," },
+	space_comma: { group: "\u202f", decimal: "," },
+};
+
+export function numberFormatSeparators(choice: NumberFormatChoice): {
+	group: string;
+	decimal: string;
+} {
+	return SEPARATORS[choice];
+}
+
+/**
+ * The choice rides on the locale tag as a BCP 47 private-use suffix
+ * ("es-AR-x-nf-cd"), so every function that already takes a `locale` (the
+ * formatter, the typing parser, the draft helpers) honors it with no new
+ * parameter, and a client sets it in one place. Intl never sees the suffix:
+ * baseLocale strips it first.
+ */
+const TAG_CODES: Record<NumberFormatChoice, string> = {
+	comma_dot: "cd",
+	dot_comma: "dc",
+	space_comma: "sc",
+};
+const TAG_SUFFIX = /-x-nf-(cd|dc|sc)$/i;
+
+/** `locale` with the number format choice attached; null follows the language. */
+export function withNumberFormat(
+	locale: string,
+	choice: NumberFormatChoice | null | undefined,
+): string {
+	const base = baseLocale(locale);
+	return choice ? `${base}-x-nf-${TAG_CODES[choice]}` : base;
+}
+
+/** The locale without any number format suffix: what Intl may be given. */
+export function baseLocale(locale: string): string {
+	return locale.trim().replace(TAG_SUFFIX, "");
+}
+
+/** The number format choice a locale tag carries, or null. */
+export function numberFormatOf(locale: string): NumberFormatChoice | null {
+	const code = TAG_SUFFIX.exec(locale.trim())?.[1]?.toLowerCase();
+	return NUMBER_FORMATS.find((choice) => TAG_CODES[choice] === code) ?? null;
+}
+
+/**
  * "en_US" (as Android and POSIX write it) becomes "en-US". An unknown or
  * malformed tag becomes en-US rather than whatever the host defaults to, so
  * the server, the browser and a phone format it the same way.
  */
 function resolveLocale(locale: string): string {
-	const tag = locale.trim().replace(/_/g, "-");
+	const tag = baseLocale(locale).replace(/_/g, "-");
 	try {
 		return Intl.NumberFormat.supportedLocalesOf(tag)[0] ?? FALLBACK_LOCALE;
 	} catch {
@@ -38,9 +102,31 @@ function resolveLocale(locale: string): string {
 export function numberSymbols(locale: string): NumberSymbols {
 	const hit = cache.get(locale);
 	if (hit) return hit;
-	const symbols = readSymbols(resolveLocale(locale));
+	const symbols = withChoice(
+		readSymbols(resolveLocale(locale)),
+		numberFormatOf(locale),
+	);
 	cache.set(locale, symbols);
 	return symbols;
+}
+
+/**
+ * The language's symbols with the account's separators over them. A set
+ * format always groups: a language that does not group (or only from five
+ * digits) groups in threes, so "1.920,30" never shows as "1920,30".
+ */
+function withChoice(
+	symbols: NumberSymbols,
+	choice: NumberFormatChoice | null,
+): NumberSymbols {
+	if (!choice) return symbols;
+	const primary = symbols.primary || 3;
+	return {
+		...symbols,
+		...SEPARATORS[choice],
+		primary,
+		secondary: symbols.primary ? symbols.secondary : primary,
+	};
 }
 
 function readSymbols(locale: string): NumberSymbols {

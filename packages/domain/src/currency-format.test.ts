@@ -303,3 +303,73 @@ describe("formatCompactAmount", () => {
 		expect(formatCompactAmount(-1_500_000, ars)).toBe("-AR$1.5M");
 	});
 });
+
+// The account's number format swaps the group and decimal marks and keeps the
+// language's pattern. Expected strings are written out by hand. U+202F is the
+// narrow no-break space of the space_comma choice.
+describe("number format override", () => {
+	const NN = " ";
+
+	it("follows the language when no format is set", () => {
+		expect(formatCurrency(1234.56, "EUR")).toBe("€1.234,56");
+		expect(formatCurrency(1234.56, "USD", "standard", true, "auto", null)).toBe(
+			"$1,234.56",
+		);
+	});
+
+	it("swaps only the marks, in each choice", () => {
+		const f = (c: Parameters<typeof formatCurrency>[5]) =>
+			formatCurrency(1234.56, "USD", "standard", true, "auto", c);
+		expect(f("comma_dot")).toBe("$1,234.56");
+		expect(f("dot_comma")).toBe("$1.234,56");
+		expect(f("space_comma")).toBe(`$1${NN}234,56`);
+	});
+
+	it("keeps the language's sign and symbol position", () => {
+		expect(
+			formatCurrency(-1234.5, "EUR", "standard", true, "auto", "comma_dot"),
+		).toBe("-€1,234.50");
+		expect(
+			formatCurrency(
+				1234.5,
+				"EUR",
+				"standard",
+				true,
+				"exceptZero",
+				"dot_comma",
+			),
+		).toBe("+€1.234,50");
+	});
+
+	it("replaces a language's own group mark (Swiss apostrophe)", () => {
+		expect(formatCurrency(1920.3, "CHF")).toBe("CHF1'920.30");
+		expect(
+			formatCurrency(1920.3, "CHF", "standard", true, "auto", "dot_comma"),
+		).toBe("CHF1.920,30");
+	});
+
+	it("keeps smart places for JPY and ARS", () => {
+		expect(
+			formatCurrency(1234567, "JPY", "standard", true, "auto", "dot_comma"),
+		).toBe("¥1.234.567");
+		expect(
+			formatCurrency(1920.3, "ARS", "standard", true, "auto", "space_comma"),
+		).toBe(`AR$1${NN}920`);
+	});
+
+	it("swaps crypto marks", () => {
+		expect(
+			formatCurrency(0.12345678, "BTC", "standard", true, "auto", "dot_comma"),
+		).toBe("0,12345678 BTC");
+		expect(
+			formatCurrency(12345.5, "BTC", "standard", true, "auto", "dot_comma"),
+		).toBe("12.345,50 BTC");
+	});
+
+	it("swaps the compact axis mark", () => {
+		expect(formatCompactAmount(1_234_567, "$", "en-US-x-nf-dc")).toBe("$1,2M");
+		expect(formatCompactAmount(-1_500_000, "AR$", "en-US-x-nf-cd")).toBe(
+			"-AR$1.5M",
+		);
+	});
+});

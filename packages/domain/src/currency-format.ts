@@ -1,4 +1,10 @@
 import { CRYPTO_CURRENCIES, CURRENCIES } from "./currencies";
+import {
+	baseLocale,
+	type NumberFormatChoice,
+	numberFormatOf,
+	numberFormatSeparators,
+} from "./format-locale";
 import { partsOf } from "./intl-parts";
 
 /** Stablecoin tickers that should use 2 decimals instead of 8. */
@@ -81,10 +87,16 @@ export function formatCompactAmount(
 	symbol: string,
 	locale = "en-US",
 ): string {
-	const digits = new Intl.NumberFormat(locale, {
-		notation: "compact",
-		maximumFractionDigits: 1,
-	}).format(Math.abs(amount));
+	const digits = swapSeparators(
+		partsOf(
+			new Intl.NumberFormat(baseLocale(locale), {
+				notation: "compact",
+				maximumFractionDigits: 1,
+			}),
+			Math.abs(amount),
+		),
+		numberFormatOf(locale),
+	);
 	const sign = amount < 0 && /[1-9]/.test(digits) ? "-" : "";
 	return `${sign}${symbol}${digits}`;
 }
@@ -149,6 +161,24 @@ export function isCrypto(currency: string): boolean {
 export type CurrencySignDisplay = "auto" | "exceptZero";
 
 /**
+ * The text of formatted parts, with the account's separators in place of
+ * the language's. No choice: the language's own, untouched.
+ */
+function swapSeparators(
+	parts: Intl.NumberFormatPart[],
+	choice: NumberFormatChoice | null,
+): string {
+	const marks = choice ? numberFormatSeparators(choice) : null;
+	return parts
+		.map((p) => {
+			if (marks && p.type === "group") return marks.group;
+			if (marks && p.type === "decimal") return marks.decimal;
+			return p.value;
+		})
+		.join("");
+}
+
+/**
  * Formats `amount` with the locale's own sign handling and splits the sign
  * from the digits, so the currency symbol can sit between them ("-AR$2,000"
  * rather than "AR$-2,000"). An amount that rounds to zero gets no sign.
@@ -158,17 +188,24 @@ function formatSignedNumber(
 	locale: string,
 	options: Intl.NumberFormatOptions,
 	signDisplay: CurrencySignDisplay,
+	numberFormat: NumberFormatChoice | null,
 ): { sign: string; digits: string } {
+	// A set format always groups: some languages leave four digits whole.
+	const grouping = numberFormat ? { useGrouping: "always" } : {};
 	const parts = partsOf(
-		new Intl.NumberFormat(locale, { ...options, signDisplay }),
+		new Intl.NumberFormat(locale, {
+			...options,
+			...grouping,
+			signDisplay,
+		} as Intl.NumberFormatOptions),
 		amount,
 	);
 	const isSign = (p: Intl.NumberFormatPart) =>
 		p.type === "minusSign" || p.type === "plusSign";
-	const digits = parts
-		.filter((p) => !isSign(p))
-		.map((p) => p.value)
-		.join("");
+	const digits = swapSeparators(
+		parts.filter((p) => !isSign(p)),
+		numberFormat,
+	);
 	const isZero = !parts.some(
 		(p) =>
 			(p.type === "integer" || p.type === "fraction") && /[1-9]/.test(p.value),
@@ -191,6 +228,8 @@ function formatSignedNumber(
  * Automatically handles symbols, locale, and decimal digits based on currency.
  * For cryptocurrencies, it uses 8 decimal places and appends the ticker.
  * The sign follows the locale's pattern and goes before the symbol.
+ * `numberFormat` is the account's separator override (null follows the
+ * language): the pattern stays, only the group and decimal marks change.
  */
 export function formatCurrency(
 	amount: number,
@@ -198,6 +237,7 @@ export function formatCurrency(
 	currencySymbolStyle: "native" | "standard" = "standard",
 	smartFormatting = true,
 	signDisplay: CurrencySignDisplay = "auto",
+	numberFormat: NumberFormatChoice | null = null,
 ): string {
 	const upperCurrency = currency.toUpperCase();
 	const currencyData = CURRENCIES[upperCurrency as keyof typeof CURRENCIES];
@@ -209,6 +249,7 @@ export function formatCurrency(
 			"en-US",
 			{ minimumFractionDigits: 2, maximumFractionDigits: 8 },
 			signDisplay,
+			numberFormat,
 		);
 		return `${sign}${digits} ${upperCurrency}`;
 	}
@@ -252,6 +293,7 @@ export function formatCurrency(
 			maximumFractionDigits: decimalDigits,
 		},
 		signDisplay,
+		numberFormat,
 	);
 
 	return `${sign}${symbol}${digits}`;

@@ -10,11 +10,17 @@
  *   than the currency has (crypto significant digits, cents: false), and
  *   then it is half to even.
  * - The locale picks separators and grouping only; placement is the same in
- *   every locale so a row of amounts lines up.
+ *   every locale so a row of amounts lines up. The account's number format
+ *   setting rides on the locale tag (withNumberFormat in ./format-locale).
  *
  * Golden cases: packages/domain/vectors/money-format.vectors.json.
  */
-import { isCrypto, SMART_NO_DECIMAL_CURRENCIES } from "./currency-format";
+import { CURRENCIES } from "./currencies";
+import {
+	getCurrencySymbolWithPreference,
+	isCrypto,
+	SMART_NO_DECIMAL_CURRENCIES,
+} from "./currency-format";
 import {
 	compactAffix,
 	groupDigits,
@@ -35,6 +41,13 @@ export interface FormatMoneyOptions {
 	display?: MoneyDisplay;
 	/** Default "auto". */
 	sign?: MoneySign;
+	/**
+	 * The account's currency symbol style. With display "symbol" it picks the
+	 * symbol the way the legacy formatter does (standard "AR$", native "$"),
+	 * so the same amount reads the same on every client. Omitted: only
+	 * unambiguous symbols show.
+	 */
+	symbolStyle?: "native" | "standard";
 	/**
 	 * auto (default): the currency's minor digits; high-nominal currencies
 	 * (ARS, COP...) drop ".00" on whole amounts; crypto shows up to 8
@@ -110,12 +123,26 @@ function shownDecimals(
 	return { shown: decimals, trim: false };
 }
 
+/** The symbol to show, or undefined when the code shows instead. */
+function symbolFor(
+	code: string,
+	display: MoneyDisplay,
+	style: "native" | "standard" | undefined,
+): string | undefined {
+	if (display !== "symbol") return undefined;
+	if (!style) return UNAMBIGUOUS_SYMBOLS[code];
+	// Crypto and unknown tickers have no symbol: their code stands.
+	if (!(code in CURRENCIES)) return undefined;
+	return getCurrencySymbolWithPreference(code, style);
+}
+
 function unitLabel(
 	code: string,
 	display: MoneyDisplay,
 	locale: string,
+	style?: "native" | "standard",
 ): string {
-	const symbol = display === "symbol" ? UNAMBIGUOUS_SYMBOLS[code] : undefined;
+	const symbol = symbolFor(code, display, style);
 	if (display === "none") return "";
 	if (!symbol) return code + NBSP;
 	return numberSymbols(locale).symbolSpaced ? symbol + NBSP : symbol;
@@ -172,7 +199,13 @@ export function formatMoney(
 ): string | null {
 	if (value == null) return null;
 	const { minor, currency } = checkedMoney(value.minor, value.currency);
-	const { locale, display = "code", sign = "auto", cents = "auto" } = options;
+	const {
+		locale,
+		display = "code",
+		sign = "auto",
+		cents = "auto",
+		symbolStyle,
+	} = options;
 	const abs = Math.abs(minor);
 	const own = currencyDecimals(currency);
 	const decimals = Math.max(own, options.places ?? 0);
@@ -180,7 +213,7 @@ export function formatMoney(
 		const c = compactNumber(abs, decimals, locale, numberSymbols(locale));
 		return (
 			signFor(minor, c.rounded, sign) +
-			unitLabel(currency, display, locale) +
+			unitLabel(currency, display, locale, symbolStyle) +
 			c.text
 		);
 	}
@@ -200,7 +233,7 @@ export function formatMoney(
 
 	return (
 		signFor(minor, rounded, sign) +
-		unitLabel(currency, display, locale) +
+		unitLabel(currency, display, locale, symbolStyle) +
 		number
 	);
 }
