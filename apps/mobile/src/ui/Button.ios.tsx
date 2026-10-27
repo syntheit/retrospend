@@ -1,5 +1,6 @@
 import { Button as SwiftButton, Text } from "@expo/ui/swift-ui";
 import {
+	accessibilityLabel as a11yLabel,
 	buttonStyle,
 	disabled as disabledModifier,
 	foregroundStyle,
@@ -27,6 +28,7 @@ export const BUTTON_STYLE = {
  */
 export function Button({
 	label,
+	accessibilityLabel,
 	onPress,
 	variant = "filled",
 	disabled,
@@ -38,6 +40,7 @@ export function Button({
 				modifiers={[
 					buttonStyle(BUTTON_STYLE[variant]),
 					tint(color.brand),
+					...(accessibilityLabel ? [a11yLabel(accessibilityLabel)] : []),
 					...(disabled ? [disabledModifier(true)] : []),
 				]}
 				onPress={onPress}

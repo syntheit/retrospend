@@ -58127,6 +58127,11 @@
 													},
 													"name": {
 														"type": "string"
+													},
+													"tone": {
+														"maximum": 9007199254740991,
+														"minimum": -9007199254740991,
+														"type": "integer"
 													}
 												},
 												"required": [
@@ -58134,6 +58139,7 @@
 													"name",
 													"color",
 													"icon",
+													"tone",
 													"excludeByDefault",
 													"expenseCount"
 												],
@@ -58361,6 +58367,11 @@
 										},
 										"name": {
 											"type": "string"
+										},
+										"tone": {
+											"maximum": 9007199254740991,
+											"minimum": -9007199254740991,
+											"type": "integer"
 										}
 									},
 									"required": [
@@ -58368,6 +58379,7 @@
 										"name",
 										"color",
 										"icon",
+										"tone",
 										"excludeByDefault",
 										"expenseCount"
 									],
@@ -58658,6 +58670,11 @@
 										},
 										"name": {
 											"type": "string"
+										},
+										"tone": {
+											"maximum": 9007199254740991,
+											"minimum": -9007199254740991,
+											"type": "integer"
 										}
 									},
 									"required": [
@@ -58665,6 +58682,7 @@
 										"name",
 										"color",
 										"icon",
+										"tone",
 										"excludeByDefault",
 										"expenseCount"
 									],
@@ -58885,6 +58903,11 @@
 										},
 										"name": {
 											"type": "string"
+										},
+										"tone": {
+											"maximum": 9007199254740991,
+											"minimum": -9007199254740991,
+											"type": "integer"
 										}
 									},
 									"required": [
@@ -58892,6 +58915,7 @@
 										"name",
 										"color",
 										"icon",
+										"tone",
 										"excludeByDefault",
 										"expenseCount"
 									],
@@ -59079,6 +59103,11 @@
 										},
 										"name": {
 											"type": "string"
+										},
+										"tone": {
+											"maximum": 9007199254740991,
+											"minimum": -9007199254740991,
+											"type": "integer"
 										}
 									},
 									"required": [
@@ -59086,6 +59115,7 @@
 										"name",
 										"color",
 										"icon",
+										"tone",
 										"excludeByDefault",
 										"expenseCount"
 									],

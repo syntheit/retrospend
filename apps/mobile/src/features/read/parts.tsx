@@ -1,7 +1,9 @@
+import { categoryIconName } from "@retrospend/domain/category-icons";
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { categoryColor, Glyph, type GlyphName } from "@/ui/Glyph";
 
 /** A section title with the count or action at its end. Flat, no card. */
 export function SectionHeader({
@@ -92,23 +94,28 @@ export function StaleNote({ since }: { since: string | null }) {
 	);
 }
 
+/** The category a row names: its icon key and its color slot (1 to 21). */
+export interface CategoryRef {
+	name: string | null;
+	icon: string | null;
+	tone: number;
+}
+
 /**
- * The category as a tile with its letter, on its own category color. It
- * says only "which category" (GUIDELINE §2.1) and sits in list rows only.
+ * The category as a tinted tile with its glyph, on its own category color.
+ * It says only "which category" (GUIDELINE 2.1) and sits in list rows only;
+ * pickers and menus show the bare glyph. A row with no category gets the
+ * neutral tile and `fallback` (a payment is a banknote).
  */
 export function CategoryTile({
-	tone,
-	label,
+	category,
+	fallback = "Tag",
 }: {
-	tone: number | null;
-	label: string;
+	category: CategoryRef | null;
+	fallback?: GlyphName;
 }) {
-	const { color, radius, size, type } = useTheme();
-	const palette = color as unknown as Record<string, string>;
-	const base =
-		tone === null
-			? color.fg3
-			: (palette[`category${((tone - 1) % 21) + 1}`] ?? color.fg3);
+	const { color, radius, size } = useTheme();
+	const base = category ? categoryColor(color, category.tone) : color.fg3;
 	return (
 		<View
 			accessibilityElementsHidden
@@ -122,11 +129,15 @@ export function CategoryTile({
 				justifyContent: "center",
 			}}
 		>
-			<Text
-				style={{ color: base, fontSize: type.body.size, fontWeight: "600" }}
-			>
-				{Array.from(label.trim())[0]?.toUpperCase() ?? ""}
-			</Text>
+			<Glyph
+				color={base}
+				name={
+					category?.name || category?.icon
+						? categoryIconName(category.name ?? "", category.icon)
+						: fallback
+				}
+				size={size.icon.phone}
+			/>
 		</View>
 	);
 }

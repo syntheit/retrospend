@@ -1,12 +1,17 @@
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { useVerdictText } from "@/features/budget/useVerdictText";
+import { verdictLabel, verdictSentence } from "@/features/budget/verdict";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { ListRow } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";
 import { type Glance as GlanceData, heroOf } from "./source";
+
+/** Home names no envelopes: the over verdicts it words never list any. */
+const NO_NAMES: ReadonlyMap<string, string> = new Map();
 
 /** A figure the server could not compute reads as words, never as 0 or 1. */
 function Figure({
@@ -78,42 +83,71 @@ export function Glance({
 	const format = useMoneyText();
 	const { color, space, type } = useTheme();
 	const hero = heroOf(glance);
+	const verdictText = useVerdictText(NO_NAMES);
 	const noRate = useTranslations("mobile.money")("noRate");
+	// Over budget reads as the Budget page does: "Over budget", how far, and why.
+	const heroTitle =
+		hero.kind === "over"
+			? verdictText(
+					verdictLabel(hero.verdict, hero.verdict.style === "SAVE_FIRST"),
+				)
+			: hero.kind === "left"
+				? t("leftToSpend")
+				: t("spentThisMonth");
+	const opensBudget = hero.kind === "left" || hero.kind === "over";
 
 	const sub =
-		hero.kind === "left"
-			? [
-					t("perDay", {
-						amount: format(hero.perDay),
-						days: hero.daysLeft,
-					}),
-					t("spentSoFar", { amount: format(hero.spent) }),
-				]
-			: hero.lastToDate
-				? [t("lastMonth", { amount: format(hero.lastToDate) })]
-				: [];
+		hero.kind === "over"
+			? [verdictText(verdictSentence(hero.verdict))]
+			: hero.kind === "left"
+				? [
+						t("perDay", {
+							amount: format(hero.perDay),
+							days: hero.daysLeft,
+						}),
+						t("spentSoFar", { amount: format(hero.spent) }),
+					]
+				: hero.lastToDate
+					? [t("lastMonth", { amount: format(hero.lastToDate) })]
+					: [];
 
 	// Left to spend is the budget's own number, so a tap on it opens Budget.
 	const heroLabel = [
-		hero.kind === "left" ? t("leftToSpend") : t("spentThisMonth"),
-		hero.amount ? format(hero.amount) : noRate,
+		heroTitle,
+		hero.amount
+			? format(
+					hero.amount,
+					hero.kind === "over" ? { sign: "never" } : undefined,
+				)
+			: noRate,
 		...sub,
 	].join(", ");
 
 	return (
 		<View>
 			<Pressable
-				accessibilityLabel={hero.kind === "left" ? heroLabel : undefined}
-				accessibilityRole={hero.kind === "left" ? "button" : undefined}
-				accessible={hero.kind === "left" ? true : undefined}
-				disabled={hero.kind !== "left"}
+				accessibilityLabel={opensBudget ? heroLabel : undefined}
+				accessibilityRole={opensBudget ? "button" : undefined}
+				accessible={opensBudget ? true : undefined}
+				disabled={!opensBudget}
 				onPress={() => router.navigate("/budget")}
 				style={{ gap: space[1], padding: space[4] }}
 			>
 				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{hero.kind === "left" ? t("leftToSpend") : t("spentThisMonth")}
+					{heroTitle}
 				</Text>
-				{hero.amount ? (
+				{hero.kind === "over" ? (
+					<Text
+						style={{
+							color: color.fg,
+							fontSize: type.hero.size,
+							fontVariant: ["tabular-nums"],
+							fontWeight: "600",
+						}}
+					>
+						{format(hero.amount, { sign: "never" })}
+					</Text>
+				) : hero.amount ? (
 					<MoneyAmount align="left" size="hero" value={hero.amount} />
 				) : (
 					<Text

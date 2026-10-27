@@ -136,7 +136,7 @@ export function SharedRow({ row }: { row: LedgerRow }) {
 				.filter(Boolean)
 				.join(", ")}
 		>
-			<CategoryTile label={row.title} tone={row.category?.tone ?? null} />
+			<CategoryTile category={row.category} />
 			<View style={{ flex: 1, gap: 2 }}>
 				<Text
 					numberOfLines={1}
