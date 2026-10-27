@@ -15,6 +15,7 @@ import {
 import { usePeopleOverview } from "@/features/people/usePeople";
 import { useFaces } from "@/features/read/faces";
 import { ListRow, SectionHeader, StaleNote } from "@/features/read/parts";
+import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
@@ -136,6 +137,7 @@ export function PeopleList({
 	const t = useTranslations("mobile.people");
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
+	const searchRef = useSearchShortcut(filters === undefined);
 	const { state, reload } = usePeopleOverview();
 	const [ownChip, setOwnChip] = useState<PeopleChip>("all");
 	const [ownQuery, setQuery] = useState("");
@@ -171,6 +173,7 @@ export function PeopleList({
 	const list = (
 		<SectionList
 			contentInsetAdjustmentBehavior="automatic"
+			keyboardDismissMode="on-drag"
 			keyExtractor={(item) => item.person.key}
 			ListEmptyComponent={empty}
 			ListHeaderComponent={
@@ -236,6 +239,7 @@ export function PeopleList({
 				<Stack.Screen
 					options={{
 						headerSearchBarOptions: {
+							ref: searchRef,
 							placeholder: t("search"),
 							onChangeText: (event) => setQuery(event.nativeEvent.text),
 						},

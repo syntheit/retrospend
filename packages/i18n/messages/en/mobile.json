@@ -5,7 +5,8 @@
 		"budget": "Budget",
 		"people": "People",
 		"projects": "Projects",
-		"add": "Add expense"
+		"add": "Add expense",
+		"search": "Search"
 	},
 	"common": {
 		"cancel": "Cancel",

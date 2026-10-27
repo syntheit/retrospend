@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ProjectsList } from "@/features/projects/ProjectsList";
+import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useTheme } from "@/theme";
 import { Segmented } from "@/ui/Segmented";
 import type { PeopleChip } from "./groups";
@@ -26,6 +27,7 @@ export function PeopleHub() {
 	const tp = useTranslations("mobile.people");
 	const tj = useTranslations("mobile.projects");
 	const { color, space } = useTheme();
+	const searchRef = useSearchShortcut();
 	const { segment: requested } = useLocalSearchParams<{ segment?: string }>();
 	const [segment, setSegment] = useState<PeopleSegment>(
 		() => parseSegment(requested) ?? readSegment(),
@@ -76,6 +78,7 @@ export function PeopleHub() {
 			<Stack.Screen
 				options={{
 					headerSearchBarOptions: {
+						ref: searchRef,
 						placeholder: segment === "people" ? tp("search") : tj("search"),
 						onChangeText: (event) => setQuery(event.nativeEvent.text),
 					},

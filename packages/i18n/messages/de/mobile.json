@@ -5,7 +5,8 @@
 		"budget": "Budget",
 		"people": "Personen",
 		"projects": "Projekte",
-		"add": "Ausgabe hinzufügen"
+		"add": "Ausgabe hinzufügen",
+		"search": "Suchen"
 	},
 	"common": {
 		"cancel": "Abbrechen",

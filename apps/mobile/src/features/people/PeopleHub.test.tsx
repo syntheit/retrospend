@@ -20,6 +20,8 @@ const mockSetParams = jest.fn((next: { segment?: string }) => {
 
 jest.mock("expo-router", () => ({
 	useLocalSearchParams: () => mockParams,
+	useFocusEffect: (effect: () => void) =>
+		require("react").useEffect(effect, [effect]),
 	router: { setParams: (next: { segment?: string }) => mockSetParams(next) },
 	Stack: {
 		Screen: ({ options }: { options: typeof mockSearchOptions }) => {

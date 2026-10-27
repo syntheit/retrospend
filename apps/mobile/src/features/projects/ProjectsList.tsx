@@ -8,6 +8,7 @@ import { groupProjects, matchesProject } from "@/features/projects/source";
 import { useProjectList } from "@/features/projects/useProjects";
 import { SectionHeader, StaleNote } from "@/features/read/parts";
 import { projectRoute } from "@/layout/destinations";
+import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
@@ -32,6 +33,7 @@ export function ProjectsList({
 	const t = useTranslations("mobile.projects");
 	const { color } = useTheme();
 	const { listDetail } = useLayoutClass();
+	const searchRef = useSearchShortcut(sharedQuery === undefined);
 	const { state, reload } = useProjectList();
 	const [ownQuery, setQuery] = useState("");
 	const query = sharedQuery ?? ownQuery;
@@ -63,6 +65,7 @@ export function ProjectsList({
 	const list = (
 		<SectionList
 			contentInsetAdjustmentBehavior="automatic"
+			keyboardDismissMode="on-drag"
 			keyExtractor={(item) => item.id}
 			ListEmptyComponent={empty}
 			ListHeaderComponent={
@@ -108,6 +111,7 @@ export function ProjectsList({
 				<Stack.Screen
 					options={{
 						headerSearchBarOptions: {
+							ref: searchRef,
 							placeholder: t("search"),
 							onChangeText: (event) => setQuery(event.nativeEvent.text),
 						},

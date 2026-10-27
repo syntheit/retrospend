@@ -42,6 +42,19 @@ export function addControlFor(info: PlatformInfo): AddControl {
 	return "floating";
 }
 
+/**
+ * Whether the floating add button shows. The iPhone's tab-bar plus sits under
+ * the keyboard while a search field has focus (the keyboard covers the whole
+ * bar, and a tap there lands on the keyboard's dictation key), so for as long
+ * as the keyboard is up the same button floats above it.
+ */
+export function floatingAddShown(
+	control: AddControl,
+	keyboardHeight: number,
+): boolean {
+	return control === "floating" || (control === "tab" && keyboardHeight > 0);
+}
+
 export const ADD_CONTROL = addControlFor({
 	os: Platform.OS,
 	isPad: Platform.OS === "ios" && Platform.isPad,
