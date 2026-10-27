@@ -39,11 +39,12 @@ describe("buildCurrenciesView", () => {
 		expect(view.canSetDefault).toBe(false);
 		const usd = view.rows.find((x) => x.code === "USD");
 		expect(usd?.defaultType).toBe("blue");
-		// 1 ARS buys 1 / 1468 = 0.00068 USD (two significant digits, 5 places).
+		// The stronger one is the unit: 1 USD = ARS 1,468.
 		expect(usd?.prices.blue).toEqual({
-			minor: 68,
-			currency: "USD",
-			places: 5,
+			minor: 146800,
+			currency: "ARS",
+			places: 2,
+			base: "USD",
 		});
 		expect(usd?.rateId).toBeNull();
 		expect(usd?.usedBy).toEqual(["Wise"]);
@@ -105,7 +106,7 @@ describe("convert", () => {
 	});
 });
 
-describe("each row reads 1 home unit in the row's currency", () => {
+describe("each row prices the stronger currency in the weaker", () => {
 	const view = (home: string, rates: ReturnType<typeof r>[]) =>
 		buildCurrenciesView({
 			home,
@@ -117,11 +118,11 @@ describe("each row reads 1 home unit in the row's currency", () => {
 	const price = (v: ReturnType<typeof view>, code: string, type: string) =>
 		v.rows.find((x) => x.code === code)?.prices[type];
 
-	it("USD home: 1 USD = ARS 1,555 at blue, BRL 5.35, KWD 0.307, BTC 0.00000893", () => {
+	it("USD home: 1 USD = ARS 1,555 and BRL 5.40; 1 KWD = USD 3.26; 1 BTC = USD 112,000", () => {
 		const v = view("USD", [
 			r("ARS", "official", "1400"),
 			r("ARS", "blue", "1555"),
-			r("BRL", "official", "5.35"),
+			r("BRL", "official", "5.4"),
 			r("KWD", "official", "0.307"),
 			r("BTC", "crypto", "112000"),
 		]);
@@ -129,54 +130,81 @@ describe("each row reads 1 home unit in the row's currency", () => {
 			minor: 155500,
 			currency: "ARS",
 			places: 2,
+			base: "USD",
 		});
 		expect(price(v, "ARS", "official")).toEqual({
 			minor: 140000,
 			currency: "ARS",
 			places: 2,
+			base: "USD",
 		});
 		expect(price(v, "BRL", "official")).toEqual({
-			minor: 535,
+			minor: 540,
 			currency: "BRL",
 			places: 2,
+			base: "USD",
 		});
-		// KWD keeps its three digits.
+		// 1 / 0.307 = 3.2573: KWD is stronger, so 1 KWD = USD 3.26.
 		expect(price(v, "KWD", "official")).toEqual({
-			minor: 307,
-			currency: "KWD",
-			places: 3,
+			minor: 326,
+			currency: "USD",
+			places: 2,
+			base: "KWD",
 		});
-		// 1 / 112000 = 0.00000892857: eight places, half to even -> 893.
 		expect(price(v, "BTC", "market")).toEqual({
-			minor: 893,
-			currency: "BTC",
-			places: 8,
+			minor: 11200000,
+			currency: "USD",
+			places: 2,
+			base: "BTC",
+		});
+		// The units differ (USD, KWD, BTC), so each cell names its own.
+		expect(v.base).toBeNull();
+	});
+
+	it("ARS home: 1 USD = ARS 1,450, 1 BRL = ARS 268.52, 1 EUR = ARS 1,611.11", () => {
+		const v = view("ARS", [
+			r("ARS", "official", "1450"),
+			r("BRL", "official", "5.4"),
+			r("EUR", "official", "0.9"),
+		]);
+		expect(price(v, "USD", "official")).toEqual({
+			minor: 145000,
+			currency: "ARS",
+			places: 2,
+			base: "USD",
+		});
+		// 1450 / 5.4 = 268.5185 -> 268.52
+		expect(price(v, "BRL", "official")).toEqual({
+			minor: 26852,
+			currency: "ARS",
+			places: 2,
+			base: "BRL",
+		});
+		// 1450 / 0.9 = 1611.111 -> 1611.11
+		expect(price(v, "EUR", "official")).toEqual({
+			minor: 161111,
+			currency: "ARS",
+			places: 2,
+			base: "EUR",
 		});
 	});
 
-	it("ARS home: 1 ARS = USD 0.00064 at blue; BRL goes through the dollar", () => {
-		const v = view("ARS", [
+	it("a home weaker than the dollar still prices the dollar as the unit", () => {
+		// IDR home, 15,000 per USD: 1 USD = IDR 15,000.
+		const idr = view("IDR", [r("IDR", "official", "15000")]);
+		expect(price(idr, "USD", "official")).toMatchObject({
+			minor: 1500000,
+			currency: "IDR",
+			base: "USD",
+		});
+	});
+
+	it("when every price shares one unit the page names it once", () => {
+		const v = view("USD", [
 			r("ARS", "official", "1400"),
-			r("ARS", "blue", "1555"),
-			r("BRL", "official", "5"),
+			r("BRL", "official", "5.4"),
 		]);
-		// 1 / 1555 = 0.000643: two significant digits need 5 places.
-		expect(price(v, "USD", "blue")).toEqual({
-			minor: 64,
-			currency: "USD",
-			places: 5,
-		});
-		// 5 / 1555 = 0.00321543 -> 0.0032 (4 places); at official 5 / 1400 = 0.00357 -> 0.0036.
-		expect(price(v, "BRL", "blue")).toEqual({
-			minor: 32,
-			currency: "BRL",
-			places: 4,
-		});
-		expect(price(v, "BRL", "official")).toEqual({
-			minor: 36,
-			currency: "BRL",
-			places: 4,
-		});
+		expect(v.base).toBe("USD");
 	});
 
 	it("a currency with no rate has no price (never 1)", () => {

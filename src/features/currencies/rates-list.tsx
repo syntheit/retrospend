@@ -4,12 +4,11 @@ import { useTranslations } from "next-intl";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { CurrencyTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { Money } from "~/components/money/money";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import { useRateLabel } from "~/features/wealth/sheets/rate-type-chips";
 import { useCurrencyName } from "./currency-detail";
 import { useCurrencySub } from "./currency-name";
-import { priceCents } from "./price-cents";
+import { RateText } from "./rate-text";
 import { StarButton } from "./star-button";
 import type { CurrencyRow } from "./types";
 import { targetOf } from "./use-currency-actions";
@@ -17,12 +16,15 @@ import { targetOf } from "./use-currency-actions";
 /** Phone: one row per currency, the default price with its type under it. */
 export function RatesList({
 	rows,
+	base,
 	handlers,
 	onSelect,
 	onFavorite,
 	favoriteBusy,
 }: {
 	rows: CurrencyRow[];
+	/** The one unit every price shares, when there is one. */
+	base: string | null;
 	handlers: ActionHandlers<CurrencyTarget>;
 	onSelect: (code: string) => void;
 	onFavorite: (row: CurrencyRow, on: boolean) => void;
@@ -54,11 +56,7 @@ export function RatesList({
 							end={
 								price && row.defaultType ? (
 									<>
-										<Money
-											cents={priceCents(price)}
-											places={price.places}
-											value={price}
-										/>
+										<RateText price={price} showBase={!base} />
 										<span className="text-fg-3 text-meta">
 											{label(row.defaultType)}
 										</span>

@@ -6,9 +6,11 @@ import type {
 	ConvertResult,
 	CurrenciesView,
 	CurrencyRow,
+	RatePrice,
 } from "../types";
 import {
 	columnsOf,
+	type Dec,
 	fromMinorDec,
 	type Priced,
 	priceAll,
@@ -28,6 +30,22 @@ export type CurrenciesInput = {
 	updated: string | null;
 };
 
+/**
+ * The stronger currency of the pair is the one unit (the one whose unit is
+ * worth more at this rate: 1 USD = ARS 1,555, 1 KWD = USD 3.26), priced in
+ * the weaker. Equal reads as the row's own currency.
+ */
+export function priceOf(
+	code: string,
+	inHome: Dec,
+	perHome: Dec,
+	home: string,
+): RatePrice {
+	return inHome.gte(1)
+		? { ...toRate(inHome, home), base: code }
+		: { ...toRate(perHome, code), base: home };
+}
+
 function row(p: Priced, input: CurrenciesInput): CurrencyRow {
 	const favs = input.favorites.filter((f) => f.currency === p.code);
 	const own = input.rates.filter((r) => r.currency === p.code);
@@ -36,7 +54,12 @@ function row(p: Priced, input: CurrenciesInput): CurrencyRow {
 		crypto: p.crypto,
 		types: p.types,
 		prices: Object.fromEntries(
-			[...p.perHome].map(([type, v]) => [type, toRate(v, p.code)]),
+			[...p.prices].flatMap(([type, inHome]) => {
+				const perHome = p.perHome.get(type);
+				return perHome
+					? [[type, priceOf(p.code, inHome, perHome, input.home)]]
+					: [];
+			}),
 		),
 		derived: p.types.filter((type) => p.derived.has(type)),
 		defaultType: p.crypto ? (p.types[0] ?? null) : defaultRateType(p.types),
@@ -87,8 +110,12 @@ export function buildCurrenciesView(input: CurrenciesInput): CurrenciesView {
 	const homeTypes = input.rates
 		.filter((r) => r.currency === input.home)
 		.map((r) => r.type);
+	const bases = new Set(
+		rows.flatMap((r) => Object.values(r.prices).map((x) => x.base)),
+	);
 	return {
 		home: input.home,
+		base: bases.size === 1 ? ([...bases][0] ?? null) : null,
 		columns: columnsOf(priced),
 		rows: [...rows, ...missing].sort(rank),
 		updated: input.updated,

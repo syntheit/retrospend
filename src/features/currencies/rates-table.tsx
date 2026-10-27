@@ -4,7 +4,6 @@ import { useTranslations } from "next-intl";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { CurrencyTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { Money } from "~/components/money/money";
 import {
 	Table,
 	TableBody,
@@ -16,7 +15,7 @@ import {
 import { useRateLabel } from "~/features/wealth/sheets/rate-type-chips";
 import { cn } from "~/lib/cn";
 import { CurrencyName } from "./currency-name";
-import { priceCents } from "./price-cents";
+import { RateText } from "./rate-text";
 import { StarButton } from "./star-button";
 import { type CurrencyRow, MARKET } from "./types";
 import { targetOf } from "./use-currency-actions";
@@ -29,10 +28,13 @@ function RateCell({
 	row,
 	type,
 	columns,
+	base,
 }: {
 	row: CurrencyRow;
 	type: string;
 	columns: string[];
+	/** The one unit every price shares, when there is one. */
+	base: string | null;
 }) {
 	const t = useTranslations("currenciesPage");
 	const price = row.prices[type];
@@ -46,23 +48,24 @@ function RateCell({
 			</span>
 		);
 	return (
-		<Money
-			cents={priceCents(price)}
+		<RateText
 			className={cn(type === row.defaultType && "font-semibold")}
-			places={price.places}
-			value={price}
+			price={price}
+			showBase={!base}
 		/>
 	);
 }
 
 /**
- * Desktop: one table, a column per rate type, each cell what 1 home unit buys,
+ * Desktop: one table, a column per rate type, each cell the stronger currency of the pair
+ * priced in the weaker,
  * the default type in bold. A row click selects the currency for the
  * detail panel; right-click and ⋯ open the registry menu.
  */
 export function RatesTable({
 	rows,
 	columns,
+	base,
 	selected,
 	handlers,
 	onSelect,
@@ -71,6 +74,7 @@ export function RatesTable({
 }: {
 	rows: CurrencyRow[];
 	columns: string[];
+	base: string | null;
 	selected: string | null;
 	handlers: ActionHandlers<CurrencyTarget>;
 	onSelect: (code: string) => void;
@@ -129,7 +133,12 @@ export function RatesTable({
 								</TableCell>
 								{columns.map((c) => (
 									<TableCell className="text-right tabular-nums" key={c}>
-										<RateCell columns={columns} row={row} type={c} />
+										<RateCell
+											base={base}
+											columns={columns}
+											row={row}
+											type={c}
+										/>
 									</TableCell>
 								))}
 								<TableCell onClick={(e) => e.stopPropagation()}>

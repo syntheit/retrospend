@@ -13,8 +13,8 @@ import type { ConvertDirection, CurrencyRow } from "./types";
 import { useConvert } from "./use-convert";
 
 /**
- * Convert: one amount of the home currency into this one (the swap turns it
- * around), and a result per rate type. The amount is
+ * Convert: one amount of the stronger currency of the pair into the weaker
+ * (the swap turns it around), and a result per rate type. The amount is
  * parsed here (the shared parser) and converted on the server.
  */
 export function ConvertBlock({
@@ -28,7 +28,13 @@ export function ConvertBlock({
 	const locale = useLocale();
 	const tp = useTranslations("currenciesPage");
 	const label = useRateLabel();
-	const [direction, setDirection] = useState<ConvertDirection>("fromHome");
+	const defaultPrice = row.defaultType
+		? row.prices[row.defaultType]
+		: undefined;
+	const [direction, setDirection] = useState<ConvertDirection>(
+		// The stronger currency is the one unit: from home when home is the base.
+		defaultPrice?.base === home ? "fromHome" : "toHome",
+	);
 	const [text, setText] = useState("100");
 	const from = direction === "toHome" ? row.code : home;
 	const to = direction === "toHome" ? home : row.code;

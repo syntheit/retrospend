@@ -4,7 +4,7 @@ import { Decimal } from "@prisma/client/runtime/index-browser";
 import { isCrypto } from "@retrospend/domain/currency-format";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { type Money, money, toMinor } from "@retrospend/domain/money-minor";
-import { MARKET, type RatePrice } from "../types";
+import { MARKET, type Rate } from "../types";
 import { defaultRateType } from "./rate-default-seam";
 
 /** Exact, half to even, enough digits for any rate times any amount. */
@@ -137,7 +137,7 @@ export function toMoney(value: Dec, currency: string): Money {
  * (BTC 0.00001493). `places` says what `minor` counts, so the client
  * formats it without computing anything.
  */
-export function toRate(value: Dec, currency: string): RatePrice {
+export function toRate(value: Dec, currency: string): Rate {
 	const own = currencyDecimals(currency);
 	const limit = isCrypto(currency) ? Math.max(own, 8) : own + 6;
 	let places = own;

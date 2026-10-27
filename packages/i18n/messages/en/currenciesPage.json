@@ -1,6 +1,6 @@
 {
 	"title": "Currencies",
-	"pricesIn": "Price of 1 {home}.",
+	"pricesIn": "Price of 1 {base}.",
 	"updated": "Updated {date}.",
 	"newUse": "New foreign amounts use {type}.",
 	"filters": {
@@ -24,6 +24,7 @@
 	"actions": "Actions",
 	"noRate": "No rate",
 	"noType": "No rate of this type",
+	"base": "1 {code} =",
 	"derived": "Derived through {home}",
 	"subNoRate": "{name} · no rate",
 	"subDefault": "{name} · {type} by default",
@@ -35,10 +36,10 @@
 	"detail": {
 		"label": "Selected currency",
 		"sheetTitle": "{code} rates",
-		"sub": "{code} · 1 {home} in {code}, {date}",
+		"sub": "{code} · {date}",
 		"noRate": "No {code} rate. Accounts and expenses in {code} are left out of totals.",
 		"usedBy": "Used by {names}",
-		"rates": "1 {home} in {code}",
+		"rates": "Rates",
 		"default": "Default",
 		"defaultTitle": "Default for new expenses",
 		"defaultFixed": "The built-in default for now."

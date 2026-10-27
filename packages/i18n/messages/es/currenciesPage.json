@@ -1,6 +1,6 @@
 {
 	"title": "Monedas",
-	"pricesIn": "Precio de 1 {home}.",
+	"pricesIn": "Precio de 1 {base}.",
 	"updated": "Actualizado el {date}.",
 	"newUse": "Los importes nuevos en otra moneda usan {type}.",
 	"filters": {
@@ -24,6 +24,7 @@
 	"actions": "Acciones",
 	"noRate": "Sin tipo de cambio",
 	"noType": "Sin tipo de cambio de esta clase",
+	"base": "1 {code} =",
 	"derived": "Derivado a través de {home}",
 	"subNoRate": "{name} · sin tipo de cambio",
 	"subDefault": "{name} · {type} por defecto",
@@ -35,10 +36,10 @@
 	"detail": {
 		"label": "Moneda seleccionada",
 		"sheetTitle": "Tipos de cambio de {code}",
-		"sub": "{code} · 1 {home} en {code}, {date}",
+		"sub": "{code} · {date}",
 		"noRate": "No hay tipo de cambio de {code}. Las cuentas y gastos en {code} quedan fuera de los totales.",
 		"usedBy": "La usa {names}",
-		"rates": "1 {home} en {code}",
+		"rates": "Tipos de cambio",
 		"default": "Por defecto",
 		"defaultTitle": "Por defecto para gastos nuevos",
 		"defaultFixed": "Por ahora, el valor predeterminado."
