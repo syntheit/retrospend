@@ -13,6 +13,7 @@ import { useActivity } from "@/features/activity/useActivity";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { StaleNote } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
@@ -63,6 +64,7 @@ export default function ActivityScreen() {
 	const dayLabel = useDayLabel();
 	const { color, space, type } = useTheme();
 	const { listDetail } = useLayoutClass();
+	const searchRef = useSearchShortcut();
 	const [filter, setFilter] = useState(DEFAULT_FILTER);
 	const [search, setSearch] = useState("");
 	const [selected, setSelected] = useState<ActivityItem | null>(null);
@@ -192,6 +194,7 @@ export default function ActivityScreen() {
 			<Stack.Screen
 				options={{
 					headerSearchBarOptions: {
+						ref: searchRef,
 						placeholder: t("search"),
 						onChangeText: (event) => setSearch(event.nativeEvent.text),
 					},

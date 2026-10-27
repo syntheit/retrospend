@@ -83,4 +83,6 @@ From harbor, like `ios-build.sh`. It takes the simulator lock on the mini, copie
 ## Known issues
 
 - iOS 26.x (seen on 26.5): with the detached "+" in the tab bar, the four destination titles are truncated ("Acti...", "Peo..."). It is react-native-screens issue 5015; iOS 27 is not affected. Accepted for now.
-- iPad has no Cmd+N: Expo UI offers no keyboard shortcut modifier for SwiftUI buttons, and React Native has no key command API. The toolbar plus opens the composer.
+- Hardware keyboard (iOS): Cmd+N opens the composer, Cmd+F focuses the search bar of the screen in front. React Native has no key command API and Expo UI no SwiftUI `keyboardShortcut`, so `modules/hardware-keys` (a local Expo module, picked up by prebuild) puts UIKeyCommands on the root view controller. Android has no hardware shortcuts yet.
+- iPhone: while a search field has focus the keyboard covers the tab bar, and with it the system "+". The same button floats above the keyboard until it hides (`floatingAddShown`).
+- iPad: the sidebar floats over the content, so `Screen` and `ListDetail` use the native `SafeAreaView` to start after it. A `Screen` inside a list-detail pane is cleared by the pair and must not wrap again.
