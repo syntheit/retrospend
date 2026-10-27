@@ -62,7 +62,6 @@ export function RecurringModal({
 	const toast = useToast();
 	const utils = api.useUtils();
 	const { data: settings } = api.settings.getGeneral.useQuery();
-
 	const { data: template } = api.recurring.get.useQuery(
 		{ id: templateId ?? "" },
 		{ enabled: !!templateId },
