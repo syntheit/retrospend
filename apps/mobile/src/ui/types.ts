@@ -64,6 +64,8 @@ export interface RowMenuProps {
 
 export interface ButtonProps {
 	label: string;
+	/** What a screen reader says when it differs from the text ("Currency, ARS"). */
+	accessibilityLabel?: string;
 	onPress?: () => void;
 	/**
 	 * Filled is the one primary action on a screen; outlined is the rest;

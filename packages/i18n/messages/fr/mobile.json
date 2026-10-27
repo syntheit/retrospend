@@ -123,7 +123,6 @@
 			},
 			"noRate": "Pas encore de taux pour {currency}. Choisis une autre devise."
 		},
-		"currencyLabel": "Devise, {code}",
 		"list": {
 			"two": "{first} et {second}",
 			"many": "{rest} et {last}",
@@ -135,6 +134,25 @@
 			"retry": "Réessayer",
 			"discard": "Supprimer",
 			"retryFailed": "Envoi toujours impossible. Réessaie plus tard."
+		}
+	},
+	"pickers": {
+		"clear": "Effacer la recherche",
+		"currency": {
+			"title": "Devise",
+			"find": "Cherche une devise",
+			"empty": "Aucune devise ne correspond",
+			"yours": "Tes devises",
+			"recent": "Récentes",
+			"all": "Toutes les devises",
+			"trigger": "Devise, {code}"
+		},
+		"category": {
+			"title": "Catégorie",
+			"find": "Cherche une catégorie",
+			"empty": "Aucune catégorie ne correspond",
+			"recent": "Récentes",
+			"all": "Toutes les catégories"
 		}
 	},
 	"entry": {

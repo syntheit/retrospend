@@ -1,8 +1,8 @@
+import { guessCategoryIconName } from "@retrospend/domain/category-icons";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "~/components/ui/toast";
 import { useCategoryName } from "~/hooks/use-category-name";
-import { getCategoryIconName } from "~/lib/category-icons";
 import type { CategoryColor } from "~/lib/constants";
 import { api } from "~/trpc/react";
 
@@ -99,7 +99,7 @@ export function useCategoryManager({
 	const syncEditor = useCallback(
 		(cat: CategoryData) => {
 			setEditName(displayName(cat.name));
-			setEditIcon(cat.icon || getCategoryIconName(cat.name));
+			setEditIcon(cat.icon || guessCategoryIconName(cat.name));
 			setEditColor(cat.color as CategoryColor);
 			setEditExclude(cat.excludeByDefault);
 		},

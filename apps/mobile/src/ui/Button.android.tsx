@@ -4,6 +4,7 @@ import {
 	Text,
 	TextButton,
 } from "@expo/ui/jetpack-compose";
+import { semantics } from "@expo/ui/jetpack-compose/modifiers";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
 import type { ButtonProps } from "./types";
@@ -15,6 +16,7 @@ import type { ButtonProps } from "./types";
  */
 export function Button({
 	label,
+	accessibilityLabel,
 	onPress,
 	variant = "filled",
 	disabled,
@@ -35,6 +37,11 @@ export function Button({
 						: { contentColor: color.brand }
 				}
 				enabled={!disabled}
+				modifiers={
+					accessibilityLabel
+						? [semantics({ contentDescription: accessibilityLabel })]
+						: undefined
+				}
 				onClick={disabled ? undefined : onPress}
 			>
 				<Text>{label}</Text>

@@ -123,7 +123,6 @@
 			},
 			"noRate": "No rate yet for {currency}. Pick another currency."
 		},
-		"currencyLabel": "Currency, {code}",
 		"list": {
 			"two": "{first} and {second}",
 			"many": "{rest}, and {last}",
@@ -135,6 +134,25 @@
 			"retry": "Try again",
 			"discard": "Discard",
 			"retryFailed": "Still can't send it. Try again later."
+		}
+	},
+	"pickers": {
+		"clear": "Clear search",
+		"currency": {
+			"title": "Currency",
+			"find": "Find a currency",
+			"empty": "No currency matches",
+			"yours": "Your currencies",
+			"recent": "Recent",
+			"all": "All currencies",
+			"trigger": "Currency, {code}"
+		},
+		"category": {
+			"title": "Category",
+			"find": "Find a category",
+			"empty": "No category matches",
+			"recent": "Recent",
+			"all": "All categories"
 		}
 	},
 	"entry": {

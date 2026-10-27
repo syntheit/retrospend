@@ -26,11 +26,12 @@ const martin: EntryPerson = {
 };
 const catalog: EntryCatalog = {
 	categories: [
-		{ id: "food", name: "Food", uses: 12 },
-		{ id: "home", name: "Home", uses: 3 },
+		{ id: "food", name: "Food", icon: "Utensils", tone: 3, uses: 12 },
+		{ id: "home", name: "Home", icon: null, tone: 7, uses: 3 },
 	],
 	people: [lucia, martin],
 	currencies: ["ARS", "USD"],
+	recentCurrencies: ["USD"],
 	hasBudget: true,
 };
 

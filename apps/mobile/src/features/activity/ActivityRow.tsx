@@ -87,7 +87,10 @@ export function ActivityRow({
 			onPress={onPress}
 			selected={selected}
 		>
-			<CategoryTile label={title} tone={item.category?.tone ?? null} />
+			<CategoryTile
+				category={item.category}
+				fallback={item.kind === "payment" ? "Banknote" : "Tag"}
+			/>
 			<View style={{ flex: 1, gap: 2 }}>
 				<Text
 					numberOfLines={1}

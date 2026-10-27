@@ -38,6 +38,8 @@ export const categorySchema = z
 		name: z.string(),
 		color: categoryColorSchema,
 		icon: z.string().nullable(),
+		/** The category-n design token number the color maps to (1 to 21). */
+		tone: z.int(),
 		excludeByDefault: z.boolean(),
 		/** Expenses filed under it (amortized parts count one each). */
 		expenseCount: z.int().min(0),

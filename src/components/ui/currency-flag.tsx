@@ -1,5 +1,5 @@
+import { getCountryCodeFromCurrency } from "@retrospend/domain/currency-country";
 import Image from "next/image";
-import { getCountryCodeFromCurrency } from "~/lib/currency-to-country";
 import { cn, isCrypto } from "~/lib/utils";
 import { CryptoIcon } from "./crypto-icon";
 
@@ -26,7 +26,7 @@ export function CurrencyFlag({ currencyCode, className }: CurrencyFlagProps) {
 		return (
 			<div
 				className={cn(
-					"h-6 w-6 shrink-0 rounded-full border border-border/50 bg-muted",
+					"border-border/50 bg-muted h-6 w-6 shrink-0 rounded-full border",
 					className,
 				)}
 			/>
@@ -36,7 +36,7 @@ export function CurrencyFlag({ currencyCode, className }: CurrencyFlagProps) {
 	return (
 		<div
 			className={cn(
-				"relative h-6 w-6 shrink-0 overflow-hidden rounded-full border border-border/50 bg-muted/20",
+				"border-border/50 bg-muted/20 relative h-6 w-6 shrink-0 overflow-hidden rounded-full border",
 				className,
 			)}
 			title={currencyCode}

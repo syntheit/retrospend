@@ -42,10 +42,7 @@ export function ProjectExpenseRow({ expense }: { expense: ProjectExpense }) {
 				.filter(Boolean)
 				.join(", ")}
 		>
-			<CategoryTile
-				label={expense.title}
-				tone={expense.category?.tone ?? null}
-			/>
+			<CategoryTile category={expense.category} />
 			<View style={{ flex: 1, gap: 2 }}>
 				<Text
 					numberOfLines={1}

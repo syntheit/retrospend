@@ -13,6 +13,10 @@ export interface EntryPerson {
 export interface EntryCategory {
 	id: string;
 	name: string;
+	/** Its icon key (a lucide name); null means the name's usual glyph. */
+	icon: string | null;
+	/** The category-n color slot, 1 to 21. */
+	tone: number;
 	/** Expenses filed under it: the most used come first as recents. */
 	uses: number;
 }
@@ -23,6 +27,8 @@ export interface EntryCatalog {
 	people: EntryPerson[];
 	/** Currencies the server holds a rate for, plus the home and default ones. */
 	currencies: string[];
+	/** Currencies of the latest entries, newest first, each once. */
+	recentCurrencies: string[];
 	/** Whether Use my plan has an envelope budget to fill; null when unknown. */
 	hasBudget: boolean | null;
 }
