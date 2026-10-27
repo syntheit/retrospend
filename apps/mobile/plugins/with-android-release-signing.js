@@ -16,9 +16,9 @@ const SIGNING_CONFIG = `        release {
         }
 `;
 const DEBUG_SIGNING_BLOCK =
-	/(    signingConfigs \{\n        debug \{[\s\S]*?\n        \}\n)/;
+	/( {4}signingConfigs \{\n {8}debug \{[\s\S]*?\n {8}\}\n)/;
 const RELEASE_USES_DEBUG =
-	/(        release \{\n[^\n]*\n[^\n]*\n)            signingConfig signingConfigs\.debug\n/;
+	/( {8}release \{\n[^\n]*\n[^\n]*\n) {12}signingConfig signingConfigs\.debug\n/;
 
 function addReleaseSigning(src) {
 	if (src.includes("System.getenv('KEYSTORE_FILE')")) return src;

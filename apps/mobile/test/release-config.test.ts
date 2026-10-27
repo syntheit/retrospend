@@ -77,7 +77,9 @@ describe("release channel config", () => {
 		});
 
 		it("fails loudly when the template changes", () => {
-			expect(() => addReleaseSigning("android {}")).toThrow(/no longer matches/);
+			expect(() => addReleaseSigning("android {}")).toThrow(
+				/no longer matches/,
+			);
 		});
 	});
 });
