@@ -917,6 +917,14 @@
 		"error": "Couldn't load settings",
 		"errorDetail": "Check your connection and try again.",
 		"notAvailable": "Not available yet",
+		"device": {
+			"title": "On this device",
+			"footer": "Changes this app only. Your web language setting stays as it is."
+		},
+		"language": {
+			"label": "Language",
+			"device": "Use device language"
+		},
 		"profile": {
 			"title": "Profile",
 			"name": "Name",

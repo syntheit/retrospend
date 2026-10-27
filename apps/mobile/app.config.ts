@@ -1,5 +1,10 @@
 import type { ExpoConfig } from "expo/config";
 
+// The languages the app has catalogs for. Written out here because the config
+// loader cannot import from src/; test/app-config.test.ts keeps it equal to
+// src/lib/locales.ts.
+export const APP_LOCALES = ["en", "es", "es-AR", "ru", "pt-BR", "fr", "de"];
+
 const DEV_PROFILES = ["development", "simulator"];
 
 /**
@@ -65,6 +70,13 @@ const config: ExpoConfig = {
 		supportsTablet: true,
 		// Stage Manager, Split View and Slide Over stay available on iPad.
 		requireFullScreen: false,
+		// Password AutoFill in the sign-in screen: iOS offers the saved logins
+		// of these domains, which serve apple-app-site-association. The App ID
+		// needs the Associated Domains capability.
+		associatedDomains: [
+			"webcredentials:dev.retrospend.app",
+			"webcredentials:retrospend.app",
+		],
 		infoPlist: {
 			// Only the system's HTTPS is used, so App Store Connect does not ask
 			// the export compliance question on every build.
@@ -91,7 +103,10 @@ const config: ExpoConfig = {
 	},
 	plugins: [
 		"expo-router",
-		"expo-localization",
+		// supportedLocales lists the app's languages for the system: Android
+		// 13+ localeConfig (Settings > Apps > Retrospend > Language) and iOS
+		// CFBundleLocalizations (Settings > Retrospend > Language).
+		["expo-localization", { supportedLocales: APP_LOCALES }],
 		"expo-secure-store",
 		// Android half of the http decision above.
 		"./plugins/with-cleartext-servers",

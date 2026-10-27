@@ -11,6 +11,11 @@ import { Screen } from "@/ui/Screen";
 
 type Step = "password" | "code";
 
+// Password managers find the fields by their autofill hints, not their
+// labels. Android gets "username" (the hint managers key on; "email" maps to
+// the emailAddress hint) and "password", iOS gets textContentType. The app is
+// tied to the server's domain by /.well-known/assetlinks.json (Android) and
+// apple-app-site-association (iOS).
 export default function SignInScreen() {
 	const t = useTranslations("mobile.signIn");
 	const { color, space, radius, size, type } = useTheme();
@@ -73,9 +78,10 @@ export default function SignInScreen() {
 							<TextInput
 								accessibilityLabel={t("email")}
 								autoCapitalize="none"
-								autoComplete="email"
+								autoComplete="username"
 								autoCorrect={false}
 								editable={!busy}
+								importantForAutofill="yes"
 								inputMode="email"
 								keyboardType="email-address"
 								onChangeText={setEmail}
@@ -93,6 +99,7 @@ export default function SignInScreen() {
 								autoComplete="current-password"
 								autoCorrect={false}
 								editable={!busy}
+								importantForAutofill="yes"
 								onChangeText={setPassword}
 								onSubmitEditing={submit}
 								returnKeyType="go"
@@ -109,9 +116,12 @@ export default function SignInScreen() {
 						<TextInput
 							accessibilityLabel={t("code")}
 							autoCapitalize="none"
-							autoComplete="one-time-code"
+							autoComplete={
+								Platform.OS === "android" ? "2fa-app-otp" : "one-time-code"
+							}
 							autoCorrect={false}
 							editable={!busy}
+							importantForAutofill="yes"
 							inputMode="numeric"
 							onChangeText={setCode}
 							onSubmitEditing={submit}

@@ -6,8 +6,9 @@ import {
 	type AppLocale,
 	loadMessages,
 	type Messages,
-	matchLocale,
+	resolveLocale,
 } from "./i18n";
+import { useLanguagePref } from "./language-pref";
 
 declare module "use-intl" {
 	interface AppConfig {
@@ -26,9 +27,12 @@ export function useFormatLocale(): string {
 }
 
 export function AppIntlProvider({ children }: { children: ReactNode }) {
-	const tag = useLocales()[0]?.languageTag;
+	const device = useLocales();
+	const pref = useLanguagePref();
 	const timeZone = useCalendars()[0]?.timeZone ?? "UTC";
-	const locale = matchLocale(tag);
+	// "Use device language" follows the phone's preferred languages, which
+	// already reflect the per-app language set in the system settings.
+	const locale = pref === "device" ? resolveLocale(device) : pref;
 	const messages = useMemo(() => loadMessages(locale), [locale]);
 
 	return (

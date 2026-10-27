@@ -917,6 +917,14 @@
 		"error": "Einstellungen konnten nicht geladen werden",
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
 		"notAvailable": "Noch nicht verfügbar",
+		"device": {
+			"title": "Auf diesem Gerät",
+			"footer": "Gilt nur für diese App. Die Sprache im Web bleibt unverändert."
+		},
+		"language": {
+			"label": "Sprache",
+			"device": "Gerätesprache verwenden"
+		},
 		"profile": {
 			"title": "Profil",
 			"name": "Name",
