@@ -183,6 +183,7 @@
 	"signIn": {
 		"title": "Entrar",
 		"intro": "Entre em {host}.",
+		"changeServer": "Trocar de servidor",
 		"expired": "Sua sessão terminou. Entre novamente.",
 		"email": "E-mail",
 		"password": "Senha",
@@ -962,7 +963,9 @@
 		},
 		"server": {
 			"title": "Servidor",
-			"connected": "Conectado a"
+			"connected": "Conectado a",
+			"change": "Trocar de servidor",
+			"changeFooter": "Você será desconectado antes."
 		},
 		"account": {
 			"title": "Conta",

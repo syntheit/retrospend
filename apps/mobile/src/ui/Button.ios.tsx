@@ -10,6 +10,17 @@ import { NativeHost } from "./NativeHost";
 import type { ButtonProps } from "./types";
 
 /**
+ * The SwiftUI style for each variant. Filled is borderedProminent: a solid
+ * fill in the tint. The glass styles (glass, glassProminent) are for chrome
+ * only and lighten the tint, which is what made the label unreadable (R17).
+ */
+export const BUTTON_STYLE = {
+	filled: "borderedProminent",
+	outlined: "bordered",
+	text: "plain",
+} as const;
+
+/**
  * A SwiftUI button on the brand tint. The label color is set to the token
  * that sits on the brand fill: the system's own white is unreadable on the
  * pale brand of the dark theme.
@@ -21,19 +32,20 @@ export function Button({
 	disabled,
 }: ButtonProps) {
 	const { color } = useTheme();
-	const filled = variant === "filled";
 	return (
 		<NativeHost>
 			<SwiftButton
 				modifiers={[
-					buttonStyle(filled ? "borderedProminent" : "bordered"),
+					buttonStyle(BUTTON_STYLE[variant]),
 					tint(color.brand),
 					...(disabled ? [disabledModifier(true)] : []),
 				]}
 				onPress={onPress}
 			>
 				<Text
-					modifiers={[foregroundStyle(filled ? color.brandFg : color.brand)]}
+					modifiers={[
+						foregroundStyle(variant === "filled" ? color.brandFg : color.brand),
+					]}
 				>
 					{label}
 				</Text>

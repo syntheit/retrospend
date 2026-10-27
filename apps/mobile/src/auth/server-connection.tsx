@@ -11,7 +11,9 @@ import {
 	useMemo,
 	useState,
 } from "react";
+import { createSqliteStore } from "@/data/sqlite-store";
 import { secureStore } from "@/lib/secure-store";
+import { clearStaleServerOnFirstRun } from "./first-run";
 
 const SERVER_URL_KEY = "retrospend.serverUrl";
 
@@ -23,6 +25,11 @@ export type ServerConnection =
 interface ServerConnectionValue {
 	connection: ServerConnection;
 	connect: (baseUrl: string) => Promise<void>;
+	/**
+	 * Forgets the saved server so the connect screen shows. Sign out first:
+	 * the session is kept per server and stays on this phone until then.
+	 */
+	disconnect: () => Promise<void>;
 }
 
 const ServerConnectionContext = createContext<ServerConnectionValue | null>(
@@ -41,11 +48,20 @@ export function ServerConnectionProvider({
 	useEffect(() => {
 		secureStore
 			.getItemAsync(SERVER_URL_KEY)
-			.then((baseUrl) =>
+			.then(async (baseUrl) => {
+				// The Keychain outlives an uninstall, so a server saved by an earlier
+				// install (a debug build) would stick. An unreadable marker keeps it.
+				const stale =
+					baseUrl !== null &&
+					(await clearStaleServerOnFirstRun(createSqliteStore(), () =>
+						secureStore.deleteItemAsync(SERVER_URL_KEY),
+					).catch(() => false));
 				setConnection(
-					baseUrl ? { status: "connected", baseUrl } : { status: "none" },
-				),
-			)
+					baseUrl && !stale
+						? { status: "connected", baseUrl }
+						: { status: "none" },
+				);
+			})
 			// An unreadable keystore entry means connecting again, not a crash.
 			.catch(() => setConnection({ status: "none" }));
 	}, []);
@@ -55,7 +71,15 @@ export function ServerConnectionProvider({
 		setConnection({ status: "connected", baseUrl });
 	}, []);
 
-	const value = useMemo(() => ({ connection, connect }), [connection, connect]);
+	const disconnect = useCallback(async () => {
+		await secureStore.deleteItemAsync(SERVER_URL_KEY);
+		setConnection({ status: "none" });
+	}, []);
+
+	const value = useMemo(
+		() => ({ connection, connect, disconnect }),
+		[connection, connect, disconnect],
+	);
 	return (
 		<ServerConnectionContext.Provider value={value}>
 			{children}

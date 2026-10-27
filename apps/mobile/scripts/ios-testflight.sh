@@ -43,5 +43,7 @@ trap 'ssh "$mini" "rmdir $lock"' EXIT
 RETROSPEND_BUILD_NUMBER=$(git -C "$here" rev-list --count HEAD)
 export RETROSPEND_BUILD_NUMBER
 echo "Build number: $RETROSPEND_BUILD_NUMBER"
+# The connect screen starts on the dev server (the field stays editable).
+export RETROSPEND_DEFAULT_SERVER=${RETROSPEND_DEFAULT_SERVER:-https://dev.retrospend.app}
 RS_REMOTE=rs-ios-plus/retrospend RS_WORK=/Users/daniel/rs-ios-plus \
 	bash "$here/ios-build.sh" testflight

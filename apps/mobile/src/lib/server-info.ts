@@ -24,6 +24,19 @@ export const DEFAULT_SERVER = "https://retrospend.app";
 const PROBE_TIMEOUT_MS = 10_000;
 
 /**
+ * What the connect field starts with. A build can bake in its own server
+ * (RETROSPEND_DEFAULT_SERVER, read by app.config.ts into extra); without one
+ * the field starts on retrospend.app. The person can always edit it.
+ */
+export function initialServerAddress(configured: unknown): string {
+	const text = typeof configured === "string" ? configured.trim() : "";
+	const normalized = text ? normalizeServerUrl(text) : null;
+	if (!normalized) return new URL(DEFAULT_SERVER).host;
+	// https is the default scheme the field adds, so it is left off.
+	return normalized.replace(/^https:\/\//, "");
+}
+
+/**
  * The base URL for what the user typed: https when no scheme is given, no
  * query, hash or trailing slash. A path stays, for servers behind a prefix.
  * Returns null when it is not an http(s) address.

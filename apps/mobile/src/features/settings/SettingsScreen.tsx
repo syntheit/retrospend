@@ -47,9 +47,12 @@ export function SettingsScreen() {
 	const t = useTranslations("mobile.settings");
 	const tn = useTranslations("mobile.settings.notify");
 	const { api, local, refreshMe } = useSession();
-	const { connection } = useServerConnection();
+	const { connection, disconnect } = useServerConnection();
 	const toast = useToast();
 	const confirmSignOut = useSignOut();
+	// Settings is only open while signed in, so the server changes after the
+	// session ends; the sign-in screen has the same action for the signed-out case.
+	const confirmChangeServer = useSignOut(disconnect);
 	const { color } = useTheme();
 	const profile = useProfile();
 	const general = useGeneralSettings();
@@ -225,8 +228,15 @@ export function SettingsScreen() {
 						</FormSection>
 					</>
 				) : null}
-				<FormSection title={t("server.title")}>
+				<FormSection
+					footer={t("server.changeFooter")}
+					title={t("server.title")}
+				>
 					<FormValueRow label={t("server.connected")} value={server} />
+					<FormActionRow
+						label={t("server.change")}
+						onPress={confirmChangeServer}
+					/>
 				</FormSection>
 				<FormSection title={t("account.title")}>
 					<FormActionRow

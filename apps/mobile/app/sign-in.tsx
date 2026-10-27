@@ -1,4 +1,3 @@
-import { Button } from "@expo/ui";
 import { Stack } from "expo-router";
 import { useState } from "react";
 import { Platform, Text, TextInput, View } from "react-native";
@@ -7,7 +6,7 @@ import type { AuthFailure } from "@/auth/errors";
 import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
 import { useTheme } from "@/theme";
-import { NativeHost } from "@/ui/NativeHost";
+import { Button } from "@/ui/Button";
 import { Screen } from "@/ui/Screen";
 
 type Step = "password" | "code";
@@ -15,7 +14,7 @@ type Step = "password" | "code";
 export default function SignInScreen() {
 	const t = useTranslations("mobile.signIn");
 	const { color, space, radius, size, type } = useTheme();
-	const { connection } = useServerConnection();
+	const { connection, disconnect } = useServerConnection();
 	const { state, signIn, verifyCode } = useSession();
 	const [step, setStep] = useState<Step>("password");
 	const [email, setEmail] = useState("");
@@ -135,15 +134,19 @@ export default function SignInScreen() {
 						{t(`error.${failure}`)}
 					</Text>
 				) : null}
-				<NativeHost>
-					<Button
-						disabled={busy}
-						label={
-							busy ? t("signingIn") : t(step === "code" ? "verify" : "submit")
-						}
-						onPress={submit}
-					/>
-				</NativeHost>
+				<Button
+					disabled={busy}
+					label={
+						busy ? t("signingIn") : t(step === "code" ? "verify" : "submit")
+					}
+					onPress={submit}
+				/>
+				<Button
+					disabled={busy}
+					label={t("changeServer")}
+					onPress={disconnect}
+					variant="text"
+				/>
 			</Screen>
 		</>
 	);

@@ -65,7 +65,10 @@ export interface RowMenuProps {
 export interface ButtonProps {
 	label: string;
 	onPress?: () => void;
-	/** Filled is the one primary action on a screen; outlined is the rest. */
-	variant?: "filled" | "outlined";
+	/**
+	 * Filled is the one primary action on a screen; outlined is the rest;
+	 * text is a link-like action (Change server).
+	 */
+	variant?: "filled" | "outlined" | "text";
 	disabled?: boolean;
 }
