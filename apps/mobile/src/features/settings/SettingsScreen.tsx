@@ -6,6 +6,12 @@ import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useSignOut } from "@/features/account/useSignOut";
+import {
+	type LanguagePref,
+	setLanguagePref,
+	useLanguagePref,
+} from "@/lib/language-pref";
+import { APP_LOCALES, LANGUAGE_NAMES } from "@/lib/locales";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import {
@@ -64,6 +70,7 @@ export function SettingsScreen() {
 	const [editing, setEditing] = useState(false);
 	const [showRates, setShowRates] = useState(false);
 	const [deleting, setDeleting] = useState(false);
+	const language = useLanguagePref();
 
 	// The switches follow the server's answer, and change at once when tapped.
 	useEffect(() => {
@@ -88,6 +95,14 @@ export function SettingsScreen() {
 	if (!settings && !me) {
 		return <EmptyState detail={t("errorDetail")} title={t("error")} />;
 	}
+
+	const languageOptions = [
+		{ value: "device" as const, label: t("language.device") },
+		...APP_LOCALES.map((value) => ({
+			value,
+			label: LANGUAGE_NAMES[value],
+		})),
+	];
 
 	const currencyOptions = (() => {
 		const known =
@@ -166,6 +181,14 @@ export function SettingsScreen() {
 						<FormValueRow label={t("profile.email")} value={me.email} />
 					</FormSection>
 				) : null}
+				<FormSection footer={t("device.footer")} title={t("device.title")}>
+					<FormPickerRow<LanguagePref>
+						label={t("language.label")}
+						onChange={setLanguagePref}
+						options={languageOptions}
+						value={language}
+					/>
+				</FormSection>
 				{settings ? (
 					<FormSection footer={t("money.footer")} title={t("money.title")}>
 						<FormPickerRow

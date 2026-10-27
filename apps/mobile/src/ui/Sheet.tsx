@@ -1,7 +1,31 @@
 import { BottomSheet, RNHostView } from "@expo/ui";
 import type { ReactNode } from "react";
-import { Platform, Text, View } from "react-native";
+import { Platform, Text, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/theme";
+
+/** The sheet's handle and title above a body, plus its padding. */
+const SHEET_CHROME = Platform.OS === "ios" ? 76 : 112;
+/** The share of the screen the iPad form sheet takes. */
+const IPAD_SHEET_SHARE = 0.88;
+
+/**
+ * The size a full-height body (a scrolling list, the composer) gives itself in
+ * a large sheet. The sheet hands its content the window's width without side
+ * padding, and on phones runs under the status and gesture bars.
+ */
+export function useSheetBodySize(): { width?: number; height: number } {
+	const insets = useSafeAreaInsets();
+	const { height, width } = useWindowDimensions();
+	const { space } = useTheme();
+	if (Platform.OS === "ios" && Platform.isPad) {
+		return { height: Math.round(height * IPAD_SHEET_SHARE) };
+	}
+	return {
+		width: width - 2 * space[4],
+		height: Math.round(height - insets.top - insets.bottom - SHEET_CHROME),
+	};
+}
 
 export type SheetDetent = "medium" | "large";
 

@@ -215,8 +215,12 @@ function Form({
 				setTried(false);
 				onModeChange?.(next);
 			}}
+			recentCurrencies={catalog.recentCurrencies}
 			surface={surface}
 			typing={typing}
+			yourCurrencies={[me?.homeCurrency, me?.defaultCurrency].filter(
+				(code): code is string => Boolean(code),
+			)}
 		>
 			<View style={{ gap: space[4] }}>
 				<SyncIssues />

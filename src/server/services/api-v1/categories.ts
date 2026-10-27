@@ -14,6 +14,7 @@ import {
 	mergeCategory,
 	updateCategory,
 } from "~/server/services/category.service";
+import { categoryTone } from "~/server/services/expense-list/category-tone";
 import type { Caller } from "./caller";
 import { decodeCursor, toPage } from "./cursor";
 
@@ -25,6 +26,7 @@ export function toCategory(row: CategoryRow): CategoryDto {
 		name: row.name,
 		color: row.color,
 		icon: row.icon,
+		tone: categoryTone(row.color),
 		excludeByDefault: row.excludeByDefault,
 		expenseCount: row._count.expenses,
 	};

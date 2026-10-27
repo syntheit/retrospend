@@ -1,6 +1,6 @@
 /**
  * Maps 3-letter currency ISO codes to 2-letter country codes
- * for use with the circle-flags library.
+ * for the circle-flags drawings the web and the apps show.
  */
 export const CURRENCY_TO_COUNTRY: Record<string, string> = {
 	// Common Currencies

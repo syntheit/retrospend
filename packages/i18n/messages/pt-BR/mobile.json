@@ -123,7 +123,6 @@
 			},
 			"noRate": "Ainda não há cotação para {currency}. Escolha outra moeda."
 		},
-		"currencyLabel": "Moeda, {code}",
 		"list": {
 			"two": "{first} e {second}",
 			"many": "{rest} e {last}",
@@ -135,6 +134,25 @@
 			"retry": "Tentar de novo",
 			"discard": "Descartar",
 			"retryFailed": "Ainda não dá para enviar. Tente mais tarde."
+		}
+	},
+	"pickers": {
+		"clear": "Limpar busca",
+		"currency": {
+			"title": "Moeda",
+			"find": "Buscar moeda",
+			"empty": "Nenhuma moeda encontrada",
+			"yours": "Suas moedas",
+			"recent": "Recentes",
+			"all": "Todas as moedas",
+			"trigger": "Moeda, {code}"
+		},
+		"category": {
+			"title": "Categoria",
+			"find": "Buscar categoria",
+			"empty": "Nenhuma categoria encontrada",
+			"recent": "Recentes",
+			"all": "Todas as categorias"
 		}
 	},
 	"entry": {
@@ -917,6 +935,14 @@
 		"error": "Não foi possível carregar os ajustes",
 		"errorDetail": "Verifique sua conexão e tente de novo.",
 		"notAvailable": "Ainda não disponível",
+		"device": {
+			"title": "Neste dispositivo",
+			"footer": "Muda só este app. O idioma da web continua como está."
+		},
+		"language": {
+			"label": "Idioma",
+			"device": "Usar o idioma do dispositivo"
+		},
 		"profile": {
 			"title": "Perfil",
 			"name": "Nome",

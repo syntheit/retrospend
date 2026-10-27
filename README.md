@@ -89,6 +89,7 @@ Edit `.env` and set the required variables. See the full reference below.
 | `PUSH_ENDPOINT_ALLOW_HOSTS` | No | | Hosts (names or IPs, comma-separated) that may receive push although they are on a private network, such as a LAN ntfy server. The admin setting Allow private webhook targets also allows private UnifiedPush endpoints |
 | `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID` | No | | Apple push (iPhone and iPad); all four APNs settings are needed |
 | `APNS_KEY` or `APNS_KEY_FILE` | No | | The APNs auth key (`.p8`) as text (newlines written `\n`) or as a file path |
+| `ANDROID_APP_CERT_SHA256` | No | | SHA-256 fingerprint(s), comma-separated, of the Android app's signing certificate. Served in `/.well-known/assetlinks.json` so password managers can fill in the app |
 | `FCM_SERVICE_ACCOUNT` or `FCM_SERVICE_ACCOUNT_FILE` | No | | Firebase service account key (JSON or file path) for Android phones with Google Play services |
 | `FCM_PROJECT_ID` | No | from the key | Firebase project, if it differs from the key's |
 

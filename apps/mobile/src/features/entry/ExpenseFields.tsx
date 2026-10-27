@@ -1,14 +1,15 @@
 import { Text, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useTheme } from "@/theme";
-import { Menu } from "@/ui/Menu";
 import { useFormatMoney } from "@/lib/money";
-import { recentCategories } from "./catalog";
+import { useTheme } from "@/theme";
+import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
+import { CategoryPicker } from "./CategoryPicker";
 import { Chip } from "./Chip";
+import { recentCategories } from "./catalog";
 import type { ExpenseDraft, ExpenseErrors, SplitRow } from "./draft";
 import { Face } from "./Face";
-import { personKey } from "./types";
 import type { EntryCatalog } from "./types";
+import { personKey } from "./types";
 
 const RECENTS = 4;
 
@@ -132,18 +133,23 @@ export function ExpenseFields({
 						<Chip
 							key={category.id}
 							label={category.name}
+							leading={
+								<CategoryGlyph
+									category={category}
+									color={categoryColor(color, category.tone)}
+									size={size.icon.phone}
+								/>
+							}
 							onPress={() => onChange({ categoryId: category.id })}
 							selected={draft.categoryId === category.id}
 						/>
 					))}
 					{catalog.categories.length > recents.length ? (
-						<Menu
-							items={catalog.categories.map((category) => ({
-								id: category.id,
-								label: category.name,
-								onPress: () => onChange({ categoryId: category.id }),
-							}))}
-							label={t("allCategories")}
+						<CategoryPicker
+							categories={catalog.categories}
+							onChange={(categoryId) => onChange({ categoryId })}
+							recent={recents}
+							value={draft.categoryId}
 						/>
 					) : null}
 				</View>
@@ -159,9 +165,9 @@ export function ExpenseFields({
 							const key = personKey(person);
 							return (
 								<Chip
+									accessibilityLabel={person.name}
 									key={key}
 									label={person.name.split(/\s+/)[0] ?? person.name}
-									accessibilityLabel={person.name}
 									leading={
 										<Face
 											diameter={size.avatar.xs}

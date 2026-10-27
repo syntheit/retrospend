@@ -123,7 +123,6 @@
 			},
 			"noRate": "Noch kein Kurs für {currency}. Wähle eine andere Währung."
 		},
-		"currencyLabel": "Währung, {code}",
 		"list": {
 			"two": "{first} und {second}",
 			"many": "{rest} und {last}",
@@ -135,6 +134,25 @@
 			"retry": "Erneut versuchen",
 			"discard": "Verwerfen",
 			"retryFailed": "Senden klappt noch nicht. Versuche es später noch einmal."
+		}
+	},
+	"pickers": {
+		"clear": "Suche löschen",
+		"currency": {
+			"title": "Währung",
+			"find": "Währung suchen",
+			"empty": "Keine Währung passt",
+			"yours": "Deine Währungen",
+			"recent": "Zuletzt",
+			"all": "Alle Währungen",
+			"trigger": "Währung, {code}"
+		},
+		"category": {
+			"title": "Kategorie",
+			"find": "Kategorie suchen",
+			"empty": "Keine Kategorie passt",
+			"recent": "Zuletzt",
+			"all": "Alle Kategorien"
 		}
 	},
 	"entry": {
@@ -917,6 +935,14 @@
 		"error": "Einstellungen konnten nicht geladen werden",
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
 		"notAvailable": "Noch nicht verfügbar",
+		"device": {
+			"title": "Auf diesem Gerät",
+			"footer": "Gilt nur für diese App. Die Sprache im Web bleibt unverändert."
+		},
+		"language": {
+			"label": "Sprache",
+			"device": "Gerätesprache verwenden"
+		},
 		"profile": {
 			"title": "Profil",
 			"name": "Name",

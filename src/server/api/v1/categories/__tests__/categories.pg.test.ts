@@ -70,7 +70,13 @@ describe("/api/v1/categories", () => {
 			c.create,
 			201,
 		);
-		expect(made).toMatchObject({ name: "Rent", expenseCount: 0, icon: null });
+		// The server row tone, the same one Activity rows carry (teal is slot 5).
+		expect(made).toMatchObject({
+			name: "Rent",
+			expenseCount: 0,
+			icon: null,
+			tone: 5,
+		});
 
 		const got = await expectBody<Category>(
 			await call(`/categories/${made.id}`, { headers: asAlice }),

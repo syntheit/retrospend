@@ -11,7 +11,7 @@ import {
 import { useTranslations } from "use-intl";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
-import { Menu } from "@/ui/Menu";
+import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { Segmented } from "@/ui/Segmented";
 import { amountMinor } from "./draft";
@@ -30,6 +30,8 @@ export function ComposerShell({
 	amountText,
 	currency,
 	currencies,
+	yourCurrencies,
+	recentCurrencies,
 	onCurrencyChange,
 	onAmountChange,
 	onAdd,
@@ -48,6 +50,9 @@ export function ComposerShell({
 	amountText: string;
 	currency: string;
 	currencies: string[];
+	/** Home and default currency: first in the picker. */
+	yourCurrencies: string[];
+	recentCurrencies: string[];
 	onCurrencyChange: (currency: string) => void;
 	onAmountChange: (text: string) => void;
 	onAdd: () => void;
@@ -124,14 +129,12 @@ export function ComposerShell({
 						minHeight: size.moneyInput.phone,
 					}}
 				>
-					<Menu
-						accessibilityLabel={t("currencyLabel", { code: currency })}
-						items={currencies.map((code) => ({
-							id: code,
-							label: code,
-							onPress: () => onCurrencyChange(code),
-						}))}
-						label={currency}
+					<CurrencyPicker
+						currencies={currencies}
+						onChange={onCurrencyChange}
+						recent={recentCurrencies}
+						value={currency}
+						yours={yourCurrencies}
 					/>
 					<Pressable
 						accessibilityHint={padOpen ? undefined : t("showKeypad")}

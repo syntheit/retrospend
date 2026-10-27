@@ -53,7 +53,8 @@ jest.mock("@/data/ids", () => ({
 const mockToast = { show: jest.fn(), dismiss: jest.fn() };
 jest.mock("@/ui/Toast", () => ({ useToast: () => mockToast }));
 // The native pickers have no JS to press; the flow uses chips and keys only.
-jest.mock("@/ui/Menu", () => ({ Menu: () => null }));
+jest.mock("@/ui/CurrencyPicker", () => ({ CurrencyPicker: () => null }));
+jest.mock("./CategoryPicker", () => ({ CategoryPicker: () => null }));
 jest.mock("@/ui/Segmented", () => ({ Segmented: () => null }));
 jest.mock("@/lib/intl", () => ({ useFormatLocale: () => "en-US" }));
 // use-intl ships untranspiled ES modules the jest preset does not transform;
@@ -84,6 +85,7 @@ const category = (id: string, name: string, uses: number) => ({
 	name,
 	color: "amber",
 	icon: null,
+	tone: 3,
 	excludeByDefault: false,
 	expenseCount: uses,
 });
@@ -145,6 +147,7 @@ function fakeApi() {
 		},
 		budget: { verdict: async () => ({ style: "FLEX" }) },
 		expenses: {
+			list: async () => page([{ amount: { minor: 100, currency: "USD" } }]),
 			create: write("expenses.create", () => ({ undo: "undo-expense" })),
 		},
 		"shared-expenses": {

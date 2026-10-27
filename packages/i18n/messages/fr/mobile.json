@@ -123,7 +123,6 @@
 			},
 			"noRate": "Pas encore de taux pour {currency}. Choisis une autre devise."
 		},
-		"currencyLabel": "Devise, {code}",
 		"list": {
 			"two": "{first} et {second}",
 			"many": "{rest} et {last}",
@@ -135,6 +134,25 @@
 			"retry": "Réessayer",
 			"discard": "Supprimer",
 			"retryFailed": "Envoi toujours impossible. Réessaie plus tard."
+		}
+	},
+	"pickers": {
+		"clear": "Effacer la recherche",
+		"currency": {
+			"title": "Devise",
+			"find": "Cherche une devise",
+			"empty": "Aucune devise ne correspond",
+			"yours": "Tes devises",
+			"recent": "Récentes",
+			"all": "Toutes les devises",
+			"trigger": "Devise, {code}"
+		},
+		"category": {
+			"title": "Catégorie",
+			"find": "Cherche une catégorie",
+			"empty": "Aucune catégorie ne correspond",
+			"recent": "Récentes",
+			"all": "Toutes les catégories"
 		}
 	},
 	"entry": {
@@ -917,6 +935,14 @@
 		"error": "Impossible de charger les réglages",
 		"errorDetail": "Vérifie ta connexion et réessaie.",
 		"notAvailable": "Pas encore disponible",
+		"device": {
+			"title": "Sur cet appareil",
+			"footer": "Ne change que cette appli. La langue du site web reste inchangée."
+		},
+		"language": {
+			"label": "Langue",
+			"device": "Utiliser la langue de l'appareil"
+		},
 		"profile": {
 			"title": "Profil",
 			"name": "Nom",

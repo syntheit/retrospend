@@ -42,6 +42,7 @@ describe("heroOf", () => {
 			...base,
 			budget: {
 				state: "ready",
+				verdict: { state: "ON_TRACK" },
 				leftToSpend: {
 					left: money(5916100),
 					perDay: money(537800),
@@ -57,5 +58,25 @@ describe("heroOf", () => {
 			daysLeft: 11,
 			spent: money(270660200),
 		});
+	});
+
+	it("says how far over once the verdict is over, not a negative Left to spend", () => {
+		const verdict = {
+			state: "OVER_BUDGET",
+			lead: {
+				kind: "LEFT_TO_SPEND",
+				figureId: "budget.leftToSpend",
+				amount: money(192030),
+			},
+		};
+		const hero = heroOf({
+			...base,
+			budget: {
+				state: "ready",
+				verdict,
+				leftToSpend: { left: money(-192030) },
+			},
+		} as unknown as Glance);
+		expect(hero).toEqual({ kind: "over", verdict, amount: money(192030) });
 	});
 });

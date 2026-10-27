@@ -13,25 +13,40 @@ type CategoryDto = Awaited<
 type Currency = Awaited<
 	ReturnType<RetrospendClient["currencies"]["list"]>
 >["items"][number];
+type RecentEntries = Awaited<
+	ReturnType<RetrospendClient["expenses"]["list"]>
+>["items"];
 type PeopleOverview = Awaited<ReturnType<RetrospendClient["people"]["list"]>>;
 
 export const ENTRY_CATALOG_CACHE = {
 	name: "entry-catalog",
-	schema: 1,
+	schema: 2,
 } as const;
 
 const PAGE = 200;
+/** How many of the latest entries the recent currencies are read from. */
+const RECENT_ENTRIES = 40;
+const RECENT_CURRENCIES = 5;
 const MAX_CURRENCY_PAGES = 5;
 
 export function catalogFrom(input: {
 	categories: CategoryDto[];
 	overview: PeopleOverview;
 	currencies: Currency[];
+	recent: RecentEntries;
 	home: string;
 	fallback: string;
 	hasBudget: boolean | null;
 }): EntryCatalog {
-	const { categories, overview, currencies, home, fallback, hasBudget } = input;
+	const {
+		categories,
+		overview,
+		currencies,
+		recent,
+		home,
+		fallback,
+		hasBudget,
+	} = input;
 	const priced = currencies
 		.filter((c) => c.rateTypes.length > 0)
 		.map((c) => c.code);
@@ -50,11 +65,16 @@ export function catalogFrom(input: {
 		categories: categories.map((c) => ({
 			id: c.id,
 			name: c.name,
+			icon: c.icon,
+			tone: c.tone,
 			uses: c.expenseCount,
 		})),
 		people,
 		// The home currency first, then the default one, then the rest by code.
 		currencies: [...new Set([home, fallback, ...priced.sort()])],
+		recentCurrencies: [
+			...new Set(recent.map((entry) => entry.amount.currency)),
+		].slice(0, RECENT_CURRENCIES),
 		hasBudget,
 	};
 }
@@ -75,21 +95,29 @@ export async function fetchEntryCatalog(
 	api: RetrospendClient,
 	me: { homeCurrency: string; defaultCurrency: string },
 ): Promise<EntryCatalog> {
-	const [categories, overview, currencies, verdict] = await Promise.all([
-		api.categories.list({ limit: PAGE }),
-		api.people.list(),
-		currencyPages(api),
-		// Null means no envelope budget yet. A server without the budget routes
-		// leaves it unknown, and Use my plan stays off the screen.
-		api.budget.verdict({}).then(
-			(v) => v !== null,
-			() => null,
-		),
-	]);
+	const [categories, overview, currencies, recent, verdict] = await Promise.all(
+		[
+			api.categories.list({ limit: PAGE }),
+			api.people.list(),
+			currencyPages(api),
+			// A failed read only leaves the Recent group out.
+			api.expenses.list({ limit: RECENT_ENTRIES }).then(
+				(page) => page.items,
+				() => [],
+			),
+			// Null means no envelope budget yet. A server without the budget routes
+			// leaves it unknown, and Use my plan stays off the screen.
+			api.budget.verdict({}).then(
+				(v) => v !== null,
+				() => null,
+			),
+		],
+	);
 	return catalogFrom({
 		categories: categories.items,
 		overview,
 		currencies,
+		recent,
 		home: me.homeCurrency,
 		fallback: me.defaultCurrency,
 		hasBudget: verdict,

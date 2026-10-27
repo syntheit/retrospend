@@ -6,7 +6,9 @@
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
+		"./category-icons": "./src/category-icons.ts",
 		"./currencies": "./src/currencies.ts",
+		"./currency-country": "./src/currency-country.ts",
 		"./currency-format": "./src/currency-format.ts",
 		"./currency-names": "./src/currency-names.ts",
 		"./decimal": "./src/decimal.ts",
@@ -19,6 +21,7 @@
 		"./money": "./src/money.ts",
 		"./money-minor": "./src/money-minor.ts",
 		"./parse": "./src/parse.ts",
+		"./picker-match": "./src/picker-match.ts",
 		"./recurring": "./src/recurring.ts",
 		"./shared-split-computation": "./src/shared-split-computation.ts",
 		"./time-zone": "./src/time-zone.ts",
