@@ -168,7 +168,9 @@ async function attempt(
 	// minutes or hours since the push was queued.
 	const device = await db.pushDevice.findUnique({
 		where: { id: delivery.deviceId },
-		include: { user: { select: { language: true, isActive: true } } },
+		include: {
+			user: { select: { language: true, numberFormat: true, isActive: true } },
+		},
 	});
 	// A deleted device takes its deliveries with it, so there is nothing to settle.
 	if (!device) return;
@@ -195,7 +197,11 @@ async function attempt(
 		return failWithout(delivery, lease, "expired");
 	if (device.transport === "UNIFIEDPUSH" && (await circuitOpen(device.id, now)))
 		return failWithout(delivery, lease, "device_unreachable");
-	const message = await buildPushMessage(data, device.user.language);
+	const message = await buildPushMessage(
+		data,
+		device.user.language,
+		device.user.numberFormat,
+	);
 	const outcome = await sender.send(device, message);
 	await settle(delivery, device.transport, outcome, now, lease);
 }

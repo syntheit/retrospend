@@ -132,9 +132,9 @@ describe("NumbersSection", () => {
 			(n) =>
 				n.props.accessibilityLabel ===
 				"Number format|dot_comma|USD 1.234.567,89",
-		)[0];
+		)[0] as TestNode;
 		await act(async () => {
-			(press?.props.onPress as () => void)();
+			(press.props.onPress as () => void)();
 		});
 		expect(mockUpdate).toHaveBeenCalledWith(
 			{ numberFormat: "dot_comma" },
@@ -148,9 +148,9 @@ describe("NumbersSection", () => {
 		const { root } = mount({ numberFormat: "dot_comma" });
 		const press = root.findAll((n) =>
 			String(n.props.accessibilityLabel).startsWith("Number format|follow|"),
-		)[0];
+		)[0] as TestNode;
 		await act(async () => {
-			(press?.props.onPress as () => void)();
+			(press.props.onPress as () => void)();
 		});
 		expect(mockUpdate).toHaveBeenCalledWith(
 			{ numberFormat: null },
