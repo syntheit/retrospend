@@ -4,7 +4,7 @@ import { Decimal } from "@prisma/client/runtime/index-browser";
 import { isCrypto } from "@retrospend/domain/currency-format";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { type Money, money, toMinor } from "@retrospend/domain/money-minor";
-import { MARKET } from "../types";
+import { MARKET, type RatePrice } from "../types";
 import { defaultRateType } from "./rate-default-seam";
 
 /** Exact, half to even, enough digits for any rate times any amount. */
@@ -26,8 +26,10 @@ export type Priced = {
 	code: string;
 	crypto: boolean;
 	types: string[];
-	/** Units of home per 1 unit of the currency, unrounded. */
+	/** Units of home per 1 unit of the currency, unrounded (what a conversion multiplies by). */
 	prices: Map<string, Dec>;
+	/** Units of the currency per 1 unit of home, unrounded (what the page shows). */
+	perHome: Map<string, Dec>;
 	/**
 	 * Types priced through another type's rate because one side has no rate
 	 * of that type (BRL at Blue is ARS blue over BRL official).
@@ -88,6 +90,7 @@ export function priceAll(rows: readonly RateRow[], home: string): Priced[] {
 					crypto: true,
 					types: [MARKET],
 					prices: new Map([[MARKET, usd.mul(h)]]),
+					perHome: new Map([[MARKET, new Dec(1).div(usd.mul(h))]]),
 					derived: new Set<string>(),
 				},
 			];
@@ -97,16 +100,20 @@ export function priceAll(rows: readonly RateRow[], home: string): Priced[] {
 		const ownDefault = own.get(defaultRateType([...own.keys()]) ?? "");
 		const types = order([...own.keys(), ...homeTypes]);
 		const prices = new Map<string, Dec>();
+		const perHome = new Map<string, Dec>();
 		const derived = new Set<string>();
 		for (const type of types) {
 			const h = homeAt(type);
 			const c = code === USD ? new Dec(1) : (own.get(type) ?? ownDefault);
 			if (!h || !c) continue;
 			prices.set(type, h.div(c));
+			perHome.set(type, c.div(h));
 			const homeHas = home === USD || homeRates.has(type);
 			if (!homeHas || (code !== USD && !own.has(type))) derived.add(type);
 		}
-		return prices.size ? [{ code, crypto: false, types, prices, derived }] : [];
+		return prices.size
+			? [{ code, crypto: false, types, prices, perHome, derived }]
+			: [];
 	});
 }
 
@@ -121,6 +128,30 @@ export function toMoney(value: Dec, currency: string): Money {
 	// toString may use the exponent form; toMinor reads it exactly.
 	const fixed = value.toDecimalPlaces(currencyDecimals(currency)).toString();
 	return money(toMinor(fixed, currency), currency);
+}
+
+/**
+ * A rate as Money in `currency`, with enough decimals to read: the
+ * currency's own, extended until two significant digits show (1 ARS is
+ * USD 0.00064, not 0.00), up to six more for a fiat and up to 8 for a coin
+ * (BTC 0.00001493). `places` says what `minor` counts, so the client
+ * formats it without computing anything.
+ */
+export function toRate(value: Dec, currency: string): RatePrice {
+	const own = currencyDecimals(currency);
+	const limit = isCrypto(currency) ? Math.max(own, 8) : own + 6;
+	let places = own;
+	// Two digits show once the rounded value reaches 10^(1 - places).
+	while (
+		places < limit &&
+		value.toDecimalPlaces(places).lt(new Dec(10).pow(1 - places))
+	)
+		places++;
+	const minor = value
+		.mul(new Dec(10).pow(places))
+		.toDecimalPlaces(0)
+		.toNumber();
+	return { ...money(minor, currency), places };
 }
 
 /** Minor units of `currency` as an exact decimal amount. */

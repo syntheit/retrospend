@@ -1,6 +1,6 @@
 {
 	"title": "Валюты",
-	"pricesIn": "Цены в {home}.",
+	"pricesIn": "Цена 1 {home}.",
 	"updated": "Обновлено {date}.",
 	"newUse": "Новые суммы в иностранной валюте используют курс {type}.",
 	"filters": {
@@ -19,7 +19,6 @@
 		"showAll": "Показать все валюты"
 	},
 	"missing": "Пока нет курса {codes}. {count, plural, one {{names} не входит} few {{names} не входят} many {{names} не входят} other {{names} не входят}} в капитал.",
-	"priceOf": "Цена 1 единицы в {home}",
 	"favorite": "Избранное",
 	"currency": "Валюта",
 	"actions": "Действия",
@@ -36,10 +35,10 @@
 	"detail": {
 		"label": "Выбранная валюта",
 		"sheetTitle": "Курсы {code}",
-		"sub": "{code} · 1 {code} в {home}, {date}",
+		"sub": "{code} · 1 {home} в {code}, {date}",
 		"noRate": "Нет курса {code}. Счета и расходы в {code} не входят в итоги.",
 		"usedBy": "Используется: {names}",
-		"rates": "Курсы",
+		"rates": "1 {home} в {code}",
 		"default": "По умолчанию",
 		"defaultTitle": "По умолчанию для новых расходов",
 		"defaultFixed": "Пока используется встроенное значение."

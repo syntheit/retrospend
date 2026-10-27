@@ -48,6 +48,13 @@ export interface FormatMoneyOptions {
 	 * from minor units. Under 1,000 whole units it is the whole amount.
 	 */
 	compact?: boolean;
+	/**
+	 * A rate, not an amount: how many decimal digits `minor` carries when that
+	 * is more than the currency's own (USD 0.00064 is 64 at 5 places). Fiat
+	 * shows the digits down to the currency's own, dropping trailing zeros
+	 * beyond them. Ignored when it is not more than the currency has.
+	 */
+	places?: number;
 }
 
 /** Symbols no other currency uses. "$", "¥", "kr" and the like are not here. */
@@ -167,7 +174,8 @@ export function formatMoney(
 	const { minor, currency } = checkedMoney(value.minor, value.currency);
 	const { locale, display = "code", sign = "auto", cents = "auto" } = options;
 	const abs = Math.abs(minor);
-	const decimals = currencyDecimals(currency);
+	const own = currencyDecimals(currency);
+	const decimals = Math.max(own, options.places ?? 0);
 	if (options.compact) {
 		const c = compactNumber(abs, decimals, locale, numberSymbols(locale));
 		return (
@@ -183,6 +191,8 @@ export function formatMoney(
 	const cut = digits.length - shown;
 	let fraction = digits.slice(cut);
 	if (trim) fraction = fraction.replace(/0+$/, "");
+	else if (decimals > own && cents === "auto")
+		fraction = fraction.replace(/0+$/, "").padEnd(own, "0");
 	const symbols = numberSymbols(locale);
 	const number =
 		groupDigits(digits.slice(0, cut), symbols) +

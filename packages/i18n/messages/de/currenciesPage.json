@@ -1,6 +1,6 @@
 {
 	"title": "Währungen",
-	"pricesIn": "Preise in {home}.",
+	"pricesIn": "Preis von 1 {home}.",
 	"updated": "Aktualisiert am {date}.",
 	"newUse": "Neue Fremdwährungsbeträge nutzen {type}.",
 	"filters": {
@@ -19,7 +19,6 @@
 		"showAll": "Alle Währungen zeigen"
 	},
 	"missing": "Noch kein Kurs für {codes}. {count, plural, one {{names} zählt} other {{names} zählen}} nicht zum Vermögen.",
-	"priceOf": "Preis für 1 Einheit in {home}",
 	"favorite": "Favorit",
 	"currency": "Währung",
 	"actions": "Aktionen",
@@ -36,10 +35,10 @@
 	"detail": {
 		"label": "Gewählte Währung",
 		"sheetTitle": "Kurse für {code}",
-		"sub": "{code} · 1 {code} in {home}, {date}",
+		"sub": "{code} · 1 {home} in {code}, {date}",
 		"noRate": "Kein {code}-Kurs. Konten und Ausgaben in {code} zählen nicht zu den Summen.",
 		"usedBy": "Verwendet von {names}",
-		"rates": "Kurse",
+		"rates": "1 {home} in {code}",
 		"default": "Standard",
 		"defaultTitle": "Standard für neue Ausgaben",
 		"defaultFixed": "Vorerst der eingebaute Standard."

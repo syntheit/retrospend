@@ -19,7 +19,7 @@ function PriceText({
 	value: CurrencyRow["prices"][string] | undefined;
 }) {
 	return value ? (
-		<Money cents={priceCents(value)} value={value} />
+		<Money cents={priceCents(value)} places={value.places} value={value} />
 	) : (
 		<Money missing="noRate" value={null} />
 	);
@@ -86,7 +86,7 @@ export function CurrencyDetail({
 			{priced ? (
 				<div>
 					<div className="text-fg-2 text-small mb-1 font-semibold">
-						{t("detail.rates")}
+						{t("detail.rates", { home: view.home, code: row.code })}
 					</div>
 					<dl>
 						{row.types.map((type) => (
