@@ -83,6 +83,11 @@ describe("Money", () => {
 		expect(html).toContain("whitespace-nowrap");
 	});
 
+	it("a rate with more places than the currency keeps its digits", () => {
+		const html = render(h(Money, { value: usd(64), places: 5 }));
+		expect(amounts(html)).toEqual([`USD${NB}0.00064`]);
+	});
+
 	it("carries the figure attributes for the audit", () => {
 		const html = render(
 			h(Money, { value: usd(-6340), figure: "monthSpend.total" }),
