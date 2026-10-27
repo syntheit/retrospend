@@ -14,6 +14,7 @@ const PUBLIC_PATHS = [
 	"/pay", // Payment pages
 	"/docs", // Public documentation
 	"/fonts/", // Public fonts (used by landing page, docs, etc.)
+	"/.well-known/", // App links for the iPhone and Android apps; fetched without a session
 ];
 
 export function proxy(request: NextRequest) {

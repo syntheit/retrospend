@@ -51,6 +51,11 @@ export const env = createEnv({
 		// The Google service account JSON, or a path to it.
 		FCM_SERVICE_ACCOUNT: z.string().optional(),
 		FCM_SERVICE_ACCOUNT_FILE: z.string().optional(),
+
+		// SHA-256 fingerprint(s) of the Android app's signing certificate,
+		// comma-separated. Served in /.well-known/assetlinks.json so the
+		// phone's password manager can trust the app for this domain.
+		ANDROID_APP_CERT_SHA256: z.string().optional(),
 	},
 
 	/**
@@ -110,6 +115,7 @@ export const env = createEnv({
 		FCM_PROJECT_ID: process.env.FCM_PROJECT_ID,
 		FCM_SERVICE_ACCOUNT: process.env.FCM_SERVICE_ACCOUNT,
 		FCM_SERVICE_ACCOUNT_FILE: process.env.FCM_SERVICE_ACCOUNT_FILE,
+		ANDROID_APP_CERT_SHA256: process.env.ANDROID_APP_CERT_SHA256,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
