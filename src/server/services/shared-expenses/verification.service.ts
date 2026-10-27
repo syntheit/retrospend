@@ -308,13 +308,13 @@ export class VerificationService {
  * YNAB-style: deletes ONLY the caller's own SplitParticipant row. Does not
  * delete other participants' splits and does not delete the transaction.
  * The remaining shares are intentionally left as-is, the unassigned amount
- * becomes the creator's "hole". Balances recompute from the surviving split
- * rows automatically (see shared-expenses/balance.ts), so no balance code
- * needs to change.
+ * becomes the payer's own cost. Pairwise balances recompute from the surviving
+ * split rows (see shared-expenses/balance.ts); the group views charge the gap
+ * to the payer explicitly so their balances still add up to zero.
  *
  * Guards:
  * - Caller must actually be a participant on the transaction.
- * - Forbidden when the transaction is locked (settled).
+ * - Forbidden when locked (settled), a correction, or with corrections.
  * - When the caller's share is already paid (settlements recorded against
  *   it) or offset by other expenses, removing it would leave the payer
  *   owing the caller. That needs `confirmBalanceChange`. Erasing a share

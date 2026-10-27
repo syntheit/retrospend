@@ -15,6 +15,7 @@
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { forUser } from "~/server/services/preview";
+import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { removeSelfMutation } from "~/server/services/shared-expenses/remove-self.mutation";
 import { adminDb } from "~/test/pg-harness";
 import { projectSettlementPlan } from "../group.service";
@@ -95,6 +96,22 @@ describe("an expense with a removed share", () => {
 		]);
 		expect(warn).not.toHaveBeenCalled();
 		warn.mockRestore();
+	});
+
+	it("the pairwise balances agree: Cam owes Ana, Ben has no line", async () => {
+		const as = (u: TestUser) => ({
+			participantType: "user" as const,
+			participantId: u.user.id,
+		});
+		const [withCam, withBen] = await computeBalanceBatch(
+			adminDb,
+			as(ana),
+			[as(cam), as(ben)],
+			{ projectScope: projectId },
+		);
+		// Positive: the counterpart owes Ana.
+		expect(withCam?.byCurrency).toEqual({ USD: 42.55 });
+		expect(withBen?.byCurrency).toEqual({});
 	});
 
 	it("the summary says the balances add up", async () => {

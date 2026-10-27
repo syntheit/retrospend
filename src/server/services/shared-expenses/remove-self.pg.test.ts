@@ -136,3 +136,69 @@ describe("remove-me undo", () => {
 		expect(await shares(id)).toBe(1);
 	});
 });
+
+describe("remove-me on corrections", () => {
+	/** A correction of `originalId` that moves USD 10 from Ana's share to Ben's. */
+	async function correctionOf(originalId: string) {
+		const made = await adminDb.sharedTransaction.create({
+			data: {
+				description: "Correction",
+				amount: "0",
+				currency: "USD",
+				date: new Date("2026-10-11"),
+				splitMode: "EXACT",
+				correctsId: originalId,
+				paidByType: "user",
+				paidById: ana.user.id,
+				createdByType: "user",
+				createdById: ana.user.id,
+				splitParticipants: {
+					create: [
+						{
+							participantType: "user" as const,
+							participantId: ana.user.id,
+							shareAmount: "-10",
+							verificationStatus: "ACCEPTED" as const,
+						},
+						{
+							participantType: "user" as const,
+							participantId: ben.user.id,
+							shareAmount: "10",
+							verificationStatus: "ACCEPTED" as const,
+						},
+					],
+				},
+			},
+		});
+		return made.id;
+	}
+
+	it("refuses on an expense that has corrections", async () => {
+		const id = await dinner();
+		await correctionOf(id);
+		await expect(
+			forUser(ben.user.id).apply(removeSelfMutation, {
+				transactionId: id,
+				confirmBalanceChange: true,
+			}),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+			message: "This expense has corrections. Undo them first",
+		});
+		expect(await shares(id)).toBe(2);
+	});
+
+	it("refuses on a correction row", async () => {
+		const correction = await correctionOf(await dinner());
+		await expect(
+			forUser(ben.user.id).apply(removeSelfMutation, {
+				transactionId: correction,
+				confirmBalanceChange: true,
+			}),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+			message: "A correction cannot be edited. Undo it instead",
+		});
+		expect(await shares(correction)).toBe(2);
+	});
+});
