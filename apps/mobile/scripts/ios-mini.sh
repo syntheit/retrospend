@@ -2,7 +2,10 @@
 # The Mac mini half of ios-build.sh: install, prebuild, xcodebuild, then
 # install and launch. Runs on the mini from the copied repo:
 #
-#   bash ~/rs-ios/retrospend/apps/mobile/scripts/ios-mini.sh [all|device|simulator|sim-build]
+#   bash ~/rs-ios/retrospend/apps/mobile/scripts/ios-mini.sh [all|device|simulator|sim-build|testflight]
+#
+# testflight (ios-archive.sh, started by ios-testflight.sh) archives Release,
+# exports an .ipa and uploads it to App Store Connect.
 #
 # Signing is Xcode automatic signing driven by the App Store Connect API key
 # in ~/.appstoreconnect/env (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_PATH), so the
@@ -189,11 +192,16 @@ device)
 	;;
 simulator) simulator ;;
 sim-build) sim_build ;;
+testflight)
+	# shellcheck source=ios-archive.sh
+	source "$app/scripts/ios-archive.sh"
+	archive_testflight
+	;;
 all)
 	device_build
 	simulator
 	# The phone goes last: it is the step most likely to need the owner.
 	device_run
 	;;
-*) echo "usage: $0 [device|simulator|sim-build|all]" >&2 && exit 2 ;;
+*) echo "usage: $0 [device|simulator|sim-build|testflight|all]" >&2 && exit 2 ;;
 esac
