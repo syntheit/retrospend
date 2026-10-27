@@ -1,3 +1,7 @@
+import {
+	type NumberFormatChoice,
+	withNumberFormat,
+} from "@retrospend/domain/format-locale";
 import { parseMoneyInput } from "@retrospend/domain/parse";
 import parseVectors from "@retrospend/domain/vectors/money-parse.vectors.json";
 import { applyKey, BACKSPACE, keypadLayout, TRIPLE_ZERO } from "./keypad";
@@ -5,13 +9,17 @@ import { applyKey, BACKSPACE, keypadLayout, TRIPLE_ZERO } from "./keypad";
 // The keypad must produce exactly the drafts the domain vectors promise.
 describe("keypad against the golden keystroke vectors", () => {
 	it.each(parseVectors.keystrokes)("$name", (c) => {
+		const locale = withNumberFormat(
+			c.locale,
+			(c as { numberFormat?: NumberFormatChoice }).numberFormat,
+		);
 		let draft = "";
 		const drafts = c.keys.map((key: string) => {
-			draft = applyKey(draft, key, c.locale, c.currency);
+			draft = applyKey(draft, key, locale, c.currency);
 			return draft;
 		});
 		expect(drafts).toEqual(c.drafts);
-		const result = parseMoneyInput(draft, c.locale, c.currency);
+		const result = parseMoneyInput(draft, locale, c.currency);
 		if ("minor" in c.expected) {
 			expect(result).toMatchObject({ ok: true, minor: c.expected.minor });
 		}
