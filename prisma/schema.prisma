@@ -37,6 +37,8 @@ model User {
   defaultRateTypes            Json                          @default("{}")
   /// IANA zone for the user's calendar days; null falls back to DEFAULT_TIME_ZONE.
   timeZone                    String?                       @db.VarChar(64)
+  /// Group and decimal marks for amounts; null follows the app language.
+  numberFormat                NumberFormat?
   accounts                Account[]
   assetAccounts           AssetAccount[]
   assetSnapshots          AssetSnapshot[]
@@ -1172,6 +1174,12 @@ enum CategoryColor {
 enum CategoryClickBehavior {
   navigate
   toggle
+}
+
+enum NumberFormat {
+  comma_dot
+  dot_comma
+  space_comma
 }
 
 enum CurrencySymbolStyle {

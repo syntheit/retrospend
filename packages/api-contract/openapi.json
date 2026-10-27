@@ -103704,6 +103704,21 @@
 												}
 											]
 										},
+										"numberFormat": {
+											"anyOf": [
+												{
+													"enum": [
+														"comma_dot",
+														"dot_comma",
+														"space_comma"
+													],
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
 										"smartCurrencyFormatting": {
 											"type": "boolean"
 										},
@@ -103723,6 +103738,7 @@
 										"defaultCurrency",
 										"categoryClickBehavior",
 										"currencySymbolStyle",
+										"numberFormat",
 										"monthlyIncome",
 										"smartCurrencyFormatting",
 										"defaultPrivacyMode",
@@ -103921,6 +103937,21 @@
 											}
 										]
 									},
+									"numberFormat": {
+										"anyOf": [
+											{
+												"enum": [
+													"comma_dot",
+													"dot_comma",
+													"space_comma"
+												],
+												"type": "string"
+											},
+											{
+												"type": "null"
+											}
+										]
+									},
 									"smartCurrencyFormatting": {
 										"type": "boolean"
 									},
@@ -104023,6 +104054,21 @@
 												}
 											]
 										},
+										"numberFormat": {
+											"anyOf": [
+												{
+													"enum": [
+														"comma_dot",
+														"dot_comma",
+														"space_comma"
+													],
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
 										"smartCurrencyFormatting": {
 											"type": "boolean"
 										},
@@ -104042,6 +104088,7 @@
 										"defaultCurrency",
 										"categoryClickBehavior",
 										"currencySymbolStyle",
+										"numberFormat",
 										"monthlyIncome",
 										"smartCurrencyFormatting",
 										"defaultPrivacyMode",

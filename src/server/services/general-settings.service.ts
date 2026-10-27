@@ -6,6 +6,7 @@ import type {
 	CategoryClickBehavior,
 	CurrencySymbolStyle,
 	DefaultExpenseDateBehavior,
+	NumberFormat,
 	Prisma,
 } from "~prisma";
 
@@ -21,6 +22,7 @@ export const GENERAL_SETTINGS_SELECT = {
 	defaultCurrency: true,
 	categoryClickBehavior: true,
 	currencySymbolStyle: true,
+	numberFormat: true,
 	monthlyIncome: true,
 	monthlyIncomeCurrency: true,
 	smartCurrencyFormatting: true,
@@ -43,6 +45,8 @@ export interface GeneralSettingsChanges {
 	defaultCurrency?: string;
 	categoryClickBehavior?: CategoryClickBehavior;
 	currencySymbolStyle?: CurrencySymbolStyle;
+	/** The account's group and decimal marks; null follows the app language. */
+	numberFormat?: NumberFormat | null;
 	/** A decimal string or number in monthlyIncomeCurrency; null clears it. */
 	monthlyIncome?: string | number | null;
 	monthlyIncomeCurrency?: string;

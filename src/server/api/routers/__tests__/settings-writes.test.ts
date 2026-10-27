@@ -73,6 +73,19 @@ describe("settings.updateGeneral", () => {
 		expect(data).toEqual({ smartCurrencyFormatting: false });
 	});
 
+	it("writes a number format, and null to follow the language again", async () => {
+		await callAndFlush(() =>
+			caller().updateGeneral({ numberFormat: "dot_comma" }),
+		);
+		expect(mockDb.user.update.mock.calls[0]?.[0].data).toEqual({
+			numberFormat: "dot_comma",
+		});
+		await callAndFlush(() => caller().updateGeneral({ numberFormat: null }));
+		expect(mockDb.user.update.mock.calls[1]?.[0].data).toEqual({
+			numberFormat: null,
+		});
+	});
+
 	it("still writes the home currency when that is the change", async () => {
 		await callAndFlush(() => caller().updateGeneral({ homeCurrency: "ARS" }));
 		expect(mockDb.user.update.mock.calls[0]?.[0].data).toEqual({

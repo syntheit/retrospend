@@ -46,6 +46,11 @@ export const settingsRouter = createTRPCRouter({
 				categoryClickBehavior: z.enum(["navigate", "toggle"]).optional(),
 
 				currencySymbolStyle: z.enum(["native", "standard"]).optional(),
+				// Null goes back to following the app language.
+				numberFormat: z
+					.enum(["comma_dot", "dot_comma", "space_comma"])
+					.nullable()
+					.optional(),
 				monthlyIncome: z
 					.number()
 					.min(0, "Monthly income must be non-negative")
@@ -72,6 +77,7 @@ export const settingsRouter = createTRPCRouter({
 				defaultCurrency: updated.defaultCurrency,
 				categoryClickBehavior: updated.categoryClickBehavior,
 				currencySymbolStyle: updated.currencySymbolStyle,
+				numberFormat: updated.numberFormat,
 				timeZone: updated.timeZone,
 			};
 		}),
