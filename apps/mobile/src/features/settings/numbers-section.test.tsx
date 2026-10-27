@@ -1,4 +1,4 @@
-import { NumbersSection } from "./NumbersSection";
+import { useNumbersSection } from "./NumbersSection";
 import type { GeneralSettings } from "./source";
 
 // The Numbers section: each number format option reads as the user's own
@@ -79,11 +79,13 @@ const settings = {
 
 function mount(over: Partial<GeneralSettings> = {}) {
 	const onSaved = jest.fn();
+	const merged = { ...settings, ...over };
+	function Section() {
+		return useNumbersSection(merged, onSaved);
+	}
 	let tree: { root: TestNode };
 	act(() => {
-		tree = create(
-			<NumbersSection onSaved={onSaved} settings={{ ...settings, ...over }} />,
-		);
+		tree = create(<Section />);
 	});
 	// biome-ignore lint/style/noNonNullAssertion: assigned inside act above
 	return { root: tree!.root, onSaved };
@@ -105,10 +107,10 @@ describe("NumbersSection", () => {
 		expect(labels(root)).toEqual(
 			expect.arrayContaining([
 				"Number format|follow",
-				"Number format|follow|Follow language (USD 1,234,567.89)",
-				"Number format|comma_dot|USD 1,234,567.89",
-				"Number format|dot_comma|USD 1.234.567,89",
-				"Number format|space_comma|USD 1 234 567,89",
+				"Number format|follow|Follow language",
+				"Number format|comma_dot|USD\u00a01,234,567.89",
+				"Number format|dot_comma|USD\u00a01.234.567,89",
+				"Number format|space_comma|USD\u00a01\u202f234\u202f567,89",
 			]),
 		);
 	});
@@ -131,7 +133,7 @@ describe("NumbersSection", () => {
 		const press = root.findAll(
 			(n) =>
 				n.props.accessibilityLabel ===
-				"Number format|dot_comma|USD 1.234.567,89",
+				"Number format|dot_comma|USD\u00a01.234.567,89",
 		)[0] as TestNode;
 		await act(async () => {
 			(press.props.onPress as () => void)();

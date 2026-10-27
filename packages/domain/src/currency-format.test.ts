@@ -308,7 +308,7 @@ describe("formatCompactAmount", () => {
 // language's pattern. Expected strings are written out by hand. U+202F is the
 // narrow no-break space of the space_comma choice.
 describe("number format override", () => {
-	const NN = " ";
+	const NN = "\u202f";
 
 	it("follows the language when no format is set", () => {
 		expect(formatCurrency(1234.56, "EUR")).toBe("€1.234,56");

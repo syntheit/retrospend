@@ -2,7 +2,7 @@ import {
 	type NumberFormatOption,
 	numberFormatExamples,
 } from "@retrospend/domain/format";
-import { useMemo } from "react";
+import { type ReactElement, useMemo } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -17,25 +17,29 @@ import type { GeneralSettings } from "./source";
  * server's answer, and the profile is read again because the money formatter
  * takes them from it (useMoneyPrefs). Each number format option is shown as
  * the user's own home-currency amount in it.
+ *
+ * A hook that returns the section's element, not a component: the form's
+ * field group reads its sections from its direct children, and a wrapper
+ * component would count as an implicit section of its own.
  */
-export function NumbersSection({
-	settings,
-	onSaved,
-}: {
-	settings: GeneralSettings;
-	onSaved(): void;
-}) {
+export function useNumbersSection(
+	settings: GeneralSettings | null,
+	onSaved: () => void,
+): ReactElement | null {
 	const t = useTranslations("mobile.settings");
 	const tn = useTranslations("mobile.settings.numbers");
 	const { api, refreshMe } = useSession();
 	const toast = useToast();
 	const language = useFormatLocale();
+	const home = settings?.homeCurrency;
 	const examples = useMemo(
-		() => numberFormatExamples(settings.homeCurrency, language),
-		[settings.homeCurrency, language],
+		() => (home ? numberFormatExamples(home, language) : null),
+		[home, language],
 	);
+	if (!settings || !examples) return null;
+
 	const options: { value: NumberFormatOption; label: string }[] = [
-		{ value: "follow", label: tn("follow", { example: examples.follow }) },
+		{ value: "follow", label: tn("follow") },
 		{ value: "comma_dot", label: examples.comma_dot },
 		{ value: "dot_comma", label: examples.dot_comma },
 		{ value: "space_comma", label: examples.space_comma },
@@ -59,7 +63,12 @@ export function NumbersSection({
 	}
 
 	return (
-		<FormSection footer={tn("footer")} title={tn("title")}>
+		<FormSection
+			footer={tn("footer", {
+				example: examples[settings.numberFormat ?? "follow"],
+			})}
+			title={tn("title")}
+		>
 			<FormPickerRow<NumberFormatOption>
 				label={tn("format")}
 				onChange={(next) =>

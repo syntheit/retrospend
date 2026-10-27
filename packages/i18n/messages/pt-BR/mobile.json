@@ -993,9 +993,9 @@
 		},
 		"numbers": {
 			"title": "Números",
-			"footer": "Vale em todo lugar onde você entrar.",
+			"footer": "Aparece assim: {example}",
 			"format": "Formato de números",
-			"follow": "Seguir o idioma ({example})",
+			"follow": "Seguir o idioma",
 			"symbol": "Símbolo da moeda",
 			"symbolStandard": "Padrão",
 			"symbolNative": "Nativo"

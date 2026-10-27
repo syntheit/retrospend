@@ -43,8 +43,9 @@ export function MoneyRows({
 	const defaultCurrency = settings.defaultCurrency ?? settings.homeCurrency;
 	// Each option reads as the user's own amount, in the language's pattern.
 	const examples = numberFormatExamples(settings.homeCurrency, language);
+	const effective = examples[settings.numberFormat ?? "follow"];
 	const formatOptions: { value: NumberFormatOption; label: string }[] = [
-		{ value: "follow", label: t("numberFollow", { example: examples.follow }) },
+		{ value: "follow", label: t("numberFollow") },
 		{ value: "comma_dot", label: examples.comma_dot },
 		{ value: "dot_comma", label: examples.dot_comma },
 		{ value: "space_comma", label: examples.space_comma },
@@ -97,7 +98,7 @@ export function MoneyRows({
 			<SettingRow
 				label={t("numberFormat")}
 				labelFor="pf-number-format"
-				meta={t("numberFormatMeta")}
+				meta={t("numberFormatMeta", { example: effective })}
 			>
 				<SelectField
 					id="pf-number-format"

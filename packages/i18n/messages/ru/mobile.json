@@ -993,9 +993,9 @@
 		},
 		"numbers": {
 			"title": "Числа",
-			"footer": "Действует везде, где вы входите в аккаунт.",
+			"footer": "Выглядит так: {example}",
 			"format": "Формат чисел",
-			"follow": "Как в языке ({example})",
+			"follow": "Как в языке",
 			"symbol": "Символ валюты",
 			"symbolStandard": "Стандартный",
 			"symbolNative": "Местный"

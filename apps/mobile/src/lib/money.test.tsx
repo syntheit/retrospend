@@ -47,10 +47,10 @@ const follow: MoneyPrefs = { numberFormat: null, symbolStyle: "standard" };
 describe("useFormatMoney", () => {
 	it("follows the language when no number format is set", () => {
 		expect(read(follow, "en-US", (m) => [m.format(usd) ?? ""])).toEqual([
-			"USD 1,234.56",
+			"USD\u00a01,234.56",
 		]);
 		expect(read(follow, "es-AR", (m) => [m.format(usd) ?? ""])).toEqual([
-			"USD 1.234,56",
+			"USD\u00a01.234,56",
 		]);
 	});
 
@@ -58,17 +58,17 @@ describe("useFormatMoney", () => {
 		const dotComma: MoneyPrefs = { ...follow, numberFormat: "dot_comma" };
 		const commaDot: MoneyPrefs = { ...follow, numberFormat: "comma_dot" };
 		expect(read(dotComma, "en-US", (m) => [m.format(usd) ?? ""])).toEqual([
-			"USD 1.234,56",
+			"USD\u00a01.234,56",
 		]);
 		// A Spanish phone that wants 1,234.56.
 		expect(read(commaDot, "es-AR", (m) => [m.format(usd) ?? ""])).toEqual([
-			"USD 1,234.56",
+			"USD\u00a01,234.56",
 		]);
 		expect(
 			read({ ...follow, numberFormat: "space_comma" }, "en-US", (m) => [
 				m.format(usd) ?? "",
 			]),
-		).toEqual(["USD 1 234,56"]);
+		).toEqual(["USD\u00a01\u202f234,56"]);
 	});
 
 	it("types in the same format: the locale carries the setting", () => {
@@ -101,7 +101,7 @@ describe("useFormatMoney", () => {
 				return [p.original, p.home ?? ""];
 			},
 		);
-		expect(original).toBe("BRL 51,90");
-		expect(home).toBe("ARS 1.234.567");
+		expect(original).toBe("BRL\u00a051,90");
+		expect(home).toBe("ARS\u00a01.234.567");
 	});
 });
