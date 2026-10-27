@@ -1,3 +1,7 @@
+import {
+	type NumberFormatChoice,
+	withNumberFormat,
+} from "@retrospend/domain/format-locale";
 import vectors from "@retrospend/domain/vectors/money-format.vectors.json";
 import { createElement as h } from "react";
 import { describe, expect, it } from "vitest";
@@ -19,6 +23,7 @@ type Options = Omit<FormatMoneyOptions, "locale">;
 type FormatCase = {
 	name: string;
 	locale: string;
+	numberFormat?: NumberFormatChoice;
 	money?: MoneyValue | null;
 	options?: Options;
 	expected?: string | null;
@@ -27,6 +32,7 @@ type FormatCase = {
 type PairCase = {
 	name: string;
 	locale: string;
+	numberFormat?: NumberFormatChoice;
 	original: MoneyValue;
 	home: MoneyValue | null;
 	options?: Options;
@@ -56,7 +62,7 @@ describe("golden vectors through the components", () => {
 	it.each(format)("Money: $name", (c) => {
 		const html = render(
 			h(Money, { value: c.money ?? null, ...c.options }),
-			c.locale,
+			withNumberFormat(c.locale, c.numberFormat),
 		);
 		expect(amounts(html)).toEqual([c.expected ?? kit.money?.none]);
 	});
@@ -64,7 +70,7 @@ describe("golden vectors through the components", () => {
 	it.each(pair)("Money.pair: $name", (c) => {
 		const html = render(
 			h(Money.pair, { original: c.original, home: c.home, ...c.options }),
-			c.locale,
+			withNumberFormat(c.locale, c.numberFormat),
 		);
 		// Same currency: one amount. A missing home amount says No rate yet.
 		const same = c.home != null && c.home.currency === c.original.currency;

@@ -87,15 +87,19 @@ export function formatCompactAmount(
 	symbol: string,
 	locale = "en-US",
 ): string {
+	const choice = numberFormatOf(locale);
+	// A set format always groups, even where the language leaves 1234 whole.
+	const grouping = choice ? { useGrouping: "always" } : {};
 	const digits = swapSeparators(
 		partsOf(
 			new Intl.NumberFormat(baseLocale(locale), {
 				notation: "compact",
 				maximumFractionDigits: 1,
-			}),
+				...grouping,
+			} as Intl.NumberFormatOptions),
 			Math.abs(amount),
 		),
-		numberFormatOf(locale),
+		choice,
 	);
 	const sign = amount < 0 && /[1-9]/.test(digits) ? "-" : "";
 	return `${sign}${symbol}${digits}`;

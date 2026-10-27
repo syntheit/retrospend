@@ -1021,10 +1021,7 @@
 			"title": "Numbers",
 			"footer": "Reads like {example}",
 			"format": "Number format",
-			"follow": "Follow language",
-			"symbol": "Currency symbol",
-			"symbolStandard": "Standard",
-			"symbolNative": "Native"
+			"follow": "Follow language"
 		}
 	}
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { SearchX, Star } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { useEffect, useRef, useState } from "react";
 import { BackButton, PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
@@ -59,7 +60,7 @@ export function CurrenciesScreen({
 }) {
 	const t = useTranslations("currenciesPage");
 	const nav = useTranslations("shell.nav");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const phone = useIsMobile();
 	const name = useCurrencyName();
 	const label = useRateLabel();

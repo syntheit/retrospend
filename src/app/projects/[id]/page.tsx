@@ -3,6 +3,7 @@ import { ProjectPage } from "~/features/project/project-page";
 import { SharedProjectPage } from "~/features/project/shared/shared-page";
 import { getWebSession } from "~/server/better-auth/web-session";
 import { db } from "~/server/db";
+import { api, HydrateClient } from "~/trpc/server";
 import { isProjectMember } from "~/server/services/project/page-view";
 
 type Params = Promise<{ id: string }>;
@@ -29,5 +30,13 @@ export default async function Page({
 		!search.invite &&
 		!search.guestResume &&
 		(await isProjectMember(db, id, session.user.id));
-	return member ? <ProjectPage id={id} /> : <SharedProjectPage id={id} />;
+	if (!member) return <SharedProjectPage id={id} />;
+	// The member's settings (number format) are in the page before it hydrates,
+	// as in the dashboard layout, so amounts do not change after first paint.
+	await api.settings.getGeneral.prefetch();
+	return (
+		<HydrateClient>
+			<ProjectPage id={id} />
+		</HydrateClient>
+	);
 }

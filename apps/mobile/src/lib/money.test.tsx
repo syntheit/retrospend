@@ -80,7 +80,7 @@ describe("useFormatMoney", () => {
 		expect(tag).toBe("en-US-x-nf-dc");
 	});
 
-	it("shows the symbol in the account's style, as the web does", () => {
+	it("shows a symbol in the account's style, never a bare $ for a peso", () => {
 		const symbol = { display: "symbol" } as const;
 		expect(read(follow, "en-US", (m) => [m.format(ars, symbol) ?? ""])).toEqual(
 			["AR$1,234,567"],
@@ -89,7 +89,7 @@ describe("useFormatMoney", () => {
 			read({ ...follow, symbolStyle: "native" }, "en-US", (m) => [
 				m.format(ars, symbol) ?? "",
 			]),
-		).toEqual(["$1,234,567"]);
+		).toEqual(["ARS\u00a01,234,567"]);
 	});
 
 	it("formats a pair with the same settings", () => {

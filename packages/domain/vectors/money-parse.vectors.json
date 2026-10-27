@@ -689,56 +689,64 @@
 		},
 		{
 			"name": "en-US with dot_comma reads 1.234,56",
-			"locale": "en-US-x-nf-dc",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
 			"currency": "USD",
 			"text": "1.234,56",
 			"expected": { "minor": 123456 }
 		},
 		{
 			"name": "dot_comma reads 1.234 as a thousand, not a fraction",
-			"locale": "en-US-x-nf-dc",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
 			"currency": "USD",
 			"text": "1.234",
 			"expected": { "minor": 123400 }
 		},
 		{
 			"name": "dot_comma refuses the English 1,234.56",
-			"locale": "en-US-x-nf-dc",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
 			"currency": "USD",
 			"text": "1,234.56",
 			"expected": { "error": "ambiguous" }
 		},
 		{
 			"name": "es-AR with comma_dot reads 1,234.56",
-			"locale": "es-AR-x-nf-cd",
+			"locale": "es-AR",
+			"numberFormat": "comma_dot",
 			"currency": "ARS",
 			"text": "1,234.56",
 			"expected": { "minor": 123456 }
 		},
 		{
 			"name": "es-AR with comma_dot refuses 1.234,56",
-			"locale": "es-AR-x-nf-cd",
+			"locale": "es-AR",
+			"numberFormat": "comma_dot",
 			"currency": "ARS",
 			"text": "1.234,56",
 			"expected": { "error": "ambiguous" }
 		},
 		{
 			"name": "space_comma reads a typed space as the group",
-			"locale": "en-US-x-nf-sc",
+			"locale": "en-US",
+			"numberFormat": "space_comma",
 			"currency": "USD",
 			"text": "1 234,56",
 			"expected": { "minor": 123456 }
 		},
 		{
 			"name": "space_comma reads the narrow group it writes",
-			"locale": "de-x-nf-sc",
+			"locale": "de",
+			"numberFormat": "space_comma",
 			"currency": "USD",
 			"text": "1\u202f234,56",
 			"expected": { "minor": 123456 }
 		},
 		{
 			"name": "space_comma sums",
-			"locale": "en-US-x-nf-sc",
+			"locale": "en-US",
+			"numberFormat": "space_comma",
 			"currency": "USD",
 			"text": "1 000 + 2,5",
 			"expected": { "minor": 100250 }
@@ -943,21 +951,24 @@
 		},
 		{
 			"name": "dot_comma regroups in an English UI",
-			"locale": "en-US-x-nf-dc",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
 			"currency": "USD",
 			"text": "1234567,5",
 			"expected": "1.234.567,5"
 		},
 		{
 			"name": "comma_dot regroups in a Spanish UI",
-			"locale": "es-AR-x-nf-cd",
+			"locale": "es-AR",
+			"numberFormat": "comma_dot",
 			"currency": "ARS",
 			"text": "1234567.5",
 			"expected": "1,234,567.5"
 		},
 		{
 			"name": "space_comma regroups with the narrow space",
-			"locale": "en-US-x-nf-sc",
+			"locale": "en-US",
+			"numberFormat": "space_comma",
 			"currency": "USD",
 			"text": "1234567,5",
 			"expected": "1\u202f234\u202f567,5"
@@ -1050,7 +1061,8 @@
 		},
 		{
 			"name": "dot_comma in English: a typed dot is the group, not a decimal",
-			"locale": "en-US-x-nf-dc",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
 			"currency": "USD",
 			"keys": ["1", "2", "3", "4", ",", "5"],
 			"drafts": ["1", "12", "123", "1.234", "1.234,", "1.234,5"],
@@ -1144,25 +1156,29 @@
 		},
 		{
 			"name": "dot_comma over en-US",
-			"locale": "en-US-x-nf-dc",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
 			"money": { "minor": 123456, "currency": "USD" },
 			"expected": "1.234,56"
 		},
 		{
 			"name": "comma_dot over es-AR",
-			"locale": "es-AR-x-nf-cd",
+			"locale": "es-AR",
+			"numberFormat": "comma_dot",
 			"money": { "minor": 123456, "currency": "ARS" },
 			"expected": "1,234.56"
 		},
 		{
 			"name": "space_comma over de",
-			"locale": "de-x-nf-sc",
+			"locale": "de",
+			"numberFormat": "space_comma",
 			"money": { "minor": 123456, "currency": "EUR" },
 			"expected": "1\u202f234,56"
 		},
 		{
 			"name": "a set format groups four digits in es-ES",
-			"locale": "es-ES-x-nf-dc",
+			"locale": "es-ES",
+			"numberFormat": "dot_comma",
 			"money": { "minor": 192030, "currency": "EUR" },
 			"expected": "1.920,30"
 		}
@@ -1175,10 +1191,10 @@
 		{ "locale": "fr", "decimal": ",", "group": "\u202f" },
 		{ "locale": "ru", "decimal": ",", "group": "\u00a0" },
 		{ "locale": "en-IN", "decimal": ".", "group": "," },
-		{ "locale": "en-US-x-nf-cd", "decimal": ".", "group": "," },
-		{ "locale": "es-AR-x-nf-cd", "decimal": ".", "group": "," },
-		{ "locale": "en-US-x-nf-dc", "decimal": ",", "group": "." },
-		{ "locale": "en-US-x-nf-sc", "decimal": ",", "group": "\u202f" },
-		{ "locale": "fr-x-nf-dc", "decimal": ",", "group": "." }
+		{"locale": "en-US", "numberFormat": "comma_dot", "decimal": ".", "group": ","},
+		{"locale": "es-AR", "numberFormat": "comma_dot", "decimal": ".", "group": ","},
+		{"locale": "en-US", "numberFormat": "dot_comma", "decimal": ",", "group": "."},
+		{"locale": "en-US", "numberFormat": "space_comma", "decimal": ",", "group": "\u202f"},
+		{"locale": "fr", "numberFormat": "dot_comma", "decimal": ",", "group": "."}
 	]
 }

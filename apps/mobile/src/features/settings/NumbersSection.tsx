@@ -12,10 +12,10 @@ import { useToast } from "@/ui/Toast";
 import type { GeneralSettings } from "./source";
 
 /**
- * How amounts read: the number format and the currency symbol style. Both
- * are account settings the web shares, so a change saves at once, from the
- * server's answer, and the profile is read again because the money formatter
- * takes them from it (useMoneyPrefs). Each number format option is shown as
+ * How amounts read: the number format. It is an account setting the web
+ * shares, so a change saves at once, from the server's answer, and the
+ * profile is read again because the money formatter takes it from there
+ * (useMoneyPrefs). Each number format option is shown as
  * the user's own home-currency amount in it.
  *
  * A hook that returns the section's element, not a component: the form's
@@ -45,10 +45,7 @@ export function useNumbersSection(
 		{ value: "space_comma", label: examples.space_comma },
 	];
 
-	async function save(patch: {
-		numberFormat?: GeneralSettings["numberFormat"];
-		currencySymbolStyle?: GeneralSettings["currencySymbolStyle"];
-	}) {
+	async function save(patch: { numberFormat: GeneralSettings["numberFormat"] }) {
 		if (!api) return;
 		try {
 			await api.settings.update(patch, {
@@ -76,15 +73,6 @@ export function useNumbersSection(
 				}
 				options={options}
 				value={settings.numberFormat ?? "follow"}
-			/>
-			<FormPickerRow
-				label={tn("symbol")}
-				onChange={(currencySymbolStyle) => save({ currencySymbolStyle })}
-				options={[
-					{ value: "standard", label: tn("symbolStandard") },
-					{ value: "native", label: tn("symbolNative") },
-				]}
-				value={settings.currencySymbolStyle}
 			/>
 		</FormSection>
 	);

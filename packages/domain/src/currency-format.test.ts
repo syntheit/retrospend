@@ -366,6 +366,12 @@ describe("number format override", () => {
 		).toBe("12.345,50 BTC");
 	});
 
+	it("groups four digits on a compact axis under a set format", () => {
+		expect(formatCompactAmount(1234, "\u20ac", "de-x-nf-cd")).toBe("\u20ac1,234");
+		expect(formatCompactAmount(1234, "\u20ac", "de")).toBe("\u20ac1234");
+		expect(formatCompactAmount(1234, "\u20ac", "de-x-nf-dc")).toBe("\u20ac1.234");
+	});
+
 	it("swaps the compact axis mark", () => {
 		expect(formatCompactAmount(1_234_567, "$", "en-US-x-nf-dc")).toBe("$1,2M");
 		expect(formatCompactAmount(-1_500_000, "AR$", "en-US-x-nf-cd")).toBe(

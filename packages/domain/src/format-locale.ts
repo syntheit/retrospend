@@ -112,21 +112,16 @@ export function numberSymbols(locale: string): NumberSymbols {
 
 /**
  * The language's symbols with the account's separators over them. A set
- * format always groups: a language that does not group (or only from five
- * digits) groups in threes, so "1.920,30" never shows as "1920,30".
+ * format always groups in threes: a language that does not group (or only
+ * from five digits) still gives "1.920,30", and en-IN's lakh groups give
+ * "123 456,78" rather than "1 23 456,78".
  */
 function withChoice(
 	symbols: NumberSymbols,
 	choice: NumberFormatChoice | null,
 ): NumberSymbols {
 	if (!choice) return symbols;
-	const primary = symbols.primary || 3;
-	return {
-		...symbols,
-		...SEPARATORS[choice],
-		primary,
-		secondary: symbols.primary ? symbols.secondary : primary,
-	};
+	return { ...symbols, ...SEPARATORS[choice], primary: 3, secondary: 3 };
 }
 
 function readSymbols(locale: string): NumberSymbols {

@@ -1021,10 +1021,7 @@
 			"title": "Números",
 			"footer": "Se lee así: {example}",
 			"format": "Formato de números",
-			"follow": "Seguir el idioma",
-			"symbol": "Símbolo de moneda",
-			"symbolStandard": "Estándar",
-			"symbolNative": "Nativo"
+			"follow": "Seguir el idioma"
 		}
 	}
 }

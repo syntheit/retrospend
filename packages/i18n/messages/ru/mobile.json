@@ -1021,10 +1021,7 @@
 			"title": "Числа",
 			"footer": "Выглядит так: {example}",
 			"format": "Формат чисел",
-			"follow": "Как в языке",
-			"symbol": "Символ валюты",
-			"symbolStandard": "Стандартный",
-			"symbolNative": "Местный"
+			"follow": "Как в языке"
 		}
 	}
 }

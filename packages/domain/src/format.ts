@@ -125,7 +125,25 @@ function shownDecimals(
 	return { shown: decimals, trim: false };
 }
 
-/** The symbol to show, or undefined when the code shows instead. */
+/** How many currencies write `symbol` as their standard or native symbol. */
+let symbolUse: Map<string, number> | null = null;
+function symbolUsers(symbol: string): number {
+	if (!symbolUse) {
+		symbolUse = new Map();
+		for (const c of Object.values(CURRENCIES)) {
+			for (const s of new Set([c.symbol, c.symbol_native])) {
+				symbolUse.set(s, (symbolUse.get(s) ?? 0) + 1);
+			}
+		}
+	}
+	return symbolUse.get(symbol) ?? 0;
+}
+
+/**
+ * The symbol to show, or undefined when the code shows instead. With the
+ * account's style the symbol is that style's, but only when no other
+ * currency uses it: "$" is every dollar and peso, so those keep their code.
+ */
 function symbolFor(
 	code: string,
 	display: MoneyDisplay,
@@ -135,7 +153,8 @@ function symbolFor(
 	if (!style) return UNAMBIGUOUS_SYMBOLS[code];
 	// Crypto and unknown tickers have no symbol: their code stands.
 	if (!(code in CURRENCIES)) return undefined;
-	return getCurrencySymbolWithPreference(code, style);
+	const symbol = getCurrencySymbolWithPreference(code, style);
+	return symbolUsers(symbol) === 1 ? symbol : undefined;
 }
 
 function unitLabel(

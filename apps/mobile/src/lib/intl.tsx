@@ -18,12 +18,15 @@ declare module "use-intl" {
 }
 
 /**
- * The device's region tag ("es-AR", "en-US"). Money and numbers use it for
- * separators even when the copy falls back to another catalog. Until the
- * signed-in user's language arrives from the server, the device decides both.
+ * The language numbers follow ("Follow language" in Settings > Numbers): the
+ * app language when one is chosen in Settings > Language, else the device's
+ * region tag ("es-AR", "en-US"), which keeps its separators even when the
+ * copy falls back to another catalog.
  */
 export function useFormatLocale(): string {
-	return useLocales()[0]?.languageTag ?? "en-US";
+	const device = useLocales()[0]?.languageTag ?? "en-US";
+	const pref = useLanguagePref();
+	return pref === "device" ? device : pref;
 }
 
 export function AppIntlProvider({ children }: { children: ReactNode }) {

@@ -115,16 +115,10 @@ describe("NumbersSection", () => {
 		);
 	});
 
-	it("reads the stored format and symbol style", () => {
-		const { root } = mount({
-			numberFormat: "dot_comma",
-			currencySymbolStyle: "native",
-		});
+	it("reads the stored format and says how it reads", () => {
+		const { root } = mount({ numberFormat: "dot_comma" });
 		expect(labels(root)).toEqual(
-			expect.arrayContaining([
-				"Number format|dot_comma",
-				"Currency symbol|native",
-			]),
+			expect.arrayContaining(["Number format|dot_comma"]),
 		);
 	});
 
