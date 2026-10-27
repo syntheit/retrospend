@@ -1,7 +1,9 @@
 /**
  * @jest-environment node
  */
+
 import config, { assertBuildProfile, defaultServer } from "../app.config";
+import { APP_LOCALES } from "../src/lib/locales";
 
 // Owner decision (2026-10-22): plain http servers are allowed after a
 // warning, so release builds must not block them at the OS level.
@@ -32,6 +34,21 @@ describe("app config", () => {
 		expect(config.android?.package).toBe("app.retrospend");
 		expect(config.scheme).toBe("retrospend");
 		expect(config.android?.predictiveBackGestureEnabled).toBe(false);
+	});
+
+	it("ties the iOS app to both server domains for Password AutoFill", () => {
+		expect(config.ios?.associatedDomains).toEqual([
+			"webcredentials:dev.retrospend.app",
+			"webcredentials:retrospend.app",
+		]);
+	});
+
+	it("tells Android and iOS which languages the app speaks", () => {
+		const entry = config.plugins?.find(
+			(p) => Array.isArray(p) && p[0] === "expo-localization",
+		) as [string, { supportedLocales: string[] }] | undefined;
+		expect(entry?.[1].supportedLocales).toEqual([...APP_LOCALES]);
+		expect(entry?.[1].supportedLocales).toContain("es-AR");
 	});
 
 	describe("assertBuildProfile", () => {

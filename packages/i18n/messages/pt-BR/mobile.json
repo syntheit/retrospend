@@ -917,6 +917,14 @@
 		"error": "Não foi possível carregar os ajustes",
 		"errorDetail": "Verifique sua conexão e tente de novo.",
 		"notAvailable": "Ainda não disponível",
+		"device": {
+			"title": "Neste dispositivo",
+			"footer": "Muda só este app. O idioma da web continua como está."
+		},
+		"language": {
+			"label": "Idioma",
+			"device": "Usar o idioma do dispositivo"
+		},
 		"profile": {
 			"title": "Perfil",
 			"name": "Nome",
