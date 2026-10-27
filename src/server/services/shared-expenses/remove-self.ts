@@ -13,13 +13,15 @@ import type { ParticipantRef } from "./types";
  * YNAB-style: deletes ONLY the caller's own SplitParticipant row. Does not
  * delete other participants' splits and does not delete the transaction.
  * The remaining shares are intentionally left as-is, the unassigned amount
- * becomes the creator's "hole". Balances recompute from the surviving split
- * rows automatically (see shared-expenses/balance.ts), so no balance code
- * needs to change.
+ * becomes the payer's own cost. Pairwise balances recompute from the surviving
+ * split rows (see shared-expenses/balance.ts); the group views
+ * (group-settlement.ts, project/summary.ts) charge the gap to the payer
+ * explicitly so their balances still add up to zero.
  *
  * Guards:
  * - Caller must actually be a participant on the transaction.
- * - Forbidden when the transaction is locked (settled).
+ * - Forbidden when the transaction is locked (settled), is a correction, or
+ *   has corrections.
  * - When the caller's share is already paid (settlements recorded against
  *   it) or offset by other expenses, removing it would leave the payer
  *   owing the caller. That needs `confirmBalanceChange`. Erasing a share
@@ -43,6 +45,8 @@ export async function removeSelfIn(
 			paidById: true,
 			createdByType: true,
 			createdById: true,
+			correctsId: true,
+			_count: { select: { corrections: true } },
 			splitParticipants: true,
 		},
 	});
@@ -58,6 +62,22 @@ export async function removeSelfIn(
 		throw new TRPCError({
 			code: "FORBIDDEN",
 			message: "This expense is settled and can no longer be changed",
+		});
+	}
+
+	// Same rule as the edit guard (project-permissions): a correction is undone,
+	// and an expense with corrections stays as it was. Removing a share from
+	// either would leave a negative gap, which the balances do not absorb.
+	if (txn.correctsId) {
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message: "A correction cannot be edited. Undo it instead",
+		});
+	}
+	if ((txn._count?.corrections ?? 0) > 0) {
+		throw new TRPCError({
+			code: "FORBIDDEN",
+			message: "This expense has corrections. Undo them first",
 		});
 	}
 

@@ -83,6 +83,22 @@ function zeroTolerance(currency: string): number {
 	return 0.5 * 10 ** -currencyDecimals(currency);
 }
 
+/**
+ * The part of an expense that no share covers, in the expense's currency.
+ * "Remove me" deletes the leaver's own share and leaves the others as they
+ * were, so the gap is real: the payer paid it and nobody owes it back (the
+ * pairwise balances already see it that way). Zero when the shares cover the
+ * amount or exceed it: shares above the amount are a data fault that stays
+ * visible in the sanity check instead of being papered over.
+ */
+function unassignedAmount(tx: TxForSettlement): number {
+	const shares = tx.splitParticipants.reduce(
+		(sum, sp) => sum + toNum(sp.shareAmount),
+		0,
+	);
+	return Math.max(0, roundMoney(toNum(tx.amount) - shares, tx.currency));
+}
+
 // ── algorithm ─────────────────────────────────────────────────────────────────
 
 /**
@@ -133,6 +149,8 @@ export function planGreedyTransfers<Ref>(
  *
  * Step 2: For each currency, compute net balance per participant:
  *   net = totalPaid − fairShare + settlementsOutgoing − settlementsIncoming
+ *   Any part of an expense that no share covers (someone used "Remove me")
+ *   counts as the payer's own share, so the balances still add up to zero.
  *   Positive net = creditor (is owed money). Negative net = debtor (owes money).
  *
  * Step 3: Greedy settlement: repeatedly match the largest creditor with the
@@ -175,6 +193,10 @@ export function computeSettlementPlan(
 				participantId: tx.paidById,
 			});
 			paidMap.set(payerKey, (paidMap.get(payerKey) ?? 0) + toNum(tx.amount));
+			const unassigned = unassignedAmount(tx);
+			if (unassigned > 0) {
+				shareMap.set(payerKey, (shareMap.get(payerKey) ?? 0) + unassigned);
+			}
 
 			for (const sp of tx.splitParticipants) {
 				const spKey = pkey(sp.participantType, sp.participantId);

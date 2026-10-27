@@ -189,18 +189,19 @@ describe("summarizeLedger", () => {
 	});
 
 	it("reports shares that do not add up instead of hiding them", () => {
-		// 100.00 paid, shares 33.33 x 3 = 99.99: the group is one cent short.
+		// 100.00 paid, shares 33.34 x 3 = 100.02: shares above the amount are
+		// a fault nobody absorbs, so the group is two cents over.
 		const m = summarizeLedger({
 			transactions: [
 				tx("BRL", "100", A, [
-					[A, "33.33"],
-					[B, "33.33"],
-					[C, "33.33"],
+					[A, "33.34"],
+					[B, "33.34"],
+					[C, "33.34"],
 				]),
 			],
 			settlements: [],
 		});
-		expect(m.imbalance).toEqual([{ minor: 1, currency: "BRL" }]);
+		expect(m.imbalance).toEqual([{ minor: -2, currency: "BRL" }]);
 	});
 
 	it("uses each currency's minor unit and rounds half to even", () => {
@@ -224,7 +225,9 @@ describe("summarizeLedger", () => {
 		]);
 		// 0.125 USD = 12.5 cents, half-even: 12.
 		expect(lineOf(m, "user:b", "USD")?.share).toBe(12);
-		expect(m.imbalance).toEqual([{ minor: 1, currency: "USD" }]);
+		// Both shares round to 12, so one cent has no share: Ana paid it.
+		expect(lineOf(m, "user:a", "USD")?.share).toBe(13);
+		expect(m.imbalance).toEqual([]);
 	});
 
 	it("is empty for a project with nothing in it", () => {
@@ -236,5 +239,33 @@ describe("summarizeLedger", () => {
 				imbalance: [],
 			},
 		);
+	});
+});
+
+describe("summarizeLedger with part of an expense unassigned", () => {
+	it("charges the unassigned amount to the payer so balances add up (I9)", () => {
+		// USD 67.67 paid by Ana; Ben's 22.56 share is gone (Remove me).
+		const n = summarizeLedger(
+			{
+				transactions: [
+					tx("USD", "67.67", A, [
+						[A, "22.56"],
+						[B, "22.55"],
+					]),
+				],
+				settlements: [],
+			},
+			[A, B],
+		);
+		expect(n.imbalance).toEqual([]);
+		// Ana: 6767 - (2256 + 2256 unassigned) = 2255; Ben owes 2255.
+		expect(lineOf(n, "user:a", "USD")).toMatchObject({
+			share: 4512,
+			balance: 2255,
+		});
+		expect(lineOf(n, "user:b", "USD")?.balance).toBe(-2255);
+		expect(n.transfers).toEqual([
+			{ from: B, to: A, amount: { minor: 2255, currency: "USD" } },
+		]);
 	});
 });

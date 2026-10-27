@@ -9,9 +9,9 @@
  *   Balance   Paid − Share − Received + Sent   (positive: the group owes them)
  *
  * Balances add up to zero over the members in each currency (I9) whenever
- * each expense's shares add up to its total; `imbalance` lists any currency
- * where they do not, so a page never claims "adds up to zero" when it does
- * not. Currencies are never converted or netted against each other.
+ * no expense's shares exceed its total (a gap below the total is the payer's
+ * own share, e.g. after "Remove me"); `imbalance` lists any currency where
+ * they do not, so a page never claims "adds up to zero" when it does not. Currencies are never converted or netted against each other.
  *
  * "Who pays whom" is the fewest transfers that settle each currency, from
  * the same greedy matcher as the settlement plan, run on minor units so
@@ -132,13 +132,17 @@ function post(ledger: SummaryLedger, accounts: Accounts) {
 			participantId: tx.paidById,
 		};
 		accounts.add(payer, tx.currency, "paid", amount);
+		let covered = 0;
 		for (const sp of tx.splitParticipants) {
-			accounts.add(
-				sp,
-				tx.currency,
-				"share",
-				minor(sp.shareAmount, tx.currency),
-			);
+			const share = minor(sp.shareAmount, tx.currency);
+			covered += share;
+			accounts.add(sp, tx.currency, "share", share);
+		}
+		// "Remove me" leaves part of the amount without a share: the payer paid
+		// it and nobody owes it back, so it is the payer's own share. A negative
+		// gap is a data fault and stays visible as an imbalance.
+		if (amount > covered) {
+			accounts.add(payer, tx.currency, "share", amount - covered);
 		}
 	}
 	for (const s of ledger.settlements) {

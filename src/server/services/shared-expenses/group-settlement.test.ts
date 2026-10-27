@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
 	computePeriodOutstanding,
 	computeSettlementPlan,
@@ -537,5 +537,58 @@ describe("settlement rounding follows the currency", () => {
 			[],
 		);
 		expect(open.map((o) => o.amount)).toEqual([0.0001, -0.0001]);
+	});
+});
+
+// A person who removed themselves ("Remove me") leaves part of an expense
+// unassigned. The payer absorbs it, as in the pairwise balances, so the
+// balances of a currency still add up to zero.
+describe("an expense with part of its amount unassigned", () => {
+	// USD 67.67 split three ways (22.56, 22.55, 22.56); Ben left, so only
+	// Ana's 22.56 and Cam's 22.55 remain. Ana paid. Then Ana paid USD 20,
+	// all Cam's.
+	const ledger = [
+		tx("ana", 67.67, "USD", [
+			{ id: "ana", amount: 22.56 },
+			{ id: "cam", amount: 22.55 },
+		]),
+		tx("ana", 20, "USD", [
+			{ id: "ana", amount: 0 },
+			{ id: "cam", amount: 20 },
+		]),
+	];
+
+	it("charges the unassigned 22.56 to the payer and balances to zero", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const usd = computeSettlementPlan(ledger, []).byCurrency.USD!;
+		// Ana: paid 87.67, share 22.56 + 22.56 (unassigned) + 0 = 45.12,
+		// net 42.55. Cam: share 22.55 + 20 = 42.55, net -42.55.
+		const ana = usd.balances.find((b) => b.participant.participantId === "ana");
+		const cam = usd.balances.find((b) => b.participant.participantId === "cam");
+		expect(ana).toMatchObject({
+			totalPaid: 87.67,
+			fairShare: 45.12,
+			netBalance: 42.55,
+		});
+		expect(cam).toMatchObject({ fairShare: 42.55, netBalance: -42.55 });
+		expect(usd.plan).toMatchObject([{ amount: 42.55, currency: "USD" }]);
+		expect(warn).not.toHaveBeenCalled();
+		warn.mockRestore();
+	});
+
+	it("leaves a negative gap alone: shares above the amount are a data fault", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const usd = computeSettlementPlan(
+			[
+				tx("ana", 10, "USD", [
+					{ id: "ana", amount: 5 },
+					{ id: "cam", amount: 6 },
+				]),
+			],
+			[],
+		).byCurrency.USD!;
+		expect(usd.balances.map((b) => b.fairShare)).toEqual([5, 6]);
+		expect(warn).toHaveBeenCalledOnce();
+		warn.mockRestore();
 	});
 });
