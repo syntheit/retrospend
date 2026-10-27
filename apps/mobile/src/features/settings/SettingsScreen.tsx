@@ -18,6 +18,7 @@ import {
 } from "@/ui/Form";
 import { useToast } from "@/ui/Toast";
 import { DeleteAccountSheet } from "./DeleteAccountSheet";
+import { NumbersSection } from "./NumbersSection";
 import { ProfileSheet } from "./ProfileSheet";
 import { RatesSheet } from "./RatesSheet";
 import {
@@ -188,6 +189,9 @@ export function SettingsScreen() {
 							value={String(settings.fiscalMonthStartDay)}
 						/>
 					</FormSection>
+				) : null}
+				{settings ? (
+					<NumbersSection onSaved={general.reload} settings={settings} />
 				) : null}
 				<FormSection footer={t("rates.footer")} title={t("rates.section")}>
 					<FormValueRow

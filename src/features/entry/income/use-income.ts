@@ -4,8 +4,8 @@ import { fromMinor } from "@retrospend/domain/money-minor";
 import { parseMoneyInput } from "@retrospend/domain/parse";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { keepPreviousData } from "@tanstack/react-query";
-import { useLocale } from "next-intl";
 import { useState } from "react";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
 import { readRateText } from "../rate-text";
@@ -39,7 +39,7 @@ export type IncomeDraft = {
  * preview of income.add with Use my plan, and the save with its undo.
  */
 export function useIncome(catalog: EntryCatalog, accountId?: string) {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const home = catalog.homeCurrency;
 	const [d, setD] = useState<IncomeDraft>(() => {
 		const account = catalog.places.find((p) => p.id === accountId);

@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import { ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useFormatLocale } from "@/lib/intl";
-import { useFormatMoney } from "@/lib/money";
+import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { type Entered, minorOf } from "./amount";
@@ -263,5 +262,5 @@ export function ChangeList({
 
 /** The locale the keypad and the amount reading use. */
 export function useAmountLocale(): string {
-	return useFormatLocale();
+	return useMoneyLocale();
 }

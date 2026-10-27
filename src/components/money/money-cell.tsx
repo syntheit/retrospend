@@ -1,8 +1,9 @@
 "use client";
 
 import { decimalSeparator, parseMoneyInput } from "@retrospend/domain/parse";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import * as React from "react";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
 import type { MoneyValue } from "./format";
@@ -56,7 +57,7 @@ export function MoneyCell({
 	className,
 }: MoneyCellProps) {
 	const t = useTranslations("pickers.money");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const field = useDraftField({ value, currency, onChange }, locale);
 	const id = React.useId();
 	const error = readOnly

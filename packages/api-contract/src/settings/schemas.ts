@@ -3,6 +3,17 @@ import { idSchema } from "../core";
 import { exchangeRateSchema } from "../currencies/schemas";
 
 /**
+ * Which marks amounts use, group mark first: "comma_dot" is 1,234.56,
+ * "dot_comma" 1.234,56, "space_comma" 1 234,56. The settings carry null to
+ * follow the app language.
+ */
+export const numberFormatSchema = z.enum([
+	"comma_dot",
+	"dot_comma",
+	"space_comma",
+]);
+
+/**
  * Pages with stored view settings, as path keys. The server maps each to
  * its Page enum value (`invite-codes` is INVITE_CODES).
  */

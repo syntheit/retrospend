@@ -24,8 +24,10 @@ import {
 import {
 	compactAffix,
 	groupDigits,
+	type NumberFormatChoice,
 	type NumberSymbols,
 	numberSymbols,
+	withNumberFormat,
 } from "./format-locale";
 import { currencyDecimals } from "./money";
 import { money as checkedMoney, type Money } from "./money-minor";
@@ -270,5 +272,44 @@ export function formatMoneyPair(
 	return {
 		original: formatMoney(original, { ...options, display: "code" }),
 		home: formatMoney(home, options),
+	};
+}
+
+/** The settings choices for how digits are marked: the language's own, or one of three. */
+export type NumberFormatOption = "follow" | NumberFormatChoice;
+
+/** 1,234,567.89 as minor units at `places` decimals, rounded half up. */
+function sampleMinor(places: number): number {
+	const whole = 123_456_789;
+	if (places >= 2) return whole * 10 ** (places - 2);
+	const unit = 10 ** (2 - places);
+	const kept = Math.floor(whole / unit);
+	return whole % unit >= unit / 2 ? kept + 1 : kept;
+}
+
+/**
+ * Each number format option as the user's own amount would read in it, for
+ * the Settings picker: 1,234,567.89 in `currency` (at its own places, so a
+ * yen shows no decimals) in the language `locale`. "follow" is the language
+ * alone; the other three keep its pattern and swap the marks.
+ */
+export function numberFormatExamples(
+	currency: string,
+	locale: string,
+): Record<NumberFormatOption, string> {
+	const sample = checkedMoney(
+		sampleMinor(currencyDecimals(currency)),
+		currency,
+	);
+	const show = (choice: NumberFormatChoice | null) =>
+		formatMoney(sample, {
+			locale: withNumberFormat(locale, choice),
+			cents: true,
+		});
+	return {
+		follow: show(null),
+		comma_dot: show("comma_dot"),
+		dot_comma: show("dot_comma"),
+		space_comma: show("space_comma"),
 	};
 }

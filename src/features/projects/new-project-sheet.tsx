@@ -3,9 +3,10 @@
 import { fromMinor } from "@retrospend/domain/money-minor";
 import { parseMoneyInput } from "@retrospend/domain/parse";
 import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { MoneyInput } from "~/components/money/money-input";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Segmented } from "~/components/ui/segmented";
@@ -32,7 +33,7 @@ export function NewProjectSheet({
 	const t = useTranslations("projectsV2.new");
 	const tt = useTranslations("projectsV2.toast");
 	const te = useTranslations("projectsV2.errors");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const router = useRouter();
 	const toast = useToast();
 	const utils = api.useUtils();

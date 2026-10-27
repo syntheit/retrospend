@@ -61,6 +61,8 @@ export async function getMe(
 			defaultCurrency: true,
 			fiscalMonthStartDay: true,
 			language: true,
+			currencySymbolStyle: true,
+			numberFormat: true,
 			emailVerified: true,
 			twoFactorEnabled: true,
 			createdAt: true,

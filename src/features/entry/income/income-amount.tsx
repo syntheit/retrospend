@@ -1,7 +1,7 @@
 "use client";
 
 import { PencilIcon } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { formatMoney } from "~/components/money/format";
 import { Money } from "~/components/money/money";
 import {
@@ -9,6 +9,7 @@ import {
 	MoneyInputRow,
 	type MoneyRates,
 } from "~/components/money/money-input";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { useDateFormat } from "~/components/pickers/use-date-format";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -81,7 +82,7 @@ export function IncomeAmount({
 /** The strip: the pair's types with their rates and bookings, then Custom (never one button alone). */
 function useIncomeRates(x: Income, show: boolean): MoneyRates | undefined {
 	const t = useTranslations("entry");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const name = useRateTypeName();
 	const rates = x.rates;
 	if (!show || !rates) return undefined;

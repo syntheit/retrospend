@@ -990,6 +990,15 @@
 			"delete": "Excluir conta",
 			"deleting": "Excluindo",
 			"error": "Não foi possível excluir a conta. Confira sua senha e tente de novo."
+		},
+		"numbers": {
+			"title": "Números",
+			"footer": "Vale em todo lugar onde você entrar.",
+			"format": "Formato de números",
+			"follow": "Seguir o idioma ({example})",
+			"symbol": "Símbolo da moeda",
+			"symbolStandard": "Padrão",
+			"symbolNative": "Nativo"
 		}
 	}
 }

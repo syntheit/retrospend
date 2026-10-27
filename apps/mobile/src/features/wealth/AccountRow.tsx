@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
@@ -6,13 +5,7 @@ import { ListRow } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { isLiability } from "./accounts";
-import { accountHref } from "./routes";
 import type { Account } from "./source";
-
-/** Where an account opens: its own screen, or the detail pane on a wide screen. */
-export function openAccount(id: string) {
-	router.navigate(accountHref(id));
-}
 
 /**
  * One account: its name and kind, what it holds in its own currency and what

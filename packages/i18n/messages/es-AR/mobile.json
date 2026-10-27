@@ -990,6 +990,15 @@
 			"delete": "Eliminar cuenta",
 			"deleting": "Eliminando",
 			"error": "No se pudo eliminar la cuenta. Revisá tu contraseña y probá de nuevo."
+		},
+		"numbers": {
+			"title": "Números",
+			"footer": "Se aplica donde iniciás sesión.",
+			"format": "Formato de números",
+			"follow": "Seguir el idioma ({example})",
+			"symbol": "Símbolo de moneda",
+			"symbolStandard": "Estándar",
+			"symbolNative": "Nativo"
 		}
 	}
 }

@@ -10,8 +10,9 @@ import {
 	type MoneyInputResult,
 	parseMoneyInput,
 } from "@retrospend/domain/parse";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import * as React from "react";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
@@ -107,7 +108,7 @@ export function draftEdit(
  * text, its parse result and the onChange to pass through.
  */
 export function useMoneyText(minor: number | null, currency: string) {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const [text, setText] = React.useState(() =>
 		minor && minor > 0 ? draftFromMinor(minor, locale, currency) : "",
 	);
@@ -147,7 +148,7 @@ export type MoneyInputProps = {
  */
 export function MoneyInput(p: MoneyInputProps) {
 	const t = useTranslations("pickers.money");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const field = useDraftField(p, locale);
 	const autoId = React.useId();
 	const id = p.id ?? autoId;

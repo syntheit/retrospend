@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
 import { scopeSchema } from "../common/scopes";
+import { numberFormatSchema } from "../settings/schemas";
 
 export const AUTH_METHODS = [
 	"password",
@@ -73,6 +74,9 @@ export const meSchema = z
 		defaultCurrency: z.string(),
 		fiscalMonthStartDay: z.int().min(1).max(28),
 		language: z.string(),
+		/** How amounts read: the symbol style and the number marks (null follows the language). */
+		currencySymbolStyle: z.enum(["native", "standard"]),
+		numberFormat: numberFormatSchema.nullable(),
 		emailVerified: z.boolean(),
 		twoFactorEnabled: z.boolean(),
 		createdAt: z.iso.datetime({ offset: true }),

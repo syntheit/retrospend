@@ -2,10 +2,11 @@
 
 import { parseMoneyInput } from "@retrospend/domain/parse";
 import { ArrowRightLeft } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Money } from "~/components/money/money";
 import { MoneyInput } from "~/components/money/money-input";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Button } from "~/components/ui/button";
 import { Tip } from "~/components/ui/tooltip";
 import { useRateLabel } from "~/features/wealth/sheets/rate-type-chips";
@@ -25,7 +26,7 @@ export function ConvertBlock({
 	home: string;
 }) {
 	const t = useTranslations("currenciesPage.convert");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const tp = useTranslations("currenciesPage");
 	const label = useRateLabel();
 	const defaultPrice = row.defaultType

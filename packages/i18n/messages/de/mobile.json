@@ -990,6 +990,15 @@
 			"delete": "Konto löschen",
 			"deleting": "Löschen",
 			"error": "Das Konto konnte nicht gelöscht werden. Prüfe dein Passwort und versuche es erneut."
+		},
+		"numbers": {
+			"title": "Zahlen",
+			"footer": "Gilt überall, wo du dich anmeldest.",
+			"format": "Zahlenformat",
+			"follow": "Sprache folgen ({example})",
+			"symbol": "Währungssymbol",
+			"symbolStandard": "Standard",
+			"symbolNative": "Landesüblich"
 		}
 	}
 }

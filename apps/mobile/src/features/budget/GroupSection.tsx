@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { useFormatLocale } from "@/lib/intl";
+import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { EnvelopeRow, useColumnWidth } from "./EnvelopeRow";
 import { groupLeft, groupPercents, groupStartsOpen, isLimits } from "./rows";
@@ -35,7 +35,7 @@ export function GroupSection({
 	const [open, setOpen] = useState(groupStartsOpen(style, group));
 	const name = group.name ?? t(group.role ?? "ungrouped");
 	const left = money(groupLeft(style, group));
-	const locale = useFormatLocale();
+	const locale = useMoneyLocale();
 	const count = t("count", { count: group.totals.count });
 	// The envelopes over are named once here, without an amount: how far over is
 	// each row's Left and the page's notice. A % target (50/30/20) leads with

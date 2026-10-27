@@ -990,6 +990,15 @@
 			"delete": "Supprimer le compte",
 			"deleting": "Suppression",
 			"error": "Impossible de supprimer le compte. Vérifie ton mot de passe et réessaie."
+		},
+		"numbers": {
+			"title": "Nombres",
+			"footer": "S'applique partout où tu te connectes.",
+			"format": "Format des nombres",
+			"follow": "Suivre la langue ({example})",
+			"symbol": "Symbole monétaire",
+			"symbolStandard": "Standard",
+			"symbolNative": "Local"
 		}
 	}
 }

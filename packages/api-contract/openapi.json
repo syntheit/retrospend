@@ -76523,6 +76523,13 @@
 											"format": "date-time",
 											"type": "string"
 										},
+										"currencySymbolStyle": {
+											"enum": [
+												"native",
+												"standard"
+											],
+											"type": "string"
+										},
 										"defaultCurrency": {
 											"type": "string"
 										},
@@ -76558,6 +76565,21 @@
 										},
 										"name": {
 											"type": "string"
+										},
+										"numberFormat": {
+											"anyOf": [
+												{
+													"enum": [
+														"comma_dot",
+														"dot_comma",
+														"space_comma"
+													],
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
 										},
 										"principal": {
 											"properties": {
@@ -76640,6 +76662,8 @@
 										"defaultCurrency",
 										"fiscalMonthStartDay",
 										"language",
+										"currencySymbolStyle",
+										"numberFormat",
 										"emailVerified",
 										"twoFactorEnabled",
 										"createdAt",

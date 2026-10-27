@@ -3,8 +3,9 @@
 import { fromMinor } from "@retrospend/domain/money-minor";
 import { draftFromMinor } from "@retrospend/domain/parse";
 import { dayKey } from "@retrospend/domain/time-zone";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Button } from "~/components/ui/button";
 import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
 import { Sheet } from "~/components/ui/sheet";
@@ -36,7 +37,7 @@ export function ExpenseForm(p: {
 	const tc = useTranslations("entry.changes");
 	const home = p.catalog.homeCurrency;
 	// The sheet's starting point, kept once: Undo changes and the unsaved check compare to it.
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const [initial] = useState(() => withAmountText(p.initial, locale));
 	const [failed, setFailed] = useState(false);
 	const youRef = {

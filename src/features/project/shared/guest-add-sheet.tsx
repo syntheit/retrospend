@@ -2,10 +2,11 @@
 
 import { fromMinorUnits } from "@retrospend/domain/money";
 import { parseMoneyInput } from "@retrospend/domain/parse";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Money } from "~/components/money/money";
 import { MoneyInput } from "~/components/money/money-input";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { DatePicker } from "~/components/pickers/date-picker";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -34,7 +35,7 @@ export function GuestAddSheet({
 }) {
 	const t = useTranslations("projectShared.add");
 	const te = useTranslations("projectShared.errors");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const toast = useToast();
 	const create = api.sharedTransaction.create.useMutation();
 	const remove = api.sharedTransaction.delete.useMutation();

@@ -1,10 +1,11 @@
 "use client";
 
 import { draftFromMinor } from "@retrospend/domain/parse";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { minorOf } from "~/components/money/money-cell";
 import { MoneyInput } from "~/components/money/money-input";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { DateField } from "~/components/pickers/date-field";
 import type { IsoDate } from "~/components/pickers/dates";
 import { useDateFormat } from "~/components/pickers/use-date-format";
@@ -31,7 +32,7 @@ type Initial = Pick<EnvelopeRow, "kind" | "target">;
 
 /** A typed amount as minor units, or null while empty or unreadable. */
 function useText(initialMinor: number | null, currency: string) {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const [text, setText] = useState(() =>
 		initialMinor && initialMinor > 0
 			? draftFromMinor(initialMinor, locale, currency)

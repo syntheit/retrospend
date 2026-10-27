@@ -101,32 +101,27 @@ describe("/api/v1/settings", () => {
 
 		it("follows the language until a number format is set, then sticks", async () => {
 			const read = async () =>
-				(await expectBody(await call("/settings", { headers: asBob }), s.get))
-					.numberFormat;
-			const patch = async (numberFormat: string | null) =>
+				expectBody(await call("/settings", { headers: asBob }), s.get);
+			const patch = async (body: Record<string, unknown>) =>
 				expectBody(
 					await call("/settings", {
 						method: "PATCH",
 						headers: asBob,
-						body: { numberFormat },
+						body,
 						idempotent: true,
 					}),
 					s.update,
 				);
-			expect(await read()).toBeNull();
-			expect((await patch("dot_comma")).numberFormat).toBe("dot_comma");
+			expect(await read()).toMatchObject({ numberFormat: null });
+			expect(await patch({ numberFormat: "dot_comma" })).toMatchObject({
+				numberFormat: "dot_comma",
+			});
 			// A language change leaves the number format alone.
-			await expectBody(
-				await call("/settings", {
-					method: "PATCH",
-					headers: asBob,
-					body: { language: "es-AR" },
-					idempotent: true,
-				}),
-				s.update,
-			);
-			expect(await read()).toBe("dot_comma");
-			expect((await patch(null)).numberFormat).toBeNull();
+			await patch({ language: "es-AR" });
+			expect(await read()).toMatchObject({ numberFormat: "dot_comma" });
+			expect(await patch({ numberFormat: null })).toMatchObject({
+				numberFormat: null,
+			});
 			await expectProblem(
 				await call("/settings", {
 					method: "PATCH",

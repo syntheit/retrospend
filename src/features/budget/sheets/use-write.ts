@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
 import { useCallback } from "react";
 import { formatMoney, type MoneyValue } from "~/components/money/format";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { useToast } from "~/components/ui/toast";
 import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
@@ -23,7 +23,7 @@ export const newId: () => string = generateId;
 export function useBudgetWrite() {
 	const utils = api.useUtils();
 	const router = useRouter();
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const toast = useToast();
 	const undoMovement = api.envelope.undo.useMutation();
 

@@ -2,10 +2,11 @@
 
 import { formatMoney } from "@retrospend/domain/format";
 import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useMemo, useRef, useTransition } from "react";
 import type { CurrencyTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { useToast } from "~/components/ui/toast";
 import { api } from "~/trpc/react";
 import type { CurrenciesView, CurrencyRow } from "./types";
@@ -28,7 +29,7 @@ export function useCurrencyActions(
 	select: (code: string) => void,
 ) {
 	const t = useTranslations("currenciesPage");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const toast = useToast();
 	const router = useRouter();
 	const toggle = api.preferences.toggleFavoriteExchangeRate.useMutation();

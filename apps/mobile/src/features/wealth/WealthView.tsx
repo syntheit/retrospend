@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useMemo } from "react";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
@@ -9,15 +9,18 @@ import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { Screen } from "@/ui/Screen";
-import { AccountRow, openAccount } from "./AccountRow";
+import { AccountRow } from "./AccountRow";
 import { closedAccounts, sectionsOf, unvalued } from "./accounts";
 import { ChangeParts } from "./ChangeParts";
 import { NetWorthHero } from "./NetWorthHero";
+import { useAccountHref } from "./routes";
 import { fetchWealth, WEALTH_CACHE, type WealthData } from "./source";
 
 function AccountsList({ data }: { data: WealthData }) {
 	const t = useTranslations("mobile.wealth");
 	const { color, space, type } = useTheme();
+	const hrefOf = useAccountHref();
+	const openAccount = (id: string) => router.push(hrefOf(id));
 	const accounts = data.list.accounts;
 	const sections = sectionsOf(accounts);
 	const closed = closedAccounts(accounts);

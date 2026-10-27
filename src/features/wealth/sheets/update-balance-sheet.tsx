@@ -1,10 +1,11 @@
 "use client";
 
 import { draftFromMinor, parseMoneyInput } from "@retrospend/domain/parse";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Money } from "~/components/money/money";
 import { MoneyInput } from "~/components/money/money-input";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { useRowDates } from "~/components/rows/dates";
 import { Sheet } from "~/components/ui/sheet";
 import type { WealthAccount } from "../types";
@@ -36,7 +37,7 @@ export function UpdateBalanceSheet({
 	) => Promise<void>;
 }) {
 	const t = useTranslations("wealthPage.sheets");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const { short } = useRowDates();
 	const rateLabel = useRateLabel();
 	const currency = account.amount.currency;

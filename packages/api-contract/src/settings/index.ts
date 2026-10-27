@@ -7,6 +7,7 @@ import { settingsExtrasContract } from "./extras";
 import {
 	categoryPreferenceSchema,
 	favoriteRateSchema,
+	numberFormatSchema,
 	PAGE_KEYS,
 	pageSettingsInputSchema,
 	pageSettingsSchema,
@@ -14,12 +15,6 @@ import {
 
 export * from "./extras";
 export * from "./schemas";
-
-/**
- * Which marks amounts use, group mark first: "comma_dot" is 1,234.56,
- * "dot_comma" 1.234,56, "space_comma" 1 234,56. Null follows the app language.
- */
-const numberFormatSchema = z.enum(["comma_dot", "dot_comma", "space_comma"]);
 
 /** Three-letter fiat code, the rule the web settings form uses. */
 const fiatCodeSchema = z.string().regex(/^[A-Z]{3}$/);

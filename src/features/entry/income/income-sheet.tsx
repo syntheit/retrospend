@@ -1,8 +1,10 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
-import { formatMoney } from "~/components/money/format";
+import { dayKey } from "@retrospend/domain/time-zone";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { formatMoney } from "~/components/money/format";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { CategoryGlyph } from "~/components/pickers/category-picker";
 import { DatePicker } from "~/components/pickers/date-picker";
 import { FilterChip, FilterChips } from "~/components/ui/chip";
@@ -12,7 +14,6 @@ import { Sheet } from "~/components/ui/sheet";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Switch } from "~/components/ui/switch";
 import { useToast } from "~/components/ui/toast";
-import { dayKey } from "@retrospend/domain/time-zone";
 import { ChangesBlock } from "../changes";
 import { PlaceSelect } from "../place-select";
 import { type EntryCatalog, Field, useEntryCatalog } from "../shared-ui";
@@ -64,7 +65,7 @@ function IncomeForm({
 	const t = useTranslations("entry.income");
 	const tc = useTranslations("entry.changes");
 	const toast = useToast();
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const x = useIncome(catalog, accountId);
 	const { d } = x;
 	const [tried, setTried] = useState(false);

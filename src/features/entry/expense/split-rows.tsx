@@ -3,8 +3,9 @@
 import { formatPercent } from "@retrospend/domain/format-percent";
 import { draftFromMinor, parseMoneyInput } from "@retrospend/domain/parse";
 import { Minus, Plus } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Money } from "~/components/money/money";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Face } from "~/components/ui/avatar-face";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -18,7 +19,7 @@ type Draft = ReturnType<typeof import("./use-expense-draft").useExpenseDraft>;
 /** The custom split's header: what is left (amount or percent), or the share count. */
 export function CustomHead({ d, you }: { d: ExpenseDraft; you: EntryPerson }) {
 	const t = useTranslations("entry.expense");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	if (d.by === "shares") {
 		const units = [...(d.youIncluded ? [you] : []), ...d.others].reduce(
 			(n, m) => n + (d.shares[splitKey(m)] ?? 1),
@@ -78,7 +79,7 @@ export function SplitRow(p: {
 	nameOf: (r: SplitRef) => string;
 }) {
 	const t = useTranslations("entry.expense");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const { d, person } = p;
 	const key = splitKey(person);
 	const name = p.nameOf(person);

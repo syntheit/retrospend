@@ -1,8 +1,9 @@
 "use client";
 
+import { formatCompactAmount } from "@retrospend/domain/currency-format";
+import { withNumberFormat } from "@retrospend/domain/format-locale";
 import { useCallback } from "react";
 import { BASE_CURRENCY } from "~/lib/constants";
-import { formatCompactAmount } from "@retrospend/domain/currency-format";
 import {
 	type CurrencySignDisplay,
 	formatCurrency,
@@ -15,6 +16,8 @@ export function useCurrencyFormatter() {
 
 	const symbolStyle = settings?.currencySymbolStyle ?? "standard";
 	const smartFormatting = settings?.smartCurrencyFormatting ?? true;
+	// Null follows the language (each currency's own pattern, as before).
+	const numberFormat = settings?.numberFormat ?? null;
 
 	const formatCurrencyWithSettings = useCallback(
 		(
@@ -28,9 +31,10 @@ export function useCurrencyFormatter() {
 				symbolStyle,
 				smartFormatting,
 				signDisplay,
+				numberFormat,
 			);
 		},
-		[symbolStyle, smartFormatting],
+		[symbolStyle, smartFormatting, numberFormat],
 	);
 
 	const getCurrencySymbolWithSettings = useCallback(
@@ -46,9 +50,9 @@ export function useCurrencyFormatter() {
 			formatCompactAmount(
 				amount,
 				getCurrencySymbolWithPreference(currency, symbolStyle),
-				locale,
+				withNumberFormat(locale ?? "en-US", numberFormat),
 			),
-		[symbolStyle],
+		[symbolStyle, numberFormat],
 	);
 
 	return {

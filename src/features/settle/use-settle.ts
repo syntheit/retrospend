@@ -6,8 +6,8 @@ import {
 	type MoneyInputResult,
 } from "@retrospend/domain/parse";
 import { keepPreviousData } from "@tanstack/react-query";
-import { useLocale } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import type { PersonIdentityDTO } from "~/features/people/types";
 import { api, type RouterInputs } from "~/trpc/react";
 
@@ -45,7 +45,7 @@ export function useSettle(
 	/** After Record: nothing reads or previews again (the sheet shows what changed). */
 	frozen = false,
 ) {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const [direction, setDirection] = useState<Direction | null>(null);
 	const [currency, setCurrency] = useState<string | null>(null);
 	const [text, setText] = useState("");

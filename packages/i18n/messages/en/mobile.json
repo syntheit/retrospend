@@ -990,6 +990,15 @@
 			"delete": "Delete account",
 			"deleting": "Deleting",
 			"error": "Couldn't delete the account. Check your password and try again."
+		},
+		"numbers": {
+			"title": "Numbers",
+			"footer": "Applies wherever you sign in.",
+			"format": "Number format",
+			"follow": "Follow language ({example})",
+			"symbol": "Currency symbol",
+			"symbolStandard": "Standard",
+			"symbolNative": "Native"
 		}
 	}
 }

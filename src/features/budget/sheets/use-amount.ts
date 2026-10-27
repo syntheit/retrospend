@@ -1,9 +1,9 @@
 "use client";
 
 import { draftFromMinor } from "@retrospend/domain/parse";
-import { useLocale } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { minorOf } from "~/components/money/money-cell";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 
 /**
  * One typed amount in the book currency. It starts from a figure the server
@@ -11,7 +11,7 @@ import { minorOf } from "~/components/money/money-cell";
  * types; `minor` is what the text says, null while it is empty or unreadable.
  */
 export function useAmount(currency: string, initial: number | null = null) {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const [text, setText] = useState("");
 	const [typed, setTyped] = useState(false);
 

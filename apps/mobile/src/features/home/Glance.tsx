@@ -167,7 +167,7 @@ export function Glance({
 			/>
 			<Figure
 				label={t("netWorth")}
-				onPress={() => router.navigate(wealthHref())}
+				onPress={() => router.push(wealthHref("home"))}
 				value={glance.netWorth.value}
 			/>
 			{glance.dollarToday ? (
