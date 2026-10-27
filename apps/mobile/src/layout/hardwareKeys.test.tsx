@@ -1,3 +1,4 @@
+import { focusSearch, useSearchShortcut } from "./searchShortcut";
 import { commandsFor, useHardwareKeys } from "./useHardwareKeys";
 
 // Cmd+N and Cmd+F: the commands handed to the native module, the events
@@ -88,16 +89,14 @@ describe("useHardwareKeys", () => {
 	});
 });
 
-describe("focusSearch", () => {
-	function Screen({ owner = true, bar }: { owner?: boolean; bar: object }) {
-		const { useSearchShortcut } = require("./searchShortcut");
-		const ref = useSearchShortcut(owner);
-		ref.current = bar;
-		return null;
-	}
+function Screen({ owner = true, bar }: { owner?: boolean; bar: object }) {
+	const ref = useSearchShortcut(owner);
+	ref.current = bar as never;
+	return null;
+}
 
+describe("focusSearch", () => {
 	it("focuses the search bar of the screen in front, and of no other", () => {
-		const { focusSearch } = require("./searchShortcut");
 		const a = { focus: jest.fn() };
 		const b = { focus: jest.fn() };
 		expect(focusSearch()).toBe(false);
@@ -118,7 +117,6 @@ describe("focusSearch", () => {
 	});
 
 	it("leaves the key to the hub when a list inside it is not the owner", () => {
-		const { focusSearch } = require("./searchShortcut");
 		const hub = { focus: jest.fn() };
 		const list = { focus: jest.fn() };
 		act(() => {

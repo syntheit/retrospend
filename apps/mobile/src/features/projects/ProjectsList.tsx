@@ -65,6 +65,7 @@ export function ProjectsList({
 	const list = (
 		<SectionList
 			contentInsetAdjustmentBehavior="automatic"
+			keyboardDismissMode="on-drag"
 			keyExtractor={(item) => item.id}
 			ListEmptyComponent={empty}
 			ListHeaderComponent={

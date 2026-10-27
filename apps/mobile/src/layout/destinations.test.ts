@@ -1,4 +1,20 @@
-import { addControlFor, iosMajor } from "./destinations";
+import { addControlFor, floatingAddShown, iosMajor } from "./destinations";
+
+describe("floatingAddShown", () => {
+	it("floats always on Android and older iPhones", () => {
+		expect(floatingAddShown("floating", 0)).toBe(true);
+		expect(floatingAddShown("floating", 336)).toBe(true);
+	});
+
+	it("floats the iPhone's plus above the keyboard, only while it is up", () => {
+		expect(floatingAddShown("tab", 0)).toBe(false);
+		expect(floatingAddShown("tab", 336)).toBe(true);
+	});
+
+	it("never floats the iPad's toolbar plus", () => {
+		expect(floatingAddShown("toolbar", 400)).toBe(false);
+	});
+});
 
 describe("addControlFor", () => {
 	it("uses the tab bar's detached plus on an iPhone from iOS 26", () => {

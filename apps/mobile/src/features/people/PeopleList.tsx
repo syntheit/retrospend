@@ -173,6 +173,7 @@ export function PeopleList({
 	const list = (
 		<SectionList
 			contentInsetAdjustmentBehavior="automatic"
+			keyboardDismissMode="on-drag"
 			keyExtractor={(item) => item.person.key}
 			ListEmptyComponent={empty}
 			ListHeaderComponent={
