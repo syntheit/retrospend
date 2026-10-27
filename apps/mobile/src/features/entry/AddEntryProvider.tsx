@@ -9,8 +9,7 @@ import {
 import { Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
-import { ADD_CONTROL, floatingAddShown } from "@/layout/destinations";
-import { useKeyboardHeight } from "@/layout/useKeyboardHeight";
+import { ADD_CONTROL } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
 import { Sheet } from "@/ui/Sheet";
@@ -61,8 +60,6 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const [open, setOpen] = useState<EntryMode | null>(null);
 	const [mode, setMode] = useState<EntryMode>("expense");
 	const iPad = Platform.OS === "ios" && Platform.isPad;
-	// Only the iPhone's tab-bar plus hides under the keyboard (floatingAddShown).
-	const keyboard = useKeyboardHeight(ADD_CONTROL === "tab");
 	useOutboxFlush();
 
 	// The sheet gives its content the window's width without its own side
@@ -84,16 +81,13 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	return (
 		<AddEntryContext.Provider value={api}>
 			{children}
-			{floatingAddShown(ADD_CONTROL, keyboard) ? (
+			{ADD_CONTROL === "floating" ? (
 				<View
 					pointerEvents="box-none"
 					style={{
 						position: "absolute",
 						right: space[4],
-						bottom:
-							keyboard > 0
-								? keyboard + space[4]
-								: insets.bottom + space[4] + BAR_HEIGHT,
+						bottom: insets.bottom + space[4] + BAR_HEIGHT,
 					}}
 				>
 					<AddButton label={t("addExpense")} onPress={() => show("expense")} />
