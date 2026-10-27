@@ -132,13 +132,17 @@ function post(ledger: SummaryLedger, accounts: Accounts) {
 			participantId: tx.paidById,
 		};
 		accounts.add(payer, tx.currency, "paid", amount);
+		let covered = 0;
 		for (const sp of tx.splitParticipants) {
-			accounts.add(
-				sp,
-				tx.currency,
-				"share",
-				minor(sp.shareAmount, tx.currency),
-			);
+			const share = minor(sp.shareAmount, tx.currency);
+			covered += share;
+			accounts.add(sp, tx.currency, "share", share);
+		}
+		// "Remove me" leaves part of the amount without a share: the payer paid
+		// it and nobody owes it back, so it is the payer's own share. A negative
+		// gap is a data fault and stays visible as an imbalance.
+		if (amount > covered) {
+			accounts.add(payer, tx.currency, "share", amount - covered);
 		}
 	}
 	for (const s of ledger.settlements) {
