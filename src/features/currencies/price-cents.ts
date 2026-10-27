@@ -1,4 +1,4 @@
-import type { RatePrice } from "./types";
+import type { Rate } from "./types";
 
 /**
  * How a price shows: whole units from 100 up (ARS 1,555), the currency's
@@ -6,7 +6,7 @@ import type { RatePrice } from "./types";
  * rate under one minor unit (USD 0.00064, BTC 0.00001493). A comparison
  * only: the formatter rounds.
  */
-export function priceCents(price: RatePrice): false | "auto" {
+export function priceCents(price: Rate): false | "auto" {
 	const hundred = 100 * 10 ** price.places;
 	return Math.abs(price.minor) >= hundred ? false : "auto";
 }

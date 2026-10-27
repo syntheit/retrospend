@@ -8,7 +8,7 @@ import { useRowDates } from "~/components/rows/dates";
 import { Notice } from "~/components/ui/notice";
 import { useRateLabel } from "~/features/wealth/sheets/rate-type-chips";
 import { ConvertBlock } from "./convert-block";
-import { priceCents } from "./price-cents";
+import { RateText } from "./rate-text";
 import { sentenceName } from "./sentence-name";
 import { StarButton } from "./star-button";
 import type { CurrenciesView, CurrencyRow } from "./types";
@@ -19,7 +19,7 @@ function PriceText({
 	value: CurrencyRow["prices"][string] | undefined;
 }) {
 	return value ? (
-		<Money cents={priceCents(value)} places={value.places} value={value} />
+		<RateText price={value} />
 	) : (
 		<Money missing="noRate" value={null} />
 	);
@@ -63,7 +63,6 @@ export function CurrencyDetail({
 						{priced && view.updated
 							? t("detail.sub", {
 									code: row.code,
-									home: view.home,
 									date: short(view.updated),
 								})
 							: row.code}
@@ -86,7 +85,7 @@ export function CurrencyDetail({
 			{priced ? (
 				<div>
 					<div className="text-fg-2 text-small mb-1 font-semibold">
-						{t("detail.rates", { home: view.home, code: row.code })}
+						{t("detail.rates")}
 					</div>
 					<dl>
 						{row.types.map((type) => (
@@ -126,7 +125,9 @@ export function CurrencyDetail({
 					)}
 				</div>
 			) : null}
-			{priced ? <ConvertBlock home={view.home} row={row} /> : null}
+			{priced ? (
+				<ConvertBlock home={view.home} key={row.code} row={row} />
+			) : null}
 		</div>
 	);
 }

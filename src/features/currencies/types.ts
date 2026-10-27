@@ -1,18 +1,21 @@
 /**
  * What the Currencies page renders, as the server builds it
- * (server/view-model.ts). Prices are rates, computed
- * on the server from the rate table; the client formats them only (R9).
- * Each row reads "1 {home} = {price} {code}": the price is in the row's
- * currency, for one unit of the home currency.
+ * (server/view-model.ts). Prices are rates, computed on the server from the
+ * rate table; the client formats them only (R9). Each price prices the
+ * stronger currency of the pair in the weaker one ("1 USD = ARS 1,555",
+ * "1 KWD = USD 3.26"): `base` says which one is the single unit.
  */
 import type { MoneyValue } from "~/components/money/format";
 
 /**
- * A rate in the row's own currency: Money whose `minor` counts `places`
- * decimal digits (at least the currency's own), so USD 0.00064 is
- * { minor: 64, places: 5 }. Format it with `places`.
+ * A rate as Money: `minor` counts `places` decimal digits (at least the
+ * currency's own), so USD 0.00064 is { minor: 64, places: 5 }. Format it
+ * with `places`.
  */
-export type RatePrice = MoneyValue & { places: number };
+export type Rate = MoneyValue & { places: number };
+
+/** A price: `base` is worth 1 unit, the Money is what it costs in the other currency. */
+export type RatePrice = Rate & { base: string };
 
 /** The column key a coin's market price sits in (its own type is "crypto"). */
 export const MARKET = "market";
@@ -22,7 +25,7 @@ export type CurrencyRow = {
 	crypto: boolean;
 	/** The rate types this currency is priced at, in column order. */
 	types: string[];
-	/** What 1 unit of the home currency buys in this currency, per rate type. */
+	/** The price of the stronger currency of the pair, per rate type. */
 	prices: Record<string, RatePrice>;
 	/** Types priced through another type's rate (one side lacks the type). */
 	derived: string[];
@@ -41,6 +44,8 @@ export type CurrenciesView = {
 	home: string;
 	columns: string[];
 	rows: CurrencyRow[];
+	/** The one unit every price shares ("1 USD in ..."), or null when they differ. */
+	base: string | null;
 	/** ISO date of the newest rate. */
 	updated: string | null;
 	/** The type new foreign amounts use, for the header line. */

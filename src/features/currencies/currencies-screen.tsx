@@ -103,7 +103,7 @@ export function CurrenciesScreen({
 	const row = view.rows.find((r) => r.code === selected) ?? null;
 	const missing = view.rows.filter((r) => !r.types.length && r.usedBy.length);
 	const sub = [
-		t("pricesIn", { home: view.home }),
+		view.base ? t("pricesIn", { base: view.base }) : null,
 		view.updated ? t("updated", { date: short(view.updated) }) : null,
 		view.homeDefault ? t("newUse", { type: label(view.homeDefault) }) : null,
 	]
@@ -131,6 +131,7 @@ export function CurrenciesScreen({
 		/>
 	) : phone ? (
 		<RatesList
+			base={view.base}
 			favoriteBusy={favoriteBusy}
 			handlers={handlers}
 			onFavorite={setFavorite}
@@ -139,6 +140,7 @@ export function CurrenciesScreen({
 		/>
 	) : (
 		<RatesTable
+			base={view.base}
 			columns={view.columns}
 			favoriteBusy={favoriteBusy}
 			handlers={handlers}

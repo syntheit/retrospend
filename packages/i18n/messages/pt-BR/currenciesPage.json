@@ -1,6 +1,6 @@
 {
 	"title": "Moedas",
-	"pricesIn": "Preço de 1 {home}.",
+	"pricesIn": "Preço de 1 {base}.",
 	"updated": "Atualizado em {date}.",
 	"newUse": "Novos valores em moeda estrangeira usam {type}.",
 	"filters": {
@@ -24,6 +24,7 @@
 	"actions": "Ações",
 	"noRate": "Sem cotação",
 	"noType": "Sem cotação deste tipo",
+	"base": "1 {code} =",
 	"derived": "Derivado via {home}",
 	"subNoRate": "{name} · sem cotação",
 	"subDefault": "{name} · {type} por padrão",
@@ -35,10 +36,10 @@
 	"detail": {
 		"label": "Moeda selecionada",
 		"sheetTitle": "Cotações de {code}",
-		"sub": "{code} · 1 {home} em {code}, {date}",
+		"sub": "{code} · {date}",
 		"noRate": "Sem cotação de {code}. Contas e despesas em {code} ficam fora dos totais.",
 		"usedBy": "Usada por {names}",
-		"rates": "1 {home} em {code}",
+		"rates": "Cotações",
 		"default": "Padrão",
 		"defaultTitle": "Padrão para novas despesas",
 		"defaultFixed": "O padrão do sistema, por enquanto."
