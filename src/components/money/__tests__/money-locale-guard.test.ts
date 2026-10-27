@@ -53,7 +53,7 @@ function argsAt(text: string, open: number): string {
 }
 
 /** Calls in `text` that pass `name` to one of the money functions or a hook. */
-export function languageLocaleHits(text: string): string[] {
+function languageLocaleHits(text: string): string[] {
 	const names = [...text.matchAll(/const (\w+) = useLocale\(\)/g)].map(
 		(m) => m[1] as string,
 	);
