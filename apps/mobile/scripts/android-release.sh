@@ -48,6 +48,8 @@ app_id=app.retrospend
 export RETROSPEND_BUILD_NUMBER
 RETROSPEND_BUILD_NUMBER=$(git -C "$tree" rev-list --count HEAD)
 echo "building $app_id build $RETROSPEND_BUILD_NUMBER"
+# The connect screen starts on the dev server (the field stays editable).
+export RETROSPEND_DEFAULT_SERVER=${RETROSPEND_DEFAULT_SERVER:-https://dev.retrospend.app}
 
 cd "$app"
 # android/ is generated (continuous native generation) and never committed.

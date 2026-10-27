@@ -184,6 +184,7 @@
 	"signIn": {
 		"title": "Se connecter",
 		"intro": "Connecte-toi à {host}.",
+		"changeServer": "Changer de serveur",
 		"expired": "Ta session a pris fin. Reconnecte-toi.",
 		"email": "E-mail",
 		"password": "Mot de passe",
@@ -963,7 +964,9 @@
 		},
 		"server": {
 			"title": "Serveur",
-			"connected": "Connecté à"
+			"connected": "Connecté à",
+			"change": "Changer de serveur",
+			"changeFooter": "Tu seras d'abord déconnecté."
 		},
 		"account": {
 			"title": "Compte",

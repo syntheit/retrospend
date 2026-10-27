@@ -1,5 +1,6 @@
 import {
 	compareVersions,
+	initialServerAddress,
 	normalizeServerUrl,
 	probeServer,
 	type ServerInfo,
@@ -148,5 +149,27 @@ describe("probeServer", () => {
 		await expect(probeServer("retrospend.app", "0.1.9", impl)).resolves.toEqual(
 			{ ok: false, reason: "appTooOld", minClientVersion: "0.2.0" },
 		);
+	});
+});
+
+describe("initialServerAddress", () => {
+	it("starts on retrospend.app when the build names no server", () => {
+		expect(initialServerAddress(undefined)).toBe("retrospend.app");
+		expect(initialServerAddress("")).toBe("retrospend.app");
+		expect(initialServerAddress("   ")).toBe("retrospend.app");
+	});
+
+	it("starts on the server the build names", () => {
+		expect(initialServerAddress("https://dev.retrospend.app")).toBe(
+			"dev.retrospend.app",
+		);
+		expect(initialServerAddress("http://10.0.0.5:3997/")).toBe(
+			"http://10.0.0.5:3997",
+		);
+	});
+
+	it("ignores a value that is not a web address", () => {
+		expect(initialServerAddress("ftp://x")).toBe("retrospend.app");
+		expect(initialServerAddress(42)).toBe("retrospend.app");
 	});
 });

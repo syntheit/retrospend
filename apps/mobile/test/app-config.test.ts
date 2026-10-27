@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import config, { assertBuildProfile } from "../app.config";
+import config, { assertBuildProfile, defaultServer } from "../app.config";
 
 // Owner decision (2026-10-22): plain http servers are allowed after a
 // warning, so release builds must not block them at the OS level.
@@ -14,6 +14,17 @@ describe("app config", () => {
 
 	it("adds the Android network security config", () => {
 		expect(config.plugins).toContain("./plugins/with-cleartext-servers");
+	});
+
+	it("leaves the connect address empty unless the build names a server", () => {
+		expect(defaultServer({})).toBe("");
+		expect(defaultServer({ RETROSPEND_DEFAULT_SERVER: " " })).toBe("");
+		expect(
+			defaultServer({
+				RETROSPEND_DEFAULT_SERVER: "https://dev.retrospend.app",
+			}),
+		).toBe("https://dev.retrospend.app");
+		expect(config.extra).toHaveProperty("defaultServer");
 	});
 
 	it("keeps the agreed identity", () => {

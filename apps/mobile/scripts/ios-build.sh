@@ -48,7 +48,7 @@ rsync -a --delete \
 status=0
 ssh "$mini" "timeout 3600 sudo launchctl asuser \$(id -u) sudo -H -u \$(id -un) \
 	env IPHONE='${IPHONE:-}' RS_WORK='${RS_WORK:-}' \
-	RETROSPEND_BUILD_NUMBER='${RETROSPEND_BUILD_NUMBER:-}' bash -l ~/$remote/apps/mobile/scripts/ios-mini.sh $target" ||
+	RETROSPEND_BUILD_NUMBER='${RETROSPEND_BUILD_NUMBER:-}' RETROSPEND_DEFAULT_SERVER='${RETROSPEND_DEFAULT_SERVER:-}' bash -l ~/$remote/apps/mobile/scripts/ios-mini.sh $target" ||
 	status=$?
 
 # The screenshot comes back even when the phone step at the end failed.

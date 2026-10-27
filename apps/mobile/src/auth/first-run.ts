@@ -18,3 +18,18 @@ export async function clearStaleTokenOnFirstRun(
 	await store.set(MARKER, new Date().toISOString());
 	return true;
 }
+
+/**
+ * True when this was the first run and a server saved by an earlier install
+ * was forgotten. Reads only: the marker is written by
+ * clearStaleTokenOnFirstRun once a server is connected, so a phone that never
+ * connected is not marked and a connected one is never asked again.
+ */
+export async function clearStaleServerOnFirstRun(
+	store: Pick<KeyValueStore, "get">,
+	clearServer: () => Promise<void>,
+): Promise<boolean> {
+	if ((await store.get(MARKER)) !== null) return false;
+	await clearServer();
+	return true;
+}

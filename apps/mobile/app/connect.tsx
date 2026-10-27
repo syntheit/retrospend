@@ -1,4 +1,3 @@
-import { Button } from "@expo/ui";
 import Constants from "expo-constants";
 import { Stack } from "expo-router";
 import { useState } from "react";
@@ -6,12 +5,12 @@ import { Platform, Text, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import {
-	DEFAULT_SERVER,
+	initialServerAddress,
 	type ProbeResult,
 	probeServer,
 } from "@/lib/server-info";
 import { useTheme } from "@/theme";
-import { NativeHost } from "@/ui/NativeHost";
+import { Button } from "@/ui/Button";
 import { Screen } from "@/ui/Screen";
 
 type Failure = Extract<ProbeResult, { ok: false }>["reason"] | "saveFailed";
@@ -22,7 +21,9 @@ export default function ConnectScreen() {
 	const t = useTranslations("mobile.connect");
 	const { color, space, radius, size, type } = useTheme();
 	const { connect } = useServerConnection();
-	const [address, setAddress] = useState(new URL(DEFAULT_SERVER).host);
+	const [address, setAddress] = useState(() =>
+		initialServerAddress(Constants.expoConfig?.extra?.defaultServer),
+	);
 	const [checking, setChecking] = useState(false);
 	const [failure, setFailure] = useState<Failure | null>(null);
 	// A plain http server that answered; saved only after "Continue anyway".
@@ -131,22 +132,20 @@ export default function ConnectScreen() {
 						</Text>
 					) : null}
 				</View>
-				<NativeHost>
-					{insecureUrl ? (
-						<Button
-							disabled={checking}
-							label={t("continueAnyway")}
-							onPress={continueInsecure}
-							variant="outlined"
-						/>
-					) : (
-						<Button
-							disabled={checking}
-							label={checking ? t("checking") : t("submit")}
-							onPress={submit}
-						/>
-					)}
-				</NativeHost>
+				{insecureUrl ? (
+					<Button
+						disabled={checking}
+						label={t("continueAnyway")}
+						onPress={continueInsecure}
+						variant="outlined"
+					/>
+				) : (
+					<Button
+						disabled={checking}
+						label={checking ? t("checking") : t("submit")}
+						onPress={submit}
+					/>
+				)}
 			</Screen>
 		</>
 	);

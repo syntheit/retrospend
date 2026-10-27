@@ -184,6 +184,7 @@
 	"signIn": {
 		"title": "Sign in",
 		"intro": "Sign in to {host}.",
+		"changeServer": "Change server",
 		"expired": "Your session ended. Sign in again.",
 		"email": "Email",
 		"password": "Password",
@@ -963,7 +964,9 @@
 		},
 		"server": {
 			"title": "Server",
-			"connected": "Connected to"
+			"connected": "Connected to",
+			"change": "Change server",
+			"changeFooter": "You will be signed out first."
 		},
 		"account": {
 			"title": "Account",
