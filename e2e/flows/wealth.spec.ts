@@ -45,7 +45,7 @@ test("Wealth: net worth, the accounts by group, update a balance and undo", asyn
 	// A foreign account shows its own amount first, the home value under it.
 	const wise = main.getByRole("listitem").filter({ hasText: "Wise (USD)" });
 	await expect(wise).toContainText("USD 2,350");
-	await expect(wise).toContainText("ARS 3,407,500");
+	await expect(wise).toContainText("$3,407,500");
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 
 	// Add an account, update its balance and undo, close it, delete it.
@@ -60,7 +60,7 @@ test("Wealth: net worth, the accounts by group, update a balance and undo", asyn
 	);
 	const row = main.getByRole("listitem").filter({ hasText: "E2E savings" });
 	await expect(row).toContainText("USD 1,000");
-	await expect(row).toContainText("ARS 1,450,000");
+	await expect(row).toContainText("$1,450,000");
 
 	// The row opens Update balance; the save shows an Undo.
 	await main.getByRole("button", { name: "E2E savings", exact: true }).click();

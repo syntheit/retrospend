@@ -55,7 +55,7 @@ test("Add income: no account, no plan without a budget, save and Undo", async ({
 	await untilSaved(page, "wealth.income.delete.save", () =>
 		page
 			.locator("[data-sonner-toast]")
-			.filter({ hasText: "Added ARS 850,000" })
+			.filter({ hasText: "Added $850,000" })
 			.getByRole("button", { name: "Undo" })
 			.click(),
 	);
@@ -88,7 +88,7 @@ test("Add income: a pair with no rate asks for one, never 1", async ({
 	// 1 UYU = 40 ARS: UYU 1,000 counts as ARS 40,000, booked by the server.
 	await sheet.getByRole("textbox", { name: "Custom rate in ARS" }).fill("40");
 	await expect(sheet.locator('[data-figure="entry.income.home"]')).toHaveText(
-		"ARS 40,000",
+		"$40,000",
 	);
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	await sheet.getByRole("button", { name: "Cancel" }).click();

@@ -35,7 +35,7 @@ test("Add expense: USD at the Official rate, preview, save and Undo", async ({
 	await sheet.getByRole("textbox", { name: "Amount" }).fill("12");
 	await sheet.getByRole("textbox", { name: "Title" }).fill("E2E Streamly");
 	await expect(sheet.locator('[data-figure="entry.home"]')).toHaveText(
-		"ARS 17,400",
+		"$17,400",
 	);
 	// The currency is plain text with a chevron and one divider: no pill, no
 	// flag, so the field keeps a single outline.
@@ -63,7 +63,7 @@ test("Add expense: USD at the Official rate, preview, save and Undo", async ({
 	// Every rate type the pair offers sits beside the amount, the default pressed.
 	const rates = sheet.getByRole("group", { name: "Rate" });
 	await expect(
-		rates.getByRole("button", { name: /Official ARS 1,450/ }),
+		rates.getByRole("button", { name: /Official \$1,450/ }),
 	).toHaveAttribute("aria-pressed", "true");
 	await expect(rates.getByRole("button", { name: "Custom" })).toBeVisible();
 	// The recents line fits the width; All reaches every category.
@@ -141,14 +141,14 @@ test("Add expense: split evenly with Martín, then Undo", async ({ page }) => {
 	// One row per person with a face and the share resolveSplits gives.
 	await expect(
 		sheet.locator('[data-split-row="user:e2e_user_sofia"]'),
-	).toContainText("ARS 3,000");
+	).toContainText("$3,000");
 	await expect(
 		sheet.locator('[data-split-row="user:e2e_user_martin"]'),
-	).toContainText("ARS 3,000");
+	).toContainText("$3,000");
 	await expect(
 		sheet.getByRole("radio", { name: "Martín owes all" }),
 	).toBeVisible();
-	await expect(sheet.getByTestId("entry-changes")).toContainText("+ARS 3,000");
+	await expect(sheet.getByTestId("entry-changes")).toContainText("+$3,000");
 
 	await untilSaved(page, "entry.shared.create.save", () =>
 		sheet.getByRole("button", { name: "Add expense" }).click(),

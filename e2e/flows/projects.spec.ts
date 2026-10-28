@@ -24,7 +24,7 @@ test("Projects: rows with balances, search, new project and archive with Undo", 
 		.getByRole("listitem")
 		.filter({ hasText: "Depto Palermo" });
 	await expect(depto).toContainText("you owe");
-	await expect(depto).toContainText("ARS 41,100");
+	await expect(depto).toContainText("$41,100");
 	await expect(
 		active.getByRole("listitem").filter({ hasText: "Viaje a Florianópolis" }),
 	).toBeVisible();

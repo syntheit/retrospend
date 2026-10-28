@@ -57,25 +57,25 @@ test("Currencies: the stronger currency priced in the weaker, convert, search co
 	const table = main.getByRole("table");
 	// The units differ (USD, BRL, EUR), so every cell names its own.
 	const usd = table.getByRole("row").filter({ hasText: "USD" });
-	await expect(usd).toContainText("1 USD = ARS 1,450");
+	await expect(usd).toContainText("1 USD = $1,450");
 	await expect(usd.locator("[data-minor='145000']").first()).toHaveAttribute(
 		"data-currency",
 		"ARS",
 	);
 	// Whole units from ARS 100 up; the server's price keeps its cents.
 	const brl = table.getByRole("row").filter({ hasText: "BRL" });
-	await expect(brl).toContainText("1 BRL = ARS 269");
+	await expect(brl).toContainText("1 BRL = $269");
 	await expect(brl.locator("[data-minor='26852']").first()).toBeVisible();
 
 	// The detail panel reads the same way and converts on the server.
 	await usd.first().click();
 	const detail = main.getByRole("complementary", { name: "Selected currency" });
-	await expect(detail).toContainText("1 USD = ARS 1,450");
+	await expect(detail).toContainText("1 USD = $1,450");
 	// From the stronger currency by default: USD 100 into ARS.
 	await expect(detail.getByRole("textbox", { name: "Amount" })).toHaveValue(
 		"100",
 	);
-	await expect(detail).toContainText("ARS 145,000");
+	await expect(detail).toContainText("$145,000");
 	await detail.getByRole("button", { name: "Swap direction" }).click();
 	await expect(detail).toContainText("USD 0.07");
 
@@ -96,7 +96,7 @@ test("Currencies: the stronger currency priced in the weaker, convert, search co
 
 	// Favorite EUR through today's favorites; it sorts first.
 	await expect(table.getByRole("row").filter({ hasText: "EUR" })).toContainText(
-		"1 EUR = ARS 1,611",
+		"1 EUR = $1,611",
 	);
 	await untilSaved(page, "preferences.toggleFavoriteExchangeRate", () =>
 		table.getByRole("button", { name: "Add EUR to favorites" }).click(),
@@ -120,8 +120,8 @@ test("Currencies at 390: rows open the rates sheet", async ({ page }) => {
 	await openCurrencies(page, "?currency=USD");
 	const sheet = page.getByRole("dialog", { name: "USD rates" });
 	await expect(sheet).toBeVisible();
-	await expect(sheet).toContainText("1 USD = ARS 1,450");
-	await expect(sheet).toContainText("ARS 145,000");
+	await expect(sheet).toContainText("1 USD = $1,450");
+	await expect(sheet).toContainText("$145,000");
 	await sheet.getByRole("button", { name: "Swap direction" }).click();
 	await expect(sheet).toContainText("USD 0.07");
 	await page.keyboard.press("Escape");

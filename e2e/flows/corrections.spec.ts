@@ -110,7 +110,7 @@ test("Corrections: ask, respond, correct, undo", async ({
 		});
 		const luciaPage = await lucia.newPage();
 		let read = await openRow(luciaPage);
-		await expect(read).toContainText("ARS 64.000");
+		await expect(read).toContainText("$ 64.000");
 		await read
 			.getByRole("button", { name: "Pedirle a Martín que lo corrija" })
 			.click();
@@ -219,9 +219,9 @@ test("Corrections: ask, respond, correct, undo", async ({
 		const changes = correct.getByTestId("entry-changes");
 		// 64,000 to 48,000: each of the two shares drops by 8,000 and Martín paid 16,000 less.
 		await expect(changes).toContainText("Your share");
-		await expect(changes).toContainText("-ARS 8,000");
+		await expect(changes).toContainText("-$8,000");
 		await expect(changes).toContainText("You paid");
-		await expect(changes).toContainText("-ARS 16,000");
+		await expect(changes).toContainText("-$16,000");
 		await expect(changes).toContainText("Lucía's share");
 		// The difference lines are tagged and read back as worked out by hand:
 		// each share drops by ARS 8,000 and Martín paid ARS 16,000 less (minor

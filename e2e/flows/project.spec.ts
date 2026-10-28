@@ -30,12 +30,12 @@ test("Project: hero, expenses and the Summary recomputed by hand", async ({
 		main.getByRole("heading", { name: "Depto Palermo" }),
 	).toBeVisible();
 	await expect(main.getByText("Group total")).toBeVisible();
-	await expect(main.getByText("ARS 615,000").first()).toBeVisible();
+	await expect(main.getByText("$615,000").first()).toBeVisible();
 	await expect(main.getByText("7 expenses").first()).toBeVisible();
-	await expect(main.getByText("ARS 307,500").first()).toBeVisible();
+	await expect(main.getByText("$307,500").first()).toBeVisible();
 	await expect(
 		main.getByRole("row").filter({ hasText: "Arreglo del calefón" }),
-	).toContainText("ARS 108,600");
+	).toContainText("$108,600");
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	expect(await auditFigures(page, "project", "project-v2")).toEqual([]);
 
@@ -48,15 +48,15 @@ test("Project: hero, expenses and the Summary recomputed by hand", async ({
 	await expect(
 		main.getByRole("heading", { name: "Who paid what" }),
 	).toBeVisible();
-	const bars = main.getByRole("list", { name: /ARS/ }).first();
-	await expect(bars).toContainText("ARS 279,600");
-	await expect(bars).toContainText("ARS 335,400");
+	const bars = main.getByRole("list", { name: /\$279,600/ }).first();
+	await expect(bars).toContainText("$279,600");
+	await expect(bars).toContainText("$335,400");
 	await expect(
-		main.getByText("Both add up to the group total, ARS 615,000."),
+		main.getByText("Both add up to the group total, $615,000."),
 	).toBeVisible();
 	const transfers = main.getByRole("list", { name: "Who pays whom" });
 	await expect(transfers).toContainText("You pay Martín Acosta");
-	await expect(transfers).toContainText("ARS 41,100");
+	await expect(transfers).toContainText("$41,100");
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	expect(
 		await auditFigures(page, "project summary", "project-v2-summary"),
@@ -71,7 +71,7 @@ test("Project: Settle all previews, records and undoes", async ({ page }) => {
 	await main.getByRole("button", { name: "Settle all" }).click();
 	const sheet = page.getByRole("dialog", { name: "Settle all" });
 	await expect(sheet).toContainText("You pay Martín Acosta");
-	await expect(sheet).toContainText("ARS 41,100");
+	await expect(sheet).toContainText("$41,100");
 	await expect(
 		sheet.getByRole("region", { name: "What this changes" }),
 	).toBeVisible();
@@ -90,7 +90,7 @@ test("Project: Settle all previews, records and undoes", async ({ page }) => {
 			.click(),
 	);
 	await expect(main.getByRole("list", { name: "Who pays whom" })).toContainText(
-		"ARS 41,100",
+		"$41,100",
 	);
 });
 

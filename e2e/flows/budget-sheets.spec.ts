@@ -178,7 +178,7 @@ test("Move: from Not planned yet to Groceries, then out again", async ({
 	await expect(sheet).toBeVisible();
 	await sheet.getByRole("textbox", { name: "Amount" }).fill("75");
 	const changes = sheet.getByRole("region", { name: "What this changes" });
-	await expect(changes).toContainText("USD 75.00");
+	await expect(changes).toContainText("$75.00");
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	await untilSaved(page, "envelope.assign", () =>
 		sheet.getByRole("button", { name: "Move", exact: true }).click(),
@@ -203,7 +203,7 @@ test("Cover: Everything else is over by 120.00; preview, save, undo", async ({
 	);
 	const changes = sheet.getByRole("region", { name: "What this changes" });
 	await expect(changes).toContainText("Everything else");
-	await expect(changes).toContainText("USD 0.00");
+	await expect(changes).toContainText("$0.00");
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	await untilSaved(page, "envelope.cover", () =>
 		sheet.getByRole("button", { name: "Cover", exact: true }).click(),
@@ -229,7 +229,7 @@ test("Cover all: every overspent envelope from Not planned yet, one Undo", async
 	await expect(sheet).toBeVisible();
 	await expect(sheet.getByText("Everything else").first()).toBeVisible();
 	const changes = sheet.getByRole("region", { name: "What this changes" });
-	await expect(changes).toContainText("USD 0.00");
+	await expect(changes).toContainText("$0.00");
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	await untilSaved(page, "envelope.assign", () =>
 		sheet.getByRole("button", { name: "Cover all" }).click(),
@@ -550,7 +550,7 @@ test("Target: a new monthly amount for Groceries, preview, save, undo", async ({
 	await expect(sheet).toBeVisible();
 	await sheet.getByRole("textbox", { name: "Amount" }).fill("450");
 	const changes = sheet.getByRole("region", { name: "What this changes" });
-	await expect(changes).toContainText("USD 450.00");
+	await expect(changes).toContainText("$450.00");
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	await untilSaved(page, "envelope.setTarget", () =>
 		sheet.getByRole("button", { name: "Save target" }).click(),
@@ -694,7 +694,7 @@ test("Assign: from the rail and from an envelope's menu; clear, type, preview, s
 	await sheet.getByRole("textbox", { name: "Assign to Groceries" }).fill("250");
 	const changes = sheet.getByRole("region", { name: "What this changes" });
 	await expect(changes.getByText("Groceries")).toBeVisible();
-	await expect(changes).toContainText("USD 250.00");
+	await expect(changes).toContainText("$250.00");
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	const save = sheet.getByRole("button", { name: "Assign", exact: true });
 	await expect(save).toBeEnabled();
@@ -1054,7 +1054,7 @@ test.describe("Set up your budget", () => {
 		await expect(sheet.getByText("Step 4 of 4")).toBeVisible();
 		const changes = sheet.getByRole("region", { name: "What this changes" });
 		await expect(changes).toContainText("Money to plan");
-		await expect(changes).toContainText("USD 2,000.00");
+		await expect(changes).toContainText("$2,000.00");
 		// A pay that varies has no date to show.
 		await expect(changes).not.toContainText("Next pay");
 		expect(await bannedOutputOn(page), "banned output").toEqual([]);

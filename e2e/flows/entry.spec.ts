@@ -31,8 +31,8 @@ test("Entry: read view of someone else's expense, edit sheet for your own", asyn
 	await expect(
 		read.getByText("Lucía added this. Only Lucía can edit it"),
 	).toBeVisible();
-	await expect(read).toContainText("ARS 64,000");
-	await expect(read).toContainText("ARS 32,000");
+	await expect(read).toContainText("$64,000");
+	await expect(read).toContainText("$32,000");
 	await expect(
 		read.getByRole("button", { name: "Ask Lucía to fix" }),
 	).toBeEnabled();

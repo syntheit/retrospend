@@ -49,13 +49,13 @@ test("Exchange: both amounts typed, rate derived, preview, save and Undo", async
 		await amounts.nth(0).fill("442500");
 		await amounts.nth(1).fill("300");
 		await expect(sheet.getByTestId("transfer-rate")).toHaveText(
-			"USD 1 = ARS 1,475 · Official ARS 1,450 · ARS 7,500 more",
+			"USD 1 = $1,475 · Official $1,450 · $7,500 more",
 		);
 		const changes = sheet.getByTestId("entry-changes");
 		await expect(changes).toContainText("E2E pesos");
-		await expect(changes).toContainText("ARS 557,500");
+		await expect(changes).toContainText("$557,500");
 		await expect(changes).toContainText("USD 300.00");
-		await expect(changes).toContainText("-ARS 7,500");
+		await expect(changes).toContainText("-$7,500");
 		expect(await bannedOutputOn(page), "banned output").toEqual([]);
 
 		await untilSaved(page, "entry.transfer.save", () =>
