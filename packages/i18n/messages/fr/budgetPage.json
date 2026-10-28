@@ -114,12 +114,12 @@
 	"rail": {
 		"label": "En un coup d'œil",
 		"owed": {
-			"title": "On te doit",
+			"title": "Réservé pour d'autres",
 			"open": "Qui te doit",
 			"hint": "Argent que tu as avancé. Il retourne dans {pool, select, TO_ASSIGN {À affecter} other {Pas encore prévu}} quand on te rembourse.",
 			"hintLimits": "Argent que tu as avancé. Il retourne dans ton budget quand on te rembourse.",
 			"pending": "<amount></amount> attendent ton accord",
-			"people": "{count, plural, =0 {Argent avancé} one {Dû par # personne} other {Dû par # personnes}}"
+			"people": "{count, plural, =0 {Argent avancé} one {Pour # personne} other {Pour # personnes}}"
 		},
 		"moneyIn": {
 			"title": "Entrées d'argent",

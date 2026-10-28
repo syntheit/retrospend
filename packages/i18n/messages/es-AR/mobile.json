@@ -342,8 +342,8 @@
 			"TO_ASSIGN": "Para asignar"
 		},
 		"owed": {
-			"title": "Te deben",
-			"people": "{count, plural, one {# persona} other {# personas}}"
+			"title": "Reservado para otros",
+			"people": "{count, plural, one {Para # persona} other {Para # personas}}"
 		},
 		"group": {
 			"BILLS": "Facturas",

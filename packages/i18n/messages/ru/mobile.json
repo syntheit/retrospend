@@ -342,8 +342,8 @@
 			"TO_ASSIGN": "К распределению"
 		},
 		"owed": {
-			"title": "Вам должны",
-			"people": "{count, plural, one {# человек} few {# человека} many {# человек} other {# человека}}"
+			"title": "Отложено для других",
+			"people": "{count, plural, one {Для # человека} other {Для # человек}}"
 		},
 		"group": {
 			"BILLS": "Счета",

@@ -342,8 +342,8 @@
 			"TO_ASSIGN": "Zuzuweisen"
 		},
 		"owed": {
-			"title": "Dir geschuldet",
-			"people": "{count, plural, one {# Person} other {# Personen}}"
+			"title": "Für andere gehalten",
+			"people": "{count, plural, one {Für # Person} other {Für # Personen}}"
 		},
 		"group": {
 			"BILLS": "Rechnungen",

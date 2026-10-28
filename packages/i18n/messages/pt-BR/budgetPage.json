@@ -114,12 +114,12 @@
 	"rail": {
 		"label": "Num relance",
 		"owed": {
-			"title": "Devem a você",
+			"title": "Reservado para outros",
 			"open": "Quem deve a você",
 			"hint": "Dinheiro que você adiantou. Volta para {pool, select, TO_ASSIGN {A atribuir} other {Ainda não planejado}} quando pagarem.",
 			"hintLimits": "Dinheiro que você adiantou. Volta para o seu orçamento quando pagarem.",
 			"pending": "<amount></amount> esperam seu OK",
-			"people": "{count, plural, =0 {Dinheiro adiantado} one {Devido por # pessoa} other {Devido por # pessoas}}"
+			"people": "{count, plural, =0 {Dinheiro adiantado} one {Para # pessoa} other {Para # pessoas}}"
 		},
 		"moneyIn": {
 			"title": "Entradas",

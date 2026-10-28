@@ -342,8 +342,8 @@
 			"TO_ASSIGN": "To assign"
 		},
 		"owed": {
-			"title": "Owed to you",
-			"people": "{count, plural, one {# person} other {# people}}"
+			"title": "Held for others",
+			"people": "{count, plural, one {For # person} other {For # people}}"
 		},
 		"group": {
 			"BILLS": "Bills",

@@ -114,12 +114,12 @@
 	"rail": {
 		"label": "De un vistazo",
 		"owed": {
-			"title": "Te deben",
+			"title": "Reservado para otros",
 			"open": "Quién te debe",
 			"hint": "Dinero que adelantaste. Vuelve a {pool, select, TO_ASSIGN {Por asignar} other {Sin planificar}} cuando te paguen.",
 			"hintLimits": "Dinero que adelantaste. Vuelve a tu presupuesto cuando te paguen.",
 			"pending": "<amount></amount> esperan tu OK",
-			"people": "{count, plural, =0 {Dinero que adelantaste} one {Te debe # persona} other {Te deben # personas}}"
+			"people": "{count, plural, =0 {Dinero que adelantaste} one {Para # persona} other {Para # personas}}"
 		},
 		"moneyIn": {
 			"title": "Ingresos",
