@@ -1,31 +1,22 @@
 import { usePathname } from "expo-router";
-import { Platform } from "react-native";
 
 /**
- * Where Wealth lives. The iPad sidebar has its own Wealth destination (all six
- * destinations show there). iPhone and Android keep four tabs, so Wealth is
- * pushed onto the stack of the screen that links to it: Home (the net worth
- * line) or Budget (its last row). Each stack renders the same screens, so
- * Android back and the iOS swipe go back to where you came from.
+ * Where Wealth lives: its own tab on every phone and on the iPad sidebar, so
+ * the Home net worth line and the Budget link both switch to it. An account
+ * opens inside the Wealth stack, so back returns to the list.
  */
-export type WealthBase = "/wealth" | "/home/wealth" | "/budget/wealth";
+export type WealthBase = "/wealth";
 
-const IPAD = Platform.OS === "ios" && Platform.isPad;
-
-/** Where Wealth opens from `origin`: its own tab on iPad, a pushed screen elsewhere. */
-export function wealthHref(origin: "home" | "budget"): WealthBase {
-	if (IPAD) return "/wealth";
-	return origin === "home" ? "/home/wealth" : "/budget/wealth";
+/** Where Wealth opens from `origin` (Home or Budget): the tab. */
+export function wealthHref(_origin: "home" | "budget"): WealthBase {
+	return "/wealth";
 }
 
-/** The Wealth root a screen is inside, read from its path ("/home/wealth/7"). */
-export function wealthBaseOf(pathname: string): WealthBase {
-	if (pathname.startsWith("/home/wealth")) return "/home/wealth";
-	if (pathname.startsWith("/wealth")) return "/wealth";
-	return "/budget/wealth";
+/** The Wealth root a screen is inside. */
+export function wealthBaseOf(_pathname: string): WealthBase {
+	return "/wealth";
 }
 
-/** An account opens in the stack that is showing Wealth, so back leaves it. */
 export function accountHref(base: WealthBase, id: string): string {
 	return `${base}/${id}`;
 }

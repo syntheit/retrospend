@@ -15,6 +15,7 @@ import {
 import { usePeopleOverview } from "@/features/people/usePeople";
 import { useFaces } from "@/features/read/faces";
 import { ListRow, SectionHeader, StaleNote } from "@/features/read/parts";
+import { FLOATING_ADD_INSET } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
@@ -179,6 +180,7 @@ export function PeopleList({
 			keyboardDismissMode="on-drag"
 			keyExtractor={(item) => item.person.key}
 			ListEmptyComponent={empty}
+			ListFooterComponent={<View style={{ height: FLOATING_ADD_INSET }} />}
 			ListHeaderComponent={
 				<View>
 					{top}

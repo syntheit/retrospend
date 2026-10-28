@@ -1,18 +1,15 @@
 import { addControlFor, iosMajor } from "./destinations";
 
 describe("addControlFor", () => {
-	it("uses the tab bar's detached plus on an iPhone from iOS 26", () => {
-		for (const version of ["26.0", "26.5", "27.0"]) {
-			expect(addControlFor({ os: "ios", isPad: false, version })).toBe("tab");
-		}
-	});
-
-	it("floats the button on an iPhone below iOS 26, where the search tab is not detached", () => {
-		for (const version of ["18.6", "25.4", "17.0"]) {
+	it("floats the button above the bar on every phone, glass or not", () => {
+		for (const version of ["26.0", "26.5", "27.0", "18.6", "17.0", ""]) {
 			expect(addControlFor({ os: "ios", isPad: false, version })).toBe(
 				"floating",
 			);
 		}
+		expect(addControlFor({ os: "android", isPad: false, version: 36 })).toBe(
+			"floating",
+		);
 	});
 
 	it("keeps the iPad's toolbar plus on any version", () => {
@@ -21,18 +18,6 @@ describe("addControlFor", () => {
 				"toolbar",
 			);
 		}
-	});
-
-	it("floats the button on Android, whatever the API level", () => {
-		expect(addControlFor({ os: "android", isPad: false, version: 36 })).toBe(
-			"floating",
-		);
-	});
-
-	it("floats the button when the version is unreadable, the safe side", () => {
-		expect(addControlFor({ os: "ios", isPad: false, version: "" })).toBe(
-			"floating",
-		);
 	});
 });
 

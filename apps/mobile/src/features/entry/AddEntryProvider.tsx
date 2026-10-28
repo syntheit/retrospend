@@ -3,10 +3,11 @@ import {
 	type ReactNode,
 	useCallback,
 	useContext,
+	useEffect,
 	useMemo,
 	useState,
 } from "react";
-import { Platform, View } from "react-native";
+import { Keyboard, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { ADD_CONTROL } from "@/layout/destinations";
@@ -37,12 +38,32 @@ export function useOptionalAddEntry(): AddEntryApi | null {
 	return useContext(AddEntryContext);
 }
 
+/** True while the software keyboard is up: the floating button steps aside. */
+function useKeyboardShown(): boolean {
+	const [shown, setShown] = useState(false);
+	useEffect(() => {
+		const ios = Platform.OS === "ios";
+		const show = Keyboard.addListener(
+			ios ? "keyboardWillShow" : "keyboardDidShow",
+			() => setShown(true),
+		);
+		const hide = Keyboard.addListener(
+			ios ? "keyboardWillHide" : "keyboardDidHide",
+			() => setShown(false),
+		);
+		return () => {
+			show.remove();
+			hide.remove();
+		};
+	}, []);
+	return shown;
+}
+
 /**
- * Where "add" lives (IMPLEMENTATION S5). The iPhone has the system's detached
- * plus at the end of the tab bar (Tabs.tsx), which calls `open`. Android has
- * no such slot (the extended FAB floats above the M3 navigation bar), nor has
- * an iPhone below iOS 26 (the same button floats above the tab bar), and the
- * iPad has a plus in the top bar's toolbar (TopBar.ios). All open
+ * Where "add" lives (IMPLEMENTATION S5). Phones float one button above the tab
+ * bar (Liquid Glass on iOS 26, an M3 FAB on Android; five tabs leave no room
+ * for a plus tab) and hide it while the keyboard is up. The iPad has a plus in
+ * the top bar's toolbar (TopBar.ios). All open
  * the composer in a sheet with detents (Income is the mode row inside it).
  * It also keeps the outbox flowing, since an entry added offline needs a
  * sender when the network returns.
@@ -54,6 +75,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const [open, setOpen] = useState<EntryMode | null>(null);
 	const [mode, setMode] = useState<EntryMode>("expense");
 	useOutboxFlush();
+	const keyboard = useKeyboardShown();
 
 	const sheetSize = useSheetBodySize();
 
@@ -67,7 +89,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	return (
 		<AddEntryContext.Provider value={api}>
 			{children}
-			{ADD_CONTROL === "floating" ? (
+			{ADD_CONTROL === "floating" && !keyboard ? (
 				<View
 					pointerEvents="box-none"
 					style={{

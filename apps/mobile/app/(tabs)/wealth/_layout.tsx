@@ -1,9 +1,8 @@
 import { useTranslations } from "use-intl";
 import { TabStack } from "@/layout/TabStack";
 
-// The iPad sidebar's own Wealth destination. On iPhone and Android it is not a
-// tab (the bar holds five), so Wealth opens from Budget instead; this stack
-// and the one under Budget show the same screens.
+// Wealth is a tab on every phone and in the iPad sidebar. Home's net worth line
+// and Budget's link switch to it.
 export default function WealthLayout() {
 	const t = useTranslations("mobile.wealth");
 	return <TabStack title={t("title")} />;

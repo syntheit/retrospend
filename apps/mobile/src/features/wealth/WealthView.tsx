@@ -1,5 +1,5 @@
 import { router, Stack } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -7,16 +7,25 @@ import { SectionHeader, StaleNote } from "@/features/read/parts";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
+import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
 import { Screen } from "@/ui/Screen";
 import { AccountRow } from "./AccountRow";
+import { AccountSheet } from "./AccountSheet";
 import { closedAccounts, sectionsOf, unvalued } from "./accounts";
 import { ChangeParts } from "./ChangeParts";
 import { NetWorthHero } from "./NetWorthHero";
 import { useAccountHref } from "./routes";
 import { fetchWealth, WEALTH_CACHE, type WealthData } from "./source";
+import { useCurrencyInfo } from "./useCurrencyInfo";
 
-function AccountsList({ data }: { data: WealthData }) {
+function AccountsList({
+	data,
+	onAdd,
+}: {
+	data: WealthData;
+	onAdd: () => void;
+}) {
 	const t = useTranslations("mobile.wealth");
 	const { color, space, type } = useTheme();
 	const hrefOf = useAccountHref();
@@ -68,15 +77,13 @@ function AccountsList({ data }: { data: WealthData }) {
 					))}
 				</View>
 			) : null}
-			<Text
-				style={{
-					color: color.fg2,
-					fontSize: type.small.size,
-					padding: space[4],
-				}}
-			>
-				{t("webForNow")}
-			</Text>
+			<View style={{ alignItems: "flex-start", padding: space[4] }}>
+				<Button
+					label={t("account.addTitle")}
+					onPress={onAdd}
+					variant="outlined"
+				/>
+			</View>
 		</View>
 	);
 }
@@ -93,7 +100,9 @@ export function WealthView() {
 	const { widthClass } = useLayoutClass();
 	const { space } = useTheme();
 	const fetch = useMemo(() => (api ? fetchWealth(api) : null), [api]);
-	const { state } = useCachedRead(WEALTH_CACHE, fetch);
+	const { state, reload } = useCachedRead(WEALTH_CACHE, fetch);
+	const catalog = useCurrencyInfo();
+	const [adding, setAdding] = useState(false);
 
 	const title = <Stack.Screen options={{ title: t("title") }} />;
 	if (state.status === "loading")
@@ -116,6 +125,16 @@ export function WealthView() {
 		);
 
 	const data = state.data;
+	const sheet = (
+		<AccountSheet
+			account={null}
+			catalog={catalog}
+			home={data.list.home}
+			onClose={() => setAdding(false)}
+			onDone={() => void reload()}
+			visible={adding}
+		/>
+	);
 	const hero = (
 		<View>
 			<StaleNote since={state.staleSince} />
@@ -130,8 +149,14 @@ export function WealthView() {
 			<>
 				{title}
 				<Screen>
-					<EmptyState detail={t("emptyDetail")} title={t("empty")} />
+					<EmptyState
+						actionLabel={t("account.addTitle")}
+						detail={t("emptyDetail")}
+						onAction={() => setAdding(true)}
+						title={t("empty")}
+					/>
 				</Screen>
+				{sheet}
 			</>
 		);
 	}
@@ -142,17 +167,18 @@ export function WealthView() {
 				{widthClass === "compact" ? (
 					<>
 						{hero}
-						<AccountsList data={data} />
+						<AccountsList data={data} onAdd={() => setAdding(true)} />
 					</>
 				) : (
 					<View style={{ flexDirection: "row", gap: space[6] }}>
 						<View style={{ flex: 1 }}>{hero}</View>
 						<View style={{ flex: 1 }}>
-							<AccountsList data={data} />
+							<AccountsList data={data} onAdd={() => setAdding(true)} />
 						</View>
 					</View>
 				)}
 			</Screen>
+			{sheet}
 		</>
 	);
 }

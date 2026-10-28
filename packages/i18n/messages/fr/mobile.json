@@ -6,7 +6,8 @@
 		"people": "Personnes",
 		"projects": "Projets",
 		"add": "Ajouter une dépense",
-		"search": "Rechercher"
+		"search": "Rechercher",
+		"recurring": "Récurrents"
 	},
 	"common": {
 		"cancel": "Annuler",
@@ -607,11 +608,10 @@
 			"badge": "Clôturé"
 		},
 		"withoutRate": "{count, plural, one {# compte n’a pas encore de taux et reste hors du patrimoine} other {# comptes n’ont pas encore de taux et restent hors du patrimoine}}",
-		"webForNow": "Ajouter des comptes, des taux et le reste se fait pour l’instant sur le web.",
 		"error": "Impossible de charger le patrimoine",
 		"errorDetail": "Vérifie ta connexion et réessaie.",
 		"empty": "Pas encore de comptes",
-		"emptyDetail": "Ajoute sur le web un compte bancaire, un placement ou un prêt pour suivre ton patrimoine.",
+		"emptyDetail": "Ajoute un compte bancaire, un placement ou un prêt pour suivre ton patrimoine.",
 		"accountError": "Impossible de charger ce compte",
 		"owedNow": "Tu dois",
 		"balance": "Solde",
@@ -637,6 +637,40 @@
 			"notLoggedHint": "Tes revenus et dépenses ne changent pas. La différence est classée dans Non enregistré.",
 			"same": "C’est déjà le solde, rien ne change donc.",
 			"toast": "{name} est maintenant à {amount}"
+		},
+		"account": {
+			"addTitle": "Ajouter un compte",
+			"editTitle": "Modifier le compte",
+			"add": "Ajouter le compte",
+			"save": "Enregistrer",
+			"name": "Nom",
+			"namePlaceholder": "Compte épargne",
+			"type": "Type",
+			"balance": "Solde",
+			"owed": "Montant dû",
+			"balanceFixed": "Il contient {amount} pour l'instant. Change-le avec Mettre à jour le solde.",
+			"noRate": "Pas encore de taux pour {currency}, le compte ne peut pas être évalué. Choisis une autre devise pour l'instant.",
+			"rateType": "Type de taux",
+			"liquid": "Liquide",
+			"liquidHint": "De l'argent que tu peux dépenser bientôt.",
+			"apr": "Taux d'intérêt (annuel, %)",
+			"dueDay": "Jour d'échéance du mois",
+			"minimum": "Paiement minimum",
+			"addedToast": "{name} ajouté",
+			"savedToast": "{name} enregistré"
+		},
+		"close": {
+			"title": "Clôturer {name} ?",
+			"submit": "Clôturer le compte",
+			"body": "{name} quitte tes comptes et ton patrimoine dès aujourd'hui. L'historique reste et tu peux la rouvrir.",
+			"left": "Il affiche encore {amount}. Si l'argent est parti ailleurs, mets d'abord le solde à zéro.",
+			"toast": "{name} clôturé"
+		},
+		"reopen": {
+			"title": "Rouvrir {name} ?",
+			"submit": "Rouvrir le compte",
+			"body": "{name} compte de nouveau dans tes comptes et ton patrimoine dès aujourd'hui.",
+			"toast": "{name} rouvert"
 		}
 	},
 	"money": {
@@ -1031,6 +1065,63 @@
 			"footerAndroid": "Retrospend cherche des nouveautés environ toutes les 15 minutes, sans services Google. Choisis lesquelles ci-dessous.",
 			"denied": "Les notifications sont désactivées pour Retrospend. Active-les dans les réglages du système.",
 			"unavailable": "Ce téléphone n’a pas pu s’inscrire aux notifications push. Réessaie plus tard."
+		},
+		"manage": {
+			"title": "Gérer",
+			"categories": "Catégories",
+			"payment": "Moyens de paiement",
+			"recurring": "Dépenses récurrentes"
+		},
+		"web": {
+			"title": "Sur le web",
+			"footer": "Ils s'ouvrent dans le navigateur ici. Tu t'y connectes aussi.",
+			"import": "Importer",
+			"insights": "Analyses",
+			"currencies": "Devises et taux",
+			"developer": "Jetons d'API et webhooks",
+			"data": "Exporter tes données",
+			"security": "Mot de passe et connexion en deux étapes"
+		},
+		"categories": {
+			"addTitle": "Ajouter une catégorie",
+			"editTitle": "Modifier la catégorie",
+			"name": "Nom",
+			"taken": "Tu as déjà une catégorie avec ce nom.",
+			"color": "Couleur",
+			"colorLabel": "Couleur {n}",
+			"icon": "Icône",
+			"iconLabel": "Icône {name}",
+			"exclude": "Exclure des totaux par défaut",
+			"excludeHint": "Les nouvelles dépenses dedans ne comptent pas dans tes dépenses.",
+			"saved": "{name} enregistrée",
+			"error": "Impossible de charger les catégories",
+			"errorDetail": "Vérifie ta connexion et réessaie.",
+			"saveError": "Impossible d'enregistrer. Réessaie.",
+			"count": "{count, plural, one {# dépense} other {# dépenses}}"
+		},
+		"payment": {
+			"error": "Impossible de charger les moyens de paiement",
+			"errorDetail": "Vérifie ta connexion et réessaie.",
+			"empty": "Aucun moyen de paiement",
+			"emptyDetail": "Ajoute sur le web comment tu préfères être payé.",
+			"visibility": {
+				"PUBLIC": "Tout le monde",
+				"FRIENDS_ONLY": "Les personnes avec qui tu partages",
+				"PAYMENT_ONLY": "Seulement pour te payer"
+			},
+			"preferred": "Préféré",
+			"addOnWeb": "L'ajout d'un moyen de paiement se fait sur le web pour l'instant.",
+			"label": "Libellé",
+			"identifier": "Numéro de compte ou identifiant",
+			"visibilityHint": "Qui peut voir ce moyen",
+			"saved": "Moyen de paiement enregistré",
+			"prefer": "Mettre en premier",
+			"preferredToast": "Moyen préféré modifié",
+			"remove": "Retirer",
+			"removeBody": "Impossible d'annuler. Les personnes avec qui tu partages ne le verront plus.",
+			"removeConfirm": "Retirer définitivement",
+			"removed": "Moyen de paiement retiré",
+			"saveError": "Impossible d'enregistrer. Réessaie."
 		}
 	},
 	"push": {
@@ -1051,6 +1142,77 @@
 				"name": "Récurrents",
 				"description": "Dépenses et revenus récurrents à venir"
 			}
+		}
+	},
+	"recurring": {
+		"title": "Récurrents",
+		"error": "Impossible de charger les dépenses récurrentes",
+		"errorDetail": "Vérifie ta connexion et réessaie.",
+		"empty": "Aucune dépense récurrente",
+		"emptyDetail": "Ajoute loyer, abonnements et autres frais fixes sur le web.",
+		"autoPay": "Paiement auto",
+		"frequency": {
+			"weekly": "Chaque semaine",
+			"biweekly": "Toutes les 2 semaines",
+			"monthly": "Chaque mois",
+			"quarterly": "Chaque trimestre",
+			"yearly": "Chaque année"
+		},
+		"status": {
+			"paused": "En pause",
+			"overdue": "En retard depuis le {date}",
+			"dueToday": "À payer aujourd'hui",
+			"upcoming": "{date}, {days, plural, one {dans # jour} other {dans # jours}}"
+		},
+		"summary": {
+			"out": {
+				"month": "Tes dépenses récurrentes coûtent {amount} par mois.",
+				"quarter": "Tes dépenses récurrentes coûtent {amount} par trimestre.",
+				"year": "Tes dépenses récurrentes coûtent {amount} par an."
+			},
+			"in": {
+				"month": "Tes revenus récurrents rapportent {amount} par mois.",
+				"quarter": "Tes revenus récurrents rapportent {amount} par trimestre.",
+				"year": "Tes revenus récurrents rapportent {amount} par an."
+			},
+			"missingRate": "Pas encore de taux pour {currencies}. Ils sont exclus.",
+			"period": "Période",
+			"monthly": "Mensuel",
+			"quarterly": "Trimestre",
+			"yearly": "Année"
+		},
+		"groups": {
+			"due": "À payer",
+			"next30": "30 prochains jours",
+			"later": "Plus tard",
+			"in": "Entrées d'argent"
+		},
+		"logged": {
+			"title": "Enregistrés par paiement auto ce mois-ci"
+		},
+		"confirm": {
+			"title": "Confirmer {title}",
+			"bodyOut": "Échéance le {date}. C'est enregistré comme dépense à cette date.",
+			"bodyIn": "Échéance le {date}. C'est enregistré comme revenu à cette date.",
+			"amount": "Montant cette fois",
+			"fixed": "Le montant habituel, {amount}.",
+			"nextDue": "Prochaine échéance",
+			"submit": "Confirmer",
+			"toast": "{title} enregistré, {amount}"
+		},
+		"item": {
+			"next": "{amount}, prochain le {date}.",
+			"paused": "{amount}. En pause, rien n'est enregistré tant que tu ne la reprends pas.",
+			"autoPay": "Paiement auto",
+			"autoOnHint": "S'enregistre tout seul à l'échéance.",
+			"autoOffHint": "Tu confirmes à chaque fois.",
+			"pause": "Mettre en pause",
+			"resume": "Reprendre",
+			"pausedToast": "{title} en pause",
+			"resumedToast": "{title} repris",
+			"autoOnToast": "Paiement auto activé pour {title}",
+			"autoOffToast": "Paiement auto désactivé pour {title}",
+			"error": "Impossible de modifier. Réessaie."
 		}
 	}
 }
