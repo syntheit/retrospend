@@ -112,7 +112,84 @@ function extensionPlist({ name, group, version, build, point, extra }) {
 		CFBundleVersion: build,
 		RetrospendAppGroup: group,
 	};
-	return plist(common, `\t<key>NSExtension</key>\n\t<dict>\n${extra}\t\t<key>NSExtensionPointIdentifier</key>\n\t\t<string>${point}</string>\n\t</dict>\n`);
+	return plist(
+		common,
+		`\t<key>NSExtension</key>\n\t<dict>\n${extra}\t\t<key>NSExtensionPointIdentifier</key>\n\t\t<string>${point}</string>\n\t</dict>\n`,
+	);
+}
+
+// ---- iOS strings --------------------------------------------------------
+//
+// The Shortcuts phrases and the intent's and Control's words come from the
+// "shortcuts" section of the mobile catalogs (packages/i18n), written as
+// String Catalogs Xcode compiles into each language. The Swift sources keep
+// the English text, which is each string's key.
+
+const MESSAGES = path.join(
+	__dirname,
+	"..",
+	"..",
+	"..",
+	"packages",
+	"i18n",
+	"messages",
+);
+
+/** Catalog keys per String Catalog table. AppShortcuts holds Siri's phrases. */
+const STRING_TABLES = {
+	AppShortcuts: ["phraseAdd", "phraseNew"],
+	Localizable: ["addExpense", "description", "amount", "summary"],
+};
+
+/** ICU arguments as the String Catalog key writes the Swift interpolation. */
+const CATALOG_ARGS = { app: "${applicationName}", amount: "${amount}" };
+
+/** ICU arguments as the Swift source writes them. */
+const SWIFT_ARGS = { app: "\\(.applicationName)", amount: "\\(\\.$amount)" };
+
+function withArgs(text, args) {
+	return text.replace(/\{(\w+)\}/g, (whole, name) => args[name] ?? whole);
+}
+
+/** The "shortcuts" section of one locale's mobile catalog. */
+function shortcutStrings(locale) {
+	const file = path.join(MESSAGES, locale, "mobile.json");
+	const strings = JSON.parse(fs.readFileSync(file, "utf8")).shortcuts;
+	if (!strings) throw new Error(`${file} has no "shortcuts" section`);
+	return strings;
+}
+
+/** One .xcstrings file (JSON): English keys, every other locale translated. */
+function stringCatalog(table, locales) {
+	const english = shortcutStrings("en");
+	const others = locales
+		.filter((l) => l !== "en")
+		.map((l) => [l, shortcutStrings(l)]);
+	const strings = {};
+	for (const key of STRING_TABLES[table]) {
+		const localizations = {};
+		for (const [locale, catalog] of others) {
+			if (!catalog[key]) continue;
+			localizations[locale] = {
+				stringUnit: {
+					state: "translated",
+					value: withArgs(catalog[key], CATALOG_ARGS),
+				},
+			};
+		}
+		strings[withArgs(english[key], CATALOG_ARGS)] = { localizations };
+	}
+	return `${JSON.stringify({ sourceLanguage: "en", strings, version: "1.0" }, null, 2)}\n`;
+}
+
+/** What the Swift sources must say for each catalog key (the English text). */
+function swiftSources() {
+	const english = shortcutStrings("en");
+	return Object.fromEntries(
+		Object.values(STRING_TABLES)
+			.flat()
+			.map((key) => [key, withArgs(english[key], SWIFT_ARGS)]),
+	);
 }
 
 const TARGETS = [
@@ -135,6 +212,8 @@ const TARGETS = [
 		// The intent is compiled into the extension too: a Control names the
 		// intent type, and the system runs it in the app (openAppWhenRun).
 		files: ["RetrospendControls.swift", "AddExpenseIntent.swift"],
+		// The Control's label and description, in the extension's own bundle.
+		strings: ["Localizable"],
 		deployment: "18.0",
 		plist: (p) =>
 			extensionPlist({
@@ -157,9 +236,15 @@ function addExtensionTarget(project, spec, ctx) {
 	const { appId, team } = ctx;
 	if (project.pbxTargetByName(spec.name)) return;
 	const bundleId = `${appId}.${spec.suffix}`;
-	const target = project.addTarget(spec.name, "app_extension", spec.name, bundleId);
+	const target = project.addTarget(
+		spec.name,
+		"app_extension",
+		spec.name,
+		bundleId,
+	);
+	const resources = (spec.strings ?? []).map((table) => `${table}.xcstrings`);
 	const group = project.addPbxGroup(
-		[...spec.files, "Info.plist", `${spec.name}.entitlements`],
+		[...spec.files, ...resources, "Info.plist", `${spec.name}.entitlements`],
 		spec.name,
 		spec.name,
 	);
@@ -173,8 +258,18 @@ function addExtensionTarget(project, spec, ctx) {
 	);
 	// The app builds the extensions first, then embeds them.
 	project.addTargetDependency(project.getFirstTarget().uuid, [target.uuid]);
-	project.addBuildPhase([], "PBXResourcesBuildPhase", "Resources", target.uuid);
-	project.addBuildPhase([], "PBXFrameworksBuildPhase", "Frameworks", target.uuid);
+	project.addBuildPhase(
+		resources,
+		"PBXResourcesBuildPhase",
+		"Resources",
+		target.uuid,
+	);
+	project.addBuildPhase(
+		[],
+		"PBXFrameworksBuildPhase",
+		"Frameworks",
+		target.uuid,
+	);
 	for (const s of settingsOf(project, target)) {
 		Object.assign(s, {
 			INFOPLIST_FILE: `"${spec.name}/Info.plist"`,
@@ -192,7 +287,28 @@ function addExtensionTarget(project, spec, ctx) {
 	}
 }
 
-function withIosSurfaces(config, group) {
+/** The String Catalogs the app target carries. */
+const APP_STRINGS = ["AppShortcuts", "Localizable"];
+
+/**
+ * Types every String Catalog reference. The xcode package does not know the
+ * extension: it leaves the type "unknown" (and writes undefined fields), so
+ * Xcode would copy the JSON instead of compiling it.
+ */
+function typeStringCatalogs(project) {
+	const refs = project.pbxFileReferenceSection();
+	for (const ref of Object.values(refs)) {
+		if (typeof ref !== "object" || !/\.xcstrings"?$/.test(String(ref.path))) {
+			continue;
+		}
+		for (const key of Object.keys(ref)) {
+			if (ref[key] === undefined) delete ref[key];
+		}
+		ref.lastKnownFileType = "text.json.xcstrings";
+	}
+}
+
+function withIosSurfaces(config, group, locales) {
 	const appId = config.ios?.bundleIdentifier;
 	if (!appId) throw new Error("ios.bundleIdentifier is required");
 	const version = config.version ?? "1.0.0";
@@ -212,14 +328,29 @@ function withIosSurfaces(config, group) {
 		(mod) => {
 			const root = mod.modRequest.platformProjectRoot;
 			const app = path.join(root, mod.modRequest.projectName);
-			for (const file of ["AddExpenseIntent.swift", "RetrospendShortcuts.swift"]) {
+			for (const file of [
+				"AddExpenseIntent.swift",
+				"RetrospendShortcuts.swift",
+			]) {
 				fs.copyFileSync(path.join(SOURCES, file), path.join(app, file));
+			}
+			for (const table of APP_STRINGS) {
+				fs.writeFileSync(
+					path.join(app, `${table}.xcstrings`),
+					stringCatalog(table, locales),
+				);
 			}
 			for (const spec of TARGETS) {
 				const dir = path.join(root, spec.name);
 				fs.mkdirSync(dir, { recursive: true });
 				for (const file of spec.files) {
 					fs.copyFileSync(path.join(SOURCES, file), path.join(dir, file));
+				}
+				for (const table of spec.strings ?? []) {
+					fs.writeFileSync(
+						path.join(dir, `${table}.xcstrings`),
+						stringCatalog(table, locales),
+					);
 				}
 				fs.writeFileSync(
 					path.join(dir, "Info.plist"),
@@ -237,10 +368,21 @@ function withIosSurfaces(config, group) {
 	return withXcodeProject(config, (mod) => {
 		const project = mod.modResults;
 		const name = mod.modRequest.projectName;
-		for (const file of ["AddExpenseIntent.swift", "RetrospendShortcuts.swift"]) {
+		for (const file of [
+			"AddExpenseIntent.swift",
+			"RetrospendShortcuts.swift",
+		]) {
 			IOSConfig.XcodeUtils.addBuildSourceFileToGroup({
 				filepath: `${name}/${file}`,
 				groupName: name,
+				project,
+			});
+		}
+		for (const table of APP_STRINGS) {
+			IOSConfig.XcodeUtils.addResourceFileToGroup({
+				filepath: `${name}/${table}.xcstrings`,
+				groupName: name,
+				isBuildFile: true,
 				project,
 			});
 		}
@@ -252,15 +394,21 @@ function withIosSurfaces(config, group) {
 				build,
 			});
 		}
+		typeStringCatalogs(project);
+		for (const locale of locales) project.addKnownRegion(locale);
 		return mod;
 	});
 }
 
 module.exports = function withSystemSurfaces(config, props = {}) {
 	const group = props.appGroup ?? `group.${config.ios?.bundleIdentifier}`;
+	const locales = props.locales ?? ["en"];
 	config = withShareTarget(config);
-	return withIosSurfaces(config, group);
+	return withIosSurfaces(config, group, locales);
 };
 module.exports.addSendFilters = addSendFilters;
 module.exports.SHARE_RULE = SHARE_RULE;
 module.exports.TARGETS = TARGETS;
+module.exports.STRING_TABLES = STRING_TABLES;
+module.exports.stringCatalog = stringCatalog;
+module.exports.swiftSources = swiftSources;

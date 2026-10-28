@@ -1771,5 +1771,13 @@
 			"autoOffToast": "Paiement auto désactivé pour {title}",
 			"error": "Impossible de modifier. Réessaie."
 		}
+	},
+	"shortcuts": {
+		"addExpense": "Ajouter une dépense",
+		"description": "Ouvre Retrospend avec une nouvelle dépense.",
+		"amount": "Montant",
+		"summary": "Ajouter une dépense de {amount}",
+		"phraseAdd": "Ajoute une dépense dans {app}",
+		"phraseNew": "Nouvelle dépense dans {app}"
 	}
 }
