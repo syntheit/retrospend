@@ -44,6 +44,7 @@
 		"usePlan": "Use my plan",
 		"add": "Add",
 		"addExpense": "Add expense",
+		"sharedFileNotice": "Receipts can't be attached yet. Add the details here.",
 		"addIncome": "Add income",
 		"undo": "Undo",
 		"cancel": "Cancel",

@@ -1,0 +1,15 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'app.retrospend.surfaces'
+version = '0.1.0'
+
+android {
+  namespace "app.retrospend.surfaces"
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+}

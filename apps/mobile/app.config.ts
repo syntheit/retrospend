@@ -134,6 +134,9 @@ const config: ExpoConfig = {
 		"./plugins/with-ios-scene-lifecycle",
 		// The aps-environment entitlement (APNs push on iOS).
 		["./plugins/with-ios-push", { mode: APNS_ENV }],
+		// Share in (both platforms), Shortcuts and Controls (iOS). The App
+		// Group and the two extension bundle ids must be registered.
+		["./plugins/with-system-surfaces", { appGroup: "group.app.retrospend" }],
 	],
 };
 
