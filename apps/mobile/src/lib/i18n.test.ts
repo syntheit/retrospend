@@ -30,7 +30,11 @@ describe("matchLocale", () => {
 		["pt", "BR", "pt-BR"],
 		["es", "ES", "es"],
 		["es", undefined, "es"],
-		["es-MX", "AR", "es"], // a language region of its own wins
+		// The language's own region has no catalog: the settings region does.
+		["es-ES", "AR", "es-AR"],
+		["es-MX", "AR", "es-AR"],
+		["es-MX", "MX", "es"],
+		["es-ES", "ES", "es"],
 		["en-US", "AR", "en"],
 		["zh-Hans-CN", "AR", "en"],
 	])("%s with region %s -> %s", (tag, region, expected) => {

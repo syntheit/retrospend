@@ -96,9 +96,9 @@ function supported(tag: string): AppLocale | undefined {
 /**
  * The catalog for one language tag. The language with its region comes
  * before the bare language: "es-AR" is the voseo catalog, not "es". iOS can
- * hand over "es-419-AR" or a bare "es" next to a region setting of AR, so
- * the last two-letter region in the tag counts, and a tag with no region of
- * its own takes the region from the system settings.
+ * hand over "es-419-AR", "es-ES" or a bare "es" next to a region setting of
+ * AR, so the tag's own region counts first (its last two-letter part), then
+ * the region from the system settings, then the bare language.
  */
 function matchTag(
 	tag: string,
@@ -109,13 +109,11 @@ function matchTag(
 	if (!language) return undefined;
 	const rest = parts.slice(1).filter((p) => !SCRIPT.test(p));
 	const own = rest.filter((p) => /^[a-z]{2}$/i.test(p)).at(-1);
-	const generic = rest.length === 0 || rest.every((p) => /^\d{3}$/.test(p));
-	const region = own ?? (generic ? settingsRegion : undefined);
-	return (
-		(region && REGION.test(region)
+	const regional = (region: string | null | undefined) =>
+		region && REGION.test(region)
 			? supported(`${language}-${region}`)
-			: undefined) ?? supported(language)
-	);
+			: undefined;
+	return regional(own) ?? regional(settingsRegion) ?? supported(language);
 }
 
 /**
