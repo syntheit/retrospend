@@ -53,6 +53,7 @@ export function Tabs({ onAdd, addLabel }: TabsProps) {
 					? { default: { color: color.fg2 }, selected: { color: color.brand } }
 					: undefined
 			}
+			labelVisibilityMode="labeled"
 			rippleColor={color.brandSoft}
 			sidebarAdaptable
 			tintColor={color.brand}
