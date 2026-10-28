@@ -58,7 +58,9 @@ class RetrospendNotifyModule : Module() {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
       )
       val built = NotificationCompat.Builder(context, notification["channel"] ?: "splits")
-        .setSmallIcon(context.applicationInfo.icon)
+        // A white-on-transparent mark: the launcher icon is a full-color
+        // square and shows as a blank tile in the status bar.
+        .setSmallIcon(R.drawable.ic_stat_retrospend)
         .setContentTitle(notification["title"])
         .setContentText(notification["body"])
         .setAutoCancel(true)
