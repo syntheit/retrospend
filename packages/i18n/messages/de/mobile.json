@@ -44,6 +44,7 @@
 		"usePlan": "Meinen Plan nutzen",
 		"add": "Hinzufügen",
 		"addExpense": "Ausgabe hinzufügen",
+		"sharedFileNotice": "Belege lassen sich noch nicht anhängen. Trag die Angaben hier ein.",
 		"addIncome": "Einnahme hinzufügen",
 		"undo": "Rückgängig",
 		"cancel": "Abbrechen",

@@ -44,6 +44,7 @@
 		"usePlan": "Usar mi plan",
 		"add": "Agregar",
 		"addExpense": "Agregar gasto",
+		"sharedFileNotice": "Todavía no se pueden adjuntar recibos. Cargá los datos acá.",
 		"addIncome": "Agregar ingreso",
 		"undo": "Deshacer",
 		"cancel": "Cancelar",

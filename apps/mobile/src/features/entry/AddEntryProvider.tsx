@@ -12,14 +12,16 @@ import { useTranslations } from "use-intl";
 import { ADD_CONTROL } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
+import type { ComposerPrefill } from "@/surfaces/prefill";
+import { useSurfaceLinks } from "@/surfaces/useSurfaceLinks";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import type { EntryMode } from "./ComposerShell";
 import { EntryComposer } from "./EntryComposer";
 import { useOutboxFlush } from "./useOutboxFlush";
 
 interface AddEntryApi {
-	/** Opens the composer sheet. */
-	open(mode?: EntryMode): void;
+	/** Opens the composer sheet, optionally filled in by a share, a Shortcut or a link. */
+	open(mode?: EntryMode, prefill?: ComposerPrefill): void;
 }
 
 const AddEntryContext = createContext<AddEntryApi | null>(null);
@@ -53,15 +55,26 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const { space } = useTheme();
 	const [open, setOpen] = useState<EntryMode | null>(null);
 	const [mode, setMode] = useState<EntryMode>("expense");
+	// A prefill belongs to one opening; the counter remounts the composer when
+	// a second share arrives while the first is still open.
+	const [fill, setFill] = useState<{
+		prefill?: ComposerPrefill;
+		count: number;
+	}>({ count: 0 });
 	useOutboxFlush();
 
 	const sheetSize = useSheetBodySize();
 
-	const show = useCallback((next: EntryMode = "expense") => {
-		setMode(next);
-		setOpen(next);
-	}, []);
+	const show = useCallback(
+		(next: EntryMode = "expense", prefill?: ComposerPrefill) => {
+			setMode(next);
+			setFill((f) => ({ prefill, count: f.count + 1 }));
+			setOpen(next);
+		},
+		[],
+	);
 	const api = useMemo(() => ({ open: show }), [show]);
+	useSurfaceLinks(show);
 	const close = useCallback(() => setOpen(null), []);
 
 	return (
@@ -89,8 +102,10 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 					{open ? (
 						<EntryComposer
 							initialMode={open}
+							key={fill.count}
 							onDone={close}
 							onModeChange={setMode}
+							prefill={fill.prefill}
 							surface
 						/>
 					) : null}

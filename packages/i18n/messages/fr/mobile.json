@@ -44,6 +44,7 @@
 		"usePlan": "Utiliser mon plan",
 		"add": "Ajouter",
 		"addExpense": "Ajouter une dépense",
+		"sharedFileNotice": "Les reçus ne peuvent pas encore être joints. Saisis les détails ici.",
 		"addIncome": "Ajouter un revenu",
 		"undo": "Annuler",
 		"cancel": "Annuler",

@@ -44,6 +44,7 @@
 		"usePlan": "Usar meu plano",
 		"add": "Adicionar",
 		"addExpense": "Adicionar gasto",
+		"sharedFileNotice": "Ainda não dá para anexar recibos. Adicione os dados aqui.",
 		"addIncome": "Adicionar receita",
 		"undo": "Desfazer",
 		"cancel": "Cancelar",

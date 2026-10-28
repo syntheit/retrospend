@@ -1,10 +1,12 @@
+import { decimalSeparator } from "@retrospend/domain/parse";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Keyboard, View } from "react-native";
+import { Keyboard, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useMoneyLocale } from "@/lib/money";
+import type { ComposerPrefill } from "@/surfaces/prefill";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { useToast } from "@/ui/Toast";
@@ -12,6 +14,8 @@ import { ChangesBlock } from "./ChangesBlock";
 import { ComposerShell, type EntryMode } from "./ComposerShell";
 import {
 	buildExpenseWrite,
+	type ExpenseDraft,
+	type IncomeDraft,
 	buildIncomeWrite,
 	expenseErrors,
 	incomeErrors,
@@ -34,6 +38,8 @@ interface ComposerProps {
 	onModeChange?: (mode: EntryMode) => void;
 	/** The composer sits on a sheet: it takes the sheet's surface, not the page's. */
 	surface?: boolean;
+	/** What a share, a Shortcut or a retrospend://add link filled in. */
+	prefill?: ComposerPrefill;
 }
 
 /**
@@ -58,6 +64,37 @@ export function EntryComposer(props: ComposerProps) {
 	return <Form {...props} catalog={catalog.catalog} />;
 }
 
+/** The drafts with a prefill laid over them; the amount is shown in the person's own separators. */
+function filled(
+	drafts: { expense: ExpenseDraft; income: IncomeDraft },
+	prefill: ComposerPrefill | undefined,
+	locale: string,
+	currencies: string[],
+) {
+	if (!prefill) return drafts;
+	const currency =
+		prefill.currency && currencies.includes(prefill.currency)
+			? prefill.currency
+			: undefined;
+	const amountText = prefill.amount
+		? prefill.amount.replace(".", decimalSeparator(locale))
+		: "";
+	return {
+		expense: {
+			...drafts.expense,
+			amountText,
+			currency: currency ?? drafts.expense.currency,
+			title: prefill.mode === "expense" ? (prefill.title ?? "") : "",
+		},
+		income: {
+			...drafts.income,
+			amountText,
+			currency: currency ?? drafts.income.currency,
+			source: prefill.mode === "income" ? (prefill.title ?? "") : "",
+		},
+	};
+}
+
 function Notice({ title, detail }: { title: string; detail?: string }) {
 	const { color } = useTheme();
 	return (
@@ -73,12 +110,13 @@ function Form({
 	onDone,
 	onModeChange,
 	surface,
+	prefill,
 }: ComposerProps & { catalog: EntryCatalog }) {
 	const t = useTranslations("mobile.composer");
 	const locale = useMoneyLocale();
 	const toast = useToast();
 	const { api, local, state } = useSession();
-	const { space } = useTheme();
+	const { color, space, type } = useTheme();
 	const me = state.status === "signedIn" ? state.me : null;
 	const today = () => dayKey(new Date());
 	const fresh = useCallback(
@@ -98,7 +136,9 @@ function Form({
 		[me?.defaultCurrency, me?.homeCurrency, catalog.hasBudget],
 	);
 	const [mode, setMode] = useState(initialMode);
-	const [drafts, setDrafts] = useState(fresh);
+	const [drafts, setDrafts] = useState(() =>
+		filled(fresh(), prefill, locale, catalog.currencies),
+	);
 	const [tried, setTried] = useState(false);
 	const [typing, setTyping] = useState(false);
 	const [busy, setBusy] = useState(false);
@@ -224,6 +264,13 @@ function Form({
 		>
 			<View style={{ gap: space[4] }}>
 				<SyncIssues />
+				{prefill?.file ? (
+					<Text
+						style={{ color: color.fg2, fontSize: type.body.size }}
+					>
+						{t("sharedFileNotice")}
+					</Text>
+				) : null}
 				{mode === "expense" ? (
 					<ExpenseFields
 						catalog={catalog}
