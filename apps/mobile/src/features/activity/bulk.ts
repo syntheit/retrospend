@@ -17,7 +17,8 @@ export function canSelect(item: ActivityItem): boolean {
 		item.source === "personal" &&
 		item.kind === "expense" &&
 		item.mine &&
-		item.canEdit
+		item.canEdit &&
+		!item.locked
 	);
 }
 

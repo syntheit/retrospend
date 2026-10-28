@@ -28,6 +28,7 @@ describe("canSelect", () => {
 		expect(canSelect(item({ kind: "transfer" }))).toBe(false);
 		expect(canSelect(item({ mine: false }))).toBe(false);
 		expect(canSelect(item({ canEdit: false }))).toBe(false);
+		expect(canSelect(item({ locked: true }))).toBe(false);
 	});
 });
 
