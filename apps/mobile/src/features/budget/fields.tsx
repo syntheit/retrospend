@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
@@ -48,6 +49,8 @@ export interface Choice {
 	label: string;
 	/** A second phrase at the end of the row (a figure already worded). */
 	detail?: string;
+	/** Identity in front of the label: a face, a bare glyph, a dot. */
+	lead?: ReactNode;
 }
 
 /**
@@ -101,6 +104,7 @@ export function ChoiceList({
 							borderBottomColor: color.line,
 						})}
 					>
+						{choice.lead}
 						<Text
 							numberOfLines={1}
 							style={{ flex: 1, color: color.fg, fontSize: type.body.size }}

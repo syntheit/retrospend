@@ -711,6 +711,75 @@
 			"submit": "Registrar",
 			"toastRecorded": "Registraste un ajuste de {amount}",
 			"toastMatched": "Coincide. No hay nada que registrar"
+		},
+		"setup": {
+			"title": "Configura tu presupuesto",
+			"step": "Paso {at} de {total}",
+			"styleTitle": "¿Cómo te gusta presupuestar?",
+			"styleSub": "No hay respuesta incorrecta. Lo puedes cambiar cuando quieras.",
+			"methods": "O sigue un método",
+			"moneyTitle": "¿Cuánto dinero puedes presupuestar ahora?",
+			"moneySub": "Cuenta el dinero que vas a usar para vivir. Con esto planificas ahora.",
+			"envelopesTitle": "Tus sobres",
+			"limitsTitle": "Elige tus límites",
+			"limitsSub": "Con tus últimos 3 meses. Todo lo demás se registra, sin límite.",
+			"continue": "Continuar",
+			"back": "Atrás",
+			"cancel": "Cancelar",
+			"start": "Empezar mi presupuesto",
+			"startTracking": "Empezar a registrar",
+			"startStopped": "Empezar igualmente",
+			"toast": "Tu presupuesto está listo",
+			"failed": "No se pudo empezar tu presupuesto. No se cambió nada.",
+			"amountFor": "Monto para {name}",
+			"pay": {
+				"title": "¿Cómo cobras?",
+				"sub": "Tu plan puede empezar con tu próximo cobro.",
+				"frequency": "Con qué frecuencia",
+				"MONTHLY": "Mensual",
+				"EVERY_TWO_WEEKS": "Cada dos semanas",
+				"WEEKLY": "Semanal",
+				"VARIES": "Varía",
+				"next": "Próximo cobro",
+				"past": "Elige hoy o un día posterior."
+			},
+			"stop": "Tu plan cuesta {cost} al mes pero empiezas con {available}.",
+			"usePay": "Usar mi sueldo para el resto. Los {short} restantes empiezan cuando llegue.",
+			"usePayOn": "Usar mi sueldo del {date} para el resto. Los {short} restantes empiezan entonces.",
+			"open": "Configura tu presupuesto",
+			"track": "Solo registrar",
+			"trackAbout": "Mira adónde va tu dinero. Sin sobres.",
+			"haveNow": "Dinero para planificar",
+			"adjust": "Cambiar un importe",
+			"coverLabel": "Usar mi paga para el resto",
+			"starting": "Empezando",
+			"loading": "Cargando",
+			"presetError": "No se pudo cargar la propuesta. Inténtalo de nuevo.",
+			"envelopesSub": "De tus últimos 3 meses. Toca uno para conservarlo o quitarlo.",
+			"names": {
+				"groups": {
+					"bills": "Cuentas",
+					"spending": "Gastos",
+					"everyday": "Gastos",
+					"limits": "Límites",
+					"savings": "Ahorros",
+					"needs": "Necesidades",
+					"wants": "Deseos",
+					"debts": "Deudas"
+				},
+				"envelopes": {
+					"spending": "Gastos",
+					"savings": "Ahorros",
+					"everythingElse": "Todo lo demás",
+					"needs": "Necesidades",
+					"wants": "Deseos",
+					"extraDebt": "Pago extra de deudas"
+				},
+				"rules": {
+					"saveFirst": "Ahorro primero",
+					"rest": "El resto"
+				}
+			}
 		}
 	},
 	"wealth": {

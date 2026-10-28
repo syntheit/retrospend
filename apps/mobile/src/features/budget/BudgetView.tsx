@@ -13,6 +13,7 @@ import { BudgetBody } from "./BudgetBody";
 import { BudgetSheets, type OpenSheet } from "./BudgetSheets";
 import { devSheet } from "./devSheet";
 import { monthInfo } from "./months";
+import { SetupSheet } from "./SetupSheet";
 import {
 	BUDGET_CACHE_KEEP,
 	BUDGET_CACHE_PREFIX,
@@ -35,6 +36,7 @@ export function BudgetView() {
 	const [selected, setSelected] = useState<number | null>(null);
 	const [seenOpen, setSeenOpen] = useState<number | null>(null);
 	const [sheet, setSheet] = useState<OpenSheet | null>(null);
+	const [setupOpen, setSetupOpen] = useState(false);
 
 	const fetch = useMemo(
 		() => (api ? fetchBudget(api, selected) : null),
@@ -60,6 +62,7 @@ export function BudgetView() {
 	const { sheet: devName } = useLocalSearchParams<{ sheet?: string }>();
 	// biome-ignore lint/correctness/useExhaustiveDependencies: opens once per route change
 	useEffect(() => {
+		if (GALLERY_ENABLED && devName === "setup") setSetupOpen(true);
 		if (GALLERY_ENABLED && devName && data) setSheet(devSheet(devName, data));
 	}, [devName, data !== null]);
 
@@ -72,7 +75,12 @@ export function BudgetView() {
 				) : state.status === "error" ? (
 					<EmptyState detail={t("errorDetail")} title={t("error")} />
 				) : !data || !info ? (
-					<EmptyState detail={t("noBudgetDetail")} title={t("noBudget")} />
+					<EmptyState
+						actionLabel={t("setup.open")}
+						detail={t("noBudgetDetail")}
+						onAction={() => setSetupOpen(true)}
+						title={t("noBudget")}
+					/>
 				) : data.book.paused ? (
 					<EmptyState detail={t("pausedDetail")} title={t("paused")} />
 				) : (
@@ -88,6 +96,11 @@ export function BudgetView() {
 					/>
 				)}
 			</Screen>
+			<SetupSheet
+				onClose={() => setSetupOpen(false)}
+				onDone={() => void reload()}
+				visible={setupOpen}
+			/>
 			{data && info && !data.book.paused ? (
 				<BudgetSheets
 					data={data}

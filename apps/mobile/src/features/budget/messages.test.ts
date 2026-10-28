@@ -49,6 +49,7 @@ describe.each(["budget", "wealth"])("mobile.%s messages", (namespace) => {
 	);
 
 	it("English has no em dash", () => {
-		for (const message of base.values()) expect(message).not.toContain("\u2014");
+		for (const message of base.values())
+			expect(message).not.toContain("\u2014");
 	});
 });

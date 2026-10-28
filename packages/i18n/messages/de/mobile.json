@@ -711,6 +711,75 @@
 			"submit": "Erfassen",
 			"toastRecorded": "Korrektur von {amount} erfasst",
 			"toastMatched": "Es stimmt überein. Nichts zu erfassen"
+		},
+		"setup": {
+			"title": "Dein Budget einrichten",
+			"step": "Schritt {at} von {total}",
+			"styleTitle": "Wie planst du gern dein Geld?",
+			"styleSub": "Es gibt keine falsche Antwort. Du kannst das jederzeit ändern.",
+			"methods": "Oder folge einer Methode",
+			"moneyTitle": "Wie viel Geld kannst du gerade verplanen?",
+			"moneySub": "Zähle das Geld, von dem du lebst. Damit planst du jetzt.",
+			"envelopesTitle": "Deine Umschläge",
+			"limitsTitle": "Wähle deine Limits",
+			"limitsSub": "Aus deinen letzten 3 Monaten. Alles andere wird erfasst, ohne Limit.",
+			"continue": "Weiter",
+			"back": "Zurück",
+			"cancel": "Abbrechen",
+			"start": "Mein Budget starten",
+			"startTracking": "Mit dem Erfassen beginnen",
+			"startStopped": "Trotzdem starten",
+			"toast": "Dein Budget ist bereit",
+			"failed": "Dein Budget konnte nicht gestartet werden. Es wurde nichts geändert.",
+			"amountFor": "Betrag für {name}",
+			"pay": {
+				"title": "Wie wirst du bezahlt?",
+				"sub": "Dein Plan kann mit deinem nächsten Gehalt starten.",
+				"frequency": "Wie oft",
+				"MONTHLY": "Monatlich",
+				"EVERY_TWO_WEEKS": "Alle zwei Wochen",
+				"WEEKLY": "Wöchentlich",
+				"VARIES": "Es schwankt",
+				"next": "Nächstes Gehalt",
+				"past": "Wähle heute oder einen späteren Tag."
+			},
+			"stop": "Dein Plan kostet {cost} im Monat, du startest aber mit {available}.",
+			"usePay": "Mit meinem Gehalt den Rest decken. Weitere {short} starten, wenn es eintrifft.",
+			"usePayOn": "Mit meinem Gehalt am {date} den Rest decken. Weitere {short} starten dann.",
+			"open": "Budget einrichten",
+			"track": "Nur erfassen",
+			"trackAbout": "Sieh, wohin dein Geld geht. Ohne Umschläge.",
+			"haveNow": "Geld zum Planen",
+			"adjust": "Betrag ändern",
+			"coverLabel": "Rest mit meinem Gehalt decken",
+			"starting": "Wird gestartet",
+			"loading": "Lädt",
+			"presetError": "Der Vorschlag ließ sich nicht laden. Versuch es nochmal.",
+			"envelopesSub": "Aus deinen letzten 3 Monaten. Tippe, um einen zu behalten oder wegzulassen.",
+			"names": {
+				"groups": {
+					"bills": "Rechnungen",
+					"spending": "Ausgaben",
+					"everyday": "Ausgaben",
+					"limits": "Ausgabenlimits",
+					"savings": "Sparen",
+					"needs": "Bedarf",
+					"wants": "Wünsche",
+					"debts": "Schulden"
+				},
+				"envelopes": {
+					"spending": "Ausgaben",
+					"savings": "Sparen",
+					"everythingElse": "Alles andere",
+					"needs": "Bedarf",
+					"wants": "Wünsche",
+					"extraDebt": "Extra-Tilgung"
+				},
+				"rules": {
+					"saveFirst": "Zuerst sparen",
+					"rest": "Der Rest"
+				}
+			}
 		}
 	},
 	"wealth": {

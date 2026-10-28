@@ -711,6 +711,75 @@
 			"submit": "Registrar",
 			"toastRecorded": "Você registrou um ajuste de {amount}",
 			"toastMatched": "Bateu. Nada a registrar"
+		},
+		"setup": {
+			"title": "Configure seu orçamento",
+			"step": "Passo {at} de {total}",
+			"styleTitle": "Como você gosta de orçar?",
+			"styleSub": "Não há resposta errada. Você pode mudar quando quiser.",
+			"methods": "Ou siga um método",
+			"moneyTitle": "Quanto dinheiro você pode orçar agora?",
+			"moneySub": "Conte o dinheiro que você usa para viver. É com isso que você planeja agora.",
+			"envelopesTitle": "Seus envelopes",
+			"limitsTitle": "Escolha seus limites",
+			"limitsSub": "Dos seus últimos 3 meses. O resto é acompanhado, sem limite.",
+			"continue": "Continuar",
+			"back": "Voltar",
+			"cancel": "Cancelar",
+			"start": "Começar meu orçamento",
+			"startTracking": "Começar a acompanhar",
+			"startStopped": "Começar mesmo assim",
+			"toast": "Seu orçamento está pronto",
+			"failed": "Não foi possível começar seu orçamento. Nada foi alterado.",
+			"amountFor": "Valor para {name}",
+			"pay": {
+				"title": "Como você recebe?",
+				"sub": "Seu plano pode começar com seu próximo pagamento.",
+				"frequency": "Com que frequência",
+				"MONTHLY": "Mensal",
+				"EVERY_TWO_WEEKS": "A cada duas semanas",
+				"WEEKLY": "Semanal",
+				"VARIES": "Varia",
+				"next": "Próximo pagamento",
+				"past": "Escolha hoje ou um dia posterior."
+			},
+			"stop": "Seu plano custa {cost} por mês, mas você começa com {available}.",
+			"usePay": "Usar meu salário para o resto. Mais {short} começam quando ele chegar.",
+			"usePayOn": "Usar meu salário de {date} para o resto. Mais {short} começam nesse dia.",
+			"open": "Configure seu orçamento",
+			"track": "Só acompanhar",
+			"trackAbout": "Veja para onde vai seu dinheiro. Sem envelopes.",
+			"haveNow": "Dinheiro para planejar",
+			"adjust": "Mudar um valor",
+			"coverLabel": "Usar meu pagamento para o resto",
+			"starting": "Iniciando",
+			"loading": "Carregando",
+			"presetError": "Não foi possível carregar a proposta. Tente de novo.",
+			"envelopesSub": "Dos seus últimos 3 meses. Toque em um para manter ou tirar.",
+			"names": {
+				"groups": {
+					"bills": "Contas",
+					"spending": "Gastos",
+					"everyday": "Gastos",
+					"limits": "Limites",
+					"savings": "Poupança",
+					"needs": "Necessidades",
+					"wants": "Desejos",
+					"debts": "Dívidas"
+				},
+				"envelopes": {
+					"spending": "Gastos",
+					"savings": "Poupança",
+					"everythingElse": "Todo o resto",
+					"needs": "Necessidades",
+					"wants": "Desejos",
+					"extraDebt": "Pagamento extra de dívidas"
+				},
+				"rules": {
+					"saveFirst": "Poupar primeiro",
+					"rest": "O resto"
+				}
+			}
 		}
 	},
 	"wealth": {

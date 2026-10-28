@@ -711,6 +711,75 @@
 			"submit": "Record",
 			"toastRecorded": "Recorded an adjustment of {amount}",
 			"toastMatched": "It matched. Nothing to record"
+		},
+		"setup": {
+			"title": "Set up your budget",
+			"step": "Step {at} of {total}",
+			"styleTitle": "How do you like to budget?",
+			"styleSub": "There is no wrong answer. You can change this anytime.",
+			"methods": "Or follow a method",
+			"moneyTitle": "How much money can you budget right now?",
+			"moneySub": "Count the money you will use for living. This is what you plan with now.",
+			"envelopesTitle": "Your envelopes",
+			"limitsTitle": "Pick your limits",
+			"limitsSub": "From your last 3 months. Everything else is tracked, with no limit.",
+			"continue": "Continue",
+			"back": "Back",
+			"cancel": "Cancel",
+			"start": "Start my budget",
+			"startTracking": "Start tracking",
+			"startStopped": "Start anyway",
+			"toast": "Your budget is ready",
+			"failed": "Could not start your budget. Nothing was changed.",
+			"amountFor": "Amount for {name}",
+			"pay": {
+				"title": "How do you get paid?",
+				"sub": "Your plan can start from your next pay.",
+				"frequency": "How often",
+				"MONTHLY": "Monthly",
+				"EVERY_TWO_WEEKS": "Every two weeks",
+				"WEEKLY": "Weekly",
+				"VARIES": "It varies",
+				"next": "Next pay",
+				"past": "Pick today or a later day."
+			},
+			"stop": "Your plan costs {cost} a month but you start with {available}.",
+			"usePay": "Use my pay for the rest. {short} more starts when it arrives.",
+			"usePayOn": "Use my pay on {date} for the rest. {short} more starts then.",
+			"open": "Set up your budget",
+			"track": "Just track",
+			"trackAbout": "See where your money goes. No envelopes.",
+			"haveNow": "Money to plan",
+			"adjust": "Change an amount",
+			"coverLabel": "Use my pay for the rest",
+			"starting": "Starting",
+			"loading": "Loading",
+			"presetError": "Could not load the proposal. Try again.",
+			"envelopesSub": "From your last 3 months. Tap one to keep or drop it.",
+			"names": {
+				"groups": {
+					"bills": "Bills",
+					"spending": "Spending",
+					"everyday": "Spending",
+					"limits": "Limits",
+					"savings": "Savings",
+					"needs": "Needs",
+					"wants": "Wants",
+					"debts": "Debts"
+				},
+				"envelopes": {
+					"spending": "Spending",
+					"savings": "Savings",
+					"everythingElse": "Everything else",
+					"needs": "Needs",
+					"wants": "Wants",
+					"extraDebt": "Extra debt payment"
+				},
+				"rules": {
+					"saveFirst": "Savings first",
+					"rest": "The rest"
+				}
+			}
 		}
 	},
 	"wealth": {

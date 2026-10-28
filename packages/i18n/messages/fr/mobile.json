@@ -711,6 +711,75 @@
 			"submit": "Enregistrer",
 			"toastRecorded": "Ajustement de {amount} enregistré",
 			"toastMatched": "Cela correspond. Rien à enregistrer"
+		},
+		"setup": {
+			"title": "Mets en place ton budget",
+			"step": "Étape {at} sur {total}",
+			"styleTitle": "Comment aimes-tu budgétiser ?",
+			"styleSub": "Il n'y a pas de mauvaise réponse. Tu peux changer à tout moment.",
+			"methods": "Ou suis une méthode",
+			"moneyTitle": "Combien d'argent peux-tu budgétiser maintenant ?",
+			"moneySub": "Compte l'argent dont tu vis. C'est avec cela que tu planifies maintenant.",
+			"envelopesTitle": "Tes enveloppes",
+			"limitsTitle": "Choisis tes limites",
+			"limitsSub": "D'après tes 3 derniers mois. Le reste est suivi, sans limite.",
+			"continue": "Continuer",
+			"back": "Retour",
+			"cancel": "Annuler",
+			"start": "Démarrer mon budget",
+			"startTracking": "Commencer le suivi",
+			"startStopped": "Démarrer quand même",
+			"toast": "Ton budget est prêt",
+			"failed": "Impossible de démarrer ton budget. Rien n'a été modifié.",
+			"amountFor": "Montant pour {name}",
+			"pay": {
+				"title": "Comment es-tu payé ?",
+				"sub": "Ton plan peut démarrer avec ta prochaine paie.",
+				"frequency": "À quelle fréquence",
+				"MONTHLY": "Chaque mois",
+				"EVERY_TWO_WEEKS": "Toutes les deux semaines",
+				"WEEKLY": "Chaque semaine",
+				"VARIES": "Ça varie",
+				"next": "Prochaine paie",
+				"past": "Choisis aujourd'hui ou un jour plus tard."
+			},
+			"stop": "Ton plan coûte {cost} par mois mais tu démarres avec {available}.",
+			"usePay": "Utiliser ma paie pour le reste. {short} de plus démarrent à son arrivée.",
+			"usePayOn": "Utiliser ma paie du {date} pour le reste. {short} de plus démarrent ce jour-là.",
+			"open": "Configurer ton budget",
+			"track": "Suivre seulement",
+			"trackAbout": "Vois où va ton argent. Sans enveloppes.",
+			"haveNow": "Argent à planifier",
+			"adjust": "Changer un montant",
+			"coverLabel": "Utiliser ma paie pour le reste",
+			"starting": "Démarrage",
+			"loading": "Chargement",
+			"presetError": "Impossible de charger la proposition. Réessaie.",
+			"envelopesSub": "D'après tes 3 derniers mois. Touche-en une pour la garder ou l'enlever.",
+			"names": {
+				"groups": {
+					"bills": "Factures",
+					"spending": "Dépenses",
+					"everyday": "Dépenses",
+					"limits": "Limites",
+					"savings": "Épargne",
+					"needs": "Besoins",
+					"wants": "Envies",
+					"debts": "Dettes"
+				},
+				"envelopes": {
+					"spending": "Dépenses",
+					"savings": "Épargne",
+					"everythingElse": "Tout le reste",
+					"needs": "Besoins",
+					"wants": "Envies",
+					"extraDebt": "Remboursement supplémentaire"
+				},
+				"rules": {
+					"saveFirst": "Épargne d'abord",
+					"rest": "Le reste"
+				}
+			}
 		}
 	},
 	"wealth": {
