@@ -4,16 +4,25 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { Segmented } from "@/ui/Segmented";
 import { minorOf, readAmount } from "./amount";
 import { BudgetChanges } from "./BudgetChanges";
-import { type TargetChoice, type TargetMode, targetBody } from "./moreBodies";
+import { DayField } from "./DayField";
+import { ChoiceList } from "./fields";
+import {
+	type BillRepeat,
+	type TargetChoice,
+	type TargetMode,
+	targetBody,
+} from "./moreBodies";
 import { AmountField, Line, Note, useAmountLocale } from "./parts";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
 import { useUndoToast } from "./useUndoToast";
 import { type FormProps, noSession, useApi, WriteFrame } from "./WriteFrame";
 
+const REPEATS: BillRepeat[] = ["MONTHLY", "QUARTERLY", "YEARLY", "ONCE"];
+
 /**
  * An envelope's target: none, a monthly amount (refill it each month, or set
- * that much aside), or a savings goal. Bills with a due date are on the web.
- * The dry run shows the plan's new need; the toast undoes it.
+ * that much aside), a bill with a due date, or a savings goal. The dry run
+ * shows the plan's new need; the toast undoes it.
  */
 export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 	const t = useTranslations("mobile.budget.target");
@@ -24,15 +33,26 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 	const currency = data.book.currency;
 	const now = envelope.target;
 	const [choice, setChoice] = useState<TargetChoice>(
-		now?.kind === "MONTHLY" || now?.kind === "SAVINGS" ? now.kind : "NONE",
+		now?.kind === "MONTHLY" || now?.kind === "SAVINGS" || now?.kind === "BILL"
+			? now.kind
+			: "NONE",
 	);
 	const [mode, setMode] = useState<TargetMode>(
 		now?.mode === "SET_ASIDE" ? "SET_ASIDE" : "REFILL",
 	);
+	const [repeat, setRepeat] = useState<BillRepeat>("MONTHLY");
+	const [due, setDue] = useState("");
 	const [draft, setDraft] = useState("");
 	const entered = readAmount(draft, locale, currency);
 	const minor = minorOf(entered);
-	const bodyKey = JSON.stringify({ id: envelope.id, choice, mode, minor });
+	const bodyKey = JSON.stringify({
+		id: envelope.id,
+		choice,
+		mode,
+		minor,
+		due,
+		repeat,
+	});
 	const { idFor } = useWriteIds(bodyKey);
 	// Nothing to say yet: no target now and none picked.
 	const idle = choice === "NONE" && now === null;
@@ -43,6 +63,8 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 		mode,
 		minor,
 		currency,
+		dueDate: due,
+		repeat,
 	});
 	const body = idle ? null : built;
 	const flow = useMoneyWrite({
@@ -66,7 +88,6 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 		onClose();
 	}
 
-	const bill = now?.kind === "BILL";
 	return (
 		<WriteFrame
 			busy={flow.committing}
@@ -90,13 +111,14 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 						: t("noTarget")
 				}
 			/>
-			{bill ? <Note>{t("billNote")}</Note> : null}
+			{now?.kind === "BILL" ? <Note>{t("billNote")}</Note> : null}
 			<Segmented
 				accessibilityLabel={t("kind.label")}
 				onChange={setChoice}
 				options={[
 					{ value: "NONE", label: t("kind.NONE") },
 					{ value: "MONTHLY", label: t("kind.MONTHLY") },
+					{ value: "BILL", label: t("kind.BILL") },
 					{ value: "SAVINGS", label: t("kind.SAVINGS") },
 				]}
 				value={choice}
@@ -112,12 +134,36 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 					value={mode}
 				/>
 			) : null}
-			{choice === "NONE" ? null : (
+			{choice === "BILL" ? (
+				<>
+					<DayField
+						hint={t("dueHint")}
+						label={t("due")}
+						onChangeText={setDue}
+						value={due}
+					/>
+					<ChoiceList
+						choices={REPEATS.map((r) => ({ id: r, label: t(`repeat.${r}`) }))}
+						label={t("repeats")}
+						onPress={(id) => setRepeat(id as BillRepeat)}
+						selected={new Set([repeat])}
+					/>
+				</>
+			) : null}
+			{choice === "NONE" ? (
+				<Note>{t("noneNote")}</Note>
+			) : (
 				<AmountField
 					currency={currency}
 					draft={draft}
 					entered={entered}
-					label={t(choice === "MONTHLY" ? "monthly" : "goal")}
+					label={t(
+						choice === "MONTHLY"
+							? "monthly"
+							: choice === "BILL"
+								? "billAmount"
+								: "goal",
+					)}
 					onDraftChange={setDraft}
 				/>
 			)}

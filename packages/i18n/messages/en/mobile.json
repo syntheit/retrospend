@@ -348,11 +348,11 @@
 		"error": "Couldn't load the budget",
 		"errorDetail": "Check your connection and try again.",
 		"noBudget": "No budget yet",
-		"noBudgetDetail": "Set up your budget on the web. It shows here when it is ready.",
+		"noBudgetDetail": "Set one up to plan your money in envelopes.",
 		"paused": "Your budget is paused",
-		"pausedDetail": "Nothing is counted while it is paused. Resume it on the web.",
+		"pausedDetail": "Nothing is counted while it is paused.",
 		"wealth": "Net worth and accounts",
-		"webForNow": "Rules, income and set up are on the web for now.",
+		"webForNow": "A few tools, like the year view, are on the web for now.",
 		"month": {
 			"previous": "Previous month",
 			"next": "Next month",
@@ -413,7 +413,16 @@
 		},
 		"owed": {
 			"title": "Held for others",
-			"people": "{count, plural, one {For # person} other {For # people}}"
+			"people": "{count, plural, one {For # person} other {For # people}}",
+			"nobody": "Nobody owes you money the budget holds.",
+			"held": "The budget holds",
+			"age": "{days, plural, one {# day} other {# days}}",
+			"pending": "{amount} waits for your OK",
+			"someone": "Someone",
+			"incomplete": "Some amounts have no rate today and are not counted.",
+			"back": "Back",
+			"error": "Couldn't load this. Try again.",
+			"forgiveTitle": "Forgive {name}"
 		},
 		"group": {
 			"BILLS": "Bills",
@@ -636,7 +645,20 @@
 			"merge": "Combine envelopes",
 			"payDebt": "Pay down a debt",
 			"style": "Budget style",
-			"reconcile": "Check against your bank"
+			"reconcile": "Check against your bank",
+			"rules": "Income rules",
+			"income": "Money in this month",
+			"owed": "Held for others",
+			"unrouted": "Shares with no envelope",
+			"whatIf": "What if I spend",
+			"plan": "Plan the month",
+			"planApply": "Apply the plan",
+			"fundNow": "Fund next month now",
+			"close": "Month summary",
+			"welcomeBack": "Welcome back",
+			"startingMoney": "Starting money",
+			"toWealth": "Move money to Wealth",
+			"fromWealth": "Move money from Wealth"
 		},
 		"afford": {
 			"title": "Can I afford it?",
@@ -669,14 +691,18 @@
 			"group": "Group",
 			"noGroup": "No group",
 			"submit": "Add",
-			"toast": "Added {name}"
+			"toast": "Added {name}",
+			"categories": "Categories it covers",
+			"categoriesHint": "A category lives in one envelope, so a checked one moves here from where it was."
 		},
 		"editEnvelope": {
 			"name": "Name",
 			"group": "Group",
 			"noGroup": "No group",
 			"submit": "Save",
-			"toast": "Saved {name}"
+			"toast": "Saved {name}",
+			"categories": "Categories it covers",
+			"categoriesHint": "A category lives in one envelope, so a checked one moves here from where it was."
 		},
 		"target": {
 			"now": "Target now",
@@ -695,9 +721,20 @@
 			},
 			"monthly": "Amount each month",
 			"goal": "Goal amount",
-			"billNote": "This envelope has a bill with a due date. Saving here replaces it; edit bills on the web.",
+			"billNote": "Saving here replaces the bill it has now.",
 			"submit": "Save target",
-			"toast": "Target saved for {name}"
+			"toast": "Target saved for {name}",
+			"due": "Due date",
+			"repeats": "Repeats",
+			"repeat": {
+				"MONTHLY": "Monthly",
+				"QUARTERLY": "Every 3 months",
+				"YEARLY": "Every year",
+				"ONCE": "Once"
+			},
+			"noneNote": "No target means nothing is planned for it.",
+			"dueHint": "YYYY-MM-DD",
+			"billAmount": "Bill amount"
 		},
 		"merge": {
 			"title": "Combine envelopes",
@@ -742,7 +779,10 @@
 			"notTracked": "Not tracked",
 			"envelope": "Taken from",
 			"submit": "Pay",
-			"toast": "Paid {amount} toward a debt"
+			"toast": "Paid {amount} toward a debt",
+			"interest": "Interest in this payment",
+			"interestHint": "Optional. Interest counts as spending (Fees), not toward the balance.",
+			"interestEstimate": "Expected interest: {amount}"
 		},
 		"reconcile": {
 			"loading": "Checking",
@@ -757,7 +797,300 @@
 			"submit": "Record",
 			"toastRecorded": "Recorded an adjustment of {amount}",
 			"toastMatched": "It matched. Nothing to record"
-		}
+		},
+		"setup": {
+			"title": "Set up your budget",
+			"step": "Step {at} of {total}",
+			"styleTitle": "How do you like to budget?",
+			"styleSub": "There is no wrong answer. You can change this anytime.",
+			"methods": "Or follow a method",
+			"moneyTitle": "How much money can you budget right now?",
+			"moneySub": "Count the money you will use for living. This is what you plan with now.",
+			"envelopesTitle": "Your envelopes",
+			"limitsTitle": "Pick your limits",
+			"limitsSub": "From your last 3 months. Everything else is tracked, with no limit.",
+			"continue": "Continue",
+			"back": "Back",
+			"cancel": "Cancel",
+			"start": "Start my budget",
+			"startTracking": "Start tracking",
+			"startStopped": "Start anyway",
+			"toast": "Your budget is ready",
+			"failed": "Could not start your budget. Nothing was changed.",
+			"amountFor": "Amount for {name}",
+			"pay": {
+				"title": "How do you get paid?",
+				"sub": "Your plan can start from your next pay.",
+				"frequency": "How often",
+				"MONTHLY": "Monthly",
+				"EVERY_TWO_WEEKS": "Every two weeks",
+				"WEEKLY": "Weekly",
+				"VARIES": "It varies",
+				"next": "Next pay",
+				"past": "Pick today or a later day."
+			},
+			"stop": "Your plan costs {cost} a month but you start with {available}.",
+			"usePay": "Use my pay for the rest. {short} more starts when it arrives.",
+			"usePayOn": "Use my pay on {date} for the rest. {short} more starts then.",
+			"open": "Set up your budget",
+			"track": "Just track",
+			"trackAbout": "See where your money goes. No envelopes.",
+			"haveNow": "Money to plan",
+			"adjust": "Change an amount",
+			"coverLabel": "Use my pay for the rest",
+			"starting": "Starting",
+			"loading": "Loading",
+			"presetError": "Could not load the proposal. Try again.",
+			"envelopesSub": "From your last 3 months. Tap one to keep or drop it.",
+			"names": {
+				"groups": {
+					"bills": "Bills",
+					"spending": "Spending",
+					"everyday": "Spending",
+					"limits": "Limits",
+					"savings": "Savings",
+					"needs": "Needs",
+					"wants": "Wants",
+					"debts": "Debts"
+				},
+				"envelopes": {
+					"spending": "Spending",
+					"savings": "Savings",
+					"everythingElse": "Everything else",
+					"needs": "Needs",
+					"wants": "Wants",
+					"extraDebt": "Extra debt payment"
+				},
+				"rules": {
+					"saveFirst": "Savings first",
+					"rest": "The rest"
+				}
+			}
+		},
+		"income": {
+			"title": "Money in, {month}",
+			"moneyIn": "Money in",
+			"planCost": "Your plan costs {cost} a month. You usually get {income}.",
+			"planCostOnly": "Your plan costs {cost} a month.",
+			"incomplete": "Some amounts have no rate today and are left out.",
+			"runway": "Your budget and savings last {months} months at this plan.",
+			"error": "Couldn't load this. Try again."
+		},
+		"rules": {
+			"title": "Income rules",
+			"lead": "What happens when money arrives, in the order the rules run. Every move shows in history with Undo.",
+			"none": "No rules yet. Money that arrives stays Not planned yet until you assign it.",
+			"paused": "Paused",
+			"add": "Add rule",
+			"sentence": {
+				"percent": "{percent} of money in to {name}",
+				"amount": "{amount} of money in to {name}",
+				"rest": "The rest to {name}",
+				"envelopeFallback": "Envelope"
+			},
+			"editor": {
+				"title": "Add rule",
+				"add": "Add rule",
+				"name": "Name",
+				"namePlaceholder": "Save first",
+				"kind": "What it does",
+				"percent": "Percent",
+				"amount": "Amount",
+				"rest": "The rest",
+				"percentLabel": "Percent of money in",
+				"amountLabel": "Amount from each money in",
+				"goesTo": "Goes to",
+				"pick": "Pick an envelope",
+				"note": "It runs on money that arrives from now on. Nothing moves today.",
+				"toast": "Added the rule {name}"
+			},
+			"apply": {
+				"title": "Apply {name} to this month",
+				"apply": "Apply",
+				"lead": "A rule only runs on money that arrives after it exists. This runs it once on money that already came in this month.",
+				"toast": "Applied {name} to this month's money in",
+				"envelopeFallback": "Envelope"
+			},
+			"back": "Back",
+			"error": "Couldn't save. Try again.",
+			"pause": "Pause",
+			"resume": "Turn on",
+			"moveUp": "Move up",
+			"moveDown": "Move down",
+			"applyAction": "Apply to this month's money in",
+			"remove": "Remove rule"
+		},
+		"forgive": {
+			"forgive": "Forgive",
+			"nothing": "Nothing is owed to you here.",
+			"owes": "{name} owes you {amount}",
+			"currency": "Currency",
+			"amount": "Forgive",
+			"chargeTo": "Charge it to",
+			"everythingElse": "Everything else",
+			"toast": "Forgave {name} {amount}",
+			"effect": "It comes off {name}'s balance. No money comes back, so Not planned yet does not change. Nothing is sent to {name}.",
+			"tooMuch": "That is more than they owe you."
+		},
+		"unrouted": {
+			"lead": "These shares count in {name} until you pick a category.",
+			"noRate": "No rate",
+			"pickFor": "Pick a category for the share of {date}",
+			"paidBy": "Paid by {name}",
+			"shareTitle": "Your share",
+			"everythingElse": "Everything else",
+			"pickTitle": "Pick a category",
+			"pickLead": "The share moves to the envelope that covers it.",
+			"route": "Put it there",
+			"routedToast": "Share moved",
+			"title": "No envelope yet",
+			"back": "Back",
+			"error": "Couldn't load this. Try again.",
+			"none": "Every share has an envelope.",
+			"loading": "Loading"
+		},
+		"categories": {
+			"find": "Find a category"
+		},
+		"planEdit": {
+			"title": "Plan {name}",
+			"lead": "What this envelope gets in the plan. It is a draft until payday; nothing moves.",
+			"planned": "Planned",
+			"target": "Its target needs {amount}.",
+			"save": "Save",
+			"toast": "Planned {name}",
+			"back": "Back",
+			"error": "Couldn't load this. Try again.",
+			"listTitle": "Plan the month",
+			"listLead": "Tap an envelope to set what it gets. Nothing moves until payday.",
+			"notPlanned": "Not planned yet"
+		},
+		"planApply": {
+			"title": "Apply the {month} plan",
+			"lead": "The plan is saved and funds itself when {month}'s money arrives. Nothing moves today.",
+			"none": "There is no plan to apply for this month.",
+			"apply": "Apply plan",
+			"toast": "{month} plan saved",
+			"envelopeFallback": "Envelope"
+		},
+		"fundNow": {
+			"title": "Fund {next} now",
+			"fund": "Fund {next}",
+			"lead": "This takes {next}'s plan out of what this month has not planned yet and puts it in {next}'s envelopes now.",
+			"toast": "Funded {next} from this month's money",
+			"envelopeFallback": "Envelope",
+			"noPlan": "There is no plan for next month yet. Plan it first, then fund it."
+		},
+		"whatIf": {
+			"titleAny": "What if I spend",
+			"lead": "A pretend expense. Nothing is saved.",
+			"envelope": "Envelope",
+			"pick": "Pick an envelope",
+			"ifSpend": "If I spend",
+			"cannot": "This cannot be previewed as typed.",
+			"wouldHave": "{name} would have",
+			"coverIt": "Cover it",
+			"coverFrom": "From {name}",
+			"uncovered": "Nothing can cover this part",
+			"idle": "Type an amount to see what it would do.",
+			"title": "What if I spend"
+		},
+		"close": {
+			"title": "{month} is closed",
+			"done": "Done",
+			"notClosed": "This month has not closed yet.",
+			"moneyIn": "Money in",
+			"assigned": "Assigned",
+			"late": "Includes {count, plural, one {# late expense} other {# late expenses}}",
+			"overTitle": "Went over",
+			"takeInstead": "Take it from {month} instead",
+			"leftTitle": "Leftovers",
+			"returned": "Went back to {pool}",
+			"swept": "Moved to {name}",
+			"envelopeFallback": "Envelope",
+			"back": "Back",
+			"error": "Couldn't load this. Try again."
+		},
+		"carry": {
+			"title": "Take it from {month}'s {name}",
+			"lead": "{name} went over last month. This takes it from {name} in {month} instead of from the money you have not planned. {name} may start {month} below zero.",
+			"take": "Take it from {name}",
+			"toast": "{name} starts {month} with the overspend"
+		},
+		"welcomeBack": {
+			"title": "Welcome back",
+			"lead": "{months} closed on their own.",
+			"leadNone": "No month closed on its own while you were away.",
+			"choice": "How to come back",
+			"catchUp": "Catch up",
+			"haveNow": "Set what I have",
+			"startFresh": "Start fresh",
+			"about": {
+				"CATCH_UP": "Opens the summaries of the months that closed, in order.",
+				"SET_HAVE_NOW": "Records one adjustment from the money you have now. Envelopes keep what they hold.",
+				"START_FRESH": "Returns every envelope's money to Not planned yet. Envelopes, targets, rules and history stay."
+			},
+			"haveLabel": "Money you have now",
+			"catchUpNothing": "Nothing changes. You are only reading.",
+			"go": {
+				"CATCH_UP": "Catch up",
+				"SET_HAVE_NOW": "Set what I have",
+				"START_FRESH": "Start fresh"
+			},
+			"toast": {
+				"CATCH_UP": "You are up to date",
+				"SET_HAVE_NOW": "Recorded what you have now",
+				"START_FRESH": "Started fresh. Every envelope's money is back in Not planned yet"
+			}
+		},
+		"startingMoney": {
+			"title": "Starting money",
+			"lead": "How much do you have right now? The budget starts counting from this.",
+			"have": "What you have right now",
+			"idle": "Type an amount to see what changes.",
+			"save": "Confirm",
+			"toast": "Starting money confirmed",
+			"moneyIn": "Money in",
+			"adjustment": "Adjustment",
+			"includes": "Includes {amount} already spent since {date}",
+			"shortfall": "The budget held more than you have. {amount} comes out as an adjustment.",
+			"nothing": "That matches what the budget holds. Nothing is added."
+		},
+		"toWealth": {
+			"title": "Move {name} to Wealth",
+			"lead": "Money leaves {name} for an account outside the budget. Its goal progress does not change.",
+			"noAccount": "You have no Wealth account outside your budget yet. Add one in Wealth.",
+			"from": "Leaves from",
+			"notTracked": "Not tracked",
+			"into": "Into",
+			"amount": "Amount",
+			"got": "You get (optional)",
+			"move": "Move",
+			"toast": "Moved {amount} from {name} to {account}",
+			"envelope": "Leaves from"
+		},
+		"fromWealth": {
+			"title": "Move from Wealth",
+			"none": "You have no Wealth account outside your budget to move from.",
+			"mode": "Did you move the money?",
+			"moved": "Yes, I moved it",
+			"count": "No, just count it",
+			"about": {
+				"moved": "The money goes from that account to one your budget counts. Both accounts change.",
+				"count": "The account keeps its money and the budget counts that much. Nothing moves in Wealth."
+			},
+			"from": "From",
+			"into": "Into",
+			"notTracked": "Not tracked",
+			"amount": "You moved",
+			"units": "Count this much",
+			"got": "You got (optional)",
+			"putIn": "Put it in",
+			"move": "Move in",
+			"toastMoved": "Moved {amount} in",
+			"toastCounted": "Counted money from {name}. {name} did not change"
+		},
+		"resume": "Resume the budget"
 	},
 	"wealth": {
 		"title": "Wealth",

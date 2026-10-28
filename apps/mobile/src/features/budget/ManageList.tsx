@@ -3,9 +3,11 @@ import { useTranslations } from "use-intl";
 import { ListRow } from "@/features/read/parts";
 import { useTheme } from "@/theme";
 import type { OpenSheet } from "./BudgetSheets";
+import { MORE_ROWS, type MoreKind } from "./MoreSheets";
 import type { MonthKind } from "./months";
 
 type RowKey =
+	| MoreKind
 	| "afford"
 	| "newEnvelope"
 	| "merge"
@@ -18,10 +20,13 @@ export function manageRows(
 	kind: MonthKind,
 	isDebtBook: boolean,
 ): { key: RowKey; sheet: OpenSheet }[] {
-	if (kind === "closed") return [];
-	const rows: { key: RowKey; sheet: OpenSheet }[] = [
-		{ key: "afford", sheet: { kind: "afford" } },
-	];
+	const rows: { key: RowKey; sheet: OpenSheet }[] =
+		kind === "closed" ? [] : [{ key: "afford", sheet: { kind: "afford" } }];
+	for (const row of MORE_ROWS) {
+		if (row.months.includes(kind)) {
+			rows.push({ key: row.kind, sheet: { kind: row.kind } });
+		}
+	}
 	if (kind === "open") {
 		rows.push(
 			{ key: "newEnvelope", sheet: { kind: "newEnvelope" } },

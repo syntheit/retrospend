@@ -21,11 +21,14 @@ export function BudgetChanges({
 }: {
 	status: PreviewStatus;
 	preview: BudgetPreview | null;
-	data: BudgetMonth;
+	/** Null before there is a budget (set up): no envelope names. */
+	data: BudgetMonth | null;
 }) {
 	const t = useTranslations("mobile.budget");
 	const money = useMoneyText();
-	const label = useFigureLabel(t(`pool.${data.toAssign.poolName}`));
+	const label = useFigureLabel(
+		t(`pool.${data?.toAssign.poolName ?? "NOT_PLANNED_YET"}`),
+	);
 	const side = (value: { minor: number; currency: string } | null) =>
 		value ? money(value) : t("preview.notAvailable");
 	const pair = (
@@ -39,7 +42,8 @@ export function BudgetChanges({
 	for (const move of moves) {
 		if (move.before.minor === move.after.minor) continue;
 		const name =
-			envelopeById(data, move.id)?.name ?? t("preview.envelopeFallback");
+			(data ? envelopeById(data, move.id)?.name : undefined) ??
+			t("preview.envelopeFallback");
 		const text = t("preview.leftOf", { name });
 		const value = pair(move.before, move.after);
 		rows.push({

@@ -68,8 +68,8 @@ export function BudgetBody({
 			});
 	};
 
-	// Only the open month acts: a closed one is read-only, and planning the
-	// next one is on the web for now (the sheets write the open month).
+	// Only the open month acts: a closed one is read-only, and the next one is
+	// planned in drafts (Plan the month in the list below), not assigned.
 	const open = kind === "open";
 	const note = (text: string) => (
 		<Text
