@@ -1,5 +1,10 @@
+import { AffordSheet } from "./AffordSheet";
 import { type EnvelopeMode, EnvelopeSheet } from "./EnvelopeSheet";
+import { MergeSheet } from "./MergeSheet";
 import type { MonthKind } from "./months";
+import { NewEnvelopeSheet } from "./NewEnvelopeSheet";
+import { PayDebtSheet } from "./PayDebtSheet";
+import { StyleSheet } from "./StyleSheet";
 import { type BudgetMonth, envelopeById } from "./source";
 import { TakeBackSheet } from "./TakeBackSheet";
 import { UsePlanSheet } from "./UsePlanSheet";
@@ -8,7 +13,12 @@ import { UsePlanSheet } from "./UsePlanSheet";
 export type OpenSheet =
 	| { kind: "envelope"; id: string; mode: EnvelopeMode }
 	| { kind: "usePlan" }
-	| { kind: "takeBack" };
+	| { kind: "takeBack" }
+	| { kind: "afford" }
+	| { kind: "newEnvelope" }
+	| { kind: "merge" }
+	| { kind: "style" }
+	| { kind: "payDebt" };
 
 /** Every sheet the Budget tab can present, closed unless `sheet` names it. */
 export function BudgetSheets({
@@ -17,12 +27,14 @@ export function BudgetSheets({
 	sheet,
 	onClose,
 	onDone,
+	onOpen,
 }: {
 	data: BudgetMonth;
 	kind: MonthKind;
 	sheet: OpenSheet | null;
 	onClose: () => void;
 	onDone: () => void;
+	onOpen: (sheet: OpenSheet) => void;
 }) {
 	const envelope =
 		sheet?.kind === "envelope" ? envelopeById(data, sheet.id) : null;
@@ -48,6 +60,36 @@ export function BudgetSheets({
 				onClose={onClose}
 				onDone={onDone}
 				visible={sheet?.kind === "takeBack"}
+			/>
+			<AffordSheet
+				data={data}
+				onClose={onClose}
+				onMove={(id) => onOpen({ kind: "envelope", id, mode: "move" })}
+				visible={sheet?.kind === "afford"}
+			/>
+			<NewEnvelopeSheet
+				data={data}
+				onClose={onClose}
+				onDone={onDone}
+				visible={sheet?.kind === "newEnvelope"}
+			/>
+			<MergeSheet
+				data={data}
+				onClose={onClose}
+				onDone={onDone}
+				visible={sheet?.kind === "merge"}
+			/>
+			<PayDebtSheet
+				data={data}
+				onClose={onClose}
+				onDone={onDone}
+				visible={sheet?.kind === "payDebt"}
+			/>
+			<StyleSheet
+				data={data}
+				onClose={onClose}
+				onDone={onDone}
+				visible={sheet?.kind === "style"}
 			/>
 		</>
 	);

@@ -11,6 +11,7 @@ import type { OpenSheet } from "./BudgetSheets";
 import { DebtHero } from "./DebtHero";
 import { ColumnTitles } from "./EnvelopeRow";
 import { GroupSection } from "./GroupSection";
+import { ManageList } from "./ManageList";
 import { MonthBar } from "./MonthBar";
 import { type MonthBounds, type MonthKind, monthDate } from "./months";
 import { Notice, PlanSummary } from "./PlanSummary";
@@ -154,6 +155,11 @@ export function BudgetBody({
 						wide={wide}
 					/>
 				))}
+			<ManageList
+				isDebtBook={style === "DEBT_PAYOFF"}
+				kind={kind}
+				onOpen={onOpen}
+			/>
 			<View style={{ paddingTop: space[4] }}>
 				<ListRow
 					accessibilityLabel={t("wealth")}

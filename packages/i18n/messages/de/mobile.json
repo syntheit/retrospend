@@ -282,7 +282,7 @@
 		"paused": "Dein Budget ist pausiert",
 		"pausedDetail": "Solange es pausiert ist, wird nichts gezählt. Setze es im Web fort.",
 		"wealth": "Vermögen und Konten",
-		"webForNow": "Ziele, Regeln, die Einrichtung und mehr gibt es vorerst im Web.",
+		"webForNow": "Regeln, Einkommen und die Einrichtung gibt es vorerst im Web.",
 		"month": {
 			"previous": "Vorheriger Monat",
 			"next": "Nächster Monat",
@@ -387,7 +387,11 @@
 			"assignTitle": "{name} zuweisen",
 			"moveTitle": "Geld verschieben für {name}",
 			"coverTitle": "{name} decken",
-			"limitTitle": "Limit für {name}"
+			"limitTitle": "Limit für {name}",
+			"targetAction": "Ziel festlegen",
+			"editAction": "Umbenennen oder verschieben",
+			"targetTitle": "Ziel für {name}",
+			"editTitle": "{name} bearbeiten"
 		},
 		"assign": {
 			"assignedNow": "Jetzt zugewiesen",
@@ -554,6 +558,120 @@
 			"capped": "Mit den Mindestraten übersteigen die Zinsen die Zahlungen.",
 			"leftToSpend": "Zum Ausgeben übrig {amount}",
 			"unavailable": "Deine Schulden konnten nicht geladen werden."
+		},
+		"manage": {
+			"title": "Planen und aufräumen",
+			"afford": "Kann ich mir das leisten?",
+			"newEnvelope": "Umschlag hinzufügen",
+			"merge": "Umschläge zusammenführen",
+			"payDebt": "Schulden abzahlen",
+			"style": "Budgetstil"
+		},
+		"afford": {
+			"title": "Kann ich mir das leisten?",
+			"amount": "Wie viel kostet es?",
+			"envelope": "Welcher Umschlag?",
+			"idle": "Gib einen Betrag ein und erhalte eine Antwort.",
+			"checking": "Wird geprüft",
+			"failed": "Das ließ sich nicht prüfen. Versuche es noch einmal.",
+			"state": {
+				"FITS": "Ja. Das passt, und es blieben {after} übrig.",
+				"FITS_TIGHT": "Es passt, aber knapp: Es blieben {after} übrig.",
+				"NO_LIMIT": "Dieser Umschlag hat kein Limit. Er hat diesen Monat {spent} ausgegeben.",
+				"SHORT_MOVE": "Nicht ganz. Diesem Umschlag fehlen {short}. Du kannst es hineinschieben.",
+				"SHORT_POOL_COVERS": "Nicht ganz. Es fehlen {short}, und bei „{pool}“ liegen {notPlanned}, die du nutzen kannst.",
+				"SHORT_NOTHING_LEFT": "Nicht diesen Monat. Es fehlen {short}, und nichts Unverplantes bleibt zum Decken.",
+				"WEEK_FITS": "Ja. Es passt in diese Woche, mit {after} übrig.",
+				"WEEK_NEXT_WEEK": "Nicht diese Woche, aber der Monat trägt es. Es geht von nächster Woche ab, und für den Monat bleiben {after}."
+			},
+			"perDay": "Etwa {perDay} pro Tag für {days, plural, one {# Tag} other {# Tage}}.",
+			"usual": "Normalerweise gibst du etwa {usual} pro Tag aus.",
+			"incomplete": "Ein Kurs fehlt, deshalb kann diese Antwort abweichen.",
+			"action": {
+				"ADD_TO_SPENDING": "{amount} zu Ausgaben hinzufügen",
+				"MOVE_MONEY": "{amount} hineinschieben"
+			}
+		},
+		"newEnvelope": {
+			"title": "Umschlag hinzufügen",
+			"name": "Name",
+			"group": "Gruppe",
+			"noGroup": "Keine Gruppe",
+			"submit": "Hinzufügen",
+			"toast": "{name} hinzugefügt"
+		},
+		"editEnvelope": {
+			"name": "Name",
+			"group": "Gruppe",
+			"noGroup": "Keine Gruppe",
+			"submit": "Speichern",
+			"toast": "{name} gespeichert"
+		},
+		"target": {
+			"now": "Aktuelles Ziel",
+			"noTarget": "Keins",
+			"kind": {
+				"label": "Art des Ziels",
+				"NONE": "Keins",
+				"MONTHLY": "Monatlich",
+				"SAVINGS": "Sparziel",
+				"BILL": "Rechnung"
+			},
+			"mode": {
+				"label": "So funktioniert es",
+				"REFILL": "Auffüllen",
+				"SET_ASIDE": "Zurücklegen"
+			},
+			"monthly": "Betrag pro Monat",
+			"goal": "Zielbetrag",
+			"billNote": "Dieser Umschlag hat eine Rechnung mit Fälligkeitsdatum. Speichern ersetzt sie; Rechnungen bearbeitest du im Web.",
+			"submit": "Ziel speichern",
+			"toast": "Ziel für {name} gespeichert"
+		},
+		"merge": {
+			"title": "Umschläge zusammenführen",
+			"lead": "Geld, Kategorien, Regeln und Ziele wandern in den Umschlag, der bleibt.",
+			"stays": "Der, der bleibt",
+			"from": "Darin zusammenführen",
+			"name": "Name nach dem Zusammenführen",
+			"submit": "Zusammenführen",
+			"toast": "{count, plural, one {# Umschlag in {name} zusammengeführt} other {# Umschläge in {name} zusammengeführt}}"
+		},
+		"style": {
+			"title": "Budgetstil",
+			"now": "Dein Stil ist {style}.",
+			"name": {
+				"FLEX": "Flex",
+				"EVERY_DOLLAR": "Jeder Euro",
+				"SAVE_FIRST": "Zuerst sparen",
+				"FIFTY_THIRTY_TWENTY": "50/30/20",
+				"WEEKLY": "Wöchentlich",
+				"LIMITS": "Limits",
+				"DEBT_PAYOFF": "Schulden tilgen"
+			},
+			"about": {
+				"FLEX": "Erst Rechnungen und Sparen. Eine Ausgabenzahl für alles andere.",
+				"EVERY_DOLLAR": "Ein Umschlag pro Kategorie. Du weist jedes eingehende Geld zu.",
+				"SAVE_FIRST": "Ein Teil jedes Gehalts geht zuerst in die Ersparnisse.",
+				"FIFTY_THIRTY_TWENTY": "Die Hälfte für Notwendiges, 30 % für Wünsche, 20 % für Sparen.",
+				"WEEKLY": "Eine Ausgabenzahl, die jede Woche neu beginnt.",
+				"LIMITS": "Limits für das, was dir wichtig ist. Alles andere wird nur erfasst.",
+				"DEBT_PAYOFF": "Mindestraten pünktlich, Extra für jeweils eine Schuld."
+			},
+			"haveNow": "Wie viel hast du gerade?",
+			"submit": "Wechseln",
+			"toast": "Zu {style} gewechselt"
+		},
+		"payDebt": {
+			"title": "Schulden abzahlen",
+			"noDebts": "Noch keine Schulden in {currency}. Lege eine unter Vermögen und Konten an.",
+			"debt": "Schuld",
+			"amount": "Betrag zur Tilgung",
+			"from": "Bezahlt von",
+			"notTracked": "Nicht erfasst",
+			"envelope": "Genommen aus",
+			"submit": "Zahlen",
+			"toast": "{amount} auf eine Schuld gezahlt"
 		}
 	},
 	"wealth": {

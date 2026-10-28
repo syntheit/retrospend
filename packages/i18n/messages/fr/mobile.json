@@ -282,7 +282,7 @@
 		"paused": "Ton budget est en pause",
 		"pausedDetail": "Rien n’est compté pendant la pause. Reprends-le sur le web.",
 		"wealth": "Patrimoine et comptes",
-		"webForNow": "Les objectifs, les règles, la configuration et le reste sont pour l’instant sur le web.",
+		"webForNow": "Les règles, les revenus et la configuration sont pour l’instant sur le web.",
 		"month": {
 			"previous": "Mois précédent",
 			"next": "Mois suivant",
@@ -387,7 +387,11 @@
 			"assignTitle": "Attribuer à {name}",
 			"moveTitle": "Déplacer de l’argent pour {name}",
 			"coverTitle": "Couvrir {name}",
-			"limitTitle": "Plafond de {name}"
+			"limitTitle": "Plafond de {name}",
+			"targetAction": "Fixer un objectif",
+			"editAction": "Renommer ou déplacer",
+			"targetTitle": "Objectif de {name}",
+			"editTitle": "Modifier {name}"
 		},
 		"assign": {
 			"assignedNow": "Attribué maintenant",
@@ -554,6 +558,120 @@
 			"capped": "Aux minimums, les intérêts dépassent les paiements.",
 			"leftToSpend": "Reste à dépenser {amount}",
 			"unavailable": "Tes dettes n’ont pas pu se charger."
+		},
+		"manage": {
+			"title": "Planifier et ranger",
+			"afford": "Puis-je me le permettre ?",
+			"newEnvelope": "Ajouter une enveloppe",
+			"merge": "Fusionner des enveloppes",
+			"payDebt": "Rembourser une dette",
+			"style": "Style de budget"
+		},
+		"afford": {
+			"title": "Puis-je me le permettre ?",
+			"amount": "Combien ça coûte ?",
+			"envelope": "Quelle enveloppe ?",
+			"idle": "Saisis un montant et obtiens une réponse.",
+			"checking": "Vérification",
+			"failed": "Impossible de vérifier. Réessaie.",
+			"state": {
+				"FITS": "Oui. Ça rentre, et il te resterait {after}.",
+				"FITS_TIGHT": "Ça rentre, mais de justesse : il resterait {after}.",
+				"NO_LIMIT": "Cette enveloppe n’a pas de plafond. Elle a dépensé {spent} ce mois-ci.",
+				"SHORT_MOVE": "Pas tout à fait. Il manque {short} à cette enveloppe. Tu peux les y déplacer.",
+				"SHORT_POOL_COVERS": "Pas tout à fait. Il manque {short}, et « {pool} » contient {notPlanned} utilisables.",
+				"SHORT_NOTHING_LEFT": "Pas ce mois-ci. Il manque {short} et rien d’imprévu ne reste pour le couvrir.",
+				"WEEK_FITS": "Oui. Ça rentre cette semaine, avec {after} de reste.",
+				"WEEK_NEXT_WEEK": "Pas cette semaine, mais le mois le supporte. Cela vient de la semaine prochaine, il reste {after} pour le mois."
+			},
+			"perDay": "Environ {perDay} par jour pendant {days, plural, one {# jour} other {# jours}}.",
+			"usual": "D’habitude, tu dépenses environ {usual} par jour.",
+			"incomplete": "Un taux manque, cette réponse peut donc être inexacte.",
+			"action": {
+				"ADD_TO_SPENDING": "Ajouter {amount} à Dépenses",
+				"MOVE_MONEY": "Y déplacer {amount}"
+			}
+		},
+		"newEnvelope": {
+			"title": "Ajouter une enveloppe",
+			"name": "Nom",
+			"group": "Groupe",
+			"noGroup": "Sans groupe",
+			"submit": "Ajouter",
+			"toast": "{name} ajoutée"
+		},
+		"editEnvelope": {
+			"name": "Nom",
+			"group": "Groupe",
+			"noGroup": "Sans groupe",
+			"submit": "Enregistrer",
+			"toast": "{name} enregistrée"
+		},
+		"target": {
+			"now": "Objectif actuel",
+			"noTarget": "Aucun",
+			"kind": {
+				"label": "Type d’objectif",
+				"NONE": "Aucun",
+				"MONTHLY": "Mensuel",
+				"SAVINGS": "Objectif d’épargne",
+				"BILL": "Facture"
+			},
+			"mode": {
+				"label": "Fonctionnement",
+				"REFILL": "Recharger",
+				"SET_ASIDE": "Mettre de côté"
+			},
+			"monthly": "Montant par mois",
+			"goal": "Montant de l’objectif",
+			"billNote": "Cette enveloppe a une facture avec une échéance. Enregistrer ici la remplace ; modifie les factures sur le web.",
+			"submit": "Enregistrer l’objectif",
+			"toast": "Objectif enregistré pour {name}"
+		},
+		"merge": {
+			"title": "Fusionner des enveloppes",
+			"lead": "Leur argent, catégories, règles et objectifs passent dans l’enveloppe conservée.",
+			"stays": "Celle qui reste",
+			"from": "Fusionner dedans",
+			"name": "Nom après la fusion",
+			"submit": "Fusionner",
+			"toast": "{count, plural, one {# enveloppe fusionnée dans {name}} other {# enveloppes fusionnées dans {name}}}"
+		},
+		"style": {
+			"title": "Style de budget",
+			"now": "Ton style est {style}.",
+			"name": {
+				"FLEX": "Flex",
+				"EVERY_DOLLAR": "Chaque euro",
+				"SAVE_FIRST": "Épargner d’abord",
+				"FIFTY_THIRTY_TWENTY": "50/30/20",
+				"WEEKLY": "Hebdomadaire",
+				"LIMITS": "Plafonds",
+				"DEBT_PAYOFF": "Remboursement de dettes"
+			},
+			"about": {
+				"FLEX": "D’abord factures et épargne. Un seul chiffre de Dépenses pour le reste.",
+				"EVERY_DOLLAR": "Une enveloppe par catégorie. Tu attribues tout l’argent qui entre.",
+				"SAVE_FIRST": "Une part de chaque paie va à l’épargne avant tout le reste.",
+				"FIFTY_THIRTY_TWENTY": "La moitié aux besoins, 30 % aux envies, 20 % à l’épargne.",
+				"WEEKLY": "Un seul chiffre de dépenses, remis à zéro chaque semaine.",
+				"LIMITS": "Des plafonds sur ce qui compte pour toi. Le reste est seulement suivi.",
+				"DEBT_PAYOFF": "Minimums à temps, le surplus sur une dette à la fois."
+			},
+			"haveNow": "Combien as-tu en ce moment ?",
+			"submit": "Changer",
+			"toast": "Passé à {style}"
+		},
+		"payDebt": {
+			"title": "Rembourser une dette",
+			"noDebts": "Pas encore de dette en {currency}. Ajoutes-en une dans Patrimoine et comptes.",
+			"debt": "Dette",
+			"amount": "Montant versé sur le solde",
+			"from": "Payé depuis",
+			"notTracked": "Non suivi",
+			"envelope": "Pris sur",
+			"submit": "Payer",
+			"toast": "{amount} versés sur une dette"
 		}
 	},
 	"wealth": {

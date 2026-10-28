@@ -282,7 +282,7 @@
 		"paused": "Your budget is paused",
 		"pausedDetail": "Nothing is counted while it is paused. Resume it on the web.",
 		"wealth": "Net worth and accounts",
-		"webForNow": "Targets, rules, set up and more are on the web for now.",
+		"webForNow": "Rules, income and set up are on the web for now.",
 		"month": {
 			"previous": "Previous month",
 			"next": "Next month",
@@ -387,7 +387,11 @@
 			"assignTitle": "Assign to {name}",
 			"moveTitle": "Move money for {name}",
 			"coverTitle": "Cover {name}",
-			"limitTitle": "Limit for {name}"
+			"limitTitle": "Limit for {name}",
+			"targetAction": "Set a target",
+			"editAction": "Rename or move",
+			"targetTitle": "Target for {name}",
+			"editTitle": "Edit {name}"
 		},
 		"assign": {
 			"assignedNow": "Assigned now",
@@ -554,6 +558,120 @@
 			"capped": "At the minimums the interest outruns the payments.",
 			"leftToSpend": "Left to spend {amount}",
 			"unavailable": "Your debts could not load."
+		},
+		"manage": {
+			"title": "Plan and tidy",
+			"afford": "Can I afford it?",
+			"newEnvelope": "Add an envelope",
+			"merge": "Combine envelopes",
+			"payDebt": "Pay down a debt",
+			"style": "Budget style"
+		},
+		"afford": {
+			"title": "Can I afford it?",
+			"amount": "How much is it?",
+			"envelope": "Which envelope?",
+			"idle": "Type an amount and get one answer.",
+			"checking": "Checking",
+			"failed": "Could not check this. Try again.",
+			"state": {
+				"FITS": "Yes. It fits, and you would have {after} left.",
+				"FITS_TIGHT": "It fits, but it is tight: {after} would be left.",
+				"NO_LIMIT": "This envelope has no limit. It has spent {spent} this month.",
+				"SHORT_MOVE": "Not quite. This envelope is {short} short. You can move it in.",
+				"SHORT_POOL_COVERS": "Not quite. It is {short} short, and {pool} holds {notPlanned} you can use.",
+				"SHORT_NOTHING_LEFT": "Not this month. It is {short} short and nothing unplanned is left to cover it.",
+				"WEEK_FITS": "Yes. It fits this week, with {after} left.",
+				"WEEK_NEXT_WEEK": "Not this week, but the month holds it. It comes out of next week, leaving {after} for the month."
+			},
+			"perDay": "About {perDay} a day for {days, plural, one {# day} other {# days}}.",
+			"usual": "You usually spend about {usual} a day.",
+			"incomplete": "A rate is missing, so this answer may be off.",
+			"action": {
+				"ADD_TO_SPENDING": "Add {amount} to Spending",
+				"MOVE_MONEY": "Move {amount} in"
+			}
+		},
+		"newEnvelope": {
+			"title": "Add an envelope",
+			"name": "Name",
+			"group": "Group",
+			"noGroup": "No group",
+			"submit": "Add",
+			"toast": "Added {name}"
+		},
+		"editEnvelope": {
+			"name": "Name",
+			"group": "Group",
+			"noGroup": "No group",
+			"submit": "Save",
+			"toast": "Saved {name}"
+		},
+		"target": {
+			"now": "Target now",
+			"noTarget": "None",
+			"kind": {
+				"label": "Kind of target",
+				"NONE": "None",
+				"MONTHLY": "Monthly",
+				"SAVINGS": "Savings goal",
+				"BILL": "Bill"
+			},
+			"mode": {
+				"label": "How it works",
+				"REFILL": "Refill",
+				"SET_ASIDE": "Set aside"
+			},
+			"monthly": "Amount each month",
+			"goal": "Goal amount",
+			"billNote": "This envelope has a bill with a due date. Saving here replaces it; edit bills on the web.",
+			"submit": "Save target",
+			"toast": "Target saved for {name}"
+		},
+		"merge": {
+			"title": "Combine envelopes",
+			"lead": "Their money, categories, rules and targets move into the envelope that stays.",
+			"stays": "The one that stays",
+			"from": "Combine into it",
+			"name": "Name after combining",
+			"submit": "Combine",
+			"toast": "{count, plural, one {Combined # envelope into {name}} other {Combined # envelopes into {name}}}"
+		},
+		"style": {
+			"title": "Budget style",
+			"now": "Your style is {style}.",
+			"name": {
+				"FLEX": "Flex",
+				"EVERY_DOLLAR": "Every dollar",
+				"SAVE_FIRST": "Save first",
+				"FIFTY_THIRTY_TWENTY": "50/30/20",
+				"WEEKLY": "Weekly",
+				"LIMITS": "Limits",
+				"DEBT_PAYOFF": "Debt payoff"
+			},
+			"about": {
+				"FLEX": "Bills and savings first. One Spending number for everything else.",
+				"EVERY_DOLLAR": "An envelope for each category. You assign all money in.",
+				"SAVE_FIRST": "A share of each paycheck goes to savings before anything else.",
+				"FIFTY_THIRTY_TWENTY": "Half to needs, 30% to wants, 20% to savings.",
+				"WEEKLY": "One spending number that resets every week.",
+				"LIMITS": "Limits on what you care about. Everything else is tracked.",
+				"DEBT_PAYOFF": "Minimums on time, extra to one debt at a time."
+			},
+			"haveNow": "How much do you have right now?",
+			"submit": "Switch",
+			"toast": "Switched to {style}"
+		},
+		"payDebt": {
+			"title": "Pay down a debt",
+			"noDebts": "No debts in {currency} yet. Add one in Net worth and accounts.",
+			"debt": "Debt",
+			"amount": "Amount toward the balance",
+			"from": "Paid from",
+			"notTracked": "Not tracked",
+			"envelope": "Taken from",
+			"submit": "Pay",
+			"toast": "Paid {amount} toward a debt"
 		}
 	},
 	"wealth": {

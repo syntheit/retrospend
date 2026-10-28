@@ -84,6 +84,7 @@ export function BudgetView() {
 					kind={info.kind}
 					onClose={() => setSheet(null)}
 					onDone={() => void reload()}
+					onOpen={setSheet}
 					sheet={sheet}
 				/>
 			) : null}
