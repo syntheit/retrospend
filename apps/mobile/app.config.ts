@@ -44,6 +44,21 @@ export function buildNumber(env: Record<string, string | undefined>): number {
 }
 const BUILD_NUMBER = buildNumber(process.env);
 
+/**
+ * The APNs environment this build's device tokens belong to. Only Xcode debug
+ * builds (RETROSPEND_APNS_ENV=development, set by ios-mini.sh) use the
+ * sandbox; Release archives and TestFlight builds use production, so an
+ * unset variable is production.
+ */
+export function apnsEnvironment(
+	env: Record<string, string | undefined>,
+): "development" | "production" {
+	return env.RETROSPEND_APNS_ENV === "development"
+		? "development"
+		: "production";
+}
+const APNS_ENV = apnsEnvironment(process.env);
+
 /** The server the connect screen starts on; empty when the build names none. */
 export function defaultServer(env: Record<string, string | undefined>): string {
 	return (env.RETROSPEND_DEFAULT_SERVER ?? "").trim();
@@ -100,6 +115,9 @@ const config: ExpoConfig = {
 		// The address the connect screen starts with. The dev and TestFlight
 		// scripts set it to the dev server; empty means retrospend.app.
 		defaultServer: defaultServer(process.env),
+		// Which APNs host this build's push tokens belong to; the app sends it
+		// when it registers the device.
+		apnsSandbox: APNS_ENV === "development",
 	},
 	plugins: [
 		"expo-router",
@@ -114,6 +132,8 @@ const config: ExpoConfig = {
 		"./plugins/with-android-release-signing",
 		// iOS 27 SDK apps must use the UIScene life cycle.
 		"./plugins/with-ios-scene-lifecycle",
+		// The aps-environment entitlement (APNs push on iOS).
+		["./plugins/with-ios-push", { mode: APNS_ENV }],
 	],
 };
 

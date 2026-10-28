@@ -986,7 +986,8 @@
 			"SETTLEMENT_REJECTED": "A payment is rejected",
 			"PERIOD_CLOSED": "A billing period closes",
 			"PARTICIPANT_ADDED": "You are added to a project",
-			"PAYMENT_REMINDER": "Someone reminds you to pay"
+			"PAYMENT_REMINDER": "Someone reminds you to pay",
+			"RECURRING_DUE": "A recurring expense is due"
 		},
 		"server": {
 			"title": "Server",
@@ -1022,6 +1023,34 @@
 			"footer": "Reads like {example}",
 			"format": "Number format",
 			"follow": "Follow language"
+		},
+		"push": {
+			"title": "Push notifications",
+			"master": "Push on this phone",
+			"footerIos": "Notifications arrive through Apple's push service. Choose which ones below.",
+			"footerAndroid": "Retrospend checks for news about every 15 minutes, with no Google services. Choose which ones below.",
+			"denied": "Notifications are off for Retrospend. Turn them on in system settings.",
+			"unavailable": "This phone could not register for push. Try again later."
+		}
+	},
+	"push": {
+		"channel": {
+			"splits": {
+				"name": "Splits",
+				"description": "Shared expenses and fix requests"
+			},
+			"payments": {
+				"name": "Payments",
+				"description": "Payments recorded, confirmed or not received"
+			},
+			"reminders": {
+				"name": "Reminders",
+				"description": "Payment reminders"
+			},
+			"recurring": {
+				"name": "Recurring",
+				"description": "Recurring expenses and income that are due"
+			}
 		}
 	}
 }

@@ -62,6 +62,13 @@ cd "$repo"
 pnpm install --frozen-lockfile --ignore-scripts --filter '@retrospend/mobile...'
 
 cd "$app"
+# Xcode debug builds register with the APNs sandbox; the TestFlight archive
+# uses production (app.config.ts, plugins/with-ios-push.js).
+if [ "$target" = testflight ]; then
+	unset RETROSPEND_APNS_ENV
+else
+	export RETROSPEND_APNS_ENV=development
+fi
 # ios/ is generated (continuous native generation) and never committed.
 CI=1 pnpm exec expo prebuild --platform ios --clean --no-install
 # EX_UPDATES_NATIVE_DEBUG makes pod install write ios/.xcode.env.updates,

@@ -6,7 +6,8 @@
 // scripts/check-google-free.sh applies its Maven half to the Gradle tree.
 // A banned package may ship only through npmExemptions, and only once a
 // product flavor or an autolinking exclude keeps it out of the Google-free
-// build (google-free.json, futureGooglePath). There is none yet.
+// build (google-free.json, futureGooglePath). expo-notifications is the one
+// exemption: excluded from Android autolinking, imported by *.ios.ts only.
 import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
 import config from "../app.config";
@@ -156,9 +157,12 @@ describe("google-free guard", () => {
 	it(`imports Google services only under ${rules.optionalDir}/`, () => {
 		const files = SOURCE_DIRS.flatMap((d) => sourceFiles(join(APP_DIR, d)));
 		expect(files.length).toBeGreaterThan(0);
+		// An exempt package is linked on iOS only, so only iOS files import it.
+		const allowed = (file: string, name: string) =>
+			EXEMPT.has(name) && /\.ios\.tsx?$/.test(file);
 		const offenders = files.flatMap((file) =>
 			importedPackages(readFileSync(file, "utf8"))
-				.filter((name) => bannedReason(name))
+				.filter((name) => bannedReason(name) && !allowed(file, name))
 				.map(
 					(name) => `${relative(APP_DIR, file).split(sep).join("/")}: ${name}`,
 				),
@@ -173,6 +177,14 @@ describe("google-free guard", () => {
 				exemption.keptOutBy,
 			);
 			expect(exemption.how.trim()).not.toBe("");
+		}
+	});
+
+	it("keeps every exempt package out of the Android autolinking", () => {
+		const pkg = JSON.parse(readFileSync(join(APP_DIR, "package.json"), "utf8"));
+		const excluded: string[] = pkg.expo?.autolinking?.android?.exclude ?? [];
+		for (const exemption of EXEMPTIONS) {
+			expect(excluded).toContain(exemption.name);
 		}
 	});
 

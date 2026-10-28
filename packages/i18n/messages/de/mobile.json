@@ -986,7 +986,8 @@
 			"SETTLEMENT_REJECTED": "Eine Zahlung wird abgelehnt",
 			"PERIOD_CLOSED": "Ein Abrechnungszeitraum endet",
 			"PARTICIPANT_ADDED": "Du wirst zu einem Projekt hinzugefügt",
-			"PAYMENT_REMINDER": "Jemand erinnert dich an eine Zahlung"
+			"PAYMENT_REMINDER": "Jemand erinnert dich an eine Zahlung",
+			"RECURRING_DUE": "Eine wiederkehrende Ausgabe ist fällig"
 		},
 		"server": {
 			"title": "Server",
@@ -1022,6 +1023,34 @@
 			"footer": "Sieht so aus: {example}",
 			"format": "Zahlenformat",
 			"follow": "Sprache folgen"
+		},
+		"push": {
+			"title": "Push-Benachrichtigungen",
+			"master": "Push auf diesem Telefon",
+			"footerIos": "Benachrichtigungen kommen über den Push-Dienst von Apple. Wähl unten aus, welche.",
+			"footerAndroid": "Retrospend sucht etwa alle 15 Minuten nach Neuigkeiten, ohne Google-Dienste. Wähl unten aus, welche.",
+			"denied": "Benachrichtigungen sind für Retrospend aus. Schalte sie in den Systemeinstellungen ein.",
+			"unavailable": "Dieses Telefon konnte sich nicht für Push anmelden. Versuch es später noch einmal."
+		}
+	},
+	"push": {
+		"channel": {
+			"splits": {
+				"name": "Aufteilungen",
+				"description": "Geteilte Ausgaben und Korrekturwünsche"
+			},
+			"payments": {
+				"name": "Zahlungen",
+				"description": "Zahlungen erfasst, bestätigt oder nicht erhalten"
+			},
+			"reminders": {
+				"name": "Erinnerungen",
+				"description": "Zahlungserinnerungen"
+			},
+			"recurring": {
+				"name": "Wiederkehrend",
+				"description": "Fällige wiederkehrende Ausgaben und Einnahmen"
+			}
 		}
 	}
 }

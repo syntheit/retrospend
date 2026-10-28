@@ -2,7 +2,13 @@
 	"about": "Android must work 100% without Google services (IMPLEMENTATION §4). test/google-free.test.ts fails on any npm package below in the shipped dependency tree, or imported outside optionalDir (code there loads only when Play services are detected at runtime). scripts/check-google-free.sh fails on any Maven group matching a prefix below in the resolved Gradle tree of the default build. Each entry says why.",
 	"optionalDir": "src/optional/google",
 	"futureGooglePath": "The FCM-when-present path (S5g) cannot just add a banned package: autolinking would put its Gradle artifacts in every APK. It needs a Gradle product flavor (a 'play' flavor next to the Google-free default) or an autolinking exclude for the Google-free build. Only then may the package be listed in npmExemptions, naming how it is kept out.",
-	"npmExemptions": [],
+	"npmExemptions": [
+		{
+			"name": "expo-notifications",
+			"keptOutBy": "autolinkingExclude",
+			"how": "package.json expo.autolinking.android.exclude keeps it out of the Android build, so firebase-messaging never reaches the Gradle tree (check-google-free.sh proves it). expo-application, which only expo-notifications needs, is excluded with it (it pulls the Play install referrer client). Only *.ios.ts files may import expo-notifications, and no config plugin of it is used: plugins/with-ios-push.js sets the aps-environment entitlement."
+		}
+	],
 	"npm": [
 		{
 			"pattern": "^@react-native-firebase/",
