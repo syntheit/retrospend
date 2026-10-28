@@ -168,9 +168,10 @@ test("Home: glance, Needs you, Recent and the rail; confirm a payment and undo",
 		later.getByRole("button", { name: "Undo" }).click(),
 	);
 	await expect(overdue).toBeVisible();
+	// The price of USD 1 reads with its code, never as a home "$" amount.
 	await expect(
 		main.getByRole("link", { name: /^Dollar today, / }),
-	).toBeVisible();
+	).toContainText("ARS");
 	expect(errors).toEqual([]);
 });
 
