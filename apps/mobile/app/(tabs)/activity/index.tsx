@@ -23,6 +23,7 @@ import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListDetail } from "@/ui/ListDetail";
 import { Screen } from "@/ui/Screen";
+import { FLOATING_ADD_INSET } from "@/layout/destinations";
 
 const SEARCH_DELAY_MS = 300;
 
@@ -170,7 +171,9 @@ export default function ActivityScreen() {
 					>
 						{t("loading")}
 					</Text>
-				) : undefined
+				) : (
+					<View style={{ height: FLOATING_ADD_INSET }} />
+				)
 			}
 			ListHeaderComponent={
 				<View>
