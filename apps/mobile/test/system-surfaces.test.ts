@@ -3,11 +3,14 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import config from "../app.config";
+import config, { APP_LOCALES } from "../app.config";
 
 const {
 	addSendFilters,
 	SHARE_RULE,
+	STRING_TABLES,
+	stringCatalog,
+	swiftSources,
 	TARGETS,
 } = require("../plugins/with-system-surfaces");
 
@@ -50,7 +53,7 @@ describe("system surfaces plugin", () => {
 		);
 		expect(entry).toEqual([
 			"./plugins/with-system-surfaces",
-			{ appGroup: "group.app.retrospend" },
+			{ appGroup: "group.app.retrospend", locales: APP_LOCALES },
 		]);
 	});
 
@@ -81,6 +84,50 @@ describe("system surfaces plugin", () => {
 			expect(SHARE_RULE).toContain(`"${uti}"`);
 		}
 		expect(SHARE_RULE).not.toMatch(/TRUEPREDICATE/);
+	});
+
+	it("translates the Shortcuts phrases into every app language", () => {
+		const catalog = JSON.parse(stringCatalog("AppShortcuts", APP_LOCALES));
+		const phrases = Object.entries(catalog.strings) as [
+			string,
+			{ localizations: Record<string, { stringUnit: { value: string } }> },
+		][];
+		expect(phrases.map(([key]) => key)).toEqual([
+			"Add an expense in ${applicationName}",
+			"New expense in ${applicationName}",
+		]);
+		for (const [, { localizations }] of phrases) {
+			expect(Object.keys(localizations).sort()).toEqual(
+				APP_LOCALES.filter((l) => l !== "en").sort(),
+			);
+			// Siri needs the app's name in every phrase.
+			for (const { stringUnit } of Object.values(localizations)) {
+				expect(stringUnit.value).toContain("${applicationName}");
+			}
+		}
+		expect(phrases[0]?.[1].localizations["es-AR"]?.stringUnit.value).toBe(
+			"Agregá un gasto en ${applicationName}",
+		);
+	});
+
+	it("keys the String Catalogs by the English the Swift sources say", () => {
+		const dir = path.join(__dirname, "../plugins/system-surfaces");
+		const swift = [
+			"AddExpenseIntent.swift",
+			"RetrospendShortcuts.swift",
+			"RetrospendControls.swift",
+		]
+			.map((file) => fs.readFileSync(path.join(dir, file), "utf8"))
+			.join("\n");
+		const sources = swiftSources() as Record<string, string>;
+		const keys = Object.values(
+			STRING_TABLES as Record<string, string[]>,
+		).flat();
+		for (const key of keys) {
+			expect(swift).toContain(`"${sources[key]}"`);
+		}
+		const localizable = JSON.parse(stringCatalog("Localizable", APP_LOCALES));
+		expect(Object.keys(localizable.strings)).toContain("Add expense ${amount}");
 	});
 
 	it("ships every Swift source the plugin copies", () => {

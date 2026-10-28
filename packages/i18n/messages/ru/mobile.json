@@ -1771,5 +1771,13 @@
 			"autoOffToast": "Автоплатёж выключен: {title}",
 			"error": "Не удалось изменить. Попробуйте снова."
 		}
+	},
+	"shortcuts": {
+		"addExpense": "Добавить расход",
+		"description": "Открывает Retrospend с новым расходом.",
+		"amount": "Сумма",
+		"summary": "Добавить расход на {amount}",
+		"phraseAdd": "Добавьте расход в {app}",
+		"phraseNew": "Новый расход в {app}"
 	}
 }

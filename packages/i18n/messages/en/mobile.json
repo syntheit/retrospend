@@ -1771,5 +1771,13 @@
 			"autoOffToast": "Auto-pay off for {title}",
 			"error": "Couldn't change it. Try again."
 		}
+	},
+	"shortcuts": {
+		"addExpense": "Add expense",
+		"description": "Opens Retrospend with a new expense.",
+		"amount": "Amount",
+		"summary": "Add expense {amount}",
+		"phraseAdd": "Add an expense in {app}",
+		"phraseNew": "New expense in {app}"
 	}
 }

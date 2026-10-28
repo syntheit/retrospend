@@ -1771,5 +1771,13 @@
 			"autoOffToast": "Autozahlung für {title} deaktiviert",
 			"error": "Änderung nicht möglich. Versuche es erneut."
 		}
+	},
+	"shortcuts": {
+		"addExpense": "Ausgabe hinzufügen",
+		"description": "Öffnet Retrospend mit einer neuen Ausgabe.",
+		"amount": "Betrag",
+		"summary": "Ausgabe über {amount} hinzufügen",
+		"phraseAdd": "Füge in {app} eine Ausgabe hinzu",
+		"phraseNew": "Neue Ausgabe in {app}"
 	}
 }

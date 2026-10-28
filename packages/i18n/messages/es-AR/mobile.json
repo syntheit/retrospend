@@ -1771,5 +1771,13 @@
 			"autoOffToast": "Pago automático desactivado para {title}",
 			"error": "No se pudo cambiar. Probá de nuevo."
 		}
+	},
+	"shortcuts": {
+		"addExpense": "Agregar gasto",
+		"description": "Abre Retrospend con un gasto nuevo.",
+		"amount": "Monto",
+		"summary": "Agregar gasto de {amount}",
+		"phraseAdd": "Agregá un gasto en {app}",
+		"phraseNew": "Nuevo gasto en {app}"
 	}
 }
