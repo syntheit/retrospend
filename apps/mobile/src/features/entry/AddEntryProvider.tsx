@@ -32,7 +32,7 @@ interface AddEntryApi {
 	/** Opens the composer sheet, optionally filled in by a share, a Shortcut or a link. */
 	open(mode?: EntryMode, prefill?: ComposerPrefill): void;
 	/** Opens the composer on a saved expense (its id); Save replaces it, and Undo restores it. */
-	edit(entryId: string): void;
+	edit(entryId: string, kind?: "shared"): void;
 }
 
 const AddEntryContext = createContext<AddEntryApi | null>(null);
@@ -91,6 +91,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const [fill, setFill] = useState<{
 		prefill?: ComposerPrefill;
 		editId?: string;
+		editShared?: boolean;
 		count: number;
 	}>({ count: 0 });
 	useOutboxFlush();
@@ -103,9 +104,10 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 			next: EntryMode = "expense",
 			prefill?: ComposerPrefill,
 			editId?: string,
+			editShared?: boolean,
 		) => {
 			setMode(next);
-			setFill((f) => ({ prefill, editId, count: f.count + 1 }));
+			setFill((f) => ({ prefill, editId, editShared, count: f.count + 1 }));
 			setOpen(next);
 		},
 		[],
@@ -114,7 +116,8 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 		() => ({
 			open: (next?: EntryMode, prefill?: ComposerPrefill) =>
 				show(next, prefill),
-			edit: (entryId: string) => show("expense", undefined, entryId),
+			edit: (entryId: string, kind?: "shared") =>
+				show("expense", undefined, entryId, kind === "shared"),
 		}),
 		[show],
 	);
@@ -170,6 +173,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 					{open ? (
 						<EntryComposer
 							editId={fill.editId}
+							editShared={fill.editShared}
 							initialMode={open}
 							key={fill.count}
 							onDone={close}

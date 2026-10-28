@@ -8,9 +8,11 @@ import {
 	expenseErrors,
 	expenseFromEntry,
 	incomeErrors,
+	isPersonal,
 	newExpenseDraft,
 	newIncomeDraft,
 	newTransferDraft,
+	sharedFromDetail,
 	splitRows,
 	transferErrors,
 } from "./draft";
@@ -122,6 +124,7 @@ describe("buildExpenseWrite", () => {
 				currency: "ARS",
 				date: "2026-10-25",
 				categoryId: "food",
+				excludeFromAnalytics: false,
 			},
 		});
 	});
@@ -426,5 +429,205 @@ describe("a transfer", () => {
 			amount: true,
 		});
 		expect(buildTransferWrite({ ...draft, toId: null }, input)).toBeNull();
+	});
+});
+
+describe("the details fields", () => {
+	const filled = {
+		...newExpenseDraft(base),
+		amountText: "12,500.00",
+		categoryId: "food",
+	};
+	const details = {
+		location: " Cafe Tortoni ",
+		note: " with the team ",
+		spread: 6,
+		exclude: true,
+	};
+
+	it("adds place, note, spread and exclude to a personal expense", () => {
+		const write = buildExpenseWrite(
+			{ ...filled, ...details },
+			{
+				locale: "en-US",
+				meId: "me",
+				catalog,
+			},
+		);
+		expect(write?.body).toMatchObject({
+			location: "Cafe Tortoni",
+			description: "with the team",
+			amortizeOver: 6,
+			excludeFromAnalytics: true,
+		});
+	});
+
+	it("leaves empty details out of the body", () => {
+		const write = buildExpenseWrite(filled, {
+			locale: "en-US",
+			meId: "me",
+			catalog,
+		});
+		expect(write?.body).not.toHaveProperty("location");
+		expect(write?.body).not.toHaveProperty("description");
+		expect(write?.body).not.toHaveProperty("amortizeOver");
+	});
+
+	it("sends the note of a split as its notes, and no place or spread", () => {
+		const write = buildExpenseWrite(
+			{ ...filled, ...details, withKeys: ["user:lucia1"] },
+			{ locale: "en-US", meId: "me", catalog },
+		);
+		expect(write?.entity).toBe("shared-expenses");
+		expect(write?.body.notes).toBe("with the team");
+		expect(write?.body.description).toBe("Food");
+		for (const key of ["location", "amortizeOver", "excludeFromAnalytics"]) {
+			expect(write?.body).not.toHaveProperty(key);
+		}
+		expect(isPersonal({ ...filled, withKeys: ["user:lucia1"] })).toBe(false);
+	});
+
+	it("round-trips on an edit, and an emptied field is cleared", () => {
+		const saved = {
+			id: ID,
+			title: "Lunch",
+			amount: { minor: 1_250_000, currency: "ARS" },
+			rateType: null,
+			date: "2026-10-20",
+			categoryId: "food",
+			location: "Cafe Tortoni",
+			description: "with the team",
+			amortizeOver: 3,
+			excludeFromAnalytics: true,
+		};
+		const d = expenseFromEntry(saved, "en-US");
+		expect(d).toMatchObject({
+			location: "Cafe Tortoni",
+			note: "with the team",
+			spread: 3,
+			exclude: true,
+		});
+		const same = buildExpenseUpdate(d, { locale: "en-US", catalog });
+		expect(same?.body).toMatchObject({
+			location: "Cafe Tortoni",
+			description: "with the team",
+			amortizeOver: 3,
+			excludeFromAnalytics: true,
+		});
+		const cleared = buildExpenseUpdate(
+			{ ...d, location: "", note: "", spread: null, exclude: false },
+			{ locale: "en-US", catalog },
+		);
+		expect(cleared?.body).toEqual(
+			expect.objectContaining({ excludeFromAnalytics: false }),
+		);
+		for (const key of ["location", "description", "amortizeOver"]) {
+			expect(cleared?.body).not.toHaveProperty(key);
+		}
+	});
+
+	it("keeps the date an edit opened with", () => {
+		const d = expenseFromEntry(
+			{
+				id: ID,
+				title: "Lunch",
+				amount: { minor: 100, currency: "ARS" },
+				rateType: null,
+				date: "2026-01-31",
+				categoryId: "food",
+				location: null,
+				description: null,
+				amortizeOver: null,
+				excludeFromAnalytics: false,
+			},
+			"en-US",
+		);
+		expect(d.date).toBe("2026-01-31");
+		expect(buildExpenseUpdate(d, { locale: "en-US", catalog })?.body.date).toBe(
+			"2026-01-31",
+		);
+	});
+});
+
+describe("editing a split expense", () => {
+	const person = (id: string) => ({ type: "user" as const, id });
+	const detail = (mode: "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES") => ({
+		id: ID,
+		title: "Dinner",
+		amount: { minor: 10_000, currency: "ARS" },
+		date: "2026-10-21",
+		notes: "birthday",
+		splitMode: mode,
+		project: { id: "trip" },
+		category: { id: "food" },
+		paidBy: person("me"),
+		splits: [
+			{
+				...person("me"),
+				share: { minor: 7_000, currency: "ARS" },
+				percentage: "70",
+				units: 7,
+			},
+			{
+				...person("lucia1"),
+				share: { minor: 3_000, currency: "ARS" },
+				percentage: "30",
+				units: 3,
+			},
+		],
+	});
+
+	it("opens as a split edit with the notes and project", () => {
+		const d = sharedFromDetail(detail("EQUAL"), "en-US");
+		expect(d).toMatchObject({
+			note: "birthday",
+			projectId: "trip",
+			amountText: "100",
+		});
+		expect(d.editing?.source).toBe("shared");
+		expect(isPersonal(d)).toBe(false);
+	});
+
+	it("sends an equal split back as the people only", () => {
+		const d = sharedFromDetail(detail("EQUAL"), "en-US");
+		const write = buildExpenseUpdate(d, { locale: "en-US", catalog });
+		expect(write).toEqual({
+			entity: "shared-expenses",
+			kind: "update",
+			label: "Dinner",
+			body: {
+				id: ID,
+				description: "Dinner",
+				amount: "100.00",
+				currency: "ARS",
+				date: "2026-10-21",
+				categoryId: "food",
+				paidBy: person("me"),
+				splitMode: "EQUAL",
+				splitWith: [person("me"), person("lucia1")],
+				notes: "birthday",
+				projectId: "trip",
+			},
+		});
+	});
+
+	it("keeps the amounts, percents or shares of a custom split", () => {
+		const rows = (mode: "EXACT" | "PERCENTAGE" | "SHARES") =>
+			buildExpenseUpdate(sharedFromDetail(detail(mode), "en-US"), {
+				locale: "en-US",
+				catalog,
+			})?.body.splitWith;
+		expect(rows("EXACT")).toEqual([
+			{ ...person("me"), shareAmount: "70.00" },
+			{ ...person("lucia1"), shareAmount: "30.00" },
+		]);
+		expect(rows("PERCENTAGE")).toEqual([
+			{ ...person("me"), sharePercentage: "70" },
+			{ ...person("lucia1"), sharePercentage: "30" },
+		]);
+		expect(rows("SHARES")).toEqual([
+			{ ...person("me"), shareUnits: 7 },
+			{ ...person("lucia1"), shareUnits: 3 },
+		]);
 	});
 });

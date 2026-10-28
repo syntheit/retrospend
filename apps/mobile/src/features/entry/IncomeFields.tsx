@@ -1,10 +1,11 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { DateField } from "@/ui/DateField";
 import { Chip } from "./Chip";
 import type { IncomeDraft, IncomeErrors } from "./draft";
-import { Face } from "./Face";
 import { FieldError, FieldLabel, TextField } from "./ExpenseFields";
+import { Face } from "./Face";
 import { type EntryCatalog, personKey } from "./types";
 
 /**
@@ -63,6 +64,11 @@ export function IncomeFields({
 					</View>
 				) : null}
 			</View>
+			<DateField
+				label={t("dateField")}
+				onChange={(date) => onChange({ date })}
+				value={draft.date}
+			/>
 			{catalog.hasBudget ? (
 				<View style={{ gap: space[2] }}>
 					<FieldLabel>{t("afterSaving")}</FieldLabel>

@@ -1,13 +1,27 @@
+import { dayKey } from "@retrospend/domain/time-zone";
+import { useState } from "react";
 import { Text, TextInput, View } from "react-native";
-import { useFormatter, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 import { Cover } from "@/features/projects/Cover";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { DateField } from "@/ui/DateField";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
+import { SwitchRow } from "@/ui/SwitchRow";
 import { CategoryPicker } from "./CategoryPicker";
 import { Chip } from "./Chip";
 import { recentCategories } from "./catalog";
-import type { ExpenseDraft, ExpenseErrors, SplitRow } from "./draft";
+import { shiftDay } from "./dates";
+import {
+	type ExpenseDraft,
+	type ExpenseErrors,
+	isPersonal,
+	LOCATION_LIMIT,
+	NOTE_LIMIT,
+	SHARED_NOTE_LIMIT,
+	SPREAD_MONTHS,
+	type SplitRow,
+} from "./draft";
 import { Face } from "./Face";
 import { PickField } from "./PickField";
 import type { EntryCatalog } from "./types";
@@ -47,6 +61,7 @@ export function TextField({
 	invalid,
 	hideLabel,
 	keyboardType,
+	maxLength,
 }: {
 	label: string;
 	value: string;
@@ -57,6 +72,7 @@ export function TextField({
 	/** The placeholder says it; screen readers still get the label. */
 	hideLabel?: boolean;
 	keyboardType?: "default" | "decimal-pad";
+	maxLength?: number;
 }) {
 	const { color, radius, size, space, type } = useTheme();
 	return (
@@ -65,6 +81,7 @@ export function TextField({
 			<TextInput
 				accessibilityLabel={label}
 				keyboardType={keyboardType}
+				maxLength={maxLength}
 				onBlur={() => onTypingChange(false)}
 				onChangeText={onChangeText}
 				onFocus={() => onTypingChange(true)}
@@ -87,10 +104,99 @@ export function TextField({
 	);
 }
 
-/** A day the server named, at noon so no time zone moves it. */
-function dayDate(day: string): Date {
-	const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-	return new Date(y, m - 1, d, 12);
+/**
+ * Note, Location, Spread over and Exclude, behind one "More details" button
+ * so the main composer stays short. It opens by itself when a field holds a
+ * value (an edit of a saved expense).
+ */
+function MoreDetails({
+	draft,
+	onChange,
+	onTypingChange,
+}: {
+	draft: ExpenseDraft;
+	onChange: (patch: Partial<ExpenseDraft>) => void;
+	onTypingChange: (typing: boolean) => void;
+}) {
+	const t = useTranslations("mobile.composer");
+	const { space } = useTheme();
+	const personal = isPersonal(draft);
+	const filled =
+		draft.note !== "" ||
+		(personal &&
+			(draft.location !== "" || draft.spread !== null || draft.exclude));
+	const [open, setOpen] = useState(filled);
+	// A saved odd spread (say 4 months) stays offered next to the usual ones.
+	const months = [
+		...new Set([...SPREAD_MONTHS, ...(draft.spread ? [draft.spread] : [])]),
+	].sort((a, b) => a - b);
+	return (
+		<View style={{ gap: space[3] }}>
+			<View style={{ flexDirection: "row" }}>
+				<Chip
+					label={t("moreDetails")}
+					onPress={() => setOpen(!open)}
+					selected={open}
+				/>
+			</View>
+			{open ? (
+				<>
+					<TextField
+						label={t("note")}
+						maxLength={personal ? NOTE_LIMIT : SHARED_NOTE_LIMIT}
+						onChangeText={(note) => onChange({ note })}
+						onTypingChange={onTypingChange}
+						placeholder={t("notePlaceholder")}
+						value={draft.note}
+					/>
+					{personal ? (
+						<>
+							<TextField
+								label={t("location")}
+								maxLength={LOCATION_LIMIT}
+								onChangeText={(location) => onChange({ location })}
+								onTypingChange={onTypingChange}
+								placeholder={t("locationPlaceholder")}
+								value={draft.location}
+							/>
+							<View style={{ gap: space[2] }}>
+								<FieldLabel>{t("spread")}</FieldLabel>
+								<View
+									accessibilityLabel={t("spread")}
+									accessibilityRole="radiogroup"
+									style={{
+										flexDirection: "row",
+										flexWrap: "wrap",
+										gap: space[2],
+									}}
+								>
+									<Chip
+										label={t("spreadOne")}
+										onPress={() => onChange({ spread: null })}
+										selected={draft.spread === null}
+									/>
+									{months.map((count) => (
+										<Chip
+											key={count}
+											label={t("spreadMonths", { count })}
+											onPress={() => onChange({ spread: count })}
+											selected={draft.spread === count}
+										/>
+									))}
+								</View>
+							</View>
+							<SwitchRow
+								detail={t("excludeDetail")}
+								label={t("exclude")}
+								onChange={(exclude) => onChange({ exclude })}
+								value={draft.exclude}
+							/>
+						</>
+					) : null}
+				</>
+			) : null}
+		</View>
+	);
 }
 
 export function ExpenseFields({
@@ -117,7 +223,7 @@ export function ExpenseFields({
 	const { color, size, space, type } = useTheme();
 	const recents = recentCategories(catalog, RECENTS, draft.categoryId);
 	const editing = draft.editing !== null;
-	const date = useFormatter();
+	const today = dayKey(new Date());
 	// In a project the split is about the project's people, not your latest ones.
 	const people = draft.projectId ? draft.projectPeople : catalog.people;
 	const projects = editing ? [] : catalog.projects;
@@ -176,14 +282,25 @@ export function ExpenseFields({
 					<FieldError>{t("errors.category")}</FieldError>
 				) : null}
 			</View>
-			{editing ? (
-				<View style={{ gap: space[1] }}>
-					<FieldLabel>{t("dateField")}</FieldLabel>
-					<Text style={{ color: color.fg, fontSize: type.body.size }}>
-						{date.dateTime(dayDate(draft.date), { dateStyle: "full" })}
-					</Text>
+			<View style={{ gap: space[2] }}>
+				<DateField
+					label={t("dateField")}
+					onChange={(day) => onChange({ date: day })}
+					value={draft.date}
+				/>
+				<View style={row}>
+					<Chip
+						label={t("today")}
+						onPress={() => onChange({ date: today })}
+						selected={draft.date === today}
+					/>
+					<Chip
+						label={t("yesterday")}
+						onPress={() => onChange({ date: shiftDay(today, -1) })}
+						selected={draft.date === shiftDay(today, -1)}
+					/>
 				</View>
-			) : null}
+			</View>
 			{projects.length > 0 ? (
 				<PickField
 					empty={t("project.empty")}
@@ -288,6 +405,11 @@ export function ExpenseFields({
 					))}
 				</View>
 			) : null}
+			<MoreDetails
+				draft={draft}
+				onChange={onChange}
+				onTypingChange={onTypingChange}
+			/>
 		</>
 	);
 }

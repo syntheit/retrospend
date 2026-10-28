@@ -22,11 +22,24 @@ export async function saveExpenseEdit(
 	const timeout = new AbortController();
 	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 	try {
-		const body = write.body as Parameters<typeof api.expenses.update>[0];
-		const result = await api.expenses.update(body, {
+		const options = {
 			context: { idempotencyKey: newClientId() },
 			signal: timeout.signal,
-		});
+		};
+		if (write.entity === "shared-expenses") {
+			const result = await api["shared-expenses"].update(
+				write.body as Parameters<(typeof api)["shared-expenses"]["update"]>[0],
+				options,
+			);
+			return {
+				status: "saved",
+				undo: { entity: "shared-expenses", token: result.undo },
+			};
+		}
+		const result = await api.expenses.update(
+			write.body as Parameters<typeof api.expenses.update>[0],
+			options,
+		);
 		return {
 			status: "saved",
 			undo: { entity: "expenses", token: result.undo },

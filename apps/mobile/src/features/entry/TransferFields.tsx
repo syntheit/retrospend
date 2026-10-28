@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { DateField } from "@/ui/DateField";
 import type { TransferDraft, TransferErrors } from "./draft";
 import { FieldError, TextField } from "./ExpenseFields";
 import { PickField } from "./PickField";
@@ -26,6 +27,7 @@ export function TransferFields({
 	onTypingChange: (typing: boolean) => void;
 }) {
 	const t = useTranslations("mobile.composer.transfer");
+	const tc = useTranslations("mobile.composer");
 	const tp = useTranslations("mobile.pickers");
 	const { color, space, type } = useTheme();
 	const to = places.find((p) => p.id === draft.toId);
@@ -88,6 +90,11 @@ export function TransferFields({
 				onTypingChange={onTypingChange}
 				placeholder={t("notePlaceholder")}
 				value={draft.note}
+			/>
+			<DateField
+				label={tc("dateField")}
+				onChange={(date) => onChange({ date })}
+				value={draft.date}
 			/>
 		</>
 	);
