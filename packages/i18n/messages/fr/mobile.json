@@ -175,7 +175,8 @@
 			"notePlaceholder": "Facultatif",
 			"errors": {
 				"same": "Choisis deux comptes différents",
-				"places": "Choisis les deux comptes"
+				"places": "Choisis les deux comptes",
+				"received": "Saisis ce qui est arrivé comme montant, ou laisse vide"
 			}
 		},
 		"moreDetails": "Plus de détails",

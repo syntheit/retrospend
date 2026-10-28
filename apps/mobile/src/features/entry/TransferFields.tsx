@@ -73,12 +73,16 @@ export function TransferFields({
 				<View style={{ gap: space[2] }}>
 					<TextField
 						keyboardType="decimal-pad"
+						invalid={errors.received}
 						label={t("received", { currency: to.currency })}
 						onChangeText={(receivedText) => onChange({ receivedText })}
 						onTypingChange={onTypingChange}
 						placeholder={t("receivedPlaceholder")}
 						value={draft.receivedText}
 					/>
+					{errors.received ? (
+						<FieldError>{t("errors.received")}</FieldError>
+					) : null}
 					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
 						{t("receivedHint")}
 					</Text>

@@ -175,7 +175,8 @@
 			"notePlaceholder": "Optional",
 			"errors": {
 				"same": "Pick two different accounts",
-				"places": "Pick both accounts"
+				"places": "Pick both accounts",
+				"received": "Enter what arrived as an amount, or leave it empty"
 			}
 		},
 		"moreDetails": "More details",

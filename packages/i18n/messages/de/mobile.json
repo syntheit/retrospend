@@ -175,7 +175,8 @@
 			"notePlaceholder": "Optional",
 			"errors": {
 				"same": "Wähle zwei verschiedene Konten",
-				"places": "Wähle beide Konten"
+				"places": "Wähle beide Konten",
+				"received": "Gib an, was angekommen ist, oder lass das Feld leer"
 			}
 		},
 		"moreDetails": "Mehr Details",

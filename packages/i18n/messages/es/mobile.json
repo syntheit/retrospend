@@ -175,7 +175,8 @@
 			"notePlaceholder": "Opcional",
 			"errors": {
 				"same": "Elige dos cuentas distintas",
-				"places": "Elige las dos cuentas"
+				"places": "Elige las dos cuentas",
+				"received": "Escribe lo que llegó como un monto, o déjalo vacío"
 			}
 		},
 		"moreDetails": "Más detalles",

@@ -385,6 +385,24 @@ describe("a transfer", () => {
 		amountText: "1,500",
 	};
 
+	it("flags a received amount that does not read, and allows it empty", () => {
+		const exchange = { ...draft, toId: "usd" };
+		expect(transferErrors(exchange, input).received).toBeUndefined();
+		expect(
+			transferErrors({ ...exchange, receivedText: "abc" }, input).received,
+		).toBe(true);
+		expect(
+			buildTransferWrite({ ...exchange, receivedText: "abc" }, input),
+		).toBeNull();
+		expect(
+			transferErrors({ ...exchange, receivedText: "1.50" }, input).received,
+		).toBeUndefined();
+		// One currency has no received amount to check.
+		expect(
+			transferErrors({ ...draft, receivedText: "abc" }, input).received,
+		).toBeUndefined();
+	});
+
 	it("starts from an account in your currency to another one", () => {
 		expect(draft).toMatchObject({ fromId: "cash", toId: "bank" });
 	});

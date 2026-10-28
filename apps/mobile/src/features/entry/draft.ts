@@ -509,7 +509,7 @@ export function buildExpenseUpdate(
 }
 
 export type TransferErrors = Partial<
-	Record<"amount" | "same" | "places", true>
+	Record<"amount" | "same" | "places" | "received", true>
 >;
 
 /** The place a transfer leaves from, with its currency (the amount's). */
@@ -533,6 +533,17 @@ export function transferErrors(
 	else if (d.fromId === d.toId) errors.same = true;
 	if (!from || !amountMinor(d.amountText, input.locale, from)) {
 		errors.amount = true;
+	}
+	// What arrived is optional, but text that is not an amount is not "empty".
+	const { to } = transferCurrencies(d, input.places);
+	if (
+		from &&
+		to &&
+		from !== to &&
+		d.receivedText.trim() !== "" &&
+		!amountMinor(d.receivedText, input.locale, to)
+	) {
+		errors.received = true;
 	}
 	return errors;
 }
