@@ -36,7 +36,9 @@ export function entityIdsOf(
  * that moved takes the sum of its per-row deltas (whole numbers in one
  * currency, so the sum is exact) and says nothing about "after", which only
  * the server could know for the whole set. A figure stays "unchanged" only if
- * every dry run found it so. One answer is passed through as it came.
+ * every dry run found it so. Every summed line is marked approximate (the
+ * per-row answers do not know each other); a real bulk delete preview is
+ * queued. One answer is passed through as it came, exact.
  */
 export function mergeDeletePreviews(diffs: readonly PreviewDto[]): PreviewDto {
 	const [first] = diffs;
@@ -57,9 +59,14 @@ export function mergeDeletePreviews(diffs: readonly PreviewDto[]): PreviewDto {
 								...seen.delta,
 								minor: seen.delta.minor + change.delta.minor,
 							},
-							approx: seen.approx || change.approx,
 						}
-					: { ...change, before: null, after: null, figureAfter: [] },
+					: {
+							...change,
+							before: null,
+							after: null,
+							figureAfter: [],
+							approx: true as const,
+						},
 			);
 		}
 	}

@@ -3,13 +3,13 @@ import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
-import { ChangesBlock } from "@/features/entry/ChangesBlock";
 import { announceEntryChange } from "@/features/entry/events";
 import type { PreviewState } from "@/features/entry/preview";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
 import { useToast } from "@/ui/Toast";
+import { BulkChanges } from "./BulkChanges";
 import { type BulkAction, previewBulk, runBulk, undoBulk } from "./bulkWrite";
 
 /**
@@ -116,7 +116,10 @@ export function BulkSheet({
 								name: action?.kind === "category" ? action.name : "",
 							})}
 				</Text>
-				<ChangesBlock idle="" state={preview} />
+				<BulkChanges
+					state={preview}
+					summed={count > 1 && action?.kind === "delete"}
+				/>
 				{count > 1 && action?.kind === "delete" && ready ? (
 					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
 						{t("addedUp")}

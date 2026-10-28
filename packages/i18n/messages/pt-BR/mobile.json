@@ -334,7 +334,7 @@
 			"categorizeTitle": "{count, plural, one {Categorizar # despesa} other {Categorizar # despesas}}",
 			"categorizeBody": "Elas vão para {name}. Os valores não mudam.",
 			"categorizeButton": "Mover para {name}",
-			"addedUp": "Cada mudança é somada entre as despesas escolhidas.",
+			"addedUp": "Esses totais são estimados. Cada mudança é somada entre as despesas escolhidas.",
 			"moved": "{count, plural, one {# despesa movida para {name}} other {# despesas movidas para {name}}}",
 			"deleted": "{count, plural, one {# despesa excluída} other {# despesas excluídas}}",
 			"deletedSome": "{count, plural, one {# despesa excluída} other {# despesas excluídas}}, {left} não puderam ser excluídas",

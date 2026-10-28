@@ -334,7 +334,7 @@
 			"categorizeTitle": "{count, plural, one {Categorizar # gasto} other {Categorizar # gastos}}",
 			"categorizeBody": "Pasan a {name}. Sus montos no cambian.",
 			"categorizeButton": "Mover a {name}",
-			"addedUp": "Cada cambio se suma entre los gastos elegidos.",
+			"addedUp": "Estos totales son estimados. Cada cambio se suma entre los gastos elegidos.",
 			"moved": "{count, plural, one {# gasto movido a {name}} other {# gastos movidos a {name}}}",
 			"deleted": "{count, plural, one {# gasto eliminado} other {# gastos eliminados}}",
 			"deletedSome": "{count, plural, one {# gasto eliminado} other {# gastos eliminados}}, {left} no se pudieron eliminar",

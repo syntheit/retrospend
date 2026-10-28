@@ -334,7 +334,7 @@
 			"categorizeTitle": "{count, plural, one {# Ausgabe kategorisieren} other {# Ausgaben kategorisieren}}",
 			"categorizeBody": "Sie wechseln zu {name}. Die Beträge bleiben gleich.",
 			"categorizeButton": "Nach {name} verschieben",
-			"addedUp": "Jede Änderung ist über die gewählten Ausgaben summiert.",
+			"addedUp": "Diese Summen sind geschätzt. Jede Änderung wird über die gewählten Ausgaben addiert.",
 			"moved": "{count, plural, one {# Ausgabe nach {name} verschoben} other {# Ausgaben nach {name} verschoben}}",
 			"deleted": "{count, plural, one {# Ausgabe gelöscht} other {# Ausgaben gelöscht}}",
 			"deletedSome": "{count, plural, one {# Ausgabe gelöscht} other {# Ausgaben gelöscht}}, {left} konnten nicht gelöscht werden",

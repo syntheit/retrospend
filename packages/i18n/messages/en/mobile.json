@@ -334,7 +334,7 @@
 			"categorizeTitle": "{count, plural, one {Categorize # expense} other {Categorize # expenses}}",
 			"categorizeBody": "They move to {name}. Their amounts stay the same.",
 			"categorizeButton": "Move to {name}",
-			"addedUp": "Each change is added across the expenses you picked.",
+			"addedUp": "These totals are estimated. Each change is added across the expenses you picked.",
 			"moved": "{count, plural, one {# expense moved to {name}} other {# expenses moved to {name}}}",
 			"deleted": "{count, plural, one {# expense deleted} other {# expenses deleted}}",
 			"deletedSome": "{count, plural, one {# expense deleted} other {# expenses deleted}}, {left} could not be deleted",

@@ -334,7 +334,7 @@
 			"categorizeTitle": "{count, plural, one {Catégoriser # dépense} other {Catégoriser # dépenses}}",
 			"categorizeBody": "Elles passent dans {name}. Leurs montants ne changent pas.",
 			"categorizeButton": "Déplacer vers {name}",
-			"addedUp": "Chaque changement est additionné sur les dépenses choisies.",
+			"addedUp": "Ces totaux sont estimés. Chaque changement est additionné sur les dépenses choisies.",
 			"moved": "{count, plural, one {# dépense déplacée vers {name}} other {# dépenses déplacées vers {name}}}",
 			"deleted": "{count, plural, one {# dépense supprimée} other {# dépenses supprimées}}",
 			"deletedSome": "{count, plural, one {# dépense supprimée} other {# dépenses supprimées}}, {left} n'ont pas pu être supprimées",
