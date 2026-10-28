@@ -1,10 +1,12 @@
-import { CRYPTO_CURRENCIES, CURRENCIES } from "@retrospend/domain/currencies";
 import { getCountryCodeFromCurrency } from "@retrospend/domain/currency-country";
-import { currencyName } from "@retrospend/domain/currency-names";
 import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { SvgXml } from "react-native-svg";
 import { useLocale, useTranslations } from "use-intl";
+import {
+	englishCurrencyName as englishName,
+	localCurrencyName,
+} from "@/lib/currency-names";
 import { useTheme } from "@/theme";
 import { Button } from "./Button";
 import { FLAGS } from "./flags.generated";
@@ -33,10 +35,6 @@ function CurrencyFlag({ code }: { code: string }) {
 			<Glyph color={color.fg2} name="Coins" size={size.icon.phone} />
 		</View>
 	);
-}
-
-function englishName(code: string): string {
-	return (CURRENCIES[code] ?? CRYPTO_CURRENCIES[code])?.name ?? code;
 }
 
 /**
@@ -74,7 +72,7 @@ export function CurrencyPicker({
 		const row = (code: string) => ({
 			id: code,
 			label: code,
-			detail: currencyName(code, locale, englishName(code)),
+			detail: localCurrencyName(code, locale),
 			keywords: [englishName(code)],
 			lead: <CurrencyFlag code={code} />,
 			selected: code === value,
