@@ -671,9 +671,20 @@
 			},
 			"monthly": "Amount each month",
 			"goal": "Goal amount",
-			"billNote": "This envelope has a bill with a due date. Saving here replaces it; edit bills on the web.",
+			"billNote": "Saving here replaces the bill it has now.",
 			"submit": "Save target",
-			"toast": "Target saved for {name}"
+			"toast": "Target saved for {name}",
+			"due": "Due date",
+			"repeats": "Repeats",
+			"repeat": {
+				"MONTHLY": "Monthly",
+				"QUARTERLY": "Every 3 months",
+				"YEARLY": "Every year",
+				"ONCE": "Once"
+			},
+			"noneNote": "No target means nothing is planned for it.",
+			"dueHint": "YYYY-MM-DD",
+			"billAmount": "Bill amount"
 		},
 		"merge": {
 			"title": "Combine envelopes",
@@ -718,7 +729,10 @@
 			"notTracked": "Not tracked",
 			"envelope": "Taken from",
 			"submit": "Pay",
-			"toast": "Paid {amount} toward a debt"
+			"toast": "Paid {amount} toward a debt",
+			"interest": "Interest in this payment",
+			"interestHint": "Optional. Interest counts as spending (Fees), not toward the balance.",
+			"interestEstimate": "Expected interest: {amount}"
 		},
 		"reconcile": {
 			"loading": "Checking",

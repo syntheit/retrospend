@@ -671,9 +671,20 @@
 			},
 			"monthly": "Valor por mês",
 			"goal": "Valor da meta",
-			"billNote": "Este envelope tem uma conta com vencimento. Salvar aqui a substitui; edite contas na web.",
+			"billNote": "Salvar aqui substitui a conta atual.",
 			"submit": "Salvar meta",
-			"toast": "Meta salva para {name}"
+			"toast": "Meta salva para {name}",
+			"due": "Data de vencimento",
+			"repeats": "Repete",
+			"repeat": {
+				"MONTHLY": "Todo mês",
+				"QUARTERLY": "A cada 3 meses",
+				"YEARLY": "Todo ano",
+				"ONCE": "Uma vez"
+			},
+			"noneNote": "Sem meta, nada é planejado para ele.",
+			"dueHint": "AAAA-MM-DD",
+			"billAmount": "Valor da conta"
 		},
 		"merge": {
 			"title": "Combinar envelopes",
@@ -718,7 +729,10 @@
 			"notTracked": "Sem registro",
 			"envelope": "Tirado de",
 			"submit": "Pagar",
-			"toast": "{amount} pagos de uma dívida"
+			"toast": "{amount} pagos de uma dívida",
+			"interest": "Juros neste pagamento",
+			"interestHint": "Opcional. Juros contam como gasto (taxas), não como saldo.",
+			"interestEstimate": "Juros previstos: {amount}"
 		},
 		"reconcile": {
 			"loading": "Verificando",

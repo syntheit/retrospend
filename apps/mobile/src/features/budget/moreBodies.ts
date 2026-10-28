@@ -1,5 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { wireAmount } from "./amount";
+import { isIsoDay } from "./DayField";
 
 // The request bodies of the budget sheets beyond the first six: new envelope,
 // rename or move, combine, target, style and the afford question. Each
@@ -76,7 +77,9 @@ export function mergeBody(input: {
 	};
 }
 
-export type TargetChoice = "NONE" | "MONTHLY" | "SAVINGS";
+export type TargetChoice = "NONE" | "MONTHLY" | "BILL" | "SAVINGS";
+/** How often a bill comes back; ONCE is a bill that does not repeat. */
+export type BillRepeat = "MONTHLY" | "QUARTERLY" | "YEARLY" | "ONCE";
 export type TargetMode = "REFILL" | "SET_ASIDE";
 
 /** The target an envelope gets: none, a monthly amount, or a savings goal. */
@@ -87,6 +90,9 @@ export function targetBody(input: {
 	mode: TargetMode;
 	minor: number | null;
 	currency: string;
+	/** A bill: the day it is due (YYYY-MM-DD) and how often. */
+	dueDate?: string;
+	repeat?: BillRepeat;
 }): TargetInput | null {
 	if (input.choice === "NONE") {
 		return {
@@ -98,6 +104,22 @@ export function targetBody(input: {
 	}
 	if (input.minor === null) return null;
 	const amount = wireAmount(input.minor, input.currency);
+	if (input.choice === "BILL") {
+		if (!input.dueDate || !isIsoDay(input.dueDate) || input.minor <= 0) {
+			return null;
+		}
+		return {
+			id: input.id,
+			envelopeId: input.envelopeId,
+			kind: "BILL",
+			target: {
+				kind: "BILL",
+				amount,
+				dueDate: input.dueDate,
+				repeat: input.repeat && input.repeat !== "ONCE" ? input.repeat : null,
+			},
+		};
+	}
 	return {
 		id: input.id,
 		envelopeId: input.envelopeId,
@@ -159,7 +181,7 @@ export type DebtPaymentInput = Parameters<Client["recordDebtPayment"]>[0];
 /**
  * Pay down a debt: the part toward the balance leaves the paying envelope
  * (null: the pool) and the account it came from (null: not tracked). Interest
- * is not asked on the phone yet, so the payment is all principal.
+ * in the payment is spending (Fees), not balance, and is asked apart.
  */
 export function debtPaymentBody(input: {
 	id: string;
@@ -167,6 +189,8 @@ export function debtPaymentBody(input: {
 	fromAccountId: string | null;
 	envelopeId: string | null;
 	minor: number | null;
+	/** Interest in this payment, in minor units; none when left out. */
+	interestMinor?: number;
 	currency: string;
 }): DebtPaymentInput | null {
 	if (!input.liabilityId || input.minor === null) return null;
@@ -176,6 +200,6 @@ export function debtPaymentBody(input: {
 		fromAccountId: input.fromAccountId,
 		envelopeId: input.envelopeId,
 		principal: wireAmount(input.minor, input.currency),
-		interest: "0",
+		interest: wireAmount(input.interestMinor ?? 0, input.currency),
 	};
 }

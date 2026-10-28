@@ -671,9 +671,20 @@
 			},
 			"monthly": "Monto cada mes",
 			"goal": "Monto de la meta",
-			"billNote": "Este sobre tiene una factura con fecha de vencimiento. Guardar acá la reemplaza; editá las facturas en la web.",
+			"billNote": "Al guardar acá se reemplaza la factura actual.",
 			"submit": "Guardar objetivo",
-			"toast": "Objetivo guardado para {name}"
+			"toast": "Objetivo guardado para {name}",
+			"due": "Fecha de vencimiento",
+			"repeats": "Se repite",
+			"repeat": {
+				"MONTHLY": "Cada mes",
+				"QUARTERLY": "Cada 3 meses",
+				"YEARLY": "Cada año",
+				"ONCE": "Una vez"
+			},
+			"noneNote": "Sin meta, no se planifica nada para este sobre.",
+			"dueHint": "AAAA-MM-DD",
+			"billAmount": "Monto de la factura"
 		},
 		"merge": {
 			"title": "Combinar sobres",
@@ -718,7 +729,10 @@
 			"notTracked": "Sin registrar",
 			"envelope": "Tomado de",
 			"submit": "Pagar",
-			"toast": "Se pagaron {amount} de una deuda"
+			"toast": "Se pagaron {amount} de una deuda",
+			"interest": "Intereses en este pago",
+			"interestHint": "Opcional. Los intereses cuentan como gasto (comisiones), no como saldo.",
+			"interestEstimate": "Intereses previstos: {amount}"
 		},
 		"reconcile": {
 			"loading": "Revisando",

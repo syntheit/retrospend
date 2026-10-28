@@ -671,9 +671,20 @@
 			},
 			"monthly": "Montant par mois",
 			"goal": "Montant de l’objectif",
-			"billNote": "Cette enveloppe a une facture avec une échéance. Enregistrer ici la remplace ; modifie les factures sur le web.",
+			"billNote": "Enregistrer ici remplace la facture actuelle.",
 			"submit": "Enregistrer l’objectif",
-			"toast": "Objectif enregistré pour {name}"
+			"toast": "Objectif enregistré pour {name}",
+			"due": "Date d'échéance",
+			"repeats": "Se répète",
+			"repeat": {
+				"MONTHLY": "Chaque mois",
+				"QUARTERLY": "Tous les 3 mois",
+				"YEARLY": "Chaque année",
+				"ONCE": "Une fois"
+			},
+			"noneNote": "Sans objectif, rien n'est planifié pour elle.",
+			"dueHint": "AAAA-MM-JJ",
+			"billAmount": "Montant de la facture"
 		},
 		"merge": {
 			"title": "Fusionner des enveloppes",
@@ -718,7 +729,10 @@
 			"notTracked": "Non suivi",
 			"envelope": "Pris sur",
 			"submit": "Payer",
-			"toast": "{amount} versés sur une dette"
+			"toast": "{amount} versés sur une dette",
+			"interest": "Intérêts dans ce paiement",
+			"interestHint": "Facultatif. Les intérêts comptent comme une dépense (frais), pas comme du solde.",
+			"interestEstimate": "Intérêts prévus : {amount}"
 		},
 		"reconcile": {
 			"loading": "Vérification",

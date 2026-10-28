@@ -671,9 +671,20 @@
 			},
 			"monthly": "Betrag pro Monat",
 			"goal": "Zielbetrag",
-			"billNote": "Dieser Umschlag hat eine Rechnung mit Fälligkeitsdatum. Speichern ersetzt sie; Rechnungen bearbeitest du im Web.",
+			"billNote": "Wenn du hier speicherst, ersetzt das die aktuelle Rechnung.",
 			"submit": "Ziel speichern",
-			"toast": "Ziel für {name} gespeichert"
+			"toast": "Ziel für {name} gespeichert",
+			"due": "Fälligkeitsdatum",
+			"repeats": "Wiederholt sich",
+			"repeat": {
+				"MONTHLY": "Monatlich",
+				"QUARTERLY": "Alle 3 Monate",
+				"YEARLY": "Jedes Jahr",
+				"ONCE": "Einmal"
+			},
+			"noneNote": "Ohne Ziel wird dafür nichts geplant.",
+			"dueHint": "JJJJ-MM-TT",
+			"billAmount": "Betrag der Rechnung"
 		},
 		"merge": {
 			"title": "Umschläge zusammenführen",
@@ -718,7 +729,10 @@
 			"notTracked": "Nicht erfasst",
 			"envelope": "Genommen aus",
 			"submit": "Zahlen",
-			"toast": "{amount} auf eine Schuld gezahlt"
+			"toast": "{amount} auf eine Schuld gezahlt",
+			"interest": "Zinsen in dieser Zahlung",
+			"interestHint": "Optional. Zinsen zählen als Ausgabe (Gebühren), nicht zum Saldo.",
+			"interestEstimate": "Erwartete Zinsen: {amount}"
 		},
 		"reconcile": {
 			"loading": "Wird geprüft",

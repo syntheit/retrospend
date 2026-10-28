@@ -10,12 +10,14 @@ export function TextField({
 	onChangeText,
 	invalid,
 	maxLength,
+	keyboardType,
 }: {
 	label: string;
 	value: string;
 	onChangeText: (text: string) => void;
 	invalid?: boolean;
 	maxLength?: number;
+	keyboardType?: "default" | "decimal-pad";
 }) {
 	const { color, radius, size, space, type } = useTheme();
 	return (
@@ -26,6 +28,7 @@ export function TextField({
 			<TextInput
 				accessibilityLabel={label}
 				autoCorrect={false}
+				keyboardType={keyboardType}
 				maxLength={maxLength}
 				onChangeText={onChangeText}
 				style={{

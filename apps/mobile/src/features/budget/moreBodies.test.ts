@@ -183,7 +183,7 @@ describe("afford and debt payment bodies", () => {
 			fromAccountId: null,
 			envelopeId: null,
 			principal: "10000.00",
-			interest: "0",
+			interest: "0.00",
 		});
 	});
 });
@@ -199,5 +199,62 @@ describe("bank check body", () => {
 			id: ID,
 			bank: "-20.00",
 		});
+	});
+});
+
+describe("bill targets and interest", () => {
+	const bill = {
+		id: ID,
+		envelopeId: "e1",
+		choice: "BILL" as const,
+		mode: "REFILL" as const,
+		minor: 12_550,
+		currency: "ARS",
+		dueDate: "2026-11-05",
+	};
+
+	it("sends a bill with its due date and how often it comes back", () => {
+		expect(targetBody({ ...bill, repeat: "MONTHLY" })).toEqual({
+			id: ID,
+			envelopeId: "e1",
+			kind: "BILL",
+			target: {
+				kind: "BILL",
+				amount: "125.50",
+				dueDate: "2026-11-05",
+				repeat: "MONTHLY",
+			},
+		});
+		expect(targetBody({ ...bill, repeat: "QUARTERLY" })?.target).toMatchObject({
+			repeat: "QUARTERLY",
+		});
+	});
+
+	it("sends a bill that does not repeat as no repeat", () => {
+		expect(targetBody({ ...bill, repeat: "ONCE" })?.target).toMatchObject({
+			repeat: null,
+		});
+	});
+
+	it("waits for a real day and an amount above zero", () => {
+		expect(targetBody({ ...bill, dueDate: "" })).toBeNull();
+		expect(targetBody({ ...bill, dueDate: "2026-02-31" })).toBeNull();
+		expect(targetBody({ ...bill, dueDate: "11/05/2026" })).toBeNull();
+		expect(targetBody({ ...bill, minor: 0 })).toBeNull();
+		expect(targetBody({ ...bill, minor: null })).toBeNull();
+	});
+
+	it("sends the interest of a debt payment apart from the principal", () => {
+		expect(
+			debtPaymentBody({
+				id: ID,
+				liabilityId: "l1",
+				fromAccountId: "a1",
+				envelopeId: null,
+				minor: 1_000_000,
+				interestMinor: 12_345,
+				currency: "ARS",
+			}),
+		).toMatchObject({ principal: "10000.00", interest: "123.45" });
 	});
 });
