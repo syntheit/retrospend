@@ -1,4 +1,5 @@
 import {
+	type ComponentType,
 	createContext,
 	type ReactNode,
 	useCallback,
@@ -11,18 +12,27 @@ import { Keyboard, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { ADD_CONTROL } from "@/layout/destinations";
-import { useTheme } from "@/theme";
-import { AddButton } from "@/ui/AddButton";
 import type { ComposerPrefill } from "@/surfaces/prefill";
 import { useSurfaceLinks } from "@/surfaces/useSurfaceLinks";
+import { useTheme } from "@/theme";
+import { AddButton } from "@/ui/AddButton";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import type { EntryMode } from "./ComposerShell";
 import { EntryComposer } from "./EntryComposer";
 import { useOutboxFlush } from "./useOutboxFlush";
 
+// The screenshot tour is required only when its variable is set, so Metro drops
+// it from every other build (see check-release-bundle.sh).
+const DevComposerTour: ComponentType<{ add: AddEntryApi }> | null = process.env
+	.EXPO_PUBLIC_DEV_COMPOSE
+	? require("@/dev/DevComposerTour").DevComposerTour
+	: null;
+
 interface AddEntryApi {
 	/** Opens the composer sheet, optionally filled in by a share, a Shortcut or a link. */
 	open(mode?: EntryMode, prefill?: ComposerPrefill): void;
+	/** Opens the composer on a saved expense (its id); Save replaces it, and Undo restores it. */
+	edit(entryId: string): void;
 }
 
 const AddEntryContext = createContext<AddEntryApi | null>(null);
@@ -80,6 +90,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	// a second share arrives while the first is still open.
 	const [fill, setFill] = useState<{
 		prefill?: ComposerPrefill;
+		editId?: string;
 		count: number;
 	}>({ count: 0 });
 	useOutboxFlush();
@@ -88,20 +99,32 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const sheetSize = useSheetBodySize();
 
 	const show = useCallback(
-		(next: EntryMode = "expense", prefill?: ComposerPrefill) => {
+		(
+			next: EntryMode = "expense",
+			prefill?: ComposerPrefill,
+			editId?: string,
+		) => {
 			setMode(next);
-			setFill((f) => ({ prefill, count: f.count + 1 }));
+			setFill((f) => ({ prefill, editId, count: f.count + 1 }));
 			setOpen(next);
 		},
 		[],
 	);
-	const api = useMemo(() => ({ open: show }), [show]);
+	const api = useMemo(
+		() => ({
+			open: (next?: EntryMode, prefill?: ComposerPrefill) =>
+				show(next, prefill),
+			edit: (entryId: string) => show("expense", undefined, entryId),
+		}),
+		[show],
+	);
 	useSurfaceLinks(show);
 	const close = useCallback(() => setOpen(null), []);
 
 	return (
 		<AddEntryContext.Provider value={api}>
 			{children}
+			{DevComposerTour ? <DevComposerTour add={api} /> : null}
 			{ADD_CONTROL === "floating" && !keyboard ? (
 				<View
 					pointerEvents="box-none"
@@ -111,18 +134,42 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 						bottom: insets.bottom + space[4] + BAR_HEIGHT,
 					}}
 				>
-					<AddButton label={t("addExpense")} onPress={() => show("expense")} />
+					<AddButton
+						actions={[
+							{
+								id: "income",
+								label: t("addIncome"),
+								onPress: () => show("income"),
+							},
+							{
+								id: "transfer",
+								label: t("addTransfer"),
+								onPress: () => show("transfer"),
+							},
+						]}
+						label={t("addExpense")}
+						onPress={() => show("expense")}
+					/>
 				</View>
 			) : null}
 			<Sheet
 				detents={["large"]}
 				onClose={close}
-				title={mode === "expense" ? t("titleExpense") : t("titleIncome")}
+				title={
+					fill.editId
+						? t("titleEdit")
+						: mode === "expense"
+							? t("titleExpense")
+							: mode === "income"
+								? t("titleIncome")
+								: t("titleTransfer")
+				}
 				visible={open !== null}
 			>
 				<View style={sheetSize}>
 					{open ? (
 						<EntryComposer
+							editId={fill.editId}
 							initialMode={open}
 							key={fill.count}
 							onDone={close}

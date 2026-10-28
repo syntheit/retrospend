@@ -64,7 +64,11 @@
 			"undone": "Se quitó {title}",
 			"undoFailed": "No se pudo deshacer. Probá de nuevo desde Actividad.",
 			"discarded": "Se descartó {title}",
-			"parkedBackground": "{count, plural, one {No se pudo agregar # entrada. Queda en este teléfono.} other {No se pudieron agregar # entradas. Quedan en este teléfono.}}"
+			"parkedBackground": "{count, plural, one {No se pudo agregar # entrada. Queda en este teléfono.} other {No se pudieron agregar # entradas. Quedan en este teléfono.}}",
+			"edited": "Se guardó {title}",
+			"restored": "Se restauró {title}",
+			"editOffline": "Estás sin conexión. Editar necesita conexión.",
+			"editRefused": "No pudimos guardar este cambio. Puede estar bloqueado o dividido."
 		},
 		"changes": {
 			"title": "Qué cambia",
@@ -123,7 +127,8 @@
 				"accounts": "tus cuentas",
 				"project_total": "el total del proyecto"
 			},
-			"noRate": "Todavía no hay cotización para {currency}. Elegí otra moneda."
+			"noRate": "Todavía no hay cotización para {currency}. Elegí otra moneda.",
+			"emptyTransfer": "Escribí un monto y elegí dos cuentas para ver qué cambia."
 		},
 		"list": {
 			"two": "{first} y {second}",
@@ -136,6 +141,42 @@
 			"retry": "Reintentar",
 			"discard": "Descartar",
 			"retryFailed": "Todavía no se puede enviar. Probá más tarde."
+		},
+		"transferMode": "Transferencia",
+		"titleTransfer": "Agregar transferencia",
+		"addTransfer": "Agregar transferencia",
+		"titleEdit": "Editar gasto",
+		"save": "Guardar",
+		"saveExpense": "Guardar gasto",
+		"editLoadError": "No pudimos abrir este gasto",
+		"dateField": "Fecha",
+		"project": {
+			"label": "Proyecto",
+			"none": "Ninguno",
+			"find": "Buscá un proyecto",
+			"empty": "Ningún proyecto coincide",
+			"loadFailed": "No pudimos cargar a las personas del proyecto. Probá de nuevo."
+		},
+		"plan": {
+			"envelope": "Sobre",
+			"title": "Después tu plan asigna",
+			"noBudget": "Usar mi plan necesita un presupuesto por sobres. Queda como Sin planear aún.",
+			"otherCurrency": "Tu plan asigna en {currency}. Este ingreso queda como Sin planear aún.",
+			"none": "Nada: todos los sobres ya tienen fondos.",
+			"stays": "Sin planear aún queda"
+		},
+		"transfer": {
+			"from": "De",
+			"to": "A",
+			"received": "Recibido en {currency}",
+			"receivedPlaceholder": "Opcional",
+			"receivedHint": "Si lo dejás vacío, se usa la cotización de referencia.",
+			"note": "Nota",
+			"notePlaceholder": "Opcional",
+			"errors": {
+				"same": "Elegí dos cuentas distintas",
+				"places": "Elegí las dos cuentas"
+			}
 		}
 	},
 	"pickers": {
@@ -155,6 +196,10 @@
 			"empty": "Ninguna categoría coincide",
 			"recent": "Recientes",
 			"all": "Todas las categorías"
+		},
+		"account": {
+			"find": "Buscá una cuenta",
+			"empty": "Ninguna cuenta coincide"
 		}
 	},
 	"entry": {
@@ -185,7 +230,8 @@
 			"refund": "Reintegro",
 			"transfer": "Transferencia",
 			"payment": "Pago"
-		}
+		},
+		"edit": "Editar"
 	},
 	"connect": {
 		"title": "Conectate a un servidor",

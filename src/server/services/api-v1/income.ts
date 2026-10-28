@@ -8,18 +8,20 @@ import {
 } from "~/server/services/income/add.mutation";
 import { deleteIncome } from "~/server/services/income/delete.mutation";
 import {
-	type MoveInInput,
 	type MovedIn,
+	type MoveInInput,
 	moveIn,
 	undoMoveIn,
 } from "~/server/services/income/move-in.mutation";
 import type { PlanResult } from "~/server/services/income/plan-seam";
+import { forUser } from "~/server/services/preview";
 import type { Caller } from "./caller";
 import {
 	accountChangeDto,
 	applyWrite,
 	previewWrite,
 	spendUndo,
+	toPreviewDto,
 	undoFor,
 } from "./money-write";
 import { readUndo } from "./undo";
@@ -68,8 +70,24 @@ export async function createIncome(caller: LedgerCaller, input: Input) {
 	};
 }
 
-export const previewCreateIncome = (caller: LedgerCaller, input: Input) =>
-	previewWrite(caller, addIncome, addInput(caller, input));
+/**
+ * The dry run of Add income. Its detail carries the plan: the lines Use my
+ * plan would write and what stays Not planned yet, from the same run as the
+ * figures, so a client shows them under What this changes.
+ */
+export async function previewCreateIncome(caller: LedgerCaller, input: Input) {
+	const preview = await forUser(caller.principal.userId).preview(
+		addIncome,
+		addInput(caller, input),
+	);
+	return {
+		...toPreviewDto(preview),
+		detail: {
+			kind: "income.add" as const,
+			plan: planDto(preview.value.plan),
+		},
+	};
+}
 
 function deleteInput(caller: LedgerCaller, id: string, templateId?: string) {
 	return { expenseId: id, templateId, timeZone: caller.timeZone };
@@ -167,7 +185,8 @@ function inverseOf(caller: LedgerCaller, op: string, input: unknown) {
 	}
 	if (op === "income.undoMoveIn" || op === "income.moveIn") {
 		const mutation = op === "income.undoMoveIn" ? undoMoveIn : moveIn;
-		const back = op === "income.undoMoveIn" ? "income.moveIn" : "income.undoMoveIn";
+		const back =
+			op === "income.undoMoveIn" ? "income.moveIn" : "income.undoMoveIn";
 		const args = { ...(input as MoveInInput), ...zone };
 		return {
 			preview: () => previewWrite(caller, mutation, args),

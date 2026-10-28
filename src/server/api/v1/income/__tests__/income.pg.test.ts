@@ -39,7 +39,10 @@ type Write = {
 	};
 	undo: string;
 };
-type Preview = { changes: { id: string; delta: Money }[] };
+type Preview = {
+	changes: { id: string; delta: Money }[];
+	detail?: { kind: string; plan?: { applied: boolean; reason: string | null } };
+};
 
 describe("/api/v1/income", () => {
 	let userId: string;
@@ -109,6 +112,22 @@ describe("/api/v1/income", () => {
 		expect(made.income.account?.after.minor).toBe(
 			(made.income.account?.before.minor ?? 0) + 30_000,
 		);
+	});
+
+	it("previews the plan the write would run", async () => {
+		const asked = await expectBody<Preview>(
+			await post("/income/preview", input({ title: "Planned", usePlan: true })),
+			c.previewCreate,
+		);
+		expect(asked.detail).toMatchObject({
+			kind: "income.add",
+			plan: { applied: false, reason: "no_envelope_budget" },
+		});
+		const plain = await expectBody<Preview>(
+			await post("/income/preview", input({ title: "Plain" })),
+			c.previewCreate,
+		);
+		expect(plain.detail?.plan).toMatchObject({ reason: "not_requested" });
 	});
 
 	it("says when Use my plan could not run, without failing the write", async () => {

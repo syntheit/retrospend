@@ -64,7 +64,11 @@
 			"undone": "{title} entfernt",
 			"undoFailed": "Rückgängig ging nicht. Versuche es noch einmal in Aktivität.",
 			"discarded": "{title} verworfen",
-			"parkedBackground": "{count, plural, one {# Eintrag ließ sich nicht hinzufügen. Er bleibt auf diesem Telefon.} other {# Einträge ließen sich nicht hinzufügen. Sie bleiben auf diesem Telefon.}}"
+			"parkedBackground": "{count, plural, one {# Eintrag ließ sich nicht hinzufügen. Er bleibt auf diesem Telefon.} other {# Einträge ließen sich nicht hinzufügen. Sie bleiben auf diesem Telefon.}}",
+			"edited": "{title} gespeichert",
+			"restored": "{title} wiederhergestellt",
+			"editOffline": "Du bist offline. Bearbeiten braucht eine Verbindung.",
+			"editRefused": "Diese Änderung ließ sich nicht speichern. Sie ist vielleicht gesperrt oder aufgeteilt."
 		},
 		"changes": {
 			"title": "Was sich ändert",
@@ -123,7 +127,8 @@
 				"accounts": "deine Konten",
 				"project_total": "die Projektsumme"
 			},
-			"noRate": "Noch kein Kurs für {currency}. Wähle eine andere Währung."
+			"noRate": "Noch kein Kurs für {currency}. Wähle eine andere Währung.",
+			"emptyTransfer": "Gib einen Betrag ein und wähle zwei Konten, um zu sehen, was sich ändert."
 		},
 		"list": {
 			"two": "{first} und {second}",
@@ -136,6 +141,42 @@
 			"retry": "Erneut versuchen",
 			"discard": "Verwerfen",
 			"retryFailed": "Senden klappt noch nicht. Versuche es später noch einmal."
+		},
+		"transferMode": "Umbuchung",
+		"titleTransfer": "Umbuchung hinzufügen",
+		"addTransfer": "Umbuchung hinzufügen",
+		"titleEdit": "Ausgabe bearbeiten",
+		"save": "Speichern",
+		"saveExpense": "Ausgabe speichern",
+		"editLoadError": "Diese Ausgabe ließ sich nicht öffnen",
+		"dateField": "Datum",
+		"project": {
+			"label": "Projekt",
+			"none": "Keins",
+			"find": "Projekt suchen",
+			"empty": "Kein Projekt passt",
+			"loadFailed": "Die Personen des Projekts ließen sich nicht laden. Versuch es noch mal."
+		},
+		"plan": {
+			"envelope": "Umschlag",
+			"title": "Dann verteilt dein Plan",
+			"noBudget": "Meinen Plan nutzen braucht ein Umschlagbudget. Es bleibt Noch nicht verplant.",
+			"otherCurrency": "Dein Plan verteilt in {currency}. Diese Einnahme bleibt Noch nicht verplant.",
+			"none": "Nichts: Jeder Umschlag ist schon gefüllt.",
+			"stays": "Noch nicht verplant bleibt"
+		},
+		"transfer": {
+			"from": "Von",
+			"to": "Nach",
+			"received": "Erhalten in {currency}",
+			"receivedPlaceholder": "Optional",
+			"receivedHint": "Lass das Feld leer, dann gilt der Referenzkurs.",
+			"note": "Notiz",
+			"notePlaceholder": "Optional",
+			"errors": {
+				"same": "Wähle zwei verschiedene Konten",
+				"places": "Wähle beide Konten"
+			}
 		}
 	},
 	"pickers": {
@@ -155,6 +196,10 @@
 			"empty": "Keine Kategorie passt",
 			"recent": "Zuletzt",
 			"all": "Alle Kategorien"
+		},
+		"account": {
+			"find": "Konto suchen",
+			"empty": "Kein Konto passt"
 		}
 	},
 	"entry": {
@@ -185,7 +230,8 @@
 			"refund": "Erstattung",
 			"transfer": "Überweisung",
 			"payment": "Zahlung"
-		}
+		},
+		"edit": "Bearbeiten"
 	},
 	"connect": {
 		"title": "Mit einem Server verbinden",

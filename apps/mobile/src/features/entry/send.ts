@@ -16,6 +16,7 @@ export const ENTRY_ENTITIES = [
 	"expenses",
 	"shared-expenses",
 	"income",
+	"transfers",
 ] as const;
 export type EntryEntity = (typeof ENTRY_ENTITIES)[number];
 
@@ -180,6 +181,13 @@ async function create(
 					options,
 				)
 			).undo;
+		case "transfers":
+			return (
+				await api.transfers.create(
+					entry.payload as Body<typeof api.transfers.create>,
+					options,
+				)
+			).undo;
 	}
 }
 
@@ -200,6 +208,8 @@ export async function undoWrite(
 		if (ref.entity === "expenses") await api.expenses.undo(input, options);
 		else if (ref.entity === "shared-expenses") {
 			await api["shared-expenses"].undo(input, options);
+		} else if (ref.entity === "transfers") {
+			await api.transfers.undo(input, options);
 		} else await api.income.undo(input, options);
 	} finally {
 		clearTimeout(timer);

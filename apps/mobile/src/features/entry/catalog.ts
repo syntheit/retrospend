@@ -1,6 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { ReadCache } from "@/data/cache";
-import type { EntryCatalog, EntryPerson } from "./types";
+import type { EntryCatalog, EntryPerson, EntryProject } from "./types";
 
 // Categories, people and currencies for the composers. Cached first so the
 // composer opens offline, then refreshed from API v1 (same pattern as
@@ -16,11 +16,17 @@ type Currency = Awaited<
 type RecentEntries = Awaited<
 	ReturnType<RetrospendClient["expenses"]["list"]>
 >["items"];
+type EntryCatalogDto = Awaited<
+	ReturnType<RetrospendClient["entry"]["catalog"]>
+>;
+type ProjectItem = Awaited<
+	ReturnType<RetrospendClient["projects"]["list"]>
+>["items"][number];
 type PeopleOverview = Awaited<ReturnType<RetrospendClient["people"]["list"]>>;
 
 export const ENTRY_CATALOG_CACHE = {
 	name: "entry-catalog",
-	schema: 2,
+	schema: 3,
 } as const;
 
 const PAGE = 200;
@@ -34,6 +40,8 @@ export function catalogFrom(input: {
 	overview: PeopleOverview;
 	currencies: Currency[];
 	recent: RecentEntries;
+	places?: EntryCatalogDto["places"];
+	projects?: ProjectItem[];
 	home: string;
 	fallback: string;
 	hasBudget: boolean | null;
@@ -43,6 +51,8 @@ export function catalogFrom(input: {
 		overview,
 		currencies,
 		recent,
+		places = [],
+		projects = [],
 		home,
 		fallback,
 		hasBudget,
@@ -75,8 +85,31 @@ export function catalogFrom(input: {
 		recentCurrencies: [
 			...new Set(recent.map((entry) => entry.amount.currency)),
 		].slice(0, RECENT_CURRENCIES),
+		places: places.map((p) => ({
+			id: p.id,
+			name: p.name,
+			type: p.type,
+			currency: p.currency,
+		})),
+		projects: addableProjects(projects),
 		hasBudget,
 	};
+}
+
+/**
+ * The projects an expense can go into, as on the web: active ones where you
+ * are a member who may add (a viewer may not). The server checks it again.
+ */
+export function addableProjects(projects: ProjectItem[]): EntryProject[] {
+	return projects
+		.filter((p) => p.status === "ACTIVE" && p.myRole && p.myRole !== "VIEWER")
+		.map((p) => ({
+			id: p.id,
+			name: p.name,
+			imageUrl: p.imageUrl,
+			currency: p.currency,
+			peopleCount: p.peopleCount,
+		}));
 }
 
 async function currencyPages(api: RetrospendClient): Promise<Currency[]> {
@@ -95,8 +128,8 @@ export async function fetchEntryCatalog(
 	api: RetrospendClient,
 	me: { homeCurrency: string; defaultCurrency: string },
 ): Promise<EntryCatalog> {
-	const [categories, overview, currencies, recent, verdict] = await Promise.all(
-		[
+	const [categories, overview, currencies, recent, verdict, places, projects] =
+		await Promise.all([
 			api.categories.list({ limit: PAGE }),
 			api.people.list(),
 			currencyPages(api),
@@ -111,13 +144,23 @@ export async function fetchEntryCatalog(
 				(v) => v !== null,
 				() => null,
 			),
-		],
-	);
+			// Without them transfers and projects stay off the screen.
+			api.entry.catalog().then(
+				(c) => c.places,
+				() => [],
+			),
+			api.projects.list().then(
+				(p) => p.items,
+				() => [],
+			),
+		]);
 	return catalogFrom({
 		categories: categories.items,
 		overview,
 		currencies,
 		recent,
+		places,
+		projects,
 		home: me.homeCurrency,
 		fallback: me.defaultCurrency,
 		hasBudget: verdict,

@@ -21,6 +21,23 @@ export interface EntryCategory {
 	uses: number;
 }
 
+export interface EntryPlace {
+	id: string;
+	name: string;
+	/** The account's type, for example CASH or CHECKING. */
+	type: string;
+	currency: string;
+}
+
+/** A project you can add expenses into (active, and you are not a viewer). */
+export interface EntryProject {
+	id: string;
+	name: string;
+	imageUrl: string | null;
+	currency: string;
+	peopleCount: number;
+}
+
 export interface EntryCatalog {
 	categories: EntryCategory[];
 	/** People you share with, the latest shared first. */
@@ -29,6 +46,10 @@ export interface EntryCatalog {
 	currencies: string[];
 	/** Currencies of the latest entries, newest first, each once. */
 	recentCurrencies: string[];
+	/** Your open accounts, for transfers. */
+	places: EntryPlace[];
+	/** Projects an expense can go into. */
+	projects: EntryProject[];
 	/** Whether Use my plan has an envelope budget to fill; null when unknown. */
 	hasBudget: boolean | null;
 }

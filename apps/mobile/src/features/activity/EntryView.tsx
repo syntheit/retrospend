@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { useFaces } from "@/features/read/faces";
 import { ENTITY_CACHE_LIMIT } from "@/features/read/loadCached";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
@@ -12,6 +13,21 @@ import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
 import { rowStatus, rowTitle } from "./ActivityRow";
 import type { ActivityItem } from "./source";
+import { TextAction } from "./TextAction";
+
+/**
+ * Only your own plain expenses can be edited here: a split, a payment, money
+ * in and a transfer have no edit route in API v1 yet, and a locked entry is
+ * the server's to refuse.
+ */
+export function canEditEntry(item: ActivityItem): boolean {
+	return (
+		item.source === "personal" &&
+		item.kind === "expense" &&
+		item.canEdit &&
+		!item.locked
+	);
+}
 
 /** A label on the left, its value on the right; a missing value leaves no row. */
 function Fact({
@@ -75,6 +91,7 @@ export function EntryView({ item }: { item: ActivityItem }) {
 	const { api, state: session } = useSession();
 	const { color, size, space, type } = useTheme();
 	const me = session.status === "signedIn" ? session.me : null;
+	const add = useOptionalAddEntry();
 
 	const personal = item.source === "personal";
 	const fetch = useMemo(
@@ -103,16 +120,32 @@ export function EntryView({ item }: { item: ActivityItem }) {
 	return (
 		<View style={{ paddingBottom: space[8] }}>
 			<View style={{ gap: space[2], paddingVertical: space[2] }}>
-				<Text
-					accessibilityRole="header"
+				<View
 					style={{
-						color: color.fg,
-						fontSize: type.title.size,
-						fontWeight: "600",
+						flexDirection: "row",
+						alignItems: "center",
+						justifyContent: "space-between",
+						gap: space[3],
 					}}
 				>
-					{title}
-				</Text>
+					<Text
+						accessibilityRole="header"
+						style={{
+							flex: 1,
+							color: color.fg,
+							fontSize: type.title.size,
+							fontWeight: "600",
+						}}
+					>
+						{title}
+					</Text>
+					{add && canEditEntry(item) ? (
+						<TextAction
+							label={t("edit")}
+							onPress={() => add.edit(item.entityId)}
+						/>
+					) : null}
+				</View>
 				<MoneyAmount
 					align="left"
 					home={item.home}
