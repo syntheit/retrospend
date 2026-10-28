@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -5,10 +6,12 @@ import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useLayoutClass } from "@/layout/useLayoutClass";
+import { GALLERY_ENABLED } from "@/lib/flags";
 import { EmptyState } from "@/ui/EmptyState";
 import { Screen } from "@/ui/Screen";
 import { BudgetBody } from "./BudgetBody";
 import { BudgetSheets, type OpenSheet } from "./BudgetSheets";
+import { devSheet } from "./devSheet";
 import { monthInfo } from "./months";
 import {
 	BUDGET_CACHE_KEEP,
@@ -53,6 +56,13 @@ export function BudgetView() {
 		? monthInfo(data.month, data.book.startMonth, seenOpen)
 		: null;
 
+	// Gallery builds only: the screenshot tour names a sheet in the route.
+	const { sheet: devName } = useLocalSearchParams<{ sheet?: string }>();
+	// biome-ignore lint/correctness/useExhaustiveDependencies: opens once per route change
+	useEffect(() => {
+		if (GALLERY_ENABLED && devName && data) setSheet(devSheet(devName, data));
+	}, [devName, data !== null]);
+
 	return (
 		<>
 			<AccountTopBar title={t("title")} />
@@ -84,6 +94,7 @@ export function BudgetView() {
 					kind={info.kind}
 					onClose={() => setSheet(null)}
 					onDone={() => void reload()}
+					onOpen={setSheet}
 					sheet={sheet}
 				/>
 			) : null}

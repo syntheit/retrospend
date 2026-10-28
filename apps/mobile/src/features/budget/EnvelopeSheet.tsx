@@ -8,14 +8,23 @@ import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
 import { AssignForm } from "./AssignForm";
 import { CoverForm } from "./CoverForm";
+import { EditForm } from "./EditForm";
 import { LimitForm } from "./LimitForm";
 import { MoveForm } from "./MoveForm";
 import type { MonthKind } from "./months";
 import { Line, Note, SheetBody } from "./parts";
 import { envelopeActions, isLimits, statusLine } from "./rows";
 import type { BudgetEnvelope, BudgetMonth } from "./source";
+import { TargetForm } from "./TargetForm";
 
-export type EnvelopeMode = "overview" | "assign" | "move" | "cover" | "limit";
+export type EnvelopeMode =
+	| "overview"
+	| "assign"
+	| "move"
+	| "cover"
+	| "limit"
+	| "target"
+	| "edit";
 
 /**
  * One envelope's sheet: its numbers and what can be done to it. The forms
@@ -97,6 +106,10 @@ export function EnvelopeSheet({
 					form((e) => <CoverForm {...props(e)} />)
 				) : mode === "limit" ? (
 					form((e) => <LimitForm {...props(e)} />)
+				) : mode === "target" ? (
+					form((e) => <TargetForm {...props(e)} />)
+				) : mode === "edit" ? (
+					form((e) => <EditForm {...props(e)} />)
 				) : envelope && actions ? (
 					<>
 						<View>
@@ -145,6 +158,20 @@ export function EnvelopeSheet({
 							<Button
 								label={t("move")}
 								onPress={() => setMode("move")}
+								variant="outlined"
+							/>
+						) : null}
+						{kind !== "closed" && !limits ? (
+							<Button
+								label={t("targetAction")}
+								onPress={() => setMode("target")}
+								variant="outlined"
+							/>
+						) : null}
+						{kind !== "closed" ? (
+							<Button
+								label={t("editAction")}
+								onPress={() => setMode("edit")}
 								variant="outlined"
 							/>
 						) : null}

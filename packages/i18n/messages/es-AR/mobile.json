@@ -305,7 +305,7 @@
 		"paused": "Tu presupuesto está en pausa",
 		"pausedDetail": "No se cuenta nada mientras esté en pausa. Reanudalo en la web.",
 		"wealth": "Patrimonio y cuentas",
-		"webForNow": "Objetivos, reglas, la configuración y más están por ahora en la web.",
+		"webForNow": "Las reglas, los ingresos y la configuración están por ahora en la web.",
 		"month": {
 			"previous": "Mes anterior",
 			"next": "Mes siguiente",
@@ -410,7 +410,11 @@
 			"assignTitle": "Asignar a {name}",
 			"moveTitle": "Mover plata de {name}",
 			"coverTitle": "Cubrir {name}",
-			"limitTitle": "Límite de {name}"
+			"limitTitle": "Límite de {name}",
+			"targetAction": "Fijar un objetivo",
+			"editAction": "Renombrar o mover",
+			"targetTitle": "Objetivo de {name}",
+			"editTitle": "Editar {name}"
 		},
 		"assign": {
 			"assignedNow": "Asignado ahora",
@@ -577,6 +581,135 @@
 			"capped": "Con los mínimos, los intereses superan los pagos.",
 			"leftToSpend": "Queda para gastar {amount}",
 			"unavailable": "No se pudieron cargar tus deudas."
+		},
+		"manage": {
+			"title": "Planificar y ordenar",
+			"afford": "¿Me alcanza?",
+			"newEnvelope": "Agregar un sobre",
+			"merge": "Combinar sobres",
+			"payDebt": "Pagar una deuda",
+			"style": "Estilo de presupuesto",
+			"reconcile": "Revisar con tu banco"
+		},
+		"afford": {
+			"title": "¿Me alcanza?",
+			"amount": "¿Cuánto sale?",
+			"envelope": "¿Qué sobre?",
+			"idle": "Escribí un monto y obtené una respuesta.",
+			"checking": "Revisando",
+			"failed": "No se pudo revisar. Probá de nuevo.",
+			"state": {
+				"FITS": "Sí. Entra, y te quedarían {after}.",
+				"FITS_TIGHT": "Entra, pero justo: te quedarían {after}.",
+				"NO_LIMIT": "Este sobre no tiene límite. Gastó {spent} este mes.",
+				"SHORT_MOVE": "Casi. A este sobre le faltan {short}. Podés moverlos.",
+				"SHORT_POOL_COVERS": "Casi. Faltan {short}, y en «{pool}» hay {notPlanned} que podés usar.",
+				"SHORT_NOTHING_LEFT": "Este mes no. Faltan {short} y no queda nada sin planificar para cubrirlo.",
+				"WEEK_FITS": "Sí. Entra esta semana, con {after} de sobra.",
+				"WEEK_NEXT_WEEK": "Esta semana no, pero el mes lo aguanta. Sale de la semana próxima y quedan {after} para el mes."
+			},
+			"perDay": "Unos {perDay} por día durante {days, plural, one {# día} other {# días}}.",
+			"usual": "Normalmente gastás unos {usual} por día.",
+			"incomplete": "Falta una cotización, así que esta respuesta puede no ser exacta.",
+			"action": {
+				"ADD_TO_SPENDING": "Sumar {amount} a Gastos",
+				"MOVE_MONEY": "Mover {amount} acá"
+			}
+		},
+		"newEnvelope": {
+			"title": "Agregar un sobre",
+			"name": "Nombre",
+			"group": "Grupo",
+			"noGroup": "Sin grupo",
+			"submit": "Agregar",
+			"toast": "Se agregó {name}"
+		},
+		"editEnvelope": {
+			"name": "Nombre",
+			"group": "Grupo",
+			"noGroup": "Sin grupo",
+			"submit": "Guardar",
+			"toast": "Se guardó {name}"
+		},
+		"target": {
+			"now": "Objetivo actual",
+			"noTarget": "Ninguno",
+			"kind": {
+				"label": "Tipo de objetivo",
+				"NONE": "Ninguno",
+				"MONTHLY": "Mensual",
+				"SAVINGS": "Meta de ahorro",
+				"BILL": "Factura"
+			},
+			"mode": {
+				"label": "Cómo funciona",
+				"REFILL": "Reponer",
+				"SET_ASIDE": "Apartar"
+			},
+			"monthly": "Monto cada mes",
+			"goal": "Monto de la meta",
+			"billNote": "Este sobre tiene una factura con fecha de vencimiento. Guardar acá la reemplaza; editá las facturas en la web.",
+			"submit": "Guardar objetivo",
+			"toast": "Objetivo guardado para {name}"
+		},
+		"merge": {
+			"title": "Combinar sobres",
+			"lead": "Su plata, categorías, reglas y objetivos pasan al sobre que se queda.",
+			"stays": "El que se queda",
+			"from": "Combinar en él",
+			"name": "Nombre al combinar",
+			"submit": "Combinar",
+			"toast": "{count, plural, one {Se combinó # sobre en {name}} other {Se combinaron # sobres en {name}}}"
+		},
+		"style": {
+			"title": "Estilo de presupuesto",
+			"now": "Tu estilo es {style}.",
+			"name": {
+				"FLEX": "Flex",
+				"EVERY_DOLLAR": "Cada peso",
+				"SAVE_FIRST": "Ahorrar primero",
+				"FIFTY_THIRTY_TWENTY": "50/30/20",
+				"WEEKLY": "Semanal",
+				"LIMITS": "Límites",
+				"DEBT_PAYOFF": "Pagar deudas"
+			},
+			"about": {
+				"FLEX": "Primero facturas y ahorro. Un solo número de Gastos para todo lo demás.",
+				"EVERY_DOLLAR": "Un sobre por categoría. Asignás toda la plata que entra.",
+				"SAVE_FIRST": "Una parte de cada sueldo va al ahorro antes que nada.",
+				"FIFTY_THIRTY_TWENTY": "La mitad a necesidades, el 30 % a gustos, el 20 % a ahorro.",
+				"WEEKLY": "Un número de gasto que se reinicia cada semana.",
+				"LIMITS": "Límites en lo que te importa. Todo lo demás solo se registra.",
+				"DEBT_PAYOFF": "Mínimos al día y el extra a una deuda por vez."
+			},
+			"haveNow": "¿Cuánta plata tenés ahora?",
+			"submit": "Cambiar",
+			"toast": "Cambiaste a {style}"
+		},
+		"payDebt": {
+			"title": "Pagar una deuda",
+			"noDebts": "Todavía no hay deudas en {currency}. Agregá una en Patrimonio y cuentas.",
+			"debt": "Deuda",
+			"amount": "Monto para el saldo",
+			"from": "Pagado desde",
+			"notTracked": "Sin registrar",
+			"envelope": "Tomado de",
+			"submit": "Pagar",
+			"toast": "Se pagaron {amount} de una deuda"
+		},
+		"reconcile": {
+			"loading": "Revisando",
+			"failed": "No se pudo cargar la revisión. Probá de nuevo.",
+			"accountsTotal": "Total de tus cuentas",
+			"title": "¿Coincide con tu banco?",
+			"lead": "Compara lo que tiene el presupuesto con las cuentas que forman parte de él. Una diferencia se registra como un ajuste.",
+			"bank": "Lo que dice tu banco",
+			"holds": "Lo que tiene el presupuesto",
+			"held": "Lo que te deben, en ninguno",
+			"incomplete": "Algunas cuentas no tienen cotización hoy, así que esto no está completo.",
+			"submit": "Registrar",
+			"toastRecorded": "Registraste un ajuste de {amount}",
+			"toastMatched": "Coincide. No hay nada que registrar"
 		}
 	},
 	"wealth": {
