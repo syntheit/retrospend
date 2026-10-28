@@ -28,6 +28,7 @@ describe("canSelect", () => {
 		expect(canSelect(item({ kind: "transfer" }))).toBe(false);
 		expect(canSelect(item({ mine: false }))).toBe(false);
 		expect(canSelect(item({ canEdit: false }))).toBe(false);
+		expect(canSelect(item({ locked: true }))).toBe(false);
 	});
 });
 
@@ -75,6 +76,21 @@ describe("mergeDeletePreviews", () => {
 		expect(merged.changes).toHaveLength(1);
 		expect(merged.changes[0]?.delta).toEqual(line(-800));
 		expect(merged.changes[0]?.after).toBeNull();
+	});
+
+	it("marks every summed line approximate, and leaves one answer exact", () => {
+		const merged = mergeDeletePreviews([
+			diff({ changes: [spent(-500, 2000)] }),
+			diff({ changes: [spent(-300, 2000)] }),
+		]);
+		expect(merged.changes.every((c) => c.approx === true)).toBe(true);
+		const lone = mergeDeletePreviews([
+			diff({ changes: [spent(-500, 2000)] }),
+			diff(),
+		]);
+		expect(lone.changes[0]?.approx).toBe(true);
+		const one = mergeDeletePreviews([diff({ changes: [spent(-500, 2000)] })]);
+		expect(one.changes[0]?.approx).toBeUndefined();
 	});
 
 	it("keeps currencies apart", () => {

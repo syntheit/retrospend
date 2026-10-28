@@ -12,6 +12,9 @@ import {
 	openAccount,
 	seedArsRates,
 } from "~/server/services/accounts/test-fixtures";
+import { setupInput } from "~/server/services/envelope/__tests__/pg-fixture";
+import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
+import { forUser } from "~/server/services/preview";
 import {
 	adminDb,
 	asKey,
@@ -43,6 +46,15 @@ type Preview = {
 	changes: { id: string; delta: Money }[];
 	detail?: { kind: string; plan?: { applied: boolean; reason: string | null } };
 };
+
+type PlanBody = {
+	applied: boolean;
+	batchId: string | null;
+	lines: unknown[];
+	rest: Money | null;
+};
+type PlanPreview = { detail?: { plan?: PlanBody } };
+type PlanWrite = { income: { plan: PlanBody } };
 
 describe("/api/v1/income", () => {
 	let userId: string;
@@ -128,6 +140,47 @@ describe("/api/v1/income", () => {
 			c.previewCreate,
 		);
 		expect(plain.detail?.plan).toMatchObject({ reason: "not_requested" });
+	});
+
+	it("previews an applied plan equal to the write's, with no batch id", async () => {
+		const planned = (await arsUser()).user.id;
+		const wallet = await openAccount(planned, "Wallet", "CASH", "ARS", 0);
+		const category = (name: string) =>
+			adminDb.category
+				.create({ data: { name, color: "blue", userId: planned } })
+				.then((made) => made.id);
+		await forUser(planned).apply(setupEnvelopeBook, {
+			...setupInput({
+				rent: await category("Rent"),
+				dining: await category("Dining"),
+			}),
+			timeZone: "UTC",
+		});
+		const body = {
+			title: "Salary",
+			amount: "1000",
+			currency: "ARS",
+			into: wallet,
+			usePlan: true,
+		};
+		const headers = await asMobile(planned);
+		const preview = await expectBody<PlanPreview>(
+			await post("/income/preview", body, headers),
+			c.previewCreate,
+		);
+		expect(preview.detail?.plan?.applied).toBe(true);
+		expect(preview.detail?.plan?.lines.length).toBeGreaterThan(0);
+		// A rolled-back id names nothing a client could undo.
+		expect(preview.detail?.plan?.batchId).toBeNull();
+
+		const made = await expectBody<PlanWrite>(
+			await post("/income", body, headers),
+			c.create,
+			201,
+		);
+		expect(made.income.plan.batchId).toEqual(expect.any(String));
+		expect(preview.detail?.plan?.lines).toEqual(made.income.plan.lines);
+		expect(preview.detail?.plan?.rest).toEqual(made.income.plan.rest);
 	});
 
 	it("says when Use my plan could not run, without failing the write", async () => {

@@ -26,6 +26,14 @@ export interface MoneyWrite<P, W> {
 const PREVIEW_DEBOUNCE_MS = 250;
 
 /**
+ * Keys of writes the server confirmed. The server replays a key for a day, so
+ * a sheet that stays mounted (write, Undo, open again, Save) must not send the
+ * same one again: it would get the first answer back and change nothing. A key
+ * the write failed with is not here, so a retry still replays.
+ */
+const spentKeys = new Set<string>();
+
+/**
  * `input` is the exact request body (client ids included), or null while the
  * form is not complete. The preview follows every change of it; the write
  * uses the same body and `idempotencyKey`, so a retry after a dropped
@@ -43,12 +51,15 @@ export function useMoneyWrite<I, P, W>(options: {
 	latest.current = options;
 	const [preview, setPreview] = useState<P | null>(null);
 	const [status, setStatus] = useState<PreviewStatus>("idle");
+	// The body the state above answered. The effect that fetches runs after the
+	// render in which the body changed, so for that frame the old answer is not
+	// this body's and must not read as ready.
+	const [answeredKey, setAnsweredKey] = useState<string | null>(null);
 	const [committing, setCommitting] = useState(false);
 	const [commitFailed, setCommitFailed] = useState(false);
 	const busy = useRef(false);
 	const bodyKey = input === null ? null : JSON.stringify(input);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `bodyKey` stands for `input`
 	useEffect(() => {
 		setPreview(null);
 		setCommitFailed(false);
@@ -66,9 +77,12 @@ export function useMoneyWrite<I, P, W>(options: {
 					if (cancelled) return;
 					setPreview(result);
 					setStatus("ready");
+					setAnsweredKey(bodyKey);
 				})
 				.catch((error: unknown) => {
-					if (!cancelled) setStatus(isRefusal(error) ? "refused" : "failed");
+					if (cancelled) return;
+					setStatus(isRefusal(error) ? "refused" : "failed");
+					setAnsweredKey(bodyKey);
 				});
 		}, debounceMs);
 		return () => {
@@ -84,7 +98,10 @@ export function useMoneyWrite<I, P, W>(options: {
 		setCommitting(true);
 		setCommitFailed(false);
 		try {
-			return await write(body, idempotencyKey);
+			const answer = await write(body, idempotencyKey);
+			// The write is done: its key must never be sent for another one.
+			spentKeys.add(idempotencyKey);
+			return answer;
 		} catch {
 			setCommitFailed(true);
 			return null;
@@ -94,13 +111,21 @@ export function useMoneyWrite<I, P, W>(options: {
 		}
 	}, []);
 
-	return { preview, status, committing, commitFailed, commit };
+	const fresh = bodyKey !== null && answeredKey === bodyKey;
+	return {
+		preview: fresh ? preview : null,
+		status: bodyKey === null ? "idle" : fresh ? status : "loading",
+		committing,
+		commitFailed,
+		commit,
+	};
 }
 
 /**
  * One id per name for as long as the request body is the same: the same body
  * sent again is the same write (a replay), a changed body is a different one.
- * Call `reset` when a sheet opens so a second opening never reuses an id.
+ * Call `reset` when a sheet opens so a second opening never reuses an id. A
+ * confirmed write retires its ids by itself (see `spentKeys`).
  */
 export function useWriteIds(bodyKey: string | null) {
 	const state = useRef({ body: "", ids: new Map<string, string>() });
@@ -109,7 +134,7 @@ export function useWriteIds(bodyKey: string | null) {
 	}
 	const idFor = useCallback((name: string): string => {
 		const known = state.current.ids.get(name);
-		if (known) return known;
+		if (known && !spentKeys.has(known)) return known;
 		const made = newClientId();
 		state.current.ids.set(name, made);
 		return made;
