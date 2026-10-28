@@ -21,7 +21,7 @@ const enabledStore = createEnabledStore(store);
 
 TaskManager.defineTask(POLL_TASK, async () => {
 	try {
-		await runPoll({
+		const posted = await runPoll({
 			enabled: () => enabledStore.get(),
 			poll: (enabled) => {
 				const tokens = createTokenStore(enabled.baseUrl);
@@ -43,9 +43,11 @@ TaskManager.defineTask(POLL_TASK, async () => {
 			channels: channelDefs,
 			post: postFor,
 		});
+		if (__DEV__) console.log(`push poll posted ${posted}`);
 		return BackgroundTask.BackgroundTaskResult.Success;
-	} catch {
+	} catch (error) {
 		// Offline or the server is down: the next run tries again.
+		console.warn("push poll failed", error);
 		return BackgroundTask.BackgroundTaskResult.Failed;
 	}
 });

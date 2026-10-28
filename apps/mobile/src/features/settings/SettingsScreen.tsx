@@ -269,32 +269,32 @@ export function SettingsScreen() {
 					</FormSection>
 				) : null}
 				{prefs.length > 0 ? (
-					<>
-						<FormSection title={t("notifications.inApp")}>
-							{INBOX_NOTIFICATION_TYPES.filter((type) =>
-								preferenceOf(prefs, type),
-							).map((type) => (
-								<FormSwitchRow
-									key={type}
-									label={tn(type)}
-									onChange={(on) => setChannel(type, "inApp", on)}
-									value={preferenceOf(prefs, type)?.inApp ?? false}
-								/>
-							))}
-						</FormSection>
-						<FormSection title={t("notifications.email")}>
-							{INBOX_NOTIFICATION_TYPES.filter((type) =>
-								preferenceOf(prefs, type),
-							).map((type) => (
-								<FormSwitchRow
-									key={type}
-									label={tn(type)}
-									onChange={(on) => setChannel(type, "email", on)}
-									value={preferenceOf(prefs, type)?.email ?? false}
-								/>
-							))}
-						</FormSection>
-					</>
+					<FormSection title={t("notifications.inApp")}>
+						{INBOX_NOTIFICATION_TYPES.filter((type) =>
+							preferenceOf(prefs, type),
+						).map((type) => (
+							<FormSwitchRow
+								key={type}
+								label={tn(type)}
+								onChange={(on) => setChannel(type, "inApp", on)}
+								value={preferenceOf(prefs, type)?.inApp ?? false}
+							/>
+						))}
+					</FormSection>
+				) : null}
+				{prefs.length > 0 ? (
+					<FormSection title={t("notifications.email")}>
+						{INBOX_NOTIFICATION_TYPES.filter((type) =>
+							preferenceOf(prefs, type),
+						).map((type) => (
+							<FormSwitchRow
+								key={type}
+								label={tn(type)}
+								onChange={(on) => setChannel(type, "email", on)}
+								value={preferenceOf(prefs, type)?.email ?? false}
+							/>
+						))}
+					</FormSection>
 				) : null}
 				<FormSection
 					footer={t("server.changeFooter")}

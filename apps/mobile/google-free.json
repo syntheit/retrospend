@@ -6,7 +6,7 @@
 		{
 			"name": "expo-notifications",
 			"keptOutBy": "autolinkingExclude",
-			"how": "package.json expo.autolinking.android.exclude keeps it out of the Android build, so firebase-messaging never reaches the Gradle tree (check-google-free.sh proves it). Only *.ios.ts files may import it, and no config plugin of it is used: plugins/with-ios-push.js sets the aps-environment entitlement."
+			"how": "package.json expo.autolinking.android.exclude keeps it out of the Android build, so firebase-messaging never reaches the Gradle tree (check-google-free.sh proves it). expo-application, which only expo-notifications needs, is excluded with it (it pulls the Play install referrer client). Only *.ios.ts files may import expo-notifications, and no config plugin of it is used: plugins/with-ios-push.js sets the aps-environment entitlement."
 		}
 	],
 	"npm": [
