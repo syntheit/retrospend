@@ -307,7 +307,7 @@ describe("expense.listV2", () => {
 			amount: { minor: 1299, currency: "USD" },
 			home: { minor: 1299000, currency: "ARS" },
 			sortKey: 1299000,
-			category: { name: "Subscriptions", tone: 8 },
+			category: { name: "Subscriptions", tone: 2 },
 		});
 		expect(cena).toMatchObject({
 			id: "shared:pgl_tx_cena",

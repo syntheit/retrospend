@@ -1,5 +1,6 @@
 "use client";
 
+import { categoryTone } from "@retrospend/domain/category-tone";
 import { ArrowLeft, Check, Circle, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { CSSProperties, Ref } from "react";
@@ -10,7 +11,6 @@ import { ScrollArea } from "~/components/ui/scroll-area";
 import { Switch } from "~/components/ui/switch";
 import { Tip } from "~/components/ui/tooltip";
 import { CATEGORY_ICON_REGISTRY } from "~/lib/category-icons";
-import { categoryTone } from "~/lib/category-tone";
 import { cn } from "~/lib/cn";
 import type { CategoryColor } from "~/lib/constants";
 

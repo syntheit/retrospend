@@ -20,7 +20,10 @@ export function useVerdictText(names: ReadonlyMap<string, string>) {
 		(v: VerdictValue): string | number => {
 			switch (v.kind) {
 				case "money":
-					return money(v.money, v.unsigned ? { sign: "never" } : undefined);
+					return money(v.money, {
+						...(v.unsigned ? { sign: "never" as const } : {}),
+						...(v.whole ? { cents: false } : {}),
+					});
 				case "month":
 					return format.dateTime(monthDate(v.key), {
 						month: "long",

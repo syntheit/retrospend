@@ -142,7 +142,7 @@ function AffordForm({ open, onClose, month }: SheetProps) {
 						a.state === "WEEK_FITS" ? (
 							<p className="text-fg-2 text-small">
 								{t.rich("perDay", {
-									perDay: () => <Money value={a.perDay} />,
+									perDay: () => <Money cents={false} value={a.perDay} />,
 									days: a.daysLeft,
 								})}
 							</p>

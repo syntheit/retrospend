@@ -9,12 +9,13 @@
  * public page, open to the internet, also loads only the newest PAGE_ROWS
  * rows and reads its totals from aggregates.
  */
-import { getImageUrl } from "~/lib/image-url";
+
+import { categoryTone } from "@retrospend/domain/category-tone";
 import { currencyDecimals } from "@retrospend/domain/money";
 import { dayKey } from "@retrospend/domain/time-zone";
+import { getImageUrl } from "~/lib/image-url";
 import type { Money } from "~/server/figures/registry";
 import { fromMinor, sumMinor, toMinor } from "~/server/services/envelope/units";
-import { categoryTone } from "~/server/services/expense-list/category-tone";
 import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
@@ -127,7 +128,8 @@ async function loadPublicTotals(db: PrismaClient, projectId: string) {
 	const digits = currencies.length
 		? Prisma.join(
 				currencies.map(
-					(c) => Prisma.sql`(${c.currency}::text, ${currencyDecimals(c.currency)}::int)`,
+					(c) =>
+						Prisma.sql`(${c.currency}::text, ${currencyDecimals(c.currency)}::int)`,
 				),
 			)
 		: Prisma.sql`(''::text, 0::int)`;
@@ -166,10 +168,12 @@ async function loadPublicTotals(db: PrismaClient, projectId: string) {
 		count,
 		first: first._min.date ? day(first._min.date) : null,
 		total: [...perCurrency.entries()]
-			.map(([currency, parts]): Money => ({
-				minor: sumMinor(parts),
-				currency,
-			}))
+			.map(
+				([currency, parts]): Money => ({
+					minor: sumMinor(parts),
+					currency,
+				}),
+			)
 			.sort((a, b) => (a.currency < b.currency ? -1 : 1)),
 		byCategory: byCategory(inputs),
 	};
@@ -347,7 +351,8 @@ async function readPage(
 		primaryCurrency: project.primaryCurrency,
 		autoAcceptSplits: project.autoAcceptSplits,
 		billingCycleLength: project.billingCycleLength,
-		myRole: viewer.kind === "link" ? ("VIEWER" as const) : (meRow?.role ?? null),
+		myRole:
+			viewer.kind === "link" ? ("VIEWER" as const) : (meRow?.role ?? null),
 		excludeFromAnalytics: meRow?.excludeFromAnalytics ?? false,
 		solo: meRow ? others.length === 0 : project.participants.length <= 1,
 		/** Today in the reader's zone, for "Today" and the date pickers. */
@@ -379,14 +384,16 @@ async function readPage(
 				withMe: i === -1 ? [] : linesOf(balances[i]?.minorByCurrency ?? {}),
 			};
 		}),
-		byCategory: publicTotals?.byCategory ?? byCategory(
-			expenses.map((e) => ({
-				currency: e.currency,
-				amount: e.amount,
-				category: e.category,
-				myShare: e.splitParticipants.find(isMe)?.shareAmount ?? null,
-			})),
-		),
+		byCategory:
+			publicTotals?.byCategory ??
+			byCategory(
+				expenses.map((e) => ({
+					currency: e.currency,
+					amount: e.amount,
+					category: e.category,
+					myShare: e.splitParticipants.find(isMe)?.shareAmount ?? null,
+				})),
+			),
 		payments: payments.map((p) => ({
 			id: p.id,
 			from: person(

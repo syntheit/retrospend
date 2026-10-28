@@ -28,7 +28,7 @@ import {
 	type NumberFormatChoice,
 	type NumberSymbols,
 	numberSymbols,
-	withNumberFormat,
+	withMoneyContext,
 } from "./format-locale";
 import { currencyDecimals } from "./money";
 import { money as checkedMoney, type Money } from "./money-minor";
@@ -384,9 +384,13 @@ export function numberFormatExamples(
 		sampleMinor(currencyDecimals(currency)),
 		currency,
 	);
+	// The picker is about the user's own (home) amounts, which show a symbol.
 	const show = (choice: NumberFormatChoice | null) =>
 		formatMoney(sample, {
-			locale: withNumberFormat(locale, choice),
+			locale: withMoneyContext(locale, {
+				numberFormat: choice,
+				homeCurrency: currency,
+			}),
 			cents: true,
 		});
 	return {

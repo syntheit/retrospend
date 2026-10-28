@@ -3,6 +3,8 @@
  * home-currency values under the totals rule, and the category color token.
  * Clients only format what comes out of here (R9).
  */
+
+import { categoryTone } from "@retrospend/domain/category-tone";
 import {
 	currencyDecimals,
 	fromUSD,
@@ -12,7 +14,6 @@ import {
 } from "@retrospend/domain/money";
 import { type Money, toMinor } from "@retrospend/domain/money-minor";
 import { type CategoryColor, Prisma } from "~prisma";
-import { categoryTone } from "./category-tone";
 import type { CategoryRefDTO } from "./types";
 
 type DecimalLike = Prisma.Decimal | number | string;

@@ -5,6 +5,8 @@
  * server computes every number (R9); a template whose currency has no rate
  * is named in the summary and left out of it, never counted as zero (B16).
  */
+
+import { NO_CATEGORY_TONE } from "@retrospend/domain/category-tone";
 import { isValidRate, USD } from "@retrospend/domain/money";
 import type { Money } from "@retrospend/domain/money-minor";
 import { nextRecurringDate } from "@retrospend/domain/recurring";
@@ -17,7 +19,6 @@ import {
 import { userTransaction } from "~/server/db-tx";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import type { Prisma, PrismaClient, RecurringTemplate } from "~prisma";
-import { NO_CATEGORY_TONE } from "./expense-list/category-tone";
 import {
 	categoryRef,
 	decimalMoney,

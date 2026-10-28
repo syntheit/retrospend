@@ -1,9 +1,9 @@
 "use client";
 
+import { categoryTone } from "@retrospend/domain/category-tone";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { usePercent } from "~/components/rows/percent";
-import { categoryTone } from "~/server/services/expense-list/category-tone";
 import { api } from "~/trpc/react";
 import type { CategoryRefs, RankWords } from "./insights-vm";
 

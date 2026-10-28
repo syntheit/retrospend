@@ -57,7 +57,7 @@ export function useVerdictCopy({
 	};
 
 	const sentence = (v: Verdict): ReactNode => {
-		const amount = () => <Money value={v.perDay} />;
+		const amount = () => <Money cents={false} value={v.perDay} />;
 		const over = () => <Money value={v.over} />;
 		const days = v.daysLeft;
 		const limits = v.lead.kind === "LEFT_IN_LIMITS";

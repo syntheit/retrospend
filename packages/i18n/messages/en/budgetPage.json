@@ -114,12 +114,12 @@
 	"rail": {
 		"label": "At a glance",
 		"owed": {
-			"title": "Owed to you",
+			"title": "Held for others",
 			"open": "Who owes you",
 			"hint": "Money you fronted. It returns to {pool, select, TO_ASSIGN {To assign} other {Not planned yet}} when they pay you back.",
 			"hintLimits": "Money you fronted. It returns to your budget when they pay you back.",
 			"pending": "<amount></amount> waits for your OK",
-			"people": "{count, plural, =0 {Money you fronted} one {Owed by # person} other {Owed by # people}}"
+			"people": "{count, plural, =0 {Money you fronted} one {For # person} other {For # people}}"
 		},
 		"moneyIn": {
 			"title": "Money in",

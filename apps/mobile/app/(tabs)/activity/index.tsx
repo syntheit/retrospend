@@ -190,17 +190,19 @@ export default function ActivityScreen() {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
-			<AccountTopBar title={t("title")} />
-			<Stack.Screen
-				options={{
-					headerSearchBarOptions: {
-						ref: searchRef,
-						placeholder: t("search"),
-						onChangeText: (event) => setSearch(event.nativeEvent.text),
-					},
-				}}
-			/>
+			{listDetail ? null : (
+				<Stack.Screen
+					options={{
+						headerSearchBarOptions: {
+							ref: searchRef,
+							placeholder: t("search"),
+							onChangeText: (event) => setSearch(event.nativeEvent.text),
+						},
+					}}
+				/>
+			)}
 			<ListDetail
+				bar={<AccountTopBar title={t("title")} />}
 				detail={
 					<Screen>
 						{selected ? (
@@ -211,6 +213,12 @@ export default function ActivityScreen() {
 					</Screen>
 				}
 				list={list}
+				search={{
+					value: search,
+					onChange: setSearch,
+					placeholder: t("search"),
+					ref: searchRef,
+				}}
 			/>
 		</View>
 	);

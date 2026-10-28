@@ -1,5 +1,6 @@
 "use client";
 
+import { categoryTone } from "@retrospend/domain/category-tone";
 import { ChevronDown, Plus } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -11,7 +12,6 @@ import { CategoryTile } from "~/components/ui/category-badge";
 import { Empty } from "~/components/ui/empty-state";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useCategoryName } from "~/hooks/use-category-name";
-import { categoryTone } from "~/lib/category-tone";
 import { api, type RouterOutputs } from "~/trpc/react";
 import { useAutosave } from "../autosave";
 import { SectionShell, SectionUnavailable } from "../section-shell";

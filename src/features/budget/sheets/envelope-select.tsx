@@ -1,5 +1,6 @@
 "use client";
 
+import { categoryTone } from "@retrospend/domain/category-tone";
 import { Money } from "~/components/money/money";
 import { CategoryGlyph } from "~/components/pickers/category-picker";
 import {
@@ -9,7 +10,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
-import { categoryTone } from "~/lib/category-tone";
 import type { EnvelopeInGroup } from "./use-month";
 
 type Amount = { minor: number; currency: string };

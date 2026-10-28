@@ -49,6 +49,8 @@ export type GlanceRow = {
 	figure?: string;
 	/** The people behind the amount (Owed to you, You owe), as faces (rule 8). */
 	faces?: FacePerson[];
+	/** dollarToday: the price is a rate, so it shows the code, not the home symbol. */
+	code?: boolean;
 	/** dollarToday: the rate type's name, already in the viewer's words. */
 	rateLabel?: string;
 };
@@ -171,6 +173,7 @@ export function GlanceStrip({
 							</span>
 							<Money
 								className="text-body @xl:text-section font-semibold"
+								display={r.code ? "code" : undefined}
 								figure={r.figure}
 								missing="noRate"
 								value={r.amount}
@@ -233,6 +236,7 @@ export function GlanceStrip({
 										"text-body font-semibold",
 										r.amount ? (TONE[r.id] ?? "text-fg") : undefined,
 									)}
+									display={r.code ? "code" : undefined}
 									figure={r.figure}
 									missing="noRate"
 									value={r.amount}

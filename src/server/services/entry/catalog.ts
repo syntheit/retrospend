@@ -5,7 +5,7 @@
  * (open accounts with their balance, the default account per currency).
  * Amounts are Money in minor units; the client only formats them.
  */
-import { categoryTone } from "~/lib/category-tone";
+import { categoryTone } from "@retrospend/domain/category-tone";
 import type { Money } from "~/server/figures/registry";
 import type { PrismaClient } from "~prisma";
 import { defaultAccounts } from "../accounts/defaults";

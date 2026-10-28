@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { tryConvertAmount } from "@retrospend/domain/money";
 import { fromMinor, money, toMinor } from "@retrospend/domain/money-minor";
 import { draftFromMinor } from "@retrospend/domain/parse";
 import { useTranslations } from "next-intl";
@@ -25,11 +24,10 @@ import {
 import { Sheet } from "~/components/ui/sheet";
 import { Switch } from "~/components/ui/switch";
 import { useToast } from "~/components/ui/toast";
-import { useCurrency } from "~/hooks/use-currency";
-import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
 import { getSubscriptionMetadata } from "~/lib/subscription-metadata";
 import { api } from "~/trpc/react";
+import { CurrencyEstimate } from "./recurring-estimate";
 
 const recurringSchema = z.object({
 	name: z.string().min(1, "Name is required"),
@@ -345,43 +343,5 @@ export function RecurringModal({
 				</div>
 			</div>
 		</Sheet>
-	);
-}
-
-function CurrencyEstimate({
-	amount,
-	currency,
-	homeCurrency,
-	rate,
-	isLoading,
-}: {
-	amount: number;
-	currency: string;
-	homeCurrency: string;
-	rate?: number;
-	isLoading: boolean;
-}) {
-	const t = useTranslations("recurring");
-	const { formatCurrency } = useCurrencyFormatter();
-	const { usdToHomeRate } = useCurrency();
-
-	if (currency === homeCurrency || !amount) return null;
-	if (isLoading)
-		return <p className="text-muted-foreground text-xs">{t("calculating")}</p>;
-
-	// No estimate until both rates are known (never assume 1)
-	const estimation = tryConvertAmount(
-		amount,
-		currency,
-		rate,
-		homeCurrency,
-		usdToHomeRate,
-	);
-	if (estimation === null) return null;
-
-	return (
-		<p className="fade-in slide-in-from-top-1 animate-in text-muted-foreground text-xs duration-300">
-			{t("estimated", { amount: formatCurrency(estimation, homeCurrency) })}
-		</p>
 	);
 }

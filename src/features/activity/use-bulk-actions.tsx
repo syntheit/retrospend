@@ -1,5 +1,6 @@
 "use client";
 
+import { categoryTone } from "@retrospend/domain/category-tone";
 import { Download, Tag, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
@@ -16,7 +17,6 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { useToast } from "~/components/ui/toast";
 import { formatDateOnly } from "~/lib/date";
-import { categoryTone } from "~/server/services/expense-list/category-tone";
 import type { RestoreToken } from "~/server/services/entry/restore-token";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
 import { api } from "~/trpc/react";

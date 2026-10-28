@@ -26,9 +26,12 @@ function openProject(id: string) {
 export function ProjectsList({
 	top,
 	query: sharedQuery,
+	bar,
 }: {
 	top?: ReactNode;
 	query?: string;
+	/** The screen's top bar; a list-detail pair draws it over the list pane. */
+	bar?: ReactNode;
 }) {
 	const t = useTranslations("mobile.projects");
 	const { color } = useTheme();
@@ -107,7 +110,7 @@ export function ProjectsList({
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
-			{sharedQuery === undefined ? (
+			{sharedQuery === undefined && !listDetail ? (
 				<Stack.Screen
 					options={{
 						headerSearchBarOptions: {
@@ -119,6 +122,7 @@ export function ProjectsList({
 				/>
 			) : null}
 			<ListDetail
+				bar={bar}
 				detail={
 					selected ? (
 						<ProjectView id={selected} key={selected} />
@@ -129,6 +133,16 @@ export function ProjectsList({
 					)
 				}
 				list={list}
+				search={
+					sharedQuery === undefined
+						? {
+								value: query,
+								onChange: setQuery,
+								placeholder: t("search"),
+								ref: searchRef,
+							}
+						: undefined
+				}
 			/>
 		</View>
 	);

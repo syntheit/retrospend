@@ -203,7 +203,7 @@ describe("project.pageView", () => {
 			name: "Sky blue",
 			icon: null,
 			color: "sky",
-			tone: 3,
+			tone: 12,
 		});
 		await adminDb.sharedTransaction.update({
 			where: { id: groceries.id },

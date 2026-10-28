@@ -1,5 +1,9 @@
 "use client";
 
+import {
+	categoryTone,
+	NO_CATEGORY_TONE,
+} from "@retrospend/domain/category-tone";
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type RefObject, useEffect, useMemo, useRef } from "react";
@@ -14,10 +18,6 @@ import {
 	type FilterMenuGroup,
 } from "~/components/ui/chip";
 import { Input } from "~/components/ui/input";
-import {
-	categoryTone,
-	NO_CATEGORY_TONE,
-} from "~/server/services/expense-list/category-tone";
 import {
 	type ActivityKind,
 	NO_CATEGORY,

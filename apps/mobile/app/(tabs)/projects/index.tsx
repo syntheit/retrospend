@@ -14,10 +14,5 @@ export default function ProjectsScreen() {
 			/>
 		);
 	}
-	return (
-		<>
-			<AccountTopBar title={t("title")} />
-			<ProjectsList />
-		</>
-	);
+	return <ProjectsList bar={<AccountTopBar title={t("title")} />} />;
 }

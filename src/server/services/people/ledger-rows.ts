@@ -6,7 +6,7 @@
  * your balance with this person: their share of what you paid, or minus
  * your share of what they paid.
  */
-import { categoryTone } from "~/lib/category-tone";
+import { categoryTone } from "@retrospend/domain/category-tone";
 import { sumMinor, toMinor } from "~/server/services/envelope/units";
 import type { TransactionHistoryItem } from "~/server/services/shared-expenses/people.service";
 import type { ParticipantRef } from "~/server/services/shared-expenses/types";

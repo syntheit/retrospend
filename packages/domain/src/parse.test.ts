@@ -39,3 +39,29 @@ describe("parseMoneyInput nesting", () => {
 		);
 	});
 });
+
+describe("parseMoneyInput home symbol", () => {
+	it("accepts the home currency's symbol on a home amount", () => {
+		expect(parseMoneyInput("$1,500", "en-US-x-hc-usd", "USD")).toEqual({
+			ok: true,
+			minor: 150000,
+			expression: false,
+		});
+		expect(parseMoneyInput("$ 1.500,50", "es-AR-x-hc-ars", "ARS")).toEqual({
+			ok: true,
+			minor: 150050,
+			expression: false,
+		});
+	});
+
+	it("refuses the symbol on a foreign amount or without a home currency", () => {
+		expect(parseMoneyInput("$1,500", "en-US-x-hc-usd", "EUR")).toEqual({
+			ok: false,
+			error: "invalidCharacter",
+		});
+		expect(parseMoneyInput("$1,500", "en-US", "USD")).toEqual({
+			ok: false,
+			error: "invalidCharacter",
+		});
+	});
+});

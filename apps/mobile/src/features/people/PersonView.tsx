@@ -9,10 +9,12 @@ import { LinkButton, SectionHeader, StaleNote } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { ConfirmSheet } from "@/features/settle/ConfirmSheet";
 import { SettleSheet } from "@/features/settle/SettleSheet";
+import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
+import { PaneBar } from "@/ui/PaneBar";
 import { Screen } from "@/ui/Screen";
 import { useToast } from "@/ui/Toast";
 import { isApproximate, sideOf } from "./groups";
@@ -45,6 +47,7 @@ export function PersonView({
 	const toast = useToast();
 	const { api } = useSession();
 	const { color, space, type } = useTheme();
+	const { listDetail } = useLayoutClass();
 	const { state, reload } = usePerson(person);
 	const [settling, setSettling] = useState(startSettling);
 	const [confirming, setConfirming] = useState<{
@@ -97,9 +100,13 @@ export function PersonView({
 
 	return (
 		<Screen flush>
-			<Stack.Screen
-				options={{ title: identity.name, headerLargeTitle: false }}
-			/>
+			{listDetail ? (
+				<PaneBar title={identity.name} />
+			) : (
+				<Stack.Screen
+					options={{ title: identity.name, headerLargeTitle: false }}
+				/>
+			)}
 			<StaleNote since={state.staleSince} />
 			<View style={{ gap: space[2], padding: space[4] }}>
 				{face ? <Avatar face={face} size="lg" /> : null}

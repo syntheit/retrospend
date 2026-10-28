@@ -108,9 +108,9 @@ describe("NumbersSection", () => {
 			expect.arrayContaining([
 				"Number format|follow",
 				"Number format|follow|Follow language",
-				"Number format|comma_dot|USD\u00a01,234,567.89",
-				"Number format|dot_comma|USD\u00a01.234.567,89",
-				"Number format|space_comma|USD\u00a01\u202f234\u202f567,89",
+				"Number format|comma_dot|$1,234,567.89",
+				"Number format|dot_comma|$1.234.567,89",
+				"Number format|space_comma|$1\u202f234\u202f567,89",
 			]),
 		);
 	});
@@ -127,7 +127,7 @@ describe("NumbersSection", () => {
 		const press = root.findAll(
 			(n) =>
 				n.props.accessibilityLabel ===
-				"Number format|dot_comma|USD\u00a01.234.567,89",
+				"Number format|dot_comma|$1.234.567,89",
 		)[0] as TestNode;
 		await act(async () => {
 			(press.props.onPress as () => void)();

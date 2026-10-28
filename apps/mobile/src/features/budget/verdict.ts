@@ -7,7 +7,7 @@ import type { Verdict } from "./source";
 // chooses which message and which of the verdict's own values go into it.
 
 export type VerdictValue =
-	| { kind: "money"; money: Money; unsigned?: boolean }
+	| { kind: "money"; money: Money; unsigned?: boolean; whole?: boolean }
 	| { kind: "month"; key: number }
 	| { kind: "date"; iso: string }
 	| { kind: "names"; ids: string[] }
@@ -72,7 +72,8 @@ export function verdictIsOver(v: Verdict): boolean {
 export function verdictSentence(v: Verdict): VerdictLine {
 	const month: VerdictValue = { kind: "month", key: v.month };
 	const next: VerdictValue = { kind: "month", key: addMonths(v.month, 1) };
-	const amount = money(v.perDay);
+	// "About X a day" is an estimate, so it reads in whole units.
+	const amount: VerdictValue = { kind: "money", money: v.perDay, whole: true };
 	const days: VerdictValue = { kind: "number", value: v.daysLeft };
 	const limits = v.lead.kind === "LEFT_IN_LIMITS";
 	const resets: VerdictValue = { kind: "date", iso: v.resetsOn ?? "" };
