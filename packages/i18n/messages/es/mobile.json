@@ -590,7 +590,9 @@
 			"merge": "Combinar sobres",
 			"payDebt": "Pagar una deuda",
 			"style": "Estilo de presupuesto",
-			"reconcile": "Comprobar con tu banco"
+			"reconcile": "Comprobar con tu banco",
+			"rules": "Reglas de ingresos",
+			"income": "Dinero que entró este mes"
 		},
 		"afford": {
 			"title": "¿Me alcanza?",
@@ -780,6 +782,59 @@
 					"rest": "El resto"
 				}
 			}
+		},
+		"income": {
+			"title": "Entradas de {month}",
+			"moneyIn": "Entradas",
+			"planCost": "Tu plan cuesta {cost} al mes. Normalmente recibes {income}.",
+			"planCostOnly": "Tu plan cuesta {cost} al mes.",
+			"incomplete": "Algunos montos no tienen cotización hoy y quedan fuera.",
+			"runway": "Tu presupuesto y tus ahorros duran {months} meses con este plan.",
+			"error": "No se pudo cargar. Inténtalo de nuevo."
+		},
+		"rules": {
+			"title": "Reglas de ingresos",
+			"lead": "Qué pasa cuando llega dinero, en el orden en que corren las reglas. Cada movimiento queda en el historial con Deshacer.",
+			"none": "Todavía no hay reglas. El dinero que llega queda Sin planear aún hasta que lo asignes.",
+			"paused": "En pausa",
+			"add": "Añadir regla",
+			"sentence": {
+				"percent": "{percent} de lo que entra a {name}",
+				"amount": "{amount} de lo que entra a {name}",
+				"rest": "El resto a {name}",
+				"envelopeFallback": "Sobre"
+			},
+			"editor": {
+				"title": "Añadir regla",
+				"add": "Añadir regla",
+				"name": "Nombre",
+				"namePlaceholder": "Ahorrar primero",
+				"kind": "Qué hace",
+				"percent": "Porcentaje",
+				"amount": "Monto",
+				"rest": "El resto",
+				"percentLabel": "Porcentaje de lo que entra",
+				"amountLabel": "Monto de cada entrada",
+				"goesTo": "Va a",
+				"pick": "Elige un sobre",
+				"note": "Corre con el dinero que llegue de ahora en adelante. Hoy no se mueve nada.",
+				"toast": "Añadiste la regla {name}"
+			},
+			"apply": {
+				"title": "Aplicar {name} a este mes",
+				"apply": "Aplicar",
+				"lead": "Una regla solo corre con el dinero que llega después de crearla. Esto la corre una vez con el dinero que ya entró este mes.",
+				"toast": "Aplicaste {name} a las entradas de este mes",
+				"envelopeFallback": "Sobre"
+			},
+			"back": "Atrás",
+			"error": "No se pudo guardar. Inténtalo de nuevo.",
+			"pause": "Pausar",
+			"resume": "Activar",
+			"moveUp": "Subir",
+			"moveDown": "Bajar",
+			"applyAction": "Aplicar al dinero que entró este mes",
+			"remove": "Quitar regla"
 		}
 	},
 	"wealth": {

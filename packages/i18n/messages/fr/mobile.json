@@ -590,7 +590,9 @@
 			"merge": "Fusionner des enveloppes",
 			"payDebt": "Rembourser une dette",
 			"style": "Style de budget",
-			"reconcile": "Comparer avec ta banque"
+			"reconcile": "Comparer avec ta banque",
+			"rules": "Règles de revenus",
+			"income": "Argent reçu ce mois-ci"
 		},
 		"afford": {
 			"title": "Puis-je me le permettre ?",
@@ -780,6 +782,59 @@
 					"rest": "Le reste"
 				}
 			}
+		},
+		"income": {
+			"title": "Entrées de {month}",
+			"moneyIn": "Entrées",
+			"planCost": "Ton plan coûte {cost} par mois. Tu reçois d'habitude {income}.",
+			"planCostOnly": "Ton plan coûte {cost} par mois.",
+			"incomplete": "Certains montants n'ont pas de taux aujourd'hui et sont laissés de côté.",
+			"runway": "Ton budget et tes économies tiennent {months} mois avec ce plan.",
+			"error": "Impossible de charger. Réessaie."
+		},
+		"rules": {
+			"title": "Règles de revenus",
+			"lead": "Ce qui se passe quand de l'argent arrive, dans l'ordre des règles. Chaque mouvement apparaît dans l'historique avec Annuler.",
+			"none": "Pas encore de règles. L'argent qui arrive reste Pas encore prévu jusqu'à ce que tu l'attribues.",
+			"paused": "En pause",
+			"add": "Ajouter une règle",
+			"sentence": {
+				"percent": "{percent} des entrées vers {name}",
+				"amount": "{amount} des entrées vers {name}",
+				"rest": "Le reste vers {name}",
+				"envelopeFallback": "Enveloppe"
+			},
+			"editor": {
+				"title": "Ajouter une règle",
+				"add": "Ajouter la règle",
+				"name": "Nom",
+				"namePlaceholder": "Épargner d'abord",
+				"kind": "Ce qu'elle fait",
+				"percent": "Pourcentage",
+				"amount": "Montant",
+				"rest": "Le reste",
+				"percentLabel": "Pourcentage des entrées",
+				"amountLabel": "Montant de chaque entrée",
+				"goesTo": "Va vers",
+				"pick": "Choisis une enveloppe",
+				"note": "Elle s'applique à l'argent qui arrive à partir de maintenant. Rien ne bouge aujourd'hui.",
+				"toast": "Règle {name} ajoutée"
+			},
+			"apply": {
+				"title": "Appliquer {name} à ce mois",
+				"apply": "Appliquer",
+				"lead": "Une règle ne s'applique qu'à l'argent qui arrive après sa création. Cela l'applique une fois à l'argent déjà entré ce mois-ci.",
+				"toast": "{name} appliquée aux entrées de ce mois",
+				"envelopeFallback": "Enveloppe"
+			},
+			"back": "Retour",
+			"error": "Impossible d'enregistrer. Réessaie.",
+			"pause": "Mettre en pause",
+			"resume": "Activer",
+			"moveUp": "Monter",
+			"moveDown": "Descendre",
+			"applyAction": "Appliquer à l'argent reçu ce mois-ci",
+			"remove": "Supprimer la règle"
 		}
 	},
 	"wealth": {

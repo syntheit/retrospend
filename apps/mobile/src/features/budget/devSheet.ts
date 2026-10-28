@@ -1,4 +1,5 @@
 import type { OpenSheet } from "./BudgetSheets";
+import { MORE_KINDS, type MoreKind } from "./MoreSheets";
 import { type BudgetMonth, envelopesOf } from "./source";
 
 /**
@@ -9,6 +10,9 @@ import { type BudgetMonth, envelopesOf } from "./source";
  */
 export function devSheet(name: string, data: BudgetMonth): OpenSheet | null {
 	const first = envelopesOf(data)[0]?.id;
+	if ((MORE_KINDS as readonly string[]).includes(name)) {
+		return { kind: name as MoreKind };
+	}
 	switch (name) {
 		case "afford":
 		case "newEnvelope":

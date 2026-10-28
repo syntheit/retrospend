@@ -590,7 +590,9 @@
 			"merge": "Combinar sobres",
 			"payDebt": "Pagar una deuda",
 			"style": "Estilo de presupuesto",
-			"reconcile": "Revisar con tu banco"
+			"reconcile": "Revisar con tu banco",
+			"rules": "Reglas de ingresos",
+			"income": "Plata que entró este mes"
 		},
 		"afford": {
 			"title": "¿Me alcanza?",
@@ -780,6 +782,59 @@
 					"rest": "El resto"
 				}
 			}
+		},
+		"income": {
+			"title": "Entradas de {month}",
+			"moneyIn": "Entradas",
+			"planCost": "Tu plan cuesta {cost} por mes. Normalmente recibís {income}.",
+			"planCostOnly": "Tu plan cuesta {cost} por mes.",
+			"incomplete": "Algunos montos no tienen cotización hoy y quedan afuera.",
+			"runway": "Tu presupuesto y tus ahorros duran {months} meses con este plan.",
+			"error": "No se pudo cargar. Probá de nuevo."
+		},
+		"rules": {
+			"title": "Reglas de ingresos",
+			"lead": "Qué pasa cuando llega plata, en el orden en que corren las reglas. Cada movimiento queda en el historial con Deshacer.",
+			"none": "Todavía no hay reglas. La plata que llega queda Sin planear aún hasta que la asignes.",
+			"paused": "En pausa",
+			"add": "Agregar regla",
+			"sentence": {
+				"percent": "{percent} de lo que entra a {name}",
+				"amount": "{amount} de lo que entra a {name}",
+				"rest": "El resto a {name}",
+				"envelopeFallback": "Sobre"
+			},
+			"editor": {
+				"title": "Agregar regla",
+				"add": "Agregar regla",
+				"name": "Nombre",
+				"namePlaceholder": "Ahorrar primero",
+				"kind": "Qué hace",
+				"percent": "Porcentaje",
+				"amount": "Monto",
+				"rest": "El resto",
+				"percentLabel": "Porcentaje de lo que entra",
+				"amountLabel": "Monto de cada entrada",
+				"goesTo": "Va a",
+				"pick": "Elegí un sobre",
+				"note": "Corre con la plata que llegue de ahora en más. Hoy no se mueve nada.",
+				"toast": "Agregaste la regla {name}"
+			},
+			"apply": {
+				"title": "Aplicar {name} a este mes",
+				"apply": "Aplicar",
+				"lead": "Una regla solo corre con la plata que llega después de crearla. Esto la corre una vez con la plata que ya entró este mes.",
+				"toast": "Aplicaste {name} a las entradas de este mes",
+				"envelopeFallback": "Sobre"
+			},
+			"back": "Atrás",
+			"error": "No se pudo guardar. Probá de nuevo.",
+			"pause": "Pausar",
+			"resume": "Activar",
+			"moveUp": "Subir",
+			"moveDown": "Bajar",
+			"applyAction": "Aplicar a la plata que entró este mes",
+			"remove": "Sacar regla"
 		}
 	},
 	"wealth": {

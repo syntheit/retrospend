@@ -590,7 +590,9 @@
 			"merge": "Combinar envelopes",
 			"payDebt": "Pagar uma dívida",
 			"style": "Estilo de orçamento",
-			"reconcile": "Conferir com seu banco"
+			"reconcile": "Conferir com seu banco",
+			"rules": "Regras de renda",
+			"income": "Dinheiro que entrou neste mês"
 		},
 		"afford": {
 			"title": "Posso pagar isso?",
@@ -780,6 +782,59 @@
 					"rest": "O resto"
 				}
 			}
+		},
+		"income": {
+			"title": "Entradas de {month}",
+			"moneyIn": "Entradas",
+			"planCost": "Seu plano custa {cost} por mês. Você costuma receber {income}.",
+			"planCostOnly": "Seu plano custa {cost} por mês.",
+			"incomplete": "Alguns valores não têm cotação hoje e ficam de fora.",
+			"runway": "Seu orçamento e suas economias duram {months} meses com este plano.",
+			"error": "Não foi possível carregar. Tente de novo."
+		},
+		"rules": {
+			"title": "Regras de renda",
+			"lead": "O que acontece quando o dinheiro chega, na ordem das regras. Cada movimento aparece no histórico com Desfazer.",
+			"none": "Ainda não há regras. O dinheiro que chega fica Ainda não planejado até você atribuir.",
+			"paused": "Pausada",
+			"add": "Adicionar regra",
+			"sentence": {
+				"percent": "{percent} do que entra para {name}",
+				"amount": "{amount} do que entra para {name}",
+				"rest": "O resto para {name}",
+				"envelopeFallback": "Envelope"
+			},
+			"editor": {
+				"title": "Adicionar regra",
+				"add": "Adicionar regra",
+				"name": "Nome",
+				"namePlaceholder": "Poupar primeiro",
+				"kind": "O que faz",
+				"percent": "Porcentagem",
+				"amount": "Valor",
+				"rest": "O resto",
+				"percentLabel": "Porcentagem do que entra",
+				"amountLabel": "Valor de cada entrada",
+				"goesTo": "Vai para",
+				"pick": "Escolha um envelope",
+				"note": "Ela roda no dinheiro que chegar de agora em diante. Hoje nada se move.",
+				"toast": "Você adicionou a regra {name}"
+			},
+			"apply": {
+				"title": "Aplicar {name} a este mês",
+				"apply": "Aplicar",
+				"lead": "Uma regra só roda no dinheiro que chega depois de existir. Isto a roda uma vez no dinheiro que já entrou neste mês.",
+				"toast": "Você aplicou {name} às entradas deste mês",
+				"envelopeFallback": "Envelope"
+			},
+			"back": "Voltar",
+			"error": "Não foi possível salvar. Tente de novo.",
+			"pause": "Pausar",
+			"resume": "Ativar",
+			"moveUp": "Subir",
+			"moveDown": "Descer",
+			"applyAction": "Aplicar ao dinheiro que entrou neste mês",
+			"remove": "Remover regra"
 		}
 	},
 	"wealth": {

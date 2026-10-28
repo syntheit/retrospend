@@ -590,7 +590,9 @@
 			"merge": "Combine envelopes",
 			"payDebt": "Pay down a debt",
 			"style": "Budget style",
-			"reconcile": "Check against your bank"
+			"reconcile": "Check against your bank",
+			"rules": "Income rules",
+			"income": "Money in this month"
 		},
 		"afford": {
 			"title": "Can I afford it?",
@@ -780,6 +782,59 @@
 					"rest": "The rest"
 				}
 			}
+		},
+		"income": {
+			"title": "Money in, {month}",
+			"moneyIn": "Money in",
+			"planCost": "Your plan costs {cost} a month. You usually get {income}.",
+			"planCostOnly": "Your plan costs {cost} a month.",
+			"incomplete": "Some amounts have no rate today and are left out.",
+			"runway": "Your budget and savings last {months} months at this plan.",
+			"error": "Couldn't load this. Try again."
+		},
+		"rules": {
+			"title": "Income rules",
+			"lead": "What happens when money arrives, in the order the rules run. Every move shows in history with Undo.",
+			"none": "No rules yet. Money that arrives stays Not planned yet until you assign it.",
+			"paused": "Paused",
+			"add": "Add rule",
+			"sentence": {
+				"percent": "{percent} of money in to {name}",
+				"amount": "{amount} of money in to {name}",
+				"rest": "The rest to {name}",
+				"envelopeFallback": "Envelope"
+			},
+			"editor": {
+				"title": "Add rule",
+				"add": "Add rule",
+				"name": "Name",
+				"namePlaceholder": "Save first",
+				"kind": "What it does",
+				"percent": "Percent",
+				"amount": "Amount",
+				"rest": "The rest",
+				"percentLabel": "Percent of money in",
+				"amountLabel": "Amount from each money in",
+				"goesTo": "Goes to",
+				"pick": "Pick an envelope",
+				"note": "It runs on money that arrives from now on. Nothing moves today.",
+				"toast": "Added the rule {name}"
+			},
+			"apply": {
+				"title": "Apply {name} to this month",
+				"apply": "Apply",
+				"lead": "A rule only runs on money that arrives after it exists. This runs it once on money that already came in this month.",
+				"toast": "Applied {name} to this month's money in",
+				"envelopeFallback": "Envelope"
+			},
+			"back": "Back",
+			"error": "Couldn't save. Try again.",
+			"pause": "Pause",
+			"resume": "Turn on",
+			"moveUp": "Move up",
+			"moveDown": "Move down",
+			"applyAction": "Apply to this month's money in",
+			"remove": "Remove rule"
 		}
 	},
 	"wealth": {

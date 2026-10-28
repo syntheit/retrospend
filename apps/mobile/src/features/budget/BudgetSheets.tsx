@@ -1,6 +1,7 @@
 import { AffordSheet } from "./AffordSheet";
 import { type EnvelopeMode, EnvelopeSheet } from "./EnvelopeSheet";
 import { MergeSheet } from "./MergeSheet";
+import { type MoreKind, MoreSheets } from "./MoreSheets";
 import type { MonthKind } from "./months";
 import { NewEnvelopeSheet } from "./NewEnvelopeSheet";
 import { PayDebtSheet } from "./PayDebtSheet";
@@ -20,7 +21,8 @@ export type OpenSheet =
 	| { kind: "merge" }
 	| { kind: "style" }
 	| { kind: "payDebt" }
-	| { kind: "reconcile" };
+	| { kind: "reconcile" }
+	| { kind: MoreKind };
 
 /** Every sheet the Budget tab can present, closed unless `sheet` names it. */
 export function BudgetSheets({
@@ -98,6 +100,14 @@ export function BudgetSheets({
 				onClose={onClose}
 				onDone={onDone}
 				visible={sheet?.kind === "style"}
+			/>
+			<MoreSheets
+				data={data}
+				kind={kind}
+				onClose={onClose}
+				onDone={onDone}
+				onOpen={onOpen}
+				open={sheet?.kind ?? null}
 			/>
 		</>
 	);

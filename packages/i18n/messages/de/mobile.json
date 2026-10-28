@@ -590,7 +590,9 @@
 			"merge": "Umschläge zusammenführen",
 			"payDebt": "Schulden abzahlen",
 			"style": "Budgetstil",
-			"reconcile": "Mit deiner Bank abgleichen"
+			"reconcile": "Mit deiner Bank abgleichen",
+			"rules": "Einnahmeregeln",
+			"income": "Geld dieses Monats"
 		},
 		"afford": {
 			"title": "Kann ich mir das leisten?",
@@ -780,6 +782,59 @@
 					"rest": "Der Rest"
 				}
 			}
+		},
+		"income": {
+			"title": "Einnahmen {month}",
+			"moneyIn": "Einnahmen",
+			"planCost": "Dein Plan kostet {cost} im Monat. Üblicherweise erhältst du {income}.",
+			"planCostOnly": "Dein Plan kostet {cost} im Monat.",
+			"incomplete": "Für einige Beträge gibt es heute keinen Kurs; sie bleiben außen vor.",
+			"runway": "Dein Budget und deine Ersparnisse reichen mit diesem Plan {months} Monate.",
+			"error": "Das ließ sich nicht laden. Versuch es nochmal."
+		},
+		"rules": {
+			"title": "Einnahmeregeln",
+			"lead": "Was passiert, wenn Geld eintrifft, in der Reihenfolge der Regeln. Jede Bewegung steht im Verlauf mit Rückgängig.",
+			"none": "Noch keine Regeln. Eingehendes Geld bleibt Noch nicht verplant, bis du es zuweist.",
+			"paused": "Pausiert",
+			"add": "Regel hinzufügen",
+			"sentence": {
+				"percent": "{percent} der Einnahmen an {name}",
+				"amount": "{amount} der Einnahmen an {name}",
+				"rest": "Der Rest an {name}",
+				"envelopeFallback": "Umschlag"
+			},
+			"editor": {
+				"title": "Regel hinzufügen",
+				"add": "Regel hinzufügen",
+				"name": "Name",
+				"namePlaceholder": "Zuerst sparen",
+				"kind": "Was sie tut",
+				"percent": "Prozent",
+				"amount": "Betrag",
+				"rest": "Der Rest",
+				"percentLabel": "Prozent der Einnahmen",
+				"amountLabel": "Betrag pro Einnahme",
+				"goesTo": "Geht an",
+				"pick": "Umschlag wählen",
+				"note": "Sie läuft auf Geld, das ab jetzt eingeht. Heute bewegt sich nichts.",
+				"toast": "Regel {name} hinzugefügt"
+			},
+			"apply": {
+				"title": "{name} auf diesen Monat anwenden",
+				"apply": "Anwenden",
+				"lead": "Eine Regel läuft nur auf Geld, das nach ihrer Erstellung eingeht. Das lässt sie einmal auf Geld laufen, das diesen Monat schon eingegangen ist.",
+				"toast": "{name} auf die Einnahmen dieses Monats angewendet",
+				"envelopeFallback": "Umschlag"
+			},
+			"back": "Zurück",
+			"error": "Das ließ sich nicht speichern. Versuch es nochmal.",
+			"pause": "Pausieren",
+			"resume": "Einschalten",
+			"moveUp": "Nach oben",
+			"moveDown": "Nach unten",
+			"applyAction": "Auf das Geld dieses Monats anwenden",
+			"remove": "Regel entfernen"
 		}
 	},
 	"wealth": {
