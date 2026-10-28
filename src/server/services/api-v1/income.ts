@@ -84,7 +84,8 @@ export async function previewCreateIncome(caller: LedgerCaller, input: Input) {
 		...toPreviewDto(preview),
 		detail: {
 			kind: "income.add" as const,
-			plan: planDto(preview.value.plan),
+			// The dry run rolls its batch back: that id names nothing a client could undo.
+			plan: { ...planDto(preview.value.plan), batchId: null },
 		},
 	};
 }
