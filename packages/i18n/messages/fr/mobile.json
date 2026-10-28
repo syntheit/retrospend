@@ -607,7 +607,12 @@
 			"whatIf": "Et si je dépense",
 			"plan": "Planifier le mois",
 			"planApply": "Appliquer le plan",
-			"fundNow": "Alimenter le mois prochain maintenant"
+			"fundNow": "Alimenter le mois prochain maintenant",
+			"close": "Résumé du mois",
+			"welcomeBack": "Bon retour",
+			"startingMoney": "Argent de départ",
+			"toWealth": "Déplacer de l'argent vers le patrimoine",
+			"fromWealth": "Prendre de l'argent du patrimoine"
 		},
 		"afford": {
 			"title": "Puis-je me le permettre ?",
@@ -925,7 +930,103 @@
 			"uncovered": "Rien ne peut couvrir cette part",
 			"idle": "Saisis un montant pour voir l'effet.",
 			"title": "Et si je dépense"
-		}
+		},
+		"close": {
+			"title": "{month} est clôturé",
+			"done": "Terminé",
+			"notClosed": "Ce mois n'est pas encore clôturé.",
+			"moneyIn": "Entrées",
+			"assigned": "Attribué",
+			"late": "Inclut {count, plural, one {# dépense tardive} other {# dépenses tardives}}",
+			"overTitle": "Dépassés",
+			"takeInstead": "Le prendre sur {month}",
+			"leftTitle": "Restes",
+			"returned": "Est retourné dans {pool}",
+			"swept": "Déplacé vers {name}",
+			"envelopeFallback": "Enveloppe",
+			"back": "Retour",
+			"error": "Impossible de charger. Réessaie."
+		},
+		"carry": {
+			"title": "Le prendre sur {name} en {month}",
+			"lead": "{name} a dépassé le mois dernier. Cela le prend sur {name} en {month} plutôt que sur l'argent non prévu. {name} peut commencer {month} sous zéro.",
+			"take": "Le prendre sur {name}",
+			"toast": "{name} commence {month} avec le dépassement"
+		},
+		"welcomeBack": {
+			"title": "Bon retour",
+			"lead": "{months} : clôturés automatiquement.",
+			"leadNone": "Aucun mois ne s'est clôturé tout seul pendant ton absence.",
+			"choice": "Comment reprendre",
+			"catchUp": "Rattraper",
+			"haveNow": "Indiquer ce que j'ai",
+			"startFresh": "Repartir de zéro",
+			"about": {
+				"CATCH_UP": "Ouvre les résumés des mois clôturés, dans l'ordre.",
+				"SET_HAVE_NOW": "Enregistre un ajustement selon l'argent que tu as maintenant. Les enveloppes gardent leur contenu.",
+				"START_FRESH": "Rend l'argent de chaque enveloppe à Pas encore prévu. Enveloppes, objectifs, règles et historique restent."
+			},
+			"haveLabel": "Argent que tu as maintenant",
+			"catchUpNothing": "Rien ne change. Tu ne fais que lire.",
+			"go": {
+				"CATCH_UP": "Rattraper",
+				"SET_HAVE_NOW": "Indiquer ce que j'ai",
+				"START_FRESH": "Repartir de zéro"
+			},
+			"toast": {
+				"CATCH_UP": "Tu es à jour",
+				"SET_HAVE_NOW": "Ce que tu as maintenant est enregistré",
+				"START_FRESH": "Nouveau départ. L'argent de chaque enveloppe est revenu dans Pas encore prévu"
+			}
+		},
+		"startingMoney": {
+			"title": "Argent de départ",
+			"lead": "Combien as-tu en ce moment ? Le budget compte à partir de là.",
+			"have": "Ce que tu as maintenant",
+			"idle": "Saisis un montant pour voir ce qui change.",
+			"save": "Confirmer",
+			"toast": "Argent de départ confirmé",
+			"moneyIn": "Entrées",
+			"adjustment": "Ajustement",
+			"includes": "Inclut {amount} déjà dépensés depuis le {date}",
+			"shortfall": "Le budget contenait plus que ce que tu as. {amount} sort en ajustement.",
+			"nothing": "Cela correspond au budget. Rien n'est ajouté."
+		},
+		"toWealth": {
+			"title": "Déplacer {name} vers Patrimoine",
+			"lead": "L'argent quitte {name} pour un compte hors budget. La progression de son objectif ne change pas.",
+			"noAccount": "Tu n'as pas encore de compte Patrimoine hors budget. Ajoutes-en un dans Patrimoine.",
+			"from": "Part de",
+			"notTracked": "Non suivi",
+			"into": "Vers",
+			"amount": "Montant",
+			"got": "Tu reçois (facultatif)",
+			"move": "Déplacer",
+			"toast": "{amount} déplacé de {name} vers {account}",
+			"envelope": "Sort de"
+		},
+		"fromWealth": {
+			"title": "Déplacer depuis Patrimoine",
+			"none": "Tu n'as aucun compte Patrimoine hors budget d'où déplacer.",
+			"mode": "As-tu déplacé l'argent ?",
+			"moved": "Oui, déplacé",
+			"count": "Non, juste le compter",
+			"about": {
+				"moved": "L'argent va de ce compte vers un compte que ton budget compte. Les deux comptes changent.",
+				"count": "Le compte garde son argent et le budget compte ce montant. Rien ne bouge dans Patrimoine."
+			},
+			"from": "De",
+			"into": "Vers",
+			"notTracked": "Non suivi",
+			"amount": "Tu as déplacé",
+			"units": "Compter ce montant",
+			"got": "Tu as reçu (facultatif)",
+			"putIn": "Mettre dans",
+			"move": "Faire entrer",
+			"toastMoved": "{amount} ajouté",
+			"toastCounted": "Argent de {name} compté. {name} n'a pas changé"
+		},
+		"resume": "Reprendre le budget"
 	},
 	"wealth": {
 		"title": "Patrimoine",

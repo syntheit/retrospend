@@ -607,7 +607,12 @@
 			"whatIf": "Was wäre, wenn ich ausgebe",
 			"plan": "Den Monat planen",
 			"planApply": "Plan anwenden",
-			"fundNow": "Nächsten Monat jetzt füllen"
+			"fundNow": "Nächsten Monat jetzt füllen",
+			"close": "Monatsübersicht",
+			"welcomeBack": "Willkommen zurück",
+			"startingMoney": "Startgeld",
+			"toWealth": "Geld ins Vermögen verschieben",
+			"fromWealth": "Geld aus dem Vermögen holen"
 		},
 		"afford": {
 			"title": "Kann ich mir das leisten?",
@@ -925,7 +930,103 @@
 			"uncovered": "Dieser Teil lässt sich nicht ausgleichen",
 			"idle": "Gib einen Betrag ein, um zu sehen, was passieren würde.",
 			"title": "Was, wenn ich ausgebe"
-		}
+		},
+		"close": {
+			"title": "{month} ist abgeschlossen",
+			"done": "Fertig",
+			"notClosed": "Dieser Monat ist noch nicht abgeschlossen.",
+			"moneyIn": "Einnahmen",
+			"assigned": "Zugewiesen",
+			"late": "Enthält {count, plural, one {# verspätete Ausgabe} other {# verspätete Ausgaben}}",
+			"overTitle": "Überzogen",
+			"takeInstead": "Stattdessen aus {month} nehmen",
+			"leftTitle": "Übrig geblieben",
+			"returned": "Ging zurück zu {pool}",
+			"swept": "Nach {name} verschoben",
+			"envelopeFallback": "Umschlag",
+			"back": "Zurück",
+			"error": "Das ließ sich nicht laden. Versuch es nochmal."
+		},
+		"carry": {
+			"title": "Aus {name} im {month} nehmen",
+			"lead": "{name} war im letzten Monat überzogen. Das nimmt es im {month} aus {name} statt aus dem nicht verplanten Geld. {name} kann im {month} unter null starten.",
+			"take": "Aus {name} nehmen",
+			"toast": "{name} startet {month} mit der Überziehung"
+		},
+		"welcomeBack": {
+			"title": "Willkommen zurück",
+			"lead": "{months}: wurden von selbst abgeschlossen.",
+			"leadNone": "Während deiner Abwesenheit wurde kein Monat von selbst abgeschlossen.",
+			"choice": "Wie du zurückkommst",
+			"catchUp": "Aufholen",
+			"haveNow": "Meinen Stand setzen",
+			"startFresh": "Neu beginnen",
+			"about": {
+				"CATCH_UP": "Öffnet die Zusammenfassungen der abgeschlossenen Monate der Reihe nach.",
+				"SET_HAVE_NOW": "Erfasst eine Korrektur anhand des Geldes, das du jetzt hast. Umschläge behalten, was sie halten.",
+				"START_FRESH": "Gibt das Geld jedes Umschlags an Noch nicht verplant zurück. Umschläge, Ziele, Regeln und Verlauf bleiben."
+			},
+			"haveLabel": "Geld, das du jetzt hast",
+			"catchUpNothing": "Nichts ändert sich. Du liest nur.",
+			"go": {
+				"CATCH_UP": "Aufholen",
+				"SET_HAVE_NOW": "Meinen Stand setzen",
+				"START_FRESH": "Neu beginnen"
+			},
+			"toast": {
+				"CATCH_UP": "Du bist auf dem neuesten Stand",
+				"SET_HAVE_NOW": "Dein aktueller Stand wurde erfasst",
+				"START_FRESH": "Neu begonnen. Das Geld jedes Umschlags ist wieder in Noch nicht verplant"
+			}
+		},
+		"startingMoney": {
+			"title": "Startgeld",
+			"lead": "Wie viel Geld hast du gerade? Das Budget zählt ab hier.",
+			"have": "Was du gerade hast",
+			"idle": "Gib einen Betrag ein, um die Änderung zu sehen.",
+			"save": "Bestätigen",
+			"toast": "Startgeld bestätigt",
+			"moneyIn": "Einnahmen",
+			"adjustment": "Korrektur",
+			"includes": "Enthält {amount}, die seit {date} schon ausgegeben wurden",
+			"shortfall": "Das Budget hielt mehr, als du hast. {amount} wird als Korrektur abgezogen.",
+			"nothing": "Das entspricht dem Budget. Es wird nichts hinzugefügt."
+		},
+		"toWealth": {
+			"title": "{name} nach Vermögen verschieben",
+			"lead": "Geld verlässt {name} für ein Konto außerhalb des Budgets. Der Zielfortschritt ändert sich nicht.",
+			"noAccount": "Du hast noch kein Vermögenskonto außerhalb deines Budgets. Füge eines in Vermögen hinzu.",
+			"from": "Verlässt",
+			"notTracked": "Nicht erfasst",
+			"into": "In",
+			"amount": "Betrag",
+			"got": "Du erhältst (optional)",
+			"move": "Verschieben",
+			"toast": "{amount} von {name} nach {account} verschoben",
+			"envelope": "Kommt aus"
+		},
+		"fromWealth": {
+			"title": "Aus Vermögen verschieben",
+			"none": "Du hast kein Vermögenskonto außerhalb deines Budgets, aus dem du verschieben könntest.",
+			"mode": "Hast du das Geld verschoben?",
+			"moved": "Ja, verschoben",
+			"count": "Nein, nur mitzählen",
+			"about": {
+				"moved": "Das Geld geht von diesem Konto auf eines, das dein Budget zählt. Beide Konten ändern sich.",
+				"count": "Das Konto behält sein Geld und das Budget zählt diesen Betrag. In Vermögen bewegt sich nichts."
+			},
+			"from": "Von",
+			"into": "In",
+			"notTracked": "Nicht erfasst",
+			"amount": "Du hast verschoben",
+			"units": "Diesen Betrag zählen",
+			"got": "Du hast erhalten (optional)",
+			"putIn": "Hineinlegen in",
+			"move": "Hereinholen",
+			"toastMoved": "{amount} hereingeholt",
+			"toastCounted": "Geld von {name} mitgezählt. {name} hat sich nicht geändert"
+		},
+		"resume": "Budget fortsetzen"
 	},
 	"wealth": {
 		"title": "Vermögen",

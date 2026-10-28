@@ -1,3 +1,4 @@
+import { CloseSheet } from "./CloseSheet";
 import { FundNowSheet } from "./FundNowSheet";
 import { IncomeSheet } from "./IncomeSheet";
 import type { MonthKind } from "./months";
@@ -5,8 +6,11 @@ import { OwedSheet } from "./OwedSheet";
 import { PlanApplySheet } from "./PlanApplySheet";
 import { PlanSheet } from "./PlanSheet";
 import { RulesSheet } from "./RulesSheet";
+import { StartingMoneySheet } from "./StartingMoneySheet";
 import type { BudgetMonth } from "./source";
 import { UnroutedSheet } from "./UnroutedSheet";
+import { WealthMoveSheet } from "./WealthMoveSheet";
+import { WelcomeBackSheet } from "./WelcomeBackSheet";
 import { WhatIfSheet } from "./WhatIfSheet";
 
 /**
@@ -21,7 +25,12 @@ export type MoreKind =
 	| "whatIf"
 	| "plan"
 	| "planApply"
-	| "fundNow";
+	| "fundNow"
+	| "close"
+	| "welcomeBack"
+	| "startingMoney"
+	| "toWealth"
+	| "fromWealth";
 
 export const MORE_KINDS: readonly MoreKind[] = [
 	"income",
@@ -32,6 +41,11 @@ export const MORE_KINDS: readonly MoreKind[] = [
 	"plan",
 	"planApply",
 	"fundNow",
+	"close",
+	"welcomeBack",
+	"startingMoney",
+	"toWealth",
+	"fromWealth",
 ];
 
 /** The rows the list adds, in order, and the kinds of month they show in. */
@@ -47,6 +61,11 @@ export const MORE_ROWS: readonly {
 	{ kind: "plan", months: ["next"] },
 	{ kind: "planApply", months: ["next"] },
 	{ kind: "fundNow", months: ["open", "next"] },
+	{ kind: "close", months: ["closed"] },
+	{ kind: "welcomeBack", months: ["open"] },
+	{ kind: "startingMoney", months: ["open"] },
+	{ kind: "toWealth", months: ["open"] },
+	{ kind: "fromWealth", months: ["open"] },
 ];
 
 export function MoreSheets({
@@ -92,6 +111,38 @@ export function MoreSheets({
 				onClose={onClose}
 				onDone={onDone}
 				visible={open === "fundNow"}
+			/>
+			<CloseSheet
+				data={data}
+				onClose={onClose}
+				onDone={onDone}
+				visible={open === "close"}
+			/>
+			<WelcomeBackSheet
+				data={data}
+				onClose={onClose}
+				onDone={onDone}
+				visible={open === "welcomeBack"}
+			/>
+			<StartingMoneySheet
+				data={data}
+				onClose={onClose}
+				onDone={onDone}
+				visible={open === "startingMoney"}
+			/>
+			<WealthMoveSheet
+				data={data}
+				direction="to"
+				onClose={onClose}
+				onDone={onDone}
+				visible={open === "toWealth"}
+			/>
+			<WealthMoveSheet
+				data={data}
+				direction="from"
+				onClose={onClose}
+				onDone={onDone}
+				visible={open === "fromWealth"}
 			/>
 			<UnroutedSheet
 				data={data}

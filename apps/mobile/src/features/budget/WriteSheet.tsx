@@ -26,8 +26,8 @@ export interface WriteProps<I, W extends WriteAnswer> {
 	onClose: () => void;
 	onDone: () => void;
 	children: ReactNode;
-	/** Read-only extras under the changes (a stop, a hint). */
-	after?: ReactNode;
+	/** Read-only extras under the changes (a stop, a hint), given the dry run once it is in. */
+	after?: ReactNode | ((preview: BudgetPreview | null) => ReactNode);
 	family?: UndoFamily;
 	/** False while the sheet is closed: nothing is asked of the server. */
 	active?: boolean;
@@ -79,7 +79,7 @@ export function WriteForm<I, W extends WriteAnswer>({
 						preview={flow.preview}
 						status={flow.status}
 					/>
-					{after}
+					{typeof after === "function" ? after(flow.preview) : after}
 				</>
 			}
 			failed={flow.commitFailed}

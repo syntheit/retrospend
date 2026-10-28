@@ -117,7 +117,7 @@ export const wait = (ms: number) =>
 	});
 
 /** `label` matches exactly, or as a prefix when it ends with a comma (a row also says its figure). */
-export function press(tree: Tree, label: string) {
+export function press(tree: Tree, label: string, last = false) {
 	const hits = tree.root.findAll(
 		(n) =>
 			(n.props.accessibilityLabel === label ||
@@ -125,18 +125,19 @@ export function press(tree: Tree, label: string) {
 					String(n.props.accessibilityLabel).startsWith(label))) &&
 			typeof n.props.onPress === "function",
 	);
-	const hit = label.endsWith(",") ? hits[hits.length - 1] : hits[0];
+	const hit = label.endsWith(",") || last ? hits[hits.length - 1] : hits[0];
 	if (!hit) throw new Error(`nothing to press: ${label}`);
 	act(() => {
 		(hit.props.onPress as () => void)();
 	});
 }
 
-export const disabled = (tree: Tree, label: string) =>
-	(
-		tree.root.findAll((n) => n.props.accessibilityLabel === label)[0]?.props
-			.accessibilityState as { disabled: boolean } | undefined
-	)?.disabled;
+export function disabled(tree: Tree, label: string, last = false) {
+	const hits = tree.root.findAll((n) => n.props.accessibilityLabel === label);
+	const hit = last ? hits[hits.length - 1] : hits[0];
+	return (hit?.props.accessibilityState as { disabled: boolean } | undefined)
+		?.disabled;
+}
 
 export interface Call {
 	route: string;

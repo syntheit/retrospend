@@ -322,7 +322,7 @@ describe("Can I afford it", () => {
 
 describe("Manage list", () => {
 	it("offers nothing on a closed month and the debt row only on a payoff book", () => {
-		expect(manageRows("closed", false)).toEqual([]);
+		expect(manageRows("closed", false).map((r) => r.key)).toEqual(["close"]);
 		expect(manageRows("next", false).map((r) => r.key)).toEqual([
 			"afford",
 			"rules",
@@ -338,6 +338,10 @@ describe("Manage list", () => {
 			"unrouted",
 			"whatIf",
 			"fundNow",
+			"welcomeBack",
+			"startingMoney",
+			"toWealth",
+			"fromWealth",
 			"newEnvelope",
 			"merge",
 			"reconcile",

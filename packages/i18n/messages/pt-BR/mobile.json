@@ -607,7 +607,12 @@
 			"whatIf": "E se eu gastar",
 			"plan": "Planeje o mês",
 			"planApply": "Aplicar o plano",
-			"fundNow": "Financiar o próximo mês agora"
+			"fundNow": "Financiar o próximo mês agora",
+			"close": "Resumo do mês",
+			"welcomeBack": "Bem-vindo de volta",
+			"startingMoney": "Dinheiro inicial",
+			"toWealth": "Mover dinheiro para Patrimônio",
+			"fromWealth": "Trazer dinheiro de Patrimônio"
 		},
 		"afford": {
 			"title": "Posso pagar isso?",
@@ -925,7 +930,103 @@
 			"uncovered": "Nada pode cobrir esta parte",
 			"idle": "Digite um valor para ver o efeito.",
 			"title": "E se eu gastar"
-		}
+		},
+		"close": {
+			"title": "{month} está fechado",
+			"done": "Pronto",
+			"notClosed": "Este mês ainda não fechou.",
+			"moneyIn": "Entradas",
+			"assigned": "Atribuído",
+			"late": "Inclui {count, plural, one {# gasto tardio} other {# gastos tardios}}",
+			"overTitle": "Estouraram",
+			"takeInstead": "Tirar de {month}",
+			"leftTitle": "Sobras",
+			"returned": "Voltou para {pool}",
+			"swept": "Movido para {name}",
+			"envelopeFallback": "Envelope",
+			"back": "Voltar",
+			"error": "Não foi possível carregar. Tente de novo."
+		},
+		"carry": {
+			"title": "Tirar de {name} em {month}",
+			"lead": "{name} estourou no mês passado. Isto tira de {name} em {month} em vez do dinheiro não planejado. {name} pode começar {month} abaixo de zero.",
+			"take": "Tirar de {name}",
+			"toast": "{name} começa {month} com o estouro"
+		},
+		"welcomeBack": {
+			"title": "Bem-vindo de volta",
+			"lead": "{months}: fecharam sozinhos.",
+			"leadNone": "Nenhum mês fechou sozinho enquanto você esteve fora.",
+			"choice": "Como voltar",
+			"catchUp": "Ficar em dia",
+			"haveNow": "Informar o que tenho",
+			"startFresh": "Começar do zero",
+			"about": {
+				"CATCH_UP": "Abre os resumos dos meses que fecharam, em ordem.",
+				"SET_HAVE_NOW": "Registra um ajuste com o dinheiro que você tem agora. Os envelopes mantêm o que têm.",
+				"START_FRESH": "Devolve o dinheiro de cada envelope para Ainda não planejado. Envelopes, metas, regras e histórico ficam."
+			},
+			"haveLabel": "Dinheiro que você tem agora",
+			"catchUpNothing": "Nada muda. Você só lê.",
+			"go": {
+				"CATCH_UP": "Ficar em dia",
+				"SET_HAVE_NOW": "Informar o que tenho",
+				"START_FRESH": "Começar do zero"
+			},
+			"toast": {
+				"CATCH_UP": "Você está em dia",
+				"SET_HAVE_NOW": "Você registrou o que tem agora",
+				"START_FRESH": "Você recomeçou. O dinheiro de cada envelope voltou para Ainda não planejado"
+			}
+		},
+		"startingMoney": {
+			"title": "Dinheiro inicial",
+			"lead": "Quanto dinheiro você tem agora? O orçamento passa a contar a partir daí.",
+			"have": "O que você tem agora",
+			"idle": "Digite um valor para ver o que muda.",
+			"save": "Confirmar",
+			"toast": "Dinheiro inicial confirmado",
+			"moneyIn": "Entradas",
+			"adjustment": "Ajuste",
+			"includes": "Inclui {amount} já gastos desde {date}",
+			"shortfall": "O orçamento tinha mais do que você tem. {amount} sai como ajuste.",
+			"nothing": "Isso bate com o orçamento. Nada é adicionado."
+		},
+		"toWealth": {
+			"title": "Mover {name} para Patrimônio",
+			"lead": "O dinheiro sai de {name} para uma conta fora do orçamento. O progresso da meta não muda.",
+			"noAccount": "Você ainda não tem uma conta de Patrimônio fora do orçamento. Adicione uma em Patrimônio.",
+			"from": "Sai de",
+			"notTracked": "Sem acompanhamento",
+			"into": "Para",
+			"amount": "Valor",
+			"got": "Você recebe (opcional)",
+			"move": "Mover",
+			"toast": "Você moveu {amount} de {name} para {account}",
+			"envelope": "Sai de"
+		},
+		"fromWealth": {
+			"title": "Mover do Patrimônio",
+			"none": "Você não tem conta de Patrimônio fora do orçamento para mover.",
+			"mode": "Você moveu o dinheiro?",
+			"moved": "Sim, movi",
+			"count": "Não, só contar",
+			"about": {
+				"moved": "O dinheiro vai dessa conta para uma que seu orçamento conta. As duas contas mudam.",
+				"count": "A conta mantém o dinheiro e o orçamento conta esse valor. Nada se move em Patrimônio."
+			},
+			"from": "De",
+			"into": "Para",
+			"notTracked": "Sem acompanhamento",
+			"amount": "Você moveu",
+			"units": "Contar este valor",
+			"got": "Você recebeu (opcional)",
+			"putIn": "Colocar em",
+			"move": "Trazer",
+			"toastMoved": "Você trouxe {amount}",
+			"toastCounted": "Você contou dinheiro de {name}. {name} não mudou"
+		},
+		"resume": "Retomar o orçamento"
 	},
 	"wealth": {
 		"title": "Patrimônio",

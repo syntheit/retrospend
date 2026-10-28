@@ -607,7 +607,12 @@
 			"whatIf": "Qué pasa si gasto",
 			"plan": "Planifica el mes",
 			"planApply": "Aplicar el plan",
-			"fundNow": "Financiar el mes que viene ahora"
+			"fundNow": "Financiar el mes que viene ahora",
+			"close": "Resumen del mes",
+			"welcomeBack": "Bienvenido de vuelta",
+			"startingMoney": "Dinero inicial",
+			"toWealth": "Mover dinero a Patrimonio",
+			"fromWealth": "Traer dinero de Patrimonio"
 		},
 		"afford": {
 			"title": "¿Me alcanza?",
@@ -925,7 +930,103 @@
 			"uncovered": "Nada puede cubrir esta parte",
 			"idle": "Escribe un monto para ver qué haría.",
 			"title": "Qué pasa si gasto"
-		}
+		},
+		"close": {
+			"title": "{month} está cerrado",
+			"done": "Listo",
+			"notClosed": "Este mes todavía no se ha cerrado.",
+			"moneyIn": "Entradas",
+			"assigned": "Asignado",
+			"late": "Incluye {count, plural, one {# gasto tardío} other {# gastos tardíos}}",
+			"overTitle": "Se pasaron",
+			"takeInstead": "Sacarlo de {month}",
+			"leftTitle": "Sobrantes",
+			"returned": "Volvió a {pool}",
+			"swept": "Se movió a {name}",
+			"envelopeFallback": "Sobre",
+			"back": "Atrás",
+			"error": "No se pudo cargar. Inténtalo de nuevo."
+		},
+		"carry": {
+			"title": "Sacarlo de {name} en {month}",
+			"lead": "{name} se pasó el mes pasado. Esto lo saca de {name} en {month} y no del dinero sin planificar. {name} puede empezar {month} por debajo de cero.",
+			"take": "Sacarlo de {name}",
+			"toast": "{name} arranca {month} con el exceso"
+		},
+		"welcomeBack": {
+			"title": "Te damos la bienvenida",
+			"lead": "{months}: se cerraron solos.",
+			"leadNone": "Ningún mes se cerró solo mientras no estabas.",
+			"choice": "Cómo volver",
+			"catchUp": "Ponerme al día",
+			"haveNow": "Indicar lo que tengo",
+			"startFresh": "Empezar de cero",
+			"about": {
+				"CATCH_UP": "Abre los resúmenes de los meses que se cerraron, en orden.",
+				"SET_HAVE_NOW": "Registra un ajuste con el dinero que tienes ahora. Los sobres conservan lo que tienen.",
+				"START_FRESH": "Devuelve el dinero de cada sobre a Sin planear aún. Sobres, objetivos, reglas e historial se quedan."
+			},
+			"haveLabel": "Dinero que tienes ahora",
+			"catchUpNothing": "No cambia nada. Solo lo lees.",
+			"go": {
+				"CATCH_UP": "Ponerme al día",
+				"SET_HAVE_NOW": "Indicar lo que tengo",
+				"START_FRESH": "Empezar de cero"
+			},
+			"toast": {
+				"CATCH_UP": "Estás al día",
+				"SET_HAVE_NOW": "Registraste lo que tienes ahora",
+				"START_FRESH": "Empezaste de cero. El dinero de cada sobre volvió a Sin planear aún"
+			}
+		},
+		"startingMoney": {
+			"title": "Dinero inicial",
+			"lead": "¿Cuánto dinero tienes ahora? El presupuesto empieza a contar desde aquí.",
+			"have": "Lo que tienes ahora",
+			"idle": "Escribe un importe para ver qué cambia.",
+			"save": "Confirmar",
+			"toast": "Dinero inicial confirmado",
+			"moneyIn": "Entradas",
+			"adjustment": "Ajuste",
+			"includes": "Incluye {amount} ya gastados desde el {date}",
+			"shortfall": "El presupuesto tenía más de lo que tienes. {amount} sale como un ajuste.",
+			"nothing": "Coincide con lo que tiene el presupuesto. No se añade nada."
+		},
+		"toWealth": {
+			"title": "Mover {name} a Patrimonio",
+			"lead": "El dinero sale de {name} hacia una cuenta fuera del presupuesto. El avance de su meta no cambia.",
+			"noAccount": "Todavía no tienes una cuenta de Patrimonio fuera de tu presupuesto. Añade una en Patrimonio.",
+			"from": "Sale de",
+			"notTracked": "Sin seguimiento",
+			"into": "Hacia",
+			"amount": "Monto",
+			"got": "Recibes (opcional)",
+			"move": "Mover",
+			"toast": "Moviste {amount} de {name} a {account}",
+			"envelope": "Sale de"
+		},
+		"fromWealth": {
+			"title": "Mover desde Patrimonio",
+			"none": "No tienes una cuenta de Patrimonio fuera de tu presupuesto desde la cual mover.",
+			"mode": "¿Moviste el dinero?",
+			"moved": "Sí, lo moví",
+			"count": "No, solo cuéntalo",
+			"about": {
+				"moved": "El dinero va de esa cuenta a una que cuenta tu presupuesto. Cambian las dos cuentas.",
+				"count": "La cuenta conserva su dinero y el presupuesto cuenta esa cantidad. En Patrimonio no se mueve nada."
+			},
+			"from": "Desde",
+			"into": "Hacia",
+			"notTracked": "Sin seguimiento",
+			"amount": "Moviste",
+			"units": "Contar esta cantidad",
+			"got": "Recibiste (opcional)",
+			"putIn": "Ponerlo en",
+			"move": "Traer",
+			"toastMoved": "Trajiste {amount}",
+			"toastCounted": "Contaste dinero de {name}. {name} no cambió"
+		},
+		"resume": "Reanudar el presupuesto"
 	},
 	"wealth": {
 		"title": "Patrimonio",

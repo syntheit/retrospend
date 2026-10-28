@@ -2,6 +2,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { newClientId } from "@/data/ids";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { useCachedRead } from "@/features/read/useCachedRead";
@@ -82,7 +83,17 @@ export function BudgetView() {
 						title={t("noBudget")}
 					/>
 				) : data.book.paused ? (
-					<EmptyState detail={t("pausedDetail")} title={t("paused")} />
+					<EmptyState
+						actionLabel={t("resume")}
+						detail={t("pausedDetail")}
+						onAction={() =>
+							void api?.budget
+								.resume({}, { context: { idempotencyKey: newClientId() } })
+								.then(() => reload())
+								.catch(() => undefined)
+						}
+						title={t("paused")}
+					/>
 				) : (
 					<BudgetBody
 						bounds={info.bounds}
