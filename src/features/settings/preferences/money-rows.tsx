@@ -6,7 +6,6 @@ import {
 } from "@retrospend/domain/format";
 import { useLocale, useTranslations } from "next-intl";
 import { useDateFormat } from "~/components/pickers/use-date-format";
-import { Segmented } from "~/components/ui/segmented";
 import { Switch } from "~/components/ui/switch";
 import { SelectField } from "../select-field";
 import { SettingRow, SettingRows } from "../setting-row";
@@ -21,8 +20,8 @@ import {
 const DAYS = Array.from({ length: 28 }, (_, i) => String(i + 1));
 
 /**
- * Money: home currency, the default for new expenses, symbol style, number
- * format, smart formatting and the day the month starts. Monthly income is gone (money in
+ * Money: home currency, the default for new expenses, number format, smart
+ * formatting and the day the month starts. Monthly income is gone (money in
  * is recorded as income now, IMPLEMENTATION §1.1). The default rate type
  * arrives with M2 (docs/ui/GAPS.md).
  */
@@ -39,7 +38,6 @@ export function MoneyRows({
 	const language = useLocale();
 	const startDay = settings.fiscalMonthStartDay ?? 1;
 	const span = monthSpan(new Date(), startDay);
-	const symbol = settings.currencySymbolStyle ?? "standard";
 	const defaultCurrency = settings.defaultCurrency ?? settings.homeCurrency;
 	// Each option reads as the user's own amount, in the language's pattern.
 	const examples = numberFormatExamples(settings.homeCurrency, language);
@@ -80,19 +78,6 @@ export function MoneyRows({
 						})
 					}
 					value={defaultCurrency}
-				/>
-			</SettingRow>
-			<SettingRow label={t("symbol")} meta={t("symbolMeta")}>
-				<Segmented
-					label={t("symbol")}
-					onChange={(v) =>
-						void save("currencySymbolStyle", v, { fallback: "standard" })
-					}
-					options={[
-						{ value: "standard", label: t("symbolStandard") },
-						{ value: "native", label: t("symbolNative") },
-					]}
-					value={symbol}
 				/>
 			</SettingRow>
 			<SettingRow
