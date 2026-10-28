@@ -1,6 +1,7 @@
 import { router, Stack } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { SectionList, Text, View } from "react-native";
+import { Platform, SectionList, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFormatter, useTranslations } from "use-intl";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ActivityFilters } from "@/features/activity/ActivityFilters";
@@ -11,6 +12,7 @@ import { groupByDay } from "@/features/activity/days";
 import { EntryView } from "@/features/activity/EntryView";
 import { DEFAULT_FILTER, isDefaultFilter } from "@/features/activity/filter";
 import type { ActivityItem, ActivityPage } from "@/features/activity/source";
+import { TextAction } from "@/features/activity/TextAction";
 import { useActivity } from "@/features/activity/useActivity";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { StaleNote } from "@/features/read/parts";
@@ -18,7 +20,6 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
-import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListDetail } from "@/ui/ListDetail";
 import { Screen } from "@/ui/Screen";
@@ -72,7 +73,7 @@ function Summary({
 						: t("summary", { count: page.count })}
 			</Text>
 			{onSelect ? (
-				<Button label={t("bulk.select")} onPress={onSelect} variant="text" />
+				<TextAction label={t("bulk.select")} onPress={onSelect} />
 			) : null}
 		</View>
 	);
@@ -84,6 +85,7 @@ export default function ActivityScreen() {
 	const { color, space, type } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const searchRef = useSearchShortcut();
+	const insets = useSafeAreaInsets();
 	const [filter, setFilter] = useState(DEFAULT_FILTER);
 	const [search, setSearch] = useState("");
 	const [selected, setSelected] = useState<ActivityItem | null>(null);
@@ -241,13 +243,31 @@ export default function ActivityScreen() {
 			style={{ backgroundColor: color.bg }}
 		/>
 	);
+	// The phone's large-title bar is transparent over the list, so the bulk bar
+	// takes its place at the top instead of sitting in the list's flow.
+	const overBar = Platform.OS === "ios" && !listDetail;
 	const list = picked ? (
 		<View style={{ flex: 1 }}>
-			<BulkControls
-				items={page?.items ?? []}
-				onDone={() => setPicked(null)}
-				picked={picked}
-			/>
+			<View
+				style={
+					overBar
+						? {
+								position: "absolute",
+								top: insets.top,
+								left: 0,
+								// Clears the account button the native bar keeps on top.
+								right: space[12] + space[4],
+								zIndex: 1,
+							}
+						: undefined
+				}
+			>
+				<BulkControls
+					items={page?.items ?? []}
+					onDone={() => setPicked(null)}
+					picked={picked}
+				/>
+			</View>
 			{rows}
 		</View>
 	) : (

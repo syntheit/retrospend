@@ -107,7 +107,7 @@ export function BulkSheet({
 	const ready = preview.status === "ready";
 
 	return (
-		<Sheet detents={["large"]} onClose={onClose} title={title} visible={open}>
+		<Sheet onClose={onClose} title={title} visible={open}>
 			<View style={{ gap: space[4] }}>
 				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
 					{action?.kind === "delete"

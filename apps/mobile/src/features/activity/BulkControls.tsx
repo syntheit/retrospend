@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
-import { Button } from "@/ui/Button";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
 import { PickerSheet } from "@/ui/PickerSheet";
 import type { PickGroup } from "@/ui/pickGroups";
@@ -10,6 +9,7 @@ import { BulkSheet } from "./BulkSheet";
 import { BULK_DELETE_LIMIT, entityIdsOf } from "./bulk";
 import type { BulkAction } from "./bulkWrite";
 import type { ActivityItem } from "./source";
+import { TextAction } from "./TextAction";
 import { useCategories } from "./useCategories";
 
 /**
@@ -75,7 +75,6 @@ export function BulkControls({
 				style={{
 					flexDirection: "row",
 					alignItems: "center",
-					flexWrap: "wrap",
 					gap: space[2],
 					paddingHorizontal: space[4],
 					paddingVertical: space[1],
@@ -86,6 +85,7 @@ export function BulkControls({
 			>
 				<Text
 					accessibilityLiveRegion="polite"
+					numberOfLines={1}
 					style={{
 						flex: 1,
 						color: color.fg,
@@ -95,19 +95,17 @@ export function BulkControls({
 				>
 					{count > 0 ? t("selected", { count }) : t("pickSome")}
 				</Text>
-				<Button
+				<TextAction
 					disabled={count === 0}
 					label={t("categorize")}
 					onPress={() => setChoosing(true)}
-					variant="text"
 				/>
-				<Button
+				<TextAction
 					disabled={count === 0 || tooMany}
 					label={t("delete")}
 					onPress={() => openSheet({ kind: "delete" })}
-					variant="text"
 				/>
-				<Button label={t("done")} onPress={onDone} variant="text" />
+				<TextAction label={t("done")} onPress={onDone} />
 			</View>
 			{tooMany ? (
 				<Text
