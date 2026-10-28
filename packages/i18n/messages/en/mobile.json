@@ -367,7 +367,16 @@
 		},
 		"owed": {
 			"title": "Held for others",
-			"people": "{count, plural, one {For # person} other {For # people}}"
+			"people": "{count, plural, one {For # person} other {For # people}}",
+			"nobody": "Nobody owes you money the budget holds.",
+			"held": "The budget holds",
+			"age": "{days, plural, one {# day} other {# days}}",
+			"pending": "{amount} waits for your OK",
+			"someone": "Someone",
+			"incomplete": "Some amounts have no rate today and are not counted.",
+			"back": "Back",
+			"error": "Couldn't load this. Try again.",
+			"forgiveTitle": "Forgive {name}"
 		},
 		"group": {
 			"BILLS": "Bills",
@@ -592,7 +601,9 @@
 			"style": "Budget style",
 			"reconcile": "Check against your bank",
 			"rules": "Income rules",
-			"income": "Money in this month"
+			"income": "Money in this month",
+			"owed": "Held for others",
+			"unrouted": "Shares with no envelope"
 		},
 		"afford": {
 			"title": "Can I afford it?",
@@ -835,6 +846,38 @@
 			"moveDown": "Move down",
 			"applyAction": "Apply to this month's money in",
 			"remove": "Remove rule"
+		},
+		"forgive": {
+			"forgive": "Forgive",
+			"nothing": "Nothing is owed to you here.",
+			"owes": "{name} owes you {amount}",
+			"currency": "Currency",
+			"amount": "Forgive",
+			"chargeTo": "Charge it to",
+			"everythingElse": "Everything else",
+			"toast": "Forgave {name} {amount}",
+			"effect": "It comes off {name}'s balance. No money comes back, so Not planned yet does not change. Nothing is sent to {name}.",
+			"tooMuch": "That is more than they owe you."
+		},
+		"unrouted": {
+			"lead": "These shares count in {name} until you pick a category.",
+			"noRate": "No rate",
+			"pickFor": "Pick a category for the share of {date}",
+			"paidBy": "Paid by {name}",
+			"shareTitle": "Your share",
+			"everythingElse": "Everything else",
+			"pickTitle": "Pick a category",
+			"pickLead": "The share moves to the envelope that covers it.",
+			"route": "Put it there",
+			"routedToast": "Share moved",
+			"title": "No envelope yet",
+			"back": "Back",
+			"error": "Couldn't load this. Try again.",
+			"none": "Every share has an envelope.",
+			"loading": "Loading"
+		},
+		"categories": {
+			"find": "Find a category"
 		}
 	},
 	"wealth": {

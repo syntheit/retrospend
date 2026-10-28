@@ -367,7 +367,16 @@
 		},
 		"owed": {
 			"title": "Reservado para outros",
-			"people": "{count, plural, one {Para # pessoa} other {Para # pessoas}}"
+			"people": "{count, plural, one {Para # pessoa} other {Para # pessoas}}",
+			"nobody": "Ninguém lhe deve dinheiro que o orçamento guarde.",
+			"held": "O orçamento guarda",
+			"age": "{days, plural, one {# dia} other {# dias}}",
+			"pending": "{amount} aguarda seu OK",
+			"someone": "Alguém",
+			"incomplete": "Alguns valores não têm cotação hoje e não são contados.",
+			"back": "Voltar",
+			"error": "Não foi possível carregar. Tente de novo.",
+			"forgiveTitle": "Perdoar {name}"
 		},
 		"group": {
 			"BILLS": "Contas",
@@ -592,7 +601,9 @@
 			"style": "Estilo de orçamento",
 			"reconcile": "Conferir com seu banco",
 			"rules": "Regras de renda",
-			"income": "Dinheiro que entrou neste mês"
+			"income": "Dinheiro que entrou neste mês",
+			"owed": "Guardado para outros",
+			"unrouted": "Partes sem envelope"
 		},
 		"afford": {
 			"title": "Posso pagar isso?",
@@ -835,6 +846,38 @@
 			"moveDown": "Descer",
 			"applyAction": "Aplicar ao dinheiro que entrou neste mês",
 			"remove": "Remover regra"
+		},
+		"forgive": {
+			"forgive": "Perdoar",
+			"nothing": "Aqui ninguém lhe deve nada.",
+			"owes": "{name} deve {amount} a você",
+			"currency": "Moeda",
+			"amount": "Perdoar",
+			"chargeTo": "Cobrar de",
+			"everythingElse": "Todo o resto",
+			"toast": "Você perdoou {amount} a {name}",
+			"effect": "Sai do saldo de {name}. Nenhum dinheiro volta, então Ainda não planejado não muda. Nada é enviado a {name}.",
+			"tooMuch": "É mais do que a pessoa te deve."
+		},
+		"unrouted": {
+			"lead": "Essas partes contam em {name} até você escolher uma categoria.",
+			"noRate": "Sem cotação",
+			"pickFor": "Escolher categoria da parte de {date}",
+			"paidBy": "Pago por {name}",
+			"shareTitle": "Sua parte",
+			"everythingElse": "Todo o resto",
+			"pickTitle": "Escolha uma categoria",
+			"pickLead": "A parte vai para o envelope que cobre a categoria.",
+			"route": "Colocar lá",
+			"routedToast": "Parte movida",
+			"title": "Ainda sem envelope",
+			"back": "Voltar",
+			"error": "Não foi possível carregar. Tente de novo.",
+			"none": "Todas as partes têm envelope.",
+			"loading": "Carregando"
+		},
+		"categories": {
+			"find": "Buscar uma categoria"
 		}
 	},
 	"wealth": {

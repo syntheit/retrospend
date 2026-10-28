@@ -367,7 +367,16 @@
 		},
 		"owed": {
 			"title": "Réservé pour d'autres",
-			"people": "{count, plural, one {Pour # personne} other {Pour # personnes}}"
+			"people": "{count, plural, one {Pour # personne} other {Pour # personnes}}",
+			"nobody": "Personne ne te doit d'argent que le budget garde.",
+			"held": "Le budget garde",
+			"age": "{days, plural, one {# jour} other {# jours}}",
+			"pending": "{amount} attend ton accord",
+			"someone": "Quelqu'un",
+			"incomplete": "Certains montants n'ont pas de taux aujourd'hui et ne sont pas comptés.",
+			"back": "Retour",
+			"error": "Impossible de charger. Réessaie.",
+			"forgiveTitle": "Pardonner à {name}"
 		},
 		"group": {
 			"BILLS": "Factures",
@@ -592,7 +601,9 @@
 			"style": "Style de budget",
 			"reconcile": "Comparer avec ta banque",
 			"rules": "Règles de revenus",
-			"income": "Argent reçu ce mois-ci"
+			"income": "Argent reçu ce mois-ci",
+			"owed": "Gardé pour d'autres",
+			"unrouted": "Parts sans enveloppe"
 		},
 		"afford": {
 			"title": "Puis-je me le permettre ?",
@@ -835,6 +846,38 @@
 			"moveDown": "Descendre",
 			"applyAction": "Appliquer à l'argent reçu ce mois-ci",
 			"remove": "Supprimer la règle"
+		},
+		"forgive": {
+			"forgive": "Pardonner",
+			"nothing": "On ne te doit rien ici.",
+			"owes": "{name} te doit {amount}",
+			"currency": "Devise",
+			"amount": "Pardonner",
+			"chargeTo": "Imputer à",
+			"everythingElse": "Tout le reste",
+			"toast": "Tu as pardonné {amount} à {name}",
+			"effect": "Cela est retiré du solde de {name}. Aucun argent ne revient, donc Pas encore prévu ne change pas. Rien n'est envoyé à {name}.",
+			"tooMuch": "C'est plus que ce que la personne te doit."
+		},
+		"unrouted": {
+			"lead": "Ces parts comptent dans {name} tant que tu n'as pas choisi de catégorie.",
+			"noRate": "Pas de taux",
+			"pickFor": "Choisir une catégorie pour la part du {date}",
+			"paidBy": "Payé par {name}",
+			"shareTitle": "Ta part",
+			"everythingElse": "Tout le reste",
+			"pickTitle": "Choisis une catégorie",
+			"pickLead": "La part passe dans l'enveloppe qui la couvre.",
+			"route": "La mettre là",
+			"routedToast": "Part déplacée",
+			"title": "Pas encore d'enveloppe",
+			"back": "Retour",
+			"error": "Impossible de charger. Réessaie.",
+			"none": "Chaque part a une enveloppe.",
+			"loading": "Chargement"
+		},
+		"categories": {
+			"find": "Chercher une catégorie"
 		}
 	},
 	"wealth": {

@@ -331,6 +331,8 @@ describe("Manage list", () => {
 			"afford",
 			"income",
 			"rules",
+			"owed",
+			"unrouted",
 			"newEnvelope",
 			"merge",
 			"reconcile",

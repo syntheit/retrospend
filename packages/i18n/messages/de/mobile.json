@@ -367,7 +367,16 @@
 		},
 		"owed": {
 			"title": "Für andere gehalten",
-			"people": "{count, plural, one {Für # Person} other {Für # Personen}}"
+			"people": "{count, plural, one {Für # Person} other {Für # Personen}}",
+			"nobody": "Niemand schuldet dir Geld, das das Budget hält.",
+			"held": "Das Budget hält",
+			"age": "{days, plural, one {# Tag} other {# Tage}}",
+			"pending": "{amount} wartet auf dein OK",
+			"someone": "Jemand",
+			"incomplete": "Für einige Beträge gibt es heute keinen Kurs; sie zählen nicht mit.",
+			"back": "Zurück",
+			"error": "Das ließ sich nicht laden. Versuch es nochmal.",
+			"forgiveTitle": "{name} erlassen"
 		},
 		"group": {
 			"BILLS": "Rechnungen",
@@ -592,7 +601,9 @@
 			"style": "Budgetstil",
 			"reconcile": "Mit deiner Bank abgleichen",
 			"rules": "Einnahmeregeln",
-			"income": "Geld dieses Monats"
+			"income": "Geld dieses Monats",
+			"owed": "Für andere gehalten",
+			"unrouted": "Anteile ohne Umschlag"
 		},
 		"afford": {
 			"title": "Kann ich mir das leisten?",
@@ -835,6 +846,38 @@
 			"moveDown": "Nach unten",
 			"applyAction": "Auf das Geld dieses Monats anwenden",
 			"remove": "Regel entfernen"
+		},
+		"forgive": {
+			"forgive": "Erlassen",
+			"nothing": "Hier wird dir nichts geschuldet.",
+			"owes": "{name} schuldet dir {amount}",
+			"currency": "Währung",
+			"amount": "Erlassen",
+			"chargeTo": "Belasten bei",
+			"everythingElse": "Alles andere",
+			"toast": "{name} {amount} erlassen",
+			"effect": "Es wird vom Saldo von {name} abgezogen. Es kommt kein Geld zurück, daher ändert sich Noch nicht verplant nicht. {name} bekommt nichts.",
+			"tooMuch": "Das ist mehr, als die Person dir schuldet."
+		},
+		"unrouted": {
+			"lead": "Diese Anteile zählen in {name}, bis du eine Kategorie wählst.",
+			"noRate": "Kein Kurs",
+			"pickFor": "Kategorie für den Anteil vom {date} wählen",
+			"paidBy": "Bezahlt von {name}",
+			"shareTitle": "Dein Anteil",
+			"everythingElse": "Alles andere",
+			"pickTitle": "Kategorie wählen",
+			"pickLead": "Der Anteil wandert in den Umschlag, der sie abdeckt.",
+			"route": "Dort einordnen",
+			"routedToast": "Anteil verschoben",
+			"title": "Noch kein Umschlag",
+			"back": "Zurück",
+			"error": "Das ließ sich nicht laden. Versuch es nochmal.",
+			"none": "Jeder Anteil hat einen Umschlag.",
+			"loading": "Lädt"
+		},
+		"categories": {
+			"find": "Kategorie suchen"
 		}
 	},
 	"wealth": {

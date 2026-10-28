@@ -367,7 +367,16 @@
 		},
 		"owed": {
 			"title": "Reservado para otros",
-			"people": "{count, plural, one {Para # persona} other {Para # personas}}"
+			"people": "{count, plural, one {Para # persona} other {Para # personas}}",
+			"nobody": "Nadie te debe plata que el presupuesto tenga reservada.",
+			"held": "El presupuesto reserva",
+			"age": "{days, plural, one {# día} other {# días}}",
+			"pending": "{amount} espera tu OK",
+			"someone": "Alguien",
+			"incomplete": "Algunos montos no tienen cotización hoy y no se cuentan.",
+			"back": "Atrás",
+			"error": "No se pudo cargar. Probá de nuevo.",
+			"forgiveTitle": "Perdonar a {name}"
 		},
 		"group": {
 			"BILLS": "Facturas",
@@ -592,7 +601,9 @@
 			"style": "Estilo de presupuesto",
 			"reconcile": "Revisar con tu banco",
 			"rules": "Reglas de ingresos",
-			"income": "Plata que entró este mes"
+			"income": "Plata que entró este mes",
+			"owed": "Guardado para otros",
+			"unrouted": "Partes sin sobre"
 		},
 		"afford": {
 			"title": "¿Me alcanza?",
@@ -835,6 +846,38 @@
 			"moveDown": "Bajar",
 			"applyAction": "Aplicar a la plata que entró este mes",
 			"remove": "Sacar regla"
+		},
+		"forgive": {
+			"forgive": "Perdonar",
+			"nothing": "Acá no te deben nada.",
+			"owes": "{name} te debe {amount}",
+			"currency": "Moneda",
+			"amount": "Perdonar",
+			"chargeTo": "Cargarlo a",
+			"everythingElse": "Todo lo demás",
+			"toast": "Le perdonaste {amount} a {name}",
+			"effect": "Se descuenta del saldo de {name}. No vuelve plata, así que Sin planear aún no cambia. No se le envía nada a {name}.",
+			"tooMuch": "Es más de lo que te debe."
+		},
+		"unrouted": {
+			"lead": "Estas partes cuentan en {name} hasta que elijas una categoría.",
+			"noRate": "Sin cotización",
+			"pickFor": "Elegir categoría de la parte del {date}",
+			"paidBy": "Pagó {name}",
+			"shareTitle": "Tu parte",
+			"everythingElse": "Todo lo demás",
+			"pickTitle": "Elegí una categoría",
+			"pickLead": "La parte pasa al sobre que cubre esa categoría.",
+			"route": "Ponerla ahí",
+			"routedToast": "Parte movida",
+			"title": "Todavía sin sobre",
+			"back": "Atrás",
+			"error": "No se pudo cargar. Probá de nuevo.",
+			"none": "Todas las partes tienen sobre.",
+			"loading": "Cargando"
+		},
+		"categories": {
+			"find": "Buscá una categoría"
 		}
 	},
 	"wealth": {

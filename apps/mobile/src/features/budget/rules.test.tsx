@@ -282,7 +282,7 @@ describe("Income rules sheet", () => {
 		expect(writes).toHaveLength(1);
 		expect(writes[0]?.input).toEqual(previews[0]?.input);
 		expect(writes[0]?.key).toBe(
-			(previews[0]?.input as { batchId: string }).batchId,
+			(previews[0]?.input as { batchId: string } | undefined)?.batchId,
 		);
 		expect(onDone).toHaveBeenCalled();
 		const toast = mockToast.show.mock.calls[0]?.[0] as {
