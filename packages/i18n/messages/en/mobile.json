@@ -177,7 +177,21 @@
 				"same": "Pick two different accounts",
 				"places": "Pick both accounts"
 			}
-		}
+		},
+		"moreDetails": "More details",
+		"today": "Today",
+		"yesterday": "Yesterday",
+		"note": "Note",
+		"notePlaceholder": "Additional details",
+		"location": "Location",
+		"locationPlaceholder": "Where was it?",
+		"spread": "Spread over",
+		"spreadOne": "One-time",
+		"spreadMonths": "{count} months",
+		"exclude": "Exclude from spending",
+		"excludeDetail": "Stays in Activity and your budget, left out of reports and Insights.",
+		"editLocked": "This expense can't be edited",
+		"editLockedDetail": "A payment settled it, or you aren't allowed to change it."
 	},
 	"pickers": {
 		"clear": "Clear search",
@@ -200,7 +214,8 @@
 		"account": {
 			"find": "Find an account",
 			"empty": "No account matches"
-		}
+		},
+		"pickDate": "Pick a date"
 	},
 	"entry": {
 		"title": "Entry",

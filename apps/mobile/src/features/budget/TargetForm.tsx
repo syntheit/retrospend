@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { DateField } from "@/ui/DateField";
 import { Segmented } from "@/ui/Segmented";
 import { minorOf, readAmount } from "./amount";
 import { BudgetChanges } from "./BudgetChanges";
-import { DayField } from "./DayField";
 import { ChoiceList } from "./fields";
 import {
 	type BillRepeat,
@@ -136,12 +136,7 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 			) : null}
 			{choice === "BILL" ? (
 				<>
-					<DayField
-						hint={t("dueHint")}
-						label={t("due")}
-						onChangeText={setDue}
-						value={due}
-					/>
+					<DateField label={t("due")} onChange={setDue} value={due} />
 					<ChoiceList
 						choices={REPEATS.map((r) => ({ id: r, label: t(`repeat.${r}`) }))}
 						label={t("repeats")}

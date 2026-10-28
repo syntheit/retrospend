@@ -177,7 +177,21 @@
 				"same": "Escolha duas contas diferentes",
 				"places": "Escolha as duas contas"
 			}
-		}
+		},
+		"moreDetails": "Mais detalhes",
+		"today": "Hoje",
+		"yesterday": "Ontem",
+		"note": "Nota",
+		"notePlaceholder": "Detalhes adicionais",
+		"location": "Local",
+		"locationPlaceholder": "Onde foi?",
+		"spread": "Dividir em",
+		"spreadOne": "Uma vez só",
+		"spreadMonths": "{count} meses",
+		"exclude": "Excluir dos gastos",
+		"excludeDetail": "Fica na Atividade e no seu orçamento, mas fora dos relatórios e do Insights.",
+		"editLocked": "Este gasto não pode ser editado",
+		"editLockedDetail": "Um pagamento quitou, ou você não tem permissão para alterar."
 	},
 	"pickers": {
 		"clear": "Limpar busca",
@@ -200,7 +214,8 @@
 		"account": {
 			"find": "Buscar uma conta",
 			"empty": "Nenhuma conta corresponde"
-		}
+		},
+		"pickDate": "Escolha uma data"
 	},
 	"entry": {
 		"title": "Lançamento",
