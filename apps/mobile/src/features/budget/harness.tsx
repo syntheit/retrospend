@@ -132,6 +132,19 @@ export function press(tree: Tree, label: string, last = false) {
 	});
 }
 
+/** Types into the text field with this label. */
+export function typeInto(tree: Tree, label: string, text: string) {
+	const hit = tree.root.findAll(
+		(n) =>
+			n.props.accessibilityLabel === label &&
+			typeof n.props.onChangeText === "function",
+	)[0];
+	if (!hit) throw new Error(`no field: ${label}`);
+	act(() => {
+		(hit.props.onChangeText as (t: string) => void)(text);
+	});
+}
+
 export function disabled(tree: Tree, label: string, last = false) {
 	const hits = tree.root.findAll((n) => n.props.accessibilityLabel === label);
 	const hit = last ? hits[hits.length - 1] : hits[0];

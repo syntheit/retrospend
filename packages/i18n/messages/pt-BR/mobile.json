@@ -645,14 +645,18 @@
 			"group": "Grupo",
 			"noGroup": "Sem grupo",
 			"submit": "Adicionar",
-			"toast": "{name} adicionado"
+			"toast": "{name} adicionado",
+			"categories": "Categorias que cobre",
+			"categoriesHint": "Uma categoria fica em um só envelope, então a que você marcar vem para cá de onde estava."
 		},
 		"editEnvelope": {
 			"name": "Nome",
 			"group": "Grupo",
 			"noGroup": "Sem grupo",
 			"submit": "Salvar",
-			"toast": "{name} salvo"
+			"toast": "{name} salvo",
+			"categories": "Categorias que cobre",
+			"categoriesHint": "Uma categoria fica em um só envelope, então a que você marcar vem para cá de onde estava."
 		},
 		"target": {
 			"now": "Meta atual",

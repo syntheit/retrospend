@@ -645,14 +645,18 @@
 			"group": "Groupe",
 			"noGroup": "Sans groupe",
 			"submit": "Ajouter",
-			"toast": "{name} ajoutée"
+			"toast": "{name} ajoutée",
+			"categories": "Catégories qu'elle couvre",
+			"categoriesHint": "Une catégorie vit dans une seule enveloppe : celle que tu coches arrive ici depuis l'ancienne."
 		},
 		"editEnvelope": {
 			"name": "Nom",
 			"group": "Groupe",
 			"noGroup": "Sans groupe",
 			"submit": "Enregistrer",
-			"toast": "{name} enregistrée"
+			"toast": "{name} enregistrée",
+			"categories": "Catégories qu'elle couvre",
+			"categoriesHint": "Une catégorie vit dans une seule enveloppe : celle que tu coches arrive ici depuis l'ancienne."
 		},
 		"target": {
 			"now": "Objectif actuel",

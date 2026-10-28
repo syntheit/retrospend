@@ -645,14 +645,18 @@
 			"group": "Grupo",
 			"noGroup": "Sin grupo",
 			"submit": "Agregar",
-			"toast": "Se agregó {name}"
+			"toast": "Se agregó {name}",
+			"categories": "Categorías que cubre",
+			"categoriesHint": "Una categoría vive en un solo sobre, así que la que tildes pasa acá desde donde estaba."
 		},
 		"editEnvelope": {
 			"name": "Nombre",
 			"group": "Grupo",
 			"noGroup": "Sin grupo",
 			"submit": "Guardar",
-			"toast": "Se guardó {name}"
+			"toast": "Se guardó {name}",
+			"categories": "Categorías que cubre",
+			"categoriesHint": "Una categoría vive en un solo sobre, así que la que tildes pasa acá desde donde estaba."
 		},
 		"target": {
 			"now": "Objetivo actual",

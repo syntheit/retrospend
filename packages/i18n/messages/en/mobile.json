@@ -645,14 +645,18 @@
 			"group": "Group",
 			"noGroup": "No group",
 			"submit": "Add",
-			"toast": "Added {name}"
+			"toast": "Added {name}",
+			"categories": "Categories it covers",
+			"categoriesHint": "A category lives in one envelope, so a checked one moves here from where it was."
 		},
 		"editEnvelope": {
 			"name": "Name",
 			"group": "Group",
 			"noGroup": "No group",
 			"submit": "Save",
-			"toast": "Saved {name}"
+			"toast": "Saved {name}",
+			"categories": "Categories it covers",
+			"categoriesHint": "A category lives in one envelope, so a checked one moves here from where it was."
 		},
 		"target": {
 			"now": "Target now",

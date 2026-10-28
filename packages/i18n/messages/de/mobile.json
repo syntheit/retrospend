@@ -645,14 +645,18 @@
 			"group": "Gruppe",
 			"noGroup": "Keine Gruppe",
 			"submit": "Hinzufügen",
-			"toast": "{name} hinzugefügt"
+			"toast": "{name} hinzugefügt",
+			"categories": "Kategorien, die er abdeckt",
+			"categoriesHint": "Eine Kategorie gehört zu einem Umschlag, daher wandert eine angehakte von ihrem bisherigen hierher."
 		},
 		"editEnvelope": {
 			"name": "Name",
 			"group": "Gruppe",
 			"noGroup": "Keine Gruppe",
 			"submit": "Speichern",
-			"toast": "{name} gespeichert"
+			"toast": "{name} gespeichert",
+			"categories": "Kategorien, die er abdeckt",
+			"categoriesHint": "Eine Kategorie gehört zu einem Umschlag, daher wandert eine angehakte von ihrem bisherigen hierher."
 		},
 		"target": {
 			"now": "Aktuelles Ziel",

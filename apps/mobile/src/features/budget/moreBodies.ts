@@ -26,14 +26,21 @@ export function createEnvelopeBody(input: {
 	id: string;
 	name: string;
 	groupId: string | null;
+	/** The categories it covers; a category lives in one envelope, so each moves here. */
+	categoryIds?: readonly string[];
 }): CreateEnvelopeInput {
 	return {
 		id: input.id,
 		name: input.name.trim(),
 		groupId: input.groupId,
 		kind: "NONE",
-		categoryIds: [],
+		categoryIds: [...(input.categoryIds ?? [])],
 	};
+}
+
+/** The same set of ids, whatever the order. */
+export function sameIds(a: readonly string[], b: readonly string[]): boolean {
+	return a.length === b.length && a.every((id) => b.includes(id));
 }
 
 /** Only what changed is sent; null when nothing did. */
@@ -42,17 +49,29 @@ export function updateEnvelopeBody(input: {
 	envelopeId: string;
 	name: string;
 	groupId: string | null;
-	was: { name: string; groupId: string | null };
+	/** The full list of categories it should cover; left out, they are not touched. */
+	categoryIds?: readonly string[];
+	was: {
+		name: string;
+		groupId: string | null;
+		categoryIds?: readonly string[];
+	};
 }): UpdateEnvelopeInput | null {
 	const name = input.name.trim();
 	const renamed = name !== "" && name !== input.was.name;
 	const moved = input.groupId !== input.was.groupId;
-	if (!renamed && !moved) return null;
+	const recategorized =
+		input.categoryIds !== undefined &&
+		!sameIds(input.categoryIds, input.was.categoryIds ?? []);
+	if (!renamed && !moved && !recategorized) return null;
 	return {
 		id: input.id,
 		envelopeId: input.envelopeId,
 		...(renamed ? { name } : {}),
 		...(moved ? { groupId: input.groupId } : {}),
+		...(recategorized && input.categoryIds
+			? { categoryIds: [...input.categoryIds] }
+			: {}),
 	};
 }
 
