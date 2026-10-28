@@ -3,6 +3,7 @@
  * ("2026-10-19"); they are formatted in UTC so a date never shifts a day
  * with the viewer's time zone. Golden cases: vectors/display-format.vectors.json.
  */
+import { baseLocale } from "./format-locale";
 
 export type DateStyle =
 	/** "Oct 19" */
@@ -31,7 +32,7 @@ function formatter(locale: string, style: DateStyle): Intl.DateTimeFormat {
 	const key = `${locale}|${style}`;
 	const hit = cache.get(key);
 	if (hit) return hit;
-	let tag = locale.trim().replace(/_/g, "-");
+	let tag = baseLocale(locale).replace(/_/g, "-");
 	try {
 		tag = Intl.DateTimeFormat.supportedLocalesOf(tag)[0] ?? "en-US";
 	} catch {

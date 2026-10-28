@@ -1,7 +1,8 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Tip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 import {
@@ -52,7 +53,7 @@ function MoneyAmount({
 	approx = false,
 	className,
 }: MoneyProps) {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const t = useTranslations("kit.money");
 	const text = formatMoney(value, {
 		locale,
@@ -103,7 +104,7 @@ function MoneyPair({
 	homeFigure?: string;
 	className?: string;
 }) {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const t = useTranslations("kit.money");
 	const pair = formatMoneyPair(original, home, { locale, ...format });
 	const same = home != null && pair.home == null;

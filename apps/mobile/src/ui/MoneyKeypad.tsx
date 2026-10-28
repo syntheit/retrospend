@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useFormatLocale } from "@/lib/intl";
+import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { applyKey, BACKSPACE, keypadLayout, TRIPLE_ZERO } from "./keypad";
 
@@ -23,7 +23,7 @@ export function MoneyKeypad({
 	keyHeight?: number;
 }) {
 	const t = useTranslations("mobile.keypad");
-	const locale = useFormatLocale();
+	const locale = useMoneyLocale();
 	const { color, radius, size, space, type } = useTheme();
 	const rows = keypadLayout(locale);
 	const decimal = rows[3]?.[0];

@@ -99,6 +99,41 @@ describe("/api/v1/settings", () => {
 			);
 		});
 
+		it("follows the language until a number format is set, then sticks", async () => {
+			const read = async () =>
+				expectBody(await call("/settings", { headers: asBob }), s.get);
+			const patch = async (body: Record<string, unknown>) =>
+				expectBody(
+					await call("/settings", {
+						method: "PATCH",
+						headers: asBob,
+						body,
+						idempotent: true,
+					}),
+					s.update,
+				);
+			expect(await read()).toMatchObject({ numberFormat: null });
+			expect(await patch({ numberFormat: "dot_comma" })).toMatchObject({
+				numberFormat: "dot_comma",
+			});
+			// A language change leaves the number format alone.
+			await patch({ language: "es-AR" });
+			expect(await read()).toMatchObject({ numberFormat: "dot_comma" });
+			expect(await patch({ numberFormat: null })).toMatchObject({
+				numberFormat: null,
+			});
+			await expectProblem(
+				await call("/settings", {
+					method: "PATCH",
+					headers: asBob,
+					body: { numberFormat: "1,234.56" },
+					idempotent: true,
+				}),
+				400,
+				"validation_failed",
+			);
+		});
+
 		it("refuses income more precise than the column keeps", async () => {
 			// 0.12345678 BTC needs 8 decimals; monthlyIncome keeps 2.
 			await expectProblem(

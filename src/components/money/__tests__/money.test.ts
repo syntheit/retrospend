@@ -1,3 +1,7 @@
+import {
+	type NumberFormatChoice,
+	withMoneyContext,
+} from "@retrospend/domain/format-locale";
 import vectors from "@retrospend/domain/vectors/money-format.vectors.json";
 import { createElement as h } from "react";
 import { describe, expect, it } from "vitest";
@@ -19,6 +23,8 @@ type Options = Omit<FormatMoneyOptions, "locale">;
 type FormatCase = {
 	name: string;
 	locale: string;
+	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	money?: MoneyValue | null;
 	options?: Options;
 	expected?: string | null;
@@ -27,6 +33,8 @@ type FormatCase = {
 type PairCase = {
 	name: string;
 	locale: string;
+	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	original: MoneyValue;
 	home: MoneyValue | null;
 	options?: Options;
@@ -50,13 +58,17 @@ describe("approximate figures", () => {
 });
 
 describe("golden vectors through the components", () => {
-	const format = (vectors.format as FormatCase[]).filter((c) => !c.throws);
+	// symbolStyle is the formatter's own option (the legacy preference); Money
+	// does not take it, so those cases run in the domain and phone suites.
+	const format = (vectors.format as FormatCase[]).filter(
+		(c) => !c.throws && !c.options?.symbolStyle,
+	);
 	const pair = vectors.pair as PairCase[];
 
 	it.each(format)("Money: $name", (c) => {
 		const html = render(
 			h(Money, { value: c.money ?? null, ...c.options }),
-			c.locale,
+			withMoneyContext(c.locale, c),
 		);
 		expect(amounts(html)).toEqual([c.expected ?? kit.money?.none]);
 	});
@@ -64,7 +76,7 @@ describe("golden vectors through the components", () => {
 	it.each(pair)("Money.pair: $name", (c) => {
 		const html = render(
 			h(Money.pair, { original: c.original, home: c.home, ...c.options }),
-			c.locale,
+			withMoneyContext(c.locale, c),
 		);
 		// Same currency: one amount. A missing home amount says No rate yet.
 		const same = c.home != null && c.home.currency === c.original.currency;

@@ -1,5 +1,5 @@
 {
-	"about": "Golden cases for formatMoney and formatMoneyPair (@retrospend/domain/format). Every client runs this file: web vitest, mobile jest, third-party clients. money.minor is integer minor units (cents, satoshis, fils). A missing money is null or absent. Options default to display code, sign auto, cents auto. \u00a0 is a no-break space, \u202f a narrow no-break space. throws names the error a case must raise.",
+	"about": "Golden cases for formatMoney and formatMoneyPair (@retrospend/domain/format). Every client runs this file: web vitest, mobile jest, third-party clients. money.minor is integer minor units (cents, satoshis, fils). A missing money is null or absent. Options default to display code, sign auto, cents auto. \u00a0 is a no-break space, \u202f a narrow no-break space. throws names the error a case must raise. A case may carry numberFormat (comma_dot, dot_comma or space_comma) and homeCurrency, the account settings: a client puts them on its locale (withMoneyContext in @retrospend/domain/format-locale) before formatting. With a homeCurrency and no display option, that currency shows its narrow symbol and every other its ISO code.",
 	"format": [
 		{
 			"name": "en-US USD",
@@ -600,7 +600,308 @@
 			"money": { "minor": 4800000, "currency": "JPY" },
 			"options": { "compact": true },
 			"expected": "JPY\u00a04.8M"
-		}
+		},
+		{
+			"name": "en-US comma_dot USD",
+			"locale": "en-US",
+			"numberFormat": "comma_dot",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01,234.56"
+		},
+		{
+			"name": "en-US dot_comma USD",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01.234,56"
+		},
+		{
+			"name": "en-US space_comma USD",
+			"locale": "en-US",
+			"numberFormat": "space_comma",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01\u202f234,56"
+		},
+		{
+			"name": "es-AR comma_dot USD",
+			"locale": "es-AR",
+			"numberFormat": "comma_dot",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01,234.56"
+		},
+		{
+			"name": "es-AR dot_comma USD",
+			"locale": "es-AR",
+			"numberFormat": "dot_comma",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01.234,56"
+		},
+		{
+			"name": "es-AR space_comma USD",
+			"locale": "es-AR",
+			"numberFormat": "space_comma",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01\u202f234,56"
+		},
+		{
+			"name": "de comma_dot USD",
+			"locale": "de",
+			"numberFormat": "comma_dot",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01,234.56"
+		},
+		{
+			"name": "de dot_comma USD",
+			"locale": "de",
+			"numberFormat": "dot_comma",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01.234,56"
+		},
+		{
+			"name": "de space_comma USD",
+			"locale": "de",
+			"numberFormat": "space_comma",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01\u202f234,56"
+		},
+		{
+			"name": "fr comma_dot USD",
+			"locale": "fr",
+			"numberFormat": "comma_dot",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01,234.56"
+		},
+		{
+			"name": "fr dot_comma USD",
+			"locale": "fr",
+			"numberFormat": "dot_comma",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01.234,56"
+		},
+		{
+			"name": "fr space_comma USD",
+			"locale": "fr",
+			"numberFormat": "space_comma",
+			"money": { "minor": 123456, "currency": "USD" },
+			"expected": "USD\u00a01\u202f234,56"
+		},
+		{
+			"name": "negative keeps the leading minus, dot_comma",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
+			"money": { "minor": -123456, "currency": "USD" },
+			"expected": "-USD\u00a01.234,56"
+		},
+		{
+			"name": "negative keeps the leading minus, space_comma",
+			"locale": "es-AR",
+			"numberFormat": "space_comma",
+			"money": { "minor": -123456, "currency": "USD" },
+			"expected": "-USD\u00a01\u202f234,56"
+		},
+		{
+			"name": "negative keeps the leading minus, comma_dot",
+			"locale": "de",
+			"numberFormat": "comma_dot",
+			"money": { "minor": -123456, "currency": "USD" },
+			"expected": "-USD\u00a01,234.56"
+		},
+		{
+			"name": "four digits group under a set format, es-ES dot_comma",
+			"locale": "es-ES",
+			"numberFormat": "dot_comma",
+			"money": { "minor": 192030, "currency": "USD" },
+			"expected": "USD\u00a01.920,30"
+		},
+		{
+			"name": "four digits group under a set format, pt-PT space_comma",
+			"locale": "pt-PT",
+			"numberFormat": "space_comma",
+			"money": { "minor": 192030, "currency": "USD" },
+			"expected": "USD\u00a01\u202f920,30"
+		},
+		{
+			"name": "four digits group under a set format, en-US comma_dot",
+			"locale": "en-US",
+			"numberFormat": "comma_dot",
+			"money": { "minor": 192030, "currency": "USD" },
+			"expected": "USD\u00a01,920.30"
+		},
+		{
+			"name": "JPY has no decimals, comma_dot",
+			"locale": "ja-JP",
+			"numberFormat": "comma_dot",
+			"money": { "minor": 1234567, "currency": "JPY" },
+			"expected": "JPY\u00a01,234,567"
+		},
+		{
+			"name": "JPY has no decimals, dot_comma",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
+			"money": { "minor": 1234567, "currency": "JPY" },
+			"expected": "JPY\u00a01.234.567"
+		},
+		{
+			"name": "JPY has no decimals, space_comma",
+			"locale": "en-US",
+			"numberFormat": "space_comma",
+			"money": { "minor": 1234567, "currency": "JPY" },
+			"expected": "JPY\u00a01\u202f234\u202f567"
+		},
+		{
+			"name": "ARS whole by default, dot_comma",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
+			"money": { "minor": 123456700, "currency": "ARS" },
+			"expected": "ARS\u00a01.234.567"
+		},
+		{
+			"name": "ARS whole by default, space_comma",
+			"locale": "es-AR",
+			"numberFormat": "space_comma",
+			"money": { "minor": 123456700, "currency": "ARS" },
+			"expected": "ARS\u00a01\u202f234\u202f567"
+		},
+		{
+			"name": "ARS cents, dot_comma",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
+			"money": { "minor": 123456750, "currency": "ARS" },
+			"expected": "ARS\u00a01.234.567,50"
+		},
+		{
+			"name": "ARS cents, comma_dot over es-AR",
+			"locale": "es-AR",
+			"numberFormat": "comma_dot",
+			"money": { "minor": 123456750, "currency": "ARS" },
+			"expected": "ARS\u00a01,234,567.50"
+		},
+		{
+			"name": "ARS cents, space_comma",
+			"locale": "en-US",
+			"numberFormat": "space_comma",
+			"money": { "minor": 123456750, "currency": "ARS" },
+			"expected": "ARS\u00a01\u202f234\u202f567,50"
+		},
+		{
+			"name": "crypto fraction, comma_dot",
+			"locale": "en-US",
+			"numberFormat": "comma_dot",
+			"money": { "minor": 12345678, "currency": "BTC" },
+			"expected": "BTC\u00a00.12345678"
+		},
+		{
+			"name": "crypto fraction, dot_comma",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
+			"money": { "minor": 12345678, "currency": "BTC" },
+			"expected": "BTC\u00a00,12345678"
+		},
+		{
+			"name": "crypto significant digits, comma_dot",
+			"locale": "en-US",
+			"numberFormat": "comma_dot",
+			"money": { "minor": 1234550000000, "currency": "BTC" },
+			"expected": "BTC\u00a012,345.5"
+		},
+		{
+			"name": "crypto significant digits, space_comma",
+			"locale": "fr",
+			"numberFormat": "space_comma",
+			"money": { "minor": 1234550000000, "currency": "BTC" },
+			"expected": "BTC\u00a012\u202f345,5"
+		},
+		{
+			"name": "crypto trailing zeros go, dot_comma",
+			"locale": "es-AR",
+			"numberFormat": "dot_comma",
+			"money": { "minor": 150000000, "currency": "BTC" },
+			"expected": "BTC\u00a01,5"
+		},
+		{
+			"name": "compact, en-US dot_comma",
+			"locale": "en-US",
+			"numberFormat": "dot_comma",
+			"money": { "minor": 270660200, "currency": "ARS" },
+			"expected": "2,7M",
+			"options": { "compact": true, "display": "none" }
+		},
+		{
+			"name": "compact, es-AR comma_dot keeps its spaced suffix",
+			"locale": "es-AR",
+			"numberFormat": "comma_dot",
+			"money": { "minor": 270660200, "currency": "ARS" },
+			"expected": "2.7\u00a0M",
+			"options": { "compact": true, "display": "none" }
+		},
+		{
+			"name": "compact, thousands under space_comma",
+			"locale": "en-US",
+			"numberFormat": "space_comma",
+			"money": { "minor": 85000000, "currency": "ARS" },
+			"expected": "850K",
+			"options": { "compact": true, "display": "none" }
+		},
+		{
+			"name": "compact, de has no thousands suffix, whole amount under comma_dot",
+			"locale": "de",
+			"numberFormat": "comma_dot",
+			"money": { "minor": 85000000, "currency": "ARS" },
+			"expected": "850,000",
+			"options": { "compact": true, "display": "none" }
+		},
+		{"name": "symbol standard, USD keeps its code ($ is ambiguous)", "locale": "en-US", "money": {"minor": 123456, "currency": "USD"}, "expected": "USD\u00a01,234.56", "options": {"display": "symbol", "symbolStyle": "standard"}},
+		{"name": "symbol native, ARS keeps its code ($ is ambiguous)", "locale": "en-US", "money": {"minor": 123456700, "currency": "ARS"}, "expected": "ARS\u00a01,234,567", "options": {"display": "symbol", "symbolStyle": "native"}},
+		{"name": "symbol native, CAD keeps its code ($ is ambiguous)", "locale": "en-US", "money": {"minor": 5000, "currency": "CAD"}, "expected": "CAD\u00a050.00", "options": {"display": "symbol", "symbolStyle": "native"}},
+		{"name": "symbol standard, ARS shows AR$ (unique)", "locale": "en-US", "money": {"minor": 123456700, "currency": "ARS"}, "expected": "AR$1,234,567", "options": {"display": "symbol", "symbolStyle": "standard"}},
+		{"name": "symbol standard, CAD shows CA$ (unique)", "locale": "en-US", "money": {"minor": 5000, "currency": "CAD"}, "expected": "CA$50.00", "options": {"display": "symbol", "symbolStyle": "standard"}},
+		{"name": "symbol standard, EUR", "locale": "en-US", "money": {"minor": 123450, "currency": "EUR"}, "expected": "\u20ac1,234.50", "options": {"display": "symbol", "symbolStyle": "standard"}},
+		{"name": "symbol native, EUR", "locale": "en-US", "money": {"minor": 123450, "currency": "EUR"}, "expected": "\u20ac1,234.50", "options": {"display": "symbol", "symbolStyle": "native"}},
+		{"name": "symbol with a set format, negative", "locale": "en-US", "numberFormat": "dot_comma", "money": {"minor": -123456700, "currency": "ARS"}, "expected": "-AR$1.234.567", "options": {"display": "symbol", "symbolStyle": "standard"}},
+		{"name": "symbol style leaves a ticker as its code", "locale": "en-US", "money": {"minor": 12345678, "currency": "BTC"}, "expected": "BTC\u00a00.12345678", "options": {"display": "symbol", "symbolStyle": "native"}},
+		{"name": "symbol style does nothing when the code is asked for", "locale": "en-US", "money": {"minor": 123456700, "currency": "ARS"}, "expected": "ARS\u00a01,234,567", "options": {"display": "code", "symbolStyle": "native"}},
+		{"name": "KWD three decimals, comma_dot", "locale": "en-US", "numberFormat": "comma_dot", "money": {"minor": 1234567, "currency": "KWD"}, "expected": "KWD\u00a01,234.567"},
+		{"name": "KWD three decimals, dot_comma", "locale": "en-US", "numberFormat": "dot_comma", "money": {"minor": 1234567, "currency": "KWD"}, "expected": "KWD\u00a01.234,567"},
+		{"name": "KWD three decimals, space_comma", "locale": "de", "numberFormat": "space_comma", "money": {"minor": 1234567, "currency": "KWD"}, "expected": "KWD\u00a01\u202f234,567"},
+		{"name": "KWD three decimals follow the language", "locale": "de", "money": {"minor": 1234567, "currency": "KWD"}, "expected": "KWD\u00a01.234,567"},
+		{"name": "exceptZero plus, comma_dot over de", "locale": "de", "numberFormat": "comma_dot", "money": {"minor": 123456, "currency": "USD"}, "expected": "+USD\u00a01,234.56", "options": {"sign": "exceptZero"}},
+		{"name": "exceptZero plus, dot_comma", "locale": "en-US", "numberFormat": "dot_comma", "money": {"minor": 123456, "currency": "USD"}, "expected": "+USD\u00a01.234,56", "options": {"sign": "exceptZero"}},
+		{"name": "exceptZero plus, space_comma", "locale": "en-US", "numberFormat": "space_comma", "money": {"minor": 123456, "currency": "USD"}, "expected": "+USD\u00a01\u202f234,56", "options": {"sign": "exceptZero"}},
+		{"name": "exceptZero keeps the minus", "locale": "en-US", "numberFormat": "dot_comma", "money": {"minor": -123456, "currency": "USD"}, "expected": "-USD\u00a01.234,56", "options": {"sign": "exceptZero"}},
+		{"name": "de-CH under comma_dot", "locale": "de-CH", "numberFormat": "comma_dot", "money": {"minor": 123456, "currency": "USD"}, "expected": "USD\u00a01,234.56"},
+		{"name": "de-CH under dot_comma", "locale": "de-CH", "numberFormat": "dot_comma", "money": {"minor": 123456, "currency": "USD"}, "expected": "USD\u00a01.234,56"},
+		{"name": "de-CH under space_comma", "locale": "de-CH", "numberFormat": "space_comma", "money": {"minor": 123456, "currency": "USD"}, "expected": "USD\u00a01\u202f234,56"},
+		{"name": "en-IN under comma_dot groups in threes, not lakh", "locale": "en-IN", "numberFormat": "comma_dot", "money": {"minor": 12345678, "currency": "USD"}, "expected": "USD\u00a0123,456.78"},
+		{"name": "en-IN under dot_comma groups in threes, not lakh", "locale": "en-IN", "numberFormat": "dot_comma", "money": {"minor": 12345678, "currency": "USD"}, "expected": "USD\u00a0123.456,78"},
+		{"name": "en-IN under space_comma groups in threes, not lakh", "locale": "en-IN", "numberFormat": "space_comma", "money": {"minor": 12345678, "currency": "USD"}, "expected": "USD\u00a0123\u202f456,78"},
+		{"name": "en-IN follows its own lakh groups", "locale": "en-IN", "money": {"minor": 123456780, "currency": "INR"}, "expected": "INR\u00a012,34,567.80"},
+		{"name": "en-IN INR under space_comma", "locale": "en-IN", "numberFormat": "space_comma", "money": {"minor": 123456780, "currency": "INR"}, "expected": "INR\u00a01\u202f234\u202f567,80"},
+		{"name": "compact four digits under comma_dot, de has no suffix", "locale": "de", "numberFormat": "comma_dot", "money": {"minor": 123400, "currency": "USD"}, "expected": "1,234", "options": {"compact": true, "display": "none"}},
+		{"name": "compact four digits follow the language", "locale": "de", "money": {"minor": 123400, "currency": "USD"}, "expected": "1.234", "options": {"compact": true, "display": "none"}},
+		{"name": "home USD shows $", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 192030, "currency": "USD"}, "expected": "$1,920.30"},
+		{"name": "home USD negative: the minus leads the symbol", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": -1200, "currency": "USD"}, "expected": "-$12.00"},
+		{"name": "home USD, a foreign ARS amount keeps its code", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 1500000, "currency": "ARS"}, "expected": "ARS\u00a015,000"},
+		{"name": "home USD, a foreign BRL amount keeps its code", "locale": "es-AR", "homeCurrency": "USD", "money": {"minor": 5190, "currency": "BRL"}, "expected": "BRL\u00a051,90"},
+		{"name": "home USD, crypto keeps its ticker", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 12345678, "currency": "BTC"}, "expected": "BTC\u00a00.12345678"},
+		{"name": "home USD zero", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 0, "currency": "USD"}, "expected": "$0.00"},
+		{"name": "home EUR shows the euro sign", "locale": "en-US", "homeCurrency": "EUR", "money": {"minor": 123450, "currency": "EUR"}, "expected": "\u20ac1,234.50"},
+		{"name": "home EUR, a USD amount keeps its code", "locale": "en-US", "homeCurrency": "EUR", "money": {"minor": 123450, "currency": "USD"}, "expected": "USD\u00a01,234.50"},
+		{"name": "home GBP shows the pound sign", "locale": "en-US", "homeCurrency": "GBP", "money": {"minor": 123450, "currency": "GBP"}, "expected": "\u00a31,234.50"},
+		{"name": "home JPY shows the yen sign, no decimals", "locale": "en-US", "homeCurrency": "JPY", "money": {"minor": 1234567, "currency": "JPY"}, "expected": "\u00a51,234,567"},
+		{"name": "home BRL shows R$", "locale": "en-US", "homeCurrency": "BRL", "money": {"minor": 5190, "currency": "BRL"}, "expected": "R$51.90"},
+		{"name": "home ARS shows $ too, it is the home currency", "locale": "en-US", "homeCurrency": "ARS", "money": {"minor": 123456700, "currency": "ARS"}, "expected": "$1,234,567"},
+		{"name": "home ARS, a USD amount keeps its code", "locale": "en-US", "homeCurrency": "ARS", "money": {"minor": 123456, "currency": "USD"}, "expected": "USD\u00a01,234.56"},
+		{"name": "home ARS in es-AR spaces the symbol like the language", "locale": "es-AR", "homeCurrency": "ARS", "money": {"minor": 123456700, "currency": "ARS"}, "expected": "$\u00a01.234.567"},
+		{"name": "home CHF has no symbol of its own, so the code stands", "locale": "en-US", "homeCurrency": "CHF", "money": {"minor": 123450, "currency": "CHF"}, "expected": "CHF\u00a01,234.50"},
+		{"name": "home USD, display code forces the code", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 192030, "currency": "USD"}, "expected": "USD\u00a01,920.30", "options": {"display": "code"}},
+		{"name": "home USD, display none leaves the currency out", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 192030, "currency": "USD"}, "expected": "1,920.30", "options": {"display": "none"}},
+		{"name": "home USD, exceptZero plus leads the symbol", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 192030, "currency": "USD"}, "expected": "+$1,920.30", "options": {"sign": "exceptZero"}},
+		{"name": "home USD compact", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 270660200, "currency": "USD"}, "expected": "$2.7M", "options": {"compact": true}},
+		{"name": "home USD under comma_dot over de", "locale": "de", "numberFormat": "comma_dot", "homeCurrency": "USD", "money": {"minor": -123456, "currency": "USD"}, "expected": "-$\u00a01,234.56"},
+		{"name": "home USD under dot_comma", "locale": "en-US", "numberFormat": "dot_comma", "homeCurrency": "USD", "money": {"minor": -123456, "currency": "USD"}, "expected": "-$1.234,56"},
+		{"name": "home USD under space_comma", "locale": "en-US", "numberFormat": "space_comma", "homeCurrency": "USD", "money": {"minor": 123456, "currency": "USD"}, "expected": "$1\u202f234,56"},
+		{"name": "home EUR under dot_comma, foreign USD keeps its code", "locale": "en-US", "numberFormat": "dot_comma", "homeCurrency": "EUR", "money": {"minor": 123456, "currency": "USD"}, "expected": "USD\u00a01.234,56"},
+		{"name": "home ARS whole under space_comma", "locale": "en-US", "numberFormat": "space_comma", "homeCurrency": "ARS", "money": {"minor": 123456700, "currency": "ARS"}, "expected": "$1\u202f234\u202f567"}
 	],
 	"pair": [
 		{
@@ -655,6 +956,10 @@
 			"original": { "minor": -5190, "currency": "BRL" },
 			"home": { "minor": -1340700, "currency": "ARS" },
 			"expected": { "original": "-BRL\u00a051.90", "home": "-ARS\u00a013,407" }
-		}
+		},
+		{"name": "foreign original with a USD home amount", "locale": "en-US", "homeCurrency": "USD", "original": {"minor": 5190, "currency": "BRL"}, "home": {"minor": 990, "currency": "USD"}, "expected": {"original": "BRL\u00a051.90", "home": "$9.90"}},
+		{"name": "home-currency original: one amount with the symbol", "locale": "en-US", "homeCurrency": "USD", "original": {"minor": 1200, "currency": "USD"}, "home": {"minor": 1200, "currency": "USD"}, "expected": {"original": "$12.00", "home": null}},
+		{"name": "ARS home: a USD original keeps its code, the ARS amount takes $", "locale": "en-US", "homeCurrency": "ARS", "original": {"minor": 299, "currency": "USD"}, "home": {"minor": 433550, "currency": "ARS"}, "expected": {"original": "USD\u00a02.99", "home": "$4,335.50"}},
+		{"name": "negative home amount under dot_comma", "locale": "en-US", "numberFormat": "dot_comma", "homeCurrency": "USD", "original": {"minor": -5190, "currency": "BRL"}, "home": {"minor": -990, "currency": "USD"}, "expected": {"original": "-BRL\u00a051,90", "home": "-$9,90"}}
 	]
 }

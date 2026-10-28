@@ -4,12 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { tryConvertAmount } from "@retrospend/domain/money";
 import { fromMinor, money, toMinor } from "@retrospend/domain/money-minor";
 import { draftFromMinor } from "@retrospend/domain/parse";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CategoryPicker } from "~/components/category-picker";
 import { MoneyInput } from "~/components/money/money-input";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Button } from "~/components/ui/button";
 import { DatePicker } from "~/components/ui/date-picker";
 import { Input } from "~/components/ui/input";
@@ -56,12 +57,11 @@ export function RecurringModal({
 	onClose,
 }: RecurringModalProps) {
 	const t = useTranslations("recurring");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const [amountText, setAmountText] = useState("");
 	const toast = useToast();
 	const utils = api.useUtils();
 	const { data: settings } = api.settings.getGeneral.useQuery();
-
 	const { data: template } = api.recurring.get.useQuery(
 		{ id: templateId ?? "" },
 		{ enabled: !!templateId },

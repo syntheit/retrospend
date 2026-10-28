@@ -157,7 +157,7 @@ export function BudgetBody({
 			<View style={{ paddingTop: space[4] }}>
 				<ListRow
 					accessibilityLabel={t("wealth")}
-					onPress={() => router.navigate(wealthHref())}
+					onPress={() => router.push(wealthHref("budget"))}
 				>
 					<Text
 						style={{ flex: 1, color: color.brand, fontSize: type.body.size }}

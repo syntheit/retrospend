@@ -9,8 +9,7 @@ import {
 	View,
 } from "react-native";
 import { useTranslations } from "use-intl";
-import { useFormatLocale } from "@/lib/intl";
-import { useFormatMoney } from "@/lib/money";
+import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
@@ -72,7 +71,7 @@ export function ComposerShell({
 	children: ReactNode;
 }) {
 	const t = useTranslations("mobile.composer");
-	const locale = useFormatLocale();
+	const locale = useMoneyLocale();
 	const { format } = useFormatMoney();
 	const { color, radius, size, space, type } = useTheme();
 	// Scrolling the fields folds the keypad away so the split and what changes

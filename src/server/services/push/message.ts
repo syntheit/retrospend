@@ -1,5 +1,9 @@
 import { EVENT_ID_PATTERN } from "@retrospend/api-contract";
 import { formatMoney } from "@retrospend/domain/format";
+import {
+	type NumberFormatChoice,
+	withNumberFormat,
+} from "@retrospend/domain/format-locale";
 import type { Money } from "@retrospend/domain/money-minor";
 import {
 	type MessageCatalog,
@@ -123,10 +127,14 @@ async function catalogFor(locale: string): Promise<MessageCatalog> {
 	return messages;
 }
 
-/** The text of one push, in the language of the person it goes to. */
+/**
+ * The text of one push, in the language of the person it goes to and with
+ * their number format, so an amount reads as it does in their app.
+ */
 export async function buildPushMessage(
 	data: PushData,
 	language: string | null | undefined,
+	numberFormat: NumberFormatChoice | null = null,
 ): Promise<PushMessage> {
 	const locale = matchSupportedLocale(language) ?? DEFAULT_LOCALE;
 	// The catalog is read at run time, so its keys are not in the types.
@@ -142,7 +150,10 @@ export async function buildPushMessage(
 				: "recurringDueOut"
 			: KEYS[data.type];
 	const amount = data.amount
-		? formatMoney(data.amount, { locale, display: "code" })
+		? formatMoney(data.amount, {
+				locale: withNumberFormat(locale, numberFormat),
+				display: "code",
+			})
 		: null;
 	return {
 		title: t(`${key}.title`),

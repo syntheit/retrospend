@@ -22,12 +22,119 @@ const cache = new Map<string, NumberSymbols>();
 const FALLBACK_LOCALE = "en-US";
 
 /**
+ * The account's number format setting: null follows the language. Each
+ * choice names the group and the decimal separator, in that order. It keeps
+ * the language's pattern (where the sign and the symbol go, how digits
+ * group) and swaps only these two marks.
+ */
+export const NUMBER_FORMATS = [
+	"comma_dot",
+	"dot_comma",
+	"space_comma",
+] as const;
+export type NumberFormatChoice = (typeof NUMBER_FORMATS)[number];
+
+/** What each choice writes. U+202F is the narrow no-break space French uses. */
+const SEPARATORS: Record<
+	NumberFormatChoice,
+	{ group: string; decimal: string }
+> = {
+	comma_dot: { group: ",", decimal: "." },
+	dot_comma: { group: ".", decimal: "," },
+	space_comma: { group: "\u202f", decimal: "," },
+};
+
+export function numberFormatSeparators(choice: NumberFormatChoice): {
+	group: string;
+	decimal: string;
+} {
+	return SEPARATORS[choice];
+}
+
+/**
+ * What the account says about how amounts read rides on the locale tag as a
+ * BCP 47 private-use suffix: the number format ("es-AR-x-nf-cd") and the
+ * home currency ("en-US-x-hc-usd", or both: "en-US-x-nf-dc-hc-usd"). Every
+ * function that already takes a `locale` (the formatter, the typing parser,
+ * the draft helpers) honors it with no new parameter, and a client sets it
+ * in one place. Intl never sees the suffix: baseLocale strips it first.
+ */
+const TAG_CODES: Record<NumberFormatChoice, string> = {
+	comma_dot: "cd",
+	dot_comma: "dc",
+	space_comma: "sc",
+};
+const TAG_SUFFIX = /-x(?:-nf-(cd|dc|sc))?(?:-hc-([a-z]{3}))?$/i;
+
+/** What the account's settings add to a locale: both parts are optional. */
+export interface MoneyContext {
+	/** Null follows the language. */
+	numberFormat?: NumberFormatChoice | null;
+	/** The home currency: the only one shown with a symbol. */
+	homeCurrency?: string | null;
+}
+
+/** The suffix of `locale`, or an empty match when it has none. */
+function tagOf(locale: string): RegExpExecArray | null {
+	const m = TAG_SUFFIX.exec(locale.trim());
+	// The pattern also matches "-x" alone and the empty string; neither is ours.
+	return m && (m[1] || m[2]) ? m : null;
+}
+
+/** `locale` with the account's number format and home currency attached. */
+export function withMoneyContext(
+	locale: string,
+	context: MoneyContext,
+): string {
+	const base = baseLocale(locale);
+	const nf = context.numberFormat
+		? `-nf-${TAG_CODES[context.numberFormat]}`
+		: "";
+	const hc = context.homeCurrency
+		? `-hc-${context.homeCurrency.toLowerCase()}`
+		: "";
+	return nf || hc ? `${base}-x${nf}${hc}` : base;
+}
+
+/**
+ * `locale` with the number format choice attached (null follows the
+ * language), keeping a home currency it already carries.
+ */
+export function withNumberFormat(
+	locale: string,
+	choice: NumberFormatChoice | null | undefined,
+): string {
+	return withMoneyContext(locale, {
+		numberFormat: choice,
+		homeCurrency: homeCurrencyOf(locale),
+	});
+}
+
+/** The locale without any suffix of ours: what Intl may be given. */
+export function baseLocale(locale: string): string {
+	const trimmed = locale.trim();
+	const m = tagOf(trimmed);
+	return m ? trimmed.slice(0, m.index) : trimmed;
+}
+
+/** The number format choice a locale tag carries, or null. */
+export function numberFormatOf(locale: string): NumberFormatChoice | null {
+	const code = tagOf(locale)?.[1]?.toLowerCase();
+	return NUMBER_FORMATS.find((choice) => TAG_CODES[choice] === code) ?? null;
+}
+
+/** The home currency a locale tag carries (upper case), or null. */
+export function homeCurrencyOf(locale: string): string | null {
+	return tagOf(locale)?.[2]?.toUpperCase() ?? null;
+}
+
+/**
  * "en_US" (as Android and POSIX write it) becomes "en-US". An unknown or
  * malformed tag becomes en-US rather than whatever the host defaults to, so
  * the server, the browser and a phone format it the same way.
  */
 function resolveLocale(locale: string): string {
-	const tag = locale.trim().replace(/_/g, "-");
+	const tag = baseLocale(locale).replace(/_/g, "-");
 	try {
 		return Intl.NumberFormat.supportedLocalesOf(tag)[0] ?? FALLBACK_LOCALE;
 	} catch {
@@ -38,9 +145,26 @@ function resolveLocale(locale: string): string {
 export function numberSymbols(locale: string): NumberSymbols {
 	const hit = cache.get(locale);
 	if (hit) return hit;
-	const symbols = readSymbols(resolveLocale(locale));
+	const symbols = withChoice(
+		readSymbols(resolveLocale(locale)),
+		numberFormatOf(locale),
+	);
 	cache.set(locale, symbols);
 	return symbols;
+}
+
+/**
+ * The language's symbols with the account's separators over them. A set
+ * format always groups in threes: a language that does not group (or only
+ * from five digits) still gives "1.920,30", and en-IN's lakh groups give
+ * "123 456,78" rather than "1 23 456,78".
+ */
+function withChoice(
+	symbols: NumberSymbols,
+	choice: NumberFormatChoice | null,
+): NumberSymbols {
+	if (!choice) return symbols;
+	return { ...symbols, ...SEPARATORS[choice], primary: 3, secondary: 3 };
 }
 
 function readSymbols(locale: string): NumberSymbols {

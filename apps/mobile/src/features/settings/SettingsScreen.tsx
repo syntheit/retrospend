@@ -24,6 +24,7 @@ import {
 } from "@/ui/Form";
 import { useToast } from "@/ui/Toast";
 import { DeleteAccountSheet } from "./DeleteAccountSheet";
+import { useNumbersSection } from "./NumbersSection";
 import { ProfileSheet } from "./ProfileSheet";
 import { RatesSheet } from "./RatesSheet";
 import {
@@ -79,6 +80,7 @@ export function SettingsScreen() {
 	}, [prefsRead.state]);
 
 	const settings = general.state.status === "ready" ? general.state.data : null;
+	const numbers = useNumbersSection(settings, general.reload);
 	const me = profile.state.status === "ready" ? profile.state.data : null;
 	const pinned = rates.state.status === "ready" ? rates.state.data.items : [];
 	const server =
@@ -212,6 +214,7 @@ export function SettingsScreen() {
 						/>
 					</FormSection>
 				) : null}
+				{numbers}
 				<FormSection footer={t("rates.footer")} title={t("rates.section")}>
 					<FormValueRow
 						label={t("rates.defaultType")}

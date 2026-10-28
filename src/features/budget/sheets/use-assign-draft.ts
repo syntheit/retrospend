@@ -1,9 +1,9 @@
 "use client";
 
 import { draftFromMinor } from "@retrospend/domain/parse";
-import { useLocale } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { minorOf } from "~/components/money/money-cell";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import type { RouterInputs, RouterOutputs } from "~/trpc/react";
 import { newId } from "./use-write";
 
@@ -28,7 +28,7 @@ export function useAssignDraft({
 	month: number | null;
 	totals: FillTotals | undefined;
 }) {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const [texts, setTexts] = useState<Texts>({});
 	const [typed, setTyped] = useState(false);
 	const [batchId] = useState(newId);

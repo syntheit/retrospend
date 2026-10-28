@@ -10,16 +10,25 @@
  *   than the currency has (crypto significant digits, cents: false), and
  *   then it is half to even.
  * - The locale picks separators and grouping only; placement is the same in
- *   every locale so a row of amounts lines up.
+ *   every locale so a row of amounts lines up. The account's number format
+ *   setting rides on the locale tag (withNumberFormat in ./format-locale).
  *
  * Golden cases: packages/domain/vectors/money-format.vectors.json.
  */
-import { isCrypto, SMART_NO_DECIMAL_CURRENCIES } from "./currency-format";
+import { CURRENCIES } from "./currencies";
+import {
+	getCurrencySymbolWithPreference,
+	isCrypto,
+	SMART_NO_DECIMAL_CURRENCIES,
+} from "./currency-format";
 import {
 	compactAffix,
 	groupDigits,
+	homeCurrencyOf,
+	type NumberFormatChoice,
 	type NumberSymbols,
 	numberSymbols,
+	withNumberFormat,
 } from "./format-locale";
 import { currencyDecimals } from "./money";
 import { money as checkedMoney, type Money } from "./money-minor";
@@ -31,10 +40,22 @@ export type MoneySign = "auto" | "exceptZero" | "never";
 
 export interface FormatMoneyOptions {
 	locale: string;
-	/** "symbol" is honored only for an unambiguous symbol. Default "code". */
+	/**
+	 * "symbol" is honored only for an unambiguous symbol. Default: the home
+	 * currency (the locale's "-x-hc-" tag) shows its narrow symbol and every
+	 * other currency its code, so a "$" always means home. "code" forces the
+	 * code, "none" leaves the currency out.
+	 */
 	display?: MoneyDisplay;
 	/** Default "auto". */
 	sign?: MoneySign;
+	/**
+	 * The account's currency symbol style. With display "symbol" it picks the
+	 * symbol the way the legacy formatter does (standard "AR$", native "$"),
+	 * so the same amount reads the same on every client. Omitted: only
+	 * unambiguous symbols show.
+	 */
+	symbolStyle?: "native" | "standard";
 	/**
 	 * auto (default): the currency's minor digits; high-nominal currencies
 	 * (ARS, COP...) drop ".00" on whole amounts; crypto shows up to 8
@@ -110,13 +131,97 @@ function shownDecimals(
 	return { shown: decimals, trim: false };
 }
 
-function unitLabel(
+/** How many currencies write `symbol` as their standard or native symbol. */
+let symbolUse: Map<string, number> | null = null;
+function symbolUsers(symbol: string): number {
+	if (!symbolUse) {
+		symbolUse = new Map();
+		for (const c of Object.values(CURRENCIES)) {
+			for (const s of new Set([c.symbol, c.symbol_native])) {
+				symbolUse.set(s, (symbolUse.get(s) ?? 0) + 1);
+			}
+		}
+	}
+	return symbolUse.get(symbol) ?? 0;
+}
+
+/**
+ * The symbol to show, or undefined when the code shows instead. With the
+ * account's style the symbol is that style's, but only when no other
+ * currency uses it: "$" is every dollar and peso, so those keep their code.
+ */
+function symbolFor(
 	code: string,
 	display: MoneyDisplay,
+	style: "native" | "standard" | undefined,
+): string | undefined {
+	if (display !== "symbol") return undefined;
+	if (!style) return UNAMBIGUOUS_SYMBOLS[code];
+	// Crypto and unknown tickers have no symbol: their code stands.
+	if (!(code in CURRENCIES)) return undefined;
+	const symbol = getCurrencySymbolWithPreference(code, style);
+	return symbolUsers(symbol) === 1 ? symbol : undefined;
+}
+
+/**
+ * The narrow symbol of the currencies people keep a home account in. A fixed
+ * table, not Intl: engines disagree (Hermes answers "ARS" or "US$"), and the
+ * same amount must read the same on every client. Every other currency has
+ * no narrow symbol here, so its code stands. A test checks each entry
+ * against CLDR (Intl "narrowSymbol").
+ */
+export const NARROW_SYMBOLS: Readonly<Record<string, string>> = {
+	USD: "$",
+	CAD: "$",
+	AUD: "$",
+	NZD: "$",
+	MXN: "$",
+	ARS: "$",
+	CLP: "$",
+	COP: "$",
+	UYU: "$",
+	SGD: "$",
+	HKD: "$",
+	TWD: "$",
+	EUR: "\u20ac",
+	GBP: "\u00a3",
+	JPY: "\u00a5",
+	CNY: "\u00a5",
+	BRL: "R$",
+	INR: "\u20b9",
+	KRW: "\u20a9",
+	RUB: "\u20bd",
+	TRY: "\u20ba",
+	UAH: "\u20b4",
+	ILS: "\u20aa",
+	PHP: "\u20b1",
+	VND: "\u20ab",
+	THB: "\u0e3f",
+	NGN: "\u20a6",
+	PLN: "z\u0142",
+	CZK: "K\u010d",
+	HUF: "Ft",
+	SEK: "kr",
+	NOK: "kr",
+	DKK: "kr",
+	ZAR: "R",
+};
+
+function unitLabel(
+	code: string,
+	display: MoneyDisplay | undefined,
 	locale: string,
+	style?: "native" | "standard",
 ): string {
-	const symbol = display === "symbol" ? UNAMBIGUOUS_SYMBOLS[code] : undefined;
 	if (display === "none") return "";
+	// No display asked for: the home currency (the locale's "-x-hc-" tag) is
+	// the one amount with a symbol, so a "$" always means home.
+	const symbol =
+		display === undefined
+			? code === homeCurrencyOf(locale)
+				? NARROW_SYMBOLS[code]
+				: undefined
+			: symbolFor(code, display, style);
 	if (!symbol) return code + NBSP;
 	return numberSymbols(locale).symbolSpaced ? symbol + NBSP : symbol;
 }
@@ -172,7 +277,13 @@ export function formatMoney(
 ): string | null {
 	if (value == null) return null;
 	const { minor, currency } = checkedMoney(value.minor, value.currency);
-	const { locale, display = "code", sign = "auto", cents = "auto" } = options;
+	const {
+		locale,
+		display,
+		sign = "auto",
+		cents = "auto",
+		symbolStyle,
+	} = options;
 	const abs = Math.abs(minor);
 	const own = currencyDecimals(currency);
 	const decimals = Math.max(own, options.places ?? 0);
@@ -180,7 +291,7 @@ export function formatMoney(
 		const c = compactNumber(abs, decimals, locale, numberSymbols(locale));
 		return (
 			signFor(minor, c.rounded, sign) +
-			unitLabel(currency, display, locale) +
+			unitLabel(currency, display, locale, symbolStyle) +
 			c.text
 		);
 	}
@@ -200,7 +311,7 @@ export function formatMoney(
 
 	return (
 		signFor(minor, rounded, sign) +
-		unitLabel(currency, display, locale) +
+		unitLabel(currency, display, locale, symbolStyle) +
 		number
 	);
 }
@@ -235,7 +346,53 @@ export function formatMoneyPair(
 		home.currency.toUpperCase() === original.currency.toUpperCase();
 	if (same) return { original: formatMoney(original, options), home: null };
 	return {
-		original: formatMoney(original, { ...options, display: "code" }),
+		original: formatMoney(original, {
+			...options,
+			// A foreign original keeps its code; the home currency keeps its symbol.
+			display:
+				original.currency.toUpperCase() === homeCurrencyOf(options.locale)
+					? options.display
+					: "code",
+		}),
 		home: formatMoney(home, options),
+	};
+}
+
+/** The settings choices for how digits are marked: the language's own, or one of three. */
+export type NumberFormatOption = "follow" | NumberFormatChoice;
+
+/** 1,234,567.89 as minor units at `places` decimals, rounded half up. */
+function sampleMinor(places: number): number {
+	const whole = 123_456_789;
+	if (places >= 2) return whole * 10 ** (places - 2);
+	const unit = 10 ** (2 - places);
+	const kept = Math.floor(whole / unit);
+	return whole % unit >= unit / 2 ? kept + 1 : kept;
+}
+
+/**
+ * Each number format option as the user's own amount would read in it, for
+ * the Settings picker: 1,234,567.89 in `currency` (at its own places, so a
+ * yen shows no decimals) in the language `locale`. "follow" is the language
+ * alone; the other three keep its pattern and swap the marks.
+ */
+export function numberFormatExamples(
+	currency: string,
+	locale: string,
+): Record<NumberFormatOption, string> {
+	const sample = checkedMoney(
+		sampleMinor(currencyDecimals(currency)),
+		currency,
+	);
+	const show = (choice: NumberFormatChoice | null) =>
+		formatMoney(sample, {
+			locale: withNumberFormat(locale, choice),
+			cents: true,
+		});
+	return {
+		follow: show(null),
+		comma_dot: show("comma_dot"),
+		dot_comma: show("dot_comma"),
+		space_comma: show("space_comma"),
 	};
 }

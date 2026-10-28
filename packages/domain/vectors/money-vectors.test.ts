@@ -6,7 +6,11 @@ import {
 	formatMoney,
 	formatMoneyPair,
 } from "../src/format";
-import { clearLocaleCaches } from "../src/format-locale";
+import {
+	clearLocaleCaches,
+	type NumberFormatChoice,
+	withMoneyContext,
+} from "../src/format-locale";
 import { setPartsMode } from "../src/intl-parts";
 import type { Money } from "../src/money-minor";
 import {
@@ -20,10 +24,19 @@ import formatVectors from "./money-format.vectors.json";
 import parseVectors from "./money-parse.vectors.json";
 
 type Options = Omit<FormatMoneyOptions, "locale">;
+/** A case's locale with its numberFormat and homeCurrency settings on it, as every client sets it. */
+const loc = (c: {
+	locale: string;
+	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
+}) => withMoneyContext(c.locale, c);
+
 
 interface FormatCase {
 	name: string;
 	locale: string;
+	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	money?: Money | null;
 	options?: Options;
 	expected?: string | null;
@@ -33,6 +46,8 @@ interface FormatCase {
 interface PairCase {
 	name: string;
 	locale: string;
+	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	original: Money;
 	home: Money | null;
 	options?: Options;
@@ -42,6 +57,8 @@ interface PairCase {
 interface ParseCase {
 	name: string;
 	locale: string;
+	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	currency: string;
 	text: string;
 	expected: { minor: number } | { error: string };
@@ -50,6 +67,8 @@ interface ParseCase {
 interface DraftCase {
 	name: string;
 	locale: string;
+	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	currency: string;
 	text: string;
 	expected: string;
@@ -63,10 +82,20 @@ const draftCases = parseVectors.draft as DraftCase[];
 interface KeystrokeCase {
 	name: string;
 	locale: string;
+	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	currency: string;
 	keys: string[];
 	drafts: string[];
 	expected: { minor: number } | { error: string };
+}
+
+interface SeparatorCase {
+	locale: string;
+	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
+	decimal: string;
+	group: string;
 }
 
 const keystrokeCases = parseVectors.keystrokes as KeystrokeCase[];
@@ -75,6 +104,8 @@ const BACKSPACE = "\u232b";
 interface DraftFromMinorCase {
 	name: string;
 	locale: string;
+	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	money: Money;
 	expected: string;
 }
@@ -97,7 +128,7 @@ describe.each(["auto", "fallback"] as const)("parts path: %s", (path) => {
 	describe("money-format vectors", () => {
 		it.each(formatCases)("$name", (c) => {
 			const run = () =>
-				formatMoney(c.money, { locale: c.locale, ...c.options });
+				formatMoney(c.money, { locale: loc(c), ...c.options });
 			if (c.throws) {
 				expect(run).toThrow(c.throws === "RangeError" ? RangeError : Error);
 				return;
@@ -107,14 +138,14 @@ describe.each(["auto", "fallback"] as const)("parts path: %s", (path) => {
 
 		it.each(pairCases)("pair: $name", (c) => {
 			expect(
-				formatMoneyPair(c.original, c.home, { locale: c.locale, ...c.options }),
+				formatMoneyPair(c.original, c.home, { locale: loc(c), ...c.options }),
 			).toEqual(c.expected);
 		});
 	});
 
 	describe("money-parse vectors", () => {
 		it.each(parseCases)("$name", (c) => {
-			const result = parseMoneyInput(c.text, c.locale, c.currency);
+			const result = parseMoneyInput(c.text, loc(c), c.currency);
 			if ("minor" in c.expected) {
 				expect(result).toMatchObject({ ok: true, minor: c.expected.minor });
 			} else {
@@ -123,20 +154,20 @@ describe.each(["auto", "fallback"] as const)("parts path: %s", (path) => {
 		});
 
 		it.each(draftCases)("draft: $name", (c) => {
-			const once = formatMoneyDraft(c.text, c.locale, c.currency);
+			const once = formatMoneyDraft(c.text, loc(c), c.currency);
 			expect(once).toBe(c.expected);
-			expect(formatMoneyDraft(once, c.locale, c.currency)).toBe(once);
+			expect(formatMoneyDraft(once, loc(c), c.currency)).toBe(once);
 		});
 
 		it.each(keystrokeCases)("keystrokes: $name", (c) => {
 			let draft = "";
 			const drafts = c.keys.map((key) => {
 				const text = key === BACKSPACE ? draft.slice(0, -1) : draft + key;
-				draft = formatMoneyDraft(text, c.locale, c.currency, draft);
+				draft = formatMoneyDraft(text, loc(c), c.currency, draft);
 				return draft;
 			});
 			expect(drafts).toEqual(c.drafts);
-			const result = parseMoneyInput(draft, c.locale, c.currency);
+			const result = parseMoneyInput(draft, loc(c), c.currency);
 			if ("minor" in c.expected) {
 				expect(result).toMatchObject({ ok: true, minor: c.expected.minor });
 			} else {
@@ -146,26 +177,26 @@ describe.each(["auto", "fallback"] as const)("parts path: %s", (path) => {
 
 		it.each(fromMinorCases)("draftFromMinor: $name", (c) => {
 			const { minor, currency } = c.money;
-			const draft = draftFromMinor(minor, c.locale, currency);
+			const draft = draftFromMinor(minor, loc(c), currency);
 			expect(draft).toBe(c.expected);
-			expect(parseMoneyInput(draft, c.locale, currency)).toMatchObject({
+			expect(parseMoneyInput(draft, loc(c), currency)).toMatchObject({
 				ok: true,
 				minor,
 			});
-			expect(formatMoneyDraft(draft, c.locale, currency)).toBe(draft);
+			expect(formatMoneyDraft(draft, loc(c), currency)).toBe(draft);
 		});
 
-		it.each(parseVectors.separators)("separators: $locale", (c) => {
-			expect(decimalSeparator(c.locale)).toBe(c.decimal);
-			expect(groupSeparator(c.locale)).toBe(c.group);
+		it.each(parseVectors.separators as SeparatorCase[])("separators: $locale $numberFormat", (c) => {
+			expect(decimalSeparator(loc(c))).toBe(c.decimal);
+			expect(groupSeparator(loc(c))).toBe(c.group);
 		});
 
 		it("parses what it formats: every successful parse survives a draft", () => {
 			for (const c of parseCases) {
 				if (!("minor" in c.expected)) continue;
-				const draft = formatMoneyDraft(c.text, c.locale, c.currency);
+				const draft = formatMoneyDraft(c.text, loc(c), c.currency);
 				expect(
-					parseMoneyInput(draft, c.locale, c.currency),
+					parseMoneyInput(draft, loc(c), c.currency),
 					c.name,
 				).toMatchObject({ ok: true, minor: c.expected.minor });
 			}

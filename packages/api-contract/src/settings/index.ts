@@ -7,6 +7,7 @@ import { settingsExtrasContract } from "./extras";
 import {
 	categoryPreferenceSchema,
 	favoriteRateSchema,
+	numberFormatSchema,
 	PAGE_KEYS,
 	pageSettingsInputSchema,
 	pageSettingsSchema,
@@ -24,6 +25,7 @@ export const generalSettingsSchema = z
 		defaultCurrency: currencyCodeSchema,
 		categoryClickBehavior: z.enum(["navigate", "toggle"]),
 		currencySymbolStyle: z.enum(["native", "standard"]),
+		numberFormat: numberFormatSchema.nullable(),
 		/** Null until the user sets one. */
 		monthlyIncome: moneySchema.nullable(),
 		smartCurrencyFormatting: z.boolean(),
@@ -50,6 +52,8 @@ export const generalSettingsPatchSchema = z
 		defaultCurrency: fiatCodeSchema,
 		categoryClickBehavior: z.enum(["navigate", "toggle"]),
 		currencySymbolStyle: z.enum(["native", "standard"]),
+		/** Null goes back to following the app language. */
+		numberFormat: numberFormatSchema.nullable(),
 		monthlyIncome: moneySchema.extend({ minor: z.int().min(0) }).nullable(),
 		smartCurrencyFormatting: z.boolean(),
 		defaultPrivacyMode: z.boolean(),

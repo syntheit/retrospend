@@ -1,18 +1,19 @@
 "use client";
 
+import { dayKey } from "@retrospend/domain/time-zone";
 import { Plus } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { formatMoney } from "~/components/money/format";
 import { Money } from "~/components/money/money";
 import { MoneyInput, MoneyInputRow } from "~/components/money/money-input";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { DatePicker } from "~/components/pickers/date-picker";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Sheet } from "~/components/ui/sheet";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
-import { dayKey } from "@retrospend/domain/time-zone";
 import { ChangesBlock } from "../changes";
 import { PlaceSelect } from "../place-select";
 import {
@@ -72,7 +73,7 @@ function TransferForm({
 	const t = useTranslations("entry.transfer");
 	const tc = useTranslations("entry.changes");
 	const name = useRateTypeName();
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const toast = useToast();
 	const x = useTransfer(catalog, fromAccountId);
 	const [tried, setTried] = useState(false);

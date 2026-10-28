@@ -1,9 +1,10 @@
 "use client";
 
 import { draftFromMinor, parseMoneyInput } from "@retrospend/domain/parse";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { MoneyInput } from "~/components/money/money-input";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -64,7 +65,7 @@ export function AccountSheet({
 }) {
 	const t = useTranslations("wealthPage.sheets");
 	const tt = useTranslations("wealthPage.types");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const [name, setName] = useState(account?.name ?? "");
 	const [type, setType] = useState<AssetTypeKey>(account?.type ?? "CASH");
 	const [currency, setCurrency] = useState(account?.amount.currency ?? home);

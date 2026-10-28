@@ -1016,6 +1016,12 @@
 			"delete": "Delete account",
 			"deleting": "Deleting",
 			"error": "Couldn't delete the account. Check your password and try again."
+		},
+		"numbers": {
+			"title": "Numbers",
+			"footer": "Reads like {example}",
+			"format": "Number format",
+			"follow": "Follow language"
 		}
 	}
 }

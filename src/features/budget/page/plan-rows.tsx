@@ -1,10 +1,11 @@
 "use client";
 
 import { draftFromMinor, parseMoneyInput } from "@retrospend/domain/parse";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Fragment, useState } from "react";
 import { AvailablePill } from "~/components/money/available-pill";
 import { Money } from "~/components/money/money";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import { CategoryTile } from "~/components/ui/category-badge";
 import { Input } from "~/components/ui/input";
@@ -62,7 +63,7 @@ function PlanInput({
 	onPlan: (minor: number) => unknown;
 }) {
 	const t = useTranslations("budgetPage.plan");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	// Nothing planned yet reads empty, with a 0 hint, not as a typed zero.
 	const shown = minor ? draftFromMinor(minor, locale, currency) : "";
 	const [text, setText] = useState(shown);

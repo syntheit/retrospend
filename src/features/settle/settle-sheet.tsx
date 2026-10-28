@@ -2,9 +2,10 @@
 
 import { CircleCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { formatMoney } from "~/components/money/format";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Empty } from "~/components/ui/empty-state";
 import { Sheet } from "~/components/ui/sheet";
 import { SkeletonRows } from "~/components/ui/skeleton";
@@ -70,7 +71,7 @@ function SettleSheetFor({
 		[full],
 	);
 	const t = useTranslations("settleSheet");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const toast = useToast();
 	const router = useRouter();
 	const session = useSession();

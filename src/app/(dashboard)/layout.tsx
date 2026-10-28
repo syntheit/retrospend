@@ -2,14 +2,15 @@ import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { LocaleSync } from "~/i18n/locale-sync";
+import { MoneyPrefsProvider } from "~/components/money/use-money-locale";
 import { RecurringModalProvider } from "~/components/recurring-modal-provider";
 import { RevisionHistoryProvider } from "~/components/revision-history-provider";
 import { AppShell } from "~/components/shell/app-shell";
 import { EntrySheetsProvider } from "~/features/entry/provider";
-import { db } from "~/server/db";
-import { HydrateClient, api } from "~/trpc/server";
+import { LocaleSync } from "~/i18n/locale-sync";
 import { getWebSession } from "~/server/better-auth/web-session";
+import { db } from "~/server/db";
+import { api, HydrateClient } from "~/trpc/server";
 
 export const metadata: Metadata = {
 	title: {
@@ -45,13 +46,15 @@ export default async function Layout({ children }: { children: ReactNode }) {
 				cookieLocale={currentCookie}
 				dbLocale={user?.language ?? "en"}
 			/>
-			<EntrySheetsProvider>
-				<RecurringModalProvider>
-					<RevisionHistoryProvider>
-						<AppShell>{children}</AppShell>
-					</RevisionHistoryProvider>
-				</RecurringModalProvider>
-			</EntrySheetsProvider>
+			<MoneyPrefsProvider>
+				<EntrySheetsProvider>
+					<RecurringModalProvider>
+						<RevisionHistoryProvider>
+							<AppShell>{children}</AppShell>
+						</RevisionHistoryProvider>
+					</RecurringModalProvider>
+				</EntrySheetsProvider>
+			</MoneyPrefsProvider>
 		</HydrateClient>
 	);
 }

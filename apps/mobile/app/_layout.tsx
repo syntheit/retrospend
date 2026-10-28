@@ -12,6 +12,7 @@ import {
 import { SessionProvider, useSession } from "@/auth/session";
 import { GALLERY_ENABLED } from "@/lib/flags";
 import { AppIntlProvider } from "@/lib/intl";
+import { MoneyPrefsProvider } from "@/lib/money";
 import { navigationTheme, themeFor } from "@/theme";
 import { ToastProvider } from "@/ui/Toast";
 
@@ -65,10 +66,12 @@ export default function RootLayout() {
 					<ThemeProvider value={navigationTheme(scheme)}>
 						<ServerConnectionProvider>
 							<SessionProvider>
-								<ToastProvider>
-									<Routes />
-									{DevAutoSignIn ? <DevAutoSignIn /> : null}
-								</ToastProvider>
+								<MoneyPrefsProvider>
+									<ToastProvider>
+										<Routes />
+										{DevAutoSignIn ? <DevAutoSignIn /> : null}
+									</ToastProvider>
+								</MoneyPrefsProvider>
 							</SessionProvider>
 						</ServerConnectionProvider>
 						<StatusBar style="auto" />

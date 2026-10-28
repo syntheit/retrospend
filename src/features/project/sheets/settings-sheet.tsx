@@ -2,9 +2,10 @@
 
 import { fromMinor } from "@retrospend/domain/money-minor";
 import { draftFromMinor, parseMoneyInput } from "@retrospend/domain/parse";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { MoneyInput } from "~/components/money/money-input";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { useRowDates } from "~/components/rows/dates";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import { Face } from "~/components/ui/avatar-face";
@@ -28,7 +29,7 @@ const major = (minor: number, currency: string) =>
 function useSettingsDraft(view: PageView) {
 	const t = useTranslations("projectV2.settings");
 	const te = useTranslations("projectV2.errors");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const toast = useToast();
 	const utils = api.useUtils();
 	const refresh = () => utils.project.invalidate();

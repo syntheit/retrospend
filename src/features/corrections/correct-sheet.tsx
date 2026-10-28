@@ -1,9 +1,10 @@
 "use client";
 
 import { draftFromMinor } from "@retrospend/domain/parse";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
 import { MoneyInput } from "~/components/money/money-input";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Notice } from "~/components/ui/notice";
 import { Sheet } from "~/components/ui/sheet";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -121,7 +122,7 @@ function CorrectForm({
 }) {
 	const t = useTranslations("corrections.correct");
 	const te = useTranslations("entry.expense");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const toast = useToast();
 	const home = catalog.homeCurrency;
 	const youRef = {

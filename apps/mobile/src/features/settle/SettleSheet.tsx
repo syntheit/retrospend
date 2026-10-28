@@ -4,7 +4,7 @@ import { ScrollView, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import type { PersonIdentity } from "@/features/people/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { useFormatLocale } from "@/lib/intl";
+import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
@@ -68,7 +68,7 @@ export function SettleSheet({
 	const toast = useToast();
 	const format = useMoneyText();
 	const { color, size, space, type } = useTheme();
-	const locale = useFormatLocale();
+	const locale = useMoneyLocale();
 	const flow = useSettle({ type: person.type, id: person.id }, visible);
 	const name = person.name;
 	const first = name.split(/\s+/)[0] ?? name;

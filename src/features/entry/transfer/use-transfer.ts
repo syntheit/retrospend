@@ -4,8 +4,8 @@ import { fromMinor } from "@retrospend/domain/money-minor";
 import { parseMoneyInput } from "@retrospend/domain/parse";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { keepPreviousData } from "@tanstack/react-query";
-import { useLocale } from "next-intl";
 import { useState } from "react";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
 import { type EntryCatalog, useSettled } from "../shared-ui";
@@ -21,7 +21,7 @@ const empty: Amount = { text: "", minor: null };
  * moves and the exchange result against the reference.
  */
 export function useTransfer(catalog: EntryCatalog, fromAccountId?: string) {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const places = catalog.places;
 	const first = places.find((p) => p.id === fromAccountId) ?? places[0] ?? null;
 	const [from, setFrom] = useState<string | null>(first?.id ?? null);

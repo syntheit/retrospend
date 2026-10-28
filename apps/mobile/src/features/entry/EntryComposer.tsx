@@ -4,7 +4,7 @@ import { Keyboard, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
-import { useFormatLocale } from "@/lib/intl";
+import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { useToast } from "@/ui/Toast";
@@ -75,7 +75,7 @@ function Form({
 	surface,
 }: ComposerProps & { catalog: EntryCatalog }) {
 	const t = useTranslations("mobile.composer");
-	const locale = useFormatLocale();
+	const locale = useMoneyLocale();
 	const toast = useToast();
 	const { api, local, state } = useSession();
 	const { space } = useTheme();

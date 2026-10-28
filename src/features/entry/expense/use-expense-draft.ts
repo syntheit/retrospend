@@ -2,8 +2,8 @@
 
 import { toMinorUnits } from "@retrospend/domain/money";
 import { parseMoneyInput } from "@retrospend/domain/parse";
-import { useLocale } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { predictCategory } from "~/lib/category-matcher";
 import {
 	type SplitRef,
@@ -28,7 +28,7 @@ export function useExpenseDraft(
 	initial: ExpenseDraft,
 	o: { you: SplitRef; home: string; categories: readonly Category[] },
 ) {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const [d, setD] = useState(initial);
 	const [ring, setRing] = useState(false);
 	const set = useCallback(

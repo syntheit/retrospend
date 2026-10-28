@@ -15,6 +15,7 @@
 		"./fiscal-month": "./src/fiscal-month.ts",
 		"./format": "./src/format.ts",
 		"./format-date": "./src/format-date.ts",
+		"./format-locale": "./src/format-locale.ts",
 		"./format-percent": "./src/format-percent.ts",
 		"./insights": "./src/insights.ts",
 		"./money": "./src/money.ts",

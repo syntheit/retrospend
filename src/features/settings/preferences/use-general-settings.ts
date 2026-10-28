@@ -77,15 +77,20 @@ export function useSaveSetting({ update, current }: GeneralSettingsApi) {
 	return useCallback(
 		<K extends Key>(
 			key: K,
-			next: NonNullable<GeneralPatch[K]>,
-			opts: { message?: string; fallback?: NonNullable<GeneralPatch[K]> } = {},
+			next: Exclude<GeneralPatch[K], undefined>,
+			opts: {
+				message?: string;
+				fallback?: Exclude<GeneralPatch[K], undefined>;
+			} = {},
 		) =>
 			guard(key, () => {
+				// A stored null reads as the fallback: pass `fallback: null` where
+				// null is a real value (number format: follow the language).
 				const prev = (current(key) ?? opts.fallback) as
-					| NonNullable<GeneralPatch[K]>
+					| Exclude<GeneralPatch[K], undefined>
 					| undefined;
 				return save({
-					apply: (value: NonNullable<GeneralPatch[K]> | undefined) =>
+					apply: (value: Exclude<GeneralPatch[K], undefined> | undefined) =>
 						update({ [key]: value } as GeneralPatch),
 					next,
 					prev,

@@ -1,6 +1,7 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { useRef, useState } from "react";
 import { MoneyInput } from "~/components/money/money-input";
 import { Button } from "~/components/ui/button";
@@ -37,7 +38,7 @@ function stepsOf(choice: Choice): Step[] {
 function SetupForm({ open, onClose }: SheetProps) {
 	const t = useTranslations("budgetSheets.setup");
 	const tp = useTranslations("budgetSheets.pool");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const s = useSetup(locale);
 	const toast = useToast();
 	const [choice, setChoice] = useState<Choice>("FLEX");

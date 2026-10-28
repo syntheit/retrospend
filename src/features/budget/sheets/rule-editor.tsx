@@ -1,6 +1,7 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { useMemo, useState } from "react";
 import { minorOf } from "~/components/money/money-cell";
 import { MoneyInput } from "~/components/money/money-input";
@@ -34,7 +35,7 @@ export function RuleEditor({
 	onClose: () => void;
 }) {
 	const t = useTranslations("budgetSheets.rules.editor");
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	const { saved } = useBudgetWrite();
 	const utils = api.useUtils();
 	const create = api.envelope.createRule.useMutation();

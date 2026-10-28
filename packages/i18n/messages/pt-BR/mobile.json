@@ -1016,6 +1016,12 @@
 			"delete": "Excluir conta",
 			"deleting": "Excluindo",
 			"error": "Não foi possível excluir a conta. Confira sua senha e tente de novo."
+		},
+		"numbers": {
+			"title": "Números",
+			"footer": "Aparece assim: {example}",
+			"format": "Formato de números",
+			"follow": "Seguir o idioma"
 		}
 	}
 }

@@ -1016,6 +1016,12 @@
 			"delete": "Eliminar cuenta",
 			"deleting": "Eliminando",
 			"error": "No se pudo eliminar la cuenta. Revisá tu contraseña y probá de nuevo."
+		},
+		"numbers": {
+			"title": "Números",
+			"footer": "Se lee así: {example}",
+			"format": "Formato de números",
+			"follow": "Seguir el idioma"
 		}
 	}
 }

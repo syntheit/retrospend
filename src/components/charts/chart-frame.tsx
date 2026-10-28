@@ -1,8 +1,9 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useCallback, useSyncExternalStore } from "react";
 import { formatMoney, type MoneyValue } from "~/components/money/format";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { cn } from "~/lib/cn";
 
 const REDUCE = "(prefers-reduced-motion: reduce)";
@@ -32,7 +33,7 @@ export function useChartMotion(): boolean {
  * snapped to whole minor units first.
  */
 export function useAxisTick(currency: string) {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	return useCallback(
 		(minor: number) =>
 			formatMoney(
@@ -65,7 +66,7 @@ export function ChartEmpty({ height }: { height: number }) {
 
 /** Money as text for a chart's spoken summary, through the one formatter. */
 export function useMoneyText() {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	return useCallback(
 		(value: MoneyValue) => formatMoney(value, { locale }) ?? "",
 		[locale],

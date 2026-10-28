@@ -9,6 +9,16 @@ const usd = { minor: 1250, currency: "USD" };
 const plain = (text: string) => text.replaceAll("\u00a0", " ");
 
 describe("buildPushMessage", () => {
+	it("keeps the account's number format over the language", async () => {
+		const data = newPushData("payment.recorded", { amount: usd });
+		expect(
+			plain((await buildPushMessage(data, "de", "comma_dot")).body),
+		).toBe("Eine Zahlung über USD 12.50 wurde erfasst");
+		expect(
+			plain((await buildPushMessage(data, "en", "dot_comma")).body),
+		).toBe("A payment of USD 12,50 was recorded");
+	});
+
 	it("words every kind in every language, with the amount when it has one", async () => {
 		for (const locale of SUPPORTED_LOCALES)
 			for (const type of KINDS) {

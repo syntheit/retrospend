@@ -1,8 +1,8 @@
 "use client";
 
 import { formatPercent } from "@retrospend/domain/format-percent";
-import { useLocale } from "next-intl";
 import { useCallback } from "react";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import type { Basis } from "./types";
 
 /**
@@ -10,7 +10,7 @@ import type { Basis } from "./types";
  * the domain's percent formatter, in the page locale: 1834 is "18.3%".
  */
 export function usePercent() {
-	const locale = useLocale();
+	const locale = useMoneyLocale();
 	return useCallback(
 		(basis: Basis, o?: { signed?: boolean; digits?: 0 | 1 | 2 }) =>
 			formatPercent(basis, {
