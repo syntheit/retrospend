@@ -15,7 +15,7 @@ function TabsWithAdd() {
 		{ add: t("addExpense"), search: tt("search") },
 		{ add: () => open("expense"), search: focusSearch },
 	);
-	return <Tabs addLabel={t("addExpense")} onAdd={() => open("expense")} />;
+	return <Tabs />;
 }
 
 export default function TabsLayout() {

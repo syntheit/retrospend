@@ -6,7 +6,8 @@
 		"people": "Personen",
 		"projects": "Projekte",
 		"add": "Ausgabe hinzufügen",
-		"search": "Suchen"
+		"search": "Suchen",
+		"recurring": "Wiederkehrend"
 	},
 	"common": {
 		"cancel": "Abbrechen",
@@ -763,11 +764,10 @@
 			"badge": "Geschlossen"
 		},
 		"withoutRate": "{count, plural, one {# Konto hat noch keinen Kurs und bleibt außerhalb des Vermögens} other {# Konten haben noch keinen Kurs und bleiben außerhalb des Vermögens}}",
-		"webForNow": "Konten, Kurse und den Rest legst du vorerst im Web an.",
 		"error": "Das Vermögen konnte nicht geladen werden",
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
 		"empty": "Noch keine Konten",
-		"emptyDetail": "Füge im Web ein Bankkonto, eine Anlage oder einen Kredit hinzu, um dein Vermögen zu verfolgen.",
+		"emptyDetail": "Füge ein Bankkonto, eine Geldanlage oder einen Kredit hinzu, um dein Vermögen zu verfolgen.",
 		"accountError": "Dieses Konto konnte nicht geladen werden",
 		"owedNow": "Du schuldest",
 		"balance": "Saldo",
@@ -793,6 +793,40 @@
 			"notLoggedHint": "Deine Einnahmen und Ausgaben bleiben, wie sie sind. Die Differenz wird als Nicht erfasst gebucht.",
 			"same": "Das ist schon der Saldo, es ändert sich also nichts.",
 			"toast": "{name} steht jetzt bei {amount}"
+		},
+		"account": {
+			"addTitle": "Konto hinzufügen",
+			"editTitle": "Konto bearbeiten",
+			"add": "Konto hinzufügen",
+			"save": "Speichern",
+			"name": "Name",
+			"namePlaceholder": "Sparkonto",
+			"type": "Typ",
+			"balance": "Saldo",
+			"owed": "Offener Betrag",
+			"balanceFixed": "Es enthält jetzt {amount}. Ändere das mit Saldo aktualisieren.",
+			"noRate": "Noch kein Kurs für {currency}, das Konto lässt sich nicht bewerten. Wähle vorerst eine andere Währung.",
+			"rateType": "Kursart",
+			"liquid": "Liquide",
+			"liquidHint": "Geld, das du bald ausgeben kannst.",
+			"apr": "Zinssatz (jährlich, %)",
+			"dueDay": "Fälligkeitstag im Monat",
+			"minimum": "Mindestzahlung",
+			"addedToast": "{name} hinzugefügt",
+			"savedToast": "{name} gespeichert"
+		},
+		"close": {
+			"title": "{name} schließen?",
+			"submit": "Konto schließen",
+			"body": "{name} verschwindet ab heute aus deinen Konten und deinem Vermögen. Der Verlauf bleibt, und du kannst es wieder öffnen.",
+			"left": "Es zeigt noch {amount}. Wenn das Geld woanders hingegangen ist, setze den Saldo zuerst auf null.",
+			"toast": "{name} geschlossen"
+		},
+		"reopen": {
+			"title": "{name} wieder öffnen?",
+			"submit": "Konto wieder öffnen",
+			"body": "{name} zählt ab heute wieder zu deinen Konten und deinem Vermögen.",
+			"toast": "{name} wieder geöffnet"
 		}
 	},
 	"money": {
@@ -1192,6 +1226,63 @@
 			"footerAndroid": "Retrospend sucht etwa alle 15 Minuten nach Neuigkeiten, ohne Google-Dienste. Wähl unten aus, welche.",
 			"denied": "Benachrichtigungen sind für Retrospend aus. Schalte sie in den Systemeinstellungen ein.",
 			"unavailable": "Dieses Telefon konnte sich nicht für Push anmelden. Versuch es später noch einmal."
+		},
+		"manage": {
+			"title": "Verwalten",
+			"categories": "Kategorien",
+			"payment": "Zahlungsmethoden",
+			"recurring": "Wiederkehrende Ausgaben"
+		},
+		"web": {
+			"title": "Im Web",
+			"footer": "Diese öffnen sich hier im Browser. Dort meldest du dich ebenfalls an.",
+			"import": "Importieren",
+			"insights": "Auswertungen",
+			"currencies": "Währungen und Kurse",
+			"developer": "API-Tokens und Webhooks",
+			"data": "Deine Daten exportieren",
+			"security": "Passwort und Anmeldung in zwei Schritten"
+		},
+		"categories": {
+			"addTitle": "Kategorie hinzufügen",
+			"editTitle": "Kategorie bearbeiten",
+			"name": "Name",
+			"taken": "Du hast bereits eine Kategorie mit diesem Namen.",
+			"color": "Farbe",
+			"colorLabel": "Farbe {n}",
+			"icon": "Symbol",
+			"iconLabel": "Symbol {name}",
+			"exclude": "Standardmäßig aus Summen ausnehmen",
+			"excludeHint": "Neue Ausgaben darin zählen nicht zu deinen Ausgaben.",
+			"saved": "{name} gespeichert",
+			"error": "Kategorien konnten nicht geladen werden",
+			"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+			"saveError": "Speichern nicht möglich. Versuche es erneut.",
+			"count": "{count, plural, one {# Ausgabe} other {# Ausgaben}}"
+		},
+		"payment": {
+			"error": "Zahlungsmethoden konnten nicht geladen werden",
+			"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+			"empty": "Keine Zahlungsmethoden",
+			"emptyDetail": "Füge im Web hinzu, wie du bezahlt werden möchtest.",
+			"visibility": {
+				"PUBLIC": "Alle",
+				"FRIENDS_ONLY": "Personen, mit denen du teilst",
+				"PAYMENT_ONLY": "Nur beim Bezahlen an dich"
+			},
+			"preferred": "Bevorzugt",
+			"addOnWeb": "Das Hinzufügen einer Methode ist vorerst im Web möglich.",
+			"label": "Bezeichnung",
+			"identifier": "Kontonummer oder Name",
+			"visibilityHint": "Wer diese Methode sehen kann",
+			"saved": "Zahlungsmethode gespeichert",
+			"prefer": "Als bevorzugt festlegen",
+			"preferredToast": "Bevorzugte Methode geändert",
+			"remove": "Entfernen",
+			"removeBody": "Das lässt sich nicht rückgängig machen. Personen, mit denen du teilst, sehen es nicht mehr.",
+			"removeConfirm": "Endgültig entfernen",
+			"removed": "Zahlungsmethode entfernt",
+			"saveError": "Speichern nicht möglich. Versuche es erneut."
 		}
 	},
 	"push": {
@@ -1212,6 +1303,77 @@
 				"name": "Wiederkehrend",
 				"description": "Fällige wiederkehrende Ausgaben und Einnahmen"
 			}
+		}
+	},
+	"recurring": {
+		"title": "Wiederkehrend",
+		"error": "Wiederkehrende Ausgaben konnten nicht geladen werden",
+		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+		"empty": "Keine wiederkehrenden Ausgaben",
+		"emptyDetail": "Füge Miete, Abos und andere Fixkosten im Web hinzu.",
+		"autoPay": "Autozahlung",
+		"frequency": {
+			"weekly": "Wöchentlich",
+			"biweekly": "Alle 2 Wochen",
+			"monthly": "Monatlich",
+			"quarterly": "Vierteljährlich",
+			"yearly": "Jährlich"
+		},
+		"status": {
+			"paused": "Pausiert",
+			"overdue": "Überfällig seit {date}",
+			"dueToday": "Heute fällig",
+			"upcoming": "{date}, {days, plural, one {in # Tag} other {in # Tagen}}"
+		},
+		"summary": {
+			"out": {
+				"month": "Deine wiederkehrenden Ausgaben kosten {amount} im Monat.",
+				"quarter": "Deine wiederkehrenden Ausgaben kosten {amount} im Quartal.",
+				"year": "Deine wiederkehrenden Ausgaben kosten {amount} im Jahr."
+			},
+			"in": {
+				"month": "Dein wiederkehrendes Einkommen bringt {amount} im Monat.",
+				"quarter": "Dein wiederkehrendes Einkommen bringt {amount} im Quartal.",
+				"year": "Dein wiederkehrendes Einkommen bringt {amount} im Jahr."
+			},
+			"missingRate": "Noch kein Kurs für {currencies}. Sie bleiben außen vor.",
+			"period": "Zeitraum",
+			"monthly": "Monatlich",
+			"quarterly": "Quartal",
+			"yearly": "Jahr"
+		},
+		"groups": {
+			"due": "Jetzt fällig",
+			"next30": "Nächste 30 Tage",
+			"later": "Später",
+			"in": "Einnahmen"
+		},
+		"logged": {
+			"title": "Diesen Monat per Autozahlung erfasst"
+		},
+		"confirm": {
+			"title": "{title} bestätigen",
+			"bodyOut": "Fällig am {date}. Es wird an diesem Tag als Ausgabe erfasst.",
+			"bodyIn": "Fällig am {date}. Es wird an diesem Tag als Einnahme erfasst.",
+			"amount": "Betrag diesmal",
+			"fixed": "Der übliche Betrag, {amount}.",
+			"nextDue": "Nächste Fälligkeit",
+			"submit": "Bestätigen",
+			"toast": "{title} erfasst, {amount}"
+		},
+		"item": {
+			"next": "{amount}, nächstes am {date}.",
+			"paused": "{amount}. Pausiert, nichts wird erfasst, bis du sie fortsetzt.",
+			"autoPay": "Autozahlung",
+			"autoOnHint": "Wird am Fälligkeitstag automatisch erfasst.",
+			"autoOffHint": "Du bestätigst jedes Mal.",
+			"pause": "Pausieren",
+			"resume": "Fortsetzen",
+			"pausedToast": "{title} pausiert",
+			"resumedToast": "{title} fortgesetzt",
+			"autoOnToast": "Autozahlung für {title} aktiviert",
+			"autoOffToast": "Autozahlung für {title} deaktiviert",
+			"error": "Änderung nicht möglich. Versuche es erneut."
 		}
 	}
 }

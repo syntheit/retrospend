@@ -17,7 +17,9 @@ import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
 import { Screen } from "@/ui/Screen";
+import { AccountSheet } from "./AccountSheet";
 import { isLiability } from "./accounts";
+import { CloseAccountSheet } from "./CloseAccountSheet";
 import {
 	ACCOUNT_CACHE_PREFIX,
 	type AccountLeg,
@@ -25,6 +27,7 @@ import {
 	fetchAccount,
 } from "./source";
 import { UpdateBalanceSheet } from "./UpdateBalanceSheet";
+import { useCurrencyInfo } from "./useCurrencyInfo";
 
 const LEGS_PAGE = 20;
 
@@ -74,9 +77,14 @@ export function AccountView({ id }: { id: string }) {
 	const t = useTranslations("mobile.wealth");
 	const format = useFormatter();
 	const loading = useTranslations("mobile.activity")("loading");
-	const { api } = useSession();
+	const { api, state: session } = useSession();
+	const me = session.status === "signedIn" ? session.me : null;
 	const { color, space, type } = useTheme();
 	const [updating, setUpdating] = useState(false);
+	const [editing, setEditing] = useState(false);
+	const [closing, setClosing] = useState(false);
+	const catalog = useCurrencyInfo();
+	const home = me?.homeCurrency ?? "USD";
 	const [shown, setShown] = useState(LEGS_PAGE);
 	const fetch = useMemo(() => (api ? fetchAccount(api, id) : null), [api, id]);
 	const { state, reload } = useCachedRead(accountCache(id), fetch, {
@@ -134,16 +142,32 @@ export function AccountView({ id }: { id: string }) {
 						</Text>
 					) : null}
 				</View>
-				{closed ? null : (
-					<View
-						style={{ alignItems: "flex-start", paddingHorizontal: space[4] }}
-					>
+				<View
+					style={{
+						alignItems: "flex-start",
+						flexDirection: "row",
+						flexWrap: "wrap",
+						gap: space[2],
+						paddingHorizontal: space[4],
+					}}
+				>
+					{closed ? null : (
 						<Button
 							label={t("update.title")}
 							onPress={() => setUpdating(true)}
 						/>
-					</View>
-				)}
+					)}
+					<Button
+						label={t("account.editTitle")}
+						onPress={() => setEditing(true)}
+						variant="outlined"
+					/>
+					<Button
+						label={closed ? t("reopen.submit") : t("close.submit")}
+						onPress={() => setClosing(true)}
+						variant="outlined"
+					/>
+				</View>
 				<SectionHeader title={t("history")} />
 				{account.legs.length === 0 ? (
 					<Text
@@ -167,6 +191,21 @@ export function AccountView({ id }: { id: string }) {
 					/>
 				) : null}
 			</Screen>
+			<AccountSheet
+				account={account}
+				catalog={catalog}
+				home={home}
+				onClose={() => setEditing(false)}
+				onDone={() => void reload()}
+				visible={editing}
+			/>
+			<CloseAccountSheet
+				account={account}
+				onClose={() => setClosing(false)}
+				onDone={() => void reload()}
+				reopen={closed}
+				visible={closing}
+			/>
 			<UpdateBalanceSheet
 				account={account}
 				onClose={() => setUpdating(false)}

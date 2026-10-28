@@ -19,6 +19,14 @@ export default function SettingsLayout() {
 			}}
 		>
 			<Stack.Screen name="index" options={{ title: t("title") }} />
+			<Stack.Screen
+				name="categories"
+				options={{ title: t("manage.categories") }}
+			/>
+			<Stack.Screen
+				name="payment-methods"
+				options={{ title: t("manage.payment") }}
+			/>
 		</Stack>
 	);
 }

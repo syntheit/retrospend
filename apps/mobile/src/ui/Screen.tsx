@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { FLOATING_ADD_INSET } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 import { useSidesCleared } from "./ListDetail";
 
@@ -26,8 +27,12 @@ export function Screen({
 		<ScrollView
 			contentContainerStyle={
 				flush
-					? { paddingBottom: space[8] }
-					: { padding: space[4], gap: space[4] }
+					? { paddingBottom: space[8] + FLOATING_ADD_INSET }
+					: {
+							padding: space[4],
+							paddingBottom: space[4] + FLOATING_ADD_INSET,
+							gap: space[4],
+						}
 			}
 			contentInsetAdjustmentBehavior="automatic"
 			keyboardShouldPersistTaps="handled"

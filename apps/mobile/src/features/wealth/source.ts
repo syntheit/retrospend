@@ -47,3 +47,18 @@ export function fetchWealth(api: RetrospendClient) {
 export function fetchAccount(api: RetrospendClient, id: string) {
 	return () => api.accounts.get({ id });
 }
+
+export type CurrencyInfo = Awaited<
+	ReturnType<RetrospendClient["currencies"]["list"]>
+>["items"][number];
+
+export const CURRENCY_INFO_CACHE: CacheKey = {
+	name: "wealth.currencies",
+	schema: 1,
+};
+
+/** Every currency the server knows with the rate types it stores for each. */
+export function fetchCurrencyInfo(api: RetrospendClient) {
+	return async (): Promise<CurrencyInfo[]> =>
+		(await api.currencies.list({ limit: 200 })).items;
+}

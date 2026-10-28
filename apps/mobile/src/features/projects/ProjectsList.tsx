@@ -7,7 +7,7 @@ import { ProjectView } from "@/features/projects/ProjectView";
 import { groupProjects, matchesProject } from "@/features/projects/source";
 import { useProjectList } from "@/features/projects/useProjects";
 import { SectionHeader, StaleNote } from "@/features/read/parts";
-import { projectRoute } from "@/layout/destinations";
+import { FLOATING_ADD_INSET, projectRoute } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
@@ -71,6 +71,7 @@ export function ProjectsList({
 			keyboardDismissMode="on-drag"
 			keyExtractor={(item) => item.id}
 			ListEmptyComponent={empty}
+			ListFooterComponent={<View style={{ height: FLOATING_ADD_INSET }} />}
 			ListHeaderComponent={
 				<View>
 					{top}

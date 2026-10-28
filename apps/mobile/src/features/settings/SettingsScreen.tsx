@@ -2,6 +2,7 @@ import {
 	INBOX_NOTIFICATION_TYPES,
 	PUSH_NOTIFICATION_TYPES,
 } from "@retrospend/api-contract";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
@@ -46,6 +47,7 @@ import {
 	useNotificationPreferences,
 	useProfile,
 } from "./useSettings";
+import { openWebPage, WEB_PAGES } from "./webPages";
 
 /**
  * Settings as a native form: the SwiftUI Form on iOS and the M3 grouped
@@ -231,6 +233,23 @@ export function SettingsScreen() {
 					</FormSection>
 				) : null}
 				{numbers}
+				<FormSection title={t("manage.title")}>
+					<FormValueRow
+						label={t("manage.categories")}
+						onPress={() => router.push("/settings/categories")}
+						value=""
+					/>
+					<FormValueRow
+						label={t("manage.payment")}
+						onPress={() => router.push("/settings/payment-methods")}
+						value=""
+					/>
+					<FormValueRow
+						label={t("manage.recurring")}
+						onPress={() => router.push("/settings/recurring")}
+						value=""
+					/>
+				</FormSection>
 				<FormSection footer={t("rates.footer")} title={t("rates.section")}>
 					<FormValueRow
 						label={t("rates.defaultType")}
@@ -292,6 +311,17 @@ export function SettingsScreen() {
 								label={tn(type)}
 								onChange={(on) => setChannel(type, "email", on)}
 								value={preferenceOf(prefs, type)?.email ?? false}
+							/>
+						))}
+					</FormSection>
+				) : null}
+				{connection.status === "connected" ? (
+					<FormSection footer={t("web.footer")} title={t("web.title")}>
+						{WEB_PAGES.map((page) => (
+							<FormActionRow
+								key={page.id}
+								label={t(`web.${page.id}`)}
+								onPress={() => void openWebPage(connection.baseUrl, page.path)}
 							/>
 						))}
 					</FormSection>

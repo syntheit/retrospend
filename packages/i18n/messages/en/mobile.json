@@ -6,7 +6,8 @@
 		"people": "People",
 		"projects": "Projects",
 		"add": "Add expense",
-		"search": "Search"
+		"search": "Search",
+		"recurring": "Recurring"
 	},
 	"common": {
 		"cancel": "Cancel",
@@ -763,11 +764,10 @@
 			"badge": "Closed"
 		},
 		"withoutRate": "{count, plural, one {# account has no rate yet and is left out of net worth} other {# accounts have no rate yet and are left out of net worth}}",
-		"webForNow": "Adding accounts, rates and the rest are on the web for now.",
 		"error": "Couldn't load Wealth",
 		"errorDetail": "Check your connection and try again.",
 		"empty": "No accounts yet",
-		"emptyDetail": "Add a bank account, an investment or a loan on the web to track your net worth.",
+		"emptyDetail": "Add a bank account, an investment or a loan to track your net worth.",
 		"accountError": "Couldn't load this account",
 		"owedNow": "You owe",
 		"balance": "Balance",
@@ -793,6 +793,40 @@
 			"notLoggedHint": "Your income and spending stay as they are. The difference is recorded as Not logged.",
 			"same": "That is already the balance, so nothing changes.",
 			"toast": "{name} is now {amount}"
+		},
+		"account": {
+			"addTitle": "Add account",
+			"editTitle": "Edit account",
+			"add": "Add account",
+			"save": "Save",
+			"name": "Name",
+			"namePlaceholder": "Savings account",
+			"type": "Type",
+			"balance": "Balance",
+			"owed": "Amount owed",
+			"balanceFixed": "It holds {amount} now. Change that with Update balance.",
+			"noRate": "No {currency} rate yet, so the account can't be valued. Pick another currency for now.",
+			"rateType": "Rate type",
+			"liquid": "Liquid",
+			"liquidHint": "Money you can spend soon.",
+			"apr": "Interest rate (APR, %)",
+			"dueDay": "Due day of the month",
+			"minimum": "Minimum payment",
+			"addedToast": "{name} added",
+			"savedToast": "{name} saved"
+		},
+		"close": {
+			"title": "Close {name}?",
+			"submit": "Close account",
+			"body": "{name} leaves your accounts and net worth from today. Its history stays, and you can reopen it.",
+			"left": "It still shows {amount}. Update the balance to zero first if the money moved elsewhere.",
+			"toast": "{name} closed"
+		},
+		"reopen": {
+			"title": "Reopen {name}?",
+			"submit": "Reopen account",
+			"body": "{name} counts in your accounts and net worth again from today.",
+			"toast": "{name} reopened"
 		}
 	},
 	"money": {
@@ -1192,6 +1226,63 @@
 			"footerAndroid": "Retrospend checks for news about every 15 minutes, with no Google services. Choose which ones below.",
 			"denied": "Notifications are off for Retrospend. Turn them on in system settings.",
 			"unavailable": "This phone could not register for push. Try again later."
+		},
+		"manage": {
+			"title": "Manage",
+			"categories": "Categories",
+			"payment": "Payment methods",
+			"recurring": "Recurring expenses"
+		},
+		"web": {
+			"title": "On the web",
+			"footer": "These open in the browser here. You sign in there too.",
+			"import": "Import",
+			"insights": "Insights",
+			"currencies": "Currencies and rates",
+			"developer": "API tokens and webhooks",
+			"data": "Export your data",
+			"security": "Password and two-step sign-in"
+		},
+		"categories": {
+			"addTitle": "Add category",
+			"editTitle": "Edit category",
+			"name": "Name",
+			"taken": "You already have a category with this name.",
+			"color": "Color",
+			"colorLabel": "Color {n}",
+			"icon": "Icon",
+			"iconLabel": "Icon {name}",
+			"exclude": "Leave out of totals by default",
+			"excludeHint": "New expenses in it don't count toward your spending.",
+			"saved": "{name} saved",
+			"error": "Couldn't load categories",
+			"errorDetail": "Check your connection and try again.",
+			"saveError": "Couldn't save. Try again.",
+			"count": "{count, plural, one {# expense} other {# expenses}}"
+		},
+		"payment": {
+			"error": "Couldn't load payment methods",
+			"errorDetail": "Check your connection and try again.",
+			"empty": "No payment methods",
+			"emptyDetail": "Add how you like to be paid on the web.",
+			"visibility": {
+				"PUBLIC": "Anyone",
+				"FRIENDS_ONLY": "People you share with",
+				"PAYMENT_ONLY": "Only when paying you"
+			},
+			"preferred": "Preferred",
+			"addOnWeb": "Adding a method is on the web for now.",
+			"label": "Label",
+			"identifier": "Account number or handle",
+			"visibilityHint": "Who can see this method",
+			"saved": "Payment method saved",
+			"prefer": "Make preferred",
+			"preferredToast": "Preferred method changed",
+			"remove": "Remove",
+			"removeBody": "This can't be undone. People you share with will no longer see it.",
+			"removeConfirm": "Remove for good",
+			"removed": "Payment method removed",
+			"saveError": "Couldn't save. Try again."
 		}
 	},
 	"push": {
@@ -1212,6 +1303,77 @@
 				"name": "Recurring",
 				"description": "Recurring expenses and income that are due"
 			}
+		}
+	},
+	"recurring": {
+		"title": "Recurring",
+		"error": "Couldn't load recurring expenses",
+		"errorDetail": "Check your connection and try again.",
+		"empty": "No recurring expenses",
+		"emptyDetail": "Add rent, subscriptions and other fixed costs on the web.",
+		"autoPay": "Auto-pay",
+		"frequency": {
+			"weekly": "Weekly",
+			"biweekly": "Every 2 weeks",
+			"monthly": "Monthly",
+			"quarterly": "Quarterly",
+			"yearly": "Yearly"
+		},
+		"status": {
+			"paused": "Paused",
+			"overdue": "Overdue since {date}",
+			"dueToday": "Due today",
+			"upcoming": "{date}, {days, plural, one {in # day} other {in # days}}"
+		},
+		"summary": {
+			"out": {
+				"month": "Your recurring expenses cost {amount} a month.",
+				"quarter": "Your recurring expenses cost {amount} a quarter.",
+				"year": "Your recurring expenses cost {amount} a year."
+			},
+			"in": {
+				"month": "Recurring income brings in {amount} a month.",
+				"quarter": "Recurring income brings in {amount} a quarter.",
+				"year": "Recurring income brings in {amount} a year."
+			},
+			"missingRate": "No rate yet for {currencies}. Those are left out.",
+			"period": "Period",
+			"monthly": "Monthly",
+			"quarterly": "Quarterly",
+			"yearly": "Yearly"
+		},
+		"groups": {
+			"due": "Due now",
+			"next30": "Next 30 days",
+			"later": "Later",
+			"in": "Money in"
+		},
+		"logged": {
+			"title": "Logged by auto-pay this month"
+		},
+		"confirm": {
+			"title": "Confirm {title}",
+			"bodyOut": "Due {date}. It is logged as an expense on that date.",
+			"bodyIn": "Due {date}. It is logged as income on that date.",
+			"amount": "Amount this time",
+			"fixed": "The usual amount, {amount}.",
+			"nextDue": "Next due",
+			"submit": "Confirm",
+			"toast": "{title} logged, {amount}"
+		},
+		"item": {
+			"next": "{amount}, next on {date}.",
+			"paused": "{amount}. Paused, nothing is logged until you resume it.",
+			"autoPay": "Auto-pay",
+			"autoOnHint": "Logs itself on the due date.",
+			"autoOffHint": "You confirm each time.",
+			"pause": "Pause",
+			"resume": "Resume",
+			"pausedToast": "{title} paused",
+			"resumedToast": "{title} resumed",
+			"autoOnToast": "Auto-pay on for {title}",
+			"autoOffToast": "Auto-pay off for {title}",
+			"error": "Couldn't change it. Try again."
 		}
 	}
 }

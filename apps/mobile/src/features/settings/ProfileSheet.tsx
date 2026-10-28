@@ -1,62 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
+import { TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import type { Profile } from "./source";
-
-function Field({
-	label,
-	value,
-	onChangeText,
-	prefix,
-	invalid,
-}: {
-	label: string;
-	value: string;
-	onChangeText: (text: string) => void;
-	prefix?: string;
-	invalid?: boolean;
-}) {
-	const { color, radius, size, space, type } = useTheme();
-	return (
-		<View style={{ gap: space[2] }}>
-			<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-				{label}
-			</Text>
-			<View
-				style={{
-					minHeight: size.moneyInput.phone,
-					flexDirection: "row",
-					alignItems: "center",
-					paddingHorizontal: space[3],
-					borderRadius: radius.ctl,
-					borderWidth: 1,
-					borderColor: invalid ? color.danger : color.lineStrong,
-					backgroundColor: color.surface,
-				}}
-			>
-				{prefix ? (
-					<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-						{prefix}
-					</Text>
-				) : null}
-				<TextInput
-					accessibilityLabel={label}
-					autoCapitalize="none"
-					autoCorrect={false}
-					onChangeText={onChangeText}
-					style={{ flex: 1, color: color.fg, fontSize: type.body.size }}
-					value={value}
-				/>
-			</View>
-		</View>
-	);
-}
 
 /**
  * Name and username. Only what changed is sent; the server answers the
@@ -129,13 +81,13 @@ export function ProfileSheet({
 			visible={visible}
 		>
 			<View style={{ gap: space[4] }}>
-				<Field
+				<TextField
 					invalid={!nameOk}
 					label={t("profile.name")}
 					onChangeText={setName}
 					value={name}
 				/>
-				<Field
+				<TextField
 					invalid={!userOk}
 					label={t("profile.username")}
 					onChangeText={setUsername}
