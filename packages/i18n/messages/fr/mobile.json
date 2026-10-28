@@ -1184,6 +1184,7 @@
 			"balance": "Solde",
 			"owed": "Montant dû",
 			"balanceFixed": "Il contient {amount} pour l'instant. Change-le avec Mettre à jour le solde.",
+			"loadError": "Impossible de charger ce compte. Réessaie.",
 			"noRate": "Pas encore de taux pour {currency}, le compte ne peut pas être évalué. Choisis une autre devise pour l'instant.",
 			"rateType": "Type de taux",
 			"liquid": "Liquide",

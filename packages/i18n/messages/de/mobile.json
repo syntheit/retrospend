@@ -1184,6 +1184,7 @@
 			"balance": "Saldo",
 			"owed": "Offener Betrag",
 			"balanceFixed": "Es enthält jetzt {amount}. Ändere das mit Saldo aktualisieren.",
+			"loadError": "Das Konto ließ sich nicht laden. Versuch es nochmal.",
 			"noRate": "Noch kein Kurs für {currency}, das Konto lässt sich nicht bewerten. Wähle vorerst eine andere Währung.",
 			"rateType": "Kursart",
 			"liquid": "Liquide",

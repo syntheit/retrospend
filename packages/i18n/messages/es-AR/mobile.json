@@ -1184,6 +1184,7 @@
 			"balance": "Saldo",
 			"owed": "Monto que debés",
 			"balanceFixed": "Tiene {amount} ahora. Cambialo con Actualizar saldo.",
+			"loadError": "No se pudo cargar la cuenta. Probá de nuevo.",
 			"noRate": "Todavía no hay cotización de {currency}, así que la cuenta no se puede valorar. Elegí otra moneda por ahora.",
 			"rateType": "Tipo de cotización",
 			"liquid": "Líquida",

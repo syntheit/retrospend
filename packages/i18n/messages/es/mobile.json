@@ -1184,6 +1184,7 @@
 			"balance": "Saldo",
 			"owed": "Monto que debes",
 			"balanceFixed": "Tiene {amount} ahora. Cámbialo con Actualizar saldo.",
+			"loadError": "No se pudo cargar la cuenta. Inténtalo de nuevo.",
 			"noRate": "Aún no hay tasa de {currency}, así que la cuenta no se puede valorar. Elige otra moneda por ahora.",
 			"rateType": "Tipo de tasa",
 			"liquid": "Líquida",

@@ -1184,6 +1184,7 @@
 			"balance": "Balance",
 			"owed": "Amount owed",
 			"balanceFixed": "It holds {amount} now. Change that with Update balance.",
+			"loadError": "Couldn't load this account. Try again.",
 			"noRate": "No {currency} rate yet, so the account can't be valued. Pick another currency for now.",
 			"rateType": "Rate type",
 			"liquid": "Liquid",

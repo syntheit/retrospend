@@ -11,6 +11,7 @@ import {
 	useAmountLocale,
 } from "@/features/budget/parts";
 import { useMoneyWrite, useWriteIds } from "@/features/budget/useMoneyWrite";
+import { useSheetRead } from "@/features/budget/useSheetRead";
 import { useUndoToast } from "@/features/budget/useUndoToast";
 import { noSession, useApi, WriteFrame } from "@/features/budget/WriteFrame";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
@@ -81,24 +82,35 @@ export function AccountSheet({
 	const [draft, setDraft] = useState("");
 	const [minimumDraft, setMinimumDraft] = useState("");
 	const accountId = useRef(newClientId());
+	// The account on the list can be older than the book: an edit also writes a
+	// balance checkpoint from its form, so the form starts from a fresh read and
+	// Save stays off until that read is in.
+	const read = useSheetRead(
+		visible && editing,
+		(client) => client.accounts.get({ id: account?.id ?? "" }),
+		account?.id ?? "",
+	);
+	const fresh = read.status === "ready" ? read.data : null;
+	const loaded = !editing || fresh !== null;
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening starts from the account (or empty) with a fresh id
 	useEffect(() => {
-		if (!visible) return;
-		accountId.current = account ? account.id : newClientId();
-		setForm(account ? formOf(account) : emptyForm(home));
+		if (!visible || !loaded) return;
+		const source = fresh;
+		accountId.current = source ? source.id : newClientId();
+		setForm(source ? formOf(source) : emptyForm(home));
 		setDraft("");
 		setMinimumDraft(
-			account?.minimumPayment
+			source?.minimumPayment
 				? draftFromMinor(
-						account.minimumPayment.minor,
+						source.minimumPayment.minor,
 						locale,
-						account.minimumPayment.currency,
+						source.minimumPayment.currency,
 					)
 				: "",
 		);
 		reset();
-	}, [visible]);
+	}, [visible, fresh]);
 
 	const entered = readAmount(draft, locale, form.currency);
 	const typedMinor = minorOf(entered, true);
@@ -117,11 +129,12 @@ export function AccountSheet({
 				: (catalog.find((c) => c.code === form.currency)?.rateTypes ?? []),
 		[catalog, form.currency, home],
 	);
-	const body = rated
-		? editing
-			? updateBody(current, accountId.current)
-			: createBody(current, accountId.current)
-		: null;
+	const body =
+		rated && loaded
+			? editing
+				? updateBody(current, accountId.current)
+				: createBody(current, accountId.current)
+			: null;
 	const bodyKey = body ? JSON.stringify(body) : null;
 	const { idFor, reset } = useWriteIds(bodyKey);
 
@@ -221,15 +234,20 @@ export function AccountSheet({
 							value={form.type}
 						/>
 					</View>
+					{editing && read.status === "error" ? (
+						<Note tone="attention">{t("loadError")}</Note>
+					) : null}
 					{editing ? (
-						<Note>
-							{t("balanceFixed", {
-								amount: money({
-									minor: form.minor ?? 0,
-									currency: form.currency,
-								}),
-							})}
-						</Note>
+						loaded ? (
+							<Note>
+								{t("balanceFixed", {
+									amount: money({
+										minor: form.minor ?? 0,
+										currency: form.currency,
+									}),
+								})}
+							</Note>
+						) : null
 					) : (
 						<View style={{ gap: space[2] }}>
 							<View
