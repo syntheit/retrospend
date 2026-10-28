@@ -11,11 +11,18 @@
  *   currency's minor unit.
  * - An amount typed as money (a bare term of a sum) may not be more precise
  *   than the currency ("12.345" USD); a factor or divisor may ("15.99*1.0825").
+ * - The home currency's symbol is accepted when the field is in the home
+ *   currency ("$1,500" pasted from a shown amount); no other symbol is.
  * - The result must be positive.
  *
  * Golden cases: packages/domain/vectors/money-parse.vectors.json.
  */
-import { type NumberSymbols, numberSymbols } from "./format-locale";
+import { NARROW_SYMBOLS } from "./format";
+import {
+	homeCurrencyOf,
+	type NumberSymbols,
+	numberSymbols,
+} from "./format-locale";
 import { currencyDecimals } from "./money";
 import {
 	isForeignMark,
@@ -211,6 +218,17 @@ function roundHalfEven(n: bigint, d: bigint): bigint {
 	return twice > d || (twice === d && kept % 2n === 1n) ? kept + 1n : kept;
 }
 
+/** `text` without the home currency's symbol, when `currency` is the home one. */
+function withoutHomeSymbol(
+	text: string,
+	locale: string,
+	currency: string,
+): string {
+	const symbol =
+		homeCurrencyOf(locale) === currency ? NARROW_SYMBOLS[currency] : undefined;
+	return symbol ? text.split(symbol).join(" ") : text;
+}
+
 /**
  * Reads typed money in `locale` as minor units of `currency`, or a typed
  * error. For live typing, pass the field's text through formatMoneyDraft
@@ -223,7 +241,7 @@ export function parseMoneyInput(
 	currency: string,
 ): MoneyInputResult {
 	const symbols = numberSymbols(locale);
-	const tokens = tokenize(text, symbols).filter((t) => t.kind !== "space");
+	const tokens = tokenize(withoutHomeSymbol(text, locale, currency), symbols).filter((t) => t.kind !== "space");
 	if (tokens.length === 0) return { ok: false, error: "empty" };
 	if (tokens.some((t) => t.kind === "other")) {
 		return { ok: false, error: "invalidCharacter" };
