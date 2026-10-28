@@ -271,6 +271,28 @@
 			"transfer": "Transferência",
 			"paymentSent": "Você pagou {name}",
 			"paymentReceived": "{name} pagou você"
+		},
+		"bulk": {
+			"select": "Selecionar",
+			"selected": "{count} selecionadas",
+			"pickSome": "Selecione despesas",
+			"categorize": "Categorizar",
+			"delete": "Excluir",
+			"done": "Concluir",
+			"deleteLimit": "Você pode excluir até {max} de uma vez.",
+			"deleteTitle": "{count, plural, one {Excluir # despesa?} other {Excluir # despesas?}}",
+			"deleteBody": "Despesas excluídas saem dos seus totais. Desfazer traz de volta.",
+			"deleteButton": "{count, plural, one {Excluir # despesa} other {Excluir # despesas}}",
+			"categorizeTitle": "{count, plural, one {Categorizar # despesa} other {Categorizar # despesas}}",
+			"categorizeBody": "Elas vão para {name}. Os valores não mudam.",
+			"categorizeButton": "Mover para {name}",
+			"addedUp": "Cada mudança é somada entre as despesas escolhidas.",
+			"moved": "{count, plural, one {# despesa movida para {name}} other {# despesas movidas para {name}}}",
+			"deleted": "{count, plural, one {# despesa excluída} other {# despesas excluídas}}",
+			"deletedSome": "{count, plural, one {# despesa excluída} other {# despesas excluídas}}, {left} não puderam ser excluídas",
+			"failed": "Não foi possível alterar essas despesas",
+			"undone": "Desfeito",
+			"undoError": "Não foi possível desfazer"
 		}
 	},
 	"budget": {
@@ -690,7 +712,12 @@
 			"empty": "Ainda não há lançamentos"
 		},
 		"error": "Não foi possível carregar o início",
-		"errorDetail": "Verifique sua conexão e tente de novo."
+		"errorDetail": "Verifique sua conexão e tente de novo.",
+		"pace": {
+			"empty": "Ainda não há gastos para o gráfico",
+			"summary": "Dia {day}: {spent} gastos, {before} até este dia no mês passado",
+			"noData": "Sem dados"
+		}
 	},
 	"people": {
 		"title": "Pessoas",

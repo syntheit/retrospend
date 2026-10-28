@@ -5,6 +5,8 @@ import { useFormatter, useTranslations } from "use-intl";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ActivityFilters } from "@/features/activity/ActivityFilters";
 import { ActivityRow } from "@/features/activity/ActivityRow";
+import { BulkControls } from "@/features/activity/BulkControls";
+import { canSelect } from "@/features/activity/bulk";
 import { groupByDay } from "@/features/activity/days";
 import { EntryView } from "@/features/activity/EntryView";
 import { DEFAULT_FILTER, isDefaultFilter } from "@/features/activity/filter";
@@ -16,6 +18,7 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
+import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListDetail } from "@/ui/ListDetail";
 import { Screen } from "@/ui/Screen";
@@ -37,25 +40,41 @@ function useDayLabel() {
 	};
 }
 
-function Summary({ page }: { page: ActivityPage }) {
+function Summary({
+	page,
+	onSelect,
+}: {
+	page: ActivityPage;
+	/** Starts selecting; absent when no row on the page can be picked. */
+	onSelect?: () => void;
+}) {
 	const t = useTranslations("mobile.activity");
 	const format = useMoneyText();
 	const { color, space, type } = useTheme();
-	if (page.count === null) return null;
+	if (page.count === null && !onSelect) return null;
 	const spent = page.total ? format(page.total.value) : null;
 	return (
-		<Text
+		<View
 			style={{
-				color: color.fg2,
-				fontSize: type.small.size,
+				flexDirection: "row",
+				alignItems: "center",
+				justifyContent: "space-between",
+				gap: space[4],
 				paddingHorizontal: space[4],
-				paddingVertical: space[2],
+				paddingVertical: space[1],
 			}}
 		>
-			{spent
-				? t("summarySpent", { count: page.count, amount: spent })
-				: t("summary", { count: page.count })}
-		</Text>
+			<Text style={{ flex: 1, color: color.fg2, fontSize: type.small.size }}>
+				{page.count === null
+					? ""
+					: spent
+						? t("summarySpent", { count: page.count, amount: spent })
+						: t("summary", { count: page.count })}
+			</Text>
+			{onSelect ? (
+				<Button label={t("bulk.select")} onPress={onSelect} variant="text" />
+			) : null}
+		</View>
 	);
 }
 
@@ -68,6 +87,8 @@ export default function ActivityScreen() {
 	const [filter, setFilter] = useState(DEFAULT_FILTER);
 	const [search, setSearch] = useState("");
 	const [selected, setSelected] = useState<ActivityItem | null>(null);
+	// Ids of the rows picked for a bulk action; null when not selecting.
+	const [picked, setPicked] = useState<ReadonlySet<string> | null>(null);
 	const { state, reload, loadMore, loadingMore } = useActivity(filter);
 
 	// The search bar sends text as it is typed; the list asks once it pauses.
@@ -91,7 +112,20 @@ export default function ActivityScreen() {
 		[page],
 	);
 
+	function toggle(item: ActivityItem) {
+		if (!canSelect(item)) return;
+		setPicked((prev) => {
+			const next = new Set(prev ?? []);
+			if (!next.delete(item.id)) next.add(item.id);
+			return next;
+		});
+	}
+
 	function open(item: ActivityItem) {
+		if (picked) {
+			toggle(item);
+			return;
+		}
 		if (listDetail) {
 			setSelected(item);
 			return;
@@ -115,9 +149,10 @@ export default function ActivityScreen() {
 			/>
 		);
 
-	const list = (
+	const rows = (
 		<SectionList
 			contentInsetAdjustmentBehavior="automatic"
+			extraData={picked}
 			keyboardDismissMode="on-drag"
 			keyExtractor={(item) => item.id}
 			ListEmptyComponent={empty}
@@ -141,7 +176,16 @@ export default function ActivityScreen() {
 						since={state.status === "ready" ? state.staleSince : null}
 					/>
 					<ActivityFilters filter={filter} onChange={setFilter} />
-					{page ? <Summary page={page} /> : null}
+					{page && !picked ? (
+						<Summary
+							onSelect={
+								page.items.some(canSelect)
+									? () => setPicked(new Set())
+									: undefined
+							}
+							page={page}
+						/>
+					) : null}
 				</View>
 			}
 			onEndReached={loadMore}
@@ -151,8 +195,18 @@ export default function ActivityScreen() {
 			renderItem={({ item }) => (
 				<ActivityRow
 					item={item}
+					onLongPress={
+						!picked && canSelect(item)
+							? () => setPicked(new Set([item.id]))
+							: undefined
+					}
 					onPress={() => open(item)}
-					selected={listDetail && selected?.id === item.id}
+					pick={
+						picked
+							? { checked: picked.has(item.id), enabled: canSelect(item) }
+							: undefined
+					}
+					selected={listDetail && !picked && selected?.id === item.id}
 				/>
 			)}
 			renderSectionHeader={({ section }) => (
@@ -186,6 +240,18 @@ export default function ActivityScreen() {
 			stickySectionHeadersEnabled={false}
 			style={{ backgroundColor: color.bg }}
 		/>
+	);
+	const list = picked ? (
+		<View style={{ flex: 1 }}>
+			<BulkControls
+				items={page?.items ?? []}
+				onDone={() => setPicked(null)}
+				picked={picked}
+			/>
+			{rows}
+		</View>
+	) : (
+		rows
 	);
 
 	return (

@@ -271,6 +271,28 @@
 			"transfer": "Transfer",
 			"paymentSent": "Paid {name}",
 			"paymentReceived": "{name} paid you"
+		},
+		"bulk": {
+			"select": "Select",
+			"selected": "{count} selected",
+			"pickSome": "Select expenses",
+			"categorize": "Categorize",
+			"delete": "Delete",
+			"done": "Done",
+			"deleteLimit": "Delete takes up to {max} at a time.",
+			"deleteTitle": "{count, plural, one {Delete # expense?} other {Delete # expenses?}}",
+			"deleteBody": "Deleted expenses leave your totals. Undo brings them back.",
+			"deleteButton": "{count, plural, one {Delete # expense} other {Delete # expenses}}",
+			"categorizeTitle": "{count, plural, one {Categorize # expense} other {Categorize # expenses}}",
+			"categorizeBody": "They move to {name}. Their amounts stay the same.",
+			"categorizeButton": "Move to {name}",
+			"addedUp": "Each change is added across the expenses you picked.",
+			"moved": "{count, plural, one {# expense moved to {name}} other {# expenses moved to {name}}}",
+			"deleted": "{count, plural, one {# expense deleted} other {# expenses deleted}}",
+			"deletedSome": "{count, plural, one {# expense deleted} other {# expenses deleted}}, {left} could not be deleted",
+			"failed": "Couldn't change those expenses",
+			"undone": "Undone",
+			"undoError": "Couldn't undo"
 		}
 	},
 	"budget": {
@@ -690,7 +712,12 @@
 			"empty": "No entries yet"
 		},
 		"error": "Couldn't load Home",
-		"errorDetail": "Check your connection and try again."
+		"errorDetail": "Check your connection and try again.",
+		"pace": {
+			"empty": "No spending to chart yet",
+			"summary": "Day {day}: {spent} spent, {before} by this day last month",
+			"noData": "No data"
+		}
 	},
 	"people": {
 		"title": "People",

@@ -271,6 +271,28 @@
 			"transfer": "Transferencia",
 			"paymentSent": "Pagaste a {name}",
 			"paymentReceived": "{name} te pagó"
+		},
+		"bulk": {
+			"select": "Seleccionar",
+			"selected": "{count} seleccionados",
+			"pickSome": "Selecciona gastos",
+			"categorize": "Categorizar",
+			"delete": "Eliminar",
+			"done": "Listo",
+			"deleteLimit": "Puedes eliminar hasta {max} a la vez.",
+			"deleteTitle": "{count, plural, one {¿Eliminar # gasto?} other {¿Eliminar # gastos?}}",
+			"deleteBody": "Los gastos eliminados salen de tus totales. Deshacer los recupera.",
+			"deleteButton": "{count, plural, one {Eliminar # gasto} other {Eliminar # gastos}}",
+			"categorizeTitle": "{count, plural, one {Categorizar # gasto} other {Categorizar # gastos}}",
+			"categorizeBody": "Pasan a {name}. Sus montos no cambian.",
+			"categorizeButton": "Mover a {name}",
+			"addedUp": "Cada cambio se suma entre los gastos elegidos.",
+			"moved": "{count, plural, one {# gasto movido a {name}} other {# gastos movidos a {name}}}",
+			"deleted": "{count, plural, one {# gasto eliminado} other {# gastos eliminados}}",
+			"deletedSome": "{count, plural, one {# gasto eliminado} other {# gastos eliminados}}, {left} no se pudieron eliminar",
+			"failed": "No se pudieron cambiar esos gastos",
+			"undone": "Deshecho",
+			"undoError": "No se pudo deshacer"
 		}
 	},
 	"budget": {
@@ -690,7 +712,12 @@
 			"empty": "Aún no hay movimientos"
 		},
 		"error": "No se pudo cargar Inicio",
-		"errorDetail": "Revisa tu conexión e inténtalo de nuevo."
+		"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
+		"pace": {
+			"empty": "Aún no hay gastos para el gráfico",
+			"summary": "Día {day}: {spent} gastados, {before} hasta este día el mes pasado",
+			"noData": "Sin datos"
+		}
 	},
 	"people": {
 		"title": "Personas",

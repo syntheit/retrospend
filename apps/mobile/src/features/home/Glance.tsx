@@ -8,6 +8,7 @@ import { ListRow } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";
+import { PaceChart } from "./PaceChart";
 import { type Glance as GlanceData, heroOf } from "./source";
 
 /** Home names no envelopes: the over verdicts it words never list any. */
@@ -179,6 +180,7 @@ export function Glance({
 					</Text>
 				) : null}
 			</Pressable>
+			<PaceChart glance={glance} />
 			<Figure
 				approx={approx.owedToYou}
 				label={t("owedToYou")}
