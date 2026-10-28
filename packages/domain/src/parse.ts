@@ -241,7 +241,10 @@ export function parseMoneyInput(
 	currency: string,
 ): MoneyInputResult {
 	const symbols = numberSymbols(locale);
-	const tokens = tokenize(withoutHomeSymbol(text, locale, currency), symbols).filter((t) => t.kind !== "space");
+	const tokens = tokenize(
+		withoutHomeSymbol(text, locale, currency),
+		symbols,
+	).filter((t) => t.kind !== "space");
 	if (tokens.length === 0) return { ok: false, error: "empty" };
 	if (tokens.some((t) => t.kind === "other")) {
 		return { ok: false, error: "invalidCharacter" };

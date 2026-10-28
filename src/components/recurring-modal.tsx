@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CategoryPicker } from "~/components/category-picker";
+import { formatMoney } from "~/components/money/format";
 import { MoneyInput } from "~/components/money/money-input";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Button } from "~/components/ui/button";
@@ -26,7 +27,6 @@ import { Sheet } from "~/components/ui/sheet";
 import { Switch } from "~/components/ui/switch";
 import { useToast } from "~/components/ui/toast";
 import { useCurrency } from "~/hooks/use-currency";
-import { useCurrencyFormatter } from "~/hooks/use-currency-formatter";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
 import { getSubscriptionMetadata } from "~/lib/subscription-metadata";
 import { api } from "~/trpc/react";
@@ -362,7 +362,7 @@ function CurrencyEstimate({
 	isLoading: boolean;
 }) {
 	const t = useTranslations("recurring");
-	const { formatCurrency } = useCurrencyFormatter();
+	const locale = useMoneyLocale();
 	const { usdToHomeRate } = useCurrency();
 
 	if (currency === homeCurrency || !amount) return null;
@@ -381,7 +381,12 @@ function CurrencyEstimate({
 
 	return (
 		<p className="fade-in slide-in-from-top-1 animate-in text-muted-foreground text-xs duration-300">
-			{t("estimated", { amount: formatCurrency(estimation, homeCurrency) })}
+			{t("estimated", {
+				amount: formatMoney(
+					{ minor: toMinor(estimation, homeCurrency), currency: homeCurrency },
+					{ locale },
+				),
+			})}
 		</p>
 	);
 }
