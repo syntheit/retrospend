@@ -986,7 +986,8 @@
 			"SETTLEMENT_REJECTED": "Se rechaza un pago",
 			"PERIOD_CLOSED": "Se cierra un período",
 			"PARTICIPANT_ADDED": "Te suman a un proyecto",
-			"PAYMENT_REMINDER": "Alguien te recuerda un pago"
+			"PAYMENT_REMINDER": "Alguien te recuerda un pago",
+			"RECURRING_DUE": "Vence un gasto recurrente"
 		},
 		"server": {
 			"title": "Servidor",
@@ -1022,6 +1023,34 @@
 			"footer": "Se lee así: {example}",
 			"format": "Formato de números",
 			"follow": "Seguir el idioma"
+		},
+		"push": {
+			"title": "Notificaciones push",
+			"master": "Push en este teléfono",
+			"footerIos": "Las notificaciones llegan por el servicio push de Apple. Elegí cuáles abajo.",
+			"footerAndroid": "Retrospend busca novedades cada 15 minutos, sin servicios de Google. Elegí cuáles abajo.",
+			"denied": "Las notificaciones están desactivadas para Retrospend. Activalas en los ajustes del sistema.",
+			"unavailable": "Este teléfono no pudo registrarse para recibir push. Probá más tarde."
+		}
+	},
+	"push": {
+		"channel": {
+			"splits": {
+				"name": "Gastos compartidos",
+				"description": "Gastos compartidos y pedidos de corrección"
+			},
+			"payments": {
+				"name": "Pagos",
+				"description": "Pagos registrados, confirmados o no recibidos"
+			},
+			"reminders": {
+				"name": "Recordatorios",
+				"description": "Recordatorios de pago"
+			},
+			"recurring": {
+				"name": "Recurrentes",
+				"description": "Gastos e ingresos recurrentes pendientes"
+			}
 		}
 	}
 }

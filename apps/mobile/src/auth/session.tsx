@@ -22,6 +22,7 @@ import { useServerConnection } from "@/auth/server-connection";
 import { createReadCache, type ReadCache } from "@/data/cache";
 import { createOutbox, type Outbox } from "@/data/outbox";
 import { createSqliteStore } from "@/data/sqlite-store";
+import { createPushControl } from "@/push/control";
 import { type AuthApi, createAuthApi, type SignInStep } from "./auth-api";
 import { isSessionEnded } from "./errors";
 import { clearStaleTokenOnFirstRun } from "./first-run";
@@ -63,6 +64,22 @@ interface SessionValue {
 const SessionContext = createContext<SessionValue | null>(null);
 const store = createSqliteStore();
 
+/** Push for the account that is signed in, for the steps that end its session. */
+function pushOf(
+	baseUrl: string | null,
+	me: Me | null,
+	api: RetrospendClient | null,
+) {
+	return baseUrl && me
+		? createPushControl({
+				store,
+				api,
+				who: { baseUrl, meId: me.id },
+				sandbox: false,
+			})
+		: null;
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
 	const { connection } = useServerConnection();
 	const baseUrl = connection.status === "connected" ? connection.baseUrl : null;
@@ -92,14 +109,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	}, [baseUrl, meId]);
 
 	// What the 401 handler needs, as of the latest render.
-	const latest = useRef({ tokens, authApi, profileCache, local });
-	latest.current = { tokens, authApi, profileCache, local };
+	const me = state.status === "signedIn" ? state.me : null;
+	const latest = useRef({ tokens, authApi, profileCache, local, baseUrl, me });
+	latest.current = { tokens, authApi, profileCache, local, baseUrl, me };
 
 	/** The session ended on the server: forget it here, keep the outbox. */
 	const expire = useCallback(async () => {
-		const { tokens, authApi, profileCache, local } = latest.current;
+		const { tokens, authApi, profileCache, local, baseUrl, me } =
+			latest.current;
 		setState({ status: "signedOut", expired: true });
 		await Promise.all([
+			// The server already dropped this session's devices; stop polling here.
+			pushOf(baseUrl, me, null)?.forget(),
 			tokens?.clear(),
 			profileCache?.clear(),
 			local?.cache.clear(),
@@ -203,6 +224,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			},
 			unsyncedCount: async () => (await local?.outbox.all())?.length ?? 0,
 			async signOut(options) {
+				// First: removing the device needs the session this ends.
+				await pushOf(baseUrl, me, api)
+					?.disable()
+					.catch(() => undefined);
 				await authApi?.signOut();
 				if (options?.discardUnsynced) await local?.outbox.clear();
 				await Promise.all([
@@ -214,7 +239,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 				setState({ status: "signedOut", expired: false });
 			},
 		}),
-		[state, api, local, authApi, tokens, finishSignIn, profileCache, fetchMe],
+		[
+			state,
+			api,
+			local,
+			authApi,
+			tokens,
+			finishSignIn,
+			profileCache,
+			fetchMe,
+			baseUrl,
+			me,
+		],
 	);
 
 	return (

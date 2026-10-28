@@ -1,6 +1,9 @@
-import { INBOX_NOTIFICATION_TYPES } from "@retrospend/api-contract";
+import {
+	INBOX_NOTIFICATION_TYPES,
+	PUSH_NOTIFICATION_TYPES,
+} from "@retrospend/api-contract";
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
@@ -12,6 +15,7 @@ import {
 	useLanguagePref,
 } from "@/lib/language-pref";
 import { APP_LOCALES, LANGUAGE_NAMES } from "@/lib/locales";
+import { usePush } from "@/push/PushProvider";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import {
@@ -56,6 +60,7 @@ export function SettingsScreen() {
 	const { api, local, refreshMe } = useSession();
 	const { connection, disconnect } = useServerConnection();
 	const toast = useToast();
+	const push = usePush();
 	const confirmSignOut = useSignOut();
 	// Settings is only open while signed in, so the server changes after the
 	// session ends; the sign-in screen has the same action for the signed-out case.
@@ -144,7 +149,7 @@ export function SettingsScreen() {
 
 	async function setChannel(
 		type: NotificationType,
-		channel: "inApp" | "email",
+		channel: "inApp" | "email" | "push",
 		on: boolean,
 	) {
 		if (!api) return;
@@ -161,6 +166,17 @@ export function SettingsScreen() {
 			toast.show({ message: t("saveError") });
 			prefsRead.reload();
 		}
+	}
+
+	async function togglePush(next: boolean) {
+		if (!next) {
+			await push.disable();
+			return;
+		}
+		const result = await push.enable();
+		if (result === "denied") toast.show({ message: t("push.denied") });
+		if (result === "unavailable")
+			toast.show({ message: t("push.unavailable") });
 	}
 
 	return (
@@ -226,6 +242,32 @@ export function SettingsScreen() {
 						value={String(pinned.length)}
 					/>
 				</FormSection>
+				{push.supported ? (
+					<FormSection
+						footer={t(
+							Platform.OS === "ios" ? "push.footerIos" : "push.footerAndroid",
+						)}
+						title={t("push.title")}
+					>
+						<FormSwitchRow
+							label={t("push.master")}
+							onChange={togglePush}
+							value={push.on}
+						/>
+						{push.on
+							? PUSH_NOTIFICATION_TYPES.filter((type) =>
+									preferenceOf(prefs, type),
+								).map((type) => (
+									<FormSwitchRow
+										key={type}
+										label={tn(type)}
+										onChange={(on) => setChannel(type, "push", on)}
+										value={preferenceOf(prefs, type)?.push ?? false}
+									/>
+								))
+							: null}
+					</FormSection>
+				) : null}
 				{prefs.length > 0 ? (
 					<>
 						<FormSection title={t("notifications.inApp")}>

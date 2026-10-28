@@ -986,7 +986,8 @@
 			"SETTLEMENT_REJECTED": "Un paiement est refusé",
 			"PERIOD_CLOSED": "Une période de facturation se termine",
 			"PARTICIPANT_ADDED": "Tu es ajouté à un projet",
-			"PAYMENT_REMINDER": "Quelqu’un te rappelle un paiement"
+			"PAYMENT_REMINDER": "Quelqu’un te rappelle un paiement",
+			"RECURRING_DUE": "Une dépense récurrente est à régler"
 		},
 		"server": {
 			"title": "Serveur",
@@ -1022,6 +1023,34 @@
 			"footer": "S'affiche comme {example}",
 			"format": "Format des nombres",
 			"follow": "Suivre la langue"
+		},
+		"push": {
+			"title": "Notifications push",
+			"master": "Push sur ce téléphone",
+			"footerIos": "Les notifications arrivent par le service push d’Apple. Choisis lesquelles ci-dessous.",
+			"footerAndroid": "Retrospend cherche des nouveautés environ toutes les 15 minutes, sans services Google. Choisis lesquelles ci-dessous.",
+			"denied": "Les notifications sont désactivées pour Retrospend. Active-les dans les réglages du système.",
+			"unavailable": "Ce téléphone n’a pas pu s’inscrire aux notifications push. Réessaie plus tard."
+		}
+	},
+	"push": {
+		"channel": {
+			"splits": {
+				"name": "Partages",
+				"description": "Dépenses partagées et demandes de correction"
+			},
+			"payments": {
+				"name": "Paiements",
+				"description": "Paiements enregistrés, confirmés ou non reçus"
+			},
+			"reminders": {
+				"name": "Rappels",
+				"description": "Rappels de paiement"
+			},
+			"recurring": {
+				"name": "Récurrents",
+				"description": "Dépenses et revenus récurrents à venir"
+			}
 		}
 	}
 }

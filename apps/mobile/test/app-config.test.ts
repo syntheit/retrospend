@@ -2,7 +2,11 @@
  * @jest-environment node
  */
 
-import config, { assertBuildProfile, defaultServer } from "../app.config";
+import config, {
+	apnsEnvironment,
+	assertBuildProfile,
+	defaultServer,
+} from "../app.config";
 import { APP_LOCALES } from "../src/lib/locales";
 
 // Owner decision (2026-10-22): plain http servers are allowed after a
@@ -27,6 +31,24 @@ describe("app config", () => {
 			}),
 		).toBe("https://dev.retrospend.app");
 		expect(config.extra).toHaveProperty("defaultServer");
+	});
+
+	it("uses the production APNs host unless an Xcode debug build says otherwise", () => {
+		// TestFlight and App Store builds set nothing: production tokens must
+		// register with apnsSandbox false.
+		expect(apnsEnvironment({})).toBe("production");
+		expect(apnsEnvironment({ RETROSPEND_APNS_ENV: "" })).toBe("production");
+		expect(apnsEnvironment({ RETROSPEND_APNS_ENV: "sandbox" })).toBe(
+			"production",
+		);
+		expect(apnsEnvironment({ RETROSPEND_APNS_ENV: "development" })).toBe(
+			"development",
+		);
+		expect(config.extra?.apnsSandbox).toBe(false);
+		expect(config.plugins).toContainEqual([
+			"./plugins/with-ios-push",
+			{ mode: "production" },
+		]);
 	});
 
 	it("keeps the agreed identity", () => {

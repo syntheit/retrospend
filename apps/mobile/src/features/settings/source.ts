@@ -49,7 +49,7 @@ export const MONTH_START_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
 export function withChannel(
 	preferences: NotificationPreference[],
 	type: NotificationType,
-	channel: "inApp" | "email",
+	channel: "inApp" | "email" | "push",
 	on: boolean,
 ): NotificationPreference[] {
 	return preferences.map((p) =>

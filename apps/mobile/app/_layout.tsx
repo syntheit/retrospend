@@ -13,6 +13,10 @@ import { SessionProvider, useSession } from "@/auth/session";
 import { GALLERY_ENABLED } from "@/lib/flags";
 import { AppIntlProvider } from "@/lib/intl";
 import { MoneyPrefsProvider } from "@/lib/money";
+// Defines the Android background poll (a no-op elsewhere); it has to exist
+// before the app starts for the system to run it headless.
+import "@/push/background";
+import { PushProvider } from "@/push/PushProvider";
 import { navigationTheme, themeFor } from "@/theme";
 import { ToastProvider } from "@/ui/Toast";
 
@@ -67,10 +71,12 @@ export default function RootLayout() {
 						<ServerConnectionProvider>
 							<SessionProvider>
 								<MoneyPrefsProvider>
-									<ToastProvider>
-										<Routes />
-										{DevAutoSignIn ? <DevAutoSignIn /> : null}
-									</ToastProvider>
+									<PushProvider>
+										<ToastProvider>
+											<Routes />
+											{DevAutoSignIn ? <DevAutoSignIn /> : null}
+										</ToastProvider>
+									</PushProvider>
 								</MoneyPrefsProvider>
 							</SessionProvider>
 						</ServerConnectionProvider>
