@@ -854,3 +854,62 @@ describe("Edit a split expense", () => {
 		act(() => tree.unmount());
 	});
 });
+
+describe("Edit needs its dry run", () => {
+	it("does not save while the preview could not be reached", async () => {
+		const { api, calls } = fakeApi();
+		(
+			api as unknown as { expenses: { previewUpdate: unknown } }
+		).expenses.previewUpdate = async () => {
+			throw new TypeError("Network request failed");
+		};
+		mockSession.api = api;
+		const done = jest.fn();
+		const tree = await open("expense", done, "e1");
+		await settle();
+		press(tree, "Save expense");
+		await flush();
+		expect(calls.some((c) => c.route === "expense.update")).toBe(false);
+		expect(done).not.toHaveBeenCalled();
+		act(() => tree.unmount());
+	});
+});
+
+describe("Picking projects quickly", () => {
+	it("keeps the people of the latest pick when an earlier answer arrives late", async () => {
+		const { api } = fakeApi();
+		let finishTrip: (value: unknown) => void = () => {};
+		const members = (api as unknown as { projects: { members: unknown } })
+			.projects;
+		members.members = (input: { id: string }) =>
+			input.id === "trip"
+				? new Promise((resolve) => {
+						finishTrip = resolve;
+					})
+				: Promise.resolve({ items: [] });
+		mockSession.api = api;
+		const tree = await open("expense");
+		press(tree, "Project, No project");
+		press(tree, "pick Trip");
+		// The person changes their mind before the first answer comes.
+		press(tree, "Project, No project");
+		press(tree, "pick No project");
+		await flush();
+		await act(async () => {
+			finishTrip({
+				items: [
+					{
+						participantType: "guest",
+						participantId: "ana1",
+						name: "Ana",
+						imageUrl: null,
+					},
+				],
+			});
+		});
+		await flush();
+		expect(words(tree)).not.toContain("Ana");
+		expect(words(tree)).toContain("No project");
+		act(() => tree.unmount());
+	});
+});

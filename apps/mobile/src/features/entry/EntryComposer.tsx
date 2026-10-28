@@ -1,6 +1,6 @@
 import { decimalSeparator } from "@retrospend/domain/parse";
 import { dayKey } from "@retrospend/domain/time-zone";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -250,11 +250,12 @@ function Form({
 			? planOf(preview.diff)
 			: null;
 	// Save waits for the dry run of exactly what it will send. Offline there is
-	// none and the write waits on the phone; a refused one can not be saved.
+	// none and an add waits on the phone, but an edit is never queued: it needs
+	// the dry run, so only a ready one lets it through. A refused one can not be saved.
 	const blocked =
 		write !== null &&
 		preview.status !== "ready" &&
-		preview.status !== "offline";
+		(editing || preview.status !== "offline");
 	const rows = useMemo(
 		() =>
 			splitRows(expense, {
@@ -302,8 +303,12 @@ function Form({
 				? patchIncome({ amountText })
 				: patchTransfer({ amountText });
 
+	// The latest pick: a slower answer for an earlier project is dropped.
+	const projectPick = useRef(0);
+
 	/** Picks the project and takes in its people on the expense's day, as the web does. */
 	async function pickProject(projectId: string | null) {
+		const pick = ++projectPick.current;
 		if (!projectId) {
 			patchExpense({ projectId: null, projectPeople: [], withKeys: [] });
 			return;
@@ -325,6 +330,7 @@ function Form({
 					name: m.name,
 					imageUrl: m.imageUrl,
 				}));
+			if (pick !== projectPick.current) return;
 			patchExpense({
 				projectId,
 				projectPeople: people,
@@ -337,6 +343,7 @@ function Form({
 					: {}),
 			});
 		} catch {
+			if (pick !== projectPick.current) return;
 			// The project stays unpicked: a split without its people would be wrong.
 			toast.show({ message: t("project.loadFailed") });
 		}
