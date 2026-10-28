@@ -128,6 +128,8 @@ const config: ExpoConfig = {
 		"expo-secure-store",
 		// Android half of the http decision above.
 		"./plugins/with-cleartext-servers",
+		// R8 keep rules: without them the minified release dies in WorkManager.
+		"./plugins/with-android-proguard",
 		// Release signing from the environment (scripts/android-release.sh).
 		"./plugins/with-android-release-signing",
 		// iOS 27 SDK apps must use the UIScene life cycle.
