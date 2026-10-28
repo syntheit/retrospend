@@ -146,21 +146,35 @@ export function CategoryTile({
 export function ListRow({
 	children,
 	onPress,
+	onLongPress,
 	selected,
+	pickState,
 	accessibilityLabel,
 }: {
 	children: ReactNode;
 	onPress?: () => void;
+	onLongPress?: () => void;
 	selected?: boolean;
+	/** While expenses are picked: a row that cannot join is disabled, the others are checkboxes. */
+	pickState?: { checked: boolean; enabled: boolean };
 	accessibilityLabel?: string;
 }) {
 	const { color, size, space } = useTheme();
 	return (
 		<Pressable
 			accessibilityLabel={accessibilityLabel}
-			accessibilityRole={onPress ? "button" : undefined}
-			accessibilityState={selected ? { selected: true } : undefined}
+			accessibilityRole={
+				pickState ? "checkbox" : onPress ? "button" : undefined
+			}
+			accessibilityState={
+				pickState
+					? { checked: pickState.checked, disabled: !pickState.enabled }
+					: selected
+						? { selected: true }
+						: undefined
+			}
 			disabled={!onPress}
+			onLongPress={onLongPress}
 			onPress={onPress}
 			style={({ pressed }) => ({
 				minHeight: size.row.phone,

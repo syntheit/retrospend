@@ -272,6 +272,28 @@
 			"transfer": "Virement",
 			"paymentSent": "Tu as payé {name}",
 			"paymentReceived": "{name} t’a payé"
+		},
+		"bulk": {
+			"select": "Sélectionner",
+			"selected": "{count} sélectionnées",
+			"pickSome": "Sélectionne des dépenses",
+			"categorize": "Catégoriser",
+			"delete": "Supprimer",
+			"done": "Terminé",
+			"deleteLimit": "Tu peux en supprimer {max} à la fois.",
+			"deleteTitle": "{count, plural, one {Supprimer # dépense ?} other {Supprimer # dépenses ?}}",
+			"deleteBody": "Les dépenses supprimées quittent tes totaux. Annuler les ramène.",
+			"deleteButton": "{count, plural, one {Supprimer # dépense} other {Supprimer # dépenses}}",
+			"categorizeTitle": "{count, plural, one {Catégoriser # dépense} other {Catégoriser # dépenses}}",
+			"categorizeBody": "Elles passent dans {name}. Leurs montants ne changent pas.",
+			"categorizeButton": "Déplacer vers {name}",
+			"addedUp": "Chaque changement est additionné sur les dépenses choisies.",
+			"moved": "{count, plural, one {# dépense déplacée vers {name}} other {# dépenses déplacées vers {name}}}",
+			"deleted": "{count, plural, one {# dépense supprimée} other {# dépenses supprimées}}",
+			"deletedSome": "{count, plural, one {# dépense supprimée} other {# dépenses supprimées}}, {left} n'ont pas pu être supprimées",
+			"failed": "Impossible de modifier ces dépenses",
+			"undone": "Annulé",
+			"undoError": "Impossible d'annuler"
 		}
 	},
 	"budget": {
@@ -691,7 +713,12 @@
 			"empty": "Aucune opération pour l’instant"
 		},
 		"error": "Impossible de charger l’accueil",
-		"errorDetail": "Vérifie ta connexion et réessaie."
+		"errorDetail": "Vérifie ta connexion et réessaie.",
+		"pace": {
+			"empty": "Pas encore de dépenses à afficher",
+			"summary": "Jour {day} : {spent} dépensés, {before} à ce même jour le mois dernier",
+			"noData": "Aucune donnée"
+		}
 	},
 	"people": {
 		"title": "Personnes",

@@ -272,6 +272,28 @@
 			"transfer": "Überweisung",
 			"paymentSent": "Du hast {name} bezahlt",
 			"paymentReceived": "{name} hat dich bezahlt"
+		},
+		"bulk": {
+			"select": "Auswählen",
+			"selected": "{count} ausgewählt",
+			"pickSome": "Ausgaben auswählen",
+			"categorize": "Kategorisieren",
+			"delete": "Löschen",
+			"done": "Fertig",
+			"deleteLimit": "Du kannst bis zu {max} auf einmal löschen.",
+			"deleteTitle": "{count, plural, one {# Ausgabe löschen?} other {# Ausgaben löschen?}}",
+			"deleteBody": "Gelöschte Ausgaben verschwinden aus deinen Summen. Mit Rückgängig holst du sie zurück.",
+			"deleteButton": "{count, plural, one {# Ausgabe löschen} other {# Ausgaben löschen}}",
+			"categorizeTitle": "{count, plural, one {# Ausgabe kategorisieren} other {# Ausgaben kategorisieren}}",
+			"categorizeBody": "Sie wechseln zu {name}. Die Beträge bleiben gleich.",
+			"categorizeButton": "Nach {name} verschieben",
+			"addedUp": "Jede Änderung ist über die gewählten Ausgaben summiert.",
+			"moved": "{count, plural, one {# Ausgabe nach {name} verschoben} other {# Ausgaben nach {name} verschoben}}",
+			"deleted": "{count, plural, one {# Ausgabe gelöscht} other {# Ausgaben gelöscht}}",
+			"deletedSome": "{count, plural, one {# Ausgabe gelöscht} other {# Ausgaben gelöscht}}, {left} konnten nicht gelöscht werden",
+			"failed": "Die Ausgaben konnten nicht geändert werden",
+			"undone": "Rückgängig gemacht",
+			"undoError": "Rückgängig nicht möglich"
 		}
 	},
 	"budget": {
@@ -691,7 +713,12 @@
 			"empty": "Noch keine Einträge"
 		},
 		"error": "Start konnte nicht geladen werden",
-		"errorDetail": "Prüfe deine Verbindung und versuche es erneut."
+		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+		"pace": {
+			"empty": "Noch keine Ausgaben für das Diagramm",
+			"summary": "Tag {day}: {spent} ausgegeben, {before} bis zum selben Tag im Vormonat",
+			"noData": "Keine Daten"
+		}
 	},
 	"people": {
 		"title": "Personen",
