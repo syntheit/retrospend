@@ -45,7 +45,8 @@ function addSendFilters(manifest) {
 		(a) => a.$["android:name"] === ".MainActivity",
 	);
 	if (!activity) throw new Error("AndroidManifest has no .MainActivity");
-	const filters = (activity["intent-filter"] ??= []);
+	activity["intent-filter"] = activity["intent-filter"] ?? [];
+	const filters = activity["intent-filter"];
 	for (const filter of sendFilters()) {
 		const type = filter.data[0].$["android:mimeType"];
 		const has = filters.some((f) =>

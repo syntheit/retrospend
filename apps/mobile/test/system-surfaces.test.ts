@@ -11,7 +11,17 @@ const {
 	TARGETS,
 } = require("../plugins/with-system-surfaces");
 
-function manifest() {
+interface Filter {
+	action?: { $: Record<string, string> }[];
+	data?: { $: Record<string, string> }[];
+}
+interface Manifest {
+	manifest: {
+		application: { activity: { "intent-filter": Filter[] }[] }[];
+	};
+}
+
+function manifest(): Manifest {
 	return {
 		manifest: {
 			application: [
@@ -27,11 +37,11 @@ function manifest() {
 				},
 			],
 		},
-	};
+	} as unknown as Manifest;
 }
 
-const filtersOf = (m: ReturnType<typeof manifest>) =>
-	m.manifest.application[0].activity[0]["intent-filter"];
+const filtersOf = (m: Manifest) =>
+	m.manifest.application[0]?.activity[0]?.["intent-filter"] ?? [];
 
 describe("system surfaces plugin", () => {
 	it("is registered with the App Group", () => {
@@ -46,15 +56,13 @@ describe("system surfaces plugin", () => {
 
 	it("accepts images, PDFs and text on the main activity, once", () => {
 		const m = addSendFilters(addSendFilters(manifest()));
-		const sends = filtersOf(m).filter((f: { action?: unknown }) => f.action);
-		expect(
-			sends.map((f: { data: { $: Record<string, string> }[] }) => f.data[0].$),
-		).toEqual([
+		const sends = filtersOf(m).filter((f) => f.action);
+		expect(sends.map((f) => f.data?.[0]?.$)).toEqual([
 			{ "android:mimeType": "image/*" },
 			{ "android:mimeType": "application/pdf" },
 			{ "android:mimeType": "text/plain" },
 		]);
-		expect(sends[0].action[0].$["android:name"]).toBe(
+		expect(sends[0]?.action?.[0]?.$["android:name"]).toBe(
 			"android.intent.action.SEND",
 		);
 		// The deep link filter stays.
