@@ -9,7 +9,7 @@ import {
 } from "@retrospend/domain/format";
 import {
 	type NumberFormatChoice,
-	withNumberFormat,
+	withMoneyContext,
 } from "@retrospend/domain/format-locale";
 import type { Money } from "@retrospend/domain/money-minor";
 import {
@@ -24,15 +24,19 @@ import parseVectors from "@retrospend/domain/vectors/money-parse.vectors.json";
 
 type Options = Omit<FormatMoneyOptions, "locale">;
 
-/** A case's locale with its numberFormat setting on it, as every client sets it. */
-const loc = (c: { locale: string; numberFormat?: NumberFormatChoice }) =>
-	withNumberFormat(c.locale, c.numberFormat);
+/** A case's locale with its numberFormat and homeCurrency settings on it, as every client sets it. */
+const loc = (c: {
+	locale: string;
+	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
+}) => withMoneyContext(c.locale, c);
 type Expected = { minor: number } | { error: string };
 
 interface FormatCase {
 	name: string;
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	money?: Money | null;
 	options?: Options;
 	expected?: string | null;
@@ -43,6 +47,7 @@ interface PairCase {
 	name: string;
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	original: Money;
 	home: Money | null;
 	options?: Options;
@@ -53,6 +58,7 @@ interface TextCase {
 	name: string;
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	currency: string;
 	text: string;
 }
@@ -60,6 +66,7 @@ interface TextCase {
 interface SeparatorCase {
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	decimal: string;
 	group: string;
 }
@@ -68,6 +75,7 @@ interface KeystrokeCase {
 	name: string;
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	currency: string;
 	keys: string[];
 	drafts: string[];
@@ -78,6 +86,7 @@ interface FromMinorCase {
 	name: string;
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	money: Money;
 	expected: string;
 }
@@ -95,6 +104,7 @@ function expectParse(
 	c: {
 		locale: string;
 		numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 		currency: string;
 	},
 	expected: Expected,

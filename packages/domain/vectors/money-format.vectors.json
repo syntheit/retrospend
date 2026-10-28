@@ -1,5 +1,5 @@
 {
-	"about": "Golden cases for formatMoney and formatMoneyPair (@retrospend/domain/format). Every client runs this file: web vitest, mobile jest, third-party clients. money.minor is integer minor units (cents, satoshis, fils). A missing money is null or absent. Options default to display code, sign auto, cents auto. \u00a0 is a no-break space, \u202f a narrow no-break space. throws names the error a case must raise. A case may carry numberFormat (comma_dot, dot_comma or space_comma), the account setting: a client puts it on its locale (withNumberFormat in @retrospend/domain/format-locale) before formatting.",
+	"about": "Golden cases for formatMoney and formatMoneyPair (@retrospend/domain/format). Every client runs this file: web vitest, mobile jest, third-party clients. money.minor is integer minor units (cents, satoshis, fils). A missing money is null or absent. Options default to display code, sign auto, cents auto. \u00a0 is a no-break space, \u202f a narrow no-break space. throws names the error a case must raise. A case may carry numberFormat (comma_dot, dot_comma or space_comma) and homeCurrency, the account settings: a client puts them on its locale (withMoneyContext in @retrospend/domain/format-locale) before formatting. With a homeCurrency and no display option, that currency shows its narrow symbol and every other its ISO code.",
 	"format": [
 		{
 			"name": "en-US USD",
@@ -877,7 +877,31 @@
 		{"name": "en-IN follows its own lakh groups", "locale": "en-IN", "money": {"minor": 123456780, "currency": "INR"}, "expected": "INR\u00a012,34,567.80"},
 		{"name": "en-IN INR under space_comma", "locale": "en-IN", "numberFormat": "space_comma", "money": {"minor": 123456780, "currency": "INR"}, "expected": "INR\u00a01\u202f234\u202f567,80"},
 		{"name": "compact four digits under comma_dot, de has no suffix", "locale": "de", "numberFormat": "comma_dot", "money": {"minor": 123400, "currency": "USD"}, "expected": "1,234", "options": {"compact": true, "display": "none"}},
-		{"name": "compact four digits follow the language", "locale": "de", "money": {"minor": 123400, "currency": "USD"}, "expected": "1.234", "options": {"compact": true, "display": "none"}}
+		{"name": "compact four digits follow the language", "locale": "de", "money": {"minor": 123400, "currency": "USD"}, "expected": "1.234", "options": {"compact": true, "display": "none"}},
+		{"name": "home USD shows $", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 192030, "currency": "USD"}, "expected": "$1,920.30"},
+		{"name": "home USD negative: the minus leads the symbol", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": -1200, "currency": "USD"}, "expected": "-$12.00"},
+		{"name": "home USD, a foreign ARS amount keeps its code", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 1500000, "currency": "ARS"}, "expected": "ARS\u00a015,000"},
+		{"name": "home USD, a foreign BRL amount keeps its code", "locale": "es-AR", "homeCurrency": "USD", "money": {"minor": 5190, "currency": "BRL"}, "expected": "BRL\u00a051,90"},
+		{"name": "home USD, crypto keeps its ticker", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 12345678, "currency": "BTC"}, "expected": "BTC\u00a00.12345678"},
+		{"name": "home USD zero", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 0, "currency": "USD"}, "expected": "$0.00"},
+		{"name": "home EUR shows the euro sign", "locale": "en-US", "homeCurrency": "EUR", "money": {"minor": 123450, "currency": "EUR"}, "expected": "\u20ac1,234.50"},
+		{"name": "home EUR, a USD amount keeps its code", "locale": "en-US", "homeCurrency": "EUR", "money": {"minor": 123450, "currency": "USD"}, "expected": "USD\u00a01,234.50"},
+		{"name": "home GBP shows the pound sign", "locale": "en-US", "homeCurrency": "GBP", "money": {"minor": 123450, "currency": "GBP"}, "expected": "\u00a31,234.50"},
+		{"name": "home JPY shows the yen sign, no decimals", "locale": "en-US", "homeCurrency": "JPY", "money": {"minor": 1234567, "currency": "JPY"}, "expected": "\u00a51,234,567"},
+		{"name": "home BRL shows R$", "locale": "en-US", "homeCurrency": "BRL", "money": {"minor": 5190, "currency": "BRL"}, "expected": "R$51.90"},
+		{"name": "home ARS shows $ too, it is the home currency", "locale": "en-US", "homeCurrency": "ARS", "money": {"minor": 123456700, "currency": "ARS"}, "expected": "$1,234,567"},
+		{"name": "home ARS, a USD amount keeps its code", "locale": "en-US", "homeCurrency": "ARS", "money": {"minor": 123456, "currency": "USD"}, "expected": "USD\u00a01,234.56"},
+		{"name": "home ARS in es-AR spaces the symbol like the language", "locale": "es-AR", "homeCurrency": "ARS", "money": {"minor": 123456700, "currency": "ARS"}, "expected": "$\u00a01.234.567"},
+		{"name": "home CHF has no symbol of its own, so the code stands", "locale": "en-US", "homeCurrency": "CHF", "money": {"minor": 123450, "currency": "CHF"}, "expected": "CHF\u00a01,234.50"},
+		{"name": "home USD, display code forces the code", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 192030, "currency": "USD"}, "expected": "USD\u00a01,920.30", "options": {"display": "code"}},
+		{"name": "home USD, display none leaves the currency out", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 192030, "currency": "USD"}, "expected": "1,920.30", "options": {"display": "none"}},
+		{"name": "home USD, exceptZero plus leads the symbol", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 192030, "currency": "USD"}, "expected": "+$1,920.30", "options": {"sign": "exceptZero"}},
+		{"name": "home USD compact", "locale": "en-US", "homeCurrency": "USD", "money": {"minor": 270660200, "currency": "USD"}, "expected": "$2.7M", "options": {"compact": true}},
+		{"name": "home USD under comma_dot over de", "locale": "de", "numberFormat": "comma_dot", "homeCurrency": "USD", "money": {"minor": -123456, "currency": "USD"}, "expected": "-$\u00a01,234.56"},
+		{"name": "home USD under dot_comma", "locale": "en-US", "numberFormat": "dot_comma", "homeCurrency": "USD", "money": {"minor": -123456, "currency": "USD"}, "expected": "-$1.234,56"},
+		{"name": "home USD under space_comma", "locale": "en-US", "numberFormat": "space_comma", "homeCurrency": "USD", "money": {"minor": 123456, "currency": "USD"}, "expected": "$1\u202f234,56"},
+		{"name": "home EUR under dot_comma, foreign USD keeps its code", "locale": "en-US", "numberFormat": "dot_comma", "homeCurrency": "EUR", "money": {"minor": 123456, "currency": "USD"}, "expected": "USD\u00a01.234,56"},
+		{"name": "home ARS whole under space_comma", "locale": "en-US", "numberFormat": "space_comma", "homeCurrency": "ARS", "money": {"minor": 123456700, "currency": "ARS"}, "expected": "$1\u202f234\u202f567"}
 	],
 	"pair": [
 		{
@@ -932,6 +956,10 @@
 			"original": { "minor": -5190, "currency": "BRL" },
 			"home": { "minor": -1340700, "currency": "ARS" },
 			"expected": { "original": "-BRL\u00a051.90", "home": "-ARS\u00a013,407" }
-		}
+		},
+		{"name": "foreign original with a USD home amount", "locale": "en-US", "homeCurrency": "USD", "original": {"minor": 5190, "currency": "BRL"}, "home": {"minor": 990, "currency": "USD"}, "expected": {"original": "BRL\u00a051.90", "home": "$9.90"}},
+		{"name": "home-currency original: one amount with the symbol", "locale": "en-US", "homeCurrency": "USD", "original": {"minor": 1200, "currency": "USD"}, "home": {"minor": 1200, "currency": "USD"}, "expected": {"original": "$12.00", "home": null}},
+		{"name": "ARS home: a USD original keeps its code, the ARS amount takes $", "locale": "en-US", "homeCurrency": "ARS", "original": {"minor": 299, "currency": "USD"}, "home": {"minor": 433550, "currency": "ARS"}, "expected": {"original": "USD\u00a02.99", "home": "$4,335.50"}},
+		{"name": "negative home amount under dot_comma", "locale": "en-US", "numberFormat": "dot_comma", "homeCurrency": "USD", "original": {"minor": -5190, "currency": "BRL"}, "home": {"minor": -990, "currency": "USD"}, "expected": {"original": "-BRL\u00a051,90", "home": "-$9,90"}}
 	]
 }

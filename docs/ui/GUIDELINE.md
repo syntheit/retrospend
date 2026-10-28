@@ -269,7 +269,7 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 - Today: `useCurrencyFormatter()` (`src/hooks/use-currency-formatter.ts`) on the client, `formatCurrency` and `formatNumber` in `@retrospend/domain/currency-format`. Dates: `src/lib/date-locale.ts`. `toFixed`, `toLocaleString` and `Intl.NumberFormat` belong only in `packages/domain` (the one formatter, after the move) and `src/server/services`; anywhere else, today's `src/lib` formatters included, they fail UI-070, as does date formatting outside the date helpers. Writing a symbol next to a value (`` `$${x}` ``, `` `${x} €` ``) fails UI-071. Arithmetic on money fields is banned in the same places but is review-only (UI-152).
 - ISO minor units (JPY 0 decimals). Crypto up to 8 significant digits. Whole ARS shows no cents (smart formatting).
 - Leading minus: "-ARS 2,000", never "ARS -2,000".
-- A foreign amount always shows the ISO code ("BRL 51.90", "USD 2.99"). A symbol shows only for the home currency when it is unambiguous; every "$" currency shows its code ("ARS 1,234,567").
+- The home currency shows its narrow symbol ("$1,920.30", "-€12.00"); every other currency shows its ISO code ("ARS 15,000", "BRL 51.90", "USD 2.99"). A "$" therefore always means home, an ARS home included ("$1,234,567"). The formatter reads the home currency from the account (`useMoneyLocale`), never a hand-built symbol. Owner decision, 2026-10-27.
 - The locale switch changes numbers and dates only. Copy stays US English.
 - Tabular figures, right-aligned in lists. Money is never inside a pill.
 

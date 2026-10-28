@@ -52,37 +52,80 @@ export function numberFormatSeparators(choice: NumberFormatChoice): {
 }
 
 /**
- * The choice rides on the locale tag as a BCP 47 private-use suffix
- * ("es-AR-x-nf-cd"), so every function that already takes a `locale` (the
- * formatter, the typing parser, the draft helpers) honors it with no new
- * parameter, and a client sets it in one place. Intl never sees the suffix:
- * baseLocale strips it first.
+ * What the account says about how amounts read rides on the locale tag as a
+ * BCP 47 private-use suffix: the number format ("es-AR-x-nf-cd") and the
+ * home currency ("en-US-x-hc-usd", or both: "en-US-x-nf-dc-hc-usd"). Every
+ * function that already takes a `locale` (the formatter, the typing parser,
+ * the draft helpers) honors it with no new parameter, and a client sets it
+ * in one place. Intl never sees the suffix: baseLocale strips it first.
  */
 const TAG_CODES: Record<NumberFormatChoice, string> = {
 	comma_dot: "cd",
 	dot_comma: "dc",
 	space_comma: "sc",
 };
-const TAG_SUFFIX = /-x-nf-(cd|dc|sc)$/i;
+const TAG_SUFFIX = /-x(?:-nf-(cd|dc|sc))?(?:-hc-([a-z]{3}))?$/i;
 
-/** `locale` with the number format choice attached; null follows the language. */
+/** What the account's settings add to a locale: both parts are optional. */
+export interface MoneyContext {
+	/** Null follows the language. */
+	numberFormat?: NumberFormatChoice | null;
+	/** The home currency: the only one shown with a symbol. */
+	homeCurrency?: string | null;
+}
+
+/** The suffix of `locale`, or an empty match when it has none. */
+function tagOf(locale: string): RegExpExecArray | null {
+	const m = TAG_SUFFIX.exec(locale.trim());
+	// The pattern also matches "-x" alone and the empty string; neither is ours.
+	return m && (m[1] || m[2]) ? m : null;
+}
+
+/** `locale` with the account's number format and home currency attached. */
+export function withMoneyContext(
+	locale: string,
+	context: MoneyContext,
+): string {
+	const base = baseLocale(locale);
+	const nf = context.numberFormat
+		? `-nf-${TAG_CODES[context.numberFormat]}`
+		: "";
+	const hc = context.homeCurrency
+		? `-hc-${context.homeCurrency.toLowerCase()}`
+		: "";
+	return nf || hc ? `${base}-x${nf}${hc}` : base;
+}
+
+/**
+ * `locale` with the number format choice attached (null follows the
+ * language), keeping a home currency it already carries.
+ */
 export function withNumberFormat(
 	locale: string,
 	choice: NumberFormatChoice | null | undefined,
 ): string {
-	const base = baseLocale(locale);
-	return choice ? `${base}-x-nf-${TAG_CODES[choice]}` : base;
+	return withMoneyContext(locale, {
+		numberFormat: choice,
+		homeCurrency: homeCurrencyOf(locale),
+	});
 }
 
-/** The locale without any number format suffix: what Intl may be given. */
+/** The locale without any suffix of ours: what Intl may be given. */
 export function baseLocale(locale: string): string {
-	return locale.trim().replace(TAG_SUFFIX, "");
+	const trimmed = locale.trim();
+	const m = tagOf(trimmed);
+	return m ? trimmed.slice(0, m.index) : trimmed;
 }
 
 /** The number format choice a locale tag carries, or null. */
 export function numberFormatOf(locale: string): NumberFormatChoice | null {
-	const code = TAG_SUFFIX.exec(locale.trim())?.[1]?.toLowerCase();
+	const code = tagOf(locale)?.[1]?.toLowerCase();
 	return NUMBER_FORMATS.find((choice) => TAG_CODES[choice] === code) ?? null;
+}
+
+/** The home currency a locale tag carries (upper case), or null. */
+export function homeCurrencyOf(locale: string): string | null {
+	return tagOf(locale)?.[2]?.toUpperCase() ?? null;
 }
 
 /**

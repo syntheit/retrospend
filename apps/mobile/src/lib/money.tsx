@@ -7,7 +7,7 @@ import {
 } from "@retrospend/domain/format";
 import {
 	type NumberFormatChoice,
-	withNumberFormat,
+	withMoneyContext,
 } from "@retrospend/domain/format-locale";
 import type { Money } from "@retrospend/domain/money-minor";
 import {
@@ -21,19 +21,20 @@ import { useSession } from "@/auth/session";
 import { useFormatLocale } from "./intl";
 
 export type { Money };
-export type MoneyOptions = Omit<FormatMoneyOptions, "locale" | "symbolStyle">;
+export type MoneyOptions = Omit<FormatMoneyOptions, "locale">;
 
-/** What the account says about how amounts read (set in Settings, shared with the web). */
+/**
+ * What the account says about how amounts read (set in Settings, shared with
+ * the web): the number format and the home currency, the one currency shown
+ * with a symbol.
+ */
 export interface MoneyPrefs {
 	/** Null follows the language. */
 	numberFormat: NumberFormatChoice | null;
-	symbolStyle: "native" | "standard";
+	homeCurrency: string | null;
 }
 
-const DEFAULT_PREFS: MoneyPrefs = {
-	numberFormat: null,
-	symbolStyle: "standard",
-};
+const DEFAULT_PREFS: MoneyPrefs = { numberFormat: null, homeCurrency: null };
 
 const MoneyPrefsContext = createContext<MoneyPrefs>(DEFAULT_PREFS);
 
@@ -47,10 +48,10 @@ export function MoneyPrefsProvider({ children }: { children: ReactNode }) {
 	const { state } = useSession();
 	const me = state.status === "signedIn" ? state.me : null;
 	const numberFormat = me?.numberFormat ?? null;
-	const symbolStyle = me?.currencySymbolStyle ?? "standard";
+	const homeCurrency = me?.homeCurrency ?? null;
 	const value = useMemo(
-		() => ({ numberFormat, symbolStyle }),
-		[numberFormat, symbolStyle],
+		() => ({ numberFormat, homeCurrency }),
+		[numberFormat, homeCurrency],
 	);
 	return (
 		<MoneyPrefsContext.Provider value={value}>
@@ -67,29 +68,28 @@ export function useMoneyPrefs(): MoneyPrefs {
 }
 
 /**
- * The locale amounts are formatted and typed in: the device's number locale
- * with the account's number format on it. Every money read and every amount
- * field takes its separators from this one place.
+ * The locale amounts are formatted and typed in: the app language with the
+ * account's number format and home currency on it. Every money read and
+ * every amount field takes its separators and its one symbol from this one
+ * place.
  */
 export function useMoneyLocale(): string {
 	const locale = useFormatLocale();
-	const { numberFormat } = useMoneyPrefs();
-	return withNumberFormat(locale, numberFormat);
+	return withMoneyContext(locale, useMoneyPrefs());
 }
 
-/** formatMoney bound to the account's number format and symbol style. */
+/** formatMoney bound to the account's number format and home currency. */
 export function useFormatMoney() {
 	const locale = useMoneyLocale();
-	const { symbolStyle } = useMoneyPrefs();
 	const format = useCallback(
 		(value: Money | null | undefined, options?: MoneyOptions) =>
-			formatMoney(value, { locale, symbolStyle, ...options }),
-		[locale, symbolStyle],
+			formatMoney(value, { locale, ...options }),
+		[locale],
 	);
 	const pair = useCallback(
 		(original: Money, home: Money | null | undefined, options?: MoneyOptions) =>
-			formatMoneyPair(original, home, { locale, symbolStyle, ...options }),
-		[locale, symbolStyle],
+			formatMoneyPair(original, home, { locale, ...options }),
+		[locale],
 	);
 	return { format, pair };
 }

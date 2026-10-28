@@ -2,10 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
-import {
-	useMoneyLocale,
-	useMoneyPrefs,
-} from "~/components/money/use-money-locale";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Tip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 import {
@@ -51,18 +48,15 @@ function MoneyAmount({
 	cents,
 	compact,
 	places,
-	symbolStyle,
 	missing = "none",
 	figure,
 	approx = false,
 	className,
 }: MoneyProps) {
 	const locale = useMoneyLocale();
-	const prefs = useMoneyPrefs();
 	const t = useTranslations("kit.money");
 	const text = formatMoney(value, {
 		locale,
-		symbolStyle: symbolStyle ?? prefs.symbolStyle,
 		display,
 		sign,
 		cents,
@@ -111,13 +105,8 @@ function MoneyPair({
 	className?: string;
 }) {
 	const locale = useMoneyLocale();
-	const { symbolStyle } = useMoneyPrefs();
 	const t = useTranslations("kit.money");
-	const pair = formatMoneyPair(original, home, {
-		locale,
-		symbolStyle,
-		...format,
-	});
+	const pair = formatMoneyPair(original, home, { locale, ...format });
 	const same = home != null && pair.home == null;
 	const first = (
 		<span

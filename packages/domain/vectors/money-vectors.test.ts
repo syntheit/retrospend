@@ -9,7 +9,7 @@ import {
 import {
 	clearLocaleCaches,
 	type NumberFormatChoice,
-	withNumberFormat,
+	withMoneyContext,
 } from "../src/format-locale";
 import { setPartsMode } from "../src/intl-parts";
 import type { Money } from "../src/money-minor";
@@ -24,15 +24,19 @@ import formatVectors from "./money-format.vectors.json";
 import parseVectors from "./money-parse.vectors.json";
 
 type Options = Omit<FormatMoneyOptions, "locale">;
-/** A case's locale with its numberFormat setting on it, as every client sets it. */
-const loc = (c: { locale: string; numberFormat?: NumberFormatChoice }) =>
-	withNumberFormat(c.locale, c.numberFormat);
+/** A case's locale with its numberFormat and homeCurrency settings on it, as every client sets it. */
+const loc = (c: {
+	locale: string;
+	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
+}) => withMoneyContext(c.locale, c);
 
 
 interface FormatCase {
 	name: string;
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	money?: Money | null;
 	options?: Options;
 	expected?: string | null;
@@ -43,6 +47,7 @@ interface PairCase {
 	name: string;
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	original: Money;
 	home: Money | null;
 	options?: Options;
@@ -53,6 +58,7 @@ interface ParseCase {
 	name: string;
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	currency: string;
 	text: string;
 	expected: { minor: number } | { error: string };
@@ -62,6 +68,7 @@ interface DraftCase {
 	name: string;
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	currency: string;
 	text: string;
 	expected: string;
@@ -76,6 +83,7 @@ interface KeystrokeCase {
 	name: string;
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	currency: string;
 	keys: string[];
 	drafts: string[];
@@ -85,6 +93,7 @@ interface KeystrokeCase {
 interface SeparatorCase {
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	decimal: string;
 	group: string;
 }
@@ -96,6 +105,7 @@ interface DraftFromMinorCase {
 	name: string;
 	locale: string;
 	numberFormat?: NumberFormatChoice;
+	homeCurrency?: string;
 	money: Money;
 	expected: string;
 }

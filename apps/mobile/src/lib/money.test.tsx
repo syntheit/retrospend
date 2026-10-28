@@ -7,7 +7,7 @@ import {
 } from "./money";
 
 // The phone formats with the account's settings the same way the web does:
-// the number format rides on the locale, the symbol style picks the symbol.
+// the number format and the home currency ride on the locale.
 // Expected strings are written out by hand (U+00A0 follows a code, U+202F is
 // the space_comma group mark).
 const renderer = require("react-test-renderer");
@@ -42,7 +42,7 @@ function read(
 	return out;
 }
 
-const follow: MoneyPrefs = { numberFormat: null, symbolStyle: "standard" };
+const follow: MoneyPrefs = { numberFormat: null, homeCurrency: null };
 
 describe("useFormatMoney", () => {
 	it("follows the language when no number format is set", () => {
@@ -80,16 +80,31 @@ describe("useFormatMoney", () => {
 		expect(tag).toBe("en-US-x-nf-dc");
 	});
 
-	it("shows a symbol in the account's style, never a bare $ for a peso", () => {
-		const symbol = { display: "symbol" } as const;
-		expect(read(follow, "en-US", (m) => [m.format(ars, symbol) ?? ""])).toEqual(
-			["AR$1,234,567"],
-		);
+	it("shows the home currency as a symbol and every other as its code", () => {
+		const home: MoneyPrefs = { ...follow, homeCurrency: "USD" };
 		expect(
-			read({ ...follow, symbolStyle: "native" }, "en-US", (m) => [
-				m.format(ars, symbol) ?? "",
+			read(home, "en-US", (m) => [
+				m.format(usd) ?? "",
+				m.format({ minor: -1200, currency: "USD" }) ?? "",
+				m.format(ars) ?? "",
 			]),
-		).toEqual(["ARS\u00a01,234,567"]);
+		).toEqual(["$1,234.56", "-$12.00", "ARS\u00a01,234,567"]);
+		// An ARS home shows $ too: it is the home currency.
+		expect(
+			read({ ...follow, homeCurrency: "ARS" }, "en-US", (m) => [
+				m.format(ars) ?? "",
+				m.format(usd) ?? "",
+			]),
+		).toEqual(["$1,234,567", "USD\u00a01,234.56"]);
+	});
+
+	it("carries the home currency and the number format on one locale", () => {
+		const [tag] = read(
+			{ numberFormat: "dot_comma", homeCurrency: "EUR" },
+			"en-US",
+			(_m, locale) => [locale],
+		);
+		expect(tag).toBe("en-US-x-nf-dc-hc-eur");
 	});
 
 	it("formats a pair with the same settings", () => {

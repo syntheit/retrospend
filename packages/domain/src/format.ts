@@ -24,11 +24,13 @@ import {
 import {
 	compactAffix,
 	groupDigits,
+	homeCurrencyOf,
 	type NumberFormatChoice,
 	type NumberSymbols,
 	numberSymbols,
 	withNumberFormat,
 } from "./format-locale";
+import { partsOf } from "./intl-parts";
 import { currencyDecimals } from "./money";
 import { money as checkedMoney, type Money } from "./money-minor";
 
@@ -39,7 +41,12 @@ export type MoneySign = "auto" | "exceptZero" | "never";
 
 export interface FormatMoneyOptions {
 	locale: string;
-	/** "symbol" is honored only for an unambiguous symbol. Default "code". */
+	/**
+	 * "symbol" is honored only for an unambiguous symbol. Default: the home
+	 * currency (the locale's "-x-hc-" tag) shows its narrow symbol and every
+	 * other currency its code, so a "$" always means home. "code" forces the
+	 * code, "none" leaves the currency out.
+	 */
 	display?: MoneyDisplay;
 	/** Default "auto". */
 	sign?: MoneySign;
@@ -157,14 +164,48 @@ function symbolFor(
 	return symbolUsers(symbol) === 1 ? symbol : undefined;
 }
 
+const narrowCache = new Map<string, string | undefined>();
+
+/**
+ * The narrow symbol of a currency ("$", "€", "£", "R$"), or undefined when it
+ * has none of its own (CHF, crypto): the code stands. Read from Intl once.
+ */
+function narrowSymbol(code: string): string | undefined {
+	if (narrowCache.has(code)) return narrowCache.get(code);
+	let found: string | undefined;
+	try {
+		const symbol = partsOf(
+			new Intl.NumberFormat("en", {
+				style: "currency",
+				currency: code,
+				currencyDisplay: "narrowSymbol",
+			}),
+			1,
+		).find((p) => p.type === "currency")?.value;
+		// An engine without narrow symbols answers "US$" or the code itself.
+		if (symbol && symbol !== code && symbol.length <= 2) found = symbol;
+	} catch {
+		found = undefined;
+	}
+	narrowCache.set(code, found);
+	return found;
+}
+
 function unitLabel(
 	code: string,
-	display: MoneyDisplay,
+	display: MoneyDisplay | undefined,
 	locale: string,
 	style?: "native" | "standard",
 ): string {
-	const symbol = symbolFor(code, display, style);
 	if (display === "none") return "";
+	// No display asked for: the home currency (the locale's "-x-hc-" tag) is
+	// the one amount with a symbol, so a "$" always means home.
+	const symbol =
+		display === undefined
+			? code === homeCurrencyOf(locale)
+				? narrowSymbol(code)
+				: undefined
+			: symbolFor(code, display, style);
 	if (!symbol) return code + NBSP;
 	return numberSymbols(locale).symbolSpaced ? symbol + NBSP : symbol;
 }
@@ -222,7 +263,7 @@ export function formatMoney(
 	const { minor, currency } = checkedMoney(value.minor, value.currency);
 	const {
 		locale,
-		display = "code",
+		display,
 		sign = "auto",
 		cents = "auto",
 		symbolStyle,
@@ -289,7 +330,14 @@ export function formatMoneyPair(
 		home.currency.toUpperCase() === original.currency.toUpperCase();
 	if (same) return { original: formatMoney(original, options), home: null };
 	return {
-		original: formatMoney(original, { ...options, display: "code" }),
+		original: formatMoney(original, {
+			...options,
+			// A foreign original keeps its code; the home currency keeps its symbol.
+			display:
+				original.currency.toUpperCase() === homeCurrencyOf(options.locale)
+					? options.display
+					: "code",
+		}),
 		home: formatMoney(home, options),
 	};
 }

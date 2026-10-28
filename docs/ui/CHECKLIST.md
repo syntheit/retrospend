@@ -62,7 +62,7 @@ Walk it on every UI change. Report each item by ID: `UI-020 pass`, `UI-075 n/a (
 - UI-070 [auto] Numbers, money and dates go through the formatters: no `toFixed`, `toLocaleString` or `Intl.NumberFormat` outside `packages/domain` and `src/server/services` (anywhere else in `src`, server code and today's `src/lib` formatters included); no `toLocaleDateString`, `toLocaleTimeString`, `Intl.DateTimeFormat` or `Intl.RelativeTimeFormat` outside the date helpers (`src/lib/date-locale.ts`, `date.ts`, `time-zone.ts`). §7 R10, IMPLEMENTATION §4
 - UI-071 [auto] No hand-built money strings: no currency symbol written next to an interpolated value or after it (`` `$${x}` ``, `` `${x} €` ``, `"€" + x`, `<span>${x}</span>`, `<span>{x} €</span>`). §7 R10
 - UI-072 [review] The client never converts, sums or rounds money; it formats what the server sends; a missing rate is never 1. §7 R9
-- UI-073 [review] Foreign amounts show the ISO code, original first and home second; the rate type shows when it is not the default; a "$" currency always shows its code. §7 R10
+- UI-073 [review] Foreign amounts show the ISO code, original first and home second; the rate type shows when it is not the default; only the home currency shows a symbol, every other currency its code. §7 R10
 - UI-074 [review] Zero, missing rate, extreme (7+ digit ARS, 0.004 ETH), loading and unavailable states are designed and shown. §7 R14
 - UI-075 [review] Every money action previews what changes and what doesn't before Save, and ends with an Undo toast. §7 R30 R15
 - UI-076 [review] Owed to you and You owe are two lines, never netted; owing is plain text with the words; status is word plus color. §7 R5
