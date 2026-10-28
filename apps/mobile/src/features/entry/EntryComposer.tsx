@@ -306,6 +306,15 @@ function Form({
 	// The latest pick: a slower answer for an earlier project is dropped.
 	const projectPick = useRef(0);
 
+	// A project's people depend on the day, so a new date reads them again.
+	const pickedDate = useRef(expense.date);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: only a date change re-reads the people
+	useEffect(() => {
+		if (pickedDate.current === expense.date) return;
+		pickedDate.current = expense.date;
+		if (expense.projectId) void pickProject(expense.projectId);
+	}, [expense.date]);
+
 	/** Picks the project and takes in its people on the expense's day, as the web does. */
 	async function pickProject(projectId: string | null) {
 		const pick = ++projectPick.current;
@@ -345,6 +354,7 @@ function Form({
 		} catch {
 			if (pick !== projectPick.current) return;
 			// The project stays unpicked: a split without its people would be wrong.
+			patchExpense({ projectId: null, projectPeople: [], withKeys: [] });
 			toast.show({ message: t("project.loadFailed") });
 		}
 	}
