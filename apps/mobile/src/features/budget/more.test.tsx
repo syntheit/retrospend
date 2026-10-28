@@ -326,6 +326,9 @@ describe("Manage list", () => {
 		expect(manageRows("next", false).map((r) => r.key)).toEqual([
 			"afford",
 			"rules",
+			"plan",
+			"planApply",
+			"fundNow",
 		]);
 		expect(manageRows("open", false).map((r) => r.key)).toEqual([
 			"afford",
@@ -333,6 +336,8 @@ describe("Manage list", () => {
 			"rules",
 			"owed",
 			"unrouted",
+			"whatIf",
+			"fundNow",
 			"newEnvelope",
 			"merge",
 			"reconcile",

@@ -603,7 +603,11 @@
 			"rules": "Règles de revenus",
 			"income": "Argent reçu ce mois-ci",
 			"owed": "Gardé pour d'autres",
-			"unrouted": "Parts sans enveloppe"
+			"unrouted": "Parts sans enveloppe",
+			"whatIf": "Et si je dépense",
+			"plan": "Planifier le mois",
+			"planApply": "Appliquer le plan",
+			"fundNow": "Alimenter le mois prochain maintenant"
 		},
 		"afford": {
 			"title": "Puis-je me le permettre ?",
@@ -878,6 +882,49 @@
 		},
 		"categories": {
 			"find": "Chercher une catégorie"
+		},
+		"planEdit": {
+			"title": "Planifier {name}",
+			"lead": "Ce que cette enveloppe reçoit dans le plan. C'est un brouillon jusqu'à la paie ; rien ne bouge.",
+			"planned": "Prévu",
+			"target": "Son objectif demande {amount}.",
+			"save": "Enregistrer",
+			"toast": "{name} planifié",
+			"back": "Retour",
+			"error": "Impossible de charger. Réessaie.",
+			"listTitle": "Planifier le mois",
+			"listLead": "Touche une enveloppe pour fixer ce qu'elle reçoit. Rien ne bouge avant la paie.",
+			"notPlanned": "Pas encore planifié"
+		},
+		"planApply": {
+			"title": "Appliquer le plan de {month}",
+			"lead": "Le plan est enregistré et se finance quand l'argent de {month} arrive. Rien ne bouge aujourd'hui.",
+			"none": "Il n'y a pas de plan à appliquer pour ce mois.",
+			"apply": "Appliquer le plan",
+			"toast": "Plan de {month} enregistré",
+			"envelopeFallback": "Enveloppe"
+		},
+		"fundNow": {
+			"title": "Financer {next} maintenant",
+			"fund": "Financer {next}",
+			"lead": "Cela prend le plan de {next} sur ce que ce mois n'a pas encore prévu et le met dès maintenant dans les enveloppes de {next}.",
+			"toast": "{next} financé avec l'argent de ce mois",
+			"envelopeFallback": "Enveloppe",
+			"noPlan": "Il n'y a pas encore de plan pour le mois suivant. Prévois-le d'abord, puis finance-le."
+		},
+		"whatIf": {
+			"titleAny": "Et si je dépense",
+			"lead": "Une dépense fictive. Rien n'est enregistré.",
+			"envelope": "Enveloppe",
+			"pick": "Choisis une enveloppe",
+			"ifSpend": "Si je dépense",
+			"cannot": "Impossible de simuler ainsi.",
+			"wouldHave": "{name} aurait",
+			"coverIt": "Le couvrir",
+			"coverFrom": "Depuis {name}",
+			"uncovered": "Rien ne peut couvrir cette part",
+			"idle": "Saisis un montant pour voir l'effet.",
+			"title": "Et si je dépense"
 		}
 	},
 	"wealth": {

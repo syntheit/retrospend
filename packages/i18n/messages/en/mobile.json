@@ -603,7 +603,11 @@
 			"rules": "Income rules",
 			"income": "Money in this month",
 			"owed": "Held for others",
-			"unrouted": "Shares with no envelope"
+			"unrouted": "Shares with no envelope",
+			"whatIf": "What if I spend",
+			"plan": "Plan the month",
+			"planApply": "Apply the plan",
+			"fundNow": "Fund next month now"
 		},
 		"afford": {
 			"title": "Can I afford it?",
@@ -878,6 +882,49 @@
 		},
 		"categories": {
 			"find": "Find a category"
+		},
+		"planEdit": {
+			"title": "Plan {name}",
+			"lead": "What this envelope gets in the plan. It is a draft until payday; nothing moves.",
+			"planned": "Planned",
+			"target": "Its target needs {amount}.",
+			"save": "Save",
+			"toast": "Planned {name}",
+			"back": "Back",
+			"error": "Couldn't load this. Try again.",
+			"listTitle": "Plan the month",
+			"listLead": "Tap an envelope to set what it gets. Nothing moves until payday.",
+			"notPlanned": "Not planned yet"
+		},
+		"planApply": {
+			"title": "Apply the {month} plan",
+			"lead": "The plan is saved and funds itself when {month}'s money arrives. Nothing moves today.",
+			"none": "There is no plan to apply for this month.",
+			"apply": "Apply plan",
+			"toast": "{month} plan saved",
+			"envelopeFallback": "Envelope"
+		},
+		"fundNow": {
+			"title": "Fund {next} now",
+			"fund": "Fund {next}",
+			"lead": "This takes {next}'s plan out of what this month has not planned yet and puts it in {next}'s envelopes now.",
+			"toast": "Funded {next} from this month's money",
+			"envelopeFallback": "Envelope",
+			"noPlan": "There is no plan for next month yet. Plan it first, then fund it."
+		},
+		"whatIf": {
+			"titleAny": "What if I spend",
+			"lead": "A pretend expense. Nothing is saved.",
+			"envelope": "Envelope",
+			"pick": "Pick an envelope",
+			"ifSpend": "If I spend",
+			"cannot": "This cannot be previewed as typed.",
+			"wouldHave": "{name} would have",
+			"coverIt": "Cover it",
+			"coverFrom": "From {name}",
+			"uncovered": "Nothing can cover this part",
+			"idle": "Type an amount to see what it would do.",
+			"title": "What if I spend"
 		}
 	},
 	"wealth": {

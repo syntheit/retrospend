@@ -603,7 +603,11 @@
 			"rules": "Einnahmeregeln",
 			"income": "Geld dieses Monats",
 			"owed": "Für andere gehalten",
-			"unrouted": "Anteile ohne Umschlag"
+			"unrouted": "Anteile ohne Umschlag",
+			"whatIf": "Was wäre, wenn ich ausgebe",
+			"plan": "Den Monat planen",
+			"planApply": "Plan anwenden",
+			"fundNow": "Nächsten Monat jetzt füllen"
 		},
 		"afford": {
 			"title": "Kann ich mir das leisten?",
@@ -878,6 +882,49 @@
 		},
 		"categories": {
 			"find": "Kategorie suchen"
+		},
+		"planEdit": {
+			"title": "{name} planen",
+			"lead": "Was dieser Umschlag im Plan bekommt. Bis zum Zahltag ein Entwurf; nichts bewegt sich.",
+			"planned": "Geplant",
+			"target": "Sein Ziel braucht {amount}.",
+			"save": "Speichern",
+			"toast": "{name} geplant",
+			"back": "Zurück",
+			"error": "Das ließ sich nicht laden. Versuch es nochmal.",
+			"listTitle": "Den Monat planen",
+			"listLead": "Tippe auf einen Umschlag, um festzulegen, was er bekommt. Vor dem Zahltag bewegt sich nichts.",
+			"notPlanned": "Noch nicht geplant"
+		},
+		"planApply": {
+			"title": "Plan für {month} anwenden",
+			"lead": "Der Plan wird gespeichert und finanziert sich, wenn das Geld für {month} eintrifft. Heute bewegt sich nichts.",
+			"none": "Für diesen Monat gibt es keinen Plan zum Anwenden.",
+			"apply": "Plan anwenden",
+			"toast": "Plan für {month} gespeichert",
+			"envelopeFallback": "Umschlag"
+		},
+		"fundNow": {
+			"title": "{next} jetzt finanzieren",
+			"fund": "{next} finanzieren",
+			"lead": "Das nimmt den Plan für {next} aus dem, was dieser Monat noch nicht verplant hat, und legt ihn jetzt in die Umschläge von {next}.",
+			"toast": "{next} mit dem Geld dieses Monats finanziert",
+			"envelopeFallback": "Umschlag",
+			"noPlan": "Für den nächsten Monat gibt es noch keinen Plan. Plane ihn zuerst, dann finanziere ihn."
+		},
+		"whatIf": {
+			"titleAny": "Was, wenn ich ausgebe",
+			"lead": "Eine gedachte Ausgabe. Nichts wird gespeichert.",
+			"envelope": "Umschlag",
+			"pick": "Umschlag wählen",
+			"ifSpend": "Wenn ich ausgebe",
+			"cannot": "Das lässt sich so nicht vorab ansehen.",
+			"wouldHave": "{name} hätte",
+			"coverIt": "Ausgleichen",
+			"coverFrom": "Aus {name}",
+			"uncovered": "Dieser Teil lässt sich nicht ausgleichen",
+			"idle": "Gib einen Betrag ein, um zu sehen, was passieren würde.",
+			"title": "Was, wenn ich ausgebe"
 		}
 	},
 	"wealth": {

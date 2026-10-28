@@ -603,7 +603,11 @@
 			"rules": "Regras de renda",
 			"income": "Dinheiro que entrou neste mês",
 			"owed": "Guardado para outros",
-			"unrouted": "Partes sem envelope"
+			"unrouted": "Partes sem envelope",
+			"whatIf": "E se eu gastar",
+			"plan": "Planeje o mês",
+			"planApply": "Aplicar o plano",
+			"fundNow": "Financiar o próximo mês agora"
 		},
 		"afford": {
 			"title": "Posso pagar isso?",
@@ -878,6 +882,49 @@
 		},
 		"categories": {
 			"find": "Buscar uma categoria"
+		},
+		"planEdit": {
+			"title": "Planejar {name}",
+			"lead": "O que este envelope recebe no plano. É um rascunho até o dia do pagamento; nada se move.",
+			"planned": "Planejado",
+			"target": "Sua meta precisa de {amount}.",
+			"save": "Salvar",
+			"toast": "Você planejou {name}",
+			"back": "Voltar",
+			"error": "Não foi possível carregar. Tente de novo.",
+			"listTitle": "Planeje o mês",
+			"listLead": "Toque em um envelope para definir o que ele recebe. Nada se move até o dia do pagamento.",
+			"notPlanned": "Ainda não planejado"
+		},
+		"planApply": {
+			"title": "Aplicar o plano de {month}",
+			"lead": "O plano é salvo e se financia quando o dinheiro de {month} chegar. Hoje nada se move.",
+			"none": "Não há plano para aplicar neste mês.",
+			"apply": "Aplicar plano",
+			"toast": "Plano de {month} salvo",
+			"envelopeFallback": "Envelope"
+		},
+		"fundNow": {
+			"title": "Financiar {next} agora",
+			"fund": "Financiar {next}",
+			"lead": "Isto tira o plano de {next} do que este mês ainda não planejou e coloca já nos envelopes de {next}.",
+			"toast": "Você financiou {next} com o dinheiro deste mês",
+			"envelopeFallback": "Envelope",
+			"noPlan": "Ainda não há plano para o mês seguinte. Planeje primeiro e depois financie."
+		},
+		"whatIf": {
+			"titleAny": "E se eu gastar",
+			"lead": "Um gasto de mentira. Nada é salvo.",
+			"envelope": "Envelope",
+			"pick": "Escolha um envelope",
+			"ifSpend": "Se eu gastar",
+			"cannot": "Isto não pode ser simulado assim.",
+			"wouldHave": "{name} teria",
+			"coverIt": "Cobrir",
+			"coverFrom": "De {name}",
+			"uncovered": "Nada pode cobrir esta parte",
+			"idle": "Digite um valor para ver o efeito.",
+			"title": "E se eu gastar"
 		}
 	},
 	"wealth": {

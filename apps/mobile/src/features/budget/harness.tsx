@@ -38,8 +38,16 @@ function HarnessButton({ label, onPress, disabled }: Record<string, unknown>) {
 }
 export const buttonMock = { Button: HarnessButton };
 
-function HarnessSheet({ visible, children }: Record<string, unknown>) {
-	return visible ? (children as never) : null;
+function HarnessSheet({ visible, children, onClose }: Record<string, unknown>) {
+	return visible ? (
+		<>
+			<Pressable
+				accessibilityLabel="Close sheet"
+				onPress={onClose as () => void}
+			/>
+			{children as never}
+		</>
+	) : null;
 }
 export const sheetMock = { Sheet: HarnessSheet };
 

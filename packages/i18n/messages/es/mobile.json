@@ -603,7 +603,11 @@
 			"rules": "Reglas de ingresos",
 			"income": "Dinero que entró este mes",
 			"owed": "Guardado para otros",
-			"unrouted": "Partes sin sobre"
+			"unrouted": "Partes sin sobre",
+			"whatIf": "Qué pasa si gasto",
+			"plan": "Planifica el mes",
+			"planApply": "Aplicar el plan",
+			"fundNow": "Financiar el mes que viene ahora"
 		},
 		"afford": {
 			"title": "¿Me alcanza?",
@@ -878,6 +882,49 @@
 		},
 		"categories": {
 			"find": "Buscar una categoría"
+		},
+		"planEdit": {
+			"title": "Planificar {name}",
+			"lead": "Lo que recibe este sobre en el plan. Es un borrador hasta el día de cobro; no se mueve nada.",
+			"planned": "Planificado",
+			"target": "Su objetivo necesita {amount}.",
+			"save": "Guardar",
+			"toast": "Planificaste {name}",
+			"back": "Atrás",
+			"error": "No se pudo cargar. Inténtalo de nuevo.",
+			"listTitle": "Planifica el mes",
+			"listLead": "Toca un sobre para fijar lo que recibe. Nada se mueve hasta el día de cobro.",
+			"notPlanned": "Aún sin planificar"
+		},
+		"planApply": {
+			"title": "Aplicar el plan de {month}",
+			"lead": "El plan se guarda y se financia solo cuando llegue el dinero de {month}. Hoy no se mueve nada.",
+			"none": "No hay un plan para aplicar este mes.",
+			"apply": "Aplicar plan",
+			"toast": "Plan de {month} guardado",
+			"envelopeFallback": "Sobre"
+		},
+		"fundNow": {
+			"title": "Financiar {next} ahora",
+			"fund": "Financiar {next}",
+			"lead": "Esto saca el plan de {next} de lo que este mes no ha planificado todavía y lo pone ya en los sobres de {next}.",
+			"toast": "Financiaste {next} con el dinero de este mes",
+			"envelopeFallback": "Sobre",
+			"noPlan": "Todavía no hay un plan para el mes que viene. Primero planifícalo y después financíalo."
+		},
+		"whatIf": {
+			"titleAny": "Qué pasa si gasto",
+			"lead": "Un gasto de mentira. No se guarda nada.",
+			"envelope": "Sobre",
+			"pick": "Elige un sobre",
+			"ifSpend": "Si gasto",
+			"cannot": "Esto no se puede simular así.",
+			"wouldHave": "{name} tendría",
+			"coverIt": "Cubrirlo",
+			"coverFrom": "Desde {name}",
+			"uncovered": "Nada puede cubrir esta parte",
+			"idle": "Escribe un monto para ver qué haría.",
+			"title": "Qué pasa si gasto"
 		}
 	},
 	"wealth": {
