@@ -20,7 +20,7 @@ export function DevComposerTour({ add }: { add: Opener }) {
 	const signedIn = state.status === "signedIn";
 	useEffect(() => {
 		if (!GALLERY_ENABLED || !STEPS || !signedIn || !api) return;
-		const timers = STEPS.split(",").map((step, index) =>
+		const timers = STEPS.split(",").map((step: string, index: number) =>
 			setTimeout(
 				async () => {
 					if (step !== "edit") return add.open(step as EntryMode);
