@@ -75,20 +75,30 @@ export function useEntryPreview(write: PendingWrite | null): PreviewState {
 	return kept.signature === signature ? kept.state : { status: "loading" };
 }
 
+type ExpenseEntry = Awaited<ReturnType<RetrospendClient["expenses"]["get"]>>;
+type SharedEntry = Awaited<
+	ReturnType<RetrospendClient["shared-expenses"]["get"]>
+>;
+
+/** The saved expense an edit opens: yours alone, or one split with people. */
+export type SavedEntry =
+	| { kind: "expense"; entry: ExpenseEntry }
+	| { kind: "shared"; entry: SharedEntry };
+
 export type EditState =
 	| { status: "idle" }
 	| { status: "loading" }
 	| { status: "error" }
-	| {
-			status: "ready";
-			entry: Awaited<ReturnType<RetrospendClient["expenses"]["get"]>>;
-	  };
+	| { status: "ready"; saved: SavedEntry };
 
 /**
  * The saved expense an edit starts from, read fresh: an edit replaces the
  * server's row, so it must begin from the server's current values.
  */
-export function useEditEntry(id: string | undefined): EditState {
+export function useEditEntry(
+	id: string | undefined,
+	shared = false,
+): EditState {
 	const { api } = useSession();
 	const [state, setState] = useState<EditState>(
 		id ? { status: "loading" } : { status: "idle" },
@@ -101,13 +111,18 @@ export function useEditEntry(id: string | undefined): EditState {
 		}
 		let cancelled = false;
 		setState({ status: "loading" });
-		api.expenses.get({ id }).then(
-			(entry) => !cancelled && setState({ status: "ready", entry }),
+		const read: Promise<SavedEntry> = shared
+			? api["shared-expenses"]
+					.get({ id })
+					.then((entry) => ({ kind: "shared", entry }))
+			: api.expenses.get({ id }).then((entry) => ({ kind: "expense", entry }));
+		read.then(
+			(saved) => !cancelled && setState({ status: "ready", saved }),
 			() => !cancelled && setState({ status: "error" }),
 		);
 		return () => {
 			cancelled = true;
 		};
-	}, [api, id]);
+	}, [api, id, shared]);
 	return state;
 }

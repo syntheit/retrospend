@@ -175,9 +175,24 @@
 			"notePlaceholder": "Facultatif",
 			"errors": {
 				"same": "Choisis deux comptes différents",
-				"places": "Choisis les deux comptes"
+				"places": "Choisis les deux comptes",
+				"received": "Saisis ce qui est arrivé comme montant, ou laisse vide"
 			}
-		}
+		},
+		"moreDetails": "Plus de détails",
+		"today": "Aujourd'hui",
+		"yesterday": "Hier",
+		"note": "Note",
+		"notePlaceholder": "Détails supplémentaires",
+		"location": "Lieu",
+		"locationPlaceholder": "C'était où ?",
+		"spread": "Répartir sur",
+		"spreadOne": "Une seule fois",
+		"spreadMonths": "{count} mois",
+		"exclude": "Exclure des dépenses",
+		"excludeDetail": "Reste dans l'activité et ton budget, mais absent des rapports et d'Insights.",
+		"editLocked": "Cette dépense ne peut pas être modifiée",
+		"editLockedDetail": "Un paiement l'a réglée, ou tu n'as pas le droit de la modifier."
 	},
 	"pickers": {
 		"clear": "Effacer la recherche",
@@ -200,7 +215,8 @@
 		"account": {
 			"find": "Chercher un compte",
 			"empty": "Aucun compte ne correspond"
-		}
+		},
+		"pickDate": "Choisis une date"
 	},
 	"entry": {
 		"title": "Opération",

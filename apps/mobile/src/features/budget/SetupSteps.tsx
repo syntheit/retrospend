@@ -3,9 +3,9 @@ import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
+import { DateField } from "@/ui/DateField";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { minorOf, readAmount } from "./amount";
-import { DayField } from "./DayField";
 import { ChoiceList } from "./fields";
 import { AmountField, Note, useAmountLocale } from "./parts";
 import {
@@ -105,10 +105,9 @@ export function PayStep({
 			/>
 			{dated ? (
 				<>
-					<DayField
-						hint={today}
+					<DateField
 						label={t("next")}
-						onChangeText={(next) => onChange({ ...value, next })}
+						onChange={(next) => onChange({ ...value, next })}
 						value={value.next}
 					/>
 					{value.next !== "" && value.next < today ? (

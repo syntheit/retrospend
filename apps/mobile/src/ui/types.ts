@@ -74,3 +74,12 @@ export interface ButtonProps {
 	variant?: "filled" | "outlined" | "text";
 	disabled?: boolean;
 }
+
+export interface DateFieldProps {
+	label: string;
+	/** A calendar day, "yyyy-MM-dd"; empty while none is picked. */
+	value: string;
+	onChange: (day: string) => void;
+	/** What shows while no day is picked. */
+	placeholder?: string;
+}

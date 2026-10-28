@@ -41,10 +41,19 @@ function dryRun(
 						options,
 					);
 		case "shared-expenses":
-			return api["shared-expenses"].previewCreate(
-				body as Parameters<(typeof api)["shared-expenses"]["previewCreate"]>[0],
-				options,
-			);
+			return write.kind === "update"
+				? api["shared-expenses"].previewUpdate(
+						body as Parameters<
+							(typeof api)["shared-expenses"]["previewUpdate"]
+						>[0],
+						options,
+					)
+				: api["shared-expenses"].previewCreate(
+						body as Parameters<
+							(typeof api)["shared-expenses"]["previewCreate"]
+						>[0],
+						options,
+					);
 		case "transfers":
 			return api.transfers.previewCreate(
 				body as Parameters<typeof api.transfers.previewCreate>[0],

@@ -175,9 +175,24 @@
 			"notePlaceholder": "Optional",
 			"errors": {
 				"same": "Wähle zwei verschiedene Konten",
-				"places": "Wähle beide Konten"
+				"places": "Wähle beide Konten",
+				"received": "Gib an, was angekommen ist, oder lass das Feld leer"
 			}
-		}
+		},
+		"moreDetails": "Mehr Details",
+		"today": "Heute",
+		"yesterday": "Gestern",
+		"note": "Notiz",
+		"notePlaceholder": "Weitere Angaben",
+		"location": "Ort",
+		"locationPlaceholder": "Wo war das?",
+		"spread": "Verteilen auf",
+		"spreadOne": "Einmalig",
+		"spreadMonths": "{count} Monate",
+		"exclude": "Von den Ausgaben ausnehmen",
+		"excludeDetail": "Bleibt in Aktivität und deinem Budget, fehlt aber in Berichten und Insights.",
+		"editLocked": "Diese Ausgabe lässt sich nicht bearbeiten",
+		"editLockedDetail": "Eine Zahlung hat sie beglichen, oder du darfst sie nicht ändern."
 	},
 	"pickers": {
 		"clear": "Suche löschen",
@@ -200,7 +215,8 @@
 		"account": {
 			"find": "Konto suchen",
 			"empty": "Kein Konto passt"
-		}
+		},
+		"pickDate": "Datum wählen"
 	},
 	"entry": {
 		"title": "Eintrag",

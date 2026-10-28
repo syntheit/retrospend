@@ -270,6 +270,47 @@ function fakeApi() {
 				unavailable: [],
 			})),
 			create: write("shared.create", () => ({ undo: "undo-shared" })),
+			previewUpdate: write("shared.previewUpdate", () => ({
+				changes: [],
+				unchanged: [],
+				unavailable: [],
+			})),
+			update: write("shared.update", () => ({ undo: "undo-shared-edit" })),
+			get: async () => ({
+				id: "s1",
+				title: "Dinner",
+				amount: { minor: 1_000_000, currency: "ARS" },
+				date: "2026-10-21",
+				notes: "birthday",
+				splitMode: "EQUAL",
+				project: null,
+				category: { id: "cafe", name: "Cafe", color: "x" },
+				locked: false,
+				paidBy: { type: "user", id: "me1", name: "Sofía", imageUrl: null },
+				splits: [
+					{
+						type: "user",
+						id: "me1",
+						name: "Sofía",
+						imageUrl: null,
+						share: { minor: 500_000, currency: "ARS" },
+						percentage: null,
+						units: null,
+						verification: "ACCEPTED",
+					},
+					{
+						type: "user",
+						id: "lucia1",
+						name: "Lucía",
+						imageUrl: null,
+						share: { minor: 500_000, currency: "ARS" },
+						percentage: null,
+						units: null,
+						verification: "PENDING",
+					},
+				],
+				canEdit: true,
+			}),
 			undo: write("shared.undo"),
 		},
 		income: {
@@ -287,11 +328,17 @@ async function open(
 	mode: EntryMode,
 	onDone: () => void = () => {},
 	editId?: string,
+	editShared = false,
 ) {
 	let tree!: Tree;
 	await act(async () => {
 		tree = create(
-			<EntryComposer editId={editId} initialMode={mode} onDone={onDone} />,
+			<EntryComposer
+				editId={editId}
+				editShared={editShared}
+				initialMode={mode}
+				onDone={onDone}
+			/>,
 		);
 	});
 	await flush();
@@ -699,6 +746,170 @@ describe("Edit expense", () => {
 		expect(mockToast.show).toHaveBeenLastCalledWith({
 			message: "You're offline. Editing needs a connection.",
 		});
+		act(() => tree.unmount());
+	});
+});
+
+describe("More details", () => {
+	it("opens on tap and sends note, place, spread and exclude on a personal expense", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+		expect(find(tree, (p) => p.accessibilityLabel === "Note")).toHaveLength(0);
+		press(tree, "More details");
+		type(tree, "Note", "with the team");
+		type(tree, "Location", "Cafe Tortoni");
+		press(tree, "6 months");
+		press(tree, "Cafe");
+		for (const key of ["9", "0", "0"]) press(tree, key);
+		await settle();
+		press(tree, "Add expense");
+		await flush();
+		expect(
+			calls.find((c) => c.route === "expenses.create")?.input,
+		).toMatchObject({
+			description: "with the team",
+			location: "Cafe Tortoni",
+			amortizeOver: 6,
+			excludeFromAnalytics: false,
+		});
+		act(() => tree.unmount());
+	});
+
+	it("keeps place and spread out of a split, and sends its note as notes", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+		press(tree, "Lucía Fernández");
+		press(tree, "More details");
+		expect(find(tree, (p) => p.accessibilityLabel === "Location")).toHaveLength(
+			0,
+		);
+		type(tree, "Note", "birthday");
+		press(tree, "Cafe");
+		for (const key of ["9", "0", "0"]) press(tree, key);
+		await settle();
+		press(tree, "Add expense");
+		await flush();
+		const sent = calls.find((c) => c.route === "shared.create")?.input;
+		expect(sent).toMatchObject({ notes: "birthday" });
+		expect(sent).not.toHaveProperty("location");
+		act(() => tree.unmount());
+	});
+});
+
+describe("Edit a split expense", () => {
+	it("previews, saves the saved split back with the new title, and undoes", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const done = jest.fn();
+		const tree = await open("expense", done, "s1", true);
+		type(tree, "Title", "Team dinner");
+		await settle();
+		expect(
+			calls.find((c) => c.route === "shared.previewUpdate")?.input,
+		).toMatchObject({
+			id: "s1",
+			description: "Team dinner",
+		});
+		press(tree, "Save expense");
+		await flush();
+		expect(calls.find((c) => c.route === "shared.update")?.input).toEqual({
+			id: "s1",
+			description: "Team dinner",
+			amount: "10000.00",
+			currency: "ARS",
+			date: "2026-10-21",
+			categoryId: "cafe",
+			paidBy: { type: "user", id: "me1" },
+			splitMode: "EQUAL",
+			splitWith: [
+				{ type: "user", id: "me1" },
+				{ type: "user", id: "lucia1" },
+			],
+			notes: "birthday",
+		});
+		expect(done).toHaveBeenCalledTimes(1);
+		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		await act(async () => toast.undo.onUndo());
+		expect(calls.find((c) => c.route === "shared.undo")?.input).toEqual({
+			token: "undo-shared-edit",
+		});
+		act(() => tree.unmount());
+	});
+
+	it("says it can't be edited when the server says so", async () => {
+		const { api } = fakeApi();
+		const shared = (api as unknown as Record<string, { get: unknown }>)[
+			"shared-expenses"
+		] as { get: () => Promise<Record<string, unknown>> };
+		const get = shared.get;
+		shared.get = async () => ({
+			...(await (get as () => Promise<object>)()),
+			canEdit: false,
+		});
+		mockSession.api = api;
+		const tree = await open("expense", () => {}, "s1", true);
+		expect(words(tree)).toContain("This expense can't be edited");
+		act(() => tree.unmount());
+	});
+});
+
+describe("Edit needs its dry run", () => {
+	it("does not save while the preview could not be reached", async () => {
+		const { api, calls } = fakeApi();
+		(
+			api as unknown as { expenses: { previewUpdate: unknown } }
+		).expenses.previewUpdate = async () => {
+			throw new TypeError("Network request failed");
+		};
+		mockSession.api = api;
+		const done = jest.fn();
+		const tree = await open("expense", done, "e1");
+		await settle();
+		press(tree, "Save expense");
+		await flush();
+		expect(calls.some((c) => c.route === "expense.update")).toBe(false);
+		expect(done).not.toHaveBeenCalled();
+		act(() => tree.unmount());
+	});
+});
+
+describe("Picking projects quickly", () => {
+	it("keeps the people of the latest pick when an earlier answer arrives late", async () => {
+		const { api } = fakeApi();
+		let finishTrip: (value: unknown) => void = () => {};
+		const members = (api as unknown as { projects: { members: unknown } })
+			.projects;
+		members.members = (input: { id: string }) =>
+			input.id === "trip"
+				? new Promise((resolve) => {
+						finishTrip = resolve;
+					})
+				: Promise.resolve({ items: [] });
+		mockSession.api = api;
+		const tree = await open("expense");
+		press(tree, "Project, No project");
+		press(tree, "pick Trip");
+		// The person changes their mind before the first answer comes.
+		press(tree, "Project, No project");
+		press(tree, "pick No project");
+		await flush();
+		await act(async () => {
+			finishTrip({
+				items: [
+					{
+						participantType: "guest",
+						participantId: "ana1",
+						name: "Ana",
+						imageUrl: null,
+					},
+				],
+			});
+		});
+		await flush();
+		expect(words(tree)).not.toContain("Ana");
+		expect(words(tree)).toContain("No project");
 		act(() => tree.unmount());
 	});
 });

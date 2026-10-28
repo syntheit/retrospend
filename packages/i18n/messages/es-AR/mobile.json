@@ -175,9 +175,24 @@
 			"notePlaceholder": "Opcional",
 			"errors": {
 				"same": "Elegí dos cuentas distintas",
-				"places": "Elegí las dos cuentas"
+				"places": "Elegí las dos cuentas",
+				"received": "Ingresá lo que llegó como un monto, o dejalo vacío"
 			}
-		}
+		},
+		"moreDetails": "Más detalles",
+		"today": "Hoy",
+		"yesterday": "Ayer",
+		"note": "Nota",
+		"notePlaceholder": "Más detalles",
+		"location": "Lugar",
+		"locationPlaceholder": "¿Dónde fue?",
+		"spread": "Repartir en",
+		"spreadOne": "Una sola vez",
+		"spreadMonths": "{count} meses",
+		"exclude": "Excluir de los gastos",
+		"excludeDetail": "Queda en Actividad y en tu presupuesto, pero afuera de los informes y de Insights.",
+		"editLocked": "Este gasto no se puede editar",
+		"editLockedDetail": "Un pago lo saldó, o no tenés permiso para cambiarlo."
 	},
 	"pickers": {
 		"clear": "Borrar búsqueda",
@@ -200,7 +215,8 @@
 		"account": {
 			"find": "Buscá una cuenta",
 			"empty": "Ninguna cuenta coincide"
-		}
+		},
+		"pickDate": "Elegí una fecha"
 	},
 	"entry": {
 		"title": "Movimiento",

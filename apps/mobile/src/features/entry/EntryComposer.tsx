@@ -1,6 +1,6 @@
 import { decimalSeparator } from "@retrospend/domain/parse";
 import { dayKey } from "@retrospend/domain/time-zone";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -26,6 +26,7 @@ import {
 	newExpenseDraft,
 	newIncomeDraft,
 	newTransferDraft,
+	sharedFromDetail,
 	splitRows,
 	type TransferDraft,
 	transferCurrencies,
@@ -34,7 +35,12 @@ import {
 import { ExpenseFields } from "./ExpenseFields";
 import { saveExpenseEdit } from "./edit";
 import { announceEntryChange } from "./events";
-import { useEditEntry, useEntryCatalog, useEntryPreview } from "./hooks";
+import {
+	type SavedEntry,
+	useEditEntry,
+	useEntryCatalog,
+	useEntryPreview,
+} from "./hooks";
 import { IncomeFields } from "./IncomeFields";
 import { PlanBlock } from "./PlanBlock";
 import { planOf } from "./preview";
@@ -55,6 +61,8 @@ interface ComposerProps {
 	prefill?: ComposerPrefill;
 	/** The saved expense to edit; the composer then edits it instead of adding. */
 	editId?: string;
+	/** The id is a split expense's, not a personal one's. */
+	editShared?: boolean;
 }
 
 /**
@@ -65,7 +73,7 @@ interface ComposerProps {
 export function EntryComposer(props: ComposerProps) {
 	const t = useTranslations("mobile.composer");
 	const catalog = useEntryCatalog();
-	const edit = useEditEntry(props.editId);
+	const edit = useEditEntry(props.editId, props.editShared);
 	const { state } = useSession();
 	// The profile is cached on sign in; without it there is no "you" to split with.
 	if (state.status !== "signedIn" || !state.me) {
@@ -81,11 +89,17 @@ export function EntryComposer(props: ComposerProps) {
 	if (edit.status === "error") {
 		return <Notice detail={t("loadErrorDetail")} title={t("editLoadError")} />;
 	}
+	if (edit.status === "ready" && edit.saved.kind === "shared") {
+		// A payment settled it, or the project does not let you: the server refuses either.
+		if (!edit.saved.entry.canEdit) {
+			return <Notice detail={t("editLockedDetail")} title={t("editLocked")} />;
+		}
+	}
 	return (
 		<Form
 			{...props}
 			catalog={catalog.catalog}
-			edit={edit.status === "ready" ? edit.entry : undefined}
+			edit={edit.status === "ready" ? edit.saved : undefined}
 		/>
 	);
 }
@@ -141,7 +155,7 @@ function Form({
 	edit,
 }: ComposerProps & {
 	catalog: EntryCatalog;
-	edit?: Parameters<typeof expenseFromEntry>[0];
+	edit?: SavedEntry;
 }) {
 	const t = useTranslations("mobile.composer");
 	const locale = useMoneyLocale();
@@ -183,7 +197,14 @@ function Form({
 	);
 	const [drafts, setDrafts] = useState(() => {
 		const start = filled(fresh(), prefill, locale, catalog.currencies);
-		return edit ? { ...start, expense: expenseFromEntry(edit, locale) } : start;
+		if (!edit) return start;
+		return {
+			...start,
+			expense:
+				edit.kind === "shared"
+					? sharedFromDetail(edit.entry, locale)
+					: expenseFromEntry(edit.entry, locale),
+		};
 	});
 	const [tried, setTried] = useState(false);
 	const [typing, setTyping] = useState(false);
@@ -229,11 +250,12 @@ function Form({
 			? planOf(preview.diff)
 			: null;
 	// Save waits for the dry run of exactly what it will send. Offline there is
-	// none and the write waits on the phone; a refused one can not be saved.
+	// none and an add waits on the phone, but an edit is never queued: it needs
+	// the dry run, so only a ready one lets it through. A refused one can not be saved.
 	const blocked =
 		write !== null &&
 		preview.status !== "ready" &&
-		preview.status !== "offline";
+		(editing || preview.status !== "offline");
 	const rows = useMemo(
 		() =>
 			splitRows(expense, {
@@ -281,8 +303,12 @@ function Form({
 				? patchIncome({ amountText })
 				: patchTransfer({ amountText });
 
+	// The latest pick: a slower answer for an earlier project is dropped.
+	const projectPick = useRef(0);
+
 	/** Picks the project and takes in its people on the expense's day, as the web does. */
 	async function pickProject(projectId: string | null) {
+		const pick = ++projectPick.current;
 		if (!projectId) {
 			patchExpense({ projectId: null, projectPeople: [], withKeys: [] });
 			return;
@@ -304,6 +330,7 @@ function Form({
 					name: m.name,
 					imageUrl: m.imageUrl,
 				}));
+			if (pick !== projectPick.current) return;
 			patchExpense({
 				projectId,
 				projectPeople: people,
@@ -316,6 +343,7 @@ function Form({
 					: {}),
 			});
 		} catch {
+			if (pick !== projectPick.current) return;
 			// The project stays unpicked: a split without its people would be wrong.
 			toast.show({ message: t("project.loadFailed") });
 		}
@@ -421,7 +449,9 @@ function Form({
 			busy={busy}
 			currencies={catalog.currencies}
 			currency={active.currency}
-			currencyLocked={mode === "transfer"}
+			currencyLocked={
+				mode === "transfer" || expense.editing?.source === "shared"
+			}
 			mode={mode}
 			modes={modes}
 			onAdd={add}
