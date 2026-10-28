@@ -51,6 +51,10 @@ export function useMoneyWrite<I, P, W>(options: {
 	latest.current = options;
 	const [preview, setPreview] = useState<P | null>(null);
 	const [status, setStatus] = useState<PreviewStatus>("idle");
+	// The body the state above answered. The effect that fetches runs after the
+	// render in which the body changed, so for that frame the old answer is not
+	// this body's and must not read as ready.
+	const [answeredKey, setAnsweredKey] = useState<string | null>(null);
 	const [committing, setCommitting] = useState(false);
 	const [commitFailed, setCommitFailed] = useState(false);
 	const busy = useRef(false);
@@ -74,9 +78,12 @@ export function useMoneyWrite<I, P, W>(options: {
 					if (cancelled) return;
 					setPreview(result);
 					setStatus("ready");
+					setAnsweredKey(bodyKey);
 				})
 				.catch((error: unknown) => {
-					if (!cancelled) setStatus(isRefusal(error) ? "refused" : "failed");
+					if (cancelled) return;
+					setStatus(isRefusal(error) ? "refused" : "failed");
+					setAnsweredKey(bodyKey);
 				});
 		}, debounceMs);
 		return () => {
@@ -105,7 +112,14 @@ export function useMoneyWrite<I, P, W>(options: {
 		}
 	}, []);
 
-	return { preview, status, committing, commitFailed, commit };
+	const fresh = bodyKey !== null && answeredKey === bodyKey;
+	return {
+		preview: fresh ? preview : null,
+		status: bodyKey === null ? "idle" : fresh ? status : "loading",
+		committing,
+		commitFailed,
+		commit,
+	};
 }
 
 /**
