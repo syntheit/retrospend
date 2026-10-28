@@ -26,6 +26,14 @@ export interface MoneyWrite<P, W> {
 const PREVIEW_DEBOUNCE_MS = 250;
 
 /**
+ * Keys of writes the server confirmed. The server replays a key for a day, so
+ * a sheet that stays mounted (write, Undo, open again, Save) must not send the
+ * same one again: it would get the first answer back and change nothing. A key
+ * the write failed with is not here, so a retry still replays.
+ */
+const spentKeys = new Set<string>();
+
+/**
  * `input` is the exact request body (client ids included), or null while the
  * form is not complete. The preview follows every change of it; the write
  * uses the same body and `idempotencyKey`, so a retry after a dropped
@@ -84,7 +92,10 @@ export function useMoneyWrite<I, P, W>(options: {
 		setCommitting(true);
 		setCommitFailed(false);
 		try {
-			return await write(body, idempotencyKey);
+			const answer = await write(body, idempotencyKey);
+			// The write is done: its key must never be sent for another one.
+			spentKeys.add(idempotencyKey);
+			return answer;
 		} catch {
 			setCommitFailed(true);
 			return null;
@@ -100,7 +111,8 @@ export function useMoneyWrite<I, P, W>(options: {
 /**
  * One id per name for as long as the request body is the same: the same body
  * sent again is the same write (a replay), a changed body is a different one.
- * Call `reset` when a sheet opens so a second opening never reuses an id.
+ * Call `reset` when a sheet opens so a second opening never reuses an id. A
+ * confirmed write retires its ids by itself (see `spentKeys`).
  */
 export function useWriteIds(bodyKey: string | null) {
 	const state = useRef({ body: "", ids: new Map<string, string>() });
@@ -109,7 +121,7 @@ export function useWriteIds(bodyKey: string | null) {
 	}
 	const idFor = useCallback((name: string): string => {
 		const known = state.current.ids.get(name);
-		if (known) return known;
+		if (known && !spentKeys.has(known)) return known;
 		const made = newClientId();
 		state.current.ids.set(name, made);
 		return made;
