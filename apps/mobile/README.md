@@ -80,6 +80,16 @@ From harbor, like `ios-build.sh`. It takes the simulator lock on the mini, copie
 - `ITSAppUsesNonExemptEncryption` is false (`app.config.ts`), so builds skip the export compliance question.
 - Install: TestFlight app on the iPhone and iPad, accept the internal tester invite. New builds update from there.
 
+## System surfaces
+
+`plugins/with-system-surfaces.js` and `modules/surfaces` (an Expo module on both platforms) wire the app into the system. Everything opens the composer through the `retrospend://` scheme or one JSON hand-off that `src/surfaces` parses (`links.ts`, `prefill.ts`, tested in `surfaces.test.ts`).
+
+- Links: `retrospend://add?amount=12.50&currency=USD&title=Coffee&mode=income` opens the composer filled in (all parameters optional); `retrospend://share` takes the share or Shortcut waiting in the hand-off. `app/+native-intent.ts` keeps both from being read as screens.
+- Share into Retrospend: a text (amount and note are read from it) or an image or PDF (the receipt). The composer has no attachment slot and the API has no attachment endpoint, so a shared file opens an empty expense with a note saying so.
+- Android: SEND intent filters for `image/*`, `application/pdf` and `text/plain` on the main activity (the plugin); the module reads the intent. The Quick Settings tile "Add expense" (`AddExpenseTileService`, in the module's manifest) opens `retrospend://add`. The user adds the tile from the Quick Settings edit panel. No Google services are involved.
+- iOS: an App Group (`group.app.retrospend`) carries the hand-off. The share extension `RetrospendShare` (bundle id `app.retrospend.share`) copies the file or text into the group and opens the app on `retrospend://share`. The App Intent "Add expense" (optional amount) shows in Shortcuts and Spotlight and runs in the app. `RetrospendControls` (`app.retrospend.controls`, iOS 18) is a WidgetKit extension with one Control that runs the same intent from Control Center, the lock screen and the Action button.
+- Apple side, once: register the App Group `group.app.retrospend`, enable it on the App IDs `app.retrospend`, `app.retrospend.share` and `app.retrospend.controls`. Automatic signing (`-allowProvisioningUpdates`) then makes the three profiles.
+
 ## Known issues
 
 - iOS 26.x (seen on 26.5): with the detached "+" in the tab bar, the four destination titles are truncated ("Acti...", "Peo..."). It is react-native-screens issue 5015; iOS 27 is not affected. Accepted for now.
