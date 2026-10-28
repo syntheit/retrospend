@@ -1,6 +1,6 @@
+import { categoryTone } from "@retrospend/domain/category-tone";
 import type { MoneyValue } from "~/components/money/format";
 import type { TransactionVM } from "~/components/rows/types";
-import { categoryTone } from "~/lib/category-tone";
 import type { RouterOutputs } from "~/trpc/react";
 
 export type PageView = RouterOutputs["project"]["pageView"];

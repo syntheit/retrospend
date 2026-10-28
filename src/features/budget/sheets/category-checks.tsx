@@ -1,12 +1,12 @@
 "use client";
 
+import { categoryTone } from "@retrospend/domain/category-tone";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { CategoryGlyph } from "~/components/pickers/category-picker";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import { Checkbox } from "~/components/ui/checkbox";
 import { SkeletonRows } from "~/components/ui/skeleton";
-import { categoryTone } from "~/lib/category-tone";
 import { api } from "~/trpc/react";
 import type { EnvelopeInGroup } from "./use-month";
 

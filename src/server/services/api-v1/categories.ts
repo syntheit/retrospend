@@ -4,6 +4,7 @@ import type {
 	createCategorySchema,
 	updateCategorySchema,
 } from "@retrospend/api-contract";
+import { categoryTone } from "@retrospend/domain/category-tone";
 import * as z from "zod";
 import {
 	type CategoryRow,
@@ -14,7 +15,6 @@ import {
 	mergeCategory,
 	updateCategory,
 } from "~/server/services/category.service";
-import { categoryTone } from "~/server/services/expense-list/category-tone";
 import type { Caller } from "./caller";
 import { decodeCursor, toPage } from "./cursor";
 

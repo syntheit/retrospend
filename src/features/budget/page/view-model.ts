@@ -3,8 +3,9 @@
  * file only picks which rows show, in what state, and under which words.
  * It compares and filters; it never adds, subtracts or divides money.
  */
+
+import { categoryTone } from "@retrospend/domain/category-tone";
 import type { EnvelopeVM } from "~/components/rows/types";
-import { categoryTone } from "~/lib/category-tone";
 import type {
 	EnvelopeGroupDto,
 	EnvelopeRowDto,

@@ -1,5 +1,6 @@
 "use client";
 
+import { categoryTone } from "@retrospend/domain/category-tone";
 import { ChartPie } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -11,7 +12,6 @@ import { TransactionRow } from "~/components/rows/transaction-row";
 import { Empty } from "~/components/ui/empty-state";
 import { Segmented } from "~/components/ui/segmented";
 import { SkeletonRows } from "~/components/ui/skeleton";
-import { categoryTone } from "~/lib/category-tone";
 import { SettleSection } from "./settle-section";
 import { figureFor, type PageView, type Summary } from "./types";
 
