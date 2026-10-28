@@ -1,20 +1,24 @@
-import { previewBulk, runBulk, undoBulk } from "./bulkWrite";
+import { previewBulk, runBulk, skippedOf, undoBulk } from "./bulkWrite";
 
 const empty = { changes: [], unchanged: [], unavailable: [] };
 
 function fakeApi(over: Record<string, unknown> = {}) {
-	const calls: string[] = [];
 	const api = {
 		expenses: {
-			previewDelete: jest.fn(async ({ id }: { id: string }) => {
-				calls.push(`preview:${id}`);
-				return empty;
-			}),
+			previewBulkDelete: jest.fn(async ({ ids }: { ids: string[] }) => ({
+				...empty,
+				detail: {
+					kind: "expense.deleteMany",
+					deleted: ids.length,
+					skipped: [],
+				},
+			})),
 			previewBulkCategory: jest.fn(async () => empty),
-			delete: jest.fn(async ({ id }: { id: string }) => {
-				calls.push(`delete:${id}`);
-				return { id, undo: `tok-${id}` };
-			}),
+			bulkDelete: jest.fn(async ({ ids }: { ids: string[] }) => ({
+				deleted: ids.length - 1,
+				skipped: [ids[ids.length - 1]],
+				undo: "tok-del",
+			})),
 			bulkCategory: jest.fn(async (body: { ids: string[] }) => ({
 				updated: body.ids.length,
 				undo: "tok-cat",
@@ -23,15 +27,19 @@ function fakeApi(over: Record<string, unknown> = {}) {
 			...over,
 		},
 	};
-	return { api: api as never, calls, raw: api };
+	return { api: api as never, raw: api };
 }
 
 describe("previewBulk", () => {
-	it("dry-runs every delete", async () => {
-		const { api, calls } = fakeApi();
+	it("dry-runs the whole delete in one request", async () => {
+		const { api, raw } = fakeApi();
 		const state = await previewBulk(api, { kind: "delete" }, ["a", "b"]);
 		expect(state.status).toBe("ready");
-		expect(calls).toEqual(["preview:a", "preview:b"]);
+		expect(raw.expenses.previewBulkDelete).toHaveBeenCalledTimes(1);
+		expect(raw.expenses.previewBulkDelete).toHaveBeenCalledWith(
+			{ ids: ["a", "b"] },
+			expect.anything(),
+		);
 	});
 
 	it("reads no answer from the server as offline", async () => {
@@ -50,12 +58,24 @@ describe("previewBulk", () => {
 
 	it("reads a 4xx as refused", async () => {
 		const { api } = fakeApi({
-			previewDelete: jest.fn(async () => {
-				throw Object.assign(new Error("no"), { status: 409 });
+			previewBulkDelete: jest.fn(async () => {
+				throw Object.assign(new Error("no"), { status: 400 });
 			}),
 		});
 		const state = await previewBulk(api, { kind: "delete" }, ["a"]);
 		expect(state.status).toBe("refused");
+	});
+});
+
+describe("skippedOf", () => {
+	it("counts the ids a delete would skip, and nothing for another write", () => {
+		expect(
+			skippedOf({
+				...empty,
+				detail: { kind: "expense.deleteMany", deleted: 1, skipped: ["x"] },
+			}),
+		).toBe(1);
+		expect(skippedOf(empty)).toBe(0);
 	});
 });
 
@@ -75,15 +95,15 @@ describe("runBulk", () => {
 		);
 	});
 
-	it("deletes one by one and counts the ones the server refused", async () => {
-		const { api } = fakeApi({
-			delete: jest.fn(async ({ id }: { id: string }) => {
-				if (id === "b") throw new Error("fee");
-				return { id, undo: `tok-${id}` };
-			}),
-		});
+	it("deletes in one request with one key and one token, counting the skipped", async () => {
+		const { api, raw } = fakeApi();
 		const out = await runBulk(api, { kind: "delete" }, ["a", "b", "c"], "k2");
-		expect(out).toEqual({ done: 2, failed: 1, tokens: ["tok-a", "tok-c"] });
+		expect(out).toEqual({ done: 2, failed: 1, tokens: ["tok-del"] });
+		expect(raw.expenses.bulkDelete).toHaveBeenCalledTimes(1);
+		expect(raw.expenses.bulkDelete).toHaveBeenCalledWith(
+			{ ids: ["a", "b", "c"] },
+			{ context: { idempotencyKey: "k2" } },
+		);
 	});
 });
 

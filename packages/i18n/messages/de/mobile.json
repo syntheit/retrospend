@@ -68,7 +68,7 @@
 			"edited": "{title} gespeichert",
 			"restored": "{title} wiederhergestellt",
 			"editOffline": "Du bist offline. Bearbeiten braucht eine Verbindung.",
-			"editRefused": "Diese Änderung ließ sich nicht speichern. Sie ist vielleicht gesperrt oder aufgeteilt."
+			"editRefused": "Diese Änderung ließ sich nicht speichern. Sie ist vielleicht gesperrt."
 		},
 		"changes": {
 			"title": "Was sich ändert",
@@ -128,7 +128,16 @@
 				"project_total": "die Projektsumme"
 			},
 			"noRate": "Noch kein Kurs für {currency}. Wähle eine andere Währung.",
-			"emptyTransfer": "Gib einen Betrag ein und wähle zwei Konten, um zu sehen, was sich ändert."
+			"emptyTransfer": "Gib einen Betrag ein und wähle zwei Konten, um zu sehen, was sich ändert.",
+			"shares": {
+				"title": "Was jede Person schuldet",
+				"you": "Du",
+				"change": "{before} auf {after}",
+				"joins": "Neu dabei, {after}",
+				"leaves": "Nicht mehr dabei, vorher {before}",
+				"told": "Alle werden über die Änderung informiert.",
+				"same": "Der Anteil jeder Person bleibt gleich."
+			}
 		},
 		"list": {
 			"two": "{first} und {second}",
@@ -350,13 +359,13 @@
 			"categorizeTitle": "{count, plural, one {# Ausgabe kategorisieren} other {# Ausgaben kategorisieren}}",
 			"categorizeBody": "Sie wechseln zu {name}. Die Beträge bleiben gleich.",
 			"categorizeButton": "Nach {name} verschieben",
-			"addedUp": "Diese Summen sind geschätzt. Jede Änderung wird über die gewählten Ausgaben addiert.",
 			"moved": "{count, plural, one {# Ausgabe nach {name} verschoben} other {# Ausgaben nach {name} verschoben}}",
 			"deleted": "{count, plural, one {# Ausgabe gelöscht} other {# Ausgaben gelöscht}}",
 			"deletedSome": "{count, plural, one {# Ausgabe gelöscht} other {# Ausgaben gelöscht}}, {left} konnten nicht gelöscht werden",
 			"failed": "Die Ausgaben konnten nicht geändert werden",
 			"undone": "Rückgängig gemacht",
-			"undoError": "Rückgängig nicht möglich"
+			"undoError": "Rückgängig nicht möglich",
+			"skipped": "{count, plural, one {# kann hier nicht gelöscht werden.} other {# können hier nicht gelöscht werden.}}"
 		}
 	},
 	"budget": {

@@ -16,7 +16,7 @@ import { useCategories } from "./useCategories";
  * The bar over the list while expenses are being selected (the phone variant
  * of the mockup's bulk bar): how many are picked, Categorize, Delete and Done.
  * Both actions open a sheet with the server's dry run before anything is
- * written. Delete is capped because its preview is one request per expense.
+ * written. Delete takes as many as one bulk delete does on the server.
  */
 export function BulkControls({
 	items,

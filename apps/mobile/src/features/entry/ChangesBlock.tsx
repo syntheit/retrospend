@@ -2,13 +2,23 @@ import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
-import { type ChangeLines, changeLines, type PreviewState } from "./preview";
+import {
+	type ChangeLines,
+	changeLines,
+	type PreviewState,
+	type ShareLine,
+	sharesOf,
+} from "./preview";
+
+type Money = { minor: number; currency: string };
 
 /**
  * What this changes (R30): each place that moves, before Save, then what
  * stays. The numbers are the server's dry run of the same write, formatted
- * here and never computed. Offline there is no dry run, and the block says
- * the write waits on the phone.
+ * here and never computed. A total the server converted at reference rates
+ * reads with the approximate mark. A split-expense edit also says whose share
+ * moves, from the same dry run. Offline there is no dry run, and the block
+ * says the write waits on the phone.
  */
 export function ChangesBlock({
 	state,
@@ -20,15 +30,18 @@ export function ChangesBlock({
 }) {
 	const t = useTranslations("mobile.composer.changes");
 	const tl = useTranslations("mobile.composer.list");
+	const tm = useTranslations("mobile.money");
 	const { color, space, type } = useTheme();
 	const { format } = useFormatMoney();
 	const lines: ChangeLines | null =
 		state.status === "ready" ? changeLines(state.diff) : null;
+	const shares: ShareLine[] | null =
+		state.status === "ready" ? sharesOf(state.diff) : null;
 	// One precision down a column: every amount shows its minor digits.
-	const money = (
-		value: { minor: number; currency: string },
-		sign?: "exceptZero",
-	) => format(value, { cents: true, sign }) ?? "";
+	const money = (value: Money, sign?: "exceptZero") =>
+		format(value, { cents: true, sign }) ?? "";
+	const marked = (text: string, approx: boolean) =>
+		approx ? tm("approx", { amount: text }) : text;
 
 	// Figure ids have dots, which message keys cannot. An id with no name of
 	// its own reads "another figure", never the id.
@@ -49,6 +62,12 @@ export function ChangesBlock({
 			last: items[items.length - 1] ?? "",
 		});
 	};
+	const shareText = (s: ShareLine) =>
+		s.before && s.after
+			? t("shares.change", { before: money(s.before), after: money(s.after) })
+			: s.after
+				? t("shares.joins", { after: money(s.after) })
+				: t("shares.leaves", { before: s.before ? money(s.before) : "" });
 	const status =
 		state.status === "idle"
 			? idle
@@ -106,7 +125,7 @@ export function ChangesBlock({
 								textAlign: "right",
 							}}
 						>
-							{money(line.delta, "exceptZero")}
+							{marked(money(line.delta, "exceptZero"), line.approx)}
 						</Text>
 					</View>
 					{line.after ? (
@@ -118,16 +137,69 @@ export function ChangesBlock({
 								textAlign: "right",
 							}}
 						>
-							{t("to", { amount: money(line.after) })}
+							{t("to", { amount: marked(money(line.after), line.approx) })}
 						</Text>
 					) : null}
 				</View>
 			))}
+			{shares && shares.length > 0 ? (
+				<View style={{ gap: space[2], paddingTop: space[2] }}>
+					<Text
+						style={{
+							color: color.fg,
+							fontSize: type.body.size,
+							fontWeight: "600",
+						}}
+					>
+						{t("shares.title")}
+					</Text>
+					{shares.map((s) => (
+						<View
+							accessible
+							key={s.key}
+							style={{
+								flexDirection: "row",
+								justifyContent: "space-between",
+								gap: space[3],
+							}}
+						>
+							<Text
+								numberOfLines={1}
+								style={{
+									flexShrink: 1,
+									color: color.fg,
+									fontSize: type.body.size,
+								}}
+							>
+								{s.you ? t("shares.you") : s.name}
+							</Text>
+							<Text
+								style={{
+									color: color.fg,
+									fontSize: type.body.size,
+									fontVariant: ["tabular-nums"],
+									textAlign: "right",
+								}}
+							>
+								{shareText(s)}
+							</Text>
+						</View>
+					))}
+					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+						{t("shares.told")}
+					</Text>
+				</View>
+			) : null}
 			{lines && lines.stays.length > 0 ? (
 				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
 					{t("stays", {
 						places: list(lines.stays.map((id) => name(id, true))),
 					})}
+				</Text>
+			) : null}
+			{shares && shares.length === 0 ? (
+				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					{t("shares.same")}
 				</Text>
 			) : null}
 			{lines && lines.unknown.length > 0 ? (

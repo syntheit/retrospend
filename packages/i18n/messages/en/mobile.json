@@ -68,7 +68,7 @@
 			"edited": "Saved {title}",
 			"restored": "Restored {title}",
 			"editOffline": "You're offline. Editing needs a connection.",
-			"editRefused": "Couldn't save this change. It may be locked or split."
+			"editRefused": "Couldn't save this change. It may be locked."
 		},
 		"changes": {
 			"title": "What this changes",
@@ -128,7 +128,16 @@
 				"project_total": "the project total"
 			},
 			"noRate": "No rate yet for {currency}. Pick another currency.",
-			"emptyTransfer": "Type an amount and pick two accounts to see what changes."
+			"emptyTransfer": "Type an amount and pick two accounts to see what changes.",
+			"shares": {
+				"title": "What each person owes",
+				"you": "You",
+				"change": "{before} to {after}",
+				"joins": "Added, {after}",
+				"leaves": "Removed, was {before}",
+				"told": "They're told about the change.",
+				"same": "Each person's share stays the same."
+			}
 		},
 		"list": {
 			"two": "{first} and {second}",
@@ -350,13 +359,13 @@
 			"categorizeTitle": "{count, plural, one {Categorize # expense} other {Categorize # expenses}}",
 			"categorizeBody": "They move to {name}. Their amounts stay the same.",
 			"categorizeButton": "Move to {name}",
-			"addedUp": "These totals are estimated. Each change is added across the expenses you picked.",
 			"moved": "{count, plural, one {# expense moved to {name}} other {# expenses moved to {name}}}",
 			"deleted": "{count, plural, one {# expense deleted} other {# expenses deleted}}",
 			"deletedSome": "{count, plural, one {# expense deleted} other {# expenses deleted}}, {left} could not be deleted",
 			"failed": "Couldn't change those expenses",
 			"undone": "Undone",
-			"undoError": "Couldn't undo"
+			"undoError": "Couldn't undo",
+			"skipped": "{count, plural, one {# of them can't be deleted here.} other {# of them can't be deleted here.}}"
 		}
 	},
 	"budget": {

@@ -12,22 +12,9 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
 import { rowStatus, rowTitle } from "./ActivityRow";
+import { canEditEntry } from "./canEdit";
 import type { ActivityItem } from "./source";
 import { TextAction } from "./TextAction";
-
-/**
- * Only your own plain expenses can be edited here: a split, a payment, money
- * in and a transfer have no edit route in API v1 yet, and a locked entry is
- * the server's to refuse.
- */
-export function canEditEntry(item: ActivityItem): boolean {
-	return (
-		item.source === "personal" &&
-		item.kind === "expense" &&
-		item.canEdit &&
-		!item.locked
-	);
-}
 
 /** A label on the left, its value on the right; a missing value leaves no row. */
 function Fact({
@@ -142,7 +129,12 @@ export function EntryView({ item }: { item: ActivityItem }) {
 					{add && canEditEntry(item) ? (
 						<TextAction
 							label={t("edit")}
-							onPress={() => add.edit(item.entityId)}
+							onPress={() =>
+								add.edit(
+									item.entityId,
+									item.source === "shared" ? "shared" : undefined,
+								)
+							}
 						/>
 					) : null}
 				</View>

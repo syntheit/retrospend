@@ -1,5 +1,4 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { newClientId } from "@/data/ids";
 import type { PendingWrite } from "./draft";
 import { SEND_TIMEOUT_MS, type UndoRef } from "./send";
 
@@ -15,15 +14,20 @@ export type EditOutcome =
 	/** The server read it and said no (a split, or money that moved in an account). */
 	| { status: "refused" };
 
+/**
+ * `idempotencyKey` belongs to this exact body: a retry of the same edit (after
+ * no answer) replays the first write instead of writing twice.
+ */
 export async function saveExpenseEdit(
 	api: RetrospendClient,
 	write: PendingWrite,
+	idempotencyKey: string,
 ): Promise<EditOutcome> {
 	const timeout = new AbortController();
 	const timer = setTimeout(() => timeout.abort(), SEND_TIMEOUT_MS);
 	try {
 		const options = {
-			context: { idempotencyKey: newClientId() },
+			context: { idempotencyKey },
 			signal: timeout.signal,
 		};
 		if (write.entity === "shared-expenses") {

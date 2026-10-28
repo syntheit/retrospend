@@ -1,9 +1,8 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { PreviewState } from "@/features/entry/preview";
-import { mergeDeletePreviews } from "./bulk";
+import type { PreviewDto, PreviewState } from "@/features/entry/preview";
 
-// The writes behind the Activity bulk bar. Each is a dry run first (R30) and a
-// write second, and each hands back the server's undo tokens (R15).
+// The writes behind the Activity bulk bar. Each is one dry run of the whole
+// set first (R30) and one write second, and hands back one undo token (R15).
 
 export type BulkAction =
 	| { kind: "delete" }
@@ -26,11 +25,7 @@ export async function previewBulk(
 	try {
 		const diff =
 			action.kind === "delete"
-				? mergeDeletePreviews(
-						await Promise.all(
-							ids.map((id) => api.expenses.previewDelete({ id }, options)),
-						),
-					)
+				? await api.expenses.previewBulkDelete({ ids: [...ids] }, options)
 				: await api.expenses.previewBulkCategory(
 						{ ids: [...ids], categoryId: action.categoryId },
 						options,
@@ -45,20 +40,30 @@ export async function previewBulk(
 	}
 }
 
+/** How many of the picked entries a delete would skip, from its dry run. */
+export function skippedOf(diff: PreviewDto): number {
+	const detail = diff.detail as
+		| { kind?: string; skipped?: unknown[] }
+		| undefined;
+	return detail?.kind === "expense.deleteMany" && Array.isArray(detail.skipped)
+		? detail.skipped.length
+		: 0;
+}
+
 export interface BulkResult {
 	/** Entries the write changed. */
 	done: number;
-	/** Entries it could not (a delete the server refused). */
+	/** Entries it left as they were (one the server skipped). */
 	failed: number;
 	/** One per write, newest last; each takes its write back. */
 	tokens: string[];
 }
 
 /**
- * Sends the write. A category change is one request. Delete is one request
- * per entry, as on the web: an entry the server refuses does not stop the
- * others, and the result says how many went. `batch` makes every key unique to
- * this attempt, so a retry of the same tap replays instead of writing twice.
+ * Sends the write: one request for the whole set, keyed by `batch`, so a
+ * retry of the same tap replays instead of writing twice. An entry the server
+ * skips (a transfer's fee) does not stop the others; the result says how many
+ * went.
  */
 export async function runBulk(
 	api: Api,
@@ -66,10 +71,11 @@ export async function runBulk(
 	ids: readonly string[],
 	batch: string,
 ): Promise<BulkResult> {
+	const options = { context: { idempotencyKey: batch } };
 	if (action.kind === "category") {
 		const out = await api.expenses.bulkCategory(
 			{ ids: [...ids], categoryId: action.categoryId },
-			{ context: { idempotencyKey: batch } },
+			options,
 		);
 		return {
 			done: out.updated,
@@ -77,20 +83,8 @@ export async function runBulk(
 			tokens: [out.undo],
 		};
 	}
-	const tokens: string[] = [];
-	let failed = 0;
-	for (const id of ids) {
-		try {
-			const out = await api.expenses.delete(
-				{ id },
-				{ context: { idempotencyKey: `${batch}-${id}` } },
-			);
-			tokens.push(out.undo);
-		} catch {
-			failed += 1;
-		}
-	}
-	return { done: tokens.length, failed, tokens };
+	const out = await api.expenses.bulkDelete({ ids: [...ids] }, options);
+	return { done: out.deleted, failed: out.skipped.length, tokens: [out.undo] };
 }
 
 /** Takes every write of a batch back; false if any token was refused. */

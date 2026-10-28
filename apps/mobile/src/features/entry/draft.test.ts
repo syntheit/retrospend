@@ -606,7 +606,7 @@ describe("editing a split expense", () => {
 		expect(isPersonal(d)).toBe(false);
 	});
 
-	it("sends an equal split back as the people only", () => {
+	it("leaves the people out, so the server keeps them", () => {
 		const d = sharedFromDetail(detail("EQUAL"), "en-US");
 		const write = buildExpenseUpdate(d, { locale: "en-US", catalog });
 		expect(write).toEqual({
@@ -622,30 +622,21 @@ describe("editing a split expense", () => {
 				categoryId: "food",
 				paidBy: person("me"),
 				splitMode: "EQUAL",
-				splitWith: [person("me"), person("lucia1")],
 				notes: "birthday",
 				projectId: "trip",
 			},
 		});
 	});
 
-	it("keeps the amounts, percents or shares of a custom split", () => {
-		const rows = (mode: "EXACT" | "PERCENTAGE" | "SHARES") =>
-			buildExpenseUpdate(sharedFromDetail(detail(mode), "en-US"), {
-				locale: "en-US",
-				catalog,
-			})?.body.splitWith;
-		expect(rows("EXACT")).toEqual([
-			{ ...person("me"), shareAmount: "70.00" },
-			{ ...person("lucia1"), shareAmount: "30.00" },
-		]);
-		expect(rows("PERCENTAGE")).toEqual([
-			{ ...person("me"), sharePercentage: "70" },
-			{ ...person("lucia1"), sharePercentage: "30" },
-		]);
-		expect(rows("SHARES")).toEqual([
-			{ ...person("me"), shareUnits: 7 },
-			{ ...person("lucia1"), shareUnits: 3 },
-		]);
+	it("keeps the mode of a custom split and lets the server split a new amount", () => {
+		for (const mode of ["EXACT", "PERCENTAGE", "SHARES"] as const) {
+			const d = sharedFromDetail(detail(mode), "en-US");
+			const body = buildExpenseUpdate(
+				{ ...d, amountText: "120" },
+				{ locale: "en-US", catalog },
+			)?.body;
+			expect(body).toMatchObject({ amount: "120.00", splitMode: mode });
+			expect(body).not.toHaveProperty("splitWith");
+		}
 	});
 });
