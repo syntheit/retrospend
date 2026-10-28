@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { AffordSheet } from "./AffordSheet";
 import { manageRows } from "./ManageList";
 import { MergeSheet } from "./MergeSheet";
 import { splitAccounts } from "./PayDebtSheet";
@@ -137,6 +138,22 @@ function fakeApi() {
 		budget: {
 			previewSetTarget: preview("previewSetTarget"),
 			setTarget: write("setTarget"),
+			afford: async (input: unknown) => {
+				calls.push({ route: "afford", input });
+				return {
+					state: "FITS",
+					after: ars(7_000),
+					short: ars(0),
+					left: ars(10_000),
+					spent: ars(0),
+					notPlanned: ars(0),
+					perDay: ars(500),
+					daysLeft: 14,
+					usualPerDay: null,
+					incomplete: false,
+					action: null,
+				};
+			},
 			previewMergeEnvelopes: preview("previewMergeEnvelopes"),
 			mergeEnvelopes: write("mergeEnvelopes"),
 			undo: async (input: unknown) => {
@@ -265,6 +282,40 @@ describe("Combine envelopes", () => {
 		await wait(50);
 		expect(calls.filter((c) => c.route === "mergeEnvelopes")).toHaveLength(1);
 		expect(onClose).toHaveBeenCalled();
+		act(() => tree.unmount());
+	});
+});
+
+describe("Can I afford it", () => {
+	it("asks the server once the amount settles and words the state it answers", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(
+				<AffordSheet
+					data={data}
+					onClose={jest.fn()}
+					onMove={jest.fn()}
+					visible
+				/>,
+			);
+		});
+		press(tree, "3");
+		press(tree, "0");
+		press(tree, "Three zeros");
+		// Still typing: nothing asked yet.
+		expect(calls.filter((c) => c.route === "afford")).toHaveLength(0);
+		await wait(450);
+		const asked = calls.filter((c) => c.route === "afford");
+		expect(asked).toHaveLength(1);
+		expect(asked[0]?.input).toEqual({ month: 202610, amount: "30000.00" });
+		const texts = tree.root
+			.findAll(() => true)
+			.flatMap((n) =>
+				typeof n.props.children === "string" ? [n.props.children] : [],
+			);
+		expect(texts.some((x) => x.startsWith("Yes. It fits"))).toBe(true);
 		act(() => tree.unmount());
 	});
 });
