@@ -60,7 +60,6 @@ export function useMoneyWrite<I, P, W>(options: {
 	const busy = useRef(false);
 	const bodyKey = input === null ? null : JSON.stringify(input);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `bodyKey` stands for `input`
 	useEffect(() => {
 		setPreview(null);
 		setCommitFailed(false);
