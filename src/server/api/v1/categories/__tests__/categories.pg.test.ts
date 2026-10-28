@@ -70,12 +70,12 @@ describe("/api/v1/categories", () => {
 			c.create,
 			201,
 		);
-		// The server row tone, the same one Activity rows carry (teal is slot 5).
+		// The server row tone, the same one Activity rows carry (teal is slot 9).
 		expect(made).toMatchObject({
 			name: "Rent",
 			expenseCount: 0,
 			icon: null,
-			tone: 5,
+			tone: 9,
 		});
 
 		const got = await expectBody<Category>(

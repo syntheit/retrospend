@@ -1,30 +1,32 @@
 /**
  * The one map from a stored category color to the 21 category-n tokens
- * (GAPS §3: "map them once"). Web, server and the apps all read it. The order
- * is the CategoryColor enum's; the tokens share one lightness and chroma, so
- * any assignment passes the contrast tests.
+ * (GAPS §3: "map them once"). Web, server and the apps all read it. Each
+ * name takes the token nearest its hue (Tailwind 500 in OKLCH against the
+ * token hues in tokens.css), one token per name, so a blue category draws
+ * blue. The design has no neutral category token, so the grays take the last
+ * free tokens.
  */
 const TONES = {
 	emerald: 1,
-	blue: 2,
-	sky: 3,
+	violet: 2,
+	amber: 3,
 	cyan: 4,
-	teal: 5,
-	orange: 6,
-	amber: 7,
-	violet: 8,
-	pink: 9,
+	pink: 5,
+	lime: 6,
+	blue: 7,
+	orange: 8,
+	teal: 9,
 	fuchsia: 10,
-	indigo: 11,
-	slate: 12,
-	zinc: 13,
-	lime: 14,
-	neutral: 15,
-	gray: 16,
-	purple: 17,
-	yellow: 18,
-	stone: 19,
-	rose: 20,
+	yellow: 11,
+	sky: 12,
+	rose: 13,
+	neutral: 14,
+	indigo: 15,
+	stone: 16,
+	gray: 17,
+	purple: 18,
+	zinc: 19,
+	slate: 20,
 	red: 21,
 } as const satisfies Record<string, number>;
 

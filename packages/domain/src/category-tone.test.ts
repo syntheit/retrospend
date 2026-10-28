@@ -10,10 +10,10 @@ describe("categoryTone", () => {
 		expect(Math.max(...tones)).toBe(21);
 	});
 
-	it("reads the enum order", () => {
-		expect(categoryTone("emerald")).toBe(1);
-		expect(categoryTone("teal")).toBe(5);
-		expect(categoryTone("red")).toBe(21);
+	it("keeps hues close: emerald is green, red is red, blue is blue", () => {
+		expect(categoryTone("emerald")).toBe(1); // hue 162
+		expect(categoryTone("blue")).toBe(7); // hue 265
+		expect(categoryTone("red")).toBe(21); // hue 25
 	});
 
 	it("falls back to the neutral slot for an unknown name", () => {
