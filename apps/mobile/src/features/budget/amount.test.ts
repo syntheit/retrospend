@@ -1,3 +1,5 @@
+import { formatMoney } from "@retrospend/domain/format";
+import { withMoneyContext } from "@retrospend/domain/format-locale";
 import { minorOf, readAmount, wireAmount } from "./amount";
 
 describe("keypad amounts", () => {
@@ -14,6 +16,35 @@ describe("keypad amounts", () => {
 			state: "ok",
 			minor: 5000,
 		});
+	});
+
+	// A home amount shows its symbol ("$1,500.00"); pasting it back reads.
+	it.each([
+		["en-US", null, "USD"],
+		["es-AR", null, "ARS"],
+		["de", null, "EUR"],
+		["fr", null, "EUR"],
+		["pt-BR", null, "BRL"],
+		["ru", null, "RUB"],
+		["es-AR", "comma_dot", "USD"],
+	] as const)(
+		"reads a shown home amount back (%s, %s, %s)",
+		(language, numberFormat, currency) => {
+			const locale = withMoneyContext(language, {
+				numberFormat,
+				homeCurrency: currency,
+			});
+			const shown = formatMoney({ minor: 150050, currency }, { locale });
+			expect(readAmount(shown, locale, currency)).toEqual({
+				state: "ok",
+				minor: 150050,
+			});
+		},
+	);
+
+	it("refuses a symbol on a currency that is not home", () => {
+		const locale = withMoneyContext("en-US", { homeCurrency: "USD" });
+		expect(readAmount("$1,500", locale, "CAD")).toEqual({ state: "invalid" });
 	});
 
 	it("tells nothing, a real zero and nonsense apart", () => {
