@@ -565,7 +565,8 @@
 			"newEnvelope": "Add an envelope",
 			"merge": "Combine envelopes",
 			"payDebt": "Pay down a debt",
-			"style": "Budget style"
+			"style": "Budget style",
+			"reconcile": "Check against your bank"
 		},
 		"afford": {
 			"title": "Can I afford it?",
@@ -672,6 +673,20 @@
 			"envelope": "Taken from",
 			"submit": "Pay",
 			"toast": "Paid {amount} toward a debt"
+		},
+		"reconcile": {
+			"loading": "Checking",
+			"failed": "Could not load the check. Try again.",
+			"accountsTotal": "Your accounts total",
+			"title": "Does this match your bank?",
+			"lead": "Compares what the budget holds with the accounts that are part of it. A difference is recorded as one adjustment.",
+			"bank": "What your bank says",
+			"holds": "What the budget holds",
+			"held": "Owed to you, in neither",
+			"incomplete": "Some accounts have no rate today, so this is not complete.",
+			"submit": "Record",
+			"toastRecorded": "Recorded an adjustment of {amount}",
+			"toastMatched": "It matched. Nothing to record"
 		}
 	},
 	"wealth": {

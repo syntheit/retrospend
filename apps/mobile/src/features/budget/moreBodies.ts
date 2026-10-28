@@ -142,6 +142,18 @@ export function affordQuery(input: {
 	};
 }
 
+export type ReconcileInput = Parameters<Client["reconcile"]>[0];
+
+/** What the bank says now, in the currency the server holds the budget in; null until there is a figure. */
+export function reconcileBody(input: {
+	id: string;
+	minor: number | null;
+	currency: string;
+}): ReconcileInput | null {
+	if (input.minor === null) return null;
+	return { id: input.id, bank: wireAmount(input.minor, input.currency) };
+}
+
 export type DebtPaymentInput = Parameters<Client["recordDebtPayment"]>[0];
 
 /**

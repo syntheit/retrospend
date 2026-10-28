@@ -565,7 +565,8 @@
 			"newEnvelope": "Adicionar um envelope",
 			"merge": "Combinar envelopes",
 			"payDebt": "Pagar uma dívida",
-			"style": "Estilo de orçamento"
+			"style": "Estilo de orçamento",
+			"reconcile": "Conferir com seu banco"
 		},
 		"afford": {
 			"title": "Posso pagar isso?",
@@ -672,6 +673,20 @@
 			"envelope": "Tirado de",
 			"submit": "Pagar",
 			"toast": "{amount} pagos de uma dívida"
+		},
+		"reconcile": {
+			"loading": "Verificando",
+			"failed": "Não foi possível carregar a conferência. Tente de novo.",
+			"accountsTotal": "Total das suas contas",
+			"title": "Isso bate com o seu banco?",
+			"lead": "Compara o que o orçamento guarda com as contas que fazem parte dele. Uma diferença é registrada como um ajuste.",
+			"bank": "O que diz o seu banco",
+			"holds": "O que o orçamento guarda",
+			"held": "Devido a você, em nenhum",
+			"incomplete": "Algumas contas não têm cotação hoje, então isto não está completo.",
+			"submit": "Registrar",
+			"toastRecorded": "Você registrou um ajuste de {amount}",
+			"toastMatched": "Bateu. Nada a registrar"
 		}
 	},
 	"wealth": {

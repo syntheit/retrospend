@@ -565,7 +565,8 @@
 			"newEnvelope": "Umschlag hinzufügen",
 			"merge": "Umschläge zusammenführen",
 			"payDebt": "Schulden abzahlen",
-			"style": "Budgetstil"
+			"style": "Budgetstil",
+			"reconcile": "Mit deiner Bank abgleichen"
 		},
 		"afford": {
 			"title": "Kann ich mir das leisten?",
@@ -672,6 +673,20 @@
 			"envelope": "Genommen aus",
 			"submit": "Zahlen",
 			"toast": "{amount} auf eine Schuld gezahlt"
+		},
+		"reconcile": {
+			"loading": "Wird geprüft",
+			"failed": "Der Abgleich ließ sich nicht laden. Versuche es noch einmal.",
+			"accountsTotal": "Summe deiner Konten",
+			"title": "Stimmt das mit deiner Bank überein?",
+			"lead": "Vergleicht, was das Budget hält, mit den Konten, die dazugehören. Ein Unterschied wird als eine Korrektur erfasst.",
+			"bank": "Was deine Bank sagt",
+			"holds": "Was das Budget hält",
+			"held": "Dir geschuldet, in keinem von beiden",
+			"incomplete": "Für einige Konten gibt es heute keinen Kurs, daher ist das nicht vollständig.",
+			"submit": "Erfassen",
+			"toastRecorded": "Korrektur von {amount} erfasst",
+			"toastMatched": "Es stimmt überein. Nichts zu erfassen"
 		}
 	},
 	"wealth": {

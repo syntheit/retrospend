@@ -5,9 +5,15 @@ import { useTheme } from "@/theme";
 import type { OpenSheet } from "./BudgetSheets";
 import type { MonthKind } from "./months";
 
-/** The sheets the list below the envelopes opens, by month kind (closed months are read-only). */
-type RowKey = "afford" | "newEnvelope" | "merge" | "payDebt" | "style";
+type RowKey =
+	| "afford"
+	| "newEnvelope"
+	| "merge"
+	| "payDebt"
+	| "reconcile"
+	| "style";
 
+/** The sheets the list below the envelopes opens, by month kind (closed months are read-only). */
 export function manageRows(
 	kind: MonthKind,
 	isDebtBook: boolean,
@@ -22,7 +28,10 @@ export function manageRows(
 			{ key: "merge", sheet: { kind: "merge" } },
 		);
 		if (isDebtBook) rows.push({ key: "payDebt", sheet: { kind: "payDebt" } });
-		rows.push({ key: "style", sheet: { kind: "style" } });
+		rows.push(
+			{ key: "reconcile", sheet: { kind: "reconcile" } },
+			{ key: "style", sheet: { kind: "style" } },
+		);
 	}
 	return rows;
 }

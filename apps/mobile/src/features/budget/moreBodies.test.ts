@@ -4,6 +4,7 @@ import {
 	debtPaymentBody,
 	mergeBody,
 	nameOk,
+	reconcileBody,
 	styleBody,
 	targetBody,
 	updateEnvelopeBody,
@@ -183,6 +184,20 @@ describe("afford and debt payment bodies", () => {
 			envelopeId: null,
 			principal: "10000.00",
 			interest: "0",
+		});
+	});
+});
+
+describe("bank check body", () => {
+	it("sends what the bank says as decimal text, negative included, and waits for a figure", () => {
+		expect(reconcileBody({ id: ID, minor: null, currency: "ARS" })).toBeNull();
+		expect(reconcileBody({ id: ID, minor: 150_025, currency: "ARS" })).toEqual({
+			id: ID,
+			bank: "1500.25",
+		});
+		expect(reconcileBody({ id: ID, minor: -2_000, currency: "ARS" })).toEqual({
+			id: ID,
+			bank: "-20.00",
 		});
 	});
 });

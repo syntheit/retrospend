@@ -565,7 +565,8 @@
 			"newEnvelope": "Agregar un sobre",
 			"merge": "Combinar sobres",
 			"payDebt": "Pagar una deuda",
-			"style": "Estilo de presupuesto"
+			"style": "Estilo de presupuesto",
+			"reconcile": "Revisar con tu banco"
 		},
 		"afford": {
 			"title": "¿Me alcanza?",
@@ -672,6 +673,20 @@
 			"envelope": "Tomado de",
 			"submit": "Pagar",
 			"toast": "Se pagaron {amount} de una deuda"
+		},
+		"reconcile": {
+			"loading": "Revisando",
+			"failed": "No se pudo cargar la revisión. Probá de nuevo.",
+			"accountsTotal": "Total de tus cuentas",
+			"title": "¿Coincide con tu banco?",
+			"lead": "Compara lo que tiene el presupuesto con las cuentas que forman parte de él. Una diferencia se registra como un ajuste.",
+			"bank": "Lo que dice tu banco",
+			"holds": "Lo que tiene el presupuesto",
+			"held": "Lo que te deben, en ninguno",
+			"incomplete": "Algunas cuentas no tienen cotización hoy, así que esto no está completo.",
+			"submit": "Registrar",
+			"toastRecorded": "Registraste un ajuste de {amount}",
+			"toastMatched": "Coincide. No hay nada que registrar"
 		}
 	},
 	"wealth": {

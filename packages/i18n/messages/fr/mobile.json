@@ -565,7 +565,8 @@
 			"newEnvelope": "Ajouter une enveloppe",
 			"merge": "Fusionner des enveloppes",
 			"payDebt": "Rembourser une dette",
-			"style": "Style de budget"
+			"style": "Style de budget",
+			"reconcile": "Comparer avec ta banque"
 		},
 		"afford": {
 			"title": "Puis-je me le permettre ?",
@@ -672,6 +673,20 @@
 			"envelope": "Pris sur",
 			"submit": "Payer",
 			"toast": "{amount} versés sur une dette"
+		},
+		"reconcile": {
+			"loading": "Vérification",
+			"failed": "Impossible de charger la comparaison. Réessaie.",
+			"accountsTotal": "Total de tes comptes",
+			"title": "Est-ce que cela correspond à ta banque ?",
+			"lead": "Compare ce que contient le budget avec les comptes qui en font partie. Une différence est enregistrée comme un ajustement.",
+			"bank": "Ce que dit ta banque",
+			"holds": "Ce que contient le budget",
+			"held": "Ce qu'on te doit, dans aucun",
+			"incomplete": "Certains comptes n'ont pas de taux aujourd'hui, ce n'est donc pas complet.",
+			"submit": "Enregistrer",
+			"toastRecorded": "Ajustement de {amount} enregistré",
+			"toastMatched": "Cela correspond. Rien à enregistrer"
 		}
 	},
 	"wealth": {

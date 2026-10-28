@@ -277,6 +277,7 @@ describe("Manage list", () => {
 			"afford",
 			"newEnvelope",
 			"merge",
+			"reconcile",
 			"style",
 		]);
 		expect(manageRows("open", true).map((r) => r.key)).toContain("payDebt");

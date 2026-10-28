@@ -4,6 +4,7 @@ import { MergeSheet } from "./MergeSheet";
 import type { MonthKind } from "./months";
 import { NewEnvelopeSheet } from "./NewEnvelopeSheet";
 import { PayDebtSheet } from "./PayDebtSheet";
+import { ReconcileSheet } from "./ReconcileSheet";
 import { StyleSheet } from "./StyleSheet";
 import { type BudgetMonth, envelopeById } from "./source";
 import { TakeBackSheet } from "./TakeBackSheet";
@@ -18,7 +19,8 @@ export type OpenSheet =
 	| { kind: "newEnvelope" }
 	| { kind: "merge" }
 	| { kind: "style" }
-	| { kind: "payDebt" };
+	| { kind: "payDebt" }
+	| { kind: "reconcile" };
 
 /** Every sheet the Budget tab can present, closed unless `sheet` names it. */
 export function BudgetSheets({
@@ -84,6 +86,12 @@ export function BudgetSheets({
 				onClose={onClose}
 				onDone={onDone}
 				visible={sheet?.kind === "payDebt"}
+			/>
+			<ReconcileSheet
+				data={data}
+				onClose={onClose}
+				onDone={onDone}
+				visible={sheet?.kind === "reconcile"}
 			/>
 			<StyleSheet
 				data={data}
