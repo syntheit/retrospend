@@ -86,6 +86,13 @@ export const bulkCategorySchema = z
 	})
 	.meta({ id: "BulkCategorize" });
 
+/** Most expenses one bulk delete takes: its undo token carries every row. */
+export const BULK_DELETE_MAX = 100;
+
+export const bulkDeleteSchema = z
+	.object({ ids: z.array(idSchema).min(1).max(BULK_DELETE_MAX) })
+	.meta({ id: "BulkDeleteExpenses" });
+
 export const duplicateQuerySchema = z.object({
 	title: userText("expense.title", 500),
 	amount: amountTextSchema,

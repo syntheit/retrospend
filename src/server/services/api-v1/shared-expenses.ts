@@ -16,20 +16,30 @@ import {
 	type UpdateSharedInput,
 	updateSharedExpense,
 } from "~/server/services/entry/shared.mutation";
+import { forUser } from "~/server/services/preview";
 import type { MoneyMutation } from "~/server/services/preview/types";
-import {
-	type RestoreSelfInput,
-	restoreSelfMutation,
-} from "~/server/services/shared-expenses/remove-self.mutation";
+import { resolveParticipantNames } from "~/server/services/project/identities";
 import {
 	answerShareMutation,
 	type RestoreAnswerInput,
 	restoreAnswerMutation,
 } from "~/server/services/shared-expenses/answer-share.mutation";
+import {
+	type RestoreSelfInput,
+	restoreSelfMutation,
+} from "~/server/services/shared-expenses/remove-self.mutation";
 import { exactAmount } from "./amounts";
 import type { Caller } from "./caller";
-import { applyWrite, previewWrite, spendUndo, undoFor } from "./money-write";
+import { moneyOf } from "./caller";
+import {
+	applyWrite,
+	previewWrite,
+	spendUndo,
+	toPreviewDto,
+	undoFor,
+} from "./money-write";
 import { guardedShared } from "./shared-guard";
+import { type ShareChange, withShares } from "./shared-shares";
 import { readUndo } from "./undo";
 
 /**
@@ -54,7 +64,7 @@ const refOf = (p: { type: "user" | "guest" | "shadow"; id: string }) => ({
 });
 
 function splitOf(body: CreateBody | UpdateBody) {
-	return body.splitWith.map((s) => ({
+	return (body.splitWith ?? []).map((s) => ({
 		...refOf(s),
 		...(s.shareAmount !== undefined && {
 			shareAmount: exactAmount(s.shareAmount, body.currency, "shareAmount"),
@@ -97,7 +107,8 @@ function updateInput(
 		categoryId: body.categoryId ?? null,
 		date: parseDateOnlyIn(body.date, caller.timeZone),
 		paidBy: refOf(body.paidBy),
-		splitWith: splitOf(body),
+		// Left out: the service keeps the people and splits a new amount again.
+		...(body.splitWith ? { splitWith: splitOf(body) } : {}),
 		splitMode: body.splitMode,
 		projectId: body.projectId ?? null,
 		notes: body.notes ?? null,
@@ -170,10 +181,27 @@ export async function replaceSharedExpense(
 	};
 }
 
-export const previewReplaceSharedExpense = (
+/**
+ * The dry run of an edit. Its detail names what each person owes before and
+ * after, from the same run as the figures, so a client can say whose share
+ * moves (an amount change on a custom split moves every share).
+ */
+export async function previewReplaceSharedExpense(
 	caller: LedgerCaller,
 	body: UpdateBody,
-) => dryRun(caller, updateSharedExpense, updateInput(caller, body));
+) {
+	const preview = await forUser(caller.principal.userId).preview(
+		withShares(updateSharedExpense),
+		{ ...updateInput(caller, body), notify: [] },
+	);
+	return {
+		...toPreviewDto(preview),
+		detail: {
+			kind: "sharedExpense.update" as const,
+			shares: await sharesView(caller, preview.value.shares),
+		},
+	};
+}
 
 const deleteInput = (body: DeleteBody) => ({
 	id: body.id,
@@ -188,6 +216,27 @@ export async function removeSharedExpense(caller: Caller, body: DeleteBody) {
 
 export const previewRemoveSharedExpense = (caller: Caller, body: DeleteBody) =>
 	dryRun(caller, deleteSharedExpense, deleteInput(body));
+
+/** Each person's share before and after, with their name; `you` marks the caller. */
+async function sharesView(caller: Caller, shares: readonly ShareChange[]) {
+	const named = await resolveParticipantNames(
+		caller.db,
+		shares.map((s) => ({
+			participantType: s.participantType,
+			participantId: s.participantId,
+		})),
+	);
+	return shares.map((s, i) => ({
+		type: s.participantType,
+		id: s.participantId,
+		name: named[i]?.name ?? "",
+		you:
+			s.participantType === "user" &&
+			s.participantId === caller.principal.userId,
+		before: s.before ? moneyOf(s.before.amount, s.before.currency) : null,
+		after: s.after ? moneyOf(s.after.amount, s.after.currency) : null,
+	}));
+}
 
 // ── Undo ────────────────────────────────────────────────────────────────────
 
@@ -321,8 +370,11 @@ async function answerOf(
 export const acceptSharedExpense = (caller: Caller, id: string) =>
 	answerOf(caller, id, "accept");
 
-export const rejectSharedExpense = (caller: Caller, id: string, reason?: string) =>
-	answerOf(caller, id, "reject", reason);
+export const rejectSharedExpense = (
+	caller: Caller,
+	id: string,
+	reason?: string,
+) => answerOf(caller, id, "reject", reason);
 
 export const previewAcceptSharedExpense = (caller: Caller, id: string) =>
 	previewWrite(caller, answerShareMutation, answerInput(id, "accept"));
@@ -331,4 +383,5 @@ export const previewRejectSharedExpense = (
 	caller: Caller,
 	id: string,
 	reason?: string,
-) => previewWrite(caller, answerShareMutation, answerInput(id, "reject", reason));
+) =>
+	previewWrite(caller, answerShareMutation, answerInput(id, "reject", reason));

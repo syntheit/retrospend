@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type {
 	ActivityFilterValue,
 	bulkCategorySchema,
+	bulkDeleteSchema,
 	CursorQuery,
 	createExpenseSchema,
 	ExpenseDto,
@@ -11,6 +12,11 @@ import { withDefaultRange } from "@retrospend/api-contract";
 import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
+import {
+	type DeleteManyInput,
+	deleteExpensesBulk,
+	restoreExpensesBulk,
+} from "~/server/services/entry/bulk-delete.mutation";
 import {
 	type CategorizeInput,
 	categorizeExpenses as categorizeMutation,
@@ -30,12 +36,19 @@ import {
 import { createExpense } from "~/server/services/expense-create.mutation";
 import { listHomeCurrency } from "~/server/services/expense-dto";
 import { listActivity } from "~/server/services/expense-list";
+import { forUser } from "~/server/services/preview";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { bookedHome } from "~/server/services/rate-types";
 import { titleSuggestions } from "~/server/services/title-suggestions.service";
 import type { Prisma } from "~prisma";
 import { type Caller, moneyOf } from "./caller";
-import { applyWrite, previewWrite, spendUndo, undoFor } from "./money-write";
+import {
+	applyWrite,
+	previewWrite,
+	spendUndo,
+	toPreviewDto,
+	undoFor,
+} from "./money-write";
 import { readUndo } from "./undo";
 
 /** v1 adapters for /expenses. The mutations are the web's own (entry/expense.mutation.ts). */
@@ -260,6 +273,41 @@ export async function categorizeExpenses(caller: Caller, input: Bulk) {
 export const previewCategorizeExpenses = (caller: Caller, input: Bulk) =>
 	previewWrite(caller, categorizeMutation, bulkInput(input));
 
+type BulkDelete = z.infer<typeof bulkDeleteSchema>;
+
+/** One write for the whole set; one token brings every deleted expense back. */
+export async function removeExpenses(caller: Caller, input: BulkDelete) {
+	const done = await applyWrite(caller, deleteExpensesBulk, {
+		ids: input.ids,
+	});
+	return {
+		deleted: done.ids.length,
+		skipped: [...done.skipped],
+		undo: undoFor(caller, "expense", "expense.restoreMany", {
+			tokens: done.restores,
+		}),
+	};
+}
+
+/**
+ * One dry run of the whole set, so every "after" is exact. Its detail says
+ * how many would go and which ids would be skipped.
+ */
+export async function previewRemoveExpenses(caller: Caller, input: BulkDelete) {
+	const preview = await forUser(caller.principal.userId).preview(
+		deleteExpensesBulk,
+		{ ids: input.ids },
+	);
+	return {
+		...toPreviewDto(preview),
+		detail: {
+			kind: "expense.deleteMany" as const,
+			deleted: preview.value.ids.length,
+			skipped: [...preview.value.skipped],
+		},
+	};
+}
+
 export async function checkDuplicate(
 	caller: LedgerCaller,
 	q: { title: string; amount: string; date: string },
@@ -340,6 +388,26 @@ function stepOf(op: string, input: unknown): Step<unknown, unknown> {
 					input: { id: v.id, expectedUpdatedAt: v.updatedAt },
 				}),
 				idOf: (v) => v.id,
+			});
+		case "expense.deleteMany":
+			return step({
+				mutation: deleteExpensesBulk,
+				input: input as DeleteManyInput,
+				redo: (v) => ({
+					op: "expense.restoreMany",
+					input: { tokens: v.restores },
+				}),
+				idOf: () => null,
+			});
+		case "expense.restoreMany":
+			return step({
+				mutation: restoreExpensesBulk,
+				input: input as { tokens: RestoreToken[] },
+				redo: (v) => ({
+					op: "expense.deleteMany",
+					input: { ids: v.ids, expected: v.stamps },
+				}),
+				idOf: () => null,
 			});
 		case "expense.categorize":
 			return step({

@@ -454,6 +454,66 @@ describe("/api/v1/shared-expenses", () => {
 		expect(Number((await row(made.id))?.amount)).toBe(120);
 	});
 
+	it("keeps the people when the split is left out, scales set amounts, and names each share", async () => {
+		const made = await add({
+			description: "Set shares",
+			splitMode: "EXACT",
+			splitWith: [
+				{ type: "user", id: sofia.user.id, shareAmount: "30" },
+				{ type: "user", id: martin.user.id, shareAmount: "60" },
+			],
+		});
+		const { splitWith: _, ...rest } = body({
+			amount: "120",
+			description: "Set shares",
+			splitMode: "EXACT",
+		});
+		const edit = { ...rest, id: made.id };
+		type Share = {
+			id: string;
+			name: string;
+			you: boolean;
+			before: Money | null;
+			after: Money | null;
+		};
+		const preview = await expectBody<
+			Preview & { detail: { kind: string; shares: Share[] } }
+		>(await post(`/shared-expenses/${made.id}/preview`, edit), c.previewUpdate);
+		expect(preview.detail.kind).toBe("sharedExpense.update");
+		const shares = Object.fromEntries(
+			preview.detail.shares.map((s) => [s.id, s]),
+		);
+		expect(shares[sofia.user.id]).toMatchObject({
+			you: true,
+			before: ars(3000),
+			after: ars(4000),
+		});
+		expect(shares[martin.user.id]).toMatchObject({
+			you: false,
+			before: ars(6000),
+			after: ars(8000),
+		});
+		expect(shares[martin.user.id]?.name).not.toBe("");
+		// The dry run wrote nothing.
+		expect(Number((await row(made.id))?.amount)).toBe(90);
+
+		await expectBody<Write>(
+			await put(`/shared-expenses/${made.id}`, edit),
+			c.update,
+		);
+		const saved = await row(made.id);
+		expect(
+			saved?.splitParticipants
+				.map((p) => [p.participantId, Number(p.shareAmount)])
+				.sort(),
+		).toEqual(
+			[
+				[martin.user.id, 80],
+				[sofia.user.id, 40],
+			].sort(),
+		);
+	});
+
 	it("takes an add back and tells nobody, with a preview that matches", async () => {
 		const before = await owedToYou();
 		const made = await add({ description: "Oops" });

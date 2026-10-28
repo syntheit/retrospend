@@ -38,7 +38,12 @@ export const sharedExpenseDetailSchema = z
 				percentage: z.string().nullable(),
 				/** Number of shares, for a shares split. */
 				units: z.int().nullable(),
-				verification: z.enum(["PENDING", "ACCEPTED", "REJECTED", "AUTO_ACCEPTED"]),
+				verification: z.enum([
+					"PENDING",
+					"ACCEPTED",
+					"REJECTED",
+					"AUTO_ACCEPTED",
+				]),
 			}),
 		),
 		/** Someone besides you has accepted their share. */

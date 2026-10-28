@@ -86,7 +86,11 @@ export const sharedExpensesRouter = {
 	),
 	previewReject: s.previewReject.handler(
 		serve(({ context, input }) =>
-			shared.previewRejectSharedExpense(signedIn(context), input.id, input.reason),
+			shared.previewRejectSharedExpense(
+				signedIn(context),
+				input.id,
+				input.reason,
+			),
 		),
 	),
 };

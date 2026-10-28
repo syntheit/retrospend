@@ -49,6 +49,7 @@ export const EVENT_TYPES = [
 	"expense.undone",
 	"expense.updated",
 	"expenses.categorized",
+	"expenses.deleted",
 	"income.created",
 	"income.deleted",
 	"income.moved_in",
