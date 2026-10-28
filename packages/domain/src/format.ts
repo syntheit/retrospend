@@ -30,7 +30,6 @@ import {
 	numberSymbols,
 	withNumberFormat,
 } from "./format-locale";
-import { partsOf } from "./intl-parts";
 import { currencyDecimals } from "./money";
 import { money as checkedMoney, type Money } from "./money-minor";
 
@@ -164,32 +163,49 @@ function symbolFor(
 	return symbolUsers(symbol) === 1 ? symbol : undefined;
 }
 
-const narrowCache = new Map<string, string | undefined>();
-
 /**
- * The narrow symbol of a currency ("$", "€", "£", "R$"), or undefined when it
- * has none of its own (CHF, crypto): the code stands. Read from Intl once.
+ * The narrow symbol of the currencies people keep a home account in. A fixed
+ * table, not Intl: engines disagree (Hermes answers "ARS" or "US$"), and the
+ * same amount must read the same on every client. Every other currency has
+ * no narrow symbol here, so its code stands. A test checks each entry
+ * against CLDR (Intl "narrowSymbol").
  */
-function narrowSymbol(code: string): string | undefined {
-	if (narrowCache.has(code)) return narrowCache.get(code);
-	let found: string | undefined;
-	try {
-		const symbol = partsOf(
-			new Intl.NumberFormat("en", {
-				style: "currency",
-				currency: code,
-				currencyDisplay: "narrowSymbol",
-			}),
-			1,
-		).find((p) => p.type === "currency")?.value;
-		// An engine without narrow symbols answers "US$" or the code itself.
-		if (symbol && symbol !== code && symbol.length <= 2) found = symbol;
-	} catch {
-		found = undefined;
-	}
-	narrowCache.set(code, found);
-	return found;
-}
+export const NARROW_SYMBOLS: Readonly<Record<string, string>> = {
+	USD: "$",
+	CAD: "$",
+	AUD: "$",
+	NZD: "$",
+	MXN: "$",
+	ARS: "$",
+	CLP: "$",
+	COP: "$",
+	UYU: "$",
+	SGD: "$",
+	HKD: "$",
+	TWD: "$",
+	EUR: "\u20ac",
+	GBP: "\u00a3",
+	JPY: "\u00a5",
+	CNY: "\u00a5",
+	BRL: "R$",
+	INR: "\u20b9",
+	KRW: "\u20a9",
+	RUB: "\u20bd",
+	TRY: "\u20ba",
+	UAH: "\u20b4",
+	ILS: "\u20aa",
+	PHP: "\u20b1",
+	VND: "\u20ab",
+	THB: "\u0e3f",
+	NGN: "\u20a6",
+	PLN: "z\u0142",
+	CZK: "K\u010d",
+	HUF: "Ft",
+	SEK: "kr",
+	NOK: "kr",
+	DKK: "kr",
+	ZAR: "R",
+};
 
 function unitLabel(
 	code: string,
@@ -203,7 +219,7 @@ function unitLabel(
 	const symbol =
 		display === undefined
 			? code === homeCurrencyOf(locale)
-				? narrowSymbol(code)
+				? NARROW_SYMBOLS[code]
 				: undefined
 			: symbolFor(code, display, style);
 	if (!symbol) return code + NBSP;
