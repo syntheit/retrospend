@@ -130,9 +130,12 @@ export interface PeopleFilters {
 export function PeopleList({
 	top,
 	filters,
+	bar,
 }: {
 	top?: ReactNode;
 	filters?: PeopleFilters;
+	/** The screen's top bar; a list-detail pair draws it over the list pane. */
+	bar?: ReactNode;
 }) {
 	const t = useTranslations("mobile.people");
 	const { color, space } = useTheme();
@@ -235,7 +238,7 @@ export function PeopleList({
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
-			{filters ? null : (
+			{filters || listDetail ? null : (
 				<Stack.Screen
 					options={{
 						headerSearchBarOptions: {
@@ -247,6 +250,7 @@ export function PeopleList({
 				/>
 			)}
 			<ListDetail
+				bar={bar}
 				detail={
 					selected ? (
 						<PersonView key={keyOf(selected)} person={selected} />
@@ -257,6 +261,16 @@ export function PeopleList({
 					)
 				}
 				list={list}
+				search={
+					filters
+						? undefined
+						: {
+								value: query,
+								onChange: setQuery,
+								placeholder: t("search"),
+								ref: searchRef,
+							}
+				}
 			/>
 		</View>
 	);

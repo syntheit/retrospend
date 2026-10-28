@@ -8,10 +8,5 @@ import { PROJECTS_APART } from "@/layout/destinations";
 export default function PeopleScreen() {
 	const t = useTranslations("mobile.people");
 	if (!PROJECTS_APART) return <PeopleHub />;
-	return (
-		<>
-			<AccountTopBar title={t("title")} />
-			<PeopleList />
-		</>
-	);
+	return <PeopleList bar={<AccountTopBar title={t("title")} />} />;
 }
