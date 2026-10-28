@@ -75,7 +75,7 @@ describe("verdict sentence", () => {
 		expect(verdictSentence(verdict())).toEqual({
 			key: "onTrack",
 			values: {
-				amount: { kind: "money", money: ars(20000) },
+				amount: { kind: "money", money: ars(20000), whole: true },
 				days: { kind: "number", value: 6 },
 			},
 		});
