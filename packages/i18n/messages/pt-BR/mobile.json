@@ -64,7 +64,11 @@
 			"undone": "{title} removido",
 			"undoFailed": "Não foi possível desfazer. Tente de novo em Atividade.",
 			"discarded": "{title} descartado",
-			"parkedBackground": "{count, plural, one {Não foi possível adicionar # lançamento. Ele fica neste celular.} other {Não foi possível adicionar # lançamentos. Eles ficam neste celular.}}"
+			"parkedBackground": "{count, plural, one {Não foi possível adicionar # lançamento. Ele fica neste celular.} other {Não foi possível adicionar # lançamentos. Eles ficam neste celular.}}",
+			"edited": "{title} salvo",
+			"restored": "{title} restaurado",
+			"editOffline": "Você está offline. Editar precisa de conexão.",
+			"editRefused": "Não foi possível salvar esta alteração. Ela pode estar bloqueada ou dividida."
 		},
 		"changes": {
 			"title": "O que isso muda",
@@ -123,7 +127,8 @@
 				"accounts": "suas contas",
 				"project_total": "o total do projeto"
 			},
-			"noRate": "Ainda não há cotação para {currency}. Escolha outra moeda."
+			"noRate": "Ainda não há cotação para {currency}. Escolha outra moeda.",
+			"emptyTransfer": "Digite um valor e escolha duas contas para ver o que muda."
 		},
 		"list": {
 			"two": "{first} e {second}",
@@ -136,6 +141,42 @@
 			"retry": "Tentar de novo",
 			"discard": "Descartar",
 			"retryFailed": "Ainda não dá para enviar. Tente mais tarde."
+		},
+		"transferMode": "Transferência",
+		"titleTransfer": "Adicionar transferência",
+		"addTransfer": "Adicionar transferência",
+		"titleEdit": "Editar gasto",
+		"save": "Salvar",
+		"saveExpense": "Salvar gasto",
+		"editLoadError": "Não foi possível abrir este gasto",
+		"dateField": "Data",
+		"project": {
+			"label": "Projeto",
+			"none": "Nenhum",
+			"find": "Buscar um projeto",
+			"empty": "Nenhum projeto corresponde",
+			"loadFailed": "Não foi possível carregar as pessoas do projeto. Tente de novo."
+		},
+		"plan": {
+			"envelope": "Envelope",
+			"title": "Depois seu plano distribui",
+			"noBudget": "Usar meu plano precisa de um orçamento por envelopes. Fica como Ainda não planejado.",
+			"otherCurrency": "Seu plano distribui em {currency}. Esta receita fica como Ainda não planejado.",
+			"none": "Nada: todos os envelopes já têm fundos.",
+			"stays": "Ainda não planejado fica"
+		},
+		"transfer": {
+			"from": "De",
+			"to": "Para",
+			"received": "Recebido em {currency}",
+			"receivedPlaceholder": "Opcional",
+			"receivedHint": "Deixe vazio para usar a cotação de referência.",
+			"note": "Nota",
+			"notePlaceholder": "Opcional",
+			"errors": {
+				"same": "Escolha duas contas diferentes",
+				"places": "Escolha as duas contas"
+			}
 		}
 	},
 	"pickers": {
@@ -155,6 +196,10 @@
 			"empty": "Nenhuma categoria encontrada",
 			"recent": "Recentes",
 			"all": "Todas as categorias"
+		},
+		"account": {
+			"find": "Buscar uma conta",
+			"empty": "Nenhuma conta corresponde"
 		}
 	},
 	"entry": {
@@ -185,7 +230,8 @@
 			"refund": "Reembolso",
 			"transfer": "Transferência",
 			"payment": "Pagamento"
-		}
+		},
+		"edit": "Editar"
 	},
 	"connect": {
 		"title": "Conecte-se a um servidor",

@@ -16,7 +16,7 @@ import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { Segmented } from "@/ui/Segmented";
 import { amountMinor } from "./draft";
 
-export type EntryMode = "expense" | "income";
+export type EntryMode = "expense" | "income" | "transfer";
 
 /**
  * The composer's frame, the same on the iPhone tab, the iPad form sheet and
@@ -26,7 +26,9 @@ export type EntryMode = "expense" | "income";
  */
 export function ComposerShell({
 	mode,
+	modes,
 	onModeChange,
+	currencyLocked,
 	amountText,
 	currency,
 	currencies,
@@ -46,7 +48,11 @@ export function ComposerShell({
 	children,
 }: {
 	mode: EntryMode;
+	/** The modes to pick between; fewer than two hides the row (an edit). */
+	modes: EntryMode[];
 	onModeChange: (mode: EntryMode) => void;
+	/** The currency comes from an account, so it is shown and not picked. */
+	currencyLocked?: boolean;
 	amountText: string;
 	currency: string;
 	currencies: string[];
@@ -98,17 +104,19 @@ export function ComposerShell({
 				style={{ flex: 1 }}
 			>
 				{/* The M3 segmented button draws its outline past its box. */}
-				<View style={{ paddingVertical: space[1] }}>
-					<Segmented
-						accessibilityLabel={t("mode")}
-						onChange={onModeChange}
-						options={[
-							{ value: "expense", label: t("expense") },
-							{ value: "income", label: t("income") },
-						]}
-						value={mode}
-					/>
-				</View>
+				{modes.length > 1 ? (
+					<View style={{ paddingVertical: space[1] }}>
+						<Segmented
+							accessibilityLabel={t("mode")}
+							onChange={onModeChange}
+							options={modes.map((value) => ({
+								value,
+								label: t(value === "transfer" ? "transferMode" : value),
+							}))}
+							value={mode}
+						/>
+					</View>
+				) : null}
 				{children}
 			</ScrollView>
 			<View
@@ -129,13 +137,25 @@ export function ComposerShell({
 						minHeight: size.moneyInput.phone,
 					}}
 				>
-					<CurrencyPicker
-						currencies={currencies}
-						onChange={onCurrencyChange}
-						recent={recentCurrencies}
-						value={currency}
-						yours={yourCurrencies}
-					/>
+					{currencyLocked ? (
+						<Text
+							style={{
+								color: color.fg2,
+								fontSize: type.body.size,
+								fontWeight: "600",
+							}}
+						>
+							{currency}
+						</Text>
+					) : (
+						<CurrencyPicker
+							currencies={currencies}
+							onChange={onCurrencyChange}
+							recent={recentCurrencies}
+							value={currency}
+							yours={yourCurrencies}
+						/>
+					)}
 					<Pressable
 						accessibilityHint={padOpen ? undefined : t("showKeypad")}
 						accessibilityLabel={spoken}

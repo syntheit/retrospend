@@ -56,6 +56,28 @@ jest.mock("@/ui/Toast", () => ({ useToast: () => mockToast }));
 jest.mock("@/ui/CurrencyPicker", () => ({ CurrencyPicker: () => null }));
 jest.mock("./CategoryPicker", () => ({ CategoryPicker: () => null }));
 jest.mock("@/ui/Segmented", () => ({ Segmented: () => null }));
+// The sheet's rows as plain buttons, so a test can pick from it.
+jest.mock("@/ui/PickerSheet", () => {
+	const { Pressable } = require("react-native");
+	const React = require("react");
+	return {
+		// biome-ignore lint/suspicious/noExplicitAny: a stand-in for a native sheet
+		PickerSheet: ({ visible, groups, onSelect }: any) =>
+			visible
+				? // biome-ignore lint/suspicious/noExplicitAny: a stand-in for a native sheet
+					groups.flatMap((g: any) =>
+						// biome-ignore lint/suspicious/noExplicitAny: a stand-in for a native sheet
+						g.rows.map((r: any) =>
+							React.createElement(Pressable, {
+								key: r.id,
+								accessibilityLabel: `pick ${r.label}`,
+								onPress: () => onSelect(r.id),
+							}),
+						),
+					)
+				: null,
+	};
+});
 jest.mock("@/lib/intl", () => ({ useFormatLocale: () => "en-US" }));
 // use-intl ships untranspiled ES modules the jest preset does not transform;
 // this stand-in reads the real English catalog, so a missing key shows up.
@@ -68,6 +90,7 @@ jest.mock("use-intl", () => {
 			// biome-ignore lint/suspicious/noExplicitAny: a walk over the JSON tree
 			.reduce((node: any, part: string) => node?.[part], messages);
 	return {
+		useFormatter: () => ({ dateTime: (d: Date) => d.toDateString() }),
 		useTranslations: (ns?: string) => {
 			const t = (key: string, values: Record<string, unknown> = {}) =>
 				String(lookup(ns, key) ?? key).replace(/\{(\w+)\}/g, (_, name) =>
@@ -105,6 +128,16 @@ const planPreview = {
 	],
 	unchanged: [{ id: "spent", lines: [money(5_000_000)] }],
 	unavailable: [],
+	// What Use my plan would assign, from the same dry run.
+	detail: {
+		kind: "income.add",
+		plan: {
+			applied: true,
+			reason: null,
+			lines: [{ envelopeId: "rent", amount: money(25_000_000), step: "PLAN" }],
+			rest: money(9_000_000),
+		},
+	},
 };
 
 function fakeApi() {
@@ -145,10 +178,90 @@ function fakeApi() {
 		currencies: {
 			list: async () => page([{ code: "ARS", rateTypes: ["official"] }]),
 		},
-		budget: { verdict: async () => ({ style: "FLEX" }) },
+		budget: {
+			verdict: async () => ({ style: "FLEX" }),
+			month: async () => ({
+				groups: [{ envelopes: [{ id: "rent", name: "Rent" }] }],
+			}),
+		},
+		entry: {
+			catalog: async () => ({
+				places: [
+					{ id: "cash", name: "Cash", type: "CASH", currency: "ARS" },
+					{ id: "bank", name: "Bank", type: "CHECKING", currency: "ARS" },
+				],
+			}),
+		},
+		projects: {
+			list: async () => ({
+				items: [
+					{
+						id: "trip",
+						name: "Trip",
+						status: "ACTIVE",
+						myRole: "EDITOR",
+						imageUrl: null,
+						currency: "ARS",
+						peopleCount: 3,
+					},
+					{
+						id: "club",
+						name: "Club",
+						status: "ACTIVE",
+						myRole: "VIEWER",
+						imageUrl: null,
+						currency: "ARS",
+						peopleCount: 9,
+					},
+				],
+			}),
+			members: write("projects.members", () => ({
+				items: [
+					{ participantType: "user", participantId: "me1", name: "Sofía" },
+					{
+						participantType: "guest",
+						participantId: "ana1",
+						name: "Ana",
+						imageUrl: null,
+					},
+				],
+			})),
+		},
+		transfers: {
+			previewCreate: write("transfer.preview", () => ({
+				changes: [],
+				unchanged: [],
+				unavailable: [],
+			})),
+			create: write("transfer.create", () => ({ undo: "undo-transfer" })),
+			undo: write("transfer.undo"),
+		},
 		expenses: {
 			list: async () => page([{ amount: { minor: 100, currency: "USD" } }]),
 			create: write("expenses.create", () => ({ undo: "undo-expense" })),
+			get: async () => ({
+				id: "e1",
+				kind: "expense",
+				title: "Lunch",
+				amount: { minor: 1_000_000, currency: "ARS" },
+				rateType: null,
+				date: "2026-10-20",
+				categoryId: "cafe",
+				location: "Tortoni",
+				description: null,
+				amortizeOver: null,
+				excludeFromAnalytics: false,
+			}),
+			previewUpdate: write("expense.previewUpdate", () => ({
+				changes: [],
+				unchanged: [],
+				unavailable: [],
+			})),
+			update: write("expense.update", () => ({
+				expense: {},
+				undo: "undo-edit",
+			})),
+			undo: write("expense.undo"),
 		},
 		"shared-expenses": {
 			previewCreate: write("shared.preview", () => ({
@@ -170,10 +283,16 @@ function fakeApi() {
 
 const flush = () => act(async () => {});
 
-async function open(mode: EntryMode, onDone: () => void = () => {}) {
+async function open(
+	mode: EntryMode,
+	onDone: () => void = () => {},
+	editId?: string,
+) {
 	let tree!: Tree;
 	await act(async () => {
-		tree = create(<EntryComposer initialMode={mode} onDone={onDone} />);
+		tree = create(
+			<EntryComposer editId={editId} initialMode={mode} onDone={onDone} />,
+		);
 	});
 	await flush();
 	return tree;
@@ -353,6 +472,12 @@ describe("Add income with Use my plan", () => {
 		expect(words(tree)).toContain("+ARS 340,000");
 		expect(words(tree)).toContain("to ARS 340,000");
 		expect(words(tree)).toContain("Stays the same: your spending.");
+		// Then the plan: the envelope it fills and what stays Not planned yet.
+		expect(words(tree)).toContain("Then your plan assigns");
+		expect(words(tree)).toContain("Rent");
+		expect(words(tree)).toContain("+ARS 250,000");
+		expect(words(tree)).toContain("Not planned yet stays");
+		expect(words(tree)).toContain("ARS 90,000");
 
 		press(tree, "Add income");
 		await flush();
@@ -461,6 +586,119 @@ describe("Save waits for the dry run of what it will send", () => {
 		press(tree, "Add expense");
 		await flush();
 		expect(creates(calls)).toHaveLength(1);
+		act(() => tree.unmount());
+	});
+});
+
+describe("Add expense into a project", () => {
+	it("hides projects a viewer can not add to, takes in the people and writes projectId", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+		press(tree, "Project, No project");
+		expect(
+			find(tree, (p) => p.accessibilityLabel === "pick Club"),
+		).toHaveLength(0);
+		press(tree, "pick Trip");
+		await flush();
+		// The project's people on the day come in; you are the payer.
+		expect(words(tree)).toContain("Ana");
+		press(tree, "Cafe");
+		for (const key of ["9", "0", "0"]) press(tree, key);
+		await settle();
+		press(tree, "Add expense");
+		await flush();
+		const sent = calls.find((c) => c.route === "shared.create");
+		expect(sent?.input).toMatchObject({
+			projectId: "trip",
+			paidBy: { type: "user", id: "me1" },
+			splitWith: [
+				{ type: "user", id: "me1" },
+				{ type: "guest", id: "ana1" },
+			],
+		});
+		act(() => tree.unmount());
+	});
+});
+
+describe("Add transfer", () => {
+	it("previews and writes a move between two accounts, and undoes it", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("transfer");
+		for (const key of ["1", "5", "0", "0"]) press(tree, key);
+		await settle();
+		expect(calls.some((c) => c.route === "transfer.preview")).toBe(true);
+		press(tree, "Add transfer");
+		await flush();
+		expect(calls.find((c) => c.route === "transfer.create")?.input).toEqual({
+			id: "6f1d1c1e-5b0e-4f5c-9c33-0a4a1c0f8a11",
+			fromAccountId: "cash",
+			toAccountId: "bank",
+			fromCurrency: "ARS",
+			toCurrency: "ARS",
+			fromAmount: "1500.00",
+			date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+		});
+		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		expect(toast.message).toBe("Added Cash > Bank");
+		await act(async () => toast.undo.onUndo());
+		expect(calls.some((c) => c.route === "transfer.undo")).toBe(true);
+		act(() => tree.unmount());
+	});
+});
+
+describe("Edit expense", () => {
+	it("starts from the saved values, previews the update, saves and undoes", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const done = jest.fn();
+		const tree = await open("expense", done, "e1");
+		expect(words(tree)).toContain("10,000");
+		type(tree, "Title", "Team lunch");
+		await settle();
+		const preview = calls.find((c) => c.route === "expense.previewUpdate");
+		expect(preview?.input).toMatchObject({ id: "e1", title: "Team lunch" });
+		press(tree, "Save expense");
+		await flush();
+		expect(calls.find((c) => c.route === "expense.update")?.input).toEqual({
+			id: "e1",
+			title: "Team lunch",
+			amount: "10000.00",
+			currency: "ARS",
+			date: "2026-10-20",
+			categoryId: "cafe",
+			excludeFromAnalytics: false,
+			location: "Tortoni",
+		});
+		expect(done).toHaveBeenCalledTimes(1);
+		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		expect(toast.message).toBe("Saved Team lunch");
+		await act(async () => toast.undo.onUndo());
+		expect(calls.find((c) => c.route === "expense.undo")?.input).toEqual({
+			token: "undo-edit",
+		});
+		// An edit never goes through the outbox.
+		expect(await local.outbox.all()).toHaveLength(0);
+		act(() => tree.unmount());
+	});
+
+	it("keeps the sheet open and says so when the phone is offline", async () => {
+		const { api } = fakeApi();
+		(api as unknown as { expenses: { update: unknown } }).expenses.update =
+			async () => {
+				throw new TypeError("Network request failed");
+			};
+		mockSession.api = api;
+		const done = jest.fn();
+		const tree = await open("expense", done, "e1");
+		await settle();
+		press(tree, "Save expense");
+		await flush();
+		expect(done).not.toHaveBeenCalled();
+		expect(mockToast.show).toHaveBeenLastCalledWith({
+			message: "You're offline. Editing needs a connection.",
+		});
 		act(() => tree.unmount());
 	});
 });

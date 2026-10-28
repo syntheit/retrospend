@@ -1,6 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { PendingWrite } from "./draft";
-import { changeLines, fetchPreview, type PreviewDto } from "./preview";
+import { changeLines, fetchPreview, type PreviewDto, planOf } from "./preview";
 
 const line = (minor: number, currency = "ARS") => ({ minor, currency });
 
@@ -148,5 +148,54 @@ describe("fetchPreview", () => {
 				body: { ...write.body, currency: "UYU" },
 			}),
 		).toEqual({ status: "refused", reason: "missingRate", currency: "UYU" });
+	});
+});
+
+describe("planOf", () => {
+	const none: PreviewDto = { changes: [], unchanged: [], unavailable: [] };
+	const withPlan = (plan: Record<string, unknown>): PreviewDto => ({
+		...none,
+		detail: { kind: "income.add", plan },
+	});
+
+	it("lists the lines the plan would write and what stays", () => {
+		const plan = planOf(
+			withPlan({
+				applied: true,
+				reason: null,
+				lines: [
+					{ envelopeId: "rent", amount: line(250_000_000), step: "PLAN" },
+				],
+				rest: line(45_000_000),
+			}),
+		);
+		expect(plan).toEqual({
+			applied: true,
+			reason: null,
+			lines: [{ envelopeId: "rent", amount: line(250_000_000) }],
+			rest: line(45_000_000),
+		});
+	});
+
+	it("says why it could not run", () => {
+		const plan = planOf(
+			withPlan({
+				applied: false,
+				reason: "no_envelope_budget",
+				lines: [],
+				rest: null,
+			}),
+		);
+		expect(plan).toMatchObject({
+			applied: false,
+			reason: "no_envelope_budget",
+		});
+	});
+
+	it("shows nothing when the plan was not asked for or the write has none", () => {
+		expect(
+			planOf(withPlan({ applied: false, reason: "not_requested", lines: [] })),
+		).toBeNull();
+		expect(planOf(none)).toBeNull();
 	});
 });

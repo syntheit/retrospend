@@ -64,7 +64,11 @@
 			"undone": "{title} retiré",
 			"undoFailed": "Impossible d'annuler. Réessaie depuis Activité.",
 			"discarded": "{title} supprimé",
-			"parkedBackground": "{count, plural, one {Impossible d'ajouter # saisie. Elle reste sur ce téléphone.} other {Impossible d'ajouter # saisies. Elles restent sur ce téléphone.}}"
+			"parkedBackground": "{count, plural, one {Impossible d'ajouter # saisie. Elle reste sur ce téléphone.} other {Impossible d'ajouter # saisies. Elles restent sur ce téléphone.}}",
+			"edited": "{title} enregistré",
+			"restored": "{title} rétabli",
+			"editOffline": "Tu es hors ligne. Modifier demande une connexion.",
+			"editRefused": "Impossible d'enregistrer ce changement. Il est peut-être verrouillé ou partagé."
 		},
 		"changes": {
 			"title": "Ce que ça change",
@@ -123,7 +127,8 @@
 				"accounts": "tes comptes",
 				"project_total": "le total du projet"
 			},
-			"noRate": "Pas encore de taux pour {currency}. Choisis une autre devise."
+			"noRate": "Pas encore de taux pour {currency}. Choisis une autre devise.",
+			"emptyTransfer": "Saisis un montant et choisis deux comptes pour voir ce qui change."
 		},
 		"list": {
 			"two": "{first} et {second}",
@@ -136,6 +141,42 @@
 			"retry": "Réessayer",
 			"discard": "Supprimer",
 			"retryFailed": "Envoi toujours impossible. Réessaie plus tard."
+		},
+		"transferMode": "Virement",
+		"titleTransfer": "Ajouter un virement",
+		"addTransfer": "Ajouter un virement",
+		"titleEdit": "Modifier la dépense",
+		"save": "Enregistrer",
+		"saveExpense": "Enregistrer la dépense",
+		"editLoadError": "Impossible d'ouvrir cette dépense",
+		"dateField": "Date",
+		"project": {
+			"label": "Projet",
+			"none": "Aucun",
+			"find": "Chercher un projet",
+			"empty": "Aucun projet ne correspond",
+			"loadFailed": "Impossible de charger les personnes du projet. Réessaie."
+		},
+		"plan": {
+			"envelope": "Enveloppe",
+			"title": "Ensuite ton plan attribue",
+			"noBudget": "Utiliser mon plan demande un budget par enveloppes. Ça reste Pas encore prévu.",
+			"otherCurrency": "Ton plan attribue en {currency}. Ce revenu reste Pas encore prévu.",
+			"none": "Rien : chaque enveloppe est déjà remplie.",
+			"stays": "Pas encore prévu reste"
+		},
+		"transfer": {
+			"from": "De",
+			"to": "Vers",
+			"received": "Reçu en {currency}",
+			"receivedPlaceholder": "Facultatif",
+			"receivedHint": "Laisse vide pour utiliser le taux de référence.",
+			"note": "Note",
+			"notePlaceholder": "Facultatif",
+			"errors": {
+				"same": "Choisis deux comptes différents",
+				"places": "Choisis les deux comptes"
+			}
 		}
 	},
 	"pickers": {
@@ -155,6 +196,10 @@
 			"empty": "Aucune catégorie ne correspond",
 			"recent": "Récentes",
 			"all": "Toutes les catégories"
+		},
+		"account": {
+			"find": "Chercher un compte",
+			"empty": "Aucun compte ne correspond"
 		}
 	},
 	"entry": {
@@ -185,7 +230,8 @@
 			"refund": "Remboursement",
 			"transfer": "Virement",
 			"payment": "Paiement"
-		}
+		},
+		"edit": "Modifier"
 	},
 	"connect": {
 		"title": "Se connecter à un serveur",

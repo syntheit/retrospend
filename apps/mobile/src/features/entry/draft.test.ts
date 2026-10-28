@@ -1,13 +1,18 @@
 import { applyKey, TRIPLE_ZERO } from "@/ui/keypad";
 import {
 	amountMinor,
+	buildExpenseUpdate,
 	buildExpenseWrite,
 	buildIncomeWrite,
+	buildTransferWrite,
 	expenseErrors,
+	expenseFromEntry,
 	incomeErrors,
 	newExpenseDraft,
 	newIncomeDraft,
+	newTransferDraft,
 	splitRows,
+	transferErrors,
 } from "./draft";
 import type { EntryCatalog, EntryPerson } from "./types";
 
@@ -32,6 +37,12 @@ const catalog: EntryCatalog = {
 	people: [lucia, martin],
 	currencies: ["ARS", "USD"],
 	recentCurrencies: ["USD"],
+	places: [
+		{ id: "cash", name: "Cash", type: "CASH", currency: "ARS" },
+		{ id: "bank", name: "Bank", type: "CHECKING", currency: "ARS" },
+		{ id: "usd", name: "Dollars", type: "CASH", currency: "USD" },
+	],
+	projects: [],
 	hasBudget: true,
 };
 
@@ -248,5 +259,172 @@ describe("buildIncomeWrite", () => {
 		const input = { locale: "en-US", hasBudget: true };
 		expect(buildIncomeWrite({ ...filled, amountText: "" }, input)).toBeNull();
 		expect(buildIncomeWrite({ ...filled, source: " " }, input)).toBeNull();
+	});
+});
+
+describe("editing a saved expense", () => {
+	const saved = {
+		id: ID,
+		title: "Lunch",
+		amount: { minor: 1_250_050, currency: "ARS" },
+		rateType: null,
+		date: "2026-10-20",
+		categoryId: "food",
+		location: "Cafe Tortoni",
+		description: "with the team",
+		amortizeOver: null,
+		excludeFromAnalytics: true,
+	};
+
+	it("opens with the saved values in the person's own separators", () => {
+		const d = expenseFromEntry(saved, "es-AR");
+		expect(d.amountText).toBe("12.500,50");
+		expect(amountMinor(d.amountText, "es-AR", "ARS")).toBe(1_250_050);
+		expect(d).toMatchObject({ id: ID, title: "Lunch", categoryId: "food" });
+	});
+
+	it("sends every field back, keeping what it has no field for", () => {
+		const d = { ...expenseFromEntry(saved, "en-US"), title: "Team lunch" };
+		const write = buildExpenseUpdate(d, { locale: "en-US", catalog });
+		expect(write).toEqual({
+			entity: "expenses",
+			kind: "update",
+			label: "Team lunch",
+			body: {
+				id: ID,
+				title: "Team lunch",
+				amount: "12500.50",
+				currency: "ARS",
+				date: "2026-10-20",
+				categoryId: "food",
+				excludeFromAnalytics: true,
+				location: "Cafe Tortoni",
+				description: "with the team",
+			},
+		});
+	});
+
+	it("keeps the rate type only while the currency is the saved one", () => {
+		const d = expenseFromEntry({ ...saved, rateType: "blue" }, "en-US");
+		const same = buildExpenseUpdate(d, { locale: "en-US", catalog });
+		expect(same?.body.rateType).toBe("blue");
+		const other = buildExpenseUpdate(
+			{ ...d, currency: "USD", amountText: "5" },
+			{ locale: "en-US", catalog },
+		);
+		expect(other?.body.rateType).toBeUndefined();
+	});
+
+	it("is not an add: the add builder refuses an edit", () => {
+		const d = expenseFromEntry(saved, "en-US");
+		expect(
+			buildExpenseWrite(d, { locale: "en-US", meId: "me", catalog }),
+		).toBeNull();
+	});
+});
+
+describe("a project expense", () => {
+	const draft = {
+		...newExpenseDraft(base),
+		amountText: "100",
+		categoryId: "food",
+		projectId: "trip",
+	};
+
+	it("goes to shared expenses with the project, even alone", () => {
+		const write = buildExpenseWrite(draft, {
+			locale: "en-US",
+			meId: "me",
+			catalog,
+		});
+		expect(write?.entity).toBe("shared-expenses");
+		expect(write?.body).toMatchObject({
+			projectId: "trip",
+			splitWith: [{ type: "user", id: "me" }],
+		});
+	});
+
+	it("splits with the project's people, who need not be in the catalog", () => {
+		const ana: EntryPerson = {
+			type: "guest",
+			id: "ana1",
+			name: "Ana",
+			imageUrl: null,
+		};
+		const write = buildExpenseWrite(
+			{ ...draft, projectPeople: [ana], withKeys: ["guest:ana1"] },
+			{ locale: "en-US", meId: "me", catalog },
+		);
+		expect(write?.body.splitWith).toEqual([
+			{ type: "user", id: "me" },
+			{ type: "guest", id: "ana1" },
+		]);
+	});
+
+	it("leaves projectId out of an expense without one", () => {
+		const write = buildExpenseWrite(
+			{ ...draft, projectId: null, withKeys: ["user:lucia1"] },
+			{ locale: "en-US", meId: "me", catalog },
+		);
+		expect(write?.body).not.toHaveProperty("projectId");
+	});
+});
+
+describe("a transfer", () => {
+	const input = { locale: "en-US", places: catalog.places };
+	const draft = {
+		...newTransferDraft({
+			id: ID,
+			date: "2026-10-25",
+			currency: "ARS",
+			places: catalog.places,
+		}),
+		amountText: "1,500",
+	};
+
+	it("starts from an account in your currency to another one", () => {
+		expect(draft).toMatchObject({ fromId: "cash", toId: "bank" });
+	});
+
+	it("moves money in one currency with one amount", () => {
+		expect(buildTransferWrite(draft, input)).toEqual({
+			entity: "transfers",
+			label: "Cash > Bank",
+			body: {
+				id: ID,
+				fromAccountId: "cash",
+				toAccountId: "bank",
+				fromCurrency: "ARS",
+				toCurrency: "ARS",
+				fromAmount: "1500.00",
+				date: "2026-10-25",
+			},
+		});
+	});
+
+	it("is an exchange across currencies: what arrived is optional", () => {
+		const across = { ...draft, toId: "usd", note: " trip " };
+		expect(buildTransferWrite(across, input)?.body).not.toHaveProperty(
+			"toAmount",
+		);
+		const typed = buildTransferWrite(
+			{ ...across, receivedText: "1.25" },
+			input,
+		);
+		expect(typed?.body).toMatchObject({
+			toCurrency: "USD",
+			toAmount: "1.25",
+			note: "trip",
+		});
+	});
+
+	it("needs two different accounts and an amount", () => {
+		expect(transferErrors({ ...draft, toId: "cash" }, input)).toEqual({
+			same: true,
+		});
+		expect(transferErrors({ ...draft, amountText: "" }, input)).toEqual({
+			amount: true,
+		});
+		expect(buildTransferWrite({ ...draft, toId: null }, input)).toBeNull();
 	});
 });

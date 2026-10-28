@@ -1,3 +1,4 @@
+import type { RetrospendClient } from "@retrospend/api-client";
 import { useEffect, useState } from "react";
 import { useSession } from "@/auth/session";
 import { type CatalogState, loadEntryCatalog } from "./catalog";
@@ -52,7 +53,7 @@ export function useEntryPreview(write: PendingWrite | null): PreviewState {
 	});
 	// A new object every render, but the same text while nothing changed.
 	const signature = write
-		? `${write.entity}:${JSON.stringify(write.body)}`
+		? `${write.entity}:${write.kind ?? "create"}:${JSON.stringify(write.body)}`
 		: "";
 
 	useEffect(() => {
@@ -72,4 +73,41 @@ export function useEntryPreview(write: PendingWrite | null): PreviewState {
 
 	if (!write) return { status: "idle" };
 	return kept.signature === signature ? kept.state : { status: "loading" };
+}
+
+export type EditState =
+	| { status: "idle" }
+	| { status: "loading" }
+	| { status: "error" }
+	| {
+			status: "ready";
+			entry: Awaited<ReturnType<RetrospendClient["expenses"]["get"]>>;
+	  };
+
+/**
+ * The saved expense an edit starts from, read fresh: an edit replaces the
+ * server's row, so it must begin from the server's current values.
+ */
+export function useEditEntry(id: string | undefined): EditState {
+	const { api } = useSession();
+	const [state, setState] = useState<EditState>(
+		id ? { status: "loading" } : { status: "idle" },
+	);
+	useEffect(() => {
+		if (!id) return;
+		if (!api) {
+			setState({ status: "error" });
+			return;
+		}
+		let cancelled = false;
+		setState({ status: "loading" });
+		api.expenses.get({ id }).then(
+			(entry) => !cancelled && setState({ status: "ready", entry }),
+			() => !cancelled && setState({ status: "error" }),
+		);
+		return () => {
+			cancelled = true;
+		};
+	}, [api, id]);
+	return state;
 }

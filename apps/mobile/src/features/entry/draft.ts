@@ -1,8 +1,13 @@
-import { fromMinor, money } from "@retrospend/domain/money-minor";
-import { parseMoneyInput } from "@retrospend/domain/parse";
-import { resolveSplits } from "@retrospend/domain/shared-split-computation";
 import { fromMinorUnits, toMinorUnits } from "@retrospend/domain/money";
-import { type EntryCatalog, type EntryPerson, personKey } from "./types";
+import { fromMinor, money } from "@retrospend/domain/money-minor";
+import { draftFromMinor, parseMoneyInput } from "@retrospend/domain/parse";
+import { resolveSplits } from "@retrospend/domain/shared-split-computation";
+import {
+	type EntryCatalog,
+	type EntryPerson,
+	type EntryPlace,
+	personKey,
+} from "./types";
 
 // The composers' state as plain data, and the pure steps on it: what the
 // keypad typed, which write it becomes, and the equal split shown before
@@ -21,6 +26,38 @@ export interface ExpenseDraft {
 	withKeys: string[];
 	/** The day, "yyyy-MM-dd". */
 	date: string;
+	/** The project it goes into; it makes the expense a shared one. */
+	projectId: string | null;
+	/** The project's people on that day (you left out), for people the catalog lacks. */
+	projectPeople: EntryPerson[];
+	/** Set when the composer edits a saved expense; null when it adds one. */
+	editing: ExpenseEdit | null;
+}
+
+/**
+ * What an edit keeps of the saved expense. The server replaces every field
+ * of an expense, so what the composer has no field for goes back as it was.
+ */
+export interface ExpenseEdit {
+	currency: string;
+	rateType: string | null;
+	location: string | null;
+	description: string | null;
+	amortizeOver: number | null;
+	excludeFromAnalytics: boolean;
+}
+
+export interface TransferDraft {
+	/** The new transfer's id, made once per composer. */
+	id: string;
+	fromId: string | null;
+	toId: string | null;
+	/** What leaves the first account, in its currency. */
+	amountText: string;
+	/** Exchange only: what arrived. Empty: the server books the reference rate. */
+	receivedText: string;
+	note: string;
+	date: string;
 }
 
 export interface IncomeDraft {
@@ -35,7 +72,9 @@ export interface IncomeDraft {
 
 /** A write waiting for the outbox: the v1 collection and the request body. */
 export interface PendingWrite {
-	entity: "expenses" | "shared-expenses" | "income";
+	entity: "expenses" | "shared-expenses" | "income" | "transfers";
+	/** An edit of a saved expense is sent at once, never queued. */
+	kind?: "create" | "update";
 	body: Record<string, unknown>;
 	/** What the toast calls it: the title, or the source. */
 	label: string;
@@ -53,7 +92,81 @@ export function newExpenseDraft(input: {
 		categoryId: null,
 		withKeys: [],
 		date: input.date,
+		projectId: null,
+		projectPeople: [],
+		editing: null,
 	};
+}
+
+/** The saved entry (GET /expenses/{id}) as the composer's draft. */
+export function expenseFromEntry(
+	entry: {
+		id: string;
+		title: string;
+		amount: { minor: number; currency: string };
+		rateType: string | null;
+		date: string;
+		categoryId: string | null;
+		location: string | null;
+		description: string | null;
+		amortizeOver: number | null;
+		excludeFromAnalytics: boolean;
+	},
+	locale: string,
+): ExpenseDraft {
+	const { currency } = entry.amount;
+	return {
+		id: entry.id,
+		currency,
+		amountText: draftFromMinor(Math.abs(entry.amount.minor), locale, currency),
+		title: entry.title,
+		categoryId: entry.categoryId,
+		withKeys: [],
+		date: entry.date,
+		projectId: null,
+		projectPeople: [],
+		editing: {
+			currency,
+			rateType: entry.rateType,
+			location: entry.location,
+			description: entry.description,
+			amortizeOver: entry.amortizeOver,
+			excludeFromAnalytics: entry.excludeFromAnalytics,
+		},
+	};
+}
+
+export function newTransferDraft(input: {
+	id: string;
+	date: string;
+	currency: string;
+	places: EntryPlace[];
+}): TransferDraft {
+	// From: an account in the currency you usually spend in; To: another one.
+	const from =
+		input.places.find((p) => p.currency === input.currency) ?? input.places[0];
+	const to = input.places.find((p) => p.id !== from?.id);
+	return {
+		id: input.id,
+		fromId: from?.id ?? null,
+		toId: to?.id ?? null,
+		amountText: "",
+		receivedText: "",
+		note: "",
+		date: input.date,
+	};
+}
+
+/** The people a split can name: the catalog's, plus the project's own. */
+export function knownPeople(
+	d: Pick<ExpenseDraft, "projectPeople">,
+	catalogPeople: EntryPerson[],
+): EntryPerson[] {
+	const seen = new Set(catalogPeople.map(personKey));
+	return [
+		...catalogPeople,
+		...d.projectPeople.filter((p) => !seen.has(personKey(p))),
+	];
 }
 
 export function newIncomeDraft(input: {
@@ -168,7 +281,8 @@ export function buildExpenseWrite(
 	if (!minor || !category) return null;
 	const title = d.title.trim() || category.name;
 	const amount = fromMinor(money(minor, d.currency));
-	if (d.withKeys.length === 0) {
+	if (d.editing) return null;
+	if (d.withKeys.length === 0 && !d.projectId) {
 		return {
 			entity: "expenses",
 			label: title,
@@ -182,11 +296,13 @@ export function buildExpenseWrite(
 			},
 		};
 	}
+	const people = knownPeople(d, input.catalog.people);
 	const others = d.withKeys.flatMap((key) => {
-		const p = input.catalog.people.find((x) => personKey(x) === key);
+		const p = people.find((x) => personKey(x) === key);
 		return p ? [{ type: p.type, id: p.id }] : [];
 	});
-	if (others.length === 0) return null;
+	// A project can hold an expense of yours alone; any other split needs someone.
+	if (others.length === 0 && !d.projectId) return null;
 	const you = { type: "user" as const, id: input.meId };
 	return {
 		entity: "shared-expenses",
@@ -201,6 +317,109 @@ export function buildExpenseWrite(
 			paidBy: you,
 			splitMode: "EQUAL",
 			splitWith: [you, ...others],
+			...(d.projectId ? { projectId: d.projectId } : {}),
+		},
+	};
+}
+
+/**
+ * The request that saves an edit: PUT /expenses/{id}, every field sent.
+ * What the composer does not show (place, notes, spread, left out of
+ * insights) goes back as it was; the rate type only while the currency is
+ * still the saved one.
+ */
+export function buildExpenseUpdate(
+	d: ExpenseDraft,
+	input: { locale: string; catalog: EntryCatalog },
+): PendingWrite | null {
+	const { editing } = d;
+	const minor = amountMinor(d.amountText, input.locale, d.currency);
+	const category = input.catalog.categories.find((c) => c.id === d.categoryId);
+	if (!editing || !minor || !category) return null;
+	const title = d.title.trim() || category.name;
+	return {
+		entity: "expenses",
+		kind: "update",
+		label: title,
+		body: {
+			id: d.id,
+			title,
+			amount: fromMinor(money(minor, d.currency)),
+			currency: d.currency,
+			date: d.date,
+			categoryId: category.id,
+			excludeFromAnalytics: editing.excludeFromAnalytics,
+			...(editing.rateType && editing.currency === d.currency
+				? { rateType: editing.rateType }
+				: {}),
+			...(editing.location ? { location: editing.location } : {}),
+			...(editing.description ? { description: editing.description } : {}),
+			...(editing.amortizeOver ? { amortizeOver: editing.amortizeOver } : {}),
+		},
+	};
+}
+
+export type TransferErrors = Partial<
+	Record<"amount" | "same" | "places", true>
+>;
+
+/** The place a transfer leaves from, with its currency (the amount's). */
+export function transferCurrencies(
+	d: TransferDraft,
+	places: EntryPlace[],
+): { from: string | null; to: string | null } {
+	return {
+		from: places.find((p) => p.id === d.fromId)?.currency ?? null,
+		to: places.find((p) => p.id === d.toId)?.currency ?? null,
+	};
+}
+
+export function transferErrors(
+	d: TransferDraft,
+	input: { locale: string; places: EntryPlace[] },
+): TransferErrors {
+	const errors: TransferErrors = {};
+	const { from } = transferCurrencies(d, input.places);
+	if (!d.fromId || !d.toId) errors.places = true;
+	else if (d.fromId === d.toId) errors.same = true;
+	if (!from || !amountMinor(d.amountText, input.locale, from)) {
+		errors.amount = true;
+	}
+	return errors;
+}
+
+/**
+ * Move money between two of your accounts. Two currencies make it an
+ * exchange: what arrived is optional, and the server books the reference
+ * rate for a side left empty.
+ */
+export function buildTransferWrite(
+	d: TransferDraft,
+	input: { locale: string; places: EntryPlace[] },
+): PendingWrite | null {
+	if (Object.keys(transferErrors(d, input)).length > 0) return null;
+	const { from, to } = transferCurrencies(d, input.places);
+	if (!from || !to) return null;
+	const out = amountMinor(d.amountText, input.locale, from);
+	if (!out) return null;
+	const received =
+		from === to ? null : amountMinor(d.receivedText, input.locale, to);
+	const note = d.note.trim();
+	const fromName = input.places.find((p) => p.id === d.fromId)?.name ?? "";
+	const toName = input.places.find((p) => p.id === d.toId)?.name ?? "";
+	return {
+		entity: "transfers",
+		label: `${fromName} > ${toName}`,
+		body: {
+			id: d.id,
+			fromAccountId: d.fromId,
+			toAccountId: d.toId,
+			fromCurrency: from,
+			toCurrency: to,
+			fromAmount: fromMinor(money(out, from)),
+			...(received ? { toAmount: fromMinor(money(received, to)) } : {}),
+			date: d.date,
+			...(note ? { note } : {}),
 		},
 	};
 }

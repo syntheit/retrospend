@@ -64,7 +64,11 @@
 			"undone": "Removed {title}",
 			"undoFailed": "Couldn't undo. Try again from Activity.",
 			"discarded": "Discarded {title}",
-			"parkedBackground": "{count, plural, one {# entry couldn't be added. It stays on this phone.} other {# entries couldn't be added. They stay on this phone.}}"
+			"parkedBackground": "{count, plural, one {# entry couldn't be added. It stays on this phone.} other {# entries couldn't be added. They stay on this phone.}}",
+			"edited": "Saved {title}",
+			"restored": "Restored {title}",
+			"editOffline": "You're offline. Editing needs a connection.",
+			"editRefused": "Couldn't save this change. It may be locked or split."
 		},
 		"changes": {
 			"title": "What this changes",
@@ -123,7 +127,8 @@
 				"accounts": "your accounts",
 				"project_total": "the project total"
 			},
-			"noRate": "No rate yet for {currency}. Pick another currency."
+			"noRate": "No rate yet for {currency}. Pick another currency.",
+			"emptyTransfer": "Type an amount and pick two accounts to see what changes."
 		},
 		"list": {
 			"two": "{first} and {second}",
@@ -136,6 +141,42 @@
 			"retry": "Try again",
 			"discard": "Discard",
 			"retryFailed": "Still can't send it. Try again later."
+		},
+		"transferMode": "Transfer",
+		"titleTransfer": "Add transfer",
+		"addTransfer": "Add transfer",
+		"titleEdit": "Edit expense",
+		"save": "Save",
+		"saveExpense": "Save expense",
+		"editLoadError": "Couldn't open this expense",
+		"dateField": "Date",
+		"project": {
+			"label": "Project",
+			"none": "No project",
+			"find": "Find a project",
+			"empty": "No project matches",
+			"loadFailed": "Couldn't load the project's people. Try again."
+		},
+		"plan": {
+			"envelope": "Envelope",
+			"title": "Then your plan assigns",
+			"noBudget": "Use my plan needs an envelope budget. It stays Not planned yet.",
+			"otherCurrency": "Your plan assigns in {currency}. This income stays Not planned yet.",
+			"none": "Nothing: every envelope is already funded.",
+			"stays": "Not planned yet stays"
+		},
+		"transfer": {
+			"from": "From",
+			"to": "To",
+			"received": "Received in {currency}",
+			"receivedPlaceholder": "Optional",
+			"receivedHint": "Leave it empty and the reference rate is used.",
+			"note": "Note",
+			"notePlaceholder": "Optional",
+			"errors": {
+				"same": "Pick two different accounts",
+				"places": "Pick both accounts"
+			}
 		}
 	},
 	"pickers": {
@@ -155,6 +196,10 @@
 			"empty": "No category matches",
 			"recent": "Recent",
 			"all": "All categories"
+		},
+		"account": {
+			"find": "Find an account",
+			"empty": "No account matches"
 		}
 	},
 	"entry": {
@@ -185,7 +230,8 @@
 			"refund": "Refund",
 			"transfer": "Transfer",
 			"payment": "Payment"
-		}
+		},
+		"edit": "Edit"
 	},
 	"connect": {
 		"title": "Connect to a server",
