@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
 import { Sheet } from "@/ui/Sheet";
 import { BudgetChanges } from "./BudgetChanges";
+import { CategoryList, loadCategories } from "./CategoryList";
 import { ChoiceList, TextField } from "./fields";
 import { createEnvelopeBody, nameOk } from "./moreBodies";
-import { SheetBody } from "./parts";
+import { Note, SheetBody } from "./parts";
 import type { BudgetMonth } from "./source";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
+import { useSheetRead } from "./useSheetRead";
 import { useUndoToast } from "./useUndoToast";
 import { noSession, useApi, WriteFrame } from "./WriteFrame";
 
@@ -41,13 +43,18 @@ export function NewEnvelopeSheet({
 	const announce = useUndoToast("budget");
 	const [name, setName] = useState("");
 	const [group, setGroup] = useState("none");
-	const { idFor, reset } = useWriteIds(visible ? `${name}|${group}` : null);
+	const [picked, setPicked] = useState<string[]>([]);
+	const categories = useSheetRead(visible, loadCategories);
+	const { idFor, reset } = useWriteIds(
+		visible ? `${name}|${group}|${picked.join(",")}` : null,
+	);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new opening starts empty
 	useEffect(() => {
 		if (!visible) return;
 		reset();
 		setName("");
 		setGroup("none");
+		setPicked([]);
 	}, [visible]);
 
 	const ready = nameOk(name);
@@ -56,6 +63,7 @@ export function NewEnvelopeSheet({
 				id: idFor("envelope"),
 				name,
 				groupId: group === "none" ? null : group,
+				categoryIds: picked,
 			})
 		: null;
 	const flow = useMoneyWrite({
@@ -116,6 +124,19 @@ export function NewEnvelopeSheet({
 						onPress={setGroup}
 						selected={new Set([group])}
 					/>
+					<Note>{t("categoriesHint")}</Note>
+					{categories.status === "ready" ? (
+						<CategoryList
+							categories={categories.data}
+							label={t("categories")}
+							onPress={(id) =>
+								setPicked((now) =>
+									now.includes(id) ? now.filter((x) => x !== id) : [...now, id],
+								)
+							}
+							selected={new Set(picked)}
+						/>
+					) : null}
 				</WriteFrame>
 			</SheetBody>
 		</Sheet>

@@ -348,11 +348,11 @@
 		"error": "Não foi possível carregar o orçamento",
 		"errorDetail": "Verifique sua conexão e tente de novo.",
 		"noBudget": "Ainda não há orçamento",
-		"noBudgetDetail": "Monte seu orçamento na web. Ele aparece aqui quando estiver pronto.",
+		"noBudgetDetail": "Crie um para planejar seu dinheiro em envelopes.",
 		"paused": "Seu orçamento está pausado",
-		"pausedDetail": "Nada é contado enquanto ele estiver pausado. Retome pela web.",
+		"pausedDetail": "Nada é contado enquanto está pausado.",
 		"wealth": "Patrimônio e contas",
-		"webForNow": "Regras, receitas e a configuração ficam, por enquanto, na web.",
+		"webForNow": "Algumas ferramentas, como a visão anual, ficam por enquanto só na web.",
 		"month": {
 			"previous": "Mês anterior",
 			"next": "Próximo mês",
@@ -413,7 +413,16 @@
 		},
 		"owed": {
 			"title": "Reservado para outros",
-			"people": "{count, plural, one {Para # pessoa} other {Para # pessoas}}"
+			"people": "{count, plural, one {Para # pessoa} other {Para # pessoas}}",
+			"nobody": "Ninguém lhe deve dinheiro que o orçamento guarde.",
+			"held": "O orçamento guarda",
+			"age": "{days, plural, one {# dia} other {# dias}}",
+			"pending": "{amount} aguarda seu OK",
+			"someone": "Alguém",
+			"incomplete": "Alguns valores não têm cotação hoje e não são contados.",
+			"back": "Voltar",
+			"error": "Não foi possível carregar. Tente de novo.",
+			"forgiveTitle": "Perdoar {name}"
 		},
 		"group": {
 			"BILLS": "Contas",
@@ -636,7 +645,20 @@
 			"merge": "Combinar envelopes",
 			"payDebt": "Pagar uma dívida",
 			"style": "Estilo de orçamento",
-			"reconcile": "Conferir com seu banco"
+			"reconcile": "Conferir com seu banco",
+			"rules": "Regras de renda",
+			"income": "Dinheiro que entrou neste mês",
+			"owed": "Guardado para outros",
+			"unrouted": "Partes sem envelope",
+			"whatIf": "E se eu gastar",
+			"plan": "Planeje o mês",
+			"planApply": "Aplicar o plano",
+			"fundNow": "Financiar o próximo mês agora",
+			"close": "Resumo do mês",
+			"welcomeBack": "Bem-vindo de volta",
+			"startingMoney": "Dinheiro inicial",
+			"toWealth": "Mover dinheiro para Patrimônio",
+			"fromWealth": "Trazer dinheiro de Patrimônio"
 		},
 		"afford": {
 			"title": "Posso pagar isso?",
@@ -669,14 +691,18 @@
 			"group": "Grupo",
 			"noGroup": "Sem grupo",
 			"submit": "Adicionar",
-			"toast": "{name} adicionado"
+			"toast": "{name} adicionado",
+			"categories": "Categorias que cobre",
+			"categoriesHint": "Uma categoria fica em um só envelope, então a que você marcar vem para cá de onde estava."
 		},
 		"editEnvelope": {
 			"name": "Nome",
 			"group": "Grupo",
 			"noGroup": "Sem grupo",
 			"submit": "Salvar",
-			"toast": "{name} salvo"
+			"toast": "{name} salvo",
+			"categories": "Categorias que cobre",
+			"categoriesHint": "Uma categoria fica em um só envelope, então a que você marcar vem para cá de onde estava."
 		},
 		"target": {
 			"now": "Meta atual",
@@ -695,9 +721,20 @@
 			},
 			"monthly": "Valor por mês",
 			"goal": "Valor da meta",
-			"billNote": "Este envelope tem uma conta com vencimento. Salvar aqui a substitui; edite contas na web.",
+			"billNote": "Salvar aqui substitui a conta atual.",
 			"submit": "Salvar meta",
-			"toast": "Meta salva para {name}"
+			"toast": "Meta salva para {name}",
+			"due": "Data de vencimento",
+			"repeats": "Repete",
+			"repeat": {
+				"MONTHLY": "Todo mês",
+				"QUARTERLY": "A cada 3 meses",
+				"YEARLY": "Todo ano",
+				"ONCE": "Uma vez"
+			},
+			"noneNote": "Sem meta, nada é planejado para ele.",
+			"dueHint": "AAAA-MM-DD",
+			"billAmount": "Valor da conta"
 		},
 		"merge": {
 			"title": "Combinar envelopes",
@@ -742,7 +779,10 @@
 			"notTracked": "Sem registro",
 			"envelope": "Tirado de",
 			"submit": "Pagar",
-			"toast": "{amount} pagos de uma dívida"
+			"toast": "{amount} pagos de uma dívida",
+			"interest": "Juros neste pagamento",
+			"interestHint": "Opcional. Juros contam como gasto (taxas), não como saldo.",
+			"interestEstimate": "Juros previstos: {amount}"
 		},
 		"reconcile": {
 			"loading": "Verificando",
@@ -757,7 +797,300 @@
 			"submit": "Registrar",
 			"toastRecorded": "Você registrou um ajuste de {amount}",
 			"toastMatched": "Bateu. Nada a registrar"
-		}
+		},
+		"setup": {
+			"title": "Configure seu orçamento",
+			"step": "Passo {at} de {total}",
+			"styleTitle": "Como você gosta de orçar?",
+			"styleSub": "Não há resposta errada. Você pode mudar quando quiser.",
+			"methods": "Ou siga um método",
+			"moneyTitle": "Quanto dinheiro você pode orçar agora?",
+			"moneySub": "Conte o dinheiro que você usa para viver. É com isso que você planeja agora.",
+			"envelopesTitle": "Seus envelopes",
+			"limitsTitle": "Escolha seus limites",
+			"limitsSub": "Dos seus últimos 3 meses. O resto é acompanhado, sem limite.",
+			"continue": "Continuar",
+			"back": "Voltar",
+			"cancel": "Cancelar",
+			"start": "Começar meu orçamento",
+			"startTracking": "Começar a acompanhar",
+			"startStopped": "Começar mesmo assim",
+			"toast": "Seu orçamento está pronto",
+			"failed": "Não foi possível começar seu orçamento. Nada foi alterado.",
+			"amountFor": "Valor para {name}",
+			"pay": {
+				"title": "Como você recebe?",
+				"sub": "Seu plano pode começar com seu próximo pagamento.",
+				"frequency": "Com que frequência",
+				"MONTHLY": "Mensal",
+				"EVERY_TWO_WEEKS": "A cada duas semanas",
+				"WEEKLY": "Semanal",
+				"VARIES": "Varia",
+				"next": "Próximo pagamento",
+				"past": "Escolha hoje ou um dia posterior."
+			},
+			"stop": "Seu plano custa {cost} por mês, mas você começa com {available}.",
+			"usePay": "Usar meu salário para o resto. Mais {short} começam quando ele chegar.",
+			"usePayOn": "Usar meu salário de {date} para o resto. Mais {short} começam nesse dia.",
+			"open": "Configure seu orçamento",
+			"track": "Só acompanhar",
+			"trackAbout": "Veja para onde vai seu dinheiro. Sem envelopes.",
+			"haveNow": "Dinheiro para planejar",
+			"adjust": "Mudar um valor",
+			"coverLabel": "Usar meu pagamento para o resto",
+			"starting": "Iniciando",
+			"loading": "Carregando",
+			"presetError": "Não foi possível carregar a proposta. Tente de novo.",
+			"envelopesSub": "Dos seus últimos 3 meses. Toque em um para manter ou tirar.",
+			"names": {
+				"groups": {
+					"bills": "Contas",
+					"spending": "Gastos",
+					"everyday": "Gastos",
+					"limits": "Limites",
+					"savings": "Poupança",
+					"needs": "Necessidades",
+					"wants": "Desejos",
+					"debts": "Dívidas"
+				},
+				"envelopes": {
+					"spending": "Gastos",
+					"savings": "Poupança",
+					"everythingElse": "Todo o resto",
+					"needs": "Necessidades",
+					"wants": "Desejos",
+					"extraDebt": "Pagamento extra de dívidas"
+				},
+				"rules": {
+					"saveFirst": "Poupar primeiro",
+					"rest": "O resto"
+				}
+			}
+		},
+		"income": {
+			"title": "Entradas de {month}",
+			"moneyIn": "Entradas",
+			"planCost": "Seu plano custa {cost} por mês. Você costuma receber {income}.",
+			"planCostOnly": "Seu plano custa {cost} por mês.",
+			"incomplete": "Alguns valores não têm cotação hoje e ficam de fora.",
+			"runway": "Seu orçamento e suas economias duram {months} meses com este plano.",
+			"error": "Não foi possível carregar. Tente de novo."
+		},
+		"rules": {
+			"title": "Regras de renda",
+			"lead": "O que acontece quando o dinheiro chega, na ordem das regras. Cada movimento aparece no histórico com Desfazer.",
+			"none": "Ainda não há regras. O dinheiro que chega fica Ainda não planejado até você atribuir.",
+			"paused": "Pausada",
+			"add": "Adicionar regra",
+			"sentence": {
+				"percent": "{percent} do que entra para {name}",
+				"amount": "{amount} do que entra para {name}",
+				"rest": "O resto para {name}",
+				"envelopeFallback": "Envelope"
+			},
+			"editor": {
+				"title": "Adicionar regra",
+				"add": "Adicionar regra",
+				"name": "Nome",
+				"namePlaceholder": "Poupar primeiro",
+				"kind": "O que faz",
+				"percent": "Porcentagem",
+				"amount": "Valor",
+				"rest": "O resto",
+				"percentLabel": "Porcentagem do que entra",
+				"amountLabel": "Valor de cada entrada",
+				"goesTo": "Vai para",
+				"pick": "Escolha um envelope",
+				"note": "Ela roda no dinheiro que chegar de agora em diante. Hoje nada se move.",
+				"toast": "Você adicionou a regra {name}"
+			},
+			"apply": {
+				"title": "Aplicar {name} a este mês",
+				"apply": "Aplicar",
+				"lead": "Uma regra só roda no dinheiro que chega depois de existir. Isto a roda uma vez no dinheiro que já entrou neste mês.",
+				"toast": "Você aplicou {name} às entradas deste mês",
+				"envelopeFallback": "Envelope"
+			},
+			"back": "Voltar",
+			"error": "Não foi possível salvar. Tente de novo.",
+			"pause": "Pausar",
+			"resume": "Ativar",
+			"moveUp": "Subir",
+			"moveDown": "Descer",
+			"applyAction": "Aplicar ao dinheiro que entrou neste mês",
+			"remove": "Remover regra"
+		},
+		"forgive": {
+			"forgive": "Perdoar",
+			"nothing": "Aqui ninguém lhe deve nada.",
+			"owes": "{name} deve {amount} a você",
+			"currency": "Moeda",
+			"amount": "Perdoar",
+			"chargeTo": "Cobrar de",
+			"everythingElse": "Todo o resto",
+			"toast": "Você perdoou {amount} a {name}",
+			"effect": "Sai do saldo de {name}. Nenhum dinheiro volta, então Ainda não planejado não muda. Nada é enviado a {name}.",
+			"tooMuch": "É mais do que a pessoa te deve."
+		},
+		"unrouted": {
+			"lead": "Essas partes contam em {name} até você escolher uma categoria.",
+			"noRate": "Sem cotação",
+			"pickFor": "Escolher categoria da parte de {date}",
+			"paidBy": "Pago por {name}",
+			"shareTitle": "Sua parte",
+			"everythingElse": "Todo o resto",
+			"pickTitle": "Escolha uma categoria",
+			"pickLead": "A parte vai para o envelope que cobre a categoria.",
+			"route": "Colocar lá",
+			"routedToast": "Parte movida",
+			"title": "Ainda sem envelope",
+			"back": "Voltar",
+			"error": "Não foi possível carregar. Tente de novo.",
+			"none": "Todas as partes têm envelope.",
+			"loading": "Carregando"
+		},
+		"categories": {
+			"find": "Buscar uma categoria"
+		},
+		"planEdit": {
+			"title": "Planejar {name}",
+			"lead": "O que este envelope recebe no plano. É um rascunho até o dia do pagamento; nada se move.",
+			"planned": "Planejado",
+			"target": "Sua meta precisa de {amount}.",
+			"save": "Salvar",
+			"toast": "Você planejou {name}",
+			"back": "Voltar",
+			"error": "Não foi possível carregar. Tente de novo.",
+			"listTitle": "Planeje o mês",
+			"listLead": "Toque em um envelope para definir o que ele recebe. Nada se move até o dia do pagamento.",
+			"notPlanned": "Ainda não planejado"
+		},
+		"planApply": {
+			"title": "Aplicar o plano de {month}",
+			"lead": "O plano é salvo e se financia quando o dinheiro de {month} chegar. Hoje nada se move.",
+			"none": "Não há plano para aplicar neste mês.",
+			"apply": "Aplicar plano",
+			"toast": "Plano de {month} salvo",
+			"envelopeFallback": "Envelope"
+		},
+		"fundNow": {
+			"title": "Financiar {next} agora",
+			"fund": "Financiar {next}",
+			"lead": "Isto tira o plano de {next} do que este mês ainda não planejou e coloca já nos envelopes de {next}.",
+			"toast": "Você financiou {next} com o dinheiro deste mês",
+			"envelopeFallback": "Envelope",
+			"noPlan": "Ainda não há plano para o mês seguinte. Planeje primeiro e depois financie."
+		},
+		"whatIf": {
+			"titleAny": "E se eu gastar",
+			"lead": "Um gasto de mentira. Nada é salvo.",
+			"envelope": "Envelope",
+			"pick": "Escolha um envelope",
+			"ifSpend": "Se eu gastar",
+			"cannot": "Isto não pode ser simulado assim.",
+			"wouldHave": "{name} teria",
+			"coverIt": "Cobrir",
+			"coverFrom": "De {name}",
+			"uncovered": "Nada pode cobrir esta parte",
+			"idle": "Digite um valor para ver o efeito.",
+			"title": "E se eu gastar"
+		},
+		"close": {
+			"title": "{month} está fechado",
+			"done": "Pronto",
+			"notClosed": "Este mês ainda não fechou.",
+			"moneyIn": "Entradas",
+			"assigned": "Atribuído",
+			"late": "Inclui {count, plural, one {# gasto tardio} other {# gastos tardios}}",
+			"overTitle": "Estouraram",
+			"takeInstead": "Tirar de {month}",
+			"leftTitle": "Sobras",
+			"returned": "Voltou para {pool}",
+			"swept": "Movido para {name}",
+			"envelopeFallback": "Envelope",
+			"back": "Voltar",
+			"error": "Não foi possível carregar. Tente de novo."
+		},
+		"carry": {
+			"title": "Tirar de {name} em {month}",
+			"lead": "{name} estourou no mês passado. Isto tira de {name} em {month} em vez do dinheiro não planejado. {name} pode começar {month} abaixo de zero.",
+			"take": "Tirar de {name}",
+			"toast": "{name} começa {month} com o estouro"
+		},
+		"welcomeBack": {
+			"title": "Bem-vindo de volta",
+			"lead": "{months}: fecharam sozinhos.",
+			"leadNone": "Nenhum mês fechou sozinho enquanto você esteve fora.",
+			"choice": "Como voltar",
+			"catchUp": "Ficar em dia",
+			"haveNow": "Informar o que tenho",
+			"startFresh": "Começar do zero",
+			"about": {
+				"CATCH_UP": "Abre os resumos dos meses que fecharam, em ordem.",
+				"SET_HAVE_NOW": "Registra um ajuste com o dinheiro que você tem agora. Os envelopes mantêm o que têm.",
+				"START_FRESH": "Devolve o dinheiro de cada envelope para Ainda não planejado. Envelopes, metas, regras e histórico ficam."
+			},
+			"haveLabel": "Dinheiro que você tem agora",
+			"catchUpNothing": "Nada muda. Você só lê.",
+			"go": {
+				"CATCH_UP": "Ficar em dia",
+				"SET_HAVE_NOW": "Informar o que tenho",
+				"START_FRESH": "Começar do zero"
+			},
+			"toast": {
+				"CATCH_UP": "Você está em dia",
+				"SET_HAVE_NOW": "Você registrou o que tem agora",
+				"START_FRESH": "Você recomeçou. O dinheiro de cada envelope voltou para Ainda não planejado"
+			}
+		},
+		"startingMoney": {
+			"title": "Dinheiro inicial",
+			"lead": "Quanto dinheiro você tem agora? O orçamento passa a contar a partir daí.",
+			"have": "O que você tem agora",
+			"idle": "Digite um valor para ver o que muda.",
+			"save": "Confirmar",
+			"toast": "Dinheiro inicial confirmado",
+			"moneyIn": "Entradas",
+			"adjustment": "Ajuste",
+			"includes": "Inclui {amount} já gastos desde {date}",
+			"shortfall": "O orçamento tinha mais do que você tem. {amount} sai como ajuste.",
+			"nothing": "Isso bate com o orçamento. Nada é adicionado."
+		},
+		"toWealth": {
+			"title": "Mover {name} para Patrimônio",
+			"lead": "O dinheiro sai de {name} para uma conta fora do orçamento. O progresso da meta não muda.",
+			"noAccount": "Você ainda não tem uma conta de Patrimônio fora do orçamento. Adicione uma em Patrimônio.",
+			"from": "Sai de",
+			"notTracked": "Sem acompanhamento",
+			"into": "Para",
+			"amount": "Valor",
+			"got": "Você recebe (opcional)",
+			"move": "Mover",
+			"toast": "Você moveu {amount} de {name} para {account}",
+			"envelope": "Sai de"
+		},
+		"fromWealth": {
+			"title": "Mover do Patrimônio",
+			"none": "Você não tem conta de Patrimônio fora do orçamento para mover.",
+			"mode": "Você moveu o dinheiro?",
+			"moved": "Sim, movi",
+			"count": "Não, só contar",
+			"about": {
+				"moved": "O dinheiro vai dessa conta para uma que seu orçamento conta. As duas contas mudam.",
+				"count": "A conta mantém o dinheiro e o orçamento conta esse valor. Nada se move em Patrimônio."
+			},
+			"from": "De",
+			"into": "Para",
+			"notTracked": "Sem acompanhamento",
+			"amount": "Você moveu",
+			"units": "Contar este valor",
+			"got": "Você recebeu (opcional)",
+			"putIn": "Colocar em",
+			"move": "Trazer",
+			"toastMoved": "Você trouxe {amount}",
+			"toastCounted": "Você contou dinheiro de {name}. {name} não mudou"
+		},
+		"resume": "Retomar o orçamento"
 	},
 	"wealth": {
 		"title": "Patrimônio",

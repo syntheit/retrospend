@@ -7,11 +7,12 @@ import type { Account } from "@/features/wealth/source";
 import { Sheet } from "@/ui/Sheet";
 import { minorOf, readAmount } from "./amount";
 import { BudgetChanges } from "./BudgetChanges";
-import { ChoiceList } from "./fields";
+import { ChoiceList, TextField } from "./fields";
 import { debtPaymentBody } from "./moreBodies";
 import { AmountField, Note, SheetBody, useAmountLocale } from "./parts";
 import { type BudgetMonth, envelopesOf } from "./source";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
+import { useSheetRead } from "./useSheetRead";
 import { useUndoToast } from "./useUndoToast";
 import { noSession, useApi, WriteFrame } from "./WriteFrame";
 
@@ -72,6 +73,7 @@ export function PayDebtSheet({
 		setSource(NONE);
 		setEnvelope(POOL);
 		setDraft("");
+		setInterestText("");
 		let cancelled = false;
 		client.accounts
 			.list()
@@ -86,16 +88,30 @@ export function PayDebtSheet({
 		};
 	}, [visible]);
 
-	const key = `${liabilityId}|${source}|${envelope}|${minor}`;
+	// Interest in the payment is spending, not balance: asked apart, empty is none.
+	const [interestText, setInterestText] = useState("");
+	const interestRead = readAmount(interestText, locale, currency);
+	const interestMinor = minorOf(interestRead, true);
+	const estimate = useSheetRead(
+		visible && liabilityId !== null,
+		(c) => c.budget.interestEstimate({ liabilityId: liabilityId ?? "" }),
+		liabilityId ?? "",
+	);
+	const expected = estimate.status === "ready" ? estimate.data.interest : null;
+	const interestBad = interestRead.state === "invalid";
+	const key = `${liabilityId}|${source}|${envelope}|${minor}|${interestMinor}`;
 	const { idFor } = useWriteIds(visible ? key : null);
-	const body = debtPaymentBody({
-		id: idFor("payment"),
-		liabilityId,
-		fromAccountId: source === NONE ? null : source,
-		envelopeId: envelope === POOL ? null : envelope,
-		minor,
-		currency,
-	});
+	const body = interestBad
+		? null
+		: debtPaymentBody({
+				id: idFor("payment"),
+				liabilityId,
+				fromAccountId: source === NONE ? null : source,
+				envelopeId: envelope === POOL ? null : envelope,
+				minor,
+				interestMinor: interestMinor ?? 0,
+				currency,
+			});
 	const flow = useMoneyWrite({
 		input: visible ? body : null,
 		idempotencyKey: body?.id ?? null,
@@ -160,6 +176,18 @@ export function PayDebtSheet({
 							label={t("amount")}
 							onDraftChange={setDraft}
 						/>
+						<TextField
+							invalid={interestBad}
+							keyboardType="decimal-pad"
+							label={t("interest")}
+							onChangeText={setInterestText}
+							value={interestText}
+						/>
+						<Note>
+							{expected
+								? `${t("interestEstimate", { amount: money(expected) })} ${t("interestHint")}`
+								: t("interestHint")}
+						</Note>
 						<ChoiceList
 							choices={[
 								{ id: NONE, label: t("notTracked") },

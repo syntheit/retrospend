@@ -26,9 +26,15 @@ function isMoney(value: unknown): value is Money {
 /** The envelopes a write moved, with their Left before and after, when the answer lists them. */
 export function envelopeMoves(preview: BudgetPreview): EnvelopeMove[] {
 	const detail = preview.detail as
-		| { result?: { envelopes?: unknown } }
+		| {
+				result?: {
+					envelopes?: unknown;
+					movement?: { envelopes?: unknown } | null;
+				};
+		  }
 		| undefined;
-	const list = detail?.result?.envelopes;
+	// Rules and drafts answer their movement one level down.
+	const list = detail?.result?.envelopes ?? detail?.result?.movement?.envelopes;
 	if (!Array.isArray(list)) return [];
 	return list.flatMap((row) => {
 		const r = row as { id?: unknown; before?: unknown; after?: unknown };
