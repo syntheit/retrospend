@@ -44,3 +44,23 @@ export function wealthMoveBody(input: {
 			: { putIn: input.envelopeId }),
 	};
 }
+
+type MoveInInput = Parameters<RetrospendClient["income"]["moveIn"]>[0];
+/** Counting units of an account (the other branch of the write counts a kept income). */
+export type CountInput = Extract<MoveInInput, { accountId: string }>;
+
+/** Count that much of a Wealth account in the budget without moving it; the account keeps its money. */
+export function countBody(input: {
+	id: string;
+	account: Place | null;
+	envelopeId: string | null;
+	minor: number | null;
+}): CountInput | null {
+	if (!input.account || input.minor === null || input.minor <= 0) return null;
+	return {
+		id: input.id,
+		accountId: input.account.id,
+		units: wireAmount(input.minor, input.account.currency),
+		putIn: input.envelopeId,
+	};
+}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { isLiability } from "@/features/wealth/accounts";
+import { Segmented } from "@/ui/Segmented";
 import { minorOf, readAmount } from "./amount";
 import { ChoiceList } from "./fields";
 import { AmountField, Note, useAmountLocale } from "./parts";
@@ -9,7 +10,13 @@ import { type BudgetMonth, envelopesOf } from "./source";
 import { useWriteIds } from "./useMoneyWrite";
 import { useSheetRead } from "./useSheetRead";
 import { WriteSheet } from "./WriteSheet";
-import { type WealthDirection, wealthMoveBody } from "./wealthBodies";
+import {
+	type CountInput,
+	countBody,
+	type TransferInput,
+	type WealthDirection,
+	wealthMoveBody,
+} from "./wealthBodies";
 
 const NONE = "none";
 const POOL = "pool";
@@ -52,6 +59,9 @@ export function WealthMoveSheet({
 	const [source, setSource] = useState<string | null>(null);
 	const [target, setTarget] = useState<string | null>(null);
 	const [draft, setDraft] = useState("");
+	// From Wealth only: the money was moved, or it stays and the budget counts it.
+	const [mode, setMode] = useState<"moved" | "count">("moved");
+	const counting = direction === "from" && mode === "count";
 
 	// Each opening starts empty.
 	useEffect(() => {
@@ -60,6 +70,7 @@ export function WealthMoveSheet({
 		setSource(null);
 		setTarget(null);
 		setDraft("");
+		setMode("moved");
 	}, [visible]);
 
 	const find = (list: typeof accounts, id: string | null) =>
@@ -91,10 +102,11 @@ export function WealthMoveSheet({
 					fromPlace?.id,
 					intoPlace?.id,
 					minor,
+					mode,
 				])
 			: null,
 	);
-	const body = wealthMoveBody({
+	const moved = wealthMoveBody({
 		id: idFor("move"),
 		direction,
 		fromPlace: fromPlace
@@ -107,6 +119,15 @@ export function WealthMoveSheet({
 		minor,
 		bookCurrency: data.book.currency,
 	});
+	const counted = countBody({
+		id: idFor("count"),
+		account: fromPlace
+			? { id: fromPlace.id, currency: fromPlace.currency }
+			: null,
+		envelopeId: envelope === POOL ? null : envelope,
+		minor,
+	});
+	const body: TransferInput | CountInput | null = counting ? counted : moved;
 	const place = (a: (typeof accounts)[number]) => ({
 		id: a.id,
 		label: a.name,
@@ -121,28 +142,38 @@ export function WealthMoveSheet({
 	return (
 		<WriteSheet
 			data={data}
-			family="transfers"
+			family={counting ? "income" : "transfers"}
 			idempotencyKey={body?.id ?? null}
 			input={body}
 			message={
-				direction === "to"
-					? t("toast", {
-							amount: minor !== null ? money({ minor, currency }) : "",
-							name: envelopeName,
-							account: intoPlace?.name ?? "",
-						})
-					: t("toastMoved", {
-							amount: minor !== null ? money({ minor, currency }) : "",
-						})
+				counting
+					? t("toastCounted", { name: fromPlace?.name ?? "" })
+					: direction === "to"
+						? t("toast", {
+								amount: minor !== null ? money({ minor, currency }) : "",
+								name: envelopeName,
+								account: intoPlace?.name ?? "",
+							})
+						: t("toastMoved", {
+								amount: minor !== null ? money({ minor, currency }) : "",
+							})
 			}
 			onClose={onClose}
 			onDone={onDone}
-			preview={(api, b) => api.transfers.previewCreate(b)}
+			preview={(api, b) =>
+				"accountId" in b
+					? api.income.previewMoveIn(b)
+					: api.transfers.previewCreate(b)
+			}
 			submitLabel={t("move")}
 			title={t("title", { name: envelopeName })}
 			visible={visible}
-			write={(api, b, key) =>
-				api.transfers.create(b, { context: { idempotencyKey: key } })
+			write={async (api, b, key) =>
+				"accountId" in b
+					? await api.income.moveIn(b, { context: { idempotencyKey: key } })
+					: await api.transfers.create(b, {
+							context: { idempotencyKey: key },
+						})
 			}
 		>
 			{wealthEmpty ? (
@@ -150,6 +181,20 @@ export function WealthMoveSheet({
 			) : (
 				<>
 					<Note>{t("lead", { name: envelopeName })}</Note>
+					{direction === "from" ? (
+						<>
+							<Segmented
+								accessibilityLabel={t("mode")}
+								onChange={setMode}
+								options={[
+									{ value: "moved", label: t("moved") },
+									{ value: "count", label: t("count") },
+								]}
+								value={mode}
+							/>
+							<Note>{t(mode === "moved" ? "about.moved" : "about.count")}</Note>
+						</>
+					) : null}
 					<ChoiceList
 						choices={[
 							{ id: POOL, label: tp(data.toAssign.poolName) },
@@ -180,28 +225,30 @@ export function WealthMoveSheet({
 							])
 						}
 					/>
-					<ChoiceList
-						choices={[
-							...(direction === "from"
-								? [{ id: NONE, label: t("notTracked") }]
-								: []),
-							...intoList.map(place),
-						]}
-						label={t("into")}
-						onPress={setTarget}
-						selected={
-							new Set([
-								direction === "from"
-									? (target ?? NONE)
-									: (intoPlace?.id ?? intoList[0]?.id ?? ""),
-							])
-						}
-					/>
+					{counting ? null : (
+						<ChoiceList
+							choices={[
+								...(direction === "from"
+									? [{ id: NONE, label: t("notTracked") }]
+									: []),
+								...intoList.map(place),
+							]}
+							label={t("into")}
+							onPress={setTarget}
+							selected={
+								new Set([
+									direction === "from"
+										? (target ?? NONE)
+										: (intoPlace?.id ?? intoList[0]?.id ?? ""),
+								])
+							}
+						/>
+					)}
 					<AmountField
 						currency={currency}
 						draft={draft}
 						entered={entered}
-						label={t("amount")}
+						label={t(counting ? "units" : "amount")}
 						onDraftChange={setDraft}
 					/>
 				</>

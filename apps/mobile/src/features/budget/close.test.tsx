@@ -510,3 +510,88 @@ describe("Move money to Wealth", () => {
 		act(() => tree.unmount());
 	});
 });
+
+describe("Count Wealth money in the budget", () => {
+	it("counts units of an account without moving it, with the income undo", async () => {
+		const calls: { route: string; input: unknown; key?: string }[] = [];
+		const api = {
+			accounts: {
+				list: async () => ({
+					accounts: [
+						{
+							id: "a-save",
+							name: "Savings",
+							type: "CASH",
+							currency: "ARS",
+							balance: ars(100_000),
+							value: ars(100_000),
+							inBudget: false,
+							isLiquid: true,
+							rateType: null,
+							closedAt: null,
+							interestRate: null,
+							minimumPayment: null,
+							dueDay: null,
+							updatedAt: "2026-10-01T00:00:00Z",
+						},
+					],
+				}),
+			},
+			income: {
+				previewMoveIn: async (input: unknown) => {
+					calls.push({ route: "previewMoveIn", input });
+					return { changes: [], unchanged: [], unavailable: [] };
+				},
+				moveIn: async (
+					input: unknown,
+					init?: { context?: { idempotencyKey?: string } },
+				) => {
+					calls.push({
+						route: "moveIn",
+						input,
+						key: init?.context?.idempotencyKey,
+					});
+					return { moved: {}, undo: "undo-token-9" };
+				},
+				undo: async (input: unknown) => {
+					calls.push({ route: "incomeUndo", input });
+					return {};
+				},
+			},
+		};
+		session.api = api as unknown as RetrospendClient;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(
+				<WealthMoveSheet
+					data={data}
+					direction="from"
+					onClose={jest.fn()}
+					onDone={jest.fn()}
+					visible
+				/>,
+			);
+		});
+		await wait(10);
+		press(tree, "No, just count it");
+		press(tree, "7");
+		press(tree, "5");
+		await wait(400);
+		const previews = calls.filter((c) => c.route === "previewMoveIn");
+		expect(previews.at(-1)?.input).toMatchObject({
+			accountId: "a-save",
+			units: "75.00",
+			putIn: null,
+		});
+		press(tree, "Move in");
+		await wait(50);
+		const writes = calls.filter((c) => c.route === "moveIn");
+		expect(writes).toHaveLength(1);
+		expect(writes[0]?.input).toEqual(previews.at(-1)?.input);
+		await undoFromToast();
+		expect(calls.find((c) => c.route === "incomeUndo")?.input).toEqual({
+			token: "undo-token-9",
+		});
+		act(() => tree.unmount());
+	});
+});
