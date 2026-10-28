@@ -20,6 +20,7 @@ function Figure({
 	caption,
 	tone,
 	approx,
+	code,
 	onPress,
 }: {
 	label: string;
@@ -28,6 +29,8 @@ function Figure({
 	tone?: "positive" | "default";
 	/** A total converted at reference rates. */
 	approx?: boolean;
+	/** A rate: shows the currency code, not the home symbol. */
+	code?: boolean;
 	onPress?: () => void;
 }) {
 	const t = useTranslations("mobile.money");
@@ -39,7 +42,7 @@ function Figure({
 		value
 			? approx
 				? t("approx", { amount: format(value) })
-				: format(value)
+				: format(value, code ? { display: "code" } : undefined)
 			: t("noRate"),
 	]
 		.filter(Boolean)
@@ -57,7 +60,7 @@ function Figure({
 				) : null}
 			</View>
 			{value ? (
-				<MoneyAmount approx={approx} tone={tone} value={value} />
+				<MoneyAmount approx={approx} code={code} tone={tone} value={value} />
 			) : (
 				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
 					{t("noRate")}
@@ -211,6 +214,7 @@ export function Glance({
 							? t("dollarRate", { rate: glance.dollarToday.rateType })
 							: undefined
 					}
+					code
 					label={t("dollarToday")}
 					value={glance.dollarToday.value}
 				/>

@@ -22,6 +22,7 @@ export function MoneyAmount({
 	align = "right",
 	size = "body",
 	approx,
+	code,
 }: {
 	value: Money;
 	home?: Money | null;
@@ -34,13 +35,21 @@ export function MoneyAmount({
 	size?: "body" | "section" | "hero";
 	/** The amount is a total converted at reference rates, so it reads "≈". */
 	approx?: boolean;
+	/** Shows the currency code, not the home symbol (a rate, not a home amount). */
+	code?: boolean;
 }) {
 	const t = useTranslations("mobile.money");
 	const { color, type } = useTheme();
 	const { format, pair } = useFormatMoney();
 	const { original, home: homeText } =
 		home === undefined
-			? { original: format(value, { sign }), home: null }
+			? {
+					original: format(value, {
+						sign,
+						...(code ? { display: "code" } : {}),
+					}),
+					home: null,
+				}
 			: pair(value, home, { sign });
 	const shown = approx ? t("approx", { amount: original ?? "" }) : original;
 	// A home value in the entry's own currency adds nothing: one line.

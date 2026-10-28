@@ -117,6 +117,7 @@ function dollarRow(dto: GlanceDTO, label?: DollarLabel): GlanceRow[] {
 			amount: d.value,
 			href: GLANCE_HREF.dollarToday,
 			figure: d.id,
+			code: true,
 			rateLabel: label ? label(d.rateType, d.rateDate, dto.today) : d.rateType,
 		},
 	];

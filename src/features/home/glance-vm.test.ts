@@ -154,6 +154,7 @@ describe("toGlanceVM", () => {
 			amount: ars(141200),
 			href: "/currencies",
 			figure: "rate.dollarToday",
+			code: true,
 			rateLabel: "blue 2026-10-20 2026-10-21",
 		});
 		const none = { ...dollar, value: null, rateType: null, rateDate: null };
