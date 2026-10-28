@@ -1,4 +1,5 @@
 import {
+	type ComponentType,
 	createContext,
 	type ReactNode,
 	useCallback,
@@ -19,6 +20,13 @@ import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import type { EntryMode } from "./ComposerShell";
 import { EntryComposer } from "./EntryComposer";
 import { useOutboxFlush } from "./useOutboxFlush";
+
+// The screenshot tour is required only when its variable is set, so Metro drops
+// it from every other build (see check-release-bundle.sh).
+const DevComposerTour: ComponentType<{ add: AddEntryApi }> | null = process.env
+	.EXPO_PUBLIC_DEV_COMPOSE
+	? require("@/dev/DevComposerTour").DevComposerTour
+	: null;
 
 interface AddEntryApi {
 	/** Opens the composer sheet, optionally filled in by a share, a Shortcut or a link. */
@@ -116,6 +124,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	return (
 		<AddEntryContext.Provider value={api}>
 			{children}
+			{DevComposerTour ? <DevComposerTour add={api} /> : null}
 			{ADD_CONTROL === "floating" && !keyboard ? (
 				<View
 					pointerEvents="box-none"

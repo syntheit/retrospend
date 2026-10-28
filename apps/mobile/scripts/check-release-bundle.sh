@@ -33,6 +33,10 @@ if grep -raql 'RetrospendDevAutoSignIn' "$dir"; then
 	echo "FAIL: the dev auto sign-in is in the bundle at $dir" >&2
 	fail=1
 fi
+if grep -raql 'RetrospendDevComposerTour' "$dir"; then
+	echo "FAIL: the dev composer tour is in the bundle at $dir" >&2
+	fail=1
+fi
 
 ((fail == 0)) && echo "OK: no dev tooling in the release bundle"
 exit "$fail"
