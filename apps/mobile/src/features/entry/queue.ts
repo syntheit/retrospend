@@ -5,8 +5,8 @@ import type { PendingWrite } from "./draft";
 import {
 	createEntrySender,
 	entryOutbox,
-	SEND_TIMEOUT_MS,
 	NOT_STORED_STATUSES,
+	SEND_TIMEOUT_MS,
 	type SenderOptions,
 	type UndoRef,
 	undoFor,

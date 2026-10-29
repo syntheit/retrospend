@@ -28,18 +28,14 @@
 		"mode": "Tipo de lançamento",
 		"expense": "Gasto",
 		"income": "Receita",
-		"titleExpense": "Adicionar gasto",
-		"titleIncome": "Adicionar receita",
 		"loading": "Carregando",
 		"loadError": "Não foi possível abrir o formulário",
 		"loadErrorDetail": "Verifique sua conexão e tente de novo.",
 		"titleField": "Título",
 		"titlePlaceholder": "O que foi?",
 		"category": "Categoria",
-		"allCategories": "Todas",
 		"with": "Com",
 		"you": "Você",
-		"splitEqually": "Dividir em partes iguais",
 		"from": "De",
 		"fromPlaceholder": "Quem pagou você?",
 		"afterSaving": "Depois de salvar",
@@ -139,7 +135,9 @@
 				"leaves": "Sai, antes {before}",
 				"told": "Todos recebem um aviso da mudança.",
 				"same": "A parte de cada pessoa continua igual."
-			}
+			},
+			"oneLineNone": "Nenhum valor muda.",
+			"oneLineMore": "{figure} e mais {count}"
 		},
 		"list": {
 			"two": "{first} e {second}",
@@ -154,7 +152,6 @@
 			"retryFailed": "Ainda não dá para enviar. Tente mais tarde."
 		},
 		"transferMode": "Transferência",
-		"titleTransfer": "Adicionar transferência",
 		"addTransfer": "Adicionar transferência",
 		"titleEdit": "Editar gasto",
 		"save": "Salvar",
@@ -179,7 +176,6 @@
 		"transfer": {
 			"from": "De",
 			"to": "Para",
-			"received": "Recebido em {currency}",
 			"receivedPlaceholder": "Opcional",
 			"receivedHint": "Deixe vazio para usar a cotação de referência.",
 			"note": "Nota",
@@ -188,7 +184,9 @@
 				"same": "Escolha duas contas diferentes",
 				"places": "Escolha as duas contas",
 				"received": "Digite o que chegou como um valor, ou deixe vazio"
-			}
+			},
+			"receivedLabel": "Recebido, {amount}",
+			"receivedEmpty": "Recebido em {currency}, opcional"
 		},
 		"today": "Hoje",
 		"yesterday": "Ontem",
@@ -227,6 +225,64 @@
 			"sharedFixed": "Despesas divididas usam sua cotação padrão.",
 			"error": "Digite uma cotação maior que zero",
 			"enterRate": "Digitar cotação"
+		},
+		"more": "Mais",
+		"moreDetails": "Mais detalhes",
+		"back": "Voltar",
+		"dateMenu": "Data, {date}",
+		"pickDate": "Escolher uma data",
+		"categoriesAll": "Todas as categorias",
+		"categoriesMore": "Mais",
+		"actions": "Ações",
+		"actionsLabel": "⋯",
+		"undoChanges": "Desfazer alterações",
+		"options": "Opções",
+		"context": {
+			"personal": "Pessoal"
+		},
+		"ops": {
+			"label": "Operadores",
+			"plus": "Mais",
+			"minus": "Menos",
+			"times": "Vezes",
+			"divide": "Dividido por"
+		},
+		"faces": {
+			"add": "Adicionar",
+			"addLabel": "Adicionar uma pessoa",
+			"find": "Buscar uma pessoa",
+			"empty": "Nenhuma pessoa encontrada",
+			"title": "Pessoas"
+		},
+		"split": {
+			"title": "Divisão",
+			"paidBy": "Pago por",
+			"mode": "Divisão",
+			"modes": {
+				"EQUAL": "Igualmente",
+				"EXACT": "Por valor",
+				"PERCENTAGE": "Por porcentagem",
+				"SHARES": "Por cotas"
+			},
+			"summary": {
+				"EQUAL": "Dividido igualmente",
+				"EXACT": "Dividido por valor",
+				"PERCENTAGE": "Dividido por porcentagem",
+				"SHARES": "Dividido por cotas"
+			},
+			"summaryShare": "{split}, sua parte {amount}",
+			"tapFaces": "Toque em um rosto no primeiro passo para dividir."
+		},
+		"delete": {
+			"row": "Excluir",
+			"title": "Excluir este gasto?",
+			"body": "Ele sai dos seus gastos e do seu orçamento.",
+			"bodyShared": "Ele sai da divisão e o que as pessoas devem muda. Não dá para desfazer.",
+			"button": "Excluir",
+			"deleted": "{title} excluído",
+			"restored": "{title} restaurado",
+			"undoFailed": "Não foi possível desfazer. Tente pela Atividade.",
+			"failed": "Não foi possível excluir. Tente de novo."
 		}
 	},
 	"pickers": {

@@ -1,9 +1,9 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { TextAction } from "@/features/activity/TextAction";
-import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Text } from "@/ui/Text";
+import { useChangeWords } from "./changeWords";
 import {
 	type ChangeLines,
 	changeLines,
@@ -11,8 +11,6 @@ import {
 	type ShareLine,
 	sharesOf,
 } from "./preview";
-
-type Money = { minor: number; currency: string };
 
 /**
  * What this changes (R30): each place that moves, before Save, then what
@@ -35,39 +33,12 @@ export function ChangesBlock({
 }) {
 	const t = useTranslations("mobile.composer.changes");
 	const tc = useTranslations("mobile.common");
-	const tl = useTranslations("mobile.composer.list");
-	const tm = useTranslations("mobile.money");
-	const { space } = useTheme();
-	const { format } = useFormatMoney();
+	const { color, space } = useTheme();
+	const { money, marked, name, list } = useChangeWords();
 	const lines: ChangeLines | null =
 		state.status === "ready" ? changeLines(state.diff) : null;
 	const shares: ShareLine[] | null =
 		state.status === "ready" ? sharesOf(state.diff) : null;
-	// One precision down a column: every amount shows its minor digits.
-	const money = (value: Money, sign?: "exceptZero") =>
-		format(value, { cents: true, sign }) ?? "";
-	const marked = (text: string, approx: boolean) =>
-		approx ? tm("approx", { amount: text }) : text;
-
-	// Figure ids have dots, which message keys cannot. An id with no name of
-	// its own reads "another figure", never the id.
-	const name = (id: string, inline: boolean) => {
-		const group = inline ? "figuresInline" : "figures";
-		const key = `${group}.${id.replaceAll(".", "_")}`;
-		// The key is built at run time, so it can not be checked against the catalog.
-		return t.has(key as never) ? t(key as never) : t(`${group}.other` as never);
-	};
-	// A list in the person's language: the words between items are messages.
-	const list = (items: string[]) => {
-		if (items.length < 2) return items[0] ?? "";
-		if (items.length === 2) {
-			return tl("two", { first: items[0] ?? "", second: items[1] ?? "" });
-		}
-		return tl("many", {
-			rest: items.slice(0, -1).join(tl("separator")),
-			last: items[items.length - 1] ?? "",
-		});
-	};
 	const shareText = (s: ShareLine) =>
 		s.before && s.after
 			? t("shares.change", { before: money(s.before), after: money(s.after) })
@@ -88,8 +59,16 @@ export function ChangesBlock({
 						: null;
 
 	return (
-		<View accessibilityLiveRegion="polite" style={{ gap: space[2] }}>
-			<Text accessibilityRole="header" variant="section">
+		<View
+			accessibilityLiveRegion="polite"
+			style={{
+				gap: space[2],
+				paddingTop: space[3],
+				borderTopWidth: 1,
+				borderTopColor: color.line,
+			}}
+		>
+			<Text accessibilityRole="header" weight="semibold">
 				{t("title")}
 			</Text>
 			{status ? <Text tone="fg2">{status}</Text> : null}
@@ -150,11 +129,18 @@ export function ChangesBlock({
 					</Text>
 				</View>
 			) : null}
-			{lines && lines.stays.length > 0 ? (
+			{lines && (lines.stays.length > 0 || lines.moved.length === 0) ? (
 				<Text tone="fg2" variant="small">
-					{t("stays", {
-						places: list(lines.stays.map((id) => name(id, true))),
-					})}
+					{[
+						lines.stays.length > 0
+							? t("stays", {
+									places: list(lines.stays.map((id) => name(id, true))),
+								})
+							: null,
+						lines.moved.length === 0 ? t("nothing") : null,
+					]
+						.filter(Boolean)
+						.join(" ")}
 				</Text>
 			) : null}
 			{shares && shares.length === 0 ? (
@@ -167,11 +153,6 @@ export function ChangesBlock({
 					{t("unknown", {
 						places: list(lines.unknown.map((id) => name(id, true))),
 					})}
-				</Text>
-			) : null}
-			{lines && lines.moved.length === 0 ? (
-				<Text tone="fg2" variant="small">
-					{t("nothing")}
 				</Text>
 			) : null}
 		</View>

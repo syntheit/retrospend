@@ -1,61 +1,31 @@
-import { fromMinor, money } from "@retrospend/domain/money-minor";
-import { decimalSeparator } from "@retrospend/domain/parse";
-import { parseRateText } from "@retrospend/domain/rate-text";
-import { dayKey } from "@retrospend/domain/time-zone";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, Text, View } from "react-native";
+import { useRef, useState } from "react";
+import { Keyboard, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
-import { newClientId } from "@/data/ids";
 import { useMoneyLocale } from "@/lib/money";
 import type { ComposerPrefill } from "@/surfaces/prefill";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
-import { useToast } from "@/ui/Toast";
-import { ChangesBlock } from "./ChangesBlock";
+import { applyKey } from "@/ui/keypad";
+import { Text } from "@/ui/Text";
+import { useMoneyLines } from "./AmountCard";
+import { ComposerHeader } from "./ComposerHeader";
 import { ComposerShell, type EntryMode } from "./ComposerShell";
-import {
-	amountMinor,
-	buildExpenseUpdate,
-	buildExpenseWrite,
-	buildIncomeWrite,
-	buildTransferWrite,
-	DEFAULT_RATE,
-	type ExpenseDraft,
-	expenseErrors,
-	expenseFromEntry,
-	type IncomeDraft,
-	incomeErrors,
-	isPersonal,
-	knownPeople,
-	newExpenseDraft,
-	newIncomeDraft,
-	newTransferDraft,
-	sharedFromDetail,
-	splitRows,
-	type TransferDraft,
-	transferCurrencies,
-	transferErrors,
-} from "./draft";
+import { DeleteEntrySheet } from "./DeleteEntrySheet";
 import { ExpenseFields } from "./ExpenseFields";
-import { saveExpenseEdit } from "./edit";
-import { announceEntryChange } from "./events";
-import {
-	type SavedEntry,
-	useEditEntry,
-	useEntryCatalog,
-	useEntryPreview,
-	useRateOptions,
-} from "./hooks";
+import { type SavedEntry, useEditEntry, useEntryCatalog } from "./hooks";
 import { IncomeFields } from "./IncomeFields";
-import { PlanBlock } from "./PlanBlock";
-import { planOf, splitSharesOf } from "./preview";
-import { type SaveOutcome, saveEntry, undoSaved } from "./queue";
+import { MoreStep, StepSlide } from "./MoreStep";
+import { PreviewLine } from "./PreviewLine";
+import { ProjectPick } from "./ProjectPick";
 import { RateField } from "./RateField";
+import { useSplitView } from "./SplitGroup";
 import { SyncIssues } from "./SyncIssues";
-import { undoWrite } from "./send";
 import { TransferFields } from "./TransferFields";
-import { type EntryCatalog, personKey } from "./types";
+import type { EntryCatalog } from "./types";
+import { useComposerPreview } from "./useComposerPreview";
+import { useEntryForm } from "./useEntryForm";
+import { useEntrySave } from "./useEntrySave";
 
 interface ComposerProps {
 	onDone: () => void;
@@ -75,9 +45,9 @@ interface ComposerProps {
 }
 
 /**
- * Add expense and Add income in one frame. The same component sits in the
- * iPhone tab, the iPad form sheet and the Android bottom sheet; `onDone`
- * closes whichever it is in.
+ * Add expense, Add income and Add transfer in one frame. The same component
+ * sits in the iPhone tab, the iPad form sheet and the Android bottom sheet;
+ * `onDone` closes whichever it is in.
  */
 export function EntryComposer(props: ComposerProps) {
 	const t = useTranslations("mobile.composer");
@@ -113,46 +83,19 @@ export function EntryComposer(props: ComposerProps) {
 	);
 }
 
-/** The drafts with a prefill laid over them; the amount is shown in the person's own separators. */
-function filled<T extends { expense: ExpenseDraft; income: IncomeDraft }>(
-	drafts: T,
-	prefill: ComposerPrefill | undefined,
-	locale: string,
-	currencies: string[],
-) {
-	if (!prefill) return drafts;
-	const currency =
-		prefill.currency && currencies.includes(prefill.currency)
-			? prefill.currency
-			: undefined;
-	const amountText = prefill.amount
-		? prefill.amount.replace(".", decimalSeparator(locale))
-		: "";
-	return {
-		...drafts,
-		expense: {
-			...drafts.expense,
-			amountText,
-			currency: currency ?? drafts.expense.currency,
-			title: prefill.mode === "expense" ? (prefill.title ?? "") : "",
-		},
-		income: {
-			...drafts.income,
-			amountText,
-			currency: currency ?? drafts.income.currency,
-			source: prefill.mode === "income" ? (prefill.title ?? "") : "",
-		},
-	};
-}
-
+/** A message in the sheet's own surface; the loading panel is transparent, never a gray box. */
 function Notice({ title, detail }: { title: string; detail?: string }) {
-	const { color } = useTheme();
 	return (
-		<View style={{ flex: 1, backgroundColor: color.bg }}>
+		<View style={{ flex: 1 }}>
 			<EmptyState detail={detail} title={title} />
 		</View>
 	);
 }
+
+type FormProps = ComposerProps & {
+	catalog: EntryCatalog;
+	edit?: SavedEntry;
+};
 
 function Form({
 	catalog,
@@ -163,469 +106,185 @@ function Form({
 	prefill,
 	edit,
 	onDirtyChange,
-}: ComposerProps & {
-	catalog: EntryCatalog;
-	edit?: SavedEntry;
-}) {
+}: FormProps) {
 	const t = useTranslations("mobile.composer");
 	const locale = useMoneyLocale();
-	const toast = useToast();
-	const { api, local, state } = useSession();
-	const { color, space, type } = useTheme();
-	const me = state.status === "signedIn" ? state.me : null;
-	const today = () => dayKey(new Date());
-	const fresh = useCallback(
-		() => ({
-			expense: newExpenseDraft({
-				id: newClientId(),
-				currency: me?.defaultCurrency ?? "USD",
-				date: today(),
-			}),
-			income: newIncomeDraft({
-				id: newClientId(),
-				currency: me?.homeCurrency ?? "USD",
-				date: today(),
-				usePlan: catalog.hasBudget === true,
-			}),
-			transfer: newTransferDraft({
-				id: newClientId(),
-				currency: me?.defaultCurrency ?? "USD",
-				date: today(),
-				places: catalog.places,
-			}),
-		}),
-		[me?.defaultCurrency, me?.homeCurrency, catalog.hasBudget, catalog.places],
-	);
-	const editing = edit !== undefined;
-	const modes: EntryMode[] = editing
-		? ["expense"]
-		: catalog.places.length >= 2
-			? ["expense", "income", "transfer"]
-			: ["expense", "income"];
-	const [mode, setMode] = useState<EntryMode>(
-		modes.includes(initialMode) ? initialMode : "expense",
-	);
-	const [drafts, setDrafts] = useState(() => {
-		const start = filled(fresh(), prefill, locale, catalog.currencies);
-		if (!edit) return start;
-		return {
-			...start,
-			expense:
-				edit.kind === "shared"
-					? sharedFromDetail(edit.entry, locale)
-					: expenseFromEntry(edit.entry, locale),
-		};
+	const { space } = useTheme();
+	const form = useEntryForm({
+		catalog,
+		initialMode,
+		prefill,
+		edit,
+		onDirtyChange,
 	});
-	const [tried, setTried] = useState(false);
-	const [typing, setTyping] = useState(false);
-	const [busy, setBusy] = useState(false);
-
-	// Any change makes new drafts; the host asks before replacing them.
-	const opened = useRef(drafts);
-	const dirty = drafts !== opened.current;
-	useEffect(() => {
-		onDirtyChange?.(dirty);
-	}, [dirty, onDirtyChange]);
-
-	// Android keeps a field focused after the keyboard is dismissed.
-	useEffect(() => {
-		const hide = Keyboard.addListener("keyboardDidHide", () =>
-			setTyping(false),
-		);
-		return () => hide.remove();
-	}, []);
-
-	const expense = drafts.expense;
-	const income = drafts.income;
-	const transfer = drafts.transfer;
-	const meId = me?.id ?? "";
-	const expenseWrite = useMemo(
-		() =>
-			expense.editing
-				? buildExpenseUpdate(expense, { locale, catalog })
-				: buildExpenseWrite(expense, { locale, meId, catalog }),
-		[expense, locale, meId, catalog],
-	);
-	const incomeWrite = useMemo(
-		() => buildIncomeWrite(income, { locale, hasBudget: catalog.hasBudget }),
-		[income, locale, catalog.hasBudget],
-	);
-	const transferWrite = useMemo(
-		() => buildTransferWrite(transfer, { locale, places: catalog.places }),
-		[transfer, locale, catalog.places],
-	);
-	const write =
-		mode === "expense"
-			? expenseWrite
-			: mode === "income"
-				? incomeWrite
-				: transferWrite;
-	const { state: preview, retry: retryPreview } = useEntryPreview(write);
-	// Use my plan: the lines it would write come with the same dry run.
-	const plan =
-		mode === "income" && income.usePlan && preview.status === "ready"
-			? planOf(preview.diff)
-			: null;
-	// Save waits for the dry run of exactly what it will send. Offline there is
-	// none and an add waits on the phone, but an edit is never queued: it needs
-	// the dry run, so only a ready one lets it through. A refused one can not be saved.
-	const blocked =
-		write !== null &&
-		preview.status !== "ready" &&
-		(editing || preview.status !== "offline");
-	// Each share is the server's, from the dry run of this very write.
-	const shares = useMemo(
-		() =>
-			mode === "expense" && preview.status === "ready"
-				? splitSharesOf(preview.diff)
-				: null,
-		[mode, preview],
-	);
-	const rows = useMemo(
-		() =>
-			splitRows(expense, {
-				locale,
-				meId,
-				people: knownPeople(expense, catalog.people),
-				youLabel: t("you"),
-				shares,
-			}),
-		[expense, locale, meId, catalog.people, t, shares],
-	);
-	const expenseProblems = expenseErrors(expense, locale, catalog.categories);
-	const incomeProblems = incomeErrors(income, locale);
-	const transferProblems = transferErrors(transfer, {
-		locale,
-		places: catalog.places,
+	const pv = useComposerPreview(form);
+	const { add, busy } = useEntrySave({
+		form,
+		write: pv.write,
+		blocked: pv.blocked,
+		onDone,
 	});
-	const amountProblem =
-		mode === "expense"
-			? expenseProblems.amount
-			: mode === "income"
-				? incomeProblems.amount
-				: transferProblems.amount;
+	const lines = useMoneyLines(form);
+	const split = useSplitView(form, pv, edit);
+	const [deleting, setDeleting] = useState(false);
+	// The More step slides in the first time it opens; the quick step is just there.
+	const visitedMore = useRef(false);
+	if (form.step === "more") visitedMore.current = true;
 
-	const patchExpense = (patch: Partial<typeof expense>) =>
-		setDrafts((d) => ({ ...d, expense: { ...d.expense, ...patch } }));
-	const patchIncome = (patch: Partial<typeof income>) =>
-		setDrafts((d) => ({ ...d, income: { ...d.income, ...patch } }));
-	const patchTransfer = (patch: Partial<TransferDraft>) =>
-		setDrafts((d) => ({ ...d, transfer: { ...d.transfer, ...patch } }));
-	// The amount and currency the keypad works on: a transfer's are its source account's.
-	const fromCurrency =
-		transferCurrencies(transfer, catalog.places).from ??
-		me?.homeCurrency ??
-		"USD";
-	const active =
-		mode === "expense"
-			? { amountText: expense.amountText, currency: expense.currency }
-			: mode === "income"
-				? { amountText: income.amountText, currency: income.currency }
-				: { amountText: transfer.amountText, currency: fromCurrency };
-	const patchAmount = (amountText: string) =>
-		mode === "expense"
-			? patchExpense({ amountText })
-			: mode === "income"
-				? patchIncome({ amountText })
-				: patchTransfer({ amountText });
+	const { mode, expense, income, transfer, rated, tried } = form;
 
-	// Another currency than home: the rate and the value at home, as the server books them.
-	const homeCurrency = me?.homeCurrency ?? "USD";
-	const rated =
-		mode === "expense" ? expense : mode === "income" ? income : null;
-	const foreign = rated !== null && rated.currency !== homeCurrency;
-	const typedMinor = rated
-		? amountMinor(rated.amountText, locale, rated.currency)
-		: null;
-	const rateOptions = useRateOptions(
-		{
-			currency: rated?.currency ?? homeCurrency,
-			date: rated?.date ?? today(),
-			amount:
-				rated && typedMinor
-					? fromMinor(money(typedMinor, rated.currency))
-					: null,
-			customRate:
-				rated?.custom === true ? parseRateText(rated.customText, locale) : null,
-		},
-		foreign,
-	);
-	const rateProblem =
-		mode === "expense"
-			? expenseProblems.rate
-			: mode === "income"
-				? incomeProblems.rate
-				: undefined;
-	// A split books at your default type: the type is stated, not picked.
-	const sharedExpense =
-		mode === "expense" &&
-		(expense.editing
-			? expense.editing.source === "shared"
-			: !isPersonal(expense));
-
-	// One key per edit body, kept across retries of the same body (R30).
-	const editKey = useRef({ body: "", key: "" });
-	function keyFor(body: string) {
-		if (editKey.current.body !== body) {
-			editKey.current = { body, key: newClientId() };
-		}
-		return editKey.current.key;
+	function goTo(step: "quick" | "more") {
+		// A field that unmounts never reports its blur.
+		Keyboard.dismiss();
+		form.setTyping(false);
+		form.setStep(step);
 	}
 
-	// The latest pick: a slower answer for an earlier project is dropped.
-	const projectPick = useRef(0);
+	const rate =
+		rated && form.foreign ? (
+			<RateField
+				choice={rated}
+				currency={rated.currency}
+				error={tried && form.rateProblem === true}
+				homeCurrency={form.homeCurrency}
+				keptHome={mode === "expense" ? (expense.editing?.home ?? null) : null}
+				onChange={(patch) =>
+					mode === "income" ? form.patchIncome(patch) : form.patchExpense(patch)
+				}
+				onTypingChange={form.setTyping}
+				options={form.rateOptions}
+				shared={form.sharedExpense}
+			/>
+		) : null;
 
-	// A project's people depend on the day, so a new date reads them again.
-	// An edit keeps its people and its project (the server splits it again the
-	// saved way), so it reads nothing: a failed read must not drop the project.
-	const pickedDate = useRef(expense.date);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: only a date change re-reads the people
-	useEffect(() => {
-		if (pickedDate.current === expense.date) return;
-		pickedDate.current = expense.date;
-		if (expense.editing) return;
-		if (expense.projectId) void pickProject(expense.projectId);
-	}, [expense.date]);
-
-	/** Picks the project and takes in its people on the expense's day, as the web does. */
-	async function pickProject(projectId: string | null) {
-		// An edit can not move an expense between projects.
-		if (expense.editing) return;
-		const pick = ++projectPick.current;
-		if (!projectId) {
-			patchExpense({ projectId: null, projectPeople: [], withKeys: [] });
-			return;
-		}
-		const project = catalog.projects.find((p) => p.id === projectId);
-		try {
-			if (!api) throw new Error("offline");
-			const { items } = await api.projects.members({
-				id: projectId,
-				date: expense.date,
-			});
-			const people = items
-				.filter(
-					(m) => !(m.participantType === "user" && m.participantId === meId),
-				)
-				.map((m) => ({
-					type: m.participantType,
-					id: m.participantId,
-					name: m.name,
-					imageUrl: m.imageUrl,
-				}));
-			if (pick !== projectPick.current) return;
-			patchExpense({
-				projectId,
-				projectPeople: people,
-				withKeys: people.map(personKey),
-				// The project's currency, until an amount is typed in another.
-				...(!expense.amountText &&
-				project &&
-				catalog.currencies.includes(project.currency)
-					? { currency: project.currency, ...DEFAULT_RATE }
-					: {}),
-			});
-		} catch {
-			if (pick !== projectPick.current) return;
-			// The project stays unpicked: a split without its people would be wrong.
-			patchExpense({ projectId: null, projectPeople: [], withKeys: [] });
-			toast.show({ message: t("project.loadFailed") });
-		}
-	}
-
-	async function saveEdit() {
-		if (!write || !api || busy || blocked) return;
-		setBusy(true);
-		const outcome = await saveExpenseEdit(
-			api,
-			write,
-			keyFor(JSON.stringify(write.body)),
-		).finally(() => setBusy(false));
-		if (outcome.status !== "saved") {
-			toast.show({
-				message:
-					outcome.status === "offline"
-						? t("toast.editOffline")
-						: t("toast.editRefused"),
-			});
-			return;
-		}
-		announceEntryChange();
-		const { undo } = outcome;
-		toast.show({
-			message: t("toast.edited", { title: write.label }),
-			undo: {
-				label: t("undo"),
-				onUndo: async () => {
-					const ok = await undoWrite(api, undo, newClientId()).then(
-						() => true,
-						() => false,
-					);
-					announceEntryChange();
-					toast.show({
-						message: ok
-							? t("toast.restored", { title: write.label })
-							: t("toast.undoFailed"),
-					});
-				},
-			},
-		});
-		onDone();
-	}
-
-	async function add() {
-		setTried(true);
-		if (editing) return saveEdit();
-		if (!write || !api || !local || busy || blocked) return;
-		setBusy(true);
-		let outcome: SaveOutcome;
-		try {
-			outcome = await saveEntry({ outbox: local.outbox, api, write });
-		} finally {
-			setBusy(false);
-		}
-		announceEntryChange();
-		const clientId = String(write.body.id);
-		showSaved(outcome, write.label, async () => {
-			const result = await undoSaved({ outbox: local.outbox, api, clientId });
-			announceEntryChange();
-			toast.show({
-				message:
-					result === "undone"
-						? t("toast.undone", { title: write.label })
-						: t("toast.undoFailed"),
-			});
-		});
-		setDrafts(fresh());
-		setTried(false);
-		onDone();
-	}
-
-	function showSaved(outcome: SaveOutcome, title: string, onUndo: () => void) {
-		const message =
-			outcome.status === "synced"
-				? t("toast.added", { title })
-				: outcome.status === "queued"
-					? t("toast.queued", { title })
-					: t("toast.parked", { title });
-		const undoable =
-			outcome.status === "queued" ||
-			(outcome.status === "synced" && outcome.undo !== null);
-		toast.show({
-			message,
-			undo: undoable ? { label: t("undo"), onUndo } : undefined,
-		});
-	}
+	// In a project the split is about the project's people, not your latest ones.
+	const people = expense.projectId ? expense.projectPeople : catalog.people;
+	const context =
+		mode === "expense" && !form.editing && catalog.projects.length > 0 ? (
+			<ProjectPick
+				onChange={form.pickProject}
+				projects={catalog.projects}
+				value={expense.projectId}
+				variant="pill"
+			/>
+		) : null;
 
 	return (
-		<ComposerShell
-			addDescription={
-				editing
-					? t("saveExpense")
-					: mode === "expense"
-						? t("addExpense")
-						: mode === "income"
-							? t("addIncome")
-							: t("addTransfer")
-			}
-			addLabel={editing ? t("save") : t("add")}
-			amountError={tried && amountProblem === true}
-			amountText={active.amountText}
-			blocked={blocked}
-			busy={busy}
-			currencies={catalog.currencies}
-			currency={active.currency}
-			currencyLocked={
-				mode === "transfer" || expense.editing?.source === "shared"
-			}
-			mode={mode}
-			modes={modes}
-			onAdd={add}
-			onAmountChange={patchAmount}
-			onCurrencyChange={(currency) =>
-				mode === "income"
-					? patchIncome({ currency, amountText: "", ...DEFAULT_RATE })
-					: patchExpense({ currency, amountText: "", ...DEFAULT_RATE })
-			}
-			onKeypadRequest={() => setTyping(false)}
-			onModeChange={(next) => {
-				setMode(next);
-				setTried(false);
-				onModeChange?.(next);
-			}}
-			rate={
-				rated && foreign ? (
-					<RateField
-						choice={rated}
-						currency={rated.currency}
-						error={tried && rateProblem === true}
-						homeCurrency={homeCurrency}
-						keptHome={
-							mode === "expense" ? (expense.editing?.home ?? null) : null
-						}
-						onChange={(patch) =>
-							mode === "income" ? patchIncome(patch) : patchExpense(patch)
-						}
-						onTypingChange={setTyping}
-						options={rateOptions}
-						shared={sharedExpense}
-					/>
-				) : null
-			}
-			recentCurrencies={catalog.recentCurrencies}
-			surface={surface}
-			typing={typing}
-			yourCurrencies={[me?.homeCurrency, me?.defaultCurrency].filter(
-				(code): code is string => Boolean(code),
-			)}
-		>
-			<View style={{ gap: space[4] }}>
-				<SyncIssues />
-				{prefill?.file ? (
-					<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-						{t("sharedFileNotice")}
-					</Text>
-				) : null}
-				{mode === "expense" ? (
-					<ExpenseFields
-						catalog={catalog}
-						draft={expense}
-						errors={tried ? expenseProblems : {}}
-						onChange={patchExpense}
-						onProject={pickProject}
-						onTypingChange={setTyping}
-						rows={rows}
-					/>
-				) : mode === "income" ? (
-					<IncomeFields
-						catalog={catalog}
-						draft={income}
-						errors={tried ? incomeProblems : {}}
-						onChange={patchIncome}
-						onTypingChange={setTyping}
-					/>
-				) : (
-					<TransferFields
-						draft={transfer}
-						errors={tried ? transferProblems : {}}
-						onChange={patchTransfer}
-						onTypingChange={setTyping}
-						places={catalog.places}
-					/>
-				)}
-				<ChangesBlock
-					idle={
-						mode === "expense"
-							? t("changes.emptyExpense")
+		<>
+			<ComposerShell
+				addDescription={
+					form.editing
+						? t("saveExpense")
+						: mode === "expense"
+							? t("addExpense")
 							: mode === "income"
-								? t("changes.emptyIncome")
-								: t("changes.emptyTransfer")
-					}
-					onRetry={retryPreview}
-					state={preview}
+								? t("addIncome")
+								: t("addTransfer")
+				}
+				addLabel={form.editing ? t("save") : t("add")}
+				addOff={pv.blocked || form.typedAmount === null}
+				amountError={tried && form.amountProblem === true}
+				busy={busy}
+				header={
+					<ComposerHeader
+						context={context}
+						mode={mode}
+						modes={form.modes}
+						onModeChange={(next) => {
+							form.setMode(next);
+							form.setTried(false);
+							form.setTarget("amount");
+							onModeChange?.(next);
+						}}
+						onMore={() => goTo("more")}
+						step={form.step}
+						undoChanges={form.dirty && form.editing ? form.undoChanges : null}
+					/>
+				}
+				keypad={{
+					text: form.keypad.text,
+					currency: form.keypad.currency,
+					onChange: form.patchAmount,
+				}}
+				lines={lines}
+				onAdd={add}
+				onBack={() => goTo("quick")}
+				onOperator={(sign) =>
+					form.patchAmount(
+						applyKey(form.keypad.text, sign, locale, form.keypad.currency),
+					)
+				}
+				onScrollDrag={() => form.setPadOpen(false)}
+				padOpen={form.padOpen}
+				preview={<PreviewLine state={pv.preview} />}
+				rate={rate}
+				step={form.step}
+				surface={surface}
+				typing={form.typing}
+			>
+				{form.step === "more" ? (
+					<StepSlide animate from={1} key="more">
+						<MoreStep
+							edit={edit}
+							form={form}
+							onDelete={() => setDeleting(true)}
+							preview={pv}
+							rate={rate}
+						/>
+					</StepSlide>
+				) : (
+					<StepSlide animate={visitedMore.current} from={-1} key="quick">
+						<View style={{ gap: space[4] }}>
+							<SyncIssues />
+							{prefill?.file ? (
+								<Text tone="fg2">{t("sharedFileNotice")}</Text>
+							) : null}
+							{mode === "expense" ? (
+								<ExpenseFields
+									catalog={catalog}
+									draft={expense}
+									errors={tried ? form.expenseProblems : {}}
+									onChange={form.patchExpense}
+									onMore={() => goTo("more")}
+									onTypingChange={form.setTyping}
+									people={people}
+									split={
+										split
+											? { mode: split.mode, yourShare: split.yourShare }
+											: null
+									}
+								/>
+							) : mode === "income" ? (
+								<IncomeFields
+									catalog={catalog}
+									draft={income}
+									errors={tried ? form.incomeProblems : {}}
+									onChange={form.patchIncome}
+									onTypingChange={form.setTyping}
+								/>
+							) : (
+								<TransferFields
+									draft={transfer}
+									errors={tried ? form.transferProblems : {}}
+									exchange={form.exchange}
+									onChange={form.patchTransfer}
+									places={catalog.places}
+								/>
+							)}
+						</View>
+					</StepSlide>
+				)}
+			</ComposerShell>
+			{form.editing && edit ? (
+				<DeleteEntrySheet
+					id={expense.id}
+					kind={edit.kind === "shared" ? "shared" : "expense"}
+					onClose={() => setDeleting(false)}
+					onDeleted={onDone}
+					title={expense.title}
+					visible={deleting}
 				/>
-				{plan ? <PlanBlock plan={plan} /> : null}
-			</View>
-		</ComposerShell>
+			) : null}
+		</>
 	);
 }

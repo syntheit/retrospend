@@ -28,18 +28,14 @@
 		"mode": "Art des Eintrags",
 		"expense": "Ausgabe",
 		"income": "Einnahme",
-		"titleExpense": "Ausgabe hinzufügen",
-		"titleIncome": "Einnahme hinzufügen",
 		"loading": "Wird geladen",
 		"loadError": "Das Formular lässt sich nicht öffnen",
 		"loadErrorDetail": "Prüfe deine Verbindung und versuche es noch einmal.",
 		"titleField": "Titel",
 		"titlePlaceholder": "Was war es?",
 		"category": "Kategorie",
-		"allCategories": "Alle",
 		"with": "Mit",
 		"you": "Du",
-		"splitEqually": "Gleichmäßig aufteilen",
 		"from": "Von",
 		"fromPlaceholder": "Wer hat dich bezahlt?",
 		"afterSaving": "Nach dem Speichern",
@@ -139,7 +135,9 @@
 				"leaves": "Nicht mehr dabei, vorher {before}",
 				"told": "Alle werden über die Änderung informiert.",
 				"same": "Der Anteil jeder Person bleibt gleich."
-			}
+			},
+			"oneLineNone": "Keine Zahl ändert sich.",
+			"oneLineMore": "{figure} und {count} weitere"
 		},
 		"list": {
 			"two": "{first} und {second}",
@@ -154,7 +152,6 @@
 			"retryFailed": "Senden klappt noch nicht. Versuche es später noch einmal."
 		},
 		"transferMode": "Umbuchung",
-		"titleTransfer": "Umbuchung hinzufügen",
 		"addTransfer": "Umbuchung hinzufügen",
 		"titleEdit": "Ausgabe bearbeiten",
 		"save": "Speichern",
@@ -179,7 +176,6 @@
 		"transfer": {
 			"from": "Von",
 			"to": "Nach",
-			"received": "Erhalten in {currency}",
 			"receivedPlaceholder": "Optional",
 			"receivedHint": "Lass das Feld leer, dann gilt der Referenzkurs.",
 			"note": "Notiz",
@@ -188,7 +184,9 @@
 				"same": "Wähle zwei verschiedene Konten",
 				"places": "Wähle beide Konten",
 				"received": "Gib an, was angekommen ist, oder lass das Feld leer"
-			}
+			},
+			"receivedLabel": "Erhalten, {amount}",
+			"receivedEmpty": "Erhalten in {currency}, optional"
 		},
 		"today": "Heute",
 		"yesterday": "Gestern",
@@ -227,6 +225,64 @@
 			"sharedFixed": "Geteilte Ausgaben nutzen deine Standard-Kursart.",
 			"error": "Gib einen Kurs über null ein",
 			"enterRate": "Kurs eingeben"
+		},
+		"more": "Mehr",
+		"moreDetails": "Weitere Details",
+		"back": "Zurück",
+		"dateMenu": "Datum, {date}",
+		"pickDate": "Datum wählen",
+		"categoriesAll": "Alle Kategorien",
+		"categoriesMore": "Mehr",
+		"actions": "Aktionen",
+		"actionsLabel": "⋯",
+		"undoChanges": "Änderungen rückgängig machen",
+		"options": "Optionen",
+		"context": {
+			"personal": "Privat"
+		},
+		"ops": {
+			"label": "Rechenzeichen",
+			"plus": "Plus",
+			"minus": "Minus",
+			"times": "Mal",
+			"divide": "Geteilt durch"
+		},
+		"faces": {
+			"add": "Hinzufügen",
+			"addLabel": "Person hinzufügen",
+			"find": "Person suchen",
+			"empty": "Keine Person gefunden",
+			"title": "Personen"
+		},
+		"split": {
+			"title": "Aufteilung",
+			"paidBy": "Bezahlt von",
+			"mode": "Aufteilung",
+			"modes": {
+				"EQUAL": "Zu gleichen Teilen",
+				"EXACT": "Nach Betrag",
+				"PERCENTAGE": "Nach Prozent",
+				"SHARES": "Nach Anteilen"
+			},
+			"summary": {
+				"EQUAL": "Zu gleichen Teilen",
+				"EXACT": "Nach Betrag",
+				"PERCENTAGE": "Nach Prozent",
+				"SHARES": "Nach Anteilen"
+			},
+			"summaryShare": "{split}, dein Anteil {amount}",
+			"tapFaces": "Tippe im ersten Schritt auf ein Gesicht, um aufzuteilen."
+		},
+		"delete": {
+			"row": "Löschen",
+			"title": "Diese Ausgabe löschen?",
+			"body": "Sie verschwindet aus deinen Ausgaben und deinem Budget.",
+			"bodyShared": "Sie verschwindet aus der Aufteilung und was andere schulden, ändert sich. Das lässt sich nicht rückgängig machen.",
+			"button": "Löschen",
+			"deleted": "{title} gelöscht",
+			"restored": "{title} wiederhergestellt",
+			"undoFailed": "Rückgängig machen nicht möglich. Versuche es unter Aktivität.",
+			"failed": "Löschen nicht möglich. Versuche es erneut."
 		}
 	},
 	"pickers": {

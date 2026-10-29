@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
 import { useRateTypeName } from "@/lib/rateTypes";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { PickerSheet } from "@/ui/PickerSheet";
+import { Text } from "@/ui/Text";
 import { FieldError, TextField } from "@/ui/TextField";
 import type { RateChoice } from "./draft";
 import type { RateOptions } from "./hooks";
@@ -50,14 +51,13 @@ export function RateField({
 	const tp = useTranslations("mobile.pickers");
 	const name = useRateTypeName();
 	const { format } = useFormatMoney();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const [open, setOpen] = useState(false);
 	const view = rateView(options, choice, keptHome);
 	// Offline before the first answer: nothing to pick from or show yet.
 	if (!options && !choice.custom && !view.home) return null;
 	const typeName = name(view.type);
 	const home = view.home ? format(view.home) : null;
-	const muted = { color: color.fg2, fontSize: type.small.size } as const;
 
 	return (
 		<View style={{ gap: space[2] }}>
@@ -71,7 +71,9 @@ export function RateField({
 				{shared ? (
 					<Text
 						accessibilityHint={t("sharedFixed")}
-						style={[muted, { flexShrink: 1 }]}
+						style={{ flexShrink: 1 }}
+						tone="fg2"
+						variant="small"
 					>
 						{t("fixed", { type: typeName })}
 					</Text>
@@ -79,11 +81,9 @@ export function RateField({
 					<>
 						<Text
 							accessibilityRole="alert"
-							style={{
-								flexShrink: 1,
-								color: color.attentionText,
-								fontSize: type.small.size,
-							}}
+							style={{ flexShrink: 1 }}
+							tone="attention"
+							variant="small"
 						>
 							{t("missing", { currency })}
 						</Text>
@@ -106,10 +106,9 @@ export function RateField({
 					<Text
 						accessibilityLabel={t("homeLabel", { amount: home })}
 						numberOfLines={1}
-						style={[
-							muted,
-							{ fontVariant: ["tabular-nums"], textAlign: "right" },
-						]}
+						style={{ textAlign: "right" }}
+						tabular
+						tone="fg2"
 					>
 						{home}
 					</Text>
@@ -119,9 +118,7 @@ export function RateField({
 				<View
 					style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}
 				>
-					<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-						{t("customUnit", { currency })}
-					</Text>
+					<Text tone="fg2">{t("customUnit", { currency })}</Text>
 					<View style={{ flex: 1 }}>
 						<TextField
 							hideLabel
@@ -134,9 +131,7 @@ export function RateField({
 							value={choice.customText}
 						/>
 					</View>
-					<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-						{homeCurrency}
-					</Text>
+					<Text tone="fg2">{homeCurrency}</Text>
 				</View>
 			) : null}
 			{error ? <FieldError>{t("error")}</FieldError> : null}

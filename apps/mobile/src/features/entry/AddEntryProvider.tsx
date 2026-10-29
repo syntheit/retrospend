@@ -87,7 +87,6 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const insets = useSafeAreaInsets();
 	const { space } = useTheme();
 	const [open, setOpen] = useState<EntryMode | null>(null);
-	const [mode, setMode] = useState<EntryMode>("expense");
 	// A prefill belongs to one opening; the counter remounts the composer when
 	// a second share arrives while the first is still open (after asking, when
 	// the first has unsaved changes).
@@ -121,7 +120,6 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 				isOpen.current && dirty.current,
 				() => {
 					dirty.current = false;
-					setMode(next);
 					setFill((f) => ({ prefill, editId, editShared, count: f.count + 1 }));
 					setOpen(next);
 				},
@@ -183,16 +181,9 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 			) : null}
 			<Sheet
 				detents={["large"]}
+				dismiss="close"
 				onClose={close}
-				title={
-					fill.editId
-						? t("titleEdit")
-						: mode === "expense"
-							? t("titleExpense")
-							: mode === "income"
-								? t("titleIncome")
-								: t("titleTransfer")
-				}
+				title={fill.editId ? t("titleEdit") : undefined}
 				visible={open !== null}
 			>
 				<View style={sheetSize}>
@@ -204,7 +195,6 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 							key={fill.count}
 							onDirtyChange={onDirtyChange}
 							onDone={close}
-							onModeChange={setMode}
 							prefill={fill.prefill}
 							surface
 						/>

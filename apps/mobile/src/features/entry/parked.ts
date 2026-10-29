@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/auth/session";
 import { subscribeEntryChanges } from "./events";
-import { exclusive, flushEntries } from "./queue";
 import { type ParkedEntry, parkedFrom } from "./parked-entry";
+import { exclusive, flushEntries } from "./queue";
 import { isEntryEntity } from "./send";
 
 // Writes the server refused wait in the outbox, parked and never dropped.
