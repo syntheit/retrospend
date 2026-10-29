@@ -2,10 +2,10 @@ import { parseScopeList } from "@retrospend/api-contract/common";
 import { describe, expect, it } from "vitest";
 import { mayCall, sessionScopesOf } from "../../scopes";
 
-const held = ["account:delete"];
+const held = ["account:delete", "account:security"];
 
 describe("sessionScopesOf", () => {
-	it("gives account deletion to the web app and the Expo app only", () => {
+	it("gives account deletion and security to the web app and the Expo app only", () => {
 		expect(sessionScopesOf({ kind: "web", granted: null })).toEqual(held);
 		expect(sessionScopesOf({ kind: "mobile", granted: null })).toEqual([]);
 		expect(

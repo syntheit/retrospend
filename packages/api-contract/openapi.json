@@ -78176,6 +78176,407 @@
 				"x-required-scope": "account:delete"
 			}
 		},
+		"/me/password": {
+			"post": {
+				"description": "Needs the current password, every time (5 tries in 15 minutes, then 429). Signs out every other session; the one making the change stays signed in.",
+				"operationId": "changeMyPassword",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"currentPassword": {
+										"maxLength": 255,
+										"minLength": 1,
+										"type": "string"
+									},
+									"newPassword": {
+										"description": "8 or more characters with a lowercase and an uppercase letter and a number.",
+										"maxLength": 255,
+										"minLength": 8,
+										"pattern": "(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)",
+										"type": "string"
+									}
+								},
+								"required": [
+									"currentPassword",
+									"newPassword"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"signedOut": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"signedOut"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"account:security"
+						]
+					},
+					{
+						"cookieAuth": [
+							"account:security"
+						]
+					}
+				],
+				"summary": "Change your password",
+				"tags": [
+					"Account"
+				],
+				"x-event-type": "user.password_changed",
+				"x-required-scope": "account:security"
+			}
+		},
+		"/me/sessions": {
+			"get": {
+				"description": "Web, app and device sessions that have not expired. No token is ever returned.",
+				"operationId": "listMySessions",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"clientId": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"current": {
+														"type": "boolean"
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"kind": {
+														"enum": [
+															"web",
+															"mobile",
+															"device"
+														],
+														"type": "string"
+													},
+													"lastUsedAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"userAgent": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													}
+												},
+												"required": [
+													"id",
+													"kind",
+													"clientId",
+													"userAgent",
+													"current",
+													"createdAt",
+													"lastUsedAt"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"items"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"account:security"
+						]
+					},
+					{
+						"cookieAuth": [
+							"account:security"
+						]
+					}
+				],
+				"summary": "Where you are signed in, most recently used first",
+				"tags": [
+					"Account"
+				],
+				"x-required-scope": "account:security"
+			}
+		},
+		"/me/sessions/{id}": {
+			"delete": {
+				"description": "Its token stops working on its next request. The session making the request is refused: sign out instead.",
+				"operationId": "endMySession",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"account:security"
+						]
+					},
+					{
+						"cookieAuth": [
+							"account:security"
+						]
+					}
+				],
+				"summary": "Sign out one of your sessions",
+				"tags": [
+					"Account"
+				],
+				"x-event-type": "user.session_ended",
+				"x-required-scope": "account:security"
+			}
+		},
 		"/needs-you": {
 			"get": {
 				"description": "Splits to review, payments to confirm, recurring entries due, import review, fix requests, budget prompts (with the envelope budget on) and setup prompts. The server sends facts; the client words each item.",

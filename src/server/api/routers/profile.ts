@@ -1,5 +1,4 @@
 import { TRPCError } from "@trpc/server";
-import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { z } from "zod";
 import {
 	type BackgroundSettings,
@@ -12,6 +11,7 @@ import {
 	publicProcedure,
 } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import { changeOwnPassword } from "~/server/services/account-security.service";
 import {
 	cancelPendingEmailChange,
 	getBackgroundSettings,
@@ -200,54 +200,14 @@ export const profileRouter = createTRPCRouter({
 				}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const { session, db } = ctx;
-
-			const credentialAccount = await db.account.findFirst({
-				where: {
-					userId: session.user.id,
-					providerId: "credential",
-				},
+			// The same check, tries limit and sign-out of the other sessions
+			// as POST /api/v1/me/password.
+			await changeOwnPassword({
+				userId: ctx.session.user.id,
+				keepSessionId: ctx.session.session.id,
+				currentPassword: input.currentPassword,
+				newPassword: input.newPassword,
 			});
-
-			if (!credentialAccount?.password) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "Password change is not available for this account",
-				});
-			}
-
-			const isCurrentValid = await verifyPassword({
-				password: input.currentPassword,
-				hash: credentialAccount.password,
-			});
-
-			if (!isCurrentValid) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "Current password is incorrect",
-				});
-			}
-
-			const hashedPassword = await hashPassword(input.newPassword);
-
-			await db.account.updateMany({
-				where: {
-					userId: session.user.id,
-					providerId: "credential",
-				},
-				data: {
-					password: hashedPassword,
-				},
-			});
-
-			// Invalidate all other sessions to force re-login
-			await db.session.deleteMany({
-				where: {
-					userId: session.user.id,
-					id: { not: session.session.id },
-				},
-			});
-
 			return { success: true };
 		}),
 	getLifetimeStats: protectedProcedure.query(async ({ ctx }) => {

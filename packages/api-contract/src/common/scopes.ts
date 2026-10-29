@@ -46,8 +46,10 @@ export const DEVICE_CLIENT_IDS: readonly string[] = [
  * be given one (parseScopeList does not know them), so the token sheet, the
  * device approval and `GET /me` never list them.
  * - `account:delete`: delete the signed-in user's own account.
+ * - `account:security`: change the password, list the signed-in sessions
+ *   and sign one of them out.
  */
-export const SESSION_SCOPES = ["account:delete"] as const;
+export const SESSION_SCOPES = ["account:delete", "account:security"] as const;
 
 export type SessionScope = (typeof SESSION_SCOPES)[number];
 
