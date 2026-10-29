@@ -222,4 +222,40 @@ describe("deleting an account is undoable", () => {
 		);
 		expect(other).toBeDefined();
 	});
+
+	it.each([
+		["amount", { amount: "25" }],
+		["day", { date: new Date("2026-01-05T00:00:00.000Z") }],
+	] as const)(
+		"refuses an undo when an income it holds was edited since (%s)",
+		async (_what, change) => {
+			const id = await open("With income", "10");
+			const made = await send("POST", "/income", {
+				title: "Pay",
+				amount: "20",
+				currency: "USD",
+				into: id,
+			});
+			expect(made.status, await made.clone().text()).toBe(201);
+			expect(
+				await adminDb.accountLeg.count({
+					where: { accountId: id, expenseId: { not: null } },
+				}),
+			).toBe(1);
+			const deleted = await expectBody<Write>(
+				await send("POST", `/accounts/${id}/delete`, { id }),
+				c.delete,
+			);
+			const income = await adminDb.expense.findFirstOrThrow({
+				where: { userId, title: "Pay" },
+			});
+			await adminDb.expense.update({ where: { id: income.id }, data: change });
+			await expectProblem(
+				await send("POST", "/accounts/undo", { token: deleted.undo }),
+				409,
+				"conflict",
+			);
+			expect(await adminDb.assetAccount.count({ where: { id } })).toBe(0);
+		},
+	);
 });

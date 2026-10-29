@@ -10,6 +10,7 @@ function item(over: Partial<RecurringItem>): RecurringItem {
 		next: "2026-11-01",
 		dueAt: "2026-11-01T12:00:00.000Z",
 		nextAfter: "2026-12-01",
+		paidOnFrom: "2026-10-01",
 		state: "upcoming",
 		paused: false,
 		autoPay: false,

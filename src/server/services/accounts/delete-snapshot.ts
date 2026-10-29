@@ -20,6 +20,15 @@ export interface AccountSnapshot {
 	readonly history: readonly Row[];
 	readonly rateTypes: readonly Row[];
 	readonly legs: readonly Row[];
+	/**
+	 * How each expense and move a leg belongs to looked when the account was
+	 * deleted, so an undo can tell one that was edited since (the leg would then
+	 * disagree with it). Absent on a stash written before this was kept.
+	 */
+	readonly sources?: {
+		readonly expenses: readonly ExpenseStamp[];
+		readonly transfers: readonly TransferStamp[];
+	};
 	/** Rows that pointed at the account and were detached by the delete. */
 	readonly links: {
 		readonly transfersFrom: readonly string[];
@@ -33,6 +42,23 @@ export interface AccountSnapshot {
 		readonly liabilityEnvelopes: readonly string[];
 		readonly wealthEnvelopes: readonly string[];
 	};
+}
+
+interface ExpenseStamp {
+	readonly id: string;
+	readonly amount: string;
+	readonly currency: string;
+	readonly date: string;
+	readonly updatedAt: string;
+}
+
+interface TransferStamp {
+	readonly id: string;
+	readonly fromAmount: string;
+	readonly fromCurrency: string;
+	readonly toAmount: string;
+	readonly toCurrency: string;
+	readonly date: string;
 }
 
 const ids = (rows: { id: string }[]) => rows.map((r) => r.id);
@@ -68,8 +94,41 @@ export async function snapshotAccount(
 			select: { id: true },
 		}),
 	]);
+	const expenseIds = [
+		...new Set(legs.map((l) => l.expenseId).filter((v): v is string => !!v)),
+	];
+	const transferIds = [
+		...new Set(legs.map((l) => l.transferId).filter((v): v is string => !!v)),
+	];
+	const [expenseRows, transferRows] = await Promise.all([
+		tx.expense.findMany({
+			where: { id: { in: expenseIds } },
+			select: {
+				id: true,
+				amount: true,
+				currency: true,
+				date: true,
+				updatedAt: true,
+			},
+		}),
+		tx.transfer.findMany({
+			where: { id: { in: transferIds } },
+			select: {
+				id: true,
+				fromAmount: true,
+				fromCurrency: true,
+				toAmount: true,
+				toCurrency: true,
+				date: true,
+			},
+		}),
+	]);
 	return {
 		userId,
+		sources: {
+			expenses: expenseRows.map(expenseStamp),
+			transfers: transferRows.map(transferStamp),
+		},
 		account: packRow(account),
 		snapshots: snapshots.map(packRow),
 		history: history.map(packRow),
@@ -84,6 +143,42 @@ export async function snapshotAccount(
 		},
 	};
 }
+
+type ExpenseSource = {
+	id: string;
+	amount: { toString(): string };
+	currency: string;
+	date: Date;
+	updatedAt: Date;
+};
+type TransferSource = {
+	id: string;
+	fromAmount: { toString(): string };
+	fromCurrency: string;
+	toAmount: { toString(): string };
+	toCurrency: string;
+	date: Date;
+};
+
+const expenseStamp = (e: ExpenseSource): ExpenseStamp => ({
+	id: e.id,
+	amount: e.amount.toString(),
+	currency: e.currency,
+	date: e.date.toISOString(),
+	updatedAt: e.updatedAt.toISOString(),
+});
+
+const transferStamp = (t: TransferSource): TransferStamp => ({
+	id: t.id,
+	fromAmount: t.fromAmount.toString(),
+	fromCurrency: t.fromCurrency,
+	toAmount: t.toAmount.toString(),
+	toCurrency: t.toCurrency,
+	date: t.date.toISOString(),
+});
+
+const same = <T extends object>(a: T, b: T) =>
+	JSON.stringify(a) === JSON.stringify(b);
 
 const changed = () =>
 	new TRPCError({
@@ -124,11 +219,28 @@ export async function restoreAccount(
 		...new Set(legs.map((l) => l.expenseId).filter((v): v is string => !!v)),
 	];
 	const [transfers, expenses] = await Promise.all([
-		tx.transfer.count({ where: { id: { in: transferIds } } }),
-		tx.expense.count({ where: { id: { in: expenseIds } } }),
+		tx.transfer.findMany({ where: { id: { in: transferIds } } }),
+		tx.expense.findMany({ where: { id: { in: expenseIds } } }),
 	]);
-	if (transfers !== transferIds.length || expenses !== expenseIds.length)
+	if (
+		transfers.length !== transferIds.length ||
+		expenses.length !== expenseIds.length
+	)
 		throw changed();
+	// One edited since (amount, currency or day) no longer matches its leg.
+	const was = snapshot.sources;
+	if (was) {
+		const nowExpense = new Map(expenses.map((e) => [e.id, expenseStamp(e)]));
+		const nowTransfer = new Map(transfers.map((t) => [t.id, transferStamp(t)]));
+		for (const e of was.expenses) {
+			const now = nowExpense.get(e.id);
+			if (!now || !same(now, e)) throw changed();
+		}
+		for (const t of was.transfers) {
+			const now = nowTransfer.get(t.id);
+			if (!now || !same(now, t)) throw changed();
+		}
+	}
 
 	await tx.assetAccount.create({ data: account });
 	// Inserting a leg moves the account's balance and counted units (a trigger);

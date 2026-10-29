@@ -124,7 +124,7 @@ export async function confirmRecurringIncomeIn(
 				}
 			: { kind: "table", rateType: input.rateType ?? null },
 		input.paidOn
-			? paidOnInstant(input.paidOn, "IN", input.timeZone)
+			? paidOnInstant(input.paidOn, "IN", input.timeZone, template)
 			: undefined,
 	);
 	const home = await homeCurrencyOf(tx, userId);

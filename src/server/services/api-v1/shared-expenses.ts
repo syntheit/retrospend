@@ -271,8 +271,27 @@ export async function removeSharedExpense(caller: Caller, body: DeleteBody) {
 	};
 }
 
-export const previewRemoveSharedExpense = (caller: Caller, body: DeleteBody) =>
-	dryRun(caller, deleteSharedExpense, deleteInput(body));
+/**
+ * The dry run of a delete. Its detail says `undoable`: false when the delete
+ * would give no undo token (an expense someone else added, or one that voids
+ * payments), so a client says so before the tap.
+ */
+export async function previewRemoveSharedExpense(
+	caller: Caller,
+	body: DeleteBody,
+) {
+	const preview = await forUser(caller.principal.userId).preview(
+		deleteSharedExpense,
+		{ ...deleteInput(body), notify: [] },
+	);
+	return {
+		...toPreviewDto(preview),
+		detail: {
+			kind: "sharedExpense.delete" as const,
+			undoable: preview.value.stash !== null,
+		},
+	};
+}
 
 /** Each person's share before and after, with their name; `you` marks the caller. */
 async function sharesView(caller: Caller, shares: readonly ShareChange[]) {

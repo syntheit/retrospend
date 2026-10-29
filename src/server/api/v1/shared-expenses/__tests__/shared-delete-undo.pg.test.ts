@@ -14,6 +14,7 @@ import { adminDb } from "~/test/pg-harness";
 import {
 	ars,
 	arsUser,
+	seedProject,
 	seedRates,
 	type TestUser,
 } from "../../__tests__/g3-fixtures";
@@ -52,7 +53,7 @@ describe("deleting a split expense is undoable", () => {
 			body,
 			idempotent: true,
 		});
-	const add = async (description: string) =>
+	const add = async (description: string, projectId?: string) =>
 		expectBody<Write>(
 			await post("/shared-expenses", {
 				amount: "90",
@@ -65,6 +66,7 @@ describe("deleting a split expense is undoable", () => {
 					{ type: "user", id: martin.user.id },
 				],
 				splitMode: "EQUAL",
+				...(projectId ? { projectId } : {}),
 			}),
 			c.create,
 			201,
@@ -265,5 +267,100 @@ describe("deleting a split expense is undoable", () => {
 			c.undo,
 		);
 		expect(await row(made.id)).toEqual(before);
+	});
+
+	it("refuses an undo when someone on it left the project, and works again once they are back", async () => {
+		const projectId = await seedProject(sofia, [
+			{ user: martin, role: "CONTRIBUTOR" },
+		]);
+		const made = await add("Trip dinner", projectId);
+		const deleted = await expectBody<Deleted>(
+			await del(made.id, { confirmUnsettled: true }),
+			c.delete,
+		);
+		await adminDb.projectParticipant.deleteMany({
+			where: { projectId, participantId: martin.user.id },
+		});
+		await expectProblem(
+			await post("/shared-expenses/undo", { token: deleted.undo }),
+			409,
+			"conflict",
+		);
+		expect(await row(made.id)).toBeNull();
+		// The refusal wrote nothing and spent nothing: back in the project, it works.
+		await adminDb.projectParticipant.create({
+			data: {
+				projectId,
+				participantType: "user",
+				participantId: martin.user.id,
+				role: "CONTRIBUTOR",
+			},
+		});
+		await expectBody(
+			await post("/shared-expenses/undo", { token: deleted.undo }),
+			c.undo,
+		);
+		expect((await row(made.id))?.projectId).toBe(projectId);
+	});
+
+	it("refuses an undo when its billing period is no longer open", async () => {
+		const projectId = await seedProject(sofia, [
+			{ user: martin, role: "CONTRIBUTOR" },
+		]);
+		const period = await adminDb.billingPeriod.create({
+			data: {
+				projectId,
+				label: "October",
+				startDate: new Date("2026-10-01"),
+				endDate: new Date("2026-10-31"),
+				status: "OPEN",
+			},
+		});
+		const made = await add("Period dinner", projectId);
+		expect((await row(made.id))?.billingPeriodId).toBe(period.id);
+		const deleted = await expectBody<Deleted>(
+			await del(made.id, { confirmUnsettled: true }),
+			c.delete,
+		);
+		await adminDb.billingPeriod.update({
+			where: { id: period.id },
+			data: { status: "CLOSED", closedAt: new Date() },
+		});
+		await expectProblem(
+			await post("/shared-expenses/undo", { token: deleted.undo }),
+			409,
+			"conflict",
+		);
+		expect(await row(made.id)).toBeNull();
+	});
+
+	it("says before the tap that a delete cannot be undone", async () => {
+		const mine = await add("Undoable");
+		const dry = await expectBody<{
+			detail?: { kind: string; undoable: boolean };
+		}>(
+			await post(`/shared-expenses/${mine.id}/delete/preview`, {
+				confirmUnsettled: true,
+			}),
+			c.previewDelete,
+		);
+		expect(dry.detail).toEqual({
+			kind: "sharedExpense.delete",
+			undoable: true,
+		});
+		const voided = await expectBody<{
+			detail?: { kind: string; undoable: boolean };
+		}>(
+			await post(`/shared-expenses/${mine.id}/delete/preview`, {
+				confirmUnsettled: true,
+				settled: "VOID_PAYMENT",
+			}),
+			c.previewDelete,
+		);
+		expect(voided.detail).toEqual({
+			kind: "sharedExpense.delete",
+			undoable: false,
+		});
+		expect(await row(mine.id)).not.toBeNull();
 	});
 });

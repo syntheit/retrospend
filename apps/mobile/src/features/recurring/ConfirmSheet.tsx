@@ -78,12 +78,13 @@ export function ConfirmSheet({
 	const [paidMode, setPaidMode] = useState<PaidOn>("due");
 	const [picked, setPicked] = useState(today);
 	const future = paidMode === "pick" && picked > today;
+	const early = paidMode === "pick" && picked < item.paidOnFrom;
 	const paidOn =
 		paidMode === "today" ? today : paidMode === "pick" ? picked : item.next;
 	const entered = readAmount(draft, locale, currency);
 	const minor = minorOf(entered);
 	const input =
-		(asks && minor === null) || future
+		(asks && minor === null) || future || early
 			? null
 			: {
 					id: item.id,
@@ -185,11 +186,17 @@ export function ConfirmSheet({
 						{paidMode === "pick" ? (
 							<DateField
 								label={t("pickDate")}
+								minimum={item.paidOnFrom}
 								onChange={setPicked}
 								value={picked}
 							/>
 						) : null}
 						{future ? <Note tone="attention">{t("future")}</Note> : null}
+						{early ? (
+							<Note tone="attention">
+								{t("tooEarly", { date: day(item.paidOnFrom) })}
+							</Note>
+						) : null}
 					</View>
 					{asks ? (
 						<AmountField

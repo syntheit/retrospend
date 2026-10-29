@@ -40,7 +40,21 @@ describe("deleting a split expense", () => {
 	it("has no warning when nothing is owed", async () => {
 		const client = api({ previewDelete: async () => diff });
 		const out = await previewDelete(client, { id: "s1", shared: true });
-		expect(out).toEqual({ state: { status: "ready", diff }, warning: null });
+		expect(out).toEqual({
+			state: { status: "ready", diff },
+			warning: null,
+			undoable: true,
+		});
+	});
+
+	it("knows before the tap that the server will give no Undo", async () => {
+		const noUndo = {
+			...diff,
+			detail: { kind: "sharedExpense.delete", undoable: false },
+		};
+		const client = api({ previewDelete: async () => noUndo });
+		const out = await previewDelete(client, { id: "s1", shared: true });
+		expect(out.undoable).toBe(false);
 	});
 
 	it("sends confirmUnsettled only when the warning was shown", async () => {

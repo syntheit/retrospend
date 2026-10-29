@@ -40,6 +40,8 @@ export const recurringItemSchema = z
 		dueAt: timestampSchema,
 		/** The day after this one is confirmed. */
 		nextAfter: daySchema,
+		/** The earliest day a confirm can say it was paid: the previous due day. */
+		paidOnFrom: daySchema,
 		state: z.enum(["upcoming", "due", "overdue"]),
 		paused: z.boolean(),
 		autoPay: z.boolean(),
@@ -145,7 +147,7 @@ export const confirmRecurringSchema = z
 		}),
 		paidOn: daySchema.optional().meta({
 			description:
-				"The day it was really paid or received, never in the future. The entry and its rate use this day; the template still moves on from the due date. Default: the due date.",
+				"The day it was really paid or received, never in the future and not before the item's paidOnFrom. The entry and its rate use this day; the template still moves on from the due date. Default: the due date.",
 		}),
 		rateType: rateTypeSchema.nullish().meta({
 			description: "Recurring income in a foreign currency only.",
@@ -185,7 +187,7 @@ export const recurringConfirmResultSchema = z
 export const skipRecurringSchema = z
 	.object({
 		id: idSchema,
-		dueAt: timestampSchema.optional().meta({
+		dueAt: timestampSchema.meta({
 			description:
 				"The item's dueAt. A repeat of the same skip is refused instead of skipping the next period.",
 		}),

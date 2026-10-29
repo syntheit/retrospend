@@ -64,7 +64,7 @@ function LegRow({ leg }: { leg: AccountLeg }) {
 /**
  * One account: what it holds (in its own currency, with the home value under
  * it), Update balance as the one primary, and its history in a list group.
- * Edit, Close or Reopen and Delete permanently are in the header menu. The
+ * Edit, Close or Reopen and Delete account are in the header menu. The
  * history is the server's newest legs; a balance update shows as Not logged.
  */
 export function AccountView({ id }: { id: string }) {

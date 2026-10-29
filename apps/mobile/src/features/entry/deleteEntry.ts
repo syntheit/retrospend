@@ -28,6 +28,16 @@ export interface DeletePreview {
 	state: PreviewState;
 	/** What the server said before it would preview; the button then confirms. */
 	warning: string | null;
+	/**
+	 * False when the server says this delete will give no Undo (a split someone
+	 * else added, or one that voids payments), so the sheet says so before the tap.
+	 */
+	undoable: boolean;
+}
+
+/** The dry run's own flag; a plain expense or an older server can be undone. */
+function undoableIn(diff: { detail?: { undoable?: unknown } }): boolean {
+	return diff.detail?.undoable !== false;
 }
 
 function statusOf(error: unknown): { status?: number; message?: string } {
@@ -46,12 +56,20 @@ export async function previewDelete(
 	try {
 		if (!target.shared) {
 			const diff = await api.expenses.previewDelete({ id }, options);
-			return { state: { status: "ready", diff }, warning: null };
+			return {
+				state: { status: "ready", diff },
+				warning: null,
+				undoable: true,
+			};
 		}
 		const shared = api["shared-expenses"];
 		try {
 			const diff = await shared.previewDelete({ id }, options);
-			return { state: { status: "ready", diff }, warning: null };
+			return {
+				state: { status: "ready", diff },
+				warning: null,
+				undoable: undoableIn(diff),
+			};
 		} catch (error) {
 			const { status, message } = statusOf(error);
 			// The server's warning: shown as it is, and the dry run is asked again
@@ -61,7 +79,11 @@ export async function previewDelete(
 				{ id, confirmUnsettled: true },
 				options,
 			);
-			return { state: { status: "ready", diff }, warning: message };
+			return {
+				state: { status: "ready", diff },
+				warning: message,
+				undoable: undoableIn(diff),
+			};
 		}
 	} catch (error) {
 		const { status } = statusOf(error);
@@ -69,7 +91,7 @@ export async function previewDelete(
 			status === undefined || status === 401
 				? { status: "offline" }
 				: { status: "refused", reason: "other", currency: "" };
-		return { state, warning: null };
+		return { state, warning: null, undoable: true };
 	} finally {
 		clearTimeout(timer);
 	}

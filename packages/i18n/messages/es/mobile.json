@@ -294,6 +294,7 @@
 			"undoFailed": "No se pudo deshacer. Inténtalo desde Actividad.",
 			"failed": "No se pudo eliminar. Inténtalo de nuevo.",
 			"sharedBody": "Se avisa a todos los que participan, y lo que deben cambia.",
+			"noUndo": "No se puede deshacer.",
 			"anyway": "Eliminar igualmente"
 		}
 	},
@@ -1399,7 +1400,7 @@
 			"edit": "Editar cuenta",
 			"reopen": "Reabrir cuenta",
 			"close": "Cerrar cuenta",
-			"delete": "Eliminar definitivamente",
+			"delete": "Eliminar cuenta",
 			"swipe": {
 				"update": "Actualizar",
 				"edit": "Editar",
@@ -1409,11 +1410,11 @@
 			}
 		},
 		"delete": {
-			"title": "¿Eliminar {name} definitivamente?",
+			"title": "¿Eliminar {name}?",
 			"body": "Esto elimina la cuenta y todo su historial de saldos. El historial del patrimonio también cambia.",
 			"keepHistory": "Para conservar el historial, cierra la cuenta en su lugar.",
 			"closeInstead": "Mejor cerrar",
-			"submit": "Eliminar definitivamente",
+			"submit": "Eliminar",
 			"deleting": "Eliminando",
 			"toast": "{name} eliminada",
 			"error": "No se pudo eliminar. Inténtalo de nuevo."
@@ -2196,6 +2197,7 @@
 			"paidOnPick": "Elegir fecha",
 			"pickDate": "Fecha",
 			"future": "La fecha no puede ser futura.",
+			"tooEarly": "La fecha no puede ser anterior al {date}.",
 			"skip": "Omitir esta vez"
 		},
 		"item": {

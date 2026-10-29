@@ -224,7 +224,7 @@ export const sharedExpensesContract = {
 			tags: TAG,
 			summary: "Delete a split expense",
 			description:
-				"A delete that would erase a debt or leave the payer owing needs confirmUnsettled or settled, and is a conflict without it; its message is the warning to show. Answers an undo token for POST /shared-expenses/undo.",
+				'A delete that would erase a debt or leave the payer owing needs confirmUnsettled or settled, and is a conflict without it; its message is the warning to show. Answers an undo token for POST /shared-expenses/undo, or null when it cannot be put back (a split someone else added, or one that voided payments). The preview\'s detail is `{ kind: "sharedExpense.delete", undoable }`: false when the delete would give no token, so say so before the tap.',
 		})
 		.meta({ scope: "write:expenses", event: "shared_expense.deleted" })
 		.input(deleteSharedExpenseSchema)

@@ -14,6 +14,7 @@ const item = (
 	next: TODAY,
 	dueAt: "2026-10-21T03:00:00.000Z",
 	nextAfter: "2026-11-21",
+	paidOnFrom: "2026-09-21",
 	state: "upcoming",
 	paused: false,
 	autoPay: false,

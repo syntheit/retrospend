@@ -322,7 +322,7 @@ type SkipInput = z.infer<typeof skipRecurringSchema>;
 function skipInput(caller: LedgerCaller, input: SkipInput) {
 	return {
 		templateId: input.id,
-		dueDate: input.dueAt ? new Date(input.dueAt) : null,
+		dueDate: new Date(input.dueAt),
 		timeZone: caller.timeZone,
 	};
 }

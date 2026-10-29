@@ -23,6 +23,7 @@ export function DateField({
 	value,
 	onChange,
 	placeholder,
+	minimum,
 }: DateFieldProps) {
 	const { color, size, space } = useTheme();
 	const t = useTranslations("mobile.pickers");
@@ -47,6 +48,9 @@ export function DateField({
 							a11yLabel(label),
 						]}
 						onDateChange={(date) => onChange(dayOfPicker(date, "local"))}
+						range={
+							minimum ? { start: pickerDate(minimum, "local") } : undefined
+						}
 						selection={pickerDate(value, "local")}
 					/>
 				) : (

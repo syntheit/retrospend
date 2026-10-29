@@ -294,6 +294,7 @@
 			"undoFailed": "Couldn't undo. Try again from Activity.",
 			"failed": "Couldn't delete this. Try again.",
 			"sharedBody": "Everyone on it is told, and what they owe changes.",
+			"noUndo": "This can't be undone.",
 			"anyway": "Delete anyway"
 		}
 	},
@@ -1399,7 +1400,7 @@
 			"edit": "Edit account",
 			"reopen": "Reopen account",
 			"close": "Close account",
-			"delete": "Delete permanently",
+			"delete": "Delete account",
 			"swipe": {
 				"update": "Update",
 				"edit": "Edit",
@@ -1409,11 +1410,11 @@
 			}
 		},
 		"delete": {
-			"title": "Delete {name} permanently?",
+			"title": "Delete {name}?",
 			"body": "This removes the account and its whole balance history. Net worth history changes too.",
 			"keepHistory": "To keep the history, close the account instead.",
 			"closeInstead": "Close instead",
-			"submit": "Delete permanently",
+			"submit": "Delete",
 			"deleting": "Deleting",
 			"toast": "Deleted {name}",
 			"error": "Couldn't delete. Try again."
@@ -2196,6 +2197,7 @@
 			"paidOnPick": "Pick a date",
 			"pickDate": "Date",
 			"future": "The date can't be in the future.",
+			"tooEarly": "The date can't be before {date}.",
 			"skip": "Skip this time"
 		},
 		"item": {

@@ -28,6 +28,7 @@ import {
 } from "./expense-list/money";
 import { shapeRows } from "./expense-list/rows";
 import type { ActivityRowDTO, CategoryRefDTO } from "./expense-list/types";
+import { previousDueDay } from "./recurring-paid-on";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -49,6 +50,8 @@ export type RecurringItemDTO = {
 	dueAt: string;
 	/** The next date once this one is confirmed (the confirm step shows it). */
 	nextAfter: string;
+	/** The earliest day a confirm can say it was paid: the previous due day. */
+	paidOnFrom: string;
 	state: "upcoming" | "due" | "overdue";
 	paused: boolean;
 	autoPay: boolean;
@@ -220,6 +223,11 @@ export async function readRecurringBody(
 			dueAt: t.nextDueDate.toISOString(),
 			nextAfter: dayKey(
 				nextRecurringDate(t.nextDueDate, t.frequency, t.anchorDay),
+				timeZone,
+			),
+			paidOnFrom: previousDueDay(
+				t,
+				t.direction === "IN" ? "IN" : "OUT",
 				timeZone,
 			),
 			state: stateOf(next, today),

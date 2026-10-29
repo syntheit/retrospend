@@ -32,6 +32,7 @@ type Item = {
 	amountMode: string;
 	paused: boolean;
 	dueAt: string;
+	paidOnFrom: string;
 	websiteUrl: string | null;
 };
 type Confirm = {
@@ -498,6 +499,55 @@ describe("/api/v1/recurring", () => {
 		expect(back.nextDueDate.toISOString()).toBe(item.dueAt);
 	});
 
+	it.each([
+		["out", "expense"],
+		["in", "income"],
+	] as const)(
+		"refuses a paid-on day before the previous due day (%s)",
+		async (direction) => {
+			const item = await make({
+				name: `Too early ${direction}`,
+				frequency: "WEEKLY",
+				direction,
+				nextDueDate: daysAgo(5),
+			});
+			// The item says where the pickable days start: one period before the due day.
+			expect(item.paidOnFrom).toBe(daysAgo(12));
+			await expectProblem(
+				await send("POST", `/recurring/${item.id}/confirm`, {
+					dueAt: item.dueAt,
+					paidOn: daysAgo(13),
+				}),
+				400,
+				"bad_request",
+			);
+			await expect(
+				adminDb.expense.count({ where: { recurringTemplateId: item.id } }),
+			).resolves.toBe(0);
+			// The first allowed day books.
+			const done = await expectBody<Confirm>(
+				await send("POST", `/recurring/${item.id}/confirm`, {
+					dueAt: item.dueAt,
+					paidOn: item.paidOnFrom,
+				}),
+				c.confirm,
+			);
+			expect(done.confirmed.expenseId).toEqual(expect.any(String));
+		},
+	);
+
+	it("refuses a skip that does not say which due date it skips", async () => {
+		const item = await make({ name: "Skip no guard", nextDueDate: daysAgo(2) });
+		await expectProblem(
+			await send("POST", `/recurring/${item.id}/skip`, {}),
+			400,
+			"bad_request",
+		);
+		await expect(
+			adminDb.recurringTemplate.findUniqueOrThrow({ where: { id: item.id } }),
+		).resolves.toMatchObject({ nextDueDate: new Date(item.dueAt) });
+	});
+
 	it("books recurring income on its paid-on day and undoes it", async () => {
 		const item = await make({
 			name: "Late pay",
@@ -626,7 +676,7 @@ describe("/api/v1/recurring", () => {
 			nextDueDate: daysAgo(-20),
 		});
 		await expectProblem(
-			await send("POST", `/recurring/${later.id}/skip`, {}),
+			await send("POST", `/recurring/${later.id}/skip`, { dueAt: later.dueAt }),
 			409,
 			"conflict",
 		);
@@ -637,7 +687,7 @@ describe("/api/v1/recurring", () => {
 			nextDueDate: daysAgo(10),
 		});
 		const skip = await expectBody<{ undo: string }>(
-			await send("POST", `/recurring/${item.id}/skip`, {}),
+			await send("POST", `/recurring/${item.id}/skip`, { dueAt: item.dueAt }),
 			c.skip,
 		);
 		await expectBody<Confirm>(
@@ -654,18 +704,33 @@ describe("/api/v1/recurring", () => {
 	it("keeps skip to the owner and to write:money", async () => {
 		const item = await make({ name: "Skip scopes" });
 		await expectProblem(
-			await send("POST", `/recurring/${item.id}/skip`, {}, asOther),
+			await send(
+				"POST",
+				`/recurring/${item.id}/skip`,
+				{ dueAt: item.dueAt },
+				asOther,
+			),
 			404,
 			"not_found",
 		);
 		await expectProblem(
-			await send("POST", `/recurring/${item.id}/skip/preview`, {}, asOther),
+			await send(
+				"POST",
+				`/recurring/${item.id}/skip/preview`,
+				{ dueAt: item.dueAt },
+				asOther,
+			),
 			404,
 			"not_found",
 		);
 		const expensesOnly = await asKey(userId, ["read", "write:expenses"]);
 		await expectProblem(
-			await send("POST", `/recurring/${item.id}/skip`, {}, expensesOnly),
+			await send(
+				"POST",
+				`/recurring/${item.id}/skip`,
+				{ dueAt: item.dueAt },
+				expensesOnly,
+			),
 			403,
 			"missing_scope",
 		);

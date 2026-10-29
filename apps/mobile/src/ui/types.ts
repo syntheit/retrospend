@@ -120,4 +120,6 @@ export interface DateFieldProps {
 	onChange: (day: string) => void;
 	/** What shows while no day is picked. */
 	placeholder?: string;
+	/** The earliest day that can be picked, "yyyy-MM-dd". */
+	minimum?: string;
 }
