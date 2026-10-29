@@ -7,16 +7,9 @@
  */
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
+import { packRow, type Row, unpackRow } from "./row-pack";
 
 type Tx = Prisma.TransactionClient;
-type Cell =
-	| string
-	| number
-	| boolean
-	| null
-	| { $dec: string }
-	| { $date: string };
-export type Row = Record<string, Cell>;
 
 export interface ExpenseSnapshot {
 	readonly userId: string;
@@ -24,31 +17,8 @@ export interface ExpenseSnapshot {
 	readonly rows: readonly Row[];
 }
 
-const isDecimal = (v: unknown): v is { toFixed(): string } =>
-	typeof v === "object" &&
-	v !== null &&
-	"toFixed" in v &&
-	typeof (v as { toFixed: unknown }).toFixed === "function";
-
-function pack(row: Record<string, unknown>): Row {
-	const out: Row = {};
-	for (const [k, v] of Object.entries(row)) {
-		if (v instanceof Date) out[k] = { $date: v.toISOString() };
-		else if (isDecimal(v)) out[k] = { $dec: v.toFixed() };
-		else out[k] = v as Cell;
-	}
-	return out;
-}
-
-function unpack(row: Row): Prisma.ExpenseCreateManyInput {
-	const out: Record<string, unknown> = {};
-	for (const [k, v] of Object.entries(row)) {
-		if (v && typeof v === "object" && "$date" in v) out[k] = new Date(v.$date);
-		else if (v && typeof v === "object" && "$dec" in v) out[k] = v.$dec;
-		else out[k] = v;
-	}
-	return out as Prisma.ExpenseCreateManyInput;
-}
+const unpack = (row: Row) =>
+	unpackRow(row) as unknown as Prisma.ExpenseCreateManyInput;
 
 export async function snapshotExpense(
 	tx: Tx,
@@ -61,7 +31,7 @@ export async function snapshotExpense(
 	});
 	return {
 		userId,
-		rows: rows.map((r) => pack(r as unknown as Record<string, unknown>)),
+		rows: rows.map((r) => packRow(r)),
 	};
 }
 

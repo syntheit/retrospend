@@ -12,6 +12,14 @@ import {
 	editAccountIn,
 	reopenAccountIn,
 } from "~/server/services/accounts/manage";
+import {
+	restoreAccount,
+	snapshotAccount,
+} from "~/server/services/accounts/delete-snapshot";
+import {
+	putUndoStash,
+	takeUndoStash,
+} from "~/server/services/entry/undo-stash";
 import { dec } from "~/server/services/envelope/units";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { assertMinorUnits, exactAmount } from "../amounts";
@@ -192,15 +200,67 @@ export const reopenAccountMutation = stateChange(
 	"account.close",
 );
 
-export const deleteAccountMutation: MoneyMutation<IdBody, { id: string }> = {
+const DELETE_FIGURES = [
+	...FIGURES,
+	"netWorthChange.income",
+	"netWorthChange.spending",
+];
+
+/**
+ * The account and its whole history go; the undo puts them back. The rows
+ * stay on the server in the caller's own expiring stash (entry/undo-stash.ts),
+ * written in this transaction, so the token stays small and a lost answer can
+ * be replayed.
+ */
+export const deleteAccountMutation: MoneyMutation<
+	IdBody,
+	{ id: string; stash: string }
+> = {
 	id: "account.delete",
-	touches: [...FIGURES, "netWorthChange.income", "netWorthChange.spending"],
+	touches: DELETE_FIGURES,
+	scope: (input) => ({ accountId: input.id }),
+	run: async (tx, input, actor) => {
+		const snapshot = await snapshotAccount(tx, actor.userId, input.id);
+		await deleteAccountIn(tx, actor.userId, input.id);
+		const stash = await putUndoStash(tx, actor.userId, snapshot);
+		return {
+			value: { id: input.id, stash },
+			undo: { kind: "revert", mutation: "account.undelete", rows: [] },
+		};
+	},
+};
+
+/**
+ * The undo of a new account: it goes while nothing was written against it, so
+ * there is no history to keep and no stash to write.
+ */
+export const removeNewAccountMutation: MoneyMutation<IdBody, { id: string }> = {
+	id: "account.delete",
+	touches: DELETE_FIGURES,
 	scope: (input) => ({ accountId: input.id }),
 	run: async (tx, input, actor) => {
 		await deleteAccountIn(tx, actor.userId, input.id);
 		return {
 			value: { id: input.id },
-			// The history goes with it: nothing to put back.
+			undo: { kind: "revert", mutation: "account.create", rows: [] },
+		};
+	},
+};
+
+/** The undo of the delete: the account with its history, as stored. */
+export const undeleteAccountMutation: MoneyMutation<
+	{ stash: string },
+	AccountItem
+> = {
+	id: "account.undelete",
+	touches: DELETE_FIGURES,
+	run: async (tx, input, actor) => {
+		const snapshot = await takeUndoStash<
+			Parameters<typeof restoreAccount>[2]
+		>(tx, actor.userId, input.stash);
+		const id = await restoreAccount(tx, actor.userId, snapshot);
+		return {
+			value: await accountItemIn(tx, actor.userId, id),
 			undo: { kind: "revert", mutation: "account.delete", rows: [] },
 		};
 	},

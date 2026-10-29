@@ -319,6 +319,27 @@ export class SharedTransactionService {
 		return result;
 	}
 
+	/**
+	 * Tells the other people on an expense that it is theirs again: the undo of
+	 * a delete puts it back, and they were told it was gone. The same notice an
+	 * add sends, queued like it (sent after the caller's commit).
+	 */
+	announceRestored(transaction: {
+		id: string;
+		description: string;
+		amount: unknown;
+		currency: string;
+		createdByType: string;
+		createdById: string;
+		splitParticipants: Array<{
+			participantType: string;
+			participantId: string;
+			shareAmount: unknown;
+		}>;
+	}) {
+		this.notify("EXPENSE_SPLIT", () => this.notifyExpenseSplit(transaction));
+	}
+
 	private async notifyExpenseSplit(transaction: {
 		id: string;
 		description: string;
@@ -899,8 +920,10 @@ export class SharedTransactionService {
 	}
 
 	/** Deletes a split; a change to who owes whom needs a choice (delete-guard.ts). */
-	async delete(id: string, options: DeleteOptions = false) {
+	/** Answers how many payment groups the delete voided (VOID_PAYMENT). */
+	async delete(id: string, options: DeleteOptions = false): Promise<number> {
 		const actor = this.actor;
+		let voided = 0;
 		let deletedSnapshot: {
 			id: string;
 			description: string;
@@ -920,7 +943,7 @@ export class SharedTransactionService {
 				this.actor.participantId,
 			);
 
-			await guardDelete(tx, existing, actor, options);
+			voided = await guardDelete(tx, existing, actor, options);
 
 			// Capture snapshot for notification before deleting
 				deletedSnapshot = {
@@ -952,6 +975,7 @@ export class SharedTransactionService {
 		// Notify user-type participants (excluding actor) that the expense was deleted
 		const gone = deletedSnapshot;
 		if (gone) this.notify("EXPENSE_DELETED", () => this.notifyExpenseDeleted(gone));
+		return voided;
 	}
 
 	private async notifyExpenseDeleted(existing: {

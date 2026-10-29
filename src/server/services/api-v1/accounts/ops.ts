@@ -18,13 +18,16 @@ import {
 	closeAccountMutation,
 	createAccountMutation,
 	deleteAccountMutation,
+	removeNewAccountMutation,
 	reopenAccountMutation,
+	undeleteAccountMutation,
 	updateAccountMutation,
 } from "./mutations";
 
 /** The inverse calls an account undo token can name (the `kind` of the undo answer). */
 export type AccountOp =
 	| "account.delete"
+	| "account.undelete"
 	| "account.restore"
 	| "account.close"
 	| "account.reopen"
@@ -58,7 +61,8 @@ const restoreAccountMutation: MoneyMutation<
  * Create is undone by deleting the new account while nothing has been
  * written against it; an edit by editing it back; close and reopen by each
  * other; Update balance and the rate type switch by their own reverts.
- * Deleting an account cannot be taken back.
+ * Deleting an account is undone by putting it back with its whole history
+ * (the stash the delete wrote, entry/undo-stash.ts).
  */
 export const accountOps = {
 	create: moneyOp(createAccountMutation, {
@@ -101,7 +105,13 @@ export const accountOps = {
 			guard: watch(i.id),
 		}),
 	}),
-	delete: moneyOp(deleteAccountMutation),
+	delete: moneyOp(deleteAccountMutation, {
+		present: (v) => ({ id: v.id }),
+		plan: (_i, v): Plan => ({
+			op: "account.undelete",
+			args: { stash: v.stash },
+		}),
+	}),
 	updateBalance: moneyOp(updateBalanceMutation, {
 		prep: (caller, input: Omit<BalanceBody, "timeZone">): BalanceBody => ({
 			...input,
@@ -133,7 +143,8 @@ export const accountOps = {
 };
 
 const INVERSES: Record<AccountOp, AnyMutation> = {
-	"account.delete": deleteAccountMutation,
+	"account.delete": removeNewAccountMutation,
+	"account.undelete": undeleteAccountMutation,
 	"account.restore": restoreAccountMutation,
 	"account.close": closeAccountMutation,
 	"account.reopen": reopenAccountMutation,

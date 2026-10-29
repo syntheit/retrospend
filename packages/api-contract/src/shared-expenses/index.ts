@@ -113,13 +113,19 @@ export const sharedExpenseWriteSchema = z
 	.meta({ id: "SharedExpenseWrite" });
 
 export const sharedExpenseDeleteSchema = z
-	.object({ id: idSchema })
+	.object({
+		id: idSchema,
+		undo: undoTokenSchema.nullable().meta({
+			description:
+				"Brings the expense back with every share and answer, once, for 24 hours. Null when the delete cannot be put back: an expense someone else added, or a delete that voided payments.",
+		}),
+	})
 	.meta({ id: "SharedExpenseDelete" });
 
 export const sharedExpenseUndoResultSchema = z
 	.object({
 		id: idSchema,
-		/** Puts the undo back. Null for the undo of an add: a deleted split has no redo. */
+		/** Puts the undo back. Null for the undo of an add or a delete: neither has a redo. */
 		redo: undoTokenSchema.nullable(),
 	})
 	.meta({ id: "SharedExpenseUndo" });
@@ -161,7 +167,8 @@ export const rejectSharedExpenseSchema = z
 /**
  * Splits with people. Each write has a preview twin and an undo token for
  * POST /shared-expenses/undo. Deleting a split changes other people's
- * balances, so it has no undo: it is confirmed and previewed instead. Reading
+ * balances, so it is previewed and confirmed first (never confirmed for you),
+ * and the undo of a delete brings back every share. Reading
  * them: GET /people/{type}/{id}/ledger, GET /projects/{id} and GET /expenses.
  */
 export const sharedExpensesContract = {
@@ -217,7 +224,7 @@ export const sharedExpensesContract = {
 			tags: TAG,
 			summary: "Delete a split expense",
 			description:
-				"A delete that would erase a debt or leave the payer owing needs confirmUnsettled or settled, and is a conflict without it.",
+				"A delete that would erase a debt or leave the payer owing needs confirmUnsettled or settled, and is a conflict without it; its message is the warning to show. Answers an undo token for POST /shared-expenses/undo.",
 		})
 		.meta({ scope: "write:expenses", event: "shared_expense.deleted" })
 		.input(deleteSharedExpenseSchema)
@@ -239,7 +246,7 @@ export const sharedExpensesContract = {
 			tags: TAG,
 			summary: "Revert a split expense write from its undo token",
 			description:
-				"Tokens from create, update, accept and reject. Undoing an add right away takes the notices back. A token is for its user and expires after 24 hours.",
+				"Tokens from create, update, delete, accept and reject. Undoing an add right away takes the notices back; undoing a delete brings back every share, and the people on it are told it is theirs again. A token is for its user, works once and expires after 24 hours.",
 		})
 		.meta({ scope: "write:expenses", event: "shared_expense.undone" })
 		.input(undoInputSchema)
