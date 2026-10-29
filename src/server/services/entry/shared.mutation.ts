@@ -24,6 +24,7 @@ import type { AnsweredFix } from "../corrections/fix-request.service";
 import type { MoneyMutation } from "../preview/types";
 import { logAudit } from "../shared-expenses/audit-log";
 import { peopleToTell } from "../shared-expenses/delete-tell";
+import { noticeRestored } from "../shared-expenses/restore-notice";
 import { serializeTransaction } from "../shared-expenses/serialize";
 import {
 	restoreShared,
@@ -246,7 +247,7 @@ export interface DeletedShared {
 	/**
 	 * sharedExpense.restore with this stash brings it back. Null when the delete
 	 * cannot be taken back (a retraction, an expense someone else added, or one
-	 * that voided payments) or was not asked for (`keepForUndo`).
+	 * that may void payments) or was not asked for (`keepForUndo`).
 	 */
 	readonly stash: string | null;
 }
@@ -284,17 +285,16 @@ export const deleteSharedExpense: MoneyMutation<
 				? await snapshotShared(tx, actor.userId, input.id)
 				: null;
 		// Retracting: the service's own notices are dropped, the retraction queued instead.
-		const voided = await serviceFor(
-			tx,
-			actor.userId,
-			retract ? { notify: [] } : input,
-		).delete(input.id, {
-			confirmUnsettled: input.confirmUnsettled ?? false,
-			settled: input.settled,
-		});
+		await serviceFor(tx, actor.userId, retract ? { notify: [] } : input).delete(
+			input.id,
+			{
+				confirmUnsettled: input.confirmUnsettled ?? false,
+				settled: input.settled,
+			},
+		);
 		if (retract) input.notify?.push(() => retractSplitNotices(input.id));
 		const stash =
-			snapshot && voided === 0
+			snapshot && input.settled !== "VOID_PAYMENT"
 				? await putUndoStash(tx, actor.userId, snapshot)
 				: null;
 		return {
@@ -343,7 +343,11 @@ export const restoreSharedExpense: MoneyMutation<
 			context: { restoredByUndo: true },
 			projectId: restored.projectId ?? undefined,
 		});
-		serviceFor(tx, actor.userId, { notify }).announceRestored(restored);
+		notify?.push(() =>
+			noticeRestored(restored, actor.userId).catch((err) =>
+				console.error("[Notification Error] EXPENSE_SPLIT:", err),
+			),
+		);
 		return {
 			value: { id: restored.id, updatedAt: restored.updatedAt.toISOString() },
 			undo: {

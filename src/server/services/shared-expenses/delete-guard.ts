@@ -72,17 +72,13 @@ async function deletionEffect(
 	return strongest;
 }
 
-/**
- * Refuses a delete that changes who owes whom without a choice; applies
- * VOID_PAYMENT. Answers how many payment groups it voided: a voided payment
- * is gone for good, so a delete that voided any cannot be undone.
- */
+/** Refuses a delete that changes who owes whom without a choice; applies VOID_PAYMENT. */
 export async function guardDelete(
 	tx: Tx,
 	existing: CoveredSplit,
 	actor: ParticipantRef,
 	options: DeleteOptions,
-): Promise<number> {
+): Promise<void> {
 	const { confirmUnsettled = false, settled } =
 		typeof options === "boolean" ? { confirmUnsettled: options } : options;
 	if (settled === "VOID_PAYMENT") {
@@ -91,14 +87,10 @@ export async function guardDelete(
 				code: "FORBIDDEN",
 				message: "Only a signed-in person can void a payment",
 			});
-		const voided = await voidCoveringPayments(
-			tx,
-			existing,
-			actor.participantId,
-		);
-		return voided.length;
+		await voidCoveringPayments(tx, existing, actor.participantId);
+		return;
 	}
-	if (confirmUnsettled || settled) return 0;
+	if (confirmUnsettled || settled) return;
 	const effect = await deletionEffect(tx as unknown as PrismaClient, existing);
 	if (effect === "flips_balance")
 		throw new TRPCError({
@@ -112,5 +104,4 @@ export async function guardDelete(
 			message:
 				"This expense still has an unsettled balance between participants. Deleting it removes that debt. Confirm to delete anyway.",
 		});
-	return 0;
 }
