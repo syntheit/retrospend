@@ -1,4 +1,4 @@
-import { type Glance, heroOf, notPlannedOf } from "./source";
+import { type Glance, budgetStatusOf, notPlannedOf, spentOf } from "./source";
 
 const money = (minor: number) => ({ minor, currency: "ARS" });
 
@@ -20,25 +20,49 @@ const base = {
 	missingRates: [],
 } satisfies Glance;
 
-describe("heroOf", () => {
-	it("leads with Spent when there is no budget", () => {
-		expect(heroOf(base)).toEqual({
-			kind: "spent",
-			amount: money(167467100),
-			lastToDate: money(379923200),
-		});
+describe("spentOf", () => {
+	it("leads with Spent, budget or not", () => {
+		const budget = {
+			state: "ready",
+			verdict: { state: "ON_TRACK" },
+			leftToSpend: { left: money(5916100), over: money(0) },
+		};
+		for (const glance of [base, { ...base, budget } as unknown as Glance]) {
+			expect(spentOf(glance)).toEqual({
+				amount: money(167467100),
+				lastToDate: money(379923200),
+				fasterThanLast: null,
+				lastMonth: "2026-09-01",
+			});
+		}
+	});
+
+	it("carries the server's pace against last month", () => {
+		const pace = { this: null, last: null, fasterThanLast: true };
+		expect(spentOf({ ...base, pace }).fasterThanLast).toBe(true);
 	});
 
 	it("keeps a missing figure missing, never zero", () => {
-		const hero = heroOf({
+		const spent = spentOf({
 			...base,
 			spent: { id: "glance.spent", value: null },
 		});
-		expect(hero).toMatchObject({ kind: "spent", amount: null });
+		expect(spent.amount).toBeNull();
+	});
+});
+
+describe("budgetStatusOf", () => {
+	it("has no status without a budget", () => {
+		expect(budgetStatusOf(base)).toBeNull();
 	});
 
-	it("leads with Left to spend when the budget has a verdict", () => {
-		const hero = heroOf({
+	it("has none while a rate is missing", () => {
+		const budget = { state: "incomplete", missingRates: ["EUR"] };
+		expect(budgetStatusOf({ ...base, budget } as unknown as Glance)).toBeNull();
+	});
+
+	it("reads Left to spend when the budget has a verdict", () => {
+		const status = budgetStatusOf({
 			...base,
 			budget: {
 				state: "ready",
@@ -52,7 +76,7 @@ describe("heroOf", () => {
 				},
 			},
 		} as unknown as Glance);
-		expect(hero).toEqual({
+		expect(status).toEqual({
 			kind: "left",
 			amount: money(5916100),
 			perDay: money(537800),
@@ -70,7 +94,7 @@ describe("heroOf", () => {
 				amount: money(192030),
 			},
 		};
-		const hero = heroOf({
+		const status = budgetStatusOf({
 			...base,
 			budget: {
 				state: "ready",
@@ -78,7 +102,7 @@ describe("heroOf", () => {
 				leftToSpend: { left: money(-192030) },
 			},
 		} as unknown as Glance);
-		expect(hero).toEqual({ kind: "over", verdict, amount: money(192030) });
+		expect(status).toEqual({ kind: "over", verdict, amount: money(192030) });
 	});
 
 	it("is over whenever leftToSpend.over is positive, whatever the verdict says", () => {
@@ -88,7 +112,7 @@ describe("heroOf", () => {
 			lead: { kind: "LEFT_TO_SPEND", figureId: "x", amount: money(-500) },
 			over: money(0),
 		};
-		const hero = heroOf({
+		const status = budgetStatusOf({
 			...base,
 			budget: {
 				state: "ready",
@@ -96,15 +120,15 @@ describe("heroOf", () => {
 				leftToSpend: { left: money(-500), over: money(500) },
 			},
 		} as unknown as Glance);
-		expect(hero).toMatchObject({ kind: "over", amount: money(500) });
-		if (hero.kind === "over") {
-			expect(hero.verdict.state).toBe("OVER_BUDGET");
-			expect(hero.verdict.lead.amount).toEqual(money(500));
+		expect(status).toMatchObject({ kind: "over", amount: money(500) });
+		if (status?.kind === "over") {
+			expect(status.verdict.state).toBe("OVER_BUDGET");
+			expect(status.verdict.lead.amount).toEqual(money(500));
 		}
 	});
 
 	it("never leads with a negative Left to spend", () => {
-		const hero = heroOf({
+		const status = budgetStatusOf({
 			...base,
 			budget: {
 				state: "ready",
@@ -117,7 +141,7 @@ describe("heroOf", () => {
 				leftToSpend: { left: money(-700), over: money(0) },
 			},
 		} as unknown as Glance);
-		expect(hero).toMatchObject({ kind: "over", amount: money(700) });
+		expect(status).toMatchObject({ kind: "over", amount: money(700) });
 	});
 });
 

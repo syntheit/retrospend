@@ -1492,6 +1492,8 @@
 			"spentThisMonth": "{amount} diesen Monat ausgegeben",
 			"notPlanned": "+ {amount} noch nicht verplant",
 			"lastMonth": "{amount} im Vormonat bis zu diesem Tag",
+			"paceFaster": "Schneller als im {month} bis zu diesem Tag",
+			"paceSlower": "Im Tempo vom {month} oder langsamer",
 			"missingRates": "Noch kein Kurs für {currencies}. Diese Einträge sind in diesen Zahlen nicht enthalten."
 		},
 		"tile": {
