@@ -29,7 +29,12 @@ import {
 	spentExpresses,
 	type TotalsContext,
 } from "./totals";
-import type { ListV2Filter, ListV2Result } from "./types";
+import {
+	type ActivityRowDTO,
+	type ListV2Filter,
+	type ListV2Result,
+	listV2Input,
+} from "./types";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -120,5 +125,57 @@ export async function listActivity(
 					? (await pageKeys(tx, { ...k, bounds: {} }, null, 1)).length > 0
 					: null,
 		};
+	});
+}
+
+/** An Activity id as the list sends it: an expense id, `shared:<id>` or `payment:<key>`. */
+function rowKeyOf(rowId: string): { src: "p" | "s" | "g"; id: string } {
+	if (rowId.startsWith("shared:"))
+		return { src: "s", id: rowId.slice("shared:".length) };
+	if (rowId.startsWith("payment:"))
+		return { src: "g", id: rowId.slice("payment:".length) };
+	return { src: "p", id: rowId };
+}
+
+/**
+ * One line of Activity by its id, shaped as the list shapes it, or null when
+ * it is gone or not yours to see. Rows in projects you hide from analytics
+ * are found too: a link to one still opens it.
+ */
+export async function activityRow(
+	db: Db,
+	userId: string,
+	rowId: string,
+	requestZone?: string,
+	now: Date = new Date(),
+): Promise<ActivityRowDTO | null> {
+	const timeZone = normalizeTimeZone(requestZone);
+	const only = rowKeyOf(rowId);
+	return userTransaction(db as PrismaClient, userId, async (tx) => {
+		const k: KeyQuery = {
+			userId,
+			filter: listV2Input.parse({ limit: 1 }),
+			bounds: {},
+			excludedProjectIds: [],
+			only,
+		};
+		const keys = await pageKeys(tx, k, null, 1);
+		if (keys.length === 0) return null;
+		const user = await tx.user.findUnique({
+			where: { id: userId },
+			select: { homeCurrency: true },
+		});
+		const home = user?.homeCurrency ?? "USD";
+		const [homeRate, defaults] = await Promise.all([
+			findExchangeRate(tx, home, now),
+			getDefaultRateTypes(tx, userId),
+		]);
+		const [row] = await shapeRows(tx, keys, {
+			userId,
+			timeZone,
+			rates: { home, homeRate: homeRate?.rate ?? null },
+			defaultRateType: preferredRateType(home, defaults),
+		});
+		return row ?? null;
 	});
 }

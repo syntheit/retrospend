@@ -29,6 +29,11 @@ export const expensesRouter = {
 			expenses.suggestTitles(signedIn(context), input.q),
 		),
 	),
+	row: e.row.handler(
+		serve(({ context, input }) =>
+			expenses.readActivityRow(signedIn(context), input.id),
+		),
+	),
 	get: e.get.handler(
 		serve(({ context, input }) =>
 			expenses.readExpense(signedIn(context), input.id),

@@ -6,7 +6,7 @@
  */
 import { fromWallTime } from "@retrospend/domain/time-zone";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { listActivity } from "~/server/services/expense-list";
+import { activityRow, listActivity } from "~/server/services/expense-list";
 import { listV2Input, NO_CATEGORY } from "~/server/services/expense-list/types";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 
@@ -434,6 +434,25 @@ describe("expense.listV2", () => {
 		]);
 		expect(r.items[0]?.payment?.direction).toBe("sent");
 		expect(r.items[1]).toMatchObject({ mine: true, canEdit: true });
+	});
+
+	it("reads one row by its Activity id as the list shapes it, and nobody else's", async () => {
+		const items = (await list(me, OCT)).items;
+		for (const item of items) {
+			await expect(
+				activityRow(me.db, me.user.id, item.id, TZ, NOW),
+			).resolves.toEqual(item);
+		}
+		const almacen = items.find((i) => i.title === "Almacén Don José");
+		await expect(
+			activityRow(other.db, other.user.id, almacen?.id ?? "", TZ, NOW),
+		).resolves.toBeNull();
+		await expect(
+			activityRow(me.db, me.user.id, "shared:missing", TZ, NOW),
+		).resolves.toBeNull();
+		await expect(
+			activityRow(me.db, me.user.id, "payment:pgl_rejected|ARS", TZ, NOW),
+		).resolves.toBeNull();
 	});
 });
 

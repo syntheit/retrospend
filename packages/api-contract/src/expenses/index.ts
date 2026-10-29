@@ -7,6 +7,7 @@ import { idParamsSchema, idSchema } from "../core";
 import { previewTwin, undoField, undoInputSchema } from "../ledger";
 import {
 	activityPageSchema,
+	activityRowSchema,
 	bulkCategorySchema,
 	bulkDeleteSchema,
 	createExpenseSchema,
@@ -52,6 +53,10 @@ export const bulkDeleteResultSchema = z
 		...undoField,
 	})
 	.meta({ id: "BulkDeleteResult" });
+
+export const activityRowQuerySchema = z.object({
+	id: z.string().min(1).max(200),
+});
 
 export const expenseListQuerySchema = cursorQuerySchema.extend(
 	filterQuerySchema.shape,
@@ -102,6 +107,19 @@ export const expensesContract = {
 		.meta({ scope: "read" })
 		.input(titleSuggestionsQuerySchema)
 		.output(z.object({ items: z.array(titleSuggestionSchema) })),
+	row: v1
+		.route({
+			method: "GET",
+			path: "/expenses/row",
+			operationId: "getActivityRow",
+			tags: TAG,
+			summary: "One line of Activity",
+			description:
+				"The row as GET /expenses lists it, by its `id` there: an expense id, `shared:<id>` or `payment:<key>`. Not found once it is deleted or you are no longer on it.",
+		})
+		.meta({ scope: "read" })
+		.input(activityRowQuerySchema)
+		.output(activityRowSchema),
 	get: v1
 		.route({
 			method: "GET",

@@ -24,6 +24,8 @@ export type KeyQuery = {
 	bounds: ListBounds;
 	/** Projects you hide from analytics; today's list leaves them out too. */
 	excludedProjectIds: string[];
+	/** One row only, by its source and key (GET /expenses/row). */
+	only?: { src: RowKey["src"]; id: string };
 };
 
 export type RowKey = { src: "p" | "s" | "g"; id: string; date: Date };
@@ -171,6 +173,7 @@ function personal(k: KeyQuery, page?: Page): Prisma.Sql {
 		[Prisma.sql`e.amount`],
 	);
 	if (s) parts.push(s);
+	if (k.only) parts.push(Prisma.sql`e.id = ${k.only.id}`);
 	const pg = pageOf("p", Prisma.sql`e.date`, Prisma.sql`e.id`, page);
 	if (pg.where) parts.push(pg.where);
 	return Prisma.sql`(SELECT 'p'::text AS src, e.id AS id, e.date AS date FROM expense e WHERE ${all(parts)} ${pg.tail})`;
@@ -217,6 +220,7 @@ function shared(k: KeyQuery, page?: Page): Prisma.Sql {
 		[Prisma.sql`st.amount`, Prisma.sql`sp."shareAmount"`],
 	);
 	if (s) parts.push(s);
+	if (k.only) parts.push(Prisma.sql`st.id = ${k.only.id}`);
 	const pg = pageOf("s", Prisma.sql`st.date`, Prisma.sql`st.id`, page);
 	if (pg.where) parts.push(pg.where);
 	return Prisma.sql`(SELECT 's'::text AS src, st.id AS id, st.date AS date
@@ -253,6 +257,7 @@ function payments(k: KeyQuery, page?: Page): Prisma.Sql {
 		parts.push(Prisma.sql`g.payer = ANY(${payerKeys(k)}::text[])`);
 	const s = searchPart(f.q, [Prisma.sql`g.words`], [Prisma.sql`g.amount`]);
 	if (s) parts.push(s);
+	if (k.only) parts.push(Prisma.sql`g.key = ${k.only.id}`);
 	const pg = pageOf("g", Prisma.sql`g.date`, Prisma.sql`g.key`, page);
 	if (pg.where) parts.push(pg.where);
 	return Prisma.sql`(SELECT 'g'::text AS src, g.key AS id, g.date AS date FROM (
@@ -273,7 +278,13 @@ function payments(k: KeyQuery, page?: Page): Prisma.Sql {
 
 /** The branches, each already cut to the page when `page` is given. */
 function union(k: KeyQuery, page?: Page): Prisma.Sql | null {
-	const w = wants(k.filter);
+	const w = k.only
+		? {
+				personal: k.only.src === "p",
+				shared: k.only.src === "s",
+				payment: k.only.src === "g",
+			}
+		: wants(k.filter);
 	const parts: Prisma.Sql[] = [];
 	if (w.personal) parts.push(personal(k, page));
 	if (w.shared) parts.push(shared(k, page));

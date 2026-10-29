@@ -447,6 +447,38 @@ describe("/api/v1/expenses", () => {
 		).resolves.toBe(1);
 	});
 
+	it("reads one Activity row by id, and not found once deleted or for someone else", async () => {
+		const made = await add(body(food, { title: "One row" }));
+		const id = made.expense.id;
+		const row = await expectBody<{ id: string; title: string; kind: string }>(
+			await call(`/expenses/row?id=${id}`, { headers: asAlice }),
+			c.row,
+		);
+		expect(row).toMatchObject({ id, title: "One row", kind: "expense" });
+		await expectProblem(
+			await call(`/expenses/row?id=${id}`, { headers: asBob }),
+			404,
+			"not_found",
+		);
+		await expectProblem(
+			await call(`/expenses/row?id=${encodeURIComponent("shared:nope")}`, {
+				headers: asAlice,
+			}),
+			404,
+			"not_found",
+		);
+		await call(`/expenses/${id}`, {
+			method: "DELETE",
+			headers: asAlice,
+			idempotent: true,
+		});
+		await expectProblem(
+			await call(`/expenses/row?id=${id}`, { headers: asAlice }),
+			404,
+			"not_found",
+		);
+	});
+
 	it("lists newest first with the filter grammar, a cursor, and totals", async () => {
 		const user = (await createTestUser()).user.id;
 		const as = await asMobile(user);
