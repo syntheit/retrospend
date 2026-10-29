@@ -2205,6 +2205,8 @@
 			"fixed": "The usual amount, {amount}.",
 			"nextDue": "Next due",
 			"submit": "Confirm",
+			"submitOut": "Log expense",
+			"submitIn": "Log income",
 			"toast": "{title} logged, {amount}",
 			"paidOn": "Paid on",
 			"paidOnIn": "Received on",

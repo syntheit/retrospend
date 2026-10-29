@@ -153,7 +153,7 @@ export function ConfirmSheet({
 					failed={flow.commitFailed}
 					onSubmit={submit}
 					ready={flow.status === "ready"}
-					submitLabel={t("submit")}
+					submitLabel={t(item.direction === "in" ? "submitIn" : "submitOut")}
 				>
 					<Note>
 						{t(item.direction === "in" ? "bodyIn" : "bodyOut", {
