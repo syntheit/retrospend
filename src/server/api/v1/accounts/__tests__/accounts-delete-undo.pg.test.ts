@@ -228,10 +228,10 @@ describe("deleting an account is undoable", () => {
 		["day", { date: new Date("2026-01-05T00:00:00.000Z") }],
 	] as const)(
 		"refuses an undo when an income it holds was edited since (%s)",
-		async (_what, change) => {
+		async (what, change) => {
 			const id = await open("With income", "10");
 			const made = await send("POST", "/income", {
-				title: "Pay",
+				title: `Pay ${what}`,
 				amount: "20",
 				currency: "USD",
 				into: id,
@@ -247,7 +247,7 @@ describe("deleting an account is undoable", () => {
 				c.delete,
 			);
 			const income = await adminDb.expense.findFirstOrThrow({
-				where: { userId, title: "Pay" },
+				where: { userId, title: `Pay ${what}` },
 			});
 			await adminDb.expense.update({ where: { id: income.id }, data: change });
 			await expectProblem(
