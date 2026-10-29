@@ -90,6 +90,7 @@ DM Sans for everything. JetBrains Mono only for strings you would paste (IDs, cr
 - Three weights: 400, 500 (labels, buttons), 600 (titles, money totals). No bold, black or light (UI-011).
 - Sentence case everywhere. No uppercase tracked eyebrows; the sidebar group labels are the only exception (UI-012). [R12]
 - Every number uses tabular, lining figures (`tabular-nums`).
+- Native apps: words go through `apps/mobile/src/ui/Text` (role, tone, weight), which loads DM Sans 400, 500 and 600 and reads size, line height and tracking from `type.*`. No raw React Native `Text` with ad-hoc font styles.
 
 ### 2.4 Space, size, radius
 
@@ -289,7 +290,7 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 
 - Wherever a set of people appears (project rows and header, split, people list, expense rows with a split), show faces: `AvatarStack` overlaps, spreads on hover with one tooltip per face (name, Paid, share) and ends with +N. Setting: Profile pictures (default) or Names. [R20]
 - People on Retrospend show their picture; others show initials on their avatar color. "Not on Retrospend" is a status word in the subline, not a dashed ring.
-- Sizes: xs 22, sm 24, default 32, md 40, lg 48.
+- Sizes: xs 22, sm 24, default 32, md 40, row 44 (phone person rows and project covers), lg 48, xl 64 (profile), xxl 80 (a person's page).
 - Payer first in a split stack. One avatar per person per row.
 - People list (Direction A): an overall line, Waiting on you, then person rows by balance. The two-sided balance bar with faces stays.
 - A person's page: the balance once (expand per currency), Settle up, a Project filter chip on the ledger, per-project balances as label-value rows.
@@ -302,6 +303,7 @@ The rest are `planned` entries (`PLANNED` in `registry.ts`, with what each repla
 - Attention (amber) only for over budget; positive only for money in.
 - Chart kinds: pace line (spent vs plan), monthly bars, ranked bars, net worth area, allocation bar (one 100% bar + legend rows). Hover shows a tooltip with date and value; gaps are null, never zero.
 - Charts look the same on every platform: the native apps draw the same chart kinds from the same tokens and numbers.
+- The spec in numbers (`chart.*` tokens): line 2, end dot radius 5 with a 2px surface ring, labels 12 in fg-3, area at 16% accent.
 
 ## 10. Sheets, dialogs and menus by platform
 

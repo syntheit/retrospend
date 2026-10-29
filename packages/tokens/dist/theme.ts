@@ -166,7 +166,10 @@ export const light = {
 			"sm": 24,
 			"default": 32,
 			"md": 40,
-			"lg": 48
+			"row": 44,
+			"lg": 48,
+			"xl": 64,
+			"xxl": 80
 		},
 		"pageMax": {
 			"desktop": 1120
@@ -177,6 +180,12 @@ export const light = {
 		"touchMin": {
 			"phone": 44
 		}
+	},
+	"chart": {
+		"line": 2,
+		"dot": 5,
+		"ring": 2,
+		"label": 12
 	},
 	"breakpoint": {
 		"phone": {
@@ -415,7 +424,10 @@ export const dark: Theme = {
 			"sm": 24,
 			"default": 32,
 			"md": 40,
-			"lg": 48
+			"row": 44,
+			"lg": 48,
+			"xl": 64,
+			"xxl": 80
 		},
 		"pageMax": {
 			"desktop": 1120
@@ -426,6 +438,12 @@ export const dark: Theme = {
 		"touchMin": {
 			"phone": 44
 		}
+	},
+	"chart": {
+		"line": 2,
+		"dot": 5,
+		"ring": 2,
+		"label": 12
 	},
 	"breakpoint": {
 		"phone": {
