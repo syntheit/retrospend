@@ -3,6 +3,10 @@ import type {
 	updateAccountSchema,
 } from "@retrospend/api-contract";
 import type * as z from "zod";
+import {
+	restoreAccount,
+	snapshotAccount,
+} from "~/server/services/accounts/delete-snapshot";
 import { exactRate } from "~/server/services/accounts/exact-rate";
 import {
 	type AccountFields,
@@ -12,10 +16,6 @@ import {
 	editAccountIn,
 	reopenAccountIn,
 } from "~/server/services/accounts/manage";
-import {
-	restoreAccount,
-	snapshotAccount,
-} from "~/server/services/accounts/delete-snapshot";
 import {
 	putUndoStash,
 	takeUndoStash,
@@ -255,9 +255,11 @@ export const undeleteAccountMutation: MoneyMutation<
 	id: "account.undelete",
 	touches: DELETE_FIGURES,
 	run: async (tx, input, actor) => {
-		const snapshot = await takeUndoStash<
-			Parameters<typeof restoreAccount>[2]
-		>(tx, actor.userId, input.stash);
+		const snapshot = await takeUndoStash<Parameters<typeof restoreAccount>[2]>(
+			tx,
+			actor.userId,
+			input.stash,
+		);
 		const id = await restoreAccount(tx, actor.userId, snapshot);
 		return {
 			value: await accountItemIn(tx, actor.userId, id),

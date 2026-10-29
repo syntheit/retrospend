@@ -40,7 +40,10 @@ export async function snapshotShared(
 }
 
 /** The ids of these rows that still exist, so a link to a row deleted since is dropped, not invented. */
-async function stillThere(ids: (string | null | undefined)[], find: (ids: string[]) => Promise<{ id: string }[]>) {
+async function stillThere(
+	ids: (string | null | undefined)[],
+	find: (ids: string[]) => Promise<{ id: string }[]>,
+) {
 	const wanted = [...new Set(ids.filter((v): v is string => !!v))];
 	if (wanted.length === 0) return new Set<string>();
 	return new Set((await find(wanted)).map((r) => r.id));
@@ -55,7 +58,9 @@ export async function restoreShared(
 	userId: string,
 	snapshot: SharedSnapshot,
 ) {
-	const expense = unpackRow(snapshot.expense) as unknown as Prisma.SharedTransactionUncheckedCreateInput;
+	const expense = unpackRow(
+		snapshot.expense,
+	) as unknown as Prisma.SharedTransactionUncheckedCreateInput;
 	if (
 		snapshot.userId !== userId ||
 		expense.createdByType !== "user" ||
@@ -74,11 +79,17 @@ export async function restoreShared(
 		});
 	}
 	const shares = snapshot.shares.map(
-		(s) => unpackRow(s) as unknown as Prisma.SplitParticipantUncheckedCreateInput,
+		(s) =>
+			unpackRow(s) as unknown as Prisma.SplitParticipantUncheckedCreateInput,
 	);
 	const [categories, projects, periods] = await Promise.all([
-		stillThere([expense.categoryId, ...shares.map((s) => s.categoryId)], (ids) =>
-			tx.category.findMany({ where: { id: { in: ids } }, select: { id: true } }),
+		stillThere(
+			[expense.categoryId, ...shares.map((s) => s.categoryId)],
+			(ids) =>
+				tx.category.findMany({
+					where: { id: { in: ids } },
+					select: { id: true },
+				}),
 		),
 		stillThere([expense.projectId], (ids) =>
 			tx.project.findMany({ where: { id: { in: ids } }, select: { id: true } }),
@@ -111,8 +122,7 @@ export async function restoreShared(
 	// Requests between other people are theirs: a person restores only their own.
 	const mine = snapshot.fixRequests
 		.map(
-			(r) =>
-				unpackRow(r) as unknown as Prisma.FixRequestUncheckedCreateInput,
+			(r) => unpackRow(r) as unknown as Prisma.FixRequestUncheckedCreateInput,
 		)
 		.filter(
 			(r) =>

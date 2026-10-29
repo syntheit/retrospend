@@ -31,7 +31,10 @@ describe("deleting a split expense", () => {
 		const out = await previewDelete(client, { id: "s1", shared: true });
 		expect(out.warning).toBe("Deleting it removes that debt.");
 		expect(out.state.status).toBe("ready");
-		expect(previews).toEqual([{ id: "s1" }, { id: "s1", confirmUnsettled: true }]);
+		expect(previews).toEqual([
+			{ id: "s1" },
+			{ id: "s1", confirmUnsettled: true },
+		]);
 	});
 
 	it("has no warning when nothing is owed", async () => {

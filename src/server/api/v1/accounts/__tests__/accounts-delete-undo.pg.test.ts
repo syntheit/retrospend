@@ -10,10 +10,10 @@ import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import {
-	asMobile as sessionHeaders,
 	call,
 	expectBody,
 	expectProblem,
+	asMobile as sessionHeaders,
 } from "../../core/__tests__/harness";
 
 vi.mock("next/headers", () => ({
@@ -119,7 +119,9 @@ describe("deleting an account is undoable", () => {
 		const otherBefore = await state(other);
 		expect(before.legs.length).toBeGreaterThan(1);
 		expect(before.transfers.length).toBe(2);
-		const worth = await adminDb.assetAccount.findUniqueOrThrow({ where: { id } });
+		const worth = await adminDb.assetAccount.findUniqueOrThrow({
+			where: { id },
+		});
 
 		const deleted = await expectBody<Write>(
 			await send("POST", `/accounts/${id}/delete`, { id }),
@@ -128,7 +130,9 @@ describe("deleting an account is undoable", () => {
 		expect(deleted.undo).toEqual(expect.any(String));
 		expect(deleted.result).toEqual({ id });
 		expect((await items()).find((a) => a.id === id)).toBeUndefined();
-		expect(await adminDb.assetSnapshot.count({ where: { accountId: id } })).toBe(0);
+		expect(
+			await adminDb.assetSnapshot.count({ where: { accountId: id } }),
+		).toBe(0);
 		// The moves stay, one side gone.
 		expect((await state(id)).transfers).toEqual([]);
 

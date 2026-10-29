@@ -134,9 +134,9 @@ describe("deleting a split expense is undoable", () => {
 			await post("/shared-expenses/undo/preview", { token: deleted.undo }),
 			c.previewUndo,
 		);
-		expect(
-			dry.changes.find((x) => x.id === "owed.owedToYou")?.delta,
-		).toEqual(ars(4500));
+		expect(dry.changes.find((x) => x.id === "owed.owedToYou")?.delta).toEqual(
+			ars(4500),
+		);
 		expect(await row(made.id)).toBeNull();
 
 		const undone = await expectBody<{ id: string; redo: string | null }>(
@@ -257,7 +257,9 @@ describe("deleting a split expense is undoable", () => {
 			await del(made.id, { confirmUnsettled: true }),
 			c.delete,
 		);
-		expect(await adminDb.fixRequest.count({ where: { transactionId: made.id } })).toBe(0);
+		expect(
+			await adminDb.fixRequest.count({ where: { transactionId: made.id } }),
+		).toBe(0);
 		await expectBody(
 			await post("/shared-expenses/undo", { token: deleted.undo }),
 			c.undo,
