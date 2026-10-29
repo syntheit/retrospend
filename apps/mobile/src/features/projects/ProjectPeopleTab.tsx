@@ -1,9 +1,9 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFaces } from "@/features/read/faces";
-import { ListRow } from "@/ui/List";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
+import { ListGroup, ListRow } from "@/ui/List";
 import { BalanceColumn, useBalanceWords } from "./Balance";
 import { useDayRange } from "./dates";
 import type { ProjectMember } from "./source";
@@ -19,7 +19,6 @@ function MemberRow({
 	const words = useBalanceWords();
 	const faces = useFaces();
 	const range = useDayRange();
-	const { color, type } = useTheme();
 	const [face] = faces([
 		{ key: member.id, name: member.name, imageUrl: member.imageUrl },
 	]);
@@ -41,28 +40,11 @@ function MemberRow({
 			]
 				.filter(Boolean)
 				.join(", ")}
-		>
-			{face ? <Avatar face={face} size="md" /> : null}
-			<View style={{ flex: 1, gap: 2 }}>
-				<Text
-					numberOfLines={1}
-					style={{
-						color: color.fg,
-						fontSize: type.body.size,
-						fontWeight: "500",
-					}}
-				>
-					{member.name}
-				</Text>
-				<Text
-					numberOfLines={1}
-					style={{ color: color.fg2, fontSize: type.small.size }}
-				>
-					{sub.join(" · ")}
-				</Text>
-			</View>
-			{member.isMe ? null : <BalanceColumn lines={member.withMe} />}
-		</ListRow>
+			end={member.isMe ? null : <BalanceColumn lines={member.withMe} />}
+			lead={face ? <Avatar face={face} size="row" /> : null}
+			sub={sub.join(" · ")}
+			title={member.name}
+		/>
 	);
 }
 
@@ -74,11 +56,14 @@ export function ProjectPeopleTab({
 	members: ProjectMember[];
 	today: string;
 }) {
+	const { space } = useTheme();
 	return (
-		<View>
-			{members.map((member) => (
-				<MemberRow key={member.id} member={member} today={today} />
-			))}
+		<View style={{ paddingTop: space[4] }}>
+			<ListGroup>
+				{members.map((member) => (
+					<MemberRow key={member.id} member={member} today={today} />
+				))}
+			</ListGroup>
 		</View>
 	);
 }
