@@ -2,6 +2,7 @@ import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Line, Note } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { SheetDetent } from "@/ui/Sheet";
 import { monthDate } from "./months";
 import { type BudgetMonth, envelopeById } from "./source";
 import { useSheetRead } from "./useSheetRead";
@@ -16,11 +17,14 @@ import { WriteSheet } from "./WriteSheet";
 export function PlanApplySheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
@@ -42,9 +46,10 @@ export function PlanApplySheet({
 	return (
 		<WriteSheet
 			data={data}
+			detent={detent}
 			idempotencyKey={draft ? idFor("apply") : null}
 			input={draft ? { draftId: draft.id } : null}
-			message={t("toast", { month: monthName })}
+			message={() => t("toast", { month: monthName })}
 			onClose={onClose}
 			onDone={onDone}
 			preview={(api, body) => api.budget.previewApplyDraft(body)}

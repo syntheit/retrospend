@@ -602,7 +602,8 @@
 			"targetAction": "Definir uma meta",
 			"editAction": "Renomear ou mover",
 			"targetTitle": "Meta de {name}",
-			"editTitle": "Editar {name}"
+			"editTitle": "Editar {name}",
+			"more": "Mais"
 		},
 		"assign": {
 			"assignedNow": "Atribuído agora",

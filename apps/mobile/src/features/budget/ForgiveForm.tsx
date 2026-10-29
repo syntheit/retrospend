@@ -58,10 +58,12 @@ export function ForgiveForm({
 			data={data}
 			idempotencyKey={body?.id ?? null}
 			input={body}
-			message={t("toast", {
-				name,
-				amount: currency && minor !== null ? money({ minor, currency }) : "",
-			})}
+			message={() =>
+				t("toast", {
+					name,
+					amount: currency && minor !== null ? money({ minor, currency }) : "",
+				})
+			}
 			onClose={onClose}
 			onDone={onDone}
 			preview={(api, b) => api.budget.previewForgive(b)}

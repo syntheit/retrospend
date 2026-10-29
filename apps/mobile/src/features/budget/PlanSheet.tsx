@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
-import { LinkButton } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import {
@@ -13,9 +11,8 @@ import {
 	SheetBody,
 	useAmountLocale,
 } from "@/features/write/parts";
-import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { Sheet } from "@/ui/Sheet";
+import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { useToast } from "@/ui/Toast";
 import {
 	linesOf,
@@ -27,6 +24,7 @@ import {
 import { ChoiceList } from "./fields";
 import { type BudgetMonth, envelopeById, envelopesOf } from "./source";
 import { useSheetRead } from "./useSheetRead";
+import { BackButton } from "./WriteSheet";
 
 /**
  * Plan a coming month: what each envelope should get when its money arrives.
@@ -36,10 +34,13 @@ import { useSheetRead } from "./useSheetRead";
 export function PlanSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 }) {
 	const t = useTranslations("mobile.budget.planEdit");
@@ -49,7 +50,6 @@ export function PlanSheet({
 	const { api } = useSession();
 	const toast = useToast();
 	const locale = useAmountLocale();
-	const { space } = useTheme();
 	const month = data.month.key;
 	const currency = data.book.currency;
 	const [editing, setEditing] = useState<string | null>(null);
@@ -128,7 +128,7 @@ export function PlanSheet({
 	const planned = envelope ? plannedFor(base, envelope.id) : null;
 	return (
 		<Sheet
-			detents={["large"]}
+			detents={[detent]}
 			onClose={onClose}
 			title={envelope ? t("title", { name: envelope.name }) : t("listTitle")}
 			visible={visible}
@@ -136,15 +136,13 @@ export function PlanSheet({
 			<SheetBody>
 				{envelope ? (
 					<>
-						<View style={{ alignItems: "flex-start", marginLeft: -space[4] }}>
-							<LinkButton
-								label={t("back")}
-								onPress={() => {
-									setEditing(null);
-									setDraft("");
-								}}
-							/>
-						</View>
+						<BackButton
+							label={t("back")}
+							onPress={() => {
+								setEditing(null);
+								setDraft("");
+							}}
+						/>
 						<Note>{t("lead")}</Note>
 						<Line
 							label={t("planned")}

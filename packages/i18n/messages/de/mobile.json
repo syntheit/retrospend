@@ -602,7 +602,8 @@
 			"targetAction": "Ziel festlegen",
 			"editAction": "Umbenennen oder verschieben",
 			"targetTitle": "Ziel für {name}",
-			"editTitle": "{name} bearbeiten"
+			"editTitle": "{name} bearbeiten",
+			"more": "Mehr"
 		},
 		"assign": {
 			"assignedNow": "Jetzt zugewiesen",

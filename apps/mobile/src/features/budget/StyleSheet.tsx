@@ -1,20 +1,13 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
 import { minorOf, readAmount } from "@/features/write/amount";
-import {
-	AmountField,
-	Note,
-	SheetBody,
-	useAmountLocale,
-} from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
-import { Sheet } from "@/ui/Sheet";
-import { BudgetChanges } from "./BudgetChanges";
+import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { SheetDetent } from "@/ui/Sheet";
 import { ChoiceList } from "./fields";
 import { type SwitchStyle, styleBody } from "./moreBodies";
 import type { BudgetMonth } from "./source";
+import { FormSheet, WriteForm } from "./WriteSheet";
 
 /** Every style a book can switch to, in the order the web lists them. */
 export const STYLES: readonly SwitchStyle[] = [
@@ -35,17 +28,18 @@ export const STYLES: readonly SwitchStyle[] = [
 export function StyleSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.style");
-	const api = useApi();
-	const announce = useUndoToast("budget");
 	const locale = useAmountLocale();
 	const currency = data.book.currency;
 	const current = data.book.style;
@@ -71,72 +65,49 @@ export function StyleSheet({
 				currency,
 			})
 		: null;
-	const flow = useMoneyWrite({
-		input: visible ? body : null,
-		idempotencyKey: body?.id ?? null,
-		preview: (b) => (api ? api.budget.previewSetStyle(b) : noSession()),
-		write: (b, key) =>
-			api
-				? api.budget.setStyle(b, { context: { idempotencyKey: key } })
-				: noSession(),
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out || !picked) return;
-		announce({
-			message: t("toast", { style: t(`name.${picked}`) }),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
 	const choices = STYLES.filter((s) => s !== current).map((s) => ({
 		id: s,
 		label: t(`name.${s}`),
 	}));
 	return (
-		<Sheet
-			detents={["large"]}
+		<FormSheet
+			detent={detent}
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}
 		>
-			<SheetBody>
-				<WriteFrame
-					busy={flow.committing}
-					changes={
-						<BudgetChanges
-							data={data}
-							preview={flow.preview}
-							status={flow.status}
-						/>
-					}
-					failed={flow.commitFailed}
-					onSubmit={submit}
-					ready={flow.status === "ready"}
-					submitLabel={t("submit")}
-				>
-					<Note>{t("now", { style: t(`name.${current}`) })}</Note>
-					<ChoiceList
-						choices={choices}
-						onPress={(id) => setPicked(id as SwitchStyle)}
-						selected={new Set(picked ? [picked] : [])}
+			<WriteForm
+				active={visible}
+				data={data}
+				idempotencyKey={body?.id ?? null}
+				input={body}
+				message={() => t("toast", { style: picked ? t(`name.${picked}`) : "" })}
+				onClose={onClose}
+				onDone={onDone}
+				preview={(api, b) => api.budget.previewSetStyle(b)}
+				submitLabel={t("submit")}
+				write={(api, b, key) =>
+					api.budget.setStyle(b, { context: { idempotencyKey: key } })
+				}
+			>
+				<Note>{t("now", { style: t(`name.${current}`) })}</Note>
+				<ChoiceList
+					choices={choices}
+					onPress={(id) => setPicked(id as SwitchStyle)}
+					selected={new Set(picked ? [picked] : [])}
+				/>
+				{picked ? <Note>{t(`about.${picked}`)}</Note> : null}
+				{leavingLimits ? (
+					<AmountField
+						allowZero
+						currency={currency}
+						draft={draft}
+						entered={entered}
+						label={t("haveNow")}
+						onDraftChange={setDraft}
 					/>
-					{picked ? <Note>{t(`about.${picked}`)}</Note> : null}
-					{leavingLimits ? (
-						<AmountField
-							allowZero
-							currency={currency}
-							draft={draft}
-							entered={entered}
-							label={t("haveNow")}
-							onDraftChange={setDraft}
-						/>
-					) : null}
-				</WriteFrame>
-			</SheetBody>
-		</Sheet>
+				) : null}
+			</WriteForm>
+		</FormSheet>
 	);
 }

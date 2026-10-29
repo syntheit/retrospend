@@ -602,7 +602,8 @@
 			"targetAction": "Set a target",
 			"editAction": "Rename or move",
 			"targetTitle": "Target for {name}",
-			"editTitle": "Edit {name}"
+			"editTitle": "Edit {name}",
+			"more": "More"
 		},
 		"assign": {
 			"assignedNow": "Assigned now",

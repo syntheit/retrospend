@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { Note, SheetBody } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
-import { Sheet } from "@/ui/Sheet";
-import { BudgetChanges } from "./BudgetChanges";
+import { Note } from "@/features/write/parts";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { SheetDetent } from "@/ui/Sheet";
 import { ChoiceList, TextField } from "./fields";
 import { mergeBody } from "./moreBodies";
 import { type BudgetMonth, envelopesOf } from "./source";
+import { FormSheet, WriteForm } from "./WriteSheet";
 
 /**
  * Combine envelopes: pick the one that stays, then the ones that go into it.
@@ -19,17 +17,18 @@ import { type BudgetMonth, envelopesOf } from "./source";
 export function MergeSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.merge");
-	const api = useApi();
-	const announce = useUndoToast("budget");
 	const money = useMoneyText();
 	const [stays, setStays] = useState<string | null>(null);
 	const [from, setFrom] = useState<ReadonlySet<string>>(new Set());
@@ -54,16 +53,6 @@ export function MergeSheet({
 		name,
 		was: stayer?.name ?? null,
 	});
-	const flow = useMoneyWrite({
-		input: visible ? body : null,
-		idempotencyKey: body?.id ?? null,
-		preview: (b) => (api ? api.budget.previewMergeEnvelopes(b) : noSession()),
-		write: (b, key2) =>
-			api
-				? api.budget.mergeEnvelopes(b, { context: { idempotencyKey: key2 } })
-				: noSession(),
-	});
-
 	function pickStayer(id: string) {
 		setStays(id);
 		setFrom((prev) => {
@@ -80,72 +69,62 @@ export function MergeSheet({
 		});
 	}
 
-	async function submit() {
-		const out = await flow.commit();
-		if (!out || !body) return;
-		announce({
-			message: t("toast", {
-				count: body.fromIds.length,
-				name: stayer?.name ?? "",
-			}),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
 	const choices = all.map((e) => ({
 		id: e.id,
 		label: e.name,
 		detail: money(e.left),
 	}));
 	return (
-		<Sheet
-			detents={["large"]}
+		<FormSheet
+			detent={detent}
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}
 		>
-			<SheetBody>
-				<WriteFrame
-					busy={flow.committing}
-					changes={
-						<BudgetChanges
-							data={data}
-							preview={flow.preview}
-							status={flow.status}
+			<WriteForm
+				active={visible}
+				data={data}
+				idempotencyKey={body?.id ?? null}
+				input={body}
+				message={() =>
+					t("toast", {
+						count: body?.fromIds.length ?? 0,
+						name: stayer?.name ?? "",
+					})
+				}
+				onClose={onClose}
+				onDone={onDone}
+				preview={(api, b) => api.budget.previewMergeEnvelopes(b)}
+				submitLabel={t("submit")}
+				write={(api, b, key) =>
+					api.budget.mergeEnvelopes(b, { context: { idempotencyKey: key } })
+				}
+			>
+				<Note>{t("lead")}</Note>
+				<ChoiceList
+					choices={choices}
+					label={t("stays")}
+					onPress={pickStayer}
+					selected={new Set(stays ? [stays] : [])}
+				/>
+				{stays ? (
+					<>
+						<ChoiceList
+							choices={choices.filter((c) => c.id !== stays)}
+							label={t("from")}
+							onPress={toggle}
+							selected={from}
 						/>
-					}
-					failed={flow.commitFailed}
-					onSubmit={submit}
-					ready={flow.status === "ready"}
-					submitLabel={t("submit")}
-				>
-					<Note>{t("lead")}</Note>
-					<ChoiceList
-						choices={choices}
-						label={t("stays")}
-						onPress={pickStayer}
-						selected={new Set(stays ? [stays] : [])}
-					/>
-					{stays ? (
-						<>
-							<ChoiceList
-								choices={choices.filter((c) => c.id !== stays)}
-								label={t("from")}
-								onPress={toggle}
-								selected={from}
-							/>
-							<TextField
-								label={t("name")}
-								maxLength={64}
-								onChangeText={setName}
-								value={name || stayer?.name || ""}
-							/>
-						</>
-					) : null}
-				</WriteFrame>
-			</SheetBody>
-		</Sheet>
+						<TextField
+							autoCapitalize="sentences"
+							label={t("name")}
+							maxLength={64}
+							onChangeText={setName}
+							value={name || stayer?.name || ""}
+						/>
+					</>
+				) : null}
+			</WriteForm>
+		</FormSheet>
 	);
 }

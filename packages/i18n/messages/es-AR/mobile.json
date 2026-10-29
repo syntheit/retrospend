@@ -602,7 +602,8 @@
 			"targetAction": "Fijar un objetivo",
 			"editAction": "Renombrar o mover",
 			"targetTitle": "Objetivo de {name}",
-			"editTitle": "Editar {name}"
+			"editTitle": "Editar {name}",
+			"more": "Más"
 		},
 		"assign": {
 			"assignedNow": "Asignado ahora",

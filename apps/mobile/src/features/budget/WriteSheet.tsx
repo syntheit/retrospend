@@ -1,10 +1,12 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { ReactNode } from "react";
+import { View } from "react-native";
 import { SheetBody } from "@/features/write/parts";
 import { useMoneyWrite } from "@/features/write/useMoneyWrite";
 import { type UndoFamily, useUndoToast } from "@/features/write/useUndoToast";
 import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
-import { Sheet } from "@/ui/Sheet";
+import { Button } from "@/ui/Button";
+import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { BudgetChanges } from "./BudgetChanges";
 import type { BudgetMonth, BudgetPreview } from "./source";
 
@@ -16,13 +18,20 @@ export interface WriteAnswer {
 export interface WriteProps<I, W extends WriteAnswer> {
 	data: BudgetMonth | null;
 	submitLabel: string;
-	/** The toast sentence once it is written. */
-	message: string;
+	/** The toast sentence once it is written, from the server's answer. */
+	message: (out: W) => string;
 	/** The exact request body, or null while the form is not complete. */
 	input: I | null;
 	idempotencyKey: string | null;
 	preview: (api: RetrospendClient, body: I) => Promise<BudgetPreview>;
 	write: (api: RetrospendClient, body: I, key: string) => Promise<W>;
+	/**
+	 * Whether the dry run says there is something to save. Save stays off
+	 * until the preview is in and this says yes, so a write that changes
+	 * nothing (an amount that is already there) is never offered. Default:
+	 * any preview that came back.
+	 */
+	canSave?: (preview: BudgetPreview) => boolean;
 	onClose: () => void;
 	onDone: () => void;
 	children: ReactNode;
@@ -35,8 +44,9 @@ export interface WriteProps<I, W extends WriteAnswer> {
 
 /**
  * The body of one money write: the fields, the server's dry run of the exact
- * body, one Save that stays off until that is in, the write with one
- * idempotency key, and an Undo toast. A form only builds the body.
+ * body, one Save that stays off until that is in (and says there is
+ * something to save), the write with one idempotency key, and an Undo toast.
+ * A form only builds the body.
  */
 export function WriteForm<I, W extends WriteAnswer>({
 	data,
@@ -46,6 +56,7 @@ export function WriteForm<I, W extends WriteAnswer>({
 	idempotencyKey,
 	preview,
 	write,
+	canSave,
 	onClose,
 	onDone,
 	children,
@@ -65,9 +76,13 @@ export function WriteForm<I, W extends WriteAnswer>({
 	async function submit() {
 		const out = await flow.commit();
 		if (!out) return;
-		announce({ message, token: out.undo, onChanged: onDone });
+		announce({ message: message(out), token: out.undo, onChanged: onDone });
 		onClose();
 	}
+
+	const ready =
+		flow.status === "ready" &&
+		(canSave === undefined || (flow.preview !== null && canSave(flow.preview)));
 
 	return (
 		<WriteFrame
@@ -84,7 +99,7 @@ export function WriteForm<I, W extends WriteAnswer>({
 			}
 			failed={flow.commitFailed}
 			onSubmit={submit}
-			ready={flow.status === "ready"}
+			ready={ready}
 			submitLabel={submitLabel}
 		>
 			{children}
@@ -92,22 +107,64 @@ export function WriteForm<I, W extends WriteAnswer>({
 	);
 }
 
+/**
+ * A platform sheet around a scrolling body. The detent is the sheet's kind
+ * (see sheetRegistry): medium for a short task, large for a long form.
+ */
+export function FormSheet({
+	visible,
+	title,
+	detent,
+	onClose,
+	children,
+}: {
+	visible: boolean;
+	title: string | undefined;
+	detent: SheetDetent;
+	onClose: () => void;
+	children: ReactNode;
+}) {
+	return (
+		<Sheet detents={[detent]} onClose={onClose} title={title} visible={visible}>
+			<SheetBody>{children}</SheetBody>
+		</Sheet>
+	);
+}
+
 /** A sheet of its own around one write form. */
 export function WriteSheet<I, W extends WriteAnswer>({
 	visible,
 	title,
+	detent = "large",
 	...form
-}: WriteProps<I, W> & { visible: boolean; title: string }) {
+}: WriteProps<I, W> & {
+	visible: boolean;
+	title: string;
+	detent?: SheetDetent;
+}) {
 	return (
-		<Sheet
-			detents={["large"]}
+		<FormSheet
+			detent={detent}
 			onClose={form.onClose}
 			title={title}
 			visible={visible}
 		>
-			<SheetBody>
-				<WriteForm {...form} active={visible} />
-			</SheetBody>
-		</Sheet>
+			<WriteForm {...form} active={visible} />
+		</FormSheet>
+	);
+}
+
+/** The way back from a form that opened inside a sheet, on its own line at the start. */
+export function BackButton({
+	label,
+	onPress,
+}: {
+	label: string;
+	onPress: () => void;
+}) {
+	return (
+		<View style={{ alignItems: "flex-start" }}>
+			<Button label={label} onPress={onPress} variant="text" />
+		</View>
 	);
 }

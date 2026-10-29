@@ -1,7 +1,7 @@
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Line, Note, SheetBody } from "@/features/write/parts";
-import { Sheet } from "@/ui/Sheet";
+import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { monthDate } from "./months";
 import type { BudgetMonth } from "./source";
 import { useSheetRead } from "./useSheetRead";
@@ -13,10 +13,13 @@ import { useSheetRead } from "./useSheetRead";
 export function IncomeSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 }) {
 	const t = useTranslations("mobile.budget.income");
@@ -35,7 +38,7 @@ export function IncomeSheet({
 	});
 	return (
 		<Sheet
-			detents={["large"]}
+			detents={[detent]}
 			onClose={onClose}
 			title={t("title", { month })}
 			visible={visible}

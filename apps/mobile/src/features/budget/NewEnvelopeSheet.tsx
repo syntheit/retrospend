@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
-import { Note, SheetBody } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
-import { Sheet } from "@/ui/Sheet";
-import { BudgetChanges } from "./BudgetChanges";
+import { Note } from "@/features/write/parts";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { SheetDetent } from "@/ui/Sheet";
 import { CategoryList, loadCategories } from "./CategoryList";
 import { ChoiceList, TextField } from "./fields";
 import { createEnvelopeBody, nameOk } from "./moreBodies";
 import type { BudgetMonth } from "./source";
 import { useSheetRead } from "./useSheetRead";
+import { FormSheet, WriteForm } from "./WriteSheet";
 
 /** The groups an envelope can sit in, as choices; "none" is the ungrouped list. */
 export function groupChoices(data: BudgetMonth, none: string) {
@@ -30,17 +28,18 @@ export function groupChoices(data: BudgetMonth, none: string) {
 export function NewEnvelopeSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.newEnvelope");
-	const api = useApi();
-	const announce = useUndoToast("budget");
 	const [name, setName] = useState("");
 	const [group, setGroup] = useState("none");
 	const [picked, setPicked] = useState<string[]>([]);
@@ -66,79 +65,54 @@ export function NewEnvelopeSheet({
 				categoryIds: picked,
 			})
 		: null;
-	const flow = useMoneyWrite({
-		input: visible ? input : null,
-		idempotencyKey: input?.id ?? null,
-		preview: (body) =>
-			api ? api.budget.previewCreateEnvelope(body) : noSession(),
-		write: (body, key) =>
-			api
-				? api.budget.createEnvelope(body, {
-						context: { idempotencyKey: key },
-					})
-				: noSession(),
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out) return;
-		announce({
-			message: t("toast", { name: name.trim() }),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
 	return (
-		<Sheet
-			detents={["large"]}
+		<FormSheet
+			detent={detent}
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}
 		>
-			<SheetBody>
-				<WriteFrame
-					busy={flow.committing}
-					changes={
-						<BudgetChanges
-							data={data}
-							preview={flow.preview}
-							status={flow.status}
-						/>
-					}
-					failed={flow.commitFailed}
-					onSubmit={submit}
-					ready={flow.status === "ready"}
-					submitLabel={t("submit")}
-				>
-					<TextField
-						label={t("name")}
-						maxLength={64}
-						onChangeText={setName}
-						value={name}
+			<WriteForm
+				active={visible}
+				data={data}
+				idempotencyKey={input?.id ?? null}
+				input={input}
+				message={() => t("toast", { name: name.trim() })}
+				onClose={onClose}
+				onDone={onDone}
+				preview={(api, body) => api.budget.previewCreateEnvelope(body)}
+				submitLabel={t("submit")}
+				write={(api, body, key) =>
+					api.budget.createEnvelope(body, { context: { idempotencyKey: key } })
+				}
+			>
+				<TextField
+					autoCapitalize="sentences"
+					label={t("name")}
+					maxLength={64}
+					onChangeText={setName}
+					value={name}
+				/>
+				<ChoiceList
+					choices={groupChoices(data, t("noGroup"))}
+					label={t("group")}
+					onPress={setGroup}
+					selected={new Set([group])}
+				/>
+				<Note>{t("categoriesHint")}</Note>
+				{categories.status === "ready" ? (
+					<CategoryList
+						categories={categories.data}
+						label={t("categories")}
+						onPress={(id) =>
+							setPicked((now) =>
+								now.includes(id) ? now.filter((x) => x !== id) : [...now, id],
+							)
+						}
+						selected={new Set(picked)}
 					/>
-					<ChoiceList
-						choices={groupChoices(data, t("noGroup"))}
-						label={t("group")}
-						onPress={setGroup}
-						selected={new Set([group])}
-					/>
-					<Note>{t("categoriesHint")}</Note>
-					{categories.status === "ready" ? (
-						<CategoryList
-							categories={categories.data}
-							label={t("categories")}
-							onPress={(id) =>
-								setPicked((now) =>
-									now.includes(id) ? now.filter((x) => x !== id) : [...now, id],
-								)
-							}
-							selected={new Set(picked)}
-						/>
-					) : null}
-				</WriteFrame>
-			</SheetBody>
-		</Sheet>
+				) : null}
+			</WriteForm>
+		</FormSheet>
 	);
 }

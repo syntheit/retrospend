@@ -1,21 +1,26 @@
-import { useEffect, useState } from "react";
+import { categoryIconName } from "@retrospend/domain/category-icons";
+import { type ReactNode, useEffect, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { LinkButton } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Line, Note, SheetBody } from "@/features/write/parts";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { Sheet } from "@/ui/Sheet";
+import { IconTile } from "@/ui/IconTile";
+import { Menu } from "@/ui/Menu";
+import { Sheet, type SheetDetent } from "@/ui/Sheet";
+import { StatusText, type StatusTone } from "@/ui/StatusText";
 import { AssignForm } from "./AssignForm";
 import { CoverForm } from "./CoverForm";
 import { EditForm } from "./EditForm";
+import { EnvelopeBar } from "./EnvelopeBar";
 import { LimitForm } from "./LimitForm";
 import { MoveForm } from "./MoveForm";
 import type { MonthKind } from "./months";
-import { envelopeActions, isLimits, statusLine } from "./rows";
+import { envelopeActions, isLimits, type StatusLine, statusLine } from "./rows";
 import type { BudgetEnvelope, BudgetMonth } from "./source";
 import { TargetForm } from "./TargetForm";
+import { BackButton } from "./WriteSheet";
 
 export type EnvelopeMode =
 	| "overview"
@@ -27,9 +32,40 @@ export type EnvelopeMode =
 	| "edit";
 
 /**
- * One envelope's sheet: its numbers and what can be done to it. The forms
- * (assign, move, cover, limit) open inside the same sheet, so a second sheet
- * never has to present while the first is still leaving.
+ * How tall each part of the envelope sheet rests: the overview and the
+ * one-amount forms are short tasks, the keypad form and the long forms are
+ * large. A short mode can still be pulled up when its body is taller than
+ * the sheet.
+ */
+const MODE_DETENTS: Record<EnvelopeMode, SheetDetent[]> = {
+	overview: ["medium", "large"],
+	cover: ["medium", "large"],
+	limit: ["medium", "large"],
+	move: ["medium", "large"],
+	assign: ["large"],
+	target: ["large"],
+	edit: ["large"],
+};
+
+/** The tone of the status word under the tile; the word itself is the server's status in words. */
+function statusTone(line: StatusLine): StatusTone {
+	switch (line.kind) {
+		case "over":
+		case "needs":
+		case "noRate":
+			return "attention";
+		case "funded":
+			return "positive";
+		case "week":
+			return "quiet";
+	}
+}
+
+/**
+ * One envelope's sheet: a tile, its bar and its numbers, one main action
+ * chosen by its status, the other actions in a row, and the rest in a menu.
+ * The forms (assign, move, cover, limit, target, edit) open inside the same
+ * sheet, so a second sheet never has to present while the first is leaving.
  */
 export function EnvelopeSheet({
 	data,
@@ -72,13 +108,10 @@ export function EnvelopeSheet({
 				? envelope.name
 				: t(`${mode}Title`, { name: envelope.name });
 
-	const form = (child: (e: BudgetEnvelope) => React.ReactNode) =>
+	const form = (child: (e: BudgetEnvelope) => ReactNode) =>
 		envelope ? (
 			<View style={{ gap: space[3] }}>
-				{/* The link pads itself to a row's gutter; the sheet already has one. */}
-				<View style={{ alignItems: "flex-start", marginLeft: -space[4] }}>
-					<LinkButton label={t("back")} onPress={() => setMode("overview")} />
-				</View>
+				<BackButton label={t("back")} onPress={() => setMode("overview")} />
 				{child(envelope)}
 			</View>
 		) : null;
@@ -90,93 +123,135 @@ export function EnvelopeSheet({
 		onDone,
 	});
 
+	const statusWords = (line: StatusLine): string => {
+		switch (line.kind) {
+			case "over":
+				return tb("row.over");
+			case "needs":
+				return tb("row.needs", { amount: money(line.amount) });
+			case "week":
+				return tb("row.leftThisWeek", { amount: money(line.amount) });
+			case "funded":
+				return tb("row.funded");
+			case "noRate":
+				return tb("row.noRate", { currency: line.currency });
+		}
+	};
+
+	const overview = (e: BudgetEnvelope, a: NonNullable<typeof actions>) => {
+		const overspent = e.status === "OVERSPENT";
+		// One main action by status: cover what is over, else set the limit
+		// (Limits books), else put money in.
+		const primary: "cover" | "limit" | "assign" | null = a.cover
+			? "cover"
+			: a.limit
+				? "limit"
+				: a.assign
+					? "assign"
+					: null;
+		const labels = {
+			cover: t("cover"),
+			limit: overspent ? tb("verdict.action.raiseLimit") : t("limitAction"),
+			assign: t("assign"),
+			move: t("move"),
+		};
+		const secondary: ("assign" | "move")[] = [];
+		if (a.assign && primary !== "assign") secondary.push("assign");
+		if (a.move) secondary.push("move");
+		const more = [
+			...(kind !== "closed" && !limits
+				? [
+						{
+							id: "target",
+							label: t("targetAction"),
+							onPress: () => setMode("target"),
+						},
+					]
+				: []),
+			...(kind !== "closed"
+				? [
+						{
+							id: "edit",
+							label: t("editAction"),
+							onPress: () => setMode("edit"),
+						},
+					]
+				: []),
+		];
+		return (
+			<>
+				<View
+					style={{ flexDirection: "row", alignItems: "center", gap: space[3] }}
+				>
+					<IconTile name={categoryIconName(e.name, e.icon)} />
+					{status ? (
+						<StatusText label={statusWords(status)} tone={statusTone(status)} />
+					) : null}
+				</View>
+				<EnvelopeBar basis={e.spentBasis} over={overspent} />
+				<View>
+					<Line
+						label={limits ? t("limit") : t("assigned")}
+						value={money(e.assigned)}
+					/>
+					<Line label={t("spent")} value={money(e.spent)} />
+					<Line emphasis label={t("left")} value={money(e.left)} />
+				</View>
+				{kind === "closed" ? <Note>{t("closedHint")}</Note> : null}
+				{primary ? (
+					<Button
+						label={labels[primary]}
+						onPress={() => setMode(primary)}
+						variant="filled"
+					/>
+				) : null}
+				{secondary.length > 0 || more.length > 0 ? (
+					<View
+						style={{
+							flexDirection: "row",
+							flexWrap: "wrap",
+							alignItems: "center",
+							gap: space[2],
+						}}
+					>
+						{secondary.map((m) => (
+							<Button
+								key={m}
+								label={labels[m]}
+								onPress={() => setMode(m)}
+								variant="outlined"
+							/>
+						))}
+						{more.length > 0 ? <Menu items={more} label={t("more")} /> : null}
+					</View>
+				) : null}
+			</>
+		);
+	};
+
 	return (
 		<Sheet
-			detents={["large"]}
+			detents={MODE_DETENTS[mode]}
 			onClose={onClose}
 			title={title}
 			visible={envelope !== null}
 		>
 			<SheetBody>
-				{mode === "assign" ? (
-					form((e) => <AssignForm {...props(e)} />)
-				) : mode === "move" ? (
-					form((e) => <MoveForm {...props(e)} />)
-				) : mode === "cover" ? (
-					form((e) => <CoverForm {...props(e)} />)
-				) : mode === "limit" ? (
-					form((e) => <LimitForm {...props(e)} />)
-				) : mode === "target" ? (
-					form((e) => <TargetForm {...props(e)} />)
-				) : mode === "edit" ? (
-					form((e) => <EditForm {...props(e)} />)
-				) : envelope && actions ? (
-					<>
-						<View>
-							<Line
-								label={limits ? t("limit") : t("assigned")}
-								value={money(envelope.assigned)}
-							/>
-							<Line label={t("spent")} value={money(envelope.spent)} />
-							<Line emphasis label={t("left")} value={money(envelope.left)} />
-						</View>
-						{status ? (
-							<Note tone={status.kind === "over" ? "attention" : "plain"}>
-								{status.kind === "over"
-									? tb("row.over")
-									: status.kind === "needs"
-										? tb("row.needs", { amount: money(status.amount) })
-										: status.kind === "week"
-											? tb("row.leftThisWeek", { amount: money(status.amount) })
-											: status.kind === "funded"
-												? tb("row.funded")
-												: tb("row.noRate", { currency: status.currency })}
-							</Note>
-						) : null}
-						{kind === "closed" ? <Note>{t("closedHint")}</Note> : null}
-						{actions.cover ? (
-							<Button label={t("cover")} onPress={() => setMode("cover")} />
-						) : null}
-						{actions.limit ? (
-							<Button
-								label={
-									envelope.status === "OVERSPENT"
-										? tb("verdict.action.raiseLimit")
-										: t("limitAction")
-								}
-								onPress={() => setMode("limit")}
-							/>
-						) : null}
-						{actions.assign ? (
-							<Button
-								label={t("assign")}
-								onPress={() => setMode("assign")}
-								variant={actions.cover ? "outlined" : "filled"}
-							/>
-						) : null}
-						{actions.move ? (
-							<Button
-								label={t("move")}
-								onPress={() => setMode("move")}
-								variant="outlined"
-							/>
-						) : null}
-						{kind !== "closed" && !limits ? (
-							<Button
-								label={t("targetAction")}
-								onPress={() => setMode("target")}
-								variant="outlined"
-							/>
-						) : null}
-						{kind !== "closed" ? (
-							<Button
-								label={t("editAction")}
-								onPress={() => setMode("edit")}
-								variant="outlined"
-							/>
-						) : null}
-					</>
-				) : null}
+				{mode === "assign"
+					? form((e) => <AssignForm {...props(e)} />)
+					: mode === "move"
+						? form((e) => <MoveForm {...props(e)} />)
+						: mode === "cover"
+							? form((e) => <CoverForm {...props(e)} />)
+							: mode === "limit"
+								? form((e) => <LimitForm {...props(e)} />)
+								: mode === "target"
+									? form((e) => <TargetForm {...props(e)} />)
+									: mode === "edit"
+										? form((e) => <EditForm {...props(e)} />)
+										: envelope && actions
+											? overview(envelope, actions)
+											: null}
 			</SheetBody>
 		</Sheet>
 	);

@@ -1,6 +1,7 @@
 import { useFormatter, useTranslations } from "use-intl";
 import { Note } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { SheetDetent } from "@/ui/Sheet";
 import { nextMonthKey, planBase } from "./draftsBody";
 import { monthDate } from "./months";
 import type { BudgetMonth } from "./source";
@@ -17,6 +18,7 @@ export function FundNowSheet({
 	data,
 	next,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
@@ -24,6 +26,8 @@ export function FundNowSheet({
 	/** True when the month on screen is already the coming one. */
 	next: boolean;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
@@ -45,9 +49,10 @@ export function FundNowSheet({
 	return (
 		<WriteSheet
 			data={data}
+			detent={detent}
 			idempotencyKey={batchId}
 			input={draft && batchId ? { draftId: draft.id, batchId } : null}
-			message={t("toast", { next: nextName })}
+			message={() => t("toast", { next: nextName })}
 			onClose={onClose}
 			onDone={onDone}
 			preview={(api, body) => api.budget.previewFundPlanNow(body)}

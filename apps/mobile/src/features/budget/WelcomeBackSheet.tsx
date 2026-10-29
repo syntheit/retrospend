@@ -5,6 +5,7 @@ import { minorOf, readAmount } from "@/features/write/amount";
 import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { Segmented } from "@/ui/Segmented";
+import type { SheetDetent } from "@/ui/Sheet";
 import { type WelcomeChoice, welcomeBackBody } from "./closeBodies";
 import { monthDate } from "./months";
 import type { BudgetMonth } from "./source";
@@ -21,11 +22,14 @@ import { WriteSheet } from "./WriteSheet";
 export function WelcomeBackSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
@@ -72,9 +76,10 @@ export function WelcomeBackSheet({
 	return (
 		<WriteSheet
 			data={data}
+			detent={detent}
 			idempotencyKey={body ? key : null}
 			input={body}
-			message={t(`toast.${choice}`)}
+			message={() => t(`toast.${choice}`)}
 			onClose={onClose}
 			onDone={onDone}
 			preview={(api, b) => api.budget.previewWelcomeBack(b)}

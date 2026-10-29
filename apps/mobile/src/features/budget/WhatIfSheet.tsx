@@ -11,7 +11,7 @@ import {
 	SheetBody,
 	useAmountLocale,
 } from "@/features/write/parts";
-import { Sheet } from "@/ui/Sheet";
+import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { type DraftOutcome, whatIfBody } from "./draftsBody";
 import { ChoiceList } from "./fields";
 import { type BudgetMonth, envelopeById, envelopesOf } from "./source";
@@ -28,10 +28,13 @@ const SETTLE_MS = 300;
 export function WhatIfSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 }) {
 	const t = useTranslations("mobile.budget.whatIf");
@@ -112,7 +115,7 @@ export function WhatIfSheet({
 	const short = outcome?.shortfalls.find((s) => s.envelopeId === envelopeId);
 	return (
 		<Sheet
-			detents={["large"]}
+			detents={[detent]}
 			onClose={close}
 			title={t("title")}
 			visible={visible}
