@@ -3,6 +3,7 @@ import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
+import { Glyph } from "@/ui/Glyph";
 import { Text } from "@/ui/Text";
 import { overEnvelopes } from "./rows";
 import type { BudgetMonth } from "./source";
@@ -60,6 +61,11 @@ export function BudgetNotice({
 				backgroundColor: attention ? color.attentionBg : color.infoBg,
 			}}
 		>
+			<Glyph
+				color={attention ? color.attentionText : color.info}
+				name={attention ? "TriangleAlert" : "Info"}
+				size={size.icon.phone}
+			/>
 			<Text style={{ flex: 1 }}>{text}</Text>
 			{action ? (
 				<Button

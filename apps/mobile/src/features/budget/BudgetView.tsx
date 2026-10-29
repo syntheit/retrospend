@@ -14,6 +14,7 @@ import { SkeletonRows } from "@/ui/Skeleton";
 import { BudgetBody } from "./BudgetBody";
 import { BudgetSheets, type OpenSheet } from "./BudgetSheets";
 import { devSheet } from "./devSheet";
+import { useManageItems } from "./ManageList";
 import { monthInfo } from "./months";
 import { SetupSheet } from "./SetupSheet";
 import {
@@ -60,6 +61,12 @@ export function BudgetView() {
 	const info = data
 		? monthInfo(data.month, data.book.startMonth, seenOpen)
 		: null;
+	const overflow = useManageItems(
+		data && info && !data.book.paused
+			? { kind: info.kind, isDebtBook: data.book.style === "DEBT_PAYOFF" }
+			: null,
+		setSheet,
+	);
 
 	// Gallery builds only: the screenshot tour names a sheet in the route.
 	const { sheet: devName } = useLocalSearchParams<{ sheet?: string }>();
@@ -71,7 +78,11 @@ export function BudgetView() {
 
 	return (
 		<>
-			<AccountTopBar title={t("title")} />
+			<AccountTopBar
+				overflow={overflow}
+				overflowLabel={t("manage.title")}
+				title={t("title")}
+			/>
 			<Screen
 				flush
 				onRefresh={() => {

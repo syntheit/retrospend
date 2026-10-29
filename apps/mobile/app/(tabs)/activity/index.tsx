@@ -261,6 +261,18 @@ export default function ActivityScreen() {
 			<ListDetail
 				bar={
 					<AccountTopBar
+						overflow={
+							segment === "expenses" && !picked
+								? [
+										{
+											id: "select",
+											label: t("bulk.select"),
+											onPress: () => setPicked(new Set()),
+										},
+									]
+								: undefined
+						}
+						overflowLabel={t("overflow")}
 						title={segment === "recurring" ? tr("title") : t("title")}
 					/>
 				}

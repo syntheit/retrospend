@@ -19,6 +19,8 @@ export interface ComposerPrefill {
 	/** ISO code; the composer ignores one it has no rate for. */
 	currency?: string;
 	title?: string;
+	/** Person keys (`user:abc`) to split the new expense with; keys the composer does not know are left out. */
+	withKeys?: string[];
 	file?: SharedFile;
 }
 

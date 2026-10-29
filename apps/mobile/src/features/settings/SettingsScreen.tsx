@@ -36,14 +36,14 @@ export type SectionId =
 	| "danger";
 
 const TILES: Record<Exclude<SectionId, "profile">, GlyphName> = {
-	preferences: "Settings",
-	categories: "Tag",
+	preferences: "SlidersHorizontal",
+	categories: "Tags",
 	"payment-methods": "CreditCard",
 	recurring: "Repeat",
-	notifications: "Smartphone",
-	security: "Monitor",
-	data: "FileUp",
-	danger: "X",
+	notifications: "Bell",
+	security: "ShieldCheck",
+	data: "Download",
+	danger: "TriangleAlert",
 };
 
 /**
@@ -148,7 +148,7 @@ export function SettingsScreen() {
 			<ListGroup>
 				<ListRow
 					end={<NavEnd />}
-					lead={face ? <Avatar face={face} /> : undefined}
+					lead={face ? <Avatar face={face} /> : <IconTile name="User" />}
 					onPress={() => router.push("/settings/profile")}
 					sub={me?.name ?? signedIn?.name}
 					title={t("profile.title")}

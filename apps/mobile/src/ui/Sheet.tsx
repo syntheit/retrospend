@@ -1,26 +1,21 @@
 import { BottomSheet, RNHostView } from "@expo/ui";
-import type { ReactNode } from "react";
-import {
-	Platform,
-	Pressable,
-	Text,
-	useWindowDimensions,
-	View,
-} from "react-native";
+import { type ReactNode, useMemo, useState } from "react";
+import { Platform, Pressable, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
-import { type Theme, useTheme } from "@/theme";
+import { useTheme } from "@/theme";
+import { Button } from "./Button";
 import { Glyph } from "./Glyph";
+import {
+	footerHeight,
+	type PinnedAction,
+	SHEET_CHROME,
+	SheetContext,
+} from "./sheetContext";
+import { Text } from "./Text";
 
-/** The sheet's handle and header row above a body, plus its padding. */
-const SHEET_CHROME = Platform.OS === "ios" ? 84 : 120;
 /** The share of the screen the iPad form sheet takes. */
 const IPAD_SHEET_SHARE = 0.88;
-
-/** The pinned footer's height: a hairline, its padding and one button row. */
-function footerHeight({ size, space }: Theme): number {
-	return 1 + space[3] + size.touchMin.phone;
-}
 
 /**
  * The size a full-height body (a scrolling list, the composer) gives itself in
@@ -85,7 +80,7 @@ function DismissItem({
 	onPress: () => void;
 }) {
 	const t = useTranslations("mobile.common");
-	const { color, font, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 	const label = kind === "done" ? t("done") : t("close");
 	return (
 		<Pressable
@@ -105,13 +100,7 @@ function DismissItem({
 			})}
 		>
 			{kind === "done" ? (
-				<Text
-					style={{
-						color: color.brand,
-						fontSize: type.body.size,
-						fontWeight: String(font.weight.semibold) as "600",
-					}}
-				>
+				<Text style={{ color: color.brand }} weight="semibold">
 					{label}
 				</Text>
 			) : (
@@ -137,8 +126,31 @@ export function Sheet({
 	footer,
 	children,
 }: SheetProps) {
-	const { color, font, space, type } = useTheme();
+	const { color, space } = useTheme();
 	const way = dismiss ?? (title ? "close" : "none");
+	// A form hands its primary action up (usePinnedAction); the sheet draws it
+	// in the footer, under the scrolling body.
+	const [pinned, setPinned] = useState<PinnedAction | null>(null);
+	const context = useMemo(
+		() => ({
+			detent: !detents
+				? null
+				: detents.includes("large")
+					? ("large" as const)
+					: ("medium" as const),
+			pin: setPinned,
+		}),
+		[detents],
+	);
+	const bottom =
+		footer ??
+		(pinned ? (
+			<Button
+				disabled={pinned.disabled}
+				label={pinned.label}
+				onPress={pinned.onPress}
+			/>
+		) : null);
 	// Compose hosts React Native views only inside RNHostView; without it they
 	// draw but never receive a touch.
 	const content = (
@@ -156,12 +168,8 @@ export function Sheet({
 					<Text
 						accessibilityRole="header"
 						numberOfLines={1}
-						style={{
-							flex: 1,
-							color: color.fg,
-							fontSize: type.section.size,
-							fontWeight: String(font.weight.semibold) as "600",
-						}}
+						style={{ flex: 1 }}
+						variant="section"
 					>
 						{title ?? ""}
 					</Text>
@@ -169,7 +177,7 @@ export function Sheet({
 				</View>
 			) : null}
 			{children}
-			{footer ? (
+			{bottom ? (
 				<View
 					style={{
 						flexDirection: "row",
@@ -181,7 +189,7 @@ export function Sheet({
 						borderTopColor: color.line,
 					}}
 				>
-					{footer}
+					{bottom}
 				</View>
 			) : null}
 		</View>
@@ -194,7 +202,9 @@ export function Sheet({
 			scrimColor={color.scrim}
 			snapPoints={detents?.map((d) => (d === "medium" ? "half" : "full"))}
 		>
-			<RNHostView matchContents={{ vertical: true }}>{content}</RNHostView>
+			<RNHostView matchContents={{ vertical: true }}>
+				<SheetContext.Provider value={context}>{content}</SheetContext.Provider>
+			</RNHostView>
 		</BottomSheet>
 	);
 }

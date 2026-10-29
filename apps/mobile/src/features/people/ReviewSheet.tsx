@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ScrollView, TextInput, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { PreviewList } from "@/features/settle/PreviewList";
@@ -9,6 +9,7 @@ import { Button } from "@/ui/Button";
 import { Segmented } from "@/ui/Segmented";
 import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
+import { TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import type { LedgerRow } from "./PersonSections";
 import type { NeedsItem, PersonIdentity } from "./source";
@@ -42,7 +43,7 @@ export function ReviewSheet({
 	const tc = useTranslations("mobile.common");
 	const toast = useToast();
 	const money = useMoneyText();
-	const { color, radius, size, space, type } = useTheme();
+	const { space } = useTheme();
 	const [choice, setChoice] = useState<ReviewChoice>("accept");
 	const [message, setMessage] = useState("");
 	const flow = useReview(need.id, choice, message, visible);
@@ -130,6 +131,13 @@ export function ReviewSheet({
 	return (
 		<Sheet
 			detents={["large"]}
+			footer={
+				<Button
+					disabled={!flow.preview || flow.busy}
+					label={flow.busy ? t("saving") : saveLabel}
+					onPress={save}
+				/>
+			}
 			onClose={onClose}
 			title={t("title", { name: first })}
 			visible={visible}
@@ -155,28 +163,12 @@ export function ReviewSheet({
 				/>
 				{note(t(`explain.${choice}`, { name: first }))}
 				{choice === "fix" ? (
-					<View style={{ gap: space[2] }}>
-						<Text tone="fg2" variant="small">
-							{t("message")}
-						</Text>
-						<TextInput
-							accessibilityLabel={t("message")}
-							multiline
-							onChangeText={setMessage}
-							style={{
-								minHeight: size.moneyInput.phone,
-								paddingHorizontal: space[3],
-								paddingVertical: space[2],
-								borderRadius: radius.ctl,
-								borderWidth: 1,
-								borderColor: color.lineStrong,
-								backgroundColor: color.surface,
-								color: color.fg,
-								fontSize: type.body.size,
-							}}
-							value={message}
-						/>
-					</View>
+					<TextField
+						label={t("message")}
+						multiline
+						onChangeText={setMessage}
+						value={message}
+					/>
 				) : null}
 				{flow.preview ? (
 					rows && rows.changes.length + rows.kept.length > 0 ? (
@@ -190,11 +182,6 @@ export function ReviewSheet({
 					note(t("checking"))
 				)}
 				{flow.failed ? note(t("error"), "attention") : null}
-				<Button
-					disabled={!flow.preview || flow.busy}
-					label={flow.busy ? t("saving") : saveLabel}
-					onPress={save}
-				/>
 			</ScrollView>
 		</Sheet>
 	);

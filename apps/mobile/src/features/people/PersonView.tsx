@@ -124,20 +124,33 @@ export function PersonView({
 			: [
 					{
 						id: "settle",
+						glyph: "Banknote" as const,
 						label: t("settleUp"),
 						onPress: () => setSettling(true),
 						primary: true,
 					},
 				]),
 		...(remindable
-			? [{ id: "remind", label: t("remind"), onPress: remind }]
+			? [
+					{
+						id: "remind",
+						glyph: "Bell" as const,
+						label: t("remind"),
+						onPress: remind,
+					},
+				]
 			: []),
 		...(add
 			? [
 					{
 						id: "expense",
+						glyph: "Plus" as const,
 						label: t("expense"),
-						onPress: () => add.open("expense"),
+						onPress: () =>
+							add.open("expense", {
+								mode: "expense",
+								withKeys: [page.person.key],
+							}),
 					},
 				]
 			: []),

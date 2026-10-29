@@ -78,6 +78,10 @@ describe("row lead and terms", () => {
 		expect(glyphOf("CASH")).toBe("Landmark");
 		expect(glyphOf("LIABILITY_CREDIT_CARD")).toBe("CreditCard");
 		expect(glyphOf("VEHICLE")).toBe("Car");
+		expect(glyphOf("CRYPTO")).toBe("Bitcoin");
+		expect(glyphOf("REAL_ESTATE")).toBe("Building2");
+		expect(glyphOf("INVESTMENT")).toBe("ChartNoAxesCombined");
+		expect(glyphOf("LIABILITY_LOAN")).toBe("HandCoins");
 	});
 
 	it("reads a yearly percent in hundredths without a float", () => {

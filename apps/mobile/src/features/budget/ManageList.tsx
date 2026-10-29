@@ -1,5 +1,5 @@
 import { useTranslations } from "use-intl";
-import { Menu } from "@/ui/Menu";
+import type { MenuItem } from "@/ui/types";
 import type { OpenSheet } from "./BudgetSheets";
 import { MORE_ROWS, type MoreKind } from "./MoreSheets";
 import type { MonthKind } from "./months";
@@ -40,33 +40,22 @@ export function manageRows(
 }
 
 /**
- * The page's overflow: what-if, income, merge, debt, style and the rest, one
- * menu item each. Can I afford something is the link under the hero and Add
- * an envelope is the button under the list, so neither repeats here.
+ * The page's overflow items for the top bar's menu: what-if, income, debt,
+ * style and the rest, one item each. Can I afford something is the link under
+ * the hero and Add an envelope is the button under the list, so neither
+ * repeats here. Empty while there is no month to act on.
  */
-export function ManageMenu({
-	kind,
-	isDebtBook,
-	onOpen,
-}: {
-	kind: MonthKind;
-	isDebtBook: boolean;
-	onOpen: (sheet: OpenSheet) => void;
-}) {
+export function useManageItems(
+	page: { kind: MonthKind; isDebtBook: boolean } | null,
+	onOpen: (sheet: OpenSheet) => void,
+): MenuItem[] {
 	const t = useTranslations("mobile.budget.manage");
-	const rows = manageRows(kind, isDebtBook).filter(
-		(row) => row.key !== "afford" && row.key !== "newEnvelope",
-	);
-	if (rows.length === 0) return null;
-	return (
-		<Menu
-			accessibilityLabel={t("title")}
-			items={rows.map((row) => ({
-				id: row.key,
-				label: t(row.key),
-				onPress: () => onOpen(row.sheet),
-			}))}
-			label={t("more")}
-		/>
-	);
+	if (!page) return [];
+	return manageRows(page.kind, page.isDebtBook)
+		.filter((row) => row.key !== "afford" && row.key !== "newEnvelope")
+		.map((row) => ({
+			id: row.key,
+			label: t(row.key),
+			onPress: () => onOpen(row.sheet),
+		}));
 }

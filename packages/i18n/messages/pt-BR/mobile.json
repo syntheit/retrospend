@@ -396,6 +396,7 @@
 	},
 	"activity": {
 		"title": "Atividade",
+		"overflow": "Mais ações",
 		"loading": "Carregando",
 		"empty": "Nenhuma despesa ainda",
 		"emptyFiltered": "Nada corresponde",

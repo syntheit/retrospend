@@ -8,12 +8,12 @@ import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { IconTile } from "@/ui/IconTile";
 import { Menu } from "@/ui/Menu";
+import { ProgressBar } from "@/ui/ProgressBar";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { StatusText, type StatusTone } from "@/ui/StatusText";
 import { AssignForm } from "./AssignForm";
 import { CoverForm } from "./CoverForm";
 import { EditForm } from "./EditForm";
-import { EnvelopeBar } from "./EnvelopeBar";
 import { LimitForm } from "./LimitForm";
 import { MoveForm } from "./MoveForm";
 import type { MonthKind } from "./months";
@@ -188,7 +188,13 @@ export function EnvelopeSheet({
 						<StatusText label={statusWords(status)} tone={statusTone(status)} />
 					) : null}
 				</View>
-				<EnvelopeBar basis={e.spentBasis} over={overspent} />
+				{e.spentBasis !== null ? (
+					<ProgressBar
+						over={overspent}
+						percent={e.spentBasis / 100}
+						weight="regular"
+					/>
+				) : null}
 				<View>
 					<Line
 						label={limits ? t("limit") : t("assigned")}

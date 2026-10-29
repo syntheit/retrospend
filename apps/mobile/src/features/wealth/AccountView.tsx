@@ -133,7 +133,12 @@ export function AccountView({ id }: { id: string }) {
 				options={{
 					title: account.name,
 					headerRight: () => (
-						<Menu accessibilityLabel={t("more")} items={menu} label="⋯" />
+						<Menu
+							accessibilityLabel={t("more")}
+							icon
+							items={menu}
+							label={t("more")}
+						/>
 					),
 				}}
 			/>

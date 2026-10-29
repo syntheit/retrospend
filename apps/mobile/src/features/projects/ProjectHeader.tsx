@@ -107,7 +107,7 @@ export function ProjectHeader({
 					{meta.join(" · ")}
 				</Text>
 			</View>
-			<View style={{ paddingHorizontal: size.gutter.phone }}>{tabs}</View>
+			{tabs}
 			<View
 				style={{
 					gap: space[4],

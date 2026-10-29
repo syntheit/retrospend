@@ -396,6 +396,7 @@
 	},
 	"activity": {
 		"title": "Activity",
+		"overflow": "More actions",
 		"loading": "Loading",
 		"empty": "No expenses yet",
 		"emptyFiltered": "Nothing matches",

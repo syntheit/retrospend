@@ -1,10 +1,13 @@
 import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
+import { Glyph, type GlyphName } from "@/ui/Glyph";
 import { Text } from "@/ui/Text";
 
 export interface PersonAction {
 	id: string;
 	label: string;
+	/** Leads the label, as the mockup's tiles do (Banknote, Bell, Plus). */
+	glyph?: GlyphName;
 	onPress: () => void;
 	/** The one filled action (Settle up). */
 	primary?: boolean;
@@ -35,8 +38,10 @@ export function PersonActions({ actions }: { actions: PersonAction[] }) {
 					style={({ pressed }) => ({
 						flex: 1,
 						minHeight: space[12],
+						flexDirection: "row",
 						alignItems: "center",
 						justifyContent: "center",
+						gap: space[2],
 						paddingHorizontal: space[2],
 						borderRadius: radius.ctl,
 						borderWidth: 1,
@@ -48,6 +53,13 @@ export function PersonActions({ actions }: { actions: PersonAction[] }) {
 								: color.surface,
 					})}
 				>
+					{action.glyph ? (
+						<Glyph
+							color={action.primary ? color.brandFg : color.fg}
+							name={action.glyph}
+							size={size.icon.phone}
+						/>
+					) : null}
 					<Text
 						numberOfLines={1}
 						style={action.primary ? { color: color.brandFg } : undefined}

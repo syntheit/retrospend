@@ -10,8 +10,10 @@ import { ChipChevron } from "@/ui/Chip";
 import type { GlyphName } from "@/ui/Glyph";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow } from "@/ui/List";
+import { Pill } from "@/ui/Pill";
+import { ProgressBar } from "@/ui/ProgressBar";
 import { Text } from "@/ui/Text";
-import { EnvelopeRow, OverPill, SpentBar, useColumnWidth } from "./EnvelopeRow";
+import { EnvelopeRow, useColumnWidth } from "./EnvelopeRow";
 import type { EnvelopeMode } from "./EnvelopeSheet";
 import { groupSpentPercent } from "./envelopeLine";
 import type { MonthKind } from "./months";
@@ -165,9 +167,7 @@ function useGroupEnd() {
 		return {
 			over,
 			node: over ? (
-				<OverPill
-					text={t("overBy", { amount: money(over, { sign: "never" }) })}
-				/>
+				<Pill text={t("overBy", { amount: money(over, { sign: "never" }) })} />
 			) : (
 				<MoneyAmount
 					tone={left.minor === 0 ? "muted" : "default"}
@@ -309,7 +309,7 @@ function BucketRows({
 				sub={
 					<View style={{ gap: space[1], paddingTop: space[1] }}>
 						{percent !== null ? (
-							<SpentBar over={over !== null} percent={percent} />
+							<ProgressBar over={over !== null} percent={percent} />
 						) : null}
 						{words ? (
 							<Text

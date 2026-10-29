@@ -8,66 +8,75 @@ import {
 	type ReactNode,
 	useContext,
 } from "react";
-import { Pressable, Text, type TextStyle, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { categoryColor, Glyph, type GlyphName } from "./Glyph";
-
-/** A weight token (400, 500, 600) as the style value React Native takes. */
-const weightStyle = (value: number) => String(value) as TextStyle["fontWeight"];
+import { Text } from "./Text";
 
 /**
  * A section title with its count (fg-3) or a link at its end. Flat, no card.
- * `detail` is the count or a short fact next to the title.
+ * `detail` is the count or a short fact next to the title. `dot` leads the
+ * title with a series dot (a wealth group) and `total` ends the row with the
+ * section's figure, already formatted (a group's total); neither stacks with
+ * an action.
  */
 export function SectionHeader({
 	title,
 	detail,
 	actionLabel,
 	onAction,
+	dot,
+	total,
 }: {
 	title: string;
 	detail?: string;
 	actionLabel?: string;
 	onAction?: () => void;
+	dot?: ReactNode;
+	total?: string;
 }) {
-	const { color, font, size, space, type } = useTheme();
+	const { color, size, space, type } = useTheme();
 	return (
 		<View
 			style={{
 				flexDirection: "row",
-				alignItems: "baseline",
+				alignItems: dot || total ? "center" : "baseline",
 				justifyContent: "space-between",
+				gap: space[3],
 				paddingHorizontal: space[4],
 				paddingTop: space[6],
 				paddingBottom: space[2],
 			}}
 		>
 			<View
-				style={{ flexDirection: "row", alignItems: "baseline", gap: space[2] }}
+				style={{
+					flex: 1,
+					flexDirection: "row",
+					alignItems: dot ? "center" : "baseline",
+					gap: space[2],
+				}}
 			>
+				{dot}
 				<Text
 					accessibilityRole="header"
-					style={{
-						color: color.fg,
-						fontSize: type.section.size,
-						fontWeight: weightStyle(type.section.weight),
-					}}
+					numberOfLines={1}
+					style={{ flexShrink: 1 }}
+					variant="section"
 				>
 					{title}
 				</Text>
 				{detail ? (
-					<Text
-						style={{
-							color: color.fg3,
-							fontSize: type.body.size,
-							fontVariant: ["tabular-nums"],
-						}}
-					>
+					<Text tabular tone="fg3">
 						{detail}
 					</Text>
 				) : null}
 			</View>
+			{total ? (
+				<Text tabular tone="fg2" weight="medium">
+					{total}
+				</Text>
+			) : null}
 			{actionLabel && onAction ? (
 				<Pressable
 					accessibilityRole="button"
@@ -75,11 +84,9 @@ export function SectionHeader({
 					onPress={onAction}
 				>
 					<Text
-						style={{
-							color: color.accentStrong,
-							fontSize: type.small.size,
-							fontWeight: weightStyle(font.weight.medium),
-						}}
+						style={{ color: color.accentStrong }}
+						variant="small"
+						weight="medium"
 					>
 						{actionLabel}
 					</Text>
@@ -93,16 +100,13 @@ export function SectionHeader({
 export function StaleNote({ since }: { since: string | null }) {
 	const t = useTranslations("mobile.activity");
 	const format = useFormatter();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	if (!since) return null;
 	return (
 		<Text
-			style={{
-				color: color.fg2,
-				fontSize: type.small.size,
-				paddingHorizontal: space[4],
-				paddingVertical: space[2],
-			}}
+			style={{ paddingHorizontal: space[4], paddingVertical: space[2] }}
+			tone="fg2"
+			variant="small"
 		>
 			{t("offlineSince", {
 				time: format.dateTime(new Date(since), {
@@ -261,28 +265,17 @@ export function useInGroup(): boolean {
  * can be a string or a node (a StatusText, a stack of faces).
  */
 export function RowText({ title, sub }: { title: ReactNode; sub?: ReactNode }) {
-	const { color, font, type } = useTheme();
 	return (
 		<View style={{ flex: 1, minWidth: 0 }}>
 			{typeof title === "string" ? (
-				<Text
-					numberOfLines={1}
-					style={{
-						color: color.fg,
-						fontSize: type.body.size,
-						fontWeight: weightStyle(font.weight.medium),
-					}}
-				>
+				<Text numberOfLines={1} weight="medium">
 					{title}
 				</Text>
 			) : (
 				title
 			)}
 			{sub === undefined || sub === null ? null : typeof sub === "string" ? (
-				<Text
-					numberOfLines={1}
-					style={{ color: color.fg3, fontSize: type.meta.size }}
-				>
+				<Text numberOfLines={1} tone="fg3" variant="meta">
 					{sub}
 				</Text>
 			) : (
@@ -377,7 +370,7 @@ export function LinkButton({
 	label: string;
 	onPress: () => void;
 }) {
-	const { color, font, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 	return (
 		<Pressable
 			accessibilityRole="button"
@@ -388,13 +381,7 @@ export function LinkButton({
 				paddingHorizontal: space[4],
 			}}
 		>
-			<Text
-				style={{
-					color: color.accentStrong,
-					fontSize: type.body.size,
-					fontWeight: weightStyle(font.weight.medium),
-				}}
-			>
+			<Text style={{ color: color.accentStrong }} weight="medium">
 				{label}
 			</Text>
 		</Pressable>

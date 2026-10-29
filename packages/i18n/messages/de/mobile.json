@@ -396,6 +396,7 @@
 	},
 	"activity": {
 		"title": "Aktivität",
+		"overflow": "Weitere Aktionen",
 		"loading": "Wird geladen",
 		"empty": "Noch keine Ausgaben",
 		"emptyFiltered": "Keine Treffer",

@@ -63,19 +63,19 @@ export function glyphOf(type: Account["type"]): GlyphName {
 		case "CASH":
 			return "Landmark";
 		case "INVESTMENT":
-			return "Briefcase";
+			return "ChartNoAxesCombined";
 		case "CRYPTO":
-			return "Coins";
+			return "Bitcoin";
 		case "REAL_ESTATE":
-			return "Home";
+			return "Building2";
 		case "VEHICLE":
 			return "Car";
 		case "LIABILITY_LOAN":
-			return "Banknote";
+			return "HandCoins";
 		case "LIABILITY_CREDIT_CARD":
 			return "CreditCard";
 		case "LIABILITY_MORTGAGE":
-			return "Receipt";
+			return "Home";
 	}
 }
 

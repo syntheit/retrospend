@@ -1,16 +1,18 @@
 import {
 	Box,
+	Text as ComposeText,
 	DropdownMenu,
 	DropdownMenuItem,
-	Text,
 	TextButton,
 } from "@expo/ui/jetpack-compose";
-import { semantics, size } from "@expo/ui/jetpack-compose/modifiers";
+import { semantics, size as sized } from "@expo/ui/jetpack-compose/modifiers";
 import { type ReactNode, useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
-import { Chip } from "./Chip";
+import { Chip, ChipChevron } from "./Chip";
+import { Glyph } from "./Glyph";
 import { NativeHost } from "./NativeHost";
+import { Text } from "./Text";
 import type { MenuItem, MenuProps } from "./types";
 
 /** The M3 dropdown with its items, opened from `trigger`. */
@@ -43,9 +45,9 @@ function Dropdown({
 						}}
 					>
 						<DropdownMenuItem.Text>
-							<Text color={item.destructive ? color.danger : undefined}>
+							<ComposeText color={item.destructive ? color.danger : undefined}>
 								{item.label}
-							</Text>
+							</ComposeText>
 						</DropdownMenuItem.Text>
 					</DropdownMenuItem>
 				))}
@@ -55,9 +57,10 @@ function Dropdown({
 }
 
 /**
- * An M3 dropdown menu anchored to a text button, or to a filter chip. The
- * chip is the app's own (ui/Chip, the same look on both platforms); the menu
- * hangs from a point under its leading edge.
+ * An M3 dropdown menu anchored to a text button, a filter chip, the overflow
+ * mark or a page heading. The chip, the mark and the heading are the app's own
+ * (React Native views, the same look on both platforms); the menu hangs from
+ * a point under their leading edge.
  */
 export function Menu({
 	label,
@@ -65,18 +68,61 @@ export function Menu({
 	items,
 	chip,
 	active = false,
+	icon,
+	heading,
 }: MenuProps) {
 	const [open, setOpen] = useState(false);
-	if (chip) {
+	const { color, size, space } = useTheme();
+	const trigger = chip ? (
+		<Chip
+			accessibilityLabel={accessibilityLabel ?? label}
+			label={label}
+			onPress={() => setOpen(true)}
+			selected={active}
+			variant="filter"
+		/>
+	) : icon ? (
+		<Pressable
+			accessibilityLabel={accessibilityLabel ?? label}
+			accessibilityRole="button"
+			android_ripple={{ color: color.raised, borderless: true }}
+			onPress={() => setOpen(true)}
+			style={{
+				width: size.touchMin.phone,
+				height: size.touchMin.phone,
+				alignItems: "center",
+				justifyContent: "center",
+			}}
+		>
+			<Glyph color={color.fg} name="Ellipsis" size={size.icon.phone} />
+		</Pressable>
+	) : heading ? (
+		<Pressable
+			accessibilityLabel={accessibilityLabel ?? label}
+			accessibilityRole="button"
+			android_ripple={{ color: color.raised }}
+			onPress={() => setOpen(true)}
+			style={{
+				minHeight: size.touchMin.phone,
+				flexDirection: "row",
+				alignItems: "center",
+				gap: space[1],
+			}}
+		>
+			<Text
+				style={{ color: color.accentStrong }}
+				variant="section"
+				weight="medium"
+			>
+				{label}
+			</Text>
+			<ChipChevron color={color.accentStrong} />
+		</Pressable>
+	) : null;
+	if (trigger) {
 		return (
 			<View>
-				<Chip
-					accessibilityLabel={accessibilityLabel ?? label}
-					label={label}
-					onPress={() => setOpen(true)}
-					selected={active}
-					variant="filter"
-				/>
+				{trigger}
 				<View
 					pointerEvents="none"
 					style={{ position: "absolute", left: 0, bottom: 0 }}
@@ -86,7 +132,7 @@ export function Menu({
 							items={items}
 							open={open}
 							setOpen={setOpen}
-							trigger={<Box modifiers={[size(1, 1)]} />}
+							trigger={<Box modifiers={[sized(1, 1)]} />}
 						/>
 					</NativeHost>
 				</View>
@@ -108,7 +154,7 @@ export function Menu({
 						}
 						onClick={() => setOpen(true)}
 					>
-						<Text>{label}</Text>
+						<ComposeText>{label}</ComposeText>
 					</TextButton>
 				}
 			/>

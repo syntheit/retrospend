@@ -35,6 +35,12 @@ interface AddEntryApi {
 	open(mode?: EntryMode, prefill?: ComposerPrefill): void;
 	/** Opens the composer on a saved expense (its id); Save replaces it, and Undo restores it. */
 	edit(entryId: string, kind?: "shared"): void;
+	/**
+	 * Hides the floating add button until the returned function is called (the
+	 * entry page, where the entry is the subject). Counts, so two pages
+	 * hiding it at once both have to let go.
+	 */
+	hideButton(): () => void;
 }
 
 const AddEntryContext = createContext<AddEntryApi | null>(null);
@@ -45,6 +51,15 @@ export function useAddEntry(): AddEntryApi {
 	const value = useContext(AddEntryContext);
 	if (!value) throw new Error("useAddEntry needs an AddEntryProvider above it");
 	return value;
+}
+
+/** Hides the floating add button while the calling screen is mounted. */
+export function useHideAddButton(hidden = true): void {
+	const add = useOptionalAddEntry();
+	useEffect(() => {
+		if (!hidden || !add) return;
+		return add.hideButton();
+	}, [add, hidden]);
 }
 
 /** Like useAddEntry, but null outside a provider (the gallery has none). */
@@ -78,7 +93,8 @@ function useKeyboardShown(): boolean {
  * bar (Liquid Glass on iOS 26, an M3 FAB on Android; five tabs leave no room
  * for a plus tab) and hide it while the keyboard is up. The iPad has a plus in
  * the top bar's toolbar (TopBar.ios). All open
- * the composer in a sheet with detents (Income is the mode row inside it).
+ * the composer in a sheet with detents. A tap opens Expense at once; Income and
+ * Transfer are the composer's mode row (and the iOS long press, or a link).
  * It also keeps the outbox flowing, since an entry added offline needs a
  * sender when the network returns.
  */
@@ -98,6 +114,11 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	}>({ count: 0 });
 	useOutboxFlush();
 	const keyboard = useKeyboardShown();
+	const [hiders, setHiders] = useState(0);
+	const hideButton = useCallback(() => {
+		setHiders((n) => n + 1);
+		return () => setHiders((n) => n - 1);
+	}, []);
 
 	const sheetSize = useSheetBodySize();
 
@@ -139,8 +160,9 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 				show(next, prefill),
 			edit: (entryId: string, kind?: "shared") =>
 				show("expense", undefined, entryId, kind === "shared"),
+			hideButton,
 		}),
-		[show],
+		[show, hideButton],
 	);
 	useSurfaceLinks(show);
 	const close = useCallback(() => {
@@ -152,7 +174,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 		<AddEntryContext.Provider value={api}>
 			{children}
 			{DevComposerTour ? <DevComposerTour add={api} /> : null}
-			{ADD_CONTROL === "floating" && !keyboard ? (
+			{ADD_CONTROL === "floating" && !keyboard && hiders === 0 ? (
 				<View
 					pointerEvents="box-none"
 					style={{
