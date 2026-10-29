@@ -8,7 +8,7 @@ import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
 import { FieldLabel, TextField } from "@/ui/TextField";
 import { ChangesBlock } from "./ChangesBlock";
-import { DateRow } from "./DateRow";
+import { DateRow, GroupItem } from "./DateRow";
 import {
 	isPersonal,
 	LOCATION_LIMIT,
@@ -136,9 +136,7 @@ export function MoreStep({
 					<>
 						<SectionHeader title={t("rate.title")} />
 						<ListGroup>
-							<ListRow>
-								<View style={{ flex: 1 }}>{rate}</View>
-							</ListRow>
+							<GroupItem>{rate}</GroupItem>
 						</ListGroup>
 					</>
 				) : null}
@@ -200,9 +198,7 @@ export function MoreStep({
 				<>
 					<SectionHeader title={t("rate.title")} />
 					<ListGroup>
-						<ListRow>
-							<View style={{ flex: 1 }}>{rate}</View>
-						</ListRow>
+						<GroupItem>{rate}</GroupItem>
 					</ListGroup>
 				</>
 			) : null}
@@ -210,8 +206,8 @@ export function MoreStep({
 				<>
 					<SectionHeader title={t("options")} />
 					<ListGroup>
-						<ListRow>
-							<View style={{ flex: 1, gap: space[2] }}>
+						<GroupItem>
+							<View style={{ gap: space[2] }}>
 								<FieldLabel>{t("spread")}</FieldLabel>
 								<View
 									accessibilityLabel={t("spread")}
@@ -237,9 +233,9 @@ export function MoreStep({
 									))}
 								</View>
 							</View>
-						</ListRow>
-						<ListRow>
-							<View style={{ flex: 1 }}>
+						</GroupItem>
+						<GroupItem>
+							<View>
 								<SwitchRow
 									detail={
 										draft.excludeAuto && draft.exclude
@@ -257,7 +253,7 @@ export function MoreStep({
 									value={draft.exclude}
 								/>
 							</View>
-						</ListRow>
+						</GroupItem>
 					</ListGroup>
 				</>
 			) : null}
