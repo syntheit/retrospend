@@ -334,7 +334,10 @@
 		"import": "Импорт",
 		"docs": "Документация",
 		"releaseNotes": "Примечания к выпуску",
-		"version": "Версия {version}"
+		"version": "Версия {version}",
+		"wealth": "Капитал",
+		"inviteCodes": "Коды приглашения",
+		"feedback": "Отправить отзыв"
 	},
 	"activity": {
 		"title": "Активность",
@@ -1295,17 +1298,10 @@
 	},
 	"home": {
 		"title": "Главная",
-		"spentThisMonth": "Потрачено в этом месяце",
-		"leftToSpend": "Можно потратить в этом месяце",
-		"perDay": "Около {amount} в день, {days, plural, one {остался # день} few {осталось # дня} many {осталось # дней} other {осталось # дня}}",
-		"spentSoFar": "Потрачено {amount}",
-		"lastMonth": "{amount} в прошлом месяце к этому дню",
-		"missingRates": "Пока нет курса для {currencies}. Эти записи не входят в эти суммы.",
 		"owedToYou": "Вам должны",
 		"youOwe": "Вы должны",
 		"netWorth": "Капитал",
 		"dollarToday": "Доллар сегодня",
-		"dollarRate": "Курс: {rate}",
 		"needs": {
 			"title": "Ждут вас",
 			"showMore": "Показать ещё {count}",
@@ -1330,7 +1326,28 @@
 			"setup_homeCurrency": "Выберите основную валюту",
 			"setup_verifyEmail": "Подтвердите почту",
 			"setup_importStatement": "Импортируйте выписку",
-			"generic": "Что-то ждёт вас"
+			"generic": "Что-то ждёт вас",
+			"budget_overAssigned": "Вы запланировали больше, чем у вас есть",
+			"budget_billDue": "{count, plural, one {# счёт скоро к оплате} few {# счёта скоро к оплате} many {# счетов скоро к оплате} other {# счёта скоро к оплате}}",
+			"budget_sharesNeedEnvelope": "{count, plural, one {# доле нужен конверт} few {# долям нужен конверт} many {# долям нужен конверт} other {# доле нужен конверт}}",
+			"budget_startingMoney": "Подтвердите начальные деньги",
+			"action": {
+				"confirm": "Подтвердить",
+				"review": "Проверить",
+				"respond": "Ответить",
+				"assign": "Назначить",
+				"cover": "Покрыть",
+				"takeBack": "Вернуть",
+				"fund": "Пополнить",
+				"setRate": "Указать курс",
+				"addExpense": "Добавить расход",
+				"choose": "Выбрать",
+				"import": "Импорт"
+			},
+			"context": {
+				"wasDue": "Срок был {date}",
+				"dueOn": "Срок {date}"
+			}
 		},
 		"recent": {
 			"title": "Недавние",
@@ -1339,12 +1356,26 @@
 		},
 		"error": "Не удалось загрузить главный экран",
 		"errorDetail": "Проверьте подключение и повторите.",
-		"pace": {
-			"empty": "Пока нет расходов для графика",
-			"summary": "День {day}: потрачено {spent}, к этому дню в прошлом месяце {before}",
-			"noData": "Нет данных"
+		"insights": "Открыть аналитику",
+		"card": {
+			"leftIn": "Можно потратить: {month}",
+			"spentIn": "Потрачено: {month}",
+			"left": "осталось",
+			"spent": "потрачено",
+			"perDay": "{amount} в день на {days, plural, one {# день} few {# дня} many {# дней} other {# дня}}",
+			"faster": "Вы тратите быстрее, чем запланировано",
+			"spentThisMonth": "{amount} потрачено в этом месяце",
+			"notPlanned": "+ {amount} ещё не запланировано",
+			"lastMonth": "{amount} в прошлом месяце к этому дню",
+			"missingRates": "Пока нет курса для {currencies}. Эти записи не входят в эти суммы."
 		},
-		"insights": "Открыть аналитику"
+		"tile": {
+			"toAssign": "К распределению",
+			"notPlanned": "Ещё не запланировано",
+			"waiting": "Ждёт назначения",
+			"youOwe": "Вы должны {amount}",
+			"rateDate": "Обновлено {date}"
+		}
 	},
 	"insights": {
 		"title": "Аналитика",

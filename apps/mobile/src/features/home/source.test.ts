@@ -1,4 +1,4 @@
-import { type Glance, heroOf } from "./source";
+import { type Glance, heroOf, notPlannedOf } from "./source";
 
 const money = (minor: number) => ({ minor, currency: "ARS" });
 
@@ -118,5 +118,37 @@ describe("heroOf", () => {
 			},
 		} as unknown as Glance);
 		expect(hero).toMatchObject({ kind: "over", amount: money(700) });
+	});
+});
+
+describe("notPlannedOf", () => {
+	const ready = (
+		value: ReturnType<typeof money> | null,
+		poolName = "NOT_PLANNED_YET",
+	) =>
+		({
+			...base,
+			budget: {
+				state: "ready",
+				verdict: { poolName },
+				notPlannedYet: { id: "budget.notPlannedYet", value },
+			},
+		}) as unknown as Glance;
+
+	it("shows the money that has no job yet, named as the plan names it", () => {
+		expect(notPlannedOf(ready(money(85000000)))).toEqual({
+			amount: money(85000000),
+			pool: "NOT_PLANNED_YET",
+		});
+		expect(notPlannedOf(ready(money(100), "TO_ASSIGN"))?.pool).toBe(
+			"TO_ASSIGN",
+		);
+	});
+
+	it("shows nothing for zero, planned too much, a missing rate or no budget", () => {
+		expect(notPlannedOf(ready(money(0)))).toBeNull();
+		expect(notPlannedOf(ready(money(-100)))).toBeNull();
+		expect(notPlannedOf(ready(null))).toBeNull();
+		expect(notPlannedOf(base)).toBeNull();
 	});
 });

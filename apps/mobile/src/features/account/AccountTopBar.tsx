@@ -1,18 +1,22 @@
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { type ReactNode, useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerBaseUrl } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
 import { absoluteImage } from "@/features/read/faces";
 import { openWebPage } from "@/features/settings/webPages";
+import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";
 import { Avatar, type Face } from "@/ui/Avatar";
 import { Glyph, type GlyphName } from "@/ui/Glyph";
+import { IconTile } from "@/ui/IconTile";
+import { ListGroup, ListRow } from "@/ui/List";
 import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { TopBar } from "@/ui/TopBar";
+import { currenciesHref } from "./places";
 import { useSignOut } from "./useSignOut";
 
 const VERSION = Constants.expoConfig?.version ?? null;
@@ -32,16 +36,16 @@ export function useMyFace(): Face | null {
 
 /**
  * The top bar with the account button. The button opens the account sheet
- * (account.html, phone): you, the places that have no tab, then Sign out and
- * the version. A native sheet: SwiftUI with detents on iOS, an M3 modal
- * bottom sheet on Android.
+ * (account.html, phone): you, the places that have no tab, the links, then
+ * Sign out and the version. A native sheet: SwiftUI with detents on iOS, an
+ * M3 modal bottom sheet on Android.
  */
 export function AccountTopBar({ title }: { title: string }) {
 	const t = useTranslations("mobile.account");
 	const { state } = useSession();
 	const baseUrl = useServerBaseUrl();
 	const confirmSignOut = useSignOut();
-	const { color, space } = useTheme();
+	const { space } = useTheme();
 	const [open, setOpen] = useState(false);
 	const me = state.status === "signedIn" ? state.me : null;
 	const face = useMyFace();
@@ -53,6 +57,7 @@ export function AccountTopBar({ title }: { title: string }) {
 	};
 	const web = (path: string) =>
 		go(() => (baseUrl ? openWebPage(baseUrl, path) : undefined));
+	const opensWeb = t("opensWeb");
 
 	return (
 		<>
@@ -70,77 +75,79 @@ export function AccountTopBar({ title }: { title: string }) {
 			>
 				<View style={{ gap: space[6] }}>
 					{me && face ? (
-						<Pressable
-							accessibilityHint={t("profileHint")}
-							accessibilityLabel={me.name}
-							accessibilityRole="button"
-							onPress={go(() => router.push("/settings"))}
-							style={({ pressed }) => ({
-								flexDirection: "row",
-								alignItems: "center",
-								gap: space[3],
-								paddingVertical: space[2],
-								backgroundColor: pressed ? color.raised : undefined,
-							})}
-						>
-							<Avatar face={face} size="md" />
-							<View style={{ flex: 1, gap: space[1] }}>
-								<Text numberOfLines={1} variant="section">
-									{me.name}
-								</Text>
-								<Text numberOfLines={1} tone="fg2" variant="small">
-									{me.username ? `@${me.username}` : me.email}
-								</Text>
-							</View>
-							<Chevron />
-						</Pressable>
+						<SheetGroup>
+							<ListRow
+								accessibilityLabel={`${me.name}, ${t("profileHint")}`}
+								end={<Chevron />}
+								lead={<Avatar face={face} size="md" />}
+								onPress={go(() => router.push("/settings"))}
+								sub={me.username ? `@${me.username}` : me.email}
+								title={me.name}
+							/>
+						</SheetGroup>
 					) : null}
-					<View style={{ gap: space[1] }}>
+					<View style={{ gap: space[2] }}>
 						<Text accessibilityRole="header" tone="fg2" variant="small">
 							{t("goTo")}
 						</Text>
-						<RowList>
-							<AccountRow
-								glyph="Coins"
-								hint={t("opensWeb")}
-								label={t("currencies")}
-								onPress={web("/currencies")}
+						<SheetGroup>
+							<Place
+								glyph="ChartLine"
+								label={t("wealth")}
+								onPress={go(() => router.navigate(wealthHref("home")))}
 							/>
-							<AccountRow
+							<Place
+								glyph="Coins"
+								label={t("currencies")}
+								onPress={go(() => router.push(currenciesHref()))}
+							/>
+							<Place
 								glyph="FileUp"
-								hint={t("opensWeb")}
 								label={t("import")}
 								onPress={web("/import")}
+								web={opensWeb}
 							/>
-							<AccountRow
+							<Place
 								glyph="Settings"
 								label={t("settings")}
 								onPress={go(() => router.push("/settings"))}
 							/>
-						</RowList>
+						</SheetGroup>
 					</View>
-					<RowList>
-						<AccountRow
+					<SheetGroup>
+						<Place
+							glyph="KeyRound"
+							label={t("inviteCodes")}
+							onPress={web("/invite-codes")}
+							web={opensWeb}
+						/>
+						<Place
+							glyph="MessageSquare"
+							label={t("feedback")}
+							onPress={web("/feedback")}
+							web={opensWeb}
+						/>
+						<Place
 							glyph="BookOpen"
-							hint={t("opensWeb")}
 							label={t("docs")}
 							onPress={web("/docs?from=app")}
+							web={opensWeb}
 						/>
-						<AccountRow
+						<Place
 							glyph="FileText"
-							hint={t("opensWeb")}
 							label={t("releaseNotes")}
 							onPress={web("/releases?from=app")}
+							web={opensWeb}
 						/>
-					</RowList>
-					<RowList>
-						<AccountRow
-							chevron={false}
+					</SheetGroup>
+					<SheetGroup>
+						<Place
 							glyph="LogOut"
 							label={t("signOut")}
 							onPress={go(confirmSignOut)}
+							plain
 						/>
-					</RowList>
+					</SheetGroup>
 					{VERSION ? (
 						<Text style={{ textAlign: "center" }} tone="fg3" variant="small">
 							{t("version", { version: VERSION })}
@@ -157,75 +164,42 @@ function Chevron() {
 	return <Glyph color={color.fg3} name="ChevronRight" size={size.icon.phone} />;
 }
 
-/** Rows of one group, a hairline between each (no box around them). */
-function RowList({ children }: { children: ReactNode }) {
-	const { color } = useTheme();
-	const rows = (Array.isArray(children) ? children : [children]).filter(
-		Boolean,
-	);
+/**
+ * A list group inside the sheet. The sheet already pads its content, so the
+ * group takes back its own page gutter and sits on the sheet's edge.
+ */
+function SheetGroup({ children }: { children: ReactNode }) {
+	const { size } = useTheme();
 	return (
-		<View>
-			{rows.map((row, index) => (
-				<View
-					// biome-ignore lint/suspicious/noArrayIndexKey: a fixed list of rows
-					key={index}
-					style={{
-						borderTopWidth: index === 0 ? 0 : 1,
-						borderTopColor: color.line,
-					}}
-				>
-					{row}
-				</View>
-			))}
+		<View style={{ marginHorizontal: -size.gutter.phone }}>
+			<ListGroup>{children}</ListGroup>
 		</View>
 	);
 }
 
-/** A row of the sheet: the glyph on a neutral tile, the label, a chevron when it goes somewhere. */
-function AccountRow({
+/** A place the sheet goes: the glyph on a neutral tile, the label, a chevron unless it is plain. */
+function Place({
 	glyph,
 	label,
-	hint,
 	onPress,
-	chevron = true,
+	web,
+	plain,
 }: {
 	glyph: GlyphName;
 	label: string;
-	/** Said after the label: where the row goes when it is not obvious. */
-	hint?: string;
 	onPress: () => void;
-	chevron?: boolean;
+	/** Said after the label when the row opens a page on the web. */
+	web?: string;
+	/** An action, not a place: no chevron (Sign out). */
+	plain?: boolean;
 }) {
-	const { color, radius, size, space } = useTheme();
-	const tile = size.avatar.default;
 	return (
-		<Pressable
-			accessibilityHint={hint}
-			accessibilityLabel={label}
-			accessibilityRole="button"
+		<ListRow
+			accessibilityLabel={web ? `${label}, ${web}` : label}
+			end={plain ? undefined : <Chevron />}
+			lead={<IconTile name={glyph} />}
 			onPress={onPress}
-			style={({ pressed }) => ({
-				minHeight: size.row.phone,
-				flexDirection: "row",
-				alignItems: "center",
-				gap: space[3],
-				backgroundColor: pressed ? color.raised : undefined,
-			})}
-		>
-			<View
-				style={{
-					width: tile,
-					height: tile,
-					borderRadius: radius.ctl,
-					alignItems: "center",
-					justifyContent: "center",
-					backgroundColor: color.raised,
-				}}
-			>
-				<Glyph color={color.fg2} name={glyph} size={size.icon.phone} />
-			</View>
-			<Text style={{ flex: 1 }}>{label}</Text>
-			{chevron ? <Chevron /> : null}
-		</Pressable>
+			title={label}
+		/>
 	);
 }

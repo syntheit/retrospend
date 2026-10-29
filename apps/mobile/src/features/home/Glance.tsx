@@ -1,236 +1,226 @@
 import { router } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { isValidElement, type ReactElement } from "react";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useVerdictText } from "@/features/budget/useVerdictText";
-import { verdictLabel, verdictSentence } from "@/features/budget/verdict";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { LinkButton, ListRow } from "@/ui/List";
+import { currenciesHref } from "@/features/account/places";
+import { useFaces } from "@/features/read/faces";
+import { MoneyAmount, useRateTypeLabel } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";
-import { PaceChart } from "./PaceChart";
-import { type Glance as GlanceData, heroOf } from "./source";
+import { AvatarStack } from "@/ui/Avatar";
+import { LinkButton } from "@/ui/List";
+import { Text } from "@/ui/Text";
+import { useHomeDates } from "./dates";
+import { HomeCard } from "./HomeCard";
+import { HomeTile, TileNote } from "./HomeTile";
+import {
+	type Glance as GlanceData,
+	type HomeData,
+	notPlannedOf,
+} from "./source";
 
-/** Home names no envelopes: the over verdicts it words never list any. */
-const NO_NAMES: ReadonlyMap<string, string> = new Map();
+type Figure = GlanceData["owedToYou"]["value"];
 
-/** A figure the server could not compute reads as words, never as 0 or 1. */
-function Figure({
-	label,
+/** A tile's figure: the money, or words when the server could not compute it. */
+function TileFigure({
 	value,
-	caption,
 	tone,
 	approx,
 	code,
-	onPress,
 }: {
-	label: string;
-	value: GlanceData["owedToYou"]["value"];
-	caption?: string;
-	tone?: "positive" | "default";
-	/** A total converted at reference rates. */
+	value: Figure;
+	tone?: "default" | "positive";
 	approx?: boolean;
-	/** A rate: shows the currency code, not the home symbol. */
 	code?: boolean;
-	onPress?: () => void;
 }) {
-	const t = useTranslations("mobile.money");
-	const format = useMoneyText();
-	const { color, type } = useTheme();
-	const spoken = [
-		label,
-		caption,
-		value
-			? approx
-				? t("approx", { amount: format(value) })
-				: format(value, code ? { display: "code" } : undefined)
-			: t("noRate"),
-	]
-		.filter(Boolean)
-		.join(", ");
-	return (
-		<ListRow accessibilityLabel={spoken} onPress={onPress}>
-			<View style={{ flex: 1 }}>
-				<Text style={{ color: color.fg, fontSize: type.body.size }}>
-					{label}
-				</Text>
-				{caption ? (
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-						{caption}
-					</Text>
-				) : null}
-			</View>
-			{value ? (
-				<MoneyAmount approx={approx} code={code} tone={tone} value={value} />
-			) : (
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{t("noRate")}
-				</Text>
-			)}
-		</ListRow>
+	const noRate = useTranslations("mobile.money")("noRate");
+	return value ? (
+		<MoneyAmount
+			align="left"
+			approx={approx}
+			code={code}
+			size="section"
+			strong
+			tone={tone}
+			value={value}
+		/>
+	) : (
+		<Text variant="section">{noRate}</Text>
 	);
 }
 
+/** Zero is not shown (GUIDELINE 7): a tile with nothing to say is left out. */
+const isZero = (value: Figure) => value !== null && value.minor === 0;
+
 /**
- * Home's glance: one big number (Left to spend with a budget, else Spent this
- * month), then Owed to you and You owe as separate lines (never netted),
- * Net worth and the dollar. Every number is the server's figure.
+ * Home's glance as summary cards (home.html, phone A): the budget card, then
+ * four doorways, two to a row: what is not planned yet, Owed to you with
+ * faces, Dollar today, Net worth. Every number is the server's figure; a
+ * tile opens its page, and one with nothing to show is left out.
  */
 export function Glance({
 	glance,
 	approx,
+	owers,
 }: {
 	glance: GlanceData;
-	approx: { owedToYou: boolean; youOwe: boolean };
+	approx: HomeData["approx"];
+	owers: HomeData["owers"];
 }) {
 	const t = useTranslations("mobile.home");
+	const money = useTranslations("mobile.money");
+	const noRate = money("noRate");
 	const format = useMoneyText();
-	const { color, space, type } = useTheme();
-	const hero = heroOf(glance);
-	const verdictText = useVerdictText(NO_NAMES);
-	const noRate = useTranslations("mobile.money")("noRate");
-	// Over budget reads as the Budget page does: "Over budget", how far, and why.
-	const heroTitle =
-		hero.kind === "over"
-			? verdictText(
-					verdictLabel(hero.verdict, hero.verdict.style === "SAVE_FIRST"),
-				)
-			: hero.kind === "left"
-				? t("leftToSpend")
-				: t("spentThisMonth");
-	const opensBudget = hero.kind === "left" || hero.kind === "over";
+	const faces = useFaces();
+	const dates = useHomeDates();
+	const rateLabel = useRateTypeLabel();
+	const { space } = useTheme();
+	const tiles: ReactElement[] = [];
 
-	const sub =
-		hero.kind === "over"
-			? [verdictText(verdictSentence(hero.verdict))]
-			: hero.kind === "left"
-				? [
-						t("perDay", {
-							amount: format(hero.perDay),
-							days: hero.daysLeft,
-						}),
-						t("spentSoFar", { amount: format(hero.spent) }),
-					]
-				: hero.lastToDate
-					? [t("lastMonth", { amount: format(hero.lastToDate) })]
-					: [];
+	const pool = notPlannedOf(glance);
+	if (pool) {
+		const label = t(
+			pool.pool === "TO_ASSIGN" ? "tile.toAssign" : "tile.notPlanned",
+		);
+		tiles.push(
+			<HomeTile
+				glyph="Wallet"
+				key="pool"
+				label={label}
+				onPress={() => router.navigate("/budget")}
+				spoken={`${label}, ${format(pool.amount)}, ${t("tile.waiting")}`}
+			>
+				<TileFigure value={pool.amount} />
+				<TileNote>{t("tile.waiting")}</TileNote>
+			</HomeTile>,
+		);
+	}
 
-	// Left to spend is the budget's own number, so a tap on it opens Budget.
-	const heroLabel = [
-		heroTitle,
-		hero.amount
-			? format(
-					hero.amount,
-					hero.kind === "over"
-						? { sign: "never", cents: false }
-						: { cents: false },
-				)
-			: noRate,
-		...sub,
-	].join(", ");
+	// Owed to you leads; with nothing owed to you, what you owe takes its place.
+	const owed = glance.owedToYou.value;
+	const owe = glance.youOwe.value;
+	if (!(isZero(owed) && isZero(owe))) {
+		const leadsWithOwe = isZero(owed) && owe !== null;
+		const lead = leadsWithOwe ? owe : owed;
+		const label = t(leadsWithOwe ? "youOwe" : "owedToYou");
+		const note =
+			!leadsWithOwe && (owe === null || owe.minor > 0)
+				? t("tile.youOwe", {
+						amount: owe
+							? approx.youOwe
+								? money("approx", { amount: format(owe) })
+								: format(owe)
+							: noRate,
+					})
+				: null;
+		const stack = leadsWithOwe ? [] : faces(owers);
+		tiles.push(
+			<HomeTile
+				foot={
+					stack.length > 0 ? (
+						<AvatarStack faces={stack} ring="surface" size="xs" />
+					) : undefined
+				}
+				glyph="HandCoins"
+				key="owed"
+				label={label}
+				onPress={() =>
+					router.navigate({
+						pathname: "/people",
+						params: { segment: "people" },
+					})
+				}
+				spoken={[label, lead ? format(lead) : noRate, note]
+					.filter(Boolean)
+					.join(", ")}
+			>
+				<TileFigure
+					approx={leadsWithOwe ? approx.youOwe : approx.owedToYou}
+					tone={leadsWithOwe ? "default" : "positive"}
+					value={lead}
+				/>
+				{note ? <TileNote>{note}</TileNote> : null}
+			</HomeTile>,
+		);
+	}
+
+	const dollar = glance.dollarToday;
+	if (dollar) {
+		const rate = dollar.rateType ? rateLabel(dollar.rateType) : null;
+		const date = dollar.rateDate
+			? t("tile.rateDate", { date: dates.short(dollar.rateDate) })
+			: null;
+		tiles.push(
+			<HomeTile
+				glyph="DollarSign"
+				key="dollar"
+				label={t("dollarToday")}
+				onPress={() => router.push(currenciesHref())}
+				spoken={[
+					t("dollarToday"),
+					dollar.value ? format(dollar.value, { display: "code" }) : noRate,
+					rate,
+					date,
+				]
+					.filter(Boolean)
+					.join(", ")}
+			>
+				<View
+					style={{
+						flexDirection: "row",
+						alignItems: "baseline",
+						gap: space[2],
+					}}
+				>
+					<TileFigure code value={dollar.value} />
+					{rate ? (
+						<Text tone="fg3" variant="meta">
+							{rate}
+						</Text>
+					) : null}
+				</View>
+				{date ? <TileNote>{date}</TileNote> : null}
+			</HomeTile>,
+		);
+	}
+
+	const worth = glance.netWorth.value;
+	if (!isZero(worth)) {
+		tiles.push(
+			<HomeTile
+				glyph="ChartLine"
+				key="worth"
+				label={t("netWorth")}
+				onPress={() => router.push(wealthHref("home"))}
+				spoken={`${t("netWorth")}, ${worth ? format(worth) : noRate}`}
+			>
+				<TileFigure value={worth} />
+			</HomeTile>,
+		);
+	}
+
+	const rows: ReactElement[][] = [];
+	for (let i = 0; i < tiles.length; i += 2) rows.push(tiles.slice(i, i + 2));
 
 	return (
-		<View>
-			<Pressable
-				accessibilityLabel={opensBudget ? heroLabel : undefined}
-				accessibilityRole={opensBudget ? "button" : undefined}
-				accessible={opensBudget ? true : undefined}
-				disabled={!opensBudget}
-				onPress={() => router.navigate("/budget")}
-				style={{ gap: space[1], padding: space[4] }}
-			>
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{heroTitle}
-				</Text>
-				{hero.amount ? (
-					<Text
-						numberOfLines={1}
-						style={{
-							color: color.fg,
-							fontSize: type.hero.size,
-							fontVariant: ["tabular-nums"],
-							fontWeight: "600",
-						}}
+		<>
+			<View style={{ paddingHorizontal: space[4], gap: space[3] }}>
+				<HomeCard glance={glance} />
+				{rows.map((row) => (
+					<View
+						key={isValidElement(row[0]) ? row[0].key : "row"}
+						style={{ flexDirection: "row", gap: space[3] }}
 					>
-						{format(
-							hero.amount,
-							hero.kind === "over"
-								? { sign: "never", cents: false }
-								: { cents: false },
-						)}
-					</Text>
-				) : (
-					<Text
-						style={{
-							color: color.fg,
-							fontSize: type.hero.size,
-							fontWeight: "600",
-						}}
-					>
-						{noRate}
-					</Text>
-				)}
-				{sub.map((line) => (
-					<Text
-						key={line}
-						style={{ color: color.fg2, fontSize: type.body.size }}
-					>
-						{line}
-					</Text>
+						{row}
+						{row.length === 1 ? <View style={{ flex: 1 }} /> : null}
+					</View>
 				))}
-				{glance.missingRates.length > 0 ? (
-					<Text
-						style={{ color: color.attentionText, fontSize: type.small.size }}
-					>
-						{t("missingRates", { currencies: glance.missingRates.join(", ") })}
-					</Text>
-				) : null}
-			</Pressable>
-			<PaceChart glance={glance} />
+			</View>
 			<LinkButton
 				label={t("insights")}
 				onPress={() => router.push("/home/insights")}
 			/>
-			<Figure
-				approx={approx.owedToYou}
-				label={t("owedToYou")}
-				onPress={() =>
-					router.navigate({
-						pathname: "/people",
-						params: { segment: "people" },
-					})
-				}
-				tone="positive"
-				value={glance.owedToYou.value}
-			/>
-			<Figure
-				approx={approx.youOwe}
-				label={t("youOwe")}
-				onPress={() =>
-					router.navigate({
-						pathname: "/people",
-						params: { segment: "people" },
-					})
-				}
-				value={glance.youOwe.value}
-			/>
-			<Figure
-				label={t("netWorth")}
-				onPress={() => router.push(wealthHref("home"))}
-				value={glance.netWorth.value}
-			/>
-			{glance.dollarToday ? (
-				<Figure
-					caption={
-						glance.dollarToday.rateType
-							? t("dollarRate", { rate: glance.dollarToday.rateType })
-							: undefined
-					}
-					code
-					label={t("dollarToday")}
-					value={glance.dollarToday.value}
-				/>
-			) : null}
-		</View>
+		</>
 	);
 }

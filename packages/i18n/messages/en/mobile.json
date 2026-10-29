@@ -334,7 +334,10 @@
 		"import": "Import",
 		"docs": "Docs",
 		"releaseNotes": "Release notes",
-		"version": "Version {version}"
+		"version": "Version {version}",
+		"wealth": "Wealth",
+		"inviteCodes": "Invite codes",
+		"feedback": "Send feedback"
 	},
 	"activity": {
 		"title": "Activity",
@@ -1295,17 +1298,10 @@
 	},
 	"home": {
 		"title": "Home",
-		"spentThisMonth": "Spent this month",
-		"leftToSpend": "Left to spend this month",
-		"perDay": "About {amount} a day, {days, plural, one {# day} other {# days}} left",
-		"spentSoFar": "{amount} spent so far",
-		"lastMonth": "{amount} last month by this day",
-		"missingRates": "No rate yet for {currencies}. Those entries are not in these numbers.",
 		"owedToYou": "Owed to you",
 		"youOwe": "You owe",
 		"netWorth": "Net worth",
 		"dollarToday": "Dollar today",
-		"dollarRate": "{rate} rate",
 		"needs": {
 			"title": "Needs you",
 			"showMore": "Show {count} more",
@@ -1330,7 +1326,28 @@
 			"setup_homeCurrency": "Set your home currency",
 			"setup_verifyEmail": "Verify your email",
 			"setup_importStatement": "Import a statement",
-			"generic": "Something needs you"
+			"generic": "Something needs you",
+			"budget_overAssigned": "You planned more than you have",
+			"budget_billDue": "{count, plural, one {# bill is} other {# bills are}} due soon",
+			"budget_sharesNeedEnvelope": "{count, plural, one {# share needs an envelope} other {# shares need an envelope}}",
+			"budget_startingMoney": "Confirm your starting money",
+			"action": {
+				"confirm": "Confirm",
+				"review": "Review",
+				"respond": "Respond",
+				"assign": "Assign",
+				"cover": "Cover",
+				"takeBack": "Take back",
+				"fund": "Fund",
+				"setRate": "Set rate",
+				"addExpense": "Add expense",
+				"choose": "Choose",
+				"import": "Import"
+			},
+			"context": {
+				"wasDue": "Was due {date}",
+				"dueOn": "Due {date}"
+			}
 		},
 		"recent": {
 			"title": "Recent",
@@ -1339,12 +1356,26 @@
 		},
 		"error": "Couldn't load Home",
 		"errorDetail": "Check your connection and try again.",
-		"pace": {
-			"empty": "No spending to chart yet",
-			"summary": "Day {day}: {spent} spent, {before} by this day last month",
-			"noData": "No data"
+		"insights": "See insights",
+		"card": {
+			"leftIn": "Left to spend in {month}",
+			"spentIn": "Spent in {month}",
+			"left": "left",
+			"spent": "spent",
+			"perDay": "{amount} a day for {days, plural, one {# day} other {# days}}",
+			"faster": "Spending faster than planned",
+			"spentThisMonth": "{amount} spent this month",
+			"notPlanned": "+ {amount} not planned yet",
+			"lastMonth": "{amount} last month by this day",
+			"missingRates": "No rate yet for {currencies}. Those entries are not in these numbers."
 		},
-		"insights": "See insights"
+		"tile": {
+			"toAssign": "To assign",
+			"notPlanned": "Not planned yet",
+			"waiting": "Waiting for a job",
+			"youOwe": "You owe {amount}",
+			"rateDate": "Updated {date}"
+		}
 	},
 	"insights": {
 		"title": "Insights",

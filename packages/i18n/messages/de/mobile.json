@@ -334,7 +334,10 @@
 		"import": "Importieren",
 		"docs": "Dokumentation",
 		"releaseNotes": "Versionshinweise",
-		"version": "Version {version}"
+		"version": "Version {version}",
+		"wealth": "Vermögen",
+		"inviteCodes": "Einladungscodes",
+		"feedback": "Feedback senden"
 	},
 	"activity": {
 		"title": "Aktivität",
@@ -1295,17 +1298,10 @@
 	},
 	"home": {
 		"title": "Start",
-		"spentThisMonth": "Diesen Monat ausgegeben",
-		"leftToSpend": "Diesen Monat noch verfügbar",
-		"perDay": "Etwa {amount} pro Tag, {days, plural, one {noch # Tag} other {noch # Tage}}",
-		"spentSoFar": "Bisher {amount} ausgegeben",
-		"lastMonth": "{amount} im Vormonat bis zu diesem Tag",
-		"missingRates": "Noch kein Kurs für {currencies}. Diese Einträge sind in diesen Zahlen nicht enthalten.",
 		"owedToYou": "Dir geschuldet",
 		"youOwe": "Du schuldest",
 		"netWorth": "Vermögen",
 		"dollarToday": "Dollar heute",
-		"dollarRate": "Kurs {rate}",
 		"needs": {
 			"title": "Braucht dich",
 			"showMore": "{count} weitere anzeigen",
@@ -1330,7 +1326,28 @@
 			"setup_homeCurrency": "Wähle deine Hauptwährung",
 			"setup_verifyEmail": "Bestätige deine E-Mail",
 			"setup_importStatement": "Importiere einen Kontoauszug",
-			"generic": "Etwas wartet auf dich"
+			"generic": "Etwas wartet auf dich",
+			"budget_overAssigned": "Du hast mehr verplant, als du hast",
+			"budget_billDue": "{count, plural, one {# Rechnung ist} other {# Rechnungen sind}} bald fällig",
+			"budget_sharesNeedEnvelope": "{count, plural, one {# Anteil braucht einen Umschlag} other {# Anteile brauchen einen Umschlag}}",
+			"budget_startingMoney": "Bestätige dein Startgeld",
+			"action": {
+				"confirm": "Bestätigen",
+				"review": "Prüfen",
+				"respond": "Antworten",
+				"assign": "Zuweisen",
+				"cover": "Decken",
+				"takeBack": "Zurücknehmen",
+				"fund": "Auffüllen",
+				"setRate": "Kurs festlegen",
+				"addExpense": "Ausgabe hinzufügen",
+				"choose": "Wählen",
+				"import": "Importieren"
+			},
+			"context": {
+				"wasDue": "Fällig seit {date}",
+				"dueOn": "Fällig am {date}"
+			}
 		},
 		"recent": {
 			"title": "Neueste",
@@ -1339,12 +1356,26 @@
 		},
 		"error": "Start konnte nicht geladen werden",
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
-		"pace": {
-			"empty": "Noch keine Ausgaben für das Diagramm",
-			"summary": "Tag {day}: {spent} ausgegeben, {before} bis zum selben Tag im Vormonat",
-			"noData": "Keine Daten"
+		"insights": "Auswertungen ansehen",
+		"card": {
+			"leftIn": "Noch verfügbar im {month}",
+			"spentIn": "Ausgegeben im {month}",
+			"left": "übrig",
+			"spent": "ausgegeben",
+			"perDay": "{amount} pro Tag für {days, plural, one {# Tag} other {# Tage}}",
+			"faster": "Du gibst schneller aus als geplant",
+			"spentThisMonth": "{amount} diesen Monat ausgegeben",
+			"notPlanned": "+ {amount} noch nicht verplant",
+			"lastMonth": "{amount} im Vormonat bis zu diesem Tag",
+			"missingRates": "Noch kein Kurs für {currencies}. Diese Einträge sind in diesen Zahlen nicht enthalten."
 		},
-		"insights": "Auswertungen ansehen"
+		"tile": {
+			"toAssign": "Zuzuweisen",
+			"notPlanned": "Noch nicht verplant",
+			"waiting": "Wartet auf eine Aufgabe",
+			"youOwe": "Du schuldest {amount}",
+			"rateDate": "Stand {date}"
+		}
 	},
 	"insights": {
 		"title": "Auswertungen",

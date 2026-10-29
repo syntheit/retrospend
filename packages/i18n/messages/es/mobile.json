@@ -334,7 +334,10 @@
 		"import": "Importar",
 		"docs": "Documentación",
 		"releaseNotes": "Notas de la versión",
-		"version": "Versión {version}"
+		"version": "Versión {version}",
+		"wealth": "Patrimonio",
+		"inviteCodes": "Códigos de invitación",
+		"feedback": "Enviar comentarios"
 	},
 	"activity": {
 		"title": "Actividad",
@@ -1295,17 +1298,10 @@
 	},
 	"home": {
 		"title": "Inicio",
-		"spentThisMonth": "Gastado este mes",
-		"leftToSpend": "Disponible este mes",
-		"perDay": "Unos {amount} al día, {days, plural, one {queda # día} other {quedan # días}}",
-		"spentSoFar": "{amount} gastados hasta ahora",
-		"lastMonth": "{amount} el mes pasado a esta fecha",
-		"missingRates": "Aún no hay cotización para {currencies}. Esos movimientos no están en estas cifras.",
 		"owedToYou": "Te deben",
 		"youOwe": "Debes",
 		"netWorth": "Patrimonio",
 		"dollarToday": "Dólar hoy",
-		"dollarRate": "Cotización {rate}",
 		"needs": {
 			"title": "Esperan por ti",
 			"showMore": "Ver {count} más",
@@ -1330,7 +1326,28 @@
 			"setup_homeCurrency": "Elige tu moneda principal",
 			"setup_verifyEmail": "Verifica tu correo",
 			"setup_importStatement": "Importa un extracto",
-			"generic": "Algo te espera"
+			"generic": "Algo te espera",
+			"budget_overAssigned": "Planeaste más de lo que tienes",
+			"budget_billDue": "{count, plural, one {# factura vence} other {# facturas vencen}} pronto",
+			"budget_sharesNeedEnvelope": "{count, plural, one {# parte necesita un sobre} other {# partes necesitan un sobre}}",
+			"budget_startingMoney": "Confirma tu dinero inicial",
+			"action": {
+				"confirm": "Confirmar",
+				"review": "Revisar",
+				"respond": "Responder",
+				"assign": "Asignar",
+				"cover": "Cubrir",
+				"takeBack": "Recuperar",
+				"fund": "Reservar",
+				"setRate": "Fijar cotización",
+				"addExpense": "Añadir gasto",
+				"choose": "Elegir",
+				"import": "Importar"
+			},
+			"context": {
+				"wasDue": "Venció el {date}",
+				"dueOn": "Vence el {date}"
+			}
 		},
 		"recent": {
 			"title": "Reciente",
@@ -1339,12 +1356,26 @@
 		},
 		"error": "No se pudo cargar Inicio",
 		"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
-		"pace": {
-			"empty": "Aún no hay gastos para el gráfico",
-			"summary": "Día {day}: {spent} gastados, {before} hasta este día el mes pasado",
-			"noData": "Sin datos"
+		"insights": "Ver análisis",
+		"card": {
+			"leftIn": "Disponible en {month}",
+			"spentIn": "Gastado en {month}",
+			"left": "disponibles",
+			"spent": "gastados",
+			"perDay": "{amount} al día durante {days, plural, one {# día} other {# días}}",
+			"faster": "Gastas más rápido de lo planeado",
+			"spentThisMonth": "{amount} gastados este mes",
+			"notPlanned": "+ {amount} sin planear aún",
+			"lastMonth": "{amount} el mes pasado a esta fecha",
+			"missingRates": "Aún no hay cotización para {currencies}. Esos movimientos no están en estas cifras."
 		},
-		"insights": "Ver análisis"
+		"tile": {
+			"toAssign": "Por asignar",
+			"notPlanned": "Sin planear aún",
+			"waiting": "Esperando un destino",
+			"youOwe": "Debes {amount}",
+			"rateDate": "Actualizado el {date}"
+		}
 	},
 	"insights": {
 		"title": "Análisis",
