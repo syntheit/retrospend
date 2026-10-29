@@ -342,7 +342,7 @@ async function walkToEnvelopes(tree: Tree) {
 	press(tree, "It varies");
 	press(tree, "Continue");
 	press(tree, "5");
-	press(tree, "Three zeros");
+	for (const k of ["0", "0", "0"]) press(tree, k);
 	press(tree, "Continue");
 	await wait(450);
 }

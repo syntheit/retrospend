@@ -6,18 +6,22 @@ import { decimalSeparator, formatMoneyDraft } from "@retrospend/domain/parse";
 // only decides which characters each key adds.
 
 export const BACKSPACE = "⌫";
+/**
+ * Three zeros at once. The keypad no longer has the key (the mockup's pad is
+ * the twelve keys of the system number pad); applyKey still takes it, since
+ * a key is any run of characters.
+ */
 export const TRIPLE_ZERO = "000";
 
 export type KeypadKey = string;
 
-/** Rows of keys, top to bottom, with the locale's decimal separator. */
+/** Rows of keys, top to bottom, with the locale's decimal separator: the system number pad. */
 export function keypadLayout(locale: string): KeypadKey[][] {
 	return [
 		["1", "2", "3"],
 		["4", "5", "6"],
 		["7", "8", "9"],
 		[decimalSeparator(locale), "0", BACKSPACE],
-		[TRIPLE_ZERO],
 	];
 }
 

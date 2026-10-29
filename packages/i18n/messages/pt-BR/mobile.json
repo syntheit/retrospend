@@ -16,12 +16,13 @@
 		"dismiss": "Dispensar",
 		"retry": "Tentar de novo",
 		"save": "Salvar",
-		"saving": "Salvando"
+		"saving": "Salvando",
+		"close": "Fechar",
+		"done": "Concluído"
 	},
 	"keypad": {
 		"delete": "Apagar",
-		"decimal": "Vírgula decimal",
-		"tripleZero": "Três zeros"
+		"decimal": "Vírgula decimal"
 	},
 	"composer": {
 		"mode": "Tipo de lançamento",

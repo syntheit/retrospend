@@ -1,26 +1,16 @@
-import { FieldGroup, Host, Picker, Row, Spacer, Switch, Text } from "@expo/ui";
+import { FieldGroup, Row, Spacer, Switch, Text } from "@expo/ui";
 import type { ReactNode } from "react";
-import { useColorScheme } from "react-native";
 import { useTheme } from "@/theme";
+import { FormFrame, FormMenu, useSectionModifiers } from "./FormChrome";
 
 // The settings form. Expo UI's FieldGroup is the SwiftUI Form on iOS and an
 // M3 grouped list (Jetpack Compose) on Android, so the rows, section
-// headers, switches and menu pickers are the system's own. One file serves
-// both: the universal components pick the native control per platform.
+// headers, switches and menu pickers are the system's own. The surfaces are
+// the tokens on both (FormChrome): the page on bg, the rows on surface.
 
-/** The form fills its screen; the seed color keeps Compose on the brand scheme. */
+/** The form fills its screen. */
 export function Form({ children }: { children: ReactNode }) {
-	const { color } = useTheme();
-	const scheme = useColorScheme();
-	return (
-		<Host
-			colorScheme={scheme === "dark" || scheme === "light" ? scheme : undefined}
-			seedColor={color.brand}
-			style={{ flex: 1 }}
-		>
-			<FieldGroup>{children}</FieldGroup>
-		</Host>
-	);
+	return <FormFrame>{children}</FormFrame>;
 }
 
 export function FormSection({
@@ -34,8 +24,9 @@ export function FormSection({
 	children: ReactNode;
 }) {
 	const { color, type } = useTheme();
+	const modifiers = useSectionModifiers();
 	return (
-		<FieldGroup.Section title={title}>
+		<FieldGroup.Section modifiers={modifiers} title={title}>
 			{children}
 			{footer ? (
 				<FieldGroup.SectionFooter>
@@ -48,7 +39,7 @@ export function FormSection({
 	);
 }
 
-/** A label with its current value at the end; a tap opens the editor. */
+/** A label with its current value at the end in fg-2; a tap opens the editor. */
 export function FormValueRow({
 	label,
 	value,
@@ -68,7 +59,7 @@ export function FormValueRow({
 			<Text
 				numberOfLines={1}
 				textStyle={{
-					color: onPress ? color.brand : color.fg2,
+					color: color.fg2,
 					fontSize: type.body.size,
 					textAlign: "right",
 				}}
@@ -146,19 +137,7 @@ export function FormPickerRow<T extends string>({
 				{label}
 			</Text>
 			<Spacer flexible />
-			<Picker<string>
-				appearance="menu"
-				onValueChange={(next) => onChange(next as T)}
-				selectedValue={value}
-			>
-				{options.map((option) => (
-					<Picker.Item
-						key={option.value}
-						label={option.label}
-						value={option.value}
-					/>
-				))}
-			</Picker>
+			<FormMenu onChange={onChange} options={options} value={value} />
 		</Row>
 	);
 }

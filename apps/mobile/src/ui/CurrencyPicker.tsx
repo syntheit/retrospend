@@ -8,28 +8,33 @@ import {
 	localCurrencyName,
 } from "@/lib/currency-names";
 import { useTheme } from "@/theme";
-import { Button } from "./Button";
+import { Chip } from "./Chip";
 import { FLAGS } from "./flags.generated";
 import { Glyph } from "./Glyph";
 import { PickerSheet } from "./PickerSheet";
 import type { PickGroup } from "./pickGroups";
 
-/** The flag of a currency's country in a circle; crypto and unknown codes get a coin. */
-function CurrencyFlag({ code }: { code: string }) {
+/**
+ * The flag of a currency's country in a circle; crypto and unknown codes get
+ * a coin. Picker rows show it in the 24 point lead slot, a chip at the 16
+ * point icon size.
+ */
+function CurrencyFlag({ code, small }: { code: string; small?: boolean }) {
 	const { color, size } = useTheme();
 	const country = getCountryCodeFromCurrency(code);
 	const xml = country ? FLAGS[country] : undefined;
+	const side = small ? size.icon.phone : size.avatar.sm;
 	return xml ? (
-		<SvgXml height={size.avatar.sm} width={size.avatar.sm} xml={xml} />
+		<SvgXml height={side} width={side} xml={xml} />
 	) : (
 		<View
 			style={{
-				width: size.avatar.sm,
-				height: size.avatar.sm,
-				borderRadius: size.avatar.sm / 2,
+				width: side,
+				height: side,
+				borderRadius: side / 2,
 				alignItems: "center",
 				justifyContent: "center",
-				backgroundColor: color.raised,
+				backgroundColor: small ? undefined : color.raised,
 			}}
 		>
 			<Glyph color={color.fg2} name="Coins" size={size.icon.phone} />
@@ -38,8 +43,8 @@ function CurrencyFlag({ code }: { code: string }) {
 }
 
 /**
- * Every place the app picks a currency: the code as a text button, and the
- * picker sheet behind it. Yours (home and default) and Recent come first, then
+ * Every place the app picks a currency: a trigger chip with the flag and the
+ * code, and the picker sheet behind it. Yours (home and default) and Recent come first, then
  * all, each with the flag the web shows and the code with its full name in
  * the reader's language; a search finds either (or the English name).
  */
@@ -92,11 +97,12 @@ export function CurrencyPicker({
 
 	return (
 		<>
-			<Button
+			<Chip
 				accessibilityLabel={t("currency.trigger", { code: value })}
 				label={value}
+				leading={<CurrencyFlag code={value} small />}
 				onPress={() => setOpen(true)}
-				variant="text"
+				variant="trigger"
 			/>
 			<PickerSheet
 				clear={t("clear")}

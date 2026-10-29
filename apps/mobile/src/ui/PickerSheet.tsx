@@ -11,10 +11,11 @@ type Item =
 
 /**
  * The one list picker: the platform sheet (a SwiftUI sheet, a form sheet on
- * iPad; an M3 modal bottom sheet) holding a search field and the choices in
- * groups, each with its identity in front and a check on the current one
- * (GUIDELINE 8: pickers carry identity). Typing narrows the list, ignoring
- * case and accents.
+ * iPad; an M3 modal bottom sheet) at medium, pulled up to large, holding a
+ * search field and the choices in groups under 13 fg-3 headings. Each row
+ * has its identity in front, its name at 14/500 over a 12 fg-3 detail line,
+ * and a check on the current one (GUIDELINE 8: pickers carry identity).
+ * Typing narrows the list, ignoring case and accents.
  */
 export function PickerSheet({
 	visible,
@@ -37,7 +38,7 @@ export function PickerSheet({
 	groups: PickGroup[];
 	onSelect: (id: string) => void;
 }) {
-	const { color, radius, size, space, type } = useTheme();
+	const { color, font, radius, size, space, type } = useTheme();
 	const body = useSheetBodySize();
 	const [query, setQuery] = useState("");
 	const shown = useMemo(() => filterGroups(groups, query), [groups, query]);
@@ -60,7 +61,12 @@ export function PickerSheet({
 	}
 
 	return (
-		<Sheet detents={["large"]} onClose={close} title={title} visible={visible}>
+		<Sheet
+			detents={["medium", "large"]}
+			onClose={close}
+			title={title}
+			visible={visible}
+		>
 			<View style={{ ...body, gap: space[2] }}>
 				<View
 					style={{
@@ -129,7 +135,7 @@ export function PickerSheet({
 								<Text
 									accessibilityRole="header"
 									style={{
-										color: color.fg2,
+										color: color.fg3,
 										fontSize: type.small.size,
 										paddingTop: space[3],
 										paddingBottom: space[1],
@@ -164,24 +170,26 @@ export function PickerSheet({
 									>
 										{item.row.lead}
 									</View>
-									<Text
-										numberOfLines={1}
-										style={{ flex: 1, fontSize: type.body.size }}
-									>
+									<View style={{ flex: 1, paddingVertical: space[1] }}>
 										<Text
+											numberOfLines={1}
 											style={{
 												color: color.fg,
-												fontWeight: item.row.detail ? "500" : "400",
+												fontSize: type.body.size,
+												fontWeight: String(font.weight.medium) as "500",
 											}}
 										>
 											{item.row.label}
 										</Text>
 										{item.row.detail ? (
-											<Text style={{ color: color.fg2 }}>
-												{`  ${item.row.detail}`}
+											<Text
+												numberOfLines={1}
+												style={{ color: color.fg3, fontSize: type.meta.size }}
+											>
+												{item.row.detail}
 											</Text>
 										) : null}
-									</Text>
+									</View>
 									{item.row.selected ? (
 										<Glyph
 											color={color.brand}

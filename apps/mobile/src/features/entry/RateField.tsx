@@ -6,8 +6,8 @@ import { useRateTypeName } from "@/lib/rateTypes";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { PickerSheet } from "@/ui/PickerSheet";
+import { FieldError, TextField } from "@/ui/TextField";
 import type { RateChoice } from "./draft";
-import { FieldError, TextField } from "./ExpenseFields";
 import type { RateOptions } from "./hooks";
 import { rateView } from "./rate";
 

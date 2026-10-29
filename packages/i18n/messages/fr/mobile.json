@@ -16,12 +16,13 @@
 		"dismiss": "Fermer",
 		"retry": "Réessayer",
 		"save": "Enregistrer",
-		"saving": "Enregistrement"
+		"saving": "Enregistrement",
+		"close": "Fermer",
+		"done": "Terminé"
 	},
 	"keypad": {
 		"delete": "Effacer",
-		"decimal": "Virgule décimale",
-		"tripleZero": "Trois zéros"
+		"decimal": "Virgule décimale"
 	},
 	"composer": {
 		"mode": "Type de saisie",

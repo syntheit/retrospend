@@ -178,7 +178,7 @@ describe("Forgive", () => {
 			);
 		});
 		press(tree, "Ana,");
-		for (const k of ["9", "Three zeros"]) press(tree, k);
+		for (const k of ["9", "0", "0", "0"]) press(tree, k);
 		await wait(400);
 		expect(disabled(tree, "Forgive")).toBe(true);
 		expect(calls.filter((c) => c.route === "previewForgive")).toEqual([]);
