@@ -1510,7 +1510,34 @@
 		"otherShort": "Outro",
 		"typeAmount": "Digite um valor",
 		"amountInvalid": "Esse valor não é válido",
-		"overpay": "Isso é mais do que o devido. Digite menos."
+		"overpay": "Isso é mais do que o devido. Digite menos.",
+		"everythingAmount": "Tudo {amount}",
+		"partAmount": "Parte em {currency} {amount}",
+		"youOwe": "Você deve {amount} a {name}",
+		"owesYou": "{name} deve {amount} a você",
+		"rate": "Cotação {currency}",
+		"rateLine": "{unit} = {value} · {type}",
+		"method": "Forma",
+		"date": "Data",
+		"today": "Hoje",
+		"yesterday": "Ontem",
+		"methodNames": {
+			"bank_transfer": "Transferência",
+			"cash": "Dinheiro"
+		},
+		"afterThis": "Depois: {state}",
+		"afterSettled": "quitado com {name}",
+		"afterOwesYou": "{name} deve {amount} a você",
+		"afterYouOwe": "você deve {amount} a {name}",
+		"rule": {
+			"received": "Definitivo: você recebeu.",
+			"waits": "Aguarda a confirmação de {name}. Seu saldo já mostra.",
+			"final": "Definitivo: {name} não usa o Retrospend."
+		},
+		"overTheyOwe": "São {amount} a mais do que {name} deve a você",
+		"overYouOwe": "São {amount} a mais do que você deve a {name}",
+		"recordExact": "Registrar {amount} em vez disso",
+		"recordAmount": "Registrar {amount}"
 	},
 	"review": {
 		"open": "Revisar",

@@ -1510,7 +1510,34 @@
 		"otherShort": "Другая",
 		"typeAmount": "Введите сумму",
 		"amountInvalid": "Эта сумма недопустима",
-		"overpay": "Это больше, чем долг. Введите меньше."
+		"overpay": "Это больше, чем долг. Введите меньше.",
+		"everythingAmount": "Всё {amount}",
+		"partAmount": "Часть в {currency} {amount}",
+		"youOwe": "Вы должны {name} {amount}",
+		"owesYou": "{name} должен(на) вам {amount}",
+		"rate": "Курс {currency}",
+		"rateLine": "{unit} = {value} · {type}",
+		"method": "Способ",
+		"date": "Дата",
+		"today": "Сегодня",
+		"yesterday": "Вчера",
+		"methodNames": {
+			"bank_transfer": "Перевод",
+			"cash": "Наличные"
+		},
+		"afterThis": "После этого: {state}",
+		"afterSettled": "расчёт с {name} закрыт",
+		"afterOwesYou": "{name} должен(на) вам {amount}",
+		"afterYouOwe": "вы должны {name} {amount}",
+		"rule": {
+			"received": "Окончательно: вы получили деньги.",
+			"waits": "Ждёт подтверждения от {name}. Ваш баланс уже это учитывает.",
+			"final": "Окончательно: {name} не в Retrospend."
+		},
+		"overTheyOwe": "Это на {amount} больше, чем вам должен(на) {name}",
+		"overYouOwe": "Это на {amount} больше, чем вы должны {name}",
+		"recordExact": "Записать {amount} вместо этого",
+		"recordAmount": "Записать {amount}"
 	},
 	"review": {
 		"open": "Проверить",

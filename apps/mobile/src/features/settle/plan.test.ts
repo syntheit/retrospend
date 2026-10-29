@@ -1,10 +1,16 @@
 import type { SettleContext } from "@/features/people/source";
 import {
+	type Allocation,
+	allocationDetail,
 	allocationOf,
 	answerFor,
+	balanceAfter,
+	everythingConverts,
 	isOverpay,
+	owedBreakdown,
 	type PaymentPreview,
 	previewRows,
+	rateChoices,
 	recordInput,
 } from "./plan";
 
@@ -197,5 +203,222 @@ describe("isOverpay", () => {
 		expect(isOverpay({ code: "bad_request", status: 400 })).toBe(false);
 		expect(isOverpay(new Error("offline"))).toBe(false);
 		expect(isOverpay(null)).toBe(false);
+	});
+});
+
+const ars = (minor: number) => ({ minor, currency: "ARS" });
+const brl = (minor: number) => ({ minor, currency: "BRL" });
+
+describe("recordInput details", () => {
+	it("sends the rate type, the method and the day the person picked", () => {
+		expect(
+			recordInput(ref, context, "outgoing", { kind: "everything" }, "id5", {
+				rateType: "blue",
+				paymentMethod: "cash",
+				paidOn: "2026-10-24",
+			}),
+		).toEqual({
+			id: "id5",
+			person: ref,
+			direction: "outgoing",
+			currency: "ARS",
+			amount: null,
+			rateType: "blue",
+			paymentMethod: "cash",
+			paidOn: "2026-10-24",
+		});
+	});
+
+	it("leaves out what was not picked, so the server's defaults stand", () => {
+		const body = recordInput(
+			ref,
+			context,
+			"outgoing",
+			{ kind: "everything" },
+			"id6",
+			{ rateType: null, paymentMethod: null, paidOn: null },
+		);
+		expect(body).not.toHaveProperty("rateType");
+		expect(body).not.toHaveProperty("paymentMethod");
+		expect(body).not.toHaveProperty("paidOn");
+	});
+});
+
+describe("the owe line", () => {
+	const owing: SettleContext = {
+		...context,
+		direction: "outgoing",
+		lines: [
+			{ project: null, amount: ars(-5670000) },
+			{ project: null, amount: brl(-42650) },
+			{ project: null, amount: brl(1000) },
+		],
+	};
+
+	it("lists the open lines the direction settles, as sent and without sign", () => {
+		expect(owedBreakdown(owing, "outgoing")).toEqual([
+			ars(5670000),
+			brl(42650),
+		]);
+		expect(owedBreakdown(owing, "incoming")).toEqual([brl(1000)]);
+	});
+
+	it("has no breakdown for one line in the payment currency", () => {
+		expect(
+			owedBreakdown(
+				{ ...owing, lines: [{ project: null, amount: ars(-100) }] },
+				"outgoing",
+			),
+		).toEqual([]);
+	});
+
+	it("is an estimate only when a debt in another currency converts", () => {
+		expect(everythingConverts(owing, "outgoing")).toBe(true);
+		expect(everythingConverts(owing, "incoming")).toBe(true);
+		expect(
+			everythingConverts(
+				{ ...owing, lines: [{ project: null, amount: ars(-100) }] },
+				"outgoing",
+			),
+		).toBe(false);
+	});
+});
+
+describe("rateChoices", () => {
+	const rate = (type: string) => ({
+		type,
+		unit: brl(100),
+		value: ars(27100),
+	});
+	const withRates: SettleContext = {
+		...context,
+		rates: [{ currency: "BRL", rate: rate("blue") }],
+		rateTypes: ["blue", "official"],
+	};
+	const allocation = (rows: Allocation["rows"]): Allocation => ({
+		amount: ars(100),
+		full: ars(100),
+		rows,
+		offsets: [],
+		overpay: null,
+	});
+
+	it("has no chips when nothing converts", () => {
+		expect(
+			rateChoices(
+				withRates,
+				allocation([{ pays: ars(100), paid: ars(100), excess: false }]),
+				null,
+			),
+		).toBeNull();
+		expect(rateChoices(withRates, null, null)).toBeNull();
+	});
+
+	it("names the converting currencies, the types and the rate in use", () => {
+		const rows = [
+			{ pays: ars(50), paid: ars(50), excess: false },
+			{ pays: brl(100), paid: ars(27100), excess: false },
+		];
+		expect(rateChoices(withRates, allocation(rows), null)).toEqual({
+			currencies: ["BRL"],
+			types: ["blue", "official"],
+			current: "blue",
+			rates: [
+				{ currency: "BRL", unit: brl(100), value: ars(27100), type: "blue" },
+			],
+		});
+		expect(rateChoices(withRates, allocation(rows), "official")?.current).toBe(
+			"official",
+		);
+	});
+
+	it("offers no choice between types when there is one", () => {
+		const rows = [{ pays: brl(100), paid: ars(27100), excess: false }];
+		expect(
+			rateChoices({ ...withRates, rateTypes: ["blue"] }, allocation(rows), null)
+				?.types,
+		).toEqual([]);
+	});
+
+	it("ignores the extra above what is owed", () => {
+		const rows = [{ pays: brl(100), paid: ars(27100), excess: true }];
+		expect(rateChoices(withRates, allocation(rows), null)).toBeNull();
+	});
+});
+
+describe("balanceAfter", () => {
+	const base = { delta: ars(0), figureAfter: [] };
+	const answer = (
+		changes: PaymentPreview["changes"],
+		unchanged: PaymentPreview["unchanged"],
+	): PaymentPreview => ({ changes, unchanged, unavailable: [] });
+
+	it("is empty when the payment settles everything", () => {
+		expect(
+			balanceAfter(
+				answer(
+					[
+						{
+							...base,
+							id: "balance.person",
+							currency: "ARS",
+							before: ars(100),
+							after: null,
+						},
+					],
+					[],
+				),
+			),
+		).toEqual([]);
+	});
+
+	it("keeps what stays open, signed from your side, per currency", () => {
+		expect(
+			balanceAfter(
+				answer(
+					[
+						{
+							...base,
+							id: "balance.person",
+							currency: "ARS",
+							before: ars(-500),
+							after: ars(-200),
+						},
+						{
+							...base,
+							id: "owed.youOwe",
+							currency: "ARS",
+							before: ars(1),
+							after: ars(2),
+						},
+					],
+					[{ id: "balance.person", lines: [brl(4000)] }],
+				),
+			),
+		).toEqual([ars(-200), brl(4000)]);
+	});
+});
+
+describe("allocationDetail", () => {
+	it("reads the allocation the preview carries, or none", () => {
+		const bare = {
+			changes: [],
+			unchanged: [],
+			unavailable: [],
+		} as PaymentPreview;
+		expect(allocationDetail(bare)).toBeNull();
+		const allocation = {
+			amount: ars(1),
+			full: ars(1),
+			rows: [],
+			offsets: [],
+			overpay: null,
+		};
+		expect(
+			allocationDetail({
+				...bare,
+				detail: { kind: "payment.record", allocation },
+			}),
+		).toEqual(allocation);
 	});
 });

@@ -5,7 +5,7 @@ import { PreviewList } from "@/features/settle/PreviewList";
 import type { PaymentPreview } from "@/features/settle/plan";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { Sheet } from "@/ui/Sheet";
+import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { describeLine, nameOfKey, settleAllDetailOf } from "./settleAll";
@@ -39,6 +39,7 @@ export function SettleAllSheet({
 	const toast = useToast();
 	const money = useMoneyText();
 	const { space } = useTheme();
+	const body = useSheetBodySize({ footer: true });
 	const flow = useSettleAll(projectId, visible);
 	const nameOf = (key: string) => nameOfKey(members, key);
 	const first = (key: string) => nameOf(key).split(/\s+/)[0] ?? nameOf(key);
@@ -81,108 +82,114 @@ export function SettleAllSheet({
 	return (
 		<Sheet
 			detents={["large"]}
+			footer={
+				flow.plan !== null && !nothing && flow.status === "ready" ? (
+					<Button
+						disabled={
+							!flow.preview || flow.recording || willRecord.length === 0
+						}
+						label={flow.recording ? t("recording") : t("record")}
+						onPress={record}
+					/>
+				) : undefined
+			}
 			onClose={onClose}
 			title={t("title", { name: projectName })}
 			visible={visible}
 		>
-			<ScrollView
-				contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
-			>
-				{flow.status === "loadError" ? (
-					<>
-						{note(t("loadError"), "attention")}
-						<Button
-							label={tc("retry")}
-							onPress={flow.retryLoad}
-							variant="outlined"
-						/>
-					</>
-				) : nothing ? (
-					note(t("nothing"))
-				) : flow.plan === null || flow.status === "loading" ? (
-					note(t("checking"))
-				) : (
-					<>
-						{note(t("explain"))}
-						{flow.preview ? (
-							<View style={{ gap: space[2] }}>
-								<Text
-									accessibilityRole="header"
-									tone="fg2"
-									variant="small"
-									weight="semibold"
-								>
-									{t("willRecord")}
-								</Text>
-								{willRecord.map((line) => {
-									const d = describeLine(line, nameOf);
-									const who = first(line.person);
-									const words =
-										d.direction === "outgoing"
-											? t("youPay", { name: who })
-											: t("paidYou", { name: who });
-									const amount = money(line.amount);
-									return (
-										<View
-											accessibilityLabel={`${words} ${amount}${d.waiting ? `, ${t("waiting", { name: who })}` : ""}`}
-											accessible
-											key={d.key}
-											style={{ gap: 2 }}
-										>
-											<View
-												style={{
-													flexDirection: "row",
-													justifyContent: "space-between",
-													gap: space[3],
-												}}
-											>
-												<Text style={{ flexShrink: 1 }}>{words}</Text>
-												<Text tabular weight="medium">
-													{amount}
-												</Text>
-											</View>
-											{d.waiting ? (
-												<Text tone="fg2" variant="small">
-													{t("waiting", { name: who })}
-												</Text>
-											) : null}
-										</View>
-									);
-								})}
-								{skipped.map((line) => (
+			<View style={{ ...body }}>
+				<ScrollView
+					contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
+				>
+					{flow.status === "loadError" ? (
+						<>
+							{note(t("loadError"), "attention")}
+							<Button
+								label={tc("retry")}
+								onPress={flow.retryLoad}
+								variant="outlined"
+							/>
+						</>
+					) : nothing ? (
+						note(t("nothing"))
+					) : flow.plan === null || flow.status === "loading" ? (
+						note(t("checking"))
+					) : (
+						<>
+							{note(t("explain"))}
+							{flow.preview ? (
+								<View style={{ gap: space[2] }}>
 									<Text
-										key={`${line.person}:${line.amount.currency}:${line.reason}`}
+										accessibilityRole="header"
 										tone="fg2"
 										variant="small"
+										weight="semibold"
 									>
-										{t(`skipped.${line.reason}`, {
-											name: first(line.person),
-											amount: money(line.amount),
-										})}
+										{t("willRecord")}
 									</Text>
-								))}
-							</View>
-						) : flow.previewFailed ? (
-							note(t("previewError"), "attention")
-						) : (
-							note(t("checking"))
-						)}
-						{figures ? <PreviewList name="" preview={figures} /> : null}
-						{flow.recordFailed === "moved"
-							? note(t("moved"), "attention")
-							: flow.recordFailed === "error"
-								? note(t("error"), "attention")
-								: null}
-						<Button
-							disabled={
-								!flow.preview || flow.recording || willRecord.length === 0
-							}
-							label={flow.recording ? t("recording") : t("record")}
-							onPress={record}
-						/>
-					</>
-				)}
-			</ScrollView>
+									{willRecord.map((line) => {
+										const d = describeLine(line, nameOf);
+										const who = first(line.person);
+										const words =
+											d.direction === "outgoing"
+												? t("youPay", { name: who })
+												: t("paidYou", { name: who });
+										const amount = money(line.amount);
+										return (
+											<View
+												accessibilityLabel={`${words} ${amount}${d.waiting ? `, ${t("waiting", { name: who })}` : ""}`}
+												accessible
+												key={d.key}
+												style={{ gap: 2 }}
+											>
+												<View
+													style={{
+														flexDirection: "row",
+														justifyContent: "space-between",
+														gap: space[3],
+													}}
+												>
+													<Text style={{ flexShrink: 1 }}>{words}</Text>
+													<Text tabular weight="medium">
+														{amount}
+													</Text>
+												</View>
+												{d.waiting ? (
+													<Text tone="fg2" variant="small">
+														{t("waiting", { name: who })}
+													</Text>
+												) : null}
+											</View>
+										);
+									})}
+									{skipped.map((line) => (
+										<Text
+											key={`${line.person}:${line.amount.currency}:${line.reason}`}
+											tone="fg2"
+											variant="small"
+										>
+											{t(`skipped.${line.reason}`, {
+												name: first(line.person),
+												amount: money(line.amount),
+											})}
+										</Text>
+									))}
+								</View>
+							) : flow.previewFailed ? (
+								note(t("previewError"), "attention")
+							) : (
+								note(t("checking"))
+							)}
+							{figures ? <PreviewList name="" preview={figures} /> : null}
+							{flow.recordFailed === "moved"
+								? note(t("moved"), "attention")
+								: flow.recordFailed === "error"
+									? note(t("error"), "attention")
+									: null}
+						</>
+					)}
+				</ScrollView>
+			</View>
 		</Sheet>
 	);
 }
