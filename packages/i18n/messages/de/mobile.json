@@ -7,7 +7,8 @@
 		"projects": "Projekte",
 		"add": "Ausgabe hinzufügen",
 		"search": "Suchen",
-		"recurring": "Wiederkehrend"
+		"recurring": "Wiederkehrend",
+		"currencies": "Währungen"
 	},
 	"common": {
 		"cancel": "Abbrechen",
@@ -1573,14 +1574,7 @@
 			"section": "Kurse",
 			"footer": "Die Standard-Kursart lässt sich vorerst nur im Web ändern.",
 			"defaultType": "Standard-Kursart",
-			"pinned": "Angeheftete Kurse",
-			"title": "Angeheftete Kurse",
-			"none": "Keine angehefteten Kurse",
-			"unpin": "Lösen",
-			"unpinned": "Kurs gelöst",
-			"error": "Der Kurs konnte nicht gelöst werden. Versuche es erneut.",
-			"line": "1 USD = {rate} {currency}",
-			"spoken": "{currency} {type}, 1 USD sind {rate} {currency}"
+			"currencies": "Währungen"
 		},
 		"notifications": {
 			"inApp": "In der App",
@@ -1653,7 +1647,6 @@
 			"footer": "Diese öffnen sich hier im Browser. Dort meldest du dich ebenfalls an.",
 			"import": "Importieren",
 			"insights": "Auswertungen",
-			"currencies": "Währungen und Kurse",
 			"developer": "API-Tokens und Webhooks",
 			"data": "Deine Daten exportieren",
 			"security": "Passwort und Anmeldung in zwei Schritten"
@@ -1798,5 +1791,80 @@
 		"summary": "Ausgabe über {amount} hinzufügen",
 		"phraseAdd": "Füge in {app} eine Ausgabe hinzu",
 		"phraseNew": "Neue Ausgabe in {app}"
+	},
+	"currencies": {
+		"title": "Währungen",
+		"search": "Suchen oder 100 usd eingeben",
+		"filter": {
+			"label": "Anzeigen",
+			"all": "Alle Währungen",
+			"favorites": "Favoriten",
+			"fiat": "Fiat",
+			"crypto": "Krypto"
+		},
+		"pricesIn": "Preis von 1 {base}.",
+		"updated": "Aktualisiert am {date}.",
+		"newUse": "Neue Fremdwährungsbeträge nutzen {type}.",
+		"missing": "Noch kein Kurs für {codes}. {count, plural, one {{names} zählt} other {{names} zählen}} nicht zum Vermögen.",
+		"noRate": "Kein Kurs",
+		"noRateSub": "Kein Kurs. Zählt nicht zu den Summen.",
+		"base": "1 {code} =",
+		"derived": "Über {home} abgeleitet",
+		"loading": "Kurse werden geladen",
+		"error": "Kurse sind gerade nicht verfügbar",
+		"errorDetail": "Versuch es gleich noch einmal.",
+		"retry": "Erneut versuchen",
+		"empty": {
+			"none": "Keine passenden Währungen",
+			"noneHint": "Versuch einen anderen Namen oder Code.",
+			"clear": "Filter löschen",
+			"noFavorites": "Noch keine Favoriten",
+			"noFavoritesHint": "Markiere eine Währung mit dem Stern, damit sie hier und in der Währungsauswahl oben steht.",
+			"showAll": "Alle Währungen zeigen"
+		},
+		"star": {
+			"add": "{code} zu Favoriten hinzufügen",
+			"remove": "{code} aus Favoriten entfernen",
+			"unavailable": "{code} kann noch kein Favorit sein"
+		},
+		"menu": {
+			"convert": "Umrechnen",
+			"favorite": "Zu Favoriten hinzufügen",
+			"unfavorite": "Aus Favoriten entfernen",
+			"history": "Kursverlauf ansehen"
+		},
+		"detail": {
+			"title": "Kurse für {code}",
+			"sub": "{code} · {date}",
+			"noRate": "Kein {code}-Kurs. Konten und Ausgaben in {code} zählen nicht zu den Summen.",
+			"usedBy": "Verwendet von {names}",
+			"rates": "Kurse",
+			"default": "Standard",
+			"defaultTitle": "Standard für neue Ausgaben",
+			"defaultFixed": "Vorerst der eingebaute Standard."
+		},
+		"convert": {
+			"title": "Umrechnen",
+			"amount": "Betrag",
+			"swap": "Richtung tauschen",
+			"into": "in {code}",
+			"failed": "Umrechnung fehlgeschlagen. Versuch es noch einmal.",
+			"quickTitle": "{amount} in {to}"
+		},
+		"toast": {
+			"favorited": "{code} zu Favoriten hinzugefügt",
+			"unfavorited": "{code} aus Favoriten entfernt",
+			"failed": "Das hat nicht geklappt. Versuch es noch einmal."
+		},
+		"rateTypes": {
+			"official": "Offiziell",
+			"blue": "Blue",
+			"card": "Karte",
+			"mep": "MEP",
+			"crypto": "Krypto",
+			"tourist": "Tourist",
+			"market": "Markt",
+			"custom": "Eigener Kurs"
+		}
 	}
 }

@@ -9,6 +9,8 @@ import { Platform } from "react-native";
  */
 export const PROJECTS_APART = Platform.OS === "ios" && Platform.isPad;
 export const RECURRING_APART = PROJECTS_APART;
+/** Currencies is an iPad sidebar destination, as in the web's Tools group; phones open it from Settings. */
+export const CURRENCIES_APART = PROJECTS_APART;
 
 /** Where a project opens: its own tab on iPad, inside People elsewhere. */
 export function projectRoute(id: string) {

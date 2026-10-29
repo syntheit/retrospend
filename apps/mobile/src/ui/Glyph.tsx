@@ -25,27 +25,36 @@ const SHAPES = {
 } as const;
 
 /** Glyphs the screens use beyond the category icons. */
-export type GlyphName = CategoryIconName | "Check" | "Coins" | "Search" | "X";
+export type GlyphName =
+	| CategoryIconName
+	| "Check"
+	| "Coins"
+	| "Search"
+	| "Star"
+	| "X";
 
 /**
  * One lucide glyph, the same drawings the web uses (GUIDELINE 2.7): 24 point
  * grid, the icon stroke token, round caps. Decorative: the row it sits in
- * carries the words, so a screen reader skips it.
+ * carries the words, so a screen reader skips it. `filled` fills the shape
+ * in its stroke color (a starred currency).
  */
 export function Glyph({
 	name,
 	size,
 	color,
+	filled,
 }: {
 	name: GlyphName;
 	size: number;
 	color: string;
+	filled?: boolean;
 }) {
 	const { size: sizes } = useTheme();
 	return (
 		<Svg
 			accessibilityElementsHidden
-			fill="none"
+			fill={filled ? color : "none"}
 			height={size}
 			importantForAccessibility="no-hide-descendants"
 			stroke={color}

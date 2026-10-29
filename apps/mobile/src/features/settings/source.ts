@@ -11,9 +11,6 @@ export type NotificationPreference = Awaited<
 	ReturnType<RetrospendClient["notifications"]["getPreferences"]>
 >["preferences"][number];
 export type NotificationType = NotificationPreference["type"];
-export type FavoriteRate = Awaited<
-	ReturnType<RetrospendClient["settings"]["listFavoriteRates"]>
->["items"][number];
 export type CurrencyOption = Awaited<
 	ReturnType<RetrospendClient["currencies"]["list"]>
 >["items"][number];
@@ -24,7 +21,6 @@ export const NOTIFICATIONS_CACHE: CacheKey = {
 	name: "settings.notifications",
 	schema: 1,
 };
-export const RATES_CACHE: CacheKey = { name: "settings.rates", schema: 1 };
 export const CURRENCIES_CACHE: CacheKey = {
 	name: "settings.currencies",
 	schema: 1,
@@ -33,10 +29,6 @@ export const CURRENCIES_CACHE: CacheKey = {
 /** The newest 200 fiat currencies the server lists is every one it knows. */
 export function fetchCurrencies(api: RetrospendClient) {
 	return () => api.currencies.list({ kind: "fiat", limit: 200 });
-}
-
-export function fetchFavoriteRates(api: RetrospendClient) {
-	return () => api.settings.listFavoriteRates({ limit: 100 });
 }
 
 /** Day 1 to 28, the months a fiscal month can start on. */

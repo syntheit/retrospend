@@ -31,7 +31,6 @@ import { useToast } from "@/ui/Toast";
 import { DeleteAccountSheet } from "./DeleteAccountSheet";
 import { useNumbersSection } from "./NumbersSection";
 import { ProfileSheet } from "./ProfileSheet";
-import { RatesSheet } from "./RatesSheet";
 import {
 	hostOf,
 	MONTH_START_DAYS,
@@ -41,7 +40,6 @@ import {
 	withChannel,
 } from "./source";
 import {
-	useFavoriteRates,
 	useFiatCurrencies,
 	useGeneralSettings,
 	useNotificationPreferences,
@@ -71,11 +69,9 @@ export function SettingsScreen() {
 	const profile = useProfile();
 	const general = useGeneralSettings();
 	const prefsRead = useNotificationPreferences();
-	const rates = useFavoriteRates();
 	const currencies = useFiatCurrencies();
 	const [prefs, setPrefs] = useState<NotificationPreference[]>([]);
 	const [editing, setEditing] = useState(false);
-	const [showRates, setShowRates] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const language = useLanguagePref();
 
@@ -89,7 +85,6 @@ export function SettingsScreen() {
 	const settings = general.state.status === "ready" ? general.state.data : null;
 	const numbers = useNumbersSection(settings, general.reload);
 	const me = profile.state.status === "ready" ? profile.state.data : null;
-	const pinned = rates.state.status === "ready" ? rates.state.data.items : [];
 	const server =
 		connection.status === "connected" ? hostOf(connection.baseUrl) : "";
 
@@ -256,9 +251,9 @@ export function SettingsScreen() {
 						value={t("notAvailable")}
 					/>
 					<FormValueRow
-						label={t("rates.pinned")}
-						onPress={() => setShowRates(true)}
-						value={String(pinned.length)}
+						label={t("rates.currencies")}
+						onPress={() => router.push("/settings/currencies")}
+						value=""
 					/>
 				</FormSection>
 				{push.supported ? (
@@ -361,12 +356,6 @@ export function SettingsScreen() {
 			<DeleteAccountSheet
 				onClose={() => setDeleting(false)}
 				visible={deleting}
-			/>
-			<RatesSheet
-				onChanged={rates.reload}
-				onClose={() => setShowRates(false)}
-				rates={pinned}
-				visible={showRates}
 			/>
 		</View>
 	);

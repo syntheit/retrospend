@@ -1,13 +1,17 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { Platform } from "react-native";
 import { useTranslations } from "use-intl";
-import { PROJECTS_APART, RECURRING_APART } from "@/layout/destinations";
+import {
+	CURRENCIES_APART,
+	PROJECTS_APART,
+	RECURRING_APART,
+} from "@/layout/destinations";
 import { useTheme } from "@/theme";
 
 /**
  * Five destinations on phones: Home, Activity, Budget, Wealth and People
  * (Projects is the second segment of People, see PeopleHub). The iPad sidebar
- * lists Projects and Recurring as well.
+ * lists Projects, Recurring and Currencies as well.
  *
  * Add is not a tab: five tabs fill the iPhone's bar and a sixth goes into
  * More, so the add button floats above the bar (AddEntryProvider). Active nav
@@ -71,6 +75,15 @@ export function Tabs() {
 				<NativeTabs.Trigger name="recurring">
 					<NativeTabs.Trigger.Label>{t("recurring")}</NativeTabs.Trigger.Label>
 					<NativeTabs.Trigger.Icon md="repeat" sf="repeat" />
+				</NativeTabs.Trigger>
+			) : null}
+			{CURRENCIES_APART ? (
+				<NativeTabs.Trigger name="currencies">
+					<NativeTabs.Trigger.Label>{t("currencies")}</NativeTabs.Trigger.Label>
+					<NativeTabs.Trigger.Icon
+						md="currency_exchange"
+						sf="dollarsign.arrow.circlepath"
+					/>
 				</NativeTabs.Trigger>
 			) : null}
 		</NativeTabs>

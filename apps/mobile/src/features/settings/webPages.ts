@@ -7,7 +7,6 @@ import * as WebBrowser from "expo-web-browser";
 export const WEB_PAGES = [
 	{ id: "import", path: "/import" },
 	{ id: "insights", path: "/activity/insights" },
-	{ id: "currencies", path: "/currencies" },
 	{ id: "developer", path: "/settings#developer" },
 	{ id: "data", path: "/settings#data" },
 	{ id: "security", path: "/settings#security" },
