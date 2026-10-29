@@ -140,7 +140,12 @@ export const confirmRecurringSchema = z
 				"The item's dueAt. A repeat of the same confirm is refused instead of booking the next period.",
 		}),
 		amount: amountTextSchema.optional().meta({
-			description: "The real amount, required when amountMode is ask.",
+			description:
+				"The real amount, required when amountMode is ask and refused when it is fixed.",
+		}),
+		paidOn: daySchema.optional().meta({
+			description:
+				"The day it was really paid or received, never in the future. The entry and its rate use this day; the template still moves on from the due date. Default: the due date.",
 		}),
 		rateType: rateTypeSchema.nullish().meta({
 			description: "Recurring income in a foreign currency only.",
@@ -176,6 +181,34 @@ export const recurringConfirmResultSchema = z
 		plan: planResultSchema.nullable(),
 	})
 	.meta({ id: "RecurringConfirm" });
+
+export const skipRecurringSchema = z
+	.object({
+		id: idSchema,
+		dueAt: timestampSchema.optional().meta({
+			description:
+				"The item's dueAt. A repeat of the same skip is refused instead of skipping the next period.",
+		}),
+	})
+	.meta({ id: "SkipRecurring" });
+
+export const recurringSkipResultSchema = z
+	.object({
+		templateId: idSchema,
+		/** The due instant that was skipped. */
+		skippedAt: timestampSchema,
+		/** The new due instant of the template. */
+		nextDueAt: timestampSchema,
+	})
+	.meta({ id: "RecurringSkip" });
+
+export const recurringSkipWriteSchema = z
+	.object({ skipped: recurringSkipResultSchema, ...undoField })
+	.meta({ id: "RecurringSkipWrite" });
+
+export const recurringSkipUndoResultSchema = z
+	.object({ templateId: idSchema, dueAt: timestampSchema })
+	.meta({ id: "RecurringSkipUndo" });
 
 export const recurringConfirmWriteSchema = z
 	.object({ confirmed: recurringConfirmResultSchema, ...undoField })
@@ -290,6 +323,48 @@ export const recurringContract = {
 		tags: TAG,
 		scope: "write:money",
 		input: confirmRecurringSchema,
+	}),
+	skip: v1
+		.route({
+			method: "POST",
+			path: "/recurring/{id}/skip",
+			operationId: "skipRecurring",
+			tags: TAG,
+			summary: "Skip a due item this time",
+			description:
+				"Moves the template to its next date and books nothing. Fixed or varying, expense or income.",
+		})
+		.meta({ scope: "write:money", event: "recurring.skipped" })
+		.input(skipRecurringSchema)
+		.output(recurringSkipWriteSchema),
+	previewSkip: previewTwin({
+		path: "/recurring/{id}/skip",
+		of: "POST /recurring/{id}/skip",
+		operationId: "previewSkipRecurring",
+		tags: TAG,
+		scope: "write:money",
+		input: skipRecurringSchema,
+	}),
+	undoSkip: v1
+		.route({
+			method: "POST",
+			path: "/recurring/skip/undo",
+			operationId: "undoSkipRecurring",
+			tags: TAG,
+			summary: "Revert a skip from its undo token",
+			description:
+				"Puts the template back on the skipped date. Only the newest change of a template can be undone.",
+		})
+		.meta({ scope: "write:money", event: "recurring.undone" })
+		.input(undoInputSchema)
+		.output(recurringSkipUndoResultSchema),
+	previewUndoSkip: previewTwin({
+		path: "/recurring/skip/undo",
+		of: "POST /recurring/skip/undo",
+		operationId: "previewUndoSkipRecurring",
+		tags: TAG,
+		scope: "write:money",
+		input: undoInputSchema,
 	}),
 	undo: v1
 		.route({

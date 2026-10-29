@@ -44,6 +44,42 @@ jest.mock("@/ui/Button", () => {
 		),
 	};
 });
+jest.mock("@/ui/Segmented", () => {
+	const { Pressable } = require("react-native");
+	return {
+		Segmented: ({
+			options,
+			onChange,
+		}: {
+			options: { value: string; label: string }[];
+			onChange: (value: string) => void;
+		}) =>
+			options.map((o) => (
+				<Pressable
+					accessibilityLabel={o.label}
+					key={o.value}
+					onPress={() => onChange(o.value)}
+				/>
+			)),
+	};
+});
+jest.mock("@/ui/DateField", () => {
+	const { Pressable } = require("react-native");
+	return {
+		DateField: ({
+			label,
+			onChange,
+		}: {
+			label: string;
+			onChange: (picked: string) => void;
+		}) => (
+			<Pressable
+				accessibilityLabel={label}
+				onPress={() => onChange("2026-11-03")}
+			/>
+		),
+	};
+});
 jest.mock("@/lib/intl", () => ({ useFormatLocale: () => "en-US" }));
 jest.mock("use-intl", () => {
 	const { loadMessages } = require("@/lib/i18n");
@@ -140,7 +176,14 @@ describe("Confirm a recurring expense", () => {
 		let tree!: Tree;
 		await act(async () => {
 			tree = create(
-				<ConfirmSheet item={item} onClose={onClose} onDone={onDone} visible />,
+				<ConfirmSheet
+					item={item}
+					onClose={onClose}
+					onDone={onDone}
+					onSkip={jest.fn()}
+					today="2026-11-01"
+					visible
+				/>,
 			);
 		});
 		await wait(400);
@@ -188,6 +231,8 @@ describe("Confirm a recurring expense", () => {
 					item={withAutoPay}
 					onClose={jest.fn()}
 					onDone={jest.fn()}
+					onSkip={jest.fn()}
+					today="2026-11-01"
 					visible
 				/>,
 			);
@@ -213,6 +258,8 @@ describe("Confirm a recurring expense", () => {
 					item={asking}
 					onClose={jest.fn()}
 					onDone={jest.fn()}
+					onSkip={jest.fn()}
+					today="2026-11-01"
 					visible
 				/>,
 			);
@@ -223,6 +270,76 @@ describe("Confirm a recurring expense", () => {
 			dueAt: "2026-11-01T12:00:00.000Z",
 			amount: "15.99",
 		});
+		act(() => tree.unmount());
+	});
+
+	it("sends the day it was paid, and only when it is not the due date", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(
+				<ConfirmSheet
+					item={item}
+					onClose={jest.fn()}
+					onDone={jest.fn()}
+					onSkip={jest.fn()}
+					today="2026-11-04"
+					visible
+				/>,
+			);
+		});
+		await wait(400);
+		const previews = () => calls.filter((c) => c.route === "preview");
+		expect(previews().at(-1)?.input).toEqual({
+			id: "rec-netflix",
+			dueAt: "2026-11-01T12:00:00.000Z",
+		});
+
+		press(tree, "Today");
+		await wait(400);
+		const body = {
+			id: "rec-netflix",
+			dueAt: "2026-11-01T12:00:00.000Z",
+			paidOn: "2026-11-04",
+		};
+		expect(previews().at(-1)?.input).toEqual(body);
+
+		press(tree, "Pick a date");
+		await wait(50);
+		press(tree, "Date");
+		await wait(400);
+		expect(previews().at(-1)?.input).toEqual({ ...body, paidOn: "2026-11-03" });
+
+		press(tree, "Confirm");
+		await wait(50);
+		const writes = calls.filter((c) => c.route === "write");
+		expect(writes).toHaveLength(1);
+		expect(writes[0]?.input).toEqual({ ...body, paidOn: "2026-11-03" });
+		act(() => tree.unmount());
+	});
+
+	it("hands over to the skip sheet without writing", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const onSkip = jest.fn();
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(
+				<ConfirmSheet
+					item={item}
+					onClose={jest.fn()}
+					onDone={jest.fn()}
+					onSkip={onSkip}
+					today="2026-11-01"
+					visible
+				/>,
+			);
+		});
+		await wait(400);
+		press(tree, "Skip this time");
+		expect(onSkip).toHaveBeenCalledTimes(1);
+		expect(calls.some((c) => c.route === "write")).toBe(false);
 		act(() => tree.unmount());
 	});
 });

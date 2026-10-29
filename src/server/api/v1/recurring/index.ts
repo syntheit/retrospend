@@ -43,6 +43,26 @@ export const recurringRouter = {
 			recurring.previewConfirmRecurring(signedIn(context), input),
 		),
 	),
+	skip: r.skip.handler(
+		serve(({ context, input }) =>
+			recurring.skipRecurringItem(signedIn(context), input),
+		),
+	),
+	previewSkip: r.previewSkip.handler(
+		serve(({ context, input }) =>
+			recurring.previewSkipRecurring(signedIn(context), input),
+		),
+	),
+	undoSkip: r.undoSkip.handler(
+		serve(({ context, input }) =>
+			recurring.undoSkipRecurring(signedIn(context), input.token),
+		),
+	),
+	previewUndoSkip: r.previewUndoSkip.handler(
+		serve(({ context, input }) =>
+			recurring.previewUndoSkipRecurring(signedIn(context), input.token),
+		),
+	),
 	undo: r.undo.handler(
 		serve(({ context, input }) =>
 			recurring.undoRecurringConfirm(signedIn(context), input.token),

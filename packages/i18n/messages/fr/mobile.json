@@ -2174,7 +2174,16 @@
 			"fixed": "Le montant habituel, {amount}.",
 			"nextDue": "Prochaine échéance",
 			"submit": "Confirmer",
-			"toast": "{title} enregistré, {amount}"
+			"toast": "{title} enregistré, {amount}",
+			"paidOn": "Payé le",
+			"paidOnIn": "Reçu le",
+			"paidOnDue": "{date} (échéance)",
+			"paidOnDueToday": "Aujourd'hui (échéance)",
+			"paidOnToday": "Aujourd'hui",
+			"paidOnPick": "Choisir une date",
+			"pickDate": "Date",
+			"future": "La date ne peut pas être dans le futur.",
+			"skip": "Ignorer cette fois"
 		},
 		"item": {
 			"next": "{amount}, prochain le {date}.",
@@ -2202,6 +2211,12 @@
 			"saving": "Enregistrement",
 			"error": "Impossible de le rendre récurrent. Réessaie.",
 			"toast": "{title} revient maintenant chaque mois"
+		},
+		"skip": {
+			"title": "Ignorer {title}",
+			"body": "Rien n'est enregistré. Prochaine échéance le {date}.",
+			"submit": "Ignorer",
+			"toast": "{title} ignoré. Prochaine échéance le {date}"
 		}
 	},
 	"shortcuts": {

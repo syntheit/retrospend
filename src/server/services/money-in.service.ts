@@ -71,7 +71,10 @@ export async function recurringEntryData(
 	/** A decimal string is stored exactly as typed. */
 	confirmedAmount?: number | string,
 	choice: RateChoice = { kind: "table", rateType: null },
+	/** The day it was really paid or received; the due date when omitted. */
+	paidOn?: Date,
 ): Promise<Prisma.ExpenseUncheckedCreateInput> {
+	const bookedOn = paidOn ?? template.nextDueDate;
 	const asks = template.amountMode === "ASK";
 	if (asks !== (confirmedAmount !== undefined)) {
 		throw new TRPCError({
@@ -89,7 +92,7 @@ export async function recurringEntryData(
 			// Decimal text keeps the home amount exact (a Decimal's toString never rounds).
 			amount: typeof amount === "object" ? amount.toFixed() : amount,
 			currency: template.currency,
-			date: template.nextDueDate,
+			date: bookedOn,
 		},
 		choice,
 	);
@@ -99,7 +102,7 @@ export async function recurringEntryData(
 		title: template.name,
 		amount,
 		currency: template.currency,
-		date: template.nextDueDate,
+		date: bookedOn,
 		categoryId: template.categoryId,
 		...rate,
 		pricingSource: "RECURRING",

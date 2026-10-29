@@ -452,6 +452,225 @@ describe("/api/v1/recurring", () => {
 		);
 	});
 
+	it("books on the day it was paid and the undo still rewinds the template", async () => {
+		const item = await make({ name: "Paid late", nextDueDate: daysAgo(5) });
+		const paidOn = daysAgo(1);
+		await expectProblem(
+			await send("POST", `/recurring/${item.id}/confirm`, {
+				paidOn: new Date(Date.now() + 2 * 86_400_000)
+					.toISOString()
+					.slice(0, 10),
+			}),
+			400,
+			"bad_request",
+		);
+		await expect(
+			adminDb.expense.count({ where: { recurringTemplateId: item.id } }),
+		).resolves.toBe(0);
+		const done = await expectBody<Confirm>(
+			await send("POST", `/recurring/${item.id}/confirm`, {
+				dueAt: item.dueAt,
+				paidOn,
+			}),
+			c.confirm,
+		);
+		const row = await adminDb.expense.findUniqueOrThrow({
+			where: { id: done.confirmed.expenseId },
+		});
+		expect(row.date.toISOString().slice(0, 10)).toBe(paidOn);
+		const moved = await adminDb.recurringTemplate.findUniqueOrThrow({
+			where: { id: item.id },
+		});
+		// The template moves on from its due date, not from the day it was paid.
+		expect(moved.nextDueDate.getTime()).toBeGreaterThan(
+			new Date(item.dueAt).getTime(),
+		);
+		await expectBody(
+			await send("POST", "/recurring/undo", { token: done.undo }),
+			c.undo,
+		);
+		await expect(
+			adminDb.expense.count({ where: { id: done.confirmed.expenseId } }),
+		).resolves.toBe(0);
+		const back = await adminDb.recurringTemplate.findUniqueOrThrow({
+			where: { id: item.id },
+		});
+		expect(back.nextDueDate.toISOString()).toBe(item.dueAt);
+	});
+
+	it("books recurring income on its paid-on day and undoes it", async () => {
+		const item = await make({
+			name: "Late pay",
+			amount: "900",
+			direction: "in",
+			nextDueDate: daysAgo(6),
+		});
+		const paidOn = daysAgo(2);
+		const done = await expectBody<Confirm>(
+			await send("POST", `/recurring/${item.id}/confirm`, { paidOn }),
+			c.confirm,
+		);
+		const row = await adminDb.expense.findUniqueOrThrow({
+			where: { id: done.confirmed.expenseId },
+		});
+		expect(row.date.toISOString()).toBe(`${paidOn}T00:00:00.000Z`);
+		await expectBody(
+			await send("POST", "/recurring/undo", { token: done.undo }),
+			c.undo,
+		);
+		const back = await adminDb.recurringTemplate.findUniqueOrThrow({
+			where: { id: item.id },
+		});
+		expect(back.nextDueDate.toISOString()).toBe(item.dueAt);
+	});
+
+	it("keeps a fixed template fixed and takes the amount of a varying one with paid on", async () => {
+		const fixed = await make({ name: "Fixed bill" });
+		await expectProblem(
+			await send("POST", `/recurring/${fixed.id}/confirm`, { amount: "99" }),
+			400,
+			"bad_request",
+		);
+		const varying = await make({ name: "Varying bill", amountMode: "ask" });
+		const done = await expectBody<Confirm>(
+			await send("POST", `/recurring/${varying.id}/confirm`, {
+				amount: "31.25",
+				paidOn: daysAgo(1),
+			}),
+			c.confirm,
+		);
+		const row = await adminDb.expense.findUniqueOrThrow({
+			where: { id: done.confirmed.expenseId },
+		});
+		expect(row.amount.toString()).toBe("31.25");
+		expect(row.date.toISOString().slice(0, 10)).toBe(daysAgo(1));
+	});
+
+	it.each([
+		["expense", "out"],
+		["income", "in"],
+	] as const)(
+		"skips a due %s after a preview, books nothing and undoes it",
+		async (_n, direction) => {
+			const item = await make({
+				name: `Skip ${direction}`,
+				direction,
+				nextDueDate: daysAgo(4),
+			});
+			const preview = await expectBody<Preview>(
+				await send("POST", `/recurring/${item.id}/skip/preview`, {
+					dueAt: item.dueAt,
+				}),
+				c.previewSkip,
+			);
+			expect(preview.changes).toEqual([]);
+			await expect(
+				adminDb.recurringTemplate.findUniqueOrThrow({ where: { id: item.id } }),
+			).resolves.toMatchObject({ nextDueDate: new Date(item.dueAt) });
+
+			const done = await expectBody<{
+				skipped: { templateId: string; skippedAt: string; nextDueAt: string };
+				undo: string;
+			}>(
+				await send("POST", `/recurring/${item.id}/skip`, { dueAt: item.dueAt }),
+				c.skip,
+			);
+			expect(done.skipped).toMatchObject({
+				templateId: item.id,
+				skippedAt: item.dueAt,
+			});
+			const moved = await adminDb.recurringTemplate.findUniqueOrThrow({
+				where: { id: item.id },
+			});
+			expect(moved.nextDueDate.toISOString()).toBe(done.skipped.nextDueAt);
+			expect(moved.nextDueDate.getTime()).toBeGreaterThan(
+				new Date(item.dueAt).getTime(),
+			);
+			await expect(
+				adminDb.expense.count({ where: { recurringTemplateId: item.id } }),
+			).resolves.toBe(0);
+
+			// The same skip again is refused, not applied to the next period.
+			await expectProblem(
+				await send("POST", `/recurring/${item.id}/skip`, { dueAt: item.dueAt }),
+				409,
+				"conflict",
+			);
+
+			await expectBody(
+				await send("POST", "/recurring/skip/undo/preview", {
+					token: done.undo,
+				}),
+				c.previewUndoSkip,
+			);
+			await expectBody(
+				await send("POST", "/recurring/skip/undo", { token: done.undo }),
+				c.undoSkip,
+			);
+			const back = await adminDb.recurringTemplate.findUniqueOrThrow({
+				where: { id: item.id },
+			});
+			expect(back.nextDueDate.toISOString()).toBe(item.dueAt);
+			// The token is spent.
+			await expectProblem(
+				await send("POST", "/recurring/skip/undo", { token: done.undo }),
+				409,
+				"conflict",
+			);
+		},
+	);
+
+	it("refuses to skip what is not due, and a skip undo after a later change", async () => {
+		const later = await make({
+			name: "Not due",
+			nextDueDate: daysAgo(-20),
+		});
+		await expectProblem(
+			await send("POST", `/recurring/${later.id}/skip`, {}),
+			409,
+			"conflict",
+		);
+
+		const item = await make({
+			name: "Skip then confirm",
+			frequency: "WEEKLY",
+			nextDueDate: daysAgo(10),
+		});
+		const skip = await expectBody<{ undo: string }>(
+			await send("POST", `/recurring/${item.id}/skip`, {}),
+			c.skip,
+		);
+		await expectBody<Confirm>(
+			await send("POST", `/recurring/${item.id}/confirm`, {}),
+			c.confirm,
+		);
+		await expectProblem(
+			await send("POST", "/recurring/skip/undo", { token: skip.undo }),
+			409,
+			"conflict",
+		);
+	});
+
+	it("keeps skip to the owner and to write:money", async () => {
+		const item = await make({ name: "Skip scopes" });
+		await expectProblem(
+			await send("POST", `/recurring/${item.id}/skip`, {}, asOther),
+			404,
+			"not_found",
+		);
+		await expectProblem(
+			await send("POST", `/recurring/${item.id}/skip/preview`, {}, asOther),
+			404,
+			"not_found",
+		);
+		const expensesOnly = await asKey(userId, ["read", "write:expenses"]);
+		await expectProblem(
+			await send("POST", `/recurring/${item.id}/skip`, {}, expensesOnly),
+			403,
+			"missing_scope",
+		);
+	});
+
 	it("keeps templates to their owner", async () => {
 		const item = await make({ name: "Alice only" });
 		await expectProblem(

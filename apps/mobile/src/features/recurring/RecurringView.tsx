@@ -24,6 +24,7 @@ import { Text } from "@/ui/Text";
 import { ConfirmSheet, useDayText } from "./ConfirmSheet";
 import { groupsOf, isDue, type Period, type RecurringGroup } from "./groups";
 import { ItemSheet } from "./ItemSheet";
+import { SkipSheet } from "./SkipSheet";
 import {
 	fetchRecurring,
 	RECURRING_CACHE,
@@ -70,10 +71,12 @@ function Row({
 	item,
 	onDetails,
 	onConfirm,
+	onSkip,
 }: {
 	item: RecurringItem;
 	onDetails: () => void;
 	onConfirm: () => void;
+	onSkip: () => void;
 }) {
 	const t = useTranslations("mobile.recurring");
 	const money = useMoneyText();
@@ -122,7 +125,8 @@ function Row({
 		row
 	);
 	if (!due) return shown;
-	// A due one swipes right to Confirm; a tap and a long press open the same.
+	// A due one swipes right to Confirm and left to Skip; a tap opens Confirm,
+	// a long press the menu.
 	return (
 		<SwipeRow
 			leading={{
@@ -132,10 +136,12 @@ function Row({
 			}}
 			menu={[
 				{ id: "confirm", label: t("confirm.submit"), onPress: onConfirm },
+				{ id: "skip", label: t("confirm.skip"), onPress: onSkip },
 				{ id: "details", label: t("details"), onPress: onDetails },
 			]}
 			menuTitle={item.title}
 			onPress={onConfirm}
+			trailing={{ label: t("skip.submit"), onPress: onSkip, tone: "neutral" }}
 		>
 			{shown}
 		</SwipeRow>
@@ -210,10 +216,12 @@ function Groups({
 	groups,
 	onDetails,
 	onConfirm,
+	onSkip,
 }: {
 	groups: RecurringGroup[];
 	onDetails: (item: RecurringItem) => void;
 	onConfirm: (item: RecurringItem) => void;
+	onSkip: (item: RecurringItem) => void;
 }) {
 	const t = useTranslations("mobile.recurring.groups");
 	return (
@@ -231,6 +239,7 @@ function Groups({
 								key={item.id}
 								onConfirm={() => onConfirm(item)}
 								onDetails={() => onDetails(item)}
+								onSkip={() => onSkip(item)}
 							/>
 						))}
 					</ListGroup>
@@ -266,7 +275,8 @@ function Logged({ data }: { data: RecurringData }) {
 /**
  * Recurring expenses and income: how many, what they cost a month, the list
  * grouped by due date, and what auto-pay logged this month. A due item
- * confirms (tap, swipe right, long press); any other opens its details
+ * confirms (tap, swipe right, long press) or skips (swipe left, long press);
+ * any other opens its details
  * (auto-pay, pause). Adding and editing a template are on the web for now.
  * `embedded` is Activity's Recurring segment: Activity owns the title, and
  * `header` is the segmented control that stays above the list.
@@ -285,6 +295,7 @@ export function RecurringView({
 	const fetch = useMemo(() => (api ? fetchRecurring(api) : null), [api]);
 	const { state, reload } = useCachedRead(RECURRING_CACHE, fetch);
 	const [confirming, setConfirming] = useState<RecurringItem | null>(null);
+	const [skipping, setSkipping] = useState<RecurringItem | null>(null);
 	const [detail, setDetail] = useState<RecurringItem | null>(null);
 
 	const title = embedded ? null : (
@@ -330,6 +341,7 @@ export function RecurringView({
 					groups={groups}
 					onConfirm={setConfirming}
 					onDetails={setDetail}
+					onSkip={setSkipping}
 				/>
 				<Logged data={data} />
 			</Screen>
@@ -337,6 +349,19 @@ export function RecurringView({
 				<ConfirmSheet
 					item={confirming}
 					onClose={() => setConfirming(null)}
+					onDone={() => void reload()}
+					onSkip={() => {
+						setSkipping(confirming);
+						setConfirming(null);
+					}}
+					today={data.summary.today}
+					visible
+				/>
+			) : null}
+			{skipping ? (
+				<SkipSheet
+					item={skipping}
+					onClose={() => setSkipping(null)}
 					onDone={() => void reload()}
 					visible
 				/>

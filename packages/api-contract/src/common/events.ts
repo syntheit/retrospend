@@ -59,6 +59,7 @@ export const EVENT_TYPES = [
 	"recurring.confirmed",
 	"recurring.created",
 	"recurring.deleted",
+	"recurring.skipped",
 	"recurring.undone",
 	"recurring.updated",
 	"transfer.created",

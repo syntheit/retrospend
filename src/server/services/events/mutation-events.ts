@@ -18,6 +18,8 @@ export const MUTATION_EVENTS: Readonly<Record<string, EventName>> = {
 	"import.undo": "import.undone",
 	"recurring.confirm": "recurring.confirmed",
 	"recurring.unconfirm": "recurring.undone",
+	"recurring.skip": "recurring.skipped",
+	"recurring.unskip": "recurring.undone",
 	"income.add": "income.created",
 	"income.delete": "income.deleted",
 	"expense.create": "expense.created",

@@ -2174,7 +2174,16 @@
 			"fixed": "O valor de sempre, {amount}.",
 			"nextDue": "Próximo vencimento",
 			"submit": "Confirmar",
-			"toast": "{title} registrado, {amount}"
+			"toast": "{title} registrado, {amount}",
+			"paidOn": "Pago em",
+			"paidOnIn": "Recebido em",
+			"paidOnDue": "{date} (vencimento)",
+			"paidOnDueToday": "Hoje (vencimento)",
+			"paidOnToday": "Hoje",
+			"paidOnPick": "Escolher data",
+			"pickDate": "Data",
+			"future": "A data não pode ser futura.",
+			"skip": "Pular desta vez"
 		},
 		"item": {
 			"next": "{amount}, próximo em {date}.",
@@ -2202,6 +2211,12 @@
 			"saving": "Salvando",
 			"error": "Não foi possível tornar recorrente. Tente de novo.",
 			"toast": "{title} agora se repete todo mês"
+		},
+		"skip": {
+			"title": "Pular {title}",
+			"body": "Nada é registrado. Vence de novo em {date}.",
+			"submit": "Pular",
+			"toast": "{title} pulado. Próximo vencimento {date}"
 		}
 	},
 	"shortcuts": {
