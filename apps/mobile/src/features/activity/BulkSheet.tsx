@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -9,6 +9,7 @@ import type { PreviewState } from "@/features/entry/preview";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import {
 	type BulkAction,
@@ -42,7 +43,7 @@ export function BulkSheet({
 	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const toast = useToast();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const [preview, setPreview] = useState<PreviewState>({ status: "loading" });
 	const [busy, setBusy] = useState(false);
 	const [failed, setFailed] = useState(false);
@@ -117,7 +118,7 @@ export function BulkSheet({
 	return (
 		<Sheet onClose={onClose} title={title} visible={open}>
 			<View style={{ gap: space[4] }}>
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
+				<Text tone="fg2">
 					{action?.kind === "delete"
 						? t("deleteBody")
 						: t("categorizeBody", {
@@ -126,15 +127,12 @@ export function BulkSheet({
 				</Text>
 				<ChangesBlock idle="" state={preview} />
 				{skipped > 0 ? (
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					<Text tone="fg2" variant="small">
 						{t("skipped", { count: skipped })}
 					</Text>
 				) : null}
 				{failed ? (
-					<Text
-						accessibilityLiveRegion="polite"
-						style={{ color: color.attentionText, fontSize: type.body.size }}
-					>
+					<Text accessibilityLiveRegion="polite" tone="attention">
 						{t("failed")}
 					</Text>
 				) : null}

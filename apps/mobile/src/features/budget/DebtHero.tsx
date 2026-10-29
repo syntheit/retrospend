@@ -1,7 +1,8 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 import { monthDate } from "./months";
 import type { BudgetMonth, PayoffProjection } from "./source";
 
@@ -22,7 +23,7 @@ export function DebtHero({
 	const t = useTranslations("mobile.budget.debt");
 	const format = useFormatter();
 	const money = useMoneyText();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const lead = data.verdict.lead.amount;
 	const quiet = t("leftToSpend", {
 		amount: money(lead, lead.minor < 0 ? { sign: "never" } : undefined),
@@ -30,10 +31,8 @@ export function DebtHero({
 	if (!payoff) {
 		return (
 			<View style={{ gap: space[1], paddingHorizontal: space[4] }}>
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{t("unavailable")}
-				</Text>
-				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+				<Text tone="fg2">{t("unavailable")}</Text>
+				<Text tone="fg2" variant="small">
 					{quiet}
 				</Text>
 			</View>
@@ -65,30 +64,21 @@ export function DebtHero({
 				accessible
 				style={{ gap: space[1] }}
 			>
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{t("label")}
-				</Text>
+				<Text tone="fg2">{t("label")}</Text>
 				<Text
 					adjustsFontSizeToFit
 					numberOfLines={1}
-					style={{
-						color: color.fg,
-						fontSize: type.hero.size,
-						fontWeight: "600",
-					}}
+					tabular={false}
+					variant="hero"
 				>
 					{headline}
 				</Text>
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{sentence}
-				</Text>
+				<Text tone="fg2">{sentence}</Text>
 				{payoff.capped && !payoff.incomplete && !payoff.diverges ? (
-					<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-						{t("capped")}
-					</Text>
+					<Text tone="fg2">{t("capped")}</Text>
 				) : null}
 			</View>
-			<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+			<Text tone="fg2" variant="small">
 				{quiet}
 			</Text>
 		</View>

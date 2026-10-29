@@ -5,11 +5,12 @@ import {
 	useImperativeHandle,
 	useRef,
 } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 import type { SearchBarCommands } from "react-native-screens";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Glyph } from "./Glyph";
+import { Text } from "./Text";
 
 /**
  * The title row of one pane in a list-detail pair. The native navigation bar
@@ -24,7 +25,7 @@ export function PaneBar({
 	title: string;
 	trailing?: ReactNode;
 }) {
-	const { color, space, size, type } = useTheme();
+	const { color, space, size } = useTheme();
 	return (
 		<View
 			style={{
@@ -41,12 +42,8 @@ export function PaneBar({
 			<Text
 				accessibilityRole="header"
 				numberOfLines={1}
-				style={{
-					flex: 1,
-					color: color.fg,
-					fontSize: type.section.size,
-					fontWeight: "600",
-				}}
+				style={{ flex: 1 }}
+				variant="section"
 			>
 				{title}
 			</Text>

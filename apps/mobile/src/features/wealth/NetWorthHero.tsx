@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Segmented } from "@/ui/Segmented";
+import { Text } from "@/ui/Text";
 import { ScrubChart } from "./ScrubChart";
 import { RANGES, sliceRange, type WealthRange } from "./series";
 import type { NetWorth, SeriesPoint } from "./source";
@@ -21,7 +22,7 @@ export function NetWorthHero({ netWorth }: { netWorth: NetWorth }) {
 	const tm = useTranslations("mobile.money");
 	const format = useFormatter();
 	const money = useMoneyText();
-	const { color, space, type } = useTheme();
+	const { space, type } = useTheme();
 	const [range, setRange] = useState<WealthRange>("3M");
 	const [scrub, setScrub] = useState<SeriesPoint | null>(null);
 	const points = useMemo(
@@ -54,27 +55,13 @@ export function NetWorthHero({ netWorth }: { netWorth: NetWorth }) {
 				accessible
 				style={{ gap: space[1] }}
 			>
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{t("netWorth")}
-				</Text>
-				<Text
-					adjustsFontSizeToFit
-					numberOfLines={1}
-					style={{
-						color: color.fg,
-						fontSize: type.hero.size,
-						fontVariant: ["tabular-nums"],
-						fontWeight: "600",
-					}}
-				>
+				<Text tone="fg2">{t("netWorth")}</Text>
+				<Text adjustsFontSizeToFit numberOfLines={1} variant="hero">
 					{amount}
 				</Text>
 				<Text
-					style={{
-						color: color.fg2,
-						fontSize: type.body.size,
-						minHeight: type.body.size * type.body.lineHeight,
-					}}
+					style={{ minHeight: type.body.size * type.body.lineHeight }}
+					tone="fg2"
 				>
 					{line ?? " "}
 				</Text>

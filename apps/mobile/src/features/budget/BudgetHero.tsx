@@ -1,8 +1,9 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
+import { Text } from "@/ui/Text";
 import type { BudgetMonth } from "./source";
 import { useVerdictText } from "./useVerdictText";
 import {
@@ -36,7 +37,7 @@ export function BudgetHero({
 	const tm = useTranslations("mobile.money");
 	const money = useMoneyText();
 	const text = useVerdictText(names);
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const v = data.verdict;
 	const missing = data.missingRates.map((r) => r.currency).join(", ");
 	const incomplete = data.incomplete || v.incomplete;
@@ -59,24 +60,11 @@ export function BudgetHero({
 				accessible
 				style={{ gap: space[1] }}
 			>
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{label}
-				</Text>
-				<Text
-					adjustsFontSizeToFit
-					numberOfLines={1}
-					style={{
-						color: color.fg,
-						fontSize: type.hero.size,
-						fontVariant: ["tabular-nums"],
-						fontWeight: "600",
-					}}
-				>
+				<Text tone="fg2">{label}</Text>
+				<Text adjustsFontSizeToFit numberOfLines={1} variant="hero">
 					{shown ?? tm("noRate")}
 				</Text>
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{sentence}
-				</Text>
+				<Text tone="fg2">{sentence}</Text>
 			</View>
 			{sheet && v.action ? (
 				<View style={{ alignItems: "flex-start", paddingTop: space[2] }}>

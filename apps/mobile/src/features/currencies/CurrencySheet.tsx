@@ -1,8 +1,9 @@
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { ConvertBlock } from "./ConvertBlock";
 import {
 	PriceText,
@@ -37,15 +38,10 @@ export function CurrencySheet({
 	const name = useCurrencyName();
 	const label = useRateLabel();
 	const day = useDayText();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const hasRate = priced(row);
 	const blocked = !row.favorite && !row.rateId;
 	const several = row.rates.length > 1;
-	const sectionTitle = {
-		color: color.fg,
-		fontSize: type.section.size,
-		fontWeight: "600" as const,
-	};
 	return (
 		<Sheet
 			detents={["medium", "large"]}
@@ -58,10 +54,8 @@ export function CurrencySheet({
 				keyboardShouldPersistTaps="handled"
 			>
 				<View style={{ gap: space[1] }}>
-					<Text style={{ color: color.fg, fontSize: type.body.size }}>
-						{name(row.code)}
-					</Text>
-					<Text style={{ color: color.fg3, fontSize: type.meta.size }}>
+					<Text>{name(row.code)}</Text>
+					<Text tone="fg3" variant="meta">
 						{hasRate && table.updated
 							? t("sub", { code: row.code, date: day(table.updated) })
 							: row.code}
@@ -69,7 +63,7 @@ export function CurrencySheet({
 				</View>
 				{hasRate ? (
 					<View>
-						<Text accessibilityRole="header" style={sectionTitle}>
+						<Text accessibilityRole="header" variant="section">
 							{t("rates")}
 						</Text>
 						{row.rates.map((r) => (
@@ -88,22 +82,16 @@ export function CurrencySheet({
 								{r.price ? (
 									<PriceText price={r.price} showBase />
 								) : (
-									<Text style={{ color: color.fg3, fontSize: type.body.size }}>
-										{tc("noRate")}
-									</Text>
+									<Text tone="fg3">{tc("noRate")}</Text>
 								)}
 							</TypeLine>
 						))}
 					</View>
 				) : (
 					<View style={{ gap: space[2] }}>
-						<Text
-							style={{ color: color.attentionText, fontSize: type.body.size }}
-						>
-							{t("noRate", { code: row.code })}
-						</Text>
+						<Text tone="attention">{t("noRate", { code: row.code })}</Text>
 						{row.usedBy.length ? (
-							<Text style={{ color: color.fg3, fontSize: type.meta.size }}>
+							<Text tone="fg3" variant="meta">
 								{t("usedBy", { names: row.usedBy.join(", ") })}
 							</Text>
 						) : null}
@@ -111,14 +99,12 @@ export function CurrencySheet({
 				)}
 				{hasRate && several && row.defaultType ? (
 					<View style={{ gap: space[1] }}>
-						<Text accessibilityRole="header" style={sectionTitle}>
+						<Text accessibilityRole="header" variant="section">
 							{t("defaultTitle")}
 						</Text>
-						<Text style={{ color: color.fg, fontSize: type.body.size }}>
-							{label(row.defaultType)}
-						</Text>
+						<Text>{label(row.defaultType)}</Text>
 						{table.canSetDefault ? null : (
-							<Text style={{ color: color.fg3, fontSize: type.meta.size }}>
+							<Text tone="fg3" variant="meta">
 								{t("defaultFixed")}
 							</Text>
 						)}
@@ -126,7 +112,7 @@ export function CurrencySheet({
 				) : null}
 				{hasRate ? <ConvertBlock home={table.home} row={row} /> : null}
 				{blocked ? (
-					<Text style={{ color: color.fg3, fontSize: type.meta.size }}>
+					<Text tone="fg3" variant="meta">
 						{ts("unavailable", { code: row.code })}
 					</Text>
 				) : (

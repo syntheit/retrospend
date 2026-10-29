@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { type ReactNode, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { ActivityRow } from "@/features/activity/ActivityRow";
 import type { ActivityItem } from "@/features/activity/source";
 import { useTheme } from "@/theme";
@@ -14,6 +14,7 @@ import { Screen } from "@/ui/Screen";
 import { Segmented } from "@/ui/Segmented";
 import { Sheet } from "@/ui/Sheet";
 import { SwipeRow } from "@/ui/SwipeRow";
+import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { TopBar } from "@/ui/TopBar";
 
@@ -37,17 +38,10 @@ const SAMPLE: ActivityItem = {
 };
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	return (
 		<View style={{ gap: space[2] }}>
-			<Text
-				accessibilityRole="header"
-				style={{
-					color: color.fg,
-					fontSize: type.section.size,
-					fontWeight: "600",
-				}}
-			>
+			<Text accessibilityRole="header" variant="section">
 				{title}
 			</Text>
 			{children}
@@ -56,7 +50,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export default function GalleryScreen() {
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const toast = useToast();
 	const [sheet, setSheet] = useState(false);
 	const [period, setPeriod] = useState<"week" | "month" | "year">("month");
@@ -78,6 +72,30 @@ export default function GalleryScreen() {
 			<Screen>
 				{second ? null : (
 					<>
+						<Section title="Type">
+							<View style={{ gap: space[1] }}>
+								<Text variant="hero">Hero, 32 semibold</Text>
+								<Text variant="title">Title, 22 semibold</Text>
+								<Text variant="section">Section, 16 semibold</Text>
+								<Text>Body, 14 regular</Text>
+								<Text weight="medium">Body, 14 medium</Text>
+								<Text tone="fg2" variant="small">
+									Small, 13 in fg-2
+								</Text>
+								<Text tone="fg3" variant="meta">
+									Meta, 12 in fg-3
+								</Text>
+								<Text tone="positive" variant="small">
+									Owes you
+								</Text>
+								<Text tone="attention" variant="small">
+									Over by
+								</Text>
+								<Text tone="danger" variant="small">
+									Could not save
+								</Text>
+							</View>
+						</Section>
 						<Section title="Money">
 							<View style={{ gap: space[1] }}>
 								<Money value={{ minor: 1250000, currency: "ARS" }} />
@@ -173,7 +191,7 @@ export default function GalleryScreen() {
 								title="Sheet title"
 								visible={sheet}
 							>
-								<Text style={{ color: color.fg2, fontSize: type.body.size }}>
+								<Text tone="fg2">
 									Detents on iOS, a modal bottom sheet on Android.
 								</Text>
 							</Sheet>
@@ -202,14 +220,7 @@ export default function GalleryScreen() {
 							/>
 						</Section>
 						<Section title="Money keypad">
-							<Text
-								style={{
-									color: color.fg,
-									fontSize: type.title.size,
-									fontVariant: ["tabular-nums"],
-									fontWeight: "600",
-								}}
-							>
+							<Text tabular variant="title">
 								{draft ? `ARS ${draft}` : "ARS 0"}
 							</Text>
 							<MoneyKeypad

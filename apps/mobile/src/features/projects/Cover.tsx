@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Image, Text, View } from "react-native";
+import { Image, View } from "react-native";
 import { useTheme } from "@/theme";
 import { avatarSlot } from "@/ui/Avatar";
+import { Text } from "@/ui/Text";
 
 /**
  * A project's cover: the picture when it has one, else its first letter on
@@ -20,7 +21,7 @@ export function Cover({
 	imageUri: string | null;
 	diameter: number;
 }) {
-	const { color, radius, type } = useTheme();
+	const { color, radius } = useTheme();
 	const [failed, setFailed] = useState(false);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new address resets
 	useEffect(() => setFailed(false), [imageUri]);
@@ -46,13 +47,7 @@ export function Cover({
 					style={{ width: diameter, height: diameter }}
 				/>
 			) : (
-				<Text
-					style={{
-						color: color.avatarFg,
-						fontSize: type.section.size,
-						fontWeight: "600",
-					}}
-				>
+				<Text style={{ color: color.avatarFg }} variant="section">
 					{Array.from(name.trim())[0]?.toUpperCase() ?? ""}
 				</Text>
 			)}

@@ -1,9 +1,9 @@
 import type { Money } from "@retrospend/domain/money-minor";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 import { balanceSides } from "./source";
 
 /**
@@ -30,11 +30,10 @@ export function useBalanceWords() {
  */
 export function BalanceColumn({ lines }: { lines: Money[] }) {
 	const t = useTranslations("mobile.projects");
-	const { color, type } = useTheme();
 	const { owedToYou, youOwe } = balanceSides(lines);
 	if (owedToYou.length === 0 && youOwe.length === 0) {
 		return (
-			<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+			<Text tone="fg2" variant="small">
 				{t("settled")}
 			</Text>
 		);
@@ -43,7 +42,7 @@ export function BalanceColumn({ lines }: { lines: Money[] }) {
 		<View style={{ alignItems: "flex-end", gap: 2 }}>
 			{owedToYou.map((line) => (
 				<View key={`in:${line.currency}`} style={{ alignItems: "flex-end" }}>
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					<Text tone="fg2" variant="small">
 						{t("owesYou")}
 					</Text>
 					<MoneyAmount tone="positive" value={line} />
@@ -51,7 +50,7 @@ export function BalanceColumn({ lines }: { lines: Money[] }) {
 			))}
 			{youOwe.map((line) => (
 				<View key={`out:${line.currency}`} style={{ alignItems: "flex-end" }}>
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					<Text tone="fg2" variant="small">
 						{t("youOwe")}
 					</Text>
 					<MoneyAmount value={line} />

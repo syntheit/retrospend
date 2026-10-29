@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useFormatter, useLocale, useTranslations } from "use-intl";
 import { localCurrencyName } from "@/lib/currency-names";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
+import { Text } from "@/ui/Text";
 import {
 	type CurrencyRow,
 	priceCents,
@@ -60,25 +61,21 @@ export function PriceText({
 }) {
 	const t = useTranslations("mobile.currencies");
 	const text = usePriceText();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	return (
 		<View
 			style={{ flexDirection: "row", alignItems: "baseline", gap: space[1] }}
 		>
 			{showBase ? (
-				<Text style={{ color: color.fg3, fontSize: type.meta.size }}>
+				<Text tone="fg3" variant="meta">
 					{t("base", { code: price.base })}
 				</Text>
 			) : null}
 			<Text
 				numberOfLines={1}
-				style={{
-					color: color.fg,
-					fontSize: type.body.size,
-					fontVariant: ["tabular-nums"],
-					fontWeight: strong ? "600" : "500",
-					textAlign: "right",
-				}}
+				style={{ textAlign: "right" }}
+				tabular
+				weight={strong ? "semibold" : "medium"}
 			>
 				{text(price)}
 			</Text>
@@ -152,7 +149,7 @@ export function TypeLine({
 	derived?: string;
 	children: ReactNode;
 }) {
-	const { color, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 	return (
 		<View
 			style={{
@@ -174,17 +171,15 @@ export function TypeLine({
 						gap: space[2],
 					}}
 				>
-					<Text style={{ color: color.fg, fontSize: type.body.size }}>
-						{label}
-					</Text>
+					<Text>{label}</Text>
 					{note ? (
-						<Text style={{ color: color.fg3, fontSize: type.meta.size }}>
+						<Text tone="fg3" variant="meta">
 							{note}
 						</Text>
 					) : null}
 				</View>
 				{derived ? (
-					<Text style={{ color: color.fg3, fontSize: type.meta.size }}>
+					<Text tone="fg3" variant="meta">
 						{derived}
 					</Text>
 				) : null}

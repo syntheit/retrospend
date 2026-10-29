@@ -5,11 +5,12 @@ import {
 	tint,
 } from "@expo/ui/swift-ui/modifiers";
 import { dayKey } from "@retrospend/domain/time-zone";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { dayOfPicker, pickerDate } from "@/features/entry/dates";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
+import { Text } from "./Text";
 import type { DateFieldProps } from "./types";
 
 /**
@@ -23,7 +24,7 @@ export function DateField({
 	onChange,
 	placeholder,
 }: DateFieldProps) {
-	const { color, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 	const t = useTranslations("mobile.pickers");
 	return (
 		<View
@@ -35,7 +36,7 @@ export function DateField({
 				gap: space[3],
 			}}
 		>
-			<Text style={{ color: color.fg, fontSize: type.body.size }}>{label}</Text>
+			<Text>{label}</Text>
 			<NativeHost>
 				{value ? (
 					<DatePicker

@@ -1,5 +1,6 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
+import { Text } from "./Text";
 
 /**
  * One line, at most one action (GUIDELINE §12). No illustration and no
@@ -16,7 +17,7 @@ export function EmptyState({
 	actionLabel?: string;
 	onAction?: () => void;
 }) {
-	const { color, radius, size, space, type } = useTheme();
+	const { color, radius, size, space } = useTheme();
 	return (
 		<View
 			// One stop for the words; with an action, each is its own stop, or
@@ -29,24 +30,11 @@ export function EmptyState({
 				paddingHorizontal: space[4],
 			}}
 		>
-			<Text
-				style={{
-					color: color.fg,
-					fontSize: type.section.size,
-					fontWeight: "600",
-					textAlign: "center",
-				}}
-			>
+			<Text style={{ textAlign: "center" }} variant="section">
 				{title}
 			</Text>
 			{detail ? (
-				<Text
-					style={{
-						color: color.fg2,
-						fontSize: type.body.size,
-						textAlign: "center",
-					}}
-				>
+				<Text style={{ textAlign: "center" }} tone="fg2">
 					{detail}
 				</Text>
 			) : null}
@@ -62,13 +50,7 @@ export function EmptyState({
 						backgroundColor: color.brand,
 					}}
 				>
-					<Text
-						style={{
-							color: color.brandFg,
-							fontSize: type.body.size,
-							fontWeight: "500",
-						}}
-					>
+					<Text style={{ color: color.brandFg }} weight="medium">
 						{actionLabel}
 					</Text>
 				</Pressable>

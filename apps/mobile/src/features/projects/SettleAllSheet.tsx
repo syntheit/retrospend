@@ -1,4 +1,4 @@
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { PreviewList } from "@/features/settle/PreviewList";
@@ -6,6 +6,7 @@ import type { PaymentPreview } from "@/features/settle/plan";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { describeLine, nameOfKey, settleAllDetailOf } from "./settleAll";
 import type { ProjectPage } from "./source";
@@ -37,7 +38,7 @@ export function SettleAllSheet({
 	const tc = useTranslations("mobile.common");
 	const toast = useToast();
 	const money = useMoneyText();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const flow = useSettleAll(projectId, visible);
 	const nameOf = (key: string) => nameOfKey(members, key);
 	const first = (key: string) => nameOf(key).split(/\s+/)[0] ?? nameOf(key);
@@ -62,14 +63,7 @@ export function SettleAllSheet({
 	}
 
 	const note = (text: string, tone: "plain" | "attention" = "plain") => (
-		<Text
-			style={{
-				color: tone === "attention" ? color.attentionText : color.fg2,
-				fontSize: type.body.size,
-			}}
-		>
-			{text}
-		</Text>
+		<Text tone={tone === "attention" ? "attention" : "fg2"}>{text}</Text>
 	);
 
 	// The figures this write moves for the whole project, not one person.
@@ -114,11 +108,9 @@ export function SettleAllSheet({
 							<View style={{ gap: space[2] }}>
 								<Text
 									accessibilityRole="header"
-									style={{
-										color: color.fg2,
-										fontSize: type.small.size,
-										fontWeight: "600",
-									}}
+									tone="fg2"
+									variant="small"
+									weight="semibold"
 								>
 									{t("willRecord")}
 								</Text>
@@ -144,33 +136,13 @@ export function SettleAllSheet({
 													gap: space[3],
 												}}
 											>
-												<Text
-													style={{
-														flexShrink: 1,
-														color: color.fg,
-														fontSize: type.body.size,
-													}}
-												>
-													{words}
-												</Text>
-												<Text
-													style={{
-														color: color.fg,
-														fontSize: type.body.size,
-														fontVariant: ["tabular-nums"],
-														fontWeight: "500",
-													}}
-												>
+												<Text style={{ flexShrink: 1 }}>{words}</Text>
+												<Text tabular weight="medium">
 													{amount}
 												</Text>
 											</View>
 											{d.waiting ? (
-												<Text
-													style={{
-														color: color.fg2,
-														fontSize: type.small.size,
-													}}
-												>
+												<Text tone="fg2" variant="small">
 													{t("waiting", { name: who })}
 												</Text>
 											) : null}
@@ -180,10 +152,8 @@ export function SettleAllSheet({
 								{skipped.map((line) => (
 									<Text
 										key={`${line.person}:${line.amount.currency}:${line.reason}`}
-										style={{
-											color: color.fg2,
-											fontSize: type.small.size,
-										}}
+										tone="fg2"
+										variant="small"
 									>
 										{t(`skipped.${line.reason}`, {
 											name: first(line.person),

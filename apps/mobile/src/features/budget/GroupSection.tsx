@@ -1,10 +1,11 @@
 import { formatPercent } from "@retrospend/domain/format-percent";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 import { EnvelopeRow, useColumnWidth } from "./EnvelopeRow";
 import { groupLeft, groupPercents, groupStartsOpen, isLimits } from "./rows";
 import type { BudgetEnvelope, BudgetGroup, BudgetStyle } from "./source";
@@ -31,7 +32,7 @@ export function GroupSection({
 	const tb = useTranslations("mobile.budget");
 	const money = useMoneyText();
 	const column = useColumnWidth();
-	const { color, size, space, type } = useTheme();
+	const { size, space } = useTheme();
 	const [open, setOpen] = useState(groupStartsOpen(style, group));
 	const name = group.name ?? t(group.role ?? "ungrouped");
 	const left = money(groupLeft(style, group));
@@ -63,14 +64,9 @@ export function GroupSection({
 	const cell = (value: string) => (
 		<Text
 			numberOfLines={1}
-			style={{
-				width: column,
-				color: color.fg,
-				fontSize: type.body.size,
-				fontVariant: ["tabular-nums"],
-				fontWeight: "600",
-				textAlign: "right",
-			}}
+			style={{ width: column, textAlign: "right" }}
+			tabular
+			weight="semibold"
 		>
 			{value}
 		</Text>
@@ -95,22 +91,14 @@ export function GroupSection({
 				}}
 			>
 				<View style={{ flex: 1, gap: space[1] }}>
-					<Text
-						accessibilityRole="header"
-						numberOfLines={1}
-						style={{
-							color: color.fg,
-							fontSize: type.section.size,
-							fontWeight: "600",
-						}}
-					>
+					<Text accessibilityRole="header" numberOfLines={1} variant="section">
 						{name}
 					</Text>
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					<Text tone="fg2" variant="small">
 						{percents ? `${percents} · ` : ""}
 						{count}
 						{overNames ? (
-							<Text style={{ color: color.attentionText }}>
+							<Text tone="attention" variant="small">
 								{` · ${t("overNames", { names: overNames })}`}
 							</Text>
 						) : null}

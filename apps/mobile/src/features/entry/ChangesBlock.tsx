@@ -1,8 +1,9 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { TextAction } from "@/features/activity/TextAction";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 import {
 	type ChangeLines,
 	changeLines,
@@ -36,7 +37,7 @@ export function ChangesBlock({
 	const tc = useTranslations("mobile.common");
 	const tl = useTranslations("mobile.composer.list");
 	const tm = useTranslations("mobile.money");
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const { format } = useFormatMoney();
 	const lines: ChangeLines | null =
 		state.status === "ready" ? changeLines(state.diff) : null;
@@ -88,21 +89,10 @@ export function ChangesBlock({
 
 	return (
 		<View accessibilityLiveRegion="polite" style={{ gap: space[2] }}>
-			<Text
-				accessibilityRole="header"
-				style={{
-					color: color.fg,
-					fontSize: type.section.size,
-					fontWeight: "600",
-				}}
-			>
+			<Text accessibilityRole="header" variant="section">
 				{t("title")}
 			</Text>
-			{status ? (
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{status}
-				</Text>
-			) : null}
+			{status ? <Text tone="fg2">{status}</Text> : null}
 			{onRetry && (state.status === "offline" || state.status === "refused") ? (
 				<View style={{ alignItems: "flex-start" }}>
 					<TextAction label={tc("retry")} onPress={onRetry} />
@@ -117,35 +107,17 @@ export function ChangesBlock({
 							gap: space[3],
 						}}
 					>
-						<Text
-							style={{
-								flexShrink: 1,
-								color: color.fg,
-								fontSize: type.body.size,
-							}}
-						>
-							{name(line.figure, false)}
-						</Text>
-						<Text
-							style={{
-								color: color.fg,
-								fontSize: type.body.size,
-								fontVariant: ["tabular-nums"],
-								fontWeight: "500",
-								textAlign: "right",
-							}}
-						>
+						<Text style={{ flexShrink: 1 }}>{name(line.figure, false)}</Text>
+						<Text style={{ textAlign: "right" }} tabular weight="medium">
 							{marked(money(line.delta, "exceptZero"), line.approx)}
 						</Text>
 					</View>
 					{line.after ? (
 						<Text
-							style={{
-								color: color.fg2,
-								fontSize: type.small.size,
-								fontVariant: ["tabular-nums"],
-								textAlign: "right",
-							}}
+							style={{ textAlign: "right" }}
+							tabular
+							tone="fg2"
+							variant="small"
 						>
 							{t("to", { amount: marked(money(line.after), line.approx) })}
 						</Text>
@@ -154,15 +126,7 @@ export function ChangesBlock({
 			))}
 			{shares && shares.length > 0 ? (
 				<View style={{ gap: space[2], paddingTop: space[2] }}>
-					<Text
-						style={{
-							color: color.fg,
-							fontSize: type.body.size,
-							fontWeight: "600",
-						}}
-					>
-						{t("shares.title")}
-					</Text>
+					<Text weight="semibold">{t("shares.title")}</Text>
 					{shares.map((s) => (
 						<View
 							accessible
@@ -173,54 +137,40 @@ export function ChangesBlock({
 								gap: space[3],
 							}}
 						>
-							<Text
-								numberOfLines={1}
-								style={{
-									flexShrink: 1,
-									color: color.fg,
-									fontSize: type.body.size,
-								}}
-							>
+							<Text numberOfLines={1} style={{ flexShrink: 1 }}>
 								{s.you ? t("shares.you") : s.name}
 							</Text>
-							<Text
-								style={{
-									color: color.fg,
-									fontSize: type.body.size,
-									fontVariant: ["tabular-nums"],
-									textAlign: "right",
-								}}
-							>
+							<Text style={{ textAlign: "right" }} tabular>
 								{shareText(s)}
 							</Text>
 						</View>
 					))}
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					<Text tone="fg2" variant="small">
 						{t("shares.told")}
 					</Text>
 				</View>
 			) : null}
 			{lines && lines.stays.length > 0 ? (
-				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+				<Text tone="fg2" variant="small">
 					{t("stays", {
 						places: list(lines.stays.map((id) => name(id, true))),
 					})}
 				</Text>
 			) : null}
 			{shares && shares.length === 0 ? (
-				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+				<Text tone="fg2" variant="small">
 					{t("shares.same")}
 				</Text>
 			) : null}
 			{lines && lines.unknown.length > 0 ? (
-				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+				<Text tone="fg2" variant="small">
 					{t("unknown", {
 						places: list(lines.unknown.map((id) => name(id, true))),
 					})}
 				</Text>
 			) : null}
 			{lines && lines.moved.length === 0 ? (
-				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+				<Text tone="fg2" variant="small">
 					{t("nothing")}
 				</Text>
 			) : null}

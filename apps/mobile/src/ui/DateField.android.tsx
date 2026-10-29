@@ -2,11 +2,12 @@ import { DatePickerDialog, Text, TextButton } from "@expo/ui/jetpack-compose";
 import { semantics } from "@expo/ui/jetpack-compose/modifiers";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { useState } from "react";
-import { Text as RNText, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { dayOfPicker, pickerDate } from "@/features/entry/dates";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
+import { Text as AppText } from "./Text";
 import type { DateFieldProps } from "./types";
 
 /**
@@ -20,7 +21,7 @@ export function DateField({
 	onChange,
 	placeholder,
 }: DateFieldProps) {
-	const { color, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 	const t = useTranslations("mobile.pickers");
 	const format = useFormatter();
 	const [open, setOpen] = useState(false);
@@ -37,9 +38,7 @@ export function DateField({
 				gap: space[3],
 			}}
 		>
-			<RNText style={{ color: color.fg, fontSize: type.body.size }}>
-				{label}
-			</RNText>
+			<AppText>{label}</AppText>
 			<NativeHost>
 				<TextButton
 					modifiers={[semantics({ contentDescription: `${label}, ${shown}` })]}

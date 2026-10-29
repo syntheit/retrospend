@@ -1,12 +1,13 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, Text, TextInput, View } from "react-native";
+import { ScrollView, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 
 type Consequences = Awaited<
 	ReturnType<RetrospendClient["account"]["deletionPreview"]>
@@ -79,11 +80,7 @@ export function DeleteAccountSheet({
 		}
 	}
 
-	const line = (text: string) => (
-		<Text key={text} style={{ color: color.fg, fontSize: type.body.size }}>
-			{text}
-		</Text>
-	);
+	const line = (text: string) => <Text key={text}>{text}</Text>;
 	const lines = what
 		? [
 				...what.projectsToTransfer.map((p) =>
@@ -118,28 +115,18 @@ export function DeleteAccountSheet({
 				contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
 				keyboardShouldPersistTaps="handled"
 			>
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{t("permanent")}
-				</Text>
+				<Text tone="fg2">{t("permanent")}</Text>
 				{loadFailed ? (
-					<Text
-						style={{ color: color.attentionText, fontSize: type.body.size }}
-					>
-						{t("loadError")}
-					</Text>
+					<Text tone="attention">{t("loadError")}</Text>
 				) : what === null ? (
-					<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-						{t("checking")}
-					</Text>
+					<Text tone="fg2">{t("checking")}</Text>
 				) : (
 					<View style={{ gap: space[2] }}>
 						<Text
 							accessibilityRole="header"
-							style={{
-								color: color.fg2,
-								fontSize: type.small.size,
-								fontWeight: "600",
-							}}
+							tone="fg2"
+							variant="small"
+							weight="semibold"
 						>
 							{t("changes")}
 						</Text>
@@ -147,7 +134,7 @@ export function DeleteAccountSheet({
 					</View>
 				)}
 				<View style={{ gap: space[2] }}>
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					<Text tone="fg2" variant="small">
 						{t("password")}
 					</Text>
 					<TextInput
@@ -171,10 +158,7 @@ export function DeleteAccountSheet({
 					/>
 				</View>
 				{refusal ? (
-					<Text
-						accessibilityRole="alert"
-						style={{ color: color.danger, fontSize: type.body.size }}
-					>
+					<Text accessibilityRole="alert" tone="danger">
 						{refusal}
 					</Text>
 				) : null}

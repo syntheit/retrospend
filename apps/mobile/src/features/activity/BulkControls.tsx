@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
 import { PickerSheet } from "@/ui/PickerSheet";
 import type { PickGroup } from "@/ui/pickGroups";
+import { Text } from "@/ui/Text";
 import { BulkSheet } from "./BulkSheet";
 import { BULK_DELETE_LIMIT, entityIdsOf } from "./bulk";
 import type { BulkAction } from "./bulkWrite";
@@ -29,7 +30,7 @@ export function BulkControls({
 }) {
 	const t = useTranslations("mobile.activity.bulk");
 	const tp = useTranslations("mobile.pickers");
-	const { color, duration, size, space, type } = useTheme();
+	const { color, duration, size, space } = useTheme();
 	const categories = useCategories();
 	const [choosing, setChoosing] = useState(false);
 	const [action, setAction] = useState<BulkAction | null>(null);
@@ -86,12 +87,8 @@ export function BulkControls({
 				<Text
 					accessibilityLiveRegion="polite"
 					numberOfLines={1}
-					style={{
-						flex: 1,
-						color: color.fg,
-						fontSize: type.body.size,
-						fontWeight: "500",
-					}}
+					style={{ flex: 1 }}
+					weight="medium"
 				>
 					{count > 0 ? t("selected", { count }) : t("pickSome")}
 				</Text>
@@ -109,12 +106,9 @@ export function BulkControls({
 			</View>
 			{tooMany ? (
 				<Text
-					style={{
-						color: color.fg2,
-						fontSize: type.small.size,
-						paddingHorizontal: space[4],
-						paddingTop: space[2],
-					}}
+					style={{ paddingHorizontal: space[4], paddingTop: space[2] }}
+					tone="fg2"
+					variant="small"
 				>
 					{t("deleteLimit", { max: BULK_DELETE_LIMIT })}
 				</Text>

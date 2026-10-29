@@ -1,7 +1,8 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Menu } from "@/ui/Menu";
+import { Text } from "@/ui/Text";
 import {
 	addMonths,
 	canStep,
@@ -26,7 +27,7 @@ export function MonthBar({
 }) {
 	const t = useTranslations("mobile.budget.month");
 	const format = useFormatter();
-	const { color, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 
 	const name = (key: number) =>
 		format.dateTime(monthDate(key), {
@@ -60,11 +61,9 @@ export function MonthBar({
 				}}
 			>
 				<Text
-					style={{
-						color: enabled ? color.brand : color.fg3,
-						fontSize: type.title.size,
-						fontWeight: "500",
-					}}
+					style={{ color: enabled ? color.brand : color.fg3 }}
+					variant="title"
+					weight="medium"
 				>
 					{glyph}
 				</Text>

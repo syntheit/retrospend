@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 import type { PlanView } from "./preview";
 
 /** Envelope names by id, read once when a plan has lines to name. */
@@ -42,7 +43,7 @@ function useEnvelopeNames(enabled: boolean): Map<string, string> {
  */
 export function PlanBlock({ plan }: { plan: PlanView }) {
 	const t = useTranslations("mobile.composer.plan");
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const { format } = useFormatMoney();
 	const names = useEnvelopeNames(plan.lines.length > 0);
 	const money = (value: { minor: number; currency: string }) =>
@@ -62,55 +63,26 @@ export function PlanBlock({ plan }: { plan: PlanView }) {
 	} as const;
 	return (
 		<View accessibilityLiveRegion="polite" style={{ gap: space[2] }}>
-			<Text
-				accessibilityRole="header"
-				style={{
-					color: color.fg,
-					fontSize: type.section.size,
-					fontWeight: "600",
-				}}
-			>
+			<Text accessibilityRole="header" variant="section">
 				{t("title")}
 			</Text>
-			{reason ? (
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{reason}
-				</Text>
-			) : null}
+			{reason ? <Text tone="fg2">{reason}</Text> : null}
 			{plan.lines.map((line) => (
 				<View accessible key={line.envelopeId} style={row}>
-					<Text
-						numberOfLines={1}
-						style={{ flex: 1, color: color.fg, fontSize: type.body.size }}
-					>
+					<Text numberOfLines={1} style={{ flex: 1 }}>
 						{names.get(line.envelopeId) ?? t("envelope")}
 					</Text>
-					<Text
-						style={{
-							color: color.fg,
-							fontSize: type.body.size,
-							fontVariant: ["tabular-nums"],
-							fontWeight: "500",
-							textAlign: "right",
-						}}
-					>
+					<Text style={{ textAlign: "right" }} tabular weight="medium">
 						{money(line.amount)}
 					</Text>
 				</View>
 			))}
 			{plan.rest ? (
 				<View accessible style={row}>
-					<Text style={{ flex: 1, color: color.fg2, fontSize: type.body.size }}>
+					<Text style={{ flex: 1 }} tone="fg2">
 						{t("stays")}
 					</Text>
-					<Text
-						style={{
-							color: color.fg2,
-							fontSize: type.body.size,
-							fontVariant: ["tabular-nums"],
-							textAlign: "right",
-						}}
-					>
+					<Text style={{ textAlign: "right" }} tabular tone="fg2">
 						{format(plan.rest, { cents: true }) ?? ""}
 					</Text>
 				</View>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, Text } from "react-native";
+import { ScrollView } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -8,6 +8,7 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { PreviewList } from "./PreviewList";
 import type { PaymentPreview } from "./plan";
@@ -35,7 +36,7 @@ export function ConfirmSheet({
 	const { api } = useSession();
 	const toast = useToast();
 	const money = useMoneyText();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const [preview, setPreview] = useState<PaymentPreview | null>(null);
 	const [failed, setFailed] = useState(false);
 	const [confirmFailed, setConfirmFailed] = useState(false);
@@ -105,29 +106,16 @@ export function ConfirmSheet({
 			<ScrollView
 				contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
 			>
-				<Text
-					style={{
-						color: color.fg,
-						fontSize: type.title.size,
-						fontVariant: ["tabular-nums"],
-						fontWeight: "600",
-					}}
-				>
+				<Text tabular variant="title">
 					{money(payment.amount)}
 				</Text>
 				{preview ? (
 					<PreviewList name={first} preview={preview} />
 				) : (
-					<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-						{failed ? t("previewError") : t("checking")}
-					</Text>
+					<Text tone="fg2">{failed ? t("previewError") : t("checking")}</Text>
 				)}
 				{confirmFailed ? (
-					<Text
-						style={{ color: color.attentionText, fontSize: type.body.size }}
-					>
-						{t("confirmError")}
-					</Text>
+					<Text tone="attention">{t("confirmError")}</Text>
 				) : null}
 				<Button
 					disabled={!preview || busy}

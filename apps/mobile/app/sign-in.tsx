@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import { useState } from "react";
-import { Platform, Text, TextInput, View } from "react-native";
+import { Platform, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 import type { AuthFailure } from "@/auth/errors";
 import { useServerConnection } from "@/auth/server-connection";
@@ -8,6 +8,7 @@ import { useSession } from "@/auth/session";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Screen } from "@/ui/Screen";
+import { Text } from "@/ui/Text";
 
 type Step = "password" | "code";
 
@@ -55,7 +56,6 @@ export default function SignInScreen() {
 		color: color.fg,
 		fontSize: type.section.size,
 	} as const;
-	const label = { color: color.fg, fontSize: type.small.size } as const;
 
 	return (
 		<>
@@ -68,13 +68,11 @@ export default function SignInScreen() {
 				}}
 			/>
 			<Screen>
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{expired ? t("expired") : t("intro", { host })}
-				</Text>
+				<Text tone="fg2">{expired ? t("expired") : t("intro", { host })}</Text>
 				{step === "password" ? (
 					<View style={{ gap: space[3] }}>
 						<View style={{ gap: space[2] }}>
-							<Text style={label}>{t("email")}</Text>
+							<Text variant="small">{t("email")}</Text>
 							<TextInput
 								accessibilityLabel={t("email")}
 								autoCapitalize="none"
@@ -92,7 +90,7 @@ export default function SignInScreen() {
 							/>
 						</View>
 						<View style={{ gap: space[2] }}>
-							<Text style={label}>{t("password")}</Text>
+							<Text variant="small">{t("password")}</Text>
 							<TextInput
 								accessibilityLabel={t("password")}
 								autoCapitalize="none"
@@ -112,7 +110,7 @@ export default function SignInScreen() {
 					</View>
 				) : (
 					<View style={{ gap: space[2] }}>
-						<Text style={label}>{t("code")}</Text>
+						<Text variant="small">{t("code")}</Text>
 						<TextInput
 							accessibilityLabel={t("code")}
 							autoCapitalize="none"
@@ -130,7 +128,7 @@ export default function SignInScreen() {
 							textContentType="oneTimeCode"
 							value={code}
 						/>
-						<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+						<Text tone="fg2" variant="small">
 							{t("codeHint")}
 						</Text>
 					</View>
@@ -139,7 +137,8 @@ export default function SignInScreen() {
 					<Text
 						accessibilityLiveRegion="polite"
 						accessibilityRole="alert"
-						style={{ color: color.danger, fontSize: type.small.size }}
+						tone="danger"
+						variant="small"
 					>
 						{t(`error.${failure}`)}
 					</Text>
