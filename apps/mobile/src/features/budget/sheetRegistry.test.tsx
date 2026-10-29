@@ -110,11 +110,12 @@ function buttons(e: BudgetEnvelope, kind: "open" | "closed") {
 			typeof n.props.onPress === "function" &&
 			typeof n.props.accessibilityLabel === "string",
 	) ?? []) as TestNode[];
-	act(() => tree?.unmount());
-	return found.map((n) => [
+	const labels = found.map((n) => [
 		n.props.accessibilityLabel,
 		n.props.accessibilityHint,
 	]);
+	act(() => tree?.unmount());
+	return labels;
 }
 
 describe("sheet registry", () => {
