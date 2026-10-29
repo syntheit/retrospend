@@ -1,5 +1,3 @@
-import "server-only";
-
 import { Decimal } from "@prisma/client/runtime/index-browser";
 import { isCrypto } from "@retrospend/domain/currency-format";
 import { currencyDecimals } from "@retrospend/domain/money";

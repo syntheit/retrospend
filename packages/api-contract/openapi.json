@@ -100347,6 +100347,325 @@
 				"x-required-scope": "read"
 			}
 		},
+		"/rates/table": {
+			"get": {
+				"description": "What the Currencies screen shows: each price is the stronger currency of the pair in the weaker, with the caller's favorites and the open accounts in a currency with no rate. Nothing is ever priced at 1 for want of a rate.",
+				"operationId": "getRateTable",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"base": {
+											"anyOf": [
+												{
+													"description": "ISO 4217 code, or the app's code for a crypto asset.",
+													"examples": [
+														"USD",
+														"ARS",
+														"BTC"
+													],
+													"pattern": "^[A-Z0-9]{2,10}$",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"canSetDefault": {
+											"type": "boolean"
+										},
+										"columns": {
+											"items": {
+												"examples": [
+													"official",
+													"blue"
+												],
+												"maxLength": 32,
+												"minLength": 1,
+												"type": "string"
+											},
+											"type": "array"
+										},
+										"home": {
+											"description": "ISO 4217 code, or the app's code for a crypto asset.",
+											"examples": [
+												"USD",
+												"ARS",
+												"BTC"
+											],
+											"pattern": "^[A-Z0-9]{2,10}$",
+											"type": "string"
+										},
+										"homeDefault": {
+											"anyOf": [
+												{
+													"examples": [
+														"official",
+														"blue"
+													],
+													"maxLength": 32,
+													"minLength": 1,
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"rows": {
+											"items": {
+												"properties": {
+													"code": {
+														"description": "ISO 4217 code, or the app's code for a crypto asset.",
+														"examples": [
+															"USD",
+															"ARS",
+															"BTC"
+														],
+														"pattern": "^[A-Z0-9]{2,10}$",
+														"type": "string"
+													},
+													"crypto": {
+														"type": "boolean"
+													},
+													"defaultType": {
+														"anyOf": [
+															{
+																"examples": [
+																	"official",
+																	"blue"
+																],
+																"maxLength": 32,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"favorite": {
+														"type": "boolean"
+													},
+													"favoriteIds": {
+														"items": {
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														"type": "array"
+													},
+													"rateId": {
+														"anyOf": [
+															{
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"rates": {
+														"items": {
+															"properties": {
+																"derived": {
+																	"type": "boolean"
+																},
+																"price": {
+																	"anyOf": [
+																		{
+																			"properties": {
+																				"base": {
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				"currency": {
+																					"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																					"examples": [
+																						"USD",
+																						"ARS",
+																						"BTC"
+																					],
+																					"pattern": "^[A-Z0-9]{2,10}$",
+																					"type": "string"
+																				},
+																				"minor": {
+																					"maximum": 9007199254740991,
+																					"minimum": -9007199254740991,
+																					"type": "integer"
+																				},
+																				"places": {
+																					"maximum": 30,
+																					"minimum": 0,
+																					"type": "integer"
+																				}
+																			},
+																			"required": [
+																				"minor",
+																				"currency",
+																				"places",
+																				"base"
+																			],
+																			"type": "object"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
+																"type": {
+																	"examples": [
+																		"official",
+																		"blue"
+																	],
+																	"maxLength": 32,
+																	"minLength": 1,
+																	"type": "string"
+																}
+															},
+															"required": [
+																"type",
+																"price",
+																"derived"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"usedBy": {
+														"items": {
+															"type": "string"
+														},
+														"type": "array"
+													}
+												},
+												"required": [
+													"code",
+													"crypto",
+													"rates",
+													"defaultType",
+													"favorite",
+													"rateId",
+													"favoriteIds",
+													"usedBy"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"updated": {
+											"anyOf": [
+												{
+													"format": "date",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"home",
+										"columns",
+										"rows",
+										"base",
+										"updated",
+										"homeDefault",
+										"canSetDefault"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "Every currency priced in the home currency, per rate type",
+				"tags": [
+					"Currencies"
+				],
+				"x-required-scope": "read"
+			}
+		},
 		"/rates/{currency}/best": {
 			"get": {
 				"description": "Same selection as saving an expense: the preferred type when it exists, else blue, official, crypto. not_found when the currency has no rates.",
@@ -100525,6 +100844,178 @@
 					}
 				],
 				"summary": "The rate the app would use for a currency on a day",
+				"tags": [
+					"Currencies"
+				],
+				"x-required-scope": "read"
+			}
+		},
+		"/rates/{currency}/convert": {
+			"get": {
+				"description": "To or from the home currency, rounded half to even to the target's minor unit. No results when either side has no rate.",
+				"operationId": "convertAmount",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "currency",
+						"required": true,
+						"schema": {
+							"description": "ISO 4217 code, or the app's code for a crypto asset.",
+							"examples": [
+								"USD",
+								"ARS",
+								"BTC"
+							],
+							"pattern": "^[A-Z0-9]{2,10}$",
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "amount",
+						"required": true,
+						"schema": {
+							"description": "Minor units of the currency converted from.",
+							"maximum": 9007199254740991,
+							"minimum": 0,
+							"type": "integer"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "direction",
+						"required": true,
+						"schema": {
+							"description": "toHome converts the currency into the home currency, fromHome the other way.",
+							"enum": [
+								"toHome",
+								"fromHome"
+							],
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"from": {
+											"$ref": "#/components/schemas/Money"
+										},
+										"results": {
+											"items": {
+												"properties": {
+													"derived": {
+														"type": "boolean"
+													},
+													"type": {
+														"examples": [
+															"official",
+															"blue"
+														],
+														"maxLength": 32,
+														"minLength": 1,
+														"type": "string"
+													},
+													"value": {
+														"$ref": "#/components/schemas/Money"
+													}
+												},
+												"required": [
+													"type",
+													"value",
+													"derived"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"from",
+										"results"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "Convert an amount at every rate type of a currency",
 				"tags": [
 					"Currencies"
 				],

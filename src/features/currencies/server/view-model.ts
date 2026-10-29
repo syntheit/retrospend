@@ -1,5 +1,3 @@
-import "server-only";
-
 import { isCrypto } from "@retrospend/domain/currency-format";
 import type {
 	ConvertDirection,

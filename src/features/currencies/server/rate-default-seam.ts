@@ -1,5 +1,3 @@
-import "server-only";
-
 /**
  * SEAM: the per-user default rate type (N73).
  *

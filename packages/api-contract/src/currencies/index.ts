@@ -8,7 +8,13 @@ import {
 	okSchema,
 	timestampSchema,
 } from "../core";
-import { currencySchema, exchangeRateSchema } from "./schemas";
+import {
+	conversionSchema,
+	convertDirectionSchema,
+	currencySchema,
+	exchangeRateSchema,
+	rateTableSchema,
+} from "./schemas";
 
 export * from "./schemas";
 
@@ -19,12 +25,9 @@ const currencyParamsSchema = z.object({ currency: currencyCodeSchema });
 export const ratesQuerySchema = cursorQuerySchema.extend({
 	currency: currencyCodeSchema.optional(),
 	type: rateTypeSchema.optional(),
-	date: z.iso
-		.date()
-		.optional()
-		.meta({
-			description: "The newest rate on or before this day; default today.",
-		}),
+	date: z.iso.date().optional().meta({
+		description: "The newest rate on or before this day; default today.",
+	}),
 });
 
 export const rateHistoryQuerySchema = cursorQuerySchema.extend({
@@ -64,6 +67,19 @@ export const rateSyncStatusSchema = z
 		lastUpdatedAt: timestampSchema.nullable(),
 	})
 	.meta({ id: "RateSyncStatus" });
+
+export const convertQuerySchema = z.object({
+	amount: z.coerce
+		.number()
+		.int()
+		.min(0)
+		.max(Number.MAX_SAFE_INTEGER)
+		.meta({ description: "Minor units of the currency converted from." }),
+	direction: convertDirectionSchema.meta({
+		description:
+			"toHome converts the currency into the home currency, fromHome the other way.",
+	}),
+});
 
 export const currenciesContract = {
 	list: v1
@@ -114,6 +130,31 @@ export const currenciesContract = {
 		.meta({ scope: "read" })
 		.input(currencyParamsSchema.extend(bestRateQuerySchema.shape))
 		.output(bestRateSchema),
+	rateTable: v1
+		.route({
+			method: "GET",
+			path: "/rates/table",
+			operationId: "getRateTable",
+			tags: TAG,
+			summary: "Every currency priced in the home currency, per rate type",
+			description:
+				"What the Currencies screen shows: each price is the stronger currency of the pair in the weaker, with the caller's favorites and the open accounts in a currency with no rate. Nothing is ever priced at 1 for want of a rate.",
+		})
+		.meta({ scope: "read" })
+		.output(rateTableSchema),
+	convert: v1
+		.route({
+			method: "GET",
+			path: "/rates/{currency}/convert",
+			operationId: "convertAmount",
+			tags: TAG,
+			summary: "Convert an amount at every rate type of a currency",
+			description:
+				"To or from the home currency, rounded half to even to the target's minor unit. No results when either side has no rate.",
+		})
+		.meta({ scope: "read" })
+		.input(currencyParamsSchema.extend(convertQuerySchema.shape))
+		.output(conversionSchema),
 	syncStatus: v1
 		.route({
 			method: "GET",
