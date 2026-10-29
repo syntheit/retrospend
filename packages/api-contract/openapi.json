@@ -2054,6 +2054,299 @@
 				"x-required-scope": "read"
 			}
 		},
+		"/accounts/summary": {
+			"get": {
+				"description": "The figures the web Wealth page shows, worked out by the server: group totals, the allocation bar, liquid money, the runway, the 30-day change as a percent, what people owe each other and Not tracked.",
+				"operationId": "getWealthSummary",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"allocation": {
+											"items": {
+												"properties": {
+													"key": {
+														"enum": [
+															"cash",
+															"investments",
+															"crypto",
+															"property",
+															"liabilities"
+														],
+														"type": "string"
+													},
+													"series": {
+														"maximum": 9007199254740991,
+														"minimum": 1,
+														"type": "integer"
+													},
+													"share": {
+														"maximum": 10000,
+														"minimum": 0,
+														"type": "integer"
+													},
+													"value": {
+														"$ref": "#/components/schemas/Money"
+													}
+												},
+												"required": [
+													"key",
+													"value",
+													"share",
+													"series"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"change": {
+											"anyOf": [
+												{
+													"properties": {
+														"basis": {
+															"anyOf": [
+																{
+																	"maximum": 9007199254740991,
+																	"minimum": -9007199254740991,
+																	"type": "integer"
+																},
+																{
+																	"type": "null"
+																}
+															],
+															"description": "The change as basis points of net worth 30 days ago (250 = 2.5%); null when that was zero."
+														},
+														"days": {
+															"maximum": 9007199254740991,
+															"minimum": -9007199254740991,
+															"type": "integer"
+														},
+														"total": {
+															"$ref": "#/components/schemas/Money"
+														}
+													},
+													"required": [
+														"days",
+														"total",
+														"basis"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"groups": {
+											"items": {
+												"properties": {
+													"key": {
+														"enum": [
+															"cash",
+															"investments",
+															"crypto",
+															"property",
+															"liabilities"
+														],
+														"type": "string"
+													},
+													"series": {
+														"anyOf": [
+															{
+																"maximum": 9007199254740991,
+																"minimum": 1,
+																"type": "integer"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"total": {
+														"$ref": "#/components/schemas/Money"
+													}
+												},
+												"required": [
+													"key",
+													"total",
+													"series"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"home": {
+											"description": "ISO 4217 code, or the app's code for a crypto asset.",
+											"examples": [
+												"USD",
+												"ARS",
+												"BTC"
+											],
+											"pattern": "^[A-Z0-9]{2,10}$",
+											"type": "string"
+										},
+										"liquid": {
+											"$ref": "#/components/schemas/Money"
+										},
+										"missingRates": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"netWorth": {
+											"$ref": "#/components/schemas/Money"
+										},
+										"notTracked": {
+											"anyOf": [
+												{
+													"$ref": "#/components/schemas/Money"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"owed": {
+											"anyOf": [
+												{
+													"properties": {
+														"toYou": {
+															"$ref": "#/components/schemas/Money"
+														},
+														"youOwe": {
+															"$ref": "#/components/schemas/Money"
+														}
+													},
+													"required": [
+														"toYou",
+														"youOwe"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"runway": {
+											"anyOf": [
+												{
+													"properties": {
+														"monthly": {
+															"$ref": "#/components/schemas/Money"
+														},
+														"months": {
+															"description": "One decimal.",
+															"type": "number"
+														}
+													},
+													"required": [
+														"months",
+														"monthly"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											]
+										}
+									},
+									"required": [
+										"home",
+										"netWorth",
+										"change",
+										"groups",
+										"allocation",
+										"liquid",
+										"runway",
+										"owed",
+										"notTracked",
+										"missingRates"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "The Wealth page's totals: groups, allocation, liquid, runway",
+				"tags": [
+					"Accounts"
+				],
+				"x-required-scope": "read"
+			}
+		},
 		"/accounts/undo": {
 			"post": {
 				"description": "Each token works once, for 24 hours. A token whose account changed since the write answers 409.",

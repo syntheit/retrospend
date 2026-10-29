@@ -210,6 +210,74 @@ export const netWorthSchema = z
 	})
 	.meta({ id: "NetWorth" });
 
+export const WEALTH_GROUPS = [
+	"cash",
+	"investments",
+	"crypto",
+	"property",
+	"liabilities",
+] as const;
+
+export const wealthGroupKeySchema = z
+	.enum(WEALTH_GROUPS)
+	.meta({ id: "WealthGroupKey" });
+
+export const wealthSummarySchema = z
+	.object({
+		home: currencyCodeSchema,
+		/** The Wealth page's net worth: accounts valued at their rates. */
+		netWorth: moneySchema,
+		/** The last 30 days; null with no history that old. */
+		change: z
+			.object({
+				days: z.int(),
+				total: moneySchema,
+				basis: z.int().nullable().meta({
+					description:
+						"The change as basis points of net worth 30 days ago (250 = 2.5%); null when that was zero.",
+				}),
+			})
+			.nullable(),
+		/** Groups that hold an account, in a fixed order. */
+		groups: z.array(
+			z.object({
+				key: wealthGroupKeySchema,
+				/** Sum of the group's home values; liabilities are negative; an account with no rate is left out. */
+				total: moneySchema,
+				/** The allocation color slot; null for liabilities, which are not part of the bar. */
+				series: z.int().min(1).nullable(),
+			}),
+		),
+		/** What you own by group (liabilities left out), largest first. */
+		allocation: z.array(
+			z.object({
+				key: wealthGroupKeySchema,
+				/** The group's counted value in the home currency. */
+				value: moneySchema,
+				/** Its share of everything counted, in basis points (2500 = 25%). */
+				share: z.int().min(0).max(10_000),
+				/** The chart color slot, 1 for the largest. */
+				series: z.int().min(1),
+			}),
+		),
+		/** Open liquid accounts in the home currency. */
+		liquid: moneySchema,
+		/** How long liquid money lasts at the average monthly spending; null when either is zero. */
+		runway: z
+			.object({
+				months: z.number().meta({ description: "One decimal." }),
+				monthly: moneySchema,
+			})
+			.nullable(),
+		/** What people owe each other, in the home currency; null when a rate is missing. */
+		owed: z.object({ toYou: moneySchema, youOwe: moneySchema }).nullable(),
+		/** Money moved with no account, at today's value; null when a rate is missing. */
+		notTracked: moneySchema.nullable(),
+		/** Open accounts left out of the totals for want of a rate. */
+		missingRates: z.int().min(0),
+	})
+	.meta({ id: "WealthSummary" });
+
 export const defaultAccountsSchema = z
 	.object({
 		defaults: z.record(z.string(), idSchema),

@@ -23,6 +23,7 @@ import {
 	setRateTypeSchema,
 	updateAccountSchema,
 	updateBalanceSchema,
+	wealthSummarySchema,
 } from "./schemas";
 
 export * from "./extras";
@@ -150,6 +151,18 @@ export const accountsContract = {
 		.meta({ scope: "read" })
 		.input(netWorthQuerySchema)
 		.output(netWorthSchema),
+	summary: v1
+		.route({
+			method: "GET",
+			path: "/accounts/summary",
+			operationId: "getWealthSummary",
+			tags: TAG,
+			summary: "The Wealth page's totals: groups, allocation, liquid, runway",
+			description:
+				"The figures the web Wealth page shows, worked out by the server: group totals, the allocation bar, liquid money, the runway, the 30-day change as a percent, what people owe each other and Not tracked.",
+		})
+		.meta({ scope: "read" })
+		.output(wealthSummarySchema),
 	defaults: v1
 		.route({
 			method: "GET",

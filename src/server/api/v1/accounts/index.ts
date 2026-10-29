@@ -1,10 +1,11 @@
-import * as gap from "~/server/services/api-v1/gap-reads";
 import {
 	accountOps as ops,
 	previewUndoAccountWrite,
 	undoAccountWrite,
 } from "~/server/services/api-v1/accounts/ops";
 import { accountReads as read } from "~/server/services/api-v1/accounts/reads";
+import { wealthSummary } from "~/server/services/api-v1/accounts/summary";
+import * as gap from "~/server/services/api-v1/gap-reads";
 import type { LedgerCaller, MoneyOp } from "~/server/services/api-v1/money-op";
 import { serve } from "../core/serve";
 import { signedIn, type V1Context, v1 } from "../middleware";
@@ -28,6 +29,7 @@ export const accountsRouter = {
 	),
 	list: a.list.handler(h(read.list)),
 	netWorth: a.netWorth.handler(h(read.netWorth)),
+	summary: a.summary.handler(h(wealthSummary)),
 	defaults: a.defaults.handler(h(read.defaults)),
 	export: a.export.handler(h(read.export)),
 	get: a.get.handler(h(read.get)),

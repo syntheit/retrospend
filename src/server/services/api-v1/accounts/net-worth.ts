@@ -23,7 +23,7 @@ type Tx = Prisma.TransactionClient;
 type Decimal = ReturnType<typeof dec>;
 
 /** What Not tracked holds in one currency on `day`, in the home currency; null when a rate is missing. */
-function notTrackedOn(
+export function notTrackedOn(
 	nt: NotTrackedHistory,
 	day: string,
 	home: string,
