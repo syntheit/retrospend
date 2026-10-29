@@ -246,7 +246,9 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"corrections.forgive.preview": to("POST /budget/forgive/preview"),
 	"corrections.forgive.save": to("POST /budget/forgive"),
 	"corrections.lockStates": to("GET /shared-expenses/lock-states"),
-	"corrections.respondToFix.preview": to("POST /fix-requests/{id}/respond/preview"),
+	"corrections.respondToFix.preview": to(
+		"POST /fix-requests/{id}/respond/preview",
+	),
 	"corrections.respondToFix.save": to("POST /fix-requests/{id}/respond"),
 	// The undo twins of the three writes above share one token route.
 	"corrections.restoreFix.preview": to("POST /corrections/undo/preview"),
@@ -286,7 +288,9 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"entry.expense.update.save": to("PUT /expenses/{id}"),
 	"entry.projectMembers": to("GET /projects/{id}/members"),
 	"entry.rateOptions": to("GET /entry/rate-options"),
-	"entry.setDefaultRateType": to("PUT /entry/default-rate-types/{homeCurrency}"),
+	"entry.setDefaultRateType": to(
+		"PUT /entry/default-rate-types/{homeCurrency}",
+	),
 	"entry.shared.create.preview": to("POST /shared-expenses/preview"),
 	"entry.shared.create.save": to("POST /shared-expenses"),
 	"entry.shared.delete.preview": to(
@@ -376,11 +380,11 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"importQueue.undo": to("POST /imports/jobs/{id}/undo"),
 
 	// ── insights ─────────────────────────────────────────────────────────
-	"insights.cashflow": to("GET /figures"),
+	"insights.cashflow": to("GET /figures/insights/cashflow"),
 	"insights.firstDay": to("GET /figures/first-day"),
-	"insights.months": to("GET /figures"),
-	"insights.summary": to("GET /figures"),
-	"insights.ytd": to("GET /figures"),
+	"insights.months": to("GET /figures/insights/months"),
+	"insights.summary": to("GET /figures/insights/summary"),
+	"insights.ytd": to("GET /figures/insights/ytd"),
 
 	// ── invite codes ─────────────────────────────────────────────────────
 	"invite.delete": to("DELETE /admin/invite-codes/{id}"),
@@ -481,9 +485,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 		"DELETE /projects/{id}/members/{type}/{personId}",
 	),
 	"project.resetMagicLink": to("POST /projects/{id}/magic-links/reset"),
-	"project.revokeMagicLink": to(
-		"DELETE /projects/{id}/magic-links/{linkId}",
-	),
+	"project.revokeMagicLink": to("DELETE /projects/{id}/magic-links/{linkId}"),
 	"project.setMembershipDates": to(
 		"PUT /projects/{id}/members/{type}/{personId}/dates",
 	),
@@ -558,7 +560,9 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"verification.outgoing": to("GET /shared-expenses/outgoing"),
 	"verification.queue": to("GET /needs-you"),
 	"verification.reject": to("POST /shared-expenses/{id}/reject"),
-	"verification.removeSelf": withPreview("POST /shared-expenses/{id}/remove-me"),
+	"verification.removeSelf": withPreview(
+		"POST /shared-expenses/{id}/remove-me",
+	),
 
 	// ── wealth ───────────────────────────────────────────────────────────
 	"wealth.accounts.defaults": to("GET /accounts/defaults"),

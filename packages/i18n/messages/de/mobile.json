@@ -1300,6 +1300,70 @@
 			"empty": "Noch keine Ausgaben für das Diagramm",
 			"summary": "Tag {day}: {spent} ausgegeben, {before} bis zum selben Tag im Vormonat",
 			"noData": "Keine Daten"
+		},
+		"insights": "Auswertungen ansehen"
+	},
+	"insights": {
+		"title": "Auswertungen",
+		"loading": "Wird geladen",
+		"error": "Auswertungen konnten nicht geladen werden",
+		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+		"retry": "Erneut versuchen",
+		"filters": "Auswertungen filtern",
+		"period": {
+			"month": "Dieser Monat",
+			"lastMonth": "Letzter Monat",
+			"year": "Dieses Jahr",
+			"all": "Gesamter Zeitraum"
+		},
+		"compareOn": "Mit dem vorigen Zeitraum vergleichen",
+		"compareOff": "Nicht mehr vergleichen",
+		"compared": "{period}, verglichen",
+		"span": "{from} bis {to}",
+		"lead": "Deine Ausgaben, {range}",
+		"leadOn": "Deine Ausgaben für {names}, {range}",
+		"leadAll": "Deine Ausgaben, gesamter Zeitraum",
+		"leadAllOn": "Deine Ausgaben für {names}, gesamter Zeitraum",
+		"leadLine": "{lead} · {count}",
+		"pair": "{first} · {second}",
+		"count": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
+		"was": "{period}: {amount}",
+		"wasChange": "{period}: {amount} ({change})",
+		"wasNone": "{period}: keine Ausgaben",
+		"missingRates": "Kein Kurs für {currencies}, nicht mitgezählt",
+		"noCategory": "Ohne Kategorie",
+		"new": "neu",
+		"showMore": "{count} weitere zeigen",
+		"showFewer": "Weniger zeigen",
+		"category": {
+			"title": "Nach Kategorie"
+		},
+		"months": {
+			"title": "Monat für Monat",
+			"caption": "Die letzten sechs Monate, gleiche Filter.",
+			"summary": "Monat für Monat: {list}"
+		},
+		"ytd": {
+			"title": "Dieses Jahr bis heute und letztes Jahr",
+			"currency": "Währung",
+			"usdNote": "Jede Ausgabe in USD zu dem Kurs, mit dem sie gespeichert wurde.",
+			"none": "Keine Ausgaben in diesem Jahr mit diesen Filtern."
+		},
+		"cashflow": {
+			"title": "Einnahmen und Sparen",
+			"income": "Einnahmen",
+			"saved": "Gespart",
+			"perDay": "Pro Tag",
+			"perMonth": "Pro Monat",
+			"rate": "{percent} der Einnahmen"
+		},
+		"empty": {
+			"range": "Keine Ausgaben in diesem Zeitraum",
+			"rangeHint": "Wähle einen anderen Zeitraum oder erfasse eine Ausgabe.",
+			"filtered": "Keine Ausgaben passen zu diesen Filtern",
+			"filteredHint": "Entferne einen Filter oder wähle einen anderen Zeitraum.",
+			"clear": "Filter entfernen",
+			"add": "Ausgabe erfassen"
 		}
 	},
 	"people": {

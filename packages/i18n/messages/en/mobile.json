@@ -1300,6 +1300,70 @@
 			"empty": "No spending to chart yet",
 			"summary": "Day {day}: {spent} spent, {before} by this day last month",
 			"noData": "No data"
+		},
+		"insights": "See insights"
+	},
+	"insights": {
+		"title": "Insights",
+		"loading": "Loading",
+		"error": "Couldn't load insights",
+		"errorDetail": "Check your connection and try again.",
+		"retry": "Try again",
+		"filters": "Filter insights",
+		"period": {
+			"month": "This month",
+			"lastMonth": "Last month",
+			"year": "This year",
+			"all": "All time"
+		},
+		"compareOn": "Compare to previous period",
+		"compareOff": "Stop comparing",
+		"compared": "{period}, compared",
+		"span": "{from} to {to}",
+		"lead": "Your spending in {range}",
+		"leadOn": "Your spending on {names} in {range}",
+		"leadAll": "Your spending, all time",
+		"leadAllOn": "Your spending on {names}, all time",
+		"leadLine": "{lead} · {count}",
+		"pair": "{first} · {second}",
+		"count": "{count, plural, one {# expense} other {# expenses}}",
+		"was": "{period} was {amount}",
+		"wasChange": "{period} was {amount} ({change})",
+		"wasNone": "{period} had no spending",
+		"missingRates": "No rate for {currencies}, not counted",
+		"noCategory": "No category",
+		"new": "new",
+		"showMore": "Show {count} more",
+		"showFewer": "Show fewer",
+		"category": {
+			"title": "By category"
+		},
+		"months": {
+			"title": "Month by month",
+			"caption": "The last six months, same filters.",
+			"summary": "Month by month: {list}"
+		},
+		"ytd": {
+			"title": "Year to date vs last year",
+			"currency": "Currency",
+			"usdNote": "Each expense in USD at the rate it was saved with.",
+			"none": "No spending this year with these filters."
+		},
+		"cashflow": {
+			"title": "Income and savings",
+			"income": "Income",
+			"saved": "Saved",
+			"perDay": "Per day",
+			"perMonth": "Per month",
+			"rate": "{percent} of income"
+		},
+		"empty": {
+			"range": "No expenses in this range",
+			"rangeHint": "Pick another period, or add an expense.",
+			"filtered": "No spending matches these filters",
+			"filteredHint": "Clear a filter or pick another period.",
+			"clear": "Clear filters",
+			"add": "Add expense"
 		}
 	},
 	"people": {

@@ -3,8 +3,10 @@ import { v1 } from "../common/meta";
 import { figureSchema } from "../common/money";
 import { figuresExtrasContract } from "./extras";
 import { glanceSchema } from "./glance";
+import { figuresInsightsContract } from "./insights";
 
 export * from "./glance";
+export * from "./insights";
 
 export const MAX_FIGURE_IDS = 50;
 
@@ -58,6 +60,7 @@ export const figuresResultSchema = z.object({
  */
 export const figuresContract = {
 	...figuresExtrasContract,
+	...figuresInsightsContract,
 	read: v1
 		.route({
 			method: "GET",

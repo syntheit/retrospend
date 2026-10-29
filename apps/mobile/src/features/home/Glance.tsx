@@ -4,7 +4,7 @@ import { useTranslations } from "use-intl";
 import { useVerdictText } from "@/features/budget/useVerdictText";
 import { verdictLabel, verdictSentence } from "@/features/budget/verdict";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { ListRow } from "@/features/read/parts";
+import { LinkButton, ListRow } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";
@@ -181,6 +181,10 @@ export function Glance({
 				) : null}
 			</Pressable>
 			<PaceChart glance={glance} />
+			<LinkButton
+				label={t("insights")}
+				onPress={() => router.push("/home/insights")}
+			/>
 			<Figure
 				approx={approx.owedToYou}
 				label={t("owedToYou")}

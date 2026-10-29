@@ -1300,6 +1300,70 @@
 			"empty": "Aún no hay gastos para el gráfico",
 			"summary": "Día {day}: {spent} gastados, {before} hasta este día el mes pasado",
 			"noData": "Sin datos"
+		},
+		"insights": "Ver análisis"
+	},
+	"insights": {
+		"title": "Análisis",
+		"loading": "Cargando",
+		"error": "No se pudo cargar el análisis",
+		"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
+		"retry": "Reintentar",
+		"filters": "Filtrar análisis",
+		"period": {
+			"month": "Este mes",
+			"lastMonth": "El mes pasado",
+			"year": "Este año",
+			"all": "Todo el tiempo"
+		},
+		"compareOn": "Comparar con el período anterior",
+		"compareOff": "Dejar de comparar",
+		"compared": "{period}, comparado",
+		"span": "{from} a {to}",
+		"lead": "Tu gasto, {range}",
+		"leadOn": "Tu gasto en {names}, {range}",
+		"leadAll": "Tu gasto, todo el período",
+		"leadAllOn": "Tu gasto en {names}, todo el período",
+		"leadLine": "{lead} · {count}",
+		"pair": "{first} · {second}",
+		"count": "{count, plural, one {# gasto} other {# gastos}}",
+		"was": "{period} fue {amount}",
+		"wasChange": "{period} fue {amount} ({change})",
+		"wasNone": "{period} no tuvo gastos",
+		"missingRates": "Sin cotización para {currencies}, no se cuenta",
+		"noCategory": "Sin categoría",
+		"new": "nueva",
+		"showMore": "Mostrar {count} más",
+		"showFewer": "Mostrar menos",
+		"category": {
+			"title": "Por categoría"
+		},
+		"months": {
+			"title": "Mes a mes",
+			"caption": "Los últimos seis meses, mismos filtros.",
+			"summary": "Mes a mes: {list}"
+		},
+		"ytd": {
+			"title": "Este año hasta hoy y el año pasado",
+			"currency": "Moneda",
+			"usdNote": "Cada gasto en USD a la cotización con la que se guardó.",
+			"none": "Sin gastos este año con estos filtros."
+		},
+		"cashflow": {
+			"title": "Ingresos y ahorro",
+			"income": "Ingresos",
+			"saved": "Ahorrado",
+			"perDay": "Por día",
+			"perMonth": "Por mes",
+			"rate": "{percent} de tus ingresos"
+		},
+		"empty": {
+			"range": "Sin gastos en este período",
+			"rangeHint": "Elige otro período o añade un gasto.",
+			"filtered": "Ningún gasto coincide con estos filtros",
+			"filteredHint": "Quita un filtro o elige otro período.",
+			"clear": "Quitar filtros",
+			"add": "Añadir gasto"
 		}
 	},
 	"people": {

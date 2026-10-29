@@ -1300,6 +1300,70 @@
 			"empty": "Pas encore de dépenses à afficher",
 			"summary": "Jour {day} : {spent} dépensés, {before} à ce même jour le mois dernier",
 			"noData": "Aucune donnée"
+		},
+		"insights": "Voir les analyses"
+	},
+	"insights": {
+		"title": "Analyses",
+		"loading": "Chargement",
+		"error": "Impossible de charger les analyses",
+		"errorDetail": "Vérifie ta connexion et réessaie.",
+		"retry": "Réessayer",
+		"filters": "Filtrer les analyses",
+		"period": {
+			"month": "Ce mois-ci",
+			"lastMonth": "Le mois dernier",
+			"year": "Cette année",
+			"all": "Toute la période"
+		},
+		"compareOn": "Comparer à la période précédente",
+		"compareOff": "Arrêter de comparer",
+		"compared": "{period}, comparé",
+		"span": "{from} au {to}",
+		"lead": "Tes dépenses, {range}",
+		"leadOn": "Tes dépenses pour {names}, {range}",
+		"leadAll": "Tes dépenses, depuis toujours",
+		"leadAllOn": "Tes dépenses pour {names}, depuis toujours",
+		"leadLine": "{lead} · {count}",
+		"pair": "{first} · {second}",
+		"count": "{count, plural, one {# dépense} other {# dépenses}}",
+		"was": "{period} : {amount}",
+		"wasChange": "{period} : {amount} ({change})",
+		"wasNone": "{period} : aucune dépense",
+		"missingRates": "Pas de taux pour {currencies}, non compté",
+		"noCategory": "Sans catégorie",
+		"new": "nouvelle",
+		"showMore": "Afficher {count} de plus",
+		"showFewer": "Afficher moins",
+		"category": {
+			"title": "Par catégorie"
+		},
+		"months": {
+			"title": "Mois par mois",
+			"caption": "Les six derniers mois, mêmes filtres.",
+			"summary": "Mois par mois : {list}"
+		},
+		"ytd": {
+			"title": "Depuis le début de l'année et l'an dernier",
+			"currency": "Devise",
+			"usdNote": "Chaque dépense en USD au taux de son enregistrement.",
+			"none": "Aucune dépense cette année avec ces filtres."
+		},
+		"cashflow": {
+			"title": "Revenus et épargne",
+			"income": "Revenus",
+			"saved": "Épargné",
+			"perDay": "Par jour",
+			"perMonth": "Par mois",
+			"rate": "{percent} des revenus"
+		},
+		"empty": {
+			"range": "Aucune dépense sur cette période",
+			"rangeHint": "Choisis une autre période ou ajoute une dépense.",
+			"filtered": "Aucune dépense ne correspond à ces filtres",
+			"filteredHint": "Retire un filtre ou choisis une autre période.",
+			"clear": "Retirer les filtres",
+			"add": "Ajouter une dépense"
 		}
 	},
 	"people": {
