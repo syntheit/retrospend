@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { type Entered, minorOf, wireAmount } from "./amount";
+import { type Entered, minorOf, wireAmount } from "@/features/write/amount";
 import { isIsoDay } from "./DayField";
 
 // The request bodies of the budget sheets beyond the first six: new envelope,

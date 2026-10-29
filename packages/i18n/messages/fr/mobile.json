@@ -2062,5 +2062,12 @@
 	},
 	"list": {
 		"loading": "Chargement"
+	},
+	"charts": {
+		"summary": "{label}. De {from} le {fromDate} à {to} le {toDate}.",
+		"pick": "{date}, {amount}",
+		"later": "Jour suivant",
+		"earlier": "Jour précédent",
+		"noData": "pas de données"
 	}
 }

@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { wireAmount } from "./amount";
+import { wireAmount } from "@/features/write/amount";
 
 // Income rules: what happens to money that arrives. A rule moves no money
 // when it is made; "apply to this month" is the money write.

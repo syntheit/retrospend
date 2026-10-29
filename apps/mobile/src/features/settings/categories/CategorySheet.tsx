@@ -6,7 +6,7 @@ import { Pressable, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
-import { Note, SheetBody } from "@/features/budget/parts";
+import { Note, SheetBody } from "@/features/write/parts";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { categoryColor, Glyph } from "@/ui/Glyph";

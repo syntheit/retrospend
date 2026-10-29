@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import type { BudgetEnvelope, BudgetMonth } from "@/features/budget/source";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Note } from "./parts";
-import type { BudgetEnvelope, BudgetMonth } from "./source";
 
 /** What every envelope form is given. */
 export interface FormProps {
@@ -30,6 +30,8 @@ export function noSession(): never {
 /**
  * The frame of a money form: the fields, what the server says the write
  * changes, and one primary button that stays off until the dry run is in.
+ * The frame sets the field gap once: 16 between fields. Inside a field (an
+ * input and its error line) the gap is 4, set by the field itself.
  */
 export function WriteFrame({
 	children,

@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { wireAmount } from "./amount";
+import { wireAmount } from "@/features/write/amount";
 
 // The request bodies of the budget money writes. Each preview twin takes the
 // same body as its write, so the sheet builds one body and sends it to both.

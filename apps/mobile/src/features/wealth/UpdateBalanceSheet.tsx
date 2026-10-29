@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
-import { minorOf, readAmount, wireAmount } from "@/features/budget/amount";
-import { figureLines } from "@/features/budget/figures";
+import { useMoneyText } from "@/features/read/useMoneyText";
+import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
+import { figureLines } from "@/features/write/figures";
 import {
 	AmountField,
 	ChangeList,
@@ -9,12 +10,11 @@ import {
 	Note,
 	SheetBody,
 	useAmountLocale,
-} from "@/features/budget/parts";
-import { useFigureLabel } from "@/features/budget/useFigureLabel";
-import { useMoneyWrite, useWriteIds } from "@/features/budget/useMoneyWrite";
-import { useUndoToast } from "@/features/budget/useUndoToast";
-import { noSession, useApi, WriteFrame } from "@/features/budget/WriteFrame";
-import { useMoneyText } from "@/features/read/useMoneyText";
+} from "@/features/write/parts";
+import { useFigureLabel } from "@/features/write/useFigureLabel";
+import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
+import { useUndoToast } from "@/features/write/useUndoToast";
+import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { Sheet } from "@/ui/Sheet";
 import { ACCOUNT_BALANCE, balanceRows, isUnchanged } from "./balance";
 import type { AccountDetail } from "./source";

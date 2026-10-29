@@ -3,19 +3,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { newClientId } from "@/data/ids";
-import { minorOf, readAmount } from "@/features/budget/amount";
+import { useSheetRead } from "@/features/budget/useSheetRead";
+import { PreviewChanges } from "@/features/read/PreviewChanges";
+import { useMoneyText } from "@/features/read/useMoneyText";
+import { minorOf, readAmount } from "@/features/write/amount";
 import {
 	AmountField,
 	Note,
 	SheetBody,
 	useAmountLocale,
-} from "@/features/budget/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/budget/useMoneyWrite";
-import { useSheetRead } from "@/features/budget/useSheetRead";
-import { useUndoToast } from "@/features/budget/useUndoToast";
-import { noSession, useApi, WriteFrame } from "@/features/budget/WriteFrame";
-import { PreviewChanges } from "@/features/read/PreviewChanges";
-import { useMoneyText } from "@/features/read/useMoneyText";
+} from "@/features/write/parts";
+import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
+import { useUndoToast } from "@/features/write/useUndoToast";
+import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { Picker } from "@/ui/Picker";

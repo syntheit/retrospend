@@ -1,8 +1,8 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { Line } from "@/features/budget/parts";
 import { SectionHeader } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { Line } from "@/features/write/parts";
 import { useTheme } from "@/theme";
 import type { NetWorth } from "./source";
 

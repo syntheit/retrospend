@@ -126,8 +126,7 @@ describe("NumbersSection", () => {
 		const { root, onSaved } = mount();
 		const press = root.findAll(
 			(n) =>
-				n.props.accessibilityLabel ===
-				"Number format|dot_comma|$1.234.567,89",
+				n.props.accessibilityLabel === "Number format|dot_comma|$1.234.567,89",
 		)[0] as TestNode;
 		await act(async () => {
 			(press.props.onPress as () => void)();

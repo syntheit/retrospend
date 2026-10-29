@@ -2062,5 +2062,12 @@
 	},
 	"list": {
 		"loading": "Загрузка"
+	},
+	"charts": {
+		"summary": "{label}. От {from} ({fromDate}) до {to} ({toDate}).",
+		"pick": "{date}, {amount}",
+		"later": "Следующий день",
+		"earlier": "Предыдущий день",
+		"noData": "нет данных"
 	}
 }

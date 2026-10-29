@@ -2062,5 +2062,12 @@
 	},
 	"list": {
 		"loading": "Loading"
+	},
+	"charts": {
+		"summary": "{label}. From {from} on {fromDate} to {to} on {toDate}.",
+		"pick": "{date}, {amount}",
+		"later": "Next day",
+		"earlier": "Previous day",
+		"noData": "no data"
 	}
 }

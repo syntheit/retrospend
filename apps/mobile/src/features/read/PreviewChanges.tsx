@@ -1,9 +1,9 @@
 import { useTranslations } from "use-intl";
-import { type FigureDiff, figureLines } from "@/features/budget/figures";
-import { ChangeList, type ChangeRow } from "@/features/budget/parts";
-import { useFigureLabel } from "@/features/budget/useFigureLabel";
-import type { PreviewStatus } from "@/features/budget/useMoneyWrite";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { type FigureDiff, figureLines } from "@/features/write/figures";
+import { ChangeList, type ChangeRow } from "@/features/write/parts";
+import { useFigureLabel } from "@/features/write/useFigureLabel";
+import type { PreviewStatus } from "@/features/write/useMoneyWrite";
 
 type Side = { minor: number; currency: string } | null;
 

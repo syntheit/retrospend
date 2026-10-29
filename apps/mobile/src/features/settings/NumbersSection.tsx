@@ -45,7 +45,9 @@ export function useNumbersSection(
 		{ value: "space_comma", label: examples.space_comma },
 	];
 
-	async function save(patch: { numberFormat: GeneralSettings["numberFormat"] }) {
+	async function save(patch: {
+		numberFormat: GeneralSettings["numberFormat"];
+	}) {
 		if (!api) return;
 		try {
 			await api.settings.update(patch, {

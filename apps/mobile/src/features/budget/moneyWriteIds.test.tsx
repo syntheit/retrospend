@@ -1,4 +1,4 @@
-import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
+import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 
 const renderer = require("react-test-renderer");
 const { act } = renderer;

@@ -2,11 +2,16 @@ import type { Money } from "@retrospend/domain/money-minor";
 import { useEffect, useState } from "react";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { minorOf, readAmount } from "./amount";
+import { minorOf, readAmount } from "@/features/write/amount";
+import {
+	AmountField,
+	Line,
+	Note,
+	useAmountLocale,
+} from "@/features/write/parts";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { startingMoneyBody } from "./closeBodies";
-import { AmountField, Line, Note, useAmountLocale } from "./parts";
 import type { BudgetMonth } from "./source";
-import { useWriteIds } from "./useMoneyWrite";
 import { WriteSheet } from "./WriteSheet";
 
 /** What the dry run of the starting money says beyond the figures that move. */
