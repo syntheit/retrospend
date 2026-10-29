@@ -7,7 +7,8 @@
 		"projects": "Projects",
 		"add": "Add expense",
 		"search": "Search",
-		"recurring": "Recurring"
+		"recurring": "Recurring",
+		"currencies": "Currencies"
 	},
 	"common": {
 		"cancel": "Cancel",
@@ -1673,14 +1674,7 @@
 			"section": "Rates",
 			"footer": "The default rate type can only be changed on the web for now.",
 			"defaultType": "Default rate type",
-			"pinned": "Pinned rates",
-			"title": "Pinned rates",
-			"none": "No pinned rates",
-			"unpin": "Unpin",
-			"unpinned": "Rate unpinned",
-			"error": "Couldn't unpin the rate. Try again.",
-			"line": "1 USD = {rate} {currency}",
-			"spoken": "{currency} {type}, 1 USD is {rate} {currency}"
+			"currencies": "Currencies"
 		},
 		"notifications": {
 			"inApp": "In the app",
@@ -1753,7 +1747,6 @@
 			"footer": "These open in the browser here. You sign in there too.",
 			"import": "Import",
 			"insights": "Insights",
-			"currencies": "Currencies and rates",
 			"developer": "API tokens and webhooks",
 			"data": "Export your data",
 			"security": "Password and two-step sign-in"
@@ -1898,5 +1891,80 @@
 		"summary": "Add expense {amount}",
 		"phraseAdd": "Add an expense in {app}",
 		"phraseNew": "New expense in {app}"
+	},
+	"currencies": {
+		"title": "Currencies",
+		"search": "Search, or type 100 usd",
+		"filter": {
+			"label": "Show",
+			"all": "All currencies",
+			"favorites": "Favorites",
+			"fiat": "Fiat",
+			"crypto": "Crypto"
+		},
+		"pricesIn": "Price of 1 {base}.",
+		"updated": "Updated {date}.",
+		"newUse": "New foreign amounts use {type}.",
+		"missing": "No rate yet for {codes}. {count, plural, one {{names} is} other {{names} are}} left out of net worth.",
+		"noRate": "No rate",
+		"noRateSub": "No rate. Left out of totals.",
+		"base": "1 {code} =",
+		"derived": "Derived through {home}",
+		"loading": "Loading rates",
+		"error": "Rates aren't available right now",
+		"errorDetail": "Try again in a moment.",
+		"retry": "Try again",
+		"empty": {
+			"none": "No currencies match",
+			"noneHint": "Try another name or code.",
+			"clear": "Clear filters",
+			"noFavorites": "No favorites yet",
+			"noFavoritesHint": "Star a currency to keep it first, here and in the currency picker.",
+			"showAll": "Show all currencies"
+		},
+		"star": {
+			"add": "Add {code} to favorites",
+			"remove": "Remove {code} from favorites",
+			"unavailable": "{code} can't be a favorite yet"
+		},
+		"menu": {
+			"convert": "Convert",
+			"favorite": "Add to favorites",
+			"unfavorite": "Remove from favorites",
+			"history": "View rate history"
+		},
+		"detail": {
+			"title": "{code} rates",
+			"sub": "{code} · {date}",
+			"noRate": "No {code} rate. Accounts and expenses in {code} are left out of totals.",
+			"usedBy": "Used by {names}",
+			"rates": "Rates",
+			"default": "Default",
+			"defaultTitle": "Default for new expenses",
+			"defaultFixed": "The built-in default for now."
+		},
+		"convert": {
+			"title": "Convert",
+			"amount": "Amount",
+			"swap": "Swap direction",
+			"into": "in {code}",
+			"failed": "Couldn't convert. Try again.",
+			"quickTitle": "{amount} in {to}"
+		},
+		"toast": {
+			"favorited": "{code} added to favorites",
+			"unfavorited": "{code} removed from favorites",
+			"failed": "Couldn't do that. Try again."
+		},
+		"rateTypes": {
+			"official": "Official",
+			"blue": "Blue",
+			"card": "Card",
+			"mep": "MEP",
+			"crypto": "Crypto",
+			"tourist": "Tourist",
+			"market": "Market",
+			"custom": "Custom"
+		}
 	}
 }

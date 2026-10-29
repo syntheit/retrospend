@@ -1,10 +1,18 @@
 import * as currencies from "~/server/services/api-v1/currencies";
+import {
+	convertAmount,
+	readRateTable,
+} from "~/server/services/api-v1/currency-table";
 import { serve } from "../core/serve";
 import { signedIn, v1 } from "../middleware";
 
 const c = v1.currencies;
 
-/** Rates are shared data; the caller's client is used only to stay on one path. */
+/**
+ * Rates are shared data; the caller's client is used only to stay on one
+ * path. The rate table and the converter read the caller's home currency,
+ * favorites and accounts as well.
+ */
 export const currenciesRouter = {
 	list: c.list.handler(
 		serve(({ context, input }) =>
@@ -31,6 +39,12 @@ export const currenciesRouter = {
 			const { currency, ...query } = input;
 			return currencies.readBestRate(signedIn(context).db, currency, query);
 		}),
+	),
+	rateTable: c.rateTable.handler(
+		serve(({ context }) => readRateTable(signedIn(context))),
+	),
+	convert: c.convert.handler(
+		serve(({ context, input }) => convertAmount(signedIn(context), input)),
 	),
 	syncStatus: c.syncStatus.handler(
 		serve(({ context }) => currencies.readSyncStatus(signedIn(context).db)),

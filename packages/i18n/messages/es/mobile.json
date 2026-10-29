@@ -7,7 +7,8 @@
 		"projects": "Proyectos",
 		"add": "Añadir gasto",
 		"search": "Buscar",
-		"recurring": "Recurrentes"
+		"recurring": "Recurrentes",
+		"currencies": "Monedas"
 	},
 	"common": {
 		"cancel": "Cancelar",
@@ -1673,14 +1674,7 @@
 			"section": "Cotizaciones",
 			"footer": "Por ahora, el tipo de cotización predeterminado solo se cambia desde la web.",
 			"defaultType": "Tipo de cotización predeterminado",
-			"pinned": "Cotizaciones fijadas",
-			"title": "Cotizaciones fijadas",
-			"none": "No hay cotizaciones fijadas",
-			"unpin": "Desfijar",
-			"unpinned": "Cotización desfijada",
-			"error": "No se pudo desfijar la cotización. Inténtalo de nuevo.",
-			"line": "1 USD = {rate} {currency}",
-			"spoken": "{currency} {type}, 1 USD vale {rate} {currency}"
+			"currencies": "Monedas"
 		},
 		"notifications": {
 			"inApp": "En la app",
@@ -1753,7 +1747,6 @@
 			"footer": "Se abren en el navegador de aquí. Allí también inicias sesión.",
 			"import": "Importar",
 			"insights": "Análisis",
-			"currencies": "Monedas y tasas",
 			"developer": "Tokens de API y webhooks",
 			"data": "Exportar tus datos",
 			"security": "Contraseña e inicio de sesión en dos pasos"
@@ -1898,5 +1891,80 @@
 		"summary": "Añadir gasto de {amount}",
 		"phraseAdd": "Añade un gasto en {app}",
 		"phraseNew": "Nuevo gasto en {app}"
+	},
+	"currencies": {
+		"title": "Monedas",
+		"search": "Busca, o escribe 100 usd",
+		"filter": {
+			"label": "Mostrar",
+			"all": "Todas las monedas",
+			"favorites": "Favoritas",
+			"fiat": "Fiat",
+			"crypto": "Cripto"
+		},
+		"pricesIn": "Precio de 1 {base}.",
+		"updated": "Actualizado el {date}.",
+		"newUse": "Los importes nuevos en otra moneda usan {type}.",
+		"missing": "Aún no hay tipo de cambio de {codes}. {count, plural, one {{names} queda} other {{names} quedan}} fuera del patrimonio.",
+		"noRate": "Sin tipo de cambio",
+		"noRateSub": "Sin tipo de cambio. Fuera de los totales.",
+		"base": "1 {code} =",
+		"derived": "Derivado a través de {home}",
+		"loading": "Cargando tipos de cambio",
+		"error": "Los tipos de cambio no están disponibles ahora",
+		"errorDetail": "Inténtalo de nuevo en un momento.",
+		"retry": "Reintentar",
+		"empty": {
+			"none": "Ninguna moneda coincide",
+			"noneHint": "Prueba con otro nombre o código.",
+			"clear": "Quitar filtros",
+			"noFavorites": "Aún no tienes favoritas",
+			"noFavoritesHint": "Marca una moneda con la estrella para tenerla primero, aquí y en el selector de monedas.",
+			"showAll": "Ver todas las monedas"
+		},
+		"star": {
+			"add": "Añadir {code} a favoritas",
+			"remove": "Quitar {code} de favoritas",
+			"unavailable": "{code} aún no puede ser favorita"
+		},
+		"menu": {
+			"convert": "Convertir",
+			"favorite": "Añadir a favoritas",
+			"unfavorite": "Quitar de favoritas",
+			"history": "Ver historial del tipo de cambio"
+		},
+		"detail": {
+			"title": "Tipos de cambio de {code}",
+			"sub": "{code} · {date}",
+			"noRate": "No hay tipo de cambio de {code}. Las cuentas y gastos en {code} quedan fuera de los totales.",
+			"usedBy": "La usa {names}",
+			"rates": "Tipos de cambio",
+			"default": "Por defecto",
+			"defaultTitle": "Por defecto para gastos nuevos",
+			"defaultFixed": "Por ahora, el valor predeterminado."
+		},
+		"convert": {
+			"title": "Convertir",
+			"amount": "Importe",
+			"swap": "Invertir",
+			"into": "en {code}",
+			"failed": "No se ha podido convertir. Inténtalo de nuevo.",
+			"quickTitle": "{amount} en {to}"
+		},
+		"toast": {
+			"favorited": "{code} añadida a favoritas",
+			"unfavorited": "{code} quitada de favoritas",
+			"failed": "No se ha podido. Inténtalo de nuevo."
+		},
+		"rateTypes": {
+			"official": "Oficial",
+			"blue": "Blue",
+			"card": "Tarjeta",
+			"mep": "MEP",
+			"crypto": "Cripto",
+			"tourist": "Turista",
+			"market": "Mercado",
+			"custom": "Personalizado"
+		}
 	}
 }

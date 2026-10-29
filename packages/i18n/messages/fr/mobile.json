@@ -7,7 +7,8 @@
 		"projects": "Projets",
 		"add": "Ajouter une dépense",
 		"search": "Rechercher",
-		"recurring": "Récurrents"
+		"recurring": "Récurrents",
+		"currencies": "Devises"
 	},
 	"common": {
 		"cancel": "Annuler",
@@ -1673,14 +1674,7 @@
 			"section": "Taux",
 			"footer": "Le type de taux par défaut ne se change que sur le web pour l’instant.",
 			"defaultType": "Type de taux par défaut",
-			"pinned": "Taux épinglés",
-			"title": "Taux épinglés",
-			"none": "Aucun taux épinglé",
-			"unpin": "Retirer",
-			"unpinned": "Taux retiré",
-			"error": "Impossible de retirer le taux. Réessaie.",
-			"line": "1 USD = {rate} {currency}",
-			"spoken": "{currency} {type}, 1 USD vaut {rate} {currency}"
+			"currencies": "Devises"
 		},
 		"notifications": {
 			"inApp": "Dans l’app",
@@ -1753,7 +1747,6 @@
 			"footer": "Ils s'ouvrent dans le navigateur ici. Tu t'y connectes aussi.",
 			"import": "Importer",
 			"insights": "Analyses",
-			"currencies": "Devises et taux",
 			"developer": "Jetons d'API et webhooks",
 			"data": "Exporter tes données",
 			"security": "Mot de passe et connexion en deux étapes"
@@ -1898,5 +1891,80 @@
 		"summary": "Ajouter une dépense de {amount}",
 		"phraseAdd": "Ajoute une dépense dans {app}",
 		"phraseNew": "Nouvelle dépense dans {app}"
+	},
+	"currencies": {
+		"title": "Devises",
+		"search": "Rechercher, ou taper 100 usd",
+		"filter": {
+			"label": "Afficher",
+			"all": "Toutes les devises",
+			"favorites": "Favoris",
+			"fiat": "Fiat",
+			"crypto": "Crypto"
+		},
+		"pricesIn": "Prix de 1 {base}.",
+		"updated": "Mis à jour le {date}.",
+		"newUse": "Les nouveaux montants en devise utilisent {type}.",
+		"missing": "Pas encore de taux pour {codes}. {count, plural, one {{names} est exclu} other {{names} sont exclus}} du patrimoine.",
+		"noRate": "Pas de taux",
+		"noRateSub": "Pas de taux. Exclu des totaux.",
+		"base": "1 {code} =",
+		"derived": "Dérivé via {home}",
+		"loading": "Chargement des taux",
+		"error": "Les taux ne sont pas disponibles pour le moment",
+		"errorDetail": "Réessaie dans un instant.",
+		"retry": "Réessayer",
+		"empty": {
+			"none": "Aucune devise ne correspond",
+			"noneHint": "Essaie un autre nom ou code.",
+			"clear": "Effacer les filtres",
+			"noFavorites": "Aucun favori pour l'instant",
+			"noFavoritesHint": "Ajoute une étoile à une devise pour la garder en tête, ici et dans le sélecteur de devises.",
+			"showAll": "Voir toutes les devises"
+		},
+		"star": {
+			"add": "Ajouter {code} aux favoris",
+			"remove": "Retirer {code} des favoris",
+			"unavailable": "{code} ne peut pas encore être un favori"
+		},
+		"menu": {
+			"convert": "Convertir",
+			"favorite": "Ajouter aux favoris",
+			"unfavorite": "Retirer des favoris",
+			"history": "Voir l'historique du taux"
+		},
+		"detail": {
+			"title": "Taux de {code}",
+			"sub": "{code} · {date}",
+			"noRate": "Pas de taux pour {code}. Les comptes et dépenses en {code} sont exclus des totaux.",
+			"usedBy": "Utilisée par {names}",
+			"rates": "Taux",
+			"default": "Par défaut",
+			"defaultTitle": "Par défaut pour les nouvelles dépenses",
+			"defaultFixed": "Le réglage par défaut pour l'instant."
+		},
+		"convert": {
+			"title": "Convertir",
+			"amount": "Montant",
+			"swap": "Inverser",
+			"into": "en {code}",
+			"failed": "Conversion impossible. Réessaie.",
+			"quickTitle": "{amount} en {to}"
+		},
+		"toast": {
+			"favorited": "{code} ajoutée aux favoris",
+			"unfavorited": "{code} retirée des favoris",
+			"failed": "Impossible pour le moment. Réessaie."
+		},
+		"rateTypes": {
+			"official": "Officiel",
+			"blue": "Blue",
+			"card": "Carte",
+			"mep": "MEP",
+			"crypto": "Crypto",
+			"tourist": "Touriste",
+			"market": "Marché",
+			"custom": "Personnalisé"
+		}
 	}
 }

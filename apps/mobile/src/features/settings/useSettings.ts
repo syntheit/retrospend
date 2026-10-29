@@ -4,10 +4,8 @@ import { useCachedRead } from "@/features/read/useCachedRead";
 import {
 	CURRENCIES_CACHE,
 	fetchCurrencies,
-	fetchFavoriteRates,
 	NOTIFICATIONS_CACHE,
 	PROFILE_CACHE,
-	RATES_CACHE,
 	SETTINGS_CACHE,
 } from "./source";
 
@@ -33,12 +31,6 @@ export function useNotificationPreferences() {
 		[api],
 	);
 	return useCachedRead(NOTIFICATIONS_CACHE, fetch);
-}
-
-export function useFavoriteRates() {
-	const { api } = useSession();
-	const fetch = useMemo(() => (api ? fetchFavoriteRates(api) : null), [api]);
-	return useCachedRead(RATES_CACHE, fetch);
 }
 
 export function useFiatCurrencies() {

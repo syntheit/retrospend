@@ -40,6 +40,7 @@ const EXTRA_GLYPHS = [
 	"LogOut",
 	"Search",
 	"Settings",
+	"Star",
 	"X",
 ];
 
