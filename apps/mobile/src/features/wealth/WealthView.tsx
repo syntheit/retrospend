@@ -1,102 +1,194 @@
 import { router, Stack } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Platform, Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { subscribeEntryChanges } from "@/features/entry/events";
-import { SectionHeader, StaleNote } from "@/ui/List";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
+import { AddButton } from "@/ui/AddButton";
 import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
+import { Glyph } from "@/ui/Glyph";
+import { ListGroup, StaleNote } from "@/ui/List";
+import { Menu } from "@/ui/Menu";
 import { Screen } from "@/ui/Screen";
+import { Skeleton, SkeletonRows } from "@/ui/Skeleton";
+import { Text } from "@/ui/Text";
+import type { MenuItem } from "@/ui/types";
 import { AccountRow } from "./AccountRow";
-import { AccountSheet } from "./AccountSheet";
+import { AccountSheets, type SheetTarget } from "./AccountSheets";
 import { closedAccounts, sectionsOf, unvalued } from "./accounts";
-import { ChangeParts } from "./ChangeParts";
-import { NetWorthHero } from "./NetWorthHero";
+import { GroupHeader } from "./GroupHeader";
+import { NetWorthChangeSheet } from "./NetWorthChangeSheet";
+import { KeyFigures, NetWorthHero } from "./NetWorthHero";
 import { useAccountHref } from "./routes";
 import { fetchWealth, WEALTH_CACHE, type WealthData } from "./source";
-import { useCurrencyInfo } from "./useCurrencyInfo";
+import { useAccountActions } from "./useAccountActions";
+
+/**
+ * The header's trailing items: Add account, the one primary, and a menu for
+ * the rest (Add income, Currencies and rates). iOS draws the system plus
+ * button; Android a text button in the top bar.
+ */
+function HeaderActions({ onAdd }: { onAdd: () => void }) {
+	const t = useTranslations("mobile.wealth");
+	const { space } = useTheme();
+	const add = useOptionalAddEntry();
+	const items: MenuItem[] = [
+		...(add
+			? [
+					{
+						id: "income",
+						label: t("menu.income"),
+						onPress: () => add.open("income"),
+					},
+				]
+			: []),
+		{
+			id: "currencies",
+			label: t("menu.currencies"),
+			onPress: () => router.push("/currencies"),
+		},
+	];
+	return (
+		<View style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}>
+			{Platform.OS === "ios" ? (
+				<AddButton label={t("account.addTitle")} onPress={onAdd} />
+			) : (
+				<Button label={t("account.addTitle")} onPress={onAdd} variant="text" />
+			)}
+			<Menu accessibilityLabel={t("more")} items={items} label="⋯" />
+		</View>
+	);
+}
+
+/** Closed accounts sit collapsed under one row that opens them. */
+function ClosedToggle({
+	count,
+	open,
+	onToggle,
+}: {
+	count: number;
+	open: boolean;
+	onToggle: () => void;
+}) {
+	const t = useTranslations("mobile.wealth");
+	const { color, size, space } = useTheme();
+	return (
+		<Pressable
+			accessibilityLabel={`${t("closed.title")}, ${count}`}
+			accessibilityRole="button"
+			accessibilityState={{ expanded: open }}
+			onPress={onToggle}
+			style={{
+				minHeight: size.touchMin.phone,
+				flexDirection: "row",
+				alignItems: "center",
+				gap: space[2],
+				paddingHorizontal: space[4],
+				paddingTop: space[4],
+			}}
+		>
+			<View style={{ transform: [{ rotate: open ? "90deg" : "0deg" }] }}>
+				<Glyph color={color.fg3} name="ChevronRight" size={size.icon.phone} />
+			</View>
+			<Text accessibilityRole="header" variant="section">
+				{t("closed.title")}
+			</Text>
+			<Text tabular tone="fg3">
+				{count}
+			</Text>
+			<Text style={{ flex: 1, textAlign: "right" }} tone="fg3" variant="meta">
+				{t("closed.notCounted")}
+			</Text>
+		</Pressable>
+	);
+}
 
 function AccountsList({
 	data,
-	onAdd,
+	onSheet,
 }: {
 	data: WealthData;
-	onAdd: () => void;
+	onSheet: (target: SheetTarget) => void;
 }) {
+	const [showClosed, setShowClosed] = useState(false);
 	const t = useTranslations("mobile.wealth");
-	const { color, space, type } = useTheme();
 	const hrefOf = useAccountHref();
-	const openAccount = (id: string) => router.push(hrefOf(id));
+	const actionsFor = useAccountActions(
+		useCallback(
+			(action, account) => onSheet({ kind: action, account }),
+			[onSheet],
+		),
+	);
 	const accounts = data.list.accounts;
 	const sections = sectionsOf(accounts);
 	const closed = closedAccounts(accounts);
-	const missing = unvalued(accounts);
+	const rows = (list: typeof accounts) =>
+		list.map((account) => (
+			<AccountRow
+				account={account}
+				actions={actionsFor(account)}
+				key={account.id}
+				onPress={() => router.push(hrefOf(account.id))}
+			/>
+		));
 	return (
 		<View>
-			{missing.length > 0 ? (
-				<Text
-					style={{
-						color: color.attentionText,
-						fontSize: type.small.size,
-						padding: space[4],
-					}}
-				>
-					{t("withoutRate", { count: missing.length })}
-				</Text>
-			) : null}
-			{sections.map((section) => (
-				<View key={section.group}>
-					<SectionHeader
-						detail={String(section.accounts.length)}
-						title={t(`groups.${section.group}`)}
-					/>
-					{section.accounts.map((account) => (
-						<AccountRow
-							account={account}
-							key={account.id}
-							onPress={() => openAccount(account.id)}
+			{sections.map((section) => {
+				const group = data.summary.groups.find((g) => g.key === section.group);
+				return (
+					<View key={section.group}>
+						<GroupHeader
+							series={group?.series ?? null}
+							title={t(`groups.${section.group}`)}
+							total={group?.total ?? null}
 						/>
-					))}
-				</View>
-			))}
+						<ListGroup>{rows(section.accounts)}</ListGroup>
+					</View>
+				);
+			})}
 			{closed.length > 0 ? (
 				<View>
-					<SectionHeader
-						detail={String(closed.length)}
-						title={t("closed.title")}
+					<ClosedToggle
+						count={closed.length}
+						onToggle={() => setShowClosed((open) => !open)}
+						open={showClosed}
 					/>
-					{closed.map((account) => (
-						<AccountRow
-							account={account}
-							key={account.id}
-							onPress={() => openAccount(account.id)}
-						/>
-					))}
+					{showClosed ? <ListGroup>{rows(closed)}</ListGroup> : null}
 				</View>
 			) : null}
-			<View style={{ alignItems: "flex-start", padding: space[4] }}>
-				<Button
-					label={t("account.addTitle")}
-					onPress={onAdd}
-					variant="outlined"
-				/>
+		</View>
+	);
+}
+
+/** What shows while Wealth loads: the shape of the hero and a few rows, so nothing jumps. */
+function WealthSkeleton() {
+	const { space } = useTheme();
+	return (
+		<View style={{ gap: space[4] }}>
+			<View style={{ gap: space[2], padding: space[4] }}>
+				<Skeleton shape="line" width="25%" />
+				<Skeleton shape="line" width="60%" />
+				<Skeleton shape="line" width="45%" />
 			</View>
+			<SkeletonRows count={6} />
 		</View>
 	);
 }
 
 /**
- * Wealth: net worth with its trend and why it moved, then the accounts by
- * group. Phone: one column. iPad and wide Android: the hero and chart on one
- * side, the accounts beside them.
+ * Wealth: net worth with its trend, then the accounts by group. A row opens
+ * the account's page; Add account and the menu are in the header. Phone: one
+ * column. iPad and wide Android: the hero and chart on one side, the accounts
+ * beside them.
  */
 export function WealthView() {
 	const t = useTranslations("mobile.wealth");
-	const loading = useTranslations("mobile.activity")("loading");
+	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const { widthClass } = useLayoutClass();
 	const { space } = useTheme();
@@ -104,16 +196,33 @@ export function WealthView() {
 	const { state, reload } = useCachedRead(WEALTH_CACHE, fetch);
 	// An Undo from a toast can land while this screen is already in focus.
 	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
-	const catalog = useCurrencyInfo();
-	const [adding, setAdding] = useState(false);
+	const [sheet, setSheet] = useState<SheetTarget | null>(null);
+	const [why, setWhy] = useState(false);
+	const [refreshing, setRefreshing] = useState(false);
+	const refresh = useCallback(async () => {
+		setRefreshing(true);
+		await reload();
+		setRefreshing(false);
+	}, [reload]);
 
-	const title = <Stack.Screen options={{ title: t("title") }} />;
+	const title = (
+		<Stack.Screen
+			options={{
+				title: t("title"),
+				headerRight: () => (
+					<HeaderActions
+						onAdd={() => setSheet({ kind: "add", account: null })}
+					/>
+				),
+			}}
+		/>
+	);
 	if (state.status === "loading")
 		return (
 			<>
 				{title}
-				<Screen>
-					<EmptyState title={loading} />
+				<Screen flush>
+					<WealthSkeleton />
 				</Screen>
 			</>
 		);
@@ -122,66 +231,90 @@ export function WealthView() {
 			<>
 				{title}
 				<Screen>
-					<EmptyState detail={t("errorDetail")} title={t("error")} />
+					<EmptyState
+						actionLabel={tc("retry")}
+						detail={t("errorDetail")}
+						onAction={() => void reload()}
+						title={t("error")}
+					/>
 				</Screen>
 			</>
 		);
 
 	const data = state.data;
-	const sheet = (
-		<AccountSheet
-			account={null}
-			catalog={catalog}
-			home={data.list.home}
-			onClose={() => setAdding(false)}
+	const home = data.list.home;
+	const sheets = (
+		<AccountSheets
+			home={home}
 			onDone={() => void reload()}
-			visible={adding}
+			onTarget={setSheet}
+			target={sheet}
 		/>
-	);
-	const hero = (
-		<View>
-			<StaleNote since={state.staleSince} />
-			<NetWorthHero netWorth={data.netWorth} />
-			{data.netWorth.change ? (
-				<ChangeParts change={data.netWorth.change} />
-			) : null}
-		</View>
 	);
 	if (data.list.accounts.length === 0) {
 		return (
 			<>
 				{title}
-				<Screen>
+				<Screen onRefresh={refresh} refreshing={refreshing}>
 					<EmptyState
 						actionLabel={t("account.addTitle")}
 						detail={t("emptyDetail")}
-						onAction={() => setAdding(true)}
+						onAction={() => setSheet({ kind: "add", account: null })}
 						title={t("empty")}
 					/>
 				</Screen>
-				{sheet}
+				{sheets}
 			</>
 		);
 	}
+	const missing = unvalued(data.list.accounts).length;
+	const change = data.netWorth.change;
+	const hero = (
+		<View style={{ gap: space[2] }}>
+			<StaleNote since={state.staleSince} />
+			{missing > 0 ? (
+				<Text
+					style={{ paddingHorizontal: space[4] }}
+					tone="attention"
+					variant="small"
+				>
+					{t("missingRates", { count: missing })}
+				</Text>
+			) : null}
+			<NetWorthHero
+				netWorth={data.netWorth}
+				onChange={() => setWhy(true)}
+				summary={data.summary}
+			/>
+			<KeyFigures summary={data.summary} />
+		</View>
+	);
 	return (
 		<>
 			{title}
-			<Screen flush>
+			<Screen flush onRefresh={refresh} refreshing={refreshing}>
 				{widthClass === "compact" ? (
 					<>
 						{hero}
-						<AccountsList data={data} onAdd={() => setAdding(true)} />
+						<AccountsList data={data} onSheet={setSheet} />
 					</>
 				) : (
 					<View style={{ flexDirection: "row", gap: space[6] }}>
 						<View style={{ flex: 1 }}>{hero}</View>
 						<View style={{ flex: 1 }}>
-							<AccountsList data={data} onAdd={() => setAdding(true)} />
+							<AccountsList data={data} onSheet={setSheet} />
 						</View>
 					</View>
 				)}
 			</Screen>
-			{sheet}
+			{change ? (
+				<NetWorthChangeSheet
+					change={change}
+					onClose={() => setWhy(false)}
+					visible={why}
+				/>
+			) : null}
+			{sheets}
 		</>
 	);
 }

@@ -1244,14 +1244,18 @@
 			"1M": "1M",
 			"3M": "3M",
 			"6M": "6M",
-			"1Y": "1A"
+			"1Y": "1A",
+			"All": "Tout"
 		},
 		"chart": {
 			"label": "Patrimoine, {range}",
-			"summary": "{label}. De {from} le {fromDate} à {to} le {toDate}.",
-			"pick": "{date}, {amount}",
-			"later": "Jour suivant",
-			"earlier": "Jour précédent"
+			"ranges": {
+				"1M": "dernier mois",
+				"3M": "3 derniers mois",
+				"6M": "6 derniers mois",
+				"1Y": "dernière année",
+				"All": "toute la période"
+			}
 		},
 		"whyTitle": "Pourquoi cela a changé en {days} jours",
 		"parts": {
@@ -1283,9 +1287,10 @@
 		"owes": "Tu dois",
 		"closed": {
 			"title": "Comptes clôturés",
-			"badge": "Clôturé"
+			"badge": "Clôturé",
+			"on": "Clôturé le {date}. Historique conservé.",
+			"notCounted": "Hors patrimoine"
 		},
-		"withoutRate": "{count, plural, one {# compte n’a pas encore de taux et reste hors du patrimoine} other {# comptes n’ont pas encore de taux et restent hors du patrimoine}}",
 		"error": "Impossible de charger le patrimoine",
 		"errorDetail": "Vérifie ta connexion et réessaie.",
 		"empty": "Pas encore de comptes",
@@ -1307,14 +1312,19 @@
 		},
 		"update": {
 			"title": "Mettre à jour le solde",
-			"now": "{name} affiche {amount} actuellement.",
+			"now": "Actuellement {amount} · Mis à jour le {date}",
 			"amount": "Ce qu’il contient aujourd’hui",
 			"submit": "Mettre à jour le solde",
 			"netWorth": "Patrimoine",
 			"notLogged": "Non enregistré",
 			"notLoggedHint": "Tes revenus et dépenses ne changent pas. La différence est classée dans Non enregistré.",
 			"same": "C’est déjà le solde, rien ne change donc.",
-			"toast": "{name} est maintenant à {amount}"
+			"toast": "{name} est maintenant à {amount}",
+			"valuedAt": "Valorisé au taux {type}",
+			"rateChange": "Valorisé au taux {next} à partir d’aujourd’hui. Les jours précédents gardent le taux {before}.",
+			"rateFromToday": "Valorisé au taux {next} à partir d’aujourd’hui.",
+			"saving": "Enregistrement",
+			"error": "Impossible d’enregistrer. Réessaie."
 		},
 		"account": {
 			"addTitle": "Ajouter un compte",
@@ -1336,7 +1346,8 @@
 			"dueDay": "Jour d'échéance du mois",
 			"minimum": "Paiement minimum",
 			"addedToast": "{name} ajouté",
-			"savedToast": "{name} enregistré"
+			"savedToast": "{name} enregistré",
+			"currency": "Devise"
 		},
 		"close": {
 			"title": "Clôturer {name} ?",
@@ -1350,6 +1361,48 @@
 			"submit": "Rouvrir le compte",
 			"body": "{name} compte de nouveau dans tes comptes et ton patrimoine dès aujourd'hui.",
 			"toast": "{name} rouvert"
+		},
+		"changePercent": "{amount} ({percent}) en {days} jours",
+		"whyHint": "Montre pourquoi cela a changé",
+		"changeTotal": "Total",
+		"assetsByGroup": "Actifs par groupe",
+		"liquid": "Actifs liquides",
+		"runway": "Autonomie",
+		"runwayAt": "avec tes dépenses moyennes de {amount} par mois",
+		"months": "{months, plural, one {# mois} other {# mois}}",
+		"valuedAtLabel": "Valorisé au",
+		"valuedAt": "Valorisé au taux {type}",
+		"apr": "Taux annuel {rate}",
+		"noRateInline": "Pas de taux {currency}. Exclu du patrimoine.",
+		"missingRates": "{count, plural, one {# compte sans taux} other {# comptes sans taux}}",
+		"more": "Autres actions",
+		"menu": {
+			"income": "Ajouter un revenu",
+			"currencies": "Devises et taux"
+		},
+		"actions": {
+			"update": "Mettre à jour le solde",
+			"edit": "Modifier le compte",
+			"reopen": "Rouvrir le compte",
+			"close": "Clôturer le compte",
+			"delete": "Supprimer définitivement",
+			"swipe": {
+				"update": "Mettre à jour",
+				"edit": "Modifier",
+				"reopen": "Rouvrir",
+				"close": "Clôturer",
+				"delete": "Supprimer"
+			}
+		},
+		"delete": {
+			"title": "Supprimer {name} définitivement ?",
+			"body": "Cela supprime le compte et tout son historique de soldes. L’historique du patrimoine change aussi. C’est irréversible.",
+			"keepHistory": "Pour garder l’historique, clôture plutôt le compte.",
+			"closeInstead": "Clôturer à la place",
+			"submit": "Supprimer définitivement",
+			"deleting": "Suppression",
+			"toast": "{name} supprimé",
+			"error": "Impossible de supprimer. Réessaie."
 		}
 	},
 	"money": {

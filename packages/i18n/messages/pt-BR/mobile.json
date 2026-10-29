@@ -1244,14 +1244,18 @@
 			"1M": "1M",
 			"3M": "3M",
 			"6M": "6M",
-			"1Y": "1A"
+			"1Y": "1A",
+			"All": "Tudo"
 		},
 		"chart": {
 			"label": "Patrimônio, {range}",
-			"summary": "{label}. De {from} em {fromDate} a {to} em {toDate}.",
-			"pick": "{date}, {amount}",
-			"later": "Dia seguinte",
-			"earlier": "Dia anterior"
+			"ranges": {
+				"1M": "último mês",
+				"3M": "últimos 3 meses",
+				"6M": "últimos 6 meses",
+				"1Y": "último ano",
+				"All": "todo o período"
+			}
 		},
 		"whyTitle": "Por que mudou em {days} dias",
 		"parts": {
@@ -1283,9 +1287,10 @@
 		"owes": "Você deve",
 		"closed": {
 			"title": "Contas encerradas",
-			"badge": "Encerrada"
+			"badge": "Encerrada",
+			"on": "Encerrada em {date}. O histórico fica guardado.",
+			"notCounted": "Fora do patrimônio"
 		},
-		"withoutRate": "{count, plural, one {# conta ainda não tem cotação e fica fora do patrimônio} other {# contas ainda não têm cotação e ficam fora do patrimônio}}",
 		"error": "Não foi possível carregar o patrimônio",
 		"errorDetail": "Verifique sua conexão e tente de novo.",
 		"empty": "Ainda não há contas",
@@ -1307,14 +1312,19 @@
 		},
 		"update": {
 			"title": "Atualizar saldo",
-			"now": "{name} mostra {amount} agora.",
+			"now": "Agora {amount} · Atualizada em {date}",
 			"amount": "Quanto tem hoje",
 			"submit": "Atualizar saldo",
 			"netWorth": "Patrimônio",
 			"notLogged": "Sem registro",
 			"notLoggedHint": "Suas receitas e gastos ficam como estão. A diferença é guardada como “Sem registro”.",
 			"same": "Esse já é o saldo, então nada muda.",
-			"toast": "{name} agora tem {amount}"
+			"toast": "{name} agora tem {amount}",
+			"valuedAt": "Avaliada na cotação {type}",
+			"rateChange": "Avaliada em {next} a partir de hoje. Os dias anteriores mantêm a cotação {before}.",
+			"rateFromToday": "Avaliada em {next} a partir de hoje.",
+			"saving": "Salvando",
+			"error": "Não foi possível salvar. Tente de novo."
 		},
 		"account": {
 			"addTitle": "Adicionar conta",
@@ -1336,7 +1346,8 @@
 			"dueDay": "Dia de vencimento do mês",
 			"minimum": "Pagamento mínimo",
 			"addedToast": "{name} adicionada",
-			"savedToast": "{name} salva"
+			"savedToast": "{name} salva",
+			"currency": "Moeda"
 		},
 		"close": {
 			"title": "Encerrar {name}?",
@@ -1350,6 +1361,48 @@
 			"submit": "Reabrir conta",
 			"body": "{name} volta a contar nas suas contas e no seu patrimônio a partir de hoje.",
 			"toast": "{name} reaberta"
+		},
+		"changePercent": "{amount} ({percent}) em {days} dias",
+		"whyHint": "Mostra por que mudou",
+		"changeTotal": "Total",
+		"assetsByGroup": "Ativos por grupo",
+		"liquid": "Ativos líquidos",
+		"runway": "Autonomia",
+		"runwayAt": "com seu gasto médio de {amount} por mês",
+		"months": "{months, plural, one {# mês} other {# meses}}",
+		"valuedAtLabel": "Avaliada em",
+		"valuedAt": "Avaliada em {type}",
+		"apr": "Juros {rate} a.a.",
+		"noRateInline": "Sem cotação de {currency}. Fica fora do patrimônio.",
+		"missingRates": "{count, plural, one {# conta sem cotação} other {# contas sem cotação}}",
+		"more": "Mais ações",
+		"menu": {
+			"income": "Adicionar receita",
+			"currencies": "Moedas e cotações"
+		},
+		"actions": {
+			"update": "Atualizar saldo",
+			"edit": "Editar conta",
+			"reopen": "Reabrir conta",
+			"close": "Encerrar conta",
+			"delete": "Excluir definitivamente",
+			"swipe": {
+				"update": "Atualizar",
+				"edit": "Editar",
+				"reopen": "Reabrir",
+				"close": "Encerrar",
+				"delete": "Excluir"
+			}
+		},
+		"delete": {
+			"title": "Excluir {name} definitivamente?",
+			"body": "Isso remove a conta e todo o histórico de saldos. O histórico do patrimônio também muda. Não dá para desfazer.",
+			"keepHistory": "Para manter o histórico, encerre a conta.",
+			"closeInstead": "Encerrar em vez disso",
+			"submit": "Excluir definitivamente",
+			"deleting": "Excluindo",
+			"toast": "{name} excluída",
+			"error": "Não foi possível excluir. Tente de novo."
 		}
 	},
 	"money": {

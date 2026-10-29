@@ -1244,14 +1244,18 @@
 			"1M": "1M",
 			"3M": "3M",
 			"6M": "6M",
-			"1Y": "1A"
+			"1Y": "1A",
+			"All": "Todo"
 		},
 		"chart": {
 			"label": "Patrimonio, {range}",
-			"summary": "{label}. De {from} el {fromDate} a {to} el {toDate}.",
-			"pick": "{date}, {amount}",
-			"later": "Día siguiente",
-			"earlier": "Día anterior"
+			"ranges": {
+				"1M": "último mes",
+				"3M": "últimos 3 meses",
+				"6M": "últimos 6 meses",
+				"1Y": "último año",
+				"All": "todo el período"
+			}
 		},
 		"whyTitle": "Por qué cambió en {days} días",
 		"parts": {
@@ -1283,9 +1287,10 @@
 		"owes": "Debes",
 		"closed": {
 			"title": "Cuentas cerradas",
-			"badge": "Cerrada"
+			"badge": "Cerrada",
+			"on": "Cerrada el {date}. Se conserva el historial.",
+			"notCounted": "Fuera del patrimonio"
 		},
-		"withoutRate": "{count, plural, one {# cuenta todavía no tiene tipo de cambio y queda fuera del patrimonio} other {# cuentas todavía no tienen tipo de cambio y quedan fuera del patrimonio}}",
 		"error": "No se pudo cargar el patrimonio",
 		"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
 		"empty": "Todavía no hay cuentas",
@@ -1307,14 +1312,19 @@
 		},
 		"update": {
 			"title": "Actualizar saldo",
-			"now": "{name} muestra {amount} ahora.",
+			"now": "Ahora {amount} · Actualizada el {date}",
 			"amount": "Cuánto tiene hoy",
 			"submit": "Actualizar saldo",
 			"netWorth": "Patrimonio",
 			"notLogged": "Sin registrar",
 			"notLoggedHint": "Tus ingresos y gastos siguen igual. La diferencia se guarda como «Sin registrar».",
 			"same": "Ese ya es el saldo, así que no cambia nada.",
-			"toast": "{name} ahora tiene {amount}"
+			"toast": "{name} ahora tiene {amount}",
+			"valuedAt": "Valuada a la cotización {type}",
+			"rateChange": "Valuada a {next} desde hoy. Los días anteriores conservan la cotización {before}.",
+			"rateFromToday": "Valuada a {next} desde hoy.",
+			"saving": "Guardando",
+			"error": "No se pudo guardar. Inténtalo de nuevo."
 		},
 		"account": {
 			"addTitle": "Agregar cuenta",
@@ -1336,7 +1346,8 @@
 			"dueDay": "Día de vencimiento del mes",
 			"minimum": "Pago mínimo",
 			"addedToast": "{name} agregada",
-			"savedToast": "{name} guardada"
+			"savedToast": "{name} guardada",
+			"currency": "Moneda"
 		},
 		"close": {
 			"title": "¿Cerrar {name}?",
@@ -1350,6 +1361,48 @@
 			"submit": "Reabrir cuenta",
 			"body": "{name} vuelve a contar en tus cuentas y en tu patrimonio desde hoy.",
 			"toast": "{name} reabierta"
+		},
+		"changePercent": "{amount} ({percent}) en {days} días",
+		"whyHint": "Muestra por qué cambió",
+		"changeTotal": "Total",
+		"assetsByGroup": "Activos por grupo",
+		"liquid": "Activos líquidos",
+		"runway": "Autonomía",
+		"runwayAt": "con tu gasto promedio de {amount} al mes",
+		"months": "{months, plural, one {# mes} other {# meses}}",
+		"valuedAtLabel": "Valuada a",
+		"valuedAt": "Valuada a {type}",
+		"apr": "Interés anual {rate}",
+		"noRateInline": "Sin cotización de {currency}. No cuenta en el patrimonio.",
+		"missingRates": "{count, plural, one {# cuenta sin cotización} other {# cuentas sin cotización}}",
+		"more": "Más acciones",
+		"menu": {
+			"income": "Agregar ingreso",
+			"currencies": "Monedas y cotizaciones"
+		},
+		"actions": {
+			"update": "Actualizar saldo",
+			"edit": "Editar cuenta",
+			"reopen": "Reabrir cuenta",
+			"close": "Cerrar cuenta",
+			"delete": "Eliminar definitivamente",
+			"swipe": {
+				"update": "Actualizar",
+				"edit": "Editar",
+				"reopen": "Reabrir",
+				"close": "Cerrar",
+				"delete": "Eliminar"
+			}
+		},
+		"delete": {
+			"title": "¿Eliminar {name} definitivamente?",
+			"body": "Esto elimina la cuenta y todo su historial de saldos. El historial del patrimonio también cambia. No se puede deshacer.",
+			"keepHistory": "Para conservar el historial, cierra la cuenta en su lugar.",
+			"closeInstead": "Mejor cerrar",
+			"submit": "Eliminar definitivamente",
+			"deleting": "Eliminando",
+			"toast": "{name} eliminada",
+			"error": "No se pudo eliminar. Inténtalo de nuevo."
 		}
 	},
 	"money": {

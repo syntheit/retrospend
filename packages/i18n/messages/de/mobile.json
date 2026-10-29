@@ -1244,14 +1244,18 @@
 			"1M": "1M",
 			"3M": "3M",
 			"6M": "6M",
-			"1Y": "1J"
+			"1Y": "1J",
+			"All": "Alle"
 		},
 		"chart": {
 			"label": "Vermögen, {range}",
-			"summary": "{label}. Von {from} am {fromDate} bis {to} am {toDate}.",
-			"pick": "{date}, {amount}",
-			"later": "Nächster Tag",
-			"earlier": "Vorheriger Tag"
+			"ranges": {
+				"1M": "letzter Monat",
+				"3M": "letzte 3 Monate",
+				"6M": "letzte 6 Monate",
+				"1Y": "letztes Jahr",
+				"All": "gesamter Zeitraum"
+			}
 		},
 		"whyTitle": "Warum es sich in {days} Tagen geändert hat",
 		"parts": {
@@ -1283,9 +1287,10 @@
 		"owes": "Du schuldest",
 		"closed": {
 			"title": "Geschlossene Konten",
-			"badge": "Geschlossen"
+			"badge": "Geschlossen",
+			"on": "Geschlossen am {date}. Verlauf bleibt erhalten.",
+			"notCounted": "Nicht im Vermögen"
 		},
-		"withoutRate": "{count, plural, one {# Konto hat noch keinen Kurs und bleibt außerhalb des Vermögens} other {# Konten haben noch keinen Kurs und bleiben außerhalb des Vermögens}}",
 		"error": "Das Vermögen konnte nicht geladen werden",
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
 		"empty": "Noch keine Konten",
@@ -1307,14 +1312,19 @@
 		},
 		"update": {
 			"title": "Saldo aktualisieren",
-			"now": "{name} zeigt jetzt {amount}.",
+			"now": "Jetzt {amount} · Aktualisiert am {date}",
 			"amount": "Was es heute enthält",
 			"submit": "Saldo aktualisieren",
 			"netWorth": "Vermögen",
 			"notLogged": "Nicht erfasst",
 			"notLoggedHint": "Deine Einnahmen und Ausgaben bleiben, wie sie sind. Die Differenz wird als Nicht erfasst gebucht.",
 			"same": "Das ist schon der Saldo, es ändert sich also nichts.",
-			"toast": "{name} steht jetzt bei {amount}"
+			"toast": "{name} steht jetzt bei {amount}",
+			"valuedAt": "Bewertet zum Kurs {type}",
+			"rateChange": "Ab heute bewertet zu {next}. Frühere Tage behalten den Kurs {before}.",
+			"rateFromToday": "Ab heute bewertet zu {next}.",
+			"saving": "Wird gespeichert",
+			"error": "Das ließ sich nicht speichern. Versuche es erneut."
 		},
 		"account": {
 			"addTitle": "Konto hinzufügen",
@@ -1336,7 +1346,8 @@
 			"dueDay": "Fälligkeitstag im Monat",
 			"minimum": "Mindestzahlung",
 			"addedToast": "{name} hinzugefügt",
-			"savedToast": "{name} gespeichert"
+			"savedToast": "{name} gespeichert",
+			"currency": "Währung"
 		},
 		"close": {
 			"title": "{name} schließen?",
@@ -1350,6 +1361,48 @@
 			"submit": "Konto wieder öffnen",
 			"body": "{name} zählt ab heute wieder zu deinen Konten und deinem Vermögen.",
 			"toast": "{name} wieder geöffnet"
+		},
+		"changePercent": "{amount} ({percent}) in {days} Tagen",
+		"whyHint": "Zeigt, warum es sich geändert hat",
+		"changeTotal": "Gesamt",
+		"assetsByGroup": "Vermögen nach Gruppe",
+		"liquid": "Liquide Mittel",
+		"runway": "Reichweite",
+		"runwayAt": "bei deinen durchschnittlichen Ausgaben von {amount} im Monat",
+		"months": "{months, plural, one {# Monat} other {# Monate}}",
+		"valuedAtLabel": "Bewertet zu",
+		"valuedAt": "Bewertet zu {type}",
+		"apr": "Zins {rate} p. a.",
+		"noRateInline": "Kein Kurs für {currency}. Zählt nicht zum Vermögen.",
+		"missingRates": "{count, plural, one {# Konto ohne Kurs} other {# Konten ohne Kurs}}",
+		"more": "Weitere Aktionen",
+		"menu": {
+			"income": "Einnahme hinzufügen",
+			"currencies": "Währungen und Kurse"
+		},
+		"actions": {
+			"update": "Saldo aktualisieren",
+			"edit": "Konto bearbeiten",
+			"reopen": "Konto wieder öffnen",
+			"close": "Konto schließen",
+			"delete": "Endgültig löschen",
+			"swipe": {
+				"update": "Aktualisieren",
+				"edit": "Bearbeiten",
+				"reopen": "Öffnen",
+				"close": "Schließen",
+				"delete": "Löschen"
+			}
+		},
+		"delete": {
+			"title": "{name} endgültig löschen?",
+			"body": "Das entfernt das Konto und seinen gesamten Saldoverlauf. Der Vermögensverlauf ändert sich ebenfalls. Das lässt sich nicht rückgängig machen.",
+			"keepHistory": "Um den Verlauf zu behalten, schließe das Konto stattdessen.",
+			"closeInstead": "Stattdessen schließen",
+			"submit": "Endgültig löschen",
+			"deleting": "Wird gelöscht",
+			"toast": "{name} gelöscht",
+			"error": "Das ließ sich nicht löschen. Versuche es erneut."
 		}
 	},
 	"money": {

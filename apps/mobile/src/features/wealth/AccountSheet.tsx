@@ -1,6 +1,6 @@
 import { draftFromMinor } from "@retrospend/domain/parse";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { newClientId } from "@/data/ids";
 import { useSheetRead } from "@/features/budget/useSheetRead";
@@ -21,7 +21,8 @@ import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { Picker } from "@/ui/Picker";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
-import { TextField } from "@/ui/TextField";
+import { Text } from "@/ui/Text";
+import { FieldLabel, TextField } from "@/ui/TextField";
 import {
 	ACCOUNT_TYPES,
 	type AccountForm,
@@ -35,6 +36,8 @@ import {
 	updateBody,
 } from "./accountBody";
 import { isLiability } from "./accounts";
+import { RateTypeChips } from "./RateTypeChips";
+import { rateTypesOf } from "./rateType";
 import type { Account, CurrencyInfo } from "./source";
 
 /** USD is the rate table's base; any other foreign currency needs a stored rate. */
@@ -76,7 +79,7 @@ export function AccountSheet({
 	const announce = useUndoToast("accounts");
 	const money = useMoneyText();
 	const locale = useAmountLocale();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const editing = account !== null;
 	const [form, setForm] = useState<AccountForm>(emptyForm(home));
 	const [draft, setDraft] = useState("");
@@ -124,10 +127,7 @@ export function AccountSheet({
 	const debt = isLiability(form.type);
 	const rated = isRated(form.currency, home, catalog);
 	const rateTypes = useMemo(
-		() =>
-			form.currency === home
-				? []
-				: (catalog.find((c) => c.code === form.currency)?.rateTypes ?? []),
+		() => rateTypesOf(catalog, form.currency, home),
 		[catalog, form.currency, home],
 	);
 	const body =
@@ -186,7 +186,6 @@ export function AccountSheet({
 					},
 				]
 			: [];
-	const small = { color: color.fg2, fontSize: type.small.size } as const;
 
 	return (
 		<Sheet
@@ -224,16 +223,34 @@ export function AccountSheet({
 						placeholder={t("namePlaceholder")}
 						value={form.name}
 					/>
-					<View style={{ gap: space[2] }}>
-						<Text style={small}>{t("type")}</Text>
-						<Picker
-							onChange={(next) => set({ type: next as AccountForm["type"] })}
-							options={ACCOUNT_TYPES.map((value) => ({
-								value,
-								label: tw(`types.${value}`),
-							}))}
-							value={form.type}
-						/>
+					<View style={{ flexDirection: "row", gap: space[4] }}>
+						<View style={{ flex: 1, gap: space[1] }}>
+							<FieldLabel>{t("type")}</FieldLabel>
+							<Picker
+								onChange={(next) => set({ type: next as AccountForm["type"] })}
+								options={ACCOUNT_TYPES.map((value) => ({
+									value,
+									label: tw(`types.${value}`),
+								}))}
+								value={form.type}
+							/>
+						</View>
+						<View style={{ flex: 1, gap: space[1] }}>
+							<FieldLabel>{t("currency")}</FieldLabel>
+							{editing ? (
+								<Text weight="medium">{form.currency}</Text>
+							) : (
+								<View style={{ alignItems: "flex-start" }}>
+									<CurrencyPicker
+										currencies={catalog.map((c) => c.code)}
+										onChange={(code) => set({ currency: code, rateType: null })}
+										recent={[]}
+										value={form.currency}
+										yours={[home]}
+									/>
+								</View>
+							)}
+						</View>
 					</View>
 					{editing && read.status === "error" ? (
 						<Note tone="attention">{t("loadError")}</Note>
@@ -251,22 +268,7 @@ export function AccountSheet({
 						) : null
 					) : (
 						<View style={{ gap: space[2] }}>
-							<View
-								style={{
-									flexDirection: "row",
-									alignItems: "center",
-									justifyContent: "space-between",
-								}}
-							>
-								<Text style={small}>{debt ? t("owed") : t("balance")}</Text>
-								<CurrencyPicker
-									currencies={catalog.map((c) => c.code)}
-									onChange={(code) => set({ currency: code, rateType: null })}
-									recent={[]}
-									value={form.currency}
-									yours={[home]}
-								/>
-							</View>
+							<FieldLabel>{debt ? t("owed") : t("balance")}</FieldLabel>
 							<AmountField
 								allowZero
 								currency={form.currency}
@@ -277,16 +279,11 @@ export function AccountSheet({
 							/>
 						</View>
 					)}
-					{rateTypes.length > 1 ? (
-						<View style={{ gap: space[2] }}>
-							<Text style={small}>{t("rateType")}</Text>
-							<Picker
-								onChange={(next) => set({ rateType: next })}
-								options={rateTypes.map((value) => ({ value, label: value }))}
-								value={form.rateType ?? rateTypes[0] ?? ""}
-							/>
-						</View>
-					) : null}
+					<RateTypeChips
+						onChange={(next) => set({ rateType: next })}
+						types={rateTypes}
+						value={form.rateType ?? rateTypes[0] ?? null}
+					/>
 					{debt ? (
 						<View style={{ gap: space[4] }}>
 							<TextField

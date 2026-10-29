@@ -26,6 +26,7 @@ jest.mock("use-intl", () => require("../budget/harness").intlMock);
 jest.mock("@/ui/TextField", () => {
 	const { Pressable } = require("react-native");
 	return {
+		FieldLabel: () => null,
 		TextField: ({ label, onChangeText }: Record<string, unknown>) => (
 			<Pressable
 				accessibilityLabel={label as string}
