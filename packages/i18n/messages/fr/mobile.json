@@ -336,7 +336,10 @@
 		"import": "Importer",
 		"docs": "Documentation",
 		"releaseNotes": "Notes de version",
-		"version": "Version {version}"
+		"version": "Version {version}",
+		"wealth": "Patrimoine",
+		"inviteCodes": "Codes d’invitation",
+		"feedback": "Envoyer un avis"
 	},
 	"activity": {
 		"title": "Activité",
@@ -1290,17 +1293,10 @@
 	},
 	"home": {
 		"title": "Accueil",
-		"spentThisMonth": "Dépensé ce mois-ci",
-		"leftToSpend": "Reste à dépenser ce mois-ci",
-		"perDay": "Environ {amount} par jour, {days, plural, one {# jour restant} other {# jours restants}}",
-		"spentSoFar": "{amount} dépensés jusqu’ici",
-		"lastMonth": "{amount} le mois dernier à cette date",
-		"missingRates": "Pas encore de taux pour {currencies}. Ces opérations ne sont pas dans ces chiffres.",
 		"owedToYou": "On te doit",
 		"youOwe": "Tu dois",
 		"netWorth": "Patrimoine",
 		"dollarToday": "Dollar aujourd’hui",
-		"dollarRate": "Taux {rate}",
 		"needs": {
 			"title": "À traiter",
 			"showMore": "Afficher {count} de plus",
@@ -1325,7 +1321,28 @@
 			"setup_homeCurrency": "Choisis ta devise principale",
 			"setup_verifyEmail": "Vérifie ton e-mail",
 			"setup_importStatement": "Importe un relevé",
-			"generic": "Quelque chose à traiter"
+			"generic": "Quelque chose à traiter",
+			"budget_overAssigned": "Tu as prévu plus que ce que tu as",
+			"budget_billDue": "{count, plural, one {# facture arrive} other {# factures arrivent}} bientôt à échéance",
+			"budget_sharesNeedEnvelope": "{count, plural, one {# part a besoin d’une enveloppe} other {# parts ont besoin d’une enveloppe}}",
+			"budget_startingMoney": "Confirme ton argent de départ",
+			"action": {
+				"confirm": "Confirmer",
+				"review": "Vérifier",
+				"respond": "Répondre",
+				"assign": "Attribuer",
+				"cover": "Couvrir",
+				"takeBack": "Reprendre",
+				"fund": "Alimenter",
+				"setRate": "Définir le taux",
+				"addExpense": "Ajouter une dépense",
+				"choose": "Choisir",
+				"import": "Importer"
+			},
+			"context": {
+				"wasDue": "Échu le {date}",
+				"dueOn": "Échéance le {date}"
+			}
 		},
 		"recent": {
 			"title": "Récent",
@@ -1334,12 +1351,26 @@
 		},
 		"error": "Impossible de charger l’accueil",
 		"errorDetail": "Vérifie ta connexion et réessaie.",
-		"pace": {
-			"empty": "Pas encore de dépenses à afficher",
-			"summary": "Jour {day} : {spent} dépensés, {before} à ce même jour le mois dernier",
-			"noData": "Aucune donnée"
+		"insights": "Voir les analyses",
+		"card": {
+			"leftIn": "Reste à dépenser en {month}",
+			"spentIn": "Dépensé en {month}",
+			"left": "restants",
+			"spent": "dépensés",
+			"perDay": "{amount} par jour pendant {days, plural, one {# jour} other {# jours}}",
+			"faster": "Tu dépenses plus vite que prévu",
+			"spentThisMonth": "{amount} dépensés ce mois-ci",
+			"notPlanned": "+ {amount} pas encore prévus",
+			"lastMonth": "{amount} le mois dernier à cette date",
+			"missingRates": "Pas encore de taux pour {currencies}. Ces opérations ne sont pas dans ces chiffres."
 		},
-		"insights": "Voir les analyses"
+		"tile": {
+			"toAssign": "À affecter",
+			"notPlanned": "Pas encore prévu",
+			"waiting": "En attente d’une destination",
+			"youOwe": "Tu dois {amount}",
+			"rateDate": "Mis à jour le {date}"
+		}
 	},
 	"insights": {
 		"title": "Analyses",

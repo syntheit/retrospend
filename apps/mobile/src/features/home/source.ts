@@ -15,9 +15,11 @@ export interface HomeData {
 	recent: ActivityPage;
 	/** Which owed totals are converted at reference rates (shown with "≈"). */
 	approx: { owedToYou: boolean; youOwe: boolean };
+	/** The people who owe you, in the server's order, for the faces on Owed to you. */
+	owers: { key: string; name: string; imageUrl: string | null }[];
 }
 
-export const HOME_CACHE: CacheKey = { name: "home", schema: 2 };
+export const HOME_CACHE: CacheKey = { name: "home", schema: 3 };
 export const SNOOZE_CACHE: CacheKey = { name: "home.later", schema: 1 };
 export const RECENT_COUNT = 5;
 
@@ -34,6 +36,13 @@ export function fetchHome(api: RetrospendClient) {
 			needs,
 			recent,
 			approx: approxSides(people.people, people.home),
+			owers: people.people
+				.filter((p) => p.group === "owed")
+				.map(({ person: { key, name, imageUrl } }) => ({
+					key,
+					name,
+					imageUrl,
+				})),
 		};
 	};
 }
@@ -105,4 +114,21 @@ export function heroOf(glance: Glance): Hero {
 		amount: glance.spent.value,
 		lastToDate: glance.spentLastToDate.value,
 	};
+}
+
+/**
+ * Money that has no job yet, when there is some: the amount and what the
+ * plan calls it ("Not planned yet", or "To assign" in a plan that says so).
+ * Zero, a negative (planned more than there is, which the verdict words) and
+ * a missing rate are all nothing to show.
+ */
+export function notPlannedOf(glance: Glance): {
+	amount: Money;
+	pool: "NOT_PLANNED_YET" | "TO_ASSIGN";
+} | null {
+	const budget = glance.budget;
+	if (budget?.state !== "ready") return null;
+	const amount = budget.notPlannedYet.value;
+	if (!amount || amount.minor <= 0) return null;
+	return { amount, pool: budget.verdict.poolName };
 }

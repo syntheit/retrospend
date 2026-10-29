@@ -1,5 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { type PersonRef, refOfKey } from "@/features/people/source";
+import type { GlyphName } from "@/ui/Glyph";
 
 export type NeedsYouList = Awaited<
 	ReturnType<RetrospendClient["needs-you"]["list"]>
@@ -17,7 +18,11 @@ const WORDED = new Set<string>([
 	"import.review",
 	"people.owedAging",
 	"budget.giveJob",
+	"budget.overAssigned",
 	"budget.overspent",
+	"budget.billDue",
+	"budget.sharesNeedEnvelope",
+	"budget.startingMoney",
 	"budget.missingRate",
 	"setup.firstExpense",
 	"setup.homeCurrency",
@@ -66,6 +71,159 @@ export function needsTarget(item: NeedsYouItem): PersonRef | null {
 	const key = item.people[0];
 	if (!key || !PERSON_TYPES.has(item.type)) return null;
 	return refOfKey(key);
+}
+
+/** Where an item's job is done: a person, or a screen. */
+export type NeedsDestination =
+	| { kind: "person"; ref: PersonRef }
+	| {
+			kind:
+				| "people"
+				| "recurring"
+				| "activity"
+				| "budget"
+				| "currencies"
+				| "settings"
+				| "import"
+				| "add";
+	  };
+
+/**
+ * Every item opens its job. The ones about a person open that person; the
+ * rest open the screen that holds the action (a plan and its envelopes live
+ * in Budget, a due bill in Recurring, a missing rate in Currencies).
+ */
+export function needsDestination(item: NeedsYouItem): NeedsDestination {
+	switch (item.type) {
+		case "payment.confirm":
+		case "split.review":
+		case "split.rejected":
+		case "split.fixRequested":
+		case "people.owedAging": {
+			const ref = needsTarget(item);
+			return ref ? { kind: "person", ref } : { kind: "people" };
+		}
+		case "recurring.overdue":
+		case "recurring.due":
+			return { kind: "recurring" };
+		case "import.review":
+			return { kind: "activity" };
+		case "budget.missingRate":
+			return { kind: "currencies" };
+		case "setup.firstExpense":
+			return { kind: "add" };
+		case "setup.homeCurrency":
+		case "setup.verifyEmail":
+			return { kind: "settings" };
+		case "setup.importStatement":
+			return { kind: "import" };
+		default:
+			return { kind: "budget" };
+	}
+}
+
+/** The one action's word, a key under `mobile.home.needs.action`. */
+export type NeedsAction =
+	| "confirm"
+	| "review"
+	| "open"
+	| "respond"
+	| "assign"
+	| "cover"
+	| "takeBack"
+	| "fund"
+	| "setRate"
+	| "addExpense"
+	| "choose"
+	| "import";
+
+export function needsAction(item: NeedsYouItem): NeedsAction {
+	switch (item.type) {
+		case "payment.confirm":
+		case "recurring.overdue":
+		case "recurring.due":
+			return "confirm";
+		case "split.review":
+		case "import.review":
+		case "budget.hiddenReview":
+			return "review";
+		case "split.fixRequested":
+			return "respond";
+		case "budget.giveJob":
+			return "assign";
+		case "budget.overspent":
+			return "cover";
+		case "budget.overAssigned":
+			return "takeBack";
+		case "budget.billDue":
+			return "fund";
+		case "budget.missingRate":
+			return "setRate";
+		case "setup.firstExpense":
+			return "addExpense";
+		case "setup.homeCurrency":
+			return "choose";
+		case "setup.importStatement":
+			return "import";
+		default:
+			return "open";
+	}
+}
+
+/** The glyph on the tile of an item that is not about a person. */
+export function needsGlyph(item: NeedsYouItem): GlyphName {
+	switch (item.type) {
+		case "recurring.overdue":
+			return "AlarmClock";
+		case "recurring.due":
+			return "Repeat";
+		case "import.review":
+		case "budget.hiddenReview":
+			return "ListChecks";
+		case "budget.giveJob":
+		case "budget.sharesNeedEnvelope":
+			return "Wallet";
+		case "budget.overspent":
+			return "CircleAlert";
+		case "budget.overAssigned":
+			return "Scale";
+		case "budget.billDue":
+		case "budget.debtDue":
+			return "CalendarClock";
+		case "budget.startingMoney":
+			return "Landmark";
+		case "budget.missingRate":
+		case "setup.homeCurrency":
+			return "Coins";
+		case "setup.firstExpense":
+			return "Plus";
+		case "setup.verifyEmail":
+			return "Mail";
+		case "setup.importStatement":
+			return "FileUp";
+		case "payment.confirm":
+			return "CircleCheck";
+		case "split.review":
+			return "UserCheck";
+		case "split.rejected":
+			return "UserX";
+		case "split.fixRequested":
+			return "MessageCircle";
+		default:
+			return "CircleAlert";
+	}
+}
+
+/** The one fact under a sentence, from the item's own date: its word and its day. */
+export function needsContext(
+	item: NeedsYouItem,
+): { key: "wasDue" | "dueOn"; day: string } | null {
+	if (!item.date) return null;
+	if (item.type === "recurring.overdue") {
+		return { key: "wasDue", day: item.date };
+	}
+	if (item.type === "recurring.due") return { key: "dueOn", day: item.date };
+	return null;
 }
 
 /** Items put off with "Later" come back the next day. */
