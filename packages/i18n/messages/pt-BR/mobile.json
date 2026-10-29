@@ -1747,9 +1747,7 @@
 			"footer": "Abrem no navegador daqui. Lá você também entra na conta.",
 			"import": "Importar",
 			"insights": "Análises",
-			"developer": "Tokens de API e webhooks",
-			"data": "Exportar seus dados",
-			"security": "Senha e login em duas etapas"
+			"developer": "Tokens de API e webhooks"
 		},
 		"categories": {
 			"addTitle": "Adicionar categoria",
@@ -1791,6 +1789,79 @@
 			"removeConfirm": "Remover de vez",
 			"removed": "Método de pagamento removido",
 			"saveError": "Não foi possível salvar. Tente de novo."
+		},
+		"security": {
+			"title": "Segurança",
+			"footer": "Trocar a senha encerra a sessão nos seus outros dispositivos.",
+			"changePassword": "Trocar senha",
+			"twoFactor": "Autenticação em dois fatores",
+			"on": "Ativada",
+			"off": "Desativada",
+			"twoFactorWeb": "Configurar dois fatores na web",
+			"devices": "Dispositivos conectados",
+			"show": "Ver",
+			"password": {
+				"title": "Trocar senha",
+				"current": "Senha atual",
+				"new": "Nova senha",
+				"confirm": "Confirmar nova senha",
+				"rules": "Regras da senha",
+				"check": {
+					"length": "8 caracteres ou mais",
+					"case": "Uma letra minúscula e uma maiúscula",
+					"number": "Um número"
+				},
+				"met": "ok",
+				"notMet": "ainda não",
+				"mismatch": "As novas senhas não são iguais",
+				"submit": "Atualizar senha",
+				"saving": "Atualizando",
+				"changed": "Senha trocada. Seus outros dispositivos foram desconectados.",
+				"wrong": "A senha atual está errada.",
+				"tooMany": "Tentativas demais. Tente mais tarde.",
+				"error": "Não foi possível trocar a senha. Tente de novo."
+			},
+			"sessions": {
+				"title": "Dispositivos conectados",
+				"thisPhone": "Este celular",
+				"others": "Outros dispositivos",
+				"now": "Agora",
+				"footer": "Toque em um para desconectá-lo.",
+				"none": "Você não está conectado em nenhum outro lugar.",
+				"confirm": "Último uso em {used}. Conectado desde {since}.",
+				"signOut": "Sair",
+				"ended": "{name} foi desconectado",
+				"endError": "Não foi possível desconectar. Tente de novo.",
+				"error": "Não foi possível carregar seus dispositivos",
+				"errorDetail": "Verifique sua conexão e tente de novo.",
+				"name": {
+					"browserOn": "{browser} no {system}",
+					"app": "App Retrospend",
+					"appOn": "App Retrospend no {system}",
+					"web": "Navegador",
+					"webOn": "Navegador no {system}",
+					"cli": "Linha de comando",
+					"desktop": "App para desktop",
+					"mcp": "Cliente MCP",
+					"device": "Dispositivo aprovado"
+				}
+			}
+		},
+		"data": {
+			"title": "Dados",
+			"footer": "Cada exportação abre o menu de compartilhar para salvar ou enviar o arquivo.",
+			"kinds": {
+				"data": "Tudo",
+				"expenses": "Despesas",
+				"wealth": "Patrimônio"
+			},
+			"formats": {
+				"data": "ZIP",
+				"expenses": "CSV",
+				"wealth": "CSV"
+			},
+			"preparing": "Preparando",
+			"failed": "Não foi possível exportar. Tente de novo."
 		}
 	},
 	"push": {

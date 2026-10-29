@@ -31,6 +31,7 @@ import { useToast } from "@/ui/Toast";
 import { DeleteAccountSheet } from "./DeleteAccountSheet";
 import { useNumbersSection } from "./NumbersSection";
 import { ProfileSheet } from "./ProfileSheet";
+import { useSecuritySections } from "./security/SecuritySections";
 import {
 	hostOf,
 	MONTH_START_DAYS,
@@ -84,6 +85,7 @@ export function SettingsScreen() {
 
 	const settings = general.state.status === "ready" ? general.state.data : null;
 	const numbers = useNumbersSection(settings, general.reload);
+	const security = useSecuritySections();
 	const me = profile.state.status === "ready" ? profile.state.data : null;
 	const server =
 		connection.status === "connected" ? hostOf(connection.baseUrl) : "";
@@ -310,6 +312,7 @@ export function SettingsScreen() {
 						))}
 					</FormSection>
 				) : null}
+				{security.sections}
 				{connection.status === "connected" ? (
 					<FormSection footer={t("web.footer")} title={t("web.title")}>
 						{WEB_PAGES.map((page) => (
@@ -353,6 +356,7 @@ export function SettingsScreen() {
 					visible={editing}
 				/>
 			) : null}
+			{security.sheets}
 			<DeleteAccountSheet
 				onClose={() => setDeleting(false)}
 				visible={deleting}

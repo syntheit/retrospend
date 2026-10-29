@@ -1,6 +1,9 @@
 import * as z from "zod";
 import { v1 } from "../common/meta";
 import { idSchema, okSchema } from "../core";
+import { accountSecurityContract } from "./security";
+
+export * from "./security";
 
 const TAG = ["Account"];
 
@@ -39,7 +42,8 @@ export const deleteAccountSchema = z
 export const recordConsentSchema = z
 	.object({
 		consentVersion: z.string().min(1).max(20).meta({
-			description: "The version of the terms and privacy policy that was shown.",
+			description:
+				"The version of the terms and privacy policy that was shown.",
 		}),
 	})
 	.meta({ id: "RecordConsent" });
@@ -51,6 +55,7 @@ export const recordConsentSchema = z
  * The password is asked again every time.
  */
 export const accountContract = {
+	...accountSecurityContract,
 	recordConsent: v1
 		.route({
 			method: "POST",

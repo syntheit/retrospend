@@ -215,7 +215,7 @@ describe("/api/v1/profile", () => {
 		expect(vi.mocked(uploadFile).mock.calls.length).toBe(calls);
 	});
 
-	it("keys the request fingerprint, so a password never sits in a plain hash", async () => {
+	it("keys the request fingerprint and leaves the password out of it", async () => {
 		const sam = await passwordUser();
 		const asSam = await asMobile(sam.id);
 		const body = {
@@ -227,18 +227,19 @@ describe("/api/v1/profile", () => {
 		const row = await adminDb.idempotencyKey.findFirstOrThrow({
 			where: { userId: sam.id, key },
 		});
-		const message = `PATCH /profile\n${JSON.stringify({
-			currentPassword: body.currentPassword,
-			email: body.email,
-		})}`;
-		const plain = createHash("sha256").update(message).digest("hex");
+		const message = (currentPassword: string) =>
+			`PATCH /profile\n${JSON.stringify({ currentPassword, email: body.email })}`;
+		const withPassword = message(body.currentPassword);
+		const plain = createHash("sha256").update(withPassword).digest("hex");
 		const subkey = createHmac("sha256", env.BETTER_AUTH_SECRET)
 			.update("idempotency-fingerprint")
 			.digest();
+		const keyed = (m: string) =>
+			createHmac("sha256", subkey).update(m).digest("hex");
 		expect(row.requestHash).not.toBe(plain);
-		expect(row.requestHash).toBe(
-			createHmac("sha256", subkey).update(message).digest("hex"),
-		);
+		// The password is redacted before hashing, so the stored hash never depends on it.
+		expect(row.requestHash).not.toBe(keyed(withPassword));
+		expect(row.requestHash).toBe(keyed(message("[redacted]")));
 		const replay = await patch(asSam, body, key);
 		expect(replay.headers.get("idempotent-replayed")).toBe("true");
 		await expectBody(replay, p.update);

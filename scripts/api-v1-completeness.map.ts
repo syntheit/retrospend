@@ -448,9 +448,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 
 	// ── profile ──────────────────────────────────────────────────────────
 	"profile.cancelPendingEmailChange": to("DELETE /profile/pending-email"),
-	"profile.changePassword": internal(
-		"passwords are changed through the better-auth endpoints",
-	),
+	"profile.changePassword": to("POST /me/password"),
 	"profile.getBackgroundSettings": to("GET /profile/background"),
 	"profile.getLifetimeStats": to("GET /profile/stats"),
 	"profile.getMyAvatar": to("GET /profile"),

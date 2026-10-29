@@ -1747,9 +1747,7 @@
 			"footer": "Se abren en el navegador de aquí. Allí también inicias sesión.",
 			"import": "Importar",
 			"insights": "Análisis",
-			"developer": "Tokens de API y webhooks",
-			"data": "Exportar tus datos",
-			"security": "Contraseña e inicio de sesión en dos pasos"
+			"developer": "Tokens de API y webhooks"
 		},
 		"categories": {
 			"addTitle": "Agregar categoría",
@@ -1791,6 +1789,79 @@
 			"removeConfirm": "Quitar definitivamente",
 			"removed": "Método de pago quitado",
 			"saveError": "No se pudo guardar. Inténtalo de nuevo."
+		},
+		"security": {
+			"title": "Seguridad",
+			"footer": "Cambiar la contraseña cierra la sesión en tus otros dispositivos.",
+			"changePassword": "Cambiar contraseña",
+			"twoFactor": "Autenticación en dos pasos",
+			"on": "Activada",
+			"off": "Desactivada",
+			"twoFactorWeb": "Configurar dos pasos en la web",
+			"devices": "Dispositivos con sesión",
+			"show": "Ver",
+			"password": {
+				"title": "Cambiar contraseña",
+				"current": "Contraseña actual",
+				"new": "Contraseña nueva",
+				"confirm": "Confirmar contraseña nueva",
+				"rules": "Reglas de la contraseña",
+				"check": {
+					"length": "8 caracteres o más",
+					"case": "Una minúscula y una mayúscula",
+					"number": "Un número"
+				},
+				"met": "listo",
+				"notMet": "todavía no",
+				"mismatch": "Las contraseñas nuevas no coinciden",
+				"submit": "Actualizar contraseña",
+				"saving": "Actualizando",
+				"changed": "Contraseña cambiada. Se cerró la sesión en tus otros dispositivos.",
+				"wrong": "La contraseña actual no es correcta.",
+				"tooMany": "Demasiados intentos. Inténtalo más tarde.",
+				"error": "No se pudo cambiar la contraseña. Inténtalo de nuevo."
+			},
+			"sessions": {
+				"title": "Dispositivos con sesión",
+				"thisPhone": "Este teléfono",
+				"others": "Otros dispositivos",
+				"now": "Ahora",
+				"footer": "Toca uno para cerrar su sesión.",
+				"none": "No tienes sesión en ningún otro lugar.",
+				"confirm": "Último uso: {used}. Sesión iniciada: {since}.",
+				"signOut": "Cerrar sesión",
+				"ended": "Se cerró la sesión en {name}",
+				"endError": "No se pudo cerrar la sesión. Inténtalo de nuevo.",
+				"error": "No se pudieron cargar tus dispositivos",
+				"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
+				"name": {
+					"browserOn": "{browser} en {system}",
+					"app": "App de Retrospend",
+					"appOn": "App de Retrospend en {system}",
+					"web": "Navegador web",
+					"webOn": "Navegador web en {system}",
+					"cli": "Línea de comandos",
+					"desktop": "App de escritorio",
+					"mcp": "Cliente MCP",
+					"device": "Dispositivo aprobado"
+				}
+			}
+		},
+		"data": {
+			"title": "Datos",
+			"footer": "Cada exportación abre el menú de compartir para guardar o enviar el archivo.",
+			"kinds": {
+				"data": "Todo",
+				"expenses": "Gastos",
+				"wealth": "Patrimonio"
+			},
+			"formats": {
+				"data": "ZIP",
+				"expenses": "CSV",
+				"wealth": "CSV"
+			},
+			"preparing": "Preparando",
+			"failed": "No se pudo hacer la exportación. Inténtalo de nuevo."
 		}
 	},
 	"push": {
