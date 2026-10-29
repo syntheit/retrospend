@@ -137,7 +137,8 @@
 				"same": "Each person's share stays the same."
 			},
 			"oneLineNone": "No figures change.",
-			"oneLineMore": "{figure} and {count} more"
+			"oneLineMore": "{figure} and {count} more",
+			"splitOff": "The parts don't add up to the total yet."
 		},
 		"list": {
 			"two": "{first} and {second}",
@@ -271,7 +272,17 @@
 				"SHARES": "Split by shares"
 			},
 			"summaryShare": "{split}, your share {amount}",
-			"tapFaces": "Tap a face on the first step to split."
+			"tapFaces": "Tap a face on the first step to split.",
+			"custom": "Custom",
+			"divideBy": "Divide by",
+			"part": {
+				"EXACT": "Amount",
+				"PERCENTAGE": "Percent",
+				"SHARES": "Shares"
+			},
+			"theirShare": "Share {amount}",
+			"partsMissing": "Enter a part for each person.",
+			"partsOff": "These parts don't add up to the total yet."
 		},
 		"delete": {
 			"row": "Delete",

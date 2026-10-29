@@ -198,6 +198,104 @@ describe("/api/v1/shared-expenses", () => {
 		);
 	});
 
+	it("adds a split another person paid, in every mode, and the shares add up exactly", async () => {
+		const you = { type: "user", id: sofia.user.id };
+		const him = { type: "user", id: martin.user.id };
+		const her = { type: "user", id: lucia.user.id };
+		type Share = { id: string; you: boolean; after: Money | null };
+		const cases = [
+			{
+				splitMode: "EXACT",
+				splitWith: [
+					{ ...you, shareAmount: "33.33" },
+					{ ...him, shareAmount: "33.33" },
+					{ ...her, shareAmount: "33.34" },
+				],
+				minor: [3333, 3333, 3334],
+			},
+			{
+				splitMode: "PERCENTAGE",
+				splitWith: [
+					{ ...you, sharePercentage: "33.3333" },
+					{ ...him, sharePercentage: "33.3333" },
+					{ ...her, sharePercentage: "33.3334" },
+				],
+				minor: null,
+			},
+			{
+				splitMode: "SHARES",
+				splitWith: [
+					{ ...you, shareUnits: 1 },
+					{ ...him, shareUnits: 1 },
+					{ ...her, shareUnits: 1 },
+				],
+				minor: null,
+			},
+			{ splitMode: "EQUAL", splitWith: [you, him, her], minor: null },
+		];
+		for (const { minor, ...split } of cases) {
+			const input = body({
+				description: `Paid by Martin, ${split.splitMode}`,
+				amount: "100",
+				paidBy: him,
+				...split,
+			});
+			const preview = await expectBody<
+				Preview & { detail: { kind: string; shares: Share[] } }
+			>(await post("/shared-expenses/preview", input), c.previewCreate);
+			expect(preview.detail.kind).toBe("sharedExpense.create");
+			// The server splits: whatever the mode, the shares add up to the amount.
+			expect(
+				preview.detail.shares.reduce((a, s) => a + (s.after?.minor ?? 0), 0),
+			).toBe(10000);
+			if (minor)
+				expect(
+					[you, him, her].map(
+						(p) =>
+							preview.detail.shares.find((s) => s.id === p.id)?.after?.minor,
+					),
+				).toEqual(minor);
+			const made = await expectBody<Write>(
+				await post("/shared-expenses", input),
+				c.create,
+				201,
+			);
+			const saved = await row(made.id);
+			expect(saved?.paidById).toBe(martin.user.id);
+			expect(saved?.splitMode).toBe(split.splitMode);
+			const savedShares = new Map(
+				(saved?.splitParticipants ?? []).map((p) => [
+					p.participantId,
+					Math.round(Number(p.shareAmount) * 100),
+				]),
+			);
+			expect([...savedShares.values()].reduce((a, b) => a + b, 0)).toBe(10000);
+			// What the dry run showed is what was saved.
+			for (const s of preview.detail.shares)
+				expect(savedShares.get(s.id)).toBe(s.after?.minor);
+		}
+	});
+
+	it("refuses a custom split that does not add up, on the preview too", async () => {
+		const input = body({
+			splitMode: "PERCENTAGE",
+			splitWith: [
+				{ type: "user", id: sofia.user.id, sharePercentage: "60" },
+				{ type: "user", id: martin.user.id, sharePercentage: "30" },
+			],
+		});
+		await expectProblem(
+			await post("/shared-expenses/preview", input),
+			400,
+			"bad_request",
+		);
+		await expectProblem(
+			await post("/shared-expenses", input),
+			400,
+			"bad_request",
+		);
+	});
+
 	it("lets the other person accept or reject their share", async () => {
 		const accepted = await add({ description: "To accept" });
 		await waiting(accepted.id);

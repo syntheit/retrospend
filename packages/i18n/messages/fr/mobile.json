@@ -137,7 +137,8 @@
 				"same": "La part de chacun ne change pas."
 			},
 			"oneLineNone": "Aucun chiffre ne change.",
-			"oneLineMore": "{figure} et {count} de plus"
+			"oneLineMore": "{figure} et {count} de plus",
+			"splitOff": "Les parts n'atteignent pas encore le total."
 		},
 		"list": {
 			"two": "{first} et {second}",
@@ -271,7 +272,17 @@
 				"SHARES": "Partagé par parts"
 			},
 			"summaryShare": "{split}, ta part {amount}",
-			"tapFaces": "Touche un visage à la première étape pour partager."
+			"tapFaces": "Touche un visage à la première étape pour partager.",
+			"custom": "Personnalisé",
+			"divideBy": "Diviser par",
+			"part": {
+				"EXACT": "Montant",
+				"PERCENTAGE": "Pourcentage",
+				"SHARES": "Parts"
+			},
+			"theirShare": "Part {amount}",
+			"partsMissing": "Saisis une part pour chaque personne.",
+			"partsOff": "Les parts n'atteignent pas encore le total."
 		},
 		"delete": {
 			"row": "Supprimer",

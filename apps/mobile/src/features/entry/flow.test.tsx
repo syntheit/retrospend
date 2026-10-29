@@ -1454,3 +1454,129 @@ describe("Edit: undo changes and delete", () => {
 		act(() => tree.unmount());
 	});
 });
+
+describe("Who paid and a custom split", () => {
+	type Shared = { previewCreate: unknown; previewUpdate: unknown };
+	const sharedOf = (api: RetrospendClient) =>
+		(api as unknown as Record<string, Shared>)["shared-expenses"] as Shared;
+
+	it("pays by someone else and splits by percent, saving only once the server accepts the parts", async () => {
+		const { api, calls } = fakeApi();
+		// The server checks the total: parts that do not make 100 are refused.
+		sharedOf(api).previewCreate = async (input: {
+			splitMode: string;
+			splitWith: { sharePercentage?: string }[];
+		}) => {
+			calls.push({ route: "shared.preview", input });
+			const sum = input.splitWith.reduce(
+				(a, s) => a + Number(s.sharePercentage ?? 0),
+				0,
+			);
+			if (input.splitMode === "PERCENTAGE" && sum !== 100) {
+				throw Object.assign(new Error("parts"), {
+					status: 400,
+					code: "bad_request",
+				});
+			}
+			return {
+				changes: [],
+				unchanged: [],
+				unavailable: [],
+				detail: {
+					kind: "sharedExpense.create",
+					shares: [
+						{
+							type: "user",
+							id: "me1",
+							you: true,
+							name: "Sofía",
+							before: null,
+							after: money(3000),
+						},
+						{
+							type: "user",
+							id: "lucia1",
+							you: false,
+							name: "Lucía",
+							before: null,
+							after: money(7000),
+						},
+					],
+				},
+			};
+		};
+		mockSession.api = api;
+		const tree = await open("expense");
+		press(tree, "Cafe");
+		press(tree, "Lucía Fernández");
+		for (const key of ["1", "0", "0"]) press(tree, key);
+		pressWords(tree, "More");
+		press(tree, "Paid by, You");
+		press(tree, "pick Lucía Fernández");
+		press(tree, "Custom");
+		press(tree, "By percent");
+		type(tree, "You", "30");
+		type(tree, "Lucía Fernández", "60");
+		await settle();
+		// 90 percent: the server refuses, so Save does not send and the line says why.
+		expect(words(tree)).toContain("These parts don't add up");
+		press(tree, "Add expense");
+		await flush();
+		expect(calls.some((c) => c.route === "shared.create")).toBe(false);
+
+		type(tree, "Lucía Fernández", "70");
+		await settle();
+		expect(words(tree)).toContain("Share ARS 70");
+		press(tree, "Add expense");
+		await flush();
+		expect(calls.find((c) => c.route === "shared.create")?.input).toEqual({
+			id: "6f1d1c1e-5b0e-4f5c-9c33-0a4a1c0f8a11",
+			description: "Cafe",
+			amount: "100.00",
+			currency: "ARS",
+			date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+			categoryId: "cafe",
+			paidBy: { type: "user", id: "lucia1" },
+			splitMode: "PERCENTAGE",
+			splitWith: [
+				{ type: "user", id: "me1", sharePercentage: "30" },
+				{ type: "user", id: "lucia1", sharePercentage: "70" },
+			],
+		});
+		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		expect(toast.undo.label).toBe("Undo");
+		act(() => tree.unmount());
+	});
+
+	it("an edit that changes who paid sends the whole split", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense", () => {}, "s1", true);
+		pressWords(tree, "More");
+		press(tree, "Paid by, You");
+		press(tree, "pick Lucía");
+		await settle();
+		expect(
+			calls.filter((c) => c.route === "shared.previewUpdate").at(-1)?.input,
+		).toMatchObject({
+			paidBy: { type: "user", id: "lucia1" },
+			splitMode: "EQUAL",
+			splitWith: [
+				{ type: "user", id: "me1" },
+				{ type: "user", id: "lucia1" },
+			],
+		});
+		press(tree, "Save expense");
+		await flush();
+		expect(calls.find((c) => c.route === "shared.update")?.input).toMatchObject(
+			{
+				paidBy: { type: "user", id: "lucia1" },
+				splitWith: [
+					{ type: "user", id: "me1" },
+					{ type: "user", id: "lucia1" },
+				],
+			},
+		);
+		act(() => tree.unmount());
+	});
+});

@@ -172,7 +172,7 @@ export function MoreStep({
 				</ListGroup>
 			</View>
 			{split ? (
-				<SplitGroup split={split} />
+				<SplitGroup form={form} preview={preview} split={split} />
 			) : draft.withKeys.length === 0 && !editing ? (
 				<View style={{ ...gutter, paddingTop: space[2] }}>
 					<Text tone="fg2" variant="small">

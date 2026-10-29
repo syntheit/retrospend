@@ -23,7 +23,9 @@ export function PreviewLine({ state }: { state: PreviewState }) {
 		text =
 			state.reason === "missingRate"
 				? t("noRate", { currency: state.currency })
-				: t("refused");
+				: state.reason === "split"
+					? t("splitOff")
+					: t("refused");
 	} else {
 		const { moved } = changeLines(state.diff);
 		const first = moved[0];

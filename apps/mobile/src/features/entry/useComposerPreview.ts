@@ -26,7 +26,7 @@ export function useComposerPreview(form: EntryForm) {
 	const expenseWrite = useMemo(
 		() =>
 			expense.editing
-				? buildExpenseUpdate(expense, { locale, catalog })
+				? buildExpenseUpdate(expense, { locale, catalog, meId })
 				: buildExpenseWrite(expense, { locale, meId, catalog }),
 		[expense, locale, meId, catalog],
 	);
@@ -53,10 +53,16 @@ export function useComposerPreview(form: EntryForm) {
 	// Save waits for the dry run of exactly what it will send. Offline there is
 	// none and an add waits on the phone, but an edit is never queued: it needs
 	// the dry run, so only a ready one lets it through. A refused one can not be saved.
+	// A custom split is only as good as the server's check of its parts, so it
+	// waits for the dry run even offline.
+	const custom =
+		mode === "expense" &&
+		write?.entity === "shared-expenses" &&
+		expense.splitMode !== "EQUAL";
 	const blocked =
 		write !== null &&
 		preview.status !== "ready" &&
-		(editing || preview.status !== "offline");
+		(editing || custom || preview.status !== "offline");
 	// Each share is the server's, from the dry run of this very write.
 	const shares = useMemo(
 		() =>
@@ -76,7 +82,7 @@ export function useComposerPreview(form: EntryForm) {
 			}),
 		[expense, locale, meId, catalog.people, t, shares],
 	);
-	return { write, preview, retry, plan, blocked, rows };
+	return { write, preview, retry, plan, blocked, rows, custom };
 }
 
 export type ComposerPreview = ReturnType<typeof useComposerPreview>;

@@ -55,7 +55,9 @@ export function ChangesBlock({
 					: state.status === "refused"
 						? state.reason === "missingRate"
 							? t("noRate", { currency: state.currency })
-							: t("refused")
+							: state.reason === "split"
+								? t("splitOff")
+								: t("refused")
 						: null;
 
 	return (
