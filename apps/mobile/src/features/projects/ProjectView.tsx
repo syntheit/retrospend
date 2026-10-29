@@ -12,8 +12,8 @@ import { EmptyState } from "@/ui/EmptyState";
 import { StaleNote } from "@/ui/List";
 import { Menu } from "@/ui/Menu";
 import { Screen } from "@/ui/Screen";
-import { Segmented } from "@/ui/Segmented";
 import { Text } from "@/ui/Text";
+import { UnderlineTabs } from "@/ui/UnderlineTabs";
 import {
 	filterExpenses,
 	ME,
@@ -133,10 +133,10 @@ export function ProjectView({
 				page={page}
 				pane={listDetail}
 				tabs={
-					<Segmented
+					<UnderlineTabs
 						accessibilityLabel={t("tabs")}
 						onChange={setTab}
-						options={tabs}
+						tabs={tabs}
 						value={tab}
 					/>
 				}

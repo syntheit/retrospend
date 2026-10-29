@@ -1,18 +1,12 @@
 import { useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { TextInput, View } from "react-native";
 import { useTheme } from "@/theme";
+import { Text, typeStyle } from "./Text";
 
 /** A field's label above it: 13/500 in fg-2. */
 export function FieldLabel({ children }: { children: string }) {
-	const { color, font, type } = useTheme();
 	return (
-		<Text
-			style={{
-				color: color.fg2,
-				fontSize: type.small.size,
-				fontWeight: String(font.weight.medium) as "500",
-			}}
-		>
+		<Text tone="fg2" variant="small" weight="medium">
 			{children}
 		</Text>
 	);
@@ -20,12 +14,8 @@ export function FieldLabel({ children }: { children: string }) {
 
 /** What is wrong with a field, under it: 12 in danger, read out at once. */
 export function FieldError({ children }: { children: string }) {
-	const { color, type } = useTheme();
 	return (
-		<Text
-			accessibilityRole="alert"
-			style={{ color: color.danger, fontSize: type.meta.size }}
-		>
+		<Text accessibilityRole="alert" tone="danger" variant="meta">
 			{children}
 		</Text>
 	);
@@ -34,8 +24,9 @@ export function FieldError({ children }: { children: string }) {
 /**
  * The one plain text input (GUIDELINE 5): a label over a 44 point field with
  * a surface fill and a line-strong border, brand while focused and danger
- * while invalid. Money has its own field (R22); this is for words and plain
- * numbers.
+ * while invalid. `multiline` makes it a taller box for a message or a note,
+ * where the return key starts a new line instead of finishing. Money has its
+ * own field (R22); this is for words and plain numbers.
  */
 export function TextField({
 	label,
@@ -44,6 +35,7 @@ export function TextField({
 	prefix,
 	invalid,
 	hideLabel,
+	multiline,
 	keyboardType,
 	placeholder,
 	maxLength,
@@ -59,6 +51,8 @@ export function TextField({
 	invalid?: boolean;
 	/** The placeholder says it; screen readers still get the label. */
 	hideLabel?: boolean;
+	/** Several lines: a message or a note. */
+	multiline?: boolean;
 	keyboardType?: "default" | "decimal-pad" | "number-pad" | "url";
 	placeholder?: string;
 	maxLength?: number;
@@ -70,20 +64,22 @@ export function TextField({
 	/** Told when typing starts and stops, so a screen can hide its keypad. */
 	onTypingChange?: (typing: boolean) => void;
 }) {
-	const { color, radius, size, space, type } = useTheme();
+	const theme = useTheme();
+	const { color, radius, size, space } = theme;
 	const [focused, setFocused] = useState(false);
 	function focus(next: boolean) {
 		setFocused(next);
 		onTypingChange?.(next);
 	}
+	const boxHeight = multiline ? space[12] * 2 : size.moneyInput.phone;
 	return (
 		<View style={{ gap: space[1] }}>
 			{hideLabel ? null : <FieldLabel>{label}</FieldLabel>}
 			<View
 				style={{
-					minHeight: size.moneyInput.phone,
+					minHeight: boxHeight,
 					flexDirection: "row",
-					alignItems: "center",
+					alignItems: multiline ? "flex-start" : "center",
 					gap: space[2],
 					paddingHorizontal: space[3],
 					borderRadius: radius.ctl,
@@ -96,11 +92,7 @@ export function TextField({
 					backgroundColor: color.surface,
 				}}
 			>
-				{prefix ? (
-					<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-						{prefix}
-					</Text>
-				) : null}
+				{prefix ? <Text tone="fg2">{prefix}</Text> : null}
 				<TextInput
 					accessibilityLabel={label}
 					autoCapitalize={autoCapitalize}
@@ -108,20 +100,28 @@ export function TextField({
 					autoCorrect={autoCapitalize === "sentences"}
 					keyboardType={keyboardType}
 					maxLength={maxLength}
+					multiline={multiline}
 					onBlur={() => focus(false)}
 					onChangeText={onChangeText}
 					onFocus={() => focus(true)}
 					placeholder={placeholder}
 					placeholderTextColor={color.fg3}
-					returnKeyType="done"
+					returnKeyType={multiline ? "default" : "done"}
 					secureTextEntry={secure}
 					selectionColor={color.brand}
-					style={{
-						flex: 1,
-						minHeight: size.touchMin.phone,
-						color: color.fg,
-						fontSize: type.body.size,
-					}}
+					style={[
+						typeStyle(theme, "body"),
+						{
+							flex: 1,
+							minHeight: multiline
+								? boxHeight - 2 * space[2]
+								: size.touchMin.phone,
+							color: color.fg,
+						},
+						multiline
+							? { paddingVertical: space[2], textAlignVertical: "top" }
+							: null,
+					]}
 					value={value}
 				/>
 			</View>

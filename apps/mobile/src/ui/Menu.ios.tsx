@@ -60,6 +60,46 @@ function ChipLabel({ label, active }: { label: string; active: boolean }) {
 	);
 }
 
+/** The overflow mark: three dots at the 44 point touch size. */
+function IconLabel() {
+	const { color, size } = useTheme();
+	return (
+		<Image
+			color={color.fg}
+			modifiers={[
+				frame({ width: size.touchMin.phone, height: size.touchMin.phone }),
+			]}
+			size={size.icon.phone}
+			systemName="ellipsis"
+		/>
+	);
+}
+
+/** A page-level choice: 16/500 accent-strong with a chevron, no border. */
+function HeadingLabel({ label }: { label: string }) {
+	const { color, size, space, type } = useTheme();
+	return (
+		<HStack
+			modifiers={[frame({ height: size.touchMin.phone })]}
+			spacing={space[1]}
+		>
+			<Text
+				modifiers={[
+					font({ size: type.section.size, weight: "medium" }),
+					foregroundStyle(color.accentStrong),
+				]}
+			>
+				{label}
+			</Text>
+			<Image
+				color={color.accentStrong}
+				size={size.icon.phone}
+				systemName="chevron.down"
+			/>
+		</HStack>
+	);
+}
+
 /** A SwiftUI Menu: the system menu with its own material and haptics. */
 export function Menu({
 	label,
@@ -67,21 +107,36 @@ export function Menu({
 	items,
 	chip,
 	active = false,
+	icon,
+	heading,
 }: MenuProps) {
+	const custom = chip || icon || heading;
 	return (
 		<NativeHost>
 			<SwiftMenu
-				label={chip ? <ChipLabel active={active} label={label} /> : label}
+				label={
+					chip ? (
+						<ChipLabel active={active} label={label} />
+					) : icon ? (
+						<IconLabel />
+					) : heading ? (
+						<HeadingLabel label={label} />
+					) : (
+						label
+					)
+				}
 				modifiers={[
-					// The chip is the whole trigger: no button chrome, no system chevron.
-					...(chip
+					// A custom trigger is the whole control: no button chrome, no system chevron.
+					...(custom
 						? [
 								menuStyle("button"),
 								buttonStyle("plain"),
 								menuIndicator("hidden"),
 							]
 						: []),
-					...(accessibilityLabel ? [a11yLabel(accessibilityLabel)] : []),
+					...(accessibilityLabel || icon
+						? [a11yLabel(accessibilityLabel ?? label)]
+						: []),
 				]}
 			>
 				{items.map((item) => (

@@ -29,7 +29,7 @@ import {
 	transferErrors,
 } from "./draft";
 import { type SavedEntry, useRateOptions } from "./hooks";
-import { type EntryCatalog, personKey } from "./types";
+import { type EntryCatalog, type EntryPerson, personKey } from "./types";
 
 const today = () => dayKey(new Date());
 
@@ -53,6 +53,7 @@ function filled<T extends { expense: ExpenseDraft; income: IncomeDraft }>(
 	prefill: ComposerPrefill | undefined,
 	locale: string,
 	currencies: string[],
+	people: EntryPerson[],
 ) {
 	if (!prefill) return drafts;
 	const currency =
@@ -69,6 +70,12 @@ function filled<T extends { expense: ExpenseDraft; income: IncomeDraft }>(
 			amountText,
 			currency: currency ?? drafts.expense.currency,
 			title: prefill.mode === "expense" ? (prefill.title ?? "") : "",
+			withKeys:
+				prefill.mode === "expense" && prefill.withKeys
+					? prefill.withKeys.filter((key) =>
+							people.some((person) => personKey(person) === key),
+						)
+					: drafts.expense.withKeys,
 		},
 		income: {
 			...drafts.income,
@@ -131,7 +138,13 @@ export function useEntryForm({
 	const [step, setStep] = useState<EntryStep>("quick");
 	const [target, setTarget] = useState<AmountTarget>("amount");
 	const [drafts, setDrafts] = useState(() => {
-		const start = filled(fresh(), prefill, locale, catalog.currencies);
+		const start = filled(
+			fresh(),
+			prefill,
+			locale,
+			catalog.currencies,
+			catalog.people,
+		);
 		if (!edit) return start;
 		return {
 			...start,

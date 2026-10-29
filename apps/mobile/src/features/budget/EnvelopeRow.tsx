@@ -7,6 +7,8 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { CategoryTile, ListRow } from "@/ui/List";
+import { Pill } from "@/ui/Pill";
+import { ProgressBar } from "@/ui/ProgressBar";
 import { RowMenu } from "@/ui/RowMenu";
 import { SwipeRow } from "@/ui/SwipeRow";
 import { Text } from "@/ui/Text";
@@ -26,69 +28,6 @@ import type { BudgetEnvelope, BudgetStyle } from "./source";
 export function useColumnWidth(): number {
 	const { space } = useTheme();
 	return space[12] * 2 + space[4];
-}
-
-/**
- * A thin bar of how much of what a row holds is spent: the track in raised,
- * the fill in accent, attention once it is over. It only draws a length; the
- * row's words carry the status, so it hides from screen readers.
- */
-export function SpentBar({
-	percent,
-	over,
-}: {
-	/** 0 to 100. */
-	percent: number;
-	over: boolean;
-}) {
-	const { color, radius, space } = useTheme();
-	return (
-		<View
-			accessibilityElementsHidden
-			importantForAccessibility="no-hide-descendants"
-			style={{
-				height: space[1],
-				borderRadius: radius.chip,
-				backgroundColor: color.raised,
-				overflow: "hidden",
-			}}
-		>
-			<View
-				style={{
-					width: `${Math.max(0, Math.min(100, percent))}%`,
-					height: space[1],
-					borderRadius: radius.chip,
-					backgroundColor: over ? color.attention : color.accent,
-				}}
-			/>
-		</View>
-	);
-}
-
-/** "Over by X": the word and the amount in the attention fill, never a minus sign alone. */
-export function OverPill({ text }: { text: string }) {
-	const { color, radius, space } = useTheme();
-	return (
-		<View
-			style={{
-				height: space[6],
-				paddingHorizontal: space[3],
-				borderRadius: radius.chip,
-				backgroundColor: color.attentionBg,
-				justifyContent: "center",
-			}}
-		>
-			<Text
-				numberOfLines={1}
-				style={{ color: color.attentionText }}
-				tabular
-				variant="small"
-				weight="semibold"
-			>
-				{text}
-			</Text>
-		</View>
-	);
 }
 
 /**
@@ -295,7 +234,7 @@ export function EnvelopeRow({
 		);
 	} else if (atom.kind === "over") {
 		end = (
-			<OverPill
+			<Pill
 				text={t("overBy", { amount: money(atom.amount, { sign: "never" }) })}
 			/>
 		);
@@ -331,7 +270,9 @@ export function EnvelopeRow({
 			onPress={onPress}
 			sub={
 				<View style={{ gap: space[1], paddingTop: space[1] }}>
-					{percent !== null ? <SpentBar over={over} percent={percent} /> : null}
+					{percent !== null ? (
+						<ProgressBar over={over} percent={percent} />
+					) : null}
 					{line ? (
 						<Text
 							numberOfLines={1}

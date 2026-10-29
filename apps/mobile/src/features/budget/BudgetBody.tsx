@@ -12,7 +12,6 @@ import type { OpenSheet } from "./BudgetSheets";
 import { DebtHero } from "./DebtHero";
 import { ColumnTitles } from "./EnvelopeRow";
 import { GroupList } from "./GroupSection";
-import { ManageMenu } from "./ManageList";
 import { MonthBar } from "./MonthBar";
 import { type MonthBounds, type MonthKind, monthDate } from "./months";
 import { PlanSummary } from "./PlanSummary";
@@ -128,18 +127,7 @@ export function BudgetBody({
 		<View>
 			<StaleNote since={stale} />
 			<SyncIssues padded />
-			<MonthBar
-				bounds={bounds}
-				month={key}
-				onChange={onSelectMonth}
-				trailing={
-					<ManageMenu
-						isDebtBook={style === "DEBT_PAYOFF"}
-						kind={kind}
-						onOpen={onOpen}
-					/>
-				}
-			/>
+			<MonthBar bounds={bounds} month={key} onChange={onSelectMonth} />
 			{wide ? (
 				<View
 					style={{ flexDirection: "row", gap: space[6], paddingTop: space[2] }}

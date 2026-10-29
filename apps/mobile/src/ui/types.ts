@@ -25,6 +25,16 @@ export interface MenuProps {
 	chip?: boolean;
 	/** A chip whose filter has a value set: brand-soft with a brand border. */
 	active?: boolean;
+	/**
+	 * Draws the trigger as the overflow mark (three dots) alone, 44 points, for
+	 * the toolbar. `label` is not shown then, so pass `accessibilityLabel`.
+	 */
+	icon?: boolean;
+	/**
+	 * Draws the trigger as a page-level choice (the month on Budget): 16/500
+	 * in accent-strong with a chevron, no border.
+	 */
+	heading?: boolean;
 }
 
 export interface SegmentedOption<T extends string> {
@@ -57,6 +67,12 @@ export interface AddButtonProps {
 
 export interface TopBarProps {
 	title: string;
+	/**
+	 * The page's overflow menu (the three dots), at the end of the bar before
+	 * the account button. Without items there is no mark.
+	 */
+	overflow?: MenuItem[];
+	overflowLabel?: string;
 	/** The signed-in person, for the account button: their picture, else initials. */
 	account?: Face;
 	accountLabel?: string;

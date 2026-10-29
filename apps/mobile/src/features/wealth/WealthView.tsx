@@ -6,13 +6,14 @@ import { useSession } from "@/auth/session";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { useCachedRead } from "@/features/read/useCachedRead";
+import { useMoneyText } from "@/features/read/useMoneyText";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
 import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
 import { Glyph } from "@/ui/Glyph";
-import { ListGroup, StaleNote } from "@/ui/List";
+import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { Menu } from "@/ui/Menu";
 import { Screen } from "@/ui/Screen";
 import { Skeleton, SkeletonRows } from "@/ui/Skeleton";
@@ -20,8 +21,8 @@ import { Text } from "@/ui/Text";
 import type { MenuItem } from "@/ui/types";
 import { AccountRow } from "./AccountRow";
 import { AccountSheets, type SheetTarget } from "./AccountSheets";
+import { GroupDot } from "./AllocationBar";
 import { closedAccounts, sectionsOf, unvalued } from "./accounts";
-import { GroupHeader } from "./GroupHeader";
 import { NetWorthChangeSheet } from "./NetWorthChangeSheet";
 import { KeyFigures, NetWorthHero } from "./NetWorthHero";
 import { useAccountHref } from "./routes";
@@ -60,7 +61,12 @@ function HeaderActions({ onAdd }: { onAdd: () => void }) {
 			) : (
 				<Button label={t("account.addTitle")} onPress={onAdd} variant="text" />
 			)}
-			<Menu accessibilityLabel={t("more")} items={items} label="⋯" />
+			<Menu
+				accessibilityLabel={t("more")}
+				icon
+				items={items}
+				label={t("more")}
+			/>
 		</View>
 	);
 }
@@ -118,6 +124,7 @@ function AccountsList({
 	const [showClosed, setShowClosed] = useState(false);
 	const t = useTranslations("mobile.wealth");
 	const hrefOf = useAccountHref();
+	const money = useMoneyText();
 	const actionsFor = useAccountActions(
 		useCallback(
 			(action, account) => onSheet({ kind: action, account }),
@@ -142,10 +149,10 @@ function AccountsList({
 				const group = data.summary.groups.find((g) => g.key === section.group);
 				return (
 					<View key={section.group}>
-						<GroupHeader
-							series={group?.series ?? null}
+						<SectionHeader
+							dot={<GroupDot series={group?.series ?? null} />}
 							title={t(`groups.${section.group}`)}
-							total={group?.total ?? null}
+							total={group?.total ? money(group.total) : undefined}
 						/>
 						<ListGroup>{rows(section.accounts)}</ListGroup>
 					</View>

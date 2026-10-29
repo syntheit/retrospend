@@ -6,7 +6,7 @@ import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ProjectsList } from "@/features/projects/ProjectsList";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useTheme } from "@/theme";
-import { Segmented } from "@/ui/Segmented";
+import { UnderlineTabs } from "@/ui/UnderlineTabs";
 import type { PeopleChip, PeopleSort } from "./groups";
 import { PeopleList } from "./PeopleList";
 import {
@@ -17,8 +17,8 @@ import {
 } from "./segment";
 
 /**
- * The People tab on phones: People and Projects behind one native segmented
- * control at the top of the list (the fifth bar slot belongs to Add). The last
+ * The People tab on phones: People and Projects behind underline tabs at
+ * the top of the list (the fifth bar slot belongs to Add). The last
  * choice is remembered; a link or redirect that names a segment wins. The
  * search text and the people chip live here, so a switch does not reset them.
  */
@@ -51,18 +51,11 @@ export function PeopleHub() {
 	}
 
 	const switcher = (
-		<View
-			style={{
-				paddingHorizontal: space[4],
-				paddingTop: space[2],
-				paddingBottom: space[2],
-				backgroundColor: color.bg,
-			}}
-		>
-			<Segmented
+		<View style={{ paddingBottom: space[2], backgroundColor: color.bg }}>
+			<UnderlineTabs
 				accessibilityLabel={tp("segmentLabel")}
 				onChange={choose}
-				options={[
+				tabs={[
 					{ value: "people", label: t("people") },
 					{ value: "projects", label: t("projects") },
 				]}

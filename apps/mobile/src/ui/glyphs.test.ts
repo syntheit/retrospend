@@ -12,9 +12,25 @@ describe("generated drawings", () => {
 	it("draws every category icon key and the control glyphs", () => {
 		for (const name of [
 			...CATEGORY_ICON_NAMES,
+			"ArrowRight",
+			"Bell",
+			"Bitcoin",
+			"Building2",
+			"ChartNoAxesCombined",
 			"Check",
+			"CircleHelp",
 			"Coins",
+			"Download",
+			"Ellipsis",
+			"HandCoins",
+			"Info",
 			"Search",
+			"Shield",
+			"ShieldCheck",
+			"SlidersHorizontal",
+			"Tags",
+			"TriangleAlert",
+			"User",
 			"X",
 		]) {
 			expect(GLYPHS[name]?.length).toBeGreaterThan(0);

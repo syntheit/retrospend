@@ -1,34 +1,33 @@
 import type { ReactNode } from "react";
-import { ScrollView, useWindowDimensions, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
+import { useSheetFill } from "@/ui/sheetContext";
 import { Text } from "@/ui/Text";
 import { type Entered, minorOf } from "./amount";
 import type { PreviewStatus } from "./useMoneyWrite";
 
 /**
- * The scrolling body of a full-height sheet. The platform sheet centers short
- * content in its detent, so the body asks for most of the window's height and
- * the content starts at the top, where a form belongs.
+ * The scrolling body of a sheet. The platform sheet centers short content in
+ * its detent, so the body claims the height its sheet rests at and the content
+ * starts at the top, where a form belongs (a medium sheet claims half the
+ * window, a large one most of it; see useSheetFill).
  */
 export function SheetBody({ children }: { children: ReactNode }) {
-	const { height } = useWindowDimensions();
+	const fill = useSheetFill();
 	const { space } = useTheme();
 	return (
 		<ScrollView
 			contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
 			keyboardShouldPersistTaps="handled"
-			style={{ minHeight: height * SHEET_FILL }}
+			style={fill}
 		>
 			{children}
 		</ScrollView>
 	);
 }
-
-/** How much of the window a sheet body claims: enough to pin the top, short of the status bar. */
-const SHEET_FILL = 0.8;
 
 /** One plain sentence in a sheet, or an attention note when it needs the person. */
 export function Note({

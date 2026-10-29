@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
@@ -8,18 +7,17 @@ import { type MonthBounds, monthChoices, monthDate, monthKind } from "./months";
 /**
  * The month on screen, "October 2026", at the start of the row. It is a menu
  * of the months, not a pair of steppers: a closed one reads, the next one is
- * the plan. `trailing` is the page's own menu at the other end of the row.
+ * the plan. It is drawn as the mockup's month button (16/500 accent-strong
+ * with a chevron). The page's own menu is the top bar's overflow.
  */
 export function MonthBar({
 	month,
 	bounds,
 	onChange,
-	trailing,
 }: {
 	month: number;
 	bounds: MonthBounds;
 	onChange: (month: number) => void;
-	trailing?: ReactNode;
 }) {
 	const t = useTranslations("mobile.budget.month");
 	const format = useFormatter();
@@ -46,13 +44,14 @@ export function MonthBar({
 				minHeight: size.touchMin.phone,
 				flexDirection: "row",
 				alignItems: "center",
-				justifyContent: "space-between",
+				justifyContent: "flex-start",
 				gap: space[3],
 				paddingHorizontal: space[4],
 			}}
 		>
 			<Menu
 				accessibilityLabel={t("pick")}
+				heading
 				items={monthChoices(bounds).map((key) => ({
 					id: String(key),
 					label: label(key),
@@ -60,7 +59,6 @@ export function MonthBar({
 				}))}
 				label={label(month)}
 			/>
-			{trailing}
 		</View>
 	);
 }

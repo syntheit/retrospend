@@ -16,6 +16,7 @@ import { ListGroup, ListRow } from "@/ui/List";
 import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { TopBar } from "@/ui/TopBar";
+import type { MenuItem } from "@/ui/types";
 import { currenciesHref } from "./places";
 import { useSignOut } from "./useSignOut";
 
@@ -40,7 +41,16 @@ export function useMyFace(): Face | null {
  * Sign out and the version. A native sheet: SwiftUI with detents on iOS, an
  * M3 modal bottom sheet on Android.
  */
-export function AccountTopBar({ title }: { title: string }) {
+export function AccountTopBar({
+	title,
+	overflow,
+	overflowLabel,
+}: {
+	title: string;
+	/** The page's overflow menu (the three dots), before the account button. */
+	overflow?: MenuItem[];
+	overflowLabel?: string;
+}) {
 	const t = useTranslations("mobile.account");
 	const { state } = useSession();
 	const baseUrl = useServerBaseUrl();
@@ -65,6 +75,8 @@ export function AccountTopBar({ title }: { title: string }) {
 				account={face ?? undefined}
 				accountLabel={t("open")}
 				onAccountPress={() => setOpen(true)}
+				overflow={overflow}
+				overflowLabel={overflowLabel}
 				title={title}
 			/>
 			<Sheet

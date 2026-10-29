@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { PeopleHub } from "./PeopleHub";
 
-// The People tab on phones, with its segmented control: the segment follows
+// The People tab on phones, with its underline tabs: the segment follows
 // the link param and the person's choice, and the search text and chip
 // survive a switch. The lists and the native control are stand-ins.
 const renderer = require("react-test-renderer");
@@ -60,9 +60,9 @@ jest.mock("@/features/projects/ProjectsList", () => ({
 			(props as { top?: unknown }).top,
 		),
 }));
-jest.mock("@/ui/Segmented", () => ({
-	Segmented: (props: object) =>
-		require("react").createElement("Segmented", props),
+jest.mock("@/ui/UnderlineTabs", () => ({
+	UnderlineTabs: (props: object) =>
+		require("react").createElement("UnderlineTabs", props),
 }));
 
 interface Tree {
@@ -103,7 +103,7 @@ function shown(tree: Tree): "people" | "projects" {
 }
 
 function choose(tree: Tree, value: "people" | "projects") {
-	act(() => only(tree, "Segmented").props.onChange(value));
+	act(() => only(tree, "UnderlineTabs").props.onChange(value));
 }
 
 beforeEach(() => {

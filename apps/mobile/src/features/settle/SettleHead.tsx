@@ -42,7 +42,7 @@ export function SettleHead({
 	const payer = outgoing ? me : them;
 	const payee = outgoing ? them : me;
 	const arrow = (
-		<Glyph color={color.fg3} name="ChevronRight" size={size.icon.phone} />
+		<Glyph color={color.fg3} name="ArrowRight" size={size.icon.phone} />
 	);
 
 	const everything = context.everything;
