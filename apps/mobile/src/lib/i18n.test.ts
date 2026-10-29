@@ -12,7 +12,10 @@ describe("matchLocale", () => {
 		["es_AR", "es-AR"],
 		["es-MX", "es"],
 		["pt-BR", "pt-BR"],
-		["pt-PT", "en"], // no Portuguese catalog other than pt-BR
+		// The only Portuguese catalog is pt-BR: nearer than English.
+		["pt-PT", "pt-BR"],
+		["pt", "pt-BR"],
+		["pt_AO", "pt-BR"],
 		["de-AT", "de"],
 		["ja-JP", "en"],
 		[undefined, "en"],
@@ -28,6 +31,7 @@ describe("matchLocale", () => {
 		["es-419-AR", undefined, "es-AR"],
 		["es_AR", "AR", "es-AR"],
 		["pt", "BR", "pt-BR"],
+		["pt", "PT", "pt-BR"],
 		["es", "ES", "es"],
 		["es", undefined, "es"],
 		// The language's own region has no catalog: the settings region does.
