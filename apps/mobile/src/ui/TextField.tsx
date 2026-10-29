@@ -11,6 +11,8 @@ export function TextField({
 	keyboardType,
 	placeholder,
 	autoCapitalize = "none",
+	secure,
+	autoComplete,
 }: {
 	label: string;
 	value: string;
@@ -20,6 +22,10 @@ export function TextField({
 	keyboardType?: "default" | "decimal-pad" | "number-pad" | "url";
 	placeholder?: string;
 	autoCapitalize?: "none" | "sentences" | "words";
+	/** Hides what is typed (passwords). */
+	secure?: boolean;
+	/** What the system may fill in (a saved password, a one-time code). */
+	autoComplete?: "current-password" | "new-password" | "one-time-code";
 }) {
 	const { color, radius, size, space, type } = useTheme();
 	return (
@@ -47,11 +53,13 @@ export function TextField({
 				<TextInput
 					accessibilityLabel={label}
 					autoCapitalize={autoCapitalize}
+					autoComplete={autoComplete}
 					autoCorrect={false}
 					keyboardType={keyboardType}
 					onChangeText={onChangeText}
 					placeholder={placeholder}
 					placeholderTextColor={color.fg3}
+					secureTextEntry={secure}
 					style={{ flex: 1, color: color.fg, fontSize: type.body.size }}
 					value={value}
 				/>
