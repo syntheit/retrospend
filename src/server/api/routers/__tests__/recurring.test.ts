@@ -52,11 +52,14 @@ vi.mock("~/server/better-auth", () => ({
 	auth: { api: { getSession: vi.fn().mockResolvedValue(null) } },
 }));
 
-import { createCallerFactory } from "~/server/api/trpc";
+import { createCallerFactory, mergeRouters } from "~/server/api/trpc";
 import { callAndFlush, makeSession } from "~/test/trpc-test-utils";
 import { recurringRouter } from "../recurring";
+import { recurringStepsRouter } from "../recurring-steps";
 
-const createCaller = createCallerFactory(recurringRouter);
+const createCaller = createCallerFactory(
+	mergeRouters(recurringRouter, recurringStepsRouter),
+);
 const caller = () =>
 	createCaller({
 		session: makeSession({ id: "user-1" }),

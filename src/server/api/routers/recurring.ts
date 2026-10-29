@@ -4,16 +4,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { userTransaction } from "~/server/db-tx";
-import { unconfirmRecurringIncome } from "~/server/services/income/confirm-recurring.mutation";
 import { RateCache } from "~/server/services/rate-cache";
-import {
-	confirmRecurringExpense,
-	unconfirmRecurringExpense,
-} from "~/server/services/recurring-confirm.mutation";
-import {
-	skipRecurring,
-	unskipRecurring,
-} from "~/server/services/recurring-skip.mutation";
+import { confirmRecurringExpense } from "~/server/services/recurring-confirm.mutation";
 
 export const recurringRouter = createTRPCRouter({
 	list: protectedProcedure
@@ -368,15 +360,12 @@ export const recurringRouter = createTRPCRouter({
 				dueDate: z.date().optional(),
 				// The real amount, required for a template whose amount varies (ASK).
 				amount: z.number().positive().optional(),
-				// The day it was really paid (yyyy-MM-dd); the due date when omitted.
 				paidOn: z.iso.date().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const userId = ctx.session.user.id;
-			// The amount as text, so it is stored as typed and never goes through float math.
-			const amount =
-				input.amount === undefined ? undefined : String(input.amount);
+			const amount = input.amount?.toString(); // as typed, no float math
 			const done = await userTransaction(ctx.db, userId, (tx) =>
 				confirmRecurringExpense.run(
 					tx,
@@ -387,68 +376,6 @@ export const recurringRouter = createTRPCRouter({
 						paidOn: input.paidOn,
 						timeZone: ctx.timeZone,
 					},
-					{ userId },
-				),
-			);
-			return done.value;
-		}),
-
-	/**
-	 * Takes back a confirm: the entry goes and the template returns to the due
-	 * date it settled. Refused while a later confirm sits on top of it. Income
-	 * has its own undo (its account leg goes back too).
-	 */
-	unconfirm: protectedProcedure
-		.input(z.object({ expenseId: z.string().min(1), dueDate: z.date() }))
-		.mutation(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-			const done = await userTransaction(ctx.db, userId, async (tx) => {
-				const row = await tx.expense.findFirst({
-					where: { id: input.expenseId, userId },
-					select: { direction: true },
-				});
-				const undo = {
-					expenseId: input.expenseId,
-					dueDate: input.dueDate,
-				};
-				return row?.direction === "IN"
-					? unconfirmRecurringIncome.run(tx, undo, { userId })
-					: unconfirmRecurringExpense.run(tx, undo, { userId });
-			});
-			return { templateId: done.value.templateId };
-		}),
-
-	/**
-	 * Skips one due item: the template moves to its next date and no entry is
-	 * booked. The same mutation /api/v1 runs (recurring-skip.mutation.ts).
-	 */
-	skip: protectedProcedure
-		.input(z.object({ id: z.cuid(), dueDate: z.date() }))
-		.mutation(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-			const done = await userTransaction(ctx.db, userId, (tx) =>
-				skipRecurring.run(
-					tx,
-					{
-						templateId: input.id,
-						dueDate: input.dueDate,
-						timeZone: ctx.timeZone,
-					},
-					{ userId },
-				),
-			);
-			return done.value;
-		}),
-
-	/** Puts a skipped item back on its due date, while the skip is the newest change. */
-	unskip: protectedProcedure
-		.input(z.object({ id: z.cuid(), dueDate: z.date() }))
-		.mutation(async ({ ctx, input }) => {
-			const userId = ctx.session.user.id;
-			const done = await userTransaction(ctx.db, userId, (tx) =>
-				unskipRecurring.run(
-					tx,
-					{ templateId: input.id, dueDate: input.dueDate },
 					{ userId },
 				),
 			);
