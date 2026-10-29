@@ -121,7 +121,9 @@ export function Glance({
 		hero.amount
 			? format(
 					hero.amount,
-					hero.kind === "over" ? { sign: "never" } : undefined,
+					hero.kind === "over"
+						? { sign: "never", cents: false }
+						: { cents: false },
 				)
 			: noRate,
 		...sub,
@@ -140,8 +142,9 @@ export function Glance({
 				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
 					{heroTitle}
 				</Text>
-				{hero.kind === "over" ? (
+				{hero.amount ? (
 					<Text
+						numberOfLines={1}
 						style={{
 							color: color.fg,
 							fontSize: type.hero.size,
@@ -149,10 +152,13 @@ export function Glance({
 							fontWeight: "600",
 						}}
 					>
-						{format(hero.amount, { sign: "never" })}
+						{format(
+							hero.amount,
+							hero.kind === "over"
+								? { sign: "never", cents: false }
+								: { cents: false },
+						)}
 					</Text>
-				) : hero.amount ? (
-					<MoneyAmount align="left" size="hero" value={hero.amount} />
 				) : (
 					<Text
 						style={{
