@@ -8,7 +8,7 @@ import { useCategories } from "@/features/activity/useCategories";
 import { useAddEntry } from "@/features/entry/AddEntryProvider";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { usePeopleOverview } from "@/features/people/usePeople";
-import { SectionHeader, StaleNote } from "@/features/read/parts";
+import { SectionHeader, StaleNote } from "@/ui/List";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";

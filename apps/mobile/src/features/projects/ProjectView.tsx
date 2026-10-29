@@ -5,7 +5,7 @@ import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import { absoluteImage, useFaces } from "@/features/read/faces";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { SectionHeader, StaleNote } from "@/features/read/parts";
+import { SectionHeader, StaleNote } from "@/ui/List";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";

@@ -2,7 +2,7 @@ import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFaces } from "@/features/read/faces";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { CategoryTile, ListRow } from "@/features/read/parts";
+import { CategoryTile, ListRow } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";

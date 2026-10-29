@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { ListRow } from "@/features/read/parts";
+import { ListRow } from "@/ui/List";
 import { useTheme } from "@/theme";
 import type { OpenSheet } from "./BudgetSheets";
 import { MORE_ROWS, type MoreKind } from "./MoreSheets";

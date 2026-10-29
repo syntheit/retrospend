@@ -9,7 +9,7 @@ import { SyncIssues } from "@/features/entry/SyncIssues";
 import { Glance } from "@/features/home/Glance";
 import { NeedsYou } from "@/features/home/NeedsYou";
 import { fetchHome, HOME_CACHE } from "@/features/home/source";
-import { SectionHeader, StaleNote } from "@/features/read/parts";
+import { SectionHeader, StaleNote } from "@/ui/List";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { EmptyState } from "@/ui/EmptyState";
 import { Screen } from "@/ui/Screen";

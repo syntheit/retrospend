@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { CategoryTile, ListRow } from "@/features/read/parts";
+import { CategoryTile, ListRow } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import type { PersonPage } from "./source";

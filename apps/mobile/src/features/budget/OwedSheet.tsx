@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { Face } from "@/features/entry/Face";
-import { LinkButton, ListRow } from "@/features/read/parts";
+import { LinkButton, ListRow } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Sheet } from "@/ui/Sheet";

@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { SyncIssues } from "@/features/entry/SyncIssues";
-import { ListRow, StaleNote } from "@/features/read/parts";
+import { ListRow, StaleNote } from "@/ui/List";
 import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";
 import { BudgetHero } from "./BudgetHero";

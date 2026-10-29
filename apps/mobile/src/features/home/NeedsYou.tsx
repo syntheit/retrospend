@@ -5,7 +5,7 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useFaces } from "@/features/read/faces";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { LinkButton, ListRow, SectionHeader } from "@/features/read/parts";
+import { LinkButton, ListRow, SectionHeader } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";

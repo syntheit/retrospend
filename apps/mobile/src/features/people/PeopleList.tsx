@@ -14,7 +14,7 @@ import {
 } from "@/features/people/source";
 import { usePeopleOverview } from "@/features/people/usePeople";
 import { useFaces } from "@/features/read/faces";
-import { ListRow, SectionHeader, StaleNote } from "@/features/read/parts";
+import { ListRow, SectionHeader, StaleNote } from "@/ui/List";
 import { FLOATING_ADD_INSET } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
