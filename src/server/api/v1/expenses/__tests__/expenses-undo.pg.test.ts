@@ -5,10 +5,11 @@
  * no Idempotency-Key.
  */
 import { randomUUID } from "node:crypto";
-import { contract } from "@retrospend/api-contract";
+import { BULK_DELETE_MAX, contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { queryOf, readFilter } from "~/features/activity/filters";
 import { createUserScopedDb } from "~/server/db";
+import { MAX_STORED_RESPONSE_BYTES } from "~/server/services/api-v1/idempotency.service";
 import { listActivity } from "~/server/services/expense-list";
 import {
 	adminDb,
@@ -299,6 +300,45 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		await expectBody(await undo(undone.redo), c.undo);
 		await expect(count()).resolves.toBe(0);
 	});
+
+	it("keeps a full bulk delete's response small enough to replay, spread parts and all", async () => {
+		const ids: string[] = [];
+		for (let i = 0; i < BULK_DELETE_MAX; i++) {
+			const made = await add(
+				body(food, {
+					title: `Spread ${i} ${"x".repeat(200)}`,
+					amount: "240",
+					amortizeOver: 24,
+					description: "y".repeat(900),
+					location: "z".repeat(180),
+				}),
+			);
+			ids.push(made.expense.id);
+		}
+		await expect(
+			adminDb.expense.count({ where: { parentId: { in: ids } } }),
+		).resolves.toBe(BULK_DELETE_MAX * 24);
+		const key = randomUUID();
+		const first = await post("/expenses/bulk-delete", { ids }, as, key);
+		const text = await first.text();
+		expect(first.status, text).toBe(200);
+		expect(Buffer.byteLength(text, "utf8")).toBeLessThan(
+			MAX_STORED_RESPONSE_BYTES,
+		);
+		// A lost response comes back the same from the same key.
+		const again = await post("/expenses/bulk-delete", { ids }, as, key);
+		expect(again.status).toBe(200);
+		expect(await again.json()).toEqual(JSON.parse(text));
+
+		const done = JSON.parse(text) as { deleted: number; undo: string };
+		expect(done.deleted).toBe(BULK_DELETE_MAX);
+		await expectBody(await undo(done.undo), c.undo);
+		await expect(
+			adminDb.expense.count({
+				where: { OR: [{ id: { in: ids } }, { parentId: { in: ids } }] },
+			}),
+		).resolves.toBe(BULK_DELETE_MAX * 25);
+	}, 120_000);
 
 	it("refuses a bulk delete when none of the ids can go", async () => {
 		const stranger = await createTestUser();

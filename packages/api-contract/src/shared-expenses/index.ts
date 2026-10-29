@@ -84,7 +84,7 @@ export const updateSharedExpenseSchema = z
 		...sharedFields,
 		splitWith: sharedFields.splitWith.optional().meta({
 			description:
-				"Left out: the same people, and a new amount is split again by `splitMode` (EXACT shares scale in proportion).",
+				"Left out: the same people, and a new amount or currency is split again the saved way (EXACT shares scale in proportion). A different `splitMode` needs splitWith; without it the edit is refused.",
 		}),
 	})
 	.meta({ id: "UpdateSharedExpense" });

@@ -4,14 +4,22 @@
  * and one undo puts every row back.
  *
  * - expense.deleteMany: each id goes as expense.delete takes it (the row and
- *   its spread parts, with a signed snapshot). An id that is not yours or is
- *   gone is skipped, and so is a transfer's fee (it goes with its transfer).
- *   Refused when nothing can go. `expected` (a redo) runs only while each
- *   row still has the stamp the undo left.
- * - expense.restoreMany: the undo, every snapshot back in one transaction;
- *   a row that is back already refuses the whole undo.
+ *   its spread parts). An id that is not yours or is gone is skipped, and so
+ *   is a transfer's fee (it goes with its transfer). Refused when nothing can
+ *   go. `expected` (a redo) runs only while each row still has the stamp the
+ *   undo left.
+ * - expense.restoreMany: the undo, every row back in one transaction; a row
+ *   that is back already refuses the whole undo.
+ *
+ * The rows the undo puts back stay on the server (a stash in the caller's
+ * own expiring idempotency_key rows, written in the delete's transaction), so
+ * the undo token and the response stay small whatever the set holds, and a
+ * lost response can always be replayed.
  */
+import { randomUUID } from "node:crypto";
+import { IDEMPOTENCY_TTL_MS } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
+import type { Prisma } from "~prisma";
 import { ExpenseService } from "../expense.service";
 import type { MoneyMutation } from "../preview/types";
 import { EXPENSE_FIGURES } from "./expense.mutation";
@@ -20,7 +28,8 @@ import {
 	restoreExpense,
 	snapshotExpense,
 } from "./expense-snapshot";
-import { type RestoreToken, readRestore, signRestore } from "./restore-token";
+
+type Tx = Prisma.TransactionClient;
 
 export interface DeleteManyInput {
 	readonly ids: readonly string[];
@@ -31,15 +40,64 @@ export interface DeleteManyInput {
 export interface DeletedMany {
 	readonly ids: readonly string[];
 	readonly skipped: readonly string[];
-	/** expense.restoreMany with these brings every deleted row back. */
-	readonly restores: readonly RestoreToken[];
+	/** expense.restoreMany with this stash brings every deleted row back. */
+	readonly stash: string;
 }
+
+/** The stash's key: no client key has this shape unless it copies one of its own. */
+const stashKey = (stash: string) => `undo-stash:${stash}`;
+
+const invalidUndo = () =>
+	new TRPCError({
+		code: "BAD_REQUEST",
+		message: "This undo is not valid anymore",
+	});
 
 const stale = () =>
 	new TRPCError({
 		code: "CONFLICT",
 		message: "This expense changed since. Undo is no longer safe.",
 	});
+
+/** Keeps the rows for as long as an undo token lives (24 hours). */
+async function putStash(
+	tx: Tx,
+	userId: string,
+	snapshots: ExpenseSnapshot[],
+): Promise<string> {
+	const stash = randomUUID();
+	const now = new Date();
+	await tx.idempotencyKey.create({
+		data: {
+			userId,
+			key: stashKey(stash),
+			requestHash: "undo-stash",
+			completedAt: now,
+			status: 200,
+			responseBody: JSON.parse(
+				JSON.stringify({ snapshots }),
+			) as Prisma.InputJsonValue,
+			expiresAt: new Date(now.getTime() + IDEMPOTENCY_TTL_MS),
+		},
+	});
+	return stash;
+}
+
+/** Takes the rows out of the stash; the undo's transaction removes it. */
+async function takeStash(
+	tx: Tx,
+	userId: string,
+	stash: string,
+): Promise<ExpenseSnapshot[]> {
+	const row = await tx.idempotencyKey.findUnique({
+		where: { userId_key: { userId, key: stashKey(stash) } },
+	});
+	if (!row || row.expiresAt <= new Date()) throw invalidUndo();
+	await tx.idempotencyKey.delete({ where: { id: row.id } });
+	const body = row.responseBody as { snapshots?: ExpenseSnapshot[] } | null;
+	if (!body?.snapshots?.length) throw invalidUndo();
+	return body.snapshots;
+}
 
 export const deleteExpensesBulk: MoneyMutation<DeleteManyInput, DeletedMany> = {
 	id: "expense.deleteMany",
@@ -63,7 +121,7 @@ export const deleteExpensesBulk: MoneyMutation<DeleteManyInput, DeletedMany> = {
 		const service = new ExpenseService(tx);
 		const deleted: string[] = [];
 		const skipped: string[] = [];
-		const restores: RestoreToken[] = [];
+		const snapshots: ExpenseSnapshot[] = [];
 		for (const id of ids) {
 			const row = byId.get(id);
 			const want = input.expected?.[id];
@@ -72,10 +130,9 @@ export const deleteExpensesBulk: MoneyMutation<DeleteManyInput, DeletedMany> = {
 				skipped.push(id);
 				continue;
 			}
-			const snapshot = await snapshotExpense(tx, actor.userId, id);
+			snapshots.push(await snapshotExpense(tx, actor.userId, id));
 			await service.deleteExpense(actor.userId, id);
 			deleted.push(id);
-			restores.push(signRestore(snapshot));
 		}
 		if (deleted.length === 0) {
 			throw new TRPCError({
@@ -83,8 +140,9 @@ export const deleteExpensesBulk: MoneyMutation<DeleteManyInput, DeletedMany> = {
 				message: "None of these expenses can be deleted here.",
 			});
 		}
+		const stash = await putStash(tx, actor.userId, snapshots);
 		return {
-			value: { ids: deleted, skipped, restores },
+			value: { ids: deleted, skipped, stash },
 			undo: {
 				kind: "revert",
 				mutation: "expense.restoreMany",
@@ -100,17 +158,17 @@ export interface RestoredMany {
 	readonly stamps: Readonly<Record<string, string>>;
 }
 
-/** The undo of expense.deleteMany: the signed rows back as they were stored. */
+/** The undo of expense.deleteMany: the stashed rows back as they were stored. */
 export const restoreExpensesBulk: MoneyMutation<
-	{ tokens: readonly RestoreToken[] },
+	{ stash: string },
 	RestoredMany
 > = {
 	id: "expense.restoreMany",
 	touches: EXPENSE_FIGURES,
 	run: async (tx, input, actor) => {
+		const snapshots = await takeStash(tx, actor.userId, input.stash);
 		const ids: string[] = [];
-		for (const token of input.tokens) {
-			const snapshot = readRestore<ExpenseSnapshot>(token);
+		for (const snapshot of snapshots) {
 			ids.push(await restoreExpense(tx, actor.userId, snapshot));
 		}
 		const rows = await tx.expense.findMany({

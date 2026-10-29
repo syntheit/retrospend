@@ -284,7 +284,7 @@ export async function removeExpenses(caller: Caller, input: BulkDelete) {
 		deleted: done.ids.length,
 		skipped: [...done.skipped],
 		undo: undoFor(caller, "expense", "expense.restoreMany", {
-			tokens: done.restores,
+			stash: done.stash,
 		}),
 	};
 }
@@ -395,14 +395,14 @@ function stepOf(op: string, input: unknown): Step<unknown, unknown> {
 				input: input as DeleteManyInput,
 				redo: (v) => ({
 					op: "expense.restoreMany",
-					input: { tokens: v.restores },
+					input: { stash: v.stash },
 				}),
 				idOf: () => null,
 			});
 		case "expense.restoreMany":
 			return step({
 				mutation: restoreExpensesBulk,
-				input: input as { tokens: RestoreToken[] },
+				input: input as { stash: string },
 				redo: (v) => ({
 					op: "expense.deleteMany",
 					input: { ids: v.ids, expected: v.stamps },

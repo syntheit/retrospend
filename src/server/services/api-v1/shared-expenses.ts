@@ -162,10 +162,29 @@ export const previewAddSharedExpense = (
 	body: CreateBody,
 ) => dryRun(caller, createSharedExpense, createInput(caller, body));
 
+/**
+ * Left out, the split keeps its people and its mode: a new mode needs the
+ * shares it counts (amounts, percents or units), so it comes with splitWith.
+ */
+async function requireSplitForNewMode(caller: Caller, body: UpdateBody) {
+	if (body.splitWith) return;
+	const row = await caller.db.sharedTransaction.findUnique({
+		where: { id: body.id },
+		select: { splitMode: true },
+	});
+	if (row && row.splitMode !== body.splitMode)
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message:
+				"To change splitMode, send splitWith with each person's share in the new mode.",
+		});
+}
+
 export async function replaceSharedExpense(
 	caller: LedgerCaller,
 	body: UpdateBody,
 ) {
+	await requireSplitForNewMode(caller, body);
 	const value = await save(
 		caller,
 		guardedShared(updateSharedExpense),
@@ -190,6 +209,7 @@ export async function previewReplaceSharedExpense(
 	caller: LedgerCaller,
 	body: UpdateBody,
 ) {
+	await requireSplitForNewMode(caller, body);
 	const preview = await forUser(caller.principal.userId).preview(
 		withShares(updateSharedExpense),
 		{ ...updateInput(caller, body), notify: [] },

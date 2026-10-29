@@ -620,10 +620,15 @@ export class SharedTransactionService {
 					effectiveSplitMode,
 					effectivePaidBy,
 				);
-			} else if (fieldUpdates.amount !== undefined) {
-				// Amount changed without explicit splitWith: re-split from what is
-				// stored. resolveSplits orders its own leftover units; the EXACT
-				// rescale gives them to the last row, so sort for it.
+			} else if (
+				fieldUpdates.amount !== undefined ||
+				fieldUpdates.currency !== undefined
+			) {
+				// Amount or currency changed without explicit splitWith: re-split
+				// from what is stored, in the new currency's minor units.
+				// resolveSplits orders its own leftover units; the EXACT rescale
+				// gives them to the last row, so sort for it.
+				const newAmount = input.amount ?? serializeDecimal(existing.amount);
 				const stored = [...existing.splitParticipants]
 					.sort(compareParticipants)
 					.map((sp) => ({
@@ -642,13 +647,14 @@ export class SharedTransactionService {
 							// rescale each proportionally, keeping it cent-accurate.
 							this.rescaleExactSplits(
 								serializeDecimal(existing.amount),
-								input.amount!,
+								newAmount,
 								effectiveCurrency,
 								stored,
 								effectivePaidBy,
+								existing.currency,
 							)
 						: this.computeSplits(
-								input.amount!,
+								newAmount,
 								effectiveCurrency,
 								stored,
 								effectiveSplitMode,
@@ -1213,7 +1219,8 @@ export class SharedTransactionService {
 	 * the payer first (else the last row), matching the rounding rule used
 	 * elsewhere.
 	 * If the old total was 0 (no proportion to preserve), falls back to an equal
-	 * split so the shares still sum to the new amount.
+	 * split so the shares still sum to the new amount. `fromCurrency` is the
+	 * currency the stored shares are in, when the edit changes it.
 	 */
 	private rescaleExactSplits(
 		oldAmount: number,
@@ -1221,16 +1228,17 @@ export class SharedTransactionService {
 		currency: string,
 		splits: Array<SplitParticipantInput & { shareAmount: number }>,
 		paidBy: ParticipantRef,
+		fromCurrency: string = currency,
 	): SplitParticipantInput[] {
 		const newTotalCents = toMinorUnits(newAmount, currency);
 
-		if (toMinorUnits(oldAmount, currency) === 0) {
+		if (toMinorUnits(oldAmount, fromCurrency) === 0) {
 			// Degenerate case: nothing to scale from. Split equally.
 			return this.computeSplits(newAmount, currency, splits, "EQUAL", paidBy);
 		}
 
 		const oldTotalCents = splits.reduce(
-			(s, p) => s + toMinorUnits(p.shareAmount, currency),
+			(s, p) => s + toMinorUnits(p.shareAmount, fromCurrency),
 			0,
 		);
 		if (oldTotalCents === 0) {
@@ -1238,7 +1246,9 @@ export class SharedTransactionService {
 		}
 
 		// Exact BigInt allocation: newTotal * oldShare overflows a float near 1e12 units.
-		const oldShares = splits.map((p) => toMinorUnits(p.shareAmount, currency));
+		const oldShares = splits.map((p) =>
+			toMinorUnits(p.shareAmount, fromCurrency),
+		);
 		const cents = allocateByWeights(
 			newTotalCents,
 			oldShares,

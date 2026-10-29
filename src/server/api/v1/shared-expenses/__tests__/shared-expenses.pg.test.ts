@@ -15,6 +15,7 @@ import {
 	arsUser,
 	seedRates,
 	type TestUser,
+	today,
 } from "../../__tests__/g3-fixtures";
 import {
 	asKey,
@@ -512,6 +513,72 @@ describe("/api/v1/shared-expenses", () => {
 				[sofia.user.id, 40],
 			].sort(),
 		);
+	});
+
+	it("refuses a new splitMode without splitWith, and changes nothing", async () => {
+		const made = await add({
+			description: "Keep my mode",
+			splitMode: "EXACT",
+			splitWith: [
+				{ type: "user", id: sofia.user.id, shareAmount: "63" },
+				{ type: "user", id: martin.user.id, shareAmount: "27" },
+			],
+		});
+		const { splitWith: _, ...rest } = body({
+			description: "Keep my mode",
+			splitMode: "EQUAL",
+		});
+		const edit = { ...rest, id: made.id };
+		for (const res of [
+			await post(`/shared-expenses/${made.id}/preview`, edit),
+			await put(`/shared-expenses/${made.id}`, edit),
+		])
+			await expectProblem(res, 400, "bad_request");
+		const saved = await row(made.id);
+		expect(saved?.splitMode).toBe("EXACT");
+		expect(
+			saved?.splitParticipants.map((p) => Number(p.shareAmount)).sort(),
+		).toEqual([27, 63]);
+	});
+
+	it("splits again in the new currency's minor units when only the currency changes", async () => {
+		await adminDb.exchangeRate.upsert({
+			where: {
+				date_currency_type: { date: today, currency: "JPY", type: "blue" },
+			},
+			create: { date: today, currency: "JPY", type: "blue", rate: "150" },
+			update: { rate: "150" },
+		});
+		const made = await add({
+			amount: "100",
+			description: "Thirds",
+			splitMode: "EXACT",
+			splitWith: [
+				{ type: "user", id: sofia.user.id, shareAmount: "33.33" },
+				{ type: "user", id: martin.user.id, shareAmount: "66.67" },
+			],
+		});
+		const { splitWith: _, ...rest } = body({
+			amount: "100",
+			currency: "JPY",
+			description: "Thirds",
+			splitMode: "EXACT",
+		});
+		await expectBody<Write>(
+			await put(`/shared-expenses/${made.id}`, { ...rest, id: made.id }),
+			c.update,
+		);
+		const saved = await row(made.id);
+		expect(saved?.currency).toBe("JPY");
+		const shares = Object.fromEntries(
+			(saved?.splitParticipants ?? []).map((p) => [
+				p.participantId,
+				p.shareAmount.toString(),
+			]),
+		);
+		// Whole yen, in the same proportion; the leftover yen goes to the payer.
+		expect(Number(shares[sofia.user.id])).toBe(34);
+		expect(Number(shares[martin.user.id])).toBe(66);
 	});
 
 	it("takes an add back and tells nobody, with a preview that matches", async () => {
