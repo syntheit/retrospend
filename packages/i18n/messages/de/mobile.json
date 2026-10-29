@@ -1570,7 +1570,34 @@
 		"otherShort": "Anderer",
 		"typeAmount": "Gib einen Betrag ein",
 		"amountInvalid": "Dieser Betrag ist ungültig",
-		"overpay": "Das ist mehr, als offen ist. Gib weniger ein."
+		"overpay": "Das ist mehr, als offen ist. Gib weniger ein.",
+		"everythingAmount": "Alles {amount}",
+		"partAmount": "Anteil in {currency} {amount}",
+		"youOwe": "Du schuldest {name} {amount}",
+		"owesYou": "{name} schuldet dir {amount}",
+		"rate": "Kurs {currency}",
+		"rateLine": "{unit} = {value} · {type}",
+		"method": "Zahlungsart",
+		"date": "Datum",
+		"today": "Heute",
+		"yesterday": "Gestern",
+		"methodNames": {
+			"bank_transfer": "Überweisung",
+			"cash": "Bargeld"
+		},
+		"afterThis": "Danach: {state}",
+		"afterSettled": "mit {name} beglichen",
+		"afterOwesYou": "{name} schuldet dir {amount}",
+		"afterYouOwe": "du schuldest {name} {amount}",
+		"rule": {
+			"received": "Endgültig: du hast es erhalten.",
+			"waits": "Wartet auf die Bestätigung von {name}. Dein Saldo zeigt es schon.",
+			"final": "Endgültig: {name} nutzt Retrospend nicht."
+		},
+		"overTheyOwe": "Das sind {amount} mehr, als {name} dir schuldet",
+		"overYouOwe": "Das sind {amount} mehr, als du {name} schuldest",
+		"recordExact": "Stattdessen {amount} erfassen",
+		"recordAmount": "{amount} erfassen"
 	},
 	"review": {
 		"open": "Prüfen",

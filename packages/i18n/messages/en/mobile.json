@@ -1570,7 +1570,34 @@
 		"otherShort": "Other",
 		"typeAmount": "Type an amount",
 		"amountInvalid": "That amount isn't valid",
-		"overpay": "That is more than is owed. Enter less."
+		"overpay": "That is more than is owed. Enter less.",
+		"everythingAmount": "Everything {amount}",
+		"partAmount": "{currency} part {amount}",
+		"youOwe": "You owe {name} {amount}",
+		"owesYou": "{name} owes you {amount}",
+		"rate": "{currency} rate",
+		"rateLine": "{unit} = {value} · {type}",
+		"method": "Method",
+		"date": "Date",
+		"today": "Today",
+		"yesterday": "Yesterday",
+		"methodNames": {
+			"bank_transfer": "Bank transfer",
+			"cash": "Cash"
+		},
+		"afterThis": "After this: {state}",
+		"afterSettled": "settled with {name}",
+		"afterOwesYou": "{name} owes you {amount}",
+		"afterYouOwe": "you owe {name} {amount}",
+		"rule": {
+			"received": "Final: you received it.",
+			"waits": "Waits for {name} to confirm. Your balance shows it now.",
+			"final": "Final: {name} is not on Retrospend."
+		},
+		"overTheyOwe": "That is {amount} more than {name} owes you",
+		"overYouOwe": "That is {amount} more than you owe {name}",
+		"recordExact": "Record {amount} instead",
+		"recordAmount": "Record {amount}"
 	},
 	"review": {
 		"open": "Review",

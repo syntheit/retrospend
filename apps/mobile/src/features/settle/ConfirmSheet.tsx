@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ScrollView } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -7,7 +7,7 @@ import type { PersonIdentity } from "@/features/people/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { Sheet } from "@/ui/Sheet";
+import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { PreviewList } from "./PreviewList";
@@ -37,6 +37,7 @@ export function ConfirmSheet({
 	const toast = useToast();
 	const money = useMoneyText();
 	const { space } = useTheme();
+	const body = useSheetBodySize({ footer: true });
 	const [preview, setPreview] = useState<PaymentPreview | null>(null);
 	const [failed, setFailed] = useState(false);
 	const [confirmFailed, setConfirmFailed] = useState(false);
@@ -99,30 +100,34 @@ export function ConfirmSheet({
 	return (
 		<Sheet
 			detents={["large"]}
-			onClose={onClose}
-			title={t("confirmTitle", { name: first })}
-			visible={visible}
-		>
-			<ScrollView
-				contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
-			>
-				<Text tabular variant="title">
-					{money(payment.amount)}
-				</Text>
-				{preview ? (
-					<PreviewList name={first} preview={preview} />
-				) : (
-					<Text tone="fg2">{failed ? t("previewError") : t("checking")}</Text>
-				)}
-				{confirmFailed ? (
-					<Text tone="attention">{t("confirmError")}</Text>
-				) : null}
+			footer={
 				<Button
 					disabled={!preview || busy}
 					label={busy ? t("recording") : t("confirm")}
 					onPress={confirm}
 				/>
-			</ScrollView>
+			}
+			onClose={onClose}
+			title={t("confirmTitle", { name: first })}
+			visible={visible}
+		>
+			<View style={{ ...body }}>
+				<ScrollView
+					contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
+				>
+					<Text tabular variant="title">
+						{money(payment.amount)}
+					</Text>
+					{preview ? (
+						<PreviewList name={first} preview={preview} />
+					) : (
+						<Text tone="fg2">{failed ? t("previewError") : t("checking")}</Text>
+					)}
+					{confirmFailed ? (
+						<Text tone="attention">{t("confirmError")}</Text>
+					) : null}
+				</ScrollView>
+			</View>
 		</Sheet>
 	);
 }

@@ -19,6 +19,17 @@ export type AmountChoice =
 	| { kind: "custom"; minor: number };
 
 /**
+ * What the person picked besides the amount: the rate type a conversion
+ * uses, how they paid and on which day. Left null, the server's defaults
+ * stand (its reference rate, no method, today).
+ */
+export interface RecordDetails {
+	rateType?: string | null;
+	paymentMethod?: string | null;
+	paidOn?: string | null;
+}
+
+/**
  * The body of POST /payments, and of its preview twin: the preview is a dry
  * run of exactly this write. "Everything" sends no amount (the server pays
  * all that is owed); a part sends that part's amount in the payment
@@ -32,8 +43,17 @@ export function recordInput(
 	direction: Direction,
 	choice: AmountChoice,
 	id: string,
+	details: RecordDetails = {},
 ): RecordInput | null {
-	const base = { id, person, direction, currency: context.currency };
+	const base = {
+		id,
+		person,
+		direction,
+		currency: context.currency,
+		...(details.rateType ? { rateType: details.rateType } : {}),
+		...(details.paymentMethod ? { paymentMethod: details.paymentMethod } : {}),
+		...(details.paidOn ? { paidOn: details.paidOn } : {}),
+	};
 	if (choice.kind === "everything") return { ...base, amount: null };
 	if (choice.kind === "custom") {
 		if (choice.minor <= 0) return null;
@@ -143,6 +163,130 @@ export function allocationOf(
 		amount: allocation.amount,
 		converted: (allocation.rows ?? []).some((row) => row.rate !== null),
 	};
+}
+
+/** Which way a signed line points: they owe you (incoming) or you owe them. */
+function pointsTheWay(minor: number, direction: Direction): boolean {
+	return direction === "incoming" ? minor > 0 : minor < 0;
+}
+
+/**
+ * The open balances the chosen direction settles, one amount per line as
+ * the server sends them (never added together), without their sign. Empty
+ * when the one line is already in the payment currency: Everything says it.
+ */
+export function owedBreakdown(
+	context: SettleContext,
+	direction: Direction,
+): Money[] {
+	const lines = context.lines
+		.filter((line) => pointsTheWay(line.amount.minor, direction))
+		.map((line) => ({
+			minor: Math.abs(line.amount.minor),
+			currency: line.amount.currency,
+		}));
+	if (lines.length === 1 && lines[0]?.currency === context.currency) return [];
+	return lines;
+}
+
+/** Everything is an estimate when a debt in another currency turns into the payment currency. */
+export function everythingConverts(
+	context: SettleContext,
+	direction: Direction,
+): boolean {
+	return context.lines.some(
+		(line) =>
+			pointsTheWay(line.amount.minor, direction) &&
+			line.amount.currency !== context.currency,
+	);
+}
+
+/** What a payment pays and cancels, as the server's dry run answers it. */
+export interface Allocation {
+	amount: Money;
+	/** Everything owed, in the payment currency. */
+	full: Money;
+	rows: { pays: Money; paid: Money; excess: boolean }[];
+	offsets: { cancels: Money; value: Money }[];
+	/** More than everything owed; null when it is not. */
+	overpay: Money | null;
+}
+
+/** The allocation in a preview's detail; null when the server sent none. */
+export function allocationDetail(preview: PaymentPreview): Allocation | null {
+	const detail = preview.detail as
+		| { allocation?: Allocation | null }
+		| undefined;
+	return detail?.allocation ?? null;
+}
+
+export interface RateChoices {
+	/** The debt currencies that turn into the payment currency. */
+	currencies: string[];
+	/** The rate types the server has, when there is a choice between them. */
+	types: string[];
+	/** The type the conversion uses now. */
+	current: string | null;
+	/** What one unit of each debt currency is worth in the payment currency. */
+	rates: { currency: string; unit: Money; value: Money; type: string }[];
+}
+
+/**
+ * The rate chips of a conversion (GUIDELINE 7, as the web's Rates): there
+ * only when the payment turns a debt in another currency into the payment
+ * currency, with the rate each of them uses now. Null when nothing converts.
+ */
+export function rateChoices(
+	context: SettleContext,
+	allocation: Allocation | null,
+	picked: string | null,
+): RateChoices | null {
+	if (!allocation) return null;
+	const pay = allocation.amount.currency;
+	const currencies = [
+		...new Set([
+			...allocation.rows
+				.filter((row) => !row.excess && row.pays.currency !== pay)
+				.map((row) => row.pays.currency),
+			...allocation.offsets
+				.filter((offset) => offset.cancels.currency !== pay)
+				.map((offset) => offset.cancels.currency),
+		]),
+	];
+	if (currencies.length === 0) return null;
+	const rates = currencies.flatMap((currency) => {
+		const rate = context.rates.find((r) => r.currency === currency)?.rate;
+		return rate
+			? [{ currency, unit: rate.unit, value: rate.value, type: rate.type }]
+			: [];
+	});
+	return {
+		currencies,
+		types: context.rateTypes.length > 1 ? [...context.rateTypes] : [],
+		current: picked ?? rates[0]?.type ?? null,
+		rates,
+	};
+}
+
+/**
+ * The balance with the person once this payment is recorded, from the
+ * preview: each currency that still has something open, signed from your
+ * side (positive: they owe you). Empty when the payment settles everything.
+ */
+export function balanceAfter(preview: PaymentPreview): Money[] {
+	const changed = preview.changes.filter(
+		(change) => change.id === "balance.person",
+	);
+	const changedCurrencies = new Set(changed.map((change) => change.currency));
+	const stays = preview.unchanged.flatMap((item) =>
+		item.id === "balance.person"
+			? item.lines.filter((line) => !changedCurrencies.has(line.currency))
+			: [],
+	);
+	return [
+		...changed.flatMap((change) => asMoney(change.after) ?? []),
+		...stays.flatMap((line) => asMoney(line) ?? []),
+	].filter((line) => line.minor !== 0);
 }
 
 /** The problem the server answers for an amount above everything owed. */
