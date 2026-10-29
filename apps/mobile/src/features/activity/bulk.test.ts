@@ -1,5 +1,4 @@
-import type { PreviewDto } from "@/features/entry/preview";
-import { canSelect, entityIdsOf, mergeDeletePreviews } from "./bulk";
+import { canSelect, entityIdsOf } from "./bulk";
 import type { ActivityItem } from "./source";
 
 const item = (over: Partial<ActivityItem> = {}): ActivityItem => ({
@@ -40,89 +39,5 @@ describe("entityIdsOf", () => {
 			item({ id: "c", entityId: "ec" }),
 		];
 		expect(entityIdsOf(rows, new Set(["c", "a"]))).toEqual(["ea", "ec"]);
-	});
-});
-
-const line = (minor: number) => ({ minor, currency: "ARS" });
-const spent = (
-	delta: number,
-	before: number,
-): PreviewDto["changes"][number] => ({
-	id: "spent",
-	currency: "ARS",
-	before: line(before),
-	after: line(before + delta),
-	delta: line(delta),
-	figureAfter: [line(before + delta)],
-});
-const diff = (over: Partial<PreviewDto> = {}): PreviewDto => ({
-	changes: [],
-	unchanged: [],
-	unavailable: [],
-	...over,
-});
-
-describe("mergeDeletePreviews", () => {
-	it("passes one answer through as it came", () => {
-		const one = diff({ changes: [spent(-500, 2000)] });
-		expect(mergeDeletePreviews([one])).toBe(one);
-	});
-
-	it("adds each figure's deltas and drops the after it cannot know", () => {
-		const merged = mergeDeletePreviews([
-			diff({ changes: [spent(-500, 2000)] }),
-			diff({ changes: [spent(-300, 2000)] }),
-		]);
-		expect(merged.changes).toHaveLength(1);
-		expect(merged.changes[0]?.delta).toEqual(line(-800));
-		expect(merged.changes[0]?.after).toBeNull();
-	});
-
-	it("marks every summed line approximate, and leaves one answer exact", () => {
-		const merged = mergeDeletePreviews([
-			diff({ changes: [spent(-500, 2000)] }),
-			diff({ changes: [spent(-300, 2000)] }),
-		]);
-		expect(merged.changes.every((c) => c.approx === true)).toBe(true);
-		const lone = mergeDeletePreviews([
-			diff({ changes: [spent(-500, 2000)] }),
-			diff(),
-		]);
-		expect(lone.changes[0]?.approx).toBe(true);
-		const one = mergeDeletePreviews([diff({ changes: [spent(-500, 2000)] })]);
-		expect(one.changes[0]?.approx).toBeUndefined();
-	});
-
-	it("keeps currencies apart", () => {
-		const usd = {
-			...spent(-100, 900),
-			currency: "USD",
-			delta: { minor: -100, currency: "USD" },
-		};
-		const merged = mergeDeletePreviews([
-			diff({ changes: [spent(-500, 2000)] }),
-			diff({ changes: [usd] }),
-		]);
-		expect(merged.changes.map((c) => c.currency).sort()).toEqual([
-			"ARS",
-			"USD",
-		]);
-	});
-
-	it("says a figure stays only when every dry run found it unchanged", () => {
-		const stays = (id: string) => ({ id, lines: [line(1)] });
-		const merged = mergeDeletePreviews([
-			diff({ unchanged: [stays("netWorth"), stays("owed.owedToYou")] }),
-			diff({ unchanged: [stays("owed.owedToYou")] }),
-		]);
-		expect(merged.unchanged.map((u) => u.id)).toEqual(["owed.owedToYou"]);
-	});
-
-	it("passes on a figure that could not be read in any of them", () => {
-		const merged = mergeDeletePreviews([
-			diff(),
-			diff({ unavailable: [{ id: "spent", before: null, after: null }] }),
-		]);
-		expect(merged.unavailable.map((u) => u.id)).toEqual(["spent"]);
 	});
 });

@@ -3,14 +3,20 @@ import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
+import { ChangesBlock } from "@/features/entry/ChangesBlock";
 import { announceEntryChange } from "@/features/entry/events";
 import type { PreviewState } from "@/features/entry/preview";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
 import { useToast } from "@/ui/Toast";
-import { BulkChanges } from "./BulkChanges";
-import { type BulkAction, previewBulk, runBulk, undoBulk } from "./bulkWrite";
+import {
+	type BulkAction,
+	previewBulk,
+	runBulk,
+	skippedOf,
+	undoBulk,
+} from "./bulkWrite";
 
 /**
  * Delete or Categorize over the picked expenses (the web's bulk bar). The
@@ -105,6 +111,8 @@ export function BulkSheet({
 			? t("deleteTitle", { count })
 			: t("categorizeTitle", { count });
 	const ready = preview.status === "ready";
+	const skipped =
+		ready && action?.kind === "delete" ? skippedOf(preview.diff) : 0;
 
 	return (
 		<Sheet onClose={onClose} title={title} visible={open}>
@@ -116,13 +124,10 @@ export function BulkSheet({
 								name: action?.kind === "category" ? action.name : "",
 							})}
 				</Text>
-				<BulkChanges
-					state={preview}
-					summed={count > 1 && action?.kind === "delete"}
-				/>
-				{count > 1 && action?.kind === "delete" && ready ? (
+				<ChangesBlock idle="" state={preview} />
+				{skipped > 0 ? (
 					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-						{t("addedUp")}
+						{t("skipped", { count: skipped })}
 					</Text>
 				) : null}
 				{failed ? (

@@ -8,6 +8,7 @@ import { previewTwin, undoField, undoInputSchema } from "../ledger";
 import {
 	activityPageSchema,
 	bulkCategorySchema,
+	bulkDeleteSchema,
 	createExpenseSchema,
 	duplicateQuerySchema,
 	duplicateResultSchema,
@@ -32,7 +33,7 @@ export const expenseDeleteSchema = z
 
 export const expenseUndoResultSchema = z
 	.object({
-		/** The expense it concerned; null when a bulk categorize was undone. */
+		/** The expense it concerned; null when a bulk write was undone. */
 		id: idSchema.nullable(),
 		/** Puts the undo back (redo). */
 		redo: undoTokenSchema,
@@ -42,6 +43,15 @@ export const expenseUndoResultSchema = z
 export const bulkCategoryResultSchema = z
 	.object({ updated: z.int().min(0), ...undoField })
 	.meta({ id: "BulkCategorizeResult" });
+
+export const bulkDeleteResultSchema = z
+	.object({
+		deleted: z.int().min(0),
+		/** Ids that were not deleted: not yours, gone already, or a transfer's fee. */
+		skipped: z.array(idSchema),
+		...undoField,
+	})
+	.meta({ id: "BulkDeleteResult" });
 
 export const expenseListQuerySchema = cursorQuerySchema.extend(
 	filterQuerySchema.shape,
@@ -185,6 +195,27 @@ export const expensesContract = {
 		scope: "write:expenses",
 		input: bulkCategorySchema,
 	}),
+	bulkDelete: v1
+		.route({
+			method: "POST",
+			path: "/expenses/bulk-delete",
+			operationId: "bulkDeleteExpenses",
+			tags: TAG,
+			summary: "Delete up to 100 expenses in one write",
+			description:
+				"One transaction. Ids that are not yours or are gone are skipped, and so is a transfer's fee (undo it from its transfer); `skipped` lists them. Refused when none can go. One undo token brings every deleted expense back. The preview's detail is `{ kind: \"expense.deleteMany\", deleted, skipped }`.",
+		})
+		.meta({ scope: "write:expenses", event: "expenses.deleted" })
+		.input(bulkDeleteSchema)
+		.output(bulkDeleteResultSchema),
+	previewBulkDelete: previewTwin({
+		path: "/expenses/bulk-delete",
+		of: "POST /expenses/bulk-delete",
+		operationId: "previewBulkDeleteExpenses",
+		tags: TAG,
+		scope: "write:expenses",
+		input: bulkDeleteSchema,
+	}),
 	undo: v1
 		.route({
 			method: "POST",
@@ -193,7 +224,7 @@ export const expensesContract = {
 			tags: TAG,
 			summary: "Revert an expense write from its undo token",
 			description:
-				"Tokens from create, update, delete and bulk-category (and from this route, as redo). A token is for its user, works once and expires after 24 hours. An update or create is refused with a conflict once the expense changed after it.",
+				"Tokens from create, update, delete, bulk-category and bulk-delete (and from this route, as redo). A token is for its user, works once and expires after 24 hours. An update or create is refused with a conflict once the expense changed after it.",
 		})
 		.meta({ scope: "write:expenses", event: "expense.undone" })
 		.input(undoInputSchema)

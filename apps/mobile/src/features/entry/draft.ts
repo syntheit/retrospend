@@ -49,19 +49,13 @@ export const NOTE_LIMIT = 1000;
 export const SHARED_NOTE_LIMIT = 5000;
 export const LOCATION_LIMIT = 191;
 
-/** A saved split as the server takes it back: who, and the share the mode counts. */
-export interface SplitRowBody {
-	type: PersonType;
-	id: string;
-	shareAmount?: string;
-	sharePercentage?: string;
-	shareUnits?: number;
-}
-
+/**
+ * What an edit keeps of a saved split: who paid and how it is split. The
+ * people are the server's to keep (the edit leaves them out).
+ */
 export interface SavedSplit {
 	mode: "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
 	paidBy: { type: PersonType; id: string };
-	rows: SplitRowBody[];
 }
 
 /**
@@ -185,31 +179,10 @@ export function sharedFromDetail(
 		project: { id: string } | null;
 		category: { id: string } | null;
 		paidBy: Person;
-		splits: (Person & {
-			share: { minor: number; currency: string };
-			percentage: string | null;
-			units: number | null;
-		})[];
 	},
 	locale: string,
 ): ExpenseDraft {
 	const { currency } = detail.amount;
-	const rows = detail.splits.map((sp): SplitRowBody => {
-		const who = { type: sp.type, id: sp.id };
-		if (detail.splitMode === "EXACT") {
-			return {
-				...who,
-				shareAmount: fromMinor(money(sp.share.minor, currency)),
-			};
-		}
-		if (detail.splitMode === "PERCENTAGE" && sp.percentage !== null) {
-			return { ...who, sharePercentage: sp.percentage };
-		}
-		if (detail.splitMode === "SHARES" && sp.units !== null) {
-			return { ...who, shareUnits: sp.units };
-		}
-		return who;
-	});
 	return {
 		id: detail.id,
 		currency,
@@ -231,7 +204,6 @@ export function sharedFromDetail(
 			split: {
 				mode: detail.splitMode,
 				paidBy: { type: detail.paidBy.type, id: detail.paidBy.id },
-				rows,
 			},
 		},
 	};
@@ -455,8 +427,10 @@ function sharedNotes(d: ExpenseDraft) {
 /**
  * The request that saves an edit: PUT /expenses/{id} or /shared-expenses/{id},
  * every field sent. What the composer does not show goes back as it was: the
- * rate type only while the currency is still the saved one, and a split as
- * saved (an amount change on a custom split is refused by the dry run).
+ * rate type only while the currency is still the saved one, and a split's
+ * payer and mode. A split's people are left out, so the server keeps them and
+ * splits a new amount again the saved way (set amounts scale in proportion);
+ * the dry run names each person's share before and after.
  */
 export function buildExpenseUpdate(
 	d: ExpenseDraft,
@@ -483,7 +457,6 @@ export function buildExpenseUpdate(
 				categoryId: category.id,
 				paidBy: editing.split.paidBy,
 				splitMode: editing.split.mode,
-				splitWith: editing.split.rows,
 				...sharedNotes(d),
 				...(d.projectId ? { projectId: d.projectId } : {}),
 			},

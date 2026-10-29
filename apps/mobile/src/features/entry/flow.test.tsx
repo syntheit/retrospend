@@ -823,10 +823,6 @@ describe("Edit a split expense", () => {
 			categoryId: "cafe",
 			paidBy: { type: "user", id: "me1" },
 			splitMode: "EQUAL",
-			splitWith: [
-				{ type: "user", id: "me1" },
-				{ type: "user", id: "lucia1" },
-			],
 			notes: "birthday",
 		});
 		expect(done).toHaveBeenCalledTimes(1);
@@ -835,6 +831,59 @@ describe("Edit a split expense", () => {
 		expect(calls.find((c) => c.route === "shared.undo")?.input).toEqual({
 			token: "undo-shared-edit",
 		});
+		act(() => tree.unmount());
+	});
+
+	it("says whose share moves, from the dry run", async () => {
+		const { api } = fakeApi();
+		const shared = (
+			api as unknown as Record<string, { previewUpdate: unknown }>
+		)["shared-expenses"] as { previewUpdate: unknown };
+		shared.previewUpdate = async () => ({
+			changes: [],
+			unchanged: [],
+			unavailable: [],
+			detail: {
+				kind: "sharedExpense.update",
+				shares: [
+					{
+						type: "user",
+						id: "me1",
+						name: "Sofía",
+						you: true,
+						before: { minor: 500_000, currency: "ARS" },
+						after: { minor: 600_000, currency: "ARS" },
+					},
+					{
+						type: "user",
+						id: "lucia1",
+						name: "Lucía",
+						you: false,
+						before: { minor: 500_000, currency: "ARS" },
+						after: { minor: 600_000, currency: "ARS" },
+					},
+					{
+						type: "guest",
+						id: "g1",
+						name: "Ana",
+						you: false,
+						before: { minor: 100, currency: "ARS" },
+						after: { minor: 100, currency: "ARS" },
+					},
+				],
+			},
+		});
+		mockSession.api = api;
+		const tree = await open("expense", () => {}, "s1", true);
+		type(tree, "Title", "Team dinner");
+		await settle();
+		const text = words(tree);
+		expect(text).toContain("What each person owes");
+		expect(text).toContain("You");
+		expect(text).toContain("Lucía");
+		// A share that stays the same is not listed.
+		expect(text).not.toContain("Ana");
+		expect(text).toContain("They're told about the change.");
 		act(() => tree.unmount());
 	});
 

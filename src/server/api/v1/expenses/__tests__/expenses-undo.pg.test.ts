@@ -5,10 +5,11 @@
  * no Idempotency-Key.
  */
 import { randomUUID } from "node:crypto";
-import { contract } from "@retrospend/api-contract";
+import { BULK_DELETE_MAX, contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { queryOf, readFilter } from "~/features/activity/filters";
 import { createUserScopedDb } from "~/server/db";
+import { MAX_STORED_RESPONSE_BYTES } from "~/server/services/api-v1/idempotency.service";
 import { listActivity } from "~/server/services/expense-list";
 import {
 	adminDb,
@@ -243,6 +244,117 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		await expectBody(await undo(done.undo), c.undo);
 		expect(await categoryOf(one.expense.id)).toBe(from);
 		expect(await categoryOf(two.expense.id)).toBe(from);
+	});
+
+	it("previews a bulk delete in one dry run, deletes the set, and undoes it with one token", async () => {
+		const one = await add(body(food, { title: "Gone A", amount: "10" }));
+		const two = await add(body(food, { title: "Gone B", amount: "5" }));
+		const stranger = await createTestUser();
+		const theirs = await add(
+			body((await newCategory(stranger.user.id)).id, { title: "Theirs" }),
+			await asMobile(stranger.user.id),
+		);
+		const ids = [one.expense.id, two.expense.id, theirs.expense.id];
+		const count = () =>
+			adminDb.expense.count({
+				where: { id: { in: [one.expense.id, two.expense.id] } },
+			});
+
+		type Diff = {
+			changes: { id: string; delta: { minor: number }; after: unknown }[];
+			detail: { kind: string; deleted: number; skipped: string[] };
+		};
+		const preview = await expectBody<Diff>(
+			await post("/expenses/bulk-delete/preview", { ids }),
+			c.previewBulkDelete,
+		);
+		expect(preview.detail).toEqual({
+			kind: "expense.deleteMany",
+			deleted: 2,
+			skipped: [theirs.expense.id],
+		});
+		const spent = preview.changes.find((x) => x.id === "spent");
+		expect(spent?.delta.minor).toBe(-1500);
+		expect(spent?.after).not.toBeNull();
+		await expect(count()).resolves.toBe(2);
+
+		const done = await expectBody<{
+			deleted: number;
+			skipped: string[];
+			undo: string;
+		}>(await post("/expenses/bulk-delete", { ids }), c.bulkDelete);
+		expect(done).toMatchObject({ deleted: 2, skipped: [theirs.expense.id] });
+		await expect(count()).resolves.toBe(0);
+		await expect(
+			adminDb.expense.count({ where: { id: theirs.expense.id } }),
+		).resolves.toBe(1);
+
+		const undone = await expectBody<{ id: string | null; redo: string }>(
+			await undo(done.undo),
+			c.undo,
+		);
+		expect(undone.id).toBeNull();
+		await expect(count()).resolves.toBe(2);
+		await expectProblem(await undo(done.undo), 409, "conflict");
+
+		await expectBody(await undo(undone.redo), c.undo);
+		await expect(count()).resolves.toBe(0);
+	});
+
+	it("keeps a full bulk delete's response small enough to replay, spread parts and all", async () => {
+		const ids: string[] = [];
+		for (let i = 0; i < BULK_DELETE_MAX; i++) {
+			const made = await add(
+				body(food, {
+					title: `Spread ${i} ${"x".repeat(200)}`,
+					amount: "240",
+					amortizeOver: 24,
+					description: "y".repeat(900),
+					location: "z".repeat(180),
+				}),
+			);
+			ids.push(made.expense.id);
+		}
+		await expect(
+			adminDb.expense.count({ where: { parentId: { in: ids } } }),
+		).resolves.toBe(BULK_DELETE_MAX * 24);
+		const key = randomUUID();
+		const first = await post("/expenses/bulk-delete", { ids }, as, key);
+		const text = await first.text();
+		expect(first.status, text).toBe(200);
+		expect(Buffer.byteLength(text, "utf8")).toBeLessThan(
+			MAX_STORED_RESPONSE_BYTES,
+		);
+		// A lost response comes back the same from the same key.
+		const again = await post("/expenses/bulk-delete", { ids }, as, key);
+		expect(again.status).toBe(200);
+		expect(await again.json()).toEqual(JSON.parse(text));
+
+		const done = JSON.parse(text) as { deleted: number; undo: string };
+		expect(done.deleted).toBe(BULK_DELETE_MAX);
+		await expectBody(await undo(done.undo), c.undo);
+		await expect(
+			adminDb.expense.count({
+				where: { OR: [{ id: { in: ids } }, { parentId: { in: ids } }] },
+			}),
+		).resolves.toBe(BULK_DELETE_MAX * 25);
+	}, 120_000);
+
+	it("refuses a bulk delete when none of the ids can go", async () => {
+		const stranger = await createTestUser();
+		const theirs = await add(
+			body((await newCategory(stranger.user.id)).id, { title: "Not mine" }),
+			await asMobile(stranger.user.id),
+		);
+		const input = { ids: [theirs.expense.id] };
+		for (const path of [
+			"/expenses/bulk-delete/preview",
+			"/expenses/bulk-delete",
+		])
+			await expectProblem(await post(path, input), 400, "bad_request");
+		await expect(
+			adminDb.expense.count({ where: { id: theirs.expense.id } }),
+		).resolves.toBe(1);
 	});
 
 	it("answers an amount too large for the ledger as a 400, never a 500", async () => {

@@ -1,6 +1,12 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { PendingWrite } from "./draft";
-import { changeLines, fetchPreview, type PreviewDto, planOf } from "./preview";
+import {
+	changeLines,
+	fetchPreview,
+	type PreviewDto,
+	planOf,
+	sharesOf,
+} from "./preview";
 
 const line = (minor: number, currency = "ARS") => ({ minor, currency });
 
@@ -90,6 +96,57 @@ describe("changeLines", () => {
 			],
 		});
 		expect(pct.moved).toEqual([]);
+	});
+
+	it("marks a converted total as approximate", () => {
+		const approx = changeLines({
+			...incomeDiff,
+			changes: incomeDiff.changes
+				.slice(1, 2)
+				.map((c) => ({ ...c, approx: true as const })),
+		});
+		expect(approx.moved[0]?.approx).toBe(true);
+		expect(lines.moved[0]?.approx).toBe(false);
+	});
+});
+
+describe("sharesOf", () => {
+	const share = (
+		id: string,
+		before: number | null,
+		after: number | null,
+		you = false,
+	) => ({
+		type: "user",
+		id,
+		name: id,
+		you,
+		before: before === null ? null : line(before),
+		after: after === null ? null : line(after),
+	});
+	const edit = (shares: unknown[]): PreviewDto => ({
+		changes: [],
+		unchanged: [],
+		unavailable: [],
+		detail: { kind: "sharedExpense.update", shares },
+	});
+
+	it("lists the shares that move, you first, and leaves the rest out", () => {
+		const out = sharesOf(
+			edit([
+				share("ana", 3000, 4000),
+				share("same", 100, 100),
+				share("me", 6000, 8000, true),
+				share("gone", 500, null),
+			]),
+		);
+		expect(out?.map((s) => s.name)).toEqual(["me", "ana", "gone"]);
+		expect(out?.[2]).toMatchObject({ before: line(500), after: null });
+	});
+
+	it("is an empty list when no share moves, and null for other writes", () => {
+		expect(sharesOf(edit([share("same", 100, 100)]))).toEqual([]);
+		expect(sharesOf(incomeDiff)).toBeNull();
 	});
 });
 

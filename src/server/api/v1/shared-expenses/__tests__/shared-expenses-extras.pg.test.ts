@@ -139,8 +139,14 @@ describe("shared expense reads and verification", () => {
 	it("lists the shares others have not answered, by person", async () => {
 		const id = await addDinner("Taxi");
 		const out = await expectBody<{
-			items: { id: string; expenses: { id: string; amount: { minor: number } }[] }[];
-		}>(await call("/shared-expenses/outgoing", { headers: asSofia }), c.outgoing);
+			items: {
+				id: string;
+				expenses: { id: string; amount: { minor: number } }[];
+			}[];
+		}>(
+			await call("/shared-expenses/outgoing", { headers: asSofia }),
+			c.outgoing,
+		);
 		const martinGroup = out.items.find((g) => g.id === martin.user.id);
 		expect(martinGroup?.expenses.map((e) => e.id)).toContain(id);
 		expect(martinGroup?.expenses[0]?.amount.minor).toBe(90_000);
@@ -200,11 +206,21 @@ describe("shared expense reads and verification", () => {
 		const rows = () =>
 			adminDb.splitParticipant.findMany({ where: { transactionId: id } });
 		// The preview shows what changes and writes nothing.
-		const preview = await expectBody<{ changes: unknown[]; unchanged: unknown[] }>(
-			await send("POST", `/shared-expenses/${id}/remove-me/preview`, asLucia, {}),
+		const preview = await expectBody<{
+			changes: unknown[];
+			unchanged: unknown[];
+		}>(
+			await send(
+				"POST",
+				`/shared-expenses/${id}/remove-me/preview`,
+				asLucia,
+				{},
+			),
 			c.previewRemoveMe,
 		);
-		expect(preview.changes.length + preview.unchanged.length).toBeGreaterThan(0);
+		expect(preview.changes.length + preview.unchanged.length).toBeGreaterThan(
+			0,
+		);
 		expect(await rows()).toHaveLength(3);
 
 		const removed = await expectBody<{ id: string; undo: string }>(
@@ -217,15 +233,21 @@ describe("shared expense reads and verification", () => {
 
 		// Undo puts the share back exactly, once.
 		const back = await expectBody<{ id: string; redo: string | null }>(
-			await send("POST", "/shared-expenses/undo", asLucia, { token: removed.undo }),
+			await send("POST", "/shared-expenses/undo", asLucia, {
+				token: removed.undo,
+			}),
 			c.undo,
 		);
 		expect(back.id).toBe(id);
-		const restored = (await rows()).find((s) => s.participantId === lucia.user.id);
+		const restored = (await rows()).find(
+			(s) => s.participantId === lucia.user.id,
+		);
 		expect(restored).toMatchObject({ verificationStatus: "PENDING" });
 		expect(Number(restored?.shareAmount)).toBe(300);
 		await expectProblem(
-			await send("POST", "/shared-expenses/undo", asLucia, { token: removed.undo }),
+			await send("POST", "/shared-expenses/undo", asLucia, {
+				token: removed.undo,
+			}),
 			409,
 			"conflict",
 		);
@@ -240,7 +262,9 @@ describe("shared expense reads and verification", () => {
 			data: { notes: "edited since" },
 		});
 		await expectProblem(
-			await send("POST", "/shared-expenses/undo", asLucia, { token: again.undo }),
+			await send("POST", "/shared-expenses/undo", asLucia, {
+				token: again.undo,
+			}),
 			409,
 			"conflict",
 		);
@@ -282,7 +306,12 @@ describe("shared expense reads and verification", () => {
 		])("removes you and undoes it through v1: %s", async (_name, who) => {
 			const id = await loose(who());
 			const total = who().length;
-			const preview = await send("POST", `/shared-expenses/${id}/remove-me/preview`, asMartin, {});
+			const preview = await send(
+				"POST",
+				`/shared-expenses/${id}/remove-me/preview`,
+				asMartin,
+				{},
+			);
 			expect(preview.status, await preview.clone().text()).toBe(200);
 			expect(await shares(id)).toBe(total);
 
@@ -293,7 +322,9 @@ describe("shared expense reads and verification", () => {
 			expect(await shares(id)).toBe(total - 1);
 
 			await expectBody(
-				await send("POST", "/shared-expenses/undo", asMartin, { token: removed.undo }),
+				await send("POST", "/shared-expenses/undo", asMartin, {
+					token: removed.undo,
+				}),
 				c.undo,
 			);
 			expect(await shares(id)).toBe(total);
@@ -302,7 +333,10 @@ describe("shared expense reads and verification", () => {
 				where: { targetType: "SPLIT_PARTICIPANT", targetId: id },
 				orderBy: { timestamp: "asc" },
 			});
-			expect(trail.map((t) => t.action)).toEqual(["PARTICIPANT_REMOVED", "PARTICIPANT_ADDED"]);
+			expect(trail.map((t) => t.action)).toEqual([
+				"PARTICIPANT_REMOVED",
+				"PARTICIPANT_ADDED",
+			]);
 		});
 
 		it.each([

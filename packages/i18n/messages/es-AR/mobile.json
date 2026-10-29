@@ -68,7 +68,7 @@
 			"edited": "Se guardó {title}",
 			"restored": "Se restauró {title}",
 			"editOffline": "Estás sin conexión. Editar necesita conexión.",
-			"editRefused": "No pudimos guardar este cambio. Puede estar bloqueado o dividido."
+			"editRefused": "No pudimos guardar este cambio. Puede estar bloqueado."
 		},
 		"changes": {
 			"title": "Qué cambia",
@@ -128,7 +128,16 @@
 				"project_total": "el total del proyecto"
 			},
 			"noRate": "Todavía no hay cotización para {currency}. Elegí otra moneda.",
-			"emptyTransfer": "Escribí un monto y elegí dos cuentas para ver qué cambia."
+			"emptyTransfer": "Escribí un monto y elegí dos cuentas para ver qué cambia.",
+			"shares": {
+				"title": "Lo que debe cada persona",
+				"you": "Vos",
+				"change": "{before} a {after}",
+				"joins": "Se suma, {after}",
+				"leaves": "Sale, antes {before}",
+				"told": "Les avisamos del cambio.",
+				"same": "La parte de cada persona no cambia."
+			}
 		},
 		"list": {
 			"two": "{first} y {second}",
@@ -350,13 +359,13 @@
 			"categorizeTitle": "{count, plural, one {Categorizar # gasto} other {Categorizar # gastos}}",
 			"categorizeBody": "Pasan a {name}. Sus montos no cambian.",
 			"categorizeButton": "Mover a {name}",
-			"addedUp": "Estos totales son estimados. Cada cambio se suma entre los gastos que elegiste.",
 			"moved": "{count, plural, one {# gasto movido a {name}} other {# gastos movidos a {name}}}",
 			"deleted": "{count, plural, one {# gasto eliminado} other {# gastos eliminados}}",
 			"deletedSome": "{count, plural, one {# gasto eliminado} other {# gastos eliminados}}, {left} no se pudieron eliminar",
 			"failed": "No se pudieron cambiar esos gastos",
 			"undone": "Deshecho",
-			"undoError": "No se pudo deshacer"
+			"undoError": "No se pudo deshacer",
+			"skipped": "{count, plural, one {# no se puede eliminar acá.} other {# no se pueden eliminar acá.}}"
 		}
 	},
 	"budget": {

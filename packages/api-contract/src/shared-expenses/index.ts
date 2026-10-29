@@ -73,9 +73,20 @@ export const createSharedExpenseSchema = z
 	})
 	.meta({ id: "CreateSharedExpense" });
 
-/** A full replacement: a note, category or project left out is cleared. */
+/**
+ * A full replacement: a note, category or project left out is cleared. The
+ * split is the one exception: left out, the people stay and a new amount is
+ * split again by the saved mode (set amounts scale in proportion).
+ */
 export const updateSharedExpenseSchema = z
-	.object({ id: idSchema, ...sharedFields })
+	.object({
+		id: idSchema,
+		...sharedFields,
+		splitWith: sharedFields.splitWith.optional().meta({
+			description:
+				"Left out: the same people, and a new amount or currency is split again the saved way (EXACT shares scale in proportion). A different `splitMode` needs splitWith; without it the edit is refused.",
+		}),
+	})
 	.meta({ id: "UpdateSharedExpense" });
 
 export const deleteSharedExpenseSchema = z
@@ -185,7 +196,7 @@ export const sharedExpensesContract = {
 			tags: TAG,
 			summary: "Replace a split expense",
 			description:
-				"Every field is sent. The people on it verify again. Refused for a split that payments locked, and for anyone the project does not let edit it.",
+				'Every field is sent, except `splitWith`, which can be left out to keep the people and split a new amount the saved way. The people on it verify again. Refused for a split that payments locked, and for anyone the project does not let edit it. The preview\'s detail is `{ kind: "sharedExpense.update", shares }`: each person on it before or after, with `before` and `after` as Money (null when they are not on that side) and `you` for the caller.',
 		})
 		.meta({ scope: "write:expenses", event: "shared_expense.updated" })
 		.input(updateSharedExpenseSchema)

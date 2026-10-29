@@ -24,7 +24,7 @@ function apiWith(
 describe("saving an edit", () => {
 	it("keeps the server's undo token for Undo", async () => {
 		const update = jest.fn(async () => ({ expense: {}, undo: "tok-1" }));
-		const outcome = await saveExpenseEdit(apiWith(update), write);
+		const outcome = await saveExpenseEdit(apiWith(update), write, "key-1");
 		expect(outcome).toEqual({
 			status: "saved",
 			undo: { entity: "expenses", token: "tok-1" },
@@ -43,6 +43,7 @@ describe("saving an edit", () => {
 				throw new TypeError("Network request failed");
 			}),
 			write,
+			"key-1",
 		);
 		expect(outcome).toEqual({ status: "offline" });
 	});
@@ -53,6 +54,7 @@ describe("saving an edit", () => {
 				throw Object.assign(new Error("conflict"), { status: 409 });
 			}),
 			write,
+			"key-1",
 		);
 		expect(outcome).toEqual({ status: "refused" });
 	});

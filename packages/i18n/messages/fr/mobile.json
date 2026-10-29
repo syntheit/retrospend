@@ -68,7 +68,7 @@
 			"edited": "{title} enregistré",
 			"restored": "{title} rétabli",
 			"editOffline": "Tu es hors ligne. Modifier demande une connexion.",
-			"editRefused": "Impossible d'enregistrer ce changement. Il est peut-être verrouillé ou partagé."
+			"editRefused": "Impossible d'enregistrer ce changement. Il est peut-être verrouillé."
 		},
 		"changes": {
 			"title": "Ce que ça change",
@@ -128,7 +128,16 @@
 				"project_total": "le total du projet"
 			},
 			"noRate": "Pas encore de taux pour {currency}. Choisis une autre devise.",
-			"emptyTransfer": "Saisis un montant et choisis deux comptes pour voir ce qui change."
+			"emptyTransfer": "Saisis un montant et choisis deux comptes pour voir ce qui change.",
+			"shares": {
+				"title": "Ce que chaque personne doit",
+				"you": "Toi",
+				"change": "{before} à {after}",
+				"joins": "Ajoutée, {after}",
+				"leaves": "Retirée, avant {before}",
+				"told": "Chacun est prévenu du changement.",
+				"same": "La part de chacun ne change pas."
+			}
 		},
 		"list": {
 			"two": "{first} et {second}",
@@ -350,13 +359,13 @@
 			"categorizeTitle": "{count, plural, one {Catégoriser # dépense} other {Catégoriser # dépenses}}",
 			"categorizeBody": "Elles passent dans {name}. Leurs montants ne changent pas.",
 			"categorizeButton": "Déplacer vers {name}",
-			"addedUp": "Ces totaux sont estimés. Chaque changement est additionné sur les dépenses choisies.",
 			"moved": "{count, plural, one {# dépense déplacée vers {name}} other {# dépenses déplacées vers {name}}}",
 			"deleted": "{count, plural, one {# dépense supprimée} other {# dépenses supprimées}}",
 			"deletedSome": "{count, plural, one {# dépense supprimée} other {# dépenses supprimées}}, {left} n'ont pas pu être supprimées",
 			"failed": "Impossible de modifier ces dépenses",
 			"undone": "Annulé",
-			"undoError": "Impossible d'annuler"
+			"undoError": "Impossible d'annuler",
+			"skipped": "{count, plural, one {# ne peut pas être supprimée ici.} other {# ne peuvent pas être supprimées ici.}}"
 		}
 	},
 	"budget": {

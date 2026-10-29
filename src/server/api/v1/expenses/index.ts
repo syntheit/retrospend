@@ -74,6 +74,16 @@ export const expensesRouter = {
 			expenses.previewCategorizeExpenses(signedIn(context), input),
 		),
 	),
+	bulkDelete: e.bulkDelete.handler(
+		serve(({ context, input }) =>
+			expenses.removeExpenses(signedIn(context), input),
+		),
+	),
+	previewBulkDelete: e.previewBulkDelete.handler(
+		serve(({ context, input }) =>
+			expenses.previewRemoveExpenses(signedIn(context), input),
+		),
+	),
 	undo: e.undo.handler(
 		serve(({ context, input }) =>
 			expenses.undoExpenseWrite(signedIn(context), input.token),

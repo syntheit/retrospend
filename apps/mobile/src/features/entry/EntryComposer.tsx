@@ -303,6 +303,15 @@ function Form({
 				? patchIncome({ amountText })
 				: patchTransfer({ amountText });
 
+	// One key per edit body, kept across retries of the same body (R30).
+	const editKey = useRef({ body: "", key: "" });
+	function keyFor(body: string) {
+		if (editKey.current.body !== body) {
+			editKey.current = { body, key: newClientId() };
+		}
+		return editKey.current.key;
+	}
+
 	// The latest pick: a slower answer for an earlier project is dropped.
 	const projectPick = useRef(0);
 
@@ -362,9 +371,11 @@ function Form({
 	async function saveEdit() {
 		if (!write || !api || busy || blocked) return;
 		setBusy(true);
-		const outcome = await saveExpenseEdit(api, write).finally(() =>
-			setBusy(false),
-		);
+		const outcome = await saveExpenseEdit(
+			api,
+			write,
+			keyFor(JSON.stringify(write.body)),
+		).finally(() => setBusy(false));
 		if (outcome.status !== "saved") {
 			toast.show({
 				message:
