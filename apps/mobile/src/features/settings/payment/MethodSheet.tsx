@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
-import { Note, SheetBody } from "@/features/write/parts";
+import { Note } from "@/features/write/parts";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Picker } from "@/ui/Picker";
-import { Sheet } from "@/ui/Sheet";
+import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import {
@@ -44,6 +44,7 @@ export function MethodSheet({
 	const { api } = useSession();
 	const toast = useToast();
 	const { space } = useTheme();
+	const body = useSheetBodySize({ footer: true });
 	const [label, setLabel] = useState(method.label ?? "");
 	const [identifier, setIdentifier] = useState(method.identifier ?? "");
 	const [visibility, setVisibility] = useState<Visibility>(method.visibility);
@@ -91,11 +92,27 @@ export function MethodSheet({
 	return (
 		<Sheet
 			detents={["large"]}
+			footer={
+				<Button
+					disabled={busy || !changed}
+					label={busy ? tc("saving") : tc("save")}
+					onPress={() =>
+						send(
+							withEdit(all, method.id, { label, identifier, visibility }),
+							t("saved"),
+						)
+					}
+				/>
+			}
 			onClose={onClose}
 			title={method.label || method.type}
 			visible={visible}
 		>
-			<SheetBody>
+			<ScrollView
+				contentContainerStyle={{ paddingBottom: space[4] }}
+				keyboardShouldPersistTaps="handled"
+				style={{ height: body.height }}
+			>
 				<View style={{ gap: space[4] }}>
 					<TextField
 						autoCapitalize="sentences"
@@ -120,16 +137,6 @@ export function MethodSheet({
 						/>
 					</View>
 					{failed ? <Note tone="attention">{t("saveError")}</Note> : null}
-					<Button
-						disabled={busy || !changed}
-						label={busy ? tc("saving") : tc("save")}
-						onPress={() =>
-							send(
-								withEdit(all, method.id, { label, identifier, visibility }),
-								t("saved"),
-							)
-						}
-					/>
 					{method.rank === 1 ? null : (
 						<Button
 							disabled={busy}
@@ -147,7 +154,7 @@ export function MethodSheet({
 								disabled={busy}
 								label={t("removeConfirm")}
 								onPress={() => send(without(all, method.id), t("removed"))}
-								variant="outlined"
+								variant="danger"
 							/>
 						</View>
 					) : (
@@ -159,7 +166,7 @@ export function MethodSheet({
 						/>
 					)}
 				</View>
-			</SheetBody>
+			</ScrollView>
 		</Sheet>
 	);
 }

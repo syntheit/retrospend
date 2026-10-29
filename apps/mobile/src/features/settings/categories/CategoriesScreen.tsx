@@ -1,29 +1,54 @@
-import { useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { Stack } from "expo-router";
+import { useState } from "react";
+import { Platform } from "react-native";
 import { useTranslations } from "use-intl";
-import { useSession } from "@/auth/session";
-import { CategoryTile, ListRow, StaleNote } from "@/ui/List";
-import { useCachedRead } from "@/features/read/useCachedRead";
-import { useTheme } from "@/theme";
+import { AddButton } from "@/ui/AddButton";
 import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
+import { CategoryTile, ListGroup, ListRow, StaleNote } from "@/ui/List";
 import { Screen } from "@/ui/Screen";
+import { StatusText } from "@/ui/StatusText";
+import { SettingsPage } from "../parts";
+import { useCategories } from "../useSettings";
 import { CategorySheet } from "./CategorySheet";
-import { CATEGORIES_CACHE, type Category, fetchCategories } from "./source";
+import type { Category } from "./source";
 
 /**
- * The categories list: each with its tile, tap to rename, recolor or change
- * its icon, and Add category at the top. Deleting and merging are on the web.
+ * The categories list: each with its tile, its name and how many expenses
+ * use it, then "Not counted in spending" when it is left out of totals. Tap
+ * one to rename, recolor or change its icon; the plus in the bar adds one.
+ * Deleting and merging are on the web.
  */
 export function CategoriesScreen() {
 	const t = useTranslations("mobile.settings.categories");
+	const ts = useTranslations("mobile.status");
 	const loading = useTranslations("mobile.activity")("loading");
-	const { api } = useSession();
-	const { color, space, type } = useTheme();
-	const fetch = useMemo(() => (api ? fetchCategories(api) : null), [api]);
-	const { state, reload } = useCachedRead(CATEGORIES_CACHE, fetch);
+	const { state, reload } = useCategories();
 	const [editing, setEditing] = useState<Category | null>(null);
 	const [open, setOpen] = useState(false);
+
+	const show = (category: Category | null) => {
+		setEditing(category);
+		setOpen(true);
+	};
+	// The plus is the bar's: the system glass plus on iOS, a text plus on Android.
+	const add = (
+		<Stack.Screen
+			options={{
+				headerRight: () =>
+					Platform.OS === "ios" ? (
+						<AddButton label={t("addTitle")} onPress={() => show(null)} />
+					) : (
+						<Button
+							accessibilityLabel={t("addTitle")}
+							label="+"
+							onPress={() => show(null)}
+							variant="text"
+						/>
+					),
+			}}
+		/>
+	);
 
 	if (state.status !== "ready") {
 		return (
@@ -36,36 +61,37 @@ export function CategoriesScreen() {
 		);
 	}
 	const all = state.data;
-	const show = (category: Category | null) => {
-		setEditing(category);
-		setOpen(true);
-	};
 	return (
 		<>
-			<Screen flush>
+			{add}
+			<SettingsPage>
 				<StaleNote since={state.staleSince} />
-				<View style={{ alignItems: "flex-start", padding: space[4] }}>
-					<Button label={t("addTitle")} onPress={() => show(null)} />
-				</View>
-				{all.map((category) => (
-					<ListRow
-						accessibilityLabel={`${category.name}, ${t("count", { count: category.expenseCount })}`}
-						key={category.id}
-						onPress={() => show(category)}
-					>
-						<CategoryTile category={category} />
-						<Text
-							numberOfLines={1}
-							style={{ flex: 1, color: color.fg, fontSize: type.body.size }}
-						>
-							{category.name}
-						</Text>
-						<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-							{t("count", { count: category.expenseCount })}
-						</Text>
-					</ListRow>
-				))}
-			</Screen>
+				<ListGroup>
+					{all.map((category) => {
+						const count = t("count", { count: category.expenseCount });
+						return (
+							<ListRow
+								accessibilityLabel={`${category.name}, ${count}`}
+								key={category.id}
+								lead={<CategoryTile category={category} />}
+								onPress={() => show(category)}
+								sub={
+									category.excludeByDefault ? (
+										<StatusText
+											label={`${count} · ${ts("notCounted")}`}
+											size="sm"
+											tone="muted"
+										/>
+									) : (
+										count
+									)
+								}
+								title={category.name}
+							/>
+						);
+					})}
+				</ListGroup>
+			</SettingsPage>
 			<CategorySheet
 				all={all}
 				category={editing}

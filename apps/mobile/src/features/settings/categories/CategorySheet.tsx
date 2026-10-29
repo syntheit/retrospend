@@ -2,17 +2,17 @@ import { CATEGORY_COLORS } from "@retrospend/api-contract";
 import { CATEGORY_ICON_NAMES } from "@retrospend/domain/category-icons";
 import { categoryTone } from "@retrospend/domain/category-tone";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
-import { Note, SheetBody } from "@/features/write/parts";
+import { Note } from "@/features/write/parts";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { categoryColor, Glyph } from "@/ui/Glyph";
-import { Sheet } from "@/ui/Sheet";
+import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
-import { TextField } from "@/ui/TextField";
+import { FieldLabel, TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import {
 	type Category,
@@ -24,32 +24,50 @@ import {
 	nameTaken,
 } from "./source";
 
+/**
+ * One pick in a grid, at the 44 point target. A swatch is a 28 round fill
+ * with a 2 point ring in fg while picked; an icon is a 36 square that takes
+ * the brand-soft fill and a brand border while picked.
+ */
 function Choice({
 	selected,
 	label,
 	onPress,
+	shape,
+	fill,
 	children,
 }: {
 	selected: boolean;
 	label: string;
 	onPress: () => void;
-	children: React.ReactNode;
+	shape: "swatch" | "icon";
+	/** A swatch's color. */
+	fill?: string;
+	children?: React.ReactNode;
 }) {
-	const { color, radius, size } = useTheme();
+	const { color, radius, size, space } = useTheme();
+	const round = shape === "swatch";
+	const box = round ? size.ctlSm.phone : size.ctl.phone;
 	return (
 		<Pressable
 			accessibilityLabel={label}
 			accessibilityRole="button"
 			accessibilityState={{ selected }}
+			hitSlop={(size.touchMin.phone - box) / 2}
 			onPress={onPress}
 			style={{
-				width: size.touchMin.phone,
-				height: size.touchMin.phone,
+				width: box,
+				height: box,
 				alignItems: "center",
 				justifyContent: "center",
-				borderRadius: radius.ctl,
-				borderWidth: selected ? 2 : 1,
-				borderColor: selected ? color.brand : color.line,
+				borderRadius: round ? box / 2 : radius.ctl,
+				borderWidth: round ? space[1] / 2 : 1,
+				borderColor: selected
+					? round
+						? color.fg
+						: color.brand
+					: "transparent",
+				backgroundColor: round ? fill : selected ? color.brandSoft : undefined,
 			}}
 		>
 			{children}
@@ -80,7 +98,8 @@ export function CategorySheet({
 	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const toast = useToast();
-	const { color, space, type } = useTheme();
+	const { color, size, space } = useTheme();
+	const body = useSheetBodySize({ footer: true });
 	const [draft, setDraft] = useState<CategoryDraft>(draftOf(category));
 	const [busy, setBusy] = useState(false);
 	const [failed, setFailed] = useState(false);
@@ -134,15 +153,25 @@ export function CategorySheet({
 		}
 	}
 
-	const small = { color: color.fg2, fontSize: type.small.size } as const;
 	return (
 		<Sheet
 			detents={["large"]}
+			footer={
+				<Button
+					disabled={busy || !ready}
+					label={busy ? tc("saving") : tc("save")}
+					onPress={save}
+				/>
+			}
 			onClose={onClose}
 			title={category ? t("editTitle") : t("addTitle")}
 			visible={visible}
 		>
-			<SheetBody>
+			<ScrollView
+				contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
+				keyboardShouldPersistTaps="handled"
+				style={{ height: body.height }}
+			>
 				<TextField
 					autoCapitalize="sentences"
 					invalid={taken}
@@ -152,36 +181,26 @@ export function CategorySheet({
 				/>
 				{taken ? <Note tone="attention">{t("taken")}</Note> : null}
 				<View style={{ gap: space[2] }}>
-					<Text style={small}>{t("color")}</Text>
+					<FieldLabel>{t("color")}</FieldLabel>
 					<View
 						style={{ flexDirection: "row", flexWrap: "wrap", gap: space[2] }}
 					>
-						{CATEGORY_COLORS.map((name: CategoryColor, index) => {
-							const fill = categoryColor(color, categoryTone(name));
-							return (
-								<Choice
-									key={name}
-									label={t("colorLabel", { n: index + 1 })}
-									onPress={() => set({ color: name })}
-									selected={draft.color === name}
-								>
-									<View
-										style={{
-											width: space[6],
-											height: space[6],
-											borderRadius: space[3],
-											backgroundColor: fill,
-										}}
-									/>
-								</Choice>
-							);
-						})}
+						{CATEGORY_COLORS.map((name: CategoryColor, index) => (
+							<Choice
+								fill={categoryColor(color, categoryTone(name))}
+								key={name}
+								label={t("colorLabel", { n: index + 1 })}
+								onPress={() => set({ color: name })}
+								selected={draft.color === name}
+								shape="swatch"
+							/>
+						))}
 					</View>
 				</View>
 				<View style={{ gap: space[2] }}>
-					<Text style={small}>{t("icon")}</Text>
+					<FieldLabel>{t("icon")}</FieldLabel>
 					<View
-						style={{ flexDirection: "row", flexWrap: "wrap", gap: space[2] }}
+						style={{ flexDirection: "row", flexWrap: "wrap", gap: space[1] }}
 					>
 						{CATEGORY_ICON_NAMES.map((name) => (
 							<Choice
@@ -189,8 +208,9 @@ export function CategorySheet({
 								label={t("iconLabel", { name })}
 								onPress={() => set({ icon: name })}
 								selected={draft.icon === name}
+								shape="icon"
 							>
-								<Glyph color={accent} name={name} size={space[6]} />
+								<Glyph color={accent} name={name} size={size.icon.phone} />
 							</Choice>
 						))}
 					</View>
@@ -202,12 +222,7 @@ export function CategorySheet({
 					value={draft.excludeByDefault}
 				/>
 				{failed ? <Note tone="attention">{t("saveError")}</Note> : null}
-				<Button
-					disabled={busy || !ready}
-					label={busy ? tc("saving") : tc("save")}
-					onPress={save}
-				/>
-			</SheetBody>
+			</ScrollView>
 		</Sheet>
 	);
 }

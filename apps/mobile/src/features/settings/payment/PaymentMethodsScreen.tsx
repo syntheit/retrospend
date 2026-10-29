@@ -1,31 +1,38 @@
-import { useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { useState } from "react";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useSession } from "@/auth/session";
-import { ListRow, StaleNote } from "@/ui/List";
-import { useCachedRead } from "@/features/read/useCachedRead";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
+import type { GlyphName } from "@/ui/Glyph";
+import { IconTile } from "@/ui/IconTile";
+import { ListGroup, ListRow, StaleNote } from "@/ui/List";
 import { Screen } from "@/ui/Screen";
+import { Text } from "@/ui/Text";
+import { GroupNote, SettingsPage } from "../parts";
+import { usePaymentMethods } from "../useSettings";
 import { MethodSheet } from "./MethodSheet";
-import {
-	fetchPaymentMethods,
-	PAYMENT_CACHE,
-	type PaymentMethod,
-} from "./source";
+import type { PaymentMethod } from "./source";
+
+/** The tile for a kind of method: a bank, crypto, cash, or a card for the rest. */
+export function methodGlyph(type: string): GlyphName {
+	const kind = type.toLowerCase();
+	if (/bank|transfer|cbu|cvu|wire/.test(kind)) return "Landmark";
+	if (/crypto|bitcoin|usdt|usdc|eth/.test(kind)) return "Coins";
+	if (/cash/.test(kind)) return "Banknote";
+	return "CreditCard";
+}
 
 /**
- * How you like to be paid: each method with its label, number or handle and
- * who can see it. Tap one to edit, prefer or remove it. New methods are
- * picked from the web's list of providers, so adding is on the web.
+ * How you like to be paid: each method with its tile, its label (Primary on
+ * the one you prefer), and its number or handle with who can see it. Tap one
+ * to edit, make primary or remove it. New methods are picked from the web's
+ * list of providers, so adding is on the web.
  */
 export function PaymentMethodsScreen() {
 	const t = useTranslations("mobile.settings.payment");
 	const loading = useTranslations("mobile.activity")("loading");
-	const { api } = useSession();
-	const { color, space, type } = useTheme();
-	const fetch = useMemo(() => (api ? fetchPaymentMethods(api) : null), [api]);
-	const { state, reload } = useCachedRead(PAYMENT_CACHE, fetch);
+	const { space } = useTheme();
+	const { state, reload } = usePaymentMethods();
 	const [editing, setEditing] = useState<PaymentMethod | null>(null);
 	const [open, setOpen] = useState(false);
 
@@ -42,52 +49,51 @@ export function PaymentMethodsScreen() {
 	const all = state.data;
 	return (
 		<>
-			<Screen flush>
+			<SettingsPage>
 				<StaleNote since={state.staleSince} />
 				{all.length === 0 ? (
 					<EmptyState detail={t("emptyDetail")} title={t("empty")} />
 				) : (
-					all.map((method) => (
-						<ListRow
-							key={method.id}
-							onPress={() => {
-								setEditing(method);
-								setOpen(true);
-							}}
-						>
-							<View style={{ flex: 1, gap: space[1] }}>
-								<Text
-									numberOfLines={1}
-									style={{ color: color.fg, fontSize: type.body.size }}
-								>
-									{method.label || method.type}
-								</Text>
-								<Text
-									numberOfLines={1}
-									style={{ color: color.fg2, fontSize: type.small.size }}
-								>
-									{[
-										method.identifier,
-										t(`visibility.${method.visibility}`),
-										method.rank === 1 ? t("preferred") : null,
-									]
-										.filter(Boolean)
-										.join(" · ")}
-								</Text>
-							</View>
-						</ListRow>
-					))
+					<ListGroup>
+						{all.map((method) => (
+							<ListRow
+								key={method.id}
+								lead={<IconTile name={methodGlyph(method.type)} />}
+								onPress={() => {
+									setEditing(method);
+									setOpen(true);
+								}}
+								sub={[method.identifier, t(`visibility.${method.visibility}`)]
+									.filter(Boolean)
+									.join(" · ")}
+								title={
+									<View
+										style={{
+											flexDirection: "row",
+											alignItems: "center",
+											gap: space[2],
+										}}
+									>
+										<Text
+											numberOfLines={1}
+											style={{ flexShrink: 1 }}
+											weight="medium"
+										>
+											{method.label || method.type}
+										</Text>
+										{method.rank === 1 ? (
+											<Text tone="fg2" variant="meta">
+												{t("preferred")}
+											</Text>
+										) : null}
+									</View>
+								}
+							/>
+						))}
+					</ListGroup>
 				)}
-				<Text
-					style={{
-						color: color.fg2,
-						fontSize: type.small.size,
-						padding: space[4],
-					}}
-				>
-					{t("addOnWeb")}
-				</Text>
-			</Screen>
+				<GroupNote>{t("addOnWeb")}</GroupNote>
+			</SettingsPage>
 			{editing ? (
 				<MethodSheet
 					all={all}

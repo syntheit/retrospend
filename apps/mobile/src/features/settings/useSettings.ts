@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useSession } from "@/auth/session";
 import { useCachedRead } from "@/features/read/useCachedRead";
+import { CATEGORIES_CACHE, fetchCategories } from "./categories/source";
+import { fetchPaymentMethods, PAYMENT_CACHE } from "./payment/source";
 import {
 	CURRENCIES_CACHE,
 	fetchCurrencies,
@@ -37,4 +39,16 @@ export function useFiatCurrencies() {
 	const { api } = useSession();
 	const fetch = useMemo(() => (api ? fetchCurrencies(api) : null), [api]);
 	return useCachedRead(CURRENCIES_CACHE, fetch);
+}
+
+export function useCategories() {
+	const { api } = useSession();
+	const fetch = useMemo(() => (api ? fetchCategories(api) : null), [api]);
+	return useCachedRead(CATEGORIES_CACHE, fetch);
+}
+
+export function usePaymentMethods() {
+	const { api } = useSession();
+	const fetch = useMemo(() => (api ? fetchPaymentMethods(api) : null), [api]);
+	return useCachedRead(PAYMENT_CACHE, fetch);
 }

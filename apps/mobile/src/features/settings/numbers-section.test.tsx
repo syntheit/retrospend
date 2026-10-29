@@ -1,4 +1,4 @@
-import { useNumbersSection } from "./NumbersSection";
+import { NumbersGroup } from "./NumbersSection";
 import type { GeneralSettings } from "./source";
 
 // The Numbers section: each number format option reads as the user's own
@@ -41,27 +41,22 @@ jest.mock("use-intl", () => {
 				),
 	};
 });
-jest.mock("@/ui/Form", () => {
+jest.mock("@/ui/Picker", () => {
 	const { Pressable, View } = require("react-native");
 	return {
-		FormSection: ({ children }: { children: unknown }) => (
-			<View>{children}</View>
-		),
-		FormPickerRow: ({
-			label,
+		Picker: ({
 			options,
 			onChange,
 			value,
 		}: {
-			label: string;
 			value: string;
 			options: { value: string; label: string }[];
 			onChange(value: string): void;
 		}) => (
-			<View accessibilityLabel={`${label}|${value}`}>
+			<View accessibilityLabel={`Number format|${value}`}>
 				{options.map((o) => (
 					<Pressable
-						accessibilityLabel={`${label}|${o.value}|${o.label}`}
+						accessibilityLabel={`Number format|${o.value}|${o.label}`}
 						key={o.value}
 						onPress={() => onChange(o.value)}
 					/>
@@ -80,12 +75,9 @@ const settings = {
 function mount(over: Partial<GeneralSettings> = {}) {
 	const onSaved = jest.fn();
 	const merged = { ...settings, ...over };
-	function Section() {
-		return useNumbersSection(merged, onSaved);
-	}
 	let tree: { root: TestNode };
 	act(() => {
-		tree = create(<Section />);
+		tree = create(<NumbersGroup onSaved={onSaved} settings={merged} />);
 	});
 	// biome-ignore lint/style/noNonNullAssertion: assigned inside act above
 	return { root: tree!.root, onSaved };

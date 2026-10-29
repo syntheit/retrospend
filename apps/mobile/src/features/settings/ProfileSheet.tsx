@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import { ScrollView } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { Sheet } from "@/ui/Sheet";
+import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
@@ -32,6 +32,7 @@ export function ProfileSheet({
 	const { api } = useSession();
 	const toast = useToast();
 	const { space } = useTheme();
+	const body = useSheetBodySize({ footer: true });
 	const [name, setName] = useState(profile.name);
 	const [username, setUsername] = useState(profile.username);
 	const [busy, setBusy] = useState(false);
@@ -77,11 +78,22 @@ export function ProfileSheet({
 	return (
 		<Sheet
 			detents={["large"]}
+			footer={
+				<Button
+					disabled={busy || !nameOk || !userOk || !changed}
+					label={busy ? tc("saving") : tc("save")}
+					onPress={save}
+				/>
+			}
 			onClose={onClose}
 			title={t("profile.edit")}
 			visible={visible}
 		>
-			<View style={{ gap: space[4] }}>
+			<ScrollView
+				contentContainerStyle={{ gap: space[4] }}
+				keyboardShouldPersistTaps="handled"
+				style={{ height: body.height }}
+			>
 				<TextField
 					invalid={!nameOk}
 					label={t("profile.name")}
@@ -105,12 +117,7 @@ export function ProfileSheet({
 						{t("profile.error")}
 					</Text>
 				) : null}
-				<Button
-					disabled={busy || !nameOk || !userOk || !changed}
-					label={busy ? tc("saving") : tc("save")}
-					onPress={save}
-				/>
-			</View>
+			</ScrollView>
 		</Sheet>
 	);
 }
