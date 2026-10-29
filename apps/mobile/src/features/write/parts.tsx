@@ -64,7 +64,7 @@ export function Line({
 	spoken?: string;
 	emphasis?: boolean;
 }) {
-	const { color, space, type } = useTheme();
+	const { color, font, space, type } = useTheme();
 	return (
 		<View
 			accessibilityLabel={spoken ?? `${label}, ${value}`}
@@ -86,7 +86,9 @@ export function Line({
 					color: color.fg,
 					fontSize: type.body.size,
 					fontVariant: ["tabular-nums"],
-					fontWeight: emphasis ? "600" : "400",
+					fontWeight: weight(
+						emphasis ? font.weight.semibold : font.weight.normal,
+					),
 					textAlign: "right",
 				}}
 			>
@@ -97,7 +99,9 @@ export function Line({
 }
 
 /**
- * The amount being typed and the keypad under it. The text is the keypad's
+ * The amount being typed and the keypad under it. The amount sits in a
+ * bordered money input (R22): 44 high, the currency chip on the left, the
+ * value at 16/500 on the right, never hero size. The text is the keypad's
  * (formatted by the domain package); the sheet reads it with `readAmount`.
  * The spoken label carries the amount as money, like the composer's.
  */
@@ -121,54 +125,82 @@ export function AmountField({
 	const t = useTranslations("mobile.composer");
 	const tb = useTranslations("mobile.budget.write");
 	const { format } = useFormatMoney();
-	const { color, size, space, type } = useTheme();
+	const { color, font, radius, size, space, type } = useTheme();
 	const minor = minorOf(entered, allowZero);
+	const invalid = entered.state === "invalid";
 	const spoken =
 		minor !== null
 			? t("amountLabel", { amount: format({ minor, currency }) ?? "" })
 			: t("amountEmpty", { currency });
 	return (
-		<View style={{ gap: space[2] }}>
-			<View
-				style={{
-					flexDirection: "row",
-					alignItems: "center",
-					gap: space[3],
-					minHeight: size.moneyInput.phone,
-				}}
-			>
-				<Text style={{ color: color.fg2, fontSize: type.section.size }}>
-					{currency}
-				</Text>
-				<Text
-					accessibilityLabel={`${label}, ${spoken}`}
-					accessibilityLiveRegion="polite"
-					adjustsFontSizeToFit
-					numberOfLines={1}
+		<View style={{ gap: space[4] }}>
+			<View style={{ gap: space[1] }}>
+				<View
 					style={{
-						flex: 1,
-						color: draft ? color.fg : color.fg3,
-						fontSize: type.hero.size,
-						fontVariant: ["tabular-nums"],
-						fontWeight: "600",
-						textAlign: "right",
+						flexDirection: "row",
+						alignItems: "center",
+						gap: space[2],
+						minHeight: size.moneyInput.phone,
+						padding: space[1],
+						backgroundColor: color.surface,
+						borderWidth: 1,
+						borderColor: invalid ? color.danger : color.lineStrong,
+						borderRadius: radius.ctl,
 					}}
 				>
-					{draft || placeholder || "0"}
-				</Text>
+					<View
+						accessibilityElementsHidden
+						importantForAccessibility="no-hide-descendants"
+						style={{
+							minHeight: size.ctl.phone,
+							justifyContent: "center",
+							paddingHorizontal: space[3],
+							borderWidth: 1,
+							borderColor: color.lineStrong,
+							borderRadius: radius.chip,
+						}}
+					>
+						<Text
+							style={{
+								color: color.fg2,
+								fontSize: type.body.size,
+								fontWeight: weight(font.weight.medium),
+							}}
+						>
+							{currency}
+						</Text>
+					</View>
+					<Text
+						accessibilityLabel={`${label}, ${spoken}`}
+						accessibilityLiveRegion="polite"
+						adjustsFontSizeToFit
+						numberOfLines={1}
+						style={{
+							flex: 1,
+							paddingRight: space[2],
+							color: draft ? color.fg : color.fg3,
+							fontSize: type.section.size,
+							fontVariant: ["tabular-nums"],
+							fontWeight: weight(font.weight.medium),
+							textAlign: "right",
+						}}
+					>
+						{draft || placeholder || "0"}
+					</Text>
+				</View>
+				{invalid ? (
+					<Text
+						accessibilityRole="alert"
+						style={{
+							color: color.danger,
+							fontSize: type.small.size,
+							textAlign: "right",
+						}}
+					>
+						{tb("amountInvalid")}
+					</Text>
+				) : null}
 			</View>
-			{entered.state === "invalid" ? (
-				<Text
-					accessibilityRole="alert"
-					style={{
-						color: color.danger,
-						fontSize: type.small.size,
-						textAlign: "right",
-					}}
-				>
-					{tb("amountInvalid")}
-				</Text>
-			) : null}
 			<MoneyKeypad
 				currency={currency}
 				draft={draft}
@@ -177,6 +209,11 @@ export function AmountField({
 			/>
 		</View>
 	);
+}
+
+/** A token weight (400, 500, 600) as the string React Native takes. */
+function weight(value: number): "400" | "500" | "600" {
+	return String(value) as "400" | "500" | "600";
 }
 
 export interface ChangeRow {
@@ -207,7 +244,7 @@ export function ChangeList({
 	unavailable: string[];
 }) {
 	const t = useTranslations("mobile.budget.preview");
-	const { color, space, type } = useTheme();
+	const { color, font, space, type } = useTheme();
 	if (status === "idle") return null;
 	if (status === "loading") return <Note>{t("checking")}</Note>;
 	if (status === "failed") return <Note tone="attention">{t("error")}</Note>;
@@ -220,14 +257,26 @@ export function ChangeList({
 				: stays.length === 1
 					? t("nothingElseOne", { item: stays[0] ?? "" })
 					: t("nothingElse", { list: stays.join(", ") });
+	const missing =
+		unavailable.length > 0
+			? t("unavailable", { list: unavailable.join(", ") })
+			: null;
+	const closing = [keeps, missing].filter(Boolean).join(" ");
 	return (
-		<View style={{ gap: space[2] }}>
+		<View
+			style={{
+				gap: space[2],
+				paddingTop: space[3],
+				borderTopWidth: 1,
+				borderTopColor: color.line,
+			}}
+		>
 			<Text
 				accessibilityRole="header"
 				style={{
-					color: color.fg2,
-					fontSize: type.small.size,
-					fontWeight: "600",
+					color: color.fg,
+					fontSize: type.body.size,
+					fontWeight: weight(font.weight.semibold),
 				}}
 			>
 				{t("changes")}
@@ -246,14 +295,9 @@ export function ChangeList({
 			) : keeps ? null : (
 				<Note>{t("nothing")}</Note>
 			)}
-			{keeps ? (
-				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-					{keeps}
-				</Text>
-			) : null}
-			{unavailable.length > 0 ? (
-				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-					{t("unavailable", { list: unavailable.join(", ") })}
+			{closing ? (
+				<Text style={{ color: color.fg3, fontSize: type.meta.size }}>
+					{closing}
 				</Text>
 			) : null}
 		</View>

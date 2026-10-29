@@ -30,6 +30,8 @@ export function noSession(): never {
 /**
  * The frame of a money form: the fields, what the server says the write
  * changes, and one primary button that stays off until the dry run is in.
+ * The frame sets the field gap once: 16 between fields. Inside a field (an
+ * input and its error line) the gap is 4, set by the field itself.
  */
 export function WriteFrame({
 	children,
