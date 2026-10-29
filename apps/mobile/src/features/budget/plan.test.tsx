@@ -158,6 +158,52 @@ describe("Plan the month", () => {
 		});
 		act(() => tree.unmount());
 	});
+
+	it("keeps Save off until the plan is read, so a save never starts from nothing", async () => {
+		const { api, calls } = fakeBudget({
+			extra: {
+				// The read never answers (slow network).
+				drafts: () => new Promise(() => undefined),
+				saveDraft: async (input: unknown) => {
+					calls.push({ route: "saveDraft", input });
+					return draft();
+				},
+			},
+		});
+		session.api = api as unknown as RetrospendClient;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(<PlanSheet data={data} onClose={jest.fn()} visible />);
+		});
+		await wait(10);
+		press(tree, "Food");
+		press(tree, "2");
+		press(tree, "5");
+		expect(disabled(tree, "Save")).toBe(true);
+		await wait(10);
+		expect(calls.filter((c) => c.route === "saveDraft")).toHaveLength(0);
+		act(() => tree.unmount());
+	});
+
+	it("keeps Save off when the plan could not be read", async () => {
+		const { api } = fakeBudget({
+			extra: {
+				drafts: async () => {
+					throw new Error("offline");
+				},
+			},
+		});
+		session.api = api as unknown as RetrospendClient;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(<PlanSheet data={data} onClose={jest.fn()} visible />);
+		});
+		await wait(10);
+		press(tree, "Food");
+		press(tree, "2");
+		expect(disabled(tree, "Save")).toBe(true);
+		act(() => tree.unmount());
+	});
 });
 
 describe("Apply the plan", () => {
@@ -330,6 +376,39 @@ describe("What if I spend", () => {
 			draftId: (saves[0]?.input as { id: string } | undefined)?.id,
 		});
 		expect(onClose).toHaveBeenCalled();
+		act(() => tree.unmount());
+	});
+
+	it("sends saves one at a time, in order, and reads the outcome of the latest only", async () => {
+		const { api, calls } = fakeBudget({
+			reads: { draftOutcome: { envelopes: [], shortfalls: [] } },
+			extra: {
+				saveDraft: (input: unknown) => {
+					calls.push({ route: "saveDraft", input });
+					return new Promise((resolve) => setTimeout(resolve, 1_000));
+				},
+			},
+		});
+		session.api = api as unknown as RetrospendClient;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(<WhatIfSheet data={data} onClose={jest.fn()} visible />);
+		});
+		press(tree, "Food,");
+		press(tree, "1");
+		await wait(350);
+		// The first save is on its way; a newer amount waits for it.
+		press(tree, "0");
+		await wait(350);
+		const saves = () =>
+			calls
+				.filter((c) => c.route === "saveDraft")
+				.map((c) => (c.input as { pretend: { amount: string }[] }).pretend);
+		expect(saves()).toHaveLength(1);
+		await wait(1_000);
+		expect(saves().map((p) => p[0]?.amount)).toEqual(["1.00", "10.00"]);
+		await wait(1_100);
+		expect(calls.filter((c) => c.route === "draftOutcome")).toHaveLength(1);
 		act(() => tree.unmount());
 	});
 });

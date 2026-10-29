@@ -39,7 +39,11 @@ export function WhatIfSheet({
 	const [outcome, setOutcome] = useState<DraftOutcome | null>(null);
 	const [failed, setFailed] = useState(false);
 	const ids = useRef({ draft: newClientId(), row: newClientId() });
-	const saved = useRef(false);
+	/** Draft ids a save reached, so closing discards only what exists. */
+	const saved = useRef(new Set<string>());
+	// Saves go out one at a time, in order: an older body can never land after
+	// a newer one and leave the draft (and its outcome) on the older amount.
+	const queue = useRef<Promise<void>>(Promise.resolve());
 	const minor = minorOf(readAmount(draft, locale, currency));
 
 	useEffect(() => {
@@ -48,7 +52,6 @@ export function WhatIfSheet({
 		setDraft("");
 		setOutcome(null);
 		setFailed(false);
-		saved.current = false;
 		ids.current = { draft: newClientId(), row: newClientId() };
 	}, [visible]);
 
@@ -67,18 +70,19 @@ export function WhatIfSheet({
 		if (!visible || !api || !body) return;
 		let cancelled = false;
 		const timer = setTimeout(() => {
-			api.budget
-				.saveDraft(body)
-				.then(() => {
-					saved.current = true;
-					return api.budget.draftOutcome({ draftId: body.id });
-				})
-				.then((out) => {
+			queue.current = queue.current.then(async () => {
+				// A newer amount was typed while this one waited: skip it.
+				if (cancelled) return;
+				try {
+					await api.budget.saveDraft(body);
+					saved.current.add(body.id);
+					if (cancelled) return;
+					const out = await api.budget.draftOutcome({ draftId: body.id });
 					if (!cancelled) setOutcome(out);
-				})
-				.catch(() => {
+				} catch {
 					if (!cancelled) setFailed(true);
-				});
+				}
+			});
 		}, SETTLE_MS);
 		return () => {
 			cancelled = true;
@@ -87,11 +91,13 @@ export function WhatIfSheet({
 	}, [visible, api, envelopeId, minor, data.month.key, currency]);
 
 	function close() {
-		if (saved.current && api) {
-			void api.budget
-				.discardDraft({ draftId: ids.current.draft })
-				.catch(() => undefined);
-		}
+		const draftId = ids.current.draft;
+		// After any save still on its way, so the draft it writes is discarded too.
+		queue.current = queue.current.then(async () => {
+			if (!saved.current.has(draftId) || !api) return;
+			saved.current.delete(draftId);
+			await api.budget.discardDraft({ draftId }).catch(() => undefined);
+		});
 		onClose();
 	}
 

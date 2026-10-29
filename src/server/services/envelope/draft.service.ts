@@ -102,7 +102,11 @@ async function checkRefs(tx: Tx, read: MonthRead, input: SaveDraftInput) {
 		invalid("a draft names an unknown category");
 }
 
-/** Creates or edits the open draft (moves no money). Another open draft for the same month and kind is discarded. */
+/**
+ * Creates or edits the open draft (moves no money). A new What if discards
+ * the open one for its month; a new plan is refused while another plan is
+ * open for the month, so a client that never read it cannot wipe it.
+ */
 export async function saveDraft(
 	tx: Tx,
 	userId: string,
@@ -140,6 +144,18 @@ export async function saveDraft(
 	if (existing)
 		return toDraftDto(
 			await tx.budgetDraft.update({ where: { id: input.id }, data }),
+		);
+	// A plan is edited by its id. A new id while another plan is open for the
+	// month means the client never read that plan, so its save would wipe it.
+	if (
+		input.kind === "PLAN" &&
+		(await tx.budgetDraft.count({
+			where: { bookId, month: input.month, kind: "PLAN", status: "OPEN" },
+		})) > 0
+	)
+		throw new EnvelopeError(
+			"DRAFT_OPEN",
+			"another plan is open for that month; save it by its id",
 		);
 	await tx.budgetDraft.updateMany({
 		where: { bookId, month: input.month, kind: input.kind, status: "OPEN" },

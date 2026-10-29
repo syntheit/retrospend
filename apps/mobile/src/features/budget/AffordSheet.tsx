@@ -46,39 +46,45 @@ export function AffordSheet({
 	const byEnvelope = style === "EVERY_DOLLAR" || style === "LIMITS";
 	const [draft, setDraft] = useState("");
 	const [envelopeId, setEnvelopeId] = useState<string | null>(null);
-	const [answer, setAnswer] = useState<Answer | null>(null);
+	// Each answer keeps the question it answers: while a new amount is being
+	// checked the last answer is not shown for it.
+	const [answered, setAnswered] = useState<{
+		key: string;
+		out: Answer | null;
+	} | null>(null);
 	const [failed, setFailed] = useState(false);
 	const entered = readAmount(draft, locale, currency);
 	const minor = minorOf(entered);
+	const query =
+		minor === null
+			? null
+			: affordQuery({
+					month: data.month.key,
+					minor,
+					currency,
+					envelopeId: byEnvelope ? envelopeId : null,
+				});
+	const queryKey = query ? JSON.stringify(query) : null;
 
 	// A closed sheet forgets the last question.
 	useEffect(() => {
 		if (visible) return;
 		setDraft("");
 		setEnvelopeId(null);
-		setAnswer(null);
+		setAnswered(null);
 	}, [visible]);
 
 	// One read per settled amount, not one per key.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `queryKey` stands for `query`
 	useEffect(() => {
 		setFailed(false);
-		if (!visible || !api || minor === null) {
-			setAnswer(null);
-			return;
-		}
+		if (!visible || !api || query === null || queryKey === null) return;
 		let cancelled = false;
 		const timer = setTimeout(() => {
 			api.budget
-				.afford(
-					affordQuery({
-						month: data.month.key,
-						minor,
-						currency,
-						envelopeId: byEnvelope ? envelopeId : null,
-					}),
-				)
+				.afford(query)
 				.then((out) => {
-					if (!cancelled) setAnswer(out);
+					if (!cancelled) setAnswered({ key: queryKey, out });
 				})
 				.catch(() => {
 					if (!cancelled) setFailed(true);
@@ -88,7 +94,7 @@ export function AffordSheet({
 			cancelled = true;
 			clearTimeout(timer);
 		};
-	}, [api, visible, minor, currency, envelopeId, byEnvelope, data.month.key]);
+	}, [api, visible, queryKey]);
 
 	const choices = useMemo(
 		() =>
@@ -98,7 +104,7 @@ export function AffordSheet({
 		[data, money],
 	);
 	const pool = tp(data.toAssign.poolName);
-	const a = answer;
+	const a = answered && answered.key === queryKey ? answered.out : null;
 	const act = a?.action ?? null;
 	const fits =
 		a?.state === "FITS" ||

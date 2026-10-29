@@ -1,7 +1,9 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { subscribeEntryChanges } from "@/features/entry/events";
 import { CloseSheet } from "./CloseSheet";
 import {
 	acknowledgeBody,
+	carryable,
 	carryBody,
 	type MonthSummary,
 	startingMoneyBody,
@@ -129,6 +131,18 @@ describe("close bodies", () => {
 		).toBeNull();
 	});
 
+	it("offers only what was not carried yet", () => {
+		const read = (carried: number) =>
+			({
+				...summary(2),
+				carried: carried ? [{ id: "e-food", amount: ars(carried) }] : [],
+			}) as unknown as MonthSummary;
+		expect(carryable(read(0))).toEqual([{ id: "e-food", minor: 4_000 }]);
+		expect(carryable(read(1_500))).toEqual([{ id: "e-food", minor: 2_500 }]);
+		expect(carryable(read(4_000))).toEqual([]);
+		expect(carryable(null)).toEqual([]);
+	});
+
 	it("acknowledges only a revision not read yet", () => {
 		const read = summary(2) as unknown as MonthSummary;
 		const unread = summary(1) as unknown as MonthSummary;
@@ -222,11 +236,19 @@ describe("Month summary", () => {
 	});
 
 	it("takes an overspend from the envelope's next month with a preview and an Undo", async () => {
+		// The server's summary says what was carried: all of it after the write,
+		// none again after its Undo.
+		let carried = false;
 		const { api, calls } = fakeBudget({
-			reads: { monthSummary: summary(2) },
 			previews: ["previewCarryOverspend"],
 			writes: ["carryOverspend"],
 			undo: "undo-token-5",
+			extra: {
+				monthSummary: async () => ({
+					...summary(2),
+					carried: carried ? [{ id: "e-food", amount: ars(4_000) }] : [],
+				}),
+			},
 		});
 		session.api = api as unknown as RetrospendClient;
 		let tree!: Tree;
@@ -250,6 +272,7 @@ describe("Month summary", () => {
 			amount: "40.00",
 		});
 		press(tree, "Take it from Food");
+		carried = true;
 		await wait(50);
 		const writes = calls.filter((c) => c.route === "carryOverspend");
 		expect(writes).toHaveLength(1);
@@ -257,10 +280,26 @@ describe("Month summary", () => {
 		expect(writes[0]?.key).toBe(
 			(previews[0]?.input as { id: string } | undefined)?.id,
 		);
+		// Read again after the carry: the row is not offered twice.
+		const offered = () =>
+			tree.root.findAll(
+				(n) =>
+					n.props.accessibilityLabel === "Take it from Oct 1, 2026 instead" &&
+					typeof n.props.onPress === "function",
+			).length;
+		expect(offered()).toBe(0);
+		// The Undo also tells the other screens (Home, Wealth) to read again.
+		const heard = jest.fn();
+		const stop = subscribeEntryChanges(heard);
+		carried = false;
 		await undoFromToast();
+		await wait(10);
+		stop();
+		expect(heard).toHaveBeenCalledTimes(1);
 		expect(calls.find((c) => c.route === "undo")?.input).toEqual({
 			token: "undo-token-5",
 		});
+		expect(offered()).toBeGreaterThan(0);
 		act(() => tree.unmount());
 	});
 });

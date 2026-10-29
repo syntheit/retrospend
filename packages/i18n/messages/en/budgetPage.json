@@ -165,6 +165,7 @@
 	},
 	"plan": {
 		"discarded": "Plan discarded",
+		"changedElsewhere": "This plan changed on another device, so it was reloaded.",
 		"emptyHint": "A plan is a draft. Nothing moves until you apply it.",
 		"emptyTitle": "Plan {month}",
 		"fill": {

@@ -8,7 +8,7 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
-import { acknowledgeBody, carryBody } from "./closeBodies";
+import { acknowledgeBody, carryable, carryBody } from "./closeBodies";
 import { nextMonthKey } from "./draftsBody";
 import { monthDate } from "./months";
 import { Line, Note, SheetBody } from "./parts";
@@ -22,6 +22,8 @@ import { WriteForm } from "./WriteSheet";
  * in, what was assigned, what went over, what each leftover rule did. Done
  * marks that revision as read. An overspend can be taken from the envelope's
  * own next month instead: its own previewed, undoable step.
+ * The server says what was already carried, so a row offers only the rest;
+ * the summary is read again after a carry and after its Undo.
  */
 export function CloseSheet({
 	data,
@@ -58,7 +60,7 @@ export function CloseSheet({
 	const envelopeName = (id: string) =>
 		envelopeById(data, id)?.name ?? t("envelopeFallback");
 	const cash = (minor: number) => ({ minor, currency: sum?.currency ?? "" });
-	const over = (sum?.envelopes ?? []).filter((e) => e.overspent > 0);
+	const over = carryable(summary);
 	const left = (sum?.envelopes ?? []).filter(
 		(e) => e.returned > 0 || e.swept > 0,
 	);
@@ -68,10 +70,15 @@ export function CloseSheet({
 		? carryBody({
 				id: idFor("carry"),
 				envelopeId: carry.id,
-				minor: carry.overspent,
+				minor: carry.minor,
 				currency: sum?.currency ?? "",
 			})
 		: null;
+	// After the carry and after its Undo: what was carried changed.
+	const carryDone = () => {
+		read.reload();
+		onDone();
+	};
 
 	useEffect(() => {
 		if (!visible) return;
@@ -117,7 +124,7 @@ export function CloseSheet({
 								month: nextName,
 							})}
 							onClose={() => setCarrying(null)}
-							onDone={onDone}
+							onDone={carryDone}
 							preview={(client, b) => client.budget.previewCarryOverspend(b)}
 							submitLabel={tc("take", { name: envelopeName(carry.id) })}
 							write={(client, b, key) =>
@@ -196,7 +203,7 @@ export function CloseSheet({
 														fontVariant: ["tabular-nums"],
 													}}
 												>
-													{money(cash(e.overspent), { sign: "never" })}
+													{money(cash(e.minor), { sign: "never" })}
 												</Text>
 											</ListRow>
 										))}

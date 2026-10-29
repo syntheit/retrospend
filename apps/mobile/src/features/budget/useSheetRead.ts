@@ -9,7 +9,8 @@ export type SheetRead<T> =
 /**
  * A read a sheet needs when it opens (accounts, owed, a draft). Each opening
  * reads again, so a sheet never shows what was true the last time. `load` is
- * rebuilt every render; only `visible` and `reload` start a read.
+ * rebuilt every render; only `visible` and `reload` start a read. Data read
+ * for another `when` reads as loading, so a write never starts from it.
  */
 export function useSheetRead<T>(
 	visible: boolean,
@@ -18,7 +19,9 @@ export function useSheetRead<T>(
 	when = "",
 ): SheetRead<T> & { reload: () => void } {
 	const { api } = useSession();
-	const [state, setState] = useState<SheetRead<T>>({ status: "idle" });
+	const [state, setState] = useState<SheetRead<T> & { when?: string }>({
+		status: "idle",
+	});
 	const [again, setAgain] = useState(0);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `load` changes every render; `api` is stable for a session
 	useEffect(() => {
@@ -27,7 +30,7 @@ export function useSheetRead<T>(
 		setState({ status: "loading" });
 		load(api).then(
 			(data) => {
-				if (!cancelled) setState({ status: "ready", data });
+				if (!cancelled) setState({ status: "ready", data, when });
 			},
 			() => {
 				if (!cancelled) setState({ status: "error" });
@@ -37,5 +40,10 @@ export function useSheetRead<T>(
 			cancelled = true;
 		};
 	}, [visible, api, again, when]);
-	return { ...state, reload: () => setAgain((n) => n + 1) };
+	const reload = () => setAgain((n) => n + 1);
+	if (state.status === "ready" && state.when !== when)
+		return { status: "loading", reload };
+	if (state.status === "ready")
+		return { status: "ready", data: state.data, reload };
+	return { status: state.status, reload };
 }

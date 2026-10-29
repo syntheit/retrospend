@@ -4,9 +4,9 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Sheet } from "@/ui/Sheet";
-import { minorOf, readAmount } from "./amount";
+import { readAmount } from "./amount";
 import { BudgetChanges } from "./BudgetChanges";
-import { reconcileBody } from "./moreBodies";
+import { bankFigure, reconcileBody } from "./moreBodies";
 import { AmountField, Line, Note, SheetBody, useAmountLocale } from "./parts";
 import type { BudgetMonth } from "./source";
 import { useMoneyWrite, useWriteIds } from "./useMoneyWrite";
@@ -44,8 +44,7 @@ export function ReconcileSheet({
 	const [draft, setDraft] = useState("");
 	const currency = bank?.holds.currency ?? data.book.currency;
 	const entered = readAmount(draft, locale, currency);
-	const typed = minorOf(entered, true);
-	const minor = typed ?? bank?.bank.minor ?? null;
+	const minor = bankFigure(entered, bank?.bank.minor ?? null);
 
 	// Read the bank side each time the sheet opens.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `client` is stable for a session

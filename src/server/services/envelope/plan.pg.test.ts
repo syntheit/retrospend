@@ -208,6 +208,40 @@ describe("Plan next month: a draft until payday (owner r5 Q1)", () => {
 	});
 });
 
+describe("a plan is edited by its id", () => {
+	it("refuses a new plan while another is open for the month, and keeps the open one", async () => {
+		const s = await seedUser();
+		const b = await book(s);
+		const open = randomUUID();
+		const plan = (
+			id: string,
+			lines: { envelopeId: string; amountMinor: number }[],
+		) =>
+			draftsApi.save(s.user.id, {
+				id,
+				kind: "PLAN",
+				month: b.next,
+				lines,
+				moves: [],
+				expectedIn: [],
+				pretend: [],
+			});
+		await plan(open, [
+			{ envelopeId: b.id("Rent"), amountMinor: 50_000 },
+			{ envelopeId: b.id("Dining"), amountMinor: 20_000 },
+		]);
+		await expect(
+			plan(randomUUID(), [{ envelopeId: b.id("Dining"), amountMinor: 1_000 }]),
+		).rejects.toMatchObject({ code: "DRAFT_OPEN" });
+		const read = await draftsApi.get(s.user.id, { kind: "PLAN" });
+		expect(read.open?.id).toBe(open);
+		expect(read.open?.lines).toHaveLength(2);
+		await expect(
+			plan(open, [{ envelopeId: b.id("Dining"), amountMinor: 1_000 }]),
+		).resolves.toMatchObject({ id: open, status: "OPEN" });
+	});
+});
+
 describe("What if writes only its moves (D54)", () => {
 	it("refuses a move beyond what Dining holds; writes a 5,000 move, never the pretend expense", async () => {
 		const s = await seedUser();

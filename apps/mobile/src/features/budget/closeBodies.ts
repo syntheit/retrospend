@@ -14,6 +14,22 @@ export type MonthSummary = NonNullable<
 >;
 export type WelcomeBackState = Awaited<ReturnType<Client["welcomeBackState"]>>;
 
+/**
+ * The overspends that can still be taken from next month: what each envelope
+ * went over, less what the server says was already carried.
+ */
+export function carryable(
+	summary: MonthSummary | null,
+): { id: string; minor: number }[] {
+	const carried = new Map(
+		(summary?.carried ?? []).map((c) => [c.id, c.amount.minor]),
+	);
+	return (summary?.summary.envelopes ?? []).flatMap((e) => {
+		const minor = e.overspent - (carried.get(e.id) ?? 0);
+		return minor > 0 ? [{ id: e.id, minor }] : [];
+	});
+}
+
 /** Take last month's overspend from the envelope that went over, this month. */
 export function carryBody(input: {
 	id: string;

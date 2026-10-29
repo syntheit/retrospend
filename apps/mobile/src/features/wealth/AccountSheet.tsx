@@ -119,6 +119,7 @@ export function AccountSheet({
 		...form,
 		minor: editing ? form.minor : typedMinor,
 		minimumMinor: minimumDraft.trim() === "" ? null : minorOf(minimum),
+		minimumInvalid: minimum.state === "invalid",
 	};
 	const debt = isLiability(form.type);
 	const rated = isRated(form.currency, home, catalog);

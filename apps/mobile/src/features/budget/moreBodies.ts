@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { wireAmount } from "./amount";
+import { type Entered, minorOf, wireAmount } from "./amount";
 import { isIsoDay } from "./DayField";
 
 // The request bodies of the budget sheets beyond the first six: new envelope,
@@ -184,6 +184,18 @@ export function affordQuery(input: {
 }
 
 export type ReconcileInput = Parameters<Client["reconcile"]>[0];
+
+/**
+ * What the bank says: the typed figure, else the accounts' own total when the
+ * field is empty. Text that is not an amount is never read as empty.
+ */
+export function bankFigure(
+	entered: Entered,
+	accountsMinor: number | null,
+): number | null {
+	if (entered.state === "empty") return accountsMinor;
+	return minorOf(entered, true);
+}
 
 /** What the bank says now, in the currency the server holds the budget in; null until there is a figure. */
 export function reconcileBody(input: {

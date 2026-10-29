@@ -70,16 +70,25 @@ async function write(
 	);
 }
 
-/** What `envelopeId` already carried from last month's overspend into this month, net of undos. */
-async function carriedAlready(tx: Tx, s: Snapshot, envelopeId: string) {
+/**
+ * What each envelope already carried into `month` from the overspend of the
+ * month before, net of undos (minor units, envelopes with none left out).
+ */
+export async function carriedOverspend(
+	tx: Tx,
+	bookId: string,
+	month: number,
+	currency: string,
+	envelopeId?: string,
+): Promise<Map<string, Minor>> {
 	const rows = await tx.budgetMovement.findMany({
 		where: {
-			bookId: s.loaded.row.id,
-			month: s.current,
+			bookId,
+			month,
 			kind: "CARRY_OVERSPEND",
-			fromEnvelopeId: envelopeId,
+			...(envelopeId ? { fromEnvelopeId: envelopeId } : {}),
 		},
-		select: { id: true, amount: true },
+		select: { id: true, amount: true, fromEnvelopeId: true },
 	});
 	const undone = new Set(
 		(
@@ -89,12 +98,26 @@ async function carriedAlready(tx: Tx, s: Snapshot, envelopeId: string) {
 			})
 		).map((r) => r.revertsId),
 	);
-	return rows
-		.filter((r) => !undone.has(r.id))
-		.reduce(
-			(t, r) => t + toMinor(r.amount.toString(), s.loaded.book.currency),
-			0,
-		);
+	const out = new Map<string, Minor>();
+	for (const r of rows) {
+		if (undone.has(r.id) || !r.fromEnvelopeId) continue;
+		const minor = toMinor(r.amount.toString(), currency);
+		out.set(r.fromEnvelopeId, (out.get(r.fromEnvelopeId) ?? 0) + minor);
+	}
+	for (const [id, minor] of out) if (minor === 0) out.delete(id);
+	return out;
+}
+
+/** What `envelopeId` already carried from last month's overspend into this month, net of undos. */
+async function carriedAlready(tx: Tx, s: Snapshot, envelopeId: string) {
+	const carried = await carriedOverspend(
+		tx,
+		s.loaded.row.id,
+		s.current,
+		s.loaded.book.currency,
+		envelopeId,
+	);
+	return carried.get(envelopeId) ?? 0;
 }
 
 export async function carryOverspend(

@@ -1,8 +1,9 @@
 import { router, Stack } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { subscribeEntryChanges } from "@/features/entry/events";
 import { SectionHeader, StaleNote } from "@/features/read/parts";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useLayoutClass } from "@/layout/useLayoutClass";
@@ -101,6 +102,8 @@ export function WealthView() {
 	const { space } = useTheme();
 	const fetch = useMemo(() => (api ? fetchWealth(api) : null), [api]);
 	const { state, reload } = useCachedRead(WEALTH_CACHE, fetch);
+	// An Undo from a toast can land while this screen is already in focus.
+	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
 	const catalog = useCurrencyInfo();
 	const [adding, setAdding] = useState(false);
 

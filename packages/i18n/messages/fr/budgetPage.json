@@ -165,6 +165,7 @@
 	},
 	"plan": {
 		"discarded": "Plan abandonné",
+		"changedElsewhere": "Ce plan a changé sur un autre appareil, il a été rechargé.",
 		"emptyHint": "Un plan est un brouillon. Rien ne bouge tant que tu ne l'appliques pas.",
 		"emptyTitle": "Planifier {month}",
 		"fill": {

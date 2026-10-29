@@ -36479,6 +36479,26 @@
 														}
 													]
 												},
+												"carried": {
+													"items": {
+														"properties": {
+															"amount": {
+																"$ref": "#/components/schemas/Money"
+															},
+															"id": {
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															}
+														},
+														"required": [
+															"id",
+															"amount"
+														],
+														"type": "object"
+													},
+													"type": "array"
+												},
 												"change": {
 													"anyOf": [
 														{
@@ -36720,6 +36740,7 @@
 											},
 											"required": [
 												"summary",
+												"carried",
 												"closedAt",
 												"revision",
 												"acknowledgedRevision",
