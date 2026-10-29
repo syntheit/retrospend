@@ -2205,6 +2205,8 @@
 			"fixed": "Le montant habituel, {amount}.",
 			"nextDue": "Prochaine échéance",
 			"submit": "Confirmer",
+			"submitOut": "Enregistrer la dépense",
+			"submitIn": "Enregistrer le revenu",
 			"toast": "{title} enregistré, {amount}",
 			"paidOn": "Payé le",
 			"paidOnIn": "Reçu le",

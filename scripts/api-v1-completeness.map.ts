@@ -510,6 +510,9 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"recurring.getPendingConfirmation": to("GET /needs-you"),
 	"recurring.list": to("GET /recurring"),
 	"recurring.listView": to("GET /recurring", "GET /recurring/summary"),
+	"recurring.skip": withPreview("POST /recurring/{id}/skip"),
+	"recurring.unconfirm": to("POST /recurring/undo"),
+	"recurring.unskip": to("POST /recurring/skip/undo"),
 	"recurring.update": to("PATCH /recurring/{id}"),
 
 	// ── settings ─────────────────────────────────────────────────────────

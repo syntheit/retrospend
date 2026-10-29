@@ -76,7 +76,8 @@
 			"gone": "Cette dépense récurrente n'existe plus.",
 			"forbidden": "Tu ne peux pas modifier cette dépense récurrente.",
 			"other": "Impossible d'enregistrer la modification"
-		}
+		},
+		"skipped": "{name} ignoré"
 	},
 	"empty": {
 		"title": "Aucune dépense récurrente",
@@ -92,11 +93,32 @@
 	"confirmSheet": {
 		"title": "Confirmer {name}",
 		"description": "Enregistrée comme payée le {date}.",
-		"submit": "Confirmer",
+		"descriptionIn": "Enregistré comme reçu le {date}.",
+		"submitOut": "Enregistrer la dépense",
+		"submitIn": "Enregistrer le revenu",
 		"changes": "Ce qui change",
 		"entry": "Nouvelle dépense le {date}",
+		"entryIn": "Nouveau revenu le {date}",
 		"next": "Prochaine échéance",
 		"nextValue": "{before} → {after}",
-		"unchanged": "Rien d'autre ne change : le montant reste le même la prochaine fois."
+		"unchanged": "Rien d'autre ne change : le montant reste le même la prochaine fois.",
+		"paidOn": "Payé le",
+		"paidOnIn": "Reçu le",
+		"paidOnDue": "{date} (échéance)",
+		"paidOnDueToday": "Aujourd'hui (échéance)",
+		"paidOnToday": "Aujourd'hui",
+		"paidOnPick": "Un autre jour",
+		"future": "La date ne peut pas être dans le futur.",
+		"tooEarly": "La date ne peut pas être avant le {date}.",
+		"skip": "Ignorer cette fois"
+	},
+	"skipSheet": {
+		"title": "Ignorer {name}",
+		"description": "Rien n'est enregistré. Prochaine échéance le {date}.",
+		"submit": "Ignorer",
+		"changes": "Ce qui change",
+		"next": "Prochaine échéance",
+		"nextValue": "{before} → {after}",
+		"unchanged": "Rien d'autre ne change : aucune dépense n'est enregistrée et le montant reste le même."
 	}
 }

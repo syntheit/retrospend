@@ -20,7 +20,8 @@ export const canConfirm = (r: RecurringItemDTO) =>
  * Edit and Add use today's recurring modal until its sheet is rebuilt.
  * Confirm opens the confirm step first (R30); a template whose amount
  * varies needs the Confirm sheet's amount field (2E), so it has no Confirm
- * here. Skip waits for a server skip (2E), so it has no handler either.
+ * here. Skip opens its own step (nothing is logged, only the date moves) and
+ * both end with an Undo toast.
  */
 export function useRecurring() {
 	const t = useTranslations("activityRecurring.actions");
@@ -39,7 +40,11 @@ export function useRecurring() {
 	const update = api.recurring.update.useMutation();
 	const confirm = api.recurring.confirmAndCreate.useMutation();
 	const remove = api.recurring.delete.useMutation();
+	const unconfirm = api.recurring.unconfirm.useMutation();
+	const skip = api.recurring.skip.useMutation();
+	const unskip = api.recurring.unskip.useMutation();
 	const [confirming, setConfirming] = useState<RecurringItemDTO | null>(null);
+	const [skipping, setSkipping] = useState<RecurringItemDTO | null>(null);
 	// Templates with a save in flight: their Confirm and Auto-pay controls wait.
 	const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
 	const mark = useCallback(
@@ -109,17 +114,31 @@ export function useRecurring() {
 	);
 
 	/**
-	 * Books the due expense from the confirm step. A failure throws its own
-	 * words, so the sheet stays open with them inline (never the server's
-	 * text). No Undo yet: undoing needs a server step back (GAPS).
+	 * Books the due expense from the confirm step, on the day it was paid when
+	 * that is not the due date. A failure throws its own words, so the sheet
+	 * stays open with them inline (never the server's text). The toast undoes
+	 * it: the entry goes and the template returns to the due date.
 	 */
 	const book = useCallback(
-		async (r: RecurringItemDTO) => {
+		async (r: RecurringItemDTO, paidOn?: string) => {
 			mark(r.id, true);
+			const dueDate = new Date(r.dueAt);
 			try {
 				// The due date guards a double confirm (the server refuses a second one).
-				await confirm.mutateAsync({ id: r.id, dueDate: new Date(r.dueAt) });
-				toast.saved(t("logged", { name: r.title }));
+				const done = await confirm.mutateAsync({
+					id: r.id,
+					dueDate,
+					...(paidOn && paidOn !== r.next ? { paidOn } : {}),
+				});
+				toast.saved(t("logged", { name: r.title }), {
+					undo: async () => {
+						await unconfirm.mutateAsync({
+							expenseId: done.expenseId,
+							dueDate,
+						});
+						await refresh();
+					},
+				});
 			} catch (error) {
 				throw new Error(t(`error.${saveError(error)}`));
 			} finally {
@@ -127,7 +146,33 @@ export function useRecurring() {
 				await refresh();
 			}
 		},
-		[confirm, toast, t, refresh, mark],
+		[confirm, unconfirm, toast, t, refresh, mark],
+	);
+
+	/**
+	 * Skips the due item from the skip step: no entry, the template moves to
+	 * its next date. The toast puts it back on the skipped date.
+	 */
+	const skipItem = useCallback(
+		async (r: RecurringItemDTO) => {
+			mark(r.id, true);
+			const dueDate = new Date(r.dueAt);
+			try {
+				await skip.mutateAsync({ id: r.id, dueDate });
+				toast.saved(t("skipped", { name: r.title }), {
+					undo: async () => {
+						await unskip.mutateAsync({ id: r.id, dueDate });
+						await refresh();
+					},
+				});
+			} catch (error) {
+				throw new Error(t(`error.${saveError(error)}`));
+			} finally {
+				mark(r.id, false);
+				await refresh();
+			}
+		},
+		[skip, unskip, toast, t, refresh, mark],
 	);
 
 	const handlers = useMemo<ActionHandlers<RecurringTarget>>(() => {
@@ -139,6 +184,7 @@ export function useRecurring() {
 			};
 		return {
 			confirm: on(setConfirming),
+			skip: on(setSkipping),
 			editAmount: on((r) => modal.openRecurring(r.id)),
 			pause: on((r) => setActive(r, false)),
 			resume: on((r) => setActive(r, true)),
@@ -151,14 +197,19 @@ export function useRecurring() {
 		};
 	}, [byId, modal, setActive, run, remove, t]);
 
-	// Confirm only books a due one; the server refuses an early confirm.
-	const notDue = useMemo(() => {
-		const { confirm: _confirm, ...rest } = handlers;
-		return rest;
+	// Confirm and Skip only act on a due one; the server refuses an early one.
+	// A template whose amount varies can be skipped but not confirmed here.
+	const forms = useMemo(() => {
+		const { confirm: _confirm, skip: _skip, ...notDue } = handlers;
+		const { confirm: _only, ...skipOnly } = handlers;
+		return { notDue, skipOnly };
 	}, [handlers]);
 	const handlersFor = useCallback(
-		(r: RecurringItemDTO) => (canConfirm(r) ? handlers : notDue),
-		[handlers, notDue],
+		(r: RecurringItemDTO) => {
+			if (canConfirm(r)) return handlers;
+			return isDue(r) ? forms.skipOnly : forms.notDue;
+		},
+		[handlers, forms],
 	);
 
 	return {
@@ -169,6 +220,10 @@ export function useRecurring() {
 		confirming,
 		closeConfirm: () => setConfirming(null),
 		book,
+		skipping,
+		askSkip: setSkipping,
+		closeSkip: () => setSkipping(null),
+		skipItem,
 		busy,
 		setAutoPay,
 		openNew: modal.openNewRecurring,

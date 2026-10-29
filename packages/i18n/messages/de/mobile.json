@@ -2205,6 +2205,8 @@
 			"fixed": "Der übliche Betrag, {amount}.",
 			"nextDue": "Nächste Fälligkeit",
 			"submit": "Bestätigen",
+			"submitOut": "Ausgabe erfassen",
+			"submitIn": "Einnahme erfassen",
 			"toast": "{title} erfasst, {amount}",
 			"paidOn": "Bezahlt am",
 			"paidOnIn": "Erhalten am",

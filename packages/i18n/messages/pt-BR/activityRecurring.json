@@ -76,7 +76,8 @@
 			"gone": "Esta despesa recorrente não existe mais.",
 			"forbidden": "Você não pode alterar esta despesa recorrente.",
 			"other": "Não foi possível salvar a alteração"
-		}
+		},
+		"skipped": "{name} pulado"
 	},
 	"empty": {
 		"title": "Nenhum gasto recorrente",
@@ -92,11 +93,32 @@
 	"confirmSheet": {
 		"title": "Confirmar {name}",
 		"description": "Registra como pago em {date}.",
-		"submit": "Confirmar",
+		"descriptionIn": "Registra como recebido em {date}.",
+		"submitOut": "Registrar despesa",
+		"submitIn": "Registrar receita",
 		"changes": "O que muda",
 		"entry": "Nova despesa em {date}",
+		"entryIn": "Nova receita em {date}",
 		"next": "Próximo vencimento",
 		"nextValue": "{before} → {after}",
-		"unchanged": "Nada mais muda: o valor continua o mesmo na próxima vez."
+		"unchanged": "Nada mais muda: o valor continua o mesmo na próxima vez.",
+		"paidOn": "Pago em",
+		"paidOnIn": "Recebido em",
+		"paidOnDue": "{date} (vencimento)",
+		"paidOnDueToday": "Hoje (vencimento)",
+		"paidOnToday": "Hoje",
+		"paidOnPick": "Outro dia",
+		"future": "A data não pode ser futura.",
+		"tooEarly": "A data não pode ser anterior a {date}.",
+		"skip": "Pular desta vez"
+	},
+	"skipSheet": {
+		"title": "Pular {name}",
+		"description": "Nada é registrado. Vence de novo em {date}.",
+		"submit": "Pular",
+		"changes": "O que muda",
+		"next": "Próximo vencimento",
+		"nextValue": "{before} → {after}",
+		"unchanged": "Nada mais muda: nenhuma despesa é registrada e o valor continua o mesmo."
 	}
 }

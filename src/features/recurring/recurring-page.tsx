@@ -20,9 +20,9 @@ import { useIsMobile } from "~/hooks/use-mobile";
 import type { RecurringView } from "~/server/services/recurring-view.service";
 import { ActivityTabs } from "../activity/activity-tabs";
 import { toTransactionVM } from "../activity/to-vm";
-import { ConfirmSheet } from "./confirm-sheet";
 import { groupsOf, matches, type RecurringChips } from "./groups";
 import { RecurringList } from "./recurring-list";
+import { RecurringSteps } from "./recurring-steps";
 import { RecurringSummary } from "./recurring-summary";
 import { RecurringTable } from "./recurring-table";
 import { useRecurring } from "./use-recurring";
@@ -84,7 +84,6 @@ export function RecurringPage() {
 	const [q, setQ] = useState("");
 	const [chips, setChips] = useState<RecurringChips>(NO_CHIPS);
 	const data = r.view.data;
-	const confirming = r.confirming;
 	const groups = useMemo(() => {
 		if (!data) return [];
 		const shown = data.items.filter((x) =>
@@ -208,16 +207,7 @@ export function RecurringPage() {
 					/>
 				)}
 				<Logged view={data} />
-				{confirming && (
-					<ConfirmSheet
-						item={confirming}
-						onConfirm={() => r.book(confirming)}
-						onOpenChange={(open) => {
-							if (!open) r.closeConfirm();
-						}}
-						today={data.today}
-					/>
-				)}
+				<RecurringSteps recurring={r} today={data.today} />
 			</>
 		);
 	}

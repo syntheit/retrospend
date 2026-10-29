@@ -1,7 +1,7 @@
-import { TRPCError } from "@trpc/server";
-import { z } from "zod";
 import { convertAmount } from "@retrospend/domain/money";
 import { startOfNextDayIn } from "@retrospend/domain/time-zone";
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { userTransaction } from "~/server/db-tx";
 import { RateCache } from "~/server/services/rate-cache";
@@ -360,13 +360,12 @@ export const recurringRouter = createTRPCRouter({
 				dueDate: z.date().optional(),
 				// The real amount, required for a template whose amount varies (ASK).
 				amount: z.number().positive().optional(),
+				paidOn: z.iso.date().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			const userId = ctx.session.user.id;
-			// The amount as text, so it is stored as typed and never goes through float math.
-			const amount =
-				input.amount === undefined ? undefined : String(input.amount);
+			const amount = input.amount?.toString(); // as typed, no float math
 			const done = await userTransaction(ctx.db, userId, (tx) =>
 				confirmRecurringExpense.run(
 					tx,
@@ -374,6 +373,7 @@ export const recurringRouter = createTRPCRouter({
 						templateId: input.id,
 						dueDate: input.dueDate,
 						amount,
+						paidOn: input.paidOn,
 						timeZone: ctx.timeZone,
 					},
 					{ userId },

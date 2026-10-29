@@ -195,7 +195,7 @@ describe("Confirm a recurring expense", () => {
 		expect(calls.find((c) => c.route === "preview")?.input).toEqual(body);
 		expect(calls.some((c) => c.route === "write")).toBe(false);
 
-		press(tree, "Confirm");
+		press(tree, "Log expense");
 		await wait(50);
 		const writes = calls.filter((c) => c.route === "write");
 		expect(writes).toHaveLength(1);
@@ -245,7 +245,7 @@ describe("Confirm a recurring expense", () => {
 		expect(tree.root.findAll((n) => n.props.label === "Auto-pay")).toHaveLength(
 			0,
 		);
-		press(tree, "Confirm");
+		press(tree, "Log expense");
 		await wait(50);
 		expect(calls.some((c) => c.route === "update")).toBe(false);
 		act(() => tree.unmount());
@@ -315,7 +315,7 @@ describe("Confirm a recurring expense", () => {
 		await wait(400);
 		expect(previews().at(-1)?.input).toEqual({ ...body, paidOn: "2026-11-03" });
 
-		press(tree, "Confirm");
+		press(tree, "Log expense");
 		await wait(50);
 		const writes = calls.filter((c) => c.route === "write");
 		expect(writes).toHaveLength(1);
@@ -353,9 +353,33 @@ describe("Confirm a recurring expense", () => {
 		// 2026-11-03 is before the earliest day: no new dry run, and Confirm is off.
 		expect(calls.filter((c) => c.route === "preview")).toHaveLength(before);
 		const confirm = tree.root.findAll(
-			(n) => n.props.accessibilityLabel === "Confirm",
+			(n) => n.props.accessibilityLabel === "Log expense",
 		)[0];
 		expect(confirm?.props.accessibilityState).toEqual({ disabled: true });
+		act(() => tree.unmount());
+	});
+
+	it("names the verb after the direction: Log income for an income template", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(
+				<ConfirmSheet
+					item={{ ...item, direction: "in" } as RecurringItem}
+					onClose={jest.fn()}
+					onDone={jest.fn()}
+					onSkip={jest.fn()}
+					today="2026-11-01"
+					visible
+				/>,
+			);
+		});
+		await wait(400);
+		const labels = (name: string) =>
+			tree.root.findAll((n) => n.props.accessibilityLabel === name);
+		expect(labels("Log income").length).toBeGreaterThan(0);
+		expect(labels("Log expense")).toHaveLength(0);
 		act(() => tree.unmount());
 	});
 

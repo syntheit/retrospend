@@ -2205,6 +2205,8 @@
 			"fixed": "O valor de sempre, {amount}.",
 			"nextDue": "Próximo vencimento",
 			"submit": "Confirmar",
+			"submitOut": "Registrar despesa",
+			"submitIn": "Registrar receita",
 			"toast": "{title} registrado, {amount}",
 			"paidOn": "Pago em",
 			"paidOnIn": "Recebido em",

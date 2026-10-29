@@ -76,7 +76,8 @@
 			"gone": "This recurring expense no longer exists.",
 			"forbidden": "You can't change this recurring expense.",
 			"other": "Couldn't save that change"
-		}
+		},
+		"skipped": "Skipped {name}"
 	},
 	"empty": {
 		"title": "No recurring expenses",
@@ -92,11 +93,32 @@
 	"confirmSheet": {
 		"title": "Confirm {name}",
 		"description": "Logs it as paid on {date}.",
-		"submit": "Confirm",
+		"descriptionIn": "Logs it as received on {date}.",
+		"submitOut": "Log expense",
+		"submitIn": "Log income",
 		"changes": "What this changes",
 		"entry": "New expense on {date}",
+		"entryIn": "New income on {date}",
 		"next": "Next due",
 		"nextValue": "{before} → {after}",
-		"unchanged": "Nothing else changes: the amount stays the same next time."
+		"unchanged": "Nothing else changes: the amount stays the same next time.",
+		"paidOn": "Paid on",
+		"paidOnIn": "Received on",
+		"paidOnDue": "{date} (due)",
+		"paidOnDueToday": "Today (due)",
+		"paidOnToday": "Today",
+		"paidOnPick": "Another day",
+		"future": "The date can't be in the future.",
+		"tooEarly": "The date can't be before {date}.",
+		"skip": "Skip this time"
+	},
+	"skipSheet": {
+		"title": "Skip {name}",
+		"description": "Nothing is logged. It comes back on {date}.",
+		"submit": "Skip",
+		"changes": "What this changes",
+		"next": "Next due",
+		"nextValue": "{before} → {after}",
+		"unchanged": "Nothing else changes: no expense is logged and the amount stays the same."
 	}
 }
