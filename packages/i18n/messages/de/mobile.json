@@ -294,6 +294,7 @@
 			"undoFailed": "Rückgängig machen nicht möglich. Versuche es unter Aktivität.",
 			"failed": "Löschen nicht möglich. Versuche es erneut.",
 			"sharedBody": "Alle darauf werden informiert, und was sie schulden, ändert sich.",
+			"noUndo": "Das lässt sich nicht rückgängig machen.",
 			"anyway": "Trotzdem löschen"
 		}
 	},
@@ -1399,7 +1400,7 @@
 			"edit": "Konto bearbeiten",
 			"reopen": "Konto wieder öffnen",
 			"close": "Konto schließen",
-			"delete": "Endgültig löschen",
+			"delete": "Konto löschen",
 			"swipe": {
 				"update": "Aktualisieren",
 				"edit": "Bearbeiten",
@@ -1409,11 +1410,11 @@
 			}
 		},
 		"delete": {
-			"title": "{name} endgültig löschen?",
+			"title": "{name} löschen?",
 			"body": "Das entfernt das Konto und seinen gesamten Saldoverlauf. Der Vermögensverlauf ändert sich ebenfalls.",
 			"keepHistory": "Um den Verlauf zu behalten, schließe das Konto stattdessen.",
 			"closeInstead": "Stattdessen schließen",
-			"submit": "Endgültig löschen",
+			"submit": "Löschen",
 			"deleting": "Wird gelöscht",
 			"toast": "{name} gelöscht",
 			"error": "Das ließ sich nicht löschen. Versuche es erneut."
@@ -2213,6 +2214,7 @@
 			"paidOnPick": "Datum wählen",
 			"pickDate": "Datum",
 			"future": "Das Datum darf nicht in der Zukunft liegen.",
+			"tooEarly": "Das Datum darf nicht vor dem {date} liegen.",
 			"skip": "Diesmal überspringen"
 		},
 		"item": {

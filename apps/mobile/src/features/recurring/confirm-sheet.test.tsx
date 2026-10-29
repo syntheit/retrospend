@@ -69,11 +69,14 @@ jest.mock("@/ui/DateField", () => {
 		DateField: ({
 			label,
 			onChange,
+			minimum,
 		}: {
 			label: string;
 			onChange: (picked: string) => void;
+			minimum?: string;
 		}) => (
 			<Pressable
+				accessibilityHint={minimum}
 				accessibilityLabel={label}
 				onPress={() => onChange("2026-11-03")}
 			/>
@@ -114,6 +117,7 @@ const item = {
 	amount: usd(1599),
 	next: "2026-11-01",
 	nextAfter: "2026-12-01",
+	paidOnFrom: "2026-10-01",
 	dueAt: "2026-11-01T12:00:00.000Z",
 } as unknown as RecurringItem;
 
@@ -316,6 +320,42 @@ describe("Confirm a recurring expense", () => {
 		const writes = calls.filter((c) => c.route === "write");
 		expect(writes).toHaveLength(1);
 		expect(writes[0]?.input).toEqual({ ...body, paidOn: "2026-11-03" });
+		act(() => tree.unmount());
+	});
+
+	it("gives the date field the earliest day and writes nothing before it", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const early = { ...item, paidOnFrom: "2026-11-04" } as RecurringItem;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(
+				<ConfirmSheet
+					item={early}
+					onClose={jest.fn()}
+					onDone={jest.fn()}
+					onSkip={jest.fn()}
+					today="2026-11-04"
+					visible
+				/>,
+			);
+		});
+		await wait(400);
+		press(tree, "Pick a date");
+		await wait(50);
+		const field = tree.root.findAll(
+			(n) => n.props.accessibilityLabel === "Date",
+		);
+		expect(field[0]?.props.accessibilityHint).toBe("2026-11-04");
+		const before = calls.filter((c) => c.route === "preview").length;
+		press(tree, "Date");
+		await wait(400);
+		// 2026-11-03 is before the earliest day: no new dry run, and Confirm is off.
+		expect(calls.filter((c) => c.route === "preview")).toHaveLength(before);
+		const confirm = tree.root.findAll(
+			(n) => n.props.accessibilityLabel === "Confirm",
+		)[0];
+		expect(confirm?.props.accessibilityState).toEqual({ disabled: true });
 		act(() => tree.unmount());
 	});
 

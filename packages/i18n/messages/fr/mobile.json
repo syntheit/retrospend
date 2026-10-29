@@ -294,6 +294,7 @@
 			"undoFailed": "Impossible d'annuler. Réessaie depuis Activité.",
 			"failed": "Impossible de supprimer. Réessaie.",
 			"sharedBody": "Toutes les personnes concernées sont prévenues, et ce qu'elles doivent change.",
+			"noUndo": "Cette action est irréversible.",
 			"anyway": "Supprimer quand même"
 		}
 	},
@@ -1399,7 +1400,7 @@
 			"edit": "Modifier le compte",
 			"reopen": "Rouvrir le compte",
 			"close": "Clôturer le compte",
-			"delete": "Supprimer définitivement",
+			"delete": "Supprimer le compte",
 			"swipe": {
 				"update": "Mettre à jour",
 				"edit": "Modifier",
@@ -1409,11 +1410,11 @@
 			}
 		},
 		"delete": {
-			"title": "Supprimer {name} définitivement ?",
+			"title": "Supprimer {name} ?",
 			"body": "Cela supprime le compte et tout son historique de soldes. L’historique du patrimoine change aussi.",
 			"keepHistory": "Pour garder l’historique, clôture plutôt le compte.",
 			"closeInstead": "Clôturer à la place",
-			"submit": "Supprimer définitivement",
+			"submit": "Supprimer",
 			"deleting": "Suppression",
 			"toast": "{name} supprimé",
 			"error": "Impossible de supprimer. Réessaie."
@@ -2213,6 +2214,7 @@
 			"paidOnPick": "Choisir une date",
 			"pickDate": "Date",
 			"future": "La date ne peut pas être dans le futur.",
+			"tooEarly": "La date ne peut pas être avant le {date}.",
 			"skip": "Ignorer cette fois"
 		},
 		"item": {

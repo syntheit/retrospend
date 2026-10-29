@@ -103582,6 +103582,10 @@
 														"format": "date",
 														"type": "string"
 													},
+													"paidOnFrom": {
+														"format": "date",
+														"type": "string"
+													},
 													"paused": {
 														"type": "boolean"
 													},
@@ -103629,6 +103633,7 @@
 													"next",
 													"dueAt",
 													"nextAfter",
+													"paidOnFrom",
 													"state",
 													"paused",
 													"autoPay",
@@ -103953,6 +103958,10 @@
 											"format": "date",
 											"type": "string"
 										},
+										"paidOnFrom": {
+											"format": "date",
+											"type": "string"
+										},
 										"paused": {
 											"type": "boolean"
 										},
@@ -104000,6 +104009,7 @@
 										"next",
 										"dueAt",
 										"nextAfter",
+										"paidOnFrom",
 										"state",
 										"paused",
 										"autoPay",
@@ -105959,6 +105969,10 @@
 											"format": "date",
 											"type": "string"
 										},
+										"paidOnFrom": {
+											"format": "date",
+											"type": "string"
+										},
 										"paused": {
 											"type": "boolean"
 										},
@@ -106006,6 +106020,7 @@
 										"next",
 										"dueAt",
 										"nextAfter",
+										"paidOnFrom",
 										"state",
 										"paused",
 										"autoPay",
@@ -106329,6 +106344,10 @@
 											"format": "date",
 											"type": "string"
 										},
+										"paidOnFrom": {
+											"format": "date",
+											"type": "string"
+										},
 										"paused": {
 											"type": "boolean"
 										},
@@ -106376,6 +106395,7 @@
 										"next",
 										"dueAt",
 										"nextAfter",
+										"paidOnFrom",
 										"state",
 										"paused",
 										"autoPay",
@@ -106549,7 +106569,7 @@
 										"description": "Recurring income only: keep it in Wealth."
 									},
 									"paidOn": {
-										"description": "The day it was really paid or received, never in the future. The entry and its rate use this day; the template still moves on from the due date. Default: the due date.",
+										"description": "The day it was really paid or received, never in the future and not before the item's paidOnFrom. The entry and its rate use this day; the template still moves on from the due date. Default: the due date.",
 										"format": "date",
 										"type": "string"
 									},
@@ -106962,7 +106982,7 @@
 										"description": "Recurring income only: keep it in Wealth."
 									},
 									"paidOn": {
-										"description": "The day it was really paid or received, never in the future. The entry and its rate use this day; the template still moves on from the due date. Default: the due date.",
+										"description": "The day it was really paid or received, never in the future and not before the item's paidOnFrom. The entry and its rate use this day; the template still moves on from the due date. Default: the due date.",
 										"format": "date",
 										"type": "string"
 									},
@@ -107476,11 +107496,14 @@
 										"type": "string"
 									}
 								},
+								"required": [
+									"dueAt"
+								],
 								"type": "object"
 							}
 						}
 					},
-					"required": false
+					"required": true
 				},
 				"responses": {
 					"200": {
@@ -107630,11 +107653,14 @@
 										"type": "string"
 									}
 								},
+								"required": [
+									"dueAt"
+								],
 								"type": "object"
 							}
 						}
 					},
-					"required": false
+					"required": true
 				},
 				"responses": {
 					"200": {
@@ -112951,7 +112977,7 @@
 		},
 		"/shared-expenses/{id}": {
 			"delete": {
-				"description": "A delete that would erase a debt or leave the payer owing needs confirmUnsettled or settled, and is a conflict without it; its message is the warning to show. Answers an undo token for POST /shared-expenses/undo.",
+				"description": "A delete that would erase a debt or leave the payer owing needs confirmUnsettled or settled, and is a conflict without it; its message is the warning to show. Answers an undo token for POST /shared-expenses/undo, or null when it cannot be put back (a split someone else added, or one that voided payments). The preview's detail is `{ kind: \"sharedExpense.delete\", undoable }`: false when the delete would give no token, so say so before the tap.",
 				"operationId": "deleteSharedExpense",
 				"parameters": [
 					{

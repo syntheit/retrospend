@@ -10,7 +10,7 @@ import {
 import { DeleteAccountSheet } from "./DeleteAccountSheet";
 import type { Account } from "./source";
 
-// Delete permanently: the dry run first, the verb last and off until it is in,
+// Delete: the dry run first, the verb last and off until it is in,
 // Close instead for an open account, and a toast with Undo: the server keeps
 // the account and its history and puts it all back from the token.
 const renderer = require("react-test-renderer");
@@ -89,12 +89,12 @@ describe("Delete account", () => {
 				/>,
 			);
 		});
-		expect(disabled(tree, "Delete permanently")).toBe(true);
+		expect(disabled(tree, "Delete")).toBe(true);
 		await wait(400);
 		expect(calls).toEqual(["preview"]);
-		expect(disabled(tree, "Delete permanently")).toBe(false);
+		expect(disabled(tree, "Delete")).toBe(false);
 
-		press(tree, "Delete permanently");
+		press(tree, "Delete");
 		await wait(50);
 		expect(calls).toEqual(["preview", "write"]);
 		expect(onDone).toHaveBeenCalled();

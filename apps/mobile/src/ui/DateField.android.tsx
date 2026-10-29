@@ -20,6 +20,7 @@ export function DateField({
 	value,
 	onChange,
 	placeholder,
+	minimum,
 }: DateFieldProps) {
 	const { color, size, space } = useTheme();
 	const t = useTranslations("mobile.pickers");
@@ -60,6 +61,9 @@ export function DateField({
 							onChange(dayOfPicker(date, "utc"));
 						}}
 						onDismissRequest={() => setOpen(false)}
+						selectableDates={
+							minimum ? { start: pickerDate(minimum, "utc") } : undefined
+						}
 					/>
 				</NativeHost>
 			) : null}

@@ -75,7 +75,12 @@ export const confirmRecurringExpense: MoneyMutation<
 			input.amount ?? undefined,
 			undefined,
 			input.paidOn
-				? paidOnInstant(input.paidOn, template.direction, input.timeZone)
+				? paidOnInstant(
+						input.paidOn,
+						template.direction,
+						input.timeZone,
+						template,
+					)
 				: undefined,
 		);
 		const nextDueAt = nextRecurringDate(

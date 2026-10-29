@@ -294,6 +294,7 @@
 			"undoFailed": "Não foi possível desfazer. Tente pela Atividade.",
 			"failed": "Não foi possível excluir. Tente de novo.",
 			"sharedBody": "Todos os envolvidos são avisados, e o que devem muda.",
+			"noUndo": "Isso não pode ser desfeito.",
 			"anyway": "Excluir mesmo assim"
 		}
 	},
@@ -1399,7 +1400,7 @@
 			"edit": "Editar conta",
 			"reopen": "Reabrir conta",
 			"close": "Encerrar conta",
-			"delete": "Excluir definitivamente",
+			"delete": "Excluir conta",
 			"swipe": {
 				"update": "Atualizar",
 				"edit": "Editar",
@@ -1409,11 +1410,11 @@
 			}
 		},
 		"delete": {
-			"title": "Excluir {name} definitivamente?",
+			"title": "Excluir {name}?",
 			"body": "Isso remove a conta e todo o histórico de saldos. O histórico do patrimônio também muda.",
 			"keepHistory": "Para manter o histórico, encerre a conta.",
 			"closeInstead": "Encerrar em vez disso",
-			"submit": "Excluir definitivamente",
+			"submit": "Excluir",
 			"deleting": "Excluindo",
 			"toast": "{name} excluída",
 			"error": "Não foi possível excluir. Tente de novo."
@@ -2213,6 +2214,7 @@
 			"paidOnPick": "Escolher data",
 			"pickDate": "Data",
 			"future": "A data não pode ser futura.",
+			"tooEarly": "A data não pode ser anterior a {date}.",
 			"skip": "Pular desta vez"
 		},
 		"item": {

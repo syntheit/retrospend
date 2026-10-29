@@ -49,6 +49,62 @@ async function stillThere(
 	return new Set((await find(wanted)).map((r) => r.id));
 }
 
+const cannotRestore = (message: string) =>
+	new TRPCError({ code: "CONFLICT", message });
+
+/**
+ * A restore follows the rules of an add: everyone on it who is not a shadow is
+ * still a member of its project, and its period is still open (an add lands only
+ * in an open one). Otherwise it would put back an expense the project would not
+ * take now, so it is refused and nothing is written.
+ */
+async function assertStillFits(
+	tx: Tx,
+	expense: Prisma.SharedTransactionUncheckedCreateInput,
+	shares: readonly Prisma.SplitParticipantUncheckedCreateInput[],
+) {
+	const projectId = expense.projectId;
+	if (!projectId) return;
+	const project = await tx.project.findUnique({
+		where: { id: projectId },
+		select: { id: true },
+	});
+	if (!project) return; // The project is gone: the link is dropped, as before.
+	const people = [
+		{ type: expense.paidByType, id: expense.paidById },
+		...shares.map((s) => ({ type: s.participantType, id: s.participantId })),
+	].filter((p) => p.type !== "shadow");
+	if (people.length > 0) {
+		const members = await tx.projectParticipant.findMany({
+			where: {
+				projectId,
+				OR: people.map((p) => ({
+					participantType: p.type,
+					participantId: p.id,
+				})),
+			},
+			select: { participantType: true, participantId: true },
+		});
+		const here = new Set(
+			members.map((m) => `${m.participantType}:${m.participantId}`),
+		);
+		if (people.some((p) => !here.has(`${p.type}:${p.id}`)))
+			throw cannotRestore(
+				"Someone on this expense left the project since. Undo is no longer safe.",
+			);
+	}
+	if (expense.billingPeriodId) {
+		const period = await tx.billingPeriod.findUnique({
+			where: { id: expense.billingPeriodId },
+			select: { status: true },
+		});
+		if (period && period.status !== "OPEN")
+			throw cannotRestore(
+				"Its billing period is closed since. Undo is no longer safe.",
+			);
+	}
+}
+
 /**
  * Puts the expense back with every share, the answers people gave and the
  * requests that involve you. Returns the restored expense with its shares.
@@ -101,6 +157,7 @@ export async function restoreShared(
 			}),
 		),
 	]);
+	await assertStillFits(tx, expense, shares);
 	const keep = (set: Set<string>, id: string | null | undefined) =>
 		id && set.has(id) ? id : null;
 	await tx.sharedTransaction.create({

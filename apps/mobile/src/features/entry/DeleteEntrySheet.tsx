@@ -47,6 +47,7 @@ export function DeleteEntrySheet({
 	const { space } = useTheme();
 	const [preview, setPreview] = useState<PreviewState>({ status: "loading" });
 	const [warning, setWarning] = useState<string | null>(null);
+	const [undoable, setUndoable] = useState(true);
 	const [busy, setBusy] = useState(false);
 	const [failed, setFailed] = useState(false);
 	// One key per opening: a second tap replays the first delete.
@@ -60,11 +61,13 @@ export function DeleteEntrySheet({
 		key.current = newClientId();
 		setPreview({ status: "loading" });
 		setWarning(null);
+		setUndoable(true);
 		setFailed(false);
 		previewDelete(api, { id, shared }).then((out) => {
 			if (cancelled) return;
 			setPreview(out.state);
 			setWarning(out.warning);
+			setUndoable(out.undoable);
 		});
 		return () => {
 			cancelled = true;
@@ -128,6 +131,7 @@ export function DeleteEntrySheet({
 		>
 			<View style={{ gap: space[4] }}>
 				<Text tone="fg2">{shared ? t("sharedBody") : t("body")}</Text>
+				{undoable ? null : <Text tone="fg2">{t("noUndo")}</Text>}
 				{warning ? (
 					<Text accessibilityLiveRegion="polite" tone="attention">
 						{warning}

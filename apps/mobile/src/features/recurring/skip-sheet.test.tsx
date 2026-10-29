@@ -76,6 +76,7 @@ const item = {
 	amount: { minor: 1599, currency: "USD" },
 	next: "2026-11-01",
 	nextAfter: "2026-12-01",
+	paidOnFrom: "2026-10-01",
 	dueAt: "2026-11-01T12:00:00.000Z",
 } as unknown as RecurringItem;
 
