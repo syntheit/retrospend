@@ -189,6 +189,30 @@ function fakeApi() {
 			}),
 		},
 		entry: {
+			// USD in an ARS home: two types, each booked at the amount asked.
+			rateOptions: write("entry.rateOptions", (input) => {
+				const { amount, customRate } = input as {
+					amount?: string;
+					customRate?: string;
+				};
+				const unit = { minor: 100, currency: "USD" };
+				const at = (rate: number) => ({
+					rate: { unit, value: money(rate * 100) },
+					home: amount ? money(Number(amount) * rate * 100) : null,
+				});
+				return {
+					homeCurrency: "ARS",
+					defaultType: "blue",
+					options: [
+						{ rateType: "official", ...at(1050) },
+						{ rateType: "blue", ...at(1465) },
+					],
+					missing: null,
+					custom: customRate
+						? { rateType: "custom", ...at(Number(customRate)) }
+						: null,
+				};
+			}),
 			catalog: async () => ({
 				places: [
 					{ id: "cash", name: "Cash", type: "CASH", currency: "ARS" },
@@ -777,13 +801,13 @@ describe("Edit expense", () => {
 	});
 });
 
-describe("More details", () => {
-	it("opens on tap and sends note, place, spread and exclude on a personal expense", async () => {
+describe("Details", () => {
+	it("shows note, place, spread and exclude with no toggle, and sends them on a personal expense", async () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense");
-		expect(find(tree, (p) => p.accessibilityLabel === "Note")).toHaveLength(0);
-		press(tree, "More details");
+		expect(words(tree)).toContain("Details");
+		expect(words(tree)).toContain("Exclude from spending");
 		type(tree, "Note", "with the team");
 		type(tree, "Location", "Cafe Tortoni");
 		press(tree, "6 months");
@@ -808,7 +832,6 @@ describe("More details", () => {
 		mockSession.api = api;
 		const tree = await open("expense");
 		press(tree, "Lucía Fernández");
-		press(tree, "More details");
 		expect(find(tree, (p) => p.accessibilityLabel === "Location")).toHaveLength(
 			0,
 		);
@@ -821,6 +844,85 @@ describe("More details", () => {
 		const sent = calls.find((c) => c.route === "shared.create")?.input;
 		expect(sent).toMatchObject({ notes: "birthday" });
 		expect(sent).not.toHaveProperty("location");
+		act(() => tree.unmount());
+	});
+});
+
+describe("An expense in another currency", () => {
+	// Dollars spent by someone whose home is pesos.
+	beforeEach(() => {
+		mockMe.defaultCurrency = "USD";
+	});
+	afterEach(() => {
+		mockMe.defaultCurrency = "ARS";
+	});
+
+	async function twelveDollars() {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+		press(tree, "Cafe");
+		for (const key of ["1", "2"]) press(tree, key);
+		await settle();
+		return { tree, calls };
+	}
+
+	it("shows the amount at home at the default type, as the server books it", async () => {
+		const { tree, calls } = await twelveDollars();
+		expect(calls.find((c) => c.route === "entry.rateOptions")?.input).toEqual({
+			currency: "USD",
+			date: expect.any(String),
+			amount: "12.00",
+		});
+		// The original stays the big number; home is the server's 12 x 1,465.
+		expect(words(tree)).toContain("ARS 17,580");
+		expect(
+			find(tree, (p) => p.label === "Blue rate" && p.variant === "text"),
+		).not.toHaveLength(0);
+		act(() => tree.unmount());
+	});
+
+	it("saves the picked rate type", async () => {
+		const { tree, calls } = await twelveDollars();
+		press(tree, "Exchange rate, Blue");
+		press(tree, "pick Official");
+		await settle();
+		expect(words(tree)).toContain("ARS 12,600");
+		press(tree, "Add expense");
+		await flush();
+		expect(
+			calls.find((c) => c.route === "expenses.create")?.input,
+		).toMatchObject({ currency: "USD", amount: "12.00", rateType: "official" });
+		act(() => tree.unmount());
+	});
+
+	it("saves a typed rate, and waits while it does not read as one", async () => {
+		const { tree, calls } = await twelveDollars();
+		press(tree, "Exchange rate, Blue");
+		press(tree, "pick Custom rate");
+		press(tree, "Add expense");
+		await flush();
+		expect(calls.some((c) => c.route === "expenses.create")).toBe(false);
+		expect(words(tree)).toContain("Enter a rate above zero");
+		type(tree, "Custom rate, 1 USD in ARS", "1200");
+		await settle();
+		expect(words(tree)).toContain("ARS 14,400");
+		press(tree, "Add expense");
+		await flush();
+		const sent = calls.find((c) => c.route === "expenses.create")?.input;
+		expect(sent).toMatchObject({ customRate: "1200" });
+		expect(sent).not.toHaveProperty("rateType");
+		act(() => tree.unmount());
+	});
+
+	it("states the default type on a split instead of offering a pick", async () => {
+		const { tree } = await twelveDollars();
+		press(tree, "Lucía Fernández");
+		await settle();
+		expect(words(tree)).toContain("Your default rate: Blue");
+		expect(
+			find(tree, (p) => p.accessibilityLabel === "Exchange rate, Blue"),
+		).toHaveLength(0);
 		act(() => tree.unmount());
 	});
 });

@@ -188,7 +188,6 @@
 				"received": "Escribe lo que llegó como un monto, o déjalo vacío"
 			}
 		},
-		"moreDetails": "Más detalles",
 		"today": "Hoy",
 		"yesterday": "Ayer",
 		"note": "Nota",
@@ -207,6 +206,25 @@
 			"detail": "Lo que escribiste aquí no está guardado y se perderá.",
 			"keep": "Seguir editando",
 			"replace": "Reemplazar"
+		},
+		"details": "Detalles",
+		"excludeAuto": "Excluido automáticamente según la categoría",
+		"rate": {
+			"title": "Tipo de cambio",
+			"trigger": "Tipo {type}",
+			"triggerLabel": "Tipo de cambio, {type}",
+			"find": "Buscar un tipo",
+			"empty": "Ningún tipo coincide",
+			"types": "Tipos para {currency}",
+			"custom": "Tipo personalizado",
+			"customUnit": "1 {currency} =",
+			"customLabel": "Tipo personalizado, 1 {currency} en {home}",
+			"missing": "No hay tipo de cambio para {currency} ese día.",
+			"homeLabel": "En tu moneda principal, {amount}",
+			"fixed": "Tu tipo predeterminado: {type}",
+			"sharedFixed": "Los gastos compartidos usan tu tipo de cambio predeterminado.",
+			"error": "Introduce un tipo mayor que cero",
+			"enterRate": "Introducir tipo"
 		}
 	},
 	"pickers": {
@@ -308,7 +326,15 @@
 		"signOut": "Cerrar sesión",
 		"signOutDiscard": "Cerrar sesión y descartar",
 		"unsynced": "{count, plural, one {# cambio sin sincronizar. Al cerrar sesión se descarta.} other {# cambios sin sincronizar. Al cerrar sesión se descartan.}}",
-		"settings": "Ajustes"
+		"settings": "Ajustes",
+		"profileHint": "Abre tu perfil en Ajustes",
+		"goTo": "Ir a",
+		"currencies": "Monedas",
+		"opensWeb": "Se abre en la web",
+		"import": "Importar",
+		"docs": "Documentación",
+		"releaseNotes": "Notas de la versión",
+		"version": "Versión {version}"
 	},
 	"activity": {
 		"title": "Actividad",
@@ -1248,7 +1274,17 @@
 		"noRate": "Sin cotización",
 		"homeWithRate": "{amount} ({rate})",
 		"approx": "≈ {amount}",
-		"yourShare": "Tu parte: {amount}"
+		"yourShare": "Tu parte: {amount}",
+		"rateTypes": {
+			"official": "Oficial",
+			"blue": "Blue",
+			"card": "Tarjeta",
+			"mep": "MEP",
+			"ccl": "CCL",
+			"crypto": "Cripto",
+			"market": "Mercado",
+			"custom": "Personalizado"
+		}
 	},
 	"home": {
 		"title": "Inicio",

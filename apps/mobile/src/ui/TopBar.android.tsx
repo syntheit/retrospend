@@ -12,7 +12,7 @@ import type { TopBarProps } from "./types";
  */
 export function TopBar({
 	title,
-	accountInitials,
+	account,
 	accountLabel,
 	onAccountPress,
 }: TopBarProps) {
@@ -25,9 +25,9 @@ export function TopBar({
 				<PaneBar
 					title={title}
 					trailing={
-						accountInitials ? (
+						account ? (
 							<AccountButton
-								initials={accountInitials}
+								face={account}
 								label={accountLabel ?? title}
 								onPress={onAccountPress}
 							/>
@@ -45,10 +45,10 @@ export function TopBar({
 				headerShadowVisible: false,
 				headerStyle: { backgroundColor: color.bg },
 				headerTintColor: color.fg,
-				headerRight: accountInitials
+				headerRight: account
 					? () => (
 							<AccountButton
-								initials={accountInitials}
+								face={account}
 								label={accountLabel ?? title}
 								onPress={onAccountPress}
 							/>

@@ -17,7 +17,7 @@ import type { TopBarProps } from "./types";
  */
 export function TopBar({
 	title,
-	accountInitials,
+	account,
 	accountLabel,
 	onAccountPress,
 }: TopBarProps) {
@@ -28,7 +28,7 @@ export function TopBar({
 	// The iPad has no tab-bar plus (its bar is a top bar that overflows), so
 	// the toolbar carries it next to the account button.
 	const showAdd = Platform.OS === "ios" && Platform.isPad && add !== null;
-	const hasTrailing = showAdd || accountInitials;
+	const hasTrailing = showAdd || account;
 	const buttons = () => (
 		<View
 			style={{
@@ -43,9 +43,9 @@ export function TopBar({
 					onPress={() => add?.open("expense")}
 				/>
 			) : null}
-			{accountInitials ? (
+			{account ? (
 				<AccountButton
-					initials={accountInitials}
+					face={account}
 					label={accountLabel ?? title}
 					onPress={onAccountPress}
 				/>

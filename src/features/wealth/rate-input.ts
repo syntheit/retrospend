@@ -1,4 +1,4 @@
-import { parseRateText, rateToText } from "~/features/entry/rate-text";
+import { parseRateText, rateToText } from "@retrospend/domain/rate-text";
 import type { WealthAccount } from "./types";
 
 /**

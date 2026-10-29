@@ -45,8 +45,11 @@ export function ComposerShell({
 	amountError,
 	surface,
 	onKeypadRequest,
+	rate,
 	children,
 }: {
+	/** Under the amount: its exchange rate and its value at home, for another currency. */
+	rate?: ReactNode;
 	mode: EntryMode;
 	/** The modes to pick between; fewer than two hides the row (an edit). */
 	modes: EntryMode[];
@@ -208,6 +211,7 @@ export function ComposerShell({
 						</Text>
 					</Pressable>
 				</View>
+				{rate}
 				{amountError ? (
 					<Text
 						accessibilityRole="alert"

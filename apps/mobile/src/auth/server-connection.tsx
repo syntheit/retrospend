@@ -87,6 +87,18 @@ export function ServerConnectionProvider({
 	);
 }
 
+/**
+ * The connected server's address, or null when none is connected (or there
+ * is no provider, as in a test): pictures the server sends as paths load
+ * from it.
+ */
+export function useServerBaseUrl(): string | null {
+	const value = useContext(ServerConnectionContext);
+	return value?.connection.status === "connected"
+		? value.connection.baseUrl
+		: null;
+}
+
 export function useServerConnection(): ServerConnectionValue {
 	const value = useContext(ServerConnectionContext);
 	if (!value) {

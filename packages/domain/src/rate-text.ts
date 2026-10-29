@@ -6,7 +6,7 @@
  * decimals the server books. Past 12 it rounds half-even in text (no float)
  * and the field shows the rounded rate, so what is booked is what is shown.
  */
-import { decimalSeparator, groupSeparator } from "@retrospend/domain/parse";
+import { decimalSeparator, groupSeparator } from "./parse";
 
 const MAX_DECIMALS = 12;
 
@@ -49,9 +49,7 @@ function roundHalfEven(
 	const above = head > "5" || (head === "5" && /[1-9]/.test(rest.slice(1)));
 	const tie = head === "5" && !above;
 	const up = above || (tie && kept % 2n === 1n);
-	const digits = (kept + (up ? 1n : 0n))
-		.toString()
-		.padStart(decimals + 1, "0");
+	const digits = (kept + (up ? 1n : 0n)).toString().padStart(decimals + 1, "0");
 	return [
 		digits.slice(0, -decimals),
 		digits.slice(-decimals).replace(/0+$/, ""),

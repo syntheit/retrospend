@@ -1,4 +1,6 @@
+import { fromMinor, money } from "@retrospend/domain/money-minor";
 import { decimalSeparator } from "@retrospend/domain/parse";
+import { parseRateText } from "@retrospend/domain/rate-text";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, Text, View } from "react-native";
@@ -13,15 +15,18 @@ import { useToast } from "@/ui/Toast";
 import { ChangesBlock } from "./ChangesBlock";
 import { ComposerShell, type EntryMode } from "./ComposerShell";
 import {
+	amountMinor,
 	buildExpenseUpdate,
 	buildExpenseWrite,
 	buildIncomeWrite,
 	buildTransferWrite,
+	DEFAULT_RATE,
 	type ExpenseDraft,
 	expenseErrors,
 	expenseFromEntry,
 	type IncomeDraft,
 	incomeErrors,
+	isPersonal,
 	knownPeople,
 	newExpenseDraft,
 	newIncomeDraft,
@@ -40,11 +45,13 @@ import {
 	useEditEntry,
 	useEntryCatalog,
 	useEntryPreview,
+	useRateOptions,
 } from "./hooks";
 import { IncomeFields } from "./IncomeFields";
 import { PlanBlock } from "./PlanBlock";
 import { planOf, splitSharesOf } from "./preview";
 import { type SaveOutcome, saveEntry, undoSaved } from "./queue";
+import { RateField } from "./RateField";
 import { SyncIssues } from "./SyncIssues";
 import { undoWrite } from "./send";
 import { TransferFields } from "./TransferFields";
@@ -322,6 +329,40 @@ function Form({
 				? patchIncome({ amountText })
 				: patchTransfer({ amountText });
 
+	// Another currency than home: the rate and the value at home, as the server books them.
+	const homeCurrency = me?.homeCurrency ?? "USD";
+	const rated =
+		mode === "expense" ? expense : mode === "income" ? income : null;
+	const foreign = rated !== null && rated.currency !== homeCurrency;
+	const typedMinor = rated
+		? amountMinor(rated.amountText, locale, rated.currency)
+		: null;
+	const rateOptions = useRateOptions(
+		{
+			currency: rated?.currency ?? homeCurrency,
+			date: rated?.date ?? today(),
+			amount:
+				rated && typedMinor
+					? fromMinor(money(typedMinor, rated.currency))
+					: null,
+			customRate:
+				rated?.custom === true ? parseRateText(rated.customText, locale) : null,
+		},
+		foreign,
+	);
+	const rateProblem =
+		mode === "expense"
+			? expenseProblems.rate
+			: mode === "income"
+				? incomeProblems.rate
+				: undefined;
+	// A split books at your default type: the type is stated, not picked.
+	const sharedExpense =
+		mode === "expense" &&
+		(expense.editing
+			? expense.editing.source === "shared"
+			: !isPersonal(expense));
+
 	// One key per edit body, kept across retries of the same body (R30).
 	const editKey = useRef({ body: "", key: "" });
 	function keyFor(body: string) {
@@ -381,7 +422,7 @@ function Form({
 				...(!expense.amountText &&
 				project &&
 				catalog.currencies.includes(project.currency)
-					? { currency: project.currency }
+					? { currency: project.currency, ...DEFAULT_RATE }
 					: {}),
 			});
 		} catch {
@@ -503,8 +544,8 @@ function Form({
 			onAmountChange={patchAmount}
 			onCurrencyChange={(currency) =>
 				mode === "income"
-					? patchIncome({ currency, amountText: "" })
-					: patchExpense({ currency, amountText: "" })
+					? patchIncome({ currency, amountText: "", ...DEFAULT_RATE })
+					: patchExpense({ currency, amountText: "", ...DEFAULT_RATE })
 			}
 			onKeypadRequest={() => setTyping(false)}
 			onModeChange={(next) => {
@@ -512,6 +553,25 @@ function Form({
 				setTried(false);
 				onModeChange?.(next);
 			}}
+			rate={
+				rated && foreign ? (
+					<RateField
+						choice={rated}
+						currency={rated.currency}
+						error={tried && rateProblem === true}
+						homeCurrency={homeCurrency}
+						keptHome={
+							mode === "expense" ? (expense.editing?.home ?? null) : null
+						}
+						onChange={(patch) =>
+							mode === "income" ? patchIncome(patch) : patchExpense(patch)
+						}
+						onTypingChange={setTyping}
+						options={rateOptions}
+						shared={sharedExpense}
+					/>
+				) : null
+			}
 			recentCurrencies={catalog.recentCurrencies}
 			surface={surface}
 			typing={typing}

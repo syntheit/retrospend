@@ -5,6 +5,7 @@ import {
 	buildExpenseWrite,
 	buildIncomeWrite,
 	buildTransferWrite,
+	DEFAULT_RATE,
 	expenseErrors,
 	expenseFromEntry,
 	incomeErrors,
@@ -12,6 +13,8 @@ import {
 	newExpenseDraft,
 	newIncomeDraft,
 	newTransferDraft,
+	pickCategory,
+	rateFields,
 	sharedFromDetail,
 	splitRows,
 	transferErrors,
@@ -33,8 +36,22 @@ const martin: EntryPerson = {
 };
 const catalog: EntryCatalog = {
 	categories: [
-		{ id: "food", name: "Food", icon: "Utensils", tone: 3, uses: 12 },
-		{ id: "home", name: "Home", icon: null, tone: 7, uses: 3 },
+		{
+			id: "food",
+			name: "Food",
+			icon: "Utensils",
+			tone: 3,
+			uses: 12,
+			excludeByDefault: false,
+		},
+		{
+			id: "home",
+			name: "Home",
+			icon: null,
+			tone: 7,
+			uses: 3,
+			excludeByDefault: true,
+		},
 	],
 	people: [lucia, martin],
 	currencies: ["ARS", "USD"],
@@ -321,7 +338,8 @@ describe("editing a saved expense", () => {
 		const same = buildExpenseUpdate(d, { locale: "en-US", catalog });
 		expect(same?.body.rateType).toBe("blue");
 		const other = buildExpenseUpdate(
-			{ ...d, currency: "USD", amountText: "5" },
+			// A new currency clears the picked rate, as the composer does.
+			{ ...d, ...DEFAULT_RATE, currency: "USD", amountText: "5" },
 			{ locale: "en-US", catalog },
 		);
 		expect(other?.body.rateType).toBeUndefined();
@@ -682,5 +700,109 @@ describe("editing a split expense", () => {
 			category: true,
 		});
 		expect(buildExpenseUpdate(stray, { locale: "en-US", catalog })).toBeNull();
+	});
+});
+
+describe("the exchange rate of a write", () => {
+	const usd = {
+		...newExpenseDraft({ ...base, currency: "USD" }),
+		amountText: "12",
+		categoryId: "food",
+	};
+	const input = { locale: "en-US", meId: "me", catalog };
+
+	it("sends nothing until a rate is picked: the server books your default type", () => {
+		expect(rateFields(usd, "en-US")).toEqual({});
+		const body = buildExpenseWrite(usd, input)?.body;
+		expect(body).not.toHaveProperty("rateType");
+		expect(body).not.toHaveProperty("customRate");
+	});
+
+	it("sends the picked type", () => {
+		const body = buildExpenseWrite({ ...usd, rateType: "mep" }, input)?.body;
+		expect(body).toMatchObject({ rateType: "mep" });
+	});
+
+	it("sends a typed rate as plain decimal text, read in the person's marks", () => {
+		const typed = { ...usd, custom: true, customText: "1.465,5" };
+		expect(rateFields(typed, "es-AR")).toEqual({ customRate: "1465.5" });
+		const body = buildExpenseWrite(typed, { ...input, locale: "es-AR" })?.body;
+		expect(body).toMatchObject({ customRate: "1465.5" });
+		expect(body).not.toHaveProperty("rateType");
+	});
+
+	it("waits for a typed rate that reads as one: never 1, never zero", () => {
+		for (const customText of ["", "0", "abc"]) {
+			const typed = { ...usd, custom: true, customText };
+			expect(rateFields(typed, "en-US")).toBeNull();
+			expect(buildExpenseWrite(typed, input)).toBeNull();
+			expect(expenseErrors(typed, "en-US").rate).toBe(true);
+		}
+	});
+
+	it("leaves the rate out of a split: it books at your default type", () => {
+		const body = buildExpenseWrite(
+			{ ...usd, rateType: "mep", withKeys: ["user:lucia1"] },
+			input,
+		)?.body;
+		expect(body).not.toHaveProperty("rateType");
+	});
+
+	it("sends income's picked rate and its note", () => {
+		const income = {
+			...newIncomeDraft({ ...base, currency: "USD", usePlan: false }),
+			amountText: "500",
+			source: "Client",
+			note: " March invoice ",
+			rateType: "official",
+		};
+		expect(
+			buildIncomeWrite(income, { locale: "en-US", hasBudget: false })?.body,
+		).toMatchObject({ rateType: "official", description: "March invoice" });
+		const typed = { ...income, rateType: null, custom: true, customText: "x" };
+		expect(
+			buildIncomeWrite(typed, { locale: "en-US", hasBudget: false }),
+		).toBeNull();
+		expect(incomeErrors(typed, "en-US").rate).toBe(true);
+	});
+});
+
+describe("picking a category", () => {
+	const fresh = newExpenseDraft(base);
+	const [food, home] = catalog.categories;
+
+	it("turns Exclude on for a category that starts excluded, and off again", () => {
+		expect(pickCategory(fresh, home, "home")).toEqual({
+			categoryId: "home",
+			exclude: true,
+			excludeAuto: true,
+		});
+		expect(pickCategory(fresh, food, "food")).toEqual({
+			categoryId: "food",
+			exclude: false,
+			excludeAuto: false,
+		});
+	});
+
+	it("leaves Exclude alone once the person flipped it, and on an edit", () => {
+		expect(
+			pickCategory({ ...fresh, excludeTouched: true }, home, "home"),
+		).toEqual({ categoryId: "home" });
+		const saved = expenseFromEntry(
+			{
+				id: ID,
+				title: "Rent",
+				amount: { minor: 100, currency: "ARS" },
+				rateType: null,
+				date: "2026-10-20",
+				categoryId: "food",
+				location: null,
+				description: null,
+				amortizeOver: null,
+				excludeFromAnalytics: false,
+			},
+			"en-US",
+		);
+		expect(pickCategory(saved, home, "home")).toEqual({ categoryId: "home" });
 	});
 });

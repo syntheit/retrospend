@@ -3,6 +3,8 @@
 // tsc resolves `./X` to the .ios file (tsconfig moduleSuffixes); Metro picks
 // the file for the running platform.
 
+import type { Face } from "./Avatar";
+
 export interface MenuItem {
 	id: string;
 	label: string;
@@ -48,8 +50,8 @@ export interface AddButtonProps {
 
 export interface TopBarProps {
 	title: string;
-	/** The signed-in person's initials, for the account button. */
-	accountInitials?: string;
+	/** The signed-in person, for the account button: their picture, else initials. */
+	account?: Face;
 	accountLabel?: string;
 	onAccountPress?: () => void;
 }

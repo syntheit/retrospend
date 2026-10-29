@@ -3,7 +3,7 @@ import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { DateField } from "@/ui/DateField";
 import { Chip } from "./Chip";
-import type { IncomeDraft, IncomeErrors } from "./draft";
+import { type IncomeDraft, type IncomeErrors, NOTE_LIMIT } from "./draft";
 import { FieldError, FieldLabel, TextField } from "./ExpenseFields";
 import { Face } from "./Face";
 import { type EntryCatalog, personKey } from "./types";
@@ -11,7 +11,7 @@ import { type EntryCatalog, personKey } from "./types";
 /**
  * Add income: who paid you, and whether the money waits as Not planned yet
  * or goes by your plan. No account is picked here, so it lands in your
- * budget and your accounts do not change.
+ * budget and your accounts do not change. A note says what it was for.
  */
 export function IncomeFields({
 	draft,
@@ -90,6 +90,14 @@ export function IncomeFields({
 					</View>
 				</View>
 			) : null}
+			<TextField
+				label={t("note")}
+				maxLength={NOTE_LIMIT}
+				onChangeText={(note) => onChange({ note })}
+				onTypingChange={onTypingChange}
+				placeholder={t("notePlaceholder")}
+				value={draft.note}
+			/>
 		</>
 	);
 }

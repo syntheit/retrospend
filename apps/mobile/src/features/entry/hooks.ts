@@ -147,3 +147,62 @@ export function useEditEntry(
 	}, [api, id, shared]);
 	return state;
 }
+
+export type RateOptions = Awaited<
+	ReturnType<RetrospendClient["entry"]["rateOptions"]>
+>;
+
+/** What the rate options are read for: the pair, the day and what was typed. */
+export interface RateQuery {
+	currency: string;
+	date: string;
+	/** The amount as decimal text, so each type comes back booked; null before one is typed. */
+	amount: string | null;
+	/** A typed rate as decimal text, booked the way Save books it. */
+	customRate: string | null;
+}
+
+/**
+ * Every rate type the pair offers, with its rate and the amount booked at
+ * it, from GET /entry/rate-options (the server's numbers, shown as sent).
+ * Null in the home currency, offline, or before the first answer. While a
+ * newer question is out the last answer for the same currency stays, so the
+ * line does not flicker as an amount is typed.
+ */
+export function useRateOptions(
+	query: RateQuery,
+	foreign: boolean,
+): RateOptions | null {
+	const { api } = useSession();
+	const [kept, setKept] = useState<{
+		currency: string;
+		options: RateOptions;
+	} | null>(null);
+	const { currency, date, amount, customRate } = query;
+	useEffect(() => {
+		if (!api || !foreign) return;
+		let cancelled = false;
+		const timer = setTimeout(() => {
+			api.entry
+				.rateOptions({
+					currency,
+					date,
+					...(amount ? { amount } : {}),
+					...(customRate ? { customRate } : {}),
+				})
+				.then(
+					(options) => {
+						if (!cancelled) setKept({ currency, options });
+					},
+					// Offline or refused: the preview below says why; the line waits.
+					() => {},
+				);
+		}, PREVIEW_DELAY_MS);
+		return () => {
+			cancelled = true;
+			clearTimeout(timer);
+		};
+	}, [api, foreign, currency, date, amount, customRate]);
+	// An answer for another currency is never shown for this one.
+	return foreign && kept?.currency === currency ? kept.options : null;
+}

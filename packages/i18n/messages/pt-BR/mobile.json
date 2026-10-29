@@ -188,7 +188,6 @@
 				"received": "Digite o que chegou como um valor, ou deixe vazio"
 			}
 		},
-		"moreDetails": "Mais detalhes",
 		"today": "Hoje",
 		"yesterday": "Ontem",
 		"note": "Nota",
@@ -207,6 +206,25 @@
 			"detail": "O que você digitou aqui não foi salvo e será perdido.",
 			"keep": "Continuar editando",
 			"replace": "Substituir"
+		},
+		"details": "Detalhes",
+		"excludeAuto": "Excluído automaticamente pela categoria",
+		"rate": {
+			"title": "Câmbio",
+			"trigger": "Cotação {type}",
+			"triggerLabel": "Câmbio, {type}",
+			"find": "Buscar uma cotação",
+			"empty": "Nenhuma cotação encontrada",
+			"types": "Cotações de {currency}",
+			"custom": "Cotação personalizada",
+			"customUnit": "1 {currency} =",
+			"customLabel": "Cotação personalizada, 1 {currency} em {home}",
+			"missing": "Sem cotação de {currency} nesse dia.",
+			"homeLabel": "Na sua moeda principal, {amount}",
+			"fixed": "Sua cotação padrão: {type}",
+			"sharedFixed": "Despesas divididas usam sua cotação padrão.",
+			"error": "Digite uma cotação maior que zero",
+			"enterRate": "Digitar cotação"
 		}
 	},
 	"pickers": {
@@ -308,7 +326,15 @@
 		"signOut": "Sair",
 		"signOutDiscard": "Sair e descartar",
 		"unsynced": "{count, plural, one {# alteração não sincronizada. Ao sair, ela será descartada.} other {# alterações não sincronizadas. Ao sair, elas serão descartadas.}}",
-		"settings": "Ajustes"
+		"settings": "Ajustes",
+		"profileHint": "Abre seu perfil nos Ajustes",
+		"goTo": "Ir para",
+		"currencies": "Moedas",
+		"opensWeb": "Abre na web",
+		"import": "Importar",
+		"docs": "Documentação",
+		"releaseNotes": "Notas da versão",
+		"version": "Versão {version}"
 	},
 	"activity": {
 		"title": "Atividade",
@@ -1248,7 +1274,17 @@
 		"noRate": "Sem cotação",
 		"homeWithRate": "{amount} ({rate})",
 		"approx": "≈ {amount}",
-		"yourShare": "Sua parte: {amount}"
+		"yourShare": "Sua parte: {amount}",
+		"rateTypes": {
+			"official": "Oficial",
+			"blue": "Blue",
+			"card": "Cartão",
+			"mep": "MEP",
+			"ccl": "CCL",
+			"crypto": "Cripto",
+			"market": "Mercado",
+			"custom": "Personalizada"
+		}
 	},
 	"home": {
 		"title": "Início",
