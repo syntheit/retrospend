@@ -219,7 +219,7 @@ describe("Set a target", () => {
 		press(tree, "Monthly");
 		press(tree, "2");
 		press(tree, "5");
-		press(tree, "Three zeros");
+		for (const k of ["0", "0", "0"]) press(tree, k);
 		await wait(400);
 		const previews = calls.filter((c) => c.route === "previewSetTarget");
 		expect(previews).toHaveLength(1);
@@ -303,7 +303,7 @@ describe("Can I afford it", () => {
 		});
 		press(tree, "3");
 		press(tree, "0");
-		press(tree, "Three zeros");
+		for (const k of ["0", "0", "0"]) press(tree, k);
 		// Still typing: nothing asked yet.
 		expect(calls.filter((c) => c.route === "afford")).toHaveLength(0);
 		await wait(450);

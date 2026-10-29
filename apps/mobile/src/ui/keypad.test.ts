@@ -32,13 +32,14 @@ describe("keypadLayout", () => {
 		expect(keypadLayout("es-AR")[3]?.[0]).toBe(",");
 	});
 
-	it("has backspace and the triple zero key", () => {
+	it("is the twelve keys of the number pad, ending in backspace", () => {
 		const keys = keypadLayout("en-US").flat();
-		expect(keys).toContain(BACKSPACE);
-		expect(keys).toContain(TRIPLE_ZERO);
+		expect(keys).toHaveLength(12);
+		expect(keys.at(-1)).toBe(BACKSPACE);
+		expect(keys).not.toContain(TRIPLE_ZERO);
 	});
 
-	it("types 125 000 with the triple zero key", () => {
+	it("still takes three zeros as one key", () => {
 		let draft = "";
 		for (const key of ["1", "2", "5", TRIPLE_ZERO]) {
 			draft = applyKey(draft, key, "en-US", "ARS");

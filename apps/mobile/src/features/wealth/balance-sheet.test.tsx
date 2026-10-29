@@ -172,7 +172,7 @@ describe("Update balance", () => {
 		expect(disabled(tree, "Update balance")).toBe(true);
 		press(tree, "1");
 		press(tree, "9");
-		press(tree, "Three zeros");
+		for (const k of ["0", "0", "0"]) press(tree, k);
 		await wait(400);
 		const previews = calls.filter((c) => c.route === "preview");
 		expect(previews.at(-1)?.input).toEqual({

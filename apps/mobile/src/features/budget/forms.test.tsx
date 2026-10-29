@@ -212,7 +212,7 @@ describe("Assign money", () => {
 		expect(disabled(tree, "Assign")?.disabled).toBe(true);
 		press(tree, "5");
 		press(tree, "0");
-		press(tree, "Three zeros");
+		for (const k of ["0", "0", "0"]) press(tree, k);
 		// Typing is still going: nothing has been asked of the server yet.
 		expect(calls).toEqual([]);
 		expect(disabled(tree, "Assign")?.disabled).toBe(true);
