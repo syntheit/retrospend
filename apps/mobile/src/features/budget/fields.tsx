@@ -1,52 +1,10 @@
 import type { ReactNode } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
 import { Text } from "@/ui/Text";
 
-/** A labeled single-line text field, at the money input's height. */
-export function TextField({
-	label,
-	value,
-	onChangeText,
-	invalid,
-	maxLength,
-	keyboardType,
-}: {
-	label: string;
-	value: string;
-	onChangeText: (text: string) => void;
-	invalid?: boolean;
-	maxLength?: number;
-	keyboardType?: "default" | "decimal-pad";
-}) {
-	const { color, radius, size, space, type } = useTheme();
-	return (
-		<View style={{ gap: space[2] }}>
-			<Text tone="fg2" variant="small">
-				{label}
-			</Text>
-			<TextInput
-				accessibilityLabel={label}
-				autoCorrect={false}
-				keyboardType={keyboardType}
-				maxLength={maxLength}
-				onChangeText={onChangeText}
-				style={{
-					minHeight: size.touchMin.phone,
-					paddingHorizontal: space[3],
-					borderRadius: radius.ctl,
-					borderWidth: 1,
-					borderColor: invalid ? color.danger : color.lineStrong,
-					backgroundColor: color.surface,
-					color: color.fg,
-					fontSize: type.body.size,
-				}}
-				value={value}
-			/>
-		</View>
-	);
-}
+export { TextField } from "@/ui/TextField";
 
 export interface Choice {
 	id: string;

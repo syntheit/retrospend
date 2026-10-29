@@ -533,7 +533,8 @@
 			"targetAction": "Fixer un objectif",
 			"editAction": "Renommer ou déplacer",
 			"targetTitle": "Objectif de {name}",
-			"editTitle": "Modifier {name}"
+			"editTitle": "Modifier {name}",
+			"more": "Plus"
 		},
 		"assign": {
 			"assignedNow": "Attribué maintenant",

@@ -1,18 +1,19 @@
+import type { RetrospendClient } from "@retrospend/api-client";
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { Line, Note, SheetBody } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
+import { Line, Note } from "@/features/write/parts";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { useApi } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { Picker } from "@/ui/Picker";
-import { Sheet } from "@/ui/Sheet";
-import { BudgetChanges } from "./BudgetChanges";
+import type { SheetDetent } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { planBody, type RestChoice } from "./bodies";
 import { monthDate } from "./months";
 import { type BudgetMonth, envelopeById, type FillPlan } from "./source";
+import { FormSheet, WriteForm } from "./WriteSheet";
 
 /** Where the money for each job comes from: the first line that names the envelope. */
 export function reasonOf(plan: FillPlan, envelopeId: string): string {
@@ -28,11 +29,14 @@ export function reasonOf(plan: FillPlan, envelopeId: string): string {
 export function UsePlanSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
@@ -40,9 +44,8 @@ export function UsePlanSheet({
 	const tb = useTranslations("mobile.budget");
 	const format = useFormatter();
 	const api = useApi();
-	const announce = useUndoToast("budget");
 	const money = useMoneyText();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const [plan, setPlan] = useState<FillPlan | null>(null);
 	const [loadFailed, setLoadFailed] = useState(false);
 	const [rest, setRest] = useState<RestChoice>("LEAVE");
@@ -72,29 +75,6 @@ export function UsePlanSheet({
 	}, [visible]);
 	const input = bodyKey ? planBody({ batchId: idFor("batch"), rest }) : null;
 
-	const flow = useMoneyWrite({
-		input: visible ? input : null,
-		idempotencyKey: input?.batchId ?? null,
-		preview: (body) => (api ? api.budget.previewUsePlan(body) : noSession()),
-		write: (body, key) => {
-			if (!api) return noSession();
-			// biome-ignore lint/correctness/useHookAtTopLevel: `usePlan` is the API route's name, not a hook
-			return api.budget.usePlan(body, { context: { idempotencyKey: key } });
-		},
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out) return;
-		const count = new Set(out.result.lines.map((l) => l.envelopeId)).size;
-		announce({
-			message: t("toast", { count }),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
 	const restLabel = (option: FillPlan["restOptions"][number]) => {
 		if (option.choice === "SAVE") {
 			const name = envelopeById(data, option.envelopeId)?.name ?? "";
@@ -112,74 +92,79 @@ export function UsePlanSheet({
 	};
 
 	return (
-		<Sheet
-			detents={["large"]}
+		<FormSheet
+			detent={detent}
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}
 		>
-			<SheetBody>
-				{loadFailed ? (
-					<Note tone="attention">{t("loadError")}</Note>
-				) : !plan ? (
-					<Note>{tb("preview.checking")}</Note>
-				) : jobs.length === 0 ? (
-					<Note>{t("met")}</Note>
-				) : (
-					<WriteFrame
-						busy={flow.committing}
-						changes={
-							<BudgetChanges
-								data={data}
-								preview={flow.preview}
-								status={flow.status}
-							/>
-						}
-						failed={flow.commitFailed}
-						onSubmit={submit}
-						ready={flow.status === "ready"}
-						submitLabel={t("use")}
-					>
-						<Note>{t("lead", { amount: money(plan.available) })}</Note>
-						<View>
-							{jobs.map((job) => {
-								const name =
-									envelopeById(data, job.envelopeId)?.name ??
-									t("envelopeFallback");
-								const why = t(
-									`why.${reasonOf(plan, job.envelopeId)}` as "why.PLAN",
-								);
-								return (
-									<Line
-										key={job.envelopeId}
-										label={`${name}, ${why}`}
-										value={money(job.amount)}
-									/>
-								);
-							})}
-						</View>
-						{plan.restOptions.length > 1 && plan.rest.minor > 0 ? (
-							<View style={{ gap: space[1] }}>
-								<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-									{t("restTitle", { amount: money(plan.rest) })}
-								</Text>
-								<Picker
-									onChange={(value) => setRest(value as RestChoice)}
-									options={plan.restOptions.map((option) => ({
-										value: option.choice,
-										label: restLabel(option),
-									}))}
-									value={rest}
+			{loadFailed ? (
+				<Note tone="attention">{t("loadError")}</Note>
+			) : !plan ? (
+				<Note>{tb("preview.checking")}</Note>
+			) : jobs.length === 0 ? (
+				<Note>{t("met")}</Note>
+			) : (
+				<WriteForm
+					active={visible}
+					data={data}
+					idempotencyKey={input?.batchId ?? null}
+					input={input}
+					message={(
+						out: Awaited<ReturnType<RetrospendClient["budget"]["usePlan"]>>,
+					) =>
+						t("toast", {
+							count: new Set(out.result.lines.map((l) => l.envelopeId)).size,
+						})
+					}
+					onClose={onClose}
+					onDone={onDone}
+					preview={(client, body) => client.budget.previewUsePlan(body)}
+					submitLabel={t("use")}
+					write={(client, body, key) =>
+						// biome-ignore lint/correctness/useHookAtTopLevel: `usePlan` is the API route's name, not a hook
+						client.budget.usePlan(body, { context: { idempotencyKey: key } })
+					}
+				>
+					<Note>{t("lead", { amount: money(plan.available) })}</Note>
+					<View>
+						{jobs.map((job) => {
+							const name =
+								envelopeById(data, job.envelopeId)?.name ??
+								t("envelopeFallback");
+							const why = t(
+								`why.${reasonOf(plan, job.envelopeId)}` as "why.PLAN",
+							);
+							return (
+								<Line
+									key={job.envelopeId}
+									label={`${name}, ${why}`}
+									value={money(job.amount)}
 								/>
-							</View>
-						) : plan.rest.minor > 0 ? (
-							<Note>
-								{t("restStays", { amount: money(plan.rest), pool: poolName })}
-							</Note>
-						) : null}
-					</WriteFrame>
-				)}
-			</SheetBody>
-		</Sheet>
+							);
+						})}
+					</View>
+					{plan.restOptions.length > 1 && plan.rest.minor > 0 ? (
+						<View style={{ gap: space[1] }}>
+							<Text tone="fg2" variant="small">
+								{t("restTitle", { amount: money(plan.rest) })}
+							</Text>
+							<Picker
+								onChange={(value) => setRest(value as RestChoice)}
+								options={plan.restOptions.map((option) => ({
+									value: option.choice,
+									label: restLabel(option),
+								}))}
+								value={rest}
+							/>
+						</View>
+					) : plan.rest.minor > 0 ? (
+						<Note>
+							{t("restStays", { amount: money(plan.rest), pool: poolName })}
+						</Note>
+					) : null}
+				</WriteForm>
+			)}
+		</FormSheet>
 	);
 }

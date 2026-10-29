@@ -1,20 +1,14 @@
 import { useState } from "react";
 import { useTranslations } from "use-intl";
 import { Note } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import {
-	type FormProps,
-	noSession,
-	useApi,
-	WriteFrame,
-} from "@/features/write/WriteFrame";
-import { BudgetChanges } from "./BudgetChanges";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { FormProps } from "@/features/write/WriteFrame";
 import { CategoryList, loadCategories } from "./CategoryList";
 import { ChoiceList, TextField } from "./fields";
 import { updateEnvelopeBody } from "./moreBodies";
 import { groupChoices } from "./NewEnvelopeSheet";
 import { useSheetRead } from "./useSheetRead";
+import { WriteForm } from "./WriteSheet";
 
 /**
  * Rename an envelope or move it to another group. Only what changed is sent;
@@ -22,8 +16,6 @@ import { useSheetRead } from "./useSheetRead";
  */
 export function EditForm({ data, envelope, onDone, onClose }: FormProps) {
 	const t = useTranslations("mobile.budget.editEnvelope");
-	const api = useApi();
-	const announce = useUndoToast("budget");
 	const [name, setName] = useState(envelope.name);
 	const [group, setGroup] = useState(envelope.groupId ?? "none");
 	const groupId = group === "none" ? null : group;
@@ -44,43 +36,22 @@ export function EditForm({ data, envelope, onDone, onClose }: FormProps) {
 	);
 	const input = body ? { ...body, id: idFor("edit") } : null;
 
-	const flow = useMoneyWrite({
-		input,
-		idempotencyKey: input?.id ?? null,
-		preview: (b) => (api ? api.budget.previewUpdateEnvelope(b) : noSession()),
-		write: (b, key) =>
-			api
-				? api.budget.updateEnvelope(b, { context: { idempotencyKey: key } })
-				: noSession(),
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out) return;
-		announce({
-			message: t("toast", { name: name.trim() || envelope.name }),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
 	return (
-		<WriteFrame
-			busy={flow.committing}
-			changes={
-				<BudgetChanges
-					data={data}
-					preview={flow.preview}
-					status={flow.status}
-				/>
-			}
-			failed={flow.commitFailed}
-			onSubmit={submit}
-			ready={flow.status === "ready"}
+		<WriteForm
+			data={data}
+			idempotencyKey={input?.id ?? null}
+			input={input}
+			message={() => t("toast", { name: name.trim() || envelope.name })}
+			onClose={onClose}
+			onDone={onDone}
+			preview={(api, b) => api.budget.previewUpdateEnvelope(b)}
 			submitLabel={t("submit")}
+			write={(api, b, key) =>
+				api.budget.updateEnvelope(b, { context: { idempotencyKey: key } })
+			}
 		>
 			<TextField
+				autoCapitalize="sentences"
 				label={t("name")}
 				maxLength={64}
 				onChangeText={setName}
@@ -105,6 +76,6 @@ export function EditForm({ data, envelope, onDone, onClose }: FormProps) {
 					selected={new Set(picked)}
 				/>
 			) : null}
-		</WriteFrame>
+		</WriteForm>
 	);
 }

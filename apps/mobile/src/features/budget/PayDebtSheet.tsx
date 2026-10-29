@@ -5,21 +5,14 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { isLiability } from "@/features/wealth/accounts";
 import type { Account } from "@/features/wealth/source";
 import { minorOf, readAmount } from "@/features/write/amount";
-import {
-	AmountField,
-	Note,
-	SheetBody,
-	useAmountLocale,
-} from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
-import { Sheet } from "@/ui/Sheet";
-import { BudgetChanges } from "./BudgetChanges";
+import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { SheetDetent } from "@/ui/Sheet";
 import { ChoiceList, TextField } from "./fields";
 import { debtPaymentBody } from "./moreBodies";
 import { type BudgetMonth, envelopesOf } from "./source";
 import { useSheetRead } from "./useSheetRead";
+import { FormSheet, WriteForm } from "./WriteSheet";
 
 const NONE = "none";
 const POOL = "pool";
@@ -44,19 +37,20 @@ export function splitAccounts(accounts: readonly Account[], currency: string) {
 export function PayDebtSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.payDebt");
 	const tp = useTranslations("mobile.budget.pool");
 	const { api: client } = useSession();
-	const api = useApi();
-	const announce = useUndoToast("budget");
 	const money = useMoneyText();
 	const locale = useAmountLocale();
 	const currency = data.book.currency;
@@ -117,107 +111,87 @@ export function PayDebtSheet({
 				interestMinor: interestMinor ?? 0,
 				currency,
 			});
-	const flow = useMoneyWrite({
-		input: visible ? body : null,
-		idempotencyKey: body?.id ?? null,
-		preview: (b) =>
-			api ? api.budget.previewRecordDebtPayment(b) : noSession(),
-		write: (b, k) =>
-			api
-				? api.budget.recordDebtPayment(b, { context: { idempotencyKey: k } })
-				: noSession(),
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out || minor === null) return;
-		announce({
-			message: t("toast", { amount: money({ minor, currency }) }),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
 	return (
-		<Sheet
-			detents={["large"]}
+		<FormSheet
+			detent={detent}
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}
 		>
-			<SheetBody>
-				{accounts !== null && debts.length === 0 ? (
-					<Note>{t("noDebts", { currency })}</Note>
-				) : (
-					<WriteFrame
-						busy={flow.committing}
-						changes={
-							<BudgetChanges
-								data={data}
-								preview={flow.preview}
-								status={flow.status}
-							/>
-						}
-						failed={flow.commitFailed}
-						onSubmit={submit}
-						ready={flow.status === "ready"}
-						submitLabel={t("submit")}
-					>
-						<ChoiceList
-							choices={debts.map((a) => ({
-								id: a.id,
-								label: a.name,
-								detail: money(a.balance, { sign: "never" }),
-							}))}
-							label={t("debt")}
-							onPress={setDebt}
-							selected={new Set(liabilityId ? [liabilityId] : [])}
-						/>
-						<AmountField
-							currency={currency}
-							draft={draft}
-							entered={entered}
-							label={t("amount")}
-							onDraftChange={setDraft}
-						/>
-						<TextField
-							invalid={interestBad}
-							keyboardType="decimal-pad"
-							label={t("interest")}
-							onChangeText={setInterestText}
-							value={interestText}
-						/>
-						<Note>
-							{expected
-								? `${t("interestEstimate", { amount: money(expected) })} ${t("interestHint")}`
-								: t("interestHint")}
-						</Note>
-						<ChoiceList
-							choices={[
-								{ id: NONE, label: t("notTracked") },
-								...sources.map((a) => ({ id: a.id, label: a.name })),
-							]}
-							label={t("from")}
-							onPress={setSource}
-							selected={new Set([source])}
-						/>
-						<ChoiceList
-							choices={[
-								{ id: POOL, label: tp(data.toAssign.poolName) },
-								...envelopesOf(data).map((e) => ({
-									id: e.id,
-									label: e.name,
-									detail: money(e.left),
-								})),
-							]}
-							label={t("envelope")}
-							onPress={setEnvelope}
-							selected={new Set([envelope])}
-						/>
-					</WriteFrame>
-				)}
-			</SheetBody>
-		</Sheet>
+			{accounts !== null && debts.length === 0 ? (
+				<Note>{t("noDebts", { currency })}</Note>
+			) : (
+				<WriteForm
+					active={visible}
+					data={data}
+					idempotencyKey={body?.id ?? null}
+					input={body}
+					message={() =>
+						t("toast", { amount: money({ minor: minor ?? 0, currency }) })
+					}
+					onClose={onClose}
+					onDone={onDone}
+					preview={(api, b) => api.budget.previewRecordDebtPayment(b)}
+					submitLabel={t("submit")}
+					write={(api, b, k) =>
+						api.budget.recordDebtPayment(b, {
+							context: { idempotencyKey: k },
+						})
+					}
+				>
+					<ChoiceList
+						choices={debts.map((a) => ({
+							id: a.id,
+							label: a.name,
+							detail: money(a.balance, { sign: "never" }),
+						}))}
+						label={t("debt")}
+						onPress={setDebt}
+						selected={new Set(liabilityId ? [liabilityId] : [])}
+					/>
+					<AmountField
+						currency={currency}
+						draft={draft}
+						entered={entered}
+						label={t("amount")}
+						onDraftChange={setDraft}
+					/>
+					<TextField
+						invalid={interestBad}
+						keyboardType="decimal-pad"
+						label={t("interest")}
+						onChangeText={setInterestText}
+						value={interestText}
+					/>
+					<Note>
+						{expected
+							? `${t("interestEstimate", { amount: money(expected) })} ${t("interestHint")}`
+							: t("interestHint")}
+					</Note>
+					<ChoiceList
+						choices={[
+							{ id: NONE, label: t("notTracked") },
+							...sources.map((a) => ({ id: a.id, label: a.name })),
+						]}
+						label={t("from")}
+						onPress={setSource}
+						selected={new Set([source])}
+					/>
+					<ChoiceList
+						choices={[
+							{ id: POOL, label: tp(data.toAssign.poolName) },
+							...envelopesOf(data).map((e) => ({
+								id: e.id,
+								label: e.name,
+								detail: money(e.left),
+							})),
+						]}
+						label={t("envelope")}
+						onPress={setEnvelope}
+						selected={new Set([envelope])}
+					/>
+				</WriteForm>
+			)}
+		</FormSheet>
 	);
 }

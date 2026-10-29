@@ -6,6 +6,7 @@ import { minorOf, readAmount } from "@/features/write/amount";
 import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { Segmented } from "@/ui/Segmented";
+import type { SheetDetent } from "@/ui/Sheet";
 import { ChoiceList } from "./fields";
 import { type BudgetMonth, envelopesOf } from "./source";
 import { useSheetRead } from "./useSheetRead";
@@ -34,12 +35,15 @@ export function WealthMoveSheet({
 	data,
 	direction,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	direction: WealthDirection;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
@@ -142,10 +146,11 @@ export function WealthMoveSheet({
 	return (
 		<WriteSheet
 			data={data}
+			detent={detent}
 			family={counting ? "income" : "transfers"}
 			idempotencyKey={body?.id ?? null}
 			input={body}
-			message={
+			message={() =>
 				counting
 					? t("toastCounted", { name: fromPlace?.name ?? "" })
 					: direction === "to"

@@ -533,7 +533,8 @@
 			"targetAction": "Задать цель",
 			"editAction": "Переименовать или перенести",
 			"targetTitle": "Цель: {name}",
-			"editTitle": "Изменить: {name}"
+			"editTitle": "Изменить: {name}",
+			"more": "Еще"
 		},
 		"assign": {
 			"assignedNow": "Назначено сейчас",

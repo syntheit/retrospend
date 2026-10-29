@@ -3,17 +3,11 @@ import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import { AmountField, Line, useAmountLocale } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import {
-	type FormProps,
-	noSession,
-	useApi,
-	WriteFrame,
-} from "@/features/write/WriteFrame";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { FormProps } from "@/features/write/WriteFrame";
 import { Segmented } from "@/ui/Segmented";
-import { BudgetChanges } from "./BudgetChanges";
 import { type LimitScope, limitBody } from "./bodies";
+import { WriteForm } from "./WriteSheet";
 
 /**
  * Limits books give each envelope a limit instead of assigned money. Set the
@@ -28,8 +22,6 @@ export function LimitForm({
 	onClose,
 }: FormProps) {
 	const t = useTranslations("mobile.budget.limit");
-	const api = useApi();
-	const announce = useUndoToast("budget");
 	const money = useMoneyText();
 	const locale = useAmountLocale();
 	const currency = data.book.currency;
@@ -57,46 +49,33 @@ export function LimitForm({
 					scope,
 				});
 
-	const flow = useMoneyWrite({
-		input,
-		idempotencyKey: input?.id ?? null,
-		preview: (body) => (api ? api.budget.previewSetLimit(body) : noSession()),
-		write: (body, key) =>
-			api
-				? api.budget.setLimit(body, { context: { idempotencyKey: key } })
-				: noSession(),
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out || minor === null) return;
-		announce({
-			message: t("toast", {
-				name: envelope.name,
-				amount: money({ minor, currency }),
-			}),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
 	return (
-		<WriteFrame
-			busy={flow.committing}
-			changes={
-				<BudgetChanges
-					data={data}
-					preview={flow.preview}
-					status={flow.status}
-				/>
+		<WriteForm
+			data={data}
+			idempotencyKey={input?.id ?? null}
+			input={input}
+			message={() =>
+				t("toast", {
+					name: envelope.name,
+					amount: money({ minor: minor ?? 0, currency }),
+				})
 			}
-			failed={flow.commitFailed}
-			onSubmit={submit}
-			ready={flow.status === "ready"}
+			onClose={onClose}
+			onDone={onDone}
+			preview={(api, body) => api.budget.previewSetLimit(body)}
 			submitLabel={t("submit")}
+			write={(api, body, key) =>
+				api.budget.setLimit(body, { context: { idempotencyKey: key } })
+			}
 		>
-			<Line label={t("now")} value={current ? money(current) : t("noLimit")} />
+			<AmountField
+				allowZero
+				currency={currency}
+				draft={draft}
+				entered={entered}
+				label={t("amount")}
+				onDraftChange={setDraft}
+			/>
 			<Segmented
 				accessibilityLabel={t("scope")}
 				onChange={setScope}
@@ -106,14 +85,7 @@ export function LimitForm({
 				]}
 				value={scope}
 			/>
-			<AmountField
-				allowZero
-				currency={currency}
-				draft={draft}
-				entered={entered}
-				label={t("amount")}
-				onDraftChange={setDraft}
-			/>
-		</WriteFrame>
+			<Line label={t("now")} value={current ? money(current) : t("noLimit")} />
+		</WriteForm>
 	);
 }

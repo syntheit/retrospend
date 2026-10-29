@@ -8,16 +8,13 @@ import {
 	AmountField,
 	Line,
 	Note,
-	SheetBody,
 	useAmountLocale,
 } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
-import { Sheet } from "@/ui/Sheet";
-import { BudgetChanges } from "./BudgetChanges";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { SheetDetent } from "@/ui/Sheet";
 import { bankFigure, reconcileBody } from "./moreBodies";
 import type { BudgetMonth } from "./source";
+import { FormSheet, WriteForm } from "./WriteSheet";
 
 type BankSide = Awaited<ReturnType<RetrospendClient["budget"]["bankCheck"]>>;
 
@@ -31,18 +28,19 @@ type BankSide = Awaited<ReturnType<RetrospendClient["budget"]["bankCheck"]>>;
 export function ReconcileSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.reconcile");
 	const { api: client } = useSession();
-	const api = useApi();
-	const announce = useUndoToast("budget");
 	const money = useMoneyText();
 	const locale = useAmountLocale();
 	const [bank, setBank] = useState<BankSide | null>(null);
@@ -77,82 +75,59 @@ export function ReconcileSheet({
 	const body = bank
 		? reconcileBody({ id: idFor("check"), minor, currency })
 		: null;
-	const flow = useMoneyWrite({
-		input: visible ? body : null,
-		idempotencyKey: body?.id ?? null,
-		preview: (b) => (api ? api.budget.previewReconcile(b) : noSession()),
-		write: (b, key) =>
-			api
-				? api.budget.reconcile(b, { context: { idempotencyKey: key } })
-				: noSession(),
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out) return;
-		announce({
-			message: out.result.expenseId
-				? t("toastRecorded", { amount: money(out.result.amount) })
-				: t("toastMatched"),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
 	return (
-		<Sheet
-			detents={["large"]}
+		<FormSheet
+			detent={detent}
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}
 		>
-			<SheetBody>
-				{failed ? (
-					<Note tone="attention">{t("failed")}</Note>
-				) : bank === null ? (
-					<Note>{t("loading")}</Note>
-				) : (
-					<WriteFrame
-						busy={flow.committing}
-						changes={
-							<BudgetChanges
-								data={data}
-								preview={flow.preview}
-								status={flow.status}
-							/>
-						}
-						failed={flow.commitFailed}
-						onSubmit={submit}
-						ready={flow.status === "ready"}
-						submitLabel={t("submit")}
-					>
-						<Note>{t("lead")}</Note>
-						{bank.accounts.map((a) => (
-							<Line
-								key={a.id}
-								label={a.name}
-								value={money(a.value ?? a.worth)}
-							/>
-						))}
-						<Line label={t("accountsTotal")} value={money(bank.bank)} />
-						<Line emphasis label={t("holds")} value={money(bank.holds)} />
-						{bank.held.minor !== 0 ? (
-							<Line label={t("held")} value={money(bank.held)} />
-						) : null}
-						{bank.incomplete ? <Note>{t("incomplete")}</Note> : null}
-						<AmountField
-							allowZero
-							currency={currency}
-							draft={draft}
-							entered={entered}
-							label={t("bank")}
-							onDraftChange={setDraft}
-							placeholder={money(bank.bank, { sign: "never" })}
-						/>
-					</WriteFrame>
-				)}
-			</SheetBody>
-		</Sheet>
+			{failed ? (
+				<Note tone="attention">{t("failed")}</Note>
+			) : bank === null ? (
+				<Note>{t("loading")}</Note>
+			) : (
+				<WriteForm
+					active={visible}
+					data={data}
+					idempotencyKey={body?.id ?? null}
+					input={body}
+					message={(
+						out: Awaited<ReturnType<RetrospendClient["budget"]["reconcile"]>>,
+					) =>
+						out.result.expenseId
+							? t("toastRecorded", { amount: money(out.result.amount) })
+							: t("toastMatched")
+					}
+					onClose={onClose}
+					onDone={onDone}
+					preview={(api, b) => api.budget.previewReconcile(b)}
+					submitLabel={t("submit")}
+					write={(api, b, key) =>
+						api.budget.reconcile(b, { context: { idempotencyKey: key } })
+					}
+				>
+					<Note>{t("lead")}</Note>
+					{bank.accounts.map((a) => (
+						<Line key={a.id} label={a.name} value={money(a.value ?? a.worth)} />
+					))}
+					<Line label={t("accountsTotal")} value={money(bank.bank)} />
+					<Line emphasis label={t("holds")} value={money(bank.holds)} />
+					{bank.held.minor !== 0 ? (
+						<Line label={t("held")} value={money(bank.held)} />
+					) : null}
+					{bank.incomplete ? <Note>{t("incomplete")}</Note> : null}
+					<AmountField
+						allowZero
+						currency={currency}
+						draft={draft}
+						entered={entered}
+						label={t("bank")}
+						onDraftChange={setDraft}
+						placeholder={money(bank.bank, { sign: "never" })}
+					/>
+				</WriteForm>
+			)}
+		</FormSheet>
 	);
 }

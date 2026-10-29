@@ -3,7 +3,6 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
-import { LinkButton } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import {
@@ -15,7 +14,8 @@ import {
 } from "@/features/write/parts";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { Sheet } from "@/ui/Sheet";
+import { LinkButton } from "@/ui/List";
+import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { useToast } from "@/ui/Toast";
 import {
 	linesOf,
@@ -36,10 +36,13 @@ import { useSheetRead } from "./useSheetRead";
 export function PlanSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 }) {
 	const t = useTranslations("mobile.budget.planEdit");
@@ -128,7 +131,7 @@ export function PlanSheet({
 	const planned = envelope ? plannedFor(base, envelope.id) : null;
 	return (
 		<Sheet
-			detents={["large"]}
+			detents={[detent]}
 			onClose={onClose}
 			title={envelope ? t("title", { name: envelope.name }) : t("listTitle")}
 			visible={visible}

@@ -8,17 +8,10 @@ import {
 	Note,
 	useAmountLocale,
 } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import {
-	type FormProps,
-	noSession,
-	useApi,
-	WriteFrame,
-} from "@/features/write/WriteFrame";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { FormProps } from "@/features/write/WriteFrame";
 import { DateField } from "@/ui/DateField";
 import { Segmented } from "@/ui/Segmented";
-import { BudgetChanges } from "./BudgetChanges";
 import { ChoiceList } from "./fields";
 import {
 	type BillRepeat,
@@ -26,6 +19,7 @@ import {
 	type TargetMode,
 	targetBody,
 } from "./moreBodies";
+import { WriteForm } from "./WriteSheet";
 
 const REPEATS: BillRepeat[] = ["MONTHLY", "QUARTERLY", "YEARLY", "ONCE"];
 
@@ -36,8 +30,6 @@ const REPEATS: BillRepeat[] = ["MONTHLY", "QUARTERLY", "YEARLY", "ONCE"];
  */
 export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 	const t = useTranslations("mobile.budget.target");
-	const api = useApi();
-	const announce = useUndoToast("budget");
 	const money = useMoneyText();
 	const locale = useAmountLocale();
 	const currency = data.book.currency;
@@ -77,51 +69,20 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 		repeat,
 	});
 	const body = idle ? null : built;
-	const flow = useMoneyWrite({
-		input: body,
-		idempotencyKey: body?.id ?? null,
-		preview: (b) => (api ? api.budget.previewSetTarget(b) : noSession()),
-		write: (b, key) =>
-			api
-				? api.budget.setTarget(b, { context: { idempotencyKey: key } })
-				: noSession(),
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out) return;
-		announce({
-			message: t("toast", { name: envelope.name }),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
 	return (
-		<WriteFrame
-			busy={flow.committing}
-			changes={
-				<BudgetChanges
-					data={data}
-					preview={flow.preview}
-					status={flow.status}
-				/>
-			}
-			failed={flow.commitFailed}
-			onSubmit={submit}
-			ready={flow.status === "ready"}
+		<WriteForm
+			data={data}
+			idempotencyKey={body?.id ?? null}
+			input={body}
+			message={() => t("toast", { name: envelope.name })}
+			onClose={onClose}
+			onDone={onDone}
+			preview={(api, b) => api.budget.previewSetTarget(b)}
 			submitLabel={t("submit")}
+			write={(api, b, key) =>
+				api.budget.setTarget(b, { context: { idempotencyKey: key } })
+			}
 		>
-			<Line
-				label={t("now")}
-				value={
-					now?.amount
-						? `${t(`kind.${now.kind}`)}, ${money(now.amount)}`
-						: t("noTarget")
-				}
-			/>
-			{now?.kind === "BILL" ? <Note>{t("billNote")}</Note> : null}
 			<Segmented
 				accessibilityLabel={t("kind.label")}
 				onChange={setChoice}
@@ -133,6 +94,21 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 				]}
 				value={choice}
 			/>
+			{choice === "NONE" ? null : (
+				<AmountField
+					currency={currency}
+					draft={draft}
+					entered={entered}
+					label={t(
+						choice === "MONTHLY"
+							? "monthly"
+							: choice === "BILL"
+								? "billAmount"
+								: "goal",
+					)}
+					onDraftChange={setDraft}
+				/>
+			)}
 			{choice === "MONTHLY" ? (
 				<Segmented
 					accessibilityLabel={t("mode.label")}
@@ -155,23 +131,16 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 					/>
 				</>
 			) : null}
-			{choice === "NONE" ? (
-				<Note>{t("noneNote")}</Note>
-			) : (
-				<AmountField
-					currency={currency}
-					draft={draft}
-					entered={entered}
-					label={t(
-						choice === "MONTHLY"
-							? "monthly"
-							: choice === "BILL"
-								? "billAmount"
-								: "goal",
-					)}
-					onDraftChange={setDraft}
-				/>
-			)}
-		</WriteFrame>
+			{choice === "NONE" ? <Note>{t("noneNote")}</Note> : null}
+			<Line
+				label={t("now")}
+				value={
+					now?.amount
+						? `${t(`kind.${now.kind}`)}, ${money(now.amount)}`
+						: t("noTarget")
+				}
+			/>
+			{now?.kind === "BILL" ? <Note>{t("billNote")}</Note> : null}
+		</WriteForm>
 	);
 }

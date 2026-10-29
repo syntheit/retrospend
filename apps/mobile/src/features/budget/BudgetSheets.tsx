@@ -1,15 +1,8 @@
-import { AffordSheet } from "./AffordSheet";
 import { type EnvelopeMode, EnvelopeSheet } from "./EnvelopeSheet";
-import { MergeSheet } from "./MergeSheet";
-import { type MoreKind, MoreSheets } from "./MoreSheets";
+import type { MoreKind } from "./MoreSheets";
 import type { MonthKind } from "./months";
-import { NewEnvelopeSheet } from "./NewEnvelopeSheet";
-import { PayDebtSheet } from "./PayDebtSheet";
-import { ReconcileSheet } from "./ReconcileSheet";
-import { StyleSheet } from "./StyleSheet";
+import { SHEET_KINDS, SHEETS } from "./sheetRegistry";
 import { type BudgetMonth, envelopeById } from "./source";
-import { TakeBackSheet } from "./TakeBackSheet";
-import { UsePlanSheet } from "./UsePlanSheet";
 
 /** The sheet on screen, if any: one at a time. */
 export type OpenSheet =
@@ -24,7 +17,11 @@ export type OpenSheet =
 	| { kind: "reconcile" }
 	| { kind: MoreKind };
 
-/** Every sheet the Budget tab can present, closed unless `sheet` names it. */
+/**
+ * Every sheet the Budget tab can present, closed unless `sheet` names it. An
+ * envelope's sheet has modes of its own; every other kind is one entry of the
+ * registry, which also says how tall it rests.
+ */
 export function BudgetSheets({
 	data,
 	kind,
@@ -53,62 +50,21 @@ export function BudgetSheets({
 				onDone={onDone}
 				startMode={sheet?.kind === "envelope" ? sheet.mode : "overview"}
 			/>
-			<UsePlanSheet
-				data={data}
-				onClose={onClose}
-				onDone={onDone}
-				visible={sheet?.kind === "usePlan"}
-			/>
-			<TakeBackSheet
-				data={data}
-				onClose={onClose}
-				onDone={onDone}
-				visible={sheet?.kind === "takeBack"}
-			/>
-			<AffordSheet
-				data={data}
-				onClose={onClose}
-				onMove={(id) => onOpen({ kind: "envelope", id, mode: "move" })}
-				visible={sheet?.kind === "afford"}
-			/>
-			<NewEnvelopeSheet
-				data={data}
-				onClose={onClose}
-				onDone={onDone}
-				visible={sheet?.kind === "newEnvelope"}
-			/>
-			<MergeSheet
-				data={data}
-				onClose={onClose}
-				onDone={onDone}
-				visible={sheet?.kind === "merge"}
-			/>
-			<PayDebtSheet
-				data={data}
-				onClose={onClose}
-				onDone={onDone}
-				visible={sheet?.kind === "payDebt"}
-			/>
-			<ReconcileSheet
-				data={data}
-				onClose={onClose}
-				onDone={onDone}
-				visible={sheet?.kind === "reconcile"}
-			/>
-			<StyleSheet
-				data={data}
-				onClose={onClose}
-				onDone={onDone}
-				visible={sheet?.kind === "style"}
-			/>
-			<MoreSheets
-				data={data}
-				kind={kind}
-				onClose={onClose}
-				onDone={onDone}
-				onOpen={onOpen}
-				open={sheet?.kind ?? null}
-			/>
+			{SHEET_KINDS.map((name) => {
+				const { component: Sheet, detent } = SHEETS[name];
+				return (
+					<Sheet
+						data={data}
+						detent={detent}
+						key={name}
+						kind={kind}
+						onClose={onClose}
+						onDone={onDone}
+						onOpen={onOpen}
+						visible={sheet?.kind === name}
+					/>
+				);
+			})}
 		</>
 	);
 }

@@ -3,13 +3,13 @@ import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
-import { LinkButton, ListRow } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Line, Note, SheetBody } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { Sheet } from "@/ui/Sheet";
+import { LinkButton, ListRow } from "@/ui/List";
+import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { acknowledgeBody, carryable, carryBody } from "./closeBodies";
 import { nextMonthKey } from "./draftsBody";
 import { monthDate } from "./months";
@@ -28,11 +28,14 @@ import { WriteForm } from "./WriteSheet";
 export function CloseSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
@@ -104,7 +107,7 @@ export function CloseSheet({
 
 	return (
 		<Sheet
-			detents={["large"]}
+			detents={[detent]}
 			onClose={onClose}
 			title={t("title", { month: name(month) })}
 			visible={visible}
@@ -119,10 +122,12 @@ export function CloseSheet({
 							data={data}
 							idempotencyKey={body?.id ?? null}
 							input={body}
-							message={tc("toast", {
-								name: envelopeName(carry.id),
-								month: nextName,
-							})}
+							message={() =>
+								tc("toast", {
+									name: envelopeName(carry.id),
+									month: nextName,
+								})
+							}
 							onClose={() => setCarrying(null)}
 							onDone={carryDone}
 							preview={(client, b) => client.budget.previewCarryOverspend(b)}

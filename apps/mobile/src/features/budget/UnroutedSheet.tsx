@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { Face } from "@/features/entry/Face";
-import { LinkButton, ListRow } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note, SheetBody } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { useTheme } from "@/theme";
-import { Sheet } from "@/ui/Sheet";
+import { LinkButton, ListRow } from "@/ui/List";
+import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { CategoryList, loadCategories } from "./CategoryList";
 import { participantKey, shareCategoryBody } from "./owedBodies";
 import type { BudgetMonth } from "./source";
@@ -22,11 +22,14 @@ import { WriteForm } from "./WriteSheet";
 export function UnroutedSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
@@ -77,7 +80,7 @@ export function UnroutedSheet({
 
 	return (
 		<Sheet
-			detents={["large"]}
+			detents={[detent]}
 			onClose={onClose}
 			title={share ? t("pickTitle") : t("title")}
 			visible={visible}
@@ -98,7 +101,7 @@ export function UnroutedSheet({
 							data={data}
 							idempotencyKey={body ? idFor("share") : null}
 							input={body}
-							message={t("routedToast")}
+							message={() => t("routedToast")}
 							onClose={() => {
 								setShareId(null);
 								setCategoryId(null);

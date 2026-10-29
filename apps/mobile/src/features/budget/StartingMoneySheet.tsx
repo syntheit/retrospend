@@ -10,6 +10,7 @@ import {
 	useAmountLocale,
 } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { SheetDetent } from "@/ui/Sheet";
 import { startingMoneyBody } from "./closeBodies";
 import type { BudgetMonth } from "./source";
 import { WriteSheet } from "./WriteSheet";
@@ -31,11 +32,14 @@ interface StartingResult {
 export function StartingMoneySheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
@@ -88,9 +92,10 @@ export function StartingMoneySheet({
 				);
 			}}
 			data={data}
+			detent={detent}
 			idempotencyKey={body?.id ?? null}
 			input={body}
-			message={t("toast")}
+			message={() => t("toast")}
 			onClose={onClose}
 			onDone={onDone}
 			preview={(api, b) => api.budget.previewConfirmStartingMoney(b)}

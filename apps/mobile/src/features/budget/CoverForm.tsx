@@ -1,24 +1,19 @@
 import { draftFromMinor } from "@retrospend/domain/parse";
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import {
-	type FormProps,
-	noSession,
-	useApi,
-	WriteFrame,
-} from "@/features/write/WriteFrame";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { type FormProps, useApi } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { Picker } from "@/ui/Picker";
-import { BudgetChanges } from "./BudgetChanges";
+import { Text } from "@/ui/Text";
 import { coverBody } from "./bodies";
 import { changesAnything } from "./preview";
 import { type CoverOverview, envelopeById } from "./source";
+import { WriteForm } from "./WriteSheet";
 
 const POOL = "pool";
 
@@ -38,10 +33,9 @@ export function CoverForm({
 	const tb = useTranslations("mobile.budget");
 	const format = useFormatter();
 	const api = useApi();
-	const announce = useUndoToast("budget");
 	const money = useMoneyText();
 	const locale = useAmountLocale();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const currency = data.book.currency;
 	const poolName = tb(`pool.${data.toAssign.poolName}`);
 	const [overview, setOverview] = useState<CoverOverview | null>(null);
@@ -95,36 +89,6 @@ export function CoverForm({
 					currency,
 				});
 
-	const flow = useMoneyWrite({
-		input,
-		idempotencyKey: input?.id ?? null,
-		preview: (body) => (api ? api.budget.previewCover(body) : noSession()),
-		write: (body, key) =>
-			api
-				? api.budget.cover(body, { context: { idempotencyKey: key } })
-				: noSession(),
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out || minor === null || !source) return;
-		announce({
-			message: t("toast", {
-				name: envelope.name,
-				amount: money({ minor, currency }),
-				source: nameOf(source.from),
-			}),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
-	const ready =
-		flow.status === "ready" &&
-		flow.preview !== null &&
-		changesAnything(flow.preview);
-
 	const optionLabel = (s: CoverOverview["sources"][number]) => {
 		const base = t("source", {
 			name: nameOf(s.from),
@@ -143,20 +107,33 @@ export function CoverForm({
 	};
 
 	return (
-		<WriteFrame
-			busy={flow.committing}
-			changes={
-				<BudgetChanges
-					data={data}
-					preview={flow.preview}
-					status={flow.status}
-				/>
+		<WriteForm
+			canSave={changesAnything}
+			data={data}
+			idempotencyKey={input?.id ?? null}
+			input={input}
+			message={() =>
+				t("toast", {
+					name: envelope.name,
+					amount: money({ minor: minor ?? 0, currency }),
+					source: nameOf(source?.from ?? null),
+				})
 			}
-			failed={flow.commitFailed}
-			onSubmit={submit}
-			ready={ready}
+			onClose={onClose}
+			onDone={onDone}
+			preview={(api, body) => api.budget.previewCover(body)}
 			submitLabel={t("submit")}
+			write={(api, body, key) =>
+				api.budget.cover(body, { context: { idempotencyKey: key } })
+			}
 		>
+			<AmountField
+				currency={currency}
+				draft={draft}
+				entered={entered}
+				label={t("amount")}
+				onDraftChange={setDraft}
+			/>
 			{loadFailed ? (
 				<Note tone="attention">{t("loadError")}</Note>
 			) : !overview ? (
@@ -173,7 +150,7 @@ export function CoverForm({
 					</Note>
 					{sources.length > 0 ? (
 						<View style={{ gap: space[1] }}>
-							<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+							<Text tone="fg2" variant="small">
 								{t("from")}
 							</Text>
 							<Picker
@@ -193,13 +170,6 @@ export function CoverForm({
 					)}
 				</>
 			)}
-			<AmountField
-				currency={currency}
-				draft={draft}
-				entered={entered}
-				label={t("amount")}
-				onDraftChange={setDraft}
-			/>
-		</WriteFrame>
+		</WriteForm>
 	);
 }

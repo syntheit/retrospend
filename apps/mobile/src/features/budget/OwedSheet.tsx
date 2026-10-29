@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { Face } from "@/features/entry/Face";
-import { LinkButton, ListRow } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Line, Note, SheetBody } from "@/features/write/parts";
 import { useTheme } from "@/theme";
-import { Sheet } from "@/ui/Sheet";
+import { LinkButton, ListRow } from "@/ui/List";
+import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { ForgiveForm } from "./ForgiveForm";
 import { forgivable, participantKey } from "./owedBodies";
 import type { BudgetMonth } from "./source";
@@ -20,11 +20,14 @@ import { useSheetRead } from "./useSheetRead";
 export function OwedSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
@@ -44,7 +47,7 @@ export function OwedSheet({
 
 	return (
 		<Sheet
-			detents={["large"]}
+			detents={[detent]}
 			onClose={onClose}
 			title={
 				person

@@ -3,25 +3,20 @@ import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import { AmountField, Line, useAmountLocale } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import {
-	type FormProps,
-	noSession,
-	useApi,
-	WriteFrame,
-} from "@/features/write/WriteFrame";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { FormProps } from "@/features/write/WriteFrame";
 import { Segmented } from "@/ui/Segmented";
-import { BudgetChanges } from "./BudgetChanges";
 import { assignBody } from "./bodies";
 import { changesAnything } from "./preview";
+import { WriteForm } from "./WriteSheet";
 
 type Mode = "add" | "set";
 
 /**
  * Assign money to one envelope: add to what it has been given, or set it to
- * an amount (zero takes it all back). The dry run shows the envelope's Left
- * and the pool before Assign is on; the toast undoes it.
+ * an amount (zero takes it all back). The amount comes first. The dry run
+ * shows the envelope's Left and the pool before Assign is on, and Assign
+ * stays off when it would change nothing; the toast undoes it.
  */
 export function AssignForm({
 	data,
@@ -32,8 +27,6 @@ export function AssignForm({
 }: FormProps) {
 	const t = useTranslations("mobile.budget.assign");
 	const tb = useTranslations("mobile.budget");
-	const api = useApi();
-	const announce = useUndoToast("budget");
 	const money = useMoneyText();
 	const locale = useAmountLocale();
 	const currency = data.book.currency;
@@ -59,55 +52,33 @@ export function AssignForm({
 					currency,
 				});
 
-	const flow = useMoneyWrite({
-		input,
-		idempotencyKey: input?.batchId ?? null,
-		preview: (body) => (api ? api.budget.previewAssign(body) : noSession()),
-		write: (body, key) =>
-			api
-				? api.budget.assign(body, { context: { idempotencyKey: key } })
-				: noSession(),
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out || minor === null) return;
-		const amount = money({ minor, currency });
-		announce({
-			message:
-				mode === "add"
-					? t("toastAdd", { amount, name: envelope.name })
-					: t("toastSet", { amount, name: envelope.name }),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
-	const ready =
-		flow.status === "ready" &&
-		flow.preview !== null &&
-		changesAnything(flow.preview);
-
 	return (
-		<WriteFrame
-			busy={flow.committing}
-			changes={
-				<BudgetChanges
-					data={data}
-					preview={flow.preview}
-					status={flow.status}
-				/>
-			}
-			failed={flow.commitFailed}
-			onSubmit={submit}
-			ready={ready}
+		<WriteForm
+			canSave={changesAnything}
+			data={data}
+			idempotencyKey={input?.batchId ?? null}
+			input={input}
+			message={() => {
+				const amount = money({ minor: minor ?? 0, currency });
+				return mode === "add"
+					? t("toastAdd", { amount, name: envelope.name })
+					: t("toastSet", { amount, name: envelope.name });
+			}}
+			onClose={onClose}
+			onDone={onDone}
+			preview={(api, body) => api.budget.previewAssign(body)}
 			submitLabel={t("submit")}
+			write={(api, body, key) =>
+				api.budget.assign(body, { context: { idempotencyKey: key } })
+			}
 		>
-			<Line label={t("assignedNow")} value={money(envelope.assigned)} />
-			<Line
-				label={tb(`pool.${data.toAssign.poolName}`)}
-				value={money(data.toAssign.amount)}
+			<AmountField
+				allowZero={mode === "set"}
+				currency={currency}
+				draft={draft}
+				entered={entered}
+				label={mode === "add" ? t("amountAdd") : t("amountSet")}
+				onDraftChange={setDraft}
 			/>
 			<Segmented
 				accessibilityLabel={t("mode")}
@@ -118,14 +89,11 @@ export function AssignForm({
 				]}
 				value={mode}
 			/>
-			<AmountField
-				allowZero={mode === "set"}
-				currency={currency}
-				draft={draft}
-				entered={entered}
-				label={mode === "add" ? t("amountAdd") : t("amountSet")}
-				onDraftChange={setDraft}
+			<Line label={t("assignedNow")} value={money(envelope.assigned)} />
+			<Line
+				label={tb(`pool.${data.toAssign.poolName}`)}
+				value={money(data.toAssign.amount)}
 			/>
-		</WriteFrame>
+		</WriteForm>
 	);
 }

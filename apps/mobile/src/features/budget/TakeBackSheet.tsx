@@ -1,14 +1,12 @@
 import { useEffect } from "react";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { Note, SheetBody } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
-import { Sheet } from "@/ui/Sheet";
-import { BudgetChanges } from "./BudgetChanges";
+import { Note } from "@/features/write/parts";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { SheetDetent } from "@/ui/Sheet";
 import { takeBackBody } from "./bodies";
 import type { BudgetMonth } from "./source";
+import { FormSheet, WriteForm } from "./WriteSheet";
 
 /**
  * Take it back: more was planned than there is, so the pool is negative. The
@@ -19,17 +17,18 @@ import type { BudgetMonth } from "./source";
 export function TakeBackSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.takeBack");
-	const api = useApi();
-	const announce = useUndoToast("budget");
 	const money = useMoneyText();
 	// How much more was planned than there is: the server's figure.
 	const owed = data.verdict.plannedTooMuch;
@@ -41,57 +40,33 @@ export function TakeBackSheet({
 	}, [visible]);
 	const input = needed ? takeBackBody(idFor("batch")) : null;
 
-	const flow = useMoneyWrite({
-		input: visible ? input : null,
-		idempotencyKey: input?.batchId ?? null,
-		preview: (body) =>
-			api ? api.budget.previewFixNegative(body) : noSession(),
-		write: (body, key) =>
-			api
-				? api.budget.fixNegative(body, { context: { idempotencyKey: key } })
-				: noSession(),
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out) return;
-		announce({
-			message: t("toast", { amount: money(owed, { sign: "never" }) }),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
 	return (
-		<Sheet
-			detents={["large"]}
+		<FormSheet
+			detent={detent}
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}
 		>
-			<SheetBody>
-				{needed ? (
-					<WriteFrame
-						busy={flow.committing}
-						changes={
-							<BudgetChanges
-								data={data}
-								preview={flow.preview}
-								status={flow.status}
-							/>
-						}
-						failed={flow.commitFailed}
-						onSubmit={submit}
-						ready={flow.status === "ready"}
-						submitLabel={t("submit")}
-					>
-						<Note>{t("lead", { amount: money(owed, { sign: "never" }) })}</Note>
-					</WriteFrame>
-				) : (
-					<Note>{t("nothing")}</Note>
-				)}
-			</SheetBody>
-		</Sheet>
+			{needed ? (
+				<WriteForm
+					active={visible}
+					data={data}
+					idempotencyKey={input?.batchId ?? null}
+					input={input}
+					message={() => t("toast", { amount: money(owed, { sign: "never" }) })}
+					onClose={onClose}
+					onDone={onDone}
+					preview={(api, body) => api.budget.previewFixNegative(body)}
+					submitLabel={t("submit")}
+					write={(api, body, key) =>
+						api.budget.fixNegative(body, { context: { idempotencyKey: key } })
+					}
+				>
+					<Note>{t("lead", { amount: money(owed, { sign: "never" }) })}</Note>
+				</WriteForm>
+			) : (
+				<Note>{t("nothing")}</Note>
+			)}
+		</FormSheet>
 	);
 }

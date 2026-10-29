@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
-import { LinkButton, ListRow } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note, SheetBody } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { noSession, useApi } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { Sheet } from "@/ui/Sheet";
+import { LinkButton, ListRow } from "@/ui/List";
+import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { RuleAddForm } from "./RuleAddForm";
 import { applyRuleBody, movedIds, type Rule } from "./rulesBody";
 import { type BudgetMonth, envelopeById } from "./source";
@@ -55,11 +55,14 @@ export function useRuleSentence(data: BudgetMonth) {
 export function RulesSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onDone,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	onDone: () => void;
 }) {
@@ -113,12 +116,7 @@ export function RulesSheet({
 				: t("title");
 
 	return (
-		<Sheet
-			detents={["large"]}
-			onClose={onClose}
-			title={title}
-			visible={visible}
-		>
+		<Sheet detents={[detent]} onClose={onClose} title={title} visible={visible}>
 			<SheetBody>
 				{mode.kind === "add" ? (
 					<>
@@ -140,7 +138,7 @@ export function RulesSheet({
 								batchId: idFor("apply"),
 								ruleId: current.id,
 							})}
-							message={t("apply.toast", { name: current.name })}
+							message={() => t("apply.toast", { name: current.name })}
 							onClose={() => setMode({ kind: "list" })}
 							onDone={onDone}
 							preview={(client, body) => client.budget.previewApplyRule(body)}

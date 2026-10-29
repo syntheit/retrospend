@@ -1,24 +1,19 @@
 import { useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import {
-	type FormProps,
-	noSession,
-	useApi,
-	WriteFrame,
-} from "@/features/write/WriteFrame";
+import { useWriteIds } from "@/features/write/useMoneyWrite";
+import type { FormProps } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { Picker } from "@/ui/Picker";
 import { Segmented } from "@/ui/Segmented";
-import { BudgetChanges } from "./BudgetChanges";
+import { Text } from "@/ui/Text";
 import { type MoveDirection, moveRequest, type Peer } from "./bodies";
 import { changesAnything } from "./preview";
 import { envelopesOf } from "./source";
+import { WriteForm } from "./WriteSheet";
 
 const POOL = "pool";
 
@@ -37,11 +32,9 @@ export function MoveForm({
 }: FormProps) {
 	const t = useTranslations("mobile.budget.move");
 	const tb = useTranslations("mobile.budget");
-	const api = useApi();
-	const announce = useUndoToast("budget");
 	const money = useMoneyText();
 	const locale = useAmountLocale();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const currency = data.book.currency;
 	const poolName = tb(`pool.${data.toAssign.poolName}`);
 	const [direction, setDirection] = useState<MoveDirection>("in");
@@ -90,64 +83,49 @@ export function MoveForm({
 					currency,
 				});
 
-	const flow = useMoneyWrite({
-		input: request,
-		idempotencyKey: request
-			? request.send === "assign"
-				? request.body.batchId
-				: request.body.id
-			: null,
-		preview: (req) => {
-			if (!api) return noSession();
-			return req.send === "assign"
-				? api.budget.previewAssign(req.body)
-				: api.budget.previewMove(req.body);
-		},
-		write: (req, key) => {
-			if (!api) return noSession();
-			const options = { context: { idempotencyKey: key } };
-			return req.send === "assign"
-				? api.budget.assign(req.body, options)
-				: api.budget.move(req.body, options);
-		},
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out || minor === null || !place) return;
-		const amount = money({ minor, currency });
-		announce({
-			message:
-				direction === "in"
-					? t("toastIn", { amount, other: place.name, name: envelope.name })
-					: t("toastOut", { amount, other: place.name, name: envelope.name }),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
-	const ready =
-		flow.status === "ready" &&
-		flow.preview !== null &&
-		changesAnything(flow.preview);
 	const otherLabel = direction === "in" ? t("from") : t("to");
 
 	return (
-		<WriteFrame
-			busy={flow.committing}
-			changes={
-				<BudgetChanges
-					data={data}
-					preview={flow.preview}
-					status={flow.status}
-				/>
+		<WriteForm
+			canSave={changesAnything}
+			data={data}
+			idempotencyKey={
+				request
+					? request.send === "assign"
+						? request.body.batchId
+						: request.body.id
+					: null
 			}
-			failed={flow.commitFailed}
-			onSubmit={submit}
-			ready={ready}
+			input={request}
+			message={() => {
+				const amount = money({ minor: minor ?? 0, currency });
+				const other = place?.name ?? "";
+				return direction === "in"
+					? t("toastIn", { amount, other, name: envelope.name })
+					: t("toastOut", { amount, other, name: envelope.name });
+			}}
+			onClose={onClose}
+			onDone={onDone}
+			preview={(api, req) =>
+				req.send === "assign"
+					? api.budget.previewAssign(req.body)
+					: api.budget.previewMove(req.body)
+			}
 			submitLabel={t("submit")}
+			write={(api, req, key) => {
+				const options = { context: { idempotencyKey: key } };
+				return req.send === "assign"
+					? api.budget.assign(req.body, options)
+					: api.budget.move(req.body, options);
+			}}
 		>
+			<AmountField
+				currency={currency}
+				draft={draft}
+				entered={entered}
+				label={t("amount")}
+				onDraftChange={setDraft}
+			/>
 			<Segmented
 				accessibilityLabel={t("direction")}
 				onChange={(next) => {
@@ -162,7 +140,7 @@ export function MoveForm({
 			/>
 			{place ? (
 				<View style={{ gap: space[1] }}>
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					<Text tone="fg2" variant="small">
 						{otherLabel}
 					</Text>
 					<Picker
@@ -177,13 +155,6 @@ export function MoveForm({
 			) : (
 				<Note>{t("nothingToMove", { pool: poolName })}</Note>
 			)}
-			<AmountField
-				currency={currency}
-				draft={draft}
-				entered={entered}
-				label={t("amount")}
-				onDraftChange={setDraft}
-			/>
-		</WriteFrame>
+		</WriteForm>
 	);
 }

@@ -11,7 +11,7 @@ import {
 	useAmountLocale,
 } from "@/features/write/parts";
 import { Button } from "@/ui/Button";
-import { Sheet } from "@/ui/Sheet";
+import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { ChoiceList } from "./fields";
 import { affordQuery } from "./moreBodies";
 import { type BudgetMonth, envelopesOf } from "./source";
@@ -32,11 +32,14 @@ const SETTLE_MS = 300;
 export function AffordSheet({
 	data,
 	visible,
+	detent = "large",
 	onClose,
 	onMove,
 }: {
 	data: BudgetMonth;
 	visible: boolean;
+	/** How tall it rests; the registry sets it (sheetRegistry.tsx). */
+	detent?: SheetDetent;
 	onClose: () => void;
 	/** Open Move on this envelope (the answer's way to make it fit). */
 	onMove: (envelopeId: string) => void;
@@ -124,7 +127,7 @@ export function AffordSheet({
 
 	return (
 		<Sheet
-			detents={["large"]}
+			detents={[detent]}
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}
