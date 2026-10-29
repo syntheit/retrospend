@@ -6,11 +6,12 @@ import { newClientId } from "@/data/ids";
 import type { ActivityItem } from "@/features/activity/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note, SheetBody } from "@/features/write/parts";
+import { spendKey, useWriteIds } from "@/features/write/useMoneyWrite";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
 import { useDayText } from "./ConfirmSheet";
-import { createFromExpense, nextMonthly } from "./makeRecurring";
+import { createFromExpense, nextMonthly, templateBody } from "./makeRecurring";
 import { useRecurringToast } from "./useRecurringToast";
 
 /**
@@ -38,13 +39,20 @@ export function MakeRecurringSheet({
 	const { space } = useTheme();
 	const [busy, setBusy] = useState(false);
 	const [failed, setFailed] = useState(false);
+	// One key per body: a Retry after a lost answer replays the first create.
+	// A confirmed create spends its key, so the next one gets a fresh key.
+	const { idFor } = useWriteIds(
+		visible ? JSON.stringify(templateBody(item)) : null,
+	);
 
 	async function submit() {
 		if (!api || busy) return;
 		setBusy(true);
 		setFailed(false);
 		try {
-			const made = await createFromExpense(api, item);
+			const key = idFor("create");
+			const made = await createFromExpense(api, item, key);
+			spendKey(key);
 			announce({
 				message: t("toast", { title: item.title }),
 				undo: async () => {

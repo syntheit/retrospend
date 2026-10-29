@@ -33,6 +33,11 @@ const PREVIEW_DEBOUNCE_MS = 250;
  */
 const spentKeys = new Set<string>();
 
+/** For a write that is not a `useMoneyWrite`: its key is spent once the server confirmed it. */
+export function spendKey(key: string): void {
+	spentKeys.add(key);
+}
+
 /**
  * `input` is the exact request body (client ids included), or null while the
  * form is not complete. The preview follows every change of it; the write
