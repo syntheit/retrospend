@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Line, Note, SheetBody } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
-import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { LinkButton, ListRow } from "@/ui/List";
+import { ListRow } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { acknowledgeBody, carryable, carryBody } from "./closeBodies";
 import { nextMonthKey } from "./draftsBody";
 import { monthDate } from "./months";
 import { type BudgetMonth, envelopeById } from "./source";
 import { useSheetRead } from "./useSheetRead";
-import { WriteForm } from "./WriteSheet";
+import { BackButton, WriteForm } from "./WriteSheet";
 
 /**
  * A closed month's summary, read-only, from the server's stored close: money
@@ -46,7 +46,6 @@ export function CloseSheet({
 	const money = useMoneyText();
 	const format = useFormatter();
 	const { api } = useSession();
-	const { color, space, type } = useTheme();
 	const month = data.month.key;
 	const [carrying, setCarrying] = useState<string | null>(null);
 	const [failed, setFailed] = useState(false);
@@ -115,9 +114,7 @@ export function CloseSheet({
 			<SheetBody>
 				{carry ? (
 					<>
-						<View style={{ alignItems: "flex-start", marginLeft: -space[4] }}>
-							<LinkButton label={t("back")} onPress={() => setCarrying(null)} />
-						</View>
+						<BackButton label={t("back")} onPress={() => setCarrying(null)} />
 						<WriteForm
 							data={data}
 							idempotencyKey={body?.id ?? null}
@@ -167,11 +164,9 @@ export function CloseSheet({
 									<View>
 										<Text
 											accessibilityRole="header"
-											style={{
-												color: color.fg2,
-												fontSize: type.small.size,
-												fontWeight: "600",
-											}}
+											tone="fg2"
+											variant="small"
+											weight="semibold"
 										>
 											{t("overTitle")}
 										</Text>
@@ -180,37 +175,16 @@ export function CloseSheet({
 												accessibilityLabel={t("takeInstead", {
 													month: nextName,
 												})}
+												end={
+													<Text tabular>
+														{money(cash(e.minor), { sign: "never" })}
+													</Text>
+												}
 												key={e.id}
 												onPress={() => setCarrying(e.id)}
-											>
-												<View style={{ flex: 1 }}>
-													<Text
-														style={{
-															color: color.fg,
-															fontSize: type.body.size,
-														}}
-													>
-														{envelopeName(e.id)}
-													</Text>
-													<Text
-														style={{
-															color: color.brand,
-															fontSize: type.small.size,
-														}}
-													>
-														{t("takeInstead", { month: nextName })}
-													</Text>
-												</View>
-												<Text
-													style={{
-														color: color.fg,
-														fontSize: type.body.size,
-														fontVariant: ["tabular-nums"],
-													}}
-												>
-													{money(cash(e.minor), { sign: "never" })}
-												</Text>
-											</ListRow>
+												sub={t("takeInstead", { month: nextName })}
+												title={envelopeName(e.id)}
+											/>
 										))}
 									</View>
 								) : null}
@@ -218,11 +192,9 @@ export function CloseSheet({
 									<View>
 										<Text
 											accessibilityRole="header"
-											style={{
-												color: color.fg2,
-												fontSize: type.small.size,
-												fontWeight: "600",
-											}}
+											tone="fg2"
+											variant="small"
+											weight="semibold"
 										>
 											{t("leftTitle")}
 										</Text>

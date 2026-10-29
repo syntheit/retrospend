@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { Face } from "@/features/entry/Face";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Line, Note, SheetBody } from "@/features/write/parts";
-import { useTheme } from "@/theme";
-import { LinkButton, ListRow } from "@/ui/List";
+import { Avatar } from "@/ui/Avatar";
+import { ListRow } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { ForgiveForm } from "./ForgiveForm";
 import { forgivable, participantKey } from "./owedBodies";
 import type { BudgetMonth } from "./source";
 import { useSheetRead } from "./useSheetRead";
+import { BackButton } from "./WriteSheet";
 
 /**
  * Money held for others: who owes you and how much, oldest first as the
@@ -33,7 +34,6 @@ export function OwedSheet({
 }) {
 	const t = useTranslations("mobile.budget.owed");
 	const money = useMoneyText();
-	const { color, size, space, type } = useTheme();
 	const [forgiving, setForgiving] = useState<string | null>(null);
 	const read = useSheetRead(visible, (client) => client.budget.owed());
 	const owed = read.status === "ready" ? read.data : null;
@@ -59,12 +59,7 @@ export function OwedSheet({
 			<SheetBody>
 				{person ? (
 					<>
-						<View style={{ alignItems: "flex-start", marginLeft: -space[4] }}>
-							<LinkButton
-								label={t("back")}
-								onPress={() => setForgiving(null)}
-							/>
-						</View>
+						<BackButton label={t("back")} onPress={() => setForgiving(null)} />
 						<ForgiveForm
 							data={data}
 							onClose={() => {
@@ -100,45 +95,21 @@ export function OwedSheet({
 										return (
 											<ListRow
 												accessibilityLabel={`${name}, ${p.lines.map((l) => money(l.amount)).join(", ")}`}
-												key={key}
-												onPress={can ? () => setForgiving(key) : undefined}
-											>
-												<Face
-													diameter={size.icon.phone + space[2]}
-													name={name}
-													seed={key}
-												/>
-												<View style={{ flex: 1 }}>
-													<Text
-														style={{
-															color: color.fg,
-															fontSize: type.body.size,
-														}}
-													>
-														{name}
+												end={
+													<Text tabular tone="positive">
+														{p.lines.map((l) => money(l.amount)).join(", ")}
 													</Text>
-													{p.ageDays !== null ? (
-														<Text
-															style={{
-																color: color.fg2,
-																fontSize: type.small.size,
-															}}
-														>
-															{t("age", { days: p.ageDays })}
-														</Text>
-													) : null}
-												</View>
-												<Text
-													style={{
-														color: color.fg,
-														fontSize: type.body.size,
-														fontVariant: ["tabular-nums"],
-														textAlign: "right",
-													}}
-												>
-													{p.lines.map((l) => money(l.amount)).join(", ")}
-												</Text>
-											</ListRow>
+												}
+												key={key}
+												lead={<Avatar face={{ key, name }} />}
+												onPress={can ? () => setForgiving(key) : undefined}
+												sub={
+													p.ageDays !== null
+														? t("age", { days: p.ageDays })
+														: undefined
+												}
+												title={name}
+											/>
 										);
 									})}
 								</View>

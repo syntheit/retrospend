@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
-import { Face } from "@/features/entry/Face";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note, SheetBody } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
-import { useTheme } from "@/theme";
-import { LinkButton, ListRow } from "@/ui/List";
+import { Avatar } from "@/ui/Avatar";
+import { ListRow } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { CategoryList, loadCategories } from "./CategoryList";
 import { participantKey, shareCategoryBody } from "./owedBodies";
 import type { BudgetMonth } from "./source";
 import { useSheetRead } from "./useSheetRead";
-import { WriteForm } from "./WriteSheet";
+import { BackButton, WriteForm } from "./WriteSheet";
 
 /**
  * Shares with no envelope: your part of someone else's split that found no
@@ -36,7 +36,6 @@ export function UnroutedSheet({
 	const t = useTranslations("mobile.budget.unrouted");
 	const money = useMoneyText();
 	const format = useFormatter();
-	const { color, size, space, type } = useTheme();
 	const [shareId, setShareId] = useState<string | null>(null);
 	const [categoryId, setCategoryId] = useState<string | null>(null);
 	const shares = useSheetRead(visible, (client) =>
@@ -88,15 +87,13 @@ export function UnroutedSheet({
 			<SheetBody>
 				{share ? (
 					<>
-						<View style={{ alignItems: "flex-start", marginLeft: -space[4] }}>
-							<LinkButton
-								label={t("back")}
-								onPress={() => {
-									setShareId(null);
-									setCategoryId(null);
-								}}
-							/>
-						</View>
+						<BackButton
+							label={t("back")}
+							onPress={() => {
+								setShareId(null);
+								setCategoryId(null);
+							}}
+						/>
 						<WriteForm
 							data={data}
 							idempotencyKey={body ? idFor("share") : null}
@@ -155,38 +152,25 @@ export function UnroutedSheet({
 								return (
 									<ListRow
 										accessibilityLabel={t("pickFor", { date: day(s.date) })}
+										end={
+											<Text tabular>
+												{s.amount ? money(s.amount) : t("noRate")}
+											</Text>
+										}
 										key={s.shareId}
+										lead={
+											<Avatar
+												face={{ key: participantKey(s.payer), name: who ?? "" }}
+											/>
+										}
 										onPress={() => setShareId(s.shareId)}
-									>
-										<Face
-											diameter={size.icon.phone + space[2]}
-											name={who ?? ""}
-											seed={participantKey(s.payer)}
-										/>
-										<View style={{ flex: 1 }}>
-											<Text
-												style={{ color: color.fg, fontSize: type.body.size }}
-											>
-												{t("shareTitle")}
-											</Text>
-											<Text
-												style={{ color: color.fg2, fontSize: type.small.size }}
-											>
-												{who
-													? `${t("paidBy", { name: who })}, ${day(s.date)}`
-													: day(s.date)}
-											</Text>
-										</View>
-										<Text
-											style={{
-												color: color.fg,
-												fontSize: type.body.size,
-												fontVariant: ["tabular-nums"],
-											}}
-										>
-											{s.amount ? money(s.amount) : t("noRate")}
-										</Text>
-									</ListRow>
+										sub={
+											who
+												? `${t("paidBy", { name: who })}, ${day(s.date)}`
+												: day(s.date)
+										}
+										title={t("shareTitle")}
+									/>
 								);
 							})}
 						</View>

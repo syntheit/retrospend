@@ -20,6 +20,7 @@ import type { MonthKind } from "./months";
 import { envelopeActions, isLimits, type StatusLine, statusLine } from "./rows";
 import type { BudgetEnvelope, BudgetMonth } from "./source";
 import { TargetForm } from "./TargetForm";
+import { BackButton } from "./WriteSheet";
 
 export type EnvelopeMode =
 	| "overview"
@@ -110,13 +111,7 @@ export function EnvelopeSheet({
 	const form = (child: (e: BudgetEnvelope) => ReactNode) =>
 		envelope ? (
 			<View style={{ gap: space[3] }}>
-				<View style={{ alignItems: "flex-start" }}>
-					<Button
-						label={t("back")}
-						onPress={() => setMode("overview")}
-						variant="text"
-					/>
-				</View>
+				<BackButton label={t("back")} onPress={() => setMode("overview")} />
 				{child(envelope)}
 			</View>
 		) : null;

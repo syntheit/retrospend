@@ -1,9 +1,11 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { ReactNode } from "react";
+import { View } from "react-native";
 import { SheetBody } from "@/features/write/parts";
 import { useMoneyWrite } from "@/features/write/useMoneyWrite";
 import { type UndoFamily, useUndoToast } from "@/features/write/useUndoToast";
 import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
+import { Button } from "@/ui/Button";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { BudgetChanges } from "./BudgetChanges";
 import type { BudgetMonth, BudgetPreview } from "./source";
@@ -149,5 +151,20 @@ export function WriteSheet<I, W extends WriteAnswer>({
 		>
 			<WriteForm {...form} active={visible} />
 		</FormSheet>
+	);
+}
+
+/** The way back from a form that opened inside a sheet, on its own line at the start. */
+export function BackButton({
+	label,
+	onPress,
+}: {
+	label: string;
+	onPress: () => void;
+}) {
+	return (
+		<View style={{ alignItems: "flex-start" }}>
+			<Button label={label} onPress={onPress} variant="text" />
+		</View>
 	);
 }

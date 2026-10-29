@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -12,9 +11,7 @@ import {
 	SheetBody,
 	useAmountLocale,
 } from "@/features/write/parts";
-import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { LinkButton } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { useToast } from "@/ui/Toast";
 import {
@@ -27,6 +24,7 @@ import {
 import { ChoiceList } from "./fields";
 import { type BudgetMonth, envelopeById, envelopesOf } from "./source";
 import { useSheetRead } from "./useSheetRead";
+import { BackButton } from "./WriteSheet";
 
 /**
  * Plan a coming month: what each envelope should get when its money arrives.
@@ -52,7 +50,6 @@ export function PlanSheet({
 	const { api } = useSession();
 	const toast = useToast();
 	const locale = useAmountLocale();
-	const { space } = useTheme();
 	const month = data.month.key;
 	const currency = data.book.currency;
 	const [editing, setEditing] = useState<string | null>(null);
@@ -139,15 +136,13 @@ export function PlanSheet({
 			<SheetBody>
 				{envelope ? (
 					<>
-						<View style={{ alignItems: "flex-start", marginLeft: -space[4] }}>
-							<LinkButton
-								label={t("back")}
-								onPress={() => {
-									setEditing(null);
-									setDraft("");
-								}}
-							/>
-						</View>
+						<BackButton
+							label={t("back")}
+							onPress={() => {
+								setEditing(null);
+								setDraft("");
+							}}
+						/>
 						<Note>{t("lead")}</Note>
 						<Line
 							label={t("planned")}

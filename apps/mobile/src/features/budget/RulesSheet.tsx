@@ -1,19 +1,18 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note, SheetBody } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { noSession, useApi } from "@/features/write/WriteFrame";
-import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { LinkButton, ListRow } from "@/ui/List";
+import { ListRow } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { RuleAddForm } from "./RuleAddForm";
 import { applyRuleBody, movedIds, type Rule } from "./rulesBody";
 import { type BudgetMonth, envelopeById } from "./source";
 import { useSheetRead } from "./useSheetRead";
-import { WriteForm } from "./WriteSheet";
+import { BackButton, WriteForm } from "./WriteSheet";
 
 type Mode =
 	| { kind: "list" }
@@ -67,7 +66,6 @@ export function RulesSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.rules");
-	const { color, space, type } = useTheme();
 	const sentence = useRuleSentence(data);
 	const [mode, setMode] = useState<Mode>({ kind: "list" });
 	const [failed, setFailed] = useState(false);
@@ -104,9 +102,7 @@ export function RulesSheet({
 	}
 
 	const back = (
-		<View style={{ alignItems: "flex-start", marginLeft: -space[4] }}>
-			<LinkButton label={t("back")} onPress={() => setMode({ kind: "list" })} />
-		</View>
+		<BackButton label={t("back")} onPress={() => setMode({ kind: "list" })} />
 	);
 	const title =
 		mode.kind === "add"
@@ -222,20 +218,11 @@ export function RulesSheet({
 									accessibilityLabel={`${r.name}, ${sentence(r)}`}
 									key={r.id}
 									onPress={() => setMode({ kind: "rule", id: r.id })}
-								>
-									<View style={{ flex: 1 }}>
-										<Text style={{ color: color.fg, fontSize: type.body.size }}>
-											{r.name}
-										</Text>
-										<Text
-											style={{ color: color.fg2, fontSize: type.small.size }}
-										>
-											{r.active
-												? sentence(r)
-												: `${sentence(r)}. ${t("paused")}`}
-										</Text>
-									</View>
-								</ListRow>
+									sub={
+										r.active ? sentence(r) : `${sentence(r)}. ${t("paused")}`
+									}
+									title={r.name}
+								/>
 							))}
 						</View>
 						<Button
