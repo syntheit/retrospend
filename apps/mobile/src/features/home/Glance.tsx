@@ -12,6 +12,7 @@ import { AvatarStack } from "@/ui/Avatar";
 import { LinkButton } from "@/ui/List";
 import { Text } from "@/ui/Text";
 import { useHomeDates } from "./dates";
+import { BudgetCard } from "./BudgetCard";
 import { HomeCard } from "./HomeCard";
 import { HomeTile, TileNote } from "./HomeTile";
 import {
@@ -54,10 +55,11 @@ function TileFigure({
 const isZero = (value: Figure) => value !== null && value.minor === 0;
 
 /**
- * Home's glance as summary cards (home.html, phone A): the budget card, then
- * four doorways, two to a row: what is not planned yet, Owed to you with
- * faces, Dollar today, Net worth. Every number is the server's figure; a
- * tile opens its page, and one with nothing to show is left out.
+ * Home's glance as summary cards (home.html, phone A): the Spent hero card
+ * (as the web leads), the budget card, then four doorways, two to a row:
+ * what is not planned yet, Owed to you with faces, Dollar today, Net worth.
+ * Every number is the server's figure; a tile opens its page, and one with
+ * nothing to show is left out.
  */
 export function Glance({
 	glance,
@@ -207,6 +209,7 @@ export function Glance({
 		<>
 			<View style={{ paddingHorizontal: space[4], gap: space[3] }}>
 				<HomeCard glance={glance} />
+				<BudgetCard glance={glance} />
 				{rows.map((row) => (
 					<View
 						key={isValidElement(row[0]) ? row[0].key : "row"}

@@ -1493,6 +1493,8 @@
 			"spentThisMonth": "{amount} spent this month",
 			"notPlanned": "+ {amount} not planned yet",
 			"lastMonth": "{amount} last month by this day",
+			"paceFaster": "Faster than {month} by this day",
+			"paceSlower": "At {month}’s pace or slower",
 			"missingRates": "No rate yet for {currencies}. Those entries are not in these numbers."
 		},
 		"tile": {

@@ -1493,6 +1493,8 @@
 			"spentThisMonth": "{amount} потрачено в этом месяце",
 			"notPlanned": "+ {amount} ещё не запланировано",
 			"lastMonth": "{amount} в прошлом месяце к этому дню",
+			"paceFaster": "Быстрее, чем за {month}, к этому дню",
+			"paceSlower": "Как за {month} или медленнее",
 			"missingRates": "Пока нет курса для {currencies}. Эти записи не входят в эти суммы."
 		},
 		"tile": {

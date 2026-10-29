@@ -48,13 +48,33 @@ export function fetchHome(api: RetrospendClient) {
 }
 
 /**
- * The one big number: Left to spend when there is a budget with a verdict
- * (or how far over, in the verdict's own words, once it is over), else what
- * was spent this period. All are the server's figures.
+ * The one big number, as the web glance leads: what was spent this period,
+ * with how it compares to last month by this day. Budget status is its own
+ * part (`budgetStatusOf`). All are the server's figures.
  */
+export interface Spent {
+	/** Null when a rate is missing: Home says so, never a guess. */
+	amount: Money | null;
+	lastToDate: Money | null;
+	/** The server's pace verdict against last month by this day; null while there is no pace. */
+	fasterThanLast: boolean | null;
+	/** A day in last month, for naming it. */
+	lastMonth: string;
+}
+
+export function spentOf(glance: Glance): Spent {
+	return {
+		amount: glance.spent.value,
+		lastToDate: glance.spentLastToDate.value,
+		fasterThanLast: glance.pace.fasterThanLast,
+		lastMonth: glance.lastPeriod.from,
+	};
+}
+
 type ReadyBudget = Extract<NonNullable<Glance["budget"]>, { state: "ready" }>;
 
-export type Hero =
+/** The budget part's status: what is left to spend, or how far over, in the verdict's words. */
+export type BudgetStatus =
 	| {
 			kind: "left";
 			amount: Money;
@@ -67,52 +87,46 @@ export type Hero =
 			kind: "over";
 			verdict: ReadyBudget["verdict"];
 			amount: Money;
-	  }
-	| { kind: "spent"; amount: Money | null; lastToDate: Money | null };
+	  };
 
-export function heroOf(glance: Glance): Hero {
+/** Null without a ready budget (none set, paused, or a rate missing). */
+export function budgetStatusOf(glance: Glance): BudgetStatus | null {
 	const budget = glance.budget;
-	if (budget?.state === "ready") {
-		const { leftToSpend, verdict } = budget;
-		if (verdictIsOver(verdict)) {
-			return { kind: "over", verdict, amount: verdict.lead.amount };
-		}
-		// As the web glance does: any `over` figure means over, whatever state
-		// the verdict is in, and Left to spend is never shown below zero.
-		const over =
-			verdict.style === "LIMITS" && verdict.over.minor > 0
-				? verdict.over
-				: leftToSpend.over.minor > 0
-					? leftToSpend.over
-					: leftToSpend.left.minor < 0
-						? {
-								minor: -leftToSpend.left.minor,
-								currency: leftToSpend.left.currency,
-							}
-						: null;
-		if (over) {
-			return {
-				kind: "over",
-				verdict: {
-					...verdict,
-					state: "OVER_BUDGET",
-					lead: { ...verdict.lead, amount: over },
-				},
-				amount: over,
-			};
-		}
+	if (budget?.state !== "ready") return null;
+	const { leftToSpend, verdict } = budget;
+	if (verdictIsOver(verdict)) {
+		return { kind: "over", verdict, amount: verdict.lead.amount };
+	}
+	// As the web glance does: any `over` figure means over, whatever state
+	// the verdict is in, and Left to spend is never shown below zero.
+	const over =
+		verdict.style === "LIMITS" && verdict.over.minor > 0
+			? verdict.over
+			: leftToSpend.over.minor > 0
+				? leftToSpend.over
+				: leftToSpend.left.minor < 0
+					? {
+							minor: -leftToSpend.left.minor,
+							currency: leftToSpend.left.currency,
+						}
+					: null;
+	if (over) {
 		return {
-			kind: "left",
-			amount: leftToSpend.left,
-			perDay: leftToSpend.perDay,
-			daysLeft: leftToSpend.daysLeft,
-			spent: leftToSpend.spent,
+			kind: "over",
+			verdict: {
+				...verdict,
+				state: "OVER_BUDGET",
+				lead: { ...verdict.lead, amount: over },
+			},
+			amount: over,
 		};
 	}
 	return {
-		kind: "spent",
-		amount: glance.spent.value,
-		lastToDate: glance.spentLastToDate.value,
+		kind: "left",
+		amount: leftToSpend.left,
+		perDay: leftToSpend.perDay,
+		daysLeft: leftToSpend.daysLeft,
+		spent: leftToSpend.spent,
 	};
 }
 
