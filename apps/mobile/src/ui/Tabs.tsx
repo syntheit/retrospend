@@ -1,29 +1,34 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { Platform } from "react-native";
 import { useTranslations } from "use-intl";
-import {
-	CURRENCIES_APART,
-	PROJECTS_APART,
-	RECURRING_APART,
-} from "@/layout/destinations";
+import { configureSidebar, IPAD_SIDEBAR } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 
 /**
- * Five destinations on phones: Home, Activity, Budget, Wealth and People
- * (Projects is the second segment of People, see PeopleHub). The iPad sidebar
- * lists Projects, Recurring and Currencies as well.
+ * Five destinations in the bar on every device: Home, Activity, Budget,
+ * Wealth and People. On phones Projects is the second segment of People.
+ *
+ * The iPad's floating tab bar holds the same five, so it does not scroll, and
+ * adapts into a sidebar (the toggle at its leading edge; open at launch in
+ * landscape). The sidebar adds Projects, Insights, Recurring, Currencies and
+ * Settings, which show there only (layout/destinations, modules/tab-sidebar).
  *
  * Add is not a tab: five tabs fill the iPhone's bar and a sixth goes into
- * More, so the add button floats above the bar (AddEntryProvider). Active nav
- * is brand (GUIDELINE §2.1); the bar itself is a theme surface.
+ * More, so the add button floats above the bar (AddEntryProvider); the iPad
+ * keeps it in the toolbar. Active nav is brand (GUIDELINE §2.1); the bar
+ * itself is a theme surface.
  */
 export function Tabs() {
 	const t = useTranslations("mobile.tabs");
+	const tw = useTranslations("mobile.wealth");
+	const ti = useTranslations("mobile.insights");
+	const ts = useTranslations("mobile.settings");
 	const { color } = useTheme();
 	// Android draws an M3 navigation bar in token colors; iOS keeps the
 	// system bar material and takes only the brand tint.
 	const m3 = Platform.OS === "android";
-	const tw = useTranslations("mobile.wealth");
+	// Before the native tabs mount, so the first install has the layout.
+	configureSidebar();
 
 	return (
 		<NativeTabs
@@ -65,25 +70,37 @@ export function Tabs() {
 				<NativeTabs.Trigger.Label>{t("people")}</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon md="group" sf="person.2" />
 			</NativeTabs.Trigger>
-			{PROJECTS_APART ? (
+			{IPAD_SIDEBAR ? (
 				<NativeTabs.Trigger name="projects">
 					<NativeTabs.Trigger.Label>{t("projects")}</NativeTabs.Trigger.Label>
 					<NativeTabs.Trigger.Icon md="folder" sf="folder" />
 				</NativeTabs.Trigger>
 			) : null}
-			{RECURRING_APART ? (
+			{IPAD_SIDEBAR ? (
+				<NativeTabs.Trigger name="insights">
+					<NativeTabs.Trigger.Label>{ti("title")}</NativeTabs.Trigger.Label>
+					<NativeTabs.Trigger.Icon md="bar_chart" sf="chart.bar" />
+				</NativeTabs.Trigger>
+			) : null}
+			{IPAD_SIDEBAR ? (
 				<NativeTabs.Trigger name="recurring">
 					<NativeTabs.Trigger.Label>{t("recurring")}</NativeTabs.Trigger.Label>
 					<NativeTabs.Trigger.Icon md="repeat" sf="repeat" />
 				</NativeTabs.Trigger>
 			) : null}
-			{CURRENCIES_APART ? (
+			{IPAD_SIDEBAR ? (
 				<NativeTabs.Trigger name="currencies">
 					<NativeTabs.Trigger.Label>{t("currencies")}</NativeTabs.Trigger.Label>
 					<NativeTabs.Trigger.Icon
 						md="currency_exchange"
 						sf="dollarsign.arrow.circlepath"
 					/>
+				</NativeTabs.Trigger>
+			) : null}
+			{IPAD_SIDEBAR ? (
+				<NativeTabs.Trigger name="preferences">
+					<NativeTabs.Trigger.Label>{ts("title")}</NativeTabs.Trigger.Label>
+					<NativeTabs.Trigger.Icon md="settings" sf="gearshape" />
 				</NativeTabs.Trigger>
 			) : null}
 		</NativeTabs>
