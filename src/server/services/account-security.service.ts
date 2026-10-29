@@ -11,8 +11,12 @@ import { MOBILE_CLIENT_ID } from "~/server/api/v1/scopes";
 import { db } from "~/server/db";
 import { consumeRateLimit } from "./api-v1/rate-limit.service";
 
-/** A wrong current password is what a stolen session can try, so every try counts. */
-const TRIES = { limit: 5, windowMs: 15 * 60_000 } as const;
+/**
+ * A wrong current password is what a stolen session can try, so every try
+ * counts: 5 per session in 15 minutes, so one session cannot use up the
+ * owner's tries, and a looser 20 per user across all their sessions.
+ */
+const TRIES = { perSession: 5, perUser: 20, windowMs: 15 * 60_000 } as const;
 
 /** The caller has used their tries; `retryAfterSeconds` says when to come back. */
 export class PasswordTriesExceededError extends TRPCError {
@@ -29,8 +33,7 @@ export const WRONG_PASSWORD_MESSAGE = "Current password is incorrect";
 /**
  * Changes the password after checking the current one, then signs out every
  * other session of the user (the one making the change stays). The tries are
- * counted before the check, 5 in 15 minutes per user. Neither password is
- * logged or returned.
+ * counted before the check (TRIES). Neither password is logged or returned.
  */
 export async function changeOwnPassword(input: {
 	userId: string;
@@ -38,13 +41,20 @@ export async function changeOwnPassword(input: {
 	currentPassword: string;
 	newPassword: string;
 }): Promise<{ signedOut: number }> {
-	const tries = await consumeRateLimit(
-		`pwchange:${input.userId}`,
-		TRIES.limit,
+	const session = await consumeRateLimit(
+		`pwchange:${input.userId}:${input.keepSessionId}`,
+		TRIES.perSession,
 		TRIES.windowMs,
 	);
-	if (!tries.allowed)
-		throw new PasswordTriesExceededError(tries.retryAfterSeconds);
+	if (!session.allowed)
+		throw new PasswordTriesExceededError(session.retryAfterSeconds);
+	const user = await consumeRateLimit(
+		`pwchange:${input.userId}`,
+		TRIES.perUser,
+		TRIES.windowMs,
+	);
+	if (!user.allowed)
+		throw new PasswordTriesExceededError(user.retryAfterSeconds);
 
 	const credential = await db.account.findFirst({
 		where: { userId: input.userId, providerId: "credential" },

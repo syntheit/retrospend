@@ -72,7 +72,7 @@ export const accountSecurityContract = {
 			tags: TAG,
 			summary: "Change your password",
 			description:
-				"Needs the current password, every time (5 tries in 15 minutes, then 429). Signs out every other session; the one making the change stays signed in.",
+				"Needs the current password, every time (5 tries per session and 20 per account in 15 minutes, then 429). Signs out every other session; the one making the change stays signed in.",
 		})
 		.meta({ scope: "account:security", event: "user.password_changed" })
 		.input(changePasswordSchema)

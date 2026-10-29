@@ -22,6 +22,7 @@ import { useServerConnection } from "@/auth/server-connection";
 import { createReadCache, type ReadCache } from "@/data/cache";
 import { createOutbox, type Outbox } from "@/data/outbox";
 import { createSqliteStore } from "@/data/sqlite-store";
+import { sweepExports } from "@/features/settings/security/exportFiles";
 import { createPushControl, forgetServerPush } from "@/push/control";
 import { type AuthApi, createAuthApi, type SignInStep } from "./auth-api";
 import { isSessionEnded } from "./errors";
@@ -120,6 +121,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	 */
 	const forgetEnded = useCallback(async (meId: string | null) => {
 		const { authApi, local, baseUrl } = latest.current;
+		sweepExports();
 		if (!baseUrl) return;
 		await Promise.all([
 			// The server already dropped this session's devices; stop polling here.
@@ -220,6 +222,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		[fetchMe, profileCache, tokens],
 	);
 
+	// An export left behind when the app last stopped is removed at launch.
+	useEffect(() => {
+		sweepExports();
+	}, []);
+
 	const value = useMemo<SessionValue>(
 		() => ({
 			state,
@@ -255,6 +262,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 					.catch(() => undefined);
 				await authApi?.signOut();
 				if (options?.discardUnsynced) await local?.outbox.clear();
+				// No exported file outlives the session.
+				sweepExports();
 				await Promise.all([
 					// Also when the profile never loaded: no push state outlives it.
 					baseUrl ? forgetServerPush(store, baseUrl, me?.id ?? null) : null,

@@ -66,6 +66,34 @@ async function describeFiles(value: unknown): Promise<unknown> {
 	return value;
 }
 
+/** Fields that hold a secret the person typed (currentPassword, password). */
+const SECRET_FIELD = /password/i;
+
+/** Stands in for a secret in a fingerprint. */
+export const REDACTED = "[redacted]";
+
+/**
+ * The input with every secret field, at any depth, replaced by a marker, so
+ * the stored fingerprint never depends on a password. The key still binds
+ * to the rest of the body and to which fields were sent.
+ */
+export function redactSecrets(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(redactSecrets);
+	// Only plain objects: a File or a Date is described later as it is.
+	const proto =
+		value && typeof value === "object"
+			? Object.getPrototypeOf(value)
+			: undefined;
+	if (proto === Object.prototype || proto === null) {
+		const out: Record<string, unknown> = {};
+		for (const [k, v] of Object.entries(value as object))
+			out[k] =
+				SECRET_FIELD.test(k) && v !== undefined ? REDACTED : redactSecrets(v);
+		return out;
+	}
+	return value;
+}
+
 /**
  * Key for request fingerprints, derived from AUTH_SECRET so it is used for
  * nothing else. A keyed hash matters because inputs can hold secrets (the
@@ -86,7 +114,7 @@ export async function hashRequest(
 	path: string,
 	input: unknown,
 ): Promise<string> {
-	const canonical = canonicalJson(await describeFiles(input));
+	const canonical = canonicalJson(await describeFiles(redactSecrets(input)));
 	return createHmac("sha256", getFingerprintKey())
 		.update(`${method.toUpperCase()} ${path}\n${canonical}`)
 		.digest("hex");

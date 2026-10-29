@@ -144,6 +144,36 @@ describe("/api/v1/me/password", () => {
 		).toBe(true);
 	});
 
+	it("counts tries per session, so one session cannot lock out another", async () => {
+		const id = await passwordUser();
+		const stolen = await mobile(id);
+		const owner = await mobile(id);
+		const wrong = {
+			currentPassword: "Wrong guess 1",
+			newPassword: NEW_PASSWORD,
+		};
+		for (let i = 0; i < 5; i++)
+			await expectProblem(
+				await changePassword(stolen.headers, wrong),
+				400,
+				"bad_request",
+			);
+		await expectProblem(
+			await changePassword(stolen.headers, wrong),
+			429,
+			"rate_limited",
+		);
+		await expectBody(
+			await changePassword(owner.headers, {
+				currentPassword: PASSWORD,
+				newPassword: NEW_PASSWORD,
+			}),
+			a.changePassword,
+		);
+		// The change signed the stolen session out.
+		expect(await sessionExists(stolen.token)).toBe(false);
+	});
+
 	it("refuses every credential that is not the person's own sign-in", async () => {
 		const id = await passwordUser();
 		const body = { currentPassword: PASSWORD, newPassword: NEW_PASSWORD };
