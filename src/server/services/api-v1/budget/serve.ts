@@ -18,6 +18,7 @@ const CODES: Record<EnvelopeErrorCode, TRPC_ERROR_CODE_KEY> = {
 	NOT_FOUND: "NOT_FOUND",
 	ID_REUSED: "CONFLICT",
 	ALREADY_UNDONE: "CONFLICT",
+	DRAFT_OPEN: "CONFLICT",
 };
 
 /** Engine errors leave as the codes the web maps them to (envelope-procedure.ts). */

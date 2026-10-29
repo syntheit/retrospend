@@ -13,7 +13,9 @@ export type EnvelopeErrorCode =
 	| "INVALID"
 	| "NOT_FOUND"
 	| "ID_REUSED"
-	| "ALREADY_UNDONE";
+	| "ALREADY_UNDONE"
+	/** A new plan while another plan is open for its month. */
+	| "DRAFT_OPEN";
 
 export class EnvelopeError extends Error {
 	constructor(

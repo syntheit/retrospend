@@ -71,7 +71,9 @@ export function PlanSheet({
 	}, [visible]);
 
 	async function save() {
-		if (!api || !envelope || minor === null || busy) return;
+		// The plan is saved whole, so it starts only from a plan read for this
+		// month: a save from nothing would replace the open plan with one line.
+		if (!api || !drafts || !envelope || minor === null || busy) return;
 		const id = drafts?.open?.id ?? fallbackId.current;
 		const before = linesOf(base);
 		setBusy(true);
@@ -89,6 +91,8 @@ export function PlanSheet({
 		} catch {
 			setFailed(true);
 			setBusy(false);
+			// The plan may have changed elsewhere: read it again before a retry.
+			read.reload();
 			return;
 		}
 		setBusy(false);
@@ -154,8 +158,11 @@ export function PlanSheet({
 							onDraftChange={setDraft}
 						/>
 						{failed ? <Note tone="attention">{tw("error")}</Note> : null}
+						{read.status === "error" ? (
+							<Note tone="attention">{t("error")}</Note>
+						) : null}
 						<Button
-							disabled={minor === null || busy}
+							disabled={!drafts || minor === null || busy}
 							label={busy ? tw("saving") : t("save")}
 							onPress={() => void save()}
 						/>
