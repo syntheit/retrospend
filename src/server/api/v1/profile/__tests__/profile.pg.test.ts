@@ -248,7 +248,7 @@ describe("/api/v1/profile", () => {
 	it("uploads and removes only the caller's own picture", async () => {
 		const other = await createTestUser();
 		await adminDb.user.update({
-			where: { id: other.id },
+			where: { id: other.user.id },
 			data: { avatarPath: "avatars/other-1.webp" },
 		});
 		const mine = await passwordUser();
@@ -274,7 +274,7 @@ describe("/api/v1/profile", () => {
 		);
 
 		const row = await adminDb.user.findUniqueOrThrow({
-			where: { id: other.id },
+			where: { id: other.user.id },
 		});
 		expect(row.avatarPath).toBe("avatars/other-1.webp");
 	});
