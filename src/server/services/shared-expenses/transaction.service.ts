@@ -1,5 +1,4 @@
 import { TRPCError } from "@trpc/server";
-import { fromMinorUnits, toMinorUnits } from "@retrospend/domain/money";
 import { findExchangeRate } from "~/server/exchange-rates";
 import { addGhostMembers } from "~/server/services/project/joining";
 import {
@@ -17,13 +16,12 @@ import {
 import { type ParticipantRef, sameParticipant } from "./types";
 import { resolveVerification } from "./auto-accept";
 import {
-	allocateByWeights,
-	remainderRow,
 	compareParticipants,
 	resolveSplits,
 	SplitComputationError,
 } from "@retrospend/domain/shared-split-computation";
 import { type DeleteOptions, guardDelete } from "./delete-guard";
+import { rescaleExactSplits } from "./exact-rescale";
 
 type AppDb = PrismaClient;
 
@@ -645,14 +643,16 @@ export class SharedTransactionService {
 						? // The stored exact shares would otherwise go stale (their sum no
 							// longer equals the amount, silently corrupting balances):
 							// rescale each proportionally, keeping it cent-accurate.
-							this.rescaleExactSplits(
-								serializeDecimal(existing.amount),
+							rescaleExactSplits({
+								oldAmount: serializeDecimal(existing.amount),
 								newAmount,
-								effectiveCurrency,
-								stored,
-								effectivePaidBy,
-								existing.currency,
-							)
+								currency: effectiveCurrency,
+								fromCurrency: existing.currency,
+								splits: stored,
+								paidBy: effectivePaidBy,
+								equal: () =>
+									this.computeSplits(newAmount, effectiveCurrency, stored, "EQUAL", effectivePaidBy),
+							})
 						: this.computeSplits(
 								newAmount,
 								effectiveCurrency,
@@ -1211,55 +1211,6 @@ export class SharedTransactionService {
 			}
 			throw err;
 		}
-	}
-
-	/**
-	 * Proportionally rescales stored EXACT shares to a new total. Each share keeps
-	 * its fraction of the old total; the leftover minor unit from flooring goes to
-	 * the payer first (else the last row), matching the rounding rule used
-	 * elsewhere.
-	 * If the old total was 0 (no proportion to preserve), falls back to an equal
-	 * split so the shares still sum to the new amount. `fromCurrency` is the
-	 * currency the stored shares are in, when the edit changes it.
-	 */
-	private rescaleExactSplits(
-		oldAmount: number,
-		newAmount: number,
-		currency: string,
-		splits: Array<SplitParticipantInput & { shareAmount: number }>,
-		paidBy: ParticipantRef,
-		fromCurrency: string = currency,
-	): SplitParticipantInput[] {
-		const newTotalCents = toMinorUnits(newAmount, currency);
-
-		if (toMinorUnits(oldAmount, fromCurrency) === 0) {
-			// Degenerate case: nothing to scale from. Split equally.
-			return this.computeSplits(newAmount, currency, splits, "EQUAL", paidBy);
-		}
-
-		const oldTotalCents = splits.reduce(
-			(s, p) => s + toMinorUnits(p.shareAmount, fromCurrency),
-			0,
-		);
-		if (oldTotalCents === 0) {
-			return this.computeSplits(newAmount, currency, splits, "EQUAL", paidBy);
-		}
-
-		// Exact BigInt allocation: newTotal * oldShare overflows a float near 1e12 units.
-		const oldShares = splits.map((p) =>
-			toMinorUnits(p.shareAmount, fromCurrency),
-		);
-		const cents = allocateByWeights(
-			newTotalCents,
-			oldShares,
-			remainderRow(splits, paidBy),
-		);
-
-		return splits.map((p, i) => ({
-			participantType: p.participantType,
-			participantId: p.participantId,
-			shareAmount: fromMinorUnits(cents[i]!, currency),
-		}));
 	}
 
 	private async runInTransaction<T>(

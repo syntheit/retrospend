@@ -427,7 +427,7 @@
 		"src/server/services/shared-expenses/people.service.ts": 1003,
 		"src/server/services/shared-expenses/settlement.service.ts": 432,
 		"src/server/services/shared-expenses/test-utils.ts": 1045,
-		"src/server/services/shared-expenses/transaction.service.ts": 765,
+		"src/server/services/shared-expenses/transaction.service.ts": 726,
 		"src/server/services/shared-expenses/verification.service.ts": 62
 	},
 	"UI-151": {
