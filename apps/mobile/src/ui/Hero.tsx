@@ -31,8 +31,9 @@ export function Hero({
 	tone?: Tone;
 	align?: "start" | "center";
 }) {
-	const { color, space, type } = useTheme();
-	const hero = type.hero;
+	const { color, size, space, type } = useTheme();
+	// Phones draw the hero at its own size (size.hero.phone); the rest of type.hero holds.
+	const hero = { ...type.hero, size: size.hero.phone };
 	const small = type.small;
 	const valueColor = {
 		fg: color.fg,

@@ -51,20 +51,20 @@ describe("Hero", () => {
 		).toBeGreaterThan(0);
 	});
 
-	it("sets the value at hero size with token weight and tracking", () => {
+	it("sets the value at the phone hero size with token weight and tracking", () => {
 		const root = render(
 			<Hero label="Owed to you" tone="positive" value="$5" />,
 		);
 		const value = root.findAll(
 			(n) =>
 				(n.props.style as { fontSize?: number } | undefined)?.fontSize ===
-				light.type.hero.size,
+				light.size.hero.phone,
 		)[0];
 		const style = value?.props.style as Record<string, unknown>;
 		expect(style.fontWeight).toBe("600");
 		expect(style.color).toBe(light.color.positive);
 		expect(style.letterSpacing).toBeCloseTo(
-			light.type.hero.size * light.type.hero.tracking,
+			light.size.hero.phone * light.type.hero.tracking,
 		);
 	});
 });

@@ -1,3 +1,4 @@
+import { light } from "@retrospend/tokens/theme";
 import type { Theme } from "@/theme";
 
 /**
@@ -61,12 +62,12 @@ export function categoryColor(color: Colors, slot: number): string {
 }
 
 export const STROKE = {
-	line: 2,
+	line: light.chart.line,
 	previous: 1.5,
 	/** Dashes of the comparison line. */
 	previousDash: "4 4",
-	dot: 5,
-	dotRing: 2,
+	dot: light.chart.dot,
+	dotRing: light.chart.ring,
 	axis: 1,
 	cross: 1,
 } as const;
