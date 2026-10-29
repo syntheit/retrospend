@@ -9,8 +9,8 @@ import { nextRecurringDate } from "@retrospend/domain/recurring";
 import { startOfNextDayIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { recurringEntryData } from "./money-in.service";
-import { paidOnInstant } from "./recurring-paid-on";
 import type { MoneyMutation } from "./preview/types";
+import { paidOnInstant } from "./recurring-paid-on";
 
 export interface ConfirmRecurringExpenseInput {
 	readonly templateId: string;

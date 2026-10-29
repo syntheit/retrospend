@@ -2174,7 +2174,16 @@
 			"fixed": "Der übliche Betrag, {amount}.",
 			"nextDue": "Nächste Fälligkeit",
 			"submit": "Bestätigen",
-			"toast": "{title} erfasst, {amount}"
+			"toast": "{title} erfasst, {amount}",
+			"paidOn": "Bezahlt am",
+			"paidOnIn": "Erhalten am",
+			"paidOnDue": "{date} (fällig)",
+			"paidOnDueToday": "Heute (fällig)",
+			"paidOnToday": "Heute",
+			"paidOnPick": "Datum wählen",
+			"pickDate": "Datum",
+			"future": "Das Datum darf nicht in der Zukunft liegen.",
+			"skip": "Diesmal überspringen"
 		},
 		"item": {
 			"next": "{amount}, nächstes am {date}.",
@@ -2202,6 +2211,12 @@
 			"saving": "Speichern …",
 			"error": "Das ließ sich nicht wiederkehrend machen. Versuche es erneut.",
 			"toast": "{title} wiederholt sich jetzt monatlich"
+		},
+		"skip": {
+			"title": "{title} überspringen",
+			"body": "Es wird nichts erfasst. Wieder fällig am {date}.",
+			"submit": "Überspringen",
+			"toast": "{title} übersprungen. Nächste Fälligkeit {date}"
 		}
 	},
 	"shortcuts": {

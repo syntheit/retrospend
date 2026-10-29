@@ -549,71 +549,76 @@ describe("/api/v1/recurring", () => {
 	it.each([
 		["expense", "out"],
 		["income", "in"],
-	] as const)("skips a due %s after a preview, books nothing and undoes it", async (_n, direction) => {
-		const item = await make({
-			name: `Skip ${direction}`,
-			direction,
-			nextDueDate: daysAgo(4),
-		});
-		const preview = await expectBody<Preview>(
-			await send("POST", `/recurring/${item.id}/skip/preview`, {
-				dueAt: item.dueAt,
-			}),
-			c.previewSkip,
-		);
-		expect(preview.changes).toEqual([]);
-		await expect(
-			adminDb.recurringTemplate.findUniqueOrThrow({ where: { id: item.id } }),
-		).resolves.toMatchObject({ nextDueDate: new Date(item.dueAt) });
+	] as const)(
+		"skips a due %s after a preview, books nothing and undoes it",
+		async (_n, direction) => {
+			const item = await make({
+				name: `Skip ${direction}`,
+				direction,
+				nextDueDate: daysAgo(4),
+			});
+			const preview = await expectBody<Preview>(
+				await send("POST", `/recurring/${item.id}/skip/preview`, {
+					dueAt: item.dueAt,
+				}),
+				c.previewSkip,
+			);
+			expect(preview.changes).toEqual([]);
+			await expect(
+				adminDb.recurringTemplate.findUniqueOrThrow({ where: { id: item.id } }),
+			).resolves.toMatchObject({ nextDueDate: new Date(item.dueAt) });
 
-		const done = await expectBody<{
-			skipped: { templateId: string; skippedAt: string; nextDueAt: string };
-			undo: string;
-		}>(
-			await send("POST", `/recurring/${item.id}/skip`, { dueAt: item.dueAt }),
-			c.skip,
-		);
-		expect(done.skipped).toMatchObject({
-			templateId: item.id,
-			skippedAt: item.dueAt,
-		});
-		const moved = await adminDb.recurringTemplate.findUniqueOrThrow({
-			where: { id: item.id },
-		});
-		expect(moved.nextDueDate.toISOString()).toBe(done.skipped.nextDueAt);
-		expect(moved.nextDueDate.getTime()).toBeGreaterThan(
-			new Date(item.dueAt).getTime(),
-		);
-		await expect(
-			adminDb.expense.count({ where: { recurringTemplateId: item.id } }),
-		).resolves.toBe(0);
+			const done = await expectBody<{
+				skipped: { templateId: string; skippedAt: string; nextDueAt: string };
+				undo: string;
+			}>(
+				await send("POST", `/recurring/${item.id}/skip`, { dueAt: item.dueAt }),
+				c.skip,
+			);
+			expect(done.skipped).toMatchObject({
+				templateId: item.id,
+				skippedAt: item.dueAt,
+			});
+			const moved = await adminDb.recurringTemplate.findUniqueOrThrow({
+				where: { id: item.id },
+			});
+			expect(moved.nextDueDate.toISOString()).toBe(done.skipped.nextDueAt);
+			expect(moved.nextDueDate.getTime()).toBeGreaterThan(
+				new Date(item.dueAt).getTime(),
+			);
+			await expect(
+				adminDb.expense.count({ where: { recurringTemplateId: item.id } }),
+			).resolves.toBe(0);
 
-		// The same skip again is refused, not applied to the next period.
-		await expectProblem(
-			await send("POST", `/recurring/${item.id}/skip`, { dueAt: item.dueAt }),
-			409,
-			"conflict",
-		);
+			// The same skip again is refused, not applied to the next period.
+			await expectProblem(
+				await send("POST", `/recurring/${item.id}/skip`, { dueAt: item.dueAt }),
+				409,
+				"conflict",
+			);
 
-		await expectBody(
-			await send("POST", "/recurring/skip/undo/preview", { token: done.undo }),
-			c.previewUndoSkip,
-		);
-		await expectBody(
-			await send("POST", "/recurring/skip/undo", { token: done.undo }),
-			c.undoSkip,
-		);
-		const back = await adminDb.recurringTemplate.findUniqueOrThrow({
-			where: { id: item.id },
-		});
-		expect(back.nextDueDate.toISOString()).toBe(item.dueAt);
-		// The token is spent.
-		await expectProblem(
-			await send("POST", "/recurring/skip/undo", { token: done.undo }),
-			409,
-			"conflict",
-		);
-	});
+			await expectBody(
+				await send("POST", "/recurring/skip/undo/preview", {
+					token: done.undo,
+				}),
+				c.previewUndoSkip,
+			);
+			await expectBody(
+				await send("POST", "/recurring/skip/undo", { token: done.undo }),
+				c.undoSkip,
+			);
+			const back = await adminDb.recurringTemplate.findUniqueOrThrow({
+				where: { id: item.id },
+			});
+			expect(back.nextDueDate.toISOString()).toBe(item.dueAt);
+			// The token is spent.
+			await expectProblem(
+				await send("POST", "/recurring/skip/undo", { token: done.undo }),
+				409,
+				"conflict",
+			);
+		},
+	);
 
 	it("refuses to skip what is not due, and a skip undo after a later change", async () => {
 		const later = await make({

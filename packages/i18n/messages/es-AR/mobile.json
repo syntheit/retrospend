@@ -2174,7 +2174,16 @@
 			"fixed": "El monto de siempre, {amount}.",
 			"nextDue": "Próximo vencimiento",
 			"submit": "Confirmar",
-			"toast": "{title} registrado, {amount}"
+			"toast": "{title} registrado, {amount}",
+			"paidOn": "Pagado el",
+			"paidOnIn": "Recibido el",
+			"paidOnDue": "{date} (vence)",
+			"paidOnDueToday": "Hoy (vence)",
+			"paidOnToday": "Hoy",
+			"paidOnPick": "Elegir fecha",
+			"pickDate": "Fecha",
+			"future": "La fecha no puede ser futura.",
+			"skip": "Omitir esta vez"
 		},
 		"item": {
 			"next": "{amount}, próximo el {date}.",
@@ -2202,6 +2211,12 @@
 			"saving": "Guardando",
 			"error": "No se pudo hacer recurrente. Intentá de nuevo.",
 			"toast": "{title} ahora se repite cada mes"
+		},
+		"skip": {
+			"title": "Omitir {title}",
+			"body": "No se registra nada. Vuelve a vencer el {date}.",
+			"submit": "Omitir",
+			"toast": "{title} omitido. Próximo vencimiento {date}"
 		}
 	},
 	"shortcuts": {

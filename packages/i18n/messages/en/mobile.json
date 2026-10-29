@@ -2174,7 +2174,16 @@
 			"fixed": "The usual amount, {amount}.",
 			"nextDue": "Next due",
 			"submit": "Confirm",
-			"toast": "{title} logged, {amount}"
+			"toast": "{title} logged, {amount}",
+			"paidOn": "Paid on",
+			"paidOnIn": "Received on",
+			"paidOnDue": "{date} (due)",
+			"paidOnDueToday": "Today (due)",
+			"paidOnToday": "Today",
+			"paidOnPick": "Pick a date",
+			"pickDate": "Date",
+			"future": "The date can't be in the future.",
+			"skip": "Skip this time"
 		},
 		"item": {
 			"next": "{amount}, next on {date}.",
@@ -2202,6 +2211,12 @@
 			"saving": "Saving",
 			"error": "Couldn't make it recurring. Try again.",
 			"toast": "{title} now repeats monthly"
+		},
+		"skip": {
+			"title": "Skip {title}",
+			"body": "Nothing is logged. It comes back on {date}.",
+			"submit": "Skip",
+			"toast": "Skipped {title}. Next due {date}"
 		}
 	},
 	"shortcuts": {
