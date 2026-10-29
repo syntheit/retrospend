@@ -36479,7 +36479,7 @@
 														}
 													]
 												},
-												"carried": {
+												"carryable": {
 													"items": {
 														"properties": {
 															"amount": {
@@ -36740,7 +36740,7 @@
 											},
 											"required": [
 												"summary",
-												"carried",
+												"carryable",
 												"closedAt",
 												"revision",
 												"acknowledgedRevision",

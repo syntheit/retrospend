@@ -118,7 +118,7 @@ export function getMonthSummary(
 ): Promise<MonthSummaryOutput | null> {
 	return read(userId, async (tx) => {
 		await ensureMonthsClosed(tx, userId, now);
-		return monthSummaryIn(tx, userId, month);
+		return monthSummaryIn(tx, userId, month, now);
 	});
 }
 

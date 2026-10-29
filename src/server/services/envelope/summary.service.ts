@@ -12,20 +12,24 @@ import type { Prisma } from "~prisma";
 import { addMonths } from "./calendar";
 import { type CloseRow, loadCloseRows } from "./close-rows";
 import { EnvelopeError } from "./errors";
-import { carriedOverspend } from "./fix.service";
+import { carryCaps } from "./fix.service";
 import { findPersonalBook } from "./inputs";
+import { snapshot } from "./movement-state";
 
 type Tx = Prisma.TransactionClient;
 
 export function summaryDto(
 	row: CloseRow,
 	currency: string,
-	carried: ReadonlyMap<string, number> = new Map(),
+	carryable: ReadonlyMap<string, number> = new Map(),
 ): MonthSummaryOutput {
 	const money = (minor: number) => ({ minor, currency });
 	return {
 		summary: row.summary,
-		carried: [...carried].map(([id, minor]) => ({ id, amount: money(minor) })),
+		carryable: [...carryable].map(([id, minor]) => ({
+			id,
+			amount: money(minor),
+		})),
 		closedAt: row.closedAt,
 		revision: row.revision,
 		acknowledgedRevision: row.ackRevision,
@@ -49,20 +53,19 @@ export async function monthSummaryIn(
 	tx: Tx,
 	userId: string,
 	month: number,
+	now: Date,
 ): Promise<MonthSummaryOutput | null> {
 	const book = await findPersonalBook(tx, userId);
 	if (!book) return null;
 	const row = (await loadCloseRows(tx, book.id)).find((r) => r.month === month);
 	if (!row) return null;
-	// The stored close never changes when an overspend is carried into the
-	// next month, so what was carried is read beside it.
-	const carried = await carriedOverspend(
-		tx,
-		book.id,
-		addMonths(month, 1),
-		book.currency,
-	);
-	return summaryDto(row, book.currency, carried);
+	// The stored close never changes after a carry or a late expense, so what
+	// can still be carried is read from the book as it is now. Only the month
+	// that just closed can be carried from.
+	const s = await snapshot(tx, userId, now);
+	const caps =
+		addMonths(month, 1) === s.current ? await carryCaps(tx, s) : new Map();
+	return summaryDto(row, book.currency, caps);
 }
 
 /** "Done" on a summary: that revision is read; a later revision waits again. */
