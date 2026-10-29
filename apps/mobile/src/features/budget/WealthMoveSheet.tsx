@@ -180,7 +180,9 @@ export function WealthMoveSheet({
 				<Note>{t(direction === "to" ? "noAccount" : "none")}</Note>
 			) : (
 				<>
-					<Note>{t("lead", { name: envelopeName })}</Note>
+					{direction === "to" ? (
+						<Note>{t("lead", { name: envelopeName })}</Note>
+					) : null}
 					{direction === "from" ? (
 						<>
 							<Segmented
