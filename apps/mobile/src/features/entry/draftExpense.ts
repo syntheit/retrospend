@@ -226,10 +226,7 @@ export function sharedFromDetail(
 		paidByKey: payerKey,
 		splitMode: detail.splitMode,
 		parts: Object.fromEntries(
-			splits.map((s) => [
-				personKey(s),
-				partText(detail.splitMode, s, locale),
-			]),
+			splits.map((s) => [personKey(s), partText(detail.splitMode, s, locale)]),
 		),
 		splitTouched: false,
 		date: detail.date,
@@ -470,7 +467,11 @@ type Ref = { type: PersonType; id: string };
 function splitBody(
 	d: ExpenseDraft,
 	input: { locale: string; meId: string; catalog: EntryCatalog },
-): { paidBy: Ref; splitWith: Record<string, unknown>[]; others: number } | null {
+): {
+	paidBy: Ref;
+	splitWith: Record<string, unknown>[];
+	others: number;
+} | null {
 	const people = knownPeople(d, input.catalog.people);
 	const you: Ref = { type: "user", id: input.meId };
 	const others = d.withKeys.flatMap((key) => {
@@ -505,7 +506,6 @@ function splitBody(
 	}
 	return { paidBy, splitWith, others: others.length };
 }
-
 
 /**
  * What only a personal expense carries: place, note, the months it is spread

@@ -204,7 +204,9 @@ export function sharesAfter(diff: PreviewDto): Map<string, Money> | null {
 	return new Map(
 		(
 			detail.shares as { type: string; id: string; after: Money | null }[]
-		).flatMap((s) => (s.after ? [[`${s.type}:${s.id}`, s.after] as const] : [])),
+		).flatMap((s) =>
+			s.after ? [[`${s.type}:${s.id}`, s.after] as const] : [],
+		),
 	);
 }
 

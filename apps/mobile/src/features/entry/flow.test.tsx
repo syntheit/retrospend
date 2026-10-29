@@ -1554,7 +1554,7 @@ describe("Who paid and a custom split", () => {
 		const tree = await open("expense", () => {}, "s1", true);
 		pressWords(tree, "More");
 		press(tree, "Paid by, You");
-		press(tree, "pick Lucía");
+		press(tree, "pick Lucía Fernández");
 		await settle();
 		expect(
 			calls.filter((c) => c.route === "shared.previewUpdate").at(-1)?.input,

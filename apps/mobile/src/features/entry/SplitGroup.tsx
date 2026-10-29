@@ -14,8 +14,8 @@ import { GroupItem } from "./DateRow";
 import { knownPeople } from "./draft";
 import { type SplitModeName, SplitSummary } from "./ExpenseFields";
 import { usePersonFaces } from "./Face";
-import { PickField } from "./PickField";
 import type { SavedEntry } from "./hooks";
+import { PickField } from "./PickField";
 import { sharesAfter } from "./preview";
 import { CUSTOM_MODES } from "./splitParts";
 import { personKey } from "./types";
@@ -90,7 +90,11 @@ export function useSplitView(
 		: preview.preview.status === "loading";
 	const shareOf = (key: string): Money | null => {
 		if (pending) return null;
-		return after?.get(key) ?? (sharedEdit && !form.dirty ? saved.get(key) : null) ?? null;
+		return (
+			after?.get(key) ??
+			(sharedEdit && !form.dirty ? saved.get(key) : null) ??
+			null
+		);
 	};
 
 	const members = [...(youOn ? [you] : []), ...others];
@@ -108,7 +112,9 @@ export function useSplitView(
 	const payers = [
 		you,
 		...others,
-		...(outside ? [person(personKey(outside), outside.name, outside.imageUrl)] : []),
+		...(outside
+			? [person(personKey(outside), outside.name, outside.imageUrl)]
+			: []),
 	];
 	const paidBy = payers.find((p) => p.key === draft.paidByKey) ?? you;
 	return {
@@ -143,7 +149,8 @@ export function SplitGroup({
 	const { format } = useFormatMoney();
 	const { space } = useTheme();
 	const draft = form.expense;
-	const custom = split.mode !== "EQUAL";
+	const customMode = split.mode === "EQUAL" ? null : split.mode;
+	const custom = customMode !== null;
 	const youKey = personKey({ type: "user", id: form.meId });
 	const money = (value: Money) => format(value, { cents: true }) ?? "";
 	const refused =
@@ -158,7 +165,9 @@ export function SplitGroup({
 					find={tc("faces.find")}
 					label={t("paidBy")}
 					onChange={(id) =>
-						form.patchSplit({ paidByKey: id === null || id === youKey ? null : id })
+						form.patchSplit({
+							paidByKey: id === null || id === youKey ? null : id,
+						})
 					}
 					rows={split.payers.map((p) => ({
 						id: p.key,
@@ -241,7 +250,7 @@ export function SplitGroup({
 											})
 										}
 										onTypingChange={form.setTyping}
-										placeholder={t(`part.${split.mode}`)}
+										placeholder={t(`part.${customMode}`)}
 										prefix={
 											split.mode === "EXACT"
 												? draft.currency

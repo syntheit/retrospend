@@ -152,11 +152,17 @@ describe("a new split with a payer and a mode", () => {
 		expect(buildExpenseWrite(open, input)).toBeNull();
 		expect(expenseErrors(open, "en-US", undefined, "me").split).toBe(true);
 		expect(
-			expenseErrors({ ...open, parts: { ...open.parts, "user:lucia1": "50" } }, "en-US", undefined, "me")
-				.split,
+			expenseErrors(
+				{ ...open, parts: { ...open.parts, "user:lucia1": "50" } },
+				"en-US",
+				undefined,
+				"me",
+			).split,
 		).toBeUndefined();
 		// An equal split has no parts to read.
-		expect(expenseErrors(draft, "en-US", undefined, "me").split).toBeUndefined();
+		expect(
+			expenseErrors(draft, "en-US", undefined, "me").split,
+		).toBeUndefined();
 	});
 });
 
@@ -203,8 +209,11 @@ describe("editing who paid and how it divides", () => {
 
 	it("sends the saved payer and mode and no people until something changes", () => {
 		const d = sharedFromDetail(detail, "en-US", "me");
-		const body = buildExpenseUpdate(d, { locale: "en-US", catalog, meId: "me" })
-			?.body;
+		const body = buildExpenseUpdate(d, {
+			locale: "en-US",
+			catalog,
+			meId: "me",
+		})?.body;
 		expect(body).toMatchObject({
 			paidBy: person("lucia1"),
 			splitMode: "PERCENTAGE",
