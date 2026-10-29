@@ -2037,5 +2037,29 @@
 			"market": "Market",
 			"custom": "Custom"
 		}
+	},
+	"status": {
+		"owed": "Owed to you",
+		"owe": "You owe",
+		"settled": "Settled",
+		"funded": "Funded",
+		"underfunded": "Underfunded",
+		"overspent": "Overspent",
+		"pending": "Pending",
+		"confirmed": "Confirmed",
+		"overdue": "Overdue",
+		"due": "Due today",
+		"review": "To review",
+		"importing": "Importing",
+		"error": "Failed",
+		"notOnRetrospend": "Not on Retrospend",
+		"upcoming": "Upcoming",
+		"noRate": "No rate yet",
+		"rejected": "Rejected",
+		"notCounted": "Not counted",
+		"spread": "Spread over time"
+	},
+	"list": {
+		"loading": "Loading"
 	}
 }

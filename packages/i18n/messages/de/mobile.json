@@ -2037,5 +2037,29 @@
 			"market": "Markt",
 			"custom": "Eigener Kurs"
 		}
+	},
+	"status": {
+		"owed": "Wird dir geschuldet",
+		"owe": "Du schuldest",
+		"settled": "Ausgeglichen",
+		"funded": "Gedeckt",
+		"underfunded": "Unterdeckt",
+		"overspent": "Überzogen",
+		"pending": "Ausstehend",
+		"confirmed": "Bestätigt",
+		"overdue": "Überfällig",
+		"due": "Heute fällig",
+		"review": "Zu prüfen",
+		"importing": "Wird importiert",
+		"error": "Fehlgeschlagen",
+		"notOnRetrospend": "Nicht auf Retrospend",
+		"upcoming": "Anstehend",
+		"noRate": "Noch kein Kurs",
+		"rejected": "Abgelehnt",
+		"notCounted": "Nicht gezählt",
+		"spread": "Über die Zeit verteilt"
+	},
+	"list": {
+		"loading": "Wird geladen"
 	}
 }

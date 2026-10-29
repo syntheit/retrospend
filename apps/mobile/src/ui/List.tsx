@@ -1,11 +1,25 @@
 import { categoryIconName } from "@retrospend/domain/category-icons";
-import type { ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { mixOklab, type Rgba, toHex } from "@retrospend/tokens/color";
+import {
+	Children,
+	createContext,
+	Fragment,
+	isValidElement,
+	type ReactNode,
+	useContext,
+} from "react";
+import { Pressable, Text, type TextStyle, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
-import { categoryColor, Glyph, type GlyphName } from "@/ui/Glyph";
+import { categoryColor, Glyph, type GlyphName } from "./Glyph";
 
-/** A section title with the count or action at its end. Flat, no card. */
+/** A weight token (400, 500, 600) as the style value React Native takes. */
+const weightStyle = (value: number) => String(value) as TextStyle["fontWeight"];
+
+/**
+ * A section title with its count (fg-3) or a link at its end. Flat, no card.
+ * `detail` is the count or a short fact next to the title.
+ */
 export function SectionHeader({
 	title,
 	detail,
@@ -17,7 +31,7 @@ export function SectionHeader({
 	actionLabel?: string;
 	onAction?: () => void;
 }) {
-	const { color, size, space, type } = useTheme();
+	const { color, font, size, space, type } = useTheme();
 	return (
 		<View
 			style={{
@@ -37,13 +51,19 @@ export function SectionHeader({
 					style={{
 						color: color.fg,
 						fontSize: type.section.size,
-						fontWeight: "600",
+						fontWeight: weightStyle(type.section.weight),
 					}}
 				>
 					{title}
 				</Text>
 				{detail ? (
-					<Text style={{ color: color.fg2, fontSize: type.body.size }}>
+					<Text
+						style={{
+							color: color.fg3,
+							fontSize: type.body.size,
+							fontVariant: ["tabular-nums"],
+						}}
+					>
 						{detail}
 					</Text>
 				) : null}
@@ -51,14 +71,14 @@ export function SectionHeader({
 			{actionLabel && onAction ? (
 				<Pressable
 					accessibilityRole="button"
-					hitSlop={(size.touchMin.phone - type.body.size) / 2}
+					hitSlop={(size.touchMin.phone - type.small.size) / 2}
 					onPress={onAction}
 				>
 					<Text
 						style={{
-							color: color.brand,
-							fontSize: type.body.size,
-							fontWeight: "500",
+							color: color.accentStrong,
+							fontSize: type.small.size,
+							fontWeight: weightStyle(font.weight.medium),
 						}}
 					>
 						{actionLabel}
@@ -101,6 +121,29 @@ export interface CategoryRef {
 	tone: number;
 }
 
+const tints = new Map<string, string>();
+
+/** A theme color (`#rrggbb` or `#rrggbbaa`) as sRGB channels. */
+function fromHex(hex: string): Rgba {
+	const n = (at: number) => Number.parseInt(hex.slice(at, at + 2), 16) / 255;
+	return { r: n(1), g: n(3), b: n(5), a: hex.length > 7 ? n(7) : 1 };
+}
+
+/**
+ * A tile's fill: the category color at 15% over the surface, mixed in OKLab
+ * the way the web tile mixes it (`color-mix(in oklab, c 15%, surface)`).
+ * Both ends are tokens, so the tint follows the theme.
+ */
+export function tileTint(base: string, surface: string): string {
+	const key = `${base}/${surface}`;
+	let tint = tints.get(key);
+	if (!tint) {
+		tint = toHex(mixOklab(fromHex(base), 15, fromHex(surface)));
+		tints.set(key, tint);
+	}
+	return tint;
+}
+
 /**
  * The category as a tinted tile with its glyph, on its own category color.
  * It says only "which category" (GUIDELINE 2.1) and sits in list rows only;
@@ -115,22 +158,23 @@ export function CategoryTile({
 	fallback?: GlyphName;
 }) {
 	const { color, radius, size } = useTheme();
-	const base = category ? categoryColor(color, category.tone) : color.fg3;
+	const base = category ? categoryColor(color, category.tone) : null;
+	const tile = size.avatar.default;
 	return (
 		<View
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
 			style={{
-				width: size.avatar.default,
-				height: size.avatar.default,
+				width: tile,
+				height: tile,
 				borderRadius: radius.ctl,
-				backgroundColor: `${base}26`,
+				backgroundColor: base ? tileTint(base, color.surface) : color.raised,
 				alignItems: "center",
 				justifyContent: "center",
 			}}
 		>
 			<Glyph
-				color={base}
+				color={base ?? color.fg2}
 				name={
 					category?.name || category?.icon
 						? categoryIconName(category.name ?? "", category.icon)
@@ -142,16 +186,133 @@ export function CategoryTile({
 	);
 }
 
-/** A tappable list row at the 44pt minimum, with a hairline under it. */
+/** Set by ListGroup: its rows sit on the surface and it draws the hairlines. */
+const InGroup = createContext(false);
+
+/** Children flattened through arrays and fragments, so each row is one item. */
+function rowsOf(children: ReactNode): ReactNode[] {
+	const out: ReactNode[] = [];
+	Children.forEach(children, (child) => {
+		if (child === null || child === undefined || child === false) return;
+		if (isValidElement(child) && child.type === Fragment) {
+			out.push(...rowsOf((child.props as { children?: ReactNode }).children));
+		} else {
+			out.push(child);
+		}
+	});
+	return out;
+}
+
+/**
+ * An inset group of rows (the iOS inset list): the surface, a 1px line
+ * edge, the panel radius and a hairline between rows, none after the last.
+ * Put ListRows (or SkeletonRows) inside; the group sits in the page gutter.
+ */
+export function ListGroup({
+	children,
+	accessibilityLabel,
+}: {
+	children: ReactNode;
+	accessibilityLabel?: string;
+}) {
+	const { color, radius, size } = useTheme();
+	const rows = rowsOf(children);
+	if (rows.length === 0) return null;
+	return (
+		<View
+			accessibilityLabel={accessibilityLabel}
+			style={{
+				marginHorizontal: size.gutter.phone,
+				backgroundColor: color.surface,
+				borderWidth: 1,
+				borderColor: color.line,
+				borderRadius: radius.panel,
+				overflow: "hidden",
+			}}
+		>
+			<InGroup.Provider value={true}>
+				{rows.map((row, index) => (
+					<Fragment
+						key={isValidElement(row) && row.key !== null ? row.key : index}
+					>
+						{index > 0 ? (
+							<View style={{ height: 1, backgroundColor: color.line }} />
+						) : null}
+						{row}
+					</Fragment>
+				))}
+			</InGroup.Provider>
+		</View>
+	);
+}
+
+/** True inside a ListGroup: a row there sits on the surface. */
+export function useInGroup(): boolean {
+	return useContext(InGroup);
+}
+
+/**
+ * The middle of a row: the title (14/500) over a sub line (12, fg-3). Either
+ * can be a string or a node (a StatusText, a stack of faces).
+ */
+export function RowText({ title, sub }: { title: ReactNode; sub?: ReactNode }) {
+	const { color, font, type } = useTheme();
+	return (
+		<View style={{ flex: 1, minWidth: 0 }}>
+			{typeof title === "string" ? (
+				<Text
+					numberOfLines={1}
+					style={{
+						color: color.fg,
+						fontSize: type.body.size,
+						fontWeight: weightStyle(font.weight.medium),
+					}}
+				>
+					{title}
+				</Text>
+			) : (
+				title
+			)}
+			{sub === undefined || sub === null ? null : typeof sub === "string" ? (
+				<Text
+					numberOfLines={1}
+					style={{ color: color.fg3, fontSize: type.meta.size }}
+				>
+					{sub}
+				</Text>
+			) : (
+				sub
+			)}
+		</View>
+	);
+}
+
+/**
+ * A tappable list row at the 44pt minimum. With `title` it lays out the lead,
+ * the title over the sub line, and the end (money, a chevron); with children
+ * it lays them out in one line. Inside a ListGroup it sits on the surface and
+ * the group draws the hairlines; on its own it draws a hairline under itself.
+ * A selected row takes the brand-soft fill.
+ */
 export function ListRow({
 	children,
+	lead,
+	title,
+	sub,
+	end,
 	onPress,
 	onLongPress,
 	selected,
 	pickState,
 	accessibilityLabel,
 }: {
-	children: ReactNode;
+	children?: ReactNode;
+	/** A tile, a face or a cover at the start. */
+	lead?: ReactNode;
+	title?: ReactNode;
+	sub?: ReactNode;
+	/** Money, a status or a chevron at the end. */
+	end?: ReactNode;
 	onPress?: () => void;
 	onLongPress?: () => void;
 	selected?: boolean;
@@ -160,6 +321,8 @@ export function ListRow({
 	accessibilityLabel?: string;
 }) {
 	const { color, size, space } = useTheme();
+	const inGroup = useInGroup();
+	const rest = inGroup ? color.surface : color.bg;
 	return (
 		<Pressable
 			accessibilityLabel={accessibilityLabel}
@@ -183,12 +346,20 @@ export function ListRow({
 				gap: space[3],
 				paddingHorizontal: space[4],
 				paddingVertical: space[2],
-				backgroundColor: pressed || selected ? color.raised : color.bg,
-				borderBottomWidth: 1,
-				borderBottomColor: color.line,
+				backgroundColor: selected
+					? color.brandSoft
+					: pressed
+						? color.raised
+						: rest,
+				...(inGroup
+					? null
+					: { borderBottomWidth: 1, borderBottomColor: color.line }),
 			})}
 		>
+			{lead}
+			{title !== undefined ? <RowText sub={sub} title={title} /> : null}
 			{children}
+			{end}
 		</Pressable>
 	);
 }
@@ -201,7 +372,7 @@ export function LinkButton({
 	label: string;
 	onPress: () => void;
 }) {
-	const { color, size, space, type } = useTheme();
+	const { color, font, size, space, type } = useTheme();
 	return (
 		<Pressable
 			accessibilityRole="button"
@@ -214,9 +385,9 @@ export function LinkButton({
 		>
 			<Text
 				style={{
-					color: color.brand,
+					color: color.accentStrong,
 					fontSize: type.body.size,
-					fontWeight: "500",
+					fontWeight: weightStyle(font.weight.medium),
 				}}
 			>
 				{label}

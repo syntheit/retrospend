@@ -2037,5 +2037,29 @@
 			"market": "Mercado",
 			"custom": "Personalizada"
 		}
+	},
+	"status": {
+		"owed": "Te deben",
+		"owe": "Debés",
+		"settled": "Saldado",
+		"funded": "Con fondos",
+		"underfunded": "Sin fondos suficientes",
+		"overspent": "Excedido",
+		"pending": "Pendiente",
+		"confirmed": "Confirmado",
+		"overdue": "Vencido",
+		"due": "Vence hoy",
+		"review": "Por revisar",
+		"importing": "Importando",
+		"error": "Falló",
+		"notOnRetrospend": "No está en Retrospend",
+		"upcoming": "Próximo",
+		"noRate": "Sin cotización aún",
+		"rejected": "Rechazado",
+		"notCounted": "No cuenta",
+		"spread": "Repartido en el tiempo"
+	},
+	"list": {
+		"loading": "Cargando"
 	}
 }
