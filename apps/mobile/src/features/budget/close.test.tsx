@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { subscribeEntryChanges } from "@/features/entry/events";
 import { CloseSheet } from "./CloseSheet";
 import {
 	acknowledgeBody,
@@ -257,10 +258,24 @@ describe("Month summary", () => {
 		expect(writes[0]?.key).toBe(
 			(previews[0]?.input as { id: string } | undefined)?.id,
 		);
+		// The stored close still says it went over: the row is not offered twice.
+		const offered = () =>
+			tree.root.findAll(
+				(n) =>
+					n.props.accessibilityLabel === "Take it from Oct 1, 2026 instead" &&
+					typeof n.props.onPress === "function",
+			).length;
+		expect(offered()).toBe(0);
+		// The Undo also tells the other screens (Home, Wealth) to read again.
+		const heard = jest.fn();
+		const stop = subscribeEntryChanges(heard);
 		await undoFromToast();
+		stop();
+		expect(heard).toHaveBeenCalledTimes(1);
 		expect(calls.find((c) => c.route === "undo")?.input).toEqual({
 			token: "undo-token-5",
 		});
+		expect(offered()).toBeGreaterThan(0);
 		act(() => tree.unmount());
 	});
 });

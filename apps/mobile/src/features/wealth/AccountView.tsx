@@ -1,8 +1,9 @@
 import { Stack } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { subscribeEntryChanges } from "@/features/entry/events";
 import { ENTITY_CACHE_LIMIT } from "@/features/read/loadCached";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import {
@@ -91,6 +92,8 @@ export function AccountView({ id }: { id: string }) {
 		prefix: ACCOUNT_CACHE_PREFIX,
 		keep: ENTITY_CACHE_LIMIT,
 	});
+	// An Undo from a toast can land while this screen is already in focus.
+	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
 
 	if (state.status !== "ready") {
 		return (

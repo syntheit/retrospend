@@ -316,6 +316,15 @@ describe("Can I afford it", () => {
 				typeof n.props.children === "string" ? [n.props.children] : [],
 			);
 		expect(texts.some((x) => x.startsWith("Yes. It fits"))).toBe(true);
+		// A new amount: the last answer is not shown for it while it is checked.
+		press(tree, "5");
+		const now = tree.root
+			.findAll(() => true)
+			.flatMap((n) =>
+				typeof n.props.children === "string" ? [n.props.children] : [],
+			);
+		expect(now.some((x) => x.startsWith("Yes. It fits"))).toBe(false);
+		expect(now).toContain("Checking");
 		act(() => tree.unmount());
 	});
 });

@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
+import { announceEntryChange } from "@/features/entry/events";
 import { useToast } from "@/ui/Toast";
 
 /** Which family of v1 writes an undo token belongs to. */
@@ -11,7 +12,10 @@ export type UndoFamily = "budget" | "accounts" | "transfers" | "income";
  * A money write ends in a toast that undoes it (R15). The token is the
  * server's: single use, 24 hours, and it answers 409 when the rows it guards
  * changed since. `onChanged` runs after the write and after an undo, so the
- * screen behind refreshes either way.
+ * screen behind refreshes either way. An undo can land after the person left
+ * that screen, so it also tells every other screen that reads money (Home,
+ * Wealth, Budget, Activity) to read again; a write does not need to, since
+ * they read again when they come back into focus.
  */
 export function useUndoToast(family: UndoFamily) {
 	const { api } = useSession();
@@ -55,7 +59,9 @@ export function useUndoToast(family: UndoFamily) {
 							onUndo: async () => {
 								const ok = await undo(done.token as string);
 								toast.show({ message: ok ? tw("undone") : tw("undoError") });
-								if (ok) done.onChanged();
+								if (!ok) return;
+								done.onChanged();
+								announceEntryChange();
 							},
 						}
 					: undefined,
