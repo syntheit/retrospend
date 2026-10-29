@@ -13,7 +13,7 @@ import { Button } from "~/components/ui/button";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { firstName } from "~/features/people/filter";
 import { ReviewSheet } from "~/features/people/review-sheet";
-import { ConfirmSheet } from "~/features/recurring/confirm-sheet";
+import { RecurringSteps } from "~/features/recurring/recurring-steps";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { useSession } from "~/hooks/use-session";
 import type { NeedsYouList as NeedsYouListDTO } from "~/server/services/needs-you/types";
@@ -76,7 +76,6 @@ export function NeedsSection({
 		const item = byId.get(vm.id);
 		if (item) actions.run(item);
 	};
-	const confirming = actions.recurring.confirming;
 	// The ⋯ menu, long press and iPhone swipe: Open is the item's own action.
 	const menu = {
 		open: ({ id }: NeedsYouTarget) => {
@@ -126,16 +125,10 @@ export function NeedsSection({
 				</>
 			)}
 			<ReviewSheet item={actions.review} onClose={actions.closeReview} />
-			{confirming && (
-				<ConfirmSheet
-					item={confirming}
-					onConfirm={() => actions.recurring.book(confirming)}
-					onOpenChange={(open) => {
-						if (!open) actions.recurring.closeConfirm();
-					}}
-					today={actions.recurring.view.data?.today ?? list?.today ?? ""}
-				/>
-			)}
+			<RecurringSteps
+				recurring={actions.recurring}
+				today={actions.recurring.view.data?.today ?? list?.today ?? ""}
+			/>
 		</Section>
 	);
 }

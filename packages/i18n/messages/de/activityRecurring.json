@@ -76,7 +76,8 @@
 			"gone": "Diese wiederkehrende Ausgabe gibt es nicht mehr.",
 			"forbidden": "Du kannst diese wiederkehrende Ausgabe nicht ändern.",
 			"other": "Änderung konnte nicht gespeichert werden"
-		}
+		},
+		"skipped": "{name} übersprungen"
 	},
 	"empty": {
 		"title": "Keine wiederkehrenden Ausgaben",
@@ -92,11 +93,32 @@
 	"confirmSheet": {
 		"title": "{name} bestätigen",
 		"description": "Wird als am {date} bezahlt erfasst.",
-		"submit": "Bestätigen",
+		"descriptionIn": "Wird als am {date} erhalten erfasst.",
+		"submitOut": "Ausgabe erfassen",
+		"submitIn": "Einnahme erfassen",
 		"changes": "Was sich ändert",
 		"entry": "Neue Ausgabe am {date}",
+		"entryIn": "Neue Einnahme am {date}",
 		"next": "Nächste Fälligkeit",
 		"nextValue": "{before} → {after}",
-		"unchanged": "Sonst ändert sich nichts: Der Betrag bleibt beim nächsten Mal gleich."
+		"unchanged": "Sonst ändert sich nichts: Der Betrag bleibt beim nächsten Mal gleich.",
+		"paidOn": "Bezahlt am",
+		"paidOnIn": "Erhalten am",
+		"paidOnDue": "{date} (fällig)",
+		"paidOnDueToday": "Heute (fällig)",
+		"paidOnToday": "Heute",
+		"paidOnPick": "Anderer Tag",
+		"future": "Das Datum darf nicht in der Zukunft liegen.",
+		"tooEarly": "Das Datum darf nicht vor dem {date} liegen.",
+		"skip": "Diesmal überspringen"
+	},
+	"skipSheet": {
+		"title": "{name} überspringen",
+		"description": "Es wird nichts erfasst. Wieder fällig am {date}.",
+		"submit": "Überspringen",
+		"changes": "Was sich ändert",
+		"next": "Nächste Fälligkeit",
+		"nextValue": "{before} → {after}",
+		"unchanged": "Sonst ändert sich nichts: Es wird keine Ausgabe erfasst und der Betrag bleibt gleich."
 	}
 }

@@ -76,7 +76,8 @@
 			"gone": "Este gasto recurrente ya no existe.",
 			"forbidden": "No podés cambiar este gasto recurrente.",
 			"other": "No se pudo guardar el cambio"
-		}
+		},
+		"skipped": "{name} omitido"
 	},
 	"empty": {
 		"title": "No tenés gastos recurrentes",
@@ -92,11 +93,32 @@
 	"confirmSheet": {
 		"title": "Confirmar {name}",
 		"description": "Se registra como pagado el {date}.",
-		"submit": "Confirmar",
+		"descriptionIn": "Se registra como recibido el {date}.",
+		"submitOut": "Registrar gasto",
+		"submitIn": "Registrar ingreso",
 		"changes": "Qué cambia",
 		"entry": "Nuevo gasto el {date}",
+		"entryIn": "Nuevo ingreso el {date}",
 		"next": "Próximo vencimiento",
 		"nextValue": "{before} → {after}",
-		"unchanged": "Nada más cambia: el monto sigue igual la próxima vez."
+		"unchanged": "Nada más cambia: el monto sigue igual la próxima vez.",
+		"paidOn": "Pagado el",
+		"paidOnIn": "Recibido el",
+		"paidOnDue": "{date} (vence)",
+		"paidOnDueToday": "Hoy (vence)",
+		"paidOnToday": "Hoy",
+		"paidOnPick": "Otro día",
+		"future": "La fecha no puede ser futura.",
+		"tooEarly": "La fecha no puede ser anterior al {date}.",
+		"skip": "Omitir esta vez"
+	},
+	"skipSheet": {
+		"title": "Omitir {name}",
+		"description": "No se registra nada. Vuelve a vencer el {date}.",
+		"submit": "Omitir",
+		"changes": "Qué cambia",
+		"next": "Próximo vencimiento",
+		"nextValue": "{before} → {after}",
+		"unchanged": "Nada más cambia: no se registra ningún gasto y el monto sigue igual."
 	}
 }

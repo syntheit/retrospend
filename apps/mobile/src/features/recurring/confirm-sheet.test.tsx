@@ -359,6 +359,30 @@ describe("Confirm a recurring expense", () => {
 		act(() => tree.unmount());
 	});
 
+	it("names the verb after the direction: Log income for an income template", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(
+				<ConfirmSheet
+					item={{ ...item, direction: "in" } as RecurringItem}
+					onClose={jest.fn()}
+					onDone={jest.fn()}
+					onSkip={jest.fn()}
+					today="2026-11-01"
+					visible
+				/>,
+			);
+		});
+		await wait(400);
+		const labels = (name: string) =>
+			tree.root.findAll((n) => n.props.accessibilityLabel === name);
+		expect(labels("Log income").length).toBeGreaterThan(0);
+		expect(labels("Log expense")).toHaveLength(0);
+		act(() => tree.unmount());
+	});
+
 	it("hands over to the skip sheet without writing", async () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;

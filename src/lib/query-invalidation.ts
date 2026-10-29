@@ -205,6 +205,7 @@ export const CROSS_ROUTER_INVALIDATIONS: Record<string, readonly string[]> = {
 		"insights",
 		"sharedTransaction",
 	],
+	"recurring.unconfirm": ["expense", "insights", "sharedTransaction"],
 
 	// ── Verification ────────────────────────────────────────────────────
 	"verification.accept": ["project", "people", "sharedTransaction", "expense"],

@@ -2,8 +2,13 @@
  * Recurring confirm (batch 3, bug 5): the rate never defaults to 1, monthly
  * steps keep their anchor day, and a double confirm books one expense.
  */
+
+import {
+	addMonthsClamped,
+	nextRecurringDate,
+} from "@retrospend/domain/recurring";
+import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addMonthsClamped, nextRecurringDate } from "@retrospend/domain/recurring";
 import { createMockDb } from "~/test/mock-db";
 import { RATE_DATE, useRateTable } from "~/test/rate-table";
 
@@ -325,6 +330,114 @@ describe("recurring money in and amounts that vary", () => {
 				}),
 			}),
 		);
+	});
+});
+
+describe("recurring.confirmAndCreate paid on", () => {
+	const id = "cltemplate00000000000001";
+	const confirm = (paidOn: string) =>
+		callAndFlush(() => caller().confirmAndCreate({ id, paidOn }));
+
+	it("books the entry on the day it was paid and still steps from the due date", async () => {
+		await confirm("2026-01-20");
+		expect(state.expenses[0]?.date).toEqual(
+			parseDateOnlyIn("2026-01-20", "America/Argentina/Buenos_Aires"),
+		);
+		const next = state.template!.nextDueDate;
+		expect([next.getMonth() + 1, next.getDate()]).toEqual([2, 28]);
+	});
+
+	it("refuses a day to come or one before the previous due date", async () => {
+		await expect(confirm("2999-01-01")).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		});
+		await expect(confirm("2025-12-01")).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		});
+		expect(state.expenses).toHaveLength(0);
+		expect(state.template!.nextDueDate.getDate()).toBe(31);
+	});
+});
+
+describe("recurring.unconfirm", () => {
+	const id = "cltemplate00000000000001";
+	const due = () => local(2026, 1, 31);
+	const confirm = () =>
+		callAndFlush(() => caller().confirmAndCreate({ id, dueDate: undefined }));
+	const unconfirm = () =>
+		callAndFlush(() =>
+			caller().unconfirm({ expenseId: "exp-1", dueDate: due() }),
+		);
+
+	beforeEach(() => {
+		mockDb.expense.findFirst.mockResolvedValue({
+			id: "exp-1",
+			direction: "OUT",
+			date: due(),
+			recurringTemplateId: id,
+		});
+		mockDb.expense.delete.mockResolvedValue({});
+	});
+
+	it("removes the entry and puts the template back on its due date", async () => {
+		await confirm();
+		await unconfirm();
+		expect(mockDb.expense.delete).toHaveBeenCalledWith({
+			where: { id: "exp-1" },
+		});
+		expect(state.template!.nextDueDate.getTime()).toBe(due().getTime());
+	});
+
+	it("refuses once a later confirm sits on top of it", async () => {
+		await confirm();
+		await confirm();
+		await expect(unconfirm()).rejects.toMatchObject({ code: "CONFLICT" });
+		expect(mockDb.expense.delete).not.toHaveBeenCalled();
+	});
+});
+
+describe("recurring.skip", () => {
+	const id = "cltemplate00000000000001";
+	const dueDate = () => local(2026, 1, 31);
+	const skip = () =>
+		callAndFlush(() => caller().skip({ id, dueDate: dueDate() }));
+	const unskip = () =>
+		callAndFlush(() => caller().unskip({ id, dueDate: dueDate() }));
+
+	it("moves the template to its next date and books nothing", async () => {
+		const done = await skip();
+		expect(state.expenses).toHaveLength(0);
+		expect(mockDb.expense.create).not.toHaveBeenCalled();
+		const next = state.template!.nextDueDate;
+		expect([next.getMonth() + 1, next.getDate()]).toEqual([2, 28]);
+		expect(done.nextDueAt.getTime()).toBe(next.getTime());
+		expect(state.template!.anchorDay).toBe(31);
+	});
+
+	it("a repeated skip of the same date is refused", async () => {
+		await skip();
+		await expect(skip()).rejects.toMatchObject({ code: "CONFLICT" });
+	});
+
+	it("a template that is not due yet cannot be skipped", async () => {
+		setTemplate({ nextDueDate: new Date(Date.now() + 5 * 86400000) });
+		await expect(
+			callAndFlush(() =>
+				caller().skip({ id, dueDate: state.template!.nextDueDate }),
+			),
+		).rejects.toMatchObject({ code: "CONFLICT" });
+	});
+
+	it("undo puts it back on the skipped date", async () => {
+		await skip();
+		await unskip();
+		expect(state.template!.nextDueDate.getTime()).toBe(dueDate().getTime());
+	});
+
+	it("undo is refused once a later change moved it on", async () => {
+		await skip();
+		await callAndFlush(() => caller().confirmAndCreate({ id }));
+		await expect(unskip()).rejects.toMatchObject({ code: "CONFLICT" });
 	});
 });
 

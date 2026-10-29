@@ -98,10 +98,39 @@ test("Recurring: add one, see it grouped and summed, confirm it", async ({
 	await expect(sheet.locator("[data-confirm=entry]")).toContainText("9,000");
 	await expect(sheet.locator("[data-confirm=next]")).toBeVisible();
 	await untilSaved(page, "recurring.confirmAndCreate", () =>
-		sheet.getByRole("button", { name: "Confirm", exact: true }).click(),
+		sheet.getByRole("button", { name: "Log expense", exact: true }).click(),
 	);
 	await expect(sheet).toBeHidden();
 	await expect(due).not.toContainText("Overdue since");
 	await expect(due.getByRole("button", { name: "Confirm" })).toHaveCount(0);
+
+	// Undo on the toast takes the entry back and the item is due again.
+	await untilSaved(page, "recurring.unconfirm", () =>
+		page.getByRole("button", { name: "Undo" }).click(),
+	);
+	await expect(due).toContainText("Overdue since");
+
+	// Skip this time: the step says nothing is logged and only the date moves;
+	// the toast undoes it.
+	await due.getByRole("button", { name: "Confirm" }).click();
+	const again = page.getByRole("dialog", {
+		name: "Confirm Seguro de la bici",
+	});
+	await expect(
+		again.getByRole("radio", { name: /Today/ }).first(),
+	).toBeVisible();
+	await again.getByRole("button", { name: "Skip this time" }).click();
+	const skip = page.getByRole("dialog", { name: "Skip Seguro de la bici" });
+	await expect(skip).toBeVisible();
+	await expect(skip.locator("[data-skip=next]")).toBeVisible();
+	await untilSaved(page, "recurring.skip", () =>
+		skip.getByRole("button", { name: "Skip", exact: true }).click(),
+	);
+	await expect(skip).toBeHidden();
+	await expect(due).not.toContainText("Overdue since");
+	await untilSaved(page, "recurring.unskip", () =>
+		page.getByRole("button", { name: "Undo" }).click(),
+	);
+	await expect(due).toContainText("Overdue since");
 	expect(errors, "uncaught page errors").toEqual([]);
 });
