@@ -62,7 +62,7 @@ describe("Add button", () => {
 	it("opens the composer in Expense mode on a tap", () => {
 		mount();
 		expect(mockComposer).toBeNull();
-		act(() => (mockButton.props?.onPress as () => void)());
+		act(() => (mockButton.props as { onPress: () => void }).onPress());
 		expect(mockComposer?.initialMode).toBe("expense");
 	});
 
