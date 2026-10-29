@@ -1433,7 +1433,27 @@
 		"noMatch": "Ninguém corresponde",
 		"pick": "Escolha uma pessoa",
 		"error": "Não foi possível carregar as pessoas",
-		"errorDetail": "Verifique sua conexão e tente de novo."
+		"errorDetail": "Verifique sua conexão e tente de novo.",
+		"peopleOweYou": "{count, plural, =0 {Ninguém deve a você} one {# pessoa deve a você} other {# pessoas devem a você}}",
+		"youOwePeople": "{count, plural, one {Você deve a # pessoa} other {Você deve a # pessoas}}",
+		"allSettled": "Em dia com todo mundo",
+		"needsMore": "{first} e mais {count}",
+		"sortBy": "Ordem: {sort}",
+		"sort": {
+			"balance": "Saldo",
+			"recent": "Recente",
+			"name": "Nome"
+		},
+		"ago": {
+			"today": "hoje",
+			"days": "há {count} d",
+			"weeks": "há {count} sem",
+			"months": "há {count} m"
+		},
+		"bar": {
+			"owesYou": "{name}: deve a você {amount}",
+			"youOwe": "{name}: você deve {amount}"
+		}
 	},
 	"person": {
 		"owesYou": "deve a você",
@@ -1443,8 +1463,6 @@
 		"remind": "Lembrar",
 		"reminded": "Lembrete enviado",
 		"remindFailed": "Não foi possível enviar o lembrete",
-		"stats": "Compartilham desde {date}, {expenses, plural, one {# despesa} other {# despesas}}, {projects, plural, one {# projeto} other {# projetos}}",
-		"statsNoDate": "{expenses, plural, one {# despesa} other {# despesas}}, {projects, plural, one {# projeto} other {# projetos}}",
 		"projects": "Projetos",
 		"outside": "Fora de projetos",
 		"scopeSettled": "Em dia",
@@ -1470,7 +1488,13 @@
 		"paidByMe": "Você pagou",
 		"paidByName": "{name} pagou",
 		"error": "Não foi possível carregar esta pessoa",
-		"errorDetail": "Verifique sua conexão e tente de novo."
+		"errorDetail": "Verifique sua conexão e tente de novo.",
+		"since": "Compartilham desde {date}",
+		"expenseCount": "{count, plural, one {# despesa} other {# despesas}}",
+		"projectCount": "{count, plural, one {# projeto} other {# projetos}}",
+		"owesYouNet": "deve a você, líquido",
+		"youOweThemNet": "você deve, líquido",
+		"expense": "Despesa"
 	},
 	"settle": {
 		"with": "Quitar com {name}",
@@ -1638,7 +1662,14 @@
 			"loadError": "Não foi possível carregar o que está em aberto. Tente de novo.",
 			"moved": "Os saldos mudaram. Confira a lista e tente de novo.",
 			"error": "Não foi possível registrar os pagamentos. Tente de novo."
-		}
+		},
+		"budgetOf": "de {amount}",
+		"solo": "Solo",
+		"toReview": "Para revisar · {count}",
+		"paidBy": "Pago por",
+		"paidByOne": "Pago por {name}",
+		"anyone": "Qualquer um",
+		"noMatchExpenses": "Nenhuma despesa corresponde"
 	},
 	"settings": {
 		"title": "Ajustes",

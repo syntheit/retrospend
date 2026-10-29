@@ -1433,7 +1433,27 @@
 		"noMatch": "No one matches",
 		"pick": "Pick a person",
 		"error": "Couldn't load people",
-		"errorDetail": "Check your connection and try again."
+		"errorDetail": "Check your connection and try again.",
+		"peopleOweYou": "{count, plural, =0 {Nobody owes you} one {# person owes you} other {# people owe you}}",
+		"youOwePeople": "{count, plural, one {You owe # person} other {You owe # people}}",
+		"allSettled": "Settled with everyone",
+		"needsMore": "{first} and {count} more",
+		"sortBy": "Sort: {sort}",
+		"sort": {
+			"balance": "Balance",
+			"recent": "Recent",
+			"name": "Name"
+		},
+		"ago": {
+			"today": "today",
+			"days": "{count}d ago",
+			"weeks": "{count}w ago",
+			"months": "{count}mo ago"
+		},
+		"bar": {
+			"owesYou": "{name}: owes you {amount}",
+			"youOwe": "{name}: you owe {amount}"
+		}
 	},
 	"person": {
 		"owesYou": "owes you",
@@ -1443,8 +1463,6 @@
 		"remind": "Remind",
 		"reminded": "Reminder sent",
 		"remindFailed": "Couldn't send the reminder",
-		"stats": "Sharing since {date}, {expenses, plural, one {# expense} other {# expenses}}, {projects, plural, one {# project} other {# projects}}",
-		"statsNoDate": "{expenses, plural, one {# expense} other {# expenses}}, {projects, plural, one {# project} other {# projects}}",
 		"projects": "Projects",
 		"outside": "Outside projects",
 		"scopeSettled": "Settled",
@@ -1470,7 +1488,13 @@
 		"paidByMe": "You paid",
 		"paidByName": "{name} paid",
 		"error": "Couldn't load this person",
-		"errorDetail": "Check your connection and try again."
+		"errorDetail": "Check your connection and try again.",
+		"since": "Sharing since {date}",
+		"expenseCount": "{count, plural, one {# expense} other {# expenses}}",
+		"projectCount": "{count, plural, one {# project} other {# projects}}",
+		"owesYouNet": "owes you, net",
+		"youOweThemNet": "you owe, net",
+		"expense": "Expense"
 	},
 	"settle": {
 		"with": "Settle up with {name}",
@@ -1638,7 +1662,14 @@
 			"loadError": "Couldn't load what is open. Try again.",
 			"moved": "The balances changed. Check the list and try again.",
 			"error": "Couldn't record the payments. Try again."
-		}
+		},
+		"budgetOf": "of {amount}",
+		"solo": "Solo",
+		"toReview": "To review · {count}",
+		"paidBy": "Paid by",
+		"paidByOne": "Paid by {name}",
+		"anyone": "Anyone",
+		"noMatchExpenses": "No expenses match"
 	},
 	"settings": {
 		"title": "Settings",

@@ -1,31 +1,35 @@
 import { router, Stack } from "expo-router";
 import { type ReactNode, useMemo, useState } from "react";
-import { SectionList, Text, View } from "react-native";
+import { FlatList, ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { type PeopleChip, sectionsOf } from "@/features/people/groups";
-import { NetAmount } from "@/features/people/NetAmount";
+import {
+	type PeopleChip,
+	type PeopleSort,
+	sectionsOf,
+} from "@/features/people/groups";
+import { NeedsCard } from "@/features/people/NeedsCard";
+import { PeopleTop } from "@/features/people/PeopleTop";
 import { PersonRow } from "@/features/people/PersonRow";
 import { PersonView } from "@/features/people/PersonView";
-import {
-	keyOf,
-	type PeopleOverview,
-	type PersonRef,
-	refOfKey,
-} from "@/features/people/source";
+import { keyOf, type PersonRef, refOfKey } from "@/features/people/source";
 import { usePeopleOverview } from "@/features/people/usePeople";
-import { useFaces } from "@/features/read/faces";
-import { ListRow, SectionHeader, StaleNote } from "@/ui/List";
-import { FLOATING_ADD_INSET } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
-import { AvatarStack } from "@/ui/Avatar";
+import { Chip } from "@/ui/Chip";
 import { EmptyState } from "@/ui/EmptyState";
+import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { ListDetail } from "@/ui/ListDetail";
 import { Menu } from "@/ui/Menu";
-import { Screen } from "@/ui/Screen";
+import { Screen, useAddInset } from "@/ui/Screen";
 
-const CHIPS: PeopleChip[] = ["all", "owesYou", "youOwe", "notOnRetrospend"];
+/** The chips narrow the list; pressing the one that is on turns it off. */
+const CHIPS: Exclude<PeopleChip, "all">[] = [
+	"owesYou",
+	"youOwe",
+	"notOnRetrospend",
+];
+const SORTS: PeopleSort[] = ["balance", "recent", "name"];
 
 function openPerson(ref: PersonRef) {
 	router.push({
@@ -34,99 +38,19 @@ function openPerson(ref: PersonRef) {
 	});
 }
 
-/** Owed to you and You owe, side by side in meaning, never netted. */
-function Totals({ overview }: { overview: PeopleOverview }) {
-	const t = useTranslations("mobile.people");
-	const { color, space, type } = useTheme();
-	const parts = overview.people.flatMap((p) => p.parts);
-	// Each total is an estimate only from the parts on its own side.
-	const owedParts = parts.filter((p) => p.amount.minor > 0);
-	const oweParts = parts.filter((p) => p.amount.minor < 0);
-	return (
-		<View style={{ gap: space[1], padding: space[4] }}>
-			<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-				{t("owedToYou")}
-			</Text>
-			<NetAmount
-				align="left"
-				home={overview.home}
-				net={overview.owedToYou}
-				parts={owedParts}
-				showCount={false}
-				size="hero"
-				tone="positive"
-			/>
-			<View
-				style={{
-					flexDirection: "row",
-					alignItems: "baseline",
-					gap: space[2],
-					paddingTop: space[2],
-				}}
-			>
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{t("youOwe")}
-				</Text>
-				<NetAmount
-					align="left"
-					home={overview.home}
-					net={overview.youOwe}
-					parts={oweParts}
-					showCount={false}
-					tone="default"
-				/>
-			</View>
-			{overview.unpriced.length > 0 ? (
-				<Text style={{ color: color.attentionText, fontSize: type.small.size }}>
-					{t("unpriced", { currencies: overview.unpriced.join(", ") })}
-				</Text>
-			) : null}
-		</View>
-	);
-}
-
-/** One line that opens the first person who is waiting on you. */
-function NeedsStrip({ overview }: { overview: PeopleOverview }) {
-	const t = useTranslations("mobile.people");
-	const faces = useFaces();
-	const { color, type } = useTheme();
-	const first = overview.needs[0];
-	if (!first) return null;
-	const ref = refOfKey(first.person.key);
-	const people = [
-		...new Map(overview.needs.map((n) => [n.person.key, n.person])).values(),
-	];
-	return (
-		<ListRow
-			accessibilityLabel={`${t("needsYou", { count: overview.needs.length })}, ${people.map((p) => p.name).join(", ")}`}
-			onPress={ref ? () => openPerson(ref) : undefined}
-		>
-			<AvatarStack faces={faces(people)} />
-			<Text
-				style={{
-					flex: 1,
-					color: color.attentionText,
-					fontSize: type.body.size,
-					fontWeight: "500",
-				}}
-			>
-				{t("needsYou", { count: overview.needs.length })}
-			</Text>
-		</ListRow>
-	);
-}
-
-/** Search text and chip a parent keeps for the list (PeopleHub), so a segment switch does not reset them. */
+/** Search text, chip and sort a parent keeps for the list (PeopleHub), so a segment switch does not reset them. */
 export interface PeopleFilters {
 	query: string;
 	chip: PeopleChip;
 	onChip(chip: PeopleChip): void;
+	sort: PeopleSort;
+	onSort(sort: PeopleSort): void;
 }
 
 /**
  * The People list (and its detail pane on wide windows), without a top bar.
- * With `filters` the parent owns the search text and the chip, and the search
- * bar; alone, the list keeps its own.
+ * With `filters` the parent owns the search text, the chip and the sort, and
+ * the search bar; alone, the list keeps its own.
  */
 export function PeopleList({
 	top,
@@ -141,26 +65,29 @@ export function PeopleList({
 	const t = useTranslations("mobile.people");
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
+	const inset = useAddInset();
 	const searchRef = useSearchShortcut(filters === undefined);
 	const { state, reload } = usePeopleOverview();
 	const [ownChip, setOwnChip] = useState<PeopleChip>("all");
+	const [ownSort, setOwnSort] = useState<PeopleSort>("balance");
 	const [ownQuery, setQuery] = useState("");
 	const chip = filters ? filters.chip : ownChip;
 	const setChip = filters ? filters.onChip : setOwnChip;
+	const sort = filters ? filters.sort : ownSort;
+	const setSort = filters ? filters.onSort : setOwnSort;
 	const query = filters ? filters.query : ownQuery;
 	const [selected, setSelected] = useState<PersonRef | null>(null);
 
 	const overview = state.status === "ready" ? state.data : null;
 	const sections = useMemo(
-		() =>
-			overview
-				? sectionsOf(overview.people, chip, query).map((s) => ({
-						...s,
-						data: s.people,
-					}))
-				: [],
-		[overview, chip, query],
+		() => (overview ? sectionsOf(overview.people, chip, query, sort) : []),
+		[overview, chip, query, sort],
 	);
+
+	function open(ref: PersonRef) {
+		if (listDetail) setSelected(ref);
+		else openPerson(ref);
+	}
 
 	const empty =
 		state.status === "loading" ? (
@@ -174,66 +101,99 @@ export function PeopleList({
 			/>
 		);
 
+	const firstNeed = overview?.needs[0];
+	const firstNeedRef = firstNeed ? refOfKey(firstNeed.person.key) : null;
+
 	const list = (
-		<SectionList
+		<FlatList
 			contentInsetAdjustmentBehavior="automatic"
+			data={sections}
 			keyboardDismissMode="on-drag"
-			keyExtractor={(item) => item.person.key}
+			keyExtractor={(section) => section.group}
 			ListEmptyComponent={empty}
-			ListFooterComponent={<View style={{ height: FLOATING_ADD_INSET }} />}
+			ListFooterComponent={<View style={{ height: inset }} />}
 			ListHeaderComponent={
 				<View>
 					{top}
 					{overview ? (
-						<View>
+						<View style={{ gap: space[3] }}>
 							<StaleNote
 								since={state.status === "ready" ? state.staleSince : null}
 							/>
-							<Totals overview={overview} />
-							<NeedsStrip overview={overview} />
-							<View
-								style={{ paddingHorizontal: space[4], paddingTop: space[2] }}
+							<PeopleTop
+								onPerson={(key) => {
+									const ref = refOfKey(key);
+									if (ref) open(ref);
+								}}
+								overview={overview}
+							/>
+							<NeedsCard
+								needs={overview.needs}
+								onPress={() => {
+									if (firstNeedRef) open(firstNeedRef);
+								}}
+							/>
+							<ScrollView
+								contentContainerStyle={{
+									alignItems: "center",
+									gap: space[2],
+									paddingHorizontal: space[4],
+								}}
+								horizontal
+								keyboardShouldPersistTaps="handled"
+								showsHorizontalScrollIndicator={false}
 							>
+								{CHIPS.map((id) => (
+									<Chip
+										key={id}
+										label={t(`chip.${id}`)}
+										onPress={() => setChip(chip === id ? "all" : id)}
+										selected={chip === id}
+									/>
+								))}
 								<Menu
-									items={CHIPS.map((id) => ({
+									active={sort !== "balance"}
+									chip
+									items={SORTS.map((id) => ({
 										id,
-										label: t(`chip.${id}`),
-										onPress: () => setChip(id),
+										label: t(`sort.${id}`),
+										onPress: () => setSort(id),
 									}))}
-									label={t(`chip.${chip}`)}
+									label={t("sortBy", { sort: t(`sort.${sort}`) })}
 								/>
-							</View>
+							</ScrollView>
 						</View>
 					) : null}
 				</View>
 			}
 			onRefresh={reload}
 			refreshing={false}
-			renderItem={({ item }) => {
-				const ref = { type: item.person.type, id: item.person.id };
-				return (
-					<PersonRow
-						home={overview?.home ?? ""}
-						onPress={() => (listDetail ? setSelected(ref) : openPerson(ref))}
-						selected={
-							listDetail &&
-							selected !== null &&
-							keyOf(selected) === item.person.key
-						}
-						summary={item}
-					/>
-				);
-			}}
-			renderSectionHeader={({ section }) => (
-				<View style={{ backgroundColor: color.bg }}>
+			renderItem={({ item: section }) => (
+				<View>
 					<SectionHeader
 						detail={String(section.people.length)}
 						title={t(`group.${section.group}`)}
 					/>
+					<ListGroup>
+						{section.people.map((item) => {
+							const ref = { type: item.person.type, id: item.person.id };
+							return (
+								<PersonRow
+									home={overview?.home ?? ""}
+									key={item.person.key}
+									onPress={() => open(ref)}
+									selected={
+										listDetail &&
+										selected !== null &&
+										keyOf(selected) === item.person.key
+									}
+									summary={item}
+								/>
+							);
+						})}
+					</ListGroup>
 				</View>
 			)}
-			sections={sections}
-			stickySectionHeadersEnabled={false}
 			style={{ backgroundColor: color.bg }}
 		/>
 	);

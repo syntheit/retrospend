@@ -1,8 +1,9 @@
 import type { Money } from "@retrospend/domain/money-minor";
-import type { PersonSummary } from "./source";
+import type { PeopleOverview, PersonSummary } from "./source";
 
 export type PeopleGroup = PersonSummary["group"];
 export type PeopleChip = "all" | "owesYou" | "youOwe" | "notOnRetrospend";
+export type PeopleSort = "balance" | "recent" | "name";
 
 const ORDER: PeopleGroup[] = ["owed", "owe", "pending", "settled"];
 
@@ -33,20 +34,42 @@ export function matchesName(person: PersonSummary, query: string): boolean {
 }
 
 /**
- * The server's order inside a group stands; the groups come in the order
- * people care about (owed to you first), and an empty group is left out.
+ * Balance is the server's order and stands as it is; Recent puts the last
+ * shared expense first (people with none go last); Name is A to Z.
+ */
+export function sortPeople(
+	people: PersonSummary[],
+	sort: PeopleSort,
+): PersonSummary[] {
+	if (sort === "balance") return people;
+	if (sort === "name") {
+		return [...people].sort((a, b) =>
+			a.person.name.localeCompare(b.person.name),
+		);
+	}
+	const day = (p: PersonSummary) => p.lastShared?.date ?? "";
+	return [...people].sort((a, b) => day(b).localeCompare(day(a)));
+}
+
+/**
+ * The groups come in the order people care about (owed to you first), an
+ * empty group is left out, and the sort orders the people inside each.
  */
 export function sectionsOf(
 	people: PersonSummary[],
 	chip: PeopleChip,
 	query: string,
+	sort: PeopleSort = "balance",
 ): PeopleSection[] {
 	const kept = people.filter(
 		(p) => chipKeeps(chip, p) && (query === "" || matchesName(p, query)),
 	);
 	return ORDER.map((group) => ({
 		group,
-		people: kept.filter((p) => p.group === group),
+		people: sortPeople(
+			kept.filter((p) => p.group === group),
+			sort,
+		),
 	})).filter((section) => section.people.length > 0);
 }
 
@@ -95,4 +118,18 @@ export function isApproximate(
 	home: string,
 ): boolean {
 	return parts.some((part) => part.amount.currency !== home);
+}
+
+export type Segment = PeopleOverview["segments"][number];
+
+/**
+ * Whose face goes over the bar: the biggest owed segments (three on a phone,
+ * those of 11% or more), then the biggest you owe. The web bar's rule.
+ */
+export function pinsOf(segments: Segment[]): Segment[] {
+	const owed = segments
+		.filter((s) => s.direction === "owed" && s.share >= 1100)
+		.slice(0, 3);
+	const owe = segments.find((s) => s.direction === "owe");
+	return owe ? [...owed, owe] : owed;
 }

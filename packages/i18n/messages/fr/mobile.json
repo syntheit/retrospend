@@ -1433,7 +1433,27 @@
 		"noMatch": "Personne ne correspond",
 		"pick": "Choisis une personne",
 		"error": "Impossible de charger les personnes",
-		"errorDetail": "Vérifie ta connexion et réessaie."
+		"errorDetail": "Vérifie ta connexion et réessaie.",
+		"peopleOweYou": "{count, plural, =0 {Personne ne te doit rien} one {# personne te doit} other {# personnes te doivent}}",
+		"youOwePeople": "{count, plural, one {Tu dois à # personne} other {Tu dois à # personnes}}",
+		"allSettled": "À jour avec tout le monde",
+		"needsMore": "{first} et {count} autres",
+		"sortBy": "Tri : {sort}",
+		"sort": {
+			"balance": "Solde",
+			"recent": "Récent",
+			"name": "Nom"
+		},
+		"ago": {
+			"today": "aujourd’hui",
+			"days": "il y a {count} j",
+			"weeks": "il y a {count} sem.",
+			"months": "il y a {count} mois"
+		},
+		"bar": {
+			"owesYou": "{name} : te doit {amount}",
+			"youOwe": "{name} : tu dois {amount}"
+		}
 	},
 	"person": {
 		"owesYou": "te doit",
@@ -1443,8 +1463,6 @@
 		"remind": "Rappeler",
 		"reminded": "Rappel envoyé",
 		"remindFailed": "Impossible d’envoyer le rappel",
-		"stats": "Partagent depuis {date}, {expenses, plural, one {# dépense} other {# dépenses}}, {projects, plural, one {# projet} other {# projets}}",
-		"statsNoDate": "{expenses, plural, one {# dépense} other {# dépenses}}, {projects, plural, one {# projet} other {# projets}}",
 		"projects": "Projets",
 		"outside": "Hors projets",
 		"scopeSettled": "À jour",
@@ -1470,7 +1488,13 @@
 		"paidByMe": "Tu as payé",
 		"paidByName": "{name} a payé",
 		"error": "Impossible de charger cette personne",
-		"errorDetail": "Vérifie ta connexion et réessaie."
+		"errorDetail": "Vérifie ta connexion et réessaie.",
+		"since": "Partagent depuis {date}",
+		"expenseCount": "{count, plural, one {# dépense} other {# dépenses}}",
+		"projectCount": "{count, plural, one {# projet} other {# projets}}",
+		"owesYouNet": "te doit, net",
+		"youOweThemNet": "tu lui dois, net",
+		"expense": "Dépense"
 	},
 	"settle": {
 		"with": "Régler avec {name}",
@@ -1638,7 +1662,14 @@
 			"loadError": "Impossible de charger ce qui est ouvert. Réessaie.",
 			"moved": "Les soldes ont changé. Vérifie la liste et réessaie.",
 			"error": "Impossible d’enregistrer les paiements. Réessaie."
-		}
+		},
+		"budgetOf": "sur {amount}",
+		"solo": "Solo",
+		"toReview": "À vérifier · {count}",
+		"paidBy": "Payé par",
+		"paidByOne": "Payé par {name}",
+		"anyone": "Tout le monde",
+		"noMatchExpenses": "Aucune dépense ne correspond"
 	},
 	"settings": {
 		"title": "Réglages",
