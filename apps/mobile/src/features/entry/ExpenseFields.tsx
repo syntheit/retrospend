@@ -2,9 +2,22 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { Chip } from "@/ui/Chip";
+import { ListGroup, SectionHeader } from "@/ui/List";
+import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
+import { FieldLabel, TextField } from "@/ui/TextField";
 import { CategoryRow } from "./CategoryRow";
-import type { ExpenseDraft, ExpenseErrors } from "./draft";
+import { GroupItem } from "./DateRow";
+import {
+	type ExpenseDraft,
+	type ExpenseErrors,
+	isPersonal,
+	LOCATION_LIMIT,
+	NOTE_LIMIT,
+	SHARED_NOTE_LIMIT,
+	SPREAD_MONTHS,
+} from "./draft";
 import { FaceRow } from "./FaceRow";
 import { TitleCard } from "./TitleCard";
 import type { EntryCatalog, EntryPerson } from "./types";
@@ -38,9 +51,114 @@ export function SplitSummary({
 }
 
 /**
- * The quick step of an expense: who it is split with, the title and day, and
- * the category. Everything else (project, split rows, rate, options, note)
- * is in More.
+ * Spread, Exclude, Note and Location, always shown under their own titles at
+ * the foot of the main step, with no toggle. A split keeps its note only, as
+ * on the web.
+ */
+function Details({
+	draft,
+	onChange,
+	onTypingChange,
+}: {
+	draft: ExpenseDraft;
+	onChange: (patch: Partial<ExpenseDraft>) => void;
+	onTypingChange: (typing: boolean) => void;
+}) {
+	const t = useTranslations("mobile.composer");
+	const { space } = useTheme();
+	const personal = isPersonal(draft);
+	// A saved odd spread (say 4 months) stays offered next to the usual ones.
+	const months = [
+		...new Set([...SPREAD_MONTHS, ...(draft.spread ? [draft.spread] : [])]),
+	].sort((a, b) => a - b);
+	return (
+		<View>
+			{personal ? (
+				<>
+					<SectionHeader title={t("options")} />
+					<ListGroup>
+						<GroupItem>
+							<View style={{ gap: space[2] }}>
+								<FieldLabel>{t("spread")}</FieldLabel>
+								<View
+									accessibilityLabel={t("spread")}
+									accessibilityRole="radiogroup"
+									style={{
+										flexDirection: "row",
+										flexWrap: "wrap",
+										gap: space[2],
+									}}
+								>
+									<Chip
+										label={t("spreadOne")}
+										onPress={() => onChange({ spread: null })}
+										selected={draft.spread === null}
+									/>
+									{months.map((count) => (
+										<Chip
+											key={count}
+											label={t("spreadMonths", { count })}
+											onPress={() => onChange({ spread: count })}
+											selected={draft.spread === count}
+										/>
+									))}
+								</View>
+							</View>
+						</GroupItem>
+						<GroupItem>
+							<View>
+								<SwitchRow
+									detail={
+										draft.excludeAuto && draft.exclude
+											? t("excludeAuto")
+											: t("excludeDetail")
+									}
+									label={t("exclude")}
+									onChange={(exclude) =>
+										onChange({
+											exclude,
+											excludeTouched: true,
+											excludeAuto: false,
+										})
+									}
+									value={draft.exclude}
+								/>
+							</View>
+						</GroupItem>
+					</ListGroup>
+				</>
+			) : null}
+			<SectionHeader title={t("details")} />
+			<View style={{ paddingHorizontal: space[4], gap: space[3] }}>
+				<TextField
+					autoCapitalize="sentences"
+					label={t("note")}
+					maxLength={personal ? NOTE_LIMIT : SHARED_NOTE_LIMIT}
+					onChangeText={(note) => onChange({ note })}
+					onTypingChange={onTypingChange}
+					placeholder={t("notePlaceholder")}
+					value={draft.note}
+				/>
+				{personal ? (
+					<TextField
+						autoCapitalize="sentences"
+						label={t("location")}
+						maxLength={LOCATION_LIMIT}
+						onChangeText={(location) => onChange({ location })}
+						onTypingChange={onTypingChange}
+						placeholder={t("locationPlaceholder")}
+						value={draft.location}
+					/>
+				) : null}
+			</View>
+		</View>
+	);
+}
+
+/**
+ * The main step of an expense: who it is split with, the title and day, the
+ * category, and the Details (spread, exclude, note, place). The project, split
+ * rows and rate are in More.
  */
 export function ExpenseFields({
 	draft,
@@ -101,6 +219,11 @@ export function ExpenseFields({
 				draft={draft}
 				error={errors.category === true}
 				onChange={onChange}
+			/>
+			<Details
+				draft={draft}
+				onChange={onChange}
+				onTypingChange={onTypingChange}
 			/>
 		</View>
 	);

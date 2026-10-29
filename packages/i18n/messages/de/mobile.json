@@ -277,7 +277,6 @@
 			"row": "Löschen",
 			"title": "Diese Ausgabe löschen?",
 			"body": "Sie verschwindet aus deinen Ausgaben und deinem Budget.",
-			"bodyShared": "Sie verschwindet aus der Aufteilung und was andere schulden, ändert sich. Das lässt sich nicht rückgängig machen.",
 			"button": "Löschen",
 			"deleted": "{title} gelöscht",
 			"restored": "{title} wiederhergestellt",
@@ -2172,9 +2171,7 @@
 			"fixed": "Der übliche Betrag, {amount}.",
 			"nextDue": "Nächste Fälligkeit",
 			"submit": "Bestätigen",
-			"toast": "{title} erfasst, {amount}",
-			"autoOn": "An",
-			"autoOff": "Aus"
+			"toast": "{title} erfasst, {amount}"
 		},
 		"item": {
 			"next": "{amount}, nächstes am {date}.",

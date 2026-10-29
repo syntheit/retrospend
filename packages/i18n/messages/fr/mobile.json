@@ -277,7 +277,6 @@
 			"row": "Supprimer",
 			"title": "Supprimer cette dépense ?",
 			"body": "Elle quitte tes dépenses et ton budget.",
-			"bodyShared": "Elle quitte le partage et ce que chacun doit change. Impossible de l'annuler.",
 			"button": "Supprimer",
 			"deleted": "{title} supprimé",
 			"restored": "{title} rétabli",
@@ -2172,9 +2171,7 @@
 			"fixed": "Le montant habituel, {amount}.",
 			"nextDue": "Prochaine échéance",
 			"submit": "Confirmer",
-			"toast": "{title} enregistré, {amount}",
-			"autoOn": "Activé",
-			"autoOff": "Désactivé"
+			"toast": "{title} enregistré, {amount}"
 		},
 		"item": {
 			"next": "{amount}, prochain le {date}.",

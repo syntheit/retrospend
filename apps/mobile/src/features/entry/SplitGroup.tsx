@@ -5,6 +5,7 @@ import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Avatar, type Face } from "@/ui/Avatar";
 import { ListGroup, ListRow, SectionHeader } from "@/ui/List";
+import { Skeleton } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { type SplitModeName, SplitSummary } from "./ExpenseFields";
 import { usePersonFaces } from "./Face";
@@ -22,13 +23,16 @@ export interface SplitView {
 	paidBy: { name: string; face: Face };
 	rows: { key: string; name: string; face: Face; share: Money | null }[];
 	yourShare: Money | null;
+	/** An edit changed something and the dry run has not answered: the saved shares are stale. */
+	pending: boolean;
 }
 
 /**
  * The split of the open expense, or null for one that is yours alone. A new
  * split is paid by you and divided equally, each share the server's from the
  * dry run. An edit shows the saved split with each share as the dry run of
- * the edit leaves it. Nothing here divides an amount.
+ * the edit leaves it; once something changed, the saved shares are not shown
+ * until that dry run answers. Nothing here divides an amount.
  */
 export function useSplitView(
 	form: EntryForm,
@@ -49,6 +53,7 @@ export function useSplitView(
 		return face as Face;
 	};
 	if (edit?.kind === "shared") {
+		const pending = form.dirty && preview.preview.status !== "ready";
 		const moved = new Map(
 			(preview.preview.status === "ready"
 				? (sharesOf(preview.preview.diff) ?? [])
@@ -63,7 +68,11 @@ export function useSplitView(
 				key,
 				name: you ? t("you") : s.name,
 				face: face as Face,
-				share: moved.has(key) ? (moved.get(key) ?? null) : s.share,
+				share: pending
+					? null
+					: moved.has(key)
+						? (moved.get(key) ?? null)
+						: s.share,
 				you,
 			};
 		});
@@ -84,6 +93,7 @@ export function useSplitView(
 			},
 			rows: rows.map(({ you: _you, ...row }) => row),
 			yourShare: rows.find((r) => r.you)?.share ?? null,
+			pending,
 		};
 	}
 	if (form.editing || preview.rows.length === 0) return null;
@@ -103,6 +113,7 @@ export function useSplitView(
 		paidBy: { name: t("you"), face: meFace() },
 		rows,
 		yourShare: preview.rows[0]?.share ?? null,
+		pending: false,
 	};
 }
 
@@ -147,7 +158,9 @@ export function SplitGroup({ split }: { split: SplitView }) {
 								: row.name
 						}
 						end={
-							row.share ? (
+							split.pending ? (
+								<Skeleton shape="money" />
+							) : row.share ? (
 								<Text tabular weight="medium">
 									{format(row.share, { cents: true }) ?? ""}
 								</Text>

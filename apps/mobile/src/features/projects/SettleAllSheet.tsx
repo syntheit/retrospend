@@ -140,7 +140,7 @@ export function SettleAllSheet({
 												accessibilityLabel={`${words} ${amount}${d.waiting ? `, ${t("waiting", { name: who })}` : ""}`}
 												accessible
 												key={d.key}
-												style={{ gap: 2 }}
+												style={{ gap: space[1] }}
 											>
 												<View
 													style={{

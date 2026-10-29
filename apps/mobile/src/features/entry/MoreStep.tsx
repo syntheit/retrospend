@@ -2,20 +2,10 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
-import { Chip } from "@/ui/Chip";
 import { ListGroup, ListRow, SectionHeader } from "@/ui/List";
-import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
-import { FieldLabel, TextField } from "@/ui/TextField";
 import { ChangesBlock } from "./ChangesBlock";
 import { DateRow, GroupItem } from "./DateRow";
-import {
-	isPersonal,
-	LOCATION_LIMIT,
-	NOTE_LIMIT,
-	SHARED_NOTE_LIMIT,
-	SPREAD_MONTHS,
-} from "./draft";
 import type { SavedEntry } from "./hooks";
 import { IncomeDetails } from "./IncomeFields";
 import { PlanBlock } from "./PlanBlock";
@@ -78,9 +68,10 @@ export function StepSlide({
 
 /**
  * Everything the quick step leaves out, in inset groups: the day and the
- * project, how it is split, the rate, the options, the note and place, and
- * the full list of what this changes. An edit ends with Delete. Income and
- * Transfer keep their own few rows.
+ * project, how it is split, the rate, and the full list of what this changes.
+ * The Details (note, place, spread, exclude) stay on the quick step. An edit
+ * of your own expense ends with Delete. Income and Transfer keep their own few
+ * rows.
  */
 export function MoreStep({
 	form,
@@ -94,8 +85,8 @@ export function MoreStep({
 	edit: SavedEntry | undefined;
 	/** The rate line for an amount in another currency; null at home. */
 	rate: ReactNode;
-	/** An edit's Delete row opens its confirm. */
-	onDelete: () => void;
+	/** Your own expense's Delete row opens its confirm; null when it is not offered. */
+	onDelete: (() => void) | null;
 }) {
 	const t = useTranslations("mobile.composer");
 	const { space } = useTheme();
@@ -159,13 +150,8 @@ export function MoreStep({
 	}
 
 	const draft = form.expense;
-	const personal = isPersonal(draft);
 	const editing = draft.editing !== null;
 	const projects = editing ? [] : catalog.projects;
-	// A saved odd spread (say 4 months) stays offered next to the usual ones.
-	const months = [
-		...new Set([...SPREAD_MONTHS, ...(draft.spread ? [draft.spread] : [])]),
-	].sort((a, b) => a - b);
 	return (
 		<View>
 			<View style={{ paddingTop: space[1] }}>
@@ -202,86 +188,8 @@ export function MoreStep({
 					</ListGroup>
 				</>
 			) : null}
-			{personal ? (
-				<>
-					<SectionHeader title={t("options")} />
-					<ListGroup>
-						<GroupItem>
-							<View style={{ gap: space[2] }}>
-								<FieldLabel>{t("spread")}</FieldLabel>
-								<View
-									accessibilityLabel={t("spread")}
-									accessibilityRole="radiogroup"
-									style={{
-										flexDirection: "row",
-										flexWrap: "wrap",
-										gap: space[2],
-									}}
-								>
-									<Chip
-										label={t("spreadOne")}
-										onPress={() => form.patchExpense({ spread: null })}
-										selected={draft.spread === null}
-									/>
-									{months.map((count) => (
-										<Chip
-											key={count}
-											label={t("spreadMonths", { count })}
-											onPress={() => form.patchExpense({ spread: count })}
-											selected={draft.spread === count}
-										/>
-									))}
-								</View>
-							</View>
-						</GroupItem>
-						<GroupItem>
-							<View>
-								<SwitchRow
-									detail={
-										draft.excludeAuto && draft.exclude
-											? t("excludeAuto")
-											: t("excludeDetail")
-									}
-									label={t("exclude")}
-									onChange={(exclude) =>
-										form.patchExpense({
-											exclude,
-											excludeTouched: true,
-											excludeAuto: false,
-										})
-									}
-									value={draft.exclude}
-								/>
-							</View>
-						</GroupItem>
-					</ListGroup>
-				</>
-			) : null}
-			<SectionHeader title={t("details")} />
-			<View style={{ ...gutter, gap: space[3] }}>
-				<TextField
-					autoCapitalize="sentences"
-					label={t("note")}
-					maxLength={personal ? NOTE_LIMIT : SHARED_NOTE_LIMIT}
-					onChangeText={(note) => form.patchExpense({ note })}
-					onTypingChange={form.setTyping}
-					placeholder={t("notePlaceholder")}
-					value={draft.note}
-				/>
-				{personal ? (
-					<TextField
-						autoCapitalize="sentences"
-						label={t("location")}
-						maxLength={LOCATION_LIMIT}
-						onChangeText={(location) => form.patchExpense({ location })}
-						onTypingChange={form.setTyping}
-						placeholder={t("locationPlaceholder")}
-						value={draft.location}
-					/>
-				) : null}
-			</View>
 			{changes}
-			{editing ? (
+			{onDelete ? (
 				<View style={{ paddingTop: space[6] }}>
 					<ListGroup>
 						<ListRow onPress={onDelete}>

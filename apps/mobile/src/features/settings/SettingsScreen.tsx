@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useMyFace } from "@/features/account/AccountTopBar";
+import { recurringHref } from "@/features/account/places";
 import { useLanguagePref } from "@/lib/language-pref";
 import { LANGUAGE_NAMES } from "@/lib/locales";
 import { usePush } from "@/push/PushProvider";
@@ -126,7 +127,10 @@ export function SettingsScreen() {
 			end={<NavEnd />}
 			key={id}
 			lead={<IconTile name={TILES[id]} />}
-			onPress={() => router.push(`/settings/${id}`)}
+			onPress={() =>
+				// Recurring is its own sidebar destination on the iPad.
+				router.push(id === "recurring" ? recurringHref() : `/settings/${id}`)
+			}
 			sub={subs[id]}
 			title={titles[id]}
 		/>

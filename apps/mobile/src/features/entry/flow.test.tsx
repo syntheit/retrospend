@@ -866,8 +866,7 @@ describe("Details", () => {
 		const tree = await open("expense");
 		press(tree, "Cafe");
 		for (const key of ["9", "0", "0"]) press(tree, key);
-		pressWords(tree, "More");
-		// Details and the options are always shown in More, with no toggle.
+		// Details and the options are always shown on the main step, with no toggle.
 		expect(words(tree)).toContain("Details");
 		expect(words(tree)).toContain("Exclude from spending");
 		type(tree, "Note", "with the team");
@@ -894,7 +893,6 @@ describe("Details", () => {
 		press(tree, "Lucía Fernández");
 		press(tree, "Cafe");
 		for (const key of ["9", "0", "0"]) press(tree, key);
-		pressWords(tree, "More");
 		expect(find(tree, (p) => p.accessibilityLabel === "Location")).toHaveLength(
 			0,
 		);
@@ -1075,6 +1073,64 @@ describe("Edit a split expense", () => {
 		// A share that stays the same is not listed.
 		expect(text).not.toContain("Ana");
 		expect(text).toContain("They're told about the change.");
+		act(() => tree.unmount());
+	});
+
+	it("shows no saved share beside a changed amount until the dry run answers", async () => {
+		const { api } = fakeApi();
+		const shared = (
+			api as unknown as Record<string, { previewUpdate: unknown }>
+		)["shared-expenses"] as { previewUpdate: unknown };
+		let answer!: (diff: object) => void;
+		shared.previewUpdate = () =>
+			new Promise((resolve) => {
+				answer = resolve;
+			});
+		mockSession.api = api;
+		const tree = await open("expense", () => {}, "s1", true);
+		pressWords(tree, "More");
+		// Nothing changed yet: the saved shares are right.
+		expect(words(tree)).toContain("5,000");
+		pressWords(tree, "Back");
+		type(tree, "Title", "Team dinner");
+		await act(async () => {
+			jest.advanceTimersByTime(400);
+		});
+		pressWords(tree, "More");
+		// Changed, no answer: the saved shares are stale and are not shown.
+		expect(words(tree)).not.toContain("5,000");
+		await act(async () => {
+			answer({
+				changes: [],
+				unchanged: [],
+				unavailable: [],
+				detail: {
+					kind: "sharedExpense.update",
+					shares: [
+						{
+							type: "user",
+							id: "me1",
+							name: "Sofía",
+							you: true,
+							before: { minor: 500_000, currency: "ARS" },
+							after: { minor: 600_000, currency: "ARS" },
+						},
+					],
+				},
+			});
+		});
+		await flush();
+		expect(words(tree)).toContain("6,000");
+		act(() => tree.unmount());
+	});
+
+	it("does not offer Delete on a split expense", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense", () => {}, "s1", true);
+		pressWords(tree, "More");
+		expect(words(tree)).not.toContain("Delete");
+		expect(calls.some((c) => c.route.includes("elete"))).toBe(false);
 		act(() => tree.unmount());
 	});
 
