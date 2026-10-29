@@ -1,4 +1,7 @@
-import { type PreviewStatus, useMoneyWrite } from "./useMoneyWrite";
+import {
+	type PreviewStatus,
+	useMoneyWrite,
+} from "@/features/write/useMoneyWrite";
 
 const renderer = require("react-test-renderer");
 const { act } = renderer;

@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { wireAmount } from "./amount";
+import { wireAmount } from "@/features/write/amount";
 
 // Moving money between an envelope and Wealth: the transfer's own write with
 // the envelope named. Leaving the budget names the envelope it comes from;

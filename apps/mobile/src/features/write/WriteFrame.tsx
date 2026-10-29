@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import type { BudgetEnvelope, BudgetMonth } from "@/features/budget/source";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Note } from "./parts";
-import type { BudgetEnvelope, BudgetMonth } from "./source";
 
 /** What every envelope form is given. */
 export interface FormProps {

@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { wireAmount } from "@/features/budget/amount";
+import { wireAmount } from "@/features/write/amount";
 import { isLiability } from "./accounts";
 import type { Account } from "./source";
 

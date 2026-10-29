@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { wireAmount } from "./amount";
+import { wireAmount } from "@/features/write/amount";
 
 // Money owed to you: forgiving a balance, and routing a share that found no
 // envelope. Both are previewed writes with the server's undo.

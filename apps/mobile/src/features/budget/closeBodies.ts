@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { wireAmount } from "./amount";
+import { wireAmount } from "@/features/write/amount";
 
 // Closing a month, coming back after time away, and starting money: the
 // writes that settle where the budget stands.

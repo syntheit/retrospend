@@ -1,11 +1,11 @@
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { figureLines } from "./figures";
-import { ChangeList, type ChangeRow } from "./parts";
+import { figureLines } from "@/features/write/figures";
+import { ChangeList, type ChangeRow } from "@/features/write/parts";
+import { useFigureLabel } from "@/features/write/useFigureLabel";
+import type { PreviewStatus } from "@/features/write/useMoneyWrite";
 import { envelopeMoves, hiddenFor } from "./preview";
 import { type BudgetMonth, type BudgetPreview, envelopeById } from "./source";
-import { useFigureLabel } from "./useFigureLabel";
-import type { PreviewStatus } from "./useMoneyWrite";
 
 /**
  * The server's dry run of a budget write, laid out like the web's block:

@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { wireAmount } from "./amount";
+import { wireAmount } from "@/features/write/amount";
 
 // Drafts: the plan for a coming month and What if. A draft is only a
 // proposal until it is applied, so saving one moves no money.

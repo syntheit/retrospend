@@ -1,5 +1,5 @@
 import type { Money } from "@retrospend/domain/money-minor";
-import { ENVELOPE_LEFT, figureLines } from "./figures";
+import { ENVELOPE_LEFT, figureLines } from "@/features/write/figures";
 import type { BudgetPreview } from "./source";
 
 // What a budget write would change, from the server's own dry run of it (the

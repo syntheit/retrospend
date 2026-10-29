@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { minorOf, readAmount } from "@/features/write/amount";
+import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
 import { useTheme } from "@/theme";
 import { DateField } from "@/ui/DateField";
 import { SwitchRow } from "@/ui/SwitchRow";
-import { minorOf, readAmount } from "./amount";
 import { ChoiceList } from "./fields";
-import { AmountField, Note, useAmountLocale } from "./parts";
 import {
 	ANSWERS,
 	METHODS,

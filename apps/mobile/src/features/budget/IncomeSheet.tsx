@@ -1,8 +1,8 @@
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { Line, Note, SheetBody } from "@/features/write/parts";
 import { Sheet } from "@/ui/Sheet";
 import { monthDate } from "./months";
-import { Line, Note, SheetBody } from "./parts";
 import type { BudgetMonth } from "./source";
 import { useSheetRead } from "./useSheetRead";
 

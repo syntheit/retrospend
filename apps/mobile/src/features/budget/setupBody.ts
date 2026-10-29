@@ -1,6 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { toMinor } from "@retrospend/domain/money-minor";
-import { wireAmount } from "./amount";
+import { wireAmount } from "@/features/write/amount";
 import { isIsoDay } from "./DayField";
 
 // The set-up wizard's request: the server's proposal for a style, with the
