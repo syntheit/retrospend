@@ -16,12 +16,13 @@
 		"dismiss": "Descartar",
 		"retry": "Reintentar",
 		"save": "Guardar",
-		"saving": "Guardando"
+		"saving": "Guardando",
+		"close": "Cerrar",
+		"done": "Listo"
 	},
 	"keypad": {
 		"delete": "Borrar",
-		"decimal": "Coma decimal",
-		"tripleZero": "Tres ceros"
+		"decimal": "Coma decimal"
 	},
 	"composer": {
 		"mode": "Tipo de entrada",

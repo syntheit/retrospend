@@ -1,9 +1,21 @@
 import type { ReactNode } from "react";
-import { Platform, ScrollView } from "react-native";
+import { Platform, RefreshControl, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { FLOATING_ADD_INSET } from "@/layout/destinations";
+import { ADD_CONTROL } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 import { useSidesCleared } from "./ListDetail";
+
+/**
+ * Room a scrolling list leaves under its last row on phones, where the add
+ * control floats above the tab bar (the iOS glass button, the M3 FAB): the
+ * control's 48 point height, its 16 point margin and 16 of air, so it never
+ * covers a row's money at the end of the list. Zero on iPad, whose plus sits
+ * in the toolbar. Lists that are not a Screen add it as their footer.
+ */
+export function useAddInset(): number {
+	const { space } = useTheme();
+	return ADD_CONTROL === "floating" ? space[12] + space[4] + space[4] : 0;
+}
 
 /**
  * A scrolling screen body on the theme background. On iOS the first scroll
@@ -11,31 +23,49 @@ import { useSidesCleared } from "./ListDetail";
  * sides. Android is edge-to-edge, so the body pads for the gesture bar too;
  * the native SafeAreaView measures what is actually covered, so a tab screen
  * whose container already sits above the navigation bar gets no extra bottom
- * padding.
+ * padding. The body always ends with the add control's inset.
  * `flush` leaves out the side padding, for lists whose rows pad themselves.
+ * `onRefresh` turns on pull to refresh; `refreshing` shows its spinner while
+ * the reload runs.
  */
 export function Screen({
 	children,
 	flush,
+	refreshing = false,
+	onRefresh,
 }: {
 	children?: ReactNode;
 	flush?: boolean;
+	refreshing?: boolean;
+	onRefresh?: () => void;
 }) {
 	const { color, space } = useTheme();
 	const cleared = useSidesCleared();
+	const inset = useAddInset();
 	const body = (
 		<ScrollView
 			contentContainerStyle={
 				flush
-					? { paddingBottom: space[8] + FLOATING_ADD_INSET }
+					? { paddingBottom: space[8] + inset }
 					: {
 							padding: space[4],
-							paddingBottom: space[4] + FLOATING_ADD_INSET,
+							paddingBottom: space[4] + inset,
 							gap: space[4],
 						}
 			}
 			contentInsetAdjustmentBehavior="automatic"
 			keyboardShouldPersistTaps="handled"
+			refreshControl={
+				onRefresh ? (
+					<RefreshControl
+						colors={[color.fg2]}
+						onRefresh={onRefresh}
+						progressBackgroundColor={color.surface}
+						refreshing={refreshing}
+						tintColor={color.fg2}
+					/>
+				) : undefined
+			}
 			style={{ flex: 1, backgroundColor: color.bg }}
 		>
 			{children}

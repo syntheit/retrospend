@@ -16,12 +16,13 @@
 		"dismiss": "Dismiss",
 		"retry": "Try again",
 		"save": "Save",
-		"saving": "Saving"
+		"saving": "Saving",
+		"close": "Close",
+		"done": "Done"
 	},
 	"keypad": {
 		"delete": "Delete",
-		"decimal": "Decimal point",
-		"tripleZero": "Three zeros"
+		"decimal": "Decimal point"
 	},
 	"composer": {
 		"mode": "Entry type",

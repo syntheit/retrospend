@@ -18,6 +18,13 @@ export interface MenuProps {
 	/** What a screen reader says when it differs from the text ("Currency, ARS"). */
 	accessibilityLabel?: string;
 	items: MenuItem[];
+	/**
+	 * Draws the trigger as a filter chip with a chevron (Activity and Insights
+	 * filters) instead of a text button.
+	 */
+	chip?: boolean;
+	/** A chip whose filter has a value set: brand-soft with a brand border. */
+	active?: boolean;
 }
 
 export interface SegmentedOption<T extends string> {
@@ -71,10 +78,23 @@ export interface ButtonProps {
 	onPress?: () => void;
 	/**
 	 * Filled is the one primary action on a screen; outlined is the rest;
-	 * text is a link-like action (Change server).
+	 * text is a link-like action (Change server); danger is only the confirm
+	 * of a destructive sheet, placed last.
 	 */
-	variant?: "filled" | "outlined" | "text";
+	variant?: "filled" | "outlined" | "text" | "danger";
+	/**
+	 * Small is the 28 point control (an outlined Resume or Use my plan inside a
+	 * row or notice), only next to other small controls (R31).
+	 */
+	size?: "regular" | "small";
 	disabled?: boolean;
+}
+
+/** A settings picker row's menu: its options, the current one, and the change. */
+export interface FormMenuProps<T extends string> {
+	options: { value: T; label: string }[];
+	value: T;
+	onChange: (value: T) => void;
 }
 
 export interface DateFieldProps {

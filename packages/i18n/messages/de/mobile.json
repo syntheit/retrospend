@@ -16,12 +16,13 @@
 		"dismiss": "Schließen",
 		"retry": "Erneut versuchen",
 		"save": "Speichern",
-		"saving": "Speichern"
+		"saving": "Speichern",
+		"close": "Schließen",
+		"done": "Fertig"
 	},
 	"keypad": {
 		"delete": "Löschen",
-		"decimal": "Dezimalkomma",
-		"tripleZero": "Drei Nullen"
+		"decimal": "Dezimalkomma"
 	},
 	"composer": {
 		"mode": "Art des Eintrags",

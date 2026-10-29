@@ -102,6 +102,35 @@ describe("other variants", () => {
 		}
 	});
 
+	it.each([
+		["light", light],
+		["dark", dark],
+	])("fills danger with its own readable foreground (%s)", (_name, theme) => {
+		const { button, label } = render(theme, {
+			label: "Delete",
+			variant: "danger",
+		});
+		expect(find(button, "buttonStyle")?.style).toBe("borderedProminent");
+		expect(JSON.stringify(find(button, "tint"))).toContain(theme.color.danger);
+		expect(JSON.stringify(find(label, "foregroundStyle"))).toContain(
+			theme.color.dangerFg,
+		);
+		expect(
+			contrast(theme.color.dangerFg, theme.color.danger),
+		).toBeGreaterThanOrEqual(4.5);
+	});
+
+	it("uses the system small size only for small buttons", () => {
+		const small = render(light, {
+			label: "Resume",
+			variant: "outlined",
+			size: "small",
+		});
+		expect(find(small.button, "controlSize")).toBeDefined();
+		const regular = render(light, { label: "Resume", variant: "outlined" });
+		expect(find(regular.button, "controlSize")).toBeUndefined();
+	});
+
 	it("reads the brand color on the page in both themes", () => {
 		expect(contrast(light.color.brand, light.color.bg)).toBeGreaterThanOrEqual(
 			4.5,
