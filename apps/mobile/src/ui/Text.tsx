@@ -4,7 +4,9 @@ import {
 	type TextProps as NativeTextProps,
 	type TextStyle,
 } from "react-native";
-import { fontFamilyFor, type Theme, useTheme } from "@/theme";
+import { type Theme, useTheme } from "@/theme";
+// Not from "@/theme": tests that mock the theme hook still get the faces.
+import { fontFamilyFor } from "@/theme/fonts";
 
 /** The type roles (GUIDELINE §2.3): one size, line height, weight and tracking each. */
 export type TextRole = "hero" | "title" | "section" | "body" | "small" | "meta";
