@@ -414,11 +414,7 @@
 		"noBudgetDetail": "Set one up to plan your money in envelopes.",
 		"paused": "Your budget is paused",
 		"pausedDetail": "Nothing is counted while it is paused.",
-		"wealth": "Net worth and accounts",
-		"webForNow": "A few tools, like the year view, are on the web for now.",
 		"month": {
-			"previous": "Previous month",
-			"next": "Next month",
 			"pick": "Choose a month",
 			"closedItem": "{month}, closed",
 			"planItem": "Plan {month}",
@@ -462,7 +458,8 @@
 			}
 		},
 		"hero": {
-			"incomplete": "No rate yet for {currencies}, so this is not worked out."
+			"incomplete": "No rate yet for {currencies}, so this is not worked out.",
+			"afford": "Can I afford something?"
 		},
 		"notice": {
 			"notPlanned": "{amount} came in that isn't planned yet.",
@@ -497,7 +494,10 @@
 			"expand": "Show envelopes",
 			"collapse": "Hide envelopes",
 			"percents": "Planned {planned} · spent {spent}",
-			"overNames": "Over: {names}"
+			"overNames": "Over: {names}",
+			"overBy": "{name} over by {amount}",
+			"needed": "{name}: {amount} still needed",
+			"covered": "{name}: covered"
 		},
 		"column": {
 			"assigned": "Assigned",
@@ -513,7 +513,12 @@
 			"leftSpoken": "{amount} left",
 			"leftThisWeek": "{amount} left this week",
 			"wideSpoken": "{assigned} assigned, {spent} spent, {left} left",
-			"wideSpokenLimit": "{assigned} limit, {spent} spent, {left} left"
+			"wideSpokenLimit": "{assigned} limit, {spent} spent, {left} left",
+			"overBy": "Over by {amount}",
+			"moreNeeded": "{amount} more needed",
+			"swipeMove": "Move",
+			"swipeLimit": "Limit",
+			"swipeTarget": "Target"
 		},
 		"envelope": {
 			"assigned": "Assigned",
@@ -721,7 +726,8 @@
 			"welcomeBack": "Welcome back",
 			"startingMoney": "Starting money",
 			"toWealth": "Move money to Wealth",
-			"fromWealth": "Move money from Wealth"
+			"fromWealth": "Move money from Wealth",
+			"more": "More"
 		},
 		"afford": {
 			"title": "Can I afford it?",
@@ -1153,7 +1159,17 @@
 			"toastMoved": "Moved {amount} in",
 			"toastCounted": "Counted money from {name}. {name} did not change"
 		},
-		"resume": "Resume the budget"
+		"resume": "Resume the budget",
+		"targetLine": {
+			"none": "No target",
+			"noLimit": "No limit",
+			"perWeek": "{amount} a week",
+			"perMonth": "{amount} a month",
+			"billDue": "{amount} by {date}",
+			"goal": "Goal {amount}",
+			"goalProgress": "{saved} of {amount}",
+			"goalBy": "by {date}"
+		}
 	},
 	"wealth": {
 		"title": "Wealth",

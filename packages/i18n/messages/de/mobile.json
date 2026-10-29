@@ -414,11 +414,7 @@
 		"noBudgetDetail": "Richte eines ein, um dein Geld in Umschlägen zu planen.",
 		"paused": "Dein Budget ist pausiert",
 		"pausedDetail": "Solange es pausiert ist, wird nichts gezählt.",
-		"wealth": "Vermögen und Konten",
-		"webForNow": "Ein paar Werkzeuge, etwa die Jahresansicht, gibt es vorerst nur im Web.",
 		"month": {
-			"previous": "Vorheriger Monat",
-			"next": "Nächster Monat",
 			"pick": "Monat wählen",
 			"closedItem": "{month}, abgeschlossen",
 			"planItem": "{month} planen",
@@ -462,7 +458,8 @@
 			}
 		},
 		"hero": {
-			"incomplete": "Noch kein Kurs für {currencies}, darum ist das nicht berechnet."
+			"incomplete": "Noch kein Kurs für {currencies}, darum ist das nicht berechnet.",
+			"afford": "Kann ich mir etwas leisten?"
 		},
 		"notice": {
 			"notPlanned": "{amount} sind eingegangen und noch nicht geplant.",
@@ -497,7 +494,10 @@
 			"expand": "Umschläge zeigen",
 			"collapse": "Umschläge ausblenden",
 			"percents": "Geplant {planned} · ausgegeben {spent}",
-			"overNames": "Drüber: {names}"
+			"overNames": "Drüber: {names}",
+			"overBy": "{name} um {amount} drüber",
+			"needed": "{name}: es fehlen {amount}",
+			"covered": "{name}: gedeckt"
 		},
 		"column": {
 			"assigned": "Zugewiesen",
@@ -513,7 +513,12 @@
 			"leftSpoken": "{amount} übrig",
 			"leftThisWeek": "{amount} diese Woche übrig",
 			"wideSpoken": "{assigned} zugewiesen, {spent} ausgegeben, {left} übrig",
-			"wideSpokenLimit": "Limit {assigned}, {spent} ausgegeben, {left} übrig"
+			"wideSpokenLimit": "Limit {assigned}, {spent} ausgegeben, {left} übrig",
+			"overBy": "Um {amount} drüber",
+			"moreNeeded": "es fehlen {amount}",
+			"swipeMove": "Verschieben",
+			"swipeLimit": "Limit",
+			"swipeTarget": "Ziel"
 		},
 		"envelope": {
 			"assigned": "Zugewiesen",
@@ -721,7 +726,8 @@
 			"welcomeBack": "Willkommen zurück",
 			"startingMoney": "Startgeld",
 			"toWealth": "Geld ins Vermögen verschieben",
-			"fromWealth": "Geld aus dem Vermögen holen"
+			"fromWealth": "Geld aus dem Vermögen holen",
+			"more": "Mehr"
 		},
 		"afford": {
 			"title": "Kann ich mir das leisten?",
@@ -1153,7 +1159,17 @@
 			"toastMoved": "{amount} hereingeholt",
 			"toastCounted": "Geld von {name} mitgezählt. {name} hat sich nicht geändert"
 		},
-		"resume": "Budget fortsetzen"
+		"resume": "Budget fortsetzen",
+		"targetLine": {
+			"none": "Kein Ziel",
+			"noLimit": "Kein Limit",
+			"perWeek": "{amount} pro Woche",
+			"perMonth": "{amount} pro Monat",
+			"billDue": "{amount} bis {date}",
+			"goal": "Ziel {amount}",
+			"goalProgress": "{saved} von {amount}",
+			"goalBy": "bis {date}"
+		}
 	},
 	"wealth": {
 		"title": "Vermögen",

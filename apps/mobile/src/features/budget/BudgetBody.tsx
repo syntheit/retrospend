@@ -1,28 +1,30 @@
-import { router } from "expo-router";
 import { useMemo } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { SyncIssues } from "@/features/entry/SyncIssues";
-import { ListRow, StaleNote } from "@/ui/List";
-import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";
+import { Button } from "@/ui/Button";
+import { StaleNote } from "@/ui/List";
+import { Text } from "@/ui/Text";
 import { BudgetHero } from "./BudgetHero";
+import { BudgetNotice } from "./BudgetNotice";
 import type { OpenSheet } from "./BudgetSheets";
 import { DebtHero } from "./DebtHero";
 import { ColumnTitles } from "./EnvelopeRow";
-import { GroupSection } from "./GroupSection";
-import { ManageList } from "./ManageList";
+import { GroupList } from "./GroupSection";
+import { ManageMenu } from "./ManageList";
 import { MonthBar } from "./MonthBar";
 import { type MonthBounds, type MonthKind, monthDate } from "./months";
-import { Notice, PlanSummary } from "./PlanSummary";
+import { PlanSummary } from "./PlanSummary";
 import { isLimits, overEnvelopes } from "./rows";
 import { type BudgetMonth, envelopesOf, type PayoffProjection } from "./source";
 import type { VerdictSheet } from "./verdict";
 
 /**
- * The loaded Budget page: month switcher, hero and notice, the pool, then the
- * groups. On a wide screen (iPad, Android tablets) the hero and the pool sit
- * side by side and every row gets Assigned, Spent and Left columns.
+ * The loaded Budget page: month menu, hero and notice, the pool and who owes
+ * you, then the groups. On a wide screen (iPad, Android tablets) the hero and
+ * the pool sit side by side and every row gets Assigned, Spent and Left
+ * columns.
  */
 export function BudgetBody({
 	data,
@@ -46,7 +48,7 @@ export function BudgetBody({
 }) {
 	const t = useTranslations("mobile.budget");
 	const format = useFormatter();
-	const { color, space, type } = useTheme();
+	const { size, space } = useTheme();
 	const key = data.month.key;
 	const closed = kind === "closed";
 	const style = data.book.style;
@@ -69,16 +71,12 @@ export function BudgetBody({
 	};
 
 	// Only the open month acts: a closed one is read-only, and the next one is
-	// planned in drafts (Plan the month in the list below), not assigned.
+	// planned in drafts (Plan the month in the menu), not assigned.
 	const open = kind === "open";
 	const note = (text: string) => (
 		<Text
-			style={{
-				color: color.fg2,
-				fontSize: type.body.size,
-				paddingHorizontal: space[4],
-				paddingTop: space[2],
-			}}
+			style={{ paddingHorizontal: size.gutter.phone, paddingTop: space[2] }}
+			tone="fg2"
 		>
 			{text}
 		</Text>
@@ -93,9 +91,11 @@ export function BudgetBody({
 		) : (
 			<BudgetHero
 				canAct={open}
+				canAfford={!closed}
 				data={data}
 				names={names}
 				onAction={openVerdict}
+				onAfford={() => onOpen({ kind: "afford" })}
 			/>
 		);
 	const hero = closed ? (
@@ -104,7 +104,7 @@ export function BudgetBody({
 		<>
 			{lead}
 			{kind === "next" ? note(t("month.planning", { month: monthName })) : null}
-			<Notice
+			<BudgetNotice
 				canAct={open}
 				data={data}
 				onCover={() => openVerdict("cover")}
@@ -115,6 +115,7 @@ export function BudgetBody({
 	const summary = closed ? null : (
 		<PlanSummary
 			data={data}
+			onOpenOwed={open ? () => onOpen({ kind: "owed" }) : null}
 			onUsePlan={
 				kind === "open" && !isLimits(style)
 					? () => onOpen({ kind: "usePlan" })
@@ -127,7 +128,18 @@ export function BudgetBody({
 		<View>
 			<StaleNote since={stale} />
 			<SyncIssues padded />
-			<MonthBar bounds={bounds} month={key} onChange={onSelectMonth} />
+			<MonthBar
+				bounds={bounds}
+				month={key}
+				onChange={onSelectMonth}
+				trailing={
+					<ManageMenu
+						isDebtBook={style === "DEBT_PAYOFF"}
+						kind={kind}
+						onOpen={onOpen}
+					/>
+				}
+			/>
 			{wide ? (
 				<View
 					style={{ flexDirection: "row", gap: space[6], paddingTop: space[2] }}
@@ -142,45 +154,30 @@ export function BudgetBody({
 				</>
 			)}
 			{wide ? <ColumnTitles style={style} /> : null}
-			{data.groups
-				.filter((group) => group.envelopes.length > 0)
-				.map((group) => (
-					<GroupSection
-						group={group}
-						key={group.id ?? "none"}
-						onOpenEnvelope={(e) =>
-							onOpen({ kind: "envelope", id: e.id, mode: "overview" })
-						}
-						style={style}
-						wide={wide}
-					/>
-				))}
-			<ManageList
-				isDebtBook={style === "DEBT_PAYOFF"}
+			<GroupList
+				groups={data.groups.filter((group) => group.envelopes.length > 0)}
 				kind={kind}
-				onOpen={onOpen}
+				onOpenEnvelope={(e, mode) =>
+					onOpen({ kind: "envelope", id: e.id, mode })
+				}
+				style={style}
+				wide={wide}
 			/>
-			<View style={{ paddingTop: space[4] }}>
-				<ListRow
-					accessibilityLabel={t("wealth")}
-					onPress={() => router.push(wealthHref("budget"))}
-				>
-					<Text
-						style={{ flex: 1, color: color.brand, fontSize: type.body.size }}
-					>
-						{t("wealth")}
-					</Text>
-				</ListRow>
-				<Text
+			{open ? (
+				<View
 					style={{
-						color: color.fg2,
-						fontSize: type.small.size,
-						padding: space[4],
+						alignItems: "flex-start",
+						paddingHorizontal: size.gutter.phone,
+						paddingTop: space[4],
 					}}
 				>
-					{t("webForNow")}
-				</Text>
-			</View>
+					<Button
+						label={t("manage.newEnvelope")}
+						onPress={() => onOpen({ kind: "newEnvelope" })}
+						variant="outlined"
+					/>
+				</View>
+			) : null}
 		</View>
 	);
 }

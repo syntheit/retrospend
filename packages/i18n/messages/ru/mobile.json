@@ -414,11 +414,7 @@
 		"noBudgetDetail": "Создай бюджет, чтобы планировать деньги по конвертам.",
 		"paused": "Ваш бюджет приостановлен",
 		"pausedDetail": "Пока бюджет на паузе, ничего не учитывается.",
-		"wealth": "Капитал и счета",
-		"webForNow": "Некоторые инструменты, например годовой обзор, пока есть только в вебе.",
 		"month": {
-			"previous": "Предыдущий месяц",
-			"next": "Следующий месяц",
 			"pick": "Выбрать месяц",
 			"closedItem": "{month}, закрыт",
 			"planItem": "Спланировать {month}",
@@ -462,7 +458,8 @@
 			}
 		},
 		"hero": {
-			"incomplete": "Пока нет курса для {currencies}, поэтому сумма не рассчитана."
+			"incomplete": "Пока нет курса для {currencies}, поэтому сумма не рассчитана.",
+			"afford": "Могу ли я позволить себе покупку?"
 		},
 		"notice": {
 			"notPlanned": "Поступило {amount}, и оно ещё не распланировано.",
@@ -497,7 +494,10 @@
 			"expand": "Показать конверты",
 			"collapse": "Скрыть конверты",
 			"percents": "Запланировано {planned} · потрачено {spent}",
-			"overNames": "Превышены: {names}"
+			"overNames": "Превышены: {names}",
+			"overBy": "«{name}» превышен на {amount}",
+			"needed": "{name}: не хватает {amount}",
+			"covered": "{name}: покрыты"
 		},
 		"column": {
 			"assigned": "Назначено",
@@ -513,7 +513,12 @@
 			"leftSpoken": "осталось {amount}",
 			"leftThisWeek": "на этой неделе осталось {amount}",
 			"wideSpoken": "назначено {assigned}, потрачено {spent}, осталось {left}",
-			"wideSpokenLimit": "лимит {assigned}, потрачено {spent}, осталось {left}"
+			"wideSpokenLimit": "лимит {assigned}, потрачено {spent}, осталось {left}",
+			"overBy": "Превышен на {amount}",
+			"moreNeeded": "не хватает {amount}",
+			"swipeMove": "Перенести",
+			"swipeLimit": "Лимит",
+			"swipeTarget": "Цель"
 		},
 		"envelope": {
 			"assigned": "Назначено",
@@ -721,7 +726,8 @@
 			"welcomeBack": "С возвращением",
 			"startingMoney": "Начальные деньги",
 			"toWealth": "Перевести деньги в капитал",
-			"fromWealth": "Перевести деньги из капитала"
+			"fromWealth": "Перевести деньги из капитала",
+			"more": "Ещё"
 		},
 		"afford": {
 			"title": "Могу ли я это позволить?",
@@ -1153,7 +1159,17 @@
 			"toastMoved": "Перенесено {amount}",
 			"toastCounted": "Деньги со счёта «{name}» учтены. «{name}» не изменился"
 		},
-		"resume": "Возобновить бюджет"
+		"resume": "Возобновить бюджет",
+		"targetLine": {
+			"none": "Без цели",
+			"noLimit": "Без лимита",
+			"perWeek": "{amount} в неделю",
+			"perMonth": "{amount} в месяц",
+			"billDue": "{amount} до {date}",
+			"goal": "Цель: {amount}",
+			"goalProgress": "{saved} из {amount}",
+			"goalBy": "до {date}"
+		}
 	},
 	"wealth": {
 		"title": "Капитал",

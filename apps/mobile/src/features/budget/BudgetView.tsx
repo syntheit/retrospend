@@ -10,6 +10,7 @@ import { useLayoutClass } from "@/layout/useLayoutClass";
 import { GALLERY_ENABLED } from "@/lib/flags";
 import { EmptyState } from "@/ui/EmptyState";
 import { Screen } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { BudgetBody } from "./BudgetBody";
 import { BudgetSheets, type OpenSheet } from "./BudgetSheets";
 import { devSheet } from "./devSheet";
@@ -30,7 +31,7 @@ import {
  */
 export function BudgetView() {
 	const t = useTranslations("mobile.budget");
-	const loading = useTranslations("mobile.activity")("loading");
+	const common = useTranslations("mobile.common");
 	const { api } = useSession();
 	const { widthClass } = useLayoutClass();
 	// null is the current month; a number is a month the person stepped to.
@@ -38,6 +39,7 @@ export function BudgetView() {
 	const [seenOpen, setSeenOpen] = useState<number | null>(null);
 	const [sheet, setSheet] = useState<OpenSheet | null>(null);
 	const [setupOpen, setSetupOpen] = useState(false);
+	const [refreshing, setRefreshing] = useState(false);
 
 	const fetch = useMemo(
 		() => (api ? fetchBudget(api, selected) : null),
@@ -70,11 +72,23 @@ export function BudgetView() {
 	return (
 		<>
 			<AccountTopBar title={t("title")} />
-			<Screen flush>
+			<Screen
+				flush
+				onRefresh={() => {
+					setRefreshing(true);
+					void reload().finally(() => setRefreshing(false));
+				}}
+				refreshing={refreshing}
+			>
 				{state.status === "loading" ? (
-					<EmptyState title={loading} />
+					<SkeletonRows count={6} />
 				) : state.status === "error" ? (
-					<EmptyState detail={t("errorDetail")} title={t("error")} />
+					<EmptyState
+						actionLabel={common("retry")}
+						detail={t("errorDetail")}
+						onAction={() => void reload()}
+						title={t("error")}
+					/>
 				) : !data || !info ? (
 					<EmptyState
 						actionLabel={t("setup.open")}

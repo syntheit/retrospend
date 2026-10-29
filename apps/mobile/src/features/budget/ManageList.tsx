@@ -1,7 +1,5 @@
-import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { ListRow } from "@/ui/List";
-import { useTheme } from "@/theme";
+import { Menu } from "@/ui/Menu";
 import type { OpenSheet } from "./BudgetSheets";
 import { MORE_ROWS, type MoreKind } from "./MoreSheets";
 import type { MonthKind } from "./months";
@@ -15,7 +13,7 @@ type RowKey =
 	| "reconcile"
 	| "style";
 
-/** The sheets the list below the envelopes opens, by month kind (closed months are read-only). */
+/** The sheets the page's menu opens, by month kind (closed months are read-only). */
 export function manageRows(
 	kind: MonthKind,
 	isDebtBook: boolean,
@@ -41,8 +39,12 @@ export function manageRows(
 	return rows;
 }
 
-/** Plan and tidy: what-if, envelopes, debt and style. One row each, one sheet each. */
-export function ManageList({
+/**
+ * The page's overflow: what-if, income, merge, debt, style and the rest, one
+ * menu item each. Can I afford something is the link under the hero and Add
+ * an envelope is the button under the list, so neither repeats here.
+ */
+export function ManageMenu({
 	kind,
 	isDebtBook,
 	onOpen,
@@ -52,35 +54,19 @@ export function ManageList({
 	onOpen: (sheet: OpenSheet) => void;
 }) {
 	const t = useTranslations("mobile.budget.manage");
-	const { color, space, type } = useTheme();
-	const rows = manageRows(kind, isDebtBook);
+	const rows = manageRows(kind, isDebtBook).filter(
+		(row) => row.key !== "afford" && row.key !== "newEnvelope",
+	);
 	if (rows.length === 0) return null;
 	return (
-		<View style={{ paddingTop: space[4] }}>
-			<Text
-				accessibilityRole="header"
-				style={{
-					color: color.fg2,
-					fontSize: type.small.size,
-					paddingHorizontal: space[4],
-					paddingBottom: space[1],
-				}}
-			>
-				{t("title")}
-			</Text>
-			{rows.map((row) => (
-				<ListRow
-					accessibilityLabel={t(row.key)}
-					key={row.key}
-					onPress={() => onOpen(row.sheet)}
-				>
-					<Text
-						style={{ flex: 1, color: color.brand, fontSize: type.body.size }}
-					>
-						{t(row.key)}
-					</Text>
-				</ListRow>
-			))}
-		</View>
+		<Menu
+			accessibilityLabel={t("title")}
+			items={rows.map((row) => ({
+				id: row.key,
+				label: t(row.key),
+				onPress: () => onOpen(row.sheet),
+			}))}
+			label={t("more")}
+		/>
 	);
 }
