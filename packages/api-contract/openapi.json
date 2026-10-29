@@ -78178,7 +78178,7 @@
 		},
 		"/me/password": {
 			"post": {
-				"description": "Needs the current password, every time (5 tries in 15 minutes, then 429). Signs out every other session; the one making the change stays signed in.",
+				"description": "Needs the current password, every time (5 tries per session and 20 per account in 15 minutes, then 429). Signs out every other session; the one making the change stays signed in.",
 				"operationId": "changeMyPassword",
 				"parameters": [
 					{
