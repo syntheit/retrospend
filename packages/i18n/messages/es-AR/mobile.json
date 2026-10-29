@@ -254,16 +254,14 @@
 		"pickDate": "Elegí una fecha"
 	},
 	"entry": {
-		"title": "Movimiento",
+		"title": "Gasto",
 		"missing": "Abrí este movimiento desde Actividad.",
 		"date": "Fecha",
 		"category": "Categoría",
 		"uncategorized": "Sin categoría",
 		"status": "Estado",
-		"type": "Tipo",
 		"paidBy": "Pagó",
 		"you": "Vos",
-		"people": "Con",
 		"project": "Proyecto",
 		"rate": "Cotización",
 		"rateType": "Cotización {rate}",
@@ -271,22 +269,22 @@
 		"notes": "Notas",
 		"spread": "Repartido en",
 		"spreadMonths": "{months} meses",
-		"excluded": "Fuera de los análisis",
-		"yes": "Sí",
 		"locked": "Bloqueado por un pago",
-		"added": "Agregado",
-		"kind": {
-			"expense": "Gasto",
-			"income": "Ingreso",
-			"refund": "Reintegro",
-			"transfer": "Transferencia",
-			"payment": "Pago"
-		},
 		"edit": "Editar",
 		"loading": "Cargando",
 		"gone": "Este movimiento se eliminó o ya no se comparte con vos.",
 		"loadError": "No se pudo cargar este movimiento",
-		"loadErrorDetail": "Revisá tu conexión y probá de nuevo."
+		"loadErrorDetail": "Revisá tu conexión y probá de nuevo.",
+		"titleIncome": "Ingreso",
+		"titlePayment": "Pago",
+		"yourShare": "Tu parte",
+		"reports": "Informes",
+		"hidden": "Oculto en los informes",
+		"shares": "Partes",
+		"paid": "pagó",
+		"addedBy": "{name} lo agregó. Solo esa persona puede cambiarlo.",
+		"delete": "Eliminar",
+		"makeRecurring": "Hacer recurrente"
 	},
 	"connect": {
 		"title": "Conectate a un servidor",
@@ -349,17 +347,18 @@
 		"pick": "Elegí un gasto",
 		"offlineSince": "Sin conexión desde {time}",
 		"search": "Buscar gastos",
-		"summary": "{count, plural, one {# movimiento} other {# movimientos}}",
-		"summarySpent": "{count, plural, one {# movimiento} other {# movimientos}}, {amount} gastados",
+		"summary": "{count, plural, one {# gasto} other {# gastos}}",
 		"today": "Hoy",
 		"yesterday": "Ayer",
 		"chip": {
-			"kind": "Tipo",
 			"category": "Categoría",
 			"person": "Persona",
 			"allCategories": "Todas las categorías",
 			"everyone": "Todos",
-			"anyKind": "Todos los tipos"
+			"anyKind": "Todos los tipos",
+			"project": "Proyecto",
+			"allProjects": "Todos los proyectos",
+			"filter": "Filtro"
 		},
 		"period": {
 			"month": "Este mes",
@@ -381,7 +380,8 @@
 			"refund": "Reintegro",
 			"transfer": "Transferencia",
 			"paymentSent": "Pagaste a {name}",
-			"paymentReceived": "{name} te pagó"
+			"paymentReceived": "{name} te pagó",
+			"paid": "Pagó {name}"
 		},
 		"bulk": {
 			"select": "Seleccionar",
@@ -404,6 +404,11 @@
 			"undone": "Deshecho",
 			"undoError": "No se pudo deshacer",
 			"skipped": "{count, plural, one {# no se puede eliminar acá.} other {# no se pueden eliminar acá.}}"
+		},
+		"segment": {
+			"label": "Actividad",
+			"expenses": "Gastos",
+			"recurring": "Recurrentes"
 		}
 	},
 	"budget": {
@@ -1886,7 +1891,7 @@
 		}
 	},
 	"recurring": {
-		"title": "Recurrentes",
+		"title": "Gastos recurrentes",
 		"error": "No se pudieron cargar los gastos recurrentes",
 		"errorDetail": "Revisá tu conexión y probá de nuevo.",
 		"empty": "Sin gastos recurrentes",
@@ -1939,7 +1944,9 @@
 			"fixed": "El monto de siempre, {amount}.",
 			"nextDue": "Próximo vencimiento",
 			"submit": "Confirmar",
-			"toast": "{title} registrado, {amount}"
+			"toast": "{title} registrado, {amount}",
+			"autoOn": "Activado",
+			"autoOff": "Desactivado"
 		},
 		"item": {
 			"next": "{amount}, próximo el {date}.",
@@ -1954,6 +1961,19 @@
 			"autoOnToast": "Pago automático activado para {title}",
 			"autoOffToast": "Pago automático desactivado para {title}",
 			"error": "No se pudo cambiar. Probá de nuevo."
+		},
+		"count": "{count, plural, one {# gasto recurrente} other {# gastos recurrentes}}",
+		"autoPayOn": "Pago automático activado",
+		"autoPayOff": "Pago automático desactivado",
+		"details": "Detalles",
+		"make": {
+			"title": "Hacer recurrente",
+			"body": "{title} se repetirá cada mes por {amount}, la próxima vez el {date}.",
+			"stays": "El pago automático está desactivado, así que no se registra nada hasta que lo confirmes. Tus totales no cambian.",
+			"submit": "Hacer recurrente",
+			"saving": "Guardando",
+			"error": "No se pudo hacer recurrente. Intentá de nuevo.",
+			"toast": "{title} ahora se repite cada mes"
 		}
 	},
 	"shortcuts": {

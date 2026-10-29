@@ -11,7 +11,6 @@ import { useToast } from "@/ui/Toast";
  * `onChanged` runs after the write and after an undo.
  */
 export function useRecurringToast() {
-	const { api } = useSession();
 	const toast = useToast();
 	const tc = useTranslations("mobile.common");
 	const tw = useTranslations("mobile.budget.write");

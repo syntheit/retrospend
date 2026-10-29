@@ -254,16 +254,14 @@
 		"pickDate": "Choisis une date"
 	},
 	"entry": {
-		"title": "Opération",
+		"title": "Dépense",
 		"missing": "Ouvre cette opération depuis Activité.",
 		"date": "Date",
 		"category": "Catégorie",
 		"uncategorized": "Sans catégorie",
 		"status": "Statut",
-		"type": "Type",
 		"paidBy": "Payé par",
 		"you": "Toi",
-		"people": "Avec",
 		"project": "Projet",
 		"rate": "Taux",
 		"rateType": "Taux {rate}",
@@ -271,22 +269,22 @@
 		"notes": "Notes",
 		"spread": "Étalé sur",
 		"spreadMonths": "{months} mois",
-		"excluded": "Exclu des analyses",
-		"yes": "Oui",
 		"locked": "Verrouillé par un paiement",
-		"added": "Ajouté",
-		"kind": {
-			"expense": "Dépense",
-			"income": "Rentrée",
-			"refund": "Remboursement",
-			"transfer": "Virement",
-			"payment": "Paiement"
-		},
 		"edit": "Modifier",
 		"loading": "Chargement",
 		"gone": "Cette opération a été supprimée ou n'est plus partagée avec toi.",
 		"loadError": "Impossible de charger cette opération",
-		"loadErrorDetail": "Vérifie ta connexion et réessaie."
+		"loadErrorDetail": "Vérifie ta connexion et réessaie.",
+		"titleIncome": "Rentrée",
+		"titlePayment": "Paiement",
+		"yourShare": "Ta part",
+		"reports": "Rapports",
+		"hidden": "Masqué des rapports",
+		"shares": "Parts",
+		"paid": "a payé",
+		"addedBy": "{name} l'a ajouté. Seule cette personne peut le modifier.",
+		"delete": "Supprimer",
+		"makeRecurring": "Rendre récurrent"
 	},
 	"connect": {
 		"title": "Se connecter à un serveur",
@@ -349,17 +347,18 @@
 		"pick": "Choisis une dépense",
 		"offlineSince": "Hors ligne depuis {time}",
 		"search": "Rechercher des dépenses",
-		"summary": "{count, plural, one {# opération} other {# opérations}}",
-		"summarySpent": "{count, plural, one {# opération} other {# opérations}}, {amount} dépensés",
+		"summary": "{count, plural, one {# dépense} other {# dépenses}}",
 		"today": "Aujourd’hui",
 		"yesterday": "Hier",
 		"chip": {
-			"kind": "Type",
 			"category": "Catégorie",
 			"person": "Personne",
 			"allCategories": "Toutes les catégories",
 			"everyone": "Tout le monde",
-			"anyKind": "Tous les types"
+			"anyKind": "Tous les types",
+			"project": "Projet",
+			"allProjects": "Tous les projets",
+			"filter": "Filtre"
 		},
 		"period": {
 			"month": "Ce mois-ci",
@@ -381,7 +380,8 @@
 			"refund": "Remboursement",
 			"transfer": "Virement",
 			"paymentSent": "Tu as payé {name}",
-			"paymentReceived": "{name} t’a payé"
+			"paymentReceived": "{name} t’a payé",
+			"paid": "{name} a payé"
 		},
 		"bulk": {
 			"select": "Sélectionner",
@@ -404,6 +404,11 @@
 			"undone": "Annulé",
 			"undoError": "Impossible d'annuler",
 			"skipped": "{count, plural, one {# ne peut pas être supprimée ici.} other {# ne peuvent pas être supprimées ici.}}"
+		},
+		"segment": {
+			"label": "Activité",
+			"expenses": "Dépenses",
+			"recurring": "Récurrents"
 		}
 	},
 	"budget": {
@@ -1886,7 +1891,7 @@
 		}
 	},
 	"recurring": {
-		"title": "Récurrents",
+		"title": "Dépenses récurrentes",
 		"error": "Impossible de charger les dépenses récurrentes",
 		"errorDetail": "Vérifie ta connexion et réessaie.",
 		"empty": "Aucune dépense récurrente",
@@ -1939,7 +1944,9 @@
 			"fixed": "Le montant habituel, {amount}.",
 			"nextDue": "Prochaine échéance",
 			"submit": "Confirmer",
-			"toast": "{title} enregistré, {amount}"
+			"toast": "{title} enregistré, {amount}",
+			"autoOn": "Activé",
+			"autoOff": "Désactivé"
 		},
 		"item": {
 			"next": "{amount}, prochain le {date}.",
@@ -1954,6 +1961,19 @@
 			"autoOnToast": "Paiement auto activé pour {title}",
 			"autoOffToast": "Paiement auto désactivé pour {title}",
 			"error": "Impossible de modifier. Réessaie."
+		},
+		"count": "{count, plural, one {# dépense récurrente} other {# dépenses récurrentes}}",
+		"autoPayOn": "Paiement auto activé",
+		"autoPayOff": "Paiement auto désactivé",
+		"details": "Détails",
+		"make": {
+			"title": "Rendre récurrent",
+			"body": "{title} reviendra chaque mois pour {amount}, la prochaine fois le {date}.",
+			"stays": "Le paiement auto est désactivé : rien n'est enregistré avant ta confirmation. Tes totaux ne changent pas.",
+			"submit": "Rendre récurrent",
+			"saving": "Enregistrement",
+			"error": "Impossible de le rendre récurrent. Réessaie.",
+			"toast": "{title} revient maintenant chaque mois"
 		}
 	},
 	"shortcuts": {

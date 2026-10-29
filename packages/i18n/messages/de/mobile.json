@@ -254,16 +254,14 @@
 		"pickDate": "Datum wählen"
 	},
 	"entry": {
-		"title": "Eintrag",
+		"title": "Ausgabe",
 		"missing": "Öffne diesen Eintrag über Aktivität.",
 		"date": "Datum",
 		"category": "Kategorie",
 		"uncategorized": "Keine Kategorie",
 		"status": "Status",
-		"type": "Art",
 		"paidBy": "Bezahlt von",
 		"you": "Du",
-		"people": "Mit",
 		"project": "Projekt",
 		"rate": "Kurs",
 		"rateType": "Kurs {rate}",
@@ -271,22 +269,22 @@
 		"notes": "Notizen",
 		"spread": "Verteilt auf",
 		"spreadMonths": "{months} Monate",
-		"excluded": "Aus Auswertungen ausgenommen",
-		"yes": "Ja",
 		"locked": "Durch eine Zahlung gesperrt",
-		"added": "Hinzugefügt",
-		"kind": {
-			"expense": "Ausgabe",
-			"income": "Einnahme",
-			"refund": "Erstattung",
-			"transfer": "Überweisung",
-			"payment": "Zahlung"
-		},
 		"edit": "Bearbeiten",
 		"loading": "Wird geladen",
 		"gone": "Dieser Eintrag wurde gelöscht oder ist nicht mehr mit dir geteilt.",
 		"loadError": "Eintrag konnte nicht geladen werden",
-		"loadErrorDetail": "Prüfe deine Verbindung und versuch es erneut."
+		"loadErrorDetail": "Prüfe deine Verbindung und versuch es erneut.",
+		"titleIncome": "Einnahme",
+		"titlePayment": "Zahlung",
+		"yourShare": "Dein Anteil",
+		"reports": "Berichte",
+		"hidden": "Aus Berichten ausgeblendet",
+		"shares": "Anteile",
+		"paid": "bezahlt",
+		"addedBy": "{name} hat das hinzugefügt. Nur diese Person kann es ändern.",
+		"delete": "Löschen",
+		"makeRecurring": "Wiederkehrend machen"
 	},
 	"connect": {
 		"title": "Mit einem Server verbinden",
@@ -349,17 +347,18 @@
 		"pick": "Wähle eine Ausgabe",
 		"offlineSince": "Offline seit {time}",
 		"search": "Ausgaben suchen",
-		"summary": "{count, plural, one {# Eintrag} other {# Einträge}}",
-		"summarySpent": "{count, plural, one {# Eintrag} other {# Einträge}}, {amount} ausgegeben",
+		"summary": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
 		"today": "Heute",
 		"yesterday": "Gestern",
 		"chip": {
-			"kind": "Art",
 			"category": "Kategorie",
 			"person": "Person",
 			"allCategories": "Alle Kategorien",
 			"everyone": "Alle",
-			"anyKind": "Alle Arten"
+			"anyKind": "Alle Arten",
+			"project": "Projekt",
+			"allProjects": "Alle Projekte",
+			"filter": "Filter"
 		},
 		"period": {
 			"month": "Dieser Monat",
@@ -381,7 +380,8 @@
 			"refund": "Erstattung",
 			"transfer": "Überweisung",
 			"paymentSent": "Du hast {name} bezahlt",
-			"paymentReceived": "{name} hat dich bezahlt"
+			"paymentReceived": "{name} hat dich bezahlt",
+			"paid": "{name} hat bezahlt"
 		},
 		"bulk": {
 			"select": "Auswählen",
@@ -404,6 +404,11 @@
 			"undone": "Rückgängig gemacht",
 			"undoError": "Rückgängig nicht möglich",
 			"skipped": "{count, plural, one {# kann hier nicht gelöscht werden.} other {# können hier nicht gelöscht werden.}}"
+		},
+		"segment": {
+			"label": "Aktivität",
+			"expenses": "Ausgaben",
+			"recurring": "Wiederkehrend"
 		}
 	},
 	"budget": {
@@ -1886,7 +1891,7 @@
 		}
 	},
 	"recurring": {
-		"title": "Wiederkehrend",
+		"title": "Wiederkehrende Ausgaben",
 		"error": "Wiederkehrende Ausgaben konnten nicht geladen werden",
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
 		"empty": "Keine wiederkehrenden Ausgaben",
@@ -1939,7 +1944,9 @@
 			"fixed": "Der übliche Betrag, {amount}.",
 			"nextDue": "Nächste Fälligkeit",
 			"submit": "Bestätigen",
-			"toast": "{title} erfasst, {amount}"
+			"toast": "{title} erfasst, {amount}",
+			"autoOn": "An",
+			"autoOff": "Aus"
 		},
 		"item": {
 			"next": "{amount}, nächstes am {date}.",
@@ -1954,6 +1961,19 @@
 			"autoOnToast": "Autozahlung für {title} aktiviert",
 			"autoOffToast": "Autozahlung für {title} deaktiviert",
 			"error": "Änderung nicht möglich. Versuche es erneut."
+		},
+		"count": "{count, plural, one {# wiederkehrende Ausgabe} other {# wiederkehrende Ausgaben}}",
+		"autoPayOn": "Autozahlung an",
+		"autoPayOff": "Autozahlung aus",
+		"details": "Details",
+		"make": {
+			"title": "Wiederkehrend machen",
+			"body": "{title} wiederholt sich jeden Monat mit {amount}, das nächste Mal am {date}.",
+			"stays": "Autozahlung ist aus, also wird nichts erfasst, bis du bestätigst. Deine Summen ändern sich nicht.",
+			"submit": "Wiederkehrend machen",
+			"saving": "Speichern …",
+			"error": "Das ließ sich nicht wiederkehrend machen. Versuche es erneut.",
+			"toast": "{title} wiederholt sich jetzt monatlich"
 		}
 	},
 	"shortcuts": {

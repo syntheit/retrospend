@@ -2,6 +2,7 @@ import { ACTIVITY_KINDS } from "@retrospend/api-contract";
 import { ScrollView } from "react-native";
 import { useTranslations } from "use-intl";
 import { usePeopleOverview } from "@/features/people/usePeople";
+import { useProjectList } from "@/features/projects/useProjects";
 import { useTheme } from "@/theme";
 import { Menu } from "@/ui/Menu";
 import type { MenuItem } from "@/ui/types";
@@ -9,9 +10,10 @@ import type { ActivityFilter } from "./filter";
 import { useCategories } from "./useCategories";
 
 /**
- * The filter chips: period, type, category, person. Each opens the system
- * menu; a chip that is set says what it is set to instead of its own name.
- * The search bar is the screen header's (native).
+ * The filter chips: period, category, person, project, and Filter (type).
+ * Each opens a menu; a chip that is set says what it is set to instead of its
+ * own name and turns brand-soft. The search bar is the screen header's
+ * (native).
  */
 export function ActivityFilters({
 	filter,
@@ -24,6 +26,7 @@ export function ActivityFilters({
 	const { space } = useTheme();
 	const categories = useCategories();
 	const people = usePeopleOverview();
+	const projects = useProjectList();
 
 	const periodItems: MenuItem[] = (["month", "all"] as const).map((period) => ({
 		id: period,
@@ -74,14 +77,30 @@ export function ActivityFilters({
 		})),
 	];
 
+	const projectList =
+		projects.state.status === "ready" ? projects.state.data.items : [];
+	const projectItems: MenuItem[] = [
+		{
+			id: "all",
+			label: t("chip.allProjects"),
+			onPress: () => onChange({ ...filter, projectId: null }),
+		},
+		...projectList.map((p) => ({
+			id: p.id,
+			label: p.name,
+			onPress: () => onChange({ ...filter, projectId: p.id }),
+		})),
+	];
+
 	const category = categoryList.find((c) => c.id === filter.categoryId);
 	const person = peopleList.find((p) => p.person.key === filter.personKey);
+	const project = projectList.find((p) => p.id === filter.projectId);
 
 	return (
 		<ScrollView
 			contentContainerStyle={{
 				alignItems: "center",
-				gap: space[4],
+				gap: space[2],
 				paddingHorizontal: space[4],
 				paddingVertical: space[1],
 			}}
@@ -89,18 +108,35 @@ export function ActivityFilters({
 			keyboardShouldPersistTaps="handled"
 			showsHorizontalScrollIndicator={false}
 		>
-			<Menu items={periodItems} label={t(`period.${filter.period}`)} />
 			<Menu
-				items={kindItems}
-				label={filter.kind ? t(`kind.${filter.kind}`) : t("chip.kind")}
+				active={filter.period !== "month"}
+				chip
+				items={periodItems}
+				label={t(`period.${filter.period}`)}
 			/>
 			<Menu
+				active={category !== undefined}
+				chip
 				items={categoryItems}
 				label={category ? category.name : t("chip.category")}
 			/>
 			<Menu
+				active={person !== undefined}
+				chip
 				items={personItems}
 				label={person ? person.person.name : t("chip.person")}
+			/>
+			<Menu
+				active={project !== undefined}
+				chip
+				items={projectItems}
+				label={project ? project.name : t("chip.project")}
+			/>
+			<Menu
+				active={filter.kind !== null}
+				chip
+				items={kindItems}
+				label={filter.kind ? t(`kind.${filter.kind}`) : t("chip.filter")}
 			/>
 		</ScrollView>
 	);

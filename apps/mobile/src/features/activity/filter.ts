@@ -11,6 +11,7 @@ export interface ActivityFilter {
 	categoryId: string | null;
 	/** A person key, `user:ID`, `shadow:ID` or `guest:ID`. */
 	personKey: string | null;
+	projectId: string | null;
 	/** Typed in the search bar; sent as is (the server treats it as opaque). */
 	q: string;
 }
@@ -20,6 +21,7 @@ export const DEFAULT_FILTER: ActivityFilter = {
 	kind: null,
 	categoryId: null,
 	personKey: null,
+	projectId: null,
 	q: "",
 };
 
@@ -30,6 +32,7 @@ export function filterString(filter: ActivityFilter): string {
 	if (filter.period === "all") pairs.push(["range", "all"]);
 	if (filter.categoryId) pairs.push(["cat", filter.categoryId]);
 	if (filter.personKey) pairs.push(["person", filter.personKey]);
+	if (filter.projectId) pairs.push(["project", filter.projectId]);
 	if (filter.kind) pairs.push(["kind", filter.kind]);
 	if (filter.q) pairs.push(["q", filter.q.slice(0, 100)]);
 	return pairs.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");

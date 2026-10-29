@@ -1,29 +1,28 @@
 import { Stack } from "expo-router";
-import { useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { type ReactNode, useMemo, useState } from "react";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
-import {
-	CategoryTile,
-	ListRow,
-	SectionHeader,
-	StaleNote,
-} from "@/ui/List";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
+import {
+	CategoryTile,
+	ListGroup,
+	ListRow,
+	SectionHeader,
+	StaleNote,
+} from "@/ui/List";
 import { Screen } from "@/ui/Screen";
 import { Segmented } from "@/ui/Segmented";
+import { SkeletonRows } from "@/ui/Skeleton";
+import { StatusText } from "@/ui/StatusText";
+import { SwipeRow } from "@/ui/SwipeRow";
+import { Text } from "@/ui/Text";
 import { ConfirmSheet, useDayText } from "./ConfirmSheet";
-import {
-	daysBetween,
-	groupsOf,
-	isDue,
-	type Period,
-	type RecurringGroup,
-} from "./groups";
+import { groupsOf, isDue, type Period, type RecurringGroup } from "./groups";
 import { ItemSheet } from "./ItemSheet";
 import {
 	fetchRecurring,
@@ -32,23 +31,36 @@ import {
 	type RecurringItem,
 } from "./source";
 
-function Status({ item, today }: { item: RecurringItem; today: string }) {
-	const t = useTranslations("mobile.recurring.status");
-	const { color, type } = useTheme();
+/** The line under the name: why it needs you, or when it comes and how often. */
+function RowStatus({ item }: { item: RecurringItem }) {
+	const t = useTranslations("mobile.recurring");
 	const day = useDayText();
-	const days = daysBetween(today, item.next);
-	let text: string;
-	let tone = color.fg2;
-	if (item.paused) text = t("paused");
-	else if (item.state === "overdue") {
-		text = t("overdue", { date: day(item.next) });
-		tone = color.attentionText;
-	} else if (item.state === "due") {
-		text = t("dueToday");
-		tone = color.attentionText;
-	} else text = t("upcoming", { date: day(item.next), days });
+	if (item.paused) {
+		return <StatusText label={t("status.paused")} size="sm" tone="muted" />;
+	}
+	if (item.state === "overdue") {
+		return (
+			<StatusText
+				label={t("status.overdue", { date: day(item.next) })}
+				size="sm"
+				tone="attention"
+			/>
+		);
+	}
+	if (item.state === "due") {
+		return (
+			<StatusText label={t("status.dueToday")} size="sm" tone="attention" />
+		);
+	}
+	// Monthly is the usual: only another rhythm is worth saying.
+	const text = [
+		day(item.next),
+		item.frequency === "monthly" ? null : t(`frequency.${item.frequency}`),
+	]
+		.filter(Boolean)
+		.join(" · ");
 	return (
-		<Text numberOfLines={1} style={{ color: tone, fontSize: type.small.size }}>
+		<Text numberOfLines={1} tone="fg3" variant="meta">
 			{text}
 		</Text>
 	);
@@ -56,82 +68,129 @@ function Status({ item, today }: { item: RecurringItem; today: string }) {
 
 function Row({
 	item,
-	today,
-	onPress,
+	onDetails,
+	onConfirm,
 }: {
 	item: RecurringItem;
-	today: string;
-	onPress: () => void;
+	onDetails: () => void;
+	onConfirm: () => void;
 }) {
 	const t = useTranslations("mobile.recurring");
-	const { color, space, type } = useTheme();
 	const money = useMoneyText();
 	const foreign = item.home !== undefined;
 	const spoken = [
 		item.title,
 		item.paused ? t("status.paused") : t(`frequency.${item.frequency}`),
 		money(item.amount),
+		item.autoPay ? t("autoPayOn") : t("autoPayOff"),
 	].join(", ");
+	const due = isDue(item);
+	const row = (
+		<ListRow
+			accessibilityLabel={spoken}
+			end={
+				<MoneyAmount
+					home={foreign ? item.home : undefined}
+					tone={item.direction === "in" ? "positive" : "default"}
+					value={item.amount}
+				/>
+			}
+			lead={
+				<CategoryTile
+					category={
+						item.category.name || item.category.icon ? item.category : null
+					}
+					fallback="Repeat"
+				/>
+			}
+			onPress={due ? undefined : onDetails}
+			sub={
+				<View>
+					<RowStatus item={item} />
+					<Text numberOfLines={1} tone="fg3" variant="meta">
+						{item.autoPay ? t("autoPayOn") : t("autoPayOff")}
+					</Text>
+				</View>
+			}
+			title={item.title}
+		/>
+	);
+	// A paused template reads dimmed, the way the mockup shows it.
+	const shown = item.paused ? (
+		<View style={{ opacity: 0.55 }}>{row}</View>
+	) : (
+		row
+	);
+	if (!due) return shown;
+	// A due one swipes right to Confirm; a tap and a long press open the same.
 	return (
-		<ListRow accessibilityLabel={spoken} onPress={onPress}>
-			<CategoryTile
-				category={
-					item.category.name || item.category.icon ? item.category : null
-				}
-				fallback="Repeat"
-			/>
-			<View style={{ flex: 1, gap: space[1], opacity: item.paused ? 0.6 : 1 }}>
-				<Text
-					numberOfLines={1}
-					style={{ color: color.fg, fontSize: type.body.size }}
-				>
-					{item.title}
-				</Text>
-				<Status item={item} today={today} />
-				<Text
-					numberOfLines={1}
-					style={{ color: color.fg2, fontSize: type.small.size }}
-				>
-					{[
-						t(`frequency.${item.frequency}`),
-						item.autoPay ? t("autoPay") : null,
-					]
-						.filter(Boolean)
-						.join(" · ")}
-				</Text>
-			</View>
-			<MoneyAmount
-				home={foreign ? item.home : undefined}
-				tone={item.direction === "in" ? "positive" : "default"}
-				value={item.amount}
-			/>
-		</ListRow>
+		<SwipeRow
+			leading={{
+				label: t("confirm.submit"),
+				onPress: onConfirm,
+				tone: "brand",
+			}}
+			menu={[
+				{ id: "confirm", label: t("confirm.submit"), onPress: onConfirm },
+				{ id: "details", label: t("details"), onPress: onDetails },
+			]}
+			menuTitle={item.title}
+			onPress={onConfirm}
+		>
+			{shown}
+		</SwipeRow>
+	);
+}
+
+/** A sentence with its money in bold: the message is split where the amount goes. */
+function Emphasis({
+	text,
+	amount,
+	tone = "fg",
+}: {
+	text: (amount: string) => string;
+	amount: string;
+	tone?: "fg" | "fg2";
+}) {
+	const mark = "\u0000";
+	const [before = "", after = ""] = text(mark).split(mark);
+	return (
+		<Text tone={tone}>
+			{before}
+			<Text tabular tone={tone} weight="semibold">
+				{amount}
+			</Text>
+			{after}
+		</Text>
 	);
 }
 
 function Summary({ data }: { data: RecurringData }) {
 	const t = useTranslations("mobile.recurring.summary");
 	const money = useMoneyText();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const [period, setPeriod] = useState<Period>("month");
 	const { out, in: income } = data.summary;
 	if (data.items.every((i) => i.paused)) return null;
 	return (
-		<View style={{ gap: space[3], padding: space[4] }}>
-			<Text style={{ color: color.fg, fontSize: type.body.size }}>
-				{t(`out.${period}`, { amount: money(out[period]) })}
-			</Text>
+		<View style={{ gap: space[2], padding: space[4] }}>
+			<Emphasis
+				amount={money(out[period])}
+				text={(amount) => t(`out.${period}`, { amount })}
+			/>
 			{income ? (
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{t(`in.${period}`, { amount: money(income[period]) })}
-				</Text>
+				<Emphasis
+					amount={money(income[period])}
+					text={(amount) => t(`in.${period}`, { amount })}
+					tone="fg2"
+				/>
 			) : null}
 			{out.missingRate.length > 0 ? (
-				<Text style={{ color: color.attentionText, fontSize: type.small.size }}>
+				<Text tone="attention" variant="small">
 					{t("missingRate", { currencies: out.missingRate.join(", ") })}
 				</Text>
 			) : null}
-			<View style={{ paddingVertical: space[1] }}>
+			<View style={{ paddingTop: space[1] }}>
 				<Segmented
 					accessibilityLabel={t("period")}
 					onChange={setPeriod}
@@ -149,12 +208,12 @@ function Summary({ data }: { data: RecurringData }) {
 
 function Groups({
 	groups,
-	today,
-	onOpen,
+	onDetails,
+	onConfirm,
 }: {
 	groups: RecurringGroup[];
-	today: string;
-	onOpen: (item: RecurringItem) => void;
+	onDetails: (item: RecurringItem) => void;
+	onConfirm: (item: RecurringItem) => void;
 }) {
 	const t = useTranslations("mobile.recurring.groups");
 	return (
@@ -165,14 +224,16 @@ function Groups({
 						detail={String(group.items.length)}
 						title={t(group.id)}
 					/>
-					{group.items.map((item) => (
-						<Row
-							item={item}
-							key={item.id}
-							onPress={() => onOpen(item)}
-							today={today}
-						/>
-					))}
+					<ListGroup>
+						{group.items.map((item) => (
+							<Row
+								item={item}
+								key={item.id}
+								onConfirm={() => onConfirm(item)}
+								onDetails={() => onDetails(item)}
+							/>
+						))}
+					</ListGroup>
 				</View>
 			))}
 		</View>
@@ -182,86 +243,93 @@ function Groups({
 function Logged({ data }: { data: RecurringData }) {
 	const t = useTranslations("mobile.recurring");
 	const day = useDayText();
-	const { color, space, type } = useTheme();
 	const rows = data.summary.logged;
 	if (rows.length === 0) return null;
 	return (
 		<View>
 			<SectionHeader detail={String(rows.length)} title={t("logged.title")} />
-			{rows.map((row) => (
-				<ListRow key={row.id}>
-					<CategoryTile category={row.category} fallback="Repeat" />
-					<View style={{ flex: 1, gap: space[1] }}>
-						<Text
-							numberOfLines={1}
-							style={{ color: color.fg, fontSize: type.body.size }}
-						>
-							{row.title}
-						</Text>
-						<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-							{day(row.date)}
-						</Text>
-					</View>
-					<MoneyAmount home={row.home} value={row.amount} />
-				</ListRow>
-			))}
+			<ListGroup>
+				{rows.map((row) => (
+					<ListRow
+						end={<MoneyAmount home={row.home} value={row.amount} />}
+						key={row.id}
+						lead={<CategoryTile category={row.category} fallback="Repeat" />}
+						sub={day(row.date)}
+						title={row.title}
+					/>
+				))}
+			</ListGroup>
 		</View>
 	);
 }
 
 /**
- * Recurring expenses and income: what they cost a month, the list grouped by
- * due date, and what auto-pay logged this month. A due item opens Confirm,
- * any other opens its details (auto-pay, pause). Adding and editing a
- * template are on the web for now.
+ * Recurring expenses and income: how many, what they cost a month, the list
+ * grouped by due date, and what auto-pay logged this month. A due item
+ * confirms (tap, swipe right, long press); any other opens its details
+ * (auto-pay, pause). Adding and editing a template are on the web for now.
+ * `embedded` is Activity's Recurring segment: Activity owns the title, and
+ * `header` is the segmented control that stays above the list.
  */
-export function RecurringView() {
+export function RecurringView({
+	embedded = false,
+	header,
+}: {
+	embedded?: boolean;
+	header?: ReactNode;
+}) {
 	const t = useTranslations("mobile.recurring");
-	const loading = useTranslations("mobile.activity")("loading");
+	const tc = useTranslations("mobile.common");
+	const { space } = useTheme();
 	const { api } = useSession();
 	const fetch = useMemo(() => (api ? fetchRecurring(api) : null), [api]);
 	const { state, reload } = useCachedRead(RECURRING_CACHE, fetch);
 	const [confirming, setConfirming] = useState<RecurringItem | null>(null);
 	const [detail, setDetail] = useState<RecurringItem | null>(null);
 
-	const title = <Stack.Screen options={{ title: t("title") }} />;
-	if (state.status !== "ready") {
+	const title = embedded ? null : (
+		<Stack.Screen options={{ title: t("title") }} />
+	);
+	if (state.status !== "ready" || state.data.items.length === 0) {
+		const failed = state.status === "error";
+		const empty = state.status === "ready";
 		return (
 			<>
 				{title}
-				<Screen>
-					<EmptyState
-						detail={state.status === "error" ? t("errorDetail") : undefined}
-						title={state.status === "error" ? t("error") : loading}
-					/>
+				<Screen flush onRefresh={() => void reload()}>
+					{header}
+					{!failed && !empty ? (
+						<SkeletonRows count={4} />
+					) : (
+						<EmptyState
+							actionLabel={failed ? tc("retry") : undefined}
+							detail={failed ? t("errorDetail") : t("emptyDetail")}
+							onAction={failed ? () => void reload() : undefined}
+							title={failed ? t("error") : t("empty")}
+						/>
+					)}
 				</Screen>
 			</>
 		);
 	}
 	const data = state.data;
-	if (data.items.length === 0) {
-		return (
-			<>
-				{title}
-				<Screen>
-					<EmptyState detail={t("emptyDetail")} title={t("empty")} />
-				</Screen>
-			</>
-		);
-	}
 	const groups = groupsOf(data.items, data.summary.today);
 	return (
 		<>
 			{title}
-			<Screen flush>
+			<Screen flush onRefresh={() => void reload()}>
+				{header}
 				<StaleNote since={state.staleSince} />
+				<View style={{ paddingHorizontal: space[4] }}>
+					<Text tone="fg2" variant="small">
+						{t("count", { count: data.items.length })}
+					</Text>
+				</View>
 				<Summary data={data} />
 				<Groups
 					groups={groups}
-					onOpen={(item) =>
-						isDue(item) ? setConfirming(item) : setDetail(item)
-					}
-					today={data.summary.today}
+					onConfirm={setConfirming}
+					onDetails={setDetail}
 				/>
 				<Logged data={data} />
 			</Screen>

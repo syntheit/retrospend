@@ -1,87 +1,41 @@
-import { useMemo } from "react";
-import { Text, View } from "react-native";
-import { useFormatter, useTranslations } from "use-intl";
-import { useSession } from "@/auth/session";
-import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
-import { useFaces } from "@/features/read/faces";
-import { ENTITY_CACHE_LIMIT } from "@/features/read/loadCached";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { StaleNote } from "@/ui/List";
-import { useCachedRead } from "@/features/read/useCachedRead";
-import { useMoneyText } from "@/features/read/useMoneyText";
+import { Stack } from "expo-router";
+import { View } from "react-native";
+import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
-import { AvatarStack } from "@/ui/Avatar";
 import { EmptyState } from "@/ui/EmptyState";
-import { rowStatus, rowTitle } from "./ActivityRow";
-import { canEditEntry } from "./canEdit";
+import { StaleNote } from "@/ui/List";
+import { SkeletonRows } from "@/ui/Skeleton";
+import { Text } from "@/ui/Text";
+import { EntryActions } from "./EntryActions";
+import { EntryFacts } from "./EntryFacts";
+import { EntryHead } from "./EntryHead";
+import { EntryShares } from "./EntryShares";
 import type { ActivityItem } from "./source";
-import { TextAction } from "./TextAction";
+import { useEntryDetail } from "./useEntryDetail";
 import { useEntryRow } from "./useEntryRow";
-
-/** A label on the left, its value on the right; a missing value leaves no row. */
-function Fact({
-	label,
-	value,
-}: {
-	label: string;
-	value: string | null | undefined;
-}) {
-	const { color, size, space, type } = useTheme();
-	if (!value) return null;
-	return (
-		<View
-			style={{
-				minHeight: size.row.phone,
-				flexDirection: "row",
-				alignItems: "center",
-				justifyContent: "space-between",
-				gap: space[4],
-				paddingVertical: space[2],
-				borderBottomWidth: 1,
-				borderBottomColor: color.line,
-			}}
-		>
-			<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-				{label}
-			</Text>
-			<Text
-				style={{
-					flex: 1,
-					color: color.fg,
-					fontSize: type.body.size,
-					textAlign: "right",
-				}}
-			>
-				{value}
-			</Text>
-		</View>
-	);
-}
-
-/** Time of day is not shown; the server sends days. */
-function dayDate(day: string): Date {
-	const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-	return new Date(y, m - 1, d, 12);
-}
 
 /**
  * One entry by its Activity id, read from the server. What the list passed
- * shows while the server answers, without Edit; a deleted entry says so.
+ * shows while the server answers, without actions; a deleted entry says so.
+ * `titled` is the pushed page: it names itself in the bar ("Expense", "Income",
+ * "Payment"); in a list-detail pane the pane has no bar.
  */
 export function EntryDetail({
 	id,
 	placeholder,
+	titled = false,
 }: {
 	id: string;
 	placeholder: ActivityItem | null;
+	titled?: boolean;
 }) {
 	const t = useTranslations("mobile.entry");
 	const state = useEntryRow(id, placeholder);
 	if (state.status === "loading") {
 		return state.placeholder ? (
-			<EntryView editable={false} item={state.placeholder} />
+			<EntryView editable={false} item={state.placeholder} titled={titled} />
 		) : (
-			<EmptyState title={t("loading")} />
+			<SkeletonRows count={3} grouped={false} />
 		);
 	}
 	if (state.status === "missing") return <EmptyState title={t("gone")} />;
@@ -93,209 +47,71 @@ export function EntryDetail({
 			editable={state.staleSince === null}
 			item={state.item}
 			staleSince={state.staleSince}
+			titled={titled}
 		/>
 	);
 }
 
 /**
- * The read view of one entry: what it is, the amount in its own currency
- * with the home value under it, and the facts the list does not have room
- * for. A personal expense also reads its notes, place and spread from
- * GET /expenses/{id}; a split and a payment show what the list row carries.
+ * The read view of one entry (the mockup's entry sheet): the head (tile,
+ * title, amount, "≈ home"), the facts, the shares of a split, notes, and the
+ * actions. A personal expense reads its notes, place and spread from GET
+ * /expenses/{id}, a split reads who paid and each share from GET
+ * /shared-expenses/{id}; a payment shows what the list row carries.
  */
 export function EntryView({
 	item,
 	editable = true,
 	staleSince = null,
+	titled = false,
 }: {
 	item: ActivityItem;
-	/** False while the row is a placeholder or a stale copy: Edit waits for the server's. */
+	/** False while the row is a placeholder or a stale copy: actions wait for the server's. */
 	editable?: boolean;
 	/** When the row was read, if the server could not be reached since. */
 	staleSince?: string | null;
+	titled?: boolean;
 }) {
 	const t = useTranslations("mobile.entry");
-	const ta = useTranslations("mobile.activity");
-	const tm = useTranslations("mobile.money");
-	const format = useFormatter();
-	const money = useMoneyText();
-	const faces = useFaces();
-	const { api, state: session } = useSession();
-	const { color, size, space, type } = useTheme();
-	const me = session.status === "signedIn" ? session.me : null;
-	const add = useOptionalAddEntry();
-
-	const personal = item.source === "personal";
-	const fetch = useMemo(
-		() =>
-			api && personal ? () => api.expenses.get({ id: item.entityId }) : null,
-		[api, personal, item.entityId],
-	);
-	const detail = useCachedRead(
-		personal ? { name: `expense.${item.entityId}`, schema: 1 } : null,
-		fetch,
-		{ prefix: "expense.", keep: ENTITY_CACHE_LIMIT },
-	);
-	const extra = detail.state.status === "ready" ? detail.state.data : null;
-
-	const title = rowTitle(item, ta);
-	const status = rowStatus(item, ta);
-	const others = (item.people ?? []).filter((p) => !p.isSelf);
-	const income = item.kind === "income" || item.kind === "refund";
-	const paidBy = item.payerId
-		? item.payerId === `user:${me?.id}`
-			? t("you")
-			: item.payerName
-		: null;
-	const rate = item.rateType ?? extra?.rateType;
+	const { space } = useTheme();
+	const detail = useEntryDetail(item);
+	const heading =
+		item.kind === "income"
+			? t("titleIncome")
+			: item.kind === "payment"
+				? t("titlePayment")
+				: t("title");
+	const note = detail.personal?.description ?? detail.shared?.notes ?? null;
+	const addedBy =
+		detail.shared && !detail.shared.createdBy.you
+			? detail.shared.createdBy.name.trim().split(/\s+/)[0]
+			: null;
 
 	return (
-		<View style={{ paddingBottom: space[8] }}>
-			<View style={{ gap: space[2], paddingVertical: space[2] }}>
-				<View
-					style={{
-						flexDirection: "row",
-						alignItems: "center",
-						justifyContent: "space-between",
-						gap: space[3],
-					}}
-				>
-					<Text
-						accessibilityRole="header"
-						style={{
-							flex: 1,
-							color: color.fg,
-							fontSize: type.title.size,
-							fontWeight: "600",
-						}}
-					>
-						{title}
-					</Text>
-					{add && editable && canEditEntry(item) ? (
-						<TextAction
-							label={t("edit")}
-							onPress={() =>
-								add.edit(
-									item.entityId,
-									item.source === "shared" ? "shared" : undefined,
-								)
-							}
-						/>
-					) : null}
-				</View>
-				<MoneyAmount
-					align="left"
-					home={item.home}
-					rateType={item.rateType}
-					sign={income ? "exceptZero" : "auto"}
-					size="hero"
-					tone={income ? "positive" : "default"}
-					value={item.amount}
-				/>
-				{item.share ? (
-					<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-						{tm("yourShare", { amount: money(item.share) })}
-					</Text>
-				) : null}
-				{status ? (
-					<Text
-						style={{
-							color: color.attentionText,
-							fontSize: type.body.size,
-							fontWeight: "500",
-						}}
-					>
-						{status}
-					</Text>
-				) : null}
-			</View>
-			<View>
-				<Fact
-					label={t("date")}
-					value={format.dateTime(dayDate(item.date), { dateStyle: "full" })}
-				/>
-				<Fact label={t("type")} value={t(`kind.${item.kind}`)} />
-				<Fact
-					label={t("category")}
-					value={
-						item.category?.name ??
-						(item.kind === "expense" ? t("uncategorized") : null)
-					}
-				/>
-				<Fact label={t("project")} value={item.project?.name} />
-				<Fact label={t("paidBy")} value={paidBy} />
-				{others.length > 0 ? (
-					<View
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							justifyContent: "space-between",
-							minHeight: size.row.phone,
-							paddingVertical: space[2],
-							borderBottomWidth: 1,
-							borderBottomColor: color.line,
-							gap: space[4],
-						}}
-					>
-						<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-							{t("people")}
-						</Text>
-						<AvatarStack
-							faces={faces(
-								others.map((p) => ({
-									key: p.id,
-									name: p.name,
-									imageUrl: p.imageUrl,
-								})),
-							)}
-							size="default"
-						/>
-						<Text
-							numberOfLines={2}
-							style={{
-								flex: 1,
-								color: color.fg,
-								fontSize: type.body.size,
-								textAlign: "right",
-							}}
-						>
-							{others.map((p) => p.name).join(", ")}
-						</Text>
-					</View>
-				) : null}
-				<Fact label={t("rate")} value={rate ? t("rateType", { rate }) : null} />
-				<Fact label={t("location")} value={extra?.location} />
-				<Fact label={t("notes")} value={extra?.description} />
-				<Fact
-					label={t("spread")}
-					value={
-						extra?.amortizeOver
-							? t("spreadMonths", { months: extra.amortizeOver })
-							: null
-					}
-				/>
-				<Fact
-					label={t("excluded")}
-					value={extra?.excludeFromAnalytics ? t("yes") : null}
-				/>
-				<Fact label={t("status")} value={item.locked ? t("locked") : null} />
-				<Fact
-					label={t("added")}
-					value={
-						extra
-							? format.dateTime(new Date(extra.createdAt), {
-									dateStyle: "medium",
-								})
-							: null
-					}
-				/>
-			</View>
-			<StaleNote
-				since={
-					staleSince ??
-					(detail.state.status === "ready" ? detail.state.staleSince : null)
+		<View style={{ gap: space[2], paddingBottom: space[8] }}>
+			{titled ? (
+				<Stack.Screen options={{ title: heading, headerLargeTitle: false }} />
+			) : null}
+			<EntryHead item={item} />
+			<EntryFacts extra={detail.personal} item={item} />
+			{detail.shared ? <EntryShares detail={detail.shared} /> : null}
+			{note ? <Text tone="fg2">{note}</Text> : null}
+			{addedBy ? (
+				<Text tone="fg3" variant="meta">
+					{t("addedBy", { name: addedBy })}
+				</Text>
+			) : null}
+			<EntryActions
+				editable={editable}
+				item={item}
+				onChanged={detail.reload}
+				// Waits for the server's detail: only it knows whether a template exists.
+				repeating={
+					detail.personal === null ||
+					detail.personal.recurringTemplateId !== null
 				}
 			/>
+			<StaleNote since={staleSince ?? detail.staleSince} />
 		</View>
 	);
 }

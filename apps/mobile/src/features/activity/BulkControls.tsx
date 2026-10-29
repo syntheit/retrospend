@@ -1,17 +1,11 @@
-import { useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
-import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
-import { PickerSheet } from "@/ui/PickerSheet";
-import type { PickGroup } from "@/ui/pickGroups";
 import { Text } from "@/ui/Text";
-import { BulkSheet } from "./BulkSheet";
 import { BULK_DELETE_LIMIT, entityIdsOf } from "./bulk";
-import type { BulkAction } from "./bulkWrite";
 import type { ActivityItem } from "./source";
 import { TextAction } from "./TextAction";
-import { useCategories } from "./useCategories";
+import type { BulkActions } from "./useBulkActions";
 
 /**
  * The bar over the list while expenses are being selected (the phone variant
@@ -22,53 +16,19 @@ import { useCategories } from "./useCategories";
 export function BulkControls({
 	items,
 	picked,
+	actions,
 	onDone,
 }: {
 	items: readonly ActivityItem[];
 	picked: ReadonlySet<string>;
+	actions: BulkActions;
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.activity.bulk");
-	const tp = useTranslations("mobile.pickers");
-	const { color, duration, size, space } = useTheme();
-	const categories = useCategories();
-	const [choosing, setChoosing] = useState(false);
-	const [action, setAction] = useState<BulkAction | null>(null);
-	// The ids the open sheet works on stay fixed while it is up.
-	const shown = useRef<string[]>([]);
+	const { color, space } = useTheme();
 	const ids = entityIdsOf(items, picked);
 	const count = ids.length;
 	const tooMany = count > BULK_DELETE_LIMIT;
-
-	const groups = useMemo<PickGroup[]>(
-		() => [
-			{
-				key: "all",
-				heading: tp("category.all"),
-				rows: (categories.state.status === "ready"
-					? categories.state.data
-					: []
-				).map((c) => ({
-					id: c.id,
-					label: c.name,
-					lead: (
-						<CategoryGlyph
-							category={c}
-							color={categoryColor(color, c.tone)}
-							size={size.icon.phone}
-						/>
-					),
-					selected: false,
-				})),
-			},
-		],
-		[categories.state, color, size.icon.phone, tp],
-	);
-
-	function openSheet(next: BulkAction) {
-		shown.current = ids;
-		setAction(next);
-	}
 
 	return (
 		<>
@@ -95,12 +55,12 @@ export function BulkControls({
 				<TextAction
 					disabled={count === 0}
 					label={t("categorize")}
-					onPress={() => setChoosing(true)}
+					onPress={() => actions.categorize(ids)}
 				/>
 				<TextAction
 					disabled={count === 0 || tooMany}
 					label={t("delete")}
-					onPress={() => openSheet({ kind: "delete" })}
+					onPress={() => actions.remove(ids)}
 				/>
 				<TextAction label={t("done")} onPress={onDone} />
 			</View>
@@ -113,33 +73,6 @@ export function BulkControls({
 					{t("deleteLimit", { max: BULK_DELETE_LIMIT })}
 				</Text>
 			) : null}
-			<PickerSheet
-				clear={tp("clear")}
-				empty={tp("category.empty")}
-				find={tp("category.find")}
-				groups={groups}
-				onClose={() => setChoosing(false)}
-				onSelect={(id) => {
-					const name =
-						categories.state.status === "ready"
-							? categories.state.data.find((c) => c.id === id)?.name
-							: undefined;
-					// The picker is still closing: the next sheet waits for it.
-					setTimeout(
-						() =>
-							openSheet({ kind: "category", categoryId: id, name: name ?? "" }),
-						duration.sheet,
-					);
-				}}
-				title={tp("category.title")}
-				visible={choosing}
-			/>
-			<BulkSheet
-				action={action}
-				ids={shown.current}
-				onClose={() => setAction(null)}
-				onDone={onDone}
-			/>
 		</>
 	);
 }
