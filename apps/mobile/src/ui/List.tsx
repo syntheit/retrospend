@@ -206,7 +206,8 @@ function rowsOf(children: ReactNode): ReactNode[] {
 /**
  * An inset group of rows (the iOS inset list): the surface, a 1px line
  * edge, the panel radius and a hairline between rows, none after the last.
- * Put ListRows (or SkeletonRows) inside; the group sits in the page gutter.
+ * Put ListRows inside (SkeletonRows brings its own group); the group sits
+ * in the page gutter.
  */
 export function ListGroup({
 	children,
@@ -233,7 +234,11 @@ export function ListGroup({
 			<InGroup.Provider value={true}>
 				{rows.map((row, index) => (
 					<Fragment
-						key={isValidElement(row) && row.key !== null ? row.key : index}
+						key={
+							isValidElement(row) && row.key !== null
+								? `key:${row.key}`
+								: `at:${index}`
+						}
 					>
 						{index > 0 ? (
 							<View style={{ height: 1, backgroundColor: color.line }} />
