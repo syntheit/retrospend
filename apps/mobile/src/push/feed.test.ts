@@ -141,9 +141,10 @@ describe("pollFeed", () => {
 			{ items: [event({ id: "2" })], cursor: "c2", hasMore: false },
 		]);
 		const found = await pollFeed({ api, state, meId: "me", now: NOW });
-		expect(found).toEqual([]);
+		expect(found.notifications).toEqual([]);
 		expect(list).toHaveBeenNthCalledWith(1, { limit: 100 });
 		expect(list).toHaveBeenNthCalledWith(2, { after: "c1", limit: 100 });
+		await found.commit();
 		expect(await state.getCursor()).toBe("c2");
 	});
 
@@ -154,12 +155,15 @@ describe("pollFeed", () => {
 			{ items: [event({ id: "3" })], cursor: "c3", hasMore: false },
 		]);
 		const found = await pollFeed({ api, state, meId: "me", now: NOW });
-		expect(found.map((n) => n.key)).toEqual(["event:3"]);
+		expect(found.notifications.map((n) => n.key)).toEqual(["event:3"]);
 		expect(list).toHaveBeenCalledWith({ after: "c2", limit: 100 });
+		// Not before the caller has posted them.
+		expect(await state.getCursor()).toBe("c2");
+		await found.commit();
 		expect(await state.getCursor()).toBe("c3");
 	});
 
-	it("keeps the cursor when a page fails, so the next run resumes", async () => {
+	it("keeps the cursor when a later page fails, so the next run announces those events", async () => {
 		const state = createFeedState(createMemoryStore(), "s|me");
 		await state.setCursor("c2");
 		const { api } = fakeApi([
@@ -168,7 +172,18 @@ describe("pollFeed", () => {
 		await expect(
 			pollFeed({ api, state, meId: "me", now: NOW }),
 		).rejects.toThrow();
-		expect(await state.getCursor()).toBe("c3");
+		expect(await state.getCursor()).toBe("c2");
+		expect(await state.seen()).toEqual([]);
+		const retry = fakeApi([
+			{ items: [event({ id: "3" })], cursor: "c3", hasMore: false },
+		]);
+		const found = await pollFeed({
+			api: retry.api,
+			state,
+			meId: "me",
+			now: NOW,
+		});
+		expect(found.notifications.map((n) => n.key)).toEqual(["event:3"]);
 	});
 
 	it("never announces the same thing twice, and caps one run", async () => {
@@ -184,21 +199,25 @@ describe("pollFeed", () => {
 			meId: "me",
 			now: NOW,
 		});
-		expect(found).toHaveLength(MAX_PER_RUN);
+		expect(found.notifications).toHaveLength(MAX_PER_RUN);
 		// The newest are kept.
-		expect(found.at(-1)?.key).toBe(`event:${MAX_PER_RUN + 2}`);
+		expect(found.notifications.at(-1)?.key).toBe(`event:${MAX_PER_RUN + 2}`);
+		await found.commit();
 		// The same events delivered again (cursor lost) announce nothing.
 		await state.setCursor("c0");
 		const again = fakeApi([{ items: many, cursor: "c9", hasMore: false }]);
 		expect(
-			await pollFeed({ api: again.api, state, meId: "me", now: NOW }),
+			(await pollFeed({ api: again.api, state, meId: "me", now: NOW }))
+				.notifications,
 		).toEqual([]);
 	});
 
 	it("starts again from the oldest event after an empty first run", async () => {
 		const state = createFeedState(createMemoryStore(), "s|me");
 		const empty = fakeApi([{ items: [], cursor: null, hasMore: false }]);
-		await pollFeed({ api: empty.api, state, meId: "me", now: NOW });
+		await (
+			await pollFeed({ api: empty.api, state, meId: "me", now: NOW })
+		).commit();
 		expect(await state.getCursor()).toBe("");
 		const next = fakeApi([
 			{ items: [event({ id: "1" })], cursor: "c1", hasMore: false },
@@ -209,7 +228,7 @@ describe("pollFeed", () => {
 			meId: "me",
 			now: NOW,
 		});
-		expect(found.map((n) => n.key)).toEqual(["event:1"]);
+		expect(found.notifications.map((n) => n.key)).toEqual(["event:1"]);
 		expect(next.list).toHaveBeenCalledWith({ limit: 100 });
 	});
 

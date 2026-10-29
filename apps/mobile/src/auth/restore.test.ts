@@ -7,7 +7,11 @@ import type { TokenStore } from "./token-store";
 
 const me = { id: "u1", name: "Ana" } as Me;
 
-function setup(token: string | null, fetchMe: FetchMe) {
+function setup(
+	token: string | null,
+	fetchMe: FetchMe,
+	ended?: (meId: string | null) => Promise<void>,
+) {
 	let current = token;
 	const tokens: TokenStore = {
 		get: async () => current,
@@ -23,7 +27,12 @@ function setup(token: string | null, fetchMe: FetchMe) {
 		tokens,
 		profileCache,
 		run: () =>
-			restoreSession({ tokens, profileCache, fetchMe: async () => fetchMe }),
+			restoreSession({
+				tokens,
+				profileCache,
+				fetchMe: async () => fetchMe,
+				ended,
+			}),
 		token: () => current,
 	};
 }
@@ -51,6 +60,21 @@ describe("restoreSession", () => {
 		expect(await s.run()).toEqual({ status: "signedOut", expired: true });
 		expect(s.token()).toBeNull();
 		expect(await s.profileCache.read("me", 1)).toBeNull();
+	});
+
+	it("drops what a sign-out drops for the account whose session ended", async () => {
+		const ended = jest.fn(async (_meId: string | null) => undefined);
+		const s = setup("t", { ok: false, reason: "unauthorized" }, ended);
+		await s.profileCache.write("me", 1, me);
+		await s.run();
+		expect(ended).toHaveBeenCalledWith("u1");
+	});
+
+	it("drops this server's state even with no cached profile", async () => {
+		const ended = jest.fn(async (_meId: string | null) => undefined);
+		const s = setup("t", { ok: false, reason: "unauthorized" }, ended);
+		await s.run();
+		expect(ended).toHaveBeenCalledWith(null);
 	});
 
 	it("stays signed in offline with the cached profile", async () => {

@@ -28,6 +28,11 @@ export async function restoreSession(deps: {
 	fetchMe: () => Promise<FetchMe>;
 	/** One profile per server on this phone, so it is readable offline. */
 	profileCache: ReadCache;
+	/**
+	 * The session ended before the app opened: drop what a sign-out drops
+	 * for this server. Gets the account from the cached profile, or null.
+	 */
+	ended?: (meId: string | null) => Promise<void>;
 }): Promise<Restored> {
 	if (!(await deps.tokens.get())) {
 		return { status: "signedOut", expired: false };
@@ -43,6 +48,11 @@ export async function restoreSession(deps: {
 		};
 	}
 	if (result.reason === "unauthorized") {
+		const last = await deps.profileCache.read<Me>(
+			ME_CACHE.name,
+			ME_CACHE.schema,
+		);
+		await deps.ended?.(last?.data.id ?? null);
 		await deps.tokens.clear();
 		await deps.profileCache.clear();
 		return { status: "signedOut", expired: true };

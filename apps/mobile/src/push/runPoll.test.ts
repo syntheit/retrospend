@@ -9,10 +9,13 @@ const note: LocalNotification = {
 
 function deps(over: Partial<PollDeps> = {}) {
 	const post = jest.fn();
-	const poll = jest.fn(async () => [note]);
+	const commit = jest.fn(async () => undefined);
+	const poll = jest.fn(async () => ({ notifications: [note], commit }));
 	const ensureChannels = jest.fn();
 	const base: PollDeps = {
 		enabled: async () => ({ baseUrl: "https://s", meId: "me" }),
+		signedInAs: async () => "me",
+		forget: jest.fn(async () => undefined),
 		poll,
 		local: { enabled: () => true, post, ensureChannels },
 		translate: () => (key: string) => key,
@@ -26,7 +29,7 @@ function deps(over: Partial<PollDeps> = {}) {
 		}),
 		...over,
 	};
-	return { base, post, poll, ensureChannels };
+	return { base, post, poll, commit, ensureChannels };
 }
 
 describe("background run", () => {
@@ -53,5 +56,37 @@ describe("background run", () => {
 		base.local = { ...base.local, enabled: () => false };
 		expect(await runPoll(base)).toBe(0);
 		expect(poll).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		["another account", "other"],
+		["nobody", null],
+	])("stops for good when %s holds the server's token", async (_who, id) => {
+		const { base, poll, post } = deps({ signedInAs: async () => id });
+		expect(await runPoll(base)).toBe(0);
+		expect(poll).not.toHaveBeenCalled();
+		expect(post).not.toHaveBeenCalled();
+		expect(base.forget).toHaveBeenCalledWith({
+			baseUrl: "https://s",
+			meId: "me",
+		});
+	});
+
+	it("moves the cursor only after posting", async () => {
+		const { base, post, commit } = deps();
+		post.mockImplementation(() => {
+			expect(commit).not.toHaveBeenCalled();
+		});
+		await runPoll(base);
+		expect(commit).toHaveBeenCalledTimes(1);
+	});
+
+	it("keeps the cursor when posting fails", async () => {
+		const { base, post, commit } = deps();
+		post.mockImplementation(() => {
+			throw new Error("blocked");
+		});
+		await expect(runPoll(base)).rejects.toThrow();
+		expect(commit).not.toHaveBeenCalled();
 	});
 });

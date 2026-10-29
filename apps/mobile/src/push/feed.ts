@@ -144,23 +144,31 @@ type FeedApi = {
 	"needs-you": Pick<RetrospendClient["needs-you"], "list">;
 };
 
+/** What one poll found, and the step that saves its progress once posted. */
+export interface Poll {
+	notifications: LocalNotification[];
+	commit(): Promise<void>;
+}
+
 /**
- * One poll. With no stored cursor the run only walks to the end of the feed
- * (what happened before push was switched on is not news). The cursor is
- * saved after every page, so a run cut short by the system continues where it
- * stopped, and it advances even when nothing was announced. Returns what to
- * post; the caller posts it and the keys are remembered here first, so a
- * crash while posting loses a notification rather than repeating one.
+ * One poll.With no stored cursor the run only walks to the end of the feed
+ * (what happened before push was switched on is not news). Nothing is saved
+ * here: the caller posts what came back and then calls `commit`, which moves
+ * the cursor (also when nothing was announced) and remembers the keys. A run
+ * that fails or is cut short before that leaves the cursor where it was, so
+ * the next run reads the same events again and loses nothing; a repeat has
+ * the same key and replaces the notification already shown.
  */
 export async function pollFeed(args: {
 	api: FeedApi;
 	state: FeedState;
 	meId: string;
 	now?: Date;
-}): Promise<LocalNotification[]> {
+}): Promise<Poll> {
 	const { api, state, meId } = args;
 	const now = args.now ?? new Date();
-	let cursor = await state.getCursor();
+	const stored = await state.getCursor();
+	let cursor = stored;
 	const firstRun = cursor === null;
 	const prefs = (await api.notifications.getPreferences()).preferences;
 	const fresh: LocalNotification[] = [];
@@ -179,10 +187,7 @@ export async function pollFeed(args: {
 				}),
 			);
 		}
-		if (result.cursor && result.cursor !== cursor) {
-			cursor = result.cursor;
-			await state.setCursor(cursor);
-		}
+		if (result.cursor && result.cursor !== cursor) cursor = result.cursor;
 		if (!result.hasMore) break;
 	}
 
@@ -195,15 +200,18 @@ export async function pollFeed(args: {
 		),
 	);
 
-	// A first run never has a cursor to resume from when the feed is empty;
-	// an empty marker keeps later runs from starting over.
-	if (firstRun && cursor === null) await state.setCursor("");
-
 	const seen = new Set(await state.seen());
 	const unseen = fresh.filter(
 		(n, i) => !seen.has(n.key) && fresh.findIndex((m) => m.key === n.key) === i,
 	);
-	const chosen = unseen.slice(-MAX_PER_RUN);
-	await state.remember(unseen.map((n) => n.key));
-	return chosen;
+	return {
+		notifications: unseen.slice(-MAX_PER_RUN),
+		async commit() {
+			// A first run never has a cursor to resume from when the feed is
+			// empty; an empty marker keeps later runs from starting over.
+			const next = cursor ?? "";
+			if (next !== stored) await state.setCursor(next);
+			await state.remember(unseen.map((n) => n.key));
+		},
+	};
 }

@@ -1,7 +1,9 @@
 import { createRetrospendClient } from "@retrospend/api-client";
 import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
+import { ME_CACHE } from "@/auth/restore";
 import { createTokenStore } from "@/auth/token-store";
+import { createReadCache } from "@/data/cache";
 import { createSqliteStore } from "@/data/sqlite-store";
 import { createEnabledStore, pushScope } from "./enabled";
 import { createFeedState, pollFeed } from "./feed";
@@ -23,6 +25,22 @@ TaskManager.defineTask(POLL_TASK, async () => {
 	try {
 		const posted = await runPoll({
 			enabled: () => enabledStore.get(),
+			signedInAs: async (baseUrl) => {
+				// The session writes the profile on every sign-in and clears it on
+				// every sign-out or ended session.
+				const me = await createReadCache(store, baseUrl).read<{ id: string }>(
+					ME_CACHE.name,
+					ME_CACHE.schema,
+				);
+				return me?.data.id ?? null;
+			},
+			forget: async (enabled) => {
+				await Promise.all([
+					enabledStore.clear(),
+					createFeedState(store, pushScope(enabled)).clear(),
+					stopPolling().catch(() => undefined),
+				]);
+			},
 			poll: (enabled) => {
 				const tokens = createTokenStore(enabled.baseUrl);
 				const api = createRetrospendClient({
