@@ -45,6 +45,7 @@ describe("heroOf", () => {
 				verdict: { state: "ON_TRACK" },
 				leftToSpend: {
 					left: money(5916100),
+					over: money(0),
 					perDay: money(537800),
 					daysLeft: 11,
 					spent: money(270660200),
@@ -78,5 +79,44 @@ describe("heroOf", () => {
 			},
 		} as unknown as Glance);
 		expect(hero).toEqual({ kind: "over", verdict, amount: money(192030) });
+	});
+
+	it("is over whenever leftToSpend.over is positive, whatever the verdict says", () => {
+		const verdict = {
+			style: "SPENDING",
+			state: "ON_TRACK",
+			lead: { kind: "LEFT_TO_SPEND", figureId: "x", amount: money(-500) },
+			over: money(0),
+		};
+		const hero = heroOf({
+			...base,
+			budget: {
+				state: "ready",
+				verdict,
+				leftToSpend: { left: money(-500), over: money(500) },
+			},
+		} as unknown as Glance);
+		expect(hero).toMatchObject({ kind: "over", amount: money(500) });
+		if (hero.kind === "over") {
+			expect(hero.verdict.state).toBe("OVER_BUDGET");
+			expect(hero.verdict.lead.amount).toEqual(money(500));
+		}
+	});
+
+	it("never leads with a negative Left to spend", () => {
+		const hero = heroOf({
+			...base,
+			budget: {
+				state: "ready",
+				verdict: {
+					style: "SPENDING",
+					state: "ON_TRACK",
+					lead: { kind: "LEFT_TO_SPEND", figureId: "x", amount: money(0) },
+					over: money(0),
+				},
+				leftToSpend: { left: money(-700), over: money(0) },
+			},
+		} as unknown as Glance);
+		expect(hero).toMatchObject({ kind: "over", amount: money(700) });
 	});
 });

@@ -68,6 +68,30 @@ export function heroOf(glance: Glance): Hero {
 		if (verdictIsOver(verdict)) {
 			return { kind: "over", verdict, amount: verdict.lead.amount };
 		}
+		// As the web glance does: any `over` figure means over, whatever state
+		// the verdict is in, and Left to spend is never shown below zero.
+		const over =
+			verdict.style === "LIMITS" && verdict.over.minor > 0
+				? verdict.over
+				: leftToSpend.over.minor > 0
+					? leftToSpend.over
+					: leftToSpend.left.minor < 0
+						? {
+								minor: -leftToSpend.left.minor,
+								currency: leftToSpend.left.currency,
+							}
+						: null;
+		if (over) {
+			return {
+				kind: "over",
+				verdict: {
+					...verdict,
+					state: "OVER_BUDGET",
+					lead: { ...verdict.lead, amount: over },
+				},
+				amount: over,
+			};
+		}
 		return {
 			kind: "left",
 			amount: leftToSpend.left,
