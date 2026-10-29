@@ -111,6 +111,12 @@ const config: ExpoConfig = {
 		// Android 16+, and on Android 15 the system Back leaves the app.
 		predictiveBackGestureEnabled: false,
 	},
+	// iOS: the photo library and camera permission texts, one file per
+	// language (InfoPlist.strings). The English text is the plugin's default
+	// below; test/app-config.test.ts keeps every language covered.
+	locales: Object.fromEntries(
+		APP_LOCALES.map((code) => [code, `./locales/${code}.json`]),
+	),
 	extra: {
 		// The address the connect screen starts with. The dev and TestFlight
 		// scripts set it to the dev server; empty means retrospend.app.
@@ -126,6 +132,18 @@ const config: ExpoConfig = {
 		// CFBundleLocalizations (Settings > Retrospend > Language).
 		["expo-localization", { supportedLocales: APP_LOCALES }],
 		"expo-secure-store",
+		// Profile picture: library and camera on iOS (texts per language in
+		// locales/), and no microphone permission on either platform.
+		[
+			"expo-image-picker",
+			{
+				photosPermission:
+					"Retrospend uses your photos to set your profile picture.",
+				cameraPermission:
+					"Retrospend uses the camera to take your profile picture.",
+				microphonePermission: false,
+			},
+		],
 		// Android half of the http decision above.
 		"./plugins/with-cleartext-servers",
 		// R8 keep rules: without them the minified release dies in WorkManager.

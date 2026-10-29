@@ -2,6 +2,8 @@
  * @jest-environment node
  */
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import config, {
 	apnsEnvironment,
 	assertBuildProfile,
@@ -71,6 +73,24 @@ describe("app config", () => {
 		) as [string, { supportedLocales: string[] }] | undefined;
 		expect(entry?.[1].supportedLocales).toEqual([...APP_LOCALES]);
 		expect(entry?.[1].supportedLocales).toContain("es-AR");
+	});
+
+	it("words the photo and camera permissions in every language", () => {
+		expect(Object.keys(config.locales ?? {}).sort()).toEqual(
+			[...APP_LOCALES].sort(),
+		);
+		for (const code of APP_LOCALES) {
+			const file = JSON.parse(
+				readFileSync(join(__dirname, "..", "locales", `${code}.json`), "utf8"),
+			) as Record<string, string>;
+			expect(file.NSPhotoLibraryUsageDescription).toBeTruthy();
+			expect(file.NSCameraUsageDescription).toBeTruthy();
+			expect(config.locales?.[code]).toBe(`./locales/${code}.json`);
+		}
+		const picker = config.plugins?.find(
+			(p) => Array.isArray(p) && p[0] === "expo-image-picker",
+		) as [string, { microphonePermission: false }] | undefined;
+		expect(picker?.[1].microphonePermission).toBe(false);
 	});
 
 	describe("assertBuildProfile", () => {

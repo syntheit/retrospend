@@ -245,6 +245,58 @@ describe("/api/v1/profile", () => {
 		await expectBody(replay, p.update);
 	});
 
+	it("uploads and removes only the caller's own picture", async () => {
+		const other = await createTestUser();
+		await adminDb.user.update({
+			where: { id: other.user.id },
+			data: { avatarPath: "avatars/other-1.webp" },
+		});
+		const mine = await passwordUser();
+		const asMine = await asMobile(mine.id);
+
+		const set = await expectBody<{ avatarUrl: string }>(
+			await call("/profile/avatar", {
+				method: "PUT",
+				headers: asMine,
+				form: await pngOf("#228b22"),
+				idempotent: true,
+			}),
+			p.setAvatar,
+		);
+		expect(set.avatarUrl).toContain(`avatars/${mine.id}-`);
+		await expectBody(
+			await call("/profile/avatar", {
+				method: "DELETE",
+				headers: asMine,
+				idempotent: true,
+			}),
+			p.removeAvatar,
+		);
+
+		const row = await adminDb.user.findUniqueOrThrow({
+			where: { id: other.user.id },
+		});
+		expect(row.avatarPath).toBe("avatars/other-1.webp");
+	});
+
+	it("refuses a picture over 5 MB", async () => {
+		const form = new FormData();
+		form.append(
+			"file",
+			new File([new Uint8Array(5 * 1024 * 1024 + 1)], "big.png", {
+				type: "image/png",
+			}),
+		);
+		const res = await call("/profile/avatar", {
+			method: "PUT",
+			headers: asLucia,
+			form,
+			idempotent: true,
+		});
+		expect(res.status).toBeGreaterThanOrEqual(400);
+		expect(res.status).toBeLessThan(500);
+	});
+
 	it("refuses a file that is not an image", async () => {
 		const form = new FormData();
 		form.append(
