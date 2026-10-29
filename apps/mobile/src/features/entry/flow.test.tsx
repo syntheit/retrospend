@@ -60,6 +60,29 @@ jest.mock("@/ui/Toast", () => ({ useToast: () => mockToast }));
 jest.mock("@/ui/CurrencyPicker", () => ({ CurrencyPicker: () => null }));
 jest.mock("./CategoryPicker", () => ({ CategoryPicker: () => null }));
 jest.mock("@/ui/Segmented", () => ({ Segmented: () => null }));
+// The sheet shows its body and footer while it is visible.
+jest.mock("@/ui/Sheet", () => ({
+	// biome-ignore lint/suspicious/noExplicitAny: a stand-in for a native sheet
+	Sheet: ({ visible, children, footer }: any) =>
+		visible ? [children, footer] : null,
+}));
+// The system menu's items as plain buttons, so a test can pick from it.
+jest.mock("@/ui/Menu", () => {
+	const { Pressable } = require("react-native");
+	const React = require("react");
+	return {
+		// biome-ignore lint/suspicious/noExplicitAny: a stand-in for a native menu
+		Menu: ({ items }: any) =>
+			// biome-ignore lint/suspicious/noExplicitAny: a stand-in for a native menu
+			items.map((item: any) =>
+				React.createElement(Pressable, {
+					key: item.id,
+					accessibilityLabel: item.label,
+					onPress: item.onPress,
+				}),
+			),
+	};
+});
 // The sheet's rows as plain buttons, so a test can pick from it.
 jest.mock("@/ui/PickerSheet", () => {
 	const { Pressable } = require("react-native");
@@ -289,6 +312,15 @@ function fakeApi() {
 				expense: {},
 				undo: "undo-edit",
 			})),
+			previewDelete: write("expense.previewDelete", () => ({
+				changes: [],
+				unchanged: [],
+				unavailable: [],
+			})),
+			delete: write("expense.delete", () => ({
+				id: "e1",
+				undo: "undo-delete",
+			})),
 			undo: write("expense.undo"),
 		},
 		"shared-expenses": {
@@ -409,6 +441,23 @@ function press(tree: Tree, label: string) {
 	});
 }
 
+/** The words under a node, joined. */
+function textOf(node: TestNode | string): string {
+	if (typeof node === "string") return node;
+	return node.children.map(textOf).join("");
+}
+
+/** Presses the button whose words are `text` (a text action has no label of its own). */
+function pressWords(tree: Tree, text: string) {
+	const hit = tree.root.findAll(
+		(n) => typeof n.props.onPress === "function" && textOf(n) === text,
+	)[0];
+	if (!hit) throw new Error(`nothing to press: ${text}`);
+	act(() => {
+		(hit.props.onPress as () => void)();
+	});
+}
+
 function type(tree: Tree, label: string, text: string) {
 	const hit = find(
 		tree,
@@ -509,9 +558,13 @@ describe("Add expense: coffee split with Lucía", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense");
+		// Add stays off until there is an amount.
+		const add = find(tree, (p) => p.accessibilityLabel === "Add expense")[0];
+		expect(add?.props.disabled).toBe(true);
+		press(tree, "9");
+		await settle();
 		press(tree, "Add expense");
 		await flush();
-		expect(words(tree)).toContain("Enter an amount above zero");
 		expect(words(tree)).toContain("Pick a category");
 		expect(calls.filter((c) => c.route.endsWith(".create"))).toEqual([]);
 		act(() => tree.unmount());
@@ -565,6 +618,11 @@ describe("Add income with Use my plan", () => {
 			currency: "ARS",
 			usePlan: true,
 		});
+		// The quick step says it in one line; More has the whole block.
+		expect(words(tree)).toContain("Not planned yet +ARS 340,000");
+		pressWords(tree, "More");
+		// The plan's envelope names are read when it first shows.
+		await flush();
 		expect(words(tree)).toContain("What this changes");
 		expect(words(tree)).toContain("Not planned yet");
 		expect(words(tree)).toContain("+ARS 340,000");
@@ -693,7 +751,7 @@ describe("Add expense into a project", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense");
-		press(tree, "Project, No project");
+		press(tree, "Project, Personal");
 		expect(
 			find(tree, (p) => p.accessibilityLabel === "pick Club"),
 		).toHaveLength(0);
@@ -806,13 +864,15 @@ describe("Details", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense");
+		press(tree, "Cafe");
+		for (const key of ["9", "0", "0"]) press(tree, key);
+		pressWords(tree, "More");
+		// Details and the options are always shown in More, with no toggle.
 		expect(words(tree)).toContain("Details");
 		expect(words(tree)).toContain("Exclude from spending");
 		type(tree, "Note", "with the team");
 		type(tree, "Location", "Cafe Tortoni");
 		press(tree, "6 months");
-		press(tree, "Cafe");
-		for (const key of ["9", "0", "0"]) press(tree, key);
 		await settle();
 		press(tree, "Add expense");
 		await flush();
@@ -832,12 +892,13 @@ describe("Details", () => {
 		mockSession.api = api;
 		const tree = await open("expense");
 		press(tree, "Lucía Fernández");
+		press(tree, "Cafe");
+		for (const key of ["9", "0", "0"]) press(tree, key);
+		pressWords(tree, "More");
 		expect(find(tree, (p) => p.accessibilityLabel === "Location")).toHaveLength(
 			0,
 		);
 		type(tree, "Note", "birthday");
-		press(tree, "Cafe");
-		for (const key of ["9", "0", "0"]) press(tree, key);
 		await settle();
 		press(tree, "Add expense");
 		await flush();
@@ -1006,6 +1067,7 @@ describe("Edit a split expense", () => {
 		const tree = await open("expense", () => {}, "s1", true);
 		type(tree, "Title", "Team dinner");
 		await settle();
+		pressWords(tree, "More");
 		const text = words(tree);
 		expect(text).toContain("What each person owes");
 		expect(text).toContain("You");
@@ -1121,6 +1183,8 @@ describe("Edit needs its dry run", () => {
 		await settle();
 		expect(words(tree)).toContain("You're offline.");
 		expenses.previewUpdate = ok;
+		// Try again is in the whole block, in More.
+		pressWords(tree, "More");
 		const tryAgain = tree.root.findAll(
 			(n) =>
 				typeof n.props.onPress === "function" &&
@@ -1179,10 +1243,10 @@ describe("Picking projects quickly", () => {
 				: Promise.resolve({ items: [] });
 		mockSession.api = api;
 		const tree = await open("expense");
-		press(tree, "Project, No project");
+		press(tree, "Project, Personal");
 		press(tree, "pick Trip");
 		// The person changes their mind before the first answer comes.
-		press(tree, "Project, No project");
+		press(tree, "Project, Personal");
 		press(tree, "pick No project");
 		await flush();
 		await act(async () => {
@@ -1199,7 +1263,7 @@ describe("Picking projects quickly", () => {
 		});
 		await flush();
 		expect(words(tree)).not.toContain("Ana");
-		expect(words(tree)).toContain("No project");
+		expect(words(tree)).toContain("Personal");
 		act(() => tree.unmount());
 	});
 });
@@ -1224,6 +1288,113 @@ describe("Unsaved changes", () => {
 		type(tree, "Title", "Coffee");
 		await flush();
 		expect(dirty).toHaveBeenLastCalledWith(true);
+		act(() => tree.unmount());
+	});
+});
+
+describe("The amount card", () => {
+	it("adds up what the operators build, and sends the sum", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+		press(tree, "Cafe");
+		press(tree, "1");
+		press(tree, "2");
+		press(tree, "Plus");
+		press(tree, "3");
+		expect(words(tree)).toContain("12+3");
+		await settle();
+		press(tree, "Add expense");
+		await flush();
+		expect(
+			calls.find((c) => c.route === "expenses.create")?.input,
+		).toMatchObject({ amount: "15.00" });
+		act(() => tree.unmount());
+	});
+
+	it("takes what arrived in a second row of the card, and leaves it empty for the reference rate", async () => {
+		const { api, calls } = fakeApi();
+		(
+			api as unknown as {
+				entry: { catalog: () => Promise<unknown> };
+			}
+		).entry.catalog = async () => ({
+			places: [
+				{ id: "cash", name: "Cash", type: "CASH", currency: "ARS" },
+				{ id: "usd", name: "Dollars", type: "CASH", currency: "USD" },
+			],
+		});
+		mockSession.api = api;
+		const tree = await open("transfer");
+		for (const key of ["1", "0", "0", "0"]) press(tree, key);
+		// The second row is the card's, not a text field: the keypad types into it.
+		press(tree, "Received in USD, optional");
+		press(tree, "9");
+		await settle();
+		press(tree, "Add transfer");
+		await flush();
+		expect(
+			calls.find((c) => c.route === "transfer.create")?.input,
+		).toMatchObject({
+			fromAmount: "1000.00",
+			toAmount: "9.00",
+			toCurrency: "USD",
+		});
+		act(() => tree.unmount());
+	});
+});
+
+describe("Edit: undo changes and delete", () => {
+	it("puts every field back from the actions menu", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense", () => {}, "e1");
+		// Nothing changed yet, so there is nothing to undo.
+		expect(
+			find(tree, (p) => p.accessibilityLabel === "Undo changes"),
+		).toHaveLength(0);
+		type(tree, "Title", "Team lunch");
+		await flush();
+		press(tree, "Undo changes");
+		await flush();
+		const field = find(
+			tree,
+			(p) => p.accessibilityLabel === "Title" && "value" in p,
+		)[0];
+		expect(field?.props.value).toBe("Lunch");
+		act(() => tree.unmount());
+	});
+
+	it("deletes after the dry run, and Undo takes it back", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const done = jest.fn();
+		const tree = await open("expense", done, "e1");
+		pressWords(tree, "More");
+		pressWords(tree, "Delete");
+		await flush();
+		expect(
+			calls.find((c) => c.route === "expense.previewDelete")?.input,
+		).toEqual({ id: "e1" });
+		const confirm = find(
+			tree,
+			(p) => p.label === "Delete" && typeof p.onPress === "function",
+		)[0];
+		if (!confirm) throw new Error("no Delete button");
+		await act(async () => {
+			(confirm.props.onPress as () => void)();
+		});
+		await flush();
+		expect(calls.find((c) => c.route === "expense.delete")?.input).toEqual({
+			id: "e1",
+		});
+		expect(done).toHaveBeenCalledTimes(1);
+		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		expect(toast.message).toBe("Deleted Lunch");
+		await act(async () => toast.undo.onUndo());
+		expect(calls.find((c) => c.route === "expense.undo")?.input).toEqual({
+			token: "undo-delete",
+		});
 		act(() => tree.unmount());
 	});
 });

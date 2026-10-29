@@ -1,97 +1,78 @@
-import { type ReactNode, useState } from "react";
-import {
-	Keyboard,
-	KeyboardAvoidingView,
-	Platform,
-	Pressable,
-	ScrollView,
-	View,
-} from "react-native";
+import type { ReactNode } from "react";
+import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
-import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
-import { Segmented } from "@/ui/Segmented";
-import { Text } from "@/ui/Text";
-import { amountMinor } from "./draft";
+import { FieldError } from "@/ui/TextField";
+import { AmountCard, type MoneyLine } from "./AmountCard";
+import { ComposerBar } from "./ComposerBar";
 
 export type EntryMode = "expense" | "income" | "transfer";
 
 /**
  * The composer's frame, the same on the iPhone tab, the iPad form sheet and
- * the Android bottom sheet: the fields scroll, while the amount, the Add
- * button and the keypad stay in the thumb zone below them. While a text
- * field is being typed in, the keypad steps aside for the system keyboard.
+ * the Android bottom sheet: the head, the fields that scroll, and under them
+ * what stays in the thumb zone. In the quick step that is the amount card,
+ * the one-line preview, the operators with Add, and the keypad; in More it is
+ * only Back and Add. While a text field is being typed in, the keypad steps
+ * aside for the system keyboard.
  */
 export function ComposerShell({
-	mode,
-	modes,
-	onModeChange,
-	currencyLocked,
-	amountText,
-	currency,
-	currencies,
-	yourCurrencies,
-	recentCurrencies,
-	onCurrencyChange,
-	onAmountChange,
+	step,
+	header,
+	lines,
+	keypad,
+	typing,
+	padOpen,
+	onScrollDrag,
+	amountError,
+	rate,
+	preview,
+	onOperator,
+	onBack,
 	onAdd,
 	addLabel,
 	addDescription,
+	addOff,
 	busy,
-	blocked,
-	typing,
-	amountError,
 	surface,
-	onKeypadRequest,
-	rate,
 	children,
 }: {
-	/** Under the amount: its exchange rate and its value at home, for another currency. */
+	step: "quick" | "more";
+	header: ReactNode;
+	lines: MoneyLine[];
+	/** What the keypad types into: the active amount. */
+	keypad: {
+		text: string;
+		currency: string;
+		onChange: (text: string) => void;
+	};
+	typing: boolean;
+	padOpen: boolean;
+	/** Scrolling the fields folds the keypad away. */
+	onScrollDrag: () => void;
+	amountError: boolean;
+	/** Under the amount, inside its card: the rate and the value at home, for another currency. */
 	rate?: ReactNode;
-	mode: EntryMode;
-	/** The modes to pick between; fewer than two hides the row (an edit). */
-	modes: EntryMode[];
-	onModeChange: (mode: EntryMode) => void;
-	/** The currency comes from an account, so it is shown and not picked. */
-	currencyLocked?: boolean;
-	amountText: string;
-	currency: string;
-	currencies: string[];
-	/** Home and default currency: first in the picker. */
-	yourCurrencies: string[];
-	recentCurrencies: string[];
-	onCurrencyChange: (currency: string) => void;
-	onAmountChange: (text: string) => void;
+	/** The one-line "what this changes" above the bar. */
+	preview: ReactNode;
+	onOperator: (sign: string) => void;
+	onBack: () => void;
 	onAdd: () => void;
 	addLabel: string;
 	/** What a screen reader says for the Add button: "Add expense". */
 	addDescription: string;
+	/** Nothing to add yet, or the dry run of what Add would send is not in. */
+	addOff: boolean;
 	busy: boolean;
-	/** The dry run of what Add would send is not in yet, or was refused. */
-	blocked: boolean;
-	typing: boolean;
-	amountError: boolean;
 	/** On a sheet: the sheet's own surface, with no panel of the page's color. */
 	surface?: boolean;
-	/** The amount was touched: stop typing in the text field. */
-	onKeypadRequest: () => void;
 	children: ReactNode;
 }) {
 	const t = useTranslations("mobile.composer");
-	const locale = useMoneyLocale();
-	const { format } = useFormatMoney();
-	const { color, radius, size, space } = useTheme();
-	// Scrolling the fields folds the keypad away so the split and what changes
-	// show in full; touching the amount brings it back.
-	const [padOpen, setPadOpen] = useState(true);
-	const minor = amountMinor(amountText, locale, currency);
-	const spoken = minor
-		? t("amountLabel", { amount: format({ minor, currency }) ?? "" })
-		: t("amountEmpty", { currency });
-	const idle = busy || blocked;
-
+	const { color, size, space } = useTheme();
+	const quick = step === "quick";
+	const keypadUp = quick && !typing && padOpen;
 	return (
 		<KeyboardAvoidingView
 			behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -100,26 +81,20 @@ export function ComposerShell({
 				backgroundColor: surface ? undefined : color.bg,
 			}}
 		>
+			<View style={{ paddingHorizontal: space[4], paddingBottom: space[2] }}>
+				{header}
+			</View>
 			<ScrollView
-				contentContainerStyle={{ padding: space[4], gap: space[4] }}
+				// More brings its own gutter: its inset groups sit in the page's.
+				contentContainerStyle={{
+					paddingVertical: space[4],
+					paddingHorizontal: quick ? space[4] : 0,
+					gap: space[4],
+				}}
 				keyboardShouldPersistTaps="handled"
-				onScrollBeginDrag={() => setPadOpen(false)}
+				onScrollBeginDrag={onScrollDrag}
 				style={{ flex: 1 }}
 			>
-				{/* The M3 segmented button draws its outline past its box. */}
-				{modes.length > 1 ? (
-					<View style={{ paddingVertical: space[1] }}>
-						<Segmented
-							accessibilityLabel={t("mode")}
-							onChange={onModeChange}
-							options={modes.map((value) => ({
-								value,
-								label: t(value === "transfer" ? "transferMode" : value),
-							}))}
-							value={mode}
-						/>
-					</View>
-				) : null}
 				{children}
 			</ScrollView>
 			<View
@@ -132,88 +107,40 @@ export function ComposerShell({
 					borderTopColor: color.line,
 				}}
 			>
-				<View
-					style={{
-						flexDirection: "row",
-						alignItems: "center",
-						gap: space[3],
-						minHeight: size.moneyInput.phone,
-					}}
-				>
-					{currencyLocked ? (
-						<Text tone="fg2" weight="semibold">
-							{currency}
-						</Text>
-					) : (
-						<CurrencyPicker
-							currencies={currencies}
-							onChange={onCurrencyChange}
-							recent={recentCurrencies}
-							value={currency}
-							yours={yourCurrencies}
+				{quick ? (
+					<>
+						<AmountCard
+							foreign={rate}
+							lines={lines}
+							ring={amountError ? "error" : keypadUp ? "focus" : "idle"}
 						/>
-					)}
-					<Pressable
-						accessibilityHint={padOpen ? undefined : t("showKeypad")}
-						accessibilityLabel={spoken}
-						accessibilityRole="button"
-						onPress={() => {
-							Keyboard.dismiss();
-							onKeypadRequest();
-							setPadOpen(true);
-						}}
-						style={{ flex: 1 }}
-					>
-						<Text
-							accessibilityLiveRegion="polite"
-							adjustsFontSizeToFit
-							numberOfLines={1}
-							style={{ textAlign: "right" }}
-							tone={amountText ? "fg" : "fg3"}
-							variant="hero"
-						>
-							{amountText || "0"}
-						</Text>
-					</Pressable>
-					<Pressable
-						accessibilityLabel={addDescription}
-						accessibilityRole="button"
-						accessibilityState={{ busy, disabled: idle }}
-						disabled={idle}
-						onPress={onAdd}
-						style={({ pressed }) => ({
-							minHeight: size.touchMin.phone,
-							justifyContent: "center",
-							paddingHorizontal: space[4],
-							borderRadius: radius.ctl,
-							backgroundColor: pressed ? color.brandHover : color.brand,
-							opacity: idle ? 0.6 : 1,
-						})}
-					>
-						<Text style={{ color: color.brandFg }} weight="semibold">
-							{addLabel}
-						</Text>
-					</Pressable>
-				</View>
-				{rate}
-				{amountError ? (
-					<Text
-						accessibilityRole="alert"
-						style={{ textAlign: "right" }}
-						tone="danger"
-						variant="small"
-					>
-						{t("errors.amount")}
-					</Text>
+						{amountError ? (
+							<View style={{ alignItems: "flex-end" }}>
+								<FieldError>{t("errors.amount")}</FieldError>
+							</View>
+						) : null}
+						{preview}
+					</>
 				) : null}
-				{typing || !padOpen ? null : (
+				<ComposerBar
+					addDescription={addDescription}
+					addLabel={addLabel}
+					addOff={addOff}
+					busy={busy}
+					onAdd={onAdd}
+					onBack={onBack}
+					onOperator={onOperator}
+					showOperators={!typing}
+					step={step}
+				/>
+				{keypadUp ? (
 					<MoneyKeypad
-						currency={currency}
-						draft={amountText}
+						currency={keypad.currency}
+						draft={keypad.text}
 						keyHeight={size.touchMin.phone}
-						onDraftChange={onAmountChange}
+						onDraftChange={keypad.onChange}
 					/>
-				)}
+				) : null}
 			</View>
 		</KeyboardAvoidingView>
 	);

@@ -43,7 +43,7 @@ function useEnvelopeNames(enabled: boolean): Map<string, string> {
  */
 export function PlanBlock({ plan }: { plan: PlanView }) {
 	const t = useTranslations("mobile.composer.plan");
-	const { space } = useTheme();
+	const { color, space } = useTheme();
 	const { format } = useFormatMoney();
 	const names = useEnvelopeNames(plan.lines.length > 0);
 	const money = (value: { minor: number; currency: string }) =>
@@ -62,8 +62,16 @@ export function PlanBlock({ plan }: { plan: PlanView }) {
 		gap: space[3],
 	} as const;
 	return (
-		<View accessibilityLiveRegion="polite" style={{ gap: space[2] }}>
-			<Text accessibilityRole="header" variant="section">
+		<View
+			accessibilityLiveRegion="polite"
+			style={{
+				gap: space[2],
+				paddingTop: space[3],
+				borderTopWidth: 1,
+				borderTopColor: color.line,
+			}}
+		>
+			<Text accessibilityRole="header" weight="semibold">
 				{t("title")}
 			</Text>
 			{reason ? <Text tone="fg2">{reason}</Text> : null}

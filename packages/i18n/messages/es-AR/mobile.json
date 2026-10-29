@@ -28,18 +28,14 @@
 		"mode": "Tipo de entrada",
 		"expense": "Gasto",
 		"income": "Ingreso",
-		"titleExpense": "Agregar gasto",
-		"titleIncome": "Agregar ingreso",
 		"loading": "Cargando",
 		"loadError": "No se pudo abrir el formulario",
 		"loadErrorDetail": "Revisá tu conexión y probá de nuevo.",
 		"titleField": "Título",
 		"titlePlaceholder": "¿Qué fue?",
 		"category": "Categoría",
-		"allCategories": "Todas",
 		"with": "Con",
 		"you": "Vos",
-		"splitEqually": "Dividir en partes iguales",
 		"from": "De",
 		"fromPlaceholder": "¿Quién te pagó?",
 		"afterSaving": "Después de guardar",
@@ -139,7 +135,9 @@
 				"leaves": "Sale, antes {before}",
 				"told": "Les avisamos del cambio.",
 				"same": "La parte de cada persona no cambia."
-			}
+			},
+			"oneLineNone": "No cambia ninguna cifra.",
+			"oneLineMore": "{figure} y {count} más"
 		},
 		"list": {
 			"two": "{first} y {second}",
@@ -154,7 +152,6 @@
 			"retryFailed": "Todavía no se puede enviar. Probá más tarde."
 		},
 		"transferMode": "Transferencia",
-		"titleTransfer": "Agregar transferencia",
 		"addTransfer": "Agregar transferencia",
 		"titleEdit": "Editar gasto",
 		"save": "Guardar",
@@ -179,7 +176,6 @@
 		"transfer": {
 			"from": "De",
 			"to": "A",
-			"received": "Recibido en {currency}",
 			"receivedPlaceholder": "Opcional",
 			"receivedHint": "Si lo dejás vacío, se usa la cotización de referencia.",
 			"note": "Nota",
@@ -188,7 +184,9 @@
 				"same": "Elegí dos cuentas distintas",
 				"places": "Elegí las dos cuentas",
 				"received": "Ingresá lo que llegó como un monto, o dejalo vacío"
-			}
+			},
+			"receivedLabel": "Recibido, {amount}",
+			"receivedEmpty": "Recibido en {currency}, opcional"
 		},
 		"today": "Hoy",
 		"yesterday": "Ayer",
@@ -227,6 +225,64 @@
 			"sharedFixed": "Los gastos compartidos usan tu cotización predeterminada.",
 			"error": "Ingresá una cotización mayor que cero",
 			"enterRate": "Ingresar cotización"
+		},
+		"more": "Más",
+		"moreDetails": "Más detalles",
+		"back": "Atrás",
+		"dateMenu": "Fecha, {date}",
+		"pickDate": "Elegir una fecha",
+		"categoriesAll": "Todas las categorías",
+		"categoriesMore": "Más",
+		"actions": "Acciones",
+		"actionsLabel": "⋯",
+		"undoChanges": "Deshacer cambios",
+		"options": "Opciones",
+		"context": {
+			"personal": "Personal"
+		},
+		"ops": {
+			"label": "Operadores",
+			"plus": "Más",
+			"minus": "Menos",
+			"times": "Por",
+			"divide": "Dividido"
+		},
+		"faces": {
+			"add": "Agregar",
+			"addLabel": "Agregar una persona",
+			"find": "Buscar una persona",
+			"empty": "Ninguna persona coincide",
+			"title": "Personas"
+		},
+		"split": {
+			"title": "División",
+			"paidBy": "Pagó",
+			"mode": "División",
+			"modes": {
+				"EQUAL": "En partes iguales",
+				"EXACT": "Por importe",
+				"PERCENTAGE": "Por porcentaje",
+				"SHARES": "Por partes"
+			},
+			"summary": {
+				"EQUAL": "En partes iguales",
+				"EXACT": "Por importe",
+				"PERCENTAGE": "Por porcentaje",
+				"SHARES": "Por partes"
+			},
+			"summaryShare": "{split}, tu parte {amount}",
+			"tapFaces": "Tocá una cara en el primer paso para dividir."
+		},
+		"delete": {
+			"row": "Eliminar",
+			"title": "¿Eliminar este gasto?",
+			"body": "Sale de tus gastos y de tu presupuesto.",
+			"bodyShared": "Sale de la división y cambia lo que se debe. No se puede deshacer.",
+			"button": "Eliminar",
+			"deleted": "Se eliminó {title}",
+			"restored": "Se restauró {title}",
+			"undoFailed": "No se pudo deshacer. Probá desde Actividad.",
+			"failed": "No se pudo eliminar. Probá de nuevo."
 		}
 	},
 	"pickers": {

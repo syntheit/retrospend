@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
-import { Button } from "@/ui/Button";
+import { Chip } from "@/ui/Chip";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
 import { PickerSheet } from "@/ui/PickerSheet";
 import type { PickGroup } from "@/ui/pickGroups";
@@ -10,7 +10,7 @@ import type { EntryCategory } from "./types";
 /**
  * Every category in one sheet: Recent first, then all, each with its bare
  * glyph in the category color (a tinted tile belongs in list rows only), and
- * a search field. The text button that opens it is the composer's "All".
+ * a search field. The trigger chip that opens it is the composer's "More".
  */
 export function CategoryPicker({
 	categories,
@@ -54,10 +54,11 @@ export function CategoryPicker({
 
 	return (
 		<>
-			<Button
-				label={tc("allCategories")}
+			<Chip
+				accessibilityLabel={tc("categoriesAll")}
+				label={tc("categoriesMore")}
 				onPress={() => setOpen(true)}
-				variant="text"
+				variant="trigger"
 			/>
 			<PickerSheet
 				clear={t("clear")}

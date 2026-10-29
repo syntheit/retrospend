@@ -28,18 +28,14 @@
 		"mode": "Entry type",
 		"expense": "Expense",
 		"income": "Income",
-		"titleExpense": "Add expense",
-		"titleIncome": "Add income",
 		"loading": "Loading",
 		"loadError": "Couldn't open the composer",
 		"loadErrorDetail": "Check your connection and try again.",
 		"titleField": "Title",
 		"titlePlaceholder": "What was it?",
 		"category": "Category",
-		"allCategories": "All",
 		"with": "With",
 		"you": "You",
-		"splitEqually": "Split equally",
 		"from": "From",
 		"fromPlaceholder": "Who paid you?",
 		"afterSaving": "After saving",
@@ -139,7 +135,9 @@
 				"leaves": "Removed, was {before}",
 				"told": "They're told about the change.",
 				"same": "Each person's share stays the same."
-			}
+			},
+			"oneLineNone": "No figures change.",
+			"oneLineMore": "{figure} and {count} more"
 		},
 		"list": {
 			"two": "{first} and {second}",
@@ -154,7 +152,6 @@
 			"retryFailed": "Still can't send it. Try again later."
 		},
 		"transferMode": "Transfer",
-		"titleTransfer": "Add transfer",
 		"addTransfer": "Add transfer",
 		"titleEdit": "Edit expense",
 		"save": "Save",
@@ -179,7 +176,6 @@
 		"transfer": {
 			"from": "From",
 			"to": "To",
-			"received": "Received in {currency}",
 			"receivedPlaceholder": "Optional",
 			"receivedHint": "Leave it empty and the reference rate is used.",
 			"note": "Note",
@@ -188,7 +184,9 @@
 				"same": "Pick two different accounts",
 				"places": "Pick both accounts",
 				"received": "Enter what arrived as an amount, or leave it empty"
-			}
+			},
+			"receivedLabel": "Received, {amount}",
+			"receivedEmpty": "Received in {currency}, optional"
 		},
 		"today": "Today",
 		"yesterday": "Yesterday",
@@ -227,6 +225,64 @@
 			"sharedFixed": "Split expenses use your default rate type.",
 			"error": "Enter a rate above zero",
 			"enterRate": "Enter rate"
+		},
+		"more": "More",
+		"moreDetails": "More details",
+		"back": "Back",
+		"dateMenu": "Date, {date}",
+		"pickDate": "Pick a date",
+		"categoriesAll": "All categories",
+		"categoriesMore": "More",
+		"actions": "Actions",
+		"actionsLabel": "⋯",
+		"undoChanges": "Undo changes",
+		"options": "Options",
+		"context": {
+			"personal": "Personal"
+		},
+		"ops": {
+			"label": "Operators",
+			"plus": "Plus",
+			"minus": "Minus",
+			"times": "Times",
+			"divide": "Divide"
+		},
+		"faces": {
+			"add": "Add",
+			"addLabel": "Add a person",
+			"find": "Find a person",
+			"empty": "No one matches",
+			"title": "People"
+		},
+		"split": {
+			"title": "Split",
+			"paidBy": "Paid by",
+			"mode": "Split",
+			"modes": {
+				"EQUAL": "Equally",
+				"EXACT": "By amount",
+				"PERCENTAGE": "By percent",
+				"SHARES": "By shares"
+			},
+			"summary": {
+				"EQUAL": "Split equally",
+				"EXACT": "Split by amount",
+				"PERCENTAGE": "Split by percent",
+				"SHARES": "Split by shares"
+			},
+			"summaryShare": "{split}, your share {amount}",
+			"tapFaces": "Tap a face on the first step to split."
+		},
+		"delete": {
+			"row": "Delete",
+			"title": "Delete this expense?",
+			"body": "It leaves your spending and your budget.",
+			"bodyShared": "It leaves the split and what people owe changes. This can't be undone.",
+			"button": "Delete",
+			"deleted": "Deleted {title}",
+			"restored": "Restored {title}",
+			"undoFailed": "Couldn't undo. Try again from Activity.",
+			"failed": "Couldn't delete this. Try again."
 		}
 	},
 	"pickers": {

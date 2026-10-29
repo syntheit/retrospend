@@ -28,18 +28,14 @@
 		"mode": "Type de saisie",
 		"expense": "Dépense",
 		"income": "Revenu",
-		"titleExpense": "Ajouter une dépense",
-		"titleIncome": "Ajouter un revenu",
 		"loading": "Chargement",
 		"loadError": "Impossible d'ouvrir le formulaire",
 		"loadErrorDetail": "Vérifie ta connexion et réessaie.",
 		"titleField": "Titre",
 		"titlePlaceholder": "C'était quoi ?",
 		"category": "Catégorie",
-		"allCategories": "Toutes",
 		"with": "Avec",
 		"you": "Toi",
-		"splitEqually": "Partager à parts égales",
 		"from": "De",
 		"fromPlaceholder": "Qui t'a payé ?",
 		"afterSaving": "Après l'enregistrement",
@@ -139,7 +135,9 @@
 				"leaves": "Retirée, avant {before}",
 				"told": "Chacun est prévenu du changement.",
 				"same": "La part de chacun ne change pas."
-			}
+			},
+			"oneLineNone": "Aucun chiffre ne change.",
+			"oneLineMore": "{figure} et {count} de plus"
 		},
 		"list": {
 			"two": "{first} et {second}",
@@ -154,7 +152,6 @@
 			"retryFailed": "Envoi toujours impossible. Réessaie plus tard."
 		},
 		"transferMode": "Virement",
-		"titleTransfer": "Ajouter un virement",
 		"addTransfer": "Ajouter un virement",
 		"titleEdit": "Modifier la dépense",
 		"save": "Enregistrer",
@@ -179,7 +176,6 @@
 		"transfer": {
 			"from": "De",
 			"to": "Vers",
-			"received": "Reçu en {currency}",
 			"receivedPlaceholder": "Facultatif",
 			"receivedHint": "Laisse vide pour utiliser le taux de référence.",
 			"note": "Note",
@@ -188,7 +184,9 @@
 				"same": "Choisis deux comptes différents",
 				"places": "Choisis les deux comptes",
 				"received": "Saisis ce qui est arrivé comme montant, ou laisse vide"
-			}
+			},
+			"receivedLabel": "Reçu, {amount}",
+			"receivedEmpty": "Reçu en {currency}, facultatif"
 		},
 		"today": "Aujourd'hui",
 		"yesterday": "Hier",
@@ -227,6 +225,64 @@
 			"sharedFixed": "Les dépenses partagées utilisent ton type de taux par défaut.",
 			"error": "Saisis un taux supérieur à zéro",
 			"enterRate": "Saisir un taux"
+		},
+		"more": "Plus",
+		"moreDetails": "Plus de détails",
+		"back": "Retour",
+		"dateMenu": "Date, {date}",
+		"pickDate": "Choisir une date",
+		"categoriesAll": "Toutes les catégories",
+		"categoriesMore": "Plus",
+		"actions": "Actions",
+		"actionsLabel": "⋯",
+		"undoChanges": "Annuler les modifications",
+		"options": "Options",
+		"context": {
+			"personal": "Personnel"
+		},
+		"ops": {
+			"label": "Opérateurs",
+			"plus": "Plus",
+			"minus": "Moins",
+			"times": "Fois",
+			"divide": "Divisé par"
+		},
+		"faces": {
+			"add": "Ajouter",
+			"addLabel": "Ajouter une personne",
+			"find": "Chercher une personne",
+			"empty": "Aucune personne trouvée",
+			"title": "Personnes"
+		},
+		"split": {
+			"title": "Partage",
+			"paidBy": "Payé par",
+			"mode": "Partage",
+			"modes": {
+				"EQUAL": "À parts égales",
+				"EXACT": "Par montant",
+				"PERCENTAGE": "Par pourcentage",
+				"SHARES": "Par parts"
+			},
+			"summary": {
+				"EQUAL": "Partagé à parts égales",
+				"EXACT": "Partagé par montant",
+				"PERCENTAGE": "Partagé par pourcentage",
+				"SHARES": "Partagé par parts"
+			},
+			"summaryShare": "{split}, ta part {amount}",
+			"tapFaces": "Touche un visage à la première étape pour partager."
+		},
+		"delete": {
+			"row": "Supprimer",
+			"title": "Supprimer cette dépense ?",
+			"body": "Elle quitte tes dépenses et ton budget.",
+			"bodyShared": "Elle quitte le partage et ce que chacun doit change. Impossible de l'annuler.",
+			"button": "Supprimer",
+			"deleted": "{title} supprimé",
+			"restored": "{title} rétabli",
+			"undoFailed": "Impossible d'annuler. Réessaie depuis Activité.",
+			"failed": "Impossible de supprimer. Réessaie."
 		}
 	},
 	"pickers": {
