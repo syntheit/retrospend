@@ -6,6 +6,7 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import { Keyboard, Platform, View } from "react-native";
@@ -19,6 +20,7 @@ import { AddButton } from "@/ui/AddButton";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import type { EntryMode } from "./ComposerShell";
 import { EntryComposer } from "./EntryComposer";
+import { replaceDraft } from "./replaceDraft";
 import { useOutboxFlush } from "./useOutboxFlush";
 
 // The screenshot tour is required only when its variable is set, so Metro drops
@@ -87,7 +89,8 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	const [open, setOpen] = useState<EntryMode | null>(null);
 	const [mode, setMode] = useState<EntryMode>("expense");
 	// A prefill belongs to one opening; the counter remounts the composer when
-	// a second share arrives while the first is still open.
+	// a second share arrives while the first is still open (after asking, when
+	// the first has unsaved changes).
 	const [fill, setFill] = useState<{
 		prefill?: ComposerPrefill;
 		editId?: string;
@@ -99,6 +102,14 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 
 	const sheetSize = useSheetBodySize();
 
+	// Whether the open composer holds unsaved changes: a new opening asks first.
+	const dirty = useRef(false);
+	const isOpen = useRef(false);
+	isOpen.current = open !== null;
+	const onDirtyChange = useCallback((next: boolean) => {
+		dirty.current = next;
+	}, []);
+
 	const show = useCallback(
 		(
 			next: EntryMode = "expense",
@@ -106,11 +117,23 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 			editId?: string,
 			editShared?: boolean,
 		) => {
-			setMode(next);
-			setFill((f) => ({ prefill, editId, editShared, count: f.count + 1 }));
-			setOpen(next);
+			replaceDraft(
+				isOpen.current && dirty.current,
+				() => {
+					dirty.current = false;
+					setMode(next);
+					setFill((f) => ({ prefill, editId, editShared, count: f.count + 1 }));
+					setOpen(next);
+				},
+				{
+					title: t("replaceDraft.title"),
+					detail: t("replaceDraft.detail"),
+					keep: t("replaceDraft.keep"),
+					replace: t("replaceDraft.replace"),
+				},
+			);
 		},
-		[],
+		[t],
 	);
 	const api = useMemo(
 		() => ({
@@ -122,7 +145,10 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 		[show],
 	);
 	useSurfaceLinks(show);
-	const close = useCallback(() => setOpen(null), []);
+	const close = useCallback(() => {
+		dirty.current = false;
+		setOpen(null);
+	}, []);
 
 	return (
 		<AddEntryContext.Provider value={api}>
@@ -176,6 +202,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 							editShared={fill.editShared}
 							initialMode={open}
 							key={fill.count}
+							onDirtyChange={onDirtyChange}
 							onDone={close}
 							onModeChange={setMode}
 							prefill={fill.prefill}

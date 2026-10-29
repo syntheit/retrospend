@@ -201,7 +201,13 @@
 		"exclude": "Excluir dos gastos",
 		"excludeDetail": "Fica na Atividade e no seu orçamento, mas fora dos relatórios e do Insights.",
 		"editLocked": "Este gasto não pode ser editado",
-		"editLockedDetail": "Um pagamento quitou, ou você não tem permissão para alterar."
+		"editLockedDetail": "Um pagamento quitou, ou você não tem permissão para alterar.",
+		"replaceDraft": {
+			"title": "Substituir este rascunho?",
+			"detail": "O que você digitou aqui não foi salvo e será perdido.",
+			"keep": "Continuar editando",
+			"replace": "Substituir"
+		}
 	},
 	"pickers": {
 		"clear": "Limpar busca",
@@ -256,7 +262,11 @@
 			"transfer": "Transferência",
 			"payment": "Pagamento"
 		},
-		"edit": "Editar"
+		"edit": "Editar",
+		"loading": "Carregando",
+		"gone": "Este lançamento foi excluído ou não é mais compartilhado com você.",
+		"loadError": "Não foi possível carregar este lançamento",
+		"loadErrorDetail": "Verifique sua conexão e tente de novo."
 	},
 	"connect": {
 		"title": "Conecte-se a um servidor",

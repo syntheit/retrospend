@@ -6,6 +6,7 @@ import {
 	type PreviewDto,
 	planOf,
 	sharesOf,
+	splitSharesOf,
 } from "./preview";
 
 const line = (minor: number, currency = "ARS") => ({ minor, currency });
@@ -147,6 +148,39 @@ describe("sharesOf", () => {
 	it("is an empty list when no share moves, and null for other writes", () => {
 		expect(sharesOf(edit([share("same", 100, 100)]))).toEqual([]);
 		expect(sharesOf(incomeDiff)).toBeNull();
+	});
+});
+
+describe("splitSharesOf", () => {
+	const add = (shares: unknown[]): PreviewDto => ({
+		changes: [],
+		unchanged: [],
+		unavailable: [],
+		detail: { kind: "sharedExpense.create", shares },
+	});
+
+	it("keys each new share by person, as the server split it", () => {
+		expect(
+			splitSharesOf(
+				add([
+					{ type: "user", id: "me", before: null, after: line(5001) },
+					{ type: "shadow", id: "ana", before: null, after: line(5000) },
+				]),
+			),
+		).toEqual([
+			{ key: "user:me", share: line(5001) },
+			{ key: "shadow:ana", share: line(5000) },
+		]);
+	});
+
+	it("is null for an edit or any other write", () => {
+		expect(splitSharesOf(incomeDiff)).toBeNull();
+		expect(
+			splitSharesOf({
+				...add([]),
+				detail: { kind: "sharedExpense.update", shares: [] },
+			}),
+		).toBeNull();
 	});
 });
 

@@ -1,7 +1,5 @@
-import { fromMinorUnits, toMinorUnits } from "@retrospend/domain/money";
 import { fromMinor, money } from "@retrospend/domain/money-minor";
 import { draftFromMinor, parseMoneyInput } from "@retrospend/domain/parse";
-import { resolveSplits } from "@retrospend/domain/shared-split-computation";
 import {
 	type EntryCatalog,
 	type EntryPerson,
@@ -11,9 +9,9 @@ import {
 } from "./types";
 
 // The composers' state as plain data, and the pure steps on it: what the
-// keypad typed, which write it becomes, and the equal split shown before
-// Save. The server books every rate and resolves every split again; nothing
-// here decides a number the server owns.
+// keypad typed, which write it becomes, and who the split names before Save.
+// The server books every rate and splits every amount (its dry run gives the
+// shares shown); nothing here decides a number the server owns.
 
 export interface ExpenseDraft {
 	/** The new expense's id, made once per composer: a second tap cannot write twice. */
@@ -61,13 +59,19 @@ export interface SavedSplit {
 /**
  * What an edit keeps of the saved expense. The server replaces every field
  * of an expense, so what the composer has no field for goes back as it was:
- * the rate type of a personal expense, the split of a shared one.
+ * the rate type of a personal expense, the split and the project of a
+ * shared one, and its category when it is someone else's (a project
+ * organizer editing another person's split).
  */
 export interface ExpenseEdit {
 	source: "personal" | "shared";
 	currency: string;
 	rateType: string | null;
 	split: SavedSplit | null;
+	/** The project it is in; an edit never moves it out. */
+	projectId: string | null;
+	/** The saved category, which may not be in your catalog. */
+	category: { id: string; name: string } | null;
 }
 
 export interface TransferDraft {
@@ -161,6 +165,8 @@ export function expenseFromEntry(
 			currency,
 			rateType: entry.rateType,
 			split: null,
+			projectId: null,
+			category: null,
 		},
 	};
 }
@@ -177,7 +183,7 @@ export function sharedFromDetail(
 		notes: string | null;
 		splitMode: SavedSplit["mode"];
 		project: { id: string } | null;
-		category: { id: string } | null;
+		category: { id: string; name: string } | null;
 		paidBy: Person;
 	},
 	locale: string,
@@ -205,6 +211,10 @@ export function sharedFromDetail(
 				mode: detail.splitMode,
 				paidBy: { type: detail.paidBy.type, id: detail.paidBy.id },
 			},
+			projectId: detail.project?.id ?? null,
+			category: detail.category
+				? { id: detail.category.id, name: detail.category.name }
+				: null,
 		},
 	};
 }
@@ -269,10 +279,22 @@ export function amountMinor(
 
 export type ExpenseErrors = Partial<Record<"amount" | "category", true>>;
 
-export function expenseErrors(d: ExpenseDraft, locale: string): ExpenseErrors {
+/**
+ * What keeps Save from writing. A category must be one of `categories`, or
+ * the one an edit started with (someone else's, on their split).
+ */
+export function expenseErrors(
+	d: ExpenseDraft,
+	locale: string,
+	categories?: { id: string }[],
+): ExpenseErrors {
 	const errors: ExpenseErrors = {};
 	if (!amountMinor(d.amountText, locale, d.currency)) errors.amount = true;
-	if (!d.categoryId) errors.category = true;
+	const known =
+		!categories ||
+		categories.some((c) => c.id === d.categoryId) ||
+		d.editing?.category?.id === d.categoryId;
+	if (!d.categoryId || !known) errors.category = true;
 	return errors;
 }
 
@@ -289,16 +311,16 @@ export interface SplitRow {
 	key: string;
 	name: string;
 	person: EntryPerson | null;
-	/** Their share in the expense's currency, in minor units. */
-	minor: number;
+	/** Their share as the server's dry run splits it; null until it answers. */
+	share: { minor: number; currency: string } | null;
 }
 
 const YOU = "you";
 
 /**
- * The equal split among you and the people picked, with the leftover minor
- * units where the server puts them (the payer first). Rows are you, then the
- * others in the order picked. Empty for a personal expense.
+ * Who shares the expense: you, then the others in the order picked, each
+ * with the share the server's dry run gives them (`shares`, null until it
+ * answers). Nothing here splits an amount. Empty for a personal expense.
  */
 export function splitRows(
 	d: ExpenseDraft,
@@ -307,6 +329,9 @@ export function splitRows(
 		meId: string;
 		people: EntryPerson[];
 		youLabel: string;
+		shares:
+			| { key: string; share: { minor: number; currency: string } }[]
+			| null;
 	},
 ): SplitRow[] {
 	const total = amountMinor(d.amountText, input.locale, d.currency);
@@ -314,32 +339,22 @@ export function splitRows(
 	const others = d.withKeys
 		.map((key) => input.people.find((p) => personKey(p) === key))
 		.filter((p): p is EntryPerson => p !== undefined);
-	const you = { participantType: "user" as const, participantId: input.meId };
-	const resolved = resolveSplits({
-		mode: "EQUAL",
-		amount: fromMinorUnits(total, d.currency),
-		currency: d.currency,
-		participants: [
-			you,
-			...others.map((p) => ({
-				participantType: p.type,
-				participantId: p.id,
-			})),
-		],
-		paidBy: you,
-	});
-	return resolved.map((row, i) => {
-		const person = i === 0 ? null : (others[i - 1] ?? null);
-		return {
-			key:
-				i === 0
-					? YOU
-					: personKey({ type: row.participantType, id: row.participantId }),
-			name: person?.name ?? input.youLabel,
+	const shareOf = (key: string) =>
+		input.shares?.find((s) => s.key === key)?.share ?? null;
+	return [
+		{
+			key: YOU,
+			name: input.youLabel,
+			person: null,
+			share: shareOf(personKey({ type: "user", id: input.meId })),
+		},
+		...others.map((person) => ({
+			key: personKey(person),
+			name: person.name,
 			person,
-			minor: toMinorUnits(row.shareAmount, d.currency),
-		};
-	});
+			share: shareOf(personKey(person)),
+		})),
+	];
 }
 
 /**
@@ -430,7 +445,9 @@ function sharedNotes(d: ExpenseDraft) {
  * rate type only while the currency is still the saved one, and a split's
  * payer and mode. A split's people are left out, so the server keeps them and
  * splits a new amount again the saved way (set amounts scale in proportion);
- * the dry run names each person's share before and after.
+ * the dry run names each person's share before and after. A split keeps its
+ * saved project whatever the draft holds, and its saved category when it is
+ * not one of yours.
  */
 export function buildExpenseUpdate(
 	d: ExpenseDraft,
@@ -438,7 +455,11 @@ export function buildExpenseUpdate(
 ): PendingWrite | null {
 	const { editing } = d;
 	const minor = amountMinor(d.amountText, input.locale, d.currency);
-	const category = input.catalog.categories.find((c) => c.id === d.categoryId);
+	const category =
+		input.catalog.categories.find((c) => c.id === d.categoryId) ??
+		(editing?.category && editing.category.id === d.categoryId
+			? editing.category
+			: undefined);
 	if (!editing || !minor || !category) return null;
 	const title = d.title.trim() || category.name;
 	const amount = fromMinor(money(minor, d.currency));
@@ -458,7 +479,7 @@ export function buildExpenseUpdate(
 				paidBy: editing.split.paidBy,
 				splitMode: editing.split.mode,
 				...sharedNotes(d),
-				...(d.projectId ? { projectId: d.projectId } : {}),
+				...(editing.projectId ? { projectId: editing.projectId } : {}),
 			},
 		};
 	}

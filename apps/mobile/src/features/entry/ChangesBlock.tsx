@@ -1,5 +1,6 @@
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { TextAction } from "@/features/activity/TextAction";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import {
@@ -23,12 +24,16 @@ type Money = { minor: number; currency: string };
 export function ChangesBlock({
 	state,
 	idle,
+	onRetry,
 }: {
 	state: PreviewState;
 	/** What to say before there is anything to preview. */
 	idle: string;
+	/** Asks the server again after an offline or refused dry run. */
+	onRetry?: () => void;
 }) {
 	const t = useTranslations("mobile.composer.changes");
+	const tc = useTranslations("mobile.common");
 	const tl = useTranslations("mobile.composer.list");
 	const tm = useTranslations("mobile.money");
 	const { color, space, type } = useTheme();
@@ -97,6 +102,11 @@ export function ChangesBlock({
 				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
 					{status}
 				</Text>
+			) : null}
+			{onRetry && (state.status === "offline" || state.status === "refused") ? (
+				<View style={{ alignItems: "flex-start" }}>
+					<TextAction label={tc("retry")} onPress={onRetry} />
+				</View>
 			) : null}
 			{lines?.moved.map((line) => (
 				<View accessible key={line.key}>

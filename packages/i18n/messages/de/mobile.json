@@ -201,7 +201,13 @@
 		"exclude": "Von den Ausgaben ausnehmen",
 		"excludeDetail": "Bleibt in Aktivität und deinem Budget, fehlt aber in Berichten und Insights.",
 		"editLocked": "Diese Ausgabe lässt sich nicht bearbeiten",
-		"editLockedDetail": "Eine Zahlung hat sie beglichen, oder du darfst sie nicht ändern."
+		"editLockedDetail": "Eine Zahlung hat sie beglichen, oder du darfst sie nicht ändern.",
+		"replaceDraft": {
+			"title": "Diesen Entwurf ersetzen?",
+			"detail": "Was du hier eingegeben hast, ist nicht gespeichert und geht verloren.",
+			"keep": "Weiter bearbeiten",
+			"replace": "Ersetzen"
+		}
 	},
 	"pickers": {
 		"clear": "Suche löschen",
@@ -256,7 +262,11 @@
 			"transfer": "Überweisung",
 			"payment": "Zahlung"
 		},
-		"edit": "Bearbeiten"
+		"edit": "Bearbeiten",
+		"loading": "Wird geladen",
+		"gone": "Dieser Eintrag wurde gelöscht oder ist nicht mehr mit dir geteilt.",
+		"loadError": "Eintrag konnte nicht geladen werden",
+		"loadErrorDetail": "Prüfe deine Verbindung und versuch es erneut."
 	},
 	"connect": {
 		"title": "Mit einem Server verbinden",

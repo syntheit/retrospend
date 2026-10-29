@@ -201,7 +201,13 @@
 		"exclude": "Exclure des dépenses",
 		"excludeDetail": "Reste dans l'activité et ton budget, mais absent des rapports et d'Insights.",
 		"editLocked": "Cette dépense ne peut pas être modifiée",
-		"editLockedDetail": "Un paiement l'a réglée, ou tu n'as pas le droit de la modifier."
+		"editLockedDetail": "Un paiement l'a réglée, ou tu n'as pas le droit de la modifier.",
+		"replaceDraft": {
+			"title": "Remplacer ce brouillon ?",
+			"detail": "Ce que tu as saisi ici n'est pas enregistré et sera perdu.",
+			"keep": "Continuer",
+			"replace": "Remplacer"
+		}
 	},
 	"pickers": {
 		"clear": "Effacer la recherche",
@@ -256,7 +262,11 @@
 			"transfer": "Virement",
 			"payment": "Paiement"
 		},
-		"edit": "Modifier"
+		"edit": "Modifier",
+		"loading": "Chargement",
+		"gone": "Cette opération a été supprimée ou n'est plus partagée avec toi.",
+		"loadError": "Impossible de charger cette opération",
+		"loadErrorDetail": "Vérifie ta connexion et réessaie."
 	},
 	"connect": {
 		"title": "Se connecter à un serveur",

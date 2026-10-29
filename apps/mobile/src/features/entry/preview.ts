@@ -145,6 +145,29 @@ export function sharesOf(diff: PreviewDto): ShareLine[] | null {
 		.sort((a, b) => Number(b.you) - Number(a.you));
 }
 
+/** One person's share of a new split, as the server splits it. */
+export interface SplitShare {
+	/** The person key, `<type>:<id>`. */
+	key: string;
+	share: Money;
+}
+
+/**
+ * Each person's share of a split being added, from the same dry run as the
+ * figures (the server's detail of POST /shared-expenses). The client never
+ * splits an amount itself. Null for any other write.
+ */
+export function splitSharesOf(diff: PreviewDto): SplitShare[] | null {
+	const detail = diff.detail as { kind?: string; shares?: unknown } | undefined;
+	if (detail?.kind !== "sharedExpense.create" || !Array.isArray(detail.shares))
+		return null;
+	return (
+		detail.shares as { type: string; id: string; after: Money | null }[]
+	).flatMap((s) =>
+		s.after ? [{ key: `${s.type}:${s.id}`, share: s.after }] : [],
+	);
+}
+
 export interface PlanView {
 	/** Why Use my plan could not run, when it did not. */
 	reason: "no_envelope_budget" | "other_currency" | null;
