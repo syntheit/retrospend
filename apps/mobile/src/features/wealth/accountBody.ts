@@ -38,6 +38,8 @@ export interface AccountForm {
 	apr: string;
 	/** Minor units of the minimum payment; null for none. */
 	minimumMinor: number | null;
+	/** The minimum payment field holds text that is not an amount. */
+	minimumInvalid?: boolean;
 	/** Day of month as typed; empty for none. */
 	dueDay: string;
 	inBudget: boolean | null;
@@ -63,12 +65,14 @@ export function dueDayInvalid(text: string): boolean {
 /** Why the form cannot be saved yet, or null when it can. */
 export function formProblem(
 	form: AccountForm,
-): "name" | "balance" | "apr" | "dueDay" | null {
+): "name" | "balance" | "apr" | "dueDay" | "minimum" | null {
 	if (form.name.trim() === "") return "name";
 	if (form.minor === null) return "balance";
 	if (isLiability(form.type)) {
 		if (aprInvalid(form.apr)) return "apr";
 		if (dueDayInvalid(form.dueDay)) return "dueDay";
+		// Never read a typo as "no minimum": that would clear the stored one.
+		if (form.minimumInvalid) return "minimum";
 	}
 	return null;
 }

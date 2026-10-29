@@ -1,5 +1,6 @@
 import {
 	affordQuery,
+	bankFigure,
 	createEnvelopeBody,
 	debtPaymentBody,
 	mergeBody,
@@ -199,6 +200,15 @@ describe("bank check body", () => {
 			id: ID,
 			bank: "-20.00",
 		});
+	});
+});
+
+describe("bank figure", () => {
+	it("uses the accounts' total only when the field is empty, never for text that is not an amount", () => {
+		expect(bankFigure({ state: "empty" }, 5_000)).toBe(5_000);
+		expect(bankFigure({ state: "invalid" }, 5_000)).toBeNull();
+		expect(bankFigure({ state: "zero" }, 5_000)).toBe(0);
+		expect(bankFigure({ state: "ok", minor: 1_234 }, 5_000)).toBe(1_234);
 	});
 });
 

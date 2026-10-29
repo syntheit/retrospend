@@ -73,6 +73,19 @@ describe("account body", () => {
 		);
 	});
 
+	it("blocks Save on a minimum payment that is not an amount, so it never clears the stored one", () => {
+		const debt = form({
+			type: "LIABILITY_LOAN",
+			minimumMinor: null,
+			minimumInvalid: true,
+		});
+		expect(formProblem(debt)).toBe("minimum");
+		expect(updateBody(debt, "acc_1")).toBeNull();
+		expect(
+			updateBody({ ...debt, minimumInvalid: false }, "acc_1"),
+		).toMatchObject({ minimumPayment: null });
+	});
+
 	it("carries the id and the kept in-budget choice on an edit", () => {
 		expect(updateBody(form({ inBudget: false }), "acc_1")).toMatchObject({
 			id: "acc_1",
