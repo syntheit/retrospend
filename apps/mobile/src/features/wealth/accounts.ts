@@ -1,7 +1,9 @@
+import type { GlyphName } from "@/ui/Glyph";
 import type { Account } from "./source";
 
-// How the accounts list is grouped. Groups carry a count, never a total: a
-// sum of accounts in several currencies is a figure only the server works out.
+// How the accounts list is grouped. A group's total is the server's (the
+// summary): a sum of accounts in several currencies is a figure only the
+// server works out.
 
 export const GROUPS = [
 	"cash",
@@ -53,4 +55,40 @@ export function closedAccounts(accounts: readonly Account[]): Account[] {
 /** Open accounts the server could not value (no rate): they are left out of net worth. */
 export function unvalued(accounts: readonly Account[]): Account[] {
 	return accounts.filter((a) => a.closedAt === null && a.value === null);
+}
+
+/** The neutral tile's glyph for a kind of account (rows only, never color). */
+export function glyphOf(type: Account["type"]): GlyphName {
+	switch (type) {
+		case "CASH":
+			return "Landmark";
+		case "INVESTMENT":
+			return "Briefcase";
+		case "CRYPTO":
+			return "Coins";
+		case "REAL_ESTATE":
+			return "Home";
+		case "VEHICLE":
+			return "Car";
+		case "LIABILITY_LOAN":
+			return "Banknote";
+		case "LIABILITY_CREDIT_CARD":
+			return "CreditCard";
+		case "LIABILITY_MORTGAGE":
+			return "Receipt";
+	}
+}
+
+/**
+ * A yearly percent as the server stores it ("24.5") in hundredths of a
+ * percent (2450), for the percent formatter. Read from the text, so no float
+ * touches it; digits past the second are dropped. Null when it is not a number.
+ */
+export function aprBasis(text: string | null): number | null {
+	if (text === null) return null;
+	const match = /^(\d{1,3})(?:\.(\d+))?$/.exec(text.trim());
+	if (!match) return null;
+	const whole = Number(match[1]);
+	const fraction = Number(`${match[2] ?? ""}00`.slice(0, 2));
+	return whole * 100 + fraction;
 }

@@ -1,5 +1,7 @@
 import {
+	aprBasis,
 	closedAccounts,
+	glyphOf,
 	groupOf,
 	isLiability,
 	sectionsOf,
@@ -68,5 +70,22 @@ describe("account groups", () => {
 				}),
 			]),
 		).toEqual([]);
+	});
+});
+
+describe("row lead and terms", () => {
+	it("gives every kind of account a glyph", () => {
+		expect(glyphOf("CASH")).toBe("Landmark");
+		expect(glyphOf("LIABILITY_CREDIT_CARD")).toBe("CreditCard");
+		expect(glyphOf("VEHICLE")).toBe("Car");
+	});
+
+	it("reads a yearly percent in hundredths without a float", () => {
+		expect(aprBasis("24.5")).toBe(2450);
+		expect(aprBasis("24")).toBe(2400);
+		expect(aprBasis("0.05")).toBe(5);
+		expect(aprBasis("12.345678")).toBe(1234);
+		expect(aprBasis("abc")).toBeNull();
+		expect(aprBasis(null)).toBeNull();
 	});
 });

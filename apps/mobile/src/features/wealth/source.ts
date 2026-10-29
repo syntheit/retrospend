@@ -1,7 +1,7 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { CacheKey } from "@/features/read/loadCached";
 
-// Wealth reads, all from API v1 (accounts and net worth). Shapes are the
+// Wealth reads, all from API v1 (accounts, net worth and the summary). Shapes are the
 // contract's own. Every figure, the net worth, its change and each point of
 // the series, is the server's; the phone formats and draws them.
 
@@ -10,6 +10,7 @@ type Client = RetrospendClient["accounts"];
 export type AccountList = Awaited<ReturnType<Client["list"]>>;
 export type Account = AccountList["accounts"][number];
 export type NetWorth = Awaited<ReturnType<Client["netWorth"]>>;
+export type WealthSummary = Awaited<ReturnType<Client["summary"]>>;
 export type SeriesPoint = NetWorth["series"][number];
 export type AccountDetail = Awaited<ReturnType<Client["get"]>>;
 export type AccountLeg = AccountDetail["legs"][number];
@@ -20,13 +21,15 @@ export type BalancePreview = Awaited<
 export interface WealthData {
 	list: AccountList;
 	netWorth: NetWorth;
+	/** The page's totals the server works out: groups, allocation, liquid, runway. */
+	summary: WealthSummary;
 }
 
 /** The longest range the chart offers; one read covers every shorter one. */
 export const SERIES_DAYS = 365;
 export const CHANGE_DAYS = 30;
 
-export const WEALTH_CACHE: CacheKey = { name: "wealth", schema: 1 };
+export const WEALTH_CACHE: CacheKey = { name: "wealth", schema: 2 };
 export const ACCOUNT_CACHE_PREFIX = "account.";
 export const ACCOUNT_CACHE_KEEP = 20;
 
@@ -36,11 +39,12 @@ export function accountCache(id: string): CacheKey {
 
 export function fetchWealth(api: RetrospendClient) {
 	return async (): Promise<WealthData> => {
-		const [list, netWorth] = await Promise.all([
+		const [list, netWorth, summary] = await Promise.all([
 			api.accounts.list(),
 			api.accounts.netWorth({ days: SERIES_DAYS, changeDays: CHANGE_DAYS }),
+			api.accounts.summary(),
 		]);
-		return { list, netWorth };
+		return { list, netWorth, summary };
 	};
 }
 

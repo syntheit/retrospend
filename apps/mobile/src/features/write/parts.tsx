@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { ScrollView, useWindowDimensions, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
+import { Text } from "@/ui/Text";
 import { type Entered, minorOf } from "./amount";
 import type { PreviewStatus } from "./useMoneyWrite";
 
@@ -37,14 +38,10 @@ export function Note({
 	children: ReactNode;
 	tone?: "plain" | "attention";
 }) {
-	const { color, type } = useTheme();
 	return (
 		<Text
 			accessibilityRole={tone === "attention" ? "alert" : undefined}
-			style={{
-				color: tone === "attention" ? color.attentionText : color.fg2,
-				fontSize: type.body.size,
-			}}
+			tone={tone === "attention" ? "attention" : "fg2"}
 		>
 			{children}
 		</Text>
@@ -64,7 +61,7 @@ export function Line({
 	spoken?: string;
 	emphasis?: boolean;
 }) {
-	const { color, font, space, type } = useTheme();
+	const { space } = useTheme();
 	return (
 		<View
 			accessibilityLabel={spoken ?? `${label}, ${value}`}
@@ -76,21 +73,13 @@ export function Line({
 				paddingVertical: space[1],
 			}}
 		>
-			<Text
-				style={{ flexShrink: 1, color: color.fg2, fontSize: type.body.size }}
-			>
+			<Text style={{ flexShrink: 1 }} tone="fg2">
 				{label}
 			</Text>
 			<Text
-				style={{
-					color: color.fg,
-					fontSize: type.body.size,
-					fontVariant: ["tabular-nums"],
-					fontWeight: weight(
-						emphasis ? font.weight.semibold : font.weight.normal,
-					),
-					textAlign: "right",
-				}}
+				style={{ textAlign: "right" }}
+				tabular
+				weight={emphasis ? "semibold" : "normal"}
 			>
 				{value}
 			</Text>
@@ -113,6 +102,7 @@ export function AmountField({
 	label,
 	allowZero,
 	placeholder,
+	between,
 }: {
 	currency: string;
 	draft: string;
@@ -121,11 +111,13 @@ export function AmountField({
 	label: string;
 	allowZero?: boolean;
 	placeholder?: string;
+	/** What reads straight after the input, before the keypad (rate chips, a preview). */
+	between?: ReactNode;
 }) {
 	const t = useTranslations("mobile.composer");
 	const tb = useTranslations("mobile.budget.write");
 	const { format } = useFormatMoney();
-	const { color, font, radius, size, space, type } = useTheme();
+	const { color, radius, size, space } = useTheme();
 	const minor = minorOf(entered, allowZero);
 	const invalid = entered.state === "invalid";
 	const spoken =
@@ -160,13 +152,7 @@ export function AmountField({
 							borderRadius: radius.chip,
 						}}
 					>
-						<Text
-							style={{
-								color: color.fg2,
-								fontSize: type.body.size,
-								fontWeight: weight(font.weight.medium),
-							}}
-						>
+						<Text tone="fg2" weight="medium">
 							{currency}
 						</Text>
 					</View>
@@ -175,15 +161,11 @@ export function AmountField({
 						accessibilityLiveRegion="polite"
 						adjustsFontSizeToFit
 						numberOfLines={1}
-						style={{
-							flex: 1,
-							paddingRight: space[2],
-							color: draft ? color.fg : color.fg3,
-							fontSize: type.section.size,
-							fontVariant: ["tabular-nums"],
-							fontWeight: weight(font.weight.medium),
-							textAlign: "right",
-						}}
+						style={{ flex: 1, paddingRight: space[2], textAlign: "right" }}
+						tabular
+						tone={draft ? "fg" : "fg3"}
+						variant="section"
+						weight="medium"
 					>
 						{draft || placeholder || "0"}
 					</Text>
@@ -191,16 +173,15 @@ export function AmountField({
 				{invalid ? (
 					<Text
 						accessibilityRole="alert"
-						style={{
-							color: color.danger,
-							fontSize: type.small.size,
-							textAlign: "right",
-						}}
+						style={{ textAlign: "right" }}
+						tone="danger"
+						variant="small"
 					>
 						{tb("amountInvalid")}
 					</Text>
 				) : null}
 			</View>
+			{between}
 			<MoneyKeypad
 				currency={currency}
 				draft={draft}
@@ -209,11 +190,6 @@ export function AmountField({
 			/>
 		</View>
 	);
-}
-
-/** A token weight (400, 500, 600) as the string React Native takes. */
-function weight(value: number): "400" | "500" | "600" {
-	return String(value) as "400" | "500" | "600";
 }
 
 export interface ChangeRow {
@@ -244,7 +220,7 @@ export function ChangeList({
 	unavailable: string[];
 }) {
 	const t = useTranslations("mobile.budget.preview");
-	const { color, font, space, type } = useTheme();
+	const { color, space } = useTheme();
 	if (status === "idle") return null;
 	if (status === "loading") return <Note>{t("checking")}</Note>;
 	if (status === "failed") return <Note tone="attention">{t("error")}</Note>;
@@ -271,14 +247,7 @@ export function ChangeList({
 				borderTopColor: color.line,
 			}}
 		>
-			<Text
-				accessibilityRole="header"
-				style={{
-					color: color.fg,
-					fontSize: type.body.size,
-					fontWeight: weight(font.weight.semibold),
-				}}
-			>
+			<Text accessibilityRole="header" weight="semibold">
 				{t("changes")}
 			</Text>
 			{changes.length > 0 ? (
@@ -296,7 +265,7 @@ export function ChangeList({
 				<Note>{t("nothing")}</Note>
 			)}
 			{closing ? (
-				<Text style={{ color: color.fg3, fontSize: type.meta.size }}>
+				<Text tone="fg3" variant="meta">
 					{closing}
 				</Text>
 			) : null}

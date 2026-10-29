@@ -1,95 +1,173 @@
+import { formatPercent } from "@retrospend/domain/format-percent";
 import { useMemo, useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
+import { heroCents } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { AreaChart, type AreaPoint } from "@/ui/charts/AreaChart";
+import { Hero } from "@/ui/Hero";
+import { ListGroup, ListRow } from "@/ui/List";
 import { Segmented } from "@/ui/Segmented";
 import { Text } from "@/ui/Text";
-import { ScrubChart } from "./ScrubChart";
-import { RANGES, sliceRange, type WealthRange } from "./series";
-import type { NetWorth, SeriesPoint } from "./source";
+import { AllocationBar } from "./AllocationBar";
+import {
+	DEFAULT_RANGE,
+	datesFor,
+	RANGES,
+	sliceRange,
+	type WealthRange,
+} from "./series";
+import type { NetWorth, WealthSummary } from "./source";
 
-const CHART_HEIGHT = 160;
+const CHART_HEIGHT = 220;
 
 /**
- * Net worth: the one hero of Wealth. The number is the server's (null when a
- * rate is missing, which reads as words, never 0), the change over 30 days is
- * the server's, and the chart is its daily series. Dragging across the chart
- * swaps the number and the line under it for that day's.
+ * Net worth: the one hero of Wealth. The number and its 30-day change (with
+ * the percent) are the server's summary; the change is a link to the sheet
+ * that says why it moved. The chart is the server's daily series on the one
+ * area chart, opening on a month; holding and dragging swaps the number for
+ * that day's. Under it: what you own by group, the server's shares.
  */
-export function NetWorthHero({ netWorth }: { netWorth: NetWorth }) {
+export function NetWorthHero({
+	netWorth,
+	summary,
+	onChange,
+}: {
+	netWorth: NetWorth;
+	summary: WealthSummary;
+	/** Opens the sheet that says why net worth moved. */
+	onChange: () => void;
+}) {
 	const t = useTranslations("mobile.wealth");
 	const tm = useTranslations("mobile.money");
 	const format = useFormatter();
 	const money = useMoneyText();
-	const { space, type } = useTheme();
-	const [range, setRange] = useState<WealthRange>("3M");
-	const [scrub, setScrub] = useState<SeriesPoint | null>(null);
+	const locale = useMoneyLocale();
+	const { color, space } = useTheme();
+	const [range, setRange] = useState<WealthRange>(DEFAULT_RANGE);
+	const [scrub, setScrub] = useState<AreaPoint | null>(null);
 	const points = useMemo(
 		() => sliceRange(netWorth.series, range),
 		[netWorth.series, range],
 	);
+	const cents = heroCents(summary.home);
+	const whole = { cents } as const;
 
-	const shown = scrub ? scrub.value : netWorth.netWorth;
-	const change = netWorth.change;
-	const line = scrub
-		? format.dateTime(new Date(`${scrub.date}T12:00:00Z`), {
-				dateStyle: "medium",
-				timeZone: "UTC",
-			})
-		: change
+	const amount = scrub
+		? scrub.value
+			? money(scrub.value, whole)
+			: tm("noRate")
+		: money(summary.netWorth, whole);
+
+	const change = summary.change;
+	const changeText = change
+		? change.basis === null
 			? t("change", {
-					amount: money(change.total, { sign: "exceptZero" }),
+					amount: money(change.total, { ...whole, sign: "exceptZero" }),
 					days: change.days,
 				})
-			: null;
-	const amount = shown ? money(shown) : tm("noRate");
+			: t("changePercent", {
+					amount: money(change.total, { ...whole, sign: "exceptZero" }),
+					percent: formatPercent(change.basis, {
+						locale,
+						digits: 1,
+						sign: "exceptZero",
+					}),
+					days: change.days,
+				})
+		: null;
+	// With the parts the server gave, the change is a link to why it moved.
+	const sub = scrub ? (
+		format.dateTime(new Date(`${scrub.date}T12:00:00Z`), {
+			dateStyle: "medium",
+			timeZone: "UTC",
+		})
+	) : changeText === null ? undefined : netWorth.change ? (
+		<Pressable
+			accessibilityHint={t("whyHint")}
+			accessibilityRole="link"
+			hitSlop={space[3]}
+			onPress={onChange}
+		>
+			<Text
+				numberOfLines={1}
+				style={{
+					color: color.accentStrong,
+					textDecorationLine: "underline",
+				}}
+				variant="small"
+			>
+				{changeText}
+			</Text>
+		</Pressable>
+	) : (
+		changeText
+	);
 
 	return (
-		<View style={{ gap: space[3], padding: space[4] }}>
-			<View
-				accessibilityLabel={[t("netWorth"), amount, line]
-					.filter(Boolean)
-					.join(", ")}
-				accessibilityLiveRegion="polite"
-				accessible
-				style={{ gap: space[1] }}
-			>
-				<Text tone="fg2">{t("netWorth")}</Text>
-				<Text adjustsFontSizeToFit numberOfLines={1} variant="hero">
-					{amount}
-				</Text>
-				<Text
-					style={{ minHeight: type.body.size * type.body.lineHeight }}
-					tone="fg2"
-				>
-					{line ?? " "}
-				</Text>
-			</View>
+		<View style={{ gap: space[4], padding: space[4] }}>
+			<Hero label={t("netWorth")} sub={sub} value={amount} />
 			{netWorth.series.length > 1 ? (
-				<>
-					<View style={{ paddingVertical: space[1] }}>
-						<Segmented
-							accessibilityLabel={t("range")}
-							onChange={(next) => {
-								setScrub(null);
-								setRange(next);
-							}}
-							options={RANGES.map((value) => ({
-								value,
-								label: t(`ranges.${value}`),
-							}))}
-							value={range}
-						/>
-					</View>
-					<ScrubChart
+				<View style={{ gap: space[3] }}>
+					<AreaChart
+						dates={datesFor(range)}
 						height={CHART_HEIGHT}
-						label={t("chart.label", { range: t(`ranges.${range}`) })}
+						label={t("chart.label", { range: t(`chart.ranges.${range}`) })}
 						onScrub={setScrub}
 						points={points}
 					/>
-				</>
+					<Segmented
+						accessibilityLabel={t("range")}
+						onChange={(next) => {
+							setScrub(null);
+							setRange(next);
+						}}
+						options={RANGES.map((value) => ({
+							value,
+							label: t(`ranges.${value}`),
+						}))}
+						value={range}
+					/>
+				</View>
 			) : null}
+			<AllocationBar items={summary.allocation} />
 		</View>
+	);
+}
+
+/**
+ * Liquid assets and the runway, as two rows in an inset group (the server's
+ * figures): the runway says how long liquid money lasts at the average
+ * monthly spending.
+ */
+export function KeyFigures({ summary }: { summary: WealthSummary }) {
+	const t = useTranslations("mobile.wealth");
+	const money = useMoneyText();
+	const whole = { cents: heroCents(summary.home) } as const;
+	const runway = summary.runway;
+	return (
+		<ListGroup>
+			<ListRow
+				end={
+					<Text tabular weight="semibold">
+						{money(summary.liquid, whole)}
+					</Text>
+				}
+				title={t("liquid")}
+			/>
+			{runway ? (
+				<ListRow
+					end={
+						<Text tabular weight="semibold">
+							{t("months", { months: runway.months })}
+						</Text>
+					}
+					sub={t("runwayAt", { amount: money(runway.monthly, whole) })}
+					title={t("runway")}
+				/>
+			) : null}
+		</ListGroup>
 	);
 }

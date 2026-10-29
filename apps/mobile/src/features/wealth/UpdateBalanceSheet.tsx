@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { useTranslations } from "use-intl";
+import { View } from "react-native";
+import { useFormatter, useTranslations } from "use-intl";
+import { useRateTypeLabel } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
 import { figureLines } from "@/features/write/figures";
@@ -14,52 +16,85 @@ import {
 import { useFigureLabel } from "@/features/write/useFigureLabel";
 import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { useUndoToast } from "@/features/write/useUndoToast";
-import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
+import { noSession, useApi } from "@/features/write/WriteFrame";
+import { useTheme } from "@/theme";
+import { Button } from "@/ui/Button";
+import { IconTile } from "@/ui/IconTile";
 import { Sheet } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
+import { glyphOf } from "./accounts";
 import { ACCOUNT_BALANCE, balanceRows, isUnchanged } from "./balance";
-import type { AccountDetail } from "./source";
+import { RateTypeChips } from "./RateTypeChips";
+import { rateTypeChanged, rateTypesOf } from "./rateType";
+import type { Account, CurrencyInfo } from "./source";
 
 /**
- * Say what the account holds today. The server works out the difference and
- * records it as Not logged (not income, not spending); the dry run shows the
- * account's new balance, net worth, and that difference before Update is on.
- * The toast undoes it.
+ * Say what the account holds today. In the order the mockup sets: the account
+ * and what it shows now, the new balance, the rate type it is valued at from
+ * today (earlier days keep theirs), What this changes, the keypad, and the
+ * verb pinned under them. The server works out the difference and records it
+ * as Not logged (not income, not spending); the dry run shows the account's
+ * new balance, net worth and that difference before Update is on. The toast
+ * undoes it.
  */
 export function UpdateBalanceSheet({
 	account,
 	visible,
+	home,
+	catalog,
 	onClose,
 	onDone,
 }: {
-	account: AccountDetail;
+	account: Account;
 	visible: boolean;
+	home: string;
+	catalog: readonly CurrencyInfo[];
 	onClose: () => void;
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.wealth.update");
 	const tp = useTranslations("mobile.budget.preview");
+	const format = useFormatter();
 	const api = useApi();
 	const announce = useUndoToast("accounts");
 	const money = useMoneyText();
+	const rateName = useRateTypeLabel();
 	const locale = useAmountLocale();
+	const { space } = useTheme();
 	const currency = account.balance.currency;
+	const types = rateTypesOf(catalog, currency, home);
+	const saved = account.rateType;
 	const [draft, setDraft] = useState("");
+	const [rateType, setRateType] = useState<string | null>(saved);
 	const entered = readAmount(draft, locale, currency);
 	// Zero is a real balance: an empty account, a paid-off card.
 	const minor = minorOf(entered, true);
+	// A pick other than the saved type values the account from today on.
+	const switching = rateType !== null && rateType !== saved;
 	const bodyKey =
-		minor === null ? null : JSON.stringify({ minor, id: account.id });
+		minor === null
+			? null
+			: JSON.stringify({
+					minor,
+					id: account.id,
+					rateType: switching ? rateType : null,
+				});
 	const { idFor, reset } = useWriteIds(bodyKey);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening starts empty and fresh
 	useEffect(() => {
 		if (!visible) return;
 		setDraft("");
+		setRateType(saved);
 		reset();
 	}, [visible]);
 	const input =
 		minor === null
 			? null
-			: { id: account.id, balance: wireAmount(minor, currency) };
+			: {
+					id: account.id,
+					balance: wireAmount(minor, currency),
+					...(switching ? { rateType } : {}),
+				};
 
 	const flow = useMoneyWrite({
 		input: visible ? input : null,
@@ -105,7 +140,21 @@ export function UpdateBalanceSheet({
 			value: money(rows.notLogged, { sign: "exceptZero" }),
 		});
 	}
-	const same = rows ? isUnchanged(rows) : false;
+	const same = rows ? isUnchanged(rows) && !switching : false;
+	const ready = flow.status === "ready" && !same;
+
+	// The dated note under the chips: what the pick does and what it leaves.
+	const rateNote =
+		rateType === null || types.length < 2
+			? null
+			: !switching
+				? t("valuedAt", { type: rateName(rateType) })
+				: rateTypeChanged(saved, rateType)
+					? t("rateChange", {
+							next: rateName(rateType),
+							before: rateName(saved ?? ""),
+						})
+					: t("rateFromToday", { next: rateName(rateType) });
 
 	async function submit() {
 		const out = await flow.commit();
@@ -124,47 +173,77 @@ export function UpdateBalanceSheet({
 	return (
 		<Sheet
 			detents={["large"]}
+			footer={
+				<Button
+					disabled={!ready || flow.committing}
+					label={flow.committing ? t("saving") : t("submit")}
+					onPress={submit}
+				/>
+			}
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}
 		>
 			<SheetBody>
-				<WriteFrame
-					busy={flow.committing}
-					changes={
-						same ? (
-							<Note>{t("same")}</Note>
-						) : (
-							<>
-								<ChangeList
-									changes={changes}
-									status={flow.status}
-									stays={(lines?.stays ?? []).map((id) => label(id).inline)}
-									unavailable={(lines?.unavailable ?? []).map(
-										(id) => label(id).inline,
-									)}
-								/>
-								{rows?.notLogged ? <Note>{t("notLoggedHint")}</Note> : null}
-							</>
-						)
-					}
-					failed={flow.commitFailed}
-					onSubmit={submit}
-					ready={flow.status === "ready" && !same}
-					submitLabel={t("submit")}
+				<View
+					style={{ flexDirection: "row", alignItems: "center", gap: space[3] }}
 				>
-					<Note>
-						{t("now", { name: account.name, amount: money(account.balance) })}
-					</Note>
-					<AmountField
-						allowZero
-						currency={currency}
-						draft={draft}
-						entered={entered}
-						label={t("amount")}
-						onDraftChange={setDraft}
-					/>
-				</WriteFrame>
+					<IconTile name={glyphOf(account.type)} />
+					<View style={{ flex: 1, minWidth: 0 }}>
+						<Text numberOfLines={1} weight="semibold">
+							{account.name}
+						</Text>
+						<Text numberOfLines={1} tone="fg3" variant="meta">
+							{t("now", {
+								amount: money(account.balance),
+								date: format.dateTime(new Date(account.updatedAt), {
+									month: "short",
+									day: "numeric",
+								}),
+							})}
+						</Text>
+					</View>
+				</View>
+				<AmountField
+					allowZero
+					between={
+						<View style={{ gap: space[4] }}>
+							<RateTypeChips
+								onChange={setRateType}
+								types={types}
+								value={rateType}
+							/>
+							{rateNote ? (
+								<Text tone={switching ? "attention" : "fg2"} variant="small">
+									{rateNote}
+								</Text>
+							) : null}
+							{same ? (
+								<Note>{t("same")}</Note>
+							) : (
+								<>
+									<ChangeList
+										changes={changes}
+										status={flow.status}
+										stays={(lines?.stays ?? []).map((id) => label(id).inline)}
+										unavailable={(lines?.unavailable ?? []).map(
+											(id) => label(id).inline,
+										)}
+									/>
+									{rows?.notLogged ? <Note>{t("notLoggedHint")}</Note> : null}
+								</>
+							)}
+							{flow.commitFailed ? (
+								<Note tone="attention">{t("error")}</Note>
+							) : null}
+						</View>
+					}
+					currency={currency}
+					draft={draft}
+					entered={entered}
+					label={t("amount")}
+					onDraftChange={setDraft}
+				/>
 			</SheetBody>
 		</Sheet>
 	);

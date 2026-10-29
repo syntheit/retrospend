@@ -1164,14 +1164,18 @@
 			"1M": "1M",
 			"3M": "3M",
 			"6M": "6M",
-			"1Y": "1Y"
+			"1Y": "1Y",
+			"All": "All"
 		},
 		"chart": {
 			"label": "Net worth, {range}",
-			"summary": "{label}. From {from} on {fromDate} to {to} on {toDate}.",
-			"pick": "{date}, {amount}",
-			"later": "Next day",
-			"earlier": "Previous day"
+			"ranges": {
+				"1M": "last month",
+				"3M": "last 3 months",
+				"6M": "last 6 months",
+				"1Y": "last year",
+				"All": "all time"
+			}
 		},
 		"whyTitle": "Why it changed in {days} days",
 		"parts": {
@@ -1203,9 +1207,10 @@
 		"owes": "You owe",
 		"closed": {
 			"title": "Closed accounts",
-			"badge": "Closed"
+			"badge": "Closed",
+			"on": "Closed {date}. History kept.",
+			"notCounted": "Not in net worth"
 		},
-		"withoutRate": "{count, plural, one {# account has no rate yet and is left out of net worth} other {# accounts have no rate yet and are left out of net worth}}",
 		"error": "Couldn't load Wealth",
 		"errorDetail": "Check your connection and try again.",
 		"empty": "No accounts yet",
@@ -1227,14 +1232,19 @@
 		},
 		"update": {
 			"title": "Update balance",
-			"now": "{name} shows {amount} now.",
+			"now": "Now {amount} · Updated {date}",
 			"amount": "What it holds today",
 			"submit": "Update balance",
 			"netWorth": "Net worth",
 			"notLogged": "Not logged",
 			"notLoggedHint": "Your income and spending stay as they are. The difference is recorded as Not logged.",
 			"same": "That is already the balance, so nothing changes.",
-			"toast": "{name} is now {amount}"
+			"toast": "{name} is now {amount}",
+			"valuedAt": "Valued at the {type} rate",
+			"rateChange": "Valued at {next} from today. Earlier days keep the {before} rate.",
+			"rateFromToday": "Valued at {next} from today.",
+			"saving": "Saving",
+			"error": "Couldn't save. Try again."
 		},
 		"account": {
 			"addTitle": "Add account",
@@ -1256,7 +1266,8 @@
 			"dueDay": "Due day of the month",
 			"minimum": "Minimum payment",
 			"addedToast": "{name} added",
-			"savedToast": "{name} saved"
+			"savedToast": "{name} saved",
+			"currency": "Currency"
 		},
 		"close": {
 			"title": "Close {name}?",
@@ -1270,6 +1281,48 @@
 			"submit": "Reopen account",
 			"body": "{name} counts in your accounts and net worth again from today.",
 			"toast": "{name} reopened"
+		},
+		"changePercent": "{amount} ({percent}) in {days} days",
+		"whyHint": "Shows why it changed",
+		"changeTotal": "Total",
+		"assetsByGroup": "Assets by group",
+		"liquid": "Liquid assets",
+		"runway": "Runway",
+		"runwayAt": "at your average spending of {amount} a month",
+		"months": "{months, plural, one {# month} other {# months}}",
+		"valuedAtLabel": "Valued at",
+		"valuedAt": "Valued at {type}",
+		"apr": "APR {rate}",
+		"noRateInline": "No {currency} rate. Left out of net worth.",
+		"missingRates": "{count, plural, one {# account without a rate} other {# accounts without a rate}}",
+		"more": "More actions",
+		"menu": {
+			"income": "Add income",
+			"currencies": "Currencies and rates"
+		},
+		"actions": {
+			"update": "Update balance",
+			"edit": "Edit account",
+			"reopen": "Reopen account",
+			"close": "Close account",
+			"delete": "Delete permanently",
+			"swipe": {
+				"update": "Update",
+				"edit": "Edit",
+				"reopen": "Reopen",
+				"close": "Close",
+				"delete": "Delete"
+			}
+		},
+		"delete": {
+			"title": "Delete {name} permanently?",
+			"body": "This removes the account and its whole balance history. Net worth history changes too. This cannot be undone.",
+			"keepHistory": "To keep the history, close the account instead.",
+			"closeInstead": "Close instead",
+			"submit": "Delete permanently",
+			"deleting": "Deleting",
+			"toast": "Deleted {name}",
+			"error": "Couldn't delete. Try again."
 		}
 	},
 	"money": {

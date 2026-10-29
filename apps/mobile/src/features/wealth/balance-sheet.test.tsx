@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { AccountDetail } from "./source";
+import type { Account, CurrencyInfo } from "./source";
 import { UpdateBalanceSheet } from "./UpdateBalanceSheet";
 
 // Update balance with real presses on the real keypad: the dry run comes
@@ -29,8 +29,21 @@ jest.mock("@/data/ids", () => ({
 const mockToast = { show: jest.fn(), dismiss: jest.fn() };
 jest.mock("@/ui/Toast", () => ({ useToast: () => mockToast }));
 jest.mock("@/ui/Sheet", () => ({
-	Sheet: ({ visible, children }: { visible: boolean; children: unknown }) =>
-		visible ? children : null,
+	Sheet: ({
+		visible,
+		children,
+		footer,
+	}: {
+		visible: boolean;
+		children: unknown;
+		footer?: unknown;
+	}) =>
+		visible ? (
+			<>
+				{children}
+				{footer}
+			</>
+		) : null,
 }));
 jest.mock("@/ui/Button", () => {
 	const { Pressable } = require("react-native");
@@ -54,6 +67,7 @@ jest.mock("use-intl", () => {
 			// biome-ignore lint/suspicious/noExplicitAny: a walk over the JSON tree
 			.reduce((node: any, part: string) => node?.[part], messages);
 	return {
+		useFormatter: () => ({ dateTime: () => "Oct 12" }),
 		useTranslations: (ns?: string) => {
 			const t = (key: string, values: Record<string, unknown> = {}) =>
 				String(lookup(ns, key) ?? key).replace(/\{(\w+)\}/g, (_, name) =>
@@ -70,8 +84,24 @@ const ars = (minor: number) => ({ minor, currency: "ARS" });
 const account = {
 	id: "acct-galicia",
 	name: "Galicia (ARS)",
+	type: "CASH",
 	balance: ars(184_000_000),
-} as unknown as AccountDetail;
+	updatedAt: "2026-10-12T12:00:00.000Z",
+	rateType: null,
+} as unknown as Account;
+
+const usdAccount = {
+	id: "acct-wise",
+	name: "Wise",
+	type: "CASH",
+	balance: { minor: 10_000, currency: "USD" },
+	updatedAt: "2026-10-12T12:00:00.000Z",
+	rateType: "official",
+} as unknown as Account;
+
+const catalog = [
+	{ code: "USD", rateTypes: ["official", "blue"] },
+] as unknown as CurrencyInfo[];
 
 function fakeApi() {
 	const calls: { route: string; input: unknown; key?: string }[] = [];
@@ -162,6 +192,8 @@ describe("Update balance", () => {
 			tree = create(
 				<UpdateBalanceSheet
 					account={account}
+					catalog={catalog}
+					home="ARS"
 					onClose={onClose}
 					onDone={onDone}
 					visible
@@ -208,6 +240,45 @@ describe("Update balance", () => {
 		act(() => tree.unmount());
 	});
 
+	it("values the account at another rate type from today, with its note", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(
+				<UpdateBalanceSheet
+					account={usdAccount}
+					catalog={catalog}
+					home="ARS"
+					onClose={jest.fn()}
+					onDone={jest.fn()}
+					visible
+				/>,
+			);
+		});
+		press(tree, "5");
+		await wait(400);
+		// The saved type is on and sends nothing extra.
+		expect(calls.at(-1)?.input).toEqual({
+			id: "acct-wise",
+			balance: "5.00",
+		});
+		press(tree, "Blue");
+		await wait(400);
+		expect(calls.at(-1)?.input).toEqual({
+			id: "acct-wise",
+			balance: "5.00",
+			rateType: "blue",
+		});
+		const note = tree.root.findAll(
+			(n) =>
+				typeof n.props.children === "string" &&
+				String(n.props.children).startsWith("Valued at Blue from today"),
+		);
+		expect(note.length).toBeGreaterThan(0);
+		act(() => tree.unmount());
+	});
+
 	it("takes a real zero (an emptied account)", async () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
@@ -216,6 +287,8 @@ describe("Update balance", () => {
 			tree = create(
 				<UpdateBalanceSheet
 					account={account}
+					catalog={catalog}
+					home="ARS"
 					onClose={jest.fn()}
 					onDone={jest.fn()}
 					visible
