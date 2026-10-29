@@ -137,7 +137,8 @@
 				"same": "Доля каждого не меняется."
 			},
 			"oneLineNone": "Ни одна цифра не меняется.",
-			"oneLineMore": "{figure} и ещё {count}"
+			"oneLineMore": "{figure} и ещё {count}",
+			"splitOff": "Части пока не дают в сумме общий итог."
 		},
 		"list": {
 			"two": "{first} и {second}",
@@ -271,7 +272,17 @@
 				"SHARES": "Разделено по долям"
 			},
 			"summaryShare": "{split}, ваша доля {amount}",
-			"tapFaces": "Нажмите на лицо на первом шаге, чтобы разделить."
+			"tapFaces": "Нажмите на лицо на первом шаге, чтобы разделить.",
+			"custom": "Свой вариант",
+			"divideBy": "Делить по",
+			"part": {
+				"EXACT": "Сумма",
+				"PERCENTAGE": "Процент",
+				"SHARES": "Доли"
+			},
+			"theirShare": "Доля {amount}",
+			"partsMissing": "Укажите часть для каждого человека.",
+			"partsOff": "Части пока не дают в сумме общий итог."
 		},
 		"delete": {
 			"row": "Удалить",

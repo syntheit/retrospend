@@ -137,7 +137,8 @@
 				"same": "Der Anteil jeder Person bleibt gleich."
 			},
 			"oneLineNone": "Keine Zahl ändert sich.",
-			"oneLineMore": "{figure} und {count} weitere"
+			"oneLineMore": "{figure} und {count} weitere",
+			"splitOff": "Die Werte ergeben noch nicht die Summe."
 		},
 		"list": {
 			"two": "{first} und {second}",
@@ -271,7 +272,17 @@
 				"SHARES": "Nach Anteilen"
 			},
 			"summaryShare": "{split}, dein Anteil {amount}",
-			"tapFaces": "Tippe im ersten Schritt auf ein Gesicht, um aufzuteilen."
+			"tapFaces": "Tippe im ersten Schritt auf ein Gesicht, um aufzuteilen.",
+			"custom": "Individuell",
+			"divideBy": "Aufteilen nach",
+			"part": {
+				"EXACT": "Betrag",
+				"PERCENTAGE": "Prozent",
+				"SHARES": "Anteile"
+			},
+			"theirShare": "Anteil {amount}",
+			"partsMissing": "Gib für jede Person einen Wert ein.",
+			"partsOff": "Die Werte ergeben noch nicht die Summe."
 		},
 		"delete": {
 			"row": "Löschen",

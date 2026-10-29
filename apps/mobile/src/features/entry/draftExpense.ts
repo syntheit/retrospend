@@ -7,6 +7,7 @@ import {
 	type RateChoice,
 	rateFields,
 } from "./draftAmount";
+import { partText, type SplitMode, shareFields } from "./splitParts";
 import {
 	type EntryCatalog,
 	type EntryPerson,
@@ -29,6 +30,14 @@ export interface ExpenseDraft extends RateChoice {
 	categoryId: string | null;
 	/** Person keys of the others on it. Empty: a personal expense. */
 	withKeys: string[];
+	/** Who paid, as a person key; null: you. Only people on the split can pay. */
+	paidByKey: string | null;
+	/** How it divides. */
+	splitMode: SplitMode;
+	/** What each person typed in a custom split, by person key. */
+	parts: Record<string, string>;
+	/** An edit changed who paid, the mode or a part: only then the people are sent back. */
+	splitTouched: boolean;
 	/** The day, "yyyy-MM-dd". */
 	date: string;
 	/** The project it goes into; it makes the expense a shared one. */
@@ -62,8 +71,10 @@ export const LOCATION_LIMIT = 191;
  * people are the server's to keep (the edit leaves them out).
  */
 export interface SavedSplit {
-	mode: "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
+	mode: SplitMode;
 	paidBy: { type: PersonType; id: string };
+	/** You hold a share of it; a payer for others may hold none. */
+	youOnSplit: boolean;
 }
 
 /**
@@ -86,6 +97,13 @@ export interface ExpenseEdit {
 	category: { id: string; name: string } | null;
 }
 
+const NO_SPLIT = {
+	paidByKey: null,
+	splitMode: "EQUAL" as SplitMode,
+	parts: {},
+	splitTouched: false,
+};
+
 export function newExpenseDraft(input: {
 	id: string;
 	currency: string;
@@ -97,6 +115,7 @@ export function newExpenseDraft(input: {
 		title: "",
 		categoryId: null,
 		withKeys: [],
+		...NO_SPLIT,
 		date: input.date,
 		projectId: null,
 		projectPeople: [],
@@ -136,6 +155,7 @@ export function expenseFromEntry(
 		title: entry.title,
 		categoryId: entry.categoryId,
 		withKeys: [],
+		...NO_SPLIT,
 		date: entry.date,
 		projectId: null,
 		projectPeople: [],
@@ -174,21 +194,49 @@ export function sharedFromDetail(
 		splitMode: SavedSplit["mode"];
 		project: { id: string } | null;
 		category: { id: string; name: string } | null;
-		paidBy: Person;
+		paidBy: Person & { name?: string; imageUrl?: string | null };
+		splits?: (Person & {
+			name?: string;
+			imageUrl?: string | null;
+			share: { minor: number; currency: string };
+			percentage: string | null;
+			units: number | null;
+		})[];
 	},
 	locale: string,
+	meId = "",
 ): ExpenseDraft {
 	const { currency } = detail.amount;
+	const isMe = (p: Person) => p.type === "user" && p.id === meId;
+	const splits = detail.splits ?? [];
+	const others = splits.filter((s) => !isMe(s));
+	const payer = detail.paidBy;
+	const payerKey = isMe(payer) ? null : personKey(payer);
+	// Everyone the split names, so a saved payer with no share stays pickable.
+	const named = [...others, ...(payerKey ? [payer] : [])].filter(
+		(p, i, all) => all.findIndex((q) => personKey(q) === personKey(p)) === i,
+	);
 	return {
 		id: detail.id,
 		currency,
 		amountText: draftFromMinor(Math.abs(detail.amount.minor), locale, currency),
 		title: detail.title,
 		categoryId: detail.category?.id ?? null,
-		withKeys: [],
+		withKeys: others.map(personKey),
+		paidByKey: payerKey,
+		splitMode: detail.splitMode,
+		parts: Object.fromEntries(
+			splits.map((s) => [personKey(s), partText(detail.splitMode, s, locale)]),
+		),
+		splitTouched: false,
 		date: detail.date,
 		projectId: detail.project?.id ?? null,
-		projectPeople: [],
+		projectPeople: named.map((p) => ({
+			type: p.type,
+			id: p.id,
+			name: p.name ?? "",
+			imageUrl: p.imageUrl ?? null,
+		})),
 		location: "",
 		note: detail.notes ?? "",
 		spread: null,
@@ -203,7 +251,8 @@ export function sharedFromDetail(
 			home: null,
 			split: {
 				mode: detail.splitMode,
-				paidBy: { type: detail.paidBy.type, id: detail.paidBy.id },
+				paidBy: { type: payer.type, id: payer.id },
+				youOnSplit: splits.length === 0 || splits.some(isMe),
 			},
 			projectId: detail.project?.id ?? null,
 			category: detail.category
@@ -232,8 +281,32 @@ export function knownPeople(
 }
 
 export type ExpenseErrors = Partial<
-	Record<"amount" | "category" | "rate", true>
+	Record<"amount" | "category" | "rate" | "split", true>
 >;
+
+/** Whether the draft is a split that sends its people (a new split, or an edit that changed it). */
+function sendsSplit(d: ExpenseDraft): boolean {
+	if (d.editing) return d.editing.source === "shared" && d.splitTouched;
+	return d.withKeys.length > 0 || d.projectId !== null;
+}
+
+/** You hold a share, unless an edit of someone's split says you do not. */
+function youOnSplit(d: ExpenseDraft): boolean {
+	return d.editing ? (d.editing.split?.youOnSplit ?? true) : true;
+}
+
+/** Whether every person of a custom split has a part that reads. */
+function partsRead(d: ExpenseDraft, locale: string, meId: string): boolean {
+	if (d.splitMode === "EQUAL") return true;
+	const mode = d.splitMode;
+	const keys = [
+		...(youOnSplit(d) ? [personKey({ type: "user", id: meId })] : []),
+		...d.withKeys,
+	];
+	return keys.every(
+		(key) => shareFields(mode, d.parts[key] ?? "", locale, d.currency) !== null,
+	);
+}
 
 /**
  * What keeps Save from writing. A category must be one of `categories`, or
@@ -243,6 +316,7 @@ export function expenseErrors(
 	d: ExpenseDraft,
 	locale: string,
 	categories?: { id: string }[],
+	meId?: string,
 ): ExpenseErrors {
 	const errors: ExpenseErrors = {};
 	if (!amountMinor(d.amountText, locale, d.currency)) errors.amount = true;
@@ -252,6 +326,9 @@ export function expenseErrors(
 		d.editing?.category?.id === d.categoryId;
 	if (!d.categoryId || !known) errors.category = true;
 	if (rateFields(d, locale) === null) errors.rate = true;
+	if (meId !== undefined && sendsSplit(d) && !partsRead(d, locale, meId)) {
+		errors.split = true;
+	}
 	return errors;
 }
 
@@ -321,7 +398,8 @@ export function splitRows(
 
 /**
  * The request for Save, or null while it cannot be saved. A split goes to
- * /shared-expenses with you as the payer, an expense alone to /expenses.
+ * /shared-expenses with its payer and mode (you and equal unless picked), an
+ * expense alone to /expenses.
  * An empty title saves as the category's name, as on the web.
  */
 export function buildExpenseWrite(
@@ -356,14 +434,9 @@ export function buildExpenseWrite(
 			},
 		};
 	}
-	const people = knownPeople(d, input.catalog.people);
-	const others = d.withKeys.flatMap((key) => {
-		const p = people.find((x) => personKey(x) === key);
-		return p ? [{ type: p.type, id: p.id }] : [];
-	});
+	const split = splitBody(d, input);
 	// A project can hold an expense of yours alone; any other split needs someone.
-	if (others.length === 0 && !d.projectId) return null;
-	const you = { type: "user" as const, id: input.meId };
+	if (!split || (split.others === 0 && !d.projectId)) return null;
 	return {
 		entity: "shared-expenses",
 		label: title,
@@ -374,13 +447,64 @@ export function buildExpenseWrite(
 			currency: d.currency,
 			date: d.date,
 			categoryId: category.id,
-			paidBy: you,
-			splitMode: "EQUAL",
-			splitWith: [you, ...others],
+			paidBy: split.paidBy,
+			splitMode: d.splitMode,
+			splitWith: split.splitWith,
 			...sharedNotes(d),
 			...(d.projectId ? { projectId: d.projectId } : {}),
 		},
 	};
+}
+
+type Ref = { type: PersonType; id: string };
+
+/**
+ * Who paid and who shares, as the API takes them. A custom split names each
+ * person's typed part (the server splits and checks the total); null while a
+ * part does not read. The payer is you unless another person on the split was
+ * picked (an edit also keeps a saved payer who holds no share).
+ */
+function splitBody(
+	d: ExpenseDraft,
+	input: { locale: string; meId: string; catalog: EntryCatalog },
+): {
+	paidBy: Ref;
+	splitWith: Record<string, unknown>[];
+	others: number;
+} | null {
+	const people = knownPeople(d, input.catalog.people);
+	const you: Ref = { type: "user", id: input.meId };
+	const others = d.withKeys.flatMap((key) => {
+		const p = people.find((x) => personKey(x) === key);
+		return p ? [{ type: p.type, id: p.id }] : [];
+	});
+	const members = [...(youOnSplit(d) ? [you] : []), ...others];
+	// A new split is paid by someone on it; an edit may keep a payer with no share.
+	const payerKey =
+		d.paidByKey !== null && (d.editing || d.withKeys.includes(d.paidByKey))
+			? d.paidByKey
+			: null;
+	const payer =
+		payerKey === null
+			? you
+			: (people.find((x) => personKey(x) === payerKey) ?? you);
+	const paidBy = { type: payer.type, id: payer.id };
+	const mode = d.splitMode;
+	if (mode === "EQUAL") {
+		return { paidBy, splitWith: members, others: others.length };
+	}
+	const splitWith: Record<string, unknown>[] = [];
+	for (const member of members) {
+		const fields = shareFields(
+			mode,
+			d.parts[personKey(member)] ?? "",
+			input.locale,
+			d.currency,
+		);
+		if (!fields) return null;
+		splitWith.push({ ...member, ...fields });
+	}
+	return { paidBy, splitWith, others: others.length };
 }
 
 /**
@@ -416,7 +540,7 @@ function sharedNotes(d: ExpenseDraft) {
  */
 export function buildExpenseUpdate(
 	d: ExpenseDraft,
-	input: { locale: string; catalog: EntryCatalog },
+	input: { locale: string; catalog: EntryCatalog; meId?: string },
 ): PendingWrite | null {
 	const { editing } = d;
 	const minor = amountMinor(d.amountText, input.locale, d.currency);
@@ -430,6 +554,14 @@ export function buildExpenseUpdate(
 	const amount = fromMinor(money(minor, d.currency));
 	if (editing.source === "shared") {
 		if (!editing.split) return null;
+		// Untouched, the saved payer and mode go back and the people are left
+		// out: the server keeps them. Changed, the whole split goes.
+		let split: ReturnType<typeof splitBody> | null = null;
+		if (d.splitTouched) {
+			if (!input.meId) return null;
+			split = splitBody(d, { ...input, meId: input.meId });
+			if (!split) return null;
+		}
 		return {
 			entity: "shared-expenses",
 			kind: "update",
@@ -441,8 +573,9 @@ export function buildExpenseUpdate(
 				currency: d.currency,
 				date: d.date,
 				categoryId: category.id,
-				paidBy: editing.split.paidBy,
-				splitMode: editing.split.mode,
+				paidBy: split ? split.paidBy : editing.split.paidBy,
+				splitMode: split ? d.splitMode : editing.split.mode,
+				...(split ? { splitWith: split.splitWith } : {}),
 				...sharedNotes(d),
 				...(editing.projectId ? { projectId: editing.projectId } : {}),
 			},

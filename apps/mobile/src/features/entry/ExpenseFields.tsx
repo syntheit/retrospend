@@ -19,13 +19,14 @@ import {
 	SPREAD_MONTHS,
 } from "./draft";
 import { FaceRow } from "./FaceRow";
+import type { SplitMode } from "./splitParts";
 import { TitleCard } from "./TitleCard";
 import type { EntryCatalog, EntryPerson } from "./types";
 
 type Money = { minor: number; currency: string };
 
 /** How a split divides, as the server names it. */
-export type SplitModeName = "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
+export type SplitModeName = SplitMode;
 
 /**
  * One line under the faces that says how it is split and what your part is.

@@ -16,7 +16,11 @@ export type PreviewState =
 	/** The server could not be reached: the write will wait on the phone. */
 	| { status: "offline" }
 	/** The server refused the dry run: no rate for the currency, or a field it rejects. */
-	| { status: "refused"; reason: "missingRate" | "other"; currency: string };
+	| {
+			status: "refused";
+			reason: "missingRate" | "split" | "other";
+			currency: string;
+	  };
 
 /** No answer for this long reads as offline; Save then waits on the phone. */
 const PREVIEW_TIMEOUT_MS = 8000;
@@ -67,6 +71,23 @@ function dryRun(
 	}
 }
 
+/**
+ * Why the server refused the dry run. A custom split it will not take is the
+ * parts not adding up to the total: the server checks that, the phone never does.
+ */
+function refusal(
+	write: PendingWrite,
+	code: string | undefined,
+): "missingRate" | "split" | "other" {
+	if (code === "missing_rate") return "missingRate";
+	const custom =
+		write.entity === "shared-expenses" &&
+		write.body.splitMode !== undefined &&
+		write.body.splitMode !== "EQUAL" &&
+		Array.isArray(write.body.splitWith);
+	return code === "bad_request" && custom ? "split" : "other";
+}
+
 export async function fetchPreview(
 	api: RetrospendClient,
 	write: PendingWrite,
@@ -87,7 +108,7 @@ export async function fetchPreview(
 		if (status === undefined || status === 401) return { status: "offline" };
 		return {
 			status: "refused",
-			reason: code === "missing_rate" ? "missingRate" : "other",
+			reason: refusal(write, code),
 			currency: String(write.body.currency ?? ""),
 		};
 	} finally {
@@ -165,6 +186,27 @@ export function splitSharesOf(diff: PreviewDto): SplitShare[] | null {
 		detail.shares as { type: string; id: string; after: Money | null }[]
 	).flatMap((s) =>
 		s.after ? [{ key: `${s.type}:${s.id}`, share: s.after }] : [],
+	);
+}
+
+/**
+ * Each person's share as the server's dry run of this write leaves it, by
+ * person key: for a split being added or edited. Null for any other write.
+ */
+export function sharesAfter(diff: PreviewDto): Map<string, Money> | null {
+	const detail = diff.detail as { kind?: string; shares?: unknown } | undefined;
+	if (
+		(detail?.kind !== "sharedExpense.create" &&
+			detail?.kind !== "sharedExpense.update") ||
+		!Array.isArray(detail.shares)
+	)
+		return null;
+	return new Map(
+		(
+			detail.shares as { type: string; id: string; after: Money | null }[]
+		).flatMap((s) =>
+			s.after ? [[`${s.type}:${s.id}`, s.after] as const] : [],
+		),
 	);
 }
 

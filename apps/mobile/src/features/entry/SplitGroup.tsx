@@ -4,35 +4,51 @@ import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Avatar, type Face } from "@/ui/Avatar";
+import { Chip } from "@/ui/Chip";
 import { ListGroup, ListRow, SectionHeader } from "@/ui/List";
 import { Skeleton } from "@/ui/Skeleton";
+import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
+import { TextField } from "@/ui/TextField";
+import { GroupItem } from "./DateRow";
+import { knownPeople } from "./draft";
 import { type SplitModeName, SplitSummary } from "./ExpenseFields";
 import { usePersonFaces } from "./Face";
 import type { SavedEntry } from "./hooks";
-import { sharesOf } from "./preview";
+import { PickField } from "./PickField";
+import { sharesAfter } from "./preview";
+import { CUSTOM_MODES } from "./splitParts";
 import { personKey } from "./types";
 import type { ComposerPreview } from "./useComposerPreview";
 import type { EntryForm } from "./useEntryForm";
 
 type Money = { minor: number; currency: string };
 
+interface SplitPerson {
+	key: string;
+	name: string;
+	face: Face;
+}
+
 /** What the Split group shows: who paid, how it divides, and each person's part. */
 export interface SplitView {
 	mode: SplitModeName;
-	paidBy: { name: string; face: Face };
-	rows: { key: string; name: string; face: Face; share: Money | null }[];
+	/** Who paid. */
+	paidBy: SplitPerson;
+	/** Who can have paid: you, the others on it, and a saved payer who holds no share. */
+	payers: SplitPerson[];
+	/** One row per person who shares it. */
+	rows: (SplitPerson & { share: Money | null; you: boolean })[];
 	yourShare: Money | null;
-	/** An edit changed something and the dry run has not answered: the saved shares are stale. */
+	/** The dry run of this exact split has not answered: shares shown would be stale. */
 	pending: boolean;
 }
 
 /**
- * The split of the open expense, or null for one that is yours alone. A new
- * split is paid by you and divided equally, each share the server's from the
- * dry run. An edit shows the saved split with each share as the dry run of
- * the edit leaves it; once something changed, the saved shares are not shown
- * until that dry run answers. Nothing here divides an amount.
+ * The split of the open expense, or null for one that is yours alone. Who
+ * paid and how it divides are the draft's; each share is the server's, from
+ * the dry run of this very body (an edit shows the saved share until
+ * something changes). Nothing here divides an amount.
  */
 export function useSplitView(
 	form: EntryForm,
@@ -41,139 +57,246 @@ export function useSplitView(
 ): SplitView | null {
 	const t = useTranslations("mobile.composer");
 	const faces = usePersonFaces();
-	const { meId } = form;
-	const meFace = (): Face => {
-		const [face] = faces([
-			{
-				key: `user:${meId}`,
-				name: form.me?.name ?? t("you"),
-				imageUrl: form.me?.avatarUrl ?? null,
-			},
-		]);
-		return face as Face;
+	const { meId, expense: draft } = form;
+	const sharedEdit = edit?.kind === "shared";
+	if (form.editing && !sharedEdit) return null;
+	if (!form.editing && draft.withKeys.length === 0) return null;
+
+	const youKey = personKey({ type: "user", id: meId });
+	const people = knownPeople(draft, form.catalog.people);
+	const person = (key: string, name: string, imageUrl: string | null) => {
+		const [face] = faces([{ key, name, imageUrl }]);
+		return { key, name, face: face as Face };
 	};
-	if (edit?.kind === "shared") {
-		const pending = form.dirty && preview.preview.status !== "ready";
-		const moved = new Map(
-			(preview.preview.status === "ready"
-				? (sharesOf(preview.preview.diff) ?? [])
-				: []
-			).map((s) => [s.key, s.after]),
-		);
-		const rows = edit.entry.splits.map((s) => {
-			const key = personKey(s);
-			const you = s.type === "user" && s.id === meId;
-			const [face] = faces([{ key, name: s.name, imageUrl: s.imageUrl }]);
-			return {
-				key,
-				name: you ? t("you") : s.name,
-				face: face as Face,
-				share: pending
-					? null
-					: moved.has(key)
-						? (moved.get(key) ?? null)
-						: s.share,
-				you,
-			};
-		});
-		const payer = edit.entry.paidBy;
-		const [payerFace] = faces([
-			{
-				key: personKey(payer),
-				name: payer.name,
-				imageUrl: payer.imageUrl,
-			},
-		]);
-		return {
-			mode: edit.entry.splitMode,
-			paidBy: {
-				name:
-					payer.type === "user" && payer.id === meId ? t("you") : payer.name,
-				face: payerFace as Face,
-			},
-			rows: rows.map(({ you: _you, ...row }) => row),
-			yourShare: rows.find((r) => r.you)?.share ?? null,
-			pending,
-		};
-	}
-	if (form.editing || preview.rows.length === 0) return null;
-	const rows = preview.rows.map((r) => {
-		const [face] = r.person
-			? faces([{ key: personKey(r.person), ...r.person }])
-			: [meFace()];
-		return {
-			key: r.key,
-			name: r.name,
-			face: face as Face,
-			share: r.share,
-		};
+	const you = person(youKey, t("you"), form.me?.avatarUrl ?? null);
+	const others = draft.withKeys.flatMap((key) => {
+		const p = people.find((x) => personKey(x) === key);
+		return p ? [person(key, p.name, p.imageUrl)] : [];
 	});
+	const youOn = draft.editing?.split?.youOnSplit ?? true;
+
+	// The server's share after this very body; an edit shows the saved share
+	// until something changes, and nothing while its dry run is out.
+	const diff = preview.preview.status === "ready" ? preview.preview.diff : null;
+	const after = diff ? sharesAfter(diff) : null;
+	const saved = new Map(
+		(sharedEdit ? edit.entry.splits : []).map((s) => [
+			personKey(s),
+			s.share as Money,
+		]),
+	);
+	const pending = sharedEdit
+		? form.dirty && !after
+		: preview.preview.status === "loading";
+	const shareOf = (key: string): Money | null => {
+		if (pending) return null;
+		return (
+			after?.get(key) ??
+			(sharedEdit && !form.dirty ? saved.get(key) : null) ??
+			null
+		);
+	};
+
+	const members = [...(youOn ? [you] : []), ...others];
+	const rows = members.map((m) => ({
+		...m,
+		share: shareOf(m.key),
+		you: m.key === youKey,
+	}));
+	const outside =
+		draft.paidByKey !== null &&
+		!draft.withKeys.includes(draft.paidByKey) &&
+		draft.editing
+			? people.find((x) => personKey(x) === draft.paidByKey)
+			: undefined;
+	const payers = [
+		you,
+		...others,
+		...(outside
+			? [person(personKey(outside), outside.name, outside.imageUrl)]
+			: []),
+	];
+	const paidBy = payers.find((p) => p.key === draft.paidByKey) ?? you;
 	return {
-		mode: "EQUAL",
-		paidBy: { name: t("you"), face: meFace() },
+		mode: draft.splitMode,
+		paidBy,
+		payers,
 		rows,
-		yourShare: preview.rows[0]?.share ?? null,
-		pending: false,
+		yourShare: rows.find((r) => r.you)?.share ?? null,
+		pending,
 	};
 }
 
 /**
- * The Split group of More: Paid by and how it divides, then one row per
- * person with their face and share, and the one-line summary under it. The
- * payer and the mode are facts of the split here; picking another needs the
- * write to carry them.
+ * The Split group of More: Paid by (a face picker), how it divides, then one
+ * row per person with their face and part, and the one-line summary under it.
+ * Equally needs no typing. A custom split takes a part for each person (an
+ * amount, a percent or shares) and the server says whether they add up: the
+ * dry run is refused until they do, and Save waits on it. Percent and shares
+ * show each person's share as the server splits it.
  */
-export function SplitGroup({ split }: { split: SplitView }) {
+export function SplitGroup({
+	split,
+	form,
+	preview,
+}: {
+	split: SplitView;
+	form: EntryForm;
+	preview: ComposerPreview;
+}) {
 	const t = useTranslations("mobile.composer.split");
+	const tc = useTranslations("mobile.composer");
 	const { format } = useFormatMoney();
 	const { space } = useTheme();
+	const draft = form.expense;
+	const customMode = split.mode === "EQUAL" ? null : split.mode;
+	const custom = customMode !== null;
+	const youKey = personKey({ type: "user", id: form.meId });
+	const money = (value: Money) => format(value, { cents: true }) ?? "";
+	const refused =
+		preview.preview.status === "refused" && preview.preview.reason === "split";
+	const unread = form.tried && form.expenseProblems.split === true;
 	return (
 		<View>
 			<SectionHeader title={t("title")} />
 			<ListGroup>
-				<ListRow
-					end={
-						<View
-							style={{
-								flexDirection: "row",
-								alignItems: "center",
-								gap: space[2],
-							}}
-						>
-							<Avatar face={split.paidBy.face} size="xs" />
-							<Text tone="fg2">{split.paidBy.name}</Text>
-						</View>
+				<PickField
+					empty={tc("faces.empty")}
+					find={tc("faces.find")}
+					label={t("paidBy")}
+					onChange={(id) =>
+						form.patchSplit({
+							paidByKey: id === null || id === youKey ? null : id,
+						})
 					}
+					rows={split.payers.map((p) => ({
+						id: p.key,
+						label: p.name,
+						lead: <Avatar face={p.face} size="sm" />,
+					}))}
 					title={t("paidBy")}
+					value={split.paidBy.key}
 				/>
-				<ListRow
-					end={<Text tone="fg2">{t(`modes.${split.mode}`)}</Text>}
-					title={t("mode")}
-				/>
-				{split.rows.map((row) => (
-					<ListRow
-						accessibilityLabel={
-							row.share
-								? `${row.name}, ${format(row.share, { cents: true }) ?? ""}`
-								: row.name
-						}
-						end={
-							split.pending ? (
-								<Skeleton shape="money" />
-							) : row.share ? (
-								<Text tabular weight="medium">
-									{format(row.share, { cents: true }) ?? ""}
-								</Text>
-							) : null
-						}
-						key={row.key}
-						lead={<Avatar face={row.face} size="default" />}
-						title={row.name}
-					/>
-				))}
+				<GroupItem>
+					<View
+						accessibilityLabel={t("mode")}
+						accessibilityRole="radiogroup"
+						style={{ flexDirection: "row", gap: space[2] }}
+					>
+						<Chip
+							label={t("modes.EQUAL")}
+							onPress={() =>
+								split.mode === "EQUAL"
+									? undefined
+									: form.patchSplit({ splitMode: "EQUAL", parts: {} })
+							}
+							selected={!custom}
+						/>
+						<Chip
+							label={t("custom")}
+							onPress={() =>
+								custom
+									? undefined
+									: form.patchSplit({ splitMode: "EXACT", parts: {} })
+							}
+							selected={custom}
+						/>
+					</View>
+				</GroupItem>
+				{custom ? (
+					<GroupItem>
+						<View
+							accessibilityLabel={t("divideBy")}
+							accessibilityRole="radiogroup"
+							style={{ flexDirection: "row", flexWrap: "wrap", gap: space[2] }}
+						>
+							{CUSTOM_MODES.map((mode) => (
+								<Chip
+									key={mode}
+									label={t(`modes.${mode}`)}
+									onPress={() =>
+										split.mode === mode
+											? undefined
+											: form.patchSplit({ splitMode: mode, parts: {} })
+									}
+									selected={split.mode === mode}
+								/>
+							))}
+						</View>
+					</GroupItem>
+				) : null}
+				{split.rows.map((row) =>
+					custom ? (
+						<GroupItem key={row.key}>
+							<View
+								style={{
+									flexDirection: "row",
+									alignItems: "flex-end",
+									gap: space[3],
+									paddingVertical: space[2],
+								}}
+							>
+								<Avatar face={row.face} size="default" />
+								<View style={{ flex: 1, gap: space[1] }}>
+									<TextField
+										invalid={unread && !draft.parts[row.key]?.trim()}
+										keyboardType={
+											split.mode === "SHARES" ? "number-pad" : "decimal-pad"
+										}
+										label={row.name}
+										onChangeText={(text) =>
+											form.patchSplit({
+												parts: { ...draft.parts, [row.key]: text },
+											})
+										}
+										onTypingChange={form.setTyping}
+										placeholder={t(`part.${customMode}`)}
+										prefix={
+											split.mode === "EXACT"
+												? draft.currency
+												: split.mode === "PERCENTAGE"
+													? "%"
+													: undefined
+										}
+										value={draft.parts[row.key] ?? ""}
+									/>
+									{split.mode !== "EXACT" && row.share ? (
+										<Text tabular tone="fg2" variant="small">
+											{t("theirShare", { amount: money(row.share) })}
+										</Text>
+									) : null}
+								</View>
+							</View>
+						</GroupItem>
+					) : (
+						<ListRow
+							accessibilityLabel={
+								row.share ? `${row.name}, ${money(row.share)}` : row.name
+							}
+							end={
+								split.pending ? (
+									<Skeleton shape="money" />
+								) : row.share ? (
+									<Text tabular weight="medium">
+										{money(row.share)}
+									</Text>
+								) : null
+							}
+							key={row.key}
+							lead={<Avatar face={row.face} size="default" />}
+							title={row.name}
+						/>
+					),
+				)}
 			</ListGroup>
 			<View style={{ paddingHorizontal: space[4], paddingTop: space[2] }}>
-				<SplitSummary mode={split.mode} yourShare={split.yourShare} />
+				{unread ? (
+					<StatusText label={t("partsMissing")} tone="attention" />
+				) : refused ? (
+					<StatusText label={t("partsOff")} tone="attention" />
+				) : (
+					<SplitSummary mode={split.mode} yourShare={split.yourShare} />
+				)}
 			</View>
 		</View>
 	);

@@ -150,7 +150,7 @@ export function useEntryForm({
 			...start,
 			expense:
 				edit.kind === "shared"
-					? sharedFromDetail(edit.entry, locale)
+					? sharedFromDetail(edit.entry, locale, me?.id)
 					: expenseFromEntry(edit.entry, locale),
 		};
 	});
@@ -193,12 +193,25 @@ export function useEntryForm({
 
 	const patchExpense = (patch: Partial<ExpenseDraft>) =>
 		setDrafts((d) => ({ ...d, expense: { ...d.expense, ...patch } }));
+	/** Who paid, how it divides or a person's part: an edit then sends the whole split. */
+	const patchSplit = (
+		patch: Partial<Pick<ExpenseDraft, "paidByKey" | "splitMode" | "parts">>,
+	) =>
+		setDrafts((d) => ({
+			...d,
+			expense: { ...d.expense, ...patch, splitTouched: true },
+		}));
 	const patchIncome = (patch: Partial<IncomeDraft>) =>
 		setDrafts((d) => ({ ...d, income: { ...d.income, ...patch } }));
 	const patchTransfer = (patch: Partial<TransferDraft>) =>
 		setDrafts((d) => ({ ...d, transfer: { ...d.transfer, ...patch } }));
 
-	const expenseProblems = expenseErrors(expense, locale, catalog.categories);
+	const expenseProblems = expenseErrors(
+		expense,
+		locale,
+		catalog.categories,
+		meId,
+	);
 	const incomeProblems = incomeErrors(income, locale);
 	const transferProblems = transferErrors(transfer, {
 		locale,
@@ -369,6 +382,7 @@ export function useEntryForm({
 		income,
 		transfer,
 		patchExpense,
+		patchSplit,
 		patchIncome,
 		patchTransfer,
 		tried,
