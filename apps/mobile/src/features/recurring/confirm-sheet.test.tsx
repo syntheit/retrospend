@@ -355,9 +355,7 @@ describe("Confirm a recurring expense", () => {
 		const confirm = tree.root.findAll(
 			(n) => n.props.accessibilityLabel === "Confirm",
 		)[0];
-		expect(
-			(confirm?.props.accessibilityState as { disabled: boolean }).disabled,
-		).toBe(true);
+		expect(confirm?.props.accessibilityState).toEqual({ disabled: true });
 		act(() => tree.unmount());
 	});
 
