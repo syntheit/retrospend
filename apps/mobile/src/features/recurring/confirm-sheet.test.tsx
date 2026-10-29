@@ -171,6 +171,37 @@ describe("Confirm a recurring expense", () => {
 		act(() => tree.unmount());
 	});
 
+	it("does not touch auto-pay: no switch, no second write", async () => {
+		const { api, calls } = fakeApi();
+		(api.recurring as unknown as Record<string, unknown>).update = async (
+			input: unknown,
+		) => {
+			calls.push({ route: "update", input });
+			return {};
+		};
+		mockSession.api = api;
+		const withAutoPay = { ...item, autoPay: true } as RecurringItem;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(
+				<ConfirmSheet
+					item={withAutoPay}
+					onClose={jest.fn()}
+					onDone={jest.fn()}
+					visible
+				/>,
+			);
+		});
+		await wait(400);
+		expect(tree.root.findAll((n) => n.props.label === "Auto-pay")).toHaveLength(
+			0,
+		);
+		press(tree, "Confirm");
+		await wait(50);
+		expect(calls.some((c) => c.route === "update")).toBe(false);
+		act(() => tree.unmount());
+	});
+
 	it("starts a varying amount at the usual one and sends it with the confirm", async () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
