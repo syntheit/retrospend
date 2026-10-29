@@ -1654,9 +1654,7 @@
 			"import": "Importer",
 			"insights": "Analyses",
 			"currencies": "Devises et taux",
-			"developer": "Jetons d'API et webhooks",
-			"data": "Exporter tes données",
-			"security": "Mot de passe et connexion en deux étapes"
+			"developer": "Jetons d'API et webhooks"
 		},
 		"categories": {
 			"addTitle": "Ajouter une catégorie",
@@ -1698,6 +1696,79 @@
 			"removeConfirm": "Retirer définitivement",
 			"removed": "Moyen de paiement retiré",
 			"saveError": "Impossible d'enregistrer. Réessaie."
+		},
+		"security": {
+			"title": "Sécurité",
+			"footer": "Changer le mot de passe déconnecte vos autres appareils.",
+			"changePassword": "Changer le mot de passe",
+			"twoFactor": "Authentification à deux facteurs",
+			"on": "Activée",
+			"off": "Désactivée",
+			"twoFactorWeb": "Configurer les deux facteurs sur le web",
+			"devices": "Appareils connectés",
+			"show": "Voir",
+			"password": {
+				"title": "Changer le mot de passe",
+				"current": "Mot de passe actuel",
+				"new": "Nouveau mot de passe",
+				"confirm": "Confirmer le nouveau mot de passe",
+				"rules": "Règles du mot de passe",
+				"check": {
+					"length": "8 caractères ou plus",
+					"case": "Une minuscule et une majuscule",
+					"number": "Un chiffre"
+				},
+				"met": "fait",
+				"notMet": "pas encore",
+				"mismatch": "Les nouveaux mots de passe ne correspondent pas",
+				"submit": "Mettre à jour le mot de passe",
+				"saving": "Mise à jour",
+				"changed": "Mot de passe changé. Vos autres appareils sont déconnectés.",
+				"wrong": "Le mot de passe actuel est incorrect.",
+				"tooMany": "Trop d'essais. Réessayez plus tard.",
+				"error": "Impossible de changer le mot de passe. Réessayez."
+			},
+			"sessions": {
+				"title": "Appareils connectés",
+				"thisPhone": "Ce téléphone",
+				"others": "Autres appareils",
+				"now": "Maintenant",
+				"footer": "Touchez-en un pour le déconnecter.",
+				"none": "Vous n'êtes connecté nulle part ailleurs.",
+				"confirm": "Dernière utilisation le {used}. Connecté depuis le {since}.",
+				"signOut": "Se déconnecter",
+				"ended": "{name} est déconnecté",
+				"endError": "Impossible de le déconnecter. Réessayez.",
+				"error": "Impossible de charger vos appareils",
+				"errorDetail": "Vérifiez votre connexion et réessayez.",
+				"name": {
+					"browserOn": "{browser} sur {system}",
+					"app": "App Retrospend",
+					"appOn": "App Retrospend sur {system}",
+					"web": "Navigateur web",
+					"webOn": "Navigateur web sur {system}",
+					"cli": "Ligne de commande",
+					"desktop": "App de bureau",
+					"mcp": "Client MCP",
+					"device": "Appareil approuvé"
+				}
+			}
+		},
+		"data": {
+			"title": "Données",
+			"footer": "Chaque export ouvre le menu de partage pour enregistrer ou envoyer le fichier.",
+			"kinds": {
+				"data": "Tout",
+				"expenses": "Dépenses",
+				"wealth": "Patrimoine"
+			},
+			"formats": {
+				"data": "ZIP",
+				"expenses": "CSV",
+				"wealth": "CSV"
+			},
+			"preparing": "Préparation",
+			"failed": "Impossible de créer l'export. Réessayez."
 		}
 	},
 	"push": {

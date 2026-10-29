@@ -1654,9 +1654,7 @@
 			"import": "Importieren",
 			"insights": "Auswertungen",
 			"currencies": "Währungen und Kurse",
-			"developer": "API-Tokens und Webhooks",
-			"data": "Deine Daten exportieren",
-			"security": "Passwort und Anmeldung in zwei Schritten"
+			"developer": "API-Tokens und Webhooks"
 		},
 		"categories": {
 			"addTitle": "Kategorie hinzufügen",
@@ -1698,6 +1696,79 @@
 			"removeConfirm": "Endgültig entfernen",
 			"removed": "Zahlungsmethode entfernt",
 			"saveError": "Speichern nicht möglich. Versuche es erneut."
+		},
+		"security": {
+			"title": "Sicherheit",
+			"footer": "Eine Passwortänderung meldet deine anderen Geräte ab.",
+			"changePassword": "Passwort ändern",
+			"twoFactor": "Zwei-Faktor-Authentifizierung",
+			"on": "An",
+			"off": "Aus",
+			"twoFactorWeb": "Zwei-Faktor im Web einrichten",
+			"devices": "Angemeldete Geräte",
+			"show": "Anzeigen",
+			"password": {
+				"title": "Passwort ändern",
+				"current": "Aktuelles Passwort",
+				"new": "Neues Passwort",
+				"confirm": "Neues Passwort bestätigen",
+				"rules": "Passwortregeln",
+				"check": {
+					"length": "Mindestens 8 Zeichen",
+					"case": "Ein Klein- und ein Großbuchstabe",
+					"number": "Eine Zahl"
+				},
+				"met": "erfüllt",
+				"notMet": "noch nicht",
+				"mismatch": "Die neuen Passwörter stimmen nicht überein",
+				"submit": "Passwort aktualisieren",
+				"saving": "Wird aktualisiert",
+				"changed": "Passwort geändert. Deine anderen Geräte sind abgemeldet.",
+				"wrong": "Das aktuelle Passwort ist falsch.",
+				"tooMany": "Zu viele Versuche. Versuch es später erneut.",
+				"error": "Das Passwort konnte nicht geändert werden. Versuch es erneut."
+			},
+			"sessions": {
+				"title": "Angemeldete Geräte",
+				"thisPhone": "Dieses Telefon",
+				"others": "Andere Geräte",
+				"now": "Jetzt",
+				"footer": "Tippe auf eines, um es abzumelden.",
+				"none": "Du bist nirgendwo sonst angemeldet.",
+				"confirm": "Zuletzt genutzt am {used}. Angemeldet seit {since}.",
+				"signOut": "Abmelden",
+				"ended": "{name} ist abgemeldet",
+				"endError": "Abmelden hat nicht geklappt. Versuch es erneut.",
+				"error": "Deine Geräte konnten nicht geladen werden",
+				"errorDetail": "Prüfe deine Verbindung und versuch es erneut.",
+				"name": {
+					"browserOn": "{browser} auf {system}",
+					"app": "Retrospend-App",
+					"appOn": "Retrospend-App auf {system}",
+					"web": "Webbrowser",
+					"webOn": "Webbrowser auf {system}",
+					"cli": "Kommandozeile",
+					"desktop": "Desktop-App",
+					"mcp": "MCP-Client",
+					"device": "Freigegebenes Gerät"
+				}
+			}
+		},
+		"data": {
+			"title": "Daten",
+			"footer": "Jeder Export öffnet das Teilen-Menü, damit du die Datei sichern oder senden kannst.",
+			"kinds": {
+				"data": "Alles",
+				"expenses": "Ausgaben",
+				"wealth": "Vermögen"
+			},
+			"formats": {
+				"data": "ZIP",
+				"expenses": "CSV",
+				"wealth": "CSV"
+			},
+			"preparing": "Wird vorbereitet",
+			"failed": "Der Export hat nicht geklappt. Versuch es erneut."
 		}
 	},
 	"push": {

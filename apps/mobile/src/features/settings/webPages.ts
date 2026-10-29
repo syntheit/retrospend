@@ -9,8 +9,6 @@ export const WEB_PAGES = [
 	{ id: "insights", path: "/activity/insights" },
 	{ id: "currencies", path: "/currencies" },
 	{ id: "developer", path: "/settings#developer" },
-	{ id: "data", path: "/settings#data" },
-	{ id: "security", path: "/settings#security" },
 ] as const;
 
 export type WebPageId = (typeof WEB_PAGES)[number]["id"];

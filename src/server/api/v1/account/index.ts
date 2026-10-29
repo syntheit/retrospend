@@ -1,7 +1,7 @@
-import * as account from "~/server/services/api-v1/account";
-import * as gap from "~/server/services/api-v1/gap-reads";
 import { DeleteTriesExceededError } from "~/server/services/account-deletion.service";
 import { PasswordTriesExceededError } from "~/server/services/account-security.service";
+import * as account from "~/server/services/api-v1/account";
+import * as gap from "~/server/services/api-v1/gap-reads";
 import { serve } from "../core/serve";
 import { problem } from "../errors";
 import { signedIn, v1 } from "../middleware";
@@ -16,7 +16,10 @@ export const accountRouter = {
 			} catch (error) {
 				// The service counts the tries (the web has the same limit): a 429 here.
 				if (error instanceof PasswordTriesExceededError) {
-					context.resHeaders?.set("Retry-After", String(error.retryAfterSeconds));
+					context.resHeaders?.set(
+						"Retry-After",
+						String(error.retryAfterSeconds),
+					);
 					throw problem("rate_limited", undefined, {
 						retryAfter: error.retryAfterSeconds,
 					});
@@ -52,7 +55,10 @@ export const accountRouter = {
 			} catch (error) {
 				// The service counts the tries (the web has the same limit): a 429 here.
 				if (error instanceof DeleteTriesExceededError) {
-					context.resHeaders?.set("Retry-After", String(error.retryAfterSeconds));
+					context.resHeaders?.set(
+						"Retry-After",
+						String(error.retryAfterSeconds),
+					);
 					throw problem("rate_limited", undefined, {
 						retryAfter: error.retryAfterSeconds,
 					});

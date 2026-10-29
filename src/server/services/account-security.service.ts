@@ -61,7 +61,10 @@ export async function changeOwnPassword(input: {
 		hash: credential.password,
 	});
 	if (!valid)
-		throw new TRPCError({ code: "BAD_REQUEST", message: WRONG_PASSWORD_MESSAGE });
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: WRONG_PASSWORD_MESSAGE,
+		});
 
 	const hashed = await hashPassword(input.newPassword);
 	const [, ended] = await db.$transaction([

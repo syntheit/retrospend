@@ -24,6 +24,10 @@ export default function SettingsLayout() {
 				options={{ title: t("manage.categories") }}
 			/>
 			<Stack.Screen
+				name="sessions"
+				options={{ title: t("security.sessions.title") }}
+			/>
+			<Stack.Screen
 				name="payment-methods"
 				options={{ title: t("manage.payment") }}
 			/>

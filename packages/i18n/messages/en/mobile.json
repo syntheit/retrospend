@@ -1654,9 +1654,7 @@
 			"import": "Import",
 			"insights": "Insights",
 			"currencies": "Currencies and rates",
-			"developer": "API tokens and webhooks",
-			"data": "Export your data",
-			"security": "Password and two-step sign-in"
+			"developer": "API tokens and webhooks"
 		},
 		"categories": {
 			"addTitle": "Add category",
@@ -1698,6 +1696,79 @@
 			"removeConfirm": "Remove for good",
 			"removed": "Payment method removed",
 			"saveError": "Couldn't save. Try again."
+		},
+		"security": {
+			"title": "Security",
+			"footer": "Changing your password signs out your other devices.",
+			"changePassword": "Change password",
+			"twoFactor": "Two-factor authentication",
+			"on": "On",
+			"off": "Off",
+			"twoFactorWeb": "Set up two-factor on the web",
+			"devices": "Signed-in devices",
+			"show": "Show",
+			"password": {
+				"title": "Change password",
+				"current": "Current password",
+				"new": "New password",
+				"confirm": "Confirm new password",
+				"rules": "Password rules",
+				"check": {
+					"length": "8 or more characters",
+					"case": "A lowercase and an uppercase letter",
+					"number": "A number"
+				},
+				"met": "done",
+				"notMet": "not yet",
+				"mismatch": "The new passwords don't match",
+				"submit": "Update password",
+				"saving": "Updating",
+				"changed": "Password changed. Your other devices are signed out.",
+				"wrong": "The current password is wrong.",
+				"tooMany": "Too many tries. Try again later.",
+				"error": "Couldn't change the password. Try again."
+			},
+			"sessions": {
+				"title": "Signed-in devices",
+				"thisPhone": "This phone",
+				"others": "Other devices",
+				"now": "Now",
+				"footer": "Tap one to sign it out.",
+				"none": "You're not signed in anywhere else.",
+				"confirm": "Last used {used}. Signed in {since}.",
+				"signOut": "Sign out",
+				"ended": "{name} is signed out",
+				"endError": "Couldn't sign it out. Try again.",
+				"error": "Couldn't load your devices",
+				"errorDetail": "Check your connection and try again.",
+				"name": {
+					"browserOn": "{browser} on {system}",
+					"app": "Retrospend app",
+					"appOn": "Retrospend app on {system}",
+					"web": "Web browser",
+					"webOn": "Web browser on {system}",
+					"cli": "Command line",
+					"desktop": "Desktop app",
+					"mcp": "MCP client",
+					"device": "Approved device"
+				}
+			}
+		},
+		"data": {
+			"title": "Data",
+			"footer": "Each export opens the share sheet, so you can save or send the file.",
+			"kinds": {
+				"data": "Everything",
+				"expenses": "Expenses",
+				"wealth": "Wealth"
+			},
+			"formats": {
+				"data": "ZIP",
+				"expenses": "CSV",
+				"wealth": "CSV"
+			},
+			"preparing": "Preparing",
+			"failed": "Couldn't make the export. Try again."
 		}
 	},
 	"push": {

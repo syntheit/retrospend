@@ -84,7 +84,10 @@ describe("/api/v1/me/password", () => {
 		);
 		expect(result.signedOut).toBeGreaterThanOrEqual(2);
 		expect(
-			await verifyPassword({ password: NEW_PASSWORD, hash: await storedHash(id) }),
+			await verifyPassword({
+				password: NEW_PASSWORD,
+				hash: await storedHash(id),
+			}),
 		).toBe(true);
 		expect(await sessionExists(me.token)).toBe(true);
 		expect(await sessionExists(other)).toBe(false);
@@ -120,7 +123,10 @@ describe("/api/v1/me/password", () => {
 	it("stops after 5 wrong tries with a 429 and Retry-After", async () => {
 		const id = await passwordUser();
 		const me = await mobile(id);
-		const wrong = { currentPassword: "Wrong guess 1", newPassword: NEW_PASSWORD };
+		const wrong = {
+			currentPassword: "Wrong guess 1",
+			newPassword: NEW_PASSWORD,
+		};
 		for (let i = 0; i < 5; i++)
 			await expectProblem(
 				await changePassword(me.headers, wrong),
@@ -207,10 +213,17 @@ describe("/api/v1/me/sessions", () => {
 		});
 		await sessionFor(stranger);
 
-		const res = await call("/me/sessions", { headers: { ...ip(), ...me.headers } });
+		const res = await call("/me/sessions", {
+			headers: { ...ip(), ...me.headers },
+		});
 		const text = await res.clone().text();
 		const list = await expectBody<{
-			items: { id: string; kind: string; current: boolean; clientId: string | null }[];
+			items: {
+				id: string;
+				kind: string;
+				current: boolean;
+				clientId: string | null;
+			}[];
 		}>(res, a.sessions);
 		for (const token of [me.token, web, device, expired])
 			expect(text).not.toContain(token);
@@ -220,11 +233,13 @@ describe("/api/v1/me/sessions", () => {
 			select: { id: true },
 		});
 		expect(new Set(ids)).toEqual(new Set(rows.map((r) => r.id)));
-		expect(list.items.filter((s) => s.current).map((s) => s.id)).toEqual([me.id]);
+		expect(list.items.filter((s) => s.current).map((s) => s.id)).toEqual([
+			me.id,
+		]);
 		expect(list.items.find((s) => s.id === me.id)?.kind).toBe("mobile");
-		expect(
-			list.items.find((s) => s.clientId === "retrospend-cli")?.kind,
-		).toBe("device");
+		expect(list.items.find((s) => s.clientId === "retrospend-cli")?.kind).toBe(
+			"device",
+		);
 		expect(list.items.some((s) => s.kind === "web")).toBe(true);
 	});
 

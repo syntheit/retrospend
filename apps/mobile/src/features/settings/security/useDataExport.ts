@@ -1,0 +1,93 @@
+import { File, Paths } from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import { useState } from "react";
+import { useServerConnection } from "@/auth/server-connection";
+import { useSession } from "@/auth/session";
+import { createTokenStore } from "@/auth/token-store";
+import { newClientId } from "@/data/ids";
+import { webUrl } from "../webPages";
+import {
+	type ExportKind,
+	mimeOf,
+	safeFileName,
+	utiOf,
+	waitForExport,
+} from "./exportJob";
+
+/** Everything, the expenses (export jobs) and the open accounts (a CSV read). */
+export type DataKind = ExportKind | "wealth";
+
+const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** Today as yyyy-mm-dd on the phone's clock, for a file name. */
+function today(): string {
+	const d = new Date();
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Exports put the file on the phone and open the system share sheet, where
+ * it can be saved to Files, sent or opened elsewhere. The server builds the
+ * file as a job; the phone reads the job until it is ready and downloads it
+ * with its own sign-in (the link alone opens nothing). The copy sits in the
+ * cache folder, which the system clears.
+ */
+export function useDataExport() {
+	const { api } = useSession();
+	const { connection } = useServerConnection();
+	const [busy, setBusy] = useState<DataKind | null>(null);
+
+	async function share(file: File, mimeType: string, UTI: string) {
+		if (!(await Sharing.isAvailableAsync())) throw new Error("no share sheet");
+		await Sharing.shareAsync(file.uri, { mimeType, UTI });
+	}
+
+	async function exportJob(kind: ExportKind, baseUrl: string) {
+		if (!api) throw new Error("signed out");
+		const key = newClientId();
+		const job = await waitForExport({
+			request: () =>
+				api.exports.request({ kind }, { context: { idempotencyKey: key } }),
+			read: (id) => api.exports.getJob({ id }),
+			wait,
+		});
+		const token = await createTokenStore(baseUrl).get();
+		if (!token) throw new Error("signed out");
+		const fallback =
+			kind === "data" ? `retrospend-${today()}.zip` : `expenses-${today()}.csv`;
+		const target = new File(Paths.cache, safeFileName(job.fileName, fallback));
+		const file = await File.downloadFileAsync(
+			webUrl(baseUrl, job.download.url),
+			target,
+			{ headers: { authorization: `Bearer ${token}` }, idempotent: true },
+		);
+		await share(file, mimeOf(job.format), utiOf(job.format));
+	}
+
+	async function exportWealth() {
+		if (!api) throw new Error("signed out");
+		const { csv } = await api.accounts.export();
+		const file = new File(Paths.cache, `wealth-${today()}.csv`);
+		file.create({ overwrite: true });
+		await file.write(csv);
+		await share(file, mimeOf("csv"), utiOf("csv"));
+	}
+
+	/** Resolves true once the share sheet opened, false when it failed. */
+	async function run(kind: DataKind): Promise<boolean> {
+		if (busy || connection.status !== "connected") return false;
+		setBusy(kind);
+		try {
+			if (kind === "wealth") await exportWealth();
+			else await exportJob(kind, connection.baseUrl);
+			return true;
+		} catch {
+			return false;
+		} finally {
+			setBusy(null);
+		}
+	}
+
+	return { busy, run };
+}

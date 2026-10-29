@@ -42,7 +42,8 @@ export const deleteAccountSchema = z
 export const recordConsentSchema = z
 	.object({
 		consentVersion: z.string().min(1).max(20).meta({
-			description: "The version of the terms and privacy policy that was shown.",
+			description:
+				"The version of the terms and privacy policy that was shown.",
 		}),
 	})
 	.meta({ id: "RecordConsent" });
