@@ -2,6 +2,7 @@
 
 import { toMinorUnits } from "@retrospend/domain/money";
 import { parseMoneyInput } from "@retrospend/domain/parse";
+import { readRateText } from "@retrospend/domain/rate-text";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { predictCategory } from "~/lib/category-matcher";
@@ -11,7 +12,6 @@ import {
 	splitMembers,
 } from "~/lib/shared-split-input";
 import { api } from "~/trpc/react";
-import { readRateText } from "../rate-text";
 import { type EntryCatalog, useSettled } from "../shared-ui";
 import type { EntryPerson } from "../types";
 import type { CustomBy, ExpenseDraft, SplitChoice } from "./draft";

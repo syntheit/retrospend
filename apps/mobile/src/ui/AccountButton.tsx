@@ -1,20 +1,22 @@
-import { Pressable, Text } from "react-native";
+import { Pressable } from "react-native";
 import { useTheme } from "@/theme";
+import { Avatar, type Face } from "./Avatar";
 
 /**
  * The account button at the trailing end of the top bar (R28): the person's
- * initials on the avatar color, with a 44pt touch target.
+ * picture, else their initials on their avatar color, with a 44pt touch
+ * target. The face is the whole label, so the button carries it in words.
  */
 export function AccountButton({
-	initials,
+	face,
 	label,
 	onPress,
 }: {
-	initials: string;
+	face: Face;
 	label: string;
 	onPress?: () => void;
 }) {
-	const { color, size, type } = useTheme();
+	const { size } = useTheme();
 	const diameter = size.avatar.default;
 	return (
 		<Pressable
@@ -22,24 +24,9 @@ export function AccountButton({
 			accessibilityRole="button"
 			hitSlop={(size.touchMin.phone - diameter) / 2}
 			onPress={onPress}
-			style={{
-				width: diameter,
-				height: diameter,
-				borderRadius: diameter / 2,
-				backgroundColor: color.avatar1,
-				alignItems: "center",
-				justifyContent: "center",
-			}}
+			style={{ width: diameter, height: diameter, borderRadius: diameter / 2 }}
 		>
-			<Text
-				style={{
-					color: color.avatarFg,
-					fontSize: type.small.size,
-					fontWeight: "600",
-				}}
-			>
-				{initials}
-			</Text>
+			<Avatar face={face} size="default" />
 		</Pressable>
 	);
 }

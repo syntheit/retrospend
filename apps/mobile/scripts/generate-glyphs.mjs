@@ -30,7 +30,18 @@ const { getCountryCodeFromCurrency } = await import(
 );
 
 /** Glyphs the screens need beyond the category icons. */
-const EXTRA_GLYPHS = ["Check", "Coins", "Search", "X"];
+const EXTRA_GLYPHS = [
+	"BookOpen",
+	"Check",
+	"ChevronRight",
+	"Coins",
+	"FileText",
+	"FileUp",
+	"LogOut",
+	"Search",
+	"Settings",
+	"X",
+];
 
 const lucideDir = dirname(
 	createRequire(join(root, "package.json")).resolve(

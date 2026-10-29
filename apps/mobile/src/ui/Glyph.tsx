@@ -25,7 +25,18 @@ const SHAPES = {
 } as const;
 
 /** Glyphs the screens use beyond the category icons. */
-export type GlyphName = CategoryIconName | "Check" | "Coins" | "Search" | "X";
+export type GlyphName =
+	| CategoryIconName
+	| "BookOpen"
+	| "Check"
+	| "ChevronRight"
+	| "Coins"
+	| "FileText"
+	| "FileUp"
+	| "LogOut"
+	| "Search"
+	| "Settings"
+	| "X";
 
 /**
  * One lucide glyph, the same drawings the web uses (GUIDELINE 2.7): 24 point

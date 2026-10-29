@@ -188,7 +188,6 @@
 				"received": "Gib an, was angekommen ist, oder lass das Feld leer"
 			}
 		},
-		"moreDetails": "Mehr Details",
 		"today": "Heute",
 		"yesterday": "Gestern",
 		"note": "Notiz",
@@ -207,6 +206,25 @@
 			"detail": "Was du hier eingegeben hast, ist nicht gespeichert und geht verloren.",
 			"keep": "Weiter bearbeiten",
 			"replace": "Ersetzen"
+		},
+		"details": "Details",
+		"excludeAuto": "Automatisch ausgeschlossen, laut Kategorie",
+		"rate": {
+			"title": "Wechselkurs",
+			"trigger": "Kurs: {type}",
+			"triggerLabel": "Wechselkurs, {type}",
+			"find": "Kursart suchen",
+			"empty": "Keine Kursart passt",
+			"types": "Kurse für {currency}",
+			"custom": "Eigener Kurs",
+			"customUnit": "1 {currency} =",
+			"customLabel": "Eigener Kurs, 1 {currency} in {home}",
+			"missing": "Kein Kurs für {currency} an diesem Tag.",
+			"homeLabel": "In deiner Hauptwährung {amount}",
+			"fixed": "Dein Standardkurs: {type}",
+			"sharedFixed": "Geteilte Ausgaben nutzen deine Standard-Kursart.",
+			"error": "Gib einen Kurs über null ein",
+			"enterRate": "Kurs eingeben"
 		}
 	},
 	"pickers": {
@@ -308,7 +326,15 @@
 		"signOut": "Abmelden",
 		"signOutDiscard": "Abmelden und verwerfen",
 		"unsynced": "{count, plural, one {# Änderung ist noch nicht synchronisiert. Beim Abmelden wird sie verworfen.} other {# Änderungen sind noch nicht synchronisiert. Beim Abmelden werden sie verworfen.}}",
-		"settings": "Einstellungen"
+		"settings": "Einstellungen",
+		"profileHint": "Öffnet dein Profil in den Einstellungen",
+		"goTo": "Gehe zu",
+		"currencies": "Währungen",
+		"opensWeb": "Öffnet im Web",
+		"import": "Importieren",
+		"docs": "Dokumentation",
+		"releaseNotes": "Versionshinweise",
+		"version": "Version {version}"
 	},
 	"activity": {
 		"title": "Aktivität",
@@ -1248,7 +1274,17 @@
 		"noRate": "Kein Kurs",
 		"homeWithRate": "{amount} ({rate})",
 		"approx": "≈ {amount}",
-		"yourShare": "Dein Anteil: {amount}"
+		"yourShare": "Dein Anteil: {amount}",
+		"rateTypes": {
+			"official": "Offiziell",
+			"blue": "Blue",
+			"card": "Karte",
+			"mep": "MEP",
+			"ccl": "CCL",
+			"crypto": "Krypto",
+			"market": "Markt",
+			"custom": "Eigener"
+		}
 	},
 	"home": {
 		"title": "Start",

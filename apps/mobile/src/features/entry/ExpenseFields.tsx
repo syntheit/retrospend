@@ -1,7 +1,7 @@
 import { dayKey } from "@retrospend/domain/time-zone";
-import { useState } from "react";
 import { Text, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { useSession } from "@/auth/session";
 import { Cover } from "@/features/projects/Cover";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
@@ -18,6 +18,7 @@ import {
 	isPersonal,
 	LOCATION_LIMIT,
 	NOTE_LIMIT,
+	pickCategory,
 	SHARED_NOTE_LIMIT,
 	SPREAD_MONTHS,
 	type SplitRow,
@@ -104,12 +105,31 @@ export function TextField({
 	);
 }
 
+/** A section's name above its fields, in the section style (sentence case). */
+export function SectionTitle({ children }: { children: string }) {
+	const { color, type } = useTheme();
+	return (
+		<Text
+			accessibilityRole="header"
+			style={{
+				color: color.fg,
+				fontSize: type.section.size,
+				fontWeight: "600",
+			}}
+		>
+			{children}
+		</Text>
+	);
+}
+
 /**
- * Note, Location, Spread over and Exclude, behind one "More details" button
- * so the main composer stays short. It opens by itself when a field holds a
- * value (an edit of a saved expense).
+ * Details: Note, and for an expense of yours alone Location, Spread over and
+ * Exclude from spending, the web composer's options. They are always shown
+ * under their own title: a "More details" toggle at the foot of the scroll,
+ * under the keypad, was too easy to miss (owner, 2026-10-29). A split keeps
+ * its note only, as on the web.
  */
-function MoreDetails({
+function Details({
 	draft,
 	onChange,
 	onTypingChange,
@@ -121,78 +141,69 @@ function MoreDetails({
 	const t = useTranslations("mobile.composer");
 	const { space } = useTheme();
 	const personal = isPersonal(draft);
-	const filled =
-		draft.note !== "" ||
-		(personal &&
-			(draft.location !== "" || draft.spread !== null || draft.exclude));
-	const [open, setOpen] = useState(filled);
 	// A saved odd spread (say 4 months) stays offered next to the usual ones.
 	const months = [
 		...new Set([...SPREAD_MONTHS, ...(draft.spread ? [draft.spread] : [])]),
 	].sort((a, b) => a - b);
 	return (
 		<View style={{ gap: space[3] }}>
-			<View style={{ flexDirection: "row" }}>
-				<Chip
-					label={t("moreDetails")}
-					onPress={() => setOpen(!open)}
-					selected={open}
-				/>
-			</View>
-			{open ? (
+			<SectionTitle>{t("details")}</SectionTitle>
+			<TextField
+				label={t("note")}
+				maxLength={personal ? NOTE_LIMIT : SHARED_NOTE_LIMIT}
+				onChangeText={(note) => onChange({ note })}
+				onTypingChange={onTypingChange}
+				placeholder={t("notePlaceholder")}
+				value={draft.note}
+			/>
+			{personal ? (
 				<>
 					<TextField
-						label={t("note")}
-						maxLength={personal ? NOTE_LIMIT : SHARED_NOTE_LIMIT}
-						onChangeText={(note) => onChange({ note })}
+						label={t("location")}
+						maxLength={LOCATION_LIMIT}
+						onChangeText={(location) => onChange({ location })}
 						onTypingChange={onTypingChange}
-						placeholder={t("notePlaceholder")}
-						value={draft.note}
+						placeholder={t("locationPlaceholder")}
+						value={draft.location}
 					/>
-					{personal ? (
-						<>
-							<TextField
-								label={t("location")}
-								maxLength={LOCATION_LIMIT}
-								onChangeText={(location) => onChange({ location })}
-								onTypingChange={onTypingChange}
-								placeholder={t("locationPlaceholder")}
-								value={draft.location}
+					<View style={{ gap: space[2] }}>
+						<FieldLabel>{t("spread")}</FieldLabel>
+						<View
+							accessibilityLabel={t("spread")}
+							accessibilityRole="radiogroup"
+							style={{
+								flexDirection: "row",
+								flexWrap: "wrap",
+								gap: space[2],
+							}}
+						>
+							<Chip
+								label={t("spreadOne")}
+								onPress={() => onChange({ spread: null })}
+								selected={draft.spread === null}
 							/>
-							<View style={{ gap: space[2] }}>
-								<FieldLabel>{t("spread")}</FieldLabel>
-								<View
-									accessibilityLabel={t("spread")}
-									accessibilityRole="radiogroup"
-									style={{
-										flexDirection: "row",
-										flexWrap: "wrap",
-										gap: space[2],
-									}}
-								>
-									<Chip
-										label={t("spreadOne")}
-										onPress={() => onChange({ spread: null })}
-										selected={draft.spread === null}
-									/>
-									{months.map((count) => (
-										<Chip
-											key={count}
-											label={t("spreadMonths", { count })}
-											onPress={() => onChange({ spread: count })}
-											selected={draft.spread === count}
-										/>
-									))}
-								</View>
-							</View>
-							<SwitchRow
-								detail={t("excludeDetail")}
-								label={t("exclude")}
-								onChange={(exclude) => onChange({ exclude })}
-								value={draft.exclude}
-							/>
-						</>
-					) : null}
+							{months.map((count) => (
+								<Chip
+									key={count}
+									label={t("spreadMonths", { count })}
+									onPress={() => onChange({ spread: count })}
+									selected={draft.spread === count}
+								/>
+							))}
+						</View>
+					</View>
+					<SwitchRow
+						detail={
+							draft.excludeAuto && draft.exclude
+								? t("excludeAuto")
+								: t("excludeDetail")
+						}
+						label={t("exclude")}
+						onChange={(exclude) =>
+							onChange({ exclude, excludeTouched: true, excludeAuto: false })
+						}
+						value={draft.exclude}
+					/>
 				</>
 			) : null}
 		</View>
@@ -220,6 +231,10 @@ export function ExpenseFields({
 }) {
 	const t = useTranslations("mobile.composer");
 	const { format } = useFormatMoney();
+	const { state } = useSession();
+	// Your own face on the You row: your picture when you have one.
+	const meImage =
+		state.status === "signedIn" ? (state.me?.avatarUrl ?? null) : null;
 	const { color, size, space, type } = useTheme();
 	const recents = recentCategories(catalog, RECENTS, draft.categoryId);
 	const editing = draft.editing !== null;
@@ -263,7 +278,7 @@ export function ExpenseFields({
 					{saved ? (
 						<Chip
 							label={saved.name}
-							onPress={() => onChange({ categoryId: saved.id })}
+							onPress={() => onChange(pickCategory(draft, undefined, saved.id))}
 							selected={draft.categoryId === saved.id}
 						/>
 					) : null}
@@ -278,14 +293,24 @@ export function ExpenseFields({
 									size={size.icon.phone}
 								/>
 							}
-							onPress={() => onChange({ categoryId: category.id })}
+							onPress={() =>
+								onChange(pickCategory(draft, category, category.id))
+							}
 							selected={draft.categoryId === category.id}
 						/>
 					))}
 					{catalog.categories.length > recents.length ? (
 						<CategoryPicker
 							categories={catalog.categories}
-							onChange={(categoryId) => onChange({ categoryId })}
+							onChange={(categoryId) =>
+								onChange(
+									pickCategory(
+										draft,
+										catalog.categories.find((c) => c.id === categoryId),
+										categoryId,
+									),
+								)
+							}
 							recent={recents}
 							value={draft.categoryId}
 						/>
@@ -390,7 +415,7 @@ export function ExpenseFields({
 						>
 							<Face
 								diameter={size.avatar.default}
-								imageUrl={r.person?.imageUrl}
+								imageUrl={r.person ? r.person.imageUrl : meImage}
 								name={r.name}
 								seed={r.person ? personKey(r.person) : r.key}
 							/>
@@ -418,7 +443,7 @@ export function ExpenseFields({
 					))}
 				</View>
 			) : null}
-			<MoreDetails
+			<Details
 				draft={draft}
 				onChange={onChange}
 				onTypingChange={onTypingChange}

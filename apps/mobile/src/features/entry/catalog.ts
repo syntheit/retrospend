@@ -26,7 +26,7 @@ type PeopleOverview = Awaited<ReturnType<RetrospendClient["people"]["list"]>>;
 
 export const ENTRY_CATALOG_CACHE = {
 	name: "entry-catalog",
-	schema: 3,
+	schema: 4,
 } as const;
 
 const PAGE = 200;
@@ -77,6 +77,7 @@ export function catalogFrom(input: {
 			name: c.name,
 			icon: c.icon,
 			tone: c.tone,
+			excludeByDefault: c.excludeByDefault,
 			uses: c.expenseCount,
 		})),
 		people,

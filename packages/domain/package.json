@@ -23,6 +23,7 @@
 		"./money-minor": "./src/money-minor.ts",
 		"./parse": "./src/parse.ts",
 		"./picker-match": "./src/picker-match.ts",
+		"./rate-text": "./src/rate-text.ts",
 		"./recurring": "./src/recurring.ts",
 		"./shared-split-computation": "./src/shared-split-computation.ts",
 		"./time-zone": "./src/time-zone.ts",

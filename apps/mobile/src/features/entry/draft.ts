@@ -1,5 +1,6 @@
 import { fromMinor, money } from "@retrospend/domain/money-minor";
 import { draftFromMinor, parseMoneyInput } from "@retrospend/domain/parse";
+import { parseRateText } from "@retrospend/domain/rate-text";
 import {
 	type EntryCatalog,
 	type EntryPerson,
@@ -13,7 +14,7 @@ import {
 // The server books every rate and splits every amount (its dry run gives the
 // shares shown); nothing here decides a number the server owns.
 
-export interface ExpenseDraft {
+export interface ExpenseDraft extends RateChoice {
 	/** The new expense's id, made once per composer: a second tap cannot write twice. */
 	id: string;
 	currency: string;
@@ -37,9 +38,33 @@ export interface ExpenseDraft {
 	spread: number | null;
 	/** Left out of reports and Insights (a personal expense). */
 	exclude: boolean;
+	/** The person flipped Exclude; a category no longer sets it. */
+	excludeTouched: boolean;
+	/** Exclude is on because the category starts its expenses excluded. */
+	excludeAuto: boolean;
 	/** Set when the composer edits a saved expense; null when it adds one. */
 	editing: ExpenseEdit | null;
 }
+
+/**
+ * The exchange rate picked for an amount in another currency. The server
+ * books the home value from it; the composer only names the choice.
+ */
+export interface RateChoice {
+	/** A type the pair offers (official, blue, MEP...); null is your default. */
+	rateType: string | null;
+	/** A typed rate instead of a type. */
+	custom: boolean;
+	/** The typed rate as shown: 1 unit of the currency in home units. */
+	customText: string;
+}
+
+/** No choice yet: the server books your default type. A new currency starts here. */
+export const DEFAULT_RATE: RateChoice = {
+	rateType: null,
+	custom: false,
+	customText: "",
+};
 
 /** The months a spread can take; a saved odd one is offered too. */
 export const SPREAD_MONTHS = [2, 3, 6, 12, 24] as const;
@@ -67,6 +92,8 @@ export interface ExpenseEdit {
 	source: "personal" | "shared";
 	currency: string;
 	rateType: string | null;
+	/** The saved expense's value at home: shown while its custom rate is kept. */
+	home: { minor: number; currency: string } | null;
 	split: SavedSplit | null;
 	/** The project it is in; an edit never moves it out. */
 	projectId: string | null;
@@ -87,7 +114,7 @@ export interface TransferDraft {
 	date: string;
 }
 
-export interface IncomeDraft {
+export interface IncomeDraft extends RateChoice {
 	id: string;
 	currency: string;
 	amountText: string;
@@ -95,6 +122,7 @@ export interface IncomeDraft {
 	source: string;
 	date: string;
 	usePlan: boolean;
+	note: string;
 }
 
 /** A write waiting for the outbox: the v1 collection and the request body. */
@@ -125,6 +153,9 @@ export function newExpenseDraft(input: {
 		note: "",
 		spread: null,
 		exclude: false,
+		excludeTouched: false,
+		excludeAuto: false,
+		...DEFAULT_RATE,
 		editing: null,
 	};
 }
@@ -135,6 +166,7 @@ export function expenseFromEntry(
 		id: string;
 		title: string;
 		amount: { minor: number; currency: string };
+		home?: { minor: number; currency: string } | null;
 		rateType: string | null;
 		date: string;
 		categoryId: string | null;
@@ -160,10 +192,17 @@ export function expenseFromEntry(
 		note: entry.description ?? "",
 		spread: entry.amortizeOver,
 		exclude: entry.excludeFromAnalytics,
+		// A saved choice stays the person's, whatever the category says.
+		excludeTouched: true,
+		excludeAuto: false,
+		// The saved type starts picked; a saved custom rate is kept as "custom".
+		...DEFAULT_RATE,
+		rateType: entry.rateType,
 		editing: {
 			source: "personal",
 			currency,
 			rateType: entry.rateType,
+			home: entry.home ?? null,
 			split: null,
 			projectId: null,
 			category: null,
@@ -203,10 +242,14 @@ export function sharedFromDetail(
 		note: detail.notes ?? "",
 		spread: null,
 		exclude: false,
+		excludeTouched: false,
+		excludeAuto: false,
+		...DEFAULT_RATE,
 		editing: {
 			source: "shared",
 			currency,
 			rateType: null,
+			home: null,
 			split: {
 				mode: detail.splitMode,
 				paidBy: { type: detail.paidBy.type, id: detail.paidBy.id },
@@ -264,7 +307,7 @@ export function newIncomeDraft(input: {
 	date: string;
 	usePlan: boolean;
 }): IncomeDraft {
-	return { ...input, amountText: "", source: "" };
+	return { ...input, amountText: "", source: "", note: "", ...DEFAULT_RATE };
 }
 
 /** The amount in minor units, or null until the keypad text reads as an amount. */
@@ -277,7 +320,9 @@ export function amountMinor(
 	return read.ok ? read.minor : null;
 }
 
-export type ExpenseErrors = Partial<Record<"amount" | "category", true>>;
+export type ExpenseErrors = Partial<
+	Record<"amount" | "category" | "rate", true>
+>;
 
 /**
  * What keeps Save from writing. A category must be one of `categories`, or
@@ -295,16 +340,52 @@ export function expenseErrors(
 		categories.some((c) => c.id === d.categoryId) ||
 		d.editing?.category?.id === d.categoryId;
 	if (!d.categoryId || !known) errors.category = true;
+	if (rateFields(d, locale) === null) errors.rate = true;
 	return errors;
 }
 
-export type IncomeErrors = Partial<Record<"amount" | "source", true>>;
+export type IncomeErrors = Partial<Record<"amount" | "source" | "rate", true>>;
 
 export function incomeErrors(d: IncomeDraft, locale: string): IncomeErrors {
 	const errors: IncomeErrors = {};
 	if (!amountMinor(d.amountText, locale, d.currency)) errors.amount = true;
 	if (!d.source.trim()) errors.source = true;
+	if (rateFields(d, locale) === null) errors.rate = true;
 	return errors;
+}
+
+/**
+ * The rate part of a write: the typed rate, the picked type, or nothing (the
+ * server books your default type). Null while a typed rate does not read as
+ * a rate above zero: Save waits for one, and a missing rate is never 1.
+ */
+export function rateFields(
+	d: RateChoice,
+	locale: string,
+):
+	| { customRate: string }
+	| { rateType: string }
+	| Record<string, never>
+	| null {
+	if (d.custom) {
+		const customRate = parseRateText(d.customText, locale);
+		return customRate ? { customRate } : null;
+	}
+	return d.rateType ? { rateType: d.rateType } : {};
+}
+
+/**
+ * Picking a category: one that starts its expenses excluded turns Exclude on
+ * (and another turns it off again), until the person flips it, as on the web.
+ */
+export function pickCategory(
+	d: Pick<ExpenseDraft, "excludeTouched">,
+	category: { id: string; excludeByDefault?: boolean } | undefined,
+	id: string,
+): Partial<ExpenseDraft> {
+	if (d.excludeTouched || !category) return { categoryId: id };
+	const auto = category.excludeByDefault === true;
+	return { categoryId: id, exclude: auto, excludeAuto: auto };
 }
 
 export interface SplitRow {
@@ -377,6 +458,8 @@ export function buildExpenseWrite(
 	const amount = fromMinor(money(minor, d.currency));
 	if (d.editing) return null;
 	if (d.withKeys.length === 0 && !d.projectId) {
+		const rate = rateFields(d, input.locale);
+		if (!rate) return null;
 		return {
 			entity: "expenses",
 			label: title,
@@ -387,6 +470,7 @@ export function buildExpenseWrite(
 				currency: d.currency,
 				date: d.date,
 				categoryId: category.id,
+				...rate,
 				...personalDetails(d),
 			},
 		};
@@ -483,6 +567,10 @@ export function buildExpenseUpdate(
 			},
 		};
 	}
+	// The saved type starts picked and a new currency clears it, so a kept
+	// type only goes back while the currency is still the saved one.
+	const rate = rateFields(d, input.locale);
+	if (!rate) return null;
 	return {
 		entity: "expenses",
 		kind: "update",
@@ -495,9 +583,7 @@ export function buildExpenseUpdate(
 			date: d.date,
 			categoryId: category.id,
 			...personalDetails(d),
-			...(editing.rateType && editing.currency === d.currency
-				? { rateType: editing.rateType }
-				: {}),
+			...rate,
 		},
 	};
 }
@@ -585,7 +671,9 @@ export function buildIncomeWrite(
 ): PendingWrite | null {
 	const minor = amountMinor(d.amountText, input.locale, d.currency);
 	const source = d.source.trim();
-	if (!minor || !source) return null;
+	const rate = rateFields(d, input.locale);
+	if (!minor || !source || !rate) return null;
+	const note = d.note.trim();
 	return {
 		entity: "income",
 		label: source,
@@ -595,6 +683,8 @@ export function buildIncomeWrite(
 			amount: fromMinor(money(minor, d.currency)),
 			currency: d.currency,
 			date: d.date,
+			...rate,
+			...(note ? { description: note } : {}),
 			// Without an envelope budget there is no plan to use.
 			usePlan: d.usePlan && input.hasBudget === true,
 		},

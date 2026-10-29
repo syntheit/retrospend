@@ -2,13 +2,13 @@
 
 import { fromMinor } from "@retrospend/domain/money-minor";
 import { parseMoneyInput } from "@retrospend/domain/parse";
+import { readRateText } from "@retrospend/domain/rate-text";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useState } from "react";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
-import { readRateText } from "../rate-text";
 import { type EntryCatalog, useSettled } from "../shared-ui";
 
 export type IncomeDraft = {

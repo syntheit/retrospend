@@ -70,7 +70,11 @@ export default function GalleryScreen() {
 
 	return (
 		<>
-			<TopBar accountInitials="DM" accountLabel="Account" title="Gallery" />
+			<TopBar
+				account={{ key: "user:gallery", name: "Daniel M", imageUri: null }}
+				accountLabel="Account"
+				title="Gallery"
+			/>
 			<Screen>
 				{second ? null : (
 					<>

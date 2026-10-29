@@ -1,8 +1,10 @@
 import { Image, Text, View } from "react-native";
+import { useServerBaseUrl } from "@/auth/server-connection";
+import { absoluteImage } from "@/features/read/faces";
 import { useTheme } from "@/theme";
 
 /**
- * A person's face: their picture when the server sent an absolute address,
+ * A person's face: their picture (a path the server sends loads from the server),
  * else initials on one of the eight avatar colors, picked from the person's
  * key so the same person is the same color everywhere.
  */
@@ -29,7 +31,7 @@ export function Face({
 		color.avatar8,
 	];
 	const background = palette[hash(seed) % palette.length];
-	const image = imageUrl?.startsWith("http") ? imageUrl : null;
+	const image = absoluteImage(imageUrl, useServerBaseUrl());
 	return (
 		<View
 			accessibilityElementsHidden

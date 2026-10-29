@@ -17,6 +17,8 @@ export interface EntryCategory {
 	icon: string | null;
 	/** The category-n color slot, 1 to 21. */
 	tone: number;
+	/** Its expenses start left out of spending (Exclude turns on by itself). */
+	excludeByDefault: boolean;
 	/** Expenses filed under it: the most used come first as recents. */
 	uses: number;
 }

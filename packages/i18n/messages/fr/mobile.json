@@ -188,7 +188,6 @@
 				"received": "Saisis ce qui est arrivé comme montant, ou laisse vide"
 			}
 		},
-		"moreDetails": "Plus de détails",
 		"today": "Aujourd'hui",
 		"yesterday": "Hier",
 		"note": "Note",
@@ -207,6 +206,25 @@
 			"detail": "Ce que tu as saisi ici n'est pas enregistré et sera perdu.",
 			"keep": "Continuer",
 			"replace": "Remplacer"
+		},
+		"details": "Détails",
+		"excludeAuto": "Exclue automatiquement selon la catégorie",
+		"rate": {
+			"title": "Taux de change",
+			"trigger": "Taux {type}",
+			"triggerLabel": "Taux de change, {type}",
+			"find": "Chercher un taux",
+			"empty": "Aucun taux ne correspond",
+			"types": "Taux pour {currency}",
+			"custom": "Taux personnalisé",
+			"customUnit": "1 {currency} =",
+			"customLabel": "Taux personnalisé, 1 {currency} en {home}",
+			"missing": "Pas de taux pour {currency} ce jour-là.",
+			"homeLabel": "Dans ta devise principale, {amount}",
+			"fixed": "Ton taux par défaut : {type}",
+			"sharedFixed": "Les dépenses partagées utilisent ton type de taux par défaut.",
+			"error": "Saisis un taux supérieur à zéro",
+			"enterRate": "Saisir un taux"
 		}
 	},
 	"pickers": {
@@ -308,7 +326,15 @@
 		"signOut": "Se déconnecter",
 		"signOutDiscard": "Se déconnecter et supprimer",
 		"unsynced": "{count, plural, one {# modification non synchronisée. La déconnexion la supprime.} other {# modifications non synchronisées. La déconnexion les supprime.}}",
-		"settings": "Réglages"
+		"settings": "Réglages",
+		"profileHint": "Ouvre ton profil dans les réglages",
+		"goTo": "Aller à",
+		"currencies": "Devises",
+		"opensWeb": "S'ouvre sur le web",
+		"import": "Importer",
+		"docs": "Documentation",
+		"releaseNotes": "Notes de version",
+		"version": "Version {version}"
 	},
 	"activity": {
 		"title": "Activité",
@@ -1248,7 +1274,17 @@
 		"noRate": "Pas de taux",
 		"homeWithRate": "{amount} ({rate})",
 		"approx": "≈ {amount}",
-		"yourShare": "Ta part : {amount}"
+		"yourShare": "Ta part : {amount}",
+		"rateTypes": {
+			"official": "Officiel",
+			"blue": "Blue",
+			"card": "Carte",
+			"mep": "MEP",
+			"ccl": "CCL",
+			"crypto": "Crypto",
+			"market": "Marché",
+			"custom": "Personnalisé"
+		}
 	},
 	"home": {
 		"title": "Accueil",

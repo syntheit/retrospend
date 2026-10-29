@@ -188,7 +188,6 @@
 				"received": "Enter what arrived as an amount, or leave it empty"
 			}
 		},
-		"moreDetails": "More details",
 		"today": "Today",
 		"yesterday": "Yesterday",
 		"note": "Note",
@@ -207,6 +206,25 @@
 			"detail": "What you entered here isn't saved and will be lost.",
 			"keep": "Keep editing",
 			"replace": "Replace"
+		},
+		"details": "Details",
+		"excludeAuto": "Auto-excluded based on category settings",
+		"rate": {
+			"title": "Exchange rate",
+			"trigger": "{type} rate",
+			"triggerLabel": "Exchange rate, {type}",
+			"find": "Find a rate type",
+			"empty": "No rate type matches",
+			"types": "Rates for {currency}",
+			"custom": "Custom rate",
+			"customUnit": "1 {currency} =",
+			"customLabel": "Custom rate, 1 {currency} in {home}",
+			"missing": "No rate for {currency} on this day.",
+			"homeLabel": "In your home currency, {amount}",
+			"fixed": "Your default rate: {type}",
+			"sharedFixed": "Split expenses use your default rate type.",
+			"error": "Enter a rate above zero",
+			"enterRate": "Enter rate"
 		}
 	},
 	"pickers": {
@@ -308,7 +326,15 @@
 		"signOut": "Sign out",
 		"signOutDiscard": "Sign out and discard",
 		"unsynced": "{count, plural, one {# change isn't synced yet. Signing out discards it.} other {# changes aren't synced yet. Signing out discards them.}}",
-		"settings": "Settings"
+		"settings": "Settings",
+		"profileHint": "Opens your profile in Settings",
+		"goTo": "Go to",
+		"currencies": "Currencies",
+		"opensWeb": "Opens on the web",
+		"import": "Import",
+		"docs": "Docs",
+		"releaseNotes": "Release notes",
+		"version": "Version {version}"
 	},
 	"activity": {
 		"title": "Activity",
@@ -1248,7 +1274,17 @@
 		"noRate": "No rate yet",
 		"homeWithRate": "{amount} at {rate}",
 		"approx": "≈ {amount}",
-		"yourShare": "Your share {amount}"
+		"yourShare": "Your share {amount}",
+		"rateTypes": {
+			"official": "Official",
+			"blue": "Blue",
+			"card": "Card",
+			"mep": "MEP",
+			"ccl": "CCL",
+			"crypto": "Crypto",
+			"market": "Market",
+			"custom": "Custom"
+		}
 	},
 	"home": {
 		"title": "Home",
