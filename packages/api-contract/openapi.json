@@ -2430,6 +2430,147 @@
 												{
 													"properties": {
 														"kind": {
+															"const": "account.undelete"
+														},
+														"result": {
+															"properties": {
+																"balance": {
+																	"$ref": "#/components/schemas/Money"
+																},
+																"closedAt": {
+																	"anyOf": [
+																		{
+																			"format": "date-time",
+																			"type": "string"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
+																"currency": {
+																	"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																	"examples": [
+																		"USD",
+																		"ARS",
+																		"BTC"
+																	],
+																	"pattern": "^[A-Z0-9]{2,10}$",
+																	"type": "string"
+																},
+																"dueDay": {
+																	"anyOf": [
+																		{
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
+																"id": {
+																	"maxLength": 64,
+																	"minLength": 1,
+																	"type": "string"
+																},
+																"inBudget": {
+																	"type": "boolean"
+																},
+																"interestRate": {
+																	"anyOf": [
+																		{
+																			"type": "string"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	],
+																	"description": "Yearly percent as text."
+																},
+																"isLiquid": {
+																	"type": "boolean"
+																},
+																"minimumPayment": {
+																	"anyOf": [
+																		{
+																			"$ref": "#/components/schemas/Money"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
+																"name": {
+																	"type": "string"
+																},
+																"rateType": {
+																	"anyOf": [
+																		{
+																			"type": "string"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
+																"type": {
+																	"enum": [
+																		"CASH",
+																		"INVESTMENT",
+																		"CRYPTO",
+																		"REAL_ESTATE",
+																		"VEHICLE",
+																		"LIABILITY_LOAN",
+																		"LIABILITY_CREDIT_CARD",
+																		"LIABILITY_MORTGAGE"
+																	],
+																	"type": "string"
+																},
+																"updatedAt": {
+																	"format": "date-time",
+																	"type": "string"
+																},
+																"value": {
+																	"anyOf": [
+																		{
+																			"$ref": "#/components/schemas/Money"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																}
+															},
+															"required": [
+																"id",
+																"name",
+																"type",
+																"currency",
+																"balance",
+																"value",
+																"inBudget",
+																"isLiquid",
+																"rateType",
+																"closedAt",
+																"interestRate",
+																"minimumPayment",
+																"dueDay",
+																"updatedAt"
+															],
+															"type": "object"
+														}
+													},
+													"required": [
+														"kind",
+														"result"
+													],
+													"type": "object"
+												},
+												{
+													"properties": {
+														"kind": {
 															"const": "account.restore"
 														},
 														"result": {
@@ -5699,7 +5840,7 @@
 		},
 		"/accounts/{id}/delete": {
 			"post": {
-				"description": "Answers `undo: null`: the history goes with the account, so there is nothing to put back.",
+				"description": "Answers an undo token for POST /budget/undo, valid for 24 hours, once.",
 				"operationId": "deleteAccount",
 				"parameters": [
 					{
@@ -112203,7 +112344,7 @@
 		},
 		"/shared-expenses/undo": {
 			"post": {
-				"description": "Tokens from create, update, accept and reject. Undoing an add right away takes the notices back. A token is for its user and expires after 24 hours.",
+				"description": "Tokens from create, update, delete, accept and reject. Undoing an add right away takes the notices back; undoing a delete brings back every share, and the people on it are told it is theirs again. A token is for its user, works once and expires after 24 hours.",
 				"operationId": "undoSharedExpenseWrite",
 				"parameters": [
 					{
@@ -112810,7 +112951,7 @@
 		},
 		"/shared-expenses/{id}": {
 			"delete": {
-				"description": "A delete that would erase a debt or leave the payer owing needs confirmUnsettled or settled, and is a conflict without it.",
+				"description": "A delete that would erase a debt or leave the payer owing needs confirmUnsettled or settled, and is a conflict without it; its message is the warning to show. Answers an undo token for POST /shared-expenses/undo.",
 				"operationId": "deleteSharedExpense",
 				"parameters": [
 					{
@@ -112867,10 +113008,24 @@
 											"maxLength": 64,
 											"minLength": 1,
 											"type": "string"
+										},
+										"undo": {
+											"anyOf": [
+												{
+													"description": "Pass to the undo route to revert.",
+													"minLength": 1,
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											],
+											"description": "Brings the expense back with every share and answer, once, for 24 hours. Null when the delete cannot be put back: an expense someone else added, or a delete that voided payments."
 										}
 									},
 									"required": [
-										"id"
+										"id",
+										"undo"
 									],
 									"type": "object"
 								}

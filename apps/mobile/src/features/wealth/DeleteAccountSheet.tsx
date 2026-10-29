@@ -10,11 +10,11 @@ import { Sheet } from "@/ui/Sheet";
 import type { Account } from "./source";
 
 /**
- * Delete an account and its whole balance history, for good. The dry run says
- * what net worth would do before the verb is on; the server cannot take this
- * back (the history goes with the account), so the toast has no Undo and the
- * sheet says so. An open account offers Close instead, which keeps the
- * history, next to the destructive verb, which comes last.
+ * Delete an account and its whole balance history. The dry run says what net
+ * worth would do before the verb is on, and the toast that follows has Undo:
+ * the server keeps the account and its history for a day and puts it all back.
+ * An open account offers Close instead, which keeps the history, next to the
+ * destructive verb, which comes last.
  */
 export function DeleteAccountSheet({
 	account,
@@ -55,10 +55,16 @@ export function DeleteAccountSheet({
 	async function submit() {
 		const out = await flow.commit();
 		if (!out) return;
+		// The screen leaves once, when the account goes; an Undo only refreshes.
+		let gone = false;
 		announce({
 			message: t("toast", { name: account.name }),
 			token: out.undo,
-			onChanged: onDone,
+			onChanged: () => {
+				if (gone) return;
+				gone = true;
+				onDone();
+			},
 		});
 		onClose();
 	}

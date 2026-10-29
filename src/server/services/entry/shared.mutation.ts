@@ -8,17 +8,33 @@
  *   with `retract`, so the people on it are not told twice.
  * - sharedExpense.update: its undo is another update with the values, payer
  *   and split it had (the people on it verify again, as after any edit).
- * - sharedExpense.delete: confirmed with a named button and no undo, since it
- *   changes other people's balances (ADD-EXPENSE-R2: shared delete).
+ * - sharedExpense.delete: confirmed with a named button, since it changes
+ *   other people's balances (ADD-EXPENSE-R2: shared delete). The web keeps no
+ *   Undo for it; the phone (R15) does, so a delete that asks for it
+ *   (`keepForUndo`) of your own expense keeps the expense, every share and the answers people gave in a stash, in
+ *   the same transaction. The one thing it cannot put back is a payment the
+ *   delete voided (`settled: "VOID_PAYMENT"`), so that delete gives no stash.
+ * - sharedExpense.restore: the undo of that delete. The expense comes back
+ *   with the same id and every share as it was, the people on it are told it
+ *   is theirs again, and each stash works once, for the person who deleted.
  */
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 import type { AnsweredFix } from "../corrections/fix-request.service";
 import type { MoneyMutation } from "../preview/types";
+import { logAudit } from "../shared-expenses/audit-log";
 import { peopleToTell } from "../shared-expenses/delete-tell";
+import { noticeRestored } from "../shared-expenses/restore-notice";
+import { serializeTransaction } from "../shared-expenses/serialize";
+import {
+	restoreShared,
+	type SharedSnapshot,
+	snapshotShared,
+} from "../shared-expenses/snapshot";
 import { SharedTransactionService } from "../shared-expenses/transaction.service";
 import type { ParticipantRef } from "../shared-expenses/types";
 import { RETRACT_WINDOW_MS, retractSplitNotices } from "./notices";
+import { putUndoStash, takeUndoStash } from "./undo-stash";
 
 type Tx = Prisma.TransactionClient;
 type Service = SharedTransactionService;
@@ -194,6 +210,8 @@ export interface DeleteSharedInput extends Deferred {
 	 * Honored only for your own expense within RETRACT_WINDOW_MS of creating it.
 	 */
 	readonly retract?: boolean;
+	/** Keep what an undo needs (the phone's Undo, R15); the web asks for no stash. */
+	readonly keepForUndo?: boolean;
 }
 
 /**
@@ -226,6 +244,12 @@ export interface DeletedShared {
 	 * written once the rows are gone).
 	 */
 	readonly tell: readonly ParticipantRef[];
+	/**
+	 * sharedExpense.restore with this stash brings it back. Null when the delete
+	 * cannot be taken back (a retraction, an expense someone else added, or one
+	 * that may void payments) or was not asked for (`keepForUndo`).
+	 */
+	readonly stash: string | null;
 }
 
 export const deleteSharedExpense: MoneyMutation<
@@ -251,6 +275,15 @@ export const deleteSharedExpense: MoneyMutation<
 			participantType: "user",
 			participantId: actor.userId,
 		});
+		// Only the person who added it can put it back (the database lets only the
+		// author insert it), and a retraction is itself an undo.
+		const snapshot =
+			input.keepForUndo &&
+			!input.retract &&
+			row?.createdByType === "user" &&
+			row.createdById === actor.userId
+				? await snapshotShared(tx, actor.userId, input.id)
+				: null;
 		// Retracting: the service's own notices are dropped, the retraction queued instead.
 		await serviceFor(tx, actor.userId, retract ? { notify: [] } : input).delete(
 			input.id,
@@ -260,12 +293,67 @@ export const deleteSharedExpense: MoneyMutation<
 			},
 		);
 		if (retract) input.notify?.push(() => retractSplitNotices(input.id));
+		const stash =
+			snapshot && input.settled !== "VOID_PAYMENT"
+				? await putUndoStash(tx, actor.userId, snapshot)
+				: null;
 		return {
-			value: { id: input.id, tell },
+			value: { id: input.id, tell, stash },
 			undo: {
 				kind: "revert",
 				mutation: "sharedExpense.create",
 				rows: [{ table: "shared_transaction", id: input.id }],
+			},
+		};
+	},
+};
+
+export interface RestoreSharedInput extends Deferred {
+	readonly stash: string;
+}
+
+export interface RestoredShared {
+	readonly id: string;
+	/** The stamp the restore left, for a client that watches the row. */
+	readonly updatedAt: string;
+}
+
+/** The undo of sharedExpense.delete: the expense and its shares back as they were stored. */
+export const restoreSharedExpense: MoneyMutation<
+	RestoreSharedInput,
+	RestoredShared
+> = {
+	id: "sharedExpense.restore",
+	touches: SHARED_FIGURES,
+	run: async (tx, { notify, stash }, actor) => {
+		const snapshot = await takeUndoStash<SharedSnapshot>(
+			tx,
+			actor.userId,
+			stash,
+		);
+		const restored = await restoreShared(tx, actor.userId, snapshot);
+		await logAudit(tx, {
+			actor: { participantType: "user", participantId: actor.userId },
+			action: "CREATED",
+			targetType: "SHARED_TRANSACTION",
+			targetId: restored.id,
+			changes: serializeTransaction(
+				restored as unknown as Record<string, unknown>,
+			),
+			context: { restoredByUndo: true },
+			projectId: restored.projectId ?? undefined,
+		});
+		notify?.push(() =>
+			noticeRestored(restored, actor.userId).catch((err) =>
+				console.error("[Notification Error] EXPENSE_SPLIT:", err),
+			),
+		);
+		return {
+			value: { id: restored.id, updatedAt: restored.updatedAt.toISOString() },
+			undo: {
+				kind: "revert",
+				mutation: "sharedExpense.delete",
+				rows: [{ table: "shared_transaction", id: restored.id }],
 			},
 		};
 	},

@@ -70,7 +70,7 @@ export function StepSlide({
  * Everything the quick step leaves out, in inset groups: the day and the
  * project, how it is split, the rate, and the full list of what this changes.
  * The Details (note, place, spread, exclude) stay on the quick step. An edit
- * of your own expense ends with Delete. Income and Transfer keep their own few
+ * of an expense ends with Delete. Income and Transfer keep their own few
  * rows.
  */
 export function MoreStep({
@@ -85,7 +85,7 @@ export function MoreStep({
 	edit: SavedEntry | undefined;
 	/** The rate line for an amount in another currency; null at home. */
 	rate: ReactNode;
-	/** Your own expense's Delete row opens its confirm; null when it is not offered. */
+	/** The Delete row opens its confirm; null when it is not offered. */
 	onDelete: (() => void) | null;
 }) {
 	const t = useTranslations("mobile.composer");

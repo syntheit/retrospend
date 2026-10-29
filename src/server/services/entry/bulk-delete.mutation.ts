@@ -16,8 +16,6 @@
  * the undo token and the response stay small whatever the set holds, and a
  * lost response can always be replayed.
  */
-import { randomUUID } from "node:crypto";
-import { IDEMPOTENCY_TTL_MS } from "@retrospend/api-contract/common";
 import { TRPCError } from "@trpc/server";
 import type { Prisma } from "~prisma";
 import { ExpenseService } from "../expense.service";
@@ -28,6 +26,7 @@ import {
 	restoreExpense,
 	snapshotExpense,
 } from "./expense-snapshot";
+import { invalidUndo, putUndoStash, takeUndoStash } from "./undo-stash";
 
 type Tx = Prisma.TransactionClient;
 
@@ -44,15 +43,6 @@ export interface DeletedMany {
 	readonly stash: string;
 }
 
-/** The stash's key: no client key has this shape unless it copies one of its own. */
-const stashKey = (stash: string) => `undo-stash:${stash}`;
-
-const invalidUndo = () =>
-	new TRPCError({
-		code: "BAD_REQUEST",
-		message: "This undo is not valid anymore",
-	});
-
 const stale = () =>
 	new TRPCError({
 		code: "CONFLICT",
@@ -60,28 +50,8 @@ const stale = () =>
 	});
 
 /** Keeps the rows for as long as an undo token lives (24 hours). */
-async function putStash(
-	tx: Tx,
-	userId: string,
-	snapshots: ExpenseSnapshot[],
-): Promise<string> {
-	const stash = randomUUID();
-	const now = new Date();
-	await tx.idempotencyKey.create({
-		data: {
-			userId,
-			key: stashKey(stash),
-			requestHash: "undo-stash",
-			completedAt: now,
-			status: 200,
-			responseBody: JSON.parse(
-				JSON.stringify({ snapshots }),
-			) as Prisma.InputJsonValue,
-			expiresAt: new Date(now.getTime() + IDEMPOTENCY_TTL_MS),
-		},
-	});
-	return stash;
-}
+const putStash = (tx: Tx, userId: string, snapshots: ExpenseSnapshot[]) =>
+	putUndoStash(tx, userId, { snapshots });
 
 /** Takes the rows out of the stash; the undo's transaction removes it. */
 async function takeStash(
@@ -89,13 +59,12 @@ async function takeStash(
 	userId: string,
 	stash: string,
 ): Promise<ExpenseSnapshot[]> {
-	const row = await tx.idempotencyKey.findUnique({
-		where: { userId_key: { userId, key: stashKey(stash) } },
-	});
-	if (!row || row.expiresAt <= new Date()) throw invalidUndo();
-	await tx.idempotencyKey.delete({ where: { id: row.id } });
-	const body = row.responseBody as { snapshots?: ExpenseSnapshot[] } | null;
-	if (!body?.snapshots?.length) throw invalidUndo();
+	const body = await takeUndoStash<{ snapshots?: ExpenseSnapshot[] }>(
+		tx,
+		userId,
+		stash,
+	);
+	if (!body.snapshots?.length) throw invalidUndo();
 	return body.snapshots;
 }
 

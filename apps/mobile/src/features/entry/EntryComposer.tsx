@@ -127,9 +127,9 @@ function Form({
 	const lines = useMoneyLines(form);
 	const split = useSplitView(form, pv, edit);
 	const [deleting, setDeleting] = useState(false);
-	// Your own expense only: a split has no Undo, so it is not deleted from here.
-	const canDelete =
-		form.editing && edit !== undefined && edit.kind !== "shared";
+	// Every saved expense deletes from here; a split asks first and Undo brings
+	// back every share.
+	const canDelete = form.editing && edit !== undefined;
 	// The More step slides in the first time it opens; the quick step is just there.
 	const visitedMore = useRef(false);
 	if (form.step === "more") visitedMore.current = true;
@@ -283,6 +283,7 @@ function Form({
 					id={expense.id}
 					onClose={() => setDeleting(false)}
 					onDeleted={onDone}
+					shared={edit?.kind === "shared"}
 					title={expense.title}
 					visible={deleting}
 				/>

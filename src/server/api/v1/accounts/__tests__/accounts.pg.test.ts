@@ -286,7 +286,7 @@ describe("/api/v1/accounts", () => {
 		await expectBody(await undo(written.undo), c.undo);
 	});
 
-	it("deletes an account with its history and offers no undo", async () => {
+	it("deletes an account with its history and answers an undo token", async () => {
 		const body = newAccount({ name: "Gone" });
 		await expectBody(await send("POST", "/accounts", body), c.create, 201);
 		const { written } = await twin(
@@ -294,7 +294,7 @@ describe("/api/v1/accounts", () => {
 			{ id: body.id },
 			{ write: c.delete, preview: c.previewDelete },
 		);
-		expect(written.undo).toBeNull();
+		expect(written.undo).toEqual(expect.any(String));
 		expect(await find(body.id)).toBeUndefined();
 	});
 

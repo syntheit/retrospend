@@ -14,6 +14,8 @@ import {
 	createSharedExpense,
 	type Deferred,
 	deleteSharedExpense,
+	type RestoreSharedInput,
+	restoreSharedExpense,
 	type SharedRestore,
 	type UpdateSharedInput,
 	updateSharedExpense,
@@ -249,13 +251,24 @@ export async function previewReplaceSharedExpense(
 
 const deleteInput = (body: DeleteBody) => ({
 	id: body.id,
+	keepForUndo: true,
 	confirmUnsettled: body.confirmUnsettled,
 	settled: body.settled,
 });
 
+/**
+ * The delete keeps the expense and every share on the server, so its token
+ * puts them all back. No token when it cannot be put back: an expense someone
+ * else added, or a delete that voided payments.
+ */
 export async function removeSharedExpense(caller: Caller, body: DeleteBody) {
 	const value = await save(caller, deleteSharedExpense, deleteInput(body));
-	return { id: value.id };
+	return {
+		id: value.id,
+		undo: value.stash
+			? undoFor(caller, FAMILY, "shared.restore", { stash: value.stash })
+			: null,
+	};
 }
 
 export const previewRemoveSharedExpense = (caller: Caller, body: DeleteBody) =>
@@ -321,6 +334,16 @@ function inverseOf(caller: Caller, op: string, input: unknown): Inverse {
 			preview: () => dryRun(caller, mutation, args),
 			apply: async () => {
 				const value = await save(caller, mutation, args);
+				return { id: value.id, redo: null };
+			},
+		};
+	}
+	if (op === "shared.restore") {
+		const args = input as RestoreSharedInput;
+		return {
+			preview: () => dryRun(caller, restoreSharedExpense, args),
+			apply: async () => {
+				const value = await save(caller, restoreSharedExpense, args);
 				return { id: value.id, redo: null };
 			},
 		};

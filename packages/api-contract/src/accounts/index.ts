@@ -77,7 +77,6 @@ const remove = moneyWrite({
 	event: "account.deleted",
 	input: accountIdParamsSchema,
 	result: accountRemovedSchema,
-	noUndo: "the history goes with the account, so there is nothing to put back.",
 });
 const updateBalance = moneyWrite({
 	path: "/accounts/{id}/balance",
@@ -105,6 +104,10 @@ export const accountUndoResultSchema = z
 			kind: z.literal("account.delete"),
 			result: accountRemovedSchema,
 		}),
+		z.object({
+			kind: z.literal("account.undelete"),
+			result: accountItemSchema,
+		}),
 		z.object({ kind: z.literal("account.restore"), result: accountItemSchema }),
 		z.object({ kind: z.literal("account.close"), result: accountItemSchema }),
 		z.object({ kind: z.literal("account.reopen"), result: accountItemSchema }),
@@ -121,8 +124,8 @@ export const accountUndoResultSchema = z
 
 /**
  * Accounts and net worth. Money writes have a preview twin and an undo token
- * for POST /accounts/undo, except deleting an account, which cannot be taken
- * back. Amounts that go in are decimal text; amounts that come out are
+ * for POST /accounts/undo; undoing a delete puts the account back with its
+ * whole history. Amounts that go in are decimal text; amounts that come out are
  * `{ minor, currency }`. Transfers and income are under /transfers and
  * /income.
  */
