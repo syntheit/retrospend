@@ -2,7 +2,7 @@ import type { Me } from "@retrospend/api-contract";
 import { createReadCache } from "@/data/cache";
 import { createMemoryStore } from "@/data/store";
 import { authFailureOf, isSessionEnded } from "./errors";
-import { type FetchMe, restoreSession } from "./restore";
+import { endSession, type FetchMe, restoreSession } from "./restore";
 import type { TokenStore } from "./token-store";
 
 const me = { id: "u1", name: "Ana" } as Me;
@@ -75,6 +75,38 @@ describe("restoreSession", () => {
 		const s = setup("t", { ok: false, reason: "unauthorized" }, ended);
 		await s.run();
 		expect(ended).toHaveBeenCalledWith(null);
+	});
+
+	it("hands the account over when the 401 handler ends the session during the restore", async () => {
+		const ended = jest.fn(async (_meId: string | null) => undefined);
+		const s = setup("t", { ok: false, reason: "unauthorized" }, ended);
+		await s.profileCache.write("me", 1, me);
+		// The fetch wrapper's 401 handler runs alongside, knowing nobody yet.
+		await Promise.all([
+			endSession({
+				tokens: s.tokens,
+				profileCache: s.profileCache,
+				ended,
+				meId: null,
+			}),
+			s.run(),
+		]);
+		expect(ended).toHaveBeenCalledWith("u1");
+		expect(s.token()).toBeNull();
+		expect(await s.profileCache.read("me", 1)).toBeNull();
+	});
+
+	it("ends the session for the account the caller names", async () => {
+		const ended = jest.fn(async (_meId: string | null) => undefined);
+		const s = setup("t", { ok: true, me });
+		await endSession({
+			tokens: s.tokens,
+			profileCache: s.profileCache,
+			ended,
+			meId: "u2",
+		});
+		expect(ended).toHaveBeenCalledWith("u2");
+		expect(s.token()).toBeNull();
 	});
 
 	it("stays signed in offline with the cached profile", async () => {

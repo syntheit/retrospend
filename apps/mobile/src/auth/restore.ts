@@ -23,6 +23,29 @@ export type FetchMe =
 	| { ok: true; me: Me }
 	| { ok: false; reason: "unauthorized" | "offline" };
 
+/**
+ * The session ended on the server. Whose it was is read from the cached
+ * profile before anything here clears it, and `ended` drops that account's
+ * data; then the token and the profile go. The restore and the 401 handler
+ * can both end the same session at once: each reads the account first, so
+ * whichever clears the profile has already handed the account over.
+ */
+export async function endSession(deps: {
+	tokens: TokenStore;
+	profileCache: ReadCache;
+	ended?: (meId: string | null) => Promise<void>;
+	/** The account when the caller knows it. */
+	meId?: string | null;
+}): Promise<void> {
+	const meId =
+		deps.meId ??
+		(await deps.profileCache.read<Me>(ME_CACHE.name, ME_CACHE.schema))?.data
+			.id ??
+		null;
+	await deps.ended?.(meId);
+	await Promise.all([deps.tokens.clear(), deps.profileCache.clear()]);
+}
+
 export async function restoreSession(deps: {
 	tokens: TokenStore;
 	fetchMe: () => Promise<FetchMe>;
@@ -48,13 +71,7 @@ export async function restoreSession(deps: {
 		};
 	}
 	if (result.reason === "unauthorized") {
-		const last = await deps.profileCache.read<Me>(
-			ME_CACHE.name,
-			ME_CACHE.schema,
-		);
-		await deps.ended?.(last?.data.id ?? null);
-		await deps.tokens.clear();
-		await deps.profileCache.clear();
+		await endSession(deps);
 		return { status: "signedOut", expired: true };
 	}
 	const cached = await deps.profileCache.read<Me>(

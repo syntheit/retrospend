@@ -26,7 +26,7 @@ import { createPushControl, forgetServerPush } from "@/push/control";
 import { type AuthApi, createAuthApi, type SignInStep } from "./auth-api";
 import { isSessionEnded } from "./errors";
 import { clearStaleTokenOnFirstRun } from "./first-run";
-import { type FetchMe, ME_CACHE, restoreSession } from "./restore";
+import { endSession, type FetchMe, ME_CACHE, restoreSession } from "./restore";
 import { createTokenStore } from "./token-store";
 
 export type SessionState =
@@ -136,11 +136,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	const expire = useCallback(async () => {
 		const { tokens, profileCache, me } = latest.current;
 		setState({ status: "signedOut", expired: true });
-		await Promise.all([
-			forgetEnded(me?.id ?? null),
-			tokens?.clear(),
-			profileCache?.clear(),
-		]);
+		if (!tokens || !profileCache) return;
+		// A 401 during the restore arrives here with no profile loaded yet.
+		await endSession({
+			tokens,
+			profileCache,
+			ended: forgetEnded,
+			meId: me?.id ?? null,
+		});
 	}, [forgetEnded]);
 
 	const api = useMemo(
