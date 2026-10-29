@@ -254,16 +254,14 @@
 		"pickDate": "Escolha uma data"
 	},
 	"entry": {
-		"title": "Lançamento",
+		"title": "Gasto",
 		"missing": "Abra este lançamento pela aba Atividade.",
 		"date": "Data",
 		"category": "Categoria",
 		"uncategorized": "Sem categoria",
 		"status": "Situação",
-		"type": "Tipo",
 		"paidBy": "Pago por",
 		"you": "Você",
-		"people": "Com",
 		"project": "Projeto",
 		"rate": "Cotação",
 		"rateType": "Cotação {rate}",
@@ -271,22 +269,22 @@
 		"notes": "Notas",
 		"spread": "Dividido em",
 		"spreadMonths": "{months} meses",
-		"excluded": "Fora das análises",
-		"yes": "Sim",
 		"locked": "Bloqueado por um pagamento",
-		"added": "Adicionado",
-		"kind": {
-			"expense": "Despesa",
-			"income": "Entrada",
-			"refund": "Reembolso",
-			"transfer": "Transferência",
-			"payment": "Pagamento"
-		},
 		"edit": "Editar",
 		"loading": "Carregando",
 		"gone": "Este lançamento foi excluído ou não é mais compartilhado com você.",
 		"loadError": "Não foi possível carregar este lançamento",
-		"loadErrorDetail": "Verifique sua conexão e tente de novo."
+		"loadErrorDetail": "Verifique sua conexão e tente de novo.",
+		"titleIncome": "Entrada",
+		"titlePayment": "Pagamento",
+		"yourShare": "Sua parte",
+		"reports": "Relatórios",
+		"hidden": "Oculto dos relatórios",
+		"shares": "Partes",
+		"paid": "pagou",
+		"addedBy": "{name} adicionou isto. Só essa pessoa pode alterar.",
+		"delete": "Excluir",
+		"makeRecurring": "Tornar recorrente"
 	},
 	"connect": {
 		"title": "Conecte-se a um servidor",
@@ -349,17 +347,18 @@
 		"pick": "Escolha uma despesa",
 		"offlineSince": "Sem conexão desde {time}",
 		"search": "Buscar despesas",
-		"summary": "{count, plural, one {# lançamento} other {# lançamentos}}",
-		"summarySpent": "{count, plural, one {# lançamento} other {# lançamentos}}, {amount} gastos",
+		"summary": "{count, plural, one {# despesa} other {# despesas}}",
 		"today": "Hoje",
 		"yesterday": "Ontem",
 		"chip": {
-			"kind": "Tipo",
 			"category": "Categoria",
 			"person": "Pessoa",
 			"allCategories": "Todas as categorias",
 			"everyone": "Todos",
-			"anyKind": "Todos os tipos"
+			"anyKind": "Todos os tipos",
+			"project": "Projeto",
+			"allProjects": "Todos os projetos",
+			"filter": "Filtro"
 		},
 		"period": {
 			"month": "Este mês",
@@ -381,7 +380,8 @@
 			"refund": "Reembolso",
 			"transfer": "Transferência",
 			"paymentSent": "Você pagou {name}",
-			"paymentReceived": "{name} pagou você"
+			"paymentReceived": "{name} pagou você",
+			"paid": "{name} pagou"
 		},
 		"bulk": {
 			"select": "Selecionar",
@@ -404,6 +404,11 @@
 			"undone": "Desfeito",
 			"undoError": "Não foi possível desfazer",
 			"skipped": "{count, plural, one {# não pode ser excluída aqui.} other {# não podem ser excluídas aqui.}}"
+		},
+		"segment": {
+			"label": "Atividade",
+			"expenses": "Despesas",
+			"recurring": "Recorrentes"
 		}
 	},
 	"budget": {
@@ -1886,7 +1891,7 @@
 		}
 	},
 	"recurring": {
-		"title": "Recorrentes",
+		"title": "Despesas recorrentes",
 		"error": "Não foi possível carregar as despesas recorrentes",
 		"errorDetail": "Verifique sua conexão e tente de novo.",
 		"empty": "Nenhuma despesa recorrente",
@@ -1939,7 +1944,9 @@
 			"fixed": "O valor de sempre, {amount}.",
 			"nextDue": "Próximo vencimento",
 			"submit": "Confirmar",
-			"toast": "{title} registrado, {amount}"
+			"toast": "{title} registrado, {amount}",
+			"autoOn": "Ativado",
+			"autoOff": "Desativado"
 		},
 		"item": {
 			"next": "{amount}, próximo em {date}.",
@@ -1954,6 +1961,19 @@
 			"autoOnToast": "Pagamento automático ativado para {title}",
 			"autoOffToast": "Pagamento automático desativado para {title}",
 			"error": "Não foi possível alterar. Tente de novo."
+		},
+		"count": "{count, plural, one {# despesa recorrente} other {# despesas recorrentes}}",
+		"autoPayOn": "Pagamento automático ativado",
+		"autoPayOff": "Pagamento automático desativado",
+		"details": "Detalhes",
+		"make": {
+			"title": "Tornar recorrente",
+			"body": "{title} vai se repetir todo mês por {amount}, a próxima em {date}.",
+			"stays": "O pagamento automático fica desativado, então nada é registrado até você confirmar. Seus totais não mudam.",
+			"submit": "Tornar recorrente",
+			"saving": "Salvando",
+			"error": "Não foi possível tornar recorrente. Tente de novo.",
+			"toast": "{title} agora se repete todo mês"
 		}
 	},
 	"shortcuts": {

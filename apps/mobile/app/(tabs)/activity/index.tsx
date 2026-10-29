@@ -1,107 +1,72 @@
-import { router, Stack } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Platform, SectionList, Text, View } from "react-native";
+import { Platform, SectionList, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFormatter, useTranslations } from "use-intl";
+import { useTranslations } from "use-intl";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ActivityFilters } from "@/features/activity/ActivityFilters";
 import { ActivityRow } from "@/features/activity/ActivityRow";
+import { ActivitySegments } from "@/features/activity/ActivitySegments";
+import { ActivitySummary } from "@/features/activity/ActivitySummary";
 import { BulkControls } from "@/features/activity/BulkControls";
 import { canSelect } from "@/features/activity/bulk";
+import { DayHeader, useDayLabel } from "@/features/activity/DayHeader";
 import { groupByDay } from "@/features/activity/days";
 import { EntryDetail } from "@/features/activity/EntryView";
 import { DEFAULT_FILTER, isDefaultFilter } from "@/features/activity/filter";
-import type { ActivityItem, ActivityPage } from "@/features/activity/source";
-import { TextAction } from "@/features/activity/TextAction";
+import { rowActions } from "@/features/activity/rowActions";
+import type { ActivityItem } from "@/features/activity/source";
 import { useActivity } from "@/features/activity/useActivity";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { StaleNote } from "@/ui/List";
-import { useMoneyText } from "@/features/read/useMoneyText";
-import { FLOATING_ADD_INSET } from "@/layout/destinations";
+import { useBulkActions } from "@/features/activity/useBulkActions";
+import { useDebouncedSearch } from "@/features/activity/useDebouncedSearch";
+import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
+import { RecurringView } from "@/features/recurring/RecurringView";
+import { RECURRING_APART } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
+import { ListGroup, StaleNote } from "@/ui/List";
 import { ListDetail } from "@/ui/ListDetail";
-import { Screen } from "@/ui/Screen";
-
-const SEARCH_DELAY_MS = 300;
-
-/** "Wed, Oct 21": a day the server named, shown in the phone's language. */
-function useDayLabel() {
-	const t = useTranslations("mobile.activity");
-	const format = useFormatter();
-	return (day: string, relative: "today" | "yesterday" | null) => {
-		if (relative) return t(relative);
-		const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-		return format.dateTime(new Date(y, m - 1, d, 12), {
-			weekday: "short",
-			month: "short",
-			day: "numeric",
-		});
-	};
-}
-
-function Summary({
-	page,
-	onSelect,
-}: {
-	page: ActivityPage;
-	/** Starts selecting; absent when no row on the page can be picked. */
-	onSelect?: () => void;
-}) {
-	const t = useTranslations("mobile.activity");
-	const format = useMoneyText();
-	const { color, space, type } = useTheme();
-	if (page.count === null && !onSelect) return null;
-	const spent = page.total ? format(page.total.value) : null;
-	return (
-		<View
-			style={{
-				flexDirection: "row",
-				alignItems: "center",
-				justifyContent: "space-between",
-				gap: space[4],
-				paddingHorizontal: space[4],
-				paddingVertical: space[1],
-			}}
-		>
-			<Text style={{ flex: 1, color: color.fg2, fontSize: type.small.size }}>
-				{page.count === null
-					? ""
-					: spent
-						? t("summarySpent", { count: page.count, amount: spent })
-						: t("summary", { count: page.count })}
-			</Text>
-			{onSelect ? (
-				<TextAction label={t("bulk.select")} onPress={onSelect} />
-			) : null}
-		</View>
-	);
-}
+import { Screen, useAddInset } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
+import { Text } from "@/ui/Text";
 
 export default function ActivityScreen() {
 	const t = useTranslations("mobile.activity");
+	const te = useTranslations("mobile.entry");
+	const tc = useTranslations("mobile.common");
+	const tr = useTranslations("mobile.recurring");
 	const dayLabel = useDayLabel();
-	const { color, space, type } = useTheme();
+	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const searchRef = useSearchShortcut();
 	const insets = useSafeAreaInsets();
+	const addInset = useAddInset();
+	const add = useOptionalAddEntry();
+	const params = useLocalSearchParams<{ segment?: string }>();
+	// On the iPad sidebar Recurring is a destination of its own.
+	const [segment, setSegment] = useState<"expenses" | "recurring">(
+		params.segment === "recurring" && !RECURRING_APART
+			? "recurring"
+			: "expenses",
+	);
+	// A link to the Recurring segment (Settings, a notification) opens it even
+	// when Activity is already mounted on Expenses.
+	useEffect(() => {
+		if (params.segment === "recurring" && !RECURRING_APART) {
+			setSegment("recurring");
+		}
+	}, [params.segment]);
 	const [filter, setFilter] = useState(DEFAULT_FILTER);
-	const [search, setSearch] = useState("");
+	const [search, setSearch] = useDebouncedSearch((q) =>
+		setFilter((f) => (f.q === q ? f : { ...f, q })),
+	);
 	const [selected, setSelected] = useState<ActivityItem | null>(null);
 	// Ids of the rows picked for a bulk action; null when not selecting.
 	const [picked, setPicked] = useState<ReadonlySet<string> | null>(null);
 	const { state, reload, loadMore, loadingMore } = useActivity(filter);
-
-	// The search bar sends text as it is typed; the list asks once it pauses.
-	useEffect(() => {
-		const timer = setTimeout(
-			() => setFilter((f) => (f.q === search ? f : { ...f, q: search })),
-			SEARCH_DELAY_MS,
-		);
-		return () => clearTimeout(timer);
-	}, [search]);
+	const bulk = useBulkActions(() => setPicked(null));
 
 	const page = state.status === "ready" ? state.data : null;
 	const sections = useMemo(
@@ -109,7 +74,8 @@ export default function ActivityScreen() {
 			page
 				? groupByDay(page.items, page.dayTotals, page.today).map((s) => ({
 						...s,
-						data: s.items,
+						// One item per day: the day's rows are one inset group.
+						data: [s.items],
 					}))
 				: [],
 		[page],
@@ -139,11 +105,43 @@ export default function ActivityScreen() {
 		});
 	}
 
+	const words = {
+		select: t("bulk.select"),
+		edit: te("edit"),
+		categorize: t("bulk.categorize"),
+		delete: t("bulk.delete"),
+	};
+	const actionsOf = (item: ActivityItem) =>
+		rowActions(
+			item,
+			words,
+			{
+				select: () => setPicked(new Set([item.id])),
+				edit: () =>
+					add?.edit(
+						item.entityId,
+						item.source === "shared" ? "shared" : undefined,
+					),
+				categorize: () => bulk.categorize([item.entityId]),
+				remove: () => bulk.remove([item.entityId]),
+			},
+			add !== null,
+		);
+
+	const segments = RECURRING_APART ? null : (
+		<ActivitySegments onChange={setSegment} value={segment} />
+	);
+
 	const empty =
 		state.status === "loading" ? (
-			<EmptyState title={t("loading")} />
+			<SkeletonRows count={6} />
 		) : state.status === "error" ? (
-			<EmptyState detail={t("errorDetail")} title={t("error")} />
+			<EmptyState
+				actionLabel={tc("retry")}
+				detail={t("errorDetail")}
+				onAction={reload}
+				title={t("error")}
+			/>
 		) : page?.elsewhere ? (
 			<EmptyState title={t("emptyElsewhere")} />
 		) : (
@@ -157,89 +155,58 @@ export default function ActivityScreen() {
 			contentInsetAdjustmentBehavior="automatic"
 			extraData={picked}
 			keyboardDismissMode="on-drag"
-			keyExtractor={(item) => item.id}
+			keyExtractor={(items) => items[0]?.id ?? "empty"}
 			ListEmptyComponent={empty}
 			ListFooterComponent={
 				loadingMore ? (
 					<Text
-						style={{
-							color: color.fg2,
-							fontSize: type.small.size,
-							padding: space[4],
-							textAlign: "center",
-						}}
+						style={{ padding: space[4], textAlign: "center" }}
+						tone="fg2"
+						variant="small"
 					>
 						{t("loading")}
 					</Text>
 				) : (
-					<View style={{ height: FLOATING_ADD_INSET }} />
+					<View style={{ height: addInset }} />
 				)
 			}
 			ListHeaderComponent={
 				<View>
+					{segments}
 					<StaleNote
 						since={state.status === "ready" ? state.staleSince : null}
 					/>
 					<ActivityFilters filter={filter} onChange={setFilter} />
-					{page && !picked ? (
-						<Summary
-							onSelect={
-								page.items.some(canSelect)
-									? () => setPicked(new Set())
-									: undefined
-							}
-							page={page}
-						/>
-					) : null}
+					{page && !picked ? <ActivitySummary page={page} /> : null}
 				</View>
 			}
 			onEndReached={loadMore}
 			onEndReachedThreshold={0.6}
 			onRefresh={reload}
 			refreshing={false}
-			renderItem={({ item }) => (
-				<ActivityRow
-					item={item}
-					onLongPress={
-						!picked && canSelect(item)
-							? () => setPicked(new Set([item.id]))
-							: undefined
-					}
-					onPress={() => open(item)}
-					pick={
-						picked
-							? { checked: picked.has(item.id), enabled: canSelect(item) }
-							: undefined
-					}
-					selected={listDetail && !picked && selected?.id === item.id}
-				/>
+			renderItem={({ item: items }) => (
+				<ListGroup>
+					{items.map((item) => (
+						<ActivityRow
+							actions={picked ? undefined : actionsOf(item)}
+							item={item}
+							key={item.id}
+							onPress={() => open(item)}
+							pick={
+								picked
+									? { checked: picked.has(item.id), enabled: canSelect(item) }
+									: undefined
+							}
+							selected={listDetail && !picked && selected?.id === item.id}
+						/>
+					))}
+				</ListGroup>
 			)}
 			renderSectionHeader={({ section }) => (
-				<View
-					style={{
-						flexDirection: "row",
-						alignItems: "baseline",
-						justifyContent: "space-between",
-						paddingHorizontal: space[4],
-						paddingTop: space[4],
-						paddingBottom: space[1],
-						backgroundColor: color.bg,
-					}}
-				>
-					<Text
-						accessibilityRole="header"
-						style={{
-							color: color.fg2,
-							fontSize: type.small.size,
-							fontWeight: "600",
-						}}
-					>
-						{dayLabel(section.day, section.relative)}
-					</Text>
-					{section.total ? (
-						<MoneyAmount tone="muted" value={section.total} />
-					) : null}
-				</View>
+				<DayHeader
+					label={dayLabel(section.day, section.relative)}
+					total={section.total}
+				/>
 			)}
 			sections={sections}
 			stickySectionHeadersEnabled={false}
@@ -266,6 +233,7 @@ export default function ActivityScreen() {
 				}
 			>
 				<BulkControls
+					actions={bulk}
 					items={page?.items ?? []}
 					onDone={() => setPicked(null)}
 					picked={picked}
@@ -279,7 +247,7 @@ export default function ActivityScreen() {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
-			{listDetail ? null : (
+			{listDetail || segment !== "expenses" ? null : (
 				<Stack.Screen
 					options={{
 						headerSearchBarOptions: {
@@ -291,24 +259,39 @@ export default function ActivityScreen() {
 				/>
 			)}
 			<ListDetail
-				bar={<AccountTopBar title={t("title")} />}
+				bar={
+					<AccountTopBar
+						title={segment === "recurring" ? tr("title") : t("title")}
+					/>
+				}
 				detail={
 					<Screen>
-						{selected ? (
+						{segment === "recurring" ? null : selected ? (
 							<EntryDetail id={selected.id} placeholder={selected} />
 						) : (
 							<EmptyState title={t("pick")} />
 						)}
 					</Screen>
 				}
-				list={list}
-				search={{
-					value: search,
-					onChange: setSearch,
-					placeholder: t("search"),
-					ref: searchRef,
-				}}
+				list={
+					segment === "recurring" ? (
+						<RecurringView embedded header={segments} />
+					) : (
+						list
+					)
+				}
+				search={
+					segment === "recurring"
+						? undefined
+						: {
+								value: search,
+								onChange: setSearch,
+								placeholder: t("search"),
+								ref: searchRef,
+							}
+				}
 			/>
+			{bulk.sheets}
 		</View>
 	);
 }

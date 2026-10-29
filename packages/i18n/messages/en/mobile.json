@@ -254,16 +254,14 @@
 		"pickDate": "Pick a date"
 	},
 	"entry": {
-		"title": "Entry",
+		"title": "Expense",
 		"missing": "Open this entry from Activity.",
 		"date": "Date",
 		"category": "Category",
 		"uncategorized": "No category",
 		"status": "Status",
-		"type": "Type",
 		"paidBy": "Paid by",
 		"you": "You",
-		"people": "With",
 		"project": "Project",
 		"rate": "Rate",
 		"rateType": "{rate} rate",
@@ -271,22 +269,22 @@
 		"notes": "Notes",
 		"spread": "Spread over",
 		"spreadMonths": "{months} months",
-		"excluded": "Left out of insights",
-		"yes": "Yes",
 		"locked": "Locked by a payment",
-		"added": "Added",
-		"kind": {
-			"expense": "Expense",
-			"income": "Money in",
-			"refund": "Refund",
-			"transfer": "Transfer",
-			"payment": "Payment"
-		},
 		"edit": "Edit",
 		"loading": "Loading",
 		"gone": "This entry was deleted or isn't shared with you anymore.",
 		"loadError": "Couldn't load this entry",
-		"loadErrorDetail": "Check your connection and try again."
+		"loadErrorDetail": "Check your connection and try again.",
+		"titleIncome": "Income",
+		"titlePayment": "Payment",
+		"yourShare": "Your share",
+		"reports": "Reports",
+		"hidden": "Hidden from reports",
+		"shares": "Shares",
+		"paid": "paid",
+		"addedBy": "{name} added this. Only they can change it.",
+		"delete": "Delete",
+		"makeRecurring": "Make recurring"
 	},
 	"connect": {
 		"title": "Connect to a server",
@@ -349,17 +347,18 @@
 		"pick": "Pick an expense",
 		"offlineSince": "Offline since {time}",
 		"search": "Search expenses",
-		"summary": "{count, plural, one {# entry} other {# entries}}",
-		"summarySpent": "{count, plural, one {# entry} other {# entries}}, {amount} spent",
+		"summary": "{count, plural, one {# expense} other {# expenses}}",
 		"today": "Today",
 		"yesterday": "Yesterday",
 		"chip": {
-			"kind": "Type",
 			"category": "Category",
 			"person": "Person",
 			"allCategories": "All categories",
 			"everyone": "Everyone",
-			"anyKind": "All types"
+			"anyKind": "All types",
+			"project": "Project",
+			"allProjects": "All projects",
+			"filter": "Filter"
 		},
 		"period": {
 			"month": "This month",
@@ -381,7 +380,8 @@
 			"refund": "Refund",
 			"transfer": "Transfer",
 			"paymentSent": "Paid {name}",
-			"paymentReceived": "{name} paid you"
+			"paymentReceived": "{name} paid you",
+			"paid": "{name} paid"
 		},
 		"bulk": {
 			"select": "Select",
@@ -404,6 +404,11 @@
 			"undone": "Undone",
 			"undoError": "Couldn't undo",
 			"skipped": "{count, plural, one {# of them can't be deleted here.} other {# of them can't be deleted here.}}"
+		},
+		"segment": {
+			"label": "Activity",
+			"expenses": "Expenses",
+			"recurring": "Recurring"
 		}
 	},
 	"budget": {
@@ -1886,7 +1891,7 @@
 		}
 	},
 	"recurring": {
-		"title": "Recurring",
+		"title": "Recurring expenses",
 		"error": "Couldn't load recurring expenses",
 		"errorDetail": "Check your connection and try again.",
 		"empty": "No recurring expenses",
@@ -1939,7 +1944,9 @@
 			"fixed": "The usual amount, {amount}.",
 			"nextDue": "Next due",
 			"submit": "Confirm",
-			"toast": "{title} logged, {amount}"
+			"toast": "{title} logged, {amount}",
+			"autoOn": "On",
+			"autoOff": "Off"
 		},
 		"item": {
 			"next": "{amount}, next on {date}.",
@@ -1954,6 +1961,19 @@
 			"autoOnToast": "Auto-pay on for {title}",
 			"autoOffToast": "Auto-pay off for {title}",
 			"error": "Couldn't change it. Try again."
+		},
+		"count": "{count, plural, one {# recurring expense} other {# recurring expenses}}",
+		"autoPayOn": "Auto-pay on",
+		"autoPayOff": "Auto-pay off",
+		"details": "Details",
+		"make": {
+			"title": "Make recurring",
+			"body": "{title} will repeat every month at {amount}, next on {date}.",
+			"stays": "Auto-pay is off, so nothing is logged until you confirm it. Your totals don't change.",
+			"submit": "Make recurring",
+			"saving": "Saving",
+			"error": "Couldn't make it recurring. Try again.",
+			"toast": "{title} now repeats monthly"
 		}
 	},
 	"shortcuts": {

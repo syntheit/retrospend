@@ -14,10 +14,11 @@ describe("filterString", () => {
 			kind: "in",
 			categoryId: "cat1",
 			personKey: "user:abc",
+			projectId: "proj1",
 			q: "café & té",
 		});
 		expect(text).toBe(
-			"range=all&cat=cat1&person=user%3Aabc&kind=in&q=caf%C3%A9%20%26%20t%C3%A9",
+			"range=all&cat=cat1&person=user%3Aabc&project=proj1&kind=in&q=caf%C3%A9%20%26%20t%C3%A9",
 		);
 		expect(parseActivityFilter(text)).toEqual({
 			ok: true,
@@ -25,6 +26,7 @@ describe("filterString", () => {
 				rangeAll: true,
 				categoryIds: ["cat1"],
 				people: ["user:abc"],
+				projectIds: ["proj1"],
 				kinds: ["in"],
 				q: "café & té",
 			},

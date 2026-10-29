@@ -148,6 +148,7 @@ export function BulkSheet({
 									})
 					}
 					onPress={() => void save()}
+					variant={action?.kind === "delete" ? "danger" : "filled"}
 				/>
 				<Button label={tc("cancel")} onPress={onClose} variant="text" />
 			</View>
