@@ -1,4 +1,11 @@
+import type {
+	insightsCashflowSchema,
+	insightsMonthsSchema,
+	insightsSummarySchema,
+	insightsYtdSchema,
+} from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
+import type * as z from "zod";
 import {
 	insightsCashflow,
 	insightsMonths,
@@ -42,40 +49,54 @@ function spanOf(q: SpanQuery) {
 
 const zone = (caller: LedgerCaller) => ({ timeZone: caller.timeZone });
 
-export const readInsightsSummary = (
+/*
+ * The services answer readonly DTOs and the wire types are the contract's
+ * mutable ones. The shape is the same (the pg test parses every answer with
+ * its schema), so the casts below only drop `readonly`.
+ */
+
+export async function readInsightsSummary(
 	caller: LedgerCaller,
 	q: SpanQuery & FilterQuery & { compare?: "true" | "false" },
-) =>
-	insightsSummary(
+) {
+	const dto = await insightsSummary(
 		caller.db,
 		caller.principal.userId,
 		{ range: spanOf(q), compare: q.compare === "true", filter: filterOf(q) },
 		zone(caller),
 	);
+	return dto as z.output<typeof insightsSummarySchema>;
+}
 
-export const readInsightsMonths = (
+export async function readInsightsMonths(
 	caller: LedgerCaller,
 	q: FilterQuery & { to: string; count: number },
-) =>
-	insightsMonths(
+) {
+	const dto = await insightsMonths(
 		caller.db,
 		caller.principal.userId,
 		{ to: q.to, count: q.count, filter: filterOf(q) },
 		zone(caller),
 	);
+	return dto as z.output<typeof insightsMonthsSchema>;
+}
 
-export const readInsightsYtd = (caller: LedgerCaller, q: FilterQuery) =>
-	insightsYtd(
+export async function readInsightsYtd(caller: LedgerCaller, q: FilterQuery) {
+	const dto = await insightsYtd(
 		caller.db,
 		caller.principal.userId,
 		{ filter: filterOf(q) },
 		zone(caller),
 	);
+	return dto as z.output<typeof insightsYtdSchema>;
+}
 
-export const readInsightsCashflow = (caller: LedgerCaller, q: SpanQuery) =>
-	insightsCashflow(
+export async function readInsightsCashflow(caller: LedgerCaller, q: SpanQuery) {
+	const dto = await insightsCashflow(
 		caller.db,
 		caller.principal.userId,
 		{ range: spanOf(q) },
 		zone(caller),
 	);
+	return dto as z.output<typeof insightsCashflowSchema>;
+}
