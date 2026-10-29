@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 // `pnpm test:pg`: tests that need a real Postgres (TEST_DATABASE_URL).
@@ -5,6 +6,11 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
 	resolve: {
 		tsconfigPaths: true,
+		alias: {
+			"server-only": fileURLToPath(
+				new URL("./src/test/server-only-stub.ts", import.meta.url),
+			),
+		},
 	},
 	test: {
 		environment: "node",

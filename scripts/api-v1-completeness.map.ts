@@ -581,7 +581,11 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"wealth.deleteAssetPermanently": to("POST /accounts/{id}/delete"),
 	"wealth.exportCsv": to("GET /accounts/export"),
 	"wealth.figures": to("GET /accounts/net-worth"),
-	"wealth.getDashboard": to("GET /accounts", "GET /accounts/net-worth"),
+	"wealth.getDashboard": to(
+		"GET /accounts",
+		"GET /accounts/net-worth",
+		"GET /accounts/summary",
+	),
 	"wealth.getRunwayStats": to("GET /accounts/runway"),
 	"wealth.importAssets": superseded(
 		"a web CSV helper that creates or edits each account without a preview or an undo; the app does the same row by row with POST /accounts and PUT /accounts/{id}, which preview and undo",
