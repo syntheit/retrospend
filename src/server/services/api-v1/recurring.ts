@@ -3,6 +3,7 @@ import type {
 	confirmRecurringSchema,
 	createRecurringSchema,
 	RecurringItemDto,
+	skipRecurringSchema,
 	updateRecurringSchema,
 } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
@@ -24,6 +25,10 @@ import {
 	confirmRecurringExpense,
 	unconfirmRecurringExpense,
 } from "~/server/services/recurring-confirm.mutation";
+import {
+	skipRecurring,
+	unskipRecurring,
+} from "~/server/services/recurring-skip.mutation";
 import {
 	listRecurringView,
 	type RecurringItemDTO,
@@ -175,6 +180,7 @@ function incomeInput(
 		templateId: input.id,
 		dueDate: input.dueAt ? new Date(input.dueAt) : null,
 		amount: input.amount,
+		paidOn: input.paidOn,
 		rateType: input.rateType,
 		customRate: input.customRate,
 		into: input.into,
@@ -198,6 +204,7 @@ function expenseInput(caller: LedgerCaller, input: ConfirmInput) {
 		templateId: input.id,
 		dueDate: input.dueAt ? new Date(input.dueAt) : null,
 		amount: input.amount,
+		paidOn: input.paidOn,
 		timeZone: caller.timeZone,
 	};
 }
@@ -228,6 +235,7 @@ export async function confirmRecurring(
 			},
 			undo: undoFor(caller, FAMILY, "income.unconfirmRecurring", {
 				expenseId: v.expenseId,
+				dueAt: v.dueAt.toISOString(),
 			}),
 		};
 	}
@@ -249,6 +257,7 @@ export async function confirmRecurring(
 		},
 		undo: undoFor(caller, FAMILY, "recurring.unconfirm", {
 			expenseId: v.expenseId,
+			dueAt: v.dueAt.toISOString(),
 		}),
 	};
 }
@@ -270,13 +279,15 @@ export async function previewConfirmRecurring(
 
 // ── Undo ────────────────────────────────────────────────────────────────────
 
-function expenseIdOf(op: string, input: unknown): string {
+function undoOf(op: string, input: unknown) {
 	if (op !== "recurring.unconfirm" && op !== "income.unconfirmRecurring")
 		throw new TRPCError({
 			code: "BAD_REQUEST",
 			message: "This undo is not valid anymore",
 		});
-	return (input as { expenseId: string }).expenseId;
+	const { expenseId, dueAt } = input as { expenseId: string; dueAt?: string };
+	// A token minted before paid on existed has no dueAt: the entry's own date.
+	return { expenseId, dueDate: dueAt ? new Date(dueAt) : null };
 }
 
 export async function undoRecurringConfirm(
@@ -284,11 +295,11 @@ export async function undoRecurringConfirm(
 	token: string,
 ) {
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
-	const expenseId = expenseIdOf(op, input);
+	const undo = undoOf(op, input);
 	const done = await spendUndo(caller, token, () =>
 		op === "recurring.unconfirm"
-			? applyWrite(caller, unconfirmRecurringExpense, { expenseId })
-			: applyWrite(caller, unconfirmRecurringIncome, { expenseId }),
+			? applyWrite(caller, unconfirmRecurringExpense, undo)
+			: applyWrite(caller, unconfirmRecurringIncome, undo),
 	);
 	return { expenseId: done.expenseId, templateId: done.templateId, redo: null };
 }
@@ -298,8 +309,66 @@ export function previewUndoRecurringConfirm(
 	token: string,
 ) {
 	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
-	const expenseId = expenseIdOf(op, input);
+	const undo = undoOf(op, input);
 	return op === "recurring.unconfirm"
-		? previewWrite(caller, unconfirmRecurringExpense, { expenseId })
-		: previewWrite(caller, unconfirmRecurringIncome, { expenseId });
+		? previewWrite(caller, unconfirmRecurringExpense, undo)
+		: previewWrite(caller, unconfirmRecurringIncome, undo);
+}
+
+// ── Skip ────────────────────────────────────────────────────────────────────
+
+type SkipInput = z.infer<typeof skipRecurringSchema>;
+
+function skipInput(caller: LedgerCaller, input: SkipInput) {
+	return {
+		templateId: input.id,
+		dueDate: input.dueAt ? new Date(input.dueAt) : null,
+		timeZone: caller.timeZone,
+	};
+}
+
+export async function skipRecurringItem(
+	caller: LedgerCaller,
+	input: SkipInput,
+) {
+	const v = await applyWrite(caller, skipRecurring, skipInput(caller, input));
+	return {
+		skipped: {
+			templateId: v.templateId,
+			skippedAt: v.dueAt.toISOString(),
+			nextDueAt: v.nextDueAt.toISOString(),
+		},
+		undo: undoFor(caller, FAMILY, "recurring.skip", {
+			templateId: v.templateId,
+			dueAt: v.dueAt.toISOString(),
+		}),
+	};
+}
+
+export function previewSkipRecurring(caller: LedgerCaller, input: SkipInput) {
+	return previewWrite(caller, skipRecurring, skipInput(caller, input));
+}
+
+function unskipOf(op: string, input: unknown) {
+	if (op !== "recurring.skip")
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "This undo is not valid anymore",
+		});
+	const { templateId, dueAt } = input as { templateId: string; dueAt: string };
+	return { templateId, dueDate: new Date(dueAt) };
+}
+
+export async function undoSkipRecurring(caller: LedgerCaller, token: string) {
+	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
+	const undo = unskipOf(op, input);
+	const done = await spendUndo(caller, token, () =>
+		applyWrite(caller, unskipRecurring, undo),
+	);
+	return { templateId: done.templateId, dueAt: done.dueAt.toISOString() };
+}
+
+export function previewUndoSkipRecurring(caller: LedgerCaller, token: string) {
+	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
+	return previewWrite(caller, unskipRecurring, unskipOf(op, input));
 }

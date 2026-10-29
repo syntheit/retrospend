@@ -20,6 +20,7 @@ import {
 	FIGURE_NOT_PLANNED_YET,
 } from "~/server/services/envelope/verdict";
 import { recurringEntryData } from "~/server/services/money-in.service";
+import { paidOnInstant } from "~/server/services/recurring-paid-on";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import type { Prisma } from "~prisma";
 import {
@@ -51,6 +52,8 @@ export interface ConfirmRecurringIncomeInput {
 	readonly dueDate?: Date | null;
 	/** The real amount as typed (a decimal string), required when the template's amount varies. */
 	readonly amount?: string | null;
+	/** The day it was really received (yyyy-MM-dd); the due date when omitted. */
+	readonly paidOn?: string | null;
 	/** Rate type for a foreign amount; null = the default (as income.add). */
 	readonly rateType?: string | null;
 	/** A typed rate: 1 unit of the template's currency = this much home. */
@@ -67,6 +70,8 @@ export interface ConfirmRecurringIncomeInput {
 export interface ConfirmedIncome {
 	readonly expenseId: string;
 	readonly templateId: string;
+	/** The due date this confirm settled, for the undo to put back. */
+	readonly dueAt: Date;
 	readonly booked: Money | null;
 	readonly into: AccountChange | null;
 	readonly kept: boolean;
@@ -118,6 +123,9 @@ export async function confirmRecurringIncomeIn(
 					value: input.customRate,
 				}
 			: { kind: "table", rateType: input.rateType ?? null },
+		input.paidOn
+			? paidOnInstant(input.paidOn, "IN", input.timeZone)
+			: undefined,
 	);
 	const home = await homeCurrencyOf(tx, userId);
 	const account = input.into
@@ -221,6 +229,7 @@ export async function confirmRecurringIncomeIn(
 	return {
 		expenseId: row.id,
 		templateId: template.id,
+		dueAt: template.nextDueDate,
 		booked: bookedMoney,
 		into,
 		kept,
@@ -258,6 +267,8 @@ export const confirmRecurringIncome: MoneyMutation<
 
 export interface UnconfirmRecurringIncomeInput {
 	readonly expenseId: string;
+	/** The due date the confirm settled; the row's own date when omitted (paid on can differ). */
+	readonly dueDate?: Date | null;
 }
 
 /** Removes the posted row (its leg goes back) and puts the template back on that due date. */
@@ -286,10 +297,11 @@ export async function unconfirmRecurringIncomeIn(
 	// Only the newest confirm can be undone: the template must sit exactly one
 	// period after this entry. Rewinding past a later confirm would book those
 	// periods again.
+	const dueDate = input.dueDate ?? row.date;
 	if (
 		template &&
 		template.nextDueDate.getTime() !==
-			nextDueDay(row.date, template.frequency, template.anchorDay).getTime()
+			nextDueDay(dueDate, template.frequency, template.anchorDay).getTime()
 	) {
 		throw new TRPCError({
 			code: "CONFLICT",
@@ -307,7 +319,7 @@ export async function unconfirmRecurringIncomeIn(
 				userId,
 				nextDueDate: template.nextDueDate,
 			},
-			data: { nextDueDate: row.date },
+			data: { nextDueDate: dueDate },
 		});
 	}
 	return { expenseId: row.id, templateId: row.recurringTemplateId, accounts };

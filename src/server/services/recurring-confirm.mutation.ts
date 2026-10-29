@@ -9,6 +9,7 @@ import { nextRecurringDate } from "@retrospend/domain/recurring";
 import { startOfNextDayIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { recurringEntryData } from "./money-in.service";
+import { paidOnInstant } from "./recurring-paid-on";
 import type { MoneyMutation } from "./preview/types";
 
 export interface ConfirmRecurringExpenseInput {
@@ -17,6 +18,8 @@ export interface ConfirmRecurringExpenseInput {
 	readonly dueDate?: Date | null;
 	/** The real amount as typed, required when the template's amount varies. */
 	readonly amount?: string | null;
+	/** The day it was really paid (yyyy-MM-dd); the due date when omitted. */
+	readonly paidOn?: string | null;
 	readonly timeZone?: string;
 }
 
@@ -24,6 +27,8 @@ export interface ConfirmedExpense {
 	readonly expenseId: string;
 	readonly templateId: string;
 	readonly nextDueAt: Date;
+	/** The due date this confirm settled, for the undo to put back. */
+	readonly dueAt: Date;
 }
 
 const FIGURES = ["spent"];
@@ -68,6 +73,10 @@ export const confirmRecurringExpense: MoneyMutation<
 			tx,
 			template,
 			input.amount ?? undefined,
+			undefined,
+			input.paidOn
+				? paidOnInstant(input.paidOn, template.direction, input.timeZone)
+				: undefined,
 		);
 		const nextDueAt = nextRecurringDate(
 			template.nextDueDate,
@@ -94,7 +103,12 @@ export const confirmRecurringExpense: MoneyMutation<
 			});
 		const row = await tx.expense.create({ data: entry, select: { id: true } });
 		return {
-			value: { expenseId: row.id, templateId: template.id, nextDueAt },
+			value: {
+				expenseId: row.id,
+				templateId: template.id,
+				nextDueAt,
+				dueAt: template.nextDueDate,
+			},
 			undo: {
 				kind: "revert",
 				mutation: "recurring.unconfirm",
@@ -109,6 +123,12 @@ export const confirmRecurringExpense: MoneyMutation<
 
 export interface UnconfirmRecurringExpenseInput {
 	readonly expenseId: string;
+	/**
+	 * The due date the confirm settled. The entry may be dated another day
+	 * (paid on), so the template is put back on this one; the entry's own date
+	 * when omitted.
+	 */
+	readonly dueDate?: Date | null;
 }
 
 export interface UnconfirmedExpense {
@@ -145,11 +165,12 @@ export const unconfirmRecurringExpense: MoneyMutation<
 		// Only the newest confirm can be undone: the template must sit exactly
 		// one period after this entry. Rewinding past a later confirm would
 		// book those periods again.
+		const dueDate = input.dueDate ?? row.date;
 		if (
 			template &&
 			template.nextDueDate.getTime() !==
 				nextRecurringDate(
-					row.date,
+					dueDate,
 					template.frequency,
 					template.anchorDay,
 				).getTime()
@@ -166,7 +187,7 @@ export const unconfirmRecurringExpense: MoneyMutation<
 					userId: actor.userId,
 					nextDueDate: template.nextDueDate,
 				},
-				data: { nextDueDate: row.date },
+				data: { nextDueDate: dueDate },
 			});
 		return {
 			value: { expenseId: row.id, templateId: row.recurringTemplateId },
