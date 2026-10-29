@@ -1,10 +1,10 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { Chip } from "@/ui/Chip";
 import { DateField } from "@/ui/DateField";
-import { Chip } from "./Chip";
+import { FieldError, FieldLabel, TextField } from "@/ui/TextField";
 import { type IncomeDraft, type IncomeErrors, NOTE_LIMIT } from "./draft";
-import { FieldError, FieldLabel, TextField } from "./ExpenseFields";
 import { Face } from "./Face";
 import { type EntryCatalog, personKey } from "./types";
 
@@ -32,6 +32,7 @@ export function IncomeFields({
 		<>
 			<View style={{ gap: space[2] }}>
 				<TextField
+					autoCapitalize="sentences"
 					invalid={errors.source}
 					label={t("from")}
 					onChangeText={(source) => onChange({ source })}
@@ -91,6 +92,7 @@ export function IncomeFields({
 				</View>
 			) : null}
 			<TextField
+				autoCapitalize="sentences"
 				label={t("note")}
 				maxLength={NOTE_LIMIT}
 				onChangeText={(note) => onChange({ note })}

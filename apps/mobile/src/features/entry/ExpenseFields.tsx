@@ -1,15 +1,16 @@
 import { dayKey } from "@retrospend/domain/time-zone";
-import { Text, TextInput, View } from "react-native";
+import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { Cover } from "@/features/projects/Cover";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { Chip } from "@/ui/Chip";
 import { DateField } from "@/ui/DateField";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
 import { SwitchRow } from "@/ui/SwitchRow";
+import { FieldError, FieldLabel, TextField } from "@/ui/TextField";
 import { CategoryPicker } from "./CategoryPicker";
-import { Chip } from "./Chip";
 import { recentCategories } from "./catalog";
 import { shiftDay } from "./dates";
 import {
@@ -29,81 +30,6 @@ import type { EntryCatalog } from "./types";
 import { personKey } from "./types";
 
 const RECENTS = 4;
-
-/** A field's label above it, in the small muted style. */
-export function FieldLabel({ children }: { children: string }) {
-	const { color, type } = useTheme();
-	return (
-		<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-			{children}
-		</Text>
-	);
-}
-
-export function FieldError({ children }: { children: string }) {
-	const { color, type } = useTheme();
-	return (
-		<Text
-			accessibilityRole="alert"
-			style={{ color: color.danger, fontSize: type.small.size }}
-		>
-			{children}
-		</Text>
-	);
-}
-
-/** The text field every composer uses: 44 high, a visible border, token colors. */
-export function TextField({
-	label,
-	value,
-	onChangeText,
-	placeholder,
-	onTypingChange,
-	invalid,
-	hideLabel,
-	keyboardType,
-	maxLength,
-}: {
-	label: string;
-	value: string;
-	onChangeText: (text: string) => void;
-	placeholder: string;
-	onTypingChange: (typing: boolean) => void;
-	invalid?: boolean;
-	/** The placeholder says it; screen readers still get the label. */
-	hideLabel?: boolean;
-	keyboardType?: "default" | "decimal-pad";
-	maxLength?: number;
-}) {
-	const { color, radius, size, space, type } = useTheme();
-	return (
-		<View style={{ gap: space[2] }}>
-			{hideLabel ? null : <FieldLabel>{label}</FieldLabel>}
-			<TextInput
-				accessibilityLabel={label}
-				keyboardType={keyboardType}
-				maxLength={maxLength}
-				onBlur={() => onTypingChange(false)}
-				onChangeText={onChangeText}
-				onFocus={() => onTypingChange(true)}
-				placeholder={placeholder}
-				placeholderTextColor={color.fg3}
-				returnKeyType="done"
-				style={{
-					minHeight: size.touchMin.phone,
-					paddingHorizontal: space[3],
-					borderRadius: radius.ctl,
-					borderWidth: 1,
-					borderColor: invalid ? color.danger : color.lineStrong,
-					backgroundColor: color.surface,
-					color: color.fg,
-					fontSize: type.section.size,
-				}}
-				value={value}
-			/>
-		</View>
-	);
-}
 
 /** A section's name above its fields, in the section style (sentence case). */
 export function SectionTitle({ children }: { children: string }) {
@@ -149,6 +75,7 @@ function Details({
 		<View style={{ gap: space[3] }}>
 			<SectionTitle>{t("details")}</SectionTitle>
 			<TextField
+				autoCapitalize="sentences"
 				label={t("note")}
 				maxLength={personal ? NOTE_LIMIT : SHARED_NOTE_LIMIT}
 				onChangeText={(note) => onChange({ note })}
@@ -159,6 +86,7 @@ function Details({
 			{personal ? (
 				<>
 					<TextField
+						autoCapitalize="sentences"
 						label={t("location")}
 						maxLength={LOCATION_LIMIT}
 						onChangeText={(location) => onChange({ location })}
@@ -265,6 +193,7 @@ export function ExpenseFields({
 	return (
 		<>
 			<TextField
+				autoCapitalize="sentences"
 				hideLabel
 				label={t("titleField")}
 				onChangeText={(title) => onChange({ title })}

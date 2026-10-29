@@ -2,8 +2,8 @@ import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { DateField } from "@/ui/DateField";
+import { FieldError, TextField } from "@/ui/TextField";
 import type { TransferDraft, TransferErrors } from "./draft";
-import { FieldError, TextField } from "./ExpenseFields";
 import { PickField } from "./PickField";
 import type { EntryPlace } from "./types";
 
@@ -72,8 +72,8 @@ export function TransferFields({
 			{exchange && to ? (
 				<View style={{ gap: space[2] }}>
 					<TextField
-						keyboardType="decimal-pad"
 						invalid={errors.received}
+						keyboardType="decimal-pad"
 						label={t("received", { currency: to.currency })}
 						onChangeText={(receivedText) => onChange({ receivedText })}
 						onTypingChange={onTypingChange}
@@ -89,6 +89,7 @@ export function TransferFields({
 				</View>
 			) : null}
 			<TextField
+				autoCapitalize="sentences"
 				label={t("note")}
 				onChangeText={(note) => onChange({ note })}
 				onTypingChange={onTypingChange}

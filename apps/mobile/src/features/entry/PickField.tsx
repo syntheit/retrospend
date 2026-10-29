@@ -3,10 +3,10 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { Chip } from "@/ui/Chip";
 import { PickerSheet } from "@/ui/PickerSheet";
 import type { PickRow } from "@/ui/pickGroups";
-import { Chip } from "./Chip";
-import { FieldLabel } from "./ExpenseFields";
+import { FieldLabel } from "@/ui/TextField";
 
 /**
  * A labeled choice from a list: a chip with the picked row's identity and
