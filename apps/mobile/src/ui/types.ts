@@ -61,7 +61,7 @@ export interface AddButtonProps {
 	onPress: () => void;
 	/** Android: shrinks to the plus when the list scrolls. */
 	expanded?: boolean;
-	/** Android: the M3 FAB menu (Income, Transfer). iOS: long press. */
+	/** iOS: the long-press menu (Income, Transfer); a tap always adds an expense. Android has none. */
 	actions?: AddAction[];
 }
 

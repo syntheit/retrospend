@@ -93,7 +93,8 @@ function useKeyboardShown(): boolean {
  * bar (Liquid Glass on iOS 26, an M3 FAB on Android; five tabs leave no room
  * for a plus tab) and hide it while the keyboard is up. The iPad has a plus in
  * the top bar's toolbar (TopBar.ios). All open
- * the composer in a sheet with detents (Income is the mode row inside it).
+ * the composer in a sheet with detents. A tap opens Expense at once; Income and
+ * Transfer are the composer's mode row (and the iOS long press, or a link).
  * It also keeps the outbox flowing, since an entry added offline needs a
  * sender when the network returns.
  */
