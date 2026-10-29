@@ -17,19 +17,23 @@ import { undoWrite } from "./send";
 /**
  * Delete the expense an edit is open on. The sheet says what it will change
  * and what it will not, from the server's dry run, before the button
- * deletes, and the toast that follows has Undo. It is for your own expense
- * only: a split changes what other people owe and the server keeps no undo for
- * it, so the composer does not offer it there.
+ * deletes, and the toast that follows has Undo. A split expense changes what
+ * other people owe: when the server would erase a debt or leave the payer
+ * owing, its warning is on the sheet and the button reads "Delete anyway".
+ * Nothing confirms for you, and Undo brings back every share.
  */
 export function DeleteEntrySheet({
 	visible,
 	id,
+	shared = false,
 	title,
 	onClose,
 	onDeleted,
 }: {
 	visible: boolean;
 	id: string;
+	/** A split expense: its own routes, its warning and its words. */
+	shared?: boolean;
 	/** What the toast calls it. */
 	title: string;
 	onClose: () => void;
@@ -42,6 +46,7 @@ export function DeleteEntrySheet({
 	const toast = useToast();
 	const { space } = useTheme();
 	const [preview, setPreview] = useState<PreviewState>({ status: "loading" });
+	const [warning, setWarning] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [failed, setFailed] = useState(false);
 	// One key per opening: a second tap replays the first delete.
@@ -54,22 +59,28 @@ export function DeleteEntrySheet({
 		let cancelled = false;
 		key.current = newClientId();
 		setPreview({ status: "loading" });
+		setWarning(null);
 		setFailed(false);
-		previewDelete(api, id).then((state) => {
-			if (!cancelled) setPreview(state);
+		previewDelete(api, { id, shared }).then((out) => {
+			if (cancelled) return;
+			setPreview(out.state);
+			setWarning(out.warning);
 		});
 		return () => {
 			cancelled = true;
 		};
-	}, [visible, api, id, attempt]);
+	}, [visible, api, id, shared, attempt]);
 
 	async function remove() {
 		if (!api || busy || preview.status !== "ready") return;
 		setBusy(true);
 		setFailed(false);
-		const outcome = await runDelete(api, id, key.current).finally(() =>
-			setBusy(false),
-		);
+		const outcome = await runDelete(
+			api,
+			{ id, shared },
+			key.current,
+			warning !== null,
+		).finally(() => setBusy(false));
 		if (outcome.status !== "deleted") {
 			setFailed(true);
 			return;
@@ -78,19 +89,21 @@ export function DeleteEntrySheet({
 		const { undo } = outcome;
 		toast.show({
 			message: t("deleted", { title }),
-			undo: {
-				label: tc("undo"),
-				onUndo: async () => {
-					const ok = await undoWrite(api, undo, newClientId()).then(
-						() => true,
-						() => false,
-					);
-					announceEntryChange();
-					toast.show({
-						message: ok ? t("restored", { title }) : t("undoFailed"),
-					});
-				},
-			},
+			undo: undo
+				? {
+						label: tc("undo"),
+						onUndo: async () => {
+							const ok = await undoWrite(api, undo, newClientId()).then(
+								() => true,
+								() => false,
+							);
+							announceEntryChange();
+							toast.show({
+								message: ok ? t("restored", { title }) : t("undoFailed"),
+							});
+						},
+					}
+				: undefined,
 		});
 		onClose();
 		onDeleted();
@@ -103,7 +116,7 @@ export function DeleteEntrySheet({
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
 					<Button
 						disabled={preview.status !== "ready" || busy}
-						label={busy ? tc("saving") : t("button")}
+						label={busy ? tc("saving") : warning ? t("anyway") : t("button")}
 						onPress={() => void remove()}
 						variant="danger"
 					/>
@@ -114,7 +127,12 @@ export function DeleteEntrySheet({
 			visible={visible}
 		>
 			<View style={{ gap: space[4] }}>
-				<Text tone="fg2">{t("body")}</Text>
+				<Text tone="fg2">{shared ? t("sharedBody") : t("body")}</Text>
+				{warning ? (
+					<Text accessibilityLiveRegion="polite" tone="attention">
+						{warning}
+					</Text>
+				) : null}
 				<ChangesBlock
 					idle=""
 					onRetry={() => setAttempt((n) => n + 1)}

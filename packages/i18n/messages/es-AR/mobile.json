@@ -281,7 +281,9 @@
 			"deleted": "Se eliminó {title}",
 			"restored": "Se restauró {title}",
 			"undoFailed": "No se pudo deshacer. Probá desde Actividad.",
-			"failed": "No se pudo eliminar. Probá de nuevo."
+			"failed": "No se pudo eliminar. Probá de nuevo.",
+			"sharedBody": "Se avisa a todos los que participan, y lo que deben cambia.",
+			"anyway": "Eliminar igualmente"
 		}
 	},
 	"pickers": {
@@ -1397,7 +1399,7 @@
 		},
 		"delete": {
 			"title": "¿Eliminar {name} definitivamente?",
-			"body": "Esto elimina la cuenta y todo su historial de saldos. El historial del patrimonio también cambia. No se puede deshacer.",
+			"body": "Esto elimina la cuenta y todo su historial de saldos. El historial del patrimonio también cambia.",
 			"keepHistory": "Para conservar el historial, cerrá la cuenta en su lugar.",
 			"closeInstead": "Mejor cerrar",
 			"submit": "Eliminar definitivamente",

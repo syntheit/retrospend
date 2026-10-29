@@ -281,7 +281,9 @@
 			"deleted": "Deleted {title}",
 			"restored": "Restored {title}",
 			"undoFailed": "Couldn't undo. Try again from Activity.",
-			"failed": "Couldn't delete this. Try again."
+			"failed": "Couldn't delete this. Try again.",
+			"sharedBody": "Everyone on it is told, and what they owe changes.",
+			"anyway": "Delete anyway"
 		}
 	},
 	"pickers": {
@@ -1397,7 +1399,7 @@
 		},
 		"delete": {
 			"title": "Delete {name} permanently?",
-			"body": "This removes the account and its whole balance history. Net worth history changes too. This cannot be undone.",
+			"body": "This removes the account and its whole balance history. Net worth history changes too.",
 			"keepHistory": "To keep the history, close the account instead.",
 			"closeInstead": "Close instead",
 			"submit": "Delete permanently",

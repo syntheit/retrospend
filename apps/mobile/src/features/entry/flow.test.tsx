@@ -167,6 +167,9 @@ const planPreview = {
 	},
 };
 
+/** What the server says before it would preview a split delete that erases a debt. */
+let sharedDeleteWarning: string | null = null;
+
 function fakeApi() {
 	const calls: { route: string; input: unknown; key?: string }[] = [];
 	const write =
@@ -358,6 +361,19 @@ function fakeApi() {
 				unavailable: [],
 			})),
 			update: write("shared.update", () => ({ undo: "undo-shared-edit" })),
+			previewDelete: write("shared.previewDelete", (input) => {
+				if (
+					sharedDeleteWarning &&
+					!(input as { confirmUnsettled?: boolean }).confirmUnsettled
+				) {
+					throw Object.assign(new Error(sharedDeleteWarning), { status: 409 });
+				}
+				return { changes: [], unchanged: [], unavailable: [] };
+			}),
+			delete: write("shared.delete", () => ({
+				id: "s1",
+				undo: "undo-shared-delete",
+			})),
 			get: async () => ({
 				id: "s1",
 				title: "Dinner",
@@ -1124,16 +1140,6 @@ describe("Edit a split expense", () => {
 		act(() => tree.unmount());
 	});
 
-	it("does not offer Delete on a split expense", async () => {
-		const { api, calls } = fakeApi();
-		mockSession.api = api;
-		const tree = await open("expense", () => {}, "s1", true);
-		pressWords(tree, "More");
-		expect(words(tree)).not.toContain("Delete");
-		expect(calls.some((c) => c.route.includes("elete"))).toBe(false);
-		act(() => tree.unmount());
-	});
-
 	it("keeps the project when the date changes, reading no people", async () => {
 		const { api, calls } = fakeApi();
 		const shared = (api as unknown as Record<string, { get: unknown }>)[
@@ -1451,6 +1457,78 @@ describe("Edit: undo changes and delete", () => {
 		expect(calls.find((c) => c.route === "expense.undo")?.input).toEqual({
 			token: "undo-delete",
 		});
+		act(() => tree.unmount());
+	});
+	it("deletes a split after the dry run, and Undo brings back every share", async () => {
+		sharedDeleteWarning = null;
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const done = jest.fn();
+		const tree = await open("expense", done, "s1", true);
+		pressWords(tree, "More");
+		pressWords(tree, "Delete");
+		await flush();
+		expect(
+			calls.find((c) => c.route === "shared.previewDelete")?.input,
+		).toEqual({ id: "s1" });
+		const confirm = find(
+			tree,
+			(p) => p.label === "Delete" && typeof p.onPress === "function",
+		)[0];
+		if (!confirm) throw new Error("no Delete button");
+		await act(async () => {
+			(confirm.props.onPress as () => void)();
+		});
+		await flush();
+		// Nothing was warned about, so nothing was confirmed for the person.
+		expect(calls.find((c) => c.route === "shared.delete")?.input).toEqual({
+			id: "s1",
+		});
+		expect(done).toHaveBeenCalledTimes(1);
+		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		expect(toast.message).toBe("Deleted Dinner");
+		await act(async () => toast.undo.onUndo());
+		expect(calls.find((c) => c.route === "shared.undo")?.input).toEqual({
+			token: "undo-shared-delete",
+		});
+		act(() => tree.unmount());
+	});
+
+	it("shows the server's warning for a split and deletes only when the button is pressed", async () => {
+		sharedDeleteWarning =
+			"This expense still has an unsettled balance between participants.";
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense", () => {}, "s1", true);
+		pressWords(tree, "More");
+		pressWords(tree, "Delete");
+		await flush();
+		// The warning is on the sheet, and the dry run is asked again as if confirmed.
+		expect(
+			calls
+				.filter((c) => c.route === "shared.previewDelete")
+				.map((c) => c.input),
+		).toEqual([{ id: "s1" }, { id: "s1", confirmUnsettled: true }]);
+		expect(
+			find(tree, (p) =>
+				String(p.children ?? "").startsWith("This expense still has"),
+			).length,
+		).toBeGreaterThan(0);
+		expect(calls.some((c) => c.route === "shared.delete")).toBe(false);
+		const anyway = find(
+			tree,
+			(p) => p.label === "Delete anyway" && typeof p.onPress === "function",
+		)[0];
+		if (!anyway) throw new Error("no Delete anyway button");
+		await act(async () => {
+			(anyway.props.onPress as () => void)();
+		});
+		await flush();
+		expect(calls.find((c) => c.route === "shared.delete")?.input).toEqual({
+			id: "s1",
+			confirmUnsettled: true,
+		});
+		sharedDeleteWarning = null;
 		act(() => tree.unmount());
 	});
 });

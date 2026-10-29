@@ -281,7 +281,9 @@
 			"deleted": "{title} excluído",
 			"restored": "{title} restaurado",
 			"undoFailed": "Não foi possível desfazer. Tente pela Atividade.",
-			"failed": "Não foi possível excluir. Tente de novo."
+			"failed": "Não foi possível excluir. Tente de novo.",
+			"sharedBody": "Todos os envolvidos são avisados, e o que devem muda.",
+			"anyway": "Excluir mesmo assim"
 		}
 	},
 	"pickers": {
@@ -1397,7 +1399,7 @@
 		},
 		"delete": {
 			"title": "Excluir {name} definitivamente?",
-			"body": "Isso remove a conta e todo o histórico de saldos. O histórico do patrimônio também muda. Não dá para desfazer.",
+			"body": "Isso remove a conta e todo o histórico de saldos. O histórico do patrimônio também muda.",
 			"keepHistory": "Para manter o histórico, encerre a conta.",
 			"closeInstead": "Encerrar em vez disso",
 			"submit": "Excluir definitivamente",

@@ -11,8 +11,8 @@ import { DeleteAccountSheet } from "./DeleteAccountSheet";
 import type { Account } from "./source";
 
 // Delete permanently: the dry run first, the verb last and off until it is in,
-// Close instead for an open account, and a toast with no Undo because the
-// server cannot take a delete back.
+// Close instead for an open account, and a toast with Undo: the server keeps
+// the account and its history and puts it all back from the token.
 const renderer = require("react-test-renderer");
 const { act, create } = renderer;
 
@@ -59,7 +59,11 @@ function fakeApi() {
 			},
 			delete: async () => {
 				calls.push("write");
-				return { result: { id: "acct-old" }, undo: null };
+				return { result: { id: "acct-old" }, undo: "undo-account" };
+			},
+			undo: async (input: { token: string }) => {
+				calls.push(`undo:${input.token}`);
+				return { result: {}, redo: null };
 			},
 		},
 	} as unknown as RetrospendClient;
@@ -67,7 +71,7 @@ function fakeApi() {
 }
 
 describe("Delete account", () => {
-	it("keeps the verb off until the dry run is in, then deletes with no Undo", async () => {
+	it("keeps the verb off until the dry run is in, then deletes with an Undo that puts it back", async () => {
 		const { api, calls } = fakeApi();
 		session.api = api;
 		const onDone = jest.fn();
@@ -100,7 +104,12 @@ describe("Delete account", () => {
 			undo?: unknown;
 		};
 		expect(shown.message).toBe("Deleted Old card");
-		expect(shown.undo).toBeUndefined();
+		const undo = shown.undo as { onUndo: () => Promise<void> };
+		expect(undo).toBeDefined();
+		await act(async () => undo.onUndo());
+		expect(calls).toEqual(["preview", "write", "undo:undo-account"]);
+		// The screen left once, when the account went; the Undo only refreshes.
+		expect(onDone).toHaveBeenCalledTimes(1);
 		act(() => tree.unmount());
 	});
 

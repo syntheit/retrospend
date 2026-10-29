@@ -281,7 +281,9 @@
 			"deleted": "{title} gelöscht",
 			"restored": "{title} wiederhergestellt",
 			"undoFailed": "Rückgängig machen nicht möglich. Versuche es unter Aktivität.",
-			"failed": "Löschen nicht möglich. Versuche es erneut."
+			"failed": "Löschen nicht möglich. Versuche es erneut.",
+			"sharedBody": "Alle darauf werden informiert, und was sie schulden, ändert sich.",
+			"anyway": "Trotzdem löschen"
 		}
 	},
 	"pickers": {
@@ -1397,7 +1399,7 @@
 		},
 		"delete": {
 			"title": "{name} endgültig löschen?",
-			"body": "Das entfernt das Konto und seinen gesamten Saldoverlauf. Der Vermögensverlauf ändert sich ebenfalls. Das lässt sich nicht rückgängig machen.",
+			"body": "Das entfernt das Konto und seinen gesamten Saldoverlauf. Der Vermögensverlauf ändert sich ebenfalls.",
 			"keepHistory": "Um den Verlauf zu behalten, schließe das Konto stattdessen.",
 			"closeInstead": "Stattdessen schließen",
 			"submit": "Endgültig löschen",
