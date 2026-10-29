@@ -1,16 +1,49 @@
 import { Platform } from "react-native";
+import { TabSidebar } from "../../modules/tab-sidebar";
 
 /**
- * Projects and Recurring are their own destinations only on iPad, whose
- * sidebar lists them all. Phones (iPhone and Android, tablets included) have
- * five destinations (Home, Activity, Budget, Wealth, People) and the add
- * control, so Projects is the second segment of the People tab and Recurring
- * opens from Settings.
+ * The iPad follows Apple's tab bar that adapts into a sidebar (HIG, Tab bars
+ * and Sidebars; iPadOS 18 and later). The floating tab bar holds the same five
+ * destinations as the iPhone (Home, Activity, Budget, Wealth, People), so it
+ * does not scroll. The sidebar lists every destination: those five, then
+ * Projects, Insights, Recurring, Currencies and Settings, which are sidebar
+ * only (modules/tab-sidebar). UIKit shows a sidebar-only destination in the
+ * bar while it is open, as Apple's own apps do.
+ *
+ * That needs iPadOS 26.1 or later (the UITab path in react-native-screens).
+ * Older iPads, phones and Android tablets have the five tabs and the add
+ * control: Projects is the second segment of People, Recurring and Currencies
+ * open from Settings, Insights from Home.
  */
-export const PROJECTS_APART = Platform.OS === "ios" && Platform.isPad;
-export const RECURRING_APART = PROJECTS_APART;
-/** Currencies is an iPad sidebar destination, as in the web's Tools group; phones open it from Settings. */
-export const CURRENCIES_APART = PROJECTS_APART;
+export const IPAD_SIDEBAR =
+	Platform.OS === "ios" &&
+	Platform.isPad &&
+	(TabSidebar?.isSupported() ?? false);
+
+export const PROJECTS_APART = IPAD_SIDEBAR;
+export const RECURRING_APART = IPAD_SIDEBAR;
+export const CURRENCIES_APART = IPAD_SIDEBAR;
+
+/**
+ * Sidebar-only destinations, by route name under app/(tabs), in sidebar
+ * order. "preferences" is Settings (app/settings is the stack phones push).
+ */
+export const SIDEBAR_ONLY = [
+	"projects",
+	"insights",
+	"recurring",
+	"currencies",
+	"preferences",
+] as const;
+
+/** Hands the sidebar layout to the native tab bar; a no-op off the iPad sidebar. */
+export function configureSidebar() {
+	if (!IPAD_SIDEBAR) return;
+	TabSidebar?.configure({
+		sidebarOnly: [...SIDEBAR_ONLY],
+		openInLandscape: true,
+	});
+}
 
 /** Where a project opens: its own tab on iPad, inside People elsewhere. */
 export function projectRoute(id: string) {

@@ -29,11 +29,14 @@ describe("iosMajor", () => {
 });
 
 describe("projectRoute", () => {
-	function routeOn(isPad: boolean) {
+	function routeOn(isPad: boolean, sidebar = true) {
 		let route: (id: string) => unknown = () => null;
 		jest.isolateModules(() => {
 			jest.doMock("react-native", () => ({
 				Platform: { OS: "ios", isPad, Version: "26.5" },
+			}));
+			jest.doMock("../../modules/tab-sidebar", () => ({
+				TabSidebar: { isSupported: () => sidebar, configure: jest.fn() },
 			}));
 			route = require("./destinations").projectRoute;
 		});
@@ -50,6 +53,13 @@ describe("projectRoute", () => {
 	it("opens a project in its own destination on iPad", () => {
 		expect(routeOn(true)("p1")).toEqual({
 			pathname: "/projects/[id]",
+			params: { id: "p1" },
+		});
+	});
+
+	it("opens a project inside People on an iPad without the sidebar", () => {
+		expect(routeOn(true, false)("p1")).toEqual({
+			pathname: "/people/project/[id]",
 			params: { id: "p1" },
 		});
 	});
