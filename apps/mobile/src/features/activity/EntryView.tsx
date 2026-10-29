@@ -11,10 +11,12 @@ import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
+import { EmptyState } from "@/ui/EmptyState";
 import { rowStatus, rowTitle } from "./ActivityRow";
 import { canEditEntry } from "./canEdit";
 import type { ActivityItem } from "./source";
 import { TextAction } from "./TextAction";
+import { useEntryRow } from "./useEntryRow";
 
 /** A label on the left, its value on the right; a missing value leaves no row. */
 function Fact({
@@ -63,12 +65,55 @@ function dayDate(day: string): Date {
 }
 
 /**
+ * One entry by its Activity id, read from the server. What the list passed
+ * shows while the server answers, without Edit; a deleted entry says so.
+ */
+export function EntryDetail({
+	id,
+	placeholder,
+}: {
+	id: string;
+	placeholder: ActivityItem | null;
+}) {
+	const t = useTranslations("mobile.entry");
+	const state = useEntryRow(id, placeholder);
+	if (state.status === "loading") {
+		return state.placeholder ? (
+			<EntryView editable={false} item={state.placeholder} />
+		) : (
+			<EmptyState title={t("loading")} />
+		);
+	}
+	if (state.status === "missing") return <EmptyState title={t("gone")} />;
+	if (state.status === "error") {
+		return <EmptyState detail={t("loadErrorDetail")} title={t("loadError")} />;
+	}
+	return (
+		<EntryView
+			editable={state.staleSince === null}
+			item={state.item}
+			staleSince={state.staleSince}
+		/>
+	);
+}
+
+/**
  * The read view of one entry: what it is, the amount in its own currency
  * with the home value under it, and the facts the list does not have room
  * for. A personal expense also reads its notes, place and spread from
  * GET /expenses/{id}; a split and a payment show what the list row carries.
  */
-export function EntryView({ item }: { item: ActivityItem }) {
+export function EntryView({
+	item,
+	editable = true,
+	staleSince = null,
+}: {
+	item: ActivityItem;
+	/** False while the row is a placeholder or a stale copy: Edit waits for the server's. */
+	editable?: boolean;
+	/** When the row was read, if the server could not be reached since. */
+	staleSince?: string | null;
+}) {
 	const t = useTranslations("mobile.entry");
 	const ta = useTranslations("mobile.activity");
 	const tm = useTranslations("mobile.money");
@@ -126,7 +171,7 @@ export function EntryView({ item }: { item: ActivityItem }) {
 					>
 						{title}
 					</Text>
-					{add && canEditEntry(item) ? (
+					{add && editable && canEditEntry(item) ? (
 						<TextAction
 							label={t("edit")}
 							onPress={() =>
@@ -246,7 +291,10 @@ export function EntryView({ item }: { item: ActivityItem }) {
 				/>
 			</View>
 			<StaleNote
-				since={detail.state.status === "ready" ? detail.state.staleSince : null}
+				since={
+					staleSince ??
+					(detail.state.status === "ready" ? detail.state.staleSince : null)
+				}
 			/>
 		</View>
 	);

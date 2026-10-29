@@ -9,7 +9,7 @@ import { ActivityRow } from "@/features/activity/ActivityRow";
 import { BulkControls } from "@/features/activity/BulkControls";
 import { canSelect } from "@/features/activity/bulk";
 import { groupByDay } from "@/features/activity/days";
-import { EntryView } from "@/features/activity/EntryView";
+import { EntryDetail } from "@/features/activity/EntryView";
 import { DEFAULT_FILTER, isDefaultFilter } from "@/features/activity/filter";
 import type { ActivityItem, ActivityPage } from "@/features/activity/source";
 import { TextAction } from "@/features/activity/TextAction";
@@ -17,13 +17,13 @@ import { useActivity } from "@/features/activity/useActivity";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { StaleNote } from "@/features/read/parts";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { FLOATING_ADD_INSET } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListDetail } from "@/ui/ListDetail";
 import { Screen } from "@/ui/Screen";
-import { FLOATING_ADD_INSET } from "@/layout/destinations";
 
 const SEARCH_DELAY_MS = 300;
 
@@ -295,7 +295,7 @@ export default function ActivityScreen() {
 				detail={
 					<Screen>
 						{selected ? (
-							<EntryView item={selected} />
+							<EntryDetail id={selected.id} placeholder={selected} />
 						) : (
 							<EmptyState title={t("pick")} />
 						)}
