@@ -25,7 +25,7 @@ export default function EntryScreen() {
 			<Stack.Screen options={{ title: t("title"), headerLargeTitle: false }} />
 			<Screen>
 				{id ? (
-					<EntryDetail id={id} placeholder={placeholder} />
+					<EntryDetail id={id} placeholder={placeholder} titled />
 				) : (
 					<EmptyState title={t("missing")} />
 				)}

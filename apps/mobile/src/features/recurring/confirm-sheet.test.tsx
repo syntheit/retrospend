@@ -170,4 +170,28 @@ describe("Confirm a recurring expense", () => {
 		});
 		act(() => tree.unmount());
 	});
+
+	it("starts a varying amount at the usual one and sends it with the confirm", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const asking = { ...item, amountMode: "ask" } as RecurringItem;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(
+				<ConfirmSheet
+					item={asking}
+					onClose={jest.fn()}
+					onDone={jest.fn()}
+					visible
+				/>,
+			);
+		});
+		await wait(400);
+		expect(calls.find((c) => c.route === "preview")?.input).toEqual({
+			id: "rec-netflix",
+			dueAt: "2026-11-01T12:00:00.000Z",
+			amount: "15.99",
+		});
+		act(() => tree.unmount());
+	});
 });
