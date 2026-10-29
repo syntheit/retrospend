@@ -2037,5 +2037,12 @@
 			"market": "Mercado",
 			"custom": "Personalizada"
 		}
+	},
+	"charts": {
+		"summary": "{label}. De {from} el {fromDate} a {to} el {toDate}.",
+		"pick": "{date}, {amount}",
+		"later": "Día siguiente",
+		"earlier": "Día anterior",
+		"noData": "sin datos"
 	}
 }
