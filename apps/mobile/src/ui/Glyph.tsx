@@ -27,16 +27,33 @@ const SHAPES = {
 /** Glyphs the screens use beyond the category icons. */
 export type GlyphName =
 	| CategoryIconName
+	| "AlarmClock"
 	| "BookOpen"
+	| "CalendarClock"
+	| "ChartLine"
 	| "Check"
 	| "ChevronRight"
+	| "CircleAlert"
+	| "CircleCheck"
 	| "Coins"
+	| "DollarSign"
 	| "FileText"
 	| "FileUp"
+	| "HandCoins"
+	| "KeyRound"
+	| "ListChecks"
 	| "LogOut"
+	| "Mail"
+	| "MessageCircle"
+	| "MessageSquare"
+	| "Plus"
+	| "Scale"
 	| "Search"
 	| "Settings"
 	| "Star"
+	| "UserCheck"
+	| "UserX"
+	| "Wallet"
 	| "X";
 
 /**
