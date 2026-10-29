@@ -1,24 +1,27 @@
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
+import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { useFaces } from "@/features/read/faces";
-import { LinkButton, SectionHeader, StaleNote } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { ConfirmSheet } from "@/features/settle/ConfirmSheet";
 import { SettleSheet } from "@/features/settle/SettleSheet";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
-import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
+import { Hero } from "@/ui/Hero";
+import { LinkButton, ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { PaneBar } from "@/ui/PaneBar";
 import { Screen } from "@/ui/Screen";
+import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { isApproximate, sideOf } from "./groups";
-import { NetAmount } from "./NetAmount";
+import { useNetHeroText } from "./NetAmount";
+import { type PersonAction, PersonActions } from "./PersonActions";
 import { PersonNeeds } from "./PersonNeeds";
 import { PaymentRow, ScopeRow, SharedRow } from "./PersonSections";
 import { type ReviewNeed, ReviewSheet } from "./ReviewSheet";
@@ -27,10 +30,11 @@ import { useLedgerMore } from "./useLedgerMore";
 import { usePerson } from "./usePeople";
 
 /**
- * One person: the balance (never netted across currencies: the parts are
- * listed), Settle up, what is open per project, the payments, and the shared
- * expenses between you. Shown as a screen on a phone and as the detail pane
- * of People on iPad and wide Android windows.
+ * One person: who they are, the balance (never netted across currencies: the
+ * parts are listed), the actions, what waits for you, what is open per
+ * project, the payments, and the shared expenses between you. Shown as a
+ * screen on a phone and as the detail pane of People on iPad and wide
+ * Android windows.
  */
 export function PersonView({
 	person,
@@ -43,10 +47,12 @@ export function PersonView({
 	const t = useTranslations("mobile.person");
 	const format = useFormatter();
 	const money = useMoneyText();
+	const heroText = useNetHeroText();
 	const faces = useFaces();
 	const toast = useToast();
+	const add = useOptionalAddEntry();
 	const { api } = useSession();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const { state, reload } = usePerson(person);
 	const [settling, setSettling] = useState(startSettling);
@@ -85,6 +91,20 @@ export function PersonView({
 	const open = page.parts.filter((p) => p.amount.minor !== 0);
 	const rows = ledger.rows ?? page.rows;
 	const remindable = identity.onRetrospend && side === "owesYou";
+	const net = open.length > 1;
+	const meta = [
+		identity.username ? `@${identity.username}` : null,
+		page.stats.since
+			? t("since", {
+					date: format.dateTime(new Date(`${page.stats.since}T12:00:00`), {
+						month: "short",
+						year: "numeric",
+					}),
+				})
+			: null,
+		t("expenseCount", { count: page.stats.expenses }),
+		t("projectCount", { count: page.stats.projects }),
+	].filter(Boolean);
 
 	async function remind() {
 		try {
@@ -98,8 +118,33 @@ export function PersonView({
 		}
 	}
 
+	const actions: PersonAction[] = [
+		...(page.settled.nothingShared
+			? []
+			: [
+					{
+						id: "settle",
+						label: t("settleUp"),
+						onPress: () => setSettling(true),
+						primary: true,
+					},
+				]),
+		...(remindable
+			? [{ id: "remind", label: t("remind"), onPress: remind }]
+			: []),
+		...(add
+			? [
+					{
+						id: "expense",
+						label: t("expense"),
+						onPress: () => add.open("expense"),
+					},
+				]
+			: []),
+	];
+
 	return (
-		<Screen flush>
+		<Screen flush onRefresh={reload}>
 			{listDetail ? (
 				<PaneBar title={identity.name} />
 			) : (
@@ -108,105 +153,105 @@ export function PersonView({
 				/>
 			)}
 			<StaleNote since={state.staleSince} />
-			<View style={{ gap: space[2], padding: space[4] }}>
-				{face ? <Avatar face={face} size="lg" /> : null}
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{side === "owesYou"
-						? t("owesYou")
-						: side === "youOwe"
-							? t("youOweThem")
-							: t("settled")}
-				</Text>
-				{side === "settled" ? null : (
-					<NetAmount
-						align="left"
-						home={page.home}
-						net={page.net}
-						parts={page.parts}
-						size="hero"
-						tone={side === "owesYou" ? "positive" : "default"}
-					/>
-				)}
-				{open.length > 1 ||
-				(open.length === 1 && isApproximate(open, page.home)) ? (
-					<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-						{open
-							.map((p) =>
-								money({
-									minor: Math.abs(p.amount.minor),
-									currency: p.amount.currency,
-								}),
-							)
-							.join(" · ")}
-					</Text>
-				) : null}
-				<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-					{page.stats.since
-						? t("stats", {
-								date: format.dateTime(
-									new Date(`${page.stats.since}T12:00:00`),
-									{
-										month: "long",
-										year: "numeric",
-									},
-								),
-								expenses: page.stats.expenses,
-								projects: page.stats.projects,
-							})
-						: t("statsNoDate", {
-								expenses: page.stats.expenses,
-								projects: page.stats.projects,
-							})}
-				</Text>
+			<View style={{ gap: space[4], paddingTop: space[4] }}>
 				<View
-					style={{ flexDirection: "row", gap: space[3], paddingTop: space[2] }}
+					style={{
+						alignItems: "center",
+						gap: space[2],
+						paddingHorizontal: space[4],
+					}}
 				>
-					{page.settled.nothingShared ? null : (
-						<Button label={t("settleUp")} onPress={() => setSettling(true)} />
-					)}
-					{remindable ? (
-						<Button label={t("remind")} onPress={remind} variant="outlined" />
-					) : null}
+					{face ? <Avatar face={face} size="xxl" /> : null}
+					<Text
+						accessibilityRole="header"
+						style={{ textAlign: "center" }}
+						variant="title"
+					>
+						{identity.name}
+					</Text>
+					<Text style={{ textAlign: "center" }} tone="fg2" variant="small">
+						{meta.join(" · ")}
+					</Text>
 				</View>
-			</View>
 
-			<PersonNeeds
-				onConfirm={setConfirming}
-				onReview={setReviewing}
-				page={page}
-			/>
+				<View style={{ paddingHorizontal: space[4] }}>
+					{side === "settled" ? (
+						<Text style={{ textAlign: "center" }} tone="fg2" variant="body">
+							{t("settled")}
+						</Text>
+					) : (
+						<Hero
+							align="center"
+							label={
+								side === "owesYou"
+									? net
+										? t("owesYouNet")
+										: t("owesYou")
+									: net
+										? t("youOweThemNet")
+										: t("youOweThem")
+							}
+							sub={
+								open.length > 1 ||
+								(open.length === 1 && isApproximate(open, page.home))
+									? open
+											.map((p) =>
+												money({
+													minor: Math.abs(p.amount.minor),
+													currency: p.amount.currency,
+												}),
+											)
+											.join(" · ")
+									: undefined
+							}
+							tone={side === "owesYou" ? "positive" : "fg"}
+							value={heroText(page.net, page.parts, page.home)}
+						/>
+					)}
+				</View>
+
+				<PersonActions actions={actions} />
+
+				<PersonNeeds
+					onConfirm={setConfirming}
+					onReview={setReviewing}
+					page={page}
+				/>
+			</View>
 
 			{page.scopes.length > 0 ? (
 				<>
 					<SectionHeader title={t("projects")} />
-					{page.scopes.map((scope) => (
-						<ScopeRow key={scope.project?.id ?? "outside"} scope={scope} />
-					))}
+					<ListGroup>
+						{page.scopes.map((scope) => (
+							<ScopeRow key={scope.project?.id ?? "outside"} scope={scope} />
+						))}
+					</ListGroup>
 				</>
 			) : null}
 
 			{page.payments.length > 0 ? (
 				<>
 					<SectionHeader title={t("payments")} />
-					{page.payments.map((payment) => (
-						<PaymentRow key={payment.id} payment={payment} />
-					))}
+					<ListGroup>
+						{page.payments.map((payment) => (
+							<PaymentRow key={payment.id} payment={payment} />
+						))}
+					</ListGroup>
 				</>
 			) : null}
 
 			<SectionHeader title={t("between")} />
 			{rows.length === 0 ? (
-				<Text
-					style={{
-						color: color.fg2,
-						fontSize: type.body.size,
-						paddingHorizontal: space[4],
-					}}
-				>
+				<Text style={{ paddingHorizontal: space[4] }} tone="fg2" variant="body">
 					{t("betweenEmpty")}
 				</Text>
 			) : (
-				rows.map((row) => <SharedRow key={row.id} row={row} />)
+				<ListGroup>
+					{rows.map((row) => (
+						<SharedRow key={row.id} row={row} />
+					))}
+				</ListGroup>
 			)}
 			{ledger.rows === null && page.rowCount > page.rows.length ? (
 				<LinkButton

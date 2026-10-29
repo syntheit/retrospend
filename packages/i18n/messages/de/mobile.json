@@ -1438,7 +1438,27 @@
 		"noMatch": "Niemand passt",
 		"pick": "Wähle eine Person",
 		"error": "Personen konnten nicht geladen werden",
-		"errorDetail": "Prüfe deine Verbindung und versuche es erneut."
+		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+		"peopleOweYou": "{count, plural, =0 {Niemand schuldet dir etwas} one {# Person schuldet dir etwas} other {# Personen schulden dir etwas}}",
+		"youOwePeople": "{count, plural, one {Du schuldest # Person etwas} other {Du schuldest # Personen etwas}}",
+		"allSettled": "Mit allen ausgeglichen",
+		"needsMore": "{first} und {count} weitere",
+		"sortBy": "Sortierung: {sort}",
+		"sort": {
+			"balance": "Saldo",
+			"recent": "Zuletzt",
+			"name": "Name"
+		},
+		"ago": {
+			"today": "heute",
+			"days": "vor {count} T.",
+			"weeks": "vor {count} Wo.",
+			"months": "vor {count} Mon."
+		},
+		"bar": {
+			"owesYou": "{name}: schuldet dir {amount}",
+			"youOwe": "{name}: du schuldest {amount}"
+		}
 	},
 	"person": {
 		"owesYou": "schuldet dir",
@@ -1448,8 +1468,6 @@
 		"remind": "Erinnern",
 		"reminded": "Erinnerung gesendet",
 		"remindFailed": "Erinnerung konnte nicht gesendet werden",
-		"stats": "Gemeinsam seit {date}, {expenses, plural, one {# Ausgabe} other {# Ausgaben}}, {projects, plural, one {# Projekt} other {# Projekte}}",
-		"statsNoDate": "{expenses, plural, one {# Ausgabe} other {# Ausgaben}}, {projects, plural, one {# Projekt} other {# Projekte}}",
 		"projects": "Projekte",
 		"outside": "Außerhalb von Projekten",
 		"scopeSettled": "Ausgeglichen",
@@ -1475,7 +1493,13 @@
 		"paidByMe": "Du hast bezahlt",
 		"paidByName": "{name} hat bezahlt",
 		"error": "Person konnte nicht geladen werden",
-		"errorDetail": "Prüfe deine Verbindung und versuche es erneut."
+		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+		"since": "Gemeinsam seit {date}",
+		"expenseCount": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
+		"projectCount": "{count, plural, one {# Projekt} other {# Projekte}}",
+		"owesYouNet": "schuldet dir, netto",
+		"youOweThemNet": "du schuldest, netto",
+		"expense": "Ausgabe"
 	},
 	"settle": {
 		"with": "Mit {name} ausgleichen",
@@ -1643,7 +1667,14 @@
 			"loadError": "Das Offene konnte nicht geladen werden. Versuche es erneut.",
 			"moved": "Die Salden haben sich geändert. Prüfe die Liste und versuche es erneut.",
 			"error": "Die Zahlungen konnten nicht erfasst werden. Versuche es erneut."
-		}
+		},
+		"budgetOf": "von {amount}",
+		"solo": "Allein",
+		"toReview": "Zu prüfen · {count}",
+		"paidBy": "Bezahlt von",
+		"paidByOne": "Bezahlt von {name}",
+		"anyone": "Alle",
+		"noMatchExpenses": "Keine Ausgabe passt"
 	},
 	"settings": {
 		"title": "Einstellungen",

@@ -1,19 +1,19 @@
 import { router, Stack } from "expo-router";
 import { type ReactNode, useMemo, useState } from "react";
-import { SectionList, View } from "react-native";
+import { FlatList, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { ProjectRow } from "@/features/projects/ProjectRow";
 import { ProjectView } from "@/features/projects/ProjectView";
 import { groupProjects, matchesProject } from "@/features/projects/source";
 import { useProjectList } from "@/features/projects/useProjects";
-import { SectionHeader, StaleNote } from "@/ui/List";
-import { FLOATING_ADD_INSET, projectRoute } from "@/layout/destinations";
+import { projectRoute } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
+import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { ListDetail } from "@/ui/ListDetail";
-import { Screen } from "@/ui/Screen";
+import { Screen, useAddInset } from "@/ui/Screen";
 
 function openProject(id: string) {
 	router.push(projectRoute(id));
@@ -36,6 +36,7 @@ export function ProjectsList({
 	const t = useTranslations("mobile.projects");
 	const { color } = useTheme();
 	const { listDetail } = useLayoutClass();
+	const inset = useAddInset();
 	const searchRef = useSearchShortcut(sharedQuery === undefined);
 	const { state, reload } = useProjectList();
 	const [ownQuery, setQuery] = useState("");
@@ -45,11 +46,7 @@ export function ProjectsList({
 	const items = state.status === "ready" ? state.data.items : null;
 	const sections = useMemo(
 		() =>
-			items
-				? groupProjects(items.filter((p) => matchesProject(p, query))).map(
-						(group) => ({ ...group, data: group.projects }),
-					)
-				: [],
+			items ? groupProjects(items.filter((p) => matchesProject(p, query))) : [],
 		[items, query],
 	);
 
@@ -66,12 +63,13 @@ export function ProjectsList({
 		);
 
 	const list = (
-		<SectionList
+		<FlatList
 			contentInsetAdjustmentBehavior="automatic"
+			data={sections}
 			keyboardDismissMode="on-drag"
-			keyExtractor={(item) => item.id}
+			keyExtractor={(group) => group.key}
 			ListEmptyComponent={empty}
-			ListFooterComponent={<View style={{ height: FLOATING_ADD_INSET }} />}
+			ListFooterComponent={<View style={{ height: inset }} />}
 			ListHeaderComponent={
 				<View>
 					{top}
@@ -82,29 +80,28 @@ export function ProjectsList({
 			}
 			onRefresh={reload}
 			refreshing={false}
-			renderItem={({ item }) => (
-				<ProjectRow
-					onPress={() =>
-						listDetail ? setSelected(item.id) : openProject(item.id)
-					}
-					project={item}
-					selected={listDetail && selected === item.id}
-				/>
-			)}
-			renderSectionHeader={({ section }) => (
-				<View style={{ backgroundColor: color.bg }}>
+			renderItem={({ item: group }) => (
+				<View>
 					<SectionHeader
-						detail={String(section.projects.length)}
+						detail={String(group.projects.length)}
 						title={
-							section.kind === "active"
-								? t("group.active")
-								: String(section.year)
+							group.kind === "active" ? t("group.active") : String(group.year)
 						}
 					/>
+					<ListGroup>
+						{group.projects.map((project) => (
+							<ProjectRow
+								key={project.id}
+								onPress={() =>
+									listDetail ? setSelected(project.id) : openProject(project.id)
+								}
+								project={project}
+								selected={listDetail && selected === project.id}
+							/>
+						))}
+					</ListGroup>
 				</View>
 			)}
-			sections={sections}
-			stickySectionHeadersEnabled={false}
 			style={{ backgroundColor: color.bg }}
 		/>
 	);

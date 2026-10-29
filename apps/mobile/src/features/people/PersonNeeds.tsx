@@ -1,17 +1,12 @@
-import { Text, View } from "react-native";
-import { useTranslations } from "use-intl";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { ListRow } from "@/ui/List";
-import { useMoneyText } from "@/features/read/useMoneyText";
-import { useTheme } from "@/theme";
-import { Button } from "@/ui/Button";
+import { NeedsCard } from "./NeedsCard";
 import type { ReviewNeed } from "./ReviewSheet";
 import type { NeedsItem, PersonPage } from "./source";
 
 /**
- * What waits for you on this person. A payment they say they made has a
- * Confirm action and a split somebody added you to has a Review action;
- * each opens its sheet with the details before anything is written.
+ * What waits for you on this person, as the one NeedsCard. A payment they
+ * say they made opens its Confirm sheet and a split somebody added you to
+ * opens its Review sheet, each with the details before anything is written.
+ * It opens the first; the next one is there once that is answered.
  */
 export function PersonNeeds({
 	page,
@@ -22,58 +17,14 @@ export function PersonNeeds({
 	onConfirm: (need: Extract<NeedsItem, { kind: "confirmPayment" }>) => void;
 	onReview: (need: ReviewNeed) => void;
 }) {
-	const t = useTranslations("mobile.home.needs");
-	const ts = useTranslations("mobile.settle");
-	const tr = useTranslations("mobile.review");
-	const format = useMoneyText();
-	const { color, space, type } = useTheme();
-	const first = page.person.name.split(/\s+/)[0] ?? "";
+	const first = page.needs[0];
+	if (!first) return null;
 	return (
-		<View>
-			{page.needs.map((need) => {
-				const message =
-					need.kind === "confirmPayment"
-						? t("payment_confirm", { name: first })
-						: t("split_review", { name: first, title: need.title });
-				return (
-					<View key={`${need.kind}:${need.id}`}>
-						<ListRow accessibilityLabel={`${message}, ${format(need.amount)}`}>
-							<Text
-								style={{
-									flex: 1,
-									color: color.attentionText,
-									fontSize: type.body.size,
-									fontWeight: "500",
-								}}
-							>
-								{message}
-							</Text>
-							<MoneyAmount value={need.amount} />
-						</ListRow>
-						<View
-							style={{
-								alignItems: "flex-start",
-								paddingHorizontal: space[4],
-								paddingVertical: space[2],
-							}}
-						>
-							{need.kind === "confirmPayment" ? (
-								<Button
-									label={ts("confirm")}
-									onPress={() => onConfirm(need)}
-									variant="outlined"
-								/>
-							) : (
-								<Button
-									label={tr("open")}
-									onPress={() => onReview(need)}
-									variant="outlined"
-								/>
-							)}
-						</View>
-					</View>
-				);
-			})}
-		</View>
+		<NeedsCard
+			needs={page.needs}
+			onPress={() =>
+				first.kind === "confirmPayment" ? onConfirm(first) : onReview(first)
+			}
+		/>
 	);
 }

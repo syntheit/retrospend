@@ -1438,7 +1438,27 @@
 		"noMatch": "Никто не найден",
 		"pick": "Выберите человека",
 		"error": "Не удалось загрузить людей",
-		"errorDetail": "Проверьте подключение и повторите."
+		"errorDetail": "Проверьте подключение и повторите.",
+		"peopleOweYou": "{count, plural, =0 {Никто вам не должен} one {# человек должен вам} few {# человека должны вам} many {# человек должны вам} other {# человека должны вам}}",
+		"youOwePeople": "{count, plural, one {Вы должны # человеку} few {Вы должны # людям} many {Вы должны # людям} other {Вы должны # людям}}",
+		"allSettled": "Со всеми в расчёте",
+		"needsMore": "{first} и ещё {count}",
+		"sortBy": "Сортировка: {sort}",
+		"sort": {
+			"balance": "Баланс",
+			"recent": "Недавние",
+			"name": "Имя"
+		},
+		"ago": {
+			"today": "сегодня",
+			"days": "{count} дн. назад",
+			"weeks": "{count} нед. назад",
+			"months": "{count} мес. назад"
+		},
+		"bar": {
+			"owesYou": "{name}: должен вам {amount}",
+			"youOwe": "{name}: вы должны {amount}"
+		}
 	},
 	"person": {
 		"owesYou": "должен вам",
@@ -1448,8 +1468,6 @@
 		"remind": "Напомнить",
 		"reminded": "Напоминание отправлено",
 		"remindFailed": "Не удалось отправить напоминание",
-		"stats": "Вместе с {date}: {expenses, plural, one {# расход} few {# расхода} many {# расходов} other {# расхода}}, {projects, plural, one {# проект} few {# проекта} many {# проектов} other {# проекта}}",
-		"statsNoDate": "{expenses, plural, one {# расход} few {# расхода} many {# расходов} other {# расхода}}, {projects, plural, one {# проект} few {# проекта} many {# проектов} other {# проекта}}",
 		"projects": "Проекты",
 		"outside": "Вне проектов",
 		"scopeSettled": "В расчёте",
@@ -1475,7 +1493,13 @@
 		"paidByMe": "Заплатили вы",
 		"paidByName": "Платил: {name}",
 		"error": "Не удалось загрузить человека",
-		"errorDetail": "Проверьте подключение и повторите."
+		"errorDetail": "Проверьте подключение и повторите.",
+		"since": "Вместе с {date}",
+		"expenseCount": "{count, plural, one {# расход} few {# расхода} many {# расходов} other {# расхода}}",
+		"projectCount": "{count, plural, one {# проект} few {# проекта} many {# проектов} other {# проекта}}",
+		"owesYouNet": "должен вам, итого",
+		"youOweThemNet": "вы должны, итого",
+		"expense": "Расход"
 	},
 	"settle": {
 		"with": "Расчёт с {name}",
@@ -1643,7 +1667,14 @@
 			"loadError": "Не удалось загрузить открытые долги. Попробуйте ещё раз.",
 			"moved": "Балансы изменились. Проверьте список и попробуйте ещё раз.",
 			"error": "Не удалось записать платежи. Попробуйте ещё раз."
-		}
+		},
+		"budgetOf": "из {amount}",
+		"solo": "Один",
+		"toReview": "К проверке · {count}",
+		"paidBy": "Заплатил",
+		"paidByOne": "Заплатил {name}",
+		"anyone": "Кто угодно",
+		"noMatchExpenses": "Нет подходящих расходов"
 	},
 	"settings": {
 		"title": "Настройки",

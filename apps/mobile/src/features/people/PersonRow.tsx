@@ -1,15 +1,39 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useFaces } from "@/features/read/faces";
-import { ListRow } from "@/ui/List";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
+import { ListRow } from "@/ui/List";
+import { StatusText } from "@/ui/StatusText";
+import { Text } from "@/ui/Text";
 import { NetAmount, useNetText } from "./NetAmount";
+import { agoOf, daysSince } from "./relative";
 import type { PersonSummary } from "./source";
 
+/** A past day as a short phrase: "4d ago", or its date after a year. */
+function useAgo() {
+	const t = useTranslations("mobile.people.ago");
+	const format = useFormatter();
+	return (day: string): string => {
+		const ago = agoOf(daysSince(day, new Date()));
+		if (ago === null) {
+			const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+			return format.dateTime(new Date(y, m - 1, d, 12), {
+				month: "short",
+				day: "numeric",
+				year: "numeric",
+			});
+		}
+		return ago.unit === "today"
+			? t("today")
+			: t(ago.unit, { count: ago.count });
+	};
+}
+
 /**
- * One person in the People list: face, name, what is going on (a status
- * word first, then the last shared entry) and the balance on the right.
+ * One person in the People list, on three lines: the name, the last shared
+ * expense and how long ago, and a status (a dot and a word). The balance is
+ * on the right, with how many currencies it spans.
  */
 export function PersonRow({
 	summary,
@@ -25,13 +49,13 @@ export function PersonRow({
 	const t = useTranslations("mobile.people");
 	const tp = useTranslations("mobile.person");
 	const netText = useNetText();
-	const format = useFormatter();
+	const ago = useAgo();
 	const faces = useFaces();
-	const { color, type } = useTheme();
+	const { space } = useTheme();
 	const { person } = summary;
 	const [face] = faces([person]);
 
-	const status =
+	const statusWord =
 		summary.needsYou > 0
 			? t("needsYou", { count: summary.needsYou })
 			: summary.pending
@@ -41,66 +65,63 @@ export function PersonRow({
 				: !person.onRetrospend
 					? t("notOn")
 					: null;
-	const last = summary.lastShared
-		? `${summary.lastShared.title}, ${format.dateTime(
-				new Date(`${summary.lastShared.date}T12:00:00`),
-				{ month: "short", day: "numeric" },
-			)}`
-		: null;
+	const status =
+		statusWord === null ? null : summary.needsYou > 0 ? (
+			<StatusText label={statusWord} size="sm" tone="attention" />
+		) : summary.pending ? (
+			<StatusText label={statusWord} size="sm" tone="info" />
+		) : (
+			<StatusText kind="notOnRetrospend" size="sm" />
+		);
+	const last = summary.lastShared;
+	const when = last ? ago(last.date) : null;
 
 	return (
 		<ListRow
 			accessibilityLabel={[
 				person.name,
-				status,
-				last,
+				statusWord,
+				last ? `${last.title}, ${when}` : null,
 				summary.group === "settled"
 					? null
 					: `${summary.group === "owed" ? tp("owesYou") : tp("youOweThem")} ${netText(summary.net, summary.parts, home)}`,
 			]
 				.filter(Boolean)
 				.join(", ")}
+			end={
+				summary.group === "settled" ? null : (
+					<NetAmount
+						home={home}
+						net={summary.net}
+						parts={summary.parts}
+						tone={summary.group === "owed" ? "positive" : "default"}
+					/>
+				)
+			}
+			lead={face ? <Avatar face={face} size="row" /> : null}
 			onPress={onPress}
 			selected={selected}
-		>
-			{face ? <Avatar face={face} size="md" /> : null}
-			<View style={{ flex: 1, gap: 2 }}>
-				<Text
-					numberOfLines={1}
-					style={{
-						color: color.fg,
-						fontSize: type.body.size,
-						fontWeight: "500",
-					}}
-				>
-					{person.name}
-				</Text>
-				<Text
-					numberOfLines={1}
-					style={{ color: color.fg2, fontSize: type.small.size }}
-				>
-					{status ? (
-						<Text
-							style={{
-								color: summary.needsYou > 0 ? color.attentionText : color.fg2,
-								fontWeight: "500",
-							}}
-						>
-							{status}
-						</Text>
+			sub={
+				<View style={{ gap: space[1] }}>
+					{last ? (
+						<View style={{ flexDirection: "row", gap: space[1] }}>
+							<Text
+								numberOfLines={1}
+								style={{ flexShrink: 1 }}
+								tone="fg2"
+								variant="meta"
+							>
+								{last.title}
+							</Text>
+							<Text tone="fg3" variant="meta">
+								{`· ${when}`}
+							</Text>
+						</View>
 					) : null}
-					{status && last ? " · " : ""}
-					{last ?? ""}
-				</Text>
-			</View>
-			{summary.group === "settled" ? null : (
-				<NetAmount
-					home={home}
-					net={summary.net}
-					parts={summary.parts}
-					tone={summary.group === "owed" ? "positive" : "default"}
-				/>
-			)}
-		</ListRow>
+					{status}
+				</View>
+			}
+			title={person.name}
+		/>
 	);
 }

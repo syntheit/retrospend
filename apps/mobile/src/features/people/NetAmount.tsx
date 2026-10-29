@@ -1,5 +1,6 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
+import { heroCents, MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Text } from "@/ui/Text";
 import { isApproximate } from "./groups";
@@ -20,10 +21,25 @@ export function useNetText() {
 	};
 }
 
+/** The same balance for the Hero: the hero's cents rule, "≈" when converted. */
+export function useNetHeroText() {
+	const t = useTranslations("mobile.money");
+	const format = useMoneyText();
+	return (net: Net, parts: { amount: Part["amount"] }[], home: string) => {
+		if (!net) return t("noRate");
+		const text = format(
+			{ minor: Math.abs(net.minor), currency: net.currency },
+			{ cents: heroCents(net.currency) },
+		);
+		return isApproximate(parts, home) ? t("approx", { amount: text }) : text;
+	};
+}
+
 /**
- * A balance in the home currency. It is marked "≈" when currencies were
- * converted (the reference rates, not a settled number), shows "No rate yet"
- * when the server could not convert, and says how many currencies it spans.
+ * A balance in the home currency, composed from MoneyAmount at weight 600.
+ * It is marked "≈" when currencies were converted (the reference rates, not a
+ * settled number), shows "No rate yet" when the server could not convert, and
+ * says how many currencies it spans.
  */
 export function NetAmount({
 	net,
@@ -44,26 +60,36 @@ export function NetAmount({
 	showCount?: boolean;
 }) {
 	const tp = useTranslations("mobile.people");
-	const netText = useNetText();
+	const t = useTranslations("mobile.money");
 	const hero = size === "hero";
 	return (
 		<View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
-			<Text
-				numberOfLines={1}
-				style={{ textAlign: align }}
-				tabular
-				tone={tone === "positive" && net ? "positive" : "fg"}
-				variant={hero ? "hero" : "body"}
-				weight={hero ? "semibold" : "medium"}
-			>
-				{netText(net, parts, home)}
-			</Text>
+			{net ? (
+				<MoneyAmount
+					align={align}
+					approx={isApproximate(parts, home)}
+					size={hero ? "hero" : "body"}
+					strong
+					tone={tone}
+					value={{ minor: Math.abs(net.minor), currency: net.currency }}
+				/>
+			) : (
+				<Text
+					numberOfLines={1}
+					style={{ textAlign: align }}
+					tabular
+					variant={hero ? "hero" : "body"}
+					weight="semibold"
+				>
+					{t("noRate")}
+				</Text>
+			)}
 			{showCount && !hero && parts.length > 1 ? (
 				<Text
 					numberOfLines={1}
 					style={{ textAlign: align }}
-					tone="fg2"
-					variant="small"
+					tone="fg3"
+					variant="meta"
 				>
 					{tp("currencies", { count: parts.length })}
 				</Text>

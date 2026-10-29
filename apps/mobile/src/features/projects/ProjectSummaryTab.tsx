@@ -1,12 +1,14 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFaces } from "@/features/read/faces";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { ListRow, SectionHeader, StaleNote } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
+import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
+import { ListGroup, ListRow, SectionHeader, StaleNote } from "@/ui/List";
+import { Text } from "@/ui/Text";
 import type { ProjectSummary } from "./source";
 
 type SummaryMember = ProjectSummary["members"][number];
@@ -17,7 +19,6 @@ function MemberRow({ member }: { member: SummaryMember }) {
 	const t = useTranslations("mobile.projects.summary");
 	const money = useMoneyText();
 	const faces = useFaces();
-	const { color, type } = useTheme();
 	const [face] = faces([member]);
 	const lines = member.lines.filter((l) => l.balance.minor !== 0);
 	const balanceWords = (line: Line) =>
@@ -39,76 +40,82 @@ function MemberRow({ member }: { member: SummaryMember }) {
 		.filter(Boolean)
 		.join(", ");
 	return (
-		<ListRow accessibilityLabel={spoken}>
-			{face ? <Avatar face={face} size="md" /> : null}
-			<View style={{ flex: 1, gap: 2 }}>
-				<Text
-					numberOfLines={1}
-					style={{
-						color: color.fg,
-						fontSize: type.body.size,
-						fontWeight: "500",
-					}}
-				>
-					{member.name}
-				</Text>
-				{member.lines.map((line) => (
-					<Text
-						key={line.currency}
-						numberOfLines={1}
-						style={{ color: color.fg2, fontSize: type.small.size }}
-					>
-						{detail(line)}
-					</Text>
-				))}
-				{member.isMember ? null : (
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-						{t("left")}
-					</Text>
-				)}
-			</View>
-			<View style={{ alignItems: "flex-end", gap: 2 }}>
-				{lines.length === 0 ? (
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+		<ListRow
+			accessibilityLabel={spoken}
+			end={
+				lines.length === 0 ? (
+					<Text tone="fg2" variant="small">
 						{t("even")}
 					</Text>
 				) : (
-					lines.map((line) => (
-						<View key={line.currency} style={{ alignItems: "flex-end" }}>
-							<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-								{line.balance.minor > 0 ? t("isOwedShort") : t("owesShort")}
-							</Text>
-							<MoneyAmount
-								tone={line.balance.minor > 0 ? "positive" : "default"}
-								value={{
-									minor: Math.abs(line.balance.minor),
-									currency: line.balance.currency,
-								}}
-							/>
-						</View>
-					))
-				)}
-			</View>
-		</ListRow>
+					<View style={{ alignItems: "flex-end" }}>
+						{lines.map((line) => (
+							<View key={line.currency} style={{ alignItems: "flex-end" }}>
+								<Text
+									tone={line.balance.minor > 0 ? "positive" : "fg2"}
+									variant="meta"
+								>
+									{line.balance.minor > 0 ? t("isOwedShort") : t("owesShort")}
+								</Text>
+								<MoneyAmount
+									strong
+									tone={line.balance.minor > 0 ? "positive" : "default"}
+									value={{
+										minor: Math.abs(line.balance.minor),
+										currency: line.balance.currency,
+									}}
+								/>
+							</View>
+						))}
+					</View>
+				)
+			}
+			lead={face ? <Avatar face={face} size="row" /> : null}
+			sub={
+				<View>
+					{member.lines.map((line) => (
+						<Text
+							key={line.currency}
+							numberOfLines={1}
+							tone="fg3"
+							variant="meta"
+						>
+							{detail(line)}
+						</Text>
+					))}
+					{member.isMember ? null : (
+						<Text tone="fg3" variant="meta">
+							{t("left")}
+						</Text>
+					)}
+				</View>
+			}
+			title={member.name}
+		/>
 	);
 }
 
 /**
- * The Summary tab: the group total, every member's Paid, Share and balance
- * per currency (never netted across currencies), and the fewest transfers
- * that would settle it (display only; recording is Settle all).
+ * The Summary tab: Settle all (recording the fewest payments), the group
+ * total, every member's Paid, Share and balance per currency (never netted
+ * across currencies), and the fewest transfers that would settle it
+ * (display only; recording is Settle all).
  */
 export function ProjectSummaryTab({
 	state,
+	onSettleAll,
 }: {
 	state:
 		| { status: "loading" }
 		| { status: "error" }
 		| { status: "ready"; data: ProjectSummary; staleSince: string | null };
+	/** Present when you may record payments; the Settle all button opens its sheet. */
+	onSettleAll?: () => void;
 }) {
 	const t = useTranslations("mobile.projects.summary");
+	const ts = useTranslations("mobile.projects.settleAll");
 	const money = useMoneyText();
-	const { color, space, type } = useTheme();
+	const { size, space } = useTheme();
 	if (state.status === "loading") return null;
 	if (state.status === "error") {
 		return <EmptyState detail={t("errorDetail")} title={t("error")} />;
@@ -117,14 +124,24 @@ export function ProjectSummaryTab({
 	return (
 		<View>
 			<StaleNote since={state.staleSince} />
+			{onSettleAll ? (
+				<View
+					style={{
+						alignItems: "flex-start",
+						paddingHorizontal: size.gutter.phone,
+						paddingTop: space[4],
+					}}
+				>
+					<Button label={ts("open")} onPress={onSettleAll} />
+				</View>
+			) : null}
 			{summary.balancesAddUp ? null : (
 				<Text
 					style={{
-						color: color.attentionText,
-						fontSize: type.body.size,
-						paddingHorizontal: space[4],
+						paddingHorizontal: size.gutter.phone,
 						paddingTop: space[2],
 					}}
+					tone="attention"
 				>
 					{t("imbalance", {
 						amounts: summary.imbalance.map((m) => money(m)).join(", "),
@@ -132,35 +149,37 @@ export function ProjectSummaryTab({
 				</Text>
 			)}
 			<SectionHeader title={t("members")} />
-			{summary.members.map((member) => (
-				<MemberRow key={member.key} member={member} />
-			))}
+			<ListGroup>
+				{summary.members.map((member) => (
+					<MemberRow key={member.key} member={member} />
+				))}
+			</ListGroup>
 			{summary.transfers.length > 0 ? (
 				<>
 					<SectionHeader title={t("transfers")} />
 					<Text
 						style={{
-							color: color.fg2,
-							fontSize: type.small.size,
-							paddingHorizontal: space[4],
+							paddingHorizontal: size.gutter.phone,
 							paddingBottom: space[2],
 						}}
+						tone="fg2"
+						variant="small"
 					>
 						{t("transfersNote")}
 					</Text>
-					{summary.transfers.map((transfer) => (
-						<ListRow
-							accessibilityLabel={`${t("pays", { from: transfer.from.name, to: transfer.to.name })}, ${money(transfer.amount)}`}
-							key={`${transfer.from.key}>${transfer.to.key}:${transfer.amount.currency}`}
-						>
-							<Text
-								style={{ flex: 1, color: color.fg, fontSize: type.body.size }}
-							>
-								{t("pays", { from: transfer.from.name, to: transfer.to.name })}
-							</Text>
-							<MoneyAmount value={transfer.amount} />
-						</ListRow>
-					))}
+					<ListGroup>
+						{summary.transfers.map((transfer) => (
+							<ListRow
+								accessibilityLabel={`${t("pays", { from: transfer.from.name, to: transfer.to.name })}, ${money(transfer.amount)}`}
+								end={<MoneyAmount value={transfer.amount} />}
+								key={`${transfer.from.key}>${transfer.to.key}:${transfer.amount.currency}`}
+								title={t("pays", {
+									from: transfer.from.name,
+									to: transfer.to.name,
+								})}
+							/>
+						))}
+					</ListGroup>
 				</>
 			) : null}
 		</View>

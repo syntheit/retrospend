@@ -1,26 +1,31 @@
 import { Stack } from "expo-router";
-import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useServerConnection } from "@/auth/server-connection";
-import { absoluteImage, useFaces } from "@/features/read/faces";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { SectionHeader, StaleNote } from "@/ui/List";
+import { NeedsCard } from "@/features/people/NeedsCard";
+import { ReviewSheet } from "@/features/people/ReviewSheet";
+import { usePeopleOverview } from "@/features/people/usePeople";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
-import { AvatarStack } from "@/ui/Avatar";
-import { Button } from "@/ui/Button";
+import { Chip } from "@/ui/Chip";
 import { EmptyState } from "@/ui/EmptyState";
+import { StaleNote } from "@/ui/List";
+import { Menu } from "@/ui/Menu";
 import { Screen } from "@/ui/Screen";
 import { Segmented } from "@/ui/Segmented";
-import { Cover } from "./Cover";
-import { useDayRange } from "./dates";
-import { ProjectExpenseRow } from "./ProjectExpenses";
+import { Text } from "@/ui/Text";
+import {
+	filterExpenses,
+	ME,
+	type PaidBy,
+	payers,
+	projectNeeds,
+} from "./filters";
+import { ProjectExpenseDays } from "./ProjectExpenses";
+import { ProjectHeader } from "./ProjectHeader";
 import { ProjectPeopleTab } from "./ProjectPeopleTab";
-import { BudgetLine } from "./ProjectRow";
 import { ProjectSummaryTab } from "./ProjectSummaryTab";
 import { SettleAllSheet } from "./SettleAllSheet";
-import type { ProjectPage } from "./source";
 import { useProject, useProjectSummary } from "./useProjects";
 
 type Tab = "expenses" | "summary" | "people";
@@ -29,40 +34,12 @@ type Period = "all" | "current";
 /** Contributor or above may record payments, as on the web. */
 const CAN_SETTLE = new Set(["ORGANIZER", "EDITOR", "CONTRIBUTOR"]);
 
-/** Money lines of one kind (total, your share), the first one large. */
-function Totals({
-	label,
-	lines,
-	hero,
-}: {
-	label: string;
-	lines: ProjectPage["total"];
-	hero?: boolean;
-}) {
-	const { color, space, type } = useTheme();
-	if (lines.length === 0) return null;
-	return (
-		<View style={{ gap: space[1] }}>
-			<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-				{label}
-			</Text>
-			{lines.map((line, index) => (
-				<MoneyAmount
-					align="left"
-					key={line.currency}
-					size={hero && index === 0 ? "hero" : "body"}
-					value={line}
-				/>
-			))}
-		</View>
-	);
-}
-
 /**
- * One project: who is in it, the group total and your share, the budget,
- * Settle all, and three tabs (Expenses, Summary, People). A solo project has
- * no People tab and no Settle all. A screen on a phone, the detail pane of
- * Projects on iPad and wide Android windows.
+ * One project: who is in it, the tabs (Expenses, Summary, People), the group
+ * total and your share, the budget, and what waits for you. Settle all is in
+ * the Summary tab. A solo project has no People tab and no Settle all. A
+ * screen on a phone, the detail pane of Projects on iPad and wide Android
+ * windows.
  */
 export function ProjectView({
 	id,
@@ -72,18 +49,33 @@ export function ProjectView({
 	startSettling?: boolean;
 }) {
 	const t = useTranslations("mobile.projects");
-	const faces = useFaces();
-	const range = useDayRange();
-	const { connection } = useServerConnection();
-	const { color, size, space, type } = useTheme();
 	const { listDetail } = useLayoutClass();
+	const { space } = useTheme();
 	const { state, reload } = useProject(id);
+	const people = usePeopleOverview();
 	const [tab, setTab] = useState<Tab>("expenses");
 	const [period, setPeriod] = useState<Period>("all");
+	const [toReview, setToReview] = useState(false);
+	const [paidBy, setPaidBy] = useState<PaidBy>(null);
+	const [reviewing, setReviewing] = useState<
+		ReturnType<typeof projectNeeds>[number] | null
+	>(null);
 	const [settling, setSettling] = useState(startSettling);
 	const page = state.status === "ready" ? state.data : null;
 	const periodId = period === "current" ? (page?.openPeriod ?? null) : null;
 	const summary = useProjectSummary(id, periodId, tab === "summary");
+	const expenses = page?.expenses;
+	const shown = useMemo(
+		() => (expenses ? filterExpenses(expenses, { toReview, paidBy }) : []),
+		[expenses, toReview, paidBy],
+	);
+	const needs = useMemo(
+		() =>
+			expenses && people.state.status === "ready"
+				? projectNeeds(people.state.data.needs, expenses)
+				: [],
+		[expenses, people.state],
+	);
 
 	useEffect(() => {
 		if (startSettling) setSettling(true);
@@ -104,9 +96,6 @@ export function ProjectView({
 		);
 	}
 
-	const baseUrl = connection.status === "connected" ? connection.baseUrl : null;
-	const others = page.members.filter((m) => !m.isMe && m.leftOn === null);
-	const when = range(page.firstExpense, page.lastExpense, page.today);
 	const canSettle =
 		!page.solo &&
 		page.status === "ACTIVE" &&
@@ -119,152 +108,158 @@ export function ProjectView({
 			? []
 			: [{ value: "people" as const, label: t("tab.people") }]),
 	];
+	const reviewCount = page.expenses.filter(
+		(e) => e.waiting === "review",
+	).length;
+	const who = payers(page.expenses);
+	const whoLabel = (key: string) =>
+		key === ME
+			? t("you")
+			: (page.expenses.find((e) => e.payerName === key)?.payerName ?? key);
 
 	return (
-		<Screen flush>
+		<Screen
+			flush
+			onRefresh={() => {
+				reload();
+				people.reload();
+			}}
+		>
 			{listDetail ? null : (
 				<Stack.Screen options={{ title: page.name, headerLargeTitle: false }} />
 			)}
 			<StaleNote since={state.status === "ready" ? state.staleSince : null} />
-			<View style={{ gap: space[3], padding: space[4] }}>
-				<View
-					style={{ flexDirection: "row", alignItems: "center", gap: space[3] }}
-				>
-					<Cover
-						diameter={size.avatar.lg}
-						id={page.id}
-						imageUri={absoluteImage(page.imageUrl, baseUrl)}
-						name={page.name}
-					/>
-					<View style={{ flex: 1, gap: 2 }}>
-						{/* The name is the navigation bar's; the detail pane has none. */}
-						{listDetail ? (
-							<Text
-								accessibilityRole="header"
-								style={{
-									color: color.fg,
-									fontSize: type.title.size,
-									fontWeight: "600",
-								}}
-							>
-								{page.name}
-							</Text>
-						) : null}
-						<Text
-							style={{
-								color: listDetail ? color.fg2 : color.fg,
-								fontSize: listDetail ? type.small.size : type.body.size,
-							}}
-						>
-							{[page.status === "ARCHIVED" ? t("archived") : null, when]
-								.filter(Boolean)
-								.join(" · ")}
-						</Text>
-					</View>
-				</View>
-				{page.solo ? null : (
-					<View
-						accessibilityLabel={others.map((m) => m.name).join(", ")}
-						accessible
-						style={{
-							flexDirection: "row",
-							alignItems: "center",
-							gap: space[2],
-						}}
-					>
-						<AvatarStack
-							faces={faces(
-								others.map((m) => ({
-									key: m.id,
-									name: m.name,
-									imageUrl: m.imageUrl,
-								})),
-							)}
-							max={6}
-							size="md"
-						/>
-						<Text
-							numberOfLines={1}
-							style={{
-								flex: 1,
-								color: color.fg2,
-								fontSize: type.body.size,
-							}}
-						>
-							{others.map((m) => m.name.split(/\s+/)[0]).join(", ")}
-						</Text>
-					</View>
-				)}
-				<Totals
-					hero
-					label={page.solo ? t("spent") : t("groupTotal")}
-					lines={page.total}
-				/>
-				{page.solo ? null : (
-					<Totals label={t("yourShareLabel")} lines={page.myShare} />
-				)}
-				{page.budget ? <BudgetLine budget={page.budget} /> : null}
-				{canSettle ? (
-					<View style={{ alignItems: "flex-start" }}>
-						<Button
-							label={t("settleAll.open")}
-							onPress={() => setSettling(true)}
-						/>
-					</View>
-				) : null}
-			</View>
-
-			<View style={{ paddingHorizontal: space[4], gap: space[3] }}>
-				<Segmented
-					accessibilityLabel={t("tabs")}
-					onChange={setTab}
-					options={tabs}
-					value={tab}
-				/>
-				{tab === "summary" && page.openPeriod ? (
+			<ProjectHeader
+				page={page}
+				pane={listDetail}
+				tabs={
 					<Segmented
-						accessibilityLabel={t("period.label")}
-						onChange={setPeriod}
-						options={[
-							{ value: "all", label: t("period.all") },
-							{ value: "current", label: t("period.current") },
-						]}
-						value={period}
+						accessibilityLabel={t("tabs")}
+						onChange={setTab}
+						options={tabs}
+						value={tab}
 					/>
-				) : null}
-			</View>
+				}
+			/>
 
 			{tab === "expenses" ? (
-				page.expenses.length === 0 ? (
-					<EmptyState title={t("noExpenses")} />
-				) : (
-					<>
-						<SectionHeader
-							detail={String(page.expenseCount)}
-							title={t("expenses")}
-						/>
-						{page.expenses.map((expense) => (
-							<ProjectExpenseRow expense={expense} key={expense.id} />
-						))}
-						{page.expenseCount > page.expenses.length ? (
-							<Text
-								style={{
-									color: color.fg2,
-									fontSize: type.small.size,
-									padding: space[4],
-								}}
-							>
-								{t("newestOnly", { count: page.expenses.length })}
-							</Text>
-						) : null}
-					</>
-				)
+				<>
+					{needs.length > 0 ? (
+						<View style={{ paddingTop: space[4] }}>
+							<NeedsCard
+								needs={needs}
+								onPress={() => setReviewing(needs[0] ?? null)}
+							/>
+						</View>
+					) : null}
+					{reviewCount > 0 || who.length > 1 ? (
+						<ScrollView
+							contentContainerStyle={{
+								alignItems: "center",
+								gap: space[2],
+								paddingHorizontal: space[4],
+								paddingTop: space[4],
+							}}
+							horizontal
+							keyboardShouldPersistTaps="handled"
+							showsHorizontalScrollIndicator={false}
+						>
+							{reviewCount > 0 ? (
+								<Chip
+									label={t("toReview", { count: reviewCount })}
+									onPress={() => setToReview(!toReview)}
+									selected={toReview}
+								/>
+							) : null}
+							{who.length > 1 ? (
+								<Menu
+									active={paidBy !== null}
+									chip
+									items={[
+										{
+											id: "any",
+											label: t("anyone"),
+											onPress: () => setPaidBy(null),
+										},
+										...who.map((key) => ({
+											id: key,
+											label: whoLabel(key),
+											onPress: () => setPaidBy(key),
+										})),
+									]}
+									label={
+										paidBy === null
+											? t("paidBy")
+											: t("paidByOne", { name: whoLabel(paidBy) })
+									}
+								/>
+							) : null}
+						</ScrollView>
+					) : null}
+					{page.expenses.length === 0 ? (
+						<EmptyState title={t("noExpenses")} />
+					) : shown.length === 0 ? (
+						<EmptyState title={t("noMatchExpenses")} />
+					) : (
+						<ProjectExpenseDays expenses={shown} solo={page.solo} />
+					)}
+					{page.expenseCount > page.expenses.length ? (
+						<Text style={{ padding: space[4] }} tone="fg2" variant="small">
+							{t("newestOnly", { count: page.expenses.length })}
+						</Text>
+					) : null}
+				</>
 			) : tab === "summary" ? (
-				<ProjectSummaryTab state={summary.state} />
+				<>
+					{page.openPeriod ? (
+						<View
+							style={{
+								alignItems: "flex-start",
+								paddingHorizontal: space[4],
+								paddingTop: space[4],
+							}}
+						>
+							<Menu
+								active={period !== "all"}
+								chip
+								items={[
+									{
+										id: "all",
+										label: t("period.all"),
+										onPress: () => setPeriod("all"),
+									},
+									{
+										id: "current",
+										label: t("period.current"),
+										onPress: () => setPeriod("current"),
+									},
+								]}
+								label={t(`period.${period}`)}
+							/>
+						</View>
+					) : null}
+					<ProjectSummaryTab
+						onSettleAll={canSettle ? () => setSettling(true) : undefined}
+						state={summary.state}
+					/>
+				</>
 			) : (
 				<ProjectPeopleTab members={page.members} today={page.today} />
 			)}
 
+			{reviewing ? (
+				<ReviewSheet
+					need={reviewing}
+					onClose={() => setReviewing(null)}
+					onDone={() => {
+						reload();
+						people.reload();
+					}}
+					person={reviewing.person}
+					row={undefined}
+					visible
+				/>
+			) : null}
 			<SettleAllSheet
 				members={page.members}
 				onClose={() => setSettling(false)}

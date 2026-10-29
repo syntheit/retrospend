@@ -1438,7 +1438,27 @@
 		"noMatch": "Nadie coincide",
 		"pick": "Elegí una persona",
 		"error": "No se pudieron cargar las personas",
-		"errorDetail": "Revisá tu conexión y probá de nuevo."
+		"errorDetail": "Revisá tu conexión y probá de nuevo.",
+		"peopleOweYou": "{count, plural, =0 {Nadie te debe} one {# persona te debe} other {# personas te deben}}",
+		"youOwePeople": "{count, plural, one {Le debés a # persona} other {Les debés a # personas}}",
+		"allSettled": "Estás al día con todos",
+		"needsMore": "{first} y {count} más",
+		"sortBy": "Orden: {sort}",
+		"sort": {
+			"balance": "Saldo",
+			"recent": "Reciente",
+			"name": "Nombre"
+		},
+		"ago": {
+			"today": "hoy",
+			"days": "hace {count} d",
+			"weeks": "hace {count} sem",
+			"months": "hace {count} m"
+		},
+		"bar": {
+			"owesYou": "{name}: te debe {amount}",
+			"youOwe": "{name}: le debés {amount}"
+		}
 	},
 	"person": {
 		"owesYou": "te debe",
@@ -1448,8 +1468,6 @@
 		"remind": "Recordar",
 		"reminded": "Recordatorio enviado",
 		"remindFailed": "No se pudo enviar el recordatorio",
-		"stats": "Comparten desde {date}, {expenses, plural, one {# gasto} other {# gastos}}, {projects, plural, one {# proyecto} other {# proyectos}}",
-		"statsNoDate": "{expenses, plural, one {# gasto} other {# gastos}}, {projects, plural, one {# proyecto} other {# proyectos}}",
 		"projects": "Proyectos",
 		"outside": "Fuera de proyectos",
 		"scopeSettled": "Al día",
@@ -1475,7 +1493,13 @@
 		"paidByMe": "Pagaste vos",
 		"paidByName": "Pagó {name}",
 		"error": "No se pudo cargar esta persona",
-		"errorDetail": "Revisá tu conexión y probá de nuevo."
+		"errorDetail": "Revisá tu conexión y probá de nuevo.",
+		"since": "Comparten desde {date}",
+		"expenseCount": "{count, plural, one {# gasto} other {# gastos}}",
+		"projectCount": "{count, plural, one {# proyecto} other {# proyectos}}",
+		"owesYouNet": "te debe, neto",
+		"youOweThemNet": "le debés, neto",
+		"expense": "Gasto"
 	},
 	"settle": {
 		"with": "Saldar con {name}",
@@ -1643,7 +1667,14 @@
 			"loadError": "No se pudo cargar lo pendiente. Probá de nuevo.",
 			"moved": "Los saldos cambiaron. Revisá la lista y probá de nuevo.",
 			"error": "No se pudieron registrar los pagos. Probá de nuevo."
-		}
+		},
+		"budgetOf": "de {amount}",
+		"solo": "Solo",
+		"toReview": "Por revisar · {count}",
+		"paidBy": "Pagó",
+		"paidByOne": "Pagó {name}",
+		"anyone": "Cualquiera",
+		"noMatchExpenses": "Ningún gasto coincide"
 	},
 	"settings": {
 		"title": "Ajustes",

@@ -7,7 +7,7 @@ import { ProjectsList } from "@/features/projects/ProjectsList";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useTheme } from "@/theme";
 import { Segmented } from "@/ui/Segmented";
-import type { PeopleChip } from "./groups";
+import type { PeopleChip, PeopleSort } from "./groups";
 import { PeopleList } from "./PeopleList";
 import {
 	type PeopleSegment,
@@ -35,6 +35,7 @@ export function PeopleHub() {
 
 	const [query, setQuery] = useState("");
 	const [chip, setChip] = useState<PeopleChip>("all");
+	const [sort, setSort] = useState<PeopleSort>("balance");
 
 	useEffect(() => {
 		const next = parseSegment(requested);
@@ -85,7 +86,10 @@ export function PeopleHub() {
 				}}
 			/>
 			{segment === "people" ? (
-				<PeopleList filters={{ query, chip, onChip: setChip }} top={switcher} />
+				<PeopleList
+					filters={{ query, chip, onChip: setChip, sort, onSort: setSort }}
+					top={switcher}
+				/>
 			) : (
 				<ProjectsList query={query} top={switcher} />
 			)}
