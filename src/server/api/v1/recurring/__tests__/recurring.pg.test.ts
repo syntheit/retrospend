@@ -538,7 +538,7 @@ describe("/api/v1/recurring", () => {
 		await expectProblem(
 			await send("POST", `/recurring/${item.id}/skip`, {}),
 			400,
-			"bad_request",
+			"validation_failed",
 		);
 		await expect(
 			adminDb.recurringTemplate.findUniqueOrThrow({ where: { id: item.id } }),

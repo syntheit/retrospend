@@ -177,8 +177,9 @@ const transferStamp = (t: TransferSource): TransferStamp => ({
 	date: t.date.toISOString(),
 });
 
+/** Field by field: the stash is stored as jsonb, which does not keep key order. */
 const same = <T extends object>(a: T, b: T) =>
-	JSON.stringify(a) === JSON.stringify(b);
+	(Object.keys(a) as (keyof T)[]).every((k) => a[k] === b[k]);
 
 const changed = () =>
 	new TRPCError({
