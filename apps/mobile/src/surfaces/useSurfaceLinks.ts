@@ -10,6 +10,23 @@ type Open = (mode: ComposerPrefill["mode"], prefill: ComposerPrefill) => void;
 // open the composer a second time.
 let handledInitial: string | null = null;
 
+type Native = Pick<
+	NonNullable<typeof RetrospendSurfaces>,
+	"consumePending" | "releaseShared"
+>;
+
+/**
+ * Takes the waiting share or Shortcut, once. The composer has no attachment
+ * slot yet, so a shared file is fully taken in here and its copy in the App
+ * Group is deleted right away (iOS; Android hands a content:// URI it owns).
+ */
+export function takePending(native: Native | null): ComposerPrefill | null {
+	const prefill = parsePending(native?.consumePending() ?? null);
+	const file = prefill?.file;
+	if (file?.uri.startsWith("file:")) native?.releaseShared?.(file.uri);
+	return prefill;
+}
+
 /**
  * Opens the composer for what the system surfaces send: a retrospend://add
  * link (Quick Settings tile, a Control, a Shortcut), or a share or Shortcut
@@ -22,7 +39,7 @@ export function useSurfaceLinks(open: Open) {
 
 	useEffect(() => {
 		const drain = () => {
-			const prefill = parsePending(RetrospendSurfaces?.consumePending() ?? null);
+			const prefill = takePending(RetrospendSurfaces);
 			if (prefill) openRef.current(prefill.mode, prefill);
 		};
 		const handle = (url: string) => {

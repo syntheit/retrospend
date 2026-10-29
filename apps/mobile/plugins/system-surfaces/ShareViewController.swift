@@ -69,6 +69,10 @@ final class ShareViewController: UIViewController {
           continuation.resume(returning: nil)
           return
         }
+        // The copy keeps the original's dates; the app's sweep of shared/
+        // goes by when it was shared (RetrospendSurfacesModule.swift).
+        try? FileManager.default.setAttributes(
+          [.modificationDate: Date()], ofItemAtPath: target.path)
         continuation.resume(returning: [
           "uri": target.absoluteString,
           "mime": type.preferredMIMEType ?? "application/octet-stream",

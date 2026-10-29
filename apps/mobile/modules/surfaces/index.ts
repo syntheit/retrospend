@@ -7,11 +7,14 @@ interface RetrospendSurfacesNative {
 	 * Android reads the activity's SEND intent.
 	 */
 	consumePending(): string | null;
+	/**
+	 * iOS only: deletes the share extension's copy of a shared file once the
+	 * app has taken it in. Anything outside the App Group's shared folder is
+	 * left alone.
+	 */
+	releaseShared?(uri: string): void;
 	/** Android only: a share arrived while the app was running. */
-	addListener(
-		event: "onPending",
-		listener: () => void,
-	): { remove(): void };
+	addListener(event: "onPending", listener: () => void): { remove(): void };
 }
 
 /** The native hand-off; null in tests and where the module is not built in. */
