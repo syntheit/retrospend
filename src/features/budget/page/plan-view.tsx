@@ -18,6 +18,7 @@ import type { PlanLine } from "~/lib/schemas/envelope-plan";
 import { api } from "~/trpc/react";
 import { useMonthLabel } from "./month-switch";
 import { monthStartIso } from "./months";
+import { isPlanConflict, planSaveId } from "./plan-draft";
 import { PlanList, PlanTable } from "./plan-rows";
 import type { BudgetActions } from "./use-budget-actions";
 import { isLimits } from "./view-model";
@@ -60,7 +61,15 @@ export function PlanView({
 			utils.envelope.previewDraft.invalidate(),
 			utils.envelope.planCost.invalidate(),
 		]);
-	const save = api.envelope.saveDraft.useMutation({ onSuccess: refresh });
+	const save = api.envelope.saveDraft.useMutation({
+		onSuccess: refresh,
+		// A plan opened on another device: read it, so the next save edits it.
+		onError: (error) => {
+			if (!isPlanConflict(error)) return;
+			void refresh();
+			toast.info(t("changedElsewhere"));
+		},
+	});
 	const discard = api.envelope.discardDraft.useMutation({ onSuccess: refresh });
 
 	const lines = useMemo(
@@ -85,7 +94,7 @@ export function PlanView({
 
 	const write = (next: PlanLine[]) =>
 		save.mutateAsync({
-			id: draft?.id ?? generateId(),
+			id: planSaveId(drafts.data, generateId),
 			kind: "PLAN",
 			month,
 			lines: next,

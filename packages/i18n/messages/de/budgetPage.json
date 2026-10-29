@@ -165,6 +165,7 @@
 	},
 	"plan": {
 		"discarded": "Plan verworfen",
+		"changedElsewhere": "Dieser Plan wurde auf einem anderen Gerät geändert und neu geladen.",
 		"emptyHint": "Ein Plan ist ein Entwurf. Nichts bewegt sich, bis du ihn anwendest.",
 		"emptyTitle": "{month} planen",
 		"fill": {
