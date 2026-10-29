@@ -422,11 +422,7 @@
 		"noBudgetDetail": "Crie um para planejar seu dinheiro em envelopes.",
 		"paused": "Seu orçamento está pausado",
 		"pausedDetail": "Nada é contado enquanto está pausado.",
-		"wealth": "Patrimônio e contas",
-		"webForNow": "Algumas ferramentas, como a visão anual, ficam por enquanto só na web.",
 		"month": {
-			"previous": "Mês anterior",
-			"next": "Próximo mês",
 			"pick": "Escolher um mês",
 			"closedItem": "{month}, fechado",
 			"planItem": "Planejar {month}",
@@ -470,7 +466,8 @@
 			}
 		},
 		"hero": {
-			"incomplete": "Ainda não há cotação de {currencies}, então isto não foi calculado."
+			"incomplete": "Ainda não há cotação de {currencies}, então isto não foi calculado.",
+			"afford": "Posso comprar algo?"
 		},
 		"notice": {
 			"notPlanned": "Entraram {amount} que ainda não estão planejados.",
@@ -505,7 +502,10 @@
 			"expand": "Mostrar envelopes",
 			"collapse": "Ocultar envelopes",
 			"percents": "Planejado {planned} · gasto {spent}",
-			"overNames": "Estourados: {names}"
+			"overNames": "Estourados: {names}",
+			"overBy": "{name} estourou em {amount}",
+			"needed": "{name}: faltam {amount}",
+			"covered": "{name}: cobertas"
 		},
 		"column": {
 			"assigned": "Atribuído",
@@ -521,7 +521,12 @@
 			"leftSpoken": "restam {amount}",
 			"leftThisWeek": "restam {amount} esta semana",
 			"wideSpoken": "{assigned} atribuído, {spent} gasto, restam {left}",
-			"wideSpokenLimit": "limite {assigned}, {spent} gasto, restam {left}"
+			"wideSpokenLimit": "limite {assigned}, {spent} gasto, restam {left}",
+			"overBy": "Estourou em {amount}",
+			"moreNeeded": "faltam {amount}",
+			"swipeMove": "Mover",
+			"swipeLimit": "Limite",
+			"swipeTarget": "Meta"
 		},
 		"envelope": {
 			"assigned": "Atribuído",
@@ -729,7 +734,8 @@
 			"welcomeBack": "Bem-vindo de volta",
 			"startingMoney": "Dinheiro inicial",
 			"toWealth": "Mover dinheiro para Patrimônio",
-			"fromWealth": "Trazer dinheiro de Patrimônio"
+			"fromWealth": "Trazer dinheiro de Patrimônio",
+			"more": "Mais"
 		},
 		"afford": {
 			"title": "Posso pagar isso?",
@@ -1161,7 +1167,17 @@
 			"toastMoved": "Você trouxe {amount}",
 			"toastCounted": "Você contou dinheiro de {name}. {name} não mudou"
 		},
-		"resume": "Retomar o orçamento"
+		"resume": "Retomar o orçamento",
+		"targetLine": {
+			"none": "Sem meta",
+			"noLimit": "Sem limite",
+			"perWeek": "{amount} por semana",
+			"perMonth": "{amount} por mês",
+			"billDue": "{amount} até {date}",
+			"goal": "Meta de {amount}",
+			"goalProgress": "{saved} de {amount}",
+			"goalBy": "até {date}"
+		}
 	},
 	"wealth": {
 		"title": "Patrimônio",

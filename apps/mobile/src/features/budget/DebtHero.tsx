@@ -2,6 +2,7 @@ import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
+import { Hero } from "@/ui/Hero";
 import { Text } from "@/ui/Text";
 import { monthDate } from "./months";
 import type { BudgetMonth, PayoffProjection } from "./source";
@@ -58,26 +59,19 @@ export function DebtHero({
 					months: payoff.months,
 				});
 	return (
-		<View style={{ gap: space[1], paddingHorizontal: space[4] }}>
-			<View
-				accessibilityLabel={`${t("label")}, ${headline}. ${sentence}`}
-				accessible
-				style={{ gap: space[1] }}
-			>
-				<Text tone="fg2">{t("label")}</Text>
-				<Text
-					adjustsFontSizeToFit
-					numberOfLines={1}
-					tabular={false}
-					variant="hero"
-				>
-					{headline}
-				</Text>
-				<Text tone="fg2">{sentence}</Text>
-				{payoff.capped && !payoff.incomplete && !payoff.diverges ? (
-					<Text tone="fg2">{t("capped")}</Text>
-				) : null}
-			</View>
+		<View style={{ gap: space[3], paddingHorizontal: space[4] }}>
+			<Hero
+				label={t("label")}
+				sub={
+					<View style={{ gap: space[1] }}>
+						<Text>{sentence}</Text>
+						{payoff.capped && !payoff.incomplete && !payoff.diverges ? (
+							<Text>{t("capped")}</Text>
+						) : null}
+					</View>
+				}
+				value={headline}
+			/>
 			<Text tone="fg2" variant="small">
 				{quiet}
 			</Text>

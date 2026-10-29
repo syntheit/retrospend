@@ -1,160 +1,115 @@
 import { router } from "expo-router";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { ListRow } from "@/ui/List";
+import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
-import { Button } from "@/ui/Button";
-import { overEnvelopes } from "./rows";
+import { AvatarStack, type Face } from "@/ui/Avatar";
+import { Glyph } from "@/ui/Glyph";
+import { ListGroup, ListRow } from "@/ui/List";
+import { participantKey } from "./owedBodies";
 import type { BudgetMonth } from "./source";
+import { useSheetRead } from "./useSheetRead";
 
-/** A label with its figure at the end, as a row (a tap is optional). */
-function SummaryRow({
-	label,
-	detail,
-	value,
-	spoken,
-	onPress,
-}: {
-	label: string;
-	detail?: string;
-	value: string;
-	spoken: string;
-	onPress?: () => void;
-}) {
-	const { color, space, type } = useTheme();
-	return (
-		<ListRow accessibilityLabel={spoken} onPress={onPress}>
-			<View style={{ flex: 1, gap: space[1] }}>
-				<Text style={{ color: color.fg, fontSize: type.body.size }}>
-					{label}
-				</Text>
-				{detail ? (
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-						{detail}
-					</Text>
-				) : null}
-			</View>
-			<Text
-				style={{
-					color: color.fg,
-					fontSize: type.body.size,
-					fontVariant: ["tabular-nums"],
-					fontWeight: "500",
-					textAlign: "right",
-				}}
-			>
-				{value}
-			</Text>
-		</ListRow>
+/**
+ * The people who owe you, as faces for the Owed row. The month's summary has
+ * only a count, so this reads the owed list when someone owes; until it
+ * arrives the row shows without faces.
+ */
+function useOwedFaces(people: number, held: number): Face[] {
+	const t = useTranslations("mobile.budget.owed");
+	const read = useSheetRead(
+		people > 0,
+		(client) => client.budget.owed(),
+		`${people}:${held}`,
 	);
+	if (read.status !== "ready" || !read.data) return [];
+	return read.data.people
+		.filter((p) => p.held.minor > 0)
+		.map((p) => ({
+			key: participantKey(p.participant),
+			name: p.name ?? t("someone"),
+		}));
 }
 
 /**
- * The pool (Not planned yet, or To assign) and what people owe you. Limits
- * books have no pool: nothing there is assigned (SPEC 6.1). Every figure is
- * the month's own.
+ * The pool (Not planned yet, or To assign) and what people owe you, as rows
+ * of one list. Limits books have no pool: nothing there is assigned (SPEC
+ * 6.1). Every figure is the month's own. The Owed row leads with faces, its
+ * amount is positive and approximate ("≈", it is held at today's rates), and
+ * it opens who owes you.
  */
 export function PlanSummary({
 	data,
 	onUsePlan,
+	onOpenOwed,
 }: {
 	data: BudgetMonth;
 	/** Set when Use my plan can run here: an open month with money to plan. */
 	onUsePlan: (() => void) | null;
+	/** Set in the open month: Owed opens its sheet; otherwise it goes to People. */
+	onOpenOwed: (() => void) | null;
 }) {
 	const t = useTranslations("mobile.budget");
 	const money = useMoneyText();
-	const pool = t(`pool.${data.toAssign.poolName}`);
+	const { color, size, space } = useTheme();
 	const owed = data.owed;
+	const faces = useOwedFaces(owed.people, owed.held.minor);
+	const pool = t(`pool.${data.toAssign.poolName}`);
 	const poolText = money(data.toAssign.amount);
-	return (
-		<View>
-			{/* The pool is said once: by the hero (To assign leads) or by the notice. */}
-			{data.book.style === "LIMITS" ||
-			data.verdict.lead.kind === "TO_ASSIGN" ||
-			data.verdict.notice?.kind === "NOT_PLANNED_YET" ? null : (
-				<SummaryRow
-					label={pool}
-					onPress={
-						onUsePlan && data.toAssign.amount.minor > 0 ? onUsePlan : undefined
-					}
-					spoken={`${pool}, ${poolText}`}
-					value={poolText}
-				/>
-			)}
-			{owed.people > 0 ? (
-				<SummaryRow
-					detail={t("owed.people", { count: owed.people })}
-					label={t("owed.title")}
-					onPress={() =>
-						router.navigate({
-							pathname: "/people",
-							params: { segment: "people" },
-						})
-					}
-					spoken={`${t("owed.title")}, ${t("owed.people", { count: owed.people })}, ${money(owed.held)}`}
-					value={money(owed.held)}
-				/>
-			) : null}
-		</View>
+	// The pool is said once: by the hero (To assign leads) or by the notice.
+	const showPool = !(
+		data.book.style === "LIMITS" ||
+		data.verdict.lead.kind === "TO_ASSIGN" ||
+		data.verdict.notice?.kind === "NOT_PLANNED_YET"
 	);
-}
-
-/**
- * At most one notice under the hero, and only when its button differs from
- * the hero's own (a fact appears once). The words and the numbers are the
- * verdict's.
- */
-export function Notice({
-	data,
-	canAct,
-	onUsePlan,
-	onCover,
-}: {
-	data: BudgetMonth;
-	canAct: boolean;
-	onUsePlan: () => void;
-	onCover: () => void;
-}) {
-	const t = useTranslations("mobile.budget.notice");
-	const money = useMoneyText();
-	const { color, space, type } = useTheme();
-	const notice = data.verdict.notice;
-	if (!notice || notice.action === data.verdict.action) return null;
-	const over = overEnvelopes(data);
-	const text =
-		notice.kind === "NOT_PLANNED_YET"
-			? t("notPlanned", { amount: money(notice.amount) })
-			: t("overspent", {
-					count: over.length,
-					name: over.length === 1 ? (over[0]?.name ?? "") : "",
-					amount: money(notice.amount, { sign: "never" }),
-				});
-	const action =
-		canAct && notice.action === "USE_PLAN"
-			? { label: t("usePlan"), run: onUsePlan }
-			: canAct && notice.action === "COVER"
-				? { label: t("cover"), run: onCover }
-				: null;
+	const owedSpoken = `${t("owed.title")}, ${t("owed.people", { count: owed.people })}, ${money(owed.held)}`;
 	return (
-		<View
-			style={{
-				gap: space[2],
-				paddingHorizontal: space[4],
-				paddingTop: space[4],
-				alignItems: "flex-start",
-			}}
-		>
-			<Text
-				accessibilityRole="alert"
-				style={{ color: color.attentionText, fontSize: type.body.size }}
-			>
-				{text}
-			</Text>
-			{action ? (
-				<Button label={action.label} onPress={action.run} variant="outlined" />
-			) : null}
+		<View style={{ paddingTop: space[4] }}>
+			<ListGroup>
+				{showPool ? (
+					<ListRow
+						accessibilityLabel={`${pool}, ${poolText}`}
+						end={<MoneyAmount value={data.toAssign.amount} />}
+						onPress={
+							onUsePlan && data.toAssign.amount.minor > 0
+								? onUsePlan
+								: undefined
+						}
+						title={pool}
+					/>
+				) : null}
+				{owed.people > 0 ? (
+					<ListRow
+						accessibilityLabel={owedSpoken}
+						end={
+							<>
+								<MoneyAmount approx tone="positive" value={owed.held} />
+								<Glyph
+									color={color.fg3}
+									name="ChevronRight"
+									size={size.icon.phone}
+								/>
+							</>
+						}
+						lead={
+							faces.length > 0 ? (
+								<AvatarStack faces={faces} max={3} ring="surface" size="sm" />
+							) : undefined
+						}
+						onPress={
+							onOpenOwed ??
+							(() =>
+								router.navigate({
+									pathname: "/people",
+									params: { segment: "people" },
+								}))
+						}
+						sub={t("owed.people", { count: owed.people })}
+						title={t("owed.title")}
+					/>
+				) : null}
+			</ListGroup>
 		</View>
 	);
 }

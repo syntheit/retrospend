@@ -1,9 +1,25 @@
-import { Text, View } from "react-native";
-import { useTranslations } from "use-intl";
-import { ListRow } from "@/ui/List";
+import { categoryTone } from "@retrospend/domain/category-tone";
+import type { ReactNode } from "react";
+import { Platform, View } from "react-native";
+import { useFormatter, useTranslations } from "use-intl";
+import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
-import { isLimits, statusLine } from "./rows";
+import { CategoryTile, ListRow } from "@/ui/List";
+import { RowMenu } from "@/ui/RowMenu";
+import { SwipeRow } from "@/ui/SwipeRow";
+import { Text } from "@/ui/Text";
+import type { MenuItem } from "@/ui/types";
+import type { EnvelopeMode } from "./EnvelopeSheet";
+import {
+	envelopeSpentPercent,
+	leftAtom,
+	type TargetLine,
+	targetLine,
+} from "./envelopeLine";
+import type { MonthKind } from "./months";
+import { envelopeActions, isLimits } from "./rows";
 import type { BudgetEnvelope, BudgetStyle } from "./source";
 
 /** The width of one money column on a wide screen, from the spacing scale. */
@@ -12,122 +28,343 @@ export function useColumnWidth(): number {
 	return space[12] * 2 + space[4];
 }
 
-/** Words for the line under an envelope's name; the status is a word as well as a color. */
-export function useStatusText() {
-	const t = useTranslations("mobile.budget.row");
+/**
+ * A thin bar of how much of what a row holds is spent: the track in raised,
+ * the fill in accent, attention once it is over. It only draws a length; the
+ * row's words carry the status, so it hides from screen readers.
+ */
+export function SpentBar({
+	percent,
+	over,
+}: {
+	/** 0 to 100. */
+	percent: number;
+	over: boolean;
+}) {
+	const { color, radius, space } = useTheme();
+	return (
+		<View
+			accessibilityElementsHidden
+			importantForAccessibility="no-hide-descendants"
+			style={{
+				height: space[1],
+				borderRadius: radius.chip,
+				backgroundColor: color.raised,
+				overflow: "hidden",
+			}}
+		>
+			<View
+				style={{
+					width: `${Math.max(0, Math.min(100, percent))}%`,
+					height: space[1],
+					borderRadius: radius.chip,
+					backgroundColor: over ? color.attention : color.accent,
+				}}
+			/>
+		</View>
+	);
+}
+
+/** "Over by X": the word and the amount in the attention fill, never a minus sign alone. */
+export function OverPill({ text }: { text: string }) {
+	const { color, radius, space } = useTheme();
+	return (
+		<View
+			style={{
+				height: space[6],
+				paddingHorizontal: space[3],
+				borderRadius: radius.chip,
+				backgroundColor: color.attentionBg,
+				justifyContent: "center",
+			}}
+		>
+			<Text
+				numberOfLines={1}
+				style={{ color: color.attentionText }}
+				tabular
+				variant="small"
+				weight="semibold"
+			>
+				{text}
+			</Text>
+		</View>
+	);
+}
+
+/**
+ * The target sentence under an envelope's name, worded ("$300 a month",
+ * "$1,200 by Dec 1"), and whether it needs the person (no rate yet). A
+ * foreign target shows its own currency first and the home amount second.
+ */
+export function useTargetText() {
+	const t = useTranslations("mobile.budget.targetLine");
+	const tr = useTranslations("mobile.budget.row");
+	const tm = useTranslations("mobile.money");
+	const format = useFormatter();
 	const money = useMoneyText();
-	return (e: BudgetEnvelope): { text: string; attention: boolean } | null => {
-		const line = statusLine(e);
-		if (!line) return null;
+	const { pair } = useFormatMoney();
+	const day = (iso: string) =>
+		format.dateTime(new Date(`${iso}T00:00:00Z`), {
+			month: "short",
+			day: "numeric",
+			timeZone: "UTC",
+		});
+	const asked = (line: Exclude<TargetLine, { kind: "none" | "noRate" }>) => {
+		if (!line.foreign) return { main: money(line.amount), home: null };
+		const shown = pair(line.foreign, line.amount);
+		return { main: shown.original ?? "", home: shown.home };
+	};
+	return (
+		e: BudgetEnvelope,
+		limits: boolean,
+	): { text: string; attention: boolean } | null => {
+		const line = targetLine(e);
+		const parts: string[] = [];
+		let attention = false;
 		switch (line.kind) {
-			case "over":
-				return { text: t("over"), attention: true };
-			case "week":
-				return {
-					text: t("leftThisWeek", { amount: money(line.amount) }),
-					attention: false,
-				};
-			case "needs":
-				return {
-					text: t("needs", { amount: money(line.amount) }),
-					attention: false,
-				};
-			case "funded":
-				return { text: t("funded"), attention: false };
+			case "none":
+				parts.push(limits ? t("noLimit") : t("none"));
+				break;
 			case "noRate":
-				return {
-					text: t("noRate", { currency: line.currency }),
-					attention: true,
-				};
+				parts.push(tr("noRate", { currency: line.currency }));
+				attention = true;
+				break;
+			case "monthly": {
+				const a = asked(line);
+				parts.push(
+					line.cadence === "WEEK"
+						? t("perWeek", { amount: a.main })
+						: t("perMonth", { amount: a.main }),
+				);
+				if (a.home) parts.push(tm("approx", { amount: a.home }));
+				break;
+			}
+			case "bill": {
+				const a = asked(line);
+				parts.push(
+					line.dueDate
+						? t("billDue", { amount: a.main, date: day(line.dueDate) })
+						: t("perMonth", { amount: a.main }),
+				);
+				if (a.home) parts.push(tm("approx", { amount: a.home }));
+				break;
+			}
+			case "goal": {
+				const a = asked(line);
+				parts.push(
+					line.saved
+						? t("goalProgress", { saved: money(line.saved), amount: a.main })
+						: t("goal", { amount: a.main }),
+				);
+				if (line.dueDate) parts.push(t("goalBy", { date: day(line.dueDate) }));
+				if (a.home) parts.push(tm("approx", { amount: a.home }));
+				break;
+			}
 		}
+		if (e.leftThisWeek && e.status !== "OVERSPENT") {
+			parts.push(tr("leftThisWeek", { amount: money(e.leftThisWeek.amount) }));
+		}
+		return parts.length > 0 ? { text: parts.join(" · "), attention } : null;
+	};
+}
+
+/** The envelope's open sheet modes a swipe or the long-press menu can start. */
+function useEnvelopeMenu(
+	e: BudgetEnvelope,
+	style: BudgetStyle,
+	kind: MonthKind,
+	onOpen: (mode: EnvelopeMode) => void,
+) {
+	const t = useTranslations("mobile.budget.envelope");
+	const tr = useTranslations("mobile.budget.row");
+	const can = envelopeActions(e, style, kind);
+	const limits = isLimits(style);
+	const target = kind !== "closed" && !limits;
+	const menu: MenuItem[] = [];
+	const add = (id: string, label: string, mode: EnvelopeMode) =>
+		menu.push({ id, label, onPress: () => onOpen(mode) });
+	if (can.cover) add("cover", t("cover"), "cover");
+	if (can.limit) add("limit", t("limitAction"), "limit");
+	if (can.assign) add("assign", t("assign"), "assign");
+	if (can.move) add("move", t("move"), "move");
+	if (target) add("target", t("targetAction"), "target");
+	const lead = can.cover
+		? { label: t("cover"), mode: "cover" as const }
+		: can.move
+			? { label: tr("swipeMove"), mode: "move" as const }
+			: can.limit
+				? { label: tr("swipeLimit"), mode: "limit" as const }
+				: null;
+	return {
+		menu,
+		leading: lead
+			? {
+					label: lead.label,
+					onPress: () => onOpen(lead.mode),
+					tone: "brand" as const,
+				}
+			: undefined,
+		trailing: target
+			? {
+					label: tr("swipeTarget"),
+					onPress: () => onOpen("target"),
+					tone: "neutral" as const,
+				}
+			: undefined,
 	};
 }
 
 /**
- * One envelope: its name, a status line, and Left. Phones show Left only
- * (the rest is in the envelope's sheet); a wide screen adds the Assigned (or
- * Limit) and Spent columns.
+ * One envelope: its category tile, name, a bar of what it spent, the target
+ * sentence and, at the end, its Left (a plain amount, quiet at zero) or a
+ * "Over by" pill, with "more needed" under a short one. Phones show Left
+ * only; a wide screen adds the Assigned (or Limit) and Spent columns. On iOS
+ * a swipe starts Move or Cover and Target; both platforms have the same
+ * actions in the long-press menu.
  */
 export function EnvelopeRow({
 	envelope,
-	limits,
+	style,
+	kind,
 	wide,
-	onPress,
+	onOpen,
 }: {
 	envelope: BudgetEnvelope;
-	/** A Limits book calls Assigned "limit". */
-	limits: boolean;
+	style: BudgetStyle;
+	kind: MonthKind;
 	wide: boolean;
-	onPress: () => void;
+	/** `overview` is a tap; the others start that form. */
+	onOpen: (mode: EnvelopeMode) => void;
 }) {
 	const t = useTranslations("mobile.budget.row");
 	const money = useMoneyText();
-	const statusText = useStatusText();
+	const targetText = useTargetText();
 	const column = useColumnWidth();
-	const { color, space, type } = useTheme();
-	const status = statusText(envelope);
+	const { color, space } = useTheme();
+	const limits = isLimits(style);
+	const line = targetText(envelope, limits);
+	const atom = leftAtom(envelope);
 	const left = money(envelope.left);
+	const over = envelope.status === "OVERSPENT";
+	const percent = envelopeSpentPercent(envelope);
+	const { menu, leading, trailing } = useEnvelopeMenu(
+		envelope,
+		style,
+		kind,
+		onOpen,
+	);
 	const spoken = [
 		envelope.name,
-		status?.text,
-		wide
-			? t(limits ? "wideSpokenLimit" : "wideSpoken", {
-					assigned: money(envelope.assigned),
-					spent: money(envelope.spent),
-					left,
-				})
-			: t("leftSpoken", { amount: left }),
+		line?.text,
+		atom.kind === "over"
+			? t("overBy", { amount: money(atom.amount, { sign: "never" }) })
+			: wide
+				? t(limits ? "wideSpokenLimit" : "wideSpoken", {
+						assigned: money(envelope.assigned),
+						spent: money(envelope.spent),
+						left,
+					})
+				: t("leftSpoken", { amount: left }),
+		atom.kind === "needed"
+			? t("moreNeeded", { amount: money(atom.need) })
+			: null,
 	]
 		.filter(Boolean)
 		.join(", ");
+
 	const cell = (value: string, strong?: boolean) => (
 		<Text
 			numberOfLines={1}
-			style={{
-				width: column,
-				color:
-					strong && envelope.status === "OVERSPENT"
-						? color.attentionText
-						: color.fg,
-				fontSize: type.body.size,
-				fontVariant: ["tabular-nums"],
-				fontWeight: strong ? "600" : "400",
-				textAlign: "right",
-			}}
+			style={{ width: column, textAlign: "right" }}
+			tabular
+			tone={strong && over ? "attention" : "fg"}
+			weight={strong ? "medium" : "normal"}
 		>
 			{value}
 		</Text>
 	);
 
-	return (
-		<ListRow accessibilityLabel={spoken} onPress={onPress}>
-			<View style={{ flex: 1, gap: space[1] }}>
-				<Text
-					numberOfLines={1}
-					style={{ color: color.fg, fontSize: type.body.size }}
-				>
-					{envelope.name}
-				</Text>
-				{status ? (
-					<Text
-						numberOfLines={1}
-						style={{
-							color: status.attention ? color.attentionText : color.fg2,
-							fontSize: type.small.size,
-						}}
-					>
-						{status.text}
+	let end: ReactNode;
+	if (wide) {
+		end = (
+			<>
+				{cell(money(envelope.assigned))}
+				{cell(money(envelope.spent))}
+				{cell(left, true)}
+			</>
+		);
+	} else if (atom.kind === "over") {
+		end = (
+			<OverPill
+				text={t("overBy", { amount: money(atom.amount, { sign: "never" }) })}
+			/>
+		);
+	} else {
+		end = (
+			<View style={{ alignItems: "flex-end", gap: space[1] }}>
+				<MoneyAmount
+					tone={atom.kind === "plain" && atom.zero ? "muted" : "default"}
+					value={atom.left}
+				/>
+				{atom.kind === "needed" ? (
+					<Text numberOfLines={1} tone="fg3" variant="meta">
+						{t("moreNeeded", { amount: money(atom.need) })}
 					</Text>
 				) : null}
 			</View>
-			{wide ? (
-				<>
-					{cell(money(envelope.assigned))}
-					{cell(money(envelope.spent))}
-				</>
-			) : null}
-			{cell(left, true)}
-		</ListRow>
+		);
+	}
+
+	const row = (onPress?: () => void) => (
+		<ListRow
+			accessibilityLabel={spoken}
+			end={end}
+			lead={
+				<CategoryTile
+					category={{
+						name: envelope.name,
+						icon: envelope.icon,
+						tone: categoryTone(envelope.color ?? ""),
+					}}
+				/>
+			}
+			onPress={onPress}
+			sub={
+				<View style={{ gap: space[1], paddingTop: space[1] }}>
+					{percent !== null ? <SpentBar over={over} percent={percent} /> : null}
+					{line ? (
+						<Text
+							numberOfLines={1}
+							style={{
+								color: line.attention ? color.attentionText : color.fg3,
+							}}
+							variant="meta"
+						>
+							{line.text}
+						</Text>
+					) : null}
+				</View>
+			}
+			title={envelope.name}
+		/>
+	);
+	const open = () => onOpen("overview");
+	// Nothing to swipe or hold (a closed month): the row is the tap alone.
+	if (menu.length === 0) return row(open);
+	return Platform.OS === "ios" ? (
+		<SwipeRow
+			leading={leading}
+			menu={menu}
+			menuTitle={envelope.name}
+			onPress={open}
+			trailing={trailing}
+		>
+			{row()}
+		</SwipeRow>
+	) : (
+		<RowMenu items={menu} onPress={open} title={envelope.name}>
+			{row()}
+		</RowMenu>
 	);
 }
 
@@ -135,15 +372,12 @@ export function EnvelopeRow({
 export function ColumnTitles({ style }: { style: BudgetStyle }) {
 	const t = useTranslations("mobile.budget.column");
 	const column = useColumnWidth();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const title = (text: string) => (
 		<Text
-			style={{
-				width: column,
-				color: color.fg2,
-				fontSize: type.small.size,
-				textAlign: "right",
-			}}
+			style={{ width: column, textAlign: "right" }}
+			tone="fg2"
+			variant="small"
 		>
 			{text}
 		</Text>

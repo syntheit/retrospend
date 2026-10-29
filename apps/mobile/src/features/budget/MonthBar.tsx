@@ -1,33 +1,29 @@
-import { Pressable, View } from "react-native";
+import type { ReactNode } from "react";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Menu } from "@/ui/Menu";
-import { Text } from "@/ui/Text";
-import {
-	addMonths,
-	canStep,
-	type MonthBounds,
-	monthChoices,
-	monthDate,
-	monthKind,
-} from "./months";
+import { type MonthBounds, monthChoices, monthDate, monthKind } from "./months";
 
 /**
- * The month switcher: back opens a closed month read-only, forward opens
- * the plan for next month. The month's name opens the list of months.
+ * The month on screen, "October 2026", at the start of the row. It is a menu
+ * of the months, not a pair of steppers: a closed one reads, the next one is
+ * the plan. `trailing` is the page's own menu at the other end of the row.
  */
 export function MonthBar({
 	month,
 	bounds,
 	onChange,
+	trailing,
 }: {
 	month: number;
 	bounds: MonthBounds;
 	onChange: (month: number) => void;
+	trailing?: ReactNode;
 }) {
 	const t = useTranslations("mobile.budget.month");
 	const format = useFormatter();
-	const { color, size, space } = useTheme();
+	const { size, space } = useTheme();
 
 	const name = (key: number) =>
 		format.dateTime(monthDate(key), {
@@ -44,43 +40,17 @@ export function MonthBar({
 				: name(key);
 	};
 
-	const step = (delta: -1 | 1, text: string, glyph: string) => {
-		const enabled = canStep(month, delta, bounds);
-		return (
-			<Pressable
-				accessibilityLabel={text}
-				accessibilityRole="button"
-				accessibilityState={{ disabled: !enabled }}
-				disabled={!enabled}
-				onPress={() => onChange(addMonths(month, delta))}
-				style={{
-					width: size.touchMin.phone,
-					height: size.touchMin.phone,
-					alignItems: "center",
-					justifyContent: "center",
-				}}
-			>
-				<Text
-					style={{ color: enabled ? color.brand : color.fg3 }}
-					variant="title"
-					weight="medium"
-				>
-					{glyph}
-				</Text>
-			</Pressable>
-		);
-	};
-
 	return (
 		<View
 			style={{
+				minHeight: size.touchMin.phone,
 				flexDirection: "row",
 				alignItems: "center",
 				justifyContent: "space-between",
-				paddingHorizontal: space[2],
+				gap: space[3],
+				paddingHorizontal: space[4],
 			}}
 		>
-			{step(-1, t("previous"), "‹")}
 			<Menu
 				accessibilityLabel={t("pick")}
 				items={monthChoices(bounds).map((key) => ({
@@ -90,7 +60,7 @@ export function MonthBar({
 				}))}
 				label={label(month)}
 			/>
-			{step(1, t("next"), "›")}
+			{trailing}
 		</View>
 	);
 }

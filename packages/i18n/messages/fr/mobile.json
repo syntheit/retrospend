@@ -422,11 +422,7 @@
 		"noBudgetDetail": "Crée-en un pour planifier ton argent en enveloppes.",
 		"paused": "Ton budget est en pause",
 		"pausedDetail": "Rien n'est compté tant qu'il est en pause.",
-		"wealth": "Patrimoine et comptes",
-		"webForNow": "Quelques outils, comme la vue annuelle, sont pour l'instant sur le web uniquement.",
 		"month": {
-			"previous": "Mois précédent",
-			"next": "Mois suivant",
 			"pick": "Choisir un mois",
 			"closedItem": "{month}, clôturé",
 			"planItem": "Planifier {month}",
@@ -470,7 +466,8 @@
 			}
 		},
 		"hero": {
-			"incomplete": "Pas encore de taux pour {currencies}, donc ce chiffre n’est pas calculé."
+			"incomplete": "Pas encore de taux pour {currencies}, donc ce chiffre n’est pas calculé.",
+			"afford": "Puis-je me permettre quelque chose ?"
 		},
 		"notice": {
 			"notPlanned": "{amount} sont arrivés sans être planifiés.",
@@ -505,7 +502,10 @@
 			"expand": "Afficher les enveloppes",
 			"collapse": "Masquer les enveloppes",
 			"percents": "Planifié {planned} · dépensé {spent}",
-			"overNames": "Dépassés : {names}"
+			"overNames": "Dépassés : {names}",
+			"overBy": "{name} dépasse de {amount}",
+			"needed": "{name} : il manque {amount}",
+			"covered": "{name} : couvertes"
 		},
 		"column": {
 			"assigned": "Attribué",
@@ -521,7 +521,12 @@
 			"leftSpoken": "reste {amount}",
 			"leftThisWeek": "{amount} restants cette semaine",
 			"wideSpoken": "{assigned} attribué, {spent} dépensé, reste {left}",
-			"wideSpokenLimit": "plafond {assigned}, {spent} dépensé, reste {left}"
+			"wideSpokenLimit": "plafond {assigned}, {spent} dépensé, reste {left}",
+			"overBy": "Dépassé de {amount}",
+			"moreNeeded": "il manque {amount}",
+			"swipeMove": "Déplacer",
+			"swipeLimit": "Plafond",
+			"swipeTarget": "Objectif"
 		},
 		"envelope": {
 			"assigned": "Attribué",
@@ -729,7 +734,8 @@
 			"welcomeBack": "Bon retour",
 			"startingMoney": "Argent de départ",
 			"toWealth": "Déplacer de l'argent vers le patrimoine",
-			"fromWealth": "Prendre de l'argent du patrimoine"
+			"fromWealth": "Prendre de l'argent du patrimoine",
+			"more": "Plus"
 		},
 		"afford": {
 			"title": "Puis-je me le permettre ?",
@@ -1161,7 +1167,17 @@
 			"toastMoved": "{amount} ajouté",
 			"toastCounted": "Argent de {name} compté. {name} n'a pas changé"
 		},
-		"resume": "Reprendre le budget"
+		"resume": "Reprendre le budget",
+		"targetLine": {
+			"none": "Pas d'objectif",
+			"noLimit": "Pas de plafond",
+			"perWeek": "{amount} par semaine",
+			"perMonth": "{amount} par mois",
+			"billDue": "{amount} d'ici le {date}",
+			"goal": "Objectif de {amount}",
+			"goalProgress": "{saved} sur {amount}",
+			"goalBy": "d'ici le {date}"
+		}
 	},
 	"wealth": {
 		"title": "Patrimoine",
