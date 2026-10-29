@@ -499,10 +499,7 @@ describe("/api/v1/recurring", () => {
 		expect(back.nextDueDate.toISOString()).toBe(item.dueAt);
 	});
 
-	it.each([
-		["out", "expense"],
-		["in", "income"],
-	] as const)(
+	it.each(["out", "in"] as const)(
 		"refuses a paid-on day before the previous due day (%s)",
 		async (direction) => {
 			const item = await make({

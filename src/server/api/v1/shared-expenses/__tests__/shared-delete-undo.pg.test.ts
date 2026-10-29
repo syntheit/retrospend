@@ -324,7 +324,7 @@ describe("deleting a split expense is undoable", () => {
 		);
 		await adminDb.billingPeriod.update({
 			where: { id: period.id },
-			data: { status: "CLOSED", closedAt: new Date() },
+			data: { status: "SETTLED", closedAt: new Date() },
 		});
 		await expectProblem(
 			await post("/shared-expenses/undo", { token: deleted.undo }),
