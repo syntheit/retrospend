@@ -43,29 +43,32 @@ export function SyncIssues({ padded }: { padded?: boolean }) {
 				{t("sync.title")}
 			</Text>
 			{entries.map((entry) => (
-				<View accessible key={entry.clientId} style={{ gap: space[1] }}>
-					<View style={{ flexDirection: "row", gap: space[3] }}>
-						<Text
-							numberOfLines={1}
-							style={{ flex: 1, color: color.fg, fontSize: type.body.size }}
-						>
-							{entry.title}
-						</Text>
-						{entry.amount ? (
+				<View key={entry.clientId} style={{ gap: space[1] }}>
+					{/* One stop for what it is; Try again and Discard stay their own stops. */}
+					<View accessible style={{ gap: space[1] }}>
+						<View style={{ flexDirection: "row", gap: space[3] }}>
 							<Text
-								style={{
-									color: color.fg,
-									fontSize: type.body.size,
-									fontVariant: ["tabular-nums"],
-								}}
+								numberOfLines={1}
+								style={{ flex: 1, color: color.fg, fontSize: type.body.size }}
 							>
-								{format(entry.amount, { cents: true }) ?? ""}
+								{entry.title}
 							</Text>
-						) : null}
+							{entry.amount ? (
+								<Text
+									style={{
+										color: color.fg,
+										fontSize: type.body.size,
+										fontVariant: ["tabular-nums"],
+									}}
+								>
+									{format(entry.amount, { cents: true }) ?? ""}
+								</Text>
+							) : null}
+						</View>
+						<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+							{t("sync.refused")}
+						</Text>
 					</View>
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
-						{t("sync.refused")}
-					</Text>
 					<View style={{ flexDirection: "row" }}>
 						<Pressable
 							accessibilityLabel={`${t("sync.retry")}, ${entry.title}`}
