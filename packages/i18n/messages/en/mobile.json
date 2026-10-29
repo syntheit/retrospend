@@ -201,7 +201,13 @@
 		"exclude": "Exclude from spending",
 		"excludeDetail": "Stays in Activity and your budget, left out of reports and Insights.",
 		"editLocked": "This expense can't be edited",
-		"editLockedDetail": "A payment settled it, or you aren't allowed to change it."
+		"editLockedDetail": "A payment settled it, or you aren't allowed to change it.",
+		"replaceDraft": {
+			"title": "Replace this draft?",
+			"detail": "What you entered here isn't saved and will be lost.",
+			"keep": "Keep editing",
+			"replace": "Replace"
+		}
 	},
 	"pickers": {
 		"clear": "Clear search",
@@ -256,7 +262,11 @@
 			"transfer": "Transfer",
 			"payment": "Payment"
 		},
-		"edit": "Edit"
+		"edit": "Edit",
+		"loading": "Loading",
+		"gone": "This entry was deleted or isn't shared with you anymore.",
+		"loadError": "Couldn't load this entry",
+		"loadErrorDetail": "Check your connection and try again."
 	},
 	"connect": {
 		"title": "Connect to a server",

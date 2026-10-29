@@ -35,7 +35,7 @@ import {
 } from "~/server/services/expense.service";
 import { createExpense } from "~/server/services/expense-create.mutation";
 import { listHomeCurrency } from "~/server/services/expense-dto";
-import { listActivity } from "~/server/services/expense-list";
+import { activityRow, listActivity } from "~/server/services/expense-list";
 import { forUser } from "~/server/services/preview";
 import type { MoneyMutation } from "~/server/services/preview/types";
 import { bookedHome } from "~/server/services/rate-types";
@@ -104,6 +104,19 @@ export async function readExpense(
 		await listHomeCurrency(db, principal.userId),
 		caller.timeZone,
 	);
+}
+
+/** One line of Activity by its id; gone or not yours is not found. */
+export async function readActivityRow(caller: LedgerCaller, id: string) {
+	const row = await activityRow(
+		caller.db,
+		caller.principal.userId,
+		id,
+		caller.timeZone,
+	);
+	if (!row)
+		throw new TRPCError({ code: "NOT_FOUND", message: "Entry not found" });
+	return row;
 }
 
 export function listExpenses(

@@ -115,6 +115,22 @@ describe("/api/v1/shared-expenses", () => {
 		);
 		const owed = preview.changes.find((x) => x.id === "owed.owedToYou");
 		expect(owed?.delta).toEqual(ars(4500));
+		// Each share as the server splits it, so no client computes a split.
+		const { detail } = preview as Preview & {
+			detail: {
+				kind: string;
+				shares: { id: string; you: boolean; before: null; after: Money }[];
+			};
+		};
+		expect(detail.kind).toBe("sharedExpense.create");
+		expect(
+			detail.shares.map((s) => [s.id, s.you, s.before, s.after]).sort(),
+		).toEqual(
+			[
+				[sofia.user.id, true, null, ars(4500)],
+				[martin.user.id, false, null, ars(4500)],
+			].sort(),
+		);
 		expect(await owedToYou()).toBe(before);
 		await expect(
 			adminDb.sharedTransaction.count({

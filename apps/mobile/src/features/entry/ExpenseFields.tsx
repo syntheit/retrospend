@@ -223,6 +223,12 @@ export function ExpenseFields({
 	const { color, size, space, type } = useTheme();
 	const recents = recentCategories(catalog, RECENTS, draft.categoryId);
 	const editing = draft.editing !== null;
+	// Someone else's category on their split: not in your catalog, but kept.
+	const saved =
+		draft.editing?.category &&
+		!catalog.categories.some((c) => c.id === draft.editing?.category?.id)
+			? draft.editing.category
+			: null;
 	const today = dayKey(new Date());
 	// In a project the split is about the project's people, not your latest ones.
 	const people = draft.projectId ? draft.projectPeople : catalog.people;
@@ -254,6 +260,13 @@ export function ExpenseFields({
 			<View style={{ gap: space[2] }}>
 				<FieldLabel>{t("category")}</FieldLabel>
 				<View style={[row, { alignItems: "center" }]}>
+					{saved ? (
+						<Chip
+							label={saved.name}
+							onPress={() => onChange({ categoryId: saved.id })}
+							selected={draft.categoryId === saved.id}
+						/>
+					) : null}
 					{recents.map((category) => (
 						<Chip
 							key={category.id}
@@ -387,20 +400,20 @@ export function ExpenseFields({
 							>
 								{r.name}
 							</Text>
-							<Text
-								style={{
-									color: color.fg,
-									fontSize: type.body.size,
-									fontVariant: ["tabular-nums"],
-									fontWeight: "500",
-									textAlign: "right",
-								}}
-							>
-								{format(
-									{ minor: r.minor, currency: draft.currency },
-									{ cents: true },
-								) ?? ""}
-							</Text>
+							{/* The server's share; nothing until its dry run answers. */}
+							{r.share ? (
+								<Text
+									style={{
+										color: color.fg,
+										fontSize: type.body.size,
+										fontVariant: ["tabular-nums"],
+										fontWeight: "500",
+										textAlign: "right",
+									}}
+								>
+									{format(r.share, { cents: true }) ?? ""}
+								</Text>
+							) : null}
 						</View>
 					))}
 				</View>

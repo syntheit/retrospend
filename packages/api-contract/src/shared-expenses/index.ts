@@ -174,7 +174,7 @@ export const sharedExpensesContract = {
 			tags: TAG,
 			summary: "Add an expense split with people",
 			description:
-				"The people on it are told. Anyone who is not you verifies their share unless the project accepts splits by itself.",
+				"The people on it are told. Anyone who is not you verifies their share unless the project accepts splits by itself. The preview's detail is `{ kind: \"sharedExpense.create\", shares }`: each person's share as the server splits it, `after` as Money, `before` null, and `you` for the caller.",
 			successStatus: 201,
 		})
 		.meta({ scope: "write:expenses", event: "shared_expense.created" })

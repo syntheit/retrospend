@@ -201,7 +201,13 @@
 		"exclude": "Excluir de los gastos",
 		"excludeDetail": "Queda en Actividad y en tu presupuesto, pero fuera de los informes y de Insights.",
 		"editLocked": "Este gasto no se puede editar",
-		"editLockedDetail": "Un pago lo saldó, o no tienes permiso para cambiarlo."
+		"editLockedDetail": "Un pago lo saldó, o no tienes permiso para cambiarlo.",
+		"replaceDraft": {
+			"title": "¿Reemplazar este borrador?",
+			"detail": "Lo que escribiste aquí no está guardado y se perderá.",
+			"keep": "Seguir editando",
+			"replace": "Reemplazar"
+		}
 	},
 	"pickers": {
 		"clear": "Borrar búsqueda",
@@ -256,7 +262,11 @@
 			"transfer": "Transferencia",
 			"payment": "Pago"
 		},
-		"edit": "Editar"
+		"edit": "Editar",
+		"loading": "Cargando",
+		"gone": "Este movimiento se eliminó o ya no se comparte contigo.",
+		"loadError": "No se pudo cargar este movimiento",
+		"loadErrorDetail": "Comprueba tu conexión e inténtalo de nuevo."
 	},
 	"connect": {
 		"title": "Conéctate a un servidor",

@@ -50,6 +50,10 @@ jest.mock("@/auth/session", () => ({
 jest.mock("@/data/ids", () => ({
 	newClientId: () => "6f1d1c1e-5b0e-4f5c-9c33-0a4a1c0f8a11",
 }));
+const mockNet: { isInternetReachable: boolean | null } = {
+	isInternetReachable: true,
+};
+jest.mock("expo-network", () => ({ useNetworkState: () => mockNet }));
 const mockToast = { show: jest.fn(), dismiss: jest.fn() };
 jest.mock("@/ui/Toast", () => ({ useToast: () => mockToast }));
 // The native pickers have no JS to press; the flow uses chips and keys only.
@@ -264,10 +268,32 @@ function fakeApi() {
 			undo: write("expense.undo"),
 		},
 		"shared-expenses": {
+			// The server splits it; the composer shows the shares it names.
 			previewCreate: write("shared.preview", () => ({
 				changes: [],
 				unchanged: [],
 				unavailable: [],
+				detail: {
+					kind: "sharedExpense.create",
+					shares: [
+						{
+							type: "user",
+							id: "lucia1",
+							name: "Lucía",
+							you: false,
+							before: null,
+							after: money(625_000),
+						},
+						{
+							type: "user",
+							id: "me1",
+							name: "Sofía",
+							you: true,
+							before: null,
+							after: money(625_000),
+						},
+					],
+				},
 			})),
 			create: write("shared.create", () => ({ undo: "undo-shared" })),
 			previewUpdate: write("shared.previewUpdate", () => ({
@@ -394,6 +420,7 @@ async function settle() {
 beforeEach(async () => {
 	// Every test makes the same client id, so nothing may carry over.
 	forgetUndoTokens();
+	mockNet.isInternetReachable = true;
 	await local.outbox.clear();
 	jest.useFakeTimers();
 	mockToast.show.mockClear();
@@ -887,6 +914,60 @@ describe("Edit a split expense", () => {
 		act(() => tree.unmount());
 	});
 
+	it("keeps the project when the date changes, reading no people", async () => {
+		const { api, calls } = fakeApi();
+		const shared = (api as unknown as Record<string, { get: unknown }>)[
+			"shared-expenses"
+		] as { get: () => Promise<Record<string, unknown>> };
+		const get = shared.get;
+		shared.get = async () => ({
+			...(await (get as () => Promise<object>)()),
+			project: { id: "trip", name: "Trip" },
+		});
+		(api as unknown as { projects: { members: unknown } }).projects.members =
+			async () => {
+				throw new TypeError("Network request failed");
+			};
+		mockSession.api = api;
+		const done = jest.fn();
+		const tree = await open("expense", done, "s1", true);
+		press(tree, "Yesterday");
+		await settle();
+		press(tree, "Save expense");
+		await flush();
+		expect(calls.some((c) => c.route === "projects.members")).toBe(false);
+		expect(calls.find((c) => c.route === "shared.update")?.input).toMatchObject(
+			{ id: "s1", projectId: "trip" },
+		);
+		expect(done).toHaveBeenCalledTimes(1);
+		act(() => tree.unmount());
+	});
+
+	it("keeps someone else's category, shown and sent back", async () => {
+		const { api, calls } = fakeApi();
+		const shared = (api as unknown as Record<string, { get: unknown }>)[
+			"shared-expenses"
+		] as { get: () => Promise<Record<string, unknown>> };
+		const get = shared.get;
+		shared.get = async () => ({
+			...(await (get as () => Promise<object>)()),
+			category: { id: "theirs", name: "Gifts", color: "x" },
+		});
+		mockSession.api = api;
+		const done = jest.fn();
+		const tree = await open("expense", done, "s1", true);
+		expect(words(tree)).toContain("Gifts");
+		type(tree, "Title", "Team dinner");
+		await settle();
+		press(tree, "Save expense");
+		await flush();
+		expect(calls.find((c) => c.route === "shared.update")?.input).toMatchObject(
+			{ description: "Team dinner", categoryId: "theirs" },
+		);
+		expect(done).toHaveBeenCalledTimes(1);
+		act(() => tree.unmount());
+	});
+
 	it("says it can't be edited when the server says so", async () => {
 		const { api } = fakeApi();
 		const shared = (api as unknown as Record<string, { get: unknown }>)[
@@ -920,6 +1001,64 @@ describe("Edit needs its dry run", () => {
 		await flush();
 		expect(calls.some((c) => c.route === "expense.update")).toBe(false);
 		expect(done).not.toHaveBeenCalled();
+		act(() => tree.unmount());
+	});
+
+	it("asks again on Try again, then saves", async () => {
+		const { api, calls } = fakeApi();
+		const expenses = (
+			api as unknown as { expenses: { previewUpdate: unknown } }
+		).expenses;
+		const ok = expenses.previewUpdate;
+		expenses.previewUpdate = async () => {
+			throw new TypeError("Network request failed");
+		};
+		mockSession.api = api;
+		const done = jest.fn();
+		const tree = await open("expense", done, "e1");
+		await settle();
+		expect(words(tree)).toContain("You're offline.");
+		expenses.previewUpdate = ok;
+		const tryAgain = tree.root.findAll(
+			(n) =>
+				typeof n.props.onPress === "function" &&
+				n.props.accessibilityRole === "button" &&
+				n.findAll((c) => c.children.includes("Try again")).length > 0,
+		)[0];
+		if (!tryAgain) throw new Error("no Try again");
+		act(() => {
+			(tryAgain.props.onPress as () => void)();
+		});
+		await settle();
+		expect(words(tree)).not.toContain("You're offline.");
+		press(tree, "Save expense");
+		await flush();
+		expect(calls.some((c) => c.route === "expense.update")).toBe(true);
+		expect(done).toHaveBeenCalledTimes(1);
+		act(() => tree.unmount());
+	});
+
+	it("asks again by itself when the network returns", async () => {
+		const { api, calls } = fakeApi();
+		const expenses = (
+			api as unknown as { expenses: { previewUpdate: unknown } }
+		).expenses;
+		const ok = expenses.previewUpdate;
+		expenses.previewUpdate = async () => {
+			throw new TypeError("Network request failed");
+		};
+		mockSession.api = api;
+		mockNet.isInternetReachable = false;
+		const tree = await open("expense", () => {}, "e1");
+		await settle();
+		expect(words(tree)).toContain("You're offline.");
+		expenses.previewUpdate = ok;
+		mockNet.isInternetReachable = true;
+		// A render with the network back, as expo-network would cause.
+		type(tree, "Title", "Lunch");
+		await settle();
+		expect(words(tree)).not.toContain("You're offline.");
+		expect(calls.some((c) => c.route === "expense.previewUpdate")).toBe(true);
 		act(() => tree.unmount());
 	});
 });
@@ -959,6 +1098,30 @@ describe("Picking projects quickly", () => {
 		await flush();
 		expect(words(tree)).not.toContain("Ana");
 		expect(words(tree)).toContain("No project");
+		act(() => tree.unmount());
+	});
+});
+
+describe("Unsaved changes", () => {
+	it("tells the host once something is typed, so a share asks before replacing it", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		const dirty = jest.fn();
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(
+				<EntryComposer
+					initialMode="expense"
+					onDirtyChange={dirty}
+					onDone={() => {}}
+				/>,
+			);
+		});
+		await flush();
+		expect(dirty).toHaveBeenLastCalledWith(false);
+		type(tree, "Title", "Coffee");
+		await flush();
+		expect(dirty).toHaveBeenLastCalledWith(true);
 		act(() => tree.unmount());
 	});
 });

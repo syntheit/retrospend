@@ -1,32 +1,51 @@
-import { Stack, useLocalSearchParams } from "expo-router";
+import {
+	type ErrorBoundaryProps,
+	Stack,
+	useLocalSearchParams,
+} from "expo-router";
 import { useMemo } from "react";
 import { useTranslations } from "use-intl";
-import { EntryView } from "@/features/activity/EntryView";
-import type { ActivityItem } from "@/features/activity/source";
+import { EntryDetail } from "@/features/activity/EntryView";
+import { rowFromParam } from "@/features/activity/entryRow";
 import { EmptyState } from "@/ui/EmptyState";
 import { Screen } from "@/ui/Screen";
 
 /**
- * One entry, read only. The list passes the row it already has (so the view
- * opens at once, offline too); a link with no row has nothing to show yet.
+ * One entry, read only, read from the server by its id. The row the list
+ * passes only fills the view while the server answers, and only when it
+ * reads as a row with this id: a link can carry anything.
  */
 export default function EntryScreen() {
 	const t = useTranslations("mobile.entry");
-	const { row } = useLocalSearchParams<{ id: string; row?: string }>();
-	const item = useMemo<ActivityItem | null>(() => {
-		try {
-			return row ? (JSON.parse(row) as ActivityItem) : null;
-		} catch {
-			return null;
-		}
-	}, [row]);
+	const { id, row } = useLocalSearchParams<{ id: string; row?: string }>();
+	const placeholder = useMemo(() => rowFromParam(row, id), [row, id]);
 
 	return (
 		<>
 			<Stack.Screen options={{ title: t("title"), headerLargeTitle: false }} />
 			<Screen>
-				{item ? <EntryView item={item} /> : <EmptyState title={t("missing")} />}
+				{id ? (
+					<EntryDetail id={id} placeholder={placeholder} />
+				) : (
+					<EmptyState title={t("missing")} />
+				)}
 			</Screen>
 		</>
+	);
+}
+
+/** A view that fails to draw says so and offers to try again, instead of closing the app. */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+	const t = useTranslations("mobile.entry");
+	const tc = useTranslations("mobile.common");
+	return (
+		<Screen>
+			<EmptyState
+				actionLabel={tc("retry")}
+				detail={t("loadErrorDetail")}
+				onAction={() => void retry()}
+				title={t("loadError")}
+			/>
+		</Screen>
 	);
 }

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
 	createSharedExpenseSchema,
 	deleteSharedExpenseSchema,
@@ -8,6 +9,7 @@ import { parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
 import {
+	type CreatedShared,
 	type CreateSharedInput,
 	createSharedExpense,
 	type Deferred,
@@ -157,10 +159,32 @@ export async function addSharedExpense(caller: LedgerCaller, body: CreateBody) {
 	};
 }
 
-export const previewAddSharedExpense = (
+/**
+ * The dry run of an add. Its detail names each person's share as the server
+ * splits it, so a client shows the split without computing it.
+ */
+export async function previewAddSharedExpense(
 	caller: LedgerCaller,
 	body: CreateBody,
-) => dryRun(caller, createSharedExpense, createInput(caller, body));
+) {
+	// The shares are read back by id, so a dry run without one gets its own.
+	const add: MoneyMutation<
+		CreateSharedInput & Deferred & { id: string },
+		CreatedShared
+	> = createSharedExpense;
+	const input = createInput(caller, body);
+	const preview = await forUser(caller.principal.userId).preview(
+		withShares(add),
+		{ ...input, id: input.id ?? randomUUID(), notify: [] },
+	);
+	return {
+		...toPreviewDto(preview),
+		detail: {
+			kind: "sharedExpense.create" as const,
+			shares: await sharesView(caller, preview.value.shares),
+		},
+	};
+}
 
 /**
  * Left out, the split keeps its people and its mode: a new mode needs the

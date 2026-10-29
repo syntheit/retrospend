@@ -43,7 +43,7 @@ import {
 } from "./hooks";
 import { IncomeFields } from "./IncomeFields";
 import { PlanBlock } from "./PlanBlock";
-import { planOf } from "./preview";
+import { planOf, splitSharesOf } from "./preview";
 import { type SaveOutcome, saveEntry, undoSaved } from "./queue";
 import { SyncIssues } from "./SyncIssues";
 import { undoWrite } from "./send";
@@ -63,6 +63,8 @@ interface ComposerProps {
 	editId?: string;
 	/** The id is a split expense's, not a personal one's. */
 	editShared?: boolean;
+	/** Told whether anything was typed or picked since the composer opened. */
+	onDirtyChange?: (dirty: boolean) => void;
 }
 
 /**
@@ -153,6 +155,7 @@ function Form({
 	surface,
 	prefill,
 	edit,
+	onDirtyChange,
 }: ComposerProps & {
 	catalog: EntryCatalog;
 	edit?: SavedEntry;
@@ -210,6 +213,13 @@ function Form({
 	const [typing, setTyping] = useState(false);
 	const [busy, setBusy] = useState(false);
 
+	// Any change makes new drafts; the host asks before replacing them.
+	const opened = useRef(drafts);
+	const dirty = drafts !== opened.current;
+	useEffect(() => {
+		onDirtyChange?.(dirty);
+	}, [dirty, onDirtyChange]);
+
 	// Android keeps a field focused after the keyboard is dismissed.
 	useEffect(() => {
 		const hide = Keyboard.addListener("keyboardDidHide", () =>
@@ -243,7 +253,7 @@ function Form({
 			: mode === "income"
 				? incomeWrite
 				: transferWrite;
-	const preview = useEntryPreview(write);
+	const { state: preview, retry: retryPreview } = useEntryPreview(write);
 	// Use my plan: the lines it would write come with the same dry run.
 	const plan =
 		mode === "income" && income.usePlan && preview.status === "ready"
@@ -256,6 +266,14 @@ function Form({
 		write !== null &&
 		preview.status !== "ready" &&
 		(editing || preview.status !== "offline");
+	// Each share is the server's, from the dry run of this very write.
+	const shares = useMemo(
+		() =>
+			mode === "expense" && preview.status === "ready"
+				? splitSharesOf(preview.diff)
+				: null,
+		[mode, preview],
+	);
 	const rows = useMemo(
 		() =>
 			splitRows(expense, {
@@ -263,10 +281,11 @@ function Form({
 				meId,
 				people: knownPeople(expense, catalog.people),
 				youLabel: t("you"),
+				shares,
 			}),
-		[expense, locale, meId, catalog.people, t],
+		[expense, locale, meId, catalog.people, t, shares],
 	);
-	const expenseProblems = expenseErrors(expense, locale);
+	const expenseProblems = expenseErrors(expense, locale, catalog.categories);
 	const incomeProblems = incomeErrors(income, locale);
 	const transferProblems = transferErrors(transfer, {
 		locale,
@@ -316,16 +335,21 @@ function Form({
 	const projectPick = useRef(0);
 
 	// A project's people depend on the day, so a new date reads them again.
+	// An edit keeps its people and its project (the server splits it again the
+	// saved way), so it reads nothing: a failed read must not drop the project.
 	const pickedDate = useRef(expense.date);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: only a date change re-reads the people
 	useEffect(() => {
 		if (pickedDate.current === expense.date) return;
 		pickedDate.current = expense.date;
+		if (expense.editing) return;
 		if (expense.projectId) void pickProject(expense.projectId);
 	}, [expense.date]);
 
 	/** Picks the project and takes in its people on the expense's day, as the web does. */
 	async function pickProject(projectId: string | null) {
+		// An edit can not move an expense between projects.
+		if (expense.editing) return;
 		const pick = ++projectPick.current;
 		if (!projectId) {
 			patchExpense({ projectId: null, projectPeople: [], withKeys: [] });
@@ -537,6 +561,7 @@ function Form({
 								? t("changes.emptyIncome")
 								: t("changes.emptyTransfer")
 					}
+					onRetry={retryPreview}
 					state={preview}
 				/>
 				{plan ? <PlanBlock plan={plan} /> : null}

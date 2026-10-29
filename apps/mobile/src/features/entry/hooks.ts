@@ -1,5 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { useEffect, useState } from "react";
+import { useNetworkState } from "expo-network";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "@/auth/session";
 import { type CatalogState, loadEntryCatalog } from "./catalog";
 import type { PendingWrite } from "./draft";
@@ -43,36 +44,56 @@ const PREVIEW_DELAY_MS = 350;
  * The server's dry run of `write`, asked 350 ms after the last change so
  * typing an amount does not send a request per key. The answer is kept with
  * the body it was for: a preview of an older body never shows as current, so
- * Save can wait for the preview of what it is about to send.
+ * Save can wait for the preview of what it is about to send. A dry run that
+ * could not reach the server is asked again when the network returns, and
+ * `retry` asks again on request (after a refusal too).
  */
-export function useEntryPreview(write: PendingWrite | null): PreviewState {
+export function useEntryPreview(write: PendingWrite | null): {
+	state: PreviewState;
+	retry: () => void;
+} {
 	const { api } = useSession();
-	const [kept, setKept] = useState<{ signature: string; state: PreviewState }>({
-		signature: "",
-		state: { status: "idle" },
-	});
+	const online = useNetworkState().isInternetReachable !== false;
+	const [attempt, setAttempt] = useState(0);
+	const [kept, setKept] = useState<{
+		signature: string;
+		attempt: number;
+		state: PreviewState;
+	}>({ signature: "", attempt: 0, state: { status: "idle" } });
 	// A new object every render, but the same text while nothing changed.
 	const signature = write
 		? `${write.entity}:${write.kind ?? "create"}:${JSON.stringify(write.body)}`
 		: "";
+	const state: PreviewState = !write
+		? { status: "idle" }
+		: kept.signature === signature && kept.attempt === attempt
+			? kept.state
+			: { status: "loading" };
+	const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
+	// Back online: an offline answer is asked again.
+	const wasOffline = useRef(false);
+	wasOffline.current = state.status === "offline";
+	useEffect(() => {
+		if (online && wasOffline.current) retry();
+	}, [online, retry]);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `write` is read through `signature`; `attempt` asks again
 	useEffect(() => {
 		if (!api || !write) return;
 		let cancelled = false;
 		const timer = setTimeout(() => {
-			fetchPreview(api, write).then((state) => {
-				if (!cancelled) setKept({ signature, state });
+			fetchPreview(api, write).then((next) => {
+				if (!cancelled) setKept({ signature, attempt, state: next });
 			});
 		}, PREVIEW_DELAY_MS);
 		return () => {
 			cancelled = true;
 			clearTimeout(timer);
 		};
-		// `write` is read through `signature`.
-	}, [api, signature]);
+	}, [api, signature, attempt]);
 
-	if (!write) return { status: "idle" };
-	return kept.signature === signature ? kept.state : { status: "loading" };
+	return { state, retry };
 }
 
 type ExpenseEntry = Awaited<ReturnType<RetrospendClient["expenses"]["get"]>>;

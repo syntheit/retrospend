@@ -63987,6 +63987,343 @@
 				"x-required-scope": "write:expenses"
 			}
 		},
+		"/expenses/row": {
+			"get": {
+				"description": "The row as GET /expenses lists it, by its `id` there: an expense id, `shared:<id>` or `payment:<key>`. Not found once it is deleted or you are no longer on it.",
+				"operationId": "getActivityRow",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 200,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"amount": {
+											"$ref": "#/components/schemas/Money"
+										},
+										"canEdit": {
+											"type": "boolean"
+										},
+										"category": {
+											"anyOf": [
+												{
+													"properties": {
+														"icon": {
+															"anyOf": [
+																{
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														},
+														"id": {
+															"anyOf": [
+																{
+																	"maxLength": 64,
+																	"minLength": 1,
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														},
+														"name": {
+															"anyOf": [
+																{
+																	"type": "string"
+																},
+																{
+																	"type": "null"
+																}
+															]
+														},
+														"tone": {
+															"maximum": 9007199254740991,
+															"minimum": -9007199254740991,
+															"type": "integer"
+														}
+													},
+													"required": [
+														"id",
+														"name",
+														"icon",
+														"tone"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"date": {
+											"format": "date",
+											"type": "string"
+										},
+										"entityId": {
+											"type": "string"
+										},
+										"home": {
+											"anyOf": [
+												{
+													"$ref": "#/components/schemas/Money"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"id": {
+											"type": "string"
+										},
+										"kind": {
+											"enum": [
+												"expense",
+												"income",
+												"refund",
+												"transfer",
+												"payment"
+											],
+											"type": "string"
+										},
+										"locked": {
+											"type": "boolean"
+										},
+										"mine": {
+											"type": "boolean"
+										},
+										"payerId": {
+											"type": "string"
+										},
+										"payerName": {
+											"type": "string"
+										},
+										"payment": {
+											"properties": {
+												"counterparty": {
+													"type": "string"
+												},
+												"direction": {
+													"enum": [
+														"sent",
+														"received"
+													],
+													"type": "string"
+												}
+											},
+											"required": [
+												"direction",
+												"counterparty"
+											],
+											"type": "object"
+										},
+										"pending": {
+											"type": "boolean"
+										},
+										"people": {
+											"items": {
+												"properties": {
+													"id": {
+														"type": "string"
+													},
+													"imageUrl": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"isSelf": {
+														"type": "boolean"
+													},
+													"name": {
+														"type": "string"
+													}
+												},
+												"required": [
+													"id",
+													"name",
+													"imageUrl",
+													"isSelf"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"project": {
+											"anyOf": [
+												{
+													"properties": {
+														"id": {
+															"maxLength": 64,
+															"minLength": 1,
+															"type": "string"
+														},
+														"name": {
+															"type": "string"
+														}
+													},
+													"required": [
+														"id",
+														"name"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"rateType": {
+											"type": "string"
+										},
+										"share": {
+											"$ref": "#/components/schemas/Money"
+										},
+										"sortKey": {
+											"anyOf": [
+												{
+													"type": "number"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"source": {
+											"enum": [
+												"personal",
+												"shared",
+												"payment"
+											],
+											"type": "string"
+										},
+										"title": {
+											"type": "string"
+										},
+										"waiting": {
+											"enum": [
+												"review",
+												"rejected"
+											],
+											"type": "string"
+										}
+									},
+									"required": [
+										"id",
+										"source",
+										"entityId",
+										"kind",
+										"title",
+										"category",
+										"amount",
+										"sortKey",
+										"project",
+										"date",
+										"mine",
+										"locked",
+										"canEdit"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "One line of Activity",
+				"tags": [
+					"Expenses"
+				],
+				"x-required-scope": "read"
+			}
+		},
 		"/expenses/title-suggestions": {
 			"get": {
 				"description": "At most 8, most used first, each with the category and amount of its latest use.",
@@ -106561,7 +106898,7 @@
 		},
 		"/shared-expenses": {
 			"post": {
-				"description": "The people on it are told. Anyone who is not you verifies their share unless the project accepts splits by itself.",
+				"description": "The people on it are told. Anyone who is not you verifies their share unless the project accepts splits by itself. The preview's detail is `{ kind: \"sharedExpense.create\", shares }`: each person's share as the server splits it, `after` as Money, `before` null, and `you` for the caller.",
 				"operationId": "createSharedExpense",
 				"parameters": [
 					{

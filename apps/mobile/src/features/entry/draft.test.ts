@@ -174,48 +174,57 @@ describe("buildExpenseWrite", () => {
 });
 
 describe("splitRows", () => {
-	const rows = (amountText: string, currency: string, keys: string[]) =>
+	const usd = (minor: number) => ({ minor, currency: "USD" });
+	const rows = (
+		amountText: string,
+		keys: string[],
+		shares:
+			| { key: string; share: { minor: number; currency: string } }[]
+			| null,
+	) =>
 		splitRows(
 			{
-				...newExpenseDraft({ ...base, currency }),
+				...newExpenseDraft({ ...base, currency: "USD" }),
 				amountText,
 				withKeys: keys,
 			},
-			{ locale: "en-US", meId: "me1", people: catalog.people, youLabel: "You" },
-		).map((r) => [r.name, r.minor]);
+			{
+				locale: "en-US",
+				meId: "me1",
+				people: catalog.people,
+				youLabel: "You",
+				shares,
+			},
+		).map((r) => [r.name, r.share]);
 
 	it("is empty for a personal expense or no amount", () => {
-		expect(rows("12,500", "ARS", [])).toEqual([]);
-		expect(rows("", "ARS", ["user:lucia1"])).toEqual([]);
+		expect(rows("10", [], null)).toEqual([]);
+		expect(rows("", ["user:lucia1"], null)).toEqual([]);
 	});
 
-	it("halves an even amount in minor units", () => {
-		expect(rows("12,500", "ARS", ["user:lucia1"])).toEqual([
-			["You", 625_000],
-			["Lucía", 625_000],
+	it("names you, then the people picked, with no share until the server's", () => {
+		expect(rows("10", ["user:lucia1", "shadow:martin1"], null)).toEqual([
+			["You", null],
+			["Lucía", null],
+			["Martín", null],
 		]);
 	});
 
-	it("gives the leftover minor unit to the payer", () => {
-		expect(rows("100.01", "ARS", ["user:lucia1"])).toEqual([
-			["You", 5001],
-			["Lucía", 5000],
-		]);
-	});
-
-	it("splits three ways without losing a cent", () => {
-		const out = rows("10", "USD", ["user:lucia1", "shadow:martin1"]);
+	it("shows each share as the server's dry run split it", () => {
+		const out = rows(
+			"10",
+			["user:lucia1", "shadow:martin1"],
+			[
+				{ key: "shadow:martin1", share: usd(333) },
+				{ key: "user:me1", share: usd(334) },
+				{ key: "user:lucia1", share: usd(333) },
+			],
+		);
 		expect(out).toEqual([
-			["You", 334],
-			["Lucía", 333],
-			["Martín", 333],
+			["You", usd(334)],
+			["Lucía", usd(333)],
+			["Martín", usd(333)],
 		]);
-		expect(out.reduce((sum, [, minor]) => sum + Number(minor), 0)).toBe(1000);
-	});
-
-	it("splits a currency without decimals in whole units", () => {
-		const out = rows("1,000", "JPY", ["user:lucia1", "shadow:martin1"]);
-		expect(out.map(([, minor]) => minor)).toEqual([334, 333, 333]);
 	});
 });
 
@@ -577,7 +586,7 @@ describe("editing a split expense", () => {
 		notes: "birthday",
 		splitMode: mode,
 		project: { id: "trip" },
-		category: { id: "food" },
+		category: { id: "food", name: "Food" },
 		paidBy: person("me"),
 		splits: [
 			{
@@ -638,5 +647,40 @@ describe("editing a split expense", () => {
 			expect(body).toMatchObject({ amount: "120.00", splitMode: mode });
 			expect(body).not.toHaveProperty("splitWith");
 		}
+	});
+
+	it("never drops the saved project, whatever the draft holds", () => {
+		const d = sharedFromDetail(detail("EQUAL"), "en-US");
+		const body = buildExpenseUpdate(
+			{ ...d, projectId: null, projectPeople: [], date: "2026-10-20" },
+			{ locale: "en-US", catalog },
+		)?.body;
+		expect(body).toMatchObject({ projectId: "trip", date: "2026-10-20" });
+	});
+
+	it("keeps someone else's category, which is not in your catalog", () => {
+		const d = sharedFromDetail(
+			{ ...detail("EQUAL"), category: { id: "theirs", name: "Gifts" } },
+			"en-US",
+		);
+		expect(expenseErrors(d, "en-US", catalog.categories)).toEqual({});
+		const write = buildExpenseUpdate(d, { locale: "en-US", catalog });
+		expect(write?.body).toMatchObject({ categoryId: "theirs" });
+		// Picking one of yours replaces it.
+		expect(
+			buildExpenseUpdate(
+				{ ...d, categoryId: "home" },
+				{ locale: "en-US", catalog },
+			)?.body,
+		).toMatchObject({ categoryId: "home" });
+	});
+
+	it("flags a category it can not send, so Save is never a silent no-op", () => {
+		const d = sharedFromDetail(detail("EQUAL"), "en-US");
+		const stray = { ...d, categoryId: "gone" };
+		expect(expenseErrors(stray, "en-US", catalog.categories)).toEqual({
+			category: true,
+		});
+		expect(buildExpenseUpdate(stray, { locale: "en-US", catalog })).toBeNull();
 	});
 });

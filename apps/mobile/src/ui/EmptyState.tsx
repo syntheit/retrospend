@@ -19,7 +19,9 @@ export function EmptyState({
 	const { color, radius, size, space, type } = useTheme();
 	return (
 		<View
-			accessible
+			// One stop for the words; with an action, each is its own stop, or
+			// VoiceOver could not reach the button.
+			accessible={!(actionLabel && onAction)}
 			style={{
 				alignItems: "center",
 				gap: space[2],
