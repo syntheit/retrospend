@@ -1,6 +1,6 @@
 import { BudgetNotice } from "./BudgetNotice";
-import { type Tree } from "./harness";
 import { GroupList } from "./GroupSection";
+import type { Tree } from "./harness";
 import type { BudgetGroup, BudgetMonth } from "./source";
 
 // The page's list: Flex folds each group into one bucket row in one list, a
@@ -106,7 +106,7 @@ describe("Flex buckets", () => {
 				typeof n.props.onPress === "function",
 		)[0];
 		act(() => {
-			(bucket?.props.onPress as () => void)();
+			(bucket as { props: { onPress: () => void } }).props.onPress();
 		});
 		const after = labels(tree);
 		expect(after.some((l) => l.startsWith("Rent"))).toBe(true);
@@ -145,7 +145,9 @@ describe("Groups that start open", () => {
 		);
 		const all = labels(tree);
 		expect(all.some((l) => l.startsWith("Rent"))).toBe(true);
-		expect(all.some((l) => l.startsWith("Cafe, No target, Over by"))).toBe(true);
+		expect(all.some((l) => l.startsWith("Cafe, No target, Over by"))).toBe(
+			true,
+		);
 		const texts = tree.root
 			.findAll((n) => n.type === "Text")
 			.map((n) => JSON.stringify(n.props.children));
@@ -179,7 +181,7 @@ describe("Notice", () => {
 				typeof n.props.onPress === "function",
 		)[0];
 		act(() => {
-			(button?.props.onPress as () => void)();
+			(button as { props: { onPress: () => void } }).props.onPress();
 		});
 		expect(ran).toEqual(["plan"]);
 	});
