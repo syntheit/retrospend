@@ -22,11 +22,11 @@ import { useServerConnection } from "@/auth/server-connection";
 import { createReadCache, type ReadCache } from "@/data/cache";
 import { createOutbox, type Outbox } from "@/data/outbox";
 import { createSqliteStore } from "@/data/sqlite-store";
-import { createPushControl } from "@/push/control";
+import { createPushControl, forgetServerPush } from "@/push/control";
 import { type AuthApi, createAuthApi, type SignInStep } from "./auth-api";
 import { isSessionEnded } from "./errors";
 import { clearStaleTokenOnFirstRun } from "./first-run";
-import { type FetchMe, ME_CACHE, restoreSession } from "./restore";
+import { endSession, type FetchMe, ME_CACHE, restoreSession } from "./restore";
 import { createTokenStore } from "./token-store";
 
 export type SessionState =
@@ -113,20 +113,38 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	const latest = useRef({ tokens, authApi, profileCache, local, baseUrl, me });
 	latest.current = { tokens, authApi, profileCache, local, baseUrl, me };
 
-	/** The session ended on the server: forget it here, keep the outbox. */
-	const expire = useCallback(async () => {
-		const { tokens, authApi, profileCache, local, baseUrl, me } =
-			latest.current;
-		setState({ status: "signedOut", expired: true });
+	/**
+	 * The session ended on the server: forget it here, keep the outbox. `me`
+	 * is null when it ended before the app opened; the push state of this
+	 * server goes all the same.
+	 */
+	const forgetEnded = useCallback(async (meId: string | null) => {
+		const { authApi, local, baseUrl } = latest.current;
+		if (!baseUrl) return;
 		await Promise.all([
 			// The server already dropped this session's devices; stop polling here.
-			pushOf(baseUrl, me, null)?.forget(),
-			tokens?.clear(),
-			profileCache?.clear(),
-			local?.cache.clear(),
+			forgetServerPush(store, baseUrl, meId),
+			local
+				? local.cache.clear()
+				: meId
+					? createReadCache(store, `${baseUrl}|${meId}`).clear()
+					: undefined,
 			authApi?.clearLocal(),
 		]);
 	}, []);
+
+	const expire = useCallback(async () => {
+		const { tokens, profileCache, me } = latest.current;
+		setState({ status: "signedOut", expired: true });
+		if (!tokens || !profileCache) return;
+		// A 401 during the restore arrives here with no profile loaded yet.
+		await endSession({
+			tokens,
+			profileCache,
+			ended: forgetEnded,
+			meId: me?.id ?? null,
+		});
+	}, [forgetEnded]);
 
 	const api = useMemo(
 		() =>
@@ -166,14 +184,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		}
 		let cancelled = false;
 		clearStaleTokenOnFirstRun(store, tokens)
-			.then(() => restoreSession({ tokens, fetchMe, profileCache }))
+			.then(() =>
+				restoreSession({
+					tokens,
+					fetchMe,
+					profileCache,
+					ended: forgetEnded,
+				}),
+			)
 			.then((restored) => {
 				if (!cancelled) setState(restored);
 			});
 		return () => {
 			cancelled = true;
 		};
-	}, [baseUrl, tokens, fetchMe, profileCache]);
+	}, [baseUrl, tokens, fetchMe, profileCache, forgetEnded]);
 
 	const finishSignIn = useCallback(
 		async (step: SignInStep) => {
@@ -231,6 +256,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 				await authApi?.signOut();
 				if (options?.discardUnsynced) await local?.outbox.clear();
 				await Promise.all([
+					// Also when the profile never loaded: no push state outlives it.
+					baseUrl ? forgetServerPush(store, baseUrl, me?.id ?? null) : null,
 					tokens?.clear(),
 					profileCache?.clear(),
 					local?.cache.clear(),

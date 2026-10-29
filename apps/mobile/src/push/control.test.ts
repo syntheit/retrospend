@@ -22,8 +22,9 @@ jest.mock("./texts", () => ({
 }));
 
 import { apns } from "./apns";
-import { createPushControl } from "./control";
+import { createPushControl, forgetServerPush } from "./control";
 import { createEnabledStore } from "./enabled";
+import { createFeedState } from "./feed";
 
 const mockApns = apns as unknown as {
 	permission: jest.Mock;
@@ -108,6 +109,37 @@ describe("push control on iOS", () => {
 		await control.enable();
 		await control.disable();
 		expect(remove).toHaveBeenCalledWith({ id: "d1" });
+		expect(await enabled.get()).toBeNull();
+	});
+});
+
+describe("push state is the account's", () => {
+	it("an ended session drops the switch and the cursor of whoever had Push on here", async () => {
+		const { store, enabled } = setup();
+		await enabled.set({ baseUrl: "https://s", meId: "a" });
+		const feed = createFeedState(store, "https://s|a");
+		await feed.setCursor("c1");
+		await forgetServerPush(store, "https://s", null);
+		expect(await enabled.get()).toBeNull();
+		expect(await feed.getCursor()).toBeNull();
+	});
+
+	it("leaves another server's switch alone", async () => {
+		const { store, enabled } = setup();
+		await enabled.set({ baseUrl: "https://other", meId: "a" });
+		await forgetServerPush(store, "https://s", "me");
+		expect(await enabled.get()).toEqual({
+			baseUrl: "https://other",
+			meId: "a",
+		});
+	});
+
+	it("a new account on the server never inherits the last one's Push", async () => {
+		mockApns.deviceToken.mockResolvedValue(TOKEN);
+		const { control, register, enabled } = setup();
+		await enabled.set({ baseUrl: "https://s", meId: "a" });
+		await control.refresh();
+		expect(register).not.toHaveBeenCalled();
 		expect(await enabled.get()).toBeNull();
 	});
 });

@@ -102,6 +102,16 @@ export function createPushControl(args: {
 		},
 		async refresh() {
 			const current = await enabled.get();
+			if (
+				current &&
+				current.baseUrl === who.baseUrl &&
+				current.meId !== who.meId
+			) {
+				// Another account on this server left Push on and its session is
+				// gone: nothing of it carries over to the one signed in now.
+				await forgetServerPush(store, who.baseUrl, null);
+				return;
+			}
 			if (!current || pushScope(current) !== scope) return;
 			if (apns.supported) {
 				if ((await apns.permission()) !== "granted") return;
@@ -119,4 +129,33 @@ export function createPushControl(args: {
 		},
 		forget,
 	};
+}
+
+/**
+ * A session on this server ended (sign-out elsewhere, expiry, another
+ * account signing in): drop the push state of `meId` and of whichever
+ * account on this server has Push on, and stop the poll that would run for
+ * it. Works without knowing who was signed in, so a session that ended
+ * before the app opened leaves nothing behind.
+ */
+export async function forgetServerPush(
+	store: KeyValueStore,
+	baseUrl: string,
+	meId: string | null,
+): Promise<void> {
+	const enabled = createEnabledStore(store);
+	const current = await enabled.get();
+	const onHere = current?.baseUrl === baseUrl ? current : null;
+	const scopes = new Set<string>();
+	if (meId) scopes.add(pushScope({ baseUrl, meId }));
+	if (onHere) scopes.add(pushScope(onHere));
+	await Promise.all(
+		[...scopes].flatMap((scope) => [
+			createRegistrationStore(store, scope).clear(),
+			createFeedState(store, scope).clear(),
+		]),
+	);
+	if (onHere) {
+		await Promise.all([enabled.clear(), stopPolling().catch(() => undefined)]);
+	}
 }
