@@ -9,7 +9,7 @@ import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { ChangesBlock } from "./ChangesBlock";
-import { type DeleteKind, previewDelete, runDelete } from "./deleteEntry";
+import { previewDelete, runDelete } from "./deleteEntry";
 import { announceEntryChange } from "./events";
 import type { PreviewState } from "./preview";
 import { undoWrite } from "./send";
@@ -17,20 +17,18 @@ import { undoWrite } from "./send";
 /**
  * Delete the expense an edit is open on. The sheet says what it will change
  * and what it will not, from the server's dry run, before the button
- * deletes; a personal expense then ends in a toast with Undo. A split asks
- * first because it changes what other people owe, and the server keeps no
- * undo for it, so its toast has none.
+ * deletes, and the toast that follows has Undo. It is for your own expense
+ * only: a split changes what other people owe and the server keeps no undo for
+ * it, so the composer does not offer it there.
  */
 export function DeleteEntrySheet({
 	visible,
-	kind,
 	id,
 	title,
 	onClose,
 	onDeleted,
 }: {
 	visible: boolean;
-	kind: DeleteKind;
 	id: string;
 	/** What the toast calls it. */
 	title: string;
@@ -57,19 +55,19 @@ export function DeleteEntrySheet({
 		key.current = newClientId();
 		setPreview({ status: "loading" });
 		setFailed(false);
-		previewDelete(api, kind, id).then((state) => {
+		previewDelete(api, id).then((state) => {
 			if (!cancelled) setPreview(state);
 		});
 		return () => {
 			cancelled = true;
 		};
-	}, [visible, api, kind, id, attempt]);
+	}, [visible, api, id, attempt]);
 
 	async function remove() {
 		if (!api || busy || preview.status !== "ready") return;
 		setBusy(true);
 		setFailed(false);
-		const outcome = await runDelete(api, kind, id, key.current).finally(() =>
+		const outcome = await runDelete(api, id, key.current).finally(() =>
 			setBusy(false),
 		);
 		if (outcome.status !== "deleted") {
@@ -80,21 +78,19 @@ export function DeleteEntrySheet({
 		const { undo } = outcome;
 		toast.show({
 			message: t("deleted", { title }),
-			undo: undo
-				? {
-						label: tc("undo"),
-						onUndo: async () => {
-							const ok = await undoWrite(api, undo, newClientId()).then(
-								() => true,
-								() => false,
-							);
-							announceEntryChange();
-							toast.show({
-								message: ok ? t("restored", { title }) : t("undoFailed"),
-							});
-						},
-					}
-				: undefined,
+			undo: {
+				label: tc("undo"),
+				onUndo: async () => {
+					const ok = await undoWrite(api, undo, newClientId()).then(
+						() => true,
+						() => false,
+					);
+					announceEntryChange();
+					toast.show({
+						message: ok ? t("restored", { title }) : t("undoFailed"),
+					});
+				},
+			},
 		});
 		onClose();
 		onDeleted();
@@ -118,9 +114,7 @@ export function DeleteEntrySheet({
 			visible={visible}
 		>
 			<View style={{ gap: space[4] }}>
-				<Text tone="fg2">
-					{kind === "shared" ? t("bodyShared") : t("body")}
-				</Text>
+				<Text tone="fg2">{t("body")}</Text>
 				<ChangesBlock
 					idle=""
 					onRetry={() => setAttempt((n) => n + 1)}

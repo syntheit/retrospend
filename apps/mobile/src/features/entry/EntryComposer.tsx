@@ -127,6 +127,9 @@ function Form({
 	const lines = useMoneyLines(form);
 	const split = useSplitView(form, pv, edit);
 	const [deleting, setDeleting] = useState(false);
+	// Your own expense only: a split has no Undo, so it is not deleted from here.
+	const canDelete =
+		form.editing && edit !== undefined && edit.kind !== "shared";
 	// The More step slides in the first time it opens; the quick step is just there.
 	const visitedMore = useRef(false);
 	if (form.step === "more") visitedMore.current = true;
@@ -227,7 +230,7 @@ function Form({
 						<MoreStep
 							edit={edit}
 							form={form}
-							onDelete={() => setDeleting(true)}
+							onDelete={canDelete ? () => setDeleting(true) : null}
 							preview={pv}
 							rate={rate}
 						/>
@@ -275,10 +278,9 @@ function Form({
 					</StepSlide>
 				)}
 			</ComposerShell>
-			{form.editing && edit ? (
+			{canDelete ? (
 				<DeleteEntrySheet
 					id={expense.id}
-					kind={edit.kind === "shared" ? "shared" : "expense"}
 					onClose={() => setDeleting(false)}
 					onDeleted={onDone}
 					title={expense.title}
