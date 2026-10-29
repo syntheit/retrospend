@@ -37,6 +37,8 @@ export const monthChangeSchema = z.object({
 
 export const monthSummaryOutputSchema = z.object({
 	summary: monthCloseSummarySchema,
+	/** Overspend already taken from each envelope's next month (Take it from next month instead), net of undos; envelopes with none are left out. */
+	carried: z.array(z.object({ id: idSchema, amount: moneySchema })),
 	closedAt: z.date(),
 	revision: z.number().int().min(1),
 	/** The revision the person acknowledged; null until they do. */

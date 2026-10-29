@@ -9,8 +9,10 @@ import type {
 	MonthSummaryOutput,
 } from "~/lib/schemas/envelope-book";
 import type { Prisma } from "~prisma";
+import { addMonths } from "./calendar";
 import { type CloseRow, loadCloseRows } from "./close-rows";
 import { EnvelopeError } from "./errors";
+import { carriedOverspend } from "./fix.service";
 import { findPersonalBook } from "./inputs";
 
 type Tx = Prisma.TransactionClient;
@@ -18,10 +20,12 @@ type Tx = Prisma.TransactionClient;
 export function summaryDto(
 	row: CloseRow,
 	currency: string,
+	carried: ReadonlyMap<string, number> = new Map(),
 ): MonthSummaryOutput {
 	const money = (minor: number) => ({ minor, currency });
 	return {
 		summary: row.summary,
+		carried: [...carried].map(([id, minor]) => ({ id, amount: money(minor) })),
 		closedAt: row.closedAt,
 		revision: row.revision,
 		acknowledgedRevision: row.ackRevision,
@@ -49,7 +53,16 @@ export async function monthSummaryIn(
 	const book = await findPersonalBook(tx, userId);
 	if (!book) return null;
 	const row = (await loadCloseRows(tx, book.id)).find((r) => r.month === month);
-	return row ? summaryDto(row, book.currency) : null;
+	if (!row) return null;
+	// The stored close never changes when an overspend is carried into the
+	// next month, so what was carried is read beside it.
+	const carried = await carriedOverspend(
+		tx,
+		book.id,
+		addMonths(month, 1),
+		book.currency,
+	);
+	return summaryDto(row, book.currency, carried);
 }
 
 /** "Done" on a summary: that revision is read; a later revision waits again. */

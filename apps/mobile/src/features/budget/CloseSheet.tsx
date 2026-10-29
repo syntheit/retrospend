@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -8,7 +8,7 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
-import { acknowledgeBody, carryBody } from "./closeBodies";
+import { acknowledgeBody, carryable, carryBody } from "./closeBodies";
 import { nextMonthKey } from "./draftsBody";
 import { monthDate } from "./months";
 import { Line, Note, SheetBody } from "./parts";
@@ -22,10 +22,8 @@ import { WriteForm } from "./WriteSheet";
  * in, what was assigned, what went over, what each leftover rule did. Done
  * marks that revision as read. An overspend can be taken from the envelope's
  * own next month instead: its own previewed, undoable step.
- *
- * The stored close does not change when an overspend is carried (the carry
- * is a step in this month), so the sheet itself drops a carried row and puts
- * it back when that carry is undone.
+ * The server says what was already carried, so a row offers only the rest;
+ * the summary is read again after a carry and after its Undo.
  */
 export function CloseSheet({
 	data,
@@ -49,7 +47,6 @@ export function CloseSheet({
 	const month = data.month.key;
 	const [carrying, setCarrying] = useState<string | null>(null);
 	const [failed, setFailed] = useState(false);
-	const [carried, setCarried] = useState<ReadonlySet<string>>(new Set());
 	const read = useSheetRead(
 		visible,
 		(client) => client.budget.monthSummary({ month }),
@@ -63,9 +60,7 @@ export function CloseSheet({
 	const envelopeName = (id: string) =>
 		envelopeById(data, id)?.name ?? t("envelopeFallback");
 	const cash = (minor: number) => ({ minor, currency: sum?.currency ?? "" });
-	const over = (sum?.envelopes ?? []).filter(
-		(e) => e.overspent > 0 && !carried.has(e.id),
-	);
+	const over = carryable(summary);
 	const left = (sum?.envelopes ?? []).filter(
 		(e) => e.returned > 0 || e.swept > 0,
 	);
@@ -75,34 +70,20 @@ export function CloseSheet({
 		? carryBody({
 				id: idFor("carry"),
 				envelopeId: carry.id,
-				minor: carry.overspent,
+				minor: carry.minor,
 				currency: sum?.currency ?? "",
 			})
 		: null;
-	// The toast runs `onDone` once for the carry and once more for its Undo.
-	const carryId = carry?.id ?? null;
-	// biome-ignore lint/correctness/useExhaustiveDependencies: one counter per carry; `onDone` is the screen's reload
-	const carryDone = useMemo(() => {
-		let calls = 0;
-		return () => {
-			calls += 1;
-			const undone = calls % 2 === 0;
-			if (carryId)
-				setCarried((previous) => {
-					const next = new Set(previous);
-					if (undone) next.delete(carryId);
-					else next.add(carryId);
-					return next;
-				});
-			onDone();
-		};
-	}, [carryId]);
+	// After the carry and after its Undo: what was carried changed.
+	const carryDone = () => {
+		read.reload();
+		onDone();
+	};
 
 	useEffect(() => {
 		if (!visible) return;
 		setCarrying(null);
 		setFailed(false);
-		setCarried(new Set());
 	}, [visible]);
 
 	async function done() {
@@ -222,7 +203,7 @@ export function CloseSheet({
 														fontVariant: ["tabular-nums"],
 													}}
 												>
-													{money(cash(e.overspent), { sign: "never" })}
+													{money(cash(e.minor), { sign: "never" })}
 												</Text>
 											</ListRow>
 										))}

@@ -125,6 +125,7 @@ describe("lazy month close on Postgres", () => {
 		});
 		const last = await getMonthSummary(b.user.id, addMonths(current, -1));
 		expect(last?.summary.overspent).toBe(5_000);
+		expect(last?.carried).toEqual([]);
 		await expect(getMonthSummary(b.user.id, current)).resolves.toBeNull();
 	});
 
@@ -167,6 +168,12 @@ describe("lazy month close on Postgres", () => {
 			(before?.toAssign.amount.minor ?? 0) + 5_000,
 		);
 		expect(left(after, b.ids.Spending as string)).toBe(-5_000);
+		// The stored close still says 5,000 over; the summary says it was carried.
+		const summary = await getMonthSummary(b.user.id, addMonths(current, -1));
+		expect(summary?.summary.overspent).toBe(5_000);
+		expect(summary?.carried).toEqual([
+			{ id: b.ids.Spending, amount: { minor: 5_000, currency: "USD" } },
+		]);
 		await expect(
 			forUser(b.user.id).apply(carryOverspendMutation, {
 				...input,
@@ -180,6 +187,9 @@ describe("lazy month close on Postgres", () => {
 			target: { movementId: applied.value.movements[0]?.id as string },
 		});
 		expect((await getMonth(b.user.id))?.toAssign).toEqual(before?.toAssign);
+		await expect(
+			getMonthSummary(b.user.id, addMonths(current, -1)),
+		).resolves.toMatchObject({ carried: [] });
 	});
 
 	it("fix a negative To assign from the envelopes holding the most, back to exactly 0", async () => {
