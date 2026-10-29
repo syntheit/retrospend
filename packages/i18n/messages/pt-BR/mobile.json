@@ -1646,9 +1646,7 @@
 		"saveError": "Não foi possível salvar. Tente de novo.",
 		"error": "Não foi possível carregar os ajustes",
 		"errorDetail": "Verifique sua conexão e tente de novo.",
-		"notAvailable": "Ainda não disponível",
 		"device": {
-			"title": "Neste dispositivo",
 			"footer": "Muda só este app. O idioma da web continua como está."
 		},
 		"language": {
@@ -1662,7 +1660,9 @@
 			"email": "E-mail",
 			"edit": "Editar perfil",
 			"usernameRule": "Use só letras e números.",
-			"error": "Não foi possível salvar seu perfil. Tente de novo."
+			"error": "Não foi possível salvar seu perfil. Tente de novo.",
+			"public": "Perfil público",
+			"pending": "Aguardando você confirmar {email}"
 		},
 		"money": {
 			"title": "Dinheiro",
@@ -1672,14 +1672,15 @@
 			"monthStart": "O mês começa no dia"
 		},
 		"rates": {
-			"section": "Cotações",
-			"footer": "Por enquanto, o tipo de cotação padrão só pode ser alterado na web.",
-			"defaultType": "Tipo de cotação padrão",
 			"currencies": "Moedas"
 		},
 		"notifications": {
-			"inApp": "No app",
-			"email": "Por e-mail"
+			"channel": {
+				"inApp": "No app",
+				"email": "E-mail",
+				"push": "Push"
+			},
+			"none": "Tudo desativado"
 		},
 		"notify": {
 			"EXPENSE_SPLIT": "Alguém adiciona você a uma despesa dividida",
@@ -1695,8 +1696,6 @@
 			"RECURRING_DUE": "Despesa recorrente vencendo"
 		},
 		"server": {
-			"title": "Servidor",
-			"connected": "Conectado a",
 			"change": "Trocar de servidor",
 			"changeFooter": "Você será desconectado antes."
 		},
@@ -1738,7 +1737,6 @@
 			"unavailable": "Este celular não conseguiu se registrar para push. Tente de novo mais tarde."
 		},
 		"manage": {
-			"title": "Gerenciar",
 			"categories": "Categorias",
 			"payment": "Métodos de pagamento",
 			"recurring": "Despesas recorrentes"
@@ -1863,6 +1861,21 @@
 			},
 			"preparing": "Preparando",
 			"failed": "Não foi possível exportar. Tente de novo."
+		},
+		"autosave": "As alterações são salvas automaticamente",
+		"display": "Exibição",
+		"root": {
+			"preferences": "Preferências",
+			"notifications": "Notificações",
+			"danger": "Zona de perigo",
+			"categories": "{count, plural, one {# categoria} other {# categorias}}",
+			"methods": "{count, plural, one {# método} other {# métodos}}",
+			"twoFactorOn": "Dois fatores ativos",
+			"twoFactorOff": "Dois fatores desativados",
+			"export": "Exportar"
+		},
+		"danger": {
+			"meta": "Pagamentos e divisões pendentes são resolvidos primeiro"
 		}
 	},
 	"push": {

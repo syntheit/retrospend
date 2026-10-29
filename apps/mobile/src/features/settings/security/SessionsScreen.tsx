@@ -1,13 +1,14 @@
 import type { SignedInSessionDto } from "@retrospend/api-contract";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
-import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
-import { Form, FormSection, FormValueRow } from "@/ui/Form";
+import { ListGroup, ListRow } from "@/ui/List";
+import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
+import { Block, GroupNote, SettingsPage } from "../parts";
 import { orderSessions, type SessionName, sessionName } from "./rules";
 
 type Load =
@@ -27,7 +28,6 @@ export function SessionsScreen() {
 	const format = useFormatter();
 	const { api } = useSession();
 	const toast = useToast();
-	const { color } = useTheme();
 	const [load, setLoad] = useState<Load>({ status: "loading" });
 
 	const read = useCallback(async () => {
@@ -96,27 +96,31 @@ export function SessionsScreen() {
 	const others = load.items.filter((s) => !s.current);
 
 	return (
-		<View style={{ flex: 1, backgroundColor: color.bg }}>
-			<Form>
-				<FormSection title={t("thisPhone")}>
+		<SettingsPage>
+			<Block title={t("thisPhone")}>
+				<ListGroup>
 					{mine.map((s) => (
-						<FormValueRow key={s.id} label={nameOf(s)} value={t("now")} />
-					))}
-				</FormSection>
-				<FormSection
-					footer={others.length > 0 ? t("footer") : t("none")}
-					title={t("others")}
-				>
-					{others.map((s) => (
-						<FormValueRow
+						<ListRow
+							end={<Text tone="fg2">{t("now")}</Text>}
 							key={s.id}
-							label={nameOf(s)}
-							onPress={() => ask(s)}
-							value={day(s.lastUsedAt)}
+							title={nameOf(s)}
 						/>
 					))}
-				</FormSection>
-			</Form>
-		</View>
+				</ListGroup>
+			</Block>
+			<Block title={t("others")}>
+				<ListGroup>
+					{others.map((s) => (
+						<ListRow
+							end={<Text tone="fg2">{day(s.lastUsedAt)}</Text>}
+							key={s.id}
+							onPress={() => ask(s)}
+							title={nameOf(s)}
+						/>
+					))}
+				</ListGroup>
+				<GroupNote>{others.length > 0 ? t("footer") : t("none")}</GroupNote>
+			</Block>
+		</SettingsPage>
 	);
 }

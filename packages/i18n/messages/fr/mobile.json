@@ -1646,9 +1646,7 @@
 		"saveError": "Impossible d’enregistrer. Réessaie.",
 		"error": "Impossible de charger les réglages",
 		"errorDetail": "Vérifie ta connexion et réessaie.",
-		"notAvailable": "Pas encore disponible",
 		"device": {
-			"title": "Sur cet appareil",
 			"footer": "Ne change que cette appli. La langue du site web reste inchangée."
 		},
 		"language": {
@@ -1662,7 +1660,9 @@
 			"email": "E-mail",
 			"edit": "Modifier le profil",
 			"usernameRule": "Lettres et chiffres uniquement.",
-			"error": "Impossible d’enregistrer ton profil. Réessaie."
+			"error": "Impossible d’enregistrer ton profil. Réessaie.",
+			"public": "Profil public",
+			"pending": "En attente de ta confirmation de {email}"
 		},
 		"money": {
 			"title": "Argent",
@@ -1672,14 +1672,15 @@
 			"monthStart": "Le mois commence le jour"
 		},
 		"rates": {
-			"section": "Taux",
-			"footer": "Le type de taux par défaut ne se change que sur le web pour l’instant.",
-			"defaultType": "Type de taux par défaut",
 			"currencies": "Devises"
 		},
 		"notifications": {
-			"inApp": "Dans l’app",
-			"email": "Par e-mail"
+			"channel": {
+				"inApp": "Dans l’app",
+				"email": "E-mail",
+				"push": "Push"
+			},
+			"none": "Tout est désactivé"
 		},
 		"notify": {
 			"EXPENSE_SPLIT": "Quelqu’un t’ajoute à une dépense partagée",
@@ -1695,8 +1696,6 @@
 			"RECURRING_DUE": "Une dépense récurrente est à régler"
 		},
 		"server": {
-			"title": "Serveur",
-			"connected": "Connecté à",
 			"change": "Changer de serveur",
 			"changeFooter": "Tu seras d'abord déconnecté."
 		},
@@ -1738,7 +1737,6 @@
 			"unavailable": "Ce téléphone n’a pas pu s’inscrire aux notifications push. Réessaie plus tard."
 		},
 		"manage": {
-			"title": "Gérer",
 			"categories": "Catégories",
 			"payment": "Moyens de paiement",
 			"recurring": "Dépenses récurrentes"
@@ -1863,6 +1861,21 @@
 			},
 			"preparing": "Préparation",
 			"failed": "Impossible de créer l'export. Réessayez."
+		},
+		"autosave": "Les modifications s’enregistrent automatiquement",
+		"display": "Affichage",
+		"root": {
+			"preferences": "Préférences",
+			"notifications": "Notifications",
+			"danger": "Zone de danger",
+			"categories": "{count, plural, one {# catégorie} other {# catégories}}",
+			"methods": "{count, plural, one {# moyen} other {# moyens}}",
+			"twoFactorOn": "Deux facteurs activés",
+			"twoFactorOff": "Deux facteurs désactivés",
+			"export": "Exporter"
+		},
+		"danger": {
+			"meta": "Les paiements et partages en attente sont réglés d’abord"
 		}
 	},
 	"push": {

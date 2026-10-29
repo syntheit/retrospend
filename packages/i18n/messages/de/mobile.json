@@ -1646,9 +1646,7 @@
 		"saveError": "Konnte nicht gespeichert werden. Versuche es erneut.",
 		"error": "Einstellungen konnten nicht geladen werden",
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
-		"notAvailable": "Noch nicht verfügbar",
 		"device": {
-			"title": "Auf diesem Gerät",
 			"footer": "Gilt nur für diese App. Die Sprache im Web bleibt unverändert."
 		},
 		"language": {
@@ -1662,7 +1660,9 @@
 			"email": "E-Mail",
 			"edit": "Profil bearbeiten",
 			"usernameRule": "Nur Buchstaben und Zahlen.",
-			"error": "Dein Profil konnte nicht gespeichert werden. Versuche es erneut."
+			"error": "Dein Profil konnte nicht gespeichert werden. Versuche es erneut.",
+			"public": "Öffentliches Profil",
+			"pending": "Wartet darauf, dass du {email} bestätigst"
 		},
 		"money": {
 			"title": "Geld",
@@ -1672,14 +1672,15 @@
 			"monthStart": "Monat beginnt am Tag"
 		},
 		"rates": {
-			"section": "Kurse",
-			"footer": "Die Standard-Kursart lässt sich vorerst nur im Web ändern.",
-			"defaultType": "Standard-Kursart",
 			"currencies": "Währungen"
 		},
 		"notifications": {
-			"inApp": "In der App",
-			"email": "Per E-Mail"
+			"channel": {
+				"inApp": "In der App",
+				"email": "E-Mail",
+				"push": "Push"
+			},
+			"none": "Alles aus"
 		},
 		"notify": {
 			"EXPENSE_SPLIT": "Jemand fügt dich zu einer geteilten Ausgabe hinzu",
@@ -1695,8 +1696,6 @@
 			"RECURRING_DUE": "Eine wiederkehrende Ausgabe ist fällig"
 		},
 		"server": {
-			"title": "Server",
-			"connected": "Verbunden mit",
 			"change": "Server wechseln",
 			"changeFooter": "Du wirst zuerst abgemeldet."
 		},
@@ -1738,7 +1737,6 @@
 			"unavailable": "Dieses Telefon konnte sich nicht für Push anmelden. Versuch es später noch einmal."
 		},
 		"manage": {
-			"title": "Verwalten",
 			"categories": "Kategorien",
 			"payment": "Zahlungsmethoden",
 			"recurring": "Wiederkehrende Ausgaben"
@@ -1863,6 +1861,21 @@
 			},
 			"preparing": "Wird vorbereitet",
 			"failed": "Der Export hat nicht geklappt. Versuch es erneut."
+		},
+		"autosave": "Änderungen werden automatisch gespeichert",
+		"display": "Anzeige",
+		"root": {
+			"preferences": "Präferenzen",
+			"notifications": "Benachrichtigungen",
+			"danger": "Gefahrenzone",
+			"categories": "{count, plural, one {# Kategorie} other {# Kategorien}}",
+			"methods": "{count, plural, one {# Methode} other {# Methoden}}",
+			"twoFactorOn": "Zwei-Faktor an",
+			"twoFactorOff": "Zwei-Faktor aus",
+			"export": "Export"
+		},
+		"danger": {
+			"meta": "Offene Zahlungen und Aufteilungen werden zuerst geklärt"
 		}
 	},
 	"push": {

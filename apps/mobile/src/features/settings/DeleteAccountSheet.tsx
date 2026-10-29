@@ -1,13 +1,14 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, TextInput, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { Sheet } from "@/ui/Sheet";
+import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
+import { TextField } from "@/ui/TextField";
 
 type Consequences = Awaited<
 	ReturnType<RetrospendClient["account"]["deletionPreview"]>
@@ -35,7 +36,8 @@ export function DeleteAccountSheet({
 }) {
 	const t = useTranslations("mobile.settings.delete");
 	const { api, signOut } = useSession();
-	const { color, radius, size, space, type } = useTheme();
+	const { space } = useTheme();
+	const body = useSheetBodySize({ footer: true });
 	const [what, setWhat] = useState<Consequences | null>(null);
 	const [loadFailed, setLoadFailed] = useState(false);
 	const [password, setPassword] = useState("");
@@ -107,6 +109,14 @@ export function DeleteAccountSheet({
 	return (
 		<Sheet
 			detents={["large"]}
+			footer={
+				<Button
+					disabled={busy || password === "" || what === null}
+					label={busy ? t("deleting") : t("delete")}
+					onPress={remove}
+					variant="danger"
+				/>
+			}
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}
@@ -114,6 +124,7 @@ export function DeleteAccountSheet({
 			<ScrollView
 				contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
 				keyboardShouldPersistTaps="handled"
+				style={{ height: body.height }}
 			>
 				<Text tone="fg2">{t("permanent")}</Text>
 				{loadFailed ? (
@@ -133,40 +144,18 @@ export function DeleteAccountSheet({
 						{lines.length === 0 ? line(t("nothing")) : lines.map(line)}
 					</View>
 				)}
-				<View style={{ gap: space[2] }}>
-					<Text tone="fg2" variant="small">
-						{t("password")}
-					</Text>
-					<TextInput
-						accessibilityLabel={t("password")}
-						autoCapitalize="none"
-						autoComplete="current-password"
-						autoCorrect={false}
-						onChangeText={setPassword}
-						secureTextEntry
-						style={{
-							minHeight: size.moneyInput.phone,
-							paddingHorizontal: space[3],
-							borderRadius: radius.ctl,
-							borderWidth: 1,
-							borderColor: color.lineStrong,
-							backgroundColor: color.surface,
-							color: color.fg,
-							fontSize: type.body.size,
-						}}
-						value={password}
-					/>
-				</View>
+				<TextField
+					autoComplete="current-password"
+					label={t("password")}
+					onChangeText={setPassword}
+					secure
+					value={password}
+				/>
 				{refusal ? (
 					<Text accessibilityRole="alert" tone="danger">
 						{refusal}
 					</Text>
 				) : null}
-				<Button
-					disabled={busy || password === "" || what === null}
-					label={busy ? t("deleting") : t("delete")}
-					onPress={remove}
-				/>
 			</ScrollView>
 		</Sheet>
 	);

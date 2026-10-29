@@ -1646,9 +1646,7 @@
 		"saveError": "Couldn't save. Try again.",
 		"error": "Couldn't load settings",
 		"errorDetail": "Check your connection and try again.",
-		"notAvailable": "Not available yet",
 		"device": {
-			"title": "On this device",
 			"footer": "Changes this app only. Your web language setting stays as it is."
 		},
 		"language": {
@@ -1662,7 +1660,9 @@
 			"email": "Email",
 			"edit": "Edit profile",
 			"usernameRule": "Use letters and numbers only.",
-			"error": "Couldn't save your profile. Try again."
+			"error": "Couldn't save your profile. Try again.",
+			"public": "Public profile",
+			"pending": "Waiting for you to confirm {email}"
 		},
 		"money": {
 			"title": "Money",
@@ -1672,14 +1672,15 @@
 			"monthStart": "Month starts on day"
 		},
 		"rates": {
-			"section": "Rates",
-			"footer": "The default rate type can only be changed on the web for now.",
-			"defaultType": "Default rate type",
 			"currencies": "Currencies"
 		},
 		"notifications": {
-			"inApp": "In the app",
-			"email": "By email"
+			"channel": {
+				"inApp": "In app",
+				"email": "Email",
+				"push": "Push"
+			},
+			"none": "All off"
 		},
 		"notify": {
 			"EXPENSE_SPLIT": "Someone adds you to a split",
@@ -1695,8 +1696,6 @@
 			"RECURRING_DUE": "A recurring expense is due"
 		},
 		"server": {
-			"title": "Server",
-			"connected": "Connected to",
 			"change": "Change server",
 			"changeFooter": "You will be signed out first."
 		},
@@ -1715,7 +1714,7 @@
 			"transfer": "{project} goes to {name}",
 			"deleteProject": "{project} is deleted, nobody else can run it",
 			"confirm": "{count, plural, one {# payment waiting for you is confirmed} other {# payments waiting for you are confirmed}}",
-			"cancel": "{count, plural, one {# payment nobody confirmed is cancelled} other {# payments nobody confirmed are cancelled}}",
+			"cancel": "{count, plural, one {# payment nobody confirmed is canceled} other {# payments nobody confirmed are canceled}}",
 			"accept": "{count, plural, one {# share waiting for your answer is accepted} other {# shares waiting for your answer are accepted}}",
 			"anonymize": "{count, plural, one {# shared expense keeps your share as Deleted User} other {# shared expenses keep your share as Deleted User}}",
 			"password": "Password",
@@ -1738,7 +1737,6 @@
 			"unavailable": "This phone could not register for push. Try again later."
 		},
 		"manage": {
-			"title": "Manage",
 			"categories": "Categories",
 			"payment": "Payment methods",
 			"recurring": "Recurring expenses"
@@ -1777,14 +1775,14 @@
 				"FRIENDS_ONLY": "People you share with",
 				"PAYMENT_ONLY": "Only when paying you"
 			},
-			"preferred": "Preferred",
+			"preferred": "Primary",
 			"addOnWeb": "Adding a method is on the web for now.",
 			"label": "Label",
 			"identifier": "Account number or handle",
 			"visibilityHint": "Who can see this method",
 			"saved": "Payment method saved",
-			"prefer": "Make preferred",
-			"preferredToast": "Preferred method changed",
+			"prefer": "Make primary",
+			"preferredToast": "Primary method changed",
 			"remove": "Remove",
 			"removeBody": "This can't be undone. People you share with will no longer see it.",
 			"removeConfirm": "Remove for good",
@@ -1863,6 +1861,21 @@
 			},
 			"preparing": "Preparing",
 			"failed": "Couldn't make the export. Try again."
+		},
+		"autosave": "Changes save automatically",
+		"display": "Display",
+		"root": {
+			"preferences": "Preferences",
+			"notifications": "Notifications",
+			"danger": "Danger zone",
+			"categories": "{count, plural, one {# category} other {# categories}}",
+			"methods": "{count, plural, one {# method} other {# methods}}",
+			"twoFactorOn": "Two-factor on",
+			"twoFactorOff": "Two-factor off",
+			"export": "Export"
+		},
+		"danger": {
+			"meta": "Pending payments and splits are resolved first"
 		}
 	},
 	"push": {
