@@ -37,8 +37,8 @@ export const monthChangeSchema = z.object({
 
 export const monthSummaryOutputSchema = z.object({
 	summary: monthCloseSummarySchema,
-	/** Overspend already taken from each envelope's next month (Take it from next month instead), net of undos; envelopes with none are left out. */
-	carried: z.array(z.object({ id: idSchema, amount: moneySchema })),
+	/** What each envelope can still take from next month for this month's overspend (Take it from next month instead): the server's cap, late expenses and earlier carries counted. Only the month that just closed has any; envelopes with none are left out. */
+	carryable: z.array(z.object({ id: idSchema, amount: moneySchema })),
 	closedAt: z.date(),
 	revision: z.number().int().min(1),
 	/** The revision the person acknowledged; null until they do. */

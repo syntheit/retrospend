@@ -131,15 +131,15 @@ describe("close bodies", () => {
 		).toBeNull();
 	});
 
-	it("offers only what was not carried yet", () => {
-		const read = (carried: number) =>
+	it("offers exactly what the server says can still be carried", () => {
+		const read = (left: number) =>
 			({
 				...summary(2),
-				carried: carried ? [{ id: "e-food", amount: ars(carried) }] : [],
+				carryable: left ? [{ id: "e-food", amount: ars(left) }] : [],
 			}) as unknown as MonthSummary;
-		expect(carryable(read(0))).toEqual([{ id: "e-food", minor: 4_000 }]);
-		expect(carryable(read(1_500))).toEqual([{ id: "e-food", minor: 2_500 }]);
-		expect(carryable(read(4_000))).toEqual([]);
+		// A late expense made it 6,000 though the stored close says 4,000.
+		expect(carryable(read(6_000))).toEqual([{ id: "e-food", minor: 6_000 }]);
+		expect(carryable(read(0))).toEqual([]);
 		expect(carryable(null)).toEqual([]);
 	});
 
@@ -236,8 +236,8 @@ describe("Month summary", () => {
 	});
 
 	it("takes an overspend from the envelope's next month with a preview and an Undo", async () => {
-		// The server's summary says what was carried: all of it after the write,
-		// none again after its Undo.
+		// The server's summary says what can still be carried: nothing after
+		// the write, all of it again after its Undo.
 		let carried = false;
 		const { api, calls } = fakeBudget({
 			previews: ["previewCarryOverspend"],
@@ -246,7 +246,7 @@ describe("Month summary", () => {
 			extra: {
 				monthSummary: async () => ({
 					...summary(2),
-					carried: carried ? [{ id: "e-food", amount: ars(4_000) }] : [],
+					carryable: carried ? [] : [{ id: "e-food", amount: ars(4_000) }],
 				}),
 			},
 		});

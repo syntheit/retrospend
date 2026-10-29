@@ -120,6 +120,32 @@ async function carriedAlready(tx: Tx, s: Snapshot, envelopeId: string) {
 	return carried.get(envelopeId) ?? 0;
 }
 
+/**
+ * What each open envelope can still take from this month for the overspend of
+ * the month that just closed: what it is over there now (late expenses
+ * included), less what it already carried. The same cap carryOverspend
+ * enforces; envelopes with nothing left to take are left out.
+ */
+export async function carryCaps(
+	tx: Tx,
+	s: Snapshot,
+): Promise<Map<string, Minor>> {
+	const out = new Map<string, Minor>();
+	const closed = addMonths(s.current, -1);
+	if (closed < s.loaded.book.startMonth) return out;
+	const carried = await carriedOverspend(
+		tx,
+		s.loaded.row.id,
+		s.current,
+		s.loaded.book.currency,
+	);
+	for (const e of openEnvelopes(s)) {
+		const cap = Math.max(0, -s.left(e.id, closed)) - (carried.get(e.id) ?? 0);
+		if (cap > 0) out.set(e.id, cap);
+	}
+	return out;
+}
+
 export async function carryOverspend(
 	tx: Tx,
 	userId: string,

@@ -125,7 +125,10 @@ describe("lazy month close on Postgres", () => {
 		});
 		const last = await getMonthSummary(b.user.id, addMonths(current, -1));
 		expect(last?.summary.overspent).toBe(5_000);
-		expect(last?.carried).toEqual([]);
+		expect(last?.carryable).toEqual([
+			{ id: b.ids.Spending, amount: usd(5_000) },
+		]);
+		expect(first?.carryable).toEqual([]);
 		await expect(getMonthSummary(b.user.id, current)).resolves.toBeNull();
 	});
 
@@ -168,12 +171,10 @@ describe("lazy month close on Postgres", () => {
 			(before?.toAssign.amount.minor ?? 0) + 5_000,
 		);
 		expect(left(after, b.ids.Spending as string)).toBe(-5_000);
-		// The stored close still says 5,000 over; the summary says it was carried.
+		// The stored close still says 5,000 over; nothing is left to carry.
 		const summary = await getMonthSummary(b.user.id, addMonths(current, -1));
 		expect(summary?.summary.overspent).toBe(5_000);
-		expect(summary?.carried).toEqual([
-			{ id: b.ids.Spending, amount: { minor: 5_000, currency: "USD" } },
-		]);
+		expect(summary?.carryable).toEqual([]);
 		await expect(
 			forUser(b.user.id).apply(carryOverspendMutation, {
 				...input,
@@ -189,7 +190,9 @@ describe("lazy month close on Postgres", () => {
 		expect((await getMonth(b.user.id))?.toAssign).toEqual(before?.toAssign);
 		await expect(
 			getMonthSummary(b.user.id, addMonths(current, -1)),
-		).resolves.toMatchObject({ carried: [] });
+		).resolves.toMatchObject({
+			carryable: [{ id: b.ids.Spending, amount: usd(5_000) }],
+		});
 	});
 
 	it("fix a negative To assign from the envelopes holding the most, back to exactly 0", async () => {
@@ -255,6 +258,36 @@ describe("lazy month close on Postgres", () => {
 				},
 			}),
 		).rejects.toThrow();
+	});
+});
+
+describe("what a closed month can still carry", () => {
+	it("is the server's cap: a late expense adds to it, a carry takes from it", async () => {
+		const b = await bookTwoMonthsBack();
+		const last = addMonths(current, -1);
+		const carryable = async () =>
+			(await getMonthSummary(b.user.id, last))?.carryable;
+		expect(await carryable()).toEqual([
+			{ id: b.ids.Spending, amount: usd(5_000) },
+		]);
+		await addRow(b.user.id, { amount: 20 }, midMonth(last));
+		expect(await carryable()).toEqual([
+			{ id: b.ids.Spending, amount: usd(7_000) },
+		]);
+		const carry = (amountMinor: number) =>
+			forUser(b.user.id).apply(carryOverspendMutation, {
+				id: randomUUID(),
+				envelopeId: b.ids.Spending as string,
+				amountMinor,
+			});
+		await carry(3_000);
+		expect(await carryable()).toEqual([
+			{ id: b.ids.Spending, amount: usd(4_000) },
+		]);
+		await expect(carry(4_001)).rejects.toMatchObject({
+			code: "OVER_CAP",
+			availableMinor: 4_000,
+		});
 	});
 });
 
