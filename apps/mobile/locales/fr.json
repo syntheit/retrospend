@@ -1,4 +1,6 @@
 {
-	"NSPhotoLibraryUsageDescription": "Retrospend utilise tes photos pour définir ta photo de profil.",
-	"NSCameraUsageDescription": "Retrospend utilise l’appareil photo pour prendre ta photo de profil."
+	"ios": {
+		"NSPhotoLibraryUsageDescription": "Retrospend utilise tes photos pour définir ta photo de profil.",
+		"NSCameraUsageDescription": "Retrospend utilise l’appareil photo pour prendre ta photo de profil."
+	}
 }

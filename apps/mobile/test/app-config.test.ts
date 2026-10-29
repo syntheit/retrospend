@@ -82,9 +82,11 @@ describe("app config", () => {
 		for (const code of APP_LOCALES) {
 			const file = JSON.parse(
 				readFileSync(join(__dirname, "..", "locales", `${code}.json`), "utf8"),
-			) as Record<string, string>;
-			expect(file.NSPhotoLibraryUsageDescription).toBeTruthy();
-			expect(file.NSCameraUsageDescription).toBeTruthy();
+			) as { ios: Record<string, string> };
+			// iOS only: Android lint refuses strings with no default locale.
+			expect(Object.keys(file)).toEqual(["ios"]);
+			expect(file.ios.NSPhotoLibraryUsageDescription).toBeTruthy();
+			expect(file.ios.NSCameraUsageDescription).toBeTruthy();
 			expect(config.locales?.[code]).toBe(`./locales/${code}.json`);
 		}
 		const picker = config.plugins?.find(

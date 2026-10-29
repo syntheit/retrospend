@@ -1,4 +1,6 @@
 {
-	"NSPhotoLibraryUsageDescription": "Retrospend использует ваши фото, чтобы установить фото профиля.",
-	"NSCameraUsageDescription": "Retrospend использует камеру, чтобы сделать фото профиля."
+	"ios": {
+		"NSPhotoLibraryUsageDescription": "Retrospend использует ваши фото, чтобы установить фото профиля.",
+		"NSCameraUsageDescription": "Retrospend использует камеру, чтобы сделать фото профиля."
+	}
 }
