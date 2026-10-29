@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { LinkButton } from "@/features/read/parts";
+import { LinkButton } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { CategoryGlyph, categoryColor, Glyph } from "@/ui/Glyph";

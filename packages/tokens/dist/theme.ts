@@ -166,7 +166,13 @@ export const light = {
 			"sm": 24,
 			"default": 32,
 			"md": 40,
-			"lg": 48
+			"lg": 48,
+			"row": 44,
+			"xl": 64,
+			"xxl": 80
+		},
+		"hero": {
+			"phone": 28
 		},
 		"pageMax": {
 			"desktop": 1120
@@ -415,7 +421,13 @@ export const dark: Theme = {
 			"sm": 24,
 			"default": 32,
 			"md": 40,
-			"lg": 48
+			"lg": 48,
+			"row": 44,
+			"xl": 64,
+			"xxl": 80
+		},
+		"hero": {
+			"phone": 28
 		},
 		"pageMax": {
 			"desktop": 1120

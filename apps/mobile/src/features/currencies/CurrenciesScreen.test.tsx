@@ -47,7 +47,7 @@ jest.mock("@/lib/money", () => ({
 			`${v.currency}:${v.minor}`,
 	}),
 }));
-jest.mock("@/features/read/parts", () => ({ StaleNote: () => null }));
+jest.mock("@/ui/List", () => ({ StaleNote: () => null }));
 jest.mock("./useCurrencies", () => ({
 	useRateTable: () => ({
 		state: { status: "ready", data: mockTable, staleSince: null },

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
-import { CategoryTile, ListRow, StaleNote } from "@/features/read/parts";
+import { CategoryTile, ListRow, StaleNote } from "@/ui/List";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";

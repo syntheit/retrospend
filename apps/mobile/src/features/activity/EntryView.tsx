@@ -6,7 +6,7 @@ import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { useFaces } from "@/features/read/faces";
 import { ENTITY_CACHE_LIMIT } from "@/features/read/loadCached";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { StaleNote } from "@/features/read/parts";
+import { StaleNote } from "@/ui/List";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";

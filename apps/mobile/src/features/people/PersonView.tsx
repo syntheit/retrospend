@@ -5,7 +5,7 @@ import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useFaces } from "@/features/read/faces";
-import { LinkButton, SectionHeader, StaleNote } from "@/features/read/parts";
+import { LinkButton, SectionHeader, StaleNote } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { ConfirmSheet } from "@/features/settle/ConfirmSheet";
 import { SettleSheet } from "@/features/settle/SettleSheet";

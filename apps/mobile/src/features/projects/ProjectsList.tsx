@@ -6,7 +6,7 @@ import { ProjectRow } from "@/features/projects/ProjectRow";
 import { ProjectView } from "@/features/projects/ProjectView";
 import { groupProjects, matchesProject } from "@/features/projects/source";
 import { useProjectList } from "@/features/projects/useProjects";
-import { SectionHeader, StaleNote } from "@/features/read/parts";
+import { SectionHeader, StaleNote } from "@/ui/List";
 import { FLOATING_ADD_INSET, projectRoute } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";

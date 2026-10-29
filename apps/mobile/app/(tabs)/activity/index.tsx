@@ -15,7 +15,7 @@ import type { ActivityItem, ActivityPage } from "@/features/activity/source";
 import { TextAction } from "@/features/activity/TextAction";
 import { useActivity } from "@/features/activity/useActivity";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { StaleNote } from "@/features/read/parts";
+import { StaleNote } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { FLOATING_ADD_INSET } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";

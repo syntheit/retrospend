@@ -3,7 +3,7 @@ import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import { FlatList, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { StaleNote } from "@/features/read/parts";
+import { StaleNote } from "@/ui/List";
 import { FLOATING_ADD_INSET } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";

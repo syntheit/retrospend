@@ -9,7 +9,7 @@ import {
 	ListRow,
 	SectionHeader,
 	StaleNote,
-} from "@/features/read/parts";
+} from "@/ui/List";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";

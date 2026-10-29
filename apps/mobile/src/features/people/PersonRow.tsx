@@ -1,7 +1,7 @@
 import { Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useFaces } from "@/features/read/faces";
-import { ListRow } from "@/features/read/parts";
+import { ListRow } from "@/ui/List";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import { NetAmount, useNetText } from "./NetAmount";

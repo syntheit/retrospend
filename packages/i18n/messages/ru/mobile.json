@@ -2037,5 +2037,29 @@
 			"market": "Рыночный",
 			"custom": "Свой"
 		}
+	},
+	"status": {
+		"owed": "Вам должны",
+		"owe": "Вы должны",
+		"settled": "Погашено",
+		"funded": "Обеспечено",
+		"underfunded": "Недостаточно средств",
+		"overspent": "Перерасход",
+		"pending": "Ожидает",
+		"confirmed": "Подтверждено",
+		"overdue": "Просрочено",
+		"due": "Срок сегодня",
+		"review": "На проверку",
+		"importing": "Импорт",
+		"error": "Ошибка",
+		"notOnRetrospend": "Не в Retrospend",
+		"upcoming": "Предстоит",
+		"noRate": "Курса пока нет",
+		"rejected": "Отклонено",
+		"notCounted": "Не учитывается",
+		"spread": "Распределено по времени"
+	},
+	"list": {
+		"loading": "Загрузка"
 	}
 }

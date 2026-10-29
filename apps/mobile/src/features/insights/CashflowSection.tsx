@@ -1,7 +1,7 @@
 import { SMART_NO_DECIMAL_CURRENCIES } from "@retrospend/domain/currency-format";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { SectionHeader } from "@/features/read/parts";
+import { SectionHeader } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import type { InsightsCashflow } from "./source";
