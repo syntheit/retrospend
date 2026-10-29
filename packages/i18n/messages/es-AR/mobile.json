@@ -277,7 +277,6 @@
 			"row": "Eliminar",
 			"title": "¿Eliminar este gasto?",
 			"body": "Sale de tus gastos y de tu presupuesto.",
-			"bodyShared": "Sale de la división y cambia lo que se debe. No se puede deshacer.",
 			"button": "Eliminar",
 			"deleted": "Se eliminó {title}",
 			"restored": "Se restauró {title}",
@@ -2172,9 +2171,7 @@
 			"fixed": "El monto de siempre, {amount}.",
 			"nextDue": "Próximo vencimiento",
 			"submit": "Confirmar",
-			"toast": "{title} registrado, {amount}",
-			"autoOn": "Activado",
-			"autoOff": "Desactivado"
+			"toast": "{title} registrado, {amount}"
 		},
 		"item": {
 			"next": "{amount}, próximo el {date}.",

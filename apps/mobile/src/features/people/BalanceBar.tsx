@@ -52,7 +52,12 @@ export function BalanceBar({
 		<Pressable
 			accessibilityLabel={label(s)}
 			accessibilityRole="button"
-			hitSlop={{ top: space[4], bottom: space[4] }}
+			hitSlop={{
+				top: space[4],
+				bottom: space[4],
+				left: space[1],
+				right: space[1],
+			}}
 			key={idOf(s)}
 			onLayout={(event) => {
 				const { x, width: w } = event.nativeEvent.layout;
@@ -61,7 +66,8 @@ export function BalanceBar({
 			onPress={() => onPerson(s.key)}
 			style={{
 				flex: s.share,
-				minWidth: space[1],
+				// A sliver of a share stays a dot as wide as the bar is tall.
+				minWidth: space[3],
 				height: THIN.balance,
 				borderRadius: radius.chip,
 				overflow: "hidden",

@@ -277,7 +277,6 @@
 			"row": "Excluir",
 			"title": "Excluir este gasto?",
 			"body": "Ele sai dos seus gastos e do seu orçamento.",
-			"bodyShared": "Ele sai da divisão e o que as pessoas devem muda. Não dá para desfazer.",
 			"button": "Excluir",
 			"deleted": "{title} excluído",
 			"restored": "{title} restaurado",
@@ -2172,9 +2171,7 @@
 			"fixed": "O valor de sempre, {amount}.",
 			"nextDue": "Próximo vencimento",
 			"submit": "Confirmar",
-			"toast": "{title} registrado, {amount}",
-			"autoOn": "Ativado",
-			"autoOff": "Desativado"
+			"toast": "{title} registrado, {amount}"
 		},
 		"item": {
 			"next": "{amount}, próximo em {date}.",

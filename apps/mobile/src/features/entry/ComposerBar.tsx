@@ -2,6 +2,7 @@ import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { TextAction } from "@/features/activity/TextAction";
 import { useTheme } from "@/theme";
+import { Button } from "@/ui/Button";
 import { Text } from "@/ui/Text";
 
 /** The operators the amount takes; the domain reads the typed sum exactly. */
@@ -14,7 +15,7 @@ const OPERATORS = [
 
 /**
  * The bar over the keypad: the four operators on the left for adding up an
- * amount, or Back on More, and the Add pill at the end (16/600, off until
+ * amount, or Back on More, and the primary Add button at the end (off until
  * there is an amount to add).
  */
 export function ComposerBar({
@@ -83,27 +84,12 @@ export function ComposerBar({
 			) : (
 				<View />
 			)}
-			<Pressable
+			<Button
 				accessibilityLabel={addDescription}
-				accessibilityRole="button"
-				accessibilityState={{ busy, disabled: addOff || busy }}
 				disabled={addOff || busy}
+				label={addLabel}
 				onPress={onAdd}
-				style={({ pressed }) => ({
-					minHeight: size.touchMin.phone,
-					minWidth: space[12] + space[8],
-					alignItems: "center",
-					justifyContent: "center",
-					paddingHorizontal: space[6],
-					borderRadius: radius.chip,
-					backgroundColor: pressed ? color.brandHover : color.brand,
-					opacity: addOff || busy ? 0.5 : 1,
-				})}
-			>
-				<Text style={{ color: color.brandFg }} variant="section">
-					{addLabel}
-				</Text>
-			</Pressable>
+			/>
 		</View>
 	);
 }

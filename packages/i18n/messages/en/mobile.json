@@ -277,7 +277,6 @@
 			"row": "Delete",
 			"title": "Delete this expense?",
 			"body": "It leaves your spending and your budget.",
-			"bodyShared": "It leaves the split and what people owe changes. This can't be undone.",
 			"button": "Delete",
 			"deleted": "Deleted {title}",
 			"restored": "Restored {title}",
@@ -2172,9 +2171,7 @@
 			"fixed": "The usual amount, {amount}.",
 			"nextDue": "Next due",
 			"submit": "Confirm",
-			"toast": "{title} logged, {amount}",
-			"autoOn": "On",
-			"autoOff": "Off"
+			"toast": "{title} logged, {amount}"
 		},
 		"item": {
 			"next": "{amount}, next on {date}.",

@@ -1,5 +1,4 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { newClientId } from "@/data/ids";
 import type { ActivityItem } from "@/features/activity/source";
 import { wireAmount } from "@/features/write/amount";
 
@@ -22,6 +21,22 @@ export function canRepeat(item: ActivityItem): boolean {
 }
 
 /**
+ * The exact body of the create, so the sheet can tie one idempotency key to it
+ * (a retry after a lost answer replays the first create, never makes a second).
+ */
+export function templateBody(item: ActivityItem) {
+	return {
+		name: item.title,
+		amount: wireAmount(item.amount.minor, item.amount.currency),
+		currency: item.amount.currency,
+		...(item.category?.id ? { categoryId: item.category.id } : {}),
+		frequency: "MONTHLY" as const,
+		nextDueDate: nextMonthly(item.date),
+		autoPay: false,
+	};
+}
+
+/**
  * Makes a monthly template from an expense: the same title, amount, currency
  * and category, next one month after the entry, with auto-pay off so nothing
  * is logged until you confirm it. It creates the template only; no entry and
@@ -30,17 +45,9 @@ export function canRepeat(item: ActivityItem): boolean {
 export function createFromExpense(
 	api: Pick<RetrospendClient, "recurring">,
 	item: ActivityItem,
+	idempotencyKey: string,
 ) {
-	return api.recurring.create(
-		{
-			name: item.title,
-			amount: wireAmount(item.amount.minor, item.amount.currency),
-			currency: item.amount.currency,
-			...(item.category?.id ? { categoryId: item.category.id } : {}),
-			frequency: "MONTHLY",
-			nextDueDate: nextMonthly(item.date),
-			autoPay: false,
-		},
-		{ context: { idempotencyKey: newClientId() } },
-	);
+	return api.recurring.create(templateBody(item), {
+		context: { idempotencyKey },
+	});
 }
