@@ -182,6 +182,21 @@ function stringCatalog(table, locales) {
 	return `${JSON.stringify({ sourceLanguage: "en", strings, version: "1.0" }, null, 2)}\n`;
 }
 
+/**
+ * One locale's AppShortcuts.strings: English phrase = translated phrase. Siri's
+ * phrases can be a String Catalog only from iOS 17, and the app supports 16.4.
+ */
+function shortcutsStrings(locale) {
+	const english = shortcutStrings("en");
+	const catalog = shortcutStrings(locale);
+	const literal = (text) =>
+		withArgs(text, CATALOG_ARGS).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+	return `${STRING_TABLES.AppShortcuts.map(
+		(key) =>
+			`"${literal(english[key])}" = "${literal(catalog[key] ?? english[key])}";`,
+	).join("\n")}\n`;
+}
+
 /** What the Swift sources must say for each catalog key (the English text). */
 function swiftSources() {
 	const english = shortcutStrings("en");
@@ -287,8 +302,8 @@ function addExtensionTarget(project, spec, ctx) {
 	}
 }
 
-/** The String Catalogs the app target carries. */
-const APP_STRINGS = ["AppShortcuts", "Localizable"];
+/** The String Catalogs the app target carries (AppShortcuts goes in .lproj). */
+const APP_STRINGS = ["Localizable"];
 
 /**
  * Types every String Catalog reference. The xcode package does not know the
@@ -340,6 +355,14 @@ function withIosSurfaces(config, group, locales) {
 					stringCatalog(table, locales),
 				);
 			}
+			for (const locale of locales) {
+				const dir = path.join(app, "Supporting", `${locale}.lproj`);
+				fs.mkdirSync(dir, { recursive: true });
+				fs.writeFileSync(
+					path.join(dir, "AppShortcuts.strings"),
+					shortcutsStrings(locale),
+				);
+			}
 			for (const spec of TARGETS) {
 				const dir = path.join(root, spec.name);
 				fs.mkdirSync(dir, { recursive: true });
@@ -386,6 +409,22 @@ function withIosSurfaces(config, group, locales) {
 				project,
 			});
 		}
+		for (const locale of locales) {
+			const groupName = `${name}/Supporting/${locale}.lproj`;
+			const group = IOSConfig.XcodeUtils.ensureGroupRecursively(
+				project,
+				groupName,
+			);
+			if (group?.children.some((c) => c.comment === "AppShortcuts.strings")) {
+				continue;
+			}
+			IOSConfig.XcodeUtils.addResourceFileToGroup({
+				filepath: `${locale}.lproj/AppShortcuts.strings`,
+				groupName,
+				isBuildFile: true,
+				project,
+			});
+		}
 		for (const spec of TARGETS) {
 			addExtensionTarget(project, spec, {
 				appId,
@@ -411,4 +450,5 @@ module.exports.SHARE_RULE = SHARE_RULE;
 module.exports.TARGETS = TARGETS;
 module.exports.STRING_TABLES = STRING_TABLES;
 module.exports.stringCatalog = stringCatalog;
+module.exports.shortcutsStrings = shortcutsStrings;
 module.exports.swiftSources = swiftSources;

@@ -9,6 +9,7 @@ const {
 	addSendFilters,
 	SHARE_RULE,
 	STRING_TABLES,
+	shortcutsStrings,
 	stringCatalog,
 	swiftSources,
 	TARGETS,
@@ -87,26 +88,19 @@ describe("system surfaces plugin", () => {
 	});
 
 	it("translates the Shortcuts phrases into every app language", () => {
-		const catalog = JSON.parse(stringCatalog("AppShortcuts", APP_LOCALES));
-		const phrases = Object.entries(catalog.strings) as [
-			string,
-			{ localizations: Record<string, { stringUnit: { value: string } }> },
-		][];
-		expect(phrases.map(([key]) => key)).toEqual([
-			"Add an expense in ${applicationName}",
-			"New expense in ${applicationName}",
-		]);
-		for (const [, { localizations }] of phrases) {
-			expect(Object.keys(localizations).sort()).toEqual(
-				APP_LOCALES.filter((l) => l !== "en").sort(),
-			);
+		for (const locale of APP_LOCALES) {
+			const lines = (shortcutsStrings(locale) as string).trim().split("\n");
+			expect(lines.map((line) => line.split(" = ")[0])).toEqual([
+				'"Add an expense in ${applicationName}"',
+				'"New expense in ${applicationName}"',
+			]);
 			// Siri needs the app's name in every phrase.
-			for (const { stringUnit } of Object.values(localizations)) {
-				expect(stringUnit.value).toContain("${applicationName}");
+			for (const line of lines) {
+				expect(line.split(" = ")[1]).toContain("${applicationName}");
 			}
 		}
-		expect(phrases[0]?.[1].localizations["es-AR"]?.stringUnit.value).toBe(
-			"Agregá un gasto en ${applicationName}",
+		expect(shortcutsStrings("es-AR")).toContain(
+			'= "Agregá un gasto en ${applicationName}";',
 		);
 	});
 
