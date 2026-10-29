@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { type ReactNode, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerBaseUrl } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
@@ -11,6 +11,7 @@ import { useTheme } from "@/theme";
 import { Avatar, type Face } from "@/ui/Avatar";
 import { Glyph, type GlyphName } from "@/ui/Glyph";
 import { Sheet } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { TopBar } from "@/ui/TopBar";
 import { useSignOut } from "./useSignOut";
 
@@ -40,7 +41,7 @@ export function AccountTopBar({ title }: { title: string }) {
 	const { state } = useSession();
 	const baseUrl = useServerBaseUrl();
 	const confirmSignOut = useSignOut();
-	const { color, space, type } = useTheme();
+	const { color, space } = useTheme();
 	const [open, setOpen] = useState(false);
 	const me = state.status === "signedIn" ? state.me : null;
 	const face = useMyFace();
@@ -84,20 +85,10 @@ export function AccountTopBar({ title }: { title: string }) {
 						>
 							<Avatar face={face} size="md" />
 							<View style={{ flex: 1, gap: space[1] }}>
-								<Text
-									numberOfLines={1}
-									style={{
-										color: color.fg,
-										fontSize: type.section.size,
-										fontWeight: "600",
-									}}
-								>
+								<Text numberOfLines={1} variant="section">
 									{me.name}
 								</Text>
-								<Text
-									numberOfLines={1}
-									style={{ color: color.fg2, fontSize: type.small.size }}
-								>
+								<Text numberOfLines={1} tone="fg2" variant="small">
 									{me.username ? `@${me.username}` : me.email}
 								</Text>
 							</View>
@@ -105,10 +96,7 @@ export function AccountTopBar({ title }: { title: string }) {
 						</Pressable>
 					) : null}
 					<View style={{ gap: space[1] }}>
-						<Text
-							accessibilityRole="header"
-							style={{ color: color.fg2, fontSize: type.small.size }}
-						>
+						<Text accessibilityRole="header" tone="fg2" variant="small">
 							{t("goTo")}
 						</Text>
 						<RowList>
@@ -154,13 +142,7 @@ export function AccountTopBar({ title }: { title: string }) {
 						/>
 					</RowList>
 					{VERSION ? (
-						<Text
-							style={{
-								color: color.fg3,
-								fontSize: type.small.size,
-								textAlign: "center",
-							}}
-						>
+						<Text style={{ textAlign: "center" }} tone="fg3" variant="small">
 							{t("version", { version: VERSION })}
 						</Text>
 					) : null}
@@ -214,7 +196,7 @@ function AccountRow({
 	onPress: () => void;
 	chevron?: boolean;
 }) {
-	const { color, radius, size, space, type } = useTheme();
+	const { color, radius, size, space } = useTheme();
 	const tile = size.avatar.default;
 	return (
 		<Pressable
@@ -242,9 +224,7 @@ function AccountRow({
 			>
 				<Glyph color={color.fg2} name={glyph} size={size.icon.phone} />
 			</View>
-			<Text style={{ flex: 1, color: color.fg, fontSize: type.body.size }}>
-				{label}
-			</Text>
+			<Text style={{ flex: 1 }}>{label}</Text>
 			{chevron ? <Chevron /> : null}
 		</Pressable>
 	);

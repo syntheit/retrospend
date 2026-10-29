@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { Stack } from "expo-router";
 import { useState } from "react";
-import { Platform, Text, TextInput, View } from "react-native";
+import { Platform, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import {
@@ -12,6 +12,7 @@ import {
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Screen } from "@/ui/Screen";
+import { Text } from "@/ui/Text";
 
 type Failure = Extract<ProbeResult, { ok: false }>["reason"] | "saveFailed";
 
@@ -66,7 +67,6 @@ export default function ConnectScreen() {
 		setInsecureUrl(null);
 	}
 
-	const small = { fontSize: type.small.size };
 	return (
 		<>
 			<Stack.Screen
@@ -78,17 +78,9 @@ export default function ConnectScreen() {
 				}}
 			/>
 			<Screen>
-				<Text
-					style={{
-						color: color.fg2,
-						fontSize: type.body.size,
-						lineHeight: type.body.size * type.body.lineHeight,
-					}}
-				>
-					{t("intro")}
-				</Text>
+				<Text tone="fg2">{t("intro")}</Text>
 				<View style={{ gap: space[2] }}>
-					<Text style={[small, { color: color.fg }]}>{t("urlLabel")}</Text>
+					<Text variant="small">{t("urlLabel")}</Text>
 					<TextInput
 						accessibilityLabel={t("urlLabel")}
 						autoCapitalize="none"
@@ -117,7 +109,8 @@ export default function ConnectScreen() {
 						<Text
 							accessibilityLiveRegion="polite"
 							accessibilityRole="alert"
-							style={[small, { color: color.danger }]}
+							tone="danger"
+							variant="small"
 						>
 							{t(failure)}
 						</Text>
@@ -126,7 +119,8 @@ export default function ConnectScreen() {
 						<Text
 							accessibilityLiveRegion="polite"
 							accessibilityRole="alert"
-							style={[small, { color: color.attentionText }]}
+							tone="attention"
+							variant="small"
 						>
 							{t("insecureWarning")}
 						</Text>

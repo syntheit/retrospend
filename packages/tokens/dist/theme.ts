@@ -184,6 +184,12 @@ export const light = {
 			"phone": 44
 		}
 	},
+	"chart": {
+		"line": 2,
+		"dot": 5,
+		"ring": 2,
+		"label": 12
+	},
 	"breakpoint": {
 		"phone": {
 			"max": 767
@@ -438,6 +444,12 @@ export const dark: Theme = {
 		"touchMin": {
 			"phone": 44
 		}
+	},
+	"chart": {
+		"line": 2,
+		"dot": 5,
+		"ring": 2,
+		"label": 12
 	},
 	"breakpoint": {
 		"phone": {

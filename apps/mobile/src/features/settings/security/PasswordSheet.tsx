@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -7,6 +7,7 @@ import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Glyph } from "@/ui/Glyph";
 import { Sheet } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import { PASSWORD_CHECKS, passwordChecks, passwordReady } from "./rules";
@@ -120,12 +121,7 @@ export function PasswordSheet({
 							<View style={{ opacity: checks[c] ? 1 : 0 }}>
 								<Glyph color={color.fg} name="Check" size={type.small.size} />
 							</View>
-							<Text
-								style={{
-									color: checks[c] ? color.fg : color.fg3,
-									fontSize: type.small.size,
-								}}
-							>
+							<Text tone={checks[c] ? "fg" : "fg3"} variant="small">
 								{t(`check.${c}`)}
 							</Text>
 						</View>
@@ -140,18 +136,12 @@ export function PasswordSheet({
 					value={confirm}
 				/>
 				{confirm !== "" && confirm !== next ? (
-					<Text
-						accessibilityRole="alert"
-						style={{ color: color.danger, fontSize: type.small.size }}
-					>
+					<Text accessibilityRole="alert" tone="danger" variant="small">
 						{t("mismatch")}
 					</Text>
 				) : null}
 				{refusal ? (
-					<Text
-						accessibilityRole="alert"
-						style={{ color: color.danger, fontSize: type.body.size }}
-					>
+					<Text accessibilityRole="alert" tone="danger">
 						{refusal}
 					</Text>
 				) : null}

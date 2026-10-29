@@ -21,6 +21,8 @@ export function useTheme(): Theme {
 	return themeFor(useColorScheme());
 }
 
+export { FONT_FAMILY, fontFamilyFor } from "./fonts";
+
 /** Navigation chrome colors (headers, tab bar, screen background) from the same tokens. */
 export function navigationTheme(
 	scheme: ColorSchemeName | null,
@@ -30,7 +32,7 @@ export function navigationTheme(
 	return {
 		...base,
 		colors: {
-			primary: color.accent,
+			primary: color.brand,
 			background: color.bg,
 			card: color.bg,
 			text: color.fg,

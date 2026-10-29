@@ -1,6 +1,6 @@
 import { parseMoneyInput } from "@retrospend/domain/parse";
 import { useEffect, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import type { PersonIdentity } from "@/features/people/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
@@ -11,6 +11,7 @@ import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { Picker } from "@/ui/Picker";
 import { Segmented } from "@/ui/Segmented";
 import { Sheet } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { PreviewList } from "./PreviewList";
 import { allocationOf } from "./plan";
@@ -67,7 +68,7 @@ export function SettleSheet({
 	const tm = useTranslations("mobile.money");
 	const toast = useToast();
 	const format = useMoneyText();
-	const { color, size, space, type } = useTheme();
+	const { size, space } = useTheme();
 	const locale = useMoneyLocale();
 	const flow = useSettle({ type: person.type, id: person.id }, visible);
 	const name = person.name;
@@ -125,14 +126,7 @@ export function SettleSheet({
 	}
 
 	const note = (text: string, tone: "plain" | "attention" = "plain") => (
-		<Text
-			style={{
-				color: tone === "attention" ? color.attentionText : color.fg2,
-				fontSize: type.body.size,
-			}}
-		>
-			{text}
-		</Text>
+		<Text tone={tone === "attention" ? "attention" : "fg2"}>{text}</Text>
 	);
 
 	return (
@@ -206,12 +200,9 @@ export function SettleSheet({
 											? `${t("amount")}, ${format({ minor: amountMinor, currency: context.currency })}`
 											: t("typeAmount")
 									}
-									style={{
-										color: amountMinor > 0 ? color.fg : color.fg3,
-										fontSize: type.title.size,
-										fontVariant: ["tabular-nums"],
-										fontWeight: "600",
-									}}
+									tabular
+									tone={amountMinor > 0 ? "fg" : "fg3"}
+									variant="title"
 								>
 									{draft === ""
 										? context.currency
@@ -224,14 +215,7 @@ export function SettleSheet({
 									onDraftChange={changeDraft}
 								/>
 								{draft !== "" && amountMinor === 0 ? (
-									<Text
-										style={{
-											color: color.attentionText,
-											fontSize: type.body.size,
-										}}
-									>
-										{t("amountInvalid")}
-									</Text>
+									<Text tone="attention">{t("amountInvalid")}</Text>
 								) : null}
 							</>
 						) : null}
@@ -243,17 +227,10 @@ export function SettleSheet({
 							: null}
 						{allocation && !custom ? (
 							<View style={{ gap: space[1] }}>
-								<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+								<Text tone="fg2" variant="small">
 									{t("amount")}
 								</Text>
-								<Text
-									style={{
-										color: color.fg,
-										fontSize: type.title.size,
-										fontVariant: ["tabular-nums"],
-										fontWeight: "600",
-									}}
-								>
+								<Text tabular variant="title">
 									{allocation.converted
 										? tm("approx", { amount: format(allocation.amount) })
 										: format(allocation.amount)}

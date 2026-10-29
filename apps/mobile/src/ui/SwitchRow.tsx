@@ -1,7 +1,8 @@
 import { Switch } from "@expo/ui";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
+import { Text } from "./Text";
 
 /** A label (and a quiet sentence under it) with the system switch at the end. */
 export function SwitchRow({
@@ -17,7 +18,7 @@ export function SwitchRow({
 	onChange: (value: boolean) => void;
 	disabled?: boolean;
 }) {
-	const { color, size, space, type } = useTheme();
+	const { size, space } = useTheme();
 	return (
 		<View
 			style={{
@@ -29,11 +30,9 @@ export function SwitchRow({
 			}}
 		>
 			<View style={{ flex: 1, gap: space[1] }}>
-				<Text style={{ color: color.fg, fontSize: type.body.size }}>
-					{label}
-				</Text>
+				<Text>{label}</Text>
 				{detail ? (
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					<Text tone="fg2" variant="small">
 						{detail}
 					</Text>
 				) : null}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ScrollView, Text, TextInput, View } from "react-native";
+import { ScrollView, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { PreviewList } from "@/features/settle/PreviewList";
@@ -8,6 +8,7 @@ import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Segmented } from "@/ui/Segmented";
 import { Sheet } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import type { LedgerRow } from "./PersonSections";
 import type { NeedsItem, PersonIdentity } from "./source";
@@ -107,32 +108,15 @@ export function ReviewSheet({
 				gap: space[3],
 			}}
 		>
-			<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-				{label}
-			</Text>
-			<Text
-				style={{
-					flexShrink: 1,
-					color: color.fg,
-					fontSize: type.body.size,
-					fontVariant: ["tabular-nums"],
-					textAlign: "right",
-				}}
-			>
+			<Text tone="fg2">{label}</Text>
+			<Text style={{ flexShrink: 1, textAlign: "right" }} tabular>
 				{value}
 			</Text>
 		</View>
 	);
 
 	const note = (text: string, tone: "plain" | "attention" = "plain") => (
-		<Text
-			style={{
-				color: tone === "attention" ? color.attentionText : color.fg2,
-				fontSize: type.body.size,
-			}}
-		>
-			{text}
-		</Text>
+		<Text tone={tone === "attention" ? "attention" : "fg2"}>{text}</Text>
 	);
 
 	const rows = flow.preview ? previewRows(flow.preview) : null;
@@ -154,15 +138,7 @@ export function ReviewSheet({
 				contentContainerStyle={{ gap: space[4], paddingBottom: space[4] }}
 				keyboardShouldPersistTaps="handled"
 			>
-				<Text
-					style={{
-						color: color.fg,
-						fontSize: type.title.size,
-						fontWeight: "600",
-					}}
-				>
-					{need.title}
-				</Text>
+				<Text variant="title">{need.title}</Text>
 				<View style={{ gap: space[2] }}>
 					{line(t("yourShare"), money(need.amount))}
 					{effect ? line(t("betweenYou"), effect) : null}
@@ -180,7 +156,7 @@ export function ReviewSheet({
 				{note(t(`explain.${choice}`, { name: first }))}
 				{choice === "fix" ? (
 					<View style={{ gap: space[2] }}>
-						<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+						<Text tone="fg2" variant="small">
 							{t("message")}
 						</Text>
 						<TextInput

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
+import { Text } from "@/ui/Text";
 
 /** A labeled single-line text field, at the money input's height. */
 export function TextField({
@@ -22,7 +23,7 @@ export function TextField({
 	const { color, radius, size, space, type } = useTheme();
 	return (
 		<View style={{ gap: space[2] }}>
-			<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+			<Text tone="fg2" variant="small">
 				{label}
 			</Text>
 			<TextInput
@@ -71,17 +72,15 @@ export function ChoiceList({
 	selected: ReadonlySet<string>;
 	onPress: (id: string) => void;
 }) {
-	const { color, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 	return (
 		<View>
 			{label ? (
 				<Text
 					accessibilityRole="header"
-					style={{
-						color: color.fg2,
-						fontSize: type.small.size,
-						paddingBottom: space[1],
-					}}
+					style={{ paddingBottom: space[1] }}
+					tone="fg2"
+					variant="small"
 				>
 					{label}
 				</Text>
@@ -108,20 +107,11 @@ export function ChoiceList({
 						})}
 					>
 						{choice.lead}
-						<Text
-							numberOfLines={1}
-							style={{ flex: 1, color: color.fg, fontSize: type.body.size }}
-						>
+						<Text numberOfLines={1} style={{ flex: 1 }}>
 							{choice.label}
 						</Text>
 						{choice.detail ? (
-							<Text
-								style={{
-									color: color.fg2,
-									fontSize: type.body.size,
-									fontVariant: ["tabular-nums"],
-								}}
-							>
+							<Text tabular tone="fg2">
 								{choice.detail}
 							</Text>
 						) : null}

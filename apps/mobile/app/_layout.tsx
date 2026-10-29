@@ -1,3 +1,7 @@
+import { DMSans_400Regular } from "@expo-google-fonts/dm-sans/400Regular";
+import { DMSans_500Medium } from "@expo-google-fonts/dm-sans/500Medium";
+import { DMSans_600SemiBold } from "@expo-google-fonts/dm-sans/600SemiBold";
+import { useFonts } from "expo-font";
 import { Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
@@ -56,12 +60,22 @@ function Routes() {
 
 export default function RootLayout() {
 	const scheme = useColorScheme();
+	// DM Sans for every word outside the native chrome (GUIDELINE §2.3), one
+	// face per weight token. The files ship in the bundle and load while the
+	// native splash shows; on an error the system font stands in.
+	const [fontsLoaded, fontError] = useFonts({
+		DMSans_400Regular,
+		DMSans_500Medium,
+		DMSans_600SemiBold,
+	});
 
 	// The window behind every screen (seen during rotation and on Android
 	// behind transparent system bars) follows the theme.
 	useEffect(() => {
 		SystemUI.setBackgroundColorAsync(themeFor(scheme).color.bg);
 	}, [scheme]);
+
+	if (!fontsLoaded && !fontError) return null;
 
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>

@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { type LayoutChangeEvent, Text, View } from "react-native";
+import { type LayoutChangeEvent, View } from "react-native";
 import Svg, { Rect } from "react-native-svg";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 import { barShares, highlightIndex } from "./rows";
 import type { InsightsMonths } from "./source";
 import type { InsightsWords } from "./useInsightsWords";
@@ -26,7 +27,7 @@ export function MonthBars({
 	const t = useTranslations("mobile.insights.months");
 	const noRate = useTranslations("mobile.money")("noRate");
 	const money = useMoneyText();
-	const { color, radius, space, type } = useTheme();
+	const { color, radius, space } = useTheme();
 	const [width, setWidth] = useState(0);
 	const height = space[12] * 3 + space[4];
 	const gap = space[3];
@@ -83,13 +84,10 @@ export function MonthBars({
 					<Text
 						key={m.month}
 						numberOfLines={1}
-						style={{
-							flex: 1,
-							textAlign: "center",
-							color: i === hi ? color.fg : color.fg2,
-							fontSize: type.meta.size,
-							fontWeight: i === hi ? "500" : "400",
-						}}
+						style={{ flex: 1, textAlign: "center" }}
+						tone={i === hi ? "fg" : "fg2"}
+						variant="meta"
+						weight={i === hi ? "medium" : "normal"}
 					>
 						{words.monthShort(m.month)}
 					</Text>
@@ -97,11 +95,9 @@ export function MonthBars({
 			</View>
 			<Text
 				importantForAccessibility="no"
-				style={{
-					color: color.fg3,
-					fontSize: type.meta.size,
-					paddingTop: space[2],
-				}}
+				style={{ paddingTop: space[2] }}
+				tone="fg3"
+				variant="meta"
 			>
 				{t("caption")}
 			</Text>

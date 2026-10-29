@@ -1,10 +1,11 @@
 import { parseMoneyInput } from "@retrospend/domain/parse";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
+import { Text } from "@/ui/Text";
 import { TextField } from "@/ui/TextField";
 import { TypeLine, useRateLabel } from "./parts";
 import {
@@ -26,7 +27,6 @@ export function ConversionLines({
 	const t = useTranslations("mobile.currencies");
 	const label = useRateLabel();
 	const { format } = useFormatMoney();
-	const { color, type } = useTheme();
 	return (
 		<View accessibilityLiveRegion="polite">
 			{(result?.results ?? []).map((r) => (
@@ -37,13 +37,9 @@ export function ConversionLines({
 				>
 					<Text
 						numberOfLines={1}
-						style={{
-							color: color.fg,
-							fontSize: type.body.size,
-							fontVariant: ["tabular-nums"],
-							fontWeight: "600",
-							textAlign: "right",
-						}}
+						style={{ textAlign: "right" }}
+						tabular
+						weight="semibold"
 					>
 						{format(r.value) ?? ""}
 					</Text>
@@ -67,7 +63,7 @@ export function ConvertBlock({
 }) {
 	const t = useTranslations("mobile.currencies.convert");
 	const locale = useMoneyLocale();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const [direction, setDirection] = useState<ConvertDirection>(
 		// The stronger currency is the one unit: from home when home is the base.
 		defaultPrice(row)?.base === home ? "fromHome" : "toHome",
@@ -83,14 +79,7 @@ export function ConvertBlock({
 	);
 	return (
 		<View style={{ gap: space[2] }}>
-			<Text
-				accessibilityRole="header"
-				style={{
-					color: color.fg,
-					fontSize: type.section.size,
-					fontWeight: "600",
-				}}
-			>
+			<Text accessibilityRole="header" variant="section">
 				{t("title")}
 			</Text>
 			<TextField
@@ -109,9 +98,7 @@ export function ConvertBlock({
 					gap: space[3],
 				}}
 			>
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-					{t("into", { code: to })}
-				</Text>
+				<Text tone="fg2">{t("into", { code: to })}</Text>
 				<Button
 					label={t("swap")}
 					onPress={() =>
@@ -121,7 +108,7 @@ export function ConvertBlock({
 				/>
 			</View>
 			{failed ? (
-				<Text style={{ color: color.danger, fontSize: type.small.size }}>
+				<Text tone="danger" variant="small">
 					{t("failed")}
 				</Text>
 			) : (

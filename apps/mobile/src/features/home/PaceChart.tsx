@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { type LayoutChangeEvent, Text, View } from "react-native";
+import { type LayoutChangeEvent, View } from "react-native";
 import Svg, { Circle, Line, Path } from "react-native-svg";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 import { type PaceLines, paceLines, paceShape } from "./pace";
 import type { Glance } from "./source";
 
@@ -44,7 +45,7 @@ export function PaceChart({ glance }: { glance: Glance }) {
 	const t = useTranslations("mobile.home.pace");
 	const money = useMoneyText();
 	const monthName = useMonthName();
-	const { color, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 	const [width, setWidth] = useState(0);
 	const days = glance.period.days;
 	const lines: PaceLines = paceLines({
@@ -59,11 +60,10 @@ export function PaceChart({ glance }: { glance: Glance }) {
 		return (
 			<Text
 				style={{
-					color: color.fg2,
-					fontSize: type.body.size,
 					paddingHorizontal: space[4],
 					paddingBottom: space[2],
 				}}
+				tone="fg2"
 			>
 				{t("empty")}
 			</Text>
@@ -143,7 +143,7 @@ export function PaceChart({ glance }: { glance: Glance }) {
 					style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}
 				>
 					<Swatch color={color.accent} />
-					<Text style={{ color: color.fg2, fontSize: type.meta.size }}>
+					<Text tone="fg2" variant="meta">
 						{thisName}
 					</Text>
 				</View>
@@ -151,7 +151,7 @@ export function PaceChart({ glance }: { glance: Glance }) {
 					style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}
 				>
 					<Swatch color={color.fg3} dashed />
-					<Text style={{ color: color.fg2, fontSize: type.meta.size }}>
+					<Text tone="fg2" variant="meta">
 						{lastName}
 					</Text>
 				</View>

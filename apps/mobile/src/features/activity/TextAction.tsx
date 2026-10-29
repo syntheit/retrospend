@@ -1,5 +1,6 @@
-import { Pressable, Text } from "react-native";
+import { Pressable } from "react-native";
 import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 
 /**
  * A text action at the end of a row (Select, Categorize, Delete, Done), at
@@ -16,7 +17,7 @@ export function TextAction({
 	onPress: () => void;
 	disabled?: boolean;
 }) {
-	const { color, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 	return (
 		<Pressable
 			accessibilityRole="button"
@@ -30,13 +31,7 @@ export function TextAction({
 				opacity: pressed || disabled ? 0.5 : 1,
 			})}
 		>
-			<Text
-				style={{
-					color: color.brand,
-					fontSize: type.body.size,
-					fontWeight: "500",
-				}}
-			>
+			<Text style={{ color: color.brand }} weight="medium">
 				{label}
 			</Text>
 		</Pressable>

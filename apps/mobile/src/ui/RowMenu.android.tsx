@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Pressable, Text } from "react-native";
+import { Pressable } from "react-native";
 import { useTheme } from "@/theme";
 import { Sheet } from "./Sheet";
+import { Text } from "./Text";
 import type { RowMenuProps } from "./types";
 
 /**
@@ -9,7 +10,7 @@ import type { RowMenuProps } from "./types";
  * listing them (the Material pattern for row actions on touch).
  */
 export function RowMenu({ title, items, children, onPress }: RowMenuProps) {
-	const { color, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 	const [open, setOpen] = useState(false);
 	return (
 		<>
@@ -44,10 +45,9 @@ export function RowMenu({ title, items, children, onPress }: RowMenuProps) {
 						}}
 					>
 						<Text
-							style={{
-								color: item.destructive ? color.danger : color.fg,
-								fontSize: type.section.size,
-							}}
+							tone={item.destructive ? "danger" : "fg"}
+							variant="section"
+							weight="normal"
 						>
 							{item.label}
 						</Text>

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import type { Profile } from "./source";
@@ -30,7 +31,7 @@ export function ProfileSheet({
 	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const toast = useToast();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const [name, setName] = useState(profile.name);
 	const [username, setUsername] = useState(profile.username);
 	const [busy, setBusy] = useState(false);
@@ -95,18 +96,12 @@ export function ProfileSheet({
 					value={username}
 				/>
 				{userOk ? null : (
-					<Text
-						accessibilityRole="alert"
-						style={{ color: color.danger, fontSize: type.small.size }}
-					>
+					<Text accessibilityRole="alert" tone="danger" variant="small">
 						{t("profile.usernameRule")}
 					</Text>
 				)}
 				{failed ? (
-					<Text
-						accessibilityRole="alert"
-						style={{ color: color.attentionText, fontSize: type.body.size }}
-					>
+					<Text accessibilityRole="alert" tone="attention">
 						{t("profile.error")}
 					</Text>
 				) : null}

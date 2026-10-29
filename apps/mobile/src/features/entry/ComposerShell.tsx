@@ -5,7 +5,6 @@ import {
 	Platform,
 	Pressable,
 	ScrollView,
-	Text,
 	View,
 } from "react-native";
 import { useTranslations } from "use-intl";
@@ -14,6 +13,7 @@ import { useTheme } from "@/theme";
 import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { Segmented } from "@/ui/Segmented";
+import { Text } from "@/ui/Text";
 import { amountMinor } from "./draft";
 
 export type EntryMode = "expense" | "income" | "transfer";
@@ -82,7 +82,7 @@ export function ComposerShell({
 	const t = useTranslations("mobile.composer");
 	const locale = useMoneyLocale();
 	const { format } = useFormatMoney();
-	const { color, radius, size, space, type } = useTheme();
+	const { color, radius, size, space } = useTheme();
 	// Scrolling the fields folds the keypad away so the split and what changes
 	// show in full; touching the amount brings it back.
 	const [padOpen, setPadOpen] = useState(true);
@@ -141,13 +141,7 @@ export function ComposerShell({
 					}}
 				>
 					{currencyLocked ? (
-						<Text
-							style={{
-								color: color.fg2,
-								fontSize: type.body.size,
-								fontWeight: "600",
-							}}
-						>
+						<Text tone="fg2" weight="semibold">
 							{currency}
 						</Text>
 					) : (
@@ -174,13 +168,9 @@ export function ComposerShell({
 							accessibilityLiveRegion="polite"
 							adjustsFontSizeToFit
 							numberOfLines={1}
-							style={{
-								color: amountText ? color.fg : color.fg3,
-								fontSize: type.hero.size,
-								fontVariant: ["tabular-nums"],
-								fontWeight: "600",
-								textAlign: "right",
-							}}
+							style={{ textAlign: "right" }}
+							tone={amountText ? "fg" : "fg3"}
+							variant="hero"
 						>
 							{amountText || "0"}
 						</Text>
@@ -200,13 +190,7 @@ export function ComposerShell({
 							opacity: idle ? 0.6 : 1,
 						})}
 					>
-						<Text
-							style={{
-								color: color.brandFg,
-								fontSize: type.body.size,
-								fontWeight: "600",
-							}}
-						>
+						<Text style={{ color: color.brandFg }} weight="semibold">
 							{addLabel}
 						</Text>
 					</Pressable>
@@ -215,11 +199,9 @@ export function ComposerShell({
 				{amountError ? (
 					<Text
 						accessibilityRole="alert"
-						style={{
-							color: color.danger,
-							fontSize: type.small.size,
-							textAlign: "right",
-						}}
+						style={{ textAlign: "right" }}
+						tone="danger"
+						variant="small"
 					>
 						{t("errors.amount")}
 					</Text>

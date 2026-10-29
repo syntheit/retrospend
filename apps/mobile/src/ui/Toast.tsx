@@ -13,12 +13,12 @@ import {
 	Animated,
 	Easing,
 	Pressable,
-	Text,
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { Text } from "./Text";
 
 export interface ToastOptions {
 	/** "Expense added": object plus past participle (GUIDELINE §12). */
@@ -44,7 +44,7 @@ const TAB_BAR_CLEARANCE = 64;
  * (moves only when reduced motion is off). Never animates money.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
-	const { color, duration, radius, size, space, type } = useTheme();
+	const { color, duration, radius, size, space } = useTheme();
 	const insets = useSafeAreaInsets();
 	const t = useTranslations("mobile.common");
 	const [current, setCurrent] = useState<ToastOptions | null>(null);
@@ -145,7 +145,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 							style={{
 								flex: 1,
 								color: color.bg,
-								fontSize: type.body.size,
 								paddingVertical: space[3],
 							}}
 						>
@@ -164,13 +163,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 									paddingHorizontal: space[3],
 								}}
 							>
-								<Text
-									style={{
-										color: color.accent,
-										fontSize: type.body.size,
-										fontWeight: "600",
-									}}
-								>
+								<Text style={{ color: color.accent }} weight="semibold">
 									{current.undo.label}
 								</Text>
 							</Pressable>

@@ -1,7 +1,8 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { announceEntryChange } from "./events";
 import { useParkedEntries } from "./parked";
@@ -13,7 +14,7 @@ import { useParkedEntries } from "./parked";
  */
 export function SyncIssues({ padded }: { padded?: boolean }) {
 	const t = useTranslations("mobile.composer");
-	const { color, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 	const { format } = useFormatMoney();
 	const toast = useToast();
 	const { entries, retry, discard } = useParkedEntries();
@@ -32,14 +33,7 @@ export function SyncIssues({ padded }: { padded?: boolean }) {
 				...(padded ? { padding: space[4] } : null),
 			}}
 		>
-			<Text
-				accessibilityRole="header"
-				style={{
-					color: color.attentionText,
-					fontSize: type.section.size,
-					fontWeight: "600",
-				}}
-			>
+			<Text accessibilityRole="header" tone="attention" variant="section">
 				{t("sync.title")}
 			</Text>
 			{entries.map((entry) => (
@@ -47,25 +41,16 @@ export function SyncIssues({ padded }: { padded?: boolean }) {
 					{/* One stop for what it is; Try again and Discard stay their own stops. */}
 					<View accessible style={{ gap: space[1] }}>
 						<View style={{ flexDirection: "row", gap: space[3] }}>
-							<Text
-								numberOfLines={1}
-								style={{ flex: 1, color: color.fg, fontSize: type.body.size }}
-							>
+							<Text numberOfLines={1} style={{ flex: 1 }}>
 								{entry.title}
 							</Text>
 							{entry.amount ? (
-								<Text
-									style={{
-										color: color.fg,
-										fontSize: type.body.size,
-										fontVariant: ["tabular-nums"],
-									}}
-								>
+								<Text tabular>
 									{format(entry.amount, { cents: true }) ?? ""}
 								</Text>
 							) : null}
 						</View>
-						<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+						<Text tone="fg2" variant="small">
 							{t("sync.refused")}
 						</Text>
 					</View>
@@ -80,9 +65,7 @@ export function SyncIssues({ padded }: { padded?: boolean }) {
 							}}
 							style={action}
 						>
-							<Text style={{ color: color.brand, fontSize: type.body.size }}>
-								{t("sync.retry")}
-							</Text>
+							<Text style={{ color: color.brand }}>{t("sync.retry")}</Text>
 						</Pressable>
 						<Pressable
 							accessibilityLabel={`${t("sync.discard")}, ${entry.title}`}
@@ -95,9 +78,7 @@ export function SyncIssues({ padded }: { padded?: boolean }) {
 							}}
 							style={action}
 						>
-							<Text style={{ color: color.danger, fontSize: type.body.size }}>
-								{t("sync.discard")}
-							</Text>
+							<Text tone="danger">{t("sync.discard")}</Text>
 						</Pressable>
 					</View>
 				</View>

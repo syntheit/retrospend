@@ -1,7 +1,7 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 import { isApproximate } from "./groups";
 import type { PersonSummary } from "./source";
 
@@ -45,30 +45,25 @@ export function NetAmount({
 }) {
 	const tp = useTranslations("mobile.people");
 	const netText = useNetText();
-	const { color, type } = useTheme();
 	const hero = size === "hero";
 	return (
 		<View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
 			<Text
 				numberOfLines={1}
-				style={{
-					color: tone === "positive" && net ? color.positive : color.fg,
-					fontSize: hero ? type.hero.size : type.body.size,
-					fontVariant: ["tabular-nums"],
-					fontWeight: hero ? "600" : "500",
-					textAlign: align,
-				}}
+				style={{ textAlign: align }}
+				tabular
+				tone={tone === "positive" && net ? "positive" : "fg"}
+				variant={hero ? "hero" : "body"}
+				weight={hero ? "semibold" : "medium"}
 			>
 				{netText(net, parts, home)}
 			</Text>
 			{showCount && !hero && parts.length > 1 ? (
 				<Text
 					numberOfLines={1}
-					style={{
-						color: color.fg2,
-						fontSize: type.small.size,
-						textAlign: align,
-					}}
+					style={{ textAlign: align }}
+					tone="fg2"
+					variant="small"
 				>
 					{tp("currencies", { count: parts.length })}
 				</Text>

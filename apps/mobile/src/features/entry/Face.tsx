@@ -1,7 +1,8 @@
-import { Image, Text, View } from "react-native";
+import { Image, View } from "react-native";
 import { useServerBaseUrl } from "@/auth/server-connection";
 import { absoluteImage } from "@/features/read/faces";
 import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 
 /**
  * A person's face: their picture (a path the server sends loads from the server),
@@ -19,7 +20,7 @@ export function Face({
 	imageUrl?: string | null;
 	diameter: number;
 }) {
-	const { color, type } = useTheme();
+	const { color } = useTheme();
 	const palette = [
 		color.avatar1,
 		color.avatar2,
@@ -53,11 +54,9 @@ export function Face({
 				/>
 			) : (
 				<Text
-					style={{
-						color: color.avatarFg,
-						fontSize: type.meta.size,
-						fontWeight: "600",
-					}}
+					style={{ color: color.avatarFg }}
+					variant="meta"
+					weight="semibold"
 				>
 					{initials(name)}
 				</Text>

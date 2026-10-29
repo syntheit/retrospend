@@ -1,8 +1,9 @@
 import type { Money } from "@retrospend/domain/money-minor";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 import type { PaymentPreview } from "./plan";
 import { previewRows } from "./plan";
 
@@ -24,7 +25,7 @@ export function PreviewList({
 	// A converted total is an estimate at reference rates: it reads "≈".
 	const format = (amount: Money, approx: boolean) =>
 		approx ? tm("approx", { amount: money(amount) }) : money(amount);
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const { changes, kept } = previewRows(preview);
 
 	const label = (figure: string) =>
@@ -42,19 +43,8 @@ export function PreviewList({
 				paddingVertical: space[1],
 			}}
 		>
-			<Text
-				style={{ flexShrink: 1, color: color.fg, fontSize: type.body.size }}
-			>
-				{left}
-			</Text>
-			<Text
-				style={{
-					color: color.fg,
-					fontSize: type.body.size,
-					fontVariant: ["tabular-nums"],
-					textAlign: "right",
-				}}
-			>
+			<Text style={{ flexShrink: 1 }}>{left}</Text>
+			<Text style={{ textAlign: "right" }} tabular>
 				{right}
 			</Text>
 		</View>
@@ -66,11 +56,9 @@ export function PreviewList({
 				<View>
 					<Text
 						accessibilityRole="header"
-						style={{
-							color: color.fg2,
-							fontSize: type.small.size,
-							fontWeight: "600",
-						}}
+						tone="fg2"
+						variant="small"
+						weight="semibold"
 					>
 						{t("changes")}
 					</Text>
@@ -90,11 +78,9 @@ export function PreviewList({
 				<View>
 					<Text
 						accessibilityRole="header"
-						style={{
-							color: color.fg2,
-							fontSize: type.small.size,
-							fontWeight: "600",
-						}}
+						tone="fg2"
+						variant="small"
+						weight="semibold"
 					>
 						{t("stays")}
 					</Text>

@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
+import { Text } from "@/ui/Text";
 import { columnHeights, downsample, endsOf, indexAt } from "./series";
 import type { SeriesPoint } from "./source";
 
@@ -35,7 +36,7 @@ export function ScrubChart({
 	const t = useTranslations("mobile.wealth.chart");
 	const format = useFormatter();
 	const money = useMoneyText();
-	const { color, space, type } = useTheme();
+	const { color, space } = useTheme();
 	const [width, setWidth] = useState(0);
 	const [index, setIndex] = useState<number | null>(null);
 
@@ -161,10 +162,10 @@ export function ScrubChart({
 					importantForAccessibility="no-hide-descendants"
 					style={{ flexDirection: "row", justifyContent: "space-between" }}
 				>
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					<Text tone="fg2" variant="small">
 						{day(first.date)}
 					</Text>
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					<Text tone="fg2" variant="small">
 						{day(last.date)}
 					</Text>
 				</View>

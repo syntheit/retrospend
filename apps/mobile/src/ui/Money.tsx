@@ -1,6 +1,5 @@
-import { Text } from "react-native";
 import { type Money as MoneyValue, useFormatMoney } from "@/lib/money";
-import { useTheme } from "@/theme";
+import { Text } from "./Text";
 
 type Tone = "default" | "positive" | "muted";
 
@@ -21,24 +20,15 @@ export function Money({
 	fallback?: string;
 	strong?: boolean;
 }) {
-	const { color, type } = useTheme();
 	const { format } = useFormatMoney();
 	const text = value ? format(value) : fallback;
 	return (
 		<Text
 			numberOfLines={1}
-			style={{
-				color:
-					tone === "positive"
-						? color.positive
-						: tone === "muted"
-							? color.fg3
-							: color.fg,
-				fontSize: type.body.size,
-				fontVariant: ["tabular-nums"],
-				fontWeight: strong ? "600" : "500",
-				textAlign: "right",
-			}}
+			style={{ textAlign: "right" }}
+			tabular
+			tone={tone === "positive" ? "positive" : tone === "muted" ? "fg3" : "fg"}
+			weight={strong ? "semibold" : "medium"}
 		>
 			{text}
 		</Text>

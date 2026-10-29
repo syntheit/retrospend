@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { useRef } from "react";
-import { Pressable, Text } from "react-native";
+import { Pressable } from "react-native";
 import ReanimatedSwipeable, {
 	type SwipeableMethods,
 } from "react-native-gesture-handler/ReanimatedSwipeable";
 import { useTheme } from "@/theme";
 import { RowMenu } from "./RowMenu";
+import { Text } from "./Text";
 import type { MenuItem } from "./types";
 
 export interface SwipeAction {
@@ -38,7 +39,7 @@ export function SwipeRow({
 	menuTitle?: string;
 	onPress?: () => void;
 }) {
-	const { color, space, type } = useTheme();
+	const { color, space } = useTheme();
 	const ref = useRef<SwipeableMethods>(null);
 
 	const action = (a: SwipeAction) => (
@@ -63,11 +64,9 @@ export function SwipeRow({
 		>
 			<Text
 				numberOfLines={1}
-				style={{
-					color: a.tone === "danger" ? color.dangerFg : color.brandFg,
-					fontSize: type.small.size,
-					fontWeight: "600",
-				}}
+				style={{ color: a.tone === "danger" ? color.dangerFg : color.brandFg }}
+				variant="small"
+				weight="semibold"
 			>
 				{a.label}
 			</Text>
