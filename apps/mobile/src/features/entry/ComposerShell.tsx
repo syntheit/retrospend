@@ -1,11 +1,27 @@
-import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { formatMoneyDraft } from "@retrospend/domain/parse";
+import { type ReactNode, useState } from "react";
+import {
+	KeyboardAvoidingView,
+	Platform,
+	ScrollView,
+	useWindowDimensions,
+	View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
+import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { FieldError } from "@/ui/TextField";
 import { AmountCard, type MoneyLine } from "./AmountCard";
 import { ComposerBar } from "./ComposerBar";
+
+/**
+ * Above this text scale the keypad steps aside for the system decimal
+ * keyboard: four rows of keys, the amount card and the head no longer fit
+ * with the fields, so the amount is typed in its card and the fields scroll.
+ */
+export const SYSTEM_PAD_SCALE = 1.5;
 
 export type EntryMode = "expense" | "income" | "transfer";
 
@@ -14,8 +30,10 @@ export type EntryMode = "expense" | "income" | "transfer";
  * the Android bottom sheet: the head, the fields that scroll, and under them
  * what stays in the thumb zone. In the quick step that is the amount card,
  * the one-line preview, the operators with Add, and the keypad; in More it is
- * only Back and Add. While a text field is being typed in, the keypad steps
- * aside for the system keyboard.
+ * only Back and Add. While a text field is being typed in, and always above
+ * a text scale of 1.5, the keypad steps aside for the system keyboard; then
+ * the head scrolls with the fields and the operators (no key on that
+ * keyboard) are not shown.
  */
 export function ComposerShell({
 	step,
@@ -72,18 +90,29 @@ export function ComposerShell({
 	const t = useTranslations("mobile.composer");
 	const { color, space } = useTheme();
 	const quick = step === "quick";
-	const keypadUp = quick && !typing && padOpen;
+	const locale = useMoneyLocale();
+	const { fontScale } = useWindowDimensions();
+	const system = quick && fontScale > SYSTEM_PAD_SCALE;
+	const [amountFocus, setAmountFocus] = useState(false);
+	const keypadUp = quick && !typing && padOpen && !system;
+	// The sheet's body ends the home indicator's height above the window's
+	// bottom, so the keyboard covers that much less of it than the view
+	// thinks; without this the pinned Add sits under the keys.
+	const { bottom } = useSafeAreaInsets();
 	return (
 		<KeyboardAvoidingView
 			behavior={Platform.OS === "ios" ? "padding" : undefined}
+			keyboardVerticalOffset={system ? bottom : 0}
 			style={{
 				flex: 1,
 				backgroundColor: surface ? undefined : color.bg,
 			}}
 		>
-			<View style={{ paddingHorizontal: space[4], paddingBottom: space[2] }}>
-				{header}
-			</View>
+			{system ? null : (
+				<View style={{ paddingHorizontal: space[4], paddingBottom: space[2] }}>
+					{header}
+				</View>
+			)}
 			<ScrollView
 				// More brings its own gutter: its inset groups sit in the page's.
 				contentContainerStyle={{
@@ -95,6 +124,8 @@ export function ComposerShell({
 				onScrollBeginDrag={onScrollDrag}
 				style={{ flex: 1 }}
 			>
+				{/* With the keyboard up there is little room: the head scrolls with the fields. */}
+				{system ? header : null}
 				{children}
 			</ScrollView>
 			<View
@@ -112,7 +143,30 @@ export function ComposerShell({
 						<AmountCard
 							foreign={rate}
 							lines={lines}
-							ring={amountError ? "error" : keypadUp ? "focus" : "idle"}
+							ring={
+								amountError
+									? "error"
+									: keypadUp || (system && amountFocus)
+										? "focus"
+										: "idle"
+							}
+							system={
+								system
+									? {
+											autoFocus: padOpen,
+											onChangeText: (raw) =>
+												keypad.onChange(
+													formatMoneyDraft(
+														raw,
+														locale,
+														keypad.currency,
+														keypad.text,
+													),
+												),
+											onFocusChange: setAmountFocus,
+										}
+									: undefined
+							}
 						/>
 						{amountError ? (
 							<View style={{ alignItems: "flex-end" }}>
@@ -130,7 +184,7 @@ export function ComposerShell({
 					onAdd={onAdd}
 					onBack={onBack}
 					onOperator={onOperator}
-					showOperators={!typing}
+					showOperators={!typing && !system}
 					step={step}
 				/>
 				{keypadUp ? (

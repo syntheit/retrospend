@@ -106,6 +106,9 @@ jest.mock("@/ui/PickerSheet", () => {
 	};
 });
 jest.mock("@/lib/intl", () => ({ useFormatLocale: () => "en-US" }));
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
 // use-intl ships untranspiled ES modules the jest preset does not transform;
 // this stand-in reads the real English catalog, so a missing key shows up.
 jest.mock("use-intl", () => {
@@ -515,6 +518,18 @@ beforeEach(async () => {
 	mockToast.show.mockClear();
 });
 afterEach(() => jest.useRealTimers());
+
+// The jest window has a font scale of 2; the composer's keypad shows at the default size.
+function fontScale(scale: number) {
+	const { Dimensions } = require("react-native");
+	return jest
+		.spyOn(Dimensions, "get")
+		.mockReturnValue({ width: 390, height: 844, scale: 3, fontScale: scale });
+}
+beforeEach(() => {
+	fontScale(1);
+});
+afterEach(() => jest.restoreAllMocks());
 
 describe("Add expense: coffee split with Lucía", () => {
 	it("takes the composer three taps and five keys, and writes through the outbox", async () => {
@@ -1657,6 +1672,27 @@ describe("Who paid and a custom split", () => {
 				],
 			},
 		);
+		act(() => tree.unmount());
+	});
+});
+
+describe("Add expense at the largest text size", () => {
+	it("types the amount on the system decimal keyboard, with no keypad to cut off", async () => {
+		fontScale(3);
+		const { api } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+
+		// The keypad is gone; the amount is a text input on the decimal pad.
+		expect(find(tree, (p) => p.accessibilityLabel === "5")).toHaveLength(0);
+		const amount = find(tree, (p) => p.keyboardType === "decimal-pad")[0];
+		if (!amount) throw new Error("no amount input");
+		act(() => {
+			(amount.props.onChangeText as (text: string) => void)("12500");
+		});
+		await settle();
+		const typed = find(tree, (p) => p.keyboardType === "decimal-pad")[0];
+		expect(typed?.props.value).toBe("12,500");
 		act(() => tree.unmount());
 	});
 });
