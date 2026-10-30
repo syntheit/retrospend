@@ -14,6 +14,7 @@ import * as z from "zod";
 import { env } from "~/env";
 import { auth } from "~/server/better-auth";
 import { pruneExpiredKeys } from "~/server/services/api-v1/idempotency.service";
+import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { createV1Handler, handleV1Request } from "../handler";
 import { signedIn, type V1InitialContext, v1Middleware } from "../middleware";
@@ -275,6 +276,25 @@ describe("/api/v1 on Postgres", () => {
 			expect(me.id).toBe(admin.user.id);
 			expect(me.principal.kind).toBe("mobile");
 			expect(me.principal.scopes).not.toContain("admin");
+		});
+
+		it("says whether members can use invite codes", async () => {
+			const token = await sessionFor(alice.user.id);
+			const read = async () =>
+				(
+					await (
+						await call("/me", { headers: { authorization: `Bearer ${token}` } })
+					).json()
+				).canInvite;
+			const before = (await getAppSettings()).allowAllUsersToGenerateInvites;
+			try {
+				await updateAppSettings({ allowAllUsersToGenerateInvites: false });
+				expect(await read()).toBe(false);
+				await updateAppSettings({ allowAllUsersToGenerateInvites: true });
+				expect(await read()).toBe(true);
+			} finally {
+				await updateAppSettings({ allowAllUsersToGenerateInvites: before });
+			}
 		});
 
 		it("refuses an unscoped web session sent as a bearer", async () => {

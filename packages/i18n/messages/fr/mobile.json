@@ -3,7 +3,8 @@
 		"home": "Accueil",
 		"activity": "Activité",
 		"budget": "Budget",
-		"people": "Personnes",
+		"peopleSegment": "Personnes",
+		"people": "Projets",
 		"projects": "Projets",
 		"add": "Ajouter une dépense",
 		"search": "Rechercher",
@@ -399,17 +400,14 @@
 		"signOutDiscard": "Se déconnecter et supprimer",
 		"unsynced": "{count, plural, one {# modification non synchronisée. La déconnexion la supprime.} other {# modifications non synchronisées. La déconnexion les supprime.}}",
 		"settings": "Réglages",
-		"profileHint": "Ouvre ton profil dans les réglages",
+		"profileHint": "Ouvre ton profil",
 		"goTo": "Aller à",
 		"currencies": "Devises",
 		"opensWeb": "S'ouvre sur le web",
-		"import": "Importer",
 		"docs": "Documentation",
 		"releaseNotes": "Notes de version",
-		"version": "Version {version}",
-		"wealth": "Patrimoine",
-		"inviteCodes": "Codes d’invitation",
-		"feedback": "Envoyer un avis"
+		"version": "Version {version} ({build})",
+		"inviteCodes": "Codes d’invitation"
 	},
 	"activity": {
 		"title": "Activité",
@@ -487,11 +485,8 @@
 		"segment": {
 			"label": "Activité",
 			"expenses": "Dépenses",
-			"recurring": "Récurrents",
-			"import": "Importer"
-		},
-		"importNotice": "{count, plural, one {# dépense importée attend une vérification} other {# dépenses importées attendent une vérification}}",
-		"importStart": "Commencer"
+			"recurring": "Récurrents"
+		}
 	},
 	"budget": {
 		"title": "Budget",
@@ -2072,13 +2067,6 @@
 			"payment": "Moyens de paiement",
 			"recurring": "Dépenses récurrentes"
 		},
-		"web": {
-			"title": "Sur le web",
-			"footer": "Ils s'ouvrent dans le navigateur ici. Tu t'y connectes aussi.",
-			"import": "Importer",
-			"insights": "Analyses",
-			"developer": "Jetons d'API et webhooks"
-		},
 		"categories": {
 			"addTitle": "Ajouter une catégorie",
 			"editTitle": "Modifier la catégorie",
@@ -2216,7 +2204,7 @@
 			"meta": "Les paiements et partages en attente sont réglés d’abord"
 		},
 		"about": {
-			"version": "Retrospend {version}",
+			"version": "Version {version} ({build})",
 			"license": "GPL v3",
 			"privacy": "Confidentialité",
 			"terms": "Conditions"

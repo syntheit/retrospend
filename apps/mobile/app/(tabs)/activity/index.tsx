@@ -14,14 +14,12 @@ import { DayHeader, useDayLabel } from "@/features/activity/DayHeader";
 import { groupByDay } from "@/features/activity/days";
 import { EntryDetail } from "@/features/activity/EntryView";
 import { DEFAULT_FILTER, isDefaultFilter } from "@/features/activity/filter";
-import { ImportNotice } from "@/features/activity/ImportNotice";
 import { useLinkedEntry } from "@/features/activity/linkedEntry";
 import { rowActions } from "@/features/activity/rowActions";
 import type { ActivityItem } from "@/features/activity/source";
 import { useActivity } from "@/features/activity/useActivity";
 import { useBulkActions } from "@/features/activity/useBulkActions";
 import { useDebouncedSearch } from "@/features/activity/useDebouncedSearch";
-import { useImportReview } from "@/features/activity/useImportReview";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { RecurringView } from "@/features/recurring/RecurringView";
 import { RECURRING_APART } from "@/layout/destinations";
@@ -77,7 +75,6 @@ export default function ActivityScreen() {
 	useTransient(picked ? () => setPicked(null) : null);
 	const { state, reload, loadMore, loadingMore } = useActivity(filter);
 	const bulk = useBulkActions(() => setPicked(null));
-	const importing = useImportReview();
 
 	const page = state.status === "ready" ? state.data : null;
 	const sections = useMemo(
@@ -193,9 +190,6 @@ export default function ActivityScreen() {
 						since={state.status === "ready" ? state.staleSince : null}
 					/>
 					<ActivityFilters filter={filter} onChange={setFilter} />
-					{importing !== null && !picked ? (
-						<ImportNotice count={importing} />
-					) : null}
 				</View>
 			}
 			onEndReached={loadMore}

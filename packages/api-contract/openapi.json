@@ -79325,6 +79325,9 @@
 												}
 											]
 										},
+										"canInvite": {
+											"type": "boolean"
+										},
 										"createdAt": {
 											"format": "date-time",
 											"type": "string"
@@ -79472,6 +79475,7 @@
 										"numberFormat",
 										"emailVerified",
 										"twoFactorEnabled",
+										"canInvite",
 										"createdAt",
 										"principal"
 									],

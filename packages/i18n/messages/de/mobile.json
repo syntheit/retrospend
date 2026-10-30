@@ -3,7 +3,8 @@
 		"home": "Start",
 		"activity": "Aktivität",
 		"budget": "Budget",
-		"people": "Personen",
+		"peopleSegment": "Personen",
+		"people": "Projekte",
 		"projects": "Projekte",
 		"add": "Ausgabe hinzufügen",
 		"search": "Suchen",
@@ -399,17 +400,14 @@
 		"signOutDiscard": "Abmelden und verwerfen",
 		"unsynced": "{count, plural, one {# Änderung ist noch nicht synchronisiert. Beim Abmelden wird sie verworfen.} other {# Änderungen sind noch nicht synchronisiert. Beim Abmelden werden sie verworfen.}}",
 		"settings": "Einstellungen",
-		"profileHint": "Öffnet dein Profil in den Einstellungen",
+		"profileHint": "Öffnet dein Profil",
 		"goTo": "Gehe zu",
 		"currencies": "Währungen",
 		"opensWeb": "Öffnet im Web",
-		"import": "Importieren",
 		"docs": "Dokumentation",
 		"releaseNotes": "Versionshinweise",
-		"version": "Version {version}",
-		"wealth": "Vermögen",
-		"inviteCodes": "Einladungscodes",
-		"feedback": "Feedback senden"
+		"version": "Version {version} ({build})",
+		"inviteCodes": "Einladungscodes"
 	},
 	"activity": {
 		"title": "Aktivität",
@@ -487,11 +485,8 @@
 		"segment": {
 			"label": "Aktivität",
 			"expenses": "Ausgaben",
-			"recurring": "Wiederkehrend",
-			"import": "Import"
-		},
-		"importNotice": "{count, plural, one {# importierte Ausgabe wartet auf Prüfung} other {# importierte Ausgaben warten auf Prüfung}}",
-		"importStart": "Starten"
+			"recurring": "Wiederkehrend"
+		}
 	},
 	"budget": {
 		"title": "Budget",
@@ -2072,13 +2067,6 @@
 			"payment": "Zahlungsmethoden",
 			"recurring": "Wiederkehrende Ausgaben"
 		},
-		"web": {
-			"title": "Im Web",
-			"footer": "Diese öffnen sich hier im Browser. Dort meldest du dich ebenfalls an.",
-			"import": "Importieren",
-			"insights": "Auswertungen",
-			"developer": "API-Tokens und Webhooks"
-		},
 		"categories": {
 			"addTitle": "Kategorie hinzufügen",
 			"editTitle": "Kategorie bearbeiten",
@@ -2216,7 +2204,7 @@
 			"meta": "Offene Zahlungen und Aufteilungen werden zuerst geklärt"
 		},
 		"about": {
-			"version": "Retrospend {version}",
+			"version": "Version {version} ({build})",
 			"license": "GPL v3",
 			"privacy": "Datenschutz",
 			"terms": "Nutzungsbedingungen"

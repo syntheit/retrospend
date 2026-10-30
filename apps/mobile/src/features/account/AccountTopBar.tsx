@@ -1,4 +1,3 @@
-import Constants from "expo-constants";
 import { router } from "expo-router";
 import { type ReactNode, useState } from "react";
 import { View } from "react-native";
@@ -7,7 +6,7 @@ import { useServerBaseUrl } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
 import { absoluteImage } from "@/features/read/faces";
 import { openWebPage } from "@/features/settings/webPages";
-import { wealthHref } from "@/features/wealth/routes";
+import { appBuild } from "@/lib/appVersion";
 import { useTheme } from "@/theme";
 import { Avatar, type Face } from "@/ui/Avatar";
 import { Glyph, type GlyphName } from "@/ui/Glyph";
@@ -19,8 +18,6 @@ import { TopBar } from "@/ui/TopBar";
 import type { MenuItem, TopBarAction } from "@/ui/types";
 import { currenciesHref } from "./places";
 import { useSignOut } from "./useSignOut";
-
-const VERSION = Constants.expoConfig?.version ?? null;
 
 /** The signed-in person as a face: the uploaded picture, else the sign-in provider's. */
 export function useMyFace(): Face | null {
@@ -96,7 +93,7 @@ export function AccountTopBar({
 								accessibilityLabel={`${me.name}, ${t("profileHint")}`}
 								end={<Chevron />}
 								lead={<Avatar face={face} size="md" />}
-								onPress={go(() => router.push("/settings"))}
+								onPress={go(() => router.push("/settings/profile"))}
 								sub={me.username ? `@${me.username}` : me.email}
 								title={me.name}
 							/>
@@ -108,20 +105,9 @@ export function AccountTopBar({
 						</Text>
 						<SheetGroup>
 							<Place
-								glyph="ChartLine"
-								label={t("wealth")}
-								onPress={go(() => router.navigate(wealthHref("home")))}
-							/>
-							<Place
 								glyph="Coins"
 								label={t("currencies")}
 								onPress={go(() => router.push(currenciesHref()))}
-							/>
-							<Place
-								glyph="FileUp"
-								label={t("import")}
-								onPress={web("/import")}
-								web={opensWeb}
 							/>
 							<Place
 								glyph="Settings"
@@ -131,18 +117,14 @@ export function AccountTopBar({
 						</SheetGroup>
 					</View>
 					<SheetGroup>
-						<Place
-							glyph="KeyRound"
-							label={t("inviteCodes")}
-							onPress={web("/invite-codes")}
-							web={opensWeb}
-						/>
-						<Place
-							glyph="MessageSquare"
-							label={t("feedback")}
-							onPress={web("/feedback")}
-							web={opensWeb}
-						/>
+						{me?.canInvite === true ? (
+							<Place
+								glyph="KeyRound"
+								label={t("inviteCodes")}
+								onPress={web("/invite-codes")}
+								web={opensWeb}
+							/>
+						) : null}
 						<Place
 							glyph="BookOpen"
 							label={t("docs")}
@@ -164,11 +146,9 @@ export function AccountTopBar({
 							plain
 						/>
 					</SheetGroup>
-					{VERSION ? (
-						<Text style={{ textAlign: "center" }} tone="fg3" variant="small">
-							{t("version", { version: VERSION })}
-						</Text>
-					) : null}
+					<Text style={{ textAlign: "center" }} tone="fg3" variant="small">
+						{t("version", appBuild())}
+					</Text>
 				</View>
 			</Sheet>
 		</>

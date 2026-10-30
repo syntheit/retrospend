@@ -3,5 +3,5 @@ import { TabStack } from "@/layout/TabStack";
 
 export default function PeopleLayout() {
 	const t = useTranslations("mobile.tabs");
-	return <TabStack title={t("people")} />;
+	return <TabStack title={t("peopleSegment")} />;
 }
