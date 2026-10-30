@@ -49,23 +49,26 @@ describe("project menu items", () => {
 		mockShow.mockClear();
 	});
 
-	it("gives an Owner Edit and Archive", () => {
+	it("gives an Owner Edit, Add person and Archive", () => {
 		expect(items(page({})).items.map((i) => i.id)).toEqual([
 			"edit-project",
+			"add-person",
 			"archive-project",
 		]);
 	});
 
-	it("gives an Owner Edit and Restore on an archived project", () => {
+	it("gives an Owner Edit, Add person and Restore on an archived project", () => {
 		expect(items(page({ status: "ARCHIVED" })).items.map((i) => i.id)).toEqual([
 			"edit-project",
+			"add-person",
 			"restore-project",
 		]);
 	});
 
-	it("gives an Editor Edit alone", () => {
+	it("gives an Editor Edit and Add person", () => {
 		expect(items(page({ myRole: "EDITOR" })).items.map((i) => i.id)).toEqual([
 			"edit-project",
+			"add-person",
 		]);
 	});
 

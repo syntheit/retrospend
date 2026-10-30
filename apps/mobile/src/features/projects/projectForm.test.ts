@@ -22,6 +22,7 @@ const original = (patch: Partial<ProjectOriginal> = {}): ProjectOriginal => ({
 	id: "p1",
 	name: "Lisbon",
 	primaryCurrency: "EUR",
+	description: null,
 	budget: null,
 	...patch,
 });
@@ -80,6 +81,47 @@ describe("createBody", () => {
 		expect(
 			createBody(form({ name: "Lisbon", budget: "abc" }), ID, L),
 		).toBeNull();
+	});
+});
+
+describe("the note", () => {
+	it("is sent trimmed when it is typed, and left out when empty", () => {
+		expect(
+			createBody(
+				form({ name: "Lisbon", note: "  Flights and the flat " }),
+				ID,
+				L,
+			),
+		).toMatchObject({ description: "Flights and the flat" });
+		expect(
+			createBody(form({ name: "Lisbon", note: "  " }), ID, L),
+		).not.toHaveProperty("description");
+	});
+
+	it("is not ready past 500 characters", () => {
+		expect(
+			createBody(form({ name: "Lisbon", note: "x".repeat(501) }), ID, L),
+		).toBeNull();
+	});
+
+	it("changes on edit, and clears with null", () => {
+		const noted = original({ description: "Flights" });
+		const same = form({ name: "Lisbon", currency: "EUR", note: "Flights" });
+		expect(updateBody(same, noted, L)).toBeNull();
+		expect(updateBody({ ...same, note: "Flights and flat" }, noted, L)).toEqual(
+			{
+				id: "p1",
+				description: "Flights and flat",
+			},
+		);
+		expect(updateBody({ ...same, note: "" }, noted, L)).toEqual({
+			id: "p1",
+			description: null,
+		});
+		expect(updateBody({ ...same, note: "Hello" }, original(), L)).toEqual({
+			id: "p1",
+			description: "Hello",
+		});
 	});
 });
 

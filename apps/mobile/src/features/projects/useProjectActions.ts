@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -19,12 +19,24 @@ import type { ProjectPage } from "./source";
 export function useProjectActions(
 	page: Pick<ProjectPage, "id" | "name" | "status" | "myRole">,
 	onChanged: () => void,
-): { items: MenuItem[]; editing: boolean; closeEdit: () => void } {
+	startAdding = false,
+): {
+	items: MenuItem[];
+	editing: boolean;
+	closeEdit: () => void;
+	adding: boolean;
+	closeAdd: () => void;
+} {
 	const t = useTranslations("mobile.projects.actions");
 	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const toast = useToast();
 	const [editing, setEditing] = useState(false);
+	// A link or a project just made "with others" opens Add person at once.
+	const [adding, setAdding] = useState(startAdding);
+	useEffect(() => {
+		if (startAdding) setAdding(true);
+	}, [startAdding]);
 
 	async function setStatus(status: "ACTIVE" | "ARCHIVED"): Promise<boolean> {
 		if (!api) return false;
@@ -77,6 +89,13 @@ export function useProjectActions(
 			onPress: () => setEditing(true),
 		});
 	}
+	if (canEditProject(page.myRole)) {
+		items.push({
+			id: "add-person",
+			label: t("addPerson"),
+			onPress: () => setAdding(true),
+		});
+	}
 	if (canArchiveProject(page.myRole)) {
 		items.push(
 			page.status === "ARCHIVED"
@@ -105,5 +124,11 @@ export function useProjectActions(
 					},
 		);
 	}
-	return { items, editing, closeEdit: () => setEditing(false) };
+	return {
+		items,
+		editing,
+		closeEdit: () => setEditing(false),
+		adding,
+		closeAdd: () => setAdding(false),
+	};
 }

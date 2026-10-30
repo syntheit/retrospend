@@ -1941,7 +1941,11 @@
 			"create": "Projekt erstellen",
 			"save": "Speichern",
 			"created": "{name} erstellt",
-			"saved": "{name} gespeichert"
+			"saved": "{name} gespeichert",
+			"note": "Notiz (optional)",
+			"people": "Personen",
+			"justMe": "Nur ich",
+			"withOthers": "Mit anderen"
 		},
 		"actions": {
 			"edit": "Projekt bearbeiten",
@@ -1953,7 +1957,16 @@
 			"archived": "{name} archiviert",
 			"restored": "{name} wiederhergestellt",
 			"archiveError": "Archivieren hat nicht geklappt. Versuch es noch einmal.",
-			"restoreError": "Wiederherstellen hat nicht geklappt. Versuch es noch einmal."
+			"restoreError": "Wiederherstellen hat nicht geklappt. Versuch es noch einmal.",
+			"addPerson": "Person hinzufügen"
+		},
+		"addPerson": {
+			"title": "Person hinzufügen",
+			"heading": "Personen",
+			"find": "Personen suchen",
+			"empty": "Niemand mehr zum Hinzufügen. Füge zuerst unter Personen jemanden mit Namen hinzu.",
+			"added": "{name} hinzugefügt",
+			"error": "{name} konnte nicht hinzugefügt werden. Versuch es noch einmal."
 		}
 	},
 	"settings": {

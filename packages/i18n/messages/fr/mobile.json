@@ -1941,7 +1941,11 @@
 			"create": "Créer le projet",
 			"save": "Enregistrer",
 			"created": "{name} créé",
-			"saved": "{name} enregistré"
+			"saved": "{name} enregistré",
+			"note": "Note (facultatif)",
+			"people": "Personnes",
+			"justMe": "Juste moi",
+			"withOthers": "Avec d'autres"
 		},
 		"actions": {
 			"edit": "Modifier le projet",
@@ -1953,7 +1957,16 @@
 			"archived": "{name} archivé",
 			"restored": "{name} restauré",
 			"archiveError": "Impossible d'archiver. Réessaie.",
-			"restoreError": "Impossible de restaurer. Réessaie."
+			"restoreError": "Impossible de restaurer. Réessaie.",
+			"addPerson": "Ajouter une personne"
+		},
+		"addPerson": {
+			"title": "Ajouter une personne",
+			"heading": "Personnes",
+			"find": "Rechercher des personnes",
+			"empty": "Personne d'autre à ajouter. Ajoute d'abord quelqu'un par son nom depuis Personnes.",
+			"added": "{name} ajouté",
+			"error": "Impossible d'ajouter {name}. Réessaie."
 		}
 	},
 	"settings": {

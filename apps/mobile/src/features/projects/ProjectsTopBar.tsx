@@ -3,13 +3,15 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { useExpensesExport } from "@/features/people/useExpensesExport";
+import { openProject } from "./openProject";
 import { ProjectSheet } from "./ProjectSheet";
 
 /**
  * The top bar of Projects: the page's title, New project as a plain icon (in
  * the overflow on the iPad, where the toolbar already has the plus), the
  * overflow and the account button. New project opens a sheet for a name, a
- * currency and an optional budget.
+ * note, a currency, an optional budget and who it is for; "With others" opens
+ * the new project on Add person.
  */
 export function ProjectsTopBar({ title }: { title: string }) {
 	const t = useTranslations("mobile.projects.form");
@@ -36,6 +38,7 @@ export function ProjectsTopBar({ title }: { title: string }) {
 			<ProjectSheet
 				home={me?.defaultCurrency ?? me?.homeCurrency ?? "USD"}
 				onClose={() => setAdding(false)}
+				onCreated={(made, others) => openProject(made, { add: others })}
 				project={null}
 				visible={adding}
 			/>

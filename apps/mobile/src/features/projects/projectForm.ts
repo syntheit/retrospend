@@ -20,6 +20,10 @@ export interface ProjectForm {
 	currency: string;
 	/** The budget as the keypad typed it; empty is no budget. */
 	budget: string;
+	/** An optional note about the project. */
+	note: string;
+	/** A new project is for you alone, or opens on Add person. */
+	who: "solo" | "others";
 }
 
 /** The project being edited, as its page knows it. */
@@ -27,13 +31,15 @@ export interface ProjectOriginal {
 	id: string;
 	name: string;
 	primaryCurrency: string;
+	description: string | null;
 	budget: { amount: Money } | null;
 }
 
 export const NAME_MAX = 191;
+export const NOTE_MAX = 500;
 
 export function emptyForm(currency: string): ProjectForm {
-	return { name: "", currency, budget: "" };
+	return { name: "", currency, budget: "", note: "", who: "solo" };
 }
 
 /** The roles that may change a project's settings: Owner and Editor. */
@@ -86,13 +92,17 @@ export function createBody(
 	locale: string,
 ): CreateProjectBody | null {
 	const name = form.name.trim();
-	if (name === "" || name.length > NAME_MAX) return null;
+	const note = form.note.trim();
+	if (name === "" || name.length > NAME_MAX || note.length > NOTE_MAX) {
+		return null;
+	}
 	const entered = readBudget(form, null, locale);
 	if (entered.state === "invalid" || entered.state === "zero") return null;
 	return {
 		id,
 		name,
 		primaryCurrency: form.currency,
+		...(note === "" ? {} : { description: note }),
 		...(entered.state === "ok"
 			? {
 					budgetAmount: wireAmount(entered.minor, form.currency),
@@ -113,13 +123,19 @@ export function updateBody(
 	locale: string,
 ): UpdateProjectBody | null {
 	const name = form.name.trim();
-	if (name === "" || name.length > NAME_MAX) return null;
+	const note = form.note.trim();
+	if (name === "" || name.length > NAME_MAX || note.length > NOTE_MAX) {
+		return null;
+	}
 	const entered = readBudget(form, original, locale);
 	if (entered.state === "invalid" || entered.state === "zero") return null;
 	const patch: Omit<UpdateProjectBody, "id"> = {};
 	if (name !== original.name) patch.name = name;
 	if (form.currency !== original.primaryCurrency) {
 		patch.primaryCurrency = form.currency;
+	}
+	if (note !== (original.description ?? "")) {
+		patch.description = note === "" ? null : note;
 	}
 	const had = original.budget?.amount ?? null;
 	if (entered.state === "empty") {

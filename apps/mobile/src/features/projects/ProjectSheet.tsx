@@ -10,6 +10,7 @@ import { useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { AmountField } from "@/ui/AmountField";
 import { CurrencyPicker } from "@/ui/CurrencyPicker";
+import { Segmented } from "@/ui/Segmented";
 import { Sheet } from "@/ui/Sheet";
 import { FieldLabel, TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
@@ -19,6 +20,7 @@ import {
 	createBody,
 	emptyForm,
 	NAME_MAX,
+	NOTE_MAX,
 	type ProjectForm,
 	type ProjectOriginal,
 	readBudget,
@@ -26,8 +28,9 @@ import {
 } from "./projectForm";
 
 /**
- * New project / Edit project: a name, the project's currency and an optional
- * budget. It moves no money, so it has no preview, and a new project is not
+ * New project / Edit project: a name, an optional note, the project's currency,
+ * an optional budget and, for a new project, who it is for (Just me, or With
+ * others, which opens the project on Add person). It moves no money, so it has no preview, and a new project is not
  * taken back with Undo (deleting one is its own, careful action). Edit sends
  * only what changed. Everything else about a project (people, dates, billing
  * periods) is set on its page.
@@ -38,6 +41,7 @@ export function ProjectSheet({
 	home,
 	onClose,
 	onDone,
+	onCreated,
 }: {
 	/** Null starts a new project. */
 	project: ProjectOriginal | null;
@@ -47,6 +51,8 @@ export function ProjectSheet({
 	onClose: () => void;
 	/** The project was saved: the screen behind refreshes. */
 	onDone?: () => void;
+	/** A new project was made; `others` when it was chosen to open on Add person. */
+	onCreated?: (made: { id: string; name: string }, others: boolean) => void;
 }) {
 	const t = useTranslations("mobile.projects.form");
 	const api = useApi();
@@ -75,6 +81,8 @@ export function ProjectSheet({
 				? {
 						name: project.name,
 						currency: project.primaryCurrency,
+						note: project.description ?? "",
+						who: "solo" as const,
 						budget: project.budget
 							? draftFromMinor(
 									project.budget.amount.minor,
@@ -117,6 +125,7 @@ export function ProjectSheet({
 				message: t(editing ? "saved" : "created", { name: saved.name }),
 			});
 			onClose();
+			if (!editing) onCreated?.(saved, form.who === "others");
 		} catch {
 			setFailed(true);
 		} finally {
@@ -149,6 +158,14 @@ export function ProjectSheet({
 						placeholder={t("namePlaceholder")}
 						value={form.name}
 					/>
+					<TextField
+						autoCapitalize="sentences"
+						label={t("note")}
+						maxLength={NOTE_MAX}
+						multiline
+						onChangeText={(note) => set({ note })}
+						value={form.note}
+					/>
 					<View style={{ gap: space[1] }}>
 						<FieldLabel>{t("currency")}</FieldLabel>
 						<View style={{ alignItems: "flex-start" }}>
@@ -172,6 +189,21 @@ export function ProjectSheet({
 						onPress={() => setKeypad(true)}
 					/>
 					{bad ? <Note tone="attention">{t("budgetInvalid")}</Note> : null}
+					{editing ? null : (
+						<View style={{ gap: space[1] }}>
+							<FieldLabel>{t("people")}</FieldLabel>
+							<Segmented
+								accessibilityLabel={t("people")}
+								onChange={(who) => set({ who })}
+								options={[
+									{ value: "solo", label: t("justMe") },
+									{ value: "others", label: t("withOthers") },
+								]}
+								stretch
+								value={form.who}
+							/>
+						</View>
+					)}
 				</WriteFrame>
 			</SheetBody>
 		</Sheet>

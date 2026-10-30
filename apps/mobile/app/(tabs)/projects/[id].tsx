@@ -3,10 +3,11 @@ import { ProjectView } from "@/features/projects/ProjectView";
 import { PROJECTS_APART } from "@/layout/destinations";
 
 export default function ProjectScreen() {
-	const { id, name, settle } = useLocalSearchParams<{
+	const { id, name, settle, add } = useLocalSearchParams<{
 		id: string;
 		name?: string;
 		settle?: string;
+		add?: string;
 	}>();
 	// Phones keep projects inside the People tab.
 	if (!PROJECTS_APART) {
@@ -18,10 +19,18 @@ export default function ProjectScreen() {
 						id,
 						...(name ? { name } : {}),
 						...(settle ? { settle } : {}),
+						...(add ? { add } : {}),
 					},
 				}}
 			/>
 		);
 	}
-	return <ProjectView id={id} name={name} startSettling={settle === "1"} />;
+	return (
+		<ProjectView
+			id={id}
+			name={name}
+			startAdding={add === "person"}
+			startSettling={settle === "1"}
+		/>
+	);
 }

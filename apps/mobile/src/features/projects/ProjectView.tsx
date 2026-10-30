@@ -18,6 +18,7 @@ import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
+import { AddMemberSheet } from "./AddMemberSheet";
 import {
 	categoriesOf,
 	filterExpenses,
@@ -53,11 +54,14 @@ export function ProjectView({
 	id,
 	name,
 	startSettling = false,
+	startAdding = false,
 }: {
 	id: string;
 	/** The name the list knew, shown in the title while the page loads. */
 	name?: string;
 	startSettling?: boolean;
+	/** Open on Add person (a project just made "with others"). */
+	startAdding?: boolean;
 }) {
 	const t = useTranslations("mobile.projects");
 	const tc = useTranslations("mobile.common");
@@ -86,6 +90,7 @@ export function ProjectView({
 			myRole: page?.myRole ?? null,
 		},
 		reload,
+		startAdding,
 	);
 	const menu = [...actions.items, ...overflow];
 	const periodId = period === "current" ? (page?.openPeriod ?? null) : null;
@@ -343,6 +348,13 @@ export function ProjectView({
 					visible
 				/>
 			) : null}
+			<AddMemberSheet
+				members={page.members}
+				onClose={actions.closeAdd}
+				onDone={reload}
+				projectId={page.id}
+				visible={actions.adding}
+			/>
 			<ProjectSheet
 				home={page.primaryCurrency}
 				onClose={actions.closeEdit}
