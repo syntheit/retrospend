@@ -22,7 +22,6 @@ import { envelopeActions, isLimits, type StatusLine, statusLine } from "./rows";
 import type { BudgetEnvelope, BudgetMonth } from "./source";
 import { TargetForm } from "./TargetForm";
 import { useTargetText } from "./useTargetText";
-import { BackButton } from "./WriteSheet";
 
 export type EnvelopeMode =
 	| "overview"
@@ -145,12 +144,7 @@ export function EnvelopeSheet({
 				: t(`${mode}Title`, { name: envelope.name });
 
 	const form = (child: (e: BudgetEnvelope) => ReactNode) =>
-		envelope ? (
-			<View style={{ gap: space[3] }}>
-				<BackButton label={tc("back")} onPress={() => setMode("overview")} />
-				{child(envelope)}
-			</View>
-		) : null;
+		envelope ? <View style={{ gap: space[3] }}>{child(envelope)}</View> : null;
 	const props = (e: BudgetEnvelope) => ({
 		data,
 		envelope: e,
@@ -299,7 +293,13 @@ export function EnvelopeSheet({
 
 	return (
 		<Sheet
+			backLabel={tc("back")}
 			detents={MODE_DETENTS[mode]}
+			onBack={
+				mode === "overview" || envelope === null
+					? undefined
+					: () => setMode("overview")
+			}
 			onClose={onClose}
 			title={title}
 			visible={envelope !== null}

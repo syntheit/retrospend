@@ -3,7 +3,7 @@ import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
-import { GroupItem, ListGroup, SectionHeader } from "@/ui/List";
+import { GroupItem, ListGroup } from "@/ui/List";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
 import { FieldLabel, TextField } from "@/ui/TextField";
@@ -51,9 +51,10 @@ export function SplitSummary({
 }
 
 /**
- * Spread, Exclude, Note and Location, always shown under their own titles at
- * the foot of the main step, with no toggle. A split keeps its note only, as
- * on the web.
+ * Spread, Exclude, Note and Location, always shown at the foot of the main
+ * step, with no toggle, each under its own label. There are no section
+ * headings: the labels say what each row is, and the headings would push the
+ * rows below the keypad. A split keeps its note only, as on the web.
  */
 function Details({
 	draft,
@@ -72,63 +73,59 @@ function Details({
 		...new Set([...SPREAD_MONTHS, ...(draft.spread ? [draft.spread] : [])]),
 	].sort((a, b) => a - b);
 	return (
-		<View>
+		<View style={{ gap: space[4] }}>
 			{personal ? (
-				<>
-					<SectionHeader title={t("options")} />
-					<ListGroup form>
-						<GroupItem>
-							<View style={{ gap: space[2] }}>
-								<FieldLabel>{t("spread")}</FieldLabel>
-								<View
-									accessibilityLabel={t("spread")}
-									accessibilityRole="radiogroup"
-									style={{
-										flexDirection: "row",
-										flexWrap: "wrap",
-										gap: space[2],
-									}}
-								>
-									<Chip
-										label={t("spreadOne")}
-										onPress={() => onChange({ spread: null })}
-										selected={draft.spread === null}
-									/>
-									{months.map((count) => (
-										<Chip
-											key={count}
-											label={t("spreadMonths", { count })}
-											onPress={() => onChange({ spread: count })}
-											selected={draft.spread === count}
-										/>
-									))}
-								</View>
-							</View>
-						</GroupItem>
-						<GroupItem>
-							<View>
-								<SwitchRow
-									detail={
-										draft.excludeAuto && draft.exclude
-											? t("excludeAuto")
-											: t("excludeDetail")
-									}
-									label={t("exclude")}
-									onChange={(exclude) =>
-										onChange({
-											exclude,
-											excludeTouched: true,
-											excludeAuto: false,
-										})
-									}
-									value={draft.exclude}
+				<ListGroup form>
+					<GroupItem>
+						<View style={{ gap: space[2] }}>
+							<FieldLabel>{t("spread")}</FieldLabel>
+							<View
+								accessibilityLabel={t("spread")}
+								accessibilityRole="radiogroup"
+								style={{
+									flexDirection: "row",
+									flexWrap: "wrap",
+									gap: space[2],
+								}}
+							>
+								<Chip
+									label={t("spreadOne")}
+									onPress={() => onChange({ spread: null })}
+									selected={draft.spread === null}
 								/>
+								{months.map((count) => (
+									<Chip
+										key={count}
+										label={t("spreadMonths", { count })}
+										onPress={() => onChange({ spread: count })}
+										selected={draft.spread === count}
+									/>
+								))}
 							</View>
-						</GroupItem>
-					</ListGroup>
-				</>
+						</View>
+					</GroupItem>
+					<GroupItem>
+						<View>
+							<SwitchRow
+								detail={
+									draft.excludeAuto && draft.exclude
+										? t("excludeAuto")
+										: t("excludeDetail")
+								}
+								label={t("exclude")}
+								onChange={(exclude) =>
+									onChange({
+										exclude,
+										excludeTouched: true,
+										excludeAuto: false,
+									})
+								}
+								value={draft.exclude}
+							/>
+						</View>
+					</GroupItem>
+				</ListGroup>
 			) : null}
-			<SectionHeader title={t("details")} />
 			<View style={{ paddingHorizontal: space[4], gap: space[3] }}>
 				<TextField
 					autoCapitalize="sentences"
