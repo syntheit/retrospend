@@ -48,6 +48,9 @@ export function Picker<T extends string>({
 	);
 }
 
+/** The system wheel's own height, seven rows; stretched or squeezed it shows four. */
+const WHEEL_HEIGHT = 216;
+
 /**
  * The system wheel in a sheet at the medium detent, behind a value. It keeps
  * its own pick while the wheel turns and hands it over when the sheet closes
@@ -85,10 +88,10 @@ function WheelSheet<T extends string>({
 			title={title}
 			visible={visible}
 		>
-			<View style={{ flex: 1, minHeight: 0 }}>
+			<View style={{ flex: 1, minHeight: 0, justifyContent: "center" }}>
 				<NativeHost
 					matchContents={false}
-					style={{ flex: 1, alignSelf: "stretch" }}
+					style={{ height: WHEEL_HEIGHT, alignSelf: "stretch" }}
 					tint={color.fg2}
 				>
 					<UniversalPicker<string>
