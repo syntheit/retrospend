@@ -24,10 +24,7 @@ export function isRecurringFiltered(filter: RecurringFilter): boolean {
 }
 
 function fold(text: string): string {
-	return text
-		.toLowerCase()
-		.normalize("NFD")
-		.replace(/[̀-ͯ]/g, "");
+	return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
 /** A foreign template carries its amount in the home currency (`home`). */

@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
+import { useCategories } from "@/features/activity/useCategories";
 import { useEntryCatalog } from "@/features/entry/hooks";
 import { PickField } from "@/features/entry/PickField";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
@@ -65,6 +66,7 @@ export function AddRecurringSheet({
 	const me = state.status === "signedIn" ? state.me : null;
 	const catalogState = useEntryCatalog();
 	const catalog = catalogState.status === "ready" ? catalogState.catalog : null;
+	const { state: categoryState } = useCategories();
 	const announce = useRecurringToast();
 	const day = useDayText();
 	const locale = useAmountLocale();
@@ -135,7 +137,12 @@ export function AddRecurringSheet({
 		onClose();
 	}
 
-	const categories = catalog?.categories ?? [];
+	// An expense template files under expense categories only; a cached list
+	// from before kinds were sent is expense categories.
+	const categories =
+		categoryState.status === "ready"
+			? categoryState.data.filter((c) => c.kind !== "income")
+			: [];
 	return (
 		<Sheet
 			detents={["large"]}

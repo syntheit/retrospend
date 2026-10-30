@@ -33,7 +33,10 @@ export function RecurringFilters({
 			<Chip
 				label={t("autoPayOn")}
 				onPress={() =>
-					onChange({ ...filter, autoPay: filter.autoPay === "on" ? null : "on" })
+					onChange({
+						...filter,
+						autoPay: filter.autoPay === "on" ? null : "on",
+					})
 				}
 				selected={filter.autoPay === "on"}
 			/>

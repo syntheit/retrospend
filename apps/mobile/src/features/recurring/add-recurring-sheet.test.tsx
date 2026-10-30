@@ -84,6 +84,17 @@ jest.mock("@/features/write/parts", () => {
 		),
 	};
 });
+jest.mock("@/features/activity/useCategories", () => ({
+	useCategories: () => ({
+		state: {
+			status: "ready",
+			data: [
+				{ id: "c1", name: "Rent", kind: "expense", icon: null, tone: 1 },
+				{ id: "c2", name: "Salary", kind: "income", icon: null, tone: 2 },
+			],
+		},
+	}),
+}));
 jest.mock("@/features/entry/hooks", () => ({
 	useEntryCatalog: () => ({
 		status: "ready",
@@ -95,7 +106,13 @@ jest.mock("@/features/entry/hooks", () => ({
 		},
 	}),
 }));
-jest.mock("@/features/entry/PickField", () => ({ PickField: () => null }));
+const mockPicked: { rows: { id: string }[] } = { rows: [] };
+jest.mock("@/features/entry/PickField", () => ({
+	PickField: ({ rows }: { rows: { id: string }[] }) => {
+		mockPicked.rows = rows;
+		return null;
+	},
+}));
 jest.mock("@/ui/CurrencyPicker", () => ({ CurrencyPicker: () => null }));
 jest.mock("@/ui/DateField", () => ({ DateField: () => null }));
 jest.mock("@/ui/Segmented", () => ({ Segmented: () => null }));
@@ -189,6 +206,8 @@ describe("Add a recurring expense", () => {
 				<AddRecurringSheet onClose={onClose} onDone={onDone} visible />,
 			);
 		});
+		// An expense template offers expense categories only.
+		expect(mockPicked.rows.map((r) => r.id)).toEqual(["c1"]);
 		// Nothing to preview until there is a name and an amount.
 		expect(calls).toHaveLength(0);
 		expect(disabled(tree, "Add")).toBe(true);

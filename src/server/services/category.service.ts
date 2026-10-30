@@ -16,6 +16,7 @@ export const CATEGORY_SELECT = {
 	name: true,
 	color: true,
 	icon: true,
+	kind: true,
 	excludeByDefault: true,
 	_count: { select: { expenses: true } },
 } as const satisfies Prisma.CategorySelect;

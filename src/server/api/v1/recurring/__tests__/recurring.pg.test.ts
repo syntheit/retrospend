@@ -6,6 +6,7 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { bookedUser } from "../../budget/__tests__/fixtures";
 import {
 	adminDb,
 	asKey,
@@ -44,7 +45,11 @@ type Confirm = {
 	};
 	undo: string;
 };
-type Preview = { changes: { id: string; delta: Money }[] };
+type Preview = {
+	changes: { id: string; delta: Money }[];
+	unchanged: { id: string }[];
+	unavailable: { id: string }[];
+};
 
 const daysAgo = (n: number) =>
 	new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
@@ -123,7 +128,12 @@ describe("/api/v1/recurring", () => {
 			await send("POST", "/recurring/preview", body, mine),
 			c.previewCreate,
 		);
-		expect(preview.changes).toEqual([]);
+		// It moves what recurring costs, in every period.
+		expect(preview.changes.map((x) => [x.id, x.delta.minor])).toEqual([
+			["recurring.cost.out.month", 900],
+			["recurring.cost.out.quarter", 2700],
+			["recurring.cost.out.year", 10800],
+		]);
 		await expect(
 			adminDb.recurringTemplate.count({ where: { userId: user } }),
 		).resolves.toBe(0);
@@ -275,7 +285,10 @@ describe("/api/v1/recurring", () => {
 			await send("POST", `/recurring/${item.id}/delete/preview`, {}),
 			c.previewDelete,
 		);
-		expect(preview.changes).toEqual([]);
+		const weekly = preview.changes.find(
+			(x) => x.id === "recurring.cost.out.month",
+		);
+		expect(weekly?.delta.minor).toBeLessThan(0);
 		await expect(
 			adminDb.recurringTemplate.count({ where: { id: item.id } }),
 		).resolves.toBe(1);
@@ -312,6 +325,120 @@ describe("/api/v1/recurring", () => {
 			409,
 			"conflict",
 		);
+	});
+
+	it("restores the links a delete cut, and shows the plan cost it can move", async () => {
+		const booked = await bookedUser();
+		const mine = await asMobile(booked.user.id);
+		const item = await make(
+			{ name: "Rent", amount: "300", nextDueDate: daysAgo(2) },
+			mine,
+		);
+		const rent = booked.ids.Rent as string;
+		await adminDb.envelope.update({
+			where: { id: rent },
+			data: { kind: "BILL", targetTemplateId: item.id },
+		});
+		const confirmed = await expectBody<Confirm>(
+			await send("POST", `/recurring/${item.id}/confirm`, {}, mine),
+			c.confirm,
+		);
+		const before = await adminDb.recurringTemplate.findUniqueOrThrow({
+			where: { id: item.id },
+		});
+
+		const preview = await expectBody<Preview>(
+			await send("POST", `/recurring/${item.id}/delete/preview`, {}, mine),
+			c.previewDelete,
+		);
+		const seen = new Set(
+			[...preview.changes, ...preview.unchanged, ...preview.unavailable].map(
+				(x) => x.id,
+			),
+		);
+		expect(seen.has("budget.planCost")).toBe(true);
+		expect(seen.has("recurring.cost.out.month")).toBe(true);
+
+		const done = await expectBody<{ undo: string }>(
+			await send("DELETE", `/recurring/${item.id}`, undefined, mine),
+			c.delete,
+		);
+		await expect(
+			adminDb.envelope.findUniqueOrThrow({ where: { id: rent } }),
+		).resolves.toMatchObject({ targetTemplateId: null });
+		await expect(
+			adminDb.expense.findUniqueOrThrow({
+				where: { id: confirmed.confirmed.expenseId },
+			}),
+		).resolves.toMatchObject({ recurringTemplateId: null });
+
+		await expectBody(
+			await send("POST", "/recurring/delete/undo", { token: done.undo }, mine),
+			c.undoDelete,
+		);
+		const after = await adminDb.recurringTemplate.findUniqueOrThrow({
+			where: { id: item.id },
+		});
+		expect(after.createdAt).toEqual(before.createdAt);
+		await expect(
+			adminDb.envelope.findUniqueOrThrow({ where: { id: rent } }),
+		).resolves.toMatchObject({ targetTemplateId: item.id });
+		await expect(
+			adminDb.expense.findUniqueOrThrow({
+				where: { id: confirmed.confirmed.expenseId },
+			}),
+		).resolves.toMatchObject({ recurringTemplateId: item.id });
+		// The confirm can still be undone from its own token.
+		await expectBody(
+			await send("POST", "/recurring/undo", { token: confirmed.undo }, mine),
+			c.undo,
+		);
+	});
+
+	it("leaves a link alone that changed while the template was gone", async () => {
+		const booked = await bookedUser();
+		const mine = await asMobile(booked.user.id);
+		const item = await make({ name: "Power" }, mine);
+		const other = await make({ name: "Water" }, mine);
+		const rent = booked.ids.Rent as string;
+		await adminDb.envelope.update({
+			where: { id: rent },
+			data: { kind: "BILL", targetTemplateId: item.id },
+		});
+		const done = await expectBody<{ undo: string }>(
+			await send("DELETE", `/recurring/${item.id}`, undefined, mine),
+			c.delete,
+		);
+		await adminDb.envelope.update({
+			where: { id: rent },
+			data: { targetTemplateId: other.id },
+		});
+		await expectBody(
+			await send("POST", "/recurring/delete/undo", { token: done.undo }, mine),
+			c.undoDelete,
+		);
+		await expect(
+			adminDb.envelope.findUniqueOrThrow({ where: { id: rent } }),
+		).resolves.toMatchObject({ targetTemplateId: other.id });
+	});
+
+	it("refuses to restore a template that was made again by hand", async () => {
+		const user = (await createTestUser()).user.id;
+		const mine = await asMobile(user);
+		const item = await make({ name: "Streamly", amount: "8" }, mine);
+		const done = await expectBody<{ undo: string }>(
+			await send("DELETE", `/recurring/${item.id}`, undefined, mine),
+			c.delete,
+		);
+		await make({ name: "streamly", amount: "8" }, mine);
+		await expectProblem(
+			await send("POST", "/recurring/delete/undo", { token: done.undo }, mine),
+			409,
+			"conflict",
+		);
+		await expect(
+			adminDb.recurringTemplate.count({ where: { userId: user } }),
+		).resolves.toBe(1);
 	});
 
 	it("keeps delete and its undo to the owner", async () => {

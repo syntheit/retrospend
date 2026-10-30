@@ -38,6 +38,8 @@ export const categorySchema = z
 		name: z.string(),
 		color: categoryColorSchema,
 		icon: z.string().nullable(),
+		/** Whether it files expenses or income. */
+		kind: z.enum(["expense", "income"]),
 		/** The category-n design token number the color maps to (1 to 21). */
 		tone: z.int(),
 		excludeByDefault: z.boolean(),

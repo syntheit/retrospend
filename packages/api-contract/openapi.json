@@ -58580,6 +58580,13 @@
 														"minLength": 1,
 														"type": "string"
 													},
+													"kind": {
+														"enum": [
+															"expense",
+															"income"
+														],
+														"type": "string"
+													},
 													"name": {
 														"type": "string"
 													},
@@ -58594,6 +58601,7 @@
 													"name",
 													"color",
 													"icon",
+													"kind",
 													"tone",
 													"excludeByDefault",
 													"expenseCount"
@@ -58820,6 +58828,13 @@
 											"minLength": 1,
 											"type": "string"
 										},
+										"kind": {
+											"enum": [
+												"expense",
+												"income"
+											],
+											"type": "string"
+										},
 										"name": {
 											"type": "string"
 										},
@@ -58834,6 +58849,7 @@
 										"name",
 										"color",
 										"icon",
+										"kind",
 										"tone",
 										"excludeByDefault",
 										"expenseCount"
@@ -59123,6 +59139,13 @@
 											"minLength": 1,
 											"type": "string"
 										},
+										"kind": {
+											"enum": [
+												"expense",
+												"income"
+											],
+											"type": "string"
+										},
 										"name": {
 											"type": "string"
 										},
@@ -59137,6 +59160,7 @@
 										"name",
 										"color",
 										"icon",
+										"kind",
 										"tone",
 										"excludeByDefault",
 										"expenseCount"
@@ -59356,6 +59380,13 @@
 											"minLength": 1,
 											"type": "string"
 										},
+										"kind": {
+											"enum": [
+												"expense",
+												"income"
+											],
+											"type": "string"
+										},
 										"name": {
 											"type": "string"
 										},
@@ -59370,6 +59401,7 @@
 										"name",
 										"color",
 										"icon",
+										"kind",
 										"tone",
 										"excludeByDefault",
 										"expenseCount"
@@ -59556,6 +59588,13 @@
 											"minLength": 1,
 											"type": "string"
 										},
+										"kind": {
+											"enum": [
+												"expense",
+												"income"
+											],
+											"type": "string"
+										},
 										"name": {
 											"type": "string"
 										},
@@ -59570,6 +59609,7 @@
 										"name",
 										"color",
 										"icon",
+										"kind",
 										"tone",
 										"excludeByDefault",
 										"expenseCount"

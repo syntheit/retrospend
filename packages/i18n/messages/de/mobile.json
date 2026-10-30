@@ -754,7 +754,13 @@
 			"netWorthChange_notLogged": "Änderung durch Nicht erfasst",
 			"netWorthChange_revaluation": "Änderung durch Kurse und Preise",
 			"netWorthChange_opened": "Änderung durch neue Konten",
-			"netWorthChange_closed": "Änderung durch geschlossene Konten"
+			"netWorthChange_closed": "Änderung durch geschlossene Konten",
+			"recurring_cost_out_month": "Wiederkehrende Kosten pro Monat",
+			"recurring_cost_in_month": "Wiederkehrendes Einkommen pro Monat",
+			"recurring_cost_out_quarter": "Wiederkehrende Kosten pro Quartal",
+			"recurring_cost_in_quarter": "Wiederkehrendes Einkommen pro Quartal",
+			"recurring_cost_out_year": "Wiederkehrende Kosten pro Jahr",
+			"recurring_cost_in_year": "Wiederkehrendes Einkommen pro Jahr"
 		},
 		"figuresInline": {
 			"budget_notPlannedYet": "Noch nicht verplant",
@@ -781,7 +787,13 @@
 			"netWorthChange_notLogged": "die Änderung durch Nicht erfasst",
 			"netWorthChange_revaluation": "die Änderung durch Kurse und Preise",
 			"netWorthChange_opened": "die Änderung durch neue Konten",
-			"netWorthChange_closed": "die Änderung durch geschlossene Konten"
+			"netWorthChange_closed": "die Änderung durch geschlossene Konten",
+			"recurring_cost_out_month": "wiederkehrende Kosten pro Monat",
+			"recurring_cost_in_month": "wiederkehrendes Einkommen pro Monat",
+			"recurring_cost_out_quarter": "wiederkehrende Kosten pro Quartal",
+			"recurring_cost_in_quarter": "wiederkehrendes Einkommen pro Quartal",
+			"recurring_cost_out_year": "wiederkehrende Kosten pro Jahr",
+			"recurring_cost_in_year": "wiederkehrendes Einkommen pro Jahr"
 		},
 		"debt": {
 			"label": "Schuldenfrei bis",

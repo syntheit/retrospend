@@ -754,7 +754,13 @@
 			"netWorthChange_notLogged": "Изменение из-за «Не учтено»",
 			"netWorthChange_revaluation": "Изменение из-за курсов и цен",
 			"netWorthChange_opened": "Изменение из-за добавленных счетов",
-			"netWorthChange_closed": "Изменение из-за закрытых счетов"
+			"netWorthChange_closed": "Изменение из-за закрытых счетов",
+			"recurring_cost_out_month": "Регулярные расходы в месяц",
+			"recurring_cost_in_month": "Регулярный доход в месяц",
+			"recurring_cost_out_quarter": "Регулярные расходы в квартал",
+			"recurring_cost_in_quarter": "Регулярный доход в квартал",
+			"recurring_cost_out_year": "Регулярные расходы в год",
+			"recurring_cost_in_year": "Регулярный доход в год"
 		},
 		"figuresInline": {
 			"budget_notPlannedYet": "Ещё не запланировано",
@@ -781,7 +787,13 @@
 			"netWorthChange_notLogged": "изменение из-за «Не учтено»",
 			"netWorthChange_revaluation": "изменение из-за курсов и цен",
 			"netWorthChange_opened": "изменение из-за добавленных счетов",
-			"netWorthChange_closed": "изменение из-за закрытых счетов"
+			"netWorthChange_closed": "изменение из-за закрытых счетов",
+			"recurring_cost_out_month": "регулярные расходы в месяц",
+			"recurring_cost_in_month": "регулярный доход в месяц",
+			"recurring_cost_out_quarter": "регулярные расходы в квартал",
+			"recurring_cost_in_quarter": "регулярный доход в квартал",
+			"recurring_cost_out_year": "регулярные расходы в год",
+			"recurring_cost_in_year": "регулярный доход в год"
 		},
 		"debt": {
 			"label": "Без долгов к",

@@ -754,7 +754,13 @@
 			"netWorthChange_notLogged": "Variação por valores não registrados",
 			"netWorthChange_revaluation": "Variação por cotações e preços",
 			"netWorthChange_opened": "Variação por contas adicionadas",
-			"netWorthChange_closed": "Variação por contas encerradas"
+			"netWorthChange_closed": "Variação por contas encerradas",
+			"recurring_cost_out_month": "Custo recorrente por mês",
+			"recurring_cost_in_month": "Renda recorrente por mês",
+			"recurring_cost_out_quarter": "Custo recorrente por trimestre",
+			"recurring_cost_in_quarter": "Renda recorrente por trimestre",
+			"recurring_cost_out_year": "Custo recorrente por ano",
+			"recurring_cost_in_year": "Renda recorrente por ano"
 		},
 		"figuresInline": {
 			"budget_notPlannedYet": "Ainda não planejado",
@@ -781,7 +787,13 @@
 			"netWorthChange_notLogged": "a variação por valores não registrados",
 			"netWorthChange_revaluation": "a variação por cotações e preços",
 			"netWorthChange_opened": "a variação por contas adicionadas",
-			"netWorthChange_closed": "a variação por contas encerradas"
+			"netWorthChange_closed": "a variação por contas encerradas",
+			"recurring_cost_out_month": "custo recorrente por mês",
+			"recurring_cost_in_month": "renda recorrente por mês",
+			"recurring_cost_out_quarter": "custo recorrente por trimestre",
+			"recurring_cost_in_quarter": "renda recorrente por trimestre",
+			"recurring_cost_out_year": "custo recorrente por ano",
+			"recurring_cost_in_year": "renda recorrente por ano"
 		},
 		"debt": {
 			"label": "Sem dívidas até",

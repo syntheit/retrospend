@@ -754,7 +754,13 @@
 			"netWorthChange_notLogged": "Variation due au non enregistré",
 			"netWorthChange_revaluation": "Variation due aux taux et prix",
 			"netWorthChange_opened": "Variation due aux comptes ajoutés",
-			"netWorthChange_closed": "Variation due aux comptes clôturés"
+			"netWorthChange_closed": "Variation due aux comptes clôturés",
+			"recurring_cost_out_month": "Coût récurrent par mois",
+			"recurring_cost_in_month": "Revenu récurrent par mois",
+			"recurring_cost_out_quarter": "Coût récurrent par trimestre",
+			"recurring_cost_in_quarter": "Revenu récurrent par trimestre",
+			"recurring_cost_out_year": "Coût récurrent par an",
+			"recurring_cost_in_year": "Revenu récurrent par an"
 		},
 		"figuresInline": {
 			"budget_notPlannedYet": "Pas encore prévu",
@@ -781,7 +787,13 @@
 			"netWorthChange_notLogged": "la variation due au non enregistré",
 			"netWorthChange_revaluation": "la variation due aux taux et prix",
 			"netWorthChange_opened": "la variation due aux comptes ajoutés",
-			"netWorthChange_closed": "la variation due aux comptes clôturés"
+			"netWorthChange_closed": "la variation due aux comptes clôturés",
+			"recurring_cost_out_month": "coût récurrent par mois",
+			"recurring_cost_in_month": "revenu récurrent par mois",
+			"recurring_cost_out_quarter": "coût récurrent par trimestre",
+			"recurring_cost_in_quarter": "revenu récurrent par trimestre",
+			"recurring_cost_out_year": "coût récurrent par an",
+			"recurring_cost_in_year": "revenu récurrent par an"
 		},
 		"debt": {
 			"label": "Sans dette d'ici",

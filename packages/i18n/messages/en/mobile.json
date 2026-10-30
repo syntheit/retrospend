@@ -754,7 +754,13 @@
 			"netWorthChange_notLogged": "Change from Not logged",
 			"netWorthChange_revaluation": "Change from rates and prices",
 			"netWorthChange_opened": "Change from accounts added",
-			"netWorthChange_closed": "Change from accounts closed"
+			"netWorthChange_closed": "Change from accounts closed",
+			"recurring_cost_out_month": "Recurring cost a month",
+			"recurring_cost_in_month": "Recurring income a month",
+			"recurring_cost_out_quarter": "Recurring cost a quarter",
+			"recurring_cost_in_quarter": "Recurring income a quarter",
+			"recurring_cost_out_year": "Recurring cost a year",
+			"recurring_cost_in_year": "Recurring income a year"
 		},
 		"figuresInline": {
 			"budget_notPlannedYet": "Not planned yet",
@@ -781,7 +787,13 @@
 			"netWorthChange_notLogged": "the change from Not logged",
 			"netWorthChange_revaluation": "the change from rates and prices",
 			"netWorthChange_opened": "the change from accounts added",
-			"netWorthChange_closed": "the change from accounts closed"
+			"netWorthChange_closed": "the change from accounts closed",
+			"recurring_cost_out_month": "recurring cost a month",
+			"recurring_cost_in_month": "recurring income a month",
+			"recurring_cost_out_quarter": "recurring cost a quarter",
+			"recurring_cost_in_quarter": "recurring income a quarter",
+			"recurring_cost_out_year": "recurring cost a year",
+			"recurring_cost_in_year": "recurring income a year"
 		},
 		"debt": {
 			"label": "Debt-free by",

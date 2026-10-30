@@ -26,6 +26,7 @@ export function toCategory(row: CategoryRow): CategoryDto {
 		name: row.name,
 		color: row.color,
 		icon: row.icon,
+		kind: row.kind === "INCOME" ? "income" : "expense",
 		tone: categoryTone(row.color),
 		excludeByDefault: row.excludeByDefault,
 		expenseCount: row._count.expenses,
