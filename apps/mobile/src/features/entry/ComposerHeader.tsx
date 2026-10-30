@@ -10,8 +10,8 @@ import type { EntryMode } from "./ComposerShell";
 
 /**
  * The composer's head. The quick step has the mode row centered over one
- * line: the actions menu at the start, the context pill (Personal or the
- * project) in the middle and More at the end. More has its own title. An
+ * line: the context pill (Personal or the project; an edit has the actions
+ * menu there) at the start and More at the end. More has its own title. An
  * edit has no mode row, and its menu holds Undo changes.
  */
 export function ComposerHeader({
@@ -85,20 +85,21 @@ export function ComposerHeader({
 				style={{
 					flexDirection: "row",
 					alignItems: "center",
+					justifyContent: "space-between",
 					gap: space[2],
 				}}
 			>
-				<View style={{ flex: 1, alignItems: "flex-start" }}>{actions}</View>
-				{context}
-				<View style={{ flex: 1, alignItems: "flex-end" }}>
-					<Chip
-						accessibilityLabel={t("more")}
-						chevron="right"
-						label={t("more")}
-						onPress={onMore}
-						variant="trigger"
-					/>
+				{/* The context pill sits at the leading edge; an edit has the actions there. */}
+				<View style={{ flexShrink: 1, alignItems: "flex-start" }}>
+					{actions ?? context}
 				</View>
+				<Chip
+					accessibilityLabel={t("more")}
+					chevron="right"
+					label={t("more")}
+					onPress={onMore}
+					variant="trigger"
+				/>
 			</View>
 		</View>
 	);

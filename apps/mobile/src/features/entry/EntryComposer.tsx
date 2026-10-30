@@ -160,6 +160,18 @@ function Form({
 			/>
 		) : null;
 
+	// Between currencies the hint sits under the second row, in the amount card.
+	const underAmount =
+		mode === "transfer" ? (
+			form.exchange ? (
+				<Text tone="fg2" variant="small">
+					{t("transfer.receivedHint")}
+				</Text>
+			) : null
+		) : (
+			rate
+		);
+
 	// In a project the split is about the project's people, not your latest ones.
 	const people = expense.projectId ? expense.projectPeople : catalog.people;
 	const context =
@@ -221,7 +233,7 @@ function Form({
 				onScrollDrag={() => form.setPadOpen(false)}
 				padOpen={form.padOpen}
 				preview={<PreviewLine state={pv.preview} />}
-				rate={rate}
+				rate={underAmount}
 				step={form.step}
 				surface={surface}
 				typing={form.typing}
@@ -270,8 +282,8 @@ function Form({
 								<TransferFields
 									draft={transfer}
 									errors={tried ? form.transferProblems : {}}
-									exchange={form.exchange}
 									onChange={form.patchTransfer}
+									onTypingChange={form.setTyping}
 									places={catalog.places}
 								/>
 							)}

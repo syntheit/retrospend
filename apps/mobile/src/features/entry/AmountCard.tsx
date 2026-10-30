@@ -41,22 +41,25 @@ export function AmountCard({
 	const { color, radius, size, space } = useTheme();
 	const edge = space[1] / 2;
 	const many = lines.length > 1;
+	// A resting card is a line-strong hairline, so it reads on the sheet's
+	// surface; the ring is thicker and padded back so nothing moves.
 	const ringColor =
 		ring === "error"
 			? color.danger
 			: ring === "focus"
 				? color.brand
-				: "transparent";
+				: color.lineStrong;
+	const cardEdge = many || ring === "idle" ? 1 : edge;
 	return (
 		<View
 			style={{
 				backgroundColor: color.surface,
 				borderRadius: radius.panel,
-				borderWidth: edge,
-				// With two rows the active row carries the ring, so the card keeps none.
-				borderColor: many ? "transparent" : ringColor,
-				paddingHorizontal: space[2],
-				paddingVertical: many ? space[1] : 0,
+				borderWidth: cardEdge,
+				// With two rows the active row carries the ring, so the card keeps a hairline.
+				borderColor: many ? color.lineStrong : ringColor,
+				paddingHorizontal: space[2] + edge - cardEdge,
+				paddingVertical: (many ? space[1] : 0) + edge - cardEdge,
 			}}
 		>
 			{lines.map((line) => (
@@ -69,7 +72,12 @@ export function AmountCard({
 						gap: space[2],
 						borderRadius: radius.ctl,
 						borderWidth: many ? edge : 0,
-						borderColor: many && line.active ? ringColor : "transparent",
+						borderColor:
+							many && line.active
+								? ring === "error"
+									? color.danger
+									: color.brand
+								: "transparent",
 						paddingHorizontal: many ? space[2] : 0,
 					}}
 				>
@@ -78,17 +86,19 @@ export function AmountCard({
 						accessibilityLabel={line.spoken}
 						accessibilityRole="button"
 						onPress={line.onPress}
-						style={{ flex: 1, minHeight: size.touchMin.phone }}
+						style={{
+							flex: 1,
+							minHeight: size.touchMin.phone,
+							justifyContent: "center",
+						}}
 					>
 						<Text
 							accessibilityLiveRegion="polite"
 							adjustsFontSizeToFit
 							numberOfLines={1}
 							style={{
-								flex: 1,
 								paddingRight: space[2],
 								textAlign: "right",
-								textAlignVertical: "center",
 							}}
 							tabular
 							tone={line.text ? "fg" : "fg3"}

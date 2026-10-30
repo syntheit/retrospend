@@ -122,7 +122,6 @@ export function MoreStep({
 					catalog={catalog}
 					draft={form.income}
 					onChange={form.patchIncome}
-					onTypingChange={form.setTyping}
 				/>
 				{rate ? (
 					<>
@@ -143,7 +142,6 @@ export function MoreStep({
 				<TransferDetails
 					draft={form.transfer}
 					onChange={form.patchTransfer}
-					onTypingChange={form.setTyping}
 				/>
 				{changes}
 			</View>
@@ -195,6 +193,16 @@ export function MoreStep({
 										{kept.name}
 									</Text>
 								</View>
+							}
+							title={t("project.label")}
+						/>
+					) : editing ? (
+						<ListRow
+							accessibilityLabel={`${t("project.label")}, ${t("project.none")}`}
+							end={
+								<Text numberOfLines={1} tone="fg2">
+									{t("project.none")}
+								</Text>
 							}
 							title={t("project.label")}
 						/>

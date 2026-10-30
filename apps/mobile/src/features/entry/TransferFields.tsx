@@ -4,7 +4,6 @@ import { groupOf } from "@/features/wealth/accounts";
 import type { Account } from "@/features/wealth/source";
 import { useTheme } from "@/theme";
 import { ListGroup, SectionHeader } from "@/ui/List";
-import { Text } from "@/ui/Text";
 import { FieldError, TextField } from "@/ui/TextField";
 import { DateRow } from "./DateRow";
 import type { TransferDraft, TransferErrors } from "./draft";
@@ -51,19 +50,19 @@ export function TransferFields({
 	draft,
 	places,
 	errors,
-	exchange,
 	onChange,
+	onTypingChange,
 }: {
 	draft: TransferDraft;
 	places: EntryPlace[];
 	/** Shown once Add was pressed. */
 	errors: TransferErrors;
-	/** The accounts are in two currencies. */
-	exchange: boolean;
+	onTypingChange: (typing: boolean) => void;
 	onChange: (patch: Partial<TransferDraft>) => void;
 }) {
 	const t = useTranslations("mobile.composer.transfer");
 	const tp = useTranslations("mobile.pickers");
+	const tc = useTranslations("mobile.composer");
 	const { space } = useTheme();
 	const from = places.find((p) => p.id === draft.fromId);
 	const rows = places.map((p) => ({
@@ -105,39 +104,6 @@ export function TransferFields({
 			{errors.same ? <FieldError>{t("errors.same")}</FieldError> : null}
 			{errors.places ? <FieldError>{t("errors.places")}</FieldError> : null}
 			{errors.received ? <FieldError>{t("errors.received")}</FieldError> : null}
-			{exchange ? (
-				<Text tone="fg2" variant="small">
-					{t("receivedHint")}
-				</Text>
-			) : null}
-		</View>
-	);
-}
-
-/** Transfer in More: the day and a note. */
-export function TransferDetails({
-	draft,
-	onChange,
-	onTypingChange,
-}: {
-	draft: TransferDraft;
-	onChange: (patch: Partial<TransferDraft>) => void;
-	onTypingChange: (typing: boolean) => void;
-}) {
-	const t = useTranslations("mobile.composer.transfer");
-	const tc = useTranslations("mobile.composer");
-	const { space } = useTheme();
-	return (
-		<View>
-			<View style={{ paddingTop: space[1] }}>
-				<ListGroup>
-					<DateRow
-						label={tc("dateField")}
-						onChange={(date) => onChange({ date })}
-						value={draft.date}
-					/>
-				</ListGroup>
-			</View>
 			<SectionHeader title={tc("details")} />
 			<View style={{ paddingHorizontal: space[4] }}>
 				<TextField
@@ -149,6 +115,29 @@ export function TransferDetails({
 					value={draft.note}
 				/>
 			</View>
+		</View>
+	);
+}
+
+/** Transfer in More: the day. */
+export function TransferDetails({
+	draft,
+	onChange,
+}: {
+	draft: TransferDraft;
+	onChange: (patch: Partial<TransferDraft>) => void;
+}) {
+	const tc = useTranslations("mobile.composer");
+	const { space } = useTheme();
+	return (
+		<View style={{ paddingTop: space[1] }}>
+			<ListGroup>
+				<DateRow
+					label={tc("dateField")}
+					onChange={(date) => onChange({ date })}
+					value={draft.date}
+				/>
+			</ListGroup>
 		</View>
 	);
 }

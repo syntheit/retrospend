@@ -62,24 +62,34 @@ export function IncomeFields({
 					))}
 				</View>
 			) : null}
+			<SectionHeader title={t("details")} />
+			<View style={{ paddingHorizontal: space[4] }}>
+				<TextField
+					autoCapitalize="sentences"
+					label={t("note")}
+					maxLength={NOTE_LIMIT}
+					onChangeText={(note) => onChange({ note })}
+					onTypingChange={onTypingChange}
+					placeholder={t("notePlaceholder")}
+					value={draft.note}
+				/>
+			</View>
 		</View>
 	);
 }
 
 /**
- * Income in More: the day, whether the money waits as Not planned yet or goes
- * by your plan, and a note that says what it was for.
+ * Income in More: the day, and whether the money waits as Not planned yet or
+ * goes by your plan. The note is on the main step.
  */
 export function IncomeDetails({
 	draft,
 	onChange,
 	catalog,
-	onTypingChange,
 }: {
 	draft: IncomeDraft;
 	onChange: (patch: Partial<IncomeDraft>) => void;
 	catalog: EntryCatalog;
-	onTypingChange: (typing: boolean) => void;
 }) {
 	const t = useTranslations("mobile.composer");
 	const { space } = useTheme();
@@ -118,18 +128,6 @@ export function IncomeDetails({
 					</View>
 				</>
 			) : null}
-			<SectionHeader title={t("details")} />
-			<View style={gutter}>
-				<TextField
-					autoCapitalize="sentences"
-					label={t("note")}
-					maxLength={NOTE_LIMIT}
-					onChangeText={(note) => onChange({ note })}
-					onTypingChange={onTypingChange}
-					placeholder={t("notePlaceholder")}
-					value={draft.note}
-				/>
-			</View>
 		</View>
 	);
 }

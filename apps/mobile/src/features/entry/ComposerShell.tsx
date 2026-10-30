@@ -70,7 +70,7 @@ export function ComposerShell({
 	children: ReactNode;
 }) {
 	const t = useTranslations("mobile.composer");
-	const { color, size, space } = useTheme();
+	const { color, space } = useTheme();
 	const quick = step === "quick";
 	const keypadUp = quick && !typing && padOpen;
 	return (
@@ -137,7 +137,6 @@ export function ComposerShell({
 					<MoneyKeypad
 						currency={keypad.currency}
 						draft={keypad.text}
-						keyHeight={size.touchMin.phone}
 						onDraftChange={keypad.onChange}
 					/>
 				) : null}

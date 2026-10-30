@@ -52,6 +52,8 @@ export function TitleCard({
 			style={{
 				backgroundColor: color.surface,
 				borderRadius: radius.panel,
+				borderWidth: 1,
+				borderColor: color.lineStrong,
 				padding: space[3],
 				gap: space[2],
 			}}
