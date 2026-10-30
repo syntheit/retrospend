@@ -583,6 +583,70 @@ describe("big text", () => {
 	});
 });
 
+// A sheet that fits its content has no detents, so at a big text size its
+// content can outgrow the window and could not scroll. Its body scrolls above
+// the pinned footer; at the default size nothing changes.
+describe("sheet without detents", () => {
+	const os = Platform.OS;
+	afterEach(() => {
+		Platform.OS = os;
+		setFontScale(1);
+	});
+	const mountPlain = (fontScale: number, platform: "ios" | "android") => {
+		setFontScale(fontScale);
+		Platform.OS = platform;
+		mockDetents.current = undefined as never;
+		let tree!: Tree;
+		act(() => {
+			tree = create(
+				<SafeAreaProvider initialMetrics={METRICS}>
+					<Sheet
+						footer={<Text>Save</Text>}
+						onClose={noop}
+						title="Month starts on day"
+						visible
+					>
+						<Text>Body</Text>
+					</Sheet>
+				</SafeAreaProvider>,
+			);
+		});
+		return tree;
+	};
+
+	it.each(["ios", "android"] as const)(
+		"does not scroll at the default size on %s",
+		(platform) => {
+			const tree = mountPlain(1, platform);
+			expect(tree.root.findAll((n) => n.type === ScrollView)).toHaveLength(0);
+			act(() => tree.unmount());
+		},
+	);
+
+	it("scrolls the body above the footer at a big size on iOS", () => {
+		const tree = mountPlain(2, "ios");
+		const body = bodyOf(tree);
+		expect(styleOf(body).flex).toBe(1);
+		const footer = tree.root.findAll(
+			(n) => n.type === Text && textOf(n) === "Save",
+		);
+		expect(footer).toHaveLength(1);
+		expect(inside(footer[0] as Node, body)).toBe(false);
+		const text = tree.root.findAll((n) => n.type === Text && textOf(n) === "Body");
+		expect(inside(text[0] as Node, body)).toBe(true);
+		act(() => tree.unmount());
+	});
+
+	it("bounds the body to the window at a big size on Android", () => {
+		const tree = mountPlain(2, "android");
+		const body = bodyOf(tree);
+		const max = styleOf(body).maxHeight;
+		expect(typeof max).toBe("number");
+		expect(max as number).toBeLessThan(window());
+		act(() => tree.unmount());
+	});
+});
+
 // The composer's cards are the surface color; on a surface sheet they did not
 // read as cards. A grouped sheet takes the page color under them.
 describe("grouped sheet", () => {
