@@ -32,7 +32,8 @@ export function EntryDetail({
 	titled?: boolean;
 }) {
 	const t = useTranslations("mobile.entry");
-	const state = useEntryRow(id, placeholder);
+	const { state, reload } = useEntryRow(id, placeholder);
+	const tc = useTranslations("mobile.common");
 	if (state.status === "loading") {
 		return state.placeholder ? (
 			<EntryView editable={false} item={state.placeholder} titled={titled} />
@@ -42,7 +43,14 @@ export function EntryDetail({
 	}
 	if (state.status === "missing") return <EmptyState title={t("gone")} />;
 	if (state.status === "error") {
-		return <EmptyState detail={t("loadErrorDetail")} title={t("loadError")} />;
+		return (
+			<EmptyState
+				actionLabel={tc("retry")}
+				detail={t("loadErrorDetail")}
+				onAction={() => void reload()}
+				title={t("loadError")}
+			/>
+		);
 	}
 	return (
 		<EntryView

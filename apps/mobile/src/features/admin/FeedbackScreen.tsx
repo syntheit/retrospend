@@ -70,7 +70,12 @@ export function FeedbackScreen() {
 	}
 
 	if (state.status !== "ready") {
-		return <PageState failed={state.status === "error"} />;
+		return (
+			<PageState
+				failed={state.status === "error"}
+				onRetry={() => void reload()}
+			/>
+		);
 	}
 	const page = state.data;
 	const open = page.items.find((item) => item.id === openId) ?? null;

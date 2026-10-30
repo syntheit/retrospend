@@ -4,20 +4,31 @@ import { Text } from "./Text";
 
 /**
  * One line, at most one action (GUIDELINE §12). No illustration and no
- * icon: the sentence says what is missing.
+ * icon: the sentence says what is missing. An error carries its Retry as
+ * the action; `inline` is the one-line form for a section.
  */
 export function EmptyState({
 	title,
 	detail,
 	actionLabel,
 	onAction,
+	inline = false,
 }: {
 	title: string;
 	detail?: string;
 	actionLabel?: string;
 	onAction?: () => void;
+	/** Inside a section: one muted line at the gutter, no title style and no action. */
+	inline?: boolean;
 }) {
 	const { color, radius, size, space } = useTheme();
+	if (inline) {
+		return (
+			<Text style={{ paddingHorizontal: space[4] }} tone="fg2">
+				{title}
+			</Text>
+		);
+	}
 	return (
 		<View
 			// One stop for the words; with an action, each is its own stop, or

@@ -31,7 +31,6 @@ import { ListGroup, StaleNote } from "@/ui/List";
 import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { Screen, useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
-import { Text } from "@/ui/Text";
 import { useTransient } from "@/ui/transient";
 
 export default function ActivityScreen() {
@@ -170,13 +169,7 @@ export default function ActivityScreen() {
 			ListEmptyComponent={empty}
 			ListFooterComponent={
 				loadingMore ? (
-					<Text
-						style={{ padding: space[4], textAlign: "center" }}
-						tone="fg2"
-						variant="small"
-					>
-						{t("loading")}
-					</Text>
+					<SkeletonRows count={1} />
 				) : (
 					<View style={{ height: addInset }} />
 				)

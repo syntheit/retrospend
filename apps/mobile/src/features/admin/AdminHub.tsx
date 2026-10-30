@@ -13,7 +13,7 @@ import { useAdminRead } from "./useAdminRead";
  */
 export function AdminHub() {
 	const t = useTranslations("mobile.admin");
-	const { state } = useAdminRead(async (api) => {
+	const { state, reload } = useAdminRead(async (api) => {
 		const [stats, feedback, settings] = await Promise.all([
 			api.admin.stats(),
 			api.admin.listFeedback({ limit: 1 }),
@@ -23,7 +23,12 @@ export function AdminHub() {
 	});
 
 	if (state.status !== "ready") {
-		return <PageState failed={state.status === "error"} />;
+		return (
+			<PageState
+				failed={state.status === "error"}
+				onRetry={() => void reload()}
+			/>
+		);
 	}
 	const { stats, feedback, settings } = state.data;
 

@@ -10,6 +10,7 @@ import { EmptyState } from "@/ui/EmptyState";
 import { CategoryTile, ListGroup, ListRow, StaleNote } from "@/ui/List";
 import { Menu } from "@/ui/Menu";
 import { Screen } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
 import { useToast } from "@/ui/Toast";
 import { SettingsPage } from "../parts";
@@ -26,9 +27,8 @@ import type { Category } from "./source";
  */
 export function CategoriesScreen() {
 	const t = useTranslations("mobile.settings.categories");
-	const tc = useTranslations("mobile.common");
 	const ts = useTranslations("mobile.status");
-	const loading = useTranslations("mobile.activity")("loading");
+	const tc = useTranslations("mobile.common");
 	const { state, reload } = useCategories();
 	const { api } = useSession();
 	const toast = useToast();
@@ -87,10 +87,16 @@ export function CategoriesScreen() {
 	if (state.status !== "ready") {
 		return (
 			<Screen>
-				<EmptyState
-					detail={state.status === "error" ? t("errorDetail") : undefined}
-					title={state.status === "error" ? t("error") : loading}
-				/>
+				{state.status === "error" ? (
+					<EmptyState
+						actionLabel={tc("retry")}
+						detail={t("errorDetail")}
+						onAction={() => void reload()}
+						title={t("error")}
+					/>
+				) : (
+					<SkeletonRows />
+				)}
 			</Screen>
 		);
 	}

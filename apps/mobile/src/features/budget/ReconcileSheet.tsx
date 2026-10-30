@@ -11,7 +11,9 @@ import {
 	useAmountLocale,
 } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { EmptyState } from "@/ui/EmptyState";
 import type { SheetDetent } from "@/ui/Sheet";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { bankFigure, reconcileBody } from "./moreBodies";
 import type { BudgetMonth } from "./source";
 import { FormSheet, WriteForm } from "./WriteSheet";
@@ -40,18 +42,20 @@ export function ReconcileSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.reconcile");
+	const tc = useTranslations("mobile.common");
 	const { api: client } = useSession();
 	const money = useMoneyText();
 	const locale = useAmountLocale();
 	const [bank, setBank] = useState<BankSide | null>(null);
 	const [failed, setFailed] = useState(false);
+	const [again, setAgain] = useState(0);
 	const [draft, setDraft] = useState("");
 	const currency = bank?.holds.currency ?? data.book.currency;
 	const entered = readAmount(draft, locale, currency);
 	const minor = bankFigure(entered, bank?.bank.minor ?? null);
 
 	// Read the bank side each time the sheet opens.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `client` is stable for a session
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `client` is stable for a session; `again` is Retry
 	useEffect(() => {
 		if (!visible || !client) return;
 		setBank(null);
@@ -69,7 +73,7 @@ export function ReconcileSheet({
 		return () => {
 			cancelled = true;
 		};
-	}, [visible]);
+	}, [visible, again]);
 
 	const { idFor } = useWriteIds(visible ? `${minor}` : null);
 	const body = bank
@@ -83,9 +87,13 @@ export function ReconcileSheet({
 			visible={visible}
 		>
 			{failed ? (
-				<Note tone="attention">{t("failed")}</Note>
+				<EmptyState
+					actionLabel={tc("retry")}
+					onAction={() => setAgain((n) => n + 1)}
+					title={t("failed")}
+				/>
 			) : bank === null ? (
-				<Note>{t("loading")}</Note>
+				<SkeletonRows count={2} />
 			) : (
 				<WriteForm
 					active={visible}

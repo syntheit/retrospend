@@ -8,11 +8,12 @@ import { useCategories } from "@/features/activity/useCategories";
 import { useAddEntry } from "@/features/entry/AddEntryProvider";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { usePeopleOverview } from "@/features/people/usePeople";
-import { SectionHeader, StaleNote } from "@/ui/List";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
+import { SectionHeader, StaleNote } from "@/ui/List";
 import { Screen } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { CashflowSection } from "./CashflowSection";
 import { InsightsToolbar } from "./InsightsToolbar";
 import { MonthBars } from "./MonthBars";
@@ -94,7 +95,7 @@ export function InsightsScreen() {
 
 	let body: React.ReactNode;
 	if (state.status === "loading") {
-		body = <EmptyState title={t("loading")} />;
+		body = <SkeletonRows />;
 	} else if (state.status === "error") {
 		body = (
 			<EmptyState
