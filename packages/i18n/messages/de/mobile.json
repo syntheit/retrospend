@@ -407,7 +407,8 @@
 		"docs": "Dokumentation",
 		"releaseNotes": "Versionshinweise",
 		"version": "Version {version} ({build})",
-		"inviteCodes": "Einladungscodes"
+		"inviteCodes": "Einladungscodes",
+		"feedback": "Feedback senden"
 	},
 	"activity": {
 		"title": "Aktivität",

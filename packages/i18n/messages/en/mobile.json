@@ -407,7 +407,8 @@
 		"docs": "Docs",
 		"releaseNotes": "Release notes",
 		"version": "Version {version} ({build})",
-		"inviteCodes": "Invite codes"
+		"inviteCodes": "Invite codes",
+		"feedback": "Send feedback"
 	},
 	"activity": {
 		"title": "Activity",

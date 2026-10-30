@@ -407,7 +407,8 @@
 		"docs": "Документация",
 		"releaseNotes": "Примечания к выпуску",
 		"version": "Версия {version} ({build})",
-		"inviteCodes": "Коды приглашения"
+		"inviteCodes": "Коды приглашения",
+		"feedback": "Отправить отзыв"
 	},
 	"activity": {
 		"title": "Активность",
