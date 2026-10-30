@@ -6,6 +6,7 @@ import {
 	buttonStyle,
 	controlSize,
 	disabled as disabledModifier,
+	dynamicTypeSize,
 	font,
 	foregroundStyle,
 	frame,
@@ -18,6 +19,7 @@ import {
 import { useColorScheme } from "react-native";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
+import { useChromeTextSize } from "./Text";
 import type { ButtonIcon, ButtonProps } from "./types";
 
 /**
@@ -39,6 +41,12 @@ export const BUTTON_STYLE = {
 /** A disabled kit button fades to this (kit.css .btn:disabled). */
 const DISABLED_OPACITY = 0.45;
 
+/**
+ * The largest Dynamic Type size a text button's own label grows to: the
+ * step at or under the 1.3 chrome cap (xxLarge is 1.23, xxxLarge 1.35).
+ */
+const CHROME_DYNAMIC_TYPE = "xxLarge";
+
 type KitVariant = "filled" | "outlined" | "danger" | "dangerText";
 
 /** The SF Symbol for each button glyph. */
@@ -57,7 +65,9 @@ const SYMBOL = {
  * brand foreground, danger the danger fill with its own foreground,
  * secondary is surface with a line-strong border and fg text, and the ghost
  * is bare danger text. Small is the 28 point control at 13/500, regular the
- * 36 point one at 14/500, so buttons in one row share one height.
+ * 36 point one at 14/500, so buttons in one row share one height. The
+ * control height is a minimum and the label grows with the user's text size
+ * up to the chrome cap (useChromeTextSize), so a larger label never clips.
  */
 function KitLabel({
 	label,
@@ -90,13 +100,14 @@ function KitLabel({
 					? color.surface
 					: null;
 	const shape = shapes.roundedRectangle({ cornerRadius: radius.ctl });
+	const labelSize = useChromeTextSize(small ? type.small.size : type.body.size);
 	return (
 		<HStack
 			modifiers={[
 				padding({ horizontal: space[3] }),
-				frame({ height: small ? size.ctlSm.phone : size.ctl.phone }),
-				// A second call: expo-ui ignores maxWidth when a fixed height is in
-				// the same frame(), which kept the button at its content width (R5).
+				frame({ minHeight: small ? size.ctlSm.phone : size.ctl.phone }),
+				// A second call: expo-ui ignores maxWidth when a height is in the
+				// same frame(), which kept the button at its content width (R5).
 				...(stretch ? [frame({ maxWidth: Infinity })] : []),
 				...(fill ? [background(fill, shape)] : []),
 				...(variant === "outlined"
@@ -119,7 +130,7 @@ function KitLabel({
 			<Text
 				modifiers={[
 					font({
-						size: small ? type.small.size : type.body.size,
+						size: labelSize,
 						weight: "medium",
 					}),
 					foregroundStyle(ink),
@@ -195,6 +206,8 @@ export function Button({
 				modifiers={[
 					buttonStyle(BUTTON_STYLE.text),
 					tint(color.brand),
+					// The system label scales on its own; stop it where the kit's does.
+					dynamicTypeSize({ max: CHROME_DYNAMIC_TYPE }),
 					...(size === "small" ? [controlSize("small")] : []),
 					...(accessibilityLabel ? [a11yLabel(accessibilityLabel)] : []),
 					...(disabled ? [disabledModifier(true)] : []),

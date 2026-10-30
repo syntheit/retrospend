@@ -112,6 +112,7 @@ export function Chip({
 			{leading}
 			<Text
 				numberOfLines={1}
+				scale="chrome"
 				tone={on || variant === "trigger" ? "fg" : "fg2"}
 				variant="small"
 				weight="medium"

@@ -2,7 +2,13 @@ import { dark, light } from "@retrospend/tokens/theme";
 import type { ReactElement } from "react";
 import { StyleSheet, type TextStyle } from "react-native";
 import { FONT_FAMILY } from "@/theme";
-import { Text, toneColor, typeStyle } from "./Text";
+import {
+	nativeTextSize,
+	TEXT_SCALE_CAP,
+	Text,
+	toneColor,
+	typeStyle,
+} from "./Text";
 
 // Every role reads its size, line height, weight and tracking from the type
 // tokens, and the weight picks a loaded DM Sans face instead of fontWeight.
@@ -87,6 +93,38 @@ describe("Text", () => {
 		);
 		expect(style.color).toBe(light.color.danger);
 		expect(style.fontSize).toBe(light.type.meta.size);
+	});
+
+	it("caps text growth at 1.5 for body and 1.3 for chrome, through a prop", () => {
+		expect(TEXT_SCALE_CAP).toEqual({ body: 1.5, chrome: 1.3 });
+		const capOf = (element: ReactElement) => {
+			const holder: {
+				tree?: {
+					root: { findByType(t: string): { props: Record<string, unknown> } };
+				};
+			} = {};
+			act(() => {
+				holder.tree = create(element);
+			});
+			return holder.tree?.root.findByType("Text").props.maxFontSizeMultiplier;
+		};
+		expect(capOf(<Text>Hi</Text>)).toBe(1.5);
+		expect(capOf(<Text scale="chrome">Hi</Text>)).toBe(1.3);
+		// An explicit prop still wins.
+		expect(capOf(<Text maxFontSizeMultiplier={1}>Hi</Text>)).toBe(1);
+	});
+
+	it("sizes native text like a chrome Text: grown, then capped", () => {
+		// SwiftUI draws a fixed size, so the scale is applied here.
+		expect(nativeTextSize(14, 1, 1.3, "ios")).toBe(14);
+		expect(nativeTextSize(14, 1.15, 1.3, "ios")).toBeCloseTo(16.1);
+		expect(nativeTextSize(14, 3.1, 1.3, "ios")).toBeCloseTo(18.2);
+		// Below 1 is not shrunk by the cap.
+		expect(nativeTextSize(14, 0.85, 1.3, "ios")).toBe(14);
+		// Compose scales sp by the system scale, so the sp value divides it back out.
+		expect(nativeTextSize(14, 1, 1.3, "android")).toBe(14);
+		expect(nativeTextSize(14, 2, 1.3, "android") * 2).toBeCloseTo(18.2);
+		expect(nativeTextSize(14, 1.15, 1.3, "android") * 1.15).toBeCloseTo(16.1);
 	});
 
 	it("lets a caller style win", () => {

@@ -13,6 +13,7 @@ import {
 import { useColorScheme } from "react-native";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
+import { useChromeTextSize } from "./Text";
 import type { ButtonProps } from "./types";
 
 /**
@@ -22,6 +23,8 @@ import type { ButtonProps } from "./types";
  * derives from the seed. Outlined is the kit secondary (surface, fg text, the
  * M3 outline); dangerText is the bare danger-text ghost; the icon prop is for
  * the SwiftUI buttons only. Small is the 28 dp control with 13 point text.
+ * The label grows with the user's text size up to the chrome cap, as the iOS
+ * button's does (useChromeTextSize takes the system's uncapped sp scaling back).
  */
 export function Button({
 	label,
@@ -41,6 +44,7 @@ export function Button({
 				? OutlinedButton
 				: TextButton;
 	const small = size === "small";
+	const labelSize = useChromeTextSize(small ? type.small.size : type.body.size);
 	const button = (
 		<Component
 			colors={
@@ -69,9 +73,7 @@ export function Button({
 			]}
 			onClick={disabled ? undefined : onPress}
 		>
-			<Text style={small ? { fontSize: type.small.size } : undefined}>
-				{label}
-			</Text>
+			<Text style={{ fontSize: labelSize }}>{label}</Text>
 		</Component>
 	);
 	if (!fill) return <NativeHost>{button}</NativeHost>;

@@ -20,6 +20,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
+import { useChromeTextSize } from "./Text";
 import type { MenuProps } from "./types";
 
 /**
@@ -40,6 +41,8 @@ function ChipLabel({
 	bare?: boolean;
 }) {
 	const { color, size, space, type } = useTheme();
+	// Grows with the user's text size to the chrome cap, as the Chip's label does.
+	const labelSize = useChromeTextSize(type.small.size);
 	return (
 		<HStack
 			modifiers={[
@@ -47,7 +50,7 @@ function ChipLabel({
 					leading: calendar ? space[2] : space[3],
 					trailing: bare ? 0 : space[2],
 				}),
-				frame({ height: size.ctl.phone }),
+				frame({ minHeight: size.ctl.phone }),
 				...(bare ? [] : chipShape(active, color)),
 			]}
 			spacing={space[2]}
@@ -57,7 +60,7 @@ function ChipLabel({
 			) : null}
 			<Text
 				modifiers={[
-					font({ size: type.small.size, weight: "medium" }),
+					font({ size: labelSize, weight: "medium" }),
 					foregroundStyle(active ? color.fg : color.fg2),
 				]}
 			>

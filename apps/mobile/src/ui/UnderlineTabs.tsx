@@ -162,6 +162,7 @@ export function UnderlineTabs<T extends string>({
 						>
 							<Text
 								numberOfLines={1}
+								scale="chrome"
 								tone={on ? "fg" : "fg2"}
 								weight={on ? "semibold" : "medium"}
 							>
