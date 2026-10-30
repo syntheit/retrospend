@@ -9,13 +9,13 @@ import { AddButton } from "@/ui/AddButton";
 import { Button } from "@/ui/Button";
 import { Chip } from "@/ui/Chip";
 import { EmptyState } from "@/ui/EmptyState";
-import { ListGroup, ListRow } from "@/ui/List";
+import { GroupItem, ListGroup, ListRow } from "@/ui/List";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
+import { SwitchRow } from "@/ui/SwitchRow";
 import { useToast } from "@/ui/Toast";
 import { Block, GroupNote, PageState, SettingsPage } from "../settings/parts";
 import { InviteSheet } from "./InviteSheet";
-import { SwitchItem } from "./SwitchItem";
 import type { InviteCodeDto } from "./types";
 import { detailOf, useAdminRead } from "./useAdminRead";
 import { useServerSettings } from "./useServerSettings";
@@ -120,21 +120,25 @@ export function InvitesScreen() {
 		<>
 			{add}
 			<SettingsPage>
-				<ListGroup>
-					<SwitchItem
-						detail={t("requireDetail")}
-						label={t("require")}
-						onChange={(on) => void settings.save({ inviteOnlyEnabled: on })}
-						value={server.inviteOnlyEnabled}
-					/>
-					<SwitchItem
-						detail={t("everyoneDetail")}
-						label={t("everyone")}
-						onChange={(on) =>
-							void settings.save({ allowAllUsersToGenerateInvites: on })
-						}
-						value={server.allowAllUsersToGenerateInvites}
-					/>
+				<ListGroup form>
+					<GroupItem>
+						<SwitchRow
+							detail={t("requireDetail")}
+							label={t("require")}
+							onChange={(on) => void settings.save({ inviteOnlyEnabled: on })}
+							value={server.inviteOnlyEnabled}
+						/>
+					</GroupItem>
+					<GroupItem>
+						<SwitchRow
+							detail={t("everyoneDetail")}
+							label={t("everyone")}
+							onChange={(on) =>
+								void settings.save({ allowAllUsersToGenerateInvites: on })
+							}
+							value={server.allowAllUsersToGenerateInvites}
+						/>
+					</GroupItem>
 				</ListGroup>
 				<Block title={t("codes")}>
 					<ScrollView

@@ -11,6 +11,7 @@ import {
 	disabled,
 	fakeBudget,
 	ids,
+	pick,
 	press,
 	session,
 	type Tree,
@@ -360,7 +361,7 @@ describe("What if I spend", () => {
 		await act(async () => {
 			tree = create(<WhatIfSheet data={data} onClose={onClose} visible />);
 		});
-		press(tree, "Food,");
+		pick(tree, "Envelope", "Food");
 		press(tree, "1");
 		press(tree, "0");
 		press(tree, "0");
@@ -399,7 +400,7 @@ describe("What if I spend", () => {
 		await act(async () => {
 			tree = create(<WhatIfSheet data={data} onClose={jest.fn()} visible />);
 		});
-		press(tree, "Food,");
+		pick(tree, "Envelope", "Food");
 		press(tree, "1");
 		await wait(350);
 		// The first save is on its way; a newer amount waits for it.

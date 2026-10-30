@@ -3,7 +3,7 @@ import { useTranslations } from "use-intl";
 import { ListGroup, ListRow } from "@/ui/List";
 import { Text } from "@/ui/Text";
 import { DeleteAccountSheet } from "./DeleteAccountSheet";
-import { NavEnd, SettingsPage } from "./parts";
+import { SettingsPage } from "./parts";
 
 /**
  * Danger zone: Delete account, the one thing here that cannot be undone. It
@@ -18,7 +18,7 @@ export function DangerSection() {
 			<SettingsPage>
 				<ListGroup>
 					<ListRow
-						end={<NavEnd />}
+						chevron
 						onPress={() => setDeleting(true)}
 						sub={t("danger.meta")}
 						title={

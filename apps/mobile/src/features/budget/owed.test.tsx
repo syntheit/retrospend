@@ -3,6 +3,7 @@ import {
 	disabled,
 	fakeBudget,
 	ids,
+	pick,
 	press,
 	session,
 	type Tree,
@@ -133,7 +134,7 @@ describe("Forgive", () => {
 		press(tree, "1");
 		press(tree, "2");
 		press(tree, "0");
-		press(tree, "Food,");
+		pick(tree, "Charge it to", "Food");
 		await wait(400);
 		const previews = calls.filter((c) => c.route === "previewForgive");
 		expect(previews).toHaveLength(1);
@@ -235,7 +236,7 @@ describe("Shares with no envelope", () => {
 		press(tree, "Pick a category for the share of Oct 1, 2026");
 		await wait(10);
 		expect(disabled(tree, "Put it there")).toBe(true);
-		press(tree, "Fun");
+		pick(tree, "Pick a category", "Fun");
 		await wait(400);
 		const previews = calls.filter((c) => c.route === "previewSetShareCategory");
 		expect(previews).toHaveLength(1);

@@ -43,7 +43,7 @@ export function NumbersGroup({
 
 	return (
 		<>
-			<ListGroup>
+			<ListGroup form>
 				<PickerRow<NumberFormatOption>
 					label={tn("format")}
 					onChange={(next) =>

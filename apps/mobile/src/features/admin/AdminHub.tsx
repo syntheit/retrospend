@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { useTranslations } from "use-intl";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow } from "@/ui/List";
-import { NavEnd, PageState, SettingsPage } from "../settings/parts";
+import { PageState, SettingsPage } from "../settings/parts";
 import { useAdminRead } from "./useAdminRead";
 
 /**
@@ -36,14 +36,14 @@ export function AdminHub() {
 		<SettingsPage>
 			<ListGroup>
 				<ListRow
-					end={<NavEnd />}
+					chevron
 					lead={<IconTile name="Users" />}
 					onPress={() => router.push("/settings/admin-users")}
 					sub={t("hub.users", { count: stats.userCount })}
 					title={t("users.title")}
 				/>
 				<ListRow
-					end={<NavEnd />}
+					chevron
 					lead={<IconTile name="KeyRound" />}
 					onPress={() => router.push("/settings/admin-invites")}
 					sub={
@@ -54,7 +54,7 @@ export function AdminHub() {
 					title={t("invites.title")}
 				/>
 				<ListRow
-					end={<NavEnd />}
+					chevron
 					lead={<IconTile name="MessageSquare" />}
 					onPress={() => router.push("/settings/admin-feedback")}
 					sub={
@@ -65,7 +65,7 @@ export function AdminHub() {
 					title={t("feedback.title")}
 				/>
 				<ListRow
-					end={<NavEnd />}
+					chevron
 					lead={<IconTile name="SlidersHorizontal" />}
 					onPress={() => router.push("/settings/admin-settings")}
 					sub={t("hub.settings")}

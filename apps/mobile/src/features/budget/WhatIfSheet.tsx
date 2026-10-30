@@ -8,7 +8,7 @@ import { Line, Note, SheetBody, useAmountLocale } from "@/features/write/parts";
 import { AmountField } from "@/ui/AmountField";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { type DraftOutcome, whatIfBody } from "./draftsBody";
-import { ChoiceList } from "./fields";
+import { EnvelopePick } from "./pickers";
 import { type BudgetMonth, envelopeById, envelopesOf } from "./source";
 
 const SETTLE_MS = 300;
@@ -117,15 +117,12 @@ export function WhatIfSheet({
 		>
 			<SheetBody>
 				<Note>{t("lead")}</Note>
-				<ChoiceList
-					choices={envelopesOf(data).map((e) => ({
-						id: e.id,
-						label: e.name,
-						detail: money(e.left),
-					}))}
+				<EnvelopePick
+					envelopes={envelopesOf(data)}
 					label={t("envelope")}
-					onPress={setEnvelopeId}
-					selected={new Set(envelopeId ? [envelopeId] : [])}
+					onChange={setEnvelopeId}
+					placeholder={t("pick")}
+					value={envelopeId}
 				/>
 				<AmountField
 					currency={currency}

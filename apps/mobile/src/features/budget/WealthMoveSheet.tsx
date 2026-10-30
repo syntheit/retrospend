@@ -8,7 +8,7 @@ import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { AmountField } from "@/ui/AmountField";
 import { Segmented } from "@/ui/Segmented";
 import type { SheetDetent } from "@/ui/Sheet";
-import { ChoiceList } from "./fields";
+import { AccountPick, EnvelopePick } from "./pickers";
 import { type BudgetMonth, envelopesOf } from "./source";
 import { useSheetRead } from "./useSheetRead";
 import { WriteSheet } from "./WriteSheet";
@@ -135,7 +135,8 @@ export function WealthMoveSheet({
 	const body: TransferInput | CountInput | null = counting ? counted : moved;
 	const place = (a: (typeof accounts)[number]) => ({
 		id: a.id,
-		label: a.name,
+		name: a.name,
+		type: a.type,
 		detail: money(a.balance, { sign: "never" }),
 	});
 	const wealthEmpty = read.status === "ready" && wealthSide.length === 0;
@@ -204,52 +205,46 @@ export function WealthMoveSheet({
 							<Note>{t(mode === "moved" ? "about.moved" : "about.count")}</Note>
 						</>
 					) : null}
-					<ChoiceList
-						choices={[
-							{ id: POOL, label: tp(data.toAssign.poolName) },
-							...envelopesOf(data).map((e) => ({
-								id: e.id,
-								label: e.name,
-								detail: money(e.left),
-							})),
+					<EnvelopePick
+						envelopes={envelopesOf(data)}
+						extras={[
+							{
+								id: POOL,
+								name: tp(data.toAssign.poolName),
+								detail: money(data.toAssign.amount),
+							},
 						]}
 						label={t(direction === "to" ? "envelope" : "putIn")}
-						onPress={setEnvelope}
-						selected={new Set([envelope])}
+						onChange={(id) => setEnvelope(id ?? POOL)}
+						value={envelope}
 					/>
-					<ChoiceList
-						choices={[
-							...(direction === "to"
-								? [{ id: NONE, label: t("notTracked") }]
-								: []),
-							...fromList.map(place),
-						]}
+					<AccountPick
+						accounts={fromList.map(place)}
 						label={t("from")}
-						onPress={setSource}
-						selected={
-							new Set([
-								direction === "to"
-									? (source ?? NONE)
-									: (fromPlace?.id ?? fromList[0]?.id ?? ""),
-							])
+						none={direction === "to" ? { label: t("notTracked") } : undefined}
+						onChange={(id) => setSource(id ?? NONE)}
+						value={
+							direction === "to"
+								? source === NONE
+									? null
+									: (fromPlace?.id ?? null)
+								: (fromPlace?.id ?? null)
 						}
 					/>
 					{counting ? null : (
-						<ChoiceList
-							choices={[
-								...(direction === "from"
-									? [{ id: NONE, label: t("notTracked") }]
-									: []),
-								...intoList.map(place),
-							]}
+						<AccountPick
+							accounts={intoList.map(place)}
 							label={t("into")}
-							onPress={setTarget}
-							selected={
-								new Set([
-									direction === "from"
-										? (target ?? NONE)
-										: (intoPlace?.id ?? intoList[0]?.id ?? ""),
-								])
+							none={
+								direction === "from" ? { label: t("notTracked") } : undefined
+							}
+							onChange={(id) => setTarget(id ?? NONE)}
+							value={
+								direction === "from"
+									? target === NONE
+										? null
+										: (intoPlace?.id ?? null)
+									: (intoPlace?.id ?? null)
 							}
 						/>
 					)}

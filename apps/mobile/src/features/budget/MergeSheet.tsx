@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
-import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import type { SheetDetent } from "@/ui/Sheet";
-import { ChoiceList, TextField } from "./fields";
+import { TextField } from "./fields";
 import { mergeBody } from "./moreBodies";
+import { EnvelopePick, EnvelopesPick } from "./pickers";
 import { type BudgetMonth, envelopesOf } from "./source";
 import { FormSheet, WriteForm } from "./WriteSheet";
 
@@ -29,7 +29,7 @@ export function MergeSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.merge");
-	const money = useMoneyText();
+	const tp = useTranslations("mobile.budget.pick");
 	const [stays, setStays] = useState<string | null>(null);
 	const [from, setFrom] = useState<ReadonlySet<string>>(new Set());
 	const [name, setName] = useState("");
@@ -69,11 +69,6 @@ export function MergeSheet({
 		});
 	}
 
-	const choices = all.map((e) => ({
-		id: e.id,
-		label: e.name,
-		detail: money(e.left),
-	}));
 	return (
 		<FormSheet
 			detent={detent}
@@ -101,18 +96,19 @@ export function MergeSheet({
 				}
 			>
 				<Note>{t("lead")}</Note>
-				<ChoiceList
-					choices={choices}
+				<EnvelopePick
+					envelopes={all}
 					label={t("stays")}
-					onPress={pickStayer}
-					selected={new Set(stays ? [stays] : [])}
+					onChange={(id) => id !== null && pickStayer(id)}
+					placeholder={tp("envelope")}
+					value={stays}
 				/>
 				{stays ? (
 					<>
-						<ChoiceList
-							choices={choices.filter((c) => c.id !== stays)}
+						<EnvelopesPick
+							envelopes={all.filter((e) => e.id !== stays)}
 							label={t("from")}
-							onPress={toggle}
+							onToggle={toggle}
 							selected={from}
 						/>
 						<TextField

@@ -97,7 +97,7 @@ export function IncomeDetails({
 	return (
 		<View>
 			<View style={{ paddingTop: space[1] }}>
-				<ListGroup>
+				<ListGroup form>
 					<DateRow
 						label={t("dateField")}
 						onChange={(date) => onChange({ date })}

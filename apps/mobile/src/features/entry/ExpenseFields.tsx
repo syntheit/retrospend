@@ -3,12 +3,11 @@ import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
-import { ListGroup, SectionHeader } from "@/ui/List";
+import { GroupItem, ListGroup, SectionHeader } from "@/ui/List";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
 import { FieldLabel, TextField } from "@/ui/TextField";
 import { CategoryRow } from "./CategoryRow";
-import { GroupItem } from "./DateRow";
 import {
 	type ExpenseDraft,
 	type ExpenseErrors,
@@ -77,7 +76,7 @@ function Details({
 			{personal ? (
 				<>
 					<SectionHeader title={t("options")} />
-					<ListGroup>
+					<ListGroup form>
 						<GroupItem>
 							<View style={{ gap: space[2] }}>
 								<FieldLabel>{t("spread")}</FieldLabel>

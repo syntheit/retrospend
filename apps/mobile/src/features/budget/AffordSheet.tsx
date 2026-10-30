@@ -1,5 +1,4 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { categoryTone } from "@retrospend/domain/category-tone";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -8,10 +7,10 @@ import { minorOf, readAmount } from "@/features/write/amount";
 import { Note, SheetBody, useAmountLocale } from "@/features/write/parts";
 import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
-import { CategoryTile } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
-import { ChoiceList } from "./fields";
+import { Text } from "@/ui/Text";
 import { affordQuery } from "./moreBodies";
+import { EnvelopePick } from "./pickers";
 import { type BudgetMonth, envelopesOf } from "./source";
 
 type Answer = NonNullable<
@@ -103,25 +102,8 @@ export function AffordSheet({
 	}, [api, visible, queryKey]);
 
 	const choices = useMemo(
-		() =>
-			envelopesOf(data)
-				.filter((e) => e.kind !== "SAVINGS")
-				.map((e) => ({
-					id: e.id,
-					label: e.name,
-					detail: money(e.left),
-					detailTone: e.left.minor < 0 ? ("attention" as const) : undefined,
-					lead: (
-						<CategoryTile
-							category={{
-								name: e.name,
-								icon: e.icon,
-								tone: categoryTone(e.color ?? ""),
-							}}
-						/>
-					),
-				})),
-		[data, money],
+		() => envelopesOf(data).filter((e) => e.kind !== "SAVINGS"),
+		[data],
 	);
 	const pool = tp(data.toAssign.poolName);
 	const a = answered && answered.key === queryKey ? answered.out : null;
@@ -153,11 +135,12 @@ export function AffordSheet({
 					onDraftChange={setDraft}
 				/>
 				{byEnvelope ? (
-					<ChoiceList
-						choices={choices}
+					<EnvelopePick
+						envelopes={choices}
 						label={t("envelope")}
-						onPress={(id) => setEnvelopeId(id === envelopeId ? null : id)}
-						selected={new Set(envelopeId ? [envelopeId] : [])}
+						none={{ label: t("anyEnvelope") }}
+						onChange={setEnvelopeId}
+						value={envelopeId}
 					/>
 				) : null}
 				{failed ? (

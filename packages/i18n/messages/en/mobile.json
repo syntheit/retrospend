@@ -642,7 +642,6 @@
 			"out": "Take out",
 			"from": "From",
 			"to": "To",
-			"place": "{name}, {amount}",
 			"amount": "Amount to move",
 			"submit": "Move",
 			"nothingToMove": "Nothing has money to move here. {pool} is empty.",
@@ -654,7 +653,6 @@
 			"notOver": "{name} is not over, so there is nothing to cover.",
 			"from": "Take it from",
 			"pickSource": "Pick a source",
-			"source": "{name}, {amount}",
 			"sourceDue": "{source}, due {date}",
 			"sourceFallback": "Envelope",
 			"noSource": "Nothing has money to cover this.",
@@ -840,7 +838,8 @@
 			"action": {
 				"ADD_TO_SPENDING": "Add {amount} to Spending",
 				"MOVE_MONEY": "Move {amount} in"
-			}
+			},
+			"anyEnvelope": "Any envelope"
 		},
 		"newEnvelope": {
 			"title": "Add an envelope",
@@ -1114,7 +1113,10 @@
 			"loading": "Loading"
 		},
 		"categories": {
-			"find": "Find a category"
+			"find": "Find a category",
+			"pick": "Pick categories",
+			"pickOne": "Pick a category",
+			"count": "{count, plural, one {# category} other {# categories}}"
 		},
 		"planEdit": {
 			"title": "Plan {name}",
@@ -1281,6 +1283,15 @@
 			"toAssign": "Money you have that is not in an envelope.",
 			"heldTitle": "Held for others",
 			"held": "Money other people owe you that the budget keeps aside."
+		},
+		"pick": {
+			"envelopeFind": "Find an envelope",
+			"envelopeEmpty": "No envelope matches",
+			"groupFind": "Find a group",
+			"groupEmpty": "No group matches",
+			"envelopes": "Pick envelopes",
+			"envelopesCount": "{count, plural, one {# envelope} other {# envelopes}}",
+			"envelope": "Pick an envelope"
 		}
 	},
 	"wealth": {

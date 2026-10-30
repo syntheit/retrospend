@@ -8,7 +8,7 @@ import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Picker } from "@/ui/Picker";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
-import { TextField } from "@/ui/TextField";
+import { FieldLabel, TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import {
 	type MethodInput,
@@ -136,7 +136,7 @@ export function MethodSheet({
 						value={identifier}
 					/>
 					<View style={{ gap: space[2] }}>
-						<Note>{t("visibilityHint")}</Note>
+						<FieldLabel>{t("visibilityHint")}</FieldLabel>
 						<Picker
 							onChange={setVisibility}
 							options={VISIBILITIES.map((value) => ({

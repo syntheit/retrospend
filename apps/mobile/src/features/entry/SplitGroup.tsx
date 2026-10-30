@@ -5,18 +5,17 @@ import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Avatar, type Face } from "@/ui/Avatar";
 import { Chip } from "@/ui/Chip";
-import { ListGroup, ListRow, SectionHeader } from "@/ui/List";
+import { GroupItem, ListGroup, ListRow, SectionHeader } from "@/ui/List";
 import { MoneyCell } from "@/ui/MoneyCell";
+import { PickField } from "@/ui/PickField";
 import { Skeleton } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { TextField } from "@/ui/TextField";
-import { GroupItem } from "./DateRow";
 import { knownPeople } from "./draft";
 import { type SplitModeName, SplitSummary } from "./ExpenseFields";
 import { usePersonFaces } from "./Face";
 import type { SavedEntry } from "./hooks";
-import { PickField } from "./PickField";
 import { sharesAfter } from "./preview";
 import { CUSTOM_MODES } from "./splitParts";
 import { personKey } from "./types";
@@ -160,7 +159,7 @@ export function SplitGroup({
 	return (
 		<View>
 			<SectionHeader title={t("title")} />
-			<ListGroup>
+			<ListGroup form>
 				<PickField
 					empty={tc("faces.empty")}
 					find={tc("faces.find")}

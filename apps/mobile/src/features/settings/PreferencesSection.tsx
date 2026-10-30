@@ -12,7 +12,6 @@ import {
 	Block,
 	CurrencyRow,
 	GroupNote,
-	NavEnd,
 	PageState,
 	PickerRow,
 	SettingsPage,
@@ -62,7 +61,7 @@ export function PreferencesSection() {
 	return (
 		<SettingsPage>
 			<Block title={t("money.title")}>
-				<ListGroup>
+				<ListGroup form>
 					<CurrencyRow
 						currencies={codes}
 						label={t("money.home")}
@@ -88,7 +87,7 @@ export function PreferencesSection() {
 						value={String(settings.fiscalMonthStartDay)}
 					/>
 					<ListRow
-						end={<NavEnd />}
+						chevron
 						onPress={() => router.push("/settings/currencies")}
 						title={t("rates.currencies")}
 					/>
@@ -99,7 +98,7 @@ export function PreferencesSection() {
 				<NumbersGroup onSaved={general.reload} settings={settings} />
 			</Block>
 			<Block title={t("display")}>
-				<ListGroup>
+				<ListGroup form>
 					<PickerRow<LanguagePref>
 						label={t("language.label")}
 						onChange={setLanguagePref}

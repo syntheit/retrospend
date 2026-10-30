@@ -1,17 +1,14 @@
 import { useMemo, useState } from "react";
-import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import { Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import type { FormProps } from "@/features/write/WriteFrame";
-import { useTheme } from "@/theme";
 import { AmountField } from "@/ui/AmountField";
-import { Picker } from "@/ui/Picker";
 import { Segmented } from "@/ui/Segmented";
-import { Text } from "@/ui/Text";
 import { type MoveDirection, moveRequest, type Peer } from "./bodies";
+import { EnvelopePick } from "./pickers";
 import { changesAnything } from "./preview";
 import { envelopesOf } from "./source";
 import { WriteForm } from "./WriteSheet";
@@ -35,7 +32,6 @@ export function MoveForm({
 	const tb = useTranslations("mobile.budget");
 	const money = useMoneyText();
 	const locale = useAmountLocale();
-	const { space } = useTheme();
 	const currency = data.book.currency;
 	const poolName = tb(`pool.${data.toAssign.poolName}`);
 	const [direction, setDirection] = useState<MoveDirection>("in");
@@ -43,19 +39,25 @@ export function MoveForm({
 	const [draft, setDraft] = useState("");
 
 	// Money can only come from a place that has some; it can go anywhere.
+	const others = useMemo(
+		() =>
+			envelopesOf(data).filter(
+				(e) =>
+					e.id !== envelope.id && (direction === "out" || e.left.minor > 0),
+			),
+		[data, envelope.id, direction],
+	);
 	const places = useMemo(() => {
-		const list = [
-			{
-				value: POOL,
-				name: poolName,
-				amount: data.toAssign.amount,
-			},
-			...envelopesOf(data)
-				.filter((e) => e.id !== envelope.id)
-				.map((e) => ({ value: e.id, name: e.name, amount: e.left })),
+		const pool = {
+			value: POOL,
+			name: poolName,
+			amount: data.toAssign.amount,
+		};
+		return [
+			...(direction === "out" || pool.amount.minor > 0 ? [pool] : []),
+			...others.map((e) => ({ value: e.id, name: e.name, amount: e.left })),
 		];
-		return direction === "in" ? list.filter((p) => p.amount.minor > 0) : list;
-	}, [data, envelope.id, poolName, direction]);
+	}, [data, others, poolName, direction]);
 	const place = places.find((p) => p.value === pick) ?? places[0] ?? null;
 	const peer: Peer | null = place
 		? place.value === POOL
@@ -141,19 +143,19 @@ export function MoveForm({
 				value={direction}
 			/>
 			{place ? (
-				<View style={{ gap: space[1] }}>
-					<Text tone="fg2" variant="small">
-						{otherLabel}
-					</Text>
-					<Picker
-						onChange={setPick}
-						options={places.map((p) => ({
-							value: p.value,
-							label: t("place", { name: p.name, amount: money(p.amount) }),
+				<EnvelopePick
+					envelopes={others}
+					extras={places
+						.filter((p) => p.value === POOL)
+						.map((p) => ({
+							id: p.value,
+							name: p.name,
+							detail: money(p.amount),
 						}))}
-						value={place.value}
-					/>
-				</View>
+					label={otherLabel}
+					onChange={(id) => setPick(id ?? POOL)}
+					value={place.value}
+				/>
 			) : (
 				<Note>{t("nothingToMove", { pool: poolName })}</Note>
 			)}

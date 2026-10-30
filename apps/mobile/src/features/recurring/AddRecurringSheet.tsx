@@ -6,7 +6,6 @@ import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useCategories } from "@/features/activity/useCategories";
 import { useCurrencyChoices } from "@/features/entry/currencyChoices";
-import { PickField } from "@/features/entry/PickField";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
 import { SheetBody, useAmountLocale } from "@/features/write/parts";
@@ -17,11 +16,11 @@ import { AmountField } from "@/ui/AmountField";
 import { ChipGroup } from "@/ui/Chip";
 import { DateField } from "@/ui/DateField";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
-import { ListGroup } from "@/ui/List";
+import { PickField } from "@/ui/PickField";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
-import { TextField } from "@/ui/TextField";
+import { FieldLabel, TextField } from "@/ui/TextField";
 import { useDayText } from "./ConfirmSheet";
 import { nextMonthly } from "./makeRecurring";
 import { useRecurringToast } from "./useRecurringToast";
@@ -193,32 +192,32 @@ export function AddRecurringSheet({
 						label={t("add.amount")}
 						onDraftChange={setDraft}
 					/>
-					<View style={{ marginHorizontal: -size.gutter.phone }}>
-						<ListGroup>
-							<PickField
-								empty={tp("category.empty")}
-								find={tp("category.find")}
-								label={t("add.category")}
-								none={{
-									label: t("add.categoryNone"),
-									lead: null,
-								}}
-								onChange={setCategoryId}
-								rows={categories.map((c) => ({
-									id: c.id,
-									label: c.name,
-									lead: (
-										<CategoryGlyph
-											category={c}
-											color={categoryColor(color, c.tone)}
-											size={size.icon.phone}
-										/>
-									),
-								}))}
-								title={tp("category.title")}
-								value={categoryId}
-							/>
-						</ListGroup>
+					<View style={{ gap: space[2], alignItems: "flex-start" }}>
+						<FieldLabel>{t("add.category")}</FieldLabel>
+						<PickField
+							empty={tp("category.empty")}
+							find={tp("category.find")}
+							label={t("add.category")}
+							none={{
+								label: t("add.categoryNone"),
+								lead: null,
+							}}
+							onChange={setCategoryId}
+							rows={categories.map((c) => ({
+								id: c.id,
+								label: c.name,
+								lead: (
+									<CategoryGlyph
+										category={c}
+										color={categoryColor(color, c.tone)}
+										size={size.icon.phone}
+									/>
+								),
+							}))}
+							title={tp("category.title")}
+							value={categoryId}
+							variant="pill"
+						/>
 					</View>
 					<ChipGroup
 						accessibilityLabel={t("add.repeats")}

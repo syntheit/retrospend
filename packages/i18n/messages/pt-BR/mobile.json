@@ -642,7 +642,6 @@
 			"out": "Tirar",
 			"from": "De",
 			"to": "Para",
-			"place": "{name}, {amount}",
 			"amount": "Valor a mover",
 			"submit": "Mover",
 			"nothingToMove": "Nada tem dinheiro para mover aqui. {pool} está vazio.",
@@ -654,7 +653,6 @@
 			"notOver": "{name} não estourou, então não há nada a cobrir.",
 			"from": "Tirar de",
 			"pickSource": "Escolha a origem",
-			"source": "{name}, {amount}",
 			"sourceDue": "{source}, vence em {date}",
 			"sourceFallback": "Envelope",
 			"noSource": "Nada tem dinheiro para cobrir isto.",
@@ -840,7 +838,8 @@
 			"action": {
 				"ADD_TO_SPENDING": "Adicionar {amount} a Gastos",
 				"MOVE_MONEY": "Mover {amount} para cá"
-			}
+			},
+			"anyEnvelope": "Qualquer envelope"
 		},
 		"newEnvelope": {
 			"title": "Adicionar um envelope",
@@ -1114,7 +1113,10 @@
 			"loading": "Carregando"
 		},
 		"categories": {
-			"find": "Buscar uma categoria"
+			"find": "Buscar uma categoria",
+			"pick": "Escolha categorias",
+			"pickOne": "Escolha uma categoria",
+			"count": "{count, plural, one {# categoria} other {# categorias}}"
 		},
 		"planEdit": {
 			"title": "Planejar {name}",
@@ -1281,6 +1283,15 @@
 			"toAssign": "Dinheiro que você tem e que não está em nenhum envelope.",
 			"heldTitle": "Reservado para outros",
 			"held": "Dinheiro que outras pessoas devem a você e que o orçamento separa."
+		},
+		"pick": {
+			"envelopeFind": "Buscar um envelope",
+			"envelopeEmpty": "Nenhum envelope encontrado",
+			"groupFind": "Buscar um grupo",
+			"groupEmpty": "Nenhum grupo encontrado",
+			"envelopes": "Escolha envelopes",
+			"envelopesCount": "{count, plural, one {# envelope} other {# envelopes}}",
+			"envelope": "Escolha um envelope"
 		}
 	},
 	"wealth": {

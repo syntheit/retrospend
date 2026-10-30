@@ -1,8 +1,9 @@
 import { light } from "@retrospend/tokens/theme";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, type TextStyle, View } from "react-native";
+import Svg from "react-native-svg";
 import { heroCents } from "@/features/read/MoneyAmount";
 import { Avatar, AvatarStack, initialsOf, splitFaces } from "./Avatar";
-import { ListGroup, ListRow, tileTint } from "./List";
+import { GroupItem, ListGroup, ListRow, NavEnd, tileTint } from "./List";
 import { StatusText, toneColors } from "./StatusText";
 
 // The shared list, face and status primitives: the group draws one hairline
@@ -112,6 +113,51 @@ describe("ListGroup", () => {
 
 	it("renders nothing without rows", () => {
 		expect(texts(render(<ListGroup>{null}</ListGroup>))).toEqual([]);
+	});
+});
+
+describe("ListRow", () => {
+	it("reads titles at 500, or 400 in a form group", () => {
+		const weightOf = (root: TestNode) =>
+			StyleSheet.flatten(root.findAllByType(Text)[0]?.props.style as TextStyle)
+				?.fontFamily;
+		const plain = render(
+			<ListGroup>
+				<ListRow title="Plain" />
+			</ListGroup>,
+		);
+		const form = render(
+			<ListGroup form>
+				<ListRow title="Form" />
+			</ListGroup>,
+		);
+		expect(weightOf(plain)).not.toBe(weightOf(form));
+	});
+
+	it("draws the disclosure chevron once, after the end", () => {
+		const root = render(
+			<ListGroup>
+				<ListRow chevron title="Open" />
+				<ListRow title="Shut" />
+			</ListGroup>,
+		);
+		expect(root.findAllByType(Svg)).toHaveLength(1);
+	});
+
+	it("shows an identity lead and the value before the chevron in NavEnd", () => {
+		const root = render(<NavEnd lead={<Text>lead</Text>} value="USD" />);
+		expect(texts(root)).toEqual(["lead", "USD"]);
+	});
+
+	it("holds a control of its own in a GroupItem, not a row", () => {
+		const root = render(
+			<ListGroup>
+				<GroupItem>
+					<Text>switch</Text>
+				</GroupItem>
+			</ListGroup>,
+		);
+		expect(texts(root)).toEqual(["switch"]);
 	});
 });
 
