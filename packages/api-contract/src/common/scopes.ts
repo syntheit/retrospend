@@ -23,10 +23,12 @@ export const scopeSchema = z.enum(SCOPES).meta({
 	description: "A permission a token carries.",
 });
 
-/** What mobile sign-in asks for: everything except `admin`. */
-export const MOBILE_SCOPES: readonly Scope[] = SCOPES.filter(
-	(s) => s !== "admin",
-);
+/**
+ * What mobile sign-in asks for: every scope. `admin` is stamped on every
+ * mobile session but is only effective while the user has the admin role,
+ * so a plain user's phone never holds it and a demoted admin loses it.
+ */
+export const MOBILE_SCOPES: readonly Scope[] = SCOPES;
 
 /**
  * Client ids allowed to start device authorization (RFC 8628). The later

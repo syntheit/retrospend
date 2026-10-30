@@ -1,3 +1,4 @@
+import { MOBILE_SCOPES } from "@retrospend/api-contract/common";
 import { describe, expect, it } from "vitest";
 import {
 	apiKeyScopes,
@@ -18,9 +19,22 @@ describe("effectiveScopes", () => {
 		).toContain("admin");
 	});
 
-	it("gives an unscoped mobile session everything but admin, even for admins", () => {
+	it("gives an unscoped mobile session every scope, admin only to admins", () => {
 		expect(
 			effectiveScopes({ kind: "mobile", granted: null, role: "ADMIN" }),
+		).toContain("admin");
+		expect(
+			effectiveScopes({ kind: "mobile", granted: null, role: "USER" }),
+		).not.toContain("admin");
+	});
+
+	it("holds admin on a stamped mobile session only while the role is admin", () => {
+		const granted = [...MOBILE_SCOPES];
+		expect(
+			effectiveScopes({ kind: "mobile", granted, role: "ADMIN" }),
+		).toContain("admin");
+		expect(
+			effectiveScopes({ kind: "mobile", granted, role: "USER" }),
 		).not.toContain("admin");
 	});
 

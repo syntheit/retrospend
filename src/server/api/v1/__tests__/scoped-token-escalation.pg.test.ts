@@ -180,7 +180,9 @@ describe("scoped tokens cannot escalate", () => {
 		const row = await adminDb.session.findFirstOrThrow({
 			where: { userId: admin.id, clientId: "retrospend-mobile" },
 		});
-		expect(row.scopes).toBe("read write:expenses write:money write:settings");
+		expect(row.scopes).toBe(
+			"read write:expenses write:money write:settings admin",
+		);
 
 		const me = await handleV1Request(
 			new Request(`${BASE}/api/v1/me`, { headers: { cookie } }),
@@ -188,7 +190,13 @@ describe("scoped tokens cannot escalate", () => {
 		expect(me.status).toBe(200);
 		expect((await me.json()).principal).toMatchObject({
 			kind: "mobile",
-			scopes: ["read", "write:expenses", "write:money", "write:settings"],
+			scopes: [
+				"read",
+				"write:expenses",
+				"write:money",
+				"write:settings",
+				"admin",
+			],
 		});
 
 		const ctx = await createTRPCContext({ headers: new Headers({ cookie }) });

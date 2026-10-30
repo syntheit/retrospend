@@ -1,6 +1,6 @@
 // Sign-in against the server's better-auth routes (/api/auth/*) through
 // @better-auth/expo. The Expo client sends the app's origin, so the server
-// stamps the session as the mobile app's (scoped, no admin) and hands the
+// stamps the session as the mobile app's (scoped; admin holds only for admins) and hands the
 // session token back in `set-auth-token`. That token is the bearer for API
 // v1; the Expo client keeps its own cookie only for the 2FA step, which the
 // server ties to a cookie set by the password step.

@@ -71,8 +71,8 @@ export function sessionKind(
 /**
  * The scopes a principal can use on this request.
  * - Stored scopes (mobile, device, API key) win, whatever the transport.
- * - An unscoped web session gets every scope; an unscoped mobile one
- *   everything but admin; anything else nothing.
+ * - An unscoped web or mobile session gets every scope; anything else
+ *   nothing.
  * `admin` is dropped unless the user has the admin role today, so a token
  * minted while an admin keeps no admin power after a demotion.
  */
