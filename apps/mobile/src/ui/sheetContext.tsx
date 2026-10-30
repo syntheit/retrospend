@@ -30,6 +30,29 @@ const LARGE_SPARE = 6;
 const MEDIUM_SPARE = 4;
 
 /**
+ * The text scale above which a sheet always rests at its large detent: the
+ * body is taller than a medium sheet has room for, so the person would scroll
+ * a half-height window. Matches the cap the chrome text keeps (1.3).
+ */
+export const BIG_TEXT_SCALE = 1.3;
+
+/**
+ * The detents a sheet rests at for the person's text size. At the default
+ * size they are the sheet's own; at a big size a sheet with detents has only
+ * large, so the body gets the whole window and scrolls above the pinned
+ * footer. A sheet that fits its content (no detents) is left as it is.
+ */
+export function detentsForScale<T extends "medium" | "large">(
+	detents: T[] | undefined,
+	fontScale: number,
+): (T | "large")[] | undefined {
+	if (!detents || detents.length === 0 || fontScale <= BIG_TEXT_SCALE) {
+		return detents;
+	}
+	return ["large"];
+}
+
+/**
  * Whether the sheet sets its content's height: on iOS, a sheet with detents.
  * The content is a column that height, the header on top, the body flexing in
  * the middle and the footer pinned at the bottom. A sheet that fits its

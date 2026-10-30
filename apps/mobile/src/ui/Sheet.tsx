@@ -7,6 +7,7 @@ import { Button } from "./Button";
 import { Glyph } from "./Glyph";
 import { SheetFrame } from "./SheetFrame";
 import {
+	detentsForScale,
 	fillsSheet,
 	footerHeight,
 	type PinnedAction,
@@ -163,7 +164,7 @@ export function Sheet({
 	visible,
 	onClose,
 	title,
-	detents,
+	detents: wanted,
 	dismiss,
 	footer,
 	grouped = false,
@@ -172,6 +173,10 @@ export function Sheet({
 	children,
 }: SheetProps) {
 	const { color, space } = useTheme();
+	// A big text size rests every sheet with detents at large (the body
+	// scrolls above the pinned footer); the default size keeps its own.
+	const { fontScale } = useWindowDimensions();
+	const detents = detentsForScale(wanted, fontScale);
 	const way = dismiss ?? (title ? "close" : "none");
 	// A form hands its primary action up (usePinnedAction); the sheet draws it
 	// in the footer, under the scrolling body.
@@ -224,8 +229,11 @@ export function Sheet({
 						<BackItem label={backLabel} onPress={onBack} />
 					) : null}
 					<Text
+						// Two lines on words; a long word shrinks, never splits.
 						accessibilityRole="header"
-						numberOfLines={1}
+						adjustsFontSizeToFit
+						minimumFontScale={0.8}
+						numberOfLines={2}
 						style={{ flex: 1 }}
 						variant="section"
 					>

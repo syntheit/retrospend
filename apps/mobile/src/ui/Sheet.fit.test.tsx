@@ -433,8 +433,19 @@ const DETENTS: { at: string; detents: SheetDetent[] }[] = [
 ];
 const window = () => require("react-native").Dimensions.get("window").height;
 
+/** The text scale of the window; the jest default (2) is a big text size. */
+function setFontScale(fontScale: number) {
+	const { Dimensions } = require("react-native");
+	const now = Dimensions.get("window");
+	Dimensions.set({
+		window: { ...now, fontScale },
+		screen: { ...now, fontScale },
+	});
+}
+
 describe.each(CASES)("$name", (c) => {
 	const os = Platform.OS;
+	beforeEach(() => setFontScale(1));
 	afterEach(() => {
 		Platform.OS = os;
 	});
@@ -529,6 +540,47 @@ describe.each(CASES)("$name", (c) => {
 			act(() => tree.unmount());
 		},
 	);
+});
+
+// At a big text size every sheet with detents rests at large: the body gets
+// the whole window and scrolls above the pinned footer.
+describe("big text", () => {
+	const os = Platform.OS;
+	afterEach(() => {
+		Platform.OS = os;
+		setFontScale(1);
+	});
+	const detentsOf = (fontScale: number, detents: SheetDetent[]) => {
+		setFontScale(fontScale);
+		Platform.OS = "ios";
+		mockDetents.current = detents;
+		let tree!: Tree;
+		act(() => {
+			tree = create(
+				<SafeAreaProvider initialMetrics={METRICS}>
+					<Sheet onClose={noop} title="Month starts on day" visible>
+						<Text>Body</Text>
+					</Sheet>
+				</SafeAreaProvider>,
+			);
+		});
+		const group = tree.root.findAll((n) => n.type === "SwiftGroup")[0];
+		const modifiers = group?.props.modifiers as { $type: string }[];
+		const set = modifiers.find((m) => m.$type === "presentationDetents");
+		act(() => tree.unmount());
+		return JSON.stringify(set);
+	};
+
+	it("keeps medium at the default size", () => {
+		expect(detentsOf(1, ["medium"])).toContain("medium");
+	});
+
+	it("rests a medium sheet at large when the text is big", () => {
+		const set = detentsOf(2, ["medium", "large"]);
+		expect(set).toContain("large");
+		expect(set).not.toContain("medium");
+		expect(detentsOf(2, ["medium"])).not.toContain("medium");
+	});
 });
 
 // The composer's cards are the surface color; on a surface sheet they did not

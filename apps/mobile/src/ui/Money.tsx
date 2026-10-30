@@ -4,6 +4,7 @@ import { useTranslations } from "use-intl";
 import { type Money, useFormatMoney } from "@/lib/money";
 import { useRateTypeName } from "@/lib/rateTypes";
 import { useTheme } from "@/theme";
+import { fitMoney } from "./fitMoney";
 import { Text } from "./Text";
 
 type Tone = "default" | "positive" | "muted";
@@ -99,9 +100,15 @@ export function MoneyAmount({
 		strong || hero ? "semibold" : weightName === "normal" ? "normal" : "medium";
 	const rate = rateType ? rateName(rateType) : "";
 	return (
-		<View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
+		<View
+			style={{
+				// Shrinks with its row, so the figure fits instead of overflowing.
+				flexShrink: 1,
+				alignItems: align === "right" ? "flex-end" : "flex-start",
+			}}
+		>
 			<Text
-				numberOfLines={1}
+				{...fitMoney}
 				style={[
 					{ textAlign: align },
 					hero
@@ -123,7 +130,7 @@ export function MoneyAmount({
 			</Text>
 			{showHome ? (
 				<Text
-					numberOfLines={1}
+					{...fitMoney}
 					style={{ textAlign: align }}
 					tabular
 					tone="fg3"
