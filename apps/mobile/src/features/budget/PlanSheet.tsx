@@ -6,17 +6,12 @@ import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
-import {
-	AmountField,
-	Line,
-	Note,
-	SheetBody,
-	useAmountLocale,
-} from "@/features/write/parts";
+import { Line, Note, SheetBody, useAmountLocale } from "@/features/write/parts";
 import { useTheme } from "@/theme";
+import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
-import { Hero } from "@/ui/Hero";
 import { Chip } from "@/ui/Chip";
+import { Hero } from "@/ui/Hero";
 import { CategoryTile, ListGroup, ListRow, SectionHeader } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";

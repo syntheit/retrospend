@@ -9,7 +9,9 @@ import { useUndoToast } from "@/features/write/useUndoToast";
 import { noSession, useApi } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
+import { EmptyState } from "@/ui/EmptyState";
 import { Sheet } from "@/ui/Sheet";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { BudgetChanges } from "./BudgetChanges";
 import {
 	EnvelopesStep,
@@ -187,9 +189,15 @@ export function SetupSheet({
 				) : step === "pay" ? (
 					<PayStep onChange={setPay} today={today} value={draft.pay} />
 				) : !proposal ? (
-					<Note>
-						{preset.status === "error" ? t("presetError") : tc("loading")}
-					</Note>
+					preset.status === "error" ? (
+						<EmptyState
+							actionLabel={tc("retry")}
+							onAction={preset.reload}
+							title={t("presetError")}
+						/>
+					) : (
+						<SkeletonRows count={2} />
+					)
 				) : step === "money" ? (
 					<MoneyStep
 						currency={proposal.currency}

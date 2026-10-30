@@ -13,6 +13,7 @@ import {
 	disabled,
 	fakeBudget,
 	ids,
+	pick,
 	press,
 	session,
 	type Tree,
@@ -520,7 +521,7 @@ describe("Move money to Wealth", () => {
 			);
 		});
 		await wait(10);
-		press(tree, "Food,");
+		pick(tree, "Leaves from", "Food");
 		press(tree, "5");
 		press(tree, "0");
 		await wait(400);

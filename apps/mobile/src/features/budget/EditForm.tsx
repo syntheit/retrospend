@@ -4,9 +4,10 @@ import { Note } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import type { FormProps } from "@/features/write/WriteFrame";
 import { CategoryList, loadCategories } from "./CategoryList";
-import { ChoiceList, TextField } from "./fields";
+import { TextField } from "./fields";
 import { updateEnvelopeBody } from "./moreBodies";
 import { groupChoices } from "./NewEnvelopeSheet";
+import { GroupPick } from "./pickers";
 import { useSheetRead } from "./useSheetRead";
 import { WriteForm } from "./WriteSheet";
 
@@ -57,11 +58,11 @@ export function EditForm({ data, envelope, onDone, onClose }: FormProps) {
 				onChangeText={setName}
 				value={name}
 			/>
-			<ChoiceList
-				choices={groupChoices(data, t("noGroup"))}
+			<GroupPick
+				groups={groupChoices(data, t("noGroup"))}
 				label={t("group")}
-				onPress={setGroup}
-				selected={new Set([group])}
+				onChange={setGroup}
+				value={group}
 			/>
 			<Note>{t("categoriesHint")}</Note>
 			{categories.status === "ready" ? (

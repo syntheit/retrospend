@@ -18,6 +18,7 @@
 		"retry": "Réessayer",
 		"save": "Enregistrer",
 		"saving": "Enregistrement",
+		"deleting": "Suppression",
 		"close": "Fermer",
 		"done": "Terminé",
 		"loading": "Chargement",
@@ -74,16 +75,12 @@
 			"editRefused": "Impossible d'enregistrer ce changement. Il est peut-être verrouillé."
 		},
 		"changes": {
-			"title": "Ce que ça change",
 			"emptyExpense": "Saisis un montant et choisis une catégorie pour voir ce qui change.",
 			"emptyIncome": "Saisis un montant et dis qui t'a payé pour voir ce qui change.",
 			"loading": "Vérification de ce qui change",
 			"offline": "Tu es hors ligne. C'est enregistré sur ton téléphone et synchronisé plus tard.",
 			"refused": "Impossible d'enregistrer pour l'instant. Vérifie le montant et la devise.",
 			"to": "à {amount}",
-			"stays": "Reste inchangé : {places}.",
-			"unknown": "Pas encore possible à dire : {places}.",
-			"nothing": "Rien d'autre ne change.",
 			"figures": {
 				"budget_notPlannedYet": "Pas encore prévu",
 				"budget_leftToSpend": "Reste à dépenser",
@@ -286,7 +283,7 @@
 		},
 		"delete": {
 			"row": "Supprimer",
-			"title": "Supprimer cette dépense ?",
+			"title": "Supprimer la dépense ?",
 			"body": "Elle quitte tes dépenses et ton budget.",
 			"button": "Supprimer la dépense",
 			"deleted": "{title} supprimé",
@@ -635,7 +632,6 @@
 			"out": "Retirer",
 			"from": "De",
 			"to": "Vers",
-			"place": "{name}, {amount}",
 			"amount": "Montant à déplacer",
 			"submit": "Déplacer",
 			"nothingToMove": "Rien n’a d’argent à déplacer ici. {pool} est vide.",
@@ -647,7 +643,6 @@
 			"notOver": "{name} ne dépasse pas, il n’y a donc rien à couvrir.",
 			"from": "Prendre sur",
 			"pickSource": "Choisis une source",
-			"source": "{name}, {amount}",
 			"sourceDue": "{source}, échéance le {date}",
 			"sourceFallback": "Enveloppe",
 			"noSource": "Rien n’a d’argent pour couvrir cela.",
@@ -698,24 +693,15 @@
 		},
 		"preview": {
 			"checking": "Vérification",
-			"error": "Impossible de vérifier. Réessaie.",
-			"changes": "Ce qui change",
 			"beforeAfter": "{before}, puis {after}",
 			"leftOf": "Reste dans {name}",
-			"nothing": "Cela ne change rien.",
 			"envelopeFallback": "Enveloppe",
-			"refused": "Impossible en l’état. Change le montant.",
-			"nothingElse": "Rien d'autre ne change : {list} restent tels quels.",
-			"nothingElseOne": "Rien d'autre ne change : {item} reste tel quel.",
-			"noneChange": "Aucun changement : {list}.",
-			"unavailable": "Impossible de vérifier {list}.",
 			"notAvailable": "Indisponible (pas encore de taux)"
 		},
 		"write": {
 			"error": "Impossible d’enregistrer. Réessaie.",
 			"undone": "Annulé",
-			"undoError": "Impossible d’annuler. Cela a peut-être déjà changé.",
-			"amountInvalid": "Utilise des chiffres et les décimales de cette devise."
+			"undoError": "Impossible d’annuler. Cela a peut-être déjà changé."
 		},
 		"listAnd": "{head} et {last}",
 		"figures": {
@@ -841,7 +827,8 @@
 			"action": {
 				"ADD_TO_SPENDING": "Ajouter {amount} à Dépenses",
 				"MOVE_MONEY": "Y déplacer {amount}"
-			}
+			},
+			"anyEnvelope": "N'importe quelle enveloppe"
 		},
 		"newEnvelope": {
 			"title": "Ajouter une enveloppe",
@@ -1109,7 +1096,10 @@
 			"none": "Chaque part a une enveloppe."
 		},
 		"categories": {
-			"find": "Chercher une catégorie"
+			"find": "Chercher une catégorie",
+			"pick": "Choisis des catégories",
+			"pickOne": "Choisis une catégorie",
+			"count": "{count, plural, one {# catégorie} other {# catégories}}"
 		},
 		"planEdit": {
 			"title": "Planifier {name}",
@@ -1274,6 +1264,15 @@
 			"toAssign": "L’argent dont vous disposez et qui n’est dans aucune enveloppe.",
 			"heldTitle": "Réservé pour d'autres",
 			"held": "L’argent que d’autres vous doivent et que le budget met de côté."
+		},
+		"pick": {
+			"envelopeFind": "Chercher une enveloppe",
+			"envelopeEmpty": "Aucune enveloppe ne correspond",
+			"groupFind": "Chercher un groupe",
+			"groupEmpty": "Aucun groupe ne correspond",
+			"envelopes": "Choisis des enveloppes",
+			"envelopesCount": "{count, plural, one {# enveloppe} other {# enveloppes}}",
+			"envelope": "Choisis une enveloppe"
 		}
 	},
 	"wealth": {
@@ -1384,6 +1383,7 @@
 			"liquidHint": "De l'argent que tu peux dépenser bientôt.",
 			"apr": "Taux d'intérêt (annuel, %)",
 			"dueDay": "Jour d'échéance du mois",
+			"dueDayNone": "Aucun",
 			"minimum": "Paiement minimum",
 			"addedToast": "{name} ajouté",
 			"savedToast": "{name} enregistré",
@@ -1462,7 +1462,8 @@
 			"crypto": "Crypto",
 			"market": "Marché",
 			"custom": "Personnalisé"
-		}
+		},
+		"invalid": "Utilise des chiffres et les décimales de cette devise."
 	},
 	"home": {
 		"title": "Accueil",
@@ -1732,8 +1733,6 @@
 		"amount": "Montant",
 		"unpriced": "{currencies} : pas encore de taux, donc hors de Tout",
 		"nothingOwed": "Rien à régler pour l’instant",
-		"changes": "Ce qui change",
-		"stays": "Ce qui ne change pas",
 		"figure": {
 			"balance_person": "Solde avec {name}",
 			"owed_owedToYou": "On te doit",
@@ -1741,7 +1740,6 @@
 		},
 		"beforeAfter": "{before}, puis {after}",
 		"none": "rien",
-		"keeps": "{amount} reste",
 		"checking": "Vérification",
 		"record": "Enregistrer le paiement",
 		"recording": "Enregistrement",
@@ -2097,9 +2095,10 @@
 			"saved": "Moyen de paiement enregistré",
 			"prefer": "Mettre en premier",
 			"preferredToast": "Moyen préféré modifié",
-			"remove": "Supprimer",
+			"remove": "Supprimer le moyen de paiement",
+			"removeTitle": "Supprimer le moyen de paiement ?",
 			"removeBody": "Impossible d'annuler. Les personnes avec qui tu partages ne le verront plus.",
-			"removeConfirm": "Supprimer le moyen de paiement",
+			"removeConfirm": "Supprimer",
 			"removed": "Moyen de paiement supprimé",
 			"saveError": "Impossible d'enregistrer. Réessaie."
 		},
@@ -2454,9 +2453,6 @@
 			"toast": "{title} enregistré, {amount}",
 			"paidOn": "Payé le",
 			"paidOnIn": "Reçu le",
-			"paidOnDue": "{date} (échéance)",
-			"paidOnDueToday": "Aujourd'hui (échéance)",
-			"pickDate": "Date",
 			"future": "La date ne peut pas être dans le futur.",
 			"tooEarly": "La date ne peut pas être avant le {date}.",
 			"skip": "Ignorer cette fois"
@@ -2479,6 +2475,8 @@
 		"count": "{count, plural, one {# dépense récurrente} other {# dépenses récurrentes}}",
 		"autoPayOn": "Paiement auto activé",
 		"autoPayOff": "Paiement auto désactivé",
+		"autoPayFilter": "Paiement auto",
+		"autoPayAny": "Tous",
 		"details": "Détails",
 		"make": {
 			"title": "Rendre récurrent",
@@ -2511,16 +2509,16 @@
 			"toast": "{title} ajouté"
 		},
 		"delete": {
-			"title": "Supprimer {title}",
+			"title": "Supprimer {title} ?",
 			"body": "Elle n'apparaît plus. Les opérations déjà enregistrées restent.",
 			"future": "Prochaines échéances",
 			"futureValue": "Arrêtées, la prochaine était le {date}",
 			"autoPay": "Paiement auto",
 			"autoPayValue": "Arrêté",
-			"submit": "Supprimer",
+			"submit": "Supprimer la dépense récurrente",
+			"submitIn": "Supprimer le revenu récurrent",
 			"toast": "{title} supprimée",
-			"error": "Impossible de supprimer. Réessaie.",
-			"confirm": "Supprimer la dépense récurrente"
+			"error": "Impossible de supprimer. Réessaie."
 		}
 	},
 	"shortcuts": {
@@ -2682,5 +2680,18 @@
 		"tooLarge": "Cette image dépasse 5 Mo.",
 		"errorReports": "Envoyer les rapports d'erreur à mon serveur",
 		"errorReportsDetail": "Plantages seulement, sans adresses ni montants. Ils vont à votre propre serveur."
+	},
+	"changes": {
+		"title": "Ce que ça change",
+		"checking": "Vérification",
+		"error": "Impossible de vérifier. Réessaie.",
+		"refused": "Impossible en l’état. Change le montant.",
+		"nothing": "Cela ne change rien.",
+		"nothingElse": "Rien d'autre ne change : {list} restent tels quels.",
+		"nothingElseOne": "Rien d'autre ne change : {item} reste tel quel.",
+		"noneChange": "Aucun changement : {list}.",
+		"unavailable": "Impossible de vérifier {list}.",
+		"stays": "Ce qui ne change pas",
+		"keeps": "{amount} reste"
 	}
 }

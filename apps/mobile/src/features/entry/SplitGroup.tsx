@@ -5,17 +5,17 @@ import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Avatar, type Face } from "@/ui/Avatar";
 import { Chip } from "@/ui/Chip";
-import { ListGroup, ListRow, SectionHeader } from "@/ui/List";
+import { GroupItem, ListGroup, ListRow, SectionHeader } from "@/ui/List";
+import { MoneyCell } from "@/ui/MoneyCell";
+import { PickField } from "@/ui/PickField";
 import { Skeleton } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { TextField } from "@/ui/TextField";
-import { GroupItem } from "./DateRow";
 import { knownPeople } from "./draft";
 import { type SplitModeName, SplitSummary } from "./ExpenseFields";
 import { usePersonFaces } from "./Face";
 import type { SavedEntry } from "./hooks";
-import { PickField } from "./PickField";
 import { sharesAfter } from "./preview";
 import { CUSTOM_MODES } from "./splitParts";
 import { personKey } from "./types";
@@ -159,7 +159,7 @@ export function SplitGroup({
 	return (
 		<View>
 			<SectionHeader title={t("title")} />
-			<ListGroup>
+			<ListGroup form>
 				<PickField
 					empty={tc("faces.empty")}
 					find={tc("faces.find")}
@@ -231,41 +231,56 @@ export function SplitGroup({
 							<View
 								style={{
 									flexDirection: "row",
-									alignItems: "flex-end",
+									alignItems: split.mode === "EXACT" ? "center" : "flex-end",
 									gap: space[3],
 									paddingVertical: space[2],
 								}}
 							>
 								<Avatar face={row.face} size="default" />
-								<View style={{ flex: 1, gap: space[1] }}>
-									<TextField
-										invalid={unread && !draft.parts[row.key]?.trim()}
-										keyboardType={
-											split.mode === "SHARES" ? "number-pad" : "decimal-pad"
-										}
-										label={row.name}
-										onChangeText={(text) =>
-											form.patchSplit({
-												parts: { ...draft.parts, [row.key]: text },
-											})
-										}
-										onTypingChange={form.setTyping}
-										placeholder={t(`part.${customMode}`)}
-										prefix={
-											split.mode === "EXACT"
-												? draft.currency
-												: split.mode === "PERCENTAGE"
-													? "%"
-													: undefined
-										}
-										value={draft.parts[row.key] ?? ""}
-									/>
-									{split.mode !== "EXACT" && row.share ? (
-										<Text tabular tone="fg2" variant="small">
-											{t("theirShare", { amount: money(row.share) })}
+								{split.mode === "EXACT" ? (
+									<>
+										<Text numberOfLines={1} style={{ flex: 1 }}>
+											{row.name}
 										</Text>
-									) : null}
-								</View>
+										<MoneyCell
+											currency={draft.currency}
+											invalid={unread && !draft.parts[row.key]?.trim()}
+											label={row.name}
+											onChange={(text) =>
+												form.patchSplit({
+													parts: { ...draft.parts, [row.key]: text },
+												})
+											}
+											onTypingChange={form.setTyping}
+											showCurrency
+											value={draft.parts[row.key] ?? ""}
+										/>
+									</>
+								) : (
+									<View style={{ flex: 1, gap: space[1] }}>
+										<TextField
+											invalid={unread && !draft.parts[row.key]?.trim()}
+											keyboardType={
+												split.mode === "SHARES" ? "number-pad" : "decimal-pad"
+											}
+											label={row.name}
+											onChangeText={(text) =>
+												form.patchSplit({
+													parts: { ...draft.parts, [row.key]: text },
+												})
+											}
+											onTypingChange={form.setTyping}
+											placeholder={t(`part.${customMode}`)}
+											prefix={split.mode === "PERCENTAGE" ? "%" : undefined}
+											value={draft.parts[row.key] ?? ""}
+										/>
+										{row.share ? (
+											<Text tabular tone="fg2" variant="small">
+												{t("theirShare", { amount: money(row.share) })}
+											</Text>
+										) : null}
+									</View>
+								)}
 							</View>
 						</GroupItem>
 					) : (

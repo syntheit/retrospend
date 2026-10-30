@@ -6,11 +6,11 @@ import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { ListGroup, ListRow } from "@/ui/List";
-import { Picker } from "@/ui/Picker";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
+import { PickerRow } from "../settings/parts";
 import { userLabel } from "./rules";
 import { confirmWithDevice, emailMatches, hasDeviceLock } from "./stepUp";
 import type { AdminUser } from "./types";
@@ -273,7 +273,7 @@ export function UserSheet({
 						{t("you")}
 					</Text>
 				) : (
-					<ListGroup>
+					<ListGroup form>
 						<ListRow
 							onPress={
 								busy
@@ -290,24 +290,20 @@ export function UserSheet({
 								person.emailVerified ? t("markUnverified") : t("markVerified")
 							}
 						/>
-						<ListRow
-							end={
-								<Picker
-									onChange={chooseAi}
-									options={[
-										{ value: "default", label: t("aiDefault") },
-										{ value: "allowed", label: t("aiAllowed") },
-										{ value: "blocked", label: t("aiBlocked") },
-									]}
-									value={ai ?? aiChoiceOf(person.externalAiAllowed)}
-								/>
-							}
-							title={t("ai")}
+						<PickerRow
+							label={t("ai")}
+							onChange={chooseAi}
+							options={[
+								{ value: "default", label: t("aiDefault") },
+								{ value: "allowed", label: t("aiAllowed") },
+								{ value: "blocked", label: t("aiBlocked") },
+							]}
+							value={ai ?? aiChoiceOf(person.externalAiAllowed)}
 						/>
 						<ListRow
 							onPress={busy ? undefined : () => void begin("delete")}
 							title={
-								<Text numberOfLines={1} tone="danger" weight="medium">
+								<Text numberOfLines={1} tone="danger">
 									{t("delete")}
 								</Text>
 							}

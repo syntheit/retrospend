@@ -3,6 +3,7 @@ import {
 	aprInvalid,
 	createBody,
 	dueDayOf,
+	dueDayOptions,
 	emptyForm,
 	formProblem,
 	updateBody,
@@ -90,6 +91,17 @@ describe("account body", () => {
 		expect(updateBody(form({ inBudget: false }), "acc_1")).toMatchObject({
 			id: "acc_1",
 			inBudget: false,
+		});
+	});
+
+	it("offers none and 1 to 28 on the due day wheel, keeping a held day past 28", () => {
+		const plain = dueDayOptions("", "None");
+		expect(plain[0]).toEqual({ value: "", label: "None" });
+		expect(plain).toHaveLength(29);
+		expect(plain.at(-1)).toEqual({ value: "28", label: "28" });
+		expect(dueDayOptions("31", "None").at(-1)).toEqual({
+			value: "31",
+			label: "31",
 		});
 	});
 });

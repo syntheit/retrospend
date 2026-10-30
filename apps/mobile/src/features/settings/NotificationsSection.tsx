@@ -6,7 +6,7 @@ import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { usePush } from "@/push/PushProvider";
 import { useTheme } from "@/theme";
-import { ListGroup, ListRow } from "@/ui/List";
+import { GroupItem, ListGroup, ListRow } from "@/ui/List";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { useToast } from "@/ui/Toast";
@@ -16,7 +16,7 @@ import {
 	hasPush,
 	type NotificationChannel,
 } from "./channels";
-import { Block, GroupNote, NavEnd, PageState, SettingsPage } from "./parts";
+import { Block, GroupNote, PageState, SettingsPage } from "./parts";
 import {
 	type NotificationPreference,
 	type NotificationType,
@@ -49,7 +49,12 @@ export function NotificationsSection() {
 	}, [read.state]);
 
 	if (read.state.status !== "ready" && prefs.length === 0) {
-		return <PageState failed={read.state.status === "error"} />;
+		return (
+			<PageState
+				failed={read.state.status === "error"}
+				onRetry={() => void read.reload()}
+			/>
+		);
 	}
 
 	async function setChannel(
@@ -91,16 +96,14 @@ export function NotificationsSection() {
 			<SettingsPage>
 				{push.supported ? (
 					<Block title={t("push.title")}>
-						<ListGroup>
-							<ListRow>
-								<View style={{ flex: 1 }}>
-									<SwitchRow
-										label={t("push.master")}
-										onChange={togglePush}
-										value={push.on}
-									/>
-								</View>
-							</ListRow>
+						<ListGroup form>
+							<GroupItem>
+								<SwitchRow
+									label={t("push.master")}
+									onChange={togglePush}
+									value={push.on}
+								/>
+							</GroupItem>
 						</ListGroup>
 						<GroupNote>
 							{t(
@@ -117,7 +120,7 @@ export function NotificationsSection() {
 							return (
 								<ListRow
 									accessibilityLabel={tn(type)}
-									end={<NavEnd />}
+									chevron
 									key={type}
 									onPress={() => setOpen(type)}
 									sub={

@@ -68,10 +68,15 @@ jest.mock("@/ui/TextField", () => {
 	};
 });
 jest.mock("@/features/write/parts", () => {
-	const { Pressable, View } = require("react-native");
+	const { View } = require("react-native");
 	return {
 		...jest.requireActual("@/features/write/parts"),
 		SheetBody: ({ children }: { children: unknown }) => <View>{children}</View>,
+	};
+});
+jest.mock("@/ui/AmountField", () => {
+	const { Pressable } = require("react-native");
+	return {
 		AmountField: ({
 			onDraftChange,
 		}: {
@@ -107,7 +112,7 @@ jest.mock("@/features/entry/hooks", () => ({
 	}),
 }));
 const mockPicked: { rows: { id: string }[] } = { rows: [] };
-jest.mock("@/features/entry/PickField", () => ({
+jest.mock("@/ui/PickField", () => ({
 	PickField: ({ rows }: { rows: { id: string }[] }) => {
 		mockPicked.rows = rows;
 		return null;

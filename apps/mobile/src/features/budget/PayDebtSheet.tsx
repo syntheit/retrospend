@@ -5,11 +5,13 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { isLiability } from "@/features/wealth/accounts";
 import type { Account } from "@/features/wealth/source";
 import { minorOf, readAmount } from "@/features/write/amount";
-import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
+import { Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { AmountField } from "@/ui/AmountField";
 import type { SheetDetent } from "@/ui/Sheet";
-import { ChoiceList, TextField } from "./fields";
+import { TextField } from "./fields";
 import { debtPaymentBody } from "./moreBodies";
+import { AccountPick, EnvelopePick } from "./pickers";
 import { type BudgetMonth, envelopesOf } from "./source";
 import { useSheetRead } from "./useSheetRead";
 import { FormSheet, WriteForm } from "./WriteSheet";
@@ -139,15 +141,16 @@ export function PayDebtSheet({
 						})
 					}
 				>
-					<ChoiceList
-						choices={debts.map((a) => ({
+					<AccountPick
+						accounts={debts.map((a) => ({
 							id: a.id,
-							label: a.name,
+							name: a.name,
+							type: a.type,
 							detail: money(a.balance, { sign: "never" }),
 						}))}
 						label={t("debt")}
-						onPress={setDebt}
-						selected={new Set(liabilityId ? [liabilityId] : [])}
+						onChange={(id) => id !== null && setDebt(id)}
+						value={liabilityId}
 					/>
 					<AmountField
 						currency={currency}
@@ -168,27 +171,29 @@ export function PayDebtSheet({
 							? `${t("interestEstimate", { amount: money(expected) })} ${t("interestHint")}`
 							: t("interestHint")}
 					</Note>
-					<ChoiceList
-						choices={[
-							{ id: NONE, label: t("notTracked") },
-							...sources.map((a) => ({ id: a.id, label: a.name })),
-						]}
+					<AccountPick
+						accounts={sources.map((a) => ({
+							id: a.id,
+							name: a.name,
+							type: a.type,
+						}))}
 						label={t("from")}
-						onPress={setSource}
-						selected={new Set([source])}
+						none={{ label: t("notTracked") }}
+						onChange={(id) => setSource(id ?? NONE)}
+						value={source === NONE ? null : source}
 					/>
-					<ChoiceList
-						choices={[
-							{ id: POOL, label: tp(data.toAssign.poolName) },
-							...envelopesOf(data).map((e) => ({
-								id: e.id,
-								label: e.name,
-								detail: money(e.left),
-							})),
+					<EnvelopePick
+						envelopes={envelopesOf(data)}
+						extras={[
+							{
+								id: POOL,
+								name: tp(data.toAssign.poolName),
+								detail: money(data.toAssign.amount),
+							},
 						]}
 						label={t("envelope")}
-						onPress={setEnvelope}
-						selected={new Set([envelope])}
+						onChange={(id) => setEnvelope(id ?? POOL)}
+						value={envelope}
 					/>
 				</WriteForm>
 			)}

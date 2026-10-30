@@ -15,7 +15,9 @@ type Item =
  * search field and the choices in groups under 13 fg-3 headings. Each row
  * has its identity in front, its name at 14/500 over a 12 fg-3 detail line,
  * and a check on the current one (GUIDELINE 8: pickers carry identity).
- * Typing narrows the list, ignoring case and accents.
+ * Typing narrows the list, ignoring case and accents. With `multiple` a tap
+ * toggles the row and the sheet stays open (a check per chosen row); Done in
+ * the header closes it.
  */
 export function PickerSheet({
 	visible,
@@ -26,6 +28,7 @@ export function PickerSheet({
 	clear,
 	groups,
 	onSelect,
+	multiple,
 }: {
 	visible: boolean;
 	onClose: () => void;
@@ -36,7 +39,10 @@ export function PickerSheet({
 	/** The spoken name of the button that clears the search. */
 	clear: string;
 	groups: PickGroup[];
+	/** Called with the id pressed; with `multiple` it toggles that id. */
 	onSelect: (id: string) => void;
+	/** Several rows can be chosen: taps do not close, Done does. */
+	multiple?: boolean;
 }) {
 	const { color, font, radius, size, space, type } = useTheme();
 	const body = useSheetBodySize();
@@ -63,6 +69,7 @@ export function PickerSheet({
 	return (
 		<Sheet
 			detents={["medium", "large"]}
+			dismiss={multiple ? "done" : undefined}
 			onClose={close}
 			title={title}
 			visible={visible}
@@ -148,11 +155,15 @@ export function PickerSheet({
 									accessibilityLabel={[item.row.label, item.row.detail]
 										.filter(Boolean)
 										.join(", ")}
-									accessibilityRole="button"
-									accessibilityState={{ selected: item.row.selected }}
+									accessibilityRole={multiple ? "checkbox" : "button"}
+									accessibilityState={
+										multiple
+											? { checked: item.row.selected }
+											: { selected: item.row.selected }
+									}
 									onPress={() => {
 										onSelect(item.row.id);
-										close();
+										if (!multiple) close();
 									}}
 									style={({ pressed }) => ({
 										minHeight: size.row.phone,

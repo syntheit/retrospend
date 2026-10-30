@@ -1,6 +1,7 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Platform, SectionList, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
@@ -29,9 +30,9 @@ import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, StaleNote } from "@/ui/List";
 import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
+import { usePaneEnter } from "@/ui/motion";
 import { Screen, useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
-import { Text } from "@/ui/Text";
 import { useTransient } from "@/ui/transient";
 
 export default function ActivityScreen() {
@@ -60,6 +61,7 @@ export default function ActivityScreen() {
 			setSegment("recurring");
 		}
 	}, [params.segment]);
+	const paneEnter = usePaneEnter(segment === "expenses" ? 0 : 1);
 	const [addingRecurring, setAddingRecurring] = useState(false);
 	const [filter, setFilter] = useState(DEFAULT_FILTER);
 	const [search, setSearch] = useDebouncedSearch((q) =>
@@ -170,13 +172,7 @@ export default function ActivityScreen() {
 			ListEmptyComponent={empty}
 			ListFooterComponent={
 				loadingMore ? (
-					<Text
-						style={{ padding: space[4], textAlign: "center" }}
-						tone="fg2"
-						variant="small"
-					>
-						{tc("loading")}
-					</Text>
+					<SkeletonRows count={1} />
 				) : (
 					<View style={{ height: addInset }} />
 				)
@@ -322,18 +318,20 @@ export default function ActivityScreen() {
 					)
 				}
 				list={
-					segment === "recurring" ? (
-						<RecurringView
-							adding={addingRecurring}
-							embedded
-							header={segments}
-							onAdd={() => setAddingRecurring(true)}
-							onAddClose={() => setAddingRecurring(false)}
-							query={search}
-						/>
-					) : (
-						list
-					)
+					<Animated.View entering={paneEnter} key={segment} style={{ flex: 1 }}>
+						{segment === "recurring" ? (
+							<RecurringView
+								adding={addingRecurring}
+								embedded
+								header={segments}
+								onAdd={() => setAddingRecurring(true)}
+								onAddClose={() => setAddingRecurring(false)}
+								query={search}
+							/>
+						) : (
+							list
+						)}
+					</Animated.View>
 				}
 				search={{
 					value: search,

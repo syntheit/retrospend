@@ -18,6 +18,7 @@
 		"retry": "Reintentar",
 		"save": "Guardar",
 		"saving": "Guardando",
+		"deleting": "Eliminando",
 		"close": "Cerrar",
 		"done": "Listo",
 		"loading": "Cargando",
@@ -74,16 +75,12 @@
 			"editRefused": "No pudimos guardar este cambio. Puede estar bloqueado."
 		},
 		"changes": {
-			"title": "Qué cambia",
 			"emptyExpense": "Escribí un monto y elegí una categoría para ver qué cambia.",
 			"emptyIncome": "Escribí un monto y decí quién te pagó para ver qué cambia.",
 			"loading": "Revisando qué cambia",
 			"offline": "Sin conexión. Se guarda en tu teléfono y se sincroniza después.",
 			"refused": "Todavía no se puede guardar. Revisá el monto y la moneda.",
 			"to": "a {amount}",
-			"stays": "Queda igual: {places}.",
-			"unknown": "Todavía no se puede saber: {places}.",
-			"nothing": "No cambia nada más.",
 			"figures": {
 				"budget_notPlannedYet": "Sin planear aún",
 				"budget_leftToSpend": "Disponible para gastar",
@@ -286,7 +283,7 @@
 		},
 		"delete": {
 			"row": "Eliminar",
-			"title": "¿Eliminar este gasto?",
+			"title": "¿Eliminar gasto?",
 			"body": "Sale de tus gastos y de tu presupuesto.",
 			"button": "Eliminar gasto",
 			"deleted": "Se eliminó {title}",
@@ -635,7 +632,6 @@
 			"out": "Sacar",
 			"from": "Desde",
 			"to": "Hacia",
-			"place": "{name}, {amount}",
 			"amount": "Monto a mover",
 			"submit": "Mover",
 			"nothingToMove": "Nada tiene plata para mover acá. {pool} está vacío.",
@@ -647,7 +643,6 @@
 			"notOver": "{name} no se pasó, así que no hay nada para cubrir.",
 			"from": "Sacalo de",
 			"pickSource": "Elegí de dónde",
-			"source": "{name}, {amount}",
 			"sourceDue": "{source}, vence el {date}",
 			"sourceFallback": "Sobre",
 			"noSource": "Nada tiene plata para cubrir esto.",
@@ -698,24 +693,15 @@
 		},
 		"preview": {
 			"checking": "Verificando",
-			"error": "No se pudo verificar. Probá de nuevo.",
-			"changes": "Qué cambia",
 			"beforeAfter": "{before} a {after}",
 			"leftOf": "Queda en {name}",
-			"nothing": "Esto no cambia nada.",
 			"envelopeFallback": "Sobre",
-			"refused": "Esto no se puede hacer así. Cambiá el monto.",
-			"nothingElse": "Nada más cambia: {list} quedan como están.",
-			"nothingElseOne": "Nada más cambia: {item} queda como está.",
-			"noneChange": "Sin cambios en {list}.",
-			"unavailable": "No se pudo revisar {list}.",
 			"notAvailable": "No disponible (todavía sin cotización)"
 		},
 		"write": {
 			"error": "No se pudo guardar. Probá de nuevo.",
 			"undone": "Deshecho",
-			"undoError": "No se pudo deshacer. Puede que ya haya cambiado.",
-			"amountInvalid": "Usá dígitos y los decimales que tiene esta moneda."
+			"undoError": "No se pudo deshacer. Puede que ya haya cambiado."
 		},
 		"listAnd": "{head} y {last}",
 		"figures": {
@@ -841,7 +827,8 @@
 			"action": {
 				"ADD_TO_SPENDING": "Sumar {amount} a Gastos",
 				"MOVE_MONEY": "Mover {amount} acá"
-			}
+			},
+			"anyEnvelope": "Cualquier sobre"
 		},
 		"newEnvelope": {
 			"title": "Agregar un sobre",
@@ -1109,7 +1096,10 @@
 			"none": "Todas las partes tienen sobre."
 		},
 		"categories": {
-			"find": "Buscá una categoría"
+			"find": "Buscá una categoría",
+			"pick": "Elegí categorías",
+			"pickOne": "Elegí una categoría",
+			"count": "{count, plural, one {# categoría} other {# categorías}}"
 		},
 		"planEdit": {
 			"title": "Planificar {name}",
@@ -1274,6 +1264,15 @@
 			"toAssign": "Dinero que tenés y no está en ningún sobre.",
 			"heldTitle": "Reservado para otros",
 			"held": "Dinero que otros te deben y que el presupuesto aparta."
+		},
+		"pick": {
+			"envelopeFind": "Buscá un sobre",
+			"envelopeEmpty": "Ningún sobre coincide",
+			"groupFind": "Buscá un grupo",
+			"groupEmpty": "Ningún grupo coincide",
+			"envelopes": "Elegí sobres",
+			"envelopesCount": "{count, plural, one {# sobre} other {# sobres}}",
+			"envelope": "Elegí un sobre"
 		}
 	},
 	"wealth": {
@@ -1384,6 +1383,7 @@
 			"liquidHint": "Plata que podés gastar pronto.",
 			"apr": "Tasa de interés (anual, %)",
 			"dueDay": "Día de vencimiento del mes",
+			"dueDayNone": "Ninguno",
 			"minimum": "Pago mínimo",
 			"addedToast": "{name} agregada",
 			"savedToast": "{name} guardada",
@@ -1462,7 +1462,8 @@
 			"crypto": "Cripto",
 			"market": "Mercado",
 			"custom": "Personalizada"
-		}
+		},
+		"invalid": "Usá dígitos y los decimales que tiene esta moneda."
 	},
 	"home": {
 		"title": "Inicio",
@@ -1732,8 +1733,6 @@
 		"amount": "Monto",
 		"unpriced": "{currencies}: todavía sin cotización, no entra en Todo",
 		"nothingOwed": "No hay nada pendiente ahora",
-		"changes": "Qué cambia",
-		"stays": "Qué sigue igual",
 		"figure": {
 			"balance_person": "Saldo con {name}",
 			"owed_owedToYou": "Te deben",
@@ -1741,7 +1740,6 @@
 		},
 		"beforeAfter": "{before} a {after}",
 		"none": "nada",
-		"keeps": "{amount} se mantiene",
 		"checking": "Verificando",
 		"record": "Registrar pago",
 		"recording": "Registrando",
@@ -2097,9 +2095,10 @@
 			"saved": "Método de pago guardado",
 			"prefer": "Hacer preferido",
 			"preferredToast": "Método preferido cambiado",
-			"remove": "Eliminar",
+			"remove": "Eliminar método de pago",
+			"removeTitle": "¿Eliminar método de pago?",
 			"removeBody": "No se puede deshacer. Las personas con las que compartís ya no lo verán.",
-			"removeConfirm": "Eliminar método de pago",
+			"removeConfirm": "Eliminar",
 			"removed": "Método de pago eliminado",
 			"saveError": "No se pudo guardar. Probá de nuevo."
 		},
@@ -2454,9 +2453,6 @@
 			"toast": "{title} registrado, {amount}",
 			"paidOn": "Pagado el",
 			"paidOnIn": "Recibido el",
-			"paidOnDue": "{date} (vence)",
-			"paidOnDueToday": "Hoy (vence)",
-			"pickDate": "Fecha",
 			"future": "La fecha no puede ser futura.",
 			"tooEarly": "La fecha no puede ser anterior al {date}.",
 			"skip": "Omitir esta vez"
@@ -2479,6 +2475,8 @@
 		"count": "{count, plural, one {# gasto recurrente} other {# gastos recurrentes}}",
 		"autoPayOn": "Pago automático activado",
 		"autoPayOff": "Pago automático desactivado",
+		"autoPayFilter": "Pago automático",
+		"autoPayAny": "Cualquiera",
 		"details": "Detalles",
 		"make": {
 			"title": "Hacer recurrente",
@@ -2511,16 +2509,16 @@
 			"toast": "{title} agregado"
 		},
 		"delete": {
-			"title": "Eliminar {title}",
+			"title": "¿Eliminar {title}?",
 			"body": "Deja de aparecer. Los movimientos que ya registró se quedan.",
 			"future": "Próximas veces",
 			"futureValue": "Se detienen, la próxima era el {date}",
 			"autoPay": "Pago automático",
 			"autoPayValue": "Se detiene",
-			"submit": "Eliminar",
+			"submit": "Eliminar gasto recurrente",
+			"submitIn": "Eliminar ingreso recurrente",
 			"toast": "{title} eliminado",
-			"error": "No se pudo eliminar. Probá de nuevo.",
-			"confirm": "Eliminar gasto recurrente"
+			"error": "No se pudo eliminar. Probá de nuevo."
 		}
 	},
 	"shortcuts": {
@@ -2682,5 +2680,18 @@
 		"tooLarge": "Esa imagen supera los 5 MB.",
 		"errorReports": "Enviar informes de errores a mi servidor",
 		"errorReportsDetail": "Solo fallos, sin direcciones ni importes. Van a tu propio servidor."
+	},
+	"changes": {
+		"title": "Qué cambia",
+		"checking": "Verificando",
+		"error": "No se pudo verificar. Probá de nuevo.",
+		"refused": "Esto no se puede hacer así. Cambiá el monto.",
+		"nothing": "Esto no cambia nada.",
+		"nothingElse": "Nada más cambia: {list} quedan como están.",
+		"nothingElseOne": "Nada más cambia: {item} queda como está.",
+		"noneChange": "Sin cambios en {list}.",
+		"unavailable": "No se pudo revisar {list}.",
+		"stays": "Qué sigue igual",
+		"keeps": "{amount} se mantiene"
 	}
 }

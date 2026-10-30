@@ -6,6 +6,7 @@ import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { dayOfPicker, pickerDate } from "@/features/entry/dates";
 import { useTheme } from "@/theme";
+import { DateQuickDays } from "./DateQuickDays";
 import { NativeHost } from "./NativeHost";
 import { Text as AppText } from "./Text";
 import type { DateFieldProps } from "./types";
@@ -15,7 +16,7 @@ import type { DateFieldProps } from "./types";
  * dialog counts days from UTC midnight, so the day goes in and out on the
  * UTC clock.
  */
-export function DateField({
+function DateRow({
 	label,
 	value,
 	onChange,
@@ -67,6 +68,22 @@ export function DateField({
 					/>
 				</NativeHost>
 			) : null}
+		</View>
+	);
+}
+
+/** The row, and with `quick` the Today and Yesterday chips under it. */
+export function DateField(props: DateFieldProps) {
+	const { space } = useTheme();
+	if (!props.quick) return <DateRow {...props} />;
+	return (
+		<View style={{ gap: space[1] }}>
+			<DateRow {...props} />
+			<DateQuickDays
+				onChange={props.onChange}
+				today={props.today}
+				value={props.value}
+			/>
 		</View>
 	);
 }

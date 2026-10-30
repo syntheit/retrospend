@@ -48,6 +48,7 @@ jest.mock("@/ui/Button", () => {
 jest.mock("@/ui/Sheet", () => ({
 	Sheet: ({ visible, children }: Record<string, unknown>) =>
 		visible ? (children as never) : null,
+	useSheetBodySize: () => ({}),
 }));
 // A segmented control as plain presses, one per option.
 jest.mock("@/ui/Segmented", () => {
@@ -266,9 +267,11 @@ describe("Combine envelopes", () => {
 			);
 		});
 		expect(disabled(tree, "Combine")?.disabled).toBe(true);
+		press(tree, "The one that stays,");
 		press(tree, "Food,");
 		await wait(400);
 		expect(calls).toEqual([]);
+		press(tree, "Combine into it,");
 		press(tree, "Eating out,");
 		await wait(400);
 		const previews = calls.filter((c) => c.route === "previewMergeEnvelopes");

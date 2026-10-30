@@ -23,6 +23,11 @@ const CALL_SITES: { file: string; uses: string; what: string }[] = [
 		what: "composer amount: expense and income currency",
 	},
 	{
+		file: "ui/AmountField.tsx",
+		uses: "<CurrencyPicker",
+		what: "a money field whose currency can change (recurring expense)",
+	},
+	{
 		file: "features/wealth/AccountSheet.tsx",
 		uses: "<CurrencyPicker",
 		what: "new account currency",

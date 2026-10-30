@@ -4,13 +4,15 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { minorOf, readAmount } from "@/features/write/amount";
-import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
+import { Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { useTheme } from "@/theme";
+import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
 import { Segmented } from "@/ui/Segmented";
 import { useToast } from "@/ui/Toast";
-import { ChoiceList, TextField } from "./fields";
+import { TextField } from "./fields";
+import { EnvelopePick } from "./pickers";
 import { createRuleBody, type RuleKind } from "./rulesBody";
 import { type BudgetMonth, envelopesOf } from "./source";
 
@@ -29,6 +31,7 @@ export function RuleAddForm({
 	onClose: () => void;
 }) {
 	const t = useTranslations("mobile.budget.rules.editor");
+	const tp = useTranslations("mobile.budget.pick");
 	const tc = useTranslations("mobile.common");
 	const tw = useTranslations("mobile.budget.write");
 	const { api } = useSession();
@@ -109,6 +112,7 @@ export function RuleAddForm({
 					{ value: "AMOUNT", label: t("amount") },
 					{ value: "REMAINDER", label: t("rest") },
 				]}
+				stretch
 				value={kind}
 			/>
 			{kind === "PERCENT" ? (
@@ -128,11 +132,12 @@ export function RuleAddForm({
 					onDraftChange={setDraft}
 				/>
 			) : null}
-			<ChoiceList
-				choices={envelopesOf(data).map((e) => ({ id: e.id, label: e.name }))}
+			<EnvelopePick
+				envelopes={envelopesOf(data)}
 				label={t("goesTo")}
-				onPress={setEnvelopeId}
-				selected={new Set(envelopeId ? [envelopeId] : [])}
+				onChange={setEnvelopeId}
+				placeholder={tp("envelope")}
+				value={envelopeId}
 			/>
 			<Note>{t("note")}</Note>
 			{failed ? <Note tone="attention">{tw("error")}</Note> : null}

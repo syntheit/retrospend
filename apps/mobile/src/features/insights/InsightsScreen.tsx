@@ -4,15 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { useFilterLeads } from "@/features/activity/filterLeads";
 import { useCategories } from "@/features/activity/useCategories";
 import { useAddEntry } from "@/features/entry/AddEntryProvider";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { usePeopleOverview } from "@/features/people/usePeople";
-import { SectionHeader, StaleNote } from "@/ui/List";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
+import { SectionHeader, StaleNote } from "@/ui/List";
 import { Screen } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { CashflowSection } from "./CashflowSection";
 import { InsightsToolbar } from "./InsightsToolbar";
 import { MonthBars } from "./MonthBars";
@@ -62,6 +64,7 @@ export function InsightsScreen() {
 
 	const categories = useCategories();
 	const people = usePeopleOverview();
+	const leads = useFilterLeads();
 	const categoryList =
 		categories.state.status === "ready" ? categories.state.data : [];
 	const peopleList =
@@ -77,12 +80,22 @@ export function InsightsScreen() {
 		[categoryList],
 	);
 	const categoryChoices = useMemo(
-		() => categoryList.map((c) => ({ id: c.id, label: c.name })),
-		[categoryList],
+		() =>
+			categoryList.map((c) => ({
+				id: c.id,
+				label: c.name,
+				lead: leads.category(c),
+			})),
+		[categoryList, leads],
 	);
 	const peopleChoices = useMemo(
-		() => peopleList.map((p) => ({ id: p.person.key, label: p.person.name })),
-		[peopleList],
+		() =>
+			peopleList.map((p) => ({
+				id: p.person.key,
+				label: p.person.name,
+				lead: leads.person(p.person),
+			})),
+		[peopleList, leads],
 	);
 	// The chips' picks by name; a pick the lists do not hold is left out.
 	const names = [
@@ -95,7 +108,7 @@ export function InsightsScreen() {
 
 	let body: React.ReactNode;
 	if (state.status === "loading") {
-		body = <EmptyState title={tc("loading")} />;
+		body = <SkeletonRows />;
 	} else if (state.status === "error") {
 		body = (
 			<EmptyState

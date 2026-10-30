@@ -8,6 +8,7 @@ import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, ListRow, SectionHeader, StaleNote } from "@/ui/List";
 import { MoneyAmount } from "@/ui/Money";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import type { ProjectSummary } from "./source";
 
@@ -104,6 +105,7 @@ function MemberRow({ member }: { member: SummaryMember }) {
 export function ProjectSummaryTab({
 	state,
 	onSettleAll,
+	onRetry,
 }: {
 	state:
 		| { status: "loading" }
@@ -111,14 +113,24 @@ export function ProjectSummaryTab({
 		| { status: "ready"; data: ProjectSummary; staleSince: string | null };
 	/** Present when you may record payments; the Settle all button opens its sheet. */
 	onSettleAll?: () => void;
+	/** Reads the summary again after an error. */
+	onRetry: () => void;
 }) {
 	const t = useTranslations("mobile.projects.summary");
 	const ts = useTranslations("mobile.projects.settleAll");
+	const tc = useTranslations("mobile.common");
 	const money = useMoneyText();
 	const { size, space } = useTheme();
-	if (state.status === "loading") return null;
+	if (state.status === "loading") return <SkeletonRows />;
 	if (state.status === "error") {
-		return <EmptyState detail={t("errorDetail")} title={t("error")} />;
+		return (
+			<EmptyState
+				actionLabel={tc("retry")}
+				detail={t("errorDetail")}
+				onAction={onRetry}
+				title={t("error")}
+			/>
+		);
 	}
 	const summary = state.data;
 	return (

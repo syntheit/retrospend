@@ -15,7 +15,9 @@ import type { PreviewState } from "./preview";
 import { undoWrite } from "./send";
 
 /**
- * Delete the expense an edit is open on. The sheet says what it will change
+ * Delete the expense an edit is open on, on the one confirm shape for money
+ * deletes: a medium sheet titled with the object, the preview, then Cancel
+ * and the verb that names the object. The sheet says what it will change
  * and what it will not, from the server's dry run, before the button
  * deletes, and the toast that follows has Undo. A split expense changes what
  * other people owe: when the server would erase a debt or leave the payer
@@ -114,12 +116,13 @@ export function DeleteEntrySheet({
 
 	return (
 		<Sheet
+			detents={["medium"]}
 			footer={
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
 					<Button
 						disabled={preview.status !== "ready" || busy}
-						label={busy ? tc("saving") : warning ? t("anyway") : t("button")}
+						label={busy ? tc("deleting") : warning ? t("anyway") : t("button")}
 						onPress={() => void remove()}
 						variant="danger"
 					/>

@@ -9,6 +9,7 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { dayOfPicker, pickerDate } from "@/features/entry/dates";
 import { useTheme } from "@/theme";
+import { DateQuickDays } from "./DateQuickDays";
 import { NativeHost } from "./NativeHost";
 import { Text } from "./Text";
 import type { DateFieldProps } from "./types";
@@ -18,7 +19,7 @@ import type { DateFieldProps } from "./types";
  * labeled row. With no day picked it shows a text button that picks today,
  * after which the compact picker takes over.
  */
-export function DateField({
+function DateRow({
 	label,
 	value,
 	onChange,
@@ -62,6 +63,22 @@ export function DateField({
 					</Button>
 				)}
 			</NativeHost>
+		</View>
+	);
+}
+
+/** The row, and with `quick` the Today and Yesterday chips under it. */
+export function DateField(props: DateFieldProps) {
+	const { space } = useTheme();
+	if (!props.quick) return <DateRow {...props} />;
+	return (
+		<View style={{ gap: space[1] }}>
+			<DateRow {...props} />
+			<DateQuickDays
+				onChange={props.onChange}
+				today={props.today}
+				value={props.value}
+			/>
 		</View>
 	);
 }

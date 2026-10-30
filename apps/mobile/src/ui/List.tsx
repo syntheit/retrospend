@@ -196,6 +196,9 @@ export function CategoryTile({
 /** Set by ListGroup: its rows sit on the surface and it draws the hairlines. */
 const InGroup = createContext(false);
 
+/** Set by `<ListGroup form>`: its row titles read at 400, like iOS Settings. */
+const InForm = createContext(false);
+
 /** Children flattened through arrays and fragments, so each row is one item. */
 function rowsOf(children: ReactNode): ReactNode[] {
 	const out: ReactNode[] = [];
@@ -225,9 +228,12 @@ function rowsOf(children: ReactNode): ReactNode[] {
 export function ListGroup({
 	children,
 	accessibilityLabel,
+	form,
 }: {
 	children: ReactNode;
 	accessibilityLabel?: string;
+	/** A group of settings or form values: row titles at 400, not 500. */
+	form?: boolean;
 }) {
 	const theme = useTheme();
 	const { color, radius, size } = theme;
@@ -247,25 +253,27 @@ export function ListGroup({
 			}}
 		>
 			<InGroup.Provider value={true}>
-				<LayoutAnimationConfig skipEntering skipExiting>
-					{rows.map((row, index) => (
-						<Animated.View
-							entering={rowEnter(theme)}
-							exiting={rowExit(theme)}
-							key={
-								isValidElement(row) && row.key !== null
-									? `key:${row.key}`
-									: `at:${index}`
-							}
-							layout={rowLayout(theme)}
-						>
-							{index > 0 ? (
-								<View style={{ height: 1, backgroundColor: color.line }} />
-							) : null}
-							{row}
-						</Animated.View>
-					))}
-				</LayoutAnimationConfig>
+				<InForm.Provider value={form === true}>
+					<LayoutAnimationConfig skipEntering skipExiting>
+						{rows.map((row, index) => (
+							<Animated.View
+								entering={rowEnter(theme)}
+								exiting={rowExit(theme)}
+								key={
+									isValidElement(row) && row.key !== null
+										? `key:${row.key}`
+										: `at:${index}`
+								}
+								layout={rowLayout(theme)}
+							>
+								{index > 0 ? (
+									<View style={{ height: 1, backgroundColor: color.line }} />
+								) : null}
+								{row}
+							</Animated.View>
+						))}
+					</LayoutAnimationConfig>
+				</InForm.Provider>
 			</InGroup.Provider>
 		</Animated.View>
 	);
@@ -281,10 +289,11 @@ export function useInGroup(): boolean {
  * can be a string or a node (a StatusText, a stack of faces).
  */
 export function RowText({ title, sub }: { title: ReactNode; sub?: ReactNode }) {
+	const form = useContext(InForm);
 	return (
 		<View style={{ flex: 1, minWidth: 0 }}>
 			{typeof title === "string" ? (
-				<Text numberOfLines={1} weight="medium">
+				<Text numberOfLines={1} weight={form ? "normal" : "medium"}>
 					{title}
 				</Text>
 			) : (
@@ -314,6 +323,7 @@ export function ListRow({
 	title,
 	sub,
 	end,
+	chevron,
 	onPress,
 	onLongPress,
 	selected,
@@ -327,6 +337,8 @@ export function ListRow({
 	sub?: ReactNode;
 	/** Money, a status or a chevron at the end. */
 	end?: ReactNode;
+	/** The disclosure chevron after `end`: the row opens something. */
+	chevron?: boolean;
 	onPress?: () => void;
 	onLongPress?: () => void;
 	selected?: boolean;
@@ -374,7 +386,65 @@ export function ListRow({
 			{title !== undefined ? <RowText sub={sub} title={title} /> : null}
 			{children}
 			{end}
+			{chevron ? <Chevron /> : null}
 		</Pressable>
+	);
+}
+
+/** The disclosure chevron at a row's end (fg-3). */
+function Chevron() {
+	const { color, size } = useTheme();
+	return <Glyph color={color.fg3} name="ChevronRight" size={size.icon.phone} />;
+}
+
+/**
+ * The end of a navigating or choosing row: its value in fg-2, then the
+ * chevron. `lead` puts an identity mark (a flag, a face, a dot) before the
+ * value.
+ */
+export function NavEnd({
+	value,
+	lead,
+	chevron = true,
+}: {
+	value?: string;
+	lead?: ReactNode;
+	/** False for a value the row shows but cannot open. */
+	chevron?: boolean;
+}) {
+	const { space } = useTheme();
+	return (
+		<View style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}>
+			{lead}
+			{value ? (
+				<Text numberOfLines={1} style={{ flexShrink: 1 }} tone="fg2">
+					{value}
+				</Text>
+			) : null}
+			{chevron ? <Chevron /> : null}
+		</View>
+	);
+}
+
+/**
+ * A row of an inset group that holds a control of its own (the date picker,
+ * a switch, the rate line). It is a plain view, not a list row: a list row is
+ * one accessibility element, which would hide the control inside it from a
+ * screen reader.
+ */
+export function GroupItem({ children }: { children: ReactNode }) {
+	const { size, space } = useTheme();
+	return (
+		<View
+			style={{
+				minHeight: size.row.phone,
+				justifyContent: "center",
+				paddingHorizontal: space[4],
+				paddingVertical: space[1],
+			}}
+		>
+			{children}
+		</View>
 	);
 }
 

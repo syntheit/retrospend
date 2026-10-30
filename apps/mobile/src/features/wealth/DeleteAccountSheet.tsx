@@ -13,8 +13,8 @@ import type { Account } from "./source";
  * Delete an account and its whole balance history. The dry run says what net
  * worth would do before the verb is on, and the toast that follows has Undo:
  * the server keeps the account and its history for a day and puts it all back.
- * An open account offers Close instead, which keeps the history, next to the
- * destructive verb, which comes last.
+ * An open account offers Close instead, which keeps the history, in the body;
+ * the footer is Cancel, then the destructive verb.
  */
 export function DeleteAccountSheet({
 	account,
@@ -32,6 +32,7 @@ export function DeleteAccountSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.wealth.delete");
+	const tc = useTranslations("mobile.common");
 	const api = useApi();
 	const announce = useUndoToast("accounts");
 	const input = { id: account.id };
@@ -74,13 +75,7 @@ export function DeleteAccountSheet({
 			detents={["medium"]}
 			footer={
 				<>
-					{open ? (
-						<Button
-							label={t("closeInstead")}
-							onPress={onCloseInstead}
-							variant="outlined"
-						/>
-					) : null}
+					<Button label={tc("cancel")} onPress={onClose} variant="text" />
 					<Button
 						disabled={flow.status !== "ready" || flow.committing}
 						label={flow.committing ? t("deleting") : t("submit")}
@@ -95,7 +90,16 @@ export function DeleteAccountSheet({
 		>
 			<SheetBody>
 				<Note>{t("body")}</Note>
-				{open ? <Note>{t("keepHistory")}</Note> : null}
+				{open ? (
+					<>
+						<Note>{t("keepHistory")}</Note>
+						<Button
+							label={t("closeInstead")}
+							onPress={onCloseInstead}
+							variant="outlined"
+						/>
+					</>
+				) : null}
 				<PreviewChanges preview={flow.preview} status={flow.status} />
 				{flow.commitFailed ? <Note tone="attention">{t("error")}</Note> : null}
 			</SheetBody>

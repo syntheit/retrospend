@@ -1,10 +1,11 @@
-import { View } from "react-native";
 import type { Money } from "@retrospend/domain/money-minor";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useRateTypeName } from "@/lib/rateTypes";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
+import { DateField } from "@/ui/DateField";
 import { Text } from "@/ui/Text";
 import { FieldLabel } from "@/ui/TextField";
 import { offeredMethods, type RateChoices } from "./plan";
@@ -80,14 +81,14 @@ export function RateChips({
 
 /**
  * How it was paid and on which day: details of the record, they change no
- * money. Picking a method again clears it; the day starts on today.
+ * money. Picking a method again clears it; the day starts on today and can
+ * be any day (Today and Yesterday are shortcuts, the calendar is the field).
  */
 export function MethodAndDate({
 	shared,
 	method,
 	onMethod,
 	today,
-	yesterday,
 	paidOn,
 	onPaidOn,
 }: {
@@ -95,12 +96,10 @@ export function MethodAndDate({
 	method: string | null;
 	onMethod: (method: string | null) => void;
 	today: string;
-	yesterday: string;
 	paidOn: string | null;
 	onPaidOn: (day: string) => void;
 }) {
 	const t = useTranslations("mobile.settle");
-	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
 	const names = new Map<string, string>(
 		shared.map((m) => [m.type, m.label ?? ""]),
@@ -130,21 +129,13 @@ export function MethodAndDate({
 					))}
 				</ChipRow>
 			</View>
-			<View style={{ gap: space[1] }}>
-				<FieldLabel>{t("date")}</FieldLabel>
-				<ChipRow>
-					<Chip
-						label={tc("today")}
-						onPress={() => onPaidOn(today)}
-						selected={day === today}
-					/>
-					<Chip
-						label={tc("yesterday")}
-						onPress={() => onPaidOn(yesterday)}
-						selected={day === yesterday}
-					/>
-				</ChipRow>
-			</View>
+			<DateField
+				label={t("date")}
+				onChange={onPaidOn}
+				quick
+				today={today}
+				value={day}
+			/>
 		</>
 	);
 }

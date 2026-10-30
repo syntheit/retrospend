@@ -13,8 +13,10 @@ import {
 import { Chip } from "./Chip";
 import { CurrencyFlag } from "./CurrencyFlag";
 import { currencySections, mergeRecent } from "./currencySections";
+import { ListRow, NavEnd } from "./List";
 import { PickerSheet } from "./PickerSheet";
 import type { PickGroup } from "./pickGroups";
+import { Text } from "./Text";
 
 const NONE: string[] = [];
 
@@ -32,6 +34,7 @@ export function CurrencyPicker({
 	yours = NONE,
 	recent = NONE,
 	label,
+	variant = "chip",
 	onChange,
 }: {
 	value: string;
@@ -43,6 +46,12 @@ export function CurrencyPicker({
 	recent?: string[];
 	/** What is being chosen ("Home currency"), spoken before the code. */
 	label?: string;
+	/**
+	 * `chip` is the trigger pill (a flat form, a money field). `row` is a
+	 * value row in an inset group: the label on the left, the flag, code and
+	 * chevron in fg-2 on the right; it needs `label`.
+	 */
+	variant?: "chip" | "row";
 	onChange: (code: string) => void;
 }) {
 	const t = useTranslations("mobile.pickers");
@@ -82,15 +91,32 @@ export function CurrencyPicker({
 
 	return (
 		<>
-			<Chip
-				accessibilityLabel={
-					label ? `${label}, ${value}` : t("currency.trigger", { code: value })
-				}
-				label={value}
-				leading={<CurrencyFlag code={value} small />}
-				onPress={() => setOpen(true)}
-				variant="trigger"
-			/>
+			{variant === "row" && label ? (
+				<ListRow
+					accessibilityLabel={`${label}, ${value}`}
+					end={
+						<NavEnd lead={<CurrencyFlag code={value} small />} value={value} />
+					}
+					onPress={() => setOpen(true)}
+					title={
+						<Text numberOfLines={2} weight="normal">
+							{label}
+						</Text>
+					}
+				/>
+			) : (
+				<Chip
+					accessibilityLabel={
+						label
+							? `${label}, ${value}`
+							: t("currency.trigger", { code: value })
+					}
+					label={value}
+					leading={<CurrencyFlag code={value} small />}
+					onPress={() => setOpen(true)}
+					variant="trigger"
+				/>
+			)}
 			<PickerSheet
 				clear={t("clear")}
 				empty={t("currency.empty")}

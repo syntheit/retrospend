@@ -49,7 +49,7 @@ function HarnessSheet({ visible, children, onClose }: Record<string, unknown>) {
 		</>
 	) : null;
 }
-export const sheetMock = { Sheet: HarnessSheet };
+export const sheetMock = { Sheet: HarnessSheet, useSheetBodySize: () => ({}) };
 
 function HarnessSegmented({
 	options,
@@ -129,6 +129,34 @@ export function press(tree: Tree, label: string, last = false) {
 	if (!hit) throw new Error(`nothing to press: ${label}`);
 	act(() => {
 		(hit.props.onPress as () => void)();
+	});
+}
+
+/**
+ * Opens the picker whose trigger reads "field, ..." and presses the row named
+ * `option` in its sheet (a row may also say its figure after a comma). With
+ * `nth`, takes that trigger when two fields share a label.
+ */
+export function pick(tree: Tree, field: string, option: string, nth = 0) {
+	const isTrigger = (n: TestNode) =>
+		typeof n.props.onPress === "function" &&
+		String(n.props.accessibilityLabel).startsWith(`${field},`);
+	const trigger = tree.root.findAll(isTrigger)[nth];
+	if (!trigger) throw new Error(`no picker: ${field}`);
+	act(() => {
+		(trigger.props.onPress as () => void)();
+	});
+	const rows = tree.root.findAll(
+		(n) =>
+			typeof n.props.onPress === "function" &&
+			!isTrigger(n) &&
+			(n.props.accessibilityLabel === option ||
+				String(n.props.accessibilityLabel).startsWith(`${option},`)),
+	);
+	const row = rows[rows.length - 1];
+	if (!row) throw new Error(`no option: ${option}`);
+	act(() => {
+		(row.props.onPress as () => void)();
 	});
 }
 

@@ -8,13 +8,14 @@ import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
 import { Chip } from "@/ui/Chip";
 import { EmptyState } from "@/ui/EmptyState";
-import { ListGroup, ListRow } from "@/ui/List";
+import { GroupItem, ListGroup, ListRow } from "@/ui/List";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
+import { SwitchRow } from "@/ui/SwitchRow";
 import { useToast } from "@/ui/Toast";
 import { TopBarAction } from "@/ui/TopBarAction";
 import { Block, GroupNote, PageState, SettingsPage } from "../settings/parts";
 import { InviteSheet } from "./InviteSheet";
-import { SwitchItem } from "./SwitchItem";
 import type { InviteCodeDto } from "./types";
 import { detailOf, useAdminRead } from "./useAdminRead";
 import { useServerSettings } from "./useServerSettings";
@@ -34,6 +35,7 @@ const MAX_PAGES = 5;
  */
 export function InvitesScreen() {
 	const t = useTranslations("mobile.admin.invites");
+	const tc = useTranslations("mobile.common");
 	const format = useFormatter();
 	const { api } = useSession();
 	const toast = useToast();
@@ -102,7 +104,10 @@ export function InvitesScreen() {
 		return (
 			<>
 				{add}
-				<PageState failed={settings.state.status === "error"} />
+				<PageState
+					failed={settings.state.status === "error"}
+					onRetry={() => void settings.reload()}
+				/>
 			</>
 		);
 	}
@@ -116,21 +121,25 @@ export function InvitesScreen() {
 		<>
 			{add}
 			<SettingsPage>
-				<ListGroup>
-					<SwitchItem
-						detail={t("requireDetail")}
-						label={t("require")}
-						onChange={(on) => void settings.save({ inviteOnlyEnabled: on })}
-						value={server.inviteOnlyEnabled}
-					/>
-					<SwitchItem
-						detail={t("everyoneDetail")}
-						label={t("everyone")}
-						onChange={(on) =>
-							void settings.save({ allowAllUsersToGenerateInvites: on })
-						}
-						value={server.allowAllUsersToGenerateInvites}
-					/>
+				<ListGroup form>
+					<GroupItem>
+						<SwitchRow
+							detail={t("requireDetail")}
+							label={t("require")}
+							onChange={(on) => void settings.save({ inviteOnlyEnabled: on })}
+							value={server.inviteOnlyEnabled}
+						/>
+					</GroupItem>
+					<GroupItem>
+						<SwitchRow
+							detail={t("everyoneDetail")}
+							label={t("everyone")}
+							onChange={(on) =>
+								void settings.save({ allowAllUsersToGenerateInvites: on })
+							}
+							value={server.allowAllUsersToGenerateInvites}
+						/>
+					</GroupItem>
 				</ListGroup>
 				<Block title={t("codes")}>
 					<ScrollView
@@ -153,12 +162,16 @@ export function InvitesScreen() {
 						))}
 					</ScrollView>
 					{items === null ? (
-						<EmptyState
-							detail={
-								codes.state.status === "error" ? t("errorDetail") : undefined
-							}
-							title={codes.state.status === "error" ? t("error") : ""}
-						/>
+						codes.state.status === "error" ? (
+							<EmptyState
+								actionLabel={tc("retry")}
+								detail={t("errorDetail")}
+								onAction={() => void codes.reload()}
+								title={t("error")}
+							/>
+						) : (
+							<SkeletonRows />
+						)
 					) : items.length === 0 ? (
 						<EmptyState title={t(`empty.${status}`)} />
 					) : (

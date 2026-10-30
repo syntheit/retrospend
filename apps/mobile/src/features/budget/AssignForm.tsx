@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
-import { AmountField, Line, useAmountLocale } from "@/features/write/parts";
+import { Line, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import type { FormProps } from "@/features/write/WriteFrame";
+import { AmountField } from "@/ui/AmountField";
 import { Segmented } from "@/ui/Segmented";
 import { assignBody } from "./bodies";
 import { changesAnything } from "./preview";
@@ -87,6 +88,7 @@ export function AssignForm({
 					{ value: "add", label: t("add") },
 					{ value: "set", label: t("set") },
 				]}
+				stretch
 				value={mode}
 			/>
 			<Line label={t("assignedNow")} value={money(envelope.assigned)} />

@@ -7,6 +7,7 @@ import type { ComposerPrefill } from "@/surfaces/prefill";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { applyKey } from "@/ui/keypad";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { useMoneyLines } from "./AmountCard";
 import { ComposerHeader } from "./ComposerHeader";
@@ -50,24 +51,57 @@ interface ComposerProps {
  * `onDone` closes whichever it is in.
  */
 export function EntryComposer(props: ComposerProps) {
+	// Retry starts the reads over: a new key remounts the loader.
+	const [attempt, setAttempt] = useState(0);
+	return (
+		<ComposerLoader
+			key={attempt}
+			{...props}
+			onRetry={() => setAttempt((n) => n + 1)}
+		/>
+	);
+}
+
+/** The reads the composer waits for: loading rows, or the error with Retry. */
+function ComposerLoader({
+	onRetry,
+	...props
+}: ComposerProps & { onRetry: () => void }) {
 	const t = useTranslations("mobile.composer");
-	const tc = useTranslations("mobile.common");
 	const catalog = useEntryCatalog();
 	const edit = useEditEntry(props.editId, props.editShared);
 	const { state } = useSession();
 	// The profile is cached on sign in; without it there is no "you" to split with.
 	if (state.status !== "signedIn" || !state.me) {
-		return <Notice detail={t("loadErrorDetail")} title={t("loadError")} />;
+		return (
+			<Notice
+				detail={t("loadErrorDetail")}
+				onRetry={onRetry}
+				title={t("loadError")}
+			/>
+		);
 	}
 	if (catalog.status === "loading") {
-		return <Notice title={tc("loading")} />;
+		return <Notice loading />;
 	}
 	if (catalog.status === "error") {
-		return <Notice detail={t("loadErrorDetail")} title={t("loadError")} />;
+		return (
+			<Notice
+				detail={t("loadErrorDetail")}
+				onRetry={onRetry}
+				title={t("loadError")}
+			/>
+		);
 	}
-	if (edit.status === "loading") return <Notice title={tc("loading")} />;
+	if (edit.status === "loading") return <Notice loading />;
 	if (edit.status === "error") {
-		return <Notice detail={t("loadErrorDetail")} title={t("editLoadError")} />;
+		return (
+			<Notice
+				detail={t("loadErrorDetail")}
+				onRetry={onRetry}
+				title={t("editLoadError")}
+			/>
+		);
 	}
 	if (edit.status === "ready" && edit.saved.kind === "shared") {
 		// A payment settled it, or the project does not let you: the server refuses either.
@@ -84,11 +118,35 @@ export function EntryComposer(props: ComposerProps) {
 	);
 }
 
-/** A message in the sheet's own surface; the loading panel is transparent, never a gray box. */
-function Notice({ title, detail }: { title: string; detail?: string }) {
+/**
+ * A state in the sheet's own surface (the loading panel is transparent, never
+ * a gray box): rows while it loads, a message with Retry when it failed, a
+ * plain message when nothing can change.
+ */
+function Notice({
+	title,
+	detail,
+	loading = false,
+	onRetry,
+}: {
+	title?: string;
+	detail?: string;
+	loading?: boolean;
+	onRetry?: () => void;
+}) {
+	const tc = useTranslations("mobile.common");
 	return (
 		<View style={{ flex: 1 }}>
-			<EmptyState detail={detail} title={title} />
+			{loading ? (
+				<SkeletonRows />
+			) : (
+				<EmptyState
+					actionLabel={onRetry ? tc("retry") : undefined}
+					detail={detail}
+					onAction={onRetry}
+					title={title ?? ""}
+				/>
+			)}
 		</View>
 	);
 }

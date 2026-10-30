@@ -1,9 +1,9 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { matchCategories } from "./CategoryList";
 import { EditForm } from "./EditForm";
 import {
 	fakeBudget,
 	ids,
+	pick,
 	press,
 	session,
 	type Tree,
@@ -85,15 +85,6 @@ describe("category bodies", () => {
 		expect(sameIds(["a", "b"], ["b", "a"])).toBe(true);
 		expect(sameIds(["a"], ["a", "b"])).toBe(false);
 	});
-
-	it("finds a category ignoring case and accents", () => {
-		const list = [
-			{ id: "1", name: "Café", icon: null, tone: 1 },
-			{ id: "2", name: "Food", icon: null, tone: 2 },
-		];
-		expect(matchCategories(list, "CAFE").map((c) => c.id)).toEqual(["1"]);
-		expect(matchCategories(list, "").map((c) => c.id)).toEqual(["1", "2"]);
-	});
 });
 
 describe("New envelope with categories", () => {
@@ -117,7 +108,7 @@ describe("New envelope with categories", () => {
 		});
 		await wait(10);
 		typeInto(tree, "Name", "Eating out");
-		press(tree, "Food");
+		pick(tree, "Categories it covers", "Food");
 		press(tree, "Fun");
 		await wait(400);
 		const previews = calls.filter((c) => c.route === "previewCreateEnvelope");
@@ -161,7 +152,7 @@ describe("Edit envelope categories", () => {
 		expect(calls.filter((c) => c.route === "previewUpdateEnvelope")).toEqual(
 			[],
 		);
-		press(tree, "Food");
+		pick(tree, "Categories it covers", "Food");
 		press(tree, "Fun");
 		await wait(400);
 		const previews = calls.filter((c) => c.route === "previewUpdateEnvelope");

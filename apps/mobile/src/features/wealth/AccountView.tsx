@@ -85,6 +85,7 @@ function LegRow({ leg }: { leg: AccountLeg }) {
  */
 export function AccountView({ id }: { id: string }) {
 	const t = useTranslations("mobile.wealth");
+	const tc = useTranslations("mobile.common");
 	const tm = useTranslations("mobile.money");
 	const format = useFormatter();
 	const money = useMoneyText();
@@ -111,7 +112,12 @@ export function AccountView({ id }: { id: string }) {
 				<Stack.Screen options={{ title: "" }} />
 				<Screen flush>
 					{state.status === "error" ? (
-						<EmptyState detail={t("errorDetail")} title={t("accountError")} />
+						<EmptyState
+							actionLabel={tc("retry")}
+							detail={t("errorDetail")}
+							onAction={() => void reload()}
+							title={t("accountError")}
+						/>
 					) : (
 						<AccountSkeleton />
 					)}
@@ -193,9 +199,7 @@ export function AccountView({ id }: { id: string }) {
 				</View>
 				<SectionHeader title={t("history")} />
 				{account.legs.length === 0 ? (
-					<Text style={{ paddingHorizontal: space[4] }} tone="fg2">
-						{t("noHistory")}
-					</Text>
+					<EmptyState inline title={t("noHistory")} />
 				) : (
 					<ListGroup>
 						{account.legs.slice(0, shown).map((leg) => (

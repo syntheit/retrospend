@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { useTranslations } from "use-intl";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow } from "@/ui/List";
-import { NavEnd, PageState, SettingsPage } from "../settings/parts";
+import { PageState, SettingsPage } from "../settings/parts";
 import { useAdminRead } from "./useAdminRead";
 
 /**
@@ -13,7 +13,7 @@ import { useAdminRead } from "./useAdminRead";
  */
 export function AdminHub() {
 	const t = useTranslations("mobile.admin");
-	const { state } = useAdminRead(async (api) => {
+	const { state, reload } = useAdminRead(async (api) => {
 		const [stats, feedback, settings] = await Promise.all([
 			api.admin.stats(),
 			api.admin.listFeedback({ limit: 1 }),
@@ -23,7 +23,12 @@ export function AdminHub() {
 	});
 
 	if (state.status !== "ready") {
-		return <PageState failed={state.status === "error"} />;
+		return (
+			<PageState
+				failed={state.status === "error"}
+				onRetry={() => void reload()}
+			/>
+		);
 	}
 	const { stats, feedback, settings } = state.data;
 
@@ -31,14 +36,14 @@ export function AdminHub() {
 		<SettingsPage>
 			<ListGroup>
 				<ListRow
-					end={<NavEnd />}
+					chevron
 					lead={<IconTile name="Users" />}
 					onPress={() => router.push("/settings/admin-users")}
 					sub={t("hub.users", { count: stats.userCount })}
 					title={t("users.title")}
 				/>
 				<ListRow
-					end={<NavEnd />}
+					chevron
 					lead={<IconTile name="KeyRound" />}
 					onPress={() => router.push("/settings/admin-invites")}
 					sub={
@@ -49,7 +54,7 @@ export function AdminHub() {
 					title={t("invites.title")}
 				/>
 				<ListRow
-					end={<NavEnd />}
+					chevron
 					lead={<IconTile name="MessageSquare" />}
 					onPress={() => router.push("/settings/admin-feedback")}
 					sub={
@@ -60,7 +65,7 @@ export function AdminHub() {
 					title={t("feedback.title")}
 				/>
 				<ListRow
-					end={<NavEnd />}
+					chevron
 					lead={<IconTile name="SlidersHorizontal" />}
 					onPress={() => router.push("/settings/admin-settings")}
 					sub={t("hub.settings")}

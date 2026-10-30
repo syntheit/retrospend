@@ -1,16 +1,14 @@
 import { draftFromMinor } from "@retrospend/domain/parse";
 import { useEffect, useState } from "react";
-import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
-import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
+import { Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { type FormProps, useApi } from "@/features/write/WriteFrame";
-import { useTheme } from "@/theme";
-import { Picker } from "@/ui/Picker";
-import { Text } from "@/ui/Text";
+import { AmountField } from "@/ui/AmountField";
 import { coverBody } from "./bodies";
+import { EnvelopePick, type ExtraPlace } from "./pickers";
 import { changesAnything } from "./preview";
 import { type CoverOverview, envelopeById } from "./source";
 import { WriteForm } from "./WriteSheet";
@@ -35,7 +33,6 @@ export function CoverForm({
 	const api = useApi();
 	const money = useMoneyText();
 	const locale = useAmountLocale();
-	const { space } = useTheme();
 	const currency = data.book.currency;
 	const poolName = tb(`pool.${data.toAssign.poolName}`);
 	const [overview, setOverview] = useState<CoverOverview | null>(null);
@@ -89,22 +86,33 @@ export function CoverForm({
 					currency,
 				});
 
-	const optionLabel = (s: CoverOverview["sources"][number]) => {
-		const base = t("source", {
-			name: nameOf(s.from),
-			amount: money(s.available),
-		});
+	// What a source can give: its amount, and the due date when it is a bill or a goal.
+	const optionDetail = (s: CoverOverview["sources"][number]) => {
+		const amount = money(s.available);
 		return s.dueDate
 			? t("sourceDue", {
-					source: base,
+					source: amount,
 					date: format.dateTime(new Date(`${s.dueDate}T12:00:00Z`), {
 						month: "short",
 						day: "numeric",
 						timeZone: "UTC",
 					}),
 				})
-			: base;
+			: amount;
 	};
+
+	// The pool and any source the month no longer lists are places; the rest are envelopes.
+	const sourceEnvelopes = sources.flatMap((s) => {
+		const found = s.from === null ? null : envelopeById(data, s.from);
+		return found ? [found] : [];
+	});
+	const sourceExtras: ExtraPlace[] = sources
+		.filter((s) => s.from === null || !envelopeById(data, s.from))
+		.map((s) => ({
+			id: s.from ?? POOL,
+			name: nameOf(s.from),
+			detail: optionDetail(s),
+		}));
 
 	return (
 		<WriteForm
@@ -149,22 +157,18 @@ export function CoverForm({
 							: t("notOver", { name: envelope.name })}
 					</Note>
 					{sources.length > 0 ? (
-						<View style={{ gap: space[1] }}>
-							<Text tone="fg2" variant="small">
-								{t("from")}
-							</Text>
-							<Picker
-								onChange={setPick}
-								options={[
-									...(source ? [] : [{ value: "", label: t("pickSource") }]),
-									...sources.map((s) => ({
-										value: s.from ?? POOL,
-										label: optionLabel(s),
-									})),
-								]}
-								value={source ? (source.from ?? POOL) : ""}
-							/>
-						</View>
+						<EnvelopePick
+							detailOf={(e) => {
+								const s = sources.find((x) => x.from === e.id);
+								return s ? optionDetail(s) : "";
+							}}
+							envelopes={sourceEnvelopes}
+							extras={sourceExtras}
+							label={t("from")}
+							onChange={(id) => id !== null && setPick(id)}
+							placeholder={t("pickSource")}
+							value={source ? (source.from ?? POOL) : null}
+						/>
 					) : (
 						<Note>{t("noSource")}</Note>
 					)}
