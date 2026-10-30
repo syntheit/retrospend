@@ -13,6 +13,43 @@ const OPERATORS = [
 	{ key: "divide", sign: "÷" },
 ] as const;
 
+/** The four operator keys that add up an amount; any sheet with a typed amount can show them. */
+export function OperatorKeys({
+	onOperator,
+}: {
+	onOperator: (sign: string) => void;
+}) {
+	const t = useTranslations("mobile.composer");
+	const { color, radius, size, space } = useTheme();
+	return (
+		<View
+			accessibilityLabel={t("ops.label")}
+			style={{ flexDirection: "row", gap: space[2] }}
+		>
+			{OPERATORS.map((op) => (
+				<Pressable
+					accessibilityLabel={t(`ops.${op.key}`)}
+					accessibilityRole="button"
+					key={op.key}
+					onPress={() => onOperator(op.sign)}
+					style={({ pressed }) => ({
+						minWidth: size.touchMin.phone,
+						minHeight: size.touchMin.phone,
+						alignItems: "center",
+						justifyContent: "center",
+						borderRadius: radius.chip,
+						backgroundColor: pressed ? color.line : color.raised,
+					})}
+				>
+					<Text variant="title" weight="medium">
+						{op.sign}
+					</Text>
+				</Pressable>
+			))}
+		</View>
+	);
+}
+
 /**
  * The bar over the keypad: the four operators on the left for adding up an
  * amount, or Back on More, and the primary Add button at the end (off until
@@ -43,7 +80,7 @@ export function ComposerBar({
 	busy: boolean;
 }) {
 	const t = useTranslations("mobile.composer");
-	const { color, radius, size, space } = useTheme();
+	const { space } = useTheme();
 	return (
 		<View
 			style={{
@@ -56,31 +93,7 @@ export function ComposerBar({
 			{step === "more" ? (
 				<TextAction label={t("back")} onPress={onBack} />
 			) : showOperators ? (
-				<View
-					accessibilityLabel={t("ops.label")}
-					style={{ flexDirection: "row", gap: space[2] }}
-				>
-					{OPERATORS.map((op) => (
-						<Pressable
-							accessibilityLabel={t(`ops.${op.key}`)}
-							accessibilityRole="button"
-							key={op.key}
-							onPress={() => onOperator(op.sign)}
-							style={({ pressed }) => ({
-								minWidth: size.touchMin.phone,
-								minHeight: size.touchMin.phone,
-								alignItems: "center",
-								justifyContent: "center",
-								borderRadius: radius.chip,
-								backgroundColor: pressed ? color.line : color.raised,
-							})}
-						>
-							<Text variant="title" weight="medium">
-								{op.sign}
-							</Text>
-						</Pressable>
-					))}
-				</View>
+				<OperatorKeys onOperator={onOperator} />
 			) : (
 				<View />
 			)}

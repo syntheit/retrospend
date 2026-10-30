@@ -3,10 +3,12 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { AvatarStack, type Face } from "@/ui/Avatar";
 import { Glyph } from "@/ui/Glyph";
 import { ListGroup, ListRow } from "@/ui/List";
+import { Text } from "@/ui/Text";
 import { participantKey } from "./owedBodies";
 import type { BudgetMonth } from "./source";
 import { useSheetRead } from "./useSheetRead";
@@ -51,7 +53,9 @@ export function PlanSummary({
 	onOpenOwed: (() => void) | null;
 }) {
 	const t = useTranslations("mobile.budget");
+	const tm = useTranslations("mobile.money");
 	const money = useMoneyText();
+	const { format } = useFormatMoney();
 	const { color, size, space } = useTheme();
 	const owed = data.owed;
 	const faces = useOwedFaces(owed.people, owed.held.minor);
@@ -82,16 +86,6 @@ export function PlanSummary({
 				{owed.people > 0 ? (
 					<ListRow
 						accessibilityLabel={owedSpoken}
-						end={
-							<>
-								<MoneyAmount approx tone="positive" value={owed.held} />
-								<Glyph
-									color={color.fg3}
-									name="ChevronRight"
-									size={size.icon.phone}
-								/>
-							</>
-						}
 						lead={
 							faces.length > 0 ? (
 								<AvatarStack faces={faces} max={3} ring="surface" size="sm" />
@@ -105,9 +99,36 @@ export function PlanSummary({
 									params: { segment: "people" },
 								}))
 						}
-						sub={t("owed.people", { count: owed.people })}
-						title={t("owed.title")}
-					/>
+					>
+						{/* The title keeps its width; the amount shrinks first, and shows whole units. */}
+						<View style={{ flexShrink: 0 }}>
+							<Text numberOfLines={1} weight="medium">
+								{t("owed.title")}
+							</Text>
+							<Text numberOfLines={1} tone="fg3" variant="meta">
+								{t("owed.people", { count: owed.people })}
+							</Text>
+						</View>
+						<View style={{ flex: 1, minWidth: 0 }}>
+							<Text
+								adjustsFontSizeToFit
+								numberOfLines={1}
+								style={{ textAlign: "right" }}
+								tabular
+								tone="positive"
+								weight="medium"
+							>
+								{tm("approx", {
+									amount: format(owed.held, { cents: false }) ?? "",
+								})}
+							</Text>
+						</View>
+						<Glyph
+							color={color.fg3}
+							name="ChevronRight"
+							size={size.icon.phone}
+						/>
+					</ListRow>
 				) : null}
 			</ListGroup>
 		</View>

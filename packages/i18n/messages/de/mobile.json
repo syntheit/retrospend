@@ -1111,7 +1111,8 @@
 			"error": "Das ließ sich nicht laden. Versuch es nochmal.",
 			"listTitle": "Den Monat planen",
 			"listLead": "Tippe auf einen Umschlag, um festzulegen, was er bekommt. Vor dem Zahltag bewegt sich nichts.",
-			"notPlanned": "Noch nicht geplant"
+			"notPlanned": "Noch nicht geplant",
+			"leftToPlan": "Noch zu planen: {month}"
 		},
 		"planApply": {
 			"title": "Plan für {month} anwenden",
@@ -1145,6 +1146,7 @@
 		},
 		"close": {
 			"title": "{month} ist abgeschlossen",
+			"titleOpen": "{month} abschließen",
 			"done": "Fertig",
 			"notClosed": "Dieser Monat ist noch nicht abgeschlossen.",
 			"moneyIn": "Einnahmen",
@@ -1157,7 +1159,9 @@
 			"swept": "Nach {name} verschoben",
 			"envelopeFallback": "Umschlag",
 			"back": "Zurück",
-			"error": "Das ließ sich nicht laden. Versuch es nochmal."
+			"error": "Das ließ sich nicht laden. Versuch es nochmal.",
+			"moneyInSub": "Alle in {month} gebuchten Einnahmen",
+			"assignedSub": "Übertrag und Startgeld eingeschlossen"
 		},
 		"carry": {
 			"title": "Aus {name} im {month} nehmen",

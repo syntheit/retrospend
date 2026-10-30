@@ -1111,7 +1111,8 @@
 			"error": "Não foi possível carregar. Tente de novo.",
 			"listTitle": "Planeje o mês",
 			"listLead": "Toque em um envelope para definir o que ele recebe. Nada se move até o dia do pagamento.",
-			"notPlanned": "Ainda não planejado"
+			"notPlanned": "Ainda não planejado",
+			"leftToPlan": "Falta planejar em {month}"
 		},
 		"planApply": {
 			"title": "Aplicar o plano de {month}",
@@ -1145,6 +1146,7 @@
 		},
 		"close": {
 			"title": "{month} está fechado",
+			"titleOpen": "Fechar {month}",
 			"done": "Pronto",
 			"notClosed": "Este mês ainda não fechou.",
 			"moneyIn": "Entradas",
@@ -1157,7 +1159,9 @@
 			"swept": "Movido para {name}",
 			"envelopeFallback": "Envelope",
 			"back": "Voltar",
-			"error": "Não foi possível carregar. Tente de novo."
+			"error": "Não foi possível carregar. Tente de novo.",
+			"moneyInSub": "Toda a renda registrada em {month}",
+			"assignedSub": "Inclui o dinheiro acumulado e o inicial"
 		},
 		"carry": {
 			"title": "Tirar de {name} em {month}",

@@ -1,7 +1,10 @@
+import { categoryTone } from "@retrospend/domain/category-tone";
 import { useEffect, useRef, useState } from "react";
-import { useTranslations } from "use-intl";
+import { View } from "react-native";
+import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
+import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import {
@@ -11,8 +14,12 @@ import {
 	SheetBody,
 	useAmountLocale,
 } from "@/features/write/parts";
+import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
+import { Hero } from "@/ui/Hero";
+import { CategoryTile, ListRow, SectionHeader } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import {
 	linesOf,
@@ -21,9 +28,11 @@ import {
 	planBody,
 	plannedFor,
 } from "./draftsBody";
-import { ChoiceList } from "./fields";
-import { type BudgetMonth, envelopeById, envelopesOf } from "./source";
+import { monthDate } from "./months";
+import { type BudgetMonth, envelopeById } from "./source";
+import { useGroupName } from "./useGroupName";
 import { useSheetRead } from "./useSheetRead";
+import { useTargetText } from "./useTargetText";
 import { BackButton } from "./WriteSheet";
 
 /**
@@ -47,6 +56,9 @@ export function PlanSheet({
 	const tw = useTranslations("mobile.budget.write");
 	const tc = useTranslations("mobile.common");
 	const money = useMoneyText();
+	const format = useFormatter();
+	const targetText = useTargetText();
+	const groupName = useGroupName();
 	const { api } = useSession();
 	const toast = useToast();
 	const locale = useAmountLocale();
@@ -64,6 +76,18 @@ export function PlanSheet({
 	);
 	const drafts = read.status === "ready" ? read.data : null;
 	const base = planBase(drafts);
+	// What is left to plan is the server's figure for the draft, read again
+	// whenever the plan is saved.
+	const outcome = useSheetRead(
+		visible && base !== null,
+		(client) => client.budget.draftOutcome({ draftId: base?.id ?? "" }),
+		`${base?.id}:${base?.updatedAt}`,
+	);
+	const left = outcome.status === "ready" ? outcome.data.toAssign.after : null;
+	const monthName = format.dateTime(monthDate(month), {
+		month: "long",
+		timeZone: "UTC",
+	});
 	const envelope = envelopeById(data, editing);
 	const entered = readAmount(draft, locale, currency);
 	const minor = minorOf(entered, true);
@@ -126,6 +150,7 @@ export function PlanSheet({
 	}
 
 	const planned = envelope ? plannedFor(base, envelope.id) : null;
+	const { space } = useTheme();
 	return (
 		<Sheet
 			detents={[detent]}
@@ -173,22 +198,65 @@ export function PlanSheet({
 					</>
 				) : (
 					<>
-						<Note>{t("listLead")}</Note>
+						{left ? (
+							<View style={{ paddingHorizontal: space[4] }}>
+								<Hero
+									label={t("leftToPlan", { month: monthName })}
+									sub={t("listLead")}
+									tone={left.minor < 0 ? "attention" : "fg"}
+									value={money(left, { sign: "never" })}
+								/>
+							</View>
+						) : (
+							<Note>{t("listLead")}</Note>
+						)}
 						{read.status === "error" ? (
 							<Note tone="attention">{t("error")}</Note>
 						) : null}
-						<ChoiceList
-							choices={envelopesOf(data).map((e) => {
-								const p = plannedFor(base, e.id);
-								return {
-									id: e.id,
-									label: e.name,
-									detail: p ? money(p) : undefined,
-								};
-							})}
-							onPress={setEditing}
-							selected={new Set()}
-						/>
+						{data.groups.map((group) => (
+							<View key={group.id ?? "none"}>
+								<SectionHeader title={groupName(group)} />
+								{group.envelopes.map((e) => {
+									const p = plannedFor(base, e.id);
+									const target = targetText(e, false);
+									return (
+										<ListRow
+											accessibilityLabel={`${e.name}, ${p ? money(p) : t("notPlanned")}`}
+											end={
+												p ? (
+													<MoneyAmount value={p} />
+												) : (
+													<Text tone="fg3">{t("notPlanned")}</Text>
+												)
+											}
+											key={e.id}
+											lead={
+												<CategoryTile
+													category={{
+														name: e.name,
+														icon: e.icon,
+														tone: categoryTone(e.color ?? ""),
+													}}
+												/>
+											}
+											onPress={() => setEditing(e.id)}
+											sub={
+												target ? (
+													<Text
+														numberOfLines={1}
+														tone={target.attention ? "attention" : "fg3"}
+														variant="meta"
+													>
+														{target.text}
+													</Text>
+												) : undefined
+											}
+											title={e.name}
+										/>
+									);
+								})}
+							</View>
+						))}
 					</>
 				)}
 			</SheetBody>

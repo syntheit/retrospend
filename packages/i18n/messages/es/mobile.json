@@ -1111,7 +1111,8 @@
 			"error": "No se pudo cargar. Inténtalo de nuevo.",
 			"listTitle": "Planifica el mes",
 			"listLead": "Toca un sobre para fijar lo que recibe. Nada se mueve hasta el día de cobro.",
-			"notPlanned": "Aún sin planificar"
+			"notPlanned": "Aún sin planificar",
+			"leftToPlan": "Por planificar en {month}"
 		},
 		"planApply": {
 			"title": "Aplicar el plan de {month}",
@@ -1145,6 +1146,7 @@
 		},
 		"close": {
 			"title": "{month} está cerrado",
+			"titleOpen": "Cerrar {month}",
 			"done": "Listo",
 			"notClosed": "Este mes todavía no se ha cerrado.",
 			"moneyIn": "Entradas",
@@ -1157,7 +1159,9 @@
 			"swept": "Se movió a {name}",
 			"envelopeFallback": "Sobre",
 			"back": "Atrás",
-			"error": "No se pudo cargar. Inténtalo de nuevo."
+			"error": "No se pudo cargar. Inténtalo de nuevo.",
+			"moneyInSub": "Todos los ingresos registrados en {month}",
+			"assignedSub": "Incluye el dinero arrastrado y el inicial"
 		},
 		"carry": {
 			"title": "Sacarlo de {name} en {month}",

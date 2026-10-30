@@ -25,6 +25,7 @@ import {
 	isLimits,
 } from "./rows";
 import type { BudgetEnvelope, BudgetGroup, BudgetStyle } from "./source";
+import { useGroupName } from "./useGroupName";
 import { joinNames } from "./verdict";
 
 type Open = (envelope: BudgetEnvelope, mode: EnvelopeMode) => void;
@@ -41,12 +42,6 @@ function roleGlyph(role: BudgetGroup["role"]): GlyphName {
 		default:
 			return "Tag";
 	}
-}
-
-/** A group's name: the one the person gave it, else its role's word. */
-function useGroupName() {
-	const t = useTranslations("mobile.budget.group");
-	return (group: BudgetGroup) => group.name ?? t(group.role ?? "ungrouped");
 }
 
 /**

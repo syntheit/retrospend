@@ -1111,7 +1111,8 @@
 			"error": "Couldn't load this. Try again.",
 			"listTitle": "Plan the month",
 			"listLead": "Tap an envelope to set what it gets. Nothing moves until payday.",
-			"notPlanned": "Not planned yet"
+			"notPlanned": "Not planned yet",
+			"leftToPlan": "Left to plan in {month}"
 		},
 		"planApply": {
 			"title": "Apply the {month} plan",
@@ -1145,6 +1146,7 @@
 		},
 		"close": {
 			"title": "{month} is closed",
+			"titleOpen": "Close {month}",
 			"done": "Done",
 			"notClosed": "This month has not closed yet.",
 			"moneyIn": "Money in",
@@ -1157,7 +1159,9 @@
 			"swept": "Moved to {name}",
 			"envelopeFallback": "Envelope",
 			"back": "Back",
-			"error": "Couldn't load this. Try again."
+			"error": "Couldn't load this. Try again.",
+			"moneyInSub": "All income booked in {month}",
+			"assignedSub": "Carried and starting money included"
 		},
 		"carry": {
 			"title": "Take it from {month}'s {name}",
