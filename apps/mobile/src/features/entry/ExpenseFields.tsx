@@ -51,8 +51,10 @@ export function SplitSummary({
 }
 
 /**
- * Spread, Exclude, Note and Location, always shown at the foot of the main
- * step, with no toggle, each under its own label. There are no section
+ * Note, Location, Spread and Exclude, always shown at the foot of the main
+ * step, with no toggle, each under its own label. The note and place come
+ * first: they are short, so they sit whole above the amount card when the
+ * spread chips would push them under it. There are no section
  * headings: the labels say what each row is, and the headings would push the
  * rows below the keypad. The gaps between the blocks are the tight ones, so
  * more of the stack sits whole above the amount card before the scroll cuts it. A split keeps its note only, as on the web.
@@ -67,7 +69,7 @@ function Details({
 	onTypingChange: (typing: boolean) => void;
 }) {
 	const t = useTranslations("mobile.composer");
-	const { space } = useTheme();
+	const { size, space } = useTheme();
 	const personal = isPersonal(draft);
 	// A saved odd spread (say 4 months) stays offered next to the usual ones.
 	const months = [
@@ -75,59 +77,7 @@ function Details({
 	].sort((a, b) => a - b);
 	return (
 		<View style={{ gap: space[3] }}>
-			{personal ? (
-				<ListGroup form>
-					<GroupItem>
-						<View style={{ gap: space[2] }}>
-							<FieldLabel>{t("spread")}</FieldLabel>
-							<View
-								accessibilityLabel={t("spread")}
-								accessibilityRole="radiogroup"
-								style={{
-									flexDirection: "row",
-									flexWrap: "wrap",
-									gap: space[2],
-								}}
-							>
-								<Chip
-									label={t("spreadOne")}
-									onPress={() => onChange({ spread: null })}
-									selected={draft.spread === null}
-								/>
-								{months.map((count) => (
-									<Chip
-										key={count}
-										label={t("spreadMonths", { count })}
-										onPress={() => onChange({ spread: count })}
-										selected={draft.spread === count}
-									/>
-								))}
-							</View>
-						</View>
-					</GroupItem>
-					<GroupItem>
-						<View>
-							<SwitchRow
-								detail={
-									draft.excludeAuto && draft.exclude
-										? t("excludeAuto")
-										: t("excludeDetail")
-								}
-								label={t("exclude")}
-								onChange={(exclude) =>
-									onChange({
-										exclude,
-										excludeTouched: true,
-										excludeAuto: false,
-									})
-								}
-								value={draft.exclude}
-							/>
-						</View>
-					</GroupItem>
-				</ListGroup>
-			) : null}
-			<View style={{ paddingHorizontal: space[4], gap: space[3] }}>
+			<View style={{ gap: space[3] }}>
 				<TextField
 					autoCapitalize="sentences"
 					label={t("note")}
@@ -149,6 +99,60 @@ function Details({
 					/>
 				) : null}
 			</View>
+			{personal ? (
+				<View style={{ marginHorizontal: -size.gutter.phone }}>
+					<ListGroup form>
+						<GroupItem>
+							<View style={{ gap: space[2] }}>
+								<FieldLabel>{t("spread")}</FieldLabel>
+								<View
+									accessibilityLabel={t("spread")}
+									accessibilityRole="radiogroup"
+									style={{
+										flexDirection: "row",
+										flexWrap: "wrap",
+										gap: space[2],
+									}}
+								>
+									<Chip
+										label={t("spreadOne")}
+										onPress={() => onChange({ spread: null })}
+										selected={draft.spread === null}
+									/>
+									{months.map((count) => (
+										<Chip
+											key={count}
+											label={t("spreadMonths", { count })}
+											onPress={() => onChange({ spread: count })}
+											selected={draft.spread === count}
+										/>
+									))}
+								</View>
+							</View>
+						</GroupItem>
+						<GroupItem>
+							<View>
+								<SwitchRow
+									detail={
+										draft.excludeAuto && draft.exclude
+											? t("excludeAuto")
+											: t("excludeDetail")
+									}
+									label={t("exclude")}
+									onChange={(exclude) =>
+										onChange({
+											exclude,
+											excludeTouched: true,
+											excludeAuto: false,
+										})
+									}
+									value={draft.exclude}
+								/>
+							</View>
+						</GroupItem>
+					</ListGroup>
+				</View>
+			) : null}
 		</View>
 	);
 }

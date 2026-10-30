@@ -1,7 +1,7 @@
 import { Box, DropdownMenu } from "@expo/ui/jetpack-compose";
 import { size as sized } from "@expo/ui/jetpack-compose/modifiers";
 import { AndroidHaptics, performAndroidHapticsAsync } from "expo-haptics";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { DropdownItems } from "./DropdownItems";
@@ -17,17 +17,18 @@ export const LONG_PRESS_MS = 400;
 
 /**
  * The long-press twin of a row's swipe actions: an M3 dropdown menu anchored
- * to the row where the finger held it, with the long-press haptic. The page
+ * to the row at the finger that held it, with the long-press haptic. The page
  * stays in place behind it (no sheet, no scrim); a tap outside or a tab
  * switch closes it.
  */
 export function RowMenu({ items, children, onPress }: RowMenuProps) {
 	const { color } = useTheme();
-	const [at, setAt] = useState<number | null>(null);
+	const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+	const row = useRef<View>(null);
 	const close = () => setAt(null);
 	useTransient(at === null ? null : close);
 	return (
-		<View>
+		<View ref={row}>
 			<Pressable
 				accessibilityActions={items.map((item) => ({
 					name: item.id,
@@ -39,16 +40,19 @@ export function RowMenu({ items, children, onPress }: RowMenuProps) {
 						.find((item) => item.id === event.nativeEvent.actionName)
 						?.onPress()
 				}
-				onLongPress={
-					items.length > 0
-						? (event) => {
-								performAndroidHapticsAsync(AndroidHaptics.Long_Press).catch(
-									() => undefined,
-								);
-								setAt(event.nativeEvent.locationX);
-							}
-						: undefined
-				}
+				// Always set: a hold on a row with no menu then does nothing on
+				// release, instead of falling back to a tap.
+				onLongPress={(event) => {
+					if (items.length === 0) return;
+					performAndroidHapticsAsync(AndroidHaptics.Long_Press).catch(
+						() => undefined,
+					);
+					// The finger, relative to the row (the touch target can be a child).
+					const { pageX, pageY } = event.nativeEvent;
+					row.current?.measure((_x, _y, _w, _h, rowX, rowY) =>
+						setAt({ x: pageX - rowX, y: pageY - rowY }),
+					);
+				}}
 				onPress={onPress}
 			>
 				{children}
@@ -56,7 +60,7 @@ export function RowMenu({ items, children, onPress }: RowMenuProps) {
 			{at === null ? null : (
 				<View
 					pointerEvents="none"
-					style={{ position: "absolute", left: at, bottom: 0 }}
+					style={{ position: "absolute", left: at.x, top: at.y }}
 				>
 					<NativeHost>
 						<DropdownMenu
