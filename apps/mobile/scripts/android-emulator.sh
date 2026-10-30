@@ -15,6 +15,8 @@
 # The AVD is a Pixel 8 class phone (written by hand, no device definition) (1080 x 2400, 420 dpi), Android 16 x86_64
 # google_apis (no Play Store), 3 GB RAM, 2 cores, software GPU, no window, no
 # audio, no snapshots. Data lives in $AVD_ROOT (default ~/.cache/retrospend-avd).
+# Build the APK in the android shell like the F-Droid release (RETROSPEND_ABIS=x86_64,
+# no keystore signs it with the debug key) and install it with the install command.
 set -euo pipefail
 
 name=${AVD_NAME:-retrospend_phone}
@@ -53,7 +55,7 @@ vm.heapSize=256
 disk.dataPartition.size=4G
 hw.gpu.enabled=yes
 hw.gpu.mode=swiftshader_indirect
-hw.keyboard=yes
+hw.keyboard=no
 hw.lcd.width=1080
 hw.lcd.height=2400
 hw.lcd.density=420
@@ -86,10 +88,10 @@ run)
 wait)
 	adb wait-for-device
 	until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do sleep 3; done
-	# Quiet, steady screens: no animations scale change (the audit wants real
-	# motion), but stay awake and skip the setup wizard.
+	# Stay awake, and show the soft keyboard (the audit wants real
+	# motion and the real IME).
 	adb shell settings put global stay_on_while_plugged_in 7
-	adb shell settings put secure show_ime_with_hard_keyboard 0
+	adb shell settings put secure show_ime_with_hard_keyboard 1
 	echo booted
 	;;
 install)
