@@ -6,9 +6,11 @@ import {
 	Easing,
 	View,
 } from "react-native";
+import Reanimated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { ListGroup } from "./List";
+import { placeholderExit } from "./motion";
 
 type Shape = "line" | "tile" | "face" | "money";
 
@@ -138,7 +140,8 @@ export function SkeletonRows({
 }) {
 	const t = useTranslations("mobile.list");
 	const opacity = usePulse();
-	const { color, size, space } = useTheme();
+	const theme = useTheme();
+	const { color, size, space } = theme;
 	const rows = Array.from({ length: count }, (_, index) => (
 		<View
 			// biome-ignore lint/suspicious/noArrayIndexKey: placeholders have no identity
@@ -163,14 +166,16 @@ export function SkeletonRows({
 			<Block opacity={opacity} shape="money" />
 		</View>
 	));
+	// The placeholders fade out (120) as the content takes their place.
 	return (
-		<View
+		<Reanimated.View
 			accessibilityLabel={t("loading")}
 			accessibilityRole="progressbar"
 			accessibilityState={{ busy: true }}
 			accessible
+			exiting={placeholderExit(theme)}
 		>
 			{grouped ? <ListGroup>{rows}</ListGroup> : rows}
-		</View>
+		</Reanimated.View>
 	);
 }

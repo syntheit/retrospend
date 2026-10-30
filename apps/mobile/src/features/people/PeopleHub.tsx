@@ -1,11 +1,13 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
+import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ProjectsList } from "@/features/projects/ProjectsList";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useTheme } from "@/theme";
+import { usePaneEnter } from "@/ui/motion";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
 import type { PeopleChip, PeopleSort } from "./groups";
 import { PeopleList } from "./PeopleList";
@@ -40,6 +42,7 @@ export function PeopleHub() {
 	const [query, setQuery] = useState("");
 	const [chip, setChip] = useState<PeopleChip>("all");
 	const [sort, setSort] = useState<PeopleSort>("balance");
+	const paneEnter = usePaneEnter(segment === "people" ? 0 : 1);
 
 	useEffect(() => {
 		const next = parseSegment(requested);
@@ -88,14 +91,16 @@ export function PeopleHub() {
 					},
 				}}
 			/>
-			{segment === "people" ? (
-				<PeopleList
-					filters={{ query, chip, onChip: setChip, sort, onSort: setSort }}
-					top={switcher}
-				/>
-			) : (
-				<ProjectsList query={query} top={switcher} />
-			)}
+			<Animated.View entering={paneEnter} key={segment} style={{ flex: 1 }}>
+				{segment === "people" ? (
+					<PeopleList
+						filters={{ query, chip, onChip: setChip, sort, onSort: setSort }}
+						top={switcher}
+					/>
+				) : (
+					<ProjectsList query={query} top={switcher} />
+				)}
+			</Animated.View>
 		</View>
 	);
 }

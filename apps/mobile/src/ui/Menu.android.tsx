@@ -13,6 +13,7 @@ import { Chip, ChipChevron } from "./Chip";
 import { Glyph } from "./Glyph";
 import { NativeHost } from "./NativeHost";
 import { Text } from "./Text";
+import { useTransient } from "./transient";
 import type { MenuItem, MenuProps } from "./types";
 
 /** The M3 dropdown with its items, opened from `trigger`. */
@@ -76,6 +77,8 @@ export function Menu({
 	clearLabel,
 }: MenuProps) {
 	const [open, setOpen] = useState(false);
+	// A tab switch closes an open menu (transient UI).
+	useTransient(open ? () => setOpen(false) : null);
 	const { color, radius, size, space } = useTheme();
 	const trigger = sortIcon ? (
 		<Pressable

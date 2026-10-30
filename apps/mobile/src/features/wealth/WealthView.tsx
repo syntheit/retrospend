@@ -1,6 +1,7 @@
 import { router, Stack } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
@@ -13,6 +14,7 @@ import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { Glyph } from "@/ui/Glyph";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
+import { rowEnter, rowExit } from "@/ui/motion";
 import { Screen } from "@/ui/Screen";
 import { Skeleton, SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
@@ -128,6 +130,7 @@ function AccountsList({
 	onSheet: (target: SheetTarget) => void;
 }) {
 	const [showClosed, setShowClosed] = useState(false);
+	const theme = useTheme();
 	const t = useTranslations("mobile.wealth");
 	const hrefOf = useAccountHref();
 	const money = useMoneyText();
@@ -174,7 +177,12 @@ function AccountsList({
 						onToggle={() => setShowClosed((open) => !open)}
 						open={showClosed}
 					/>
-					{showClosed ? <ListGroup>{rows(closed)}</ListGroup> : null}
+					{showClosed ? (
+						// The opened section fades in and out (200).
+						<Animated.View entering={rowEnter(theme)} exiting={rowExit(theme)}>
+							<ListGroup>{rows(closed)}</ListGroup>
+						</Animated.View>
+					) : null}
 				</View>
 			) : null}
 		</View>

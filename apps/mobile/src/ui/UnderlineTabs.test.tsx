@@ -42,6 +42,11 @@ describe("UnderlineTabs", () => {
 			{ selected: true },
 			{ selected: false },
 		]);
+		// A press draws no ripple or box: the sliding line is the answer.
+		for (const tab of tabs) {
+			expect(tab.props.android_ripple).toBeUndefined();
+			expect(typeof tab.props.style).not.toBe("function");
+		}
 		const second = tabs[1] as Node;
 		act(() => (second.props.onPress as () => void)());
 		expect(onChange).toHaveBeenCalledWith("projects");

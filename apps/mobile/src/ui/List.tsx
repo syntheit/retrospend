@@ -9,9 +9,11 @@ import {
 	useContext,
 } from "react";
 import { Pressable, View } from "react-native";
+import Animated, { LayoutAnimationConfig } from "react-native-reanimated";
 import { useFormatter, useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { categoryColor, Glyph, type GlyphName } from "./Glyph";
+import { rowEnter, rowExit, rowLayout } from "./motion";
 import { Text } from "./Text";
 
 /**
@@ -212,6 +214,12 @@ function rowsOf(children: ReactNode): ReactNode[] {
  * edge, the panel radius and a hairline between rows, none after the last.
  * Put ListRows inside (SkeletonRows brings its own group); the group sits
  * in the page gutter.
+ *
+ * Rows that join or leave a group already on screen animate (200): a new
+ * row fades in, a removed one fades out, and the rows and the group's edge
+ * slide to their place (reduced motion: the fades only). Rows that arrive
+ * with the group (the first load, a list mounting rows as it scrolls) and
+ * rows leaving with it do not animate. Keyed rows animate as themselves.
  */
 export function ListGroup({
 	children,
@@ -220,12 +228,14 @@ export function ListGroup({
 	children: ReactNode;
 	accessibilityLabel?: string;
 }) {
-	const { color, radius, size } = useTheme();
+	const theme = useTheme();
+	const { color, radius, size } = theme;
 	const rows = rowsOf(children);
 	if (rows.length === 0) return null;
 	return (
-		<View
+		<Animated.View
 			accessibilityLabel={accessibilityLabel}
+			layout={rowLayout(theme)}
 			style={{
 				marginHorizontal: size.gutter.phone,
 				backgroundColor: color.surface,
@@ -236,22 +246,27 @@ export function ListGroup({
 			}}
 		>
 			<InGroup.Provider value={true}>
-				{rows.map((row, index) => (
-					<Fragment
-						key={
-							isValidElement(row) && row.key !== null
-								? `key:${row.key}`
-								: `at:${index}`
-						}
-					>
-						{index > 0 ? (
-							<View style={{ height: 1, backgroundColor: color.line }} />
-						) : null}
-						{row}
-					</Fragment>
-				))}
+				<LayoutAnimationConfig skipEntering skipExiting>
+					{rows.map((row, index) => (
+						<Animated.View
+							entering={rowEnter(theme)}
+							exiting={rowExit(theme)}
+							key={
+								isValidElement(row) && row.key !== null
+									? `key:${row.key}`
+									: `at:${index}`
+							}
+							layout={rowLayout(theme)}
+						>
+							{index > 0 ? (
+								<View style={{ height: 1, backgroundColor: color.line }} />
+							) : null}
+							{row}
+						</Animated.View>
+					))}
+				</LayoutAnimationConfig>
 			</InGroup.Provider>
-		</View>
+		</Animated.View>
 	);
 }
 
