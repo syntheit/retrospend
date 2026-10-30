@@ -1933,6 +1933,7 @@
 	},
 	"settings": {
 		"title": "Settings",
+		"back": "Back",
 		"saved": "Saved",
 		"saveError": "Couldn't save. Try again.",
 		"error": "Couldn't load settings",

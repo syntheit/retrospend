@@ -133,8 +133,8 @@ export function SettingsScreen() {
 		<SettingsPage>
 			<Text
 				style={{ paddingHorizontal: space[4], paddingBottom: space[4] }}
-				tone="fg2"
-				variant="small"
+				tone="fg3"
+				variant="meta"
 			>
 				{t("autosave")}
 			</Text>

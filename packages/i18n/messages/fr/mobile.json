@@ -1933,6 +1933,7 @@
 	},
 	"settings": {
 		"title": "Réglages",
+		"back": "Retour",
 		"saved": "Enregistré",
 		"saveError": "Impossible d’enregistrer. Réessaie.",
 		"error": "Impossible de charger les réglages",

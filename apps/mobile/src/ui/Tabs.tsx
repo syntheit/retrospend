@@ -10,8 +10,8 @@ import { useTheme } from "@/theme";
  *
  * The iPad's floating tab bar holds the same five, so it does not scroll, and
  * adapts into a sidebar (the toggle at its leading edge; open at launch in
- * a regular width window, portrait or landscape). The sidebar adds Projects, Insights, Recurring, Currencies and
- * Settings, which show there only (layout/destinations, modules/tab-sidebar).
+ * landscape only). The sidebar adds Projects and Settings, which show there
+ * only (layout/destinations, modules/tab-sidebar).
  *
  * Add is not a tab: five tabs fill the iPhone's bar and a sixth goes into
  * More, so the add button floats above the bar (AddEntryProvider); the iPad
@@ -21,7 +21,6 @@ import { useTheme } from "@/theme";
 export function Tabs() {
 	const t = useTranslations("mobile.tabs");
 	const tw = useTranslations("mobile.wealth");
-	const ti = useTranslations("mobile.insights");
 	const ts = useTranslations("mobile.settings");
 	const { color } = useTheme();
 	// Android draws an M3 navigation bar in token colors; iOS keeps the
@@ -74,27 +73,6 @@ export function Tabs() {
 				<NativeTabs.Trigger name="projects">
 					<NativeTabs.Trigger.Label>{t("projects")}</NativeTabs.Trigger.Label>
 					<NativeTabs.Trigger.Icon md="folder" sf="folder" />
-				</NativeTabs.Trigger>
-			) : null}
-			{IPAD_SIDEBAR ? (
-				<NativeTabs.Trigger name="insights">
-					<NativeTabs.Trigger.Label>{ti("title")}</NativeTabs.Trigger.Label>
-					<NativeTabs.Trigger.Icon md="bar_chart" sf="chart.bar" />
-				</NativeTabs.Trigger>
-			) : null}
-			{IPAD_SIDEBAR ? (
-				<NativeTabs.Trigger name="recurring">
-					<NativeTabs.Trigger.Label>{t("recurring")}</NativeTabs.Trigger.Label>
-					<NativeTabs.Trigger.Icon md="repeat" sf="repeat" />
-				</NativeTabs.Trigger>
-			) : null}
-			{IPAD_SIDEBAR ? (
-				<NativeTabs.Trigger name="currencies">
-					<NativeTabs.Trigger.Label>{t("currencies")}</NativeTabs.Trigger.Label>
-					<NativeTabs.Trigger.Icon
-						md="currency_exchange"
-						sf="dollarsign.arrow.circlepath"
-					/>
 				</NativeTabs.Trigger>
 			) : null}
 			{IPAD_SIDEBAR ? (

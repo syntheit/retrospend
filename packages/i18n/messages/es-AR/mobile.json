@@ -1933,6 +1933,7 @@
 	},
 	"settings": {
 		"title": "Ajustes",
+		"back": "Atrás",
 		"saved": "Guardado",
 		"saveError": "No se pudo guardar. Probá de nuevo.",
 		"error": "No se pudieron cargar los ajustes",

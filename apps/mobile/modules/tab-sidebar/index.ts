@@ -3,7 +3,7 @@ import { requireOptionalNativeModule } from "expo";
 export interface SidebarConfig {
 	/** Route names that show in the sidebar only, not in the top tab bar. */
 	sidebarOnly: string[];
-	/** Open the sidebar at launch in a regular width window (portrait or landscape). The name predates portrait. */
+	/** Open the sidebar at launch in landscape only; portrait shows the tab bar with the sidebar toggle. */
 	openInLandscape: boolean;
 }
 
