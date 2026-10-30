@@ -88,11 +88,7 @@ export function PickerValueRow<T extends string>({
 			}
 			onPress={() => setOpen(true)}
 			sub={sub}
-			title={
-				<Text numberOfLines={2} weight="normal">
-					{label}
-				</Text>
-			}
+			title={<Text weight="normal">{label}</Text>}
 		/>
 	);
 }
@@ -217,11 +213,7 @@ export function WheelField<T extends string>({
 					accessibilityLabel={spoken}
 					end={<NavEnd value={shown} />}
 					onPress={() => setOpen(true)}
-					title={
-						<Text numberOfLines={2} weight="normal">
-							{label}
-						</Text>
-					}
+					title={<Text weight="normal">{label}</Text>}
 				/>
 			)}
 			<WheelSheet

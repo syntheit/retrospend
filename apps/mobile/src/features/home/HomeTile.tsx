@@ -4,6 +4,9 @@ import { useTheme } from "@/theme";
 import { Glyph, type GlyphName } from "@/ui/Glyph";
 import { Text } from "@/ui/Text";
 
+/** The largest text scale for a tile's label: a tile is narrow, and the label wraps. */
+const TEXT_CAP = 1.3;
+
 /**
  * A doorway to a page on Home's second row (home.html, phone A): the surface
  * with a 1px line and the panel radius, a glyph and a label (13, fg-2), the
@@ -51,7 +54,12 @@ export function HomeTile({
 				style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}
 			>
 				<Glyph color={color.fg2} name={glyph} size={size.icon.phone} />
-				<Text numberOfLines={1} style={{ flex: 1 }} tone="fg2" variant="small">
+				<Text
+					maxFontSizeMultiplier={TEXT_CAP}
+					style={{ flex: 1 }}
+					tone="fg2"
+					variant="small"
+				>
 					{label}
 				</Text>
 			</View>
