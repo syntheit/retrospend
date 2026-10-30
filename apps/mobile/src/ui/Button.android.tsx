@@ -1,10 +1,16 @@
+import { Host } from "@expo/ui";
 import {
 	Button as ComposeButton,
 	OutlinedButton,
 	Text,
 	TextButton,
 } from "@expo/ui/jetpack-compose";
-import { height, semantics } from "@expo/ui/jetpack-compose/modifiers";
+import {
+	fillMaxWidth,
+	height,
+	semantics,
+} from "@expo/ui/jetpack-compose/modifiers";
+import { useColorScheme } from "react-native";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
 import type { ButtonProps } from "./types";
@@ -24,7 +30,9 @@ export function Button({
 	variant = "filled",
 	size = "regular",
 	disabled,
+	fill,
 }: ButtonProps) {
+	const scheme = useColorScheme();
 	const { color, size: sizes, space, type } = useTheme();
 	const Component =
 		variant === "filled" || variant === "danger"
@@ -33,38 +41,50 @@ export function Button({
 				? OutlinedButton
 				: TextButton;
 	const small = size === "small";
+	const button = (
+		<Component
+			colors={
+				variant === "filled"
+					? { containerColor: color.brand, contentColor: color.brandFg }
+					: variant === "danger"
+						? { containerColor: color.danger, contentColor: color.dangerFg }
+						: variant === "outlined"
+							? { containerColor: color.surface, contentColor: color.fg }
+							: variant === "dangerText"
+								? { contentColor: color.danger }
+								: { contentColor: color.brand }
+			}
+			contentPadding={
+				small
+					? { start: space[3], end: space[3], top: 0, bottom: 0 }
+					: undefined
+			}
+			enabled={!disabled}
+			modifiers={[
+				...(fill ? [fillMaxWidth()] : []),
+				...(small ? [height(sizes.ctlSm.phone)] : []),
+				...(accessibilityLabel
+					? [semantics({ contentDescription: accessibilityLabel })]
+					: []),
+			]}
+			onClick={disabled ? undefined : onPress}
+		>
+			<Text style={small ? { fontSize: type.small.size } : undefined}>
+				{label}
+			</Text>
+		</Component>
+	);
+	if (!fill) return <NativeHost>{button}</NativeHost>;
+	// A host that matches the height only, so the button takes the width its
+	// row gives it (two equal halves on a card).
 	return (
-		<NativeHost>
-			<Component
-				colors={
-					variant === "filled"
-						? { containerColor: color.brand, contentColor: color.brandFg }
-						: variant === "danger"
-							? { containerColor: color.danger, contentColor: color.dangerFg }
-							: variant === "outlined"
-								? { containerColor: color.surface, contentColor: color.fg }
-								: variant === "dangerText"
-									? { contentColor: color.danger }
-									: { contentColor: color.brand }
-				}
-				contentPadding={
-					small
-						? { start: space[3], end: space[3], top: 0, bottom: 0 }
-						: undefined
-				}
-				enabled={!disabled}
-				modifiers={[
-					...(small ? [height(sizes.ctlSm.phone)] : []),
-					...(accessibilityLabel
-						? [semantics({ contentDescription: accessibilityLabel })]
-						: []),
-				]}
-				onClick={disabled ? undefined : onPress}
-			>
-				<Text style={small ? { fontSize: type.small.size } : undefined}>
-					{label}
-				</Text>
-			</Component>
-		</NativeHost>
+		<Host
+			colorScheme={scheme === "dark" || scheme === "light" ? scheme : undefined}
+			matchContents={{ vertical: true }}
+			seedColor={color.brand}
+			style={{ alignSelf: "stretch" }}
+		>
+			{button}
+		</Host>
 	);
 }

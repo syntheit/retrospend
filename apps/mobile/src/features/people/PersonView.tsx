@@ -15,6 +15,7 @@ import { Avatar } from "@/ui/Avatar";
 import { EmptyState } from "@/ui/EmptyState";
 import { Hero } from "@/ui/Hero";
 import { LinkButton, ListGroup, SectionHeader, StaleNote } from "@/ui/List";
+import { Menu } from "@/ui/Menu";
 import { PaneBar } from "@/ui/PaneBar";
 import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
@@ -30,6 +31,7 @@ import { type ReviewNeed, ReviewSheet } from "./ReviewSheet";
 import type { PersonRef } from "./source";
 import { useLedgerMore } from "./useLedgerMore";
 import { usePerson } from "./usePeople";
+import { usePersonExport } from "./useScopedExport";
 
 /**
  * One person: who they are, the balance (never netted across currencies: the
@@ -48,6 +50,8 @@ export function PersonView({
 }) {
 	const t = useTranslations("mobile.person");
 	const tc = useTranslations("mobile.common");
+	const more = useTranslations("mobile.activity")("overflow");
+	const overflow = usePersonExport(person);
 	const format = useFormatter();
 	const money = useMoneyText();
 	const heroText = useNetHeroText();
@@ -105,8 +109,9 @@ export function PersonView({
 			? `@${identity.username}`
 			: null
 		: t("notOnRetrospend");
-	// Two fixed lines, so a long line never leaves one word alone on a third.
+	// One line, as the mockup: the handle first, then since, expenses, projects.
 	const meta = [
+		handle,
 		page.stats.since
 			? t("since", {
 					date: format.dateTime(new Date(`${page.stats.since}T12:00:00`), {
@@ -192,10 +197,31 @@ export function PersonView({
 	return (
 		<Screen flush onRefresh={reload}>
 			{listDetail ? (
-				<PaneBar title={identity.name} />
+				<PaneBar
+					title={identity.name}
+					trailing={
+						<Menu
+							accessibilityLabel={more}
+							icon
+							items={overflow}
+							label={more}
+						/>
+					}
+				/>
 			) : (
 				<Stack.Screen
-					options={{ title: identity.name, headerLargeTitle: false }}
+					options={{
+						title: identity.name,
+						headerLargeTitle: false,
+						headerRight: () => (
+							<Menu
+								accessibilityLabel={more}
+								icon
+								items={overflow}
+								label={more}
+							/>
+						),
+					}}
 				/>
 			)}
 			<StaleNote since={state.staleSince} />
@@ -231,11 +257,6 @@ export function PersonView({
 					>
 						{identity.name}
 					</Text>
-					{handle ? (
-						<Text style={{ textAlign: "center" }} tone="fg2" variant="small">
-							{handle}
-						</Text>
-					) : null}
 					<Text style={{ textAlign: "center" }} tone="fg2" variant="small">
 						{meta.join(" · ")}
 					</Text>

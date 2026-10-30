@@ -9,7 +9,6 @@ import { AvatarStack, avatarSlot } from "@/ui/Avatar";
 import { Button } from "@/ui/Button";
 import { ListGroup } from "@/ui/List";
 import { MoneyAmount } from "@/ui/Money";
-import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { useDayRange } from "./dates";
 import { BudgetLine } from "./ProjectRow";
@@ -17,8 +16,9 @@ import { balanceSides, daysSince, type ProjectItem } from "./source";
 
 /**
  * A project's cover as a banner: the picture when it has one, else the
- * project's avatar color. Content, so it fills the top of the card edge to
- * edge; the name below is what a screen reader reads.
+ * project's avatar color with its first letter, as the row cover does.
+ * Content, so it fills the top of the card edge to edge; the name below is
+ * what a screen reader reads.
  */
 function Banner({ project }: { project: ProjectItem }) {
 	const { color, space } = useTheme();
@@ -37,6 +37,8 @@ function Banner({ project }: { project: ProjectItem }) {
 				height: space[12] * 2,
 				backgroundColor:
 					palette[`avatar${avatarSlot(`project:${project.id}`)}`],
+				alignItems: "center",
+				justifyContent: "center",
 			}}
 		>
 			{uri && !failed ? (
@@ -46,7 +48,11 @@ function Banner({ project }: { project: ProjectItem }) {
 					source={{ uri }}
 					style={{ width: "100%", height: "100%" }}
 				/>
-			) : null}
+			) : (
+				<Text style={{ color: color.avatarFg }} variant="title">
+					{Array.from(project.name.trim())[0]?.toUpperCase() ?? ""}
+				</Text>
+			)}
 		</View>
 	);
 }
@@ -78,7 +84,7 @@ export function ProjectCard({
 	const money = useMoneyText();
 	const faces = useFaces();
 	const range = useDayRange();
-	const { space } = useTheme();
+	const { color, space } = useTheme();
 	const when = range(project.firstExpense, project.lastExpense, today);
 	const back =
 		hero && project.lastExpense
@@ -181,27 +187,31 @@ export function ProjectCard({
 						{project.budget ? <BudgetLine budget={project.budget} /> : null}
 						<View style={{ gap: space[1] }}>
 							{owedToYou.map((line) => (
-								<StatusText
+								<Text
 									key={`in:${line.currency}`}
-									label={t("owesYouAmount", { amount: money(line) })}
-									size="sm"
 									tone="positive"
-								/>
+									variant="small"
+								>
+									{t("owesYouAmount", { amount: money(line) })}
+								</Text>
 							))}
 							{youOwe.map((line) => (
-								<StatusText
+								<Text
 									key={`out:${line.currency}`}
-									label={t("youOweAmount", { amount: money(line) })}
-									size="sm"
-									tone="owe"
-								/>
+									style={{ color: color.owe }}
+									variant="small"
+								>
+									{t("youOweAmount", { amount: money(line) })}
+								</Text>
 							))}
 							{project.solo ? (
 								<Text tone="fg3" variant="meta">
 									{t("soloShort")}
 								</Text>
 							) : owedToYou.length === 0 && youOwe.length === 0 ? (
-								<StatusText kind="settled" size="sm" />
+								<Text tone="fg3" variant="small">
+									{t("settled")}
+								</Text>
 							) : null}
 						</View>
 					</View>
@@ -217,11 +227,12 @@ export function ProjectCard({
 					>
 						{onSettle ? (
 							<View style={{ flex: 1 }}>
-								<Button label={tp("settleUp")} onPress={onSettle} />
+								<Button fill label={tp("settleUp")} onPress={onSettle} />
 							</View>
 						) : null}
 						<View style={{ flex: 1 }}>
 							<Button
+								fill
 								label={t("openProject")}
 								onPress={onPress}
 								variant="outlined"

@@ -1,3 +1,4 @@
+import { Host } from "@expo/ui";
 import { HStack, Image, Button as SwiftButton, Text } from "@expo/ui/swift-ui";
 import {
 	accessibilityLabel as a11yLabel,
@@ -14,6 +15,7 @@ import {
 	strokeBorder,
 	tint,
 } from "@expo/ui/swift-ui/modifiers";
+import { useColorScheme } from "react-native";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
 import type { ButtonIcon, ButtonProps } from "./types";
@@ -61,12 +63,14 @@ function KitLabel({
 	small,
 	icon,
 	disabled,
+	stretch,
 }: {
 	label: string;
 	variant: KitVariant;
 	small: boolean;
 	icon?: ButtonIcon;
 	disabled?: boolean;
+	stretch?: boolean;
 }) {
 	const { color, radius, size, space, type } = useTheme();
 	const ink = {
@@ -88,7 +92,10 @@ function KitLabel({
 		<HStack
 			modifiers={[
 				padding({ horizontal: space[3] }),
-				frame({ height: small ? size.ctlSm.phone : size.ctl.phone }),
+				frame({
+					height: small ? size.ctlSm.phone : size.ctl.phone,
+					...(stretch ? { maxWidth: Infinity } : {}),
+				}),
 				...(fill ? [background(fill, shape)] : []),
 				...(variant === "outlined"
 					? [
@@ -137,29 +144,48 @@ export function Button({
 	size = "regular",
 	icon,
 	disabled,
+	fill,
 }: ButtonProps) {
 	const { color } = useTheme();
+	const scheme = useColorScheme();
 	if (variant !== "text") {
-		return (
-			<NativeHost>
-				<SwiftButton
-					modifiers={[
-						buttonStyle(BUTTON_STYLE[variant]),
-						...(accessibilityLabel ? [a11yLabel(accessibilityLabel)] : []),
-						...(disabled ? [disabledModifier(true)] : []),
-					]}
-					onPress={onPress}
-				>
-					<KitLabel
-						disabled={disabled}
-						icon={icon}
-						label={label}
-						small={size === "small"}
-						variant={variant}
-					/>
-				</SwiftButton>
-			</NativeHost>
+		const button = (
+			<SwiftButton
+				modifiers={[
+					buttonStyle(BUTTON_STYLE[variant]),
+					...(fill ? [frame({ maxWidth: Infinity })] : []),
+					...(accessibilityLabel ? [a11yLabel(accessibilityLabel)] : []),
+					...(disabled ? [disabledModifier(true)] : []),
+				]}
+				onPress={onPress}
+			>
+				<KitLabel
+					disabled={disabled}
+					icon={icon}
+					label={label}
+					small={size === "small"}
+					stretch={fill}
+					variant={variant}
+				/>
+			</SwiftButton>
 		);
+		if (fill) {
+			// A host that matches the height only, so the button takes the width
+			// its row gives it (two equal halves on a card).
+			return (
+				<Host
+					colorScheme={
+						scheme === "dark" || scheme === "light" ? scheme : undefined
+					}
+					matchContents={{ vertical: true }}
+					seedColor={color.brand}
+					style={{ alignSelf: "stretch" }}
+				>
+					{button}
+				</Host>
+			);
+		}
+		return <NativeHost>{button}</NativeHost>;
 	}
 	return (
 		<NativeHost>

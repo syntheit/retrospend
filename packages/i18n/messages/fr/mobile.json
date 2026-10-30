@@ -1727,7 +1727,9 @@
 		"projectCount": "{count, plural, one {# projet} other {# projets}}",
 		"owesYouNet": "te doit, net",
 		"youOweThemNet": "tu lui dois, net",
-		"expense": "Dépense"
+		"expense": "Dépense",
+		"exportHistory": "Exporter l'historique (CSV)",
+		"shareStatement": "Partager le relevé (PDF)"
 	},
 	"settle": {
 		"with": "Régler avec {name}",

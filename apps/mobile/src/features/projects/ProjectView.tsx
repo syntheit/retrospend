@@ -6,6 +6,7 @@ import { useTranslations } from "use-intl";
 import { NeedsCard } from "@/features/people/NeedsCard";
 import { ReviewSheet } from "@/features/people/ReviewSheet";
 import { usePeopleOverview } from "@/features/people/usePeople";
+import { useProjectExport } from "@/features/people/useScopedExport";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
@@ -58,6 +59,8 @@ export function ProjectView({
 }) {
 	const t = useTranslations("mobile.projects");
 	const tc = useTranslations("mobile.common");
+	const more = useTranslations("mobile.activity")("overflow");
+	const overflow = useProjectExport(id);
 	const { listDetail } = useLayoutClass();
 	const { space } = useTheme();
 	const { state, reload } = useProject(id);
@@ -159,6 +162,14 @@ export function ProjectView({
 						title: page.name,
 						headerLargeTitle: false,
 						headerTitle: () => <ProjectTitle page={page} />,
+						headerRight: () => (
+							<Menu
+								accessibilityLabel={more}
+								icon
+								items={overflow}
+								label={more}
+							/>
+						),
 					}}
 				/>
 			)}
