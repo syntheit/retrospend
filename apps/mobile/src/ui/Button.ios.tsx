@@ -94,10 +94,10 @@ function KitLabel({
 		<HStack
 			modifiers={[
 				padding({ horizontal: space[3] }),
-				frame({
-					height: small ? size.ctlSm.phone : size.ctl.phone,
-					...(stretch ? { maxWidth: Infinity } : {}),
-				}),
+				frame({ height: small ? size.ctlSm.phone : size.ctl.phone }),
+				// A second call: expo-ui ignores maxWidth when a fixed height is in
+				// the same frame(), which kept the button at its content width (R5).
+				...(stretch ? [frame({ maxWidth: Infinity })] : []),
 				...(fill ? [background(fill, shape)] : []),
 				...(variant === "outlined"
 					? [
@@ -173,9 +173,7 @@ export function Button({
 		);
 		if (fill) {
 			// A host that matches the height only, so the button takes the width
-			// its row gives it (two equal halves on a card). The width is stated,
-			// not left to alignSelf alone: the native host kept the content width
-			// on a card and on Person (R5).
+			// its row gives it (two equal halves on a card).
 			return (
 				<Host
 					colorScheme={
@@ -183,7 +181,7 @@ export function Button({
 					}
 					matchContents={{ vertical: true }}
 					seedColor={color.brand}
-					style={{ alignSelf: "stretch", width: "100%" }}
+					style={{ alignSelf: "stretch" }}
 				>
 					{button}
 				</Host>

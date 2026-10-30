@@ -82,7 +82,7 @@ export function Button({
 			colorScheme={scheme === "dark" || scheme === "light" ? scheme : undefined}
 			matchContents={{ vertical: true }}
 			seedColor={color.brand}
-			style={{ alignSelf: "stretch", width: "100%" }}
+			style={{ alignSelf: "stretch" }}
 		>
 			{button}
 		</Host>

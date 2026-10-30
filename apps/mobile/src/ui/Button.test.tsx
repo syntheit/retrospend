@@ -135,9 +135,16 @@ describe("other variants", () => {
 			vertical: true,
 		});
 		const stack = root.findAll((n) => n.type === "SwiftHStack")[0];
-		const frame = find((stack?.props.modifiers ?? []) as Modifier[], "frame");
-		expect(JSON.stringify(frame)).toContain(`"height":${light.size.ctl.phone}`);
-		expect(JSON.stringify(frame)).toContain("maxWidth");
+		const frames = ((stack?.props.modifiers ?? []) as Modifier[]).filter(
+			(m) => m.$type === "frame",
+		);
+		// expo-ui ignores maxWidth when a height is in the same frame(): two calls.
+		expect(frames).toHaveLength(2);
+		expect(JSON.stringify(frames[0])).toContain(
+			`"height":${light.size.ctl.phone}`,
+		);
+		expect(JSON.stringify(frames[0])).not.toContain("maxWidth");
+		expect(JSON.stringify(frames[1])).toContain("maxWidth");
 	});
 
 	it("never uses a glass style", () => {
