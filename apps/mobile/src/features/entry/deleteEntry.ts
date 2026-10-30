@@ -36,7 +36,7 @@ export interface DeletePreview {
 }
 
 /** The dry run's own flag; a plain expense or an older server can be undone. */
-function undoableIn(diff: { detail?: { undoable?: unknown } }): boolean {
+function undoableIn(diff: { detail?: { kind: string; undoable?: unknown } }): boolean {
 	return diff.detail?.undoable !== false;
 }
 

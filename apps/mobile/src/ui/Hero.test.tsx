@@ -64,12 +64,13 @@ describe("Hero", () => {
 				value="$5"
 			/>,
 		);
-		const styleOf = (text: string) =>
-			StyleSheet.flatten(
-				root.findAll(
-					(n) => typeof n.type === "string" && n.props.children === text,
-				)[0]?.props.style as TextStyle,
-			);
+		const styleOf = (text: string) => {
+			const node = root.findAll(
+				(n) => typeof n.type === "string" && n.props.children === text,
+			)[0];
+			if (!node) throw new Error(`no text node for ${text}`);
+			return StyleSheet.flatten(node.props.style as TextStyle) ?? {};
+		};
 		expect(styleOf("Lucia owes you").color).toBe(light.color.positive);
 		expect(styleOf("Lucia owes you").fontSize).toBe(light.type.body.size);
 		expect(styleOf("3 shared expenses").color).toBe(light.color.fg3);

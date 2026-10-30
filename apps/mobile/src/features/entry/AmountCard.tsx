@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import {
+	Pressable,
+	TextInput,
+	type TextInputInstance,
+	View,
+} from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
@@ -63,7 +68,7 @@ export function AmountCard({
 }) {
 	const theme = useTheme();
 	const { color, radius, size, space } = theme;
-	const inputs = useRef<Record<string, TextInput | null>>({});
+	const inputs = useRef<Record<string, TextInputInstance | null>>({});
 	// The keyboard opens once the sheet has rested, not while it slides in.
 	const focusFirst = system?.autoFocus ?? false;
 	const activeKey = lines.find((line) => line.active)?.key;

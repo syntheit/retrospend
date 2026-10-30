@@ -64,11 +64,24 @@ export function IncomeSheet({
 	// that are zero are left out, and Money in is the hero above them.
 	const { terms } = data.toAssign;
 	const rows = [
-		{ key: "assigned", value: terms.assigned, always: true },
-		{ key: "assignedAhead", value: terms.assignedAhead },
-		{ key: "overspendTaken", value: terms.overspendTaken },
-		{ key: "returned", value: terms.returned },
-		{ key: "splitsNet", value: terms.splitsNet },
+		{
+			key: "assigned",
+			label: t("terms.assigned"),
+			value: terms.assigned,
+			always: true,
+		},
+		{
+			key: "assignedAhead",
+			label: t("terms.assignedAhead"),
+			value: terms.assignedAhead,
+		},
+		{
+			key: "overspendTaken",
+			label: t("terms.overspendTaken"),
+			value: terms.overspendTaken,
+		},
+		{ key: "returned", label: t("terms.returned"), value: terms.returned },
+		{ key: "splitsNet", label: t("terms.splitsNet"), value: terms.splitsNet },
 	].filter((row) => row.always || row.value.minor !== 0);
 	return (
 		<Sheet
@@ -89,10 +102,10 @@ export function IncomeSheet({
 				<ListGroup>
 					{rows.map((row) => (
 						<ListRow
-							accessibilityLabel={`${t(`terms.${row.key}`)}, ${money(row.value, exact)}`}
+							accessibilityLabel={`${row.label}, ${money(row.value, exact)}`}
 							end={<MoneyAmount cents value={row.value} />}
 							key={row.key}
-							title={t(`terms.${row.key}`)}
+							title={row.label}
 						/>
 					))}
 					<ListRow
