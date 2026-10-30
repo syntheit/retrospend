@@ -37,7 +37,9 @@ describe("Hero help", () => {
 		)[0];
 		expect(button?.props.accessibilityRole).toBe("button");
 		expect(button?.props.accessibilityHint).toBe("Explains the words");
-		act(() => (button?.props.onPress as () => void)());
+		act(() => {
+			(button?.props.onPress as (() => void) | undefined)?.();
+		});
 		expect(onPress).toHaveBeenCalled();
 		const group = root.findAll(
 			(n) => n.props.accessibilityLiveRegion === "polite",
