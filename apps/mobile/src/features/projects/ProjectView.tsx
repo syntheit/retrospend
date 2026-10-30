@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 import { NeedsCard } from "@/features/people/NeedsCard";
 import { ReviewSheet } from "@/features/people/ReviewSheet";
@@ -11,6 +12,7 @@ import { Chip } from "@/ui/Chip";
 import { EmptyState } from "@/ui/EmptyState";
 import { StaleNote } from "@/ui/List";
 import { Menu } from "@/ui/Menu";
+import { usePaneEnter } from "@/ui/motion";
 import { Screen } from "@/ui/Screen";
 import { Text } from "@/ui/Text";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
@@ -30,6 +32,7 @@ import { SettleAllSheet } from "./SettleAllSheet";
 import { useProject, useProjectSummary } from "./useProjects";
 
 type Tab = "expenses" | "summary" | "people";
+const TAB_ORDER: Tab[] = ["expenses", "summary", "people"];
 type Period = "all" | "current";
 
 /** Contributor or above may record payments, as on the web. */
@@ -58,6 +61,7 @@ export function ProjectView({
 	const { state, reload } = useProject(id);
 	const people = usePeopleOverview();
 	const [tab, setTab] = useState<Tab>("expenses");
+	const paneEnter = usePaneEnter(TAB_ORDER.indexOf(tab));
 	const [period, setPeriod] = useState<Period>("all");
 	const [toReview, setToReview] = useState(false);
 	const [paidBy, setPaidBy] = useState<PaidBy>(null);
@@ -165,133 +169,135 @@ export function ProjectView({
 				}
 			/>
 
-			{tab === "expenses" ? (
-				<>
-					{needs.length > 0 ? (
-						<View style={{ paddingTop: space[4] }}>
-							<NeedsCard
-								inline
-								needs={needs}
-								onPress={() => setReviewing(needs[0] ?? null)}
-							/>
-						</View>
-					) : null}
-					{reviewCount > 0 || who.length > 1 || categories.length > 1 ? (
-						<ScrollView
-							contentContainerStyle={{
-								alignItems: "center",
-								gap: space[2],
-								paddingHorizontal: space[4],
-								paddingTop: space[4],
-							}}
-							horizontal
-							keyboardShouldPersistTaps="handled"
-							showsHorizontalScrollIndicator={false}
-						>
-							{reviewCount > 0 ? (
-								<Chip
-									label={t("toReview", { count: reviewCount })}
-									onPress={() => setToReview(!toReview)}
-									selected={toReview}
+			<Animated.View entering={paneEnter} key={tab}>
+				{tab === "expenses" ? (
+					<>
+						{needs.length > 0 ? (
+							<View style={{ paddingTop: space[4] }}>
+								<NeedsCard
+									inline
+									needs={needs}
+									onPress={() => setReviewing(needs[0] ?? null)}
 								/>
-							) : null}
-							{who.length > 1 ? (
+							</View>
+						) : null}
+						{reviewCount > 0 || who.length > 1 || categories.length > 1 ? (
+							<ScrollView
+								contentContainerStyle={{
+									alignItems: "center",
+									gap: space[2],
+									paddingHorizontal: space[4],
+									paddingTop: space[4],
+								}}
+								horizontal
+								keyboardShouldPersistTaps="handled"
+								showsHorizontalScrollIndicator={false}
+							>
+								{reviewCount > 0 ? (
+									<Chip
+										label={t("toReview", { count: reviewCount })}
+										onPress={() => setToReview(!toReview)}
+										selected={toReview}
+									/>
+								) : null}
+								{who.length > 1 ? (
+									<Menu
+										active={paidBy !== null}
+										chip
+										items={[
+											{
+												id: "any",
+												label: t("anyone"),
+												onPress: () => setPaidBy(null),
+											},
+											...who.map((key) => ({
+												id: key,
+												label: whoLabel(key),
+												onPress: () => setPaidBy(key),
+											})),
+										]}
+										label={
+											paidBy === null
+												? t("paidBy")
+												: t("paidByOne", { name: whoLabel(paidBy) })
+										}
+									/>
+								) : null}
+								{categories.length > 1 ? (
+									<Menu
+										active={category !== null}
+										chip
+										items={[
+											{
+												id: "all",
+												label: t("allCategories"),
+												onPress: () => setCategory(null),
+											},
+											...categories.map((c) => ({
+												id: c.id,
+												label: c.name,
+												onPress: () => setCategory(c.id),
+											})),
+										]}
+										label={
+											categories.find((c) => c.id === category)?.name ??
+											t("filter")
+										}
+									/>
+								) : null}
+							</ScrollView>
+						) : null}
+						{page.expenses.length === 0 ? (
+							<EmptyState title={t("noExpenses")} />
+						) : shown.length === 0 ? (
+							<EmptyState title={t("noMatchExpenses")} />
+						) : (
+							<ProjectExpenseDays expenses={shown} solo={page.solo} />
+						)}
+						{page.expenseCount > page.expenses.length ? (
+							<Text style={{ padding: space[4] }} tone="fg2" variant="small">
+								{t("newestOnly", { count: page.expenses.length })}
+							</Text>
+						) : null}
+					</>
+				) : tab === "summary" ? (
+					<>
+						{page.openPeriod ? (
+							<View
+								style={{
+									alignItems: "flex-start",
+									paddingHorizontal: space[4],
+									paddingTop: space[4],
+								}}
+							>
 								<Menu
-									active={paidBy !== null}
-									chip
-									items={[
-										{
-											id: "any",
-											label: t("anyone"),
-											onPress: () => setPaidBy(null),
-										},
-										...who.map((key) => ({
-											id: key,
-											label: whoLabel(key),
-											onPress: () => setPaidBy(key),
-										})),
-									]}
-									label={
-										paidBy === null
-											? t("paidBy")
-											: t("paidByOne", { name: whoLabel(paidBy) })
-									}
-								/>
-							) : null}
-							{categories.length > 1 ? (
-								<Menu
-									active={category !== null}
+									active={period !== "all"}
 									chip
 									items={[
 										{
 											id: "all",
-											label: t("allCategories"),
-											onPress: () => setCategory(null),
+											label: t("period.all"),
+											onPress: () => setPeriod("all"),
 										},
-										...categories.map((c) => ({
-											id: c.id,
-											label: c.name,
-											onPress: () => setCategory(c.id),
-										})),
+										{
+											id: "current",
+											label: t("period.current"),
+											onPress: () => setPeriod("current"),
+										},
 									]}
-									label={
-										categories.find((c) => c.id === category)?.name ??
-										t("filter")
-									}
+									label={t(`period.${period}`)}
 								/>
-							) : null}
-						</ScrollView>
-					) : null}
-					{page.expenses.length === 0 ? (
-						<EmptyState title={t("noExpenses")} />
-					) : shown.length === 0 ? (
-						<EmptyState title={t("noMatchExpenses")} />
-					) : (
-						<ProjectExpenseDays expenses={shown} solo={page.solo} />
-					)}
-					{page.expenseCount > page.expenses.length ? (
-						<Text style={{ padding: space[4] }} tone="fg2" variant="small">
-							{t("newestOnly", { count: page.expenses.length })}
-						</Text>
-					) : null}
-				</>
-			) : tab === "summary" ? (
-				<>
-					{page.openPeriod ? (
-						<View
-							style={{
-								alignItems: "flex-start",
-								paddingHorizontal: space[4],
-								paddingTop: space[4],
-							}}
-						>
-							<Menu
-								active={period !== "all"}
-								chip
-								items={[
-									{
-										id: "all",
-										label: t("period.all"),
-										onPress: () => setPeriod("all"),
-									},
-									{
-										id: "current",
-										label: t("period.current"),
-										onPress: () => setPeriod("current"),
-									},
-								]}
-								label={t(`period.${period}`)}
-							/>
-						</View>
-					) : null}
-					<ProjectSummaryTab
-						onSettleAll={canSettle ? () => setSettling(true) : undefined}
-						state={summary.state}
-					/>
-				</>
-			) : (
-				<ProjectPeopleTab members={page.members} today={page.today} />
-			)}
+							</View>
+						) : null}
+						<ProjectSummaryTab
+							onSettleAll={canSettle ? () => setSettling(true) : undefined}
+							state={summary.state}
+						/>
+					</>
+				) : (
+					<ProjectPeopleTab members={page.members} today={page.today} />
+				)}
+			</Animated.View>
 
 			{reviewing ? (
 				<ReviewSheet

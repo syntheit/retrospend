@@ -101,8 +101,22 @@ export function UnderlineTabs<T extends string>({
 		}
 		shown.value = 1;
 		x.value = withTiming(to.x, { duration: duration.tab, easing: ease });
-		width.value = withTiming(to.width, { duration: duration.tab, easing: ease });
-	}, [boxes, tabs, value, reduce, duration.state, duration.tab, ease, shown, width, x]);
+		width.value = withTiming(to.width, {
+			duration: duration.tab,
+			easing: ease,
+		});
+	}, [
+		boxes,
+		tabs,
+		value,
+		reduce,
+		duration.state,
+		duration.tab,
+		ease,
+		shown,
+		width,
+		x,
+	]);
 
 	const line = useAnimatedStyle(() => ({
 		opacity: shown.value,

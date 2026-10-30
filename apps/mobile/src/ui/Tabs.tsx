@@ -1,8 +1,11 @@
+import { useSegments } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { useEffect } from "react";
 import { Platform } from "react-native";
 import { useTranslations } from "use-intl";
 import { configureSidebar, IPAD_SIDEBAR } from "@/layout/destinations";
 import { useTheme } from "@/theme";
+import { closeTransients } from "./transient";
 
 /**
  * Five destinations in the bar on every device: Home, Activity, Budget,
@@ -17,6 +20,12 @@ import { useTheme } from "@/theme";
  * More, so the add button floats above the bar (AddEntryProvider); the iPad
  * keeps it in the toolbar. Active nav is brand (GUIDELINE §2.1); the bar
  * itself is a theme surface.
+ *
+ * Each tab keeps its stack and scroll while another is open (native tabs).
+ * Tapping the open tab pops it to its root, and tapping again scrolls to the
+ * top (the native repeated-selection effects, on by default on both
+ * platforms). Leaving a tab closes its passing UI: an open swipe row, a menu,
+ * bulk select (ui/transient). An iPad's list-detail selection stays.
  */
 export function Tabs() {
 	const t = useTranslations("mobile.tabs");
@@ -26,6 +35,9 @@ export function Tabs() {
 	// Android draws an M3 navigation bar in token colors; iOS keeps the
 	// system bar material and takes only the brand tint.
 	const m3 = Platform.OS === "android";
+	const tab = (useSegments() as string[])[1];
+	// biome-ignore lint/correctness/useExhaustiveDependencies: runs on each tab switch
+	useEffect(() => closeTransients(), [tab]);
 	// Before the native tabs mount, so the first install has the layout.
 	configureSidebar();
 

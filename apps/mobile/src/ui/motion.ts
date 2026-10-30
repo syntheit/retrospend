@@ -1,9 +1,14 @@
+import { light } from "@retrospend/tokens/theme";
+import { useEffect, useRef } from "react";
 import {
 	Easing,
 	FadeIn,
+	FadeInLeft,
+	FadeInRight,
 	FadeOut,
 	LinearTransition,
 	ReduceMotion,
+	useReducedMotion,
 } from "react-native-reanimated";
 import type { Theme } from "@/theme";
 
@@ -52,4 +57,30 @@ export function placeholderExit(theme: Theme) {
 	return FadeOut.duration(theme.duration.state).reduceMotion(
 		ReduceMotion.Never,
 	);
+}
+
+/**
+ * The pane under underline tabs arriving after a switch: it fades in while
+ * it slides a short way along the tabs' axis, from the side of the tab it
+ * comes from (220, the land curve). Reduced motion: the fade alone. Nothing
+ * on the first render, so a page never animates on load. Put it as the
+ * `entering` of a view keyed by the open tab.
+ */
+export function usePaneEnter(index: number) {
+	// Durations and curves are the same in both themes.
+	const theme = light;
+	const reduce = useReducedMotion();
+	// The tab on screen at the last commit: a render that differs from it is
+	// the switch.
+	const shown = useRef(index);
+	useEffect(() => {
+		shown.current = index;
+	}, [index]);
+	const from = shown.current;
+	if (from === index) return undefined;
+	const base = reduce ? FadeIn : index > from ? FadeInRight : FadeInLeft;
+	return base
+		.duration(theme.duration.tab)
+		.easing(easeLand(theme))
+		.reduceMotion(ReduceMotion.Never);
 }

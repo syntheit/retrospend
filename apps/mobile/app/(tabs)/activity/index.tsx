@@ -34,6 +34,7 @@ import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { Screen, useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
+import { useTransient } from "@/ui/transient";
 
 export default function ActivityScreen() {
 	const t = useTranslations("mobile.activity");
@@ -72,6 +73,8 @@ export default function ActivityScreen() {
 	useEffect(() => setSelected(null), [linked]);
 	// Ids of the rows picked for a bulk action; null when not selecting.
 	const [picked, setPicked] = useState<ReadonlySet<string> | null>(null);
+	// Leaving the tab ends bulk select.
+	useTransient(picked ? () => setPicked(null) : null);
 	const { state, reload, loadMore, loadingMore } = useActivity(filter);
 	const bulk = useBulkActions(() => setPicked(null));
 	const importing = useImportReview();
