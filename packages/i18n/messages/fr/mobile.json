@@ -402,7 +402,11 @@
 		"releaseNotes": "Notes de version",
 		"version": "Version {version} ({build})",
 		"inviteCodes": "Codes d’invitation",
-		"feedback": "Envoyer un avis"
+		"feedback": "Envoyer un avis",
+		"notifications": "Notifications",
+		"admin": "Administration",
+		"feedbackInbox": "Boîte des retours",
+		"newCount": "{count} nouveaux"
 	},
 	"activity": {
 		"title": "Activité",
@@ -2679,7 +2683,35 @@
 		"limit": "Vous pouvez en envoyer 5 par heure. Réessayez plus tard.",
 		"tooLarge": "Cette image dépasse 5 Mo.",
 		"errorReports": "Envoyer les rapports d'erreur à mon serveur",
-		"errorReportsDetail": "Plantages seulement, sans adresses ni montants. Ils vont à votre propre serveur."
+		"errorReportsDetail": "Plantages seulement, sans adresses ni montants. Ils vont à votre propre serveur.",
+		"screens": {
+			"home": "Accueil",
+			"insights": "Analyses",
+			"activity": "Activité",
+			"entry": "Dépense",
+			"budget": "Budget",
+			"currencies": "Devises",
+			"people": "Personnes",
+			"person": "Personne",
+			"project": "Projet",
+			"projects": "Projets",
+			"preferences": "Préférences",
+			"recurring": "Dépenses récurrentes",
+			"wealth": "Patrimoine",
+			"account": "Compte",
+			"settings": "Réglages",
+			"profile": "Profil",
+			"categories": "Catégories",
+			"paymentMethods": "Moyens de paiement",
+			"notifications": "Notifications",
+			"security": "Sécurité",
+			"sessions": "Sessions",
+			"data": "Données",
+			"admin": "Administration",
+			"signIn": "Se connecter",
+			"connect": "Se connecter à un serveur",
+			"other": "Autre écran"
+		}
 	},
 	"changes": {
 		"title": "Ce que ça change",

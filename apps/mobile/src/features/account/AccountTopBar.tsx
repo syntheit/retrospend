@@ -1,9 +1,10 @@
 import { router } from "expo-router";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerBaseUrl } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
+import { adminAccess } from "@/features/admin/rules";
 import { useFeedback } from "@/features/feedback/FeedbackProvider";
 import { absoluteImage } from "@/features/read/faces";
 import { openWebPage } from "@/features/settings/webPages";
@@ -14,6 +15,7 @@ import { Glyph, type GlyphName } from "@/ui/Glyph";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow } from "@/ui/List";
 import { Sheet } from "@/ui/Sheet";
+import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { TopBar } from "@/ui/TopBar";
 import type { MenuItem, TopBarAction } from "@/ui/types";
@@ -31,6 +33,41 @@ export function useMyFace(): Face | null {
 		name: me.name,
 		imageUri: absoluteImage(me.avatarUrl ?? me.image, baseUrl),
 	};
+}
+
+/**
+ * What the sheet counts, read each time it opens: unread notifications for
+ * everyone, unread feedback for an admin. A failed read leaves the row without
+ * a count.
+ */
+function useUnreadCounts(open: boolean, admin: boolean) {
+	const { api } = useSession();
+	const [counts, setCounts] = useState<{
+		notifications: number;
+		feedback: number;
+	}>({ notifications: 0, feedback: 0 });
+	useEffect(() => {
+		if (!open || !api) return;
+		let alive = true;
+		void Promise.all([
+			api.notifications.unreadCount().then(
+				(r) => r.count,
+				() => 0,
+			),
+			admin
+				? api.admin.listFeedback({ limit: 1 }).then(
+						(r) => r.counts.unread,
+						() => 0,
+					)
+				: Promise.resolve(0),
+		]).then(([notifications, feedback]) => {
+			if (alive) setCounts({ notifications, feedback });
+		});
+		return () => {
+			alive = false;
+		};
+	}, [open, api, admin]);
+	return counts;
 }
 
 /**
@@ -61,6 +98,12 @@ export function AccountTopBar({
 	const [open, setOpen] = useState(false);
 	const me = state.status === "signedIn" ? state.me : null;
 	const face = useMyFace();
+	const admin = adminAccess(me) === "ok";
+	const unread = useUnreadCounts(open, admin);
+	const newWord = (count: number) =>
+		count > 0 ? (
+			<StatusText label={t("newCount", { count })} size="sm" tone="attention" />
+		) : undefined;
 
 	/** Closes the sheet, then goes: a pushed screen or a page on the web. */
 	const go = (to: () => unknown) => () => {
@@ -101,6 +144,14 @@ export function AccountTopBar({
 							/>
 						</SheetGroup>
 					) : null}
+					<SheetGroup>
+						<Place
+							end={newWord(unread.notifications)}
+							glyph="Bell"
+							label={t("notifications")}
+							onPress={go(() => router.push("/settings/notifications"))}
+						/>
+					</SheetGroup>
 					<View style={{ gap: space[2] }}>
 						<Text accessibilityRole="header" tone="fg3" variant="meta">
 							{t("goTo")}
@@ -118,15 +169,36 @@ export function AccountTopBar({
 							/>
 						</SheetGroup>
 					</View>
-					<SheetGroup>
-						{me?.canInvite === true ? (
+					{admin || me?.canInvite === true ? (
+						<SheetGroup>
+							{admin ? (
+								<Place
+									glyph="Shield"
+									label={t("admin")}
+									onPress={go(() => router.push("/settings/admin"))}
+								/>
+							) : null}
 							<Place
 								glyph="KeyRound"
 								label={t("inviteCodes")}
-								onPress={web("/invite-codes")}
-								web={opensWeb}
+								onPress={
+									admin
+										? go(() => router.push("/settings/admin-invites"))
+										: web("/invite-codes")
+								}
+								web={admin ? undefined : opensWeb}
 							/>
-						) : null}
+							{admin ? (
+								<Place
+									end={newWord(unread.feedback)}
+									glyph="Mail"
+									label={t("feedbackInbox")}
+									onPress={go(() => router.push("/settings/admin-feedback"))}
+								/>
+							) : null}
+						</SheetGroup>
+					) : null}
+					<SheetGroup>
 						<Place
 							glyph="MessageSquare"
 							label={t("feedback")}
@@ -187,8 +259,11 @@ function Place({
 	onPress,
 	web,
 	plain,
+	end,
 }: {
 	glyph: GlyphName;
+	/** A count before the chevron ("3 new"). */
+	end?: ReactNode;
 	label: string;
 	onPress: () => void;
 	/** Said after the label when the row opens a page on the web. */
@@ -199,7 +274,14 @@ function Place({
 	return (
 		<ListRow
 			accessibilityLabel={web ? `${label}, ${web}` : label}
-			end={plain ? undefined : <Chevron />}
+			end={
+				plain ? undefined : (
+					<>
+						{end}
+						<Chevron />
+					</>
+				)
+			}
 			lead={<IconTile name={glyph} />}
 			onPress={onPress}
 			title={label}
