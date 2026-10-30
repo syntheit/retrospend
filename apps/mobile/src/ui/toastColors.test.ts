@@ -1,6 +1,6 @@
 import { contrast, type Rgba } from "@retrospend/tokens/color";
 import { dark, light } from "@retrospend/tokens/theme";
-import { toastColors } from "./Toast";
+import { toastColors } from "./toastColors";
 
 /** `#rrggbb` to channels in 0..1. */
 function rgba(hex: string): Rgba {

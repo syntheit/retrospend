@@ -17,8 +17,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
-import { type Theme, useTheme } from "@/theme";
+import { useTheme } from "@/theme";
 import { Text } from "./Text";
+import { toastColors } from "./toastColors";
 
 export interface ToastOptions {
 	/** "Expense added": object plus past participle (GUIDELINE §12). */
@@ -37,15 +38,6 @@ const UNDO_MS = 6000;
 const PLAIN_MS = 4000;
 /** Clears the tab bar; the toast floats above it. */
 const TAB_BAR_CLEARANCE = 64;
-
-/**
- * The toast is the inverted pill: the page color on the text color. Undo is
- * the page color too, underlined (the mockup, kit.css), so it is as readable
- * as the message in both schemes. The accent on this pill was 2.1:1 in dark.
- */
-export function toastColors(color: Theme["color"]) {
-	return { fill: color.fg, text: color.bg, undo: color.bg };
-}
 
 /**
  * One toast at a time, bottom of the screen above the tab bar. It announces
