@@ -12,6 +12,13 @@ import { Text } from "./Text";
  * switch had no width). The label column may shrink (`minWidth: 0`). The
  * iOS 26 switch draws a little wider than the size it reports, and a sheet's
  * scroll area cuts that off at its edge, so the host keeps a small margin.
+ *
+ * The on-state is the brand family (a switch is a selection control). The iOS
+ * thumb is fixed white, so in dark the brand track (#ffe0c2) is 1.26:1 against
+ * it. No token gives 3:1 against both the thumb and the surface: brand 1.26,
+ * brandHover 1.24, brandSoft 1.41 on surface, brandFg 1.06 on surface. The
+ * tint stays the brand and the thumb position carries the state; Android
+ * draws brand with a brandFg thumb (m3Colors, 4.5:1).
  */
 export function SwitchRow({
 	label,

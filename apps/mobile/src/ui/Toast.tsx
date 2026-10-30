@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Text } from "./Text";
+import { toastColors } from "./toastColors";
 
 export interface ToastOptions {
 	/** "Expense added": object plus past participle (GUIDELINE §12). */
@@ -138,13 +139,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 							paddingLeft: space[4],
 							paddingRight: space[2],
 							borderRadius: radius.panel,
-							backgroundColor: color.fg,
+							backgroundColor: toastColors(color).fill,
 						}}
 					>
 						<Text
 							style={{
 								flex: 1,
-								color: color.bg,
+								color: toastColors(color).text,
 								paddingVertical: space[3],
 							}}
 						>
@@ -163,7 +164,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 									paddingHorizontal: space[3],
 								}}
 							>
-								<Text style={{ color: color.accent }} weight="semibold">
+								<Text
+									style={{
+										color: toastColors(color).undo,
+										textDecorationLine: "underline",
+									}}
+									weight="semibold"
+								>
 									{current.undo.label}
 								</Text>
 							</Pressable>

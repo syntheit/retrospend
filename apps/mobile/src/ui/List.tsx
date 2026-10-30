@@ -8,7 +8,7 @@ import {
 	type ReactNode,
 	useContext,
 } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, useWindowDimensions, View } from "react-native";
 import Animated, { LayoutAnimationConfig } from "react-native-reanimated";
 import { useFormatter, useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
@@ -284,16 +284,22 @@ export function useInGroup(): boolean {
 	return useContext(InGroup);
 }
 
+/** The text scale from which a row title wraps instead of ending in an ellipsis. */
+const WRAP_FROM_SCALE = 1.3;
+
 /**
  * The middle of a row: the title (14/500) over a sub line (12, fg-3). Either
  * can be a string or a node (a StatusText, a stack of faces).
  */
 export function RowText({ title, sub }: { title: ReactNode; sub?: ReactNode }) {
 	const form = useContext(InForm);
+	// At the largest text sizes a title wraps whole words instead of ending in an ellipsis.
+	const { fontScale } = useWindowDimensions();
+	const titleLines = fontScale > WRAP_FROM_SCALE ? undefined : 1;
 	return (
 		<View style={{ flex: 1, minWidth: 0 }}>
 			{typeof title === "string" ? (
-				<Text numberOfLines={1} weight={form ? "normal" : "medium"}>
+				<Text numberOfLines={titleLines} weight={form ? "normal" : "medium"}>
 					{title}
 				</Text>
 			) : (
@@ -414,7 +420,14 @@ export function NavEnd({
 }) {
 	const { space } = useTheme();
 	return (
-		<View style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}>
+		<View
+			style={{
+				flexShrink: 1,
+				flexDirection: "row",
+				alignItems: "center",
+				gap: space[2],
+			}}
+		>
 			{lead}
 			{value ? (
 				<Text numberOfLines={1} style={{ flexShrink: 1 }} tone="fg2">

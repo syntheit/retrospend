@@ -10,6 +10,9 @@ import { Text } from "@/ui/Text";
 import { useHomeDates } from "./dates";
 import { type Glance, spentOf } from "./source";
 
+/** The largest text scale for the card's sentences; they wrap, and stay under the native title. */
+const TEXT_CAP = 1.3;
+
 /**
  * Home's hero card, led as the web glance leads: Spent in the month, the one
  * big number, with the server's pace against last month by this day (or last
@@ -60,7 +63,7 @@ export function HomeCard({ glance }: { glance: Glance }) {
 					>
 						<Glyph color={color.fg2} name="Wallet" size={size.icon.phone} />
 						<Text
-							numberOfLines={1}
+							maxFontSizeMultiplier={TEXT_CAP}
 							style={{ flex: 1 }}
 							tone="fg2"
 							variant="small"
@@ -83,11 +86,13 @@ export function HomeCard({ glance }: { glance: Glance }) {
 						{spent.amount ? (
 							<MoneyAmount align="left" size="hero" value={spent.amount} />
 						) : (
-							<Text variant="title">{noRate}</Text>
+							<Text maxFontSizeMultiplier={TEXT_CAP} variant="title">
+								{noRate}
+							</Text>
 						)}
 					</View>
 					{sub ? (
-						<Text tone="fg2" variant="small">
+						<Text maxFontSizeMultiplier={TEXT_CAP} tone="fg2" variant="small">
 							{sub}
 						</Text>
 					) : null}
