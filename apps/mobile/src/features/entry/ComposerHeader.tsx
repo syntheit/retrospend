@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { TextAction } from "@/features/activity/TextAction";
 import { useTheme } from "@/theme";
+import { Button } from "@/ui/Button";
 import { Menu } from "@/ui/Menu";
 import { Segmented } from "@/ui/Segmented";
 import { Text } from "@/ui/Text";
@@ -22,6 +22,7 @@ export function ComposerHeader({
 	context,
 	onMore,
 	undoChanges,
+	editing,
 }: {
 	step: "quick" | "more";
 	mode: EntryMode;
@@ -33,6 +34,8 @@ export function ComposerHeader({
 	onMore: () => void;
 	/** Puts every field back as it was opened; null while nothing changed. */
 	undoChanges: (() => void) | null;
+	/** An edit: the sheet's own title says it, so More adds none. */
+	editing: boolean;
 }) {
 	const t = useTranslations("mobile.composer");
 	const { space } = useTheme();
@@ -53,9 +56,11 @@ export function ComposerHeader({
 					gap: space[2],
 				}}
 			>
-				<Text accessibilityRole="header" variant="section">
-					{t("moreDetails")}
-				</Text>
+				{editing ? null : (
+					<Text accessibilityRole="header" variant="section">
+						{t("moreDetails")}
+					</Text>
+				)}
 				{actions}
 			</View>
 		);
@@ -86,7 +91,13 @@ export function ComposerHeader({
 				<View style={{ flex: 1, alignItems: "flex-start" }}>{actions}</View>
 				{context}
 				<View style={{ flex: 1, alignItems: "flex-end" }}>
-					<TextAction label={t("more")} onPress={onMore} />
+					<Button
+						accessibilityLabel={t("more")}
+						label={t("more")}
+						onPress={onMore}
+						size="small"
+						variant="outlined"
+					/>
 				</View>
 			</View>
 		</View>

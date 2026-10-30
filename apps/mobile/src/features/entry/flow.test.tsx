@@ -636,7 +636,7 @@ describe("Add income with Use my plan", () => {
 		});
 		// The quick step says it in one line; More has the whole block.
 		expect(words(tree)).toContain("Not planned yet +ARS 340,000");
-		pressWords(tree, "More");
+		press(tree, "More");
 		// The plan's envelope names are read when it first shows.
 		await flush();
 		expect(words(tree)).toContain("What this changes");
@@ -1081,7 +1081,7 @@ describe("Edit a split expense", () => {
 		const tree = await open("expense", () => {}, "s1", true);
 		type(tree, "Title", "Team dinner");
 		await settle();
-		pressWords(tree, "More");
+		press(tree, "More");
 		const text = words(tree);
 		expect(text).toContain("What each person owes");
 		expect(text).toContain("You");
@@ -1104,15 +1104,15 @@ describe("Edit a split expense", () => {
 			});
 		mockSession.api = api;
 		const tree = await open("expense", () => {}, "s1", true);
-		pressWords(tree, "More");
+		press(tree, "More");
 		// Nothing changed yet: the saved shares are right.
 		expect(words(tree)).toContain("5,000");
-		pressWords(tree, "Back");
+		press(tree, "Back");
 		type(tree, "Title", "Team dinner");
 		await act(async () => {
 			jest.advanceTimersByTime(400);
 		});
-		pressWords(tree, "More");
+		press(tree, "More");
 		// Changed, no answer: the saved shares are stale and are not shown.
 		expect(words(tree)).not.toContain("5,000");
 		await act(async () => {
@@ -1246,7 +1246,7 @@ describe("Edit needs its dry run", () => {
 		expect(words(tree)).toContain("You're offline.");
 		expenses.previewUpdate = ok;
 		// Try again is in the whole block, in More.
-		pressWords(tree, "More");
+		press(tree, "More");
 		const tryAgain = tree.root.findAll(
 			(n) =>
 				typeof n.props.onPress === "function" &&
@@ -1432,7 +1432,7 @@ describe("Edit: undo changes and delete", () => {
 		mockSession.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "e1");
-		pressWords(tree, "More");
+		press(tree, "More");
 		pressWords(tree, "Delete");
 		await flush();
 		expect(
@@ -1465,7 +1465,7 @@ describe("Edit: undo changes and delete", () => {
 		mockSession.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "s1", true);
-		pressWords(tree, "More");
+		press(tree, "More");
 		pressWords(tree, "Delete");
 		await flush();
 		expect(
@@ -1500,7 +1500,7 @@ describe("Edit: undo changes and delete", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense", () => {}, "s1", true);
-		pressWords(tree, "More");
+		press(tree, "More");
 		pressWords(tree, "Delete");
 		await flush();
 		// The warning is on the sheet, and the dry run is asked again as if confirmed.
@@ -1588,7 +1588,7 @@ describe("Who paid and a custom split", () => {
 		press(tree, "Cafe");
 		press(tree, "Lucía Fernández");
 		for (const key of ["1", "0", "0"]) press(tree, key);
-		pressWords(tree, "More");
+		press(tree, "More");
 		press(tree, "Paid by, You");
 		press(tree, "pick Lucía Fernández");
 		press(tree, "Custom");
@@ -1630,7 +1630,7 @@ describe("Who paid and a custom split", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense", () => {}, "s1", true);
-		pressWords(tree, "More");
+		press(tree, "More");
 		press(tree, "Paid by, You");
 		press(tree, "pick Lucía Fernández");
 		await settle();

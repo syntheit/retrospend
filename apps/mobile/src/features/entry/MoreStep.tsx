@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { Cover } from "@/features/projects/Cover";
 import { useTheme } from "@/theme";
 import { ListGroup, ListRow, SectionHeader } from "@/ui/List";
 import { Text } from "@/ui/Text";
@@ -89,7 +90,7 @@ export function MoreStep({
 	onDelete: (() => void) | null;
 }) {
 	const t = useTranslations("mobile.composer");
-	const { space } = useTheme();
+	const { size, space } = useTheme();
 	const { mode, catalog } = form;
 	const split = useSplitView(form, preview, edit);
 	const gutter = { paddingHorizontal: space[4] } as const;
@@ -152,6 +153,10 @@ export function MoreStep({
 	const draft = form.expense;
 	const editing = draft.editing !== null;
 	const projects = editing ? [] : catalog.projects;
+	// A saved expense keeps its project (the server does not move it): a plain row.
+	const kept = editing
+		? catalog.projects.find((p) => p.id === draft.projectId)
+		: undefined;
 	return (
 		<View>
 			<View style={{ paddingTop: space[1] }}>
@@ -167,6 +172,31 @@ export function MoreStep({
 							projects={projects}
 							value={draft.projectId}
 							variant="row"
+						/>
+					) : null}
+					{kept ? (
+						<ListRow
+							accessibilityLabel={`${t("project.label")}, ${kept.name}`}
+							end={
+								<View
+									style={{
+										flexDirection: "row",
+										alignItems: "center",
+										gap: space[2],
+									}}
+								>
+									<Cover
+										diameter={size.avatar.sm}
+										id={kept.id}
+										imageUri={kept.imageUrl}
+										name={kept.name}
+									/>
+									<Text numberOfLines={1} tone="fg2">
+										{kept.name}
+									</Text>
+								</View>
+							}
+							title={t("project.label")}
 						/>
 					) : null}
 				</ListGroup>

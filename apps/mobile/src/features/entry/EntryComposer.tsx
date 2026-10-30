@@ -191,6 +191,7 @@ function Form({
 				header={
 					<ComposerHeader
 						context={context}
+						editing={form.editing}
 						mode={mode}
 						modes={form.modes}
 						onModeChange={(next) => {

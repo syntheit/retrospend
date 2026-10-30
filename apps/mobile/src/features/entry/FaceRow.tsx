@@ -26,7 +26,7 @@ function FaceRing({ face, on }: { face: Face; on: boolean }) {
 				borderColor: on ? color.brand : "transparent",
 			}}
 		>
-			<Avatar face={face} size="md" />
+			<Avatar face={face} size="sm" />
 		</View>
 	);
 }
@@ -137,8 +137,8 @@ export function FaceRow({
 					<View style={{ padding: ring + ring }}>
 						<View
 							style={{
-								width: size.avatar.md,
-								height: size.avatar.md,
+								width: size.avatar.sm,
+								height: size.avatar.sm,
 								borderRadius: radius.chip,
 								alignItems: "center",
 								justifyContent: "center",

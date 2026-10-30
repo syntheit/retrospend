@@ -158,7 +158,7 @@ export function useEntryForm({
 	const [typing, setTyping] = useState(false);
 	// Scrolling the fields folds the keypad away so the split and what changes
 	// show in full; touching the amount brings it back.
-	const [padOpen, setPadOpen] = useState(true);
+	const [padOpen, setPadOpen] = useState(!editing);
 	const requestKeypad = () => {
 		Keyboard.dismiss();
 		setTyping(false);
