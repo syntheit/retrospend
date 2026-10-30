@@ -19,9 +19,9 @@ import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
-import { ListDetail } from "@/ui/ListDetail";
+import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { Menu } from "@/ui/Menu";
-import { Screen, useAddInset } from "@/ui/Screen";
+import { useAddInset } from "@/ui/Screen";
 
 /** The chips narrow the list; pressing the one that is on turns it off. */
 const CHIPS: Exclude<PeopleChip, "all">[] = [
@@ -154,15 +154,13 @@ export function PeopleList({
 								<Menu
 									accessibilityLabel={t("sortBy", { sort: t(`sort.${sort}`) })}
 									active={sort !== "balance"}
-									chip
 									items={SORTS.map((id) => ({
 										id,
 										label: t(`sort.${id}`),
 										onPress: () => setSort(id),
 									}))}
-									label={
-										sort === "balance" ? t("sortShort") : t(`sort.${sort}`)
-									}
+									label={t(`sort.${sort}`)}
+									sortIcon
 								/>
 							</ScrollView>
 						</View>
@@ -220,9 +218,7 @@ export function PeopleList({
 					selected ? (
 						<PersonView key={keyOf(selected)} person={selected} />
 					) : (
-						<Screen>
-							<EmptyState title={t("pick")} />
-						</Screen>
+						<EmptyDetail title={t("pick")} />
 					)
 				}
 				list={list}

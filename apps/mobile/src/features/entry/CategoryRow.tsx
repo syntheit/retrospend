@@ -3,7 +3,7 @@ import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
-import { FieldError, FieldLabel } from "@/ui/TextField";
+import { FieldError } from "@/ui/TextField";
 import { CategoryPicker } from "./CategoryPicker";
 import { recentCategories } from "./catalog";
 import { type ExpenseDraft, pickCategory } from "./draft";
@@ -41,8 +41,8 @@ export function CategoryRow({
 			: null;
 	return (
 		<View style={{ gap: space[2] }}>
-			<FieldLabel>{t("category")}</FieldLabel>
 			<View
+				accessibilityLabel={t("category")}
 				style={{
 					flexDirection: "row",
 					flexWrap: "wrap",

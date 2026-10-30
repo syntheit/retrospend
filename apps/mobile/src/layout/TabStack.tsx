@@ -13,6 +13,8 @@ export function TabStack({ title }: { title: string }) {
 	return (
 		<Stack
 			screenOptions={{
+				// A pushed page names itself; until it does the bar is blank, never the route ("[id]").
+				title: "",
 				headerLargeTitle: !android,
 				headerShadowVisible: false,
 				headerTintColor: color.fg,

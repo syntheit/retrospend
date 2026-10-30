@@ -132,6 +132,7 @@ export function NetWorthHero({
 							value,
 							label: t(`ranges.${value}`),
 						}))}
+						stretch
 						value={range}
 					/>
 				</View>

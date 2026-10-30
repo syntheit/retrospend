@@ -43,6 +43,7 @@ export function TextField({
 	secure,
 	autoComplete,
 	onTypingChange,
+	bare,
 }: {
 	label: string;
 	value: string;
@@ -53,7 +54,12 @@ export function TextField({
 	hideLabel?: boolean;
 	/** Several lines: a message or a note. */
 	multiline?: boolean;
-	keyboardType?: "default" | "decimal-pad" | "number-pad" | "url";
+	keyboardType?:
+		| "default"
+		| "decimal-pad"
+		| "number-pad"
+		| "url"
+		| "email-address";
 	placeholder?: string;
 	maxLength?: number;
 	autoCapitalize?: "none" | "sentences" | "words";
@@ -63,6 +69,11 @@ export function TextField({
 	autoComplete?: "current-password" | "new-password" | "one-time-code";
 	/** Told when typing starts and stops, so a screen can hide its keypad. */
 	onTypingChange?: (typing: boolean) => void;
+	/**
+	 * No box: no border, fill or side padding, for a field that sits on a card
+	 * of its own (the composer's title). The card carries the field's edge.
+	 */
+	bare?: boolean;
 }) {
 	const theme = useTheme();
 	const { color, radius, size, space } = theme;
@@ -81,15 +92,19 @@ export function TextField({
 					flexDirection: "row",
 					alignItems: multiline ? "flex-start" : "center",
 					gap: space[2],
-					paddingHorizontal: space[3],
-					borderRadius: radius.ctl,
-					borderWidth: 1,
-					borderColor: invalid
-						? color.danger
-						: focused
-							? color.brand
-							: color.lineStrong,
-					backgroundColor: color.surface,
+					...(bare
+						? {}
+						: {
+								paddingHorizontal: space[3],
+								borderRadius: radius.ctl,
+								borderWidth: 1,
+								borderColor: invalid
+									? color.danger
+									: focused
+										? color.brand
+										: color.lineStrong,
+								backgroundColor: color.surface,
+							}),
 				}}
 			>
 				{prefix ? <Text tone="fg2">{prefix}</Text> : null}

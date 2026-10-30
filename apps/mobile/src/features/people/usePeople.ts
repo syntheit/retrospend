@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useSession } from "@/auth/session";
+import { subscribeEntryChanges } from "@/features/entry/events";
 import { ENTITY_CACHE_LIMIT } from "@/features/read/loadCached";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import {
@@ -14,7 +15,11 @@ import {
 export function usePeopleOverview() {
 	const { api } = useSession();
 	const fetch = useMemo(() => (api ? fetchOverview(api) : null), [api]);
-	return useCachedRead(OVERVIEW_CACHE, fetch);
+	const read = useCachedRead(OVERVIEW_CACHE, fetch);
+	const { reload } = read;
+	// A person added from the top bar, or an entry added or undone.
+	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
+	return read;
 }
 
 /** One person's page, cache first. */

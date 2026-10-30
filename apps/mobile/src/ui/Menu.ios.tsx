@@ -27,12 +27,23 @@ import type { MenuProps } from "./types";
  * a 1 point line-strong border, 13/500 fg-2 with a chevron; brand-soft with a
  * brand border while its filter has a value.
  */
-function ChipLabel({ label, active }: { label: string; active: boolean }) {
+function ChipLabel({
+	label,
+	active,
+	calendar,
+}: {
+	label: string;
+	active: boolean;
+	calendar?: boolean;
+}) {
 	const { color, size, space, type } = useTheme();
 	return (
 		<HStack
 			modifiers={[
-				padding({ leading: space[3], trailing: space[2] }),
+				padding({
+					leading: calendar ? space[2] : space[3],
+					trailing: space[2],
+				}),
 				frame({ height: size.ctl.phone }),
 				background(active ? color.brandSoft : "transparent", shapes.capsule()),
 				strokeBorder({
@@ -43,6 +54,9 @@ function ChipLabel({ label, active }: { label: string; active: boolean }) {
 			]}
 			spacing={space[2]}
 		>
+			{calendar ? (
+				<Image color={color.fg3} size={size.icon.phone} systemName="calendar" />
+			) : null}
 			<Text
 				modifiers={[
 					font({ size: type.small.size, weight: "medium" }),
@@ -55,6 +69,30 @@ function ChipLabel({ label, active }: { label: string; active: boolean }) {
 				color={color.fg3}
 				size={size.icon.phone}
 				systemName="chevron.down"
+			/>
+		</HStack>
+	);
+}
+
+/** The sort chip: the arrows alone in a chip-height circle, brand-soft while a sort is set. */
+function SortLabel({ active }: { active: boolean }) {
+	const { color, size } = useTheme();
+	return (
+		<HStack
+			modifiers={[
+				frame({ width: size.ctl.phone, height: size.ctl.phone }),
+				background(active ? color.brandSoft : "transparent", shapes.capsule()),
+				strokeBorder({
+					content: active ? color.brand : color.lineStrong,
+					shape: "capsule",
+					style: { lineWidth: 1 },
+				}),
+			]}
+		>
+			<Image
+				color={active ? color.fg : color.fg2}
+				size={size.icon.phone}
+				systemName="arrow.up.arrow.down"
 			/>
 		</HStack>
 	);
@@ -109,14 +147,22 @@ export function Menu({
 	active = false,
 	icon,
 	heading,
+	leadingCalendar,
+	sortIcon,
 }: MenuProps) {
-	const custom = chip || icon || heading;
+	const custom = chip || icon || heading || sortIcon;
 	return (
 		<NativeHost>
 			<SwiftMenu
 				label={
-					chip ? (
-						<ChipLabel active={active} label={label} />
+					sortIcon ? (
+						<SortLabel active={active} />
+					) : chip ? (
+						<ChipLabel
+							active={active}
+							calendar={leadingCalendar}
+							label={label}
+						/>
 					) : icon ? (
 						<IconLabel />
 					) : heading ? (
@@ -134,7 +180,7 @@ export function Menu({
 								menuIndicator("hidden"),
 							]
 						: []),
-					...(accessibilityLabel || icon
+					...(accessibilityLabel || icon || sortIcon
 						? [a11yLabel(accessibilityLabel ?? label)]
 						: []),
 				]}

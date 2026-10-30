@@ -279,6 +279,36 @@ describe("Update balance", () => {
 		act(() => tree.unmount());
 	});
 
+	it("puts the keypad before the rate chips, puts it away on a pick and brings it back on the amount", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		let tree!: Tree;
+		await act(async () => {
+			tree = create(
+				<UpdateBalanceSheet
+					account={usdAccount}
+					catalog={catalog}
+					home="ARS"
+					onClose={jest.fn()}
+					onDone={jest.fn()}
+					visible
+				/>,
+			);
+		});
+		const labels = () =>
+			tree.root
+				.findAll((n) => typeof n.props.accessibilityLabel === "string")
+				.map((n) => n.props.accessibilityLabel as string);
+		expect(labels().indexOf("5")).toBeGreaterThan(-1);
+		expect(labels().indexOf("5")).toBeLessThan(labels().indexOf("Blue"));
+		press(tree, "Blue");
+		expect(labels()).not.toContain("5");
+		const amount = labels().find((l) => l.startsWith("What it holds today"));
+		press(tree, amount as string);
+		expect(labels()).toContain("5");
+		act(() => tree.unmount());
+	});
+
 	it("takes a real zero (an emptied account)", async () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;

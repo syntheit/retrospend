@@ -39,6 +39,7 @@ export function ActivitySegments({
 					{ value: "recurring", label: t("recurring") },
 					{ value: "import", label: t("import") },
 				]}
+				stretch
 				value={value}
 			/>
 		</View>

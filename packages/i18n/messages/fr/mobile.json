@@ -544,7 +544,9 @@
 		},
 		"hero": {
 			"incomplete": "Pas encore de taux pour {currencies}, donc ce chiffre n’est pas calculé.",
-			"afford": "Puis-je me permettre quelque chose ?"
+			"afford": "Puis-je me permettre quelque chose ?",
+			"help": "Le sens des mots",
+			"helpHint": "Explique les mots de cette page"
 		},
 		"notice": {
 			"notPlanned": "{amount} sont arrivés sans être planifiés.",
@@ -1260,6 +1262,17 @@
 			"goal": "Objectif de {amount}",
 			"goalProgress": "{saved} sur {amount}",
 			"goalBy": "d'ici le {date}"
+		},
+		"help": {
+			"title": "Le sens des mots",
+			"leftTitle": "Reste à dépenser",
+			"left": "Ce que vous pouvez encore dépenser ce mois-ci, une fois les factures et l’épargne couvertes.",
+			"notPlannedTitle": "Pas encore prévu",
+			"notPlanned": "L’argent entré qui n’a pas encore d’enveloppe.",
+			"toAssignTitle": "À attribuer",
+			"toAssign": "L’argent dont vous disposez et qui n’est dans aucune enveloppe.",
+			"heldTitle": "Réservé pour d'autres",
+			"held": "L’argent que d’autres vous doivent et que le budget met de côté."
 		}
 	},
 	"wealth": {
@@ -1651,6 +1664,18 @@
 		"bar": {
 			"owesYou": "{name} : te doit {amount}",
 			"youOwe": "{name} : tu dois {amount}"
+		},
+		"add": {
+			"title": "Ajouter une personne",
+			"name": "Nom",
+			"email": "E-mail (facultatif)",
+			"emailPlaceholder": "nom@exemple.com",
+			"emailInvalid": "Cet e-mail ne semble pas valide.",
+			"save": "Ajouter",
+			"saving": "Ajout",
+			"added": "{name} ajouté",
+			"existing": "{name} est déjà là",
+			"error": "Impossible d'ajouter cette personne. Réessayez."
 		}
 	},
 	"person": {

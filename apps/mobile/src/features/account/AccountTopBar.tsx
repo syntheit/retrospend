@@ -16,7 +16,7 @@ import { ListGroup, ListRow } from "@/ui/List";
 import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { TopBar } from "@/ui/TopBar";
-import type { MenuItem } from "@/ui/types";
+import type { MenuItem, TopBarAction } from "@/ui/types";
 import { currenciesHref } from "./places";
 import { useSignOut } from "./useSignOut";
 
@@ -43,10 +43,13 @@ export function useMyFace(): Face | null {
  */
 export function AccountTopBar({
 	title,
+	actions,
 	overflow,
 	overflowLabel,
 }: {
 	title: string;
+	/** Icon-only page actions (Add person), before the overflow and the account button. */
+	actions?: TopBarAction[];
 	/** The page's overflow menu (the three dots), before the account button. */
 	overflow?: MenuItem[];
 	overflowLabel?: string;
@@ -74,6 +77,7 @@ export function AccountTopBar({
 			<TopBar
 				account={face ?? undefined}
 				accountLabel={t("open")}
+				actions={actions}
 				onAccountPress={() => setOpen(true)}
 				overflow={overflow}
 				overflowLabel={overflowLabel}

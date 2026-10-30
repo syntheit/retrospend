@@ -9,6 +9,7 @@ import { useTheme } from "@/theme";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
 import type { PeopleChip, PeopleSort } from "./groups";
 import { PeopleList } from "./PeopleList";
+import { PeopleTopBar } from "./PeopleTopBar";
 import {
 	type PeopleSegment,
 	parseSegment,
@@ -66,9 +67,11 @@ export function PeopleHub() {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
-			<AccountTopBar
-				title={segment === "people" ? t("people") : t("projects")}
-			/>
+			{segment === "people" ? (
+				<PeopleTopBar title={t("people")} />
+			) : (
+				<AccountTopBar title={t("projects")} />
+			)}
 			<Stack.Screen
 				options={{
 					headerSearchBarOptions: {

@@ -17,8 +17,8 @@ import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
-import { ListDetail } from "@/ui/ListDetail";
-import { Screen, useAddInset } from "@/ui/Screen";
+import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
+import { useAddInset } from "@/ui/Screen";
 
 /** The phone's today as a YYYY-MM-DD day; the list carries no server day. */
 function todayDay(): string {
@@ -184,9 +184,7 @@ export function ProjectsList({
 					selected ? (
 						<ProjectView id={selected} key={selected} />
 					) : (
-						<Screen>
-							<EmptyState title={t("pick")} />
-						</Screen>
+						<EmptyDetail title={t("pick")} />
 					)
 				}
 				list={list}

@@ -70,13 +70,44 @@ export function Menu({
 	active = false,
 	icon,
 	heading,
+	leadingCalendar,
+	sortIcon,
 }: MenuProps) {
 	const [open, setOpen] = useState(false);
-	const { color, size, space } = useTheme();
-	const trigger = chip ? (
+	const { color, radius, size, space } = useTheme();
+	const trigger = sortIcon ? (
+		<Pressable
+			accessibilityLabel={accessibilityLabel ?? label}
+			accessibilityRole="button"
+			accessibilityState={{ selected: active }}
+			hitSlop={space[1]}
+			onPress={() => setOpen(true)}
+			style={{
+				width: size.ctl.phone,
+				height: size.ctl.phone,
+				borderRadius: radius.chip,
+				borderWidth: 1,
+				borderColor: active ? color.brand : color.lineStrong,
+				backgroundColor: active ? color.brandSoft : "transparent",
+				alignItems: "center",
+				justifyContent: "center",
+			}}
+		>
+			<Glyph
+				color={active ? color.fg : color.fg2}
+				name="ArrowUpDown"
+				size={size.icon.phone}
+			/>
+		</Pressable>
+	) : chip ? (
 		<Chip
 			accessibilityLabel={accessibilityLabel ?? label}
 			label={label}
+			leading={
+				leadingCalendar ? (
+					<Glyph color={color.fg3} name="Calendar" size={size.icon.phone} />
+				) : undefined
+			}
 			onPress={() => setOpen(true)}
 			selected={active}
 			variant="filter"

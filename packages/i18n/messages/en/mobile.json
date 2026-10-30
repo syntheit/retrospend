@@ -544,7 +544,9 @@
 		},
 		"hero": {
 			"incomplete": "No rate yet for {currencies}, so this is not worked out.",
-			"afford": "Can I afford something?"
+			"afford": "Can I afford something?",
+			"help": "What the words mean",
+			"helpHint": "Explains the words on this page"
 		},
 		"notice": {
 			"notPlanned": "{amount} came in that isn't planned yet.",
@@ -1260,6 +1262,17 @@
 			"goal": "Goal {amount}",
 			"goalProgress": "{saved} of {amount}",
 			"goalBy": "by {date}"
+		},
+		"help": {
+			"title": "What the words mean",
+			"leftTitle": "Left to spend",
+			"left": "What you can still spend this month, after bills and savings are covered.",
+			"notPlannedTitle": "Not planned yet",
+			"notPlanned": "Money that came in and has no envelope yet.",
+			"toAssignTitle": "To assign",
+			"toAssign": "Money you have that is not in an envelope.",
+			"heldTitle": "Held for others",
+			"held": "Money other people owe you that the budget keeps aside."
 		}
 	},
 	"wealth": {
@@ -1651,6 +1664,18 @@
 		"bar": {
 			"owesYou": "{name}: owes you {amount}",
 			"youOwe": "{name}: you owe {amount}"
+		},
+		"add": {
+			"title": "Add person",
+			"name": "Name",
+			"email": "Email (optional)",
+			"emailPlaceholder": "name@example.com",
+			"emailInvalid": "That email does not look right.",
+			"save": "Add",
+			"saving": "Adding",
+			"added": "{name} added",
+			"existing": "{name} is already here",
+			"error": "Couldn't add this person. Try again."
 		}
 	},
 	"person": {

@@ -15,10 +15,18 @@ import { Text } from "./Text";
 export type ChipVariant = "choice" | "trigger" | "filter";
 
 /** The chevron a trigger or filter chip ends with: ChevronRight turned down. */
-export function ChipChevron({ color }: { color: string }) {
+export function ChipChevron({
+	color,
+	direction = "down",
+}: {
+	color: string;
+	direction?: "down" | "right";
+}) {
 	const { size } = useTheme();
 	return (
-		<View style={{ transform: [{ rotate: "90deg" }] }}>
+		<View
+			style={direction === "down" ? { transform: [{ rotate: "90deg" }] } : null}
+		>
 			<Glyph color={color} name="ChevronRight" size={size.icon.phone} />
 		</View>
 	);
@@ -39,6 +47,7 @@ export function Chip({
 	accessibilityLabel,
 	onClear,
 	clearLabel,
+	chevron: chevronDirection = "down",
 }: {
 	label: string;
 	variant?: ChipVariant;
@@ -54,11 +63,17 @@ export function Chip({
 	 */
 	onClear?: () => void;
 	clearLabel?: string;
+	/**
+	 * Which way the end chevron points: down opens a picker or menu (default),
+	 * right goes on to another step (More).
+	 */
+	chevron?: "down" | "right";
 }) {
 	const { color, radius, size, space } = useTheme();
 	const on = selected && variant !== "trigger";
 	const clear = on && onClear !== undefined;
-	const chevron = variant !== "choice" && !clear;
+	const chevron =
+		(variant !== "choice" || chevronDirection === "right") && !clear;
 	return (
 		<Pressable
 			accessibilityLabel={accessibilityLabel ?? label}
@@ -94,7 +109,9 @@ export function Chip({
 			>
 				{label}
 			</Text>
-			{chevron ? <ChipChevron color={color.fg3} /> : null}
+			{chevron ? (
+				<ChipChevron color={color.fg3} direction={chevronDirection} />
+			) : null}
 			{clear ? (
 				<Pressable
 					accessibilityLabel={clearLabel ?? label}

@@ -80,9 +80,12 @@ function ProfileBody({ me, reload }: { me: Profile; reload: () => void }) {
 			message: ts("saved"),
 			undo: {
 				label: tc("undo"),
-				onUndo: () => {
+				onUndo: async () => {
 					setName(before);
-					void update({ name: before });
+					if (await update({ name: before })) return;
+					// The server still has the new name: show it, and say so.
+					setName(next);
+					toast.show({ message: t("error") });
 				},
 			},
 		});

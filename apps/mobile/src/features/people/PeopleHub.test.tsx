@@ -44,6 +44,10 @@ jest.mock("@/features/account/AccountTopBar", () => ({
 	AccountTopBar: ({ title }: { title: string }) =>
 		require("react").createElement("TopBar", { title }),
 }));
+jest.mock("./PeopleTopBar", () => ({
+	PeopleTopBar: ({ title }: { title: string }) =>
+		require("react").createElement("TopBar", { title }),
+}));
 jest.mock("./PeopleList", () => ({
 	PeopleList: (props: object) =>
 		require("react").createElement(

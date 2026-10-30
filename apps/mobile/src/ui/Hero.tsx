@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
+import { Glyph } from "./Glyph";
 import { Text, type TextTone } from "./Text";
 
 type Tone = Extract<TextTone, "fg" | "positive" | "attention" | "danger">;
@@ -14,6 +15,11 @@ type Tone = Extract<TextTone, "fg" | "positive" | "attention" | "danger">;
  * The label, value and a text sub line read as one element and announce a
  * change (a scrub). A sub line that holds a control (a link to a sheet) is
  * left out of that element so it stays reachable on its own.
+ *
+ * `help` puts an icon button after the label (a question mark that explains
+ * the figure): its `label` is what a screen reader calls it and `hint` is its
+ * tooltip text (read as the hint, since a phone has no hover). It sits beside
+ * the label, outside the element above, so it stays reachable on its own.
  */
 export function Hero({
 	label,
@@ -23,6 +29,7 @@ export function Hero({
 	labelTone = "fg2",
 	subTone = "fg2",
 	align = "start",
+	help,
 }: {
 	label: string;
 	value: string;
@@ -37,14 +44,62 @@ export function Hero({
 	/** The sub line: fg2 at 13 (default), or fg3 at 12 for the quiet parts line. */
 	subTone?: "fg2" | "fg3";
 	align?: "start" | "center";
+	help?: { label: string; hint: string; onPress: () => void };
 }) {
-	const { size, space, type } = useTheme();
+	const { color, size, space, type } = useTheme();
 	// Phones draw the hero at its own size (size.hero.phone); the rest of type.hero holds.
 	const heroSize = size.hero.phone;
 	const textAlign = align === "center" ? "center" : "left";
 	const subText = typeof sub === "string" ? sub : null;
 	const labelHero = labelTone === "hero";
 	const quiet = subTone === "fg3";
+
+	const labelText = (
+		<Text
+			style={{ textAlign }}
+			tone={labelHero ? tone : "fg2"}
+			variant={labelHero ? "body" : "small"}
+		>
+			{label}
+		</Text>
+	);
+	const group = (withLabel: boolean) => (
+		<View
+			accessibilityLabel={[label, value, subText].filter(Boolean).join(", ")}
+			accessibilityLiveRegion="polite"
+			accessible
+			style={{
+				gap: space[1],
+				alignItems: align === "center" ? "center" : "stretch",
+			}}
+		>
+			{withLabel ? labelText : null}
+			<Text
+				adjustsFontSizeToFit
+				numberOfLines={1}
+				style={{
+					fontSize: heroSize,
+					lineHeight: heroSize * type.hero.lineHeight,
+					letterSpacing: heroSize * type.hero.tracking,
+					textAlign,
+				}}
+				tone={tone}
+				variant="hero"
+			>
+				{value}
+			</Text>
+			{subText !== null ? (
+				<Text
+					numberOfLines={1}
+					style={{ textAlign }}
+					tone={quiet ? "fg3" : "fg2"}
+					variant={quiet ? "meta" : "small"}
+				>
+					{subText}
+				</Text>
+			) : null}
+		</View>
+	);
 
 	return (
 		<View
@@ -53,47 +108,34 @@ export function Hero({
 				alignItems: align === "center" ? "center" : "stretch",
 			}}
 		>
-			<View
-				accessibilityLabel={[label, value, subText].filter(Boolean).join(", ")}
-				accessibilityLiveRegion="polite"
-				accessible
-				style={{
-					gap: space[1],
-					alignItems: align === "center" ? "center" : "stretch",
-				}}
-			>
-				<Text
-					style={{ textAlign }}
-					tone={labelHero ? tone : "fg2"}
-					variant={labelHero ? "body" : "small"}
-				>
-					{label}
-				</Text>
-				<Text
-					adjustsFontSizeToFit
-					numberOfLines={1}
+			{help ? (
+				<View
 					style={{
-						fontSize: heroSize,
-						lineHeight: heroSize * type.hero.lineHeight,
-						letterSpacing: heroSize * type.hero.tracking,
-						textAlign,
+						flexDirection: "row",
+						alignItems: "center",
+						justifyContent: align === "center" ? "center" : "flex-start",
+						gap: space[1],
 					}}
-					tone={tone}
-					variant="hero"
 				>
-					{value}
-				</Text>
-				{subText !== null ? (
-					<Text
-						numberOfLines={1}
-						style={{ textAlign }}
-						tone={quiet ? "fg3" : "fg2"}
-						variant={quiet ? "meta" : "small"}
+					{/* The element below says the label; this copy is for the eye. */}
+					<View
+						accessibilityElementsHidden
+						importantForAccessibility="no-hide-descendants"
 					>
-						{subText}
-					</Text>
-				) : null}
-			</View>
+						{labelText}
+					</View>
+					<Pressable
+						accessibilityHint={help.hint}
+						accessibilityLabel={help.label}
+						accessibilityRole="button"
+						hitSlop={space[3]}
+						onPress={help.onPress}
+					>
+						<Glyph color={color.fg3} name="CircleHelp" size={size.icon.phone} />
+					</Pressable>
+				</View>
+			) : null}
+			{group(!help)}
 			{sub != null && subText === null ? (
 				<View style={{ minHeight: type.small.size * type.small.lineHeight }}>
 					{sub}

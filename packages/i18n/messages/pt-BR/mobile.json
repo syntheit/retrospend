@@ -544,7 +544,9 @@
 		},
 		"hero": {
 			"incomplete": "Ainda não há cotação de {currencies}, então isto não foi calculado.",
-			"afford": "Posso comprar algo?"
+			"afford": "Posso comprar algo?",
+			"help": "O que as palavras significam",
+			"helpHint": "Explica as palavras desta página"
 		},
 		"notice": {
 			"notPlanned": "Entraram {amount} que ainda não estão planejados.",
@@ -1260,6 +1262,17 @@
 			"goal": "Meta de {amount}",
 			"goalProgress": "{saved} de {amount}",
 			"goalBy": "até {date}"
+		},
+		"help": {
+			"title": "O que as palavras significam",
+			"leftTitle": "Resta para gastar",
+			"left": "O que você ainda pode gastar neste mês, com as contas e a poupança já cobertas.",
+			"notPlannedTitle": "Ainda não planejado",
+			"notPlanned": "Dinheiro que entrou e ainda não tem envelope.",
+			"toAssignTitle": "A atribuir",
+			"toAssign": "Dinheiro que você tem e que não está em nenhum envelope.",
+			"heldTitle": "Reservado para outros",
+			"held": "Dinheiro que outras pessoas devem a você e que o orçamento separa."
 		}
 	},
 	"wealth": {
@@ -1651,6 +1664,18 @@
 		"bar": {
 			"owesYou": "{name}: deve a você {amount}",
 			"youOwe": "{name}: você deve {amount}"
+		},
+		"add": {
+			"title": "Adicionar pessoa",
+			"name": "Nome",
+			"email": "E-mail (opcional)",
+			"emailPlaceholder": "nome@exemplo.com",
+			"emailInvalid": "Esse e-mail não parece válido.",
+			"save": "Adicionar",
+			"saving": "Adicionando",
+			"added": "{name} adicionado",
+			"existing": "{name} já está aqui",
+			"error": "Não foi possível adicionar esta pessoa. Tente de novo."
 		}
 	},
 	"person": {
