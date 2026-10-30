@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
+import { fitMoney } from "./fitMoney";
 import { Glyph } from "./Glyph";
-import { fitMoney } from "./Money";
 import { Text, type TextTone } from "./Text";
 
 type Tone = Extract<TextTone, "fg" | "positive" | "attention" | "danger">;
