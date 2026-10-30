@@ -26,9 +26,10 @@ export function SheetFrame({
 	visible,
 	onClose,
 	detents,
+	background,
 	children,
 }: SheetFrameProps) {
-	const { color, space } = useTheme();
+	const { space } = useTheme();
 	const insets = useSafeAreaInsets();
 	const { height } = useWindowDimensions();
 	const pad = Platform.OS === "ios" && Platform.isPad;
@@ -83,7 +84,7 @@ export function SheetFrame({
 									}),
 								]
 							: []),
-						presentationBackground(color.surface),
+						presentationBackground(background),
 					]}
 				>
 					<RNHostView matchContents={{ vertical: true }}>

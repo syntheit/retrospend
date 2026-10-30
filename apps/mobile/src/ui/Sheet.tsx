@@ -73,6 +73,11 @@ interface SheetProps {
 	 * verb (Cancel, Save). Pass ui/Button elements.
 	 */
 	footer?: ReactNode;
+	/**
+	 * A sheet of cards (the composer): the page color, so the surface cards on
+	 * it read as cards, the way iOS groups a form. Default: the surface.
+	 */
+	grouped?: boolean;
 	children: ReactNode;
 }
 
@@ -129,6 +134,7 @@ export function Sheet({
 	detents,
 	dismiss,
 	footer,
+	grouped = false,
 	children,
 }: SheetProps) {
 	const { color, space } = useTheme();
@@ -211,7 +217,12 @@ export function Sheet({
 		</View>
 	);
 	return (
-		<SheetFrame detents={detents} onClose={onClose} visible={visible}>
+		<SheetFrame
+			background={grouped ? color.bg : color.surface}
+			detents={detents}
+			onClose={onClose}
+			visible={visible}
+		>
 			{(height) => (
 				<SheetContext.Provider value={context}>
 					{content(height)}

@@ -12,12 +12,13 @@ export function SheetFrame({
 	visible,
 	onClose,
 	detents,
+	background,
 	children,
 }: SheetFrameProps) {
 	const { color } = useTheme();
 	return (
 		<BottomSheet
-			containerColor={color.surface}
+			containerColor={background}
 			isPresented={visible}
 			onDismiss={onClose}
 			scrimColor={color.scrim}

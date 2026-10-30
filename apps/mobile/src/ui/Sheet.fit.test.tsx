@@ -9,7 +9,7 @@ import { SettleSheet } from "@/features/settle/SettleSheet";
 import type { Account, CurrencyInfo } from "@/features/wealth/source";
 import { UpdateBalanceSheet } from "@/features/wealth/UpdateBalanceSheet";
 import { PickerSheet } from "./PickerSheet";
-import type { SheetDetent } from "./Sheet";
+import { Sheet, type SheetDetent } from "./Sheet";
 import { SHEET_PAD_TOP, sheetContentHeight } from "./sheetContext";
 
 // Build 15 clipped every sheet whose content was sized from a guess at its
@@ -529,4 +529,34 @@ describe.each(CASES)("$name", (c) => {
 			act(() => tree.unmount());
 		},
 	);
+});
+
+// The composer's cards are the surface color; on a surface sheet they did not
+// read as cards. A grouped sheet takes the page color under them.
+describe("grouped sheet", () => {
+	const { color } = require("@retrospend/tokens/theme").light;
+	const backgroundOf = (grouped: boolean) => {
+		Platform.OS = "ios";
+		mockDetents.current = ["large"];
+		let tree!: Tree;
+		act(() => {
+			tree = create(
+				<SafeAreaProvider initialMetrics={METRICS}>
+					<Sheet grouped={grouped} onClose={noop} title="Expense" visible>
+						<Text>Card</Text>
+					</Sheet>
+				</SafeAreaProvider>,
+			);
+		});
+		const group = tree.root.findAll((n) => n.type === "SwiftGroup")[0];
+		const modifiers = group?.props.modifiers as { $type: string }[];
+		const paint = modifiers.find((m) => m.$type === "presentationBackground");
+		act(() => tree.unmount());
+		return JSON.stringify(paint);
+	};
+
+	it("paints the page color under the cards, and the surface otherwise", () => {
+		expect(backgroundOf(true)).toContain(color.bg);
+		expect(backgroundOf(false)).toContain(color.surface);
+	});
 });

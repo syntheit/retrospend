@@ -12,6 +12,8 @@ export interface SheetFrameProps {
 	visible: boolean;
 	onClose: () => void;
 	detents?: ("medium" | "large")[];
+	/** The sheet's own color. */
+	background: string;
 	/**
 	 * Draws the content. `height` is the height the content takes when the
 	 * sheet sets it (iOS with detents), or null when the content sizes itself.
