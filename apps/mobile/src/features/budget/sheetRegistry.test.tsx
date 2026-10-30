@@ -63,6 +63,10 @@ jest.mock("use-intl", () => {
 			t.has = (key: string) => lookup(ns, key) !== undefined;
 			return t;
 		},
+		useFormatter: () => ({
+			number: (n: number) => String(n),
+			dateTime: () => "Oct 1, 2026",
+		}),
 	};
 });
 
@@ -138,7 +142,7 @@ describe("sheet registry", () => {
 	it("rests short tasks at medium and long forms at large", () => {
 		const medium = SHEET_KINDS.filter((k) => SHEETS[k].detent === "medium");
 		expect(medium.sort()).toEqual(
-			["afford", "income", "owed", "takeBack", "whatIf"].sort(),
+			["income", "owed", "takeBack", "whatIf"].sort(),
 		);
 	});
 });

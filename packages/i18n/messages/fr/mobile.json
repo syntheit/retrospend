@@ -1111,7 +1111,8 @@
 			"error": "Impossible de charger. Réessaie.",
 			"listTitle": "Planifier le mois",
 			"listLead": "Touche une enveloppe pour fixer ce qu'elle reçoit. Rien ne bouge avant la paie.",
-			"notPlanned": "Pas encore planifié"
+			"notPlanned": "Pas encore planifié",
+			"leftToPlan": "Reste à planifier en {month}"
 		},
 		"planApply": {
 			"title": "Appliquer le plan de {month}",
@@ -1145,6 +1146,7 @@
 		},
 		"close": {
 			"title": "{month} est clôturé",
+			"titleOpen": "Clôturer {month}",
 			"done": "Terminé",
 			"notClosed": "Ce mois n'est pas encore clôturé.",
 			"moneyIn": "Entrées",
@@ -1157,7 +1159,9 @@
 			"swept": "Déplacé vers {name}",
 			"envelopeFallback": "Enveloppe",
 			"back": "Retour",
-			"error": "Impossible de charger. Réessaie."
+			"error": "Impossible de charger. Réessaie.",
+			"moneyInSub": "Tous les revenus enregistrés en {month}",
+			"assignedSub": "Report et argent de départ inclus"
 		},
 		"carry": {
 			"title": "Le prendre sur {name} en {month}",

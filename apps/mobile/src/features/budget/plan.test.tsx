@@ -117,7 +117,10 @@ describe("draft bodies", () => {
 describe("Plan the month", () => {
 	it("saves one line over the draft and Undo puts the previous lines back", async () => {
 		const { api, calls } = fakeBudget({
-			reads: { drafts: { month: 202611, open: draft(), saved: null } },
+			reads: {
+				drafts: { month: 202611, open: draft(), saved: null },
+				draftOutcome: { toAssign: { before: ars(0), after: ars(5_000) } },
+			},
 			extra: {
 				saveDraft: async (input: unknown) => {
 					calls.push({ route: "saveDraft", input });
@@ -131,7 +134,9 @@ describe("Plan the month", () => {
 			tree = create(<PlanSheet data={data} onClose={jest.fn()} visible />);
 		});
 		await wait(10);
-		press(tree, "Food");
+		// The left to plan is the server's figure for the draft.
+		expect(calls.some((c) => c.route === "draftOutcome")).toBe(true);
+		press(tree, "Food,");
 		expect(disabled(tree, "Save")).toBe(true);
 		press(tree, "2");
 		press(tree, "5");
@@ -176,7 +181,7 @@ describe("Plan the month", () => {
 			tree = create(<PlanSheet data={data} onClose={jest.fn()} visible />);
 		});
 		await wait(10);
-		press(tree, "Food");
+		press(tree, "Food,");
 		press(tree, "2");
 		press(tree, "5");
 		expect(disabled(tree, "Save")).toBe(true);
@@ -199,7 +204,7 @@ describe("Plan the month", () => {
 			tree = create(<PlanSheet data={data} onClose={jest.fn()} visible />);
 		});
 		await wait(10);
-		press(tree, "Food");
+		press(tree, "Food,");
 		press(tree, "2");
 		expect(disabled(tree, "Save")).toBe(true);
 		act(() => tree.unmount());

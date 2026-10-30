@@ -3,13 +3,13 @@ import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
+import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { Line, Note, SheetBody } from "@/features/write/parts";
+import { Note, SheetBody } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { Button } from "@/ui/Button";
-import { ListRow } from "@/ui/List";
+import { ListRow, SectionHeader } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
-import { Text } from "@/ui/Text";
 import { acknowledgeBody, carryable, carryBody } from "./closeBodies";
 import { nextMonthKey } from "./draftsBody";
 import { monthDate } from "./months";
@@ -108,7 +108,11 @@ export function CloseSheet({
 		<Sheet
 			detents={[detent]}
 			onClose={onClose}
-			title={t("title", { month: name(month) })}
+			title={
+				sum
+					? t("title", { month: name(month) })
+					: t("titleOpen", { month: name(month) })
+			}
 			visible={visible}
 		>
 			<SheetBody>
@@ -151,10 +155,17 @@ export function CloseSheet({
 						{sum ? (
 							<>
 								<View>
-									<Line label={t("moneyIn")} value={money(cash(sum.moneyIn))} />
-									<Line
-										label={t("assigned")}
-										value={money(cash(sum.assigned))}
+									<ListRow
+										accessibilityLabel={`${t("moneyIn")}, ${money(cash(sum.moneyIn))}`}
+										end={<MoneyAmount value={cash(sum.moneyIn)} />}
+										sub={t("moneyInSub", { month: name(month) })}
+										title={t("moneyIn")}
+									/>
+									<ListRow
+										accessibilityLabel={`${t("assigned")}, ${money(cash(sum.assigned))}`}
+										end={<MoneyAmount value={cash(sum.assigned)} />}
+										sub={t("assignedSub")}
+										title={t("assigned")}
 									/>
 								</View>
 								{summary?.lateEntries ? (
@@ -162,24 +173,13 @@ export function CloseSheet({
 								) : null}
 								{over.length > 0 ? (
 									<View>
-										<Text
-											accessibilityRole="header"
-											tone="fg2"
-											variant="small"
-											weight="semibold"
-										>
-											{t("overTitle")}
-										</Text>
+										<SectionHeader title={t("overTitle")} />
 										{over.map((e) => (
 											<ListRow
 												accessibilityLabel={t("takeInstead", {
 													month: nextName,
 												})}
-												end={
-													<Text tabular>
-														{money(cash(e.minor), { sign: "never" })}
-													</Text>
-												}
+												end={<MoneyAmount value={cash(e.minor)} />}
 												key={e.id}
 												onPress={() => setCarrying(e.id)}
 												sub={t("takeInstead", { month: nextName })}
@@ -190,18 +190,16 @@ export function CloseSheet({
 								) : null}
 								{left.length > 0 ? (
 									<View>
-										<Text
-											accessibilityRole="header"
-											tone="fg2"
-											variant="small"
-											weight="semibold"
-										>
-											{t("leftTitle")}
-										</Text>
+										<SectionHeader title={t("leftTitle")} />
 										{left.map((e) => (
-											<Line
+											<ListRow
+												end={
+													<MoneyAmount
+														value={cash(e.returned > 0 ? e.returned : e.swept)}
+													/>
+												}
 												key={e.id}
-												label={`${envelopeName(e.id)}, ${
+												sub={
 													e.returned > 0
 														? t("returned", {
 																pool: tp(data.toAssign.poolName),
@@ -211,10 +209,8 @@ export function CloseSheet({
 																	? envelopeName(e.sweepToId)
 																	: "",
 															})
-												}`}
-												value={money(
-													cash(e.returned > 0 ? e.returned : e.swept),
-												)}
+												}
+												title={envelopeName(e.id)}
 											/>
 										))}
 									</View>

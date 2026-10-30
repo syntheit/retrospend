@@ -61,7 +61,7 @@ export const SHEETS: Record<SheetKind, SheetEntry> = {
 		component: (p) => <TakeBackSheet {...p} />,
 	},
 	afford: {
-		detent: "medium",
+		detent: "large",
 		component: (p) => (
 			<AffordSheet
 				{...p}

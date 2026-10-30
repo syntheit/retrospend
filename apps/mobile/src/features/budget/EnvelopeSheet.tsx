@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { Line, Note, SheetBody } from "@/features/write/parts";
+import { Note, SheetBody } from "@/features/write/parts";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { IconTile } from "@/ui/IconTile";
@@ -11,6 +11,7 @@ import { Menu } from "@/ui/Menu";
 import { ProgressBar } from "@/ui/ProgressBar";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { StatusText, type StatusTone } from "@/ui/StatusText";
+import { Text } from "@/ui/Text";
 import { AssignForm } from "./AssignForm";
 import { CoverForm } from "./CoverForm";
 import { EditForm } from "./EditForm";
@@ -20,6 +21,7 @@ import type { MonthKind } from "./months";
 import { envelopeActions, isLimits, type StatusLine, statusLine } from "./rows";
 import type { BudgetEnvelope, BudgetMonth } from "./source";
 import { TargetForm } from "./TargetForm";
+import { useTargetText } from "./useTargetText";
 import { BackButton } from "./WriteSheet";
 
 export type EnvelopeMode =
@@ -61,6 +63,38 @@ function statusTone(line: StatusLine): StatusTone {
 	}
 }
 
+/** One of the three figures under the bar: a quiet label over the amount, 600. */
+function Figure({
+	label,
+	value,
+	tone = "fg",
+}: {
+	label: string;
+	value: string;
+	tone?: "fg" | "attention";
+}) {
+	return (
+		<View
+			accessibilityLabel={`${label}, ${value}`}
+			accessible
+			style={{ flex: 1, minWidth: 0 }}
+		>
+			<Text numberOfLines={1} tone="fg3" variant="meta">
+				{label}
+			</Text>
+			<Text
+				adjustsFontSizeToFit
+				numberOfLines={1}
+				tabular
+				tone={tone}
+				weight="semibold"
+			>
+				{value}
+			</Text>
+		</View>
+	);
+}
+
 /**
  * One envelope's sheet: a tile, its bar and its numbers, one main action
  * chosen by its status, the other actions in a row, and the rest in a menu.
@@ -88,6 +122,7 @@ export function EnvelopeSheet({
 	const t = useTranslations("mobile.budget.envelope");
 	const tb = useTranslations("mobile.budget");
 	const money = useMoneyText();
+	const targetText = useTargetText();
 	const { space } = useTheme();
 	const [mode, setMode] = useState<EnvelopeMode>(startMode);
 	const id = envelope?.id ?? null;
@@ -155,6 +190,7 @@ export function EnvelopeSheet({
 			assign: t("assign"),
 			move: t("move"),
 		};
+		const target = targetText(e, limits);
 		const secondary: ("assign" | "move")[] = [];
 		if (a.assign && primary !== "assign") secondary.push("assign");
 		if (a.move) secondary.push("move");
@@ -184,9 +220,23 @@ export function EnvelopeSheet({
 					style={{ flexDirection: "row", alignItems: "center", gap: space[3] }}
 				>
 					<IconTile name={categoryIconName(e.name, e.icon)} />
-					{status ? (
-						<StatusText label={statusWords(status)} tone={statusTone(status)} />
-					) : null}
+					<View style={{ flex: 1, minWidth: 0, gap: space[1] }}>
+						{status ? (
+							<StatusText
+								label={statusWords(status)}
+								tone={statusTone(status)}
+							/>
+						) : null}
+						{target ? (
+							<Text
+								numberOfLines={2}
+								tone={target.attention ? "attention" : "fg2"}
+								variant="small"
+							>
+								{target.text}
+							</Text>
+						) : null}
+					</View>
 				</View>
 				{e.spentBasis !== null ? (
 					<ProgressBar
@@ -195,13 +245,17 @@ export function EnvelopeSheet({
 						weight="regular"
 					/>
 				) : null}
-				<View>
-					<Line
+				<View style={{ flexDirection: "row", gap: space[2] }}>
+					<Figure
 						label={limits ? t("limit") : t("assigned")}
 						value={money(e.assigned)}
 					/>
-					<Line label={t("spent")} value={money(e.spent)} />
-					<Line emphasis label={t("left")} value={money(e.left)} />
+					<Figure label={t("spent")} value={money(e.spent)} />
+					<Figure
+						label={t("left")}
+						tone={e.left.minor < 0 ? "attention" : "fg"}
+						value={money(e.left)}
+					/>
 				</View>
 				{kind === "closed" ? <Note>{t("closedHint")}</Note> : null}
 				{primary ? (
@@ -228,7 +282,14 @@ export function EnvelopeSheet({
 								variant="outlined"
 							/>
 						))}
-						{more.length > 0 ? <Menu items={more} label={t("more")} /> : null}
+						{more.length > 0 ? (
+							<Menu
+								accessibilityLabel={t("more")}
+								icon
+								items={more}
+								label={t("more")}
+							/>
+						) : null}
 					</View>
 				) : null}
 			</>
