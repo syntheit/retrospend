@@ -52,9 +52,7 @@ describe("SwitchRow", () => {
 		expect(style.flexShrink).toBe(0);
 		expect(style.width).toBeGreaterThanOrEqual(size.touchMin.phone);
 		expect(style.height).toBeGreaterThan(0);
-		expect(tree.root.findAll((n) => n.type === "NativeSwitch")).toHaveLength(
-			1,
-		);
+		expect(tree.root.findAll((n) => n.type === "NativeSwitch")).toHaveLength(1);
 		act(() => tree.unmount());
 	});
 

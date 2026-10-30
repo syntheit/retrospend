@@ -104,9 +104,7 @@ export function PickerRow<T extends string>({
 }) {
 	return (
 		<ListRow
-			end={
-				<Picker onChange={onChange} options={options} value={value} />
-			}
+			end={<Picker onChange={onChange} options={options} value={value} />}
 			sub={sub}
 			title={
 				<Text numberOfLines={2} weight="normal">

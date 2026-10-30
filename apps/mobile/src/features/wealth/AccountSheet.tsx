@@ -18,7 +18,6 @@ import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { Picker, WheelField } from "@/ui/Picker";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
-import { Text } from "@/ui/Text";
 import { FieldLabel, TextField } from "@/ui/TextField";
 import {
 	ACCOUNT_TYPES,

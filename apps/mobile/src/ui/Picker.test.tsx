@@ -9,10 +9,6 @@ const { act, create } = renderer;
 jest.mock("@/theme", () => ({
 	useTheme: () => require("@retrospend/tokens/theme").light,
 }));
-jest.mock("react-native/Libraries/Utilities/Platform", () => ({
-	OS: "ios",
-	select: (spec: Record<string, unknown>) => spec.ios ?? spec.default,
-}));
 jest.mock("./NativeHost", () => {
 	const React = require("react");
 	return {
@@ -81,6 +77,18 @@ function render(onChange: (value: string) => void) {
 const kind = (tree: { root: Node }, type: string) =>
 	tree.root.findAll((n) => n.type === type);
 
+/** Calls a handler prop of the first node of a type, as the native side would. */
+function fire(
+	tree: { root: Node },
+	type: string,
+	prop: string,
+	...args: unknown[]
+) {
+	const handler = kind(tree, type)[0]?.props[prop];
+	if (typeof handler !== "function") throw new Error(`${type} has no ${prop}`);
+	act(() => handler(...args));
+}
+
 describe("WheelField", () => {
 	it("shows a value row and keeps the wheel in a closed sheet", () => {
 		const tree = render(() => undefined);
@@ -94,14 +102,14 @@ describe("WheelField", () => {
 	it("opens the wheel on press and saves the pick once, on close", () => {
 		const onChange = jest.fn();
 		const tree = render(onChange);
-		act(() => (kind(tree, "RowView")[0]?.props.onPress as () => void)());
+		fire(tree, "RowView", "onPress");
 		expect(kind(tree, "SheetView")[0]?.props.visible).toBe(true);
 		const wheel = kind(tree, "NativePicker")[0];
 		expect(wheel?.props.appearance).toBe("wheel");
-		act(() => (wheel?.props.onValueChange as (v: string) => void)("28"));
-		act(() => (wheel?.props.onValueChange as (v: string) => void)("3"));
+		fire(tree, "NativePicker", "onValueChange", "28");
+		fire(tree, "NativePicker", "onValueChange", "3");
 		expect(onChange).not.toHaveBeenCalled();
-		act(() => (kind(tree, "SheetView")[0]?.props.onClose as () => void)());
+		fire(tree, "SheetView", "onClose");
 		expect(onChange).toHaveBeenCalledTimes(1);
 		expect(onChange).toHaveBeenCalledWith("3");
 		expect(kind(tree, "SheetView")[0]?.props.visible).toBe(false);
@@ -111,8 +119,8 @@ describe("WheelField", () => {
 	it("does not save when the sheet closes on the same day", () => {
 		const onChange = jest.fn();
 		const tree = render(onChange);
-		act(() => (kind(tree, "RowView")[0]?.props.onPress as () => void)());
-		act(() => (kind(tree, "SheetView")[0]?.props.onClose as () => void)());
+		fire(tree, "RowView", "onPress");
+		fire(tree, "SheetView", "onClose");
 		expect(onChange).not.toHaveBeenCalled();
 		act(() => tree.unmount());
 	});
