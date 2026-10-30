@@ -54,7 +54,8 @@ export function SplitSummary({
  * Spread, Exclude, Note and Location, always shown at the foot of the main
  * step, with no toggle, each under its own label. There are no section
  * headings: the labels say what each row is, and the headings would push the
- * rows below the keypad. A split keeps its note only, as on the web.
+ * rows below the keypad. The gaps between the blocks are the tight ones, so
+ * more of the stack sits whole above the amount card before the scroll cuts it. A split keeps its note only, as on the web.
  */
 function Details({
 	draft,
@@ -73,7 +74,7 @@ function Details({
 		...new Set([...SPREAD_MONTHS, ...(draft.spread ? [draft.spread] : [])]),
 	].sort((a, b) => a - b);
 	return (
-		<View style={{ gap: space[4] }}>
+		<View style={{ gap: space[3] }}>
 			{personal ? (
 				<ListGroup form>
 					<GroupItem>
@@ -192,7 +193,7 @@ export function ExpenseFields({
 	}
 
 	return (
-		<View style={{ gap: space[4] }}>
+		<View style={{ gap: space[3] }}>
 			{!editing && people.length > 0 ? (
 				<FaceRow
 					onToggle={togglePerson}
