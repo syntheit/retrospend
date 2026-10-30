@@ -149,11 +149,12 @@ describe("sheet registry", () => {
 
 describe("envelope sheet", () => {
 	it("leads with Cover when the envelope is over, then the others in a row", () => {
+		// The menu sits in the header row, before the actions.
 		expect(buttons(envelope("OVERSPENT"), "open")).toEqual([
+			["More", undefined],
 			["Cover", "filled"],
 			["Assign money", "outlined"],
 			["Move money", "outlined"],
-			["More", undefined],
 		]);
 	});
 
@@ -161,9 +162,9 @@ describe("envelope sheet", () => {
 		expect(
 			buttons(envelope("NO_TARGET", { left: ars(1_000) }), "open"),
 		).toEqual([
+			["More", undefined],
 			["Assign money", "filled"],
 			["Move money", "outlined"],
-			["More", undefined],
 		]);
 	});
 
