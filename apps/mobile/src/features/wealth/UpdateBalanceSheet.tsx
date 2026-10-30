@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
@@ -183,11 +183,16 @@ export function UpdateBalanceSheet({
 		<Sheet
 			detents={UPDATE_BALANCE_DETENTS}
 			footer={
-				<Button
-					disabled={!ready || flow.committing}
-					label={flow.committing ? common("saving") : t("submit")}
-					onPress={submit}
-				/>
+				<>
+					{Platform.OS === "android" ? (
+						<Button label={common("cancel")} onPress={onClose} variant="text" />
+					) : null}
+					<Button
+						disabled={!ready || flow.committing}
+						label={flow.committing ? common("saving") : t("submit")}
+						onPress={submit}
+					/>
+				</>
 			}
 			onClose={onClose}
 			title={t("title")}

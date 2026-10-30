@@ -1,6 +1,12 @@
 import type { ErrorReportInput } from "@retrospend/api-contract";
 import { type ReactNode, useEffect, useState } from "react";
-import { Image, ScrollView, useWindowDimensions, View } from "react-native";
+import {
+	Image,
+	Platform,
+	ScrollView,
+	useWindowDimensions,
+	View,
+} from "react-native";
 import { useLocale, useTranslations } from "use-intl";
 import { useServerBaseUrl } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
@@ -85,6 +91,7 @@ export function FeedbackSheet({
 	screen: string | undefined;
 }) {
 	const t = useTranslations("mobile.feedback");
+	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const toast = useToast();
 	const locale = useLocale();
@@ -198,11 +205,16 @@ export function FeedbackSheet({
 		<Sheet
 			detents={["large"]}
 			footer={
-				<Button
-					disabled={busy || text === ""}
-					label={busy ? t("sending") : t("send")}
-					onPress={() => void send()}
-				/>
+				<>
+					{Platform.OS === "android" ? (
+						<Button label={tc("cancel")} onPress={close} variant="text" />
+					) : null}
+					<Button
+						disabled={busy || text === ""}
+						label={busy ? t("sending") : t("send")}
+						onPress={() => void send()}
+					/>
+				</>
 			}
 			onClose={close}
 			title={t("title")}

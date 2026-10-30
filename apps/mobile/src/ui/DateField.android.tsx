@@ -1,20 +1,21 @@
-import { DatePickerDialog, Text, TextButton } from "@expo/ui/jetpack-compose";
-import { semantics } from "@expo/ui/jetpack-compose/modifiers";
+import { DatePickerDialog } from "@expo/ui/jetpack-compose";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { dayOfPicker, pickerDate } from "@/features/entry/dates";
 import { useTheme } from "@/theme";
 import { DateQuickDays } from "./DateQuickDays";
+import { NavEnd } from "./List";
 import { NativeHost } from "./NativeHost";
 import { Text as AppText } from "./Text";
 import type { DateFieldProps } from "./types";
 
 /**
- * A labeled row whose day opens the Material 3 date picker dialog. The
- * dialog counts days from UTC midnight, so the day goes in and out on the
- * UTC clock.
+ * A labeled row whose day opens the Material 3 date picker dialog. The day
+ * reads as every other value row does, in fg-2 with a chevron, and the whole
+ * row opens the dialog. The dialog counts days from UTC midnight, so the day
+ * goes in and out on the UTC clock.
  */
 function DateRow({
 	label,
@@ -31,24 +32,23 @@ function DateRow({
 		? format.dateTime(pickerDate(value, "local"), { dateStyle: "medium" })
 		: (placeholder ?? tc("pickDate"));
 	return (
-		<View
-			style={{
-				minHeight: size.touchMin.phone,
-				flexDirection: "row",
-				alignItems: "center",
-				justifyContent: "space-between",
-				gap: space[3],
-			}}
-		>
-			<AppText>{label}</AppText>
-			<NativeHost>
-				<TextButton
-					modifiers={[semantics({ contentDescription: `${label}, ${shown}` })]}
-					onClick={() => setOpen(true)}
-				>
-					<Text>{shown}</Text>
-				</TextButton>
-			</NativeHost>
+		<View>
+			<Pressable
+				accessibilityLabel={`${label}, ${shown}`}
+				accessibilityRole="button"
+				android_ripple={{ color: color.raised }}
+				onPress={() => setOpen(true)}
+				style={{
+					minHeight: size.touchMin.phone,
+					flexDirection: "row",
+					alignItems: "center",
+					justifyContent: "space-between",
+					gap: space[3],
+				}}
+			>
+				<AppText>{label}</AppText>
+				<NavEnd value={shown} />
+			</Pressable>
 			{open ? (
 				<NativeHost>
 					<DatePickerDialog

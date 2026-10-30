@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import { appBuild } from "@/lib/appVersion";
@@ -7,7 +7,7 @@ import { useTheme } from "@/theme";
 import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListRow, SectionHeader } from "@/ui/List";
-import { Picker, type PickerOption } from "@/ui/Picker";
+import { Picker, type PickerOption, PickerValueRow } from "@/ui/Picker";
 import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
@@ -86,8 +86,9 @@ export function PageState({
 
 /**
  * A setting with a menu of choices: the label (and what it means, under it)
- * on the left, the system menu picker at the end. A change saves at once. A
- * long label wraps to a second line instead of cutting off.
+ * on the left, the system menu picker at the end. On Android the end is the
+ * value and a chevron, and a press opens an M3 dropdown. A change saves at
+ * once. A long label wraps to a second line instead of cutting off.
  */
 export function PickerRow<T extends string>({
 	label,
@@ -102,6 +103,17 @@ export function PickerRow<T extends string>({
 	value: T;
 	onChange: (value: T) => void;
 }) {
+	if (Platform.OS === "android") {
+		return (
+			<PickerValueRow
+				label={label}
+				onChange={onChange}
+				options={options}
+				sub={sub}
+				value={value}
+			/>
+		);
+	}
 	return (
 		<ListRow
 			end={<Picker onChange={onChange} options={options} value={value} />}

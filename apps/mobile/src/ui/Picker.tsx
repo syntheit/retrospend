@@ -7,6 +7,7 @@ import { ListRow, NavEnd } from "./List";
 import { NativeHost } from "./NativeHost";
 import { Sheet } from "./Sheet";
 import { Text } from "./Text";
+import { ValueMenu } from "./ValueMenu";
 
 export interface PickerOption<T extends string> {
 	value: T;
@@ -45,6 +46,54 @@ export function Picker<T extends string>({
 				))}
 			</UniversalPicker>
 		</NativeHost>
+	);
+}
+
+/**
+ * Android's value row for a choice from a list: the label (and what it means
+ * under it) on the left, the value and a chevron in fg-2 on the right, and a
+ * press opens an M3 dropdown under the value, as Currency opens its picker.
+ * The M3 exposed dropdown field squeezed the label to a third of the row.
+ */
+export function PickerValueRow<T extends string>({
+	label,
+	sub,
+	options,
+	value,
+	onChange,
+}: {
+	label: string;
+	sub?: string;
+	options: PickerOption<T>[];
+	value: T;
+	onChange: (value: T) => void;
+}) {
+	const [open, setOpen] = useState(false);
+	const shown = options.find((o) => o.value === value)?.label ?? value;
+	return (
+		<ListRow
+			accessibilityLabel={`${label}, ${shown}`}
+			end={
+				<ValueMenu
+					items={options.map((option) => ({
+						id: option.value,
+						label: option.label,
+						onPress: () => onChange(option.value),
+					}))}
+					open={open}
+					setOpen={setOpen}
+				>
+					<NavEnd value={shown} />
+				</ValueMenu>
+			}
+			onPress={() => setOpen(true)}
+			sub={sub}
+			title={
+				<Text numberOfLines={2} weight="normal">
+					{label}
+				</Text>
+			}
+		/>
 	);
 }
 
@@ -117,8 +166,8 @@ function WheelSheet<T extends string>({
  * A choice from a short run of numbers (the day of the month, 1 to 28), one
  * control for every place that asks. On iOS the value opens the system wheel
  * in a sheet; the wheel is never drawn inline, where it is a 200 point drum
- * in the middle of a form. Android has no wheel, so it keeps the M3 dropdown
- * (Material 3).
+ * in the middle of a form. Android has no wheel, so the row opens an M3
+ * dropdown of the numbers (Material 3) and the chip keeps the M3 field.
  * - `row`: a value row in an inset group, the label on the left and the
  *   value and chevron in fg-2 on the right.
  * - `chip`: a trigger chip under a field label in a flat form.
@@ -144,6 +193,16 @@ export function WheelField<T extends string>({
 	if (dropdown && variant === "chip") {
 		return <Picker onChange={onChange} options={options} value={value} />;
 	}
+	if (dropdown) {
+		return (
+			<PickerValueRow
+				label={label}
+				onChange={onChange}
+				options={options}
+				value={value}
+			/>
+		);
+	}
 	return (
 		<>
 			{variant === "chip" ? (
@@ -156,14 +215,8 @@ export function WheelField<T extends string>({
 			) : (
 				<ListRow
 					accessibilityLabel={spoken}
-					end={
-						dropdown ? (
-							<Picker onChange={onChange} options={options} value={value} />
-						) : (
-							<NavEnd value={shown} />
-						)
-					}
-					onPress={dropdown ? undefined : () => setOpen(true)}
+					end={<NavEnd value={shown} />}
+					onPress={() => setOpen(true)}
 					title={
 						<Text numberOfLines={2} weight="normal">
 							{label}
@@ -171,16 +224,14 @@ export function WheelField<T extends string>({
 					}
 				/>
 			)}
-			{dropdown ? null : (
-				<WheelSheet
-					onChange={onChange}
-					onClose={() => setOpen(false)}
-					options={options}
-					title={label}
-					value={value}
-					visible={open}
-				/>
-			)}
+			<WheelSheet
+				onChange={onChange}
+				onClose={() => setOpen(false)}
+				options={options}
+				title={label}
+				value={value}
+				visible={open}
+			/>
 		</>
 	);
 }
