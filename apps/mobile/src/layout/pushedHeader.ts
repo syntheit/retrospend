@@ -21,6 +21,16 @@ export function pushedHeader(
 }
 
 /**
+ * The options of the tabs screen in the root stack. It draws no header, but
+ * the system labels the back button of a screen pushed over it with this
+ * screen's title, and with none it falls back to the route name, "(tabs)".
+ * The title is the word Back, so a page pushed from a tab reads "< Back".
+ */
+export function tabsScreenOptions(back: string) {
+	return { title: back } as const;
+}
+
+/**
  * The pages under Settings, by route name in the root stack. They sit in the
  * root stack, not in a stack of their own: the first screen of a nested stack
  * has nothing to go back to inside it, so the system draws no back button
