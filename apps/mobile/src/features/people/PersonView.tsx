@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Share, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -22,8 +22,9 @@ import { useToast } from "@/ui/Toast";
 import { isApproximate, sideOf } from "./groups";
 import { useNetHeroText } from "./NetAmount";
 import { type PersonAction, PersonActions } from "./PersonActions";
+import { PersonLedger } from "./PersonLedger";
 import { PersonNeeds } from "./PersonNeeds";
-import { PaymentRow, ScopeRow, SharedRow } from "./PersonSections";
+import { ScopeRow } from "./PersonSections";
 import { type ReviewNeed, ReviewSheet } from "./ReviewSheet";
 import type { PersonRef } from "./source";
 import { useLedgerMore } from "./useLedgerMore";
@@ -52,7 +53,7 @@ export function PersonView({
 	const toast = useToast();
 	const add = useOptionalAddEntry();
 	const { api } = useSession();
-	const { space } = useTheme();
+	const { color, size, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const { state, reload } = usePerson(person);
 	const [settling, setSettling] = useState(startSettling);
@@ -90,10 +91,14 @@ export function PersonView({
 	const side = sideOf(page.net, page.parts);
 	const open = page.parts.filter((p) => p.amount.minor !== 0);
 	const rows = ledger.rows ?? page.rows;
-	const remindable = identity.onRetrospend && side === "owesYou";
+	const remindable = side === "owesYou";
 	const net = open.length > 1;
 	const meta = [
-		identity.username ? `@${identity.username}` : null,
+		identity.onRetrospend
+			? identity.username
+				? `@${identity.username}`
+				: null
+			: t("notOnRetrospend"),
 		page.stats.since
 			? t("since", {
 					date: format.dateTime(new Date(`${page.stats.since}T12:00:00`), {
@@ -107,6 +112,29 @@ export function PersonView({
 	].filter(Boolean);
 
 	async function remind() {
+		// Someone not on Retrospend has no app to nudge: the share sheet opens
+		// a message you send yourself.
+		if (!identity.onRetrospend) {
+			const first = identity.name.split(/\s+/)[0] ?? identity.name;
+			try {
+				await Share.share({
+					message: t("remindMessage", {
+						name: first,
+						amount: open
+							.map((p) =>
+								money({
+									minor: Math.abs(p.amount.minor),
+									currency: p.amount.currency,
+								}),
+							)
+							.join(" + "),
+					}),
+				});
+			} catch {
+				toast.show({ message: t("remindFailed") });
+			}
+			return;
+		}
 		try {
 			await api?.people.remind(
 				{ type: person.type, id: person.id },
@@ -174,7 +202,23 @@ export function PersonView({
 						paddingHorizontal: space[4],
 					}}
 				>
-					{face ? <Avatar face={face} size="xxl" /> : null}
+					{face ? (
+						identity.onRetrospend ? (
+							<Avatar face={face} size="xxl" />
+						) : (
+							<View
+								style={{
+									borderRadius: size.avatar.xxl,
+									borderWidth: 1,
+									borderStyle: "dashed",
+									borderColor: color.lineStrong,
+									padding: space[1],
+								}}
+							>
+								<Avatar face={face} size="xxl" />
+							</View>
+						)
+					) : null}
 					<Text
 						accessibilityRole="header"
 						style={{ textAlign: "center" }}
@@ -243,29 +287,16 @@ export function PersonView({
 				</>
 			) : null}
 
-			{page.payments.length > 0 ? (
-				<>
-					<SectionHeader title={t("payments")} />
-					<ListGroup>
-						{page.payments.map((payment) => (
-							<PaymentRow key={payment.id} payment={payment} />
-						))}
-					</ListGroup>
-				</>
-			) : null}
-
-			<SectionHeader title={t("between")} />
-			{rows.length === 0 ? (
-				<Text style={{ paddingHorizontal: space[4] }} tone="fg2" variant="body">
-					{t("betweenEmpty")}
-				</Text>
-			) : (
-				<ListGroup>
-					{rows.map((row) => (
-						<SharedRow key={row.id} row={row} />
-					))}
-				</ListGroup>
-			)}
+			<PersonLedger
+				complete={
+					ledger.rows !== null
+						? !ledger.hasMore
+						: page.rowCount <= page.rows.length
+				}
+				firstName={identity.name.split(/\s+/)[0] ?? identity.name}
+				payments={page.payments}
+				rows={rows}
+			/>
 			{ledger.rows === null && page.rowCount > page.rows.length ? (
 				<LinkButton
 					label={t("showAll", { count: page.rowCount })}

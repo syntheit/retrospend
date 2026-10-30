@@ -21,6 +21,7 @@ export function PersonNeeds({
 	if (!first) return null;
 	return (
 		<NeedsCard
+			inline
 			needs={page.needs}
 			onPress={() =>
 				first.kind === "confirmPayment" ? onConfirm(first) : onReview(first)

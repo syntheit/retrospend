@@ -2,11 +2,16 @@ import { router, Stack } from "expo-router";
 import { type ReactNode, useMemo, useState } from "react";
 import { FlatList, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { ProjectCard } from "@/features/projects/ProjectCard";
 import { ProjectRow } from "@/features/projects/ProjectRow";
 import { ProjectView } from "@/features/projects/ProjectView";
-import { groupProjects, matchesProject } from "@/features/projects/source";
+import {
+	groupProjects,
+	justBack,
+	matchesProject,
+} from "@/features/projects/source";
 import { useProjectList } from "@/features/projects/useProjects";
-import { projectRoute } from "@/layout/destinations";
+import { PROJECTS_APART } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
@@ -15,8 +20,25 @@ import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { ListDetail } from "@/ui/ListDetail";
 import { Screen, useAddInset } from "@/ui/Screen";
 
-function openProject(id: string) {
-	router.push(projectRoute(id));
+/** The phone's today as a YYYY-MM-DD day; the list carries no server day. */
+function todayDay(): string {
+	const now = new Date();
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/** Opens a project; the name shows in the title while it loads, and `settle` opens Settle all. */
+function openProject(project: { id: string; name: string }, settle = false) {
+	const params = {
+		id: project.id,
+		name: project.name,
+		...(settle ? { settle: "1" } : {}),
+	};
+	router.push(
+		PROJECTS_APART
+			? { pathname: "/projects/[id]", params }
+			: { pathname: "/people/project/[id]", params },
+	);
 }
 
 /**
@@ -34,7 +56,7 @@ export function ProjectsList({
 	bar?: ReactNode;
 }) {
 	const t = useTranslations("mobile.projects");
-	const { color } = useTheme();
+	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const inset = useAddInset();
 	const searchRef = useSearchShortcut(sharedQuery === undefined);
@@ -44,10 +66,17 @@ export function ProjectsList({
 	const [selected, setSelected] = useState<string | null>(null);
 
 	const items = state.status === "ready" ? state.data.items : null;
-	const sections = useMemo(
-		() =>
-			items ? groupProjects(items.filter((p) => matchesProject(p, query))) : [],
+	const today = todayDay();
+	const shown = useMemo(
+		() => (items ? items.filter((p) => matchesProject(p, query)) : []),
 		[items, query],
+	);
+	// Layout A: the project you just came back from leads as the hero, the
+	// other active ones are cover cards, archived ones stay compact rows.
+	const hero = useMemo(() => justBack(shown, todayDay()), [shown]);
+	const sections = useMemo(
+		() => groupProjects(shown.filter((p) => p !== hero)),
+		[shown, hero],
 	);
 
 	const empty =
@@ -76,6 +105,21 @@ export function ProjectsList({
 					{state.status === "ready" ? (
 						<StaleNote since={state.staleSince} />
 					) : null}
+					{hero ? (
+						<View style={{ paddingTop: space[4] }}>
+							<ProjectCard
+								hero
+								onPress={() =>
+									listDetail ? setSelected(hero.id) : openProject(hero)
+								}
+								onSettle={() =>
+									listDetail ? setSelected(hero.id) : openProject(hero, true)
+								}
+								project={hero}
+								today={today}
+							/>
+						</View>
+					) : null}
 				</View>
 			}
 			onRefresh={reload}
@@ -88,18 +132,33 @@ export function ProjectsList({
 							group.kind === "active" ? t("group.active") : String(group.year)
 						}
 					/>
-					<ListGroup>
-						{group.projects.map((project) => (
-							<ProjectRow
-								key={project.id}
-								onPress={() =>
-									listDetail ? setSelected(project.id) : openProject(project.id)
-								}
-								project={project}
-								selected={listDetail && selected === project.id}
-							/>
-						))}
-					</ListGroup>
+					{group.kind === "active" ? (
+						<View style={{ gap: space[3] }}>
+							{group.projects.map((project) => (
+								<ProjectCard
+									key={project.id}
+									onPress={() =>
+										listDetail ? setSelected(project.id) : openProject(project)
+									}
+									project={project}
+									today={today}
+								/>
+							))}
+						</View>
+					) : (
+						<ListGroup>
+							{group.projects.map((project) => (
+								<ProjectRow
+									key={project.id}
+									onPress={() =>
+										listDetail ? setSelected(project.id) : openProject(project)
+									}
+									project={project}
+									selected={listDetail && selected === project.id}
+								/>
+							))}
+						</ListGroup>
+					)}
 				</View>
 			)}
 			style={{ backgroundColor: color.bg }}

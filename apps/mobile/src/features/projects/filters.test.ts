@@ -1,5 +1,5 @@
 import type { NeedsItem } from "@/features/people/source";
-import { filterExpenses, payers, projectNeeds } from "./filters";
+import { categoriesOf, filterExpenses, payers, projectNeeds } from "./filters";
 import type { ProjectExpense } from "./source";
 
 const expense = (
@@ -36,6 +36,39 @@ describe("filterExpenses", () => {
 		expect(
 			filterExpenses(list, { toReview: false, paidBy: "me" }).map((e) => e.id),
 		).toEqual(["b"]);
+	});
+});
+
+describe("categories", () => {
+	const withCategory = (id: string, category: string | null) =>
+		({
+			id,
+			category: category
+				? { id: category, name: category.toUpperCase() }
+				: null,
+		}) as ProjectExpense;
+	const rows = [
+		withCategory("a", "food"),
+		withCategory("b", "stay"),
+		withCategory("c", "food"),
+		withCategory("d", null),
+	];
+
+	it("lists each category once, in order", () => {
+		expect(categoriesOf(rows)).toEqual([
+			{ id: "food", name: "FOOD" },
+			{ id: "stay", name: "STAY" },
+		]);
+	});
+
+	it("keeps one category's expenses", () => {
+		expect(
+			filterExpenses(rows, {
+				toReview: false,
+				paidBy: null,
+				category: "food",
+			}).map((e) => e.id),
+		).toEqual(["a", "c"]);
 	});
 });
 

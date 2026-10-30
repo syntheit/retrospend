@@ -3,8 +3,9 @@ import { ProjectView } from "@/features/projects/ProjectView";
 import { PROJECTS_APART } from "@/layout/destinations";
 
 export default function ProjectScreen() {
-	const { id, settle } = useLocalSearchParams<{
+	const { id, name, settle } = useLocalSearchParams<{
 		id: string;
+		name?: string;
 		settle?: string;
 	}>();
 	// Phones keep projects inside the People tab.
@@ -13,10 +14,14 @@ export default function ProjectScreen() {
 			<Redirect
 				href={{
 					pathname: "/people/project/[id]",
-					params: settle ? { id, settle } : { id },
+					params: {
+						id,
+						...(name ? { name } : {}),
+						...(settle ? { settle } : {}),
+					},
 				}}
 			/>
 		);
 	}
-	return <ProjectView id={id} startSettling={settle === "1"} />;
+	return <ProjectView id={id} name={name} startSettling={settle === "1"} />;
 }

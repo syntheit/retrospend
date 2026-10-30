@@ -152,6 +152,7 @@ export function PeopleList({
 									/>
 								))}
 								<Menu
+									accessibilityLabel={t("sortBy", { sort: t(`sort.${sort}`) })}
 									active={sort !== "balance"}
 									chip
 									items={SORTS.map((id) => ({
@@ -159,7 +160,9 @@ export function PeopleList({
 										label: t(`sort.${id}`),
 										onPress: () => setSort(id),
 									}))}
-									label={t("sortBy", { sort: t(`sort.${sort}`) })}
+									label={
+										sort === "balance" ? t("sortShort") : t(`sort.${sort}`)
+									}
 								/>
 							</ScrollView>
 						</View>

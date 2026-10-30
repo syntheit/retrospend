@@ -69,7 +69,6 @@ export function BalanceBar({
 				// A sliver of a share stays a dot as wide as the bar is tall.
 				minWidth: space[3],
 				height: THIN.balance,
-				borderRadius: radius.chip,
 				overflow: "hidden",
 				backgroundColor:
 					s.direction === "owed"
@@ -139,11 +138,18 @@ export function BalanceBar({
 			</View>
 			<View
 				onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-				style={{ flexDirection: "row", gap: THIN.gap, height: THIN.balance }}
+				style={{
+					flexDirection: "row",
+					gap: THIN.gap,
+					height: THIN.balance,
+					// One pill clips every segment; the segments themselves are square.
+					borderRadius: radius.chip,
+					overflow: "hidden",
+				}}
 			>
 				{owed.map(segment)}
 				{owe.length > 0 && owed.length > 0 ? (
-					<View style={{ width: space[3] }} />
+					<View style={{ width: space[1] }} />
 				) : null}
 				{owe.map(segment)}
 			</View>
