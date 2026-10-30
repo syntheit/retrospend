@@ -197,6 +197,7 @@ export function WealthMoveSheet({
 									{ value: "moved", label: t("moved") },
 									{ value: "count", label: t("count") },
 								]}
+								stretch
 								value={mode}
 							/>
 							<Note>{t(mode === "moved" ? "about.moved" : "about.count")}</Note>

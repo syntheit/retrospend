@@ -103,6 +103,7 @@ export function WelcomeBackSheet({
 					{ value: "SET_HAVE_NOW", label: t("haveNow") },
 					{ value: "START_FRESH", label: t("startFresh") },
 				]}
+				stretch
 				value={choice}
 			/>
 			<Note>{t(`about.${choice}`)}</Note>

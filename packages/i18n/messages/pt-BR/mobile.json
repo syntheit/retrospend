@@ -2504,6 +2504,8 @@
 		"count": "{count, plural, one {# despesa recorrente} other {# despesas recorrentes}}",
 		"autoPayOn": "Pagamento automático ativado",
 		"autoPayOff": "Pagamento automático desativado",
+		"autoPayFilter": "Pagamento automático",
+		"autoPayAny": "Qualquer",
 		"details": "Detalhes",
 		"make": {
 			"title": "Tornar recorrente",

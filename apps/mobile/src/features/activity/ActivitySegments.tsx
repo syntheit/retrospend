@@ -1,14 +1,14 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
-import { Segmented } from "@/ui/Segmented";
+import { UnderlineTabs } from "@/ui/UnderlineTabs";
 
 export type ActivitySegment = "expenses" | "recurring";
 
 /**
- * Expenses and Recurring, the parts of Activity (the mockup's tabs under its
- * title). The system segmented control, in the page gutter, at the top of
- * whichever list is showing.
+ * Expenses and Recurring, the parts of Activity: sibling panes, so underline
+ * tabs as on People and Projects (the mockup's tabs under its title), at the
+ * top of whichever list is showing.
  */
 export function ActivitySegments({
 	value,
@@ -18,17 +18,16 @@ export function ActivitySegments({
 	onChange: (next: ActivitySegment) => void;
 }) {
 	const t = useTranslations("mobile.activity.segment");
-	const { space } = useTheme();
+	const { color, space } = useTheme();
 	return (
-		<View style={{ paddingHorizontal: space[4], paddingVertical: space[2] }}>
-			<Segmented<ActivitySegment>
+		<View style={{ paddingBottom: space[2], backgroundColor: color.bg }}>
+			<UnderlineTabs<ActivitySegment>
 				accessibilityLabel={t("label")}
 				onChange={onChange}
-				options={[
+				tabs={[
 					{ value: "expenses", label: t("expenses") },
 					{ value: "recurring", label: t("recurring") },
 				]}
-				stretch
 				value={value}
 			/>
 		</View>
