@@ -2229,9 +2229,7 @@
 			"openSignUp": "Tout le monde peut s'inscrire",
 			"unread": "{count} non lus",
 			"noUnread": "Rien de non lu",
-			"settings": "Fonctions, confidentialité, IA",
-			"web": "Ouvrir l'administration web",
-			"webNote": "E-mail, sauvegardes, journaux, usage de l'IA et réinitialisations de mot de passe restent sur le web."
+			"settings": "Fonctions, confidentialité, IA"
 		},
 		"users": {
 			"title": "Utilisateurs",
@@ -2280,7 +2278,13 @@
 			"disabled": "{name} est désactivé",
 			"enabled": "{name} est activé",
 			"deleted": "{name} est supprimé",
-			"error": "Impossible de le faire. Réessayez."
+			"error": "Impossible de le faire. Réessayez.",
+			"typeEmail": "Saisissez {email} pour confirmer",
+			"undoChanged": "{name} a été modifié depuis, rien n'a donc été annulé",
+			"stepUp": {
+				"disable": "Confirmez que c'est vous pour désactiver ce compte",
+				"delete": "Confirmez que c'est vous pour supprimer ce compte"
+			}
 		},
 		"invites": {
 			"title": "Codes d'invitation",

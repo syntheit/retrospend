@@ -2229,9 +2229,7 @@
 			"openSignUp": "Jeder kann sich registrieren",
 			"unread": "{count} ungelesen",
 			"noUnread": "Nichts Ungelesenes",
-			"settings": "Funktionen, Datenschutz, KI",
-			"web": "Web-Verwaltung öffnen",
-			"webNote": "E-Mail, Backups, Protokolle, KI-Nutzung und Passwort-Resets bleiben im Web."
+			"settings": "Funktionen, Datenschutz, KI"
 		},
 		"users": {
 			"title": "Nutzer",
@@ -2280,7 +2278,13 @@
 			"disabled": "{name} ist deaktiviert",
 			"enabled": "{name} ist aktiviert",
 			"deleted": "{name} ist gelöscht",
-			"error": "Das hat nicht geklappt. Versuch es erneut."
+			"error": "Das hat nicht geklappt. Versuch es erneut.",
+			"typeEmail": "Gib {email} zur Bestätigung ein",
+			"undoChanged": "{name} wurde inzwischen geändert, daher wurde nichts rückgängig gemacht",
+			"stepUp": {
+				"disable": "Bestätige, dass du es bist, um dieses Konto zu deaktivieren",
+				"delete": "Bestätige, dass du es bist, um dieses Konto zu löschen"
+			}
 		},
 		"invites": {
 			"title": "Einladungscodes",

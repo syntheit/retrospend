@@ -2229,9 +2229,7 @@
 			"openSignUp": "Anyone can sign up",
 			"unread": "{count} unread",
 			"noUnread": "Nothing unread",
-			"settings": "Features, privacy, AI",
-			"web": "Open the web admin",
-			"webNote": "Email, backups, logs, AI usage and password resets stay on the web."
+			"settings": "Features, privacy, AI"
 		},
 		"users": {
 			"title": "Users",
@@ -2280,7 +2278,13 @@
 			"disabled": "{name} is disabled",
 			"enabled": "{name} is enabled",
 			"deleted": "{name} is deleted",
-			"error": "Couldn't do that. Try again."
+			"error": "Couldn't do that. Try again.",
+			"typeEmail": "Type {email} to confirm",
+			"undoChanged": "{name} was changed since, so nothing was undone",
+			"stepUp": {
+				"disable": "Confirm it's you to disable this account",
+				"delete": "Confirm it's you to delete this account"
+			}
 		},
 		"invites": {
 			"title": "Invite codes",

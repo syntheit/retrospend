@@ -2229,9 +2229,7 @@
 			"openSignUp": "Cualquiera puede registrarse",
 			"unread": "{count} sin leer",
 			"noUnread": "Nada sin leer",
-			"settings": "Funciones, privacidad, IA",
-			"web": "Abrir la administración web",
-			"webNote": "El correo, las copias de seguridad, los registros, el uso de IA y los restablecimientos de contraseña siguen en la web."
+			"settings": "Funciones, privacidad, IA"
 		},
 		"users": {
 			"title": "Usuarios",
@@ -2280,7 +2278,13 @@
 			"disabled": "{name} está desactivado",
 			"enabled": "{name} está activado",
 			"deleted": "{name} fue eliminado",
-			"error": "No se pudo hacer. Probá de nuevo."
+			"error": "No se pudo hacer. Probá de nuevo.",
+			"typeEmail": "Escribí {email} para confirmar",
+			"undoChanged": "{name} cambió desde entonces, así que no se deshizo nada",
+			"stepUp": {
+				"disable": "Confirmá que sos vos para desactivar esta cuenta",
+				"delete": "Confirmá que sos vos para eliminar esta cuenta"
+			}
 		},
 		"invites": {
 			"title": "Códigos de invitación",

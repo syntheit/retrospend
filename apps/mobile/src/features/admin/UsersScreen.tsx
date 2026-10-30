@@ -59,7 +59,7 @@ export function UsersScreen() {
 	const ts = useTranslations("mobile.admin.users.status");
 	const tf = useTranslations("mobile.admin.users.filter");
 	const { space } = useTheme();
-	const { state: session } = useSession();
+	const { state: session, api } = useSession();
 	const myId = session.status === "signedIn" ? (session.me?.id ?? null) : null;
 	const { state, reload } = useAdminRead((api) =>
 		readAllUsers((input) => api.admin.listUsers(input)),
@@ -150,6 +150,13 @@ export function UsersScreen() {
 				key={open?.id ?? "none"}
 				onChanged={reload}
 				onClose={() => setOpenId(null)}
+				readUser={async (id) => {
+					if (!api) return null;
+					const fresh = await readAllUsers((input) =>
+						api.admin.listUsers(input),
+					);
+					return fresh.find((user) => user.id === id) ?? null;
+				}}
 				user={open}
 			/>
 		</>

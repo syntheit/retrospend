@@ -1,28 +1,18 @@
 import { router } from "expo-router";
-import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useServerConnection } from "@/auth/server-connection";
-import { useTheme } from "@/theme";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow } from "@/ui/List";
-import { GroupNote, NavEnd, PageState, SettingsPage } from "../settings/parts";
-import { openWebPage } from "../settings/webPages";
+import { NavEnd, PageState, SettingsPage } from "../settings/parts";
 import { useAdminRead } from "./useAdminRead";
-
-/** The web page the rest of Admin lives on. */
-const WEB_ADMIN = "/admin";
 
 /**
  * Admin, as a list of what an admin can run from the phone: the accounts,
  * the invite codes, the feedback inbox and the server settings. Each row says
- * where it stands. What needs a keyboard or a long table (email, backups, logs,
- * AI usage, password resets) opens the web admin.
+ * where it stands. Nothing else is linked: what the phone does not do is not
+ * offered here.
  */
 export function AdminHub() {
 	const t = useTranslations("mobile.admin");
-	const { space } = useTheme();
-	const { connection } = useServerConnection();
-	const baseUrl = connection.status === "connected" ? connection.baseUrl : null;
 	const { state } = useAdminRead(async (api) => {
 		const [stats, feedback, settings] = await Promise.all([
 			api.admin.stats(),
@@ -77,19 +67,6 @@ export function AdminHub() {
 					title={t("settings.title")}
 				/>
 			</ListGroup>
-			{baseUrl ? (
-				<>
-					<View style={{ height: space[6] }} />
-					<ListGroup>
-						<ListRow
-							end={<NavEnd />}
-							onPress={() => void openWebPage(baseUrl, WEB_ADMIN)}
-							title={t("hub.web")}
-						/>
-					</ListGroup>
-					<GroupNote>{t("hub.webNote")}</GroupNote>
-				</>
-			) : null}
 		</SettingsPage>
 	);
 }

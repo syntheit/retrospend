@@ -2,8 +2,9 @@ import { Alert } from "react-native";
 import type { AdminUser } from "./types";
 import { UserSheet } from "./UserSheet";
 
-// Disabling an account asks first and ends in an Undo toast; your own account
-// shows the facts and no actions.
+// Disabling or deleting an account asks first, then the device (or the typed
+// email when the phone has no lock); disabling ends in an Undo toast that only
+// undoes what is still true; your own account shows the facts and no actions.
 const renderer = require("react-test-renderer");
 const { act, create } = renderer;
 
@@ -26,10 +27,34 @@ jest.mock("@/data/ids", () => ({ newClientId: () => "key-1" }));
 const mockToast = { show: jest.fn(), dismiss: jest.fn() };
 jest.mock("@/ui/Toast", () => ({ useToast: () => mockToast }));
 jest.mock("@/ui/Sheet", () => ({
-	Sheet: ({ children }: { children: unknown }) => children,
+	Sheet: ({ children, footer }: { children: unknown; footer?: unknown }) => (
+		<>
+			{children}
+			{footer}
+		</>
+	),
 	useSheetBodySize: () => ({ height: 600 }),
 }));
 jest.mock("@/ui/Picker", () => ({ Picker: () => null }));
+jest.mock("@/ui/Button", () => {
+	const { Pressable } = require("react-native");
+	return {
+		Button: ({ label, onPress, disabled }: Record<string, unknown>) => (
+			<Pressable
+				accessibilityLabel={label as string}
+				disabled={disabled as boolean}
+				onPress={onPress as () => void}
+			/>
+		),
+	};
+});
+const mockLevel = jest.fn();
+const mockAuth = jest.fn();
+jest.mock("expo-local-authentication", () => ({
+	SecurityLevel: { NONE: 0, SECRET: 1, BIOMETRIC_WEAK: 2, BIOMETRIC_STRONG: 3 },
+	getEnrolledLevelAsync: () => mockLevel(),
+	authenticateAsync: (options: unknown) => mockAuth(options),
+}));
 jest.mock("use-intl", () => {
 	const { loadMessages } = require("@/lib/i18n");
 	const messages = loadMessages("en");
@@ -77,44 +102,61 @@ const row = (tree: { root: TestNode }, title: string) =>
 		(n) => typeof n.props.onPress === "function" && textOf(n).includes(title),
 	)[0];
 
+const gone = { ...sofia, isActive: false } as AdminUser;
+
+async function open(readUser: () => Promise<AdminUser | null>) {
+	const onChanged = jest.fn().mockResolvedValue(undefined);
+	const onClose = jest.fn();
+	let tree!: { root: TestNode; unmount(): void };
+	await act(async () => {
+		tree = create(
+			<UserSheet
+				isMe={false}
+				onChanged={onChanged}
+				onClose={onClose}
+				readUser={readUser}
+				user={sofia}
+			/>,
+		);
+	});
+	return { tree, onChanged, onClose };
+}
+
+async function pressDisableAndConfirm(tree: { root: TestNode }) {
+	const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+	await act(async () => {
+		const press = row(tree, "Disable account")?.props.onPress as
+			| (() => void)
+			| undefined;
+		press?.();
+	});
+	const buttons = alert.mock.calls.at(-1)?.[2] as
+		| { style?: string; onPress?: () => void }[]
+		| undefined;
+	return { alert, buttons };
+}
+
 describe("UserSheet", () => {
 	beforeEach(() => {
 		mockDisable.mockReset().mockResolvedValue({ ok: true });
 		mockEnable.mockReset().mockResolvedValue({ ok: true });
+		mockLevel.mockReset().mockResolvedValue(2);
+		mockAuth.mockReset().mockResolvedValue({ success: true });
 		mockToast.show.mockClear();
 	});
 
-	it("asks before disabling, then disables, closes and offers Undo", async () => {
-		const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
-		const onChanged = jest.fn().mockResolvedValue(undefined);
-		const onClose = jest.fn();
-		let tree!: { root: TestNode; unmount(): void };
-		await act(async () => {
-			tree = create(
-				<UserSheet
-					isMe={false}
-					onChanged={onChanged}
-					onClose={onClose}
-					user={sofia}
-				/>,
-			);
-		});
-		await act(async () => {
-			const press = row(tree, "Disable account")?.props.onPress as
-				| (() => void)
-				| undefined;
-			press?.();
-		});
+	it("asks, then the device, before disabling; closes and offers Undo", async () => {
+		const readUser = jest.fn().mockResolvedValue(gone);
+		const { tree, onChanged, onClose } = await open(readUser);
+		const { alert, buttons } = await pressDisableAndConfirm(tree);
 		expect(alert).toHaveBeenCalledTimes(1);
+		expect(mockAuth).not.toHaveBeenCalled();
 		expect(mockDisable).not.toHaveBeenCalled();
 
-		const buttons = alert.mock.calls[0]?.[2] as {
-			style?: string;
-			onPress?: () => void;
-		}[];
 		await act(async () => {
-			buttons.find((b) => b.style === "destructive")?.onPress?.();
+			buttons?.find((b) => b.style === "destructive")?.onPress?.();
 		});
+		expect(mockAuth).toHaveBeenCalledTimes(1);
 		expect(mockDisable).toHaveBeenCalledWith(
 			{ id: "u1" },
 			{ context: { idempotencyKey: "key-1" } },
@@ -130,10 +172,81 @@ describe("UserSheet", () => {
 		await act(async () => {
 			toast.undo.onUndo();
 		});
+		expect(readUser).toHaveBeenCalledWith("u1");
 		expect(mockEnable).toHaveBeenCalledWith(
 			{ id: "u1" },
 			{ context: { idempotencyKey: "key-1" } },
 		);
+		alert.mockRestore();
+		act(() => tree.unmount());
+	});
+
+	it("does not disable when the device check is cancelled", async () => {
+		mockAuth.mockResolvedValue({ success: false });
+		const { tree } = await open(jest.fn());
+		const { alert, buttons } = await pressDisableAndConfirm(tree);
+		await act(async () => {
+			buttons?.find((b) => b.style === "destructive")?.onPress?.();
+		});
+		expect(mockAuth).toHaveBeenCalled();
+		expect(mockDisable).not.toHaveBeenCalled();
+		alert.mockRestore();
+		act(() => tree.unmount());
+	});
+
+	it("leaves the account alone on Undo when someone changed it since", async () => {
+		// The account is active again: it is no longer as the disable left it.
+		const readUser = jest.fn().mockResolvedValue(sofia);
+		const { tree } = await open(readUser);
+		const { alert, buttons } = await pressDisableAndConfirm(tree);
+		await act(async () => {
+			buttons?.find((b) => b.style === "destructive")?.onPress?.();
+		});
+		const toast = mockToast.show.mock.calls.at(-1)?.[0] as {
+			undo: { onUndo: () => void };
+		};
+		mockToast.show.mockClear();
+		await act(async () => {
+			toast.undo.onUndo();
+		});
+		expect(mockEnable).not.toHaveBeenCalled();
+		expect(mockToast.show.mock.calls.at(-1)?.[0]).toEqual({
+			message: "sofia was changed since, so nothing was undone",
+		});
+		alert.mockRestore();
+		act(() => tree.unmount());
+	});
+
+	it("asks for the email when the phone has no screen lock", async () => {
+		mockLevel.mockResolvedValue(0);
+		const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+		const { tree } = await open(jest.fn());
+		await act(async () => {
+			const press = row(tree, "Delete account")?.props.onPress as
+				| (() => void)
+				| undefined;
+			press?.();
+		});
+		await act(async () => {});
+		expect(alert).not.toHaveBeenCalled();
+		expect(mockAuth).not.toHaveBeenCalled();
+
+		const confirm = () =>
+			tree.root.findAll(
+				(n) => n.props.accessibilityLabel === "Delete account",
+			)[0];
+		expect(confirm()?.props.disabled).toBe(true);
+		const input = tree.root.findAll(
+			(n) => typeof n.props.onChangeText === "function",
+		)[0];
+		const change = input?.props.onChangeText as
+			| ((text: string) => void)
+			| undefined;
+		const type = (text: string) => change?.(text);
+		act(() => type("nope@x.io"));
+		expect(confirm()?.props.disabled).toBe(true);
+		act(() => type(" Sofia@Example.com "));
+		expect(confirm()?.props.disabled).toBe(false);
 		alert.mockRestore();
 		act(() => tree.unmount());
 	});
@@ -146,6 +259,7 @@ describe("UserSheet", () => {
 					isMe
 					onChanged={jest.fn()}
 					onClose={jest.fn()}
+					readUser={jest.fn()}
 					user={sofia}
 				/>,
 			);

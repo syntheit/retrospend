@@ -1,6 +1,7 @@
 {
 	"ios": {
 		"NSPhotoLibraryUsageDescription": "O Retrospend usa suas fotos para definir sua foto de perfil.",
-		"NSCameraUsageDescription": "O Retrospend usa a câmera para tirar sua foto de perfil."
+		"NSCameraUsageDescription": "O Retrospend usa a câmera para tirar sua foto de perfil.",
+		"NSFaceIDUsageDescription": "O Retrospend usa o Face ID para confirmar ações de administração."
 	}
 }

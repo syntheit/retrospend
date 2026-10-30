@@ -4,12 +4,15 @@ import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
+import { Button } from "@/ui/Button";
 import { ListGroup, ListRow } from "@/ui/List";
 import { Picker } from "@/ui/Picker";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
+import { TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import { userLabel } from "./rules";
+import { confirmWithDevice, emailMatches, hasDeviceLock } from "./stepUp";
 import type { AdminUser } from "./types";
 import { detailOf } from "./useAdminRead";
 
@@ -33,12 +36,15 @@ export function UserSheet({
 	isMe,
 	onClose,
 	onChanged,
+	readUser,
 }: {
 	user: AdminUser | null;
 	isMe: boolean;
 	onClose: () => void;
 	/** Reads the list again after a change. */
 	onChanged: () => Promise<void>;
+	/** Reads one account fresh from the server (null when it is gone). */
+	readUser: (id: string) => Promise<AdminUser | null>;
 }) {
 	const t = useTranslations("mobile.admin.users");
 	const tc = useTranslations("mobile.common");
@@ -49,6 +55,11 @@ export function UserSheet({
 	const body = useSheetBodySize();
 	const [busy, setBusy] = useState(false);
 	const [ai, setAi] = useState<AiChoice | null>(null);
+	// Phones with no screen lock confirm by typing the account's email.
+	const [confirming, setConfirming] = useState<"disable" | "delete" | null>(
+		null,
+	);
+	const [typed, setTyped] = useState("");
 
 	if (!user) {
 		return (
@@ -89,45 +100,80 @@ export function UserSheet({
 			message: active ? t("enabled", { name }) : t("disabled", { name }),
 			undo: {
 				label: tc("undo"),
-				onUndo: () => {
-					void run(async () => {
-						if (active) await api?.admin.disableUser({ id: person.id }, key());
-						else await api?.admin.enableUser({ id: person.id }, key());
-					}, t("error"));
-				},
+				onUndo: () => void undoActive(active),
 			},
 		});
 	}
 
-	function askDisable() {
-		Alert.alert(t("disableTitle", { name }), t("disableBody"), [
-			{ text: tc("cancel"), style: "cancel" },
-			{
-				text: t("disable"),
-				style: "destructive",
-				onPress: () => void setActive(false),
-			},
-		]);
+	// Undo puts the account back only if it is still as this action left it;
+	// if someone else changed it since, say so and leave it alone.
+	async function undoActive(left: boolean) {
+		let now: AdminUser | null;
+		try {
+			now = await readUser(person.id);
+		} catch {
+			toast.show({ message: t("error") });
+			return;
+		}
+		if (!now || now.isActive !== left) {
+			toast.show({ message: t("undoChanged", { name }) });
+			return;
+		}
+		await run(async () => {
+			if (left) await api?.admin.disableUser({ id: person.id }, key());
+			else await api?.admin.enableUser({ id: person.id }, key());
+		}, t("error"));
 	}
 
-	function askDelete() {
-		Alert.alert(t("deleteTitle", { name }), t("deleteBody"), [
-			{ text: tc("cancel"), style: "cancel" },
-			{
-				text: t("delete"),
-				style: "destructive",
-				onPress: () => {
-					void (async () => {
-						const ok = await run(async () => {
-							await api?.admin.deleteUser({ id: person.id }, key());
-						}, t("error"));
-						if (!ok) return;
-						onClose();
-						toast.show({ message: t("deleted", { name }) });
-					})();
+	async function remove() {
+		const ok = await run(async () => {
+			await api?.admin.deleteUser({ id: person.id }, key());
+		}, t("error"));
+		if (!ok) return;
+		onClose();
+		toast.show({ message: t("deleted", { name }) });
+	}
+
+	// Disabling and deleting need the device's say-so first: the screen lock
+	// (Face ID, Touch ID, passcode, biometric) when the phone has one, else the
+	// account's email typed out.
+	async function begin(kind: "disable" | "delete") {
+		if (!(await hasDeviceLock())) {
+			setTyped("");
+			setConfirming(kind);
+			return;
+		}
+		Alert.alert(
+			kind === "disable"
+				? t("disableTitle", { name })
+				: t("deleteTitle", { name }),
+			kind === "disable" ? t("disableBody") : t("deleteBody"),
+			[
+				{ text: tc("cancel"), style: "cancel" },
+				{
+					text: kind === "disable" ? t("disable") : t("delete"),
+					style: "destructive",
+					onPress: () => {
+						void (async () => {
+							const passed = await confirmWithDevice(
+								t(`stepUp.${kind}`),
+								tc("cancel"),
+							);
+							if (!passed) return;
+							if (kind === "disable") await setActive(false);
+							else await remove();
+						})();
+					},
 				},
-			},
-		]);
+			],
+		);
+	}
+
+	async function confirmTyped() {
+		const kind = confirming;
+		if (!kind || !emailMatches(typed, person.email)) return;
+		if (kind === "disable") await setActive(false);
+		else await remove();
 	}
 
 	function toggleVerified() {
@@ -162,6 +208,41 @@ export function UserSheet({
 			title={label}
 		/>
 	);
+
+	if (confirming) {
+		return (
+			<Sheet
+				detents={["large"]}
+				footer={
+					<Button
+						disabled={busy || !emailMatches(typed, person.email)}
+						label={confirming === "disable" ? t("disable") : t("delete")}
+						onPress={() => void confirmTyped()}
+						variant="danger"
+					/>
+				}
+				onClose={onClose}
+				title={
+					confirming === "disable"
+						? t("disableTitle", { name })
+						: t("deleteTitle", { name })
+				}
+				visible
+			>
+				<View style={{ gap: space[4], paddingBottom: space[4] }}>
+					<Text tone="fg2">
+						{confirming === "disable" ? t("disableBody") : t("deleteBody")}
+					</Text>
+					<TextField
+						autoCapitalize="none"
+						label={t("typeEmail", { email: person.email })}
+						onChangeText={setTyped}
+						value={typed}
+					/>
+				</View>
+			</Sheet>
+		);
+	}
 
 	return (
 		<Sheet detents={["medium", "large"]} onClose={onClose} title={name} visible>
@@ -198,7 +279,7 @@ export function UserSheet({
 								busy
 									? undefined
 									: person.isActive
-										? askDisable
+										? () => void begin("disable")
 										: () => void setActive(true)
 							}
 							title={person.isActive ? t("disable") : t("enable")}
@@ -224,7 +305,7 @@ export function UserSheet({
 							title={t("ai")}
 						/>
 						<ListRow
-							onPress={busy ? undefined : askDelete}
+							onPress={busy ? undefined : () => void begin("delete")}
 							title={
 								<Text numberOfLines={1} tone="danger" weight="medium">
 									{t("delete")}
