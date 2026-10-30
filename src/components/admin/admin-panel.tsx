@@ -22,6 +22,7 @@ import {
 import { AiUsageTable } from "./ai-usage-table";
 import { AuditLogsTable } from "./audit-logs-table";
 import { BackupStatus } from "./backup-status";
+import { FeedbackInbox } from "./feedback-inbox";
 import { InviteCodesTable } from "./invite-codes-table";
 import { ParticipantsTable } from "./participants-table";
 import { UsersTable } from "./users-table";
@@ -55,6 +56,7 @@ type PendingAction =
 
 export function AdminPanel() {
 	const t = useTranslations("admin");
+	const tf = useTranslations("feedbackInbox");
 	const toast = useToast();
 	const tabsRef = useRef<HTMLDivElement>(null);
 	const { tab, onTabChange } = useAdminTab(tabsRef);
@@ -367,6 +369,7 @@ export function AdminPanel() {
 							{t("tabInviteCodes")}
 						</TabsTrigger>
 						<TabsTrigger value="ai-usage">{t("tabAiUsage")}</TabsTrigger>
+						<TabsTrigger value="feedback">{tf("tab")}</TabsTrigger>
 						<TabsTrigger value="audit-logs">{t("tabAuditLogs")}</TabsTrigger>
 					</TabsList>
 
@@ -434,6 +437,10 @@ export function AdminPanel() {
 
 					<TabsContent value="ai-usage">
 						<AiUsageTable />
+					</TabsContent>
+
+					<TabsContent value="feedback">
+						<FeedbackInbox />
 					</TabsContent>
 
 					<TabsContent value="audit-logs">

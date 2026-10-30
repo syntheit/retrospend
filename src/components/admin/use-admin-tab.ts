@@ -7,11 +7,12 @@ const ADMIN_TABS = [
 	"participants",
 	"invite-codes",
 	"ai-usage",
+	"feedback",
 	"audit-logs",
 ];
 
 /**
- * The admin data tab. /admin#users (or #participants, #invite-codes, ...)
+ * The admin data tab. /admin#users (or #participants, #invite-codes, #feedback, ...)
  * opens that tab, and changing tab scrolls its tab row into view.
  */
 export function useAdminTab(anchor: RefObject<HTMLElement | null>) {
