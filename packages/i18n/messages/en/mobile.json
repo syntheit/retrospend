@@ -2506,6 +2506,8 @@
 		"count": "{count, plural, one {# recurring expense} other {# recurring expenses}}",
 		"autoPayOn": "Auto-pay on",
 		"autoPayOff": "Auto-pay off",
+		"autoPayFilter": "Auto-pay",
+		"autoPayAny": "Any",
 		"details": "Details",
 		"make": {
 			"title": "Make recurring",

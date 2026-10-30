@@ -128,7 +128,10 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 						accessibilityLabel={t("repeats")}
 						label={t("repeats")}
 						onChange={setRepeat}
-						options={REPEATS.map((r) => ({ value: r, label: t(`repeat.${r}`) }))}
+						options={REPEATS.map((r) => ({
+							value: r,
+							label: t(`repeat.${r}`),
+						}))}
 						value={repeat}
 					/>
 				</>

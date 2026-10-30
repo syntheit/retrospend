@@ -2506,6 +2506,8 @@
 		"count": "{count, plural, one {# dépense récurrente} other {# dépenses récurrentes}}",
 		"autoPayOn": "Paiement auto activé",
 		"autoPayOff": "Paiement auto désactivé",
+		"autoPayFilter": "Paiement auto",
+		"autoPayAny": "Tous",
 		"details": "Détails",
 		"make": {
 			"title": "Rendre récurrent",
