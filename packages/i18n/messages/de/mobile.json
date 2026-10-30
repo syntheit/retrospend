@@ -1031,7 +1031,14 @@
 			"planCostOnly": "Dein Plan kostet {cost} im Monat.",
 			"incomplete": "Für einige Beträge gibt es heute keinen Kurs; sie bleiben außen vor.",
 			"runway": "Dein Budget und deine Ersparnisse reichen mit diesem Plan {months} Monate.",
-			"error": "Das ließ sich nicht laden. Versuch es nochmal."
+			"error": "Das ließ sich nicht laden. Versuch es nochmal.",
+			"terms": {
+				"assigned": "Umschlägen zugewiesen",
+				"assignedAhead": "Im Voraus zugewiesen",
+				"overspendTaken": "Für Überziehungen entnommen",
+				"returned": "Aus Umschlägen zurück",
+				"splitsNet": "Geteilte Ausgaben"
+			}
 		},
 		"rules": {
 			"title": "Einnahmeregeln",
@@ -1121,7 +1128,8 @@
 			"listTitle": "Den Monat planen",
 			"listLead": "Tippe auf einen Umschlag, um festzulegen, was er bekommt. Vor dem Zahltag bewegt sich nichts.",
 			"notPlanned": "Noch nicht geplant",
-			"leftToPlan": "Noch zu planen: {month}"
+			"leftToPlan": "Noch zu planen: {month}",
+			"plannedOf": "Geplant {planned} von {expected}"
 		},
 		"planApply": {
 			"title": "Plan für {month} anwenden",

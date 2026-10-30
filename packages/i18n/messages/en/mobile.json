@@ -1031,7 +1031,14 @@
 			"planCostOnly": "Your plan costs {cost} a month.",
 			"incomplete": "Some amounts have no rate today and are left out.",
 			"runway": "Your budget and savings last {months} months at this plan.",
-			"error": "Couldn't load this. Try again."
+			"error": "Couldn't load this. Try again.",
+			"terms": {
+				"assigned": "Assigned to envelopes",
+				"assignedAhead": "Assigned ahead",
+				"overspendTaken": "Taken for overspending",
+				"returned": "Returned from envelopes",
+				"splitsNet": "Shared expenses"
+			}
 		},
 		"rules": {
 			"title": "Income rules",
@@ -1121,7 +1128,8 @@
 			"listTitle": "Plan the month",
 			"listLead": "Tap an envelope to set what it gets. Nothing moves until payday.",
 			"notPlanned": "Not planned yet",
-			"leftToPlan": "Left to plan in {month}"
+			"leftToPlan": "Left to plan in {month}",
+			"plannedOf": "Planned {planned} of {expected}"
 		},
 		"planApply": {
 			"title": "Apply the {month} plan",

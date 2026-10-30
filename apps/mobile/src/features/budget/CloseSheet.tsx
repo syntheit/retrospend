@@ -104,9 +104,11 @@ export function CloseSheet({
 		onClose();
 	}
 
+	// An open month has nothing to read but one line, so it rests at medium.
+	const unclosed = read.status === "ready" && !sum;
 	return (
 		<Sheet
-			detents={[detent]}
+			detents={[unclosed ? "medium" : detent]}
 			onClose={onClose}
 			title={
 				sum

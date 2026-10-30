@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { categoryTone } from "@retrospend/domain/category-tone";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -11,6 +12,7 @@ import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { applyKey } from "@/ui/keypad";
+import { CategoryTile } from "@/ui/List";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
@@ -117,7 +119,21 @@ export function AffordSheet({
 		() =>
 			envelopesOf(data)
 				.filter((e) => e.kind !== "SAVINGS")
-				.map((e) => ({ id: e.id, label: e.name, detail: money(e.left) })),
+				.map((e) => ({
+					id: e.id,
+					label: e.name,
+					detail: money(e.left),
+					detailTone: e.left.minor < 0 ? ("attention" as const) : undefined,
+					lead: (
+						<CategoryTile
+							category={{
+								name: e.name,
+								icon: e.icon,
+								tone: categoryTone(e.color ?? ""),
+							}}
+						/>
+					),
+				})),
 		[data, money],
 	);
 	const pool = tp(data.toAssign.poolName);

@@ -1031,7 +1031,14 @@
 			"planCostOnly": "Tu plan cuesta {cost} por mes.",
 			"incomplete": "Algunos montos no tienen cotización hoy y quedan afuera.",
 			"runway": "Tu presupuesto y tus ahorros duran {months} meses con este plan.",
-			"error": "No se pudo cargar. Probá de nuevo."
+			"error": "No se pudo cargar. Probá de nuevo.",
+			"terms": {
+				"assigned": "Asignado a sobres",
+				"assignedAhead": "Asignado por adelantado",
+				"overspendTaken": "Tomado por excesos",
+				"returned": "Devuelto de sobres",
+				"splitsNet": "Gastos compartidos"
+			}
 		},
 		"rules": {
 			"title": "Reglas de ingresos",
@@ -1121,7 +1128,8 @@
 			"listTitle": "Planificá el mes",
 			"listLead": "Tocá un sobre para fijar lo que recibe. Nada se mueve hasta el día de cobro.",
 			"notPlanned": "Todavía sin planificar",
-			"leftToPlan": "Por planificar en {month}"
+			"leftToPlan": "Por planificar en {month}",
+			"plannedOf": "Planificado {planned} de {expected}"
 		},
 		"planApply": {
 			"title": "Aplicar el plan de {month}",

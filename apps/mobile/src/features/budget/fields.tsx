@@ -11,6 +11,8 @@ export interface Choice {
 	label: string;
 	/** A second phrase at the end of the row (a figure already worded). */
 	detail?: string;
+	/** Attention when the figure needs the person (a negative left). */
+	detailTone?: "attention";
 	/** Identity in front of the label: a face, a bare glyph, a dot. */
 	lead?: ReactNode;
 }
@@ -69,7 +71,7 @@ export function ChoiceList({
 							{choice.label}
 						</Text>
 						{choice.detail ? (
-							<Text tabular tone="fg2">
+							<Text tabular tone={choice.detailTone ?? "fg2"}>
 								{choice.detail}
 							</Text>
 						) : null}

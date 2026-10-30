@@ -1031,7 +1031,14 @@
 			"planCostOnly": "Seu plano custa {cost} por mês.",
 			"incomplete": "Alguns valores não têm cotação hoje e ficam de fora.",
 			"runway": "Seu orçamento e suas economias duram {months} meses com este plano.",
-			"error": "Não foi possível carregar. Tente de novo."
+			"error": "Não foi possível carregar. Tente de novo.",
+			"terms": {
+				"assigned": "Atribuído aos envelopes",
+				"assignedAhead": "Atribuído adiantado",
+				"overspendTaken": "Tirado por excessos",
+				"returned": "Devolvido dos envelopes",
+				"splitsNet": "Despesas compartilhadas"
+			}
 		},
 		"rules": {
 			"title": "Regras de renda",
@@ -1121,7 +1128,8 @@
 			"listTitle": "Planeje o mês",
 			"listLead": "Toque em um envelope para definir o que ele recebe. Nada se move até o dia do pagamento.",
 			"notPlanned": "Ainda não planejado",
-			"leftToPlan": "Falta planejar em {month}"
+			"leftToPlan": "Falta planejar em {month}",
+			"plannedOf": "Planejado {planned} de {expected}"
 		},
 		"planApply": {
 			"title": "Aplicar o plano de {month}",

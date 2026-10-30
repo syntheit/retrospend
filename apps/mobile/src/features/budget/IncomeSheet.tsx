@@ -1,10 +1,12 @@
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
+import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note, SheetBody } from "@/features/write/parts";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
 import { Hero } from "@/ui/Hero";
+import { ListGroup, ListRow } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import type { OpenSheet } from "./BudgetSheets";
 import { monthDate } from "./months";
@@ -32,6 +34,7 @@ export function IncomeSheet({
 }) {
 	const t = useTranslations("mobile.budget.income");
 	const tr = useTranslations("mobile.budget.manage");
+	const tp = useTranslations("mobile.budget.pool");
 	const money = useMoneyText();
 	const format = useFormatter();
 	const { space } = useTheme();
@@ -54,6 +57,16 @@ export function IncomeSheet({
 				})
 			: t("planCostOnly", { cost: money(plan.cost) })
 		: undefined;
+	// Where this month's money went, from the server's own terms: the rows
+	// that are zero are left out, and Money in is the hero above them.
+	const { terms } = data.toAssign;
+	const rows = [
+		{ key: "assigned", value: terms.assigned, always: true },
+		{ key: "assignedAhead", value: terms.assignedAhead },
+		{ key: "overspendTaken", value: terms.overspendTaken },
+		{ key: "returned", value: terms.returned },
+		{ key: "splitsNet", value: terms.splitsNet },
+	].filter((row) => row.always || row.value.minor !== 0);
 	return (
 		<Sheet
 			detents={[detent]}
@@ -62,12 +75,30 @@ export function IncomeSheet({
 			visible={visible}
 		>
 			<SheetBody>
+				<View style={{ paddingHorizontal: space[4] }}>
 				<Hero
 					label={t("moneyIn")}
 					sub={cost}
-					tone="positive"
+					tone={data.toAssign.terms.moneyIn.minor > 0 ? "positive" : "fg"}
 					value={money(data.toAssign.terms.moneyIn)}
 				/>
+				</View>
+				<ListGroup>
+					{rows.map((row) => (
+						<ListRow
+							accessibilityLabel={`${t(`terms.${row.key}`)}, ${money(row.value)}`}
+							end={<MoneyAmount value={row.value} />}
+							key={row.key}
+							title={t(`terms.${row.key}`)}
+						/>
+					))}
+					<ListRow
+						accessibilityLabel={`${tp(data.toAssign.poolName)}, ${money(data.toAssign.amount)}`}
+						end={<MoneyAmount value={data.toAssign.amount} />}
+						title={tp(data.toAssign.poolName)}
+					/>
+				</ListGroup>
+				<View style={{ gap: space[3], paddingHorizontal: space[4] }}>
 				{read.status === "error" ? (
 					<Note tone="attention">{t("error")}</Note>
 				) : null}
@@ -90,6 +121,7 @@ export function IncomeSheet({
 						/>
 					</View>
 				) : null}
+				</View>
 			</SheetBody>
 		</Sheet>
 	);
