@@ -3,6 +3,7 @@ import { useTranslations } from "use-intl";
 
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
+import { Chip } from "@/ui/Chip";
 import { Text } from "@/ui/Text";
 
 /** The operators the amount takes; the domain reads the typed sum exactly. */
@@ -91,12 +92,10 @@ export function ComposerBar({
 			}}
 		>
 			{step === "more" ? (
-				<Button
+				<Chip
 					accessibilityLabel={t("back")}
 					label={t("back")}
 					onPress={onBack}
-					size="small"
-					variant="outlined"
 				/>
 			) : showOperators ? (
 				<OperatorKeys onOperator={onOperator} />
