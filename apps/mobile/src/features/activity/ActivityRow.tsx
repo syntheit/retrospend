@@ -8,6 +8,7 @@ import { AvatarStack } from "@/ui/Avatar";
 import { Glyph } from "@/ui/Glyph";
 import { CategoryTile, ListRow } from "@/ui/List";
 import { MoneyAmount } from "@/ui/Money";
+import { RowMenu } from "@/ui/RowMenu";
 import { StatusText } from "@/ui/StatusText";
 import { SwipeRow } from "@/ui/SwipeRow";
 import { Text } from "@/ui/Text";
@@ -230,6 +231,9 @@ export function ActivityRow({
 		) : undefined;
 
 	const swipes = actions !== undefined && actions.menu.length > 0 && !pick;
+	// A row with no menu still owns its long press, so a hold on Android
+	// does nothing on release instead of falling through to the tap.
+	const holds = !swipes && !pick;
 	const row = (
 		<ListRow
 			accessibilityLabel={[
@@ -276,15 +280,22 @@ export function ActivityRow({
 					/>
 				</>
 			}
-			// A swiping row hands its tap to the swipe wrapper, which also
+			// A swiping or holding row hands its tap to the wrapper, which also
 			// owns the long press; a disabled inner press lets both through.
-			onPress={swipes ? undefined : onPress}
+			onPress={swipes || holds ? undefined : onPress}
 			pickState={pick}
 			selected={pick ? pick.checked : selected}
 			sub={sub}
 			title={title}
 		/>
 	);
+	if (holds) {
+		return (
+			<RowMenu items={[]} onPress={onPress}>
+				{row}
+			</RowMenu>
+		);
+	}
 	if (!swipes || !actions) return row;
 	return (
 		<SwipeRow
