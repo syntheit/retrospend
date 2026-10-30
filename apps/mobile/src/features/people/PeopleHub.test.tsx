@@ -40,8 +40,8 @@ jest.mock("use-intl", () => ({
 jest.mock("@/theme", () => ({
 	useTheme: () => ({ color: { bg: "bg" }, space: [0, 4, 8, 12, 16] }),
 }));
-jest.mock("@/features/account/AccountTopBar", () => ({
-	AccountTopBar: ({ title }: { title: string }) =>
+jest.mock("@/features/projects/ProjectsTopBar", () => ({
+	ProjectsTopBar: ({ title }: { title: string }) =>
 		require("react").createElement("TopBar", { title }),
 }));
 jest.mock("./useExpensesExport", () => ({ useExpensesExport: () => [] }));

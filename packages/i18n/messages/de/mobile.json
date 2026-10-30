@@ -1929,7 +1929,45 @@
 		"anyone": "Alle",
 		"filter": "Filtern",
 		"allCategories": "Alle Kategorien",
-		"noMatchExpenses": "Keine Ausgabe passt"
+		"noMatchExpenses": "Keine Ausgabe passt",
+		"form": {
+			"newTitle": "Neues Projekt",
+			"editTitle": "Projekt bearbeiten",
+			"name": "Name",
+			"namePlaceholder": "Reise, Wohnung, Renovierung",
+			"currency": "Währung",
+			"budget": "Budget (optional)",
+			"budgetInvalid": "Gib ein Budget über null ein oder lass das Feld leer.",
+			"create": "Projekt erstellen",
+			"save": "Speichern",
+			"created": "{name} erstellt",
+			"saved": "{name} gespeichert",
+			"note": "Notiz (optional)",
+			"people": "Personen",
+			"justMe": "Nur ich",
+			"withOthers": "Mit anderen"
+		},
+		"actions": {
+			"edit": "Projekt bearbeiten",
+			"archive": "Projekt archivieren",
+			"restore": "Projekt wiederherstellen",
+			"archiveTitle": "{name} archivieren?",
+			"archiveBody": "Es wandert zu den archivierten Projekten. Ausgaben und Salden bleiben erhalten, und du kannst es wiederherstellen.",
+			"archiveConfirm": "Archivieren",
+			"archived": "{name} archiviert",
+			"restored": "{name} wiederhergestellt",
+			"archiveError": "Archivieren hat nicht geklappt. Versuch es noch einmal.",
+			"restoreError": "Wiederherstellen hat nicht geklappt. Versuch es noch einmal.",
+			"addPerson": "Person hinzufügen"
+		},
+		"addPerson": {
+			"title": "Person hinzufügen",
+			"heading": "Personen",
+			"find": "Personen suchen",
+			"empty": "Niemand mehr zum Hinzufügen. Füge zuerst unter Personen jemanden mit Namen hinzu.",
+			"added": "{name} hinzugefügt",
+			"error": "{name} konnte nicht hinzugefügt werden. Versuch es noch einmal."
+		}
 	},
 	"settings": {
 		"title": "Einstellungen",

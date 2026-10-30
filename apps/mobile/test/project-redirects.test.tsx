@@ -23,8 +23,8 @@ jest.mock("@/layout/destinations", () => ({
 		return mockApart;
 	},
 }));
-jest.mock("@/features/account/AccountTopBar", () => ({
-	AccountTopBar: () => require("react").createElement("TopBar"),
+jest.mock("@/features/projects/ProjectsTopBar", () => ({
+	ProjectsTopBar: () => require("react").createElement("TopBar"),
 }));
 jest.mock("@/features/projects/ProjectsList", () => ({
 	ProjectsList: () => require("react").createElement("ProjectsList"),
@@ -108,7 +108,20 @@ describe("/projects on iPad", () => {
 		expect(tree.root.findAllByType("Redirect")).toHaveLength(0);
 		expect(only(tree, "ProjectView").props).toEqual({
 			id: "p1",
+			startAdding: false,
 			startSettling: true,
+		});
+		act(() => tree.unmount());
+	});
+
+	it("opens on Add person when the link says so", () => {
+		mockApart = true;
+		mockParams = { id: "p1", add: "person" };
+		const tree = render(ProjectScreen);
+		expect(only(tree, "ProjectView").props).toMatchObject({
+			id: "p1",
+			startAdding: true,
+			startSettling: false,
 		});
 		act(() => tree.unmount());
 	});

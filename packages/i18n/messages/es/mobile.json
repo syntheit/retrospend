@@ -1929,7 +1929,45 @@
 		"anyone": "Cualquiera",
 		"filter": "Filtrar",
 		"allCategories": "Todas las categorías",
-		"noMatchExpenses": "Ningún gasto coincide"
+		"noMatchExpenses": "Ningún gasto coincide",
+		"form": {
+			"newTitle": "Nuevo proyecto",
+			"editTitle": "Editar proyecto",
+			"name": "Nombre",
+			"namePlaceholder": "Viaje, piso, reforma",
+			"currency": "Moneda",
+			"budget": "Presupuesto (opcional)",
+			"budgetInvalid": "Escribe un presupuesto mayor que cero o déjalo vacío.",
+			"create": "Crear proyecto",
+			"save": "Guardar",
+			"created": "{name} creado",
+			"saved": "{name} guardado",
+			"note": "Nota (opcional)",
+			"people": "Personas",
+			"justMe": "Solo yo",
+			"withOthers": "Con otras personas"
+		},
+		"actions": {
+			"edit": "Editar proyecto",
+			"archive": "Archivar proyecto",
+			"restore": "Restaurar proyecto",
+			"archiveTitle": "¿Archivar {name}?",
+			"archiveBody": "Pasa a los proyectos archivados. Sus gastos y saldos se conservan y puedes restaurarlo.",
+			"archiveConfirm": "Archivar",
+			"archived": "{name} archivado",
+			"restored": "{name} restaurado",
+			"archiveError": "No se pudo archivar. Inténtalo de nuevo.",
+			"restoreError": "No se pudo restaurar. Inténtalo de nuevo.",
+			"addPerson": "Agregar persona"
+		},
+		"addPerson": {
+			"title": "Agregar persona",
+			"heading": "Personas",
+			"find": "Buscar personas",
+			"empty": "No hay nadie más para agregar. Primero agrega a alguien por nombre en Personas.",
+			"added": "{name} agregado",
+			"error": "No se pudo agregar a {name}. Inténtalo de nuevo."
+		}
 	},
 	"settings": {
 		"title": "Ajustes",

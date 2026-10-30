@@ -1,7 +1,8 @@
-import { router, Stack } from "expo-router";
+import { Stack } from "expo-router";
 import { type ReactNode, useMemo, useState } from "react";
 import { FlatList, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { openProject } from "@/features/projects/openProject";
 import { ProjectCard } from "@/features/projects/ProjectCard";
 import { ProjectRow } from "@/features/projects/ProjectRow";
 import { ProjectView } from "@/features/projects/ProjectView";
@@ -11,7 +12,6 @@ import {
 	matchesProject,
 } from "@/features/projects/source";
 import { useProjectList } from "@/features/projects/useProjects";
-import { PROJECTS_APART } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
@@ -26,20 +26,6 @@ function todayDay(): string {
 	const now = new Date();
 	const pad = (n: number) => String(n).padStart(2, "0");
 	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
-/** Opens a project; the name shows in the title while it loads, and `settle` opens Settle all. */
-function openProject(project: { id: string; name: string }, settle = false) {
-	const params = {
-		id: project.id,
-		name: project.name,
-		...(settle ? { settle: "1" } : {}),
-	};
-	router.push(
-		PROJECTS_APART
-			? { pathname: "/projects/[id]", params }
-			: { pathname: "/people/project/[id]", params },
-	);
 }
 
 /**
@@ -120,7 +106,9 @@ export function ProjectsList({
 									listDetail ? setSelected(hero.id) : openProject(hero)
 								}
 								onSettle={() =>
-									listDetail ? setSelected(hero.id) : openProject(hero, true)
+									listDetail
+										? setSelected(hero.id)
+										: openProject(hero, { settle: true })
 								}
 								project={hero}
 								today={today}

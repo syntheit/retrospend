@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
-import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ProjectsList } from "@/features/projects/ProjectsList";
+import { ProjectsTopBar } from "@/features/projects/ProjectsTopBar";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useTheme } from "@/theme";
 import { usePaneEnter } from "@/ui/motion";
@@ -18,7 +18,6 @@ import {
 	readSegment,
 	writeSegment,
 } from "./segment";
-import { useExpensesExport } from "./useExpensesExport";
 
 /**
  * The People tab on phones: People and Projects behind underline tabs at
@@ -31,8 +30,6 @@ export function PeopleHub() {
 	const tp = useTranslations("mobile.people");
 	const tj = useTranslations("mobile.projects");
 	const { color, space } = useTheme();
-	const more = useTranslations("mobile.activity")("overflow");
-	const overflow = useExpensesExport();
 	const searchRef = useSearchShortcut();
 	const { segment: requested } = useLocalSearchParams<{ segment?: string }>();
 	const [segment, setSegment] = useState<PeopleSegment>(
@@ -92,11 +89,7 @@ export function PeopleHub() {
 			{segment === "people" ? (
 				<PeopleTopBar title={t("peopleSegment")} />
 			) : (
-				<AccountTopBar
-					overflow={overflow}
-					overflowLabel={more}
-					title={t("projects")}
-				/>
+				<ProjectsTopBar title={t("projects")} />
 			)}
 			<Stack.Screen
 				options={{

@@ -18,6 +18,7 @@ import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
+import { AddMemberSheet } from "./AddMemberSheet";
 import {
 	categoriesOf,
 	filterExpenses,
@@ -29,8 +30,10 @@ import {
 import { ProjectExpenseDays } from "./ProjectExpenses";
 import { ProjectHeader, ProjectTitle } from "./ProjectHeader";
 import { ProjectPeopleTab } from "./ProjectPeopleTab";
+import { ProjectSheet } from "./ProjectSheet";
 import { ProjectSummaryTab } from "./ProjectSummaryTab";
 import { SettleAllSheet } from "./SettleAllSheet";
+import { useProjectActions } from "./useProjectActions";
 import { useProject, useProjectSummary } from "./useProjects";
 
 type Tab = "expenses" | "summary" | "people";
@@ -51,11 +54,14 @@ export function ProjectView({
 	id,
 	name,
 	startSettling = false,
+	startAdding = false,
 }: {
 	id: string;
 	/** The name the list knew, shown in the title while the page loads. */
 	name?: string;
 	startSettling?: boolean;
+	/** Open on Add person (a project just made "with others"). */
+	startAdding?: boolean;
 }) {
 	const t = useTranslations("mobile.projects");
 	const tc = useTranslations("mobile.common");
@@ -76,6 +82,17 @@ export function ProjectView({
 	>(null);
 	const [settling, setSettling] = useState(startSettling);
 	const page = state.status === "ready" ? state.data : null;
+	const actions = useProjectActions(
+		{
+			id,
+			name: page?.name ?? name ?? "",
+			status: page?.status ?? "ACTIVE",
+			myRole: page?.myRole ?? null,
+		},
+		reload,
+		startAdding,
+	);
+	const menu = [...actions.items, ...overflow];
 	const periodId = period === "current" ? (page?.openPeriod ?? null) : null;
 	const summary = useProjectSummary(id, periodId, tab === "summary");
 	const expenses = page?.expenses;
@@ -163,18 +180,18 @@ export function ProjectView({
 						headerLargeTitle: false,
 						headerTitle: () => <ProjectTitle page={page} />,
 						headerRight: () => (
-							<Menu
-								accessibilityLabel={more}
-								icon
-								items={overflow}
-								label={more}
-							/>
+							<Menu accessibilityLabel={more} icon items={menu} label={more} />
 						),
 					}}
 				/>
 			)}
 			<StaleNote since={state.status === "ready" ? state.staleSince : null} />
 			<ProjectHeader
+				menu={
+					listDetail ? (
+						<Menu accessibilityLabel={more} icon items={menu} label={more} />
+					) : undefined
+				}
 				page={page}
 				pane={listDetail}
 				tabs={
@@ -331,6 +348,20 @@ export function ProjectView({
 					visible
 				/>
 			) : null}
+			<AddMemberSheet
+				members={page.members}
+				onClose={actions.closeAdd}
+				onDone={reload}
+				projectId={page.id}
+				visible={actions.adding}
+			/>
+			<ProjectSheet
+				home={page.primaryCurrency}
+				onClose={actions.closeEdit}
+				onDone={reload}
+				project={page}
+				visible={actions.editing}
+			/>
 			<SettleAllSheet
 				members={page.members}
 				onClose={() => setSettling(false)}

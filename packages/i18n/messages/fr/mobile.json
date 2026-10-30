@@ -1929,7 +1929,45 @@
 		"anyone": "Tout le monde",
 		"filter": "Filtrer",
 		"allCategories": "Toutes les catégories",
-		"noMatchExpenses": "Aucune dépense ne correspond"
+		"noMatchExpenses": "Aucune dépense ne correspond",
+		"form": {
+			"newTitle": "Nouveau projet",
+			"editTitle": "Modifier le projet",
+			"name": "Nom",
+			"namePlaceholder": "Voyage, appartement, rénovation",
+			"currency": "Devise",
+			"budget": "Budget (facultatif)",
+			"budgetInvalid": "Saisis un budget supérieur à zéro ou laisse le champ vide.",
+			"create": "Créer le projet",
+			"save": "Enregistrer",
+			"created": "{name} créé",
+			"saved": "{name} enregistré",
+			"note": "Note (facultatif)",
+			"people": "Personnes",
+			"justMe": "Juste moi",
+			"withOthers": "Avec d'autres"
+		},
+		"actions": {
+			"edit": "Modifier le projet",
+			"archive": "Archiver le projet",
+			"restore": "Restaurer le projet",
+			"archiveTitle": "Archiver {name} ?",
+			"archiveBody": "Il passe dans les projets archivés. Ses dépenses et ses soldes sont conservés, et tu peux le restaurer.",
+			"archiveConfirm": "Archiver",
+			"archived": "{name} archivé",
+			"restored": "{name} restauré",
+			"archiveError": "Impossible d'archiver. Réessaie.",
+			"restoreError": "Impossible de restaurer. Réessaie.",
+			"addPerson": "Ajouter une personne"
+		},
+		"addPerson": {
+			"title": "Ajouter une personne",
+			"heading": "Personnes",
+			"find": "Rechercher des personnes",
+			"empty": "Personne d'autre à ajouter. Ajoute d'abord quelqu'un par son nom depuis Personnes.",
+			"added": "{name} ajouté",
+			"error": "Impossible d'ajouter {name}. Réessaie."
+		}
 	},
 	"settings": {
 		"title": "Réglages",
