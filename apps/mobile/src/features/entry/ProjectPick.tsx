@@ -1,6 +1,7 @@
 import { useTranslations } from "use-intl";
 import { Cover } from "@/features/projects/Cover";
 import { useTheme } from "@/theme";
+import { Glyph } from "@/ui/Glyph";
 import { PickField } from "./PickField";
 import type { EntryProject } from "./types";
 
@@ -21,7 +22,7 @@ export function ProjectPick({
 	onChange: (projectId: string | null) => void;
 }) {
 	const t = useTranslations("mobile.composer");
-	const { size } = useTheme();
+	const { color, size } = useTheme();
 	return (
 		<PickField
 			empty={t("project.empty")}
@@ -30,7 +31,10 @@ export function ProjectPick({
 			none={{
 				label: t("project.none"),
 				shown: variant === "pill" ? t("context.personal") : t("project.none"),
-				lead: null,
+				lead:
+					variant === "pill" ? (
+						<Glyph color={color.fg2} name="User" size={size.icon.phone} />
+					) : null,
 			}}
 			onChange={onChange}
 			rows={projects.map((p) => ({

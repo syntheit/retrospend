@@ -1,6 +1,6 @@
 import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { TextAction } from "@/features/activity/TextAction";
+
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Text } from "@/ui/Text";
@@ -91,7 +91,13 @@ export function ComposerBar({
 			}}
 		>
 			{step === "more" ? (
-				<TextAction label={t("back")} onPress={onBack} />
+				<Button
+					accessibilityLabel={t("back")}
+					label={t("back")}
+					onPress={onBack}
+					size="small"
+					variant="outlined"
+				/>
 			) : showOperators ? (
 				<OperatorKeys onOperator={onOperator} />
 			) : (

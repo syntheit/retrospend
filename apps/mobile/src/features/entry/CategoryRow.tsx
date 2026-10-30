@@ -9,8 +9,8 @@ import { recentCategories } from "./catalog";
 import { type ExpenseDraft, pickCategory } from "./draft";
 import type { EntryCatalog } from "./types";
 
-/** Three recents fit one line next to the More chip. */
-const RECENTS = 3;
+/** Two recents fit one line next to the More chip on the narrowest phone. */
+const RECENTS = 2;
 
 /**
  * The category: your three most used as chips with their bare glyph, and a
