@@ -47,6 +47,8 @@ const SYMBOL = {
 	Repeat: "repeat",
 	Pencil: "pencil",
 	Plus: "plus",
+	Banknote: "banknote",
+	Bell: "bell",
 } as const satisfies Record<ButtonIcon, string>;
 
 /**
@@ -92,10 +94,10 @@ function KitLabel({
 		<HStack
 			modifiers={[
 				padding({ horizontal: space[3] }),
-				frame({
-					height: small ? size.ctlSm.phone : size.ctl.phone,
-					...(stretch ? { maxWidth: Infinity } : {}),
-				}),
+				frame({ height: small ? size.ctlSm.phone : size.ctl.phone }),
+				// A second call: expo-ui ignores maxWidth when a fixed height is in
+				// the same frame(), which kept the button at its content width (R5).
+				...(stretch ? [frame({ maxWidth: Infinity })] : []),
 				...(fill ? [background(fill, shape)] : []),
 				...(variant === "outlined"
 					? [

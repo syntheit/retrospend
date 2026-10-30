@@ -10,6 +10,7 @@ import { useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { AmountField } from "@/ui/AmountField";
 import { CurrencyPicker } from "@/ui/CurrencyPicker";
+import { Button } from "@/ui/Button";
 import { Segmented } from "@/ui/Segmented";
 import { Sheet } from "@/ui/Sheet";
 import { FieldLabel, TextField } from "@/ui/TextField";
@@ -30,10 +31,15 @@ import {
 /**
  * New project / Edit project: a name, an optional note, the project's currency,
  * an optional budget and, for a new project, who it is for (Just me, or With
- * others, which opens the project on Add person). It moves no money, so it has no preview, and a new project is not
- * taken back with Undo (deleting one is its own, careful action). Edit sends
- * only what changed. Everything else about a project (people, dates, billing
- * periods) is set on its page.
+ * others, which opens the project on Add person). It moves no money, so it has
+ * no preview, and a new project is not taken back with Undo (deleting one is
+ * its own, careful action). Edit sends only what changed. The footer has
+ * Cancel and the primary action.
+ *
+ * The mockup also has Kind, Dates and Cover. The database and API v1 have no
+ * kind, no project dates and no cover choice (a project's image is an upload
+ * the API does not take), so those wait for a schema change. Everything else
+ * about a project (people, billing periods) is set on its page.
  */
 export function ProjectSheet({
 	project,
@@ -55,6 +61,7 @@ export function ProjectSheet({
 	onCreated?: (made: { id: string; name: string }, others: boolean) => void;
 }) {
 	const t = useTranslations("mobile.projects.form");
+	const tc = useTranslations("mobile.common");
 	const api = useApi();
 	const toast = useToast();
 	const locale = useAmountLocale();
@@ -136,6 +143,16 @@ export function ProjectSheet({
 	return (
 		<Sheet
 			detents={["large"]}
+			footer={
+				<>
+					<Button label={tc("cancel")} onPress={onClose} variant="text" />
+					<Button
+						disabled={(update === null && create === null) || saving}
+						label={saving ? tc("saving") : editing ? t("save") : t("create")}
+						onPress={() => void submit()}
+					/>
+				</>
+			}
 			onClose={onClose}
 			title={editing ? t("editTitle") : t("newTitle")}
 			visible={visible}

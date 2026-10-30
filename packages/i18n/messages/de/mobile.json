@@ -1962,11 +1962,19 @@
 		},
 		"addPerson": {
 			"title": "Person hinzufügen",
-			"heading": "Personen",
+			"known": "Bekannte Personen",
+			"fresh": "Neue Person",
 			"find": "Personen suchen",
-			"empty": "Niemand mehr zum Hinzufügen. Füge zuerst unter Personen jemanden mit Namen hinzu.",
+			"empty": "Niemand mehr zum Hinzufügen. Wechsle zu Neue Person.",
+			"name": "Name",
+			"email": "E-Mail (optional)",
+			"emailPlaceholder": "name@beispiel.de",
+			"emailInvalid": "Diese E-Mail sieht nicht richtig aus.",
+			"joinsOn": "Tritt bei am",
+			"joinsHint": "Ausgaben vor diesem Datum bleiben unverändert.",
+			"submit": "Zum Projekt hinzufügen",
 			"added": "{name} hinzugefügt",
-			"error": "{name} konnte nicht hinzugefügt werden. Versuch es noch einmal."
+			"error": "Die Person konnte nicht hinzugefügt werden. Versuch es noch einmal."
 		}
 	},
 	"settings": {

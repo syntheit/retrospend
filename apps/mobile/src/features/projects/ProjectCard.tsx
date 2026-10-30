@@ -227,7 +227,12 @@ export function ProjectCard({
 					>
 						{onSettle ? (
 							<View style={{ flex: 1 }}>
-								<Button fill label={tp("settleUp")} onPress={onSettle} />
+								<Button
+									fill
+									icon="Banknote"
+									label={tp("settleUp")}
+									onPress={onSettle}
+								/>
 							</View>
 						) : null}
 						<View style={{ flex: 1 }}>
