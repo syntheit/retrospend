@@ -99,7 +99,7 @@ export function AccountTopBar({
 						</SheetGroup>
 					) : null}
 					<View style={{ gap: space[2] }}>
-						<Text accessibilityRole="header" tone="fg2" variant="small">
+						<Text accessibilityRole="header" tone="fg3" variant="meta">
 							{t("goTo")}
 						</Text>
 						<SheetGroup>

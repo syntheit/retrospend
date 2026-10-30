@@ -1496,7 +1496,6 @@
 		},
 		"error": "Impossible de charger l’accueil",
 		"errorDetail": "Vérifie ta connexion et réessaie.",
-		"insights": "Voir les analyses",
 		"card": {
 			"leftIn": "Reste à dépenser en {month}",
 			"spentIn": "Dépensé en {month}",
@@ -1516,7 +1515,8 @@
 			"notPlanned": "Pas encore prévu",
 			"waiting": "En attente d’une destination",
 			"youOwe": "Tu dois {amount}",
-			"rateDate": "Mis à jour le {date}"
+			"rateDate": "Mis à jour le {date}",
+			"netWorthNote": "Inclut ce que les gens te doivent"
 		}
 	},
 	"insights": {

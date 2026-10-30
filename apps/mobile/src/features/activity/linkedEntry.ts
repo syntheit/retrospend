@@ -18,7 +18,8 @@ export function useLinkedEntry(): {
 		row?: string;
 	}>();
 	return useMemo(
-		() => (select ? { id: select, placeholder: rowFromParam(row, select) } : null),
+		() =>
+			select ? { id: select, placeholder: rowFromParam(row, select) } : null,
 		[select, row],
 	);
 }

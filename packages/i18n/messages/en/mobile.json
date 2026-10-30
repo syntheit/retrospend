@@ -1496,7 +1496,6 @@
 		},
 		"error": "Couldn't load Home",
 		"errorDetail": "Check your connection and try again.",
-		"insights": "See insights",
 		"card": {
 			"leftIn": "Left to spend in {month}",
 			"spentIn": "Spent in {month}",
@@ -1516,7 +1515,8 @@
 			"notPlanned": "Not planned yet",
 			"waiting": "Waiting for a job",
 			"youOwe": "You owe {amount}",
-			"rateDate": "Updated {date}"
+			"rateDate": "Updated {date}",
+			"netWorthNote": "Includes what people owe you"
 		}
 	},
 	"insights": {

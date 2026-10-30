@@ -1496,7 +1496,6 @@
 		},
 		"error": "No se pudo cargar Inicio",
 		"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
-		"insights": "Ver análisis",
 		"card": {
 			"leftIn": "Disponible en {month}",
 			"spentIn": "Gastado en {month}",
@@ -1516,7 +1515,8 @@
 			"notPlanned": "Sin planear aún",
 			"waiting": "Esperando un destino",
 			"youOwe": "Debes {amount}",
-			"rateDate": "Actualizado el {date}"
+			"rateDate": "Actualizado el {date}",
+			"netWorthNote": "Incluye lo que te deben"
 		}
 	},
 	"insights": {

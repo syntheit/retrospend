@@ -11,7 +11,7 @@ import { Glyph } from "@/ui/Glyph";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { useHomeDates } from "./dates";
-import { budgetStatusOf, type Glance, notPlannedOf } from "./source";
+import { budgetStatusOf, type Glance } from "./source";
 
 /** Home names no envelopes: the over verdicts it words never list any. */
 const NO_NAMES: ReadonlyMap<string, string> = new Map();
@@ -75,9 +75,9 @@ function SpendBar({ spent, time }: { spent: number; time: number }) {
 
 /**
  * Home's budget card, its own part under the hero: Left to spend this month
- * with a day's allowance, a word when spending runs faster than planned, the
- * spend bar with a mark for today, and what was spent against what is not
- * planned yet. Over budget it reads as the Budget page does: the verdict's
+ * with a day's allowance, a word when spending runs faster than planned and
+ * the spend bar with a mark for today. What was spent is the hero above it and
+ * what is not planned yet is a tile, so neither is said again here. Over budget it reads as the Budget page does: the verdict's
  * label and sentence, never a minus. Nothing without a ready budget. Every
  * number is the server's figure; the whole card opens Budget.
  */
@@ -108,23 +108,12 @@ export function BudgetCard({ glance }: { glance: Glance }) {
 		(budget?.leftToSpend.fasterThanPlanned ||
 			budget?.verdict.state === "FASTER_THAN_PLANNED");
 	const shares = status.kind === "left" ? barShares(glance) : null;
-	const spentFoot =
-		status.kind === "left"
-			? t("spentThisMonth", { amount: format(status.spent) })
-			: null;
-	const pool = status.kind === "left" ? notPlannedOf(glance) : null;
-	const notPlanned = pool
-		? t("notPlanned", { amount: format(pool.amount) })
-		: null;
-
 	const spoken = [
 		label,
 		format(status.amount),
 		unit,
 		sentence,
 		faster ? t("faster") : null,
-		spentFoot,
-		notPlanned,
 	]
 		.filter(Boolean)
 		.join(", ");
@@ -173,28 +162,6 @@ export function BudgetCard({ glance }: { glance: Glance }) {
 				</View>
 			) : null}
 			{shares ? <SpendBar {...shares} /> : null}
-			{spentFoot || notPlanned ? (
-				<View
-					style={{
-						flexDirection: "row",
-						justifyContent: "space-between",
-						gap: space[3],
-					}}
-				>
-					<Text style={{ flexShrink: 1 }} tone="fg3" variant="meta">
-						{spentFoot ?? ""}
-					</Text>
-					{notPlanned ? (
-						<Text
-							style={{ flexShrink: 1, textAlign: "right" }}
-							tone="fg3"
-							variant="meta"
-						>
-							{notPlanned}
-						</Text>
-					) : null}
-				</View>
-			) : null}
 		</Pressable>
 	);
 }

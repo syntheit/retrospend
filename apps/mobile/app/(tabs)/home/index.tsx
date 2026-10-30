@@ -8,6 +8,7 @@ import { subscribeEntryChanges } from "@/features/entry/events";
 import { SyncIssues } from "@/features/entry/SyncIssues";
 import { useHomeDates } from "@/features/home/dates";
 import { Glance } from "@/features/home/Glance";
+import { HomeSkeleton } from "@/features/home/HomeSkeleton";
 import { NeedsYou } from "@/features/home/NeedsYou";
 import { fetchHome, HOME_CACHE } from "@/features/home/source";
 import { useCachedRead } from "@/features/read/useCachedRead";
@@ -15,7 +16,6 @@ import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { Screen } from "@/ui/Screen";
-import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 
 export default function HomeScreen() {
@@ -91,7 +91,7 @@ export default function HomeScreen() {
 						title={t("error")}
 					/>
 				) : (
-					<SkeletonRows count={4} />
+					<HomeSkeleton />
 				)}
 			</Screen>
 		</>

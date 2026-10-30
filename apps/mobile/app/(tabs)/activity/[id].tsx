@@ -29,9 +29,7 @@ export default function EntryScreen() {
 	// With a detail pane the entry opens there, not over both panes.
 	if (listDetail && id) {
 		return (
-			<Redirect
-				href={{ pathname: "/activity", params: { select: id, row } }}
-			/>
+			<Redirect href={{ pathname: "/activity", params: { select: id, row } }} />
 		);
 	}
 
