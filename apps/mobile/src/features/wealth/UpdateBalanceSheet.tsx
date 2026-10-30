@@ -5,13 +5,7 @@ import { useRateTypeLabel } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
 import { figureLines } from "@/features/write/figures";
-import {
-	ChangeList,
-	type ChangeRow,
-	Note,
-	SheetBody,
-	useAmountLocale,
-} from "@/features/write/parts";
+import { Note, SheetBody, useAmountLocale } from "@/features/write/parts";
 import { useFigureLabel } from "@/features/write/useFigureLabel";
 import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { useUndoToast } from "@/features/write/useUndoToast";
@@ -19,6 +13,7 @@ import { noSession, useApi } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
+import { ChangeList, type ChangeRow } from "@/ui/ChangeList";
 import { IconTile } from "@/ui/IconTile";
 import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";

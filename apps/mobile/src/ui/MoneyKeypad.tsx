@@ -1,8 +1,9 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { applyKey, BACKSPACE, keypadLayout } from "./keypad";
+import { Text } from "./Text";
 
 /**
  * The amount keypad: the twelve keys of the system number pad with the
@@ -27,7 +28,7 @@ export function MoneyKeypad({
 }) {
 	const t = useTranslations("mobile.keypad");
 	const locale = useMoneyLocale();
-	const { color, font, radius, size, space, type } = useTheme();
+	const { color, radius, size, space } = useTheme();
 	const rows = keypadLayout(locale);
 	const decimal = rows[3]?.[0];
 
@@ -67,14 +68,7 @@ export function MoneyKeypad({
 											: color.raised,
 								})}
 							>
-								<Text
-									style={{
-										color: color.fg,
-										fontSize: type.title.size,
-										fontVariant: ["tabular-nums"],
-										fontWeight: String(font.weight.medium) as "500",
-									}}
-								>
+								<Text tabular variant="title" weight="medium">
 									{key}
 								</Text>
 							</Pressable>

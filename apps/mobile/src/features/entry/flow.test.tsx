@@ -643,7 +643,9 @@ describe("Add income with Use my plan", () => {
 		expect(words(tree)).toContain("Not planned yet");
 		expect(words(tree)).toContain("+ARS 340,000");
 		expect(words(tree)).toContain("to ARS 340,000");
-		expect(words(tree)).toContain("Stays the same: your spending.");
+		expect(words(tree)).toContain(
+			"Nothing else changes: your spending stays as it is.",
+		);
 		// Then the plan: the envelope it fills and what stays Not planned yet.
 		expect(words(tree)).toContain("Then your plan assigns");
 		expect(words(tree)).toContain("Rent");
