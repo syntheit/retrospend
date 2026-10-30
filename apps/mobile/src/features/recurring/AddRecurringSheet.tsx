@@ -147,7 +147,7 @@ export function AddRecurringSheet({
 			detents={["large"]}
 			footer={
 				<>
-					<Button label={tc("cancel")} onPress={onClose} variant="outlined" />
+					<Button label={tc("cancel")} onPress={onClose} variant="text" />
 					<Button
 						disabled={flow.status !== "ready" || flow.committing}
 						label={flow.committing ? tc("saving") : t("add.submit")}
