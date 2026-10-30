@@ -1145,6 +1145,7 @@
 		},
 		"close": {
 			"title": "{month} está cerrado",
+			"openTitle": "Cerrar {month}",
 			"done": "Listo",
 			"notClosed": "Este mes todavía no se cerró.",
 			"moneyIn": "Entradas",
@@ -1441,6 +1442,7 @@
 		"owedToYou": "Te deben",
 		"youOwe": "Debés",
 		"netWorth": "Patrimonio",
+		"netWorthMeta": "Incluye lo que te deben",
 		"dollarToday": "Dólar hoy",
 		"needs": {
 			"title": "Esperan por vos",
@@ -2173,9 +2175,9 @@
 		},
 		"summary": {
 			"out": {
-				"month": "Tus gastos recurrentes cuestan {amount} por mes.",
-				"quarter": "Tus gastos recurrentes cuestan {amount} por trimestre.",
-				"year": "Tus gastos recurrentes cuestan {amount} por año."
+				"month": "Los gastos recurrentes cuestan {amount} por mes.",
+				"quarter": "Los gastos recurrentes cuestan {amount} por trimestre.",
+				"year": "Los gastos recurrentes cuestan {amount} por año."
 			},
 			"in": {
 				"month": "Tus ingresos recurrentes suman {amount} por mes.",

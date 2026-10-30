@@ -1145,6 +1145,7 @@
 		},
 		"close": {
 			"title": "{month} is closed",
+			"openTitle": "Close {month}",
 			"done": "Done",
 			"notClosed": "This month has not closed yet.",
 			"moneyIn": "Money in",
@@ -1441,6 +1442,7 @@
 		"owedToYou": "Owed to you",
 		"youOwe": "You owe",
 		"netWorth": "Net worth",
+		"netWorthMeta": "Includes what people owe you",
 		"dollarToday": "Dollar today",
 		"needs": {
 			"title": "Needs you",
@@ -1597,7 +1599,7 @@
 			"notOnRetrospend": "Not on Retrospend"
 		},
 		"group": {
-			"owed": "Owes you",
+			"owed": "Owe you",
 			"owe": "You owe",
 			"pending": "Waiting",
 			"settled": "Settled"
@@ -1663,8 +1665,8 @@
 			"rejected": "Rejected",
 			"settled": "Settled"
 		},
-		"paidByMe": "You paid",
-		"paidByName": "{name} paid",
+		"paidByMe": "paid by you",
+		"paidByName": "paid by {name}",
 		"error": "Couldn't load this person",
 		"errorDetail": "Check your connection and try again.",
 		"since": "Sharing since {date}",
@@ -1798,7 +1800,7 @@
 		"archived": "Archived",
 		"groupTotal": "Group total",
 		"yourShareLabel": "Your share",
-		"yourShare": "Your share {amount}",
+		"yourShare": "your share {amount}",
 		"tabs": "Project sections",
 		"tab": {
 			"expenses": "Expenses",
@@ -1817,8 +1819,8 @@
 			"review": "To review",
 			"rejected": "Rejected"
 		},
-		"paidByMe": "You paid",
-		"paidByName": "{name} paid",
+		"paidByMe": "paid by you",
+		"paidByName": "paid by {name}",
 		"you": "You",
 		"role": {
 			"ORGANIZER": "Organizer",
@@ -2173,9 +2175,9 @@
 		},
 		"summary": {
 			"out": {
-				"month": "Your recurring expenses cost {amount} a month.",
-				"quarter": "Your recurring expenses cost {amount} a quarter.",
-				"year": "Your recurring expenses cost {amount} a year."
+				"month": "Recurring expenses cost {amount} a month.",
+				"quarter": "Recurring expenses cost {amount} a quarter.",
+				"year": "Recurring expenses cost {amount} a year."
 			},
 			"in": {
 				"month": "Recurring income brings in {amount} a month.",

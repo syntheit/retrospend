@@ -1145,6 +1145,7 @@
 		},
 		"close": {
 			"title": "{month} ist abgeschlossen",
+			"openTitle": "{month} abschließen",
 			"done": "Fertig",
 			"notClosed": "Dieser Monat ist noch nicht abgeschlossen.",
 			"moneyIn": "Einnahmen",
@@ -1441,6 +1442,7 @@
 		"owedToYou": "Dir geschuldet",
 		"youOwe": "Du schuldest",
 		"netWorth": "Vermögen",
+		"netWorthMeta": "Enthält, was andere dir schulden",
 		"dollarToday": "Dollar heute",
 		"needs": {
 			"title": "Braucht dich",
@@ -2173,9 +2175,9 @@
 		},
 		"summary": {
 			"out": {
-				"month": "Deine wiederkehrenden Ausgaben kosten {amount} im Monat.",
-				"quarter": "Deine wiederkehrenden Ausgaben kosten {amount} im Quartal.",
-				"year": "Deine wiederkehrenden Ausgaben kosten {amount} im Jahr."
+				"month": "Wiederkehrende Ausgaben kosten {amount} im Monat.",
+				"quarter": "Wiederkehrende Ausgaben kosten {amount} im Quartal.",
+				"year": "Wiederkehrende Ausgaben kosten {amount} im Jahr."
 			},
 			"in": {
 				"month": "Dein wiederkehrendes Einkommen bringt {amount} im Monat.",
