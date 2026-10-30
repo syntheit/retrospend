@@ -10,6 +10,7 @@ import { Button } from "@/ui/Button";
 import { Chip } from "@/ui/Chip";
 import { EmptyState } from "@/ui/EmptyState";
 import { GroupItem, ListGroup, ListRow } from "@/ui/List";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { useToast } from "@/ui/Toast";
@@ -34,6 +35,7 @@ const MAX_PAGES = 5;
  */
 export function InvitesScreen() {
 	const t = useTranslations("mobile.admin.invites");
+	const tc = useTranslations("mobile.common");
 	const format = useFormatter();
 	const { api } = useSession();
 	const toast = useToast();
@@ -101,7 +103,10 @@ export function InvitesScreen() {
 		return (
 			<>
 				{add}
-				<PageState failed={settings.state.status === "error"} />
+				<PageState
+					failed={settings.state.status === "error"}
+					onRetry={() => void settings.reload()}
+				/>
 			</>
 		);
 	}
@@ -156,12 +161,16 @@ export function InvitesScreen() {
 						))}
 					</ScrollView>
 					{items === null ? (
-						<EmptyState
-							detail={
-								codes.state.status === "error" ? t("errorDetail") : undefined
-							}
-							title={codes.state.status === "error" ? t("error") : ""}
-						/>
+						codes.state.status === "error" ? (
+							<EmptyState
+								actionLabel={tc("retry")}
+								detail={t("errorDetail")}
+								onAction={() => void codes.reload()}
+								title={t("error")}
+							/>
+						) : (
+							<SkeletonRows />
+						)
 					) : items.length === 0 ? (
 						<EmptyState title={t(`empty.${status}`)} />
 					) : (

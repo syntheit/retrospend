@@ -49,7 +49,12 @@ export function NotificationsSection() {
 	}, [read.state]);
 
 	if (read.state.status !== "ready" && prefs.length === 0) {
-		return <PageState failed={read.state.status === "error"} />;
+		return (
+			<PageState
+				failed={read.state.status === "error"}
+				onRetry={() => void read.reload()}
+			/>
+		);
 	}
 
 	async function setChannel(

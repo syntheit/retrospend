@@ -9,6 +9,7 @@ import { EmptyState } from "@/ui/EmptyState";
 import { ListRow, SectionHeader } from "@/ui/List";
 import { Picker, type PickerOption } from "@/ui/Picker";
 import { Screen } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { openWebPage } from "./webPages";
 
@@ -53,15 +54,30 @@ export function SettingsPage({ children }: { children: ReactNode }) {
 	);
 }
 
-/** What a page shows while its read has not answered, or when it failed. */
-export function PageState({ failed }: { failed: boolean }) {
+/**
+ * What a page shows while its read has not answered (rows in place), or when
+ * it failed (the message and Retry).
+ */
+export function PageState({
+	failed,
+	onRetry,
+}: {
+	failed: boolean;
+	onRetry: () => void;
+}) {
 	const t = useTranslations("mobile.settings");
+	const tc = useTranslations("mobile.common");
 	return (
 		<Screen>
 			{failed ? (
-				<EmptyState detail={t("errorDetail")} title={t("error")} />
+				<EmptyState
+					actionLabel={tc("retry")}
+					detail={t("errorDetail")}
+					onAction={onRetry}
+					title={t("error")}
+				/>
 			) : (
-				<EmptyState title="" />
+				<SkeletonRows />
 			)}
 		</Screen>
 	);
@@ -78,16 +94,26 @@ export function PickerRow<T extends string>({
 	options,
 	value,
 	onChange,
+	appearance,
 }: {
 	label: string;
 	sub?: string;
 	options: PickerOption<T>[];
 	value: T;
 	onChange: (value: T) => void;
+	/** A wheel for a short run of numbers like a day of the month. */
+	appearance?: "menu" | "wheel";
 }) {
 	return (
 		<ListRow
-			end={<Picker onChange={onChange} options={options} value={value} />}
+			end={
+				<Picker
+					appearance={appearance}
+					onChange={onChange}
+					options={options}
+					value={value}
+				/>
+			}
 			sub={sub}
 			title={
 				<Text numberOfLines={2} weight="normal">

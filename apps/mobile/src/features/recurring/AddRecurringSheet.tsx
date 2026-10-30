@@ -5,22 +5,18 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useCategories } from "@/features/activity/useCategories";
-import { useEntryCatalog } from "@/features/entry/hooks";
+import { useCurrencyChoices } from "@/features/entry/currencyChoices";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
-import {
-	AmountField,
-	SheetBody,
-	useAmountLocale,
-} from "@/features/write/parts";
+import { SheetBody, useAmountLocale } from "@/features/write/parts";
 import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
-import { CurrencyPicker } from "@/ui/CurrencyPicker";
+import { AmountField } from "@/ui/AmountField";
+import { ChipGroup } from "@/ui/Chip";
 import { DateField } from "@/ui/DateField";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
 import { PickField } from "@/ui/PickField";
-import { Segmented } from "@/ui/Segmented";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
@@ -63,14 +59,13 @@ export function AddRecurringSheet({
 	const api = useApi();
 	const { state } = useSession();
 	const me = state.status === "signedIn" ? state.me : null;
-	const catalogState = useEntryCatalog();
-	const catalog = catalogState.status === "ready" ? catalogState.catalog : null;
 	const { state: categoryState } = useCategories();
 	const announce = useRecurringToast();
 	const day = useDayText();
 	const locale = useAmountLocale();
 	const { color, size, space } = useTheme();
 	const fallback = me?.defaultCurrency ?? me?.homeCurrency ?? "USD";
+	const currencies = useCurrencyChoices(fallback);
 
 	const [name, setName] = useState("");
 	const [currency, setCurrency] = useState(fallback);
@@ -183,38 +178,20 @@ export function AddRecurringSheet({
 						placeholder={t("add.namePlaceholder")}
 						value={name}
 					/>
-					<View style={{ gap: space[2] }}>
-						<View
-							style={{
-								minHeight: size.touchMin.phone,
-								flexDirection: "row",
-								alignItems: "center",
-								justifyContent: "space-between",
-								gap: space[3],
-							}}
-						>
-							<FieldLabel>{t("add.amount")}</FieldLabel>
-							<CurrencyPicker
-								currencies={catalog?.currencies ?? [currency]}
-								onChange={(next) => {
-									setCurrency(next);
-									setDraft("");
-								}}
-								recent={catalog?.recentCurrencies ?? []}
-								value={currency}
-								yours={[me?.homeCurrency, me?.defaultCurrency].filter(
-									(c): c is string => Boolean(c),
-								)}
-							/>
-						</View>
-						<AmountField
-							currency={currency}
-							draft={draft}
-							entered={entered}
-							label={t("add.amount")}
-							onDraftChange={setDraft}
-						/>
-					</View>
+					<AmountField
+						choose={{
+							...currencies,
+							onChange: (next) => {
+								setCurrency(next);
+								setDraft("");
+							},
+						}}
+						currency={currency}
+						draft={draft}
+						entered={entered}
+						label={t("add.amount")}
+						onDraftChange={setDraft}
+					/>
 					<View style={{ gap: space[2], alignItems: "flex-start" }}>
 						<FieldLabel>{t("add.category")}</FieldLabel>
 						<PickField
@@ -242,19 +219,16 @@ export function AddRecurringSheet({
 							variant="pill"
 						/>
 					</View>
-					<View style={{ gap: space[2] }}>
-						<FieldLabel>{t("add.repeats")}</FieldLabel>
-						<Segmented
-							accessibilityLabel={t("add.repeats")}
-							onChange={setFrequency}
-							options={FREQUENCIES.map((f) => ({
-								value: f.value,
-								label: t(`frequency.${f.key}`),
-							}))}
-							stretch
-							value={frequency}
-						/>
-					</View>
+					<ChipGroup
+						accessibilityLabel={t("add.repeats")}
+						label={t("add.repeats")}
+						onChange={setFrequency}
+						options={FREQUENCIES.map((f) => ({
+							value: f.value,
+							label: t(`frequency.${f.key}`),
+						}))}
+						value={frequency}
+					/>
 					<View style={{ gap: space[1] }}>
 						<DateField
 							label={t("add.first")}

@@ -3,8 +3,9 @@ import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { isLiability } from "@/features/wealth/accounts";
 import { minorOf, readAmount } from "@/features/write/amount";
-import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
+import { Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { AmountField } from "@/ui/AmountField";
 import { Segmented } from "@/ui/Segmented";
 import type { SheetDetent } from "@/ui/Sheet";
 import { AccountPick, EnvelopePick } from "./pickers";
@@ -198,6 +199,7 @@ export function WealthMoveSheet({
 									{ value: "moved", label: t("moved") },
 									{ value: "count", label: t("count") },
 								]}
+								stretch
 								value={mode}
 							/>
 							<Note>{t(mode === "moved" ? "about.moved" : "about.count")}</Note>

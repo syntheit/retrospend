@@ -12,6 +12,7 @@ import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, ListRow, StaleNote } from "@/ui/List";
 import { RowMenu } from "@/ui/RowMenu";
 import { Screen } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { ConversionLines } from "./ConvertBlock";
 import { CurrencySheet } from "./CurrencySheet";
@@ -235,7 +236,7 @@ export function CurrenciesScreen() {
 							title={t("error")}
 						/>
 					) : (
-						<EmptyState title={t("loading")} />
+						<SkeletonRows />
 					)}
 				</Screen>
 			</View>

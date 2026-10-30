@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { Chip } from "./Chip";
+import { Chip, ChipGroup } from "./Chip";
 
 // A trigger whose value is set and can be cleared (a set period) reads as
 // set: brand-soft with a brand border and an x in place of the chevron. A
@@ -69,5 +69,39 @@ describe("trigger chip", () => {
 		expect(style.backgroundColor).toBe(color.surface);
 		expect(style.borderColor).toBe(color.lineStrong);
 		expect(clear).toHaveLength(0);
+	});
+});
+
+describe("chip group", () => {
+	it("is a radio group with the picked option on, and picking calls back", () => {
+		const onChange = jest.fn();
+		let tree!: { root: Node };
+		act(() => {
+			tree = create(
+				<ChipGroup
+					accessibilityLabel="Repeats"
+					onChange={onChange}
+					options={[
+						{ value: "a", label: "Weekly" },
+						{ value: "b", label: "Monthly" },
+					]}
+					value="b"
+				/>,
+			);
+		});
+		expect(
+			tree.root.findAll((n) => n.props.accessibilityRole === "radiogroup")
+				.length,
+		).toBeGreaterThan(0);
+		const named = (label: string) =>
+			tree.root.findAll((n) => n.props.accessibilityLabel === label)[0] as Node;
+		expect(named("Weekly").props.accessibilityState).toEqual({
+			selected: false,
+		});
+		expect(named("Monthly").props.accessibilityState).toEqual({
+			selected: true,
+		});
+		act(() => (named("Weekly").props.onPress as () => void)());
+		expect(onChange).toHaveBeenCalledWith("a");
 	});
 });

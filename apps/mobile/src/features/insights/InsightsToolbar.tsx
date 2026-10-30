@@ -1,19 +1,23 @@
+import type { ReactElement } from "react";
 import { ScrollView } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Menu } from "@/ui/Menu";
 import type { MenuItem } from "@/ui/types";
-import { type InsightsView, PERIODS } from "./view";
+import { DEFAULT_VIEW, type InsightsView, PERIODS } from "./view";
 
 export interface ChipChoice {
 	id: string;
 	label: string;
+	/** The identity mark before the label in the menu. */
+	lead?: ReactElement;
 }
 
 /**
  * The period, Category and Person chips in one row, each the system menu
- * as on Activity. The period chip carries Compare to the period before, as
- * the web's range chip does; a set chip says what it is set to.
+ * chip as on Activity. The period chip carries Compare to the period before,
+ * as the web's range chip does; a chip that is set says what it is set to and
+ * turns brand-soft (the period is set once it is not this month, or compared).
  */
 export function InsightsToolbar({
 	view,
@@ -62,6 +66,7 @@ export function InsightsToolbar({
 		...categories.map((c) => ({
 			id: c.id,
 			label: c.label,
+			lead: c.lead,
 			onPress: () => onChange({ ...view, categoryId: c.id }),
 		})),
 	];
@@ -74,6 +79,7 @@ export function InsightsToolbar({
 		...people.map((p) => ({
 			id: p.id,
 			label: p.label,
+			lead: p.lead,
 			onPress: () => onChange({ ...view, personKey: p.id }),
 		})),
 	];
@@ -85,19 +91,31 @@ export function InsightsToolbar({
 			accessibilityLabel={t("filters")}
 			contentContainerStyle={{
 				alignItems: "center",
-				gap: space[4],
+				gap: space[2],
 				paddingHorizontal: space[4],
 				paddingVertical: space[1],
 			}}
 			horizontal
 			showsHorizontalScrollIndicator={false}
 		>
-			<Menu items={periodItems} label={periodLabel} />
 			<Menu
+				active={view.period !== DEFAULT_VIEW.period || view.compare}
+				chip
+				items={periodItems}
+				label={periodLabel}
+			/>
+			<Menu
+				active={category !== undefined}
+				chip
 				items={categoryItems}
 				label={category ? category.label : ta("category")}
 			/>
-			<Menu items={personItems} label={person ? person.label : ta("person")} />
+			<Menu
+				active={person !== undefined}
+				chip
+				items={personItems}
+				label={person ? person.label : ta("person")}
+			/>
 		</ScrollView>
 	);
 }

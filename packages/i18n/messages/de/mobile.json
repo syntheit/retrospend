@@ -18,6 +18,7 @@
 		"retry": "Erneut versuchen",
 		"save": "Speichern",
 		"saving": "Speichern",
+		"deleting": "Wird gelöscht",
 		"close": "Schließen",
 		"done": "Fertig"
 	},
@@ -70,16 +71,12 @@
 			"editRefused": "Diese Änderung ließ sich nicht speichern. Sie ist vielleicht gesperrt."
 		},
 		"changes": {
-			"title": "Was sich ändert",
 			"emptyExpense": "Gib einen Betrag ein und wähle eine Kategorie, um zu sehen, was sich ändert.",
 			"emptyIncome": "Gib einen Betrag ein und sag, wer dich bezahlt hat, um zu sehen, was sich ändert.",
 			"loading": "Prüfe, was sich ändert",
 			"offline": "Du bist offline. Das wird auf deinem Telefon gespeichert und später synchronisiert.",
 			"refused": "Das lässt sich noch nicht speichern. Prüfe Betrag und Währung.",
 			"to": "auf {amount}",
-			"stays": "Bleibt gleich: {places}.",
-			"unknown": "Noch nicht zu sagen: {places}.",
-			"nothing": "Sonst ändert sich nichts.",
 			"figures": {
 				"budget_notPlannedYet": "Noch nicht verplant",
 				"budget_leftToSpend": "Noch verfügbar",
@@ -287,9 +284,9 @@
 		},
 		"delete": {
 			"row": "Löschen",
-			"title": "Diese Ausgabe löschen?",
+			"title": "Ausgabe löschen?",
 			"body": "Sie verschwindet aus deinen Ausgaben und deinem Budget.",
-			"button": "Löschen",
+			"button": "Ausgabe löschen",
 			"deleted": "{title} gelöscht",
 			"restored": "{title} wiederhergestellt",
 			"undoFailed": "Rückgängig machen nicht möglich. Versuche es unter Aktivität.",
@@ -323,6 +320,8 @@
 			"find": "Konto suchen",
 			"empty": "Kein Konto passt"
 		},
+		"today": "Heute",
+		"yesterday": "Gestern",
 		"pickDate": "Datum wählen"
 	},
 	"entry": {
@@ -704,25 +703,16 @@
 		},
 		"preview": {
 			"checking": "Wird geprüft",
-			"error": "Das ließ sich nicht prüfen. Versuche es erneut.",
-			"changes": "Was sich ändert",
 			"beforeAfter": "{before} auf {after}",
 			"leftOf": "Übrig in {name}",
-			"nothing": "Das ändert nichts.",
 			"envelopeFallback": "Umschlag",
-			"refused": "So geht das nicht. Ändere den Betrag.",
-			"nothingElse": "Sonst ändert sich nichts: {list} bleiben, wie sie sind.",
-			"nothingElseOne": "Sonst ändert sich nichts: {item} bleibt, wie es ist.",
-			"noneChange": "Keine Änderung: {list}.",
-			"unavailable": "{list} ließ sich nicht prüfen.",
 			"notAvailable": "Nicht verfügbar (noch kein Kurs)"
 		},
 		"write": {
 			"saving": "Wird gespeichert",
 			"error": "Das ließ sich nicht speichern. Versuche es erneut.",
 			"undone": "Rückgängig gemacht",
-			"undoError": "Das ließ sich nicht rückgängig machen. Es hat sich vielleicht schon geändert.",
-			"amountInvalid": "Nutze Ziffern und die Nachkommastellen dieser Währung."
+			"undoError": "Das ließ sich nicht rückgängig machen. Es hat sich vielleicht schon geändert."
 		},
 		"listAnd": "{head} und {last}",
 		"figures": {
@@ -1413,6 +1403,7 @@
 			"liquidHint": "Geld, das du bald ausgeben kannst.",
 			"apr": "Zinssatz (jährlich, %)",
 			"dueDay": "Fälligkeitstag im Monat",
+			"dueDayNone": "Keiner",
 			"minimum": "Mindestzahlung",
 			"addedToast": "{name} hinzugefügt",
 			"savedToast": "{name} gespeichert",
@@ -1471,7 +1462,7 @@
 			"body": "Das entfernt das Konto und seinen gesamten Saldoverlauf. Der Vermögensverlauf ändert sich ebenfalls.",
 			"keepHistory": "Um den Verlauf zu behalten, schließe das Konto stattdessen.",
 			"closeInstead": "Stattdessen schließen",
-			"submit": "Löschen",
+			"submit": "Konto löschen",
 			"deleting": "Wird gelöscht",
 			"toast": "{name} gelöscht",
 			"error": "Das ließ sich nicht löschen. Versuche es erneut."
@@ -1491,7 +1482,8 @@
 			"crypto": "Krypto",
 			"market": "Markt",
 			"custom": "Eigener"
-		}
+		},
+		"invalid": "Nutze Ziffern und die Nachkommastellen dieser Währung."
 	},
 	"home": {
 		"title": "Start",
@@ -1764,8 +1756,6 @@
 		"amount": "Betrag",
 		"unpriced": "{currencies}: noch kein Kurs, darum nicht in Alles",
 		"nothingOwed": "Gerade ist nichts offen",
-		"changes": "Was sich ändert",
-		"stays": "Was gleich bleibt",
 		"figure": {
 			"balance_person": "Saldo mit {name}",
 			"owed_owedToYou": "Dir geschuldet",
@@ -1773,7 +1763,6 @@
 		},
 		"beforeAfter": "{before} auf {after}",
 		"none": "nichts",
-		"keeps": "{amount} bleibt",
 		"checking": "Wird geprüft",
 		"record": "Zahlung erfassen",
 		"recording": "Wird erfasst",
@@ -1801,8 +1790,6 @@
 		"rateLine": "{unit} = {value} · {type}",
 		"method": "Zahlungsart",
 		"date": "Datum",
-		"today": "Heute",
-		"yesterday": "Gestern",
 		"methodNames": {
 			"bank_transfer": "Überweisung",
 			"cash": "Bargeld"
@@ -2133,10 +2120,11 @@
 			"saved": "Zahlungsmethode gespeichert",
 			"prefer": "Als bevorzugt festlegen",
 			"preferredToast": "Bevorzugte Methode geändert",
-			"remove": "Entfernen",
+			"remove": "Zahlungsmethode löschen",
+			"removeTitle": "Zahlungsmethode löschen?",
 			"removeBody": "Das lässt sich nicht rückgängig machen. Personen, mit denen du teilst, sehen es nicht mehr.",
-			"removeConfirm": "Endgültig entfernen",
-			"removed": "Zahlungsmethode entfernt",
+			"removeConfirm": "Löschen",
+			"removed": "Zahlungsmethode gelöscht",
 			"saveError": "Speichern nicht möglich. Versuche es erneut."
 		},
 		"security": {
@@ -2490,11 +2478,6 @@
 			"toast": "{title} erfasst, {amount}",
 			"paidOn": "Bezahlt am",
 			"paidOnIn": "Erhalten am",
-			"paidOnDue": "{date} (fällig)",
-			"paidOnDueToday": "Heute (fällig)",
-			"paidOnToday": "Heute",
-			"paidOnPick": "Datum wählen",
-			"pickDate": "Datum",
 			"future": "Das Datum darf nicht in der Zukunft liegen.",
 			"tooEarly": "Das Datum darf nicht vor dem {date} liegen.",
 			"skip": "Diesmal überspringen"
@@ -2517,6 +2500,8 @@
 		"count": "{count, plural, one {# wiederkehrende Ausgabe} other {# wiederkehrende Ausgaben}}",
 		"autoPayOn": "Autozahlung an",
 		"autoPayOff": "Autozahlung aus",
+		"autoPayFilter": "Autozahlung",
+		"autoPayAny": "Beliebig",
 		"details": "Details",
 		"make": {
 			"title": "Wiederkehrend machen",
@@ -2550,13 +2535,14 @@
 			"toast": "{title} hinzugefügt"
 		},
 		"delete": {
-			"title": "{title} löschen",
+			"title": "{title} löschen?",
 			"body": "Es taucht nicht mehr auf. Bereits erfasste Einträge bleiben.",
 			"future": "Künftige Fälligkeiten",
 			"futureValue": "Entfallen, nächste war {date}",
 			"autoPay": "Autozahlung",
 			"autoPayValue": "Endet",
-			"submit": "Löschen",
+			"submit": "Wiederkehrende Ausgabe löschen",
+			"submitIn": "Wiederkehrende Einnahme löschen",
 			"toast": "{title} gelöscht",
 			"error": "Löschen hat nicht geklappt. Versuche es nochmal."
 		}
@@ -2725,5 +2711,18 @@
 		"tooLarge": "Dieses Bild ist größer als 5 MB.",
 		"errorReports": "Fehlerberichte an meinen Server senden",
 		"errorReportsDetail": "Nur Abstürze, ohne Adressen und Beträge. Sie gehen an deinen eigenen Server."
+	},
+	"changes": {
+		"title": "Was sich ändert",
+		"checking": "Wird geprüft",
+		"error": "Das ließ sich nicht prüfen. Versuche es erneut.",
+		"refused": "So geht das nicht. Ändere den Betrag.",
+		"nothing": "Das ändert nichts.",
+		"nothingElse": "Sonst ändert sich nichts: {list} bleiben, wie sie sind.",
+		"nothingElseOne": "Sonst ändert sich nichts: {item} bleibt, wie es ist.",
+		"noneChange": "Keine Änderung: {list}.",
+		"unavailable": "{list} ließ sich nicht prüfen.",
+		"stays": "Was gleich bleibt",
+		"keeps": "{amount} bleibt"
 	}
 }

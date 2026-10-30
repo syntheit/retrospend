@@ -47,6 +47,10 @@ export function ServerSettingsScreen() {
 		return (
 			<PageState
 				failed={server.state.status === "error" || ai.state.status === "error"}
+				onRetry={() => {
+					void server.reload();
+					void ai.reload();
+				}}
 			/>
 		);
 	}

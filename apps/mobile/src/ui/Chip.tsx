@@ -3,6 +3,7 @@ import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Glyph } from "./Glyph";
 import { Text } from "./Text";
+import { FieldLabel } from "./TextField";
 
 /**
  * - choice: one of a row of choices (a split mode, a person); on reads as
@@ -131,5 +132,47 @@ export function Chip({
 				</Pressable>
 			) : null}
 		</Pressable>
+	);
+}
+
+/**
+ * A single choice in a form from four to seven short options (GUIDELINE 5):
+ * a row of choice chips that wraps, the picked one on, under an optional
+ * label. Two or three options are a stretched Segmented; more, or long
+ * labels, are a picker row. Nothing is picked while `value` is null.
+ */
+export function ChipGroup<T extends string>({
+	options,
+	value,
+	onChange,
+	accessibilityLabel,
+	label,
+}: {
+	options: { value: T; label: string }[];
+	value: T | null;
+	onChange: (value: T) => void;
+	accessibilityLabel: string;
+	/** The visible label above the chips. */
+	label?: string;
+}) {
+	const { space } = useTheme();
+	return (
+		<View style={{ gap: space[2] }}>
+			{label ? <FieldLabel>{label}</FieldLabel> : null}
+			<View
+				accessibilityLabel={accessibilityLabel}
+				accessibilityRole="radiogroup"
+				style={{ flexDirection: "row", flexWrap: "wrap", gap: space[2] }}
+			>
+				{options.map((option) => (
+					<Chip
+						key={option.value}
+						label={option.label}
+						onPress={() => onChange(option.value)}
+						selected={option.value === value}
+					/>
+				))}
+			</View>
+		</View>
 	);
 }

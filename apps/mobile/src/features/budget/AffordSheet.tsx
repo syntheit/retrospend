@@ -2,16 +2,11 @@ import type { RetrospendClient } from "@retrospend/api-client";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
-import { AmountCard } from "@/features/entry/AmountCard";
-import { OperatorKeys } from "@/features/entry/ComposerBar";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import { Note, SheetBody, useAmountLocale } from "@/features/write/parts";
-import { useFormatMoney } from "@/lib/money";
-import { useTheme } from "@/theme";
+import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
-import { applyKey } from "@/ui/keypad";
-import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { affordQuery } from "./moreBodies";
@@ -48,10 +43,7 @@ export function AffordSheet({
 }) {
 	const t = useTranslations("mobile.budget.afford");
 	const tp = useTranslations("mobile.budget.pool");
-	const tc = useTranslations("mobile.composer");
 	const { api } = useSession();
-	const { format: formatMoney } = useFormatMoney();
-	const { size } = useTheme();
 	const money = useMoneyText();
 	const locale = useAmountLocale();
 	const currency = data.book.currency;
@@ -68,10 +60,6 @@ export function AffordSheet({
 	const [failed, setFailed] = useState(false);
 	const entered = readAmount(draft, locale, currency);
 	const minor = minorOf(entered);
-	const spoken =
-		minor !== null
-			? tc("amountLabel", { amount: formatMoney({ minor, currency }) ?? "" })
-			: tc("amountEmpty", { currency });
 	const query =
 		minor === null
 			? null
@@ -139,33 +127,11 @@ export function AffordSheet({
 			visible={visible}
 		>
 			<SheetBody>
-				<AmountCard
-					lines={[
-						{
-							key: "amount",
-							currency: (
-								<Text tone="fg2" weight="semibold">
-									{currency}
-								</Text>
-							),
-							text: draft,
-							placeholder: "0",
-							spoken: `${t("amount")}, ${spoken}`,
-							active: true,
-							onPress: () => undefined,
-						},
-					]}
-					ring={entered.state === "invalid" ? "error" : "focus"}
-				/>
-				<OperatorKeys
-					onOperator={(sign) =>
-						setDraft(applyKey(draft, sign, locale, currency))
-					}
-				/>
-				<MoneyKeypad
+				<AmountField
 					currency={currency}
 					draft={draft}
-					keyHeight={size.touchMin.phone}
+					entered={entered}
+					label={t("amount")}
 					onDraftChange={setDraft}
 				/>
 				{byEnvelope ? (

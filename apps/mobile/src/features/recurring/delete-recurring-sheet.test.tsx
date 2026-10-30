@@ -151,8 +151,9 @@ describe("Delete a recurring expense", () => {
 		});
 		// The button waits for the dry run.
 		expect(
-			tree.root.findAll((n) => n.props.accessibilityLabel === "Delete")[0]
-				?.props.accessibilityState,
+			tree.root.findAll(
+				(n) => n.props.accessibilityLabel === "Delete recurring expense",
+			)[0]?.props.accessibilityState,
 		).toEqual({ disabled: true });
 		await wait(400);
 		expect(calls.find((c) => c.route === "preview")?.input).toEqual({
@@ -160,7 +161,7 @@ describe("Delete a recurring expense", () => {
 		});
 		expect(calls.some((c) => c.route === "write")).toBe(false);
 
-		press(tree, "Delete");
+		press(tree, "Delete recurring expense");
 		await wait(50);
 		const writes = calls.filter((c) => c.route === "write");
 		expect(writes).toHaveLength(1);

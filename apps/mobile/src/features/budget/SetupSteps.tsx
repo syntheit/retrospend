@@ -3,8 +3,10 @@ import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
-import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
+import { Note, useAmountLocale } from "@/features/write/parts";
 import { useTheme } from "@/theme";
+import { AmountField } from "@/ui/AmountField";
+import { ChipGroup } from "@/ui/Chip";
 import { DateField } from "@/ui/DateField";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { ChoiceList } from "./fields";
@@ -56,25 +58,26 @@ export function StyleStep({
 	const t = useTranslations("mobile.budget.setup");
 	const ts = useTranslations("mobile.budget.style");
 	const { space } = useTheme();
-	const choices = (list: SetupChoice[]) =>
+	const options = (list: SetupChoice[]) =>
 		list.map((c) => ({
-			id: c,
+			value: c,
 			label: c === "TRACK" ? t("track") : ts(`name.${c}`),
-			detail: undefined,
 		}));
 	return (
 		<View style={{ gap: space[4] }}>
 			<Heading sub={t("styleSub")} title={t("styleTitle")} />
-			<ChoiceList
-				choices={choices(ANSWERS)}
-				onPress={(id) => onChange(id as SetupChoice)}
-				selected={new Set([value])}
+			<ChipGroup
+				accessibilityLabel={t("styleTitle")}
+				onChange={onChange}
+				options={options(ANSWERS)}
+				value={value}
 			/>
-			<ChoiceList
-				choices={choices(METHODS)}
+			<ChipGroup
+				accessibilityLabel={t("methods")}
 				label={t("methods")}
-				onPress={(id) => onChange(id as SetupChoice)}
-				selected={new Set([value])}
+				onChange={onChange}
+				options={options(METHODS)}
+				value={value}
 			/>
 			<Note>{value === "TRACK" ? t("trackAbout") : ts(`about.${value}`)}</Note>
 		</View>
@@ -97,11 +100,12 @@ export function PayStep({
 	return (
 		<View style={{ gap: space[4] }}>
 			<Heading sub={t("sub")} title={t("title")} />
-			<ChoiceList
-				choices={FREQUENCIES.map((f) => ({ id: f, label: t(f) }))}
+			<ChipGroup
+				accessibilityLabel={t("frequency")}
 				label={t("frequency")}
-				onPress={(id) => onChange({ ...value, frequency: id as PayFrequency })}
-				selected={new Set(value.frequency ? [value.frequency] : [])}
+				onChange={(frequency) => onChange({ ...value, frequency })}
+				options={FREQUENCIES.map((f) => ({ value: f, label: t(f) }))}
+				value={value.frequency}
 			/>
 			{dated ? (
 				<>

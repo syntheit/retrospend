@@ -7,6 +7,7 @@ import type { GlyphName } from "@/ui/Glyph";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow, StaleNote } from "@/ui/List";
 import { Screen } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { GroupNote, SettingsPage } from "../parts";
 import { usePaymentMethods } from "../useSettings";
@@ -30,7 +31,7 @@ export function methodGlyph(type: string): GlyphName {
  */
 export function PaymentMethodsScreen() {
 	const t = useTranslations("mobile.settings.payment");
-	const loading = useTranslations("mobile.activity")("loading");
+	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
 	const { state, reload } = usePaymentMethods();
 	const [editing, setEditing] = useState<PaymentMethod | null>(null);
@@ -39,10 +40,16 @@ export function PaymentMethodsScreen() {
 	if (state.status !== "ready") {
 		return (
 			<Screen>
-				<EmptyState
-					detail={state.status === "error" ? t("errorDetail") : undefined}
-					title={state.status === "error" ? t("error") : loading}
-				/>
+				{state.status === "error" ? (
+					<EmptyState
+						actionLabel={tc("retry")}
+						detail={t("errorDetail")}
+						onAction={() => void reload()}
+						title={t("error")}
+					/>
+				) : (
+					<SkeletonRows />
+				)}
 			</Screen>
 		);
 	}

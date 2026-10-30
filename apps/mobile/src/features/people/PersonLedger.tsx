@@ -3,8 +3,8 @@ import { ScrollView, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
+import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, SectionHeader } from "@/ui/List";
-import { Text } from "@/ui/Text";
 import { TextField } from "@/ui/TextField";
 import {
 	filterLedger,
@@ -70,9 +70,7 @@ export function PersonLedger({
 		<View>
 			<SectionHeader title={t("between")} />
 			{all.length === 0 ? (
-				<Text style={{ paddingHorizontal: space[4] }} tone="fg2" variant="body">
-					{t("betweenEmpty")}
-				</Text>
+				<EmptyState inline title={t("betweenEmpty")} />
 			) : (
 				<View style={{ gap: space[3] }}>
 					<View style={{ paddingHorizontal: space[4] }}>
@@ -104,13 +102,7 @@ export function PersonLedger({
 						))}
 					</ScrollView>
 					{months.length === 0 ? (
-						<Text
-							style={{ paddingHorizontal: space[4] }}
-							tone="fg2"
-							variant="body"
-						>
-							{t("ledgerNoMatch")}
-						</Text>
+						<EmptyState inline title={t("ledgerNoMatch")} />
 					) : null}
 				</View>
 			)}

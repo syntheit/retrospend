@@ -116,7 +116,33 @@ export function BulkSheet({
 		ready && action?.kind === "delete" ? skippedOf(preview.diff) : 0;
 
 	return (
-		<Sheet onClose={onClose} title={title} visible={open}>
+		<Sheet
+			detents={action?.kind === "delete" ? ["medium"] : undefined}
+			footer={
+				<>
+					<Button label={tc("cancel")} onPress={onClose} variant="text" />
+					<Button
+						disabled={!ready || busy}
+						label={
+							busy
+								? action?.kind === "delete"
+									? tc("deleting")
+									: tc("saving")
+								: action?.kind === "delete"
+									? t("deleteButton", { count })
+									: t("categorizeButton", {
+											name: action?.kind === "category" ? action.name : "",
+										})
+						}
+						onPress={() => void save()}
+						variant={action?.kind === "delete" ? "danger" : "filled"}
+					/>
+				</>
+			}
+			onClose={onClose}
+			title={title}
+			visible={open}
+		>
 			<View style={{ gap: space[4] }}>
 				<Text tone="fg2">
 					{action?.kind === "delete"
@@ -136,21 +162,6 @@ export function BulkSheet({
 						{t("failed")}
 					</Text>
 				) : null}
-				<Button
-					disabled={!ready || busy}
-					label={
-						busy
-							? tc("saving")
-							: action?.kind === "delete"
-								? t("deleteButton", { count })
-								: t("categorizeButton", {
-										name: action?.kind === "category" ? action.name : "",
-									})
-					}
-					onPress={() => void save()}
-					variant={action?.kind === "delete" ? "danger" : "filled"}
-				/>
-				<Button label={tc("cancel")} onPress={onClose} variant="text" />
 			</View>
 		</Sheet>
 	);

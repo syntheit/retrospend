@@ -4,9 +4,10 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { minorOf, readAmount } from "@/features/write/amount";
-import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
+import { Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { useTheme } from "@/theme";
+import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
 import { Segmented } from "@/ui/Segmented";
 import { useToast } from "@/ui/Toast";
@@ -111,6 +112,7 @@ export function RuleAddForm({
 					{ value: "AMOUNT", label: t("amount") },
 					{ value: "REMAINDER", label: t("rest") },
 				]}
+				stretch
 				value={kind}
 			/>
 			{kind === "PERCENT" ? (

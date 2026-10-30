@@ -26,6 +26,13 @@ export interface MenuItem {
 	label: string;
 	onPress: () => void;
 	destructive?: boolean;
+	/**
+	 * An identity mark before the label: a face, a bare category glyph or a
+	 * cover (GUIDELINE 8), for filter menus of people, categories and
+	 * projects. Android draws it in the item's leading slot. The iOS system
+	 * menu draws only SF Symbols, so it shows the label alone there.
+	 */
+	lead?: ReactElement;
 }
 
 export interface MenuProps {
@@ -182,4 +189,8 @@ export interface DateFieldProps {
 	placeholder?: string;
 	/** The earliest day that can be picked, "yyyy-MM-dd". */
 	minimum?: string;
+	/** Today and Yesterday chips under the row, like the web date picker. */
+	quick?: boolean;
+	/** What Today means with `quick`, when it is not the phone's day. */
+	today?: string;
 }

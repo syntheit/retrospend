@@ -72,7 +72,6 @@ export function EntryActions({
 				<View>
 					{canDelete ? (
 						<Button
-							icon="Trash2"
 							label={t("delete")}
 							onPress={() => setDeleting(true)}
 							variant="dangerText"

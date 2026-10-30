@@ -18,6 +18,7 @@
 		"retry": "Reintentar",
 		"save": "Guardar",
 		"saving": "Guardando",
+		"deleting": "Eliminando",
 		"close": "Cerrar",
 		"done": "Listo"
 	},
@@ -70,16 +71,12 @@
 			"editRefused": "No se pudo guardar este cambio. Puede estar bloqueado."
 		},
 		"changes": {
-			"title": "Qué cambia",
 			"emptyExpense": "Escribe un importe y elige una categoría para ver qué cambia.",
 			"emptyIncome": "Escribe un importe e indica quién te pagó para ver qué cambia.",
 			"loading": "Comprobando qué cambia",
 			"offline": "Sin conexión. Se guarda en tu teléfono y se sincroniza después.",
 			"refused": "Todavía no se puede guardar. Revisa el importe y la moneda.",
 			"to": "a {amount}",
-			"stays": "Se queda igual: {places}.",
-			"unknown": "Aún no se puede saber: {places}.",
-			"nothing": "No cambia nada más.",
 			"figures": {
 				"budget_notPlannedYet": "Sin planear aún",
 				"budget_leftToSpend": "Disponible para gastar",
@@ -287,9 +284,9 @@
 		},
 		"delete": {
 			"row": "Eliminar",
-			"title": "¿Eliminar este gasto?",
+			"title": "¿Eliminar gasto?",
 			"body": "Sale de tus gastos y de tu presupuesto.",
-			"button": "Eliminar",
+			"button": "Eliminar gasto",
 			"deleted": "Se eliminó {title}",
 			"restored": "Se restauró {title}",
 			"undoFailed": "No se pudo deshacer. Inténtalo desde Actividad.",
@@ -323,6 +320,8 @@
 			"find": "Busca una cuenta",
 			"empty": "Ninguna cuenta coincide"
 		},
+		"today": "Hoy",
+		"yesterday": "Ayer",
 		"pickDate": "Elige una fecha"
 	},
 	"entry": {
@@ -704,25 +703,16 @@
 		},
 		"preview": {
 			"checking": "Verificando",
-			"error": "No se pudo verificar. Inténtalo de nuevo.",
-			"changes": "Qué cambia",
 			"beforeAfter": "{before} a {after}",
 			"leftOf": "Queda en {name}",
-			"nothing": "Esto no cambia nada.",
 			"envelopeFallback": "Sobre",
-			"refused": "Esto no se puede hacer así. Cambia el monto.",
-			"nothingElse": "Nada más cambia: {list} siguen igual.",
-			"nothingElseOne": "Nada más cambia: {item} sigue igual.",
-			"noneChange": "Sin cambios en {list}.",
-			"unavailable": "No se pudo comprobar {list}.",
 			"notAvailable": "No disponible (sin tipo de cambio)"
 		},
 		"write": {
 			"saving": "Guardando",
 			"error": "No se pudo guardar. Inténtalo de nuevo.",
 			"undone": "Deshecho",
-			"undoError": "No se pudo deshacer. Puede que ya haya cambiado.",
-			"amountInvalid": "Usa dígitos y los decimales que tiene esta moneda."
+			"undoError": "No se pudo deshacer. Puede que ya haya cambiado."
 		},
 		"listAnd": "{head} y {last}",
 		"figures": {
@@ -1413,6 +1403,7 @@
 			"liquidHint": "Dinero que puedes gastar pronto.",
 			"apr": "Tasa de interés (anual, %)",
 			"dueDay": "Día de vencimiento del mes",
+			"dueDayNone": "Ninguno",
 			"minimum": "Pago mínimo",
 			"addedToast": "{name} agregada",
 			"savedToast": "{name} guardada",
@@ -1471,7 +1462,7 @@
 			"body": "Esto elimina la cuenta y todo su historial de saldos. El historial del patrimonio también cambia.",
 			"keepHistory": "Para conservar el historial, cierra la cuenta en su lugar.",
 			"closeInstead": "Mejor cerrar",
-			"submit": "Eliminar",
+			"submit": "Eliminar cuenta",
 			"deleting": "Eliminando",
 			"toast": "{name} eliminada",
 			"error": "No se pudo eliminar. Inténtalo de nuevo."
@@ -1491,7 +1482,8 @@
 			"crypto": "Cripto",
 			"market": "Mercado",
 			"custom": "Personalizado"
-		}
+		},
+		"invalid": "Usa dígitos y los decimales que tiene esta moneda."
 	},
 	"home": {
 		"title": "Inicio",
@@ -1764,8 +1756,6 @@
 		"amount": "Monto",
 		"unpriced": "{currencies}: todavía sin cotización, no entra en Todo",
 		"nothingOwed": "No hay nada pendiente ahora",
-		"changes": "Qué cambia",
-		"stays": "Qué sigue igual",
 		"figure": {
 			"balance_person": "Saldo con {name}",
 			"owed_owedToYou": "Te deben",
@@ -1773,7 +1763,6 @@
 		},
 		"beforeAfter": "{before} a {after}",
 		"none": "nada",
-		"keeps": "{amount} se mantiene",
 		"checking": "Verificando",
 		"record": "Registrar pago",
 		"recording": "Registrando",
@@ -1801,8 +1790,6 @@
 		"rateLine": "{unit} = {value} · {type}",
 		"method": "Medio",
 		"date": "Fecha",
-		"today": "Hoy",
-		"yesterday": "Ayer",
 		"methodNames": {
 			"bank_transfer": "Transferencia",
 			"cash": "Efectivo"
@@ -2133,10 +2120,11 @@
 			"saved": "Método de pago guardado",
 			"prefer": "Hacer preferido",
 			"preferredToast": "Método preferido cambiado",
-			"remove": "Quitar",
+			"remove": "Eliminar método de pago",
+			"removeTitle": "¿Eliminar método de pago?",
 			"removeBody": "No se puede deshacer. Las personas con las que compartes ya no lo verán.",
-			"removeConfirm": "Quitar definitivamente",
-			"removed": "Método de pago quitado",
+			"removeConfirm": "Eliminar",
+			"removed": "Método de pago eliminado",
 			"saveError": "No se pudo guardar. Inténtalo de nuevo."
 		},
 		"security": {
@@ -2490,11 +2478,6 @@
 			"toast": "{title} registrado, {amount}",
 			"paidOn": "Pagado el",
 			"paidOnIn": "Recibido el",
-			"paidOnDue": "{date} (vence)",
-			"paidOnDueToday": "Hoy (vence)",
-			"paidOnToday": "Hoy",
-			"paidOnPick": "Elegir fecha",
-			"pickDate": "Fecha",
 			"future": "La fecha no puede ser futura.",
 			"tooEarly": "La fecha no puede ser anterior al {date}.",
 			"skip": "Omitir esta vez"
@@ -2517,6 +2500,8 @@
 		"count": "{count, plural, one {# gasto recurrente} other {# gastos recurrentes}}",
 		"autoPayOn": "Pago automático activado",
 		"autoPayOff": "Pago automático desactivado",
+		"autoPayFilter": "Pago automático",
+		"autoPayAny": "Cualquiera",
 		"details": "Detalles",
 		"make": {
 			"title": "Hacer recurrente",
@@ -2550,13 +2535,14 @@
 			"toast": "{title} agregado"
 		},
 		"delete": {
-			"title": "Eliminar {title}",
+			"title": "¿Eliminar {title}?",
 			"body": "Deja de aparecer. Los movimientos que ya registró se quedan.",
 			"future": "Próximas veces",
 			"futureValue": "Se detienen, la próxima era el {date}",
 			"autoPay": "Pago automático",
 			"autoPayValue": "Se detiene",
-			"submit": "Eliminar",
+			"submit": "Eliminar gasto recurrente",
+			"submitIn": "Eliminar ingreso recurrente",
 			"toast": "{title} eliminado",
 			"error": "No se pudo eliminar. Intenta de nuevo."
 		}
@@ -2725,5 +2711,18 @@
 		"tooLarge": "Esa imagen supera los 5 MB.",
 		"errorReports": "Enviar informes de errores a mi servidor",
 		"errorReportsDetail": "Solo fallos, sin direcciones ni importes. Van a tu propio servidor."
+	},
+	"changes": {
+		"title": "Qué cambia",
+		"checking": "Verificando",
+		"error": "No se pudo verificar. Inténtalo de nuevo.",
+		"refused": "Esto no se puede hacer así. Cambia el monto.",
+		"nothing": "Esto no cambia nada.",
+		"nothingElse": "Nada más cambia: {list} siguen igual.",
+		"nothingElseOne": "Nada más cambia: {item} sigue igual.",
+		"noneChange": "Sin cambios en {list}.",
+		"unavailable": "No se pudo comprobar {list}.",
+		"stays": "Qué sigue igual",
+		"keeps": "{amount} se mantiene"
 	}
 }

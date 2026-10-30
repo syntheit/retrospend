@@ -5,20 +5,14 @@ import { useFormatter, useTranslations } from "use-intl";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
-import {
-	AmountField,
-	Note,
-	SheetBody,
-	useAmountLocale,
-} from "@/features/write/parts";
+import { Note, SheetBody, useAmountLocale } from "@/features/write/parts";
 import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
+import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
 import { DateField } from "@/ui/DateField";
-import { Segmented } from "@/ui/Segmented";
 import { Sheet } from "@/ui/Sheet";
-import { Text } from "@/ui/Text";
 import type { RecurringItem } from "./source";
 import { useConfirmUndo, useRecurringToast } from "./useRecurringToast";
 
@@ -36,16 +30,14 @@ export function useDayText() {
 /**
  * Confirm a due recurring expense or income: the server books the entry and
  * moves the template on from its due date. Paid on says which day it books on
- * (the due date, today when it is overdue, or a day picked); the rate follows
- * that day. A varying amount (amountMode ask) starts at the usual amount and
- * is edited here; a fixed one is shown, since the server keeps it fixed.
+ * (one date field that starts on the due date, with Today and Yesterday as
+ * shortcuts); the rate follows that day. A varying amount (amountMode ask)
+ * starts at the usual amount and is edited here; a fixed one is shown, since the server keeps it fixed.
  * Skip this time hands over to the skip sheet. Auto-pay is not here: it is a
  * separate change to the template, with its own Undo, in the item sheet. The
  * dry run lists what changes before Confirm is on, and the toast undoes it.
  * Medium for a fixed amount, large with the keypad.
  */
-type PaidOn = "due" | "today" | "pick";
-
 export function ConfirmSheet({
 	item,
 	today,
@@ -74,13 +66,9 @@ export function ConfirmSheet({
 	const usual = draftFromMinor(item.amount.minor, locale, currency);
 	const [draft, setDraft] = useState(usual);
 	const { space } = useTheme();
-	const overdue = item.next < today;
-	const [paidMode, setPaidMode] = useState<PaidOn>("due");
-	const [picked, setPicked] = useState(today);
-	const future = paidMode === "pick" && picked > today;
-	const early = paidMode === "pick" && picked < item.paidOnFrom;
-	const paidOn =
-		paidMode === "today" ? today : paidMode === "pick" ? picked : item.next;
+	const [paidOn, setPaidOn] = useState(item.next);
+	const future = paidOn > today;
+	const early = paidOn < item.paidOnFrom;
 	const entered = readAmount(draft, locale, currency);
 	const minor = minorOf(entered);
 	const input =
@@ -100,8 +88,7 @@ export function ConfirmSheet({
 	useEffect(() => {
 		if (!visible) return;
 		setDraft(usual);
-		setPaidMode("due");
-		setPicked(today);
+		setPaidOn(item.next);
 		reset();
 	}, [visible]);
 
@@ -161,36 +148,14 @@ export function ConfirmSheet({
 						})}
 					</Note>
 					<View style={{ gap: space[2] }}>
-						<Text tone="fg2" variant="small" weight="medium">
-							{t(item.direction === "in" ? "paidOnIn" : "paidOn")}
-						</Text>
-						<Segmented
-							accessibilityLabel={t(
-								item.direction === "in" ? "paidOnIn" : "paidOn",
-							)}
-							onChange={setPaidMode}
-							options={[
-								{
-									value: "due",
-									label: overdue
-										? t("paidOnDue", { date: day(item.next) })
-										: t("paidOnDueToday"),
-								},
-								...(overdue
-									? [{ value: "today" as const, label: t("paidOnToday") }]
-									: []),
-								{ value: "pick", label: t("paidOnPick") },
-							]}
-							value={paidMode}
+						<DateField
+							label={t(item.direction === "in" ? "paidOnIn" : "paidOn")}
+							minimum={item.paidOnFrom}
+							onChange={setPaidOn}
+							quick
+							today={today}
+							value={paidOn}
 						/>
-						{paidMode === "pick" ? (
-							<DateField
-								label={t("pickDate")}
-								minimum={item.paidOnFrom}
-								onChange={setPicked}
-								value={picked}
-							/>
-						) : null}
 						{future ? <Note tone="attention">{t("future")}</Note> : null}
 						{early ? (
 							<Note tone="attention">

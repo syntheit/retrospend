@@ -5,14 +5,37 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note, SheetBody } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { Avatar } from "@/ui/Avatar";
+import { EmptyState } from "@/ui/EmptyState";
 import { ListRow } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { CategoryPick, loadCategories } from "./CategoryList";
 import { participantKey, shareCategoryBody } from "./owedBodies";
 import type { BudgetMonth } from "./source";
 import { useSheetRead } from "./useSheetRead";
 import { BackButton, WriteForm } from "./WriteSheet";
+
+/** A read that has not answered (rows in place) or failed (the message and Retry). */
+function LoadState({
+	status,
+	onRetry,
+}: {
+	status: string;
+	onRetry: () => void;
+}) {
+	const t = useTranslations("mobile.budget.unrouted");
+	const tc = useTranslations("mobile.common");
+	return status === "error" ? (
+		<EmptyState
+			actionLabel={tc("retry")}
+			onAction={onRetry}
+			title={t("error")}
+		/>
+	) : (
+		<SkeletonRows count={2} />
+	);
+}
 
 /**
  * Shares with no envelope: your part of someone else's split that found no
@@ -124,16 +147,17 @@ export function UnroutedSheet({
 									value={categoryId}
 								/>
 							) : (
-								<Note>
-									{categories.status === "error" ? t("error") : t("loading")}
-								</Note>
+								<LoadState
+									onRetry={categories.reload}
+									status={categories.status}
+								/>
 							)}
 						</WriteForm>
 					</>
 				) : (
 					<>
-						{shares.status === "error" ? (
-							<Note tone="attention">{t("error")}</Note>
+						{shares.status === "error" || shares.status === "loading" ? (
+							<LoadState onRetry={shares.reload} status={shares.status} />
 						) : null}
 						{list && list.count === 0 ? <Note>{t("none")}</Note> : null}
 						{list && list.count > 0 ? (

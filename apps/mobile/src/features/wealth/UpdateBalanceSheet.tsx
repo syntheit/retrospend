@@ -1,27 +1,20 @@
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
-import { AmountCard } from "@/features/entry/AmountCard";
 import { useRateTypeLabel } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
 import { figureLines } from "@/features/write/figures";
-import {
-	ChangeList,
-	type ChangeRow,
-	Note,
-	SheetBody,
-	useAmountLocale,
-} from "@/features/write/parts";
+import { Note, SheetBody, useAmountLocale } from "@/features/write/parts";
 import { useFigureLabel } from "@/features/write/useFigureLabel";
 import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { useUndoToast } from "@/features/write/useUndoToast";
 import { noSession, useApi } from "@/features/write/WriteFrame";
-import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
+import { ChangeList, type ChangeRow } from "@/ui/ChangeList";
 import { IconTile } from "@/ui/IconTile";
-import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { glyphOf } from "./accounts";
@@ -63,10 +56,7 @@ export function UpdateBalanceSheet({
 	const money = useMoneyText();
 	const rateName = useRateTypeLabel();
 	const locale = useAmountLocale();
-	const tc = useTranslations("mobile.composer");
-	const tb = useTranslations("mobile.budget.write");
-	const { format: format_ } = useFormatMoney();
-	const { size, space } = useTheme();
+	const { space } = useTheme();
 	const currency = account.balance.currency;
 	const types = rateTypesOf(catalog, currency, home);
 	const saved = account.rateType;
@@ -215,50 +205,16 @@ export function UpdateBalanceSheet({
 					</View>
 				</View>
 				<View style={{ gap: space[4] }}>
-					<View style={{ gap: space[1] }}>
-						<AmountCard
-							lines={[
-								{
-									key: "amount",
-									currency: (
-										<Text tone="fg2" weight="semibold">
-											{currency}
-										</Text>
-									),
-									text: draft,
-									placeholder: "0",
-									spoken: `${t("amount")}, ${
-										minor !== null
-											? tc("amountLabel", {
-													amount: format_({ minor, currency }) ?? "",
-												})
-											: tc("amountEmpty", { currency })
-									}`,
-									active: true,
-									onPress: () => setKeypad(true),
-								},
-							]}
-							ring={entered.state === "invalid" ? "error" : "focus"}
-						/>
-						{entered.state === "invalid" ? (
-							<Text
-								accessibilityRole="alert"
-								style={{ textAlign: "right" }}
-								tone="danger"
-								variant="small"
-							>
-								{tb("amountInvalid")}
-							</Text>
-						) : null}
-					</View>
-					{keypad ? (
-						<MoneyKeypad
-							currency={currency}
-							draft={draft}
-							keyHeight={size.touchMin.phone}
-							onDraftChange={setDraft}
-						/>
-					) : null}
+					<AmountField
+						allowZero
+						currency={currency}
+						draft={draft}
+						entered={entered}
+						keypad={keypad}
+						label={t("amount")}
+						onDraftChange={setDraft}
+						onPress={() => setKeypad(true)}
+					/>
 					<View style={{ gap: space[4] }}>
 						<RateTypeChips
 							onChange={(next) => {

@@ -19,6 +19,7 @@ import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { useAddInset } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
 
 /** The phone's today as a YYYY-MM-DD day; the list carries no server day. */
 function todayDay(): string {
@@ -56,6 +57,7 @@ export function ProjectsList({
 	bar?: ReactNode;
 }) {
 	const t = useTranslations("mobile.projects");
+	const tc = useTranslations("mobile.common");
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const inset = useAddInset();
@@ -81,9 +83,14 @@ export function ProjectsList({
 
 	const empty =
 		state.status === "loading" ? (
-			<EmptyState title={t("title")} />
+			<SkeletonRows />
 		) : state.status === "error" ? (
-			<EmptyState detail={t("errorDetail")} title={t("error")} />
+			<EmptyState
+				actionLabel={tc("retry")}
+				detail={t("errorDetail")}
+				onAction={() => void reload()}
+				title={t("error")}
+			/>
 		) : (
 			<EmptyState
 				detail={query === "" ? t("emptyDetail") : undefined}

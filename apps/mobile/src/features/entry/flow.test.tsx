@@ -643,7 +643,9 @@ describe("Add income with Use my plan", () => {
 		expect(words(tree)).toContain("Not planned yet");
 		expect(words(tree)).toContain("+ARS 340,000");
 		expect(words(tree)).toContain("to ARS 340,000");
-		expect(words(tree)).toContain("Stays the same: your spending.");
+		expect(words(tree)).toContain(
+			"Nothing else changes: your spending stays as it is.",
+		);
 		// Then the plan: the envelope it fills and what stays Not planned yet.
 		expect(words(tree)).toContain("Then your plan assigns");
 		expect(words(tree)).toContain("Rent");
@@ -1440,7 +1442,7 @@ describe("Edit: undo changes and delete", () => {
 		).toEqual({ id: "e1" });
 		const confirm = find(
 			tree,
-			(p) => p.label === "Delete" && typeof p.onPress === "function",
+			(p) => p.label === "Delete expense" && typeof p.onPress === "function",
 		)[0];
 		if (!confirm) throw new Error("no Delete button");
 		await act(async () => {
@@ -1473,7 +1475,7 @@ describe("Edit: undo changes and delete", () => {
 		).toEqual({ id: "s1" });
 		const confirm = find(
 			tree,
-			(p) => p.label === "Delete" && typeof p.onPress === "function",
+			(p) => p.label === "Delete expense" && typeof p.onPress === "function",
 		)[0];
 		if (!confirm) throw new Error("no Delete button");
 		await act(async () => {

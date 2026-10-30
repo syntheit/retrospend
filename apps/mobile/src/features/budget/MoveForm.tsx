@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
-import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
+import { Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import type { FormProps } from "@/features/write/WriteFrame";
+import { AmountField } from "@/ui/AmountField";
 import { Segmented } from "@/ui/Segmented";
 import { type MoveDirection, moveRequest, type Peer } from "./bodies";
 import { EnvelopePick } from "./pickers";
@@ -138,6 +139,7 @@ export function MoveForm({
 					{ value: "in", label: t("in") },
 					{ value: "out", label: t("out") },
 				]}
+				stretch
 				value={direction}
 			/>
 			{place ? (
