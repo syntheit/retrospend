@@ -4,6 +4,7 @@ import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import { useTheme } from "@/theme";
+import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { EmptyState } from "@/ui/EmptyState";
 import { Glyph } from "@/ui/Glyph";
 import { ListRow, SectionHeader } from "@/ui/List";
@@ -104,6 +105,43 @@ export function PickerRow<T extends string>({
 		<ListRow
 			end={<Picker onChange={onChange} options={options} value={value} />}
 			sub={sub}
+			title={
+				<Text numberOfLines={2} weight="medium">
+					{label}
+				</Text>
+			}
+		/>
+	);
+}
+
+/**
+ * A settings row that picks a currency: the label, and the one currency
+ * picker (flag, code, chevron) at the end.
+ */
+export function CurrencyRow({
+	label,
+	currencies,
+	yours,
+	value,
+	onChange,
+}: {
+	label: string;
+	currencies: string[];
+	yours: string[];
+	value: string;
+	onChange: (code: string) => void;
+}) {
+	return (
+		<ListRow
+			end={
+				<CurrencyPicker
+					currencies={currencies}
+					label={label}
+					onChange={onChange}
+					value={value}
+					yours={yours}
+				/>
+			}
 			title={
 				<Text numberOfLines={2} weight="medium">
 					{label}

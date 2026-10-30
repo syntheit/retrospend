@@ -7,6 +7,7 @@ import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
+import { CurrencyFlag } from "@/ui/CurrencyFlag";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, ListRow, StaleNote } from "@/ui/List";
 import { RowMenu } from "@/ui/RowMenu";
@@ -87,6 +88,7 @@ function CurrencyLine({
 	const name = useCurrencyName();
 	const label = useRateLabel();
 	const price = defaultPrice(row);
+	const { space } = useTheme();
 	const canStar = row.favorite || row.rateId !== null;
 	const items = [
 		{ id: "convert", label: t("menu.convert"), onPress: onOpen },
@@ -124,7 +126,18 @@ function CurrencyLine({
 						<Text tone="attention">{t("noRate")}</Text>
 					)
 				}
-				lead={<StarButton busy={busy} onToggle={onFavorite} row={row} />}
+				lead={
+					<View
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							gap: space[3],
+						}}
+					>
+						<StarButton busy={busy} onToggle={onFavorite} row={row} />
+						<CurrencyFlag code={row.code} />
+					</View>
+				}
 				sub={
 					price ? (
 						name(row.code)

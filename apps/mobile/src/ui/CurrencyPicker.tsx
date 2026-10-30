@@ -1,104 +1,91 @@
-import { getCountryCodeFromCurrency } from "@retrospend/domain/currency-country";
 import { useMemo, useState } from "react";
-import { View } from "react-native";
-import { SvgXml } from "react-native-svg";
 import { useLocale, useTranslations } from "use-intl";
+import { usePinnedCurrencies } from "@/features/currencies/useCurrencies";
 import {
+	countryNamesOf,
 	englishCurrencyName as englishName,
 	localCurrencyName,
 } from "@/lib/currency-names";
-import { useTheme } from "@/theme";
+import {
+	recordRecentCurrency,
+	useRecentCurrencies,
+} from "@/lib/recent-currencies";
 import { Chip } from "./Chip";
-import { FLAGS } from "./flags.generated";
-import { Glyph } from "./Glyph";
+import { CurrencyFlag } from "./CurrencyFlag";
+import { currencySections, mergeRecent } from "./currencySections";
 import { PickerSheet } from "./PickerSheet";
 import type { PickGroup } from "./pickGroups";
 
-/**
- * The flag of a currency's country in a circle; crypto and unknown codes get
- * a coin. Picker rows show it in the 24 point lead slot, a chip at the 16
- * point icon size.
- */
-function CurrencyFlag({ code, small }: { code: string; small?: boolean }) {
-	const { color, size } = useTheme();
-	const country = getCountryCodeFromCurrency(code);
-	const xml = country ? FLAGS[country] : undefined;
-	const side = small ? size.icon.phone : size.avatar.sm;
-	return xml ? (
-		<SvgXml height={side} width={side} xml={xml} />
-	) : (
-		<View
-			style={{
-				width: side,
-				height: side,
-				borderRadius: side / 2,
-				alignItems: "center",
-				justifyContent: "center",
-				backgroundColor: small ? undefined : color.raised,
-			}}
-		>
-			<Glyph color={color.fg2} name="Coins" size={size.icon.phone} />
-		</View>
-	);
-}
+const NONE: string[] = [];
 
 /**
- * Every place the app picks a currency: a trigger chip with the flag and the
- * code, and the picker sheet behind it. Yours (home and default) and Recent come first, then
- * all, each with the flag the web shows and the code with its full name in
- * the reader's language; a search finds either (or the English name).
+ * The one place the app picks a currency: a trigger pill (flag, code,
+ * chevron) and the picker sheet behind it. The sheet lists Pinned (the stars
+ * on the Currencies screen), Your currencies, Recent, then Fiat and Crypto,
+ * each row with its flag (a coin for crypto), the code and the name in the
+ * reader's language. A search finds the code, the name in either language or
+ * the country, best matches first.
  */
 export function CurrencyPicker({
 	value,
 	currencies,
-	yours,
-	recent,
+	yours = NONE,
+	recent = NONE,
+	label,
 	onChange,
 }: {
 	value: string;
 	/** Every currency to choose from. */
 	currencies: string[];
-	/** Home and default currency, shown first. */
-	yours: string[];
-	/** Used lately, newest first. */
-	recent: string[];
+	/** Home and default currency, shown after the pinned ones. */
+	yours?: string[];
+	/** Used lately on this screen's side, newest first; the picks made here are added. */
+	recent?: string[];
+	/** What is being chosen ("Home currency"), spoken before the code. */
+	label?: string;
 	onChange: (code: string) => void;
 }) {
 	const t = useTranslations("mobile.pickers");
 	const locale = useLocale();
 	const [open, setOpen] = useState(false);
+	const pinned = usePinnedCurrencies();
+	const picked = useRecentCurrencies();
 	const groups = useMemo<PickGroup[]>(() => {
-		const taken = new Set<string>();
-		const known = new Set(currencies);
-		const take = (codes: readonly string[]) =>
-			codes.filter(
-				(code) => known.has(code) && !taken.has(code) && taken.add(code),
-			);
+		const sections = currencySections({
+			currencies,
+			pinned,
+			yours,
+			recent: mergeRecent(picked, recent),
+		});
 		const row = (code: string) => ({
 			id: code,
 			label: code,
 			detail: localCurrencyName(code, locale),
-			keywords: [englishName(code)],
+			keywords: [englishName(code), ...countryNamesOf(code, locale)],
 			lead: <CurrencyFlag code={code} />,
 			selected: code === value,
 		});
-		const first = take(yours);
-		const lately = take(recent);
+		const group = (key: keyof typeof sections, heading: string): PickGroup => ({
+			key,
+			heading,
+			rows: sections[key].map(row),
+			ranked: true,
+		});
 		return [
-			{ key: "yours", heading: t("currency.yours"), rows: first.map(row) },
-			{ key: "recent", heading: t("currency.recent"), rows: lately.map(row) },
-			{
-				key: "all",
-				heading: t("currency.all"),
-				rows: take(currencies).map(row),
-			},
+			group("pinned", t("currency.pinned")),
+			group("yours", t("currency.yours")),
+			group("recent", t("currency.recent")),
+			group("fiat", t("currency.fiat")),
+			group("crypto", t("currency.crypto")),
 		];
-	}, [currencies, yours, recent, locale, value, t]);
+	}, [currencies, pinned, yours, picked, recent, locale, value, t]);
 
 	return (
 		<>
 			<Chip
-				accessibilityLabel={t("currency.trigger", { code: value })}
+				accessibilityLabel={
+					label ? `${label}, ${value}` : t("currency.trigger", { code: value })
+				}
 				label={value}
 				leading={<CurrencyFlag code={value} small />}
 				onPress={() => setOpen(true)}
@@ -110,8 +97,11 @@ export function CurrencyPicker({
 				find={t("currency.find")}
 				groups={groups}
 				onClose={() => setOpen(false)}
-				onSelect={onChange}
-				title={t("currency.title")}
+				onSelect={(code) => {
+					recordRecentCurrency(code);
+					onChange(code);
+				}}
+				title={label ?? t("currency.title")}
 				visible={open}
 			/>
 		</>

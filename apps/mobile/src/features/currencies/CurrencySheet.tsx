@@ -2,6 +2,7 @@ import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
+import { CurrencyFlag } from "@/ui/CurrencyFlag";
 import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { ConvertBlock } from "./ConvertBlock";
@@ -53,13 +54,18 @@ export function CurrencySheet({
 				contentContainerStyle={{ gap: space[6], paddingBottom: space[4] }}
 				keyboardShouldPersistTaps="handled"
 			>
-				<View style={{ gap: space[1] }}>
-					<Text>{name(row.code)}</Text>
-					<Text tone="fg3" variant="meta">
-						{hasRate && table.updated
-							? t("sub", { code: row.code, date: day(table.updated) })
-							: row.code}
-					</Text>
+				<View
+					style={{ flexDirection: "row", alignItems: "center", gap: space[3] }}
+				>
+					<CurrencyFlag code={row.code} />
+					<View style={{ flex: 1, gap: space[1] }}>
+						<Text>{name(row.code)}</Text>
+						<Text tone="fg3" variant="meta">
+							{hasRate && table.updated
+								? t("sub", { code: row.code, date: day(table.updated) })
+								: row.code}
+						</Text>
+					</View>
 				</View>
 				{hasRate ? (
 					<View>

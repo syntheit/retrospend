@@ -306,7 +306,9 @@
 			"empty": "Keine Währung passt",
 			"yours": "Deine Währungen",
 			"recent": "Zuletzt",
-			"all": "Alle Währungen",
+			"pinned": "Angeheftet",
+			"fiat": "Klassische Währungen",
+			"crypto": "Krypto",
 			"trigger": "Währung, {code}"
 		},
 		"category": {

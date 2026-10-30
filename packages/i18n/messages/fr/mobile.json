@@ -306,7 +306,9 @@
 			"empty": "Aucune devise ne correspond",
 			"yours": "Tes devises",
 			"recent": "Récentes",
-			"all": "Toutes les devises",
+			"pinned": "Épinglées",
+			"fiat": "Classiques",
+			"crypto": "Crypto",
 			"trigger": "Devise, {code}"
 		},
 		"category": {

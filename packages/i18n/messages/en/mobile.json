@@ -306,7 +306,9 @@
 			"empty": "No currency matches",
 			"yours": "Your currencies",
 			"recent": "Recent",
-			"all": "All currencies",
+			"pinned": "Pinned",
+			"fiat": "Fiat",
+			"crypto": "Crypto",
 			"trigger": "Currency, {code}"
 		},
 		"category": {

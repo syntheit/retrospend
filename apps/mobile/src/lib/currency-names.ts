@@ -1,5 +1,7 @@
 import { CRYPTO_CURRENCIES, CURRENCIES } from "@retrospend/domain/currencies";
+import { getCountryCodeFromCurrency } from "@retrospend/domain/currency-country";
 import { currencyName } from "@retrospend/domain/currency-names";
+import { COUNTRY_NAMES } from "./country-names.generated";
 import { CURRENCY_NAMES } from "./currency-names.generated";
 
 /** The name from the currency list ("US Dollar"), or the code. */
@@ -19,4 +21,21 @@ export function localCurrencyName(code: string, locale: string): string {
 		CURRENCY_NAMES[language]?.[code] ??
 		currencyName(code, locale, englishCurrencyName(code))
 	);
+}
+
+/**
+ * The names of the country whose flag a currency carries, in the app
+ * language and in English (crypto has no country). The picker's search reads
+ * them, so "brasil" and "brazil" both find BRL.
+ */
+export function countryNamesOf(code: string, locale: string): string[] {
+	const country = getCountryCodeFromCurrency(code);
+	if (!country) return [];
+	const language = locale.split("-")[0] ?? locale;
+	const names = [
+		COUNTRY_NAMES[locale]?.[country],
+		COUNTRY_NAMES[language]?.[country],
+		COUNTRY_NAMES.en?.[country],
+	].filter((name): name is string => Boolean(name));
+	return [...new Set(names)];
 }

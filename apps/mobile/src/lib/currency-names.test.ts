@@ -1,7 +1,22 @@
 import { CURRENCIES } from "@retrospend/domain/currencies";
-import { englishCurrencyName, localCurrencyName } from "./currency-names";
+import {
+	countryNamesOf,
+	englishCurrencyName,
+	localCurrencyName,
+} from "./currency-names";
 import { CURRENCY_NAMES } from "./currency-names.generated";
 import { APP_LOCALES } from "./locales";
+
+describe("countryNamesOf", () => {
+	it("names the country in the app language and in English", () => {
+		expect(countryNamesOf("BRL", "pt-BR")).toEqual(["Brasil", "Brazil"]);
+		expect(countryNamesOf("BRL", "en")).toEqual(["Brazil"]);
+	});
+
+	it("has none for crypto", () => {
+		expect(countryNamesOf("BTC", "es")).toEqual([]);
+	});
+});
 
 describe("localCurrencyName", () => {
 	const displayNames = Intl.DisplayNames;
