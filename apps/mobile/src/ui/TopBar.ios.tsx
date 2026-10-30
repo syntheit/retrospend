@@ -2,10 +2,10 @@ import { Stack } from "expo-router";
 import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
-import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { AccountButton } from "./AccountButton";
 import { AddButton } from "./AddButton";
+import { useInPair } from "./ListDetail";
 import { Menu } from "./Menu";
 import { PaneBar } from "./PaneBar";
 import type { TopBarProps } from "./types";
@@ -26,7 +26,7 @@ export function TopBar({
 }: TopBarProps) {
 	const t = useTranslations("mobile.composer");
 	const { space } = useTheme();
-	const { listDetail } = useLayoutClass();
+	const inPair = useInPair();
 	const add = useOptionalAddEntry();
 	// The iPad has no tab-bar plus (its bar is a top bar that overflows), so
 	// the toolbar carries it next to the account button.
@@ -65,7 +65,7 @@ export function TopBar({
 			) : null}
 		</View>
 	);
-	if (listDetail) {
+	if (inPair) {
 		return (
 			<>
 				<Stack.Screen options={{ headerShown: false }} />

@@ -19,6 +19,7 @@ import type { ActivityItem } from "@/features/activity/source";
 import { useActivity } from "@/features/activity/useActivity";
 import { useBulkActions } from "@/features/activity/useBulkActions";
 import { useDebouncedSearch } from "@/features/activity/useDebouncedSearch";
+import { useLinkedEntry } from "@/features/activity/linkedEntry";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { RecurringView } from "@/features/recurring/RecurringView";
 import { RECURRING_APART } from "@/layout/destinations";
@@ -27,7 +28,7 @@ import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, StaleNote } from "@/ui/List";
-import { ListDetail } from "@/ui/ListDetail";
+import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { Screen, useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
@@ -63,6 +64,10 @@ export default function ActivityScreen() {
 		setFilter((f) => (f.q === q ? f : { ...f, q })),
 	);
 	const [selected, setSelected] = useState<ActivityItem | null>(null);
+	// An entry opened by a link (a Home row, a notification) fills the detail.
+	const linked = useLinkedEntry();
+	// biome-ignore lint/correctness/useExhaustiveDependencies: a new link replaces the picked row
+	useEffect(() => setSelected(null), [linked]);
 	// Ids of the rows picked for a bulk action; null when not selecting.
 	const [picked, setPicked] = useState<ReadonlySet<string> | null>(null);
 	const { state, reload, loadMore, loadingMore } = useActivity(filter);
@@ -277,13 +282,17 @@ export default function ActivityScreen() {
 					/>
 				}
 				detail={
-					<Screen>
-						{segment === "recurring" ? null : selected ? (
-							<EntryDetail id={selected.id} placeholder={selected} />
-						) : (
-							<EmptyState title={t("pick")} />
-						)}
-					</Screen>
+					segment === "expenses" && !selected && !linked ? (
+						<EmptyDetail title={t("pick")} />
+					) : (
+						<Screen>
+							{segment === "recurring" ? null : selected ? (
+								<EntryDetail id={selected.id} placeholder={selected} />
+							) : linked ? (
+								<EntryDetail id={linked.id} placeholder={linked.placeholder} />
+							) : null}
+						</Screen>
+					)
 				}
 				list={
 					segment === "recurring" ? (

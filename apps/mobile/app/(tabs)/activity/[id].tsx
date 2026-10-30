@@ -1,5 +1,6 @@
 import {
 	type ErrorBoundaryProps,
+	Redirect,
 	Stack,
 	useLocalSearchParams,
 } from "expo-router";
@@ -8,6 +9,7 @@ import { useTranslations } from "use-intl";
 import { EntryDetail } from "@/features/activity/EntryView";
 import { rowFromParam } from "@/features/activity/entryRow";
 import { useHideAddButton } from "@/features/entry/AddEntryProvider";
+import { useLayoutClass } from "@/layout/useLayoutClass";
 import { EmptyState } from "@/ui/EmptyState";
 import { Screen } from "@/ui/Screen";
 
@@ -22,6 +24,16 @@ export default function EntryScreen() {
 	const placeholder = useMemo(() => rowFromParam(row, id), [row, id]);
 	// The entry is the subject here, so the floating add button steps aside.
 	useHideAddButton();
+	const { listDetail } = useLayoutClass();
+
+	// With a detail pane the entry opens there, not over both panes.
+	if (listDetail && id) {
+		return (
+			<Redirect
+				href={{ pathname: "/activity", params: { select: id, row } }}
+			/>
+		);
+	}
 
 	return (
 		<>

@@ -10,7 +10,7 @@ import { useTheme } from "@/theme";
  *
  * The iPad's floating tab bar holds the same five, so it does not scroll, and
  * adapts into a sidebar (the toggle at its leading edge; open at launch in
- * landscape). The sidebar adds Projects, Insights, Recurring, Currencies and
+ * a regular width window, portrait or landscape). The sidebar adds Projects, Insights, Recurring, Currencies and
  * Settings, which show there only (layout/destinations, modules/tab-sidebar).
  *
  * Add is not a tab: five tabs fill the iPhone's bar and a sixth goes into
