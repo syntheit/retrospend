@@ -1,4 +1,4 @@
-import { WheelField } from "./Picker";
+import { PickerValueRow, WheelField } from "./Picker";
 
 // A day of the month used to draw the wheel inline: a 200 point drum in the
 // middle of the form with the label clipped. It is now a value row that opens
@@ -30,6 +30,13 @@ jest.mock("./List", () => {
 			React.createElement("RowView", props, props.end),
 		NavEnd: (props: Record<string, unknown>) =>
 			React.createElement("NavEndView", props),
+	};
+});
+jest.mock("./ValueMenu", () => {
+	const React = require("react");
+	return {
+		ValueMenu: (props: Record<string, unknown>) =>
+			React.createElement("ValueMenuView", props, props.children),
 	};
 });
 jest.mock("./Chip", () => {
@@ -122,6 +129,37 @@ describe("WheelField", () => {
 		fire(tree, "RowView", "onPress");
 		fire(tree, "SheetView", "onClose");
 		expect(onChange).not.toHaveBeenCalled();
+		act(() => tree.unmount());
+	});
+});
+
+describe("PickerValueRow (Android)", () => {
+	it("shows the value with a chevron and opens the menu on press", () => {
+		const onChange = jest.fn();
+		let tree!: { root: Node; unmount(): void };
+		act(() => {
+			tree = create(
+				<PickerValueRow
+					label="Language"
+					onChange={onChange}
+					options={options}
+					value="2"
+				/>,
+			);
+		});
+		const row = kind(tree, "RowView")[0];
+		expect(row?.props.accessibilityLabel).toBe("Language, 2");
+		expect(kind(tree, "NavEndView")[0]?.props.value).toBe("2");
+		expect(kind(tree, "ValueMenuView")[0]?.props.open).toBe(false);
+		fire(tree, "RowView", "onPress");
+		expect(kind(tree, "ValueMenuView")[0]?.props.open).toBe(true);
+		const items = kind(tree, "ValueMenuView")[0]?.props.items as {
+			id: string;
+			onPress: () => void;
+		}[];
+		expect(items.map((i) => i.id)).toEqual(["1", "2", "3", "28"]);
+		items[3]?.onPress();
+		expect(onChange).toHaveBeenCalledWith("28");
 		act(() => tree.unmount());
 	});
 });
