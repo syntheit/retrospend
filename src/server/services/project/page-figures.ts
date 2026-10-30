@@ -5,6 +5,8 @@
  */
 import type { Money } from "~/server/figures/registry";
 import { ratioBp, sumMinor, toMinor } from "~/server/services/envelope/units";
+import { toPaymentCurrency } from "~/server/services/payments/allocate";
+import type { Quote } from "~/server/services/payments/types";
 
 type Amount = number | { toString(): string };
 
@@ -126,4 +128,31 @@ export function linesOf(byCurrency: Readonly<Record<string, number>>): Money[] {
 		.filter(([, minor]) => minor !== 0)
 		.map(([currency, minor]) => ({ minor, currency }))
 		.sort((a, b) => (a.currency < b.currency ? -1 : 1));
+}
+
+/**
+ * Your share as one amount in your home currency at the reference rates, so
+ * the page can say "about X" under shares in other currencies. Null when
+ * there is nothing to add (no share, or every line is already home) and when
+ * any line has no rate: a missing rate is never read as 1, and a part of a
+ * share is not a share.
+ */
+export function shareAtHome(
+	lines: readonly Money[],
+	home: string | null,
+	quotes: ReadonlyMap<string, Quote>,
+): Money | null {
+	if (!home || lines.length === 0) return null;
+	if (lines.every((l) => l.currency === home)) return null;
+	const parts: number[] = [];
+	for (const line of lines) {
+		if (line.currency === home) {
+			parts.push(line.minor);
+			continue;
+		}
+		const quote = quotes.get(line.currency);
+		if (!quote) return null;
+		parts.push(toPaymentCurrency(line.minor, line.currency, home, quote));
+	}
+	return { minor: sumMinor(parts), currency: home };
 }

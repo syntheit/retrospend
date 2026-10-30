@@ -159,6 +159,9 @@ export function ProjectHeader({
 							{page.myShare.map((line) => (
 								<MoneyAmount key={line.currency} strong value={line} />
 							))}
+							{page.myShareHome ? (
+								<MoneyAmount approx tone="muted" value={page.myShareHome} />
+							) : null}
 						</View>
 					</View>
 				)}

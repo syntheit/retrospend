@@ -16,6 +16,7 @@ import { dayKey } from "@retrospend/domain/time-zone";
 import { getImageUrl } from "~/lib/image-url";
 import type { Money } from "~/server/figures/registry";
 import { fromMinor, sumMinor, toMinor } from "~/server/services/envelope/units";
+import { loadQuotes } from "~/server/services/payments/quotes";
 import { BALANCE_SETTLEMENT_STATUSES } from "~/server/services/shared-expenses/balance";
 import { computeBalanceBatch } from "~/server/services/shared-expenses/balance-batch";
 import { resolveClaimAliases } from "~/server/services/shared-expenses/identity";
@@ -30,6 +31,7 @@ import {
 	byCategory,
 	type CategoryInput,
 	linesOf,
+	shareAtHome,
 } from "./page-figures";
 import { refKey } from "./summary";
 
@@ -263,6 +265,27 @@ async function isMeFor(db: PrismaClient, me: ParticipantRef | null) {
 	return (r: Ref) => keys.has(key(r));
 }
 
+/** Your share in your home currency, or null (see shareAtHome). */
+async function homeShare(
+	db: PrismaClient,
+	userId: string | null,
+	shares: readonly Money[],
+): Promise<Money | null> {
+	if (!userId || shares.length === 0) return null;
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: { homeCurrency: true },
+	});
+	const home = user?.homeCurrency ?? null;
+	if (!home) return null;
+	const quotes = await loadQuotes(db, {
+		into: home,
+		currencies: shares.map((s) => s.currency),
+		date: new Date(),
+	});
+	return shareAtHome(shares, home, quotes);
+}
+
 export async function readProjectPage(
 	db: PrismaClient,
 	projectId: string,
@@ -339,6 +362,10 @@ async function readPage(
 		.slice(0, PAGE_ROWS)
 		.map((e) => expenseRow(e, isMe, people));
 	const userId = viewer.kind === "user" ? viewer.userId : null;
+	const myShare = myLine.map(
+		(l): Money => ({ minor: l.share, currency: l.currency }),
+	);
+	const myShareHome = await homeShare(db, userId, myShare);
 
 	return {
 		id: project.id,
@@ -365,9 +392,9 @@ async function readPage(
 				: null,
 		lastExpense: rows[0]?.date ?? null,
 		total,
-		myShare: myLine.map(
-			(l): Money => ({ minor: l.share, currency: l.currency }),
-		),
+		myShare,
+		/** Your share in your home currency at the reference rates; null when it is home already or a currency has no rate. */
+		myShareHome,
 		budget: budgetOf(project, total),
 		/** Everyone, you first, then in join order. */
 		members: [...(meRow ? [meRow] : []), ...others].map((p) => {
