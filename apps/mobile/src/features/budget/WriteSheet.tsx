@@ -1,12 +1,14 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import type { ReactNode } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { SheetBody } from "@/features/write/parts";
 import { useMoneyWrite } from "@/features/write/useMoneyWrite";
 import { type UndoFamily, useUndoToast } from "@/features/write/useUndoToast";
 import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
-import { Button } from "@/ui/Button";
+import { useTheme } from "@/theme";
+import { Glyph } from "@/ui/Glyph";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
+import { Text } from "@/ui/Text";
 import { BudgetChanges } from "./BudgetChanges";
 import type { BudgetMonth, BudgetPreview } from "./source";
 
@@ -154,7 +156,11 @@ export function WriteSheet<I, W extends WriteAnswer>({
 	);
 }
 
-/** The way back from a form that opened inside a sheet, on its own line at the start. */
+/**
+ * The way back from a form that opened inside a sheet: a chevron and the
+ * word in the brand color, the way a navigation bar draws Back, on its own
+ * line at the start.
+ */
 export function BackButton({
 	label,
 	onPress,
@@ -162,9 +168,33 @@ export function BackButton({
 	label: string;
 	onPress: () => void;
 }) {
+	const { color, radius, size, space } = useTheme();
 	return (
 		<View style={{ alignItems: "flex-start" }}>
-			<Button label={label} onPress={onPress} variant="text" />
+			<Pressable
+				accessibilityLabel={label}
+				accessibilityRole="button"
+				onPress={onPress}
+				style={({ pressed }) => ({
+					minHeight: size.touchMin.phone,
+					flexDirection: "row",
+					alignItems: "center",
+					paddingRight: space[2],
+					borderRadius: radius.ctl,
+					backgroundColor: pressed ? color.raised : "transparent",
+				})}
+			>
+				<View style={{ transform: [{ rotate: "180deg" }] }}>
+					<Glyph
+						color={color.brand}
+						name="ChevronRight"
+						size={size.icon.phone}
+					/>
+				</View>
+				<Text style={{ color: color.brand }} weight="medium">
+					{label}
+				</Text>
+			</Pressable>
 		</View>
 	);
 }
