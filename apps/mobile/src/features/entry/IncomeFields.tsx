@@ -62,7 +62,7 @@ export function IncomeFields({
 					))}
 				</View>
 			) : null}
-			<View style={{ paddingHorizontal: space[4], paddingTop: space[2] }}>
+			<View style={{ paddingTop: space[2] }}>
 				<TextField
 					autoCapitalize="sentences"
 					label={t("note")}
