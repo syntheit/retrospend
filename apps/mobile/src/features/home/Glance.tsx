@@ -226,7 +226,9 @@ export function Glance({
 					key={isValidElement(row[0]) ? row[0].key : "row"}
 					style={{ flexDirection: "row", gap: space[3] }}
 				>
-					{row.length === 1 ? cloneElement(row[0], { spans: true }) : row}
+					{row.length === 1 && row[0]
+						? cloneElement(row[0], { spans: true })
+						: row}
 				</View>
 			))}
 		</View>
