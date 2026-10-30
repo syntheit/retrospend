@@ -15,14 +15,19 @@ export function TabStack({ title }: { title: string }) {
 			screenOptions={{
 				// A pushed page names itself; until it does the bar is blank, never the route ("[id]").
 				title: "",
-				headerLargeTitle: !android,
+				// A page pushed inside the tab has the inline title and the system
+				// back button; only the tab's own list has the large one.
+				headerLargeTitle: false,
 				headerShadowVisible: false,
 				headerTintColor: color.fg,
 				headerStyle: android ? { backgroundColor: color.bg } : undefined,
 				contentStyle: { backgroundColor: color.bg },
 			}}
 		>
-			<Stack.Screen name="index" options={{ title }} />
+			<Stack.Screen
+				name="index"
+				options={{ title, headerLargeTitle: !android }}
+			/>
 		</Stack>
 	);
 }

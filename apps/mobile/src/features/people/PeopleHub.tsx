@@ -73,6 +73,22 @@ export function PeopleHub() {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
+			{/*
+			 * The list is the first child, then the bars: the system finds the
+			 * scroll view behind the large title and search through the first
+			 * child of each view, and the account sheet is a native view (see
+			 * ListDetail).
+			 */}
+			<Animated.View entering={paneEnter} key={segment} style={{ flex: 1 }}>
+				{segment === "people" ? (
+					<PeopleList
+						filters={{ query, chip, onChip: setChip, sort, onSort: setSort }}
+						top={switcher}
+					/>
+				) : (
+					<ProjectsList query={query} top={switcher} />
+				)}
+			</Animated.View>
 			{segment === "people" ? (
 				<PeopleTopBar title={t("peopleSegment")} />
 			) : (
@@ -91,16 +107,6 @@ export function PeopleHub() {
 					},
 				}}
 			/>
-			<Animated.View entering={paneEnter} key={segment} style={{ flex: 1 }}>
-				{segment === "people" ? (
-					<PeopleList
-						filters={{ query, chip, onChip: setChip, sort, onSort: setSort }}
-						top={switcher}
-					/>
-				) : (
-					<ProjectsList query={query} top={switcher} />
-				)}
-			</Animated.View>
 		</View>
 	);
 }

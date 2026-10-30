@@ -78,11 +78,6 @@ export function BudgetView() {
 
 	return (
 		<>
-			<AccountTopBar
-				overflow={overflow}
-				overflowLabel={t("manage.title")}
-				title={t("title")}
-			/>
 			<Screen
 				flush
 				onRefresh={() => {
@@ -132,6 +127,12 @@ export function BudgetView() {
 					/>
 				)}
 			</Screen>
+			{/* After the scroll view: see ListDetail. */}
+			<AccountTopBar
+				overflow={overflow}
+				overflowLabel={t("manage.title")}
+				title={t("title")}
+			/>
 			<SetupSheet
 				onClose={() => setSetupOpen(false)}
 				onDone={() => void reload()}

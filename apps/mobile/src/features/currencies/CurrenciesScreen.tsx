@@ -225,16 +225,19 @@ export function CurrenciesScreen() {
 		return (
 			<View style={{ flex: 1, backgroundColor: color.bg }}>
 				{header}
-				{state.status === "error" ? (
-					<EmptyState
-						actionLabel={t("retry")}
-						detail={t("errorDetail")}
-						onAction={() => void reload()}
-						title={t("error")}
-					/>
-				) : (
-					<EmptyState title={t("loading")} />
-				)}
+				{/* The scroll view is there from the first frame, so the large title can track it. */}
+				<Screen flush>
+					{state.status === "error" ? (
+						<EmptyState
+							actionLabel={t("retry")}
+							detail={t("errorDetail")}
+							onAction={() => void reload()}
+							title={t("error")}
+						/>
+					) : (
+						<EmptyState title={t("loading")} />
+					)}
+				</Screen>
 			</View>
 		);
 	}
