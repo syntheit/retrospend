@@ -1686,14 +1686,13 @@ describe("Add expense at the largest text size", () => {
 		// The keypad is gone; the amount is a text input on the decimal pad.
 		expect(find(tree, (p) => p.accessibilityLabel === "5")).toHaveLength(0);
 		const amount = find(tree, (p) => p.keyboardType === "decimal-pad")[0];
-		expect(amount).toBeDefined();
+		if (!amount) throw new Error("no amount input");
 		act(() => {
-			(amount?.props.onChangeText as (text: string) => void)("12500");
+			(amount.props.onChangeText as (text: string) => void)("12500");
 		});
 		await settle();
-		expect(
-			find(tree, (p) => p.keyboardType === "decimal-pad")[0]?.props.value,
-		).toBe("12,500");
+		const typed = find(tree, (p) => p.keyboardType === "decimal-pad")[0];
+		expect(typed?.props.value).toBe("12,500");
 		act(() => tree.unmount());
 	});
 });
