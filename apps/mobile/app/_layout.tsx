@@ -6,10 +6,10 @@ import { Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 import { type ComponentType, useEffect } from "react";
-import { useTranslations } from "use-intl";
 import { Platform, useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useTranslations } from "use-intl";
 import {
 	ServerConnectionProvider,
 	useServerConnection,
