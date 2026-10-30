@@ -2,6 +2,7 @@ import { router, Stack } from "expo-router";
 import { type ReactNode, useMemo, useState } from "react";
 import { FlatList, ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { useAddButtonScroll } from "@/features/entry/addEntryContext";
 import {
 	type PeopleChip,
 	type PeopleSort,
@@ -12,7 +13,6 @@ import { PeopleTop } from "@/features/people/PeopleTop";
 import { PersonRow } from "@/features/people/PersonRow";
 import { PersonView } from "@/features/people/PersonView";
 import { keyOf, type PersonRef, refOfKey } from "@/features/people/source";
-import { useAddButtonScroll } from "@/features/entry/addEntryContext";
 import { usePeopleOverview } from "@/features/people/usePeople";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";

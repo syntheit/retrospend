@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { Platform } from "react-native";
-import { useHideAddButton } from "@/features/entry/AddEntryProvider";
+import { useHideAddButton } from "@/features/entry/addEntryContext";
 import { AccountView } from "@/features/wealth/AccountView";
 
 export default function WealthAccountScreen() {

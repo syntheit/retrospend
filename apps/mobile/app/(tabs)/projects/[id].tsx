@@ -1,6 +1,6 @@
 import { Redirect, useLocalSearchParams } from "expo-router";
 import { Platform } from "react-native";
-import { useHideAddButton } from "@/features/entry/AddEntryProvider";
+import { useHideAddButton } from "@/features/entry/addEntryContext";
 import { ProjectView } from "@/features/projects/ProjectView";
 import { PROJECTS_APART } from "@/layout/destinations";
 

@@ -104,12 +104,13 @@ describe("Add button", () => {
 	});
 });
 
+let scroll: ((event: unknown) => void) | undefined;
+function Scroller() {
+	scroll = useAddButtonScroll().onScroll as typeof scroll;
+	return null;
+}
+
 describe("Add button on a scrolling list (Android)", () => {
-	let scroll: ((event: unknown) => void) | undefined;
-	function Scroller() {
-		scroll = useAddButtonScroll().onScroll as typeof scroll;
-		return null;
-	}
 	const at = (y: number) => ({ nativeEvent: { contentOffset: { y } } });
 
 	beforeEach(() => {

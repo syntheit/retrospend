@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { Platform } from "react-native";
-import { useHideAddButton } from "@/features/entry/AddEntryProvider";
+import { useHideAddButton } from "@/features/entry/addEntryContext";
 import { PersonView } from "@/features/people/PersonView";
 import type { ParticipantType } from "@/features/people/source";
 

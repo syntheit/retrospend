@@ -1,4 +1,3 @@
-import { useFocusEffect } from "expo-router";
 import {
 	type ComponentType,
 	type ReactNode,
@@ -23,6 +22,7 @@ import {
 	AddEntryContext,
 	useAddButtonScroll,
 	useAddEntry,
+	useHideAddButton,
 	useOptionalAddEntry,
 } from "./addEntryContext";
 import type { EntryMode } from "./ComposerShell";
@@ -37,25 +37,15 @@ const DevComposerTour: ComponentType<{ add: AddEntryApi }> | null = process.env
 	? require("@/dev/DevComposerTour").DevComposerTour
 	: null;
 
-export { useAddButtonScroll, useAddEntry, useOptionalAddEntry };
+export {
+	useAddButtonScroll,
+	useAddEntry,
+	useHideAddButton,
+	useOptionalAddEntry,
+};
 
 /** Height of the bar the floating button sits above: the M3 navigation bar, or the iOS tab bar. */
 const BAR_HEIGHT = Platform.OS === "android" ? 80 : 49;
-
-/**
- * Hides the floating add button while the calling screen is on top. A route
- * under a pushed page, or in another tab, is still mounted but not focused,
- * and must not hide the button there.
- */
-export function useHideAddButton(hidden = true): void {
-	const add = useOptionalAddEntry();
-	useFocusEffect(
-		useCallback(() => {
-			if (!hidden || !add) return;
-			return add.hideButton();
-		}, [add, hidden]),
-	);
-}
 
 /** True while the software keyboard is up: the floating button steps aside. */
 function useKeyboardShown(): boolean {

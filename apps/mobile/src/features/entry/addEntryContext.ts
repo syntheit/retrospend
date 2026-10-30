@@ -1,3 +1,4 @@
+import { useFocusEffect } from "expo-router";
 import {
 	createContext,
 	type Dispatch,
@@ -41,6 +42,21 @@ export function useAddEntry(): AddEntryApi {
 	const value = useContext(AddEntryContext);
 	if (!value) throw new Error("useAddEntry needs an AddEntryProvider above it");
 	return value;
+}
+
+/**
+ * Hides the floating add button while the calling screen is on top. A route
+ * under a pushed page, or in another tab, is still mounted but not focused,
+ * and must not hide the button there.
+ */
+export function useHideAddButton(hidden = true): void {
+	const add = useOptionalAddEntry();
+	useFocusEffect(
+		useCallback(() => {
+			if (!hidden || !add) return;
+			return add.hideButton();
+		}, [add, hidden]),
+	);
 }
 
 /** Like useAddEntry, but null outside a provider (the gallery has none). */
