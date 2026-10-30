@@ -18,6 +18,7 @@
 		"retry": "Try again",
 		"save": "Save",
 		"saving": "Saving",
+		"deleting": "Deleting",
 		"close": "Close",
 		"done": "Done"
 	},
@@ -287,9 +288,9 @@
 		},
 		"delete": {
 			"row": "Delete",
-			"title": "Delete this expense?",
+			"title": "Delete expense?",
 			"body": "It leaves your spending and your budget.",
-			"button": "Delete",
+			"button": "Delete expense",
 			"deleted": "Deleted {title}",
 			"restored": "Restored {title}",
 			"undoFailed": "Couldn't undo. Try again from Activity.",
@@ -323,6 +324,8 @@
 			"find": "Find an account",
 			"empty": "No account matches"
 		},
+		"today": "Today",
+		"yesterday": "Yesterday",
 		"pickDate": "Pick a date"
 	},
 	"entry": {
@@ -1402,6 +1405,7 @@
 			"liquidHint": "Money you can spend soon.",
 			"apr": "Interest rate (APR, %)",
 			"dueDay": "Due day of the month",
+			"dueDayNone": "None",
 			"minimum": "Minimum payment",
 			"addedToast": "{name} added",
 			"savedToast": "{name} saved",
@@ -1460,7 +1464,7 @@
 			"body": "This removes the account and its whole balance history. Net worth history changes too.",
 			"keepHistory": "To keep the history, close the account instead.",
 			"closeInstead": "Close instead",
-			"submit": "Delete",
+			"submit": "Delete account",
 			"deleting": "Deleting",
 			"toast": "Deleted {name}",
 			"error": "Couldn't delete. Try again."
@@ -1790,8 +1794,6 @@
 		"rateLine": "{unit} = {value} · {type}",
 		"method": "Method",
 		"date": "Date",
-		"today": "Today",
-		"yesterday": "Yesterday",
 		"methodNames": {
 			"bank_transfer": "Bank transfer",
 			"cash": "Cash"
@@ -2122,10 +2124,11 @@
 			"saved": "Payment method saved",
 			"prefer": "Make primary",
 			"preferredToast": "Primary method changed",
-			"remove": "Remove",
+			"remove": "Delete payment method",
+			"removeTitle": "Delete payment method?",
 			"removeBody": "This can't be undone. People you share with will no longer see it.",
-			"removeConfirm": "Remove for good",
-			"removed": "Payment method removed",
+			"removeConfirm": "Delete",
+			"removed": "Payment method deleted",
 			"saveError": "Couldn't save. Try again."
 		},
 		"security": {
@@ -2479,11 +2482,6 @@
 			"toast": "{title} logged, {amount}",
 			"paidOn": "Paid on",
 			"paidOnIn": "Received on",
-			"paidOnDue": "{date} (due)",
-			"paidOnDueToday": "Today (due)",
-			"paidOnToday": "Today",
-			"paidOnPick": "Pick a date",
-			"pickDate": "Date",
 			"future": "The date can't be in the future.",
 			"tooEarly": "The date can't be before {date}.",
 			"skip": "Skip this time"
@@ -2539,13 +2537,14 @@
 			"toast": "{title} added"
 		},
 		"delete": {
-			"title": "Delete {title}",
+			"title": "Delete {title}?",
 			"body": "It stops coming up. Entries it already logged stay.",
 			"future": "Future occurrences",
 			"futureValue": "Stop, next was {date}",
 			"autoPay": "Auto-pay",
 			"autoPayValue": "Stops",
-			"submit": "Delete",
+			"submit": "Delete recurring expense",
+			"submitIn": "Delete recurring income",
 			"toast": "{title} deleted",
 			"error": "Couldn't delete it. Try again."
 		}

@@ -4,8 +4,8 @@ import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import type { PersonIdentity } from "@/features/people/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { AmountField } from "@/features/write/parts";
 import { readAmount } from "@/features/write/amount";
+import { AmountField } from "@/features/write/parts";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
@@ -207,7 +207,6 @@ export function SettleSheet({
 										paidOn={flow.paidOn}
 										shared={flow.shared}
 										today={context.today}
-										yesterday={context.yesterday}
 									/>
 								</>
 							)}

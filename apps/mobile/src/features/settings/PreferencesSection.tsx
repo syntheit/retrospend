@@ -73,6 +73,7 @@ export function PreferencesSection() {
 						yours={yours}
 					/>
 					<PickerRow
+						appearance="wheel"
 						label={t("money.monthStart")}
 						onChange={(day) => save({ fiscalMonthStartDay: Number(day) })}
 						options={MONTH_START_DAYS.map((d) => ({

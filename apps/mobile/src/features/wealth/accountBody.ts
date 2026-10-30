@@ -62,6 +62,23 @@ export function dueDayInvalid(text: string): boolean {
 	return text.trim() !== "" && dueDayOf(text) === null;
 }
 
+/**
+ * The wheel's days: none, then 1 to 28 (a day every month has). A due day an
+ * account already holds beyond 28 stays in the wheel so it is not lost.
+ */
+export function dueDayOptions(
+	current: string,
+	none: string,
+): { value: string; label: string }[] {
+	const days = Array.from({ length: 28 }, (_, i) => i + 1);
+	const held = dueDayOf(current);
+	if (held !== null && held > 28) days.push(held);
+	return [
+		{ value: "", label: none },
+		...days.map((d) => ({ value: String(d), label: String(d) })),
+	];
+}
+
 /** Why the form cannot be saved yet, or null when it can. */
 export function formProblem(
 	form: AccountForm,
