@@ -47,6 +47,7 @@ export function MoneyAmount({
 	size = "body",
 	approx,
 	code,
+	cents: centsProp,
 }: {
 	value: Money;
 	home?: Money | null;
@@ -63,13 +64,18 @@ export function MoneyAmount({
 	approx?: boolean;
 	/** Shows the currency code, not the home symbol (a rate, not a home amount). */
 	code?: boolean;
+	/**
+	 * Precision for a list of figures that must read alike (every minor digit,
+	 * or whole units); default is the formatter's own, the hero's for a hero.
+	 */
+	cents?: boolean;
 }) {
 	const t = useTranslations("mobile.money");
 	const rateName = useRateTypeLabel();
 	const { size: sizes, type } = useTheme();
 	const { format, pair } = useFormatMoney();
 	const hero = size === "hero";
-	const cents = hero ? heroCents(value.currency) : undefined;
+	const cents = centsProp ?? (hero ? heroCents(value.currency) : undefined);
 	const options = {
 		sign,
 		...(cents === undefined ? {} : { cents }),

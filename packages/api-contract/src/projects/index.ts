@@ -137,6 +137,12 @@ export const projectPageSchema = z
 		lastExpense: daySchema.nullable(),
 		total: z.array(moneySchema),
 		myShare: z.array(moneySchema),
+		/**
+		 * Your share as one amount in your home currency at the reference
+		 * rates. Null when every line is home already, when a currency has no
+		 * rate (never read as 1), and without a "you" (a link, the public).
+		 */
+		myShareHome: moneySchema.nullable(),
 		budget: projectBudgetSchema.nullable(),
 		/** Everyone, you first, then in join order. */
 		members: z.array(projectMemberSchema),

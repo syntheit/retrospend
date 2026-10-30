@@ -49,13 +49,16 @@ export function IncomeSheet({
 		month: "long",
 		timeZone: "UTC",
 	});
+	// One precision down the sheet: every figure shows its minor digits, so
+	// "$2,100,000.00" and "-$112,555.56" sit in one column.
+	const exact = { cents: true };
 	const cost = plan
 		? plan.typicalIncome
 			? t("planCost", {
-					cost: money(plan.cost),
-					income: money(plan.typicalIncome),
+					cost: money(plan.cost, exact),
+					income: money(plan.typicalIncome, exact),
 				})
-			: t("planCostOnly", { cost: money(plan.cost) })
+			: t("planCostOnly", { cost: money(plan.cost, exact) })
 		: undefined;
 	// Where this month's money went, from the server's own terms: the rows
 	// that are zero are left out, and Money in is the hero above them.
@@ -80,25 +83,31 @@ export function IncomeSheet({
 						label={t("moneyIn")}
 						sub={cost}
 						tone={data.toAssign.terms.moneyIn.minor > 0 ? "positive" : "fg"}
-						value={money(data.toAssign.terms.moneyIn)}
+						value={money(data.toAssign.terms.moneyIn, exact)}
 					/>
 				</View>
 				<ListGroup>
 					{rows.map((row) => (
 						<ListRow
-							accessibilityLabel={`${t(`terms.${row.key}`)}, ${money(row.value)}`}
-							end={<MoneyAmount value={row.value} />}
+							accessibilityLabel={`${t(`terms.${row.key}`)}, ${money(row.value, exact)}`}
+							end={<MoneyAmount cents value={row.value} />}
 							key={row.key}
 							title={t(`terms.${row.key}`)}
 						/>
 					))}
 					<ListRow
-						accessibilityLabel={`${tp(data.toAssign.poolName)}, ${money(data.toAssign.amount)}`}
-						end={<MoneyAmount value={data.toAssign.amount} />}
+						accessibilityLabel={`${tp(data.toAssign.poolName)}, ${money(data.toAssign.amount, exact)}`}
+						end={<MoneyAmount cents value={data.toAssign.amount} />}
 						title={tp(data.toAssign.poolName)}
 					/>
 				</ListGroup>
-				<View style={{ gap: space[3], paddingHorizontal: space[4] }}>
+				<View
+					style={{
+						gap: space[3],
+						paddingHorizontal: space[4],
+						paddingBottom: space[6],
+					}}
+				>
 					{read.status === "error" ? (
 						<Note tone="attention">{t("error")}</Note>
 					) : null}
@@ -108,7 +117,7 @@ export function IncomeSheet({
 								months: format.number(plan.runway.tenths / 10, {
 									maximumFractionDigits: 1,
 								}),
-								available: money(plan.runway.available),
+								available: money(plan.runway.available, exact),
 							})}
 						</Note>
 					) : null}

@@ -238,6 +238,14 @@ export function EnvelopeSheet({
 							</Text>
 						) : null}
 					</View>
+					{more.length > 0 ? (
+						<Menu
+							accessibilityLabel={t("more")}
+							icon
+							items={more}
+							label={t("more")}
+						/>
+					) : null}
 				</View>
 				{e.spentBasis !== null ? (
 					<ProgressBar
@@ -266,7 +274,7 @@ export function EnvelopeSheet({
 						variant="filled"
 					/>
 				) : null}
-				{secondary.length > 0 || more.length > 0 ? (
+				{secondary.length > 0 ? (
 					<View
 						style={{
 							flexDirection: "row",
@@ -283,14 +291,6 @@ export function EnvelopeSheet({
 								variant="outlined"
 							/>
 						))}
-						{more.length > 0 ? (
-							<Menu
-								accessibilityLabel={t("more")}
-								icon
-								items={more}
-								label={t("more")}
-							/>
-						) : null}
 					</View>
 				) : null}
 			</>

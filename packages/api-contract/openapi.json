@@ -94193,6 +94193,16 @@
 											},
 											"type": "array"
 										},
+										"myShareHome": {
+											"anyOf": [
+												{
+													"$ref": "#/components/schemas/Money"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
 										"name": {
 											"type": "string"
 										},
@@ -94341,6 +94351,7 @@
 										"lastExpense",
 										"total",
 										"myShare",
+										"myShareHome",
 										"budget",
 										"members",
 										"byCategory",

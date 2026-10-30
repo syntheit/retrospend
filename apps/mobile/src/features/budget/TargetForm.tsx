@@ -79,15 +79,16 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 				api.budget.setTarget(b, { context: { idempotencyKey: key } })
 			}
 		>
-			<ChipGroup
+			<Segmented
 				accessibilityLabel={t("kind.label")}
 				onChange={setChoice}
 				options={[
-					{ value: "NONE", label: t("kind.NONE") },
 					{ value: "MONTHLY", label: t("kind.MONTHLY") },
 					{ value: "BILL", label: t("kind.BILL") },
 					{ value: "SAVINGS", label: t("kind.SAVINGS") },
+					{ value: "NONE", label: t("kind.NONE") },
 				]}
+				stretch
 				value={choice}
 			/>
 			{choice === "NONE" ? null : (
