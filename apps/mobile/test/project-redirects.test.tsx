@@ -14,6 +14,7 @@ jest.mock("expo-router", () => ({
 	Redirect: (props: object) =>
 		require("react").createElement("Redirect", props),
 	useLocalSearchParams: () => mockParams,
+	useFocusEffect: () => {},
 }));
 jest.mock("use-intl", () => ({
 	useTranslations: (ns: string) => (key: string) => `${ns}.${key}`,

@@ -1,11 +1,12 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 import { ProjectsList } from "@/features/projects/ProjectsList";
 import { ProjectsTopBar } from "@/features/projects/ProjectsTopBar";
 import { useSearchShortcut } from "@/layout/searchShortcut";
+import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { usePaneEnter } from "@/ui/motion";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
@@ -31,6 +32,11 @@ export function PeopleHub() {
 	const tj = useTranslations("mobile.projects");
 	const { color, space } = useTheme();
 	const searchRef = useSearchShortcut();
+	const { listDetail } = useLayoutClass();
+	// On an Android phone the tab row stays above the lists, mounted across a
+	// switch, so the line slides to the tab (M3 tabs are fixed, not part of the
+	// scroll). iOS and the wide Android pair keep it in each list's header.
+	const fixedTabs = Platform.OS === "android" && !listDetail;
 	const { segment: requested } = useLocalSearchParams<{ segment?: string }>();
 	const [segment, setSegment] = useState<PeopleSegment>(
 		() => parseSegment(requested) ?? readSegment(),
@@ -70,6 +76,7 @@ export function PeopleHub() {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
+			{fixedTabs ? switcher : null}
 			{/*
 			 * The list is the first child, then the bars: the system finds the
 			 * scroll view behind the large title and search through the first
@@ -80,10 +87,10 @@ export function PeopleHub() {
 				{segment === "people" ? (
 					<PeopleList
 						filters={{ query, chip, onChip: setChip, sort, onSort: setSort }}
-						top={switcher}
+						top={fixedTabs ? undefined : switcher}
 					/>
 				) : (
-					<ProjectsList query={query} top={switcher} />
+					<ProjectsList query={query} top={fixedTabs ? undefined : switcher} />
 				)}
 			</Animated.View>
 			{segment === "people" ? (

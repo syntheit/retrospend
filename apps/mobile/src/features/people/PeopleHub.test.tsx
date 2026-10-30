@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { Platform } from "react-native";
 import { PeopleHub } from "./PeopleHub";
 
 // The People tab on phones, with its underline tabs: the segment follows
@@ -145,6 +146,30 @@ describe("PeopleHub", () => {
 		mockParams = { segment: "people" };
 		rerender(tree);
 		expect(shown(tree)).toBe("people");
+		act(() => tree.unmount());
+	});
+
+	it("keeps the tab row mounted above the lists on an Android phone", () => {
+		jest.replaceProperty(Platform, "OS", "android");
+		try {
+			const tree = mount();
+			const row = only(tree, "UnderlineTabs");
+			// Not in the list's header, so a switch does not remount it.
+			expect(only(tree, "PeopleList").props.top).toBeUndefined();
+			choose(tree, "projects");
+			rerender(tree);
+			expect(shown(tree)).toBe("projects");
+			expect(only(tree, "ProjectsList").props.top).toBeUndefined();
+			expect(only(tree, "UnderlineTabs")).toBe(row);
+			act(() => tree.unmount());
+		} finally {
+			jest.restoreAllMocks();
+		}
+	});
+
+	it("keeps the tab row in each list's header on iOS", () => {
+		const tree = mount();
+		expect(only(tree, "PeopleList").props.top).toBeDefined();
 		act(() => tree.unmount());
 	});
 

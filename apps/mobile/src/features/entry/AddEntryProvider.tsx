@@ -1,9 +1,7 @@
 import {
 	type ComponentType,
-	createContext,
 	type ReactNode,
 	useCallback,
-	useContext,
 	useEffect,
 	useMemo,
 	useRef,
@@ -18,6 +16,15 @@ import { useSurfaceLinks } from "@/surfaces/useSurfaceLinks";
 import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
+import { useTransient } from "@/ui/transient";
+import {
+	type AddEntryApi,
+	AddEntryContext,
+	useAddButtonScroll,
+	useAddEntry,
+	useHideAddButton,
+	useOptionalAddEntry,
+} from "./addEntryContext";
 import type { EntryMode } from "./ComposerShell";
 import { EntryComposer } from "./EntryComposer";
 import { replaceDraft } from "./replaceDraft";
@@ -30,42 +37,15 @@ const DevComposerTour: ComponentType<{ add: AddEntryApi }> | null = process.env
 	? require("@/dev/DevComposerTour").DevComposerTour
 	: null;
 
-interface AddEntryApi {
-	/** Opens the composer sheet, optionally filled in by a share, a Shortcut or a link. */
-	open(mode?: EntryMode, prefill?: ComposerPrefill): void;
-	/** Opens the composer on a saved expense (its id); Save replaces it, and Undo restores it. */
-	edit(entryId: string, kind?: "shared"): void;
-	/**
-	 * Hides the floating add button until the returned function is called (the
-	 * entry page, where the entry is the subject). Counts, so two pages
-	 * hiding it at once both have to let go.
-	 */
-	hideButton(): () => void;
-}
-
-const AddEntryContext = createContext<AddEntryApi | null>(null);
+export {
+	useAddButtonScroll,
+	useAddEntry,
+	useHideAddButton,
+	useOptionalAddEntry,
+};
 
 /** Height of the bar the floating button sits above: the M3 navigation bar, or the iOS tab bar. */
 const BAR_HEIGHT = Platform.OS === "android" ? 80 : 49;
-export function useAddEntry(): AddEntryApi {
-	const value = useContext(AddEntryContext);
-	if (!value) throw new Error("useAddEntry needs an AddEntryProvider above it");
-	return value;
-}
-
-/** Hides the floating add button while the calling screen is mounted. */
-export function useHideAddButton(hidden = true): void {
-	const add = useOptionalAddEntry();
-	useEffect(() => {
-		if (!hidden || !add) return;
-		return add.hideButton();
-	}, [add, hidden]);
-}
-
-/** Like useAddEntry, but null outside a provider (the gallery has none). */
-export function useOptionalAddEntry(): AddEntryApi | null {
-	return useContext(AddEntryContext);
-}
 
 /** True while the software keyboard is up: the floating button steps aside. */
 function useKeyboardShown(): boolean {
@@ -119,6 +99,9 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 		setHiders((n) => n + 1);
 		return () => setHiders((n) => n - 1);
 	}, []);
+	// Folded to the plus by a scroll is passing UI: leaving the tab extends it.
+	const [expanded, setExpanded] = useState(true);
+	useTransient(expanded ? null : () => setExpanded(true));
 
 	const sheetSize = useSheetBodySize();
 
@@ -161,6 +144,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 			edit: (entryId: string, kind?: "shared") =>
 				show("expense", undefined, entryId, kind === "shared"),
 			hideButton,
+			setButtonExpanded: setExpanded,
 		}),
 		[show, hideButton],
 	);
@@ -196,6 +180,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 								onPress: () => show("transfer"),
 							},
 						]}
+						expanded={expanded}
 						label={t("addExpense")}
 						onPress={() => show("expense")}
 					/>

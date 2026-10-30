@@ -21,7 +21,10 @@ import type { ActivityItem } from "@/features/activity/source";
 import { useActivity } from "@/features/activity/useActivity";
 import { useBulkActions } from "@/features/activity/useBulkActions";
 import { useDebouncedSearch } from "@/features/activity/useDebouncedSearch";
-import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
+import {
+	useAddButtonScroll,
+	useOptionalAddEntry,
+} from "@/features/entry/addEntryContext";
 import { RecurringView } from "@/features/recurring/RecurringView";
 import { RECURRING_APART } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
@@ -46,6 +49,7 @@ export default function ActivityScreen() {
 	const searchRef = useSearchShortcut();
 	const insets = useSafeAreaInsets();
 	const addInset = useAddInset();
+	const fabScroll = useAddButtonScroll();
 	const add = useOptionalAddEntry();
 	const params = useLocalSearchParams<{ segment?: string }>();
 	// On the iPad sidebar Recurring is a destination of its own.
@@ -165,6 +169,7 @@ export default function ActivityScreen() {
 
 	const rows = (
 		<SectionList
+			{...fabScroll}
 			contentInsetAdjustmentBehavior="automatic"
 			extraData={picked}
 			keyboardDismissMode="on-drag"

@@ -2,6 +2,7 @@ import { router, Stack } from "expo-router";
 import { type ReactNode, useMemo, useState } from "react";
 import { FlatList, ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { useAddButtonScroll } from "@/features/entry/addEntryContext";
 import {
 	type PeopleChip,
 	type PeopleSort,
@@ -68,6 +69,7 @@ export function PeopleList({
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const inset = useAddInset();
+	const fabScroll = useAddButtonScroll();
 	const searchRef = useSearchShortcut(filters === undefined);
 	const { state, reload } = usePeopleOverview();
 	const [ownChip, setOwnChip] = useState<PeopleChip>("all");
@@ -113,6 +115,7 @@ export function PeopleList({
 
 	const list = (
 		<FlatList
+			{...fabScroll}
 			contentInsetAdjustmentBehavior="automatic"
 			data={sections}
 			keyboardDismissMode="on-drag"

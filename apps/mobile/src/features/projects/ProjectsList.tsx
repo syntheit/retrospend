@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { type ReactNode, useMemo, useState } from "react";
 import { FlatList, View } from "react-native";
 import { useTranslations } from "use-intl";
+import { useAddButtonScroll } from "@/features/entry/addEntryContext";
 import { openProject } from "@/features/projects/openProject";
 import { ProjectCard } from "@/features/projects/ProjectCard";
 import { ProjectRow } from "@/features/projects/ProjectRow";
@@ -47,6 +48,7 @@ export function ProjectsList({
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const inset = useAddInset();
+	const fabScroll = useAddButtonScroll();
 	const searchRef = useSearchShortcut(sharedQuery === undefined);
 	const { state, reload } = useProjectList();
 	const [ownQuery, setQuery] = useState("");
@@ -86,6 +88,7 @@ export function ProjectsList({
 
 	const list = (
 		<FlatList
+			{...fabScroll}
 			contentInsetAdjustmentBehavior="automatic"
 			data={sections}
 			keyboardDismissMode="on-drag"
