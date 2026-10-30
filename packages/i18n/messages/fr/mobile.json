@@ -1031,7 +1031,14 @@
 			"planCostOnly": "Ton plan coûte {cost} par mois.",
 			"incomplete": "Certains montants n'ont pas de taux aujourd'hui et sont laissés de côté.",
 			"runway": "Ton budget et tes économies tiennent {months} mois avec ce plan.",
-			"error": "Impossible de charger. Réessaie."
+			"error": "Impossible de charger. Réessaie.",
+			"terms": {
+				"assigned": "Attribué aux enveloppes",
+				"assignedAhead": "Attribué d'avance",
+				"overspendTaken": "Repris pour les dépassements",
+				"returned": "Rendu par les enveloppes",
+				"splitsNet": "Dépenses partagées"
+			}
 		},
 		"rules": {
 			"title": "Règles de revenus",
@@ -1121,7 +1128,8 @@
 			"listTitle": "Planifier le mois",
 			"listLead": "Touche une enveloppe pour fixer ce qu'elle reçoit. Rien ne bouge avant la paie.",
 			"notPlanned": "Pas encore planifié",
-			"leftToPlan": "Reste à planifier en {month}"
+			"leftToPlan": "Reste à planifier en {month}",
+			"plannedOf": "Prévu {planned} sur {expected}"
 		},
 		"planApply": {
 			"title": "Appliquer le plan de {month}",

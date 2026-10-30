@@ -4,7 +4,6 @@ import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import {
@@ -17,7 +16,8 @@ import {
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Hero } from "@/ui/Hero";
-import { CategoryTile, ListRow, SectionHeader } from "@/ui/List";
+import { Chip } from "@/ui/Chip";
+import { CategoryTile, ListGroup, ListRow, SectionHeader } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
@@ -84,6 +84,16 @@ export function PlanSheet({
 		`${base?.id}:${base?.updatedAt}`,
 	);
 	const left = outcome.status === "ready" ? outcome.data.toAssign.after : null;
+	// What the plan gives out and what it expects in: sums of the draft's own
+	// lines, shown through the money formatter.
+	const planTotal = {
+		minor: (base?.lines ?? []).reduce((sum, l) => sum + l.amount.minor, 0),
+		currency,
+	};
+	const expected = {
+		minor: (base?.expectedIn ?? []).reduce((sum, l) => sum + l.amount.minor, 0),
+		currency,
+	};
 	const monthName = format.dateTime(monthDate(month), {
 		month: "long",
 		timeZone: "UTC",
@@ -202,59 +212,78 @@ export function PlanSheet({
 							<View style={{ paddingHorizontal: space[4] }}>
 								<Hero
 									label={t("leftToPlan", { month: monthName })}
-									sub={t("listLead")}
+									sub={
+										base && expected.minor > 0
+											? t("plannedOf", {
+													planned: money(planTotal),
+													expected: money(expected),
+												})
+											: undefined
+									}
 									tone={left.minor < 0 ? "attention" : "fg"}
 									value={money(left, { sign: "never" })}
 								/>
 							</View>
-						) : (
+						) : null}
+						<View style={{ paddingHorizontal: space[4] }}>
 							<Note>{t("listLead")}</Note>
-						)}
+						</View>
 						{read.status === "error" ? (
-							<Note tone="attention">{t("error")}</Note>
+							<View style={{ paddingHorizontal: space[4] }}>
+								<Note tone="attention">{t("error")}</Note>
+							</View>
 						) : null}
 						{data.groups.map((group) => (
 							<View key={group.id ?? "none"}>
-								<SectionHeader title={groupName(group)} />
-								{group.envelopes.map((e) => {
-									const p = plannedFor(base, e.id);
-									const target = targetText(e, false);
-									return (
-										<ListRow
-											accessibilityLabel={`${e.name}, ${p ? money(p) : t("notPlanned")}`}
-											end={
-												p ? (
-													<MoneyAmount value={p} />
-												) : (
-													<Text tone="fg3">{t("notPlanned")}</Text>
-												)
-											}
-											key={e.id}
-											lead={
-												<CategoryTile
-													category={{
-														name: e.name,
-														icon: e.icon,
-														tone: categoryTone(e.color ?? ""),
-													}}
-												/>
-											}
-											onPress={() => setEditing(e.id)}
-											sub={
-												target ? (
-													<Text
-														numberOfLines={1}
-														tone={target.attention ? "attention" : "fg3"}
-														variant="meta"
-													>
-														{target.text}
-													</Text>
-												) : undefined
-											}
-											title={e.name}
-										/>
-									);
-								})}
+								<SectionHeader
+									title={groupName(group)}
+									total={money({
+										minor: group.envelopes.reduce(
+											(sum, e) => sum + (plannedFor(base, e.id)?.minor ?? 0),
+											0,
+										),
+										currency,
+									})}
+								/>
+								<ListGroup>
+									{group.envelopes.map((e) => {
+										const p = plannedFor(base, e.id) ?? { minor: 0, currency };
+										const target = targetText(e, false);
+										return (
+											<ListRow
+												end={
+													<Chip
+														accessibilityLabel={`${e.name}, ${money(p)}`}
+														label={money(p)}
+														onPress={() => setEditing(e.id)}
+													/>
+												}
+												key={e.id}
+												lead={
+													<CategoryTile
+														category={{
+															name: e.name,
+															icon: e.icon,
+															tone: categoryTone(e.color ?? ""),
+														}}
+													/>
+												}
+												sub={
+													target ? (
+														<Text
+															numberOfLines={1}
+															tone={target.attention ? "attention" : "fg3"}
+															variant="meta"
+														>
+															{target.text}
+														</Text>
+													) : undefined
+												}
+												title={e.name}
+											/>
+										);
+									})}
+								</ListGroup>
 							</View>
 						))}
 					</>
