@@ -130,7 +130,7 @@ export function SettleSheet({
 	const ready = context !== null && flow.direction !== null && !nothingOwed;
 	const footer = ready ? (
 		<>
-			<Button label={tc("cancel")} onPress={onClose} variant="outlined" />
+			<Button label={tc("cancel")} onPress={onClose} variant="text" />
 			<Button
 				disabled={!flow.preview || flow.recording}
 				label={
