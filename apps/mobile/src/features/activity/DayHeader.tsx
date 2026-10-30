@@ -7,7 +7,7 @@ import { Text } from "@/ui/Text";
 
 /** "Wed, Oct 21": a day the server named, shown in the phone's language. */
 export function useDayLabel() {
-	const t = useTranslations("mobile.activity");
+	const t = useTranslations("mobile.common");
 	const format = useFormatter();
 	return (day: string, relative: "today" | "yesterday" | null) => {
 		if (relative) return t(relative);

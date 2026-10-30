@@ -120,6 +120,7 @@ export function EnvelopeSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.envelope");
+	const tc = useTranslations("mobile.common");
 	const tb = useTranslations("mobile.budget");
 	const money = useMoneyText();
 	const targetText = useTargetText();
@@ -146,7 +147,7 @@ export function EnvelopeSheet({
 	const form = (child: (e: BudgetEnvelope) => ReactNode) =>
 		envelope ? (
 			<View style={{ gap: space[3] }}>
-				<BackButton label={t("back")} onPress={() => setMode("overview")} />
+				<BackButton label={tc("back")} onPress={() => setMode("overview")} />
 				{child(envelope)}
 			</View>
 		) : null;

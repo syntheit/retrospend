@@ -2,11 +2,12 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import { absoluteImage, useFaces } from "@/features/read/faces";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
 import { ListRow } from "@/ui/List";
+import { MoneyAmount } from "@/ui/Money";
+import { ProgressBar } from "@/ui/ProgressBar";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { useBalanceWords } from "./Balance";
@@ -26,7 +27,7 @@ export function BudgetLine({
 }) {
 	const t = useTranslations("mobile.projects");
 	const money = useMoneyText();
-	const { color, radius, space } = useTheme();
+	const { space } = useTheme();
 	const text = budget.over
 		? t("budgetOver", {
 				amount: money({
@@ -56,24 +57,7 @@ export function BudgetLine({
 					{t("budgetOf", { amount: money(budget.amount) })}
 				</Text>
 			</View>
-			<View
-				accessibilityElementsHidden
-				importantForAccessibility="no-hide-descendants"
-				style={{
-					height: space[1],
-					borderRadius: radius.chip,
-					backgroundColor: color.raised,
-					overflow: "hidden",
-				}}
-			>
-				<View
-					style={{
-						width: `${budget.used / 100}%`,
-						height: space[1],
-						backgroundColor: budget.over ? color.attention : color.accent,
-					}}
-				/>
-			</View>
+			<ProgressBar over={budget.over} percent={budget.used / 100} />
 		</View>
 	);
 }

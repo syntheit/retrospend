@@ -66,6 +66,7 @@ export function RulesSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.rules");
+	const tc = useTranslations("mobile.common");
 	const sentence = useRuleSentence(data);
 	const [mode, setMode] = useState<Mode>({ kind: "list" });
 	const [failed, setFailed] = useState(false);
@@ -102,7 +103,7 @@ export function RulesSheet({
 	}
 
 	const back = (
-		<BackButton label={t("back")} onPress={() => setMode({ kind: "list" })} />
+		<BackButton label={tc("back")} onPress={() => setMode({ kind: "list" })} />
 	);
 	const title =
 		mode.kind === "add"

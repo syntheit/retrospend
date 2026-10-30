@@ -1,12 +1,12 @@
 import { formatPercent } from "@retrospend/domain/format-percent";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
-import { MoneyAmount, useRateTypeLabel } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { IconTile } from "@/ui/IconTile";
 import { ListRow } from "@/ui/List";
+import { MoneyAmount, useRateTypeLabel } from "@/ui/Money";
 import { SwipeRow } from "@/ui/SwipeRow";
 import { Text } from "@/ui/Text";
 import { aprBasis, glyphOf, isLiability } from "./accounts";

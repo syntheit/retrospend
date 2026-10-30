@@ -1,7 +1,7 @@
 import { light } from "@retrospend/tokens/theme";
 import { StyleSheet, Text, type TextStyle, View } from "react-native";
 import Svg from "react-native-svg";
-import { heroCents } from "@/features/read/MoneyAmount";
+import { heroCents } from "@/ui/Money";
 import { Avatar, AvatarStack, initialsOf, splitFaces } from "./Avatar";
 import { GroupItem, ListGroup, ListRow, NavEnd, tileTint } from "./List";
 import { StatusText, toneColors } from "./StatusText";

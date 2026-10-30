@@ -43,6 +43,7 @@ const KEEP = 8;
  */
 export function InsightsScreen() {
 	const t = useTranslations("mobile.insights");
+	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const { open } = useAddEntry();
 	const { space } = useTheme();
@@ -111,7 +112,7 @@ export function InsightsScreen() {
 	} else if (state.status === "error") {
 		body = (
 			<EmptyState
-				actionLabel={t("retry")}
+				actionLabel={tc("retry")}
 				detail={t("errorDetail")}
 				onAction={() => void reload()}
 				title={t("error")}
@@ -124,7 +125,7 @@ export function InsightsScreen() {
 			summary.count === 0 ? (
 				narrowed ? (
 					<EmptyState
-						actionLabel={t("empty.clear")}
+						actionLabel={tc("clearFilters")}
 						detail={t("empty.filteredHint")}
 						onAction={() =>
 							setView({ ...view, categoryId: null, personKey: null })

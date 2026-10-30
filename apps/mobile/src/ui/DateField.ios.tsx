@@ -27,7 +27,7 @@ function DateRow({
 	minimum,
 }: DateFieldProps) {
 	const { color, size, space } = useTheme();
-	const t = useTranslations("mobile.pickers");
+	const tc = useTranslations("mobile.common");
 	return (
 		<View
 			style={{
@@ -59,7 +59,7 @@ function DateRow({
 						modifiers={[tint(color.brand), a11yLabel(label)]}
 						onPress={() => onChange(dayKey(new Date()))}
 					>
-						<SwiftText>{placeholder ?? t("pickDate")}</SwiftText>
+						<SwiftText>{placeholder ?? tc("pickDate")}</SwiftText>
 					</Button>
 				)}
 			</NativeHost>

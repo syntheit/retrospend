@@ -252,7 +252,7 @@ export function SetupSheet({
 						onPress={() => void go()}
 					/>
 					<Button
-						label={at === 0 ? t("cancel") : t("back")}
+						label={at === 0 ? tc("cancel") : tc("back")}
 						onPress={() => (at === 0 ? onClose() : setAt(at - 1))}
 						variant="text"
 					/>

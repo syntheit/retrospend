@@ -2,7 +2,7 @@ import type { Account, CurrencyInfo } from "./source";
 
 // Which rate type an account is valued at, and which ones it can be. The
 // names people read ("Blue", "MEP") come from `useRateTypeLabel`
-// (features/read/MoneyAmount), never the raw key. Rates themselves stay on
+// (ui/Money), never the raw key. Rates themselves stay on
 // the server: a type is a name here, and the server values the account.
 
 /**

@@ -3,11 +3,11 @@ import { Pressable, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useFaces } from "@/features/read/faces";
-import { useRateTypeLabel } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import { CategoryGlyph, categoryColor, Glyph } from "@/ui/Glyph";
+import { useRateTypeLabel } from "@/ui/Money";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { rowStatus } from "./ActivityRow";
@@ -73,11 +73,7 @@ function Fact({
 					children
 				)}
 				{onPress ? (
-					<Glyph
-						color={color.fg3}
-						name="ChevronRight"
-						size={size.icon.phone}
-					/>
+					<Glyph color={color.fg3} name="ChevronRight" size={size.icon.phone} />
 				) : null}
 			</View>
 		</Pressable>

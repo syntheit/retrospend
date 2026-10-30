@@ -57,6 +57,7 @@ export function UnroutedSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.unrouted");
+	const tc = useTranslations("mobile.common");
 	const money = useMoneyText();
 	const format = useFormatter();
 	const [shareId, setShareId] = useState<string | null>(null);
@@ -111,7 +112,7 @@ export function UnroutedSheet({
 				{share ? (
 					<>
 						<BackButton
-							label={t("back")}
+							label={tc("back")}
 							onPress={() => {
 								setShareId(null);
 								setCategoryId(null);

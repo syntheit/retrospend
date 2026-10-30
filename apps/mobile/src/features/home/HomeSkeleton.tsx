@@ -31,11 +31,11 @@ function Card({ second }: { second?: boolean }) {
  * what arrives, so nothing jumps when the data does.
  */
 export function HomeSkeleton() {
-	const t = useTranslations("mobile.list");
+	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
 	return (
 		<View
-			accessibilityLabel={t("loading")}
+			accessibilityLabel={tc("loading")}
 			accessibilityRole="progressbar"
 			accessibilityState={{ busy: true }}
 			accessible

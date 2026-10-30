@@ -1,8 +1,8 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { heroCents } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Line, SheetBody } from "@/features/write/parts";
+import { heroCents } from "@/ui/Money";
 import { Sheet } from "@/ui/Sheet";
 import { type Change, movedParts } from "./changeParts";
 

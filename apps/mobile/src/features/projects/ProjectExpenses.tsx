@@ -1,9 +1,9 @@
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { CategoryTile, ListGroup, ListRow } from "@/ui/List";
+import { MoneyAmount } from "@/ui/Money";
 import { Text } from "@/ui/Text";
 import { dayDate } from "./dates";
 import { groupByDay } from "./days";

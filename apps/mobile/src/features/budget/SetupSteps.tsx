@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
@@ -9,6 +9,7 @@ import { AmountField } from "@/ui/AmountField";
 import { ChipGroup } from "@/ui/Chip";
 import { DateField } from "@/ui/DateField";
 import { SwitchRow } from "@/ui/SwitchRow";
+import { Text } from "@/ui/Text";
 import { ChoiceList } from "./fields";
 import {
 	ANSWERS,
@@ -29,17 +30,10 @@ const FREQUENCIES: PayFrequency[] = [
 ];
 
 function Heading({ title, sub }: { title: string; sub?: string }) {
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	return (
 		<View style={{ gap: space[1] }}>
-			<Text
-				accessibilityRole="header"
-				style={{
-					color: color.fg,
-					fontSize: type.section.size,
-					fontWeight: "600",
-				}}
-			>
+			<Text accessibilityRole="header" variant="section">
 				{title}
 			</Text>
 			{sub ? <Note>{sub}</Note> : null}

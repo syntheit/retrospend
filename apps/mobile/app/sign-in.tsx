@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import { useState } from "react";
-import { Platform, TextInput, View } from "react-native";
+import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import type { AuthFailure } from "@/auth/errors";
 import { useServerConnection } from "@/auth/server-connection";
@@ -9,6 +9,7 @@ import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Screen } from "@/ui/Screen";
 import { Text } from "@/ui/Text";
+import { TextField } from "@/ui/TextField";
 
 type Step = "password" | "code";
 
@@ -19,7 +20,7 @@ type Step = "password" | "code";
 // apple-app-site-association (iOS).
 export default function SignInScreen() {
 	const t = useTranslations("mobile.signIn");
-	const { color, space, radius, size, type } = useTheme();
+	const { space } = useTheme();
 	const { connection, disconnect } = useServerConnection();
 	const { state, signIn, verifyCode } = useSession();
 	const [step, setStep] = useState<Step>("password");
@@ -46,17 +47,6 @@ export default function SignInScreen() {
 		else if (result.status === "error") setFailure(result.reason);
 	}
 
-	const field = {
-		minHeight: size.touchMin.phone,
-		paddingHorizontal: space[3],
-		borderRadius: radius.ctl,
-		borderWidth: 1,
-		borderColor: failure ? color.danger : color.lineStrong,
-		backgroundColor: color.surface,
-		color: color.fg,
-		fontSize: type.section.size,
-	} as const;
-
 	return (
 		<>
 			<Stack.Screen
@@ -71,60 +61,44 @@ export default function SignInScreen() {
 				<Text tone="fg2">{expired ? t("expired") : t("intro", { host })}</Text>
 				{step === "password" ? (
 					<View style={{ gap: space[3] }}>
-						<View style={{ gap: space[2] }}>
-							<Text variant="small">{t("email")}</Text>
-							<TextInput
-								accessibilityLabel={t("email")}
-								autoCapitalize="none"
-								autoComplete="username"
-								autoCorrect={false}
-								editable={!busy}
-								importantForAutofill="yes"
-								inputMode="email"
-								keyboardType="email-address"
-								onChangeText={setEmail}
-								returnKeyType="next"
-								style={field}
-								textContentType="username"
-								value={email}
-							/>
-						</View>
-						<View style={{ gap: space[2] }}>
-							<Text variant="small">{t("password")}</Text>
-							<TextInput
-								accessibilityLabel={t("password")}
-								autoCapitalize="none"
-								autoComplete="current-password"
-								autoCorrect={false}
-								editable={!busy}
-								importantForAutofill="yes"
-								onChangeText={setPassword}
-								onSubmitEditing={submit}
-								returnKeyType="go"
-								secureTextEntry
-								style={field}
-								textContentType="password"
-								value={password}
-							/>
-						</View>
+						<TextField
+							autoComplete="username"
+							disabled={busy}
+							inputMode="email"
+							invalid={!!failure}
+							keyboardType="email-address"
+							label={t("email")}
+							onChangeText={setEmail}
+							returnKeyType="next"
+							textContentType="username"
+							value={email}
+						/>
+						<TextField
+							autoComplete="current-password"
+							disabled={busy}
+							invalid={!!failure}
+							label={t("password")}
+							onChangeText={setPassword}
+							onSubmitEditing={submit}
+							returnKeyType="go"
+							secure
+							textContentType="password"
+							value={password}
+						/>
 					</View>
 				) : (
 					<View style={{ gap: space[2] }}>
-						<Text variant="small">{t("code")}</Text>
-						<TextInput
-							accessibilityLabel={t("code")}
-							autoCapitalize="none"
+						<TextField
 							autoComplete={
 								Platform.OS === "android" ? "2fa-app-otp" : "one-time-code"
 							}
-							autoCorrect={false}
-							editable={!busy}
-							importantForAutofill="yes"
+							disabled={busy}
 							inputMode="numeric"
+							invalid={!!failure}
+							label={t("code")}
 							onChangeText={setCode}
 							onSubmitEditing={submit}
 							returnKeyType="go"
-							style={field}
 							textContentType="oneTimeCode"
 							value={code}
 						/>

@@ -1,9 +1,10 @@
 import { SMART_NO_DECIMAL_CURRENCIES } from "@retrospend/domain/currency-format";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { SectionHeader } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
+import { SectionHeader } from "@/ui/List";
+import { Text } from "@/ui/Text";
 import type { InsightsCashflow } from "./source";
 import type { InsightsWords } from "./useInsightsWords";
 
@@ -24,7 +25,7 @@ function FigureRow({
 }) {
 	const noRate = useTranslations("mobile.money")("noRate");
 	const money = useMoneyText();
-	const { color, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 	const value = figure.value;
 	const text = value
 		? money(
@@ -50,24 +51,19 @@ function FigureRow({
 			}}
 		>
 			<View style={{ flex: 1 }}>
-				<Text style={{ color: color.fg, fontSize: type.body.size }}>
-					{label}
-				</Text>
+				<Text>{label}</Text>
 				{sub ? (
-					<Text style={{ color: color.fg2, fontSize: type.small.size }}>
+					<Text tone="fg2" variant="small">
 						{sub}
 					</Text>
 				) : null}
 			</View>
 			<Text
 				numberOfLines={1}
-				style={{
-					color: value ? color.fg : color.fg2,
-					fontSize: type.body.size,
-					fontVariant: ["tabular-nums"],
-					fontWeight: value ? "600" : "400",
-					textAlign: "right",
-				}}
+				style={{ textAlign: "right" }}
+				tabular
+				tone={value ? "fg" : "fg2"}
+				weight={value ? "semibold" : "normal"}
 			>
 				{text}
 			</Text>
@@ -92,7 +88,7 @@ export function CashflowSection({
 }) {
 	const t = useTranslations("mobile.insights.cashflow");
 	const ti = useTranslations("mobile.insights");
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const unnamed = data.missingRates.filter((c) => !named.includes(c));
 	return (
 		<View>
@@ -111,12 +107,9 @@ export function CashflowSection({
 			<FigureRow figure={data.monthlyAverage} label={t("perMonth")} whole />
 			{unnamed.length > 0 ? (
 				<Text
-					style={{
-						color: color.fg3,
-						fontSize: type.small.size,
-						paddingHorizontal: space[4],
-						paddingTop: space[2],
-					}}
+					style={{ paddingHorizontal: space[4], paddingTop: space[2] }}
+					tone="fg3"
+					variant="small"
 				>
 					{ti("missingRates", { currencies: unnamed.join(", ") })}
 				</Text>

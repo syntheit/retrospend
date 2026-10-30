@@ -1,8 +1,9 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
+import { Hero } from "@/ui/Hero";
+import { heroCents } from "@/ui/Money";
 import { Text } from "@/ui/Text";
 import type { InsightsSummary } from "./source";
 import type { InsightsWords } from "./useInsightsWords";
@@ -56,20 +57,14 @@ export function SummaryLead({
 	const total = summary.total.value;
 
 	return (
-		<View
-			accessibilityLabel={[total ? money(total) : noRate, lead, count, before]
-				.filter(Boolean)
-				.join(", ")}
-			accessible
-			style={{ gap: space[1], padding: space[4] }}
-		>
-			{total ? (
-				<MoneyAmount align="left" size="hero" value={total} />
-			) : (
-				<Text variant="hero">{noRate}</Text>
-			)}
-			<Text tone="fg2">{t("leadLine", { lead, count })}</Text>
-			{before ? <Text tone="fg2">{before}</Text> : null}
+		<View style={{ gap: space[1], padding: space[4] }}>
+			<Hero
+				label={t("leadLine", { lead, count })}
+				sub={before ?? undefined}
+				value={
+					total ? money(total, { cents: heroCents(total.currency) }) : noRate
+				}
+			/>
 			{summary.missingRates.length > 0 ? (
 				<Text tone="fg3" variant="small">
 					{t("missingRates", { currencies: summary.missingRates.join(", ") })}

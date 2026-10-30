@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
-import { useRateTypeLabel } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
 import { figureLines } from "@/features/write/figures";
@@ -15,6 +14,7 @@ import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
 import { ChangeList, type ChangeRow } from "@/ui/ChangeList";
 import { IconTile } from "@/ui/IconTile";
+import { useRateTypeLabel } from "@/ui/Money";
 import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { glyphOf } from "./accounts";
@@ -49,6 +49,7 @@ export function UpdateBalanceSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.wealth.update");
+	const common = useTranslations("mobile.common");
 	const tp = useTranslations("mobile.budget.preview");
 	const format = useFormatter();
 	const api = useApi();
@@ -176,7 +177,7 @@ export function UpdateBalanceSheet({
 			footer={
 				<Button
 					disabled={!ready || flow.committing}
-					label={flow.committing ? t("saving") : t("submit")}
+					label={flow.committing ? common("saving") : t("submit")}
 					onPress={submit}
 				/>
 			}

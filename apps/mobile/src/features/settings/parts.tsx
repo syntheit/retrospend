@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import { appBuild } from "@/lib/appVersion";
@@ -11,6 +11,7 @@ import { Picker, type PickerOption } from "@/ui/Picker";
 import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
+import { TextAction } from "@/ui/TextAction";
 import { openWebPage } from "./webPages";
 
 /** One quiet sentence under a group, for what its rows cannot say. */
@@ -161,7 +162,7 @@ export function CurrencyRow({
 export function AboutFooter() {
 	const t = useTranslations("mobile.settings.about");
 	const { connection } = useServerConnection();
-	const { color, size, space } = useTheme();
+	const { space } = useTheme();
 	const baseUrl = connection.status === "connected" ? connection.baseUrl : null;
 	const pages = [
 		{ id: "privacy", label: t("privacy"), path: "/privacy" },
@@ -186,19 +187,13 @@ export function AboutFooter() {
 			</Text>
 			{baseUrl
 				? pages.map((page) => (
-						<Pressable
-							accessibilityRole="link"
+						<TextAction
 							key={page.id}
+							label={page.label}
+							link
 							onPress={() => void openWebPage(baseUrl, page.path)}
-							style={{
-								minHeight: size.touchMin.phone,
-								justifyContent: "center",
-							}}
-						>
-							<Text style={{ color: color.fg3 }} variant="small">
-								{page.label}
-							</Text>
-						</Pressable>
+							small
+						/>
 					))
 				: null}
 		</View>

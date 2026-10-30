@@ -134,7 +134,7 @@ export function ReviewSheet({
 			footer={
 				<Button
 					disabled={!flow.preview || flow.busy}
-					label={flow.busy ? t("saving") : saveLabel}
+					label={flow.busy ? tc("saving") : saveLabel}
 					onPress={save}
 				/>
 			}

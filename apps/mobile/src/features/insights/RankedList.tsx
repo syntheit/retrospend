@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { LinkButton } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { CategoryGlyph, categoryColor, Glyph } from "@/ui/Glyph";
+import { LinkButton } from "@/ui/List";
+import { MoneyAmount } from "@/ui/Money";
+import { ProgressBar } from "@/ui/ProgressBar";
+import { Text } from "@/ui/Text";
 import { barShares, type RankedRow } from "./rows";
 import type { InsightsWords } from "./useInsightsWords";
 
@@ -28,11 +30,10 @@ export function RankedList({
 	const t = useTranslations("mobile.insights");
 	const noRate = useTranslations("mobile.money")("noRate");
 	const money = useMoneyText();
-	const { color, radius, size, space, type } = useTheme();
+	const { color, size, space } = useTheme();
 	const [all, setAll] = useState(false);
 	const shown = all ? rows : rows.slice(0, FIRST);
 	const shares = barShares(shown.map((r) => r.value));
-	const bar = space[1] + space[1] / 2;
 
 	return (
 		<View>
@@ -75,18 +76,11 @@ export function RankedList({
 							) : (
 								<Glyph color={tint} name="Tag" size={size.icon.phone} />
 							)}
-							<Text
-								numberOfLines={1}
-								style={{
-									flexShrink: 1,
-									color: color.fg,
-									fontSize: type.body.size,
-								}}
-							>
+							<Text numberOfLines={1} style={{ flexShrink: 1 }}>
 								{name}
 							</Text>
 							{note ? (
-								<Text style={{ color: color.fg3, fontSize: type.meta.size }}>
+								<Text tone="fg3" variant="meta">
 									{note}
 								</Text>
 							) : null}
@@ -94,28 +88,10 @@ export function RankedList({
 							{row.value ? (
 								<MoneyAmount value={row.value} />
 							) : (
-								<Text style={{ color: color.fg2, fontSize: type.body.size }}>
-									{noRate}
-								</Text>
+								<Text tone="fg2">{noRate}</Text>
 							)}
 						</View>
-						<View
-							style={{
-								height: bar,
-								borderRadius: radius.chip,
-								backgroundColor: color.raised,
-								overflow: "hidden",
-							}}
-						>
-							<View
-								style={{
-									width: `${(shares[i] ?? 0) * 100}%`,
-									height: bar,
-									borderRadius: radius.chip,
-									backgroundColor: color.accent,
-								}}
-							/>
-						</View>
+						<ProgressBar percent={(shares[i] ?? 0) * 100} />
 					</View>
 				);
 			})}

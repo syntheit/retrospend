@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { TextInput, View } from "react-native";
+import { TextInput, type TextInputProps, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Text, typeStyle } from "./Text";
 
-/** A field's label above it: 13/500 in fg-2. */
+/** A field's label above it: 13/400 in fg-2, as in iOS Settings. */
 export function FieldLabel({ children }: { children: string }) {
 	return (
-		<Text tone="fg2" variant="small" weight="medium">
+		<Text tone="fg2" variant="small">
 			{children}
 		</Text>
 	);
@@ -42,6 +42,11 @@ export function TextField({
 	autoCapitalize = "none",
 	secure,
 	autoComplete,
+	textContentType,
+	inputMode,
+	returnKeyType,
+	onSubmitEditing,
+	disabled,
 	onTypingChange,
 	bare,
 }: {
@@ -66,7 +71,17 @@ export function TextField({
 	/** Hides what is typed (passwords). */
 	secure?: boolean;
 	/** What the system may fill in (a saved password, a one-time code). */
-	autoComplete?: "current-password" | "new-password" | "one-time-code";
+	autoComplete?: TextInputProps["autoComplete"];
+	/** The iOS twin of `autoComplete`: what the keychain may fill in. */
+	textContentType?: TextInputProps["textContentType"];
+	/** Which keyboard shows: email, numeric, url. */
+	inputMode?: TextInputProps["inputMode"];
+	/** The return key's word; "done" unless said (several lines: a new line). */
+	returnKeyType?: "done" | "go" | "next" | "search";
+	/** Runs when the return key is pressed (sign in, continue). */
+	onSubmitEditing?: () => void;
+	/** Not editable (a request is running). */
+	disabled?: boolean;
 	/** Told when typing starts and stops, so a screen can hide its keypad. */
 	onTypingChange?: (typing: boolean) => void;
 	/**
@@ -113,15 +128,19 @@ export function TextField({
 					autoCapitalize={autoCapitalize}
 					autoComplete={autoComplete}
 					autoCorrect={autoCapitalize === "sentences"}
+					editable={!disabled}
+					importantForAutofill={autoComplete ? "yes" : "auto"}
+					inputMode={inputMode}
 					keyboardType={keyboardType}
 					maxLength={maxLength}
 					multiline={multiline}
 					onBlur={() => focus(false)}
 					onChangeText={onChangeText}
 					onFocus={() => focus(true)}
+					onSubmitEditing={onSubmitEditing}
 					placeholder={placeholder}
 					placeholderTextColor={color.fg3}
-					returnKeyType={multiline ? "default" : "done"}
+					returnKeyType={multiline ? "default" : (returnKeyType ?? "done")}
 					secureTextEntry={secure}
 					selectionColor={color.brand}
 					style={[
@@ -137,6 +156,7 @@ export function TextField({
 							? { paddingVertical: space[2], textAlignVertical: "top" }
 							: null,
 					]}
+					textContentType={textContentType}
 					value={value}
 				/>
 			</View>

@@ -6,7 +6,6 @@ import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
-import { Button } from "@/ui/Button";
 import { Chip } from "@/ui/Chip";
 import { EmptyState } from "@/ui/EmptyState";
 import { GroupItem, ListGroup, ListRow } from "@/ui/List";
@@ -14,6 +13,7 @@ import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { useToast } from "@/ui/Toast";
+import { TopBarAction } from "@/ui/TopBarAction";
 import { Block, GroupNote, PageState, SettingsPage } from "../settings/parts";
 import { InviteSheet } from "./InviteSheet";
 import type { InviteCodeDto } from "./types";
@@ -79,7 +79,7 @@ export function InvitesScreen() {
 		}
 	}
 
-	// The plus is the bar's: the system glass plus on iOS, a text plus on Android.
+	// The plus is the bar's: the system glass plus on iOS, the plus icon on Android.
 	const add = (
 		<Stack.Screen
 			options={{
@@ -87,12 +87,13 @@ export function InvitesScreen() {
 					Platform.OS === "ios" ? (
 						<AddButton label={t("create")} onPress={() => void create()} />
 					) : (
-						<Button
-							accessibilityLabel={t("create")}
-							disabled={creating}
-							label="+"
-							onPress={() => void create()}
-							variant="text"
+						<TopBarAction
+							icon="Plus"
+							id="create"
+							label={t("create")}
+							onPress={() => {
+								if (!creating) void create();
+							}}
 						/>
 					),
 			}}

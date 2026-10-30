@@ -35,7 +35,7 @@ export function ComposerBar({
 	addOff: boolean;
 	busy: boolean;
 }) {
-	const t = useTranslations("mobile.composer");
+	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
 	return (
 		<View
@@ -48,8 +48,8 @@ export function ComposerBar({
 		>
 			{step === "more" ? (
 				<Chip
-					accessibilityLabel={t("back")}
-					label={t("back")}
+					accessibilityLabel={tc("back")}
+					label={tc("back")}
 					onPress={onBack}
 				/>
 			) : showOperators ? (

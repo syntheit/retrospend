@@ -20,7 +20,7 @@ export function DateQuickDays({
 	/** Today in another zone than the phone's, when the server's counts. */
 	today?: string;
 }) {
-	const t = useTranslations("mobile.pickers");
+	const t = useTranslations("mobile.common");
 	const { space } = useTheme();
 	const yesterday = shiftDay(today, -1);
 	return (

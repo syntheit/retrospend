@@ -24,12 +24,12 @@ function DateRow({
 	minimum,
 }: DateFieldProps) {
 	const { color, size, space } = useTheme();
-	const t = useTranslations("mobile.pickers");
+	const tc = useTranslations("mobile.common");
 	const format = useFormatter();
 	const [open, setOpen] = useState(false);
 	const shown = value
 		? format.dateTime(pickerDate(value, "local"), { dateStyle: "medium" })
-		: (placeholder ?? t("pickDate"));
+		: (placeholder ?? tc("pickDate"));
 	return (
 		<View
 			style={{

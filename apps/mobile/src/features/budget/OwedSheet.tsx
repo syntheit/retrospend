@@ -33,6 +33,7 @@ export function OwedSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.owed");
+	const tc = useTranslations("mobile.common");
 	const money = useMoneyText();
 	const [forgiving, setForgiving] = useState<string | null>(null);
 	const read = useSheetRead(visible, (client) => client.budget.owed());
@@ -59,7 +60,7 @@ export function OwedSheet({
 			<SheetBody>
 				{person ? (
 					<>
-						<BackButton label={t("back")} onPress={() => setForgiving(null)} />
+						<BackButton label={tc("back")} onPress={() => setForgiving(null)} />
 						<ForgiveForm
 							data={data}
 							onClose={() => {

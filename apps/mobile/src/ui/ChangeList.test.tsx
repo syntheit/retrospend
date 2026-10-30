@@ -10,7 +10,7 @@ const { act, create } = renderer;
 jest.mock("@/theme", () => ({
 	useTheme: () => require("@retrospend/tokens/theme").light,
 }));
-jest.mock("@/features/activity/TextAction", () => {
+jest.mock("./TextAction", () => {
 	const { Text } = require("react-native");
 	return {
 		TextAction: ({ label }: { label: string }) => (

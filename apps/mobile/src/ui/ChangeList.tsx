@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { TextAction } from "@/features/activity/TextAction";
 import { useTheme } from "@/theme";
 import { Text } from "./Text";
+import { TextAction } from "./TextAction";
 
 /** A label on the left and a figure on the right, right-aligned with tabular figures. */
 export function Line({

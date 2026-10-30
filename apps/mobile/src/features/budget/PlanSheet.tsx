@@ -167,7 +167,7 @@ export function PlanSheet({
 				{envelope ? (
 					<>
 						<BackButton
-							label={t("back")}
+							label={tc("back")}
 							onPress={() => {
 								setEditing(null);
 								setDraft("");
@@ -197,7 +197,7 @@ export function PlanSheet({
 						) : null}
 						<Button
 							disabled={!drafts || minor === null || busy}
-							label={busy ? tw("saving") : t("save")}
+							label={busy ? tc("saving") : t("save")}
 							onPress={() => void save()}
 						/>
 					</>

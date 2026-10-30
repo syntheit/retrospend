@@ -190,6 +190,7 @@ function TableNote({ table }: { table: RateTable }) {
  */
 export function CurrenciesScreen() {
 	const t = useTranslations("mobile.currencies");
+	const tc = useTranslations("mobile.common");
 	const { color, space } = useTheme();
 	const locale = useMoneyLocale();
 	const name = useCurrencyName();
@@ -230,7 +231,7 @@ export function CurrenciesScreen() {
 				<Screen flush>
 					{state.status === "error" ? (
 						<EmptyState
-							actionLabel={t("retry")}
+							actionLabel={tc("retry")}
 							detail={t("errorDetail")}
 							onAction={() => void reload()}
 							title={t("error")}
@@ -254,7 +255,7 @@ export function CurrenciesScreen() {
 			/>
 		) : (
 			<EmptyState
-				actionLabel={t("empty.clear")}
+				actionLabel={tc("clearFilters")}
 				detail={t("empty.noneHint")}
 				onAction={() => {
 					searchRef.current?.clearText();

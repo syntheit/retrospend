@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
-import { SectionHeader } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
+import { SectionHeader } from "@/ui/List";
+import { MoneyAmount } from "@/ui/Money";
 import { Segmented } from "@/ui/Segmented";
+import { Text } from "@/ui/Text";
 import { RankedList } from "./RankedList";
 import { type CategoryInfo, ytdRows } from "./rows";
 import type { InsightsYtd } from "./source";
@@ -33,7 +34,7 @@ export function YtdSection({
 	const ti = useTranslations("mobile.insights");
 	const noRate = useTranslations("mobile.money")("noRate");
 	const money = useMoneyText();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const [shown, setShown] = useState<Shown>("home");
 	// A USD home has nothing to switch to.
 	const usd = shown === "usd" && data.home !== "USD";
@@ -93,23 +94,17 @@ export function YtdSection({
 				{total ? (
 					<MoneyAmount align="left" size="section" strong value={total} />
 				) : (
-					<Text
-						style={{
-							color: color.fg,
-							fontSize: type.section.size,
-							fontWeight: "600",
-						}}
-					>
+					<Text variant="section" weight="semibold">
 						{noRate}
 					</Text>
 				)}
-				<Text style={{ color: color.fg2, fontSize: type.body.size }}>
+				<Text tone="fg2">
 					{before
 						? ti("pair", { first: words.range(data.thisYear), second: before })
 						: words.range(data.thisYear)}
 				</Text>
 				{usd ? (
-					<Text style={{ color: color.fg3, fontSize: type.meta.size }}>
+					<Text tone="fg3" variant="meta">
 						{t("usdNote")}
 					</Text>
 				) : null}
@@ -118,23 +113,18 @@ export function YtdSection({
 				<RankedList rows={rows} words={words} />
 			) : (
 				<Text
-					style={{
-						color: color.fg3,
-						fontSize: type.small.size,
-						paddingHorizontal: space[4],
-					}}
+					style={{ paddingHorizontal: space[4] }}
+					tone="fg3"
+					variant="small"
 				>
 					{t("none")}
 				</Text>
 			)}
 			{unnamed.length > 0 ? (
 				<Text
-					style={{
-						color: color.fg3,
-						fontSize: type.small.size,
-						paddingHorizontal: space[4],
-						paddingTop: space[2],
-					}}
+					style={{ paddingHorizontal: space[4], paddingTop: space[2] }}
+					tone="fg3"
+					variant="small"
 				>
 					{ti("missingRates", { currencies: unnamed.join(", ") })}
 				</Text>

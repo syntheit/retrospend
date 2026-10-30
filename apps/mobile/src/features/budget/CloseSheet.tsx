@@ -3,12 +3,12 @@ import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note, SheetBody } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { Button } from "@/ui/Button";
 import { ListRow, SectionHeader } from "@/ui/List";
+import { MoneyAmount } from "@/ui/Money";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { acknowledgeBody, carryable, carryBody } from "./closeBodies";
 import { nextMonthKey } from "./draftsBody";
@@ -40,6 +40,7 @@ export function CloseSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.close");
+	const common = useTranslations("mobile.common");
 	const tc = useTranslations("mobile.budget.carry");
 	const tw = useTranslations("mobile.budget.write");
 	const tp = useTranslations("mobile.budget.pool");
@@ -120,7 +121,10 @@ export function CloseSheet({
 			<SheetBody>
 				{carry ? (
 					<>
-						<BackButton label={t("back")} onPress={() => setCarrying(null)} />
+						<BackButton
+							label={common("back")}
+							onPress={() => setCarrying(null)}
+						/>
 						<WriteForm
 							data={data}
 							idempotencyKey={body?.id ?? null}
