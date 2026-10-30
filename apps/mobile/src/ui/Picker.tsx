@@ -1,7 +1,12 @@
 import { Picker as UniversalPicker } from "@expo/ui";
-import { Platform } from "react-native";
+import { useEffect, useState } from "react";
+import { Platform, View } from "react-native";
 import { useTheme } from "@/theme";
+import { Chip } from "./Chip";
+import { ListRow, NavEnd } from "./List";
 import { NativeHost } from "./NativeHost";
+import { Sheet } from "./Sheet";
+import { Text } from "./Text";
 
 export interface PickerOption<T extends string> {
 	value: T;
@@ -9,27 +14,25 @@ export interface PickerOption<T extends string> {
 }
 
 /**
- * A single choice from a list: the SwiftUI menu picker on iOS (a wheel for
- * short pickers like a date part) and the M3 exposed dropdown on Android.
- * The value reads in fg-2 on iOS, as the settings mockup has it, not in the
- * brand tint that marks an action.
+ * A single choice from a list: the SwiftUI menu picker on iOS and the M3
+ * exposed dropdown on Android. The value reads in fg-2 on iOS, as the
+ * settings mockup has it, not in the brand tint that marks an action. A short
+ * run of numbers (a day of the month) is a WheelField instead.
  */
 export function Picker<T extends string>({
 	options,
 	value,
 	onChange,
-	appearance = "menu",
 }: {
 	options: PickerOption<T>[];
 	value: T;
 	onChange: (value: T) => void;
-	appearance?: "menu" | "wheel";
 }) {
 	const { color } = useTheme();
 	return (
 		<NativeHost tint={Platform.OS === "ios" ? color.fg2 : undefined}>
 			<UniversalPicker<string>
-				appearance={appearance}
+				appearance="menu"
 				onValueChange={(next) => onChange(next as T)}
 				selectedValue={value}
 			>
@@ -42,5 +45,139 @@ export function Picker<T extends string>({
 				))}
 			</UniversalPicker>
 		</NativeHost>
+	);
+}
+
+/**
+ * The system wheel in a sheet at the medium detent, behind a value. It keeps
+ * its own pick while the wheel turns and hands it over when the sheet closes
+ * (Done or a swipe down), so a setting saves once and not at every number it
+ * passes.
+ */
+function WheelSheet<T extends string>({
+	visible,
+	onClose,
+	title,
+	options,
+	value,
+	onChange,
+}: {
+	visible: boolean;
+	onClose: () => void;
+	title: string;
+	options: PickerOption<T>[];
+	value: T;
+	onChange: (value: T) => void;
+}) {
+	const { color } = useTheme();
+	const [draft, setDraft] = useState(value);
+	useEffect(() => {
+		if (visible) setDraft(value);
+	}, [visible, value]);
+	return (
+		<Sheet
+			detents={["medium"]}
+			dismiss="done"
+			onClose={() => {
+				if (draft !== value) onChange(draft);
+				onClose();
+			}}
+			title={title}
+			visible={visible}
+		>
+			<View style={{ flex: 1, minHeight: 0 }}>
+				<NativeHost
+					matchContents={false}
+					style={{ flex: 1, alignSelf: "stretch" }}
+					tint={color.fg2}
+				>
+					<UniversalPicker<string>
+						appearance="wheel"
+						onValueChange={(next) => setDraft(next as T)}
+						selectedValue={draft}
+					>
+						{options.map((option) => (
+							<UniversalPicker.Item
+								key={option.value}
+								label={option.label}
+								value={option.value}
+							/>
+						))}
+					</UniversalPicker>
+				</NativeHost>
+			</View>
+		</Sheet>
+	);
+}
+
+/**
+ * A choice from a short run of numbers (the day of the month, 1 to 28), one
+ * control for every place that asks. On iOS the value opens the system wheel
+ * in a sheet; the wheel is never drawn inline, where it is a 200 point drum
+ * in the middle of a form. Android has no wheel, so it keeps the M3 dropdown
+ * (Material 3).
+ * - `row`: a value row in an inset group, the label on the left and the
+ *   value and chevron in fg-2 on the right.
+ * - `chip`: a trigger chip under a field label in a flat form.
+ */
+export function WheelField<T extends string>({
+	variant = "row",
+	label,
+	options,
+	value,
+	onChange,
+}: {
+	variant?: "row" | "chip";
+	/** What is being chosen ("Month start"), the sheet's title and spoken before the value. */
+	label: string;
+	options: PickerOption<T>[];
+	value: T;
+	onChange: (value: T) => void;
+}) {
+	const [open, setOpen] = useState(false);
+	const shown = options.find((o) => o.value === value)?.label ?? value;
+	const spoken = `${label}, ${shown}`;
+	const dropdown = Platform.OS !== "ios";
+	if (dropdown && variant === "chip") {
+		return <Picker onChange={onChange} options={options} value={value} />;
+	}
+	return (
+		<>
+			{variant === "chip" ? (
+				<Chip
+					accessibilityLabel={spoken}
+					label={shown}
+					onPress={() => setOpen(true)}
+					variant="trigger"
+				/>
+			) : (
+				<ListRow
+					accessibilityLabel={spoken}
+					end={
+						dropdown ? (
+							<Picker onChange={onChange} options={options} value={value} />
+						) : (
+							<NavEnd value={shown} />
+						)
+					}
+					onPress={dropdown ? undefined : () => setOpen(true)}
+					title={
+						<Text numberOfLines={2} weight="normal">
+							{label}
+						</Text>
+					}
+				/>
+			)}
+			{dropdown ? null : (
+				<WheelSheet
+					onChange={onChange}
+					onClose={() => setOpen(false)}
+					options={options}
+					title={label}
+					value={value}
+					visible={open}
+				/>
+			)}
+		</>
 	);
 }

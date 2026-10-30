@@ -35,7 +35,7 @@ jest.mock("@/ui/TextField", () => {
 		),
 	};
 });
-jest.mock("@/ui/Picker", () => ({ Picker: () => null }));
+jest.mock("@/ui/Picker", () => ({ Picker: () => null, WheelField: () => null }));
 jest.mock("@/ui/CurrencyPicker", () => ({ CurrencyPicker: () => null }));
 jest.mock("@/features/entry/currencyChoices", () => ({
 	useCurrencyChoices: (home: string) => ({
