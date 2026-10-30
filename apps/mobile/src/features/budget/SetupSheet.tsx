@@ -74,6 +74,7 @@ export function SetupSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.setup");
+	const tc = useTranslations("mobile.common");
 	const tn = useTranslations("mobile.budget.setup.names");
 	const api = useApi();
 	const announce = useUndoToast("budget");
@@ -187,7 +188,7 @@ export function SetupSheet({
 					<PayStep onChange={setPay} today={today} value={draft.pay} />
 				) : !proposal ? (
 					<Note>
-						{preset.status === "error" ? t("presetError") : t("loading")}
+						{preset.status === "error" ? t("presetError") : tc("loading")}
 					</Note>
 				) : step === "money" ? (
 					<MoneyStep
@@ -243,7 +244,7 @@ export function SetupSheet({
 						onPress={() => void go()}
 					/>
 					<Button
-						label={at === 0 ? t("cancel") : t("back")}
+						label={at === 0 ? tc("cancel") : tc("back")}
 						onPress={() => (at === 0 ? onClose() : setAt(at - 1))}
 						variant="text"
 					/>

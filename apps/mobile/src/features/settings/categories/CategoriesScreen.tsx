@@ -28,7 +28,7 @@ export function CategoriesScreen() {
 	const t = useTranslations("mobile.settings.categories");
 	const tc = useTranslations("mobile.common");
 	const ts = useTranslations("mobile.status");
-	const loading = useTranslations("mobile.activity")("loading");
+	const loading = useTranslations("mobile.common")("loading");
 	const { state, reload } = useCategories();
 	const { api } = useSession();
 	const toast = useToast();

@@ -138,7 +138,7 @@ export function SkeletonRows({
 	count?: number;
 	grouped?: boolean;
 }) {
-	const t = useTranslations("mobile.list");
+	const tc = useTranslations("mobile.common");
 	const opacity = usePulse();
 	const theme = useTheme();
 	const { color, size, space } = theme;
@@ -169,7 +169,7 @@ export function SkeletonRows({
 	// The placeholders fade out (120) as the content takes their place.
 	return (
 		<Reanimated.View
-			accessibilityLabel={t("loading")}
+			accessibilityLabel={tc("loading")}
 			accessibilityRole="progressbar"
 			accessibilityState={{ busy: true }}
 			accessible

@@ -34,15 +34,16 @@ export function TitleCard({
 	children?: ReactNode;
 }) {
 	const t = useTranslations("mobile.composer");
+	const tc = useTranslations("mobile.common");
 	const format = useFormatter();
 	const { color, radius, space } = useTheme();
 	const today = dayKey(new Date());
 	const yesterday = shiftDay(today, -1);
 	const shown =
 		date === today
-			? t("today")
+			? tc("today")
 			: date === yesterday
-				? t("yesterday")
+				? tc("yesterday")
 				: format.dateTime(pickerDate(date, "local"), {
 						month: "short",
 						day: "numeric",
@@ -80,15 +81,15 @@ export function TitleCard({
 					items={[
 						{
 							id: "today",
-							label: t("today"),
+							label: tc("today"),
 							onPress: () => onDateChange(today),
 						},
 						{
 							id: "yesterday",
-							label: t("yesterday"),
+							label: tc("yesterday"),
 							onPress: () => onDateChange(yesterday),
 						},
-						{ id: "pick", label: t("pickDate"), onPress: onPickDate },
+						{ id: "pick", label: tc("pickDate"), onPress: onPickDate },
 					]}
 					label={shown}
 					leadingCalendar

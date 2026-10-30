@@ -175,7 +175,7 @@ export default function ActivityScreen() {
 						tone="fg2"
 						variant="small"
 					>
-						{t("loading")}
+						{tc("loading")}
 					</Text>
 				) : (
 					<View style={{ height: addInset }} />

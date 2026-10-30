@@ -19,7 +19,13 @@
 		"save": "Guardar",
 		"saving": "Guardando",
 		"close": "Cerrar",
-		"done": "Listo"
+		"done": "Listo",
+		"loading": "Cargando",
+		"back": "Atrás",
+		"today": "Hoy",
+		"yesterday": "Ayer",
+		"pickDate": "Elegir una fecha",
+		"clearFilters": "Quitar filtros"
 	},
 	"keypad": {
 		"delete": "Borrar",
@@ -29,7 +35,6 @@
 		"mode": "Tipo de entrada",
 		"expense": "Gasto",
 		"income": "Ingreso",
-		"loading": "Cargando",
 		"loadError": "No se pudo abrir el formulario",
 		"loadErrorDetail": "Comprueba tu conexión e inténtalo de nuevo.",
 		"titleField": "Título",
@@ -47,7 +52,6 @@
 		"sharedFileNotice": "Aún no se pueden adjuntar recibos. Añade los datos aquí.",
 		"addIncome": "Añadir ingreso",
 		"undo": "Deshacer",
-		"cancel": "Cancelar",
 		"amountLabel": "Importe, {amount}",
 		"amountEmpty": "Importe, {currency}, todavía vacío",
 		"showKeypad": "Muestra el teclado numérico",
@@ -149,7 +153,6 @@
 		"sync": {
 			"title": "No se pudo sincronizar",
 			"refused": "El servidor no aceptó esto.",
-			"retry": "Reintentar",
 			"discard": "Descartar",
 			"retryFailed": "Todavía no se puede enviar. Inténtalo más tarde."
 		},
@@ -190,8 +193,6 @@
 			"receivedLabel": "Recibido, {amount}",
 			"receivedEmpty": "Recibido en {currency}, opcional"
 		},
-		"today": "Hoy",
-		"yesterday": "Ayer",
 		"note": "Nota",
 		"notePlaceholder": "Más detalles",
 		"location": "Lugar",
@@ -230,9 +231,7 @@
 		},
 		"more": "Más",
 		"moreDetails": "Más detalles",
-		"back": "Atrás",
 		"dateMenu": "Fecha, {date}",
-		"pickDate": "Elegir una fecha",
 		"categoriesAll": "Todas las categorías",
 		"categoriesMore": "Más",
 		"actions": "Acciones",
@@ -289,7 +288,7 @@
 			"row": "Eliminar",
 			"title": "¿Eliminar este gasto?",
 			"body": "Sale de tus gastos y de tu presupuesto.",
-			"button": "Eliminar",
+			"button": "Eliminar gasto",
 			"deleted": "Se eliminó {title}",
 			"restored": "Se restauró {title}",
 			"undoFailed": "No se pudo deshacer. Inténtalo desde Actividad.",
@@ -322,8 +321,7 @@
 		"account": {
 			"find": "Busca una cuenta",
 			"empty": "Ninguna cuenta coincide"
-		},
-		"pickDate": "Elige una fecha"
+		}
 	},
 	"entry": {
 		"title": "Gasto",
@@ -344,7 +342,6 @@
 		"spreadMonths": "{months} meses",
 		"locked": "Bloqueado por un pago",
 		"edit": "Editar",
-		"loading": "Cargando",
 		"gone": "Este movimiento se eliminó o ya no se comparte contigo.",
 		"loadError": "No se pudo cargar este movimiento",
 		"loadErrorDetail": "Comprueba tu conexión e inténtalo de nuevo.",
@@ -413,7 +410,6 @@
 	"activity": {
 		"title": "Actividad",
 		"overflow": "Más acciones",
-		"loading": "Cargando",
 		"empty": "Aún no hay gastos",
 		"emptyFiltered": "Nada coincide",
 		"emptyElsewhere": "Nada este mes. Prueba con Todo el tiempo.",
@@ -426,8 +422,6 @@
 			"month": "{count, plural, one {# gasto} other {# gastos}} este mes",
 			"all": "{count, plural, one {# gasto} other {# gastos}}, todo el tiempo"
 		},
-		"today": "Hoy",
-		"yesterday": "Ayer",
 		"chip": {
 			"category": "Categoría",
 			"person": "Persona",
@@ -565,7 +559,6 @@
 			"pending": "{amount} espera tu OK",
 			"someone": "Alguien",
 			"incomplete": "Algunos montos no tienen cotización hoy y no se cuentan.",
-			"back": "Atrás",
 			"error": "No se pudo cargar. Inténtalo de nuevo.",
 			"forgiveTitle": "Perdonar a {name}"
 		},
@@ -615,7 +608,6 @@
 			"assign": "Asignar dinero",
 			"move": "Mover dinero",
 			"limitAction": "Cambiar límite",
-			"back": "Volver",
 			"assignTitle": "Asignar a {name}",
 			"moveTitle": "Mover dinero de {name}",
 			"coverTitle": "Cubrir {name}",
@@ -720,7 +712,6 @@
 			"notAvailable": "No disponible (sin tipo de cambio)"
 		},
 		"write": {
-			"saving": "Guardando",
 			"error": "No se pudo guardar. Inténtalo de nuevo.",
 			"undone": "Deshecho",
 			"undoError": "No se pudo deshacer. Puede que ya haya cambiado.",
@@ -977,8 +968,6 @@
 			"limitsTitle": "Elige tus límites",
 			"limitsSub": "Con tus últimos 3 meses. Todo lo demás se registra, sin límite.",
 			"continue": "Continuar",
-			"back": "Atrás",
-			"cancel": "Cancelar",
 			"start": "Empezar mi presupuesto",
 			"startTracking": "Empezar a registrar",
 			"startStopped": "Empezar igualmente",
@@ -1006,7 +995,6 @@
 			"adjust": "Cambiar un importe",
 			"coverLabel": "Usar mi paga para el resto",
 			"starting": "Empezando",
-			"loading": "Cargando",
 			"presetError": "No se pudo cargar la propuesta. Inténtalo de nuevo.",
 			"envelopesSub": "De tus últimos 3 meses. Toca uno para conservarlo o quitarlo.",
 			"names": {
@@ -1085,14 +1073,13 @@
 				"toast": "Aplicaste {name} a las entradas de este mes",
 				"envelopeFallback": "Sobre"
 			},
-			"back": "Atrás",
 			"error": "No se pudo guardar. Inténtalo de nuevo.",
 			"pause": "Pausar",
 			"resume": "Activar",
 			"moveUp": "Subir",
 			"moveDown": "Bajar",
 			"applyAction": "Aplicar al dinero que entró este mes",
-			"remove": "Quitar regla"
+			"remove": "Eliminar regla"
 		},
 		"forgive": {
 			"forgive": "Perdonar",
@@ -1118,10 +1105,8 @@
 			"route": "Ponerla ahí",
 			"routedToast": "Parte movida",
 			"title": "Aún sin sobre",
-			"back": "Atrás",
 			"error": "No se pudo cargar. Inténtalo de nuevo.",
-			"none": "Todas las partes tienen sobre.",
-			"loading": "Cargando"
+			"none": "Todas las partes tienen sobre."
 		},
 		"categories": {
 			"find": "Buscar una categoría"
@@ -1133,7 +1118,6 @@
 			"target": "Su objetivo necesita {amount}.",
 			"save": "Guardar",
 			"toast": "Planificaste {name}",
-			"back": "Atrás",
 			"error": "No se pudo cargar. Inténtalo de nuevo.",
 			"listTitle": "Planifica el mes",
 			"listLead": "Toca un sobre para fijar lo que recibe. Nada se mueve hasta el día de cobro.",
@@ -1185,7 +1169,6 @@
 			"returned": "Volvió a {pool}",
 			"swept": "Se movió a {name}",
 			"envelopeFallback": "Sobre",
-			"back": "Atrás",
 			"error": "No se pudo cargar. Inténtalo de nuevo.",
 			"moneyInSub": "Todos los ingresos registrados en {month}",
 			"assignedSub": "Incluye el dinero arrastrado y el inicial",
@@ -1228,7 +1211,7 @@
 			"lead": "¿Cuánto dinero tienes ahora? El presupuesto empieza a contar desde aquí.",
 			"have": "Lo que tienes ahora",
 			"idle": "Escribe un importe para ver qué cambia.",
-			"save": "Confirmar",
+			"save": "Guardar",
 			"toast": "Dinero inicial confirmado",
 			"moneyIn": "Entradas",
 			"adjustment": "Ajuste",
@@ -1381,7 +1364,6 @@
 			"valuedAt": "Valuada a la cotización {type}",
 			"rateChange": "Valuada a {next} desde hoy. Los días anteriores conservan la cotización {before}.",
 			"rateFromToday": "Valuada a {next} desde hoy.",
-			"saving": "Guardando",
 			"error": "No se pudo guardar. Inténtalo de nuevo."
 		},
 		"account": {
@@ -1460,7 +1442,7 @@
 			"body": "Esto elimina la cuenta y todo su historial de saldos. El historial del patrimonio también cambia.",
 			"keepHistory": "Para conservar el historial, cierra la cuenta en su lugar.",
 			"closeInstead": "Mejor cerrar",
-			"submit": "Eliminar",
+			"submit": "Eliminar cuenta",
 			"deleting": "Eliminando",
 			"toast": "{name} eliminada",
 			"error": "No se pudo eliminar. Inténtalo de nuevo."
@@ -1568,10 +1550,8 @@
 	},
 	"insights": {
 		"title": "Análisis",
-		"loading": "Cargando",
 		"error": "No se pudo cargar el análisis",
 		"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
-		"retry": "Reintentar",
 		"filters": "Filtrar análisis",
 		"period": {
 			"month": "Este mes",
@@ -1625,7 +1605,6 @@
 			"rangeHint": "Elige otro período o añade un gasto.",
 			"filtered": "Ningún gasto coincide con estos filtros",
 			"filteredHint": "Quita un filtro o elige otro período.",
-			"clear": "Quitar filtros",
 			"add": "Añadir gasto"
 		}
 	},
@@ -1790,8 +1769,6 @@
 		"rateLine": "{unit} = {value} · {type}",
 		"method": "Medio",
 		"date": "Fecha",
-		"today": "Hoy",
-		"yesterday": "Ayer",
 		"methodNames": {
 			"bank_transfer": "Transferencia",
 			"cash": "Efectivo"
@@ -1819,7 +1796,6 @@
 		"effectYou": "Debes {amount}",
 		"accept": "Aceptar",
 		"reject": "Rechazar",
-		"saving": "Guardando",
 		"accepted": "Parte aceptada",
 		"rejected": "Parte rechazada, se lo avisamos a {name}",
 		"error": "No se pudo guardar tu respuesta. Inténtalo de nuevo.",
@@ -1953,7 +1929,6 @@
 	},
 	"settings": {
 		"title": "Ajustes",
-		"back": "Atrás",
 		"saved": "Guardado",
 		"saveError": "No se pudo guardar. Inténtalo de nuevo.",
 		"error": "No se pudieron cargar los ajustes",
@@ -2122,10 +2097,10 @@
 			"saved": "Método de pago guardado",
 			"prefer": "Hacer preferido",
 			"preferredToast": "Método preferido cambiado",
-			"remove": "Quitar",
+			"remove": "Eliminar",
 			"removeBody": "No se puede deshacer. Las personas con las que compartes ya no lo verán.",
-			"removeConfirm": "Quitar definitivamente",
-			"removed": "Método de pago quitado",
+			"removeConfirm": "Eliminar método de pago",
+			"removed": "Método de pago eliminado",
 			"saveError": "No se pudo guardar. Inténtalo de nuevo."
 		},
 		"security": {
@@ -2275,7 +2250,7 @@
 			"aiDefault": "Valor del servidor",
 			"aiAllowed": "Permitida",
 			"aiBlocked": "Bloqueada",
-			"delete": "Eliminar cuenta",
+			"delete": "Eliminar usuario",
 			"disableTitle": "¿Desactivar a {name}?",
 			"disableBody": "Se cierra su sesión en todas partes y no podrá entrar hasta que actives la cuenta.",
 			"deleteTitle": "¿Eliminar a {name}?",
@@ -2481,8 +2456,6 @@
 			"paidOnIn": "Recibido el",
 			"paidOnDue": "{date} (vence)",
 			"paidOnDueToday": "Hoy (vence)",
-			"paidOnToday": "Hoy",
-			"paidOnPick": "Elegir fecha",
 			"pickDate": "Fecha",
 			"future": "La fecha no puede ser futura.",
 			"tooEarly": "La fecha no puede ser anterior al {date}.",
@@ -2512,7 +2485,6 @@
 			"body": "{title} se repetirá cada mes por {amount}, la próxima vez el {date}.",
 			"stays": "El pago automático está desactivado, así que no se registra nada hasta que lo confirmes. Tus totales no cambian.",
 			"submit": "Hacer recurrente",
-			"saving": "Guardando",
 			"error": "No se pudo hacer recurrente. Inténtalo de nuevo.",
 			"toast": "{title} ahora se repite cada mes"
 		},
@@ -2547,7 +2519,8 @@
 			"autoPayValue": "Se detiene",
 			"submit": "Eliminar",
 			"toast": "{title} eliminado",
-			"error": "No se pudo eliminar. Intenta de nuevo."
+			"error": "No se pudo eliminar. Intenta de nuevo.",
+			"confirm": "Eliminar gasto recurrente"
 		}
 	},
 	"shortcuts": {
@@ -2579,11 +2552,9 @@
 		"loading": "Cargando tipos de cambio",
 		"error": "Los tipos de cambio no están disponibles ahora",
 		"errorDetail": "Inténtalo de nuevo en un momento.",
-		"retry": "Reintentar",
 		"empty": {
 			"none": "Ninguna moneda coincide",
 			"noneHint": "Prueba con otro nombre o código.",
-			"clear": "Quitar filtros",
 			"noFavorites": "Aún no tienes favoritas",
 			"noFavoritesHint": "Marca una moneda con la estrella para tenerla primero, aquí y en el selector de monedas.",
 			"showAll": "Ver todas las monedas"
@@ -2654,9 +2625,6 @@
 		"rejected": "Rechazado",
 		"notCounted": "No cuenta",
 		"spread": "Repartido en el tiempo"
-	},
-	"list": {
-		"loading": "Cargando"
 	},
 	"charts": {
 		"summary": "{label}. De {from} el {fromDate} a {to} el {toDate}.",

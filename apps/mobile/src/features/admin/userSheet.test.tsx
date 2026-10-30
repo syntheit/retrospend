@@ -222,7 +222,7 @@ describe("UserSheet", () => {
 		const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
 		const { tree } = await open(jest.fn());
 		await act(async () => {
-			const press = row(tree, "Delete account")?.props.onPress as
+			const press = row(tree, "Delete user")?.props.onPress as
 				| (() => void)
 				| undefined;
 			press?.();
@@ -233,7 +233,7 @@ describe("UserSheet", () => {
 
 		const confirm = () =>
 			tree.root.findAll(
-				(n) => n.props.accessibilityLabel === "Delete account",
+				(n) => n.props.accessibilityLabel === "Delete user",
 			)[0];
 		expect(confirm()?.props.disabled).toBe(true);
 		const input = tree.root.findAll(
@@ -265,7 +265,7 @@ describe("UserSheet", () => {
 			);
 		});
 		expect(row(tree, "Disable account")).toBeUndefined();
-		expect(row(tree, "Delete account")).toBeUndefined();
+		expect(row(tree, "Delete user")).toBeUndefined();
 		act(() => tree.unmount());
 	});
 });

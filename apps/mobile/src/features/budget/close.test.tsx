@@ -428,7 +428,7 @@ describe("Starting money", () => {
 				/>,
 			);
 		});
-		expect(disabled(tree, "Confirm")).toBe(true);
+		expect(disabled(tree, "Save")).toBe(true);
 		press(tree, "5");
 		press(tree, "0");
 		await wait(400);
@@ -437,7 +437,7 @@ describe("Starting money", () => {
 		);
 		expect(previews).toHaveLength(1);
 		expect(previews[0]?.input).toMatchObject({ amount: "50.00" });
-		press(tree, "Confirm");
+		press(tree, "Save");
 		await wait(50);
 		const writes = calls.filter((c) => c.route === "confirmStartingMoney");
 		expect(writes).toHaveLength(1);

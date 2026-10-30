@@ -138,7 +138,7 @@ export function RuleAddForm({
 			{failed ? <Note tone="attention">{tw("error")}</Note> : null}
 			<Button
 				disabled={!body || busy}
-				label={busy ? tw("saving") : t("add")}
+				label={busy ? tc("saving") : t("add")}
 				onPress={() => void save()}
 			/>
 		</View>

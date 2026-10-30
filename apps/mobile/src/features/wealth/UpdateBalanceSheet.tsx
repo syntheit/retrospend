@@ -56,6 +56,7 @@ export function UpdateBalanceSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.wealth.update");
+	const common = useTranslations("mobile.common");
 	const tp = useTranslations("mobile.budget.preview");
 	const format = useFormatter();
 	const api = useApi();
@@ -186,7 +187,7 @@ export function UpdateBalanceSheet({
 			footer={
 				<Button
 					disabled={!ready || flow.committing}
-					label={flow.committing ? t("saving") : t("submit")}
+					label={flow.committing ? common("saving") : t("submit")}
 					onPress={submit}
 				/>
 			}

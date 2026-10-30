@@ -32,6 +32,7 @@ export function MakeRecurringSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.recurring.make");
+	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const announce = useRecurringToast();
 	const money = useMoneyText();
@@ -91,7 +92,7 @@ export function MakeRecurringSheet({
 					{failed ? <Note tone="attention">{t("error")}</Note> : null}
 					<Button
 						disabled={busy}
-						label={busy ? t("saving") : t("submit")}
+						label={busy ? tc("saving") : t("submit")}
 						onPress={submit}
 					/>
 				</View>

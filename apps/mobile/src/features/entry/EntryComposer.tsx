@@ -51,6 +51,7 @@ interface ComposerProps {
  */
 export function EntryComposer(props: ComposerProps) {
 	const t = useTranslations("mobile.composer");
+	const tc = useTranslations("mobile.common");
 	const catalog = useEntryCatalog();
 	const edit = useEditEntry(props.editId, props.editShared);
 	const { state } = useSession();
@@ -59,12 +60,12 @@ export function EntryComposer(props: ComposerProps) {
 		return <Notice detail={t("loadErrorDetail")} title={t("loadError")} />;
 	}
 	if (catalog.status === "loading") {
-		return <Notice title={t("loading")} />;
+		return <Notice title={tc("loading")} />;
 	}
 	if (catalog.status === "error") {
 		return <Notice detail={t("loadErrorDetail")} title={t("loadError")} />;
 	}
-	if (edit.status === "loading") return <Notice title={t("loading")} />;
+	if (edit.status === "loading") return <Notice title={tc("loading")} />;
 	if (edit.status === "error") {
 		return <Notice detail={t("loadErrorDetail")} title={t("editLoadError")} />;
 	}

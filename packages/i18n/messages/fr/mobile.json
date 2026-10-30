@@ -19,7 +19,13 @@
 		"save": "Enregistrer",
 		"saving": "Enregistrement",
 		"close": "Fermer",
-		"done": "Terminé"
+		"done": "Terminé",
+		"loading": "Chargement",
+		"back": "Retour",
+		"today": "Aujourd'hui",
+		"yesterday": "Hier",
+		"pickDate": "Choisir une date",
+		"clearFilters": "Retirer les filtres"
 	},
 	"keypad": {
 		"delete": "Effacer",
@@ -29,7 +35,6 @@
 		"mode": "Type de saisie",
 		"expense": "Dépense",
 		"income": "Revenu",
-		"loading": "Chargement",
 		"loadError": "Impossible d'ouvrir le formulaire",
 		"loadErrorDetail": "Vérifie ta connexion et réessaie.",
 		"titleField": "Titre",
@@ -47,7 +52,6 @@
 		"sharedFileNotice": "Les reçus ne peuvent pas encore être joints. Saisis les détails ici.",
 		"addIncome": "Ajouter un revenu",
 		"undo": "Annuler",
-		"cancel": "Annuler",
 		"amountLabel": "Montant, {amount}",
 		"amountEmpty": "Montant, {currency}, vide pour l'instant",
 		"showKeypad": "Affiche le clavier numérique",
@@ -149,7 +153,6 @@
 		"sync": {
 			"title": "Synchronisation impossible",
 			"refused": "Le serveur n'a pas accepté ceci.",
-			"retry": "Réessayer",
 			"discard": "Supprimer",
 			"retryFailed": "Envoi toujours impossible. Réessaie plus tard."
 		},
@@ -190,8 +193,6 @@
 			"receivedLabel": "Reçu, {amount}",
 			"receivedEmpty": "Reçu en {currency}, facultatif"
 		},
-		"today": "Aujourd'hui",
-		"yesterday": "Hier",
 		"note": "Note",
 		"notePlaceholder": "Détails supplémentaires",
 		"location": "Lieu",
@@ -230,9 +231,7 @@
 		},
 		"more": "Plus",
 		"moreDetails": "Plus de détails",
-		"back": "Retour",
 		"dateMenu": "Date, {date}",
-		"pickDate": "Choisir une date",
 		"categoriesAll": "Toutes les catégories",
 		"categoriesMore": "Plus",
 		"actions": "Actions",
@@ -289,7 +288,7 @@
 			"row": "Supprimer",
 			"title": "Supprimer cette dépense ?",
 			"body": "Elle quitte tes dépenses et ton budget.",
-			"button": "Supprimer",
+			"button": "Supprimer la dépense",
 			"deleted": "{title} supprimé",
 			"restored": "{title} rétabli",
 			"undoFailed": "Impossible d'annuler. Réessaie depuis Activité.",
@@ -322,8 +321,7 @@
 		"account": {
 			"find": "Chercher un compte",
 			"empty": "Aucun compte ne correspond"
-		},
-		"pickDate": "Choisis une date"
+		}
 	},
 	"entry": {
 		"title": "Dépense",
@@ -344,7 +342,6 @@
 		"spreadMonths": "{months} mois",
 		"locked": "Verrouillé par un paiement",
 		"edit": "Modifier",
-		"loading": "Chargement",
 		"gone": "Cette opération a été supprimée ou n'est plus partagée avec toi.",
 		"loadError": "Impossible de charger cette opération",
 		"loadErrorDetail": "Vérifie ta connexion et réessaie.",
@@ -413,7 +410,6 @@
 	"activity": {
 		"title": "Activité",
 		"overflow": "Autres actions",
-		"loading": "Chargement",
 		"empty": "Aucune dépense pour l'instant",
 		"emptyFiltered": "Aucun résultat",
 		"emptyElsewhere": "Rien ce mois-ci. Essaie Toute la période.",
@@ -426,8 +422,6 @@
 			"month": "{count, plural, one {# dépense} other {# dépenses}} ce mois-ci",
 			"all": "{count, plural, one {# dépense} other {# dépenses}}, toute la période"
 		},
-		"today": "Aujourd’hui",
-		"yesterday": "Hier",
 		"chip": {
 			"category": "Catégorie",
 			"person": "Personne",
@@ -565,7 +559,6 @@
 			"pending": "{amount} attend ton accord",
 			"someone": "Quelqu'un",
 			"incomplete": "Certains montants n'ont pas de taux aujourd'hui et ne sont pas comptés.",
-			"back": "Retour",
 			"error": "Impossible de charger. Réessaie.",
 			"forgiveTitle": "Pardonner à {name}"
 		},
@@ -615,7 +608,6 @@
 			"assign": "Attribuer de l’argent",
 			"move": "Déplacer de l’argent",
 			"limitAction": "Changer le plafond",
-			"back": "Retour",
 			"assignTitle": "Attribuer à {name}",
 			"moveTitle": "Déplacer de l’argent pour {name}",
 			"coverTitle": "Couvrir {name}",
@@ -720,7 +712,6 @@
 			"notAvailable": "Indisponible (pas encore de taux)"
 		},
 		"write": {
-			"saving": "Enregistrement",
 			"error": "Impossible d’enregistrer. Réessaie.",
 			"undone": "Annulé",
 			"undoError": "Impossible d’annuler. Cela a peut-être déjà changé.",
@@ -977,8 +968,6 @@
 			"limitsTitle": "Choisis tes limites",
 			"limitsSub": "D'après tes 3 derniers mois. Le reste est suivi, sans limite.",
 			"continue": "Continuer",
-			"back": "Retour",
-			"cancel": "Annuler",
 			"start": "Démarrer mon budget",
 			"startTracking": "Commencer le suivi",
 			"startStopped": "Démarrer quand même",
@@ -1006,7 +995,6 @@
 			"adjust": "Changer un montant",
 			"coverLabel": "Utiliser ma paie pour le reste",
 			"starting": "Démarrage",
-			"loading": "Chargement",
 			"presetError": "Impossible de charger la proposition. Réessaie.",
 			"envelopesSub": "D'après tes 3 derniers mois. Touche-en une pour la garder ou l'enlever.",
 			"names": {
@@ -1085,7 +1073,6 @@
 				"toast": "{name} appliquée aux entrées de ce mois",
 				"envelopeFallback": "Enveloppe"
 			},
-			"back": "Retour",
 			"error": "Impossible d'enregistrer. Réessaie.",
 			"pause": "Mettre en pause",
 			"resume": "Activer",
@@ -1118,10 +1105,8 @@
 			"route": "La mettre là",
 			"routedToast": "Part déplacée",
 			"title": "Pas encore d'enveloppe",
-			"back": "Retour",
 			"error": "Impossible de charger. Réessaie.",
-			"none": "Chaque part a une enveloppe.",
-			"loading": "Chargement"
+			"none": "Chaque part a une enveloppe."
 		},
 		"categories": {
 			"find": "Chercher une catégorie"
@@ -1133,7 +1118,6 @@
 			"target": "Son objectif demande {amount}.",
 			"save": "Enregistrer",
 			"toast": "{name} planifié",
-			"back": "Retour",
 			"error": "Impossible de charger. Réessaie.",
 			"listTitle": "Planifier le mois",
 			"listLead": "Touche une enveloppe pour fixer ce qu'elle reçoit. Rien ne bouge avant la paie.",
@@ -1185,7 +1169,6 @@
 			"returned": "Est retourné dans {pool}",
 			"swept": "Déplacé vers {name}",
 			"envelopeFallback": "Enveloppe",
-			"back": "Retour",
 			"error": "Impossible de charger. Réessaie.",
 			"moneyInSub": "Tous les revenus enregistrés en {month}",
 			"assignedSub": "Report et argent de départ inclus",
@@ -1228,7 +1211,7 @@
 			"lead": "Combien as-tu en ce moment ? Le budget compte à partir de là.",
 			"have": "Ce que tu as maintenant",
 			"idle": "Saisis un montant pour voir ce qui change.",
-			"save": "Confirmer",
+			"save": "Enregistrer",
 			"toast": "Argent de départ confirmé",
 			"moneyIn": "Entrées",
 			"adjustment": "Ajustement",
@@ -1381,7 +1364,6 @@
 			"valuedAt": "Valorisé au taux {type}",
 			"rateChange": "Valorisé au taux {next} à partir d’aujourd’hui. Les jours précédents gardent le taux {before}.",
 			"rateFromToday": "Valorisé au taux {next} à partir d’aujourd’hui.",
-			"saving": "Enregistrement",
 			"error": "Impossible d’enregistrer. Réessaie."
 		},
 		"account": {
@@ -1460,7 +1442,7 @@
 			"body": "Cela supprime le compte et tout son historique de soldes. L’historique du patrimoine change aussi.",
 			"keepHistory": "Pour garder l’historique, clôture plutôt le compte.",
 			"closeInstead": "Clôturer à la place",
-			"submit": "Supprimer",
+			"submit": "Supprimer le compte",
 			"deleting": "Suppression",
 			"toast": "{name} supprimé",
 			"error": "Impossible de supprimer. Réessaie."
@@ -1568,10 +1550,8 @@
 	},
 	"insights": {
 		"title": "Analyses",
-		"loading": "Chargement",
 		"error": "Impossible de charger les analyses",
 		"errorDetail": "Vérifie ta connexion et réessaie.",
-		"retry": "Réessayer",
 		"filters": "Filtrer les analyses",
 		"period": {
 			"month": "Ce mois-ci",
@@ -1625,7 +1605,6 @@
 			"rangeHint": "Choisis une autre période ou ajoute une dépense.",
 			"filtered": "Aucune dépense ne correspond à ces filtres",
 			"filteredHint": "Retire un filtre ou choisis une autre période.",
-			"clear": "Retirer les filtres",
 			"add": "Ajouter une dépense"
 		}
 	},
@@ -1790,8 +1769,6 @@
 		"rateLine": "{unit} = {value} · {type}",
 		"method": "Moyen",
 		"date": "Date",
-		"today": "Aujourd'hui",
-		"yesterday": "Hier",
 		"methodNames": {
 			"bank_transfer": "Virement",
 			"cash": "Espèces"
@@ -1819,7 +1796,6 @@
 		"effectYou": "Tu dois {amount}",
 		"accept": "Accepter",
 		"reject": "Refuser",
-		"saving": "Enregistrement",
 		"accepted": "Part acceptée",
 		"rejected": "Part refusée, {name} en est informé",
 		"error": "Impossible d’enregistrer ta réponse. Réessaie.",
@@ -1953,7 +1929,6 @@
 	},
 	"settings": {
 		"title": "Réglages",
-		"back": "Retour",
 		"saved": "Enregistré",
 		"saveError": "Impossible d’enregistrer. Réessaie.",
 		"error": "Impossible de charger les réglages",
@@ -2122,10 +2097,10 @@
 			"saved": "Moyen de paiement enregistré",
 			"prefer": "Mettre en premier",
 			"preferredToast": "Moyen préféré modifié",
-			"remove": "Retirer",
+			"remove": "Supprimer",
 			"removeBody": "Impossible d'annuler. Les personnes avec qui tu partages ne le verront plus.",
-			"removeConfirm": "Retirer définitivement",
-			"removed": "Moyen de paiement retiré",
+			"removeConfirm": "Supprimer le moyen de paiement",
+			"removed": "Moyen de paiement supprimé",
 			"saveError": "Impossible d'enregistrer. Réessaie."
 		},
 		"security": {
@@ -2275,7 +2250,7 @@
 			"aiDefault": "Réglage du serveur",
 			"aiAllowed": "Autorisée",
 			"aiBlocked": "Bloquée",
-			"delete": "Supprimer le compte",
+			"delete": "Supprimer l'utilisateur",
 			"disableTitle": "Désactiver {name} ?",
 			"disableBody": "La personne est déconnectée partout et ne peut plus se connecter tant que vous n'activez pas le compte.",
 			"deleteTitle": "Supprimer {name} ?",
@@ -2481,8 +2456,6 @@
 			"paidOnIn": "Reçu le",
 			"paidOnDue": "{date} (échéance)",
 			"paidOnDueToday": "Aujourd'hui (échéance)",
-			"paidOnToday": "Aujourd'hui",
-			"paidOnPick": "Choisir une date",
 			"pickDate": "Date",
 			"future": "La date ne peut pas être dans le futur.",
 			"tooEarly": "La date ne peut pas être avant le {date}.",
@@ -2512,7 +2485,6 @@
 			"body": "{title} reviendra chaque mois pour {amount}, la prochaine fois le {date}.",
 			"stays": "Le paiement auto est désactivé : rien n'est enregistré avant ta confirmation. Tes totaux ne changent pas.",
 			"submit": "Rendre récurrent",
-			"saving": "Enregistrement",
 			"error": "Impossible de le rendre récurrent. Réessaie.",
 			"toast": "{title} revient maintenant chaque mois"
 		},
@@ -2547,7 +2519,8 @@
 			"autoPayValue": "Arrêté",
 			"submit": "Supprimer",
 			"toast": "{title} supprimée",
-			"error": "Impossible de supprimer. Réessaie."
+			"error": "Impossible de supprimer. Réessaie.",
+			"confirm": "Supprimer la dépense récurrente"
 		}
 	},
 	"shortcuts": {
@@ -2579,11 +2552,9 @@
 		"loading": "Chargement des taux",
 		"error": "Les taux ne sont pas disponibles pour le moment",
 		"errorDetail": "Réessaie dans un instant.",
-		"retry": "Réessayer",
 		"empty": {
 			"none": "Aucune devise ne correspond",
 			"noneHint": "Essaie un autre nom ou code.",
-			"clear": "Effacer les filtres",
 			"noFavorites": "Aucun favori pour l'instant",
 			"noFavoritesHint": "Ajoute une étoile à une devise pour la garder en tête, ici et dans le sélecteur de devises.",
 			"showAll": "Voir toutes les devises"
@@ -2654,9 +2625,6 @@
 		"rejected": "Refusé",
 		"notCounted": "Non compté",
 		"spread": "Étalé dans le temps"
-	},
-	"list": {
-		"loading": "Chargement"
 	},
 	"charts": {
 		"summary": "{label}. De {from} le {fromDate} à {to} le {toDate}.",

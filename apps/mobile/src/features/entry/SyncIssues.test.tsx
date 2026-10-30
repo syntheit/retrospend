@@ -54,7 +54,7 @@ it("keeps Try again and Discard reachable by a screen reader", async () => {
 			typeof n.props.accessibilityLabel === "string",
 	);
 	const labels = [...new Set(buttons.map((b) => b.props.accessibilityLabel))];
-	expect(labels).toEqual(["sync.retry, Coffee", "sync.discard, Coffee"]);
+	expect(labels).toEqual(["retry, Coffee", "sync.discard, Coffee"]);
 	for (const button of buttons) expect(insideAccessible(button)).toBe(false);
 	// The entry's words are still one stop.
 	expect(

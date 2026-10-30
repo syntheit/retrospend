@@ -63,6 +63,7 @@ export function ConfirmSheet({
 	onSkip: () => void;
 }) {
 	const t = useTranslations("mobile.recurring.confirm");
+	const tc = useTranslations("mobile.common");
 	const api = useApi();
 	const announce = useRecurringToast();
 	const undoOf = useConfirmUndo();
@@ -177,9 +178,9 @@ export function ConfirmSheet({
 										: t("paidOnDueToday"),
 								},
 								...(overdue
-									? [{ value: "today" as const, label: t("paidOnToday") }]
+									? [{ value: "today" as const, label: tc("today") }]
 									: []),
-								{ value: "pick", label: t("paidOnPick") },
+								{ value: "pick", label: tc("pickDate") },
 							]}
 							value={paidMode}
 						/>

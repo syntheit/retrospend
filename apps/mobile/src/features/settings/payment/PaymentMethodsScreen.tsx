@@ -30,7 +30,7 @@ export function methodGlyph(type: string): GlyphName {
  */
 export function PaymentMethodsScreen() {
 	const t = useTranslations("mobile.settings.payment");
-	const loading = useTranslations("mobile.activity")("loading");
+	const loading = useTranslations("mobile.common")("loading");
 	const { space } = useTheme();
 	const { state, reload } = usePaymentMethods();
 	const [editing, setEditing] = useState<PaymentMethod | null>(null);

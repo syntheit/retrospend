@@ -19,7 +19,13 @@
 		"save": "Speichern",
 		"saving": "Speichern",
 		"close": "Schließen",
-		"done": "Fertig"
+		"done": "Fertig",
+		"loading": "Wird geladen",
+		"back": "Zurück",
+		"today": "Heute",
+		"yesterday": "Gestern",
+		"pickDate": "Datum wählen",
+		"clearFilters": "Filter entfernen"
 	},
 	"keypad": {
 		"delete": "Löschen",
@@ -29,7 +35,6 @@
 		"mode": "Art des Eintrags",
 		"expense": "Ausgabe",
 		"income": "Einnahme",
-		"loading": "Wird geladen",
 		"loadError": "Das Formular lässt sich nicht öffnen",
 		"loadErrorDetail": "Prüfe deine Verbindung und versuche es noch einmal.",
 		"titleField": "Titel",
@@ -47,7 +52,6 @@
 		"sharedFileNotice": "Belege lassen sich noch nicht anhängen. Trag die Angaben hier ein.",
 		"addIncome": "Einnahme hinzufügen",
 		"undo": "Rückgängig",
-		"cancel": "Abbrechen",
 		"amountLabel": "Betrag, {amount}",
 		"amountEmpty": "Betrag, {currency}, noch leer",
 		"showKeypad": "Zeigt die Zahlentastatur",
@@ -149,7 +153,6 @@
 		"sync": {
 			"title": "Synchronisierung fehlgeschlagen",
 			"refused": "Der Server hat das nicht angenommen.",
-			"retry": "Erneut versuchen",
 			"discard": "Verwerfen",
 			"retryFailed": "Senden klappt noch nicht. Versuche es später noch einmal."
 		},
@@ -190,8 +193,6 @@
 			"receivedLabel": "Erhalten, {amount}",
 			"receivedEmpty": "Erhalten in {currency}, optional"
 		},
-		"today": "Heute",
-		"yesterday": "Gestern",
 		"note": "Notiz",
 		"notePlaceholder": "Weitere Angaben",
 		"location": "Ort",
@@ -230,9 +231,7 @@
 		},
 		"more": "Mehr",
 		"moreDetails": "Weitere Details",
-		"back": "Zurück",
 		"dateMenu": "Datum, {date}",
-		"pickDate": "Datum wählen",
 		"categoriesAll": "Alle Kategorien",
 		"categoriesMore": "Mehr",
 		"actions": "Aktionen",
@@ -289,7 +288,7 @@
 			"row": "Löschen",
 			"title": "Diese Ausgabe löschen?",
 			"body": "Sie verschwindet aus deinen Ausgaben und deinem Budget.",
-			"button": "Löschen",
+			"button": "Ausgabe löschen",
 			"deleted": "{title} gelöscht",
 			"restored": "{title} wiederhergestellt",
 			"undoFailed": "Rückgängig machen nicht möglich. Versuche es unter Aktivität.",
@@ -322,8 +321,7 @@
 		"account": {
 			"find": "Konto suchen",
 			"empty": "Kein Konto passt"
-		},
-		"pickDate": "Datum wählen"
+		}
 	},
 	"entry": {
 		"title": "Ausgabe",
@@ -344,7 +342,6 @@
 		"spreadMonths": "{months} Monate",
 		"locked": "Durch eine Zahlung gesperrt",
 		"edit": "Bearbeiten",
-		"loading": "Wird geladen",
 		"gone": "Dieser Eintrag wurde gelöscht oder ist nicht mehr mit dir geteilt.",
 		"loadError": "Eintrag konnte nicht geladen werden",
 		"loadErrorDetail": "Prüfe deine Verbindung und versuch es erneut.",
@@ -413,7 +410,6 @@
 	"activity": {
 		"title": "Aktivität",
 		"overflow": "Weitere Aktionen",
-		"loading": "Wird geladen",
 		"empty": "Noch keine Ausgaben",
 		"emptyFiltered": "Keine Treffer",
 		"emptyElsewhere": "Diesen Monat nichts. Versuche Gesamter Zeitraum.",
@@ -426,8 +422,6 @@
 			"month": "{count, plural, one {# Ausgabe} other {# Ausgaben}} diesen Monat",
 			"all": "{count, plural, one {# Ausgabe} other {# Ausgaben}}, gesamter Zeitraum"
 		},
-		"today": "Heute",
-		"yesterday": "Gestern",
 		"chip": {
 			"category": "Kategorie",
 			"person": "Person",
@@ -565,7 +559,6 @@
 			"pending": "{amount} wartet auf dein OK",
 			"someone": "Jemand",
 			"incomplete": "Für einige Beträge gibt es heute keinen Kurs; sie zählen nicht mit.",
-			"back": "Zurück",
 			"error": "Das ließ sich nicht laden. Versuch es nochmal.",
 			"forgiveTitle": "{name} erlassen"
 		},
@@ -615,7 +608,6 @@
 			"assign": "Geld zuweisen",
 			"move": "Geld verschieben",
 			"limitAction": "Limit ändern",
-			"back": "Zurück",
 			"assignTitle": "{name} zuweisen",
 			"moveTitle": "Geld verschieben für {name}",
 			"coverTitle": "{name} decken",
@@ -720,7 +712,6 @@
 			"notAvailable": "Nicht verfügbar (noch kein Kurs)"
 		},
 		"write": {
-			"saving": "Wird gespeichert",
 			"error": "Das ließ sich nicht speichern. Versuche es erneut.",
 			"undone": "Rückgängig gemacht",
 			"undoError": "Das ließ sich nicht rückgängig machen. Es hat sich vielleicht schon geändert.",
@@ -977,8 +968,6 @@
 			"limitsTitle": "Wähle deine Limits",
 			"limitsSub": "Aus deinen letzten 3 Monaten. Alles andere wird erfasst, ohne Limit.",
 			"continue": "Weiter",
-			"back": "Zurück",
-			"cancel": "Abbrechen",
 			"start": "Mein Budget starten",
 			"startTracking": "Mit dem Erfassen beginnen",
 			"startStopped": "Trotzdem starten",
@@ -1006,7 +995,6 @@
 			"adjust": "Betrag ändern",
 			"coverLabel": "Rest mit meinem Gehalt decken",
 			"starting": "Wird gestartet",
-			"loading": "Lädt",
 			"presetError": "Der Vorschlag ließ sich nicht laden. Versuch es nochmal.",
 			"envelopesSub": "Aus deinen letzten 3 Monaten. Tippe, um einen zu behalten oder wegzulassen.",
 			"names": {
@@ -1085,14 +1073,13 @@
 				"toast": "{name} auf die Einnahmen dieses Monats angewendet",
 				"envelopeFallback": "Umschlag"
 			},
-			"back": "Zurück",
 			"error": "Das ließ sich nicht speichern. Versuch es nochmal.",
 			"pause": "Pausieren",
 			"resume": "Einschalten",
 			"moveUp": "Nach oben",
 			"moveDown": "Nach unten",
 			"applyAction": "Auf das Geld dieses Monats anwenden",
-			"remove": "Regel entfernen"
+			"remove": "Regel löschen"
 		},
 		"forgive": {
 			"forgive": "Erlassen",
@@ -1118,10 +1105,8 @@
 			"route": "Dort einordnen",
 			"routedToast": "Anteil verschoben",
 			"title": "Noch kein Umschlag",
-			"back": "Zurück",
 			"error": "Das ließ sich nicht laden. Versuch es nochmal.",
-			"none": "Jeder Anteil hat einen Umschlag.",
-			"loading": "Lädt"
+			"none": "Jeder Anteil hat einen Umschlag."
 		},
 		"categories": {
 			"find": "Kategorie suchen"
@@ -1133,7 +1118,6 @@
 			"target": "Sein Ziel braucht {amount}.",
 			"save": "Speichern",
 			"toast": "{name} geplant",
-			"back": "Zurück",
 			"error": "Das ließ sich nicht laden. Versuch es nochmal.",
 			"listTitle": "Den Monat planen",
 			"listLead": "Tippe auf einen Umschlag, um festzulegen, was er bekommt. Vor dem Zahltag bewegt sich nichts.",
@@ -1185,7 +1169,6 @@
 			"returned": "Ging zurück zu {pool}",
 			"swept": "Nach {name} verschoben",
 			"envelopeFallback": "Umschlag",
-			"back": "Zurück",
 			"error": "Das ließ sich nicht laden. Versuch es nochmal.",
 			"moneyInSub": "Alle in {month} gebuchten Einnahmen",
 			"assignedSub": "Übertrag und Startgeld eingeschlossen",
@@ -1228,7 +1211,7 @@
 			"lead": "Wie viel Geld hast du gerade? Das Budget zählt ab hier.",
 			"have": "Was du gerade hast",
 			"idle": "Gib einen Betrag ein, um die Änderung zu sehen.",
-			"save": "Bestätigen",
+			"save": "Speichern",
 			"toast": "Startgeld bestätigt",
 			"moneyIn": "Einnahmen",
 			"adjustment": "Korrektur",
@@ -1381,7 +1364,6 @@
 			"valuedAt": "Bewertet zum Kurs {type}",
 			"rateChange": "Ab heute bewertet zu {next}. Frühere Tage behalten den Kurs {before}.",
 			"rateFromToday": "Ab heute bewertet zu {next}.",
-			"saving": "Wird gespeichert",
 			"error": "Das ließ sich nicht speichern. Versuche es erneut."
 		},
 		"account": {
@@ -1460,7 +1442,7 @@
 			"body": "Das entfernt das Konto und seinen gesamten Saldoverlauf. Der Vermögensverlauf ändert sich ebenfalls.",
 			"keepHistory": "Um den Verlauf zu behalten, schließe das Konto stattdessen.",
 			"closeInstead": "Stattdessen schließen",
-			"submit": "Löschen",
+			"submit": "Konto löschen",
 			"deleting": "Wird gelöscht",
 			"toast": "{name} gelöscht",
 			"error": "Das ließ sich nicht löschen. Versuche es erneut."
@@ -1568,10 +1550,8 @@
 	},
 	"insights": {
 		"title": "Auswertungen",
-		"loading": "Wird geladen",
 		"error": "Auswertungen konnten nicht geladen werden",
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
-		"retry": "Erneut versuchen",
 		"filters": "Auswertungen filtern",
 		"period": {
 			"month": "Dieser Monat",
@@ -1625,7 +1605,6 @@
 			"rangeHint": "Wähle einen anderen Zeitraum oder erfasse eine Ausgabe.",
 			"filtered": "Keine Ausgaben passen zu diesen Filtern",
 			"filteredHint": "Entferne einen Filter oder wähle einen anderen Zeitraum.",
-			"clear": "Filter entfernen",
 			"add": "Ausgabe erfassen"
 		}
 	},
@@ -1790,8 +1769,6 @@
 		"rateLine": "{unit} = {value} · {type}",
 		"method": "Zahlungsart",
 		"date": "Datum",
-		"today": "Heute",
-		"yesterday": "Gestern",
 		"methodNames": {
 			"bank_transfer": "Überweisung",
 			"cash": "Bargeld"
@@ -1819,7 +1796,6 @@
 		"effectYou": "Du schuldest {amount}",
 		"accept": "Annehmen",
 		"reject": "Ablehnen",
-		"saving": "Speichern",
 		"accepted": "Anteil angenommen",
 		"rejected": "Anteil abgelehnt, {name} erfährt es",
 		"error": "Deine Antwort konnte nicht gespeichert werden. Versuche es erneut.",
@@ -1953,7 +1929,6 @@
 	},
 	"settings": {
 		"title": "Einstellungen",
-		"back": "Zurück",
 		"saved": "Gespeichert",
 		"saveError": "Konnte nicht gespeichert werden. Versuche es erneut.",
 		"error": "Einstellungen konnten nicht geladen werden",
@@ -2122,10 +2097,10 @@
 			"saved": "Zahlungsmethode gespeichert",
 			"prefer": "Als bevorzugt festlegen",
 			"preferredToast": "Bevorzugte Methode geändert",
-			"remove": "Entfernen",
+			"remove": "Löschen",
 			"removeBody": "Das lässt sich nicht rückgängig machen. Personen, mit denen du teilst, sehen es nicht mehr.",
-			"removeConfirm": "Endgültig entfernen",
-			"removed": "Zahlungsmethode entfernt",
+			"removeConfirm": "Zahlungsmethode löschen",
+			"removed": "Zahlungsmethode gelöscht",
 			"saveError": "Speichern nicht möglich. Versuche es erneut."
 		},
 		"security": {
@@ -2275,7 +2250,7 @@
 			"aiDefault": "Server-Standard",
 			"aiAllowed": "Erlaubt",
 			"aiBlocked": "Gesperrt",
-			"delete": "Konto löschen",
+			"delete": "Nutzer löschen",
 			"disableTitle": "{name} deaktivieren?",
 			"disableBody": "Die Person wird überall abgemeldet und kann sich erst wieder anmelden, wenn du das Konto aktivierst.",
 			"deleteTitle": "{name} löschen?",
@@ -2481,8 +2456,6 @@
 			"paidOnIn": "Erhalten am",
 			"paidOnDue": "{date} (fällig)",
 			"paidOnDueToday": "Heute (fällig)",
-			"paidOnToday": "Heute",
-			"paidOnPick": "Datum wählen",
 			"pickDate": "Datum",
 			"future": "Das Datum darf nicht in der Zukunft liegen.",
 			"tooEarly": "Das Datum darf nicht vor dem {date} liegen.",
@@ -2512,7 +2485,6 @@
 			"body": "{title} wiederholt sich jeden Monat mit {amount}, das nächste Mal am {date}.",
 			"stays": "Autozahlung ist aus, also wird nichts erfasst, bis du bestätigst. Deine Summen ändern sich nicht.",
 			"submit": "Wiederkehrend machen",
-			"saving": "Speichern …",
 			"error": "Das ließ sich nicht wiederkehrend machen. Versuche es erneut.",
 			"toast": "{title} wiederholt sich jetzt monatlich"
 		},
@@ -2547,7 +2519,8 @@
 			"autoPayValue": "Endet",
 			"submit": "Löschen",
 			"toast": "{title} gelöscht",
-			"error": "Löschen hat nicht geklappt. Versuche es nochmal."
+			"error": "Löschen hat nicht geklappt. Versuche es nochmal.",
+			"confirm": "Wiederkehrende Ausgabe löschen"
 		}
 	},
 	"shortcuts": {
@@ -2579,11 +2552,9 @@
 		"loading": "Kurse werden geladen",
 		"error": "Kurse sind gerade nicht verfügbar",
 		"errorDetail": "Versuch es gleich noch einmal.",
-		"retry": "Erneut versuchen",
 		"empty": {
 			"none": "Keine passenden Währungen",
 			"noneHint": "Versuch einen anderen Namen oder Code.",
-			"clear": "Filter löschen",
 			"noFavorites": "Noch keine Favoriten",
 			"noFavoritesHint": "Markiere eine Währung mit dem Stern, damit sie hier und in der Währungsauswahl oben steht.",
 			"showAll": "Alle Währungen zeigen"
@@ -2654,9 +2625,6 @@
 		"rejected": "Abgelehnt",
 		"notCounted": "Nicht gezählt",
 		"spread": "Über die Zeit verteilt"
-	},
-	"list": {
-		"loading": "Wird geladen"
 	},
 	"charts": {
 		"summary": "{label}. Von {from} am {fromDate} bis {to} am {toDate}.",

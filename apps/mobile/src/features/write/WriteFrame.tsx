@@ -53,8 +53,9 @@ export function WriteFrame({
 	onSubmit: () => void;
 }) {
 	const t = useTranslations("mobile.budget.write");
+	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
-	const label = busy ? t("saving") : submitLabel;
+	const label = busy ? tc("saving") : submitLabel;
 	// In a sheet, Save sits in the pinned footer under the scrolling body; the
 	// sheet draws it, so this frame leaves its own out.
 	const pinned = usePinnedAction({

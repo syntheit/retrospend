@@ -1440,7 +1440,7 @@ describe("Edit: undo changes and delete", () => {
 		).toEqual({ id: "e1" });
 		const confirm = find(
 			tree,
-			(p) => p.label === "Delete" && typeof p.onPress === "function",
+			(p) => p.label === "Delete expense" && typeof p.onPress === "function",
 		)[0];
 		if (!confirm) throw new Error("no Delete button");
 		await act(async () => {
@@ -1473,7 +1473,7 @@ describe("Edit: undo changes and delete", () => {
 		).toEqual({ id: "s1" });
 		const confirm = find(
 			tree,
-			(p) => p.label === "Delete" && typeof p.onPress === "function",
+			(p) => p.label === "Delete expense" && typeof p.onPress === "function",
 		)[0];
 		if (!confirm) throw new Error("no Delete button");
 		await act(async () => {

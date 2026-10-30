@@ -19,7 +19,13 @@
 		"save": "Salvar",
 		"saving": "Salvando",
 		"close": "Fechar",
-		"done": "Concluído"
+		"done": "Concluído",
+		"loading": "Carregando",
+		"back": "Voltar",
+		"today": "Hoje",
+		"yesterday": "Ontem",
+		"pickDate": "Escolher uma data",
+		"clearFilters": "Remover filtros"
 	},
 	"keypad": {
 		"delete": "Apagar",
@@ -29,7 +35,6 @@
 		"mode": "Tipo de lançamento",
 		"expense": "Gasto",
 		"income": "Receita",
-		"loading": "Carregando",
 		"loadError": "Não foi possível abrir o formulário",
 		"loadErrorDetail": "Verifique sua conexão e tente de novo.",
 		"titleField": "Título",
@@ -47,7 +52,6 @@
 		"sharedFileNotice": "Ainda não dá para anexar recibos. Adicione os dados aqui.",
 		"addIncome": "Adicionar receita",
 		"undo": "Desfazer",
-		"cancel": "Cancelar",
 		"amountLabel": "Valor, {amount}",
 		"amountEmpty": "Valor, {currency}, ainda vazio",
 		"showKeypad": "Mostra o teclado numérico",
@@ -149,7 +153,6 @@
 		"sync": {
 			"title": "Não foi possível sincronizar",
 			"refused": "O servidor não aceitou isto.",
-			"retry": "Tentar de novo",
 			"discard": "Descartar",
 			"retryFailed": "Ainda não dá para enviar. Tente mais tarde."
 		},
@@ -190,8 +193,6 @@
 			"receivedLabel": "Recebido, {amount}",
 			"receivedEmpty": "Recebido em {currency}, opcional"
 		},
-		"today": "Hoje",
-		"yesterday": "Ontem",
 		"note": "Nota",
 		"notePlaceholder": "Detalhes adicionais",
 		"location": "Local",
@@ -230,9 +231,7 @@
 		},
 		"more": "Mais",
 		"moreDetails": "Mais detalhes",
-		"back": "Voltar",
 		"dateMenu": "Data, {date}",
-		"pickDate": "Escolher uma data",
 		"categoriesAll": "Todas as categorias",
 		"categoriesMore": "Mais",
 		"actions": "Ações",
@@ -289,7 +288,7 @@
 			"row": "Excluir",
 			"title": "Excluir este gasto?",
 			"body": "Ele sai dos seus gastos e do seu orçamento.",
-			"button": "Excluir",
+			"button": "Excluir gasto",
 			"deleted": "{title} excluído",
 			"restored": "{title} restaurado",
 			"undoFailed": "Não foi possível desfazer. Tente pela Atividade.",
@@ -322,8 +321,7 @@
 		"account": {
 			"find": "Buscar uma conta",
 			"empty": "Nenhuma conta corresponde"
-		},
-		"pickDate": "Escolha uma data"
+		}
 	},
 	"entry": {
 		"title": "Gasto",
@@ -344,7 +342,6 @@
 		"spreadMonths": "{months} meses",
 		"locked": "Bloqueado por um pagamento",
 		"edit": "Editar",
-		"loading": "Carregando",
 		"gone": "Este lançamento foi excluído ou não é mais compartilhado com você.",
 		"loadError": "Não foi possível carregar este lançamento",
 		"loadErrorDetail": "Verifique sua conexão e tente de novo.",
@@ -413,7 +410,6 @@
 	"activity": {
 		"title": "Atividade",
 		"overflow": "Mais ações",
-		"loading": "Carregando",
 		"empty": "Nenhuma despesa ainda",
 		"emptyFiltered": "Nada corresponde",
 		"emptyElsewhere": "Nada neste mês. Tente Todo o período.",
@@ -426,8 +422,6 @@
 			"month": "{count, plural, one {# despesa} other {# despesas}} neste mês",
 			"all": "{count, plural, one {# despesa} other {# despesas}}, todo o período"
 		},
-		"today": "Hoje",
-		"yesterday": "Ontem",
 		"chip": {
 			"category": "Categoria",
 			"person": "Pessoa",
@@ -565,7 +559,6 @@
 			"pending": "{amount} aguarda seu OK",
 			"someone": "Alguém",
 			"incomplete": "Alguns valores não têm cotação hoje e não são contados.",
-			"back": "Voltar",
 			"error": "Não foi possível carregar. Tente de novo.",
 			"forgiveTitle": "Perdoar {name}"
 		},
@@ -615,7 +608,6 @@
 			"assign": "Atribuir dinheiro",
 			"move": "Mover dinheiro",
 			"limitAction": "Mudar limite",
-			"back": "Voltar",
 			"assignTitle": "Atribuir a {name}",
 			"moveTitle": "Mover dinheiro de {name}",
 			"coverTitle": "Cobrir {name}",
@@ -720,7 +712,6 @@
 			"notAvailable": "Indisponível (sem cotação ainda)"
 		},
 		"write": {
-			"saving": "Salvando",
 			"error": "Não foi possível salvar. Tente de novo.",
 			"undone": "Desfeito",
 			"undoError": "Não foi possível desfazer. Talvez já tenha mudado.",
@@ -977,8 +968,6 @@
 			"limitsTitle": "Escolha seus limites",
 			"limitsSub": "Dos seus últimos 3 meses. O resto é acompanhado, sem limite.",
 			"continue": "Continuar",
-			"back": "Voltar",
-			"cancel": "Cancelar",
 			"start": "Começar meu orçamento",
 			"startTracking": "Começar a acompanhar",
 			"startStopped": "Começar mesmo assim",
@@ -1006,7 +995,6 @@
 			"adjust": "Mudar um valor",
 			"coverLabel": "Usar meu pagamento para o resto",
 			"starting": "Iniciando",
-			"loading": "Carregando",
 			"presetError": "Não foi possível carregar a proposta. Tente de novo.",
 			"envelopesSub": "Dos seus últimos 3 meses. Toque em um para manter ou tirar.",
 			"names": {
@@ -1085,14 +1073,13 @@
 				"toast": "Você aplicou {name} às entradas deste mês",
 				"envelopeFallback": "Envelope"
 			},
-			"back": "Voltar",
 			"error": "Não foi possível salvar. Tente de novo.",
 			"pause": "Pausar",
 			"resume": "Ativar",
 			"moveUp": "Subir",
 			"moveDown": "Descer",
 			"applyAction": "Aplicar ao dinheiro que entrou neste mês",
-			"remove": "Remover regra"
+			"remove": "Excluir regra"
 		},
 		"forgive": {
 			"forgive": "Perdoar",
@@ -1118,10 +1105,8 @@
 			"route": "Colocar lá",
 			"routedToast": "Parte movida",
 			"title": "Ainda sem envelope",
-			"back": "Voltar",
 			"error": "Não foi possível carregar. Tente de novo.",
-			"none": "Todas as partes têm envelope.",
-			"loading": "Carregando"
+			"none": "Todas as partes têm envelope."
 		},
 		"categories": {
 			"find": "Buscar uma categoria"
@@ -1133,7 +1118,6 @@
 			"target": "Sua meta precisa de {amount}.",
 			"save": "Salvar",
 			"toast": "Você planejou {name}",
-			"back": "Voltar",
 			"error": "Não foi possível carregar. Tente de novo.",
 			"listTitle": "Planeje o mês",
 			"listLead": "Toque em um envelope para definir o que ele recebe. Nada se move até o dia do pagamento.",
@@ -1185,7 +1169,6 @@
 			"returned": "Voltou para {pool}",
 			"swept": "Movido para {name}",
 			"envelopeFallback": "Envelope",
-			"back": "Voltar",
 			"error": "Não foi possível carregar. Tente de novo.",
 			"moneyInSub": "Toda a renda registrada em {month}",
 			"assignedSub": "Inclui o dinheiro acumulado e o inicial",
@@ -1228,7 +1211,7 @@
 			"lead": "Quanto dinheiro você tem agora? O orçamento passa a contar a partir daí.",
 			"have": "O que você tem agora",
 			"idle": "Digite um valor para ver o que muda.",
-			"save": "Confirmar",
+			"save": "Salvar",
 			"toast": "Dinheiro inicial confirmado",
 			"moneyIn": "Entradas",
 			"adjustment": "Ajuste",
@@ -1381,7 +1364,6 @@
 			"valuedAt": "Avaliada na cotação {type}",
 			"rateChange": "Avaliada em {next} a partir de hoje. Os dias anteriores mantêm a cotação {before}.",
 			"rateFromToday": "Avaliada em {next} a partir de hoje.",
-			"saving": "Salvando",
 			"error": "Não foi possível salvar. Tente de novo."
 		},
 		"account": {
@@ -1460,7 +1442,7 @@
 			"body": "Isso remove a conta e todo o histórico de saldos. O histórico do patrimônio também muda.",
 			"keepHistory": "Para manter o histórico, encerre a conta.",
 			"closeInstead": "Encerrar em vez disso",
-			"submit": "Excluir",
+			"submit": "Excluir conta",
 			"deleting": "Excluindo",
 			"toast": "{name} excluída",
 			"error": "Não foi possível excluir. Tente de novo."
@@ -1568,10 +1550,8 @@
 	},
 	"insights": {
 		"title": "Análises",
-		"loading": "Carregando",
 		"error": "Não foi possível carregar as análises",
 		"errorDetail": "Verifique sua conexão e tente de novo.",
-		"retry": "Tentar de novo",
 		"filters": "Filtrar análises",
 		"period": {
 			"month": "Este mês",
@@ -1625,7 +1605,6 @@
 			"rangeHint": "Escolha outro período ou adicione um gasto.",
 			"filtered": "Nenhum gasto corresponde a esses filtros",
 			"filteredHint": "Remova um filtro ou escolha outro período.",
-			"clear": "Remover filtros",
 			"add": "Adicionar gasto"
 		}
 	},
@@ -1790,8 +1769,6 @@
 		"rateLine": "{unit} = {value} · {type}",
 		"method": "Forma",
 		"date": "Data",
-		"today": "Hoje",
-		"yesterday": "Ontem",
 		"methodNames": {
 			"bank_transfer": "Transferência",
 			"cash": "Dinheiro"
@@ -1819,7 +1796,6 @@
 		"effectYou": "Você deve {amount}",
 		"accept": "Aceitar",
 		"reject": "Recusar",
-		"saving": "Salvando",
 		"accepted": "Parte aceita",
 		"rejected": "Parte recusada, {name} foi avisado",
 		"error": "Não foi possível salvar sua resposta. Tente de novo.",
@@ -1953,7 +1929,6 @@
 	},
 	"settings": {
 		"title": "Ajustes",
-		"back": "Voltar",
 		"saved": "Salvo",
 		"saveError": "Não foi possível salvar. Tente de novo.",
 		"error": "Não foi possível carregar os ajustes",
@@ -2122,10 +2097,10 @@
 			"saved": "Método de pagamento salvo",
 			"prefer": "Tornar preferido",
 			"preferredToast": "Método preferido alterado",
-			"remove": "Remover",
+			"remove": "Excluir",
 			"removeBody": "Isso não pode ser desfeito. As pessoas com quem você divide não o verão mais.",
-			"removeConfirm": "Remover de vez",
-			"removed": "Método de pagamento removido",
+			"removeConfirm": "Excluir método de pagamento",
+			"removed": "Método de pagamento excluído",
 			"saveError": "Não foi possível salvar. Tente de novo."
 		},
 		"security": {
@@ -2275,7 +2250,7 @@
 			"aiDefault": "Padrão do servidor",
 			"aiAllowed": "Permitida",
 			"aiBlocked": "Bloqueada",
-			"delete": "Excluir conta",
+			"delete": "Excluir usuário",
 			"disableTitle": "Desativar {name}?",
 			"disableBody": "A pessoa é desconectada de todos os lugares e não consegue entrar até você ativar a conta.",
 			"deleteTitle": "Excluir {name}?",
@@ -2481,8 +2456,6 @@
 			"paidOnIn": "Recebido em",
 			"paidOnDue": "{date} (vencimento)",
 			"paidOnDueToday": "Hoje (vencimento)",
-			"paidOnToday": "Hoje",
-			"paidOnPick": "Escolher data",
 			"pickDate": "Data",
 			"future": "A data não pode ser futura.",
 			"tooEarly": "A data não pode ser anterior a {date}.",
@@ -2512,7 +2485,6 @@
 			"body": "{title} vai se repetir todo mês por {amount}, a próxima em {date}.",
 			"stays": "O pagamento automático fica desativado, então nada é registrado até você confirmar. Seus totais não mudam.",
 			"submit": "Tornar recorrente",
-			"saving": "Salvando",
 			"error": "Não foi possível tornar recorrente. Tente de novo.",
 			"toast": "{title} agora se repete todo mês"
 		},
@@ -2547,7 +2519,8 @@
 			"autoPayValue": "Para",
 			"submit": "Excluir",
 			"toast": "{title} excluída",
-			"error": "Não foi possível excluir. Tente de novo."
+			"error": "Não foi possível excluir. Tente de novo.",
+			"confirm": "Excluir despesa recorrente"
 		}
 	},
 	"shortcuts": {
@@ -2579,11 +2552,9 @@
 		"loading": "Carregando cotações",
 		"error": "As cotações não estão disponíveis agora",
 		"errorDetail": "Tente de novo em instantes.",
-		"retry": "Tentar de novo",
 		"empty": {
 			"none": "Nenhuma moeda encontrada",
 			"noneHint": "Tente outro nome ou código.",
-			"clear": "Limpar filtros",
 			"noFavorites": "Nenhuma favorita ainda",
 			"noFavoritesHint": "Marque uma moeda com a estrela para mantê-la no topo, aqui e no seletor de moedas.",
 			"showAll": "Ver todas as moedas"
@@ -2654,9 +2625,6 @@
 		"rejected": "Recusado",
 		"notCounted": "Não conta",
 		"spread": "Dividido ao longo do tempo"
-	},
-	"list": {
-		"loading": "Carregando"
 	},
 	"charts": {
 		"summary": "{label}. De {from} em {fromDate} a {to} em {toDate}.",

@@ -100,6 +100,7 @@ export function MethodAndDate({
 	onPaidOn: (day: string) => void;
 }) {
 	const t = useTranslations("mobile.settle");
+	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
 	const names = new Map<string, string>(
 		shared.map((m) => [m.type, m.label ?? ""]),
@@ -133,12 +134,12 @@ export function MethodAndDate({
 				<FieldLabel>{t("date")}</FieldLabel>
 				<ChipRow>
 					<Chip
-						label={t("today")}
+						label={tc("today")}
 						onPress={() => onPaidOn(today)}
 						selected={day === today}
 					/>
 					<Chip
-						label={t("yesterday")}
+						label={tc("yesterday")}
 						onPress={() => onPaidOn(yesterday)}
 						selected={day === yesterday}
 					/>

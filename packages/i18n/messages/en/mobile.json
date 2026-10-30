@@ -19,7 +19,13 @@
 		"save": "Save",
 		"saving": "Saving",
 		"close": "Close",
-		"done": "Done"
+		"done": "Done",
+		"loading": "Loading",
+		"back": "Back",
+		"today": "Today",
+		"yesterday": "Yesterday",
+		"pickDate": "Pick a date",
+		"clearFilters": "Clear filters"
 	},
 	"keypad": {
 		"delete": "Delete",
@@ -29,7 +35,6 @@
 		"mode": "Entry type",
 		"expense": "Expense",
 		"income": "Income",
-		"loading": "Loading",
 		"loadError": "Couldn't open the composer",
 		"loadErrorDetail": "Check your connection and try again.",
 		"titleField": "Title",
@@ -47,7 +52,6 @@
 		"sharedFileNotice": "Receipts can't be attached yet. Add the details here.",
 		"addIncome": "Add income",
 		"undo": "Undo",
-		"cancel": "Cancel",
 		"amountLabel": "Amount, {amount}",
 		"amountEmpty": "Amount, {currency}, none yet",
 		"showKeypad": "Shows the keypad",
@@ -149,7 +153,6 @@
 		"sync": {
 			"title": "Couldn't sync",
 			"refused": "The server didn't accept this.",
-			"retry": "Try again",
 			"discard": "Discard",
 			"retryFailed": "Still can't send it. Try again later."
 		},
@@ -190,8 +193,6 @@
 			"receivedLabel": "Received, {amount}",
 			"receivedEmpty": "Received in {currency}, optional"
 		},
-		"today": "Today",
-		"yesterday": "Yesterday",
 		"note": "Note",
 		"notePlaceholder": "Additional details",
 		"location": "Location",
@@ -230,9 +231,7 @@
 		},
 		"more": "More",
 		"moreDetails": "More details",
-		"back": "Back",
 		"dateMenu": "Date, {date}",
-		"pickDate": "Pick a date",
 		"categoriesAll": "All categories",
 		"categoriesMore": "More",
 		"actions": "Actions",
@@ -289,7 +288,7 @@
 			"row": "Delete",
 			"title": "Delete this expense?",
 			"body": "It leaves your spending and your budget.",
-			"button": "Delete",
+			"button": "Delete expense",
 			"deleted": "Deleted {title}",
 			"restored": "Restored {title}",
 			"undoFailed": "Couldn't undo. Try again from Activity.",
@@ -322,8 +321,7 @@
 		"account": {
 			"find": "Find an account",
 			"empty": "No account matches"
-		},
-		"pickDate": "Pick a date"
+		}
 	},
 	"entry": {
 		"title": "Expense",
@@ -344,7 +342,6 @@
 		"spreadMonths": "{months} months",
 		"locked": "Locked by a payment",
 		"edit": "Edit",
-		"loading": "Loading",
 		"gone": "This entry was deleted or isn't shared with you anymore.",
 		"loadError": "Couldn't load this entry",
 		"loadErrorDetail": "Check your connection and try again.",
@@ -413,7 +410,6 @@
 	"activity": {
 		"title": "Activity",
 		"overflow": "More actions",
-		"loading": "Loading",
 		"empty": "No expenses yet",
 		"emptyFiltered": "Nothing matches",
 		"emptyElsewhere": "Nothing this month. Try All time.",
@@ -426,8 +422,6 @@
 			"month": "{count, plural, one {# expense} other {# expenses}} this month",
 			"all": "{count, plural, one {# expense} other {# expenses}}, all time"
 		},
-		"today": "Today",
-		"yesterday": "Yesterday",
 		"chip": {
 			"category": "Category",
 			"person": "Person",
@@ -565,7 +559,6 @@
 			"pending": "{amount} waits for your OK",
 			"someone": "Someone",
 			"incomplete": "Some amounts have no rate today and are not counted.",
-			"back": "Back",
 			"error": "Couldn't load this. Try again.",
 			"forgiveTitle": "Forgive {name}"
 		},
@@ -615,7 +608,6 @@
 			"assign": "Assign money",
 			"move": "Move money",
 			"limitAction": "Change limit",
-			"back": "Back",
 			"assignTitle": "Assign to {name}",
 			"moveTitle": "Move money for {name}",
 			"coverTitle": "Cover {name}",
@@ -716,11 +708,10 @@
 			"nothingElse": "Nothing else changes: {list} stay as they are.",
 			"nothingElseOne": "Nothing else changes: {item} stays as it is.",
 			"noneChange": "No change to {list}.",
-			"unavailable": "Could not check {list}.",
+			"unavailable": "Couldn't check {list}.",
 			"notAvailable": "Not available (no rate yet)"
 		},
 		"write": {
-			"saving": "Saving",
 			"error": "Couldn't save. Try again.",
 			"undone": "Undone",
 			"undoError": "Couldn't undo. It may have changed already.",
@@ -833,7 +824,7 @@
 			"envelope": "Which envelope?",
 			"idle": "Type an amount and get one answer.",
 			"checking": "Checking",
-			"failed": "Could not check this. Try again.",
+			"failed": "Couldn't check this. Try again.",
 			"state": {
 				"FITS": "Yes. It fits, and you would have {after} left.",
 				"FITS_TIGHT": "It fits, but it is tight: {after} would be left.",
@@ -953,7 +944,7 @@
 		},
 		"reconcile": {
 			"loading": "Checking",
-			"failed": "Could not load the check. Try again.",
+			"failed": "Couldn't load the check. Try again.",
 			"accountsTotal": "Your accounts total",
 			"title": "Does this match your bank?",
 			"lead": "Compares what the budget holds with the accounts that are part of it. A difference is recorded as one adjustment.",
@@ -977,13 +968,11 @@
 			"limitsTitle": "Pick your limits",
 			"limitsSub": "From your last 3 months. Everything else is tracked, with no limit.",
 			"continue": "Continue",
-			"back": "Back",
-			"cancel": "Cancel",
 			"start": "Start my budget",
 			"startTracking": "Start tracking",
 			"startStopped": "Start anyway",
 			"toast": "Your budget is ready",
-			"failed": "Could not start your budget. Nothing was changed.",
+			"failed": "Couldn't start your budget. Nothing was changed.",
 			"amountFor": "Amount for {name}",
 			"pay": {
 				"title": "How do you get paid?",
@@ -1006,8 +995,7 @@
 			"adjust": "Change an amount",
 			"coverLabel": "Use my pay for the rest",
 			"starting": "Starting",
-			"loading": "Loading",
-			"presetError": "Could not load the proposal. Try again.",
+			"presetError": "Couldn't load the proposal. Try again.",
 			"envelopesSub": "From your last 3 months. Tap one to keep or drop it.",
 			"names": {
 				"groups": {
@@ -1085,14 +1073,13 @@
 				"toast": "Applied {name} to this month's money in",
 				"envelopeFallback": "Envelope"
 			},
-			"back": "Back",
 			"error": "Couldn't save. Try again.",
 			"pause": "Pause",
 			"resume": "Turn on",
 			"moveUp": "Move up",
 			"moveDown": "Move down",
 			"applyAction": "Apply to this month's money in",
-			"remove": "Remove rule"
+			"remove": "Delete rule"
 		},
 		"forgive": {
 			"forgive": "Forgive",
@@ -1118,10 +1105,8 @@
 			"route": "Put it there",
 			"routedToast": "Share moved",
 			"title": "No envelope yet",
-			"back": "Back",
 			"error": "Couldn't load this. Try again.",
-			"none": "Every share has an envelope.",
-			"loading": "Loading"
+			"none": "Every share has an envelope."
 		},
 		"categories": {
 			"find": "Find a category"
@@ -1133,7 +1118,6 @@
 			"target": "Its target needs {amount}.",
 			"save": "Save",
 			"toast": "Planned {name}",
-			"back": "Back",
 			"error": "Couldn't load this. Try again.",
 			"listTitle": "Plan the month",
 			"listLead": "Tap an envelope to set what it gets. Nothing moves until payday.",
@@ -1185,7 +1169,6 @@
 			"returned": "Went back to {pool}",
 			"swept": "Moved to {name}",
 			"envelopeFallback": "Envelope",
-			"back": "Back",
 			"error": "Couldn't load this. Try again.",
 			"moneyInSub": "All income booked in {month}",
 			"assignedSub": "Carried and starting money included",
@@ -1228,7 +1211,7 @@
 			"lead": "How much do you have right now? The budget starts counting from this.",
 			"have": "What you have right now",
 			"idle": "Type an amount to see what changes.",
-			"save": "Confirm",
+			"save": "Save",
 			"toast": "Starting money confirmed",
 			"moneyIn": "Money in",
 			"adjustment": "Adjustment",
@@ -1381,7 +1364,6 @@
 			"valuedAt": "Valued at the {type} rate",
 			"rateChange": "Valued at {next} from today. Earlier days keep the {before} rate.",
 			"rateFromToday": "Valued at {next} from today.",
-			"saving": "Saving",
 			"error": "Couldn't save. Try again."
 		},
 		"account": {
@@ -1460,7 +1442,7 @@
 			"body": "This removes the account and its whole balance history. Net worth history changes too.",
 			"keepHistory": "To keep the history, close the account instead.",
 			"closeInstead": "Close instead",
-			"submit": "Delete",
+			"submit": "Delete account",
 			"deleting": "Deleting",
 			"toast": "Deleted {name}",
 			"error": "Couldn't delete. Try again."
@@ -1568,10 +1550,8 @@
 	},
 	"insights": {
 		"title": "Insights",
-		"loading": "Loading",
 		"error": "Couldn't load insights",
 		"errorDetail": "Check your connection and try again.",
-		"retry": "Try again",
 		"filters": "Filter insights",
 		"period": {
 			"month": "This month",
@@ -1625,7 +1605,6 @@
 			"rangeHint": "Pick another period, or add an expense.",
 			"filtered": "No spending matches these filters",
 			"filteredHint": "Clear a filter or pick another period.",
-			"clear": "Clear filters",
 			"add": "Add expense"
 		}
 	},
@@ -1790,8 +1769,6 @@
 		"rateLine": "{unit} = {value} · {type}",
 		"method": "Method",
 		"date": "Date",
-		"today": "Today",
-		"yesterday": "Yesterday",
 		"methodNames": {
 			"bank_transfer": "Bank transfer",
 			"cash": "Cash"
@@ -1819,7 +1796,6 @@
 		"effectYou": "You owe {amount}",
 		"accept": "Accept",
 		"reject": "Reject",
-		"saving": "Saving",
 		"accepted": "Share accepted",
 		"rejected": "Share rejected, {name} is told",
 		"error": "Couldn't save your answer. Try again.",
@@ -1953,7 +1929,6 @@
 	},
 	"settings": {
 		"title": "Settings",
-		"back": "Back",
 		"saved": "Saved",
 		"saveError": "Couldn't save. Try again.",
 		"error": "Couldn't load settings",
@@ -2073,7 +2048,7 @@
 			"footerIos": "Notifications arrive through Apple's push service. Choose which ones below.",
 			"footerAndroid": "Retrospend checks for news about every 15 minutes, with no Google services. Choose which ones below.",
 			"denied": "Notifications are off for Retrospend. Turn them on in system settings.",
-			"unavailable": "This phone could not register for push. Try again later."
+			"unavailable": "This phone couldn't register for push. Try again later."
 		},
 		"manage": {
 			"categories": "Categories",
@@ -2122,10 +2097,10 @@
 			"saved": "Payment method saved",
 			"prefer": "Make primary",
 			"preferredToast": "Primary method changed",
-			"remove": "Remove",
+			"remove": "Delete",
 			"removeBody": "This can't be undone. People you share with will no longer see it.",
-			"removeConfirm": "Remove for good",
-			"removed": "Payment method removed",
+			"removeConfirm": "Delete payment method",
+			"removed": "Payment method deleted",
 			"saveError": "Couldn't save. Try again."
 		},
 		"security": {
@@ -2275,7 +2250,7 @@
 			"aiDefault": "Server default",
 			"aiAllowed": "Allowed",
 			"aiBlocked": "Blocked",
-			"delete": "Delete account",
+			"delete": "Delete user",
 			"disableTitle": "Disable {name}?",
 			"disableBody": "They're signed out everywhere and can't sign in until you enable the account.",
 			"deleteTitle": "Delete {name}?",
@@ -2481,8 +2456,6 @@
 			"paidOnIn": "Received on",
 			"paidOnDue": "{date} (due)",
 			"paidOnDueToday": "Today (due)",
-			"paidOnToday": "Today",
-			"paidOnPick": "Pick a date",
 			"pickDate": "Date",
 			"future": "The date can't be in the future.",
 			"tooEarly": "The date can't be before {date}.",
@@ -2512,7 +2485,6 @@
 			"body": "{title} will repeat every month at {amount}, next on {date}.",
 			"stays": "Auto-pay is off, so nothing is logged until you confirm it. Your totals don't change.",
 			"submit": "Make recurring",
-			"saving": "Saving",
 			"error": "Couldn't make it recurring. Try again.",
 			"toast": "{title} now repeats monthly"
 		},
@@ -2547,7 +2519,8 @@
 			"autoPayValue": "Stops",
 			"submit": "Delete",
 			"toast": "{title} deleted",
-			"error": "Couldn't delete it. Try again."
+			"error": "Couldn't delete it. Try again.",
+			"confirm": "Delete recurring expense"
 		}
 	},
 	"shortcuts": {
@@ -2579,11 +2552,9 @@
 		"loading": "Loading rates",
 		"error": "Rates aren't available right now",
 		"errorDetail": "Try again in a moment.",
-		"retry": "Try again",
 		"empty": {
 			"none": "No currencies match",
 			"noneHint": "Try another name or code.",
-			"clear": "Clear filters",
 			"noFavorites": "No favorites yet",
 			"noFavoritesHint": "Star a currency to keep it first, here and in the currency picker.",
 			"showAll": "Show all currencies"
@@ -2654,9 +2625,6 @@
 		"rejected": "Rejected",
 		"notCounted": "Not counted",
 		"spread": "Spread over time"
-	},
-	"list": {
-		"loading": "Loading"
 	},
 	"charts": {
 		"summary": "{label}. From {from} on {fromDate} to {to} on {toDate}.",

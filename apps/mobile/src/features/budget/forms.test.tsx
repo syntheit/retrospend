@@ -330,7 +330,7 @@ describe("Assign money", () => {
 		expect(texts).toContain(
 			"Nothing else changes: left to spend stays as it is.",
 		);
-		expect(texts).toContain("Could not check net worth.");
+		expect(texts).toContain("Couldn't check net worth.");
 		act(() => tree.unmount());
 	});
 });

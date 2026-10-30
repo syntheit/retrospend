@@ -40,6 +40,7 @@ export function CloseSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.budget.close");
+	const common = useTranslations("mobile.common");
 	const tc = useTranslations("mobile.budget.carry");
 	const tw = useTranslations("mobile.budget.write");
 	const tp = useTranslations("mobile.budget.pool");
@@ -120,7 +121,10 @@ export function CloseSheet({
 			<SheetBody>
 				{carry ? (
 					<>
-						<BackButton label={t("back")} onPress={() => setCarrying(null)} />
+						<BackButton
+							label={common("back")}
+							onPress={() => setCarrying(null)}
+						/>
 						<WriteForm
 							data={data}
 							idempotencyKey={body?.id ?? null}

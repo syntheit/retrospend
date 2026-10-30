@@ -15,6 +15,7 @@ import { useParkedEntries } from "./parked";
  */
 export function SyncIssues({ padded }: { padded?: boolean }) {
 	const t = useTranslations("mobile.composer");
+	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
 	const { format } = useFormatMoney();
 	const toast = useToast();
@@ -51,8 +52,8 @@ export function SyncIssues({ padded }: { padded?: boolean }) {
 					</View>
 					<View style={{ flexDirection: "row" }}>
 						<TextAction
-							accessibilityLabel={`${t("sync.retry")}, ${entry.title}`}
-							label={t("sync.retry")}
+							accessibilityLabel={`${tc("retry")}, ${entry.title}`}
+							label={tc("retry")}
 							onPress={async () => {
 								const sent = await retry(entry.clientId);
 								announceEntryChange();
