@@ -230,6 +230,11 @@ export function SettleSheet({
 										preview={flow.preview}
 									/>
 									<PreviewList name={first} preview={flow.preview} />
+									{nothingOwed ? null : (
+										<Text tone="fg2" variant="small">
+											{t("methodHint")}
+										</Text>
+									)}
 								</>
 							) : flow.overpaid ? (
 								<OverpayAction

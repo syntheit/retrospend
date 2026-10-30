@@ -1745,6 +1745,8 @@
 			"owed_youOwe": "Du schuldest"
 		},
 		"beforeAfter": "{before} auf {after}",
+		"figureIn": "{label} in {currency}",
+		"methodHint": "Zahlungsart und Datum stehen unten.",
 		"none": "nichts",
 		"checking": "Wird geprüft",
 		"record": "Zahlung erfassen",
@@ -2590,6 +2592,9 @@
 			"repeats": "Wiederholt sich",
 			"first": "Nächste Fälligkeit",
 			"firstHint": "Die erste wird an diesem Datum erfasst.",
+			"website": "Website",
+			"websitePlaceholder": "beispiel.de",
+			"websiteInvalid": "Diese Adresse sieht nicht richtig aus.",
 			"submit": "Hinzufügen",
 			"toast": "{title} hinzugefügt"
 		},

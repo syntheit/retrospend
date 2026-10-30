@@ -1745,6 +1745,8 @@
 			"owed_youOwe": "Tu dois"
 		},
 		"beforeAfter": "{before}, puis {after}",
+		"figureIn": "{label} en {currency}",
+		"methodHint": "Le moyen et la date sont plus bas.",
 		"none": "rien",
 		"checking": "Vérification",
 		"record": "Enregistrer le paiement",
@@ -2590,6 +2592,9 @@
 			"repeats": "Se répète",
 			"first": "Prochaine échéance",
 			"firstHint": "La première est enregistrée à cette date.",
+			"website": "Site web",
+			"websitePlaceholder": "exemple.fr",
+			"websiteInvalid": "Cette adresse ne semble pas correcte.",
 			"submit": "Ajouter",
 			"toast": "{title} ajouté"
 		},

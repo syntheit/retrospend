@@ -1745,6 +1745,8 @@
 			"owed_youOwe": "Вы должны"
 		},
 		"beforeAfter": "с {before} до {after}",
+		"figureIn": "{label}, {currency}",
+		"methodHint": "Способ и дата ниже.",
 		"none": "ничего",
 		"checking": "Проверяем",
 		"record": "Записать платёж",
@@ -2590,6 +2592,9 @@
 			"repeats": "Повторяется",
 			"first": "Следующий срок",
 			"firstHint": "Первый записывается в эту дату.",
+			"website": "Сайт",
+			"websitePlaceholder": "example.com",
+			"websiteInvalid": "Этот адрес выглядит неверно.",
 			"submit": "Добавить",
 			"toast": "{title}: добавлено"
 		},
