@@ -14,10 +14,7 @@ import * as z from "zod";
 import { env } from "~/env";
 import { auth } from "~/server/better-auth";
 import { pruneExpiredKeys } from "~/server/services/api-v1/idempotency.service";
-import {
-	getAppSettings,
-	updateAppSettings,
-} from "~/server/services/settings";
+import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import { adminDb, createTestUser } from "~/test/pg-harness";
 import { createV1Handler, handleV1Request } from "../handler";
 import { signedIn, type V1InitialContext, v1Middleware } from "../middleware";
