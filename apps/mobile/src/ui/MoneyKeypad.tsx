@@ -5,6 +5,9 @@ import { useTheme } from "@/theme";
 import { applyKey, BACKSPACE, keypadLayout } from "./keypad";
 import { Text } from "./Text";
 
+/** The most a key label scales, so a row of keys keeps its height. */
+const KEY_LABEL_SCALE = 1.3;
+
 /**
  * The amount keypad: the twelve keys of the system number pad with the
  * locale's decimal key. Digits sit on raised keys; the decimal and Delete
@@ -13,6 +16,11 @@ import { Text } from "./Text";
  * Every key is a labeled button, so VoiceOver and TalkBack read "5",
  * "Delete", "Decimal point". The draft text is formatted by the domain
  * package, never here.
+ *
+ * The pad's height never depends on the text size: the key labels stop
+ * scaling at 1.3, so four rows are always 48 (or 44) points each and the
+ * decimal key, 0 and Delete stay on screen. A bigger text size is the
+ * composer's call: it swaps the pad for the system decimal keyboard.
  */
 export function MoneyKeypad({
 	draft,
@@ -68,7 +76,12 @@ export function MoneyKeypad({
 											: color.raised,
 								})}
 							>
-								<Text tabular variant="title" weight="medium">
+								<Text
+									maxFontSizeMultiplier={KEY_LABEL_SCALE}
+									tabular
+									variant="title"
+									weight="medium"
+								>
 									{key}
 								</Text>
 							</Pressable>

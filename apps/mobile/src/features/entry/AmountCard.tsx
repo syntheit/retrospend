@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { useRef } from "react";
+import { Pressable, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { FixedCurrency } from "@/ui/AmountField";
 import { CurrencyPicker } from "@/ui/CurrencyPicker";
-import { Text } from "@/ui/Text";
+import { Text, typeStyle } from "@/ui/Text";
 import { currencyChoices } from "./currencyChoices";
 import { amountMinor, DEFAULT_RATE } from "./draft";
 import type { EntryForm } from "./useEntryForm";
@@ -24,6 +25,21 @@ export interface MoneyLine {
 	onPress: () => void;
 }
 
+/** The typed amount scales with the text size up to here, so a figure fits its card. */
+const SYSTEM_AMOUNT_SCALE = 1.5;
+
+/**
+ * How the card is typed into on the system decimal keyboard, at the largest
+ * text sizes where the keypad does not fit. The active amount becomes a text
+ * input; the composer formats what comes back.
+ */
+export interface SystemEntry {
+	onChangeText: (raw: string) => void;
+	onFocusChange: (focused: boolean) => void;
+	/** Open the keyboard as the card appears. */
+	autoFocus: boolean;
+}
+
 /**
  * The amount: a surface card holding one money row per amount (a transfer
  * between currencies has two), each with its currency at the start and the
@@ -35,12 +51,16 @@ export function AmountCard({
 	lines,
 	ring,
 	foreign,
+	system,
 }: {
 	lines: MoneyLine[];
 	ring: "idle" | "focus" | "error";
 	foreign?: ReactNode;
+	system?: SystemEntry;
 }) {
-	const { color, radius, size, space } = useTheme();
+	const theme = useTheme();
+	const { color, radius, size, space } = theme;
+	const inputs = useRef<Record<string, TextInput | null>>({});
 	const edge = space[1] / 2;
 	const many = lines.length > 1;
 	// A resting card is a line-strong hairline, so it reads on the sheet's
@@ -84,32 +104,74 @@ export function AmountCard({
 					}}
 				>
 					{line.currency}
-					<Pressable
-						accessibilityLabel={line.spoken}
-						accessibilityRole="button"
-						onPress={line.onPress}
-						style={{
-							flex: 1,
-							minHeight: size.touchMin.phone,
-							justifyContent: "center",
-						}}
-					>
-						<Text
-							accessibilityLiveRegion="polite"
-							adjustsFontSizeToFit
-							numberOfLines={1}
-							style={{
-								paddingRight: space[2],
-								textAlign: "right",
+					{system ? (
+						<Pressable
+							onPress={() => {
+								if (!line.active) line.onPress();
+								// The target changes first, then the keyboard opens on it.
+								setTimeout(() => inputs.current[line.key]?.focus(), 0);
 							}}
-							tabular
-							tone={line.text ? "fg" : "fg3"}
-							variant="title"
-							weight="medium"
+							style={{ flex: 1, minHeight: size.touchMin.phone }}
 						>
-							{line.text || line.placeholder}
-						</Text>
-					</Pressable>
+							<TextInput
+								accessibilityLabel={line.spoken}
+								autoComplete="off"
+								autoCorrect={false}
+								autoFocus={system.autoFocus && line.active}
+								editable={line.active}
+								inputMode="decimal"
+								keyboardType="decimal-pad"
+								maxFontSizeMultiplier={SYSTEM_AMOUNT_SCALE}
+								onBlur={() => system.onFocusChange(false)}
+								onChangeText={system.onChangeText}
+								onFocus={() => system.onFocusChange(true)}
+								placeholder={line.placeholder}
+								placeholderTextColor={color.fg3}
+								ref={(node) => {
+									inputs.current[line.key] = node;
+								}}
+								selectionColor={color.brand}
+								style={[
+									typeStyle(theme, "title", { weight: "medium", tabular: true }),
+									{
+										flex: 1,
+										minHeight: size.touchMin.phone,
+										paddingRight: space[2],
+										textAlign: "right",
+										color: color.fg,
+									},
+								]}
+								value={line.text}
+							/>
+						</Pressable>
+					) : (
+						<Pressable
+							accessibilityLabel={line.spoken}
+							accessibilityRole="button"
+							onPress={line.onPress}
+							style={{
+								flex: 1,
+								minHeight: size.touchMin.phone,
+								justifyContent: "center",
+							}}
+						>
+							<Text
+								accessibilityLiveRegion="polite"
+								adjustsFontSizeToFit
+								numberOfLines={1}
+								style={{
+									paddingRight: space[2],
+									textAlign: "right",
+								}}
+								tabular
+								tone={line.text ? "fg" : "fg3"}
+								variant="title"
+								weight="medium"
+							>
+								{line.text || line.placeholder}
+							</Text>
+						</Pressable>
+					)}
 				</View>
 			))}
 			{foreign ? (

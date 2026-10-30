@@ -1,11 +1,26 @@
-import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { formatMoneyDraft } from "@retrospend/domain/parse";
+import { type ReactNode, useState } from "react";
+import {
+	KeyboardAvoidingView,
+	Platform,
+	ScrollView,
+	useWindowDimensions,
+	View,
+} from "react-native";
 import { useTranslations } from "use-intl";
+import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { FieldError } from "@/ui/TextField";
 import { AmountCard, type MoneyLine } from "./AmountCard";
 import { ComposerBar } from "./ComposerBar";
+
+/**
+ * Above this text scale the keypad steps aside for the system decimal
+ * keyboard: four rows of keys, the amount card and the head no longer fit
+ * with the fields, so the amount is typed in its card and the fields scroll.
+ */
+export const SYSTEM_PAD_SCALE = 1.5;
 
 export type EntryMode = "expense" | "income" | "transfer";
 
@@ -14,8 +29,8 @@ export type EntryMode = "expense" | "income" | "transfer";
  * the Android bottom sheet: the head, the fields that scroll, and under them
  * what stays in the thumb zone. In the quick step that is the amount card,
  * the one-line preview, the operators with Add, and the keypad; in More it is
- * only Back and Add. While a text field is being typed in, the keypad steps
- * aside for the system keyboard.
+ * only Back and Add. While a text field is being typed in, and always above
+ * a text scale of 1.5, the keypad steps aside for the system keyboard.
  */
 export function ComposerShell({
 	step,
@@ -72,7 +87,11 @@ export function ComposerShell({
 	const t = useTranslations("mobile.composer");
 	const { color, space } = useTheme();
 	const quick = step === "quick";
-	const keypadUp = quick && !typing && padOpen;
+	const locale = useMoneyLocale();
+	const { fontScale } = useWindowDimensions();
+	const system = quick && fontScale > SYSTEM_PAD_SCALE;
+	const [amountFocus, setAmountFocus] = useState(false);
+	const keypadUp = quick && !typing && padOpen && !system;
 	return (
 		<KeyboardAvoidingView
 			behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -112,7 +131,30 @@ export function ComposerShell({
 						<AmountCard
 							foreign={rate}
 							lines={lines}
-							ring={amountError ? "error" : keypadUp ? "focus" : "idle"}
+							ring={
+								amountError
+									? "error"
+									: keypadUp || (system && amountFocus)
+										? "focus"
+										: "idle"
+							}
+							system={
+								system
+									? {
+											autoFocus: padOpen,
+											onChangeText: (raw) =>
+												keypad.onChange(
+													formatMoneyDraft(
+														raw,
+														locale,
+														keypad.currency,
+														keypad.text,
+													),
+												),
+											onFocusChange: setAmountFocus,
+										}
+									: undefined
+							}
 						/>
 						{amountError ? (
 							<View style={{ alignItems: "flex-end" }}>
