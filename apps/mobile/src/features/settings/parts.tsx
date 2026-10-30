@@ -6,27 +6,11 @@ import { appBuild } from "@/lib/appVersion";
 import { useTheme } from "@/theme";
 import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { EmptyState } from "@/ui/EmptyState";
-import { Glyph } from "@/ui/Glyph";
 import { ListRow, SectionHeader } from "@/ui/List";
 import { Picker, type PickerOption } from "@/ui/Picker";
 import { Screen } from "@/ui/Screen";
 import { Text } from "@/ui/Text";
 import { openWebPage } from "./webPages";
-
-/** The end of a navigating row: its value in fg-2, then the chevron. */
-export function NavEnd({ value }: { value?: string }) {
-	const { color, size, space } = useTheme();
-	return (
-		<View style={{ flexDirection: "row", alignItems: "center", gap: space[1] }}>
-			{value ? (
-				<Text numberOfLines={1} style={{ flexShrink: 1 }} tone="fg2">
-					{value}
-				</Text>
-			) : null}
-			<Glyph color={color.fg3} name="ChevronRight" size={size.icon.phone} />
-		</View>
-	);
-}
 
 /** One quiet sentence under a group, for what its rows cannot say. */
 export function GroupNote({ children }: { children: ReactNode }) {
@@ -106,7 +90,7 @@ export function PickerRow<T extends string>({
 			end={<Picker onChange={onChange} options={options} value={value} />}
 			sub={sub}
 			title={
-				<Text numberOfLines={2} weight="medium">
+				<Text numberOfLines={2} weight="normal">
 					{label}
 				</Text>
 			}
@@ -116,7 +100,8 @@ export function PickerRow<T extends string>({
 
 /**
  * A settings row that picks a currency: the label, and the one currency
- * picker (flag, code, chevron) at the end.
+ * picker as a value row (flag, code, chevron in fg-2) like every other
+ * value that opens a picker.
  */
 export function CurrencyRow({
 	label,
@@ -132,21 +117,13 @@ export function CurrencyRow({
 	onChange: (code: string) => void;
 }) {
 	return (
-		<ListRow
-			end={
-				<CurrencyPicker
-					currencies={currencies}
-					label={label}
-					onChange={onChange}
-					value={value}
-					yours={yours}
-				/>
-			}
-			title={
-				<Text numberOfLines={2} weight="medium">
-					{label}
-				</Text>
-			}
+		<CurrencyPicker
+			currencies={currencies}
+			label={label}
+			onChange={onChange}
+			value={value}
+			variant="row"
+			yours={yours}
 		/>
 	);
 }

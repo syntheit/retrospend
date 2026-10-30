@@ -4,10 +4,10 @@ import { groupOf } from "@/features/wealth/accounts";
 import type { Account } from "@/features/wealth/source";
 import { useTheme } from "@/theme";
 import { ListGroup, SectionHeader } from "@/ui/List";
+import { PickField } from "@/ui/PickField";
 import { FieldError, TextField } from "@/ui/TextField";
 import { DateRow } from "./DateRow";
 import type { TransferDraft, TransferErrors } from "./draft";
-import { PickField } from "./PickField";
 import type { EntryPlace } from "./types";
 
 /**
@@ -73,7 +73,7 @@ export function TransferFields({
 	}));
 	return (
 		<View style={{ gap: space[2] }}>
-			<ListGroup>
+			<ListGroup form>
 				<PickField
 					empty={tp("account.empty")}
 					find={tp("account.find")}
@@ -131,7 +131,7 @@ export function TransferDetails({
 	const { space } = useTheme();
 	return (
 		<View style={{ paddingTop: space[1] }}>
-			<ListGroup>
+			<ListGroup form>
 				<DateRow
 					label={tc("dateField")}
 					onChange={(date) => onChange({ date })}

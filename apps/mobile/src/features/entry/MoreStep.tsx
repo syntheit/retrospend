@@ -1,12 +1,11 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { Cover } from "@/features/projects/Cover";
 import { useTheme } from "@/theme";
-import { ListGroup, ListRow, SectionHeader } from "@/ui/List";
+import { GroupItem, ListGroup, ListRow, SectionHeader } from "@/ui/List";
 import { Text } from "@/ui/Text";
 import { ChangesBlock } from "./ChangesBlock";
-import { DateRow, GroupItem } from "./DateRow";
+import { DateRow } from "./DateRow";
 import type { SavedEntry } from "./hooks";
 import { IncomeDetails } from "./IncomeFields";
 import { PlanBlock } from "./PlanBlock";
@@ -90,7 +89,7 @@ export function MoreStep({
 	onDelete: (() => void) | null;
 }) {
 	const t = useTranslations("mobile.composer");
-	const { size, space } = useTheme();
+	const { space } = useTheme();
 	const { mode, catalog } = form;
 	const split = useSplitView(form, preview, edit);
 	const gutter = { paddingHorizontal: space[4] } as const;
@@ -139,10 +138,7 @@ export function MoreStep({
 	if (mode === "transfer") {
 		return (
 			<View>
-				<TransferDetails
-					draft={form.transfer}
-					onChange={form.patchTransfer}
-				/>
+				<TransferDetails draft={form.transfer} onChange={form.patchTransfer} />
 				{changes}
 			</View>
 		);
@@ -151,14 +147,11 @@ export function MoreStep({
 	const draft = form.expense;
 	const editing = draft.editing !== null;
 	const projects = editing ? [] : catalog.projects;
-	// A saved expense keeps its project (the server does not move it): a plain row.
-	const kept = editing
-		? catalog.projects.find((p) => p.id === draft.projectId)
-		: undefined;
+	// A saved expense keeps its project (the server does not move it): a read-only row.
 	return (
 		<View>
 			<View style={{ paddingTop: space[1] }}>
-				<ListGroup>
+				<ListGroup form>
 					<DateRow
 						label={t("dateField")}
 						onChange={(date) => form.patchExpense({ date })}
@@ -172,39 +165,13 @@ export function MoreStep({
 							variant="row"
 						/>
 					) : null}
-					{kept ? (
-						<ListRow
-							accessibilityLabel={`${t("project.label")}, ${kept.name}`}
-							end={
-								<View
-									style={{
-										flexDirection: "row",
-										alignItems: "center",
-										gap: space[2],
-									}}
-								>
-									<Cover
-										diameter={size.avatar.sm}
-										id={kept.id}
-										imageUri={kept.imageUrl}
-										name={kept.name}
-									/>
-									<Text numberOfLines={1} tone="fg2">
-										{kept.name}
-									</Text>
-								</View>
-							}
-							title={t("project.label")}
-						/>
-					) : editing ? (
-						<ListRow
-							accessibilityLabel={`${t("project.label")}, ${t("project.none")}`}
-							end={
-								<Text numberOfLines={1} tone="fg2">
-									{t("project.none")}
-								</Text>
-							}
-							title={t("project.label")}
+					{editing ? (
+						<ProjectPick
+							onChange={form.pickProject}
+							projects={catalog.projects}
+							readOnly
+							value={draft.projectId}
+							variant="row"
 						/>
 					) : null}
 				</ListGroup>

@@ -15,12 +15,12 @@ import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import type { GlyphName } from "@/ui/Glyph";
 import { IconTile } from "@/ui/IconTile";
-import { ListGroup, ListRow } from "@/ui/List";
+import { GroupItem, ListGroup, ListRow } from "@/ui/List";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
 import { adminAccess } from "../admin/rules";
 import { channelsOn, type NotificationChannel } from "./channels";
-import { AboutFooter, Block, GroupNote, NavEnd, SettingsPage } from "./parts";
+import { AboutFooter, Block, GroupNote, SettingsPage } from "./parts";
 import {
 	useCategories,
 	useGeneralSettings,
@@ -132,7 +132,7 @@ export function SettingsScreen() {
 
 	const row = (id: Exclude<SectionId, "profile">) => (
 		<ListRow
-			end={<NavEnd />}
+			chevron
 			key={id}
 			lead={<IconTile name={TILES[id]} />}
 			onPress={() => router.push(`/settings/${id}`)}
@@ -152,7 +152,7 @@ export function SettingsScreen() {
 			</Text>
 			<ListGroup>
 				<ListRow
-					end={<NavEnd />}
+					chevron
 					lead={face ? <Avatar face={face} /> : <IconTile name="User" />}
 					onPress={() => router.push("/settings/profile")}
 					sub={me?.name ?? signedIn?.name}
@@ -170,7 +170,7 @@ export function SettingsScreen() {
 					<View style={{ height: space[6] }} />
 					<ListGroup>
 						<ListRow
-							end={admin === "ok" ? <NavEnd /> : undefined}
+							chevron={admin === "ok"}
 							lead={<IconTile name="Shield" />}
 							onPress={
 								admin === "ok"
@@ -187,20 +187,18 @@ export function SettingsScreen() {
 			<Block>
 				<ListGroup>
 					<ListRow
-						end={<NavEnd />}
+						chevron
 						lead={<IconTile name="MessageSquare" />}
 						onPress={() => feedback.open()}
 						title={tf("title")}
 					/>
-					<ListRow>
-						<View style={{ flex: 1 }}>
-							<SwitchRow
-								label={tf("errorReports")}
-								onChange={setErrorReportsPref}
-								value={errorReports}
-							/>
-						</View>
-					</ListRow>
+					<GroupItem>
+						<SwitchRow
+							label={tf("errorReports")}
+							onChange={setErrorReportsPref}
+							value={errorReports}
+						/>
+					</GroupItem>
 				</ListGroup>
 				<GroupNote>{tf("errorReportsDetail")}</GroupNote>
 			</Block>

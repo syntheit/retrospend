@@ -2,7 +2,7 @@ import { useTranslations } from "use-intl";
 import { Cover } from "@/features/projects/Cover";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
-import { PickField } from "./PickField";
+import { PickField } from "@/ui/PickField";
 import type { EntryProject } from "./types";
 
 /**
@@ -14,9 +14,12 @@ export function ProjectPick({
 	variant,
 	projects,
 	value,
+	readOnly,
 	onChange,
 }: {
 	variant: "pill" | "row";
+	/** A saved expense keeps its project: the row shows it and does not open. */
+	readOnly?: boolean;
 	projects: EntryProject[];
 	value: string | null;
 	onChange: (projectId: string | null) => void;
@@ -37,6 +40,7 @@ export function ProjectPick({
 					) : null,
 			}}
 			onChange={onChange}
+			readOnly={readOnly}
 			rows={projects.map((p) => ({
 				id: p.id,
 				label: p.name,

@@ -107,7 +107,7 @@ jest.mock("@/features/entry/hooks", () => ({
 	}),
 }));
 const mockPicked: { rows: { id: string }[] } = { rows: [] };
-jest.mock("@/features/entry/PickField", () => ({
+jest.mock("@/ui/PickField", () => ({
 	PickField: ({ rows }: { rows: { id: string }[] }) => {
 		mockPicked.rows = rows;
 		return null;

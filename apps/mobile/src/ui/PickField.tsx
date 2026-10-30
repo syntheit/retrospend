@@ -1,14 +1,11 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useTheme } from "@/theme";
-import { Chip } from "@/ui/Chip";
-import { Glyph } from "@/ui/Glyph";
-import { ListRow } from "@/ui/List";
-import { PickerSheet } from "@/ui/PickerSheet";
-import type { PickRow } from "@/ui/pickGroups";
-import { Text } from "@/ui/Text";
+import { Chip } from "./Chip";
+import { ListRow, NavEnd } from "./List";
+import { PickerSheet } from "./PickerSheet";
+import type { PickRow } from "./pickGroups";
+import { Text } from "./Text";
 
 /**
  * A choice from a list, in two looks over the one picker sheet
@@ -29,6 +26,7 @@ export function PickField({
 	rows,
 	value,
 	none,
+	readOnly,
 	onChange,
 }: {
 	variant?: "pill" | "row";
@@ -40,10 +38,11 @@ export function PickField({
 	value: string | null;
 	/** `label` is the picker row; `shown` is what the pill or row says while nothing is picked. */
 	none?: { label: string; shown?: string; lead: ReactNode };
+	/** Shows the pick but cannot change it (a saved expense keeps its project): no chevron, no sheet. */
+	readOnly?: boolean;
 	onChange: (id: string | null) => void;
 }) {
 	const t = useTranslations("mobile.pickers");
-	const { color, size, space } = useTheme();
 	const [open, setOpen] = useState(false);
 	const picked = rows.find((r) => r.id === value);
 	const shown = picked
@@ -71,26 +70,14 @@ export function PickField({
 				<ListRow
 					accessibilityLabel={spoken}
 					end={
-						<View
-							style={{
-								flexDirection: "row",
-								alignItems: "center",
-								gap: space[2],
-							}}
-						>
-							{shown.lead}
-							<Text numberOfLines={1} tone="fg2">
-								{shown.text}
-							</Text>
-							<Glyph
-								color={color.fg3}
-								name="ChevronRight"
-								size={size.icon.phone}
-							/>
-						</View>
+						<NavEnd chevron={!readOnly} lead={shown.lead} value={shown.text} />
 					}
-					onPress={() => setOpen(true)}
-					title={label}
+					onPress={readOnly ? undefined : () => setOpen(true)}
+					title={
+						<Text numberOfLines={1} weight="normal">
+							{label}
+						</Text>
+					}
 				/>
 			)}
 			<PickerSheet

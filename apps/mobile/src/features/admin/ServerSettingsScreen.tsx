@@ -2,12 +2,12 @@ import type { RetrospendClient } from "@retrospend/api-client";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
-import { ListGroup, ListRow } from "@/ui/List";
+import { GroupItem, ListGroup, ListRow } from "@/ui/List";
+import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { Block, PageState, PickerRow, SettingsPage } from "../settings/parts";
 import { importJobChoices } from "./rules";
-import { SwitchItem } from "./SwitchItem";
 import { detailOf, useAdminRead } from "./useAdminRead";
 import { useServerSettings } from "./useServerSettings";
 
@@ -56,25 +56,29 @@ export function ServerSettingsScreen() {
 	return (
 		<SettingsPage>
 			<Block title={t("features")}>
-				<ListGroup>
-					<SwitchItem
-						detail={t("feedbackDetail")}
-						label={t("feedback")}
-						onChange={(on) => void server.save({ enableFeedback: on })}
-						value={s.enableFeedback}
-					/>
-					<SwitchItem
-						detail={t("webhooksDetail")}
-						label={t("webhooks")}
-						onChange={(on) =>
-							void server.save({ webhooksAllowPrivateTargets: on })
-						}
-						value={s.webhooksAllowPrivateTargets}
-					/>
+				<ListGroup form>
+					<GroupItem>
+						<SwitchRow
+							detail={t("feedbackDetail")}
+							label={t("feedback")}
+							onChange={(on) => void server.save({ enableFeedback: on })}
+							value={s.enableFeedback}
+						/>
+					</GroupItem>
+					<GroupItem>
+						<SwitchRow
+							detail={t("webhooksDetail")}
+							label={t("webhooks")}
+							onChange={(on) =>
+								void server.save({ webhooksAllowPrivateTargets: on })
+							}
+							value={s.webhooksAllowPrivateTargets}
+						/>
+					</GroupItem>
 				</ListGroup>
 			</Block>
 			<Block title={t("limits")}>
-				<ListGroup>
+				<ListGroup form>
 					<PickerRow<Privacy>
 						label={t("audit")}
 						onChange={(value) => void server.save({ auditPrivacyMode: value })}
@@ -101,7 +105,7 @@ export function ServerSettingsScreen() {
 				</ListGroup>
 			</Block>
 			<Block title={t("ai")}>
-				<ListGroup>
+				<ListGroup form>
 					<PickerRow<"LOCAL" | "EXTERNAL">
 						label={t("aiMode")}
 						onChange={(value) => void saveAi({ defaultAiMode: value })}

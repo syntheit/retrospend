@@ -4,8 +4,8 @@ import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
 import { useSignOut } from "@/features/account/useSignOut";
-import { ListGroup, ListRow } from "@/ui/List";
-import { Block, GroupNote, NavEnd, SettingsPage } from "../parts";
+import { ListGroup, ListRow, NavEnd } from "@/ui/List";
+import { Block, GroupNote, SettingsPage } from "../parts";
 import { hostOf } from "../source";
 import { openWebPage } from "../webPages";
 import { PasswordSheet } from "./PasswordSheet";
@@ -38,7 +38,7 @@ export function SecuritySection() {
 				<Block>
 					<ListGroup>
 						<ListRow
-							end={<NavEnd />}
+							chevron
 							onPress={() => setChanging(true)}
 							title={t("changePassword")}
 						/>
@@ -57,7 +57,7 @@ export function SecuritySection() {
 							/>
 						) : null}
 						<ListRow
-							end={<NavEnd />}
+							chevron
 							onPress={() => router.push("/settings/sessions")}
 							title={t("devices")}
 						/>
