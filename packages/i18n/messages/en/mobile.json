@@ -327,6 +327,7 @@
 		"missing": "Open this entry from Activity.",
 		"date": "Date",
 		"category": "Category",
+		"changeCategory": "Change category",
 		"uncategorized": "No category",
 		"status": "Status",
 		"paidBy": "Paid by",
@@ -420,7 +421,10 @@
 		"pick": "Pick an expense",
 		"offlineSince": "Offline since {time}",
 		"search": "Search expenses",
-		"summary": "{count, plural, one {# expense} other {# expenses}}",
+		"summary": {
+			"month": "{count, plural, one {# expense} other {# expenses}} this month",
+			"all": "{count, plural, one {# expense} other {# expenses}}, all time"
+		},
 		"today": "Today",
 		"yesterday": "Yesterday",
 		"chip": {
@@ -481,8 +485,11 @@
 		"segment": {
 			"label": "Activity",
 			"expenses": "Expenses",
-			"recurring": "Recurring"
-		}
+			"recurring": "Recurring",
+			"import": "Import"
+		},
+		"importNotice": "{count, plural, one {# imported expense waits for a check} other {# imported expenses wait for a check}}",
+		"importStart": "Start"
 	},
 	"budget": {
 		"title": "Budget",
@@ -2200,9 +2207,9 @@
 		},
 		"summary": {
 			"out": {
-				"month": "Your recurring expenses cost {amount} a month.",
-				"quarter": "Your recurring expenses cost {amount} a quarter.",
-				"year": "Your recurring expenses cost {amount} a year."
+				"month": "Recurring expenses cost {amount} a month.",
+				"quarter": "Recurring expenses cost {amount} a quarter.",
+				"year": "Recurring expenses cost {amount} a year."
 			},
 			"in": {
 				"month": "Recurring income brings in {amount} a month.",
@@ -2278,7 +2285,10 @@
 			"body": "Nothing is logged. It comes back on {date}.",
 			"submit": "Skip",
 			"toast": "Skipped {title}. Next due {date}"
-		}
+		},
+		"search": "Search recurring expenses",
+		"foreign": "Foreign currency",
+		"emptyFiltered": "Nothing matches"
 	},
 	"shortcuts": {
 		"addExpense": "Add expense",

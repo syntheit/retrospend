@@ -327,6 +327,7 @@
 		"missing": "Ouvre cette opération depuis Activité.",
 		"date": "Date",
 		"category": "Catégorie",
+		"changeCategory": "Changer de catégorie",
 		"uncategorized": "Sans catégorie",
 		"status": "Statut",
 		"paidBy": "Payé par",
@@ -420,7 +421,10 @@
 		"pick": "Choisis une dépense",
 		"offlineSince": "Hors ligne depuis {time}",
 		"search": "Rechercher des dépenses",
-		"summary": "{count, plural, one {# dépense} other {# dépenses}}",
+		"summary": {
+			"month": "{count, plural, one {# dépense} other {# dépenses}} ce mois-ci",
+			"all": "{count, plural, one {# dépense} other {# dépenses}}, toute la période"
+		},
 		"today": "Aujourd’hui",
 		"yesterday": "Hier",
 		"chip": {
@@ -481,8 +485,11 @@
 		"segment": {
 			"label": "Activité",
 			"expenses": "Dépenses",
-			"recurring": "Récurrents"
-		}
+			"recurring": "Récurrents",
+			"import": "Importer"
+		},
+		"importNotice": "{count, plural, one {# dépense importée attend une vérification} other {# dépenses importées attendent une vérification}}",
+		"importStart": "Commencer"
 	},
 	"budget": {
 		"title": "Budget",
@@ -2200,9 +2207,9 @@
 		},
 		"summary": {
 			"out": {
-				"month": "Tes dépenses récurrentes coûtent {amount} par mois.",
-				"quarter": "Tes dépenses récurrentes coûtent {amount} par trimestre.",
-				"year": "Tes dépenses récurrentes coûtent {amount} par an."
+				"month": "Les dépenses récurrentes coûtent {amount} par mois.",
+				"quarter": "Les dépenses récurrentes coûtent {amount} par trimestre.",
+				"year": "Les dépenses récurrentes coûtent {amount} par an."
 			},
 			"in": {
 				"month": "Tes revenus récurrents rapportent {amount} par mois.",
@@ -2278,7 +2285,10 @@
 			"body": "Rien n'est enregistré. Prochaine échéance le {date}.",
 			"submit": "Ignorer",
 			"toast": "{title} ignoré. Prochaine échéance le {date}"
-		}
+		},
+		"search": "Rechercher des dépenses récurrentes",
+		"foreign": "Devise étrangère",
+		"emptyFiltered": "Aucun résultat"
 	},
 	"shortcuts": {
 		"addExpense": "Ajouter une dépense",

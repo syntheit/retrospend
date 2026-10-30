@@ -13,12 +13,14 @@ import { canSelect } from "@/features/activity/bulk";
 import { DayHeader, useDayLabel } from "@/features/activity/DayHeader";
 import { groupByDay } from "@/features/activity/days";
 import { EntryDetail } from "@/features/activity/EntryView";
+import { ImportNotice } from "@/features/activity/ImportNotice";
 import { DEFAULT_FILTER, isDefaultFilter } from "@/features/activity/filter";
 import { rowActions } from "@/features/activity/rowActions";
 import type { ActivityItem } from "@/features/activity/source";
 import { useActivity } from "@/features/activity/useActivity";
 import { useBulkActions } from "@/features/activity/useBulkActions";
 import { useDebouncedSearch } from "@/features/activity/useDebouncedSearch";
+import { useImportReview } from "@/features/activity/useImportReview";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { RecurringView } from "@/features/recurring/RecurringView";
 import { RECURRING_APART } from "@/layout/destinations";
@@ -67,6 +69,7 @@ export default function ActivityScreen() {
 	const [picked, setPicked] = useState<ReadonlySet<string> | null>(null);
 	const { state, reload, loadMore, loadingMore } = useActivity(filter);
 	const bulk = useBulkActions(() => setPicked(null));
+	const importing = useImportReview();
 
 	const page = state.status === "ready" ? state.data : null;
 	const sections = useMemo(
@@ -172,12 +175,17 @@ export default function ActivityScreen() {
 			}
 			ListHeaderComponent={
 				<View>
+					{page && !picked ? (
+						<ActivitySummary page={page} period={filter.period} />
+					) : null}
 					{segments}
 					<StaleNote
 						since={state.status === "ready" ? state.staleSince : null}
 					/>
 					<ActivityFilters filter={filter} onChange={setFilter} />
-					{page && !picked ? <ActivitySummary page={page} /> : null}
+					{importing !== null && !picked ? (
+						<ImportNotice count={importing} />
+					) : null}
 				</View>
 			}
 			onEndReached={loadMore}
@@ -247,12 +255,12 @@ export default function ActivityScreen() {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
-			{listDetail || segment !== "expenses" ? null : (
+			{listDetail ? null : (
 				<Stack.Screen
 					options={{
 						headerSearchBarOptions: {
 							ref: searchRef,
-							placeholder: t("search"),
+							placeholder: segment === "recurring" ? tr("search") : t("search"),
 							onChangeText: (event) => setSearch(event.nativeEvent.text),
 						},
 					}}
@@ -287,21 +295,17 @@ export default function ActivityScreen() {
 				}
 				list={
 					segment === "recurring" ? (
-						<RecurringView embedded header={segments} />
+						<RecurringView embedded header={segments} query={search} />
 					) : (
 						list
 					)
 				}
-				search={
-					segment === "recurring"
-						? undefined
-						: {
-								value: search,
-								onChange: setSearch,
-								placeholder: t("search"),
-								ref: searchRef,
-							}
-				}
+				search={{
+					value: search,
+					onChange: setSearch,
+					placeholder: segment === "recurring" ? tr("search") : t("search"),
+					ref: searchRef,
+				}}
 			/>
 			{bulk.sheets}
 		</View>

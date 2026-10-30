@@ -6,11 +6,13 @@ import { EmptyState } from "@/ui/EmptyState";
 import { StaleNote } from "@/ui/List";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
+import { canSelect } from "./bulk";
 import { EntryActions } from "./EntryActions";
 import { EntryFacts } from "./EntryFacts";
 import { EntryHead } from "./EntryHead";
 import { EntryShares } from "./EntryShares";
 import type { ActivityItem } from "./source";
+import { useBulkActions } from "./useBulkActions";
 import { useEntryDetail } from "./useEntryDetail";
 import { useEntryRow } from "./useEntryRow";
 
@@ -75,6 +77,7 @@ export function EntryView({
 	const t = useTranslations("mobile.entry");
 	const { space } = useTheme();
 	const detail = useEntryDetail(item);
+	const bulk = useBulkActions(() => detail.reload());
 	const heading =
 		item.kind === "income"
 			? t("titleIncome")
@@ -93,7 +96,17 @@ export function EntryView({
 				<Stack.Screen options={{ title: heading, headerLargeTitle: false }} />
 			) : null}
 			<EntryHead item={item} />
-			<EntryFacts extra={detail.personal} item={item} />
+			<EntryFacts
+				extra={detail.personal}
+				item={item}
+				// The same rule as a bulk pick: only your own expense, and only
+				// while the row is the server's.
+				onCategory={
+					editable && canSelect(item)
+						? () => bulk.categorize([item.entityId])
+						: undefined
+				}
+			/>
 			{detail.shared ? <EntryShares detail={detail.shared} /> : null}
 			{note ? <Text tone="fg2">{note}</Text> : null}
 			{addedBy ? (
@@ -112,6 +125,7 @@ export function EntryView({
 				}
 			/>
 			<StaleNote since={staleSince ?? detail.staleSince} />
+			{bulk.sheets}
 		</View>
 	);
 }

@@ -327,6 +327,7 @@
 		"missing": "Öffne diesen Eintrag über Aktivität.",
 		"date": "Datum",
 		"category": "Kategorie",
+		"changeCategory": "Kategorie ändern",
 		"uncategorized": "Keine Kategorie",
 		"status": "Status",
 		"paidBy": "Bezahlt von",
@@ -420,7 +421,10 @@
 		"pick": "Wähle eine Ausgabe",
 		"offlineSince": "Offline seit {time}",
 		"search": "Ausgaben suchen",
-		"summary": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
+		"summary": {
+			"month": "{count, plural, one {# Ausgabe} other {# Ausgaben}} diesen Monat",
+			"all": "{count, plural, one {# Ausgabe} other {# Ausgaben}}, gesamter Zeitraum"
+		},
 		"today": "Heute",
 		"yesterday": "Gestern",
 		"chip": {
@@ -481,8 +485,11 @@
 		"segment": {
 			"label": "Aktivität",
 			"expenses": "Ausgaben",
-			"recurring": "Wiederkehrend"
-		}
+			"recurring": "Wiederkehrend",
+			"import": "Import"
+		},
+		"importNotice": "{count, plural, one {# importierte Ausgabe wartet auf Prüfung} other {# importierte Ausgaben warten auf Prüfung}}",
+		"importStart": "Starten"
 	},
 	"budget": {
 		"title": "Budget",
@@ -2200,9 +2207,9 @@
 		},
 		"summary": {
 			"out": {
-				"month": "Deine wiederkehrenden Ausgaben kosten {amount} im Monat.",
-				"quarter": "Deine wiederkehrenden Ausgaben kosten {amount} im Quartal.",
-				"year": "Deine wiederkehrenden Ausgaben kosten {amount} im Jahr."
+				"month": "Wiederkehrende Ausgaben kosten {amount} im Monat.",
+				"quarter": "Wiederkehrende Ausgaben kosten {amount} im Quartal.",
+				"year": "Wiederkehrende Ausgaben kosten {amount} im Jahr."
 			},
 			"in": {
 				"month": "Dein wiederkehrendes Einkommen bringt {amount} im Monat.",
@@ -2278,7 +2285,10 @@
 			"body": "Es wird nichts erfasst. Wieder fällig am {date}.",
 			"submit": "Überspringen",
 			"toast": "{title} übersprungen. Nächste Fälligkeit {date}"
-		}
+		},
+		"search": "Wiederkehrende Ausgaben suchen",
+		"foreign": "Fremdwährung",
+		"emptyFiltered": "Keine Treffer"
 	},
 	"shortcuts": {
 		"addExpense": "Ausgabe hinzufügen",
