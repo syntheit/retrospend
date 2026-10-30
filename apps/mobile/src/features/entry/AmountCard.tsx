@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
@@ -24,6 +24,9 @@ export interface MoneyLine {
 	active: boolean;
 	onPress: () => void;
 }
+
+/** The sheet's motion, with a margin: the keyboard waits this long on a fresh composer. */
+export const SHEET_SETTLE_MS = 600;
 
 /** The typed amount scales with the text size up to here, so a figure fits its card. */
 const SYSTEM_AMOUNT_SCALE = 1.5;
@@ -61,6 +64,18 @@ export function AmountCard({
 	const theme = useTheme();
 	const { color, radius, size, space } = theme;
 	const inputs = useRef<Record<string, TextInput | null>>({});
+	// The keyboard opens once the sheet has rested, not while it slides in.
+	const focusFirst = system?.autoFocus ?? false;
+	const activeKey = lines.find((line) => line.active)?.key;
+	const focused = useRef(false);
+	useEffect(() => {
+		if (!focusFirst || focused.current || !activeKey) return;
+		const id = setTimeout(() => {
+			focused.current = true;
+			inputs.current[activeKey]?.focus();
+		}, SHEET_SETTLE_MS);
+		return () => clearTimeout(id);
+	}, [focusFirst, activeKey]);
 	const edge = space[1] / 2;
 	const many = lines.length > 1;
 	// A resting card is a line-strong hairline, so it reads on the sheet's
@@ -117,7 +132,6 @@ export function AmountCard({
 								accessibilityLabel={line.spoken}
 								autoComplete="off"
 								autoCorrect={false}
-								autoFocus={system.autoFocus && line.active}
 								editable={line.active}
 								inputMode="decimal"
 								keyboardType="decimal-pad"
@@ -132,7 +146,10 @@ export function AmountCard({
 								}}
 								selectionColor={color.brand}
 								style={[
-									typeStyle(theme, "title", { weight: "medium", tabular: true }),
+									typeStyle(theme, "title", {
+										weight: "medium",
+										tabular: true,
+									}),
 									{
 										flex: 1,
 										minHeight: size.touchMin.phone,

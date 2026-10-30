@@ -7,6 +7,7 @@ import {
 	useWindowDimensions,
 	View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
@@ -30,7 +31,9 @@ export type EntryMode = "expense" | "income" | "transfer";
  * what stays in the thumb zone. In the quick step that is the amount card,
  * the one-line preview, the operators with Add, and the keypad; in More it is
  * only Back and Add. While a text field is being typed in, and always above
- * a text scale of 1.5, the keypad steps aside for the system keyboard.
+ * a text scale of 1.5, the keypad steps aside for the system keyboard; then
+ * the head scrolls with the fields and the operators (no key on that
+ * keyboard) are not shown.
  */
 export function ComposerShell({
 	step,
@@ -92,17 +95,24 @@ export function ComposerShell({
 	const system = quick && fontScale > SYSTEM_PAD_SCALE;
 	const [amountFocus, setAmountFocus] = useState(false);
 	const keypadUp = quick && !typing && padOpen && !system;
+	// The sheet's body ends the home indicator's height above the window's
+	// bottom, so the keyboard covers that much less of it than the view
+	// thinks; without this the pinned Add sits under the keys.
+	const { bottom } = useSafeAreaInsets();
 	return (
 		<KeyboardAvoidingView
 			behavior={Platform.OS === "ios" ? "padding" : undefined}
+			keyboardVerticalOffset={system ? bottom : 0}
 			style={{
 				flex: 1,
 				backgroundColor: surface ? undefined : color.bg,
 			}}
 		>
-			<View style={{ paddingHorizontal: space[4], paddingBottom: space[2] }}>
-				{header}
-			</View>
+			{system ? null : (
+				<View style={{ paddingHorizontal: space[4], paddingBottom: space[2] }}>
+					{header}
+				</View>
+			)}
 			<ScrollView
 				// More brings its own gutter: its inset groups sit in the page's.
 				contentContainerStyle={{
@@ -114,6 +124,8 @@ export function ComposerShell({
 				onScrollBeginDrag={onScrollDrag}
 				style={{ flex: 1 }}
 			>
+				{/* With the keyboard up there is little room: the head scrolls with the fields. */}
+				{system ? header : null}
 				{children}
 			</ScrollView>
 			<View
@@ -172,7 +184,7 @@ export function ComposerShell({
 					onAdd={onAdd}
 					onBack={onBack}
 					onOperator={onOperator}
-					showOperators={!typing}
+					showOperators={!typing && !system}
 					step={step}
 				/>
 				{keypadUp ? (
