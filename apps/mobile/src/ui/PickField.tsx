@@ -26,6 +26,7 @@ export function PickField({
 	rows,
 	value,
 	none,
+	placeholder,
 	readOnly,
 	onChange,
 }: {
@@ -38,6 +39,8 @@ export function PickField({
 	value: string | null;
 	/** `label` is the picker row; `shown` is what the pill or row says while nothing is picked. */
 	none?: { label: string; shown?: string; lead: ReactNode };
+	/** What the pill or row says while nothing is picked and there is no `none` row. */
+	placeholder?: string;
 	/** Shows the pick but cannot change it (a saved expense keeps its project): no chevron, no sheet. */
 	readOnly?: boolean;
 	onChange: (id: string | null) => void;
@@ -49,7 +52,7 @@ export function PickField({
 		? { text: picked.label, lead: picked.lead }
 		: none
 			? { text: none.shown ?? none.label, lead: none.lead }
-			: { text: "", lead: null };
+			: { text: placeholder ?? "", lead: null };
 	const NONE = "";
 	const all = [
 		...(none ? [{ id: NONE, label: none.label, lead: none.lead }] : []),

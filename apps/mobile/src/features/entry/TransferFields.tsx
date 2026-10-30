@@ -1,7 +1,6 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { groupOf } from "@/features/wealth/accounts";
-import type { Account } from "@/features/wealth/source";
+import { AccountDot } from "@/features/wealth/AccountDot";
 import { useTheme } from "@/theme";
 import { ListGroup, SectionHeader } from "@/ui/List";
 import { PickField } from "@/ui/PickField";
@@ -9,36 +8,6 @@ import { FieldError, TextField } from "@/ui/TextField";
 import { DateRow } from "./DateRow";
 import type { TransferDraft, TransferErrors } from "./draft";
 import type { EntryPlace } from "./types";
-
-/**
- * The dot of an account's group: the same series color the Wealth page uses
- * for the group, so the account is known by where it sits. Liabilities stay
- * neutral. A type the groups do not know reads as cash.
- */
-function GroupDot({ type }: { type: string }) {
-	const { color, radius, space } = useTheme();
-	const group = groupOf(type as Account["type"]) ?? "cash";
-	const fill =
-		group === "cash"
-			? color.series1
-			: group === "investments"
-				? color.series2
-				: group === "crypto"
-					? color.series3
-					: group === "property"
-						? color.series4
-						: color.fg3;
-	return (
-		<View
-			style={{
-				width: space[2],
-				height: space[2],
-				borderRadius: radius.chip,
-				backgroundColor: fill,
-			}}
-		/>
-	);
-}
 
 /**
  * The quick step of Transfer: your own money between two of your accounts,
@@ -69,7 +38,7 @@ export function TransferFields({
 		id: p.id,
 		label: p.name,
 		detail: p.currency,
-		lead: <GroupDot type={p.type} />,
+		lead: <AccountDot type={p.type} />,
 	}));
 	return (
 		<View style={{ gap: space[2] }}>

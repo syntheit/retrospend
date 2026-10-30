@@ -643,7 +643,6 @@
 			"out": "Sacar",
 			"from": "Desde",
 			"to": "Hacia",
-			"place": "{name}, {amount}",
 			"amount": "Monto a mover",
 			"submit": "Mover",
 			"nothingToMove": "Nada tiene plata para mover acá. {pool} está vacío.",
@@ -655,7 +654,6 @@
 			"notOver": "{name} no se pasó, así que no hay nada para cubrir.",
 			"from": "Sacalo de",
 			"pickSource": "Elegí de dónde",
-			"source": "{name}, {amount}",
 			"sourceDue": "{source}, vence el {date}",
 			"sourceFallback": "Sobre",
 			"noSource": "Nada tiene plata para cubrir esto.",
@@ -850,7 +848,8 @@
 			"action": {
 				"ADD_TO_SPENDING": "Sumar {amount} a Gastos",
 				"MOVE_MONEY": "Mover {amount} acá"
-			}
+			},
+			"anyEnvelope": "Cualquier sobre"
 		},
 		"newEnvelope": {
 			"title": "Agregar un sobre",
@@ -1124,7 +1123,10 @@
 			"loading": "Cargando"
 		},
 		"categories": {
-			"find": "Buscá una categoría"
+			"find": "Buscá una categoría",
+			"pick": "Elegí categorías",
+			"pickOne": "Elegí una categoría",
+			"count": "{count, plural, one {# categoría} other {# categorías}}"
 		},
 		"planEdit": {
 			"title": "Planificar {name}",
@@ -1291,6 +1293,15 @@
 			"toAssign": "Dinero que tenés y no está en ningún sobre.",
 			"heldTitle": "Reservado para otros",
 			"held": "Dinero que otros te deben y que el presupuesto aparta."
+		},
+		"pick": {
+			"envelopeFind": "Buscá un sobre",
+			"envelopeEmpty": "Ningún sobre coincide",
+			"groupFind": "Buscá un grupo",
+			"groupEmpty": "Ningún grupo coincide",
+			"envelopes": "Elegí sobres",
+			"envelopesCount": "{count, plural, one {# sobre} other {# sobres}}",
+			"envelope": "Elegí un sobre"
 		}
 	},
 	"wealth": {

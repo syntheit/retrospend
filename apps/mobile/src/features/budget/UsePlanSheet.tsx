@@ -9,7 +9,7 @@ import { useApi } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { Picker } from "@/ui/Picker";
 import type { SheetDetent } from "@/ui/Sheet";
-import { Text } from "@/ui/Text";
+import { FieldLabel } from "@/ui/TextField";
 import { planBody, type RestChoice } from "./bodies";
 import { monthDate } from "./months";
 import { type BudgetMonth, envelopeById, type FillPlan } from "./source";
@@ -146,9 +146,9 @@ export function UsePlanSheet({
 					</View>
 					{plan.restOptions.length > 1 && plan.rest.minor > 0 ? (
 						<View style={{ gap: space[1] }}>
-							<Text tone="fg2" variant="small">
+							<FieldLabel>
 								{t("restTitle", { amount: money(plan.rest) })}
-							</Text>
+							</FieldLabel>
 							<Picker
 								onChange={(value) => setRest(value as RestChoice)}
 								options={plan.restOptions.map((option) => ({

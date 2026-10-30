@@ -643,7 +643,6 @@
 			"out": "Entnehmen",
 			"from": "Von",
 			"to": "Nach",
-			"place": "{name}, {amount}",
 			"amount": "Betrag zum Verschieben",
 			"submit": "Verschieben",
 			"nothingToMove": "Nichts hat hier Geld zum Verschieben. {pool} ist leer.",
@@ -655,7 +654,6 @@
 			"notOver": "{name} ist nicht überzogen, es gibt also nichts zu decken.",
 			"from": "Nehmen aus",
 			"pickSource": "Quelle wählen",
-			"source": "{name}, {amount}",
 			"sourceDue": "{source}, fällig {date}",
 			"sourceFallback": "Umschlag",
 			"noSource": "Nichts hat Geld, um das zu decken.",
@@ -850,7 +848,8 @@
 			"action": {
 				"ADD_TO_SPENDING": "{amount} zu Ausgaben hinzufügen",
 				"MOVE_MONEY": "{amount} hineinschieben"
-			}
+			},
+			"anyEnvelope": "Beliebiger Umschlag"
 		},
 		"newEnvelope": {
 			"title": "Umschlag hinzufügen",
@@ -1124,7 +1123,10 @@
 			"loading": "Lädt"
 		},
 		"categories": {
-			"find": "Kategorie suchen"
+			"find": "Kategorie suchen",
+			"pick": "Kategorien wählen",
+			"pickOne": "Kategorie wählen",
+			"count": "{count, plural, one {# Kategorie} other {# Kategorien}}"
 		},
 		"planEdit": {
 			"title": "{name} planen",
@@ -1291,6 +1293,15 @@
 			"toAssign": "Geld, das du hast und das in keinem Umschlag liegt.",
 			"heldTitle": "Für andere gehalten",
 			"held": "Geld, das andere dir schulden und das das Budget beiseitelegt."
+		},
+		"pick": {
+			"envelopeFind": "Umschlag suchen",
+			"envelopeEmpty": "Kein Umschlag passt",
+			"groupFind": "Gruppe suchen",
+			"groupEmpty": "Keine Gruppe passt",
+			"envelopes": "Umschläge wählen",
+			"envelopesCount": "{count, plural, one {# Umschlag} other {# Umschläge}}",
+			"envelope": "Umschlag wählen"
 		}
 	},
 	"wealth": {

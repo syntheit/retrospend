@@ -1,10 +1,9 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { useMemo, useState } from "react";
-import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
-import { ChoiceList, TextField } from "./fields";
+import { PickField } from "@/ui/PickField";
+import { PickLabeled, PickMany } from "./pickers";
 
 /** The part of a category an envelope picker needs. */
 export interface BudgetCategory {
@@ -26,67 +25,84 @@ export async function loadCategories(
 		.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Names that contain the text, ignoring case and accents. */
-export function matchCategories(
-	categories: readonly BudgetCategory[],
-	query: string,
-): BudgetCategory[] {
-	const fold = (s: string) =>
-		s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
-	const q = fold(query.trim());
-	return q === ""
-		? [...categories]
-		: categories.filter((c) => fold(c.name).includes(q));
+/** A category as a picker row: its bare glyph in its own color (a picker carries identity). */
+function useCategoryRows(categories: readonly BudgetCategory[]) {
+	const { color, size } = useTheme();
+	return categories.map((c) => ({
+		id: c.id,
+		label: c.name,
+		lead: (
+			<CategoryGlyph
+				category={c}
+				color={categoryColor(color, c.tone)}
+				size={size.icon.phone}
+			/>
+		),
+	}));
 }
 
 /**
- * Categories as a checked list with a find field, each with its bare glyph in
- * its own color (a picker carries identity). One choice or several is the
- * caller's: it gets the id that was pressed.
+ * Several categories: a trigger that says how many, and the picker sheet
+ * (search, bare glyphs, a check per row, Done). The caller gets the id that
+ * was pressed.
  */
 export function CategoryList({
 	categories,
 	selected,
 	onPress,
 	label,
-	extra,
 }: {
 	categories: readonly BudgetCategory[];
 	selected: ReadonlySet<string>;
 	onPress: (id: string) => void;
-	label?: string;
-	/** A choice ahead of the categories (Everything else). */
-	extra?: { id: string; label: string };
+	label: string;
 }) {
 	const t = useTranslations("mobile.budget.categories");
-	const { color, size, space } = useTheme();
-	const [query, setQuery] = useState("");
-	const shown = useMemo(
-		() => matchCategories(categories, query),
-		[categories, query],
-	);
+	const tp = useTranslations("mobile.pickers");
+	const rows = useCategoryRows(categories);
 	return (
-		<View style={{ gap: space[2] }}>
-			<TextField label={t("find")} onChangeText={setQuery} value={query} />
-			<ChoiceList
-				choices={[
-					...(extra ? [extra] : []),
-					...shown.map((c) => ({
-						id: c.id,
-						label: c.name,
-						lead: (
-							<CategoryGlyph
-								category={c}
-								color={categoryColor(color, c.tone)}
-								size={size.icon.phone}
-							/>
-						),
-					})),
-				]}
+		<PickMany
+			empty={tp("category.empty")}
+			find={t("find")}
+			label={label}
+			onToggle={onPress}
+			rows={rows}
+			selected={selected}
+			summary={
+				selected.size > 0 ? t("count", { count: selected.size }) : t("pick")
+			}
+		/>
+	);
+}
+
+/** One category: the picker trigger with the category's glyph and name. */
+export function CategoryPick({
+	categories,
+	value,
+	onChange,
+	label,
+}: {
+	categories: readonly BudgetCategory[];
+	value: string | null;
+	onChange: (id: string | null) => void;
+	label: string;
+}) {
+	const t = useTranslations("mobile.budget.categories");
+	const tp = useTranslations("mobile.pickers");
+	const rows = useCategoryRows(categories);
+	return (
+		<PickLabeled label={label}>
+			<PickField
+				empty={tp("category.empty")}
+				find={t("find")}
 				label={label}
-				onPress={onPress}
-				selected={selected}
+				onChange={onChange}
+				placeholder={t("pickOne")}
+				rows={rows}
+				title={label}
+				value={value}
+				variant="pill"
 			/>
-		</View>
+		</PickLabeled>
 	);
 }

@@ -4,8 +4,9 @@ import { Note } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import type { SheetDetent } from "@/ui/Sheet";
 import { CategoryList, loadCategories } from "./CategoryList";
-import { ChoiceList, TextField } from "./fields";
+import { TextField } from "./fields";
 import { createEnvelopeBody, nameOk } from "./moreBodies";
+import { GroupPick } from "./pickers";
 import type { BudgetMonth } from "./source";
 import { useSheetRead } from "./useSheetRead";
 import { FormSheet, WriteForm } from "./WriteSheet";
@@ -93,11 +94,11 @@ export function NewEnvelopeSheet({
 					onChangeText={setName}
 					value={name}
 				/>
-				<ChoiceList
-					choices={groupChoices(data, t("noGroup"))}
+				<GroupPick
+					groups={groupChoices(data, t("noGroup"))}
 					label={t("group")}
-					onPress={setGroup}
-					selected={new Set([group])}
+					onChange={setGroup}
+					value={group}
 				/>
 				<Note>{t("categoriesHint")}</Note>
 				{categories.status === "ready" ? (

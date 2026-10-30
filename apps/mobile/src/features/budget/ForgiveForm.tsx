@@ -4,8 +4,9 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
-import { ChoiceList } from "./fields";
+import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { forgivable, forgiveBody, type OwedPerson } from "./owedBodies";
+import { EnvelopePick, PickLabeled } from "./pickers";
 import { type BudgetMonth, envelopesOf } from "./source";
 import { WriteForm } from "./WriteSheet";
 
@@ -78,16 +79,14 @@ export function ForgiveForm({
 				<Note>{t("nothing")}</Note>
 			)}
 			{lines.length > 1 ? (
-				<ChoiceList
-					choices={lines.map((l) => ({
-						id: l.amount.currency,
-						label: l.amount.currency,
-						detail: money(l.amount),
-					}))}
-					label={t("currency")}
-					onPress={setCurrency}
-					selected={new Set(currency ? [currency] : [])}
-				/>
+				<PickLabeled label={t("currency")}>
+					<CurrencyPicker
+						currencies={lines.map((l) => l.amount.currency)}
+						label={t("currency")}
+						onChange={setCurrency}
+						value={currency ?? lines[0]?.amount.currency ?? ""}
+					/>
+				</PickLabeled>
 			) : null}
 			{currency ? (
 				<AmountField
@@ -99,16 +98,14 @@ export function ForgiveForm({
 				/>
 			) : null}
 			{over ? <Note tone="attention">{t("tooMuch")}</Note> : null}
-			<ChoiceList
-				choices={[
-					{ id: HOME, label: t("everythingElse") },
-					...envelopesOf(data)
-						.filter((e) => e.id !== data.book.defaultEnvelopeId)
-						.map((e) => ({ id: e.id, label: e.name, detail: money(e.left) })),
-				]}
+			<EnvelopePick
+				envelopes={envelopesOf(data).filter(
+					(e) => e.id !== data.book.defaultEnvelopeId,
+				)}
+				extras={[{ id: HOME, name: t("everythingElse") }]}
 				label={t("chargeTo")}
-				onPress={setEnvelope}
-				selected={new Set([envelope])}
+				onChange={(id) => setEnvelope(id ?? HOME)}
+				value={envelope}
 			/>
 			<Note>{t("effect", { name })}</Note>
 		</WriteForm>

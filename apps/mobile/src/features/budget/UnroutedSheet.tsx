@@ -8,7 +8,7 @@ import { Avatar } from "@/ui/Avatar";
 import { ListRow } from "@/ui/List";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
-import { CategoryList, loadCategories } from "./CategoryList";
+import { CategoryPick, loadCategories } from "./CategoryList";
 import { participantKey, shareCategoryBody } from "./owedBodies";
 import type { BudgetMonth } from "./source";
 import { useSheetRead } from "./useSheetRead";
@@ -117,10 +117,11 @@ export function UnroutedSheet({
 						>
 							<Note>{t("pickLead")}</Note>
 							{categories.status === "ready" ? (
-								<CategoryList
+								<CategoryPick
 									categories={categories.data}
-									onPress={setCategoryId}
-									selected={new Set(categoryId ? [categoryId] : [])}
+									label={t("pickTitle")}
+									onChange={setCategoryId}
+									value={categoryId}
 								/>
 							) : (
 								<Note>
