@@ -2234,7 +2234,7 @@
 		"error": "Couldn't load recurring expenses",
 		"errorDetail": "Check your connection and try again.",
 		"empty": "No recurring expenses",
-		"emptyDetail": "Add rent, subscriptions and other fixed costs on the web.",
+		"emptyDetail": "Add rent, subscriptions and other fixed costs.",
 		"autoPay": "Auto-pay",
 		"frequency": {
 			"weekly": "Weekly",
@@ -2332,7 +2332,20 @@
 		},
 		"search": "Search recurring expenses",
 		"foreign": "Foreign currency",
-		"emptyFiltered": "Nothing matches"
+		"emptyFiltered": "Nothing matches",
+		"add": {
+			"title": "Add recurring expense",
+			"name": "Name",
+			"namePlaceholder": "Rent, Streamly, Gym",
+			"amount": "Amount",
+			"category": "Category",
+			"categoryNone": "No category",
+			"repeats": "Repeats",
+			"first": "First due",
+			"firstHint": "The first one is logged on this date.",
+			"submit": "Add",
+			"toast": "{title} added"
+		}
 	},
 	"shortcuts": {
 		"addExpense": "Add expense",

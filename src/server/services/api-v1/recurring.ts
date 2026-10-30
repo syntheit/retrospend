@@ -13,7 +13,6 @@ import {
 	confirmRecurringIncome,
 	unconfirmRecurringIncome,
 } from "~/server/services/income/confirm-recurring.mutation";
-import { createRecurring } from "~/server/services/recurring-create.mutation";
 import {
 	deleteTemplate,
 	templateDirection,
@@ -25,6 +24,7 @@ import {
 	confirmRecurringExpense,
 	unconfirmRecurringExpense,
 } from "~/server/services/recurring-confirm.mutation";
+import { createRecurring } from "~/server/services/recurring-create.mutation";
 import {
 	skipRecurring,
 	unskipRecurring,

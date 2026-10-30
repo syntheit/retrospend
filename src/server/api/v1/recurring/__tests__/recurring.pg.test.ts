@@ -181,7 +181,11 @@ describe("/api/v1/recurring", () => {
 			403,
 			"forbidden",
 		);
-		await expectProblem(await send("POST", "/recurring", body), 403, "forbidden");
+		await expectProblem(
+			await send("POST", "/recurring", body),
+			403,
+			"forbidden",
+		);
 		await expect(
 			adminDb.recurringTemplate.count({ where: { name: "Not mine" } }),
 		).resolves.toBe(0);

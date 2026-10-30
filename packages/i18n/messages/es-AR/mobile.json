@@ -2234,7 +2234,7 @@
 		"error": "No se pudieron cargar los gastos recurrentes",
 		"errorDetail": "Revisá tu conexión y probá de nuevo.",
 		"empty": "Sin gastos recurrentes",
-		"emptyDetail": "Agregá alquiler, suscripciones y otros costos fijos en la web.",
+		"emptyDetail": "Agregá alquiler, suscripciones y otros costos fijos.",
 		"autoPay": "Pago automático",
 		"frequency": {
 			"weekly": "Semanal",
@@ -2332,7 +2332,20 @@
 		},
 		"search": "Buscar gastos recurrentes",
 		"foreign": "Moneda extranjera",
-		"emptyFiltered": "Nada coincide"
+		"emptyFiltered": "Nada coincide",
+		"add": {
+			"title": "Agregar gasto recurrente",
+			"name": "Nombre",
+			"namePlaceholder": "Alquiler, Streamly, Gimnasio",
+			"amount": "Monto",
+			"category": "Categoría",
+			"categoryNone": "Sin categoría",
+			"repeats": "Se repite",
+			"first": "Primer vencimiento",
+			"firstHint": "El primero se registra en esta fecha.",
+			"submit": "Agregar",
+			"toast": "{title} agregado"
+		}
 	},
 	"shortcuts": {
 		"addExpense": "Agregar gasto",

@@ -2234,7 +2234,7 @@
 		"error": "Wiederkehrende Ausgaben konnten nicht geladen werden",
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
 		"empty": "Keine wiederkehrenden Ausgaben",
-		"emptyDetail": "Füge Miete, Abos und andere Fixkosten im Web hinzu.",
+		"emptyDetail": "Füge Miete, Abos und andere Fixkosten hinzu.",
 		"autoPay": "Autozahlung",
 		"frequency": {
 			"weekly": "Wöchentlich",
@@ -2332,7 +2332,20 @@
 		},
 		"search": "Wiederkehrende Ausgaben suchen",
 		"foreign": "Fremdwährung",
-		"emptyFiltered": "Keine Treffer"
+		"emptyFiltered": "Keine Treffer",
+		"add": {
+			"title": "Wiederkehrende Ausgabe hinzufügen",
+			"name": "Name",
+			"namePlaceholder": "Miete, Streamly, Fitnessstudio",
+			"amount": "Betrag",
+			"category": "Kategorie",
+			"categoryNone": "Keine Kategorie",
+			"repeats": "Wiederholt sich",
+			"first": "Erste Fälligkeit",
+			"firstHint": "Die erste wird an diesem Datum erfasst.",
+			"submit": "Hinzufügen",
+			"toast": "{title} hinzugefügt"
+		}
 	},
 	"shortcuts": {
 		"addExpense": "Ausgabe hinzufügen",

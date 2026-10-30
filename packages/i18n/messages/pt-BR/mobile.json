@@ -2234,7 +2234,7 @@
 		"error": "Não foi possível carregar as despesas recorrentes",
 		"errorDetail": "Verifique sua conexão e tente de novo.",
 		"empty": "Nenhuma despesa recorrente",
-		"emptyDetail": "Adicione aluguel, assinaturas e outros custos fixos na web.",
+		"emptyDetail": "Adicione aluguel, assinaturas e outros custos fixos.",
 		"autoPay": "Pagamento automático",
 		"frequency": {
 			"weekly": "Semanal",
@@ -2332,7 +2332,20 @@
 		},
 		"search": "Buscar despesas recorrentes",
 		"foreign": "Moeda estrangeira",
-		"emptyFiltered": "Nada corresponde"
+		"emptyFiltered": "Nada corresponde",
+		"add": {
+			"title": "Adicionar despesa recorrente",
+			"name": "Nome",
+			"namePlaceholder": "Aluguel, Streamly, Academia",
+			"amount": "Valor",
+			"category": "Categoria",
+			"categoryNone": "Sem categoria",
+			"repeats": "Repete",
+			"first": "Primeiro vencimento",
+			"firstHint": "A primeira é registrada nesta data.",
+			"submit": "Adicionar",
+			"toast": "{title} adicionada"
+		}
 	},
 	"shortcuts": {
 		"addExpense": "Adicionar gasto",
