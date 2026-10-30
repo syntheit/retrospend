@@ -1,6 +1,11 @@
 import { contrast, over, type Rgba } from "@retrospend/tokens/color";
 import { dark, light } from "@retrospend/tokens/theme";
-import { segmentedColors, switchColors } from "./m3Colors";
+import {
+	datePickerColors,
+	dropdownFieldColors,
+	segmentedColors,
+	switchColors,
+} from "./m3Colors";
 
 /** `#rrggbb` or `#rrggbbaa` to channels in 0..1. */
 function rgba(hex: string): Rgba {
@@ -32,6 +37,8 @@ describe.each(themes)("M3 token colors (%s)", (_name, theme) => {
 	const { color } = theme;
 	const segmented = segmentedColors(color);
 	const sw = switchColors(color);
+	const date = datePickerColors(color);
+	const field = dropdownFieldColors(color);
 
 	it("maps the segment to brand-soft, raised and the text tokens", () => {
 		expect(segmented).toEqual({
@@ -55,9 +62,35 @@ describe.each(themes)("M3 token colors (%s)", (_name, theme) => {
 		});
 	});
 
+	it("maps the date picker to the surface, fg text and a brand day", () => {
+		expect(date.containerColor).toBe(color.surface);
+		expect(date.dayContentColor).toBe(color.fg);
+		expect(date.selectedDayContainerColor).toBe(color.brand);
+		expect(date.selectedDayContentColor).toBe(color.brandFg);
+	});
+
+	it("maps the dropdown field to raised, fg text and a lineStrong border", () => {
+		expect(field.unfocusedContainerColor).toBe(color.raised);
+		expect(field.unfocusedTextColor).toBe(color.fg);
+		expect(field.unfocusedIndicatorColor).toBe(color.lineStrong);
+	});
+
+	it("keeps the date and field text readable", () => {
+		expect(ratio(color.fg, color.surface, color.bg)).toBeGreaterThanOrEqual(4.5);
+		expect(ratio(color.brandFg, color.brand, color.bg)).toBeGreaterThanOrEqual(
+			4.5,
+		);
+		expect(ratio(color.fg, color.raised, color.bg)).toBeGreaterThanOrEqual(4.5);
+	});
+
 	it("passes only token values", () => {
 		const tokens = tokenValues(color);
-		for (const value of [...Object.values(segmented), ...Object.values(sw)]) {
+		for (const value of [
+			...Object.values(segmented),
+			...Object.values(sw),
+			...Object.values(date),
+			...Object.values(field),
+		]) {
 			expect(tokens.has(value as string)).toBe(true);
 		}
 	});

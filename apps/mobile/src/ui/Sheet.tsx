@@ -1,5 +1,11 @@
 import { type ReactNode, useMemo, useState } from "react";
-import { Platform, Pressable, useWindowDimensions, View } from "react-native";
+import {
+	Platform,
+	Pressable,
+	ScrollView,
+	useWindowDimensions,
+	View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
@@ -7,6 +13,7 @@ import { Button } from "./Button";
 import { Glyph } from "./Glyph";
 import { SheetFrame } from "./SheetFrame";
 import {
+	BIG_TEXT_SCALE,
 	detentsForScale,
 	fillsSheet,
 	footerHeight,
@@ -175,8 +182,12 @@ export function Sheet({
 	const { color, space } = useTheme();
 	// A big text size rests every sheet with detents at large (the body
 	// scrolls above the pinned footer); the default size keeps its own.
-	const { fontScale } = useWindowDimensions();
-	const detents = detentsForScale(wanted, fontScale);
+	const { fontScale, height: windowHeight } = useWindowDimensions();
+	const insets = useSafeAreaInsets();
+	// A sheet that fits its content cannot scroll it; at a big size the content
+	// can outgrow the window, so it rests at large and the body scrolls.
+	const scrolls = !wanted?.length && fontScale > BIG_TEXT_SCALE;
+	const detents = scrolls ? ["large" as const] : detentsForScale(wanted, fontScale);
 	const way = dismiss ?? (title ? "close" : "none");
 	// A form hands its primary action up (usePinnedAction); the sheet draws it
 	// in the footer, under the scrolling body.
@@ -190,6 +201,17 @@ export function Sheet({
 	const context = useMemo(
 		() => ({ detent: tallest, fills, pin: setPinned }),
 		[tallest, fills],
+	);
+	const hasFooter = Boolean(footer ?? pinned);
+	const theme = useTheme();
+	// Android lets the content size itself, so the scroll is given the room
+	// the window leaves under the header and above the footer.
+	const room = Math.round(
+		windowHeight -
+			insets.top -
+			insets.bottom -
+			SHEET_CHROME -
+			(hasFooter ? footerHeight(theme) + theme.space[3] : 0),
 	);
 	const bottom =
 		footer ??
@@ -242,7 +264,19 @@ export function Sheet({
 					{way === "none" ? null : <DismissItem kind={way} onPress={onClose} />}
 				</View>
 			) : null}
-			{height !== null ? (
+			{scrolls ? (
+				<ScrollView
+					contentContainerStyle={{ gap: space[3] }}
+					keyboardShouldPersistTaps="handled"
+					style={
+						height !== null
+							? { flex: 1, minHeight: 0 }
+							: { maxHeight: room, flexGrow: 0 }
+					}
+				>
+					{children}
+				</ScrollView>
+			) : height !== null ? (
 				<View
 					style={{ flex: 1, minHeight: 0, gap: space[3], overflow: "hidden" }}
 				>

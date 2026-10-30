@@ -5,6 +5,7 @@ import { Pressable, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { dayOfPicker, pickerDate } from "@/features/entry/dates";
 import { useTheme } from "@/theme";
+import { datePickerColors } from "./m3Colors";
 import { DateQuickDays } from "./DateQuickDays";
 import { NavEnd } from "./List";
 import { NativeHost } from "./NativeHost";
@@ -53,6 +54,7 @@ function DateRow({
 				<NativeHost>
 					<DatePickerDialog
 						color={color.brand}
+						elementColors={datePickerColors(color)}
 						initialDate={pickerDate(
 							value || dayKey(new Date()),
 							"utc",

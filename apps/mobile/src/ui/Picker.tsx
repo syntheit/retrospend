@@ -4,6 +4,7 @@ import { Platform, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Chip } from "./Chip";
 import { ListRow, NavEnd } from "./List";
+import { NativeDropdown } from "./NativeDropdown";
 import { NativeHost } from "./NativeHost";
 import { Sheet } from "./Sheet";
 import { Text } from "./Text";
@@ -32,19 +33,11 @@ export function Picker<T extends string>({
 	const { color } = useTheme();
 	return (
 		<NativeHost tint={Platform.OS === "ios" ? color.fg2 : undefined}>
-			<UniversalPicker<string>
-				appearance="menu"
-				onValueChange={(next) => onChange(next as T)}
-				selectedValue={value}
-			>
-				{options.map((option) => (
-					<UniversalPicker.Item
-						key={option.value}
-						label={option.label}
-						value={option.value}
-					/>
-				))}
-			</UniversalPicker>
+			<NativeDropdown
+				onChange={(next) => onChange(next as T)}
+				options={options}
+				value={value}
+			/>
 		</NativeHost>
 	);
 }
