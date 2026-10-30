@@ -2,8 +2,9 @@ import { StyleSheet } from "react-native";
 import { SwitchRow, switchHostStyle } from "./SwitchRow";
 
 // Send feedback drew the label and its long detail sentence but no switch:
-// the switch's host matches its contents, so it had no width of its own and
-// the label's flex took the whole row. The host has to keep its room.
+// the switch's host matched its contents, so it had no width until the native
+// control reported one and the label's flex took the whole row. The host is a
+// fixed box that keeps its room from the first frame.
 const renderer = require("react-test-renderer");
 const { act, create } = renderer;
 
@@ -47,20 +48,18 @@ describe("SwitchRow", () => {
 		});
 		const host = tree.root.findAll((n) => n.type === "NativeHostView")[0];
 		const style = StyleSheet.flatten(host?.props.style as never);
+		expect(host?.props.matchContents).toBe(false);
 		expect(style.flexShrink).toBe(0);
-		expect(style.minWidth).toBe(size.touchMin.phone);
-		expect(style.minHeight).toBe(size.touchMin.phone);
-		expect(tree.root.findAll((n) => n.type === "NativeSwitch")).toHaveLength(
-			1,
-		);
+		expect(style.width).toBeGreaterThanOrEqual(size.touchMin.phone);
+		expect(style.height).toBeGreaterThan(0);
+		expect(tree.root.findAll((n) => n.type === "NativeSwitch")).toHaveLength(1);
 		act(() => tree.unmount());
 	});
 
-	it("sizes the host from the touch target token", () => {
-		expect(switchHostStyle(44)).toEqual({
-			flexShrink: 0,
-			minWidth: 44,
-			minHeight: 44,
-		});
+	it("gives the host a width and a height without waiting for the control", () => {
+		const style = switchHostStyle();
+		expect(style.flexShrink).toBe(0);
+		expect(style.width).toBeGreaterThan(0);
+		expect(style.height).toBeGreaterThan(0);
 	});
 });

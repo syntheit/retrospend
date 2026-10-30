@@ -7,6 +7,7 @@ import {
 } from "@/lib/language-pref";
 import { APP_LOCALES, LANGUAGE_NAMES } from "@/lib/locales";
 import { ListGroup, ListRow } from "@/ui/List";
+import { WheelField } from "@/ui/Picker";
 import { NumbersGroup } from "./NumbersSection";
 import {
 	Block,
@@ -76,8 +77,7 @@ export function PreferencesSection() {
 						value={settings.defaultCurrency}
 						yours={yours}
 					/>
-					<PickerRow
-						appearance="wheel"
+					<WheelField
 						label={t("money.monthStart")}
 						onChange={(day) => save({ fiscalMonthStartDay: Number(day) })}
 						options={MONTH_START_DAYS.map((d) => ({

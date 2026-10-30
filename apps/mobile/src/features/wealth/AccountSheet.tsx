@@ -15,10 +15,9 @@ import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { AmountField, FixedCurrency } from "@/ui/AmountField";
 import { CurrencyPicker } from "@/ui/CurrencyPicker";
-import { Picker } from "@/ui/Picker";
+import { Picker, WheelField } from "@/ui/Picker";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
-import { Text } from "@/ui/Text";
 import { FieldLabel, TextField } from "@/ui/TextField";
 import {
 	ACCOUNT_TYPES,
@@ -293,21 +292,17 @@ export function AccountSheet({
 								onChangeText={(apr) => set({ apr })}
 								value={form.apr}
 							/>
-							<View
-								style={{
-									flexDirection: "row",
-									alignItems: "center",
-									justifyContent: "space-between",
-									gap: space[3],
-								}}
-							>
-								<Text>{t("dueDay")}</Text>
-								<Picker
-									appearance="wheel"
-									onChange={(dueDay) => set({ dueDay })}
-									options={dueDayOptions(form.dueDay, t("dueDayNone"))}
-									value={form.dueDay}
-								/>
+							<View style={{ gap: space[1] }}>
+								<FieldLabel>{t("dueDay")}</FieldLabel>
+								<View style={{ alignItems: "flex-start" }}>
+									<WheelField
+										label={t("dueDay")}
+										onChange={(dueDay) => set({ dueDay })}
+										options={dueDayOptions(form.dueDay, t("dueDayNone"))}
+										value={form.dueDay}
+										variant="chip"
+									/>
+								</View>
 							</View>
 							<AmountField
 								allowZero
