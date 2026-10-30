@@ -10,7 +10,7 @@ import { TRPCError } from "@trpc/server";
 import * as z from "zod";
 import { db } from "~/server/db";
 import { processReceipt } from "~/server/image-processing";
-import { deleteFile, getFileStream, uploadFile } from "~/server/storage";
+import { getFileStream, uploadFile } from "~/server/storage";
 import { assertAdmin } from "./admin";
 import { decodeCursor, encodeCursor } from "./cursor";
 import type { LedgerCaller } from "./money-op";
@@ -35,14 +35,6 @@ export async function submit(caller: LedgerCaller, input: SubmitFeedback) {
  * same moment leave one file, never an orphan.
  */
 export const screenshotPathOf = (id: string) => `feedback/${id}.webp`;
-
-async function deleteQuietly(path: string) {
-	try {
-		await deleteFile(path);
-	} catch (err) {
-		console.warn("Failed to delete feedback screenshot:", err);
-	}
-}
 
 export async function attachScreenshot(
 	caller: LedgerCaller,
@@ -270,11 +262,7 @@ export async function setNote(
 export async function remove(caller: LedgerCaller, id: string) {
 	assertAdmin(caller);
 	await requireFeedback(id);
-	const row = await db.feedback.findUnique({
-		where: { id },
-		select: { screenshotPath: true },
-	});
+	// The procedure deletes the screenshot with the entry.
 	await (await trpcFeedback(caller)).delete({ id });
-	if (row?.screenshotPath) await deleteQuietly(row.screenshotPath);
 	return { ok: true as const };
 }

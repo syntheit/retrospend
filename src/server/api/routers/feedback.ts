@@ -13,6 +13,7 @@ import {
 import { db } from "~/server/db";
 import { getFeedbackNotificationTemplate } from "~/server/email-templates";
 import { sendEmail } from "~/server/mailer";
+import { deleteFile } from "~/server/storage";
 
 export const feedbackRouter = createTRPCRouter({
 	submit: protectedProcedure
@@ -180,7 +181,49 @@ export const feedbackRouter = createTRPCRouter({
 	delete: adminProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(async ({ ctx, input }) => {
+			const row = await ctx.db.feedback.findUnique({
+				where: { id: input.id },
+				select: { screenshotPath: true },
+			});
 			await ctx.db.feedback.delete({ where: { id: input.id } });
+			// The picture goes with the entry; a failed delete never fails this.
+			if (row?.screenshotPath) {
+				try {
+					await deleteFile(row.screenshotPath);
+				} catch (err) {
+					console.warn("Failed to delete feedback screenshot:", err);
+				}
+			}
+			return { success: true };
+		}),
+
+	/** Errors the mobile app sent, newest first. Admins only; already scrubbed. */
+	errorReports: adminProcedure
+		.input(
+			z.object({
+				cursor: z.string().optional(),
+				limit: z.number().min(1).max(100).default(20),
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			const [rows, total] = await Promise.all([
+				ctx.db.errorReport.findMany({
+					take: input.limit + 1,
+					...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+					orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+					include: { user: { select: { id: true, name: true } } },
+				}),
+				ctx.db.errorReport.count(),
+			]);
+			let nextCursor: string | undefined;
+			if (rows.length > input.limit) nextCursor = rows.pop()?.id;
+			return { items: rows, nextCursor, total };
+		}),
+
+	deleteErrorReport: adminProcedure
+		.input(z.object({ id: z.string() }))
+		.mutation(async ({ ctx, input }) => {
+			await ctx.db.errorReport.delete({ where: { id: input.id } });
 			return { success: true };
 		}),
 });
