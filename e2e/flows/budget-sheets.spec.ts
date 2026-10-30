@@ -1063,8 +1063,13 @@ test.describe("Set up your budget", () => {
 		const start = sheet.getByRole("button", { name: "Start my budget" });
 		await expect(start).toBeEnabled();
 		await untilSaved(page, "envelope.setup", () => start.click());
-		await expect(sheet).toBeHidden();
-		await expect(toast(page, "Your budget is ready")).toBeVisible();
+		// The toast first: it lives 6 seconds from the save, and the sheet only
+		// closes after the page has refreshed, which can take longer than that
+		// on a loaded run. Checking the sheet first lets the toast pass unseen.
+		await expect(toast(page, "Your budget is ready")).toBeVisible({
+			timeout: 15_000,
+		});
+		await expect(sheet).toBeHidden({ timeout: 15_000 });
 	});
 });
 
