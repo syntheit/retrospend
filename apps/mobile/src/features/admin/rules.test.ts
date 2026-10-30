@@ -4,6 +4,7 @@ import {
 	firstLine,
 	importJobChoices,
 	inviteLink,
+	userLabel,
 	userStatus,
 } from "./rules";
 import type { AdminUser } from "./types";
@@ -11,6 +12,7 @@ import type { AdminUser } from "./types";
 function user(over: Partial<AdminUser>): AdminUser {
 	return {
 		id: "u",
+		name: "Sofía Reyes",
 		username: "sofia",
 		email: "sofia@example.com",
 		emailVerified: true,
@@ -68,6 +70,23 @@ describe("filterUsers", () => {
 		expect(filterUsers(all, "all", " MARCO ").map((u) => u.id)).toEqual(["b"]);
 		expect(filterUsers(all, "all", "gone@").map((u) => u.id)).toEqual(["c"]);
 		expect(filterUsers(all, "admins", "sofia")).toEqual([]);
+	});
+});
+
+describe("userLabel", () => {
+	it("names a person by the name they chose", () => {
+		expect(userLabel(user({}))).toBe("Sofía Reyes");
+	});
+
+	it("falls back to the username, then the email", () => {
+		expect(userLabel(user({ name: " " }))).toBe("sofia");
+		expect(userLabel(user({ name: "", username: null }))).toBe(
+			"sofia@example.com",
+		);
+	});
+
+	it("is searchable by name", () => {
+		expect(filterUsers([user({ id: "a" })], "all", "reyes")).toHaveLength(1);
 	});
 });
 

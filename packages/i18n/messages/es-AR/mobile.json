@@ -1980,7 +1980,40 @@
 			"keepUsername": "Dejarlo así",
 			"usernameSaved": "Tu nombre de usuario ahora es @{username}",
 			"changeEmail": "Cambiar email",
-			"usernameRefused": "No pudimos cambiar tu nombre de usuario. Puede estar en uso o haberlo cambiado en los últimos 30 días."
+			"usernameRefused": "No pudimos cambiar tu nombre de usuario. Puede estar en uso o haberlo cambiado en los últimos 30 días.",
+			"background": "Fondo",
+			"backgroundSheet": {
+				"title": "Fondo del perfil",
+				"symbols": "Símbolos",
+				"symbol": {
+					"currency": "Monedas",
+					"math": "Matemática",
+					"finance": "Finanzas"
+				},
+				"color": "Color",
+				"colors": {
+					"gray": "Gris",
+					"green": "Verde",
+					"blue": "Azul",
+					"purple": "Violeta",
+					"orange": "Naranja",
+					"gold": "Dorado"
+				},
+				"density": "Densidad",
+				"densities": {
+					"sparse": "Baja",
+					"medium": "Media",
+					"dense": "Alta"
+				},
+				"opacity": "Opacidad",
+				"opacities": {
+					"subtle": "Tenue",
+					"medium": "Media",
+					"bold": "Intensa"
+				},
+				"error": "No se pudo guardar el fondo",
+				"loading": "Cargando"
+			}
 		},
 		"money": {
 			"title": "Dinero",
@@ -2525,7 +2558,8 @@
 			"submitIn": "Eliminar ingreso recurrente",
 			"toast": "{title} eliminado",
 			"error": "No se pudo eliminar. Probá de nuevo."
-		}
+		},
+		"pick": "Elegí un gasto recurrente"
 	},
 	"shortcuts": {
 		"addExpense": "Agregar gasto",

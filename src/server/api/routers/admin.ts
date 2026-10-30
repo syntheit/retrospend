@@ -216,6 +216,7 @@ export const adminRouter = createTRPCRouter({
 		const users = await db.user.findMany({
 			select: {
 				id: true,
+				name: true,
 				username: true,
 				email: true,
 				emailVerified: true,
@@ -253,22 +254,15 @@ export const adminRouter = createTRPCRouter({
 			},
 		});
 
-		return users.map((user) => ({
-			id: user.id,
-			username: user.username,
-			email: user.email,
-			emailVerified: user.emailVerified,
+		return users.map(({ _count, expenses, ...user }) => ({
+			...user,
 			twoFactorEnabled: !!user.twoFactorEnabled,
-			role: user.role,
-			isActive: user.isActive,
-			createdAt: user.createdAt,
-			expenseCount: user._count.expenses,
-			inviteCodesCount: user._count.createdInviteCodes,
-			lastExpenseDate: user.expenses[0]?.date ?? null,
-			hasBudget: user._count.budgets > 0,
-			hasRecurring: user._count.recurringTemplates > 0,
-			hasWealth: user._count.assetAccounts > 0,
-			externalAiAllowed: user.externalAiAllowed,
+			expenseCount: _count.expenses,
+			inviteCodesCount: _count.createdInviteCodes,
+			lastExpenseDate: expenses[0]?.date ?? null,
+			hasBudget: _count.budgets > 0,
+			hasRecurring: _count.recurringTemplates > 0,
+			hasWealth: _count.assetAccounts > 0,
 		}));
 	}),
 

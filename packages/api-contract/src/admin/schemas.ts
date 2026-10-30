@@ -35,6 +35,8 @@ export const adminStatsSchema = z
 export const adminUserSchema = z
 	.object({
 		id: idSchema,
+		/** The display name the person chose; the username is their handle. */
+		name: z.string(),
 		username: z.string().nullable(),
 		email: z.string(),
 		emailVerified: z.boolean(),

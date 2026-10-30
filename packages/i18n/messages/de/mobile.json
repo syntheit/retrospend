@@ -1980,7 +1980,40 @@
 			"keepUsername": "Behalten",
 			"usernameSaved": "Dein Benutzername ist jetzt @{username}",
 			"changeEmail": "E-Mail ändern",
-			"usernameRefused": "Der Benutzername konnte nicht geändert werden. Er ist vielleicht vergeben oder wurde in den letzten 30 Tagen geändert."
+			"usernameRefused": "Der Benutzername konnte nicht geändert werden. Er ist vielleicht vergeben oder wurde in den letzten 30 Tagen geändert.",
+			"background": "Hintergrund",
+			"backgroundSheet": {
+				"title": "Profilhintergrund",
+				"symbols": "Symbole",
+				"symbol": {
+					"currency": "Währungen",
+					"math": "Mathe",
+					"finance": "Finanzen"
+				},
+				"color": "Farbe",
+				"colors": {
+					"gray": "Grau",
+					"green": "Grün",
+					"blue": "Blau",
+					"purple": "Lila",
+					"orange": "Orange",
+					"gold": "Gold"
+				},
+				"density": "Dichte",
+				"densities": {
+					"sparse": "Gering",
+					"medium": "Mittel",
+					"dense": "Hoch"
+				},
+				"opacity": "Deckkraft",
+				"opacities": {
+					"subtle": "Schwach",
+					"medium": "Mittel",
+					"bold": "Stark"
+				},
+				"error": "Hintergrund konnte nicht gespeichert werden",
+				"loading": "Wird geladen"
+			}
 		},
 		"money": {
 			"title": "Geld",
@@ -2525,7 +2558,8 @@
 			"submitIn": "Wiederkehrende Einnahme löschen",
 			"toast": "{title} gelöscht",
 			"error": "Löschen hat nicht geklappt. Versuche es nochmal."
-		}
+		},
+		"pick": "Wähle eine wiederkehrende Ausgabe"
 	},
 	"shortcuts": {
 		"addExpense": "Ausgabe hinzufügen",

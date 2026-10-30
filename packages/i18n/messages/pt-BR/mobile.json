@@ -1980,7 +1980,40 @@
 			"keepUsername": "Manter",
 			"usernameSaved": "Seu nome de usuário agora é @{username}",
 			"changeEmail": "Mudar e-mail",
-			"usernameRefused": "Não foi possível mudar seu nome de usuário. Ele pode estar em uso ou ter sido alterado nos últimos 30 dias."
+			"usernameRefused": "Não foi possível mudar seu nome de usuário. Ele pode estar em uso ou ter sido alterado nos últimos 30 dias.",
+			"background": "Fundo",
+			"backgroundSheet": {
+				"title": "Fundo do perfil",
+				"symbols": "Símbolos",
+				"symbol": {
+					"currency": "Moedas",
+					"math": "Matemática",
+					"finance": "Finanças"
+				},
+				"color": "Cor",
+				"colors": {
+					"gray": "Cinza",
+					"green": "Verde",
+					"blue": "Azul",
+					"purple": "Roxo",
+					"orange": "Laranja",
+					"gold": "Dourado"
+				},
+				"density": "Densidade",
+				"densities": {
+					"sparse": "Baixa",
+					"medium": "Média",
+					"dense": "Alta"
+				},
+				"opacity": "Opacidade",
+				"opacities": {
+					"subtle": "Suave",
+					"medium": "Média",
+					"bold": "Forte"
+				},
+				"error": "Não foi possível salvar o fundo",
+				"loading": "Carregando"
+			}
 		},
 		"money": {
 			"title": "Dinheiro",
@@ -2525,7 +2558,8 @@
 			"submitIn": "Excluir receita recorrente",
 			"toast": "{title} excluída",
 			"error": "Não foi possível excluir. Tente de novo."
-		}
+		},
+		"pick": "Escolha uma despesa recorrente"
 	},
 	"shortcuts": {
 		"addExpense": "Adicionar gasto",

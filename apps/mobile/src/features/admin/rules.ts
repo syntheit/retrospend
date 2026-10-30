@@ -37,6 +37,7 @@ export function filterUsers(
 		if (filter === "unverified" && user.emailVerified) return false;
 		if (text === "") return true;
 		return (
+			(user.name ?? "").toLocaleLowerCase().includes(text) ||
 			(user.username ?? "").toLocaleLowerCase().includes(text) ||
 			user.email.toLocaleLowerCase().includes(text)
 		);
@@ -56,8 +57,10 @@ export function userStatus(user: AdminUser, today: string): UserStatus {
 	return gap > 14 ? "dormant" : "active";
 }
 
-/** Who a user is, for a row: the username, else the email. */
+/** Who a user is, for a row: the name they chose, else the username, else the email. */
 export function userLabel(user: AdminUser): string {
+	// An older server sends no name: fall back to the handle.
+	if (user.name && user.name.trim() !== "") return user.name;
 	return user.username && user.username !== "" ? user.username : user.email;
 }
 

@@ -305,11 +305,13 @@ export default function ActivityScreen() {
 					/>
 				}
 				detail={
-					segment === "expenses" && !selected && !linked ? (
+					segment === "recurring" ? (
+						<EmptyDetail title={tr("pick")} />
+					) : !selected && !linked ? (
 						<EmptyDetail title={t("pick")} />
 					) : (
 						<Screen>
-							{segment === "recurring" ? null : selected ? (
+							{selected ? (
 								<EntryDetail id={selected.id} placeholder={selected} />
 							) : linked ? (
 								<EntryDetail id={linked.id} placeholder={linked.placeholder} />

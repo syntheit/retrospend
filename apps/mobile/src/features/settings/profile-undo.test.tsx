@@ -26,6 +26,7 @@ jest.mock("@/data/ids", () => ({ newClientId: () => "key-1" }));
 const mockToast = { show: jest.fn(), dismiss: jest.fn() };
 jest.mock("@/ui/Toast", () => ({ useToast: () => mockToast }));
 jest.mock("expo-clipboard", () => ({ setStringAsync: jest.fn() }));
+jest.mock("./BackgroundSheet", () => ({ BackgroundSheet: () => null }));
 jest.mock("./webPages", () => ({ openWebPage: jest.fn() }));
 jest.mock("./useAvatar", () => ({
 	useAvatar: () => ({ busy: null, pick: jest.fn(), confirmRemove: jest.fn() }),
