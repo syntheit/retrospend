@@ -2309,7 +2309,8 @@
 			"resumedToast": "{title} reanudado",
 			"autoOnToast": "Pago automático activado para {title}",
 			"autoOffToast": "Pago automático desactivado para {title}",
-			"error": "No se pudo cambiar. Inténtalo de nuevo."
+			"error": "No se pudo cambiar. Inténtalo de nuevo.",
+			"delete": "Eliminar"
 		},
 		"count": "{count, plural, one {# gasto recurrente} other {# gastos recurrentes}}",
 		"autoPayOn": "Pago automático activado",
@@ -2345,6 +2346,17 @@
 			"firstHint": "El primero se registra en esta fecha.",
 			"submit": "Agregar",
 			"toast": "{title} agregado"
+		},
+		"delete": {
+			"title": "Eliminar {title}",
+			"body": "Deja de aparecer. Los movimientos que ya registró se quedan.",
+			"future": "Próximas veces",
+			"futureValue": "Se detienen, la próxima era el {date}",
+			"autoPay": "Pago automático",
+			"autoPayValue": "Se detiene",
+			"submit": "Eliminar",
+			"toast": "{title} eliminado",
+			"error": "No se pudo eliminar. Intenta de nuevo."
 		}
 	},
 	"shortcuts": {

@@ -2309,7 +2309,8 @@
 			"resumedToast": "{title} repris",
 			"autoOnToast": "Paiement auto activé pour {title}",
 			"autoOffToast": "Paiement auto désactivé pour {title}",
-			"error": "Impossible de modifier. Réessaie."
+			"error": "Impossible de modifier. Réessaie.",
+			"delete": "Supprimer"
 		},
 		"count": "{count, plural, one {# dépense récurrente} other {# dépenses récurrentes}}",
 		"autoPayOn": "Paiement auto activé",
@@ -2345,6 +2346,17 @@
 			"firstHint": "La première est enregistrée à cette date.",
 			"submit": "Ajouter",
 			"toast": "{title} ajouté"
+		},
+		"delete": {
+			"title": "Supprimer {title}",
+			"body": "Elle n'apparaît plus. Les opérations déjà enregistrées restent.",
+			"future": "Prochaines échéances",
+			"futureValue": "Arrêtées, la prochaine était le {date}",
+			"autoPay": "Paiement auto",
+			"autoPayValue": "Arrêté",
+			"submit": "Supprimer",
+			"toast": "{title} supprimée",
+			"error": "Impossible de supprimer. Réessaie."
 		}
 	},
 	"shortcuts": {

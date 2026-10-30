@@ -2309,7 +2309,8 @@
 			"resumedToast": "{title} fortgesetzt",
 			"autoOnToast": "Autozahlung für {title} aktiviert",
 			"autoOffToast": "Autozahlung für {title} deaktiviert",
-			"error": "Änderung nicht möglich. Versuche es erneut."
+			"error": "Änderung nicht möglich. Versuche es erneut.",
+			"delete": "Löschen"
 		},
 		"count": "{count, plural, one {# wiederkehrende Ausgabe} other {# wiederkehrende Ausgaben}}",
 		"autoPayOn": "Autozahlung an",
@@ -2345,6 +2346,17 @@
 			"firstHint": "Die erste wird an diesem Datum erfasst.",
 			"submit": "Hinzufügen",
 			"toast": "{title} hinzugefügt"
+		},
+		"delete": {
+			"title": "{title} löschen",
+			"body": "Es taucht nicht mehr auf. Bereits erfasste Einträge bleiben.",
+			"future": "Künftige Fälligkeiten",
+			"futureValue": "Entfallen, nächste war {date}",
+			"autoPay": "Autozahlung",
+			"autoPayValue": "Endet",
+			"submit": "Löschen",
+			"toast": "{title} gelöscht",
+			"error": "Löschen hat nicht geklappt. Versuche es nochmal."
 		}
 	},
 	"shortcuts": {

@@ -2309,7 +2309,8 @@
 			"resumedToast": "{title} retomada",
 			"autoOnToast": "Pagamento automático ativado para {title}",
 			"autoOffToast": "Pagamento automático desativado para {title}",
-			"error": "Não foi possível alterar. Tente de novo."
+			"error": "Não foi possível alterar. Tente de novo.",
+			"delete": "Excluir"
 		},
 		"count": "{count, plural, one {# despesa recorrente} other {# despesas recorrentes}}",
 		"autoPayOn": "Pagamento automático ativado",
@@ -2345,6 +2346,17 @@
 			"firstHint": "A primeira é registrada nesta data.",
 			"submit": "Adicionar",
 			"toast": "{title} adicionada"
+		},
+		"delete": {
+			"title": "Excluir {title}",
+			"body": "Ela deixa de aparecer. Os lançamentos que já registrou ficam.",
+			"future": "Próximas vezes",
+			"futureValue": "Param, a próxima era {date}",
+			"autoPay": "Pagamento automático",
+			"autoPayValue": "Para",
+			"submit": "Excluir",
+			"toast": "{title} excluída",
+			"error": "Não foi possível excluir. Tente de novo."
 		}
 	},
 	"shortcuts": {

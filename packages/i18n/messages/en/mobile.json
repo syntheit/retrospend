@@ -2309,7 +2309,8 @@
 			"resumedToast": "{title} resumed",
 			"autoOnToast": "Auto-pay on for {title}",
 			"autoOffToast": "Auto-pay off for {title}",
-			"error": "Couldn't change it. Try again."
+			"error": "Couldn't change it. Try again.",
+			"delete": "Delete"
 		},
 		"count": "{count, plural, one {# recurring expense} other {# recurring expenses}}",
 		"autoPayOn": "Auto-pay on",
@@ -2345,6 +2346,17 @@
 			"firstHint": "The first one is logged on this date.",
 			"submit": "Add",
 			"toast": "{title} added"
+		},
+		"delete": {
+			"title": "Delete {title}",
+			"body": "It stops coming up. Entries it already logged stay.",
+			"future": "Future occurrences",
+			"futureValue": "Stop, next was {date}",
+			"autoPay": "Auto-pay",
+			"autoPayValue": "Stops",
+			"submit": "Delete",
+			"toast": "{title} deleted",
+			"error": "Couldn't delete it. Try again."
 		}
 	},
 	"shortcuts": {
