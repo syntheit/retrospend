@@ -1,5 +1,6 @@
 import { dark, light } from "@retrospend/tokens/theme";
 import { BUTTON_STYLE, Button } from "./Button.ios";
+import { TEXT_SCALE_CAP } from "./Text";
 
 // The first TestFlight build showed white text on the pale brand fill of the
 // dark theme, and build 15 showed the system capsule taller than the kit
@@ -25,6 +26,16 @@ jest.mock("./NativeHost", () => ({
 jest.mock("@expo/ui", () => ({
 	Host: (props: Record<string, unknown>) =>
 		require("react").createElement("ExpoHost", props),
+}));
+const fontScale = { current: 1 };
+jest.mock("react-native/Libraries/Utilities/useWindowDimensions", () => ({
+	__esModule: true,
+	default: () => ({
+		width: 390,
+		height: 844,
+		scale: 3,
+		fontScale: fontScale.current,
+	}),
 }));
 jest.mock("react-native/Libraries/Utilities/useColorScheme", () => ({
 	__esModule: true,
@@ -89,11 +100,11 @@ describe.each([
 		expect(BUTTON_STYLE.filled).toBe("plain");
 		expect(find(button, "buttonStyle")?.style).toBe("plain");
 		expect(JSON.stringify(find(shape, "frame"))).toContain(
-			`"height":${theme.size.ctl.phone}`,
+			`"minHeight":${theme.size.ctl.phone}`,
 		);
 		const small = render(theme, { label: "Settle up", size: "small" });
 		expect(JSON.stringify(find(small.shape, "frame"))).toContain(
-			`"height":${theme.size.ctlSm.phone}`,
+			`"minHeight":${theme.size.ctlSm.phone}`,
 		);
 	});
 
@@ -141,10 +152,35 @@ describe("other variants", () => {
 		// expo-ui ignores maxWidth when a height is in the same frame(): two calls.
 		expect(frames).toHaveLength(2);
 		expect(JSON.stringify(frames[0])).toContain(
-			`"height":${light.size.ctl.phone}`,
+			`"minHeight":${light.size.ctl.phone}`,
 		);
 		expect(JSON.stringify(frames[0])).not.toContain("maxWidth");
 		expect(JSON.stringify(frames[1])).toContain("maxWidth");
+	});
+
+	it("grows the label with the text size to the chrome cap, never past it", () => {
+		const size = (scale: number, small = false) => {
+			fontScale.current = scale;
+			const { label } = render(light, {
+				label: "Record",
+				size: small ? "small" : "regular",
+			});
+			return (find(label, "font") as unknown as { size: number }).size;
+		};
+		expect(size(1)).toBe(light.type.body.size);
+		expect(size(1.15)).toBeCloseTo(light.type.body.size * 1.15);
+		expect(size(3.1)).toBeCloseTo(light.type.body.size * TEXT_SCALE_CAP.chrome);
+		expect(size(3.1, true)).toBeCloseTo(
+			light.type.small.size * TEXT_SCALE_CAP.chrome,
+		);
+		fontScale.current = 1;
+	});
+
+	it("caps the text button's own label at the chrome Dynamic Type step", () => {
+		const { button } = render(light, { label: "Change", variant: "text" });
+		expect(JSON.stringify(find(button, "dynamicTypeSize"))).toContain(
+			"xxLarge",
+		);
 	});
 
 	it("never uses a glass style", () => {

@@ -54,4 +54,27 @@ describe("UnderlineTabs", () => {
 			root.findAll((n) => n.props.accessibilityRole === "tablist").length,
 		).toBeGreaterThan(0);
 	});
+
+	it("stops the labels growing past the chrome cap", () => {
+		let tree: { root: Node } | undefined;
+		act(() => {
+			tree = create(
+				<UnderlineTabs
+					accessibilityLabel="Pages"
+					onChange={() => {}}
+					tabs={[
+						{ value: "people", label: "People" },
+						{ value: "projects", label: "Projects" },
+					]}
+					value="people"
+				/>,
+			);
+		});
+		const labels = (tree as { root: Node }).root.findAll(
+			(n) => n.props.maxFontSizeMultiplier !== undefined,
+		);
+		expect(labels.length).toBeGreaterThan(0);
+		for (const node of labels)
+			expect(node.props.maxFontSizeMultiplier).toBe(1.3);
+	});
 });

@@ -39,7 +39,7 @@ export function OperatorKeys({
 						backgroundColor: pressed ? color.line : color.raised,
 					})}
 				>
-					<Text variant="title" weight="medium">
+					<Text scale="chrome" variant="title" weight="medium">
 						{op.sign}
 					</Text>
 				</Pressable>

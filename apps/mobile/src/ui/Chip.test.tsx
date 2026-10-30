@@ -72,6 +72,21 @@ describe("trigger chip", () => {
 	});
 });
 
+describe("chip label", () => {
+	it("stops growing with the text size at the chrome cap", () => {
+		let tree!: { root: Node };
+		act(() => {
+			tree = create(<Chip label="Foreign currency" onPress={() => {}} />);
+		});
+		const label = tree.root.findAll(
+			(n) => n.props.maxFontSizeMultiplier !== undefined,
+		);
+		expect(label.length).toBeGreaterThan(0);
+		for (const node of label)
+			expect(node.props.maxFontSizeMultiplier).toBe(1.3);
+	});
+});
+
 describe("chip group", () => {
 	it("is a radio group with the picked option on, and picking calls back", () => {
 		const onChange = jest.fn();
