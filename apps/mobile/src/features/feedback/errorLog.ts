@@ -1,8 +1,8 @@
+import type { ErrorReportInput } from "@retrospend/api-contract";
 import {
-	type ErrorReportInput,
 	scrubErrorText,
 	scrubScreen,
-} from "@retrospend/api-contract";
+} from "@retrospend/api-contract/feedback-client";
 import { newClientId } from "@/data/ids";
 import type { KeyValueStore } from "@/data/store";
 

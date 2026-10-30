@@ -1,3 +1,12 @@
+// Dependency-free on purpose: the mobile app imports this file by its own
+// subpath (@retrospend/api-contract/feedback-client) so its tests and bundle
+// do not load the oRPC contract.
+
+/** A screenshot is re-encoded to WebP on the server; this caps what is sent. */
+export const FEEDBACK_SCREENSHOT_MAX_BYTES = 5 * 1024 * 1024;
+
+export const ERROR_REPORT_BATCH_MAX = 20;
+
 /**
  * Error reports leave the phone only after this pass, and the server runs it
  * again on what it receives. It removes what could name a person or a sum:

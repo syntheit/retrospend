@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { ERROR_REPORT_BATCH_MAX } from "@retrospend/api-contract";
+import { ERROR_REPORT_BATCH_MAX } from "@retrospend/api-contract/feedback-client";
 import { newClientId } from "@/data/ids";
 import { type ErrorLog, toReport } from "./errorLog";
 

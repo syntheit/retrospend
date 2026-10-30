@@ -1,9 +1,9 @@
-import {
-	type ErrorReportInput,
-	type FeedbackDiagnostics,
-	type SubmitFeedback,
-	scrubScreen,
+import type {
+	ErrorReportInput,
+	FeedbackDiagnostics,
+	SubmitFeedback,
 } from "@retrospend/api-contract";
+import { scrubScreen } from "@retrospend/api-contract/feedback-client";
 
 export type FeedbackCategory = SubmitFeedback["category"];
 

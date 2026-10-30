@@ -3,10 +3,12 @@ import { v1 } from "../common/meta";
 import { userText } from "../common/user-text";
 import { idSchema, okSchema } from "../core";
 
-export * from "./scrub";
+import {
+	ERROR_REPORT_BATCH_MAX,
+	FEEDBACK_SCREENSHOT_MAX_BYTES,
+} from "./client";
 
-/** A screenshot is re-encoded to WebP on the server; this caps what is sent. */
-export const FEEDBACK_SCREENSHOT_MAX_BYTES = 5 * 1024 * 1024;
+export * from "./client";
 
 export const FEEDBACK_CATEGORIES = ["bug", "idea", "other"] as const;
 
@@ -36,8 +38,6 @@ export const errorReportSchema = z
 	.meta({ id: "ErrorReport" });
 
 export type ErrorReportInput = z.infer<typeof errorReportSchema>;
-
-export const ERROR_REPORT_BATCH_MAX = 20;
 
 export const submitErrorReportsSchema = z
 	.object({

@@ -1,4 +1,4 @@
-import { FEEDBACK_SCREENSHOT_MAX_BYTES } from "@retrospend/api-contract";
+import { FEEDBACK_SCREENSHOT_MAX_BYTES } from "@retrospend/api-contract/feedback-client";
 import * as ImagePicker from "expo-image-picker";
 
 export type ScreenshotPick =

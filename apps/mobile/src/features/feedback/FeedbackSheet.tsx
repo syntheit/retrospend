@@ -1,4 +1,5 @@
-import { type ErrorReportInput, scrubScreen } from "@retrospend/api-contract";
+import type { ErrorReportInput } from "@retrospend/api-contract";
+import { scrubScreen } from "@retrospend/api-contract/feedback-client";
 import { type ReactNode, useEffect, useState } from "react";
 import { Image, ScrollView, useWindowDimensions, View } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
