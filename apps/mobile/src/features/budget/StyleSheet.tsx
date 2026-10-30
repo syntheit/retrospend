@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
 import { minorOf, readAmount } from "@/features/write/amount";
-import { AmountField, Note, useAmountLocale } from "@/features/write/parts";
+import { Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { AmountField } from "@/ui/AmountField";
 import { ChipGroup } from "@/ui/Chip";
 import type { SheetDetent } from "@/ui/Sheet";
 import { type SwitchStyle, styleBody } from "./moreBodies";

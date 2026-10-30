@@ -5,15 +5,11 @@ import { useFormatter, useTranslations } from "use-intl";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
-import {
-	AmountField,
-	Note,
-	SheetBody,
-	useAmountLocale,
-} from "@/features/write/parts";
+import { Note, SheetBody, useAmountLocale } from "@/features/write/parts";
 import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
+import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
 import { DateField } from "@/ui/DateField";
 import { Sheet } from "@/ui/Sheet";

@@ -5,8 +5,8 @@ import { useTranslations } from "use-intl";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
+import { MoneyCell } from "@/ui/MoneyCell";
 import { Text } from "@/ui/Text";
-import { TextField } from "@/ui/TextField";
 import { TypeLine, useRateLabel } from "./parts";
 import {
 	type Conversion,
@@ -82,14 +82,24 @@ export function ConvertBlock({
 			<Text accessibilityRole="header" variant="section">
 				{t("title")}
 			</Text>
-			<TextField
-				invalid={text.trim() !== "" && !parsed.ok}
-				keyboardType="decimal-pad"
-				label={t("amount")}
-				onChangeText={setText}
-				prefix={from}
-				value={text}
-			/>
+			<View
+				style={{
+					flexDirection: "row",
+					alignItems: "center",
+					justifyContent: "space-between",
+					gap: space[3],
+				}}
+			>
+				<Text>{t("amount")}</Text>
+				<MoneyCell
+					currency={from}
+					invalid={text.trim() !== "" && !parsed.ok}
+					label={t("amount")}
+					onChange={setText}
+					showCurrency
+					value={text}
+				/>
+			</View>
 			<View
 				style={{
 					flexDirection: "row",

@@ -4,13 +4,9 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { readAmount } from "@/features/write/amount";
-import {
-	AmountField,
-	Line,
-	Note,
-	useAmountLocale,
-} from "@/features/write/parts";
+import { Line, Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { AmountField } from "@/ui/AmountField";
 import { EmptyState } from "@/ui/EmptyState";
 import type { SheetDetent } from "@/ui/Sheet";
 import { SkeletonRows } from "@/ui/Skeleton";

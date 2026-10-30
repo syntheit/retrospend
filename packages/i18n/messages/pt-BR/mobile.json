@@ -71,16 +71,12 @@
 			"editRefused": "Não foi possível salvar esta alteração. Ela pode estar bloqueada."
 		},
 		"changes": {
-			"title": "O que isso muda",
 			"emptyExpense": "Digite um valor e escolha uma categoria para ver o que muda.",
 			"emptyIncome": "Digite um valor e diga quem pagou você para ver o que muda.",
 			"loading": "Verificando o que muda",
 			"offline": "Você está offline. Isto é salvo no celular e sincronizado depois.",
 			"refused": "Ainda não dá para salvar. Confira o valor e a moeda.",
 			"to": "para {amount}",
-			"stays": "Continua igual: {places}.",
-			"unknown": "Ainda não dá para saber: {places}.",
-			"nothing": "Nada mais muda.",
 			"figures": {
 				"budget_notPlannedYet": "Ainda não planejado",
 				"budget_leftToSpend": "Disponível para gastar",
@@ -709,25 +705,16 @@
 		},
 		"preview": {
 			"checking": "Verificando",
-			"error": "Não foi possível verificar. Tente de novo.",
-			"changes": "O que muda",
 			"beforeAfter": "{before} para {after}",
 			"leftOf": "Resta em {name}",
-			"nothing": "Isto não muda nada.",
 			"envelopeFallback": "Envelope",
-			"refused": "Isto não pode ser feito assim. Mude o valor.",
-			"nothingElse": "Nada mais muda: {list} continuam como estão.",
-			"nothingElseOne": "Nada mais muda: {item} continua como está.",
-			"noneChange": "Sem mudança em {list}.",
-			"unavailable": "Não foi possível verificar {list}.",
 			"notAvailable": "Indisponível (sem cotação ainda)"
 		},
 		"write": {
 			"saving": "Salvando",
 			"error": "Não foi possível salvar. Tente de novo.",
 			"undone": "Desfeito",
-			"undoError": "Não foi possível desfazer. Talvez já tenha mudado.",
-			"amountInvalid": "Use dígitos e as casas decimais que esta moeda tem."
+			"undoError": "Não foi possível desfazer. Talvez já tenha mudado."
 		},
 		"listAnd": "{head} e {last}",
 		"figures": {
@@ -1484,7 +1471,8 @@
 			"crypto": "Cripto",
 			"market": "Mercado",
 			"custom": "Personalizada"
-		}
+		},
+		"invalid": "Use dígitos e as casas decimais que esta moeda tem."
 	},
 	"home": {
 		"title": "Início",
@@ -1757,8 +1745,6 @@
 		"amount": "Valor",
 		"unpriced": "{currencies}: ainda sem cotação, por isso fora de Tudo",
 		"nothingOwed": "Nada pendente agora",
-		"changes": "O que muda",
-		"stays": "O que continua igual",
 		"figure": {
 			"balance_person": "Saldo com {name}",
 			"owed_owedToYou": "Devem a você",
@@ -1766,7 +1752,6 @@
 		},
 		"beforeAfter": "{before} para {after}",
 		"none": "nada",
-		"keeps": "{amount} continua",
 		"checking": "Verificando",
 		"record": "Registrar pagamento",
 		"recording": "Registrando",
@@ -2715,5 +2700,18 @@
 		"tooLarge": "Essa imagem tem mais de 5 MB.",
 		"errorReports": "Enviar relatórios de erro para o meu servidor",
 		"errorReportsDetail": "Só falhas, sem endereços nem valores. Vão para o seu próprio servidor."
+	},
+	"changes": {
+		"title": "O que isso muda",
+		"checking": "Verificando",
+		"error": "Não foi possível verificar. Tente de novo.",
+		"refused": "Isto não pode ser feito assim. Mude o valor.",
+		"nothing": "Isto não muda nada.",
+		"nothingElse": "Nada mais muda: {list} continuam como estão.",
+		"nothingElseOne": "Nada mais muda: {item} continua como está.",
+		"noneChange": "Sem mudança em {list}.",
+		"unavailable": "Não foi possível verificar {list}.",
+		"stays": "O que continua igual",
+		"keeps": "{amount} continua"
 	}
 }

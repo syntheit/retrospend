@@ -5,13 +5,12 @@ import { useTranslations } from "use-intl";
 import type { PersonIdentity } from "@/features/people/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { readAmount } from "@/features/write/amount";
-import { AmountField } from "@/features/write/parts";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
-import { FieldLabel } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import { AfterThis, OverpayAction } from "./AfterThis";
 import { AmountChoices } from "./AmountChoices";
@@ -172,24 +171,21 @@ export function SettleSheet({
 							/>
 							{nothingOwed ? note(t("nothingOwed")) : null}
 							{nothingOwed ? null : (
-								<View style={{ gap: space[1] }}>
-									<FieldLabel>{t("amount")}</FieldLabel>
-									<AmountField
-										between={
-											<AmountChoices
-												choice={flow.choice}
-												context={context}
-												direction={flow.direction}
-												onChoose={flow.setChoice}
-											/>
-										}
-										currency={context.currency}
-										draft={draft}
-										entered={entered}
-										label={t("amount")}
-										onDraftChange={changeDraft}
-									/>
-								</View>
+								<AmountField
+									between={
+										<AmountChoices
+											choice={flow.choice}
+											context={context}
+											direction={flow.direction}
+											onChoose={flow.setChoice}
+										/>
+									}
+									currency={context.currency}
+									draft={draft}
+									entered={entered}
+									label={t("amount")}
+									onDraftChange={changeDraft}
+								/>
 							)}
 							{nothingOwed ? null : (
 								<>

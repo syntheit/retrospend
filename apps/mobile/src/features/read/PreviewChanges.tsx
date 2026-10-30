@@ -1,9 +1,9 @@
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { type FigureDiff, figureLines } from "@/features/write/figures";
-import { ChangeList, type ChangeRow } from "@/features/write/parts";
 import { useFigureLabel } from "@/features/write/useFigureLabel";
 import type { PreviewStatus } from "@/features/write/useMoneyWrite";
+import { ChangeList, type ChangeRow } from "@/ui/ChangeList";
 
 type Side = { minor: number; currency: string } | null;
 

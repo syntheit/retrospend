@@ -4,13 +4,8 @@ import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
-import {
-	AmountField,
-	Line,
-	Note,
-	SheetBody,
-	useAmountLocale,
-} from "@/features/write/parts";
+import { Line, Note, SheetBody, useAmountLocale } from "@/features/write/parts";
+import { AmountField } from "@/ui/AmountField";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { type DraftOutcome, whatIfBody } from "./draftsBody";
 import { ChoiceList } from "./fields";
