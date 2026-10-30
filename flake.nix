@@ -131,6 +131,41 @@
                 GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidHome}/build-tools/36.0.0/aapt2";
               };
             };
+          # Android emulator for screenshot audits (apps/mobile/scripts/android-emulator.sh).
+          # API 36 (Android 16) x86_64 google_apis image, no Play Store. Build
+          # APKs in the `android` shell, run them here.
+          android-emu =
+            let
+              emuPkgs = import nixpkgs {
+                inherit system;
+                config = {
+                  allowUnfree = true;
+                  android_sdk.accept_license = true;
+                };
+              };
+              emuSdk =
+                (emuPkgs.androidenv.composeAndroidPackages {
+                  platformVersions = [ "36" ];
+                  buildToolsVersions = [ "36.0.0" ];
+                  includeEmulator = true;
+                  includeSystemImages = true;
+                  systemImageTypes = [ "google_apis" ];
+                  abiVersions = [ "x86_64" ];
+                  includeNDK = false;
+                }).androidsdk;
+            in
+            emuPkgs.mkShell {
+              packages = [
+                emuSdk
+                emuPkgs.jdk17
+                emuPkgs.util-linux
+              ];
+              env = {
+                JAVA_HOME = emuPkgs.jdk17.home;
+                ANDROID_HOME = "${emuSdk}/libexec/android-sdk";
+                ANDROID_SDK_ROOT = "${emuSdk}/libexec/android-sdk";
+              };
+            };
         }
       );
     };
