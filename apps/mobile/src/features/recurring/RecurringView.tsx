@@ -4,7 +4,6 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
-import { MoneyAmount } from "@/ui/Money";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
@@ -16,6 +15,7 @@ import {
 	SectionHeader,
 	StaleNote,
 } from "@/ui/List";
+import { MoneyAmount } from "@/ui/Money";
 import { Screen } from "@/ui/Screen";
 import { Segmented } from "@/ui/Segmented";
 import { SkeletonRows } from "@/ui/Skeleton";
@@ -106,7 +106,13 @@ function Row({
 			end={
 				<MoneyAmount
 					home={foreign ? item.home : undefined}
-					tone={item.direction === "in" ? "positive" : "default"}
+					tone={
+						item.paused
+							? "muted"
+							: item.direction === "in"
+								? "positive"
+								: "default"
+					}
 					value={item.amount}
 				/>
 			}
@@ -130,12 +136,7 @@ function Row({
 			title={item.title}
 		/>
 	);
-	// A paused template reads dimmed, the way the mockup shows it.
-	const shown = item.paused ? (
-		<View style={{ opacity: 0.55 }}>{row}</View>
-	) : (
-		row
-	);
+	// A paused template says Paused and its amount reads quiet.
 	const remove = {
 		id: "delete",
 		label: t("delete.submit"),
@@ -158,7 +159,7 @@ function Row({
 					tone: "danger",
 				}}
 			>
-				{shown}
+				{row}
 			</SwipeRow>
 		);
 	// A due one swipes right to Confirm and left to Skip; a tap opens Confirm,
@@ -180,7 +181,7 @@ function Row({
 			onPress={onConfirm}
 			trailing={{ label: t("skip.submit"), onPress: onSkip, tone: "neutral" }}
 		>
-			{shown}
+			{row}
 		</SwipeRow>
 	);
 }

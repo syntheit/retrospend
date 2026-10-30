@@ -15,6 +15,7 @@ import { useTheme } from "@/theme";
 import { categoryColor, Glyph, type GlyphName } from "./Glyph";
 import { rowEnter, rowExit, rowLayout } from "./motion";
 import { Text } from "./Text";
+import { TextAction } from "./TextAction";
 
 /**
  * A section title with its count (fg-3) or a link at its end. Flat, no card.
@@ -377,7 +378,7 @@ export function ListRow({
 	);
 }
 
-/** A text button on its own line (Show more, Show fewer), at the 44pt minimum. */
+/** A text button on its own line (Show more, Show fewer), in line with the rows. */
 export function LinkButton({
 	label,
 	onPress,
@@ -385,20 +386,5 @@ export function LinkButton({
 	label: string;
 	onPress: () => void;
 }) {
-	const { color, size, space } = useTheme();
-	return (
-		<Pressable
-			accessibilityRole="button"
-			onPress={onPress}
-			style={{
-				minHeight: size.touchMin.phone,
-				justifyContent: "center",
-				paddingHorizontal: space[4],
-			}}
-		>
-			<Text style={{ color: color.accentStrong }} weight="medium">
-				{label}
-			</Text>
-		</Pressable>
-	);
+	return <TextAction inset label={label} onPress={onPress} />;
 }

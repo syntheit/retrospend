@@ -3,11 +3,11 @@ import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useVerdictText } from "@/features/budget/useVerdictText";
 import { verdictLabel, verdictSentence } from "@/features/budget/verdict";
-import { MoneyAmount } from "@/ui/Money";
-
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
+import { MoneyAmount } from "@/ui/Money";
+import { ProgressBar } from "@/ui/ProgressBar";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { useHomeDates } from "./dates";
@@ -31,44 +31,12 @@ function barShares(glance: Glance): { spent: number; time: number } | null {
 	};
 }
 
-/** The spend bar: the spent share filled in accent, a 2pt mark for today. */
+/** The spend bar: the spent share in accent, a mark for today. */
 function SpendBar({ spent, time }: { spent: number; time: number }) {
-	const { color, radius, space } = useTheme();
-	const mark = space[1] / 2;
+	const { space } = useTheme();
 	return (
-		<View
-			accessibilityElementsHidden
-			importantForAccessibility="no-hide-descendants"
-			style={{
-				height: space[2],
-				marginVertical: space[3],
-				borderRadius: radius.chip,
-				backgroundColor: color.raised,
-			}}
-		>
-			<View
-				style={{
-					position: "absolute",
-					left: 0,
-					top: 0,
-					bottom: 0,
-					width: `${spent * 100}%`,
-					borderRadius: radius.chip,
-					backgroundColor: color.accent,
-				}}
-			/>
-			<View
-				style={{
-					position: "absolute",
-					left: `${time * 100}%`,
-					top: -space[1] / 2,
-					bottom: -space[1] / 2,
-					width: mark,
-					marginLeft: -mark / 2,
-					borderRadius: mark / 2,
-					backgroundColor: color.fg,
-				}}
-			/>
+		<View style={{ marginVertical: space[3] }}>
+			<ProgressBar mark={time * 100} percent={spent * 100} weight="regular" />
 		</View>
 	);
 }

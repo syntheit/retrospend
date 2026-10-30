@@ -1,9 +1,9 @@
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
-import { MoneyAmount } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { IconTile } from "@/ui/IconTile";
 import { CategoryTile, ListRow } from "@/ui/List";
+import { MoneyAmount } from "@/ui/Money";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import type { PersonPage } from "./source";

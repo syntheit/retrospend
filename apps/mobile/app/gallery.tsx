@@ -107,7 +107,10 @@ export default function GalleryScreen() {
 									tone="muted"
 									value={{ minor: 299, currency: "USD" }}
 								/>
-								<MoneyAmount home={null} value={{ minor: 1250, currency: "EUR" }} />
+								<MoneyAmount
+									home={null}
+									value={{ minor: 1250, currency: "EUR" }}
+								/>
 							</View>
 						</Section>
 						<Section title="Segmented">

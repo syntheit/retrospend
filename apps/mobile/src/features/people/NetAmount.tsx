@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { heroCents, MoneyAmount } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { heroCents, MoneyAmount } from "@/ui/Money";
 import { Text } from "@/ui/Text";
 import { isApproximate } from "./groups";
 import type { PersonSummary } from "./source";

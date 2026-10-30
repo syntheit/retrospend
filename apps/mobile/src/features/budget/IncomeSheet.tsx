@@ -1,12 +1,12 @@
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
-import { MoneyAmount } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note, SheetBody } from "@/features/write/parts";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
 import { Hero } from "@/ui/Hero";
 import { ListGroup, ListRow } from "@/ui/List";
+import { MoneyAmount } from "@/ui/Money";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import type { OpenSheet } from "./BudgetSheets";
 import { monthDate } from "./months";
@@ -76,12 +76,12 @@ export function IncomeSheet({
 		>
 			<SheetBody>
 				<View style={{ paddingHorizontal: space[4] }}>
-				<Hero
-					label={t("moneyIn")}
-					sub={cost}
-					tone={data.toAssign.terms.moneyIn.minor > 0 ? "positive" : "fg"}
-					value={money(data.toAssign.terms.moneyIn)}
-				/>
+					<Hero
+						label={t("moneyIn")}
+						sub={cost}
+						tone={data.toAssign.terms.moneyIn.minor > 0 ? "positive" : "fg"}
+						value={money(data.toAssign.terms.moneyIn)}
+					/>
 				</View>
 				<ListGroup>
 					{rows.map((row) => (
@@ -99,28 +99,28 @@ export function IncomeSheet({
 					/>
 				</ListGroup>
 				<View style={{ gap: space[3], paddingHorizontal: space[4] }}>
-				{read.status === "error" ? (
-					<Note tone="attention">{t("error")}</Note>
-				) : null}
-				{plan?.runway ? (
-					<Note>
-						{t("runway", {
-							months: format.number(plan.runway.tenths / 10, {
-								maximumFractionDigits: 1,
-							}),
-							available: money(plan.runway.available),
-						})}
-					</Note>
-				) : null}
-				{plan?.incomplete ? <Note>{t("incomplete")}</Note> : null}
-				{onOpen ? (
-					<View style={{ flexDirection: "row", gap: space[2] }}>
-						<Chip
-							label={tr("rules")}
-							onPress={() => onOpen({ kind: "rules" })}
-						/>
-					</View>
-				) : null}
+					{read.status === "error" ? (
+						<Note tone="attention">{t("error")}</Note>
+					) : null}
+					{plan?.runway ? (
+						<Note>
+							{t("runway", {
+								months: format.number(plan.runway.tenths / 10, {
+									maximumFractionDigits: 1,
+								}),
+								available: money(plan.runway.available),
+							})}
+						</Note>
+					) : null}
+					{plan?.incomplete ? <Note>{t("incomplete")}</Note> : null}
+					{onOpen ? (
+						<View style={{ flexDirection: "row", gap: space[2] }}>
+							<Chip
+								label={tr("rules")}
+								onPress={() => onOpen({ kind: "rules" })}
+							/>
+						</View>
+					) : null}
 				</View>
 			</SheetBody>
 		</Sheet>

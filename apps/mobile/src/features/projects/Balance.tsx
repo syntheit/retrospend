@@ -1,8 +1,9 @@
 import type { Money } from "@retrospend/domain/money-minor";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { MoneyAmount } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useTheme } from "@/theme";
+import { MoneyAmount } from "@/ui/Money";
 import { Text } from "@/ui/Text";
 import { balanceSides } from "./source";
 
@@ -30,6 +31,7 @@ export function useBalanceWords() {
  */
 export function BalanceColumn({ lines }: { lines: Money[] }) {
 	const t = useTranslations("mobile.projects");
+	const { space } = useTheme();
 	const { owedToYou, youOwe } = balanceSides(lines);
 	if (owedToYou.length === 0 && youOwe.length === 0) {
 		return (
@@ -39,7 +41,7 @@ export function BalanceColumn({ lines }: { lines: Money[] }) {
 		);
 	}
 	return (
-		<View style={{ alignItems: "flex-end", gap: 2 }}>
+		<View style={{ alignItems: "flex-end", gap: space[1] }}>
 			{owedToYou.map((line) => (
 				<View key={`in:${line.currency}`} style={{ alignItems: "flex-end" }}>
 					<Text tone="fg2" variant="small">

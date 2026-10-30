@@ -1,13 +1,13 @@
 import { router } from "expo-router";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { MoneyAmount } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { AvatarStack, type Face } from "@/ui/Avatar";
 import { Glyph } from "@/ui/Glyph";
 import { ListGroup, ListRow } from "@/ui/List";
+import { MoneyAmount } from "@/ui/Money";
 import { Text } from "@/ui/Text";
 import { participantKey } from "./owedBodies";
 import type { BudgetMonth } from "./source";

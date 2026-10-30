@@ -5,13 +5,13 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { AddButton } from "@/ui/AddButton";
-import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
 import { CategoryTile, ListGroup, ListRow, StaleNote } from "@/ui/List";
 import { Menu } from "@/ui/Menu";
 import { Screen } from "@/ui/Screen";
 import { StatusText } from "@/ui/StatusText";
 import { useToast } from "@/ui/Toast";
+import { TopBarAction } from "@/ui/TopBarAction";
 import { SettingsPage } from "../parts";
 import { useCategories } from "../useSettings";
 import { CategorySheet } from "./CategorySheet";
@@ -65,7 +65,7 @@ export function CategoriesScreen() {
 		}
 	}
 
-	// The plus is the bar's: the system glass plus on iOS, a text plus on Android.
+	// The plus is the bar's: the system glass plus on iOS, the plus icon on Android.
 	const add = (
 		<Stack.Screen
 			options={{
@@ -73,11 +73,11 @@ export function CategoriesScreen() {
 					Platform.OS === "ios" ? (
 						<AddButton label={t("addTitle")} onPress={() => show(null)} />
 					) : (
-						<Button
-							accessibilityLabel={t("addTitle")}
-							label="+"
+						<TopBarAction
+							icon="Plus"
+							id="add"
+							label={t("addTitle")}
 							onPress={() => show(null)}
-							variant="text"
 						/>
 					),
 			}}

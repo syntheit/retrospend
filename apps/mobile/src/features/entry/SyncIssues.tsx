@@ -1,8 +1,9 @@
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Text } from "@/ui/Text";
+import { TextAction } from "@/ui/TextAction";
 import { useToast } from "@/ui/Toast";
 import { announceEntryChange } from "./events";
 import { useParkedEntries } from "./parked";
@@ -14,17 +15,11 @@ import { useParkedEntries } from "./parked";
  */
 export function SyncIssues({ padded }: { padded?: boolean }) {
 	const t = useTranslations("mobile.composer");
-	const { color, size, space } = useTheme();
+	const { space } = useTheme();
 	const { format } = useFormatMoney();
 	const toast = useToast();
 	const { entries, retry, discard } = useParkedEntries();
 	if (entries.length === 0) return null;
-
-	const action = {
-		minHeight: size.touchMin.phone,
-		justifyContent: "center",
-		paddingHorizontal: space[3],
-	} as const;
 
 	return (
 		<View
@@ -55,31 +50,26 @@ export function SyncIssues({ padded }: { padded?: boolean }) {
 						</Text>
 					</View>
 					<View style={{ flexDirection: "row" }}>
-						<Pressable
+						<TextAction
 							accessibilityLabel={`${t("sync.retry")}, ${entry.title}`}
-							accessibilityRole="button"
+							label={t("sync.retry")}
 							onPress={async () => {
 								const sent = await retry(entry.clientId);
 								announceEntryChange();
 								if (!sent) toast.show({ message: t("sync.retryFailed") });
 							}}
-							style={action}
-						>
-							<Text style={{ color: color.brand }}>{t("sync.retry")}</Text>
-						</Pressable>
-						<Pressable
+						/>
+						<TextAction
 							accessibilityLabel={`${t("sync.discard")}, ${entry.title}`}
-							accessibilityRole="button"
+							label={t("sync.discard")}
 							onPress={async () => {
 								await discard(entry.clientId);
 								toast.show({
 									message: t("toast.discarded", { title: entry.title }),
 								});
 							}}
-							style={action}
-						>
-							<Text tone="danger">{t("sync.discard")}</Text>
-						</Pressable>
+							tone="danger"
+						/>
 					</View>
 				</View>
 			))}

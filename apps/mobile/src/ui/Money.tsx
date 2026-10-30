@@ -107,7 +107,9 @@ export function MoneyAmount({
 						: null,
 				]}
 				tabular
-				tone={tone === "positive" ? "positive" : tone === "muted" ? "fg3" : "fg"}
+				tone={
+					tone === "positive" ? "positive" : tone === "muted" ? "fg3" : "fg"
+				}
 				variant={hero ? "hero" : size === "section" ? "section" : "body"}
 				weight={weight}
 			>

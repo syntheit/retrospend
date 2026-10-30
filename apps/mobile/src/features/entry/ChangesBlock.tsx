@@ -1,8 +1,8 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { TextAction } from "@/features/activity/TextAction";
 import { useTheme } from "@/theme";
 import { Text } from "@/ui/Text";
+import { TextAction } from "@/ui/TextAction";
 import { useChangeWords } from "./changeWords";
 import {
 	type ChangeLines,

@@ -2,9 +2,9 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Text } from "@/ui/Text";
+import { TextAction } from "@/ui/TextAction";
 import { BULK_DELETE_LIMIT, entityIdsOf } from "./bulk";
 import type { ActivityItem } from "./source";
-import { TextAction } from "./TextAction";
 import type { BulkActions } from "./useBulkActions";
 
 /**
