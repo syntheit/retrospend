@@ -1,3 +1,4 @@
+import type { ExportRequest } from "@retrospend/api-contract";
 import { File } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { useState } from "react";
@@ -15,7 +16,10 @@ import {
 	waitForExport,
 } from "./exportJob";
 
-/** Everything, the expenses (export jobs) and the open accounts (a CSV read). */
+/**
+ * Everything, the expenses (export jobs) and the open accounts (a CSV read);
+ * a full request asks for one project's or one person's document.
+ */
 export type DataKind = ExportKind | "wealth";
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -37,7 +41,7 @@ function today(): string {
 export function useDataExport() {
 	const { api } = useSession();
 	const { connection } = useServerConnection();
-	const [busy, setBusy] = useState<DataKind | null>(null);
+	const [busy, setBusy] = useState<string | null>(null);
 
 	async function share(file: File, mimeType: string, UTI: string) {
 		await shareThenDelete(file, async (f) => {
@@ -47,19 +51,23 @@ export function useDataExport() {
 		});
 	}
 
-	async function exportJob(kind: ExportKind, baseUrl: string) {
+	async function exportJob(request: ExportRequest, baseUrl: string) {
 		if (!api) throw new Error("signed out");
 		const key = newClientId();
 		const job = await waitForExport({
 			request: () =>
-				api.exports.request({ kind }, { context: { idempotencyKey: key } }),
+				api.exports.request(request, { context: { idempotencyKey: key } }),
 			read: (id) => api.exports.getJob({ id }),
 			wait,
 		});
 		const token = await createTokenStore(baseUrl).get();
 		if (!token) throw new Error("signed out");
 		const fallback =
-			kind === "data" ? `retrospend-${today()}.zip` : `expenses-${today()}.csv`;
+			request.kind === "data"
+				? `retrospend-${today()}.zip`
+				: request.kind === "expenses"
+					? `expenses-${today()}.csv`
+					: `${request.kind.replace(/_/g, "-")}-${today()}.${job.format}`;
 		const target = exportFile(safeFileName(job.fileName, fallback));
 		let file: File;
 		try {
@@ -90,12 +98,17 @@ export function useDataExport() {
 	}
 
 	/** Resolves true once the share sheet opened, false when it failed. */
-	async function run(kind: DataKind): Promise<boolean> {
+	async function run(what: DataKind | ExportRequest): Promise<boolean> {
 		if (busy || connection.status !== "connected") return false;
+		const kind = typeof what === "string" ? what : what.kind;
 		setBusy(kind);
 		try {
-			if (kind === "wealth") await exportWealth();
-			else await exportJob(kind, connection.baseUrl);
+			if (what === "wealth") await exportWealth();
+			else
+				await exportJob(
+					typeof what === "string" ? { kind: what } : what,
+					connection.baseUrl,
+				);
 			return true;
 		} catch {
 			return false;

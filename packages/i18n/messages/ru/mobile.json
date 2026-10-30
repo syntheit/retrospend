@@ -1723,7 +1723,9 @@
 		"projectCount": "{count, plural, one {# проект} few {# проекта} many {# проектов} other {# проекта}}",
 		"owesYouNet": "должен вам, итого",
 		"youOweThemNet": "вы должны, итого",
-		"expense": "Расход"
+		"expense": "Расход",
+		"exportHistory": "Экспорт истории (CSV)",
+		"shareStatement": "Поделиться выпиской (PDF)"
 	},
 	"settle": {
 		"with": "Расчёт с {name}",

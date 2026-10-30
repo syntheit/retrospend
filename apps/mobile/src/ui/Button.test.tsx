@@ -22,6 +22,14 @@ jest.mock("@/theme", () => ({ useTheme: () => mockTheme.current }));
 jest.mock("./NativeHost", () => ({
 	NativeHost: ({ children }: { children: unknown }) => children,
 }));
+jest.mock("@expo/ui", () => ({
+	Host: (props: Record<string, unknown>) =>
+		require("react").createElement("ExpoHost", props),
+}));
+jest.mock("react-native/Libraries/Utilities/useColorScheme", () => ({
+	__esModule: true,
+	default: () => "light",
+}));
 jest.mock("@expo/ui/swift-ui", () => {
 	const React = require("react");
 	return {
@@ -115,6 +123,23 @@ describe.each([
 });
 
 describe("other variants", () => {
+	it("fills the width its row gives it, at the same control height", () => {
+		mockTheme.current = light;
+		let tree: { root: TestNode } | undefined;
+		act(() => {
+			tree = create(<Button fill label="Open project" variant="outlined" />);
+		});
+		const root = (tree as NonNullable<typeof tree>).root;
+		// The host keeps only the height, so the row decides the width.
+		expect(root.findByType("ExpoHost").props.matchContents).toEqual({
+			vertical: true,
+		});
+		const stack = root.findAll((n) => n.type === "SwiftHStack")[0];
+		const frame = find((stack?.props.modifiers ?? []) as Modifier[], "frame");
+		expect(JSON.stringify(frame)).toContain(`"height":${light.size.ctl.phone}`);
+		expect(JSON.stringify(frame)).toContain("maxWidth");
+	});
+
 	it("never uses a glass style", () => {
 		expect(Object.values(BUTTON_STYLE).join(" ")).not.toMatch(/glass/i);
 	});

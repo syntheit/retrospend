@@ -167,6 +167,11 @@ export interface ButtonProps {
 	size?: "regular" | "small";
 	/** A glyph before the label on outlined and dangerText (SwiftUI buttons only). */
 	icon?: ButtonIcon;
+	/**
+	 * Fills the width its row gives it, for two equal halves on a card. The
+	 * label stays centered; the height is the control height either way.
+	 */
+	fill?: boolean;
 	disabled?: boolean;
 }
 

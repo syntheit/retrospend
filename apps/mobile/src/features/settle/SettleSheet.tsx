@@ -74,6 +74,11 @@ export function SettleSheet({
 	// The amount field is always there. A chip fills it with the server's own
 	// amount; typing makes the amount the typed one and unpicks the chips.
 	const [typed, setTyped] = useState("");
+	// The sheet opens on the server's suggestion, already filled, so the
+	// keypad is put away and Method, Date and what changes are on screen
+	// before Record. Tapping the amount brings the keypad up; picking a chip,
+	// a rate, the direction, a method or a day puts it away again.
+	const [keypad, setKeypad] = useState(false);
 	const custom = flow.choice.kind === "custom";
 	const fill = context ? fillOf(context, flow.choice) : null;
 	const draft = custom
@@ -87,6 +92,7 @@ export function SettleSheet({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `visible` is the trigger
 	useEffect(() => {
 		setTyped("");
+		setKeypad(false);
 	}, [visible]);
 
 	function changeDraft(next: string) {
@@ -166,7 +172,10 @@ export function SettleSheet({
 							<SettleHead
 								context={context}
 								direction={flow.direction}
-								onDirection={flow.changeDirection}
+								onDirection={(next) => {
+									setKeypad(false);
+									flow.changeDirection(next);
+								}}
 								person={person}
 							/>
 							{nothingOwed ? note(t("nothingOwed")) : null}
@@ -177,14 +186,19 @@ export function SettleSheet({
 											choice={flow.choice}
 											context={context}
 											direction={flow.direction}
-											onChoose={flow.setChoice}
+											onChoose={(next) => {
+												setKeypad(false);
+												flow.setChoice(next);
+											}}
 										/>
 									}
 									currency={context.currency}
 									draft={draft}
 									entered={entered}
+									keypad={keypad}
 									label={t("amount")}
 									onDraftChange={changeDraft}
+									onPress={() => setKeypad(true)}
 								/>
 							)}
 							{nothingOwed ? null : (
@@ -192,14 +206,23 @@ export function SettleSheet({
 									{shownRates ? (
 										<RateChips
 											choices={shownRates}
-											onPick={flow.changeRate}
+											onPick={(type) => {
+												setKeypad(false);
+												flow.changeRate(type);
+											}}
 											values={flow.typeRates}
 										/>
 									) : null}
 									<MethodAndDate
 										method={flow.method}
-										onMethod={flow.setMethod}
-										onPaidOn={flow.setPaidOn}
+										onMethod={(next) => {
+											setKeypad(false);
+											flow.setMethod(next);
+										}}
+										onPaidOn={(day) => {
+											setKeypad(false);
+											flow.setPaidOn(day);
+										}}
 										paidOn={flow.paidOn}
 										shared={flow.shared}
 										today={context.today}
