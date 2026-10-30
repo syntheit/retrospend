@@ -35,6 +35,7 @@ export function DeleteAccountSheet({
 	onClose: () => void;
 }) {
 	const t = useTranslations("mobile.settings.delete");
+	const tc = useTranslations("mobile.common");
 	const { api, signOut } = useSession();
 	const { space } = useTheme();
 	const body = useSheetBodySize({ footer: true });
@@ -110,12 +111,15 @@ export function DeleteAccountSheet({
 		<Sheet
 			detents={["large"]}
 			footer={
-				<Button
-					disabled={busy || password === "" || what === null}
-					label={busy ? t("deleting") : t("delete")}
-					onPress={remove}
-					variant="danger"
-				/>
+				<>
+					<Button label={tc("cancel")} onPress={onClose} variant="text" />
+					<Button
+						disabled={busy || password === "" || what === null}
+						label={busy ? t("deleting") : t("delete")}
+						onPress={remove}
+						variant="danger"
+					/>
+				</>
 			}
 			onClose={onClose}
 			title={t("title")}

@@ -76,7 +76,13 @@ export function UsersScreen() {
 	const open = users?.find((user) => user.id === openId) ?? null;
 	const today = new Date().toISOString().slice(0, 10);
 
-	if (!users) return <PageState failed={state.status === "error"} />;
+	if (!users)
+		return (
+			<PageState
+				failed={state.status === "error"}
+				onRetry={() => void reload()}
+			/>
+		);
 
 	return (
 		<>

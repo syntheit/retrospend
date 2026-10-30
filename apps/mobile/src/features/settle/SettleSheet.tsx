@@ -203,7 +203,6 @@ export function SettleSheet({
 										paidOn={flow.paidOn}
 										shared={flow.shared}
 										today={context.today}
-										yesterday={context.yesterday}
 									/>
 								</>
 							)}

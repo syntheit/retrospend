@@ -2,12 +2,13 @@ import { ScrollView } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
+import { Menu } from "@/ui/Menu";
+import type { MenuItem } from "@/ui/types";
 import type { RecurringFilter } from "./filter";
 
 /**
- * The Recurring chips: Auto-pay on, Auto-pay off and Foreign currency. Each
- * toggles; the two auto-pay chips are one choice, so picking one clears the
- * other.
+ * The Recurring chips: an Auto-pay menu chip (on, off or any, one choice)
+ * and the Foreign currency toggle.
  */
 export function RecurringFilters({
 	filter,
@@ -18,6 +19,23 @@ export function RecurringFilters({
 }) {
 	const t = useTranslations("mobile.recurring");
 	const { space } = useTheme();
+	const autoPayItems: MenuItem[] = [
+		{
+			id: "any",
+			label: t("autoPayAny"),
+			onPress: () => onChange({ ...filter, autoPay: null }),
+		},
+		{
+			id: "on",
+			label: t("autoPayOn"),
+			onPress: () => onChange({ ...filter, autoPay: "on" }),
+		},
+		{
+			id: "off",
+			label: t("autoPayOff"),
+			onPress: () => onChange({ ...filter, autoPay: "off" }),
+		},
+	];
 	return (
 		<ScrollView
 			contentContainerStyle={{
@@ -30,25 +48,17 @@ export function RecurringFilters({
 			keyboardShouldPersistTaps="handled"
 			showsHorizontalScrollIndicator={false}
 		>
-			<Chip
-				label={t("autoPayOn")}
-				onPress={() =>
-					onChange({
-						...filter,
-						autoPay: filter.autoPay === "on" ? null : "on",
-					})
+			<Menu
+				active={filter.autoPay !== null}
+				chip
+				items={autoPayItems}
+				label={
+					filter.autoPay === "on"
+						? t("autoPayOn")
+						: filter.autoPay === "off"
+							? t("autoPayOff")
+							: t("autoPayFilter")
 				}
-				selected={filter.autoPay === "on"}
-			/>
-			<Chip
-				label={t("autoPayOff")}
-				onPress={() =>
-					onChange({
-						...filter,
-						autoPay: filter.autoPay === "off" ? null : "off",
-					})
-				}
-				selected={filter.autoPay === "off"}
 			/>
 			<Chip
 				label={t("foreign")}

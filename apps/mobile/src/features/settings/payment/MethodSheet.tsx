@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { Alert, ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -23,7 +23,8 @@ const VISIBILITIES: Visibility[] = ["PUBLIC", "FRIENDS_ONLY", "PAYMENT_ONLY"];
 
 /**
  * One payment method: its label, number or handle, and who sees it. Prefer
- * moves it to the top; Remove asks once more. Every change sends the whole
+ * moves it to the top; Delete asks once more in an alert (no money moves, so
+ * no preview sheet). Every change sends the whole
  * list (the server replaces it) and says so in a toast.
  */
 export function MethodSheet({
@@ -48,7 +49,6 @@ export function MethodSheet({
 	const [label, setLabel] = useState(method.label ?? "");
 	const [identifier, setIdentifier] = useState(method.identifier ?? "");
 	const [visibility, setVisibility] = useState<Visibility>(method.visibility);
-	const [confirmRemove, setConfirmRemove] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [failed, setFailed] = useState(false);
 	const key = useRef(newClientId());
@@ -59,7 +59,6 @@ export function MethodSheet({
 		setLabel(method.label ?? "");
 		setIdentifier(method.identifier ?? "");
 		setVisibility(method.visibility);
-		setConfirmRemove(false);
 		setFailed(false);
 		key.current = newClientId();
 	}, [visible, method.id]);
@@ -87,6 +86,17 @@ export function MethodSheet({
 		} finally {
 			setBusy(false);
 		}
+	}
+
+	function askDelete() {
+		Alert.alert(t("removeTitle"), t("removeBody"), [
+			{ text: tc("cancel"), style: "cancel" },
+			{
+				text: t("removeConfirm"),
+				style: "destructive",
+				onPress: () => void send(without(all, method.id), t("removed")),
+			},
+		]);
 	}
 
 	return (
@@ -147,24 +157,12 @@ export function MethodSheet({
 							variant="outlined"
 						/>
 					)}
-					{confirmRemove ? (
-						<View style={{ gap: space[2] }}>
-							<Note tone="attention">{t("removeBody")}</Note>
-							<Button
-								disabled={busy}
-								label={t("removeConfirm")}
-								onPress={() => send(without(all, method.id), t("removed"))}
-								variant="danger"
-							/>
-						</View>
-					) : (
-						<Button
-							disabled={busy}
-							label={t("remove")}
-							onPress={() => setConfirmRemove(true)}
-							variant="text"
-						/>
-					)}
+					<Button
+						disabled={busy}
+						label={t("remove")}
+						onPress={askDelete}
+						variant="dangerText"
+					/>
 				</View>
 			</ScrollView>
 		</Sheet>

@@ -74,7 +74,11 @@ export function DeleteRecurringSheet({
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
 					<Button
 						disabled={flow.status !== "ready" || busy}
-						label={busy ? tc("saving") : t("submit")}
+						label={
+							busy
+								? tc("deleting")
+								: t(item.direction === "in" ? "submitIn" : "submit")
+						}
 						onPress={() => void submit()}
 						variant="danger"
 					/>

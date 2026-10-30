@@ -14,6 +14,7 @@ import { StaleNote } from "@/ui/List";
 import { Menu } from "@/ui/Menu";
 import { usePaneEnter } from "@/ui/motion";
 import { Screen } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
 import {
@@ -56,6 +57,7 @@ export function ProjectView({
 	startSettling?: boolean;
 }) {
 	const t = useTranslations("mobile.projects");
+	const tc = useTranslations("mobile.common");
 	const { listDetail } = useLayoutClass();
 	const { space } = useTheme();
 	const { state, reload } = useProject(id);
@@ -99,7 +101,7 @@ export function ProjectView({
 						options={{ title: name ?? "", headerLargeTitle: false }}
 					/>
 				)}
-				<EmptyState title="" />
+				<SkeletonRows />
 			</Screen>
 		);
 	}
@@ -111,7 +113,12 @@ export function ProjectView({
 						options={{ title: name ?? "", headerLargeTitle: false }}
 					/>
 				)}
-				<EmptyState detail={t("errorDetail")} title={t("errorOne")} />
+				<EmptyState
+					actionLabel={tc("retry")}
+					detail={t("errorDetail")}
+					onAction={() => void reload()}
+					title={t("errorOne")}
+				/>
 			</Screen>
 		);
 	}
@@ -290,6 +297,7 @@ export function ProjectView({
 							</View>
 						) : null}
 						<ProjectSummaryTab
+							onRetry={() => void summary.reload()}
 							onSettleAll={canSettle ? () => setSettling(true) : undefined}
 							state={summary.state}
 						/>

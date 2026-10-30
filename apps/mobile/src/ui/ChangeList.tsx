@@ -93,6 +93,7 @@ export function ChangeList({
 	status,
 	changes = [],
 	groups = [],
+	holds = [],
 	stays = [],
 	unavailable = [],
 	message,
@@ -102,6 +103,8 @@ export function ChangeList({
 	/** The figures that moved. */
 	changes?: ChangeRow[];
 	groups?: ChangeGroup[];
+	/** Figures checked that do not move, with their amounts (a settlement shows them). */
+	holds?: ChangeRow[];
 	/** Names of the figures checked that stay as they are. */
 	stays?: string[];
 	/** Names of the figures that could not be checked. */
@@ -176,7 +179,7 @@ export function ChangeList({
 	]
 		.filter(Boolean)
 		.join(" ");
-	const shown = anyLine || groups.length > 0;
+	const shown = anyLine || groups.length > 0 || holds.length > 0;
 	return frame(
 		<>
 			{changes.map((row) => (
@@ -211,6 +214,21 @@ export function ChangeList({
 					) : null}
 				</View>
 			))}
+			{holds.length > 0 ? (
+				<View style={{ gap: space[1], paddingTop: space[2] }}>
+					<Text accessibilityRole="header" tone="fg2" weight="semibold">
+						{t("stays")}
+					</Text>
+					{holds.map((row) => (
+						<Line
+							key={row.key}
+							label={row.label}
+							spoken={row.spoken}
+							value={row.value}
+						/>
+					))}
+				</View>
+			) : null}
 			{!shown && !keeps ? <Text tone="fg2">{t("nothing")}</Text> : null}
 			{closing ? (
 				<Text tone="fg3" variant="meta">

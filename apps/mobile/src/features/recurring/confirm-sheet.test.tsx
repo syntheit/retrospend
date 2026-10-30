@@ -44,25 +44,6 @@ jest.mock("@/ui/Button", () => {
 		),
 	};
 });
-jest.mock("@/ui/Segmented", () => {
-	const { Pressable } = require("react-native");
-	return {
-		Segmented: ({
-			options,
-			onChange,
-		}: {
-			options: { value: string; label: string }[];
-			onChange: (value: string) => void;
-		}) =>
-			options.map((o) => (
-				<Pressable
-					accessibilityLabel={o.label}
-					key={o.value}
-					onPress={() => onChange(o.value)}
-				/>
-			)),
-	};
-});
 jest.mock("@/ui/DateField", () => {
 	const { Pressable } = require("react-native");
 	return {
@@ -70,16 +51,26 @@ jest.mock("@/ui/DateField", () => {
 			label,
 			onChange,
 			minimum,
+			today,
+			value,
 		}: {
 			label: string;
 			onChange: (picked: string) => void;
 			minimum?: string;
+			today?: string;
+			value: string;
 		}) => (
-			<Pressable
-				accessibilityHint={minimum}
-				accessibilityLabel={label}
-				onPress={() => onChange("2026-11-03")}
-			/>
+			<>
+				<Pressable
+					accessibilityHint={`${minimum} ${value}`}
+					accessibilityLabel={label}
+					onPress={() => onChange("2026-11-03")}
+				/>
+				<Pressable
+					accessibilityLabel="Today"
+					onPress={() => onChange(today as string)}
+				/>
+			</>
 		),
 	};
 });
@@ -309,9 +300,7 @@ describe("Confirm a recurring expense", () => {
 		};
 		expect(previews().at(-1)?.input).toEqual(body);
 
-		press(tree, "Pick a date");
-		await wait(50);
-		press(tree, "Date");
+		press(tree, "Paid on");
 		await wait(400);
 		expect(previews().at(-1)?.input).toEqual({ ...body, paidOn: "2026-11-03" });
 
@@ -326,7 +315,11 @@ describe("Confirm a recurring expense", () => {
 	it("gives the date field the earliest day and writes nothing before it", async () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
-		const early = { ...item, paidOnFrom: "2026-11-04" } as RecurringItem;
+		const early = {
+			...item,
+			next: "2026-11-10",
+			paidOnFrom: "2026-11-04",
+		} as RecurringItem;
 		let tree!: Tree;
 		await act(async () => {
 			tree = create(
@@ -335,20 +328,18 @@ describe("Confirm a recurring expense", () => {
 					onClose={jest.fn()}
 					onDone={jest.fn()}
 					onSkip={jest.fn()}
-					today="2026-11-04"
+					today="2026-11-12"
 					visible
 				/>,
 			);
 		});
 		await wait(400);
-		press(tree, "Pick a date");
-		await wait(50);
 		const field = tree.root.findAll(
-			(n) => n.props.accessibilityLabel === "Date",
+			(n) => n.props.accessibilityLabel === "Paid on",
 		);
-		expect(field[0]?.props.accessibilityHint).toBe("2026-11-04");
+		expect(field[0]?.props.accessibilityHint).toBe("2026-11-04 2026-11-10");
 		const before = calls.filter((c) => c.route === "preview").length;
-		press(tree, "Date");
+		press(tree, "Paid on");
 		await wait(400);
 		// 2026-11-03 is before the earliest day: no new dry run, and Confirm is off.
 		expect(calls.filter((c) => c.route === "preview")).toHaveLength(before);

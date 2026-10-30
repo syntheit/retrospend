@@ -22,6 +22,7 @@ import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { Menu } from "@/ui/Menu";
 import { useAddInset } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
 
 /** The chips narrow the list; pressing the one that is on turns it off. */
 const CHIPS: Exclude<PeopleChip, "all">[] = [
@@ -63,6 +64,7 @@ export function PeopleList({
 	bar?: ReactNode;
 }) {
 	const t = useTranslations("mobile.people");
+	const tc = useTranslations("mobile.common");
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const inset = useAddInset();
@@ -91,9 +93,14 @@ export function PeopleList({
 
 	const empty =
 		state.status === "loading" ? (
-			<EmptyState title={t("title")} />
+			<SkeletonRows />
 		) : state.status === "error" ? (
-			<EmptyState detail={t("errorDetail")} title={t("error")} />
+			<EmptyState
+				actionLabel={tc("retry")}
+				detail={t("errorDetail")}
+				onAction={() => void reload()}
+				title={t("error")}
+			/>
 		) : (
 			<EmptyState
 				detail={query === "" && chip === "all" ? t("emptyDetail") : undefined}

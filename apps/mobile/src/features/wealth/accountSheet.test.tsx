@@ -37,6 +37,13 @@ jest.mock("@/ui/TextField", () => {
 });
 jest.mock("@/ui/Picker", () => ({ Picker: () => null }));
 jest.mock("@/ui/CurrencyPicker", () => ({ CurrencyPicker: () => null }));
+jest.mock("@/features/entry/currencyChoices", () => ({
+	useCurrencyChoices: (home: string) => ({
+		currencies: [home],
+		yours: [home],
+		recent: [],
+	}),
+}));
 
 const ars = (minor: number) => ({ minor, currency: "ARS" });
 const base = {

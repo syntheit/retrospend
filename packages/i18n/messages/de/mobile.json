@@ -18,6 +18,7 @@
 		"retry": "Erneut versuchen",
 		"save": "Speichern",
 		"saving": "Speichern",
+		"deleting": "Wird gelöscht",
 		"close": "Schließen",
 		"done": "Fertig"
 	},
@@ -283,9 +284,9 @@
 		},
 		"delete": {
 			"row": "Löschen",
-			"title": "Diese Ausgabe löschen?",
+			"title": "Ausgabe löschen?",
 			"body": "Sie verschwindet aus deinen Ausgaben und deinem Budget.",
-			"button": "Löschen",
+			"button": "Ausgabe löschen",
 			"deleted": "{title} gelöscht",
 			"restored": "{title} wiederhergestellt",
 			"undoFailed": "Rückgängig machen nicht möglich. Versuche es unter Aktivität.",
@@ -319,6 +320,8 @@
 			"find": "Konto suchen",
 			"empty": "Kein Konto passt"
 		},
+		"today": "Heute",
+		"yesterday": "Gestern",
 		"pickDate": "Datum wählen"
 	},
 	"entry": {
@@ -1389,6 +1392,7 @@
 			"liquidHint": "Geld, das du bald ausgeben kannst.",
 			"apr": "Zinssatz (jährlich, %)",
 			"dueDay": "Fälligkeitstag im Monat",
+			"dueDayNone": "Keiner",
 			"minimum": "Mindestzahlung",
 			"addedToast": "{name} hinzugefügt",
 			"savedToast": "{name} gespeichert",
@@ -1447,7 +1451,7 @@
 			"body": "Das entfernt das Konto und seinen gesamten Saldoverlauf. Der Vermögensverlauf ändert sich ebenfalls.",
 			"keepHistory": "Um den Verlauf zu behalten, schließe das Konto stattdessen.",
 			"closeInstead": "Stattdessen schließen",
-			"submit": "Löschen",
+			"submit": "Konto löschen",
 			"deleting": "Wird gelöscht",
 			"toast": "{name} gelöscht",
 			"error": "Das ließ sich nicht löschen. Versuche es erneut."
@@ -1775,8 +1779,6 @@
 		"rateLine": "{unit} = {value} · {type}",
 		"method": "Zahlungsart",
 		"date": "Datum",
-		"today": "Heute",
-		"yesterday": "Gestern",
 		"methodNames": {
 			"bank_transfer": "Überweisung",
 			"cash": "Bargeld"
@@ -2107,10 +2109,11 @@
 			"saved": "Zahlungsmethode gespeichert",
 			"prefer": "Als bevorzugt festlegen",
 			"preferredToast": "Bevorzugte Methode geändert",
-			"remove": "Entfernen",
+			"remove": "Zahlungsmethode löschen",
+			"removeTitle": "Zahlungsmethode löschen?",
 			"removeBody": "Das lässt sich nicht rückgängig machen. Personen, mit denen du teilst, sehen es nicht mehr.",
-			"removeConfirm": "Endgültig entfernen",
-			"removed": "Zahlungsmethode entfernt",
+			"removeConfirm": "Löschen",
+			"removed": "Zahlungsmethode gelöscht",
 			"saveError": "Speichern nicht möglich. Versuche es erneut."
 		},
 		"security": {
@@ -2464,11 +2467,6 @@
 			"toast": "{title} erfasst, {amount}",
 			"paidOn": "Bezahlt am",
 			"paidOnIn": "Erhalten am",
-			"paidOnDue": "{date} (fällig)",
-			"paidOnDueToday": "Heute (fällig)",
-			"paidOnToday": "Heute",
-			"paidOnPick": "Datum wählen",
-			"pickDate": "Datum",
 			"future": "Das Datum darf nicht in der Zukunft liegen.",
 			"tooEarly": "Das Datum darf nicht vor dem {date} liegen.",
 			"skip": "Diesmal überspringen"
@@ -2491,6 +2489,8 @@
 		"count": "{count, plural, one {# wiederkehrende Ausgabe} other {# wiederkehrende Ausgaben}}",
 		"autoPayOn": "Autozahlung an",
 		"autoPayOff": "Autozahlung aus",
+		"autoPayFilter": "Autozahlung",
+		"autoPayAny": "Beliebig",
 		"details": "Details",
 		"make": {
 			"title": "Wiederkehrend machen",
@@ -2524,13 +2524,14 @@
 			"toast": "{title} hinzugefügt"
 		},
 		"delete": {
-			"title": "{title} löschen",
+			"title": "{title} löschen?",
 			"body": "Es taucht nicht mehr auf. Bereits erfasste Einträge bleiben.",
 			"future": "Künftige Fälligkeiten",
 			"futureValue": "Entfallen, nächste war {date}",
 			"autoPay": "Autozahlung",
 			"autoPayValue": "Endet",
-			"submit": "Löschen",
+			"submit": "Wiederkehrende Ausgabe löschen",
+			"submitIn": "Wiederkehrende Einnahme löschen",
 			"toast": "{title} gelöscht",
 			"error": "Löschen hat nicht geklappt. Versuche es nochmal."
 		}
@@ -2709,6 +2710,8 @@
 		"nothingElse": "Sonst ändert sich nichts: {list} bleiben, wie sie sind.",
 		"nothingElseOne": "Sonst ändert sich nichts: {item} bleibt, wie es ist.",
 		"noneChange": "Keine Änderung: {list}.",
-		"unavailable": "{list} ließ sich nicht prüfen."
+		"unavailable": "{list} ließ sich nicht prüfen.",
+		"stays": "Was gleich bleibt",
+		"keeps": "{amount} bleibt"
 	}
 }

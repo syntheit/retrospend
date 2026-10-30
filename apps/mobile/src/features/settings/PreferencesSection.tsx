@@ -35,7 +35,12 @@ export function PreferencesSection() {
 	const save = useSaveSettings(general.reload);
 	const settings = general.state.status === "ready" ? general.state.data : null;
 	if (!settings) {
-		return <PageState failed={general.state.status === "error"} />;
+		return (
+			<PageState
+				failed={general.state.status === "error"}
+				onRetry={() => void general.reload()}
+			/>
+		);
 	}
 
 	const languageOptions = [
@@ -73,6 +78,7 @@ export function PreferencesSection() {
 						yours={yours}
 					/>
 					<PickerRow
+						appearance="wheel"
 						label={t("money.monthStart")}
 						onChange={(day) => save({ fiscalMonthStartDay: Number(day) })}
 						options={MONTH_START_DAYS.map((d) => ({

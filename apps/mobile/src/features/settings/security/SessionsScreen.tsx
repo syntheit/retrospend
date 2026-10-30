@@ -6,6 +6,7 @@ import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, ListRow } from "@/ui/List";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { Block, GroupNote, SettingsPage } from "../parts";
@@ -88,9 +89,25 @@ export function SessionsScreen() {
 		);
 	}
 
-	if (load.status === "loading") return <EmptyState title="" />;
-	if (load.status === "failed")
-		return <EmptyState detail={t("errorDetail")} title={t("error")} />;
+	if (load.status === "loading") {
+		return (
+			<SettingsPage>
+				<SkeletonRows count={2} />
+			</SettingsPage>
+		);
+	}
+	if (load.status === "failed") {
+		return (
+			<SettingsPage>
+				<EmptyState
+					actionLabel={tc("retry")}
+					detail={t("errorDetail")}
+					onAction={() => void read()}
+					title={t("error")}
+				/>
+			</SettingsPage>
+		);
+	}
 
 	const mine = load.items.filter((s) => s.current);
 	const others = load.items.filter((s) => !s.current);

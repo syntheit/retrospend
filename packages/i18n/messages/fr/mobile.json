@@ -18,6 +18,7 @@
 		"retry": "Réessayer",
 		"save": "Enregistrer",
 		"saving": "Enregistrement",
+		"deleting": "Suppression",
 		"close": "Fermer",
 		"done": "Terminé"
 	},
@@ -283,9 +284,9 @@
 		},
 		"delete": {
 			"row": "Supprimer",
-			"title": "Supprimer cette dépense ?",
+			"title": "Supprimer la dépense ?",
 			"body": "Elle quitte tes dépenses et ton budget.",
-			"button": "Supprimer",
+			"button": "Supprimer la dépense",
 			"deleted": "{title} supprimé",
 			"restored": "{title} rétabli",
 			"undoFailed": "Impossible d'annuler. Réessaie depuis Activité.",
@@ -319,6 +320,8 @@
 			"find": "Chercher un compte",
 			"empty": "Aucun compte ne correspond"
 		},
+		"today": "Aujourd'hui",
+		"yesterday": "Hier",
 		"pickDate": "Choisis une date"
 	},
 	"entry": {
@@ -1389,6 +1392,7 @@
 			"liquidHint": "De l'argent que tu peux dépenser bientôt.",
 			"apr": "Taux d'intérêt (annuel, %)",
 			"dueDay": "Jour d'échéance du mois",
+			"dueDayNone": "Aucun",
 			"minimum": "Paiement minimum",
 			"addedToast": "{name} ajouté",
 			"savedToast": "{name} enregistré",
@@ -1447,7 +1451,7 @@
 			"body": "Cela supprime le compte et tout son historique de soldes. L’historique du patrimoine change aussi.",
 			"keepHistory": "Pour garder l’historique, clôture plutôt le compte.",
 			"closeInstead": "Clôturer à la place",
-			"submit": "Supprimer",
+			"submit": "Supprimer le compte",
 			"deleting": "Suppression",
 			"toast": "{name} supprimé",
 			"error": "Impossible de supprimer. Réessaie."
@@ -1775,8 +1779,6 @@
 		"rateLine": "{unit} = {value} · {type}",
 		"method": "Moyen",
 		"date": "Date",
-		"today": "Aujourd'hui",
-		"yesterday": "Hier",
 		"methodNames": {
 			"bank_transfer": "Virement",
 			"cash": "Espèces"
@@ -2107,10 +2109,11 @@
 			"saved": "Moyen de paiement enregistré",
 			"prefer": "Mettre en premier",
 			"preferredToast": "Moyen préféré modifié",
-			"remove": "Retirer",
+			"remove": "Supprimer le moyen de paiement",
+			"removeTitle": "Supprimer le moyen de paiement ?",
 			"removeBody": "Impossible d'annuler. Les personnes avec qui tu partages ne le verront plus.",
-			"removeConfirm": "Retirer définitivement",
-			"removed": "Moyen de paiement retiré",
+			"removeConfirm": "Supprimer",
+			"removed": "Moyen de paiement supprimé",
 			"saveError": "Impossible d'enregistrer. Réessaie."
 		},
 		"security": {
@@ -2464,11 +2467,6 @@
 			"toast": "{title} enregistré, {amount}",
 			"paidOn": "Payé le",
 			"paidOnIn": "Reçu le",
-			"paidOnDue": "{date} (échéance)",
-			"paidOnDueToday": "Aujourd'hui (échéance)",
-			"paidOnToday": "Aujourd'hui",
-			"paidOnPick": "Choisir une date",
-			"pickDate": "Date",
 			"future": "La date ne peut pas être dans le futur.",
 			"tooEarly": "La date ne peut pas être avant le {date}.",
 			"skip": "Ignorer cette fois"
@@ -2491,6 +2489,8 @@
 		"count": "{count, plural, one {# dépense récurrente} other {# dépenses récurrentes}}",
 		"autoPayOn": "Paiement auto activé",
 		"autoPayOff": "Paiement auto désactivé",
+		"autoPayFilter": "Paiement auto",
+		"autoPayAny": "Tous",
 		"details": "Détails",
 		"make": {
 			"title": "Rendre récurrent",
@@ -2524,13 +2524,14 @@
 			"toast": "{title} ajouté"
 		},
 		"delete": {
-			"title": "Supprimer {title}",
+			"title": "Supprimer {title} ?",
 			"body": "Elle n'apparaît plus. Les opérations déjà enregistrées restent.",
 			"future": "Prochaines échéances",
 			"futureValue": "Arrêtées, la prochaine était le {date}",
 			"autoPay": "Paiement auto",
 			"autoPayValue": "Arrêté",
-			"submit": "Supprimer",
+			"submit": "Supprimer la dépense récurrente",
+			"submitIn": "Supprimer le revenu récurrent",
 			"toast": "{title} supprimée",
 			"error": "Impossible de supprimer. Réessaie."
 		}
@@ -2709,6 +2710,8 @@
 		"nothingElse": "Rien d'autre ne change : {list} restent tels quels.",
 		"nothingElseOne": "Rien d'autre ne change : {item} reste tel quel.",
 		"noneChange": "Aucun changement : {list}.",
-		"unavailable": "Impossible de vérifier {list}."
+		"unavailable": "Impossible de vérifier {list}.",
+		"stays": "Ce qui ne change pas",
+		"keeps": "{amount} reste"
 	}
 }

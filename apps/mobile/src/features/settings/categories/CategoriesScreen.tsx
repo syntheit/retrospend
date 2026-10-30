@@ -8,8 +8,9 @@ import { AddButton } from "@/ui/AddButton";
 import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
 import { CategoryTile, ListGroup, ListRow, StaleNote } from "@/ui/List";
-import { Menu } from "@/ui/Menu";
+import { RowMenu } from "@/ui/RowMenu";
 import { Screen } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
 import { useToast } from "@/ui/Toast";
 import { SettingsPage } from "../parts";
@@ -20,15 +21,14 @@ import type { Category } from "./source";
 /**
  * The categories list: each with its tile, its name and how many expenses
  * use it, then "Not counted in spending" when it is left out of totals. Tap
- * one to rename, recolor or change its icon; its menu also switches whether it
- * counts in spending (with Undo). The plus in the bar adds one. Deleting and
+ * one to rename, recolor or change its icon; a long press opens its menu, which
+ * also switches whether it counts in spending (with Undo). The plus in the bar adds one. Deleting and
  * merging are on the web.
  */
 export function CategoriesScreen() {
 	const t = useTranslations("mobile.settings.categories");
-	const tc = useTranslations("mobile.common");
 	const ts = useTranslations("mobile.status");
-	const loading = useTranslations("mobile.activity")("loading");
+	const tc = useTranslations("mobile.common");
 	const { state, reload } = useCategories();
 	const { api } = useSession();
 	const toast = useToast();
@@ -87,10 +87,16 @@ export function CategoriesScreen() {
 	if (state.status !== "ready") {
 		return (
 			<Screen>
-				<EmptyState
-					detail={state.status === "error" ? t("errorDetail") : undefined}
-					title={state.status === "error" ? t("error") : loading}
-				/>
+				{state.status === "error" ? (
+					<EmptyState
+						actionLabel={tc("retry")}
+						detail={t("errorDetail")}
+						onAction={() => void reload()}
+						title={t("error")}
+					/>
+				) : (
+					<SkeletonRows />
+				)}
 			</Screen>
 		);
 	}
@@ -104,53 +110,48 @@ export function CategoriesScreen() {
 					{all.map((category) => {
 						const count = t("count", { count: category.expenseCount });
 						return (
-							<ListRow
-								accessibilityLabel={`${category.name}, ${count}`}
-								end={
-									<Menu
-										accessibilityLabel={t("menu.label", {
-											name: category.name,
-										})}
-										icon
-										items={[
-											{
-												id: "rename",
-												label: t("menu.rename"),
-												onPress: () => show(category),
-											},
-											{
-												id: "icon",
-												label: t("menu.iconColor"),
-												onPress: () => show(category),
-											},
-											{
-												id: "count",
-												label: category.excludeByDefault
-													? t("menu.count")
-													: t("menu.uncount"),
-												onPress: () =>
-													void setCounted(category, category.excludeByDefault),
-											},
-										]}
-										label={t("menu.label", { name: category.name })}
-									/>
-								}
+							<RowMenu
+								items={[
+									{
+										id: "rename",
+										label: t("menu.rename"),
+										onPress: () => show(category),
+									},
+									{
+										id: "icon",
+										label: t("menu.iconColor"),
+										onPress: () => show(category),
+									},
+									{
+										id: "count",
+										label: category.excludeByDefault
+											? t("menu.count")
+											: t("menu.uncount"),
+										onPress: () =>
+											void setCounted(category, category.excludeByDefault),
+									},
+								]}
 								key={category.id}
-								lead={<CategoryTile category={category} />}
 								onPress={() => show(category)}
-								sub={
-									category.excludeByDefault ? (
-										<StatusText
-											label={`${count} · ${ts("notCounted")}`}
-											size="sm"
-											tone="muted"
-										/>
-									) : (
-										count
-									)
-								}
 								title={category.name}
-							/>
+							>
+								<ListRow
+									accessibilityLabel={`${category.name}, ${count}`}
+									lead={<CategoryTile category={category} />}
+									sub={
+										category.excludeByDefault ? (
+											<StatusText
+												label={`${count} · ${ts("notCounted")}`}
+												size="sm"
+												tone="muted"
+											/>
+										) : (
+											count
+										)
+									}
+									title={category.name}
+								/>
+							</RowMenu>
 						);
 					})}
 				</ListGroup>

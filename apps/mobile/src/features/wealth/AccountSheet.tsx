@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { newClientId } from "@/data/ids";
 import { useSheetRead } from "@/features/budget/useSheetRead";
+import { useCurrencyChoices } from "@/features/entry/currencyChoices";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
@@ -17,6 +18,7 @@ import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { Picker } from "@/ui/Picker";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
+import { Text } from "@/ui/Text";
 import { FieldLabel, TextField } from "@/ui/TextField";
 import {
 	ACCOUNT_TYPES,
@@ -24,7 +26,7 @@ import {
 	aprInvalid,
 	type CreateAccountBody,
 	createBody,
-	dueDayInvalid,
+	dueDayOptions,
 	emptyForm,
 	formOf,
 	type UpdateAccountBody,
@@ -76,6 +78,7 @@ export function AccountSheet({
 	const locale = useAmountLocale();
 	const { space } = useTheme();
 	const editing = account !== null;
+	const choices = useCurrencyChoices(home);
 	const [form, setForm] = useState<AccountForm>(emptyForm(home));
 	const [draft, setDraft] = useState("");
 	const [minimumDraft, setMinimumDraft] = useState("");
@@ -242,9 +245,9 @@ export function AccountSheet({
 									<CurrencyPicker
 										currencies={catalog.map((c) => c.code)}
 										onChange={(code) => set({ currency: code, rateType: null })}
-										recent={[]}
+										recent={choices.recent}
 										value={form.currency}
-										yours={[home]}
+										yours={choices.yours}
 									/>
 								</View>
 							)}
@@ -290,13 +293,22 @@ export function AccountSheet({
 								onChangeText={(apr) => set({ apr })}
 								value={form.apr}
 							/>
-							<TextField
-								invalid={dueDayInvalid(form.dueDay)}
-								keyboardType="number-pad"
-								label={t("dueDay")}
-								onChangeText={(dueDay) => set({ dueDay })}
-								value={form.dueDay}
-							/>
+							<View
+								style={{
+									flexDirection: "row",
+									alignItems: "center",
+									justifyContent: "space-between",
+									gap: space[3],
+								}}
+							>
+								<Text>{t("dueDay")}</Text>
+								<Picker
+									appearance="wheel"
+									onChange={(dueDay) => set({ dueDay })}
+									options={dueDayOptions(form.dueDay, t("dueDayNone"))}
+									value={form.dueDay}
+								/>
+							</View>
 							<AmountField
 								allowZero
 								currency={form.currency}

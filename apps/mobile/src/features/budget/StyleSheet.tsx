@@ -4,8 +4,8 @@ import { minorOf, readAmount } from "@/features/write/amount";
 import { Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { AmountField } from "@/ui/AmountField";
+import { ChipGroup } from "@/ui/Chip";
 import type { SheetDetent } from "@/ui/Sheet";
-import { ChoiceList } from "./fields";
 import { type SwitchStyle, styleBody } from "./moreBodies";
 import type { BudgetMonth } from "./source";
 import { FormSheet, WriteForm } from "./WriteSheet";
@@ -67,7 +67,7 @@ export function StyleSheet({
 			})
 		: null;
 	const choices = STYLES.filter((s) => s !== current).map((s) => ({
-		id: s,
+		value: s,
 		label: t(`name.${s}`),
 	}));
 	return (
@@ -92,10 +92,11 @@ export function StyleSheet({
 				}
 			>
 				<Note>{t("now", { style: t(`name.${current}`) })}</Note>
-				<ChoiceList
-					choices={choices}
-					onPress={(id) => setPicked(id as SwitchStyle)}
-					selected={new Set(picked ? [picked] : [])}
+				<ChipGroup
+					accessibilityLabel={t("title")}
+					onChange={setPicked}
+					options={choices}
+					value={picked}
 				/>
 				{picked ? <Note>{t(`about.${picked}`)}</Note> : null}
 				{leavingLimits ? (

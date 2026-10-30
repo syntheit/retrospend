@@ -18,6 +18,7 @@
 		"retry": "Reintentar",
 		"save": "Guardar",
 		"saving": "Guardando",
+		"deleting": "Eliminando",
 		"close": "Cerrar",
 		"done": "Listo"
 	},
@@ -283,9 +284,9 @@
 		},
 		"delete": {
 			"row": "Eliminar",
-			"title": "¿Eliminar este gasto?",
+			"title": "¿Eliminar gasto?",
 			"body": "Sale de tus gastos y de tu presupuesto.",
-			"button": "Eliminar",
+			"button": "Eliminar gasto",
 			"deleted": "Se eliminó {title}",
 			"restored": "Se restauró {title}",
 			"undoFailed": "No se pudo deshacer. Probá desde Actividad.",
@@ -319,6 +320,8 @@
 			"find": "Buscá una cuenta",
 			"empty": "Ninguna cuenta coincide"
 		},
+		"today": "Hoy",
+		"yesterday": "Ayer",
 		"pickDate": "Elegí una fecha"
 	},
 	"entry": {
@@ -1389,6 +1392,7 @@
 			"liquidHint": "Plata que podés gastar pronto.",
 			"apr": "Tasa de interés (anual, %)",
 			"dueDay": "Día de vencimiento del mes",
+			"dueDayNone": "Ninguno",
 			"minimum": "Pago mínimo",
 			"addedToast": "{name} agregada",
 			"savedToast": "{name} guardada",
@@ -1447,7 +1451,7 @@
 			"body": "Esto elimina la cuenta y todo su historial de saldos. El historial del patrimonio también cambia.",
 			"keepHistory": "Para conservar el historial, cerrá la cuenta en su lugar.",
 			"closeInstead": "Mejor cerrar",
-			"submit": "Eliminar",
+			"submit": "Eliminar cuenta",
 			"deleting": "Eliminando",
 			"toast": "{name} eliminada",
 			"error": "No se pudo eliminar. Probá de nuevo."
@@ -1775,8 +1779,6 @@
 		"rateLine": "{unit} = {value} · {type}",
 		"method": "Medio",
 		"date": "Fecha",
-		"today": "Hoy",
-		"yesterday": "Ayer",
 		"methodNames": {
 			"bank_transfer": "Transferencia",
 			"cash": "Efectivo"
@@ -2107,10 +2109,11 @@
 			"saved": "Método de pago guardado",
 			"prefer": "Hacer preferido",
 			"preferredToast": "Método preferido cambiado",
-			"remove": "Quitar",
+			"remove": "Eliminar método de pago",
+			"removeTitle": "¿Eliminar método de pago?",
 			"removeBody": "No se puede deshacer. Las personas con las que compartís ya no lo verán.",
-			"removeConfirm": "Quitar definitivamente",
-			"removed": "Método de pago quitado",
+			"removeConfirm": "Eliminar",
+			"removed": "Método de pago eliminado",
 			"saveError": "No se pudo guardar. Probá de nuevo."
 		},
 		"security": {
@@ -2464,11 +2467,6 @@
 			"toast": "{title} registrado, {amount}",
 			"paidOn": "Pagado el",
 			"paidOnIn": "Recibido el",
-			"paidOnDue": "{date} (vence)",
-			"paidOnDueToday": "Hoy (vence)",
-			"paidOnToday": "Hoy",
-			"paidOnPick": "Elegir fecha",
-			"pickDate": "Fecha",
 			"future": "La fecha no puede ser futura.",
 			"tooEarly": "La fecha no puede ser anterior al {date}.",
 			"skip": "Omitir esta vez"
@@ -2491,6 +2489,8 @@
 		"count": "{count, plural, one {# gasto recurrente} other {# gastos recurrentes}}",
 		"autoPayOn": "Pago automático activado",
 		"autoPayOff": "Pago automático desactivado",
+		"autoPayFilter": "Pago automático",
+		"autoPayAny": "Cualquiera",
 		"details": "Detalles",
 		"make": {
 			"title": "Hacer recurrente",
@@ -2524,13 +2524,14 @@
 			"toast": "{title} agregado"
 		},
 		"delete": {
-			"title": "Eliminar {title}",
+			"title": "¿Eliminar {title}?",
 			"body": "Deja de aparecer. Los movimientos que ya registró se quedan.",
 			"future": "Próximas veces",
 			"futureValue": "Se detienen, la próxima era el {date}",
 			"autoPay": "Pago automático",
 			"autoPayValue": "Se detiene",
-			"submit": "Eliminar",
+			"submit": "Eliminar gasto recurrente",
+			"submitIn": "Eliminar ingreso recurrente",
 			"toast": "{title} eliminado",
 			"error": "No se pudo eliminar. Probá de nuevo."
 		}
@@ -2709,6 +2710,8 @@
 		"nothingElse": "Nada más cambia: {list} quedan como están.",
 		"nothingElseOne": "Nada más cambia: {item} queda como está.",
 		"noneChange": "Sin cambios en {list}.",
-		"unavailable": "No se pudo revisar {list}."
+		"unavailable": "No se pudo revisar {list}.",
+		"stays": "Qué sigue igual",
+		"keeps": "{amount} se mantiene"
 	}
 }

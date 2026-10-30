@@ -84,6 +84,7 @@ export function LimitForm({
 					{ value: "THIS_MONTH", label: t("thisMonth") },
 					{ value: "FROM_NOW_ON", label: t("fromNowOn") },
 				]}
+				stretch
 				value={scope}
 			/>
 			<Line label={t("now")} value={current ? money(current) : t("noLimit")} />

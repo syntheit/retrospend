@@ -7,9 +7,9 @@ import { currenciesHref, recurringHref } from "@/features/account/places";
 import { useAddEntry } from "@/features/entry/AddEntryProvider";
 import { useFaces } from "@/features/read/faces";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
 import { Button } from "@/ui/Button";
+import { EmptyState } from "@/ui/EmptyState";
 import { IconTile } from "@/ui/IconTile";
 import { LinkButton, ListGroup, ListRow, SectionHeader } from "@/ui/List";
 import { SwipeRow } from "@/ui/SwipeRow";
@@ -179,7 +179,6 @@ export function NeedsYou({ list }: { list: NeedsYouList }) {
 	const tc = useTranslations("mobile.common");
 	const toast = useToast();
 	const { local } = useSession();
-	const { space } = useTheme();
 	const open = useOpenNeeds();
 	const [snoozed, setSnoozed] = useState<Snoozed | null>(null);
 	const [expanded, setExpanded] = useState(false);
@@ -224,9 +223,7 @@ export function NeedsYou({ list }: { list: NeedsYouList }) {
 				title={t("title")}
 			/>
 			{shown.length === 0 ? (
-				<Text style={{ paddingHorizontal: space[4] }} tone="fg2">
-					{t("empty")}
-				</Text>
+				<EmptyState inline title={t("empty")} />
 			) : (
 				<ListGroup>
 					{rows.map((item) => (

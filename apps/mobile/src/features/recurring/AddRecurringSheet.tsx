@@ -14,14 +14,14 @@ import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { AmountField } from "@/ui/AmountField";
+import { ChipGroup } from "@/ui/Chip";
 import { DateField } from "@/ui/DateField";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
 import { ListGroup } from "@/ui/List";
-import { Segmented } from "@/ui/Segmented";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
-import { FieldLabel, TextField } from "@/ui/TextField";
+import { TextField } from "@/ui/TextField";
 import { useDayText } from "./ConfirmSheet";
 import { nextMonthly } from "./makeRecurring";
 import { useRecurringToast } from "./useRecurringToast";
@@ -220,19 +220,16 @@ export function AddRecurringSheet({
 							/>
 						</ListGroup>
 					</View>
-					<View style={{ gap: space[2] }}>
-						<FieldLabel>{t("add.repeats")}</FieldLabel>
-						<Segmented
-							accessibilityLabel={t("add.repeats")}
-							onChange={setFrequency}
-							options={FREQUENCIES.map((f) => ({
-								value: f.value,
-								label: t(`frequency.${f.key}`),
-							}))}
-							stretch
-							value={frequency}
-						/>
-					</View>
+					<ChipGroup
+						accessibilityLabel={t("add.repeats")}
+						label={t("add.repeats")}
+						onChange={setFrequency}
+						options={FREQUENCIES.map((f) => ({
+							value: f.value,
+							label: t(`frequency.${f.key}`),
+						}))}
+						value={frequency}
+					/>
 					<View style={{ gap: space[1] }}>
 						<DateField
 							label={t("add.first")}

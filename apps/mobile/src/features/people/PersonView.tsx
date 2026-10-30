@@ -17,6 +17,7 @@ import { Hero } from "@/ui/Hero";
 import { LinkButton, ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { PaneBar } from "@/ui/PaneBar";
 import { Screen } from "@/ui/Screen";
+import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { isApproximate, sideOf } from "./groups";
@@ -46,6 +47,7 @@ export function PersonView({
 	startSettling?: boolean;
 }) {
 	const t = useTranslations("mobile.person");
+	const tc = useTranslations("mobile.common");
 	const format = useFormatter();
 	const money = useMoneyText();
 	const heroText = useNetHeroText();
@@ -72,13 +74,18 @@ export function PersonView({
 	if (state.status === "loading")
 		return (
 			<Screen>
-				<EmptyState title="" />
+				<SkeletonRows />
 			</Screen>
 		);
 	if (state.status === "error") {
 		return (
 			<Screen>
-				<EmptyState detail={t("errorDetail")} title={t("error")} />
+				<EmptyState
+					actionLabel={tc("retry")}
+					detail={t("errorDetail")}
+					onAction={() => void reload()}
+					title={t("error")}
+				/>
 			</Screen>
 		);
 	}

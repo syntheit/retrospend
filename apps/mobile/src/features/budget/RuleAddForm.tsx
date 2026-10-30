@@ -110,6 +110,7 @@ export function RuleAddForm({
 					{ value: "AMOUNT", label: t("amount") },
 					{ value: "REMAINDER", label: t("rest") },
 				]}
+				stretch
 				value={kind}
 			/>
 			{kind === "PERCENT" ? (

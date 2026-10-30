@@ -19,6 +19,7 @@ export function PreviewList({
 }) {
 	const t = useTranslations("mobile.settle");
 	const tm = useTranslations("mobile.money");
+	const tc = useTranslations("mobile.changes");
 	const money = useMoneyText();
 	// A converted total is an estimate at reference rates: it reads "≈".
 	const format = (amount: Money, approx: boolean) =>
@@ -40,8 +41,17 @@ export function PreviewList({
 					after: c.after ? format(c.after, c.approx) : t("none"),
 				}),
 			}))}
+			holds={kept.map((k) => ({
+				key: k.figure,
+				label: label(k.figure),
+				value:
+					k.lines.length > 0
+						? k.lines
+								.map((line) => tc("keeps", { amount: format(line, k.approx) }))
+								.join(", ")
+						: t("none"),
+			}))}
 			status="ready"
-			stays={kept.map((k) => label(k.figure))}
 		/>
 	);
 }

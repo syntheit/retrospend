@@ -6,14 +6,15 @@ import { useProjectList } from "@/features/projects/useProjects";
 import { useTheme } from "@/theme";
 import { Menu } from "@/ui/Menu";
 import type { MenuItem } from "@/ui/types";
-import type { ActivityFilter } from "./filter";
+import { type ActivityFilter, DEFAULT_FILTER } from "./filter";
+import { useFilterLeads } from "./filterLeads";
 import { useCategories } from "./useCategories";
 
 /**
  * The filter chips: period, category, person, project, and Filter (type).
  * Each opens a menu; a chip that is set says what it is set to instead of its
- * own name and turns brand-soft. The search bar is the screen header's
- * (native).
+ * own name and turns brand-soft; the period is set only when it is not this
+ * month. The search bar is the screen header's (native).
  */
 export function ActivityFilters({
 	filter,
@@ -27,6 +28,7 @@ export function ActivityFilters({
 	const categories = useCategories();
 	const people = usePeopleOverview();
 	const projects = useProjectList();
+	const leads = useFilterLeads();
 
 	const periodItems: MenuItem[] = (["month", "all"] as const).map((period) => ({
 		id: period,
@@ -58,6 +60,7 @@ export function ActivityFilters({
 		...categoryList.map((c) => ({
 			id: c.id,
 			label: c.name,
+			lead: leads.category(c),
 			onPress: () => onChange({ ...filter, categoryId: c.id }),
 		})),
 	];
@@ -73,6 +76,7 @@ export function ActivityFilters({
 		...peopleList.map((p) => ({
 			id: p.person.key,
 			label: p.person.name,
+			lead: leads.person(p.person),
 			onPress: () => onChange({ ...filter, personKey: p.person.key }),
 		})),
 	];
@@ -88,6 +92,7 @@ export function ActivityFilters({
 		...projectList.map((p) => ({
 			id: p.id,
 			label: p.name,
+			lead: leads.project(p),
 			onPress: () => onChange({ ...filter, projectId: p.id }),
 		})),
 	];
@@ -109,7 +114,7 @@ export function ActivityFilters({
 			showsHorizontalScrollIndicator={false}
 		>
 			<Menu
-				active
+				active={filter.period !== DEFAULT_FILTER.period}
 				chip
 				items={periodItems}
 				label={t(`period.${filter.period}`)}
