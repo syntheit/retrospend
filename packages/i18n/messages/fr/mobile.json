@@ -2580,7 +2580,7 @@
 			"category": "Catégorie",
 			"categoryNone": "Aucune catégorie",
 			"repeats": "Se répète",
-			"first": "Première échéance",
+			"first": "Prochaine échéance",
 			"firstHint": "La première est enregistrée à cette date.",
 			"submit": "Ajouter",
 			"toast": "{title} ajouté"

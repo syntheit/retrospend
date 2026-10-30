@@ -2580,7 +2580,7 @@
 			"category": "Category",
 			"categoryNone": "No category",
 			"repeats": "Repeats",
-			"first": "First due",
+			"first": "Next due",
 			"firstHint": "The first one is logged on this date.",
 			"submit": "Add",
 			"toast": "{title} added"
