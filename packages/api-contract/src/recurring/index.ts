@@ -8,7 +8,7 @@ import {
 import { cursorQuerySchema, pageOf } from "../common/pagination";
 import { undoTokenSchema } from "../common/preview";
 import { userText } from "../common/user-text";
-import { idParamsSchema, idSchema, okSchema, timestampSchema } from "../core";
+import { idParamsSchema, idSchema, timestampSchema } from "../core";
 import { activityRowSchema } from "../expenses/schemas";
 import { frequencySchema, planRestSchema, planResultSchema } from "../income";
 import {
@@ -208,6 +208,10 @@ export const recurringSkipWriteSchema = z
 	.object({ skipped: recurringSkipResultSchema, ...undoField })
 	.meta({ id: "RecurringSkipWrite" });
 
+export const recurringDeleteWriteSchema = z
+	.object({ ok: z.literal(true), ...undoField })
+	.meta({ id: "RecurringDeleteWrite" });
+
 export const recurringSkipUndoResultSchema = z
 	.object({ templateId: idSchema, dueAt: timestampSchema })
 	.meta({ id: "RecurringSkipUndo" });
@@ -312,7 +316,37 @@ export const recurringContract = {
 		})
 		.meta({ scope: "write:expenses", event: "recurring.deleted" })
 		.input(idParamsSchema)
-		.output(okSchema),
+		.output(recurringDeleteWriteSchema),
+	previewDelete: previewTwin({
+		path: "/recurring/{id}",
+		twinPath: "/recurring/{id}/delete/preview",
+		of: "DELETE /recurring/{id}",
+		operationId: "previewDeleteRecurring",
+		tags: TAG,
+		scope: "write:expenses",
+		input: idParamsSchema,
+	}),
+	undoDelete: v1
+		.route({
+			method: "POST",
+			path: "/recurring/delete/undo",
+			operationId: "undoDeleteRecurring",
+			tags: TAG,
+			summary: "Put a deleted template back from its undo token",
+			description:
+				"Restores the template with its schedule and auto-pay. Entries it logged were never removed, but they are not linked to it again.",
+		})
+		.meta({ scope: "write:expenses", event: "recurring.undone" })
+		.input(undoInputSchema)
+		.output(recurringItemSchema),
+	previewUndoDelete: previewTwin({
+		path: "/recurring/delete/undo",
+		of: "POST /recurring/delete/undo",
+		operationId: "previewUndoDeleteRecurring",
+		tags: TAG,
+		scope: "write:expenses",
+		input: undoInputSchema,
+	}),
 	confirm: v1
 		.route({
 			method: "POST",

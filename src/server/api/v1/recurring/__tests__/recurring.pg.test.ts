@@ -264,6 +264,82 @@ describe("/api/v1/recurring", () => {
 		);
 	});
 
+	it("previews a delete, deletes with an undo token, and the undo puts it back", async () => {
+		const item = await make({
+			name: "Gym",
+			frequency: "WEEKLY",
+			autoPay: false,
+			paymentSource: "Visa",
+		});
+		const preview = await expectBody<Preview>(
+			await send("POST", `/recurring/${item.id}/delete/preview`, {}),
+			c.previewDelete,
+		);
+		expect(preview.changes).toEqual([]);
+		await expect(
+			adminDb.recurringTemplate.count({ where: { id: item.id } }),
+		).resolves.toBe(1);
+
+		const done = await expectBody<{ ok: true; undo: string }>(
+			await send("DELETE", `/recurring/${item.id}`),
+			c.delete,
+		);
+		await expect(
+			adminDb.recurringTemplate.count({ where: { id: item.id } }),
+		).resolves.toBe(0);
+
+		await expectBody(
+			await send("POST", "/recurring/delete/undo/preview", {
+				token: done.undo,
+			}),
+			c.previewUndoDelete,
+		);
+		const back = await expectBody<Item>(
+			await send("POST", "/recurring/delete/undo", { token: done.undo }),
+			c.undoDelete,
+		);
+		expect(back).toMatchObject({
+			id: item.id,
+			title: "Gym",
+			frequency: "weekly",
+			autoPay: false,
+			paymentSource: "Visa",
+			dueAt: item.dueAt,
+			amount: { minor: 1500, currency: "USD" },
+		});
+		await expectProblem(
+			await send("POST", "/recurring/delete/undo", { token: done.undo }),
+			409,
+			"conflict",
+		);
+	});
+
+	it("keeps delete and its undo to the owner", async () => {
+		const item = await make({ name: "Mine to delete" });
+		await expectProblem(
+			await send("POST", `/recurring/${item.id}/delete/preview`, {}, asOther),
+			404,
+			"not_found",
+		);
+		const done = await expectBody<{ undo: string }>(
+			await send("DELETE", `/recurring/${item.id}`),
+			c.delete,
+		);
+		await expectProblem(
+			await send(
+				"POST",
+				"/recurring/delete/undo",
+				{ token: done.undo },
+				asOther,
+			),
+			400,
+			"bad_request",
+		);
+		await expect(
+			adminDb.recurringTemplate.count({ where: { id: item.id } }),
+		).resolves.toBe(0);
+	});
+
 	it("confirms a due template after a preview, and moves it on", async () => {
 		const item = await make({ name: "Confirm me" });
 		const preview = await expectBody<Preview>(

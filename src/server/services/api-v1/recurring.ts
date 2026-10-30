@@ -14,7 +14,6 @@ import {
 	unconfirmRecurringIncome,
 } from "~/server/services/income/confirm-recurring.mutation";
 import {
-	deleteTemplate,
 	templateDirection,
 	templateDueAt,
 	templateExtras,
@@ -25,6 +24,11 @@ import {
 	unconfirmRecurringExpense,
 } from "~/server/services/recurring-confirm.mutation";
 import { createRecurring } from "~/server/services/recurring-create.mutation";
+import {
+	deleteRecurring,
+	restoreRecurring,
+	type TemplateSnapshot,
+} from "~/server/services/recurring-delete.mutation";
 import {
 	skipRecurring,
 	unskipRecurring,
@@ -172,9 +176,45 @@ export async function changeRecurring(
 	return readRecurring(caller, id);
 }
 
-export async function removeRecurring(caller: Caller, id: string) {
-	await deleteTemplate(caller.db, caller.principal.userId, id);
-	return { ok: true as const };
+export async function removeRecurring(caller: LedgerCaller, id: string) {
+	const template = await applyWrite(caller, deleteRecurring, {
+		templateId: id,
+	});
+	return {
+		ok: true as const,
+		undo: undoFor(caller, FAMILY, "recurring.restore", { template }),
+	};
+}
+
+/** What deleting would stop (nothing moves, logged entries stay); writes nothing. */
+export function previewRemoveRecurring(caller: LedgerCaller, id: string) {
+	return previewWrite(caller, deleteRecurring, { templateId: id });
+}
+
+function restoreOf(op: string, input: unknown) {
+	if (op !== "recurring.restore")
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "This undo is not valid anymore",
+		});
+	return { template: (input as { template: TemplateSnapshot }).template };
+}
+
+export async function undoRemoveRecurring(caller: LedgerCaller, token: string) {
+	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
+	const restore = restoreOf(op, input);
+	await spendUndo(caller, token, () =>
+		applyWrite(caller, restoreRecurring, restore),
+	);
+	return readRecurring(caller, restore.template.id);
+}
+
+export function previewUndoRemoveRecurring(
+	caller: LedgerCaller,
+	token: string,
+) {
+	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
+	return previewWrite(caller, restoreRecurring, restoreOf(op, input));
 }
 
 // ── Confirm ─────────────────────────────────────────────────────────────────
