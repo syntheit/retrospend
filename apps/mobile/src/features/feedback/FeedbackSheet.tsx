@@ -24,7 +24,7 @@ import {
 	type FeedbackCategory,
 } from "./payload";
 import { appFacts, getErrorLog } from "./runtime";
-import { pickScreenshot, readScreenshot } from "./screenshot";
+import { discardTempImage, pickScreenshot, readScreenshot } from "./screenshot";
 import { sendFeedback } from "./sendFeedback";
 
 const CATEGORIES: FeedbackCategory[] = ["bug", "idea", "other"];
@@ -139,7 +139,10 @@ export function FeedbackSheet({
 
 	async function pick() {
 		const picked = await pickScreenshot();
-		if (picked.status === "picked") setShot(picked.uri);
+		if (picked.status === "picked") {
+			drop(shot);
+			setShot(picked.uri);
+		}
 		if (picked.status === "tooLarge") setProblem(t("tooLarge"));
 	}
 
@@ -171,7 +174,7 @@ export function FeedbackSheet({
 				toast.show({
 					message: result.status === "sent" ? t("sent") : t("sentNoScreenshot"),
 				});
-				onClose();
+				close();
 			} else {
 				setProblem(result.status === "limit" ? t("limit") : t("failed"));
 			}
@@ -182,6 +185,14 @@ export function FeedbackSheet({
 		}
 	}
 
+	/** The capture is the provider's to delete; a picked copy is this sheet's. */
+	function drop(uri: string | null) {
+		if (uri && uri !== captured) discardTempImage(uri);
+	}
+	function close() {
+		drop(shot);
+		onClose();
+	}
 	const thumb = size.avatar.xl;
 	return (
 		<Sheet
@@ -193,7 +204,7 @@ export function FeedbackSheet({
 					onPress={() => void send()}
 				/>
 			}
-			onClose={onClose}
+			onClose={close}
 			title={t("title")}
 			visible={visible}
 		>
@@ -229,7 +240,10 @@ export function FeedbackSheet({
 								end={
 									<Button
 										label={t("remove")}
-										onPress={() => setShot(null)}
+										onPress={() => {
+											drop(shot);
+											setShot(null);
+										}}
 										size="small"
 										variant="outlined"
 									/>
@@ -300,14 +314,24 @@ export function FeedbackSheet({
 							))
 						)}
 					</Group>
-					<Text tone="fg3" variant="small">
-						{t("preview.never")}
-					</Text>
-					{host ? (
-						<Text tone="fg3" variant="small">
-							{t("preview.goesTo", { host })}
+					{shot ? (
+						// A picture shows whatever was on screen, amounts included, so
+						// the line that says amounts are never sent must not stand.
+						<Text tone="attention" variant="small">
+							{t("preview.screenshotWarning", { host })}
 						</Text>
-					) : null}
+					) : (
+						<>
+							<Text tone="fg3" variant="small">
+								{t("preview.never")}
+							</Text>
+							{host ? (
+								<Text tone="fg3" variant="small">
+									{t("preview.goesTo", { host })}
+								</Text>
+							) : null}
+						</>
+					)}
 				</View>
 				{problem ? (
 					<Text accessibilityRole="alert" tone="danger">

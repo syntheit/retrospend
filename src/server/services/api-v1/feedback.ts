@@ -4,8 +4,7 @@ import {
 	FEEDBACK_SCREENSHOT_MAX_BYTES,
 	feedbackDiagnosticsSchema,
 	type SubmitFeedback,
-	scrubErrorText,
-	scrubScreen,
+	scrubReport,
 } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
@@ -29,8 +28,13 @@ export async function submit(caller: LedgerCaller, input: SubmitFeedback) {
 	return { ok: true as const, id: sent.id };
 }
 
-/** Where a screenshot lives. Not under a public prefix: only admins read it. */
-const screenshotPathOf = (id: string) => `feedback/${id}-${Date.now()}.webp`;
+/**
+ * Where a screenshot lives: one fixed path per entry, outside the public
+ * prefixes, so only admins read it. A new upload is written over the old one
+ * (the store renames a finished temp file into place), so two uploads at the
+ * same moment leave one file, never an orphan.
+ */
+export const screenshotPathOf = (id: string) => `feedback/${id}.webp`;
 
 async function deleteQuietly(path: string) {
 	try {
@@ -53,7 +57,7 @@ export async function attachScreenshot(
 	// The sender only: another person's id is a 404.
 	const row = await caller.db.feedback.findFirst({
 		where: { id: input.id, userId },
-		select: { id: true, screenshotPath: true },
+		select: { id: true },
 	});
 	if (!row)
 		throw new TRPCError({ code: "NOT_FOUND", message: "Feedback not found" });
@@ -74,7 +78,6 @@ export async function attachScreenshot(
 		where: { id: row.id },
 		data: { screenshotPath: path },
 	});
-	if (row.screenshotPath) await deleteQuietly(row.screenshotPath);
 	return { ok: true as const };
 }
 
@@ -115,12 +118,12 @@ export async function submitErrorReports(
 	const userId = caller.principal.userId;
 	const reports = input.reports.slice(0, ERROR_REPORT_BATCH_MAX);
 	await caller.db.errorReport.createMany({
-		data: reports.map((r) => ({
+		data: reports.map(scrubReport).map((r) => ({
 			userId,
 			kind: r.kind,
-			message: scrubErrorText(r.message, 500),
-			stack: r.stack ? scrubErrorText(r.stack, 4000) : null,
-			screen: r.screen ? scrubScreen(r.screen) : null,
+			message: r.message,
+			stack: r.stack ?? null,
+			screen: r.screen ?? null,
 			appVersion: r.appVersion ?? null,
 			build: r.build ?? null,
 			os: r.os ?? null,

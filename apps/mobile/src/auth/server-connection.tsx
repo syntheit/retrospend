@@ -12,6 +12,7 @@ import {
 	useState,
 } from "react";
 import { createSqliteStore } from "@/data/sqlite-store";
+import { getErrorLog } from "@/features/feedback/runtime";
 import { secureStore } from "@/lib/secure-store";
 import { clearStaleServerOnFirstRun } from "./first-run";
 
@@ -68,11 +69,18 @@ export function ServerConnectionProvider({
 
 	const connect = useCallback(async (baseUrl: string) => {
 		await secureStore.setItemAsync(SERVER_URL_KEY, baseUrl);
+		// The recorded errors belong to the server they were recorded against.
+		await getErrorLog()
+			.clear()
+			.catch(() => undefined);
 		setConnection({ status: "connected", baseUrl });
 	}, []);
 
 	const disconnect = useCallback(async () => {
 		await secureStore.deleteItemAsync(SERVER_URL_KEY);
+		await getErrorLog()
+			.clear()
+			.catch(() => undefined);
 		setConnection({ status: "none" });
 	}, []);
 

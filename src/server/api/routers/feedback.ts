@@ -1,6 +1,7 @@
 import {
 	FEEDBACK_CATEGORIES,
 	feedbackDiagnosticsSchema,
+	scrubReport,
 } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -52,7 +53,14 @@ export const feedbackRouter = createTRPCRouter({
 					viewportSize: input.viewportSize,
 					appVersion: input.appVersion,
 					category: input.category,
-					diagnostics: input.diagnostics,
+					// The same scrubber POST /error-reports runs: what the app sent
+					// as "recent errors" is never kept raw.
+					diagnostics: input.diagnostics
+						? {
+								...input.diagnostics,
+								recentErrors: input.diagnostics.recentErrors?.map(scrubReport),
+							}
+						: undefined,
 				},
 			});
 

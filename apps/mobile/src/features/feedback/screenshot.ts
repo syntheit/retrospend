@@ -1,4 +1,5 @@
 import { FEEDBACK_SCREENSHOT_MAX_BYTES } from "@retrospend/api-contract/feedback-client";
+import { File as FsFile } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 
 export type ScreenshotPick =
@@ -60,4 +61,19 @@ export async function readScreenshot(uri: string): Promise<File | null> {
 	return blob.size > FEEDBACK_SCREENSHOT_MAX_BYTES
 		? null
 		: (blob as unknown as File);
+}
+
+/**
+ * Deletes a temporary picture (the screen capture, or a copy the picker made)
+ * once it has been sent or the sheet was left. A failure leaves it to the
+ * system, which clears its cache folders.
+ */
+export function discardTempImage(uri: string | null | undefined): void {
+	if (!uri) return;
+	try {
+		const file = new FsFile(uri);
+		if (file.exists) file.delete();
+	} catch {
+		// The system clears the cache folder too.
+	}
 }

@@ -2495,7 +2495,8 @@
 			"diagnostics": "Diagnostics",
 			"notIncluded": "Not included",
 			"never": "Your expenses, amounts and account details are never sent.",
-			"goesTo": "Goes to the admins of {host}."
+			"goesTo": "Goes to the admins of {host}.",
+			"screenshotWarning": "The screenshot shows what is on your screen, amounts included. It goes to the admins of {host}."
 		},
 		"send": "Send",
 		"sending": "Sending",

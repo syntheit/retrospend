@@ -29,11 +29,33 @@ describe("error log", () => {
 		);
 		const [entry] = await log.recent();
 		expect(entry?.message).toBe(
-			"Error: POST <url> failed for <email> owing <n> with Bearer <token>",
+			"Error: POST /api/expenses/:id failed for <email> owing $# with Bearer <token>",
 		);
 		expect(entry?.screen).toBe("/(tabs)/activity/:id");
 		expect(entry?.os).toBe("iOS 19");
 		expect(JSON.stringify(entry)).not.toMatch(/me\.example|bob@|1,234/);
+	});
+
+	it("keeps no name, amount, quoted text or stack argument", async () => {
+		const log = createErrorLog(createMemoryStore(), ctx);
+		const error = new Error('paid 1500 to "Lucia" at example.com/people/lucia');
+		error.stack = [
+			"Error: paid 1500 to Lucia",
+			"    at pay (http://192.168.1.4:8081/index.bundle?platform=ios:1234:56)",
+			"    at run (/app/node_modules/react/index.js:10:2)",
+		].join("\n");
+		await log.record("crash", error);
+		const [entry] = await log.recent();
+		expect(entry?.message).toBe("Error: paid # to <str> at <url>");
+		expect(entry?.stack).toBe("at index.bundle:1234:56");
+		expect(JSON.stringify(entry)).not.toMatch(/Lucia|lucia|1500|192\.168/);
+	});
+
+	it("forgets everything when cleared", async () => {
+		const log = createErrorLog(createMemoryStore(), ctx);
+		await log.record("crash", "one");
+		await log.clear();
+		expect(await log.recent()).toEqual([]);
 	});
 
 	it("keeps only the newest entries and lists the newest first", async () => {

@@ -2,6 +2,7 @@ import type { ErrorReportInput } from "@retrospend/api-contract";
 import {
 	scrubErrorText,
 	scrubScreen,
+	scrubStack,
 } from "@retrospend/api-contract/feedback-client";
 import { newClientId } from "@/data/ids";
 import type { KeyValueStore } from "@/data/store";
@@ -108,7 +109,7 @@ export function createErrorLog(
 					sent: false,
 					kind,
 					message: clean,
-					stack: stack ? scrubErrorText(stack, 4000) : undefined,
+					stack: stack ? scrubStack(stack, 4000) || undefined : undefined,
 					screen: ctx.screen ? scrubScreen(ctx.screen) : undefined,
 					appVersion: ctx.appVersion,
 					build: ctx.build,

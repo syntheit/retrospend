@@ -9,6 +9,12 @@ import { contract } from "@retrospend/api-contract";
 import sharp from "sharp";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
+	ARCHIVED_SCREENSHOT_RETENTION_DAYS,
+	ERROR_REPORT_RETENTION_DAYS,
+	sweepSupportData,
+} from "~/server/services/api-v1/retention-sweep";
+import { anonymizeAndDeleteUser } from "~/server/services/user-deletion.service";
+import {
 	adminDb,
 	asKey,
 	call,
@@ -177,10 +183,12 @@ describe("/api/v1/feedback and /error-reports", () => {
 		});
 		expect(asUser.status).toBe(403);
 
-		// A new file replaces the old one.
+		// A new file is written over the old one: one path, no orphan.
 		const before = row.screenshotPath ?? "";
+		const count = files.size;
 		await expectBody(await put(asBob, await shot(600)), f.attachScreenshot);
-		expect(files.has(before)).toBe(false);
+		expect(files.size).toBe(count);
+		expect((await sharp(files.get(before)).metadata()).width).toBe(600);
 
 		// Deleting the entry deletes the picture.
 		const after = (
@@ -257,9 +265,10 @@ describe("/api/v1/feedback and /error-reports", () => {
 			a.listErrorReports,
 		);
 		const mine = page.items.find((i) => i.user.id === bob);
-		expect(mine?.message).toBe("Failed <url> for <email> paying <n>");
-		expect(mine?.stack).toContain("<url>:12:3");
-		expect(mine?.stack).toContain("Bearer <token>");
+		expect(mine?.message).toBe(
+			"Failed /api/expenses/:id for <email> paying $#",
+		);
+		expect(mine?.stack).toBe("at bundle.js:12:3");
 		expect(mine?.screen).toBe("/(tabs)/activity/:id");
 		expect(page.total).toBeGreaterThanOrEqual(1);
 
@@ -305,6 +314,168 @@ describe("/api/v1/feedback and /error-reports", () => {
 		expect(await adminDb.errorReport.count({ where: { userId: eve } })).toBe(
 			200,
 		);
+	});
+
+	it("scrubs the recent errors sent with feedback, as it does error reports", async () => {
+		const person = (await createTestUser()).user.id;
+		const sent = await expectBody<{ id: string }>(
+			await send(await asKey(person, ["read", "write:settings"]), {
+				message: "Crashes",
+				pageUrl: "app:/x",
+				diagnostics: {
+					recentErrors: [
+						report({
+							message: 'paid 1500 to "Lucia" at example.com/people/lucia',
+							stack: "TypeError: x\n    at f (index.bundle:5:6)",
+						}),
+					],
+				},
+			}),
+			f.submit,
+			201,
+		);
+		const row = await adminDb.feedback.findUniqueOrThrow({
+			where: { id: sent.id },
+		});
+		const stored = JSON.stringify(row.diagnostics);
+		expect(stored).not.toMatch(/1500|Lucia|lucia|example\.com/);
+		expect(stored).toContain("at index.bundle:5:6");
+	});
+
+	it("limits screenshot uploads to 5 a minute per person", async () => {
+		const person = (await createTestUser()).user.id;
+		const asPerson = await asKey(person, ["read", "write:settings"]);
+		const sent = await expectBody<{ id: string }>(
+			await send(asPerson, { message: "Many pictures", pageUrl: "app:/x" }),
+			f.submit,
+			201,
+		);
+		const put = async () =>
+			call(`/feedback/${sent.id}/screenshot`, {
+				method: "PUT",
+				headers: asPerson,
+				form: await shot(100),
+				idempotent: true,
+			});
+		for (let n = 0; n < 5; n++) expect((await put()).status).toBe(200);
+		await expectProblem(await put(), 429, "rate_limited");
+	});
+
+	it("leaves one file when uploads arrive at the same moment", async () => {
+		const person = (await createTestUser()).user.id;
+		const asPerson = await asKey(person, ["read", "write:settings"]);
+		const sent = await expectBody<{ id: string }>(
+			await send(asPerson, { message: "Race", pageUrl: "app:/x" }),
+			f.submit,
+			201,
+		);
+		const before = files.size;
+		const results = await Promise.all(
+			[100, 200, 300].map(async (w) =>
+				call(`/feedback/${sent.id}/screenshot`, {
+					method: "PUT",
+					headers: asPerson,
+					form: await shot(w),
+					idempotent: true,
+				}),
+			),
+		);
+		for (const res of results) expect(res.status).toBe(200);
+		expect(files.size).toBe(before + 1);
+	});
+
+	it("removes screenshots with the account", async () => {
+		const person = await createTestUser();
+		const asPerson = await asKey(person.user.id, ["read", "write:settings"]);
+		const sent = await expectBody<{ id: string }>(
+			await send(asPerson, { message: "Bye", pageUrl: "app:/x" }),
+			f.submit,
+			201,
+		);
+		await call(`/feedback/${sent.id}/screenshot`, {
+			method: "PUT",
+			headers: asPerson,
+			form: await shot(100),
+			idempotent: true,
+		});
+		const path = (
+			await adminDb.feedback.findUniqueOrThrow({ where: { id: sent.id } })
+		).screenshotPath;
+		expect(files.has(path ?? "")).toBe(true);
+		await anonymizeAndDeleteUser(
+			adminDb,
+			person.user.id,
+			person.user.email,
+			null,
+		);
+		expect(files.has(path ?? "")).toBe(false);
+	});
+
+	it("keeps error reports 90 days and archived screenshots 180", async () => {
+		const person = (await createTestUser()).user.id;
+		const day = 24 * 60 * 60 * 1000;
+		const now = new Date();
+		const ago = (days: number) => new Date(now.getTime() - days * day);
+		const mk = (days: number, extra: Record<string, unknown> = {}) =>
+			adminDb.errorReport.create({
+				data: {
+					userId: person,
+					kind: "crash",
+					message: "m",
+					occurredAt: ago(days),
+					createdAt: ago(days),
+					...extra,
+				},
+			});
+		const oldReport = await mk(ERROR_REPORT_RETENTION_DAYS + 1);
+		const freshReport = await mk(ERROR_REPORT_RETENTION_DAYS - 1);
+
+		const entry = (status: string, days: number, name: string) => {
+			files.set(`feedback/${name}.webp`, Buffer.from("x"));
+			return adminDb.feedback.create({
+				data: {
+					userId: person,
+					message: name,
+					pageUrl: "app:/x",
+					status,
+					screenshotPath: `feedback/${name}.webp`,
+					updatedAt: ago(days),
+				},
+			});
+		};
+		const oldArchived = await entry(
+			"archived",
+			ARCHIVED_SCREENSHOT_RETENTION_DAYS + 1,
+			"old-archived",
+		);
+		const freshArchived = await entry(
+			"archived",
+			ARCHIVED_SCREENSHOT_RETENTION_DAYS - 1,
+			"fresh-archived",
+		);
+		const oldUnread = await entry(
+			"unread",
+			ARCHIVED_SCREENSHOT_RETENTION_DAYS + 30,
+			"old-unread",
+		);
+
+		await sweepSupportData(now);
+
+		await expect(
+			adminDb.errorReport.findUnique({ where: { id: oldReport.id } }),
+		).resolves.toBeNull();
+		await expect(
+			adminDb.errorReport.findUnique({ where: { id: freshReport.id } }),
+		).resolves.not.toBeNull();
+		const rows = await adminDb.feedback.findMany({
+			where: { id: { in: [oldArchived.id, freshArchived.id, oldUnread.id] } },
+		});
+		const byMessage = Object.fromEntries(rows.map((r) => [r.message, r]));
+		expect(byMessage["old-archived"]?.screenshotPath).toBeNull();
+		expect(files.has("feedback/old-archived.webp")).toBe(false);
+		expect(byMessage["old-archived"]?.message).toBe("old-archived");
+		expect(byMessage["fresh-archived"]?.screenshotPath).not.toBeNull();
+		expect(byMessage["old-unread"]?.screenshotPath).not.toBeNull();
 	});
 
 	it("needs a write scope and a signed-in caller", async () => {

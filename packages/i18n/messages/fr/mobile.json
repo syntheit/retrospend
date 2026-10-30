@@ -2495,7 +2495,8 @@
 			"diagnostics": "Diagnostic",
 			"notIncluded": "Non inclus",
 			"never": "Vos dépenses, montants et données de compte ne sont jamais envoyés.",
-			"goesTo": "Va aux administrateurs de {host}."
+			"goesTo": "Va aux administrateurs de {host}.",
+			"screenshotWarning": "La capture montre ce qui est à l'écran, montants compris. Elle va aux administrateurs de {host}."
 		},
 		"send": "Envoyer",
 		"sending": "Envoi",

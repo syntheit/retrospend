@@ -8,7 +8,7 @@ import {
 } from "react";
 import { FeedbackSheet } from "./FeedbackSheet";
 import { currentScreen } from "./runtime";
-import { captureScreen } from "./screenshot";
+import { captureScreen, discardTempImage } from "./screenshot";
 
 /** How long the account sheet takes to leave, so it is not in the picture. */
 const SHEET_LEAVES_MS = 450;
@@ -53,7 +53,11 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 			{children}
 			<FeedbackSheet
 				captured={state.captured}
-				onClose={() => setState((s) => ({ ...s, visible: false }))}
+				onClose={() => {
+					// Sent or left: the capture is no longer needed.
+					discardTempImage(state.captured);
+					setState((s) => ({ ...s, visible: false, captured: null }));
+				}}
 				screen={state.screen}
 				visible={state.visible}
 			/>

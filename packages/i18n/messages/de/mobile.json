@@ -2495,7 +2495,8 @@
 			"diagnostics": "Diagnose",
 			"notIncluded": "Nicht enthalten",
 			"never": "Deine Ausgaben, Beträge und Kontodaten werden nie gesendet.",
-			"goesTo": "Geht an die Admins von {host}."
+			"goesTo": "Geht an die Admins von {host}.",
+			"screenshotWarning": "Der Screenshot zeigt, was auf deinem Bildschirm ist, auch Beträge. Er geht an die Admins von {host}."
 		},
 		"send": "Senden",
 		"sending": "Wird gesendet",

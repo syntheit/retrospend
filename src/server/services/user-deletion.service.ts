@@ -1,24 +1,18 @@
 import type { PrismaClient } from "~prisma";
 import { assertAnotherAdminRemains } from "./admin-guard.service";
+import { DELETED_USER_NAME, DELETED_USER_SENTINEL } from "./deleted-sentinels";
 import {
-	DELETED_USER_NAME,
-	DELETED_USER_SENTINEL,
-} from "./deleted-sentinels";
-import {
-	type PrismaTx,
-	retireGhosts,
-} from "./user-deletion-ghosts";
+	repointSettlementParty,
+	syncPaymentHeaders,
+} from "./payments/participants";
+import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
+import { type PrismaTx, retireGhosts } from "./user-deletion-ghosts";
 import {
 	countOtherUserOrganizers,
 	findSuccessorOrganizer,
 	handOverCreatedProjects,
 } from "./user-deletion-projects";
 import { removeUserFiles } from "./user-files.service";
-import {
-	repointSettlementParty,
-	syncPaymentHeaders,
-} from "./payments/participants";
-import { mergeOverlappingSplitRows } from "./shared-expenses/split-merge";
 
 export * from "./deleted-sentinels";
 export { anonymizeParticipantReferences } from "./user-deletion-ghosts";
@@ -77,13 +71,18 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 	// ── Step 1: Projects where user is the only organizer ────────────────────
 
 	const userOrganizerRoles = await tx.projectParticipant.findMany({
-		where: { participantType: "user", participantId: userId, role: "ORGANIZER" },
+		where: {
+			participantType: "user",
+			participantId: userId,
+			role: "ORGANIZER",
+		},
 		include: { project: { select: { id: true, name: true } } },
 	});
 
 	for (const pp of userOrganizerRoles) {
 		// If another organizer already exists, no action needed
-		if ((await countOtherUserOrganizers(tx, pp.projectId, userId)) > 0) continue;
+		if ((await countOtherUserOrganizers(tx, pp.projectId, userId)) > 0)
+			continue;
 
 		const promotee = await findSuccessorOrganizer(tx, pp.projectId, userId);
 
@@ -172,8 +171,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 					targetType: "SETTLEMENT",
 					targetId: s.id,
 					changes: {
-						message:
-							"Settlement cancelled: participant deleted their account.",
+						message: "Settlement cancelled: participant deleted their account.",
 					},
 				},
 			});
@@ -226,8 +224,7 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 					targetType: "SETTLEMENT",
 					targetId: s.id,
 					changes: {
-						message:
-							"Settlement cancelled: participant deleted their account.",
+						message: "Settlement cancelled: participant deleted their account.",
 					},
 				},
 			});
@@ -236,7 +233,10 @@ async function preDeletionCleanup(tx: PrismaTx, userId: string): Promise<void> {
 	}
 
 	// Headers take their rows' new status; one whose rows were all cancelled goes.
-	await syncPaymentHeaders(tx, [...settlementsAsPayer, ...settlementsAsPayee].map((s) => s.paymentGroupId));
+	await syncPaymentHeaders(
+		tx,
+		[...settlementsAsPayer, ...settlementsAsPayee].map((s) => s.paymentGroupId),
+	);
 
 	// ── Step 3: Auto-accept pending verifications ─────────────────────────────
 
@@ -268,12 +268,17 @@ export async function previewAccountDeletion(
 
 	// Step 1: Projects where user is the only organizer
 	const userOrganizerRoles = await db.projectParticipant.findMany({
-		where: { participantType: "user", participantId: userId, role: "ORGANIZER" },
+		where: {
+			participantType: "user",
+			participantId: userId,
+			role: "ORGANIZER",
+		},
 		include: { project: { select: { id: true, name: true } } },
 	});
 
 	for (const pp of userOrganizerRoles) {
-		if ((await countOtherUserOrganizers(db, pp.projectId, userId)) > 0) continue;
+		if ((await countOtherUserOrganizers(db, pp.projectId, userId)) > 0)
+			continue;
 
 		const promotee = await findSuccessorOrganizer(db, pp.projectId, userId);
 
@@ -371,8 +376,17 @@ export async function anonymizeAndDeleteUser(
 	userEmail: string,
 	avatarPath: string | null,
 ): Promise<void> {
+	// Feedback rows go with the user; their screenshots are files, so the
+	// paths are read first and the files removed after the commit.
+	let screenshotPaths: string[] = [];
 	await db.$transaction(async (tx) => {
 		await assertAnotherAdminRemains(tx, userId);
+		screenshotPaths = (
+			await tx.feedback.findMany({
+				where: { userId, screenshotPath: { not: null } },
+				select: { screenshotPath: true },
+			})
+		).flatMap((f) => (f.screenshotPath ? [f.screenshotPath] : []));
 		// ── Pre-deletion cleanup: resolve functional dependencies ─────────────
 		await preDeletionCleanup(tx as unknown as PrismaTx, userId);
 
@@ -414,7 +428,11 @@ export async function anonymizeAndDeleteUser(
 		});
 
 		// Anonymize Settlement from/to and payment headers
-		await repointSettlementParty(tx, { participantType: "user", participantId: userId }, { participantType: "user", participantId: DELETED_USER_SENTINEL });
+		await repointSettlementParty(
+			tx,
+			{ participantType: "user", participantId: userId },
+			{ participantType: "user", participantId: DELETED_USER_SENTINEL },
+		);
 
 		// Anonymize ProjectParticipant
 		//
@@ -460,5 +478,5 @@ export async function anonymizeAndDeleteUser(
 		await tx.guestSession.deleteMany({ where: { email: userEmail } });
 	});
 	// Only once the guard passed and the delete committed; a failure leaves a file behind
-	await removeUserFiles(userId, avatarPath);
+	await removeUserFiles(userId, avatarPath, screenshotPaths);
 }

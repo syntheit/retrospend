@@ -2495,7 +2495,8 @@
 			"diagnostics": "Diagnóstico",
 			"notIncluded": "Não incluído",
 			"never": "Suas despesas, valores e dados da conta nunca são enviados.",
-			"goesTo": "Vai para os administradores de {host}."
+			"goesTo": "Vai para os administradores de {host}.",
+			"screenshotWarning": "A captura mostra o que está na sua tela, valores incluídos. Vai para os administradores de {host}."
 		},
 		"send": "Enviar",
 		"sending": "Enviando",

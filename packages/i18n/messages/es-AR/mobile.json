@@ -2495,7 +2495,8 @@
 			"diagnostics": "Diagnóstico",
 			"notIncluded": "No incluido",
 			"never": "Nunca se envían tus gastos, importes ni datos de la cuenta.",
-			"goesTo": "Va a los administradores de {host}."
+			"goesTo": "Va a los administradores de {host}.",
+			"screenshotWarning": "La captura muestra lo que hay en tu pantalla, importes incluidos. Va a los administradores de {host}."
 		},
 		"send": "Enviar",
 		"sending": "Enviando",
