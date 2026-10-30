@@ -308,7 +308,7 @@ const CASES: Case[] = [
 	{
 		name: "Afford",
 		title: "Can I afford it?",
-		fields: ["Which envelope?", "Cafe", "Everything else"],
+		fields: ["Which envelope?", "Any envelope"],
 		footer: [],
 		sheetBody: true,
 		render: () => (
