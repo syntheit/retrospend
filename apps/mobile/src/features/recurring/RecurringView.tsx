@@ -55,6 +55,7 @@ function RowStatus({ item }: { item: RecurringItem }) {
 				label={t("status.overdue", { date: day(item.next) })}
 				size="sm"
 				tone="attention"
+				wrap
 			/>
 		);
 	}

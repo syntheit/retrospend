@@ -104,7 +104,10 @@ export function MoneyAmount({
 			style={{
 				// Shrinks with its row, so the figure fits instead of overflowing.
 				flexShrink: 1,
-				alignItems: align === "right" ? "flex-end" : "flex-start",
+				minWidth: 0,
+				// Stretch, so the line has the width it must fit (adjustsFontSizeToFit
+				// shrinks to the box; a content-sized box just clips); textAlign aligns.
+				alignItems: "stretch",
 			}}
 		>
 			<Text

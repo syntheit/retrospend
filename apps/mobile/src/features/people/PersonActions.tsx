@@ -1,7 +1,13 @@
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import type { ButtonIcon } from "@/ui/types";
+
+/**
+ * From this text size up, three labels no longer fit one row at the chrome
+ * cap without breaking a word, so the actions stack.
+ */
+export const STACK_FROM_SCALE = 1.15;
 
 export interface PersonAction {
 	id: string;
@@ -20,18 +26,20 @@ export interface PersonAction {
  */
 export function PersonActions({ actions }: { actions: PersonAction[] }) {
 	const { size, space } = useTheme();
+	const { fontScale } = useWindowDimensions();
+	const stacked = fontScale >= STACK_FROM_SCALE;
 	if (actions.length === 0) return null;
 	return (
 		<View
 			style={{
-				flexDirection: "row",
-				alignItems: "flex-start",
+				flexDirection: stacked ? "column" : "row",
+				alignItems: stacked ? "stretch" : "flex-start",
 				gap: space[2],
 				paddingHorizontal: size.gutter.phone,
 			}}
 		>
 			{actions.map((action) => (
-				<View key={action.id} style={{ flex: 1 }}>
+				<View key={action.id} style={stacked ? undefined : { flex: 1 }}>
 					<Button
 						fill
 						icon={action.icon}

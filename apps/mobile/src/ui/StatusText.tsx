@@ -76,19 +76,28 @@ export function StatusText({
 	tone,
 	label,
 	size = "default",
+	wrap,
 }: (
 	| { kind: StatusKind; tone?: undefined }
 	| { kind?: undefined; tone: StatusTone }
 ) & {
 	label?: string;
 	size?: "default" | "sm";
+	/** Lets a long word wrap under the dot at big text sizes, not clip. */
+	wrap?: boolean;
 }) {
 	const t = useTranslations("mobile.status");
 	const { color, space, type } = useTheme();
 	const colors = toneColors(color, kind ? STATUS[kind] : (tone ?? "quiet"));
 	const word = label ?? (kind ? t(kind) : "");
 	return (
-		<View style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}>
+		<View
+			style={{
+				flexDirection: "row",
+				alignItems: wrap ? "flex-start" : "center",
+				gap: space[2],
+			}}
+		>
 			<View
 				accessibilityElementsHidden
 				importantForAccessibility="no-hide-descendants"
@@ -97,11 +106,13 @@ export function StatusText({
 					height: space[2],
 					borderRadius: space[1],
 					backgroundColor: colors.dot,
+					marginTop: wrap ? space[1] : 0,
 				}}
 			/>
 			<Text
-				numberOfLines={1}
+				numberOfLines={wrap ? undefined : 1}
 				style={{
+					flexShrink: 1,
 					color: colors.text,
 					fontSize: size === "sm" ? type.meta.size : type.small.size,
 				}}
