@@ -75,8 +75,8 @@ export function SettleSheet({
 	// amount; typing makes the amount the typed one and unpicks the chips.
 	const [typed, setTyped] = useState("");
 	// The sheet opens on the server's suggestion, already filled, so the
-	// keypad is put away and Method, Date and what changes are on screen
-	// before Record. Tapping the amount brings the keypad up; picking a chip,
+	// keypad is put away and what changes is on screen (it sits right under
+	// the amount and the rate, above Method and Date) before Record. Tapping the amount brings the keypad up; picking a chip,
 	// a rate, the direction, a method or a day puts it away again.
 	const [keypad, setKeypad] = useState(false);
 	const custom = flow.choice.kind === "custom";
@@ -213,20 +213,6 @@ export function SettleSheet({
 											values={flow.typeRates}
 										/>
 									) : null}
-									<MethodAndDate
-										method={flow.method}
-										onMethod={(next) => {
-											setKeypad(false);
-											flow.setMethod(next);
-										}}
-										onPaidOn={(day) => {
-											setKeypad(false);
-											flow.setPaidOn(day);
-										}}
-										paidOn={flow.paidOn}
-										shared={flow.shared}
-										today={context.today}
-									/>
 								</>
 							)}
 							{context.unpriced.length > 0
@@ -257,6 +243,22 @@ export function SettleSheet({
 								note(t("previewError"), "attention")
 							) : nothingOwed || (custom && amountMinor === 0) ? null : (
 								note(t("checking"))
+							)}
+							{nothingOwed ? null : (
+								<MethodAndDate
+									method={flow.method}
+									onMethod={(next) => {
+										setKeypad(false);
+										flow.setMethod(next);
+									}}
+									onPaidOn={(day) => {
+										setKeypad(false);
+										flow.setPaidOn(day);
+									}}
+									paidOn={flow.paidOn}
+									shared={flow.shared}
+									today={context.today}
+								/>
 							)}
 							{flow.recordFailed ? note(t("error"), "attention") : null}
 						</>
