@@ -2,8 +2,8 @@ import { Dimensions } from "react-native";
 import { SheetContext, usePinnedAction, useSheetFill } from "./sheetContext";
 
 // A form hands its primary action to the sheet's pinned footer; outside a
-// sheet it keeps its own button. A medium sheet's body fills half the window,
-// not most of it, so the sheet rests at medium.
+// sheet it keeps its own button. A body flexes where the sheet hands it its
+// height, and is bounded to its detent elsewhere.
 const renderer = require("react-test-renderer");
 const { act, create } = renderer;
 
@@ -78,11 +78,11 @@ describe("usePinnedAction", () => {
 });
 
 describe("useSheetFill", () => {
-	const fillIn = (detent: "medium" | "large" | null) => {
+	const fillIn = (detent: "medium" | "large" | null, fills = false) => {
 		const out: { fill?: ReturnType<typeof useSheetFill> } = {};
 		act(() => {
 			create(
-				<SheetContext.Provider value={{ detent, pin: () => {} }}>
+				<SheetContext.Provider value={{ detent, fills, pin: () => {} }}>
 					<Fill out={out} />
 				</SheetContext.Provider>,
 			);
@@ -90,15 +90,20 @@ describe("useSheetFill", () => {
 		return out.fill as ReturnType<typeof useSheetFill>;
 	};
 
+	it("flexes into the sheet's own height where the sheet hands it over", () => {
+		expect(fillIn("medium", true)).toEqual({ flex: 1, minHeight: 0 });
+		expect(fillIn("large", true)).toEqual({ flex: 1, minHeight: 0 });
+	});
+
 	it("keeps a medium body inside half the window", () => {
 		const medium = fillIn("medium");
 		expect(medium.maxHeight).toBe(medium.minHeight);
 		expect(medium.minHeight).toBeLessThan(Dimensions.get("window").height / 2);
 	});
 
-	it("lets a large body claim most of the window and grow", () => {
+	it("bounds a large body to most of the window, so a long list scrolls", () => {
 		const large = fillIn("large");
-		expect(large.maxHeight).toBeUndefined();
+		expect(large.maxHeight).toBe(large.minHeight);
 		const window = Dimensions.get("window").height;
 		expect(large.minHeight).toBeGreaterThan(window / 2);
 		expect(large.minHeight).toBeLessThan(window * 0.8);

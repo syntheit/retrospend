@@ -3,8 +3,21 @@
 // tsc resolves `./X` to the .ios file (tsconfig moduleSuffixes); Metro picks
 // the file for the running platform.
 
+import type { ReactElement } from "react";
 import type { Face } from "./Avatar";
 import type { GlyphName } from "./Glyph";
+
+/** The platform sheet around the content Sheet lays out (SheetFrame). */
+export interface SheetFrameProps {
+	visible: boolean;
+	onClose: () => void;
+	detents?: ("medium" | "large")[];
+	/**
+	 * Draws the content. `height` is the height the content takes when the
+	 * sheet sets it (iOS with detents), or null when the content sizes itself.
+	 */
+	children: (height: number | null) => ReactElement;
+}
 
 export interface MenuItem {
 	id: string;
