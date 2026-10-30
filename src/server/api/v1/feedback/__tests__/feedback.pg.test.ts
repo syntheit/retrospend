@@ -265,7 +265,7 @@ describe("/api/v1/feedback and /error-reports", () => {
 		await expectProblem(
 			await call("/admin/error-reports", { headers: asBob }),
 			403,
-			"forbidden",
+			"missing_scope",
 		);
 		expect(
 			(
