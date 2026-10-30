@@ -1,16 +1,14 @@
 import type { ReactNode } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useTheme } from "@/theme";
+import { Text, type TextTone } from "./Text";
 
-type Tone = "fg" | "positive" | "attention" | "danger";
-
-/** A token weight (400, 500, 600) as the string React Native takes. */
-const weight = (value: number) => String(value) as "400" | "500" | "600";
+type Tone = Extract<TextTone, "fg" | "positive" | "attention" | "danger">;
 
 /**
- * The one hero number of a screen (GUIDELINE §3, §7): a label at 13 fg-2,
+ * The one hero number of a screen (GUIDELINE §3, §7): a label at 13 fg-2 (or 14 in the figure's tone, `labelTone`),
  * the value at hero size with its line height and tracking, and an optional
- * sub line at 13 fg-2 (the change over 30 days, the scrubbed day, a short
+ * sub line at 13 fg-2 (or 12 fg-3, `subTone`; the change over 30 days, the scrubbed day, a short
  * sentence). The value arrives formatted by the money formatter, or as words
  * when it is missing ("No rate yet"); the hero never computes or rounds it.
  * The label, value and a text sub line read as one element and announce a
@@ -22,6 +20,8 @@ export function Hero({
 	value,
 	sub,
 	tone = "fg",
+	labelTone = "fg2",
+	subTone = "fg2",
 	align = "start",
 }: {
 	label: string;
@@ -29,27 +29,22 @@ export function Hero({
 	/** One line under the value: text, or a node that holds a link. */
 	sub?: ReactNode;
 	tone?: Tone;
+	/**
+	 * The label's color job: fg2 at 13 (default), or `hero` for a sentence
+	 * that carries the figure's tone at 14 ("Lucia owes you").
+	 */
+	labelTone?: "fg2" | "hero";
+	/** The sub line: fg2 at 13 (default), or fg3 at 12 for the quiet parts line. */
+	subTone?: "fg2" | "fg3";
 	align?: "start" | "center";
 }) {
-	const { color, size, space, type } = useTheme();
+	const { size, space, type } = useTheme();
 	// Phones draw the hero at its own size (size.hero.phone); the rest of type.hero holds.
-	const hero = { ...type.hero, size: size.hero.phone };
-	const small = type.small;
-	const valueColor = {
-		fg: color.fg,
-		positive: color.positive,
-		attention: color.attentionText,
-		danger: color.danger,
-	}[tone];
+	const heroSize = size.hero.phone;
 	const textAlign = align === "center" ? "center" : "left";
 	const subText = typeof sub === "string" ? sub : null;
-	const smallText = {
-		color: color.fg2,
-		fontSize: small.size,
-		lineHeight: small.size * small.lineHeight,
-		fontWeight: weight(small.weight),
-		textAlign,
-	} as const;
+	const labelHero = labelTone === "hero";
+	const quiet = subTone === "fg3";
 
 	return (
 		<View
@@ -67,30 +62,42 @@ export function Hero({
 					alignItems: align === "center" ? "center" : "stretch",
 				}}
 			>
-				<Text style={smallText}>{label}</Text>
+				<Text
+					style={{ textAlign }}
+					tone={labelHero ? tone : "fg2"}
+					variant={labelHero ? "body" : "small"}
+				>
+					{label}
+				</Text>
 				<Text
 					adjustsFontSizeToFit
 					numberOfLines={1}
 					style={{
-						color: valueColor,
-						fontSize: hero.size,
-						lineHeight: hero.size * hero.lineHeight,
-						letterSpacing: hero.size * hero.tracking,
-						fontWeight: weight(hero.weight),
-						fontVariant: ["tabular-nums", "lining-nums"],
+						fontSize: heroSize,
+						lineHeight: heroSize * type.hero.lineHeight,
+						letterSpacing: heroSize * type.hero.tracking,
 						textAlign,
 					}}
+					tone={tone}
+					variant="hero"
 				>
 					{value}
 				</Text>
 				{subText !== null ? (
-					<Text numberOfLines={1} style={smallText}>
+					<Text
+						numberOfLines={1}
+						style={{ textAlign }}
+						tone={quiet ? "fg3" : "fg2"}
+						variant={quiet ? "meta" : "small"}
+					>
 						{subText}
 					</Text>
 				) : null}
 			</View>
 			{sub != null && subText === null ? (
-				<View style={{ minHeight: small.size * small.lineHeight }}>{sub}</View>
+				<View style={{ minHeight: type.small.size * type.small.lineHeight }}>
+					{sub}
+				</View>
 			) : null}
 		</View>
 	);

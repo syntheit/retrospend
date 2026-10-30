@@ -1168,7 +1168,8 @@
 			"back": "Back",
 			"error": "Couldn't load this. Try again.",
 			"moneyInSub": "All income booked in {month}",
-			"assignedSub": "Carried and starting money included"
+			"assignedSub": "Carried and starting money included",
+			"openTitle": "Close {month}"
 		},
 		"carry": {
 			"title": "Take it from {month}'s {name}",
@@ -1528,7 +1529,8 @@
 			"waiting": "Waiting for a job",
 			"youOwe": "You owe {amount}",
 			"rateDate": "Updated {date}"
-		}
+		},
+		"netWorthMeta": "Includes what people owe you"
 	},
 	"insights": {
 		"title": "Insights",
@@ -1608,7 +1610,7 @@
 			"notOnRetrospend": "Not on Retrospend"
 		},
 		"group": {
-			"owed": "Owes you",
+			"owed": "Owe you",
 			"owe": "You owe",
 			"pending": "Waiting",
 			"settled": "Settled"
@@ -1674,8 +1676,8 @@
 			"rejected": "Rejected",
 			"settled": "Settled"
 		},
-		"paidByMe": "You paid",
-		"paidByName": "{name} paid",
+		"paidByMe": "paid by you",
+		"paidByName": "paid by {name}",
 		"error": "Couldn't load this person",
 		"errorDetail": "Check your connection and try again.",
 		"since": "Sharing since {date}",
@@ -1809,7 +1811,7 @@
 		"archived": "Archived",
 		"groupTotal": "Group total",
 		"yourShareLabel": "Your share",
-		"yourShare": "Your share {amount}",
+		"yourShare": "your share {amount}",
 		"tabs": "Project sections",
 		"tab": {
 			"expenses": "Expenses",
@@ -1828,8 +1830,8 @@
 			"review": "To review",
 			"rejected": "Rejected"
 		},
-		"paidByMe": "You paid",
-		"paidByName": "{name} paid",
+		"paidByMe": "paid by you",
+		"paidByName": "paid by {name}",
 		"you": "You",
 		"role": {
 			"ORGANIZER": "Organizer",

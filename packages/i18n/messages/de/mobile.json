@@ -1168,7 +1168,8 @@
 			"back": "Zurück",
 			"error": "Das ließ sich nicht laden. Versuch es nochmal.",
 			"moneyInSub": "Alle in {month} gebuchten Einnahmen",
-			"assignedSub": "Übertrag und Startgeld eingeschlossen"
+			"assignedSub": "Übertrag und Startgeld eingeschlossen",
+			"openTitle": "{month} abschließen"
 		},
 		"carry": {
 			"title": "Aus {name} im {month} nehmen",
@@ -1528,7 +1529,8 @@
 			"waiting": "Wartet auf eine Aufgabe",
 			"youOwe": "Du schuldest {amount}",
 			"rateDate": "Stand {date}"
-		}
+		},
+		"netWorthMeta": "Enthält, was andere dir schulden"
 	},
 	"insights": {
 		"title": "Auswertungen",

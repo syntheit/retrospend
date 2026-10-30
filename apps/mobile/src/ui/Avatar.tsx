@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Image, Text, type TextStyle, View } from "react-native";
 import { type Theme, useTheme } from "@/theme";
+import { Glyph } from "./Glyph";
 
 /** A weight token (400, 500, 600) as the style value React Native takes. */
 const weightStyle = (value: number) => String(value) as TextStyle["fontWeight"];
@@ -53,54 +54,108 @@ function initialsSize(diameter: number, theme: Theme): number {
  * or below it shows one initial, so two letters never collide. It is
  * decoration next to a name, so it hides from screen readers; the name
  * beside it is what they read.
+ *
+ * `offApp` is a person who is not on Retrospend: a dashed ring around the
+ * face, drawn outside its box so the layout does not move. `checked` is a
+ * picked face in a picker: a small brand tick at the lower end, also outside
+ * the box. Neither carries meaning alone; the row says it in words.
  */
 export function Avatar({
 	face,
 	size = "default",
+	offApp,
+	checked,
 }: {
 	face: Face;
 	size?: AvatarSize;
+	offApp?: boolean;
+	checked?: boolean;
 }) {
 	const theme = useTheme();
-	const { color, font, size: sizes } = theme;
+	const { color, font, size: sizes, space } = theme;
 	const [failed, setFailed] = useState(false);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new address resets
 	useEffect(() => setFailed(false), [face.imageUri]);
 	const diameter = sizes.avatar[size];
 	const palette = color as unknown as Record<string, string>;
+	// The ring sits a hairline gap and its own width outside the face.
+	const gap = space[1] / 2;
+	const ringWidth = 1;
+	const reach = gap + ringWidth;
+	const tick = space[4];
 	return (
 		<View
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
-			style={{
-				width: diameter,
-				height: diameter,
-				borderRadius: diameter / 2,
-				overflow: "hidden",
-				backgroundColor: palette[`avatar${avatarSlot(face.key)}`],
-				alignItems: "center",
-				justifyContent: "center",
-			}}
+			style={{ width: diameter, height: diameter }}
 		>
-			{face.imageUri && !failed ? (
-				<Image
-					accessibilityIgnoresInvertColors
-					onError={() => setFailed(true)}
-					source={{ uri: face.imageUri }}
-					style={{ width: diameter, height: diameter }}
-				/>
-			) : (
-				<Text
-					allowFontScaling={false}
+			<View
+				style={{
+					width: diameter,
+					height: diameter,
+					borderRadius: diameter / 2,
+					overflow: "hidden",
+					backgroundColor: palette[`avatar${avatarSlot(face.key)}`],
+					alignItems: "center",
+					justifyContent: "center",
+				}}
+			>
+				{face.imageUri && !failed ? (
+					<Image
+						accessibilityIgnoresInvertColors
+						onError={() => setFailed(true)}
+						source={{ uri: face.imageUri }}
+						style={{ width: diameter, height: diameter }}
+					/>
+				) : (
+					<Text
+						allowFontScaling={false}
+						style={{
+							color: color.avatarFg,
+							fontSize: initialsSize(diameter, theme),
+							fontWeight: weightStyle(font.weight.semibold),
+						}}
+					>
+						{initialsOf(face.name, diameter <= sizes.avatar.sm)}
+					</Text>
+				)}
+			</View>
+			{offApp ? (
+				<View
+					pointerEvents="none"
 					style={{
-						color: color.avatarFg,
-						fontSize: initialsSize(diameter, theme),
-						fontWeight: weightStyle(font.weight.semibold),
+						position: "absolute",
+						top: -reach,
+						left: -reach,
+						width: diameter + 2 * reach,
+						height: diameter + 2 * reach,
+						borderRadius: (diameter + 2 * reach) / 2,
+						borderWidth: ringWidth,
+						borderStyle: "dashed",
+						borderColor: color.fg3,
+					}}
+				/>
+			) : null}
+			{checked ? (
+				<View
+					pointerEvents="none"
+					style={{
+						position: "absolute",
+						right: -gap,
+						bottom: -gap,
+						width: tick,
+						height: tick,
+						borderRadius: tick / 2,
+						backgroundColor: color.brand,
+						borderWidth: gap,
+						borderColor: color.surface,
+						alignItems: "center",
+						justifyContent: "center",
 					}}
 				>
-					{initialsOf(face.name, diameter <= sizes.avatar.sm)}
-				</Text>
-			)}
+					<Glyph color={color.brandFg} name="Check" size={space[2]} />
+				</View>
+			) : null}
 		</View>
 	);
 }

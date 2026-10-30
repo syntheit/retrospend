@@ -8,16 +8,18 @@ import { AccountButton } from "./AccountButton";
 import { AddButton } from "./AddButton";
 import { Menu } from "./Menu";
 import { PaneBar } from "./PaneBar";
+import { TopBarAction } from "./TopBarAction";
 import type { TopBarProps } from "./types";
 
 /**
  * iOS navigation bar: the system large title (Liquid Glass bar material on
- * iOS 26) with the page's overflow menu and the account button trailing it. Render it inside a screen. In
+ * iOS 26) with the page's icon actions, overflow menu and the account button trailing it. Render it inside a screen. In
  * a list-detail pair the native bar would span both panes, so it is hidden and
  * the list pane draws this title and toolbar itself (ListDetail's `bar`).
  */
 export function TopBar({
 	title,
+	actions,
 	overflow,
 	overflowLabel,
 	account,
@@ -32,8 +34,10 @@ export function TopBar({
 	// the toolbar carries it next to the account button.
 	const showAdd = Platform.OS === "ios" && Platform.isPad && add !== null;
 	const items = overflow ?? [];
+	const pageActions = actions ?? [];
 	const hasOverflow = items.length > 0;
-	const hasTrailing = showAdd || account || hasOverflow;
+	const hasTrailing =
+		showAdd || account || hasOverflow || pageActions.length > 0;
 	const buttons = () => (
 		<View
 			style={{
@@ -42,6 +46,9 @@ export function TopBar({
 				gap: space[2],
 			}}
 		>
+			{pageActions.map((action) => (
+				<TopBarAction key={action.id} {...action} />
+			))}
 			{showAdd ? (
 				<AddButton
 					label={t("addExpense")}

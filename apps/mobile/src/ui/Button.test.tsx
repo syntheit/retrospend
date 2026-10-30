@@ -26,6 +26,10 @@ jest.mock("@expo/ui/swift-ui", () => {
 			React.createElement("SwiftButton", props),
 		Text: (props: Record<string, unknown>) =>
 			React.createElement("SwiftText", props),
+		HStack: (props: Record<string, unknown>) =>
+			React.createElement("SwiftHStack", props),
+		Image: (props: Record<string, unknown>) =>
+			React.createElement("SwiftImage", props),
 	};
 });
 
@@ -93,13 +97,49 @@ describe("other variants", () => {
 		expect(Object.values(BUTTON_STYLE).join(" ")).not.toMatch(/glass/i);
 	});
 
-	it("labels outlined and text buttons in the brand color", () => {
-		for (const variant of ["outlined", "text"] as const) {
-			const { label } = render(light, { label: "Change", variant });
+	it("labels the text button in the brand color", () => {
+		const { label } = render(light, { label: "Change", variant: "text" });
+		expect(JSON.stringify(find(label, "foregroundStyle"))).toContain(
+			light.color.brand,
+		);
+	});
+
+	it.each([
+		["light", light],
+		["dark", dark],
+	])(
+		"draws outlined as the kit secondary, not a system capsule (%s)",
+		(_name, theme) => {
+			const { button, label } = render(theme, {
+				label: "Cancel",
+				variant: "outlined",
+			});
+			expect(BUTTON_STYLE.outlined).toBe("plain");
+			expect(find(button, "buttonStyle")?.style).toBe("plain");
 			expect(JSON.stringify(find(label, "foregroundStyle"))).toContain(
-				light.color.brand,
+				theme.color.fg,
 			);
-		}
+			expect(
+				contrast(theme.color.fg, theme.color.surface),
+			).toBeGreaterThanOrEqual(4.5);
+		},
+	);
+
+	it.each([
+		["light", light],
+		["dark", dark],
+	])("draws dangerText as bare danger text (%s)", (_name, theme) => {
+		const { button, label } = render(theme, {
+			label: "Delete",
+			variant: "dangerText",
+		});
+		expect(find(button, "buttonStyle")?.style).toBe("plain");
+		expect(JSON.stringify(find(label, "foregroundStyle"))).toContain(
+			theme.color.danger,
+		);
+		expect(contrast(theme.color.danger, theme.color.bg)).toBeGreaterThanOrEqual(
+			4.5,
+		);
 	});
 
 	it.each([
@@ -120,14 +160,14 @@ describe("other variants", () => {
 		).toBeGreaterThanOrEqual(4.5);
 	});
 
-	it("uses the system small size only for small buttons", () => {
+	it("uses the system small size only for small system buttons", () => {
 		const small = render(light, {
 			label: "Resume",
-			variant: "outlined",
+			variant: "text",
 			size: "small",
 		});
 		expect(find(small.button, "controlSize")).toBeDefined();
-		const regular = render(light, { label: "Resume", variant: "outlined" });
+		const regular = render(light, { label: "Resume", variant: "text" });
 		expect(find(regular.button, "controlSize")).toBeUndefined();
 	});
 

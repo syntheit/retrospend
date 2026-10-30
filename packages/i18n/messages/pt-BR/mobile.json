@@ -1168,7 +1168,8 @@
 			"back": "Voltar",
 			"error": "Não foi possível carregar. Tente de novo.",
 			"moneyInSub": "Toda a renda registrada em {month}",
-			"assignedSub": "Inclui o dinheiro acumulado e o inicial"
+			"assignedSub": "Inclui o dinheiro acumulado e o inicial",
+			"openTitle": "Fechar {month}"
 		},
 		"carry": {
 			"title": "Tirar de {name} em {month}",
@@ -1528,7 +1529,8 @@
 			"waiting": "Aguardando um destino",
 			"youOwe": "Você deve {amount}",
 			"rateDate": "Atualizado em {date}"
-		}
+		},
+		"netWorthMeta": "Inclui o que as pessoas devem a você"
 	},
 	"insights": {
 		"title": "Análises",

@@ -24,7 +24,7 @@ import type { MenuProps } from "./types";
 
 /**
  * The filter chip as a SwiftUI label (GUIDELINE 5): control height, capsule,
- * a 1 point line-strong border, fg-2 at 500 with a chevron; brand-soft with a
+ * a 1 point line-strong border, 13/500 fg-2 with a chevron; brand-soft with a
  * brand border while its filter has a value.
  */
 function ChipLabel({ label, active }: { label: string; active: boolean }) {
@@ -45,7 +45,7 @@ function ChipLabel({ label, active }: { label: string; active: boolean }) {
 		>
 			<Text
 				modifiers={[
-					font({ size: type.body.size, weight: "medium" }),
+					font({ size: type.small.size, weight: "medium" }),
 					foregroundStyle(active ? color.fg : color.fg2),
 				]}
 			>

@@ -1168,7 +1168,8 @@
 			"back": "Retour",
 			"error": "Impossible de charger. Réessaie.",
 			"moneyInSub": "Tous les revenus enregistrés en {month}",
-			"assignedSub": "Report et argent de départ inclus"
+			"assignedSub": "Report et argent de départ inclus",
+			"openTitle": "Clôturer {month}"
 		},
 		"carry": {
 			"title": "Le prendre sur {name} en {month}",
@@ -1528,7 +1529,8 @@
 			"waiting": "En attente d’une destination",
 			"youOwe": "Tu dois {amount}",
 			"rateDate": "Mis à jour le {date}"
-		}
+		},
+		"netWorthMeta": "Inclut ce que les gens te doivent"
 	},
 	"insights": {
 		"title": "Analyses",

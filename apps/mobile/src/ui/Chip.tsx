@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Glyph } from "./Glyph";
+import { Text } from "./Text";
 
 /**
  * - choice: one of a row of choices (a split mode, a person); on reads as
@@ -9,7 +10,7 @@ import { Glyph } from "./Glyph";
  * - trigger: shows a value and opens a picker (a currency, a project); always
  *   the neutral look, with a chevron.
  * - filter: narrows a list and opens a menu of values; on while a value is
- *   set, with a chevron.
+ *   set, with a chevron (or a clear mark, see `onClear`).
  */
 export type ChipVariant = "choice" | "trigger" | "filter";
 
@@ -25,7 +26,7 @@ export function ChipChevron({ color }: { color: string }) {
 
 /**
  * The one chip (GUIDELINE 5): control height, pill radius, a line-strong
- * border, label 14/500. It may lead with an identity mark (a face, a bare
+ * border, label 13/500 (fg-2 while unset, fg once a value is set, on brand-soft). It may lead with an identity mark (a face, a bare
  * category glyph, a cover, a flag) and nothing else. The hit slop takes the
  * 36 point chip to the 44 point touch target.
  */
@@ -36,6 +37,8 @@ export function Chip({
 	onPress,
 	leading,
 	accessibilityLabel,
+	onClear,
+	clearLabel,
 }: {
 	label: string;
 	variant?: ChipVariant;
@@ -44,10 +47,18 @@ export function Chip({
 	onPress: () => void;
 	leading?: ReactNode;
 	accessibilityLabel?: string;
+	/**
+	 * A chip that is on and can be cleared (a set period, a picked project):
+	 * the end mark is an x that calls this, in place of the chevron. Needs
+	 * `clearLabel`.
+	 */
+	onClear?: () => void;
+	clearLabel?: string;
 }) {
-	const { color, font, radius, size, space, type } = useTheme();
+	const { color, radius, size, space } = useTheme();
 	const on = selected && variant !== "trigger";
-	const chevron = variant !== "choice";
+	const clear = on && onClear !== undefined;
+	const chevron = variant !== "choice" && !clear;
 	return (
 		<Pressable
 			accessibilityLabel={accessibilityLabel ?? label}
@@ -61,7 +72,7 @@ export function Chip({
 				alignItems: "center",
 				gap: space[2],
 				paddingLeft: leading ? space[2] : space[3],
-				paddingRight: chevron ? space[2] : space[3],
+				paddingRight: chevron || clear ? space[2] : space[3],
 				borderRadius: radius.chip,
 				borderWidth: 1,
 				borderColor: on ? color.brand : color.lineStrong,
@@ -77,15 +88,23 @@ export function Chip({
 			{leading}
 			<Text
 				numberOfLines={1}
-				style={{
-					color: on || variant === "trigger" ? color.fg : color.fg2,
-					fontSize: type.body.size,
-					fontWeight: String(font.weight.medium) as "500",
-				}}
+				tone={on || variant === "trigger" ? "fg" : "fg2"}
+				variant="small"
+				weight="medium"
 			>
 				{label}
 			</Text>
 			{chevron ? <ChipChevron color={color.fg3} /> : null}
+			{clear ? (
+				<Pressable
+					accessibilityLabel={clearLabel ?? label}
+					accessibilityRole="button"
+					hitSlop={space[2]}
+					onPress={onClear}
+				>
+					<Glyph color={color.fg2} name="X" size={size.icon.phone} />
+				</Pressable>
+			) : null}
 		</Pressable>
 	);
 }

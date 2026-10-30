@@ -1168,7 +1168,8 @@
 			"back": "Atrás",
 			"error": "No se pudo cargar. Inténtalo de nuevo.",
 			"moneyInSub": "Todos los ingresos registrados en {month}",
-			"assignedSub": "Incluye el dinero arrastrado y el inicial"
+			"assignedSub": "Incluye el dinero arrastrado y el inicial",
+			"openTitle": "Cerrar {month}"
 		},
 		"carry": {
 			"title": "Sacarlo de {name} en {month}",
@@ -1528,7 +1529,8 @@
 			"waiting": "Esperando un destino",
 			"youOwe": "Debes {amount}",
 			"rateDate": "Actualizado el {date}"
-		}
+		},
+		"netWorthMeta": "Incluye lo que te deben"
 	},
 	"insights": {
 		"title": "Análisis",
