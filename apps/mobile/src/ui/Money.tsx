@@ -9,6 +9,18 @@ import { Text } from "./Text";
 type Tone = "default" | "positive" | "muted";
 
 /**
+ * A figure never ends in an ellipsis (GUIDELINE §7): it shrinks to fit its
+ * line down to this floor and, past the floor, is clipped, never "$1,2...".
+ * Spread onto a single-line money Text.
+ */
+export const fitMoney = {
+	numberOfLines: 1,
+	adjustsFontSizeToFit: true,
+	minimumFontScale: 0.5,
+	ellipsizeMode: "clip",
+} as const;
+
+/**
  * The hero's precision, as the web's `heroCents()`: whole units for a
  * currency the formatter shows without cents (ARS, CLP...), else the
  * formatter's default. The formatter rounds; the screen never does.
@@ -99,9 +111,15 @@ export function MoneyAmount({
 		strong || hero ? "semibold" : weightName === "normal" ? "normal" : "medium";
 	const rate = rateType ? rateName(rateType) : "";
 	return (
-		<View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
+		<View
+			style={{
+				// Shrinks with its row, so the figure fits instead of overflowing.
+				flexShrink: 1,
+				alignItems: align === "right" ? "flex-end" : "flex-start",
+			}}
+		>
 			<Text
-				numberOfLines={1}
+				{...fitMoney}
 				style={[
 					{ textAlign: align },
 					hero
@@ -123,7 +141,7 @@ export function MoneyAmount({
 			</Text>
 			{showHome ? (
 				<Text
-					numberOfLines={1}
+					{...fitMoney}
 					style={{ textAlign: align }}
 					tabular
 					tone="fg3"

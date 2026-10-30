@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { heroCents, MoneyAmount } from "@/ui/Money";
+import { fitMoney, heroCents, MoneyAmount } from "@/ui/Money";
 import { Text } from "@/ui/Text";
 import { isApproximate } from "./groups";
 import type { PersonSummary } from "./source";
@@ -65,11 +65,16 @@ export function NetAmount({
 	const hero = size === "hero";
 	const approx = isApproximate(parts, home);
 	return (
-		<View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
+		<View
+			style={{
+				flexShrink: 1,
+				alignItems: align === "right" ? "flex-end" : "flex-start",
+			}}
+		>
 			{net && approx && !hero ? (
 				// A converted total is an estimate: whole units, no cents.
 				<Text
-					numberOfLines={1}
+					{...fitMoney}
 					style={{ textAlign: align }}
 					tabular
 					tone={tone === "positive" ? "positive" : "fg"}
@@ -93,7 +98,7 @@ export function NetAmount({
 				/>
 			) : (
 				<Text
-					numberOfLines={1}
+					{...fitMoney}
 					style={{ textAlign: align }}
 					tabular
 					variant={hero ? "hero" : "body"}

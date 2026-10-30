@@ -254,7 +254,11 @@ export function PersonView({
 						)
 					) : null}
 					<Text
+						// Wraps on words (two lines); a long word shrinks, never splits.
 						accessibilityRole="header"
+						adjustsFontSizeToFit
+						minimumFontScale={0.6}
+						numberOfLines={2}
 						style={{ textAlign: "center" }}
 						variant="title"
 					>

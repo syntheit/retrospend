@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Glyph } from "./Glyph";
+import { fitMoney } from "./Money";
 import { Text, type TextTone } from "./Text";
 
 type Tone = Extract<TextTone, "fg" | "positive" | "attention" | "danger">;
@@ -75,8 +76,7 @@ export function Hero({
 		>
 			{withLabel ? labelText : null}
 			<Text
-				adjustsFontSizeToFit
-				numberOfLines={1}
+				{...fitMoney}
 				style={{
 					fontSize: heroSize,
 					lineHeight: heroSize * type.hero.lineHeight,
@@ -90,7 +90,8 @@ export function Hero({
 			</Text>
 			{subText !== null ? (
 				<Text
-					numberOfLines={1}
+					// A figure in the sub line wraps at a space, never ends in "...".
+					numberOfLines={2}
 					style={{ textAlign }}
 					tone={quiet ? "fg3" : "fg2"}
 					variant={quiet ? "meta" : "small"}
