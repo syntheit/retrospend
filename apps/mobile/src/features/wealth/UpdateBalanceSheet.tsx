@@ -32,9 +32,10 @@ import type { Account, CurrencyInfo } from "./source";
 
 /**
  * Say what the account holds today. In the order the mockup sets: the account
- * and what it shows now, the new balance, the rate type it is valued at from
- * today (earlier days keep theirs), What this changes, the keypad, and the
- * verb pinned under them. The server works out the difference and records it
+ * and what it shows now, the new balance, the keypad, the rate type it is valued at
+ * from today (earlier days keep theirs), What this changes, and the verb
+ * pinned under them. The amount and keypad come first so they are in view at
+ * the medium detent. The server works out the difference and records it
  * as Not logged (not income, not spending); the dry run shows the account's
  * new balance, net worth and that difference before Update is on. The toast
  * undoes it.
@@ -71,6 +72,9 @@ export function UpdateBalanceSheet({
 	const saved = account.rateType;
 	const [draft, setDraft] = useState("");
 	const [rateType, setRateType] = useState<string | null>(saved);
+	// The keypad is up on opening; picking a rate type puts it away, and
+	// tapping the amount brings it back.
+	const [keypad, setKeypad] = useState(true);
 	const entered = readAmount(draft, locale, currency);
 	// Zero is a real balance: an empty account, a paid-off card.
 	const minor = minorOf(entered, true);
@@ -90,6 +94,7 @@ export function UpdateBalanceSheet({
 		if (!visible) return;
 		setDraft("");
 		setRateType(saved);
+		setKeypad(true);
 		reset();
 	}, [visible]);
 	const input =
@@ -230,7 +235,7 @@ export function UpdateBalanceSheet({
 											: tc("amountEmpty", { currency })
 									}`,
 									active: true,
-									onPress: () => {},
+									onPress: () => setKeypad(true),
 								},
 							]}
 							ring={entered.state === "invalid" ? "error" : "focus"}
@@ -246,9 +251,21 @@ export function UpdateBalanceSheet({
 							</Text>
 						) : null}
 					</View>
+					{keypad ? (
+						<MoneyKeypad
+							currency={currency}
+							draft={draft}
+							keyHeight={size.touchMin.phone}
+							onDraftChange={setDraft}
+						/>
+					) : null}
 					<View style={{ gap: space[4] }}>
 						<RateTypeChips
-							onChange={setRateType}
+							onChange={(next) => {
+								// The keypad gives way to what the pick changes.
+								setRateType(next);
+								setKeypad(false);
+							}}
 							types={types}
 							value={rateType}
 						/>
@@ -276,12 +293,6 @@ export function UpdateBalanceSheet({
 							<Note tone="attention">{t("error")}</Note>
 						) : null}
 					</View>
-					<MoneyKeypad
-						currency={currency}
-						draft={draft}
-						keyHeight={size.touchMin.phone}
-						onDraftChange={setDraft}
-					/>
 				</View>
 			</SheetBody>
 		</Sheet>

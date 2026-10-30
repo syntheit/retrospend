@@ -13,8 +13,8 @@ import { canSelect } from "@/features/activity/bulk";
 import { DayHeader, useDayLabel } from "@/features/activity/DayHeader";
 import { groupByDay } from "@/features/activity/days";
 import { EntryDetail } from "@/features/activity/EntryView";
-import { ImportNotice } from "@/features/activity/ImportNotice";
 import { DEFAULT_FILTER, isDefaultFilter } from "@/features/activity/filter";
+import { ImportNotice } from "@/features/activity/ImportNotice";
 import { useLinkedEntry } from "@/features/activity/linkedEntry";
 import { rowActions } from "@/features/activity/rowActions";
 import type { ActivityItem } from "@/features/activity/source";
@@ -67,7 +67,7 @@ export default function ActivityScreen() {
 	);
 	const [selected, setSelected] = useState<ActivityItem | null>(null);
 	// An entry opened by a link (a Home row, a notification) fills the detail.
-	const linked = useLinkedEntry();
+	const { link: linked, release: releaseLink } = useLinkedEntry();
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new link replaces the picked row
 	useEffect(() => setSelected(null), [linked]);
 	// Ids of the rows picked for a bulk action; null when not selecting.
@@ -105,6 +105,8 @@ export default function ActivityScreen() {
 		}
 		if (listDetail) {
 			setSelected(item);
+			// The picked row now owns the pane; the same link may ask again.
+			releaseLink();
 			return;
 		}
 		router.push({

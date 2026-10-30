@@ -544,7 +544,9 @@
 		},
 		"hero": {
 			"incomplete": "Noch kein Kurs für {currencies}, darum ist das nicht berechnet.",
-			"afford": "Kann ich mir etwas leisten?"
+			"afford": "Kann ich mir etwas leisten?",
+			"help": "Was die Wörter bedeuten",
+			"helpHint": "Erklärt die Wörter auf dieser Seite"
 		},
 		"notice": {
 			"notPlanned": "{amount} sind eingegangen und noch nicht geplant.",
@@ -1260,6 +1262,17 @@
 			"goal": "Ziel {amount}",
 			"goalProgress": "{saved} von {amount}",
 			"goalBy": "bis {date}"
+		},
+		"help": {
+			"title": "Was die Wörter bedeuten",
+			"leftTitle": "Zum Ausgeben",
+			"left": "Was du diesen Monat noch ausgeben kannst, nachdem Rechnungen und Sparen gedeckt sind.",
+			"notPlannedTitle": "Noch nicht verplant",
+			"notPlanned": "Geld, das hereingekommen ist und noch keinen Umschlag hat.",
+			"toAssignTitle": "Zuzuweisen",
+			"toAssign": "Geld, das du hast und das in keinem Umschlag liegt.",
+			"heldTitle": "Für andere gehalten",
+			"held": "Geld, das andere dir schulden und das das Budget beiseitelegt."
 		}
 	},
 	"wealth": {
@@ -1651,6 +1664,18 @@
 		"bar": {
 			"owesYou": "{name}: schuldet dir {amount}",
 			"youOwe": "{name}: du schuldest {amount}"
+		},
+		"add": {
+			"title": "Person hinzufügen",
+			"name": "Name",
+			"email": "E-Mail (optional)",
+			"emailPlaceholder": "name@beispiel.de",
+			"emailInvalid": "Diese E-Mail sieht nicht richtig aus.",
+			"save": "Hinzufügen",
+			"saving": "Wird hinzugefügt",
+			"added": "{name} hinzugefügt",
+			"existing": "{name} ist schon da",
+			"error": "Die Person konnte nicht hinzugefügt werden. Versuche es erneut."
 		}
 	},
 	"person": {

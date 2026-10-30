@@ -27,6 +27,16 @@ export interface MenuProps {
 	/** A chip whose filter has a value set: brand-soft with a brand border. */
 	active?: boolean;
 	/**
+	 * Draws the chip as the sort mark alone (up and down arrows), a circle the
+	 * height of a chip. `accessibilityLabel` is what it is called; it is on
+	 * while `active`. Chip only.
+	 */
+	sortIcon?: boolean;
+	/**
+	 * A calendar mark before a chip's label (the date chip). Chip only.
+	 */
+	leadingCalendar?: boolean;
+	/**
 	 * Draws the trigger as the overflow mark (three dots) alone, 44 points, for
 	 * the toolbar. `label` is not shown then, so pass `accessibilityLabel`.
 	 */
@@ -48,6 +58,11 @@ export interface SegmentedProps<T extends string> {
 	value: T;
 	onChange: (value: T) => void;
 	accessibilityLabel: string;
+	/**
+	 * Fills the width it is given, with equal segments. iOS is as wide as its
+	 * labels without it; Android always fills.
+	 */
+	stretch?: boolean;
 }
 
 export interface AddAction {

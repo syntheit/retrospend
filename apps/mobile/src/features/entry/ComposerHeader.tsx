@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
-import { Button } from "@/ui/Button";
+import { Chip } from "@/ui/Chip";
 import { Menu } from "@/ui/Menu";
 import { Segmented } from "@/ui/Segmented";
 import { Text } from "@/ui/Text";
@@ -91,12 +91,12 @@ export function ComposerHeader({
 				<View style={{ flex: 1, alignItems: "flex-start" }}>{actions}</View>
 				{context}
 				<View style={{ flex: 1, alignItems: "flex-end" }}>
-					<Button
+					<Chip
 						accessibilityLabel={t("more")}
+						chevron="right"
 						label={t("more")}
 						onPress={onMore}
-						size="small"
-						variant="outlined"
+						variant="trigger"
 					/>
 				</View>
 			</View>

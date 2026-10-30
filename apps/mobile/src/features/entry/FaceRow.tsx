@@ -13,27 +13,20 @@ import { type EntryPerson, personKey } from "./types";
 /** How many people show as columns before the rest wait behind Add. */
 const SHOWN = 8;
 
-/** A face with a brand ring while the person is on the expense. */
+/** A face with the brand tick while the person is on the expense. */
 function FaceRing({ face, on }: { face: Face; on: boolean }) {
-	const { color, radius, space } = useTheme();
-	const ring = space[1] / 2;
+	const { space } = useTheme();
+	// The tick sits outside the face, so the padding keeps the column's width.
 	return (
-		<View
-			style={{
-				padding: ring,
-				borderRadius: radius.chip,
-				borderWidth: ring,
-				borderColor: on ? color.brand : "transparent",
-			}}
-		>
-			<Avatar face={face} size="sm" />
+		<View style={{ padding: space[1] }}>
+			<Avatar checked={on} face={face} size="sm" />
 		</View>
 	);
 }
 
 /**
  * Who it is split with: faces in columns, you first and Add last. A face
- * lights with a ring and a heavier name when the person is on the expense
+ * carries the brand tick and a heavier name when the person is on the expense
  * (state is never color alone). Add opens a search over everyone you can
  * split with, for the people past the columns.
  */

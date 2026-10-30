@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
@@ -16,6 +17,7 @@ import {
 	verdictSentence,
 	verdictSheet,
 } from "./verdict";
+import { WordsSheet } from "./WordsSheet";
 
 /**
  * The one hero of the page: one number, one sentence, at most one button, and
@@ -45,6 +47,7 @@ export function BudgetHero({
 	const money = useMoneyText();
 	const text = useVerdictText(names);
 	const { space } = useTheme();
+	const [words, setWords] = useState(false);
 	const v = data.verdict;
 	const missing = data.missingRates.map((r) => r.currency).join(", ");
 	const incomplete = data.incomplete || v.incomplete;
@@ -64,6 +67,11 @@ export function BudgetHero({
 		<View style={{ gap: space[3] }}>
 			<View style={{ paddingHorizontal: space[4] }}>
 				<Hero
+					help={{
+						label: t("hero.help"),
+						hint: t("hero.helpHint"),
+						onPress: () => setWords(true),
+					}}
 					label={label}
 					sub={<Text>{sentence}</Text>}
 					value={shown ?? tm("noRate")}
@@ -86,6 +94,7 @@ export function BudgetHero({
 					<LinkButton label={t("hero.afford")} onPress={onAfford} />
 				</View>
 			) : null}
+			<WordsSheet onClose={() => setWords(false)} visible={words} />
 		</View>
 	);
 }

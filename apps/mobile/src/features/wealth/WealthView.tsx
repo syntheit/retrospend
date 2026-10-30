@@ -13,10 +13,10 @@ import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { Glyph } from "@/ui/Glyph";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
-import { Menu } from "@/ui/Menu";
 import { Screen } from "@/ui/Screen";
 import { Skeleton, SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
+import { TopBar } from "@/ui/TopBar";
 import type { MenuItem } from "@/ui/types";
 import { AccountRow } from "./AccountRow";
 import { AccountSheets, type SheetTarget } from "./AccountSheets";
@@ -34,13 +34,12 @@ import { fetchWealth, WEALTH_CACHE, type WealthData } from "./source";
 import { useAccountActions } from "./useAccountActions";
 
 /**
- * The header's trailing items: Add account as a plain plus and a menu for
- * the rest (Add income, Currencies and rates). Neither is the page's primary
- * action, so neither is filled.
+ * The header: Add account as a plain plus and a menu for the rest (Add
+ * income, Currencies and rates). Neither is the page's primary action, so
+ * neither is filled.
  */
-function HeaderActions({ onAdd }: { onAdd: () => void }) {
+function WealthTopBar({ onAdd }: { onAdd: () => void }) {
 	const t = useTranslations("mobile.wealth");
-	const { color, size, space } = useTheme();
 	const add = useOptionalAddEntry();
 	const items: MenuItem[] = [
 		...(add
@@ -59,27 +58,19 @@ function HeaderActions({ onAdd }: { onAdd: () => void }) {
 		},
 	];
 	return (
-		<View style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}>
-			<Pressable
-				accessibilityLabel={t("account.addTitle")}
-				accessibilityRole="button"
-				onPress={onAdd}
-				style={{
-					width: size.touchMin.phone,
-					height: size.touchMin.phone,
-					alignItems: "center",
-					justifyContent: "center",
-				}}
-			>
-				<Glyph color={color.fg} name="Plus" size={size.icon.phone} />
-			</Pressable>
-			<Menu
-				accessibilityLabel={t("more")}
-				icon
-				items={items}
-				label={t("more")}
-			/>
-		</View>
+		<TopBar
+			actions={[
+				{
+					id: "add",
+					icon: "Plus",
+					label: t("account.addTitle"),
+					onPress: onAdd,
+				},
+			]}
+			overflow={items}
+			overflowLabel={t("more")}
+			title={t("title")}
+		/>
 	);
 }
 
@@ -233,16 +224,7 @@ export function WealthView() {
 	}, [reload]);
 
 	const title = (
-		<Stack.Screen
-			options={{
-				title: t("title"),
-				headerRight: () => (
-					<HeaderActions
-						onAdd={() => setSheet({ kind: "add", account: null })}
-					/>
-				),
-			}}
-		/>
+		<WealthTopBar onAdd={() => setSheet({ kind: "add", account: null })} />
 	);
 	if (state.status === "loading")
 		return (

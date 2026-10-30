@@ -9,14 +9,21 @@ import { useTheme } from "@/theme";
  * Compose builds its Material 3 scheme from the tokens and never from the
  * wallpaper (no dynamic color in v1).
  */
-export function NativeHost({ children }: { children: ReactNode }) {
+export function NativeHost({
+	children,
+	tint,
+}: {
+	children: ReactNode;
+	/** Another seed than the brand, for a control that should not read as an action (iOS draws its value in it). */
+	tint?: string;
+}) {
 	const { color } = useTheme();
 	const scheme = useColorScheme();
 	return (
 		<Host
 			colorScheme={scheme === "dark" || scheme === "light" ? scheme : undefined}
 			matchContents
-			seedColor={color.brand}
+			seedColor={tint ?? color.brand}
 		>
 			{children}
 		</Host>

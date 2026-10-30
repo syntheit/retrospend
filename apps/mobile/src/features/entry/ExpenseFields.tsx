@@ -214,13 +214,14 @@ export function ExpenseFields({
 				onTitleChange={(title) => onChange({ title })}
 				onTypingChange={onTypingChange}
 				title={draft.title}
-			/>
-			<CategoryRow
-				catalog={catalog}
-				draft={draft}
-				error={errors.category === true}
-				onChange={onChange}
-			/>
+			>
+				<CategoryRow
+					catalog={catalog}
+					draft={draft}
+					error={errors.category === true}
+					onChange={onChange}
+				/>
+			</TitleCard>
 			<Details
 				draft={draft}
 				onChange={onChange}

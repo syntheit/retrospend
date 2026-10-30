@@ -76,6 +76,7 @@ export function SettleHead({
 					{ value: "outgoing", label: t("iPaid", { name: first }) },
 					{ value: "incoming", label: t("theyPaid", { name: first }) },
 				]}
+				stretch
 				value={direction}
 			/>
 			{owe ? <Text tone="fg2">{owe}</Text> : null}
