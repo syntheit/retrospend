@@ -402,7 +402,11 @@
 		"releaseNotes": "Notas da versão",
 		"version": "Versão {version} ({build})",
 		"inviteCodes": "Códigos de convite",
-		"feedback": "Enviar feedback"
+		"feedback": "Enviar feedback",
+		"notifications": "Notificações",
+		"admin": "Administração",
+		"feedbackInbox": "Caixa de feedback",
+		"newCount": "{count} novos"
 	},
 	"activity": {
 		"title": "Atividade",
@@ -2679,7 +2683,35 @@
 		"limit": "Você pode enviar 5 por hora. Tente mais tarde.",
 		"tooLarge": "Essa imagem tem mais de 5 MB.",
 		"errorReports": "Enviar relatórios de erro para o meu servidor",
-		"errorReportsDetail": "Só falhas, sem endereços nem valores. Vão para o seu próprio servidor."
+		"errorReportsDetail": "Só falhas, sem endereços nem valores. Vão para o seu próprio servidor.",
+		"screens": {
+			"home": "Início",
+			"insights": "Análises",
+			"activity": "Atividade",
+			"entry": "Despesa",
+			"budget": "Orçamento",
+			"currencies": "Moedas",
+			"people": "Pessoas",
+			"person": "Pessoa",
+			"project": "Projeto",
+			"projects": "Projetos",
+			"preferences": "Preferências",
+			"recurring": "Despesas recorrentes",
+			"wealth": "Patrimônio",
+			"account": "Conta",
+			"settings": "Configurações",
+			"profile": "Perfil",
+			"categories": "Categorias",
+			"paymentMethods": "Formas de pagamento",
+			"notifications": "Notificações",
+			"security": "Segurança",
+			"sessions": "Sessões",
+			"data": "Dados",
+			"admin": "Administração",
+			"signIn": "Entrar",
+			"connect": "Conectar a um servidor",
+			"other": "Outra tela"
+		}
 	},
 	"changes": {
 		"title": "O que isso muda",

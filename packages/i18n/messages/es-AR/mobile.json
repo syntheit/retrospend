@@ -402,7 +402,11 @@
 		"releaseNotes": "Notas de la versión",
 		"version": "Versión {version} ({build})",
 		"inviteCodes": "Códigos de invitación",
-		"feedback": "Enviar comentarios"
+		"feedback": "Enviar comentarios",
+		"notifications": "Notificaciones",
+		"admin": "Administración",
+		"feedbackInbox": "Bandeja de comentarios",
+		"newCount": "{count} nuevos"
 	},
 	"activity": {
 		"title": "Actividad",
@@ -2679,7 +2683,35 @@
 		"limit": "Podés enviar 5 por hora. Probá más tarde.",
 		"tooLarge": "Esa imagen supera los 5 MB.",
 		"errorReports": "Enviar informes de errores a mi servidor",
-		"errorReportsDetail": "Solo fallos, sin direcciones ni importes. Van a tu propio servidor."
+		"errorReportsDetail": "Solo fallos, sin direcciones ni importes. Van a tu propio servidor.",
+		"screens": {
+			"home": "Inicio",
+			"insights": "Análisis",
+			"activity": "Actividad",
+			"entry": "Gasto",
+			"budget": "Presupuesto",
+			"currencies": "Monedas",
+			"people": "Personas",
+			"person": "Persona",
+			"project": "Proyecto",
+			"projects": "Proyectos",
+			"preferences": "Preferencias",
+			"recurring": "Gastos recurrentes",
+			"wealth": "Patrimonio",
+			"account": "Cuenta",
+			"settings": "Ajustes",
+			"profile": "Perfil",
+			"categories": "Categorías",
+			"paymentMethods": "Medios de pago",
+			"notifications": "Notificaciones",
+			"security": "Seguridad",
+			"sessions": "Sesiones",
+			"data": "Datos",
+			"admin": "Administración",
+			"signIn": "Iniciar sesión",
+			"connect": "Conectar a un servidor",
+			"other": "Otra pantalla"
+		}
 	},
 	"changes": {
 		"title": "Qué cambia",

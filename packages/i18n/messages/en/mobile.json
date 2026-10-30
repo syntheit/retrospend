@@ -402,7 +402,11 @@
 		"releaseNotes": "Release notes",
 		"version": "Version {version} ({build})",
 		"inviteCodes": "Invite codes",
-		"feedback": "Send feedback"
+		"feedback": "Send feedback",
+		"notifications": "Notifications",
+		"admin": "Admin",
+		"feedbackInbox": "Feedback inbox",
+		"newCount": "{count} new"
 	},
 	"activity": {
 		"title": "Activity",
@@ -2679,7 +2683,35 @@
 		"limit": "You can send 5 a hour. Try again later.",
 		"tooLarge": "That image is over 5 MB.",
 		"errorReports": "Send error reports to my server",
-		"errorReportsDetail": "Crashes only, with addresses and amounts removed. They go to your own server."
+		"errorReportsDetail": "Crashes only, with addresses and amounts removed. They go to your own server.",
+		"screens": {
+			"home": "Home",
+			"insights": "Insights",
+			"activity": "Activity",
+			"entry": "Expense",
+			"budget": "Budget",
+			"currencies": "Currencies",
+			"people": "People",
+			"person": "Person",
+			"project": "Project",
+			"projects": "Projects",
+			"preferences": "Preferences",
+			"recurring": "Recurring expenses",
+			"wealth": "Wealth",
+			"account": "Account",
+			"settings": "Settings",
+			"profile": "Profile",
+			"categories": "Categories",
+			"paymentMethods": "Payment methods",
+			"notifications": "Notifications",
+			"security": "Security",
+			"sessions": "Sessions",
+			"data": "Data",
+			"admin": "Admin",
+			"signIn": "Sign in",
+			"connect": "Connect to a server",
+			"other": "Another screen"
+		}
 	},
 	"changes": {
 		"title": "What this changes",

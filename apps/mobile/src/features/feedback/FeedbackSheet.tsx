@@ -1,5 +1,4 @@
 import type { ErrorReportInput } from "@retrospend/api-contract";
-import { scrubScreen } from "@retrospend/api-contract/feedback-client";
 import { type ReactNode, useEffect, useState } from "react";
 import { Image, ScrollView, useWindowDimensions, View } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
@@ -24,6 +23,7 @@ import {
 	type FeedbackCategory,
 } from "./payload";
 import { appFacts, getErrorLog } from "./runtime";
+import { screenKey } from "./ScreenTracker";
 import { discardTempImage, pickScreenshot, readScreenshot } from "./screenshot";
 import { sendFeedback } from "./sendFeedback";
 
@@ -293,7 +293,7 @@ export function FeedbackSheet({
 						/>
 						<PreviewRow
 							title={t("preview.screen")}
-							value={scrubScreen(screen ?? "/")}
+							value={t(`screens.${screenKey(screen)}`)}
 						/>
 						<PreviewRow
 							title={t("preview.screenshot")}

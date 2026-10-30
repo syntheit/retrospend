@@ -402,7 +402,11 @@
 		"releaseNotes": "Versionshinweise",
 		"version": "Version {version} ({build})",
 		"inviteCodes": "Einladungscodes",
-		"feedback": "Feedback senden"
+		"feedback": "Feedback senden",
+		"notifications": "Benachrichtigungen",
+		"admin": "Admin",
+		"feedbackInbox": "Feedback-Eingang",
+		"newCount": "{count} neu"
 	},
 	"activity": {
 		"title": "Aktivität",
@@ -2679,7 +2683,35 @@
 		"limit": "Du kannst 5 pro Stunde senden. Versuch es später noch einmal.",
 		"tooLarge": "Dieses Bild ist größer als 5 MB.",
 		"errorReports": "Fehlerberichte an meinen Server senden",
-		"errorReportsDetail": "Nur Abstürze, ohne Adressen und Beträge. Sie gehen an deinen eigenen Server."
+		"errorReportsDetail": "Nur Abstürze, ohne Adressen und Beträge. Sie gehen an deinen eigenen Server.",
+		"screens": {
+			"home": "Start",
+			"insights": "Einblicke",
+			"activity": "Aktivität",
+			"entry": "Ausgabe",
+			"budget": "Budget",
+			"currencies": "Währungen",
+			"people": "Personen",
+			"person": "Person",
+			"project": "Projekt",
+			"projects": "Projekte",
+			"preferences": "Einstellungen",
+			"recurring": "Wiederkehrende Ausgaben",
+			"wealth": "Vermögen",
+			"account": "Konto",
+			"settings": "Einstellungen",
+			"profile": "Profil",
+			"categories": "Kategorien",
+			"paymentMethods": "Zahlungsmethoden",
+			"notifications": "Benachrichtigungen",
+			"security": "Sicherheit",
+			"sessions": "Sitzungen",
+			"data": "Daten",
+			"admin": "Admin",
+			"signIn": "Anmelden",
+			"connect": "Mit einem Server verbinden",
+			"other": "Anderer Bildschirm"
+		}
 	},
 	"changes": {
 		"title": "Was sich ändert",
