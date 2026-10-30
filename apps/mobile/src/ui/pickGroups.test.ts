@@ -45,4 +45,34 @@ describe("filterGroups", () => {
 	it("drops groups with no match", () => {
 		expect(filterGroups(groups, "zzz")).toEqual([]);
 	});
+
+	it("ranks a ranked group: exact code, code prefix, name word, anywhere", () => {
+		const ranked: PickGroup[] = [
+			{
+				key: "all",
+				heading: "All",
+				ranked: true,
+				rows: [
+					row("BAM", "BAM", "Bosnia Marka", ["Convertible Mark"]),
+					row("MAD", "MAD", "dirham marroquí", ["Moroccan Dirham"]),
+					row("MARS", "MARS", "Mars coin"),
+					row("MAR", "MAR", "Marker"),
+					row("XMA", "XMA", "Ma dollar"),
+				],
+			},
+		];
+		// MAR is exact, MARS starts with it, BAM has the word "Marka" and
+		// MAD the "marroquí" one (list order between them); XMA is no match.
+		expect(ids(filterGroups(ranked, "mar"))).toEqual([
+			"MAR",
+			"MARS",
+			"BAM",
+			"MAD",
+		]);
+	});
+
+	it("keeps the order of a group that is not ranked", () => {
+		const plain = [{ ...groups[2], key: "plain" } as PickGroup];
+		expect(ids(filterGroups(plain, "e"))).toEqual(["EUR", "BRL"]);
+	});
 });

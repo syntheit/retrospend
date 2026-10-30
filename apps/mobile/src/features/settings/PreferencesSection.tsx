@@ -10,6 +10,7 @@ import { ListGroup, ListRow } from "@/ui/List";
 import { NumbersGroup } from "./NumbersSection";
 import {
 	Block,
+	CurrencyRow,
 	GroupNote,
 	NavEnd,
 	PageState,
@@ -47,32 +48,29 @@ export function PreferencesSection() {
 
 	const known =
 		currencies.state.status === "ready" ? currencies.state.data.items : [];
-	const currencyOptions = known.map((c) => ({
-		value: c.code,
-		label: `${c.code} · ${c.name}`,
-	}));
+	const yours = [settings.homeCurrency, settings.defaultCurrency].filter(
+		(code): code is string => Boolean(code),
+	);
 	// A currency the list does not carry is still the current one.
-	for (const code of [settings.homeCurrency, settings.defaultCurrency]) {
-		if (code && !currencyOptions.some((o) => o.value === code)) {
-			currencyOptions.push({ value: code, label: code });
-		}
-	}
+	const codes = [...new Set([...known.map((c) => c.code), ...yours])];
 
 	return (
 		<SettingsPage>
 			<Block title={t("money.title")}>
 				<ListGroup>
-					<PickerRow
+					<CurrencyRow
+						currencies={codes}
 						label={t("money.home")}
 						onChange={(homeCurrency) => save({ homeCurrency })}
-						options={currencyOptions}
 						value={settings.homeCurrency}
+						yours={yours}
 					/>
-					<PickerRow
+					<CurrencyRow
+						currencies={codes}
 						label={t("money.default")}
 						onChange={(defaultCurrency) => save({ defaultCurrency })}
-						options={currencyOptions}
 						value={settings.defaultCurrency}
+						yours={yours}
 					/>
 					<PickerRow
 						label={t("money.monthStart")}

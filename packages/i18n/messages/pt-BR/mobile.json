@@ -306,7 +306,9 @@
 			"empty": "Nenhuma moeda encontrada",
 			"yours": "Suas moedas",
 			"recent": "Recentes",
-			"all": "Todas as moedas",
+			"pinned": "Fixadas",
+			"fiat": "Tradicionais",
+			"crypto": "Cripto",
 			"trigger": "Moeda, {code}"
 		},
 		"category": {

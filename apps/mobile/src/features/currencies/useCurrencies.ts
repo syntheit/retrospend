@@ -21,6 +21,22 @@ export function useRateTable() {
 }
 
 /**
+ * The currencies starred on the Currencies screen, in the table's order. The
+ * currency picker lists them first, so the pins mean the same everywhere.
+ * Empty until the table has been read once.
+ */
+export function usePinnedCurrencies(): string[] {
+	const { state } = useRateTable();
+	return useMemo(
+		() =>
+			state.status === "ready"
+				? state.data.rows.filter((r) => r.favorite).map((r) => r.code)
+				: [],
+		[state],
+	);
+}
+
+/**
  * A conversion the server computes: the typed amount (minor units from the
  * shared parser) goes up, a Money per rate type comes back. Waits a moment
  * so typing does not send a request per key; a stale answer never replaces
