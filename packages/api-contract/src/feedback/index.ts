@@ -131,7 +131,7 @@ export const feedbackContract = {
 				"Up to 20 reports a call. Admins read them at GET /admin/error-reports.",
 			successStatus: 201,
 		})
-		.meta({ scope: "write:settings" })
+		.meta({ scope: "write:settings", event: "feedback.error_reports_sent" })
 		.input(submitErrorReportsSchema)
 		.output(z.object({ ok: z.literal(true), stored: z.int().min(0) })),
 };

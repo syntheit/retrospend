@@ -329,7 +329,7 @@ export const adminContract = {
 			tags: TAG,
 			summary: "Delete an error report",
 		})
-		.meta({ scope: "admin", event: "error_report.deleted" })
+		.meta({ scope: "admin", event: "feedback.error_report_deleted" })
 		.input(idParamsSchema)
 		.output(okSchema),
 };

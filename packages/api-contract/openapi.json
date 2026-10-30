@@ -9604,7 +9604,7 @@
 				"tags": [
 					"Admin"
 				],
-				"x-event-type": "error_report.deleted",
+				"x-event-type": "feedback.error_report_deleted",
 				"x-required-scope": "admin"
 			}
 		},
@@ -62201,6 +62201,7 @@
 				"tags": [
 					"Feedback"
 				],
+				"x-event-type": "feedback.error_reports_sent",
 				"x-required-scope": "write:settings"
 			}
 		},
