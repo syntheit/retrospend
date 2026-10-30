@@ -22,6 +22,7 @@ import { useServerConnection } from "@/auth/server-connection";
 import { createReadCache, type ReadCache } from "@/data/cache";
 import { createOutbox, type Outbox } from "@/data/outbox";
 import { createSqliteStore } from "@/data/sqlite-store";
+import { getErrorLog } from "@/features/feedback/runtime";
 import { sweepExports } from "@/features/settings/security/exportFiles";
 import { createPushControl, forgetServerPush } from "@/push/control";
 import { type AuthApi, createAuthApi, type SignInStep } from "./auth-api";
@@ -271,6 +272,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 					profileCache?.clear(),
 					local?.cache.clear(),
 					authApi?.clearLocal(),
+					// What the app recorded belongs to the person who was using it.
+					getErrorLog().clear(),
 				]);
 				setState({ status: "signedOut", expired: false });
 			},

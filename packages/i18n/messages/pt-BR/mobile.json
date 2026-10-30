@@ -2663,5 +2663,55 @@
 		"later": "Dia seguinte",
 		"earlier": "Dia anterior",
 		"noData": "sem dados"
+	},
+	"feedback": {
+		"title": "Enviar feedback",
+		"category": "Categoria",
+		"categories": {
+			"bug": "Erro",
+			"idea": "Ideia",
+			"other": "Outro"
+		},
+		"message": "Mensagem",
+		"messagePlaceholder": "O que aconteceu ou o que ajudaria?",
+		"screenshot": "Captura de tela",
+		"attachScreen": "Anexar esta tela",
+		"chooseImage": "Escolher uma imagem",
+		"attached": "Captura anexada",
+		"remove": "Remover",
+		"diagnostics": "Incluir diagnóstico",
+		"diagnosticsDetail": "App, celular e erros recentes do app. Sem despesas nem valores.",
+		"diagnosticRows": {
+			"app": "App",
+			"system": "Sistema",
+			"device": "Dispositivo",
+			"language": "Idioma",
+			"server": "Servidor",
+			"errors": "Erros recentes do app"
+		},
+		"preview": {
+			"title": "O que será enviado",
+			"category": "Categoria",
+			"message": "Mensagem",
+			"characters": "{count, plural, one {# caractere} other {# caracteres}}",
+			"screen": "Tela",
+			"screenshot": "Captura",
+			"attached": "Anexada",
+			"none": "Nenhuma",
+			"diagnostics": "Diagnóstico",
+			"notIncluded": "Não incluído",
+			"never": "Suas despesas, valores e dados da conta nunca são enviados.",
+			"goesTo": "Vai para os administradores de {host}.",
+			"screenshotWarning": "A captura mostra o que está na sua tela, valores incluídos. Vai para os administradores de {host}."
+		},
+		"send": "Enviar",
+		"sending": "Enviando",
+		"sent": "Feedback enviado",
+		"sentNoScreenshot": "Feedback enviado. A captura não foi enviada.",
+		"failed": "Feedback não enviado. Tente de novo.",
+		"limit": "Você pode enviar 5 por hora. Tente mais tarde.",
+		"tooLarge": "Essa imagem tem mais de 5 MB.",
+		"errorReports": "Enviar relatórios de erro para o meu servidor",
+		"errorReportsDetail": "Só falhas, sem endereços nem valores. Vão para o seu próprio servidor."
 	}
 }

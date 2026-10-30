@@ -82,6 +82,7 @@ model User {
   consentIp               String?                  @db.VarChar(45)
 
   feedback                Feedback[]
+  errorReports            ErrorReport[]
   usernameHistory         UsernameHistory[]
   createdShadowProfiles   ShadowProfile[]          @relation("CreatedShadowProfiles")
   claimedShadowProfiles   ShadowProfile[]          @relation("ClaimedShadowProfiles")
@@ -2073,6 +2074,12 @@ model Feedback {
   viewportSize  String?
   appVersion    String?
 
+  // Sent from the mobile app: bug, idea or other; a stored screenshot
+  // (never served publicly); the diagnostics the person chose to include.
+  category       String   @default("other")
+  screenshotPath String?
+  diagnostics    Json?
+
   // Admin management
   status        String   @default("unread")  // unread, read, archived
   adminNote     String?  @db.Text
@@ -2086,6 +2093,30 @@ model Feedback {
   @@index([status])
   @@index([createdAt])
   @@map("feedback")
+}
+
+/// A crash or unhandled rejection the mobile app recorded and the person
+/// chose to send to their own server. The app scrubs URLs, tokens and numbers
+/// before it queues a report; nothing here is a third-party service.
+model ErrorReport {
+  id         String   @id @default(cuid())
+  userId     String
+  kind       String   // crash, rejection, render
+  message    String   @db.Text
+  stack      String?  @db.Text
+  screen     String?
+  appVersion String?
+  build      String?
+  os         String?
+  device     String?
+  occurredAt DateTime
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("error_report")
 }
 
 // better-auth api-key plugin (@better-auth/api-key; the adapter looks the

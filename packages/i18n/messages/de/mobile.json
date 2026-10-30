@@ -2663,5 +2663,55 @@
 		"later": "Nächster Tag",
 		"earlier": "Vorheriger Tag",
 		"noData": "keine Daten"
+	},
+	"feedback": {
+		"title": "Feedback senden",
+		"category": "Kategorie",
+		"categories": {
+			"bug": "Fehler",
+			"idea": "Idee",
+			"other": "Sonstiges"
+		},
+		"message": "Nachricht",
+		"messagePlaceholder": "Was ist passiert, oder was würde helfen?",
+		"screenshot": "Screenshot",
+		"attachScreen": "Diesen Bildschirm anhängen",
+		"chooseImage": "Bild auswählen",
+		"attached": "Screenshot angehängt",
+		"remove": "Entfernen",
+		"diagnostics": "Diagnose einschließen",
+		"diagnosticsDetail": "App, Telefon und aktuelle App-Fehler. Keine Ausgaben oder Beträge.",
+		"diagnosticRows": {
+			"app": "App",
+			"system": "System",
+			"device": "Gerät",
+			"language": "Sprache",
+			"server": "Server",
+			"errors": "Aktuelle App-Fehler"
+		},
+		"preview": {
+			"title": "Das wird gesendet",
+			"category": "Kategorie",
+			"message": "Nachricht",
+			"characters": "{count, plural, one {# Zeichen} other {# Zeichen}}",
+			"screen": "Bildschirm",
+			"screenshot": "Screenshot",
+			"attached": "Angehängt",
+			"none": "Keiner",
+			"diagnostics": "Diagnose",
+			"notIncluded": "Nicht enthalten",
+			"never": "Deine Ausgaben, Beträge und Kontodaten werden nie gesendet.",
+			"goesTo": "Geht an die Admins von {host}.",
+			"screenshotWarning": "Der Screenshot zeigt, was auf deinem Bildschirm ist, auch Beträge. Er geht an die Admins von {host}."
+		},
+		"send": "Senden",
+		"sending": "Wird gesendet",
+		"sent": "Feedback gesendet",
+		"sentNoScreenshot": "Feedback gesendet. Der Screenshot wurde nicht hochgeladen.",
+		"failed": "Feedback nicht gesendet. Versuch es noch einmal.",
+		"limit": "Du kannst 5 pro Stunde senden. Versuch es später noch einmal.",
+		"tooLarge": "Dieses Bild ist größer als 5 MB.",
+		"errorReports": "Fehlerberichte an meinen Server senden",
+		"errorReportsDetail": "Nur Abstürze, ohne Adressen und Beträge. Sie gehen an deinen eigenen Server."
 	}
 }

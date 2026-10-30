@@ -1,7 +1,16 @@
-import type { SubmitFeedback } from "@retrospend/api-contract";
+import {
+	ERROR_REPORT_BATCH_MAX,
+	type ErrorReportInput,
+	FEEDBACK_SCREENSHOT_MAX_BYTES,
+	feedbackDiagnosticsSchema,
+	type SubmitFeedback,
+	scrubReport,
+} from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import * as z from "zod";
 import { db } from "~/server/db";
+import { processReceipt } from "~/server/image-processing";
+import { deleteFile, getFileStream, uploadFile } from "~/server/storage";
 import { assertAdmin } from "./admin";
 import { decodeCursor, encodeCursor } from "./cursor";
 import type { LedgerCaller } from "./money-op";
@@ -15,11 +24,182 @@ import { trpcFeedback } from "./trpc-bridge";
  */
 
 export async function submit(caller: LedgerCaller, input: SubmitFeedback) {
-	await (await trpcFeedback(caller)).submit(input);
+	const sent = await (await trpcFeedback(caller)).submit(input);
+	return { ok: true as const, id: sent.id };
+}
+
+/**
+ * Where a screenshot lives: one fixed path per entry, outside the public
+ * prefixes, so only admins read it. A new upload is written over the old one
+ * (the store renames a finished temp file into place), so two uploads at the
+ * same moment leave one file, never an orphan.
+ */
+export const screenshotPathOf = (id: string) => `feedback/${id}.webp`;
+
+async function deleteQuietly(path: string) {
+	try {
+		await deleteFile(path);
+	} catch (err) {
+		console.warn("Failed to delete feedback screenshot:", err);
+	}
+}
+
+export async function attachScreenshot(
+	caller: LedgerCaller,
+	input: { id: string; file: File },
+) {
+	if (input.file.size > FEEDBACK_SCREENSHOT_MAX_BYTES)
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "File too large. Maximum 5MB.",
+		});
+	const userId = caller.principal.userId;
+	// The sender only: another person's id is a 404.
+	const row = await caller.db.feedback.findFirst({
+		where: { id: input.id, userId },
+		select: { id: true },
+	});
+	if (!row)
+		throw new TRPCError({ code: "NOT_FOUND", message: "Feedback not found" });
+	let processed: Buffer;
+	try {
+		processed = await processReceipt(
+			Buffer.from(await input.file.arrayBuffer()),
+		);
+	} catch (err) {
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: err instanceof Error ? err.message : "Invalid image format",
+		});
+	}
+	const path = screenshotPathOf(row.id);
+	await uploadFile(path, processed, "image/webp");
+	await caller.db.feedback.update({
+		where: { id: row.id },
+		data: { screenshotPath: path },
+	});
+	return { ok: true as const };
+}
+
+export async function readScreenshot(
+	caller: LedgerCaller,
+	id: string,
+): Promise<File> {
+	assertAdmin(caller);
+	const row = await db.feedback.findUnique({
+		where: { id },
+		select: { screenshotPath: true },
+	});
+	if (!row?.screenshotPath)
+		throw new TRPCError({ code: "NOT_FOUND", message: "No screenshot" });
+	const chunks: Buffer[] = [];
+	try {
+		for await (const chunk of await getFileStream(row.screenshotPath))
+			chunks.push(Buffer.from(chunk));
+	} catch {
+		throw new TRPCError({ code: "NOT_FOUND", message: "No screenshot" });
+	}
+	return new File([new Uint8Array(Buffer.concat(chunks))], `${id}.webp`, {
+		type: "image/webp",
+	});
+}
+
+/** The newest reports kept per person; older ones are dropped as new arrive. */
+const REPORTS_KEPT_PER_USER = 200;
+
+/**
+ * Stores what the app recorded. The app scrubs first; this scrubs again, so a
+ * client that forgot cannot put an address or an amount in the table.
+ */
+export async function submitErrorReports(
+	caller: LedgerCaller,
+	input: { reports: ErrorReportInput[] },
+) {
+	const userId = caller.principal.userId;
+	const reports = input.reports.slice(0, ERROR_REPORT_BATCH_MAX);
+	await caller.db.errorReport.createMany({
+		data: reports.map(scrubReport).map((r) => ({
+			userId,
+			kind: r.kind,
+			message: r.message,
+			stack: r.stack ?? null,
+			screen: r.screen ?? null,
+			appVersion: r.appVersion ?? null,
+			build: r.build ?? null,
+			os: r.os ?? null,
+			device: r.device ?? null,
+			occurredAt: new Date(r.occurredAt),
+		})),
+	});
+	const old = await caller.db.errorReport.findMany({
+		where: { userId },
+		orderBy: { createdAt: "desc" },
+		skip: REPORTS_KEPT_PER_USER,
+		select: { id: true },
+	});
+	if (old.length)
+		await caller.db.errorReport.deleteMany({
+			where: { id: { in: old.map((o) => o.id) }, userId },
+		});
+	return { ok: true as const, stored: reports.length };
+}
+
+export async function listErrorReports(
+	caller: LedgerCaller,
+	q: { cursor?: string; limit: number },
+) {
+	assertAdmin(caller);
+	const after = decodeCursor(q.cursor, idKey);
+	const [rows, total] = await Promise.all([
+		db.errorReport.findMany({
+			take: q.limit + 1,
+			...(after ? { cursor: { id: after.id }, skip: 1 } : {}),
+			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+			include: { user: { select: { id: true, name: true } } },
+		}),
+		db.errorReport.count(),
+	]);
+	const more = rows.length > q.limit;
+	const items = more ? rows.slice(0, q.limit) : rows;
+	const last = items[items.length - 1];
+	return {
+		items: items.map((r) => ({
+			id: r.id,
+			kind: r.kind as ErrorReportInput["kind"],
+			message: r.message,
+			stack: r.stack,
+			screen: r.screen,
+			appVersion: r.appVersion,
+			build: r.build,
+			os: r.os,
+			device: r.device,
+			occurredAt: r.occurredAt.toISOString(),
+			createdAt: r.createdAt.toISOString(),
+			user: { id: r.user.id, name: r.user.name },
+		})),
+		nextCursor: more && last ? encodeCursor({ id: last.id }) : null,
+		total,
+	};
+}
+
+export async function removeErrorReport(caller: LedgerCaller, id: string) {
+	assertAdmin(caller);
+	const found = await db.errorReport.findUnique({
+		where: { id },
+		select: { id: true },
+	});
+	if (!found)
+		throw new TRPCError({ code: "NOT_FOUND", message: "Report not found" });
+	await db.errorReport.delete({ where: { id } });
 	return { ok: true as const };
 }
 
 const idKey = z.object({ id: z.string() });
+
+function diagnosticsOf(value: unknown) {
+	const parsed = feedbackDiagnosticsSchema.safeParse(value);
+	return parsed.success ? parsed.data : null;
+}
 
 type Status = "unread" | "read" | "archived";
 
@@ -44,6 +224,9 @@ export async function listInbox(
 			userAgent: f.userAgent,
 			viewportSize: f.viewportSize,
 			appVersion: f.appVersion,
+			category: f.category as "bug" | "idea" | "other",
+			hasScreenshot: f.screenshotPath !== null,
+			diagnostics: diagnosticsOf(f.diagnostics),
 			createdAt: f.createdAt.toISOString(),
 			user: { id: f.user.id, name: f.user.name, email: f.user.email },
 		})),
@@ -87,6 +270,11 @@ export async function setNote(
 export async function remove(caller: LedgerCaller, id: string) {
 	assertAdmin(caller);
 	await requireFeedback(id);
+	const row = await db.feedback.findUnique({
+		where: { id },
+		select: { screenshotPath: true },
+	});
 	await (await trpcFeedback(caller)).delete({ id });
+	if (row?.screenshotPath) await deleteQuietly(row.screenshotPath);
 	return { ok: true as const };
 }

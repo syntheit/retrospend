@@ -1,3 +1,8 @@
+import {
+	FEEDBACK_CATEGORIES,
+	feedbackDiagnosticsSchema,
+	scrubReport,
+} from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -18,6 +23,8 @@ export const feedbackRouter = createTRPCRouter({
 				userAgent: z.string().optional(),
 				viewportSize: z.string().optional(),
 				appVersion: z.string().optional(),
+				category: z.enum(FEEDBACK_CATEGORIES).default("other"),
+				diagnostics: feedbackDiagnosticsSchema.optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -45,6 +52,15 @@ export const feedbackRouter = createTRPCRouter({
 					userAgent: input.userAgent,
 					viewportSize: input.viewportSize,
 					appVersion: input.appVersion,
+					category: input.category,
+					// The same scrubber POST /error-reports runs: what the app sent
+					// as "recent errors" is never kept raw.
+					diagnostics: input.diagnostics
+						? {
+								...input.diagnostics,
+								recentErrors: input.diagnostics.recentErrors?.map(scrubReport),
+							}
+						: undefined,
 				},
 			});
 
@@ -56,8 +72,7 @@ export const feedbackRouter = createTRPCRouter({
 						select: { email: true },
 					});
 
-					const userName =
-						ctx.session.user.name || ctx.session.user.email;
+					const userName = ctx.session.user.name || ctx.session.user.email;
 					const html = getFeedbackNotificationTemplate(
 						userName,
 						input.message,
@@ -67,11 +82,7 @@ export const feedbackRouter = createTRPCRouter({
 
 					await Promise.allSettled(
 						admins.map((admin) =>
-							sendEmail(
-								admin.email,
-								`New feedback from ${userName}`,
-								html,
-							),
+							sendEmail(admin.email, `New feedback from ${userName}`, html),
 						),
 					);
 				} catch {
@@ -79,15 +90,13 @@ export const feedbackRouter = createTRPCRouter({
 				}
 			}
 
-			return { success: true };
+			return { success: true, id: feedback.id };
 		}),
 
 	list: adminProcedure
 		.input(
 			z.object({
-				status: z
-					.enum(["unread", "read", "archived"])
-					.optional(),
+				status: z.enum(["unread", "read", "archived"]).optional(),
 				cursor: z.string().optional(),
 				limit: z.number().min(1).max(100).default(20),
 			}),
@@ -99,9 +108,7 @@ export const feedbackRouter = createTRPCRouter({
 				ctx.db.feedback.findMany({
 					where,
 					take: input.limit + 1,
-					...(input.cursor
-						? { cursor: { id: input.cursor }, skip: 1 }
-						: {}),
+					...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
 					orderBy: { createdAt: "desc" },
 					include: {
 						user: {

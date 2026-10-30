@@ -2663,5 +2663,55 @@
 		"later": "Jour suivant",
 		"earlier": "Jour précédent",
 		"noData": "pas de données"
+	},
+	"feedback": {
+		"title": "Envoyer un retour",
+		"category": "Catégorie",
+		"categories": {
+			"bug": "Bogue",
+			"idea": "Idée",
+			"other": "Autre"
+		},
+		"message": "Message",
+		"messagePlaceholder": "Que s'est-il passé, ou qu'est-ce qui aiderait ?",
+		"screenshot": "Capture d'écran",
+		"attachScreen": "Joindre cet écran",
+		"chooseImage": "Choisir une image",
+		"attached": "Capture jointe",
+		"remove": "Retirer",
+		"diagnostics": "Inclure le diagnostic",
+		"diagnosticsDetail": "L'app, le téléphone et les erreurs récentes de l'app. Aucune dépense ni aucun montant.",
+		"diagnosticRows": {
+			"app": "App",
+			"system": "Système",
+			"device": "Appareil",
+			"language": "Langue",
+			"server": "Serveur",
+			"errors": "Erreurs récentes de l'app"
+		},
+		"preview": {
+			"title": "Ce qui sera envoyé",
+			"category": "Catégorie",
+			"message": "Message",
+			"characters": "{count, plural, one {# caractère} other {# caractères}}",
+			"screen": "Écran",
+			"screenshot": "Capture",
+			"attached": "Jointe",
+			"none": "Aucune",
+			"diagnostics": "Diagnostic",
+			"notIncluded": "Non inclus",
+			"never": "Vos dépenses, montants et données de compte ne sont jamais envoyés.",
+			"goesTo": "Va aux administrateurs de {host}.",
+			"screenshotWarning": "La capture montre ce qui est à l'écran, montants compris. Elle va aux administrateurs de {host}."
+		},
+		"send": "Envoyer",
+		"sending": "Envoi",
+		"sent": "Retour envoyé",
+		"sentNoScreenshot": "Retour envoyé. La capture n'a pas été transmise.",
+		"failed": "Retour non envoyé. Réessayez.",
+		"limit": "Vous pouvez en envoyer 5 par heure. Réessayez plus tard.",
+		"tooLarge": "Cette image dépasse 5 Mo.",
+		"errorReports": "Envoyer les rapports d'erreur à mon serveur",
+		"errorReportsDetail": "Plantages seulement, sans adresses ni montants. Ils vont à votre propre serveur."
 	}
 }

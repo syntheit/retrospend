@@ -48,7 +48,10 @@ function makeTx(overrides: Record<string, Record<string, Fn>>) {
 
 describe("anonymizeAndDeleteUser", () => {
 	it("detaches the user's ghosts from projects before the cascade deletes them", async () => {
-		const shadowFindMany = vi.fn(async () => [{ id: "shadow-a" }, { id: "shadow-b" }]);
+		const shadowFindMany = vi.fn(async () => [
+			{ id: "shadow-a" },
+			{ id: "shadow-b" },
+		]);
 		const ppDeleteMany = vi.fn(async () => ({ count: 1 }));
 		const userDelete = vi.fn(async () => ({}));
 		const { tx } = makeTx({
@@ -56,7 +59,9 @@ describe("anonymizeAndDeleteUser", () => {
 			projectParticipant: { deleteMany: ppDeleteMany },
 			user: { delete: userDelete },
 		});
-		const db = { $transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)) };
+		const db = {
+			$transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)),
+		};
 
 		await anonymizeAndDeleteUser(db as never, "user-1", "u@example.com", null);
 
@@ -79,12 +84,45 @@ describe("anonymizeAndDeleteUser", () => {
 		removeUserExports.mockClear();
 		const userDelete = vi.fn(async () => ({}));
 		const { tx } = makeTx({ user: { delete: userDelete } });
-		const db = { $transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)) };
+		const db = {
+			$transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)),
+		};
 
-		await anonymizeAndDeleteUser(db as never, "user-1", "u@x.test", "avatars/a.webp");
+		await anonymizeAndDeleteUser(
+			db as never,
+			"user-1",
+			"u@x.test",
+			"avatars/a.webp",
+		);
 
 		expect(deleteFile).toHaveBeenCalledWith("avatars/a.webp");
 		expect(removeUserExports).toHaveBeenCalledWith("user-1");
+		expect(vi.mocked(deleteFile).mock.invocationCallOrder[0]!).toBeGreaterThan(
+			userDelete.mock.invocationCallOrder[0]!,
+		);
+	});
+
+	it("removes the feedback screenshots only after the delete committed", async () => {
+		vi.mocked(deleteFile).mockClear();
+		vi.mocked(deleteFile).mockResolvedValue(undefined);
+		const userDelete = vi.fn(async () => ({}));
+		const { tx } = makeTx({
+			user: { delete: userDelete },
+			feedback: {
+				findMany: vi.fn(async () => [
+					{ screenshotPath: "feedback/f1.webp" },
+					{ screenshotPath: "feedback/f2.webp" },
+				]),
+			},
+		});
+		const db = {
+			$transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)),
+		};
+
+		await anonymizeAndDeleteUser(db as never, "user-1", "u@x.test", null);
+
+		expect(deleteFile).toHaveBeenCalledWith("feedback/f1.webp");
+		expect(deleteFile).toHaveBeenCalledWith("feedback/f2.webp");
 		expect(vi.mocked(deleteFile).mock.invocationCallOrder[0]!).toBeGreaterThan(
 			userDelete.mock.invocationCallOrder[0]!,
 		);
@@ -94,11 +132,20 @@ describe("anonymizeAndDeleteUser", () => {
 		vi.mocked(deleteFile).mockClear();
 		removeUserExports.mockClear();
 		const { tx } = makeTx({});
-		(tx as unknown as { $queryRaw: Fn }).$queryRaw.mockResolvedValue([{ id: "user-1" }]);
-		const db = { $transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)) };
+		(tx as unknown as { $queryRaw: Fn }).$queryRaw.mockResolvedValue([
+			{ id: "user-1" },
+		]);
+		const db = {
+			$transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)),
+		};
 
 		await expect(
-			anonymizeAndDeleteUser(db as never, "user-1", "u@x.test", "avatars/a.webp"),
+			anonymizeAndDeleteUser(
+				db as never,
+				"user-1",
+				"u@x.test",
+				"avatars/a.webp",
+			),
 		).rejects.toMatchObject({ code: "FORBIDDEN" });
 
 		expect(deleteFile).not.toHaveBeenCalled();
@@ -124,10 +171,12 @@ function memberQueries(members: Member[]) {
 		(where.role === undefined || m.role === where.role) &&
 		m.participantId !== (where.participantId as { not?: string })?.not;
 	return {
-		findFirst: vi.fn(async ({ where }: { where: Record<string, unknown> }) =>
-			members
-				.filter((m) => matches(m, where))
-				.sort((a, b) => a.joinedAt.getTime() - b.joinedAt.getTime())[0] ?? null,
+		findFirst: vi.fn(
+			async ({ where }: { where: Record<string, unknown> }) =>
+				members
+					.filter((m) => matches(m, where))
+					.sort((a, b) => a.joinedAt.getTime() - b.joinedAt.getTime())[0] ??
+				null,
 		),
 		count: vi.fn(
 			async ({ where }: { where: Record<string, unknown> }) =>
@@ -148,12 +197,31 @@ describe("organizer hand-over on account deletion", () => {
 
 	it("never promotes a ghost; picks the registered user instead", async () => {
 		const pp = memberQueries([
-			{ id: "pp-ghost", projectId: "p1", participantType: "shadow", participantId: "s1", role: "EDITOR", joinedAt: early },
-			{ id: "pp-bob", projectId: "p1", participantType: "user", participantId: "bob", role: "CONTRIBUTOR", joinedAt: later },
+			{
+				id: "pp-ghost",
+				projectId: "p1",
+				participantType: "shadow",
+				participantId: "s1",
+				role: "EDITOR",
+				joinedAt: early,
+			},
+			{
+				id: "pp-bob",
+				projectId: "p1",
+				participantType: "user",
+				participantId: "bob",
+				role: "CONTRIBUTOR",
+				joinedAt: later,
+			},
 		]);
 		const projectDelete = vi.fn(async () => ({}));
-		const { tx } = makeTx({ projectParticipant: pp, project: { delete: projectDelete } });
-		const db = { $transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)) };
+		const { tx } = makeTx({
+			projectParticipant: pp,
+			project: { delete: projectDelete },
+		});
+		const db = {
+			$transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)),
+		};
 
 		await anonymizeAndDeleteUser(db as never, "user-1", "u@example.com", null);
 
@@ -167,11 +235,23 @@ describe("organizer hand-over on account deletion", () => {
 
 	it("deletes the project when only ghosts are left", async () => {
 		const pp = memberQueries([
-			{ id: "pp-ghost", projectId: "p1", participantType: "shadow", participantId: "s1", role: "EDITOR", joinedAt: early },
+			{
+				id: "pp-ghost",
+				projectId: "p1",
+				participantType: "shadow",
+				participantId: "s1",
+				role: "EDITOR",
+				joinedAt: early,
+			},
 		]);
 		const projectDelete = vi.fn(async () => ({}));
-		const { tx } = makeTx({ projectParticipant: pp, project: { delete: projectDelete } });
-		const db = { $transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)) };
+		const { tx } = makeTx({
+			projectParticipant: pp,
+			project: { delete: projectDelete },
+		});
+		const db = {
+			$transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)),
+		};
 
 		await anonymizeAndDeleteUser(db as never, "user-1", "u@example.com", null);
 
@@ -181,11 +261,27 @@ describe("organizer hand-over on account deletion", () => {
 
 	it("falls back to a VIEWER user before deleting the project", async () => {
 		const pp = memberQueries([
-			{ id: "pp-ghost", projectId: "p1", participantType: "shadow", participantId: "s1", role: "CONTRIBUTOR", joinedAt: early },
-			{ id: "pp-vic", projectId: "p1", participantType: "user", participantId: "vic", role: "VIEWER", joinedAt: later },
+			{
+				id: "pp-ghost",
+				projectId: "p1",
+				participantType: "shadow",
+				participantId: "s1",
+				role: "CONTRIBUTOR",
+				joinedAt: early,
+			},
+			{
+				id: "pp-vic",
+				projectId: "p1",
+				participantType: "user",
+				participantId: "vic",
+				role: "VIEWER",
+				joinedAt: later,
+			},
 		]);
 		const { tx } = makeTx({ projectParticipant: pp });
-		const db = { $transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)) };
+		const db = {
+			$transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)),
+		};
 
 		await anonymizeAndDeleteUser(db as never, "user-1", "u@example.com", null);
 
@@ -197,8 +293,22 @@ describe("organizer hand-over on account deletion", () => {
 
 	it("preview names the registered successor, not the ghost", async () => {
 		const pp = memberQueries([
-			{ id: "pp-ghost", projectId: "p1", participantType: "shadow", participantId: "s1", role: "EDITOR", joinedAt: early },
-			{ id: "pp-bob", projectId: "p1", participantType: "user", participantId: "bob", role: "CONTRIBUTOR", joinedAt: later },
+			{
+				id: "pp-ghost",
+				projectId: "p1",
+				participantType: "shadow",
+				participantId: "s1",
+				role: "EDITOR",
+				joinedAt: early,
+			},
+			{
+				id: "pp-bob",
+				projectId: "p1",
+				participantType: "user",
+				participantId: "bob",
+				role: "CONTRIBUTOR",
+				joinedAt: later,
+			},
 		]);
 		const { tx } = makeTx({
 			projectParticipant: pp,
@@ -244,15 +354,38 @@ describe("pending settlements on account deletion", () => {
 
 	const rows: Row[] = [
 		// Payee refused this one; it must stay refused.
-		{ id: "rejected-out", fromParticipantId: "user-1", toParticipantId: "bob", status: "REJECTED", confirmedByPayer: true, confirmedByPayee: false },
-		{ id: "rejected-in", fromParticipantId: "bob", toParticipantId: "user-1", status: "REJECTED", confirmedByPayer: true, confirmedByPayee: false },
-		{ id: "pending-out", fromParticipantId: "user-1", toParticipantId: "bob", status: "PROPOSED", confirmedByPayer: true, confirmedByPayee: false },
+		{
+			id: "rejected-out",
+			fromParticipantId: "user-1",
+			toParticipantId: "bob",
+			status: "REJECTED",
+			confirmedByPayer: true,
+			confirmedByPayee: false,
+		},
+		{
+			id: "rejected-in",
+			fromParticipantId: "bob",
+			toParticipantId: "user-1",
+			status: "REJECTED",
+			confirmedByPayer: true,
+			confirmedByPayee: false,
+		},
+		{
+			id: "pending-out",
+			fromParticipantId: "user-1",
+			toParticipantId: "bob",
+			status: "PROPOSED",
+			confirmedByPayer: true,
+			confirmedByPayee: false,
+		},
 	];
 
 	it("finalizes PROPOSED settlements but leaves REJECTED ones alone", async () => {
 		const settlement = settlementModel(rows);
 		const { tx } = makeTx({ settlement });
-		const db = { $transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)) };
+		const db = {
+			$transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)),
+		};
 
 		await anonymizeAndDeleteUser(db as never, "user-1", "u@example.com", null);
 
@@ -267,12 +400,28 @@ describe("pending settlements on account deletion", () => {
 		// user-1 sent a full settle-up: a payment row to bob and an offset row
 		// from bob (its flags point the other way: user-1 is its payee).
 		const groupRows: Row[] = [
-			{ id: "group-cash", fromParticipantId: "user-1", toParticipantId: "bob", status: "PROPOSED", confirmedByPayer: true, confirmedByPayee: false },
-			{ id: "group-offset", fromParticipantId: "bob", toParticipantId: "user-1", status: "PROPOSED", confirmedByPayer: false, confirmedByPayee: true },
+			{
+				id: "group-cash",
+				fromParticipantId: "user-1",
+				toParticipantId: "bob",
+				status: "PROPOSED",
+				confirmedByPayer: true,
+				confirmedByPayee: false,
+			},
+			{
+				id: "group-offset",
+				fromParticipantId: "bob",
+				toParticipantId: "user-1",
+				status: "PROPOSED",
+				confirmedByPayer: false,
+				confirmedByPayee: true,
+			},
 		];
 		const settlement = settlementModel(groupRows);
 		const { tx } = makeTx({ settlement });
-		const db = { $transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)) };
+		const db = {
+			$transaction: vi.fn(async (cb: (t: unknown) => unknown) => cb(tx)),
+		};
 
 		await anonymizeAndDeleteUser(db as never, "user-1", "u@example.com", null);
 

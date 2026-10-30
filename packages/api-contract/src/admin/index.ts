@@ -1,3 +1,4 @@
+import * as z from "zod";
 import { v1 } from "../common/meta";
 import { cursorQuerySchema, pageOf } from "../common/pagination";
 import { idParamsSchema, okSchema } from "../core";
@@ -8,6 +9,7 @@ import {
 } from "../invite-codes";
 import {
 	adminAiSettingsSchema,
+	adminErrorReportPageSchema,
 	adminFeedbackPageSchema,
 	adminSettingsSchema,
 	adminStatsSchema,
@@ -17,6 +19,7 @@ import {
 	aiUsageSchema,
 	backupStartedSchema,
 	backupStatusSchema,
+	errorReportListQuerySchema,
 	eventLogEntrySchema,
 	eventLogQuerySchema,
 	feedbackListQuerySchema,
@@ -294,5 +297,39 @@ export const adminContract = {
 		})
 		.meta({ scope: "admin", event: "feedback.deleted" })
 		.input(feedbackParamsSchema)
+		.output(okSchema),
+	getFeedbackScreenshot: v1
+		.route({
+			method: "GET",
+			path: "/admin/feedback/{id}/screenshot",
+			operationId: "getFeedbackScreenshot",
+			tags: TAG,
+			summary: "The screenshot sent with a feedback entry",
+			description: "A WebP. Answers 404 when the entry has none.",
+		})
+		.meta({ scope: "admin" })
+		.input(feedbackParamsSchema)
+		.output(z.file()),
+	listErrorReports: v1
+		.route({
+			method: "GET",
+			path: "/admin/error-reports",
+			operationId: "listErrorReports",
+			tags: TAG,
+			summary: "Crashes people's apps sent, newest first",
+		})
+		.meta({ scope: "admin" })
+		.input(errorReportListQuerySchema)
+		.output(adminErrorReportPageSchema),
+	deleteErrorReport: v1
+		.route({
+			method: "DELETE",
+			path: "/admin/error-reports/{id}",
+			operationId: "deleteErrorReport",
+			tags: TAG,
+			summary: "Delete an error report",
+		})
+		.meta({ scope: "admin", event: "feedback.error_report_deleted" })
+		.input(idParamsSchema)
 		.output(okSchema),
 };

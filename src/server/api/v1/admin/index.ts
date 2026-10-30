@@ -89,6 +89,21 @@ export const adminRouter = {
 	setFeedbackNote: a.setFeedbackNote.handler(
 		serve(({ context, input }) => feedback.setNote(signedIn(context), input)),
 	),
+	getFeedbackScreenshot: a.getFeedbackScreenshot.handler(
+		serve(({ context, input }) =>
+			feedback.readScreenshot(signedIn(context), input.id),
+		),
+	),
+	listErrorReports: a.listErrorReports.handler(
+		serve(({ context, input }) =>
+			feedback.listErrorReports(signedIn(context), input),
+		),
+	),
+	deleteErrorReport: a.deleteErrorReport.handler(
+		serve(({ context, input }) =>
+			feedback.removeErrorReport(signedIn(context), input.id),
+		),
+	),
 	deleteFeedback: a.deleteFeedback.handler(
 		serve(({ context, input }) => feedback.remove(signedIn(context), input.id)),
 	),
