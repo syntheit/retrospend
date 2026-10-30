@@ -47,7 +47,35 @@ jest.mock("@/lib/money", () => ({
 			`${v.currency}:${v.minor}`,
 	}),
 }));
-jest.mock("@/ui/List", () => ({ StaleNote: () => null }));
+jest.mock("@/ui/List", () => {
+	const { createElement } = require("react");
+	return {
+		StaleNote: () => null,
+		ListGroup: (props: { children: unknown }) =>
+			createElement("ListGroup", null, props.children),
+		ListRow: (props: {
+			lead: unknown;
+			title: unknown;
+			sub: unknown;
+			end: unknown;
+		}) =>
+			createElement(
+				"ListRow",
+				null,
+				props.lead,
+				props.title,
+				props.sub,
+				props.end,
+			),
+	};
+});
+jest.mock("@/ui/Screen", () => ({
+	Screen: (props: { children: unknown }) =>
+		require("react").createElement("Screen", null, props.children),
+}));
+jest.mock("@/ui/Chip", () => ({
+	Chip: (props: object) => require("react").createElement("Chip", props),
+}));
 jest.mock("./useCurrencies", () => ({
 	useRateTable: () => ({
 		state: { status: "ready", data: mockTable, staleSince: null },
@@ -76,9 +104,6 @@ jest.mock("./useCurrencies", () => ({
 				: null,
 		};
 	},
-}));
-jest.mock("@/ui/Menu", () => ({
-	Menu: (props: object) => require("react").createElement("Menu", props),
 }));
 jest.mock("@/ui/RowMenu", () => ({
 	RowMenu: (props: { children: unknown }) =>
@@ -218,8 +243,10 @@ describe("CurrenciesScreen", () => {
 		expect(shown).toContain("ARS:146800");
 		expect(shown).toContain("mobile.currencies.rateTypes.blue");
 		expect(shown).toContain("ARS:26200");
-		// Prices differ in their unit, so each names it.
-		expect(shown).toContain('mobile.currencies.base {"code":"USD"}');
+		// Each price is for the row's own currency, so it names no unit.
+		expect(shown.some((s) => s.startsWith("mobile.currencies.base"))).toBe(
+			false,
+		);
 		// No rate reads as words, never a figure.
 		expect(shown).toContain("mobile.currencies.noRateSub");
 		expect(shown.some((s) => s.startsWith("mobile.currencies.missing"))).toBe(
@@ -268,15 +295,22 @@ describe("CurrenciesScreen", () => {
 		expect(shown).toContain("mobile.currencies.detail.defaultFixed");
 	});
 
+	it("lists the chips for favorites, fiat and crypto", () => {
+		const tree = mount();
+		expect(tree.root.findAllByType("Chip").map((c) => c.props.label)).toEqual([
+			"mobile.currencies.filter.favorites",
+			"mobile.currencies.filter.fiat",
+			"mobile.currencies.filter.crypto",
+		]);
+	});
+
 	it("says when no favorite is starred", () => {
 		mockTable = { ...mockTable, rows: [BRL, CLP] };
 		const tree = mount();
-		const menu = tree.root.findAllByType("Menu")[0];
-		act(() =>
-			menu?.props.items
-				.find((i: { id: string }) => i.id === "favorites")
-				.onPress(),
-		);
+		const chip = tree.root
+			.findAllByType("Chip")
+			.find((c) => c.props.label === "mobile.currencies.filter.favorites");
+		act(() => chip?.props.onPress());
 		expect(texts(tree)).toContain("mobile.currencies.empty.noFavorites");
 	});
 });

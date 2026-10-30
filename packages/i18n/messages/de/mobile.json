@@ -1915,7 +1915,17 @@
 			"copyFailed": "Link konnte nicht kopiert werden",
 			"takePhoto": "Foto aufnehmen",
 			"choosePhoto": "Aus der Mediathek wählen",
-			"photoDenied": "Erlaube den Zugriff in den Einstellungen deines Telefons"
+			"photoDenied": "Erlaube den Zugriff in den Einstellungen deines Telefons",
+			"displayName": "Anzeigename",
+			"usernameHint": "Eine Änderung alle 30 Tage",
+			"nameRequired": "Dein Name darf nicht leer sein",
+			"changeUsernameTitle": "Benutzernamen in @{username} ändern?",
+			"changeUsernameBody": "Du kannst ihn in 30 Tagen wieder ändern. @{old} bleibt 90 Tage für dich reserviert.",
+			"changeUsername": "Benutzernamen ändern",
+			"keepUsername": "Behalten",
+			"usernameSaved": "Dein Benutzername ist jetzt @{username}",
+			"changeEmail": "E-Mail ändern",
+			"usernameRefused": "Der Benutzername konnte nicht geändert werden. Er ist vielleicht vergeben oder wurde in den letzten 30 Tagen geändert."
 		},
 		"money": {
 			"title": "Geld",
@@ -2016,7 +2026,14 @@
 			"error": "Kategorien konnten nicht geladen werden",
 			"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
 			"saveError": "Speichern nicht möglich. Versuche es erneut.",
-			"count": "{count, plural, one {# Ausgabe} other {# Ausgaben}}"
+			"count": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
+			"menu": {
+				"label": "Aktionen für {name}",
+				"rename": "Umbenennen",
+				"iconColor": "Symbol und Farbe",
+				"count": "In Ausgaben zählen",
+				"uncount": "Nicht in Ausgaben zählen"
+			}
 		},
 		"payment": {
 			"error": "Zahlungsmethoden konnten nicht geladen werden",
@@ -2129,6 +2146,12 @@
 		},
 		"danger": {
 			"meta": "Offene Zahlungen und Aufteilungen werden zuerst geklärt"
+		},
+		"about": {
+			"version": "Retrospend {version}",
+			"license": "GPL v3",
+			"privacy": "Datenschutz",
+			"terms": "Nutzungsbedingungen"
 		}
 	},
 	"push": {
@@ -2334,7 +2357,8 @@
 			"tourist": "Tourist",
 			"market": "Markt",
 			"custom": "Eigener Kurs"
-		}
+		},
+		"pricesInHome": "Preise in {home}."
 	},
 	"status": {
 		"owed": "Wird dir geschuldet",

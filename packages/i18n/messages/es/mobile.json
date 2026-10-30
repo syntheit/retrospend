@@ -1915,7 +1915,17 @@
 			"copyFailed": "No se pudo copiar el enlace",
 			"takePhoto": "Tomar foto",
 			"choosePhoto": "Elegir de la galería",
-			"photoDenied": "Permite el acceso en los Ajustes del teléfono"
+			"photoDenied": "Permite el acceso en los Ajustes del teléfono",
+			"displayName": "Nombre para mostrar",
+			"usernameHint": "Un cambio cada 30 días",
+			"nameRequired": "Tu nombre no puede estar vacío",
+			"changeUsernameTitle": "¿Cambiar tu nombre de usuario a @{username}?",
+			"changeUsernameBody": "Podrás cambiarlo de nuevo en 30 días. @{old} queda reservado para ti durante 90 días.",
+			"changeUsername": "Cambiar nombre de usuario",
+			"keepUsername": "Mantenerlo",
+			"usernameSaved": "Tu nombre de usuario ahora es @{username}",
+			"changeEmail": "Cambiar email",
+			"usernameRefused": "No se pudo cambiar tu nombre de usuario. Puede estar en uso o haberse cambiado en los últimos 30 días."
 		},
 		"money": {
 			"title": "Dinero",
@@ -2016,7 +2026,14 @@
 			"error": "No se pudieron cargar las categorías",
 			"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
 			"saveError": "No se pudo guardar. Inténtalo de nuevo.",
-			"count": "{count, plural, one {# gasto} other {# gastos}}"
+			"count": "{count, plural, one {# gasto} other {# gastos}}",
+			"menu": {
+				"label": "Acciones de {name}",
+				"rename": "Cambiar nombre",
+				"iconColor": "Ícono y color",
+				"count": "Contar en los gastos",
+				"uncount": "No contar en los gastos"
+			}
 		},
 		"payment": {
 			"error": "No se pudieron cargar los métodos de pago",
@@ -2129,6 +2146,12 @@
 		},
 		"danger": {
 			"meta": "Los pagos y divisiones pendientes se resuelven primero"
+		},
+		"about": {
+			"version": "Retrospend {version}",
+			"license": "GPL v3",
+			"privacy": "Privacidad",
+			"terms": "Términos"
 		}
 	},
 	"push": {
@@ -2334,7 +2357,8 @@
 			"tourist": "Turista",
 			"market": "Mercado",
 			"custom": "Personalizado"
-		}
+		},
+		"pricesInHome": "Precios en {home}."
 	},
 	"status": {
 		"owed": "Te deben",

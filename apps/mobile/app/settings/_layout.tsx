@@ -8,16 +8,23 @@ import { useTheme } from "@/theme";
  * view, so it is not a native modal): swipe back or the system back leaves.
  * The list of sections has the large title on iOS; every page under it has
  * an inline title (GUIDELINE 15).
+ *
+ * The bar is the system's, as in the tab stacks: on iOS an opaque
+ * `headerStyle` paints over the large title and leaves a blank band, so only
+ * Android gets the flat theme-colored bar. The first screen's back button
+ * comes from the root stack (it shows the route name "(tabs)" as its label,
+ * so the label is dropped and the arrow stands alone).
  */
 export default function SettingsLayout() {
 	const t = useTranslations("mobile.settings");
 	const { color } = useTheme();
+	const android = Platform.OS === "android";
 	return (
 		<Stack
 			screenOptions={{
 				headerShadowVisible: false,
 				headerTintColor: color.fg,
-				headerStyle: { backgroundColor: color.bg },
+				headerStyle: android ? { backgroundColor: color.bg } : undefined,
 				contentStyle: { backgroundColor: color.bg },
 			}}
 		>
@@ -25,7 +32,8 @@ export default function SettingsLayout() {
 				name="index"
 				options={{
 					title: t("title"),
-					headerLargeTitle: Platform.OS === "ios",
+					headerLargeTitle: !android,
+					headerBackButtonDisplayMode: "minimal",
 				}}
 			/>
 			<Stack.Screen name="profile" options={{ title: t("profile.title") }} />

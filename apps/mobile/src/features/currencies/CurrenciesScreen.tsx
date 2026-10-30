@@ -1,16 +1,17 @@
 import { Stack } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
-import { FlatList, Text, View } from "react-native";
+import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { StaleNote } from "@/ui/List";
-import { FLOATING_ADD_INSET } from "@/layout/destinations";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { Chip } from "@/ui/Chip";
 import { EmptyState } from "@/ui/EmptyState";
-import { Menu } from "@/ui/Menu";
+import { ListGroup, ListRow, StaleNote } from "@/ui/List";
 import { RowMenu } from "@/ui/RowMenu";
+import { Screen } from "@/ui/Screen";
+import { Text } from "@/ui/Text";
 import { ConversionLines } from "./ConvertBlock";
 import { CurrencySheet } from "./CurrencySheet";
 import {
@@ -25,10 +26,10 @@ import {
 	type CurrencyFilter,
 	type CurrencyRow,
 	defaultPrice,
-	FILTERS,
 	missingRows,
 	type RateTable,
 	readConvQuery,
+	TOGGLE_FILTERS,
 	visibleRows,
 } from "./source";
 import { useConvert, useFavorite, useRateTable } from "./useCurrencies";
@@ -44,7 +45,7 @@ function openHistory(code: string, home: string) {
 function QuickConvert({ query, home }: { query: ConvQuery; home: string }) {
 	const t = useTranslations("mobile.currencies.convert");
 	const { format } = useFormatMoney();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const { result, failed } = useConvert(
 		query.code,
 		query.minor,
@@ -52,21 +53,14 @@ function QuickConvert({ query, home }: { query: ConvQuery; home: string }) {
 	);
 	return (
 		<View style={{ paddingHorizontal: space[4], paddingTop: space[4] }}>
-			<Text
-				accessibilityRole="header"
-				style={{
-					color: color.fg,
-					fontSize: type.section.size,
-					fontWeight: "600",
-				}}
-			>
+			<Text accessibilityRole="header" variant="section">
 				{t("quickTitle", {
 					amount: format({ minor: query.minor, currency: query.from }) ?? "",
 					to: query.to,
 				})}
 			</Text>
 			{failed ? (
-				<Text style={{ color: color.danger, fontSize: type.small.size }}>
+				<Text tone="danger" variant="small">
 					{t("failed")}
 				</Text>
 			) : (
@@ -92,7 +86,6 @@ function CurrencyLine({
 	const t = useTranslations("mobile.currencies");
 	const name = useCurrencyName();
 	const label = useRateLabel();
-	const { color, size, space, type } = useTheme();
 	const price = defaultPrice(row);
 	const canStar = row.favorite || row.rateId !== null;
 	const items = [
@@ -117,69 +110,33 @@ function CurrencyLine({
 				]),
 	];
 	return (
-		<View
-			style={{
-				flexDirection: "row",
-				alignItems: "center",
-				paddingLeft: space[4],
-				borderBottomWidth: 1,
-				borderBottomColor: color.line,
-				backgroundColor: color.bg,
-			}}
-		>
-			<StarButton busy={busy} onToggle={onFavorite} row={row} />
-			<View style={{ flex: 1 }}>
-				<RowMenu items={items} onPress={onOpen} title={row.code}>
-					<View
-						style={{
-							minHeight: size.row.phone,
-							flexDirection: "row",
-							alignItems: "center",
-							gap: space[3],
-							paddingLeft: space[3],
-							paddingRight: space[4],
-							paddingVertical: space[2],
-						}}
-					>
-						<View style={{ flex: 1, gap: space[1] }}>
-							<Text
-								numberOfLines={1}
-								style={{
-									color: color.fg,
-									fontSize: type.body.size,
-									fontWeight: "500",
-								}}
-							>
-								{row.code}
-							</Text>
-							<Text
-								numberOfLines={1}
-								style={{
-									color: price ? color.fg2 : color.attentionText,
-									fontSize: type.small.size,
-								}}
-							>
-								{price ? name(row.code) : t("noRateSub")}
+		<RowMenu items={items} onPress={onOpen} title={row.code}>
+			<ListRow
+				end={
+					price && row.defaultType ? (
+						<View style={{ alignItems: "flex-end" }}>
+							<PriceText price={price} showBase={price.base !== row.code} />
+							<Text tone="fg3" variant="meta">
+								{label(row.defaultType)}
 							</Text>
 						</View>
-						{price && row.defaultType ? (
-							<View style={{ alignItems: "flex-end", gap: space[1] }}>
-								<PriceText price={price} showBase={!table.base} />
-								<Text style={{ color: color.fg3, fontSize: type.meta.size }}>
-									{label(row.defaultType)}
-								</Text>
-							</View>
-						) : (
-							<Text
-								style={{ color: color.attentionText, fontSize: type.body.size }}
-							>
-								{t("noRate")}
-							</Text>
-						)}
-					</View>
-				</RowMenu>
-			</View>
-		</View>
+					) : (
+						<Text tone="attention">{t("noRate")}</Text>
+					)
+				}
+				lead={<StarButton busy={busy} onToggle={onFavorite} row={row} />}
+				sub={
+					price ? (
+						name(row.code)
+					) : (
+						<Text tone="attention" variant="meta">
+							{t("noRateSub")}
+						</Text>
+					)
+				}
+				title={row.code}
+			/>
+		</RowMenu>
 	);
 }
 
@@ -188,9 +145,11 @@ function TableNote({ table }: { table: RateTable }) {
 	const t = useTranslations("mobile.currencies");
 	const label = useRateLabel();
 	const day = useDayText();
-	const { color, space, type } = useTheme();
+	const { space } = useTheme();
 	const text = [
-		table.base ? t("pricesIn", { base: table.base }) : null,
+		table.base
+			? t("pricesIn", { base: table.base })
+			: t("pricesInHome", { home: table.home }),
 		table.updated ? t("updated", { date: day(table.updated) }) : null,
 		table.homeDefault ? t("newUse", { type: label(table.homeDefault) }) : null,
 	]
@@ -199,12 +158,9 @@ function TableNote({ table }: { table: RateTable }) {
 	if (!text) return null;
 	return (
 		<Text
-			style={{
-				color: color.fg2,
-				fontSize: type.small.size,
-				paddingHorizontal: space[4],
-				paddingTop: space[2],
-			}}
+			style={{ paddingHorizontal: space[4], paddingTop: space[2] }}
+			tone="fg2"
+			variant="small"
 		>
 			{text}
 		</Text>
@@ -220,7 +176,7 @@ function TableNote({ table }: { table: RateTable }) {
  */
 export function CurrenciesScreen() {
 	const t = useTranslations("mobile.currencies");
-	const { color, space, type } = useTheme();
+	const { color, space } = useTheme();
 	const locale = useMoneyLocale();
 	const name = useCurrencyName();
 	const searchRef = useSearchShortcut();
@@ -242,6 +198,7 @@ export function CurrenciesScreen() {
 		<Stack.Screen
 			options={{
 				title: t("title"),
+				headerLargeTitle: Platform.OS === "ios",
 				headerSearchBarOptions: {
 					ref: searchRef,
 					placeholder: t("search"),
@@ -294,69 +251,61 @@ export function CurrenciesScreen() {
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
 			{header}
-			<FlatList
-				contentInsetAdjustmentBehavior="automatic"
-				data={rows}
-				keyboardDismissMode="on-drag"
-				keyboardShouldPersistTaps="handled"
-				keyExtractor={(row) => row.code}
-				ListEmptyComponent={empty}
-				ListFooterComponent={<View style={{ height: FLOATING_ADD_INSET }} />}
-				ListHeaderComponent={
-					<View style={{ paddingBottom: space[2] }}>
-						<StaleNote
-							since={state.status === "ready" ? state.staleSince : null}
+			<Screen flush onRefresh={() => void reload()} refreshing={false}>
+				<StaleNote since={state.status === "ready" ? state.staleSince : null} />
+				<TableNote table={table} />
+				<View
+					style={{
+						flexDirection: "row",
+						flexWrap: "wrap",
+						gap: space[2],
+						paddingHorizontal: space[4],
+						paddingVertical: space[3],
+					}}
+				>
+					{TOGGLE_FILTERS.map((id) => (
+						<Chip
+							key={id}
+							label={t(`filter.${id}`)}
+							onPress={() => setFilter(filter === id ? "all" : id)}
+							selected={filter === id}
 						/>
-						<TableNote table={table} />
-						<View
-							style={{
-								flexDirection: "row",
-								paddingHorizontal: space[4],
-								paddingTop: space[3],
-							}}
-						>
-							<Menu
-								accessibilityLabel={`${t("filter.label")}, ${t(`filter.${filter}`)}`}
-								items={FILTERS.map((id) => ({
-									id,
-									label: t(`filter.${id}`),
-									onPress: () => setFilter(id),
-								}))}
-								label={t(`filter.${filter}`)}
+					))}
+				</View>
+				{conv ? <QuickConvert home={table.home} query={conv} /> : null}
+				{missing.length ? (
+					<Text
+						style={{
+							paddingHorizontal: space[4],
+							paddingBottom: space[3],
+						}}
+						tone="attention"
+						variant="small"
+					>
+						{t("missing", {
+							codes: missing.map((m) => m.code).join(", "),
+							names: usedBy.join(", "),
+							count: usedBy.length,
+						})}
+					</Text>
+				) : null}
+				{rows.length === 0 ? (
+					empty
+				) : (
+					<ListGroup>
+						{rows.map((item) => (
+							<CurrencyLine
+								busy={pending}
+								key={item.code}
+								onFavorite={(on) => void setFavorite(item, on)}
+								onOpen={() => setOpen(item.code)}
+								row={item}
+								table={table}
 							/>
-						</View>
-						{conv ? <QuickConvert home={table.home} query={conv} /> : null}
-						{missing.length ? (
-							<Text
-								style={{
-									color: color.attentionText,
-									fontSize: type.small.size,
-									paddingHorizontal: space[4],
-									paddingTop: space[3],
-								}}
-							>
-								{t("missing", {
-									codes: missing.map((m) => m.code).join(", "),
-									names: usedBy.join(", "),
-									count: usedBy.length,
-								})}
-							</Text>
-						) : null}
-					</View>
-				}
-				onRefresh={reload}
-				refreshing={false}
-				renderItem={({ item }) => (
-					<CurrencyLine
-						busy={pending}
-						onFavorite={(on) => void setFavorite(item, on)}
-						onOpen={() => setOpen(item.code)}
-						row={item}
-						table={table}
-					/>
+						))}
+					</ListGroup>
 				)}
-				style={{ backgroundColor: color.bg }}
-			/>
+			</Screen>
 			{openRow ? (
 				<CurrencySheet
 					busy={pending}

@@ -2,12 +2,16 @@ import { Stack } from "expo-router";
 import { useState } from "react";
 import { Platform } from "react-native";
 import { useTranslations } from "use-intl";
+import { useSession } from "@/auth/session";
+import { newClientId } from "@/data/ids";
 import { AddButton } from "@/ui/AddButton";
 import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
 import { CategoryTile, ListGroup, ListRow, StaleNote } from "@/ui/List";
+import { Menu } from "@/ui/Menu";
 import { Screen } from "@/ui/Screen";
 import { StatusText } from "@/ui/StatusText";
+import { useToast } from "@/ui/Toast";
 import { SettingsPage } from "../parts";
 import { useCategories } from "../useSettings";
 import { CategorySheet } from "./CategorySheet";
@@ -16,14 +20,18 @@ import type { Category } from "./source";
 /**
  * The categories list: each with its tile, its name and how many expenses
  * use it, then "Not counted in spending" when it is left out of totals. Tap
- * one to rename, recolor or change its icon; the plus in the bar adds one.
- * Deleting and merging are on the web.
+ * one to rename, recolor or change its icon; its menu also switches whether it
+ * counts in spending (with Undo). The plus in the bar adds one. Deleting and
+ * merging are on the web.
  */
 export function CategoriesScreen() {
 	const t = useTranslations("mobile.settings.categories");
+	const tc = useTranslations("mobile.common");
 	const ts = useTranslations("mobile.status");
 	const loading = useTranslations("mobile.activity")("loading");
 	const { state, reload } = useCategories();
+	const { api } = useSession();
+	const toast = useToast();
 	const [editing, setEditing] = useState<Category | null>(null);
 	const [open, setOpen] = useState(false);
 
@@ -31,6 +39,32 @@ export function CategoriesScreen() {
 		setEditing(category);
 		setOpen(true);
 	};
+	// Whether the category counts in spending, switched from its menu. The
+	// toast carries Undo, which puts the old setting back.
+	async function setCounted(category: Category, counted: boolean) {
+		if (!api) return;
+		const write = (excludeByDefault: boolean) =>
+			api.categories.update(
+				{ id: category.id, excludeByDefault },
+				{ context: { idempotencyKey: newClientId() } },
+			);
+		try {
+			await write(!counted);
+			void reload();
+			toast.show({
+				message: t("saved", { name: category.name }),
+				undo: {
+					label: tc("undo"),
+					onUndo: () => {
+						void write(!category.excludeByDefault).then(() => void reload());
+					},
+				},
+			});
+		} catch {
+			toast.show({ message: t("saveError") });
+		}
+	}
+
 	// The plus is the bar's: the system glass plus on iOS, a text plus on Android.
 	const add = (
 		<Stack.Screen
@@ -72,6 +106,35 @@ export function CategoriesScreen() {
 						return (
 							<ListRow
 								accessibilityLabel={`${category.name}, ${count}`}
+								end={
+									<Menu
+										accessibilityLabel={t("menu.label", {
+											name: category.name,
+										})}
+										icon
+										items={[
+											{
+												id: "rename",
+												label: t("menu.rename"),
+												onPress: () => show(category),
+											},
+											{
+												id: "icon",
+												label: t("menu.iconColor"),
+												onPress: () => show(category),
+											},
+											{
+												id: "count",
+												label: category.excludeByDefault
+													? t("menu.count")
+													: t("menu.uncount"),
+												onPress: () =>
+													void setCounted(category, category.excludeByDefault),
+											},
+										]}
+										label={t("menu.label", { name: category.name })}
+									/>
+								}
 								key={category.id}
 								lead={<CategoryTile category={category} />}
 								onPress={() => show(category)}

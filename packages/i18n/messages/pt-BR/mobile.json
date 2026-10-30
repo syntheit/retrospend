@@ -1915,7 +1915,17 @@
 			"copyFailed": "Não foi possível copiar o link",
 			"takePhoto": "Tirar foto",
 			"choosePhoto": "Escolher da galeria",
-			"photoDenied": "Permita o acesso nas Configurações do telefone"
+			"photoDenied": "Permita o acesso nas Configurações do telefone",
+			"displayName": "Nome de exibição",
+			"usernameHint": "Uma alteração a cada 30 dias",
+			"nameRequired": "Seu nome não pode ficar vazio",
+			"changeUsernameTitle": "Mudar seu nome de usuário para @{username}?",
+			"changeUsernameBody": "Você poderá mudar de novo em 30 dias. @{old} fica reservado para você por 90 dias.",
+			"changeUsername": "Mudar nome de usuário",
+			"keepUsername": "Manter",
+			"usernameSaved": "Seu nome de usuário agora é @{username}",
+			"changeEmail": "Mudar e-mail",
+			"usernameRefused": "Não foi possível mudar seu nome de usuário. Ele pode estar em uso ou ter sido alterado nos últimos 30 dias."
 		},
 		"money": {
 			"title": "Dinheiro",
@@ -2016,7 +2026,14 @@
 			"error": "Não foi possível carregar as categorias",
 			"errorDetail": "Verifique sua conexão e tente de novo.",
 			"saveError": "Não foi possível salvar. Tente de novo.",
-			"count": "{count, plural, one {# despesa} other {# despesas}}"
+			"count": "{count, plural, one {# despesa} other {# despesas}}",
+			"menu": {
+				"label": "Ações para {name}",
+				"rename": "Renomear",
+				"iconColor": "Ícone e cor",
+				"count": "Contar nos gastos",
+				"uncount": "Não contar nos gastos"
+			}
 		},
 		"payment": {
 			"error": "Não foi possível carregar os métodos de pagamento",
@@ -2129,6 +2146,12 @@
 		},
 		"danger": {
 			"meta": "Pagamentos e divisões pendentes são resolvidos primeiro"
+		},
+		"about": {
+			"version": "Retrospend {version}",
+			"license": "GPL v3",
+			"privacy": "Privacidade",
+			"terms": "Termos"
 		}
 	},
 	"push": {
@@ -2334,7 +2357,8 @@
 			"tourist": "Turismo",
 			"market": "Mercado",
 			"custom": "Personalizada"
-		}
+		},
+		"pricesInHome": "Preços em {home}."
 	},
 	"status": {
 		"owed": "Devem a você",
