@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { FeedbackTable } from "~/components/admin/feedback-table";
+import { FeedbackInbox } from "~/components/admin/feedback-inbox";
 import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { getWebSession } from "~/server/better-auth/web-session";
@@ -17,12 +17,12 @@ export default async function FeedbackPage() {
 		redirect("/home");
 	}
 
-	const t = await getTranslations("admin");
+	const t = await getTranslations("feedbackInbox");
 
 	return (
 		<PageFrame>
-			<PageHeader title={t("feedbackTitle")} />
-			<FeedbackTable />
+			<PageHeader title={t("title")} />
+			<FeedbackInbox />
 		</PageFrame>
 	);
 }

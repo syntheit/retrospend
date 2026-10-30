@@ -21,7 +21,9 @@ import {
 } from "./admin-settings-sections";
 import { AiUsageTable } from "./ai-usage-table";
 import { AuditLogsTable } from "./audit-logs-table";
+import { dialogContentFor, type PendingAction } from "./admin-dialog-content";
 import { BackupStatus } from "./backup-status";
+import { FeedbackInbox } from "./feedback-inbox";
 import { InviteCodesTable } from "./invite-codes-table";
 import { ParticipantsTable } from "./participants-table";
 import { UsersTable } from "./users-table";
@@ -35,26 +37,9 @@ type ExtendedUser = NonNullable<
 	isActive: boolean;
 };
 
-type PendingAction =
-	| { type: "resetPassword"; userId: string; username: string }
-	| {
-			type: "toggleUserStatus";
-			userId: string;
-			username: string;
-			isActive: boolean;
-	  }
-	| { type: "deleteUser"; userId: string; username: string }
-	| { type: "deleteInviteCode"; inviteCodeId: string; code: string }
-	| {
-			type: "toggleEmailVerification";
-			userId: string;
-			username: string;
-			verified: boolean;
-	  }
-	| null;
-
 export function AdminPanel() {
 	const t = useTranslations("admin");
+	const tf = useTranslations("feedbackInbox");
 	const toast = useToast();
 	const tabsRef = useRef<HTMLDivElement>(null);
 	const { tab, onTabChange } = useAdminTab(tabsRef);
@@ -233,73 +218,7 @@ export function AdminPanel() {
 		setInviteCodesStatus(newStatus);
 	};
 
-	const getDialogContent = () => {
-		if (!pendingAction) return null;
-
-		switch (pendingAction.type) {
-			case "resetPassword":
-				return {
-					title: t("resetPassword"),
-					description: t("resetPasswordConfirm", {
-						username: pendingAction.username,
-					}),
-					confirmLabel: t("resetPassword"),
-					variant: "default" as const,
-				};
-
-			case "toggleUserStatus":
-				return {
-					title: pendingAction.isActive ? t("disableUser") : t("enableUser"),
-					description: pendingAction.isActive
-						? t("disableUserConfirm", { username: pendingAction.username })
-						: t("enableUserConfirm", { username: pendingAction.username }),
-					confirmLabel: pendingAction.isActive
-						? t("disableUser")
-						: t("enableUser"),
-					variant: "default" as const,
-				};
-
-			case "deleteUser":
-				return {
-					title: t("deleteUser"),
-					description: t("deleteUserConfirm", {
-						username: pendingAction.username,
-					}),
-					confirmLabel: t("deleteUser"),
-					variant: "destructive" as const,
-				};
-
-			case "deleteInviteCode":
-				return {
-					title: t("deleteInviteCode"),
-					description: t("deleteInviteCodeConfirm", {
-						code: pendingAction.code,
-					}),
-					confirmLabel: t("deleteCode"),
-					variant: "destructive" as const,
-				};
-
-			case "toggleEmailVerification":
-				return {
-					title: pendingAction.verified
-						? t("markEmailVerified")
-						: t("markEmailUnverified"),
-					description: pendingAction.verified
-						? t("markEmailVerifiedConfirm", {
-								username: pendingAction.username,
-							})
-						: t("markEmailUnverifiedConfirm", {
-								username: pendingAction.username,
-							}),
-					confirmLabel: pendingAction.verified
-						? t("markAsVerified")
-						: t("markAsUnverified"),
-					variant: "default" as const,
-				};
-		}
-	};
-
-	const dialogContent = getDialogContent();
+	const dialogContent = dialogContentFor(pendingAction, t);
 	const isLoadingAction =
 		resetPasswordMutation.isPending ||
 		disableUserMutation.isPending ||
@@ -367,6 +286,7 @@ export function AdminPanel() {
 							{t("tabInviteCodes")}
 						</TabsTrigger>
 						<TabsTrigger value="ai-usage">{t("tabAiUsage")}</TabsTrigger>
+						<TabsTrigger value="feedback">{tf("tab")}</TabsTrigger>
 						<TabsTrigger value="audit-logs">{t("tabAuditLogs")}</TabsTrigger>
 					</TabsList>
 
@@ -434,6 +354,10 @@ export function AdminPanel() {
 
 					<TabsContent value="ai-usage">
 						<AiUsageTable />
+					</TabsContent>
+
+					<TabsContent value="feedback">
+						<FeedbackInbox />
 					</TabsContent>
 
 					<TabsContent value="audit-logs">
