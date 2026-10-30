@@ -1,4 +1,3 @@
-import { BottomSheet, RNHostView } from "@expo/ui";
 import { type ReactNode, useMemo, useState } from "react";
 import { Platform, Pressable, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,7 +5,9 @@ import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Button } from "./Button";
 import { Glyph } from "./Glyph";
+import { SheetFrame } from "./SheetFrame";
 import {
+	fillsSheet,
 	footerHeight,
 	type PinnedAction,
 	SHEET_CHROME,
@@ -14,26 +15,30 @@ import {
 } from "./sheetContext";
 import { Text } from "./Text";
 
-/** The share of the screen the iPad form sheet takes. */
-const IPAD_SHEET_SHARE = 0.88;
-
 /**
- * The size a full-height body (a scrolling list, the composer) gives itself in
- * a large sheet. The sheet hands its content the window's width without side
- * padding, and on phones runs under the status and gesture bars. A sheet with
- * a pinned footer passes `footer` so the body leaves room for it.
+ * The size of a full-height body (a scrolling list, the composer) in a sheet
+ * with detents. On iOS the sheet gives its content the height of the detent
+ * it is at, so the body flexes into the room between the header and the
+ * pinned footer. On Android the body takes most of the
+ * window (the M3 sheet shows its top at half and the rest when pulled up),
+ * leaving room for a pinned footer when the sheet has one (`footer`). On
+ * phones the width is the window's less the sheet's side padding.
  */
 export function useSheetBodySize(options?: { footer?: boolean }): {
 	width?: number;
-	height: number;
+	height?: number;
+	flex?: number;
+	minHeight?: number;
 } {
 	const insets = useSafeAreaInsets();
 	const { height, width } = useWindowDimensions();
 	const theme = useTheme();
-	const footer = options?.footer ? footerHeight(theme) + theme.space[3] : 0;
-	if (Platform.OS === "ios" && Platform.isPad) {
-		return { height: Math.round(height * IPAD_SHEET_SHARE) - footer };
+	if (Platform.OS === "ios") {
+		return Platform.isPad
+			? { flex: 1, minHeight: 0 }
+			: { width: width - 2 * theme.space[4], flex: 1, minHeight: 0 };
 	}
+	const footer = options?.footer ? footerHeight(theme) + theme.space[3] : 0;
 	return {
 		width: width - 2 * theme.space[4],
 		height: Math.round(
@@ -68,6 +73,11 @@ interface SheetProps {
 	 * verb (Cancel, Save). Pass ui/Button elements.
 	 */
 	footer?: ReactNode;
+	/**
+	 * A sheet of cards (the composer): the page color, so the surface cards on
+	 * it read as cards, the way iOS groups a form. Default: the surface.
+	 */
+	grouped?: boolean;
 	children: ReactNode;
 }
 
@@ -124,6 +134,7 @@ export function Sheet({
 	detents,
 	dismiss,
 	footer,
+	grouped = false,
 	children,
 }: SheetProps) {
 	const { color, space } = useTheme();
@@ -131,16 +142,15 @@ export function Sheet({
 	// A form hands its primary action up (usePinnedAction); the sheet draws it
 	// in the footer, under the scrolling body.
 	const [pinned, setPinned] = useState<PinnedAction | null>(null);
+	const fills = fillsSheet(detents);
+	const tallest = !detents
+		? null
+		: detents.includes("large")
+			? ("large" as const)
+			: ("medium" as const);
 	const context = useMemo(
-		() => ({
-			detent: !detents
-				? null
-				: detents.includes("large")
-					? ("large" as const)
-					: ("medium" as const),
-			pin: setPinned,
-		}),
-		[detents],
+		() => ({ detent: tallest, fills, pin: setPinned }),
+		[tallest, fills],
 	);
 	const bottom =
 		footer ??
@@ -151,11 +161,15 @@ export function Sheet({
 				onPress={pinned.onPress}
 			/>
 		) : null);
-	// Compose hosts React Native views only inside RNHostView; without it they
-	// draw but never receive a touch.
-	const content = (
+	// Where the sheet sets the content's height (fills), the content is a
+	// column that height: the header on top, the body flexing in the middle (a
+	// scrolling body scrolls what does not fit), the footer pinned at the
+	// bottom. Content that sized itself past its detent would be centered by
+	// the system and lose its header and footer.
+	const content = (height: number | null) => (
 		<View
 			style={{
+				height: height ?? undefined,
 				alignSelf: "stretch",
 				gap: space[3],
 				paddingBottom: Platform.OS === "android" ? space[6] : space[4],
@@ -176,7 +190,15 @@ export function Sheet({
 					{way === "none" ? null : <DismissItem kind={way} onPress={onClose} />}
 				</View>
 			) : null}
-			{children}
+			{height !== null ? (
+				<View
+					style={{ flex: 1, minHeight: 0, gap: space[3], overflow: "hidden" }}
+				>
+					{children}
+				</View>
+			) : (
+				children
+			)}
 			{bottom ? (
 				<View
 					style={{
@@ -195,16 +217,17 @@ export function Sheet({
 		</View>
 	);
 	return (
-		<BottomSheet
-			containerColor={color.surface}
-			isPresented={visible}
-			onDismiss={onClose}
-			scrimColor={color.scrim}
-			snapPoints={detents?.map((d) => (d === "medium" ? "half" : "full"))}
+		<SheetFrame
+			background={grouped ? color.bg : color.surface}
+			detents={detents}
+			onClose={onClose}
+			visible={visible}
 		>
-			<RNHostView matchContents={{ vertical: true }}>
-				<SheetContext.Provider value={context}>{content}</SheetContext.Provider>
-			</RNHostView>
-		</BottomSheet>
+			{(height) => (
+				<SheetContext.Provider value={context}>
+					{content(height)}
+				</SheetContext.Provider>
+			)}
+		</SheetFrame>
 	);
 }

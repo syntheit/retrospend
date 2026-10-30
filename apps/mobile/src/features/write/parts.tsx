@@ -10,10 +10,9 @@ import { type Entered, minorOf } from "./amount";
 import type { PreviewStatus } from "./useMoneyWrite";
 
 /**
- * The scrolling body of a sheet. The platform sheet centers short content in
- * its detent, so the body claims the height its sheet rests at and the content
- * starts at the top, where a form belongs (a medium sheet claims half the
- * window, a large one most of it; see useSheetFill).
+ * The scrolling body of a sheet. It takes the room the sheet has between its
+ * header and its pinned footer at the detent it rests at, starts at the top,
+ * where a form belongs, and scrolls what does not fit (see useSheetFill).
  */
 export function SheetBody({ children }: { children: ReactNode }) {
 	const fill = useSheetFill();

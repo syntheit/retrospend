@@ -10,10 +10,58 @@ export function footerHeight({ size, space }: Theme): number {
 	return 1 + space[3] + size.touchMin.phone;
 }
 
-/** How much of the window a large sheet body claims: enough to pin the top, short of the status bar. */
+/** How much of the window an Android sheet at full height gives its body. */
 const LARGE_FILL = 0.8;
 /** A medium detent rests at half the window. */
 const MEDIUM_SHARE = 0.5;
+
+/** The space above the content inside an iOS sheet, under the grabber. */
+export const SHEET_PAD_TOP = 16;
+/** The share of the window the floating iPad sheet takes (always large there). */
+const IPAD_SHEET_SHARE = 0.88;
+/**
+ * What the content leaves free under its iOS detent, so it never runs past
+ * the sheet. The content sits at the top of the sheet, so room to spare
+ * shows as a little space under the footer; content taller than the sheet
+ * would lose its footer.
+ */
+const LARGE_SPARE = 10;
+const MEDIUM_SPARE = 6;
+
+/**
+ * Whether the sheet sets its content's height: on iOS, a sheet with detents.
+ * The content is a column that height, the header on top, the body flexing in
+ * the middle and the footer pinned at the bottom. A sheet that fits its
+ * content (no detents) and the Android sheet let the content size itself.
+ */
+export function fillsSheet(detents: readonly unknown[] | undefined): boolean {
+	return Platform.OS === "ios" && detents !== undefined && detents.length > 0;
+}
+
+/**
+ * The height of an iOS sheet's content at a detent, its top padding
+ * included. The system lays the content out pinned to the top of the sheet
+ * and centers content taller than the detent the sheet is at, which cuts off
+ * the header and the footer; so the content takes the height of the detent
+ * the sheet is at now. On a phone large is the window under the status bar
+ * and above the home indicator, and medium half the window above the home
+ * indicator. The iPad sheet floats at most of the window, whatever the detent.
+ */
+export function sheetContentHeight(
+	detent: "medium" | "large",
+	{
+		window,
+		top,
+		bottom,
+		pad = false,
+	}: { window: number; top: number; bottom: number; pad?: boolean },
+): number {
+	if (pad) return Math.round(window * IPAD_SHEET_SHARE) - LARGE_SPARE;
+	if (detent === "medium") {
+		return Math.round(window / 2) - bottom - MEDIUM_SPARE;
+	}
+	return Math.round(window - top - bottom - LARGE_SPARE);
+}
 
 /** The one primary action a form hands to the sheet's pinned footer. */
 export interface PinnedAction {
@@ -25,6 +73,8 @@ export interface PinnedAction {
 export interface SheetContextValue {
 	/** The tallest height the sheet rests at; null when it fits its content. */
 	detent: "medium" | "large" | null;
+	/** The content takes the sheet's own height (see fillsSheet). */
+	fills?: boolean;
 	pin: (action: PinnedAction | null) => void;
 }
 
@@ -50,20 +100,40 @@ export function usePinnedAction(action: PinnedAction): boolean {
 	return pin !== null;
 }
 
+/** How a scrolling sheet body sizes itself. */
+export interface SheetFill {
+	flex?: number;
+	minHeight?: number;
+	maxHeight?: number;
+}
+
 /**
- * The height a scrolling sheet body claims so its content starts at the top
- * (the platform sheet centers short content in its detent). A large sheet
- * takes most of the window; a medium one takes what is left of half the
- * window under the header and above the pinned footer, so it rests at medium.
+ * How a scrolling sheet body sizes itself so the header, the whole body and
+ * the pinned footer all show at the height the sheet rests at.
+ *
+ * Where the sheet hands its content its own height (iOS with detents), the
+ * body flexes into the room between the header and the footer and scrolls
+ * what does not fit. A fixed height there is a guess at the detent; when the
+ * guess is taller than the sheet, the system centers the content and cuts
+ * off the header and the footer (Update balance showed only its keypad).
+ *
+ * Elsewhere the body takes a fixed height, never more than its detent has
+ * room for, so a long list scrolls instead of pushing the footer away: half
+ * the window for a medium sheet, most of it for a large one. A sheet with
+ * both detents is sized for large, since Android shows the top of it at half
+ * and the rest when pulled up.
  */
-export function useSheetFill(): { minHeight: number; maxHeight?: number } {
+export function useSheetFill(): SheetFill {
 	const sheet = useContext(SheetContext);
 	const theme = useTheme();
 	const { height } = useWindowDimensions();
+	if (sheet?.fills) return { flex: 1, minHeight: 0 };
 	const footer = footerHeight(theme) + theme.space[3];
-	if (sheet?.detent === "medium") {
-		const room = Math.max(0, height * MEDIUM_SHARE - SHEET_CHROME - footer);
-		return { minHeight: room, maxHeight: room };
-	}
-	return { minHeight: Math.max(0, height * LARGE_FILL - footer) };
+	const room = Math.max(
+		0,
+		sheet?.detent === "medium"
+			? height * MEDIUM_SHARE - SHEET_CHROME - footer
+			: height * LARGE_FILL - footer,
+	);
+	return { minHeight: room, maxHeight: room };
 }

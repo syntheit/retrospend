@@ -2,9 +2,11 @@ import { dark, light } from "@retrospend/tokens/theme";
 import { BUTTON_STYLE, Button } from "./Button.ios";
 
 // The first TestFlight build showed white text on the pale brand fill of the
-// dark theme. The filled button is pinned to a solid SwiftUI style (never the
-// glass styles, which belong to chrome) and to the token pair that sits on
-// the brand fill, and that pair has to read at 4.5:1 in both themes.
+// dark theme, and build 15 showed the system capsule taller than the kit
+// buttons beside it. The filled button is the kit primary drawn by hand at
+// the control height (never the glass styles, which belong to chrome), on
+// the token pair that sits on the brand fill, and that pair has to read at
+// 4.5:1 in both themes.
 const renderer = require("react-test-renderer");
 const { act, create } = renderer;
 
@@ -12,6 +14,7 @@ interface TestNode {
 	type: unknown;
 	props: Record<string, unknown>;
 	findByType(type: string): TestNode;
+	findAll(match: (node: TestNode) => boolean): TestNode[];
 }
 
 const mockTheme: { current: typeof light } = { current: light };
@@ -58,9 +61,11 @@ function render(theme: typeof light, props: Parameters<typeof Button>[0]) {
 	const root = (tree as NonNullable<typeof tree>).root;
 	const button = root.findByType("SwiftButton");
 	const text = root.findByType("SwiftText");
+	const stacks = root.findAll((n) => n.type === "SwiftHStack");
 	return {
 		button: button.props.modifiers as Modifier[],
 		label: text.props.modifiers as Modifier[],
+		shape: (stacks[0]?.props.modifiers ?? []) as Modifier[],
 	};
 }
 
@@ -71,17 +76,34 @@ describe.each([
 	["light", light],
 	["dark", dark],
 ])("filled Button in the %s theme", (_name, theme) => {
-	it("is a solid prominent fill, not glass", () => {
-		const { button } = render(theme, { label: "Sign in" });
-		expect(BUTTON_STYLE.filled).toBe("borderedProminent");
-		expect(find(button, "buttonStyle")?.style).toBe("borderedProminent");
+	it("is the kit primary at the control height, not a system capsule", () => {
+		const { button, shape } = render(theme, { label: "Sign in" });
+		expect(BUTTON_STYLE.filled).toBe("plain");
+		expect(find(button, "buttonStyle")?.style).toBe("plain");
+		expect(JSON.stringify(find(shape, "frame"))).toContain(
+			`"height":${theme.size.ctl.phone}`,
+		);
+		const small = render(theme, { label: "Settle up", size: "small" });
+		expect(JSON.stringify(find(small.shape, "frame"))).toContain(
+			`"height":${theme.size.ctlSm.phone}`,
+		);
 	});
 
-	it("tints with the brand and labels with the brand foreground", () => {
-		const { button, label } = render(theme, { label: "Sign in" });
-		expect(JSON.stringify(find(button, "tint"))).toContain(theme.color.brand);
+	it("fills with the brand and labels with the brand foreground", () => {
+		const { shape, label } = render(theme, { label: "Sign in" });
+		expect(JSON.stringify(find(shape, "background"))).toContain(
+			theme.color.brand,
+		);
 		expect(JSON.stringify(find(label, "foregroundStyle"))).toContain(
 			theme.color.brandFg,
+		);
+	});
+
+	it("fades when disabled", () => {
+		const { shape } = render(theme, { label: "Save", disabled: true });
+		expect(find(shape, "opacity")).toBeDefined();
+		expect(find(render(theme, { label: "Save" }).shape, "opacity")).toBe(
+			undefined,
 		);
 	});
 
@@ -146,12 +168,14 @@ describe("other variants", () => {
 		["light", light],
 		["dark", dark],
 	])("fills danger with its own readable foreground (%s)", (_name, theme) => {
-		const { button, label } = render(theme, {
+		const { button, label, shape } = render(theme, {
 			label: "Delete",
 			variant: "danger",
 		});
-		expect(find(button, "buttonStyle")?.style).toBe("borderedProminent");
-		expect(JSON.stringify(find(button, "tint"))).toContain(theme.color.danger);
+		expect(find(button, "buttonStyle")?.style).toBe("plain");
+		expect(JSON.stringify(find(shape, "background"))).toContain(
+			theme.color.danger,
+		);
 		expect(JSON.stringify(find(label, "foregroundStyle"))).toContain(
 			theme.color.dangerFg,
 		);

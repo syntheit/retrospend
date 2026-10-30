@@ -31,10 +31,13 @@ function ChipLabel({
 	label,
 	active,
 	calendar,
+	bare,
 }: {
 	label: string;
 	active: boolean;
 	calendar?: boolean;
+	/** Inside a clearable chip: the capsule and the end mark are the chip's. */
+	bare?: boolean;
 }) {
 	const { color, size, space, type } = useTheme();
 	return (
@@ -42,15 +45,10 @@ function ChipLabel({
 			modifiers={[
 				padding({
 					leading: calendar ? space[2] : space[3],
-					trailing: space[2],
+					trailing: bare ? 0 : space[2],
 				}),
 				frame({ height: size.ctl.phone }),
-				background(active ? color.brandSoft : "transparent", shapes.capsule()),
-				strokeBorder({
-					content: active ? color.brand : color.lineStrong,
-					shape: "capsule",
-					style: { lineWidth: 1 },
-				}),
+				...(bare ? [] : chipShape(active, color)),
 			]}
 			spacing={space[2]}
 		>
@@ -65,13 +63,30 @@ function ChipLabel({
 			>
 				{label}
 			</Text>
-			<Image
-				color={color.fg3}
-				size={size.icon.phone}
-				systemName="chevron.down"
-			/>
+			{bare ? null : (
+				<Image
+					color={color.fg3}
+					size={size.icon.phone}
+					systemName="chevron.down"
+				/>
+			)}
 		</HStack>
 	);
+}
+
+/** The chip's capsule: brand-soft with a brand border while set. */
+function chipShape(
+	active: boolean,
+	color: ReturnType<typeof useTheme>["color"],
+) {
+	return [
+		background(active ? color.brandSoft : "transparent", shapes.capsule()),
+		strokeBorder({
+			content: active ? color.brand : color.lineStrong,
+			shape: "capsule",
+			style: { lineWidth: 1 },
+		}),
+	];
 }
 
 /** The sort chip: the arrows alone in a chip-height circle, brand-soft while a sort is set. */
@@ -149,8 +164,61 @@ export function Menu({
 	heading,
 	leadingCalendar,
 	sortIcon,
+	onClear,
+	clearLabel,
 }: MenuProps) {
+	const { color, size, space } = useTheme();
 	const custom = chip || icon || heading || sortIcon;
+	if (chip && active && onClear) {
+		// A set chip that can be cleared: the menu opens from the label, and
+		// the x after it clears the value, inside one capsule.
+		return (
+			<NativeHost>
+				<HStack
+					modifiers={[
+						frame({ height: size.ctl.phone }),
+						...chipShape(true, color),
+					]}
+					spacing={0}
+				>
+					<SwiftMenu
+						label={
+							<ChipLabel active bare calendar={leadingCalendar} label={label} />
+						}
+						modifiers={[
+							menuStyle("button"),
+							buttonStyle("plain"),
+							menuIndicator("hidden"),
+							...(accessibilityLabel ? [a11yLabel(accessibilityLabel)] : []),
+						]}
+					>
+						{items.map((item) => (
+							<Button
+								key={item.id}
+								label={item.label}
+								onPress={item.onPress}
+								role={item.destructive ? "destructive" : undefined}
+							/>
+						))}
+					</SwiftMenu>
+					<Button
+						modifiers={[buttonStyle("plain"), a11yLabel(clearLabel ?? label)]}
+						onPress={onClear}
+					>
+						<Image
+							color={color.fg2}
+							modifiers={[
+								frame({ width: size.ctl.phone, height: size.ctl.phone }),
+								padding({ trailing: space[1] }),
+							]}
+							size={size.icon.phone}
+							systemName="xmark"
+						/>
+					</Button>
+				</HStack>
+			</NativeHost>
+		);
+	}
 	return (
 		<NativeHost>
 			<SwiftMenu

@@ -3,8 +3,23 @@
 // tsc resolves `./X` to the .ios file (tsconfig moduleSuffixes); Metro picks
 // the file for the running platform.
 
+import type { ReactElement } from "react";
 import type { Face } from "./Avatar";
 import type { GlyphName } from "./Glyph";
+
+/** The platform sheet around the content Sheet lays out (SheetFrame). */
+export interface SheetFrameProps {
+	visible: boolean;
+	onClose: () => void;
+	detents?: ("medium" | "large")[];
+	/** The sheet's own color. */
+	background: string;
+	/**
+	 * Draws the content. `height` is the height the content takes when the
+	 * sheet sets it (iOS with detents), or null when the content sizes itself.
+	 */
+	children: (height: number | null) => ReactElement;
+}
 
 export interface MenuItem {
 	id: string;
@@ -26,6 +41,14 @@ export interface MenuProps {
 	chip?: boolean;
 	/** A chip whose filter has a value set: brand-soft with a brand border. */
 	active?: boolean;
+	/**
+	 * A set chip that can be cleared (a set period): while `active`, an x
+	 * after the label calls this, in place of the chevron. Needs
+	 * `clearLabel`. Chip only.
+	 */
+	onClear?: () => void;
+	/** The spoken name of the clear mark ("Clear period"). */
+	clearLabel?: string;
 	/**
 	 * Draws the chip as the sort mark alone (up and down arrows), a circle the
 	 * height of a chip. `accessibilityLabel` is what it is called; it is on
