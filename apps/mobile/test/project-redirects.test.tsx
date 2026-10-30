@@ -23,8 +23,8 @@ jest.mock("@/layout/destinations", () => ({
 		return mockApart;
 	},
 }));
-jest.mock("@/features/account/AccountTopBar", () => ({
-	AccountTopBar: () => require("react").createElement("TopBar"),
+jest.mock("@/features/projects/ProjectsTopBar", () => ({
+	ProjectsTopBar: () => require("react").createElement("TopBar"),
 }));
 jest.mock("@/features/projects/ProjectsList", () => ({
 	ProjectsList: () => require("react").createElement("ProjectsList"),
