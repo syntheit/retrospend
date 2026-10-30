@@ -100,6 +100,47 @@ describe("account sheet", () => {
 		expect(texts).toContain("newCount:3");
 	});
 
+	it("scrolls on iOS, so Sign out and the version are reachable under the detent", async () => {
+		const { Platform, ScrollView } = require("react-native");
+		const was = Platform.OS;
+		Platform.OS = "ios";
+		mockState.me = {
+			...member,
+			role: "ADMIN",
+			principal: { scopes: ["admin"] },
+		};
+		let tree!: {
+			root: {
+				findAllByType(t: unknown): {
+					findAll(
+						f: (n: { props: Record<string, unknown> }) => boolean,
+					): unknown[];
+				}[];
+				findByProps(p: Record<string, unknown>): {
+					props: { onPress: () => void };
+				};
+			};
+			unmount(): void;
+		};
+		try {
+			await act(async () => {
+				tree = create(<AccountTopBar title="Home" />);
+			});
+			await act(async () => {
+				tree.root.findByProps({ accessibilityLabel: "open" }).props.onPress();
+			});
+			const scrolls = tree.root.findAllByType(ScrollView);
+			expect(scrolls).toHaveLength(1);
+			const inside = scrolls[0]
+				.findAll((n) => n.props.children === "signOut")
+				.concat(scrolls[0].findAll((n) => n.props.children === "version"));
+			expect(inside.length).toBeGreaterThan(0);
+		} finally {
+			Platform.OS = was;
+			act(() => tree.unmount());
+		}
+	});
+
 	it("keeps Admin out until an admin signs in again with the admin scope", async () => {
 		const texts = await labels({ ...member, role: "ADMIN" });
 		expect(texts).not.toContain("admin");

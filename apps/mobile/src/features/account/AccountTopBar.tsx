@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { type ReactNode, useEffect, useState } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerBaseUrl } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
@@ -8,6 +8,7 @@ import { adminAccess } from "@/features/admin/rules";
 import { useFeedback } from "@/features/feedback/FeedbackProvider";
 import { absoluteImage } from "@/features/read/faces";
 import { openWebPage } from "@/features/settings/webPages";
+import { SheetBody } from "@/features/write/parts";
 import { appBuild } from "@/lib/appVersion";
 import { useTheme } from "@/theme";
 import { Avatar, type Face } from "@/ui/Avatar";
@@ -131,106 +132,121 @@ export function AccountTopBar({
 				title={t("open")}
 				visible={open}
 			>
-				<View style={{ gap: space[6] }}>
-					{me && face ? (
+				<Scrolls>
+					<View style={{ gap: space[6] }}>
+						{me && face ? (
+							<SheetGroup>
+								<ListRow
+									accessibilityLabel={`${me.name}, ${t("profileHint")}`}
+									end={<Chevron />}
+									lead={<Avatar face={face} size="md" />}
+									onPress={go(() => router.push("/settings/profile"))}
+									sub={me.username ? `@${me.username}` : me.email}
+									title={me.name}
+								/>
+							</SheetGroup>
+						) : null}
 						<SheetGroup>
-							<ListRow
-								accessibilityLabel={`${me.name}, ${t("profileHint")}`}
-								end={<Chevron />}
-								lead={<Avatar face={face} size="md" />}
-								onPress={go(() => router.push("/settings/profile"))}
-								sub={me.username ? `@${me.username}` : me.email}
-								title={me.name}
+							<Place
+								end={newWord(unread.notifications)}
+								glyph="Bell"
+								label={t("notifications")}
+								onPress={go(() => router.push("/settings/notifications"))}
 							/>
 						</SheetGroup>
-					) : null}
-					<SheetGroup>
-						<Place
-							end={newWord(unread.notifications)}
-							glyph="Bell"
-							label={t("notifications")}
-							onPress={go(() => router.push("/settings/notifications"))}
-						/>
-					</SheetGroup>
-					<View style={{ gap: space[2] }}>
-						<Text accessibilityRole="header" tone="fg3" variant="meta">
-							{t("goTo")}
+						<View style={{ gap: space[2] }}>
+							<Text accessibilityRole="header" tone="fg3" variant="meta">
+								{t("goTo")}
+							</Text>
+							<SheetGroup>
+								<Place
+									glyph="Coins"
+									label={t("currencies")}
+									onPress={go(() => router.push(currenciesHref()))}
+								/>
+								<Place
+									glyph="Settings"
+									label={t("settings")}
+									onPress={go(() => router.push("/settings"))}
+								/>
+							</SheetGroup>
+						</View>
+						{admin || me?.canInvite === true ? (
+							<SheetGroup>
+								{admin ? (
+									<Place
+										glyph="Shield"
+										label={t("admin")}
+										onPress={go(() => router.push("/settings/admin"))}
+									/>
+								) : null}
+								<Place
+									glyph="KeyRound"
+									label={t("inviteCodes")}
+									onPress={
+										admin
+											? go(() => router.push("/settings/admin-invites"))
+											: web("/invite-codes")
+									}
+									web={admin ? undefined : opensWeb}
+								/>
+								{admin ? (
+									<Place
+										end={newWord(unread.feedback)}
+										glyph="Mail"
+										label={t("feedbackInbox")}
+										onPress={go(() => router.push("/settings/admin-feedback"))}
+									/>
+								) : null}
+							</SheetGroup>
+						) : null}
+						<SheetGroup>
+							<Place
+								glyph="MessageSquare"
+								label={t("feedback")}
+								onPress={go(() => feedback.open({ afterSheet: true }))}
+							/>
+							<Place
+								glyph="BookOpen"
+								label={t("docs")}
+								onPress={web("/docs?from=app")}
+								web={opensWeb}
+							/>
+							<Place
+								glyph="FileText"
+								label={t("releaseNotes")}
+								onPress={web("/releases?from=app")}
+								web={opensWeb}
+							/>
+						</SheetGroup>
+						<SheetGroup>
+							<Place
+								glyph="LogOut"
+								label={t("signOut")}
+								onPress={go(confirmSignOut)}
+								plain
+							/>
+						</SheetGroup>
+						<Text style={{ textAlign: "center" }} tone="fg3" variant="small">
+							{t("version", appBuild())}
 						</Text>
-						<SheetGroup>
-							<Place
-								glyph="Coins"
-								label={t("currencies")}
-								onPress={go(() => router.push(currenciesHref()))}
-							/>
-							<Place
-								glyph="Settings"
-								label={t("settings")}
-								onPress={go(() => router.push("/settings"))}
-							/>
-						</SheetGroup>
 					</View>
-					{admin || me?.canInvite === true ? (
-						<SheetGroup>
-							{admin ? (
-								<Place
-									glyph="Shield"
-									label={t("admin")}
-									onPress={go(() => router.push("/settings/admin"))}
-								/>
-							) : null}
-							<Place
-								glyph="KeyRound"
-								label={t("inviteCodes")}
-								onPress={
-									admin
-										? go(() => router.push("/settings/admin-invites"))
-										: web("/invite-codes")
-								}
-								web={admin ? undefined : opensWeb}
-							/>
-							{admin ? (
-								<Place
-									end={newWord(unread.feedback)}
-									glyph="Mail"
-									label={t("feedbackInbox")}
-									onPress={go(() => router.push("/settings/admin-feedback"))}
-								/>
-							) : null}
-						</SheetGroup>
-					) : null}
-					<SheetGroup>
-						<Place
-							glyph="MessageSquare"
-							label={t("feedback")}
-							onPress={go(() => feedback.open({ afterSheet: true }))}
-						/>
-						<Place
-							glyph="BookOpen"
-							label={t("docs")}
-							onPress={web("/docs?from=app")}
-							web={opensWeb}
-						/>
-						<Place
-							glyph="FileText"
-							label={t("releaseNotes")}
-							onPress={web("/releases?from=app")}
-							web={opensWeb}
-						/>
-					</SheetGroup>
-					<SheetGroup>
-						<Place
-							glyph="LogOut"
-							label={t("signOut")}
-							onPress={go(confirmSignOut)}
-							plain
-						/>
-					</SheetGroup>
-					<Text style={{ textAlign: "center" }} tone="fg3" variant="small">
-						{t("version", appBuild())}
-					</Text>
-				</View>
+				</Scrolls>
 			</Sheet>
 		</>
+	);
+}
+
+/**
+ * On iOS the sheet gives its content a fixed height and clips what does not
+ * fit, so an admin's longer list needs a scroll to reach Sign out and the
+ * version. Android lays the sheet out from its content.
+ */
+function Scrolls({ children }: { children: ReactNode }) {
+	return Platform.OS === "ios" ? (
+		<SheetBody>{children}</SheetBody>
+	) : (
+		<>{children}</>
 	);
 }
 
