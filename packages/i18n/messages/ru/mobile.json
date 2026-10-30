@@ -2595,6 +2595,7 @@
 			"website": "Сайт",
 			"websitePlaceholder": "example.com",
 			"websiteInvalid": "Этот адрес выглядит неверно.",
+			"moreDetails": "Ещё подробности",
 			"submit": "Добавить",
 			"toast": "{title}: добавлено"
 		},

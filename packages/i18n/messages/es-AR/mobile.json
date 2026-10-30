@@ -2595,6 +2595,7 @@
 			"website": "Sitio web",
 			"websitePlaceholder": "ejemplo.com",
 			"websiteInvalid": "Esa dirección no parece correcta.",
+			"moreDetails": "Más detalles",
 			"submit": "Agregar",
 			"toast": "{title} agregado"
 		},

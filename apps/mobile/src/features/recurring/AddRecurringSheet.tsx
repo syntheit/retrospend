@@ -301,7 +301,7 @@ export function AddRecurringSheet({
 					) : (
 						<View style={{ alignItems: "flex-start" }}>
 							<TextAction
-								label={tc("moreDetails")}
+								label={t("add.moreDetails")}
 								onPress={() => {
 									setMore(true);
 									setKeypad(false);
