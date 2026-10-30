@@ -22,9 +22,24 @@ export function useRateLabel() {
 	};
 }
 
+/**
+ * English names come title-cased ("Brazilian Real"); the app writes them in
+ * sentence case ("Brazilian real"): the last word of a name with several
+ * goes lower, unless it is an acronym. Other languages' names already are.
+ */
+export function sentenceCaseName(name: string, locale: string): string {
+	if (!locale.toLowerCase().startsWith("en")) return name;
+	const at = name.lastIndexOf(" ");
+	if (at < 0) return name;
+	const last = name.slice(at + 1);
+	if (last !== last.toLowerCase() && last === last.toUpperCase()) return name;
+	return `${name.slice(0, at + 1)}${last.toLowerCase()}`;
+}
+
 export function useCurrencyName() {
 	const locale = useLocale();
-	return (code: string) => localCurrencyName(code, locale);
+	return (code: string) =>
+		sentenceCaseName(localCurrencyName(code, locale), locale);
 }
 
 /** A price as the server sent it, through the one formatter, with its places. */

@@ -1919,7 +1919,17 @@
 			"copyFailed": "Impossible de copier le lien",
 			"takePhoto": "Prendre une photo",
 			"choosePhoto": "Choisir dans la photothèque",
-			"photoDenied": "Autorise l’accès dans les Réglages du téléphone"
+			"photoDenied": "Autorise l’accès dans les Réglages du téléphone",
+			"displayName": "Nom affiché",
+			"usernameHint": "Une modification tous les 30 jours",
+			"nameRequired": "Ton nom ne peut pas être vide",
+			"changeUsernameTitle": "Changer ton nom d’utilisateur en @{username} ?",
+			"changeUsernameBody": "Tu pourras le changer à nouveau dans 30 jours. @{old} te reste réservé pendant 90 jours.",
+			"changeUsername": "Changer de nom d’utilisateur",
+			"keepUsername": "Le garder",
+			"usernameSaved": "Ton nom d’utilisateur est désormais @{username}",
+			"changeEmail": "Changer d’e-mail",
+			"usernameRefused": "Impossible de changer votre nom d'utilisateur. Il est peut-être pris, ou changé depuis moins de 30 jours."
 		},
 		"money": {
 			"title": "Argent",
@@ -2020,7 +2030,14 @@
 			"error": "Impossible de charger les catégories",
 			"errorDetail": "Vérifie ta connexion et réessaie.",
 			"saveError": "Impossible d'enregistrer. Réessaie.",
-			"count": "{count, plural, one {# dépense} other {# dépenses}}"
+			"count": "{count, plural, one {# dépense} other {# dépenses}}",
+			"menu": {
+				"label": "Actions pour {name}",
+				"rename": "Renommer",
+				"iconColor": "Icône et couleur",
+				"count": "Compter dans les dépenses",
+				"uncount": "Ne pas compter dans les dépenses"
+			}
 		},
 		"payment": {
 			"error": "Impossible de charger les moyens de paiement",
@@ -2133,6 +2150,12 @@
 		},
 		"danger": {
 			"meta": "Les paiements et partages en attente sont réglés d’abord"
+		},
+		"about": {
+			"version": "Retrospend {version}",
+			"license": "GPL v3",
+			"privacy": "Confidentialité",
+			"terms": "Conditions"
 		}
 	},
 	"push": {
@@ -2338,7 +2361,8 @@
 			"tourist": "Touriste",
 			"market": "Marché",
 			"custom": "Personnalisé"
-		}
+		},
+		"pricesInHome": "Prix en {home}."
 	},
 	"status": {
 		"owed": "On te doit",

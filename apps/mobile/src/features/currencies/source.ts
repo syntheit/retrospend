@@ -26,7 +26,8 @@ export function fetchRateTable(api: RetrospendClient) {
 }
 
 export type CurrencyFilter = "all" | "favorites" | "fiat" | "crypto";
-export const FILTERS: CurrencyFilter[] = ["all", "favorites", "fiat", "crypto"];
+/** The chips on the screen: each one narrows the list, and a second tap clears it. */
+export const TOGGLE_FILTERS = ["favorites", "fiat", "crypto"] as const;
 
 /** Case and accents folded, so "real" finds "Real brasileño". */
 export function fold(text: string): string {

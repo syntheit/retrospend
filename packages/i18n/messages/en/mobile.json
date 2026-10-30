@@ -1919,7 +1919,17 @@
 			"copyFailed": "Couldn't copy the link",
 			"takePhoto": "Take photo",
 			"choosePhoto": "Choose from library",
-			"photoDenied": "Allow access in your phone's Settings"
+			"photoDenied": "Allow access in your phone's Settings",
+			"displayName": "Display name",
+			"usernameHint": "One change every 30 days",
+			"nameRequired": "Your name can't be empty",
+			"changeUsernameTitle": "Change your username to @{username}?",
+			"changeUsernameBody": "You can change it again in 30 days. @{old} stays reserved for you for 90 days.",
+			"changeUsername": "Change username",
+			"keepUsername": "Keep it",
+			"usernameSaved": "Username is now @{username}",
+			"changeEmail": "Change email",
+			"usernameRefused": "Couldn't change your username. It may be taken, or changed in the last 30 days."
 		},
 		"money": {
 			"title": "Money",
@@ -2020,7 +2030,14 @@
 			"error": "Couldn't load categories",
 			"errorDetail": "Check your connection and try again.",
 			"saveError": "Couldn't save. Try again.",
-			"count": "{count, plural, one {# expense} other {# expenses}}"
+			"count": "{count, plural, one {# expense} other {# expenses}}",
+			"menu": {
+				"label": "Actions for {name}",
+				"rename": "Rename",
+				"iconColor": "Icon and color",
+				"count": "Count in spending",
+				"uncount": "Leave out of spending"
+			}
 		},
 		"payment": {
 			"error": "Couldn't load payment methods",
@@ -2133,6 +2150,12 @@
 		},
 		"danger": {
 			"meta": "Pending payments and splits are resolved first"
+		},
+		"about": {
+			"version": "Retrospend {version}",
+			"license": "GPL v3",
+			"privacy": "Privacy",
+			"terms": "Terms"
 		}
 	},
 	"push": {
@@ -2338,7 +2361,8 @@
 			"tourist": "Tourist",
 			"market": "Market",
 			"custom": "Custom"
-		}
+		},
+		"pricesInHome": "Prices in {home}."
 	},
 	"status": {
 		"owed": "Owed to you",
