@@ -29,10 +29,12 @@ export type GlyphName =
 	| CategoryIconName
 	| "AlarmClock"
 	| "ArrowRight"
+	| "ArrowUpDown"
 	| "Bell"
 	| "Bitcoin"
 	| "BookOpen"
 	| "Building2"
+	| "Calendar"
 	| "CalendarClock"
 	| "ChartLine"
 	| "ChartNoAxesCombined"
@@ -47,6 +49,7 @@ export type GlyphName =
 	| "Ellipsis"
 	| "FileText"
 	| "FileUp"
+	| "FolderPlus"
 	| "HandCoins"
 	| "Info"
 	| "KeyRound"
@@ -67,6 +70,7 @@ export type GlyphName =
 	| "TriangleAlert"
 	| "User"
 	| "UserCheck"
+	| "UserPlus"
 	| "UserX"
 	| "Wallet"
 	| "X";

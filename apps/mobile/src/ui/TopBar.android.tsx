@@ -5,6 +5,7 @@ import { useTheme } from "@/theme";
 import { AccountButton } from "./AccountButton";
 import { Menu } from "./Menu";
 import { PaneBar } from "./PaneBar";
+import { TopBarAction } from "./TopBarAction";
 import type { TopBarProps } from "./types";
 
 /**
@@ -14,6 +15,7 @@ import type { TopBarProps } from "./types";
  */
 export function TopBar({
 	title,
+	actions,
 	overflow,
 	overflowLabel,
 	account,
@@ -23,9 +25,13 @@ export function TopBar({
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const items = overflow ?? [];
-	const hasTrailing = items.length > 0 || account;
+	const pageActions = actions ?? [];
+	const hasTrailing = items.length > 0 || pageActions.length > 0 || account;
 	const buttons = () => (
 		<View style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}>
+			{pageActions.map((action) => (
+				<TopBarAction key={action.id} {...action} />
+			))}
 			{items.length > 0 ? (
 				<Menu
 					accessibilityLabel={overflowLabel ?? title}

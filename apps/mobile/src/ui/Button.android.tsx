@@ -13,7 +13,9 @@ import type { ButtonProps } from "./types";
  * An M3 button with the token colors set outright: filled is the brand fill
  * with the brand foreground on it, danger the danger fill with its own
  * foreground (the pairs the contrast test checks), not a color Material
- * derives from the seed. Small is the 28 dp control with 13 point text.
+ * derives from the seed. Outlined is the kit secondary (surface, fg text, the
+ * M3 outline); dangerText is the bare danger-text ghost; the icon prop is for
+ * the SwiftUI buttons only. Small is the 28 dp control with 13 point text.
  */
 export function Button({
 	label,
@@ -39,7 +41,11 @@ export function Button({
 						? { containerColor: color.brand, contentColor: color.brandFg }
 						: variant === "danger"
 							? { containerColor: color.danger, contentColor: color.dangerFg }
-							: { contentColor: color.brand }
+							: variant === "outlined"
+								? { containerColor: color.surface, contentColor: color.fg }
+								: variant === "dangerText"
+									? { contentColor: color.danger }
+									: { contentColor: color.brand }
 				}
 				contentPadding={
 					small

@@ -4,6 +4,7 @@
 // the file for the running platform.
 
 import type { Face } from "./Avatar";
+import type { GlyphName } from "./Glyph";
 
 export interface MenuItem {
 	id: string;
@@ -65,8 +66,22 @@ export interface AddButtonProps {
 	actions?: AddAction[];
 }
 
+/** An icon-only page action in the top bar. */
+export interface TopBarAction {
+	id: string;
+	/** The accessibility label, also the name of the action. */
+	label: string;
+	icon: GlyphName;
+	onPress: () => void;
+}
+
 export interface TopBarProps {
 	title: string;
+	/**
+	 * Icon-only page actions (Add person, New project), at the end of the bar
+	 * before the overflow menu and the account button.
+	 */
+	actions?: TopBarAction[];
 	/**
 	 * The page's overflow menu (the three dots), at the end of the bar before
 	 * the account button. Without items there is no mark.
@@ -95,16 +110,23 @@ export interface ButtonProps {
 	/**
 	 * Filled is the one primary action on a screen; outlined is the rest;
 	 * text is a link-like action (Change server); danger is only the confirm
-	 * of a destructive sheet, placed last.
+	 * of a destructive sheet, placed last; dangerText is the bare danger-text
+	 * ghost for a destructive action beside others (Delete on an entry).
+	 * Outlined and dangerText are the kit's secondary and ghost looks.
 	 */
-	variant?: "filled" | "outlined" | "text" | "danger";
+	variant?: "filled" | "outlined" | "text" | "danger" | "dangerText";
 	/**
 	 * Small is the 28 point control (an outlined Resume or Use my plan inside a
 	 * row or notice), only next to other small controls (R31).
 	 */
 	size?: "regular" | "small";
+	/** A glyph before the label on outlined and dangerText (SwiftUI buttons only). */
+	icon?: ButtonIcon;
 	disabled?: boolean;
 }
+
+/** The glyphs a button may lead with. */
+export type ButtonIcon = "Trash2" | "Repeat" | "Pencil" | "Plus";
 
 /** A settings picker row's menu: its options, the current one, and the change. */
 export interface FormMenuProps<T extends string> {

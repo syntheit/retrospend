@@ -1,5 +1,6 @@
 import { light } from "@retrospend/tokens/theme";
-import { Pressable } from "react-native";
+import { Pressable, StyleSheet, type TextStyle } from "react-native";
+import { fontFamilyFor } from "@/theme/fonts";
 import { Hero } from "./Hero";
 
 // One hero per screen: the label, value and a text sub line read as one
@@ -12,6 +13,7 @@ jest.mock("@/theme", () => ({
 }));
 
 interface Node {
+	type: unknown;
 	props: Record<string, unknown>;
 	findAll(match: (node: Node) => boolean): Node[];
 }
@@ -51,17 +53,44 @@ describe("Hero", () => {
 		).toBeGreaterThan(0);
 	});
 
+	it("draws a hero label in the figure's tone and a quiet sub line", () => {
+		const root = render(
+			<Hero
+				label="Lucia owes you"
+				labelTone="hero"
+				sub="3 shared expenses"
+				subTone="fg3"
+				tone="positive"
+				value="$5"
+			/>,
+		);
+		const styleOf = (text: string) =>
+			StyleSheet.flatten(
+				root.findAll(
+					(n) => typeof n.type === "string" && n.props.children === text,
+				)[0]?.props.style as TextStyle,
+			);
+		expect(styleOf("Lucia owes you").color).toBe(light.color.positive);
+		expect(styleOf("Lucia owes you").fontSize).toBe(light.type.body.size);
+		expect(styleOf("3 shared expenses").color).toBe(light.color.fg3);
+		expect(styleOf("3 shared expenses").fontSize).toBe(light.type.meta.size);
+	});
+
 	it("sets the value at the phone hero size with token weight and tracking", () => {
 		const root = render(
 			<Hero label="Owed to you" tone="positive" value="$5" />,
 		);
 		const value = root.findAll(
 			(n) =>
-				(n.props.style as { fontSize?: number } | undefined)?.fontSize ===
-				light.size.hero.phone,
+				typeof n.type === "string" &&
+				StyleSheet.flatten(n.props.style as TextStyle | undefined)?.fontSize ===
+					light.size.hero.phone,
 		)[0];
-		const style = value?.props.style as Record<string, unknown>;
-		expect(style.fontWeight).toBe("600");
+		const style = StyleSheet.flatten(value?.props.style as TextStyle) as Record<
+			string,
+			unknown
+		>;
+		expect(style.fontFamily).toBe(fontFamilyFor(light.type.hero.weight));
 		expect(style.color).toBe(light.color.positive);
 		expect(style.letterSpacing).toBeCloseTo(
 			light.size.hero.phone * light.type.hero.tracking,

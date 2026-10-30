@@ -13,14 +13,17 @@ describe("generated drawings", () => {
 		for (const name of [
 			...CATEGORY_ICON_NAMES,
 			"ArrowRight",
+			"ArrowUpDown",
 			"Bell",
 			"Bitcoin",
 			"Building2",
+			"Calendar",
 			"ChartNoAxesCombined",
 			"Check",
 			"CircleHelp",
 			"Coins",
 			"Download",
+			"FolderPlus",
 			"Ellipsis",
 			"HandCoins",
 			"Info",
@@ -31,6 +34,7 @@ describe("generated drawings", () => {
 			"Tags",
 			"TriangleAlert",
 			"User",
+			"UserPlus",
 			"X",
 		]) {
 			expect(GLYPHS[name]?.length).toBeGreaterThan(0);
