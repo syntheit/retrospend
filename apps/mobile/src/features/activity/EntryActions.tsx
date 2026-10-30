@@ -40,7 +40,7 @@ export function EntryActions({
 	const t = useTranslations("mobile.entry");
 	const add = useOptionalAddEntry();
 	const { listDetail } = useLayoutClass();
-	const { color, space } = useTheme();
+	const { space } = useTheme();
 	const [deleting, setDeleting] = useState(false);
 	const [repeat, setRepeat] = useState(false);
 
@@ -67,8 +67,6 @@ export function EntryActions({
 					justifyContent: "space-between",
 					gap: space[2],
 					paddingTop: space[3],
-					borderTopWidth: 1,
-					borderTopColor: color.line,
 				}}
 			>
 				<View>
@@ -76,7 +74,7 @@ export function EntryActions({
 						<Button
 							label={t("delete")}
 							onPress={() => setDeleting(true)}
-							variant="outlined"
+							variant="text"
 						/>
 					) : null}
 				</View>

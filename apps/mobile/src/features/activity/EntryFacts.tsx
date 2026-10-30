@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useFaces } from "@/features/read/faces";
@@ -7,27 +7,39 @@ import { useRateTypeLabel } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
-import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
+import { CategoryGlyph, categoryColor, Glyph } from "@/ui/Glyph";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { rowStatus } from "./ActivityRow";
 import type { ActivityItem } from "./source";
 import type { ExpenseDetail } from "./useEntryDetail";
 
-/** A label on the left, its value (600) on the right; a missing value leaves no row. */
+/**
+ * A label on the left, its value (600) on the right; a missing value leaves
+ * no row. With `onPress` the row is a link: it ends in a chevron and opens
+ * what changes the value.
+ */
 function Fact({
 	label,
 	children,
+	onPress,
+	hint,
 }: {
 	label: string;
 	children: ReactNode | null | undefined | false;
+	onPress?: () => void;
+	hint?: string;
 }) {
 	const { color, size, space } = useTheme();
 	if (children === null || children === undefined || children === false) {
 		return null;
 	}
 	return (
-		<View
+		<Pressable
+			accessibilityHint={onPress ? hint : undefined}
+			accessibilityRole={onPress ? "button" : undefined}
+			disabled={!onPress}
+			onPress={onPress}
 			style={{
 				minHeight: size.row.phone,
 				flexDirection: "row",
@@ -60,8 +72,15 @@ function Fact({
 				) : (
 					children
 				)}
+				{onPress ? (
+					<Glyph
+						color={color.fg3}
+						name="ChevronRight"
+						size={size.icon.phone}
+					/>
+				) : null}
 			</View>
-		</View>
+		</Pressable>
 	);
 }
 
@@ -80,9 +99,12 @@ function dayDate(day: string): Date {
 export function EntryFacts({
 	item,
 	extra,
+	onCategory,
 }: {
 	item: ActivityItem;
 	extra: ExpenseDetail | null;
+	/** Opens the category picker; absent where the entry's category is not yours to change. */
+	onCategory?: () => void;
 }) {
 	const t = useTranslations("mobile.entry");
 	const ta = useTranslations("mobile.activity");
@@ -140,7 +162,7 @@ export function EntryFacts({
 				) : null}
 			</Fact>
 			<Fact label={t("date")}>
-				{format.dateTime(dayDate(item.date), { dateStyle: "medium" })}
+				{format.dateTime(dayDate(item.date), { dateStyle: "long" })}
 			</Fact>
 			<Fact label={t("rate")}>
 				{foreign
@@ -152,7 +174,11 @@ export function EntryFacts({
 					: null}
 			</Fact>
 			<Fact label={t("project")}>{item.project?.name}</Fact>
-			<Fact label={t("category")}>
+			<Fact
+				hint={t("changeCategory")}
+				label={t("category")}
+				onPress={onCategory}
+			>
 				{categoryName ? (
 					<>
 						{category?.name ? (

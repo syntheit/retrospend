@@ -327,6 +327,7 @@
 		"missing": "Abra este lançamento pela aba Atividade.",
 		"date": "Data",
 		"category": "Categoria",
+		"changeCategory": "Alterar categoria",
 		"uncategorized": "Sem categoria",
 		"status": "Situação",
 		"paidBy": "Pago por",
@@ -420,7 +421,10 @@
 		"pick": "Escolha uma despesa",
 		"offlineSince": "Sem conexão desde {time}",
 		"search": "Buscar despesas",
-		"summary": "{count, plural, one {# despesa} other {# despesas}}",
+		"summary": {
+			"month": "{count, plural, one {# despesa} other {# despesas}} neste mês",
+			"all": "{count, plural, one {# despesa} other {# despesas}}, todo o período"
+		},
 		"today": "Hoje",
 		"yesterday": "Ontem",
 		"chip": {
@@ -481,8 +485,11 @@
 		"segment": {
 			"label": "Atividade",
 			"expenses": "Despesas",
-			"recurring": "Recorrentes"
-		}
+			"recurring": "Recorrentes",
+			"import": "Importar"
+		},
+		"importNotice": "{count, plural, one {# despesa importada aguarda revisão} other {# despesas importadas aguardam revisão}}",
+		"importStart": "Começar"
 	},
 	"budget": {
 		"title": "Orçamento",
@@ -2173,9 +2180,9 @@
 		},
 		"summary": {
 			"out": {
-				"month": "Suas despesas recorrentes custam {amount} por mês.",
-				"quarter": "Suas despesas recorrentes custam {amount} por trimestre.",
-				"year": "Suas despesas recorrentes custam {amount} por ano."
+				"month": "As despesas recorrentes custam {amount} por mês.",
+				"quarter": "As despesas recorrentes custam {amount} por trimestre.",
+				"year": "As despesas recorrentes custam {amount} por ano."
 			},
 			"in": {
 				"month": "Sua renda recorrente soma {amount} por mês.",
@@ -2251,7 +2258,10 @@
 			"body": "Nada é registrado. Vence de novo em {date}.",
 			"submit": "Pular",
 			"toast": "{title} pulado. Próximo vencimento {date}"
-		}
+		},
+		"search": "Buscar despesas recorrentes",
+		"foreign": "Moeda estrangeira",
+		"emptyFiltered": "Nada corresponde"
 	},
 	"shortcuts": {
 		"addExpense": "Adicionar gasto",

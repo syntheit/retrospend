@@ -22,8 +22,15 @@ import { StatusText } from "@/ui/StatusText";
 import { SwipeRow } from "@/ui/SwipeRow";
 import { Text } from "@/ui/Text";
 import { ConfirmSheet, useDayText } from "./ConfirmSheet";
+import {
+	filterRecurring,
+	isRecurringFiltered,
+	NO_RECURRING_FILTER,
+	type RecurringFilter,
+} from "./filter";
 import { groupsOf, isDue, type Period, type RecurringGroup } from "./groups";
 import { ItemSheet } from "./ItemSheet";
+import { RecurringFilters } from "./RecurringFilters";
 import { SkipSheet } from "./SkipSheet";
 import {
 	fetchRecurring,
@@ -152,18 +159,16 @@ function Row({
 function Emphasis({
 	text,
 	amount,
-	tone = "fg",
 }: {
 	text: (amount: string) => string;
 	amount: string;
-	tone?: "fg" | "fg2";
 }) {
 	const mark = "\u0000";
 	const [before = "", after = ""] = text(mark).split(mark);
 	return (
-		<Text tone={tone}>
+		<Text tone="fg2" variant="small">
 			{before}
-			<Text tabular tone={tone} weight="semibold">
+			<Text tabular tone="fg" variant="small" weight="semibold">
 				{amount}
 			</Text>
 			{after}
@@ -188,7 +193,6 @@ function Summary({ data }: { data: RecurringData }) {
 				<Emphasis
 					amount={money(income[period])}
 					text={(amount) => t(`in.${period}`, { amount })}
-					tone="fg2"
 				/>
 			) : null}
 			{out.missingRate.length > 0 ? (
@@ -278,15 +282,19 @@ function Logged({ data }: { data: RecurringData }) {
  * confirms (tap, swipe right, long press) or skips (swipe left, long press);
  * any other opens its details
  * (auto-pay, pause). Adding and editing a template are on the web for now.
- * `embedded` is Activity's Recurring segment: Activity owns the title, and
- * `header` is the segmented control that stays above the list.
+ * The count sits under the title, then the segments, the search and the chips.
+ * `embedded` is Activity's Recurring segment: Activity owns the title and the
+ * search (`query`), and `header` is the segmented control that stays above the
+ * list.
  */
 export function RecurringView({
 	embedded = false,
 	header,
+	query = "",
 }: {
 	embedded?: boolean;
 	header?: ReactNode;
+	query?: string;
 }) {
 	const t = useTranslations("mobile.recurring");
 	const tc = useTranslations("mobile.common");
@@ -298,8 +306,20 @@ export function RecurringView({
 	const [skipping, setSkipping] = useState<RecurringItem | null>(null);
 	const [detail, setDetail] = useState<RecurringItem | null>(null);
 
+	const [chips, setChips] = useState<RecurringFilter>(NO_RECURRING_FILTER);
+	const [own, setOwn] = useState("");
+	const filter = { ...chips, q: embedded ? query : own };
+
 	const title = embedded ? null : (
-		<Stack.Screen options={{ title: t("title") }} />
+		<Stack.Screen
+			options={{
+				title: t("title"),
+				headerSearchBarOptions: {
+					placeholder: t("search"),
+					onChangeText: (event) => setOwn(event.nativeEvent.text),
+				},
+			}}
+		/>
 	);
 	if (state.status !== "ready" || state.data.items.length === 0) {
 		const failed = state.status === "error";
@@ -324,25 +344,31 @@ export function RecurringView({
 		);
 	}
 	const data = state.data;
-	const groups = groupsOf(data.items, data.summary.today);
+	const shown = filterRecurring(data.items, filter);
+	const groups = groupsOf(shown, data.summary.today);
 	return (
 		<>
 			{title}
 			<Screen flush onRefresh={() => void reload()}>
-				{header}
-				<StaleNote since={state.staleSince} />
 				<View style={{ paddingHorizontal: space[4] }}>
 					<Text tone="fg2" variant="small">
 						{t("count", { count: data.items.length })}
 					</Text>
 				</View>
+				{header}
+				<StaleNote since={state.staleSince} />
+				<RecurringFilters filter={chips} onChange={setChips} />
 				<Summary data={data} />
-				<Groups
-					groups={groups}
-					onConfirm={setConfirming}
-					onDetails={setDetail}
-					onSkip={setSkipping}
-				/>
+				{shown.length === 0 && isRecurringFiltered(filter) ? (
+					<EmptyState title={t("emptyFiltered")} />
+				) : (
+					<Groups
+						groups={groups}
+						onConfirm={setConfirming}
+						onDetails={setDetail}
+						onSkip={setSkipping}
+					/>
+				)}
 				<Logged data={data} />
 			</Screen>
 			{confirming ? (

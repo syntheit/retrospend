@@ -327,6 +327,7 @@
 		"missing": "Abrí este movimiento desde Actividad.",
 		"date": "Fecha",
 		"category": "Categoría",
+		"changeCategory": "Cambiar categoría",
 		"uncategorized": "Sin categoría",
 		"status": "Estado",
 		"paidBy": "Pagó",
@@ -420,7 +421,10 @@
 		"pick": "Elegí un gasto",
 		"offlineSince": "Sin conexión desde {time}",
 		"search": "Buscar gastos",
-		"summary": "{count, plural, one {# gasto} other {# gastos}}",
+		"summary": {
+			"month": "{count, plural, one {# gasto} other {# gastos}} este mes",
+			"all": "{count, plural, one {# gasto} other {# gastos}}, todo el tiempo"
+		},
 		"today": "Hoy",
 		"yesterday": "Ayer",
 		"chip": {
@@ -481,8 +485,11 @@
 		"segment": {
 			"label": "Actividad",
 			"expenses": "Gastos",
-			"recurring": "Recurrentes"
-		}
+			"recurring": "Recurrentes",
+			"import": "Importar"
+		},
+		"importNotice": "{count, plural, one {# gasto importado espera revisión} other {# gastos importados esperan revisión}}",
+		"importStart": "Empezar"
 	},
 	"budget": {
 		"title": "Presupuesto",
@@ -2173,9 +2180,9 @@
 		},
 		"summary": {
 			"out": {
-				"month": "Tus gastos recurrentes cuestan {amount} por mes.",
-				"quarter": "Tus gastos recurrentes cuestan {amount} por trimestre.",
-				"year": "Tus gastos recurrentes cuestan {amount} por año."
+				"month": "Los gastos recurrentes cuestan {amount} por mes.",
+				"quarter": "Los gastos recurrentes cuestan {amount} por trimestre.",
+				"year": "Los gastos recurrentes cuestan {amount} por año."
 			},
 			"in": {
 				"month": "Tus ingresos recurrentes suman {amount} por mes.",
@@ -2251,7 +2258,10 @@
 			"body": "No se registra nada. Vuelve a vencer el {date}.",
 			"submit": "Omitir",
 			"toast": "{title} omitido. Próximo vencimiento {date}"
-		}
+		},
+		"search": "Buscar gastos recurrentes",
+		"foreign": "Moneda extranjera",
+		"emptyFiltered": "Nada coincide"
 	},
 	"shortcuts": {
 		"addExpense": "Agregar gasto",
