@@ -109,7 +109,7 @@ export function ActivityFilters({
 			showsHorizontalScrollIndicator={false}
 		>
 			<Menu
-				active={filter.period !== "month"}
+				active
 				chip
 				items={periodItems}
 				label={t(`period.${filter.period}`)}

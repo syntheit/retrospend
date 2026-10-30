@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslations } from "use-intl";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { AddPersonSheet } from "./AddPersonSheet";
+import { useExpensesExport } from "./useExpensesExport";
 
 /**
  * The top bar of People: the page's title, Add person as a plain icon, and
@@ -10,6 +11,8 @@ import { AddPersonSheet } from "./AddPersonSheet";
  */
 export function PeopleTopBar({ title }: { title: string }) {
 	const t = useTranslations("mobile.people.add");
+	const more = useTranslations("mobile.activity")("overflow");
+	const overflow = useExpensesExport();
 	const [adding, setAdding] = useState(false);
 	return (
 		<>
@@ -22,6 +25,8 @@ export function PeopleTopBar({ title }: { title: string }) {
 						onPress: () => setAdding(true),
 					},
 				]}
+				overflow={overflow}
+				overflowLabel={more}
 				title={title}
 			/>
 			<AddPersonSheet onClose={() => setAdding(false)} visible={adding} />

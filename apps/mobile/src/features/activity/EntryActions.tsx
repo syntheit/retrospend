@@ -72,9 +72,10 @@ export function EntryActions({
 				<View>
 					{canDelete ? (
 						<Button
+							icon="Trash2"
 							label={t("delete")}
 							onPress={() => setDeleting(true)}
-							variant="text"
+							variant="dangerText"
 						/>
 					) : null}
 				</View>
@@ -83,6 +84,7 @@ export function EntryActions({
 				>
 					{canRepeatIt ? (
 						<Button
+							icon="Repeat"
 							label={t("makeRecurring")}
 							onPress={() => setRepeat(true)}
 							variant="outlined"
