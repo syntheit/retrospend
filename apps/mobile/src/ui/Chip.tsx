@@ -7,8 +7,9 @@ import { Text } from "./Text";
 /**
  * - choice: one of a row of choices (a split mode, a person); on reads as
  *   brand-soft with a brand border.
- * - trigger: shows a value and opens a picker (a currency, a project); always
- *   the neutral look, with a chevron.
+ * - trigger: shows a value and opens a picker (a currency, a project); the
+ *   neutral look with a chevron, or set (brand-soft with an x) when its value
+ *   can be cleared and is set.
  * - filter: narrows a list and opens a menu of values; on while a value is
  *   set, with a chevron (or a clear mark, see `onClear`).
  */
@@ -51,7 +52,10 @@ export function Chip({
 }: {
 	label: string;
 	variant?: ChipVariant;
-	/** On: a picked choice, or a filter with a value set. A trigger is never on. */
+	/**
+	 * On: a picked choice, or a filter with a value set. A trigger is on only
+	 * when its value is set and can be cleared (`onClear`).
+	 */
 	selected?: boolean;
 	onPress: () => void;
 	leading?: ReactNode;
@@ -70,7 +74,7 @@ export function Chip({
 	chevron?: "down" | "right";
 }) {
 	const { color, radius, size, space } = useTheme();
-	const on = selected && variant !== "trigger";
+	const on = selected && (variant !== "trigger" || onClear !== undefined);
 	const clear = on && onClear !== undefined;
 	const chevron =
 		(variant !== "choice" || chevronDirection === "right") && !clear;
@@ -78,7 +82,11 @@ export function Chip({
 		<Pressable
 			accessibilityLabel={accessibilityLabel ?? label}
 			accessibilityRole="button"
-			accessibilityState={variant === "trigger" ? undefined : { selected: on }}
+			accessibilityState={
+				variant === "trigger" && onClear === undefined
+					? undefined
+					: { selected: on }
+			}
 			hitSlop={space[1]}
 			onPress={onPress}
 			style={({ pressed }) => ({

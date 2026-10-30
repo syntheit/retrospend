@@ -40,6 +40,14 @@ export interface MenuProps {
 	/** A chip whose filter has a value set: brand-soft with a brand border. */
 	active?: boolean;
 	/**
+	 * A set chip that can be cleared (a set period): while `active`, an x
+	 * after the label calls this, in place of the chevron. Needs
+	 * `clearLabel`. Chip only.
+	 */
+	onClear?: () => void;
+	/** The spoken name of the clear mark ("Clear period"). */
+	clearLabel?: string;
+	/**
 	 * Draws the chip as the sort mark alone (up and down arrows), a circle the
 	 * height of a chip. `accessibilityLabel` is what it is called; it is on
 	 * while `active`. Chip only.

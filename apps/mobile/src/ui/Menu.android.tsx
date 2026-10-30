@@ -72,6 +72,8 @@ export function Menu({
 	heading,
 	leadingCalendar,
 	sortIcon,
+	onClear,
+	clearLabel,
 }: MenuProps) {
 	const [open, setOpen] = useState(false);
 	const { color, radius, size, space } = useTheme();
@@ -102,12 +104,14 @@ export function Menu({
 	) : chip ? (
 		<Chip
 			accessibilityLabel={accessibilityLabel ?? label}
+			clearLabel={clearLabel}
 			label={label}
 			leading={
 				leadingCalendar ? (
 					<Glyph color={color.fg3} name="Calendar" size={size.icon.phone} />
 				) : undefined
 			}
+			onClear={onClear}
 			onPress={() => setOpen(true)}
 			selected={active}
 			variant="filter"
