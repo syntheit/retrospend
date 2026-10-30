@@ -136,6 +136,7 @@ export function MoveForm({
 					{ value: "in", label: t("in") },
 					{ value: "out", label: t("out") },
 				]}
+				stretch
 				value={direction}
 			/>
 			{place ? (

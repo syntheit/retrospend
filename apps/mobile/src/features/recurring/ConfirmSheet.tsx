@@ -181,6 +181,7 @@ export function ConfirmSheet({
 									: []),
 								{ value: "pick", label: t("paidOnPick") },
 							]}
+							stretch
 							value={paidMode}
 						/>
 						{paidMode === "pick" ? (

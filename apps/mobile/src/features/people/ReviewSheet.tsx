@@ -159,6 +159,7 @@ export function ReviewSheet({
 						{ value: "reject", label: t("reject") },
 						{ value: "fix", label: t("askToFix") },
 					]}
+					stretch
 					value={choice}
 				/>
 				{note(t(`explain.${choice}`, { name: first }))}

@@ -2,7 +2,6 @@ import {
 	Box,
 	Text as ComposeText,
 	DropdownMenu,
-	DropdownMenuItem,
 	TextButton,
 } from "@expo/ui/jetpack-compose";
 import { semantics, size as sized } from "@expo/ui/jetpack-compose/modifiers";
@@ -10,6 +9,7 @@ import { type ReactNode, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Chip, ChipChevron } from "./Chip";
+import { DropdownItems } from "./DropdownItems";
 import { Glyph } from "./Glyph";
 import { NativeHost } from "./NativeHost";
 import { Text } from "./Text";
@@ -37,21 +37,13 @@ function Dropdown({
 		>
 			<DropdownMenu.Trigger>{trigger}</DropdownMenu.Trigger>
 			<DropdownMenu.Items>
-				{items.map((item) => (
-					<DropdownMenuItem
-						key={item.id}
-						onClick={() => {
-							setOpen(false);
-							item.onPress();
-						}}
-					>
-						<DropdownMenuItem.Text>
-							<ComposeText color={item.destructive ? color.danger : undefined}>
-								{item.label}
-							</ComposeText>
-						</DropdownMenuItem.Text>
-					</DropdownMenuItem>
-				))}
+				<DropdownItems
+					items={items}
+					onPick={(item) => {
+						setOpen(false);
+						item.onPress();
+					}}
+				/>
 			</DropdownMenu.Items>
 		</DropdownMenu>
 	);

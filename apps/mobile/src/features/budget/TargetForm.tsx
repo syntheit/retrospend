@@ -10,9 +10,9 @@ import {
 } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import type { FormProps } from "@/features/write/WriteFrame";
+import { ChipGroup } from "@/ui/Chip";
 import { DateField } from "@/ui/DateField";
 import { Segmented } from "@/ui/Segmented";
-import { ChoiceList } from "./fields";
 import {
 	type BillRepeat,
 	type TargetChoice,
@@ -83,7 +83,7 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 				api.budget.setTarget(b, { context: { idempotencyKey: key } })
 			}
 		>
-			<Segmented
+			<ChipGroup
 				accessibilityLabel={t("kind.label")}
 				onChange={setChoice}
 				options={[
@@ -117,17 +117,19 @@ export function TargetForm({ data, envelope, onDone, onClose }: FormProps) {
 						{ value: "REFILL", label: t("mode.REFILL") },
 						{ value: "SET_ASIDE", label: t("mode.SET_ASIDE") },
 					]}
+					stretch
 					value={mode}
 				/>
 			) : null}
 			{choice === "BILL" ? (
 				<>
 					<DateField label={t("due")} onChange={setDue} value={due} />
-					<ChoiceList
-						choices={REPEATS.map((r) => ({ id: r, label: t(`repeat.${r}`) }))}
+					<ChipGroup
+						accessibilityLabel={t("repeats")}
 						label={t("repeats")}
-						onPress={(id) => setRepeat(id as BillRepeat)}
-						selected={new Set([repeat])}
+						onChange={setRepeat}
+						options={REPEATS.map((r) => ({ value: r, label: t(`repeat.${r}`) }))}
+						value={repeat}
 					/>
 				</>
 			) : null}

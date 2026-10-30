@@ -87,6 +87,7 @@ export function AssignForm({
 					{ value: "add", label: t("add") },
 					{ value: "set", label: t("set") },
 				]}
+				stretch
 				value={mode}
 			/>
 			<Line label={t("assignedNow")} value={money(envelope.assigned)} />

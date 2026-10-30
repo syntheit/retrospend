@@ -26,6 +26,14 @@ export interface MenuItem {
 	label: string;
 	onPress: () => void;
 	destructive?: boolean;
+	/**
+	 * An identity mark before the label: a face, a bare category glyph or a
+	 * cover (GUIDELINE 8), for filter menus of people, categories and
+	 * projects. Android draws it in the item's leading slot. The iOS system
+	 * menu draws only SF Symbols, so it shows the label alone there; the chip
+	 * that opened it carries the mark of a set value instead.
+	 */
+	lead?: ReactElement;
 }
 
 export interface MenuProps {
