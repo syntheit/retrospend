@@ -1,15 +1,17 @@
-import { parseMoneyInput } from "@retrospend/domain/parse";
+import { draftFromMinor, parseMoneyInput } from "@retrospend/domain/parse";
 import { useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import type { PersonIdentity } from "@/features/people/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { AmountField } from "@/features/write/parts";
+import { readAmount } from "@/features/write/amount";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
+import { FieldLabel } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import { AfterThis, OverpayAction } from "./AfterThis";
 import { AmountChoices } from "./AmountChoices";
@@ -17,6 +19,7 @@ import { PreviewList } from "./PreviewList";
 import {
 	allocationDetail,
 	everythingConverts,
+	fillOf,
 	type RateChoices,
 	rateChoices,
 } from "./plan";
@@ -48,7 +51,7 @@ export function SettleSheet({
 	const tc = useTranslations("mobile.common");
 	const toast = useToast();
 	const format = useMoneyText();
-	const { size, space } = useTheme();
+	const { space } = useTheme();
 	const body = useSheetBodySize({ footer: true });
 	const locale = useMoneyLocale();
 	const flow = useSettle({ type: person.type, id: person.id }, visible);
@@ -69,24 +72,26 @@ export function SettleSheet({
 		(flow.repricing && keptRates.current
 			? { ...keptRates.current, current: flow.rateType }
 			: null);
-	// The typed amount, as the keypad shows it; 0 until it reads as money.
-	const [draft, setDraft] = useState("");
-	const amountMinor =
-		context && draft !== ""
-			? (() => {
-					const read = parseMoneyInput(draft, locale, context.currency);
-					return read.ok ? read.minor : 0;
-				})()
-			: 0;
+	// The amount field is always there. A chip fills it with the server's own
+	// amount; typing makes the amount the typed one and unpicks the chips.
+	const [typed, setTyped] = useState("");
 	const custom = flow.choice.kind === "custom";
-	// A new opening, or any other amount choice, starts the keypad empty.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `visible` and `custom` are the triggers
+	const fill = context ? fillOf(context, flow.choice) : null;
+	const draft = custom
+		? typed
+		: fill
+			? draftFromMinor(fill.minor, locale, fill.currency)
+			: "";
+	const entered = readAmount(draft, locale, context?.currency ?? "");
+	const amountMinor = entered.state === "ok" ? entered.minor : 0;
+	// A new opening starts the field on what the server suggests.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `visible` is the trigger
 	useEffect(() => {
-		if (!custom) setDraft("");
-	}, [visible, custom]);
+		setTyped("");
+	}, [visible]);
 
 	function changeDraft(next: string) {
-		setDraft(next);
+		setTyped(next);
 		if (!context) return;
 		const read = parseMoneyInput(next, locale, context.currency);
 		flow.setChoice({ kind: "custom", minor: read.ok ? read.minor : 0 });
@@ -140,7 +145,7 @@ export function SettleSheet({
 			detents={["large"]}
 			footer={footer}
 			onClose={onClose}
-			title={t("with", { name })}
+			title={t("with", { name: first })}
 			visible={visible}
 		>
 			<View style={{ ...body }}>
@@ -167,44 +172,33 @@ export function SettleSheet({
 							/>
 							{nothingOwed ? note(t("nothingOwed")) : null}
 							{nothingOwed ? null : (
-								<AmountChoices
-									choice={flow.choice}
-									context={context}
-									direction={flow.direction}
-									onChoose={flow.setChoice}
-								/>
-							)}
-							{flow.choice.kind === "custom" ? (
-								<>
-									<Text
-										accessibilityLabel={
-											amountMinor > 0
-												? `${t("amount")}, ${format({ minor: amountMinor, currency: context.currency })}`
-												: t("typeAmount")
+								<View style={{ gap: space[1] }}>
+									<FieldLabel>{t("amount")}</FieldLabel>
+									<AmountField
+										between={
+											<AmountChoices
+												choice={flow.choice}
+												context={context}
+												direction={flow.direction}
+												onChoose={flow.setChoice}
+											/>
 										}
-										tabular
-										tone={amountMinor > 0 ? "fg" : "fg3"}
-										variant="title"
-									>
-										{draft === ""
-											? context.currency
-											: `${context.currency} ${draft}`}
-									</Text>
-									<MoneyKeypad
 										currency={context.currency}
 										draft={draft}
-										keyHeight={size.touchMin.phone}
+										entered={entered}
+										label={t("amount")}
 										onDraftChange={changeDraft}
 									/>
-									{draft !== "" && amountMinor === 0 ? (
-										<Text tone="attention">{t("amountInvalid")}</Text>
-									) : null}
-								</>
-							) : null}
+								</View>
+							)}
 							{nothingOwed ? null : (
 								<>
 									{shownRates ? (
-										<RateChips choices={shownRates} onPick={flow.changeRate} />
+										<RateChips
+											choices={shownRates}
+											onPick={flow.changeRate}
+											values={flow.typeRates}
+										/>
 									) : null}
 									<MethodAndDate
 										method={flow.method}

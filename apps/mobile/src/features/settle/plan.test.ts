@@ -6,12 +6,14 @@ import {
 	answerFor,
 	balanceAfter,
 	everythingConverts,
+	fillOf,
 	isOverpay,
 	owedBreakdown,
 	type PaymentPreview,
 	previewRows,
 	rateChoices,
 	recordInput,
+	startMethod,
 } from "./plan";
 
 const ref = { type: "user", id: "lucia" } as const;
@@ -420,5 +422,35 @@ describe("allocationDetail", () => {
 				detail: { kind: "payment.record", allocation },
 			}),
 		).toEqual(allocation);
+	});
+});
+
+describe("fillOf", () => {
+	it("fills the field with Everything or a part, in the payment currency", () => {
+		expect(fillOf(context, { kind: "everything" })).toEqual(context.everything);
+		expect(fillOf(context, { kind: "part", currency: "BRL" })).toEqual({
+			minor: 14288100,
+			currency: "ARS",
+		});
+	});
+
+	it("leaves a typed amount to the field itself", () => {
+		expect(fillOf(context, { kind: "custom", minor: 500 })).toBeNull();
+		expect(fillOf(context, { kind: "part", currency: "USD" })).toBeNull();
+	});
+});
+
+describe("startMethod", () => {
+	it("starts on the last method when it is offered again", () => {
+		expect(startMethod("cash", [])).toBe("cash");
+		expect(startMethod("mercado_pago", [{ type: "mercado_pago" }])).toBe(
+			"mercado_pago",
+		);
+	});
+
+	it("falls back to the first shared method, else none", () => {
+		expect(startMethod("mercado_pago", [])).toBeNull();
+		expect(startMethod(null, [{ type: "pix" }, { type: "cash" }])).toBe("pix");
+		expect(startMethod(null, [])).toBeNull();
 	});
 });

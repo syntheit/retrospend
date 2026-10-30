@@ -71,6 +71,44 @@ export function recordInput(
 	};
 }
 
+/**
+ * What the amount field shows for a choice that fills it: Everything or one
+ * currency's part, in the payment currency, as the server filled them. A typed
+ * amount is the field's own text, so it has no fill.
+ */
+export function fillOf(
+	context: SettleContext,
+	choice: AmountChoice,
+): Money | null {
+	if (choice.kind === "everything") return context.everything;
+	if (choice.kind === "part") {
+		return (
+			context.parts.find((p) => p.currency === choice.currency)?.full ?? null
+		);
+	}
+	return null;
+}
+
+/** Offered to everyone, besides the methods you share with the person. */
+export const GENERIC_METHODS = ["bank_transfer", "cash"];
+
+/** Every method type the chips offer: the shared ones first, then the generic two. */
+export function offeredMethods(shared: { type: string }[]): string[] {
+	return [...new Set([...shared.map((m) => m.type), ...GENERIC_METHODS])];
+}
+
+/**
+ * The method a new settle starts on: the one last used when it is offered
+ * again, else the first one you share with the person, else none.
+ */
+export function startMethod(
+	last: string | null,
+	shared: { type: string }[],
+): string | null {
+	if (last && offeredMethods(shared).includes(last)) return last;
+	return shared[0]?.type ?? null;
+}
+
 /** The figures a payment preview names, and which of them the sheet words. */
 export const SETTLE_FIGURES = [
 	"balance.person",
