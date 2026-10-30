@@ -1,18 +1,22 @@
 import { View } from "react-native";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
+import type { ButtonIcon } from "@/ui/types";
 
 export interface PersonAction {
 	id: string;
 	label: string;
 	onPress: () => void;
+	/** The glyph before the label (banknote, bell, plus). */
+	icon?: ButtonIcon;
 	/** The one filled action (Settle up). */
 	primary?: boolean;
 }
 
 /**
- * The actions on a person, as buttons in one row: Settle up (filled), Remind
- * and Expense (outlined). They share one height, as buttons do.
+ * The actions on a person, as equal columns in one row: Settle up (filled),
+ * Remind and Expense (outlined), each with its glyph. They share one height
+ * and one width, as the mockup's three columns do.
  */
 export function PersonActions({ actions }: { actions: PersonAction[] }) {
 	const { size, space } = useTheme();
@@ -21,19 +25,21 @@ export function PersonActions({ actions }: { actions: PersonAction[] }) {
 		<View
 			style={{
 				flexDirection: "row",
-				flexWrap: "wrap",
-				alignItems: "center",
+				alignItems: "flex-start",
 				gap: space[2],
 				paddingHorizontal: size.gutter.phone,
 			}}
 		>
 			{actions.map((action) => (
-				<Button
-					key={action.id}
-					label={action.label}
-					onPress={action.onPress}
-					variant={action.primary ? "filled" : "outlined"}
-				/>
+				<View key={action.id} style={{ flex: 1 }}>
+					<Button
+						fill
+						icon={action.icon}
+						label={action.label}
+						onPress={action.onPress}
+						variant={action.primary ? "filled" : "outlined"}
+					/>
+				</View>
 			))}
 		</View>
 	);

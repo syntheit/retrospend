@@ -176,7 +176,13 @@ export interface ButtonProps {
 }
 
 /** The glyphs a button may lead with. */
-export type ButtonIcon = "Trash2" | "Repeat" | "Pencil" | "Plus";
+export type ButtonIcon =
+	| "Trash2"
+	| "Repeat"
+	| "Pencil"
+	| "Plus"
+	| "Banknote"
+	| "Bell";
 
 /** A settings picker row's menu: its options, the current one, and the change. */
 export interface FormMenuProps<T extends string> {

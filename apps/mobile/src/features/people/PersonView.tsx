@@ -165,6 +165,7 @@ export function PersonView({
 			: [
 					{
 						id: "settle",
+						icon: "Banknote" as const,
 						label: t("settleUp"),
 						onPress: () => setSettling(true),
 						primary: true,
@@ -174,6 +175,7 @@ export function PersonView({
 			? [
 					{
 						id: "remind",
+						icon: "Bell" as const,
 						label: t("remind"),
 						onPress: remind,
 					},
@@ -183,6 +185,7 @@ export function PersonView({
 			? [
 					{
 						id: "expense",
+						icon: "Plus" as const,
 						label: t("expense"),
 						onPress: () =>
 							add.open("expense", {

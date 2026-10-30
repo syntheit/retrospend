@@ -47,6 +47,8 @@ const SYMBOL = {
 	Repeat: "repeat",
 	Pencil: "pencil",
 	Plus: "plus",
+	Banknote: "banknote",
+	Bell: "bell",
 } as const satisfies Record<ButtonIcon, string>;
 
 /**
@@ -171,7 +173,9 @@ export function Button({
 		);
 		if (fill) {
 			// A host that matches the height only, so the button takes the width
-			// its row gives it (two equal halves on a card).
+			// its row gives it (two equal halves on a card). The width is stated,
+			// not left to alignSelf alone: the native host kept the content width
+			// on a card and on Person (R5).
 			return (
 				<Host
 					colorScheme={
@@ -179,7 +183,7 @@ export function Button({
 					}
 					matchContents={{ vertical: true }}
 					seedColor={color.brand}
-					style={{ alignSelf: "stretch" }}
+					style={{ alignSelf: "stretch", width: "100%" }}
 				>
 					{button}
 				</Host>
