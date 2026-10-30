@@ -30,12 +30,17 @@ export function PreviewList({
 		t(`figure.${figure.replace(".", "_")}` as "figure.balance_person", {
 			name,
 		});
+	// A figure in two currencies is two lines: each one names its currency.
+	const labelIn = (figure: string, currency: string) =>
+		changes.filter((c) => c.figure === figure).length > 1
+			? t("figureIn", { label: label(figure), currency })
+			: label(figure);
 
 	return (
 		<ChangeList
 			changes={changes.map((c) => ({
 				key: `${c.figure}:${c.currency}`,
-				label: label(c.figure),
+				label: labelIn(c.figure, c.currency),
 				value: t("beforeAfter", {
 					before: c.before ? format(c.before, c.approx) : t("none"),
 					after: c.after ? format(c.after, c.approx) : t("none"),

@@ -17,14 +17,17 @@ import { Button } from "@/ui/Button";
 import { ChipGroup } from "@/ui/Chip";
 import { DateField } from "@/ui/DateField";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
+import { ListGroup } from "@/ui/List";
 import { PickField } from "@/ui/PickField";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
-import { FieldLabel, TextField } from "@/ui/TextField";
+import { TextAction } from "@/ui/TextAction";
+import { FieldError, TextField } from "@/ui/TextField";
 import { useDayText } from "./ConfirmSheet";
 import { nextMonthly } from "./makeRecurring";
 import { useRecurringToast } from "./useRecurringToast";
+import { readWebsite } from "./websiteUrl";
 
 type Frequency = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY";
 
@@ -76,14 +79,17 @@ export function AddRecurringSheet({
 	const [frequency, setFrequency] = useState<Frequency>("MONTHLY");
 	const [first, setFirst] = useState(() => nextMonthly(dayKey(new Date())));
 	const [autoPay, setAutoPay] = useState(false);
+	const [more, setMore] = useState(false);
+	const [website, setWebsite] = useState("");
 	// The keypad comes up when the amount is tapped and gives way to the rest.
 	const [keypad, setKeypad] = useState(false);
 
 	const entered = readAmount(draft, locale, currency);
 	const minor = minorOf(entered);
 	const title = name.trim();
+	const site = readWebsite(website);
 	const input =
-		visible && title !== "" && minor !== null
+		visible && title !== "" && minor !== null && site !== "invalid"
 			? {
 					name: title,
 					amount: wireAmount(minor, currency),
@@ -92,6 +98,7 @@ export function AddRecurringSheet({
 					frequency,
 					nextDueDate: first,
 					autoPay,
+					...(site ? { websiteUrl: site } : {}),
 				}
 			: null;
 	const { idFor, reset } = useWriteIds(input ? JSON.stringify(input) : null);
@@ -105,6 +112,8 @@ export function AddRecurringSheet({
 		setFrequency("MONTHLY");
 		setFirst(nextMonthly(dayKey(new Date())));
 		setAutoPay(false);
+		setMore(false);
+		setWebsite("");
 		setKeypad(false);
 		reset();
 	}, [visible]);
@@ -210,35 +219,36 @@ export function AddRecurringSheet({
 						onDraftChange={setDraft}
 						onPress={() => setKeypad(true)}
 					/>
-					<View style={{ gap: space[2], alignItems: "flex-start" }}>
-						<FieldLabel>{t("add.category")}</FieldLabel>
-						<PickField
-							empty={tp("category.empty")}
-							find={tp("category.find")}
-							label={t("add.category")}
-							none={{
-								label: t("add.categoryNone"),
-								lead: null,
-							}}
-							onChange={(next) => {
-								setCategoryId(next);
-								setKeypad(false);
-							}}
-							rows={categories.map((c) => ({
-								id: c.id,
-								label: c.name,
-								lead: (
-									<CategoryGlyph
-										category={c}
-										color={categoryColor(color, c.tone)}
-										size={size.icon.phone}
-									/>
-								),
-							}))}
-							title={tp("category.title")}
-							value={categoryId}
-							variant="pill"
-						/>
+					{/* The sheet body is already inset; the group adds its own gutter. */}
+					<View style={{ marginHorizontal: -size.gutter.phone }}>
+						<ListGroup form>
+							<PickField
+								empty={tp("category.empty")}
+								find={tp("category.find")}
+								label={t("add.category")}
+								none={{
+									label: t("add.categoryNone"),
+									lead: null,
+								}}
+								onChange={(next) => {
+									setCategoryId(next);
+									setKeypad(false);
+								}}
+								rows={categories.map((c) => ({
+									id: c.id,
+									label: c.name,
+									lead: (
+										<CategoryGlyph
+											category={c}
+											color={categoryColor(color, c.tone)}
+											size={size.icon.phone}
+										/>
+									),
+								}))}
+								title={tp("category.title")}
+								value={categoryId}
+							/>
+						</ListGroup>
 					</View>
 					<ChipGroup
 						accessibilityLabel={t("add.repeats")}
@@ -272,6 +282,33 @@ export function AddRecurringSheet({
 						onChange={setAutoPay}
 						value={autoPay}
 					/>
+					{more ? (
+						<View style={{ gap: space[1] }}>
+							<TextField
+								invalid={site === "invalid"}
+								keyboardType="url"
+								label={t("add.website")}
+								maxLength={512}
+								onChangeText={setWebsite}
+								onTypingChange={(typing) => typing && setKeypad(false)}
+								placeholder={t("add.websitePlaceholder")}
+								value={website}
+							/>
+							{site === "invalid" ? (
+								<FieldError>{t("add.websiteInvalid")}</FieldError>
+							) : null}
+						</View>
+					) : (
+						<View style={{ alignItems: "flex-start" }}>
+							<TextAction
+								label={t("add.moreDetails")}
+								onPress={() => {
+									setMore(true);
+									setKeypad(false);
+								}}
+							/>
+						</View>
+					)}
 				</WriteFrame>
 			</SheetBody>
 		</Sheet>

@@ -1745,6 +1745,8 @@
 			"owed_youOwe": "Debés"
 		},
 		"beforeAfter": "{before} a {after}",
+		"figureIn": "{label} en {currency}",
+		"methodHint": "El medio y la fecha están abajo.",
 		"none": "nada",
 		"checking": "Verificando",
 		"record": "Registrar pago",
@@ -2590,6 +2592,10 @@
 			"repeats": "Se repite",
 			"first": "Próximo vencimiento",
 			"firstHint": "El primero se registra en esta fecha.",
+			"website": "Sitio web",
+			"websitePlaceholder": "ejemplo.com",
+			"websiteInvalid": "Esa dirección no parece correcta.",
+			"moreDetails": "Más detalles",
 			"submit": "Agregar",
 			"toast": "{title} agregado"
 		},

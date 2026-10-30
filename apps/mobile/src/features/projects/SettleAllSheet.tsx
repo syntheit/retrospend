@@ -84,13 +84,16 @@ export function SettleAllSheet({
 			detents={["large"]}
 			footer={
 				flow.plan !== null && !nothing && flow.status === "ready" ? (
-					<Button
-						disabled={
-							!flow.preview || flow.recording || willRecord.length === 0
-						}
-						label={flow.recording ? t("recording") : t("record")}
-						onPress={record}
-					/>
+					<>
+						<Button label={tc("cancel")} onPress={onClose} variant="text" />
+						<Button
+							disabled={
+								!flow.preview || flow.recording || willRecord.length === 0
+							}
+							label={flow.recording ? t("recording") : t("record")}
+							onPress={record}
+						/>
+					</>
 				) : undefined
 			}
 			onClose={onClose}
