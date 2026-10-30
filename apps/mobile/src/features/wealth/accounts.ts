@@ -48,6 +48,19 @@ export function sectionsOf(accounts: readonly Account[]): AccountSection[] {
 	});
 }
 
+/** Accounts whose name holds the typed text, ignoring case and accents; all of them with no text. */
+export function matchingAccounts(
+	accounts: readonly Account[],
+	query: string,
+): Account[] {
+	const fold = (text: string) =>
+		text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+	const needle = fold(query.trim());
+	return needle === ""
+		? [...accounts]
+		: accounts.filter((a) => fold(a.name).includes(needle));
+}
+
 export function closedAccounts(accounts: readonly Account[]): Account[] {
 	return accounts.filter((a) => a.closedAt !== null);
 }

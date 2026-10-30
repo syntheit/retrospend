@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
+import { AmountCard } from "@/features/entry/AmountCard";
 import { useRateTypeLabel } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
 import { figureLines } from "@/features/write/figures";
 import {
-	AmountField,
 	ChangeList,
 	type ChangeRow,
 	Note,
@@ -17,9 +17,11 @@ import { useFigureLabel } from "@/features/write/useFigureLabel";
 import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { useUndoToast } from "@/features/write/useUndoToast";
 import { noSession, useApi } from "@/features/write/WriteFrame";
+import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { IconTile } from "@/ui/IconTile";
+import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { Sheet } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { glyphOf } from "./accounts";
@@ -60,7 +62,10 @@ export function UpdateBalanceSheet({
 	const money = useMoneyText();
 	const rateName = useRateTypeLabel();
 	const locale = useAmountLocale();
-	const { space } = useTheme();
+	const tc = useTranslations("mobile.composer");
+	const tb = useTranslations("mobile.budget.write");
+	const { format: format_ } = useFormatMoney();
+	const { size, space } = useTheme();
 	const currency = account.balance.currency;
 	const types = rateTypesOf(catalog, currency, home);
 	const saved = account.rateType;
@@ -172,7 +177,7 @@ export function UpdateBalanceSheet({
 
 	return (
 		<Sheet
-			detents={["large"]}
+			detents={["medium", "large"]}
 			footer={
 				<Button
 					disabled={!ready || flow.committing}
@@ -204,46 +209,80 @@ export function UpdateBalanceSheet({
 						</Text>
 					</View>
 				</View>
-				<AmountField
-					allowZero
-					between={
-						<View style={{ gap: space[4] }}>
-							<RateTypeChips
-								onChange={setRateType}
-								types={types}
-								value={rateType}
-							/>
-							{rateNote ? (
-								<Text tone={switching ? "attention" : "fg2"} variant="small">
-									{rateNote}
-								</Text>
-							) : null}
-							{same ? (
-								<Note>{t("same")}</Note>
-							) : (
-								<>
-									<ChangeList
-										changes={changes}
-										status={flow.status}
-										stays={(lines?.stays ?? []).map((id) => label(id).inline)}
-										unavailable={(lines?.unavailable ?? []).map(
-											(id) => label(id).inline,
-										)}
-									/>
-									{rows?.notLogged ? <Note>{t("notLoggedHint")}</Note> : null}
-								</>
-							)}
-							{flow.commitFailed ? (
-								<Note tone="attention">{t("error")}</Note>
-							) : null}
-						</View>
-					}
-					currency={currency}
-					draft={draft}
-					entered={entered}
-					label={t("amount")}
-					onDraftChange={setDraft}
-				/>
+				<View style={{ gap: space[4] }}>
+					<View style={{ gap: space[1] }}>
+						<AmountCard
+							lines={[
+								{
+									key: "amount",
+									currency: (
+										<Text tone="fg2" weight="semibold">
+											{currency}
+										</Text>
+									),
+									text: draft,
+									placeholder: "0",
+									spoken: `${t("amount")}, ${
+										minor !== null
+											? tc("amountLabel", {
+													amount: format_({ minor, currency }) ?? "",
+												})
+											: tc("amountEmpty", { currency })
+									}`,
+									active: true,
+									onPress: () => {},
+								},
+							]}
+							ring={entered.state === "invalid" ? "error" : "focus"}
+						/>
+						{entered.state === "invalid" ? (
+							<Text
+								accessibilityRole="alert"
+								style={{ textAlign: "right" }}
+								tone="danger"
+								variant="small"
+							>
+								{tb("amountInvalid")}
+							</Text>
+						) : null}
+					</View>
+					<View style={{ gap: space[4] }}>
+						<RateTypeChips
+							onChange={setRateType}
+							types={types}
+							value={rateType}
+						/>
+						{rateNote ? (
+							<Text tone={switching ? "attention" : "fg2"} variant="small">
+								{rateNote}
+							</Text>
+						) : null}
+						{same ? (
+							<Note>{t("same")}</Note>
+						) : (
+							<>
+								<ChangeList
+									changes={changes}
+									status={flow.status}
+									stays={(lines?.stays ?? []).map((id) => label(id).inline)}
+									unavailable={(lines?.unavailable ?? []).map(
+										(id) => label(id).inline,
+									)}
+								/>
+								{rows?.notLogged ? <Note>{t("notLoggedHint")}</Note> : null}
+							</>
+						)}
+						{flow.commitFailed ? (
+							<Note tone="attention">{t("error")}</Note>
+						) : null}
+					</View>
+					<MoneyKeypad
+						currency={currency}
+						draft={draft}
+						keyHeight={size.touchMin.phone}
+						onDraftChange={setDraft}
+					/>
+				</View>
 			</SheetBody>
 		</Sheet>
 	);
