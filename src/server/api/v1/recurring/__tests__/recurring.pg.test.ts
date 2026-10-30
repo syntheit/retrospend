@@ -165,8 +165,8 @@ describe("/api/v1/recurring", () => {
 	});
 
 	it("refuses another person's category on a create and its preview", async () => {
-		const theirs = await adminDb.category.findFirstOrThrow({
-			where: { userId: otherId, kind: "EXPENSE" },
+		const theirs = await adminDb.category.create({
+			data: { userId: otherId, name: "Theirs", color: "teal" },
 		});
 		const body = {
 			name: "Not mine",
