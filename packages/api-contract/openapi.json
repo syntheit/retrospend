@@ -69279,6 +69279,24 @@
 														"id": {
 															"type": "string"
 														},
+														"others": {
+															"items": {
+																"properties": {
+																	"rateType": {
+																		"type": "string"
+																	},
+																	"value": {
+																		"$ref": "#/components/schemas/Money"
+																	}
+																},
+																"required": [
+																	"rateType",
+																	"value"
+																],
+																"type": "object"
+															},
+															"type": "array"
+														},
 														"rateDate": {
 															"anyOf": [
 																{
@@ -69316,7 +69334,8 @@
 														"value",
 														"rateType",
 														"rateDate",
-														"home"
+														"home",
+														"others"
 													],
 													"type": "object"
 												},
