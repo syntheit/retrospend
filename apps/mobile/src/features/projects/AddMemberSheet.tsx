@@ -60,7 +60,7 @@ export function AddMemberSheet({
 	const { api } = useSession();
 	const toast = useToast();
 	const faces = useFaces();
-	const { space } = useTheme();
+	const { space, size } = useTheme();
 	const overview = usePeopleOverview();
 	const people: PersonSummary[] = useMemo(
 		() =>
@@ -198,26 +198,29 @@ export function AddMemberSheet({
 									value={find}
 								/>
 							) : null}
-							<ListGroup accessibilityLabel={t("known")}>
-								{shown.map(({ person }) => {
-									const [face] = faces([
-										{
-											key: person.key,
-											name: person.name,
-											imageUrl: person.imageUrl,
-										},
-									]);
-									return (
-										<ListRow
-											key={person.key}
-											lead={face ? <Avatar face={face} size="sm" /> : null}
-											onPress={() => setPicked(person.key)}
-											selected={picked === person.key}
-											title={person.name}
-										/>
-									);
-								})}
-							</ListGroup>
+							{/* A group brings its own side margin; the sheet has its padding already. */}
+							<View style={{ marginHorizontal: -size.gutter.phone }}>
+								<ListGroup accessibilityLabel={t("known")}>
+									{shown.map(({ person }) => {
+										const [face] = faces([
+											{
+												key: person.key,
+												name: person.name,
+												imageUrl: person.imageUrl,
+											},
+										]);
+										return (
+											<ListRow
+												key={person.key}
+												lead={face ? <Avatar face={face} size="sm" /> : null}
+												onPress={() => setPicked(person.key)}
+												selected={picked === person.key}
+												title={person.name}
+											/>
+										);
+									})}
+								</ListGroup>
+							</View>
 						</View>
 					)
 				) : (
