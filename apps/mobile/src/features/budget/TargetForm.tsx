@@ -2,14 +2,10 @@ import { useState } from "react";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
-import {
-	AmountField,
-	Line,
-	Note,
-	useAmountLocale,
-} from "@/features/write/parts";
+import { Line, Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
 import type { FormProps } from "@/features/write/WriteFrame";
+import { AmountField } from "@/ui/AmountField";
 import { DateField } from "@/ui/DateField";
 import { Segmented } from "@/ui/Segmented";
 import { ChoiceList } from "./fields";

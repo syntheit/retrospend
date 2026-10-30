@@ -70,16 +70,12 @@
 			"editRefused": "Couldn't save this change. It may be locked."
 		},
 		"changes": {
-			"title": "What this changes",
 			"emptyExpense": "Type an amount and pick a category to see what changes.",
 			"emptyIncome": "Type an amount and say who paid you to see what changes.",
 			"loading": "Checking what changes",
 			"offline": "You're offline. This saves on your phone and syncs later.",
 			"refused": "This can't be saved yet. Check the amount and the currency.",
 			"to": "to {amount}",
-			"stays": "Stays the same: {places}.",
-			"unknown": "Can't tell yet: {places}.",
-			"nothing": "Nothing else changes.",
 			"figures": {
 				"budget_notPlannedYet": "Not planned yet",
 				"budget_leftToSpend": "Left to spend",
@@ -706,25 +702,16 @@
 		},
 		"preview": {
 			"checking": "Checking",
-			"error": "Couldn't check this. Try again.",
-			"changes": "What changes",
 			"beforeAfter": "{before} to {after}",
 			"leftOf": "{name} left",
-			"nothing": "This changes nothing.",
 			"envelopeFallback": "Envelope",
-			"refused": "This cannot be done as it is. Change the amount.",
-			"nothingElse": "Nothing else changes: {list} stay as they are.",
-			"nothingElseOne": "Nothing else changes: {item} stays as it is.",
-			"noneChange": "No change to {list}.",
-			"unavailable": "Could not check {list}.",
 			"notAvailable": "Not available (no rate yet)"
 		},
 		"write": {
 			"saving": "Saving",
 			"error": "Couldn't save. Try again.",
 			"undone": "Undone",
-			"undoError": "Couldn't undo. It may have changed already.",
-			"amountInvalid": "Use digits and the decimals this currency has."
+			"undoError": "Couldn't undo. It may have changed already."
 		},
 		"listAnd": "{head} and {last}",
 		"figures": {
@@ -1480,7 +1467,8 @@
 			"crypto": "Crypto",
 			"market": "Market",
 			"custom": "Custom"
-		}
+		},
+		"invalid": "Use digits and the decimals this currency has."
 	},
 	"home": {
 		"title": "Home",
@@ -1753,8 +1741,6 @@
 		"amount": "Amount",
 		"unpriced": "{currencies}: no rate yet, so it is not in Everything",
 		"nothingOwed": "Nothing is owed right now",
-		"changes": "What changes",
-		"stays": "What stays the same",
 		"figure": {
 			"balance_person": "Balance with {name}",
 			"owed_owedToYou": "Owed to you",
@@ -1762,7 +1748,6 @@
 		},
 		"beforeAfter": "{before} to {after}",
 		"none": "nothing",
-		"keeps": "{amount} stays",
 		"checking": "Checking",
 		"record": "Record payment",
 		"recording": "Recording",
@@ -2714,5 +2699,16 @@
 		"tooLarge": "That image is over 5 MB.",
 		"errorReports": "Send error reports to my server",
 		"errorReportsDetail": "Crashes only, with addresses and amounts removed. They go to your own server."
+	},
+	"changes": {
+		"title": "What this changes",
+		"checking": "Checking",
+		"error": "Couldn't check this. Try again.",
+		"refused": "This cannot be done as it is. Change the amount.",
+		"nothing": "This changes nothing.",
+		"nothingElse": "Nothing else changes: {list} stay as they are.",
+		"nothingElseOne": "Nothing else changes: {item} stays as it is.",
+		"noneChange": "No change to {list}.",
+		"unavailable": "Could not check {list}."
 	}
 }

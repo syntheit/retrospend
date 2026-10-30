@@ -70,16 +70,12 @@
 			"editRefused": "Diese Änderung ließ sich nicht speichern. Sie ist vielleicht gesperrt."
 		},
 		"changes": {
-			"title": "Was sich ändert",
 			"emptyExpense": "Gib einen Betrag ein und wähle eine Kategorie, um zu sehen, was sich ändert.",
 			"emptyIncome": "Gib einen Betrag ein und sag, wer dich bezahlt hat, um zu sehen, was sich ändert.",
 			"loading": "Prüfe, was sich ändert",
 			"offline": "Du bist offline. Das wird auf deinem Telefon gespeichert und später synchronisiert.",
 			"refused": "Das lässt sich noch nicht speichern. Prüfe Betrag und Währung.",
 			"to": "auf {amount}",
-			"stays": "Bleibt gleich: {places}.",
-			"unknown": "Noch nicht zu sagen: {places}.",
-			"nothing": "Sonst ändert sich nichts.",
 			"figures": {
 				"budget_notPlannedYet": "Noch nicht verplant",
 				"budget_leftToSpend": "Noch verfügbar",
@@ -706,25 +702,16 @@
 		},
 		"preview": {
 			"checking": "Wird geprüft",
-			"error": "Das ließ sich nicht prüfen. Versuche es erneut.",
-			"changes": "Was sich ändert",
 			"beforeAfter": "{before} auf {after}",
 			"leftOf": "Übrig in {name}",
-			"nothing": "Das ändert nichts.",
 			"envelopeFallback": "Umschlag",
-			"refused": "So geht das nicht. Ändere den Betrag.",
-			"nothingElse": "Sonst ändert sich nichts: {list} bleiben, wie sie sind.",
-			"nothingElseOne": "Sonst ändert sich nichts: {item} bleibt, wie es ist.",
-			"noneChange": "Keine Änderung: {list}.",
-			"unavailable": "{list} ließ sich nicht prüfen.",
 			"notAvailable": "Nicht verfügbar (noch kein Kurs)"
 		},
 		"write": {
 			"saving": "Wird gespeichert",
 			"error": "Das ließ sich nicht speichern. Versuche es erneut.",
 			"undone": "Rückgängig gemacht",
-			"undoError": "Das ließ sich nicht rückgängig machen. Es hat sich vielleicht schon geändert.",
-			"amountInvalid": "Nutze Ziffern und die Nachkommastellen dieser Währung."
+			"undoError": "Das ließ sich nicht rückgängig machen. Es hat sich vielleicht schon geändert."
 		},
 		"listAnd": "{head} und {last}",
 		"figures": {
@@ -1480,7 +1467,8 @@
 			"crypto": "Krypto",
 			"market": "Markt",
 			"custom": "Eigener"
-		}
+		},
+		"invalid": "Nutze Ziffern und die Nachkommastellen dieser Währung."
 	},
 	"home": {
 		"title": "Start",
@@ -1753,8 +1741,6 @@
 		"amount": "Betrag",
 		"unpriced": "{currencies}: noch kein Kurs, darum nicht in Alles",
 		"nothingOwed": "Gerade ist nichts offen",
-		"changes": "Was sich ändert",
-		"stays": "Was gleich bleibt",
 		"figure": {
 			"balance_person": "Saldo mit {name}",
 			"owed_owedToYou": "Dir geschuldet",
@@ -1762,7 +1748,6 @@
 		},
 		"beforeAfter": "{before} auf {after}",
 		"none": "nichts",
-		"keeps": "{amount} bleibt",
 		"checking": "Wird geprüft",
 		"record": "Zahlung erfassen",
 		"recording": "Wird erfasst",
@@ -2714,5 +2699,16 @@
 		"tooLarge": "Dieses Bild ist größer als 5 MB.",
 		"errorReports": "Fehlerberichte an meinen Server senden",
 		"errorReportsDetail": "Nur Abstürze, ohne Adressen und Beträge. Sie gehen an deinen eigenen Server."
+	},
+	"changes": {
+		"title": "Was sich ändert",
+		"checking": "Wird geprüft",
+		"error": "Das ließ sich nicht prüfen. Versuche es erneut.",
+		"refused": "So geht das nicht. Ändere den Betrag.",
+		"nothing": "Das ändert nichts.",
+		"nothingElse": "Sonst ändert sich nichts: {list} bleiben, wie sie sind.",
+		"nothingElseOne": "Sonst ändert sich nichts: {item} bleibt, wie es ist.",
+		"noneChange": "Keine Änderung: {list}.",
+		"unavailable": "{list} ließ sich nicht prüfen."
 	}
 }

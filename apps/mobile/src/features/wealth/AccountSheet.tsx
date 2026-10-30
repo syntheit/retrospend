@@ -7,16 +7,12 @@ import { useSheetRead } from "@/features/budget/useSheetRead";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
-import {
-	AmountField,
-	Note,
-	SheetBody,
-	useAmountLocale,
-} from "@/features/write/parts";
+import { Note, SheetBody, useAmountLocale } from "@/features/write/parts";
 import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { useUndoToast } from "@/features/write/useUndoToast";
 import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
+import { AmountField, FixedCurrency } from "@/ui/AmountField";
 import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { Picker } from "@/ui/Picker";
 import { Sheet } from "@/ui/Sheet";
@@ -84,6 +80,9 @@ export function AccountSheet({
 	const [form, setForm] = useState<AccountForm>(emptyForm(home));
 	const [draft, setDraft] = useState("");
 	const [minimumDraft, setMinimumDraft] = useState("");
+	// Two amounts can be typed here; the keypad sits under the one in hand.
+	const [typing, setTyping] = useState<"balance" | "minimum">("balance");
+	const active = editing ? "minimum" : typing;
 	const accountId = useRef(newClientId());
 	// The account on the list can be older than the book: an edit also writes a
 	// balance checkpoint from its form, so the form starts from a fresh read and
@@ -238,7 +237,7 @@ export function AccountSheet({
 						<View style={{ flex: 1, gap: space[1] }}>
 							<FieldLabel>{t("currency")}</FieldLabel>
 							{editing ? (
-								<Text weight="medium">{form.currency}</Text>
+								<FixedCurrency code={form.currency} />
 							) : (
 								<View style={{ alignItems: "flex-start" }}>
 									<CurrencyPicker
@@ -267,17 +266,16 @@ export function AccountSheet({
 							</Note>
 						) : null
 					) : (
-						<View style={{ gap: space[2] }}>
-							<FieldLabel>{debt ? t("owed") : t("balance")}</FieldLabel>
-							<AmountField
-								allowZero
-								currency={form.currency}
-								draft={draft}
-								entered={entered}
-								label={debt ? t("owed") : t("balance")}
-								onDraftChange={setDraft}
-							/>
-						</View>
+						<AmountField
+							allowZero
+							currency={form.currency}
+							draft={draft}
+							entered={entered}
+							keypad={active === "balance"}
+							label={debt ? t("owed") : t("balance")}
+							onDraftChange={setDraft}
+							onPress={() => setTyping("balance")}
+						/>
 					)}
 					<RateTypeChips
 						onChange={(next) => set({ rateType: next })}
@@ -300,12 +298,15 @@ export function AccountSheet({
 								onChangeText={(dueDay) => set({ dueDay })}
 								value={form.dueDay}
 							/>
-							<TextField
-								invalid={minimum.state === "invalid"}
-								keyboardType="decimal-pad"
+							<AmountField
+								allowZero
+								currency={form.currency}
+								draft={minimumDraft}
+								entered={minimum}
+								keypad={active === "minimum"}
 								label={t("minimum")}
-								onChangeText={setMinimumDraft}
-								value={minimumDraft}
+								onDraftChange={setMinimumDraft}
+								onPress={() => setTyping("minimum")}
 							/>
 						</View>
 					) : (

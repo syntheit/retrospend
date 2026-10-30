@@ -6,26 +6,28 @@ import { applyKey, BACKSPACE, keypadLayout } from "./keypad";
 
 /**
  * The amount keypad: the twelve keys of the system number pad with the
- * locale's decimal key, 48 points high. Digits sit on raised keys; the
- * decimal and Delete keys are flat, as on the system pad. Every key is a
- * labeled button, so VoiceOver and TalkBack read "5", "Delete", "Decimal
- * point". The draft text is formatted by the domain package, never here.
+ * locale's decimal key. Digits sit on raised keys; the decimal and Delete
+ * keys are flat, as on the system pad. Keys are 48 points high on the
+ * composer and 44 in a sheet (`compact`), set here and not by each caller.
+ * Every key is a labeled button, so VoiceOver and TalkBack read "5",
+ * "Delete", "Decimal point". The draft text is formatted by the domain
+ * package, never here.
  */
 export function MoneyKeypad({
 	draft,
 	currency,
 	onDraftChange,
-	keyHeight,
+	compact,
 }: {
 	draft: string;
 	currency: string;
 	onDraftChange: (draft: string) => void;
-	/** Shorter keys for a screen that also needs room for fields; default 48. */
-	keyHeight?: number;
+	/** A sheet that also holds fields: 44 point keys. The composer's pad is 48. */
+	compact?: boolean;
 }) {
 	const t = useTranslations("mobile.keypad");
 	const locale = useMoneyLocale();
-	const { color, font, radius, space, type } = useTheme();
+	const { color, font, radius, size, space, type } = useTheme();
 	const rows = keypadLayout(locale);
 	const decimal = rows[3]?.[0];
 
@@ -54,7 +56,7 @@ export function MoneyKeypad({
 								}
 								style={({ pressed }) => ({
 									flex: 1,
-									minHeight: keyHeight ?? space[12],
+									minHeight: compact ? size.touchMin.phone : space[12],
 									alignItems: "center",
 									justifyContent: "center",
 									borderRadius: radius.ctl,

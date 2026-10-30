@@ -3,8 +3,10 @@ import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { FixedCurrency } from "@/ui/AmountField";
 import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { Text } from "@/ui/Text";
+import { currencyChoices } from "./currencyChoices";
 import { amountMinor, DEFAULT_RATE } from "./draft";
 import type { EntryForm } from "./useEntryForm";
 
@@ -134,11 +136,7 @@ export function useMoneyLines(form: EntryForm): MoneyLine[] {
 			? t("amountLabel", { amount: format({ minor, currency }) ?? "" })
 			: t("amountEmpty", { currency });
 	};
-	const code = (currency: string) => (
-		<Text tone="fg2" weight="semibold">
-			{currency}
-		</Text>
-	);
+	const code = (currency: string) => <FixedCurrency code={currency} />;
 	if (mode === "transfer") {
 		const out: MoneyLine = {
 			key: "amount",
@@ -181,6 +179,7 @@ export function useMoneyLines(form: EntryForm): MoneyLine[] {
 		];
 	}
 	const draft = mode === "income" ? form.income : form.expense;
+	const choices = currencyChoices(catalog, form.me, draft.currency);
 	const locked =
 		form.expense.editing?.source === "shared" && mode === "expense";
 	return [
@@ -190,17 +189,15 @@ export function useMoneyLines(form: EntryForm): MoneyLine[] {
 				code(draft.currency)
 			) : (
 				<CurrencyPicker
-					currencies={catalog.currencies}
+					currencies={choices.currencies}
 					onChange={(currency) =>
 						mode === "income"
 							? form.patchIncome({ currency, amountText: "", ...DEFAULT_RATE })
 							: form.patchExpense({ currency, amountText: "", ...DEFAULT_RATE })
 					}
-					recent={catalog.recentCurrencies}
+					recent={choices.recent}
 					value={draft.currency}
-					yours={[form.me?.homeCurrency, form.me?.defaultCurrency].filter(
-						(c): c is string => Boolean(c),
-					)}
+					yours={choices.yours}
 				/>
 			),
 			text: draft.amountText,

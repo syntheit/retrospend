@@ -70,16 +70,12 @@
 			"editRefused": "Impossible d'enregistrer ce changement. Il est peut-être verrouillé."
 		},
 		"changes": {
-			"title": "Ce que ça change",
 			"emptyExpense": "Saisis un montant et choisis une catégorie pour voir ce qui change.",
 			"emptyIncome": "Saisis un montant et dis qui t'a payé pour voir ce qui change.",
 			"loading": "Vérification de ce qui change",
 			"offline": "Tu es hors ligne. C'est enregistré sur ton téléphone et synchronisé plus tard.",
 			"refused": "Impossible d'enregistrer pour l'instant. Vérifie le montant et la devise.",
 			"to": "à {amount}",
-			"stays": "Reste inchangé : {places}.",
-			"unknown": "Pas encore possible à dire : {places}.",
-			"nothing": "Rien d'autre ne change.",
 			"figures": {
 				"budget_notPlannedYet": "Pas encore prévu",
 				"budget_leftToSpend": "Reste à dépenser",
@@ -706,25 +702,16 @@
 		},
 		"preview": {
 			"checking": "Vérification",
-			"error": "Impossible de vérifier. Réessaie.",
-			"changes": "Ce qui change",
 			"beforeAfter": "{before}, puis {after}",
 			"leftOf": "Reste dans {name}",
-			"nothing": "Cela ne change rien.",
 			"envelopeFallback": "Enveloppe",
-			"refused": "Impossible en l’état. Change le montant.",
-			"nothingElse": "Rien d'autre ne change : {list} restent tels quels.",
-			"nothingElseOne": "Rien d'autre ne change : {item} reste tel quel.",
-			"noneChange": "Aucun changement : {list}.",
-			"unavailable": "Impossible de vérifier {list}.",
 			"notAvailable": "Indisponible (pas encore de taux)"
 		},
 		"write": {
 			"saving": "Enregistrement",
 			"error": "Impossible d’enregistrer. Réessaie.",
 			"undone": "Annulé",
-			"undoError": "Impossible d’annuler. Cela a peut-être déjà changé.",
-			"amountInvalid": "Utilise des chiffres et les décimales de cette devise."
+			"undoError": "Impossible d’annuler. Cela a peut-être déjà changé."
 		},
 		"listAnd": "{head} et {last}",
 		"figures": {
@@ -1480,7 +1467,8 @@
 			"crypto": "Crypto",
 			"market": "Marché",
 			"custom": "Personnalisé"
-		}
+		},
+		"invalid": "Utilise des chiffres et les décimales de cette devise."
 	},
 	"home": {
 		"title": "Accueil",
@@ -1753,8 +1741,6 @@
 		"amount": "Montant",
 		"unpriced": "{currencies} : pas encore de taux, donc hors de Tout",
 		"nothingOwed": "Rien à régler pour l’instant",
-		"changes": "Ce qui change",
-		"stays": "Ce qui ne change pas",
 		"figure": {
 			"balance_person": "Solde avec {name}",
 			"owed_owedToYou": "On te doit",
@@ -1762,7 +1748,6 @@
 		},
 		"beforeAfter": "{before}, puis {after}",
 		"none": "rien",
-		"keeps": "{amount} reste",
 		"checking": "Vérification",
 		"record": "Enregistrer le paiement",
 		"recording": "Enregistrement",
@@ -2714,5 +2699,16 @@
 		"tooLarge": "Cette image dépasse 5 Mo.",
 		"errorReports": "Envoyer les rapports d'erreur à mon serveur",
 		"errorReportsDetail": "Plantages seulement, sans adresses ni montants. Ils vont à votre propre serveur."
+	},
+	"changes": {
+		"title": "Ce que ça change",
+		"checking": "Vérification",
+		"error": "Impossible de vérifier. Réessaie.",
+		"refused": "Impossible en l’état. Change le montant.",
+		"nothing": "Cela ne change rien.",
+		"nothingElse": "Rien d'autre ne change : {list} restent tels quels.",
+		"nothingElseOne": "Rien d'autre ne change : {item} reste tel quel.",
+		"noneChange": "Aucun changement : {list}.",
+		"unavailable": "Impossible de vérifier {list}."
 	}
 }
