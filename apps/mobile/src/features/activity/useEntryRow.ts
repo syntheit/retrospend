@@ -13,7 +13,7 @@ import type { ActivityItem } from "./source";
 export function useEntryRow(
 	id: string,
 	placeholder: ActivityItem | null,
-): EntryRowState {
+): { state: EntryRowState; reload: () => Promise<void> } {
 	const { api, local } = useSession();
 	const [state, setState] = useState<EntryRowState>({
 		status: "loading",
@@ -49,5 +49,5 @@ export function useEntryRow(
 		}, [reload, id]),
 	);
 
-	return state;
+	return { state, reload };
 }

@@ -31,7 +31,13 @@ const USERNAME = /^[a-zA-Z0-9]{1,50}$/;
 export function ProfileSection() {
 	const profile = useProfile();
 	const me = profile.state.status === "ready" ? profile.state.data : null;
-	if (!me) return <PageState failed={profile.state.status === "error"} />;
+	if (!me)
+		return (
+			<PageState
+				failed={profile.state.status === "error"}
+				onRetry={() => void profile.reload()}
+			/>
+		);
 	return <ProfileBody me={me} reload={profile.reload} />;
 }
 
