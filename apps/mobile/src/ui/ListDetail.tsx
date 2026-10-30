@@ -65,9 +65,14 @@ export function ListDetail({
 	const { color } = useTheme();
 	if (!listDetail) {
 		return (
+			// The list comes first: the system finds the scroll view that drives the
+			// large title and the search bar through the first child of each view
+			// down the screen, and the bar's account sheet is a native view that
+			// would stand in front of it and leave the title and search stuck while
+			// the rows scroll under them.
 			<View style={{ flex: 1 }}>
-				{bar}
 				{list}
+				{bar}
 			</View>
 		);
 	}

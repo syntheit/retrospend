@@ -231,30 +231,37 @@ export default function ActivityScreen() {
 	// The phone's large-title bar is transparent over the list, so the bulk bar
 	// takes its place at the top instead of sitting in the list's flow.
 	const overBar = Platform.OS === "ios" && !listDetail;
+	const bulkBar = picked ? (
+		<View
+			style={
+				overBar
+					? {
+							position: "absolute",
+							top: insets.top,
+							left: 0,
+							// Clears the account button the native bar keeps on top.
+							right: space[12] + space[4],
+							zIndex: 1,
+						}
+					: undefined
+			}
+		>
+			<BulkControls
+				actions={bulk}
+				items={page?.items ?? []}
+				onDone={() => setPicked(null)}
+				picked={picked}
+			/>
+		</View>
+	) : null;
+	// Over the bar the controls float, so the list stays the first child (the
+	// system finds the scroll view behind the large title through it); in the
+	// flow they sit above the rows.
 	const list = picked ? (
 		<View style={{ flex: 1 }}>
-			<View
-				style={
-					overBar
-						? {
-								position: "absolute",
-								top: insets.top,
-								left: 0,
-								// Clears the account button the native bar keeps on top.
-								right: space[12] + space[4],
-								zIndex: 1,
-							}
-						: undefined
-				}
-			>
-				<BulkControls
-					actions={bulk}
-					items={page?.items ?? []}
-					onDone={() => setPicked(null)}
-					picked={picked}
-				/>
-			</View>
+			{overBar ? null : bulkBar}
 			{rows}
+			{overBar ? bulkBar : null}
 		</View>
 	) : (
 		rows

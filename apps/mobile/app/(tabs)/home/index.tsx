@@ -41,7 +41,6 @@ export default function HomeScreen() {
 
 	return (
 		<>
-			<AccountTopBar title={t("title")} />
 			<Screen flush onRefresh={refresh} refreshing={refreshing}>
 				{state.status === "ready" ? (
 					<>
@@ -94,6 +93,8 @@ export default function HomeScreen() {
 					<HomeSkeleton />
 				)}
 			</Screen>
+			{/* After the scroll view: see ListDetail. */}
+			<AccountTopBar title={t("title")} />
 		</>
 	);
 }
