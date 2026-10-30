@@ -13,6 +13,7 @@ import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { AmountField } from "@/ui/AmountField";
+import { Button } from "@/ui/Button";
 import { ChipGroup } from "@/ui/Chip";
 import { DateField } from "@/ui/DateField";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
@@ -56,6 +57,7 @@ export function AddRecurringSheet({
 }) {
 	const t = useTranslations("mobile.recurring");
 	const tp = useTranslations("mobile.pickers");
+	const tc = useTranslations("mobile.common");
 	const api = useApi();
 	const { state } = useSession();
 	const me = state.status === "signedIn" ? state.me : null;
@@ -74,6 +76,8 @@ export function AddRecurringSheet({
 	const [frequency, setFrequency] = useState<Frequency>("MONTHLY");
 	const [first, setFirst] = useState(() => nextMonthly(dayKey(new Date())));
 	const [autoPay, setAutoPay] = useState(true);
+	// The keypad comes up when the amount is tapped and gives way to the rest.
+	const [keypad, setKeypad] = useState(false);
 
 	const entered = readAmount(draft, locale, currency);
 	const minor = minorOf(entered);
@@ -101,6 +105,7 @@ export function AddRecurringSheet({
 		setFrequency("MONTHLY");
 		setFirst(nextMonthly(dayKey(new Date())));
 		setAutoPay(true);
+		setKeypad(false);
 		reset();
 	}, [visible]);
 
@@ -140,6 +145,16 @@ export function AddRecurringSheet({
 	return (
 		<Sheet
 			detents={["large"]}
+			footer={
+				<>
+					<Button label={tc("cancel")} onPress={onClose} variant="text" />
+					<Button
+						disabled={flow.status !== "ready" || flow.committing}
+						label={flow.committing ? tc("saving") : t("add.submit")}
+						onPress={() => void submit()}
+					/>
+				</>
+			}
 			onClose={onClose}
 			title={t("add.title")}
 			visible={visible}
@@ -175,6 +190,7 @@ export function AddRecurringSheet({
 						label={t("add.name")}
 						maxLength={191}
 						onChangeText={setName}
+						onTypingChange={(typing) => typing && setKeypad(false)}
 						placeholder={t("add.namePlaceholder")}
 						value={name}
 					/>
@@ -189,8 +205,10 @@ export function AddRecurringSheet({
 						currency={currency}
 						draft={draft}
 						entered={entered}
+						keypad={keypad}
 						label={t("add.amount")}
 						onDraftChange={setDraft}
+						onPress={() => setKeypad(true)}
 					/>
 					<View style={{ gap: space[2], alignItems: "flex-start" }}>
 						<FieldLabel>{t("add.category")}</FieldLabel>
@@ -202,7 +220,10 @@ export function AddRecurringSheet({
 								label: t("add.categoryNone"),
 								lead: null,
 							}}
-							onChange={setCategoryId}
+							onChange={(next) => {
+								setCategoryId(next);
+								setKeypad(false);
+							}}
 							rows={categories.map((c) => ({
 								id: c.id,
 								label: c.name,
@@ -222,7 +243,10 @@ export function AddRecurringSheet({
 					<ChipGroup
 						accessibilityLabel={t("add.repeats")}
 						label={t("add.repeats")}
-						onChange={setFrequency}
+						onChange={(next) => {
+							setFrequency(next);
+							setKeypad(false);
+						}}
 						options={FREQUENCIES.map((f) => ({
 							value: f.value,
 							label: t(`frequency.${f.key}`),
@@ -232,7 +256,10 @@ export function AddRecurringSheet({
 					<View style={{ gap: space[1] }}>
 						<DateField
 							label={t("add.first")}
-							onChange={setFirst}
+							onChange={(next) => {
+								setFirst(next);
+								setKeypad(false);
+							}}
 							value={first}
 						/>
 						<Text tone="fg2" variant="small">

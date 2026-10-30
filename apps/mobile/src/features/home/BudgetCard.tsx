@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useVerdictText } from "@/features/budget/useVerdictText";
-import { verdictLabel, verdictSentence } from "@/features/budget/verdict";
+import { verdictLabel } from "@/features/budget/verdict";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
@@ -45,8 +45,9 @@ function SpendBar({ spent, time }: { spent: number; time: number }) {
  * Home's budget card, its own part under the hero: Left to spend this month
  * with a day's allowance, a word when spending runs faster than planned and
  * the spend bar with a mark for today. What was spent is the hero above it and
- * what is not planned yet is a tile, so neither is said again here. Over budget it reads as the Budget page does: the verdict's
- * label and sentence, never a minus. Nothing without a ready budget. Every
+ * what is not planned yet is a tile, so neither is said again here. Over
+ * budget it reads as the Budget page does: the verdict's label and how far
+ * over, said once, never a minus. Nothing without a ready budget. Every
  * number is the server's figure; the whole card opens Budget.
  */
 export function BudgetCard({ glance }: { glance: Glance }) {
@@ -67,9 +68,11 @@ export function BudgetCard({ glance }: { glance: Glance }) {
 				)
 			: t("leftIn", { month });
 	const unit = status.kind === "left" ? t("left") : null;
+	// Over budget the label is the status word and the figure is how far over;
+	// the verdict's sentence would say that figure again, so it stays on Budget.
 	const sentence =
 		status.kind === "over"
-			? verdictText(verdictSentence(status.verdict))
+			? null
 			: t("perDay", { amount: format(status.perDay), days: status.daysLeft });
 	const faster =
 		status.kind === "left" &&
@@ -121,9 +124,11 @@ export function BudgetCard({ glance }: { glance: Glance }) {
 				<MoneyAmount align="left" size="section" strong value={status.amount} />
 				{unit ? <Text tone="fg2">{unit}</Text> : null}
 			</View>
-			<Text tone="fg2" variant="small">
-				{sentence}
-			</Text>
+			{sentence ? (
+				<Text tone="fg2" variant="small">
+					{sentence}
+				</Text>
+			) : null}
 			{faster ? (
 				<View style={{ marginTop: space[1] }}>
 					<StatusText label={t("faster")} tone="attention" />

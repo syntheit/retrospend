@@ -2403,7 +2403,7 @@
 		"autoPay": "Auto-pay",
 		"frequency": {
 			"weekly": "Weekly",
-			"biweekly": "Every 2 weeks",
+			"biweekly": "Biweekly",
 			"monthly": "Monthly",
 			"quarterly": "Quarterly",
 			"yearly": "Yearly"
