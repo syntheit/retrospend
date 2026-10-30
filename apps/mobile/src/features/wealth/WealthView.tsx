@@ -1,16 +1,15 @@
 import { router, Stack } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
-import { AddButton } from "@/ui/AddButton";
-import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
 import { Glyph } from "@/ui/Glyph";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
@@ -22,7 +21,12 @@ import type { MenuItem } from "@/ui/types";
 import { AccountRow } from "./AccountRow";
 import { AccountSheets, type SheetTarget } from "./AccountSheets";
 import { GroupDot } from "./AllocationBar";
-import { closedAccounts, sectionsOf, unvalued } from "./accounts";
+import {
+	closedAccounts,
+	matchingAccounts,
+	sectionsOf,
+	unvalued,
+} from "./accounts";
 import { NetWorthChangeSheet } from "./NetWorthChangeSheet";
 import { KeyFigures, NetWorthHero } from "./NetWorthHero";
 import { useAccountHref } from "./routes";
@@ -30,13 +34,13 @@ import { fetchWealth, WEALTH_CACHE, type WealthData } from "./source";
 import { useAccountActions } from "./useAccountActions";
 
 /**
- * The header's trailing items: Add account, the one primary, and a menu for
- * the rest (Add income, Currencies and rates). iOS draws the system plus
- * button; Android a text button in the top bar.
+ * The header's trailing items: Add account as a plain plus and a menu for
+ * the rest (Add income, Currencies and rates). Neither is the page's primary
+ * action, so neither is filled.
  */
 function HeaderActions({ onAdd }: { onAdd: () => void }) {
 	const t = useTranslations("mobile.wealth");
-	const { space } = useTheme();
+	const { color, size, space } = useTheme();
 	const add = useOptionalAddEntry();
 	const items: MenuItem[] = [
 		...(add
@@ -56,11 +60,19 @@ function HeaderActions({ onAdd }: { onAdd: () => void }) {
 	];
 	return (
 		<View style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}>
-			{Platform.OS === "ios" ? (
-				<AddButton label={t("account.addTitle")} onPress={onAdd} />
-			) : (
-				<Button label={t("account.addTitle")} onPress={onAdd} variant="text" />
-			)}
+			<Pressable
+				accessibilityLabel={t("account.addTitle")}
+				accessibilityRole="button"
+				onPress={onAdd}
+				style={{
+					width: size.touchMin.phone,
+					height: size.touchMin.phone,
+					alignItems: "center",
+					justifyContent: "center",
+				}}
+			>
+				<Glyph color={color.fg} name="Plus" size={size.icon.phone} />
+			</Pressable>
 			<Menu
 				accessibilityLabel={t("more")}
 				icon
@@ -116,9 +128,12 @@ function ClosedToggle({
 
 function AccountsList({
 	data,
+	query,
 	onSheet,
 }: {
 	data: WealthData;
+	/** What the search bar holds; the groups show the accounts that match. */
+	query: string;
 	onSheet: (target: SheetTarget) => void;
 }) {
 	const [showClosed, setShowClosed] = useState(false);
@@ -131,7 +146,7 @@ function AccountsList({
 			[onSheet],
 		),
 	);
-	const accounts = data.list.accounts;
+	const accounts = matchingAccounts(data.list.accounts, query);
 	const sections = sectionsOf(accounts);
 	const closed = closedAccounts(accounts);
 	const rows = (list: typeof accounts) =>
@@ -143,6 +158,9 @@ function AccountsList({
 				onPress={() => router.push(hrefOf(account.id))}
 			/>
 		));
+	if (query.trim() !== "" && accounts.length === 0) {
+		return <EmptyState title={t("noMatch")} />;
+	}
 	return (
 		<View>
 			{sections.map((section) => {
@@ -205,6 +223,8 @@ export function WealthView() {
 	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
 	const [sheet, setSheet] = useState<SheetTarget | null>(null);
 	const [why, setWhy] = useState(false);
+	const [query, setQuery] = useState("");
+	const searchRef = useSearchShortcut();
 	const [refreshing, setRefreshing] = useState(false);
 	const refresh = useCallback(async () => {
 		setRefreshing(true);
@@ -279,6 +299,9 @@ export function WealthView() {
 	const hero = (
 		<View style={{ gap: space[2] }}>
 			<StaleNote since={state.staleSince} />
+			<Text style={{ paddingHorizontal: space[4] }} tone="fg3" variant="meta">
+				{t("ratesToday")}
+			</Text>
 			{missing > 0 ? (
 				<Text
 					style={{ paddingHorizontal: space[4] }}
@@ -299,17 +322,26 @@ export function WealthView() {
 	return (
 		<>
 			{title}
+			<Stack.Screen
+				options={{
+					headerSearchBarOptions: {
+						ref: searchRef,
+						placeholder: t("search"),
+						onChangeText: (event) => setQuery(event.nativeEvent.text),
+					},
+				}}
+			/>
 			<Screen flush onRefresh={refresh} refreshing={refreshing}>
 				{widthClass === "compact" ? (
 					<>
 						{hero}
-						<AccountsList data={data} onSheet={setSheet} />
+						<AccountsList data={data} onSheet={setSheet} query={query} />
 					</>
 				) : (
 					<View style={{ flexDirection: "row", gap: space[6] }}>
 						<View style={{ flex: 1 }}>{hero}</View>
 						<View style={{ flex: 1 }}>
-							<AccountsList data={data} onSheet={setSheet} />
+							<AccountsList data={data} onSheet={setSheet} query={query} />
 						</View>
 					</View>
 				)}

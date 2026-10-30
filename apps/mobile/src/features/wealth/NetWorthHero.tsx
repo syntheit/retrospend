@@ -7,6 +7,7 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { AreaChart, type AreaPoint } from "@/ui/charts/AreaChart";
+import { Glyph } from "@/ui/Glyph";
 import { Hero } from "@/ui/Hero";
 import { ListGroup, ListRow } from "@/ui/List";
 import { Segmented } from "@/ui/Segmented";
@@ -45,7 +46,7 @@ export function NetWorthHero({
 	const format = useFormatter();
 	const money = useMoneyText();
 	const locale = useMoneyLocale();
-	const { color, space } = useTheme();
+	const { color, size, space } = useTheme();
 	const [range, setRange] = useState<WealthRange>(DEFAULT_RANGE);
 	const [scrub, setScrub] = useState<AreaPoint | null>(null);
 	const points = useMemo(
@@ -91,16 +92,19 @@ export function NetWorthHero({
 			hitSlop={space[3]}
 			onPress={onChange}
 		>
-			<Text
-				numberOfLines={1}
-				style={{
-					color: color.accentStrong,
-					textDecorationLine: "underline",
-				}}
-				variant="small"
+			<View
+				style={{ flexDirection: "row", alignItems: "center", gap: space[1] }}
 			>
-				{changeText}
-			</Text>
+				<Text
+					numberOfLines={1}
+					style={{ flexShrink: 1 }}
+					tone="fg2"
+					variant="small"
+				>
+					{changeText}
+				</Text>
+				<Glyph color={color.fg3} name="ChevronRight" size={size.icon.phone} />
+			</View>
 		</Pressable>
 	) : (
 		changeText

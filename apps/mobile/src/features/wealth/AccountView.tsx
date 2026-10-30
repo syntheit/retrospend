@@ -21,6 +21,7 @@ import {
 } from "@/ui/List";
 import { Menu } from "@/ui/Menu";
 import { Screen } from "@/ui/Screen";
+import { Skeleton, SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { AccountSheets, type SheetTarget } from "./AccountSheets";
 import { isLiability } from "./accounts";
@@ -34,6 +35,21 @@ import {
 } from "./source";
 
 const LEGS_PAGE = 20;
+
+/** The shape of the page while it loads: the figure, its lines, then history rows. */
+function AccountSkeleton() {
+	const { space } = useTheme();
+	return (
+		<View style={{ gap: space[4] }}>
+			<View style={{ gap: space[2], padding: space[4] }}>
+				<Skeleton shape="line" width="25%" />
+				<Skeleton shape="line" width="60%" />
+				<Skeleton shape="line" width="45%" />
+			</View>
+			<SkeletonRows count={4} />
+		</View>
+	);
+}
 
 function LegRow({ leg }: { leg: AccountLeg }) {
 	const t = useTranslations("mobile.wealth.leg");
@@ -73,7 +89,6 @@ export function AccountView({ id }: { id: string }) {
 	const format = useFormatter();
 	const money = useMoneyText();
 	const rateName = useRateTypeLabel();
-	const loading = useTranslations("mobile.activity")("loading");
 	const { api, state: session } = useSession();
 	const me = session.status === "signedIn" ? session.me : null;
 	const { space } = useTheme();
@@ -89,13 +104,19 @@ export function AccountView({ id }: { id: string }) {
 	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
 
 	if (state.status !== "ready") {
+		// Until the account arrives the header would show the route's own name
+		// ("[id]"), so the title is empty while it loads.
 		return (
-			<Screen>
-				<EmptyState
-					detail={state.status === "error" ? t("errorDetail") : undefined}
-					title={state.status === "error" ? t("accountError") : loading}
-				/>
-			</Screen>
+			<>
+				<Stack.Screen options={{ title: "" }} />
+				<Screen flush>
+					{state.status === "error" ? (
+						<EmptyState detail={t("errorDetail")} title={t("accountError")} />
+					) : (
+						<AccountSkeleton />
+					)}
+				</Screen>
+			</>
 		);
 	}
 	const account = state.data;

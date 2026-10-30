@@ -4,6 +4,7 @@ import {
 	glyphOf,
 	groupOf,
 	isLiability,
+	matchingAccounts,
 	sectionsOf,
 	unvalued,
 } from "./accounts";
@@ -91,5 +92,23 @@ describe("row lead and terms", () => {
 		expect(aprBasis("12.345678")).toBe(1234);
 		expect(aprBasis("abc")).toBeNull();
 		expect(aprBasis(null)).toBeNull();
+	});
+});
+
+describe("account search", () => {
+	const list = [
+		account("Galicia", "CASH"),
+		account("Cuenta Ahorro", "CASH"),
+		account("Visa", "LIABILITY_CREDIT_CARD"),
+	];
+	it("keeps every account with no text", () => {
+		expect(matchingAccounts(list, "  ")).toHaveLength(3);
+	});
+	it("matches the name, ignoring case and accents", () => {
+		expect(matchingAccounts(list, "ahórro").map((a) => a.id)).toEqual([
+			"Cuenta Ahorro",
+		]);
+		expect(matchingAccounts(list, "VIS").map((a) => a.id)).toEqual(["Visa"]);
+		expect(matchingAccounts(list, "zzz")).toEqual([]);
 	});
 });
