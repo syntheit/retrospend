@@ -206,7 +206,14 @@ export function Sheet({
 				height: height ?? undefined,
 				alignSelf: "stretch",
 				gap: space[3],
-				paddingBottom: Platform.OS === "android" ? space[6] : space[4],
+				// A sheet with a set height ends its footer just above the safe
+				// area; the content is already pinned inside the detent.
+				paddingBottom:
+					Platform.OS === "android"
+						? space[6]
+						: height === null
+							? space[4]
+							: space[2],
 			}}
 		>
 			{title || way !== "none" ? (

@@ -22,11 +22,12 @@ const IPAD_SHEET_SHARE = 0.88;
 /**
  * What the content leaves free under its iOS detent, so it never runs past
  * the sheet. The content sits at the top of the sheet, so room to spare
- * shows as a little space under the footer; content taller than the sheet
- * would lose its footer.
+ * shows as a little space under the footer, and the footer ends just above
+ * the home indicator; content taller than the sheet by more than the top
+ * padding would lose its header, so the spare stays small but not zero.
  */
-const LARGE_SPARE = 10;
-const MEDIUM_SPARE = 6;
+const LARGE_SPARE = 6;
+const MEDIUM_SPARE = 4;
 
 /**
  * Whether the sheet sets its content's height: on iOS, a sheet with detents.
