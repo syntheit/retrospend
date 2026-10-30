@@ -1929,7 +1929,32 @@
 		"anyone": "Anyone",
 		"filter": "Filter",
 		"allCategories": "All categories",
-		"noMatchExpenses": "No expenses match"
+		"noMatchExpenses": "No expenses match",
+		"form": {
+			"newTitle": "New project",
+			"editTitle": "Edit project",
+			"name": "Name",
+			"namePlaceholder": "Trip, apartment, renovation",
+			"currency": "Currency",
+			"budget": "Budget (optional)",
+			"budgetInvalid": "Enter a budget above zero, or leave it empty.",
+			"create": "Create project",
+			"save": "Save",
+			"created": "{name} created",
+			"saved": "{name} saved"
+		},
+		"actions": {
+			"edit": "Edit project",
+			"archive": "Archive project",
+			"restore": "Restore project",
+			"archiveTitle": "Archive {name}?",
+			"archiveBody": "It moves to the archived projects. Its expenses and balances stay, and you can restore it.",
+			"archiveConfirm": "Archive",
+			"archived": "{name} archived",
+			"restored": "{name} restored",
+			"archiveError": "Couldn't archive. Try again.",
+			"restoreError": "Couldn't restore. Try again."
+		}
 	},
 	"settings": {
 		"title": "Settings",

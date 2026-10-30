@@ -29,8 +29,10 @@ import {
 import { ProjectExpenseDays } from "./ProjectExpenses";
 import { ProjectHeader, ProjectTitle } from "./ProjectHeader";
 import { ProjectPeopleTab } from "./ProjectPeopleTab";
+import { ProjectSheet } from "./ProjectSheet";
 import { ProjectSummaryTab } from "./ProjectSummaryTab";
 import { SettleAllSheet } from "./SettleAllSheet";
+import { useProjectActions } from "./useProjectActions";
 import { useProject, useProjectSummary } from "./useProjects";
 
 type Tab = "expenses" | "summary" | "people";
@@ -76,6 +78,16 @@ export function ProjectView({
 	>(null);
 	const [settling, setSettling] = useState(startSettling);
 	const page = state.status === "ready" ? state.data : null;
+	const actions = useProjectActions(
+		{
+			id,
+			name: page?.name ?? name ?? "",
+			status: page?.status ?? "ACTIVE",
+			myRole: page?.myRole ?? null,
+		},
+		reload,
+	);
+	const menu = [...actions.items, ...overflow];
 	const periodId = period === "current" ? (page?.openPeriod ?? null) : null;
 	const summary = useProjectSummary(id, periodId, tab === "summary");
 	const expenses = page?.expenses;
@@ -163,18 +175,18 @@ export function ProjectView({
 						headerLargeTitle: false,
 						headerTitle: () => <ProjectTitle page={page} />,
 						headerRight: () => (
-							<Menu
-								accessibilityLabel={more}
-								icon
-								items={overflow}
-								label={more}
-							/>
+							<Menu accessibilityLabel={more} icon items={menu} label={more} />
 						),
 					}}
 				/>
 			)}
 			<StaleNote since={state.status === "ready" ? state.staleSince : null} />
 			<ProjectHeader
+				menu={
+					listDetail ? (
+						<Menu accessibilityLabel={more} icon items={menu} label={more} />
+					) : undefined
+				}
 				page={page}
 				pane={listDetail}
 				tabs={
@@ -331,6 +343,13 @@ export function ProjectView({
 					visible
 				/>
 			) : null}
+			<ProjectSheet
+				home={page.primaryCurrency}
+				onClose={actions.closeEdit}
+				onDone={reload}
+				project={page}
+				visible={actions.editing}
+			/>
 			<SettleAllSheet
 				members={page.members}
 				onClose={() => setSettling(false)}

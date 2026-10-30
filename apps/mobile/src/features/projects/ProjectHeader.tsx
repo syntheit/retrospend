@@ -48,12 +48,15 @@ export function ProjectHeader({
 	page,
 	pane,
 	tabs,
+	menu,
 }: {
 	page: ProjectPage;
 	/** The detail pane of a list-detail pair: it has no navigation bar to name the project. */
 	pane: boolean;
 	/** The tab control, drawn right under the meta line. */
 	tabs: ReactNode;
+	/** The overflow menu, drawn after the name in the detail pane (the navigation bar carries it elsewhere). */
+	menu?: ReactNode;
 }) {
 	const t = useTranslations("mobile.projects");
 	const faces = useFaces();
@@ -95,6 +98,7 @@ export function ProjectHeader({
 					<Text accessibilityRole="header" style={{ flex: 1 }} variant="title">
 						{page.name}
 					</Text>
+					{menu}
 				</View>
 			) : null}
 			<View

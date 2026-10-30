@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useSession } from "@/auth/session";
+import { subscribeEntryChanges } from "@/features/entry/events";
 import { ENTITY_CACHE_LIMIT } from "@/features/read/loadCached";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import {
@@ -15,7 +16,11 @@ import {
 export function useProjectList() {
 	const { api } = useSession();
 	const fetch = useMemo(() => (api ? fetchProjects(api) : null), [api]);
-	return useCachedRead(PROJECTS_CACHE, fetch);
+	const read = useCachedRead(PROJECTS_CACHE, fetch);
+	const { reload } = read;
+	// A project made, changed or archived from a sheet.
+	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
+	return read;
 }
 
 /** One project's page, cache first. */
