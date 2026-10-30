@@ -14,6 +14,7 @@ import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { FieldError, TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
+import { BackgroundSheet } from "./BackgroundSheet";
 import { PageState, SettingsPage } from "./parts";
 import { hostOf, type Profile } from "./source";
 import { useAvatar } from "./useAvatar";
@@ -52,6 +53,7 @@ function ProfileBody({ me, reload }: { me: Profile; reload: () => void }) {
 	const avatar = useAvatar(reload);
 	const [name, setName] = useState(me.name);
 	const [username, setUsername] = useState(me.username);
+	const [backgroundOpen, setBackgroundOpen] = useState(false);
 
 	const baseUrl = connection.status === "connected" ? connection.baseUrl : null;
 	const publicPath = `/u/${me.username}`;
@@ -262,18 +264,36 @@ function ProfileBody({ me, reload }: { me: Profile; reload: () => void }) {
 				{baseUrl ? (
 					<ListRow
 						end={
-							<Button
-								label={t("copyLink")}
-								onPress={() => void copyLink()}
-								size="small"
-								variant="outlined"
-							/>
+							<View
+								style={{
+									flexDirection: "row",
+									alignItems: "center",
+									gap: space[2],
+								}}
+							>
+								<Button
+									label={t("copyLink")}
+									onPress={() => void copyLink()}
+									size="small"
+									variant="outlined"
+								/>
+								<Button
+									label={t("background")}
+									onPress={() => setBackgroundOpen(true)}
+									size="small"
+									variant="outlined"
+								/>
+							</View>
 						}
 						sub={`${hostOf(baseUrl)}${publicPath}`}
 						title={t("public")}
 					/>
 				) : null}
 			</ListGroup>
+			<BackgroundSheet
+				onClose={() => setBackgroundOpen(false)}
+				visible={backgroundOpen}
+			/>
 		</SettingsPage>
 	);
 }

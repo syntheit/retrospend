@@ -1974,7 +1974,40 @@
 			"keepUsername": "Le garder",
 			"usernameSaved": "Ton nom d’utilisateur est désormais @{username}",
 			"changeEmail": "Changer d’e-mail",
-			"usernameRefused": "Impossible de changer votre nom d'utilisateur. Il est peut-être pris, ou changé depuis moins de 30 jours."
+			"usernameRefused": "Impossible de changer votre nom d'utilisateur. Il est peut-être pris, ou changé depuis moins de 30 jours.",
+			"background": "Arrière-plan",
+			"backgroundSheet": {
+				"title": "Arrière-plan du profil",
+				"symbols": "Symboles",
+				"symbol": {
+					"currency": "Devises",
+					"math": "Maths",
+					"finance": "Finance"
+				},
+				"color": "Couleur",
+				"colors": {
+					"gray": "Gris",
+					"green": "Vert",
+					"blue": "Bleu",
+					"purple": "Violet",
+					"orange": "Orange",
+					"gold": "Or"
+				},
+				"density": "Densité",
+				"densities": {
+					"sparse": "Faible",
+					"medium": "Moyenne",
+					"dense": "Élevée"
+				},
+				"opacity": "Opacité",
+				"opacities": {
+					"subtle": "Légère",
+					"medium": "Moyenne",
+					"bold": "Forte"
+				},
+				"error": "Impossible d'enregistrer l'arrière-plan",
+				"loading": "Chargement"
+			}
 		},
 		"money": {
 			"title": "Argent",
@@ -2519,7 +2552,8 @@
 			"submitIn": "Supprimer le revenu récurrent",
 			"toast": "{title} supprimée",
 			"error": "Impossible de supprimer. Réessaie."
-		}
+		},
+		"pick": "Choisissez une dépense récurrente"
 	},
 	"shortcuts": {
 		"addExpense": "Ajouter une dépense",

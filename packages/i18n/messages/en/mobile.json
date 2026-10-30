@@ -1974,7 +1974,40 @@
 			"keepUsername": "Keep it",
 			"usernameSaved": "Username is now @{username}",
 			"changeEmail": "Change email",
-			"usernameRefused": "Couldn't change your username. It may be taken, or changed in the last 30 days."
+			"usernameRefused": "Couldn't change your username. It may be taken, or changed in the last 30 days.",
+			"background": "Background",
+			"backgroundSheet": {
+				"title": "Profile background",
+				"symbols": "Symbols",
+				"symbol": {
+					"currency": "Currencies",
+					"math": "Math",
+					"finance": "Finance"
+				},
+				"color": "Color",
+				"colors": {
+					"gray": "Gray",
+					"green": "Green",
+					"blue": "Blue",
+					"purple": "Purple",
+					"orange": "Orange",
+					"gold": "Gold"
+				},
+				"density": "Density",
+				"densities": {
+					"sparse": "Low",
+					"medium": "Medium",
+					"dense": "High"
+				},
+				"opacity": "Opacity",
+				"opacities": {
+					"subtle": "Faint",
+					"medium": "Medium",
+					"bold": "Strong"
+				},
+				"error": "Couldn't save the background",
+				"loading": "Loading"
+			}
 		},
 		"money": {
 			"title": "Money",
@@ -2519,7 +2552,8 @@
 			"submitIn": "Delete recurring income",
 			"toast": "{title} deleted",
 			"error": "Couldn't delete it. Try again."
-		}
+		},
+		"pick": "Pick a recurring expense"
 	},
 	"shortcuts": {
 		"addExpense": "Add expense",

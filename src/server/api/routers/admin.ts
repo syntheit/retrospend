@@ -216,6 +216,7 @@ export const adminRouter = createTRPCRouter({
 		const users = await db.user.findMany({
 			select: {
 				id: true,
+				name: true,
 				username: true,
 				email: true,
 				emailVerified: true,
@@ -255,6 +256,7 @@ export const adminRouter = createTRPCRouter({
 
 		return users.map((user) => ({
 			id: user.id,
+			name: user.name,
 			username: user.username,
 			email: user.email,
 			emailVerified: user.emailVerified,

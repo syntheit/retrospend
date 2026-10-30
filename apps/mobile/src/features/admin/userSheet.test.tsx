@@ -76,6 +76,7 @@ jest.mock("use-intl", () => {
 
 const sofia = {
 	id: "u1",
+	name: "Sofía Reyes",
 	username: "sofia",
 	email: "sofia@example.com",
 	emailVerified: true,
@@ -167,7 +168,7 @@ describe("UserSheet", () => {
 			message: string;
 			undo: { onUndo: () => void };
 		};
-		expect(toast.message).toBe("sofia is disabled");
+		expect(toast.message).toBe("Sofía Reyes is disabled");
 
 		await act(async () => {
 			toast.undo.onUndo();
@@ -211,7 +212,7 @@ describe("UserSheet", () => {
 		});
 		expect(mockEnable).not.toHaveBeenCalled();
 		expect(mockToast.show.mock.calls.at(-1)?.[0]).toEqual({
-			message: "sofia was changed since, so nothing was undone",
+			message: "Sofía Reyes was changed since, so nothing was undone",
 		});
 		alert.mockRestore();
 		act(() => tree.unmount());
@@ -232,9 +233,7 @@ describe("UserSheet", () => {
 		expect(mockAuth).not.toHaveBeenCalled();
 
 		const confirm = () =>
-			tree.root.findAll(
-				(n) => n.props.accessibilityLabel === "Delete user",
-			)[0];
+			tree.root.findAll((n) => n.props.accessibilityLabel === "Delete user")[0];
 		expect(confirm()?.props.disabled).toBe(true);
 		const input = tree.root.findAll(
 			(n) => typeof n.props.onChangeText === "function",

@@ -85,6 +85,7 @@ export async function listUsers(caller: LedgerCaller, q: CursorQuery) {
 		(u) => ({ id: u.id }),
 		(u) => ({
 			id: u.id,
+			name: u.name,
 			username: u.username,
 			email: u.email,
 			emailVerified: u.emailVerified,

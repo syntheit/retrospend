@@ -11945,6 +11945,9 @@
 															}
 														]
 													},
+													"name": {
+														"type": "string"
+													},
 													"role": {
 														"enum": [
 															"USER",
@@ -11968,6 +11971,7 @@
 												},
 												"required": [
 													"id",
+													"name",
 													"username",
 													"email",
 													"emailVerified",
