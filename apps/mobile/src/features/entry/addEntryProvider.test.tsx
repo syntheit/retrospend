@@ -1,4 +1,10 @@
-import { AddEntryProvider, useAddEntry } from "./AddEntryProvider";
+import { Platform } from "react-native";
+import { closeTransients } from "@/ui/transient";
+import {
+	AddEntryProvider,
+	useAddButtonScroll,
+	useAddEntry,
+} from "./AddEntryProvider";
 
 // Tapping Add opens the composer in Expense mode at once, with no menu in
 // front of it. The kind lives in the composer's mode row; the long press on
@@ -18,6 +24,7 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("use-intl", () => ({
 	useTranslations: () => (key: string) => key,
 }));
+jest.mock("expo-router", () => ({ useFocusEffect: () => {} }));
 jest.mock("@/layout/destinations", () => ({ ADD_CONTROL: "floating" }));
 jest.mock("@/surfaces/useSurfaceLinks", () => ({ useSurfaceLinks: () => {} }));
 jest.mock("./useOutboxFlush", () => ({ useOutboxFlush: () => {} }));
@@ -94,5 +101,59 @@ describe("Add button", () => {
 		expect(mockButton.props).toBeUndefined();
 		act(() => release?.());
 		expect(mockButton.props).toBeDefined();
+	});
+});
+
+describe("Add button on a scrolling list (Android)", () => {
+	let scroll: ((event: unknown) => void) | undefined;
+	function Scroller() {
+		scroll = useAddButtonScroll().onScroll as typeof scroll;
+		return null;
+	}
+	const at = (y: number) => ({ nativeEvent: { contentOffset: { y } } });
+
+	beforeEach(() => {
+		scroll = undefined;
+		jest.replaceProperty(Platform, "OS", "android");
+	});
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
+	function mountWithList() {
+		act(() => {
+			create(
+				<AddEntryProvider>
+					<Scroller />
+				</AddEntryProvider>,
+			);
+		});
+	}
+
+	it("shrinks to the plus going down and extends going up", () => {
+		mountWithList();
+		expect(mockButton.props?.expanded).toBe(true);
+		act(() => scroll?.(at(40)));
+		expect(mockButton.props?.expanded).toBe(false);
+		act(() => scroll?.(at(90)));
+		expect(mockButton.props?.expanded).toBe(false);
+		act(() => scroll?.(at(60)));
+		expect(mockButton.props?.expanded).toBe(true);
+	});
+
+	it("is extended again when the tab changes", () => {
+		mountWithList();
+		act(() => scroll?.(at(80)));
+		expect(mockButton.props?.expanded).toBe(false);
+		act(() => closeTransients());
+		expect(mockButton.props?.expanded).toBe(true);
+	});
+
+	it("gives a list nothing to listen to on iOS", () => {
+		// Back to the test platform, which is iOS.
+		jest.restoreAllMocks();
+		expect(Platform.OS).toBe("ios");
+		mountWithList();
+		expect(scroll).toBeUndefined();
 	});
 });

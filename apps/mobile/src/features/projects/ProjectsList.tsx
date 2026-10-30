@@ -11,6 +11,7 @@ import {
 	justBack,
 	matchesProject,
 } from "@/features/projects/source";
+import { useAddButtonScroll } from "@/features/entry/addEntryContext";
 import { useProjectList } from "@/features/projects/useProjects";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
@@ -47,6 +48,7 @@ export function ProjectsList({
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const inset = useAddInset();
+	const fabScroll = useAddButtonScroll();
 	const searchRef = useSearchShortcut(sharedQuery === undefined);
 	const { state, reload } = useProjectList();
 	const [ownQuery, setQuery] = useState("");
@@ -86,6 +88,7 @@ export function ProjectsList({
 
 	const list = (
 		<FlatList
+			{...fabScroll}
 			contentInsetAdjustmentBehavior="automatic"
 			data={sections}
 			keyboardDismissMode="on-drag"

@@ -12,6 +12,7 @@ import { PeopleTop } from "@/features/people/PeopleTop";
 import { PersonRow } from "@/features/people/PersonRow";
 import { PersonView } from "@/features/people/PersonView";
 import { keyOf, type PersonRef, refOfKey } from "@/features/people/source";
+import { useAddButtonScroll } from "@/features/entry/addEntryContext";
 import { usePeopleOverview } from "@/features/people/usePeople";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
@@ -68,6 +69,7 @@ export function PeopleList({
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const inset = useAddInset();
+	const fabScroll = useAddButtonScroll();
 	const searchRef = useSearchShortcut(filters === undefined);
 	const { state, reload } = usePeopleOverview();
 	const [ownChip, setOwnChip] = useState<PeopleChip>("all");
@@ -113,6 +115,7 @@ export function PeopleList({
 
 	const list = (
 		<FlatList
+			{...fabScroll}
 			contentInsetAdjustmentBehavior="automatic"
 			data={sections}
 			keyboardDismissMode="on-drag"

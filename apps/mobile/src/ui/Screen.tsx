@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Platform, RefreshControl, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAddButtonScroll } from "@/features/entry/addEntryContext";
 import { ADD_CONTROL } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 import { useSidesCleared } from "./ListDetail";
@@ -8,13 +9,15 @@ import { useSidesCleared } from "./ListDetail";
 /**
  * Room a scrolling list leaves under its last row on phones, where the add
  * control floats above the tab bar (the iOS glass button, the M3 FAB): the
- * control's 48 point height, its 16 point margin and 16 of air, so it never
+ * control's height (48 points, 56 for the M3 FAB), its 16 point margin and 16 of air, so it never
  * covers a row's money at the end of the list. Zero on iPad, whose plus sits
  * in the toolbar. Lists that are not a Screen add it as their footer.
  */
 export function useAddInset(): number {
 	const { space } = useTheme();
-	return ADD_CONTROL === "floating" ? space[12] + space[4] + space[4] : 0;
+	// The M3 extended FAB is 56 tall, the iOS glass button 48.
+	const control = Platform.OS === "android" ? space[12] + space[2] : space[12];
+	return ADD_CONTROL === "floating" ? control + space[4] + space[4] : 0;
 }
 
 /**
@@ -42,8 +45,10 @@ export function Screen({
 	const { color, space } = useTheme();
 	const cleared = useSidesCleared();
 	const inset = useAddInset();
+	const fabScroll = useAddButtonScroll();
 	const body = (
 		<ScrollView
+			{...fabScroll}
 			contentContainerStyle={
 				flush
 					? { paddingBottom: space[8] + inset }
