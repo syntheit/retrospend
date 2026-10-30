@@ -88,12 +88,17 @@ describe("app config", () => {
 			expect(Object.keys(file)).toEqual(["ios"]);
 			expect(file.ios.NSPhotoLibraryUsageDescription).toBeTruthy();
 			expect(file.ios.NSCameraUsageDescription).toBeTruthy();
+			expect(file.ios.NSFaceIDUsageDescription).toBeTruthy();
 			expect(config.locales?.[code]).toBe(`./locales/${code}.json`);
 		}
 		const picker = config.plugins?.find(
 			(p) => Array.isArray(p) && p[0] === "expo-image-picker",
 		) as [string, { microphonePermission: false }] | undefined;
 		expect(picker?.[1].microphonePermission).toBe(false);
+		const auth = config.plugins?.find(
+			(p) => Array.isArray(p) && p[0] === "expo-local-authentication",
+		) as [string, { faceIDPermission: string }] | undefined;
+		expect(auth?.[1].faceIDPermission).toBeTruthy();
 	});
 
 	describe("assertBuildProfile", () => {

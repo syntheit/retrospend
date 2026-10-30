@@ -33,6 +33,8 @@ export function pushedHeader(
 export const SETTINGS_SCREENS: readonly {
 	name: string;
 	title?: string;
+	/** The catalog the title comes from: mobile.settings unless "admin". */
+	ns?: "admin";
 	large?: true;
 	redirect?: true;
 }[] = [
@@ -48,4 +50,9 @@ export const SETTINGS_SCREENS: readonly {
 	{ name: "settings/danger", title: "root.danger" },
 	{ name: "settings/currencies" },
 	{ name: "settings/recurring", redirect: true },
+	{ name: "settings/admin", title: "title", ns: "admin" },
+	{ name: "settings/admin-users", title: "users.title", ns: "admin" },
+	{ name: "settings/admin-invites", title: "invites.title", ns: "admin" },
+	{ name: "settings/admin-feedback", title: "feedback.title", ns: "admin" },
+	{ name: "settings/admin-settings", title: "settings.title", ns: "admin" },
 ];

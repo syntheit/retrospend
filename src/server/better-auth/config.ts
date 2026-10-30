@@ -487,8 +487,8 @@ export const auth = betterAuth({
 						throw new Error("Account is deactivated");
 					}
 
-					// The Expo app gets the mobile scopes (everything but admin,
-					// IMPLEMENTATION §2.3) stamped on its session, so they hold
+					// The Expo app gets the mobile scopes (every scope; admin
+					// stays inert unless the user has the admin role) stamped on its session, so they hold
 					// whether it sends the token as a bearer or as a cookie. Device
 					// sessions are stamped after /device/token instead.
 					const requestHeaders = ctx?.request?.headers ?? ctx?.headers;

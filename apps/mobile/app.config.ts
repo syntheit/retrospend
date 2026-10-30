@@ -131,7 +131,7 @@ const config: ExpoConfig = {
 		// Android 16+, and on Android 15 the system Back leaves the app.
 		predictiveBackGestureEnabled: false,
 	},
-	// iOS: the photo library and camera permission texts, one file per
+	// iOS: the photo library, camera and Face ID permission texts, one file per
 	// language (InfoPlist.strings). The English text is the plugin's default
 	// below; test/app-config.test.ts keeps every language covered.
 	locales: Object.fromEntries(
@@ -166,6 +166,12 @@ const config: ExpoConfig = {
 					"Retrospend uses the camera to take your profile picture.",
 				microphonePermission: false,
 			},
+		],
+		// Face ID prompt for destructive admin actions (iOS text per language in
+		// locales/); Android adds the biometric permission itself.
+		[
+			"expo-local-authentication",
+			{ faceIDPermission: "Retrospend uses Face ID to confirm admin actions." },
 		],
 		// Android half of the http decision above.
 		"./plugins/with-cleartext-servers",

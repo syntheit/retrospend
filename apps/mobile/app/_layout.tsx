@@ -41,6 +41,7 @@ const DevAutoSignIn: ComponentType | null = process.env.EXPO_PUBLIC_DEV_SERVER
  */
 function useSettingsScreens() {
 	const t = useTranslations("mobile.settings");
+	const ta = useTranslations("mobile.admin");
 	const { color } = useTheme();
 	const android = Platform.OS === "android";
 	const header = pushedHeader(color, android);
@@ -53,7 +54,9 @@ function useSettingsScreens() {
 					? { headerShown: false }
 					: {
 							...header,
-							title: screen.title ? t(screen.title as never) : "",
+							title: screen.title
+								? (screen.ns === "admin" ? ta : t)(screen.title as never)
+								: "",
 							headerLargeTitle: screen.large ? !android : false,
 						}
 			}

@@ -10,6 +10,7 @@ import { getAppSettings, updateAppSettings } from "~/server/services/settings";
 import {
 	adminDb,
 	asKey,
+	asMobile,
 	call,
 	createTestUser,
 	expectBody,
@@ -426,6 +427,57 @@ describe("/api/v1/admin", () => {
 	it("returned no user title or note anywhere", () => {
 		expect(seen.length).toBeGreaterThan(8);
 		for (const body of seen) expect(body).not.toContain(SECRET);
+	});
+
+	it("works from an admin's phone session and is a 403 from anyone else's", async () => {
+		const phoneAdmin = await asMobile(admin);
+		for (const path of [
+			"/admin/stats",
+			"/admin/users",
+			"/admin/settings",
+			"/admin/invite-codes",
+			"/admin/feedback",
+		]) {
+			expect((await call(path, { headers: phoneAdmin })).status).toBe(200);
+		}
+		const phoneBob = await asMobile(bob);
+		for (const path of [
+			"/admin/stats",
+			"/admin/users",
+			"/admin/settings",
+			"/admin/invite-codes",
+			"/admin/feedback",
+		]) {
+			await expectProblem(
+				await call(path, { headers: phoneBob }),
+				403,
+				"missing_scope",
+			);
+		}
+		await expectProblem(
+			await call(`/admin/users/${bob}/disable`, {
+				method: "POST",
+				headers: phoneBob,
+				idempotent: true,
+			}),
+			403,
+			"missing_scope",
+		);
+	});
+
+	it("takes admin from a phone session the day the role is removed", async () => {
+		const former = (await createTestUser({ role: "ADMIN" })).user.id;
+		const headers = await asMobile(former);
+		expect((await call("/admin/stats", { headers })).status).toBe(200);
+		await adminDb.user.update({
+			where: { id: former },
+			data: { role: "USER" },
+		});
+		await expectProblem(
+			await call("/admin/stats", { headers }),
+			403,
+			"missing_scope",
+		);
 	});
 
 	it("stops working for an admin who loses the role", async () => {

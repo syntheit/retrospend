@@ -47,8 +47,9 @@ export function call(path: string, init: CallInit = {}) {
 	);
 }
 
-/** What the Expo app's sign-in stamps: every scope but admin. */
-export const MOBILE_SCOPES = "read write:expenses write:money write:settings";
+/** What the Expo app's sign-in stamps: every scope (admin only works for admins). */
+export const MOBILE_SCOPES =
+	"read write:expenses write:money write:settings admin";
 
 /** A session token, the mobile app's by default, to send as a bearer. */
 export async function sessionFor(

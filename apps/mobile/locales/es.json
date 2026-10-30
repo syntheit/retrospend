@@ -1,6 +1,7 @@
 {
 	"ios": {
 		"NSPhotoLibraryUsageDescription": "Retrospend usa tus fotos para poner tu foto de perfil.",
-		"NSCameraUsageDescription": "Retrospend usa la cámara para tomar tu foto de perfil."
+		"NSCameraUsageDescription": "Retrospend usa la cámara para tomar tu foto de perfil.",
+		"NSFaceIDUsageDescription": "Retrospend usa Face ID para confirmar acciones de administración."
 	}
 }
