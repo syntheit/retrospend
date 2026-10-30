@@ -60,6 +60,7 @@ export default function ActivityScreen() {
 			setSegment("recurring");
 		}
 	}, [params.segment]);
+	const [addingRecurring, setAddingRecurring] = useState(false);
 	const [filter, setFilter] = useState(DEFAULT_FILTER);
 	const [search, setSearch] = useDebouncedSearch((q) =>
 		setFilter((f) => (f.q === q ? f : { ...f, q })),
@@ -280,6 +281,18 @@ export default function ActivityScreen() {
 			<ListDetail
 				bar={
 					<AccountTopBar
+						actions={
+							segment === "recurring"
+								? [
+										{
+											id: "add-recurring",
+											icon: "Plus",
+											label: tr("add.title"),
+											onPress: () => setAddingRecurring(true),
+										},
+									]
+								: undefined
+						}
 						overflow={
 							segment === "expenses" && !picked
 								? [
@@ -310,7 +323,14 @@ export default function ActivityScreen() {
 				}
 				list={
 					segment === "recurring" ? (
-						<RecurringView embedded header={segments} query={search} />
+						<RecurringView
+							adding={addingRecurring}
+							embedded
+							header={segments}
+							onAdd={() => setAddingRecurring(true)}
+							onAddClose={() => setAddingRecurring(false)}
+							query={search}
+						/>
 					) : (
 						list
 					)

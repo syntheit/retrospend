@@ -14,8 +14,6 @@ import {
 	unconfirmRecurringIncome,
 } from "~/server/services/income/confirm-recurring.mutation";
 import {
-	createTemplate,
-	deleteTemplate,
 	templateDirection,
 	templateDueAt,
 	templateExtras,
@@ -25,6 +23,14 @@ import {
 	confirmRecurringExpense,
 	unconfirmRecurringExpense,
 } from "~/server/services/recurring-confirm.mutation";
+import { createRecurring } from "~/server/services/recurring-create.mutation";
+import {
+	deleteRecurring,
+	deleteRecurringWithPlan,
+	restoreRecurring,
+	restoreRecurringWithPlan,
+	type TemplateSnapshot,
+} from "~/server/services/recurring-delete.mutation";
 import {
 	skipRecurring,
 	unskipRecurring,
@@ -114,21 +120,39 @@ export async function readRecurring(caller: LedgerCaller, id: string) {
 	return item;
 }
 
+function createInput(
+	caller: LedgerCaller,
+	input: z.infer<typeof createRecurringSchema>,
+) {
+	return {
+		template: {
+			...input,
+			direction: input.direction === "in" ? ("IN" as const) : ("OUT" as const),
+			amountMode:
+				input.amountMode === "ask" ? ("ASK" as const) : ("FIXED" as const),
+		},
+		timeZone: caller.timeZone,
+	};
+}
+
 export async function addRecurring(
 	caller: LedgerCaller,
 	input: z.infer<typeof createRecurringSchema>,
 ) {
-	const created = await createTemplate(
-		caller.db,
-		caller.principal.userId,
-		{
-			...input,
-			direction: input.direction === "in" ? "IN" : "OUT",
-			amountMode: input.amountMode === "ask" ? "ASK" : "FIXED",
-		},
-		caller.timeZone,
+	const created = await applyWrite(
+		caller,
+		createRecurring,
+		createInput(caller, input),
 	);
 	return readRecurring(caller, created.id);
+}
+
+/** What adding would change (nothing moves) and what it would not; writes nothing. */
+export function previewAddRecurring(
+	caller: LedgerCaller,
+	input: z.infer<typeof createRecurringSchema>,
+) {
+	return previewWrite(caller, createRecurring, createInput(caller, input));
 }
 
 export async function changeRecurring(
@@ -154,9 +178,79 @@ export async function changeRecurring(
 	return readRecurring(caller, id);
 }
 
-export async function removeRecurring(caller: Caller, id: string) {
-	await deleteTemplate(caller.db, caller.principal.userId, id);
-	return { ok: true as const };
+/** Whether a BILL envelope follows the template: then deleting it can move the plan cost. */
+async function hasBillEnvelope(caller: LedgerCaller, id: string) {
+	const count = await caller.db.envelope.count({
+		where: {
+			targetTemplateId: id,
+			targetTemplate: { userId: caller.principal.userId },
+		},
+	});
+	return count > 0;
+}
+
+export async function removeRecurring(caller: LedgerCaller, id: string) {
+	const template = await applyWrite(
+		caller,
+		(await hasBillEnvelope(caller, id))
+			? deleteRecurringWithPlan
+			: deleteRecurring,
+		{ templateId: id },
+	);
+	return {
+		ok: true as const,
+		undo: undoFor(caller, FAMILY, "recurring.restore", { template }),
+	};
+}
+
+/** What deleting would stop (nothing moves, logged entries stay); writes nothing. */
+export async function previewRemoveRecurring(caller: LedgerCaller, id: string) {
+	return previewWrite(
+		caller,
+		(await hasBillEnvelope(caller, id))
+			? deleteRecurringWithPlan
+			: deleteRecurring,
+		{ templateId: id },
+	);
+}
+
+function restoreOf(op: string, input: unknown) {
+	if (op !== "recurring.restore")
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "This undo is not valid anymore",
+		});
+	const template = (input as { template: TemplateSnapshot }).template;
+	// A token minted before the links were carried has neither list.
+	return {
+		template: {
+			...template,
+			createdAt: template.createdAt ?? new Date().toISOString(),
+			envelopeIds: template.envelopeIds ?? [],
+			expenseIds: template.expenseIds ?? [],
+		},
+	};
+}
+
+const restoreMutation = (template: TemplateSnapshot) =>
+	template.envelopeIds.length > 0 ? restoreRecurringWithPlan : restoreRecurring;
+
+export async function undoRemoveRecurring(caller: LedgerCaller, token: string) {
+	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
+	const restore = restoreOf(op, input);
+	await spendUndo(caller, token, () =>
+		applyWrite(caller, restoreMutation(restore.template), restore),
+	);
+	return readRecurring(caller, restore.template.id);
+}
+
+export function previewUndoRemoveRecurring(
+	caller: LedgerCaller,
+	token: string,
+) {
+	const { op, input } = readUndo(caller.principal.userId, FAMILY, token);
+	const restore = restoreOf(op, input);
+	return previewWrite(caller, restoreMutation(restore.template), restore);
 }
 
 // ── Confirm ─────────────────────────────────────────────────────────────────

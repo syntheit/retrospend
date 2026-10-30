@@ -26,7 +26,10 @@ describe("filterRecurring", () => {
 	});
 
 	it("splits by auto-pay", () => {
-		const on = filterRecurring(ITEMS, { ...NO_RECURRING_FILTER, autoPay: "on" });
+		const on = filterRecurring(ITEMS, {
+			...NO_RECURRING_FILTER,
+			autoPay: "on",
+		});
 		const off = filterRecurring(ITEMS, {
 			...NO_RECURRING_FILTER,
 			autoPay: "off",
@@ -36,7 +39,10 @@ describe("filterRecurring", () => {
 	});
 
 	it("keeps foreign templates only", () => {
-		const out = filterRecurring(ITEMS, { ...NO_RECURRING_FILTER, foreign: true });
+		const out = filterRecurring(ITEMS, {
+			...NO_RECURRING_FILTER,
+			foreign: true,
+		});
 		expect(out.map((i) => i.title)).toEqual(["Streamly"]);
 	});
 

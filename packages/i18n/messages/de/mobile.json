@@ -751,7 +751,13 @@
 			"netWorthChange_notLogged": "Änderung durch Nicht erfasst",
 			"netWorthChange_revaluation": "Änderung durch Kurse und Preise",
 			"netWorthChange_opened": "Änderung durch neue Konten",
-			"netWorthChange_closed": "Änderung durch geschlossene Konten"
+			"netWorthChange_closed": "Änderung durch geschlossene Konten",
+			"recurring_cost_out_month": "Wiederkehrende Kosten pro Monat",
+			"recurring_cost_in_month": "Wiederkehrendes Einkommen pro Monat",
+			"recurring_cost_out_quarter": "Wiederkehrende Kosten pro Quartal",
+			"recurring_cost_in_quarter": "Wiederkehrendes Einkommen pro Quartal",
+			"recurring_cost_out_year": "Wiederkehrende Kosten pro Jahr",
+			"recurring_cost_in_year": "Wiederkehrendes Einkommen pro Jahr"
 		},
 		"figuresInline": {
 			"budget_notPlannedYet": "Noch nicht verplant",
@@ -778,7 +784,13 @@
 			"netWorthChange_notLogged": "die Änderung durch Nicht erfasst",
 			"netWorthChange_revaluation": "die Änderung durch Kurse und Preise",
 			"netWorthChange_opened": "die Änderung durch neue Konten",
-			"netWorthChange_closed": "die Änderung durch geschlossene Konten"
+			"netWorthChange_closed": "die Änderung durch geschlossene Konten",
+			"recurring_cost_out_month": "wiederkehrende Kosten pro Monat",
+			"recurring_cost_in_month": "wiederkehrendes Einkommen pro Monat",
+			"recurring_cost_out_quarter": "wiederkehrende Kosten pro Quartal",
+			"recurring_cost_in_quarter": "wiederkehrendes Einkommen pro Quartal",
+			"recurring_cost_out_year": "wiederkehrende Kosten pro Jahr",
+			"recurring_cost_in_year": "wiederkehrendes Einkommen pro Jahr"
 		},
 		"debt": {
 			"label": "Schuldenfrei bis",
@@ -2235,7 +2247,7 @@
 		"error": "Wiederkehrende Ausgaben konnten nicht geladen werden",
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
 		"empty": "Keine wiederkehrenden Ausgaben",
-		"emptyDetail": "Füge Miete, Abos und andere Fixkosten im Web hinzu.",
+		"emptyDetail": "Füge Miete, Abos und andere Fixkosten hinzu.",
 		"autoPay": "Autozahlung",
 		"frequency": {
 			"weekly": "Wöchentlich",
@@ -2310,7 +2322,8 @@
 			"resumedToast": "{title} fortgesetzt",
 			"autoOnToast": "Autozahlung für {title} aktiviert",
 			"autoOffToast": "Autozahlung für {title} deaktiviert",
-			"error": "Änderung nicht möglich. Versuche es erneut."
+			"error": "Änderung nicht möglich. Versuche es erneut.",
+			"delete": "Löschen"
 		},
 		"count": "{count, plural, one {# wiederkehrende Ausgabe} other {# wiederkehrende Ausgaben}}",
 		"autoPayOn": "Autozahlung an",
@@ -2333,7 +2346,31 @@
 		},
 		"search": "Wiederkehrende Ausgaben suchen",
 		"foreign": "Fremdwährung",
-		"emptyFiltered": "Keine Treffer"
+		"emptyFiltered": "Keine Treffer",
+		"add": {
+			"title": "Wiederkehrende Ausgabe hinzufügen",
+			"name": "Name",
+			"namePlaceholder": "Miete, Streamly, Fitnessstudio",
+			"amount": "Betrag",
+			"category": "Kategorie",
+			"categoryNone": "Keine Kategorie",
+			"repeats": "Wiederholt sich",
+			"first": "Erste Fälligkeit",
+			"firstHint": "Die erste wird an diesem Datum erfasst.",
+			"submit": "Hinzufügen",
+			"toast": "{title} hinzugefügt"
+		},
+		"delete": {
+			"title": "{title} löschen",
+			"body": "Es taucht nicht mehr auf. Bereits erfasste Einträge bleiben.",
+			"future": "Künftige Fälligkeiten",
+			"futureValue": "Entfallen, nächste war {date}",
+			"autoPay": "Autozahlung",
+			"autoPayValue": "Endet",
+			"submit": "Löschen",
+			"toast": "{title} gelöscht",
+			"error": "Löschen hat nicht geklappt. Versuche es nochmal."
+		}
 	},
 	"shortcuts": {
 		"addExpense": "Ausgabe hinzufügen",

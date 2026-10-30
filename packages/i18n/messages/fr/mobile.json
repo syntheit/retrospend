@@ -751,7 +751,13 @@
 			"netWorthChange_notLogged": "Variation due au non enregistré",
 			"netWorthChange_revaluation": "Variation due aux taux et prix",
 			"netWorthChange_opened": "Variation due aux comptes ajoutés",
-			"netWorthChange_closed": "Variation due aux comptes clôturés"
+			"netWorthChange_closed": "Variation due aux comptes clôturés",
+			"recurring_cost_out_month": "Coût récurrent par mois",
+			"recurring_cost_in_month": "Revenu récurrent par mois",
+			"recurring_cost_out_quarter": "Coût récurrent par trimestre",
+			"recurring_cost_in_quarter": "Revenu récurrent par trimestre",
+			"recurring_cost_out_year": "Coût récurrent par an",
+			"recurring_cost_in_year": "Revenu récurrent par an"
 		},
 		"figuresInline": {
 			"budget_notPlannedYet": "Pas encore prévu",
@@ -778,7 +784,13 @@
 			"netWorthChange_notLogged": "la variation due au non enregistré",
 			"netWorthChange_revaluation": "la variation due aux taux et prix",
 			"netWorthChange_opened": "la variation due aux comptes ajoutés",
-			"netWorthChange_closed": "la variation due aux comptes clôturés"
+			"netWorthChange_closed": "la variation due aux comptes clôturés",
+			"recurring_cost_out_month": "coût récurrent par mois",
+			"recurring_cost_in_month": "revenu récurrent par mois",
+			"recurring_cost_out_quarter": "coût récurrent par trimestre",
+			"recurring_cost_in_quarter": "revenu récurrent par trimestre",
+			"recurring_cost_out_year": "coût récurrent par an",
+			"recurring_cost_in_year": "revenu récurrent par an"
 		},
 		"debt": {
 			"label": "Sans dette d'ici",
@@ -2235,7 +2247,7 @@
 		"error": "Impossible de charger les dépenses récurrentes",
 		"errorDetail": "Vérifie ta connexion et réessaie.",
 		"empty": "Aucune dépense récurrente",
-		"emptyDetail": "Ajoute loyer, abonnements et autres frais fixes sur le web.",
+		"emptyDetail": "Ajoute loyer, abonnements et autres frais fixes.",
 		"autoPay": "Paiement auto",
 		"frequency": {
 			"weekly": "Chaque semaine",
@@ -2310,7 +2322,8 @@
 			"resumedToast": "{title} repris",
 			"autoOnToast": "Paiement auto activé pour {title}",
 			"autoOffToast": "Paiement auto désactivé pour {title}",
-			"error": "Impossible de modifier. Réessaie."
+			"error": "Impossible de modifier. Réessaie.",
+			"delete": "Supprimer"
 		},
 		"count": "{count, plural, one {# dépense récurrente} other {# dépenses récurrentes}}",
 		"autoPayOn": "Paiement auto activé",
@@ -2333,7 +2346,31 @@
 		},
 		"search": "Rechercher des dépenses récurrentes",
 		"foreign": "Devise étrangère",
-		"emptyFiltered": "Aucun résultat"
+		"emptyFiltered": "Aucun résultat",
+		"add": {
+			"title": "Ajouter une dépense récurrente",
+			"name": "Nom",
+			"namePlaceholder": "Loyer, Streamly, Salle de sport",
+			"amount": "Montant",
+			"category": "Catégorie",
+			"categoryNone": "Aucune catégorie",
+			"repeats": "Se répète",
+			"first": "Première échéance",
+			"firstHint": "La première est enregistrée à cette date.",
+			"submit": "Ajouter",
+			"toast": "{title} ajouté"
+		},
+		"delete": {
+			"title": "Supprimer {title}",
+			"body": "Elle n'apparaît plus. Les opérations déjà enregistrées restent.",
+			"future": "Prochaines échéances",
+			"futureValue": "Arrêtées, la prochaine était le {date}",
+			"autoPay": "Paiement auto",
+			"autoPayValue": "Arrêté",
+			"submit": "Supprimer",
+			"toast": "{title} supprimée",
+			"error": "Impossible de supprimer. Réessaie."
+		}
 	},
 	"shortcuts": {
 		"addExpense": "Ajouter une dépense",

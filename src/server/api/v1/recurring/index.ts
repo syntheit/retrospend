@@ -23,6 +23,11 @@ export const recurringRouter = {
 			recurring.addRecurring(signedIn(context), input),
 		),
 	),
+	previewCreate: r.previewCreate.handler(
+		serve(({ context, input }) =>
+			recurring.previewAddRecurring(signedIn(context), input),
+		),
+	),
 	update: r.update.handler(
 		serve(({ context, input }) =>
 			recurring.changeRecurring(signedIn(context), input),
@@ -31,6 +36,21 @@ export const recurringRouter = {
 	delete: r.delete.handler(
 		serve(({ context, input }) =>
 			recurring.removeRecurring(signedIn(context), input.id),
+		),
+	),
+	previewDelete: r.previewDelete.handler(
+		serve(({ context, input }) =>
+			recurring.previewRemoveRecurring(signedIn(context), input.id),
+		),
+	),
+	undoDelete: r.undoDelete.handler(
+		serve(({ context, input }) =>
+			recurring.undoRemoveRecurring(signedIn(context), input.token),
+		),
+	),
+	previewUndoDelete: r.previewUndoDelete.handler(
+		serve(({ context, input }) =>
+			recurring.previewUndoRemoveRecurring(signedIn(context), input.token),
 		),
 	),
 	confirm: r.confirm.handler(

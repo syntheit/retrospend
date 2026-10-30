@@ -71,3 +71,18 @@ export function useConfirmUndo() {
 		[api],
 	);
 }
+
+/** Puts a deleted template back from its token, schedule and auto-pay included. */
+export function useDeleteUndo() {
+	const { api } = useSession();
+	return useCallback(
+		(token: string) => async () => {
+			if (!api) throw new Error("Signed out");
+			await api.recurring.undoDelete(
+				{ token },
+				{ context: { idempotencyKey: newClientId() } },
+			);
+		},
+		[api],
+	);
+}

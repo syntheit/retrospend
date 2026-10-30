@@ -751,7 +751,13 @@
 			"netWorthChange_notLogged": "Change from Not logged",
 			"netWorthChange_revaluation": "Change from rates and prices",
 			"netWorthChange_opened": "Change from accounts added",
-			"netWorthChange_closed": "Change from accounts closed"
+			"netWorthChange_closed": "Change from accounts closed",
+			"recurring_cost_out_month": "Recurring cost a month",
+			"recurring_cost_in_month": "Recurring income a month",
+			"recurring_cost_out_quarter": "Recurring cost a quarter",
+			"recurring_cost_in_quarter": "Recurring income a quarter",
+			"recurring_cost_out_year": "Recurring cost a year",
+			"recurring_cost_in_year": "Recurring income a year"
 		},
 		"figuresInline": {
 			"budget_notPlannedYet": "Not planned yet",
@@ -778,7 +784,13 @@
 			"netWorthChange_notLogged": "the change from Not logged",
 			"netWorthChange_revaluation": "the change from rates and prices",
 			"netWorthChange_opened": "the change from accounts added",
-			"netWorthChange_closed": "the change from accounts closed"
+			"netWorthChange_closed": "the change from accounts closed",
+			"recurring_cost_out_month": "recurring cost a month",
+			"recurring_cost_in_month": "recurring income a month",
+			"recurring_cost_out_quarter": "recurring cost a quarter",
+			"recurring_cost_in_quarter": "recurring income a quarter",
+			"recurring_cost_out_year": "recurring cost a year",
+			"recurring_cost_in_year": "recurring income a year"
 		},
 		"debt": {
 			"label": "Debt-free by",
@@ -2235,7 +2247,7 @@
 		"error": "Couldn't load recurring expenses",
 		"errorDetail": "Check your connection and try again.",
 		"empty": "No recurring expenses",
-		"emptyDetail": "Add rent, subscriptions and other fixed costs on the web.",
+		"emptyDetail": "Add rent, subscriptions and other fixed costs.",
 		"autoPay": "Auto-pay",
 		"frequency": {
 			"weekly": "Weekly",
@@ -2310,7 +2322,8 @@
 			"resumedToast": "{title} resumed",
 			"autoOnToast": "Auto-pay on for {title}",
 			"autoOffToast": "Auto-pay off for {title}",
-			"error": "Couldn't change it. Try again."
+			"error": "Couldn't change it. Try again.",
+			"delete": "Delete"
 		},
 		"count": "{count, plural, one {# recurring expense} other {# recurring expenses}}",
 		"autoPayOn": "Auto-pay on",
@@ -2333,7 +2346,31 @@
 		},
 		"search": "Search recurring expenses",
 		"foreign": "Foreign currency",
-		"emptyFiltered": "Nothing matches"
+		"emptyFiltered": "Nothing matches",
+		"add": {
+			"title": "Add recurring expense",
+			"name": "Name",
+			"namePlaceholder": "Rent, Streamly, Gym",
+			"amount": "Amount",
+			"category": "Category",
+			"categoryNone": "No category",
+			"repeats": "Repeats",
+			"first": "First due",
+			"firstHint": "The first one is logged on this date.",
+			"submit": "Add",
+			"toast": "{title} added"
+		},
+		"delete": {
+			"title": "Delete {title}",
+			"body": "It stops coming up. Entries it already logged stay.",
+			"future": "Future occurrences",
+			"futureValue": "Stop, next was {date}",
+			"autoPay": "Auto-pay",
+			"autoPayValue": "Stops",
+			"submit": "Delete",
+			"toast": "{title} deleted",
+			"error": "Couldn't delete it. Try again."
+		}
 	},
 	"shortcuts": {
 		"addExpense": "Add expense",

@@ -16,6 +16,9 @@ type EventName = EventType | ((value: unknown) => EventType);
 export const MUTATION_EVENTS: Readonly<Record<string, EventName>> = {
 	"import.commit": "import.finalized",
 	"import.undo": "import.undone",
+	"recurring.create": "recurring.created",
+	"recurring.delete": "recurring.deleted",
+	"recurring.restore": "recurring.undone",
 	"recurring.confirm": "recurring.confirmed",
 	"recurring.unconfirm": "recurring.undone",
 	"recurring.skip": "recurring.skipped",

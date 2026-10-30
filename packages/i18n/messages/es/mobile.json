@@ -751,7 +751,13 @@
 			"netWorthChange_notLogged": "Cambio por lo no registrado",
 			"netWorthChange_revaluation": "Cambio por tipos de cambio y precios",
 			"netWorthChange_opened": "Cambio por cuentas añadidas",
-			"netWorthChange_closed": "Cambio por cuentas cerradas"
+			"netWorthChange_closed": "Cambio por cuentas cerradas",
+			"recurring_cost_out_month": "Costo recurrente por mes",
+			"recurring_cost_in_month": "Ingreso recurrente por mes",
+			"recurring_cost_out_quarter": "Costo recurrente por trimestre",
+			"recurring_cost_in_quarter": "Ingreso recurrente por trimestre",
+			"recurring_cost_out_year": "Costo recurrente por año",
+			"recurring_cost_in_year": "Ingreso recurrente por año"
 		},
 		"figuresInline": {
 			"budget_notPlannedYet": "Sin planear aún",
@@ -778,7 +784,13 @@
 			"netWorthChange_notLogged": "el cambio por lo no registrado",
 			"netWorthChange_revaluation": "el cambio por tipos de cambio y precios",
 			"netWorthChange_opened": "el cambio por cuentas añadidas",
-			"netWorthChange_closed": "el cambio por cuentas cerradas"
+			"netWorthChange_closed": "el cambio por cuentas cerradas",
+			"recurring_cost_out_month": "costo recurrente por mes",
+			"recurring_cost_in_month": "ingreso recurrente por mes",
+			"recurring_cost_out_quarter": "costo recurrente por trimestre",
+			"recurring_cost_in_quarter": "ingreso recurrente por trimestre",
+			"recurring_cost_out_year": "costo recurrente por año",
+			"recurring_cost_in_year": "ingreso recurrente por año"
 		},
 		"debt": {
 			"label": "Sin deudas en",
@@ -2235,7 +2247,7 @@
 		"error": "No se pudieron cargar los gastos recurrentes",
 		"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
 		"empty": "Sin gastos recurrentes",
-		"emptyDetail": "Agrega alquiler, suscripciones y otros costos fijos en la web.",
+		"emptyDetail": "Agrega alquiler, suscripciones y otros costos fijos.",
 		"autoPay": "Pago automático",
 		"frequency": {
 			"weekly": "Semanal",
@@ -2310,7 +2322,8 @@
 			"resumedToast": "{title} reanudado",
 			"autoOnToast": "Pago automático activado para {title}",
 			"autoOffToast": "Pago automático desactivado para {title}",
-			"error": "No se pudo cambiar. Inténtalo de nuevo."
+			"error": "No se pudo cambiar. Inténtalo de nuevo.",
+			"delete": "Eliminar"
 		},
 		"count": "{count, plural, one {# gasto recurrente} other {# gastos recurrentes}}",
 		"autoPayOn": "Pago automático activado",
@@ -2333,7 +2346,31 @@
 		},
 		"search": "Buscar gastos recurrentes",
 		"foreign": "Moneda extranjera",
-		"emptyFiltered": "Nada coincide"
+		"emptyFiltered": "Nada coincide",
+		"add": {
+			"title": "Agregar gasto recurrente",
+			"name": "Nombre",
+			"namePlaceholder": "Alquiler, Streamly, Gimnasio",
+			"amount": "Monto",
+			"category": "Categoría",
+			"categoryNone": "Sin categoría",
+			"repeats": "Se repite",
+			"first": "Primer vencimiento",
+			"firstHint": "El primero se registra en esta fecha.",
+			"submit": "Agregar",
+			"toast": "{title} agregado"
+		},
+		"delete": {
+			"title": "Eliminar {title}",
+			"body": "Deja de aparecer. Los movimientos que ya registró se quedan.",
+			"future": "Próximas veces",
+			"futureValue": "Se detienen, la próxima era el {date}",
+			"autoPay": "Pago automático",
+			"autoPayValue": "Se detiene",
+			"submit": "Eliminar",
+			"toast": "{title} eliminado",
+			"error": "No se pudo eliminar. Intenta de nuevo."
+		}
 	},
 	"shortcuts": {
 		"addExpense": "Añadir gasto",

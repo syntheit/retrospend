@@ -751,7 +751,13 @@
 			"netWorthChange_notLogged": "Изменение из-за «Не учтено»",
 			"netWorthChange_revaluation": "Изменение из-за курсов и цен",
 			"netWorthChange_opened": "Изменение из-за добавленных счетов",
-			"netWorthChange_closed": "Изменение из-за закрытых счетов"
+			"netWorthChange_closed": "Изменение из-за закрытых счетов",
+			"recurring_cost_out_month": "Регулярные расходы в месяц",
+			"recurring_cost_in_month": "Регулярный доход в месяц",
+			"recurring_cost_out_quarter": "Регулярные расходы в квартал",
+			"recurring_cost_in_quarter": "Регулярный доход в квартал",
+			"recurring_cost_out_year": "Регулярные расходы в год",
+			"recurring_cost_in_year": "Регулярный доход в год"
 		},
 		"figuresInline": {
 			"budget_notPlannedYet": "Ещё не запланировано",
@@ -778,7 +784,13 @@
 			"netWorthChange_notLogged": "изменение из-за «Не учтено»",
 			"netWorthChange_revaluation": "изменение из-за курсов и цен",
 			"netWorthChange_opened": "изменение из-за добавленных счетов",
-			"netWorthChange_closed": "изменение из-за закрытых счетов"
+			"netWorthChange_closed": "изменение из-за закрытых счетов",
+			"recurring_cost_out_month": "регулярные расходы в месяц",
+			"recurring_cost_in_month": "регулярный доход в месяц",
+			"recurring_cost_out_quarter": "регулярные расходы в квартал",
+			"recurring_cost_in_quarter": "регулярный доход в квартал",
+			"recurring_cost_out_year": "регулярные расходы в год",
+			"recurring_cost_in_year": "регулярный доход в год"
 		},
 		"debt": {
 			"label": "Без долгов к",
@@ -2235,7 +2247,7 @@
 		"error": "Не удалось загрузить регулярные расходы",
 		"errorDetail": "Проверьте соединение и попробуйте снова.",
 		"empty": "Регулярных расходов нет",
-		"emptyDetail": "Добавьте аренду, подписки и другие постоянные расходы в вебе.",
+		"emptyDetail": "Добавьте аренду, подписки и другие постоянные расходы.",
 		"autoPay": "Автоплатёж",
 		"frequency": {
 			"weekly": "Еженедельно",
@@ -2310,7 +2322,8 @@
 			"resumedToast": "«{title}» возобновлено",
 			"autoOnToast": "Автоплатёж включён: {title}",
 			"autoOffToast": "Автоплатёж выключен: {title}",
-			"error": "Не удалось изменить. Попробуйте снова."
+			"error": "Не удалось изменить. Попробуйте снова.",
+			"delete": "Удалить"
 		},
 		"count": "{count, plural, one {# регулярный расход} few {# регулярных расхода} many {# регулярных расходов} other {# регулярного расхода}}",
 		"autoPayOn": "Автоплатёж включён",
@@ -2333,7 +2346,31 @@
 		},
 		"search": "Поиск регулярных расходов",
 		"foreign": "Иностранная валюта",
-		"emptyFiltered": "Ничего не найдено"
+		"emptyFiltered": "Ничего не найдено",
+		"add": {
+			"title": "Добавить регулярный расход",
+			"name": "Название",
+			"namePlaceholder": "Аренда, Streamly, Спортзал",
+			"amount": "Сумма",
+			"category": "Категория",
+			"categoryNone": "Без категории",
+			"repeats": "Повторяется",
+			"first": "Первый платёж",
+			"firstHint": "Первый записывается в эту дату.",
+			"submit": "Добавить",
+			"toast": "{title}: добавлено"
+		},
+		"delete": {
+			"title": "Удалить: {title}",
+			"body": "Расход больше не появится. Уже записанные операции останутся.",
+			"future": "Будущие платежи",
+			"futureValue": "Остановятся, следующий был {date}",
+			"autoPay": "Автоплатёж",
+			"autoPayValue": "Остановится",
+			"submit": "Удалить",
+			"toast": "{title}: удалено",
+			"error": "Не удалось удалить. Попробуйте ещё раз."
+		}
 	},
 	"shortcuts": {
 		"addExpense": "Добавить расход",

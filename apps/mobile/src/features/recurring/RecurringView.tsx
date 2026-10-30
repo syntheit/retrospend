@@ -3,6 +3,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
@@ -21,7 +22,9 @@ import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
 import { SwipeRow } from "@/ui/SwipeRow";
 import { Text } from "@/ui/Text";
+import { AddRecurringSheet } from "./AddRecurringSheet";
 import { ConfirmSheet, useDayText } from "./ConfirmSheet";
+import { DeleteRecurringSheet } from "./DeleteRecurringSheet";
 import {
 	filterRecurring,
 	isRecurringFiltered,
@@ -79,11 +82,13 @@ function Row({
 	onDetails,
 	onConfirm,
 	onSkip,
+	onDelete,
 }: {
 	item: RecurringItem;
 	onDetails: () => void;
 	onConfirm: () => void;
 	onSkip: () => void;
+	onDelete: () => void;
 }) {
 	const t = useTranslations("mobile.recurring");
 	const money = useMoneyText();
@@ -131,7 +136,31 @@ function Row({
 	) : (
 		row
 	);
-	if (!due) return shown;
+	const remove = {
+		id: "delete",
+		label: t("delete.submit"),
+		onPress: onDelete,
+		destructive: true,
+	};
+	// One that is not due swipes left to Delete; a tap opens its details.
+	if (!due)
+		return (
+			<SwipeRow
+				menu={[
+					{ id: "details", label: t("details"), onPress: onDetails },
+					remove,
+				]}
+				menuTitle={item.title}
+				onPress={onDetails}
+				trailing={{
+					label: t("delete.submit"),
+					onPress: onDelete,
+					tone: "danger",
+				}}
+			>
+				{shown}
+			</SwipeRow>
+		);
 	// A due one swipes right to Confirm and left to Skip; a tap opens Confirm,
 	// a long press the menu.
 	return (
@@ -145,6 +174,7 @@ function Row({
 				{ id: "confirm", label: t("confirm.submit"), onPress: onConfirm },
 				{ id: "skip", label: t("confirm.skip"), onPress: onSkip },
 				{ id: "details", label: t("details"), onPress: onDetails },
+				remove,
 			]}
 			menuTitle={item.title}
 			onPress={onConfirm}
@@ -221,11 +251,13 @@ function Groups({
 	onDetails,
 	onConfirm,
 	onSkip,
+	onDelete,
 }: {
 	groups: RecurringGroup[];
 	onDetails: (item: RecurringItem) => void;
 	onConfirm: (item: RecurringItem) => void;
 	onSkip: (item: RecurringItem) => void;
+	onDelete: (item: RecurringItem) => void;
 }) {
 	const t = useTranslations("mobile.recurring.groups");
 	return (
@@ -242,6 +274,7 @@ function Groups({
 								item={item}
 								key={item.id}
 								onConfirm={() => onConfirm(item)}
+								onDelete={() => onDelete(item)}
 								onDetails={() => onDetails(item)}
 								onSkip={() => onSkip(item)}
 							/>
@@ -281,20 +314,29 @@ function Logged({ data }: { data: RecurringData }) {
  * grouped by due date, and what auto-pay logged this month. A due item
  * confirms (tap, swipe right, long press) or skips (swipe left, long press);
  * any other opens its details
- * (auto-pay, pause). Adding and editing a template are on the web for now.
+ * (auto-pay, pause, Delete). Delete is also the left swipe of a row that is
+ * not due and in every row's menu; it opens the delete sheet. Adding opens the add sheet (the + in the top bar, or the
+ * empty state); editing a template is on the web for now.
  * The count sits under the title, then the segments, the search and the chips.
  * `embedded` is Activity's Recurring segment: Activity owns the title and the
  * search (`query`), and `header` is the segmented control that stays above the
- * list.
+ * list; its owner draws the + (it passes `adding` and `onAdd` to open the
+ * add sheet, `onAddClose` to close it).
  */
 export function RecurringView({
 	embedded = false,
 	header,
 	query = "",
+	adding = false,
+	onAdd,
+	onAddClose,
 }: {
 	embedded?: boolean;
 	header?: ReactNode;
 	query?: string;
+	adding?: boolean;
+	onAdd?: () => void;
+	onAddClose?: () => void;
 }) {
 	const t = useTranslations("mobile.recurring");
 	const tc = useTranslations("mobile.common");
@@ -305,20 +347,46 @@ export function RecurringView({
 	const [confirming, setConfirming] = useState<RecurringItem | null>(null);
 	const [skipping, setSkipping] = useState<RecurringItem | null>(null);
 	const [detail, setDetail] = useState<RecurringItem | null>(null);
+	const [deleting, setDeleting] = useState<RecurringItem | null>(null);
+	const [ownAdding, setOwnAdding] = useState(false);
+	const isAdding = embedded ? adding : ownAdding;
+	const openAdd = embedded ? (onAdd ?? (() => {})) : () => setOwnAdding(true);
+	const closeAdd = embedded
+		? (onAddClose ?? (() => {}))
+		: () => setOwnAdding(false);
 
 	const [chips, setChips] = useState<RecurringFilter>(NO_RECURRING_FILTER);
 	const [own, setOwn] = useState("");
 	const filter = { ...chips, q: embedded ? query : own };
 
 	const title = embedded ? null : (
-		<Stack.Screen
-			options={{
-				title: t("title"),
-				headerSearchBarOptions: {
-					placeholder: t("search"),
-					onChangeText: (event) => setOwn(event.nativeEvent.text),
-				},
-			}}
+		<>
+			<AccountTopBar
+				actions={[
+					{
+						id: "add-recurring",
+						icon: "Plus",
+						label: t("add.title"),
+						onPress: openAdd,
+					},
+				]}
+				title={t("title")}
+			/>
+			<Stack.Screen
+				options={{
+					headerSearchBarOptions: {
+						placeholder: t("search"),
+						onChangeText: (event) => setOwn(event.nativeEvent.text),
+					},
+				}}
+			/>
+		</>
+	);
+	const addSheet = (
+		<AddRecurringSheet
+			onClose={closeAdd}
+			onDone={() => void reload()}
+			visible={isAdding}
 		/>
 	);
 	if (state.status !== "ready" || state.data.items.length === 0) {
@@ -333,13 +401,14 @@ export function RecurringView({
 						<SkeletonRows count={4} />
 					) : (
 						<EmptyState
-							actionLabel={failed ? tc("retry") : undefined}
+							actionLabel={failed ? tc("retry") : t("add.title")}
 							detail={failed ? t("errorDetail") : t("emptyDetail")}
-							onAction={failed ? () => void reload() : undefined}
+							onAction={failed ? () => void reload() : openAdd}
 							title={failed ? t("error") : t("empty")}
 						/>
 					)}
 				</Screen>
+				{addSheet}
 			</>
 		);
 	}
@@ -365,6 +434,7 @@ export function RecurringView({
 					<Groups
 						groups={groups}
 						onConfirm={setConfirming}
+						onDelete={setDeleting}
 						onDetails={setDetail}
 						onSkip={setSkipping}
 					/>
@@ -396,10 +466,23 @@ export function RecurringView({
 				<ItemSheet
 					item={detail}
 					onClose={() => setDetail(null)}
+					onDelete={() => {
+						setDeleting(detail);
+						setDetail(null);
+					}}
 					onDone={() => void reload()}
 					visible
 				/>
 			) : null}
+			{deleting ? (
+				<DeleteRecurringSheet
+					item={deleting}
+					onClose={() => setDeleting(null)}
+					onDone={() => void reload()}
+					visible
+				/>
+			) : null}
+			{addSheet}
 		</>
 	);
 }

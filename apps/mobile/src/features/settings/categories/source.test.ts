@@ -11,6 +11,7 @@ const food: Category = {
 	name: "Food",
 	color: "emerald",
 	icon: null,
+	kind: "expense",
 	tone: 1,
 	excludeByDefault: false,
 	expenseCount: 3,

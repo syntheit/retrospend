@@ -70,3 +70,8 @@ export const recurringFigures: readonly FigureDefinition[] = [
 	recurringAmount,
 	...costFigures,
 ];
+
+/** The six cost figures, for the mutations that add, remove or restore a template. */
+export const RECURRING_COST_FIGURES: readonly string[] = DIRECTIONS.flatMap(
+	(dir) => PERIODS.map((period) => `recurring.cost.${dir}.${period}`),
+);

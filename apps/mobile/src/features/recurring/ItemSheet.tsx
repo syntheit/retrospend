@@ -23,11 +23,14 @@ export function ItemSheet({
 	visible,
 	onClose,
 	onDone,
+	onDelete,
 }: {
 	item: RecurringItem;
 	visible: boolean;
 	onClose: () => void;
 	onDone: () => void;
+	/** Opens the delete sheet, which says what stops before anything goes. */
+	onDelete: () => void;
 }) {
 	const t = useTranslations("mobile.recurring.item");
 	const { api } = useSession();
@@ -104,6 +107,12 @@ export function ItemSheet({
 						label={item.paused ? t("resume") : t("pause")}
 						onPress={() => change({ paused: !item.paused })}
 						variant="outlined"
+					/>
+					<Button
+						disabled={busy}
+						label={t("delete")}
+						onPress={onDelete}
+						variant="dangerText"
 					/>
 				</View>
 			</SheetBody>
