@@ -1,10 +1,9 @@
 import { StyleSheet } from "react-native";
-import { SwitchRow, switchHostStyle } from "./SwitchRow";
+import { SwitchRow } from "./SwitchRow";
 
 // Send feedback drew the label and its long detail sentence but no switch:
-// the switch's host matched its contents, so it had no width until the native
-// control reported one and the label's flex took the whole row. The host is a
-// fixed box that keeps its room from the first frame.
+// the label's flex took the whole row. The detail now sits under the row, so
+// the row holds only the label and the switch, and the host cannot shrink.
 const renderer = require("react-test-renderer");
 const { act, create } = renderer;
 
@@ -29,17 +28,27 @@ jest.mock("@expo/ui", () => {
 interface Node {
 	type: unknown;
 	props: Record<string, unknown>;
+	parent: Node | null;
 	findAll(match: (node: Node) => boolean): Node[];
 }
 
+/** The View the host sits in: the nearest host component above it. */
+function hostRow(from: Node): Node {
+	let node = from.parent as Node;
+	while (typeof node.type !== "string") node = node.parent as Node;
+	return node;
+}
+
+const DETAIL =
+	"Adds the app version, your phone model, and recent errors so a bug is easier to find.";
+
 describe("SwitchRow", () => {
-	it("keeps the switch host from shrinking to nothing next to a long detail", () => {
-		const { size } = require("@retrospend/tokens/theme").light;
+	it("draws the switch in a row of its own, with the detail under the row", () => {
 		let tree!: { root: Node; unmount(): void };
 		act(() => {
 			tree = create(
 				<SwitchRow
-					detail="Adds the app version, your phone model, and recent errors so a bug is easier to find."
+					detail={DETAIL}
 					label="Include diagnostics"
 					onChange={() => undefined}
 					value={false}
@@ -48,18 +57,33 @@ describe("SwitchRow", () => {
 		});
 		const host = tree.root.findAll((n) => n.type === "NativeHostView")[0];
 		const style = StyleSheet.flatten(host?.props.style as never);
-		expect(host?.props.matchContents).toBe(false);
 		expect(style.flexShrink).toBe(0);
-		expect(style.width).toBeGreaterThanOrEqual(size.touchMin.phone);
-		expect(style.height).toBeGreaterThan(0);
 		expect(tree.root.findAll((n) => n.type === "NativeSwitch")).toHaveLength(1);
+		const hasDetail = (n: Node) => n.props.children === DETAIL;
+		const row = hostRow(host as Node);
+		expect(StyleSheet.flatten(row.props.style as never).flexDirection).toBe(
+			"row",
+		);
+		expect(row.findAll(hasDetail)).toHaveLength(0);
+		expect(tree.root.findAll(hasDetail).length).toBeGreaterThan(0);
 		act(() => tree.unmount());
 	});
 
-	it("gives the host a width and a height without waiting for the control", () => {
-		const style = switchHostStyle();
-		expect(style.flexShrink).toBe(0);
-		expect(style.width).toBeGreaterThan(0);
-		expect(style.height).toBeGreaterThan(0);
+	it("lets the label column shrink so the switch keeps its place", () => {
+		let tree!: { root: Node; unmount(): void };
+		act(() => {
+			tree = create(
+				<SwitchRow label="Auto-pay" onChange={() => undefined} value={false} />,
+			);
+		});
+		const host = tree.root.findAll((n) => n.type === "NativeHostView")[0];
+		const row = hostRow(host as Node);
+		const column = row.findAll(
+			(n) =>
+				typeof n.type === "string" &&
+				StyleSheet.flatten(n.props.style as never)?.minWidth === 0,
+		);
+		expect(column.length).toBeGreaterThan(0);
+		act(() => tree.unmount());
 	});
 });
