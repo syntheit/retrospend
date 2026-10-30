@@ -7,7 +7,9 @@ import { useTheme } from "@/theme";
  * Hosts Expo UI controls (SwiftUI on iOS, Jetpack Compose on Android). The
  * seed is the brand color (primary buttons are brand, GUIDELINE §2.1), so
  * Compose builds its Material 3 scheme from the tokens and never from the
- * wallpaper (no dynamic color in v1).
+ * wallpaper (no dynamic color in v1). The seed still tints the containers
+ * Compose draws on its own, so a control with a selected or on state gets
+ * explicit token colors from m3Colors.
  *
  * By default the host matches its contents: its size in the row comes from
  * the native control, reported after the first native layout and written

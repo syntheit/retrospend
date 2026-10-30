@@ -1,7 +1,7 @@
-import { Switch } from "@expo/ui";
 import { View } from "react-native";
 import { useTheme } from "@/theme";
 import { NativeHost } from "./NativeHost";
+import { NativeSwitch } from "./NativeSwitch";
 import { Text } from "./Text";
 
 /**
@@ -42,7 +42,7 @@ export function SwitchRow({
 					<Text>{label}</Text>
 				</View>
 				<NativeHost style={{ flexShrink: 0, marginEnd: space[1] }}>
-					<Switch disabled={disabled} onValueChange={onChange} value={value} />
+					<NativeSwitch disabled={disabled} onChange={onChange} value={value} />
 				</NativeHost>
 			</View>
 			{detail ? (

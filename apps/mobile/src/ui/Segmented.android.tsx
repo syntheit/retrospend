@@ -11,6 +11,7 @@ import {
 } from "@expo/ui/jetpack-compose/modifiers";
 import { useColorScheme } from "react-native";
 import { useTheme } from "@/theme";
+import { segmentedColors } from "./m3Colors";
 import type { SegmentedProps } from "./types";
 
 /**
@@ -27,6 +28,7 @@ export function Segmented<T extends string>({
 }: SegmentedProps<T>) {
 	const { color } = useTheme();
 	const scheme = useColorScheme();
+	const colors = segmentedColors(color);
 	return (
 		<Host
 			colorScheme={scheme === "dark" || scheme === "light" ? scheme : undefined}
@@ -42,6 +44,7 @@ export function Segmented<T extends string>({
 			>
 				{options.map((option) => (
 					<SegmentedButton
+						colors={colors}
 						key={option.value}
 						// Equal shares of the row, as the iOS segments are.
 						modifiers={[weight(1)]}
