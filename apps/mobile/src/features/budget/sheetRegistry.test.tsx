@@ -141,9 +141,7 @@ describe("sheet registry", () => {
 
 	it("rests short tasks at medium and long forms at large", () => {
 		const medium = SHEET_KINDS.filter((k) => SHEETS[k].detent === "medium");
-		expect(medium.sort()).toEqual(
-			["income", "owed", "takeBack", "whatIf"].sort(),
-		);
+		expect(medium.sort()).toEqual(["owed", "takeBack", "whatIf"].sort());
 	});
 });
 

@@ -62,8 +62,7 @@ export function IncomeFields({
 					))}
 				</View>
 			) : null}
-			<SectionHeader title={t("details")} />
-			<View style={{ paddingHorizontal: space[4] }}>
+			<View style={{ paddingHorizontal: space[4], paddingTop: space[2] }}>
 				<TextField
 					autoCapitalize="sentences"
 					label={t("note")}

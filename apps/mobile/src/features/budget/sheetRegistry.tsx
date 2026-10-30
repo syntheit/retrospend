@@ -90,7 +90,7 @@ export const SHEETS: Record<SheetKind, SheetEntry> = {
 		component: (p) => <ReconcileSheet {...p} />,
 	},
 	income: {
-		detent: "medium",
+		detent: "large",
 		component: (p) => <IncomeSheet {...p} />,
 	},
 	rules: {

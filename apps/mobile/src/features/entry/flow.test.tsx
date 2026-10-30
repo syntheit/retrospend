@@ -885,7 +885,7 @@ describe("Details", () => {
 		press(tree, "Cafe");
 		for (const key of ["9", "0", "0"]) press(tree, key);
 		// Details and the options are always shown on the main step, with no toggle.
-		expect(words(tree)).toContain("Details");
+		expect(words(tree)).toContain("Spread over");
 		expect(words(tree)).toContain("Exclude from spending");
 		type(tree, "Note", "with the team");
 		type(tree, "Location", "Cafe Tortoni");

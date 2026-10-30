@@ -78,6 +78,13 @@ interface SheetProps {
 	 * it read as cards, the way iOS groups a form. Default: the surface.
 	 */
 	grouped?: boolean;
+	/**
+	 * A sheet that steps through screens inside itself: the way back to the
+	 * previous one, drawn as the chevron at the header's start (the way a
+	 * navigation bar draws Back). Needs `backLabel` for screen readers.
+	 */
+	onBack?: () => void;
+	backLabel?: string;
 	children: ReactNode;
 }
 
@@ -120,6 +127,31 @@ function DismissItem({
 	);
 }
 
+/** The header's back item: a chevron, 28 high with a hit slop to the 44 point target. */
+function BackItem({ label, onPress }: { label: string; onPress: () => void }) {
+	const { color, size, space } = useTheme();
+	return (
+		<Pressable
+			accessibilityLabel={label}
+			accessibilityRole="button"
+			hitSlop={space[2]}
+			onPress={onPress}
+			style={({ pressed }) => ({
+				width: size.ctlSm.phone,
+				height: size.ctlSm.phone,
+				alignItems: "center",
+				justifyContent: "center",
+				borderRadius: size.ctlSm.phone / 2,
+				backgroundColor: pressed ? color.raised : "transparent",
+			})}
+		>
+			<View style={{ transform: [{ rotate: "180deg" }] }}>
+				<Glyph color={color.brand} name="ChevronRight" size={size.icon.phone} />
+			</View>
+		</Pressable>
+	);
+}
+
 /**
  * The platform sheet: a SwiftUI sheet with detents on iOS (glass at partial
  * detents comes from the system), an M3 modal bottom sheet on Android (back
@@ -135,6 +167,8 @@ export function Sheet({
 	dismiss,
 	footer,
 	grouped = false,
+	onBack,
+	backLabel,
 	children,
 }: SheetProps) {
 	const { color, space } = useTheme();
@@ -179,6 +213,9 @@ export function Sheet({
 				<View
 					style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}
 				>
+					{onBack && backLabel ? (
+						<BackItem label={backLabel} onPress={onBack} />
+					) : null}
 					<Text
 						accessibilityRole="header"
 						numberOfLines={1}
