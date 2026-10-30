@@ -105,8 +105,9 @@ describe("Flex buckets", () => {
 				(n.props.accessibilityLabel as string).startsWith("Bills, ") &&
 				typeof n.props.onPress === "function",
 		)[0];
+		const press = bucket?.props.onPress as () => void;
 		act(() => {
-			(bucket as { props: { onPress: () => void } }).props.onPress();
+			press();
 		});
 		const after = labels(tree);
 		expect(after.some((l) => l.startsWith("Rent"))).toBe(true);
@@ -180,8 +181,9 @@ describe("Notice", () => {
 				n.props.accessibilityLabel === "Use my plan" &&
 				typeof n.props.onPress === "function",
 		)[0];
+		const usePlan = button?.props.onPress as () => void;
 		act(() => {
-			(button as { props: { onPress: () => void } }).props.onPress();
+			usePlan();
 		});
 		expect(ran).toEqual(["plan"]);
 	});

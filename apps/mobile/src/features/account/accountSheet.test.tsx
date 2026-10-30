@@ -131,9 +131,9 @@ describe("account sheet", () => {
 			});
 			const scrolls = tree.root.findAllByType(ScrollView);
 			expect(scrolls).toHaveLength(1);
-			const inside = scrolls[0]
-				.findAll((n) => n.props.children === "signOut")
-				.concat(scrolls[0].findAll((n) => n.props.children === "version"));
+			const [scroll] = scrolls;
+			const inside = (scroll?.findAll((n) => n.props.children === "signOut") ?? [])
+				.concat(scroll?.findAll((n) => n.props.children === "version") ?? []);
 			expect(inside.length).toBeGreaterThan(0);
 		} finally {
 			Platform.OS = was;

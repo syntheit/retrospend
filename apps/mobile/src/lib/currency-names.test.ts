@@ -27,7 +27,11 @@ describe("localCurrencyName", () => {
 		delete Intl.DisplayNames;
 	});
 	afterEach(() => {
-		Intl.DisplayNames = displayNames;
+		Object.defineProperty(Intl, "DisplayNames", {
+			configurable: true,
+			writable: true,
+			value: displayNames,
+		});
 	});
 
 	it("names currencies in the app language without Intl.DisplayNames", () => {

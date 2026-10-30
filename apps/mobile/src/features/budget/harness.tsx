@@ -7,6 +7,7 @@ const renderer = require("react-test-renderer");
 const { act } = renderer;
 
 export interface TestNode {
+	type: unknown;
 	props: Record<string, unknown>;
 	findAll(match: (node: TestNode) => boolean): TestNode[];
 }

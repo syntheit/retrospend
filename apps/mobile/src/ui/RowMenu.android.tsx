@@ -2,7 +2,7 @@ import { Box, DropdownMenu } from "@expo/ui/jetpack-compose";
 import { size as sized } from "@expo/ui/jetpack-compose/modifiers";
 import { AndroidHaptics, performAndroidHapticsAsync } from "expo-haptics";
 import { useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import { type HostInstance, Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { DropdownItems } from "./DropdownItems";
 import { NativeHost } from "./NativeHost";
@@ -24,7 +24,7 @@ export const LONG_PRESS_MS = 400;
 export function RowMenu({ items, children, onPress }: RowMenuProps) {
 	const { color } = useTheme();
 	const [at, setAt] = useState<{ x: number; y: number } | null>(null);
-	const row = useRef<View>(null);
+	const row = useRef<HostInstance>(null);
 	const close = () => setAt(null);
 	useTransient(at === null ? null : close);
 	return (

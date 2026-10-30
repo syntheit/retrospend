@@ -4,10 +4,10 @@ import {
 	ExposedDropdownMenu,
 	ExposedDropdownMenuBox,
 	TextField,
-	type TextFieldRef,
+	useNativeState,
 } from "@expo/ui/jetpack-compose";
 import { menuAnchor } from "@expo/ui/jetpack-compose/modifiers";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "@/theme";
 import { dropdownFieldColors } from "./m3Colors";
 
@@ -27,20 +27,20 @@ export function NativeDropdown({
 }) {
 	const { color } = useTheme();
 	const [expanded, setExpanded] = useState(false);
-	const field = useRef<TextFieldRef>(null);
 	const shown = options.find((o) => o.value === value)?.label ?? "";
-	// The anchor field is uncontrolled: push the label when it changes.
+	// The field's text lives in native state (TextField has no defaultValue
+	// prop): start at the label and push it when it changes.
+	const text = useNativeState(shown);
 	useEffect(() => {
-		field.current?.setText(shown);
-	}, [shown]);
+		text.set(shown);
+	}, [shown, text]);
 	return (
 		<ExposedDropdownMenuBox expanded={expanded} onExpandedChange={setExpanded}>
 			<TextField
 				colors={dropdownFieldColors(color)}
-				defaultValue={shown}
 				modifiers={[menuAnchor()]}
 				readOnly
-				ref={field}
+				value={text}
 			/>
 			<ExposedDropdownMenu
 				containerColor={color.raised}
