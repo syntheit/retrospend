@@ -194,8 +194,9 @@ private enum TabSidebar {
     }
   }
 
-  /// HIG: the sidebar can start open where there is room. Only at launch and
-  /// only in landscape; after that the person's toggle decides.
+  /// HIG: the sidebar can start open where there is room: a regular width
+  /// window, in portrait or landscape. Only at launch; after that the
+  /// person's toggle decides.
   @available(iOS 26.1, *)
   private static func openSidebarIfLandscape(_ controller: UITabBarController?) {
     guard let controller, state.takeOpenAtLaunch() else { return }
@@ -206,9 +207,7 @@ private enum TabSidebar {
         controller.view.window?.windowScene
         ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
       guard let scene else { return }
-      if scene.traitCollection.horizontalSizeClass == .regular,
-        scene.effectiveGeometry.interfaceOrientation.isLandscape
-      {
+      if scene.traitCollection.horizontalSizeClass == .regular {
         controller.sidebar.isHidden = false
       }
     }

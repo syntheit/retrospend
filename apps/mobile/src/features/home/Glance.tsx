@@ -9,10 +9,9 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
-import { LinkButton } from "@/ui/List";
 import { Text } from "@/ui/Text";
-import { useHomeDates } from "./dates";
 import { BudgetCard } from "./BudgetCard";
+import { useHomeDates } from "./dates";
 import { HomeCard } from "./HomeCard";
 import { HomeTile, TileNote } from "./HomeTile";
 import {
@@ -56,10 +55,11 @@ const isZero = (value: Figure) => value !== null && value.minor === 0;
 
 /**
  * Home's glance as summary cards (home.html, phone A): the Spent hero card
- * (as the web leads), the budget card, then four doorways, two to a row:
- * what is not planned yet, Owed to you with faces, Dollar today, Net worth.
- * Every number is the server's figure; a tile opens its page, and one with
- * nothing to show is left out.
+ * (as the web leads), the budget card, then up to four doorways, two to a
+ * row: what is not planned yet, Owed to you with faces, Dollar today, Net
+ * worth. A last tile on its own row fills the width. Insights opens from the
+ * Spent card. Every number is the server's figure; a tile opens its page, and
+ * one with nothing to show is left out.
  */
 export function Glance({
 	glance,
@@ -198,6 +198,7 @@ export function Glance({
 				spoken={`${t("netWorth")}, ${worth ? format(worth) : noRate}`}
 			>
 				<TileFigure value={worth} />
+				<TileNote>{t("tile.netWorthNote")}</TileNote>
 			</HomeTile>,
 		);
 	}
@@ -206,24 +207,17 @@ export function Glance({
 	for (let i = 0; i < tiles.length; i += 2) rows.push(tiles.slice(i, i + 2));
 
 	return (
-		<>
-			<View style={{ paddingHorizontal: space[4], gap: space[3] }}>
-				<HomeCard glance={glance} />
-				<BudgetCard glance={glance} />
-				{rows.map((row) => (
-					<View
-						key={isValidElement(row[0]) ? row[0].key : "row"}
-						style={{ flexDirection: "row", gap: space[3] }}
-					>
-						{row}
-						{row.length === 1 ? <View style={{ flex: 1 }} /> : null}
-					</View>
-				))}
-			</View>
-			<LinkButton
-				label={t("insights")}
-				onPress={() => router.push("/home/insights")}
-			/>
-		</>
+		<View style={{ paddingHorizontal: space[4], gap: space[3] }}>
+			<HomeCard glance={glance} />
+			<BudgetCard glance={glance} />
+			{rows.map((row) => (
+				<View
+					key={isValidElement(row[0]) ? row[0].key : "row"}
+					style={{ flexDirection: "row", gap: space[3] }}
+				>
+					{row}
+				</View>
+			))}
+		</View>
 	);
 }

@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { SearchBarCommands } from "react-native-screens";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
+import { EmptyState } from "./EmptyState";
 import { PaneSearch } from "./PaneBar";
 
 const LIST_WIDTH = 360;
@@ -18,6 +19,17 @@ const SidesCleared = createContext(false);
 
 export function useSidesCleared(): boolean {
 	return useContext(SidesCleared);
+}
+
+/**
+ * True inside the list pane's bar of a list-detail pair. Only there does a top
+ * bar draw its own PaneBar and hide the native one; a tab screen that is not
+ * a pair (Home, Budget) keeps the native large title on a wide window too.
+ */
+const InPair = createContext(false);
+
+export function useInPair(): boolean {
+	return useContext(InPair);
 }
 
 /**
@@ -73,7 +85,7 @@ export function ListDetail({
 					borderRightColor: color.line,
 				}}
 			>
-				{bar}
+				<InPair.Provider value>{bar}</InPair.Provider>
 				{search ? (
 					<PaneSearch
 						onChange={search.onChange}
@@ -88,5 +100,14 @@ export function ListDetail({
 				<View style={{ flex: 1 }}>{detail}</View>
 			</SidesCleared.Provider>
 		</SafeAreaView>
+	);
+}
+
+/** The detail pane before a row is picked: one centered line. */
+export function EmptyDetail({ title }: { title: string }) {
+	return (
+		<View style={{ flex: 1, justifyContent: "center" }}>
+			<EmptyState title={title} />
+		</View>
 	);
 }

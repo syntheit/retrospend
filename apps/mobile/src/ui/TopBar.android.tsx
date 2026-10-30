@@ -1,8 +1,8 @@
 import { Stack } from "expo-router";
 import { View } from "react-native";
-import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { AccountButton } from "./AccountButton";
+import { useInPair } from "./ListDetail";
 import { Menu } from "./Menu";
 import { PaneBar } from "./PaneBar";
 import { TopBarAction } from "./TopBarAction";
@@ -23,7 +23,7 @@ export function TopBar({
 	onAccountPress,
 }: TopBarProps) {
 	const { color, space } = useTheme();
-	const { listDetail } = useLayoutClass();
+	const inPair = useInPair();
 	const items = overflow ?? [];
 	const pageActions = actions ?? [];
 	const hasTrailing = items.length > 0 || pageActions.length > 0 || account;
@@ -49,7 +49,7 @@ export function TopBar({
 			) : null}
 		</View>
 	);
-	if (listDetail) {
+	if (inPair) {
 		return (
 			<>
 				<Stack.Screen options={{ headerShown: false }} />

@@ -1511,7 +1511,6 @@
 		},
 		"error": "Start konnte nicht geladen werden",
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
-		"insights": "Auswertungen ansehen",
 		"card": {
 			"leftIn": "Noch verfügbar im {month}",
 			"spentIn": "Ausgegeben im {month}",
@@ -1531,7 +1530,8 @@
 			"notPlanned": "Noch nicht verplant",
 			"waiting": "Wartet auf eine Aufgabe",
 			"youOwe": "Du schuldest {amount}",
-			"rateDate": "Stand {date}"
+			"rateDate": "Stand {date}",
+			"netWorthNote": "Enthält, was andere dir schulden"
 		},
 		"netWorthMeta": "Enthält, was andere dir schulden"
 	},
