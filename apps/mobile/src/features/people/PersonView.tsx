@@ -93,12 +93,13 @@ export function PersonView({
 	const rows = ledger.rows ?? page.rows;
 	const remindable = side === "owesYou";
 	const net = open.length > 1;
+	const handle = identity.onRetrospend
+		? identity.username
+			? `@${identity.username}`
+			: null
+		: t("notOnRetrospend");
+	// Two fixed lines, so a long line never leaves one word alone on a third.
 	const meta = [
-		identity.onRetrospend
-			? identity.username
-				? `@${identity.username}`
-				: null
-			: t("notOnRetrospend"),
 		page.stats.since
 			? t("since", {
 					date: format.dateTime(new Date(`${page.stats.since}T12:00:00`), {
@@ -226,6 +227,11 @@ export function PersonView({
 					>
 						{identity.name}
 					</Text>
+					{handle ? (
+						<Text style={{ textAlign: "center" }} tone="fg2" variant="small">
+							{handle}
+						</Text>
+					) : null}
 					<Text style={{ textAlign: "center" }} tone="fg2" variant="small">
 						{meta.join(" · ")}
 					</Text>
@@ -248,6 +254,7 @@ export function PersonView({
 										? t("youOweThemNet")
 										: t("youOweThem")
 							}
+							labelTone="hero"
 							sub={
 								open.length > 1 ||
 								(open.length === 1 && isApproximate(open, page.home))
@@ -261,6 +268,7 @@ export function PersonView({
 											.join(" · ")
 									: undefined
 							}
+							subTone="fg3"
 							tone={side === "owesYou" ? "positive" : "fg"}
 							value={heroText(page.net, page.parts, page.home)}
 						/>

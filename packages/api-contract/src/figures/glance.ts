@@ -161,6 +161,8 @@ export const glanceSchema = z
 				rateType: z.string().nullable(),
 				rateDate: daySchema.nullable(),
 				home: currencyCodeSchema,
+				/** The other rate types on that day, in the table's order (Official, MEP, Card). */
+				others: z.array(z.object({ rateType: z.string(), value: moneySchema })),
 			})
 			.nullable(),
 		/** Currencies whose missing rate keeps a number out. */

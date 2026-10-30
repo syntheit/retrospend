@@ -87,6 +87,17 @@ export function ProjectCard({
 	const meta = [when, back, t("expenseCount", { count: project.expenseCount })]
 		.filter(Boolean)
 		.join(" · ");
+	const first = (name: string) => name.trim().split(/\s+/)[0] ?? name;
+	const who =
+		project.people.length > 3
+			? t("namesMore", {
+					names: project.people
+						.slice(0, 3)
+						.map((p) => first(p.name))
+						.join(", "),
+					count: project.people.length - 3,
+				})
+			: project.people.map((p) => first(p.name)).join(", ");
 	const shareText = project.myShare.map((m) => money(m)).join(" · ");
 	const { owedToYou, youOwe } = balanceSides(project.myBalance);
 	const spoken = [
@@ -122,18 +133,34 @@ export function ProjectCard({
 							{meta}
 						</Text>
 						{project.solo ? null : (
-							<AvatarStack
-								faces={faces(
-									project.people.map((p) => ({
-										key: p.id,
-										name: p.name,
-										imageUrl: p.imageUrl,
-									})),
-								)}
-								max={5}
-								ring="surface"
-								size="sm"
-							/>
+							<View
+								style={{
+									flexDirection: "row",
+									alignItems: "center",
+									gap: space[2],
+								}}
+							>
+								<AvatarStack
+									faces={faces(
+										project.people.map((p) => ({
+											key: p.id,
+											name: p.name,
+											imageUrl: p.imageUrl,
+										})),
+									)}
+									max={5}
+									ring="surface"
+									size="sm"
+								/>
+								<Text
+									numberOfLines={1}
+									style={{ flex: 1 }}
+									tone="fg2"
+									variant="small"
+								>
+									{who}
+								</Text>
+							</View>
 						)}
 						<View style={{ gap: space[1] }}>
 							{project.total.map((line) => (

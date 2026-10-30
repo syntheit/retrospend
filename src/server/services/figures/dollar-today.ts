@@ -30,6 +30,8 @@ export interface DollarToday {
 	/** The day the rate is from (it may be older than today). */
 	readonly rateDate: string | null;
 	readonly home: string;
+	/** The other rate types on that same day, for the tile's smaller lines. */
+	readonly others: readonly { rateType: string; value: Money }[];
 }
 
 /** Null when the row does not apply (USD or crypto home). */
@@ -48,9 +50,19 @@ export async function dollarTodayIn(
 		rateType: null,
 		rateDate: null,
 		home: homeCurrency,
+		others: [],
 	} as const;
 	if (!picked) return none;
 	const zone = await userTimeZone(db, userId, timeZone);
+	const sameDay = await db.exchangeRate.findMany({
+		where: {
+			currency: homeCurrency,
+			date: picked.date,
+			type: { not: picked.type },
+		},
+		orderBy: { type: "asc" },
+		select: { type: true, rate: true },
+	});
 	return {
 		id: DOLLAR_TODAY,
 		value: {
@@ -60,6 +72,13 @@ export async function dollarTodayIn(
 		rateType: picked.type,
 		rateDate: dayKey(picked.date, zone),
 		home: homeCurrency,
+		others: sameDay.map((r) => ({
+			rateType: r.type,
+			value: {
+				minor: toMinor(Number(r.rate), homeCurrency),
+				currency: homeCurrency,
+			},
+		})),
 	};
 }
 

@@ -51,10 +51,10 @@ export function ProjectExpenseRow({
 				.filter(Boolean)
 				.join(", ")}
 			end={
-				<View style={{ alignItems: "flex-end" }}>
+				<View style={{ alignItems: "flex-end", flexShrink: 1 }}>
 					<MoneyAmount value={expense.amount} />
 					{share ? (
-						<Text tone="fg3" variant="meta">
+						<Text numberOfLines={1} tone="fg3" variant="meta">
 							{share}
 						</Text>
 					) : null}

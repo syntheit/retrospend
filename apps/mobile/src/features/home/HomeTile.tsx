@@ -17,6 +17,7 @@ export function HomeTile({
 	onPress,
 	children,
 	foot,
+	spans = false,
 }: {
 	glyph: GlyphName;
 	label: string;
@@ -25,6 +26,8 @@ export function HomeTile({
 	onPress: () => void;
 	children?: ReactNode;
 	foot?: ReactNode;
+	/** Alone on its row, so it takes the width and only the height it needs. */
+	spans?: boolean;
 }) {
 	const { color, radius, size, space } = useTheme();
 	return (
@@ -35,7 +38,7 @@ export function HomeTile({
 			style={({ pressed }) => ({
 				flex: 1,
 				minWidth: 0,
-				minHeight: space[12] * 2 + space[6],
+				minHeight: spans ? undefined : space[12] * 2 + space[6],
 				padding: space[3],
 				gap: space[1],
 				backgroundColor: pressed ? color.raised : color.surface,

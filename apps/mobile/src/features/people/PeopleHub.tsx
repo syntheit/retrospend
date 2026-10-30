@@ -16,6 +16,7 @@ import {
 	readSegment,
 	writeSegment,
 } from "./segment";
+import { useExpensesExport } from "./useExpensesExport";
 
 /**
  * The People tab on phones: People and Projects behind underline tabs at
@@ -28,6 +29,8 @@ export function PeopleHub() {
 	const tp = useTranslations("mobile.people");
 	const tj = useTranslations("mobile.projects");
 	const { color, space } = useTheme();
+	const more = useTranslations("mobile.activity")("overflow");
+	const overflow = useExpensesExport();
 	const searchRef = useSearchShortcut();
 	const { segment: requested } = useLocalSearchParams<{ segment?: string }>();
 	const [segment, setSegment] = useState<PeopleSegment>(
@@ -70,7 +73,11 @@ export function PeopleHub() {
 			{segment === "people" ? (
 				<PeopleTopBar title={t("people")} />
 			) : (
-				<AccountTopBar title={t("projects")} />
+				<AccountTopBar
+					overflow={overflow}
+					overflowLabel={more}
+					title={t("projects")}
+				/>
 			)}
 			<Stack.Screen
 				options={{

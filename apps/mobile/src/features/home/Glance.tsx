@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { isValidElement, type ReactElement } from "react";
+import { cloneElement, isValidElement, type ReactElement } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { currenciesHref } from "@/features/account/places";
@@ -78,7 +78,7 @@ export function Glance({
 	const dates = useHomeDates();
 	const rateLabel = useRateTypeLabel();
 	const { space } = useTheme();
-	const tiles: ReactElement[] = [];
+	const tiles: ReactElement<{ spans?: boolean }>[] = [];
 
 	const pool = notPlannedOf(glance);
 	if (pool) {
@@ -153,6 +153,14 @@ export function Glance({
 		const date = dollar.rateDate
 			? t("tile.rateDate", { date: dates.short(dollar.rateDate) })
 			: null;
+		// The other rate types of that day, two to a line, then the date.
+		const others = dollar.others.map(
+			(o) => `${rateLabel(o.rateType)} ${format(o.value, { display: "none" })}`,
+		);
+		const lines: string[] = [];
+		for (let i = 0; i < others.length; i += 2)
+			lines.push(others.slice(i, i + 2).join(" · "));
+		if (date) lines.push(date);
 		tiles.push(
 			<HomeTile
 				glyph="DollarSign"
@@ -163,6 +171,7 @@ export function Glance({
 					t("dollarToday"),
 					dollar.value ? format(dollar.value, { display: "code" }) : noRate,
 					rate,
+					...others,
 					date,
 				]
 					.filter(Boolean)
@@ -182,7 +191,9 @@ export function Glance({
 						</Text>
 					) : null}
 				</View>
-				{date ? <TileNote>{date}</TileNote> : null}
+				{lines.map((line) => (
+					<TileNote key={line}>{line}</TileNote>
+				))}
 			</HomeTile>,
 		);
 	}
@@ -203,7 +214,7 @@ export function Glance({
 		);
 	}
 
-	const rows: ReactElement[][] = [];
+	const rows: ReactElement<{ spans?: boolean }>[][] = [];
 	for (let i = 0; i < tiles.length; i += 2) rows.push(tiles.slice(i, i + 2));
 
 	return (
@@ -215,7 +226,9 @@ export function Glance({
 					key={isValidElement(row[0]) ? row[0].key : "row"}
 					style={{ flexDirection: "row", gap: space[3] }}
 				>
-					{row}
+					{row.length === 1 && row[0]
+						? cloneElement(row[0], { spans: true })
+						: row}
 				</View>
 			))}
 		</View>

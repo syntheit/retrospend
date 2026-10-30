@@ -144,6 +144,7 @@ describe("toGlanceVM", () => {
 			rateType: "blue",
 			rateDate: "2026-10-20",
 			home: "ARS",
+			others: [],
 		};
 		const vm = toGlanceVM(
 			{ ...BASE, dollarToday: dollar },

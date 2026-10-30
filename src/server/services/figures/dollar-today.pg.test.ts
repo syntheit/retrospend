@@ -77,6 +77,7 @@ describe("glance dollarToday", () => {
 			rateType: "blue",
 			rateDate: "2026-10-20",
 			home: "PLN",
+			others: [],
 		});
 	});
 
@@ -92,6 +93,7 @@ describe("glance dollarToday", () => {
 			rateType: null,
 			rateDate: null,
 			home: "ISK",
+			others: [],
 		});
 	});
 
