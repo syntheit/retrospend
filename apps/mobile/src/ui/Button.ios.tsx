@@ -8,6 +8,7 @@ import {
 	font,
 	foregroundStyle,
 	frame,
+	opacity,
 	padding,
 	shapes,
 	strokeBorder,
@@ -18,19 +19,25 @@ import { NativeHost } from "./NativeHost";
 import type { ButtonIcon, ButtonProps } from "./types";
 
 /**
- * The SwiftUI style for each variant. Filled and danger are
- * borderedProminent: a solid fill in the tint. The glass styles (glass,
- * glassProminent) are for chrome only and lighten the tint, which is what
- * made the label unreadable (R17). Outlined and dangerText are plain: their
- * look is drawn by KitLabel.
+ * The SwiftUI style for each variant. Every kit button (filled, outlined,
+ * danger, dangerText) is a plain SwiftUI button whose label KitLabel draws
+ * at the kit's size: the system's borderedProminent capsule is taller with a
+ * larger label, so a row of buttons did not share one height. The glass
+ * styles (glass, glassProminent) are for chrome only and lighten the tint,
+ * which is what made the label unreadable (R17).
  */
 export const BUTTON_STYLE = {
-	filled: "borderedProminent",
+	filled: "plain",
 	outlined: "plain",
 	text: "plain",
-	danger: "borderedProminent",
+	danger: "plain",
 	dangerText: "plain",
 } as const;
+
+/** A disabled kit button fades to this (kit.css .btn:disabled). */
+const DISABLED_OPACITY = 0.45;
+
+type KitVariant = "filled" | "outlined" | "danger" | "dangerText";
 
 /** The SF Symbol for each button glyph. */
 const SYMBOL = {
@@ -41,37 +48,50 @@ const SYMBOL = {
 } as const satisfies Record<ButtonIcon, string>;
 
 /**
- * The kit secondary and the danger-text ghost (kit.css .btn.secondary and
- * .btn.danger-text): a plain SwiftUI button whose label is drawn by hand so
- * the look is the tokens, not the system's gray bordered capsule. Secondary
- * is surface with a line-strong border and fg text; the ghost is bare danger
- * text. Small is the 28 point control at 13/500, regular the 36 point one at
- * 14/500.
+ * A kit button's label (kit.css .btn), drawn by hand so the look is the
+ * tokens, not the system's capsules: primary is the brand fill with the
+ * brand foreground, danger the danger fill with its own foreground,
+ * secondary is surface with a line-strong border and fg text, and the ghost
+ * is bare danger text. Small is the 28 point control at 13/500, regular the
+ * 36 point one at 14/500, so buttons in one row share one height.
  */
 function KitLabel({
 	label,
 	variant,
 	small,
 	icon,
+	disabled,
 }: {
 	label: string;
-	variant: "outlined" | "dangerText";
+	variant: KitVariant;
 	small: boolean;
 	icon?: ButtonIcon;
+	disabled?: boolean;
 }) {
 	const { color, radius, size, space, type } = useTheme();
-	const ink = variant === "outlined" ? color.fg : color.danger;
+	const ink = {
+		filled: color.brandFg,
+		danger: color.dangerFg,
+		outlined: color.fg,
+		dangerText: color.danger,
+	}[variant];
+	const fill =
+		variant === "filled"
+			? color.brand
+			: variant === "danger"
+				? color.danger
+				: variant === "outlined"
+					? color.surface
+					: null;
+	const shape = shapes.roundedRectangle({ cornerRadius: radius.ctl });
 	return (
 		<HStack
 			modifiers={[
 				padding({ horizontal: space[3] }),
 				frame({ height: small ? size.ctlSm.phone : size.ctl.phone }),
+				...(fill ? [background(fill, shape)] : []),
 				...(variant === "outlined"
 					? [
-							background(
-								color.surface,
-								shapes.roundedRectangle({ cornerRadius: radius.ctl }),
-							),
 							strokeBorder({
 								content: color.lineStrong,
 								shape: "roundedRectangle",
@@ -80,6 +100,7 @@ function KitLabel({
 							}),
 						]
 					: []),
+				...(disabled ? [opacity(DISABLED_OPACITY)] : []),
 			]}
 			spacing={space[2]}
 		>
@@ -102,11 +123,11 @@ function KitLabel({
 }
 
 /**
- * A SwiftUI button. Outlined and dangerText are the kit's secondary and
- * danger-text ghost (KitLabel). Filled sits on the brand tint, danger on the
- * danger tint; each label takes the token that reads on its fill, since the
- * system's own white is unreadable on the pale brand of the dark theme.
- * Small is the system's small control size.
+ * A SwiftUI button. Filled, outlined, danger and dangerText are the kit's
+ * buttons (KitLabel); each label takes the token that reads on its fill,
+ * since the system's own white is unreadable on the pale brand of the dark
+ * theme. Text is the system's plain button in the brand color, small at the
+ * system's small control size.
  */
 export function Button({
 	label,
@@ -118,7 +139,7 @@ export function Button({
 	disabled,
 }: ButtonProps) {
 	const { color } = useTheme();
-	if (variant === "outlined" || variant === "dangerText") {
+	if (variant !== "text") {
 		return (
 			<NativeHost>
 				<SwiftButton
@@ -130,6 +151,7 @@ export function Button({
 					onPress={onPress}
 				>
 					<KitLabel
+						disabled={disabled}
 						icon={icon}
 						label={label}
 						small={size === "small"}
@@ -139,26 +161,19 @@ export function Button({
 			</NativeHost>
 		);
 	}
-	const fill = variant === "danger" ? color.danger : color.brand;
-	const ink =
-		variant === "filled"
-			? color.brandFg
-			: variant === "danger"
-				? color.dangerFg
-				: color.brand;
 	return (
 		<NativeHost>
 			<SwiftButton
 				modifiers={[
-					buttonStyle(BUTTON_STYLE[variant]),
-					tint(fill),
+					buttonStyle(BUTTON_STYLE.text),
+					tint(color.brand),
 					...(size === "small" ? [controlSize("small")] : []),
 					...(accessibilityLabel ? [a11yLabel(accessibilityLabel)] : []),
 					...(disabled ? [disabledModifier(true)] : []),
 				]}
 				onPress={onPress}
 			>
-				<Text modifiers={[foregroundStyle(ink)]}>{label}</Text>
+				<Text modifiers={[foregroundStyle(color.brand)]}>{label}</Text>
 			</SwiftButton>
 		</NativeHost>
 	);
