@@ -2457,5 +2457,54 @@
 		"later": "Día siguiente",
 		"earlier": "Día anterior",
 		"noData": "sin datos"
+	},
+	"feedback": {
+		"title": "Enviar comentarios",
+		"category": "Categoría",
+		"categories": {
+			"bug": "Error",
+			"idea": "Idea",
+			"other": "Otro"
+		},
+		"message": "Mensaje",
+		"messagePlaceholder": "¿Qué pasó o qué ayudaría?",
+		"screenshot": "Captura de pantalla",
+		"attachScreen": "Adjuntar esta pantalla",
+		"chooseImage": "Elegir una imagen",
+		"attached": "Captura adjunta",
+		"remove": "Quitar",
+		"diagnostics": "Incluir diagnóstico",
+		"diagnosticsDetail": "App, teléfono y errores recientes de la app. Sin gastos ni importes.",
+		"diagnosticRows": {
+			"app": "App",
+			"system": "Sistema",
+			"device": "Dispositivo",
+			"language": "Idioma",
+			"server": "Servidor",
+			"errors": "Errores recientes de la app"
+		},
+		"preview": {
+			"title": "Qué se enviará",
+			"category": "Categoría",
+			"message": "Mensaje",
+			"characters": "{count, plural, one {# carácter} other {# caracteres}}",
+			"screen": "Pantalla",
+			"screenshot": "Captura",
+			"attached": "Adjunta",
+			"none": "Ninguna",
+			"diagnostics": "Diagnóstico",
+			"notIncluded": "No incluido",
+			"never": "Nunca se envían tus gastos, importes ni datos de la cuenta.",
+			"goesTo": "Va a los administradores de {host}."
+		},
+		"send": "Enviar",
+		"sending": "Enviando",
+		"sent": "Comentarios enviados",
+		"sentNoScreenshot": "Comentarios enviados. La captura no se subió.",
+		"failed": "No se enviaron los comentarios. Probá de nuevo.",
+		"limit": "Podés enviar 5 por hora. Probá más tarde.",
+		"tooLarge": "Esa imagen supera los 5 MB.",
+		"errorReports": "Enviar informes de errores a mi servidor",
+		"errorReportsDetail": "Solo fallos, sin direcciones ni importes. Van a tu propio servidor."
 	}
 }

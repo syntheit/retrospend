@@ -19,8 +19,8 @@ import {
 	aiUsageSchema,
 	backupStartedSchema,
 	backupStatusSchema,
-	eventLogEntrySchema,
 	errorReportListQuerySchema,
+	eventLogEntrySchema,
 	eventLogQuerySchema,
 	feedbackListQuerySchema,
 	feedbackParamsSchema,
@@ -333,4 +333,3 @@ export const adminContract = {
 		.input(idParamsSchema)
 		.output(okSchema),
 };
-

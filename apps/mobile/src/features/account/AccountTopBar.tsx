@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerBaseUrl } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
+import { useFeedback } from "@/features/feedback/FeedbackProvider";
 import { absoluteImage } from "@/features/read/faces";
 import { openWebPage } from "@/features/settings/webPages";
 import { wealthHref } from "@/features/wealth/routes";
@@ -58,6 +59,7 @@ export function AccountTopBar({
 	const { state } = useSession();
 	const baseUrl = useServerBaseUrl();
 	const confirmSignOut = useSignOut();
+	const feedback = useFeedback();
 	const { space } = useTheme();
 	const [open, setOpen] = useState(false);
 	const me = state.status === "signedIn" ? state.me : null;
@@ -140,8 +142,7 @@ export function AccountTopBar({
 						<Place
 							glyph="MessageSquare"
 							label={t("feedback")}
-							onPress={web("/feedback")}
-							web={opensWeb}
+							onPress={go(() => feedback.open({ afterSheet: true }))}
 						/>
 						<Place
 							glyph="BookOpen"

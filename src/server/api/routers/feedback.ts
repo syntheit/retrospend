@@ -64,8 +64,7 @@ export const feedbackRouter = createTRPCRouter({
 						select: { email: true },
 					});
 
-					const userName =
-						ctx.session.user.name || ctx.session.user.email;
+					const userName = ctx.session.user.name || ctx.session.user.email;
 					const html = getFeedbackNotificationTemplate(
 						userName,
 						input.message,
@@ -75,11 +74,7 @@ export const feedbackRouter = createTRPCRouter({
 
 					await Promise.allSettled(
 						admins.map((admin) =>
-							sendEmail(
-								admin.email,
-								`New feedback from ${userName}`,
-								html,
-							),
+							sendEmail(admin.email, `New feedback from ${userName}`, html),
 						),
 					);
 				} catch {
@@ -93,9 +88,7 @@ export const feedbackRouter = createTRPCRouter({
 	list: adminProcedure
 		.input(
 			z.object({
-				status: z
-					.enum(["unread", "read", "archived"])
-					.optional(),
+				status: z.enum(["unread", "read", "archived"]).optional(),
 				cursor: z.string().optional(),
 				limit: z.number().min(1).max(100).default(20),
 			}),
@@ -107,9 +100,7 @@ export const feedbackRouter = createTRPCRouter({
 				ctx.db.feedback.findMany({
 					where,
 					take: input.limit + 1,
-					...(input.cursor
-						? { cursor: { id: input.cursor }, skip: 1 }
-						: {}),
+					...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
 					orderBy: { createdAt: "desc" },
 					include: {
 						user: {

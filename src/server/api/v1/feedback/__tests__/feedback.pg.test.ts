@@ -233,7 +233,8 @@ describe("/api/v1/feedback and /error-reports", () => {
 				kind: "rejection",
 				message:
 					"Failed https://me.example/api/v1/expenses/abc for bob@example.com paying $1,234.50",
-				stack: "at go (https://me.example/bundle.js:12:3)\nBearer abcdef.ghijkl",
+				stack:
+					"at go (https://me.example/bundle.js:12:3)\nBearer abcdef.ghijkl",
 				screen: "/(tabs)/activity/clx9f2k3j0000abc123?tab=1",
 				os: "iOS 19",
 			}),
@@ -295,7 +296,9 @@ describe("/api/v1/feedback and /error-reports", () => {
 				(
 					await sendReports(
 						asEve,
-						Array.from({ length: 20 }, (_, i) => report({ message: `m${n}-${i}` })),
+						Array.from({ length: 20 }, (_, i) =>
+							report({ message: `m${n}-${i}` }),
+						),
 					)
 				).status,
 			).toBe(201);
@@ -311,6 +314,10 @@ describe("/api/v1/feedback and /error-reports", () => {
 			403,
 			"missing_scope",
 		);
-		await expectProblem(await sendReports({}, [report()]), 401, "unauthenticated");
+		await expectProblem(
+			await sendReports({}, [report()]),
+			401,
+			"unauthenticated",
+		);
 	});
 });

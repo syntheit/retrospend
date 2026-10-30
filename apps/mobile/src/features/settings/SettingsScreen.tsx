@@ -3,6 +3,11 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useMyFace } from "@/features/account/AccountTopBar";
+import { useFeedback } from "@/features/feedback/FeedbackProvider";
+import {
+	setErrorReportsPref,
+	useErrorReportsPref,
+} from "@/features/feedback/pref";
 import { useLanguagePref } from "@/lib/language-pref";
 import { LANGUAGE_NAMES } from "@/lib/locales";
 import { usePush } from "@/push/PushProvider";
@@ -11,9 +16,10 @@ import { Avatar } from "@/ui/Avatar";
 import type { GlyphName } from "@/ui/Glyph";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow } from "@/ui/List";
+import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
 import { channelsOn, type NotificationChannel } from "./channels";
-import { AboutFooter, NavEnd, SettingsPage } from "./parts";
+import { AboutFooter, Block, GroupNote, NavEnd, SettingsPage } from "./parts";
 import {
 	useCategories,
 	useGeneralSettings,
@@ -64,6 +70,9 @@ export function SettingsScreen() {
 	const methods = usePaymentMethods();
 	const prefsRead = useNotificationPreferences();
 	const language = useLanguagePref();
+	const feedback = useFeedback();
+	const errorReports = useErrorReportsPref();
+	const tf = useTranslations("mobile.feedback");
 
 	const me = profile.state.status === "ready" ? profile.state.data : null;
 	const settings = general.state.status === "ready" ? general.state.data : null;
@@ -153,6 +162,27 @@ export function SettingsScreen() {
 				{row("security")}
 				{row("data")}
 			</ListGroup>
+			<View style={{ height: space[6] }} />
+			<Block>
+				<ListGroup>
+					<ListRow
+						end={<NavEnd />}
+						lead={<IconTile name="MessageSquare" />}
+						onPress={() => feedback.open()}
+						title={tf("title")}
+					/>
+					<ListRow>
+						<View style={{ flex: 1 }}>
+							<SwitchRow
+								label={tf("errorReports")}
+								onChange={setErrorReportsPref}
+								value={errorReports}
+							/>
+						</View>
+					</ListRow>
+				</ListGroup>
+				<GroupNote>{tf("errorReportsDetail")}</GroupNote>
+			</Block>
 			<View style={{ height: space[6] }} />
 			<ListGroup>{row("danger")}</ListGroup>
 			<AboutFooter />

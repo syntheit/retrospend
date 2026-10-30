@@ -9,6 +9,7 @@ import { useTranslations } from "use-intl";
 import { EntryDetail } from "@/features/activity/EntryView";
 import { rowFromParam } from "@/features/activity/entryRow";
 import { useHideAddButton } from "@/features/entry/AddEntryProvider";
+import { useRecordRenderError } from "@/features/feedback/useRecordRenderError";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { EmptyState } from "@/ui/EmptyState";
 import { Screen } from "@/ui/Screen";
@@ -48,9 +49,10 @@ export default function EntryScreen() {
 }
 
 /** A view that fails to draw says so and offers to try again, instead of closing the app. */
-export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 	const t = useTranslations("mobile.entry");
 	const tc = useTranslations("mobile.common");
+	useRecordRenderError(error);
 	return (
 		<Screen>
 			<EmptyState

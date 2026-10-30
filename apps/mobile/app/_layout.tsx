@@ -14,6 +14,11 @@ import {
 	useServerConnection,
 } from "@/auth/server-connection";
 import { SessionProvider, useSession } from "@/auth/session";
+import { ErrorReportsFlusher } from "@/features/feedback/ErrorReportsFlusher";
+import { FeedbackProvider } from "@/features/feedback/FeedbackProvider";
+import { installErrorHandlers } from "@/features/feedback/handlers";
+import { getErrorLog } from "@/features/feedback/runtime";
+import { ScreenTracker } from "@/features/feedback/ScreenTracker";
 import { GALLERY_ENABLED } from "@/lib/flags";
 import { AppIntlProvider } from "@/lib/intl";
 import { MoneyPrefsProvider } from "@/lib/money";
@@ -30,6 +35,10 @@ const DevAutoSignIn: ComponentType | null = process.env.EXPO_PUBLIC_DEV_SERVER
 	? require("@/dev/DevAutoSignIn").DevAutoSignIn
 	: null;
 
+// Records crashes and unhandled promise rejections into the local ring. Nothing
+// leaves the phone unless the person turns on error reports (Settings).
+installErrorHandlers(getErrorLog());
+
 function Routes() {
 	const { connection } = useServerConnection();
 	const { state } = useSession();
@@ -40,21 +49,24 @@ function Routes() {
 	const connected = connection.status === "connected";
 	const signedIn = connected && state.status === "signedIn";
 	return (
-		<Stack screenOptions={{ headerShown: false }}>
-			<Stack.Protected guard={signedIn}>
-				<Stack.Screen name="(tabs)" />
-				<Stack.Screen name="settings" />
-			</Stack.Protected>
-			<Stack.Protected guard={connected && !signedIn}>
-				<Stack.Screen name="sign-in" />
-			</Stack.Protected>
-			<Stack.Protected guard={!connected}>
-				<Stack.Screen name="connect" />
-			</Stack.Protected>
-			<Stack.Protected guard={GALLERY_ENABLED}>
-				<Stack.Screen name="gallery" />
-			</Stack.Protected>
-		</Stack>
+		<>
+			<ScreenTracker />
+			<Stack screenOptions={{ headerShown: false }}>
+				<Stack.Protected guard={signedIn}>
+					<Stack.Screen name="(tabs)" />
+					<Stack.Screen name="settings" />
+				</Stack.Protected>
+				<Stack.Protected guard={connected && !signedIn}>
+					<Stack.Screen name="sign-in" />
+				</Stack.Protected>
+				<Stack.Protected guard={!connected}>
+					<Stack.Screen name="connect" />
+				</Stack.Protected>
+				<Stack.Protected guard={GALLERY_ENABLED}>
+					<Stack.Screen name="gallery" />
+				</Stack.Protected>
+			</Stack>
+		</>
 	);
 }
 
@@ -87,8 +99,11 @@ export default function RootLayout() {
 								<MoneyPrefsProvider>
 									<PushProvider>
 										<ToastProvider>
-											<Routes />
-											{DevAutoSignIn ? <DevAutoSignIn /> : null}
+											<FeedbackProvider>
+												<Routes />
+												<ErrorReportsFlusher />
+												{DevAutoSignIn ? <DevAutoSignIn /> : null}
+											</FeedbackProvider>
 										</ToastProvider>
 									</PushProvider>
 								</MoneyPrefsProvider>

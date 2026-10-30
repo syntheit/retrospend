@@ -2457,5 +2457,54 @@
 		"later": "Next day",
 		"earlier": "Previous day",
 		"noData": "no data"
+	},
+	"feedback": {
+		"title": "Send feedback",
+		"category": "Category",
+		"categories": {
+			"bug": "Bug",
+			"idea": "Idea",
+			"other": "Other"
+		},
+		"message": "Message",
+		"messagePlaceholder": "What happened, or what would help?",
+		"screenshot": "Screenshot",
+		"attachScreen": "Attach this screen",
+		"chooseImage": "Choose an image",
+		"attached": "Screenshot attached",
+		"remove": "Remove",
+		"diagnostics": "Include diagnostics",
+		"diagnosticsDetail": "App, phone and recent app errors. No expenses or amounts.",
+		"diagnosticRows": {
+			"app": "App",
+			"system": "System",
+			"device": "Device",
+			"language": "Language",
+			"server": "Server",
+			"errors": "Recent app errors"
+		},
+		"preview": {
+			"title": "What will be sent",
+			"category": "Category",
+			"message": "Message",
+			"characters": "{count, plural, one {# character} other {# characters}}",
+			"screen": "Screen",
+			"screenshot": "Screenshot",
+			"attached": "Attached",
+			"none": "None",
+			"diagnostics": "Diagnostics",
+			"notIncluded": "Not included",
+			"never": "Your expenses, amounts and account details are never sent.",
+			"goesTo": "Goes to the admins of {host}."
+		},
+		"send": "Send",
+		"sending": "Sending",
+		"sent": "Feedback sent",
+		"sentNoScreenshot": "Feedback sent. The screenshot did not upload.",
+		"failed": "Feedback not sent. Try again.",
+		"limit": "You can send 5 a hour. Try again later.",
+		"tooLarge": "That image is over 5 MB.",
+		"errorReports": "Send error reports to my server",
+		"errorReportsDetail": "Crashes only, with addresses and amounts removed. They go to your own server."
 	}
 }
