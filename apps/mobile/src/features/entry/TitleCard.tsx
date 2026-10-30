@@ -91,7 +91,6 @@ export function TitleCard({
 						{ id: "pick", label: t("pickDate"), onPress: onPickDate },
 					]}
 					label={shown}
-					leadingCalendar
 				/>
 			</View>
 			{children}

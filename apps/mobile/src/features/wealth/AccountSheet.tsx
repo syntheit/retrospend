@@ -29,7 +29,7 @@ import {
 	aprInvalid,
 	type CreateAccountBody,
 	createBody,
-	dueDayInvalid,
+	dueDayOptions,
 	emptyForm,
 	formOf,
 	type UpdateAccountBody,
@@ -293,13 +293,22 @@ export function AccountSheet({
 								onChangeText={(apr) => set({ apr })}
 								value={form.apr}
 							/>
-							<TextField
-								invalid={dueDayInvalid(form.dueDay)}
-								keyboardType="number-pad"
-								label={t("dueDay")}
-								onChangeText={(dueDay) => set({ dueDay })}
-								value={form.dueDay}
-							/>
+							<View
+								style={{
+									flexDirection: "row",
+									alignItems: "center",
+									justifyContent: "space-between",
+									gap: space[3],
+								}}
+							>
+								<Text>{t("dueDay")}</Text>
+								<Picker
+									appearance="wheel"
+									onChange={(dueDay) => set({ dueDay })}
+									options={dueDayOptions(form.dueDay, t("dueDayNone"))}
+									value={form.dueDay}
+								/>
+							</View>
 							<TextField
 								invalid={minimum.state === "invalid"}
 								keyboardType="decimal-pad"

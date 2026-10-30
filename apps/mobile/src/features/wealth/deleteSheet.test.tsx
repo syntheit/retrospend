@@ -89,12 +89,12 @@ describe("Delete account", () => {
 				/>,
 			);
 		});
-		expect(disabled(tree, "Delete")).toBe(true);
+		expect(disabled(tree, "Delete account")).toBe(true);
 		await wait(400);
 		expect(calls).toEqual(["preview"]);
-		expect(disabled(tree, "Delete")).toBe(false);
+		expect(disabled(tree, "Delete account")).toBe(false);
 
-		press(tree, "Delete");
+		press(tree, "Delete account");
 		await wait(50);
 		expect(calls).toEqual(["preview", "write"]);
 		expect(onDone).toHaveBeenCalled();

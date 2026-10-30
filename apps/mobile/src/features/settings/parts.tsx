@@ -110,16 +110,26 @@ export function PickerRow<T extends string>({
 	options,
 	value,
 	onChange,
+	appearance,
 }: {
 	label: string;
 	sub?: string;
 	options: PickerOption<T>[];
 	value: T;
 	onChange: (value: T) => void;
+	/** A wheel for a short run of numbers like a day of the month. */
+	appearance?: "menu" | "wheel";
 }) {
 	return (
 		<ListRow
-			end={<Picker onChange={onChange} options={options} value={value} />}
+			end={
+				<Picker
+					appearance={appearance}
+					onChange={onChange}
+					options={options}
+					value={value}
+				/>
+			}
 			sub={sub}
 			title={
 				<Text numberOfLines={2} weight="medium">

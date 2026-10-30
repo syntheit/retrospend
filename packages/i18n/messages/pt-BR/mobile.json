@@ -18,6 +18,7 @@
 		"retry": "Tentar de novo",
 		"save": "Salvar",
 		"saving": "Salvando",
+		"deleting": "Excluindo",
 		"close": "Fechar",
 		"done": "Concluído"
 	},
@@ -287,9 +288,9 @@
 		},
 		"delete": {
 			"row": "Excluir",
-			"title": "Excluir este gasto?",
+			"title": "Excluir gasto?",
 			"body": "Ele sai dos seus gastos e do seu orçamento.",
-			"button": "Excluir",
+			"button": "Excluir gasto",
 			"deleted": "{title} excluído",
 			"restored": "{title} restaurado",
 			"undoFailed": "Não foi possível desfazer. Tente pela Atividade.",
@@ -323,6 +324,8 @@
 			"find": "Buscar uma conta",
 			"empty": "Nenhuma conta corresponde"
 		},
+		"today": "Hoje",
+		"yesterday": "Ontem",
 		"pickDate": "Escolha uma data"
 	},
 	"entry": {
@@ -1402,6 +1405,7 @@
 			"liquidHint": "Dinheiro que você pode gastar logo.",
 			"apr": "Taxa de juros (anual, %)",
 			"dueDay": "Dia de vencimento do mês",
+			"dueDayNone": "Nenhum",
 			"minimum": "Pagamento mínimo",
 			"addedToast": "{name} adicionada",
 			"savedToast": "{name} salva",
@@ -1460,7 +1464,7 @@
 			"body": "Isso remove a conta e todo o histórico de saldos. O histórico do patrimônio também muda.",
 			"keepHistory": "Para manter o histórico, encerre a conta.",
 			"closeInstead": "Encerrar em vez disso",
-			"submit": "Excluir",
+			"submit": "Excluir conta",
 			"deleting": "Excluindo",
 			"toast": "{name} excluída",
 			"error": "Não foi possível excluir. Tente de novo."
@@ -1790,8 +1794,6 @@
 		"rateLine": "{unit} = {value} · {type}",
 		"method": "Forma",
 		"date": "Data",
-		"today": "Hoje",
-		"yesterday": "Ontem",
 		"methodNames": {
 			"bank_transfer": "Transferência",
 			"cash": "Dinheiro"
@@ -2122,10 +2124,11 @@
 			"saved": "Método de pagamento salvo",
 			"prefer": "Tornar preferido",
 			"preferredToast": "Método preferido alterado",
-			"remove": "Remover",
+			"remove": "Excluir método de pagamento",
+			"removeTitle": "Excluir método de pagamento?",
 			"removeBody": "Isso não pode ser desfeito. As pessoas com quem você divide não o verão mais.",
-			"removeConfirm": "Remover de vez",
-			"removed": "Método de pagamento removido",
+			"removeConfirm": "Excluir",
+			"removed": "Método de pagamento excluído",
 			"saveError": "Não foi possível salvar. Tente de novo."
 		},
 		"security": {
@@ -2479,11 +2482,6 @@
 			"toast": "{title} registrado, {amount}",
 			"paidOn": "Pago em",
 			"paidOnIn": "Recebido em",
-			"paidOnDue": "{date} (vencimento)",
-			"paidOnDueToday": "Hoje (vencimento)",
-			"paidOnToday": "Hoje",
-			"paidOnPick": "Escolher data",
-			"pickDate": "Data",
 			"future": "A data não pode ser futura.",
 			"tooEarly": "A data não pode ser anterior a {date}.",
 			"skip": "Pular desta vez"
@@ -2539,13 +2537,14 @@
 			"toast": "{title} adicionada"
 		},
 		"delete": {
-			"title": "Excluir {title}",
+			"title": "Excluir {title}?",
 			"body": "Ela deixa de aparecer. Os lançamentos que já registrou ficam.",
 			"future": "Próximas vezes",
 			"futureValue": "Param, a próxima era {date}",
 			"autoPay": "Pagamento automático",
 			"autoPayValue": "Para",
-			"submit": "Excluir",
+			"submit": "Excluir gasto recorrente",
+			"submitIn": "Excluir receita recorrente",
 			"toast": "{title} excluída",
 			"error": "Não foi possível excluir. Tente de novo."
 		}

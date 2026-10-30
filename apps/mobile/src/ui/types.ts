@@ -182,4 +182,8 @@ export interface DateFieldProps {
 	placeholder?: string;
 	/** The earliest day that can be picked, "yyyy-MM-dd". */
 	minimum?: string;
+	/** Today and Yesterday chips under the row, like the web date picker. */
+	quick?: boolean;
+	/** What Today means with `quick`, when it is not the phone's day. */
+	today?: string;
 }
