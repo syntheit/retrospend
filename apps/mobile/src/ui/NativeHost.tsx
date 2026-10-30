@@ -1,6 +1,6 @@
 import { Host } from "@expo/ui";
 import type { ReactNode } from "react";
-import { useColorScheme } from "react-native";
+import { type StyleProp, useColorScheme, type ViewStyle } from "react-native";
 import { useTheme } from "@/theme";
 
 /**
@@ -12,10 +12,13 @@ import { useTheme } from "@/theme";
 export function NativeHost({
 	children,
 	tint,
+	style,
 }: {
 	children: ReactNode;
 	/** Another seed than the brand, for a control that should not read as an action (iOS draws its value in it). */
 	tint?: string;
+	/** The host's place in its row, for a control that must keep its size. */
+	style?: StyleProp<ViewStyle>;
 }) {
 	const { color } = useTheme();
 	const scheme = useColorScheme();
@@ -24,6 +27,7 @@ export function NativeHost({
 			colorScheme={scheme === "dark" || scheme === "light" ? scheme : undefined}
 			matchContents
 			seedColor={tint ?? color.brand}
+			style={style}
 		>
 			{children}
 		</Host>

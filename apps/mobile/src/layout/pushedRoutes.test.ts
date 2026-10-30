@@ -1,6 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { pushedHeader, SETTINGS_SCREENS } from "./pushedHeader";
+import {
+	pushedHeader,
+	SETTINGS_SCREENS,
+	tabsScreenOptions,
+} from "./pushedHeader";
 
 // Every pushed screen (not a tab root) shows the system back button: the iOS
 // chevron with the previous title or "Back", the Android Material 3 up arrow.
@@ -86,6 +90,17 @@ describe("pushed screens have the back button", () => {
 				offenders.push(`${relative(SRC, path)}: headerLeft`);
 		}
 		expect(offenders).toEqual([]);
+	});
+
+	// The back button of Settings read "(tabs)", the route group's name, because
+	// the tabs screen had no title for the system to label it with.
+	it("titles the tabs screen so the back button never reads the route name", () => {
+		expect(tabsScreenOptions("Back").title).toBe("Back");
+		const layout = readFileSync(join(APP, "_layout.tsx"), "utf8");
+		expect(layout).toMatch(
+			/<Stack\.Screen\s+name="\(tabs\)"\s+options=\{tabsScreenOptions\(back\)\}/,
+		);
+		expect(layout).toContain('useTranslations("mobile.common")("back")');
 	});
 
 	it("hides a header only on the root screens and the list-detail pair", () => {

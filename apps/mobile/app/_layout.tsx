@@ -20,7 +20,11 @@ import { FeedbackProvider } from "@/features/feedback/FeedbackProvider";
 import { installErrorHandlers } from "@/features/feedback/handlers";
 import { getErrorLog } from "@/features/feedback/runtime";
 import { ScreenTracker } from "@/features/feedback/ScreenTracker";
-import { pushedHeader, SETTINGS_SCREENS } from "@/layout/pushedHeader";
+import {
+	pushedHeader,
+	SETTINGS_SCREENS,
+	tabsScreenOptions,
+} from "@/layout/pushedHeader";
 import { GALLERY_ENABLED } from "@/lib/flags";
 import { AppIntlProvider } from "@/lib/intl";
 import { MoneyPrefsProvider } from "@/lib/money";
@@ -77,6 +81,7 @@ function Routes() {
 	const { connection } = useServerConnection();
 	const { state } = useSession();
 	const settingsScreens = useSettingsScreens();
+	const back = useTranslations("mobile.common")("back");
 	// The keystore read and the first profile fetch take a moment; the
 	// native splash covers it.
 	if (connection.status === "loading" || state.status === "loading")
@@ -88,7 +93,7 @@ function Routes() {
 			<ScreenTracker />
 			<Stack screenOptions={{ headerShown: false }}>
 				<Stack.Protected guard={signedIn}>
-					<Stack.Screen name="(tabs)" />
+					<Stack.Screen name="(tabs)" options={tabsScreenOptions(back)} />
 					{settingsScreens}
 				</Stack.Protected>
 				<Stack.Protected guard={connected && !signedIn}>

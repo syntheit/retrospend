@@ -15,7 +15,7 @@ import { Button } from "@/ui/Button";
 import { ChangeList, type ChangeRow } from "@/ui/ChangeList";
 import { IconTile } from "@/ui/IconTile";
 import { useRateTypeLabel } from "@/ui/Money";
-import { Sheet } from "@/ui/Sheet";
+import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { glyphOf } from "./accounts";
 import { ACCOUNT_BALANCE, balanceRows, isUnchanged } from "./balance";
@@ -24,11 +24,19 @@ import { rateTypeChanged, rateTypesOf } from "./rateType";
 import type { Account, CurrencyInfo } from "./source";
 
 /**
+ * Update balance rests at large only. Its body is the account, the amount, the
+ * operator keys and the whole keypad; at medium (half the window) the keypad
+ * stopped after 4 5 6 and 7 8 9 0 needed a drag up before a balance could be
+ * typed. At large the whole keypad and the Update balance footer are in view.
+ */
+export const UPDATE_BALANCE_DETENTS: SheetDetent[] = ["large"];
+
+/**
  * Say what the account holds today. In the order the mockup sets: the account
  * and what it shows now, the new balance, the keypad, the rate type it is valued at
  * from today (earlier days keep theirs), What this changes, and the verb
  * pinned under them. The amount and keypad come first so they are in view at
- * the medium detent. The server works out the difference and records it
+ * the detent it rests at. The server works out the difference and records it
  * as Not logged (not income, not spending); the dry run shows the account's
  * new balance, net worth and that difference before Update is on. The toast
  * undoes it.
@@ -173,7 +181,7 @@ export function UpdateBalanceSheet({
 
 	return (
 		<Sheet
-			detents={["medium", "large"]}
+			detents={UPDATE_BALANCE_DETENTS}
 			footer={
 				<Button
 					disabled={!ready || flow.committing}
