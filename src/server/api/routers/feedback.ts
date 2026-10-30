@@ -1,3 +1,7 @@
+import {
+	FEEDBACK_CATEGORIES,
+	feedbackDiagnosticsSchema,
+} from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -18,6 +22,8 @@ export const feedbackRouter = createTRPCRouter({
 				userAgent: z.string().optional(),
 				viewportSize: z.string().optional(),
 				appVersion: z.string().optional(),
+				category: z.enum(FEEDBACK_CATEGORIES).default("other"),
+				diagnostics: feedbackDiagnosticsSchema.optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -45,6 +51,8 @@ export const feedbackRouter = createTRPCRouter({
 					userAgent: input.userAgent,
 					viewportSize: input.viewportSize,
 					appVersion: input.appVersion,
+					category: input.category,
+					diagnostics: input.diagnostics,
 				},
 			});
 
@@ -79,7 +87,7 @@ export const feedbackRouter = createTRPCRouter({
 				}
 			}
 
-			return { success: true };
+			return { success: true, id: feedback.id };
 		}),
 
 	list: adminProcedure

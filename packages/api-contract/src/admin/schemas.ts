@@ -1,6 +1,11 @@
 import * as z from "zod";
 import { userText } from "../common/user-text";
 import { idSchema, timestampSchema } from "../core";
+import {
+	ERROR_REPORT_KINDS,
+	feedbackCategorySchema,
+	feedbackDiagnosticsSchema,
+} from "../feedback";
 import { daySchema } from "../ledger";
 
 /**
@@ -231,6 +236,11 @@ export const adminFeedbackSchema = z
 		userAgent: z.string().nullable(),
 		viewportSize: z.string().nullable(),
 		appVersion: z.string().nullable(),
+		category: feedbackCategorySchema,
+		/** Whether GET /admin/feedback/{id}/screenshot has a picture. */
+		hasScreenshot: z.boolean(),
+		/** What the sender chose to include; null when they included nothing. */
+		diagnostics: feedbackDiagnosticsSchema.nullable(),
 		createdAt: timestampSchema,
 		user: z.object({
 			id: idSchema,
@@ -262,4 +272,34 @@ export const setFeedbackStatusSchema = feedbackParamsSchema.extend({
 export const setFeedbackNoteSchema = feedbackParamsSchema.extend({
 	/** null clears the note. Stored exactly as sent. */
 	note: userText("feedback.adminNote", 2000).nullable(),
+});
+
+export const adminErrorReportSchema = z
+	.object({
+		id: idSchema,
+		kind: z.enum(ERROR_REPORT_KINDS),
+		message: z.string(),
+		stack: z.string().nullable(),
+		screen: z.string().nullable(),
+		appVersion: z.string().nullable(),
+		build: z.string().nullable(),
+		os: z.string().nullable(),
+		device: z.string().nullable(),
+		occurredAt: timestampSchema,
+		createdAt: timestampSchema,
+		user: z.object({ id: idSchema, name: z.string() }),
+	})
+	.meta({ id: "AdminErrorReport" });
+
+export const adminErrorReportPageSchema = z
+	.object({
+		items: z.array(adminErrorReportSchema),
+		nextCursor: z.string().nullable(),
+		total: z.int().min(0),
+	})
+	.meta({ id: "AdminErrorReportPage" });
+
+export const errorReportListQuerySchema = z.object({
+	cursor: z.string().min(1).max(512).optional(),
+	limit: z.coerce.number().int().min(1).max(100).default(20),
 });

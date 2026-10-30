@@ -9230,6 +9230,384 @@
 				"x-required-scope": "admin"
 			}
 		},
+		"/admin/error-reports": {
+			"get": {
+				"operationId": "listErrorReports",
+				"parameters": [
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"maxLength": 512,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"default": 20,
+							"maximum": 100,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"items": {
+											"items": {
+												"properties": {
+													"appVersion": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"build": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"createdAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"device": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"id": {
+														"maxLength": 64,
+														"minLength": 1,
+														"type": "string"
+													},
+													"kind": {
+														"enum": [
+															"crash",
+															"rejection",
+															"render"
+														],
+														"type": "string"
+													},
+													"message": {
+														"type": "string"
+													},
+													"occurredAt": {
+														"format": "date-time",
+														"type": "string"
+													},
+													"os": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"screen": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"stack": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"user": {
+														"properties": {
+															"id": {
+																"maxLength": 64,
+																"minLength": 1,
+																"type": "string"
+															},
+															"name": {
+																"type": "string"
+															}
+														},
+														"required": [
+															"id",
+															"name"
+														],
+														"type": "object"
+													}
+												},
+												"required": [
+													"id",
+													"kind",
+													"message",
+													"stack",
+													"screen",
+													"appVersion",
+													"build",
+													"os",
+													"device",
+													"occurredAt",
+													"createdAt",
+													"user"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										},
+										"nextCursor": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"total": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"items",
+										"nextCursor",
+										"total"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Crashes people's apps sent, newest first",
+				"tags": [
+					"Admin"
+				],
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/error-reports/{id}": {
+			"delete": {
+				"operationId": "deleteErrorReport",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "Delete an error report",
+				"tags": [
+					"Admin"
+				],
+				"x-event-type": "error_report.deleted",
+				"x-required-scope": "admin"
+			}
+		},
 		"/admin/event-logs": {
 			"get": {
 				"operationId": "listEventLogs",
@@ -9623,9 +10001,110 @@
 															}
 														]
 													},
+													"category": {
+														"enum": [
+															"bug",
+															"idea",
+															"other"
+														],
+														"type": "string"
+													},
 													"createdAt": {
 														"format": "date-time",
 														"type": "string"
+													},
+													"diagnostics": {
+														"anyOf": [
+															{
+																"properties": {
+																	"appVersion": {
+																		"maxLength": 32,
+																		"type": "string"
+																	},
+																	"build": {
+																		"maxLength": 32,
+																		"type": "string"
+																	},
+																	"device": {
+																		"maxLength": 64,
+																		"type": "string"
+																	},
+																	"locale": {
+																		"maxLength": 32,
+																		"type": "string"
+																	},
+																	"os": {
+																		"maxLength": 64,
+																		"type": "string"
+																	},
+																	"recentErrors": {
+																		"items": {
+																			"properties": {
+																				"appVersion": {
+																					"maxLength": 32,
+																					"type": "string"
+																				},
+																				"build": {
+																					"maxLength": 32,
+																					"type": "string"
+																				},
+																				"device": {
+																					"maxLength": 64,
+																					"type": "string"
+																				},
+																				"kind": {
+																					"enum": [
+																						"crash",
+																						"rejection",
+																						"render"
+																					],
+																					"type": "string"
+																				},
+																				"message": {
+																					"maxLength": 500,
+																					"type": "string"
+																				},
+																				"occurredAt": {
+																					"format": "date-time",
+																					"type": "string"
+																				},
+																				"os": {
+																					"maxLength": 64,
+																					"type": "string"
+																				},
+																				"screen": {
+																					"maxLength": 200,
+																					"type": "string"
+																				},
+																				"stack": {
+																					"maxLength": 4000,
+																					"type": "string"
+																				}
+																			},
+																			"required": [
+																				"kind",
+																				"message",
+																				"occurredAt"
+																			],
+																			"type": "object"
+																		},
+																		"maxItems": 10,
+																		"type": "array"
+																	},
+																	"serverVersion": {
+																		"maxLength": 32,
+																		"type": "string"
+																	}
+																},
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"hasScreenshot": {
+														"type": "boolean"
 													},
 													"id": {
 														"maxLength": 64,
@@ -9697,6 +10176,9 @@
 													"userAgent",
 													"viewportSize",
 													"appVersion",
+													"category",
+													"hasScreenshot",
+													"diagnostics",
 													"createdAt",
 													"user"
 												],
@@ -10063,6 +10545,109 @@
 					"Admin"
 				],
 				"x-event-type": "feedback.note_set",
+				"x-required-scope": "admin"
+			}
+		},
+		"/admin/feedback/{id}/screenshot": {
+			"get": {
+				"description": "A WebP. Answers 404 when the entry has none.",
+				"operationId": "getFeedbackScreenshot",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"*/*": {
+								"schema": {
+									"contentMediaType": "*/*",
+									"type": "string"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"admin"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"admin"
+						]
+					},
+					{
+						"cookieAuth": [
+							"admin"
+						]
+					}
+				],
+				"summary": "The screenshot sent with a feedback entry",
+				"tags": [
+					"Admin"
+				],
 				"x-required-scope": "admin"
 			}
 		},
@@ -61434,6 +62019,191 @@
 				"x-required-scope": "read"
 			}
 		},
+		"/error-reports": {
+			"post": {
+				"description": "Up to 20 reports a call. Admins read them at GET /admin/error-reports.",
+				"operationId": "submitErrorReports",
+				"parameters": [
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"reports": {
+										"items": {
+											"properties": {
+												"appVersion": {
+													"maxLength": 32,
+													"type": "string"
+												},
+												"build": {
+													"maxLength": 32,
+													"type": "string"
+												},
+												"device": {
+													"maxLength": 64,
+													"type": "string"
+												},
+												"kind": {
+													"enum": [
+														"crash",
+														"rejection",
+														"render"
+													],
+													"type": "string"
+												},
+												"message": {
+													"maxLength": 500,
+													"type": "string"
+												},
+												"occurredAt": {
+													"format": "date-time",
+													"type": "string"
+												},
+												"os": {
+													"maxLength": 64,
+													"type": "string"
+												},
+												"screen": {
+													"maxLength": 200,
+													"type": "string"
+												},
+												"stack": {
+													"maxLength": 4000,
+													"type": "string"
+												}
+											},
+											"required": [
+												"kind",
+												"message",
+												"occurredAt"
+											],
+											"type": "object"
+										},
+										"maxItems": 20,
+										"minItems": 1,
+										"type": "array"
+									}
+								},
+								"required": [
+									"reports"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"ok": {
+											"const": true
+										},
+										"stored": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										}
+									},
+									"required": [
+										"ok",
+										"stored"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Send the app's recorded crashes to the admins",
+				"tags": [
+					"Feedback"
+				],
+				"x-required-scope": "write:settings"
+			}
+		},
 		"/events": {
 			"get": {
 				"description": "Events for the signed-in user in commit order. Poll with `after` set to the last `cursor`; an event shows up a moment after its write commits, never out of order. When someone else changes a thing you share (a split expense, a fix request, a payment), your feed gets that event too, a moment later: its actorUserId is theirs, its entity is the thing, and it carries no ids or amounts (read the entity for what changed). Events are kept for 30 days and carry ids and amounts only. An event appears once every older write transaction on the database server has finished, which is normally milliseconds but can be longer while any long write runs, whoever started it. Delivery order inside the feed is commit order.",
@@ -68373,7 +69143,7 @@
 		},
 		"/feedback": {
 			"post": {
-				"description": "Answers 409 after 5 entries in an hour. Admins are emailed when the server has email on.",
+				"description": "Answers 409 after 5 entries in an hour. Admins are emailed when the server has email on. The answer carries the id to attach a screenshot to.",
 				"operationId": "submitFeedback",
 				"parameters": [
 					{
@@ -68394,6 +69164,98 @@
 									"appVersion": {
 										"maxLength": 32,
 										"type": "string"
+									},
+									"category": {
+										"default": "other",
+										"enum": [
+											"bug",
+											"idea",
+											"other"
+										],
+										"type": "string"
+									},
+									"diagnostics": {
+										"properties": {
+											"appVersion": {
+												"maxLength": 32,
+												"type": "string"
+											},
+											"build": {
+												"maxLength": 32,
+												"type": "string"
+											},
+											"device": {
+												"maxLength": 64,
+												"type": "string"
+											},
+											"locale": {
+												"maxLength": 32,
+												"type": "string"
+											},
+											"os": {
+												"maxLength": 64,
+												"type": "string"
+											},
+											"recentErrors": {
+												"items": {
+													"properties": {
+														"appVersion": {
+															"maxLength": 32,
+															"type": "string"
+														},
+														"build": {
+															"maxLength": 32,
+															"type": "string"
+														},
+														"device": {
+															"maxLength": 64,
+															"type": "string"
+														},
+														"kind": {
+															"enum": [
+																"crash",
+																"rejection",
+																"render"
+															],
+															"type": "string"
+														},
+														"message": {
+															"maxLength": 500,
+															"type": "string"
+														},
+														"occurredAt": {
+															"format": "date-time",
+															"type": "string"
+														},
+														"os": {
+															"maxLength": 64,
+															"type": "string"
+														},
+														"screen": {
+															"maxLength": 200,
+															"type": "string"
+														},
+														"stack": {
+															"maxLength": 4000,
+															"type": "string"
+														}
+													},
+													"required": [
+														"kind",
+														"message",
+														"occurredAt"
+													],
+													"type": "object"
+												},
+												"maxItems": 10,
+												"type": "array"
+											},
+											"serverVersion": {
+												"maxLength": 32,
+												"type": "string"
+											}
+										},
+										"type": "object"
 									},
 									"message": {
 										"maxLength": 5000,
@@ -68425,6 +69287,167 @@
 				},
 				"responses": {
 					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"id": {
+											"maxLength": 64,
+											"minLength": 1,
+											"type": "string"
+										},
+										"ok": {
+											"const": true
+										}
+									},
+									"required": [
+										"ok",
+										"id"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"write:settings"
+						]
+					},
+					{
+						"cookieAuth": [
+							"write:settings"
+						]
+					}
+				],
+				"summary": "Send feedback to the admins",
+				"tags": [
+					"Feedback"
+				],
+				"x-event-type": "feedback.submitted",
+				"x-required-scope": "write:settings"
+			}
+		},
+		"/feedback/{id}/screenshot": {
+			"put": {
+				"description": "Only the sender can attach, and a new file replaces the old one. The picture is private: only admins read it.",
+				"operationId": "attachFeedbackScreenshot",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"maxLength": 64,
+							"minLength": 1,
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "Idempotency-Key",
+						"required": true,
+						"schema": {
+							"maxLength": 255,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"file": {
+										"contentMediaType": "*/*",
+										"description": "JPEG, PNG, WebP or GIF up to 5 MB; stored as a WebP at most 1200 pixels wide.",
+										"type": "string"
+									}
+								},
+								"required": [
+									"file"
+								],
+								"type": "object"
+							}
+						},
+						"multipart/form-data": {
+							"schema": {
+								"properties": {
+									"file": {
+										"contentMediaType": "*/*",
+										"description": "JPEG, PNG, WebP or GIF up to 5 MB; stored as a WebP at most 1200 pixels wide.",
+										"type": "string"
+									}
+								},
+								"required": [
+									"file"
+								],
+								"type": "object"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
 						"content": {
 							"application/json": {
 								"schema": {
@@ -68510,11 +69533,11 @@
 						]
 					}
 				],
-				"summary": "Send feedback to the admins",
+				"summary": "Attach a screenshot to feedback you sent (multipart/form-data, field file)",
 				"tags": [
 					"Feedback"
 				],
-				"x-event-type": "feedback.submitted",
+				"x-event-type": "feedback.screenshot_attached",
 				"x-required-scope": "write:settings"
 			}
 		},
