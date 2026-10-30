@@ -1941,6 +1941,7 @@
 	},
 	"settings": {
 		"title": "Ajustes",
+		"back": "Voltar",
 		"saved": "Salvo",
 		"saveError": "Não foi possível salvar. Tente de novo.",
 		"error": "Não foi possível carregar os ajustes",

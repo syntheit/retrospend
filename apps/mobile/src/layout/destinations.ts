@@ -5,15 +5,17 @@ import { TabSidebar } from "../../modules/tab-sidebar";
  * The iPad follows Apple's tab bar that adapts into a sidebar (HIG, Tab bars
  * and Sidebars; iPadOS 18 and later). The floating tab bar holds the same five
  * destinations as the iPhone (Home, Activity, Budget, Wealth, People), so it
- * does not scroll. The sidebar lists every destination: those five, then
- * Projects, Insights, Recurring, Currencies and Settings, which are sidebar
- * only (modules/tab-sidebar). UIKit shows a sidebar-only destination in the
- * bar while it is open, as Apple's own apps do.
+ * does not scroll. The sidebar lists six destinations (those five and
+ * Projects) and Settings; Projects and Settings are sidebar only
+ * (modules/tab-sidebar). UIKit shows a sidebar-only destination in the bar
+ * while it is open, as Apple's own apps do. It opens by default in landscape
+ * only.
  *
  * That needs iPadOS 26.1 or later (the UITab path in react-native-screens).
  * Older iPads, phones and Android tablets have the five tabs and the add
- * control: Projects is the second segment of People, Recurring and Currencies
- * open from Settings, Insights from Home.
+ * control: Projects is the second segment of People. On every device
+ * Recurring is a segment of Activity and Currencies opens from Settings, and
+ * Insights opens from Home.
  */
 export const IPAD_SIDEBAR =
 	Platform.OS === "ios" &&
@@ -21,20 +23,14 @@ export const IPAD_SIDEBAR =
 	(TabSidebar?.isSupported() ?? false);
 
 export const PROJECTS_APART = IPAD_SIDEBAR;
-export const RECURRING_APART = IPAD_SIDEBAR;
-export const CURRENCIES_APART = IPAD_SIDEBAR;
+export const RECURRING_APART = false;
+export const CURRENCIES_APART = false;
 
 /**
  * Sidebar-only destinations, by route name under app/(tabs), in sidebar
  * order. "preferences" is Settings (app/settings is the stack phones push).
  */
-export const SIDEBAR_ONLY = [
-	"projects",
-	"insights",
-	"recurring",
-	"currencies",
-	"preferences",
-] as const;
+export const SIDEBAR_ONLY = ["projects", "preferences"] as const;
 
 /** Hands the sidebar layout to the native tab bar; a no-op off the iPad sidebar. */
 export function configureSidebar() {

@@ -1941,6 +1941,7 @@
 	},
 	"settings": {
 		"title": "Einstellungen",
+		"back": "Zurück",
 		"saved": "Gespeichert",
 		"saveError": "Konnte nicht gespeichert werden. Versuche es erneut.",
 		"error": "Einstellungen konnten nicht geladen werden",

@@ -1,20 +1,52 @@
-import { Stack } from "expo-router";
-import { Platform } from "react-native";
+import { router, Stack } from "expo-router";
+import { I18nManager, Platform, Pressable } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { Glyph } from "@/ui/Glyph";
 
 /**
  * Settings pushes over the tabs (the toast and the sheets live in the root
- * view, so it is not a native modal): swipe back or the system back leaves.
+ * view, so it is not a native modal): swipe back or the back button leaves.
  * The list of sections has the large title on iOS; every page under it has
  * an inline title (GUIDELINE 15).
  *
  * The bar is the system's, as in the tab stacks: on iOS an opaque
  * `headerStyle` paints over the large title and leaves a blank band, so only
- * Android gets the flat theme-colored bar. The first screen's back button
- * comes from the root stack (it shows the route name "(tabs)" as its label,
- * so the label is dropped and the arrow stands alone).
+ * Android gets the flat theme-colored bar. The root stack hides its own
+ * header and this stack's first screen has nothing behind it, so the list of
+ * sections draws its own back button (the arrow alone) and leaves with
+ * `router.back()`.
  */
+/**
+ * The way out of the first screen: the arrow alone, 44 points, labeled. The
+ * glyph set has the right chevron only, so the arrow is turned around (and
+ * left as it is in a right-to-left layout, where "back" points right).
+ */
+function LeaveSettings({ label }: { label: string }) {
+	const { color, size } = useTheme();
+	const target = size.touchMin.phone;
+	return (
+		<Pressable
+			accessibilityLabel={label}
+			accessibilityRole="button"
+			onPress={() =>
+				router.canGoBack() ? router.back() : router.replace("/")
+			}
+			style={({ pressed }) => ({
+				width: target,
+				height: target,
+				borderRadius: target / 2,
+				alignItems: "center",
+				justifyContent: "center",
+				backgroundColor: pressed ? color.raised : "transparent",
+				transform: [{ rotate: I18nManager.isRTL ? "0deg" : "180deg" }],
+			})}
+		>
+			<Glyph color={color.fg} name="ChevronRight" size={size.icon.phone} />
+		</Pressable>
+	);
+}
+
 export default function SettingsLayout() {
 	const t = useTranslations("mobile.settings");
 	const { color } = useTheme();
@@ -33,7 +65,7 @@ export default function SettingsLayout() {
 				options={{
 					title: t("title"),
 					headerLargeTitle: !android,
-					headerBackButtonDisplayMode: "minimal",
+					headerLeft: () => <LeaveSettings label={t("back")} />,
 				}}
 			/>
 			<Stack.Screen name="profile" options={{ title: t("profile.title") }} />
