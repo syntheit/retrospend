@@ -1,6 +1,8 @@
 import {
 	balanceSides,
+	daysSince,
 	groupProjects,
+	justBack,
 	matchesProject,
 	type ProjectItem,
 	summaryCache,
@@ -68,5 +70,46 @@ describe("summaryCache", () => {
 		expect(summaryCache("p1", null).name).not.toBe(
 			summaryCache("p1", "x").name,
 		);
+	});
+});
+
+describe("justBack", () => {
+	const trip = (
+		id: string,
+		last: string | null,
+		over: Partial<ProjectItem> = {},
+	) =>
+		({
+			id,
+			status: "ACTIVE",
+			solo: false,
+			lastExpense: last,
+			myBalance: [{ minor: 500, currency: "BRL" }],
+			...over,
+		}) as ProjectItem;
+
+	it("takes the most recent active shared project that still has a balance", () => {
+		const items = [
+			trip("old", "2026-08-01"),
+			trip("recent", "2026-10-18"),
+			trip("newer", "2026-10-25"),
+		];
+		expect(justBack(items, "2026-10-29")?.id).toBe("newer");
+	});
+
+	it("skips solo, archived, settled and long-ago projects", () => {
+		const items = [
+			trip("solo", "2026-10-25", { solo: true }),
+			trip("archived", "2026-10-25", { status: "ARCHIVED" }),
+			trip("settled", "2026-10-25", { myBalance: [] }),
+			trip("none", null),
+			trip("ago", "2026-08-01"),
+		];
+		expect(justBack(items, "2026-10-29")).toBeNull();
+	});
+
+	it("counts whole days back", () => {
+		expect(daysSince("2026-10-26", "2026-10-29")).toBe(3);
+		expect(daysSince("2026-10-30", "2026-10-29")).toBe(0);
 	});
 });

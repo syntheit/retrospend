@@ -61,13 +61,31 @@ export function NetAmount({
 }) {
 	const tp = useTranslations("mobile.people");
 	const t = useTranslations("mobile.money");
+	const format = useMoneyText();
 	const hero = size === "hero";
+	const approx = isApproximate(parts, home);
 	return (
 		<View style={{ alignItems: align === "right" ? "flex-end" : "flex-start" }}>
-			{net ? (
+			{net && approx && !hero ? (
+				// A converted total is an estimate: whole units, no cents.
+				<Text
+					numberOfLines={1}
+					style={{ textAlign: align }}
+					tabular
+					tone={tone === "positive" ? "positive" : "fg"}
+					weight="semibold"
+				>
+					{t("approx", {
+						amount: format(
+							{ minor: Math.abs(net.minor), currency: net.currency },
+							{ cents: false },
+						),
+					})}
+				</Text>
+			) : net ? (
 				<MoneyAmount
 					align={align}
-					approx={isApproximate(parts, home)}
+					approx={approx}
 					size={hero ? "hero" : "body"}
 					strong
 					tone={tone}

@@ -6,7 +6,7 @@ import { Text } from "@/ui/Text";
 export interface PersonAction {
 	id: string;
 	label: string;
-	/** Leads the label, as the mockup's tiles do (Banknote, Bell, Plus). */
+	/** Sits above the label, as the mockup's tiles do (Banknote, Bell, Plus). */
 	glyph?: GlyphName;
 	onPress: () => void;
 	/** The one filled action (Settle up). */
@@ -37,11 +37,12 @@ export function PersonActions({ actions }: { actions: PersonAction[] }) {
 					onPress={action.onPress}
 					style={({ pressed }) => ({
 						flex: 1,
-						minHeight: space[12],
-						flexDirection: "row",
+						// 56 tall: the glyph over the label, as the mockup's tiles.
+						minHeight: space[12] + space[2],
+						flexDirection: "column",
 						alignItems: "center",
 						justifyContent: "center",
-						gap: space[2],
+						gap: space[1],
 						paddingHorizontal: space[2],
 						borderRadius: radius.ctl,
 						borderWidth: 1,
@@ -63,7 +64,7 @@ export function PersonActions({ actions }: { actions: PersonAction[] }) {
 					<Text
 						numberOfLines={1}
 						style={action.primary ? { color: color.brandFg } : undefined}
-						variant="body"
+						variant="small"
 						weight="medium"
 					>
 						{action.label}

@@ -6,7 +6,6 @@ import { MoneyAmount } from "@/features/read/MoneyAmount";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
-import { THIN } from "@/ui/charts/chartSpec";
 import { ListRow } from "@/ui/List";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
@@ -16,9 +15,9 @@ import { useDayRange } from "./dates";
 import { balanceSides, type ProjectItem } from "./source";
 
 /**
- * The budget as a bar and a line under it: what is left on the left (or how
- * far over), "of" the budget on the right. The bar is the server's capped
- * percent.
+ * The budget as a line and a 4 point bar under it: what is left on the left
+ * (or how far over), "of" the budget on the right. The bar is the server's
+ * capped percent.
  */
 export function BudgetLine({
 	budget,
@@ -39,24 +38,6 @@ export function BudgetLine({
 	return (
 		<View style={{ gap: space[1] }}>
 			<View
-				accessibilityElementsHidden
-				importantForAccessibility="no-hide-descendants"
-				style={{
-					height: THIN.ranked,
-					borderRadius: radius.chip,
-					backgroundColor: color.raised,
-					overflow: "hidden",
-				}}
-			>
-				<View
-					style={{
-						width: `${budget.used / 100}%`,
-						height: THIN.ranked,
-						backgroundColor: budget.over ? color.attention : color.accent,
-					}}
-				/>
-			</View>
-			<View
 				style={{
 					flexDirection: "row",
 					justifyContent: "space-between",
@@ -64,7 +45,6 @@ export function BudgetLine({
 				}}
 			>
 				<Text
-					numberOfLines={1}
 					style={{ flexShrink: 1 }}
 					tone={budget.over ? "attention" : "fg"}
 					variant="small"
@@ -75,6 +55,24 @@ export function BudgetLine({
 				<Text tone="fg3" variant="meta">
 					{t("budgetOf", { amount: money(budget.amount) })}
 				</Text>
+			</View>
+			<View
+				accessibilityElementsHidden
+				importantForAccessibility="no-hide-descendants"
+				style={{
+					height: space[1],
+					borderRadius: radius.chip,
+					backgroundColor: color.raised,
+					overflow: "hidden",
+				}}
+			>
+				<View
+					style={{
+						width: `${budget.used / 100}%`,
+						height: space[1],
+						backgroundColor: budget.over ? color.attention : color.accent,
+					}}
+				/>
 			</View>
 		</View>
 	);
@@ -122,80 +120,85 @@ export function ProjectRow({
 		.filter(Boolean)
 		.join(", ");
 	return (
-		<ListRow
-			accessibilityLabel={spoken}
-			end={
-				<View style={{ alignItems: "flex-end", gap: space[1] }}>
-					{project.total.map((line) => (
-						<MoneyAmount key={line.currency} value={line} />
-					))}
-					<Text tone="fg3" variant="meta">
-						{project.solo || !shareText
-							? t("spent")
-							: t("yourShare", { amount: shareText })}
-					</Text>
-				</View>
-			}
-			lead={
+		<ListRow accessibilityLabel={spoken} onPress={onPress} selected={selected}>
+			<View style={{ alignSelf: "flex-start" }}>
 				<Cover
 					diameter={size.avatar.row}
 					id={project.id}
 					imageUri={absoluteImage(project.imageUrl, baseUrl)}
 					name={project.name}
 				/>
-			}
-			onPress={onPress}
-			selected={selected}
-			sub={
-				<View style={{ gap: space[1] }}>
-					<Text numberOfLines={1} tone="fg2" variant="meta">
-						{sub}
-					</Text>
-					{project.solo ? null : (
-						<View
-							style={{
-								flexDirection: "row",
-								alignItems: "center",
-								gap: space[2],
-							}}
-						>
-							<AvatarStack
-								faces={faces(
-									project.people.map((p) => ({
-										key: p.id,
-										name: p.name,
-										imageUrl: p.imageUrl,
-									})),
-								)}
-								max={4}
-								ring="surface"
-								size="sm"
-							/>
-							{owedToYou.length === 0 && youOwe.length === 0 ? (
-								<StatusText kind="settled" size="sm" />
-							) : null}
-						</View>
-					)}
-					{owedToYou.map((line) => (
-						<StatusText
-							key={`in:${line.currency}`}
-							label={t("owesYouAmount", { amount: money(line) })}
-							size="sm"
-							tone="positive"
-						/>
-					))}
-					{youOwe.map((line) => (
-						<StatusText
-							key={`out:${line.currency}`}
-							label={t("youOweAmount", { amount: money(line) })}
-							size="sm"
-							tone="owe"
-						/>
-					))}
-					{project.budget ? <BudgetLine budget={project.budget} /> : null}
+			</View>
+			<View style={{ flex: 1, minWidth: 0, gap: space[1] }}>
+				<View
+					style={{
+						flexDirection: "row",
+						alignItems: "flex-start",
+						gap: space[3],
+					}}
+				>
+					<View style={{ flex: 1, minWidth: 0 }}>
+						<Text numberOfLines={2} weight="medium">
+							{project.name}
+						</Text>
+						<Text tone="fg3" variant="meta">
+							{sub}
+						</Text>
+					</View>
+					<View style={{ alignItems: "flex-end", flexShrink: 1 }}>
+						{project.total.map((line) => (
+							<MoneyAmount key={line.currency} value={line} />
+						))}
+						<Text style={{ textAlign: "right" }} tone="fg3" variant="meta">
+							{project.solo || !shareText
+								? t("spent")
+								: t("yourShare", { amount: shareText })}
+						</Text>
+					</View>
 				</View>
-			}
-			title={project.name}
-		/>
+				{project.solo ? null : (
+					<View
+						style={{
+							flexDirection: "row",
+							alignItems: "center",
+							gap: space[2],
+						}}
+					>
+						<AvatarStack
+							faces={faces(
+								project.people.map((p) => ({
+									key: p.id,
+									name: p.name,
+									imageUrl: p.imageUrl,
+								})),
+							)}
+							max={4}
+							ring="surface"
+							size="sm"
+						/>
+						{owedToYou.length === 0 && youOwe.length === 0 ? (
+							<StatusText kind="settled" size="sm" />
+						) : null}
+					</View>
+				)}
+				{owedToYou.map((line) => (
+					<StatusText
+						key={`in:${line.currency}`}
+						label={t("owesYouAmount", { amount: money(line) })}
+						size="sm"
+						tone="positive"
+					/>
+				))}
+				{youOwe.map((line) => (
+					<StatusText
+						key={`out:${line.currency}`}
+						label={t("youOweAmount", { amount: money(line) })}
+						size="sm"
+						tone="owe"
+					/>
+				))}
+				{project.budget ? <BudgetLine budget={project.budget} /> : null}
+			</View>
+		</ListRow>
 	);
 }

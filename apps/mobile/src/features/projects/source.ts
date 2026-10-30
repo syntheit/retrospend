@@ -82,6 +82,43 @@ export function groupProjects(items: ProjectItem[]): ProjectGroup[] {
 	return groups;
 }
 
+/** A project counts as just back for this many days after its last expense. */
+export const JUST_BACK_DAYS = 30;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The project the list leads with: an active shared project with an open
+ * balance whose last expense is recent, the most recent first. The list has
+ * no end date, so "recent" is the last expense, within JUST_BACK_DAYS of
+ * `today` (a YYYY-MM-DD day).
+ */
+export function justBack(
+	items: ProjectItem[],
+	today: string,
+): ProjectItem | null {
+	const now = Date.parse(`${today}T12:00:00Z`);
+	const recent = items
+		.filter((p) => {
+			if (p.status !== "ACTIVE" || p.solo || p.lastExpense === null) {
+				return false;
+			}
+			if (!p.myBalance.some((line) => line.minor !== 0)) return false;
+			const age = (now - Date.parse(`${p.lastExpense}T12:00:00Z`)) / DAY_MS;
+			return age >= 0 && age <= JUST_BACK_DAYS;
+		})
+		.sort((a, b) => ((b.lastExpense ?? "") > (a.lastExpense ?? "") ? 1 : -1));
+	return recent[0] ?? null;
+}
+
+/** How many whole days ago a day was, never below zero. */
+export function daysSince(day: string, today: string): number {
+	const diff =
+		(Date.parse(`${today}T12:00:00Z`) - Date.parse(`${day}T12:00:00Z`)) /
+		DAY_MS;
+	return Math.max(0, Math.round(diff));
+}
+
 /** Name search ignoring case and accents, like People's. */
 export function matchesProject(item: ProjectItem, query: string): boolean {
 	const fold = (text: string) =>

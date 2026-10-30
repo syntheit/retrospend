@@ -15,6 +15,7 @@ import { Screen } from "@/ui/Screen";
 import { Text } from "@/ui/Text";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
 import {
+	categoriesOf,
 	filterExpenses,
 	ME,
 	type PaidBy,
@@ -22,7 +23,7 @@ import {
 	projectNeeds,
 } from "./filters";
 import { ProjectExpenseDays } from "./ProjectExpenses";
-import { ProjectHeader } from "./ProjectHeader";
+import { ProjectHeader, ProjectTitle } from "./ProjectHeader";
 import { ProjectPeopleTab } from "./ProjectPeopleTab";
 import { ProjectSummaryTab } from "./ProjectSummaryTab";
 import { SettleAllSheet } from "./SettleAllSheet";
@@ -43,9 +44,12 @@ const CAN_SETTLE = new Set(["ORGANIZER", "EDITOR", "CONTRIBUTOR"]);
  */
 export function ProjectView({
 	id,
+	name,
 	startSettling = false,
 }: {
 	id: string;
+	/** The name the list knew, shown in the title while the page loads. */
+	name?: string;
 	startSettling?: boolean;
 }) {
 	const t = useTranslations("mobile.projects");
@@ -57,6 +61,7 @@ export function ProjectView({
 	const [period, setPeriod] = useState<Period>("all");
 	const [toReview, setToReview] = useState(false);
 	const [paidBy, setPaidBy] = useState<PaidBy>(null);
+	const [category, setCategory] = useState<string | null>(null);
 	const [reviewing, setReviewing] = useState<
 		ReturnType<typeof projectNeeds>[number] | null
 	>(null);
@@ -66,8 +71,9 @@ export function ProjectView({
 	const summary = useProjectSummary(id, periodId, tab === "summary");
 	const expenses = page?.expenses;
 	const shown = useMemo(
-		() => (expenses ? filterExpenses(expenses, { toReview, paidBy }) : []),
-		[expenses, toReview, paidBy],
+		() =>
+			expenses ? filterExpenses(expenses, { toReview, paidBy, category }) : [],
+		[expenses, toReview, paidBy, category],
 	);
 	const needs = useMemo(
 		() =>
@@ -84,6 +90,11 @@ export function ProjectView({
 	if (state.status === "loading") {
 		return (
 			<Screen>
+				{listDetail ? null : (
+					<Stack.Screen
+						options={{ title: name ?? "", headerLargeTitle: false }}
+					/>
+				)}
 				<EmptyState title="" />
 			</Screen>
 		);
@@ -91,6 +102,11 @@ export function ProjectView({
 	if (!page) {
 		return (
 			<Screen>
+				{listDetail ? null : (
+					<Stack.Screen
+						options={{ title: name ?? "", headerLargeTitle: false }}
+					/>
+				)}
 				<EmptyState detail={t("errorDetail")} title={t("errorOne")} />
 			</Screen>
 		);
@@ -112,6 +128,7 @@ export function ProjectView({
 		(e) => e.waiting === "review",
 	).length;
 	const who = payers(page.expenses);
+	const categories = categoriesOf(page.expenses);
 	const whoLabel = (key: string) =>
 		key === ME
 			? t("you")
@@ -126,7 +143,13 @@ export function ProjectView({
 			}}
 		>
 			{listDetail ? null : (
-				<Stack.Screen options={{ title: page.name, headerLargeTitle: false }} />
+				<Stack.Screen
+					options={{
+						title: page.name,
+						headerLargeTitle: false,
+						headerTitle: () => <ProjectTitle page={page} />,
+					}}
+				/>
 			)}
 			<StaleNote since={state.status === "ready" ? state.staleSince : null} />
 			<ProjectHeader
@@ -147,12 +170,13 @@ export function ProjectView({
 					{needs.length > 0 ? (
 						<View style={{ paddingTop: space[4] }}>
 							<NeedsCard
+								inline
 								needs={needs}
 								onPress={() => setReviewing(needs[0] ?? null)}
 							/>
 						</View>
 					) : null}
-					{reviewCount > 0 || who.length > 1 ? (
+					{reviewCount > 0 || who.length > 1 || categories.length > 1 ? (
 						<ScrollView
 							contentContainerStyle={{
 								alignItems: "center",
@@ -191,6 +215,28 @@ export function ProjectView({
 										paidBy === null
 											? t("paidBy")
 											: t("paidByOne", { name: whoLabel(paidBy) })
+									}
+								/>
+							) : null}
+							{categories.length > 1 ? (
+								<Menu
+									active={category !== null}
+									chip
+									items={[
+										{
+											id: "all",
+											label: t("allCategories"),
+											onPress: () => setCategory(null),
+										},
+										...categories.map((c) => ({
+											id: c.id,
+											label: c.name,
+											onPress: () => setCategory(c.id),
+										})),
+									]}
+									label={
+										categories.find((c) => c.id === category)?.name ??
+										t("filter")
 									}
 								/>
 							) : null}

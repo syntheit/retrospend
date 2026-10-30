@@ -12,16 +12,30 @@ export function payerKey(expense: ProjectExpense): string | null {
 	return expense.payerIsMe ? ME : expense.payerName;
 }
 
-/** The expenses the toolbar chips keep: only those to review, and only one payer's. */
+/** The expenses the toolbar chips keep: only those to review, one payer's, one category's. */
 export function filterExpenses(
 	expenses: ProjectExpense[],
-	filter: { toReview: boolean; paidBy: PaidBy },
+	filter: { toReview: boolean; paidBy: PaidBy; category?: string | null },
 ): ProjectExpense[] {
 	return expenses.filter(
 		(e) =>
 			(!filter.toReview || e.waiting === "review") &&
-			(filter.paidBy === null || payerKey(e) === filter.paidBy),
+			(filter.paidBy === null || payerKey(e) === filter.paidBy) &&
+			(!filter.category || e.category?.id === filter.category),
 	);
+}
+
+/** The categories these expenses use, once each, in the order they come. */
+export function categoriesOf(
+	expenses: ProjectExpense[],
+): { id: string; name: string }[] {
+	const seen = new Map<string, string>();
+	for (const e of expenses) {
+		if (e.category && !seen.has(e.category.id)) {
+			seen.set(e.category.id, e.category.name);
+		}
+	}
+	return [...seen].map(([id, name]) => ({ id, name }));
 }
 
 /** Who paid something in these expenses: you first, then names in the order they come. */

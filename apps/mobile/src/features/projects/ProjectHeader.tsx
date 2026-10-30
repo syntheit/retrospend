@@ -14,6 +14,29 @@ import { useDayRange } from "./dates";
 import { BudgetLine } from "./ProjectRow";
 import type { ProjectPage } from "./source";
 
+/** The navigation bar's title: the cover at 24 before the name. */
+export function ProjectTitle({ page }: { page: ProjectPage }) {
+	const { connection } = useServerConnection();
+	const { size, space } = useTheme();
+	const baseUrl = connection.status === "connected" ? connection.baseUrl : null;
+	return (
+		<View
+			accessibilityRole="header"
+			style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}
+		>
+			<Cover
+				diameter={size.avatar.sm}
+				id={page.id}
+				imageUri={absoluteImage(page.imageUrl, baseUrl)}
+				name={page.name}
+			/>
+			<Text numberOfLines={1} variant="section" weight="semibold">
+				{page.name}
+			</Text>
+		</View>
+	);
+}
+
 /**
  * The top of a project: a compact meta line (who is in it, when, the
  * currency), the tabs right under it, then the one hero (the group total,
