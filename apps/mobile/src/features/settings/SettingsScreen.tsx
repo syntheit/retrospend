@@ -12,6 +12,7 @@ import type { GlyphName } from "@/ui/Glyph";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow } from "@/ui/List";
 import { Text } from "@/ui/Text";
+import { adminAccess } from "../admin/rules";
 import { channelsOn, type NotificationChannel } from "./channels";
 import { AboutFooter, NavEnd, SettingsPage } from "./parts";
 import {
@@ -54,6 +55,7 @@ export function SettingsScreen() {
 	const t = useTranslations("mobile.settings");
 	const tr = useTranslations("mobile.settings.root");
 	const tc = useTranslations("mobile.settings.notifications.channel");
+	const ta = useTranslations("mobile.admin");
 	const { state } = useSession();
 	const push = usePush();
 	const face = useMyFace();
@@ -68,6 +70,7 @@ export function SettingsScreen() {
 	const me = profile.state.status === "ready" ? profile.state.data : null;
 	const settings = general.state.status === "ready" ? general.state.data : null;
 	const signedIn = state.status === "signedIn" ? state.me : null;
+	const admin = adminAccess(signedIn);
 
 	const languageName =
 		language === "device" ? t("language.device") : LANGUAGE_NAMES[language];
@@ -153,6 +156,24 @@ export function SettingsScreen() {
 				{row("security")}
 				{row("data")}
 			</ListGroup>
+			{admin === "none" ? null : (
+				<>
+					<View style={{ height: space[6] }} />
+					<ListGroup>
+						<ListRow
+							end={admin === "ok" ? <NavEnd /> : undefined}
+							lead={<IconTile name="Shield" />}
+							onPress={
+								admin === "ok"
+									? () => router.push("/settings/admin")
+									: undefined
+							}
+							sub={admin === "signIn" ? ta("signInAgain") : undefined}
+							title={ta("title")}
+						/>
+					</ListGroup>
+				</>
+			)}
 			<View style={{ height: space[6] }} />
 			<ListGroup>{row("danger")}</ListGroup>
 			<AboutFooter />

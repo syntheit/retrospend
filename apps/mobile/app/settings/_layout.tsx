@@ -29,9 +29,7 @@ function LeaveSettings({ label }: { label: string }) {
 		<Pressable
 			accessibilityLabel={label}
 			accessibilityRole="button"
-			onPress={() =>
-				router.canGoBack() ? router.back() : router.replace("/")
-			}
+			onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
 			style={({ pressed }) => ({
 				width: target,
 				height: target,
@@ -49,6 +47,7 @@ function LeaveSettings({ label }: { label: string }) {
 
 export default function SettingsLayout() {
 	const t = useTranslations("mobile.settings");
+	const ta = useTranslations("mobile.admin");
 	const { color } = useTheme();
 	const android = Platform.OS === "android";
 	return (
@@ -92,6 +91,20 @@ export default function SettingsLayout() {
 			/>
 			<Stack.Screen name="data" options={{ title: t("data.title") }} />
 			<Stack.Screen name="danger" options={{ title: t("root.danger") }} />
+			<Stack.Screen name="admin" options={{ title: ta("title") }} />
+			<Stack.Screen name="admin-users" options={{ title: ta("users.title") }} />
+			<Stack.Screen
+				name="admin-invites"
+				options={{ title: ta("invites.title") }}
+			/>
+			<Stack.Screen
+				name="admin-feedback"
+				options={{ title: ta("feedback.title") }}
+			/>
+			<Stack.Screen
+				name="admin-settings"
+				options={{ title: ta("settings.title") }}
+			/>
 		</Stack>
 	);
 }
