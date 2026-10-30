@@ -57,7 +57,7 @@ export function PeopleHub() {
 				accessibilityLabel={tp("segmentLabel")}
 				onChange={choose}
 				tabs={[
-					{ value: "people", label: t("people") },
+					{ value: "people", label: t("peopleSegment") },
 					{ value: "projects", label: t("projects") },
 				]}
 				value={segment}
@@ -68,7 +68,7 @@ export function PeopleHub() {
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
 			{segment === "people" ? (
-				<PeopleTopBar title={t("people")} />
+				<PeopleTopBar title={t("peopleSegment")} />
 			) : (
 				<AccountTopBar title={t("projects")} />
 			)}

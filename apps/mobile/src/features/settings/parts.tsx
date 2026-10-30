@@ -1,8 +1,8 @@
-import Constants from "expo-constants";
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
+import { appBuild } from "@/lib/appVersion";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { Glyph } from "@/ui/Glyph";
@@ -122,7 +122,6 @@ export function AboutFooter() {
 	const { connection } = useServerConnection();
 	const { color, size, space } = useTheme();
 	const baseUrl = connection.status === "connected" ? connection.baseUrl : null;
-	const version = Constants.expoConfig?.version ?? "";
 	const pages = [
 		{ id: "privacy", label: t("privacy"), path: "/privacy" },
 		{ id: "terms", label: t("terms"), path: "/terms" },
@@ -139,7 +138,7 @@ export function AboutFooter() {
 			}}
 		>
 			<Text tone="fg3" variant="small">
-				{t("version", { version })}
+				{t("version", appBuild())}
 			</Text>
 			<Text tone="fg3" variant="small">
 				{t("license")}

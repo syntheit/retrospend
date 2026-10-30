@@ -79,6 +79,8 @@ export const meSchema = z
 		numberFormat: numberFormatSchema.nullable(),
 		emailVerified: z.boolean(),
 		twoFactorEnabled: z.boolean(),
+		/** Whether invite codes are on for members: the setting the web's Invite codes entry follows. */
+		canInvite: z.boolean(),
 		createdAt: z.iso.datetime({ offset: true }),
 		principal: principalSchema,
 	})

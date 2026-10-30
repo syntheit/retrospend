@@ -1,16 +1,10 @@
 import * as WebBrowser from "expo-web-browser";
 
-// Pages that stay on the web for 0.5. Each opens in the in-app browser on the
-// connected server, where the web asks you to sign in (the phone's session is
-// a token, not a cookie).
-
-export const WEB_PAGES = [
-	{ id: "import", path: "/import" },
-	{ id: "insights", path: "/activity/insights" },
-	{ id: "developer", path: "/settings#developer" },
-] as const;
-
-export type WebPageId = (typeof WEB_PAGES)[number]["id"];
+// Pages that open in the in-app browser on the connected server, where the web
+// asks you to sign in (the phone's session is a token, not a cookie). Only
+// what must finish on the web (two-factor, the email change) and the plain
+// reading pages (privacy, terms, docs, release notes) go there; a feature the
+// app does not have is not offered.
 
 /** The address of a page on the connected server. */
 export function webUrl(baseUrl: string, path: string): string {

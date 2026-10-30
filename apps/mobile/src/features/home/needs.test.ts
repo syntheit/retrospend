@@ -99,7 +99,6 @@ describe("needsDestination", () => {
 		expect(where("setup.firstExpense")).toBe("add");
 		expect(where("setup.homeCurrency")).toBe("settings");
 		expect(where("setup.verifyEmail")).toBe("settings");
-		expect(where("setup.importStatement")).toBe("import");
 		for (const type of [
 			"budget.giveJob",
 			"budget.overAssigned",
@@ -160,5 +159,17 @@ describe("visibleNeeds", () => {
 			hidden: 1,
 		});
 		expect(visibleNeeds(items, snoozed, "2026-10-26").shown).toHaveLength(2);
+	});
+
+	it("leaves out what can only be done on the web", () => {
+		const web = [
+			item({ id: "i", type: "setup.importStatement" }),
+			item({ id: "r", type: "import.review" }),
+			item({ id: "p" }),
+		];
+		expect(visibleNeeds(web, null, "2026-10-25")).toEqual({
+			shown: [web[2]],
+			hidden: 0,
+		});
 	});
 });

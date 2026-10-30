@@ -8,6 +8,7 @@ import config, {
 	apnsEnvironment,
 	assertBuildProfile,
 	defaultServer,
+	releaseVersion,
 } from "../app.config";
 import { APP_LOCALES } from "../src/lib/locales";
 
@@ -121,6 +122,31 @@ describe("app config", () => {
 					RETROSPEND_BUILD_PROFILE: profile,
 				}),
 			).not.toThrow();
+		});
+	});
+
+	describe("version", () => {
+		const root = JSON.parse(
+			readFileSync(join(__dirname, "..", "..", "..", "package.json"), "utf8"),
+		) as { version: string };
+
+		it("is the Retrospend release version, not a number kept here", () => {
+			expect(releaseVersion()).toBe(root.version);
+			expect(config.version).toBe(root.version);
+		});
+
+		it("is the same one the server reports", () => {
+			const server = readFileSync(
+				join(__dirname, "..", "..", "..", "src", "lib", "version.ts"),
+				"utf8",
+			);
+			expect(server).toContain(`"${root.version}"`);
+		});
+
+		it("hands the build number to the app next to it", () => {
+			expect(config.extra?.buildNumber).toBe(
+				Number(process.env.RETROSPEND_BUILD_NUMBER || 1),
+			);
 		});
 	});
 });

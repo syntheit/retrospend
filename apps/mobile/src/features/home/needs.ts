@@ -84,7 +84,6 @@ export type NeedsDestination =
 				| "budget"
 				| "currencies"
 				| "settings"
-				| "import"
 				| "add";
 	  };
 
@@ -115,8 +114,6 @@ export function needsDestination(item: NeedsYouItem): NeedsDestination {
 		case "setup.homeCurrency":
 		case "setup.verifyEmail":
 			return { kind: "settings" };
-		case "setup.importStatement":
-			return { kind: "import" };
 		default:
 			return { kind: "budget" };
 	}
@@ -232,11 +229,22 @@ export interface Snoozed {
 	ids: string[];
 }
 
+/**
+ * Items whose job is a page the app does not have (importing a statement, or
+ * the review of imported expenses, which happens on the web). They are not
+ * offered here.
+ */
+const WEB_ONLY_TYPES = new Set<NeedsYouItem["type"]>([
+	"setup.importStatement",
+	"import.review",
+]);
+
 export function visibleNeeds(
-	items: NeedsYouItem[],
+	all: NeedsYouItem[],
 	snoozed: Snoozed | null,
 	today: string,
 ): { shown: NeedsYouItem[]; hidden: number } {
+	const items = all.filter((item) => !WEB_ONLY_TYPES.has(item.type));
 	const ids = new Set(snoozed && snoozed.day === today ? snoozed.ids : []);
 	const shown = items.filter((item) => !ids.has(item.id));
 	return { shown, hidden: items.length - shown.length };

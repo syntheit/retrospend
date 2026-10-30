@@ -1,6 +1,6 @@
 jest.mock("expo-web-browser", () => ({ openBrowserAsync: jest.fn() }));
 
-import { WEB_PAGES, webUrl } from "./webPages";
+import { webUrl } from "./webPages";
 
 describe("webUrl", () => {
 	it("joins the server and the page without a double slash", () => {
@@ -16,10 +16,5 @@ describe("webUrl", () => {
 		expect(webUrl("https://host.example/rs", "/currencies")).toBe(
 			"https://host.example/rs/currencies",
 		);
-	});
-
-	it("lists each web-only page once", () => {
-		const ids = WEB_PAGES.map((p) => p.id);
-		expect(new Set(ids).size).toBe(ids.length);
 	});
 });

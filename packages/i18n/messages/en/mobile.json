@@ -3,7 +3,8 @@
 		"home": "Home",
 		"activity": "Activity",
 		"budget": "Budget",
-		"people": "People",
+		"peopleSegment": "People",
+		"people": "Projects",
 		"projects": "Projects",
 		"add": "Add expense",
 		"search": "Search",
@@ -397,17 +398,14 @@
 		"signOutDiscard": "Sign out and discard",
 		"unsynced": "{count, plural, one {# change isn't synced yet. Signing out discards it.} other {# changes aren't synced yet. Signing out discards them.}}",
 		"settings": "Settings",
-		"profileHint": "Opens your profile in Settings",
+		"profileHint": "Opens your profile",
 		"goTo": "Go to",
 		"currencies": "Currencies",
 		"opensWeb": "Opens on the web",
-		"import": "Import",
 		"docs": "Docs",
 		"releaseNotes": "Release notes",
-		"version": "Version {version}",
-		"wealth": "Wealth",
-		"inviteCodes": "Invite codes",
-		"feedback": "Send feedback"
+		"version": "Version {version} ({build})",
+		"inviteCodes": "Invite codes"
 	},
 	"activity": {
 		"title": "Activity",
@@ -485,11 +483,8 @@
 		"segment": {
 			"label": "Activity",
 			"expenses": "Expenses",
-			"recurring": "Recurring",
-			"import": "Import"
-		},
-		"importNotice": "{count, plural, one {# imported expense waits for a check} other {# imported expenses wait for a check}}",
-		"importStart": "Start"
+			"recurring": "Recurring"
+		}
 	},
 	"budget": {
 		"title": "Budget",
@@ -2068,13 +2063,6 @@
 			"payment": "Payment methods",
 			"recurring": "Recurring expenses"
 		},
-		"web": {
-			"title": "On the web",
-			"footer": "These open in the browser here. You sign in there too.",
-			"import": "Import",
-			"insights": "Insights",
-			"developer": "API tokens and webhooks"
-		},
 		"categories": {
 			"addTitle": "Add category",
 			"editTitle": "Edit category",
@@ -2212,7 +2200,7 @@
 			"meta": "Pending payments and splits are resolved first"
 		},
 		"about": {
-			"version": "Retrospend {version}",
+			"version": "Version {version} ({build})",
 			"license": "GPL v3",
 			"privacy": "Privacy",
 			"terms": "Terms"

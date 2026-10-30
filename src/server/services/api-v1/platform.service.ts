@@ -2,7 +2,10 @@ import type { Me, ServerInfo } from "@retrospend/api-contract";
 import { APP_VERSION } from "~/lib/version";
 import type { db as globalDb } from "~/server/db";
 import { type PushConfig, pushConfig } from "~/server/services/push/config";
-import { isInviteOnlyEnabled } from "~/server/services/settings";
+import {
+	isAllowAllUsersToGenerateInvitesEnabled,
+	isInviteOnlyEnabled,
+} from "~/server/services/settings";
 import { getImageUrl } from "~/server/storage";
 import type { Principal } from "./principal.service";
 
@@ -74,6 +77,7 @@ export async function getMe(
 		avatarUrl: getImageUrl(avatarPath) ?? user.image,
 		createdAt: createdAt.toISOString(),
 		twoFactorEnabled: user.twoFactorEnabled ?? false,
+		canInvite: await isAllowAllUsersToGenerateInvitesEnabled(),
 		principal: {
 			kind: principal.kind,
 			scopes: principal.scopes,

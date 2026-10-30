@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { ExpoConfig } from "expo/config";
 
 // The languages the app has catalogs for. Written out here because the config
@@ -31,6 +33,24 @@ export function assertBuildProfile(
 }
 
 assertBuildProfile(process.env);
+
+/**
+ * The app ships under the release version of Retrospend itself (Immich does
+ * the same): the version in the repo root package.json, the one the server
+ * reports. Nothing here is kept by hand. The build number below tells two
+ * builds of one release apart.
+ */
+export function releaseVersion(
+	rootPackagePath = join(__dirname, "..", "..", "package.json"),
+): string {
+	const { version } = JSON.parse(readFileSync(rootPackagePath, "utf8")) as {
+		version?: unknown;
+	};
+	if (typeof version !== "string" || !/^\d+\.\d+\.\d+/.test(version)) {
+		throw new Error(`${rootPackagePath} has no release version.`);
+	}
+	return version;
+}
 
 // Release scripts pass the commit count, so every build is newer than the
 // last. A plain build is number 1.
@@ -70,7 +90,7 @@ const config: ExpoConfig = {
 	name: "Retrospend",
 	slug: "retrospend",
 	scheme: "retrospend",
-	version: "0.1.0",
+	version: releaseVersion(),
 	// The web client is the Next app at the repo root, not an Expo web build.
 	platforms: ["ios", "android"],
 	orientation: "default",
@@ -118,6 +138,9 @@ const config: ExpoConfig = {
 		APP_LOCALES.map((code) => [code, `./locales/${code}.json`]),
 	),
 	extra: {
+		// Shown beside the version ("0.5.0 (1847)"). The same number the stores
+		// get as the iOS build number and the Android version code.
+		buildNumber: BUILD_NUMBER,
 		// The address the connect screen starts with. The dev and TestFlight
 		// scripts set it to the dev server; empty means retrospend.app.
 		defaultServer: defaultServer(process.env),

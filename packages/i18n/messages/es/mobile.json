@@ -3,7 +3,8 @@
 		"home": "Inicio",
 		"activity": "Actividad",
 		"budget": "Presupuesto",
-		"people": "Personas",
+		"peopleSegment": "Personas",
+		"people": "Proyectos",
 		"projects": "Proyectos",
 		"add": "Añadir gasto",
 		"search": "Buscar",
@@ -397,17 +398,14 @@
 		"signOutDiscard": "Cerrar sesión y descartar",
 		"unsynced": "{count, plural, one {# cambio sin sincronizar. Al cerrar sesión se descarta.} other {# cambios sin sincronizar. Al cerrar sesión se descartan.}}",
 		"settings": "Ajustes",
-		"profileHint": "Abre tu perfil en Ajustes",
+		"profileHint": "Abre tu perfil",
 		"goTo": "Ir a",
 		"currencies": "Monedas",
 		"opensWeb": "Se abre en la web",
-		"import": "Importar",
 		"docs": "Documentación",
 		"releaseNotes": "Notas de la versión",
-		"version": "Versión {version}",
-		"wealth": "Patrimonio",
-		"inviteCodes": "Códigos de invitación",
-		"feedback": "Enviar comentarios"
+		"version": "Versión {version} ({build})",
+		"inviteCodes": "Códigos de invitación"
 	},
 	"activity": {
 		"title": "Actividad",
@@ -485,11 +483,8 @@
 		"segment": {
 			"label": "Actividad",
 			"expenses": "Gastos",
-			"recurring": "Recurrentes",
-			"import": "Importar"
-		},
-		"importNotice": "{count, plural, one {# gasto importado espera revisión} other {# gastos importados esperan revisión}}",
-		"importStart": "Empezar"
+			"recurring": "Recurrentes"
+		}
 	},
 	"budget": {
 		"title": "Presupuesto",
@@ -2068,13 +2063,6 @@
 			"payment": "Métodos de pago",
 			"recurring": "Gastos recurrentes"
 		},
-		"web": {
-			"title": "En la web",
-			"footer": "Se abren en el navegador de aquí. Allí también inicias sesión.",
-			"import": "Importar",
-			"insights": "Análisis",
-			"developer": "Tokens de API y webhooks"
-		},
 		"categories": {
 			"addTitle": "Agregar categoría",
 			"editTitle": "Editar categoría",
@@ -2212,7 +2200,7 @@
 			"meta": "Los pagos y divisiones pendientes se resuelven primero"
 		},
 		"about": {
-			"version": "Retrospend {version}",
+			"version": "Versión {version} ({build})",
 			"license": "GPL v3",
 			"privacy": "Privacidad",
 			"terms": "Términos"

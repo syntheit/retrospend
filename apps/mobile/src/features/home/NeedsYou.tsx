@@ -2,13 +2,11 @@ import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
-import { useServerBaseUrl } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
 import { currenciesHref, recurringHref } from "@/features/account/places";
 import { useAddEntry } from "@/features/entry/AddEntryProvider";
 import { useFaces } from "@/features/read/faces";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { openWebPage } from "@/features/settings/webPages";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
 import { Button } from "@/ui/Button";
@@ -37,7 +35,6 @@ const COMPACT_COUNT = 3;
 
 /** Opens the job of an item: its person, or the screen that holds the action. */
 function useOpenNeeds() {
-	const baseUrl = useServerBaseUrl();
 	const add = useAddEntry();
 	return useCallback(
 		(to: NeedsDestination) => {
@@ -69,15 +66,12 @@ function useOpenNeeds() {
 				case "settings":
 					router.push("/settings");
 					return;
-				case "import":
-					if (baseUrl) void openWebPage(baseUrl, "/import");
-					return;
 				case "add":
 					add.open("expense");
 					return;
 			}
 		},
-		[add, baseUrl],
+		[add],
 	);
 }
 

@@ -3,7 +3,8 @@
 		"home": "Início",
 		"activity": "Atividade",
 		"budget": "Orçamento",
-		"people": "Pessoas",
+		"peopleSegment": "Pessoas",
+		"people": "Projetos",
 		"projects": "Projetos",
 		"add": "Adicionar despesa",
 		"search": "Buscar",
@@ -397,17 +398,14 @@
 		"signOutDiscard": "Sair e descartar",
 		"unsynced": "{count, plural, one {# alteração não sincronizada. Ao sair, ela será descartada.} other {# alterações não sincronizadas. Ao sair, elas serão descartadas.}}",
 		"settings": "Ajustes",
-		"profileHint": "Abre seu perfil nos Ajustes",
+		"profileHint": "Abre seu perfil",
 		"goTo": "Ir para",
 		"currencies": "Moedas",
 		"opensWeb": "Abre na web",
-		"import": "Importar",
 		"docs": "Documentação",
 		"releaseNotes": "Notas da versão",
-		"version": "Versão {version}",
-		"wealth": "Patrimônio",
-		"inviteCodes": "Códigos de convite",
-		"feedback": "Enviar feedback"
+		"version": "Versão {version} ({build})",
+		"inviteCodes": "Códigos de convite"
 	},
 	"activity": {
 		"title": "Atividade",
@@ -485,11 +483,8 @@
 		"segment": {
 			"label": "Atividade",
 			"expenses": "Despesas",
-			"recurring": "Recorrentes",
-			"import": "Importar"
-		},
-		"importNotice": "{count, plural, one {# despesa importada aguarda revisão} other {# despesas importadas aguardam revisão}}",
-		"importStart": "Começar"
+			"recurring": "Recorrentes"
+		}
 	},
 	"budget": {
 		"title": "Orçamento",
@@ -2068,13 +2063,6 @@
 			"payment": "Métodos de pagamento",
 			"recurring": "Despesas recorrentes"
 		},
-		"web": {
-			"title": "Na web",
-			"footer": "Abrem no navegador daqui. Lá você também entra na conta.",
-			"import": "Importar",
-			"insights": "Análises",
-			"developer": "Tokens de API e webhooks"
-		},
 		"categories": {
 			"addTitle": "Adicionar categoria",
 			"editTitle": "Editar categoria",
@@ -2212,7 +2200,7 @@
 			"meta": "Pagamentos e divisões pendentes são resolvidos primeiro"
 		},
 		"about": {
-			"version": "Retrospend {version}",
+			"version": "Versão {version} ({build})",
 			"license": "GPL v3",
 			"privacy": "Privacidade",
 			"terms": "Termos"
