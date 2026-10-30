@@ -1962,11 +1962,19 @@
 		},
 		"addPerson": {
 			"title": "Add person",
-			"heading": "People",
+			"known": "People you know",
+			"fresh": "New person",
 			"find": "Search people",
-			"empty": "No one else to add. Add a person by name from People first.",
+			"empty": "No one else to add. Switch to New person.",
+			"name": "Name",
+			"email": "Email (optional)",
+			"emailPlaceholder": "name@example.com",
+			"emailInvalid": "That email does not look right.",
+			"joinsOn": "Joins on",
+			"joinsHint": "Expenses before this date stay as they are.",
+			"submit": "Add to project",
 			"added": "{name} added",
-			"error": "Couldn't add {name}. Try again."
+			"error": "Couldn't add this person. Try again."
 		}
 	},
 	"settings": {
