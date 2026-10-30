@@ -1,4 +1,5 @@
 import { View } from "react-native";
+import type { Money } from "@retrospend/domain/money-minor";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useRateTypeName } from "@/lib/rateTypes";
@@ -6,11 +7,8 @@ import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
 import { Text } from "@/ui/Text";
 import { FieldLabel } from "@/ui/TextField";
-import type { RateChoices } from "./plan";
+import { offeredMethods, type RateChoices } from "./plan";
 import type { SharedMethod } from "./useSettle";
-
-/** Offered to everyone, besides the methods you share with the person. */
-const GENERIC_METHODS = ["bank_transfer", "cash"];
 
 function ChipRow({ children }: { children: React.ReactNode }) {
 	const { space } = useTheme();
@@ -22,15 +20,20 @@ function ChipRow({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * The rate type a conversion uses (GUIDELINE 7), with the rate each debt
- * currency takes now: "1 BRL = ARS 271 at Blue". A new type moves Everything
- * and the parts, so the chips are there whenever anything converts.
+ * The rate type a conversion uses (GUIDELINE 7). Each chip carries the rate
+ * it would use ("Blue ARS 271") when one currency converts; with several, the
+ * chips are names and a line under them gives each currency's rate now. A new
+ * type moves Everything and the parts, so the chips are there whenever
+ * anything converts.
  */
 export function RateChips({
 	choices,
+	values,
 	onPick,
 }: {
 	choices: RateChoices;
+	/** What one unit of the converting currency is worth at each type, from the server. */
+	values: Record<string, Money>;
 	onPick: (type: string) => void;
 }) {
 	const t = useTranslations("mobile.settle");
@@ -38,6 +41,15 @@ export function RateChips({
 	const rateName = useRateTypeName();
 	const { space } = useTheme();
 	const label = t("rate", { currency: choices.currencies.join(", ") });
+	const single = choices.currencies.length === 1 && choices.types.length > 0;
+	const chipLabel = (type: string): string => {
+		const value =
+			values[type] ??
+			(choices.current === type ? choices.rates[0]?.value : undefined);
+		return single && value
+			? t("rateChip", { type: rateName(type), value: money(value) })
+			: rateName(type);
+	};
 	return (
 		<View style={{ gap: space[1] }}>
 			<FieldLabel>{label}</FieldLabel>
@@ -46,14 +58,14 @@ export function RateChips({
 					{choices.types.map((type) => (
 						<Chip
 							key={type}
-							label={rateName(type)}
+							label={chipLabel(type)}
 							onPress={() => onPick(type)}
 							selected={choices.current === type}
 						/>
 					))}
 				</ChipRow>
 			) : null}
-			{choices.rates.map((rate) => (
+			{(single ? [] : choices.rates).map((rate) => (
 				<Text key={rate.currency} tabular tone="fg2" variant="small">
 					{t("rateLine", {
 						unit: money(rate.unit),
@@ -92,9 +104,7 @@ export function MethodAndDate({
 	const names = new Map<string, string>(
 		shared.map((m) => [m.type, m.label ?? ""]),
 	);
-	const types = [
-		...new Set([...shared.map((m) => m.type), ...GENERIC_METHODS]),
-	];
+	const types = offeredMethods(shared);
 	const nameOf = (type: string): string => {
 		const key = `methodNames.${type}` as Parameters<typeof t>[0];
 		if (t.has(key)) return t(key);

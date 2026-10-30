@@ -4,14 +4,14 @@ import type { SettleContext } from "@/features/people/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
-import { FieldLabel } from "@/ui/TextField";
 import { type AmountChoice, type Direction, everythingConverts } from "./plan";
 
 /**
- * What the payment pays, as chips that carry their amounts: Everything,
- * one currency's part when more than one is owed, and Other, which opens
- * the keypad. The amounts are the server's own fills, the same ones Record
- * then pays; a conversion into the payment currency reads "≈".
+ * What the payment pays, as chips that carry their amounts: Everything, and
+ * one currency's part when more than one is owed. A chip fills the amount
+ * field above it; typing there picks none. The amounts are the server's own
+ * fills, the same ones Record then pays; a conversion into the payment
+ * currency reads "≈".
  */
 export function AmountChoices({
 	context,
@@ -31,9 +31,7 @@ export function AmountChoices({
 	const approx = (amount: string, estimate: boolean) =>
 		estimate ? tm("approx", { amount }) : amount;
 	return (
-		<View style={{ gap: space[1] }}>
-			<FieldLabel>{t("amount")}</FieldLabel>
-			<View style={{ flexDirection: "row", flexWrap: "wrap", gap: space[2] }}>
+		<View style={{ flexDirection: "row", flexWrap: "wrap", gap: space[2] }}>
 				{context.everything ? (
 					<Chip
 						label={t("everythingAmount", {
@@ -62,12 +60,6 @@ export function AmountChoices({
 						}
 					/>
 				))}
-				<Chip
-					label={t("otherShort")}
-					onPress={() => onChoose({ kind: "custom", minor: 0 })}
-					selected={choice.kind === "custom"}
-				/>
-			</View>
 		</View>
 	);
 }

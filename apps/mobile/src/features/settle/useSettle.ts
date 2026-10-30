@@ -1,4 +1,5 @@
 import type { Money } from "@retrospend/domain/money-minor";
+import Storage from "expo-sqlite/kv-store";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -8,10 +9,32 @@ import {
 	allocationDetail,
 	answerFor,
 	type Direction,
+	everythingConverts,
 	isOverpay,
 	type PaymentPreview,
 	recordInput,
+	startMethod,
 } from "./plan";
+
+const LAST_METHOD = "ui.settle.method";
+
+/** How the last payment was made; a convenience, so a failed read is none. */
+function readLastMethod(): string | null {
+	try {
+		return Storage.getItemSync(LAST_METHOD);
+	} catch {
+		return null;
+	}
+}
+
+function writeLastMethod(method: string | null): void {
+	if (!method) return;
+	try {
+		Storage.setItemSync(LAST_METHOD, method);
+	} catch {
+		// Remembering is a convenience; the payment is recorded either way.
+	}
+}
 
 export interface Recorded {
 	/** PROPOSED waits for the other person to confirm. */
@@ -48,7 +71,17 @@ export function useSettle(person: PersonRef, active: boolean) {
 	const [direction, setDirection] = useState<Direction | null>(null);
 	const [choice, setChoice] = useState<AmountChoice>({ kind: "everything" });
 	const [rateType, setRateType] = useState<string | null>(null);
-	const [method, setMethod] = useState<string | null>(null);
+	const [method, setMethodState] = useState<string | null>(null);
+	// Until the person picks a method, the start one (the last used, or the
+	// first you share with them) is what the payment carries.
+	const methodTouched = useRef(false);
+	const setMethod = useCallback((next: string | null) => {
+		methodTouched.current = true;
+		setMethodState(next);
+	}, []);
+	// What one unit of a debt currency is worth at each rate type, so the
+	// chips can show the rate they would use; the server prices each type.
+	const [typeRates, setTypeRates] = useState<Record<string, Money>>({});
 	const [paidOn, setPaidOn] = useState<string | null>(null);
 	// A new rate type moves Everything and the parts: until the server's
 	// figures are in again, nothing is previewed or recorded.
@@ -99,8 +132,10 @@ export function useSettle(person: PersonRef, active: boolean) {
 		write.current = { body: "", id: newClientId() };
 		setRecordFailed(null);
 		setRateType(null);
-		setMethod(null);
+		methodTouched.current = false;
+		setMethodState(null);
 		setPaidOn(null);
+		setTypeRates({});
 		read(undefined, null);
 	}, [active, read]);
 
@@ -124,6 +159,38 @@ export function useSettle(person: PersonRef, active: boolean) {
 			cancelled = true;
 		};
 	}, [api, active, person.type, person.id, direction]);
+
+	// A new opening, or another set of shared methods, preselects the method.
+	useEffect(() => {
+		if (!active || methodTouched.current) return;
+		setMethodState(startMethod(readLastMethod(), shared));
+	}, [active, shared]);
+
+	// The rate each type would use, when a debt turns into the payment
+	// currency and there is a choice of types: one read per type.
+	const typesKey =
+		context && direction && everythingConverts(context, direction)
+			? context.rateTypes.join(",")
+			: "";
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `typesKey` stands for the types, `direction` for the way they price
+	useEffect(() => {
+		const types = typesKey.split(",").filter(Boolean);
+		if (!api || !active || !direction || types.length < 2) return;
+		let cancelled = false;
+		for (const type of types) {
+			api.people
+				.settle({ type: person.type, id: person.id, direction, rateType: type })
+				.then((ctx) => {
+					const rate = ctx.rates.find((r) => r.rate !== null)?.rate;
+					if (!cancelled && rate)
+						setTypeRates((was) => ({ ...was, [type]: rate.value }));
+				})
+				.catch(() => {});
+		}
+		return () => {
+			cancelled = true;
+		};
+	}, [api, active, typesKey, direction, person.type, person.id]);
 
 	const draft =
 		context && direction && !repricing
@@ -229,6 +296,7 @@ export function useSettle(person: PersonRef, active: boolean) {
 			const result = await api.payments.record(input, {
 				context: { idempotencyKey: input.id },
 			});
+			writeLastMethod(input.paymentMethod ?? null);
 			return { status: result.status, undoToken: result.undo };
 		} catch (error) {
 			setRecordFailed(isOverpay(error) ? "overpay" : "error");
@@ -266,6 +334,7 @@ export function useSettle(person: PersonRef, active: boolean) {
 		changeRate,
 		method,
 		setMethod,
+		typeRates,
 		paidOn,
 		setPaidOn,
 		shared,
