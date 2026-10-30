@@ -1,6 +1,6 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { heroCents, MoneyAmount } from "@/features/read/MoneyAmount";
+import { heroCents, MoneyAmount } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Text } from "@/ui/Text";
 import { isApproximate } from "./groups";

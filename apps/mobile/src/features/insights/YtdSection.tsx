@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
+import { MoneyAmount } from "@/ui/Money";
 import { SectionHeader } from "@/ui/List";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";

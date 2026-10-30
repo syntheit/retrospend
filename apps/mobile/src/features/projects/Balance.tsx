@@ -1,7 +1,7 @@
 import type { Money } from "@retrospend/domain/money-minor";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
+import { MoneyAmount } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Text } from "@/ui/Text";
 import { balanceSides } from "./source";

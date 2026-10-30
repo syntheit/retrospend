@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import { absoluteImage, useFaces } from "@/features/read/faces";
-import { heroCents, MoneyAmount } from "@/features/read/MoneyAmount";
+import { heroCents, MoneyAmount } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";

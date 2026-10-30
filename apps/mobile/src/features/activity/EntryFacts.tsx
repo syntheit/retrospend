@@ -3,7 +3,7 @@ import { Pressable, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useFaces } from "@/features/read/faces";
-import { useRateTypeLabel } from "@/features/read/MoneyAmount";
+import { useRateTypeLabel } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";

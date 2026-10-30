@@ -1,6 +1,6 @@
 import { light } from "@retrospend/tokens/theme";
 import { Text, View } from "react-native";
-import { heroCents } from "@/features/read/MoneyAmount";
+import { heroCents } from "@/ui/Money";
 import { Avatar, AvatarStack, initialsOf, splitFaces } from "./Avatar";
 import { ListGroup, ListRow, tileTint } from "./List";
 import { StatusText, toneColors } from "./StatusText";

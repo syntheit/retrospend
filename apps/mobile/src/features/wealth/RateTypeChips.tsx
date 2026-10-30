@@ -1,6 +1,6 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useRateTypeLabel } from "@/features/read/MoneyAmount";
+import { useRateTypeLabel } from "@/ui/Money";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
 import { FieldLabel } from "@/ui/TextField";

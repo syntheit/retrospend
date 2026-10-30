@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
+import { MoneyAmount } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";

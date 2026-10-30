@@ -2,7 +2,7 @@ import { formatPercent } from "@retrospend/domain/format-percent";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
+import { MoneyAmount } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";

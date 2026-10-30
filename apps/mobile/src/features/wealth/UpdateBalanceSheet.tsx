@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { AmountCard } from "@/features/entry/AmountCard";
-import { useRateTypeLabel } from "@/features/read/MoneyAmount";
+import { useRateTypeLabel } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
 import { figureLines } from "@/features/write/figures";

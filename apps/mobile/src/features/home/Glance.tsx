@@ -4,7 +4,7 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { currenciesHref } from "@/features/account/places";
 import { useFaces } from "@/features/read/faces";
-import { MoneyAmount, useRateTypeLabel } from "@/features/read/MoneyAmount";
+import { MoneyAmount, useRateTypeLabel } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";

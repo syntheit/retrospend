@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { Stack } from "expo-router";
 import { useState } from "react";
-import { Platform, TextInput, View } from "react-native";
+import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import {
@@ -13,6 +13,7 @@ import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Screen } from "@/ui/Screen";
 import { Text } from "@/ui/Text";
+import { TextField } from "@/ui/TextField";
 
 type Failure = Extract<ProbeResult, { ok: false }>["reason"] | "saveFailed";
 
@@ -20,7 +21,7 @@ const APP_VERSION = Constants.expoConfig?.version ?? "0.0.0";
 
 export default function ConnectScreen() {
 	const t = useTranslations("mobile.connect");
-	const { color, space, radius, size, type } = useTheme();
+	const { space } = useTheme();
 	const { connect } = useServerConnection();
 	const [address, setAddress] = useState(() =>
 		initialServerAddress(Constants.expoConfig?.extra?.defaultServer),
@@ -80,28 +81,16 @@ export default function ConnectScreen() {
 			<Screen>
 				<Text tone="fg2">{t("intro")}</Text>
 				<View style={{ gap: space[2] }}>
-					<Text variant="small">{t("urlLabel")}</Text>
-					<TextInput
-						accessibilityLabel={t("urlLabel")}
-						autoCapitalize="none"
+					<TextField
 						autoComplete="url"
-						autoCorrect={false}
-						editable={!checking}
+						disabled={checking}
 						inputMode="url"
+						invalid={!!failure}
 						keyboardType="url"
+						label={t("urlLabel")}
 						onChangeText={edit}
 						onSubmitEditing={submit}
 						returnKeyType="go"
-						style={{
-							minHeight: size.touchMin.phone,
-							paddingHorizontal: space[3],
-							borderRadius: radius.ctl,
-							borderWidth: 1,
-							borderColor: failure ? color.danger : color.lineStrong,
-							backgroundColor: color.surface,
-							color: color.fg,
-							fontSize: type.section.size,
-						}}
 						textContentType="URL"
 						value={address}
 					/>

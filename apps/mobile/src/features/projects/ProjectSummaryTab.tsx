@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFaces } from "@/features/read/faces";
-import { MoneyAmount } from "@/features/read/MoneyAmount";
+import { MoneyAmount } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";

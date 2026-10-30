@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { heroCents, MoneyAmount } from "@/features/read/MoneyAmount";
+import { heroCents, MoneyAmount } from "@/ui/Money";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";

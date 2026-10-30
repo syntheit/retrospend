@@ -7,7 +7,7 @@ import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
 import { EmptyState } from "@/ui/EmptyState";
 import { Menu } from "@/ui/Menu";
-import { Money } from "@/ui/Money";
+import { MoneyAmount } from "@/ui/Money";
 import { MoneyKeypad } from "@/ui/MoneyKeypad";
 import { Picker } from "@/ui/Picker";
 import { Screen } from "@/ui/Screen";
@@ -98,13 +98,16 @@ export default function GalleryScreen() {
 						</Section>
 						<Section title="Money">
 							<View style={{ gap: space[1] }}>
-								<Money value={{ minor: 1250000, currency: "ARS" }} />
-								<Money
+								<MoneyAmount value={{ minor: 1250000, currency: "ARS" }} />
+								<MoneyAmount
 									tone="positive"
 									value={{ minor: 5190, currency: "BRL" }}
 								/>
-								<Money tone="muted" value={{ minor: 299, currency: "USD" }} />
-								<Money fallback="No rate yet" value={null} />
+								<MoneyAmount
+									tone="muted"
+									value={{ minor: 299, currency: "USD" }}
+								/>
+								<MoneyAmount home={null} value={{ minor: 1250, currency: "EUR" }} />
 							</View>
 						</Section>
 						<Section title="Segmented">
