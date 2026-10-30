@@ -2,13 +2,14 @@
 
 import type { FeedbackDiagnostics } from "@retrospend/api-contract";
 import { useFormatter, useTranslations } from "next-intl";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "~/components/ui/collapsible";
+import { Facts, Stack } from "./feedback-facts";
 import { Label } from "~/components/ui/label";
 import { Sheet } from "~/components/ui/sheet";
 import { Textarea } from "~/components/ui/textarea";
@@ -21,38 +22,9 @@ import {
 } from "./feedback-parts";
 
 export type FeedbackItem = RouterOutputs["feedback"]["list"]["items"][number];
-export type ErrorReportItem =
-	RouterOutputs["feedback"]["errorReports"]["items"][number];
 const categoryOf = (c: string) =>
 	c === "bug" || c === "idea" ? c : ("other" as const);
 export type FeedbackStatus = "unread" | "read" | "archived";
-
-/** Label and value pairs; a pair without a value is left out. */
-function Facts({ rows }: { rows: [string, ReactNode][] }) {
-	return (
-		<dl className="divide-line text-body divide-y">
-			{rows
-				.filter(([, value]) => value != null && value !== "")
-				.map(([label, value]) => (
-					<div
-						className="flex items-baseline justify-between gap-3 py-2"
-						key={label}
-					>
-						<dt className="text-fg-2 shrink-0">{label}</dt>
-						<dd className="text-fg min-w-0 text-right break-words">{value}</dd>
-					</div>
-				))}
-		</dl>
-	);
-}
-
-function Stack({ children }: { children: string }) {
-	return (
-		<pre className="bg-raised text-fg-2 text-meta rounded-ctl overflow-x-auto p-3 font-mono whitespace-pre-wrap break-words">
-			{children}
-		</pre>
-	);
-}
 
 function Screenshot({ id }: { id: string }) {
 	const t = useTranslations("feedbackInbox");
@@ -254,75 +226,6 @@ export function FeedbackSheet({
 						</Button>
 					</div>
 				</section>
-			</div>
-		</Sheet>
-	);
-}
-
-/** One error report: where and when it happened, on which build, and its stack. */
-export function ErrorReportSheet({
-	item,
-	onOpenChange,
-	onDelete,
-}: {
-	item: ErrorReportItem;
-	onOpenChange: (open: boolean) => void;
-	onDelete: () => void;
-}) {
-	const t = useTranslations("feedbackInbox");
-	const format = useFormatter();
-	const kinds = ["crash", "rejection", "render"] as const;
-	const kind = kinds.find((k) => k === item.kind);
-	const version = item.appVersion
-		? item.build
-			? t("versionBuild", { version: item.appVersion, build: item.build })
-			: item.appVersion
-		: null;
-	return (
-		<Sheet
-			footer={
-				<Button kind="ghost" onClick={onDelete}>
-					{t("delete")}
-				</Button>
-			}
-			onOpenChange={onOpenChange}
-			open
-			title={t("reportSheet")}
-		>
-			<div className="flex flex-col gap-6 pb-4">
-				<p className="text-fg text-body break-words whitespace-pre-wrap">
-					{item.message}
-				</p>
-				<Facts
-					rows={[
-						[t("kindLabel"), kind ? t(`kind.${kind}`) : item.kind],
-						[t("from"), item.user.name],
-						[
-							t("occurred"),
-							format.dateTime(item.occurredAt, {
-								dateStyle: "medium",
-								timeStyle: "short",
-							}),
-						],
-						[
-							t("sent"),
-							format.dateTime(item.createdAt, {
-								dateStyle: "medium",
-								timeStyle: "short",
-							}),
-						],
-						[t("screen"), item.screen],
-						[t("version"), version],
-						[t("platform"), item.os],
-						[t("device"), item.device],
-					]}
-				/>
-				{item.stack ? (
-					<section className="flex flex-col gap-2">
-						<h3 className="text-fg text-body font-semibold">{t("stack")}</h3>
-						<Stack>{item.stack}</Stack>
-					</section>
-				) : null}
 			</div>
 		</Sheet>
 	);

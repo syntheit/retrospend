@@ -1,7 +1,6 @@
 import { Readable } from "node:stream";
 import { getWebSession } from "~/server/better-auth/web-session";
-import { db } from "~/server/db";
-import { getFileStream } from "~/server/storage";
+import { openFeedbackScreenshot } from "~/server/services/feedback-screenshot.service";
 
 /**
  * A feedback screenshot for the admin inbox. It can show a person's screen,
@@ -19,23 +18,14 @@ export async function GET(
 		return new Response("Forbidden", { status: 403 });
 
 	const { id } = await params;
-	const row = await db.feedback.findUnique({
-		where: { id },
-		select: { screenshotPath: true },
+	const stream = await openFeedbackScreenshot(id);
+	if (!stream) return new Response("Not found", { status: 404 });
+	return new Response(Readable.toWeb(stream as Readable) as ReadableStream, {
+		headers: {
+			"Content-Type": "image/webp",
+			"Cache-Control": "private, no-store",
+			"X-Content-Type-Options": "nosniff",
+			"Content-Disposition": "inline",
+		},
 	});
-	if (!row?.screenshotPath) return new Response("Not found", { status: 404 });
-
-	try {
-		const stream = await getFileStream(row.screenshotPath);
-		return new Response(Readable.toWeb(stream as Readable) as ReadableStream, {
-			headers: {
-				"Content-Type": "image/webp",
-				"Cache-Control": "private, no-store",
-				"X-Content-Type-Options": "nosniff",
-				"Content-Disposition": "inline",
-			},
-		});
-	} catch {
-		return new Response("Not found", { status: 404 });
-	}
 }

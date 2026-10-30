@@ -350,6 +350,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	// ── feedback ─────────────────────────────────────────────────────────
 	"feedback.addNote": to("PUT /admin/feedback/{id}/note"),
 	"feedback.delete": to("DELETE /admin/feedback/{id}"),
+	"feedback.deleteErrorReport": to("DELETE /admin/error-reports/{id}"),
+	"feedback.errorReports": to("GET /admin/error-reports"),
 	"feedback.list": to("GET /admin/feedback"),
 	"feedback.submit": to("POST /feedback"),
 	"feedback.unreadCount": to("GET /admin/feedback"),
