@@ -3,9 +3,10 @@
  * writes (the database holds the same line: settlement-followups.pg.test.ts).
  *
  * The payment currency is USD, so a rate is USD per 1 unit of the other
- * currency. Fiat is stored per USD, so PLN 4 per USD is 0.25 USD per PLN and
- * the band is 0.05 to 1.25; BGN 3 per USD is 0.333... USD per BGN, band
- * 0.0666... to 1.6666.... The currencies are ones no other test file uses.
+ * currency. Fiat is stored per USD, so MKD 4 per USD is 0.25 USD per MKD and
+ * the band is 0.05 to 1.25; UAH 3 per USD is 0.333... USD per UAH, band
+ * 0.0666... to 1.6666.... The currencies (MKD, BAM, UAH) are ones no other test file uses, so the
+ * stored rates are only these, whatever ran before.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { forUser } from "~/server/services/preview";
@@ -20,16 +21,19 @@ const DAY = new Date("2026-06-15T00:00:00.000Z");
 // The rates are taken away again: the database is shared by the whole run.
 afterAll(async () => {
 	await adminDb.exchangeRate.deleteMany({
-		where: { currency: { in: ["PLN", "CZK", "BGN"] } },
+		where: { currency: { in: ["MKD", "BAM", "UAH"] } },
 	});
 });
 
 beforeAll(async () => {
+	await adminDb.exchangeRate.deleteMany({
+		where: { currency: { in: ["MKD", "BAM", "UAH"] } },
+	});
 	const rates: [string, string, string, string][] = [
-		["2026-05-01", "PLN", "official", "4"],
-		["2026-04-01", "CZK", "official", "25"],
-		["2026-04-01", "CZK", "blue", "20"],
-		["2026-05-01", "BGN", "official", "3"],
+		["2026-05-01", "MKD", "official", "4"],
+		["2026-04-01", "BAM", "official", "25"],
+		["2026-04-01", "BAM", "blue", "20"],
+		["2026-05-01", "UAH", "official", "3"],
 	];
 	await adminDb.exchangeRate.createMany({
 		data: rates.map(([date, currency, type, rate]) => ({
@@ -42,7 +46,7 @@ beforeAll(async () => {
 	});
 });
 
-/** A row the allocation would write: PLN 100 of debt, cash or offset, at a typed rate. */
+/** A row the allocation would write: MKD 100 of debt, cash or offset, at a typed rate. */
 const planned = (
 	currency: string,
 	rate: string | null,
@@ -71,7 +75,7 @@ describe("assertTypedRate", () => {
 	it("takes a rate from 0.2x to 5x of the stored one", async () => {
 		for (const rate of ["0.05", "0.25", "1.25"]) {
 			await expect(
-				check("PLN", rate, [planned("PLN", rate)]),
+				check("MKD", rate, [planned("MKD", rate)]),
 			).resolves.toBeUndefined();
 		}
 	});
@@ -79,44 +83,44 @@ describe("assertTypedRate", () => {
 	it("refuses a rate outside the band", async () => {
 		for (const rate of ["0.04999999", "0.000001", "1.25000001", "100"]) {
 			await expect(
-				check("PLN", rate, [planned("PLN", rate)]),
+				check("MKD", rate, [planned("MKD", rate)]),
 			).rejects.toBeInstanceOf(RateOutOfRangeError);
 		}
 	});
 
-	it("spans the rate types: CZK official 25 and blue 20 give 0.008 to 0.25", async () => {
+	it("spans the rate types: BAM official 25 and blue 20 give 0.008 to 0.25", async () => {
 		await expect(
-			check("CZK", "0.008", [planned("CZK", "0.008")]),
+			check("BAM", "0.008", [planned("BAM", "0.008")]),
 		).resolves.toBeUndefined();
 		await expect(
-			check("CZK", "0.25", [planned("CZK", "0.25")]),
+			check("BAM", "0.25", [planned("BAM", "0.25")]),
 		).resolves.toBeUndefined();
 		await expect(
-			check("CZK", "0.00799", [planned("CZK", "0.00799")]),
+			check("BAM", "0.00799", [planned("BAM", "0.00799")]),
 		).rejects.toBeInstanceOf(RateOutOfRangeError);
 		await expect(
-			check("CZK", "0.2501", [planned("CZK", "0.2501")]),
+			check("BAM", "0.2501", [planned("BAM", "0.2501")]),
 		).rejects.toBeInstanceOf(RateOutOfRangeError);
 	});
 
 	it("holds an offset to the band at the six decimals the row keeps", async () => {
-		// BGN 3 per USD: the top of the band is 5 x 0.3333... = 1.6666.... A typed
+		// UAH 3 per USD: the top of the band is 5 x 0.3333... = 1.6666.... A typed
 		// 1.66666666 is inside it, and an offset row stores 1.666667, which is not.
 		await expect(
-			check("BGN", "1.66666666", [planned("BGN", "1.66666666")]),
+			check("UAH", "1.66666666", [planned("UAH", "1.66666666")]),
 		).resolves.toBeUndefined();
 		await expect(
-			check("BGN", "1.66666666", [
-				planned("BGN", "1.66666666", { isOffset: true }),
+			check("UAH", "1.66666666", [
+				planned("UAH", "1.66666666", { isOffset: true }),
 			]),
 		).rejects.toBeInstanceOf(RateOutOfRangeError);
 	});
 
 	it("does nothing when the rows did not use the typed rate", async () => {
-		await expect(check("PLN", "0.000001", [])).resolves.toBeUndefined();
+		await expect(check("MKD", "0.000001", [])).resolves.toBeUndefined();
 		await expect(
-			check("PLN", "0.000001", [
-				planned("PLN", "0.25", { rateType: "official" }),
+			check("MKD", "0.000001", [
+				planned("MKD", "0.25", { rateType: "official" }),
 			]),
 		).resolves.toBeUndefined();
 	});
@@ -130,7 +134,7 @@ describe("assertTypedRate", () => {
 		// is the only way the database takes an offset with nothing to compare to.
 		const mixed = [
 			planned("RON", "0.22", { isOffset: true }),
-			planned("PLN", "0.25", { rateType: "official" }),
+			planned("MKD", "0.25", { rateType: "official" }),
 		];
 		await expect(check("RON", "0.22", mixed)).rejects.toBeInstanceOf(
 			RateOutOfRangeError,
@@ -139,7 +143,7 @@ describe("assertTypedRate", () => {
 		await expect(
 			check("RON", "0.22", [
 				planned("RON", "0.22"),
-				planned("PLN", "0.25", { rateType: "official" }),
+				planned("MKD", "0.25", { rateType: "official" }),
 			]),
 		).resolves.toBeUndefined();
 	});
@@ -151,7 +155,7 @@ describe("payment.record with a typed rate", () => {
 		participantId: u.user.id,
 	});
 
-	/** Ana owes Ben PLN 100, and pays USD 25 at the rate she typed. */
+	/** Ana owes Ben MKD 100, and pays USD 25 at the rate she typed. */
 	async function pay(rate: string) {
 		const ana = await createTestUser();
 		const ben = await createTestUser();
@@ -159,7 +163,7 @@ describe("payment.record with a typed rate", () => {
 			data: {
 				description: "Shared",
 				amount: "100",
-				currency: "PLN",
+				currency: "MKD",
 				date: new Date("2026-06-10"),
 				paidByType: "user",
 				paidById: ben.user.id,
@@ -182,13 +186,13 @@ describe("payment.record with a typed rate", () => {
 			direction: "outgoing",
 			currency: "USD",
 			amount: "25",
-			customRate: { rate, currency: "PLN" },
+			customRate: { rate, currency: "MKD" },
 			paidOn: "2026-06-15",
 		});
 	}
 
 	it("records a rate inside the band as the payment's own rate", async () => {
-		// 25 USD at 0.25 USD per PLN clears PLN 100.
+		// 25 USD at 0.25 USD per MKD clears MKD 100.
 		const done = await pay("0.25");
 		if (!done.value.recorded) throw new Error("not recorded");
 		const header = await adminDb.payment.findUniqueOrThrow({
@@ -198,7 +202,7 @@ describe("payment.record with a typed rate", () => {
 			header.rateType,
 			header.rate?.toString(),
 			header.rateCurrency,
-		]).toEqual(["custom", "0.25", "PLN"]);
+		]).toEqual(["custom", "0.25", "MKD"]);
 	});
 
 	it("refuses a rate outside the band, and writes nothing", async () => {
