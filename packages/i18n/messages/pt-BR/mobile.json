@@ -2580,7 +2580,7 @@
 			"category": "Categoria",
 			"categoryNone": "Sem categoria",
 			"repeats": "Repete",
-			"first": "Primeiro vencimento",
+			"first": "Próximo vencimento",
 			"firstHint": "A primeira é registrada nesta data.",
 			"submit": "Adicionar",
 			"toast": "{title} adicionada"

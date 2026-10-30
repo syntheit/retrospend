@@ -225,7 +225,7 @@ describe("Add a recurring expense", () => {
 			amount: "12.50",
 			currency: "USD",
 			frequency: "MONTHLY",
-			autoPay: true,
+			autoPay: false,
 		});
 		expect(disabled(tree, "Add")).toBe(false);
 

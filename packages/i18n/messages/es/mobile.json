@@ -2580,7 +2580,7 @@
 			"category": "Categoría",
 			"categoryNone": "Sin categoría",
 			"repeats": "Se repite",
-			"first": "Primer vencimiento",
+			"first": "Próximo vencimiento",
 			"firstHint": "El primero se registra en esta fecha.",
 			"submit": "Agregar",
 			"toast": "{title} agregado"

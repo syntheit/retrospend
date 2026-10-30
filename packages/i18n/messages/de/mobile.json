@@ -2580,7 +2580,7 @@
 			"category": "Kategorie",
 			"categoryNone": "Keine Kategorie",
 			"repeats": "Wiederholt sich",
-			"first": "Erste Fälligkeit",
+			"first": "Nächste Fälligkeit",
 			"firstHint": "Die erste wird an diesem Datum erfasst.",
 			"submit": "Hinzufügen",
 			"toast": "{title} hinzugefügt"

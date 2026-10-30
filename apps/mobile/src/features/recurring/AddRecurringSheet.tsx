@@ -75,7 +75,7 @@ export function AddRecurringSheet({
 	const [categoryId, setCategoryId] = useState<string | null>(null);
 	const [frequency, setFrequency] = useState<Frequency>("MONTHLY");
 	const [first, setFirst] = useState(() => nextMonthly(dayKey(new Date())));
-	const [autoPay, setAutoPay] = useState(true);
+	const [autoPay, setAutoPay] = useState(false);
 	// The keypad comes up when the amount is tapped and gives way to the rest.
 	const [keypad, setKeypad] = useState(false);
 
@@ -104,7 +104,7 @@ export function AddRecurringSheet({
 		setCategoryId(null);
 		setFrequency("MONTHLY");
 		setFirst(nextMonthly(dayKey(new Date())));
-		setAutoPay(true);
+		setAutoPay(false);
 		setKeypad(false);
 		reset();
 	}, [visible]);
@@ -147,7 +147,7 @@ export function AddRecurringSheet({
 			detents={["large"]}
 			footer={
 				<>
-					<Button label={tc("cancel")} onPress={onClose} variant="text" />
+					<Button label={tc("cancel")} onPress={onClose} variant="outlined" />
 					<Button
 						disabled={flow.status !== "ready" || flow.committing}
 						label={flow.committing ? tc("saving") : t("add.submit")}
