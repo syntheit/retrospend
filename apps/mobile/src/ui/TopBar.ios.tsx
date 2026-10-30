@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
+import { singleAdd } from "@/layout/destinations";
 import { useTheme } from "@/theme";
 import { AccountButton } from "./AccountButton";
 import { AddButton } from "./AddButton";
@@ -33,8 +34,12 @@ export function TopBar({
 	// The iPad has no tab-bar plus (its bar is a top bar that overflows), so
 	// the toolbar carries it next to the account button.
 	const showAdd = Platform.OS === "ios" && Platform.isPad && add !== null;
-	const items = overflow ?? [];
-	const pageActions = actions ?? [];
+	// With the toolbar's plus drawn, a page's own add goes into the overflow.
+	const { actions: pageActions, overflow: items } = singleAdd(
+		showAdd ? "toolbar" : "floating",
+		actions ?? [],
+		overflow ?? [],
+	);
 	const hasOverflow = items.length > 0;
 	const hasTrailing =
 		showAdd || account || hasOverflow || pageActions.length > 0;

@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import type { MenuItem, TopBarAction } from "@/ui/types";
 import { TabSidebar } from "../../modules/tab-sidebar";
 
 /**
@@ -86,3 +87,25 @@ export const ADD_CONTROL = addControlFor({
  * never covers it: the button, its margin and a little air.
  */
 export const FLOATING_ADD_INSET = ADD_CONTROL === "floating" ? 80 : 0;
+
+/**
+ * One plus per header. Where the toolbar carries the global add (the iPad),
+ * a page's own add action (Add recurring expense, Add person, Add account)
+ * moves to the front of its overflow menu instead of drawing a second plus
+ * next to the global one.
+ */
+export function singleAdd(
+	control: AddControl,
+	actions: readonly TopBarAction[],
+	overflow: readonly MenuItem[],
+): { actions: TopBarAction[]; overflow: MenuItem[] } {
+	if (control !== "toolbar" || actions.length === 0)
+		return { actions: [...actions], overflow: [...overflow] };
+	return {
+		actions: [],
+		overflow: [
+			...actions.map(({ id, label, onPress }) => ({ id, label, onPress })),
+			...overflow,
+		],
+	};
+}

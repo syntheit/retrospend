@@ -1,4 +1,4 @@
-import { addControlFor, iosMajor } from "./destinations";
+import { addControlFor, iosMajor, singleAdd } from "./destinations";
 
 describe("addControlFor", () => {
 	it("floats the button above the bar on every phone, glass or not", () => {
@@ -62,5 +62,27 @@ describe("projectRoute", () => {
 			pathname: "/people/project/[id]",
 			params: { id: "p1" },
 		});
+	});
+});
+
+describe("singleAdd", () => {
+	const add = {
+		id: "add",
+		icon: "Plus" as const,
+		label: "Add",
+		onPress: jest.fn(),
+	};
+	const more = { id: "export", label: "Export", onPress: jest.fn() };
+
+	it("moves a page add into the overflow where the toolbar has the plus", () => {
+		const out = singleAdd("toolbar", [add], [more]);
+		expect(out.actions).toEqual([]);
+		expect(out.overflow.map((item) => item.id)).toEqual(["add", "export"]);
+	});
+
+	it("leaves the bar alone where the add floats", () => {
+		const out = singleAdd("floating", [add], [more]);
+		expect(out.actions).toEqual([add]);
+		expect(out.overflow).toEqual([more]);
 	});
 });
