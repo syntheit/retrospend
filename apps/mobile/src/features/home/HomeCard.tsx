@@ -65,7 +65,7 @@ export function HomeCard({ glance }: { glance: Glance }) {
 							tone="fg2"
 							variant="small"
 						>
-							{month}
+							{t("spentIn", { month })}
 						</Text>
 						<Glyph
 							color={color.fg3}
@@ -85,7 +85,6 @@ export function HomeCard({ glance }: { glance: Glance }) {
 						) : (
 							<Text variant="title">{noRate}</Text>
 						)}
-						<Text tone="fg2">{t("spent")}</Text>
 					</View>
 					{sub ? (
 						<Text tone="fg2" variant="small">

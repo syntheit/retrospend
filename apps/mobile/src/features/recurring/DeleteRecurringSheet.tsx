@@ -1,11 +1,9 @@
 import { useEffect } from "react";
-import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
-import { Note } from "@/features/write/parts";
+import { Note, SheetBody } from "@/features/write/parts";
 import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { noSession, useApi } from "@/features/write/WriteFrame";
-import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
 import { useDayText } from "./ConfirmSheet";
@@ -36,7 +34,6 @@ export function DeleteRecurringSheet({
 	const announce = useRecurringToast();
 	const undoOf = useDeleteUndo();
 	const day = useDayText();
-	const { space } = useTheme();
 	const input = { id: item.id };
 	const { idFor, reset } = useWriteIds(JSON.stringify(input));
 	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening starts with a fresh write id
@@ -88,7 +85,7 @@ export function DeleteRecurringSheet({
 			title={t("title", { title: item.title })}
 			visible={visible}
 		>
-			<View style={{ gap: space[4] }}>
+			<SheetBody>
 				<Note>{t("body")}</Note>
 				<PreviewChanges
 					lead={[
@@ -111,7 +108,7 @@ export function DeleteRecurringSheet({
 					status={flow.status}
 				/>
 				{flow.commitFailed ? <Note tone="attention">{t("error")}</Note> : null}
-			</View>
+			</SheetBody>
 		</Sheet>
 	);
 }

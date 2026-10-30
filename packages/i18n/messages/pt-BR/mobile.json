@@ -2403,7 +2403,7 @@
 		"autoPay": "Pagamento automático",
 		"frequency": {
 			"weekly": "Semanal",
-			"biweekly": "A cada 2 semanas",
+			"biweekly": "Quinzenal",
 			"monthly": "Mensal",
 			"quarterly": "Trimestral",
 			"yearly": "Anual"
