@@ -13,8 +13,8 @@ import {
 	confirmRecurringIncome,
 	unconfirmRecurringIncome,
 } from "~/server/services/income/confirm-recurring.mutation";
+import { createRecurring } from "~/server/services/recurring-create.mutation";
 import {
-	createTemplate,
 	deleteTemplate,
 	templateDirection,
 	templateDueAt,
@@ -114,21 +114,39 @@ export async function readRecurring(caller: LedgerCaller, id: string) {
 	return item;
 }
 
+function createInput(
+	caller: LedgerCaller,
+	input: z.infer<typeof createRecurringSchema>,
+) {
+	return {
+		template: {
+			...input,
+			direction: input.direction === "in" ? ("IN" as const) : ("OUT" as const),
+			amountMode:
+				input.amountMode === "ask" ? ("ASK" as const) : ("FIXED" as const),
+		},
+		timeZone: caller.timeZone,
+	};
+}
+
 export async function addRecurring(
 	caller: LedgerCaller,
 	input: z.infer<typeof createRecurringSchema>,
 ) {
-	const created = await createTemplate(
-		caller.db,
-		caller.principal.userId,
-		{
-			...input,
-			direction: input.direction === "in" ? "IN" : "OUT",
-			amountMode: input.amountMode === "ask" ? "ASK" : "FIXED",
-		},
-		caller.timeZone,
+	const created = await applyWrite(
+		caller,
+		createRecurring,
+		createInput(caller, input),
 	);
 	return readRecurring(caller, created.id);
+}
+
+/** What adding would change (nothing moves) and what it would not; writes nothing. */
+export function previewAddRecurring(
+	caller: LedgerCaller,
+	input: z.infer<typeof createRecurringSchema>,
+) {
+	return previewWrite(caller, createRecurring, createInput(caller, input));
 }
 
 export async function changeRecurring(

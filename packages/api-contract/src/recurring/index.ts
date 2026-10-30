@@ -282,6 +282,14 @@ export const recurringContract = {
 		.meta({ scope: "write:expenses", event: "recurring.created" })
 		.input(createRecurringSchema)
 		.output(recurringItemSchema),
+	previewCreate: previewTwin({
+		path: "/recurring",
+		of: "POST /recurring",
+		operationId: "previewCreateRecurring",
+		tags: TAG,
+		scope: "write:expenses",
+		input: createRecurringSchema,
+	}),
 	update: v1
 		.route({
 			method: "PATCH",

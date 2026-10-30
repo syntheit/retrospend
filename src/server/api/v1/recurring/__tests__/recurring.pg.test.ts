@@ -109,6 +109,84 @@ describe("/api/v1/recurring", () => {
 		expect(got.id).toBe(item.id);
 	});
 
+	it("previews a new template without writing it", async () => {
+		const user = (await createTestUser()).user.id;
+		const mine = await asMobile(user);
+		const body = {
+			name: "Preview only",
+			amount: "9",
+			currency: "USD",
+			frequency: "MONTHLY",
+			nextDueDate: daysAgo(-5),
+		};
+		const preview = await expectBody<Preview>(
+			await send("POST", "/recurring/preview", body, mine),
+			c.previewCreate,
+		);
+		expect(preview.changes).toEqual([]);
+		await expect(
+			adminDb.recurringTemplate.count({ where: { userId: user } }),
+		).resolves.toBe(0);
+		const made = await expectBody<Item>(
+			await send("POST", "/recurring", body, mine),
+			c.create,
+			201,
+		);
+		expect(made.title).toBe("Preview only");
+		await expect(
+			adminDb.recurringTemplate.count({ where: { userId: user } }),
+		).resolves.toBe(1);
+	});
+
+	it("creates once for one key, and the preview needs the write scope", async () => {
+		const user = (await createTestUser()).user.id;
+		const mine = await asMobile(user);
+		const body = {
+			name: "Once only",
+			amount: "4",
+			currency: "USD",
+			frequency: "WEEKLY",
+			nextDueDate: daysAgo(-2),
+		};
+		const key = randomUUID();
+		const first = await send("POST", "/recurring", body, mine, key);
+		const second = await send("POST", "/recurring", body, mine, key);
+		expect(second.headers.get("idempotent-replayed")).toBe("true");
+		expect(await second.json()).toEqual(await first.json());
+		await expect(
+			adminDb.recurringTemplate.count({ where: { userId: user } }),
+		).resolves.toBe(1);
+		const readOnly = await asKey(user, ["read"]);
+		await expectProblem(
+			await send("POST", "/recurring/preview", body, readOnly),
+			403,
+			"missing_scope",
+		);
+	});
+
+	it("refuses another person's category on a create and its preview", async () => {
+		const theirs = await adminDb.category.findFirstOrThrow({
+			where: { userId: otherId, kind: "EXPENSE" },
+		});
+		const body = {
+			name: "Not mine",
+			amount: "3",
+			currency: "USD",
+			frequency: "MONTHLY",
+			nextDueDate: daysAgo(-1),
+			categoryId: theirs.id,
+		};
+		await expectProblem(
+			await send("POST", "/recurring/preview", body),
+			403,
+			"forbidden",
+		);
+		await expectProblem(await send("POST", "/recurring", body), 403, "forbidden");
+		await expect(
+			adminDb.recurringTemplate.count({ where: { name: "Not mine" } }),
+		).resolves.toBe(0);
+	});
+
 	it("pages templates by next due date with an opaque cursor", async () => {
 		const user = (await createTestUser()).user.id;
 		const paged = await asMobile(user);

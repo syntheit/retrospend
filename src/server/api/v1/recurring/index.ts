@@ -23,6 +23,11 @@ export const recurringRouter = {
 			recurring.addRecurring(signedIn(context), input),
 		),
 	),
+	previewCreate: r.previewCreate.handler(
+		serve(({ context, input }) =>
+			recurring.previewAddRecurring(signedIn(context), input),
+		),
+	),
 	update: r.update.handler(
 		serve(({ context, input }) =>
 			recurring.changeRecurring(signedIn(context), input),
