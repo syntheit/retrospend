@@ -78,7 +78,10 @@ export function Tabs() {
 				/>
 			</NativeTabs.Trigger>
 			<NativeTabs.Trigger name="people">
-				<NativeTabs.Trigger.Label>{t("people")}</NativeTabs.Trigger.Label>
+				{/* iPad lists Projects on its own, so this tab is People there. */}
+				<NativeTabs.Trigger.Label>
+					{IPAD_SIDEBAR ? t("peopleSegment") : t("people")}
+				</NativeTabs.Trigger.Label>
 				<NativeTabs.Trigger.Icon md="group" sf="person.2" />
 			</NativeTabs.Trigger>
 			{IPAD_SIDEBAR ? (
