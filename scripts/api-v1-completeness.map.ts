@@ -101,6 +101,9 @@ function envelope(): Record<string, Entry> {
 		getMonth: to("GET /budget/month"),
 		hiddenRows: to("GET /budget/hidden-rows"),
 		history: to("GET /budget/history"),
+		insights: gap(
+			"the Budget page's spending against plan, over and under envelopes and the monthly trend; no other client shows it yet",
+		),
 		interestEstimate: to("GET /budget/debts/{liabilityId}/interest-estimate"),
 		leftToSpend: to("GET /budget/left-to-spend"),
 		monthSummary: to("GET /budget/month-summary"),
@@ -592,6 +595,9 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 		"GET /accounts/summary",
 	),
 	"wealth.getRunwayStats": to("GET /accounts/runway"),
+	"wealth.setAssetIcon": gap(
+		"setting an account's logo or monogram color; GET /accounts already returns the icon, and the web is the only client that sets it",
+	),
 	"wealth.importAssets": superseded(
 		"a web CSV helper that creates or edits each account without a preview or an undo; the app does the same row by row with POST /accounts and PUT /accounts/{id}, which preview and undo",
 	),
