@@ -26,7 +26,7 @@ type PeopleOverview = Awaited<ReturnType<RetrospendClient["people"]["list"]>>;
 
 export const ENTRY_CATALOG_CACHE = {
 	name: "entry-catalog",
-	schema: 4,
+	schema: 5,
 } as const;
 
 const PAGE = 200;
@@ -110,6 +110,11 @@ export function addableProjects(projects: ProjectItem[]): EntryProject[] {
 			imageUrl: p.imageUrl,
 			currency: p.currency,
 			peopleCount: p.peopleCount,
+			people: (p.people ?? []).map((m) => ({
+				id: m.id,
+				name: m.name,
+				imageUrl: m.imageUrl,
+			})),
 		}));
 }
 

@@ -10,7 +10,7 @@ import type { EntryCategory } from "./types";
 /**
  * Every category in one sheet: Recent first, then all, each with its bare
  * glyph in the category color (a tinted tile belongs in list rows only), and
- * a search field. The trigger chip that opens it is the composer's "More".
+ * a search field. The trigger chip that opens it reads All categories.
  */
 export function CategoryPicker({
 	categories,
@@ -56,7 +56,7 @@ export function CategoryPicker({
 		<>
 			<Chip
 				accessibilityLabel={tc("categoriesAll")}
-				label={tc("categoriesMore")}
+				label={tc("categoriesAll")}
 				onPress={() => setOpen(true)}
 				variant="trigger"
 			/>

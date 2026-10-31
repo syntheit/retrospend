@@ -38,6 +38,8 @@ export interface EntryProject {
 	imageUrl: string | null;
 	currency: string;
 	peopleCount: number;
+	/** The other members, for the faces on its row. */
+	people: { id: string; name: string; imageUrl: string | null }[];
 }
 
 export interface EntryCatalog {

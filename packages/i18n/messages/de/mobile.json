@@ -30,7 +30,11 @@
 	},
 	"keypad": {
 		"delete": "Löschen",
-		"decimal": "Dezimalkomma"
+		"decimal": "Dezimalkomma",
+		"plusSpoken": "Plus, halten für Mal",
+		"minusSpoken": "Minus, halten für Geteilt",
+		"plusHold": "Mal",
+		"minusHold": "Geteilt"
 	},
 	"composer": {
 		"mode": "Art des Eintrags",
@@ -39,7 +43,7 @@
 		"loadError": "Das Formular lässt sich nicht öffnen",
 		"loadErrorDetail": "Prüfe deine Verbindung und versuche es noch einmal.",
 		"titleField": "Titel",
-		"titlePlaceholder": "Was war es?",
+		"titlePlaceholder": "Was war es? (optional)",
 		"category": "Kategorie",
 		"with": "Mit",
 		"you": "Du",
@@ -165,7 +169,9 @@
 			"none": "Keins",
 			"find": "Projekt suchen",
 			"empty": "Kein Projekt passt",
-			"loadFailed": "Die Personen des Projekts ließen sich nicht laden. Versuch es noch mal."
+			"loadFailed": "Die Personen des Projekts ließen sich nicht laden. Versuch es noch mal.",
+			"onlyYou": "Nur du",
+			"noneYet": "Noch keine Projekte zum Hinzufügen"
 		},
 		"plan": {
 			"envelope": "Umschlag",
@@ -279,7 +285,13 @@
 			},
 			"theirShare": "Anteil {amount}",
 			"partsMissing": "Gib für jede Person einen Wert ein.",
-			"partsOff": "Die Werte ergeben noch nicht die Summe."
+			"partsOff": "Die Werte ergeben noch nicht die Summe.",
+			"short": {
+				"EQUAL": "Gleich",
+				"EXACT": "Beträge",
+				"PERCENTAGE": "Prozent",
+				"SHARES": "Anteile"
+			}
 		},
 		"delete": {
 			"row": "Löschen",
@@ -293,6 +305,43 @@
 			"sharedBody": "Alle darauf werden informiert, und was sie schulden, ändert sich.",
 			"noUndo": "Das lässt sich nicht rückgängig machen.",
 			"anyway": "Trotzdem löschen"
+		},
+		"tabs": {
+			"category": "Kategorie",
+			"when": "Wann",
+			"who": "Wer",
+			"project": "Projekt",
+			"more": "Mehr",
+			"changed": "geändert",
+			"label": "Details"
+		},
+		"summary": {
+			"you": "du",
+			"split": "Auf {count} aufgeteilt, {name} hat gezahlt",
+			"justYou": "Nur du",
+			"excluded": "Ausgenommen"
+		},
+		"earlierDate": "Früheres Datum",
+		"lastTime": "Letztes Mal {amount}",
+		"who": {
+			"eachPays": "Jeder zahlt {amount}",
+			"yourShare": "Dein Anteil {amount}",
+			"youOwe": "Du schuldest {name} {amount}",
+			"paidByPerson": "Bezahlt von {name}",
+			"tapFaces": "Tippe auf Gesichter, um zu teilen. Wer gezahlt hat und wie geteilt wird, erscheint hier."
+		},
+		"extras": {
+			"add": "Hinzufügen",
+			"remove": "Entfernen",
+			"on": "An",
+			"off": "Aus",
+			"spread": "Über Monate verteilen",
+			"custom": "Eigene",
+			"months": "Monate, {min} bis {max}",
+			"monthsPlaceholder": "Wie viele Monate",
+			"changes": "Das ändert sich",
+			"show": "Zeigen",
+			"hide": "Ausblenden"
 		}
 	},
 	"pickers": {

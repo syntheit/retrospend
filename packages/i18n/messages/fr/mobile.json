@@ -30,7 +30,11 @@
 	},
 	"keypad": {
 		"delete": "Effacer",
-		"decimal": "Virgule décimale"
+		"decimal": "Virgule décimale",
+		"plusSpoken": "Plus, maintiens pour multiplier",
+		"minusSpoken": "Moins, maintiens pour diviser",
+		"plusHold": "Multiplier",
+		"minusHold": "Diviser"
 	},
 	"composer": {
 		"mode": "Type de saisie",
@@ -39,7 +43,7 @@
 		"loadError": "Impossible d'ouvrir le formulaire",
 		"loadErrorDetail": "Vérifie ta connexion et réessaie.",
 		"titleField": "Titre",
-		"titlePlaceholder": "C'était quoi ?",
+		"titlePlaceholder": "C'était quoi ? (facultatif)",
 		"category": "Catégorie",
 		"with": "Avec",
 		"you": "Toi",
@@ -165,7 +169,9 @@
 			"none": "Aucun",
 			"find": "Chercher un projet",
 			"empty": "Aucun projet ne correspond",
-			"loadFailed": "Impossible de charger les personnes du projet. Réessaie."
+			"loadFailed": "Impossible de charger les personnes du projet. Réessaie.",
+			"onlyYou": "Juste toi",
+			"noneYet": "Pas encore de projet"
 		},
 		"plan": {
 			"envelope": "Enveloppe",
@@ -279,7 +285,13 @@
 			},
 			"theirShare": "Part {amount}",
 			"partsMissing": "Saisis une part pour chaque personne.",
-			"partsOff": "Les parts n'atteignent pas encore le total."
+			"partsOff": "Les parts n'atteignent pas encore le total.",
+			"short": {
+				"EQUAL": "Égal",
+				"EXACT": "Montants",
+				"PERCENTAGE": "Pourcent",
+				"SHARES": "Parts"
+			}
 		},
 		"delete": {
 			"row": "Supprimer",
@@ -293,6 +305,43 @@
 			"sharedBody": "Toutes les personnes concernées sont prévenues, et ce qu'elles doivent change.",
 			"noUndo": "Cette action est irréversible.",
 			"anyway": "Supprimer quand même"
+		},
+		"tabs": {
+			"category": "Catégorie",
+			"when": "Quand",
+			"who": "Qui",
+			"project": "Projet",
+			"more": "Plus",
+			"changed": "modifié",
+			"label": "Détails"
+		},
+		"summary": {
+			"you": "toi",
+			"split": "Partagé en {count}, {name} a payé",
+			"justYou": "Juste toi",
+			"excluded": "Exclu"
+		},
+		"earlierDate": "Date antérieure",
+		"lastTime": "La dernière fois {amount}",
+		"who": {
+			"eachPays": "Chacun paie {amount}",
+			"yourShare": "Ta part {amount}",
+			"youOwe": "Tu dois {amount} à {name}",
+			"paidByPerson": "Payé par {name}",
+			"tapFaces": "Touche les visages pour partager. Qui a payé et comment partager apparaissent ici."
+		},
+		"extras": {
+			"add": "Ajouter",
+			"remove": "Retirer",
+			"on": "Oui",
+			"off": "Non",
+			"spread": "Étaler sur des mois",
+			"custom": "Autre",
+			"months": "Mois, de {min} à {max}",
+			"monthsPlaceholder": "Combien de mois",
+			"changes": "Ce qui change",
+			"show": "Afficher",
+			"hide": "Masquer"
 		}
 	},
 	"pickers": {

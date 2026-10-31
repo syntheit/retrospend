@@ -1,11 +1,11 @@
 "use client";
 
+import { predictCategory } from "@retrospend/domain/category-matcher";
 import { toMinorUnits } from "@retrospend/domain/money";
 import { parseMoneyInput } from "@retrospend/domain/parse";
 import { readRateText } from "@retrospend/domain/rate-text";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
-import { predictCategory } from "~/lib/category-matcher";
 import {
 	type SplitRef,
 	splitKey,

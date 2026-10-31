@@ -2,15 +2,10 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
-import { GroupItem, ListGroup, ListRow, SectionHeader } from "@/ui/List";
-import { Text } from "@/ui/Text";
+import { GroupItem, ListGroup, SectionHeader } from "@/ui/List";
 import { ChangesBlock } from "./ChangesBlock";
-import { DateRow } from "./DateRow";
-import type { SavedEntry } from "./hooks";
 import { IncomeDetails } from "./IncomeFields";
 import { PlanBlock } from "./PlanBlock";
-import { ProjectPick } from "./ProjectPick";
-import { SplitGroup, useSplitView } from "./SplitGroup";
 import { TransferDetails } from "./TransferFields";
 import type { ComposerPreview } from "./useComposerPreview";
 import type { EntryForm } from "./useEntryForm";
@@ -67,31 +62,24 @@ export function StepSlide({
 }
 
 /**
- * Everything the quick step leaves out, in inset groups: the day and the
- * project, how it is split, the rate, and the full list of what this changes.
- * The Details (note, place, spread, exclude) stay on the quick step. An edit
- * of an expense ends with Delete. Income and Transfer keep their own few
- * rows.
+ * What the quick step of Add income and Add transfer leaves out, in inset
+ * groups: the day, the plan, the rate, and the full list of what this
+ * changes. (An expense has no More step: its details are the panels of the
+ * detail pager.)
  */
 export function MoreStep({
 	form,
 	preview,
-	edit,
 	rate,
-	onDelete,
 }: {
 	form: EntryForm;
 	preview: ComposerPreview;
-	edit: SavedEntry | undefined;
 	/** The rate line for an amount in another currency; null at home. */
 	rate: ReactNode;
-	/** The Delete row opens its confirm; null when it is not offered. */
-	onDelete: (() => void) | null;
 }) {
 	const t = useTranslations("mobile.composer");
 	const { space } = useTheme();
 	const { mode, catalog } = form;
-	const split = useSplitView(form, preview, edit);
 	const gutter = { paddingHorizontal: space[4] } as const;
 	const changes = (
 		<View style={{ ...gutter, paddingTop: space[6] }}>
@@ -135,76 +123,10 @@ export function MoreStep({
 			</View>
 		);
 	}
-	if (mode === "transfer") {
-		return (
-			<View>
-				<TransferDetails draft={form.transfer} onChange={form.patchTransfer} />
-				{changes}
-			</View>
-		);
-	}
-
-	const draft = form.expense;
-	const editing = draft.editing !== null;
-	const projects = editing ? [] : catalog.projects;
-	// A saved expense keeps its project (the server does not move it): a read-only row.
 	return (
 		<View>
-			<View style={{ paddingTop: space[1] }}>
-				<ListGroup form>
-					<DateRow
-						label={t("dateField")}
-						onChange={(date) => form.patchExpense({ date })}
-						value={draft.date}
-					/>
-					{projects.length > 0 ? (
-						<ProjectPick
-							onChange={form.pickProject}
-							projects={projects}
-							value={draft.projectId}
-							variant="row"
-						/>
-					) : null}
-					{editing ? (
-						<ProjectPick
-							onChange={form.pickProject}
-							projects={catalog.projects}
-							readOnly
-							value={draft.projectId}
-							variant="row"
-						/>
-					) : null}
-				</ListGroup>
-			</View>
-			{split ? (
-				<SplitGroup form={form} preview={preview} split={split} />
-			) : draft.withKeys.length === 0 && !editing ? (
-				<View style={{ ...gutter, paddingTop: space[2] }}>
-					<Text tone="fg2" variant="small">
-						{t("split.tapFaces")}
-					</Text>
-				</View>
-			) : null}
-			{rate ? (
-				<>
-					<SectionHeader title={t("rate.title")} />
-					<ListGroup>
-						<GroupItem>{rate}</GroupItem>
-					</ListGroup>
-				</>
-			) : null}
+			<TransferDetails draft={form.transfer} onChange={form.patchTransfer} />
 			{changes}
-			{onDelete ? (
-				<View style={{ paddingTop: space[6] }}>
-					<ListGroup>
-						<ListRow onPress={onDelete}>
-							<Text tone="danger" weight="medium">
-								{t("delete.row")}
-							</Text>
-						</ListRow>
-					</ListGroup>
-				</View>
-			) : null}
 		</View>
 	);
 }

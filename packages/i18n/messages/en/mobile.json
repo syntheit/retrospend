@@ -30,7 +30,11 @@
 	},
 	"keypad": {
 		"delete": "Delete",
-		"decimal": "Decimal point"
+		"decimal": "Decimal point",
+		"plusSpoken": "Plus, hold for times",
+		"minusSpoken": "Minus, hold for divide",
+		"plusHold": "Times",
+		"minusHold": "Divide"
 	},
 	"composer": {
 		"mode": "Entry type",
@@ -39,7 +43,7 @@
 		"loadError": "Couldn't open the composer",
 		"loadErrorDetail": "Check your connection and try again.",
 		"titleField": "Title",
-		"titlePlaceholder": "What was it?",
+		"titlePlaceholder": "What was it? (optional)",
 		"category": "Category",
 		"with": "With",
 		"you": "You",
@@ -165,7 +169,9 @@
 			"none": "No project",
 			"find": "Find a project",
 			"empty": "No project matches",
-			"loadFailed": "Couldn't load the project's people. Try again."
+			"loadFailed": "Couldn't load the project's people. Try again.",
+			"onlyYou": "Only you",
+			"noneYet": "No projects to add to yet"
 		},
 		"plan": {
 			"envelope": "Envelope",
@@ -279,7 +285,13 @@
 			},
 			"theirShare": "Share {amount}",
 			"partsMissing": "Enter a part for each person.",
-			"partsOff": "These parts don't add up to the total yet."
+			"partsOff": "These parts don't add up to the total yet.",
+			"short": {
+				"EQUAL": "Equally",
+				"EXACT": "Amounts",
+				"PERCENTAGE": "Percent",
+				"SHARES": "Shares"
+			}
 		},
 		"delete": {
 			"row": "Delete",
@@ -293,6 +305,43 @@
 			"sharedBody": "Everyone on it is told, and what they owe changes.",
 			"noUndo": "This can't be undone.",
 			"anyway": "Delete anyway"
+		},
+		"tabs": {
+			"category": "Category",
+			"when": "When",
+			"who": "Who",
+			"project": "Project",
+			"more": "More",
+			"changed": "changed",
+			"label": "Details"
+		},
+		"summary": {
+			"you": "you",
+			"split": "Split {count} ways, {name} paid",
+			"justYou": "Just you",
+			"excluded": "Excluded"
+		},
+		"earlierDate": "Earlier date",
+		"lastTime": "Last time {amount}",
+		"who": {
+			"eachPays": "Each pays {amount}",
+			"yourShare": "Your share {amount}",
+			"youOwe": "You owe {name} {amount}",
+			"paidByPerson": "Paid by {name}",
+			"tapFaces": "Tap faces to split. Paid by and how to split appear here."
+		},
+		"extras": {
+			"add": "Add",
+			"remove": "Remove",
+			"on": "On",
+			"off": "Off",
+			"spread": "Spread over months",
+			"custom": "Custom",
+			"months": "Months, {min} to {max}",
+			"monthsPlaceholder": "How many months",
+			"changes": "What this changes",
+			"show": "Show",
+			"hide": "Hide"
 		}
 	},
 	"pickers": {

@@ -49,6 +49,7 @@ export function TextField({
 	disabled,
 	onTypingChange,
 	bare,
+	align,
 }: {
 	label: string;
 	value: string;
@@ -89,6 +90,8 @@ export function TextField({
 	 * of its own (the composer's title). The card carries the field's edge.
 	 */
 	bare?: boolean;
+	/** Centers the words, for the composer's title. */
+	align?: "center";
 }) {
 	const theme = useTheme();
 	const { color, radius, size, space } = theme;
@@ -151,6 +154,7 @@ export function TextField({
 								? boxHeight - 2 * space[2]
 								: size.touchMin.phone,
 							color: color.fg,
+							textAlign: align,
 						},
 						multiline
 							? { paddingVertical: space[2], textAlignVertical: "top" }
