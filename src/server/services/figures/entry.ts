@@ -25,11 +25,12 @@ const PAYMENT = "payment:";
 
 function keyOf(entryId: string): RowKey {
 	const date = new Date(0);
+	const created = date;
 	if (entryId.startsWith(SHARED))
-		return { src: "s", id: entryId.slice(SHARED.length), date };
+		return { src: "s", id: entryId.slice(SHARED.length), date, created };
 	if (entryId.startsWith(PAYMENT))
-		return { src: "g", id: entryId.slice(PAYMENT.length), date };
-	return { src: "p", id: entryId, date };
+		return { src: "g", id: entryId.slice(PAYMENT.length), date, created };
+	return { src: "p", id: entryId, date, created };
 }
 
 async function rowOf(

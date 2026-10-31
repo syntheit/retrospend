@@ -147,13 +147,18 @@ async function loggedThisMonth(
 			recurringTemplateId: { not: null },
 			date: { gte: fromWallTime({ year, month, day: 1 }, timeZone), lte: now },
 		},
-		orderBy: [{ date: "desc" }, { id: "desc" }],
-		select: { id: true, date: true },
+		orderBy: [{ date: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+		select: { id: true, date: true, createdAt: true },
 		take: 20,
 	});
 	return shapeRows(
 		tx,
-		rows.map((r) => ({ src: "p" as const, id: r.id, date: r.date })),
+		rows.map((r) => ({
+			src: "p" as const,
+			id: r.id,
+			date: r.date,
+			created: r.createdAt,
+		})),
 		{ userId, timeZone, rates },
 	);
 }
