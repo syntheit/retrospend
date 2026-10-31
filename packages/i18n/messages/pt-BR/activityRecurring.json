@@ -29,20 +29,19 @@
 		"due": "Vencimento",
 		"repeats": "Repete",
 		"amount": "Valor",
-		"autoPay": "Débito automático",
-		"autoPayFor": "Débito automático de {name}",
+		"autoPay": "Registrar automaticamente",
+		"autoPayFor": "Registrar {name} automaticamente",
 		"actions": "Ações"
 	},
 	"autoPay": {
-		"on": "Débito automático ligado",
-		"off": "Débito automático desligado"
+		"on": "Registra automaticamente",
+		"off": "Confirmar a cada vez"
 	},
 	"toolbar": {
 		"label": "Filtrar recorrentes",
 		"search": "Buscar recorrentes",
-		"autoPayOn": "Débito automático ligado",
-		"autoPayOff": "Débito automático desligado",
-		"foreign": "Moeda estrangeira"
+		"autoPayOn": "Registra automaticamente",
+		"autoPayOff": "Confirmar a cada vez"
 	},
 	"summary": {
 		"cost": "Seus gastos recorrentes custam <amount></amount> {period}.",
@@ -67,8 +66,8 @@
 	"actions": {
 		"paused": "{name} pausado",
 		"resumed": "{name} retomado",
-		"autoPayOn": "Débito automático ligado para {name}",
-		"autoPayOff": "Débito automático desligado para {name}",
+		"autoPayOn": "{name} registra automaticamente",
+		"autoPayOff": "{name} pede confirmação a cada vez",
 		"logged": "{name} registrado",
 		"deleted": "{name} excluído",
 		"error": {

@@ -172,6 +172,7 @@ export function ProjectRow({
 						key="f"
 						on={variant === "group" ? "surface" : "bg"}
 						people={project.people}
+						size="sm"
 					/>,
 					dates,
 				]}

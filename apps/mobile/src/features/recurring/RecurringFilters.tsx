@@ -1,14 +1,12 @@
 import { ScrollView } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
-import { Chip } from "@/ui/Chip";
 import { Menu } from "@/ui/Menu";
 import type { MenuItem } from "@/ui/types";
 import type { RecurringFilter } from "./filter";
 
 /**
- * The Recurring chips: an Auto-pay menu chip (on, off or any, one choice)
- * and the Foreign currency toggle.
+ * The Recurring chip: a Record automatically menu (on, off or any, one choice).
  */
 export function RecurringFilters({
 	filter,
@@ -59,11 +57,6 @@ export function RecurringFilters({
 							? t("autoPayOff")
 							: t("autoPayFilter")
 				}
-			/>
-			<Chip
-				label={t("foreign")}
-				onPress={() => onChange({ ...filter, foreign: !filter.foreign })}
-				selected={filter.foreign}
 			/>
 		</ScrollView>
 	);

@@ -25,7 +25,6 @@ import { Sheet } from "~/components/ui/sheet";
 import { Switch } from "~/components/ui/switch";
 import { useToast } from "~/components/ui/toast";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
-import { getSubscriptionMetadata } from "~/lib/subscription-metadata";
 import { api } from "~/trpc/react";
 import { CurrencyEstimate } from "./recurring-estimate";
 
@@ -36,7 +35,6 @@ const recurringSchema = z.object({
 	categoryId: z.string().min(1, "Please select a category"),
 	frequency: z.enum(["WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"]),
 	nextDueDate: z.date(),
-	websiteUrl: z.url().optional().or(z.literal("")),
 	paymentSource: z.string().optional(),
 	autoPay: z.boolean(),
 });
@@ -101,24 +99,10 @@ export function RecurringModal({
 			categoryId: "",
 			frequency: "MONTHLY",
 			nextDueDate: new Date(),
-			websiteUrl: "",
 			paymentSource: "",
 			autoPay: true,
 		},
 	});
-
-	const watchedName = watch("name");
-	const watchedWebsiteUrl = watch("websiteUrl");
-
-	// Auto-fill website URL based on subscription name
-	useEffect(() => {
-		if (watchedName && !watchedWebsiteUrl && !templateId) {
-			const metadata = getSubscriptionMetadata(watchedName);
-			if (metadata?.url) {
-				setValue("websiteUrl", metadata.url);
-			}
-		}
-	}, [watchedName, watchedWebsiteUrl, setValue, templateId]);
 
 	// Load template data for editing
 	useEffect(() => {
@@ -130,7 +114,6 @@ export function RecurringModal({
 				categoryId: template.categoryId ?? "",
 				frequency: template.frequency,
 				nextDueDate: new Date(template.nextDueDate),
-				websiteUrl: template.websiteUrl ?? "",
 				paymentSource: template.paymentSource ?? "",
 				autoPay: template.autoPay,
 			});
@@ -162,14 +145,12 @@ export function RecurringModal({
 				id: templateId,
 				...data,
 				categoryId: data.categoryId || null,
-				websiteUrl: data.websiteUrl || null,
 				paymentSource: data.paymentSource || null,
 			});
 		} else {
 			await createMutation.mutateAsync({
 				...data,
 				categoryId: data.categoryId || undefined,
-				websiteUrl: data.websiteUrl || undefined,
 				paymentSource: data.paymentSource || undefined,
 			});
 		}
@@ -264,22 +245,6 @@ export function RecurringModal({
 					)}
 				</div>
 
-				{/* Website URL */}
-				<div className="space-y-2">
-					<Label htmlFor="websiteUrl">{t("fieldWebsiteUrl")}</Label>
-					<Input
-						id="websiteUrl"
-						type="url"
-						{...register("websiteUrl")}
-						placeholder="https://..."
-					/>
-					{errors.websiteUrl && (
-						<p className="text-destructive text-sm">
-							{errors.websiteUrl.message}
-						</p>
-					)}
-				</div>
-
 				{/* Category */}
 				<div className="space-y-2">
 					<Label>{t("fieldCategory")}</Label>
@@ -328,16 +293,12 @@ export function RecurringModal({
 					/>
 				</div>
 
-				{/* Auto Pay */}
-				<div className="flex items-center justify-between rounded-lg border p-4">
-					<div className="space-y-0.5">
-						<Label>{t("fieldAutoPay")}</Label>
-						<p className="text-muted-foreground text-sm">
-							{t("fieldAutoPayDescription")}
-						</p>
-					</div>
+				{/* Record automatically */}
+				<div className="flex items-center justify-between gap-4">
+					<Label htmlFor="recurring-auto-record">{t("fieldAutoPay")}</Label>
 					<Switch
 						checked={watch("autoPay")}
+						id="recurring-auto-record"
 						onCheckedChange={(checked) => setValue("autoPay", checked)}
 					/>
 				</div>

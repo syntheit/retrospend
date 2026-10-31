@@ -2605,7 +2605,7 @@
 		"errorDetail": "Verifique sua conexão e tente de novo.",
 		"empty": "Nenhuma despesa recorrente",
 		"emptyDetail": "Adicione aluguel, assinaturas e outros custos fixos.",
-		"autoPay": "Pagamento automático",
+		"autoPay": "Registrar automaticamente",
 		"frequency": {
 			"weekly": "Semanal",
 			"biweekly": "Quinzenal",
@@ -2643,7 +2643,7 @@
 			"in": "Entradas"
 		},
 		"logged": {
-			"title": "Registrados por pagamento automático neste mês"
+			"title": "Registrado automaticamente neste mês"
 		},
 		"confirm": {
 			"title": "Confirmar {title}",
@@ -2665,28 +2665,28 @@
 		"item": {
 			"next": "{amount}, próximo em {date}.",
 			"paused": "{amount}. Pausada, nada é registrado até você retomar.",
-			"autoPay": "Pagamento automático",
+			"autoPay": "Registrar automaticamente",
 			"autoOnHint": "Registra sozinho na data de vencimento.",
 			"autoOffHint": "Você confirma a cada vez.",
 			"pause": "Pausar",
 			"resume": "Retomar",
 			"pausedToast": "{title} pausada",
 			"resumedToast": "{title} retomada",
-			"autoOnToast": "Pagamento automático ativado para {title}",
-			"autoOffToast": "Pagamento automático desativado para {title}",
+			"autoOnToast": "{title} registra automaticamente",
+			"autoOffToast": "{title} pede confirmação a cada vez",
 			"error": "Não foi possível alterar. Tente de novo.",
 			"delete": "Excluir"
 		},
 		"count": "{count, plural, one {# despesa recorrente} other {# despesas recorrentes}}",
-		"autoPayOn": "Pagamento automático ativado",
-		"autoPayOff": "Pagamento automático desativado",
-		"autoPayFilter": "Pagamento automático",
+		"autoPayOn": "Registra automaticamente",
+		"autoPayOff": "Confirmar a cada vez",
+		"autoPayFilter": "Registrar automaticamente",
 		"autoPayAny": "Qualquer",
 		"details": "Detalhes",
 		"make": {
 			"title": "Tornar recorrente",
 			"body": "{title} vai se repetir todo mês por {amount}, a próxima em {date}.",
-			"stays": "O pagamento automático fica desativado, então nada é registrado até você confirmar. Seus totais não mudam.",
+			"stays": "Nada é registrado até você confirmar. Seus totais não mudam.",
 			"submit": "Tornar recorrente",
 			"error": "Não foi possível tornar recorrente. Tente de novo.",
 			"toast": "{title} agora se repete todo mês"
@@ -2698,7 +2698,6 @@
 			"toast": "{title} pulado. Próximo vencimento {date}"
 		},
 		"search": "Buscar despesas recorrentes",
-		"foreign": "Moeda estrangeira",
 		"emptyFiltered": "Nada corresponde",
 		"add": {
 			"title": "Adicionar despesa recorrente",
@@ -2710,10 +2709,6 @@
 			"repeats": "Repete",
 			"first": "Próximo vencimento",
 			"firstHint": "A primeira é registrada nesta data.",
-			"website": "Site",
-			"websitePlaceholder": "exemplo.com.br",
-			"websiteInvalid": "Esse endereço não parece correto.",
-			"moreDetails": "Mais detalhes",
 			"submit": "Adicionar",
 			"toast": "{title} adicionada"
 		},
@@ -2722,7 +2717,7 @@
 			"body": "Ela deixa de aparecer. Os lançamentos que já registrou ficam.",
 			"future": "Próximas vezes",
 			"futureValue": "Param, a próxima era {date}",
-			"autoPay": "Pagamento automático",
+			"autoPay": "Registrar automaticamente",
 			"autoPayValue": "Para",
 			"submit": "Excluir gasto recorrente",
 			"submitIn": "Excluir receita recorrente",

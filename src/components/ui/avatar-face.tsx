@@ -124,8 +124,47 @@ const OVERLAP: Record<FaceSize, string> = {
 };
 
 /**
+ * The hover spread moves each face sideways with a transform, so the stack
+ * keeps its width and nothing beside it (a table column, a subline) shifts.
+ * The stack's own box stays put, so the pointer never loses it mid-spread.
+ * Face n moves n steps right; a step is the overlap plus the gap (8 for the
+ * small sizes, 12 for md and lg). Reduced motion keeps the faces still.
+ */
+const STEP_SMALL = [
+	"",
+	"motion-safe:can-hover:group-hover/faces:translate-x-2",
+	"motion-safe:can-hover:group-hover/faces:translate-x-4",
+	"motion-safe:can-hover:group-hover/faces:translate-x-6",
+	"motion-safe:can-hover:group-hover/faces:translate-x-8",
+	"motion-safe:can-hover:group-hover/faces:translate-x-10",
+	"motion-safe:can-hover:group-hover/faces:translate-x-12",
+	"motion-safe:can-hover:group-hover/faces:translate-x-14",
+] as const;
+const STEP_LARGE = [
+	"",
+	"motion-safe:can-hover:group-hover/faces:translate-x-3",
+	"motion-safe:can-hover:group-hover/faces:translate-x-6",
+	"motion-safe:can-hover:group-hover/faces:translate-x-9",
+	"motion-safe:can-hover:group-hover/faces:translate-x-12",
+	"motion-safe:can-hover:group-hover/faces:translate-x-15",
+	"motion-safe:can-hover:group-hover/faces:translate-x-18",
+	"motion-safe:can-hover:group-hover/faces:translate-x-21",
+] as const;
+
+/** Classes for the face at `index`: its overlap and its hover offset. */
+function spreadOf(size: FaceSize, index: number): string {
+	if (index === 0) return "";
+	const steps = size === "md" || size === "lg" ? STEP_LARGE : STEP_SMALL;
+	return cn(
+		OVERLAP[size],
+		"transition-transform duration-(--t-state) ease-land",
+		steps[Math.min(index, steps.length - 1)],
+	);
+}
+
+/**
  * FaceStack (R20, GUIDELINE §8): the faces of a set of people. Overlaps, and
- * spreads on hover (fine pointers) with one tooltip per face (name, Paid,
+ * spreads on hover (fine pointers, by transform, so its width never changes) with one tooltip per face (name, Paid,
  * share), ends with +N. The payer comes first, with an accent ring when
  * someone else paid. `names` is the Names setting: plain names instead.
  */
@@ -175,10 +214,6 @@ export function FaceStack({
 			: "ring-ds-accent ring-offset-2 ring-offset-surface";
 	const payer = ordered.find((p) => p.id === payerId);
 	const label = payer ? t("paidBy", { names: all, payer: nameOf(payer) }) : all;
-	const spread = cn(
-		OVERLAP[size],
-		"transition-[margin] duration-(--t-state) ease-land can-hover:group-hover/faces:ml-1",
-	);
 
 	return (
 		<span
@@ -211,7 +246,7 @@ export function FaceStack({
 							className={cn(
 								"inline-flex rounded-chip ring-2",
 								ring,
-								i > 0 && spread,
+								spreadOf(size, i),
 								paid && !p.isSelf && payerRing,
 							)}
 						>
@@ -227,7 +262,7 @@ export function FaceStack({
 							"inline-flex items-center justify-center rounded-chip bg-raised px-1 font-medium text-fg-2 text-meta tabular-nums ring-2",
 							HEIGHT[size],
 							ring,
-							spread,
+							spreadOf(size, shown.length),
 						)}
 					>
 						+{rest.length}

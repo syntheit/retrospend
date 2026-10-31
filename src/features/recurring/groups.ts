@@ -41,7 +41,6 @@ export function groupsOf(
 export type RecurringChips = {
 	autoPayOn: boolean;
 	autoPayOff: boolean;
-	foreign: boolean;
 };
 
 /** Search (case and accents ignored) and the chips; two auto-pay chips mean either. */
@@ -49,13 +48,11 @@ export function matches(
 	r: RecurringItemDTO,
 	q: string,
 	chips: RecurringChips,
-	homeCurrency: string,
 ): boolean {
 	const query = fold(q.trim());
 	if (query && !fold(`${r.title} ${r.category.name ?? ""}`).includes(query))
 		return false;
 	const autoPay = chips.autoPayOn !== chips.autoPayOff;
 	if (autoPay && r.autoPay !== chips.autoPayOn) return false;
-	if (chips.foreign && r.amount.currency === homeCurrency) return false;
 	return true;
 }

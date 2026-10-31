@@ -29,20 +29,19 @@
 		"due": "Vence",
 		"repeats": "Se repite",
 		"amount": "Monto",
-		"autoPay": "Débito automático",
-		"autoPayFor": "Débito automático de {name}",
+		"autoPay": "Registrar automáticamente",
+		"autoPayFor": "Registrar {name} automáticamente",
 		"actions": "Acciones"
 	},
 	"autoPay": {
-		"on": "Débito automático activado",
-		"off": "Débito automático desactivado"
+		"on": "Se registra automáticamente",
+		"off": "Confirmar cada vez"
 	},
 	"toolbar": {
 		"label": "Filtrar recurrentes",
 		"search": "Buscá recurrentes",
-		"autoPayOn": "Débito automático activado",
-		"autoPayOff": "Débito automático desactivado",
-		"foreign": "Moneda extranjera"
+		"autoPayOn": "Se registra automáticamente",
+		"autoPayOff": "Confirmar cada vez"
 	},
 	"summary": {
 		"cost": "Tus gastos recurrentes cuestan <amount></amount> {period}.",
@@ -67,8 +66,8 @@
 	"actions": {
 		"paused": "Pausaste {name}",
 		"resumed": "Reanudaste {name}",
-		"autoPayOn": "Débito automático activado para {name}",
-		"autoPayOff": "Débito automático desactivado para {name}",
+		"autoPayOn": "{name} se registra automáticamente",
+		"autoPayOff": "{name} se confirma cada vez",
 		"logged": "Registraste {name}",
 		"deleted": "Borraste {name}",
 		"error": {

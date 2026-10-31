@@ -4,6 +4,7 @@ import {
 	Banknote,
 	Download,
 	FileText,
+	FolderOpen,
 	Link,
 	Pin,
 	Plus,
@@ -20,12 +21,22 @@ export type ProjectTarget = ActionTarget & {
 	archived?: boolean;
 	/** Only an owner archives, restores or deletes a project. */
 	owner?: boolean;
+	/** Viewers record nothing and change no settings; unknown means yes. */
+	editor?: boolean;
 };
 
 const ownerOf = (p: ProjectTarget) => p.owner !== false;
+const editorOf = (p: ProjectTarget) => p.editor !== false;
 
 export const PROJECT_ACTIONS: readonly ActionDef<ProjectTarget>[] = [
-	{ id: "addExpense", icon: Plus, group: 0, swipe: "lead" },
+	{ id: "open", icon: FolderOpen, group: 0 },
+	{
+		id: "addExpense",
+		icon: Plus,
+		group: 0,
+		swipe: "lead",
+		when: editorOf,
+	},
 	{ id: "pin", icon: Pin, group: 0 },
 	{ id: "share", icon: Link, group: 0 },
 	{ id: "settleAll", icon: Banknote, group: 0, when: (p) => !p.solo },
@@ -33,7 +44,7 @@ export const PROJECT_ACTIONS: readonly ActionDef<ProjectTarget>[] = [
 	{ id: "exportCsv", icon: Download, group: 1 },
 	{ id: "exportPlan", icon: Download, group: 1, when: (p) => !p.solo },
 	{ id: "exportPdf", icon: FileText, group: 1 },
-	{ id: "settings", icon: Settings, group: 1 },
+	{ id: "settings", icon: Settings, group: 1, when: editorOf },
 	{
 		id: "archive",
 		icon: Archive,

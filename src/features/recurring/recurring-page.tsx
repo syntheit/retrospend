@@ -30,7 +30,6 @@ import { useRecurring } from "./use-recurring";
 const NO_CHIPS: RecurringChips = {
 	autoPayOn: false,
 	autoPayOff: false,
-	foreign: false,
 };
 
 /**
@@ -86,9 +85,7 @@ export function RecurringPage() {
 	const data = r.view.data;
 	const groups = useMemo(() => {
 		if (!data) return [];
-		const shown = data.items.filter((x) =>
-			matches(x, q, chips, data.homeCurrency),
-		);
+		const shown = data.items.filter((x) => matches(x, q, chips));
 		return groupsOf(shown, data.today);
 	}, [data, q, chips]);
 	const out = data?.items.filter((x) => x.direction === "out").length ?? 0;
@@ -175,7 +172,6 @@ export function RecurringPage() {
 					<FilterChips label={t("toolbar.label")}>
 						{chip("autoPayOn", t("toolbar.autoPayOn"))}
 						{chip("autoPayOff", t("toolbar.autoPayOff"))}
-						{chip("foreign", t("toolbar.foreign"))}
 					</FilterChips>
 				</Toolbar>
 				<RecurringSummary income={data.in} out={data.out} />

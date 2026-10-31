@@ -319,7 +319,7 @@ describe("entity rows", () => {
 		const t = text(list(h(RecurringRow, { item }), "group"));
 		expect(t).toContain("Next Oct 30");
 		expect(t).toContain("Every 2 weeks");
-		expect(t).toContain("Auto-pay on");
+		expect(t).toContain("Records automatically");
 		const paused = list(
 			h(RecurringRow, {
 				item: { ...item, paused: true, state: "due" },

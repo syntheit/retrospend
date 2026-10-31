@@ -2,8 +2,11 @@
 
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { type ReactNode, useCallback, useMemo } from "react";
+import { ActionArea } from "~/components/actions/action-menu";
+import type { ProjectTarget } from "~/components/actions/registry";
+import type { ActionHandlers } from "~/components/actions/types";
 import { ProjectVisual } from "~/components/project/project-visual";
 import { Button } from "~/components/ui/button";
 import { Tip } from "~/components/ui/tooltip";
@@ -17,6 +20,7 @@ import {
 	projectHref,
 	TOOLS,
 } from "~/lib/nav";
+import { useProjectActions } from "~/features/projects/use-project-actions";
 import { api } from "~/trpc/react";
 import { AccountMenu } from "./account-menu";
 import { AddSplitButton } from "./add-button";
@@ -72,8 +76,13 @@ function EntryLinks({
 	);
 }
 
-/** A pinned project as the sidebar draws it. */
-export type PinnedItem = { id: string; name: string; lead: ReactNode };
+/** A pinned project as the sidebar draws it; with a target it has a context menu. */
+export type PinnedItem = {
+	id: string;
+	name: string;
+	lead: ReactNode;
+	target?: ProjectTarget;
+};
 
 /**
  * The desktop and tablet sidebar (components.html, shell): the logo row with
@@ -87,6 +96,7 @@ export function SidebarView({
 	badges,
 	bell,
 	account,
+	projectActions,
 	className,
 }: {
 	pathname: string;
@@ -94,6 +104,8 @@ export function SidebarView({
 	badges?: NavBadges;
 	bell: ReactNode;
 	account: ReactNode;
+	/** What a pinned row's context menu can do (right-click, the menu key). */
+	projectActions?: ActionHandlers<ProjectTarget>;
 	className?: string;
 }) {
 	const t = useTranslations("shell");
@@ -148,15 +160,30 @@ export function SidebarView({
 						aria-label={t("sidebar.pinnedLabel")}
 						className="flex flex-col gap-0.5"
 					>
-						{pinned.map((p) => (
-							<SidebarLink
-								current={p.id === pinnedCurrent?.id}
-								href={projectHref(p.id)}
-								key={p.id}
-								label={p.name}
-								lead={p.lead}
-							/>
-						))}
+						{pinned.map((p) => {
+							const link = (
+								<SidebarLink
+									current={p.id === pinnedCurrent?.id}
+									href={projectHref(p.id)}
+									label={p.name}
+									lead={p.lead}
+								/>
+							);
+							return p.target && projectActions ? (
+								<ActionArea
+									entity="project"
+									handlers={projectActions}
+									key={p.id}
+									target={p.target}
+								>
+									{link}
+								</ActionArea>
+							) : (
+								<span className="contents" key={p.id}>
+									{link}
+								</span>
+							);
+						})}
 					</nav>
 				</>
 			)}
@@ -164,6 +191,23 @@ export function SidebarView({
 			{account}
 		</aside>
 	);
+}
+
+/** What a pinned project's menu needs from `project.list`; pinned projects are active. */
+function sidebarTarget(p: {
+	id: string;
+	name: string;
+	myRole: string | null;
+	_count: { participants: number };
+}): ProjectTarget & { archived: boolean; owner: boolean; editor: boolean } {
+	return {
+		id: p.id,
+		name: p.name,
+		solo: p._count.participants <= 1,
+		archived: false,
+		owner: p.myRole === "ORGANIZER",
+		editor: p.myRole === "ORGANIZER" || p.myRole === "EDITOR",
+	};
 }
 
 /** The sidebar on live data: pinned projects, the notifications bell, the account menu. */
@@ -175,9 +219,31 @@ export function ShellSidebar({
 	className?: string;
 }) {
 	const pathname = usePathname();
-	const pinned = usePinnedProjects().map((p) => ({
+	const router = useRouter();
+	const projects = usePinnedProjects();
+	const byId = useCallback(
+		(id: string) => {
+			const p = projects.find((x) => x.id === id);
+			return p && { ...sidebarTarget(p), currency: p.primaryCurrency };
+		},
+		[projects],
+	);
+	const base = useProjectActions(byId);
+	// Share and Settings are sheets of the project page: open the page with that sheet.
+	const projectActions = useMemo<ActionHandlers<ProjectTarget>>(
+		() => ({
+			open: (x) => router.push(projectHref(x.id)),
+			addExpense: base.addExpense,
+			share: (x) => router.push(`${projectHref(x.id)}?sheet=share`),
+			settings: (x) => router.push(`${projectHref(x.id)}?sheet=settings`),
+			archive: base.archive,
+		}),
+		[base, router],
+	);
+	const pinned = projects.map((p) => ({
 		id: p.id,
 		name: p.name,
+		target: sidebarTarget(p),
 		lead: (
 			<ProjectVisual
 				className="size-4.5 shrink-0 rounded-ctl"
@@ -195,6 +261,7 @@ export function ShellSidebar({
 			className={className}
 			pathname={pathname}
 			pinned={pinned}
+			projectActions={projectActions}
 		/>
 	);
 }

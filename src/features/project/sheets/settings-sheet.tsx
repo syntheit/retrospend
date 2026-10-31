@@ -176,6 +176,7 @@ export function SettingsSheet({
 	return (
 		<Sheet
 			detent="large"
+			focusField={false}
 			onOpenChange={onOpenChange}
 			onSubmit={d.submit}
 			open

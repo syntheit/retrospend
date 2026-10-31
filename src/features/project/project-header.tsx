@@ -86,6 +86,7 @@ export function ProjectHeader({
 							imageUrl: m.imageUrl,
 							isSelf: m.id === me,
 						}))}
+						size="sm"
 					/>
 				)
 			}

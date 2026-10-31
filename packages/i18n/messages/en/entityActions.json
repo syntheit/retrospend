@@ -64,6 +64,9 @@
 		}
 	},
 	"project": {
+		"open": {
+			"label": "Open"
+		},
 		"addExpense": {
 			"label": "Add expense"
 		},

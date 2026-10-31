@@ -2605,7 +2605,7 @@
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
 		"empty": "Keine wiederkehrenden Ausgaben",
 		"emptyDetail": "Füge Miete, Abos und andere Fixkosten hinzu.",
-		"autoPay": "Autozahlung",
+		"autoPay": "Automatisch erfassen",
 		"frequency": {
 			"weekly": "Wöchentlich",
 			"biweekly": "14-tägig",
@@ -2643,7 +2643,7 @@
 			"in": "Einnahmen"
 		},
 		"logged": {
-			"title": "Diesen Monat per Autozahlung erfasst"
+			"title": "Diesen Monat automatisch erfasst"
 		},
 		"confirm": {
 			"title": "{title} bestätigen",
@@ -2665,28 +2665,28 @@
 		"item": {
 			"next": "{amount}, nächstes am {date}.",
 			"paused": "{amount}. Pausiert, nichts wird erfasst, bis du sie fortsetzt.",
-			"autoPay": "Autozahlung",
+			"autoPay": "Automatisch erfassen",
 			"autoOnHint": "Wird am Fälligkeitstag automatisch erfasst.",
 			"autoOffHint": "Du bestätigst jedes Mal.",
 			"pause": "Pausieren",
 			"resume": "Fortsetzen",
 			"pausedToast": "{title} pausiert",
 			"resumedToast": "{title} fortgesetzt",
-			"autoOnToast": "Autozahlung für {title} aktiviert",
-			"autoOffToast": "Autozahlung für {title} deaktiviert",
+			"autoOnToast": "{title} wird automatisch erfasst",
+			"autoOffToast": "{title} wird jedes Mal bestätigt",
 			"error": "Änderung nicht möglich. Versuche es erneut.",
 			"delete": "Löschen"
 		},
 		"count": "{count, plural, one {# wiederkehrende Ausgabe} other {# wiederkehrende Ausgaben}}",
-		"autoPayOn": "Autozahlung an",
-		"autoPayOff": "Autozahlung aus",
-		"autoPayFilter": "Autozahlung",
+		"autoPayOn": "Wird automatisch erfasst",
+		"autoPayOff": "Jedes Mal bestätigen",
+		"autoPayFilter": "Automatisch erfassen",
 		"autoPayAny": "Beliebig",
 		"details": "Details",
 		"make": {
 			"title": "Wiederkehrend machen",
 			"body": "{title} wiederholt sich jeden Monat mit {amount}, das nächste Mal am {date}.",
-			"stays": "Autozahlung ist aus, also wird nichts erfasst, bis du bestätigst. Deine Summen ändern sich nicht.",
+			"stays": "Es wird nichts erfasst, bis du bestätigst. Deine Summen ändern sich nicht.",
 			"submit": "Wiederkehrend machen",
 			"error": "Das ließ sich nicht wiederkehrend machen. Versuche es erneut.",
 			"toast": "{title} wiederholt sich jetzt monatlich"
@@ -2698,7 +2698,6 @@
 			"toast": "{title} übersprungen. Nächste Fälligkeit {date}"
 		},
 		"search": "Wiederkehrende Ausgaben suchen",
-		"foreign": "Fremdwährung",
 		"emptyFiltered": "Keine Treffer",
 		"add": {
 			"title": "Wiederkehrende Ausgabe hinzufügen",
@@ -2710,10 +2709,6 @@
 			"repeats": "Wiederholt sich",
 			"first": "Nächste Fälligkeit",
 			"firstHint": "Die erste wird an diesem Datum erfasst.",
-			"website": "Website",
-			"websitePlaceholder": "beispiel.de",
-			"websiteInvalid": "Diese Adresse sieht nicht richtig aus.",
-			"moreDetails": "Weitere Details",
 			"submit": "Hinzufügen",
 			"toast": "{title} hinzugefügt"
 		},
@@ -2722,7 +2717,7 @@
 			"body": "Es taucht nicht mehr auf. Bereits erfasste Einträge bleiben.",
 			"future": "Künftige Fälligkeiten",
 			"futureValue": "Entfallen, nächste war {date}",
-			"autoPay": "Autozahlung",
+			"autoPay": "Automatisch erfassen",
 			"autoPayValue": "Endet",
 			"submit": "Wiederkehrende Ausgabe löschen",
 			"submitIn": "Wiederkehrende Einnahme löschen",

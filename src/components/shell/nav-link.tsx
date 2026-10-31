@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { cn } from "~/lib/cn";
 import { badgeText } from "~/lib/nav";
 
@@ -33,22 +33,28 @@ export function NavBadge({
 	);
 }
 
-/** One sidebar row: a lead (icon or cover) in one slot, the label, an optional count. */
+/**
+ * One sidebar row: a lead (icon or cover) in one slot, the label, an optional
+ * count. Extra props and the ref go to the link, so a context menu trigger
+ * can wrap the row.
+ */
 export function SidebarLink({
 	href,
 	lead,
 	label,
 	current,
 	badge,
+	...rest
 }: {
 	href: string;
 	lead: ReactNode;
 	label: string;
 	current: boolean;
 	badge?: number;
-}) {
+} & Omit<ComponentProps<typeof Link>, "href" | "children" | "className">) {
 	return (
 		<Link
+			{...rest}
 			aria-current={current ? "page" : undefined}
 			className={ROW}
 			href={href}

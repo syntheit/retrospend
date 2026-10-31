@@ -2605,7 +2605,7 @@
 		"errorDetail": "Check your connection and try again.",
 		"empty": "No recurring expenses",
 		"emptyDetail": "Add rent, subscriptions and other fixed costs.",
-		"autoPay": "Auto-pay",
+		"autoPay": "Record automatically",
 		"frequency": {
 			"weekly": "Weekly",
 			"biweekly": "Biweekly",
@@ -2643,7 +2643,7 @@
 			"in": "Money in"
 		},
 		"logged": {
-			"title": "Logged by auto-pay this month"
+			"title": "Recorded automatically this month"
 		},
 		"confirm": {
 			"title": "Confirm {title}",
@@ -2665,28 +2665,28 @@
 		"item": {
 			"next": "{amount}, next on {date}.",
 			"paused": "{amount}. Paused, nothing is logged until you resume it.",
-			"autoPay": "Auto-pay",
+			"autoPay": "Record automatically",
 			"autoOnHint": "Logs itself on the due date.",
 			"autoOffHint": "You confirm each time.",
 			"pause": "Pause",
 			"resume": "Resume",
 			"pausedToast": "{title} paused",
 			"resumedToast": "{title} resumed",
-			"autoOnToast": "Auto-pay on for {title}",
-			"autoOffToast": "Auto-pay off for {title}",
+			"autoOnToast": "{title} records automatically",
+			"autoOffToast": "{title} needs confirming each time",
 			"error": "Couldn't change it. Try again.",
 			"delete": "Delete"
 		},
 		"count": "{count, plural, one {# recurring expense} other {# recurring expenses}}",
-		"autoPayOn": "Auto-pay on",
-		"autoPayOff": "Auto-pay off",
-		"autoPayFilter": "Auto-pay",
+		"autoPayOn": "Records automatically",
+		"autoPayOff": "Confirm each time",
+		"autoPayFilter": "Record automatically",
 		"autoPayAny": "Any",
 		"details": "Details",
 		"make": {
 			"title": "Make recurring",
 			"body": "{title} will repeat every month at {amount}, next on {date}.",
-			"stays": "Auto-pay is off, so nothing is logged until you confirm it. Your totals don't change.",
+			"stays": "Nothing is logged until you confirm it. Your totals don't change.",
 			"submit": "Make recurring",
 			"error": "Couldn't make it recurring. Try again.",
 			"toast": "{title} now repeats monthly"
@@ -2698,7 +2698,6 @@
 			"toast": "Skipped {title}. Next due {date}"
 		},
 		"search": "Search recurring expenses",
-		"foreign": "Foreign currency",
 		"emptyFiltered": "Nothing matches",
 		"add": {
 			"title": "Add recurring expense",
@@ -2710,10 +2709,6 @@
 			"repeats": "Repeats",
 			"first": "Next due",
 			"firstHint": "The first one is logged on this date.",
-			"website": "Website",
-			"websitePlaceholder": "example.com",
-			"websiteInvalid": "That address does not look right.",
-			"moreDetails": "More details",
 			"submit": "Add",
 			"toast": "{title} added"
 		},
@@ -2722,7 +2717,7 @@
 			"body": "It stops coming up. Entries it already logged stay.",
 			"future": "Future occurrences",
 			"futureValue": "Stop, next was {date}",
-			"autoPay": "Auto-pay",
+			"autoPay": "Record automatically",
 			"autoPayValue": "Stops",
 			"submit": "Delete recurring expense",
 			"submitIn": "Delete recurring income",
