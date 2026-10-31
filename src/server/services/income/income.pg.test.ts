@@ -161,9 +161,13 @@ describe("income.add", () => {
 		});
 		// The row sits at the zone's midnight (rowDateOf); its calendar day is read there.
 		const [y, m, d] = dayKey(row.date).split("-").map(Number);
-		// One month after the income's own day, whatever the server's zone.
+		// One month after the income's own day, whatever the server's zone,
+		// clamped to the end of a shorter month (Oct 31 repeats on Nov 30).
+		const lastDay = new Date(Date.UTC(y ?? 0, (m ?? 0) + 1, 0)).getUTCDate();
 		expect(template.nextDueDate.toISOString().slice(0, 10)).toBe(
-			new Date(Date.UTC(y ?? 0, m ?? 0, d)).toISOString().slice(0, 10),
+			new Date(Date.UTC(y ?? 0, m ?? 0, Math.min(d ?? 1, lastDay)))
+				.toISOString()
+				.slice(0, 10),
 		);
 		expect(row.recurringTemplateId).toBe(template.id);
 	});
