@@ -188,10 +188,9 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 			) : null}
 			<Sheet
 				detents={["large"]}
-				dismiss="close"
+				dismiss="none"
 				grouped
 				onClose={close}
-				title={fill.editId ? t("titleEdit") : undefined}
 				visible={open !== null}
 			>
 				<View style={sheetSize}>

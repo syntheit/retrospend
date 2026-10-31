@@ -170,8 +170,7 @@
 			"find": "Projekt suchen",
 			"empty": "Kein Projekt passt",
 			"loadFailed": "Die Personen des Projekts ließen sich nicht laden. Versuch es noch mal.",
-			"onlyYou": "Nur du",
-			"noneYet": "Noch keine Projekte zum Hinzufügen"
+			"onlyYou": "Nur du"
 		},
 		"plan": {
 			"envelope": "Umschlag",
@@ -275,7 +274,6 @@
 				"SHARES": "Nach Anteilen"
 			},
 			"summaryShare": "{split}, dein Anteil {amount}",
-			"tapFaces": "Tippe im ersten Schritt auf ein Gesicht, um aufzuteilen.",
 			"custom": "Individuell",
 			"divideBy": "Aufteilen nach",
 			"part": {
@@ -327,8 +325,7 @@
 			"eachPays": "Jeder zahlt {amount}",
 			"yourShare": "Dein Anteil {amount}",
 			"youOwe": "Du schuldest {name} {amount}",
-			"paidByPerson": "Bezahlt von {name}",
-			"tapFaces": "Tippe auf Gesichter, um zu teilen. Wer gezahlt hat und wie geteilt wird, erscheint hier."
+			"paidByPerson": "Bezahlt von {name}"
 		},
 		"extras": {
 			"add": "Hinzufügen",

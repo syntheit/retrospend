@@ -5,7 +5,6 @@ import { useTheme } from "@/theme";
 import type { Face } from "@/ui/Avatar";
 import { Glyph } from "@/ui/Glyph";
 import { ProjectRow } from "@/ui/ProjectRow";
-import { Text } from "@/ui/Text";
 import { usePersonFaces } from "./Face";
 import type { EntryProject } from "./types";
 
@@ -90,11 +89,6 @@ export function ProjectPanel({
 					/>
 				);
 			})}
-			{projects.length === 0 && !editing ? (
-				<Text tone="fg2" variant="small">
-					{t("project.noneYet")}
-				</Text>
-			) : null}
 		</View>
 	);
 }

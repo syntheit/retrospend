@@ -1699,6 +1699,123 @@ describe("Who paid and a custom split", () => {
 	});
 });
 
+describe("The keypad folds into the Add button", () => {
+	const keys = (tree: Tree) =>
+		find(
+			tree,
+			(p) => p.accessibilityLabel === "5" && typeof p.onPress === "function",
+		);
+
+	it("stays open while there is no amount, folds on a pick once there is one, and comes back when the amount is tapped", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+		expect(keys(tree).length).toBeGreaterThan(0);
+		// Nothing to add yet: picking a category leaves the keys.
+		press(tree, "Cafe");
+		expect(keys(tree).length).toBeGreaterThan(0);
+		press(tree, "9");
+		press(tree, "Groceries");
+		expect(keys(tree)).toHaveLength(0);
+		// The folded bar is the one Add button.
+		expect(
+			find(
+				tree,
+				(p) =>
+					p.accessibilityLabel === "Add expense" &&
+					typeof p.onPress === "function",
+			).length,
+		).toBeGreaterThan(0);
+		pressStarting(tree, "Amount");
+		expect(keys(tree).length).toBeGreaterThan(0);
+		act(() => tree.unmount());
+	});
+
+	it("opens folded when editing", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense", () => {}, "e1");
+		expect(keys(tree)).toHaveLength(0);
+		act(() => tree.unmount());
+	});
+
+	it("folds when a tab is tapped after an amount", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+		press(tree, "9");
+		pressStarting(tree, "Who");
+		expect(keys(tree)).toHaveLength(0);
+		act(() => tree.unmount());
+	});
+});
+
+describe("The title remembers", () => {
+	const selected = (tree: Tree, label: string) =>
+		find(tree, (p) => p.accessibilityLabel === label && "accessibilityState" in p)[0]
+			?.props.accessibilityState;
+
+	it("picks the category you gave this title before, and says what it cost", async () => {
+		const { api } = fakeApi();
+		(
+			api as unknown as { expenses: { titleSuggestions: unknown } }
+		).expenses.titleSuggestions = async () => ({
+			items: [
+				{
+					title: "Coffee",
+					count: 3,
+					lastCategoryId: "groceries",
+					lastAmount: { minor: 350_000, currency: "ARS" },
+				},
+			],
+		});
+		mockSession.api = api;
+		const tree = await open("expense");
+		type(tree, "Title", "Coffee");
+		await settle();
+		await settle();
+		expect(selected(tree, "Groceries")).toEqual({ selected: true });
+		expect(words(tree)).toContain("Last time ARS 3,500");
+		act(() => tree.unmount());
+	});
+
+	it("does not choose over a category you picked yourself", async () => {
+		const { api } = fakeApi();
+		(
+			api as unknown as { expenses: { titleSuggestions: unknown } }
+		).expenses.titleSuggestions = async () => ({
+			items: [
+				{
+					title: "Coffee",
+					count: 3,
+					lastCategoryId: "groceries",
+					lastAmount: null,
+				},
+			],
+		});
+		mockSession.api = api;
+		const tree = await open("expense");
+		press(tree, "Cafe");
+		type(tree, "Title", "Coffee");
+		await settle();
+		await settle();
+		expect(selected(tree, "Cafe")).toEqual({ selected: true });
+		expect(selected(tree, "Groceries")).toEqual({ selected: false });
+		act(() => tree.unmount());
+	});
+
+	it("picks from a keyword when there is no history", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+		type(tree, "Title", "Grocery run");
+		await settle();
+		await settle();
+		expect(selected(tree, "Groceries")).toEqual({ selected: true });
+		act(() => tree.unmount());
+	});
+});
+
 describe("Add expense at the largest text size", () => {
 	it("types the amount on the system decimal keyboard, with no keypad to cut off", async () => {
 		fontScale(3);

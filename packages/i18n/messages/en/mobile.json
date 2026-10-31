@@ -170,8 +170,7 @@
 			"find": "Find a project",
 			"empty": "No project matches",
 			"loadFailed": "Couldn't load the project's people. Try again.",
-			"onlyYou": "Only you",
-			"noneYet": "No projects to add to yet"
+			"onlyYou": "Only you"
 		},
 		"plan": {
 			"envelope": "Envelope",
@@ -275,7 +274,6 @@
 				"SHARES": "Split by shares"
 			},
 			"summaryShare": "{split}, your share {amount}",
-			"tapFaces": "Tap a face on the first step to split.",
 			"custom": "Custom",
 			"divideBy": "Divide by",
 			"part": {
@@ -327,8 +325,7 @@
 			"eachPays": "Each pays {amount}",
 			"yourShare": "Your share {amount}",
 			"youOwe": "You owe {name} {amount}",
-			"paidByPerson": "Paid by {name}",
-			"tapFaces": "Tap faces to split. Paid by and how to split appear here."
+			"paidByPerson": "Paid by {name}"
 		},
 		"extras": {
 			"add": "Add",

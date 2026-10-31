@@ -138,8 +138,11 @@ export function MorePanel({
 	const draft = form.expense;
 	const personal = isPersonal(draft);
 	const set = form.patchExpense;
-	const [noteOpen, setNoteOpen] = useState(draft.note.length > 0);
-	const [placeOpen, setPlaceOpen] = useState(draft.location.length > 0);
+	// A note or a place that is already there (undone changes, a share) shows open.
+	const [noteAsked, setNoteAsked] = useState(false);
+	const [placeAsked, setPlaceAsked] = useState(false);
+	const noteOpen = noteAsked || draft.note.length > 0;
+	const placeOpen = placeAsked || draft.location.length > 0;
 	const [customOpen, setCustomOpen] = useState(false);
 	const [customText, setCustomText] = useState("");
 	const [changesOpen, setChangesOpen] = useState(false);
@@ -165,7 +168,7 @@ export function MorePanel({
 				on={noteOpen}
 				onPress={() => {
 					if (noteOpen) set({ note: "" });
-					setNoteOpen(!noteOpen);
+					setNoteAsked(!noteOpen);
 					onPicked();
 				}}
 				state={noteOpen ? remove : add}
@@ -260,9 +263,9 @@ export function MorePanel({
 						}}
 						state={draft.exclude ? t("extras.on") : t("extras.off")}
 					>
-						{draft.exclude ? (
+						{draft.exclude && draft.excludeAuto ? (
 							<Text tone="fg2" variant="small">
-								{draft.excludeAuto ? t("excludeAuto") : t("excludeDetail")}
+								{t("excludeAuto")}
 							</Text>
 						) : null}
 					</OptionRow>
@@ -272,7 +275,7 @@ export function MorePanel({
 						on={placeOpen}
 						onPress={() => {
 							if (placeOpen) set({ location: "" });
-							setPlaceOpen(!placeOpen);
+							setPlaceAsked(!placeOpen);
 							onPicked();
 						}}
 						state={placeOpen ? remove : add}
@@ -301,7 +304,7 @@ export function MorePanel({
 			>
 				{changesOpen ? (
 					<ChangesBlock
-						idle={t("changes.emptyExpense")}
+						idle=""
 						onRetry={preview.retry}
 						state={preview.preview}
 					/>

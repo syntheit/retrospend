@@ -217,11 +217,7 @@ export function WhoPanel({
 						</Text>
 					)}
 				</View>
-			) : editing ? null : (
-				<Text style={{ textAlign: "center" }} tone="fg2" variant="small">
-					{tw("tapFaces")}
-				</Text>
-			)}
+			) : null}
 		</View>
 	);
 }

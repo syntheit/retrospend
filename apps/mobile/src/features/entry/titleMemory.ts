@@ -88,8 +88,8 @@ export function useTitleMemory({
 			return;
 		}
 		let cancelled = false;
-		api.expenses
-			.titleSuggestions({ q: settled })
+		Promise.resolve()
+			.then(() => api.expenses.titleSuggestions({ q: settled }))
 			.then(({ items }) => {
 				if (cancelled) return;
 				const match = items.find(

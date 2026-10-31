@@ -218,7 +218,10 @@ export function ExpenseComposer({
 		<WhenPanel
 			date={draft.date}
 			key="when"
-			onPick={(date) => patch({ date })}
+			// The system date control may report the day it already shows.
+			onPick={(date) => {
+				if (date !== draft.date) patch({ date });
+			}}
 		/>,
 		<WhoPanel
 			form={form}

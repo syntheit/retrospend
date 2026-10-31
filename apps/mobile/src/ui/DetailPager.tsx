@@ -148,7 +148,8 @@ export function DetailPager({
 	useEffect(() => () => stop.current?.(), []);
 
 	function settled(event: NativeSyntheticEvent<NativeScrollEvent>) {
-		if (pageWidth === 0) return;
+		// A scroll the pager started itself is not a swipe.
+		if (pageWidth === 0 || stop.current) return;
 		const x = event.nativeEvent.contentOffset.x;
 		offset.current = x;
 		const next = Math.max(
