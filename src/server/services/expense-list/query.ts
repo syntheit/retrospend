@@ -173,6 +173,8 @@ function personal(k: KeyQuery, page?: Page): Prisma.Sql {
 		[Prisma.sql`e.amount`],
 	);
 	if (s) parts.push(s);
+	if (has(f.currencies))
+		parts.push(Prisma.sql`e.currency = ANY(${f.currencies}::text[])`);
 	if (k.only) parts.push(Prisma.sql`e.id = ${k.only.id}`);
 	const pg = pageOf("p", Prisma.sql`e.date`, Prisma.sql`e.id`, page);
 	if (pg.where) parts.push(pg.where);
@@ -220,6 +222,8 @@ function shared(k: KeyQuery, page?: Page): Prisma.Sql {
 		[Prisma.sql`st.amount`, Prisma.sql`sp."shareAmount"`],
 	);
 	if (s) parts.push(s);
+	if (has(f.currencies))
+		parts.push(Prisma.sql`st.currency = ANY(${f.currencies}::text[])`);
 	if (k.only) parts.push(Prisma.sql`st.id = ${k.only.id}`);
 	const pg = pageOf("s", Prisma.sql`st.date`, Prisma.sql`st.id`, page);
 	if (pg.where) parts.push(pg.where);
@@ -252,6 +256,8 @@ function payments(k: KeyQuery, page?: Page): Prisma.Sql {
 	);
 	const parts = dateParts(Prisma.sql`g.date`, k.bounds);
 	if (has(f.projectIds)) parts.push(Prisma.sql`g.in_project`);
+	if (has(f.currencies))
+		parts.push(Prisma.sql`g.currency = ANY(${f.currencies}::text[])`);
 	if (has(f.people)) parts.push(Prisma.sql`g.other = ANY(${f.people}::text[])`);
 	if (has(f.paidBy))
 		parts.push(Prisma.sql`g.payer = ANY(${payerKeys(k)}::text[])`);
@@ -262,6 +268,7 @@ function payments(k: KeyQuery, page?: Page): Prisma.Sql {
 	if (pg.where) parts.push(pg.where);
 	return Prisma.sql`(SELECT 'g'::text AS src, g.key AS id, g.date AS date FROM (
 		SELECT coalesce(s."paymentGroupId", s.id) || '|' || s.currency AS key,
+			min(s.currency) AS currency,
 			min(s."initiatedAt") AS date,
 			sum(s.amount) AS amount,
 			bool_or(coalesce(s."projectId" = ANY(${f.projectIds ?? []}::text[]), false)) AS in_project,

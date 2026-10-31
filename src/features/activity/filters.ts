@@ -1,7 +1,7 @@
 /**
  * The Activity filter as one value, read from and written to the URL, so
  * links from Insights, Budget and People arrive pre-filtered (?cat=,
- * ?person=, ?project=, ?paidby=, ?kind=, ?from=, ?to=, ?q=). The list, the
+ * ?person=, ?project=, ?paidby=, ?kind=, ?currency=, ?from=, ?to=, ?q=). The list, the
  * count and the footer all read this one value (RC4).
  */
 
@@ -20,10 +20,18 @@ export type ActivityFilter = {
 	projects: string[];
 	paidBy: string[];
 	kinds: ActivityKind[];
+	/** Original currencies (ISO codes or coin tickers). */
+	currencies: string[];
 	q: string;
 };
 
-export type Dim = "cats" | "people" | "projects" | "paidBy" | "kinds";
+export type Dim =
+	| "cats"
+	| "people"
+	| "projects"
+	| "paidBy"
+	| "kinds"
+	| "currencies";
 
 const PARAM: Record<Dim, string> = {
 	cats: "cat",
@@ -31,6 +39,7 @@ const PARAM: Record<Dim, string> = {
 	projects: "project",
 	paidBy: "paidby",
 	kinds: "kind",
+	currencies: "currency",
 };
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -71,6 +80,9 @@ export function readFilter(
 		kinds: list(params.get(PARAM.kinds)).filter((k): k is ActivityKind =>
 			(ACTIVITY_KINDS as readonly string[]).includes(k),
 		),
+		currencies: list(params.get(PARAM.currencies))
+			.map((c) => c.toUpperCase())
+			.filter((c) => /^[A-Z]{3,10}$/.test(c)),
 		q,
 	};
 }
@@ -106,6 +118,7 @@ export function queryOf(
 		...(f.projects.length ? { projectIds: f.projects } : {}),
 		...(f.paidBy.length ? { paidBy: f.paidBy } : {}),
 		...(f.kinds.length ? { kinds: f.kinds } : {}),
+		...(f.currencies.length ? { currencies: f.currencies } : {}),
 		...(q ? { q } : {}),
 	};
 }

@@ -48,6 +48,9 @@ export function NetWorthArea({
 	height = 200,
 	label = "month",
 	onScrub,
+	name,
+	moneyFormat,
+	summaryText,
 }: {
 	points: AreaPoint[];
 	currency: string;
@@ -55,10 +58,21 @@ export function NetWorthArea({
 	/** How the edge labels read: by month ("Oct") or by day ("Oct 21"). */
 	label?: "month" | "day";
 	onScrub?: (point: AreaPoint | null) => void;
+	/** What the line is called when it is not net worth ("Price"). */
+	name?: string;
+	/** Decimal places and cents for values that are not whole money (a rate). */
+	moneyFormat?: { places?: number; cents?: false | "auto" };
+	/** The spoken summary, when the line is not net worth. */
+	summaryText?: (s: {
+		from: string;
+		start: string;
+		to: string;
+		end: string;
+	}) => string;
 }) {
 	const t = useTranslations("charts");
 	const animate = useChartMotion();
-	const text = useMoneyText();
+	const text = useMoneyText(moneyFormat);
 	const { monthShort, short } = useRowDates();
 	const fmt = label === "month" ? monthShort : short;
 	const data = useMemo(
@@ -82,7 +96,7 @@ export function NetWorthArea({
 	return (
 		<ChartFrame
 			height={height}
-			summary={t("area.summary", {
+			summary={(summaryText ?? ((s) => t("area.summary", s)))({
 				from: first ? fmt(first.date) : "",
 				start: first?.value ? text(first.value) : t("noData"),
 				to: last ? fmt(last.date) : "",
@@ -91,7 +105,9 @@ export function NetWorthArea({
 		>
 			<ChartContainer
 				className="aspect-auto size-full touch-pan-y"
-				config={{ value: { label: t("area.label"), color: COLOR.accent } }}
+				config={{
+					value: { label: name ?? t("area.label"), color: COLOR.accent },
+				}}
 			>
 				<AreaChart
 					data={data}

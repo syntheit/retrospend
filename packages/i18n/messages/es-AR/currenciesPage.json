@@ -34,7 +34,6 @@
 		"unavailable": "{code} todavía no puede ser favorita"
 	},
 	"detail": {
-		"label": "Moneda elegida",
 		"sheetTitle": "Cotizaciones de {code}",
 		"sub": "{code} · {date}",
 		"noRate": "No hay cotización de {code}. Las cuentas y gastos en {code} quedan fuera de los totales.",
@@ -61,5 +60,29 @@
 		"title": "Las cotizaciones no están disponibles ahora",
 		"hint": "Probá de nuevo en un rato.",
 		"retry": "Reintentar"
+	},
+	"history": {
+		"title": "Historial de cotización",
+		"range": {
+			"label": "Período",
+			"1M": "1M",
+			"3M": "3M",
+			"1Y": "1A",
+			"ALL": "Todo"
+		},
+		"type": "Tipo de cotización",
+		"series": "Cotización",
+		"summary": "La cotización pasó de {start} el {from} a {end} el {to}",
+		"empty": "Todavía no hay suficiente historial",
+		"failed": "No se pudo cargar el historial. Probá de nuevo."
+	},
+	"expenses": {
+		"title": "Tus gastos en {code}",
+		"total": "{count, plural, one {# gasto} other {# gastos}}",
+		"inHome": "En {home}",
+		"recent": "Últimos gastos",
+		"seeAll": "Ver todo",
+		"empty": "Todavía no hay gastos en {code}",
+		"failed": "No se pudieron cargar tus gastos. Probá de nuevo."
 	}
 }

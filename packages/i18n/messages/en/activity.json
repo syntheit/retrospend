@@ -25,7 +25,8 @@
 			"people": "Person",
 			"projects": "Project",
 			"paidBy": "Paid by",
-			"kinds": "Type"
+			"kinds": "Type",
+			"currencies": "Currency"
 		},
 		"kind": {
 			"expense": "Spending",

@@ -34,7 +34,6 @@
 		"unavailable": "{code} ne peut pas encore être un favori"
 	},
 	"detail": {
-		"label": "Devise sélectionnée",
 		"sheetTitle": "Taux de {code}",
 		"sub": "{code} · {date}",
 		"noRate": "Pas de taux pour {code}. Les comptes et dépenses en {code} sont exclus des totaux.",
@@ -61,5 +60,29 @@
 		"title": "Les taux ne sont pas disponibles pour le moment",
 		"hint": "Réessaie dans un instant.",
 		"retry": "Réessayer"
+	},
+	"history": {
+		"title": "Historique du taux",
+		"range": {
+			"label": "Période",
+			"1M": "1M",
+			"3M": "3M",
+			"1Y": "1A",
+			"ALL": "Tout"
+		},
+		"type": "Type de taux",
+		"series": "Taux",
+		"summary": "Le taux est passé de {start} le {from} à {end} le {to}",
+		"empty": "Pas encore assez d'historique",
+		"failed": "Impossible de charger l'historique. Réessaie."
+	},
+	"expenses": {
+		"title": "Tes dépenses en {code}",
+		"total": "{count, plural, one {# dépense} other {# dépenses}}",
+		"inHome": "En {home}",
+		"recent": "Dernières dépenses",
+		"seeAll": "Tout voir",
+		"empty": "Aucune dépense en {code} pour le moment",
+		"failed": "Impossible de charger tes dépenses. Réessaie."
 	}
 }

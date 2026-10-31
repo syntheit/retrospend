@@ -114,6 +114,7 @@ export function activityHref(
 			projects: view.projects,
 			paidBy: [],
 			kinds: [],
+			currencies: [],
 			q: "",
 		},
 		today,

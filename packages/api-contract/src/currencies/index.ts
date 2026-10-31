@@ -12,7 +12,10 @@ import {
 	conversionSchema,
 	convertDirectionSchema,
 	currencySchema,
+	currencySpendingSchema,
 	exchangeRateSchema,
+	historyRangeSchema,
+	rateHistorySchema,
 	rateTableSchema,
 } from "./schemas";
 
@@ -34,6 +37,12 @@ export const rateHistoryQuerySchema = cursorQuerySchema.extend({
 	type: rateTypeSchema.optional(),
 	from: z.iso.date().optional(),
 	to: z.iso.date().optional(),
+});
+
+export const rateSeriesQuerySchema = z.object({
+	range: historyRangeSchema.default("3M").meta({
+		description: "How far back: 1M, 3M, 1Y or ALL (every stored day).",
+	}),
 });
 
 export const bestRateQuerySchema = z.object({
@@ -142,6 +151,32 @@ export const currenciesContract = {
 		})
 		.meta({ scope: "read" })
 		.output(rateTableSchema),
+	rateSeries: v1
+		.route({
+			method: "GET",
+			path: "/rates/{currency}/series",
+			operationId: "getRateSeries",
+			tags: TAG,
+			summary: "A currency's rate history against the home currency",
+			description:
+				"One line per rate type, priced like the rate table: the stronger currency of the pair is the one unit, at the same decimal places on every point. Days come from the stored rate history; a side with no rate gives an empty series, never a 1.",
+		})
+		.meta({ scope: "read" })
+		.input(currencyParamsSchema.extend(rateSeriesQuerySchema.shape))
+		.output(rateHistorySchema),
+	currencySpending: v1
+		.route({
+			method: "GET",
+			path: "/currencies/{currency}/spending",
+			operationId: "getCurrencySpending",
+			tags: TAG,
+			summary: "What the caller spent in one original currency",
+			description:
+				"All time, from the one spending definition Activity's footer uses. The list of those expenses is GET /expenses with filter=currency=CODE.",
+		})
+		.meta({ scope: "read" })
+		.input(currencyParamsSchema)
+		.output(currencySpendingSchema),
 	convert: v1
 		.route({
 			method: "GET",

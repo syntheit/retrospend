@@ -34,7 +34,6 @@
 		"unavailable": "{code} kann noch kein Favorit sein"
 	},
 	"detail": {
-		"label": "Gewählte Währung",
 		"sheetTitle": "Kurse für {code}",
 		"sub": "{code} · {date}",
 		"noRate": "Kein {code}-Kurs. Konten und Ausgaben in {code} zählen nicht zu den Summen.",
@@ -61,5 +60,29 @@
 		"title": "Kurse sind gerade nicht verfügbar",
 		"hint": "Versuch es gleich noch einmal.",
 		"retry": "Erneut versuchen"
+	},
+	"history": {
+		"title": "Kursverlauf",
+		"range": {
+			"label": "Zeitraum",
+			"1M": "1M",
+			"3M": "3M",
+			"1Y": "1J",
+			"ALL": "Alle"
+		},
+		"type": "Kurstyp",
+		"series": "Kurs",
+		"summary": "Der Kurs ging von {start} am {from} auf {end} am {to}",
+		"empty": "Noch nicht genug Verlauf",
+		"failed": "Der Verlauf konnte nicht geladen werden. Versuch es noch einmal."
+	},
+	"expenses": {
+		"title": "Deine Ausgaben in {code}",
+		"total": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
+		"inHome": "In {home}",
+		"recent": "Letzte Ausgaben",
+		"seeAll": "Alle anzeigen",
+		"empty": "Noch keine Ausgaben in {code}",
+		"failed": "Deine Ausgaben konnten nicht geladen werden. Versuch es noch einmal."
 	}
 }

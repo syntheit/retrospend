@@ -54,9 +54,9 @@ export function ChartEmpty({ height }: { height: number }) {
 	const t = useTranslations("charts");
 	return (
 		<div
+			aria-label={t("empty")}
 			className="text-fg-3 text-small flex items-center justify-center"
 			role="img"
-			aria-label={t("empty")}
 			style={{ height }}
 		>
 			{t("empty")}
@@ -65,11 +65,16 @@ export function ChartEmpty({ height }: { height: number }) {
 }
 
 /** Money as text for a chart's spoken summary, through the one formatter. */
-export function useMoneyText() {
+export function useMoneyText(options?: {
+	places?: number;
+	cents?: false | "auto";
+}) {
 	const locale = useMoneyLocale();
+	const places = options?.places;
+	const cents = options?.cents;
 	return useCallback(
-		(value: MoneyValue) => formatMoney(value, { locale }) ?? "",
-		[locale],
+		(value: MoneyValue) => formatMoney(value, { locale, places, cents }) ?? "",
+		[locale, places, cents],
 	);
 }
 

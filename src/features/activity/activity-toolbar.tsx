@@ -4,11 +4,13 @@ import {
 	categoryTone,
 	NO_CATEGORY_TONE,
 } from "@retrospend/domain/category-tone";
+import { currencyName } from "@retrospend/domain/currency-names";
 import { Search } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { type RefObject, useEffect, useMemo, useRef } from "react";
 import { Toolbar } from "~/components/layout/toolbar";
 import { CategoryGlyph } from "~/components/pickers/category-picker";
+import { ALL_CURRENCIES } from "~/components/pickers/currency-picker";
 import { DateRange } from "~/components/pickers/date-range";
 import { isTypingTarget } from "~/components/shell/shortcuts";
 import { Face } from "~/components/ui/avatar-face";
@@ -17,6 +19,7 @@ import {
 	FilterMenu,
 	type FilterMenuGroup,
 } from "~/components/ui/chip";
+import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { Input } from "~/components/ui/input";
 import {
 	type ActivityKind,
@@ -50,6 +53,7 @@ const NO_CATEGORY_REF = {
  */
 export function useDimItems({ noCategory = false } = {}) {
 	const t = useTranslations("activity.filters");
+	const locale = useLocale();
 	const categories = api.categories.getAll.useQuery(undefined, {
 		staleTime: 60_000,
 	});
@@ -88,8 +92,15 @@ export function useDimItems({ noCategory = false } = {}) {
 			),
 			paidBy: [{ id: "me", label: t("you") }, ...persons],
 			kinds: KINDS.map((k): DimItem => ({ id: k, label: t(`kind.${k}`) })),
+			currencies: ALL_CURRENCIES.map(
+				(c): DimItem => ({
+					id: c.id,
+					label: `${c.id} ${currencyName(c.id, locale, c.name)}`,
+					lead: <CurrencyFlag className="size-4" currencyCode={c.id} />,
+				}),
+			),
 		} satisfies Record<Dim, DimItem[]>;
-	}, [categories.data, people.data, projects.data, noCategory, t]);
+	}, [categories.data, people.data, projects.data, noCategory, t, locale]);
 }
 
 /** "/" focuses the search, outside fields and open layers (the mockup's key). */
@@ -152,6 +163,14 @@ export function ActivityToolbar({
 			})),
 		},
 		{
+			id: "currencies",
+			label: t("dim.currencies"),
+			items: items.currencies.map((i) => ({
+				...i,
+				checked: filter.currencies.includes(i.id),
+			})),
+		},
+		{
 			id: "paidBy",
 			label: t("dim.paidBy"),
 			// Everyone: the menu scrolls, so nobody is hidden behind a cut-off.
@@ -197,10 +216,11 @@ export function ActivityToolbar({
 				{chip("projects")}
 				{filter.paidBy.length > 0 && chip("paidBy")}
 				{filter.kinds.length > 0 && chip("kinds")}
+				{filter.currencies.length > 0 && chip("currencies")}
 				<FilterMenu
 					groups={menu}
 					onToggle={(group, id) => {
-						const dim = group as "kinds" | "paidBy";
+						const dim = group as "kinds" | "paidBy" | "currencies";
 						setFilter({ ...filter, [dim]: toggled<string>(filter[dim], id) });
 					}}
 				/>

@@ -25,7 +25,8 @@
 			"people": "Человек",
 			"projects": "Проект",
 			"paidBy": "Кто платил",
-			"kinds": "Тип"
+			"kinds": "Тип",
+			"currencies": "Валюта"
 		},
 		"kind": {
 			"expense": "Расходы",

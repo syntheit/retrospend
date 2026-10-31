@@ -926,6 +926,21 @@ model ExchangeRate {
   @@map("exchange_rate")
 }
 
+/// One stored rate per day, currency and type, kept by every rate sync (the
+/// sidecar). `exchange_rate` holds only the newest value of each, rewritten in
+/// place; this table is the history the Currencies chart reads. Shared data,
+/// no RLS: the app role reads it, the sidecar and the backfill script write.
+model ExchangeRateHistory {
+  date     DateTime @db.Date
+  currency String
+  type     String   @default("official") @db.VarChar(32)
+  rate     Decimal  @db.Decimal(18, 6)
+
+  @@id([date, currency, type])
+  @@index([currency, type, date])
+  @@map("exchange_rate_history")
+}
+
 model ExchangeRateFavorite {
   id             String       @id @default(cuid())
   userId         String

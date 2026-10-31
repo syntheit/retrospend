@@ -62,3 +62,41 @@ export type ConvertResult = {
 	/** Converted through another type's rate (one side lacks the type). */
 	derived: boolean;
 }[];
+
+/** The ranges the history chart offers; ALL is every stored day. */
+export const HISTORY_RANGES = ["1M", "3M", "1Y", "ALL"] as const;
+export type HistoryRange = (typeof HISTORY_RANGES)[number];
+
+/** One day of a rate type's history, priced like the page's prices. */
+export type HistoryPoint = {
+	/** ISO day. */
+	date: string;
+	price: Rate;
+};
+
+/** A rate type's days in the range, oldest first. */
+export type HistorySeries = {
+	type: string;
+	/** Priced through another type's rate (one side lacks this type). */
+	derived: boolean;
+	/** Change from the first to the last day, in hundredths of a percent; null with one day. */
+	changeBp: number | null;
+	points: HistoryPoint[];
+};
+
+/**
+ * A currency's history against the home currency: every point is the same
+ * unit as the page's price (`base` is worth 1; the Money is what it costs in
+ * the other currency of the pair) at the same `places`, so the line is
+ * comparable between points and rate types.
+ */
+export type RateHistory = {
+	code: string;
+	home: string;
+	range: HistoryRange;
+	/** The one unit every point shares; null with no history. */
+	base: string | null;
+	/** The type the chart opens on; null with no history. */
+	defaultType: string | null;
+	series: HistorySeries[];
+};
