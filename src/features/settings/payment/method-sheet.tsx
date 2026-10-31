@@ -18,7 +18,6 @@ const EMPTY: MethodDraft = {
 	type: "",
 	identifier: "",
 	label: "",
-	showLabel: false,
 	currency: "",
 	network: "",
 	minAmount: "",
@@ -29,7 +28,6 @@ const draftOf = (m: Method): MethodDraft => ({
 	type: m.type,
 	identifier: m.identifier,
 	label: m.label,
-	showLabel: !!m.label,
 	currency: m.currency,
 	network: m.network,
 	minAmount: m.minAmount,
@@ -84,7 +82,7 @@ export function MethodSheet({
 			id: editing?.id,
 			localId: editing?.localId ?? newLocalId(),
 			type: draft.type,
-			label: draft.showLabel ? draft.label : "",
+			label: draft.label.trim(),
 			identifier: draft.identifier.trim(),
 			visibility: draft.visibility,
 			minAmount: draft.minAmount,
@@ -96,7 +94,6 @@ export function MethodSheet({
 	const picking = step === "pick";
 	return (
 		<Sheet
-			description={picking ? t("choosePlatform") : undefined}
 			footer={picking ? false : undefined}
 			onOpenChange={(o) => !o && onClose()}
 			onSubmit={picking ? undefined : save}

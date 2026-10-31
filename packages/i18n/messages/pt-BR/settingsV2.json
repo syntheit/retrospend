@@ -131,8 +131,7 @@
 		"language": "Idioma",
 		"timeZone": "Fuso horário",
 		"timeZoneMeta": "Usado quando seu dispositivo não informa o dele",
-		"hideBalances": "Ocultar saldos em Patrimônio",
-		"hideBalancesMeta": "Até você tocar no olho",
+		"hideBalances": "Ocultar saldos por padrão",
 		"chartTap": "Ao tocar em uma categoria em um gráfico",
 		"chartTapOpen": "Abre as despesas dela",
 		"chartTapHide": "Oculta do gráfico",
@@ -212,7 +211,27 @@
 		"twoFactorOff": "Desativada",
 		"turnOn": "Ativar",
 		"turnOff": "Desativar",
-		"backupCodes": "Códigos de backup"
+		"backupCodes": "Códigos de backup",
+		"devices": {
+			"title": "Dispositivos conectados",
+			"current": "Este dispositivo",
+			"lastUsed": "Último uso em {date}",
+			"signedIn": "Conectado em {date}",
+			"signedOut": "{name} foi desconectado",
+			"failed": "Não foi possível concluir. Tente de novo.",
+			"none": "Você não está conectado em nenhum outro lugar.",
+			"name": {
+				"browserOn": "{browser} no {system}",
+				"app": "App Retrospend",
+				"appOn": "App Retrospend no {system}",
+				"web": "Navegador",
+				"webOn": "Navegador no {system}",
+				"cli": "Linha de comando",
+				"desktop": "App para desktop",
+				"mcp": "Cliente MCP",
+				"device": "Dispositivo aprovado"
+			}
+		}
 	},
 	"password": {
 		"title": "Mudar senha",
@@ -280,11 +299,6 @@
 			"write_settings": "Configurações",
 			"admin": "Administração"
 		},
-		"devices": "Dispositivos aprovados",
-		"noDevices": "Nenhum dispositivo aprovado",
-		"noDevicesHint": "Os apps que você conecta com um código em /device aparecem aqui.",
-		"approvedOn": "Aprovado em {date}",
-		"disconnected": "Desconectamos {name}",
 		"failed": "Não foi possível concluir. Tente de novo.",
 		"newTitle": "Nova chave de API",
 		"name": "Nome",
@@ -517,6 +531,6 @@
 		"github": "GitHub",
 		"matrix": "Matrix",
 		"donate": "Doar",
-		"madeBy": "Feito por <name>Daniel Miller</name>"
+		"madeBy": "Feito por Daniel Miller"
 	}
 }

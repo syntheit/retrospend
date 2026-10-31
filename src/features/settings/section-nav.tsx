@@ -1,7 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { type RefObject, useCallback, useEffect, useState } from "react";
+import {
+	type RefObject,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { lineTab, lineTabOn, TabIndicator } from "~/components/ui/tabs";
 import { cn } from "~/lib/cn";
 import {
@@ -11,8 +17,19 @@ import {
 	sectionFromHash,
 } from "./sections";
 
-/** Below the sticky phone tabs, so a section heading is never under them. */
-const READING_LINE = 96;
+/** Measured from the top of the scrolling pane, which starts below the header and the phone tabs. */
+const READING_LINE = 64;
+
+/** Keys that scroll a pane: pressing one means the person has taken over from a click. */
+const SCROLL_KEYS = new Set([
+	"ArrowUp",
+	"ArrowDown",
+	"PageUp",
+	"PageDown",
+	"Home",
+	"End",
+	" ",
+]);
 
 function scrollBehavior(): ScrollBehavior {
 	return window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -42,6 +59,10 @@ export function useSectionSpy(
 	ids: readonly SectionId[],
 ) {
 	const [current, setCurrent] = useState<SectionId>(ids[0] ?? "profile");
+	// The section a click or link asked for. While set, the scrolling we cause
+	// getting there (which may stop short: the last sections cannot reach the
+	// top) never changes the marked section. The person scrolling clears it.
+	const pinned = useRef<SectionId | null>(null);
 
 	useEffect(() => {
 		const root = scroller.current;
@@ -55,6 +76,7 @@ export function useSectionSpy(
 				return el ? [{ id, top: el.getBoundingClientRect().top - base }] : [];
 			});
 			const atEnd = root.scrollTop + root.clientHeight >= root.scrollHeight - 4;
+			if (pinned.current) return;
 			const next = activeSection(tops, READING_LINE, atEnd);
 			if (next) setCurrent(next);
 		};
@@ -62,16 +84,37 @@ export function useSectionSpy(
 			if (!frame) frame = requestAnimationFrame(measure);
 		};
 		measure();
+		const release = () => {
+			if (!pinned.current) return;
+			pinned.current = null;
+			onScroll();
+		};
+		const onKey = (e: KeyboardEvent) => {
+			if (SCROLL_KEYS.has(e.key)) release();
+		};
+		const onPointer = (e: PointerEvent) => {
+			// A press on the pane's own scrollbar (the target is the pane itself).
+			if (e.target === root) release();
+		};
 		root.addEventListener("scroll", onScroll, { passive: true });
+		root.addEventListener("wheel", release, { passive: true });
+		root.addEventListener("touchmove", release, { passive: true });
+		root.addEventListener("pointerdown", onPointer);
+		window.addEventListener("keydown", onKey);
 		window.addEventListener("resize", onScroll);
 		return () => {
 			root.removeEventListener("scroll", onScroll);
+			root.removeEventListener("wheel", release);
+			root.removeEventListener("touchmove", release);
+			root.removeEventListener("pointerdown", onPointer);
+			window.removeEventListener("keydown", onKey);
 			window.removeEventListener("resize", onScroll);
 			if (frame) cancelAnimationFrame(frame);
 		};
 	}, [scroller, ids]);
 
 	const go = useCallback((id: SectionId) => {
+		pinned.current = id;
 		reveal(id, scrollBehavior());
 		history.replaceState(null, "", `#${id}`);
 		setCurrent(id);
@@ -86,6 +129,7 @@ export function useSectionSpy(
 			if (!id) return;
 			clearTimeout(timer);
 			timer = setTimeout(() => {
+				pinned.current = id;
 				reveal(id, delay ? "auto" : scrollBehavior());
 				setCurrent(id);
 			}, delay);
@@ -152,7 +196,7 @@ export function SectionTabs({ ids, current, onGo }: NavProps) {
 			?.scrollIntoView({ block: "nearest", inline: "center" });
 	}, [current]);
 	return (
-		<div className="sticky top-0 z-10 -mx-4 mb-4 bg-bg px-4">
+		<div className="-mx-4 bg-bg px-4">
 			<nav
 				aria-label={t("label")}
 				className="relative flex items-stretch gap-6 overflow-x-auto border-line border-b [scrollbar-width:none]"

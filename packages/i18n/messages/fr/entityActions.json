@@ -208,7 +208,7 @@
 		"disconnect": {
 			"label": "Déconnecter",
 			"confirmTitle": "Déconnecter {name} ?",
-			"confirmBody": "Il est déconnecté immédiatement et aura besoin d’un nouveau code pour se reconnecter.",
+			"confirmBody": "Il est déconnecté immédiatement et devra se reconnecter.",
 			"confirmButton": "Déconnecter l’appareil"
 		}
 	},

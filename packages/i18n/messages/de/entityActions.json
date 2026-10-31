@@ -206,10 +206,10 @@
 	},
 	"device": {
 		"disconnect": {
-			"label": "Trennen",
-			"confirmTitle": "{name} trennen?",
-			"confirmBody": "Es wird sofort abgemeldet und braucht einen neuen Code, um sich wieder zu verbinden.",
-			"confirmButton": "Gerät trennen"
+			"label": "Abmelden",
+			"confirmTitle": "{name} abmelden?",
+			"confirmBody": "Das Gerät wird sofort abgemeldet und muss sich neu anmelden.",
+			"confirmButton": "Gerät abmelden"
 		}
 	},
 	"currency": {

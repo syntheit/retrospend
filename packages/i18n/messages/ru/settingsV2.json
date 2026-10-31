@@ -131,8 +131,7 @@
 		"language": "Язык",
 		"timeZone": "Часовой пояс",
 		"timeZoneMeta": "Используется, если устройство не сообщает свой",
-		"hideBalances": "Скрывать балансы в разделе «Капитал»",
-		"hideBalancesMeta": "Пока вы не нажмёте на глаз",
+		"hideBalances": "Скрывать балансы по умолчанию",
 		"chartTap": "Нажатие на категорию в диаграмме",
 		"chartTapOpen": "Открывает её расходы",
 		"chartTapHide": "Скрывает её из диаграммы",
@@ -212,7 +211,27 @@
 		"twoFactorOff": "Выключена",
 		"turnOn": "Включить",
 		"turnOff": "Выключить",
-		"backupCodes": "Резервные коды"
+		"backupCodes": "Резервные коды",
+		"devices": {
+			"title": "Устройства со входом",
+			"current": "Это устройство",
+			"lastUsed": "Последнее использование: {date}",
+			"signedIn": "Вход выполнен {date}",
+			"signedOut": "Выход на {name} выполнен",
+			"failed": "Не получилось. Попробуйте ещё раз.",
+			"none": "Вы больше нигде не вошли.",
+			"name": {
+				"browserOn": "{browser} на {system}",
+				"app": "Приложение Retrospend",
+				"appOn": "Приложение Retrospend на {system}",
+				"web": "Браузер",
+				"webOn": "Браузер на {system}",
+				"cli": "Командная строка",
+				"desktop": "Приложение для компьютера",
+				"mcp": "Клиент MCP",
+				"device": "Одобренное устройство"
+			}
+		}
 	},
 	"password": {
 		"title": "Смена пароля",
@@ -280,11 +299,6 @@
 			"write_settings": "Настройки",
 			"admin": "Администрирование"
 		},
-		"devices": "Одобренные устройства",
-		"noDevices": "Одобренных устройств нет",
-		"noDevicesHint": "Здесь появятся приложения, подключённые по коду на /device.",
-		"approvedOn": "Одобрено {date}",
-		"disconnected": "Отключено: {name}",
 		"failed": "Не получилось. Попробуйте ещё раз.",
 		"newTitle": "Новый ключ API",
 		"name": "Название",
@@ -517,6 +531,6 @@
 		"github": "GitHub",
 		"matrix": "Matrix",
 		"donate": "Поддержать",
-		"madeBy": "Автор: <name>Daniel Miller</name>"
+		"madeBy": "Автор: Daniel Miller"
 	}
 }

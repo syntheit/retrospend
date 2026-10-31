@@ -131,8 +131,7 @@
 		"language": "Idioma",
 		"timeZone": "Zona horaria",
 		"timeZoneMeta": "Se usa cuando tu dispositivo no indica la suya",
-		"hideBalances": "Ocultar saldos en Patrimonio",
-		"hideBalancesMeta": "Hasta que toques el ojo",
+		"hideBalances": "Ocultar saldos por defecto",
 		"chartTap": "Al tocar una categoría en un gráfico",
 		"chartTapOpen": "Abre sus gastos",
 		"chartTapHide": "La oculta del gráfico",
@@ -212,7 +211,27 @@
 		"twoFactorOff": "Desactivada",
 		"turnOn": "Activar",
 		"turnOff": "Desactivar",
-		"backupCodes": "Códigos de respaldo"
+		"backupCodes": "Códigos de respaldo",
+		"devices": {
+			"title": "Dispositivos con sesión",
+			"current": "Este dispositivo",
+			"lastUsed": "Último uso: {date}",
+			"signedIn": "Sesión iniciada el {date}",
+			"signedOut": "Se cerró la sesión en {name}",
+			"failed": "No se pudo completar. Intentá de nuevo.",
+			"none": "No tenés sesión en ningún otro lado.",
+			"name": {
+				"browserOn": "{browser} en {system}",
+				"app": "App de Retrospend",
+				"appOn": "App de Retrospend en {system}",
+				"web": "Navegador web",
+				"webOn": "Navegador web en {system}",
+				"cli": "Línea de comandos",
+				"desktop": "App de escritorio",
+				"mcp": "Cliente MCP",
+				"device": "Dispositivo aprobado"
+			}
+		}
 	},
 	"password": {
 		"title": "Cambiar contraseña",
@@ -280,11 +299,6 @@
 			"write_settings": "Configuración",
 			"admin": "Administración"
 		},
-		"devices": "Dispositivos aprobados",
-		"noDevices": "No hay dispositivos aprobados",
-		"noDevicesHint": "Acá aparecen las apps que conectás con un código en /device.",
-		"approvedOn": "Aprobado el {date}",
-		"disconnected": "Se desconectó {name}",
 		"failed": "No se pudo completar. Intentá de nuevo.",
 		"newTitle": "Nueva clave de API",
 		"name": "Nombre",
@@ -517,6 +531,6 @@
 		"github": "GitHub",
 		"matrix": "Matrix",
 		"donate": "Donar",
-		"madeBy": "Hecho por <name>Daniel Miller</name>"
+		"madeBy": "Hecho por Daniel Miller"
 	}
 }

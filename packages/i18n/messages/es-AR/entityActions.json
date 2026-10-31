@@ -206,10 +206,10 @@
 	},
 	"device": {
 		"disconnect": {
-			"label": "Desconectar",
-			"confirmTitle": "¿Querés desconectar {name}?",
-			"confirmBody": "Su sesión se cierra en el acto y va a necesitar un código nuevo para volver a conectarse.",
-			"confirmButton": "Desconectar dispositivo"
+			"label": "Cerrar sesión",
+			"confirmTitle": "¿Cerrar la sesión de {name}?",
+			"confirmBody": "Se cierra la sesión de inmediato y tendrá que iniciarla de nuevo.",
+			"confirmButton": "Cerrar sesión"
 		}
 	},
 	"currency": {

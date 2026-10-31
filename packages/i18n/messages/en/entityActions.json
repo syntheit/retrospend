@@ -206,10 +206,10 @@
 	},
 	"device": {
 		"disconnect": {
-			"label": "Disconnect",
-			"confirmTitle": "Disconnect {name}?",
-			"confirmBody": "It is signed out at once and needs a new code to connect again.",
-			"confirmButton": "Disconnect device"
+			"label": "Sign out",
+			"confirmTitle": "Sign out {name}?",
+			"confirmBody": "It is signed out at once and needs to sign in again.",
+			"confirmButton": "Sign out device"
 		}
 	},
 	"currency": {

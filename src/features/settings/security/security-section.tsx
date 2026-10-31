@@ -6,6 +6,7 @@ import { Button } from "~/components/ui/button";
 import { useSession } from "~/hooks/use-session";
 import { SectionShell } from "../section-shell";
 import { SettingRow, SettingRows } from "../setting-row";
+import { DevicesBlock } from "./devices-block";
 import { PasswordSheet } from "./password-sheet";
 import { TwoFactorOnSheet } from "./two-factor-on-sheet";
 import { BackupCodesSheet, TwoFactorOffSheet } from "./two-factor-sheets";
@@ -63,6 +64,7 @@ export function SecuritySection() {
 					)}
 				</SettingRow>
 			</SettingRows>
+			<DevicesBlock />
 			<PasswordSheet {...sheet("password")} />
 			<TwoFactorOnSheet {...sheet("tfaOn")} onDone={refetch} />
 			<TwoFactorOffSheet {...sheet("tfaOff")} onDone={refetch} />

@@ -131,8 +131,7 @@
 		"language": "Sprache",
 		"timeZone": "Zeitzone",
 		"timeZoneMeta": "Gilt, wenn dein Gerät keine eigene mitteilt",
-		"hideBalances": "Salden unter Vermögen ausblenden",
-		"hideBalancesMeta": "Bis du auf das Auge tippst",
+		"hideBalances": "Salden standardmäßig ausblenden",
 		"chartTap": "Tippen auf eine Kategorie im Diagramm",
 		"chartTapOpen": "Öffnet ihre Ausgaben",
 		"chartTapHide": "Blendet sie im Diagramm aus",
@@ -212,7 +211,27 @@
 		"twoFactorOff": "Aus",
 		"turnOn": "Einschalten",
 		"turnOff": "Ausschalten",
-		"backupCodes": "Backup-Codes"
+		"backupCodes": "Backup-Codes",
+		"devices": {
+			"title": "Angemeldete Geräte",
+			"current": "Dieses Gerät",
+			"lastUsed": "Zuletzt verwendet am {date}",
+			"signedIn": "Angemeldet am {date}",
+			"signedOut": "{name} ist abgemeldet",
+			"failed": "Das hat nicht geklappt. Versuch es erneut.",
+			"none": "Du bist nirgendwo sonst angemeldet.",
+			"name": {
+				"browserOn": "{browser} auf {system}",
+				"app": "Retrospend-App",
+				"appOn": "Retrospend-App auf {system}",
+				"web": "Webbrowser",
+				"webOn": "Webbrowser auf {system}",
+				"cli": "Kommandozeile",
+				"desktop": "Desktop-App",
+				"mcp": "MCP-Client",
+				"device": "Freigegebenes Gerät"
+			}
+		}
 	},
 	"password": {
 		"title": "Passwort ändern",
@@ -280,11 +299,6 @@
 			"write_settings": "Einstellungen",
 			"admin": "Admin"
 		},
-		"devices": "Freigegebene Geräte",
-		"noDevices": "Keine freigegebenen Geräte",
-		"noDevicesHint": "Apps, die du mit einem Code unter /device verbindest, erscheinen hier.",
-		"approvedOn": "Freigegeben am {date}",
-		"disconnected": "{name} getrennt",
 		"failed": "Das hat nicht geklappt. Versuch es erneut.",
 		"newTitle": "Neuer API-Schlüssel",
 		"name": "Name",
@@ -517,6 +531,6 @@
 		"github": "GitHub",
 		"matrix": "Matrix",
 		"donate": "Spenden",
-		"madeBy": "Von <name>Daniel Miller</name>"
+		"madeBy": "Von Daniel Miller"
 	}
 }
