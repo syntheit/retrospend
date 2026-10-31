@@ -93,7 +93,8 @@ describe("FaceStack", () => {
 	it("overlaps, spreads on hover and ends with +N", () => {
 		const html = render(h(FaceStack, { people, max: 4 }));
 		expect(html).toContain("-ml-1");
-		expect(html).toContain("can-hover:group-hover/faces:ml-1");
+		expect(html).toContain("can-hover:group-hover/faces:translate-x-2");
+		expect(html).not.toContain("group-hover/faces:ml-");
 		expect(html).toContain(">+2<");
 	});
 
