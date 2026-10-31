@@ -50,9 +50,10 @@ const recurringAllRouter = mergeRouters(
 	recurringStepsRouter,
 );
 const importAllRouter = mergeRouters(importQueueRouter, importV2Router);
+const adminAllRouter = mergeRouters(adminRouter, adminOverviewRouter);
 
 export const appRouter = createTRPCRouter({
-	admin: mergeRouters(adminRouter, adminOverviewRouter),
+	admin: adminAllRouter,
 	auditLog: auditLogRouter,
 	guest: guestRouter,
 	auth: authRouter,
