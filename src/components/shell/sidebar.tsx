@@ -163,6 +163,7 @@ export function SidebarView({
 						{pinned.map((p) => {
 							const link = (
 								<SidebarLink
+									key={p.id}
 									current={p.id === pinnedCurrent?.id}
 									href={projectHref(p.id)}
 									label={p.name}
