@@ -85,3 +85,68 @@ export async function restoreSession(deps: {
 		offlineSince: cached?.fetchedAt ?? null,
 	};
 }
+
+/** How long a cold start with no cached profile waits for the server. */
+export const OPEN_TIMEOUT_MS = 4000;
+
+export interface Opening {
+	/** What the app shows now. */
+	first: Restored;
+	/**
+	 * What the server says once it answers, or null when `first` already is
+	 * that. A session the server ended arrives here as signedOut.
+	 */
+	settled: Promise<Restored | null>;
+}
+
+/**
+ * Opening the app. With a token and a cached profile the app opens signed in
+ * from the cache at once and the server's answer follows in `settled`; the
+ * phone is offline-first, so a slow network is not a reason to wait. With a
+ * token and no cache it waits for the server, but only `timeoutMs`; after
+ * that it opens offline and the answer still follows.
+ */
+export async function openSession(
+	deps: Parameters<typeof restoreSession>[0] & { timeoutMs?: number },
+): Promise<Opening> {
+	if (!(await deps.tokens.get())) {
+		return {
+			first: { status: "signedOut", expired: false },
+			settled: Promise.resolve(null),
+		};
+	}
+	const cached = await deps.profileCache.read<Me>(
+		ME_CACHE.name,
+		ME_CACHE.schema,
+	);
+	// Nobody waits on the check once the app is open; a failure is no answer.
+	const check = restoreSession(deps);
+	const later = check.catch((): Restored | null => null);
+	if (cached) {
+		return {
+			first: {
+				status: "signedIn",
+				me: cached.data,
+				offline: false,
+				offlineSince: null,
+			},
+			settled: later,
+		};
+	}
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const early = await Promise.race([
+		check,
+		new Promise<null>((resolve) => {
+			timer = setTimeout(
+				() => resolve(null),
+				deps.timeoutMs ?? OPEN_TIMEOUT_MS,
+			);
+		}),
+	]);
+	clearTimeout(timer);
+	if (early) return { first: early, settled: Promise.resolve(null) };
+	return {
+		first: { status: "signedIn", me: null, offline: true, offlineSince: null },
+		settled: later,
+	};
+}

@@ -28,7 +28,7 @@ import { createPushControl, forgetServerPush } from "@/push/control";
 import { type AuthApi, createAuthApi, type SignInStep } from "./auth-api";
 import { isSessionEnded } from "./errors";
 import { clearStaleTokenOnFirstRun } from "./first-run";
-import { endSession, type FetchMe, ME_CACHE, restoreSession } from "./restore";
+import { endSession, type FetchMe, ME_CACHE, openSession } from "./restore";
 import { createTokenStore } from "./token-store";
 
 export type SessionState =
@@ -181,6 +181,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	}, [api]);
 
 	useEffect(() => {
+		// The saved server is still being read: stay loading, so sign-in
+		// never shows for a moment on the way to Home.
+		if (connection.status === "loading") return;
 		if (!baseUrl || !tokens || !profileCache) {
 			setState({ status: "signedOut", expired: false });
 			return;
@@ -188,20 +191,36 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		let cancelled = false;
 		clearStaleTokenOnFirstRun(store, tokens)
 			.then(() =>
-				restoreSession({
+				openSession({
 					tokens,
 					fetchMe,
 					profileCache,
 					ended: forgetEnded,
 				}),
 			)
-			.then((restored) => {
-				if (!cancelled) setState(restored);
+			.then(({ first, settled }) => {
+				if (cancelled) return;
+				setState(first);
+				// The server's answer, unless the person has moved on since:
+				// signed out, or into another account.
+				settled.then((answer) => {
+					if (cancelled || !answer) return;
+					setState((prev) => {
+						if (prev.status !== "signedIn") return prev;
+						if (answer.status === "signedOut") return answer;
+						const same = !prev.me || !answer.me || prev.me.id === answer.me.id;
+						return same ? answer : prev;
+					});
+				});
+			})
+			.catch(() => {
+				// An unreadable keystore or store means signing in again.
+				if (!cancelled) setState({ status: "signedOut", expired: false });
 			});
 		return () => {
 			cancelled = true;
 		};
-	}, [baseUrl, tokens, fetchMe, profileCache, forgetEnded]);
+	}, [connection.status, baseUrl, tokens, fetchMe, profileCache, forgetEnded]);
 
 	const finishSignIn = useCallback(
 		async (step: SignInStep) => {
