@@ -33,9 +33,10 @@ function DateRow({
 			style={{
 				minHeight: size.touchMin.phone,
 				flexDirection: "row",
+				flexWrap: "wrap",
 				alignItems: "center",
 				justifyContent: "space-between",
-				gap: space[3],
+				columnGap: space[3],
 			}}
 		>
 			<Text>{label}</Text>

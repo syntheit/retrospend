@@ -9,24 +9,24 @@ import { EmptyState } from "@/ui/EmptyState";
 import { applyKey } from "@/ui/keypad";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
+import type { MenuItem } from "@/ui/types";
 import { useMoneyLines } from "./AmountCard";
 import { ComposerHeader } from "./ComposerHeader";
 import { ComposerShell, type EntryMode } from "./ComposerShell";
 import { DeleteEntrySheet } from "./DeleteEntrySheet";
-import { ExpenseFields } from "./ExpenseFields";
+import { ExpenseComposer } from "./ExpenseComposer";
 import { type SavedEntry, useEditEntry, useEntryCatalog } from "./hooks";
 import { IncomeFields } from "./IncomeFields";
 import { MoreStep, StepSlide } from "./MoreStep";
 import { PreviewLine } from "./PreviewLine";
-import { ProjectPick } from "./ProjectPick";
 import { RateField } from "./RateField";
-import { useSplitView } from "./SplitGroup";
 import { SyncIssues } from "./SyncIssues";
 import { TransferFields } from "./TransferFields";
 import type { EntryCatalog } from "./types";
 import { useComposerPreview } from "./useComposerPreview";
 import { useEntryForm } from "./useEntryForm";
 import { useEntrySave } from "./useEntrySave";
+import { useSplitView } from "./useSplitView";
 
 interface ComposerProps {
 	onDone: () => void;
@@ -160,7 +160,7 @@ function Form({
 	catalog,
 	initialMode = "expense",
 	onDone,
-	onModeChange,
+	onModeChange: told,
 	surface,
 	prefill,
 	edit,
@@ -231,135 +231,141 @@ function Form({
 			rate
 		);
 
-	// In a project the split is about the project's people, not your latest ones.
-	const people = expense.projectId ? expense.projectPeople : catalog.people;
-	const context =
-		mode === "expense" && !form.editing && catalog.projects.length > 0 ? (
-			<ProjectPick
-				onChange={form.pickProject}
-				projects={catalog.projects}
-				value={expense.projectId}
-				variant="pill"
-			/>
-		) : null;
-
-	return (
+	const notices = (
 		<>
-			<ComposerShell
-				addDescription={
-					form.editing
-						? t("saveExpense")
-						: mode === "expense"
-							? t("addExpense")
-							: mode === "income"
-								? t("addIncome")
-								: t("addTransfer")
-				}
-				addLabel={form.editing ? t("save") : t("add")}
-				addOff={pv.blocked || form.typedAmount === null}
-				amountError={tried && form.amountProblem === true}
-				busy={busy}
-				header={
-					<ComposerHeader
-						context={context}
-						editing={form.editing}
-						mode={mode}
-						modes={form.modes}
-						onModeChange={(next) => {
-							form.setMode(next);
-							form.setTried(false);
-							form.setTarget("amount");
-							onModeChange?.(next);
-						}}
-						onMore={() => goTo("more")}
-						step={form.step}
-						undoChanges={form.dirty && form.editing ? form.undoChanges : null}
-					/>
-				}
-				keypad={{
-					text: form.keypad.text,
-					currency: form.keypad.currency,
-					onChange: form.patchAmount,
-				}}
-				lines={lines}
-				onAdd={add}
-				onBack={() => goTo("quick")}
-				onOperator={(sign) =>
-					form.patchAmount(
-						applyKey(form.keypad.text, sign, locale, form.keypad.currency),
-					)
-				}
-				onScrollDrag={() => form.setPadOpen(false)}
-				padOpen={form.padOpen}
-				preview={<PreviewLine state={pv.preview} />}
-				rate={underAmount}
-				step={form.step}
-				surface={surface}
-				typing={form.typing}
-			>
-				{form.step === "more" ? (
-					<StepSlide animate from={1} key="more">
-						<MoreStep
-							edit={edit}
-							form={form}
-							onDelete={canDelete ? () => setDeleting(true) : null}
-							preview={pv}
-							rate={rate}
-						/>
-					</StepSlide>
-				) : (
-					<StepSlide animate={visitedMore.current} from={-1} key="quick">
-						<View style={{ gap: space[4] }}>
-							<SyncIssues />
-							{prefill?.file ? (
-								<Text tone="fg2">{t("sharedFileNotice")}</Text>
-							) : null}
-							{mode === "expense" ? (
-								<ExpenseFields
-									catalog={catalog}
-									draft={expense}
-									errors={tried ? form.expenseProblems : {}}
-									onChange={form.patchExpense}
-									onMore={() => goTo("more")}
-									onTypingChange={form.setTyping}
-									people={people}
-									split={
-										split
-											? { mode: split.mode, yourShare: split.yourShare }
-											: null
-									}
-								/>
-							) : mode === "income" ? (
-								<IncomeFields
-									catalog={catalog}
-									draft={income}
-									errors={tried ? form.incomeProblems : {}}
-									onChange={form.patchIncome}
-									onTypingChange={form.setTyping}
-								/>
-							) : (
-								<TransferFields
-									draft={transfer}
-									errors={tried ? form.transferProblems : {}}
-									onChange={form.patchTransfer}
-									onTypingChange={form.setTyping}
-									places={catalog.places}
-								/>
-							)}
-						</View>
-					</StepSlide>
-				)}
-			</ComposerShell>
-			{canDelete ? (
-				<DeleteEntrySheet
-					id={expense.id}
-					onClose={() => setDeleting(false)}
-					onDeleted={onDone}
-					shared={edit?.kind === "shared"}
-					title={expense.title}
-					visible={deleting}
-				/>
-			) : null}
+			<SyncIssues />
+			{prefill?.file ? <Text tone="fg2">{t("sharedFileNotice")}</Text> : null}
 		</>
+	);
+
+	const onModeChange = (next: EntryMode) => {
+		form.setMode(next);
+		form.setTried(false);
+		form.setTarget("amount");
+		told?.(next);
+	};
+
+	// A saved expense's menu: Undo changes once something changed, and Delete.
+	const actions: MenuItem[] = [
+		...(form.dirty && form.editing
+			? [{ id: "undo", label: t("undoChanges"), onPress: form.undoChanges }]
+			: []),
+		...(canDelete
+			? [
+					{
+						id: "delete",
+						label: t("delete.row"),
+						destructive: true,
+						onPress: () => setDeleting(true),
+					},
+				]
+			: []),
+	];
+
+	const deleteSheet = canDelete ? (
+		<DeleteEntrySheet
+			id={expense.id}
+			onClose={() => setDeleting(false)}
+			onDeleted={onDone}
+			shared={edit?.kind === "shared"}
+			title={expense.title}
+			visible={deleting}
+		/>
+	) : null;
+
+	if (mode === "expense") {
+		return (
+			<>
+				<ExpenseComposer
+					actions={actions}
+					busy={busy}
+					catalog={catalog}
+					form={form}
+					lines={lines}
+					notices={notices}
+					onAdd={add}
+					onCancel={onDone}
+					onModeChange={onModeChange}
+					pv={pv}
+					rate={underAmount}
+					split={split}
+					surface={surface}
+				/>
+				{deleteSheet}
+			</>
+		);
+	}
+
+	// Income and Transfer keep the earlier two-step frame until they move onto
+	// the detail pager like the expense.
+	return (
+		<ComposerShell
+			addDescription={mode === "income" ? t("addIncome") : t("addTransfer")}
+			addLabel={t("add")}
+			addOff={pv.blocked || form.typedAmount === null}
+			amountError={tried && form.amountProblem === true}
+			busy={busy}
+			header={
+				<ComposerHeader
+					context={null}
+					editing={false}
+					mode={mode}
+					modes={form.modes}
+					onModeChange={onModeChange}
+					onMore={() => goTo("more")}
+					step={form.step}
+					undoChanges={null}
+				/>
+			}
+			keypad={{
+				text: form.keypad.text,
+				currency: form.keypad.currency,
+				onChange: form.patchAmount,
+			}}
+			lines={lines}
+			onAdd={add}
+			onBack={() => goTo("quick")}
+			onOperator={(sign) =>
+				form.patchAmount(
+					applyKey(form.keypad.text, sign, locale, form.keypad.currency),
+				)
+			}
+			onScrollDrag={() => form.setPadOpen(false)}
+			padOpen={form.padOpen}
+			preview={<PreviewLine state={pv.preview} />}
+			rate={underAmount}
+			step={form.step}
+			surface={surface}
+			typing={form.typing}
+		>
+			{form.step === "more" ? (
+				<StepSlide animate from={1} key="more">
+					<MoreStep form={form} preview={pv} rate={rate} />
+				</StepSlide>
+			) : (
+				<StepSlide animate={visitedMore.current} from={-1} key="quick">
+					<View style={{ gap: space[4] }}>
+						{notices}
+						{mode === "income" ? (
+							<IncomeFields
+								catalog={catalog}
+								draft={income}
+								errors={tried ? form.incomeProblems : {}}
+								onChange={form.patchIncome}
+								onTypingChange={form.setTyping}
+							/>
+						) : (
+							<TransferFields
+								draft={transfer}
+								errors={tried ? form.transferProblems : {}}
+								onChange={form.patchTransfer}
+								onTypingChange={form.setTyping}
+								places={catalog.places}
+							/>
+						)}
+					</View>
+				</StepSlide>
+			)}
+		</ComposerShell>
 	);
 }

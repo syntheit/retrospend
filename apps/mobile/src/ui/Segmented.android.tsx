@@ -12,6 +12,7 @@ import {
 import { useColorScheme } from "react-native";
 import { useTheme } from "@/theme";
 import { segmentedColors } from "./m3Colors";
+import { useChromeTextSize } from "./Text";
 import type { SegmentedProps } from "./types";
 
 /**
@@ -26,7 +27,9 @@ export function Segmented<T extends string>({
 	onChange,
 	accessibilityLabel,
 }: SegmentedProps<T>) {
-	const { color } = useTheme();
+	const { color, type } = useTheme();
+	// The labels grow with the text size to the chrome cap, as the other controls do.
+	const labelSize = useChromeTextSize(type.small.size);
 	const scheme = useColorScheme();
 	const colors = segmentedColors(color);
 	return (
@@ -52,7 +55,7 @@ export function Segmented<T extends string>({
 						selected={option.value === value}
 					>
 						<SegmentedButton.Label>
-							<Text>{option.label}</Text>
+							<Text style={{ fontSize: labelSize }}>{option.label}</Text>
 						</SegmentedButton.Label>
 					</SegmentedButton>
 				))}

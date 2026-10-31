@@ -460,21 +460,25 @@ function press(tree: Tree, label: string) {
 	});
 }
 
+/** Presses the button whose spoken label starts with `prefix` (a row that adds its detail to its name). */
+function pressStarting(tree: Tree, prefix: string) {
+	const hit = find(
+		tree,
+		(p) =>
+			typeof p.accessibilityLabel === "string" &&
+			p.accessibilityLabel.startsWith(prefix) &&
+			typeof p.onPress === "function",
+	)[0];
+	if (!hit) throw new Error(`nothing to press: ${prefix}`);
+	act(() => {
+		(hit.props.onPress as () => void)();
+	});
+}
+
 /** The words under a node, joined. */
 function textOf(node: TestNode | string): string {
 	if (typeof node === "string") return node;
 	return node.children.map(textOf).join("");
-}
-
-/** Presses the button whose words are `text` (a text action has no label of its own). */
-function pressWords(tree: Tree, text: string) {
-	const hit = tree.root.findAll(
-		(n) => typeof n.props.onPress === "function" && textOf(n) === text,
-	)[0];
-	if (!hit) throw new Error(`nothing to press: ${text}`);
-	act(() => {
-		(hit.props.onPress as () => void)();
-	});
 }
 
 function type(tree: Tree, label: string, text: string) {
@@ -548,7 +552,7 @@ describe("Add expense: coffee split with Lucía", () => {
 		});
 		await flush();
 		// The split rows are on screen before Save.
-		expect(words(tree)).toContain("Split equally");
+		expect(words(tree)).toContain("Each pays");
 		expect(words(tree)).toContain("ARS 6,250");
 		press(tree, taps[2] as string);
 		await flush();
@@ -784,11 +788,16 @@ describe("Add expense into a project", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense");
-		press(tree, "Project, Personal");
+		// The Project panel lists the projects you can add to, not the ones you only view.
 		expect(
-			find(tree, (p) => p.accessibilityLabel === "pick Club"),
+			find(
+				tree,
+				(p) =>
+					typeof p.accessibilityLabel === "string" &&
+					p.accessibilityLabel.startsWith("Club"),
+			),
 		).toHaveLength(0);
-		press(tree, "pick Trip");
+		pressStarting(tree, "Trip");
 		await flush();
 		// The project's people on the day come in; you are the payer.
 		expect(words(tree)).toContain("Ana");
@@ -899,11 +908,14 @@ describe("Details", () => {
 		const tree = await open("expense");
 		press(tree, "Cafe");
 		for (const key of ["9", "0", "0"]) press(tree, key);
-		// Details and the options are always shown on the main step, with no toggle.
-		expect(words(tree)).toContain("Spread over");
+		// More holds each option as a row; turning one on opens its control in place.
+		expect(words(tree)).toContain("Spread over months");
 		expect(words(tree)).toContain("Exclude from spending");
+		press(tree, "Note, Add");
 		type(tree, "Note", "with the team");
+		press(tree, "Location, Add");
 		type(tree, "Location", "Cafe Tortoni");
+		press(tree, "Spread over months, Add");
 		press(tree, "6 months");
 		await settle();
 		press(tree, "Add expense");
@@ -926,9 +938,16 @@ describe("Details", () => {
 		press(tree, "Lucía Fernández");
 		press(tree, "Cafe");
 		for (const key of ["9", "0", "0"]) press(tree, key);
-		expect(find(tree, (p) => p.accessibilityLabel === "Location")).toHaveLength(
-			0,
-		);
+		expect(
+			find(
+				tree,
+				(p) =>
+					typeof p.accessibilityLabel === "string" &&
+					(p.accessibilityLabel.startsWith("Location") ||
+						p.accessibilityLabel.startsWith("Spread")),
+			),
+		).toHaveLength(0);
+		press(tree, "Note, Add");
 		type(tree, "Note", "birthday");
 		await settle();
 		press(tree, "Add expense");
@@ -1098,7 +1117,7 @@ describe("Edit a split expense", () => {
 		const tree = await open("expense", () => {}, "s1", true);
 		type(tree, "Title", "Team dinner");
 		await settle();
-		press(tree, "More");
+		press(tree, "What this changes, Show");
 		const text = words(tree);
 		expect(text).toContain("What each person owes");
 		expect(text).toContain("You");
@@ -1121,15 +1140,12 @@ describe("Edit a split expense", () => {
 			});
 		mockSession.api = api;
 		const tree = await open("expense", () => {}, "s1", true);
-		press(tree, "More");
 		// Nothing changed yet: the saved shares are right.
 		expect(words(tree)).toContain("5,000");
-		press(tree, "Back");
 		type(tree, "Title", "Team dinner");
 		await act(async () => {
 			jest.advanceTimersByTime(400);
 		});
-		press(tree, "More");
 		// Changed, no answer: the saved shares are stale and are not shown.
 		expect(words(tree)).not.toContain("5,000");
 		await act(async () => {
@@ -1174,7 +1190,7 @@ describe("Edit a split expense", () => {
 		mockSession.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "s1", true);
-		press(tree, "Yesterday");
+		pressStarting(tree, "Yesterday");
 		await settle();
 		press(tree, "Save expense");
 		await flush();
@@ -1263,7 +1279,7 @@ describe("Edit needs its dry run", () => {
 		expect(words(tree)).toContain("You're offline.");
 		expenses.previewUpdate = ok;
 		// Try again is in the whole block, in More.
-		press(tree, "More");
+		press(tree, "What this changes, Show");
 		const tryAgain = tree.root.findAll(
 			(n) =>
 				typeof n.props.onPress === "function" &&
@@ -1322,11 +1338,9 @@ describe("Picking projects quickly", () => {
 				: Promise.resolve({ items: [] });
 		mockSession.api = api;
 		const tree = await open("expense");
-		press(tree, "Project, Personal");
-		press(tree, "pick Trip");
+		pressStarting(tree, "Trip");
 		// The person changes their mind before the first answer comes.
-		press(tree, "Project, Personal");
-		press(tree, "pick No project");
+		press(tree, "Personal, Only you");
 		await flush();
 		await act(async () => {
 			finishTrip({
@@ -1379,7 +1393,7 @@ describe("The amount card", () => {
 		press(tree, "Cafe");
 		press(tree, "1");
 		press(tree, "2");
-		press(tree, "Plus");
+		press(tree, "Plus, hold for times");
 		press(tree, "3");
 		expect(words(tree)).toContain("12+3");
 		await settle();
@@ -1449,8 +1463,7 @@ describe("Edit: undo changes and delete", () => {
 		mockSession.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "e1");
-		press(tree, "More");
-		pressWords(tree, "Delete");
+		press(tree, "Delete");
 		await flush();
 		expect(
 			calls.find((c) => c.route === "expense.previewDelete")?.input,
@@ -1482,8 +1495,7 @@ describe("Edit: undo changes and delete", () => {
 		mockSession.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "s1", true);
-		press(tree, "More");
-		pressWords(tree, "Delete");
+		press(tree, "Delete");
 		await flush();
 		expect(
 			calls.find((c) => c.route === "shared.previewDelete")?.input,
@@ -1517,8 +1529,7 @@ describe("Edit: undo changes and delete", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense", () => {}, "s1", true);
-		press(tree, "More");
-		pressWords(tree, "Delete");
+		press(tree, "Delete");
 		await flush();
 		// The warning is on the sheet, and the dry run is asked again as if confirmed.
 		expect(
@@ -1605,13 +1616,13 @@ describe("Who paid and a custom split", () => {
 		press(tree, "Cafe");
 		press(tree, "Lucía Fernández");
 		for (const key of ["1", "0", "0"]) press(tree, key);
-		press(tree, "More");
-		press(tree, "Paid by, You");
-		press(tree, "pick Lucía Fernández");
-		press(tree, "Custom");
-		press(tree, "By percent");
-		type(tree, "You", "30");
-		type(tree, "Lucía Fernández", "60");
+		press(tree, "Paid by Lucía Fernández");
+		press(tree, "Percent");
+		// A part is typed on the keypad: tap the person's row, then the keys.
+		press(tree, "You, Percent");
+		for (const key of ["3", "0"]) press(tree, key);
+		press(tree, "Lucía Fernández, Percent");
+		for (const key of ["6", "0"]) press(tree, key);
 		await settle();
 		// 90 percent: the server refuses, so Save does not send and the line says why.
 		expect(words(tree)).toContain("These parts don't add up");
@@ -1619,7 +1630,10 @@ describe("Who paid and a custom split", () => {
 		await flush();
 		expect(calls.some((c) => c.route === "shared.create")).toBe(false);
 
-		type(tree, "Lucía Fernández", "70");
+		pressStarting(tree, "Lucía Fernández, 60");
+		press(tree, "Delete");
+		press(tree, "Delete");
+		for (const key of ["7", "0"]) press(tree, key);
 		await settle();
 		expect(words(tree)).toContain("Share ARS 70");
 		press(tree, "Add expense");
@@ -1647,9 +1661,7 @@ describe("Who paid and a custom split", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense", () => {}, "s1", true);
-		press(tree, "More");
-		press(tree, "Paid by, You");
-		press(tree, "pick Lucía Fernández");
+		press(tree, "Paid by Lucía Fernández");
 		await settle();
 		expect(
 			calls.filter((c) => c.route === "shared.previewUpdate").at(-1)?.input,
@@ -1672,6 +1684,125 @@ describe("Who paid and a custom split", () => {
 				],
 			},
 		);
+		act(() => tree.unmount());
+	});
+});
+
+describe("The keypad folds into the Add button", () => {
+	const keys = (tree: Tree) =>
+		find(
+			tree,
+			(p) => p.accessibilityLabel === "5" && typeof p.onPress === "function",
+		);
+
+	it("stays open while there is no amount, folds on a pick once there is one, and comes back when the amount is tapped", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+		expect(keys(tree).length).toBeGreaterThan(0);
+		// Nothing to add yet: picking a category leaves the keys.
+		press(tree, "Cafe");
+		expect(keys(tree).length).toBeGreaterThan(0);
+		press(tree, "9");
+		press(tree, "Groceries");
+		expect(keys(tree)).toHaveLength(0);
+		// The folded bar is the one Add button.
+		expect(
+			find(
+				tree,
+				(p) =>
+					p.accessibilityLabel === "Add expense" &&
+					typeof p.onPress === "function",
+			).length,
+		).toBeGreaterThan(0);
+		pressStarting(tree, "Amount");
+		expect(keys(tree).length).toBeGreaterThan(0);
+		act(() => tree.unmount());
+	});
+
+	it("opens folded when editing", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense", () => {}, "e1");
+		expect(keys(tree)).toHaveLength(0);
+		act(() => tree.unmount());
+	});
+
+	it("folds when a tab is tapped after an amount", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+		press(tree, "9");
+		pressStarting(tree, "Who");
+		expect(keys(tree)).toHaveLength(0);
+		act(() => tree.unmount());
+	});
+});
+
+describe("The title remembers", () => {
+	const selected = (tree: Tree, label: string) =>
+		find(
+			tree,
+			(p) => p.accessibilityLabel === label && "accessibilityState" in p,
+		)[0]?.props.accessibilityState;
+
+	it("picks the category you gave this title before, and says what it cost", async () => {
+		const { api } = fakeApi();
+		(
+			api as unknown as { expenses: { titleSuggestions: unknown } }
+		).expenses.titleSuggestions = async () => ({
+			items: [
+				{
+					title: "Coffee",
+					count: 3,
+					lastCategoryId: "groceries",
+					lastAmount: { minor: 350_000, currency: "ARS" },
+				},
+			],
+		});
+		mockSession.api = api;
+		const tree = await open("expense");
+		type(tree, "Title", "Coffee");
+		await settle();
+		await settle();
+		expect(selected(tree, "Groceries")).toEqual({ selected: true });
+		expect(words(tree)).toContain("Last time ARS 3,500");
+		act(() => tree.unmount());
+	});
+
+	it("does not choose over a category you picked yourself", async () => {
+		const { api } = fakeApi();
+		(
+			api as unknown as { expenses: { titleSuggestions: unknown } }
+		).expenses.titleSuggestions = async () => ({
+			items: [
+				{
+					title: "Coffee",
+					count: 3,
+					lastCategoryId: "groceries",
+					lastAmount: null,
+				},
+			],
+		});
+		mockSession.api = api;
+		const tree = await open("expense");
+		press(tree, "Cafe");
+		type(tree, "Title", "Coffee");
+		await settle();
+		await settle();
+		expect(selected(tree, "Cafe")).toEqual({ selected: true });
+		expect(selected(tree, "Groceries")).toEqual({ selected: false });
+		act(() => tree.unmount());
+	});
+
+	it("picks from a keyword when there is no history", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("expense");
+		type(tree, "Title", "Grocery run");
+		await settle();
+		await settle();
+		expect(selected(tree, "Groceries")).toEqual({ selected: true });
 		act(() => tree.unmount());
 	});
 });

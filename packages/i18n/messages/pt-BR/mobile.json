@@ -30,7 +30,11 @@
 	},
 	"keypad": {
 		"delete": "Apagar",
-		"decimal": "Vírgula decimal"
+		"decimal": "Vírgula decimal",
+		"plusSpoken": "Mais, segure para multiplicar",
+		"minusSpoken": "Menos, segure para dividir",
+		"plusHold": "Multiplicar",
+		"minusHold": "Dividir"
 	},
 	"composer": {
 		"mode": "Tipo de lançamento",
@@ -39,7 +43,7 @@
 		"loadError": "Não foi possível abrir o formulário",
 		"loadErrorDetail": "Verifique sua conexão e tente de novo.",
 		"titleField": "Título",
-		"titlePlaceholder": "O que foi?",
+		"titlePlaceholder": "O que foi? (opcional)",
 		"category": "Categoria",
 		"with": "Com",
 		"you": "Você",
@@ -165,7 +169,8 @@
 			"none": "Nenhum",
 			"find": "Buscar um projeto",
 			"empty": "Nenhum projeto corresponde",
-			"loadFailed": "Não foi possível carregar as pessoas do projeto. Tente de novo."
+			"loadFailed": "Não foi possível carregar as pessoas do projeto. Tente de novo.",
+			"onlyYou": "Só você"
 		},
 		"plan": {
 			"envelope": "Envelope",
@@ -269,7 +274,6 @@
 				"SHARES": "Dividido por cotas"
 			},
 			"summaryShare": "{split}, sua parte {amount}",
-			"tapFaces": "Toque em um rosto no primeiro passo para dividir.",
 			"custom": "Personalizado",
 			"divideBy": "Dividir por",
 			"part": {
@@ -279,7 +283,13 @@
 			},
 			"theirShare": "Parte {amount}",
 			"partsMissing": "Informe a parte de cada pessoa.",
-			"partsOff": "As partes ainda não somam o total."
+			"partsOff": "As partes ainda não somam o total.",
+			"short": {
+				"EQUAL": "Igual",
+				"EXACT": "Valores",
+				"PERCENTAGE": "Percentual",
+				"SHARES": "Cotas"
+			}
 		},
 		"delete": {
 			"row": "Excluir",
@@ -293,6 +303,42 @@
 			"sharedBody": "Todos os envolvidos são avisados, e o que devem muda.",
 			"noUndo": "Isso não pode ser desfeito.",
 			"anyway": "Excluir mesmo assim"
+		},
+		"tabs": {
+			"category": "Categoria",
+			"when": "Quando",
+			"who": "Quem",
+			"project": "Projeto",
+			"more": "Mais",
+			"changed": "alterado",
+			"label": "Detalhes"
+		},
+		"summary": {
+			"you": "você",
+			"split": "Dividido por {count}, {name} pagou",
+			"justYou": "Só você",
+			"excluded": "Excluído"
+		},
+		"earlierDate": "Data anterior",
+		"lastTime": "Da última vez {amount}",
+		"who": {
+			"eachPays": "Cada um paga {amount}",
+			"yourShare": "Sua parte {amount}",
+			"youOwe": "Você deve {amount} a {name}",
+			"paidByPerson": "Pago por {name}"
+		},
+		"extras": {
+			"add": "Adicionar",
+			"remove": "Remover",
+			"on": "Sim",
+			"off": "Não",
+			"spread": "Diluir em meses",
+			"custom": "Outro",
+			"months": "Meses, de {min} a {max}",
+			"monthsPlaceholder": "Quantos meses",
+			"changes": "O que muda",
+			"show": "Mostrar",
+			"hide": "Ocultar"
 		}
 	},
 	"pickers": {

@@ -4,7 +4,14 @@ import {
 } from "@retrospend/domain/format-locale";
 import { parseMoneyInput } from "@retrospend/domain/parse";
 import parseVectors from "@retrospend/domain/vectors/money-parse.vectors.json";
-import { applyKey, BACKSPACE, keypadLayout, TRIPLE_ZERO } from "./keypad";
+import {
+	applyEntryKey,
+	applyKey,
+	applyPlainKey,
+	BACKSPACE,
+	keypadLayout,
+	TRIPLE_ZERO,
+} from "./keypad";
 
 // The keypad must produce exactly the drafts the domain vectors promise.
 describe("keypad against the golden keystroke vectors", () => {
@@ -48,5 +55,35 @@ describe("keypadLayout", () => {
 			ok: true,
 			minor: 12_500_000,
 		});
+	});
+});
+
+describe("keys for a part that is not money", () => {
+	const type = (keys: string[], kind: "percent" | "units") =>
+		keys.reduce((text, key) => applyPlainKey(text, key, kind, "en-US"), "");
+
+	it("types a percent up to 100 with two decimals", () => {
+		expect(type(["1", "2", ".", "5"], "percent")).toBe("12.5");
+		expect(type(["1", "2", ".", "5", "5", "5"], "percent")).toBe("12.55");
+		expect(type(["1", "0", "0", "0"], "percent")).toBe("100");
+		expect(type([".", "5"], "percent")).toBe("0.5");
+		expect(type(["1", ".", ".", "2"], "percent")).toBe("1.2");
+	});
+
+	it("types shares as whole numbers and ignores the decimal key", () => {
+		expect(type(["2", ".", "5"], "units")).toBe("25");
+		expect(type(["0", "3"], "units")).toBe("3");
+		expect(type(["1", "2", "3", "4", "5", "6", "7"], "units")).toBe("123456");
+	});
+
+	it("deletes the last character", () => {
+		expect(applyPlainKey("12.5", BACKSPACE, "percent", "en-US")).toBe("12.");
+	});
+
+	it("sends money to the money keypad", () => {
+		expect(applyEntryKey("12", "5", "money", "en-US", "USD")).toBe(
+			applyKey("12", "5", "en-US", "USD"),
+		);
+		expect(applyEntryKey("12", "5", "units", "en-US", "USD")).toBe("125");
 	});
 });

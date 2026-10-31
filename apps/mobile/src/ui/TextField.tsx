@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { TextInput, type TextInputProps, View } from "react-native";
 import { useTheme } from "@/theme";
-import { Text, typeStyle } from "./Text";
+import { TEXT_SCALE_CAP, Text, typeStyle } from "./Text";
 
 /** A field's label above it: 13/400 in fg-2, as in iOS Settings. */
 export function FieldLabel({ children }: { children: string }) {
@@ -49,6 +49,7 @@ export function TextField({
 	disabled,
 	onTypingChange,
 	bare,
+	align,
 }: {
 	label: string;
 	value: string;
@@ -89,6 +90,8 @@ export function TextField({
 	 * of its own (the composer's title). The card carries the field's edge.
 	 */
 	bare?: boolean;
+	/** Centers the words, for the composer's title. */
+	align?: "center";
 }) {
 	const theme = useTheme();
 	const { color, radius, size, space } = theme;
@@ -132,6 +135,7 @@ export function TextField({
 					importantForAutofill={autoComplete ? "yes" : "auto"}
 					inputMode={inputMode}
 					keyboardType={keyboardType}
+					maxFontSizeMultiplier={TEXT_SCALE_CAP.body}
 					maxLength={maxLength}
 					multiline={multiline}
 					onBlur={() => focus(false)}
@@ -151,6 +155,7 @@ export function TextField({
 								? boxHeight - 2 * space[2]
 								: size.touchMin.phone,
 							color: color.fg,
+							textAlign: align,
 						},
 						multiline
 							? { paddingVertical: space[2], textAlignVertical: "top" }

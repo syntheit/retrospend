@@ -99,6 +99,16 @@ export const GLYPHS: Record<string, GlyphShape[]> = {
 		["path", { d: "M8 2v3" }],
 		["circle", { cx: "16", cy: "16", r: "6" }],
 	],
+	CalendarRange: [
+		["rect", { x: "3", y: "3", width: "18", height: "18", rx: "2" }],
+		["path", { d: "M16 2v3" }],
+		["path", { d: "M3 9h18" }],
+		["path", { d: "M8 2v3" }],
+		["path", { d: "M17 13h-6" }],
+		["path", { d: "M13 17H7" }],
+		["path", { d: "M7 13h.01" }],
+		["path", { d: "M17 17h.01" }],
+	],
 	Car: [
 		[
 			"path",
@@ -224,6 +234,22 @@ export const GLYPHS: Record<string, GlyphShape[]> = {
 		["circle", { cx: "19", cy: "12", r: "1" }],
 		["circle", { cx: "5", cy: "12", r: "1" }],
 	],
+	EyeOff: [
+		[
+			"path",
+			{
+				d: "M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49",
+			},
+		],
+		["path", { d: "M14.084 14.158a3 3 0 0 1-4.242-4.242" }],
+		[
+			"path",
+			{
+				d: "M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143",
+			},
+		],
+		["path", { d: "m2 2 20 20" }],
+	],
 	FileText: [
 		[
 			"path",
@@ -246,6 +272,14 @@ export const GLYPHS: Record<string, GlyphShape[]> = {
 		["path", { d: "M14 2v5a1 1 0 0 0 1 1h5" }],
 		["path", { d: "M12 12v6" }],
 		["path", { d: "m15 15-3-3-3 3" }],
+	],
+	Folder: [
+		[
+			"path",
+			{
+				d: "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z",
+			},
+		],
 	],
 	FolderPlus: [
 		["path", { d: "M12 10v6" }],
@@ -396,6 +430,15 @@ export const GLYPHS: Record<string, GlyphShape[]> = {
 		["path", { d: "m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7" }],
 		["rect", { x: "2", y: "4", width: "20", height: "16", rx: "2" }],
 	],
+	MapPin: [
+		[
+			"path",
+			{
+				d: "M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0",
+			},
+		],
+		["circle", { cx: "12", cy: "10", r: "3" }],
+	],
 	MessageCircle: [
 		[
 			"path",
@@ -459,6 +502,15 @@ export const GLYPHS: Record<string, GlyphShape[]> = {
 		["circle", { cx: "17.5", cy: "10.5", r: ".5", fill: "currentColor" }],
 		["circle", { cx: "6.5", cy: "12.5", r: ".5", fill: "currentColor" }],
 		["circle", { cx: "8.5", cy: "7.5", r: ".5", fill: "currentColor" }],
+	],
+	Pencil: [
+		[
+			"path",
+			{
+				d: "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z",
+			},
+		],
+		["path", { d: "m15 5 4 4" }],
 	],
 	Plane: [
 		[
