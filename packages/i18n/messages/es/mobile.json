@@ -2481,6 +2481,20 @@
 			}
 		}
 	},
+	"notifications": {
+		"title": "Notificaciones",
+		"markAllRead": "Marcar todas como leídas",
+		"markRead": "Marcar como leída",
+		"settings": "Ajustes de notificaciones",
+		"unread": "Sin leer",
+		"empty": "Aún no hay notificaciones",
+		"emptyDetail": "Aquí aparecen los gastos compartidos, los pagos y los proyectos.",
+		"error": "No se pudieron cargar las notificaciones",
+		"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
+		"showMore": "Mostrar más",
+		"markError": "No se pudo guardar. Inténtalo de nuevo.",
+		"moreError": "No se pudieron cargar más. Inténtalo de nuevo."
+	},
 	"recurring": {
 		"title": "Gastos recurrentes",
 		"error": "No se pudieron cargar los gastos recurrentes",

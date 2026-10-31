@@ -20,7 +20,10 @@ jest.mock("@/auth/session", () => ({
 jest.mock("@/auth/server-connection", () => ({
 	useServerBaseUrl: () => "https://retrospend.test/",
 }));
-jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({
+	router: { push: (to: string) => mockPush(to) },
+}));
 jest.mock("@/features/feedback/FeedbackProvider", () => ({
 	useFeedback: () => ({ open: jest.fn() }),
 }));
@@ -87,6 +90,35 @@ describe("account sheet", () => {
 		expect(texts).not.toContain("feedbackInbox");
 	});
 
+	it("opens the inbox from the Notifications row, not the settings", async () => {
+		mockState.me = member;
+		let tree!: {
+			root: {
+				findAll(f: (n: { props: Record<string, unknown> }) => boolean): {
+					props: { onPress?: () => void; title?: string };
+				}[];
+				findByProps(p: Record<string, unknown>): {
+					props: { onPress: () => void };
+				};
+			};
+			unmount(): void;
+		};
+		await act(async () => {
+			tree = create(<AccountTopBar title="Home" />);
+		});
+		await act(async () => {
+			tree.root.findByProps({ accessibilityLabel: "open" }).props.onPress();
+		});
+		const row = tree.root.findAll(
+			(n) => n.props.title === "notifications" && !!n.props.onPress,
+		)[0];
+		await act(async () => {
+			row?.props.onPress?.();
+		});
+		expect(mockPush).toHaveBeenCalledWith("/settings/inbox");
+		act(() => tree.unmount());
+	});
+
 	it("shows Admin, Invite codes and Feedback inbox with its count for an admin", async () => {
 		const texts = await labels({
 			...member,
@@ -132,8 +164,9 @@ describe("account sheet", () => {
 			const scrolls = tree.root.findAllByType(ScrollView);
 			expect(scrolls).toHaveLength(1);
 			const [scroll] = scrolls;
-			const inside = (scroll?.findAll((n) => n.props.children === "signOut") ?? [])
-				.concat(scroll?.findAll((n) => n.props.children === "version") ?? []);
+			const inside = (
+				scroll?.findAll((n) => n.props.children === "signOut") ?? []
+			).concat(scroll?.findAll((n) => n.props.children === "version") ?? []);
 			expect(inside.length).toBeGreaterThan(0);
 		} finally {
 			Platform.OS = was;

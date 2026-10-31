@@ -2481,6 +2481,20 @@
 			}
 		}
 	},
+	"notifications": {
+		"title": "Notifications",
+		"markAllRead": "Tout marquer comme lu",
+		"markRead": "Marquer comme lue",
+		"settings": "Réglages des notifications",
+		"unread": "Non lue",
+		"empty": "Aucune notification pour le moment",
+		"emptyDetail": "Les dépenses partagées, les paiements et les projets apparaissent ici.",
+		"error": "Impossible de charger les notifications",
+		"errorDetail": "Vérifie ta connexion et réessaie.",
+		"showMore": "Afficher plus",
+		"markError": "Impossible d'enregistrer. Réessaie.",
+		"moreError": "Impossible d'en charger plus. Réessaie."
+	},
 	"recurring": {
 		"title": "Dépenses récurrentes",
 		"error": "Impossible de charger les dépenses récurrentes",

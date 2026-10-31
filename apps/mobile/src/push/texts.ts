@@ -42,6 +42,6 @@ export function postFor(n: LocalNotification, t: Translate): LocalPost {
 		channel: PUSH_KINDS[n.kind].channel,
 		title: t(`push.${key}.title`),
 		body: t(`push.${key}.body`),
-		url: deepLinkFor(n.kind),
+		url: deepLinkFor(n.kind, n.entity),
 	};
 }

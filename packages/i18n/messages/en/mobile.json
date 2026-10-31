@@ -2481,6 +2481,20 @@
 			}
 		}
 	},
+	"notifications": {
+		"title": "Notifications",
+		"markAllRead": "Mark all read",
+		"markRead": "Mark read",
+		"settings": "Notification settings",
+		"unread": "Unread",
+		"empty": "No notifications yet",
+		"emptyDetail": "Shared expenses, payments and projects show up here.",
+		"error": "Couldn't load notifications",
+		"errorDetail": "Check your connection and try again.",
+		"showMore": "Show more",
+		"markError": "Couldn't save that. Try again.",
+		"moreError": "Couldn't load more. Try again."
+	},
 	"recurring": {
 		"title": "Recurring expenses",
 		"error": "Couldn't load recurring expenses",

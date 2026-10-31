@@ -110,4 +110,19 @@ describe("payload to route", () => {
 		expect(deepLinkFor("shared_expense.created")).toBe("retrospend://activity");
 		expect(deepLinkFor("recurring.due")).toBe("retrospend://home");
 	});
+
+	it("opens the expense a shared expense push names", () => {
+		const entity = { type: "shared_expense", id: "t1" };
+		expect(deepLinkFor("shared_expense.created", entity)).toBe(
+			"retrospend://activity/shared:t1",
+		);
+		expect(deepLinkFor("shared_expense.updated", entity)).toBe(
+			"retrospend://activity/shared:t1",
+		);
+		// Without an expense to name, or for another kind, the place stays.
+		expect(deepLinkFor("shared_expense.created", null)).toBe(
+			"retrospend://activity",
+		);
+		expect(deepLinkFor("payment.recorded", entity)).toBe("retrospend://people");
+	});
 });

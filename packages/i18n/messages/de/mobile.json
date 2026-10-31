@@ -2481,6 +2481,20 @@
 			}
 		}
 	},
+	"notifications": {
+		"title": "Benachrichtigungen",
+		"markAllRead": "Alle als gelesen markieren",
+		"markRead": "Als gelesen markieren",
+		"settings": "Benachrichtigungseinstellungen",
+		"unread": "Ungelesen",
+		"empty": "Noch keine Benachrichtigungen",
+		"emptyDetail": "Geteilte Ausgaben, Zahlungen und Projekte erscheinen hier.",
+		"error": "Benachrichtigungen konnten nicht geladen werden",
+		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+		"showMore": "Mehr anzeigen",
+		"markError": "Das konnte nicht gespeichert werden. Versuche es erneut.",
+		"moreError": "Weitere konnten nicht geladen werden. Versuche es erneut."
+	},
 	"recurring": {
 		"title": "Wiederkehrende Ausgaben",
 		"error": "Wiederkehrende Ausgaben konnten nicht geladen werden",

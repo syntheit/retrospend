@@ -54,6 +54,7 @@ export const SETTINGS_SCREENS: readonly {
 	{ name: "settings/categories", title: "manage.categories" },
 	{ name: "settings/payment-methods", title: "manage.payment" },
 	{ name: "settings/notifications", title: "root.notifications" },
+	{ name: "settings/inbox" },
 	{ name: "settings/security", title: "security.title" },
 	{ name: "settings/sessions", title: "security.sessions.title" },
 	{ name: "settings/data", title: "data.title" },

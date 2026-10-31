@@ -2481,6 +2481,20 @@
 			}
 		}
 	},
+	"notifications": {
+		"title": "Notificações",
+		"markAllRead": "Marcar todas como lidas",
+		"markRead": "Marcar como lida",
+		"settings": "Ajustes de notificações",
+		"unread": "Não lida",
+		"empty": "Ainda não há notificações",
+		"emptyDetail": "Despesas compartilhadas, pagamentos e projetos aparecem aqui.",
+		"error": "Não foi possível carregar as notificações",
+		"errorDetail": "Verifique sua conexão e tente de novo.",
+		"showMore": "Mostrar mais",
+		"markError": "Não foi possível salvar. Tente de novo.",
+		"moreError": "Não foi possível carregar mais. Tente de novo."
+	},
 	"recurring": {
 		"title": "Despesas recorrentes",
 		"error": "Não foi possível carregar as despesas recorrentes",
