@@ -3,11 +3,11 @@ import { getFileStream } from "~/server/storage";
 
 /**
  * This route is public and cached for a year, so it serves only the folders
- * that hold pictures meant to be seen: avatars and project images (the only
- * two uploadFile callers). Anything else under the upload store, and anything
- * that ever lands there by mistake, is a 404.
+ * that hold pictures meant to be seen: avatars, project images and account
+ * icons (the only uploadFile callers). Anything else under the upload store,
+ * and anything that ever lands there by mistake, is a 404.
  */
-const PUBLIC_PREFIXES = ["avatars", "projects"];
+const PUBLIC_PREFIXES = ["avatars", "projects", "accounts"];
 
 export async function GET(
 	_request: Request,

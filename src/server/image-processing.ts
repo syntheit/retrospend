@@ -62,6 +62,23 @@ export async function processProjectImage(input: Buffer): Promise<Buffer> {
 		.toBuffer();
 }
 
+/**
+ * An account's icon: the whole picture fits in a square (a logo is never
+ * cropped) and keeps its transparent corners.
+ */
+export async function processAccountIcon(input: Buffer): Promise<Buffer> {
+	assertValidImage(input);
+
+	return sharp(input)
+		.rotate()
+		.resize(256, 256, {
+			fit: "contain",
+			background: { r: 0, g: 0, b: 0, alpha: 0 },
+		})
+		.webp({ quality: 85 })
+		.toBuffer();
+}
+
 export async function processReceipt(input: Buffer): Promise<Buffer> {
 	assertValidImage(input);
 

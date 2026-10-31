@@ -176,6 +176,8 @@ export class WealthService {
 				closedAt: true,
 				createdAt: true,
 				updatedAt: true,
+				iconKind: true,
+				iconValue: true,
 			},
 		});
 
@@ -470,6 +472,8 @@ export class WealthService {
 				currency: a.currency,
 				balance: toNumberWithDefault(a.balance),
 				closedAt: a.closedAt,
+				iconKind: a.iconKind,
+				iconValue: a.iconValue,
 			})),
 		};
 	}

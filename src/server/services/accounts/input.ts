@@ -40,6 +40,20 @@ const accountFields = {
 export const createAccountSchema = z.object(accountFields);
 export const editAccountSchema = z.object({ id: z.cuid(), ...accountFields });
 
+/**
+ * A logo or a monogram color, or null for the default glyph. An uploaded
+ * picture goes through POST /api/upload/account-icon, never this.
+ */
+export const setAccountIconSchema = z.object({
+	id: z.cuid(),
+	icon: z
+		.object({
+			kind: z.enum(["BRAND", "MONOGRAM"]),
+			value: z.string().min(1).max(40),
+		})
+		.nullable(),
+});
+
 export const importAccountsSchema = z.object({
 	rows: z
 		.array(

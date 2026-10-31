@@ -7,6 +7,7 @@ import {
 	setDefaultAccount,
 } from "~/server/services/accounts/defaults";
 import { exactRate, withRateNumber } from "~/server/services/accounts/exact-rate";
+import { setAccountIcon } from "~/server/services/accounts/icon";
 import * as schema from "~/server/services/accounts/input";
 import {
 	closeAccount,
@@ -96,6 +97,13 @@ export const wealthRouter = createTRPCRouter({
 				withRateNumber(input),
 				ctx.timeZone,
 			),
+		),
+
+	/** The mark beside an account. Not a money move: no preview, no Undo. */
+	setAssetIcon: protectedProcedure
+		.input(schema.setAccountIconSchema)
+		.mutation(({ ctx, input }) =>
+			setAccountIcon(ctx.db, ctx.session.user.id, input.id, input.icon),
 		),
 
 	/** The old Update balance dialog; the same mutation as the API's account.updateBalance. */

@@ -4,6 +4,7 @@
  * hundredths of a percent: the client formats, it never computes (R9).
  */
 import type { MoneyValue } from "~/components/money/format";
+import type { AccountIcon } from "~/lib/account-icons";
 import type { AccountKind, Basis } from "~/components/rows/types";
 
 export type AssetTypeKey =
@@ -52,6 +53,8 @@ export type WealthAccount = {
 	updated: string;
 	/** ISO date it was closed; null while open. */
 	closedOn: string | null;
+	/** The mark beside it; null keeps the glyph of its type. */
+	icon: AccountIcon | null;
 };
 
 export type WealthGroup = {

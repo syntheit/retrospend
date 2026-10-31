@@ -231,6 +231,51 @@ describe("buildWealthView", () => {
 		expect(usd?.valuation).toEqual({ type: "official", customRate: null });
 	});
 
+	it("passes an account's icon on, and drops one the app cannot draw", () => {
+		const v = buildWealthView({
+			...input,
+			dashboard: {
+				...input.dashboard,
+				assets: [
+					asset({
+						id: "a",
+						type: "CASH",
+						currency: "ARS",
+						balance: 1,
+						balanceInTargetCurrency: 1,
+						iconKind: "BRAND",
+						iconValue: "revolut",
+					}),
+					asset({
+						id: "b",
+						type: "CASH",
+						currency: "ARS",
+						balance: 1,
+						balanceInTargetCurrency: 1,
+						iconKind: "IMAGE",
+						iconValue: "accounts/b-1730000000000.webp",
+					}),
+					asset({
+						id: "c",
+						type: "CASH",
+						currency: "ARS",
+						balance: 1,
+						balanceInTargetCurrency: 1,
+						iconKind: "BRAND",
+						iconValue: "removed-brand",
+					}),
+				],
+			},
+		});
+		const [a, b, c] = v.groups[0]?.accounts ?? [];
+		expect(a?.icon).toEqual({ kind: "BRAND", value: "revolut" });
+		expect(b?.icon).toEqual({
+			kind: "IMAGE",
+			value: "/api/images/accounts/b-1730000000000.webp",
+		});
+		expect(c?.icon).toBeNull();
+	});
+
 	it("no 30-day baseline: no change", () => {
 		const v = buildWealthView({
 			...input,

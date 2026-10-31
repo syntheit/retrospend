@@ -18,6 +18,7 @@ const account = (valuation: WealthAccount["valuation"]): WealthAccount => ({
 	apr: null,
 	updated: "2026-10-20",
 	closedOn: null,
+	icon: null,
 });
 
 describe("rateInput", () => {

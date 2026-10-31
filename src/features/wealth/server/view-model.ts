@@ -2,6 +2,7 @@ import "server-only";
 
 import { type Money, subtractMoney } from "@retrospend/domain/money-minor";
 import type { AccountKind } from "~/components/rows/types";
+import { type AccountIconKind, iconOf } from "~/lib/account-icons";
 import { CUSTOM_RATE_TYPE } from "~/server/services/wealth.service";
 import {
 	type AssetTypeKey,
@@ -36,6 +37,8 @@ export type DashboardInput = {
 		interestRate: number | null;
 		rateMissing: boolean;
 		updatedAt: Date;
+		iconKind?: AccountIconKind | null;
+		iconValue?: string | null;
 	}[];
 	closedAssets: {
 		id: string;
@@ -44,6 +47,8 @@ export type DashboardInput = {
 		currency: string;
 		balance: number;
 		closedAt: Date;
+		iconKind?: AccountIconKind | null;
+		iconValue?: string | null;
 	}[];
 };
 
@@ -141,6 +146,7 @@ function account(
 		apr: liability ? a.interestRate : null,
 		updated: isoDay(a.updatedAt),
 		closedOn: null,
+		icon: iconOf(a),
 	};
 }
 
@@ -272,6 +278,7 @@ export function buildWealthView(input: WealthInput): WealthView {
 				apr: null,
 				updated: isoDay(c.closedAt),
 				closedOn: isoDay(c.closedAt),
+				icon: iconOf(c),
 			};
 		}),
 		liquid,
