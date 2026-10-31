@@ -1,4 +1,4 @@
-import { Platform, View } from "react-native";
+import { Platform, useWindowDimensions, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Menu } from "@/ui/Menu";
@@ -8,11 +8,16 @@ import { TextAction } from "@/ui/TextAction";
 import type { MenuItem } from "@/ui/types";
 import type { EntryMode } from "./ComposerShell";
 
+/** Past this text scale, or under this width on Android, the modes take their own row. */
+const STACK_SCALE = 1.3;
+const STACK_WIDTH = 400;
+
 /**
  * The head of the composer: Cancel at the start and, at the end, the choice
  * between Expense, Income and Transfer. A saved expense has no choice: its
  * title stands there, and the actions menu (Undo changes, Delete) sits at the
- * end.
+ * end. At large text, and on a narrow Android phone, the three modes do not
+ * fit beside Cancel and sit on a row of their own.
  */
 export function ComposerTop({
 	mode,
@@ -34,57 +39,72 @@ export function ComposerTop({
 	const t = useTranslations("mobile.composer");
 	const tc = useTranslations("mobile.common");
 	const { space } = useTheme();
+	const { fontScale, width } = useWindowDimensions();
+	const choose = !editing && modes.length > 1;
+	const stack =
+		choose &&
+		(fontScale > STACK_SCALE ||
+			(Platform.OS === "android" && width < STACK_WIDTH));
+	const segmented = choose ? (
+		<Segmented
+			accessibilityLabel={t("mode")}
+			onChange={onModeChange}
+			options={modes.map((value) => ({
+				value,
+				label: t(value === "transfer" ? "transferMode" : value),
+			}))}
+			stretch={stack}
+			value={mode}
+		/>
+	) : null;
 	return (
-		<View
-			style={{
-				flexDirection: "row",
-				alignItems: "center",
-				justifyContent: "space-between",
-				gap: space[2],
-			}}
-		>
-			<TextAction label={tc("cancel")} onPress={onCancel} />
-			{editing ? (
-				<Text
-					accessibilityRole="header"
-					numberOfLines={1}
-					style={{ flex: 1, textAlign: "center" }}
-					variant="section"
-				>
-					{t("titleEdit")}
-				</Text>
-			) : modes.length > 1 ? (
-				// The M3 segmented button draws its outline past its box.
-				// iOS draws it as wide as its words, at the end; Android fills what it is given.
-				<View
-					style={{
-						flex: 1,
-						alignItems: Platform.OS === "ios" ? "flex-end" : "stretch",
-						paddingVertical: space[1],
-					}}
-				>
-					<Segmented
-						accessibilityLabel={t("mode")}
-						onChange={onModeChange}
-						options={modes.map((value) => ({
-							value,
-							label: t(value === "transfer" ? "transferMode" : value),
-						}))}
-						value={mode}
-					/>
-				</View>
-			) : null}
-			{editing ? (
-				actions.length > 0 ? (
-					<Menu
-						accessibilityLabel={t("actions")}
-						icon
-						items={actions}
-						label={t("actions")}
-					/>
-				) : (
-					<View />
-				)
+		<View style={{ gap: space[1] }}>
+			<View
+				style={{
+					flexDirection: "row",
+					alignItems: "center",
+					justifyContent: "space-between",
+					gap: space[2],
+				}}
+			>
+				<TextAction label={tc("cancel")} onPress={onCancel} />
+				{editing ? (
+					<Text
+						accessibilityRole="header"
+						numberOfLines={1}
+						style={{ flex: 1, textAlign: "center" }}
+						variant="section"
+					>
+						{t("titleEdit")}
+					</Text>
+				) : choose && !stack ? (
+					// The M3 segmented button draws its outline past its box. iOS draws
+					// it as wide as its words, at the end; Android fills what it is given.
+					<View
+						style={{
+							flex: 1,
+							alignItems: Platform.OS === "ios" ? "flex-end" : "stretch",
+							paddingVertical: space[1],
+						}}
+					>
+						{segmented}
+					</View>
+				) : null}
+				{editing ? (
+					actions.length > 0 ? (
+						<Menu
+							accessibilityLabel={t("actions")}
+							icon
+							items={actions}
+							label={t("actions")}
+						/>
+					) : (
+						<View />
+					)
+				) : null}
+			</View>
+			{stack ? (
+				<View style={{ paddingVertical: space[1] }}>{segmented}</View>
 			) : null}
 		</View>
 	);

@@ -50,8 +50,6 @@ export function ComposerFrame({
 	keypadOpen,
 	typing,
 	add,
-	onKeypadOpen,
-	onTab,
 	onScrollDrag,
 	surface,
 }: {
@@ -84,10 +82,6 @@ export function ComposerFrame({
 		off: boolean;
 		busy: boolean;
 	};
-	/** A hardware key was typed while the keys were folded. */
-	onKeypadOpen: () => void;
-	/** Tab on a hardware keyboard: the next panel. */
-	onTab: () => void;
 	/** Scrolling the details lets the system keyboard (and the keypad) go. */
 	onScrollDrag: () => void;
 	/** On a sheet: the sheet's own surface, with no panel of the page's color. */
@@ -109,17 +103,21 @@ export function ComposerFrame({
 				backgroundColor: surface ? undefined : color.bg,
 			}}
 		>
-			{/* The head and the amount stay put: what is typed is always on screen, with the system keyboard too. */}
-			<View
-				style={{
-					paddingHorizontal: space[4],
-					paddingBottom: space[1],
-					gap: space[1],
-				}}
-			>
-				{header}
-				{amount}
-			</View>
+			{/* The head and the amount stay put: what is typed is always on screen.
+			    With the system keyboard up (large text) the sheet is short, so the
+			    head scrolls with the details and the amount sits above the Add button. */}
+			{system ? null : (
+				<View
+					style={{
+						paddingHorizontal: space[4],
+						paddingBottom: space[1],
+						gap: space[1],
+					}}
+				>
+					{header}
+					{amount}
+				</View>
+			)}
 			<ScrollView
 				bounces={false}
 				contentContainerStyle={{ flexGrow: 1, gap: space[2] }}
@@ -128,6 +126,9 @@ export function ComposerFrame({
 				showsVerticalScrollIndicator={false}
 				style={{ flex: 1 }}
 			>
+				{system ? (
+					<View style={{ paddingHorizontal: space[4] }}>{header}</View>
+				) : null}
 				<View style={{ paddingHorizontal: space[4], gap: space[1] }}>
 					{title}
 				</View>
@@ -153,6 +154,11 @@ export function ComposerFrame({
 					{preview}
 				</View>
 			</ScrollView>
+			{system ? (
+				<View style={{ paddingHorizontal: space[4], paddingBottom: space[1] }}>
+					{amount}
+				</View>
+			) : null}
 			<View style={{ paddingHorizontal: space[2], paddingBottom: space[2] }}>
 				<FoldingKeypad
 					addDescription={add.description}
@@ -163,8 +169,6 @@ export function ComposerFrame({
 					entry={keypad}
 					foldedLabel={add.folded}
 					onAdd={add.onPress}
-					onOpen={onKeypadOpen}
-					onTab={onTab}
 					open={open}
 				/>
 			</View>

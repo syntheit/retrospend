@@ -339,12 +339,10 @@ export function ExpenseComposer({
 			}
 			keypad={keypad}
 			keypadOpen={form.padOpen}
-			onKeypadOpen={typeAmount}
 			onPageChange={(next) => goTo(next)}
 			onScrollDrag={() => {
 				if (system) form.setPadOpen(false);
 			}}
-			onTab={() => goTo((page + 1) % PANELS.length)}
 			page={page}
 			panels={panels}
 			preview={<PreviewLine state={pv.preview} />}

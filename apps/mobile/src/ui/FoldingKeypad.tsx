@@ -1,12 +1,5 @@
 import { decimalSeparator } from "@retrospend/domain/parse";
-import { useEffect, useRef } from "react";
-import {
-	Platform,
-	Pressable,
-	TextInput,
-	type TextInputInstance,
-	View,
-} from "react-native";
+import { Pressable, View } from "react-native";
 import Animated, { FadeIn, ReduceMotion } from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 import { useMoneyLocale } from "@/lib/money";
@@ -36,9 +29,7 @@ const HOLD = { "+": "×", "−": "÷" } as const;
  * button stays ("Add expense", "Save" when editing). The caller decides when
  * it folds. The pad never grows with the text size: key labels stop at 1.3.
  * A part that is not money (a percent, shares) has no operators.
- *
- * On an iPad with a hardware keyboard the digits, Return and Tab work too,
- * through an invisible field that holds the keyboard focus.
+
  */
 export function FoldingKeypad({
 	open,
@@ -50,8 +41,6 @@ export function FoldingKeypad({
 	addOff,
 	busy,
 	compact = false,
-	onOpen,
-	onTab,
 }: {
 	open: boolean;
 	entry: KeypadEntry;
@@ -67,10 +56,6 @@ export function FoldingKeypad({
 	busy: boolean;
 	/** A short phone: 44 point keys and tighter gaps. */
 	compact?: boolean;
-	/** A hardware key was typed while folded: bring the keys back. */
-	onOpen?: () => void;
-	/** Tab on a hardware keyboard: the next panel. */
-	onTab?: () => void;
 }) {
 	const t = useTranslations("mobile.keypad");
 	const locale = useMoneyLocale();
@@ -119,42 +104,9 @@ export function FoldingKeypad({
 		</Pressable>
 	);
 
-	const keys = useRef<TextInputInstance | null>(null);
-	const hardware = Platform.OS === "ios" && Platform.isPad;
-	useEffect(() => {
-		if (hardware) keys.current?.focus();
-	}, [hardware]);
-
-	const catcher = hardware ? (
-		<TextInput
-			accessibilityElementsHidden
-			autoCorrect={false}
-			caretHidden
-			importantForAccessibility="no-hide-descendants"
-			onKeyPress={(event) => {
-				const key = event.nativeEvent.key;
-				if (key === "Enter") {
-					if (!off) onAdd();
-				} else if (key === "Tab") {
-					onTab?.();
-				} else if (key === "Backspace") {
-					if (open) press(BACKSPACE);
-				} else if (/^\d$/.test(key) || key === separator) {
-					if (!open) onOpen?.();
-					if (open || onOpen) press(key);
-				}
-			}}
-			ref={keys}
-			showSoftInputOnFocus={false}
-			style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
-			value=""
-		/>
-	) : null;
-
 	if (!open) {
 		return (
 			<View>
-				{catcher}
 				<View style={{ flexDirection: "row" }}>{Add}</View>
 			</View>
 		);
@@ -236,7 +188,6 @@ export function FoldingKeypad({
 
 	return (
 		<Animated.View entering={enter} style={{ gap, paddingTop: gap }}>
-			{catcher}
 			<View style={{ flexDirection: "row", gap }}>
 				{digit("7")}
 				{digit("8")}

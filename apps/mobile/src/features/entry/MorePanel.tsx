@@ -95,9 +95,7 @@ function OptionRow({
 				})}
 			>
 				<Glyph color={color.fg3} name={icon} size={size.icon.phone} />
-				<Text numberOfLines={1} style={{ flex: 1 }}>
-					{name}
-				</Text>
+				<Text style={{ flex: 1 }}>{name}</Text>
 				<RowState label={state} on={filled === true && on} />
 			</Pressable>
 			{children ? (
