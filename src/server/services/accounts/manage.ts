@@ -12,6 +12,7 @@ import { normalizeDate } from "~/lib/date";
 import { isValidRate, toUSD, USD } from "@retrospend/domain/money";
 import { toNumberOrNull } from "~/lib/utils";
 import { userTransaction } from "~/server/db-tx";
+import { deleteFile } from "~/server/storage";
 import { dec } from "~/server/services/envelope/units";
 import { WealthService } from "~/server/services/wealth.service";
 import type { AssetType, Prisma, PrismaClient } from "~prisma";
@@ -301,8 +302,24 @@ export async function deleteAccountIn(
 	return { success: true };
 }
 
-export const deleteAccount = (db: Db, userId: string, id: string) =>
-	userTransaction(db, userId, (tx) => deleteAccountIn(tx, userId, id));
+/**
+ * The web's delete has no undo, so the uploaded picture goes with the account
+ * (after the commit; a failure only leaves a file behind). The API's delete
+ * keeps it for its undo stash (api-v1/idempotency.service.ts prunes it).
+ */
+export async function deleteAccount(db: Db, userId: string, id: string) {
+	let picture: string | null = null;
+	const result = await userTransaction(db, userId, async (tx) => {
+		const row = await tx.assetAccount.findFirst({
+			where: { id, userId },
+			select: { iconKind: true, iconValue: true },
+		});
+		if (row?.iconKind === "IMAGE") picture = row.iconValue;
+		return deleteAccountIn(tx, userId, id);
+	});
+	if (picture) await deleteFile(picture).catch(() => {});
+	return result;
+}
 
 /** Balance in USD from the stored rate, as a Decimal; null when there is no usable rate. */
 function usdValue(

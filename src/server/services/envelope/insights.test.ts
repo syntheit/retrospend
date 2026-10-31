@@ -120,3 +120,12 @@ describe("trendMonths", () => {
 		expect(previousMonth(202610)).toBe(202609);
 	});
 });
+
+describe("insightsOf incomplete", () => {
+	it("is set when an earlier month in the trend lacked a rate", () => {
+		const m = month(202610, [envelope("rent", 50_000, 50_000)]);
+		const old = month(202609, [envelope("rent", 50_000, 50_000)], true);
+		expect(insightsOf(m, [old]).incomplete).toBe(true);
+		expect(insightsOf(m, []).incomplete).toBe(false);
+	});
+});

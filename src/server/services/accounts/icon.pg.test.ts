@@ -23,7 +23,11 @@ vi.mock("~/server/storage", async () => {
 });
 
 import { deleteFile, uploadFile } from "~/server/storage";
-import { editAccount } from "./manage";
+import { pruneExpiredKeys } from "~/server/services/api-v1/idempotency.service";
+import { putUndoStash } from "~/server/services/entry/undo-stash";
+import { anonymizeAndDeleteUser } from "~/server/services/user-deletion.service";
+import { snapshotAccount } from "./delete-snapshot";
+import { deleteAccount, editAccount } from "./manage";
 import { replaceAccountImage, setAccountIcon } from "./icon";
 import { arsUser, openAccount, seedArsRates } from "./test-fixtures";
 
@@ -155,7 +159,7 @@ describe("replaceAccountImage", () => {
 
 		const saved = await row(id);
 		expect(saved.iconKind).toBe("IMAGE");
-		expect(saved.iconValue).toMatch(new RegExp(`^accounts/${id}-\\d+\\.webp$`));
+		expect(saved.iconValue).toMatch(new RegExp(`^accounts/${id}-\\d+-[0-9a-f]{8}\\.webp$`));
 		expect(icon).toEqual({
 			kind: "IMAGE",
 			value: `/api/images/${saved.iconValue}`,
@@ -203,5 +207,71 @@ describe("replaceAccountImage", () => {
 		).rejects.toMatchObject({ code: "NOT_FOUND" });
 		expect(uploadFile).not.toHaveBeenCalled();
 		expect(await row(id)).toMatchObject({ iconKind: null });
+	});
+});
+
+describe("the picture's files", () => {
+	it("two uploads at once leave one file referenced and delete the other", async () => {
+		const { user } = await arsUser();
+		const id = await openAccount(user.id, "Mine", "CASH", "ARS", 1000);
+		await Promise.all([
+			replaceAccountImage(adminDb, user.id, id, await png()),
+			replaceAccountImage(adminDb, user.id, id, await png()),
+		]);
+		const kept = (await row(id)).iconValue;
+		const uploaded = vi.mocked(uploadFile).mock.calls.map((c) => c[0]);
+		expect(uploaded).toHaveLength(2);
+		expect(uploaded).toContain(kept);
+		const lost = uploaded.find((p) => p !== kept);
+		expect(vi.mocked(deleteFile)).toHaveBeenCalledWith(lost);
+		expect(vi.mocked(deleteFile)).not.toHaveBeenCalledWith(kept);
+	});
+
+	it("deleting the account on the web deletes its picture", async () => {
+		const { user } = await arsUser();
+		const id = await openAccount(user.id, "Mine", "CASH", "ARS", 1000);
+		await replaceAccountImage(adminDb, user.id, id, await png());
+		const path = (await row(id)).iconValue;
+		await deleteAccount(adminDb, user.id, id);
+		expect(deleteFile).toHaveBeenCalledWith(path);
+	});
+
+	it("keeps the picture while an undo can bring the account back, then prunes it", async () => {
+		const { user } = await arsUser();
+		const id = await openAccount(user.id, "Mine", "CASH", "ARS", 1000);
+		await replaceAccountImage(adminDb, user.id, id, await png());
+		const path = (await row(id)).iconValue;
+		vi.mocked(deleteFile).mockClear();
+		const stash = await adminDb.$transaction(async (tx) => {
+			const snapshot = await snapshotAccount(tx, user.id, id);
+			await tx.assetAccount.delete({ where: { id } });
+			return putUndoStash(tx, user.id, snapshot);
+		});
+		await pruneExpiredKeys();
+		expect(deleteFile).not.toHaveBeenCalledWith(path);
+
+		await adminDb.idempotencyKey.updateMany({
+			where: { userId: user.id, key: `undo-stash:${stash}` },
+			data: { expiresAt: new Date(Date.now() - 1000) },
+		});
+		await pruneExpiredKeys();
+		expect(deleteFile).toHaveBeenCalledWith(path);
+	});
+
+	it("deleting the user deletes live and stashed pictures", async () => {
+		const { user } = await arsUser();
+		const live = await openAccount(user.id, "Live", "CASH", "ARS", 1000);
+		const gone = await openAccount(user.id, "Gone", "CASH", "ARS", 1000);
+		await replaceAccountImage(adminDb, user.id, live, await png());
+		await replaceAccountImage(adminDb, user.id, gone, await png());
+		const paths = [(await row(live)).iconValue, (await row(gone)).iconValue];
+		await adminDb.$transaction(async (tx) => {
+			const snapshot = await snapshotAccount(tx, user.id, gone);
+			await tx.assetAccount.delete({ where: { id: gone } });
+			await putUndoStash(tx, user.id, snapshot);
+		});
+		vi.mocked(deleteFile).mockClear();
+		await anonymizeAndDeleteUser(adminDb, user.id, user.email, null);
+		for (const p of paths) expect(deleteFile).toHaveBeenCalledWith(p);
 	});
 });

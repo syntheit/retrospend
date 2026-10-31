@@ -3,6 +3,7 @@
  * changes how the account looks and nothing it counts, so it has no preview
  * and no Undo, and it leaves the account's "updated" day alone.
  */
+import { randomUUID } from "node:crypto";
 import { AVATAR_MAX_BYTES } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import { type AccountIcon, isAccountIcon } from "~/lib/account-icons";
@@ -22,32 +23,62 @@ async function deleteQuietly(path: string) {
 	}
 }
 
-/** Swaps the stored icon and returns the file it replaced, to delete after the commit. */
+/**
+ * Swaps the stored icon and returns the file it replaced, to delete after the
+ * commit. The update only lands on the row it read: a concurrent swap makes it
+ * match nothing, and it reads again, so the last writer wins and the file of
+ * the one it replaced is the one deleted (no file is left unreferenced).
+ */
 async function swapIcon(
 	db: AppDb,
 	userId: string,
 	id: string,
 	next: AccountIcon | null,
 ): Promise<string | null> {
-	return userTransaction(db, userId, async (tx) => {
-		const row = await tx.assetAccount.findFirst({
-			where: { id, userId },
-			select: { iconKind: true, iconValue: true, updatedAt: true },
+	for (let attempt = 0; attempt < 5; attempt++) {
+		const old = await userTransaction(db, userId, async (tx) => {
+			const row = await tx.assetAccount.findFirst({
+				where: { id, userId },
+				select: { iconKind: true, iconValue: true, updatedAt: true },
+			});
+			if (!row) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Account not found",
+				});
+			}
+			const { count } = await tx.assetAccount.updateMany({
+				where: {
+					id,
+					userId,
+					iconKind: row.iconKind,
+					iconValue: row.iconValue,
+				},
+				data: {
+					iconKind: next?.kind ?? null,
+					iconValue: next?.value ?? null,
+					updatedAt: row.updatedAt,
+				},
+			});
+			if (count === 0) return undefined;
+			const prev = row.iconKind === "IMAGE" ? row.iconValue : null;
+			return prev && prev !== next?.value ? prev : null;
 		});
-		if (!row) {
-			throw new TRPCError({ code: "NOT_FOUND", message: "Account not found" });
-		}
-		await tx.assetAccount.update({
-			where: { id },
-			data: {
-				iconKind: next?.kind ?? null,
-				iconValue: next?.value ?? null,
-				updatedAt: row.updatedAt,
-			},
-		});
-		const old = row.iconKind === "IMAGE" ? row.iconValue : null;
-		return old && old !== next?.value ? old : null;
+		if (old !== undefined) return old;
+	}
+	throw new TRPCError({
+		code: "CONFLICT",
+		message: "The icon changed at the same time. Try again.",
 	});
+}
+
+/** The uploaded picture an undo stash of a deleted account holds, if any. */
+export function stashedIconPath(body: unknown): string | null {
+	const account = (body as { account?: Record<string, unknown> } | null)
+		?.account;
+	return account?.iconKind === "IMAGE" && typeof account.iconValue === "string"
+		? account.iconValue
+		: null;
 }
 
 /** A logo, a monogram color or none. An uploaded image goes through replaceAccountImage. */
@@ -103,7 +134,7 @@ export async function replaceAccountImage(
 			message: err instanceof Error ? err.message : "Invalid image format",
 		});
 	}
-	const path = `accounts/${id}-${Date.now()}.webp`;
+	const path = `accounts/${id}-${Date.now()}-${randomUUID().slice(0, 8)}.webp`;
 	await uploadFile(path, processed, "image/webp");
 	let old: string | null;
 	try {

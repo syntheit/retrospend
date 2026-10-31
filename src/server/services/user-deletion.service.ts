@@ -12,6 +12,7 @@ import {
 	findSuccessorOrganizer,
 	handOverCreatedProjects,
 } from "./user-deletion-projects";
+import { stashedIconPath } from "./accounts/icon";
 import { removeUserFiles } from "./user-files.service";
 
 export * from "./deleted-sentinels";
@@ -379,6 +380,7 @@ export async function anonymizeAndDeleteUser(
 	// Feedback rows go with the user; their screenshots are files, so the
 	// paths are read first and the files removed after the commit.
 	let screenshotPaths: string[] = [];
+	let iconPaths: string[] = [];
 	await db.$transaction(async (tx) => {
 		await assertAnotherAdminRemains(tx, userId);
 		screenshotPaths = (
@@ -387,6 +389,21 @@ export async function anonymizeAndDeleteUser(
 				select: { screenshotPath: true },
 			})
 		).flatMap((f) => (f.screenshotPath ? [f.screenshotPath] : []));
+		// Uploaded account pictures, live and held in an undo stash.
+		const [accounts, stashes] = await Promise.all([
+			tx.assetAccount.findMany({
+				where: { userId, iconKind: "IMAGE" },
+				select: { iconValue: true },
+			}),
+			tx.idempotencyKey.findMany({
+				where: { userId, key: { startsWith: "undo-stash:" } },
+				select: { responseBody: true },
+			}),
+		]);
+		iconPaths = [
+			...accounts.map((a) => a.iconValue),
+			...stashes.map((s) => stashedIconPath(s.responseBody)),
+		].filter((p): p is string => !!p);
 		// ── Pre-deletion cleanup: resolve functional dependencies ─────────────
 		await preDeletionCleanup(tx as unknown as PrismaTx, userId);
 
@@ -478,5 +495,5 @@ export async function anonymizeAndDeleteUser(
 		await tx.guestSession.deleteMany({ where: { email: userEmail } });
 	});
 	// Only once the guard passed and the delete committed; a failure leaves a file behind
-	await removeUserFiles(userId, avatarPath, screenshotPaths);
+	await removeUserFiles(userId, avatarPath, screenshotPaths, iconPaths);
 }

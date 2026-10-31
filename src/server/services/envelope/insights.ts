@@ -83,6 +83,6 @@ export function insightsOf(
 						month: m.month.key,
 						spent: money(spendingOf(m).spent),
 					})),
-		incomplete: month.incomplete,
+		incomplete: months.some((m) => m.incomplete),
 	};
 }
