@@ -132,5 +132,13 @@
 			"body": "{name} verlässt ab heute deine Konten und dein Vermögen. Der Saldoverlauf bleibt, und du kannst es unter Geschlossene Konten wieder öffnen.",
 			"left": "Es zeigt noch <amount></amount>. Wenn das Geld woanders hin ist, setz den Saldo zuerst auf null."
 		}
+	},
+	"sort": {
+		"button": "Sortierung: {sort}",
+		"label": "Konten sortieren nach",
+		"balance": "Kontostand",
+		"name": "Name",
+		"type": "Typ",
+		"updated": "Zuletzt aktualisiert"
 	}
 }

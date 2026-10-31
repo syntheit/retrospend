@@ -132,5 +132,13 @@
 			"body": "{name} leaves your accounts and net worth from today. Its balance history stays, and you can reopen it from Closed accounts.",
 			"left": "It still shows <amount></amount>. Update the balance to zero first if the money moved elsewhere."
 		}
+	},
+	"sort": {
+		"button": "Sort: {sort}",
+		"label": "Sort accounts by",
+		"balance": "Balance",
+		"name": "Name",
+		"type": "Type",
+		"updated": "Recently updated"
 	}
 }

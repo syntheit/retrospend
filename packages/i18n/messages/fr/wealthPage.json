@@ -132,5 +132,13 @@
 			"body": "{name} quitte tes comptes et ton patrimoine à partir d'aujourd'hui. Son historique de soldes est conservé et tu peux le rouvrir depuis Comptes clôturés.",
 			"left": "Il affiche encore <amount></amount>. Si l'argent est parti ailleurs, mets d'abord le solde à zéro."
 		}
+	},
+	"sort": {
+		"button": "Tri : {sort}",
+		"label": "Trier les comptes par",
+		"balance": "Solde",
+		"name": "Nom",
+		"type": "Type",
+		"updated": "Mis à jour récemment"
 	}
 }

@@ -132,5 +132,13 @@
 			"body": "{name} sale de tus cuentas y de tu patrimonio desde hoy. Su historial de saldos se mantiene y puedes reabrirla desde Cuentas cerradas.",
 			"left": "Todavía muestra <amount></amount>. Si el dinero se movió a otro sitio, primero actualiza el saldo a cero."
 		}
+	},
+	"sort": {
+		"button": "Orden: {sort}",
+		"label": "Ordenar cuentas por",
+		"balance": "Saldo",
+		"name": "Nombre",
+		"type": "Tipo",
+		"updated": "Actualizadas hace poco"
 	}
 }
