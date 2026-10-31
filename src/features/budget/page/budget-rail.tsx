@@ -6,7 +6,6 @@ import { Money } from "~/components/money/money";
 import { Row, RowList, RowSub } from "~/components/rows/row";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import { api } from "~/trpc/react";
-import { BudgetInsights } from "./budget-insights";
 import type { BudgetActions } from "./use-budget-actions";
 import { hasDebt, isLimits } from "./view-model";
 
@@ -178,7 +177,6 @@ export function BudgetRail({
 					<p className="text-fg-3 text-meta mt-2">{t("moneyIn.hint")}</p>
 				</Section>
 			)}
-			<BudgetInsights month={month} />
 			{!readOnly && data.book.style !== "DEBT_PAYOFF" && hasDebt(data) && (
 				<DebtBlock actions={actions} month={month} />
 			)}

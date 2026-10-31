@@ -6,6 +6,7 @@ import { useRowDates } from "~/components/rows/dates";
 import { useIsMobile } from "~/hooks/use-mobile";
 import type { EnvelopeGroupDto, GetMonthOutput } from "~/lib/schemas/envelope";
 import { api } from "~/trpc/react";
+import { BudgetInsights } from "./budget-insights";
 import { BudgetNotice } from "./budget-notice";
 import { BudgetRail } from "./budget-rail";
 import { ClosedHero } from "./closed-hero";
@@ -118,6 +119,7 @@ export function MonthContent({
 					) : (
 						<GroupsTable {...list} columns={columns} />
 					)}
+					{!filtering && <BudgetInsights month={key} />}
 				</div>
 				<div className="mt-8 lg:mt-0 lg:w-64 lg:shrink-0">
 					<BudgetRail actions={actions} data={data} readOnly={closed} />

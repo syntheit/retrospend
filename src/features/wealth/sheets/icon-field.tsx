@@ -78,19 +78,24 @@ export function IconField({
 
 	return (
 		<div className="flex flex-col gap-1">
-			<Label htmlFor="acct-icon">{t("label")}</Label>
+			<Label id="acct-icon-label">{t("label")}</Label>
 			<PickerPopover
 				onOpenChange={setOpen}
 				open={open}
 				title={t("title")}
 				trigger={
 					<Button
+						aria-labelledby="acct-icon-label acct-icon-value"
 						className="w-full justify-start"
-						id="acct-icon"
 						kind="secondary"
 					>
 						{icon ? <AccountMark icon={icon} name={name} size="menu" /> : null}
-						<span className="min-w-0 flex-1 truncate text-left">{label}</span>
+						<span
+							className="min-w-0 flex-1 truncate text-left"
+							id="acct-icon-value"
+						>
+							{label}
+						</span>
 						<ChevronDown aria-hidden="true" className="text-fg-3" />
 					</Button>
 				}

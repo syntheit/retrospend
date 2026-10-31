@@ -39,9 +39,9 @@ describe("promotedActions", () => {
 		);
 	});
 
-	it("a sheet that does not exist is not offered", () => {
+	it("a sheet that does not exist is not offered (Add income is the Add family's own)", () => {
 		expect(promotedActions({ actions: none, ...live })).toEqual({
-			income: false,
+			income: true,
 			plan: true,
 			whatIf: false,
 		});

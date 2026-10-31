@@ -191,7 +191,7 @@ test("Budget: one number, the groups, and every figure matches the server", asyn
 	// keeps the rare ones in the menu.
 	const header = page.locator('[data-slot="page-header"]');
 	await expect(
-		header.getByRole("button", { name: "Add money in" }),
+		header.getByRole("button", { name: "Add income" }),
 	).toBeVisible();
 	await expect(
 		header.getByRole("button", { name: "Plan next month" }),

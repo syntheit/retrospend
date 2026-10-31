@@ -27,8 +27,7 @@ const READ_ONLY = new Set(["summary", "help"]);
 const DEBT = new Set(["payoffPlan", "payDebt"]);
 
 /** The menu items the header already shows as buttons. */
-const PROMOTED_ID: Record<keyof HeaderPromoted, string> = {
-	income: "addIncome",
+const PROMOTED_ID: Partial<Record<keyof HeaderPromoted, string>> = {
 	plan: "planNext",
 	whatIf: "whatIf",
 };
@@ -57,7 +56,7 @@ export function HeaderMenu({
 	const shown = new Set(
 		(Object.keys(PROMOTED_ID) as (keyof HeaderPromoted)[])
 			.filter((k) => promoted[k])
-			.map((k) => PROMOTED_ID[k]),
+			.map((k) => PROMOTED_ID[k] as string),
 	);
 	for (const [id, sheet] of Object.entries(SHEET)) {
 		if (shown.has(id)) continue;
