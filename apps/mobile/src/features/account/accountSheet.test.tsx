@@ -100,6 +100,13 @@ describe("account sheet", () => {
 		expect(texts).toContain("newCount:3");
 	});
 
+	it("offers Invite codes to a member the server lets invite, and hides the row otherwise", async () => {
+		const allowed = await labels({ ...member, canInvite: true });
+		expect(allowed).toContain("inviteCodes");
+		expect(allowed).not.toContain("admin");
+		expect(await labels(member)).not.toContain("inviteCodes");
+	});
+
 	it("scrolls on iOS, so Sign out and the version are reachable under the detent", async () => {
 		const { Platform, ScrollView } = require("react-native");
 		const was = Platform.OS;

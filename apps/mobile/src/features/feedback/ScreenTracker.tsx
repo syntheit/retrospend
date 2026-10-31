@@ -77,6 +77,8 @@ const PAGES: Record<string, ScreenKey> = {
 	"settings/admin": "admin",
 	"settings/admin-users": "admin",
 	"settings/admin-invites": "admin",
+	search: "other",
+	"settings/invite-codes": "settings",
 	"settings/admin-feedback": "admin",
 	"settings/admin-settings": "admin",
 	"sign-in": "signIn",

@@ -183,12 +183,11 @@ export function AccountTopBar({
 								<Place
 									glyph="KeyRound"
 									label={t("inviteCodes")}
-									onPress={
-										admin
-											? go(() => router.push("/settings/admin-invites"))
-											: web("/invite-codes")
-									}
-									web={admin ? undefined : opensWeb}
+									onPress={go(() =>
+										router.push(
+											admin ? "/settings/admin-invites" : "/settings/invite-codes",
+										),
+									)}
 								/>
 								{admin ? (
 									<Place

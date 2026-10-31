@@ -1425,7 +1425,8 @@
 		"more": "Weitere Aktionen",
 		"menu": {
 			"income": "Einnahme hinzufügen",
-			"currencies": "Währungen und Kurse"
+			"currencies": "Währungen und Kurse",
+			"export": "Konten exportieren"
 		},
 		"actions": {
 			"update": "Saldo aktualisieren",
@@ -2387,7 +2388,8 @@
 			"codeCopied": "Code kopiert",
 			"linkCopied": "Link kopiert",
 			"copyFailed": "Das konnte nicht kopiert werden",
-			"shareFailed": "Teilen konnte nicht geöffnet werden"
+			"shareFailed": "Teilen konnte nicht geöffnet werden",
+			"createdOn": "Erstellt am {date}"
 		},
 		"feedback": {
 			"title": "Feedback",
@@ -2813,5 +2815,32 @@
 		"unavailable": "{list} ließ sich nicht prüfen.",
 		"stays": "Was gleich bleibt",
 		"keeps": "{amount} bleibt"
+	},
+	"search": {
+		"title": "Suchen",
+		"placeholder": "Ausgaben, Personen und Projekte suchen",
+		"recent": "Letzte Suchen",
+		"clear": "Löschen",
+		"expenses": "Ausgaben",
+		"people": "Personen",
+		"projects": "Projekte",
+		"goTo": "Gehe zu",
+		"empty": "Nichts gefunden für „{query}“",
+		"error": "Suche fehlgeschlagen",
+		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
+		"archived": "Archiviert",
+		"places": {
+			"home": "Start",
+			"activity": "Aktivität",
+			"budget": "Budget",
+			"wealth": "Vermögen",
+			"people": "Personen",
+			"projects": "Projekte",
+			"recurring": "Wiederkehrende Ausgaben",
+			"insights": "Auswertung",
+			"currencies": "Währungen",
+			"notifications": "Benachrichtigungen",
+			"settings": "Einstellungen"
+		}
 	}
 }

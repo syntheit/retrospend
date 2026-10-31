@@ -23,7 +23,10 @@ export function InviteSheet({
 	invite,
 	onClose,
 	onChanged,
+	mine,
 }: {
+	/** Your own codes (a person's screen), not every code (Admin). */
+	mine?: boolean;
 	invite: InviteCodeDto | null;
 	onClose: () => void;
 	onChanged: () => Promise<void>;
@@ -76,10 +79,10 @@ export function InviteSheet({
 						if (!api || busy) return;
 						setBusy(true);
 						try {
-							await api.admin.deleteInviteCode(
-								{ id: invite?.id ?? "" },
-								{ context: { idempotencyKey: newClientId() } },
-							);
+							const call = { context: { idempotencyKey: newClientId() } };
+							const id = invite?.id ?? "";
+							if (mine) await api["invite-codes"].delete({ id }, call);
+							else await api.admin.deleteInviteCode({ id }, call);
 							onClose();
 							await onChanged();
 							toast.show({ message: t("deleted") });

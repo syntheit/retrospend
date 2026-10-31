@@ -48,6 +48,7 @@ export const SETTINGS_SCREENS: readonly {
 	large?: true;
 	redirect?: true;
 }[] = [
+	{ name: "search" },
 	{ name: "settings/index", title: "title", large: true },
 	{ name: "settings/profile", title: "profile.title" },
 	{ name: "settings/preferences", title: "root.preferences" },
@@ -62,6 +63,7 @@ export const SETTINGS_SCREENS: readonly {
 	{ name: "settings/recurring", redirect: true },
 	{ name: "settings/admin", title: "title", ns: "admin" },
 	{ name: "settings/admin-users", title: "users.title", ns: "admin" },
+	{ name: "settings/invite-codes", title: "invites.title", ns: "admin" },
 	{ name: "settings/admin-invites", title: "invites.title", ns: "admin" },
 	{ name: "settings/admin-feedback", title: "feedback.title", ns: "admin" },
 	{ name: "settings/admin-settings", title: "settings.title", ns: "admin" },

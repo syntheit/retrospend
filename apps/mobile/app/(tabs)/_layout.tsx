@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useTranslations } from "use-intl";
 import {
 	AddEntryProvider,
@@ -13,7 +14,12 @@ function TabsWithAdd() {
 	const { open } = useAddEntry();
 	useHardwareKeys(
 		{ add: t("addExpense"), search: tt("search") },
-		{ add: () => open("expense"), search: focusSearch },
+		{
+			add: () => open("expense"),
+			search: () => {
+				if (!focusSearch()) router.push("/search");
+			},
+		},
 	);
 	return <Tabs />;
 }
