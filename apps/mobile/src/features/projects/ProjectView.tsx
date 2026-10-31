@@ -1,8 +1,10 @@
 import { Stack } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import * as WebBrowser from "expo-web-browser";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
+import { useServerBaseUrl } from "@/auth/server-connection";
 import { NeedsCard } from "@/features/people/NeedsCard";
 import { ReviewSheet } from "@/features/people/ReviewSheet";
 import { usePeopleOverview } from "@/features/people/usePeople";
@@ -28,11 +30,15 @@ import {
 	projectNeeds,
 } from "./filters";
 import { ProjectExpenseDays } from "./ProjectExpenses";
+import { opensWebPage } from "./joinLink";
 import { ProjectHeader, ProjectTitle } from "./ProjectHeader";
 import { ProjectPeopleTab } from "./ProjectPeopleTab";
+import { ProjectSettingsSheet } from "./ProjectSettingsSheet";
 import { ProjectSheet } from "./ProjectSheet";
 import { ProjectSummaryTab } from "./ProjectSummaryTab";
 import { SettleAllSheet } from "./SettleAllSheet";
+import { projectPageUrl } from "./share";
+import { ShareSheet } from "./ShareSheet";
 import { useProjectActions } from "./useProjectActions";
 import { useProject, useProjectSummary } from "./useProjects";
 
@@ -55,6 +61,8 @@ export function ProjectView({
 	name,
 	startSettling = false,
 	startAdding = false,
+	fromLink = false,
+	invite,
 }: {
 	id: string;
 	/** The name the list knew, shown in the title while the page loads. */
@@ -62,6 +70,14 @@ export function ProjectView({
 	startSettling?: boolean;
 	/** Open on Add person (a project just made "with others"). */
 	startAdding?: boolean;
+	/**
+	 * Opened by a share or join link. A project you are not in opens its web
+	 * page in the in-app browser (the guest join flow and the public page are
+	 * web pages); one you are in opens here.
+	 */
+	fromLink?: boolean;
+	/** The invite in a join link. */
+	invite?: string;
 }) {
 	const t = useTranslations("mobile.projects");
 	const tc = useTranslations("mobile.common");
@@ -93,6 +109,23 @@ export function ProjectView({
 		startAdding,
 	);
 	const menu = [...actions.items, ...overflow];
+	const baseUrl = useServerBaseUrl();
+	const webOpened = useRef(false);
+	const sendToWeb = baseUrl
+		? () => WebBrowser.openBrowserAsync(projectPageUrl(baseUrl, id, invite))
+		: null;
+	const linkRead = {
+		fromLink,
+		status: state.status,
+		refreshing: state.status === "ready" && state.refreshing,
+		myRole: page?.myRole ?? null,
+	};
+	const toWeb = opensWebPage(linkRead);
+	useEffect(() => {
+		if (!toWeb || !sendToWeb || webOpened.current) return;
+		webOpened.current = true;
+		void sendToWeb();
+	}, [toWeb, sendToWeb]);
 	const periodId = period === "current" ? (page?.openPeriod ?? null) : null;
 	const summary = useProjectSummary(id, periodId, tab === "summary");
 	const expenses = page?.expenses;
@@ -361,6 +394,18 @@ export function ProjectView({
 				onDone={reload}
 				project={page}
 				visible={actions.editing}
+			/>
+			<ShareSheet
+				onClose={actions.closeShare}
+				onDone={reload}
+				page={page}
+				visible={actions.sharing}
+			/>
+			<ProjectSettingsSheet
+				onClose={actions.closeSettings}
+				onDone={reload}
+				page={page}
+				visible={actions.configuring}
 			/>
 			<SettleAllSheet
 				members={page.members}

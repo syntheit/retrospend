@@ -1,8 +1,8 @@
 import { Alert } from "react-native";
 import { useProjectActions } from "./useProjectActions";
 
-// The project's overflow items: Edit for Owners and Editors, Archive or
-// Restore for Owners. Archive asks first, then archives and offers Undo,
+// The project's overflow items: Edit, Add person, Share and Settings for Owners
+// and Editors, Archive or Restore for Owners. Archive asks first, then archives and offers Undo,
 // which restores.
 const renderer = require("react-test-renderer");
 const { act, create } = renderer;
@@ -53,6 +53,8 @@ describe("project menu items", () => {
 		expect(items(page({})).items.map((i) => i.id)).toEqual([
 			"edit-project",
 			"add-person",
+			"share-project",
+			"project-settings",
 			"archive-project",
 		]);
 	});
@@ -61,15 +63,35 @@ describe("project menu items", () => {
 		expect(items(page({ status: "ARCHIVED" })).items.map((i) => i.id)).toEqual([
 			"edit-project",
 			"add-person",
+			"share-project",
+			"project-settings",
 			"restore-project",
 		]);
 	});
 
-	it("gives an Editor Edit and Add person", () => {
+	it("gives an Editor Edit, Add person, Share and Settings", () => {
 		expect(items(page({ myRole: "EDITOR" })).items.map((i) => i.id)).toEqual([
 			"edit-project",
 			"add-person",
+			"share-project",
+			"project-settings",
 		]);
+	});
+
+	it("opens the Share and Settings sheets from their items", () => {
+		const menu = items(page({}));
+		expect(menu.sharing).toBe(false);
+		expect(menu.configuring).toBe(false);
+		act(() => {
+			menu.items.find((i) => i.id === "share-project")?.onPress();
+		});
+		expect(out.sharing).toBe(true);
+		act(() => {
+			out.items.find((i) => i.id === "project-settings")?.onPress();
+		});
+		expect(out.configuring).toBe(true);
+		act(() => out.closeShare());
+		expect(out.sharing).toBe(false);
 	});
 
 	it("gives a Contributor nothing", () => {

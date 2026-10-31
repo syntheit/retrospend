@@ -108,6 +108,7 @@ describe("/projects on iPad", () => {
 		const tree = render(ProjectScreen);
 		expect(tree.root.findAllByType("Redirect")).toHaveLength(0);
 		expect(only(tree, "ProjectView").props).toEqual({
+			fromLink: false,
 			id: "p1",
 			startAdding: false,
 			startSettling: true,

@@ -10,8 +10,9 @@ import { canArchiveProject, canEditProject } from "./projectForm";
 import type { ProjectPage } from "./source";
 
 /**
- * Edit, Archive and Restore for one project, as items of its overflow menu.
- * Edit opens the project sheet. Archive asks first (a native alert: no money
+ * Edit, Add person, Share, Settings, Archive and Restore for one project, as
+ * items of its overflow menu. Edit opens the project sheet, Share the share
+ * sheet and Settings the settings sheet (switches and member dates). Archive asks first (a native alert: no money
  * moves) and ends with a toast that restores it, since the API restores with
  * the same write. What the role may not do is left out; the server checks it
  * again.
@@ -26,12 +27,18 @@ export function useProjectActions(
 	closeEdit: () => void;
 	adding: boolean;
 	closeAdd: () => void;
+	sharing: boolean;
+	closeShare: () => void;
+	configuring: boolean;
+	closeSettings: () => void;
 } {
 	const t = useTranslations("mobile.projects.actions");
 	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const toast = useToast();
 	const [editing, setEditing] = useState(false);
+	const [sharing, setSharing] = useState(false);
+	const [configuring, setConfiguring] = useState(false);
 	// A link or a project just made "with others" opens Add person at once.
 	const [adding, setAdding] = useState(startAdding);
 	useEffect(() => {
@@ -96,6 +103,20 @@ export function useProjectActions(
 			onPress: () => setAdding(true),
 		});
 	}
+	if (canEditProject(page.myRole)) {
+		items.push(
+			{
+				id: "share-project",
+				label: t("share"),
+				onPress: () => setSharing(true),
+			},
+			{
+				id: "project-settings",
+				label: t("settings"),
+				onPress: () => setConfiguring(true),
+			},
+		);
+	}
 	if (canArchiveProject(page.myRole)) {
 		items.push(
 			page.status === "ARCHIVED"
@@ -130,5 +151,9 @@ export function useProjectActions(
 		closeEdit: () => setEditing(false),
 		adding,
 		closeAdd: () => setAdding(false),
+		sharing,
+		closeShare: () => setSharing(false),
+		configuring,
+		closeSettings: () => setConfiguring(false),
 	};
 }

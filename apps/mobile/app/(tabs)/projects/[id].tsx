@@ -7,11 +7,13 @@ import { PROJECTS_APART } from "@/layout/destinations";
 export default function ProjectScreen() {
 	// Android: a pushed detail page has no floating add button; iOS keeps it.
 	useHideAddButton(Platform.OS === "android");
-	const { id, name, settle, add } = useLocalSearchParams<{
+	const { id, name, settle, add, link, invite } = useLocalSearchParams<{
 		id: string;
 		name?: string;
 		settle?: string;
 		add?: string;
+		link?: string;
+		invite?: string;
 	}>();
 	// Phones keep projects inside the People tab.
 	if (!PROJECTS_APART) {
@@ -24,6 +26,8 @@ export default function ProjectScreen() {
 						...(name ? { name } : {}),
 						...(settle ? { settle } : {}),
 						...(add ? { add } : {}),
+						...(link ? { link } : {}),
+						...(invite ? { invite } : {}),
 					},
 				}}
 			/>
@@ -31,7 +35,9 @@ export default function ProjectScreen() {
 	}
 	return (
 		<ProjectView
+			fromLink={link === "1"}
 			id={id}
+			invite={invite}
 			name={name}
 			startAdding={add === "person"}
 			startSettling={settle === "1"}

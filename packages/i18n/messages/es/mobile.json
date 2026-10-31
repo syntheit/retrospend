@@ -1961,7 +1961,9 @@
 			"restored": "{name} restaurado",
 			"archiveError": "No se pudo archivar. Inténtalo de nuevo.",
 			"restoreError": "No se pudo restaurar. Inténtalo de nuevo.",
-			"addPerson": "Agregar persona"
+			"addPerson": "Agregar persona",
+			"share": "Compartir proyecto",
+			"settings": "Ajustes del proyecto"
 		},
 		"addPerson": {
 			"title": "Agregar persona",
@@ -1978,6 +1980,106 @@
 			"submit": "Agregar al proyecto",
 			"added": "{name} agregado",
 			"error": "No se pudo agregar a esta persona. Inténtalo de nuevo."
+		},
+		"share": {
+			"title": "Compartir proyecto",
+			"links": "Enlaces de invitación",
+			"loading": "Cargando",
+			"loadError": "No se pudieron cargar los enlaces de invitación.",
+			"roles": {
+				"CONTRIBUTOR": "Puede agregar gastos",
+				"VIEWER": "Puede ver"
+			},
+			"on": "Cualquiera con el enlace puede sumarse",
+			"off": "Desactivado",
+			"create": "Crear enlace",
+			"copy": "Copiar",
+			"share": "Compartir",
+			"newLink": "Enlace nuevo",
+			"newLinkTitle": "¿Reemplazar este enlace?",
+			"newLinkBody": "El enlace anterior deja de funcionar. Quienes ya se sumaron siguen en el proyecto.",
+			"newLinkConfirm": "Reemplazar",
+			"turnOff": "Desactivar",
+			"turnOffTitle": "¿Desactivar este enlace?",
+			"turnOffBody": "Nadie podrá sumarse con él. Quienes ya se sumaron siguen en el proyecto.",
+			"turnOffConfirm": "Desactivar",
+			"linkError": "No se pudo cambiar el enlace. Inténtalo de nuevo.",
+			"linksHint": "Quien tenga un enlace se suma con ese rol.",
+			"copied": "Enlace copiado",
+			"copyFailed": "No se pudo copiar el enlace.",
+			"shareFailed": "No se pudo abrir el menú de compartir.",
+			"public": "Página pública",
+			"publicHint": "Quien tenga la dirección ve los totales y los gastos, nunca saldos ni correos.",
+			"publicOwner": "Solo un organizador cambia esto.",
+			"copyPublic": "Copiar dirección de la página",
+			"nowPublic": "La página del proyecto es pública",
+			"nowPrivate": "La página del proyecto es privada",
+			"publicError": "No se pudo cambiar la página. Inténtalo de nuevo.",
+			"accessTitle": "Quién ve qué",
+			"access": {
+				"members": "Las personas del proyecto ven lo que permite su rol.",
+				"link": {
+					"CONTRIBUTOR": "Quien tenga el enlace para agregar se suma y puede agregar gastos.",
+					"VIEWER": "Quien tenga el enlace para ver se suma y puede ver."
+				},
+				"publicOn": "Quien tenga la dirección de la página ve totales y gastos, nunca saldos ni correos.",
+				"publicOff": "La página del proyecto es privada."
+			}
+		},
+		"settings": {
+			"title": "Ajustes del proyecto",
+			"submit": "Guardar",
+			"autoAccept": "Las partes nuevas cuentan sin revisión",
+			"autoAcceptHint": "Las partes que se agregan a un reparto de este proyecto cuentan como aceptadas.",
+			"exclude": "Dejar este proyecto fuera de mis estadísticas",
+			"excludeHint": "Solo para ti. Los demás miembros no se ven afectados.",
+			"members": "Miembros",
+			"since": "Desde {date}",
+			"fromStart": "Desde el inicio",
+			"left": "Se fue el {date}",
+			"you": "{name} (tú)",
+			"datesHint": "Las fechas eligen a quién incluyen los gastos nuevos. Los gastos guardados mantienen su reparto.",
+			"datesTitle": "Fechas de {name}",
+			"saved": "Ajustes del proyecto guardados",
+			"undone": "Ajustes restaurados",
+			"undoError": "No se pudo deshacer. Inténtalo de nuevo."
+		},
+		"dates": {
+			"submit": "Guardar fechas",
+			"joined": "Se sumó",
+			"left": "Se fue",
+			"fromStart": "Desde el inicio",
+			"stillHere": "Sigue",
+			"onADay": "Un día",
+			"order": "El día de salida tiene que ser posterior al de entrada.",
+			"leaves": "Desde el {date}, los gastos nuevos dejan fuera a {name} por defecto.",
+			"joins": "Desde el {date}, los gastos nuevos incluyen a {name} por defecto.",
+			"always": "Los gastos nuevos incluyen a {name} por defecto.",
+			"hint": "Los gastos guardados mantienen su reparto.",
+			"you": "Tú",
+			"saved": "Fechas de {name} guardadas",
+			"undone": "Fechas restauradas",
+			"undoError": "No se pudo deshacer. Inténtalo de nuevo.",
+			"figures": {
+				"project_total": "Total del grupo",
+				"project_member_balance": "{name} en el grupo",
+				"project_member_share": "Parte de {name}",
+				"project_member_paid": "{name} pagó",
+				"owed_owedToYou": "Te deben",
+				"owed_youOwe": "Debes",
+				"balance_person": "Tú y {name}",
+				"other": "Otra cifra"
+			},
+			"figuresInline": {
+				"project_total": "el total del grupo",
+				"project_member_balance": "el saldo de {name} en el grupo",
+				"project_member_share": "la parte de {name}",
+				"project_member_paid": "lo que pagó {name}",
+				"owed_owedToYou": "lo que te deben",
+				"owed_youOwe": "lo que debes",
+				"balance_person": "tu saldo con {name}",
+				"other": "otra cifra"
+			}
 		}
 	},
 	"settings": {

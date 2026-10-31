@@ -1961,7 +1961,9 @@
 			"restored": "{name} restored",
 			"archiveError": "Couldn't archive. Try again.",
 			"restoreError": "Couldn't restore. Try again.",
-			"addPerson": "Add person"
+			"addPerson": "Add person",
+			"share": "Share project",
+			"settings": "Project settings"
 		},
 		"addPerson": {
 			"title": "Add person",
@@ -1978,6 +1980,106 @@
 			"submit": "Add to project",
 			"added": "{name} added",
 			"error": "Couldn't add this person. Try again."
+		},
+		"share": {
+			"title": "Share project",
+			"links": "Invite links",
+			"loading": "Loading",
+			"loadError": "Couldn't load the invite links.",
+			"roles": {
+				"CONTRIBUTOR": "Can add expenses",
+				"VIEWER": "Can view"
+			},
+			"on": "Anyone with the link can join",
+			"off": "Off",
+			"create": "Create link",
+			"copy": "Copy",
+			"share": "Share",
+			"newLink": "New link",
+			"newLinkTitle": "Replace this link?",
+			"newLinkBody": "The old link stops working. People who already joined stay.",
+			"newLinkConfirm": "Replace",
+			"turnOff": "Turn off",
+			"turnOffTitle": "Turn off this link?",
+			"turnOffBody": "Nobody can join with it any more. People who already joined stay.",
+			"turnOffConfirm": "Turn off",
+			"linkError": "Couldn't change the link. Try again.",
+			"linksHint": "Anyone with a link joins with that role.",
+			"copied": "Link copied",
+			"copyFailed": "Couldn't copy the link.",
+			"shareFailed": "Couldn't open the share sheet.",
+			"public": "Public page",
+			"publicHint": "Anyone with the address sees the totals and the expenses, never balances or emails.",
+			"publicOwner": "Only an Organizer changes this.",
+			"copyPublic": "Copy page address",
+			"nowPublic": "The project page is public",
+			"nowPrivate": "The project page is private",
+			"publicError": "Couldn't change the page. Try again.",
+			"accessTitle": "Who can see what",
+			"access": {
+				"members": "People in the project see what their role allows.",
+				"link": {
+					"CONTRIBUTOR": "Anyone with the add link joins and can add expenses.",
+					"VIEWER": "Anyone with the view link joins and can view."
+				},
+				"publicOn": "Anyone with the page address sees totals and expenses, never balances or emails.",
+				"publicOff": "The project page is private."
+			}
+		},
+		"settings": {
+			"title": "Project settings",
+			"submit": "Save",
+			"autoAccept": "New shares count without a review",
+			"autoAcceptHint": "Shares added to a split in this project count as accepted.",
+			"exclude": "Leave this project out of my insights",
+			"excludeHint": "Only for you. Other members are not affected.",
+			"members": "Members",
+			"since": "Since {date}",
+			"fromStart": "From the start",
+			"left": "Left {date}",
+			"you": "{name} (you)",
+			"datesHint": "Dates choose who new expenses include. Saved expenses keep their splits.",
+			"datesTitle": "Dates for {name}",
+			"saved": "Project settings saved",
+			"undone": "Settings restored",
+			"undoError": "Couldn't undo. Try again."
+		},
+		"dates": {
+			"submit": "Save dates",
+			"joined": "Joined",
+			"left": "Left",
+			"fromStart": "From the start",
+			"stillHere": "Still here",
+			"onADay": "On a day",
+			"order": "The leave day must be after the join day.",
+			"leaves": "From {date}, new expenses leave {name} out by default.",
+			"joins": "From {date}, new expenses include {name} by default.",
+			"always": "New expenses include {name} by default.",
+			"hint": "Saved expenses keep their splits.",
+			"you": "You",
+			"saved": "Saved the dates for {name}",
+			"undone": "Dates restored",
+			"undoError": "Couldn't undo. Try again.",
+			"figures": {
+				"project_total": "Group total",
+				"project_member_balance": "{name} in the group",
+				"project_member_share": "{name}'s share",
+				"project_member_paid": "{name} paid",
+				"owed_owedToYou": "Owed to you",
+				"owed_youOwe": "You owe",
+				"balance_person": "You and {name}",
+				"other": "Another figure"
+			},
+			"figuresInline": {
+				"project_total": "the group total",
+				"project_member_balance": "{name}'s balance in the group",
+				"project_member_share": "{name}'s share",
+				"project_member_paid": "what {name} paid",
+				"owed_owedToYou": "what people owe you",
+				"owed_youOwe": "what you owe",
+				"balance_person": "your balance with {name}",
+				"other": "another figure"
+			}
 		}
 	},
 	"settings": {
