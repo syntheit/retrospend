@@ -17,5 +17,5 @@ export function ActivityTabs({ current }: { current: ActivityTabId }) {
 		{ id: "recurring", label: t("recurring"), href: entryOf("recurring").href },
 		{ id: "insights", label: t("insights"), href: entryOf("insights").href },
 	];
-	return <PageTabs current={current} items={tabs} />;
+	return <PageTabs current={current} group="activity" items={tabs} />;
 }

@@ -187,6 +187,7 @@ export function ActivityList(props: Props) {
 				bulk={bulk.bulk}
 				canSelect={bulk.canSelect}
 				empty={props.empty}
+				fill
 				groups={{ by: "day", label: day, total }}
 				onOpen={onOpen}
 				rowArea={rowArea}

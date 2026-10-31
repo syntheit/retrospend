@@ -112,7 +112,7 @@ export function ActivityPage() {
 		/>
 	);
 	return (
-		<PageFrame label="activity">
+		<PageFrame fill label="activity">
 			<PageHeader
 				overflow={<Overflow />}
 				sub={a.count != null ? t("header.sub", { count: a.count }) : undefined}

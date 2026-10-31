@@ -14,6 +14,7 @@ import type { MoneyValue } from "~/components/money/format";
 import { Money } from "~/components/money/money";
 import type { TransactionVM } from "~/components/rows/types";
 import { TableCell, TableRow } from "~/components/ui/table";
+import { cn } from "~/lib/cn";
 import { BulkBar } from "./bulk-bar";
 import { useElementWidth } from "./column-fit";
 import { type TableGroups, withGroupRows } from "./group-rows";
@@ -119,6 +120,7 @@ export function TransactionTable({
 	onOpen,
 	empty,
 	sort,
+	fill,
 	className,
 }: {
 	rows: TransactionVM[];
@@ -151,6 +153,8 @@ export function TransactionTable({
 	empty?: ReactNode;
 	/** The starting sort, as column ids ("amount", "date"); the header changes it. */
 	sort?: { id: string; desc: boolean }[];
+	/** Fills the height its parent gives it: the rows scroll, the footer stays. */
+	fill?: boolean;
 	className?: string;
 }) {
 	const t = useTranslations("rows.table");
@@ -180,18 +184,25 @@ export function TransactionTable({
 	const after = span - amountAt - 1;
 	const ids = [...sel.live];
 	return (
-		<div className={className} data-slot="transaction-table">
+		<div
+			className={cn(fill && "flex min-h-64 flex-1 flex-col", className)}
+			data-slot="transaction-table"
+		>
 			{bulk && (
 				<BulkBar count={ids.length} onClear={sel.clear}>
 					{bulk(ids, sel.clear)}
 				</BulkBar>
 			)}
-			<div className={TABLE_LOOK} ref={panel}>
+			<div
+				className={cn(TABLE_LOOK, fill && "flex min-h-0 flex-1 flex-col")}
+				ref={panel}
+			>
 				<SelectionContext.Provider value={sel.context}>
 					<DataTable
 						columns={columns}
 						data={rows}
 						emptyState={empty}
+						fillHeight={fill}
 						footer={
 							total && (
 								<TableRow>

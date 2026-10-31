@@ -217,3 +217,33 @@ async function openV2Search(page: Page, q: string) {
 	await page.keyboard.type(q);
 	await expect(page).toHaveURL(new RegExp(`q=${q}`));
 }
+
+test("Activity: tabs swap the page at once and the list fills the window on desktop", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openV2(page, "/activity");
+	const main = page.getByRole("main");
+	await expect(main.locator("tfoot")).toBeVisible();
+
+	// The list runs to the bottom of the window, not to the end of its rows.
+	const panel = main.locator('[data-slot="transaction-table"]');
+	const bottom = await panel.evaluate(
+		(el) => el.getBoundingClientRect().bottom,
+	);
+	expect(bottom).toBeGreaterThan(900 - 80);
+
+	// The page wrapper stays, so no entrance plays on a tab; the indicator slides.
+	const wrapper = page.locator("#main-content > div");
+	await wrapper.evaluate((el) => el.setAttribute("data-probe", "1"));
+	await main.getByRole("link", { name: "Insights" }).click();
+	await expect(page).toHaveURL(/\/activity\/insights/);
+	await expect(
+		page.locator('[data-ui="v2"][data-page="insights"]'),
+	).toBeVisible();
+	await expect(wrapper).toHaveAttribute("data-probe", "1");
+	await expect(main.locator('[data-slot="tab-indicator"]')).toHaveAttribute(
+		"data-animate",
+		"true",
+	);
+});
