@@ -1,0 +1,14 @@
+{
+  "sections": "Seções do administrador",
+  "users": "Usuários",
+  "activeThisWeek": "Ativos esta semana",
+  "expensesThisMonth": "Despesas este mês",
+  "storage": "Armazenamento",
+  "storageDetail": "{database} de banco de dados, {media} de arquivos",
+  "serverVersion": "Versão do servidor",
+  "unreadFeedback": "Feedback não lido",
+  "errorReports": "Relatórios de erro",
+  "invitesUsed": "Convites usados",
+  "invitesOpen": "{count} abertos",
+  "tabServer": "Servidor"
+}

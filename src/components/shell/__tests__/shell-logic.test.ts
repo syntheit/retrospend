@@ -96,6 +96,7 @@ describe("palette Go to", () => {
 			"/import",
 			"/currencies",
 			"/settings",
+			"/profile",
 			"/activity/recurring",
 			"/activity/insights",
 		]);
@@ -104,7 +105,6 @@ describe("palette Go to", () => {
 	it("adds the Settings sections once the person types", () => {
 		const sections = goToItems(true).filter((i) => i.label.section);
 		expect(sections.map((i) => i.href)).toEqual([
-			"/settings#profile",
 			"/settings#preferences",
 			"/settings#categories",
 			"/settings#payment",

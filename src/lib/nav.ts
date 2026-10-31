@@ -93,7 +93,6 @@ export function entryOf(id: NavId): NavEntry {
 
 /** Settings sections, by their anchor id on the Settings page. */
 export const SETTINGS_SECTIONS = [
-	"profile",
 	"preferences",
 	"categories",
 	"payment",

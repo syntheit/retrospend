@@ -4,7 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Section } from "~/components/layout/section";
 import { SettingRow, SettingRows } from "~/features/settings/setting-row";
-import { formatBytes, formatUptime } from "~/lib/format";
+import { formatUptime } from "~/lib/format";
 import { api } from "~/trpc/react";
 
 const WORKER_FRESH_MS = 20 * 60 * 1000;
@@ -15,7 +15,7 @@ function Value({ children }: { children: React.ReactNode }) {
 
 /**
  * How the server is doing, one row each: the sidecar, AI import, the import
- * queue, the database and backups. The word is the status, never a color.
+ * queue and backups (the database size is a figure at the top of the page). The word is the status, never a color.
  */
 export function AdminOverviewStats() {
 	const t = useTranslations("admin");
@@ -23,9 +23,6 @@ export function AdminOverviewStats() {
 		undefined,
 		{ refetchInterval: 30000 },
 	);
-	const { data: serverStats } = api.admin.getServerStats.useQuery(undefined, {
-		refetchInterval: 30000,
-	});
 	const { data: sidecarStatus } = api.system.checkSidecarStatus.useQuery(
 		undefined,
 		{ refetchInterval: 30000 },
@@ -96,12 +93,6 @@ export function AdminOverviewStats() {
 					<Value>
 						{`${importQueueStats?.currentProcessing ?? 0} / ${importQueueStats?.maxConcurrent ?? 3}`}
 					</Value>
-				</SettingRow>
-				<SettingRow
-					label={t("database")}
-					meta={`${formatBytes(serverStats?.storageSize ?? 0)} ${t("media")}`}
-				>
-					<Value>{formatBytes(serverStats?.databaseSize ?? 0)}</Value>
 				</SettingRow>
 				<SettingRow
 					label={t("backups")}

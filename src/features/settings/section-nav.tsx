@@ -41,7 +41,7 @@ export function useSectionSpy(
 	scroller: RefObject<HTMLElement | null>,
 	ids: readonly SectionId[],
 ) {
-	const [current, setCurrent] = useState<SectionId>(ids[0] ?? "profile");
+	const [current, setCurrent] = useState<SectionId>(ids[0] ?? "preferences");
 
 	useEffect(() => {
 		const root = scroller.current;

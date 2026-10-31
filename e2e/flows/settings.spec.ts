@@ -31,7 +31,6 @@ test.describe("Settings v2", () => {
 
 		const main = page.getByRole("main");
 		for (const name of [
-			"Profile",
 			"Preferences",
 			"Categories",
 			"Payment methods",
@@ -44,8 +43,8 @@ test.describe("Settings v2", () => {
 			await expect(main.getByRole("heading", { level: 2, name })).toBeVisible();
 		// Monthly income is gone (IMPLEMENTATION §1.1).
 		await expect(main.getByText(/monthly income/i)).toHaveCount(0);
-		// Labels name their fields (GAPS §8).
-		await expect(page.getByLabel("Display name")).toHaveValue(SOFIA.name);
+		// Your profile has its own page now.
+		await expect(main.getByRole("heading", { name: "Profile" })).toHaveCount(0);
 		// The seeded categories are listed with their counts.
 		await expect(main.getByText(/\d+ expenses?/).first()).toBeVisible();
 
@@ -205,7 +204,7 @@ test.describe("Settings v2", () => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		await openSettings(page);
 		const tabs = page.getByRole("navigation", { name: "Settings sections" });
-		await expect(tabs.getByRole("link", { name: "Profile" })).toBeVisible();
+		await expect(tabs.getByRole("link", { name: "Preferences" })).toBeVisible();
 		await tabs.getByRole("link", { name: "Notifications" }).click();
 		await expect(page).toHaveURL(/#notifications$/);
 		await expect(

@@ -12,8 +12,8 @@ import {
 	defaultBackgroundSettings,
 } from "~/lib/background-settings";
 import { api } from "~/trpc/react";
-import { useAutosave, useSaveGuard } from "../autosave";
-import { SelectField } from "../select-field";
+import { useAutosave, useSaveGuard } from "~/features/settings/autosave";
+import { SelectField } from "~/features/settings/select-field";
 
 type SymbolSet = BackgroundSettings["symbolSets"][number];
 const SYMBOLS: SymbolSet[] = ["currency", "math", "finance"];

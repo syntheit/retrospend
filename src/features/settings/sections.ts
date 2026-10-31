@@ -8,7 +8,6 @@ import {
 	SlidersHorizontal,
 	Tags,
 	TriangleAlert,
-	User,
 } from "lucide-react";
 
 /**
@@ -17,7 +16,6 @@ import {
  * the palette) lands on it. Danger zone sits apart at the end of the nav.
  */
 export const SECTIONS = [
-	"profile",
 	"preferences",
 	"categories",
 	"payment",
@@ -31,7 +29,6 @@ export const SECTIONS = [
 export type SectionId = (typeof SECTIONS)[number];
 
 export const SECTION_ICONS: Record<SectionId, LucideIcon> = {
-	profile: User,
 	preferences: SlidersHorizontal,
 	categories: Tags,
 	payment: CreditCard,
@@ -64,7 +61,7 @@ export function activeSection(
 ): SectionId | null {
 	if (tops.length === 0) return null;
 	if (atEnd) return tops[tops.length - 1]?.id ?? null;
-	let current: SectionId = tops[0]?.id ?? "profile";
+	let current: SectionId = tops[0]?.id ?? "preferences";
 	for (const s of tops) if (s.top <= line) current = s.id;
 	return current;
 }
