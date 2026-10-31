@@ -76,6 +76,10 @@ describe("deviceSession router (signed-in devices)", () => {
 		});
 		webToken = web.token;
 		webId = web.id;
+		// Sign-up also opened a session; keep the one the test signs in with.
+		await adminDb.session.deleteMany({
+			where: { userId, id: { not: webId } },
+		});
 		// Signed in two days ago: not "fresh" for better-auth's session list.
 		const twoDaysAgo = new Date(Date.now() - 2 * DAY);
 		await adminDb.session.update({
