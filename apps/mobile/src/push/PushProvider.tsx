@@ -1,5 +1,4 @@
 import Constants from "expo-constants";
-import { useRouter } from "expo-router";
 import {
 	createContext,
 	type ReactNode,
@@ -13,10 +12,12 @@ import { AppState, Platform } from "react-native";
 import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
 import { createSqliteStore } from "@/data/sqlite-store";
+import { openTarget } from "@/features/notifications/openTarget";
+import { pushTarget } from "@/features/notifications/rules";
 import { apns } from "./apns";
 import { createPushControl, type EnableResult } from "./control";
 import { createEnabledStore, pushScope } from "./enabled";
-import { parsePushPayload, routeFor } from "./kinds";
+import { parsePushPayload } from "./kinds";
 
 // Push for the signed-in account, for the screens that show or change it.
 // Keeping it alive across launches (registering the iOS token again, taps
@@ -44,7 +45,6 @@ function sandboxBuild(): boolean {
 export function PushProvider({ children }: { children: ReactNode }) {
 	const { connection } = useServerConnection();
 	const { state, api } = useSession();
-	const router = useRouter();
 	const baseUrl = connection.status === "connected" ? connection.baseUrl : null;
 	const meId = state.status === "signedIn" ? (state.me?.id ?? null) : null;
 	const [on, setOn] = useState(false);
@@ -102,13 +102,15 @@ export function PushProvider({ children }: { children: ReactNode }) {
 		const offTap = apns.onTap((raw) => {
 			const payload = parsePushPayload(raw);
 			// Next tick: a cold start taps before the signed-in screens mount.
-			if (payload) setTimeout(() => router.navigate(routeFor(payload.type)), 0);
+			if (payload) {
+				setTimeout(() => openTarget(pushTarget(payload), "navigate"), 0);
+			}
 		});
 		return () => {
 			offToken();
 			offTap();
 		};
-	}, [control, router]);
+	}, [control]);
 
 	const enable = useCallback(async (): Promise<EnableResult> => {
 		if (!control) return "unavailable";

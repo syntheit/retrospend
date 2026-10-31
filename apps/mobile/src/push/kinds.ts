@@ -131,7 +131,21 @@ export function routeFor(kind: PushKind): "/activity" | "/people" | "/home" {
 	}
 }
 
-/** The link an Android notification opens, handled by Expo Router. */
-export function deepLinkFor(kind: PushKind): string {
+/**
+ * The link an Android notification opens, handled by Expo Router. A shared
+ * expense names its entry, so the link opens that expense (the Activity id
+ * of a split is `shared:<id>`); the others open their place.
+ */
+export function deepLinkFor(
+	kind: PushKind,
+	entity?: { type: string; id: string } | null,
+): string {
+	if (
+		(kind === "shared_expense.created" || kind === "shared_expense.updated") &&
+		entity?.type === "shared_expense" &&
+		entity.id !== ""
+	) {
+		return `retrospend://activity/shared:${entity.id}`;
+	}
 	return `retrospend://${routeFor(kind).slice(1)}`;
 }

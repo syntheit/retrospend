@@ -151,7 +151,7 @@ export function AccountTopBar({
 								end={newWord(unread.notifications)}
 								glyph="Bell"
 								label={t("notifications")}
-								onPress={go(() => router.push("/settings/notifications"))}
+								onPress={go(() => router.push("/settings/inbox"))}
 							/>
 						</SheetGroup>
 						<View style={{ gap: space[2] }}>

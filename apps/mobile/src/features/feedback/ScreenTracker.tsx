@@ -71,6 +71,7 @@ const PAGES: Record<string, ScreenKey> = {
 	"settings/categories": "categories",
 	"settings/payment-methods": "paymentMethods",
 	"settings/notifications": "notifications",
+	"settings/inbox": "notifications",
 	"settings/security": "security",
 	"settings/sessions": "sessions",
 	"settings/data": "data",
