@@ -187,11 +187,25 @@ test("Budget: one number, the groups, and every figure matches the server", asyn
 	).toBeVisible();
 	await expect(main.getByText(/^Left to spend in /)).toBeVisible();
 	// Every button opens a sheet, and a sheet that does not exist yet hides
-	// its button: the header menu still offers Plan next month.
+	// its button: the header shows the most used actions as buttons and
+	// keeps the rare ones in the menu.
+	const header = page.locator('[data-slot="page-header"]');
+	await expect(
+		header.getByRole("button", { name: "Add money in" }),
+	).toBeVisible();
+	await expect(
+		header.getByRole("button", { name: "Plan next month" }),
+	).toBeVisible();
+	await expect(
+		header.getByRole("button", { name: "What if I spend…" }),
+	).toBeVisible();
 	await main.getByRole("button", { name: "More actions for Budget" }).click();
 	await expect(
-		page.getByRole("menuitem", { name: "Plan next month" }),
+		page.getByRole("menuitem", { name: "Budget style" }),
 	).toBeVisible();
+	await expect(
+		page.getByRole("menuitem", { name: "Plan next month" }),
+	).toHaveCount(0);
 	await page.keyboard.press("Escape");
 	// The three groups, each folded to one row (Flex).
 	const table = main.getByRole("table", { name: "Envelopes" });

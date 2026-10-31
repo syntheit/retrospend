@@ -14,8 +14,7 @@
 		"searchLimits": "Rechercher des plafonds",
 		"chips": "Filtrer par statut",
 		"overspent": "Dépassées {count}",
-		"underfunded": "Sous-approvisionnées {count}",
-		"plan": "Planifier {month}"
+		"underfunded": "Sous-approvisionnées {count}"
 	},
 	"hero": {
 		"why": "Comment c'est calculé",
@@ -140,6 +139,15 @@
 			"open": "Attribuer de l'argent",
 			"fromWealth": "Déplacer depuis Patrimoine"
 		}
+	},
+	"insights": {
+		"title": "Dépenses et plan",
+		"spent": "<spent></spent> dépensés sur <planned></planned> prévus",
+		"bar": "Dépensé du plan",
+		"incomplete": "Exclu : lignes sans taux",
+		"mostOver": "Les plus au-dessus du plan",
+		"mostRoom": "Le plus de marge",
+		"trend": "Dépenses par mois"
 	},
 	"unavailable": {
 		"title": "Indisponible pour le moment",

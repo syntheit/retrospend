@@ -14,8 +14,7 @@
 		"searchLimits": "Limits suchen",
 		"chips": "Nach Status filtern",
 		"overspent": "Überzogen {count}",
-		"underfunded": "Unterdeckt {count}",
-		"plan": "{month} planen"
+		"underfunded": "Unterdeckt {count}"
 	},
 	"hero": {
 		"why": "So setzt es sich zusammen",
@@ -140,6 +139,15 @@
 			"open": "Geld zuweisen",
 			"fromWealth": "Aus Vermögen verschieben"
 		}
+	},
+	"insights": {
+		"title": "Ausgaben und Plan",
+		"spent": "<spent></spent> von <planned></planned> Plan ausgegeben",
+		"bar": "Ausgegeben vom Plan",
+		"incomplete": "Nicht enthalten: Zeilen ohne Kurs",
+		"mostOver": "Am meisten über dem Plan",
+		"mostRoom": "Am meisten übrig",
+		"trend": "Ausgaben pro Monat"
 	},
 	"unavailable": {
 		"title": "Gerade nicht verfügbar",

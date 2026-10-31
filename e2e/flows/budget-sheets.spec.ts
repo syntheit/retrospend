@@ -51,8 +51,18 @@ async function openBudget(page: Page, path = "/budget"): Promise<void> {
 	await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
 }
 
-/** The header's overflow menu: one of its items. */
+/**
+ * A header action: Add money in, Plan next month and What if I spend are
+ * buttons in the header (desktop); everything else is in the overflow menu.
+ */
 async function fromMenu(page: Page, item: RegExp | string): Promise<void> {
+	const direct = page
+		.locator('[data-slot="page-header"]')
+		.getByRole("button", { name: item });
+	if ((await direct.count()) > 0) {
+		await direct.first().click();
+		return;
+	}
 	await page.getByRole("button", { name: "More actions for Budget" }).click();
 	await page.getByRole("menuitem", { name: item }).click();
 }
