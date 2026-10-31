@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { TextInput, type TextInputProps, View } from "react-native";
 import { useTheme } from "@/theme";
-import { Text, typeStyle } from "./Text";
+import { TEXT_SCALE_CAP, Text, typeStyle } from "./Text";
 
 /** A field's label above it: 13/400 in fg-2, as in iOS Settings. */
 export function FieldLabel({ children }: { children: string }) {
@@ -135,6 +135,7 @@ export function TextField({
 					importantForAutofill={autoComplete ? "yes" : "auto"}
 					inputMode={inputMode}
 					keyboardType={keyboardType}
+					maxFontSizeMultiplier={TEXT_SCALE_CAP.body}
 					maxLength={maxLength}
 					multiline={multiline}
 					onBlur={() => focus(false)}

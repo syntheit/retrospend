@@ -1,6 +1,6 @@
 import { formatMoneyDraft } from "@retrospend/domain/parse";
 import { type ReactNode, useCallback, useState } from "react";
-import { useWindowDimensions, View } from "react-native";
+import { Keyboard, useWindowDimensions, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
@@ -97,8 +97,11 @@ export function ExpenseComposer({
 	// A pick in a panel, a swipe or a tap on a tab folds the keys away once
 	// there is an amount to add, so the panel can use the room.
 	const fold = useCallback(() => {
-		if (form.typedAmount !== null) form.setPadOpen(false);
-	}, [form]);
+		if (form.typedAmount === null) return;
+		form.setPadOpen(false);
+		// At the largest text sizes the amount is a field: folding lets its keyboard go.
+		if (system) Keyboard.dismiss();
+	}, [form, system]);
 	const goTo = (next: number) => {
 		setPage(next);
 		if (next !== 2) setPart(null);
@@ -338,6 +341,9 @@ export function ExpenseComposer({
 			keypadOpen={form.padOpen}
 			onKeypadOpen={typeAmount}
 			onPageChange={(next) => goTo(next)}
+			onScrollDrag={() => {
+				if (system) form.setPadOpen(false);
+			}}
 			onTab={() => goTo((page + 1) % PANELS.length)}
 			page={page}
 			panels={panels}

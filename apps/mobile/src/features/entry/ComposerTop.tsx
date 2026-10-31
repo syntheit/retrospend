@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Menu } from "@/ui/Menu";
@@ -55,7 +55,14 @@ export function ComposerTop({
 				</Text>
 			) : modes.length > 1 ? (
 				// The M3 segmented button draws its outline past its box.
-				<View style={{ paddingVertical: space[1] }}>
+				// iOS draws it as wide as its words, at the end; Android fills what it is given.
+				<View
+					style={{
+						flex: 1,
+						alignItems: Platform.OS === "ios" ? "flex-end" : "stretch",
+						paddingVertical: space[1],
+					}}
+				>
 					<Segmented
 						accessibilityLabel={t("mode")}
 						onChange={onModeChange}
