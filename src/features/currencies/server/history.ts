@@ -71,8 +71,8 @@ function sample(source: Source, days: string[]): (Dec | undefined)[] {
 	let at = 0;
 	let current: Dec | undefined;
 	return days.map((day) => {
-		while (source[at] && source[at].day <= day) {
-			current = source[at]?.value;
+		for (let p = source[at]; p && p.day <= day; p = source[at]) {
+			current = p.value;
 			at++;
 		}
 		return current;
@@ -106,7 +106,7 @@ const empty = (
 	home: string,
 	range: HistoryRange,
 ): RateHistory => ({
-	code,
+	currency: code,
 	home,
 	range,
 	base: null,
@@ -235,7 +235,7 @@ export function buildRateHistory(input: {
 		};
 	});
 	return {
-		code,
+		currency: code,
 		home,
 		range,
 		base: unit,

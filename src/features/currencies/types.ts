@@ -91,7 +91,7 @@ export type HistorySeries = {
  * comparable between points and rate types.
  */
 export type RateHistory = {
-	code: string;
+	currency: string;
 	home: string;
 	range: HistoryRange;
 	/** The one unit every point shares; null with no history. */

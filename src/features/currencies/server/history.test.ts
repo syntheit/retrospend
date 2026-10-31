@@ -77,8 +77,8 @@ describe("buildRateHistory", () => {
 			today: "2026-10-31",
 		});
 		expect(h.series.map((s) => s.type)).toEqual(["market"]);
-		// 60,000 USD at ARS blue 1400 on the day both exist.
-		expect(minors(h, "market")).toEqual([8400000000]);
+		// 60,000 USD at ARS blue 1400, 1450 and 1500 (the coin carries over).
+		expect(minors(h, "market")).toEqual([8400000000, 8700000000, 9000000000]);
 	});
 
 	it("gives no history when either side has no rate, never a 1", () => {
@@ -146,7 +146,7 @@ describe("buildRateHistory", () => {
 describe("rangeStart", () => {
 	it("counts calendar days back and leaves ALL open", () => {
 		expect(rangeStart("1M", "2026-10-31")).toBe("2026-10-01");
-		expect(rangeStart("3M", "2026-10-31")).toBe("2026-07-31");
+		expect(rangeStart("3M", "2026-10-31")).toBe("2026-08-01");
 		expect(rangeStart("1Y", "2026-10-31")).toBe("2025-10-31");
 		expect(rangeStart("ALL", "2026-10-31")).toBeNull();
 	});
