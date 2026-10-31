@@ -36,7 +36,7 @@ export function ProjectPanel({
 	const rows = editing ? projects.filter((p) => p.id === value) : projects;
 	const personal = (
 		<ProjectRow
-			accessibilityLabel={`${t("project.none")}, ${t("project.onlyYou")}`}
+			accessibilityLabel={`${t("context.personal")}, ${t("project.onlyYou")}`}
 			cover={
 				<View
 					accessibilityElementsHidden
