@@ -48,7 +48,6 @@ export const SETTINGS_SCREENS: readonly {
 	large?: true;
 	redirect?: true;
 }[] = [
-	{ name: "search" },
 	{ name: "settings/index", title: "title", large: true },
 	{ name: "settings/profile", title: "profile.title" },
 	{ name: "settings/preferences", title: "root.preferences" },
@@ -60,6 +59,7 @@ export const SETTINGS_SCREENS: readonly {
 	{ name: "settings/data", title: "data.title" },
 	{ name: "settings/danger", title: "root.danger" },
 	{ name: "settings/currencies" },
+	{ name: "settings/search" },
 	{ name: "settings/recurring", redirect: true },
 	{ name: "settings/admin", title: "title", ns: "admin" },
 	{ name: "settings/admin-users", title: "users.title", ns: "admin" },

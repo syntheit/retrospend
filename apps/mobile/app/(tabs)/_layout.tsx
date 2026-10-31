@@ -17,7 +17,7 @@ function TabsWithAdd() {
 		{
 			add: () => open("expense"),
 			search: () => {
-				if (!focusSearch()) router.push("/search");
+				if (!focusSearch()) router.push("/settings/search");
 			},
 		},
 	);

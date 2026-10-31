@@ -101,7 +101,7 @@ export default function HomeScreen() {
 						id: "search",
 						icon: "Search",
 						label: ts("search"),
-						onPress: () => router.push("/search"),
+						onPress: () => router.push("/settings/search"),
 					},
 				]}
 				title={t("title")}
