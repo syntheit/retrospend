@@ -131,8 +131,7 @@
 		"language": "Language",
 		"timeZone": "Time zone",
 		"timeZoneMeta": "Used when your device does not share its own",
-		"hideBalances": "Hide balances on Wealth",
-		"hideBalancesMeta": "Until you tap the eye",
+		"hideBalances": "Hide balances by default",
 		"chartTap": "Tapping a category in a chart",
 		"chartTapOpen": "Opens its expenses",
 		"chartTapHide": "Hides it from the chart",
@@ -212,7 +211,27 @@
 		"twoFactorOff": "Off",
 		"turnOn": "Turn on",
 		"turnOff": "Turn off",
-		"backupCodes": "Backup codes"
+		"backupCodes": "Backup codes",
+		"devices": {
+			"title": "Signed-in devices",
+			"current": "This device",
+			"lastUsed": "Last used {date}",
+			"signedIn": "Signed in {date}",
+			"signedOut": "{name} is signed out",
+			"failed": "Couldn't finish. Try again.",
+			"none": "You're not signed in anywhere else.",
+			"name": {
+				"browserOn": "{browser} on {system}",
+				"app": "Retrospend app",
+				"appOn": "Retrospend app on {system}",
+				"web": "Web browser",
+				"webOn": "Web browser on {system}",
+				"cli": "Command line",
+				"desktop": "Desktop app",
+				"mcp": "MCP client",
+				"device": "Approved device"
+			}
+		}
 	},
 	"password": {
 		"title": "Change password",
@@ -280,11 +299,6 @@
 			"write_settings": "Settings",
 			"admin": "Admin"
 		},
-		"devices": "Approved devices",
-		"noDevices": "No approved devices",
-		"noDevicesHint": "Apps you connect with a code at /device show here.",
-		"approvedOn": "Approved {date}",
-		"disconnected": "Disconnected {name}",
 		"failed": "Couldn't finish. Try again.",
 		"newTitle": "New API key",
 		"name": "Name",
@@ -517,6 +531,6 @@
 		"github": "GitHub",
 		"matrix": "Matrix",
 		"donate": "Donate",
-		"madeBy": "Made by <name>Daniel Miller</name>"
+		"madeBy": "Made by Daniel Miller"
 	}
 }

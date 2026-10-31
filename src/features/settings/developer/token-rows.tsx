@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, Laptop } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { useDateFormat } from "~/components/pickers/use-date-format";
@@ -13,7 +13,6 @@ import { cn } from "~/lib/cn";
 import { SectionUnavailable } from "../section-shell";
 import {
 	type ApiToken,
-	type ApprovedDevice,
 	isExpired,
 	orderScopes,
 } from "./tokens";
@@ -21,11 +20,9 @@ import {
 /** The words for a token's scopes ("Read, Expenses") and its dates. */
 export function useTokenWords() {
 	const t = useTranslations("settingsV2.developer");
-	const tClient = useTranslations("device.clients");
 	const dates = useDateFormat();
 	return {
 		day: (d: Date) => dates.medium(formatDateOnly(d)),
-		client: (id: string) => (tClient.has(id) ? tClient(id) : id),
 		scopes: (scopes: ApiToken["scopes"]) =>
 			orderScopes(scopes)
 				.map((s) => t(`scope.${s.replace(":", "_")}`))
@@ -110,40 +107,6 @@ export function KeyRow({
 				/>
 			}
 			title={k.name}
-		/>
-	);
-}
-
-export function DeviceRow({
-	device: d,
-	onDisconnect,
-}: {
-	device: ApprovedDevice;
-	onDisconnect: () => void;
-}) {
-	const t = useTranslations("settingsV2.developer");
-	const w = useTokenWords();
-	const name = w.client(d.clientId);
-	return (
-		<Row
-			actions={
-				<ActionMenu
-					entity="device"
-					handlers={{ disconnect: onDisconnect }}
-					target={{ id: d.id, name }}
-				/>
-			}
-			lead={<IconTile icon={Laptop} />}
-			sub={
-				<RowSub
-					parts={[
-						w.scopes(d.scopes),
-						t("approvedOn", { date: w.day(d.approvedAt) }),
-						t("lastUsed", { date: w.day(d.lastUsedAt) }),
-					]}
-				/>
-			}
-			title={name}
 		/>
 	);
 }

@@ -36,21 +36,25 @@ export function SettingsPage() {
 
 	return (
 		<div
-			className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pt-6 pb-12"
+			className="flex min-h-0 flex-1 flex-col overflow-hidden pt-6"
 			data-page="settings-v2"
-			ref={scroller}
 		>
-			{/* The page column (mockup .page): 1120 wide with the gutter inside, centered; nav and sections sit at its start. */}
-			<div className="px-gutter mx-auto w-full max-w-280">
+			{/* The page column (mockup .page): 1120 wide with the gutter inside, centered. The title (and the phone tabs) stay put; only the pane below scrolls, and the section list sticks at its top. */}
+			<div className="px-gutter mx-auto w-full max-w-280 shrink-0">
 				<PageHeader
 					lead={<BackButton href={home} label={t("back")} />}
 					sub={t("autosaveNote")}
 					title={t("title")}
 				/>
 				{phone && <SectionTabs current={current} ids={SECTIONS} onGo={go} />}
-				<div className="md:flex md:items-start md:gap-12">
+			</div>
+			<div
+				className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+				ref={scroller}
+			>
+				<div className="px-gutter mx-auto w-full max-w-280 pt-4 pb-12 md:pt-2 md:flex md:items-start md:gap-12">
 					{!phone && (
-						<div className="sticky top-0 w-50 shrink-0">
+						<div className="sticky top-2 w-50 shrink-0">
 							<SectionList current={current} ids={SECTIONS} onGo={go} />
 						</div>
 					)}

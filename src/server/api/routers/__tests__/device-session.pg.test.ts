@@ -1,5 +1,5 @@
 /**
- * Settings' approved devices: listed and disconnected by session id for a
+ * Settings' signed-in devices: every live session listed, and the others signed out by session id, for a
  * plain web session of any age (better-auth's listSessions refused one
  * older than a day), never handing a token to the page.
  */
@@ -44,7 +44,7 @@ async function session(
 	return row;
 }
 
-describe("deviceSession router", () => {
+describe("deviceSession router (signed-in devices)", () => {
 	let userId: string;
 	let webToken: string;
 	let webId: string;
@@ -76,6 +76,10 @@ describe("deviceSession router", () => {
 		});
 		webToken = web.token;
 		webId = web.id;
+		// Sign-up also opened a session; keep the one the test signs in with.
+		await adminDb.session.deleteMany({
+			where: { userId, id: { not: webId } },
+		});
 		// Signed in two days ago: not "fresh" for better-auth's session list.
 		const twoDaysAgo = new Date(Date.now() - 2 * DAY);
 		await adminDb.session.update({
@@ -109,26 +113,32 @@ describe("deviceSession router", () => {
 		caller = createCaller(ctx);
 	});
 
-	it("lists only the user's live device sessions, without tokens", async () => {
+	it("lists every live session of the user (web, phone, device), without tokens", async () => {
 		const list = await caller.deviceSession.list();
-		expect(list).toEqual([
-			{
-				id: cli.id,
-				clientId: "retrospend-cli",
-				scopes: ["read", "write:expenses"],
-				approvedAt: expect.any(Date),
-				lastUsedAt: expect.any(Date),
-			},
-		]);
+		// The expired MCP session and the other user's desktop are not there.
+		expect(list.map((s) => [s.kind, s.clientId, s.current]).sort()).toEqual(
+			[
+				["device", "retrospend-cli", false],
+				["mobile", "retrospend-mobile", false],
+				["web", null, true],
+			].sort(),
+		);
+		const web = list.find((s) => s.id === webId);
+		expect(web).toMatchObject({ kind: "web", current: true });
+		expect(list.find((s) => s.id === cli.id)).toMatchObject({
+			kind: "device",
+			current: false,
+			lastUsedAt: expect.any(Date),
+		});
 		const json = JSON.stringify(list);
 		expect(json).not.toContain(cli.token);
 		expect(json).not.toContain(webToken);
 	});
 
-	it("does not disconnect the web session or another user's device", async () => {
+	it("does not sign out the current session or another user's device", async () => {
 		await expect(
 			caller.deviceSession.disconnect({ id: webId }),
-		).rejects.toMatchObject({ code: "NOT_FOUND" });
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
 		await expect(
 			caller.deviceSession.disconnect({ id: otherDevice.id }),
 		).rejects.toMatchObject({ code: "NOT_FOUND" });
@@ -137,7 +147,7 @@ describe("deviceSession router", () => {
 		).resolves.toBe(2);
 	});
 
-	it("disconnects a device by id, and its token stops working", async () => {
+	it("signs another device out by id, and its token stops working", async () => {
 		await expect(
 			caller.deviceSession.disconnect({ id: cli.id }),
 		).resolves.toEqual({ id: cli.id });
@@ -148,6 +158,7 @@ describe("deviceSession router", () => {
 			headers: new Headers({ authorization: `Bearer ${cli.token}` }),
 		});
 		expect(after).toBeNull();
-		await expect(caller.deviceSession.list()).resolves.toEqual([]);
+		const list = await caller.deviceSession.list();
+		expect(list.map((s) => s.kind).sort()).toEqual(["mobile", "web"]);
 	});
 });

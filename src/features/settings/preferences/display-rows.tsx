@@ -87,11 +87,7 @@ export function DisplayRows({
 				/>
 			</SettingRow>
 			<TimeZoneRow timeZone={settings.timeZone} writer={writer} />
-			<SettingRow
-				label={t("hideBalances")}
-				labelFor="pf-privacy"
-				meta={t("hideBalancesMeta")}
-			>
+			<SettingRow label={t("hideBalances")} labelFor="pf-privacy">
 				<Switch
 					checked={settings.defaultPrivacyMode ?? false}
 					id="pf-privacy"

@@ -49,20 +49,14 @@ export function AboutFooter() {
 					{t(key)}
 				</a>
 			))}
-			<span>
-				{t.rich("madeBy", {
-					name: (chunks) => (
-						<a
-							className={LINK}
-							href="https://matv.io"
-							rel="noopener noreferrer"
-							target="_blank"
-						>
-							{chunks}
-						</a>
-					),
-				})}
-			</span>
+			<a
+				className={LINK}
+				href="https://matv.io"
+				rel="noopener noreferrer"
+				target="_blank"
+			>
+				{t("madeBy")}
+			</a>
 		</footer>
 	);
 }

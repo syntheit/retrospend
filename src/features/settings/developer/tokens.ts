@@ -4,7 +4,6 @@ import {
 	type Scope,
 	TOKEN_DEFAULT_DAYS,
 } from "@retrospend/api-contract";
-import type { RouterOutputs } from "~/trpc/react";
 
 /**
  * The Developer section's token model (IMPLEMENTATION §2.3). Tokens come
@@ -72,6 +71,3 @@ export function expiryFrom(days: number, now: Date = new Date()): Date {
 export function isExpired(token: ApiToken, now: Date = new Date()): boolean {
 	return token.expiresAt != null && token.expiresAt.getTime() <= now.getTime();
 }
-
-/** An approved device as deviceSession.list returns it (no token, ever). */
-export type ApprovedDevice = RouterOutputs["deviceSession"]["list"][number];

@@ -84,7 +84,45 @@ test.describe("Settings v2", () => {
 		await expect(page.getByRole("dialog")).toHaveCount(0);
 	});
 
-	test("approved devices list and disconnect by name", async ({ page }) => {
+	test("the title and section list stay put, and a click keeps its section marked", async ({
+		page,
+	}) => {
+		test.setTimeout(120_000);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await openSettings(page);
+		const nav = page.getByRole("navigation", { name: "Settings sections" });
+		const top = () =>
+			page.evaluate(() => ({
+				nav: document
+					.querySelector('nav[aria-label="Settings sections"]')
+					?.getBoundingClientRect().top,
+				title: document.querySelector("h1")?.getBoundingClientRect().top,
+			}));
+		const before = await top();
+		await page
+			.getByRole("main")
+			.getByRole("heading", { level: 2, name: "Data" })
+			.scrollIntoViewIfNeeded();
+		const after = await top();
+		expect(after.title).toBe(before.title);
+		expect(after.nav).toBeCloseTo(before.nav ?? 0, 0);
+		// Data is a short section near the end: the page cannot put it at the
+		// top, and the list still marks Data, not Danger zone.
+		await nav.getByRole("link", { name: "Data" }).click();
+		await page.waitForTimeout(1_200);
+		await expect(nav.getByRole("link", { name: "Data" })).toHaveAttribute(
+			"aria-current",
+			"true",
+		);
+		await expect(nav.getByRole("link", { name: "Danger zone" })).not.toHaveAttribute(
+			"aria-current",
+			"true",
+		);
+	});
+
+	test("signed-in devices list this browser and sign another device out", async ({
+		page,
+	}) => {
 		test.setTimeout(120_000);
 		await page.setViewportSize({ width: 1440, height: 900 });
 		const pool = new Pool({ connectionString: E2E_DATABASE_URL });
@@ -100,18 +138,21 @@ test.describe("Settings v2", () => {
 			await pool.end();
 		}
 		await openSettings(page);
-		const devices = page.getByRole("list", { name: "Approved devices" });
-		await expect(devices.getByText("Retrospend CLI")).toBeVisible();
+		const devices = page.getByRole("list", { name: "Signed-in devices" });
+		// This browser is listed (a web session is a signed-in device too) and
+		// cannot sign itself out here.
+		await expect(devices.getByText("This device")).toBeVisible();
+		await expect(devices.getByText("Command line")).toBeVisible();
 		await devices
-			.getByRole("button", { name: "More actions for Retrospend CLI" })
+			.getByRole("button", { name: "More actions for Command line" })
 			.click();
-		await page.getByRole("menuitem", { name: "Disconnect" }).click();
+		await page.getByRole("menuitem", { name: "Sign out" }).click();
 		await page
-			.getByRole("alertdialog", { name: "Disconnect Retrospend CLI?" })
-			.getByRole("button", { name: "Disconnect device" })
+			.getByRole("alertdialog", { name: "Sign out Command line?" })
+			.getByRole("button", { name: "Sign out device" })
 			.click();
-		await expect(devices).toHaveCount(0);
-		await expect(page.getByText("No approved devices")).toBeVisible();
+		await expect(devices.getByText("Command line")).toHaveCount(0);
+		await expect(devices.getByText("This device")).toBeVisible();
 	});
 
 	test("a switch saves on change, Undo puts it back, and it sticks", async ({

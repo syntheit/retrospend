@@ -175,7 +175,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "payment-method-icon",
 		status: "core",
-		job: "Payment method identity (Venmo, PayPal, bank)",
+		job: "Payment method kind: a bare glyph (wallet, bank, coins, cash) or the currency flag for cash",
 	},
 	{
 		file: "popover",

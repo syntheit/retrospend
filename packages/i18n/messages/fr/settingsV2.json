@@ -131,8 +131,7 @@
 		"language": "Langue",
 		"timeZone": "Fuseau horaire",
 		"timeZoneMeta": "Utilisé quand ton appareil n'indique pas le sien",
-		"hideBalances": "Masquer les soldes dans Patrimoine",
-		"hideBalancesMeta": "Jusqu’à ce que tu touches l’œil",
+		"hideBalances": "Masquer les soldes par défaut",
 		"chartTap": "Toucher une catégorie dans un graphique",
 		"chartTapOpen": "Ouvre ses dépenses",
 		"chartTapHide": "La masque du graphique",
@@ -212,7 +211,27 @@
 		"twoFactorOff": "Désactivée",
 		"turnOn": "Activer",
 		"turnOff": "Désactiver",
-		"backupCodes": "Codes de secours"
+		"backupCodes": "Codes de secours",
+		"devices": {
+			"title": "Appareils connectés",
+			"current": "Cet appareil",
+			"lastUsed": "Dernière utilisation le {date}",
+			"signedIn": "Connecté le {date}",
+			"signedOut": "{name} est déconnecté",
+			"failed": "Impossible de terminer. Réessaie.",
+			"none": "Vous n'êtes connecté nulle part ailleurs.",
+			"name": {
+				"browserOn": "{browser} sur {system}",
+				"app": "App Retrospend",
+				"appOn": "App Retrospend sur {system}",
+				"web": "Navigateur web",
+				"webOn": "Navigateur web sur {system}",
+				"cli": "Ligne de commande",
+				"desktop": "App de bureau",
+				"mcp": "Client MCP",
+				"device": "Appareil approuvé"
+			}
+		}
 	},
 	"password": {
 		"title": "Changer le mot de passe",
@@ -280,11 +299,6 @@
 			"write_settings": "Paramètres",
 			"admin": "Administration"
 		},
-		"devices": "Appareils approuvés",
-		"noDevices": "Aucun appareil approuvé",
-		"noDevicesHint": "Les apps connectées avec un code sur /device s’affichent ici.",
-		"approvedOn": "Approuvé le {date}",
-		"disconnected": "{name} déconnecté",
 		"failed": "Impossible de terminer. Réessaie.",
 		"newTitle": "Nouvelle clé API",
 		"name": "Nom",
@@ -517,6 +531,6 @@
 		"github": "GitHub",
 		"matrix": "Matrix",
 		"donate": "Faire un don",
-		"madeBy": "Créé par <name>Daniel Miller</name>"
+		"madeBy": "Créé par Daniel Miller"
 	}
 }

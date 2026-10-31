@@ -3,7 +3,6 @@
 import type { CurrencyCode } from "@retrospend/domain/currencies";
 import { useTranslations } from "next-intl";
 import { CurrencyPicker } from "~/components/currency-picker";
-import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { PaymentMethodIcon } from "~/components/ui/payment-method-icon";
@@ -21,7 +20,6 @@ export type MethodDraft = {
 	type: string;
 	identifier: string;
 	label: string;
-	showLabel: boolean;
 	currency: string;
 	network: string;
 	minAmount: string;
@@ -131,29 +129,16 @@ export function MethodFields({
 				</div>
 			)}
 
-			{draft.showLabel ? (
-				<div className="flex flex-col gap-2">
-					<Label htmlFor="pm-label">{t("displayName")}</Label>
-					<Input
-						id="pm-label"
-						maxLength={100}
-						onChange={(e) => onChange({ label: e.target.value })}
-						placeholder={def.name}
-						value={draft.label}
-					/>
-				</div>
-			) : (
-				<div>
-					<Button
-						kind="ghost"
-						onClick={() => onChange({ showLabel: true })}
-						size="sm"
-						type="button"
-					>
-						{t("addCustomLabel")}
-					</Button>
-				</div>
-			)}
+			<div className="flex flex-col gap-2">
+				<Label htmlFor="pm-label">{t("displayName")}</Label>
+				<Input
+					id="pm-label"
+					maxLength={100}
+					onChange={(e) => onChange({ label: e.target.value })}
+					placeholder={def.name}
+					value={draft.label}
+				/>
+			</div>
 
 			<div className="flex flex-col gap-2">
 				<Label htmlFor="pm-min">{t("minimumAmountOptional")}</Label>
@@ -173,7 +158,6 @@ export function MethodFields({
 						</span>
 					)}
 				</div>
-				<p className="text-fg-3 text-meta">{t("minimumAmountHint")}</p>
 			</div>
 
 			<div className="flex flex-col gap-2">

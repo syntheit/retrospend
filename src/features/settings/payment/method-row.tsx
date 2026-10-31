@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { ActionMenu } from "~/components/actions/action-menu";
-import { Row, RowSub } from "~/components/rows/row";
+import { IconTile, Row, RowSub } from "~/components/rows/row";
 import { PaymentMethodIcon } from "~/components/ui/payment-method-icon";
 import type { Method, Visibility } from "./types";
 
@@ -59,8 +59,11 @@ export function MethodRow({
 				/>
 			}
 			lead={
-				<PaymentMethodIcon currency={m.currency} size="md" typeId={m.type} />
+				<IconTile>
+					<PaymentMethodIcon currency={m.currency} size="sm" typeId={m.type} />
+				</IconTile>
 			}
+			open={{ onOpen: onEdit, label: name }}
 			sub={
 				<RowSub
 					parts={[{ shrink: m.identifier }, t(`visibility.${m.visibility}`)]}

@@ -28,7 +28,7 @@ export function SectionShell({
 	return (
 		<section
 			aria-labelledby={`${id}-title`}
-			className="mt-12 scroll-mt-4 first:mt-0 max-md:scroll-mt-14"
+			className="mt-12 scroll-mt-4 first:mt-0"
 			data-section={id}
 			id={id}
 		>
