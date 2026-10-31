@@ -2,7 +2,7 @@ import type { Me } from "@retrospend/api-contract";
 import { createReadCache } from "@/data/cache";
 import { createMemoryStore } from "@/data/store";
 import { authFailureOf, isSessionEnded } from "./errors";
-import { endSession, type FetchMe, restoreSession } from "./restore";
+import { endSession, type FetchMe, openSession, restoreSession } from "./restore";
 import type { TokenStore } from "./token-store";
 
 const me = { id: "u1", name: "Ana" } as Me;
@@ -119,6 +119,144 @@ describe("restoreSession", () => {
 			/^\d{4}-\d{2}-\d{2}T/,
 		);
 		expect(s.token()).toBe("t");
+	});
+});
+
+describe("openSession", () => {
+	function open(
+		token: string | null,
+		fetchMe: () => Promise<FetchMe>,
+		cached: boolean,
+	) {
+		let current = token;
+		const tokens: TokenStore = {
+			get: async () => current,
+			set: async (t) => {
+				current = t;
+			},
+			clear: async () => {
+				current = null;
+			},
+		};
+		const profileCache = createReadCache(createMemoryStore(), "srv");
+		return {
+			tokens,
+			profileCache,
+			token: () => current,
+			run: async () => {
+				if (cached) await profileCache.write("me", 1, me);
+				return openSession({
+					tokens,
+					profileCache,
+					fetchMe,
+					timeoutMs: 4000,
+				});
+			},
+		};
+	}
+
+	afterEach(() => jest.useRealTimers());
+
+	it("goes to sign-in at once with no token", async () => {
+		const fetchMe = jest.fn(async (): Promise<FetchMe> => ({ ok: true, me }));
+		const o = open(null, fetchMe, true);
+		const opening = await o.run();
+		expect(opening.first).toEqual({ status: "signedOut", expired: false });
+		expect(await opening.settled).toBeNull();
+		expect(fetchMe).not.toHaveBeenCalled();
+	});
+
+	it("opens signed in from the cache without waiting for the server", async () => {
+		const o = open("t", () => new Promise<FetchMe>(() => {}), true);
+		const opening = await o.run();
+		expect(opening.first).toEqual({
+			status: "signedIn",
+			me,
+			offline: false,
+			offlineSince: null,
+		});
+	});
+
+	it("verifies in the background and keeps the session when the server agrees", async () => {
+		const fresh = { id: "u1", name: "Ana B" } as Me;
+		const o = open("t", async () => ({ ok: true, me: fresh }), true);
+		const opening = await o.run();
+		expect(await opening.settled).toMatchObject({
+			status: "signedIn",
+			me: fresh,
+			offline: false,
+		});
+	});
+
+	it("ends the session when the server says 401 after the optimistic open", async () => {
+		const o = open("t", async () => ({ ok: false, reason: "unauthorized" }), true);
+		const opening = await o.run();
+		expect(opening.first.status).toBe("signedIn");
+		expect(await opening.settled).toEqual({ status: "signedOut", expired: true });
+		expect(o.token()).toBeNull();
+		expect(await o.profileCache.read("me", 1)).toBeNull();
+	});
+
+	it("marks the cached session offline when the server cannot be reached", async () => {
+		const o = open("t", async () => ({ ok: false, reason: "offline" }), true);
+		const opening = await o.run();
+		expect(await opening.settled).toMatchObject({
+			status: "signedIn",
+			me,
+			offline: true,
+		});
+		expect(o.token()).toBe("t");
+	});
+
+	it("waits for the server when there is no cached profile", async () => {
+		const o = open("t", async () => ({ ok: true, me }), false);
+		const opening = await o.run();
+		expect(opening.first).toMatchObject({ status: "signedIn", me });
+		expect(await opening.settled).toBeNull();
+	});
+
+	it("falls back to offline after the timeout when the server hangs", async () => {
+		jest.useFakeTimers();
+		let answer: (r: FetchMe) => void = () => {};
+		const o = open(
+			"t",
+			() => new Promise<FetchMe>((resolve) => (answer = resolve)),
+			false,
+		);
+		let result: Awaited<ReturnType<typeof openSession>> | undefined;
+		o.run().then((r) => {
+			result = r;
+		});
+		await jest.advanceTimersByTimeAsync(3900);
+		expect(result).toBeUndefined();
+		await jest.advanceTimersByTimeAsync(200);
+		expect(result?.first).toEqual({
+			status: "signedIn",
+			me: null,
+			offline: true,
+			offlineSince: null,
+		});
+		// The late answer still arrives.
+		answer({ ok: true, me });
+		expect(await result?.settled).toMatchObject({ status: "signedIn", me });
+	});
+
+	it("ends the session when a slow server finally says 401", async () => {
+		jest.useFakeTimers();
+		let answer: (r: FetchMe) => void = () => {};
+		const o = open(
+			"t",
+			() => new Promise<FetchMe>((resolve) => (answer = resolve)),
+			false,
+		);
+		let result: Awaited<ReturnType<typeof openSession>> | undefined;
+		o.run().then((r) => {
+			result = r;
+		});
+		await jest.advanceTimersByTimeAsync(4100);
+		answer({ ok: false, reason: "unauthorized" });
+		expect(await result?.settled).toEqual({ status: "signedOut", expired: true });
+		expect(o.token()).toBeNull();
 	});
 });
 

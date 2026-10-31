@@ -28,6 +28,7 @@ import {
 import { GALLERY_ENABLED } from "@/lib/flags";
 import { AppIntlProvider } from "@/lib/intl";
 import { MoneyPrefsProvider } from "@/lib/money";
+import { holdSplash, releaseSplash, SPLASH_CAP_MS } from "@/lib/splash";
 // Defines the Android background poll (a no-op elsewhere); it has to exist
 // before the app starts for the system to run it headless.
 import "@/push/background";
@@ -77,15 +78,20 @@ function useSettingsScreens() {
 // leaves the phone unless the person turns on error reports (Settings).
 installErrorHandlers(getErrorLog());
 
+// The splash stays until the first real screen is ready (Routes), or the cap.
+holdSplash();
+
 function Routes() {
 	const { connection } = useServerConnection();
 	const { state } = useSession();
 	const settingsScreens = useSettingsScreens();
 	const back = useTranslations("mobile.common")("back");
-	// The keystore read and the first profile fetch take a moment; the
-	// native splash covers it.
-	if (connection.status === "loading" || state.status === "loading")
-		return null;
+	// The keystore reads take a moment; the native splash covers it.
+	const loading = connection.status === "loading" || state.status === "loading";
+	useEffect(() => {
+		if (!loading) releaseSplash();
+	}, [loading]);
+	if (loading) return null;
 	const connected = connection.status === "connected";
 	const signedIn = connected && state.status === "signedIn";
 	return (
@@ -126,6 +132,12 @@ export default function RootLayout() {
 	useEffect(() => {
 		SystemUI.setBackgroundColorAsync(themeFor(scheme).color.bg);
 	}, [scheme]);
+
+	// A stuck font or keystore never keeps the splash up for good.
+	useEffect(() => {
+		const timer = setTimeout(releaseSplash, SPLASH_CAP_MS);
+		return () => clearTimeout(timer);
+	}, []);
 
 	if (!fontsLoaded && !fontError) return null;
 
