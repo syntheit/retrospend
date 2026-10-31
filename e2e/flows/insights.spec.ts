@@ -237,8 +237,8 @@ test("Insights: figures match the reads, a range with Compare moves them, Show i
 	const before = page.url();
 	await monthButtons.first().click();
 	await expect(monthButtons.first()).toHaveAttribute("aria-pressed", "true");
+	await expect(page).not.toHaveURL(before);
 	await expect(page).toHaveURL(/\/activity\/insights\?/);
-	expect(page.url()).not.toBe(before);
 	await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
 	// The bars stay where they were, so the picked month is still the first.
 	await expect(monthButtons).toHaveCount(6);

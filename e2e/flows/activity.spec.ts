@@ -233,17 +233,35 @@ test("Activity: tabs swap the page at once and the list fills the window on desk
 	);
 	expect(bottom).toBeGreaterThan(900 - 80);
 
-	// The page wrapper stays, so no entrance plays on a tab; the indicator slides.
+	// The page wrapper stays, so no entrance plays on a tab; only the
+	// indicator moves, and it passes through the places between the tabs.
 	const wrapper = page.locator("#main-content > div");
-	await wrapper.evaluate((el) => el.setAttribute("data-probe", "1"));
+	await wrapper.evaluate((el) => {
+		el.setAttribute("data-probe", "1");
+		const seen: number[] = [];
+		(window as unknown as { __seen: number[] }).__seen = seen;
+		const sample = () => {
+			const bar = document.querySelector('[data-slot="tab-indicator"]');
+			if (bar) {
+				const x = new DOMMatrix(getComputedStyle(bar).transform).m41;
+				if (seen.at(-1) !== x) seen.push(x);
+			}
+			requestAnimationFrame(sample);
+		};
+		requestAnimationFrame(sample);
+	});
 	await main.getByRole("link", { name: "Insights" }).click();
 	await expect(page).toHaveURL(/\/activity\/insights/);
 	await expect(
 		page.locator('[data-ui="v2"][data-page="insights"]'),
 	).toBeVisible();
+	await page.waitForTimeout(600);
 	await expect(wrapper).toHaveAttribute("data-probe", "1");
-	await expect(main.locator('[data-slot="tab-indicator"]')).toHaveAttribute(
-		"data-animate",
-		"true",
+	const seen = await page.evaluate(
+		() => (window as unknown as { __seen: number[] }).__seen,
 	);
+	const start = seen[0] ?? 0;
+	const end = seen.at(-1) ?? 0;
+	expect(end).toBeGreaterThan(start);
+	expect(seen.some((x) => x > start && x < end)).toBe(true);
 });
