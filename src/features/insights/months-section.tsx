@@ -15,6 +15,9 @@ import { ChartSkeleton, type PartQuery, PartUnavailable } from "./part-states";
 
 const HEIGHT = { desktop: 180, phone: 160 };
 
+/** A month with spending: the only kind a pick can land on, as the others have no bar. */
+const spent = (bar: MonthBar) => (bar.total?.minor ?? 0) > 0;
+
 /** The bar for the range: the month it is exactly, else the one it ends in. */
 function selectedBar(months: readonly MonthBar[], range: Span): number {
 	const exact = months.findIndex(
@@ -65,30 +68,34 @@ export function MonthsSection({
 						months={totals}
 						onSelect={(i) => {
 							const bar = data.months[i];
-							if (bar) onPick(bar.span);
+							if (bar && spent(bar)) onPick(bar.span);
 						}}
 					/>
 					<ul
 						aria-label={t("list")}
 						className="sr-only focus-within:not-sr-only focus-within:mt-2 focus-within:flex focus-within:flex-wrap focus-within:gap-x-2 focus-within:gap-y-1"
 					>
-						{data.months.map((bar, i) => (
-							<li key={bar.month}>
-								<Button
-									aria-pressed={i === on}
-									kind={i === on ? "secondary" : "ghost"}
-									onClick={() => onPick(bar.span)}
-									size="sm"
-								>
-									{month(`${bar.month}-01`)}{" "}
-									<Money
-										figure={bar.total ? monthFigure(bar) : undefined}
-										missing="noRate"
-										value={bar.total}
-									/>
-								</Button>
-							</li>
-						))}
+						{data.months.flatMap((bar, i) =>
+							spent(bar) ? (
+								<li key={bar.month}>
+									<Button
+										aria-pressed={i === on}
+										kind={i === on ? "secondary" : "ghost"}
+										onClick={() => onPick(bar.span)}
+										size="sm"
+									>
+										{month(`${bar.month}-01`)}{" "}
+										<Money
+											figure={bar.total ? monthFigure(bar) : undefined}
+											missing="noRate"
+											value={bar.total}
+										/>
+									</Button>
+								</li>
+							) : (
+								[]
+							),
+						)}
 					</ul>
 				</div>
 			)}

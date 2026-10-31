@@ -228,20 +228,21 @@ test("Insights: figures match the reads, a range with Compare moves them, Show i
 
 	// The month buttons are for the keyboard: hidden until one has focus, then
 	// shown. Picking one moves the range in place, with no navigation.
-	const monthButtons = main
-		.getByRole("list", { name: "Months" })
-		.getByRole("button");
+	const monthList = main.getByRole("list", { name: "Months" });
+	const monthButtons = monthList.getByRole("button");
+	const months = await monthButtons.count();
+	expect(months).toBeGreaterThan(1);
 	await monthButtons.first().focus();
 	const shown = await monthButtons.first().boundingBox();
 	expect(shown?.width ?? 0).toBeGreaterThan(24);
 	const before = page.url();
-	await monthButtons.first().click();
-	await expect(monthButtons.first()).toHaveAttribute("aria-pressed", "true");
+	await monthList.getByRole("button", { pressed: false }).first().click();
 	await expect(page).not.toHaveURL(before);
 	await expect(page).toHaveURL(/\/activity\/insights\?/);
 	await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
-	// The bars stay where they were, so the picked month is still the first.
-	await expect(monthButtons).toHaveCount(6);
+	// The bars stay where they were: the same months, and one is picked.
+	await expect(monthButtons).toHaveCount(months);
+	await expect(monthList.getByRole("button", { pressed: true })).toHaveCount(1);
 	// Back to the range the rest of the flow reads.
 	await page.goto(`/activity/insights?${url.searchParams.toString()}`);
 	await expect(page.locator('[data-ui="v2"]')).toBeVisible();
