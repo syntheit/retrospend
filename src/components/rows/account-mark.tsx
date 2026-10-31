@@ -45,6 +45,7 @@ export function AccountMark({
 				className={cn(base, "text-fg-2", row && "bg-raised", box)}
 			>
 				<svg
+					aria-hidden="true"
 					className={cn(inner, !own && "fill-current")}
 					focusable="false"
 					style={own ? { fill: `#${brand.hex}` } : undefined}

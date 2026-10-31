@@ -6,6 +6,7 @@
 import { AVATAR_MAX_BYTES } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import { type AccountIcon, isAccountIcon } from "~/lib/account-icons";
+import { db } from "~/server/db";
 import { userTransaction } from "~/server/db-tx";
 import { processAccountIcon } from "~/server/image-processing";
 import { deleteFile, getImageUrl, uploadFile } from "~/server/storage";
@@ -113,4 +114,23 @@ export async function replaceAccountImage(
 	}
 	if (old) await deleteQuietly(old);
 	return { kind: "IMAGE", value: getImageUrl(path) ?? path };
+}
+
+/**
+ * The upload route's entry: the signed-in person must still be active, as
+ * for the other uploads. The route holds the session, the service the rest.
+ */
+export async function uploadAccountIcon(
+	userId: string,
+	accountId: string,
+	input: Buffer,
+): Promise<AccountIcon> {
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: { isActive: true },
+	});
+	if (!user?.isActive) {
+		throw new TRPCError({ code: "FORBIDDEN", message: "Forbidden" });
+	}
+	return replaceAccountImage(db, userId, accountId, input);
 }
