@@ -8,7 +8,10 @@ import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type RefObject, useEffect, useMemo, useRef } from "react";
 import { Toolbar } from "~/components/layout/toolbar";
-import { CategoryGlyph } from "~/components/pickers/category-picker";
+import {
+	CategoryGlyph,
+	type PickerCategory,
+} from "~/components/pickers/category-picker";
 import { DateRange } from "~/components/pickers/date-range";
 import { isTypingTarget } from "~/components/shell/shortcuts";
 import { Face } from "~/components/ui/avatar-face";
@@ -18,6 +21,7 @@ import {
 	type FilterMenuGroup,
 } from "~/components/ui/chip";
 import { Input } from "~/components/ui/input";
+import { useCategoryName } from "~/hooks/use-category-name";
 import {
 	type ActivityKind,
 	NO_CATEGORY,
@@ -55,32 +59,35 @@ export function useDimItems({ noCategory = false } = {}) {
 	});
 	const people = api.people.list.useQuery(undefined, { staleTime: 60_000 });
 	const projects = api.project.list.useQuery({}, { staleTime: 60_000 });
+	const catalog = api.entry.catalog.useQuery(undefined, { staleTime: 60_000 });
+	const { displayName } = useCategoryName();
+	const recentIds = catalog.data?.recentCategoryIds;
 	return useMemo(() => {
 		const persons: DimItem[] = (people.data ?? []).map(({ identity: p }) => ({
 			id: `${p.participantType}:${p.participantId}`,
 			label: p.name,
 			lead: <Face imageUrl={p.avatarUrl} name={p.name} size="xs" />,
 		}));
-		const cats = (categories.data ?? []).map((c): DimItem => {
-			const ref = {
-				id: c.id,
-				name: c.name,
-				icon: c.icon,
-				tone: categoryTone(c.color),
-			};
-			return {
-				id: c.id,
-				label: c.name,
-				lead: <CategoryGlyph category={ref} />,
-			};
-		});
+		const refs: PickerCategory[] = (categories.data ?? []).map((c) => ({
+			id: c.id,
+			name: c.name,
+			icon: c.icon,
+			tone: categoryTone(c.color),
+		}));
 		if (noCategory)
-			cats.push({
-				id: NO_CATEGORY,
-				label: t("noCategory"),
-				lead: <CategoryGlyph category={NO_CATEGORY_REF} />,
-			});
-		return {
+			refs.push({ ...NO_CATEGORY_REF, name: t("noCategory") });
+		const cats = refs.map(
+			(ref): DimItem => ({
+				id: ref.id,
+				label: displayName(ref.name),
+				lead: (
+					<CategoryGlyph
+						category={ref.id === NO_CATEGORY ? NO_CATEGORY_REF : ref}
+					/>
+				),
+			}),
+		);
+		const dims = {
 			cats,
 			people: persons,
 			projects: (projects.data ?? []).map(
@@ -89,7 +96,17 @@ export function useDimItems({ noCategory = false } = {}) {
 			paidBy: [{ id: "me", label: t("you") }, ...persons],
 			kinds: KINDS.map((k): DimItem => ({ id: k, label: t(`kind.${k}`) })),
 		} satisfies Record<Dim, DimItem[]>;
-	}, [categories.data, people.data, projects.data, noCategory, t]);
+		// The category chip's picker: the same categories, most used first.
+		return { ...dims, categories: refs, recentIds };
+	}, [
+		categories.data,
+		people.data,
+		projects.data,
+		noCategory,
+		t,
+		displayName,
+		recentIds,
+	]);
 }
 
 /** "/" focuses the search, outside fields and open layers (the mockup's key). */
@@ -136,9 +153,11 @@ export function ActivityToolbar({
 		setFilter({ ...filter, [dim]: value });
 	const chip = (dim: Dim) => (
 		<DimChip
+			categories={dim === "cats" ? items.categories : undefined}
 			items={items[dim]}
 			label={t(`dim.${dim}`)}
 			onChange={set(dim)}
+			recentIds={items.recentIds}
 			value={filter[dim]}
 		/>
 	);

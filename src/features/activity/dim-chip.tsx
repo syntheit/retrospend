@@ -4,11 +4,16 @@ import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 import {
+	CategoryPicker,
+	type PickerCategory,
+} from "~/components/pickers/category-picker";
+import {
 	PickerGroup,
 	PickerItem,
 	PickerList,
 } from "~/components/pickers/picker-list";
 import { PickerPopover } from "~/components/pickers/picker-popover";
+import { Button } from "~/components/ui/button";
 import { FilterChip } from "~/components/ui/chip";
 import { toggled } from "./filters";
 
@@ -24,12 +29,17 @@ export function DimChip({
 	items,
 	value,
 	onChange,
+	categories,
+	recentIds,
 }: {
 	/** The dimension's name: the chip's text when nothing is picked. */
 	label: string;
 	items: DimItem[];
 	value: string[];
 	onChange: (value: string[]) => void;
+	/** The Category chip opens the one CategoryPicker (most used first) instead of the plain list. */
+	categories?: readonly PickerCategory[];
+	recentIds?: readonly string[];
 }) {
 	const t = useTranslations("activity.filters");
 	const [open, setOpen] = useState(false);
@@ -51,37 +61,49 @@ export function DimChip({
 				</FilterChip>
 			}
 		>
-			<PickerList empty={t("noMatch")} label={label} placeholder={t("find")}>
-				{value.length > 0 && (
-					<PickerGroup heading={t("picked")}>
-						<PickerItem
-							keywords={[t("clear")]}
-							lead={null}
-							onSelect={() => onChange([])}
-							selected={false}
-							selectedLabel=""
-							value="__clear"
-						>
-							{t("clear")}
-						</PickerItem>
+			{categories ? (
+				<CategoryPicker
+					categories={categories}
+					multiple
+					onChange={onChange}
+					recentIds={recentIds}
+					value={value}
+				/>
+			) : (
+				<PickerList
+					empty={t("noMatch")}
+					footer={
+						value.length > 0 ? (
+							<Button
+								className="self-end"
+								kind="ghost"
+								onClick={() => onChange([])}
+								size="sm"
+							>
+								{t("clear")}
+							</Button>
+						) : null
+					}
+					label={label}
+					placeholder={t("find")}
+				>
+					<PickerGroup heading={label}>
+						{items.map((item) => (
+							<PickerItem
+								key={item.id}
+								keywords={[item.label]}
+								lead={item.lead}
+								onSelect={() => onChange(toggled(value, item.id))}
+								selected={value.includes(item.id)}
+								selectedLabel={t("selected")}
+								value={item.id}
+							>
+								{item.label}
+							</PickerItem>
+						))}
 					</PickerGroup>
-				)}
-				<PickerGroup heading={label}>
-					{items.map((item) => (
-						<PickerItem
-							key={item.id}
-							keywords={[item.label]}
-							lead={item.lead}
-							onSelect={() => onChange(toggled(value, item.id))}
-							selected={value.includes(item.id)}
-							selectedLabel={t("selected")}
-							value={item.id}
-						>
-							{item.label}
-						</PickerItem>
-					))}
-				</PickerGroup>
-			</PickerList>
+				</PickerList>
+			)}
 		</PickerPopover>
 	);
 }

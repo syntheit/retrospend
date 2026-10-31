@@ -2,7 +2,8 @@
 	"category": {
 		"label": "Kategorie",
 		"find": "Kategorie suchen",
-		"recent": "Zuletzt",
+		"recent": "Am häufigsten",
+		"clear": "Zurücksetzen",
 		"all": "Alle Kategorien",
 		"empty": "Keine Treffer",
 		"selected": "Ausgewählt"

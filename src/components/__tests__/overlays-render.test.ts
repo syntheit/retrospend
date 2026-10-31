@@ -63,7 +63,7 @@ describe("CategoryPicker", () => {
 			}),
 		);
 		expect(html).toContain('placeholder="Find a category"');
-		expect(html.indexOf("Recent")).toBeLessThan(html.indexOf("All categories"));
+		expect(html.indexOf("Most used")).toBeLessThan(html.indexOf("All categories"));
 		expect(html.indexOf("Café")).toBeLessThan(html.indexOf("Groceries"));
 		expect(html).toContain("color:var(--category-7)");
 		expect(html).toContain('data-chosen="true"');

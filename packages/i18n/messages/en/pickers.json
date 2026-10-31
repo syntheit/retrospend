@@ -2,7 +2,8 @@
 	"category": {
 		"label": "Category",
 		"find": "Find a category",
-		"recent": "Recent",
+		"recent": "Most used",
+		"clear": "Clear",
 		"all": "All categories",
 		"empty": "No matches",
 		"selected": "Selected"

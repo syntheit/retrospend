@@ -3,13 +3,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { fromMinor, money, toMinor } from "@retrospend/domain/money-minor";
 import { draftFromMinor } from "@retrospend/domain/parse";
+import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { CategoryPicker } from "~/components/category-picker";
 import { MoneyInput } from "~/components/money/money-input";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
+import {
+	CategoryGlyph,
+	CategoryPicker,
+} from "~/components/pickers/category-picker";
+import { PickerPopover } from "~/components/pickers/picker-popover";
 import { Button } from "~/components/ui/button";
 import { DatePicker } from "~/components/ui/date-picker";
 import { Input } from "~/components/ui/input";
@@ -24,6 +29,7 @@ import {
 import { Sheet } from "~/components/ui/sheet";
 import { Switch } from "~/components/ui/switch";
 import { useToast } from "~/components/ui/toast";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { useExchangeRates } from "~/hooks/use-exchange-rates";
 import { getSubscriptionMetadata } from "~/lib/subscription-metadata";
 import { api } from "~/trpc/react";
@@ -107,6 +113,17 @@ export function RecurringModal({
 		},
 	});
 
+	const [categoryOpen, setCategoryOpen] = useState(false);
+	const { displayName } = useCategoryName();
+	const { data: catalog } = api.entry.catalog.useQuery(undefined, {
+		staleTime: 60_000,
+	});
+	const categoryId = watch("categoryId");
+	const categories = useMemo(
+		() => (catalog?.categories ?? []).filter((c) => c.kind === "EXPENSE"),
+		[catalog],
+	);
+	const category = catalog?.categories.find((c) => c.id === categoryId);
 	const watchedName = watch("name");
 	const watchedWebsiteUrl = watch("websiteUrl");
 
@@ -283,11 +300,41 @@ export function RecurringModal({
 				{/* Category */}
 				<div className="space-y-2">
 					<Label>{t("fieldCategory")}</Label>
-					<CategoryPicker
-						onValueChange={(value) => setValue("categoryId", value)}
-						placeholder={t("fieldCategoryPlaceholder")}
-						value={watch("categoryId")}
-					/>
+					<PickerPopover
+						onOpenChange={setCategoryOpen}
+						open={categoryOpen}
+						title={t("fieldCategory")}
+						trigger={
+							<Button
+								aria-haspopup="dialog"
+								aria-label={t("fieldCategory")}
+								className="w-full justify-between"
+								kind="secondary"
+							>
+								{category ? (
+									<span className="flex min-w-0 items-center gap-2">
+										<CategoryGlyph category={category} />
+										<span className="truncate">{displayName(category.name)}</span>
+									</span>
+								) : (
+									<span className="truncate text-fg-3">
+										{t("fieldCategoryPlaceholder")}
+									</span>
+								)}
+								<ChevronDown aria-hidden="true" className="text-fg-3" />
+							</Button>
+						}
+					>
+						<CategoryPicker
+							categories={categories}
+							onChange={(id) => {
+								setCategoryOpen(false);
+								setValue("categoryId", id, { shouldValidate: true });
+							}}
+							recentIds={catalog?.recentCategoryIds}
+							value={categoryId || null}
+						/>
+					</PickerPopover>
 					{errors.categoryId && (
 						<p className="text-destructive text-sm">
 							{errors.categoryId.message}
