@@ -29,8 +29,7 @@
 	},
 	"months": {
 		"title": "Month by month",
-		"list": "Open a month in Activity",
-		"caption": "Same filters. Tap a month to open it in Activity."
+		"list": "Months"
 	},
 	"ytd": {
 		"title": "Year to date vs last year",

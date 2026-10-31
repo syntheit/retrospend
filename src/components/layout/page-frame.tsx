@@ -2,26 +2,34 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/cn";
 import { Tip } from "~/components/ui/tooltip";
 
 /**
  * PageFrame: the scrolling column a v2 page sits in inside the shell's main
  * (kit `.main` + `.page`): 1120 at most, centered, the gutter at the sides,
  * 24 above and 48 below. `data-ui="v2"` and `data-page` mark the page for
- * the e2e audits.
+ * the e2e audits. With `fill`, from md up the column is as tall as the
+ * window and its last child (a list) takes the height that is left.
  */
 export function PageFrame({
 	children,
 	label,
+	fill,
 }: {
 	children: ReactNode;
 	/** Names the page for the audits ("wealth"); a loading fallback leaves it out. */
 	label?: string;
+	/** Desktop: the content runs to the bottom of the window. */
+	fill?: boolean;
 }) {
 	return (
 		<div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
 			<div
-				className="px-gutter mx-auto w-full max-w-280 pt-6 pb-12"
+				className={cn(
+					"px-gutter mx-auto w-full max-w-280 pt-6 pb-12",
+					fill && "md:flex md:flex-1 md:flex-col md:pb-6",
+				)}
 				data-page={label}
 				data-ui={label ? "v2" : undefined}
 			>

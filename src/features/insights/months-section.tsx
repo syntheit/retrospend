@@ -1,42 +1,58 @@
 "use client";
 
 import type { Span } from "@retrospend/domain/insights";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { MonthlyBars } from "~/components/charts/monthly-bars";
 import { Section } from "~/components/layout/section";
 import { Money } from "~/components/money/money";
 import { useRowDates } from "~/components/rows/dates";
+import { Button } from "~/components/ui/button";
 import { useIsMobile } from "~/hooks/use-mobile";
-import { cn } from "~/lib/cn";
-import type { MonthsDTO } from "~/server/services/insights/types";
+import type { MonthBar, MonthsDTO } from "~/server/services/insights/types";
 import { monthFigure, monthTotals } from "./insights-vm";
 import { ChartSkeleton, type PartQuery, PartUnavailable } from "./part-states";
-import { FIGURE_LINK } from "./period-was";
 
 const HEIGHT = { desktop: 180, phone: 160 };
 
+/** A month with spending: the only kind a pick can land on, as the others have no bar. */
+const spent = (bar: MonthBar) => (bar.total?.minor ?? 0) > 0;
+
+/** The bar for the range: the month it is exactly, else the one it ends in. */
+function selectedBar(months: readonly MonthBar[], range: Span): number {
+	const exact = months.findIndex(
+		(m) => m.span.from === range.from && m.span.to === range.to,
+	);
+	if (exact >= 0) return exact;
+	const ends = months.findIndex(
+		(m) => m.span.from <= range.to && range.to <= m.span.to,
+	);
+	return ends >= 0 ? ends : months.length - 1;
+}
+
 /**
  * Month by month: the last six months of the same filters, the month the
- * range ends in highlighted. A bar opens that month in Activity. The drawing
- * is for sight only, so the same targets follow as links (hidden until one has focus)
+ * range covers highlighted. A bar picks that month in place: the range
+ * becomes the month and the figures below follow. The drawing is for sight
+ * only, so the same months follow as buttons (hidden until one has focus)
  * with each month's figure, for keyboards and screen readers.
  */
 export function MonthsSection({
 	query,
-	hrefOf,
+	span,
+	onPick,
 }: {
 	query: PartQuery<MonthsDTO>;
-	hrefOf: (span: Span) => string;
+	/** The range the page shows. */
+	span: Span;
+	onPick: (month: Span) => void;
 }) {
 	const t = useTranslations("insights.months");
-	const router = useRouter();
 	const phone = useIsMobile();
 	const { month } = useRowDates();
 	const data = query.data;
 	const totals = useMemo(() => (data ? monthTotals(data.months) : []), [data]);
+	const on = data ? selectedBar(data.months, span) : -1;
 	return (
 		<Section id="by-month" title={t("title")}>
 			{query.isPending ? (
@@ -48,32 +64,38 @@ export function MonthsSection({
 					<MonthlyBars
 						currency={data.home}
 						height={phone ? HEIGHT.phone : HEIGHT.desktop}
+						highlight={on}
 						months={totals}
 						onSelect={(i) => {
 							const bar = data.months[i];
-							if (bar) router.push(hrefOf(bar.span));
+							if (bar && spent(bar)) onPick(bar.span);
 						}}
 					/>
-					<p className="text-fg-3 text-meta mt-2">{t("caption")}</p>
 					<ul
 						aria-label={t("list")}
-						className="sr-only focus-within:not-sr-only focus-within:mt-2 focus-within:flex focus-within:flex-wrap focus-within:gap-x-4 focus-within:gap-y-1"
+						className="sr-only focus-within:not-sr-only focus-within:mt-2 focus-within:flex focus-within:flex-wrap focus-within:gap-x-2 focus-within:gap-y-1"
 					>
-						{data.months.map((bar) => (
-							<li key={bar.month}>
-								<Link
-									className={cn(FIGURE_LINK, "text-small text-fg-2")}
-									href={hrefOf(bar.span)}
-								>
-									{month(`${bar.month}-01`)}{" "}
-									<Money
-										figure={bar.total ? monthFigure(bar) : undefined}
-										missing="noRate"
-										value={bar.total}
-									/>
-								</Link>
-							</li>
-						))}
+						{data.months.flatMap((bar, i) =>
+							spent(bar) ? (
+								<li key={bar.month}>
+									<Button
+										aria-pressed={i === on}
+										kind={i === on ? "secondary" : "ghost"}
+										onClick={() => onPick(bar.span)}
+										size="sm"
+									>
+										{month(`${bar.month}-01`)}{" "}
+										<Money
+											figure={bar.total ? monthFigure(bar) : undefined}
+											missing="noRate"
+											value={bar.total}
+										/>
+									</Button>
+								</li>
+							) : (
+								[]
+							),
+						)}
 					</ul>
 				</div>
 			)}

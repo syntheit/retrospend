@@ -49,12 +49,23 @@ export function amountCandidates(q: string): string[] {
 	return [...out];
 }
 
-/** The sort key of a row: newest first, then source, then id, all descending. */
-export type CursorKey = { date: Date; src: string; id: string };
+/**
+ * The sort key of a row, all descending: its date, then when it was added (so
+ * the entry made last leads inside a day), then source, then id.
+ */
+export type CursorKey = { date: Date; created: Date; src: string; id: string };
+
+/** Cursors made before `created` joined the key carry none; they page from the day's top. */
+const NO_CREATED = new Date("9999-12-31T00:00:00.000Z");
 
 export function encodeCursor(key: CursorKey): string {
 	return Buffer.from(
-		JSON.stringify([key.date.toISOString(), key.src, key.id]),
+		JSON.stringify([
+			key.date.toISOString(),
+			key.src,
+			key.id,
+			key.created.toISOString(),
+		]),
 	).toString("base64url");
 }
 
@@ -64,17 +75,25 @@ export function decodeCursor(cursor: string): CursorKey | null {
 		const parsed: unknown = JSON.parse(
 			Buffer.from(cursor, "base64url").toString("utf8"),
 		);
-		if (!Array.isArray(parsed) || parsed.length !== 3) return null;
-		const [iso, src, id] = parsed;
+		if (!Array.isArray(parsed) || (parsed.length !== 3 && parsed.length !== 4))
+			return null;
+		const [iso, src, id, made] = parsed;
 		if (
 			typeof iso !== "string" ||
 			typeof src !== "string" ||
-			typeof id !== "string"
+			typeof id !== "string" ||
+			(made !== undefined && typeof made !== "string")
 		)
 			return null;
 		const date = new Date(iso);
-		if (Number.isNaN(date.getTime()) || !/^[psg]$/.test(src)) return null;
-		return { date, src, id };
+		const created = made === undefined ? NO_CREATED : new Date(made);
+		if (
+			Number.isNaN(date.getTime()) ||
+			Number.isNaN(created.getTime()) ||
+			!/^[psg]$/.test(src)
+		)
+			return null;
+		return { date, created, src, id };
 	} catch {
 		return null;
 	}

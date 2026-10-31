@@ -26,15 +26,23 @@ function Tabs({
 const ACTIVE = '[data-state="active"], [aria-current="page"]';
 
 /**
+ * Where the indicator of a tab row last sat, by `group`. Sibling pages each
+ * render their own PageTabs, so the indicator is new on every page; it starts
+ * where the last page left it and slides from there.
+ */
+const lastPlace = new Map<string, { left: number; width: number }>();
+
+/**
  * The one underline indicator of a tab row (R24). It sits on the selected
  * tab without motion on first paint and on resize, and slides (220ms,
- * ease-land) when the selection changes. It also tells the tabs root which
- * way the selection moved, so the entering pane comes from that side.
+ * ease-land) when the selection changes, also across pages that share a
+ * `group`. It also tells the tabs root which way the selection moved, so the
+ * entering pane comes from that side.
  * Reduced motion: --t-tab drops to 1ms and globals.css stops transforms, so
  * the indicator jumps and the new pane appears in place, with no slide and
  * no visible fade.
  */
-function TabIndicator() {
+function TabIndicator({ group }: { group?: string }) {
 	const ref = useRef<HTMLSpanElement>(null);
 
 	useLayoutEffect(() => {
@@ -47,14 +55,31 @@ function TabIndicator() {
 			);
 		let index = tabs().findIndex((t) => t.matches(ACTIVE));
 
+		const put = (left: number, width: number) => {
+			bar.style.width = `${width}px`;
+			bar.style.transform = `translateX(${left}px)`;
+		};
+		let shown = "";
 		const place = (animate: boolean) => {
 			const on = list.querySelector<HTMLElement>(ACTIVE);
+			const left = on?.offsetLeft ?? 0;
+			const width = on?.offsetWidth ?? 0;
+			shown = `${left}:${width}`;
 			bar.dataset.animate = String(animate);
-			bar.style.width = on ? `${on.offsetWidth}px` : "0px";
-			bar.style.transform = `translateX(${on?.offsetLeft ?? 0}px)`;
+			put(left, width);
 			list.dataset.indicator = "ready";
+			if (group && on) lastPlace.set(group, { left, width });
 		};
-		place(false);
+		const from = group ? lastPlace.get(group) : undefined;
+		const now = list.querySelector<HTMLElement>(ACTIVE);
+		if (from && now && from.left !== now.offsetLeft) {
+			// A sibling page: start where the last one ended, then slide.
+			bar.dataset.animate = "false";
+			put(from.left, from.width);
+			list.dataset.indicator = "ready";
+			bar.getBoundingClientRect();
+		}
+		place(!!from && !!now && from.left !== now.offsetLeft);
 
 		const moved = new MutationObserver(() => {
 			const next = tabs().findIndex((t) => t.matches(ACTIVE));
@@ -72,7 +97,13 @@ function TabIndicator() {
 		});
 		// The list and every tab: a label can change width (a count, a font
 		// swap, a locale) without the list resizing.
-		const resized = new ResizeObserver(() => place(false));
+		// Observing fires once at the start; only a real move re-places the
+		// bar, so a slide from a sibling page is not cut short.
+		const resized = new ResizeObserver(() => {
+			const on = list.querySelector<HTMLElement>(ACTIVE);
+			if (`${on?.offsetLeft ?? 0}:${on?.offsetWidth ?? 0}` !== shown)
+				place(false);
+		});
 		resized.observe(list);
 		for (const tab of tabs()) resized.observe(tab);
 		return () => {

@@ -29,8 +29,7 @@
 	},
 	"months": {
 		"title": "Mês a mês",
-		"list": "Abrir um mês em Atividade",
-		"caption": "Mesmos filtros. Toque em um mês para abri-lo em Atividade."
+		"list": "Meses"
 	},
 	"ytd": {
 		"title": "Este ano até hoje e o ano passado",

@@ -47,6 +47,7 @@ describe("Activity search", () => {
 	it("round-trips a cursor and refuses a made-up one", () => {
 		const key = {
 			date: new Date("2026-10-05T03:00:00.000Z"),
+			created: new Date("2026-10-05T18:30:12.345Z"),
 			src: "p",
 			id: "abc",
 		};
@@ -55,5 +56,15 @@ describe("Activity search", () => {
 		expect(
 			decodeCursor(Buffer.from('["2026-10-05","x","a"]').toString("base64url")),
 		).toBeNull();
+	});
+
+	it("reads a cursor made before the creation time joined the key", () => {
+		const old = Buffer.from('["2026-10-05T03:00:00.000Z","p","abc"]').toString(
+			"base64url",
+		);
+		const key = decodeCursor(old);
+		expect(key?.id).toBe("abc");
+		// Later than any real entry, so the page starts at the day's top.
+		expect(key?.created.getTime()).toBeGreaterThan(Date.UTC(3000, 0, 1));
 	});
 });

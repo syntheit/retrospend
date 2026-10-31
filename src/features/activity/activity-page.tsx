@@ -112,25 +112,29 @@ export function ActivityPage() {
 		/>
 	);
 	return (
-		<PageFrame label="activity">
-			<PageHeader
-				overflow={<Overflow />}
-				sub={a.count != null ? t("header.sub", { count: a.count }) : undefined}
-				tabs={<ActivityTabs current="expenses" />}
-				title={t("header.title")}
-			/>
-			<ActivityToolbar
-				compare={compare}
-				filter={a.filter}
-				search={a.search}
-				setCompare={setCompare}
-				setFilter={a.setFilter}
-				setSearch={a.setSearch}
-				today={a.today}
-			/>
-			{compare && (
-				<p className="text-fg-2 text-small mb-4">{t("compareUnavailable")}</p>
-			)}
+		<PageFrame fill label="activity">
+			<div>
+				<PageHeader
+					overflow={<Overflow />}
+					sub={
+						a.count != null ? t("header.sub", { count: a.count }) : undefined
+					}
+					tabs={<ActivityTabs current="expenses" />}
+					title={t("header.title")}
+				/>
+				<ActivityToolbar
+					compare={compare}
+					filter={a.filter}
+					search={a.search}
+					setCompare={setCompare}
+					setFilter={a.setFilter}
+					setSearch={a.setSearch}
+					today={a.today}
+				/>
+				{compare && (
+					<p className="text-fg-2 text-small mb-4">{t("compareUnavailable")}</p>
+				)}
+			</div>
 			{a.query.isError ? (
 				<Notice
 					action={

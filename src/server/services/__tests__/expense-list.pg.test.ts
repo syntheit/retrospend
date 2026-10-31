@@ -882,3 +882,56 @@ describe("expense.listV2 rows the footer leaves out", () => {
 		await adminDb.user.deleteMany({ where: { id: u.user.id } });
 	});
 });
+
+describe("expense.listV2 order inside a day", () => {
+	it("lists the entry added last first, across pages, whatever the ids", async () => {
+		const u = await createTestUser();
+		const when = day(6);
+		const at = (min: number) => new Date(Date.UTC(2026, 9, 6, 12, min));
+		const row = (id: string, title: string, min: number) => ({
+			id,
+			userId: u.user.id,
+			title,
+			amount: "100",
+			currency: "ARS",
+			amountInUSD: "0.1",
+			exchangeRate: "1000",
+			pricingSource: "MANUAL",
+			date: when,
+			createdAt: at(min),
+		});
+		// Ids that sort against the creation order, as random ids can.
+		await adminDb.expense.createMany({
+			data: [
+				row("zzz-first", "McDonalds", 1),
+				row("mmm-second", "Agua con gas", 2),
+				row("aaa-third", "Cafe", 3),
+			],
+		});
+		const all = await list(u, OCT);
+		expect(all.items.map((i) => i.title)).toEqual([
+			"Cafe",
+			"Agua con gas",
+			"McDonalds",
+		]);
+
+		const p1 = await list(u, { ...OCT, limit: 1 });
+		const p2 = await list(u, {
+			...OCT,
+			limit: 1,
+			cursor: p1.nextCursor ?? "",
+		});
+		const p3 = await list(u, {
+			...OCT,
+			limit: 1,
+			cursor: p2.nextCursor ?? "",
+		});
+		expect([p1, p2, p3].map((p) => p.items[0]?.title)).toEqual([
+			"Cafe",
+			"Agua con gas",
+			"McDonalds",
+		]);
+		expect(p3.nextCursor).toBeNull();
+		await adminDb.user.deleteMany({ where: { id: u.user.id } });
+	});
+});

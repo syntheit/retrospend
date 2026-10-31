@@ -21,18 +21,21 @@ export type PageTab = {
 /**
  * PageTabs (R21): underline tabs between sibling pages of one destination
  * (Activity: Expenses, Recurring). Real links with aria-current, part of the
- * page header. Put them in a shared layout so the indicator slides between
- * pages; switching panes inside one page is Tabs, switching a view of the
- * same data is Segmented.
+ * page header. Give the sibling pages one `group` so the indicator slides
+ * between them; switching panes inside one page is Tabs, switching a view of
+ * the same data is Segmented.
  */
 export function PageTabs({
 	items,
 	current,
+	group,
 	className,
 }: {
 	items: PageTab[];
 	/** The id of the page being shown. */
 	current: string;
+	/** Names the set of sibling pages, so the indicator slides between them. */
+	group?: string;
 	className?: string;
 }) {
 	const t = useTranslations("kit.tabs");
@@ -59,7 +62,7 @@ export function PageTabs({
 						</Link>
 					);
 				})}
-				<TabIndicator />
+				<TabIndicator group={group} />
 			</nav>
 		</div>
 	);

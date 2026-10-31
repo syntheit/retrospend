@@ -28,7 +28,13 @@ export type KeyQuery = {
 	only?: { src: RowKey["src"]; id: string };
 };
 
-export type RowKey = { src: "p" | "s" | "g"; id: string; date: Date };
+/** `created` breaks ties inside a date: the entry added last comes first. */
+export type RowKey = {
+	src: "p" | "s" | "g";
+	id: string;
+	date: Date;
+	created: Date;
+};
 
 const fold = (col: Prisma.Sql) =>
 	Prisma.sql`lower(translate(${col}, ${FOLD_FROM}, ${FOLD_TO}))`;
@@ -135,6 +141,7 @@ export type Page = { after: CursorKey | null; take: number };
 function pageOf(
 	src: RowKey["src"],
 	date: Prisma.Sql,
+	created: Prisma.Sql,
 	id: Prisma.Sql,
 	page: Page | undefined,
 ) {
@@ -143,9 +150,9 @@ function pageOf(
 	return {
 		// Same key order as the outer query; src is constant per branch.
 		where: a
-			? Prisma.sql`(${date}, ${src}::text, ${id}) < (${a.date}, ${a.src}, ${a.id})`
+			? Prisma.sql`(${date}, ${created}, ${src}::text, ${id}) < (${a.date}, ${a.created}, ${a.src}, ${a.id})`
 			: null,
-		tail: Prisma.sql`ORDER BY ${date} DESC, ${id} DESC LIMIT ${page.take}`,
+		tail: Prisma.sql`ORDER BY ${date} DESC, ${created} DESC, ${id} DESC LIMIT ${page.take}`,
 	};
 }
 
@@ -174,9 +181,15 @@ function personal(k: KeyQuery, page?: Page): Prisma.Sql {
 	);
 	if (s) parts.push(s);
 	if (k.only) parts.push(Prisma.sql`e.id = ${k.only.id}`);
-	const pg = pageOf("p", Prisma.sql`e.date`, Prisma.sql`e.id`, page);
+	const pg = pageOf(
+		"p",
+		Prisma.sql`e.date`,
+		Prisma.sql`e."createdAt"`,
+		Prisma.sql`e.id`,
+		page,
+	);
 	if (pg.where) parts.push(pg.where);
-	return Prisma.sql`(SELECT 'p'::text AS src, e.id AS id, e.date AS date FROM expense e WHERE ${all(parts)} ${pg.tail})`;
+	return Prisma.sql`(SELECT 'p'::text AS src, e.id AS id, e.date AS date, e."createdAt" AS created FROM expense e WHERE ${all(parts)} ${pg.tail})`;
 }
 
 const keyOf = (type: Prisma.Sql, id: Prisma.Sql) =>
@@ -221,9 +234,15 @@ function shared(k: KeyQuery, page?: Page): Prisma.Sql {
 	);
 	if (s) parts.push(s);
 	if (k.only) parts.push(Prisma.sql`st.id = ${k.only.id}`);
-	const pg = pageOf("s", Prisma.sql`st.date`, Prisma.sql`st.id`, page);
+	const pg = pageOf(
+		"s",
+		Prisma.sql`st.date`,
+		Prisma.sql`st."createdAt"`,
+		Prisma.sql`st.id`,
+		page,
+	);
 	if (pg.where) parts.push(pg.where);
-	return Prisma.sql`(SELECT 's'::text AS src, st.id AS id, st.date AS date
+	return Prisma.sql`(SELECT 's'::text AS src, st.id AS id, st.date AS date, st."createdAt" AS created
 		FROM shared_transaction st
 		JOIN split_participant sp ON sp."transactionId" = st.id
 			AND sp."participantType" = 'user' AND sp."participantId" = ${k.userId}
@@ -258,9 +277,9 @@ function payments(k: KeyQuery, page?: Page): Prisma.Sql {
 	const s = searchPart(f.q, [Prisma.sql`g.words`], [Prisma.sql`g.amount`]);
 	if (s) parts.push(s);
 	if (k.only) parts.push(Prisma.sql`g.key = ${k.only.id}`);
-	const pg = pageOf("g", Prisma.sql`g.date`, Prisma.sql`g.key`, page);
+	const pg = pageOf("g", Prisma.sql`g.date`, Prisma.sql`g.date`, Prisma.sql`g.key`, page);
 	if (pg.where) parts.push(pg.where);
-	return Prisma.sql`(SELECT 'g'::text AS src, g.key AS id, g.date AS date FROM (
+	return Prisma.sql`(SELECT 'g'::text AS src, g.key AS id, g.date AS date, g.date AS created FROM (
 		SELECT coalesce(s."paymentGroupId", s.id) || '|' || s.currency AS key,
 			min(s."initiatedAt") AS date,
 			sum(s.amount) AS amount,
@@ -293,7 +312,7 @@ function union(k: KeyQuery, page?: Page): Prisma.Sql | null {
 }
 
 /**
- * One page of row keys after `after`, newest first. Each branch applies the
+ * One page of row keys after `after`, newest first (by date, then by when it was added). Each branch applies the
  * cursor and the limit itself, so Postgres never sorts more than `take` rows
  * per source; the outer sort merges them.
  */
@@ -305,8 +324,8 @@ export async function pageKeys(
 ): Promise<RowKey[]> {
 	const u = union(k, { after, take });
 	if (!u) return [];
-	return db.$queryRaw<RowKey[]>`SELECT u.src, u.id, u.date FROM (${u}) u
-		ORDER BY u.date DESC, u.src DESC, u.id DESC LIMIT ${take}`;
+	return db.$queryRaw<RowKey[]>`SELECT u.src, u.id, u.date, u.created FROM (${u}) u
+		ORDER BY u.date DESC, u.created DESC, u.src DESC, u.id DESC LIMIT ${take}`;
 }
 
 /** How many rows the filter matches across every page. */

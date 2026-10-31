@@ -29,8 +29,7 @@
 	},
 	"months": {
 		"title": "Monat für Monat",
-		"list": "Monat in Aktivität öffnen",
-		"caption": "Gleiche Filter. Tippe auf einen Monat, um ihn in Aktivität zu öffnen."
+		"list": "Monate"
 	},
 	"ytd": {
 		"title": "Dieses Jahr bis heute und letztes Jahr",
