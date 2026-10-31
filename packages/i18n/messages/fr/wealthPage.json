@@ -76,7 +76,8 @@
 		"updated": "{name} mis à jour",
 		"added": "{name} ajouté",
 		"saved": "{name} enregistré",
-		"failed": "Enregistrement impossible. Réessaie."
+		"failed": "Enregistrement impossible. Réessaie.",
+		"iconFailed": "Enregistré, mais l'icône n'a pas été importée. Réessayez."
 	},
 	"rateTypes": {
 		"official": "Officiel",
@@ -131,6 +132,31 @@
 			"submit": "Clôturer le compte",
 			"body": "{name} quitte tes comptes et ton patrimoine à partir d'aujourd'hui. Son historique de soldes est conservé et tu peux le rouvrir depuis Comptes clôturés.",
 			"left": "Il affiche encore <amount></amount>. Si l'argent est parti ailleurs, mets d'abord le solde à zéro."
+		},
+		"icon": {
+			"label": "Icône",
+			"default": "Par défaut",
+			"letter": "Lettre",
+			"image": "Votre image",
+			"title": "Icône du compte",
+			"find": "Chercher un logo",
+			"empty": "Aucun logo ne correspond",
+			"none": "Icône par défaut",
+			"letters": "Lettre sur une couleur",
+			"logos": "Logos",
+			"selected": "Sélectionné",
+			"upload": "Importer une image",
+			"tooLarge": "Choisissez une image de moins de 5 Mo.",
+			"colors": {
+				"avatar-1": "Bleu",
+				"avatar-2": "Orange",
+				"avatar-3": "Rose",
+				"avatar-4": "Vert",
+				"avatar-5": "Violet",
+				"avatar-6": "Rouge",
+				"avatar-7": "Indigo",
+				"avatar-8": "Sarcelle"
+			}
 		}
 	},
 	"sort": {

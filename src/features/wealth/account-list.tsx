@@ -92,6 +92,7 @@ function Rows({
 								id: a.id,
 								name: a.name,
 								kind: a.kind,
+								icon: a.icon,
 								amount: a.amount,
 								home: a.home,
 								updated: a.updated,

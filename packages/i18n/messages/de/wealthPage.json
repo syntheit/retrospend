@@ -76,7 +76,8 @@
 		"updated": "{name} aktualisiert",
 		"added": "{name} hinzugefügt",
 		"saved": "{name} gespeichert",
-		"failed": "Speichern fehlgeschlagen. Versuch es noch einmal."
+		"failed": "Speichern fehlgeschlagen. Versuch es noch einmal.",
+		"iconFailed": "Gespeichert, aber das Symbol wurde nicht hochgeladen. Versuche es erneut."
 	},
 	"rateTypes": {
 		"official": "Offiziell",
@@ -131,6 +132,31 @@
 			"submit": "Konto schließen",
 			"body": "{name} verlässt ab heute deine Konten und dein Vermögen. Der Saldoverlauf bleibt, und du kannst es unter Geschlossene Konten wieder öffnen.",
 			"left": "Es zeigt noch <amount></amount>. Wenn das Geld woanders hin ist, setz den Saldo zuerst auf null."
+		},
+		"icon": {
+			"label": "Symbol",
+			"default": "Standard",
+			"letter": "Buchstabe",
+			"image": "Dein Bild",
+			"title": "Kontosymbol",
+			"find": "Logo suchen",
+			"empty": "Kein Logo passt",
+			"none": "Standardsymbol",
+			"letters": "Buchstabe auf Farbe",
+			"logos": "Logos",
+			"selected": "Ausgewählt",
+			"upload": "Bild hochladen",
+			"tooLarge": "Wähle ein Bild unter 5 MB.",
+			"colors": {
+				"avatar-1": "Blau",
+				"avatar-2": "Orange",
+				"avatar-3": "Rosa",
+				"avatar-4": "Grün",
+				"avatar-5": "Violett",
+				"avatar-6": "Rot",
+				"avatar-7": "Indigo",
+				"avatar-8": "Petrol"
+			}
 		}
 	},
 	"sort": {

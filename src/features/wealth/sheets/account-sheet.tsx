@@ -19,6 +19,7 @@ import { Switch } from "~/components/ui/switch";
 import type { AssetTypeKey, WealthAccount } from "../types";
 import type { AccountDraft } from "../use-account-actions";
 import { balanceMinor } from "./balance";
+import { type IconDraft, IconField } from "./icon-field";
 import {
 	aprInvalid,
 	LiabilityFields,
@@ -37,6 +38,23 @@ const TYPES: AssetTypeKey[] = [
 	"LIABILITY_CREDIT_CARD",
 	"LIABILITY_MORTGAGE",
 ];
+
+/** What Save has to do about the icon: nothing, set a logo or color (or clear it), or upload a picture. */
+function iconChange(
+	before: WealthAccount["icon"],
+	draft: IconDraft,
+): AccountDraft["icon"] {
+	if (draft.file) return { file: draft.file };
+	const now = draft.icon;
+	if (before?.kind === now?.kind && before?.value === now?.value) return null;
+	// A picture already on the account stays when nothing was picked.
+	if (now?.kind === "IMAGE") return null;
+	return {
+		pick: now
+			? { kind: now.kind as "BRAND" | "MONOGRAM", value: now.value }
+			: null,
+	};
+}
 
 const isLiability = (type: AssetTypeKey) => type.startsWith("LIABILITY_");
 
@@ -80,6 +98,10 @@ export function AccountSheet({
 		account?.rateType ?? null,
 	);
 	const liability = useLiability(account);
+	const [icon, setIcon] = useState<IconDraft>({
+		icon: account?.icon ?? null,
+		file: null,
+	});
 	const [tried, setTried] = useState(false);
 	const result = parseMoneyInput(text, locale, currency);
 	// A custom rate counts as a rate while the currency stays the same.
@@ -95,6 +117,7 @@ export function AccountSheet({
 		if (!name.trim() || minor == null || !rated) return false;
 		if (debt && aprInvalid(liability)) return false;
 		await onSave({
+			icon: iconChange(account?.icon ?? null, icon),
 			name: name.trim(),
 			type,
 			balance: { minor, currency },
@@ -175,6 +198,7 @@ export function AccountSheet({
 					)}
 				</div>
 				<RateTypeChips onChange={setRateType} types={types} value={rateType} />
+				<IconField name={name} onChange={setIcon} value={icon} />
 				{debt ? (
 					<LiabilityFields
 						currency={currency}

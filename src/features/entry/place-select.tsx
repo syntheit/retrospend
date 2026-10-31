@@ -1,6 +1,7 @@
 "use client";
 
 import { Money } from "~/components/money/money";
+import { AccountMark } from "~/components/rows/account-mark";
 import { CurrencyFlag } from "~/components/ui/currency-flag";
 import {
 	Select,
@@ -51,9 +52,13 @@ export function PlaceSelect({
 				) : null}
 				{places.map((p) => (
 					<SelectItem key={p.id} value={p.id}>
-						<span aria-hidden="true" className="inline-flex shrink-0">
-							<CurrencyFlag className="size-4" currencyCode={p.currency} />
-						</span>
+						{p.icon ? (
+							<AccountMark icon={p.icon} name={p.name} size="menu" />
+						) : (
+							<span aria-hidden="true" className="inline-flex shrink-0">
+								<CurrencyFlag className="size-4" currencyCode={p.currency} />
+							</span>
+						)}
 						<span className="truncate">{p.name}</span>
 						<span className="text-fg-3 text-meta">
 							<Money value={p.balance} />

@@ -27,6 +27,11 @@ export type AccountDraft = {
 	apr: number | null;
 	minimumPayment: MoneyValue | null;
 	dueDay: number | null;
+	/** Null: leave the icon alone. */
+	icon:
+		| { pick: { kind: "BRAND" | "MONOGRAM"; value: string } | null }
+		| { file: File }
+		| null;
 };
 
 /**
@@ -65,6 +70,7 @@ export function useAccountActions(
 	const close = api.wealth.closeAsset.useMutation(opts);
 	const reopen = api.wealth.reopenAsset.useMutation(opts);
 	const remove = api.wealth.deleteAssetPermanently.useMutation(opts);
+	const setIcon = api.wealth.setAssetIcon.useMutation();
 
 	const byId = useMemo(() => {
 		const all = [...view.groups.flatMap((g) => g.accounts), ...view.closed];
@@ -132,6 +138,27 @@ export function useAccountActions(
 			});
 		},
 		async saveAccount(a: WealthAccount | null, d: AccountDraft) {
+			/** The icon is not a money move: it is set after the account is saved. */
+			const applyIcon = async (id: string) => {
+				if (!d.icon) return;
+				try {
+					if ("file" in d.icon) {
+						const body = new FormData();
+						body.append("file", d.icon.file);
+						body.append("accountId", id);
+						const res = await fetch("/api/upload/account-icon", {
+							method: "POST",
+							body,
+						});
+						if (!res.ok) throw new Error(String(res.status));
+					} else {
+						await setIcon.mutateAsync({ id, icon: d.icon.pick });
+					}
+					refresh();
+				} catch {
+					toast.failed(t("iconFailed"));
+				}
+			};
 			const input = {
 				name: d.name,
 				type: d.type,
@@ -145,12 +172,14 @@ export function useAccountActions(
 			};
 			if (!a) {
 				const made = await create.mutateAsync(input);
+				await applyIcon(made.id);
 				toast.saved(t("added", { name: d.name }), {
 					undo: () => remove.mutateAsync({ id: made.id }),
 				});
 				return;
 			}
 			await edit.mutateAsync({ id: a.id, ...input });
+			await applyIcon(a.id);
 			toast.saved(t("saved", { name: d.name }), {
 				undo: () =>
 					edit.mutateAsync({

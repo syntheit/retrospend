@@ -6,6 +6,7 @@
 import type { ReactNode } from "react";
 import type { MoneyValue } from "~/components/money/format";
 import type { FacePerson } from "~/components/ui/avatar-face";
+import type { AccountIcon } from "~/lib/account-icons";
 
 /** A category's identity: its name, its icon key and its color slot (1 to 21). */
 export type CategoryRef = {
@@ -166,6 +167,8 @@ export type AccountVM = {
 	id: string;
 	name: string;
 	kind: AccountKind;
+	/** The mark the person chose; without one the row shows the glyph of its kind. */
+	icon?: AccountIcon | null;
 	/** Native amount; liabilities are negative. */
 	amount: MoneyValue;
 	/** Home value when the currency differs; null means no rate yet. */

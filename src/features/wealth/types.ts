@@ -4,8 +4,8 @@
  * hundredths of a percent: the client formats, it never computes (R9).
  */
 import type { MoneyValue } from "~/components/money/format";
-import type { AccountIcon } from "~/lib/account-icons";
 import type { AccountKind, Basis } from "~/components/rows/types";
+import type { AccountIcon } from "~/lib/account-icons";
 
 export type AssetTypeKey =
 	| "CASH"

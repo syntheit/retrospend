@@ -76,7 +76,8 @@
 		"updated": "{name} actualizada",
 		"added": "Agregaste {name}",
 		"saved": "{name} guardada",
-		"failed": "No se pudo guardar. Probá de nuevo."
+		"failed": "No se pudo guardar. Probá de nuevo.",
+		"iconFailed": "Se guardó, pero el ícono no se subió. Intentá de nuevo."
 	},
 	"rateTypes": {
 		"official": "Oficial",
@@ -131,6 +132,31 @@
 			"submit": "Cerrar cuenta",
 			"body": "{name} sale de tus cuentas y de tu patrimonio desde hoy. Su historial de saldos se mantiene y podés reabrirla desde Cuentas cerradas.",
 			"left": "Todavía muestra <amount></amount>. Si la plata se movió a otro lado, primero actualizá el saldo a cero."
+		},
+		"icon": {
+			"label": "Ícono",
+			"default": "Predeterminado",
+			"letter": "Letra",
+			"image": "Tu imagen",
+			"title": "Ícono de la cuenta",
+			"find": "Buscar un logo",
+			"empty": "Ningún logo coincide",
+			"none": "Ícono predeterminado",
+			"letters": "Letra sobre un color",
+			"logos": "Logos",
+			"selected": "Seleccionado",
+			"upload": "Subir imagen",
+			"tooLarge": "Elegí una imagen de menos de 5 MB.",
+			"colors": {
+				"avatar-1": "Azul",
+				"avatar-2": "Naranja",
+				"avatar-3": "Rosa",
+				"avatar-4": "Verde",
+				"avatar-5": "Violeta",
+				"avatar-6": "Rojo",
+				"avatar-7": "Índigo",
+				"avatar-8": "Verde azulado"
+			}
 		}
 	},
 	"sort": {

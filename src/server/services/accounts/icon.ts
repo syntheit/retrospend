@@ -56,7 +56,10 @@ export async function setAccountIcon(
 	id: string,
 	icon: AccountIcon | null,
 ): Promise<AccountIcon | null> {
-	if (icon && (icon.kind === "IMAGE" || !isAccountIcon(icon.kind, icon.value))) {
+	if (
+		icon &&
+		(icon.kind === "IMAGE" || !isAccountIcon(icon.kind, icon.value))
+	) {
 		throw new TRPCError({
 			code: "BAD_REQUEST",
 			message: "That icon is not one we have.",

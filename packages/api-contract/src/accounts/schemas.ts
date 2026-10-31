@@ -95,6 +95,22 @@ export const updateAccountSchema = accountFieldsSchema
 
 export const accountIdParamsSchema = z.object({ id: idSchema });
 
+export const ACCOUNT_ICON_KINDS = ["BRAND", "MONOGRAM", "IMAGE"] as const;
+
+export const accountIconSchema = z
+	.object({
+		kind: z.enum(ACCOUNT_ICON_KINDS),
+		value: z.string().meta({
+			description:
+				"BRAND: a logo slug from the finance subset of Simple Icons (CC0), like revolut. MONOGRAM: an avatar palette slot, avatar-1 to avatar-8; the mark is the first letter of the name on that color. IMAGE: the URL path of the picture the person uploaded, like /api/images/accounts/<id>-<ms>.webp.",
+		}),
+	})
+	.meta({
+		id: "AccountIcon",
+		description:
+			"The mark shown beside the account. Absent (null) means the default glyph for its type.",
+	});
+
 export const accountItemSchema = z
 	.object({
 		id: idSchema,
@@ -115,6 +131,7 @@ export const accountItemSchema = z
 			.meta({ description: "Yearly percent as text." }),
 		minimumPayment: moneySchema.nullable(),
 		dueDay: z.int().nullable(),
+		icon: accountIconSchema.nullable(),
 		updatedAt: timestampSchema,
 	})
 	.meta({ id: "Account" });
