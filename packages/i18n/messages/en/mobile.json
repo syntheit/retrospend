@@ -1425,7 +1425,8 @@
 		"more": "More actions",
 		"menu": {
 			"income": "Add income",
-			"currencies": "Currencies and rates"
+			"currencies": "Currencies and rates",
+			"export": "Export accounts"
 		},
 		"actions": {
 			"update": "Update balance",
@@ -2387,7 +2388,8 @@
 			"codeCopied": "Code copied",
 			"linkCopied": "Link copied",
 			"copyFailed": "Couldn't copy that",
-			"shareFailed": "Couldn't open sharing"
+			"shareFailed": "Couldn't open sharing",
+			"createdOn": "Created {date}"
 		},
 		"feedback": {
 			"title": "Feedback",
@@ -2813,5 +2815,32 @@
 		"unavailable": "Couldn't check {list}.",
 		"stays": "What stays the same",
 		"keeps": "{amount} stays"
+	},
+	"search": {
+		"title": "Search",
+		"placeholder": "Search expenses, people and projects",
+		"recent": "Recent searches",
+		"clear": "Clear",
+		"expenses": "Expenses",
+		"people": "People",
+		"projects": "Projects",
+		"goTo": "Go to",
+		"empty": "Nothing found for “{query}”",
+		"error": "Couldn’t search",
+		"errorDetail": "Check your connection and try again.",
+		"archived": "Archived",
+		"places": {
+			"home": "Home",
+			"activity": "Activity",
+			"budget": "Budget",
+			"wealth": "Wealth",
+			"people": "People",
+			"projects": "Projects",
+			"recurring": "Recurring expenses",
+			"insights": "Insights",
+			"currencies": "Currencies",
+			"notifications": "Notifications",
+			"settings": "Settings"
+		}
 	}
 }

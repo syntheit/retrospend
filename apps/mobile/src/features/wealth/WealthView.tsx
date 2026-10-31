@@ -8,6 +8,7 @@ import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useDataExport } from "@/features/settings/security/useDataExport";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
@@ -18,6 +19,7 @@ import { rowEnter, rowExit } from "@/ui/motion";
 import { Screen } from "@/ui/Screen";
 import { Skeleton, SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
+import { useToast } from "@/ui/Toast";
 import { TopBar } from "@/ui/TopBar";
 import type { MenuItem } from "@/ui/types";
 import { AccountRow } from "./AccountRow";
@@ -42,7 +44,10 @@ import { useAccountActions } from "./useAccountActions";
  */
 function WealthTopBar({ onAdd }: { onAdd: () => void }) {
 	const t = useTranslations("mobile.wealth");
+	const failed = useTranslations("mobile.settings.data")("failed");
 	const add = useOptionalAddEntry();
+	const toast = useToast();
+	const exporter = useDataExport();
 	const items: MenuItem[] = [
 		...(add
 			? [
@@ -57,6 +62,16 @@ function WealthTopBar({ onAdd }: { onAdd: () => void }) {
 			id: "currencies",
 			label: t("menu.currencies"),
 			onPress: () => router.push("/currencies"),
+		},
+		{
+			id: "export",
+			label: t("menu.export"),
+			onPress: () => {
+				if (exporter.busy) return;
+				void exporter.run("wealth").then((ok) => {
+					if (!ok) toast.show({ message: failed });
+				});
+			},
 		},
 	];
 	return (

@@ -1,31 +1,24 @@
 import { Stack } from "expo-router";
 import { useState } from "react";
-import { Platform, ScrollView, View } from "react-native";
-import { useFormatter, useTranslations } from "use-intl";
+import { Platform, View } from "react-native";
+import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
-import { Chip } from "@/ui/Chip";
-import { EmptyState } from "@/ui/EmptyState";
-import { GroupItem, ListGroup, ListRow } from "@/ui/List";
-import { SkeletonRows } from "@/ui/Skeleton";
-import { StatusText } from "@/ui/StatusText";
+import { GroupItem, ListGroup } from "@/ui/List";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { useToast } from "@/ui/Toast";
 import { TopBarAction } from "@/ui/TopBarAction";
-import { Block, GroupNote, PageState, SettingsPage } from "../settings/parts";
+import { Block, PageState, SettingsPage } from "../settings/parts";
+import {
+	InviteCodeList,
+	type InviteStatus,
+	readInviteCodes,
+} from "./InviteCodeList";
 import { InviteSheet } from "./InviteSheet";
-import type { InviteCodeDto } from "./types";
 import { detailOf, useAdminRead } from "./useAdminRead";
 import { useServerSettings } from "./useServerSettings";
-
-type Status = "active" | "used";
-const STATUSES: Status[] = ["active", "used"];
-
-/** Codes are read 100 at a time, up to a cap no self-hosted server reaches. */
-const PAGE = 100;
-const MAX_PAGES = 5;
 
 /**
  * Invite codes: whether sign-up needs a code and whether every user may make
@@ -35,31 +28,19 @@ const MAX_PAGES = 5;
  */
 export function InvitesScreen() {
 	const t = useTranslations("mobile.admin.invites");
-	const tc = useTranslations("mobile.common");
-	const format = useFormatter();
 	const { api } = useSession();
 	const toast = useToast();
 	const { space } = useTheme();
 	const settings = useServerSettings();
-	const [status, setStatus] = useState<Status>("active");
+	const [status, setStatus] = useState<InviteStatus>("active");
 	const [openId, setOpenId] = useState<string | null>(null);
 	const [creating, setCreating] = useState(false);
 
-	const codes = useAdminRead(async (client) => {
-		const items: InviteCodeDto[] = [];
-		let cursor: string | undefined;
-		for (let page = 0; page < MAX_PAGES; page++) {
-			const read = await client.admin.listInviteCodes({
-				status,
-				limit: PAGE,
-				cursor,
-			});
-			items.push(...read.items);
-			if (!read.nextCursor) break;
-			cursor = read.nextCursor;
-		}
-		return items;
-	}, status);
+	const codes = useAdminRead(
+		(client) =>
+			readInviteCodes((query) => client.admin.listInviteCodes(query), status),
+		status,
+	);
 
 	async function create() {
 		if (!api || creating) return;
@@ -114,8 +95,6 @@ export function InvitesScreen() {
 	const server = settings.state.data;
 	const items = codes.state.status === "ready" ? codes.state.data : null;
 	const open = items?.find((code) => code.id === openId) ?? null;
-	const day = (iso: string) =>
-		format.dateTime(new Date(iso), { dateStyle: "medium" });
 
 	return (
 		<>
@@ -142,70 +121,12 @@ export function InvitesScreen() {
 					</GroupItem>
 				</ListGroup>
 				<Block title={t("codes")}>
-					<ScrollView
-						contentContainerStyle={{
-							alignItems: "center",
-							gap: space[2],
-							paddingHorizontal: space[4],
-							paddingBottom: space[3],
-						}}
-						horizontal
-						showsHorizontalScrollIndicator={false}
-					>
-						{STATUSES.map((id) => (
-							<Chip
-								key={id}
-								label={t(`status.${id}`)}
-								onPress={() => setStatus(id)}
-								selected={status === id}
-							/>
-						))}
-					</ScrollView>
-					{items === null ? (
-						codes.state.status === "error" ? (
-							<EmptyState
-								actionLabel={tc("retry")}
-								detail={t("errorDetail")}
-								onAction={() => void codes.reload()}
-								title={t("error")}
-							/>
-						) : (
-							<SkeletonRows />
-						)
-					) : items.length === 0 ? (
-						<EmptyState title={t(`empty.${status}`)} />
-					) : (
-						<ListGroup>
-							{items.map((code) => (
-								<ListRow
-									end={
-										<StatusText
-											label={t(`status.${code.state}`)}
-											size="sm"
-											tone={code.state === "active" ? "quiet" : "muted"}
-										/>
-									}
-									key={code.id}
-									onPress={() => setOpenId(code.id)}
-									sub={
-										code.usedBy && code.usedAt
-											? t("usedBy", {
-													name: code.usedBy.username ?? code.usedBy.name,
-													date: day(code.usedAt),
-												})
-											: t("createdBy", {
-													name: code.createdBy.username ?? code.createdBy.name,
-													date: day(code.createdAt),
-												})
-									}
-									title={code.code}
-								/>
-							))}
-						</ListGroup>
-					)}
-					{items && items.length > 0 ? (
-						<GroupNote>{t("tapNote")}</GroupNote>
-					) : null}
+					<InviteCodeList
+						codes={codes}
+						onOpen={setOpenId}
+						onStatus={setStatus}
+						status={status}
+					/>
 				</Block>
 				<View style={{ height: space[2] }} />
 			</SettingsPage>

@@ -1425,7 +1425,8 @@
 		"more": "Autres actions",
 		"menu": {
 			"income": "Ajouter un revenu",
-			"currencies": "Devises et taux"
+			"currencies": "Devises et taux",
+			"export": "Exporter les comptes"
 		},
 		"actions": {
 			"update": "Mettre à jour le solde",
@@ -2387,7 +2388,8 @@
 			"codeCopied": "Code copié",
 			"linkCopied": "Lien copié",
 			"copyFailed": "Impossible de copier",
-			"shareFailed": "Impossible d'ouvrir le partage"
+			"shareFailed": "Impossible d'ouvrir le partage",
+			"createdOn": "Créé le {date}"
 		},
 		"feedback": {
 			"title": "Retours",
@@ -2813,5 +2815,32 @@
 		"unavailable": "Impossible de vérifier {list}.",
 		"stays": "Ce qui ne change pas",
 		"keeps": "{amount} reste"
+	},
+	"search": {
+		"title": "Rechercher",
+		"placeholder": "Rechercher dépenses, personnes et projets",
+		"recent": "Recherches récentes",
+		"clear": "Effacer",
+		"expenses": "Dépenses",
+		"people": "Personnes",
+		"projects": "Projets",
+		"goTo": "Aller à",
+		"empty": "Aucun résultat pour « {query} »",
+		"error": "Recherche impossible",
+		"errorDetail": "Vérifiez votre connexion et réessayez.",
+		"archived": "Archivé",
+		"places": {
+			"home": "Accueil",
+			"activity": "Activité",
+			"budget": "Budget",
+			"wealth": "Patrimoine",
+			"people": "Personnes",
+			"projects": "Projets",
+			"recurring": "Dépenses récurrentes",
+			"insights": "Analyses",
+			"currencies": "Devises",
+			"notifications": "Notifications",
+			"settings": "Réglages"
+		}
 	}
 }

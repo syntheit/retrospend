@@ -1425,7 +1425,8 @@
 		"more": "Más acciones",
 		"menu": {
 			"income": "Agregar ingreso",
-			"currencies": "Monedas y cotizaciones"
+			"currencies": "Monedas y cotizaciones",
+			"export": "Exportar cuentas"
 		},
 		"actions": {
 			"update": "Actualizar saldo",
@@ -2387,7 +2388,8 @@
 			"codeCopied": "Código copiado",
 			"linkCopied": "Enlace copiado",
 			"copyFailed": "No se pudo copiar",
-			"shareFailed": "No se pudo abrir el menú de compartir"
+			"shareFailed": "No se pudo abrir el menú de compartir",
+			"createdOn": "Creado el {date}"
 		},
 		"feedback": {
 			"title": "Comentarios",
@@ -2813,5 +2815,32 @@
 		"unavailable": "No se pudo revisar {list}.",
 		"stays": "Qué sigue igual",
 		"keeps": "{amount} se mantiene"
+	},
+	"search": {
+		"title": "Buscar",
+		"placeholder": "Buscar gastos, personas y proyectos",
+		"recent": "Búsquedas recientes",
+		"clear": "Borrar",
+		"expenses": "Gastos",
+		"people": "Personas",
+		"projects": "Proyectos",
+		"goTo": "Ir a",
+		"empty": "No se encontró nada para «{query}»",
+		"error": "No se pudo buscar",
+		"errorDetail": "Revisá tu conexión y probá de nuevo.",
+		"archived": "Archivado",
+		"places": {
+			"home": "Inicio",
+			"activity": "Actividad",
+			"budget": "Presupuesto",
+			"wealth": "Patrimonio",
+			"people": "Personas",
+			"projects": "Proyectos",
+			"recurring": "Gastos recurrentes",
+			"insights": "Análisis",
+			"currencies": "Monedas",
+			"notifications": "Notificaciones",
+			"settings": "Ajustes"
+		}
 	}
 }

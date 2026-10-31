@@ -21,6 +21,7 @@ import { Text } from "@/ui/Text";
 export default function HomeScreen() {
 	const t = useTranslations("mobile.home");
 	const tc = useTranslations("mobile.common");
+	const ts = useTranslations("mobile.tabs");
 	const { space } = useTheme();
 	const dates = useHomeDates();
 	const { api } = useSession();
@@ -94,7 +95,17 @@ export default function HomeScreen() {
 				)}
 			</Screen>
 			{/* After the scroll view: see ListDetail. */}
-			<AccountTopBar title={t("title")} />
+			<AccountTopBar
+				actions={[
+					{
+						id: "search",
+						icon: "Search",
+						label: ts("search"),
+						onPress: () => router.push("/settings/search"),
+					},
+				]}
+				title={t("title")}
+			/>
 		</>
 	);
 }
