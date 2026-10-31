@@ -74,7 +74,7 @@ export function FoldingKeypad({
 }) {
 	const t = useTranslations("mobile.keypad");
 	const locale = useMoneyLocale();
-	const { color, duration, radius, size, space } = useTheme();
+	const { color, duration, radius, space } = useTheme();
 	const separator = decimalSeparator(locale);
 	const money = entry.kind === "money";
 	// 48 point keys, 44 on a short phone.

@@ -481,17 +481,6 @@ function textOf(node: TestNode | string): string {
 	return node.children.map(textOf).join("");
 }
 
-/** Presses the button whose words are `text` (a text action has no label of its own). */
-function pressWords(tree: Tree, text: string) {
-	const hit = tree.root.findAll(
-		(n) => typeof n.props.onPress === "function" && textOf(n) === text,
-	)[0];
-	if (!hit) throw new Error(`nothing to press: ${text}`);
-	act(() => {
-		(hit.props.onPress as () => void)();
-	});
-}
-
 function type(tree: Tree, label: string, text: string) {
 	const hit = find(
 		tree,
@@ -1752,8 +1741,10 @@ describe("The keypad folds into the Add button", () => {
 
 describe("The title remembers", () => {
 	const selected = (tree: Tree, label: string) =>
-		find(tree, (p) => p.accessibilityLabel === label && "accessibilityState" in p)[0]
-			?.props.accessibilityState;
+		find(
+			tree,
+			(p) => p.accessibilityLabel === label && "accessibilityState" in p,
+		)[0]?.props.accessibilityState;
 
 	it("picks the category you gave this title before, and says what it cost", async () => {
 		const { api } = fakeApi();

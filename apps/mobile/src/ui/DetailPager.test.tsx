@@ -48,8 +48,17 @@ const textOf = (n: TestNode | string): string =>
 const tab = (tree: { root: TestNode }, label: string) =>
 	tree.root.findAll(
 		(n) =>
-			n.props.accessibilityRole === "tab" && n.props.accessibilityLabel === label,
+			n.props.accessibilityRole === "tab" &&
+			n.props.accessibilityLabel === label,
 	)[0];
+
+function fire(node: TestNode | undefined, prop: string, ...args: unknown[]) {
+	const fn = node?.props[prop];
+	if (typeof fn !== "function") throw new Error(`nothing to call: ${prop}`);
+	act(() => {
+		fn(...args);
+	});
+}
 
 describe("DetailPager", () => {
 	it("draws a tab for each panel, the open one selected, and says which changed", () => {
@@ -79,17 +88,15 @@ describe("DetailPager", () => {
 
 	it("asks for a page by tab, and by swipe once a swipe settles on another", () => {
 		const { tree, onPageChange } = render(0);
-		act(() => (tab(tree, "Who")?.props.onPress as () => void)());
+		fire(tab(tree, "Who"), "onPress");
 		expect(onPageChange).toHaveBeenLastCalledWith(2, "tab");
 		const scroller = tree.root.findAll(
 			(n) => typeof n.props.onMomentumScrollEnd === "function",
 		)[0];
 		// The window of the test renderer is 750 wide: a settle at one page over.
-		act(() =>
-			(
-				scroller?.props.onMomentumScrollEnd as (e: unknown) => void
-			)({ nativeEvent: { contentOffset: { x: 750 } } }),
-		);
+		fire(scroller, "onMomentumScrollEnd", {
+			nativeEvent: { contentOffset: { x: 750 } },
+		});
 		expect(onPageChange).toHaveBeenLastCalledWith(1, "swipe");
 	});
 

@@ -56,13 +56,21 @@ const money = (text: string, onChange: (t: string) => void): KeypadEntry => ({
 	onChange,
 });
 
+function fire(node: TestNode | undefined, prop: string, ...args: unknown[]) {
+	const fn = node?.props[prop];
+	if (typeof fn !== "function") throw new Error(`nothing to call: ${prop}`);
+	act(() => {
+		fn(...args);
+	});
+}
+
 describe("FoldingKeypad", () => {
 	it("types digits into the amount and deletes", () => {
 		const onChange = jest.fn();
 		const tree = render({ entry: money("12", onChange) });
-		act(() => (byLabel(tree, "5")?.props.onPress as () => void)());
+		fire(byLabel(tree, "5"), "onPress");
 		expect(onChange).toHaveBeenLastCalledWith("125");
-		act(() => (byLabel(tree, "word:delete")?.props.onPress as () => void)());
+		fire(byLabel(tree, "word:delete"), "onPress");
 		expect(onChange).toHaveBeenLastCalledWith("1");
 	});
 
@@ -70,26 +78,24 @@ describe("FoldingKeypad", () => {
 		const onChange = jest.fn();
 		const tree = render({ entry: money("12", onChange) });
 		const plus = byLabel(tree, "word:plusSpoken");
-		act(() => (plus?.props.onPress as () => void)());
+		fire(plus, "onPress");
 		expect(onChange).toHaveBeenLastCalledWith("12+");
-		act(() =>
-			(
-				tree.root.findAll(
-					(n) =>
-						n.props.accessibilityLabel === "word:plusSpoken" &&
-						typeof n.props.onLongPress === "function",
-				)[0]?.props.onLongPress as () => void
-			)(),
+		fire(
+			tree.root.findAll(
+				(n) =>
+					n.props.accessibilityLabel === "word:plusSpoken" &&
+					typeof n.props.onLongPress === "function",
+			)[0],
+			"onLongPress",
 		);
 		expect(onChange).toHaveBeenLastCalledWith("12×");
-		act(() =>
-			(
-				tree.root.findAll(
-					(n) =>
-						n.props.accessibilityLabel === "word:minusSpoken" &&
-						typeof n.props.onLongPress === "function",
-				)[0]?.props.onLongPress as () => void
-			)(),
+		fire(
+			tree.root.findAll(
+				(n) =>
+					n.props.accessibilityLabel === "word:minusSpoken" &&
+					typeof n.props.onLongPress === "function",
+			)[0],
+			"onLongPress",
 		);
 		expect(onChange).toHaveBeenLastCalledWith("12÷");
 	});
@@ -101,7 +107,7 @@ describe("FoldingKeypad", () => {
 		expect(byLabel(busy, "Add expense")?.props.disabled).toBe(true);
 		const onAdd = jest.fn();
 		const ready = render({ entry: money("5", () => {}), onAdd });
-		act(() => (byLabel(ready, "Add expense")?.props.onPress as () => void)());
+		fire(byLabel(ready, "Add expense"), "onPress");
 		expect(onAdd).toHaveBeenCalledTimes(1);
 	});
 
@@ -117,7 +123,7 @@ describe("FoldingKeypad", () => {
 		const tree = render({
 			entry: { text: "2", currency: "USD", kind: "units", onChange },
 		});
-		act(() => (byLabel(tree, "3")?.props.onPress as () => void)());
+		fire(byLabel(tree, "3"), "onPress");
 		expect(onChange).toHaveBeenLastCalledWith("23");
 		expect(byLabel(tree, "word:plusSpoken")).toBeUndefined();
 		expect(byLabel(tree, "word:decimal")).toBeUndefined();
@@ -128,7 +134,7 @@ describe("FoldingKeypad", () => {
 		const tree = render({
 			entry: { text: "12", currency: "USD", kind: "percent", onChange },
 		});
-		act(() => (byLabel(tree, "word:decimal")?.props.onPress as () => void)());
+		fire(byLabel(tree, "word:decimal"), "onPress");
 		expect(onChange).toHaveBeenLastCalledWith("12.");
 	});
 });

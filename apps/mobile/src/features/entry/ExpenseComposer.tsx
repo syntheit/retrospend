@@ -18,7 +18,6 @@ import { type ExpenseDraft, isPersonal, pickCategory } from "./draft";
 import { MorePanel } from "./MorePanel";
 import { PreviewLine } from "./PreviewLine";
 import { ProjectPanel } from "./ProjectPanel";
-import { SyncIssues } from "./SyncIssues";
 import { useTitleMemory } from "./titleMemory";
 import type { EntryCatalog, EntryCategory } from "./types";
 import type { ComposerPreview } from "./useComposerPreview";

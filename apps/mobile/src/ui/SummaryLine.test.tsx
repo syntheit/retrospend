@@ -19,11 +19,24 @@ interface TestNode {
 const textOf = (n: TestNode | string): string =>
 	typeof n === "string" ? n : n.children.map(textOf).join("");
 
+function fire(node: TestNode | undefined, prop: string, ...args: unknown[]) {
+	const fn = node?.props[prop];
+	if (typeof fn !== "function") throw new Error(`nothing to call: ${prop}`);
+	act(() => {
+		fn(...args);
+	});
+}
+
 describe("SummaryLine", () => {
 	it("joins the parts with a middle dot, clamps to two lines, and opens each part's panel", () => {
 		const open = jest.fn();
 		const parts: SummaryPart[] = [
-			{ key: "c", text: "Pick a category", tone: "attention", onPress: () => open("c") },
+			{
+				key: "c",
+				text: "Pick a category",
+				tone: "attention",
+				onPress: () => open("c"),
+			},
 			{ key: "w", text: "Today", onPress: () => open("w"), active: true },
 			{ key: "p", text: "Personal", onPress: () => open("p") },
 		];
@@ -39,7 +52,7 @@ describe("SummaryLine", () => {
 		);
 		expect(buttons).toHaveLength(3);
 		expect(buttons[1]?.props.accessibilityState).toEqual({ selected: true });
-		act(() => (buttons[2]?.props.onPress as () => void)());
+		fire(buttons[2], "onPress");
 		expect(open).toHaveBeenCalledWith("p");
 	});
 });
