@@ -226,14 +226,25 @@ test("Insights: figures match the reads, a range with Compare moves them, Show i
 		await moved.checkPage(page, "insights last month", "insightsCompare"),
 	).toEqual([]);
 
-	// The month links are for the keyboard: hidden until one has focus, then shown.
-	const monthLinks = main
-		.getByRole("list", { name: "Open a month in Activity" })
-		.getByRole("link");
-	await monthLinks.first().focus();
-	const shown = await monthLinks.first().boundingBox();
+	// The month buttons are for the keyboard: hidden until one has focus, then
+	// shown. Picking one moves the range in place, with no navigation.
+	const monthButtons = main
+		.getByRole("list", { name: "Months" })
+		.getByRole("button");
+	await monthButtons.first().focus();
+	const shown = await monthButtons.first().boundingBox();
 	expect(shown?.width ?? 0).toBeGreaterThan(24);
-	await expect(main.getByText(/^Same filters\./)).toBeVisible();
+	const before = page.url();
+	await monthButtons.first().click();
+	await expect(monthButtons.first()).toHaveAttribute("aria-pressed", "true");
+	await expect(page).toHaveURL(/\/activity\/insights\?/);
+	expect(page.url()).not.toBe(before);
+	await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+	// The bars stay where they were, so the picked month is still the first.
+	await expect(monthButtons).toHaveCount(6);
+	// Back to the range the rest of the flow reads.
+	await page.goto(`/activity/insights?${url.searchParams.toString()}`);
+	await expect(page.locator('[data-ui="v2"]')).toBeVisible();
 
 	// A figure opens the expenses behind it: Rent opens Activity on that
 	// range, filtered to the category.

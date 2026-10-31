@@ -58,7 +58,6 @@ export function InsightsPage() {
 		(cat: string) => hrefOf(undefined, cat),
 		[hrefOf],
 	);
-	const spanHref = useCallback((span: Span) => hrefOf(span), [hrefOf]);
 	const summary = i.summary.data;
 	const narrowed = isNarrowed(view);
 	const named = summary?.missingRates ?? [];
@@ -134,7 +133,11 @@ export function InsightsPage() {
 							/>
 						</div>
 						<div className="mt-8 min-w-0 lg:col-span-2 lg:mt-0">
-							<MonthsSection hrefOf={spanHref} query={i.months} />
+							<MonthsSection
+								onPick={i.pickMonth}
+								query={i.months}
+								span={i.span}
+							/>
 							{i.showCashflow && (
 								<CashflowSection named={named} query={i.cashflow} />
 							)}

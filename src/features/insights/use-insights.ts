@@ -1,5 +1,6 @@
 "use client";
 
+import type { Span } from "@retrospend/domain/insights";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { keepPreviousData } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -30,13 +31,23 @@ export function useInsights() {
 	const [view, setViewState] = useState<InsightsView>(() =>
 		readView(new URLSearchParams(params.toString()), today),
 	);
-	const setView = useCallback(
+	// The last day the month bars end at while a bar is picked: picking a
+	// month moves the range, and the bars must stay where they are.
+	const [barsTo, setBarsTo] = useState<string | null>(null);
+	const commit = useCallback(
 		(next: InsightsView) => {
 			setViewState(next);
 			const qs = writeView(next, today);
 			router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
 		},
 		[router, pathname, today],
+	);
+	const setView = useCallback(
+		(next: InsightsView) => {
+			setBarsTo(null);
+			commit(next);
+		},
+		[commit],
 	);
 
 	const allTime = view.range.from === null;
@@ -51,13 +62,21 @@ export function useInsights() {
 		[view.range, today, first.data],
 	);
 	const filter = useMemo(() => filterOf(view), [view]);
+	/** A month bar was picked: the range becomes that month, in place. */
+	const pickMonth = useCallback(
+		(month: Span) => {
+			setBarsTo((to) => to ?? span.to);
+			commit({ ...view, range: { from: month.from, to: month.to } });
+		},
+		[commit, view, span.to],
+	);
 	const keep = { placeholderData: keepPreviousData, enabled: ready };
 	const summary = api.insights.summary.useQuery(
 		{ range: span, compare: view.compare, filter },
 		keep,
 	);
 	const months = api.insights.months.useQuery(
-		{ to: span.to, count: 6, filter },
+		{ to: barsTo ?? span.to, count: 6, filter },
 		keep,
 	);
 	const ytd = api.insights.ytd.useQuery(
@@ -74,6 +93,7 @@ export function useInsights() {
 		today,
 		view,
 		setView,
+		pickMonth,
 		span,
 		summary,
 		months,
