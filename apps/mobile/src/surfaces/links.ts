@@ -7,6 +7,11 @@ import { canonicalAmount } from "./prefill";
 //
 //   retrospend://add?amount=12.50&currency=USD&title=Coffee&mode=income
 //   retrospend://share    a share or Shortcut waits in the native hand-off
+//
+// A project link (retrospend://projects/ID, or the web address
+// https://host/projects/ID?invite=LINK a person was sent) opens that project
+// in the app; the project screen sends it to the web page when you are not in
+// it (the guest join flow and the public page are web pages).
 
 export type AppLink =
 	| { kind: "compose"; prefill: ComposerPrefill }
@@ -14,10 +19,15 @@ export type AppLink =
 	| { kind: "route"; path: string };
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
+/** The scheme and host of a web address: only its path says where it goes. */
+const WEB_ORIGIN = /^https?:\/\/[^/?#]+/i;
 
 /** Scheme and leading slashes dropped: "retrospend://add?x=1" and "/add?x=1" both give "add?x=1". */
 function pathOf(url: string): string {
-	return url.replace(SCHEME, "").replace(/^\/+/, "");
+	return url
+		.replace(WEB_ORIGIN, "")
+		.replace(SCHEME, "")
+		.replace(/^\/+/, "");
 }
 
 export function routeForUrl(url: string): AppLink | null {
@@ -43,6 +53,12 @@ export function routeForUrl(url: string): AppLink | null {
 				...(title ? { title } : {}),
 			},
 		};
+	}
+	if (first === "projects" && segments.length === 2) {
+		// Marked as a link, so a project you are not in opens its web page.
+		const params = new URLSearchParams(query);
+		params.set("link", "1");
+		return { kind: "route", path: `/${segments.join("/")}?${params}` };
 	}
 	return {
 		kind: "route",

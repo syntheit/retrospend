@@ -1960,7 +1960,9 @@
 			"restored": "{name} restaurado",
 			"archiveError": "Não foi possível arquivar. Tente de novo.",
 			"restoreError": "Não foi possível restaurar. Tente de novo.",
-			"addPerson": "Adicionar pessoa"
+			"addPerson": "Adicionar pessoa",
+			"share": "Compartilhar projeto",
+			"settings": "Ajustes do projeto"
 		},
 		"addPerson": {
 			"title": "Adicionar pessoa",
@@ -1977,6 +1979,106 @@
 			"submit": "Adicionar ao projeto",
 			"added": "{name} adicionado",
 			"error": "Não foi possível adicionar esta pessoa. Tente de novo."
+		},
+		"share": {
+			"title": "Compartilhar projeto",
+			"links": "Links de convite",
+			"loading": "Carregando",
+			"loadError": "Não foi possível carregar os links de convite.",
+			"roles": {
+				"CONTRIBUTOR": "Pode adicionar despesas",
+				"VIEWER": "Pode ver"
+			},
+			"on": "Qualquer pessoa com o link pode entrar",
+			"off": "Desativado",
+			"create": "Criar link",
+			"copy": "Copiar",
+			"share": "Compartilhar",
+			"newLink": "Novo link",
+			"newLinkTitle": "Substituir este link?",
+			"newLinkBody": "O link antigo deixa de funcionar. Quem já entrou continua no projeto.",
+			"newLinkConfirm": "Substituir",
+			"turnOff": "Desativar",
+			"turnOffTitle": "Desativar este link?",
+			"turnOffBody": "Ninguém mais consegue entrar com ele. Quem já entrou continua no projeto.",
+			"turnOffConfirm": "Desativar",
+			"linkError": "Não foi possível mudar o link. Tente de novo.",
+			"linksHint": "Quem tem um link entra com esse papel.",
+			"copied": "Link copiado",
+			"copyFailed": "Não foi possível copiar o link.",
+			"shareFailed": "Não foi possível abrir o menu de compartilhar.",
+			"public": "Página pública",
+			"publicHint": "Quem tiver o endereço vê os totais e as despesas, nunca saldos ou e-mails.",
+			"publicOwner": "Só um organizador muda isso.",
+			"copyPublic": "Copiar endereço da página",
+			"nowPublic": "A página do projeto está pública",
+			"nowPrivate": "A página do projeto está privada",
+			"publicError": "Não foi possível mudar a página. Tente de novo.",
+			"accessTitle": "Quem vê o quê",
+			"access": {
+				"members": "As pessoas do projeto veem o que o papel delas permite.",
+				"link": {
+					"CONTRIBUTOR": "Quem tem o link para adicionar entra e pode adicionar despesas.",
+					"VIEWER": "Quem tem o link para ver entra e pode ver."
+				},
+				"publicOn": "Quem tiver o endereço da página vê totais e despesas, nunca saldos ou e-mails.",
+				"publicOff": "A página do projeto está privada."
+			}
+		},
+		"settings": {
+			"title": "Ajustes do projeto",
+			"submit": "Salvar",
+			"autoAccept": "Partes novas contam sem revisão",
+			"autoAcceptHint": "Partes adicionadas a uma divisão deste projeto contam como aceitas.",
+			"exclude": "Deixar este projeto fora das minhas análises",
+			"excludeHint": "Só para você. Os outros membros não são afetados.",
+			"members": "Membros",
+			"since": "Desde {date}",
+			"fromStart": "Desde o início",
+			"left": "Saiu em {date}",
+			"you": "{name} (você)",
+			"datesHint": "As datas escolhem quem as novas despesas incluem. Despesas salvas mantêm sua divisão.",
+			"datesTitle": "Datas de {name}",
+			"saved": "Ajustes do projeto salvos",
+			"undone": "Ajustes restaurados",
+			"undoError": "Não foi possível desfazer. Tente de novo."
+		},
+		"dates": {
+			"submit": "Salvar datas",
+			"joined": "Entrou",
+			"left": "Saiu",
+			"fromStart": "Desde o início",
+			"stillHere": "Ainda está",
+			"onADay": "Em um dia",
+			"order": "A saída precisa ser depois da entrada.",
+			"leaves": "A partir de {date}, novas despesas deixam {name} de fora por padrão.",
+			"joins": "A partir de {date}, novas despesas incluem {name} por padrão.",
+			"always": "Novas despesas incluem {name} por padrão.",
+			"hint": "Despesas salvas mantêm sua divisão.",
+			"you": "Você",
+			"saved": "Datas de {name} salvas",
+			"undone": "Datas restauradas",
+			"undoError": "Não foi possível desfazer. Tente de novo.",
+			"figures": {
+				"project_total": "Total do grupo",
+				"project_member_balance": "{name} no grupo",
+				"project_member_share": "Parte de {name}",
+				"project_member_paid": "{name} pagou",
+				"owed_owedToYou": "Devem a você",
+				"owed_youOwe": "Você deve",
+				"balance_person": "Você e {name}",
+				"other": "Outro valor"
+			},
+			"figuresInline": {
+				"project_total": "o total do grupo",
+				"project_member_balance": "o saldo de {name} no grupo",
+				"project_member_share": "a parte de {name}",
+				"project_member_paid": "o que {name} pagou",
+				"owed_owedToYou": "o que devem a você",
+				"owed_youOwe": "o que você deve",
+				"balance_person": "seu saldo com {name}",
+				"other": "outro valor"
+			}
 		}
 	},
 	"settings": {

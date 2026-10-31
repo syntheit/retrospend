@@ -1960,7 +1960,9 @@
 			"restored": "{name} wiederhergestellt",
 			"archiveError": "Archivieren hat nicht geklappt. Versuch es noch einmal.",
 			"restoreError": "Wiederherstellen hat nicht geklappt. Versuch es noch einmal.",
-			"addPerson": "Person hinzufügen"
+			"addPerson": "Person hinzufügen",
+			"share": "Projekt teilen",
+			"settings": "Projekteinstellungen"
 		},
 		"addPerson": {
 			"title": "Person hinzufügen",
@@ -1977,6 +1979,106 @@
 			"submit": "Zum Projekt hinzufügen",
 			"added": "{name} hinzugefügt",
 			"error": "Die Person konnte nicht hinzugefügt werden. Versuch es noch einmal."
+		},
+		"share": {
+			"title": "Projekt teilen",
+			"links": "Einladungslinks",
+			"loading": "Wird geladen",
+			"loadError": "Die Einladungslinks ließen sich nicht laden.",
+			"roles": {
+				"CONTRIBUTOR": "Kann Ausgaben hinzufügen",
+				"VIEWER": "Kann ansehen"
+			},
+			"on": "Jeder mit dem Link kann beitreten",
+			"off": "Aus",
+			"create": "Link erstellen",
+			"copy": "Kopieren",
+			"share": "Teilen",
+			"newLink": "Neuer Link",
+			"newLinkTitle": "Diesen Link ersetzen?",
+			"newLinkBody": "Der alte Link funktioniert nicht mehr. Wer schon beigetreten ist, bleibt dabei.",
+			"newLinkConfirm": "Ersetzen",
+			"turnOff": "Ausschalten",
+			"turnOffTitle": "Diesen Link ausschalten?",
+			"turnOffBody": "Niemand kann damit mehr beitreten. Wer schon beigetreten ist, bleibt dabei.",
+			"turnOffConfirm": "Ausschalten",
+			"linkError": "Der Link ließ sich nicht ändern. Versuche es erneut.",
+			"linksHint": "Wer einen Link hat, tritt mit dieser Rolle bei.",
+			"copied": "Link kopiert",
+			"copyFailed": "Der Link ließ sich nicht kopieren.",
+			"shareFailed": "Das Teilen-Menü ließ sich nicht öffnen.",
+			"public": "Öffentliche Seite",
+			"publicHint": "Wer die Adresse hat, sieht die Summen und die Ausgaben, nie Salden oder E-Mails.",
+			"publicOwner": "Das ändert nur ein Organisator.",
+			"copyPublic": "Seitenadresse kopieren",
+			"nowPublic": "Die Projektseite ist öffentlich",
+			"nowPrivate": "Die Projektseite ist privat",
+			"publicError": "Die Seite ließ sich nicht ändern. Versuche es erneut.",
+			"accessTitle": "Wer was sehen kann",
+			"access": {
+				"members": "Mitglieder sehen, was ihre Rolle erlaubt.",
+				"link": {
+					"CONTRIBUTOR": "Wer den Link zum Hinzufügen hat, tritt bei und kann Ausgaben hinzufügen.",
+					"VIEWER": "Wer den Link zum Ansehen hat, tritt bei und kann ansehen."
+				},
+				"publicOn": "Wer die Seitenadresse hat, sieht Summen und Ausgaben, nie Salden oder E-Mails.",
+				"publicOff": "Die Projektseite ist privat."
+			}
+		},
+		"settings": {
+			"title": "Projekteinstellungen",
+			"submit": "Speichern",
+			"autoAccept": "Neue Anteile zählen ohne Prüfung",
+			"autoAcceptHint": "Anteile, die zu einer Aufteilung in diesem Projekt hinzukommen, zählen als angenommen.",
+			"exclude": "Dieses Projekt aus meinen Auswertungen herauslassen",
+			"excludeHint": "Nur für dich. Andere Mitglieder sind nicht betroffen.",
+			"members": "Mitglieder",
+			"since": "Seit {date}",
+			"fromStart": "Von Anfang an",
+			"left": "Ausgetreten am {date}",
+			"you": "{name} (du)",
+			"datesHint": "Die Daten bestimmen, wen neue Ausgaben einschließen. Gespeicherte Ausgaben behalten ihre Aufteilung.",
+			"datesTitle": "Daten für {name}",
+			"saved": "Projekteinstellungen gespeichert",
+			"undone": "Einstellungen zurückgesetzt",
+			"undoError": "Rückgängig machen ging nicht. Versuche es erneut."
+		},
+		"dates": {
+			"submit": "Daten speichern",
+			"joined": "Beigetreten",
+			"left": "Ausgetreten",
+			"fromStart": "Von Anfang an",
+			"stillHere": "Noch dabei",
+			"onADay": "An einem Tag",
+			"order": "Der Austritt muss nach dem Beitritt liegen.",
+			"leaves": "Ab dem {date} lassen neue Ausgaben {name} standardmäßig aus.",
+			"joins": "Ab dem {date} schließen neue Ausgaben {name} standardmäßig ein.",
+			"always": "Neue Ausgaben schließen {name} standardmäßig ein.",
+			"hint": "Gespeicherte Ausgaben behalten ihre Aufteilung.",
+			"you": "Du",
+			"saved": "Daten für {name} gespeichert",
+			"undone": "Daten zurückgesetzt",
+			"undoError": "Rückgängig machen ging nicht. Versuche es erneut.",
+			"figures": {
+				"project_total": "Gruppensumme",
+				"project_member_balance": "{name} in der Gruppe",
+				"project_member_share": "Anteil von {name}",
+				"project_member_paid": "{name} hat bezahlt",
+				"owed_owedToYou": "Dir geschuldet",
+				"owed_youOwe": "Du schuldest",
+				"balance_person": "Du und {name}",
+				"other": "Eine andere Zahl"
+			},
+			"figuresInline": {
+				"project_total": "die Gruppensumme",
+				"project_member_balance": "der Saldo von {name} in der Gruppe",
+				"project_member_share": "der Anteil von {name}",
+				"project_member_paid": "was {name} bezahlt hat",
+				"owed_owedToYou": "was dir geschuldet wird",
+				"owed_youOwe": "was du schuldest",
+				"balance_person": "dein Saldo mit {name}",
+				"other": "eine andere Zahl"
+			}
 		}
 	},
 	"settings": {

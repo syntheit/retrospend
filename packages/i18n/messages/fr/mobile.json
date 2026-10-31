@@ -1960,7 +1960,9 @@
 			"restored": "{name} restauré",
 			"archiveError": "Impossible d'archiver. Réessaie.",
 			"restoreError": "Impossible de restaurer. Réessaie.",
-			"addPerson": "Ajouter une personne"
+			"addPerson": "Ajouter une personne",
+			"share": "Partager le projet",
+			"settings": "Paramètres du projet"
 		},
 		"addPerson": {
 			"title": "Ajouter une personne",
@@ -1977,6 +1979,106 @@
 			"submit": "Ajouter au projet",
 			"added": "{name} ajouté",
 			"error": "Impossible d'ajouter cette personne. Réessaie."
+		},
+		"share": {
+			"title": "Partager le projet",
+			"links": "Liens d'invitation",
+			"loading": "Chargement",
+			"loadError": "Impossible de charger les liens d'invitation.",
+			"roles": {
+				"CONTRIBUTOR": "Peut ajouter des dépenses",
+				"VIEWER": "Peut consulter"
+			},
+			"on": "Toute personne ayant le lien peut rejoindre",
+			"off": "Désactivé",
+			"create": "Créer un lien",
+			"copy": "Copier",
+			"share": "Partager",
+			"newLink": "Nouveau lien",
+			"newLinkTitle": "Remplacer ce lien ?",
+			"newLinkBody": "L'ancien lien ne fonctionne plus. Les personnes qui ont déjà rejoint restent.",
+			"newLinkConfirm": "Remplacer",
+			"turnOff": "Désactiver",
+			"turnOffTitle": "Désactiver ce lien ?",
+			"turnOffBody": "Plus personne ne peut rejoindre avec lui. Les personnes qui ont déjà rejoint restent.",
+			"turnOffConfirm": "Désactiver",
+			"linkError": "Impossible de modifier le lien. Réessaie.",
+			"linksHint": "Quiconque a un lien rejoint avec ce rôle.",
+			"copied": "Lien copié",
+			"copyFailed": "Impossible de copier le lien.",
+			"shareFailed": "Impossible d'ouvrir le menu de partage.",
+			"public": "Page publique",
+			"publicHint": "Quiconque a l'adresse voit les totaux et les dépenses, jamais les soldes ni les e-mails.",
+			"publicOwner": "Seul un organisateur peut changer cela.",
+			"copyPublic": "Copier l'adresse de la page",
+			"nowPublic": "La page du projet est publique",
+			"nowPrivate": "La page du projet est privée",
+			"publicError": "Impossible de modifier la page. Réessaie.",
+			"accessTitle": "Qui voit quoi",
+			"access": {
+				"members": "Les membres du projet voient ce que leur rôle permet.",
+				"link": {
+					"CONTRIBUTOR": "Quiconque a le lien d'ajout rejoint et peut ajouter des dépenses.",
+					"VIEWER": "Quiconque a le lien de consultation rejoint et peut consulter."
+				},
+				"publicOn": "Quiconque a l'adresse de la page voit les totaux et les dépenses, jamais les soldes ni les e-mails.",
+				"publicOff": "La page du projet est privée."
+			}
+		},
+		"settings": {
+			"title": "Paramètres du projet",
+			"submit": "Enregistrer",
+			"autoAccept": "Les nouvelles parts comptent sans vérification",
+			"autoAcceptHint": "Les parts ajoutées à une répartition de ce projet comptent comme acceptées.",
+			"exclude": "Exclure ce projet de mes analyses",
+			"excludeHint": "Pour toi seulement. Les autres membres ne sont pas concernés.",
+			"members": "Membres",
+			"since": "Depuis le {date}",
+			"fromStart": "Depuis le début",
+			"left": "Parti le {date}",
+			"you": "{name} (toi)",
+			"datesHint": "Les dates choisissent qui les nouvelles dépenses incluent. Les dépenses enregistrées gardent leur répartition.",
+			"datesTitle": "Dates de {name}",
+			"saved": "Paramètres du projet enregistrés",
+			"undone": "Paramètres rétablis",
+			"undoError": "Impossible d'annuler. Réessaie."
+		},
+		"dates": {
+			"submit": "Enregistrer les dates",
+			"joined": "Arrivée",
+			"left": "Départ",
+			"fromStart": "Depuis le début",
+			"stillHere": "Toujours là",
+			"onADay": "Un jour précis",
+			"order": "Le départ doit suivre l'arrivée.",
+			"leaves": "À partir du {date}, les nouvelles dépenses excluent {name} par défaut.",
+			"joins": "À partir du {date}, les nouvelles dépenses incluent {name} par défaut.",
+			"always": "Les nouvelles dépenses incluent {name} par défaut.",
+			"hint": "Les dépenses enregistrées gardent leur répartition.",
+			"you": "Toi",
+			"saved": "Dates de {name} enregistrées",
+			"undone": "Dates rétablies",
+			"undoError": "Impossible d'annuler. Réessaie.",
+			"figures": {
+				"project_total": "Total du groupe",
+				"project_member_balance": "{name} dans le groupe",
+				"project_member_share": "Part de {name}",
+				"project_member_paid": "{name} a payé",
+				"owed_owedToYou": "On te doit",
+				"owed_youOwe": "Tu dois",
+				"balance_person": "Toi et {name}",
+				"other": "Un autre chiffre"
+			},
+			"figuresInline": {
+				"project_total": "le total du groupe",
+				"project_member_balance": "le solde de {name} dans le groupe",
+				"project_member_share": "la part de {name}",
+				"project_member_paid": "ce que {name} a payé",
+				"owed_owedToYou": "ce qu'on te doit",
+				"owed_youOwe": "ce que tu dois",
+				"balance_person": "ton solde avec {name}",
+				"other": "un autre chiffre"
+			}
 		}
 	},
 	"settings": {
