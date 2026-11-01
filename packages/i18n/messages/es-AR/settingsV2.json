@@ -1,6 +1,5 @@
 {
 	"title": "Configuración",
-	"autosaveNote": "Los cambios se guardan automáticamente",
 	"back": "Inicio",
 	"sections": {
 		"label": "Secciones de configuración",
@@ -29,7 +28,6 @@
 		"photoHint": "JPEG, PNG, WebP o GIF, hasta 5 MB",
 		"cropTitle": "Recortá tu foto",
 		"removePhotoTitle": "¿Querés quitar tu foto?",
-		"removePhotoBody": "Los demás van a ver tus iniciales en su lugar.",
 		"removePhotoConfirm": "Quitar foto",
 		"photoUpdated": "Foto actualizada",
 		"photoRemoved": "Foto quitada",
@@ -113,12 +111,10 @@
 		"display": "Visualización",
 		"defaults": "Valores predeterminados",
 		"homeCurrency": "Moneda principal",
-		"homeCurrencyMeta": "Los totales y los informes la usan",
 		"homeCurrencySaved": "Tu moneda principal ahora es {code}",
 		"defaultCurrency": "Predeterminada para gastos nuevos",
 		"defaultCurrencySaved": "Los gastos nuevos arrancan en {code}",
 		"numberFormat": "Formato de números",
-		"numberFormatMeta": "Se lee así: {example}",
 		"numberFollow": "Seguir el idioma",
 		"smart": "Formato inteligente",
 		"smartMeta": "Oculta los centavos en montos grandes",
@@ -130,7 +126,6 @@
 		"themeSystem": "Sistema",
 		"language": "Idioma",
 		"timeZone": "Zona horaria",
-		"timeZoneMeta": "Se usa cuando tu dispositivo no indica la suya",
 		"hideBalances": "Ocultar saldos por defecto",
 		"chartTap": "Al tocar una categoría en un gráfico",
 		"chartTapOpen": "Abre sus gastos",
@@ -352,7 +347,6 @@
 			"label": "Eventos que se mandan",
 			"all": "Todos los eventos",
 			"some": "Eventos elegidos",
-			"allHint": "Todos los eventos que ocurren en tu cuenta.",
 			"tooMany": "Elegiste demasiadas áreas. Usá Todos los eventos.",
 			"scope": {
 				"all": "{area}: todos los eventos",
@@ -384,7 +378,6 @@
 			"pending": "Pendiente"
 		},
 		"reference": "Referencia de la API",
-		"referenceHint": "Todas las rutas, con su alcance y sus campos.",
 		"openReference": "Abrir",
 		"areas": {
 			"expenses": "Gastos",
@@ -481,7 +474,6 @@
 		},
 		"failed": "No se pudo crear la exportación",
 		"import": "Importar",
-		"importMeta": "Resúmenes bancarios y archivos CSV",
 		"openImport": "Abrir Importar"
 	},
 	"delete": {

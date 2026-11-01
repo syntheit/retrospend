@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { useTranslations } from "use-intl";
 import { useFormatLocale } from "@/lib/intl";
 import { ListGroup } from "@/ui/List";
-import { GroupNote, PickerRow } from "./parts";
+import { PickerRow } from "./parts";
 import type { GeneralSettings } from "./source";
 import { useSaveSettings } from "./useSaveSettings";
 
@@ -42,22 +42,15 @@ export function NumbersGroup({
 	];
 
 	return (
-		<>
-			<ListGroup form>
-				<PickerRow<NumberFormatOption>
-					label={tn("format")}
-					onChange={(next) =>
-						save({ numberFormat: next === "follow" ? null : next })
-					}
-					options={options}
-					value={settings.numberFormat ?? "follow"}
-				/>
-			</ListGroup>
-			<GroupNote>
-				{tn("footer", {
-					example: examples[settings.numberFormat ?? "follow"],
-				})}
-			</GroupNote>
-		</>
+		<ListGroup form>
+			<PickerRow<NumberFormatOption>
+				label={tn("format")}
+				onChange={(next) =>
+					save({ numberFormat: next === "follow" ? null : next })
+				}
+				options={options}
+				value={settings.numberFormat ?? "follow"}
+			/>
+		</ListGroup>
 	);
 }

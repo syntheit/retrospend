@@ -206,7 +206,6 @@ export function RulesSheet({
 					</>
 				) : (
 					<>
-						<Note>{t("lead")}</Note>
 						{read.status === "error" ? (
 							<Note tone="attention">{t("error")}</Note>
 						) : null}

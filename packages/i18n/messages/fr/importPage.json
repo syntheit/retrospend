@@ -156,7 +156,6 @@
 		"kept": "{count} gardées",
 		"keep": "Garder",
 		"skip": "Ignorer",
-		"hint": "Glisse à droite pour garder, à gauche pour ignorer",
 		"ready": "{count} prêtes à importer",
 		"readyHint": "{skipped} ignorées",
 		"backToCards": "Retour aux cartes",
@@ -165,7 +164,6 @@
 	},
 	"match": {
 		"title": "Associer les catégories",
-		"hint": "Une étape par catégorie non reconnue.",
 		"rows": "{count, plural, one {# ligne} other {# lignes}}",
 		"suggested": "suggérée d'après ton historique",
 		"create": "Créer « {name} »",

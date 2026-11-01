@@ -109,11 +109,6 @@ export function CurrencySheet({
 							{t("defaultTitle")}
 						</Text>
 						<Text>{label(row.defaultType)}</Text>
-						{table.canSetDefault ? null : (
-							<Text tone="fg3" variant="meta">
-								{t("defaultFixed")}
-							</Text>
-						)}
 					</View>
 				) : null}
 				{hasRate ? <ConvertBlock home={table.home} row={row} /> : null}

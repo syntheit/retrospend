@@ -382,7 +382,6 @@
 	},
 	"rules": {
 		"title": "Reglas de ingresos",
-		"lead": "Qué pasa cuando llega dinero, en el orden en que corren las reglas. Cada movimiento queda en el historial con Deshacer.",
 		"none": "Todavía no hay reglas. El dinero que llega queda Sin planear aún hasta que lo asignes.",
 		"done": "Listo",
 		"active": "La regla {name} está activa",
@@ -422,7 +421,6 @@
 		"title": "Qué pasa si gasto en {name}",
 		"titleAny": "Qué pasa si gasto",
 		"done": "Listo",
-		"lead": "Un gasto de mentira. No se guarda nada.",
 		"envelope": "Sobre",
 		"pick": "Elige un sobre",
 		"ifSpend": "Si gasto",
@@ -455,7 +453,6 @@
 		"exists": "Ya tienes un presupuesto. Cambia su estilo desde el menú.",
 		"step": "Paso {at} de {total}",
 		"styleTitle": "¿Cómo te gusta presupuestar?",
-		"styleSub": "No hay respuesta incorrecta. Lo puedes cambiar cuando quieras.",
 		"methods": "O sigue un método",
 		"recommended": "Recomendado",
 		"pickStyle": "Elegir {name}",
@@ -484,7 +481,6 @@
 			"WEEKLY": "Semanal",
 			"VARIES": "Varía",
 			"next": "Próximo cobro",
-			"hint": "Mostraremos tu próximo cobro en el plan.",
 			"variesHint": "Tu plan empieza cuando llegue tu cobro.",
 			"past": "Elige hoy o un día posterior."
 		},
@@ -716,7 +712,6 @@
 	},
 	"startingMoney": {
 		"title": "Dinero inicial",
-		"lead": "¿Cuánto dinero tienes ahora? El presupuesto empieza a contar desde aquí.",
 		"have": "Lo que tienes ahora",
 		"idle": "Escribe un importe para ver qué cambia.",
 		"save": "Confirmar",

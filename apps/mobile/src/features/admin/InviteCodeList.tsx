@@ -6,7 +6,6 @@ import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, ListRow } from "@/ui/List";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
-import { GroupNote } from "../settings/parts";
 import type { InviteCodeDto } from "./types";
 import type { AdminState } from "./useAdminRead";
 
@@ -130,9 +129,6 @@ export function InviteCodeList({
 					))}
 				</ListGroup>
 			)}
-			{items && items.length > 0 ? (
-				<GroupNote>{t("tapNote")}</GroupNote>
-			) : null}
 		</>
 	);
 }

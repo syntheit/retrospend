@@ -120,11 +120,6 @@ export function CurrencyDetail({
 					{priced && row.types.length > 1 && row.defaultType ? (
 						<Section id="default" title={t("detail.defaultTitle")}>
 							<p className="text-body text-fg">{label(row.defaultType)}</p>
-							{view.canSetDefault ? null : (
-								<p className="text-fg-3 text-meta">
-									{t("detail.defaultFixed")}
-								</p>
-							)}
 						</Section>
 					) : null}
 					{priced ? (

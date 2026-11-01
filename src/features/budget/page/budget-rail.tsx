@@ -174,7 +174,6 @@ export function BudgetRail({
 							title={t("moneyIn.thisMonth")}
 						/>
 					</RowList>
-					<p className="text-fg-3 text-meta mt-2">{t("moneyIn.hint")}</p>
 				</Section>
 			)}
 			{!readOnly && data.book.style !== "DEBT_PAYOFF" && hasDebt(data) && (

@@ -119,7 +119,6 @@ export function MatchSheet({
 	}, [open, unmatched]);
 	return (
 		<Sheet
-			description={t("hint")}
 			detent="medium"
 			onOpenChange={onOpenChange}
 			onSubmit={() => onApply(picks)}

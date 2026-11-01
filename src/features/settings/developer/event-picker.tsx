@@ -47,9 +47,7 @@ export function EventPicker({
 				]}
 				value={all ? "all" : "some"}
 			/>
-			{all ? (
-				<p className="text-fg-3 text-small">{t("allHint")}</p>
-			) : (
+			{!all && (
 				<>
 					<fieldset className="flex max-h-56 flex-col gap-3 overflow-y-auto">
 						<legend className="sr-only">{t("label")}</legend>

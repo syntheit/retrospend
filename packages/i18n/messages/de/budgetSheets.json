@@ -382,7 +382,6 @@
 	},
 	"rules": {
 		"title": "Einnahmeregeln",
-		"lead": "Was passiert, wenn Geld eintrifft, in der Reihenfolge der Regeln. Jede Bewegung steht im Verlauf mit Rückgängig.",
 		"none": "Noch keine Regeln. Eingehendes Geld bleibt Noch nicht verplant, bis du es zuweist.",
 		"done": "Fertig",
 		"active": "Regel {name} ist an",
@@ -422,7 +421,6 @@
 		"title": "Was, wenn ich bei {name} ausgebe",
 		"titleAny": "Was, wenn ich ausgebe",
 		"done": "Fertig",
-		"lead": "Eine gedachte Ausgabe. Nichts wird gespeichert.",
 		"envelope": "Umschlag",
 		"pick": "Umschlag wählen",
 		"ifSpend": "Wenn ich ausgebe",
@@ -455,7 +453,6 @@
 		"exists": "Du hast schon ein Budget. Ändere den Stil im Menü.",
 		"step": "Schritt {at} von {total}",
 		"styleTitle": "Wie planst du gern dein Geld?",
-		"styleSub": "Es gibt keine falsche Antwort. Du kannst das jederzeit ändern.",
 		"methods": "Oder folge einer Methode",
 		"recommended": "Empfohlen",
 		"pickStyle": "{name} wählen",
@@ -484,7 +481,6 @@
 			"WEEKLY": "Wöchentlich",
 			"VARIES": "Es schwankt",
 			"next": "Nächstes Gehalt",
-			"hint": "Wir zeigen dir dein nächstes Gehalt im Plan.",
 			"variesHint": "Dein Plan startet, wenn dein Gehalt eintrifft.",
 			"past": "Wähle heute oder einen späteren Tag."
 		},
@@ -716,7 +712,6 @@
 	},
 	"startingMoney": {
 		"title": "Startgeld",
-		"lead": "Wie viel Geld hast du gerade? Das Budget zählt ab hier.",
 		"have": "Was du gerade hast",
 		"idle": "Gib einen Betrag ein, um die Änderung zu sehen.",
 		"save": "Bestätigen",

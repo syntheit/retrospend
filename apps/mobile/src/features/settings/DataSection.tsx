@@ -2,7 +2,7 @@ import { useTranslations } from "use-intl";
 import { ListGroup, ListRow } from "@/ui/List";
 import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
-import { Block, GroupNote, SettingsPage } from "./parts";
+import { Block, SettingsPage } from "./parts";
 import { type DataKind, useDataExport } from "./security/useDataExport";
 
 const DATA_KINDS: DataKind[] = ["data", "expenses", "wealth"];
@@ -37,7 +37,6 @@ export function DataSection() {
 						/>
 					))}
 				</ListGroup>
-				<GroupNote>{t("footer")}</GroupNote>
 			</Block>
 		</SettingsPage>
 	);

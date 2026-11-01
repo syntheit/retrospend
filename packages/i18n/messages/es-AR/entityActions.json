@@ -30,7 +30,6 @@
 		"delete": {
 			"label": "Eliminar",
 			"confirmTitle": "¿Eliminar {name}?",
-			"confirmBody": "Los saldos afectados se actualizan para todos.",
 			"confirmButton": "Eliminar gasto"
 		},
 		"accept": {
@@ -88,7 +87,6 @@
 		"delete": {
 			"label": "Borrar",
 			"confirmTitle": "¿Borrar {name}?",
-			"confirmBody": "El proyecto desaparece. Sus gastos quedan, fuera de cualquier proyecto. No se puede deshacer.",
 			"confirmButton": "Borrar proyecto"
 		},
 		"addPerson": {
@@ -132,7 +130,6 @@
 		"delete": {
 			"label": "Borrar para siempre",
 			"confirmTitle": "¿Borrar {name} para siempre?",
-			"confirmBody": "Se borran la cuenta y todo su historial de saldos, y también cambia tu patrimonio pasado. Si querés conservar el historial, cerrá la cuenta.",
 			"confirmButton": "Borrar para siempre"
 		}
 	},
@@ -155,7 +152,6 @@
 		"delete": {
 			"label": "Eliminar",
 			"confirmTitle": "¿Eliminar {name}?",
-			"confirmBody": "Los próximos se detienen; los gastos pasados quedan.",
 			"confirmButton": "Eliminar gasto recurrente"
 		}
 	},
@@ -203,7 +199,6 @@
 		"revoke": {
 			"label": "Revocar clave",
 			"confirmTitle": "¿Querés revocar {name}?",
-			"confirmBody": "Todo lo que use esta clave deja de funcionar en el acto.",
 			"confirmButton": "Revocar clave"
 		}
 	},
@@ -211,7 +206,6 @@
 		"disconnect": {
 			"label": "Cerrar sesión",
 			"confirmTitle": "¿Cerrar la sesión de {name}?",
-			"confirmBody": "Se cierra la sesión de inmediato y tendrá que iniciarla de nuevo.",
 			"confirmButton": "Cerrar sesión"
 		}
 	},
@@ -239,7 +233,6 @@
 		"notReceived": {
 			"label": "No lo recibí",
 			"confirmTitle": "¿No recibiste el pago de {name}?",
-			"confirmBody": "El pago queda como no recibido y tu saldo sigue igual.",
 			"confirmButton": "No lo recibí"
 		}
 	},
@@ -400,7 +393,6 @@
 		"remove": {
 			"label": "Quitar",
 			"confirmTitle": "¿Quitar {name}?",
-			"confirmBody": "Deja de correr con la plata nueva. Lo que ya asignó queda como está.",
 			"confirmButton": "Quitar regla"
 		}
 	},
@@ -426,7 +418,6 @@
 		"delete": {
 			"label": "Eliminar webhook",
 			"confirmTitle": "¿Querés eliminar {name}?",
-			"confirmBody": "Deja de recibir eventos y se borra su registro de entregas. No se puede deshacer.",
 			"confirmButton": "Eliminar webhook"
 		}
 	}

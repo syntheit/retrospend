@@ -135,7 +135,6 @@ export function ItemSheet({
 			<SheetBody>
 				<View style={{ gap: space[4] }}>
 					<SwitchRow
-						detail={t(item.autoPay ? "autoOnHint" : "autoOffHint")}
 						disabled={busy}
 						label={t("autoPay")}
 						onChange={(autoPay) => change({ autoPay })}

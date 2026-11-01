@@ -39,8 +39,7 @@
 		"usedBy": "La usa {names}",
 		"rates": "Tipos de cambio",
 		"default": "Por defecto",
-		"defaultTitle": "Por defecto para gastos nuevos",
-		"defaultFixed": "Por ahora, el valor predeterminado."
+		"defaultTitle": "Por defecto para gastos nuevos"
 	},
 	"convert": {
 		"title": "Convertir",

@@ -382,7 +382,6 @@
 	},
 	"rules": {
 		"title": "Regras de renda",
-		"lead": "O que acontece quando o dinheiro chega, na ordem das regras. Cada movimento aparece no histórico com Desfazer.",
 		"none": "Ainda não há regras. O dinheiro que chega fica Ainda não planejado até você atribuir.",
 		"done": "Pronto",
 		"active": "A regra {name} está ativa",
@@ -422,7 +421,6 @@
 		"title": "E se eu gastar em {name}",
 		"titleAny": "E se eu gastar",
 		"done": "Pronto",
-		"lead": "Um gasto de mentira. Nada é salvo.",
 		"envelope": "Envelope",
 		"pick": "Escolha um envelope",
 		"ifSpend": "Se eu gastar",
@@ -455,7 +453,6 @@
 		"exists": "Você já tem um orçamento. Mude o estilo pelo menu.",
 		"step": "Passo {at} de {total}",
 		"styleTitle": "Como você gosta de orçar?",
-		"styleSub": "Não há resposta errada. Você pode mudar quando quiser.",
 		"methods": "Ou siga um método",
 		"recommended": "Recomendado",
 		"pickStyle": "Escolher {name}",
@@ -484,7 +481,6 @@
 			"WEEKLY": "Semanal",
 			"VARIES": "Varia",
 			"next": "Próximo pagamento",
-			"hint": "Vamos mostrar seu próximo pagamento no plano.",
 			"variesHint": "Seu plano começa quando o pagamento chegar.",
 			"past": "Escolha hoje ou um dia posterior."
 		},
@@ -716,7 +712,6 @@
 	},
 	"startingMoney": {
 		"title": "Dinheiro inicial",
-		"lead": "Quanto dinheiro você tem agora? O orçamento passa a contar a partir daí.",
 		"have": "O que você tem agora",
 		"idle": "Digite um valor para ver o que muda.",
 		"save": "Confirmar",

@@ -1,6 +1,5 @@
 {
 	"title": "Paramètres",
-	"autosaveNote": "Les modifications sont enregistrées automatiquement",
 	"back": "Accueil",
 	"sections": {
 		"label": "Sections des paramètres",
@@ -29,7 +28,6 @@
 		"photoHint": "JPEG, PNG, WebP ou GIF, 5 Mo maximum",
 		"cropTitle": "Recadre ta photo",
 		"removePhotoTitle": "Supprimer ta photo ?",
-		"removePhotoBody": "Tes initiales s’afficheront à la place.",
 		"removePhotoConfirm": "Supprimer la photo",
 		"photoUpdated": "Photo mise à jour",
 		"photoRemoved": "Photo supprimée",
@@ -113,12 +111,10 @@
 		"display": "Affichage",
 		"defaults": "Valeurs par défaut",
 		"homeCurrency": "Devise principale",
-		"homeCurrencyMeta": "Utilisée pour les totaux et les rapports",
 		"homeCurrencySaved": "Ta devise principale est désormais {code}",
 		"defaultCurrency": "Par défaut pour les nouvelles dépenses",
 		"defaultCurrencySaved": "Les nouvelles dépenses commencent en {code}",
 		"numberFormat": "Format des nombres",
-		"numberFormatMeta": "S'affiche comme {example}",
 		"numberFollow": "Suivre la langue",
 		"smart": "Format intelligent",
 		"smartMeta": "Masque les centimes sur les gros montants",
@@ -130,7 +126,6 @@
 		"themeSystem": "Système",
 		"language": "Langue",
 		"timeZone": "Fuseau horaire",
-		"timeZoneMeta": "Utilisé quand ton appareil n'indique pas le sien",
 		"hideBalances": "Masquer les soldes par défaut",
 		"chartTap": "Toucher une catégorie dans un graphique",
 		"chartTapOpen": "Ouvre ses dépenses",
@@ -352,7 +347,6 @@
 			"label": "Événements à envoyer",
 			"all": "Tous les événements",
 			"some": "Événements choisis",
-			"allHint": "Tous les événements de ton compte.",
 			"tooMany": "Trop de domaines choisis. Utilise Tous les événements.",
 			"scope": {
 				"all": "{area} : tous les événements",
@@ -384,7 +378,6 @@
 			"pending": "En attente"
 		},
 		"reference": "Référence de l’API",
-		"referenceHint": "Toutes les routes, avec leur portée et leurs champs.",
 		"openReference": "Ouvrir",
 		"areas": {
 			"expenses": "Dépenses",
@@ -481,7 +474,6 @@
 		},
 		"failed": "Impossible de créer l’export",
 		"import": "Importer",
-		"importMeta": "Relevés bancaires et fichiers CSV",
 		"openImport": "Ouvrir Importer"
 	},
 	"delete": {

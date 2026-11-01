@@ -156,7 +156,6 @@
 		"kept": "{count} behalten",
 		"keep": "Behalten",
 		"skip": "Überspringen",
-		"hint": "Nach rechts wischen zum Behalten, nach links zum Überspringen",
 		"ready": "{count} bereit zum Import",
 		"readyHint": "{skipped} übersprungen",
 		"backToCards": "Zurück zu den Karten",
@@ -165,7 +164,6 @@
 	},
 	"match": {
 		"title": "Kategorien zuordnen",
-		"hint": "Ein Schritt für jede Kategorie ohne Treffer.",
 		"rows": "{count, plural, one {# Zeile} other {# Zeilen}}",
 		"suggested": "vorgeschlagen aus deinem Verlauf",
 		"create": "„{name}“ erstellen",

@@ -60,7 +60,6 @@ export function RulesSheet({ open, onClose, month }: SheetProps) {
 				<SkeletonRows count={3} />
 			) : (
 				<div className="flex flex-col gap-4 pb-4">
-					<p className="text-fg-2 text-small">{t("lead")}</p>
 					{list.length === 0 ? (
 						<p className="text-fg-3 text-small">{t("none")}</p>
 					) : (

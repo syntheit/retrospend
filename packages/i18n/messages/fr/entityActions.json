@@ -30,7 +30,6 @@
 		"delete": {
 			"label": "Supprimer",
 			"confirmTitle": "Supprimer {name} ?",
-			"confirmBody": "Les soldes concernés sont mis à jour pour tous.",
 			"confirmButton": "Supprimer la dépense"
 		},
 		"accept": {
@@ -88,7 +87,6 @@
 		"delete": {
 			"label": "Supprimer",
 			"confirmTitle": "Supprimer {name} ?",
-			"confirmBody": "Le projet disparaît. Ses dépenses restent, hors de tout projet. Impossible d'annuler.",
 			"confirmButton": "Supprimer le projet"
 		},
 		"addPerson": {
@@ -132,7 +130,6 @@
 		"delete": {
 			"label": "Supprimer définitivement",
 			"confirmTitle": "Supprimer {name} définitivement ?",
-			"confirmBody": "Le compte et tout son historique de soldes sont supprimés, et ton patrimoine passé change aussi. Pour garder l'historique, clôture plutôt le compte.",
 			"confirmButton": "Supprimer définitivement"
 		}
 	},
@@ -155,7 +152,6 @@
 		"delete": {
 			"label": "Supprimer",
 			"confirmTitle": "Supprimer {name} ?",
-			"confirmBody": "Les prochaines s'arrêtent, les dépenses passées restent.",
 			"confirmButton": "Supprimer la dépense récurrente"
 		}
 	},
@@ -203,7 +199,6 @@
 		"revoke": {
 			"label": "Révoquer la clé",
 			"confirmTitle": "Révoquer {name} ?",
-			"confirmBody": "Tout ce qui utilise cette clé cesse de fonctionner immédiatement.",
 			"confirmButton": "Révoquer la clé"
 		}
 	},
@@ -211,7 +206,6 @@
 		"disconnect": {
 			"label": "Déconnecter",
 			"confirmTitle": "Déconnecter {name} ?",
-			"confirmBody": "Il est déconnecté immédiatement et devra se reconnecter.",
 			"confirmButton": "Déconnecter l’appareil"
 		}
 	},
@@ -239,7 +233,6 @@
 		"notReceived": {
 			"label": "Pas reçu",
 			"confirmTitle": "Paiement de {name} pas reçu ?",
-			"confirmBody": "Le paiement est marqué comme non reçu et ton solde reste inchangé.",
 			"confirmButton": "Pas reçu"
 		}
 	},
@@ -400,7 +393,6 @@
 		"remove": {
 			"label": "Retirer",
 			"confirmTitle": "Retirer {name} ?",
-			"confirmBody": "Elle ne s'applique plus à l'argent nouveau. Ce qu'elle a déjà attribué reste tel quel.",
 			"confirmButton": "Retirer la règle"
 		}
 	},
@@ -426,7 +418,6 @@
 		"delete": {
 			"label": "Supprimer le webhook",
 			"confirmTitle": "Supprimer {name} ?",
-			"confirmBody": "Il ne reçoit plus d’événements et son journal d’envois est supprimé. Impossible d’annuler.",
 			"confirmButton": "Supprimer le webhook"
 		}
 	}

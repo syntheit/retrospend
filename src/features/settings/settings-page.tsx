@@ -42,7 +42,6 @@ export function SettingsPage() {
 			<div className="px-gutter mx-auto w-full max-w-280 shrink-0">
 				<PageHeader
 					lead={<BackButton href={home} label={t("back")} />}
-					sub={t("autosaveNote")}
 					title={t("title")}
 				/>
 				{phone && <SectionTabs current={current} ids={SECTIONS} onGo={go} />}

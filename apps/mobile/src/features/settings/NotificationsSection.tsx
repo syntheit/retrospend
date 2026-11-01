@@ -105,11 +105,9 @@ export function NotificationsSection() {
 								/>
 							</GroupItem>
 						</ListGroup>
-						<GroupNote>
-							{t(
-								Platform.OS === "ios" ? "push.footerIos" : "push.footerAndroid",
-							)}
-						</GroupNote>
+						{Platform.OS === "android" ? (
+							<GroupNote>{t("push.footerAndroid")}</GroupNote>
+						) : null}
 					</Block>
 				) : null}
 				<Block title={t("root.notifications")}>

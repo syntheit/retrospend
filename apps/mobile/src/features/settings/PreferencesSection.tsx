@@ -96,7 +96,6 @@ export function PreferencesSection() {
 						title={t("rates.currencies")}
 					/>
 				</ListGroup>
-				<GroupNote>{t("money.footer")}</GroupNote>
 			</Block>
 			<Block title={t("numbers.title")}>
 				<NumbersGroup onSaved={general.reload} settings={settings} />
@@ -117,7 +116,6 @@ export function PreferencesSection() {
 						/>
 					</GroupItem>
 				</ListGroup>
-				<GroupNote>{t("device.footer")}</GroupNote>
 			</Block>
 		</SettingsPage>
 	);

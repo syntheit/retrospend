@@ -123,7 +123,6 @@
 		"moneyIn": {
 			"title": "Ingresos",
 			"open": "Ingresos y reglas",
-			"hint": "Las reglas de ingresos deciden adónde va",
 			"thisMonth": "Este mes"
 		},
 		"shares": {

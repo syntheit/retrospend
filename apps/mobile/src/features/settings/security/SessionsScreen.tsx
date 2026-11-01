@@ -136,7 +136,7 @@ export function SessionsScreen() {
 						/>
 					))}
 				</ListGroup>
-				<GroupNote>{others.length > 0 ? t("footer") : t("none")}</GroupNote>
+				{others.length === 0 ? <GroupNote>{t("none")}</GroupNote> : null}
 			</Block>
 		</SettingsPage>
 	);

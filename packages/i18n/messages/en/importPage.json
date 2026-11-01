@@ -156,7 +156,6 @@
 		"kept": "{count} kept",
 		"keep": "Keep",
 		"skip": "Skip",
-		"hint": "Swipe right to keep, left to skip",
 		"ready": "{count} ready to import",
 		"readyHint": "{skipped} skipped",
 		"backToCards": "Back to cards",
@@ -165,7 +164,6 @@
 	},
 	"match": {
 		"title": "Match categories",
-		"hint": "One step for every category that did not match.",
 		"rows": "{count, plural, one {# row} other {# rows}}",
 		"suggested": "suggested from your history",
 		"create": "Create \"{name}\"",

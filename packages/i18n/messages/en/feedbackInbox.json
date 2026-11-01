@@ -73,7 +73,6 @@
 	"deleteBody": "The message and its screenshot are removed for good.",
 	"deleted": "Feedback deleted",
 	"deleteReportTitle": "Delete this error report?",
-	"deleteReportBody": "It is removed for good.",
 	"reportDeleted": "Error report deleted",
 	"failed": "That didn't work. Try again.",
 	"categoryLabel": "Category"

@@ -59,7 +59,7 @@ export function StyleStep({
 		}));
 	return (
 		<View style={{ gap: space[4] }}>
-			<Heading sub={t("styleSub")} title={t("styleTitle")} />
+			<Heading title={t("styleTitle")} />
 			<ChipGroup
 				accessibilityLabel={t("styleTitle")}
 				onChange={onChange}

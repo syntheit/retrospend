@@ -93,14 +93,6 @@ export function MonthBars({
 					</Text>
 				))}
 			</View>
-			<Text
-				importantForAccessibility="no"
-				style={{ paddingTop: space[2] }}
-				tone="fg3"
-				variant="meta"
-			>
-				{t("caption")}
-			</Text>
 		</View>
 	);
 }

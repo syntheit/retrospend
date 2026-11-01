@@ -30,7 +30,6 @@
 		"delete": {
 			"label": "Excluir",
 			"confirmTitle": "Excluir {name}?",
-			"confirmBody": "Os saldos afetados são atualizados para todos.",
 			"confirmButton": "Excluir despesa"
 		},
 		"accept": {
@@ -88,7 +87,6 @@
 		"delete": {
 			"label": "Excluir",
 			"confirmTitle": "Excluir {name}?",
-			"confirmBody": "O projeto some. Suas despesas ficam, fora de qualquer projeto. Não dá para desfazer.",
 			"confirmButton": "Excluir projeto"
 		},
 		"addPerson": {
@@ -132,7 +130,6 @@
 		"delete": {
 			"label": "Excluir definitivamente",
 			"confirmTitle": "Excluir {name} definitivamente?",
-			"confirmBody": "A conta e todo o histórico de saldos são excluídos, e seu patrimônio passado também muda. Para manter o histórico, encerre a conta.",
 			"confirmButton": "Excluir definitivamente"
 		}
 	},
@@ -155,7 +152,6 @@
 		"delete": {
 			"label": "Excluir",
 			"confirmTitle": "Excluir {name}?",
-			"confirmBody": "Os próximos param; as despesas passadas ficam.",
 			"confirmButton": "Excluir despesa recorrente"
 		}
 	},
@@ -203,7 +199,6 @@
 		"revoke": {
 			"label": "Revogar chave",
 			"confirmTitle": "Revogar {name}?",
-			"confirmBody": "Tudo que usa esta chave para de funcionar na hora.",
 			"confirmButton": "Revogar chave"
 		}
 	},
@@ -211,7 +206,6 @@
 		"disconnect": {
 			"label": "Sair",
 			"confirmTitle": "Sair de {name}?",
-			"confirmBody": "A sessão é encerrada na hora e precisará entrar de novo.",
 			"confirmButton": "Encerrar sessão"
 		}
 	},
@@ -239,7 +233,6 @@
 		"notReceived": {
 			"label": "Não recebi",
 			"confirmTitle": "Não recebeu o pagamento de {name}?",
-			"confirmBody": "O pagamento fica como não recebido e seu saldo continua igual.",
 			"confirmButton": "Não recebi"
 		}
 	},
@@ -400,7 +393,6 @@
 		"remove": {
 			"label": "Remover",
 			"confirmTitle": "Remover {name}?",
-			"confirmBody": "Ela deixa de rodar no dinheiro novo. O que já atribuiu fica como está.",
 			"confirmButton": "Remover regra"
 		}
 	},
@@ -426,7 +418,6 @@
 		"delete": {
 			"label": "Excluir webhook",
 			"confirmTitle": "Excluir {name}?",
-			"confirmBody": "Ele para de receber eventos e o registro de entregas é apagado. Não dá para desfazer.",
 			"confirmButton": "Excluir webhook"
 		}
 	}

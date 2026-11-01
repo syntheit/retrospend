@@ -382,7 +382,6 @@
 	},
 	"rules": {
 		"title": "Règles de revenus",
-		"lead": "Ce qui se passe quand de l'argent arrive, dans l'ordre des règles. Chaque mouvement apparaît dans l'historique avec Annuler.",
 		"none": "Pas encore de règles. L'argent qui arrive reste Pas encore prévu jusqu'à ce que tu l'attribues.",
 		"done": "Terminé",
 		"active": "La règle {name} est active",
@@ -422,7 +421,6 @@
 		"title": "Et si je dépense dans {name}",
 		"titleAny": "Et si je dépense",
 		"done": "Terminé",
-		"lead": "Une dépense fictive. Rien n'est enregistré.",
 		"envelope": "Enveloppe",
 		"pick": "Choisis une enveloppe",
 		"ifSpend": "Si je dépense",
@@ -455,7 +453,6 @@
 		"exists": "Tu as déjà un budget. Change son style depuis le menu.",
 		"step": "Étape {at} sur {total}",
 		"styleTitle": "Comment aimes-tu budgétiser ?",
-		"styleSub": "Il n'y a pas de mauvaise réponse. Tu peux changer à tout moment.",
 		"methods": "Ou suis une méthode",
 		"recommended": "Recommandé",
 		"pickStyle": "Choisir {name}",
@@ -484,7 +481,6 @@
 			"WEEKLY": "Chaque semaine",
 			"VARIES": "Ça varie",
 			"next": "Prochaine paie",
-			"hint": "Nous afficherons ta prochaine paie dans le plan.",
 			"variesHint": "Ton plan démarre à l'arrivée de ta paie.",
 			"past": "Choisis aujourd'hui ou un jour plus tard."
 		},
@@ -716,7 +712,6 @@
 	},
 	"startingMoney": {
 		"title": "Argent de départ",
-		"lead": "Combien as-tu en ce moment ? Le budget compte à partir de là.",
 		"have": "Ce que tu as maintenant",
 		"idle": "Saisis un montant pour voir ce qui change.",
 		"save": "Confirmer",

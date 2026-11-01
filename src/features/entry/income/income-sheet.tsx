@@ -66,7 +66,6 @@ function IncomeForm({
 	onMode: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	const t = useTranslations("entry.income");
-	const tc = useTranslations("entry.changes");
 	const toast = useToast();
 	const locale = useMoneyLocale();
 	const x = useIncome(catalog, accountId, carry);
@@ -116,7 +115,6 @@ function IncomeForm({
 						byDesign={x.account ? [] : ["accounts"]}
 						cannot={x.valid ? x.previewError : null}
 						diff={x.preview}
-						empty={tc("emptyAmount")}
 						loading={x.previewLoading}
 					/>
 				}

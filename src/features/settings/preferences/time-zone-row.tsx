@@ -34,7 +34,7 @@ export function TimeZoneRow({
 	const options = useMemo(() => zoneOptions(value), [value]);
 	if (!timeZone) return null;
 	return (
-		<SettingRow label={t("timeZone")} labelFor="pf-tz" meta={t("timeZoneMeta")}>
+		<SettingRow label={t("timeZone")} labelFor="pf-tz">
 			<SelectField
 				id="pf-tz"
 				onChange={(v) => void save("timeZone", v)}

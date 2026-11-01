@@ -100,7 +100,7 @@ export function DataSection() {
 				{row("budgets", "zip")}
 				{row("wealth", "csv")}
 				{row("all", "zip")}
-				<SettingRow label={t("import")} meta={t("importMeta")}>
+				<SettingRow label={t("import")}>
 					<Link className={TEXT_LINK} href="/import">
 						{t("openImport")}
 						<ChevronRight aria-hidden="true" className="size-4" />

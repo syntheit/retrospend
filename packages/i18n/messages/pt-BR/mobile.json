@@ -81,8 +81,6 @@
 			"editRefused": "Não foi possível salvar esta alteração. Ela pode estar bloqueada."
 		},
 		"changes": {
-			"emptyExpense": "Digite um valor e escolha uma categoria para ver o que muda.",
-			"emptyIncome": "Digite um valor e diga quem pagou você para ver o que muda.",
 			"loading": "Verificando o que muda",
 			"offline": "Você está offline. Isto é salvo no celular e sincronizado depois.",
 			"refused": "Ainda não dá para salvar. Confira o valor e a moeda.",
@@ -134,7 +132,6 @@
 				"project_total": "o total do projeto"
 			},
 			"noRate": "Ainda não há cotação para {currency}. Escolha outra moeda.",
-			"emptyTransfer": "Digite um valor e escolha duas contas para ver o que muda.",
 			"shares": {
 				"title": "Quanto cada pessoa deve",
 				"you": "Você",
@@ -209,7 +206,6 @@
 		"spreadOne": "Uma vez só",
 		"spreadMonths": "{count} meses",
 		"exclude": "Excluir dos gastos",
-		"excludeDetail": "Fica na Atividade e no seu orçamento, mas fora dos relatórios e do Insights.",
 		"editLocked": "Este gasto não pode ser editado",
 		"editLockedDetail": "Um pagamento quitou, ou você não tem permissão para alterar.",
 		"replaceDraft": {
@@ -881,7 +877,6 @@
 			"title": "Posso pagar isso?",
 			"amount": "Quanto custa?",
 			"envelope": "Qual envelope?",
-			"idle": "Digite um valor e receba uma resposta.",
 			"checking": "Verificando",
 			"failed": "Não foi possível verificar. Tente de novo.",
 			"state": {
@@ -951,7 +946,6 @@
 				"ONCE": "Uma vez"
 			},
 			"noneNote": "Sem meta, nada é planejado para ele.",
-			"dueHint": "AAAA-MM-DD",
 			"billAmount": "Valor da conta"
 		},
 		"merge": {
@@ -965,7 +959,6 @@
 		},
 		"style": {
 			"title": "Estilo de orçamento",
-			"now": "Seu estilo é {style}.",
 			"name": {
 				"FLEX": "Flex",
 				"EVERY_DOLLAR": "Cada real",
@@ -1020,7 +1013,6 @@
 			"title": "Configure seu orçamento",
 			"step": "Passo {at} de {total}",
 			"styleTitle": "Como você gosta de orçar?",
-			"styleSub": "Não há resposta errada. Você pode mudar quando quiser.",
 			"methods": "Ou siga um método",
 			"moneyTitle": "Quanto dinheiro você pode orçar agora?",
 			"moneySub": "Conte o dinheiro que você usa para viver. É com isso que você planeja agora.",
@@ -1100,7 +1092,6 @@
 		},
 		"rules": {
 			"title": "Regras de renda",
-			"lead": "O que acontece quando o dinheiro chega, na ordem das regras. Cada movimento aparece no histórico com Desfazer.",
 			"none": "Ainda não há regras. O dinheiro que chega fica Ainda não planejado até você atribuir.",
 			"paused": "Pausada",
 			"add": "Adicionar regra",
@@ -1183,7 +1174,6 @@
 			"toast": "Você planejou {name}",
 			"error": "Não foi possível carregar. Tente de novo.",
 			"listTitle": "Planeje o mês",
-			"listLead": "Toque em um envelope para definir o que ele recebe. Nada se move até o dia do pagamento.",
 			"notPlanned": "Ainda não planejado",
 			"leftToPlan": "Falta planejar em {month}",
 			"plannedOf": "Planejado {planned} de {expected}"
@@ -1206,7 +1196,6 @@
 		},
 		"whatIf": {
 			"titleAny": "E se eu gastar",
-			"lead": "Um gasto de mentira. Nada é salvo.",
 			"envelope": "Envelope",
 			"pick": "Escolha um envelope",
 			"ifSpend": "Se eu gastar",
@@ -1215,7 +1204,6 @@
 			"coverIt": "Cobrir",
 			"coverFrom": "De {name}",
 			"uncovered": "Nada pode cobrir esta parte",
-			"idle": "Digite um valor para ver o efeito.",
 			"title": "E se eu gastar"
 		},
 		"close": {
@@ -1271,9 +1259,7 @@
 		},
 		"startingMoney": {
 			"title": "Dinheiro inicial",
-			"lead": "Quanto dinheiro você tem agora? O orçamento passa a contar a partir daí.",
 			"have": "O que você tem agora",
-			"idle": "Digite um valor para ver o que muda.",
 			"save": "Salvar",
 			"toast": "Dinheiro inicial confirmado",
 			"moneyIn": "Entradas",
@@ -1631,7 +1617,6 @@
 			"rateDate": "Atualizado em {date}",
 			"netWorthNote": "Inclui o que as pessoas devem a você"
 		},
-		"netWorthMeta": "Inclui o que as pessoas devem a você",
 		"topBar": {
 			"converter": "Conversor de moedas",
 			"notifications": "Notificações",
@@ -1673,7 +1658,6 @@
 		},
 		"months": {
 			"title": "Mês a mês",
-			"caption": "Os últimos seis meses, mesmos filtros.",
 			"summary": "Mês a mês: {list}"
 		},
 		"ytd": {
@@ -1831,7 +1815,6 @@
 		},
 		"beforeAfter": "{before} para {after}",
 		"figureIn": "{label} em {currency}",
-		"methodHint": "A forma e a data estão abaixo.",
 		"none": "nada",
 		"checking": "Verificando",
 		"record": "Registrar pagamento",
@@ -2171,9 +2154,6 @@
 		"saveError": "Não foi possível salvar. Tente de novo.",
 		"error": "Não foi possível carregar os ajustes",
 		"errorDetail": "Verifique sua conexão e tente de novo.",
-		"device": {
-			"footer": "Muda só este app. O idioma da web continua como está."
-		},
 		"language": {
 			"label": "Idioma",
 			"device": "Usar o idioma do dispositivo"
@@ -2250,7 +2230,6 @@
 		},
 		"money": {
 			"title": "Dinheiro",
-			"footer": "Totais e relatórios usam sua moeda principal.",
 			"home": "Moeda principal",
 			"default": "Padrão para novas despesas",
 			"monthStart": "O mês começa no dia"
@@ -2308,14 +2287,12 @@
 		},
 		"numbers": {
 			"title": "Números",
-			"footer": "Aparece assim: {example}",
 			"format": "Formato de números",
 			"follow": "Seguir o idioma"
 		},
 		"push": {
 			"title": "Notificações push",
 			"master": "Push neste celular",
-			"footerIos": "As notificações chegam pelo serviço push da Apple. Escolha quais abaixo.",
 			"footerAndroid": "O Retrospend busca novidades a cada 15 minutos, sem serviços do Google. Escolha quais abaixo.",
 			"denied": "As notificações estão desativadas para o Retrospend. Ative nos ajustes do sistema.",
 			"unavailable": "Este celular não conseguiu se registrar para push. Tente de novo mais tarde."
@@ -2409,7 +2386,6 @@
 				"thisPhone": "Este celular",
 				"others": "Outros dispositivos",
 				"now": "Agora",
-				"footer": "Toque em um para desconectá-lo.",
 				"none": "Você não está conectado em nenhum outro lugar.",
 				"confirm": "Último uso em {used}. Conectado desde {since}.",
 				"signOut": "Sair",
@@ -2432,7 +2408,6 @@
 		},
 		"data": {
 			"title": "Dados",
-			"footer": "Cada exportação abre o menu de compartilhar para salvar ou enviar o arquivo.",
 			"kinds": {
 				"data": "Tudo",
 				"expenses": "Despesas",
@@ -2446,7 +2421,6 @@
 			"preparing": "Preparando",
 			"failed": "Não foi possível exportar. Tente de novo."
 		},
-		"autosave": "As alterações são salvas automaticamente",
 		"display": "Exibição",
 		"root": {
 			"preferences": "Preferências",
@@ -2559,7 +2533,6 @@
 			},
 			"createdBy": "Criado por {name}, {date}",
 			"usedBy": "Usado por {name}, {date}",
-			"tapNote": "Toque em um código para copiar, compartilhar ou excluir.",
 			"error": "Não foi possível carregar os códigos",
 			"errorDetail": "Verifique sua conexão e tente de novo.",
 			"sheet": "Código de convite",
@@ -2748,8 +2721,6 @@
 			"next": "{amount}, próximo em {date}.",
 			"paused": "{amount}. Pausada, nada é registrado até você retomar.",
 			"autoPay": "Registrar automaticamente",
-			"autoOnHint": "Registra sozinho na data de vencimento.",
-			"autoOffHint": "Você confirma a cada vez.",
 			"pause": "Pausar",
 			"resume": "Retomar",
 			"pausedToast": "{title} pausada",
@@ -2864,8 +2835,7 @@
 			"usedBy": "Usada por {names}",
 			"rates": "Cotações",
 			"default": "Padrão",
-			"defaultTitle": "Padrão para novas despesas",
-			"defaultFixed": "O padrão do sistema, por enquanto."
+			"defaultTitle": "Padrão para novas despesas"
 		},
 		"convert": {
 			"title": "Converter",

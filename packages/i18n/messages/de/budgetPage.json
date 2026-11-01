@@ -123,7 +123,6 @@
 		"moneyIn": {
 			"title": "Einnahmen",
 			"open": "Einnahmen und Regeln",
-			"hint": "Einnahmeregeln entscheiden, wohin es geht",
 			"thisMonth": "Diesen Monat"
 		},
 		"shares": {
