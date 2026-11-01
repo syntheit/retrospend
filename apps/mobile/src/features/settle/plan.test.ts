@@ -291,6 +291,7 @@ describe("rateChoices", () => {
 		type,
 		unit: brl(100),
 		value: ars(27100),
+		rate: "271",
 	});
 	const withRates: SettleContext = {
 		...context,
