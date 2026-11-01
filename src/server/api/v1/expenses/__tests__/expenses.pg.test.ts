@@ -4,9 +4,12 @@
  * one user never reaching another's entries. Requests go through the same
  * handler the Next route uses, so RLS, scopes and idempotency are real.
  */
+
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { defaultTimeZone } from "~/server/services/user-time-zone";
 import {
 	adminDb,
 	asKey,
@@ -45,7 +48,9 @@ type Preview = {
 	unchanged: { id: string }[];
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+// The caller has no stored zone, so days read in the default zone: after 00:00 UTC
+// it can still be yesterday there.
+const today = () => dayKey(new Date(), defaultTimeZone());
 
 async function category(userId: string, name = "Food") {
 	return adminDb.category.create({

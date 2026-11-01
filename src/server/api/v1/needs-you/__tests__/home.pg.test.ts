@@ -2,7 +2,9 @@
  * GET /needs-you and GET /figures/glance on Postgres: Home's two reads over
  * v1, parsed with the contract's schemas, scoped to the caller.
  */
+
 import { contract } from "@retrospend/api-contract";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
 	seedUser,
@@ -10,6 +12,7 @@ import {
 } from "~/server/services/envelope/__tests__/pg-fixture";
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { forUser } from "~/server/services/preview";
+import { defaultTimeZone } from "~/server/services/user-time-zone";
 import {
 	adminDb,
 	asKey,
@@ -110,7 +113,7 @@ describe("Home reads over v1", () => {
 				title: "Groceries",
 				amount: "42.10",
 				currency: "USD",
-				date: new Date().toISOString().slice(0, 10),
+				date: dayKey(new Date(), defaultTimeZone()),
 				categoryId: cat.id,
 			},
 		});

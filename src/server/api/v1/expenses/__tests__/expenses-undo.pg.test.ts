@@ -4,13 +4,17 @@
  * checks, a previewable and undoable bulk categorize, and previews that need
  * no Idempotency-Key.
  */
+
 import { randomUUID } from "node:crypto";
 import { BULK_DELETE_MAX, contract } from "@retrospend/api-contract";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { queryOf, readFilter } from "~/features/activity/filters";
 import { createUserScopedDb } from "~/server/db";
+import { listExpenses } from "~/server/services/api-v1/expenses";
 import { MAX_STORED_RESPONSE_BYTES } from "~/server/services/api-v1/idempotency.service";
 import { listActivity } from "~/server/services/expense-list";
+import { defaultTimeZone } from "~/server/services/user-time-zone";
 import {
 	adminDb,
 	asMobile,
@@ -33,7 +37,9 @@ type Page = {
 	total: { value: { minor: number; currency: string } } | null;
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+// The caller has no stored zone, so days read in the default zone: after 00:00 UTC
+// it can still be yesterday there.
+const today = () => dayKey(new Date(), defaultTimeZone());
 
 describe("/api/v1/expenses undo, filter and preview rules", () => {
 	let userId: string;
@@ -153,10 +159,8 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 		const user = (await createTestUser()).user.id;
 		const mine = await asMobile(user);
 		const cat = (await newCategory(user)).id;
-		const now = new Date();
-		const lastMonth = new Date(
-			Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 15),
-		)
+		const [y = 0, m = 1] = today().split("-").map(Number);
+		const lastMonth = new Date(Date.UTC(y, m - 2, 15))
 			.toISOString()
 			.slice(0, 10);
 		await add(body(cat, { title: "This month", amount: "8" }), mine);
@@ -183,7 +187,7 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 				...queryOf(readFilter(new URLSearchParams("kind=expense"), today())),
 				limit: 50,
 			},
-			"UTC",
+			defaultTimeZone(),
 		);
 		expect(month.items.map((i) => i.id)).toEqual(web.items.map((i) => i.id));
 		expect(month.count).toBe(web.count);
@@ -201,6 +205,50 @@ describe("/api/v1/expenses undo, filter and preview rules", () => {
 				(i) => i.title,
 			),
 		).toEqual(["Last month"]);
+	});
+
+	it("reads no dates as this month in the caller's zone at a month's end, not the UTC one", async () => {
+		const user = (await createTestUser()).user.id;
+		const cat = (await newCategory(user)).id;
+		await adminDb.expense.createMany({
+			data: [
+				["Oct 31", "2026-10-31"],
+				["Nov 1", "2026-11-01"],
+			].map(([title, day]) => ({
+				userId: user,
+				title: title as string,
+				amount: "5",
+				currency: "USD",
+				exchangeRate: "1",
+				amountInUSD: "5",
+				pricingSource: "MANUAL",
+				date: new Date(`${day}T12:00:00.000Z`),
+				categoryId: cat,
+			})),
+		});
+		const caller = (timeZone: string) => ({
+			db: createUserScopedDb(user),
+			principal: { userId: user } as never,
+			timeZone,
+		});
+		const filter = { kinds: ["expense"] } as never;
+		const page = { limit: 50 } as never;
+		const titles = async (zone: string) =>
+			(await listExpenses(caller(zone), filter, page)).items.map(
+				(i) => i.title,
+			);
+
+		// 00:30 UTC on Nov 1 is still Oct 31 at UTC-3.
+		vi.useFakeTimers({ toFake: ["Date"] });
+		try {
+			vi.setSystemTime(new Date("2026-11-01T00:30:00.000Z"));
+			expect(await titles("America/Argentina/Buenos_Aires")).toEqual([
+				"Oct 31",
+			]);
+			expect(await titles("UTC")).toEqual(["Nov 1"]);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("checks duplicates by the exact amount typed", async () => {
