@@ -179,6 +179,9 @@ test("Add expense: errors before saving, and nothing is saved", async ({
 	await sheet.getByRole("button", { name: "Add expense" }).click();
 	await expect(sheet.getByText("Enter an amount above zero")).toBeVisible();
 	await expect(
+		sheet.getByRole("alert").filter({ hasText: "Add a name" }),
+	).toBeVisible();
+	await expect(
 		sheet.getByText("Pick a category", { exact: true }).first(),
 	).toBeVisible();
 	await expect(
@@ -219,7 +222,9 @@ test("Add expense: the project tab shows each project with its people", async ({
 	await sheet.getByRole("button", { name: "Cancel" }).click();
 });
 
-test("Add expense: switching to Income carries the amount", async ({ page }) => {
+test("Add expense: switching to Income carries the amount", async ({
+	page,
+}) => {
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await openV2(page, "/activity");
 	await page.keyboard.press("n");

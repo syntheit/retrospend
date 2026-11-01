@@ -69,6 +69,7 @@
 		"undoChanges": "Undo changes",
 		"error": {
 			"amount": "Enter an amount above zero",
+			"title": "Add a name",
 			"category": "Pick a category",
 			"rate": "Enter a rate for {currency}",
 			"splitAmount": "The split does not add up to the amount",

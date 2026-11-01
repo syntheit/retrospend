@@ -69,6 +69,7 @@
 		"undoChanges": "Deshacer cambios",
 		"error": {
 			"amount": "Introduce un importe mayor que cero",
+			"title": "Agrega un nombre",
 			"category": "Elige una categoría",
 			"rate": "Introduce un tipo de cambio para {currency}",
 			"splitAmount": "La división no suma el importe",

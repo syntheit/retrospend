@@ -12,9 +12,9 @@ import { Sheet } from "~/components/ui/sheet";
 import { UnsavedChangesDialog } from "~/components/ui/unsaved-changes-dialog";
 import { api } from "~/trpc/react";
 import { ChangesBlock } from "../changes";
+import { ModeSwitch } from "../mode-switch";
 import type { EntryCatalog } from "../shared-ui";
 import { FieldError, useSettled } from "../shared-ui";
-import { ModeSwitch } from "../mode-switch";
 import type {
 	EntryCarry,
 	EntryMode,
@@ -73,7 +73,6 @@ export function ExpenseForm(p: {
 	const s = useExpenseSave(d, {
 		home,
 		you: youRef,
-		categoryName: category?.name ?? "",
 		valid,
 	});
 	const dirty = JSON.stringify(d) !== JSON.stringify(initial.draft);

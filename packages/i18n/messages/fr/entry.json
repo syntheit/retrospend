@@ -69,6 +69,7 @@
 		"undoChanges": "Annuler les modifications",
 		"error": {
 			"amount": "Saisis un montant supérieur à zéro",
+			"title": "Ajoute un nom",
 			"category": "Choisis une catégorie",
 			"rate": "Saisis un taux pour {currency}",
 			"splitAmount": "Le partage ne correspond pas au montant",

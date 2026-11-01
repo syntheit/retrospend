@@ -59,7 +59,7 @@ export interface ExpenseDraft {
 }
 
 export type DraftErrors = Partial<
-	Record<"amount" | "category" | "rate" | "split", true>
+	Record<"amount" | "title" | "category" | "rate" | "split", true>
 >;
 
 /** Shared when anyone else is on it, or it sits in a project. */
@@ -128,6 +128,7 @@ export function validate(
 ): DraftErrors {
 	const e: DraftErrors = {};
 	if (!d.minor || d.minor <= 0) e.amount = true;
+	if (!d.title.trim()) e.title = true;
 	if (!d.categoryId) e.category = true;
 	if (isForeign(d, o.home) && (d.custom ? !d.customRate : o.rateMissing))
 		e.rate = true;
@@ -148,14 +149,11 @@ function rateFields(d: ExpenseDraft, home: string) {
 }
 
 /** entry.expense.create / update input, or null while it cannot be saved. */
-export function personalInput(
-	d: ExpenseDraft,
-	o: { home: string; categoryName: string },
-) {
-	if (!d.minor || !d.categoryId) return null;
+export function personalInput(d: ExpenseDraft, o: { home: string }) {
+	if (!d.minor || !d.categoryId || !d.title.trim()) return null;
 	return {
 		id: d.editing?.id ?? d.newId,
-		title: d.title.trim() || o.categoryName,
+		title: d.title.trim(),
 		amount: fromMinor({ minor: d.minor, currency: d.currency }),
 		currency: d.currency,
 		date: d.date,
@@ -169,17 +167,14 @@ export function personalInput(
 }
 
 /** entry.shared.create input (and update with the id), or null while it cannot be saved. */
-export function sharedInput(
-	d: ExpenseDraft,
-	o: { you: SplitRef; categoryName: string },
-) {
-	if (!d.minor || !d.categoryId) return null;
+export function sharedInput(d: ExpenseDraft, o: { you: SplitRef }) {
+	if (!d.minor || !d.categoryId || !d.title.trim()) return null;
 	const split = buildSplitInput(splitStateOf(d, o.you));
 	if (split.splitWith.length === 0) return null;
 	return {
 		amount: fromMinor({ minor: d.minor, currency: d.currency }),
 		currency: d.currency,
-		description: d.title.trim() || o.categoryName,
+		description: d.title.trim(),
 		categoryId: d.categoryId,
 		date: d.date,
 		...(d.note.trim() ? { notes: d.note.trim() } : {}),

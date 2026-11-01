@@ -69,6 +69,7 @@
 		"undoChanges": "Desfazer alterações",
 		"error": {
 			"amount": "Digite um valor maior que zero",
+			"title": "Adicione um nome",
 			"category": "Escolha uma categoria",
 			"rate": "Digite uma cotação para {currency}",
 			"splitAmount": "A divisão não soma o valor",

@@ -69,6 +69,7 @@
 		"undoChanges": "Deshacer cambios",
 		"error": {
 			"amount": "Ingresá un monto mayor a cero",
+			"title": "Poné un nombre",
 			"category": "Elegí una categoría",
 			"rate": "Ingresá una cotización para {currency}",
 			"splitAmount": "La división no suma el monto",
