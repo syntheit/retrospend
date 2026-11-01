@@ -118,7 +118,7 @@
 			"nameMissing": "Donne un nom au compte",
 			"type": "Type",
 			"custom": "Ordre personnalisé",
-		"value": "Valeur",
+			"value": "Valeur",
 			"owed": "Montant dû",
 			"noRate": "Pas encore de taux pour {currency} : le compte ne peut pas être évalué. Choisis une autre devise pour l'instant.",
 			"liquid": "Liquide",
@@ -162,7 +162,8 @@
 	"sort": {
 		"button": "Tri : {sort}",
 		"label": "Trier les comptes par",
-		"balance": "Solde",
+		"custom": "Ordre personnalisé",
+		"value": "Valeur",
 		"name": "Nom",
 		"type": "Type",
 		"updated": "Mis à jour récemment",

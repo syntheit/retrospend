@@ -118,7 +118,7 @@
 			"nameMissing": "Give the account a name",
 			"type": "Type",
 			"custom": "Custom order",
-		"value": "Value",
+			"value": "Value",
 			"owed": "Amount owed",
 			"noRate": "No {currency} rate yet, so the account can't be valued. Pick another currency for now.",
 			"liquid": "Liquid",
@@ -162,7 +162,8 @@
 	"sort": {
 		"button": "Sort: {sort}",
 		"label": "Sort accounts by",
-		"balance": "Balance",
+		"custom": "Custom order",
+		"value": "Value",
 		"name": "Name",
 		"type": "Type",
 		"updated": "Recently updated",

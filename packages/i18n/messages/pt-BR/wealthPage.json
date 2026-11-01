@@ -118,7 +118,7 @@
 			"nameMissing": "Dê um nome à conta",
 			"type": "Tipo",
 			"custom": "Ordem própria",
-		"value": "Valor",
+			"value": "Valor",
 			"owed": "Valor devido",
 			"noRate": "Ainda não há cotação de {currency}, então a conta não pode ser avaliada. Escolha outra moeda por enquanto.",
 			"liquid": "Líquida",
@@ -162,7 +162,8 @@
 	"sort": {
 		"button": "Ordem: {sort}",
 		"label": "Ordenar contas por",
-		"balance": "Saldo",
+		"custom": "Ordem própria",
+		"value": "Valor",
 		"name": "Nome",
 		"type": "Tipo",
 		"updated": "Atualizadas recentemente",
