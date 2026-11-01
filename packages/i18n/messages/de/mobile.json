@@ -26,7 +26,8 @@
 		"today": "Heute",
 		"yesterday": "Gestern",
 		"pickDate": "Datum wählen",
-		"clearFilters": "Filter entfernen"
+		"clearFilters": "Filter entfernen",
+		"edit": "Bearbeiten"
 	},
 	"keypad": {
 		"delete": "Löschen",
@@ -298,15 +299,14 @@
 		"delete": {
 			"row": "Löschen",
 			"title": "Ausgabe löschen?",
-			"body": "Sie verschwindet aus deinen Ausgaben und deinem Budget.",
 			"button": "Ausgabe löschen",
 			"deleted": "{title} gelöscht",
 			"restored": "{title} wiederhergestellt",
 			"undoFailed": "Rückgängig machen nicht möglich. Versuche es unter Aktivität.",
 			"failed": "Löschen nicht möglich. Versuche es erneut.",
-			"sharedBody": "Alle darauf werden informiert, und was sie schulden, ändert sich.",
 			"noUndo": "Das lässt sich nicht rückgängig machen.",
-			"anyway": "Trotzdem löschen"
+			"anyway": "Trotzdem löschen",
+			"sharedEffect": "Alle darauf erfahren es, und was sie schulden, ändert sich."
 		},
 		"tabs": {
 			"category": "Kategorie",
@@ -528,7 +528,6 @@
 			"done": "Fertig",
 			"deleteLimit": "Du kannst bis zu {max} auf einmal löschen.",
 			"deleteTitle": "{count, plural, one {# Ausgabe löschen?} other {# Ausgaben löschen?}}",
-			"deleteBody": "Gelöschte Ausgaben verschwinden aus deinen Summen. Mit Rückgängig holst du sie zurück.",
 			"deleteButton": "{count, plural, one {# Ausgabe löschen} other {# Ausgaben löschen}}",
 			"categorizeTitle": "{count, plural, one {# Ausgabe kategorisieren} other {# Ausgaben kategorisieren}}",
 			"categorizeBody": "Sie wechseln zu {name}. Die Beträge bleiben gleich.",
@@ -1507,8 +1506,6 @@
 		},
 		"delete": {
 			"title": "{name} löschen?",
-			"body": "Das entfernt das Konto und seinen gesamten Saldoverlauf. Der Vermögensverlauf ändert sich ebenfalls.",
-			"keepHistory": "Um den Verlauf zu behalten, schließe das Konto stattdessen.",
 			"closeInstead": "Stattdessen schließen",
 			"submit": "Konto löschen",
 			"deleting": "Wird gelöscht",
@@ -2021,7 +2018,6 @@
 			"archive": "Projekt archivieren",
 			"restore": "Projekt wiederherstellen",
 			"archiveTitle": "{name} archivieren?",
-			"archiveBody": "Es wandert zu den archivierten Projekten. Ausgaben und Salden bleiben erhalten, und du kannst es wiederherstellen.",
 			"archiveConfirm": "Archivieren",
 			"archived": "{name} archiviert",
 			"restored": "{name} wiederhergestellt",
@@ -2063,11 +2059,9 @@
 			"share": "Teilen",
 			"newLink": "Neuer Link",
 			"newLinkTitle": "Diesen Link ersetzen?",
-			"newLinkBody": "Der alte Link funktioniert nicht mehr. Wer schon beigetreten ist, bleibt dabei.",
 			"newLinkConfirm": "Ersetzen",
 			"turnOff": "Ausschalten",
 			"turnOffTitle": "Diesen Link ausschalten?",
-			"turnOffBody": "Niemand kann damit mehr beitreten. Wer schon beigetreten ist, bleibt dabei.",
 			"turnOffConfirm": "Ausschalten",
 			"linkError": "Der Link ließ sich nicht ändern. Versuche es erneut.",
 			"linksHint": "Wer einen Link hat, tritt mit dieser Rolle bei.",
@@ -2175,7 +2169,6 @@
 			"removePhoto": "Entfernen",
 			"photoHint": "JPEG, PNG, WebP oder GIF, bis 5 MB",
 			"removePhotoTitle": "Dein Foto entfernen?",
-			"removePhotoBody": "Andere sehen dann deine Initialen.",
 			"removePhotoConfirm": "Foto entfernen",
 			"photoUpdated": "Foto aktualisiert",
 			"photoRemoved": "Foto entfernt",
@@ -2353,7 +2346,6 @@
 			"preferredToast": "Bevorzugte Methode geändert",
 			"remove": "Zahlungsmethode löschen",
 			"removeTitle": "Zahlungsmethode löschen?",
-			"removeBody": "Das lässt sich nicht rückgängig machen. Personen, mit denen du teilst, sehen es nicht mehr.",
 			"removeConfirm": "Löschen",
 			"removed": "Zahlungsmethode gelöscht",
 			"saveError": "Speichern nicht möglich. Versuche es erneut."
@@ -2550,7 +2542,6 @@
 			"share": "Registrierungslink teilen",
 			"delete": "Code löschen",
 			"deleteTitle": "Diesen Code löschen?",
-			"deleteBody": "{code} funktioniert sofort nicht mehr.",
 			"deleteError": "Der Code konnte nicht gelöscht werden. Versuch es erneut.",
 			"deleted": "Einladungscode gelöscht",
 			"codeCopied": "Code kopiert",
@@ -2589,7 +2580,6 @@
 			"unarchive": "Aus dem Archiv holen",
 			"delete": "Feedback löschen",
 			"deleteTitle": "Dieses Feedback löschen?",
-			"deleteBody": "Das lässt sich nicht rückgängig machen.",
 			"deleted": "Feedback gelöscht",
 			"moved": {
 				"read": "Als gelesen markiert",
@@ -2782,7 +2772,6 @@
 		},
 		"delete": {
 			"title": "{title} löschen?",
-			"body": "Es taucht nicht mehr auf. Bereits erfasste Einträge bleiben.",
 			"future": "Künftige Fälligkeiten",
 			"futureValue": "Entfallen, nächste war {date}",
 			"autoPay": "Automatisch erfassen",
@@ -2790,7 +2779,9 @@
 			"submit": "Wiederkehrende Ausgabe löschen",
 			"submitIn": "Wiederkehrende Einnahme löschen",
 			"toast": "{title} gelöscht",
-			"error": "Löschen hat nicht geklappt. Versuche es nochmal."
+			"error": "Löschen hat nicht geklappt. Versuche es nochmal.",
+			"logged": "Bereits erfasste Einträge",
+			"loggedStays": "Bleiben"
 		},
 		"pick": "Wähle eine wiederkehrende Ausgabe"
 	},

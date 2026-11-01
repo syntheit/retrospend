@@ -4,15 +4,15 @@ import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { StaleNote } from "@/ui/List";
+import { PaneBar } from "@/ui/PaneBar";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
-import { canSelect } from "./bulk";
-import { EntryActions } from "./EntryActions";
+import { TopBarAction } from "@/ui/TopBarAction";
+import { useEntryActions } from "./EntryActions";
 import { EntryFacts } from "./EntryFacts";
 import { EntryHead } from "./EntryHead";
 import { EntryShares } from "./EntryShares";
 import type { ActivityItem } from "./source";
-import { useBulkActions } from "./useBulkActions";
 import { useEntryDetail } from "./useEntryDetail";
 import { useEntryRow } from "./useEntryRow";
 
@@ -85,7 +85,18 @@ export function EntryView({
 	const t = useTranslations("mobile.entry");
 	const { space } = useTheme();
 	const detail = useEntryDetail(item);
-	const bulk = useBulkActions(() => detail.reload());
+	const actions = useEntryActions({
+		item,
+		editable,
+		onChanged: detail.reload,
+		// Waits for the server's detail: only it knows whether a template exists.
+		repeating:
+			detail.personal === null || detail.personal.recurringTemplateId !== null,
+	});
+	// Edit is a pencil in the header: a pushed page's bar, or the pane's.
+	const pencil = actions.edit ? (
+		<TopBarAction icon="Pencil" id="edit" label={t("edit")} onPress={actions.edit} />
+	) : null;
 	const heading =
 		item.kind === "income"
 			? t("titleIncome")
@@ -101,20 +112,18 @@ export function EntryView({
 	return (
 		<View style={{ gap: space[2], paddingBottom: space[8] }}>
 			{titled ? (
-				<Stack.Screen options={{ title: heading, headerLargeTitle: false }} />
-			) : null}
+				<Stack.Screen
+					options={{
+						title: heading,
+						headerLargeTitle: false,
+						headerRight: pencil ? () => pencil : undefined,
+					}}
+				/>
+			) : (
+				<PaneBar title={heading} trailing={pencil ?? undefined} />
+			)}
 			<EntryHead item={item} />
-			<EntryFacts
-				extra={detail.personal}
-				item={item}
-				// The same rule as a bulk pick: only your own expense, and only
-				// while the row is the server's.
-				onCategory={
-					editable && canSelect(item)
-						? () => bulk.categorize([item.entityId])
-						: undefined
-				}
-			/>
+			<EntryFacts extra={detail.personal} item={item} />
 			{detail.shared ? <EntryShares detail={detail.shared} /> : null}
 			{note ? <Text tone="fg2">{note}</Text> : null}
 			{addedBy ? (
@@ -122,18 +131,9 @@ export function EntryView({
 					{t("addedBy", { name: addedBy })}
 				</Text>
 			) : null}
-			<EntryActions
-				editable={editable}
-				item={item}
-				onChanged={detail.reload}
-				// Waits for the server's detail: only it knows whether a template exists.
-				repeating={
-					detail.personal === null ||
-					detail.personal.recurringTemplateId !== null
-				}
-			/>
+			{actions.footer}
 			<StaleNote since={staleSince ?? detail.staleSince} />
-			{bulk.sheets}
+			{actions.sheets}
 		</View>
 	);
 }

@@ -84,7 +84,6 @@ export function useEntityActions<E extends Entity>(
 	const confirm = pending ? (
 		<ConfirmationDialog
 			confirmLabel={t(`${entity}.${pending.id}.confirmButton`)}
-			description={t(`${entity}.${pending.id}.confirmBody`)}
 			onConfirm={() => {
 				const a = pending;
 				setPending(null);

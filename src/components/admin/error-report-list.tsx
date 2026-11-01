@@ -110,7 +110,6 @@ export function ErrorReportList() {
 			) : null}
 			<ConfirmationDialog
 				confirmLabel={t("delete")}
-				description={t("deleteReportBody")}
 				isLoading={remove.isPending}
 				onCancel={() => setDeleting(null)}
 				onConfirm={() => deleting && remove.mutate({ id: deleting.id })}

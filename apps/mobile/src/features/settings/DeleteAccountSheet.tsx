@@ -110,6 +110,7 @@ export function DeleteAccountSheet({
 	return (
 		<Sheet
 			detents={["large"]}
+			footerApart
 			footer={
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />

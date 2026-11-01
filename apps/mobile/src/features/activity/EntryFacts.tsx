@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useFaces } from "@/features/read/faces";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
-import { CategoryGlyph, categoryColor, Glyph } from "@/ui/Glyph";
+import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
 import { useRateTypeLabel } from "@/ui/Money";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
@@ -16,30 +16,21 @@ import type { ExpenseDetail } from "./useEntryDetail";
 
 /**
  * A label on the left, its value (600) on the right; a missing value leaves
- * no row. With `onPress` the row is a link: it ends in a chevron and opens
- * what changes the value.
+ * no row. A view only shows facts: no row opens a picker (R2).
  */
 function Fact({
 	label,
 	children,
-	onPress,
-	hint,
 }: {
 	label: string;
 	children: ReactNode | null | undefined | false;
-	onPress?: () => void;
-	hint?: string;
 }) {
 	const { color, size, space } = useTheme();
 	if (children === null || children === undefined || children === false) {
 		return null;
 	}
 	return (
-		<Pressable
-			accessibilityHint={onPress ? hint : undefined}
-			accessibilityRole={onPress ? "button" : undefined}
-			disabled={!onPress}
-			onPress={onPress}
+		<View
 			style={{
 				minHeight: size.row.phone,
 				flexDirection: "row",
@@ -72,11 +63,8 @@ function Fact({
 				) : (
 					children
 				)}
-				{onPress ? (
-					<Glyph color={color.fg3} name="ChevronRight" size={size.icon.phone} />
-				) : null}
 			</View>
-		</Pressable>
+		</View>
 	);
 }
 
@@ -95,12 +83,9 @@ function dayDate(day: string): Date {
 export function EntryFacts({
 	item,
 	extra,
-	onCategory,
 }: {
 	item: ActivityItem;
 	extra: ExpenseDetail | null;
-	/** Opens the category picker; absent where the entry's category is not yours to change. */
-	onCategory?: () => void;
 }) {
 	const t = useTranslations("mobile.entry");
 	const ta = useTranslations("mobile.activity");
@@ -146,11 +131,19 @@ export function EntryFacts({
 	const categoryName =
 		category?.name ?? (item.kind === "expense" ? t("uncategorized") : null);
 	const split = people.length > 1;
+	// "Paid by: You" tells nothing on your own expense. It shows when the
+	// expense is split or shared, or when someone else paid (R10).
+	const someoneElse = payer
+		? !payer.isSelf
+		: item.payerId
+			? item.payerId !== `user:${me?.id}`
+			: false;
+	const showPaidBy = split || item.source !== "personal" || someoneElse;
 
 	return (
 		<View>
 			<Fact label={t("paidBy")}>
-				{paidBy ? (
+				{showPaidBy && paidBy ? (
 					<>
 						{payerFace ? <Avatar face={payerFace} size="xs" /> : null}
 						<Text weight="semibold">{paidBy}</Text>
@@ -170,11 +163,7 @@ export function EntryFacts({
 					: null}
 			</Fact>
 			<Fact label={t("project")}>{item.project?.name}</Fact>
-			<Fact
-				hint={t("changeCategory")}
-				label={t("category")}
-				onPress={onCategory}
-			>
+			<Fact label={t("category")}>
 				{categoryName ? (
 					<>
 						{category?.name ? (

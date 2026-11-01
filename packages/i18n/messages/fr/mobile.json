@@ -26,7 +26,8 @@
 		"today": "Aujourd'hui",
 		"yesterday": "Hier",
 		"pickDate": "Choisir une date",
-		"clearFilters": "Retirer les filtres"
+		"clearFilters": "Retirer les filtres",
+		"edit": "Modifier"
 	},
 	"keypad": {
 		"delete": "Effacer",
@@ -298,15 +299,14 @@
 		"delete": {
 			"row": "Supprimer",
 			"title": "Supprimer la dépense ?",
-			"body": "Elle quitte tes dépenses et ton budget.",
 			"button": "Supprimer la dépense",
 			"deleted": "{title} supprimé",
 			"restored": "{title} rétabli",
 			"undoFailed": "Impossible d'annuler. Réessaie depuis Activité.",
 			"failed": "Impossible de supprimer. Réessaie.",
-			"sharedBody": "Toutes les personnes concernées sont prévenues, et ce qu'elles doivent change.",
 			"noUndo": "Cette action est irréversible.",
-			"anyway": "Supprimer quand même"
+			"anyway": "Supprimer quand même",
+			"sharedEffect": "Tout le monde est prévenu et ce que chacun doit change."
 		},
 		"tabs": {
 			"category": "Catégorie",
@@ -528,7 +528,6 @@
 			"done": "Terminé",
 			"deleteLimit": "Tu peux en supprimer {max} à la fois.",
 			"deleteTitle": "{count, plural, one {Supprimer # dépense ?} other {Supprimer # dépenses ?}}",
-			"deleteBody": "Les dépenses supprimées quittent tes totaux. Annuler les ramène.",
 			"deleteButton": "{count, plural, one {Supprimer # dépense} other {Supprimer # dépenses}}",
 			"categorizeTitle": "{count, plural, one {Catégoriser # dépense} other {Catégoriser # dépenses}}",
 			"categorizeBody": "Elles passent dans {name}. Leurs montants ne changent pas.",
@@ -1507,8 +1506,6 @@
 		},
 		"delete": {
 			"title": "Supprimer {name} ?",
-			"body": "Cela supprime le compte et tout son historique de soldes. L’historique du patrimoine change aussi.",
-			"keepHistory": "Pour garder l’historique, clôture plutôt le compte.",
 			"closeInstead": "Clôturer à la place",
 			"submit": "Supprimer le compte",
 			"deleting": "Suppression",
@@ -2021,7 +2018,6 @@
 			"archive": "Archiver le projet",
 			"restore": "Restaurer le projet",
 			"archiveTitle": "Archiver {name} ?",
-			"archiveBody": "Il passe dans les projets archivés. Ses dépenses et ses soldes sont conservés, et tu peux le restaurer.",
 			"archiveConfirm": "Archiver",
 			"archived": "{name} archivé",
 			"restored": "{name} restauré",
@@ -2063,11 +2059,9 @@
 			"share": "Partager",
 			"newLink": "Nouveau lien",
 			"newLinkTitle": "Remplacer ce lien ?",
-			"newLinkBody": "L'ancien lien ne fonctionne plus. Les personnes qui ont déjà rejoint restent.",
 			"newLinkConfirm": "Remplacer",
 			"turnOff": "Désactiver",
 			"turnOffTitle": "Désactiver ce lien ?",
-			"turnOffBody": "Plus personne ne peut rejoindre avec lui. Les personnes qui ont déjà rejoint restent.",
 			"turnOffConfirm": "Désactiver",
 			"linkError": "Impossible de modifier le lien. Réessaie.",
 			"linksHint": "Quiconque a un lien rejoint avec ce rôle.",
@@ -2175,7 +2169,6 @@
 			"removePhoto": "Supprimer",
 			"photoHint": "JPEG, PNG, WebP ou GIF, 5 Mo maximum",
 			"removePhotoTitle": "Supprimer ta photo ?",
-			"removePhotoBody": "Tes initiales s’afficheront à la place.",
 			"removePhotoConfirm": "Supprimer la photo",
 			"photoUpdated": "Photo mise à jour",
 			"photoRemoved": "Photo supprimée",
@@ -2353,7 +2346,6 @@
 			"preferredToast": "Moyen préféré modifié",
 			"remove": "Supprimer le moyen de paiement",
 			"removeTitle": "Supprimer le moyen de paiement ?",
-			"removeBody": "Impossible d'annuler. Les personnes avec qui tu partages ne le verront plus.",
 			"removeConfirm": "Supprimer",
 			"removed": "Moyen de paiement supprimé",
 			"saveError": "Impossible d'enregistrer. Réessaie."
@@ -2550,7 +2542,6 @@
 			"share": "Partager le lien d'inscription",
 			"delete": "Supprimer le code",
 			"deleteTitle": "Supprimer ce code ?",
-			"deleteBody": "{code} cesse de fonctionner immédiatement.",
 			"deleteError": "Impossible de supprimer le code. Réessayez.",
 			"deleted": "Code d'invitation supprimé",
 			"codeCopied": "Code copié",
@@ -2589,7 +2580,6 @@
 			"unarchive": "Désarchiver",
 			"delete": "Supprimer le retour",
 			"deleteTitle": "Supprimer ce retour ?",
-			"deleteBody": "Cette action est irréversible.",
 			"deleted": "Retour supprimé",
 			"moved": {
 				"read": "Marqué comme lu",
@@ -2782,7 +2772,6 @@
 		},
 		"delete": {
 			"title": "Supprimer {title} ?",
-			"body": "Elle n'apparaît plus. Les opérations déjà enregistrées restent.",
 			"future": "Prochaines échéances",
 			"futureValue": "Arrêtées, la prochaine était le {date}",
 			"autoPay": "Enregistrer automatiquement",
@@ -2790,7 +2779,9 @@
 			"submit": "Supprimer la dépense récurrente",
 			"submitIn": "Supprimer le revenu récurrent",
 			"toast": "{title} supprimée",
-			"error": "Impossible de supprimer. Réessaie."
+			"error": "Impossible de supprimer. Réessaie.",
+			"logged": "Entrées déjà enregistrées",
+			"loggedStays": "Restent"
 		},
 		"pick": "Choisissez une dépense récurrente"
 	},

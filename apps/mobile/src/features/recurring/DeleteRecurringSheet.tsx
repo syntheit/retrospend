@@ -66,6 +66,7 @@ export function DeleteRecurringSheet({
 	return (
 		<Sheet
 			detents={["medium"]}
+			footerApart
 			footer={
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
@@ -86,7 +87,6 @@ export function DeleteRecurringSheet({
 			visible={visible}
 		>
 			<SheetBody>
-				<Note>{t("body")}</Note>
 				<PreviewChanges
 					lead={[
 						{
@@ -103,6 +103,12 @@ export function DeleteRecurringSheet({
 									},
 								]
 							: []),
+						// What does not change is said too (R7).
+						{
+							key: "logged",
+							label: t("logged"),
+							value: t("loggedStays"),
+						},
 					]}
 					preview={flow.preview}
 					status={flow.status}

@@ -89,7 +89,7 @@ export function MethodSheet({
 	}
 
 	function askDelete() {
-		Alert.alert(t("removeTitle"), t("removeBody"), [
+		Alert.alert(t("removeTitle"), undefined, [
 			{ text: tc("cancel"), style: "cancel" },
 			{
 				text: t("removeConfirm"),
@@ -161,6 +161,7 @@ export function MethodSheet({
 						disabled={busy}
 						label={t("remove")}
 						onPress={askDelete}
+						size="small"
 						variant="dangerText"
 					/>
 				</View>

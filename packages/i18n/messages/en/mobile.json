@@ -26,7 +26,8 @@
 		"today": "Today",
 		"yesterday": "Yesterday",
 		"pickDate": "Pick a date",
-		"clearFilters": "Clear filters"
+		"clearFilters": "Clear filters",
+		"edit": "Edit"
 	},
 	"keypad": {
 		"delete": "Delete",
@@ -298,15 +299,14 @@
 		"delete": {
 			"row": "Delete",
 			"title": "Delete expense?",
-			"body": "It leaves your spending and your budget.",
 			"button": "Delete expense",
 			"deleted": "Deleted {title}",
 			"restored": "Restored {title}",
 			"undoFailed": "Couldn't undo. Try again from Activity.",
 			"failed": "Couldn't delete this. Try again.",
-			"sharedBody": "Everyone on it is told, and what they owe changes.",
 			"noUndo": "This can't be undone.",
-			"anyway": "Delete anyway"
+			"anyway": "Delete anyway",
+			"sharedEffect": "Everyone on it is told, and what they owe changes."
 		},
 		"tabs": {
 			"category": "Category",
@@ -528,7 +528,6 @@
 			"done": "Done",
 			"deleteLimit": "Delete takes up to {max} at a time.",
 			"deleteTitle": "{count, plural, one {Delete # expense?} other {Delete # expenses?}}",
-			"deleteBody": "Deleted expenses leave your totals. Undo brings them back.",
 			"deleteButton": "{count, plural, one {Delete # expense} other {Delete # expenses}}",
 			"categorizeTitle": "{count, plural, one {Categorize # expense} other {Categorize # expenses}}",
 			"categorizeBody": "They move to {name}. Their amounts stay the same.",
@@ -1507,8 +1506,6 @@
 		},
 		"delete": {
 			"title": "Delete {name}?",
-			"body": "This removes the account and its whole balance history. Net worth history changes too.",
-			"keepHistory": "To keep the history, close the account instead.",
 			"closeInstead": "Close instead",
 			"submit": "Delete account",
 			"deleting": "Deleting",
@@ -2021,7 +2018,6 @@
 			"archive": "Archive project",
 			"restore": "Restore project",
 			"archiveTitle": "Archive {name}?",
-			"archiveBody": "It moves to the archived projects. Its expenses and balances stay, and you can restore it.",
 			"archiveConfirm": "Archive",
 			"archived": "{name} archived",
 			"restored": "{name} restored",
@@ -2063,11 +2059,9 @@
 			"share": "Share",
 			"newLink": "New link",
 			"newLinkTitle": "Replace this link?",
-			"newLinkBody": "The old link stops working. People who already joined stay.",
 			"newLinkConfirm": "Replace",
 			"turnOff": "Turn off",
 			"turnOffTitle": "Turn off this link?",
-			"turnOffBody": "Nobody can join with it any more. People who already joined stay.",
 			"turnOffConfirm": "Turn off",
 			"linkError": "Couldn't change the link. Try again.",
 			"linksHint": "Anyone with a link joins with that role.",
@@ -2175,7 +2169,6 @@
 			"removePhoto": "Remove",
 			"photoHint": "JPEG, PNG, WebP or GIF, up to 5 MB",
 			"removePhotoTitle": "Remove your photo?",
-			"removePhotoBody": "People will see your initials instead.",
 			"removePhotoConfirm": "Remove photo",
 			"photoUpdated": "Photo updated",
 			"photoRemoved": "Photo removed",
@@ -2353,7 +2346,6 @@
 			"preferredToast": "Primary method changed",
 			"remove": "Delete payment method",
 			"removeTitle": "Delete payment method?",
-			"removeBody": "This can't be undone. People you share with will no longer see it.",
 			"removeConfirm": "Delete",
 			"removed": "Payment method deleted",
 			"saveError": "Couldn't save. Try again."
@@ -2550,7 +2542,6 @@
 			"share": "Share sign-up link",
 			"delete": "Delete code",
 			"deleteTitle": "Delete this code?",
-			"deleteBody": "{code} stops working at once.",
 			"deleteError": "Couldn't delete the code. Try again.",
 			"deleted": "Invite code deleted",
 			"codeCopied": "Code copied",
@@ -2589,7 +2580,6 @@
 			"unarchive": "Unarchive",
 			"delete": "Delete feedback",
 			"deleteTitle": "Delete this feedback?",
-			"deleteBody": "This can't be undone.",
 			"deleted": "Feedback deleted",
 			"moved": {
 				"read": "Marked read",
@@ -2782,7 +2772,6 @@
 		},
 		"delete": {
 			"title": "Delete {title}?",
-			"body": "It stops coming up. Entries it already logged stay.",
 			"future": "Future occurrences",
 			"futureValue": "Stop, next was {date}",
 			"autoPay": "Record automatically",
@@ -2790,7 +2779,9 @@
 			"submit": "Delete recurring expense",
 			"submitIn": "Delete recurring income",
 			"toast": "{title} deleted",
-			"error": "Couldn't delete it. Try again."
+			"error": "Couldn't delete it. Try again.",
+			"logged": "Entries already logged",
+			"loggedStays": "Stay"
 		},
 		"pick": "Pick a recurring expense"
 	},

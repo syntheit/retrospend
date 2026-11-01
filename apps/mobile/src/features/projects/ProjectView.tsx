@@ -19,6 +19,7 @@ import { usePaneEnter } from "@/ui/motion";
 import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
+import { TopBarAction } from "@/ui/TopBarAction";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
 import { AddMemberSheet } from "./AddMemberSheet";
 import {
@@ -109,6 +110,10 @@ export function ProjectView({
 		startAdding,
 	);
 	const menu = [...actions.items, ...overflow];
+	// Edit is the pencil in the header, not an item of the menu (R3).
+	const pencil = actions.edit ? (
+		<TopBarAction icon="Pencil" id="edit" label={t("actions.edit")} onPress={actions.edit} />
+	) : null;
 	const baseUrl = useServerBaseUrl();
 	const webOpened = useRef(false);
 	const sendToWeb = baseUrl
@@ -213,7 +218,16 @@ export function ProjectView({
 						headerLargeTitle: false,
 						headerTitle: () => <ProjectTitle page={page} />,
 						headerRight: () => (
-							<Menu accessibilityLabel={more} icon items={menu} label={more} />
+							<View
+								style={{
+									flexDirection: "row",
+									alignItems: "center",
+									gap: space[2],
+								}}
+							>
+								{pencil}
+								<Menu accessibilityLabel={more} icon items={menu} label={more} />
+							</View>
 						),
 					}}
 				/>
@@ -222,7 +236,10 @@ export function ProjectView({
 			<ProjectHeader
 				menu={
 					listDetail ? (
-						<Menu accessibilityLabel={more} icon items={menu} label={more} />
+						<>
+							{pencil}
+							<Menu accessibilityLabel={more} icon items={menu} label={more} />
+						</>
 					) : undefined
 				}
 				page={page}

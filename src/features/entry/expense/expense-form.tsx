@@ -253,7 +253,6 @@ export function ExpenseForm(p: {
 			/>
 			<ConfirmationDialog
 				confirmLabel={t("deleteShared.confirm")}
-				description={t("deleteShared.body")}
 				isLoading={s.busy}
 				onConfirm={() => void s.remove().then(close, () => setFailed(true))}
 				onOpenChange={(o) => !o && setConfirm(null)}

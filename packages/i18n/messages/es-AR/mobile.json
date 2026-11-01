@@ -26,7 +26,8 @@
 		"today": "Hoy",
 		"yesterday": "Ayer",
 		"pickDate": "Elegir una fecha",
-		"clearFilters": "Sacar filtros"
+		"clearFilters": "Sacar filtros",
+		"edit": "Editar"
 	},
 	"keypad": {
 		"delete": "Borrar",
@@ -298,15 +299,14 @@
 		"delete": {
 			"row": "Eliminar",
 			"title": "¿Eliminar gasto?",
-			"body": "Sale de tus gastos y de tu presupuesto.",
 			"button": "Eliminar gasto",
 			"deleted": "Se eliminó {title}",
 			"restored": "Se restauró {title}",
 			"undoFailed": "No se pudo deshacer. Probá desde Actividad.",
 			"failed": "No se pudo eliminar. Probá de nuevo.",
-			"sharedBody": "Se avisa a todos los que participan, y lo que deben cambia.",
 			"noUndo": "No se puede deshacer.",
-			"anyway": "Eliminar igualmente"
+			"anyway": "Eliminar igualmente",
+			"sharedEffect": "Se avisa a todos los que participan y cambia lo que deben."
 		},
 		"tabs": {
 			"category": "Categoría",
@@ -528,7 +528,6 @@
 			"done": "Listo",
 			"deleteLimit": "Podés eliminar hasta {max} a la vez.",
 			"deleteTitle": "{count, plural, one {¿Eliminar # gasto?} other {¿Eliminar # gastos?}}",
-			"deleteBody": "Los gastos eliminados salen de tus totales. Deshacer los recupera.",
 			"deleteButton": "{count, plural, one {Eliminar # gasto} other {Eliminar # gastos}}",
 			"categorizeTitle": "{count, plural, one {Categorizar # gasto} other {Categorizar # gastos}}",
 			"categorizeBody": "Pasan a {name}. Sus montos no cambian.",
@@ -1507,8 +1506,6 @@
 		},
 		"delete": {
 			"title": "¿Eliminar {name}?",
-			"body": "Esto elimina la cuenta y todo su historial de saldos. El historial del patrimonio también cambia.",
-			"keepHistory": "Para conservar el historial, cerrá la cuenta en su lugar.",
 			"closeInstead": "Mejor cerrar",
 			"submit": "Eliminar cuenta",
 			"deleting": "Eliminando",
@@ -2021,7 +2018,6 @@
 			"archive": "Archivar proyecto",
 			"restore": "Restaurar proyecto",
 			"archiveTitle": "¿Archivar {name}?",
-			"archiveBody": "Pasa a los proyectos archivados. Sus gastos y saldos se conservan y podés restaurarlo.",
 			"archiveConfirm": "Archivar",
 			"archived": "{name} archivado",
 			"restored": "{name} restaurado",
@@ -2063,11 +2059,9 @@
 			"share": "Compartir",
 			"newLink": "Enlace nuevo",
 			"newLinkTitle": "¿Reemplazar este enlace?",
-			"newLinkBody": "El enlace anterior deja de funcionar. Quienes ya se sumaron siguen en el proyecto.",
 			"newLinkConfirm": "Reemplazar",
 			"turnOff": "Desactivar",
 			"turnOffTitle": "¿Desactivar este enlace?",
-			"turnOffBody": "Nadie podrá sumarse con él. Quienes ya se sumaron siguen en el proyecto.",
 			"turnOffConfirm": "Desactivar",
 			"linkError": "No se pudo cambiar el enlace. Probá de nuevo.",
 			"linksHint": "Quien tenga un enlace se suma con ese rol.",
@@ -2175,7 +2169,6 @@
 			"removePhoto": "Quitar",
 			"photoHint": "JPEG, PNG, WebP o GIF, hasta 5 MB",
 			"removePhotoTitle": "¿Querés quitar tu foto?",
-			"removePhotoBody": "Los demás van a ver tus iniciales en su lugar.",
 			"removePhotoConfirm": "Quitar foto",
 			"photoUpdated": "Foto actualizada",
 			"photoRemoved": "Foto quitada",
@@ -2353,7 +2346,6 @@
 			"preferredToast": "Método preferido cambiado",
 			"remove": "Eliminar método de pago",
 			"removeTitle": "¿Eliminar método de pago?",
-			"removeBody": "No se puede deshacer. Las personas con las que compartís ya no lo verán.",
 			"removeConfirm": "Eliminar",
 			"removed": "Método de pago eliminado",
 			"saveError": "No se pudo guardar. Probá de nuevo."
@@ -2550,7 +2542,6 @@
 			"share": "Compartir enlace de registro",
 			"delete": "Eliminar código",
 			"deleteTitle": "¿Eliminar este código?",
-			"deleteBody": "{code} deja de funcionar enseguida.",
 			"deleteError": "No se pudo eliminar el código. Probá de nuevo.",
 			"deleted": "Código de invitación eliminado",
 			"codeCopied": "Código copiado",
@@ -2589,7 +2580,6 @@
 			"unarchive": "Desarchivar",
 			"delete": "Eliminar comentario",
 			"deleteTitle": "¿Eliminar este comentario?",
-			"deleteBody": "No se puede deshacer.",
 			"deleted": "Comentario eliminado",
 			"moved": {
 				"read": "Marcado como leído",
@@ -2782,7 +2772,6 @@
 		},
 		"delete": {
 			"title": "¿Eliminar {title}?",
-			"body": "Deja de aparecer. Los movimientos que ya registró se quedan.",
 			"future": "Próximas veces",
 			"futureValue": "Se detienen, la próxima era el {date}",
 			"autoPay": "Registrar automáticamente",
@@ -2790,7 +2779,9 @@
 			"submit": "Eliminar gasto recurrente",
 			"submitIn": "Eliminar ingreso recurrente",
 			"toast": "{title} eliminado",
-			"error": "No se pudo eliminar. Probá de nuevo."
+			"error": "No se pudo eliminar. Probá de nuevo.",
+			"logged": "Movimientos ya registrados",
+			"loggedStays": "Se conservan"
 		},
 		"pick": "Elegí un gasto recurrente"
 	},

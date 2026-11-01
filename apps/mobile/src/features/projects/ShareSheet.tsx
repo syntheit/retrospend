@@ -85,8 +85,8 @@ export function ShareSheet({
 		}
 	}
 
-	function ask(title: string, body: string, confirm: string, run: () => void) {
-		Alert.alert(title, body, [
+	function ask(title: string, confirm: string, run: () => void) {
+		Alert.alert(title, undefined, [
 			{ text: tc("cancel"), style: "cancel" },
 			{ text: confirm, style: "destructive", onPress: run },
 		]);
@@ -195,7 +195,6 @@ export function ShareSheet({
 														onPress={() =>
 															ask(
 																t("newLinkTitle"),
-																t("newLinkBody"),
 																t("newLinkConfirm"),
 																() => void flow.replace(role),
 															)
@@ -209,7 +208,6 @@ export function ShareSheet({
 														onPress={() =>
 															ask(
 																t("turnOffTitle"),
-																t("turnOffBody"),
 																t("turnOffConfirm"),
 																() => void flow.turnOff(role),
 															)

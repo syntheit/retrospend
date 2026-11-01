@@ -68,7 +68,6 @@ export function AvatarRow({ fallbackName }: { fallbackName: string }) {
 			<ImageCropDialog {...avatar.crop} title={t("cropTitle")} />
 			<ConfirmationDialog
 				confirmLabel={t("removePhotoConfirm")}
-				description={t("removePhotoBody")}
 				isLoading={avatar.isRemoving}
 				onConfirm={async () => {
 					await avatar.remove();

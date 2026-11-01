@@ -118,6 +118,7 @@ export function BulkSheet({
 	return (
 		<Sheet
 			detents={action?.kind === "delete" ? ["medium"] : undefined}
+			footerApart={action?.kind === "delete"}
 			footer={
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
@@ -144,13 +145,13 @@ export function BulkSheet({
 			visible={open}
 		>
 			<View style={{ gap: space[4] }}>
-				<Text tone="fg2">
-					{action?.kind === "delete"
-						? t("deleteBody")
-						: t("categorizeBody", {
-								name: action?.kind === "category" ? action.name : "",
-							})}
-				</Text>
+				{action?.kind === "delete" ? null : (
+					<Text tone="fg2">
+						{t("categorizeBody", {
+							name: action?.kind === "category" ? action.name : "",
+						})}
+					</Text>
+				)}
 				<ChangesBlock idle="" state={preview} />
 				{skipped > 0 ? (
 					<Text tone="fg2" variant="small">

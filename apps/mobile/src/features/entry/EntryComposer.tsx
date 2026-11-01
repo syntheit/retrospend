@@ -8,7 +8,6 @@ import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import type { MenuItem } from "@/ui/types";
 import { useMoneyLines } from "./AmountCard";
-import { DeleteEntrySheet } from "./DeleteEntrySheet";
 import { ExpenseComposer } from "./ExpenseComposer";
 import { type SavedEntry, useEditEntry, useEntryCatalog } from "./hooks";
 import { IncomeComposer } from "./IncomeComposer";
@@ -17,6 +16,7 @@ import { SyncIssues } from "./SyncIssues";
 import { TransferComposer } from "./TransferComposer";
 import type { EntryCatalog, EntryMode } from "./types";
 import { useComposerPreview } from "./useComposerPreview";
+import { useDeleteEntry } from "./useDeleteEntry";
 import { useEntryForm } from "./useEntryForm";
 import { useEntrySave } from "./useEntrySave";
 import { useSplitView } from "./useSplitView";
@@ -176,11 +176,17 @@ function Form({
 	});
 	const lines = useMoneyLines(form);
 	const split = useSplitView(form, pv, edit);
-	const [deleting, setDeleting] = useState(false);
 	// Every saved expense deletes from here; a split asks first and Undo brings
 	// back every share.
 	const canDelete = form.editing && edit !== undefined;
 	const { mode, expense, rated, tried } = form;
+	// The system alert after the server's dry run, then the Undo toast.
+	const askDelete = useDeleteEntry({
+		id: expense.id,
+		shared: edit?.kind === "shared",
+		title: expense.title,
+		onDeleted: onDone,
+	});
 
 	const rate =
 		rated && form.foreign ? (
@@ -226,22 +232,11 @@ function Form({
 						id: "delete",
 						label: t("delete.row"),
 						destructive: true,
-						onPress: () => setDeleting(true),
+						onPress: askDelete,
 					},
 				]
 			: []),
 	];
-
-	const deleteSheet = canDelete ? (
-		<DeleteEntrySheet
-			id={expense.id}
-			onClose={() => setDeleting(false)}
-			onDeleted={onDone}
-			shared={edit?.kind === "shared"}
-			title={expense.title}
-			visible={deleting}
-		/>
-	) : null;
 
 	if (mode === "expense") {
 		return (
@@ -261,7 +256,6 @@ function Form({
 					split={split}
 					surface={surface}
 				/>
-				{deleteSheet}
 			</>
 		);
 	}
