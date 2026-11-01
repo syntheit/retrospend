@@ -117,6 +117,7 @@ export function DetailPager({
 	label,
 	dotLabel,
 	minHeight = MIN_PANEL_HEIGHT,
+	snapKey,
 }: {
 	tabs: PagerTab[];
 	page: number;
@@ -128,6 +129,8 @@ export function DetailPager({
 	/** Added to a dotted tab's spoken label ("changed"). */
 	dotLabel: string;
 	minHeight?: number;
+	/** Another key means another set of panels (a mode): the strip lands on its page at once. */
+	snapKey?: string;
 }) {
 	const theme = useTheme();
 	const { color, duration, radius, size, space } = theme;
@@ -165,9 +168,12 @@ export function DetailPager({
 	// follows from wherever it is. A width change (rotation, a split view)
 	// lands on the page at once.
 	const lastWidth = useRef(pageWidth);
+	const lastKey = useRef(snapKey);
 	useEffect(() => {
-		const resized = lastWidth.current !== pageWidth;
+		const resized =
+			lastWidth.current !== pageWidth || lastKey.current !== snapKey;
 		lastWidth.current = pageWidth;
+		lastKey.current = snapKey;
 		widthSV.value = pageWidth;
 		countSV.value = count;
 		if (resized) {
@@ -177,7 +183,7 @@ export function DetailPager({
 			shown.current = page;
 			slide(-page * pageWidth);
 		}
-	}, [page, pageWidth, count, slide, widthSV, countSV, x]);
+	}, [page, pageWidth, snapKey, count, slide, widthSV, countSV, x]);
 
 	const settled = useCallback(
 		(next: number) => {
@@ -340,7 +346,10 @@ export function DetailPager({
 										}
 										// biome-ignore lint/suspicious/noArrayIndexKey: the panels are fixed, one per tab
 										key={index}
-										style={{ width: pageWidth, height: box.height || undefined }}
+										style={{
+											width: pageWidth,
+											height: box.height || undefined,
+										}}
 									>
 										<ScrollView
 											contentContainerStyle={{

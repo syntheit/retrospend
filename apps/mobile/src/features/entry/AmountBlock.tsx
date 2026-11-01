@@ -4,8 +4,8 @@ import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Text } from "@/ui/Text";
 import { FieldError } from "@/ui/TextField";
-import { AmountCaret } from "./AmountCaret";
 import type { MoneyLine } from "./AmountCard";
+import { AmountCaret } from "./AmountCaret";
 
 /**
  * The amount, big and centered: the currency (its picker, or the plain code

@@ -8,13 +8,14 @@ import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import type { MenuItem } from "@/ui/types";
 import { useMoneyLines } from "./AmountCard";
+import { ComposerFrame } from "./ComposerFrame";
 import { DeleteEntrySheet } from "./DeleteEntrySheet";
-import { ExpenseComposer } from "./ExpenseComposer";
+import { useExpenseFrame } from "./ExpenseComposer";
 import { type SavedEntry, useEditEntry, useEntryCatalog } from "./hooks";
-import { IncomeComposer } from "./IncomeComposer";
+import { useIncomeFrame } from "./IncomeComposer";
 import { RateField } from "./RateField";
 import { SyncIssues } from "./SyncIssues";
-import { TransferComposer } from "./TransferComposer";
+import { useTransferFrame } from "./TransferComposer";
 import type { EntryCatalog, EntryMode } from "./types";
 import { useComposerPreview } from "./useComposerPreview";
 import { useEntryForm } from "./useEntryForm";
@@ -243,59 +244,47 @@ function Form({
 		/>
 	) : null;
 
-	if (mode === "expense") {
-		return (
-			<>
-				<ExpenseComposer
-					actions={actions}
-					busy={busy}
-					catalog={catalog}
-					form={form}
-					lines={lines}
-					notices={notices}
-					onAdd={add}
-					onCancel={onDone}
-					onModeChange={onModeChange}
-					pv={pv}
-					rate={underAmount}
-					split={split}
-					surface={surface}
-				/>
-				{deleteSheet}
-			</>
-		);
-	}
-
-	if (mode === "income") {
-		return (
-			<IncomeComposer
-				busy={busy}
-				catalog={catalog}
-				form={form}
-				lines={lines}
-				notices={notices}
-				onAdd={add}
-				onCancel={onDone}
-				onModeChange={onModeChange}
-				pv={pv}
-				rate={underAmount}
-				surface={surface}
-			/>
-		);
-	}
-
+	// One frame for all three modes, so the head, the segmented control, the
+	// amount and the keypad stay mounted when the mode changes. Each mode builds
+	// its details; only the one on screen runs its effects.
+	const shared = {
+		busy,
+		catalog,
+		form,
+		lines,
+		notices,
+		onAdd: add,
+		onCancel: onDone,
+		onModeChange,
+		pv,
+		surface,
+	};
+	const expenseFrame = useExpenseFrame({
+		...shared,
+		actions,
+		active: mode === "expense",
+		rate: underAmount,
+		split,
+	});
+	const incomeFrame = useIncomeFrame({
+		...shared,
+		active: mode === "income",
+		rate: underAmount,
+	});
+	const transferFrame = useTransferFrame({
+		...shared,
+		active: mode === "transfer",
+	});
+	const frame =
+		mode === "expense"
+			? expenseFrame
+			: mode === "income"
+				? incomeFrame
+				: transferFrame;
 	return (
-		<TransferComposer
-			busy={busy}
-			catalog={catalog}
-			form={form}
-			lines={lines}
-			notices={notices}
-			onAdd={add}
-			onCancel={onDone}
-			onModeChange={onModeChange}
-			pv={pv}
-			surface={surface}
-		/>
+		<>
+			<ComposerFrame {...frame} />
+			{deleteSheet}
+		</>
 	);
 }

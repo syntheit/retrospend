@@ -57,7 +57,11 @@ export function TransferAmount({
 								: on
 									? color.brand
 									: "transparent",
-							backgroundColor: on ? color.brandSoft : keysUp ? color.surface : color.raised,
+							backgroundColor: on
+								? color.brandSoft
+								: keysUp
+									? color.surface
+									: color.raised,
 						}}
 					>
 						<View style={{ flex: 1, minWidth: 0 }}>
@@ -89,7 +93,7 @@ export function TransferAmount({
 							>
 								{line.text || line.placeholder}
 							</Text>
-							{on ? <AmountCaret role="title" /> : null}
+							{on ? <AmountCaret figure="title" /> : null}
 						</View>
 					</Pressable>
 				);

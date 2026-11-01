@@ -76,7 +76,9 @@ describe.each(themes)("M3 token colors (%s)", (_name, theme) => {
 	});
 
 	it("keeps the date and field text readable", () => {
-		expect(ratio(color.fg, color.surface, color.bg)).toBeGreaterThanOrEqual(4.5);
+		expect(ratio(color.fg, color.surface, color.bg)).toBeGreaterThanOrEqual(
+			4.5,
+		);
 		expect(ratio(color.brandFg, color.brand, color.bg)).toBeGreaterThanOrEqual(
 			4.5,
 		);

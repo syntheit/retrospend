@@ -22,10 +22,10 @@ import { TEXT_SCALE_CAP } from "@/ui/Text";
  * what a screen reader gets.
  */
 export function AmountCaret({
-	role = "hero",
+	figure = "hero",
 }: {
 	/** The type role of the figure it sits after. */
-	role?: "hero" | "title";
+	figure?: "hero" | "title";
 }) {
 	const { color, duration, space, type } = useTheme();
 	const { fontScale } = useWindowDimensions();
@@ -49,7 +49,7 @@ export function AmountCaret({
 	}, [reduce, duration.row, duration.state, opacity]);
 	const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
 	const scaled =
-		type[role].size * Math.min(Math.max(fontScale, 1), TEXT_SCALE_CAP.body);
+		type[figure].size * Math.min(Math.max(fontScale, 1), TEXT_SCALE_CAP.body);
 	return (
 		<Animated.View
 			accessibilityElementsHidden

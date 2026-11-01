@@ -10,7 +10,7 @@ import { AccountPanel } from "./AccountPanel";
 import { AmountBlock } from "./AmountBlock";
 import { AmountCard, type MoneyLine } from "./AmountCard";
 import { CategoryPanel } from "./CategoryPanel";
-import { ComposerFrame } from "./ComposerFrame";
+import type { ComposerFrameProps } from "./ComposerFrame";
 import { ComposerTop } from "./ComposerTop";
 import { DEFAULT_RATE } from "./draft";
 import { OptionRow } from "./MorePanel";
@@ -39,7 +39,8 @@ const PANEL_ICON = {
  * and More (Note, Repeats). Every answer is written to the income draft the
  * data layer owns, and Add sends what the dry run previewed.
  */
-export function IncomeComposer({
+export function useIncomeFrame({
+	active,
 	form,
 	pv,
 	lines,
@@ -64,7 +65,9 @@ export function IncomeComposer({
 	onModeChange: (mode: EntryMode) => void;
 	notices: ReactNode;
 	surface?: boolean;
-}) {
+	/** This mode is on screen: only then do its side effects run. */
+	active: boolean;
+}): ComposerFrameProps {
 	const t = useTranslations("mobile.composer");
 	const locale = useMoneyLocale();
 	const { space } = useTheme();
@@ -245,71 +248,70 @@ export function IncomeComposer({
 	);
 
 	const sourceError = form.tried && form.incomeProblems.source === true;
-	return (
-		<ComposerFrame
-			add={{
-				onPress: onAdd,
-				label: t("add"),
-				description: t("addIncome"),
-				folded: t("addIncome"),
-				off: pv.blocked || form.typedAmount === null,
-				busy,
-			}}
-			amount={amount}
-			changedLabel={t("tabs.changed")}
-			header={
-				<View style={{ gap: space[2] }}>
-					<ComposerTop
-						actions={[]}
-						editing={false}
-						mode={form.mode}
-						modes={form.modes}
-						onCancel={onCancel}
-						onModeChange={onModeChange}
-					/>
-					{notices}
-				</View>
-			}
-			keypad={{
-				text: form.keypad.text,
-				currency: form.keypad.currency,
-				kind: "money",
-				onChange: form.patchAmount,
-			}}
-			keypadOpen={form.padOpen}
-			onPageChange={(next) => goTo(next)}
-			onScrollDrag={() => {
-				if (system) form.setPadOpen(false);
-			}}
-			page={page}
-			panels={names.map((name) => panelOf[name])}
-			preview={<PreviewLine state={pv.preview} />}
-			summary={parts}
-			surface={surface}
-			tabs={tabs}
-			tabsLabel={t("tabs.label")}
-			title={
-				<View>
-					<TextField
-						align="center"
-						autoCapitalize="sentences"
-						bare
-						hideLabel
-						invalid={sourceError}
-						label={t("from")}
-						onChangeText={(source) => form.patchIncome({ source })}
-						onTypingChange={form.setTyping}
-						placeholder={t("fromPlaceholder")}
-						value={draft.source}
-					/>
-					{sourceError ? (
-						<View style={{ alignItems: "center" }}>
-							<FieldError>{t("errors.source")}</FieldError>
-						</View>
-					) : null}
-				</View>
-			}
-			typing={form.typing}
-		/>
-	);
+	return {
+		add: {
+			onPress: onAdd,
+			label: t("add"),
+			description: t("addIncome"),
+			folded: t("addIncome"),
+			off: pv.blocked || form.typedAmount === null,
+			busy,
+		},
+		amount: amount,
+		changedLabel: t("tabs.changed"),
+		header: (
+			<View style={{ gap: space[2] }}>
+				<ComposerTop
+					actions={[]}
+					editing={false}
+					mode={form.mode}
+					modes={form.modes}
+					onCancel={onCancel}
+					onModeChange={onModeChange}
+				/>
+				{notices}
+			</View>
+		),
+		keypad: {
+			text: form.keypad.text,
+			currency: form.keypad.currency,
+			kind: "money" as const,
+			onChange: form.patchAmount,
+		},
+		keypadOpen: form.padOpen,
+		mode: "income" as const,
+		onPageChange: (next: number) => goTo(next),
+		onScrollDrag: () => {
+			if (system) form.setPadOpen(false);
+		},
+		page: page,
+		panels: names.map((name) => panelOf[name]),
+		preview: <PreviewLine state={pv.preview} />,
+		summary: parts,
+		surface: surface,
+		tabs: tabs,
+		tabsLabel: t("tabs.label"),
+		title: (
+			<View>
+				<TextField
+					align="center"
+					autoCapitalize="sentences"
+					bare
+					hideLabel
+					invalid={sourceError}
+					label={t("from")}
+					onChangeText={(source) => form.patchIncome({ source })}
+					onTypingChange={form.setTyping}
+					placeholder={t("fromPlaceholder")}
+					value={draft.source}
+				/>
+				{sourceError ? (
+					<View style={{ alignItems: "center" }}>
+						<FieldError>{t("errors.source")}</FieldError>
+					</View>
+				) : null}
+			</View>
+		),
+		typing: form.typing,
+	};
 }

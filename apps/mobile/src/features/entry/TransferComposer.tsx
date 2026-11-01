@@ -8,7 +8,7 @@ import type { PagerTab } from "@/ui/DetailPager";
 import { FieldError, TextField } from "@/ui/TextField";
 import { AccountPanel } from "./AccountPanel";
 import { AmountCard, type MoneyLine } from "./AmountCard";
-import { ComposerFrame } from "./ComposerFrame";
+import type { ComposerFrameProps } from "./ComposerFrame";
 import { ComposerTop } from "./ComposerTop";
 import { OptionRow } from "./MorePanel";
 import { ChangesRow, NoteRow } from "./MoreRows";
@@ -35,7 +35,8 @@ const PANEL_ICON = {
  * panels From, To, When and More (Note, Bank fee). Tapping either amount row
  * brings the keypad back on that figure.
  */
-export function TransferComposer({
+export function useTransferFrame({
+	active,
 	form,
 	pv,
 	lines,
@@ -57,7 +58,9 @@ export function TransferComposer({
 	onModeChange: (mode: EntryMode) => void;
 	notices: ReactNode;
 	surface?: boolean;
-}) {
+	/** This mode is on screen: only then do its side effects run. */
+	active: boolean;
+}): ComposerFrameProps {
 	const t = useTranslations("mobile.composer");
 	const tt = useTranslations("mobile.composer.transfer");
 	const locale = useMoneyLocale();
@@ -250,51 +253,50 @@ export function TransferComposer({
 		</View>
 	);
 
-	return (
-		<ComposerFrame
-			add={{
-				onPress: onAdd,
-				label: t("add"),
-				description: t("addTransfer"),
-				folded: t("addTransfer"),
-				off: pv.blocked || form.typedAmount === null,
-				busy,
-			}}
-			amount={amount}
-			changedLabel={t("tabs.changed")}
-			header={
-				<View style={{ gap: space[2] }}>
-					<ComposerTop
-						actions={[]}
-						editing={false}
-						mode={form.mode}
-						modes={form.modes}
-						onCancel={onCancel}
-						onModeChange={onModeChange}
-					/>
-					{notices}
-				</View>
-			}
-			keypad={{
-				text: form.keypad.text,
-				currency: form.keypad.currency,
-				kind: "money",
-				onChange: form.patchAmount,
-			}}
-			keypadOpen={form.padOpen}
-			onPageChange={(next) => goTo(next)}
-			onScrollDrag={() => {
-				if (system) form.setPadOpen(false);
-			}}
-			page={page}
-			panels={panels}
-			preview={<PreviewLine state={pv.preview} />}
-			summary={parts}
-			surface={surface}
-			tabs={tabs}
-			tabsLabel={t("tabs.label")}
-			title={null}
-			typing={form.typing}
-		/>
-	);
+	return {
+		add: {
+			onPress: onAdd,
+			label: t("add"),
+			description: t("addTransfer"),
+			folded: t("addTransfer"),
+			off: pv.blocked || form.typedAmount === null,
+			busy,
+		},
+		amount: amount,
+		changedLabel: t("tabs.changed"),
+		header: (
+			<View style={{ gap: space[2] }}>
+				<ComposerTop
+					actions={[]}
+					editing={false}
+					mode={form.mode}
+					modes={form.modes}
+					onCancel={onCancel}
+					onModeChange={onModeChange}
+				/>
+				{notices}
+			</View>
+		),
+		keypad: {
+			text: form.keypad.text,
+			currency: form.keypad.currency,
+			kind: "money" as const,
+			onChange: form.patchAmount,
+		},
+		keypadOpen: form.padOpen,
+		mode: "transfer" as const,
+		onPageChange: (next: number) => goTo(next),
+		onScrollDrag: () => {
+			if (system) form.setPadOpen(false);
+		},
+		page: page,
+		panels: panels,
+		preview: <PreviewLine state={pv.preview} />,
+		summary: parts,
+		surface: surface,
+		tabs: tabs,
+		tabsLabel: t("tabs.label"),
+		title: null,
+		typing: form.typing,
+	};
 }
