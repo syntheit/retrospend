@@ -62,6 +62,9 @@ async function trpcQuery<T>(
 	return (await res.json()).result.data.json as T;
 }
 
+/** The day of the month the seed's rent is paid (e2e/fixtures/ledger.ts). */
+const SEED_RENT_DAY = 3;
+
 /** The viewer's today in the browser's zone, and the month it is in. */
 async function monthOf(page: Page) {
 	const today = await page.evaluate(() =>
@@ -174,7 +177,14 @@ test("Insights: figures match the reads, a range with Compare moves them, Show i
 
 	// The default view: this month. Its figures are the reads' and the registry's.
 	const audit = new FigureAudit(insightsFetcher(page, month, false));
-	expect(await audit.checkPage(page, "insights")).toEqual([]);
+	const rentIsIn = Number(month.today.slice(8)) >= SEED_RENT_DAY;
+	expect(
+		await audit.checkPage(
+			page,
+			"insights",
+			rentIsIn ? "insights" : "insightsBeforeRent",
+		),
+	).toEqual([]);
 	const v1 = await page.request.get(
 		"/api/v1/figures?ids=insights.spent,insights.ytd,insights.income",
 	);

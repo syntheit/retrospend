@@ -447,6 +447,15 @@ describe("moving a category keeps closed months as they closed (finding 7)", () 
 	});
 });
 
+describe("a past month opens whatever closed after it", () => {
+	it("September reads on November 1 with checkpoints through October", async () => {
+		const b = await augustBook();
+		const view = await getMonth(b.user.id, 202609, at("2026-11-01"));
+		expect(view?.month.key).toBe(202609);
+		expect(view?.month.state).toBe("CLOSED");
+	});
+});
+
 describe("round 2: each change is judged against the window, payments mark from paidOn", () => {
 	it("one late entry inside the window and one after it: October is revised", async () => {
 		const b = await augustBook();
