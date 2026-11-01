@@ -27,24 +27,24 @@ describe("sections", () => {
 
 describe("activeSection", () => {
 	const tops = [
-		{ id: "profile", top: -400 },
-		{ id: "preferences", top: 40 },
-		{ id: "categories", top: 600 },
+		{ id: "preferences", top: -400 },
+		{ id: "categories", top: 40 },
+		{ id: "payment", top: 600 },
 	] as const;
 
 	it("is the last section whose top passed the reading line", () => {
-		expect(activeSection(tops, 96, false)).toBe("preferences");
-		expect(activeSection(tops, 20, false)).toBe("profile");
+		expect(activeSection(tops, 96, false)).toBe("categories");
+		expect(activeSection(tops, 20, false)).toBe("preferences");
 	});
 
 	it("is the first section before any reaches the line", () => {
-		expect(activeSection([{ id: "profile", top: 200 }], 96, false)).toBe(
-			"profile",
+		expect(activeSection([{ id: "preferences", top: 200 }], 96, false)).toBe(
+			"preferences",
 		);
 	});
 
 	it("is the last section at the end of the page", () => {
-		expect(activeSection(tops, 96, true)).toBe("categories");
+		expect(activeSection(tops, 96, true)).toBe("payment");
 	});
 
 	it("is null with no sections", () => {

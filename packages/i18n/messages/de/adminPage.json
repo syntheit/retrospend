@@ -1,0 +1,14 @@
+{
+  "sections": "Adminbereiche",
+  "users": "Nutzer",
+  "activeThisWeek": "Aktiv diese Woche",
+  "expensesThisMonth": "Ausgaben diesen Monat",
+  "storage": "Speicher",
+  "storageDetail": "{database} Datenbank, {media} Medien",
+  "serverVersion": "Serverversion",
+  "unreadFeedback": "Ungelesenes Feedback",
+  "errorReports": "Fehlerberichte",
+  "invitesUsed": "Genutzte Einladungen",
+  "invitesOpen": "{count} offen",
+  "tabServer": "Server"
+}

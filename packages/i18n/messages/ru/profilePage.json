@@ -1,0 +1,19 @@
+{
+  "title": "Профиль",
+  "back": "Главная",
+  "changePhoto": "Сменить фото",
+  "details": "Данные",
+  "memberSince": "С нами с",
+  "publicSection": "Публичный профиль",
+  "visibility": "Видимость",
+  "visibilityValue": "Все, у кого есть ссылка",
+  "paymentMethods": "Публичные способы оплаты",
+  "paymentMethodsCount": "{count, plural, =0 {Нет} one {# способ} few {# способа} many {# способов} other {# способа}}",
+  "background": "Фон",
+  "backgroundSummary": "{symbols}, {color}",
+  "edit": "Изменить",
+  "accountSection": "Аккаунт",
+  "security": "Безопасность",
+  "sessions": "Сеансы",
+  "open": "Открыть"
+}

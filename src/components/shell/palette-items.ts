@@ -1,4 +1,4 @@
-import { Settings, type LucideIcon } from "lucide-react";
+import { Settings, type LucideIcon, UserRound } from "lucide-react";
 import {
 	DESTINATIONS,
 	PLACES,
@@ -23,12 +23,20 @@ export type GoToItem = {
  * join once the person types, so the empty palette stays short.
  */
 export function goToItems(typed: boolean): GoToItem[] {
-	const places = [...DESTINATIONS, ...TOOLS, ...PLACES].map((entry) => ({
+	const places: GoToItem[] = [...DESTINATIONS, ...TOOLS, ...PLACES].map((entry) => ({
 		id: entry.id,
 		icon: entry.icon,
 		href: entry.href,
 		label: { key: `nav.${entry.id}` },
 	}));
+	// Your profile is its own page; it sits after Settings.
+	const settingsAt = places.findIndex((p) => p.id === "settings");
+	places.splice(settingsAt + 1, 0, {
+		id: "profile",
+		icon: UserRound,
+		href: "/profile",
+		label: { key: "account.profile" },
+	});
 	if (!typed) return places;
 	const sections = SETTINGS_SECTIONS.map((section) => ({
 		id: `settings-${section}`,

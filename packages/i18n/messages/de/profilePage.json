@@ -1,0 +1,19 @@
+{
+  "title": "Profil",
+  "back": "Start",
+  "changePhoto": "Foto ändern",
+  "details": "Angaben",
+  "memberSince": "Mitglied seit",
+  "publicSection": "Öffentliches Profil",
+  "visibility": "Sichtbarkeit",
+  "visibilityValue": "Alle mit dem Link",
+  "paymentMethods": "Öffentliche Zahlungsmethoden",
+  "paymentMethodsCount": "{count, plural, =0 {Keine} one {# Methode} other {# Methoden}}",
+  "background": "Hintergrund",
+  "backgroundSummary": "{symbols}, {color}",
+  "edit": "Bearbeiten",
+  "accountSection": "Konto",
+  "security": "Sicherheit",
+  "sessions": "Sitzungen",
+  "open": "Öffnen"
+}

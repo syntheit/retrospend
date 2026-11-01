@@ -1,0 +1,14 @@
+{
+  "sections": "Разделы администратора",
+  "users": "Пользователи",
+  "activeThisWeek": "Активны на этой неделе",
+  "expensesThisMonth": "Расходы за месяц",
+  "storage": "Хранилище",
+  "storageDetail": "{database} база данных, {media} файлы",
+  "serverVersion": "Версия сервера",
+  "unreadFeedback": "Непрочитанные отзывы",
+  "errorReports": "Отчеты об ошибках",
+  "invitesUsed": "Использовано приглашений",
+  "invitesOpen": "Открыто: {count}",
+  "tabServer": "Сервер"
+}

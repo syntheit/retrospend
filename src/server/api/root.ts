@@ -1,4 +1,5 @@
 import { adminRouter } from "~/server/api/routers/admin";
+import { adminOverviewRouter } from "~/server/api/routers/admin-overview";
 import { auditLogRouter } from "~/server/api/routers/audit-log";
 import { authRouter } from "~/server/api/routers/auth";
 import { billingPeriodRouter } from "~/server/api/routers/billingPeriod";
@@ -49,9 +50,10 @@ const recurringAllRouter = mergeRouters(
 	recurringStepsRouter,
 );
 const importAllRouter = mergeRouters(importQueueRouter, importV2Router);
+const adminAllRouter = mergeRouters(adminRouter, adminOverviewRouter);
 
 export const appRouter = createTRPCRouter({
-	admin: adminRouter,
+	admin: adminAllRouter,
 	auditLog: auditLogRouter,
 	guest: guestRouter,
 	auth: authRouter,

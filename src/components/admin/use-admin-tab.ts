@@ -1,38 +1,47 @@
 "use client";
 
-import { type RefObject, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-const ADMIN_TABS = [
+export const ADMIN_TABS = [
 	"users",
 	"participants",
 	"invite-codes",
-	"ai-usage",
 	"feedback",
+	"ai-usage",
+	"server",
+	"settings",
 	"audit-logs",
-];
+] as const;
+
+export type AdminTab = (typeof ADMIN_TABS)[number];
+
+/** The tab a URL hash names ("#feedback"), or null. */
+export function tabFromHash(hash: string): AdminTab | null {
+	const id = hash.replace(/^#/, "");
+	return (ADMIN_TABS as readonly string[]).includes(id) ? (id as AdminTab) : null;
+}
 
 /**
- * The admin data tab. /admin#users (or #participants, #invite-codes, #feedback, ...)
- * opens that tab, and changing tab scrolls its tab row into view.
+ * The admin section. /admin#feedback (or #users, #invite-codes, #server, ...)
+ * opens that tab, and changing tab writes its name to the hash, so a link
+ * or a reload lands on the same one.
  */
-export function useAdminTab(anchor: RefObject<HTMLElement | null>) {
-	const [tab, setTab] = useState("users");
-	const scroll = () =>
-		requestAnimationFrame(() =>
-			anchor.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-		);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: runs once on arrival
+export function useAdminTab() {
+	const [tab, setTab] = useState<AdminTab>("users");
 	useEffect(() => {
-		const hash = window.location.hash.slice(1);
-		if (!ADMIN_TABS.includes(hash)) return;
-		setTab(hash);
-		scroll();
+		const fromHash = () => {
+			const next = tabFromHash(window.location.hash);
+			if (next) setTab(next);
+		};
+		fromHash();
+		window.addEventListener("hashchange", fromHash);
+		return () => window.removeEventListener("hashchange", fromHash);
 	}, []);
-	return {
-		tab,
-		onTabChange: (value: string) => {
-			setTab(value);
-			scroll();
-		},
-	};
+	const onTabChange = useCallback((value: string) => {
+		const next = tabFromHash(value);
+		if (!next) return;
+		setTab(next);
+		history.replaceState(null, "", `#${next}`);
+	}, []);
+	return { tab, onTabChange };
 }

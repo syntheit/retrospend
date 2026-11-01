@@ -14,7 +14,6 @@ import { DeveloperSection } from "./developer/developer-section";
 import { NotificationsSection } from "./notifications/notifications-section";
 import { PaymentSection } from "./payment/payment-section";
 import { PreferencesSection } from "./preferences/preferences-section";
-import { ProfileSection } from "./profile/profile-section";
 import { SectionList, SectionTabs, useSectionSpy } from "./section-nav";
 import { SECTIONS } from "./sections";
 import { SecuritySection } from "./security/security-section";
@@ -59,7 +58,6 @@ export function SettingsPage() {
 						</div>
 					)}
 					<div className="max-w-160 min-w-0 flex-1">
-						<ProfileSection />
 						<PreferencesSection />
 						<CategoriesSection />
 						<PaymentSection />

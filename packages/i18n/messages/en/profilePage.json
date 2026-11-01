@@ -1,0 +1,19 @@
+{
+  "title": "Profile",
+  "back": "Home",
+  "changePhoto": "Change photo",
+  "details": "Details",
+  "memberSince": "Member since",
+  "publicSection": "Public profile",
+  "visibility": "Visibility",
+  "visibilityValue": "Anyone with the link",
+  "paymentMethods": "Public payment methods",
+  "paymentMethodsCount": "{count, plural, =0 {None} one {# method} other {# methods}}",
+  "background": "Background",
+  "backgroundSummary": "{symbols}, {color}",
+  "edit": "Edit",
+  "accountSection": "Account",
+  "security": "Security",
+  "sessions": "Sessions",
+  "open": "Open"
+}

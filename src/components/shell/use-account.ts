@@ -18,7 +18,6 @@ import { useRouter } from "next/navigation";
 import { useSession } from "~/hooks/use-session";
 import { authClient } from "~/lib/auth-client";
 import { handleError } from "~/lib/handle-error";
-import { settingsHref } from "~/lib/nav";
 import { api } from "~/trpc/react";
 import { useShellActions } from "./shell-context";
 
@@ -90,7 +89,7 @@ export function useAccountEntries() {
 			id: "profile",
 			icon: UserRound,
 			label: t("profile"),
-			href: settingsHref("profile"),
+			href: "/profile",
 		}),
 		settings: entry({
 			id: "settings",

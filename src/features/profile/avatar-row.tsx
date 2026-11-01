@@ -10,12 +10,13 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { AVATAR_ACCEPT, useAvatarUpload } from "./use-avatar-upload";
 
 /**
- * The profile picture row: the face, Upload photo and Remove. The file is
+ * The profile picture row: the face, Change photo and Remove. The file is
  * deleted on the server, so Remove asks first with a named button rather
  * than offering an Undo it could not keep.
  */
 export function AvatarRow({ fallbackName }: { fallbackName: string }) {
 	const t = useTranslations("settingsV2.profile");
+	const tp = useTranslations("profilePage");
 	const avatar = useAvatarUpload();
 	const [confirm, setConfirm] = useState(false);
 	const busy = avatar.isUploading || avatar.isRemoving;
@@ -43,7 +44,7 @@ export function AvatarRow({ fallbackName }: { fallbackName: string }) {
 						onClick={avatar.pick}
 						size="sm"
 					>
-						{t("uploadPhoto")}
+						{tp("changePhoto")}
 					</Button>
 					{avatar.avatarUrl && (
 						<Button
@@ -56,7 +57,6 @@ export function AvatarRow({ fallbackName }: { fallbackName: string }) {
 						</Button>
 					)}
 				</div>
-				<p className="mt-2 text-fg-3 text-meta">{t("photoHint")}</p>
 			</div>
 			<input
 				accept={AVATAR_ACCEPT}

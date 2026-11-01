@@ -167,6 +167,9 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"admin.getBackupStatus": to("GET /admin/backups"),
 	"admin.getEventLogs": to("GET /admin/event-logs"),
 	"admin.getEventLogsCursor": to("GET /admin/event-logs"),
+	"admin.getOverview": webOnly(
+		"the figures at the top of the web admin page; stats and backups have their routes",
+	),
 	"admin.getServerStats": to("GET /admin/stats"),
 	"admin.getSettings": to("GET /admin/settings"),
 	"admin.getStats": to("GET /admin/stats"),

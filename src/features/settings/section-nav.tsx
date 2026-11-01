@@ -58,7 +58,7 @@ export function useSectionSpy(
 	scroller: RefObject<HTMLElement | null>,
 	ids: readonly SectionId[],
 ) {
-	const [current, setCurrent] = useState<SectionId>(ids[0] ?? "profile");
+	const [current, setCurrent] = useState<SectionId>(ids[0] ?? "preferences");
 	// The section a click or link asked for. While set, the scrolling we cause
 	// getting there (which may stop short: the last sections cannot reach the
 	// top) never changes the marked section. The person scrolling clears it.

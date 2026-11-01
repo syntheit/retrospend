@@ -1,9 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
+import { Section } from "~/components/layout/section";
 import { RateSyncControl } from "~/components/rate-sync-control";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useToast } from "~/components/ui/toast";
@@ -11,6 +12,7 @@ import { useSession } from "~/hooks/use-session";
 import { api } from "~/trpc/react";
 import { ActionDialog } from "./action-dialog";
 import { EmailSection } from "./admin-email-section";
+import { AdminFigures } from "./admin-figures";
 import { AdminOverviewStats } from "./admin-overview-stats";
 import {
 	AiSettingsSection,
@@ -41,8 +43,8 @@ export function AdminPanel() {
 	const t = useTranslations("admin");
 	const tf = useTranslations("feedbackInbox");
 	const toast = useToast();
-	const tabsRef = useRef<HTMLDivElement>(null);
-	const { tab, onTabChange } = useAdminTab(tabsRef);
+	const ta = useTranslations("adminPage");
+	const { tab, onTabChange } = useAdminTab();
 	const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [resetResult, setResetResult] = useState<{
@@ -234,62 +236,25 @@ export function AdminPanel() {
 	return (
 		<PageFrame>
 			<PageHeader title={t("adminPanel")} />
-			<div className="flex flex-col gap-12">
-				<AdminOverviewStats />
+			<AdminFigures />
 
-				<section
-					aria-labelledby="admin-settings"
-					className="flex flex-col gap-8"
-				>
-					<h2 className="text-fg text-section" id="admin-settings">
-						{t("settings")}
-					</h2>
-					<RegistrationSection
-						isUpdating={updateSettingsMutation.isPending}
-						onSave={saveSettings}
-						settings={settings}
-					/>
-					<EmailSection
-						adminEmail={extendedUser?.email}
-						isUpdating={updateSettingsMutation.isPending}
-						onSave={saveSettings}
-						settings={settings}
-					/>
-					<AiSettingsSection
-						aiSettings={aiSettings}
-						isUpdating={updateAiSettingsMutation.isPending}
-						onUpdate={saveAiSettings}
-					/>
-					<SystemSection
-						isUpdating={updateSettingsMutation.isPending}
-						onSave={saveSettings}
-						settings={settings}
-					/>
-				</section>
+			<Tabs
+				className="mt-8"
+				onValueChange={onTabChange}
+				value={tab}
+			>
+				<TabsList aria-label={ta("sections")} variant="line">
+					<TabsTrigger value="users">{t("tabUsers")}</TabsTrigger>
+					<TabsTrigger value="participants">{t("tabParticipants")}</TabsTrigger>
+					<TabsTrigger value="invite-codes">{t("tabInviteCodes")}</TabsTrigger>
+					<TabsTrigger value="feedback">{tf("tab")}</TabsTrigger>
+					<TabsTrigger value="ai-usage">{t("tabAiUsage")}</TabsTrigger>
+					<TabsTrigger value="server">{ta("tabServer")}</TabsTrigger>
+					<TabsTrigger value="settings">{t("settings")}</TabsTrigger>
+					<TabsTrigger value="audit-logs">{t("tabAuditLogs")}</TabsTrigger>
+				</TabsList>
 
-				<section aria-labelledby="admin-services">
-					<h2 className="text-fg text-section" id="admin-services">
-						{t("services")}
-					</h2>
-					<RateSyncControl />
-					<BackupStatus />
-				</section>
-
-				{/* Data Management Tabs */}
-				<Tabs onValueChange={onTabChange} ref={tabsRef} value={tab}>
-					<TabsList>
-						<TabsTrigger value="users">{t("tabUsers")}</TabsTrigger>
-						<TabsTrigger value="participants">
-							{t("tabParticipants")}
-						</TabsTrigger>
-						<TabsTrigger value="invite-codes">
-							{t("tabInviteCodes")}
-						</TabsTrigger>
-						<TabsTrigger value="ai-usage">{t("tabAiUsage")}</TabsTrigger>
-						<TabsTrigger value="feedback">{tf("tab")}</TabsTrigger>
-						<TabsTrigger value="audit-logs">{t("tabAuditLogs")}</TabsTrigger>
-					</TabsList>
-
+				<div className="mt-4">
 					<TabsContent value="users">
 						<UsersTable
 							currentUserId={session?.user?.id}
@@ -360,11 +325,43 @@ export function AdminPanel() {
 						<FeedbackInbox />
 					</TabsContent>
 
+					<TabsContent value="server">
+						<AdminOverviewStats />
+						<Section title={t("services")}>
+							<RateSyncControl />
+							<BackupStatus />
+						</Section>
+					</TabsContent>
+
+					<TabsContent className="flex flex-col gap-8" value="settings">
+						<RegistrationSection
+							isUpdating={updateSettingsMutation.isPending}
+							onSave={saveSettings}
+							settings={settings}
+						/>
+						<EmailSection
+							adminEmail={extendedUser?.email}
+							isUpdating={updateSettingsMutation.isPending}
+							onSave={saveSettings}
+							settings={settings}
+						/>
+						<AiSettingsSection
+							aiSettings={aiSettings}
+							isUpdating={updateAiSettingsMutation.isPending}
+							onUpdate={saveAiSettings}
+						/>
+						<SystemSection
+							isUpdating={updateSettingsMutation.isPending}
+							onSave={saveSettings}
+							settings={settings}
+						/>
+					</TabsContent>
+
 					<TabsContent value="audit-logs">
 						<AuditLogsTable />
 					</TabsContent>
-				</Tabs>
-			</div>
+				</div>
+			</Tabs>
 
 			{dialogContent && (
 				<ActionDialog

@@ -8,7 +8,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { useToast } from "~/components/ui/toast";
 import { api } from "~/trpc/react";
-import { useAutosave } from "../autosave";
+import { useAutosave } from "~/features/settings/autosave";
 
 export type ProfileIdentity = { name: string; username: string; email: string };
 
