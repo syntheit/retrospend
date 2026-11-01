@@ -240,7 +240,7 @@ test("Add expense: switching to Income carries the amount", async ({ page }) => 
 	);
 	// And on to Transfer: the amount still carries.
 	await income.getByRole("radio", { name: "Transfer" }).click();
-	const transfer = page.getByRole("dialog", { name: "Transfer" });
+	const transfer = page.getByRole("dialog", { name: /^(Transfer|Exchange)$/ });
 	await expect(transfer).toBeVisible();
 	await expect(
 		transfer.getByRole("textbox", { name: "Amount" }).first(),
