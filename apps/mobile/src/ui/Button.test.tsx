@@ -252,15 +252,25 @@ describe("other variants", () => {
 		).toBeGreaterThanOrEqual(4.5);
 	});
 
-	it("uses the system small size only for small system buttons", () => {
+	it("draws a small text button like the small dangerText beside it", () => {
 		const small = render(light, {
 			label: "Resume",
 			variant: "text",
 			size: "small",
 		});
-		expect(find(small.button, "controlSize")).toBeDefined();
+		expect(JSON.stringify(find(small.shape, "frame"))).toContain(
+			`"minHeight":${light.size.ctlSm.phone}`,
+		);
+		expect(JSON.stringify(find(small.label, "foregroundStyle"))).toContain(
+			light.color.brand,
+		);
+		expect(find(small.button, "controlSize")).toBeUndefined();
+	});
+
+	it("leaves the regular text button to the system", () => {
 		const regular = render(light, { label: "Resume", variant: "text" });
-		expect(find(regular.button, "controlSize")).toBeUndefined();
+		expect(find(regular.button, "tint")).toBeDefined();
+		expect(find(regular.button, "dynamicTypeSize")).toBeDefined();
 	});
 
 	it("reads the brand color on the page in both themes", () => {
