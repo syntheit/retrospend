@@ -18,7 +18,7 @@ import { type EntryCatalog, Field } from "../shared-ui";
 import type { EntryPerson } from "../types";
 import { AmountField, type RateState } from "./amount-field";
 import { CategoryPanel } from "./category-panel";
-import { type DraftErrors, isShared } from "./draft";
+import { canEditPeople, type DraftErrors, isShared } from "./draft";
 import { useAnswers } from "./expense-answers";
 import { ProjectPanel, WhenPanel, WhoPanel } from "./expense-panels";
 import { OptionsSection } from "./options-section";
@@ -72,8 +72,7 @@ export function ExpenseFields(p: {
 	const project = p.projects.find((pr) => pr.id === d.projectId) ?? null;
 	// The list's members are only the first few: the full read wins once loaded.
 	const members = project ? (p.projectMembers ?? project.members) : null;
-	const editingShared = d.editing?.source === "shared";
-	const showPeople = d.editing === null || editingShared;
+	const showPeople = canEditPeople(d);
 	const err = (k: keyof DraftErrors) =>
 		p.tried && p.errors[k] ? true : undefined;
 	const [tab, setTab] = useState<TabId>("category");

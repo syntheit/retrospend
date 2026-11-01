@@ -341,3 +341,40 @@ test("Corrections: accepting on an open split opens Edit, and saving answers the
 		await cleanUp(pool, rowId);
 	}
 });
+
+test("Corrections: editing a shared expense shows Who and Project and saves a new split", async ({
+	page,
+}) => {
+	test.setTimeout(120_000);
+	await page.setViewportSize({ width: 1440, height: 900 });
+	const pool = new Pool({ connectionString: E2E_DATABASE_URL });
+	const title = "E2E split edit";
+	let rowId: string | null = null;
+	try {
+		rowId = await addSplit(page, pool, title);
+		await openV2(page, "/activity?range=all");
+		await page.getByRole("main").getByText(title).first().click();
+		const edit = page.getByRole("dialog", { name: "Edit shared expense" });
+		await expect(edit).toBeVisible();
+		await expect(edit.getByRole("tab", { name: /^Project/ })).toBeVisible();
+		await edit.getByRole("tab", { name: /^Who/ }).click();
+		await expect(
+			edit.locator('[data-split-row="user:e2e_user_martin"]'),
+		).toContainText("$32,000");
+		await edit.getByRole("radio", { name: "Lucía owes all" }).click();
+		await expect(
+			edit.locator('[data-split-row="user:e2e_user_lucia"]'),
+		).toContainText("$64,000");
+		await untilSaved(page, "entry.shared.update.save", () =>
+			edit.getByRole("button", { name: "Save" }).click(),
+		);
+		await expect(edit).toBeHidden();
+		const row = await pool.query<{ splitMode: string }>(
+			`SELECT "splitMode" FROM shared_transaction WHERE id = $1`,
+			[rowId],
+		);
+		expect(row.rows[0]?.splitMode).not.toBe("EQUAL");
+	} finally {
+		await cleanUp(pool, rowId);
+	}
+});

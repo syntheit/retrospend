@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { lineIds } from "./category-line";
 import {
 	type ExpenseDraft,
+	canEditPeople,
 	personalInput,
 	sharedInput,
 	validate,
@@ -143,5 +144,21 @@ describe("category recents line", () => {
 	it("a picked category outside the line takes the first slot; nothing else moves", () => {
 		expect(lineIds(["c", "a"], cats, "f", 4)).toEqual(["f", "c", "a", "b"]);
 		expect(lineIds(["c", "a"], cats, "a", 4)).toEqual(["c", "a", "b", "d"]);
+	});
+});
+
+describe("canEditPeople", () => {
+	it("shows Who and Project for a new expense", () => {
+		expect(canEditPeople({ editing: null })).toBe(true);
+	});
+	it("shows them when editing a shared expense", () => {
+		expect(canEditPeople({ editing: { source: "shared", id: "s1" } })).toBe(
+			true,
+		);
+	});
+	it("hides them when editing a personal expense", () => {
+		expect(canEditPeople({ editing: { source: "personal", id: "p1" } })).toBe(
+			false,
+		);
 	});
 });
