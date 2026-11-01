@@ -122,6 +122,8 @@ export function PeopleList({
 			keyExtractor={(section) => section.group}
 			ListEmptyComponent={empty}
 			ListFooterComponent={<View style={{ height: inset }} />}
+			// Over the rows: the pane cover hangs from the tabs in this header.
+			ListHeaderComponentStyle={{ zIndex: 1 }}
 			ListHeaderComponent={
 				<View>
 					{top}

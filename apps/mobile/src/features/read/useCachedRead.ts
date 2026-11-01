@@ -4,6 +4,39 @@ import { useSession } from "@/auth/session";
 import { type CacheKey, loadCached, type ReadState } from "./loadCached";
 
 /**
+ * The last answer of each read in this run, per account store. A screen that
+ * mounts again (a segment switch remounts its list) starts from it instead of
+ * from a skeleton, then refreshes; the disk cache answers too late for the
+ * first frame.
+ */
+const lastReady = new WeakMap<object, Map<string, ReadState<unknown>>>();
+
+function remembered<T>(
+	store: object | null | undefined,
+	name: string | undefined,
+): ReadState<T> | null {
+	if (!store || !name) return null;
+	const seen = lastReady.get(store)?.get(name);
+	return seen?.status === "ready"
+		? { ...(seen as ReadState<T> & { status: "ready" }), refreshing: true }
+		: null;
+}
+
+function remember(
+	store: object | null | undefined,
+	name: string | undefined,
+	state: ReadState<unknown>,
+) {
+	if (!store || !name || state.status !== "ready") return;
+	let names = lastReady.get(store);
+	if (!names) {
+		names = new Map();
+		lastReady.set(store, names);
+	}
+	names.set(name, state);
+}
+
+/**
  * One cached read for a screen: the cache first, then the server, and again
  * each time the screen comes back into focus (after a payment on another
  * screen, or a swipe back from a person). `key.name` decides what is read;
@@ -18,7 +51,9 @@ export function useCachedRead<T>(
 	prune?: { prefix: string; keep: number },
 ): { state: ReadState<T>; reload: () => Promise<void> } {
 	const { local } = useSession();
-	const [state, setState] = useState<ReadState<T>>({ status: "loading" });
+	const [state, setState] = useState<ReadState<T>>(
+		() => remembered<T>(local?.cache, key?.name) ?? { status: "loading" },
+	);
 	const latest = useRef({ key, fetch, prune });
 	latest.current = { key, fetch, prune };
 	const alive = useRef(true);
@@ -39,14 +74,23 @@ export function useCachedRead<T>(
 			},
 			prune,
 		);
+		remember(local?.cache, key.name, next);
 		if (current()) setState(next);
 	}, [local]);
 
-	// A different read (another person, another filter) starts from loading.
+	// A different read (another person, another filter) starts from what this
+	// run last read for it, else from loading. The first run is the mount,
+	// whose state already did.
+	const mounted = useRef(false);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `name` is the trigger
 	useEffect(() => {
 		alive.current = true;
-		setState({ status: "loading" });
+		if (mounted.current) {
+			setState(
+				remembered<T>(local?.cache, name) ?? { status: "loading" },
+			);
+		}
+		mounted.current = true;
 		return () => {
 			alive.current = false;
 		};

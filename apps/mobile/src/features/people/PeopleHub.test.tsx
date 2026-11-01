@@ -66,6 +66,10 @@ jest.mock("@/features/projects/ProjectsList", () => ({
 			(props as { top?: unknown }).top,
 		),
 }));
+jest.mock("@/ui/PaneVeil", () => ({
+	markPaneSwitch: () => undefined,
+	PaneVeil: () => null,
+}));
 jest.mock("@/ui/UnderlineTabs", () => ({
 	UnderlineTabs: (props: object) =>
 		require("react").createElement("UnderlineTabs", props),
