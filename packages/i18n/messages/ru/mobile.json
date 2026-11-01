@@ -1855,7 +1855,10 @@
 		"overTheyOwe": "Это на {amount} больше, чем вам должен(на) {name}",
 		"overYouOwe": "Это на {amount} больше, чем вы должны {name}",
 		"recordExact": "Записать {amount} вместо этого",
-		"recordAmount": "Записать {amount}"
+		"recordAmount": "Записать {amount}",
+		"methodNone": "Без способа",
+		"rateTab": "Курс",
+		"recordKey": "Записать"
 	},
 	"review": {
 		"open": "Проверить",
@@ -2771,9 +2774,11 @@
 			"categoryNone": "Без категории",
 			"repeats": "Повторяется",
 			"first": "Следующий срок",
-			"firstHint": "Первый записывается в эту дату.",
 			"submit": "Добавить",
-			"toast": "{title}: добавлено"
+			"toast": "{title}: добавлено",
+			"error": "Не удалось добавить. Повторите.",
+			"dayOfMonth": "День месяца",
+			"changes": "Изменения"
 		},
 		"delete": {
 			"title": "Удалить: {title}?",

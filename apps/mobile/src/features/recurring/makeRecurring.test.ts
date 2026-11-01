@@ -1,5 +1,5 @@
 import type { ActivityItem } from "@/features/activity/source";
-import { canRepeat, nextMonthly } from "./makeRecurring";
+import { canRepeat, nextMonthly, nextOnDay } from "./makeRecurring";
 
 const item = (over: Partial<ActivityItem> = {}): ActivityItem => ({
 	id: "a",
@@ -36,5 +36,20 @@ describe("canRepeat", () => {
 		expect(canRepeat(item({ source: "shared" }))).toBe(false);
 		expect(canRepeat(item({ kind: "income" }))).toBe(false);
 		expect(canRepeat(item({ mine: false }))).toBe(false);
+	});
+});
+
+describe("nextOnDay", () => {
+	it("stays in this month while the day is still ahead", () => {
+		expect(nextOnDay("2026-10-10", 15)).toBe("2026-10-15");
+		expect(nextOnDay("2026-10-15", 15)).toBe("2026-10-15");
+	});
+	it("moves to next month once the day has passed", () => {
+		expect(nextOnDay("2026-10-31", 15)).toBe("2026-11-15");
+		expect(nextOnDay("2026-12-20", 5)).toBe("2027-01-05");
+	});
+	it("takes the last day of a short month", () => {
+		expect(nextOnDay("2026-02-10", 31)).toBe("2026-02-28");
+		expect(nextOnDay("2026-01-31", 30)).toBe("2026-02-28");
 	});
 });

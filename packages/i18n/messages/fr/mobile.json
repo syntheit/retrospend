@@ -1855,7 +1855,10 @@
 		"overTheyOwe": "C'est {amount} de plus que ce que {name} te doit",
 		"overYouOwe": "C'est {amount} de plus que ce que tu dois à {name}",
 		"recordExact": "Enregistrer {amount} à la place",
-		"recordAmount": "Enregistrer {amount}"
+		"recordAmount": "Enregistrer {amount}",
+		"methodNone": "Sans moyen",
+		"rateTab": "Taux",
+		"recordKey": "Enregistrer"
 	},
 	"review": {
 		"open": "Vérifier",
@@ -2771,9 +2774,11 @@
 			"categoryNone": "Aucune catégorie",
 			"repeats": "Se répète",
 			"first": "Prochaine échéance",
-			"firstHint": "La première est enregistrée à cette date.",
 			"submit": "Ajouter",
-			"toast": "{title} ajouté"
+			"toast": "{title} ajouté",
+			"error": "Impossible de l’ajouter. Réessaie.",
+			"dayOfMonth": "Jour du mois",
+			"changes": "Changements"
 		},
 		"delete": {
 			"title": "Supprimer {title} ?",

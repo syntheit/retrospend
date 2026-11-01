@@ -13,6 +13,20 @@ export function nextMonthly(day: string): string {
 }
 
 /**
+ * The first day on or after `today` that is day `day` of a month ("2026-10-31",
+ * 15 gives "2026-11-15"); a month too short for `day` gives its last day.
+ */
+export function nextOnDay(today: string, day: number): string {
+	const [y, m, d] = today.split("-").map(Number) as [number, number, number];
+	for (let step = 0; step < 2; step++) {
+		const last = new Date(Date.UTC(y, m - 1 + step + 1, 0)).getUTCDate();
+		const on = new Date(Date.UTC(y, m - 1 + step, Math.min(day, last)));
+		if (step > 0 || on.getUTCDate() >= d) return on.toISOString().slice(0, 10);
+	}
+	return today;
+}
+
+/**
  * Whether an Activity row can become a template: your own expense, not a
  * split or a payment.
  */

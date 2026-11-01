@@ -22,11 +22,14 @@ export function SettleHead({
 	context,
 	direction,
 	onDirection,
+	hideSwitch = false,
 }: {
 	person: PersonIdentity;
 	context: SettleContext;
 	direction: Direction;
 	onDirection: (direction: Direction) => void;
+	/** The direction is switched elsewhere (the composer's head). */
+	hideSwitch?: boolean;
 }) {
 	const t = useTranslations("mobile.settle");
 	const tm = useTranslations("mobile.money");
@@ -59,7 +62,12 @@ export function SettleHead({
 	}
 
 	return (
-		<View style={{ gap: space[3] }}>
+		<View
+			style={{
+				gap: hideSwitch ? space[2] : space[3],
+				alignItems: hideSwitch ? "center" : undefined,
+			}}
+		>
 			<View
 				accessibilityElementsHidden
 				importantForAccessibility="no-hide-descendants"
@@ -69,17 +77,26 @@ export function SettleHead({
 				{arrow}
 				{payee ? <Avatar face={payee} size="md" /> : null}
 			</View>
-			<Segmented
-				accessibilityLabel={t("direction")}
-				onChange={(value) => onDirection(value)}
-				options={[
-					{ value: "outgoing", label: t("iPaid", { name: first }) },
-					{ value: "incoming", label: t("theyPaid", { name: first }) },
-				]}
-				stretch
-				value={direction}
-			/>
-			{owe ? <Text tone="fg2">{owe}</Text> : null}
+			{hideSwitch ? null : (
+				<Segmented
+					accessibilityLabel={t("direction")}
+					onChange={(value) => onDirection(value)}
+					options={[
+						{ value: "outgoing", label: t("iPaid", { name: first }) },
+						{ value: "incoming", label: t("theyPaid", { name: first }) },
+					]}
+					stretch
+					value={direction}
+				/>
+			)}
+			{owe ? (
+				<Text
+					style={hideSwitch ? { textAlign: "center" } : undefined}
+					tone="fg2"
+				>
+					{owe}
+				</Text>
+			) : null}
 		</View>
 	);
 }

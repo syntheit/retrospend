@@ -1855,7 +1855,10 @@
 		"overTheyOwe": "That is {amount} more than {name} owes you",
 		"overYouOwe": "That is {amount} more than you owe {name}",
 		"recordExact": "Record {amount} instead",
-		"recordAmount": "Record {amount}"
+		"recordAmount": "Record {amount}",
+		"methodNone": "No method",
+		"rateTab": "Rate",
+		"recordKey": "Record"
 	},
 	"review": {
 		"open": "Review",
@@ -2771,9 +2774,11 @@
 			"categoryNone": "No category",
 			"repeats": "Repeats",
 			"first": "Next due",
-			"firstHint": "The first one is logged on this date.",
 			"submit": "Add",
-			"toast": "{title} added"
+			"toast": "{title} added",
+			"error": "Couldn't add it. Try again.",
+			"dayOfMonth": "Day of month",
+			"changes": "Changes"
 		},
 		"delete": {
 			"title": "Delete {title}?",

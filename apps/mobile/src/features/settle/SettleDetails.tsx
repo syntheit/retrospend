@@ -5,7 +5,6 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useRateTypeName } from "@/lib/rateTypes";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
-import { DateField } from "@/ui/DateField";
 import { Text } from "@/ui/Text";
 import { FieldLabel } from "@/ui/TextField";
 import { offeredMethods, type RateChoices } from "./plan";
@@ -80,32 +79,16 @@ export function RateChips({
 }
 
 /**
- * How it was paid and on which day: details of the record, they change no
- * money. Picking a method again clears it; the day starts on today and can
- * be any day (Today and Yesterday are shortcuts, the calendar is the field).
+ * How it was paid: a detail of the record, it changes no money. Picking a
+ * method again clears it. The name of a type is the catalog's, else the
+ * label the other side gave it, else its words.
  */
-export function MethodAndDate({
-	shared,
-	method,
-	onMethod,
-	today,
-	paidOn,
-	onPaidOn,
-}: {
-	shared: SharedMethod[];
-	method: string | null;
-	onMethod: (method: string | null) => void;
-	today: string;
-	paidOn: string | null;
-	onPaidOn: (day: string) => void;
-}) {
+export function useMethodName(shared: SharedMethod[]) {
 	const t = useTranslations("mobile.settle");
-	const { space } = useTheme();
 	const names = new Map<string, string>(
 		shared.map((m) => [m.type, m.label ?? ""]),
 	);
-	const types = offeredMethods(shared);
-	const nameOf = (type: string): string => {
+	return (type: string): string => {
 		const key = `methodNames.${type}` as Parameters<typeof t>[0];
 		if (t.has(key)) return t(key);
 		const label = names.get(type);
@@ -113,29 +96,32 @@ export function MethodAndDate({
 		const words = type.replace(/[_-]+/g, " ");
 		return words.charAt(0).toUpperCase() + words.slice(1);
 	};
-	const day = paidOn ?? today;
+}
+
+/** The methods you share with them, as chips: the Method panel. */
+export function MethodChips({
+	shared,
+	method,
+	onMethod,
+}: {
+	shared: SharedMethod[];
+	method: string | null;
+	onMethod: (method: string | null) => void;
+}) {
+	const t = useTranslations("mobile.settle");
+	const nameOf = useMethodName(shared);
 	return (
-		<>
-			<View style={{ gap: space[1] }}>
-				<FieldLabel>{t("method")}</FieldLabel>
-				<ChipRow>
-					{types.map((type) => (
-						<Chip
-							key={type}
-							label={nameOf(type)}
-							onPress={() => onMethod(method === type ? null : type)}
-							selected={method === type}
-						/>
-					))}
-				</ChipRow>
-			</View>
-			<DateField
-				label={t("date")}
-				onChange={onPaidOn}
-				quick
-				today={today}
-				value={day}
-			/>
-		</>
+		<View accessibilityLabel={t("method")}>
+			<ChipRow>
+				{offeredMethods(shared).map((type) => (
+					<Chip
+						key={type}
+						label={nameOf(type)}
+						onPress={() => onMethod(method === type ? null : type)}
+						selected={method === type}
+					/>
+				))}
+			</ChipRow>
+		</View>
 	);
 }
