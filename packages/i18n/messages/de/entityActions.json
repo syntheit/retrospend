@@ -64,6 +64,9 @@
 		}
 	},
 	"project": {
+		"open": {
+			"label": "Öffnen"
+		},
 		"addExpense": {
 			"label": "Ausgabe hinzufügen"
 		},

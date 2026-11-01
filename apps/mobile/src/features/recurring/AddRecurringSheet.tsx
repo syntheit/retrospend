@@ -22,12 +22,10 @@ import { PickField } from "@/ui/PickField";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { Text } from "@/ui/Text";
-import { TextAction } from "@/ui/TextAction";
-import { FieldError, TextField } from "@/ui/TextField";
+import { TextField } from "@/ui/TextField";
 import { useDayText } from "./ConfirmSheet";
 import { nextMonthly } from "./makeRecurring";
 import { useRecurringToast } from "./useRecurringToast";
-import { readWebsite } from "./websiteUrl";
 
 type Frequency = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY";
 
@@ -43,7 +41,7 @@ const FREQUENCIES: { value: Frequency; key: FrequencyKey }[] = [
 
 /**
  * Add a recurring expense, as the web does: a name, an amount in a currency,
- * a category, how often, the first due day and auto-pay. A template books
+ * a category, how often, the first due day and Record automatically. A template books
  * nothing until a confirm, so the server's dry run says what is added and
  * that every total stays; Add stays off until it is in. The write carries one
  * key per body, and the toast undoes it by deleting the template (R30, R15).
@@ -79,17 +77,14 @@ export function AddRecurringSheet({
 	const [frequency, setFrequency] = useState<Frequency>("MONTHLY");
 	const [first, setFirst] = useState(() => nextMonthly(dayKey(new Date())));
 	const [autoPay, setAutoPay] = useState(false);
-	const [more, setMore] = useState(false);
-	const [website, setWebsite] = useState("");
 	// The keypad comes up when the amount is tapped and gives way to the rest.
 	const [keypad, setKeypad] = useState(false);
 
 	const entered = readAmount(draft, locale, currency);
 	const minor = minorOf(entered);
 	const title = name.trim();
-	const site = readWebsite(website);
 	const input =
-		visible && title !== "" && minor !== null && site !== "invalid"
+		visible && title !== "" && minor !== null
 			? {
 					name: title,
 					amount: wireAmount(minor, currency),
@@ -98,7 +93,6 @@ export function AddRecurringSheet({
 					frequency,
 					nextDueDate: first,
 					autoPay,
-					...(site ? { websiteUrl: site } : {}),
 				}
 			: null;
 	const { idFor, reset } = useWriteIds(input ? JSON.stringify(input) : null);
@@ -112,8 +106,6 @@ export function AddRecurringSheet({
 		setFrequency("MONTHLY");
 		setFirst(nextMonthly(dayKey(new Date())));
 		setAutoPay(false);
-		setMore(false);
-		setWebsite("");
 		setKeypad(false);
 		reset();
 	}, [visible]);
@@ -277,38 +269,10 @@ export function AddRecurringSheet({
 						</Text>
 					</View>
 					<SwitchRow
-						detail={t(autoPay ? "item.autoOnHint" : "item.autoOffHint")}
 						label={t("item.autoPay")}
 						onChange={setAutoPay}
 						value={autoPay}
 					/>
-					{more ? (
-						<View style={{ gap: space[1] }}>
-							<TextField
-								invalid={site === "invalid"}
-								keyboardType="url"
-								label={t("add.website")}
-								maxLength={512}
-								onChangeText={setWebsite}
-								onTypingChange={(typing) => typing && setKeypad(false)}
-								placeholder={t("add.websitePlaceholder")}
-								value={website}
-							/>
-							{site === "invalid" ? (
-								<FieldError>{t("add.websiteInvalid")}</FieldError>
-							) : null}
-						</View>
-					) : (
-						<View style={{ alignItems: "flex-start" }}>
-							<TextAction
-								label={t("add.moreDetails")}
-								onPress={() => {
-									setMore(true);
-									setKeypad(false);
-								}}
-							/>
-						</View>
-					)}
 				</WriteFrame>
 			</SheetBody>
 		</Sheet>

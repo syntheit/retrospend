@@ -1,7 +1,7 @@
 "use client";
 
 import { CloudOff } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { PageFrame } from "~/components/layout/page-frame";
@@ -44,21 +44,40 @@ function useRefreshAfterExpenseSave(id: string) {
 	}, [watch.dataUpdatedAt, utils, id]);
 }
 
-/** What the link asked to open: ?settle=all, ?add=person. */
+/** What the link asked to open: ?settle=all, ?add=person, ?sheet=share or settings. */
 function initialSheet(params: URLSearchParams): SheetState {
 	if (params.get("settle") === "all") return { kind: "settleAll" };
 	if (params.get("add") === "person") return { kind: "addPerson" };
-	return null;
+	return sheetParam(params.get("sheet"));
+}
+
+/** The sidebar menu's Share and Settings: ?sheet=share, ?sheet=settings. */
+function sheetParam(kind: string | null): SheetState {
+	return kind === "share" || kind === "settings" ? { kind } : null;
 }
 
 export function ProjectScreen({ id }: { id: string }) {
 	const t = useTranslations("projectV2");
 	const params = useSearchParams();
+	const router = useRouter();
+	const pathname = usePathname();
 	const session = useSession();
 	const view = api.project.pageView.useQuery({ id });
 	const summary = api.project.summary.useQuery({ projectId: id });
 	const [sheet, setSheet] = useState<SheetState>(() => initialSheet(params));
 	useRefreshAfterExpenseSave(id);
+	// Opened from the sidebar menu: open the sheet, then drop the param so a
+	// reload does not open it again.
+	const wanted = params.get("sheet");
+	useEffect(() => {
+		const next = sheetParam(wanted);
+		if (!next) return;
+		setSheet(next);
+		const rest = new URLSearchParams(params.toString());
+		rest.delete("sheet");
+		const qs = rest.toString();
+		router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+	}, [wanted, params, pathname, router]);
 	const handlers = useProjectPageActions(view.data, setSheet);
 	const me = `user:${session.data?.user.id ?? ""}`;
 

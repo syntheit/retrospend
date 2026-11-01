@@ -65,8 +65,7 @@ export default function RecurringExpensesPage() {
 				Optional fields:
 			</p>
 			<ul className="mb-4 list-disc space-y-1.5 pl-6 text-muted-foreground text-sm leading-relaxed">
-				<li><strong>Website URL</strong>: link to the service or provider.</li>
-				<li><strong>Auto-pay toggle</strong>: mark whether this is automatically charged.</li>
+				<li><strong>Record automatically</strong>: create the expense on its due date without asking you to confirm.</li>
 				<li><strong>Notes</strong>: any extra context you want to remember.</li>
 			</ul>
 			<Callout variant="tip" title="Start date tip">

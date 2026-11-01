@@ -29,20 +29,19 @@
 		"due": "Due",
 		"repeats": "Repeats",
 		"amount": "Amount",
-		"autoPay": "Auto-pay",
-		"autoPayFor": "Auto-pay for {name}",
+		"autoPay": "Record automatically",
+		"autoPayFor": "Record {name} automatically",
 		"actions": "Actions"
 	},
 	"autoPay": {
-		"on": "Auto-pay on",
-		"off": "Auto-pay off"
+		"on": "Records automatically",
+		"off": "Confirm each time"
 	},
 	"toolbar": {
 		"label": "Filter recurring",
 		"search": "Search recurring",
-		"autoPayOn": "Auto-pay on",
-		"autoPayOff": "Auto-pay off",
-		"foreign": "Foreign currency"
+		"autoPayOn": "Records automatically",
+		"autoPayOff": "Confirm each time"
 	},
 	"summary": {
 		"cost": "Your recurring expenses cost <amount></amount> {period}.",
@@ -67,8 +66,8 @@
 	"actions": {
 		"paused": "Paused {name}",
 		"resumed": "Resumed {name}",
-		"autoPayOn": "Auto-pay on for {name}",
-		"autoPayOff": "Auto-pay off for {name}",
+		"autoPayOn": "{name} records automatically",
+		"autoPayOff": "{name} needs confirming each time",
 		"logged": "Logged {name}",
 		"deleted": "Deleted {name}",
 		"error": {

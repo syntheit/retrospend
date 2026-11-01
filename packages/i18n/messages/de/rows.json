@@ -55,8 +55,8 @@
 		"yearly": "Jährlich",
 		"biweekly": "Alle 2 Wochen",
 		"paused": "Pausiert",
-		"autoPayOn": "Auto-Zahlung an",
-		"autoPayOff": "Auto-Zahlung aus"
+		"autoPayOn": "Wird automatisch erfasst",
+		"autoPayOff": "Jedes Mal bestätigen"
 	},
 	"table": {
 		"selectAll": "Alle auswählen",

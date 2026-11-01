@@ -29,20 +29,19 @@
 		"due": "Échéance",
 		"repeats": "Fréquence",
 		"amount": "Montant",
-		"autoPay": "Paiement auto",
-		"autoPayFor": "Paiement auto pour {name}",
+		"autoPay": "Enregistrer automatiquement",
+		"autoPayFor": "Enregistrer {name} automatiquement",
 		"actions": "Actions"
 	},
 	"autoPay": {
-		"on": "Paiement auto activé",
-		"off": "Paiement auto désactivé"
+		"on": "S'enregistre automatiquement",
+		"off": "Confirmer à chaque fois"
 	},
 	"toolbar": {
 		"label": "Filtrer les récurrentes",
 		"search": "Chercher une récurrente",
-		"autoPayOn": "Paiement auto activé",
-		"autoPayOff": "Paiement auto désactivé",
-		"foreign": "Devise étrangère"
+		"autoPayOn": "S'enregistre automatiquement",
+		"autoPayOff": "Confirmer à chaque fois"
 	},
 	"summary": {
 		"cost": "Tes dépenses récurrentes coûtent <amount></amount> {period}.",
@@ -67,8 +66,8 @@
 	"actions": {
 		"paused": "{name} en pause",
 		"resumed": "{name} reprise",
-		"autoPayOn": "Paiement auto activé pour {name}",
-		"autoPayOff": "Paiement auto désactivé pour {name}",
+		"autoPayOn": "{name} s'enregistre automatiquement",
+		"autoPayOff": "{name} se confirme à chaque fois",
 		"logged": "{name} enregistrée",
 		"deleted": "{name} supprimée",
 		"error": {

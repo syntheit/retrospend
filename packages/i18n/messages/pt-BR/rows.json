@@ -55,8 +55,8 @@
 		"yearly": "Anual",
 		"biweekly": "A cada 2 semanas",
 		"paused": "Pausado",
-		"autoPayOn": "Débito automático ligado",
-		"autoPayOff": "Débito automático desligado"
+		"autoPayOn": "Registra automaticamente",
+		"autoPayOff": "Confirmar a cada vez"
 	},
 	"table": {
 		"selectAll": "Selecionar tudo",

@@ -146,6 +146,7 @@ export function useLedgerColumns({
 								on="bg"
 								payerId={row.original.payerId}
 								people={row.original.people ?? []}
+								size="sm"
 							/>
 						) : null,
 				},

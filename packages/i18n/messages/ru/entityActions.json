@@ -64,6 +64,9 @@
 		}
 	},
 	"project": {
+		"open": {
+			"label": "Открыть"
+		},
 		"addExpense": {
 			"label": "Добавить расход"
 		},

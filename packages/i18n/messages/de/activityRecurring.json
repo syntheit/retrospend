@@ -29,20 +29,19 @@
 		"due": "Fällig",
 		"repeats": "Wiederholung",
 		"amount": "Betrag",
-		"autoPay": "Auto-Zahlung",
-		"autoPayFor": "Auto-Zahlung für {name}",
+		"autoPay": "Automatisch erfassen",
+		"autoPayFor": "{name} automatisch erfassen",
 		"actions": "Aktionen"
 	},
 	"autoPay": {
-		"on": "Auto-Zahlung an",
-		"off": "Auto-Zahlung aus"
+		"on": "Wird automatisch erfasst",
+		"off": "Jedes Mal bestätigen"
 	},
 	"toolbar": {
 		"label": "Wiederkehrende filtern",
 		"search": "Wiederkehrende suchen",
-		"autoPayOn": "Auto-Zahlung an",
-		"autoPayOff": "Auto-Zahlung aus",
-		"foreign": "Fremdwährung"
+		"autoPayOn": "Wird automatisch erfasst",
+		"autoPayOff": "Jedes Mal bestätigen"
 	},
 	"summary": {
 		"cost": "Deine wiederkehrenden Ausgaben kosten <amount></amount> {period}.",
@@ -67,8 +66,8 @@
 	"actions": {
 		"paused": "{name} pausiert",
 		"resumed": "{name} fortgesetzt",
-		"autoPayOn": "Auto-Zahlung an für {name}",
-		"autoPayOff": "Auto-Zahlung aus für {name}",
+		"autoPayOn": "{name} wird automatisch erfasst",
+		"autoPayOff": "{name} wird jedes Mal bestätigt",
 		"logged": "{name} erfasst",
 		"deleted": "{name} gelöscht",
 		"error": {

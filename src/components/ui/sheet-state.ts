@@ -47,6 +47,12 @@ export interface SheetProps {
 	submitDisabled?: boolean;
 	/** Replaces the default Cancel + verb footer; false hides the footer. */
 	footer?: React.ReactNode | false;
+	/**
+	 * Focus the first field when the sheet opens (the default). False puts
+	 * focus on the sheet itself: for a sheet that is read or edited on demand,
+	 * where a field already in focus (and highlighted) would be a guess.
+	 */
+	focusField?: boolean;
 	/** Where focus goes on close when the opener is gone; defaults to the opener, then its menu's trigger. */
 	returnFocusTo?: React.RefObject<HTMLElement | null>;
 	children?: React.ReactNode;
@@ -118,11 +124,16 @@ export function useSheetState(props: SheetProps) {
 			const root = contentRef.current;
 			if (!root) return;
 			// A sheet that opens before its content loads has no field yet.
-			const target = initialFocus(
-				root.querySelector<HTMLElement>(`[data-sheet-body] :is(${FOCUSABLE})`),
-				root.querySelector<HTMLElement>("[data-sheet-submit]"),
-				root,
-			);
+			const target =
+				props.focusField === false
+					? root
+					: initialFocus(
+							root.querySelector<HTMLElement>(
+								`[data-sheet-body] :is(${FOCUSABLE})`,
+							),
+							root.querySelector<HTMLElement>("[data-sheet-submit]"),
+							root,
+						);
 			e.preventDefault();
 			target?.focus({ preventScroll: true });
 		},

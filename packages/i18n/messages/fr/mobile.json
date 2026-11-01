@@ -2651,7 +2651,7 @@
 		"errorDetail": "Vérifie ta connexion et réessaie.",
 		"empty": "Aucune dépense récurrente",
 		"emptyDetail": "Ajoute loyer, abonnements et autres frais fixes.",
-		"autoPay": "Paiement auto",
+		"autoPay": "Enregistrer automatiquement",
 		"frequency": {
 			"weekly": "Chaque semaine",
 			"biweekly": "Toutes les 2 semaines",
@@ -2689,7 +2689,7 @@
 			"in": "Entrées d'argent"
 		},
 		"logged": {
-			"title": "Enregistrés par paiement auto ce mois-ci"
+			"title": "Enregistré automatiquement ce mois-ci"
 		},
 		"confirm": {
 			"title": "Confirmer {title}",
@@ -2711,28 +2711,28 @@
 		"item": {
 			"next": "{amount}, prochain le {date}.",
 			"paused": "{amount}. En pause, rien n'est enregistré tant que tu ne la reprends pas.",
-			"autoPay": "Paiement auto",
+			"autoPay": "Enregistrer automatiquement",
 			"autoOnHint": "S'enregistre tout seul à l'échéance.",
 			"autoOffHint": "Tu confirmes à chaque fois.",
 			"pause": "Mettre en pause",
 			"resume": "Reprendre",
 			"pausedToast": "{title} en pause",
 			"resumedToast": "{title} repris",
-			"autoOnToast": "Paiement auto activé pour {title}",
-			"autoOffToast": "Paiement auto désactivé pour {title}",
+			"autoOnToast": "{title} s'enregistre automatiquement",
+			"autoOffToast": "{title} se confirme à chaque fois",
 			"error": "Impossible de modifier. Réessaie.",
 			"delete": "Supprimer"
 		},
 		"count": "{count, plural, one {# dépense récurrente} other {# dépenses récurrentes}}",
-		"autoPayOn": "Paiement auto activé",
-		"autoPayOff": "Paiement auto désactivé",
-		"autoPayFilter": "Paiement auto",
+		"autoPayOn": "S'enregistre automatiquement",
+		"autoPayOff": "Confirmer à chaque fois",
+		"autoPayFilter": "Enregistrer automatiquement",
 		"autoPayAny": "Tous",
 		"details": "Détails",
 		"make": {
 			"title": "Rendre récurrent",
 			"body": "{title} reviendra chaque mois pour {amount}, la prochaine fois le {date}.",
-			"stays": "Le paiement auto est désactivé : rien n'est enregistré avant ta confirmation. Tes totaux ne changent pas.",
+			"stays": "Rien n'est enregistré tant que tu ne confirmes pas. Tes totaux ne changent pas.",
 			"submit": "Rendre récurrent",
 			"error": "Impossible de le rendre récurrent. Réessaie.",
 			"toast": "{title} revient maintenant chaque mois"
@@ -2744,7 +2744,6 @@
 			"toast": "{title} ignoré. Prochaine échéance le {date}"
 		},
 		"search": "Rechercher des dépenses récurrentes",
-		"foreign": "Devise étrangère",
 		"emptyFiltered": "Aucun résultat",
 		"add": {
 			"title": "Ajouter une dépense récurrente",
@@ -2756,10 +2755,6 @@
 			"repeats": "Se répète",
 			"first": "Prochaine échéance",
 			"firstHint": "La première est enregistrée à cette date.",
-			"website": "Site web",
-			"websitePlaceholder": "exemple.fr",
-			"websiteInvalid": "Cette adresse ne semble pas correcte.",
-			"moreDetails": "Plus de détails",
 			"submit": "Ajouter",
 			"toast": "{title} ajouté"
 		},
@@ -2768,7 +2763,7 @@
 			"body": "Elle n'apparaît plus. Les opérations déjà enregistrées restent.",
 			"future": "Prochaines échéances",
 			"futureValue": "Arrêtées, la prochaine était le {date}",
-			"autoPay": "Paiement auto",
+			"autoPay": "Enregistrer automatiquement",
 			"autoPayValue": "Arrêté",
 			"submit": "Supprimer la dépense récurrente",
 			"submitIn": "Supprimer le revenu récurrent",

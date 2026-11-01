@@ -5,17 +5,13 @@ import {
 } from "./filter";
 import type { RecurringItem } from "./source";
 
-function item(title: string, autoPay: boolean, foreign = false) {
-	return {
-		title,
-		autoPay,
-		...(foreign ? { home: { currency: "ARS", minor: 1 } } : {}),
-	} as unknown as RecurringItem;
+function item(title: string, autoPay: boolean) {
+	return { title, autoPay } as unknown as RecurringItem;
 }
 
 const ITEMS = [
 	item("Fibra e internet", false),
-	item("Streamly", false, true),
+	item("Streamly", false),
 	item("Gimnasio Fuerza", true),
 ];
 
@@ -36,14 +32,6 @@ describe("filterRecurring", () => {
 		});
 		expect(on.map((i) => i.title)).toEqual(["Gimnasio Fuerza"]);
 		expect(off).toHaveLength(2);
-	});
-
-	it("keeps foreign templates only", () => {
-		const out = filterRecurring(ITEMS, {
-			...NO_RECURRING_FILTER,
-			foreign: true,
-		});
-		expect(out.map((i) => i.title)).toEqual(["Streamly"]);
 	});
 
 	it("searches the name, ignoring case and accents", () => {

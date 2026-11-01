@@ -233,7 +233,7 @@ describe("Confirm a recurring expense", () => {
 			);
 		});
 		await wait(400);
-		expect(tree.root.findAll((n) => n.props.label === "Auto-pay")).toHaveLength(
+		expect(tree.root.findAll((n) => n.props.label === "Record automatically")).toHaveLength(
 			0,
 		);
 		press(tree, "Log expense");

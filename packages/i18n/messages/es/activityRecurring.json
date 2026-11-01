@@ -29,20 +29,19 @@
 		"due": "Vence",
 		"repeats": "Repite",
 		"amount": "Importe",
-		"autoPay": "Pago automático",
-		"autoPayFor": "Pago automático de {name}",
+		"autoPay": "Registrar automáticamente",
+		"autoPayFor": "Registrar {name} automáticamente",
 		"actions": "Acciones"
 	},
 	"autoPay": {
-		"on": "Pago automático activado",
-		"off": "Pago automático desactivado"
+		"on": "Se registra automáticamente",
+		"off": "Confirmar cada vez"
 	},
 	"toolbar": {
 		"label": "Filtrar recurrentes",
 		"search": "Buscar recurrentes",
-		"autoPayOn": "Pago automático activado",
-		"autoPayOff": "Pago automático desactivado",
-		"foreign": "Moneda extranjera"
+		"autoPayOn": "Se registra automáticamente",
+		"autoPayOff": "Confirmar cada vez"
 	},
 	"summary": {
 		"cost": "Tus gastos recurrentes cuestan <amount></amount> {period}.",
@@ -67,8 +66,8 @@
 	"actions": {
 		"paused": "{name} en pausa",
 		"resumed": "{name} reanudado",
-		"autoPayOn": "Pago automático activado para {name}",
-		"autoPayOff": "Pago automático desactivado para {name}",
+		"autoPayOn": "{name} se registra automáticamente",
+		"autoPayOff": "{name} se confirma cada vez",
 		"logged": "{name} registrado",
 		"deleted": "{name} eliminado",
 		"error": {
