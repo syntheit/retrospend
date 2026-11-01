@@ -23,7 +23,7 @@ test("Category picker in the expense sheet: type, arrows, Enter, Escape", async 
 
 	// Arrows move the highlight; Escape closes the picker, not the sheet.
 	await all.click();
-	const find = page.getByRole("combobox", { name: "Find a category" });
+	const find = page.getByRole("combobox", { name: "Category" });
 	await expect(find).toBeFocused();
 	const options = page.getByRole("option");
 	await expect(options.first()).toHaveAttribute("aria-selected", "true");
@@ -64,9 +64,9 @@ test("Category filter: a pick toggles and the list stays open, Clear empties it"
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await openV2(page, "/activity");
 	const main = page.getByRole("main");
-	const chip = main.getByRole("button", { name: /^Category/ });
+	const chip = main.getByRole("button", { name: /^(Category|Subscriptions)/ });
 	await chip.click();
-	const find = page.getByRole("combobox", { name: "Find a category" });
+	const find = page.getByRole("combobox", { name: "Category" });
 	await expect(find).toBeFocused();
 
 	await page.keyboard.type("subs");
