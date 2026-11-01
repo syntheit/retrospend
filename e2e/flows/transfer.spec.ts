@@ -40,9 +40,9 @@ test("Exchange: both amounts typed, rate derived, preview, save and Undo", async
 		const sheet = page.getByRole("dialog");
 		await expect(sheet).toBeVisible();
 		await sheet.getByRole("tab", { name: /^From/ }).click();
-		await sheet.getByRole("button", { name: /^E2E pesos/ }).click();
+		await sheet.getByRole("button", { name: /flag E2E pesos/ }).click();
 		await sheet.getByRole("tab", { name: /^To/ }).click();
-		await sheet.getByRole("button", { name: /^E2E dollars/ }).click();
+		await sheet.getByRole("button", { name: /flag E2E dollars/ }).click();
 		await expect(page.getByRole("dialog", { name: "Exchange" })).toBeVisible();
 
 		const amounts = sheet.getByRole("textbox", { name: "Amount" });

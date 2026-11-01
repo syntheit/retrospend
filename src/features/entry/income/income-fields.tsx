@@ -50,6 +50,7 @@ export function IncomeFields({
 	changes: React.ReactNode;
 }) {
 	const t = useTranslations("entry.income");
+	const te = useTranslations("entry.expense");
 	const { d } = x;
 	const { displayName } = useCategoryName();
 	const { days, dayLabel } = useDays(today);
@@ -198,7 +199,7 @@ export function IncomeFields({
 				}
 			: {
 					id: "category",
-					text: t("error.category"),
+					text: te("pickCategory"),
 					tone: "attention",
 					onSelect: () => setTab("category"),
 				},
