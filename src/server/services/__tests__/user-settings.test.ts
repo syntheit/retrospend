@@ -3,7 +3,14 @@ import type { Page } from "~prisma";
 import { DEFAULT_PAGE_SETTINGS, getPageSettings, updatePageSettings } from "../user-settings";
 
 function dbWith(stored: unknown) {
+	// An update runs in a transaction that locks the row (raw SQL) and then writes it.
+	const tx = {
+		$executeRaw: vi.fn(async () => 0),
+		$queryRaw: vi.fn(async () => [{ settings: stored }]),
+		userPageSetting: { update: vi.fn(async () => ({})) },
+	};
 	return {
+		$transaction: async <T,>(work: (t: typeof tx) => Promise<T>) => work(tx),
 		userPageSetting: {
 			findUnique: vi.fn(async () => (stored === undefined ? null : { settings: stored })),
 			upsert: vi.fn(async () => ({})),

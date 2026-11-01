@@ -8,28 +8,24 @@ import type { ACCOUNT_SORTS } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import { userTransaction } from "~/server/db-tx";
 import type { Prisma, PrismaClient } from "~prisma";
-import { WealthSettingsSchema } from "../user-settings";
+import {
+	DEFAULT_PAGE_SETTINGS,
+	lockPageSettings,
+	WealthSettingsSchema,
+} from "../user-settings";
 
 export type AccountOrder = {
 	sort: (typeof ACCOUNT_SORTS)[number];
 	order: string[];
 };
 
-async function readIn(
-	tx: Prisma.TransactionClient,
-	userId: string,
-): Promise<ReturnType<typeof WealthSettingsSchema.parse>> {
-	const row = await tx.userPageSetting.findUnique({
-		where: { userId_page: { userId, page: "WEALTH" } },
-	});
-	const parsed = WealthSettingsSchema.safeParse(row?.settings);
+function parse(
+	settings: unknown,
+): ReturnType<typeof WealthSettingsSchema.parse> {
+	const parsed = WealthSettingsSchema.safeParse(settings);
 	return parsed.success
 		? parsed.data
-		: WealthSettingsSchema.parse({
-				version: 1,
-				showCurrencyExposure: true,
-				showHistoryChart: true,
-			});
+		: WealthSettingsSchema.parse(DEFAULT_PAGE_SETTINGS.WEALTH);
 }
 
 const pick = (s: AccountOrder): AccountOrder => ({
@@ -41,9 +37,12 @@ export function getAccountOrder(
 	db: Pick<PrismaClient, "$transaction">,
 	userId: string,
 ): Promise<AccountOrder> {
-	return userTransaction(db, userId, async (tx) =>
-		pick(await readIn(tx, userId)),
-	);
+	return userTransaction(db, userId, async (tx) => {
+		const row = await tx.userPageSetting.findUnique({
+			where: { userId_page: { userId, page: "WEALTH" } },
+		});
+		return pick(parse(row?.settings));
+	});
 }
 
 /**
@@ -73,16 +72,16 @@ export function setAccountOrder(
 					message: "The order has an account that is not yours",
 				});
 		}
-		const current = await readIn(tx, userId);
+		// Under the row's lock: a concurrent settings toggle or order save keeps its keys.
+		const current = parse(await lockPageSettings(tx, userId, "WEALTH"));
 		const next = {
 			...current,
 			...(input.sort !== undefined ? { sort: input.sort } : {}),
 			...(input.order !== undefined ? { order: input.order } : {}),
 		};
-		await tx.userPageSetting.upsert({
+		await tx.userPageSetting.update({
 			where: { userId_page: { userId, page: "WEALTH" } },
-			update: { settings: next },
-			create: { userId, page: "WEALTH", settings: next },
+			data: { settings: next },
 		});
 		return pick(next);
 	});
