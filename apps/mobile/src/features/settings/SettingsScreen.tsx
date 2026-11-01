@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -8,6 +7,7 @@ import {
 	setErrorReportsPref,
 	useErrorReportsPref,
 } from "@/features/feedback/pref";
+import { useOpenSettingsRoute } from "@/layout/settingsPath";
 import { useLanguagePref } from "@/lib/language-pref";
 import { LANGUAGE_NAMES } from "@/lib/locales";
 import { usePush } from "@/push/PushProvider";
@@ -59,6 +59,7 @@ const TILES: Record<Exclude<SectionId, "profile">, GlyphName> = {
  */
 export function SettingsScreen() {
 	const t = useTranslations("mobile.settings");
+	const open = useOpenSettingsRoute();
 	const tr = useTranslations("mobile.settings.root");
 	const tc = useTranslations("mobile.settings.notifications.channel");
 	const ta = useTranslations("mobile.admin");
@@ -135,7 +136,7 @@ export function SettingsScreen() {
 			chevron
 			key={id}
 			lead={<IconTile name={TILES[id]} />}
-			onPress={() => router.push(`/settings/${id}`)}
+			onPress={() => open(id)}
 			sub={subs[id]}
 			title={titles[id]}
 		/>
@@ -154,7 +155,7 @@ export function SettingsScreen() {
 				<ListRow
 					chevron
 					lead={face ? <Avatar face={face} /> : <IconTile name="User" />}
-					onPress={() => router.push("/settings/profile")}
+					onPress={() => open("profile")}
 					sub={me?.name ?? signedIn?.name}
 					title={t("profile.title")}
 				/>
@@ -174,7 +175,7 @@ export function SettingsScreen() {
 							lead={<IconTile name="Shield" />}
 							onPress={
 								admin === "ok"
-									? () => router.push("/settings/admin")
+									? () => open("admin")
 									: undefined
 							}
 							sub={admin === "signIn" ? ta("signInAgain") : undefined}

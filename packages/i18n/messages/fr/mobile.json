@@ -469,7 +469,8 @@
 		"notifications": "Notifications",
 		"admin": "Administration",
 		"feedbackInbox": "Boîte des retours",
-		"newCount": "{count} nouveaux"
+		"newCount": "{count} nouveaux",
+		"title": "Compte"
 	},
 	"activity": {
 		"title": "Activité",
@@ -1612,7 +1613,12 @@
 			"rateDate": "Mis à jour le {date}",
 			"netWorthNote": "Inclut ce que les gens te doivent"
 		},
-		"netWorthMeta": "Inclut ce que les gens te doivent"
+		"netWorthMeta": "Inclut ce que les gens te doivent",
+		"topBar": {
+			"converter": "Convertisseur de devises",
+			"notifications": "Notifications",
+			"notificationsUnread": "Notifications, {count, plural, one {# non lue} other {# non lues}}"
+		}
 	},
 	"insights": {
 		"title": "Analyses",
@@ -2443,6 +2449,9 @@
 			"license": "GPL v3",
 			"privacy": "Confidentialité",
 			"terms": "Conditions"
+		},
+		"converter": {
+			"show": "Afficher le convertisseur de devises"
 		}
 	},
 	"admin": {
@@ -2865,7 +2874,11 @@
 			"market": "Marché",
 			"custom": "Personnalisé"
 		},
-		"pricesInHome": "Prix en {home}."
+		"pricesInHome": "Prix en {home}.",
+		"converter": {
+			"title": "Convertisseur de devises",
+			"all": "Toutes les devises"
+		}
 	},
 	"status": {
 		"owed": "On te doit",

@@ -469,7 +469,8 @@
 		"notifications": "Notificações",
 		"admin": "Administração",
 		"feedbackInbox": "Caixa de feedback",
-		"newCount": "{count} novos"
+		"newCount": "{count} novos",
+		"title": "Conta"
 	},
 	"activity": {
 		"title": "Atividade",
@@ -1612,7 +1613,12 @@
 			"rateDate": "Atualizado em {date}",
 			"netWorthNote": "Inclui o que as pessoas devem a você"
 		},
-		"netWorthMeta": "Inclui o que as pessoas devem a você"
+		"netWorthMeta": "Inclui o que as pessoas devem a você",
+		"topBar": {
+			"converter": "Conversor de moedas",
+			"notifications": "Notificações",
+			"notificationsUnread": "Notificações, {count} não lidas"
+		}
 	},
 	"insights": {
 		"title": "Análises",
@@ -2443,6 +2449,9 @@
 			"license": "GPL v3",
 			"privacy": "Privacidade",
 			"terms": "Termos"
+		},
+		"converter": {
+			"show": "Mostrar o conversor de moedas"
 		}
 	},
 	"admin": {
@@ -2865,7 +2874,11 @@
 			"market": "Mercado",
 			"custom": "Personalizada"
 		},
-		"pricesInHome": "Preços em {home}."
+		"pricesInHome": "Preços em {home}.",
+		"converter": {
+			"title": "Conversor de moedas",
+			"all": "Todas as moedas"
+		}
 	},
 	"status": {
 		"owed": "Devem a você",

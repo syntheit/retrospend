@@ -1,12 +1,14 @@
-import { router } from "expo-router";
 import { useTranslations } from "use-intl";
+import { useOpenSettingsRoute } from "@/layout/settingsPath";
+import { setShowConverter, useShowConverter } from "@/lib/converter-pref";
 import {
 	type LanguagePref,
 	setLanguagePref,
 	useLanguagePref,
 } from "@/lib/language-pref";
 import { APP_LOCALES, LANGUAGE_NAMES } from "@/lib/locales";
-import { ListGroup, ListRow } from "@/ui/List";
+import { GroupItem, ListGroup, ListRow } from "@/ui/List";
+import { SwitchRow } from "@/ui/SwitchRow";
 import { WheelField } from "@/ui/Picker";
 import { NumbersGroup } from "./NumbersSection";
 import {
@@ -29,9 +31,11 @@ import { useFiatCurrencies, useGeneralSettings } from "./useSettings";
  */
 export function PreferencesSection() {
 	const t = useTranslations("mobile.settings");
+	const open = useOpenSettingsRoute();
 	const general = useGeneralSettings();
 	const currencies = useFiatCurrencies();
 	const language = useLanguagePref();
+	const showConverter = useShowConverter();
 	const save = useSaveSettings(general.reload);
 	const settings = general.state.status === "ready" ? general.state.data : null;
 	if (!settings) {
@@ -88,7 +92,7 @@ export function PreferencesSection() {
 					/>
 					<ListRow
 						chevron
-						onPress={() => router.push("/settings/currencies")}
+						onPress={() => open("currencies")}
 						title={t("rates.currencies")}
 					/>
 				</ListGroup>
@@ -105,6 +109,13 @@ export function PreferencesSection() {
 						options={languageOptions}
 						value={language}
 					/>
+					<GroupItem>
+						<SwitchRow
+							label={t("converter.show")}
+							onChange={setShowConverter}
+							value={showConverter}
+						/>
+					</GroupItem>
 				</ListGroup>
 				<GroupNote>{t("device.footer")}</GroupNote>
 			</Block>

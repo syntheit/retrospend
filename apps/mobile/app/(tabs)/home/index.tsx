@@ -6,12 +6,15 @@ import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ActivityRow } from "@/features/activity/ActivityRow";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { SyncIssues } from "@/features/entry/SyncIssues";
+import { ConverterSheet } from "@/features/currencies/ConverterSheet";
 import { useHomeDates } from "@/features/home/dates";
 import { Glance } from "@/features/home/Glance";
 import { HomeSkeleton } from "@/features/home/HomeSkeleton";
 import { NeedsYou } from "@/features/home/NeedsYou";
 import { fetchHome, HOME_CACHE } from "@/features/home/source";
+import { useUnreadNotifications } from "@/features/notifications/useUnreadCount";
 import { useCachedRead } from "@/features/read/useCachedRead";
+import { useShowConverter } from "@/lib/converter-pref";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
@@ -22,6 +25,10 @@ export default function HomeScreen() {
 	const t = useTranslations("mobile.home");
 	const tc = useTranslations("mobile.common");
 	const ts = useTranslations("mobile.tabs");
+	const tb = useTranslations("mobile.home.topBar");
+	const unread = useUnreadNotifications();
+	const showConverter = useShowConverter();
+	const [converter, setConverter] = useState(false);
 	const { space } = useTheme();
 	const dates = useHomeDates();
 	const { api } = useSession();
@@ -103,9 +110,35 @@ export default function HomeScreen() {
 						label: ts("search"),
 						onPress: () => router.push("/settings/search"),
 					},
+					...(showConverter
+						? [
+								{
+									id: "converter",
+									icon: "DollarSign" as const,
+									label: tb("converter"),
+									onPress: () => setConverter(true),
+								},
+							]
+						: []),
+					{
+						id: "notifications",
+						icon: "Bell",
+						label:
+							unread > 0
+								? tb("notificationsUnread", { count: unread })
+								: tb("notifications"),
+						badge: unread,
+						onPress: () => router.push("/settings/inbox"),
+					},
 				]}
 				title={t("title")}
 			/>
+			{showConverter ? (
+				<ConverterSheet
+					onClose={() => setConverter(false)}
+					visible={converter}
+				/>
+			) : null}
 		</>
 	);
 }

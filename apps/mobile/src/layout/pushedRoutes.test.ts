@@ -79,6 +79,24 @@ describe("pushed screens have the back button", () => {
 		expect(header).not.toHaveProperty("headerLeft");
 	});
 
+	it("opens the same Settings pages inside the account sheet", () => {
+		const inSheet = routes
+			.filter((route) => route.startsWith("account/"))
+			.map((route) => route.replace(/\.tsx?$/, ""))
+			.sort();
+		expect(inSheet).toContain("account/_layout");
+		expect(inSheet).toContain("account/index");
+		// Every page the sheet lists is a re-export of the page Settings pushes.
+		const pages = SETTINGS_SCREENS.map((s) => s.name)
+			.filter((n) => !["settings/search", "settings/inbox", "settings/recurring"].includes(n))
+			.map((n) => `account/${n.replace(/^settings\//, "").replace(/^index$/, "settings")}`);
+		for (const page of pages) expect(inSheet).toContain(page);
+		const layout = readFileSync(join(APP, "account/_layout.tsx"), "utf8");
+		expect(layout).toMatch(/unstable_settings\s*=\s*{\s*anchor:\s*"index"/);
+		const root = readFileSync(join(APP, "_layout.tsx"), "utf8");
+		expect(root).toMatch(/name="account"\s+options=\{accountSheetOptions\(\)\}/);
+	});
+
 	it("never hides the back button or swaps it for a drawn one", () => {
 		const offenders: string[] = [];
 		for (const path of [...files(APP), ...files(SRC)]) {
@@ -111,6 +129,8 @@ describe("pushed screens have the back button", () => {
 			.sort();
 		expect(hidden).toEqual([
 			"../app/_layout.tsx",
+			"layout/pushedHeader.ts",
+			"layout/useSettingsScreens.tsx",
 			"ui/TopBar.android.tsx",
 			"ui/TopBar.ios.tsx",
 		]);

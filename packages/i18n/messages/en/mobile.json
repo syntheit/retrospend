@@ -469,7 +469,8 @@
 		"notifications": "Notifications",
 		"admin": "Admin",
 		"feedbackInbox": "Feedback inbox",
-		"newCount": "{count} new"
+		"newCount": "{count} new",
+		"title": "Account"
 	},
 	"activity": {
 		"title": "Activity",
@@ -1612,7 +1613,12 @@
 			"rateDate": "Updated {date}",
 			"netWorthNote": "Includes what people owe you"
 		},
-		"netWorthMeta": "Includes what people owe you"
+		"netWorthMeta": "Includes what people owe you",
+		"topBar": {
+			"converter": "Currency converter",
+			"notifications": "Notifications",
+			"notificationsUnread": "Notifications, {count} unread"
+		}
 	},
 	"insights": {
 		"title": "Insights",
@@ -2443,6 +2449,9 @@
 			"license": "GPL v3",
 			"privacy": "Privacy",
 			"terms": "Terms"
+		},
+		"converter": {
+			"show": "Show currency converter"
 		}
 	},
 	"admin": {
@@ -2865,7 +2874,11 @@
 			"market": "Market",
 			"custom": "Custom"
 		},
-		"pricesInHome": "Prices in {home}."
+		"pricesInHome": "Prices in {home}.",
+		"converter": {
+			"title": "Currency converter",
+			"all": "All currencies"
+		}
 	},
 	"status": {
 		"owed": "Owed to you",

@@ -469,7 +469,8 @@
 		"notifications": "Уведомления",
 		"admin": "Администрирование",
 		"feedbackInbox": "Входящие отзывы",
-		"newCount": "Новых: {count}"
+		"newCount": "Новых: {count}",
+		"title": "Аккаунт"
 	},
 	"activity": {
 		"title": "Активность",
@@ -1612,7 +1613,12 @@
 			"rateDate": "Обновлено {date}",
 			"netWorthNote": "Включая то, что вам должны"
 		},
-		"netWorthMeta": "Включая то, что вам должны"
+		"netWorthMeta": "Включая то, что вам должны",
+		"topBar": {
+			"converter": "Конвертер валют",
+			"notifications": "Уведомления",
+			"notificationsUnread": "Уведомления, непрочитанных: {count}"
+		}
 	},
 	"insights": {
 		"title": "Аналитика",
@@ -2443,6 +2449,9 @@
 			"license": "GPL v3",
 			"privacy": "Конфиденциальность",
 			"terms": "Условия"
+		},
+		"converter": {
+			"show": "Показывать конвертер валют"
 		}
 	},
 	"admin": {
@@ -2865,7 +2874,11 @@
 			"market": "Рыночный",
 			"custom": "Свой"
 		},
-		"pricesInHome": "Цены в {home}."
+		"pricesInHome": "Цены в {home}.",
+		"converter": {
+			"title": "Конвертер валют",
+			"all": "Все валюты"
+		}
 	},
 	"status": {
 		"owed": "Вам должны",

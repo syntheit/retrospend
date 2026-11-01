@@ -469,7 +469,8 @@
 		"notifications": "Benachrichtigungen",
 		"admin": "Admin",
 		"feedbackInbox": "Feedback-Eingang",
-		"newCount": "{count} neu"
+		"newCount": "{count} neu",
+		"title": "Konto"
 	},
 	"activity": {
 		"title": "Aktivität",
@@ -1612,7 +1613,12 @@
 			"rateDate": "Stand {date}",
 			"netWorthNote": "Enthält, was andere dir schulden"
 		},
-		"netWorthMeta": "Enthält, was andere dir schulden"
+		"netWorthMeta": "Enthält, was andere dir schulden",
+		"topBar": {
+			"converter": "Währungsrechner",
+			"notifications": "Benachrichtigungen",
+			"notificationsUnread": "Benachrichtigungen, {count} ungelesen"
+		}
 	},
 	"insights": {
 		"title": "Auswertungen",
@@ -2443,6 +2449,9 @@
 			"license": "GPL v3",
 			"privacy": "Datenschutz",
 			"terms": "Nutzungsbedingungen"
+		},
+		"converter": {
+			"show": "Währungsrechner anzeigen"
 		}
 	},
 	"admin": {
@@ -2865,7 +2874,11 @@
 			"market": "Markt",
 			"custom": "Eigener Kurs"
 		},
-		"pricesInHome": "Preise in {home}."
+		"pricesInHome": "Preise in {home}.",
+		"converter": {
+			"title": "Währungsrechner",
+			"all": "Alle Währungen"
+		}
 	},
 	"status": {
 		"owed": "Wird dir geschuldet",

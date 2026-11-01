@@ -6,7 +6,7 @@ import { Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 import { type ComponentType, useEffect } from "react";
-import { Platform, useColorScheme } from "react-native";
+import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
@@ -20,11 +20,8 @@ import { FeedbackProvider } from "@/features/feedback/FeedbackProvider";
 import { installErrorHandlers } from "@/features/feedback/handlers";
 import { getErrorLog } from "@/features/feedback/runtime";
 import { ScreenTracker } from "@/features/feedback/ScreenTracker";
-import {
-	pushedHeader,
-	SETTINGS_SCREENS,
-	tabsScreenOptions,
-} from "@/layout/pushedHeader";
+import { accountSheetOptions, tabsScreenOptions } from "@/layout/pushedHeader";
+import { useSettingsScreens } from "@/layout/useSettingsScreens";
 import { GALLERY_ENABLED } from "@/lib/flags";
 import { AppIntlProvider } from "@/lib/intl";
 import { MoneyPrefsProvider } from "@/lib/money";
@@ -42,38 +39,6 @@ const DevAutoSignIn: ComponentType | null = process.env.EXPO_PUBLIC_DEV_SERVER
 	? require("@/dev/DevAutoSignIn").DevAutoSignIn
 	: null;
 
-/**
- * Settings and its pages push over the tabs in this stack (the toast and the
- * sheets live in the root view, so it is not a native modal). They are root
- * routes with the system header, so each one has the native back button; the
- * list of sections has the large title on iOS, every page under it an inline
- * title (GUIDELINE 15).
- */
-function useSettingsScreens() {
-	const t = useTranslations("mobile.settings");
-	const ta = useTranslations("mobile.admin");
-	const { color } = useTheme();
-	const android = Platform.OS === "android";
-	const header = pushedHeader(color, android);
-	return SETTINGS_SCREENS.map((screen) => (
-		<Stack.Screen
-			key={screen.name}
-			name={screen.name}
-			options={
-				screen.redirect
-					? { headerShown: false }
-					: {
-							...header,
-							title: screen.title
-								? (screen.ns === "admin" ? ta : t)(screen.title as never)
-								: "",
-							headerLargeTitle: screen.large ? !android : false,
-						}
-			}
-		/>
-	));
-}
-
 // Records crashes and unhandled promise rejections into the local ring. Nothing
 // leaves the phone unless the person turns on error reports (Settings).
 installErrorHandlers(getErrorLog());
@@ -84,7 +49,7 @@ holdSplash();
 function Routes() {
 	const { connection } = useServerConnection();
 	const { state } = useSession();
-	const settingsScreens = useSettingsScreens();
+	const settingsScreens = useSettingsScreens("settings");
 	const back = useTranslations("mobile.common")("back");
 	// The keystore reads take a moment; the native splash covers it.
 	const loading = connection.status === "loading" || state.status === "loading";
@@ -101,6 +66,7 @@ function Routes() {
 				<Stack.Protected guard={signedIn}>
 					<Stack.Screen name="(tabs)" options={tabsScreenOptions(back)} />
 					{settingsScreens}
+					<Stack.Screen name="account" options={accountSheetOptions()} />
 				</Stack.Protected>
 				<Stack.Protected guard={connected && !signedIn}>
 					<Stack.Screen name="sign-in" />
