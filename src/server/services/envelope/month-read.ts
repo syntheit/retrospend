@@ -67,7 +67,8 @@ async function computeMonthView(
 	now: Date,
 	month?: MonthKey,
 ): Promise<MonthRead | null> {
-	const loaded = await loadBook(tx, userId, { now });
+	// A past month needs the pass to start before it, not at the last closed one.
+	const loaded = await loadBook(tx, userId, { now, needFrom: month });
 	if (!loaded) return null;
 	const key = month ?? loaded.input.currentMonth;
 	if (

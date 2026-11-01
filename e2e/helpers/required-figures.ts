@@ -66,6 +66,17 @@ export const REQUIRED_FIGURES: Readonly<Record<string, readonly string[]>> = {
 		"insights.dailyAverage",
 		"insights.monthlyAverage",
 	],
+	// The seed's rent falls on the 3rd, so on the 1st and 2nd this month has no
+	// rent row and the by-category figure for it does not exist yet.
+	insightsBeforeRent: [
+		"insights.spent",
+		"insights.ytd",
+		`insights.ytdByCategory:${RENT}`,
+		"insights.income",
+		"insights.saved",
+		"insights.dailyAverage",
+		"insights.monthlyAverage",
+	],
 	insightsUsd: ["insights.ytdUsd", `insights.ytdByCategoryUsd:${RENT}`],
 	insightsCompare: ["insights.spent", "insights.spentPrevious"],
 	// S4G: the Add expense sheet with a foreign amount, audited inside the
