@@ -16,7 +16,6 @@ import { randomUUID } from "node:crypto";
 import type { Prisma } from "~prisma";
 import { findPersonalBook } from "./inputs";
 import { forgetMonthViews } from "./month-read";
-import { isoDateIn } from "./months";
 import { fromMinor } from "./units";
 
 type Tx = Prisma.TransactionClient;
@@ -64,7 +63,10 @@ export async function recordWealthMove(
 		(e) => e.id === move.envelopeId && e.archivedAt === null,
 	);
 	const id = move.id ?? randomUUID();
-	const day = isoDateIn(move.date, book.timeZone);
+	// move.date is the move's own calendar day (a UTC-midnight marker from moveDay,
+	// or noon of it): reading it in the book's zone gives the day before west of UTC,
+	// so the 1st fell in the previous month.
+	const day = move.date.toISOString().slice(0, 10);
 	try {
 		await insertMove(tx, move, {
 			id,
