@@ -209,7 +209,8 @@ const CASES: Case[] = [
 		// balance key are the foot. Both stay outside the scrolling middle.
 		fields: [],
 		footer: ["Update balance", "1", "0"],
-		sheetBody: true,
+		// Its body is the keypad form (useSheetBodySize), like the composer's.
+		sheetBody: false,
 		render: () => (
 			<UpdateBalanceSheet
 				account={account}
