@@ -58,11 +58,12 @@ export default function ActivityScreen() {
 			? "recurring"
 			: "expenses",
 	);
-	// A link to the Recurring segment (Settings, a notification) opens it even
-	// when Activity is already mounted on Expenses.
+	// A link to a segment (Settings, a notification) opens it even when
+	// Activity is already mounted on the other one.
 	useEffect(() => {
-		if (params.segment === "recurring" && !RECURRING_APART) {
-			setSegment("recurring");
+		if (RECURRING_APART) return;
+		if (params.segment === "recurring" || params.segment === "expenses") {
+			setSegment(params.segment);
 		}
 	}, [params.segment]);
 	const paneEnter = usePaneEnter(segment === "expenses" ? 0 : 1);
