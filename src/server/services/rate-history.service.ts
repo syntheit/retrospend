@@ -1,6 +1,7 @@
 import {
 	buildRateHistory,
 	type HistoryRow,
+	rangeStart,
 } from "~/features/currencies/server/history";
 import type { HistoryRange, RateHistory } from "~/features/currencies/types";
 import { userTransaction } from "~/server/db-tx";
@@ -26,22 +27,33 @@ export async function readRateHistory(
 		homeCurrencyOf(tx, userId),
 	);
 	const currencies = [...new Set([code, home])];
-	const [stored, newest] = await Promise.all([
+	const today = isoDay(now);
+	const start = rangeStart(range, today);
+	const select = { date: true, currency: true, type: true, rate: true };
+	const where = { currency: { in: currencies } };
+	// Only the range's days, plus the newest earlier day of each currency and
+	// type, which a series falls back to before its first stored day.
+	const [stored, lookback, newest] = await Promise.all([
 		db.exchangeRateHistory.findMany({
-			where: { currency: { in: currencies } },
-			select: { date: true, currency: true, type: true, rate: true },
+			where: start ? { ...where, date: { gte: new Date(start) } } : where,
+			select,
 		}),
-		db.exchangeRate.findMany({
-			where: { currency: { in: currencies } },
-			select: { date: true, currency: true, type: true, rate: true },
-		}),
+		start
+			? db.exchangeRateHistory.findMany({
+					where: { ...where, date: { lt: new Date(start) } },
+					distinct: ["currency", "type"],
+					orderBy: { date: "desc" },
+					select,
+				})
+			: Promise.resolve([]),
+		db.exchangeRate.findMany({ where, select }),
 	]);
 	// The newest row of each type wins over a stored day it shares.
-	const rows: HistoryRow[] = [...stored, ...newest].map((r) => ({
+	const rows: HistoryRow[] = [...lookback, ...stored, ...newest].map((r) => ({
 		currency: r.currency,
 		type: r.type,
 		day: isoDay(r.date),
 		rate: r.rate,
 	}));
-	return buildRateHistory({ code, home, rows, range, today: isoDay(now) });
+	return buildRateHistory({ code, home, rows, range, today });
 }

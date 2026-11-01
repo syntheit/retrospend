@@ -282,14 +282,23 @@ func recordRateHistory(ctx context.Context, database *db.DB, day time.Time, entr
 	currencies := make([]string, 0, len(entries))
 	types := make([]string, 0, len(entries))
 	rates := make([]float64, 0, len(entries))
+	seen := make(map[string]int, len(entries))
 	for _, e := range entries {
+		// One row per (currency, type): a duplicate in the feed would make the
+		// insert fail on the same key and drop the whole day. The last one wins.
+		key := e.Currency + "\x00" + e.Type
+		if i, ok := seen[key]; ok {
+			rates[i] = e.Rate
+			continue
+		}
+		seen[key] = len(currencies)
 		currencies = append(currencies, e.Currency)
 		types = append(types, e.Type)
 		rates = append(rates, e.Rate)
 	}
 	_, err := database.Pool.Exec(ctx, `
 		INSERT INTO exchange_rate_history (date, currency, type, rate)
-		SELECT $1::timestamptz::date, u.currency, u.type, u.rate
+		SELECT ($1::timestamptz AT TIME ZONE 'UTC')::date, u.currency, u.type, u.rate
 		FROM unnest($2::text[], $3::text[], $4::float8[]) AS u(currency, type, rate)
 		WHERE u.rate > 0
 		ON CONFLICT (date, currency, type) DO UPDATE SET rate = EXCLUDED.rate
