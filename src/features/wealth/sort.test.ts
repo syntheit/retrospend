@@ -113,9 +113,9 @@ describe("custom order", () => {
 	const d = account("D", { amount: money(900) });
 
 	it("follows the saved order exactly", () => {
-		expect(names(sortAccounts([a, b, c], "custom", "en", ["C", "A", "B"]))).toEqual(
-			["C", "A", "B"],
-		);
+		expect(
+			names(sortAccounts([a, b, c], "custom", "en", ["C", "A", "B"])),
+		).toEqual(["C", "A", "B"]);
 	});
 
 	it("puts accounts not placed yet after the placed ones, largest first", () => {
@@ -124,16 +124,24 @@ describe("custom order", () => {
 	});
 
 	it("ignores ids that are no longer accounts", () => {
-		expect(names(sortAccounts([a, b], "custom", "en", ["gone", "B", "A"]))).toEqual(
-			["B", "A"],
-		);
+		expect(
+			names(sortAccounts([a, b], "custom", "en", ["gone", "B", "A"])),
+		).toEqual(["B", "A"]);
 	});
 
 	it("restores the custom order after another sort and back", () => {
 		const order = ["B", "C", "A"];
 		const list = [a, b, c];
-		expect(names(sortAccounts(list, "name", "en", order))).toEqual(["A", "B", "C"]);
-		expect(names(sortAccounts(list, "value", "en", order))).toEqual(["B", "C", "A"]);
+		expect(names(sortAccounts(list, "name", "en", order))).toEqual([
+			"A",
+			"B",
+			"C",
+		]);
+		expect(names(sortAccounts(list, "value", "en", order))).toEqual([
+			"B",
+			"C",
+			"A",
+		]);
 		expect(names(sortAccounts(list, "custom", "en", order))).toEqual(order);
 	});
 });
@@ -159,10 +167,9 @@ describe("moveInOrder", () => {
 	it("starts from the fallback order when nothing is saved", () => {
 		const big = account("Big", { amount: money(500) });
 		const small = account("Small", { amount: money(5) });
-		expect(moveInOrder([small, big], [], "en", ["Big", "Small"], 0, 1)).toEqual([
-			"Small",
-			"Big",
-		]);
+		expect(moveInOrder([small, big], [], "en", ["Big", "Small"], 0, 1)).toEqual(
+			["Small", "Big"],
+		);
 	});
 
 	it("is a no-op when the item stays", () => {

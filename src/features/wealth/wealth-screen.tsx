@@ -146,12 +146,12 @@ export function WealthScreen({
 				</Toolbar>
 				{accounts ? (
 					<AccountList
+						custom={custom}
 						filters={filters}
 						handlers={actions.handlers}
 						onAdd={() => setSheet({ kind: "add" })}
 						onClear={() => setFilters(NO_FILTERS)}
 						onOpen={(a) => setSheet({ kind: "update", account: a })}
-						custom={custom}
 						onReorder={reorder}
 						sort={sort}
 						view={view}

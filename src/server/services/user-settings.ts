@@ -1,5 +1,5 @@
-import { TRPCError } from "@trpc/server";
 import { ACCOUNT_SORTS, MAX_CUSTOM_ORDER } from "@retrospend/api-contract";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { generateDefaultCategoryPreferences } from "~/lib/analytics-defaults";
 import { BASE_CURRENCY, DEFAULT_PAGE_SIZE } from "~/lib/constants";

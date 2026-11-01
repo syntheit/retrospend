@@ -7,10 +7,9 @@ import {
 	setDefaultAccount,
 } from "~/server/services/accounts/defaults";
 import {
-	getAccountOrder,
-	setAccountOrder,
-} from "~/server/services/accounts/order";
-import { exactRate, withRateNumber } from "~/server/services/accounts/exact-rate";
+	exactRate,
+	withRateNumber,
+} from "~/server/services/accounts/exact-rate";
 import { setAccountIcon } from "~/server/services/accounts/icon";
 import * as schema from "~/server/services/accounts/input";
 import {
@@ -22,6 +21,10 @@ import {
 	importAccounts,
 	reopenAccount,
 } from "~/server/services/accounts/manage";
+import {
+	getAccountOrder,
+	setAccountOrder,
+} from "~/server/services/accounts/order";
 import {
 	revertRateType,
 	setRateType,

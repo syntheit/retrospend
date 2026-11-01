@@ -110,11 +110,7 @@ describe("/api/v1/accounts/order", () => {
 		await expectProblem(await put({}), 400, "validation_failed");
 		const [a] = ids as [string];
 		await expectProblem(await put({ order: [a, a] }), 400, "bad_request");
-		await expectProblem(
-			await put({ order: [a, foreign] }),
-			400,
-			"bad_request",
-		);
+		await expectProblem(await put({ order: [a, foreign] }), 400, "bad_request");
 		await expectProblem(
 			await put({ sort: "newest" }),
 			400,
