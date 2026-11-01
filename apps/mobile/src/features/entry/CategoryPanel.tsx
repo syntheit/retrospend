@@ -42,7 +42,12 @@ export function CategoryPanel({
 	// while the pills (with More) are taller than the room, and start again when
 	// the room grows (the keys folded away).
 	const [count, setCount] = useState(SHOWN);
-	const [settled, setSettled] = useState(false);
+	// The pills' height as laid out, and for how many pills it was measured: a
+	// height measured for another count says nothing about this one.
+	const [measured, setMeasured] = useState<{
+		height: number;
+		count: number;
+	} | null>(null);
 	const lastRoom = useRef(room);
 	useEffect(() => {
 		const before = lastRoom.current;
@@ -51,11 +56,18 @@ export function CategoryPanel({
 			setCount(SHOWN);
 		}
 	}, [room, size.ctl.phone]);
+	const current = measured !== null && measured.count === count;
+	const tooTall = current && room !== null && measured.height > room;
+	useEffect(() => {
+		if (tooTall && count > 1) setCount(count - 1);
+	}, [tooTall, count]);
+	// Hidden until the first measure says the pills fit, so no frame shows More cut off.
+	const settled = room === null || (current && (!tooTall || count === 1));
+	// After the first fit a change of room never hides the pills again.
+	const everSettled = useRef(false);
+	if (settled) everSettled.current = true;
 	const measure = (event: LayoutChangeEvent) => {
-		const { height } = event.nativeEvent.layout;
-		if (room === null) return;
-		if (height > room && count > 1) setCount(count - 1);
-		else setSettled(true);
+		setMeasured({ height: event.nativeEvent.layout.height, count });
 	};
 	const shown = recentCategories(catalog, count, draft.categoryId);
 	// Someone else's category on their split: not in your catalog, but kept.
@@ -74,7 +86,7 @@ export function CategoryPanel({
 					flexWrap: "wrap",
 					gap: space[2],
 					// Hidden for the first layout only, while the count settles.
-					opacity: settled || room === null ? 1 : 0,
+					opacity: everSettled.current ? 1 : 0,
 				}}
 			>
 				{saved ? (
