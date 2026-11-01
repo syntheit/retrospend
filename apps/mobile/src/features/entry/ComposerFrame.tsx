@@ -1,4 +1,10 @@
-import { type ReactNode, useLayoutEffect, useMemo, useRef } from "react";
+import {
+	type ReactNode,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {
 	KeyboardAvoidingView,
 	Platform,
@@ -104,6 +110,8 @@ export function ComposerFrame({
 	const { color, duration, space } = theme;
 	const { fontScale, height } = useWindowDimensions();
 	const { bottom } = useSafeAreaInsets();
+	// The details scroll as a whole on a short window: the panels get what is left.
+	const [viewport, setViewport] = useState<number | undefined>(undefined);
 	const system = fontScale > SYSTEM_PAD_SCALE;
 	const open = keypadOpen && !typing && !system;
 
@@ -156,6 +164,7 @@ export function ComposerFrame({
 					bounces={false}
 					contentContainerStyle={{ flexGrow: 1, gap: space[3] }}
 					keyboardShouldPersistTaps="handled"
+					onLayout={(event) => setViewport(event.nativeEvent.layout.height)}
 					onScrollBeginDrag={onScrollDrag}
 					showsVerticalScrollIndicator={false}
 					style={{ flex: 1 }}
@@ -176,6 +185,7 @@ export function ComposerFrame({
 						page={page}
 						snapKey={mode}
 						tabs={tabs}
+						viewportHeight={viewport}
 					>
 						{panels}
 					</DetailPager>

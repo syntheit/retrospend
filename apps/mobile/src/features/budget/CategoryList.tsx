@@ -3,7 +3,7 @@ import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
 import { PickField } from "@/ui/PickField";
-import { PickLabeled, PickMany } from "./pickers";
+import { PickLabeled, PickMany } from "@/ui/PickLabeled";
 
 /** The part of a category an envelope picker needs. */
 export interface BudgetCategory {

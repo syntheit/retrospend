@@ -1,11 +1,11 @@
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Platform, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 import { ProjectsList } from "@/features/projects/ProjectsList";
 import { ProjectsTopBar } from "@/features/projects/ProjectsTopBar";
-import { useSearchShortcut } from "@/layout/searchShortcut";
+import { useHeaderSearch } from "@/layout/headerSearch";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { usePaneEnter } from "@/ui/motion";
@@ -32,7 +32,6 @@ export function PeopleHub() {
 	const tp = useTranslations("mobile.people");
 	const tj = useTranslations("mobile.projects");
 	const { color, space } = useTheme();
-	const searchRef = useSearchShortcut();
 	const { listDetail } = useLayoutClass();
 	// On an Android phone the tab row stays above the lists, mounted across a
 	// switch, so the line slides to the tab (M3 tabs are fixed, not part of the
@@ -44,6 +43,10 @@ export function PeopleHub() {
 	);
 
 	const [query, setQuery] = useState("");
+	const headerSearch = useHeaderSearch({
+		onChange: setQuery,
+		placeholder: segment === "people" ? tp("search") : tj("search"),
+	});
 	const [chip, setChip] = useState<PeopleChip>("all");
 	const [sort, setSort] = useState<PeopleSort>("balance");
 	const paneEnter = usePaneEnter(segment === "people" ? 0 : 1);
@@ -107,19 +110,11 @@ export function PeopleHub() {
 				)}
 			</Animated.View>
 			{segment === "people" ? (
-				<PeopleTopBar title={t("peopleSegment")} />
+				<PeopleTopBar search={headerSearch.action} title={t("peopleSegment")} />
 			) : (
-				<ProjectsTopBar title={t("projects")} />
+				<ProjectsTopBar search={headerSearch.action} title={t("projects")} />
 			)}
-			<Stack.Screen
-				options={{
-					headerSearchBarOptions: {
-						ref: searchRef,
-						placeholder: segment === "people" ? tp("search") : tj("search"),
-						onChangeText: (event) => setQuery(event.nativeEvent.text),
-					},
-				}}
-			/>
+			{headerSearch.screen}
 		</View>
 	);
 }

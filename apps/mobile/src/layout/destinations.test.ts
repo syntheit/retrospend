@@ -80,6 +80,13 @@ describe("singleAdd", () => {
 		expect(out.overflow.map((item) => item.id)).toEqual(["add", "export"]);
 	});
 
+	it("keeps search in the bar beside the toolbar plus", () => {
+		const search = { ...add, id: "search", icon: "Search" as const };
+		const out = singleAdd("toolbar", [search, add], []);
+		expect(out.actions).toEqual([search]);
+		expect(out.overflow.map((item) => item.id)).toEqual(["add"]);
+	});
+
 	it("leaves the bar alone where the add floats", () => {
 		const out = singleAdd("floating", [add], [more]);
 		expect(out.actions).toEqual([add]);

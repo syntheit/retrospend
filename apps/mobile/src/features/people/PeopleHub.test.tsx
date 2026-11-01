@@ -42,13 +42,13 @@ jest.mock("@/theme", () => ({
 	useTheme: () => ({ color: { bg: "bg" }, space: [0, 4, 8, 12, 16] }),
 }));
 jest.mock("@/features/projects/ProjectsTopBar", () => ({
-	ProjectsTopBar: ({ title }: { title: string }) =>
-		require("react").createElement("TopBar", { title }),
+	ProjectsTopBar: ({ title, search }: { title: string; search: unknown }) =>
+		require("react").createElement("TopBar", { title, search }),
 }));
 jest.mock("./useExpensesExport", () => ({ useExpensesExport: () => [] }));
 jest.mock("./PeopleTopBar", () => ({
-	PeopleTopBar: ({ title }: { title: string }) =>
-		require("react").createElement("TopBar", { title }),
+	PeopleTopBar: ({ title, search }: { title: string; search: unknown }) =>
+		require("react").createElement("TopBar", { title, search }),
 }));
 jest.mock("./PeopleList", () => ({
 	PeopleList: (props: object) =>
@@ -180,6 +180,9 @@ describe("PeopleHub", () => {
 	it("keeps the search text and the chip across a segment switch", () => {
 		const tree = mount();
 		act(() => only(tree, "PeopleList").props.filters.onChip("owesYou"));
+		// The system's search bar is mounted by the Search icon in the top bar.
+		expect(mockSearchOptions.headerSearchBarOptions).toBeUndefined();
+		act(() => only(tree, "TopBar").props.search.onPress());
 		act(() =>
 			mockSearchOptions.headerSearchBarOptions?.onChangeText({
 				nativeEvent: { text: "lu" },

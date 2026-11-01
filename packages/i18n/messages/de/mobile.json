@@ -1269,7 +1269,7 @@
 			"nothing": "Das entspricht dem Budget. Es wird nichts hinzugefügt."
 		},
 		"toWealth": {
-			"title": "{name} nach Vermögen verschieben",
+			"title": "In Vermögen verschieben",
 			"lead": "Geld verlässt {name} für ein Konto außerhalb des Budgets. Der Zielfortschritt ändert sich nicht.",
 			"noAccount": "Du hast noch kein Vermögenskonto außerhalb deines Budgets. Füge eines in Vermögen hinzu.",
 			"from": "Verlässt",
@@ -1279,7 +1279,8 @@
 			"got": "Du erhältst (optional)",
 			"move": "Verschieben",
 			"toast": "{amount} von {name} nach {account} verschoben",
-			"envelope": "Kommt aus"
+			"envelope": "Kommt aus",
+			"account": "Konto"
 		},
 		"fromWealth": {
 			"title": "Aus Vermögen verschieben",
@@ -1300,7 +1301,8 @@
 			"putIn": "Hineinlegen in",
 			"move": "Hereinholen",
 			"toastMoved": "{amount} hereingeholt",
-			"toastCounted": "Geld von {name} mitgezählt. {name} hat sich nicht geändert"
+			"toastCounted": "Geld von {name} mitgezählt. {name} hat sich nicht geändert",
+			"account": "Konto"
 		},
 		"resume": "Budget fortsetzen",
 		"targetLine": {

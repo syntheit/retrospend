@@ -1,7 +1,7 @@
-import { Stack } from "expo-router";
 import { type ReactNode, useMemo, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
+import { useHeaderSearch } from "@/layout/headerSearch";
 import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { useCachedRead } from "@/features/read/useCachedRead";
@@ -361,11 +361,18 @@ export function RecurringView({
 	const [chips, setChips] = useState<RecurringFilter>(NO_RECURRING_FILTER);
 	const [own, setOwn] = useState("");
 	const filter = { ...chips, q: embedded ? query : own };
+	const headerSearch = useHeaderSearch({
+		enabled: !embedded,
+		onChange: setOwn,
+		owner: !embedded,
+		placeholder: t("search"),
+	});
 
 	const title = embedded ? null : (
 		<>
 			<AccountTopBar
 				actions={[
+					...(headerSearch.action ? [headerSearch.action] : []),
 					{
 						id: "add-recurring",
 						icon: "Plus",
@@ -375,14 +382,7 @@ export function RecurringView({
 				]}
 				title={t("title")}
 			/>
-			<Stack.Screen
-				options={{
-					headerSearchBarOptions: {
-						placeholder: t("search"),
-						onChangeText: (event) => setOwn(event.nativeEvent.text),
-					},
-				}}
-			/>
+			{headerSearch.screen}
 		</>
 	);
 	const addSheet = (

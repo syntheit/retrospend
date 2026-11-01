@@ -27,27 +27,33 @@ export function useFilterLeads() {
 					size={size.icon.phone}
 				/>
 			),
-			person: (person: {
-				key: string;
-				name: string;
-				imageUrl?: string | null;
-			}): ReactElement => (
+			person: (
+				person: {
+					key: string;
+					name: string;
+					imageUrl?: string | null;
+				},
+				avatar: "xs" | "sm" = "xs",
+			): ReactElement => (
 				<Avatar
 					face={{
 						key: person.key,
 						name: person.name,
 						imageUri: absoluteImage(person.imageUrl, base),
 					}}
-					size="xs"
+					size={avatar}
 				/>
 			),
-			project: (project: {
-				id: string;
-				name: string;
-				imageUrl?: string | null;
-			}): ReactElement => (
+			project: (
+				project: {
+					id: string;
+					name: string;
+					imageUrl?: string | null;
+				},
+				avatar: "xs" | "sm" = "xs",
+			): ReactElement => (
 				<Cover
-					diameter={size.avatar.xs}
+					diameter={size.avatar[avatar]}
 					id={project.id}
 					imageUri={absoluteImage(project.imageUrl, base)}
 					name={project.name}

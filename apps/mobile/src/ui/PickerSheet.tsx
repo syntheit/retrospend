@@ -51,7 +51,9 @@ export function PickerSheet({
 	const items = useMemo<Item[]>(
 		() =>
 			shown.flatMap((g) => [
-				{ kind: "heading" as const, key: `h:${g.key}`, text: g.heading },
+				...(g.heading
+					? [{ kind: "heading" as const, key: `h:${g.key}`, text: g.heading }]
+					: []),
 				...g.rows.map((row) => ({
 					kind: "row" as const,
 					key: `${g.key}:${row.id}`,

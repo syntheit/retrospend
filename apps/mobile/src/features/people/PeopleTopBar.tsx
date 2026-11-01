@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslations } from "use-intl";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
+import type { TopBarAction } from "@/ui/types";
 import { AddPersonSheet } from "./AddPersonSheet";
 import { useExpensesExport } from "./useExpensesExport";
 
@@ -9,7 +10,14 @@ import { useExpensesExport } from "./useExpensesExport";
  * the account button. Add person opens a sheet for a name and an optional
  * email.
  */
-export function PeopleTopBar({ title }: { title: string }) {
+export function PeopleTopBar({
+	title,
+	search,
+}: {
+	title: string;
+	/** The list's Search icon, first in the bar. */
+	search?: TopBarAction | null;
+}) {
 	const t = useTranslations("mobile.people.add");
 	const more = useTranslations("mobile.activity")("overflow");
 	const overflow = useExpensesExport();
@@ -18,6 +26,7 @@ export function PeopleTopBar({ title }: { title: string }) {
 		<>
 			<AccountTopBar
 				actions={[
+					...(search ? [search] : []),
 					{
 						id: "add-person",
 						icon: "UserPlus",

@@ -1,7 +1,9 @@
 import {
 	Children,
+	createContext,
 	type ReactNode,
 	useCallback,
+	useContext,
 	useEffect,
 	useMemo,
 	useRef,
@@ -31,6 +33,18 @@ import { useTheme } from "@/theme";
 import { Glyph, type GlyphName } from "./Glyph";
 import { easeLand } from "./motion";
 import { Text } from "./Text";
+
+/**
+ * The height a panel has to show its content, before it has to scroll
+ * (null until the pager has been laid out). A panel with a choice of its own
+ * length (the category pills) reads it to show as many as fit.
+ */
+const PanelRoomContext = createContext<number | null>(null);
+
+/** The height of the panel this component is in, less the panel's own padding. */
+export function usePanelRoom(): number | null {
+	return useContext(PanelRoomContext);
+}
 
 /** One tab of the pager: its word, its glyph, and whether it is off its default. */
 export interface PagerTab {
@@ -118,6 +132,7 @@ export function DetailPager({
 	dotLabel,
 	minHeight = MIN_PANEL_HEIGHT,
 	snapKey,
+	viewportHeight,
 }: {
 	tabs: PagerTab[];
 	page: number;
@@ -131,12 +146,20 @@ export function DetailPager({
 	minHeight?: number;
 	/** Another key means another set of panels (a mode): the strip lands on its page at once. */
 	snapKey?: string;
+	/**
+	 * The height of the scroll view the pager sits in, when that scrolls as a
+	 * whole (the composer on a short window): the panels then show only what
+	 * is left of it under the pager's top, which is less than the panel is tall.
+	 */
+	viewportHeight?: number;
 }) {
 	const theme = useTheme();
 	const { color, duration, radius, size, space } = theme;
 	const { fontScale, width: windowWidth } = useWindowDimensions();
 	const reduce = useReducedMotion();
 	const [box, setBox] = useState({ width: 0, height: 0 });
+	// Where the pager starts in its scroll view's content.
+	const [top, setTop] = useState(0);
 	const { width } = box;
 	// Before the first layout the window's width stands in, so every panel exists.
 	const pageWidth = Math.round(width || windowWidth);
@@ -236,8 +259,22 @@ export function DetailPager({
 	}));
 
 	const dot = space[2];
+	// What a panel can show without scrolling: its own height, or less when the
+	// scroll view around the pager cuts it (the tab row and the gap come first).
+	const tabsHeight = size.touchMin.phone + space[1] + space[2];
+	const seen =
+		viewportHeight === undefined
+			? box.height
+			: Math.min(box.height, viewportHeight - top - tabsHeight);
+	const room = box.height > 0 ? Math.max(0, seen - 2 * space[3]) : null;
 	return (
-		<View style={{ flex: 1, minHeight, gap: space[2] }}>
+		<View
+			onLayout={(event: LayoutChangeEvent) => {
+				const y = event.nativeEvent.layout.y;
+				setTop((t) => (t === y ? t : y));
+			}}
+			style={{ flex: 1, minHeight, gap: space[2] }}
+		>
 			<View
 				accessibilityLabel={label}
 				accessibilityRole="tablist"
@@ -359,7 +396,9 @@ export function DetailPager({
 											keyboardShouldPersistTaps="handled"
 											nestedScrollEnabled
 										>
-											{panel}
+											<PanelRoomContext.Provider value={room}>
+												{panel}
+											</PanelRoomContext.Provider>
 										</ScrollView>
 									</View>
 								))}

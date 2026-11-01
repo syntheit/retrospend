@@ -1,9 +1,6 @@
-import { type ReactNode, useMemo, useRef, useState } from "react";
-import { useTranslations } from "use-intl";
+import { type ReactNode, useRef, useState } from "react";
 import { useTheme } from "@/theme";
-import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
-import { PickerSheet } from "@/ui/PickerSheet";
-import type { PickGroup } from "@/ui/pickGroups";
+import { CategoryPickerSheet } from "@/ui/CategoryPickerSheet";
 import { BulkSheet } from "./BulkSheet";
 import type { BulkAction } from "./bulkWrite";
 import { useCategories } from "./useCategories";
@@ -23,48 +20,21 @@ export interface BulkActions {
  * server's dry run before anything is written (R30), then an Undo toast.
  */
 export function useBulkActions(onDone: () => void): BulkActions {
-	const tp = useTranslations("mobile.pickers");
-	const { color, duration, size } = useTheme();
+	const { duration } = useTheme();
 	const categories = useCategories();
 	const [choosing, setChoosing] = useState(false);
 	const [action, setAction] = useState<BulkAction | null>(null);
 	// The ids the open sheet works on stay fixed while it is up.
 	const shown = useRef<string[]>([]);
 
-	const groups = useMemo<PickGroup[]>(
-		() => [
-			{
-				key: "all",
-				heading: tp("category.all"),
-				rows: (categories.state.status === "ready"
-					? categories.state.data
-					: []
-				).map((c) => ({
-					id: c.id,
-					label: c.name,
-					lead: (
-						<CategoryGlyph
-							category={c}
-							color={categoryColor(color, c.tone)}
-							size={size.icon.phone}
-						/>
-					),
-					selected: false,
-				})),
-			},
-		],
-		[categories.state, color, size.icon.phone, tp],
-	);
-
 	const sheets = (
 		<>
-			<PickerSheet
-				clear={tp("clear")}
-				empty={tp("category.empty")}
-				find={tp("category.find")}
-				groups={groups}
-				onClose={() => setChoosing(false)}
-				onSelect={(id) => {
+			<CategoryPickerSheet
+				categories={(categories.state.status === "ready"
+					? categories.state.data
+					: []
+				).map((c) => ({ ...c, icon: c.icon ?? null }))}
+				onChange={(id) => {
 					const name =
 						categories.state.status === "ready"
 							? categories.state.data.find((c) => c.id === id)?.name
@@ -80,7 +50,8 @@ export function useBulkActions(onDone: () => void): BulkActions {
 						duration.sheet,
 					);
 				}}
-				title={tp("category.title")}
+				onClose={() => setChoosing(false)}
+				value={null}
 				visible={choosing}
 			/>
 			<BulkSheet

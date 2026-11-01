@@ -88,6 +88,9 @@ export const ADD_CONTROL = addControlFor({
  */
 export const FLOATING_ADD_INSET = ADD_CONTROL === "floating" ? 80 : 0;
 
+/** Page actions that are not adds: they stay in the bar beside the plus. */
+const STAY_IN_BAR = new Set(["search", "converter", "notifications"]);
+
 /**
  * One plus per header. Where the toolbar carries the global add (the iPad),
  * a page's own add action (Add recurring expense, Add person, Add account)
@@ -99,12 +102,15 @@ export function singleAdd(
 	actions: readonly TopBarAction[],
 	overflow: readonly MenuItem[],
 ): { actions: TopBarAction[]; overflow: MenuItem[] } {
-	if (control !== "toolbar" || actions.length === 0)
+	if (control !== "toolbar") {
 		return { actions: [...actions], overflow: [...overflow] };
+	}
+	const stay = actions.filter((action) => STAY_IN_BAR.has(action.id));
+	const adds = actions.filter((action) => !STAY_IN_BAR.has(action.id));
 	return {
-		actions: [],
+		actions: stay,
 		overflow: [
-			...actions.map(({ id, label, onPress }) => ({ id, label, onPress })),
+			...adds.map(({ id, label, onPress }) => ({ id, label, onPress })),
 			...overflow,
 		],
 	};

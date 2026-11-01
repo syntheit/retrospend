@@ -11,7 +11,11 @@ import { PickerSheet } from "@/ui/PickerSheet";
 import type { PickGroup } from "@/ui/pickGroups";
 import { SummaryLine, type SummaryPart } from "@/ui/SummaryLine";
 import type { MenuItem } from "@/ui/types";
-import { type ActivityFilter, DEFAULT_FILTER } from "./filter";
+import {
+	type ActivityFilter,
+	DEFAULT_FILTER,
+	effectivePeriod,
+} from "./filter";
 import { useFilterLeads } from "./filterLeads";
 import { useCategories } from "./useCategories";
 
@@ -51,17 +55,20 @@ export function ActivityFilters({
 	const person = peopleList.find((p) => p.person.key === filter.personKey);
 	const project = projectList.find((p) => p.id === filter.projectId);
 
+	// What the list really covers: a search or a category lists every month.
+	const period = effectivePeriod(filter);
 	const parts: SummaryPart[] = [
 		{
 			key: "period",
-			text: t(`period.${filter.period}`),
+			text: t(`period.${period}`),
 			accessibilityLabel: t("chip.periodSpoken", {
-				value: t(`period.${filter.period}`),
+				value: t(`period.${period}`),
 			}),
+			// All time becomes this month, asked for on purpose, and back.
 			onPress: () =>
 				onChange({
 					...filter,
-					period: filter.period === "month" ? "all" : "month",
+					period: period === "all" ? "thisMonth" : "all",
 				}),
 		},
 	];
@@ -159,7 +166,7 @@ export function ActivityFilters({
 					peopleList.map((p) => ({
 						id: p.person.key,
 						label: p.person.name,
-						lead: leads.person(p.person),
+						lead: leads.person(p.person, "sm"),
 						selected: p.person.key === filter.personKey,
 					})),
 				)}
@@ -177,7 +184,7 @@ export function ActivityFilters({
 					projectList.map((p) => ({
 						id: p.id,
 						label: p.name,
-						lead: leads.project(p),
+						lead: leads.project(p, "sm"),
 						selected: p.id === filter.projectId,
 					})),
 				)}
