@@ -102,6 +102,15 @@ describe("pushed screens have the back button", () => {
 		expect(root).toMatch(/name="account"\s+options=\{accountSheetOptions\(\)\}/);
 	});
 
+	// The owner chose the platform standard: a tab keeps its stack, tapping the
+	// open tab pops it to its root, and tapping again at the root scrolls to the
+	// top. The native tabs do all three unless a trigger turns them off.
+	it("leaves the native tab behavior on: pop to root and scroll to top", () => {
+		const tabs = readFileSync(join(SRC, "ui/Tabs.tsx"), "utf8");
+		expect(tabs).not.toMatch(/disablePopToTop|disableScrollToTop/);
+		expect(tabs).not.toMatch(/popToRoot|unstable_nativeProps/);
+	});
+
 	it("never hides the back button or swaps it for a drawn one", () => {
 		const offenders: string[] = [];
 		for (const path of [...files(APP), ...files(SRC)]) {
