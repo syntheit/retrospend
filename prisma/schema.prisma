@@ -962,6 +962,12 @@ model AssetAccount {
   /// Set when the account is closed. A closed account counts 0 from this day
   /// on but keeps its snapshots, so past net worth stays as it was.
   closedAt         DateTime?
+  /// The mark shown beside the account. Null = the default glyph for its
+  /// type. BRAND: iconValue is a bundled logo's slug. MONOGRAM: iconValue is
+  /// an avatar palette slot ("avatar-3"), the first letter of the name on it.
+  /// IMAGE: iconValue is the uploaded file's path in the upload store.
+  iconKind         AccountIconKind?
+  iconValue        String?         @db.VarChar(500)
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1175,6 +1181,12 @@ enum CategoryColor {
 enum CategoryClickBehavior {
   navigate
   toggle
+}
+
+enum AccountIconKind {
+  BRAND
+  MONOGRAM
+  IMAGE
 }
 
 enum NumberFormat {

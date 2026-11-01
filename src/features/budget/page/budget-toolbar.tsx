@@ -3,14 +3,11 @@
 import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Toolbar } from "~/components/layout/toolbar";
-import { useRowDates } from "~/components/rows/dates";
-import { Button } from "~/components/ui/button";
 import { FilterChip, FilterChips } from "~/components/ui/chip";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/cn";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import { MonthSwitch } from "./month-switch";
-import { monthStartIso, shiftMonth } from "./months";
 import { type Chip, countStatus } from "./view-model";
 
 /**
@@ -43,27 +40,14 @@ export function BudgetToolbar({
 	onMonth: (key: number) => void;
 }) {
 	const t = useTranslations("budgetPage.toolbar");
-	const { month } = useRowDates();
 	const key = data.month.key;
 	const over = countStatus(data.groups, "overspent");
 	const under = countStatus(data.groups, "underfunded");
 	const toggle = (c: Chip) => onChip(chip === c ? null : c);
-	const next = shiftMonth(current, 1);
 	// A phone keeps the month and the hero; search and chips come with a long list (SPEC §6.2).
 	const long = data.groups.reduce((n, g) => n + g.envelopes.length, 0) > 8;
 	return (
 		<Toolbar
-			end={
-				key === current ? (
-					<Button
-						className="max-md:hidden"
-						kind="secondary"
-						onClick={() => onMonth(next)}
-					>
-						{t("plan", { month: month(monthStartIso(next)) })}
-					</Button>
-				) : undefined
-			}
 			label={t("label")}
 			search={
 				<>

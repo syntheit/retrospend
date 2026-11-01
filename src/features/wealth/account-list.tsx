@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronRight, SearchX } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { AccountTarget } from "~/components/actions/registry";
@@ -14,6 +14,7 @@ import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import { cn } from "~/lib/cn";
 import { useRateLabel } from "./sheets/rate-type-chips";
+import { sortAccounts, type WealthSort } from "./sort";
 import type { WealthAccount, WealthGroup, WealthView } from "./types";
 
 export type AccountFilters = {
@@ -91,6 +92,7 @@ function Rows({
 								id: a.id,
 								name: a.name,
 								kind: a.kind,
+								icon: a.icon,
 								amount: a.amount,
 								home: a.home,
 								updated: a.updated,
@@ -157,6 +159,7 @@ function Group({
 export function AccountList({
 	view,
 	filters,
+	sort,
 	handlers,
 	onOpen,
 	onClear,
@@ -164,12 +167,14 @@ export function AccountList({
 }: {
 	view: WealthView;
 	filters: AccountFilters;
+	sort: WealthSort;
 	handlers: ActionHandlers<AccountTarget>;
 	onOpen: (a: WealthAccount) => void;
 	onClear: () => void;
 	onAdd: () => void;
 }) {
 	const t = useTranslations("wealthPage");
+	const locale = useLocale();
 	const [showClosed, setShowClosed] = useState(false);
 	const series = new Map(view.allocation.map((s) => [s.key, s.series]));
 	if (!view.groups.length && !view.closed.length)
@@ -187,10 +192,18 @@ export function AccountList({
 	const shown = view.groups
 		.map((g) => ({
 			...g,
-			accounts: g.accounts.filter((a) => matches(a, filters, view.home)),
+			accounts: sortAccounts(
+				g.accounts.filter((a) => matches(a, filters, view.home)),
+				sort,
+				locale,
+			),
 		}))
 		.filter((g) => g.accounts.length);
-	const closed = view.closed.filter((a) => matches(a, filters, view.home));
+	const closed = sortAccounts(
+		view.closed.filter((a) => matches(a, filters, view.home)),
+		sort,
+		locale,
+	);
 	return (
 		<div>
 			{shown.map((g) => (

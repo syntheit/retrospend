@@ -5,6 +5,7 @@
  */
 import type { MoneyValue } from "~/components/money/format";
 import type { AccountKind, Basis } from "~/components/rows/types";
+import type { AccountIcon } from "~/lib/account-icons";
 
 export type AssetTypeKey =
 	| "CASH"
@@ -52,6 +53,8 @@ export type WealthAccount = {
 	updated: string;
 	/** ISO date it was closed; null while open. */
 	closedOn: string | null;
+	/** The mark beside it; null keeps the glyph of its type. */
+	icon: AccountIcon | null;
 };
 
 export type WealthGroup = {

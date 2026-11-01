@@ -43,6 +43,24 @@ describe("valid paths", () => {
 		expect(cc).toContain("public");
 	});
 
+	it("serves account icons", async () => {
+		const res = await GET(
+			makeRequest(),
+			makeParams(["accounts", "a1-1730000000000.webp"]),
+		);
+		expect(res.status).toBe(200);
+		expect(res.headers.get("Content-Type")).toBe("image/webp");
+	});
+
+	it("serves account icons", async () => {
+		const res = await GET(
+			makeRequest(),
+			makeParams(["accounts", "a1-1730000000000.webp"]),
+		);
+		expect(res.status).toBe(200);
+		expect(res.headers.get("Content-Type")).toBe("image/webp");
+	});
+
 	it("returns correct content-type for .jpeg", async () => {
 		const res = await GET(makeRequest(), makeParams(["projects", "r-1.jpeg"]));
 		expect(res.status).toBe(200);

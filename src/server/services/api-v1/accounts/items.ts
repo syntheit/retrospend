@@ -1,3 +1,4 @@
+import { iconOf } from "~/lib/account-icons";
 import { homeCurrencyOf, ratePickFor } from "~/server/services/accounts/ledger";
 import { inBudget, worthOf } from "~/server/services/accounts/places";
 import { homeValue, type RatePick } from "~/server/services/accounts/valuation";
@@ -40,6 +41,7 @@ export function accountItem(row: Row, home: string, pick: RatePick) {
 			? moneyOfText(row.minimumPayment.toString(), row.currency)
 			: null,
 		dueDay: row.dueDate,
+		icon: iconOf(row),
 		updatedAt: row.updatedAt.toISOString(),
 	};
 }

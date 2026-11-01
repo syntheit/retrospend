@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { accountIconSchema } from "../accounts/schemas";
 import { v1 } from "../common/meta";
 import {
 	currencyCodeSchema,
@@ -39,6 +40,9 @@ export const entryPlaceSchema = z
 		/** Part of your budget. */
 		inBudget: z.boolean(),
 		liability: z.boolean(),
+		icon: accountIconSchema
+			.nullable()
+			.meta({ description: "The mark beside the account; null: its default." }),
 	})
 	.meta({ id: "EntryPlace" });
 

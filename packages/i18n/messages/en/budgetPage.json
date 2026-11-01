@@ -14,8 +14,7 @@
 		"searchLimits": "Search limits",
 		"chips": "Filter by status",
 		"overspent": "Overspent {count}",
-		"underfunded": "Underfunded {count}",
-		"plan": "Plan {month}"
+		"underfunded": "Underfunded {count}"
 	},
 	"hero": {
 		"why": "How this adds up",
@@ -140,6 +139,15 @@
 			"open": "Assign money",
 			"fromWealth": "Move from Wealth"
 		}
+	},
+	"insights": {
+		"title": "Spending vs plan",
+		"spent": "Spent <spent></spent> of <planned></planned> planned",
+		"bar": "Spent of planned",
+		"incomplete": "Left out: rows without a rate yet",
+		"mostOver": "Most over plan",
+		"mostRoom": "Most room left",
+		"trend": "Spent by month"
 	},
 	"unavailable": {
 		"title": "Not available right now",

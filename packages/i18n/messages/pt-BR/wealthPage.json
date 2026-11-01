@@ -76,7 +76,8 @@
 		"updated": "{name} atualizada",
 		"added": "{name} adicionada",
 		"saved": "{name} salva",
-		"failed": "Não foi possível salvar. Tente de novo."
+		"failed": "Não foi possível salvar. Tente de novo.",
+		"iconFailed": "Salvo, mas o ícone não foi enviado. Tente de novo."
 	},
 	"rateTypes": {
 		"official": "Oficial",
@@ -131,6 +132,39 @@
 			"submit": "Encerrar conta",
 			"body": "{name} sai das suas contas e do seu patrimônio a partir de hoje. O histórico de saldos continua, e você pode reabri-la em Contas encerradas.",
 			"left": "Ainda mostra <amount></amount>. Se o dinheiro foi para outro lugar, primeiro atualize o saldo para zero."
+		},
+		"icon": {
+			"label": "Ícone",
+			"default": "Padrão",
+			"letter": "Letra",
+			"image": "Sua imagem",
+			"title": "Ícone da conta",
+			"find": "Buscar um logo",
+			"empty": "Nenhum logo corresponde",
+			"none": "Ícone padrão",
+			"letters": "Letra sobre uma cor",
+			"logos": "Logos",
+			"selected": "Selecionado",
+			"upload": "Enviar imagem",
+			"tooLarge": "Escolha uma imagem com menos de 5 MB.",
+			"colors": {
+				"avatar-1": "Azul",
+				"avatar-2": "Laranja",
+				"avatar-3": "Rosa",
+				"avatar-4": "Verde",
+				"avatar-5": "Roxo",
+				"avatar-6": "Vermelho",
+				"avatar-7": "Índigo",
+				"avatar-8": "Verde-azulado"
+			}
 		}
+	},
+	"sort": {
+		"button": "Ordem: {sort}",
+		"label": "Ordenar contas por",
+		"balance": "Saldo",
+		"name": "Nome",
+		"type": "Tipo",
+		"updated": "Atualizadas recentemente"
 	}
 }

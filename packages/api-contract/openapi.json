@@ -187,6 +187,35 @@
 															}
 														]
 													},
+													"icon": {
+														"anyOf": [
+															{
+																"description": "The mark shown beside the account. Absent (null) means the default glyph for its type.",
+																"properties": {
+																	"kind": {
+																		"enum": [
+																			"BRAND",
+																			"MONOGRAM",
+																			"IMAGE"
+																		],
+																		"type": "string"
+																	},
+																	"value": {
+																		"description": "BRAND: a logo slug from the finance subset of Simple Icons (CC0), like revolut. MONOGRAM: an avatar palette slot, avatar-1 to avatar-8; the mark is the first letter of the name on that color. IMAGE: the URL path of the picture the person uploaded, like /api/images/accounts/<id>-<ms>.webp.",
+																		"type": "string"
+																	}
+																},
+																"required": [
+																	"kind",
+																	"value"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
 													"id": {
 														"maxLength": 64,
 														"minLength": 1,
@@ -274,6 +303,7 @@
 													"interestRate",
 													"minimumPayment",
 													"dueDay",
+													"icon",
 													"updatedAt"
 												],
 												"type": "object"
@@ -574,6 +604,35 @@
 														}
 													]
 												},
+												"icon": {
+													"anyOf": [
+														{
+															"description": "The mark shown beside the account. Absent (null) means the default glyph for its type.",
+															"properties": {
+																"kind": {
+																	"enum": [
+																		"BRAND",
+																		"MONOGRAM",
+																		"IMAGE"
+																	],
+																	"type": "string"
+																},
+																"value": {
+																	"description": "BRAND: a logo slug from the finance subset of Simple Icons (CC0), like revolut. MONOGRAM: an avatar palette slot, avatar-1 to avatar-8; the mark is the first letter of the name on that color. IMAGE: the URL path of the picture the person uploaded, like /api/images/accounts/<id>-<ms>.webp.",
+																	"type": "string"
+																}
+															},
+															"required": [
+																"kind",
+																"value"
+															],
+															"type": "object"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"id": {
 													"maxLength": 64,
 													"minLength": 1,
@@ -661,6 +720,7 @@
 												"interestRate",
 												"minimumPayment",
 												"dueDay",
+												"icon",
 												"updatedAt"
 											],
 											"type": "object"
@@ -2470,6 +2530,35 @@
 																		}
 																	]
 																},
+																"icon": {
+																	"anyOf": [
+																		{
+																			"description": "The mark shown beside the account. Absent (null) means the default glyph for its type.",
+																			"properties": {
+																				"kind": {
+																					"enum": [
+																						"BRAND",
+																						"MONOGRAM",
+																						"IMAGE"
+																					],
+																					"type": "string"
+																				},
+																				"value": {
+																					"description": "BRAND: a logo slug from the finance subset of Simple Icons (CC0), like revolut. MONOGRAM: an avatar palette slot, avatar-1 to avatar-8; the mark is the first letter of the name on that color. IMAGE: the URL path of the picture the person uploaded, like /api/images/accounts/<id>-<ms>.webp.",
+																					"type": "string"
+																				}
+																			},
+																			"required": [
+																				"kind",
+																				"value"
+																			],
+																			"type": "object"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
 																"id": {
 																	"maxLength": 64,
 																	"minLength": 1,
@@ -2557,6 +2646,7 @@
 																"interestRate",
 																"minimumPayment",
 																"dueDay",
+																"icon",
 																"updatedAt"
 															],
 															"type": "object"
@@ -2611,6 +2701,35 @@
 																		}
 																	]
 																},
+																"icon": {
+																	"anyOf": [
+																		{
+																			"description": "The mark shown beside the account. Absent (null) means the default glyph for its type.",
+																			"properties": {
+																				"kind": {
+																					"enum": [
+																						"BRAND",
+																						"MONOGRAM",
+																						"IMAGE"
+																					],
+																					"type": "string"
+																				},
+																				"value": {
+																					"description": "BRAND: a logo slug from the finance subset of Simple Icons (CC0), like revolut. MONOGRAM: an avatar palette slot, avatar-1 to avatar-8; the mark is the first letter of the name on that color. IMAGE: the URL path of the picture the person uploaded, like /api/images/accounts/<id>-<ms>.webp.",
+																					"type": "string"
+																				}
+																			},
+																			"required": [
+																				"kind",
+																				"value"
+																			],
+																			"type": "object"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
 																"id": {
 																	"maxLength": 64,
 																	"minLength": 1,
@@ -2698,6 +2817,7 @@
 																"interestRate",
 																"minimumPayment",
 																"dueDay",
+																"icon",
 																"updatedAt"
 															],
 															"type": "object"
@@ -2752,6 +2872,35 @@
 																		}
 																	]
 																},
+																"icon": {
+																	"anyOf": [
+																		{
+																			"description": "The mark shown beside the account. Absent (null) means the default glyph for its type.",
+																			"properties": {
+																				"kind": {
+																					"enum": [
+																						"BRAND",
+																						"MONOGRAM",
+																						"IMAGE"
+																					],
+																					"type": "string"
+																				},
+																				"value": {
+																					"description": "BRAND: a logo slug from the finance subset of Simple Icons (CC0), like revolut. MONOGRAM: an avatar palette slot, avatar-1 to avatar-8; the mark is the first letter of the name on that color. IMAGE: the URL path of the picture the person uploaded, like /api/images/accounts/<id>-<ms>.webp.",
+																					"type": "string"
+																				}
+																			},
+																			"required": [
+																				"kind",
+																				"value"
+																			],
+																			"type": "object"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
 																"id": {
 																	"maxLength": 64,
 																	"minLength": 1,
@@ -2839,6 +2988,7 @@
 																"interestRate",
 																"minimumPayment",
 																"dueDay",
+																"icon",
 																"updatedAt"
 															],
 															"type": "object"
@@ -2893,6 +3043,35 @@
 																		}
 																	]
 																},
+																"icon": {
+																	"anyOf": [
+																		{
+																			"description": "The mark shown beside the account. Absent (null) means the default glyph for its type.",
+																			"properties": {
+																				"kind": {
+																					"enum": [
+																						"BRAND",
+																						"MONOGRAM",
+																						"IMAGE"
+																					],
+																					"type": "string"
+																				},
+																				"value": {
+																					"description": "BRAND: a logo slug from the finance subset of Simple Icons (CC0), like revolut. MONOGRAM: an avatar palette slot, avatar-1 to avatar-8; the mark is the first letter of the name on that color. IMAGE: the URL path of the picture the person uploaded, like /api/images/accounts/<id>-<ms>.webp.",
+																					"type": "string"
+																				}
+																			},
+																			"required": [
+																				"kind",
+																				"value"
+																			],
+																			"type": "object"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
 																"id": {
 																	"maxLength": 64,
 																	"minLength": 1,
@@ -2980,6 +3159,7 @@
 																"interestRate",
 																"minimumPayment",
 																"dueDay",
+																"icon",
 																"updatedAt"
 															],
 															"type": "object"
@@ -3667,6 +3847,35 @@
 												}
 											]
 										},
+										"icon": {
+											"anyOf": [
+												{
+													"description": "The mark shown beside the account. Absent (null) means the default glyph for its type.",
+													"properties": {
+														"kind": {
+															"enum": [
+																"BRAND",
+																"MONOGRAM",
+																"IMAGE"
+															],
+															"type": "string"
+														},
+														"value": {
+															"description": "BRAND: a logo slug from the finance subset of Simple Icons (CC0), like revolut. MONOGRAM: an avatar palette slot, avatar-1 to avatar-8; the mark is the first letter of the name on that color. IMAGE: the URL path of the picture the person uploaded, like /api/images/accounts/<id>-<ms>.webp.",
+															"type": "string"
+														}
+													},
+													"required": [
+														"kind",
+														"value"
+													],
+													"type": "object"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
 										"id": {
 											"maxLength": 64,
 											"minLength": 1,
@@ -3845,6 +4054,7 @@
 										"interestRate",
 										"minimumPayment",
 										"dueDay",
+										"icon",
 										"updatedAt",
 										"countedUnits",
 										"rateTypeHistory",
@@ -4134,6 +4344,35 @@
 														}
 													]
 												},
+												"icon": {
+													"anyOf": [
+														{
+															"description": "The mark shown beside the account. Absent (null) means the default glyph for its type.",
+															"properties": {
+																"kind": {
+																	"enum": [
+																		"BRAND",
+																		"MONOGRAM",
+																		"IMAGE"
+																	],
+																	"type": "string"
+																},
+																"value": {
+																	"description": "BRAND: a logo slug from the finance subset of Simple Icons (CC0), like revolut. MONOGRAM: an avatar palette slot, avatar-1 to avatar-8; the mark is the first letter of the name on that color. IMAGE: the URL path of the picture the person uploaded, like /api/images/accounts/<id>-<ms>.webp.",
+																	"type": "string"
+																}
+															},
+															"required": [
+																"kind",
+																"value"
+															],
+															"type": "object"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"id": {
 													"maxLength": 64,
 													"minLength": 1,
@@ -4221,6 +4460,7 @@
 												"interestRate",
 												"minimumPayment",
 												"dueDay",
+												"icon",
 												"updatedAt"
 											],
 											"type": "object"
@@ -5193,6 +5433,35 @@
 														}
 													]
 												},
+												"icon": {
+													"anyOf": [
+														{
+															"description": "The mark shown beside the account. Absent (null) means the default glyph for its type.",
+															"properties": {
+																"kind": {
+																	"enum": [
+																		"BRAND",
+																		"MONOGRAM",
+																		"IMAGE"
+																	],
+																	"type": "string"
+																},
+																"value": {
+																	"description": "BRAND: a logo slug from the finance subset of Simple Icons (CC0), like revolut. MONOGRAM: an avatar palette slot, avatar-1 to avatar-8; the mark is the first letter of the name on that color. IMAGE: the URL path of the picture the person uploaded, like /api/images/accounts/<id>-<ms>.webp.",
+																	"type": "string"
+																}
+															},
+															"required": [
+																"kind",
+																"value"
+															],
+															"type": "object"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"id": {
 													"maxLength": 64,
 													"minLength": 1,
@@ -5280,6 +5549,7 @@
 												"interestRate",
 												"minimumPayment",
 												"dueDay",
+												"icon",
 												"updatedAt"
 											],
 											"type": "object"
@@ -7811,6 +8081,35 @@
 														}
 													]
 												},
+												"icon": {
+													"anyOf": [
+														{
+															"description": "The mark shown beside the account. Absent (null) means the default glyph for its type.",
+															"properties": {
+																"kind": {
+																	"enum": [
+																		"BRAND",
+																		"MONOGRAM",
+																		"IMAGE"
+																	],
+																	"type": "string"
+																},
+																"value": {
+																	"description": "BRAND: a logo slug from the finance subset of Simple Icons (CC0), like revolut. MONOGRAM: an avatar palette slot, avatar-1 to avatar-8; the mark is the first letter of the name on that color. IMAGE: the URL path of the picture the person uploaded, like /api/images/accounts/<id>-<ms>.webp.",
+																	"type": "string"
+																}
+															},
+															"required": [
+																"kind",
+																"value"
+															],
+															"type": "object"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"id": {
 													"maxLength": 64,
 													"minLength": 1,
@@ -7898,6 +8197,7 @@
 												"interestRate",
 												"minimumPayment",
 												"dueDay",
+												"icon",
 												"updatedAt"
 											],
 											"type": "object"
@@ -61323,6 +61623,36 @@
 														"pattern": "^[A-Z0-9]{2,10}$",
 														"type": "string"
 													},
+													"icon": {
+														"anyOf": [
+															{
+																"description": "The mark shown beside the account. Absent (null) means the default glyph for its type.",
+																"properties": {
+																	"kind": {
+																		"enum": [
+																			"BRAND",
+																			"MONOGRAM",
+																			"IMAGE"
+																		],
+																		"type": "string"
+																	},
+																	"value": {
+																		"description": "BRAND: a logo slug from the finance subset of Simple Icons (CC0), like revolut. MONOGRAM: an avatar palette slot, avatar-1 to avatar-8; the mark is the first letter of the name on that color. IMAGE: the URL path of the picture the person uploaded, like /api/images/accounts/<id>-<ms>.webp.",
+																		"type": "string"
+																	}
+																},
+																"required": [
+																	"kind",
+																	"value"
+																],
+																"type": "object"
+															},
+															{
+																"type": "null"
+															}
+														],
+														"description": "The mark beside the account; null: its default."
+													},
 													"id": {
 														"maxLength": 64,
 														"minLength": 1,
@@ -61348,7 +61678,8 @@
 													"currency",
 													"balance",
 													"inBudget",
-													"liability"
+													"liability",
+													"icon"
 												],
 												"type": "object"
 											},

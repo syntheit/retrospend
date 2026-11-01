@@ -14,8 +14,7 @@
 		"searchLimits": "Buscar límites",
 		"chips": "Filtrar por estado",
 		"overspent": "Excedidos {count}",
-		"underfunded": "Sin fondos suficientes {count}",
-		"plan": "Planificar {month}"
+		"underfunded": "Sin fondos suficientes {count}"
 	},
 	"hero": {
 		"why": "Cómo se calcula",
@@ -140,6 +139,15 @@
 			"open": "Asignar plata",
 			"fromWealth": "Mover desde Patrimonio"
 		}
+	},
+	"insights": {
+		"title": "Gasto y plan",
+		"spent": "Gastaste <spent></spent> de <planned></planned> planificados",
+		"bar": "Gastado del plan",
+		"incomplete": "Quedan afuera: filas sin cotización",
+		"mostOver": "Más por encima del plan",
+		"mostRoom": "Más margen disponible",
+		"trend": "Gasto por mes"
 	},
 	"unavailable": {
 		"title": "No disponible por ahora",

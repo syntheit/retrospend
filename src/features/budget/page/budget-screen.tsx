@@ -5,10 +5,12 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
+import { useIsMobile } from "~/hooks/use-mobile";
 import type { GetMonthOutput } from "~/lib/schemas/envelope";
 import { api } from "~/trpc/react";
 import { BudgetSheetsProvider, useBudgetSheet } from "../use-budget-sheet";
 import { BudgetToolbar } from "./budget-toolbar";
+import { HeaderActions, promotedActions } from "./header-actions";
 import { HeaderMenu } from "./header-menu";
 import { MonthContent } from "./month-content";
 import { useMonthLabel } from "./month-switch";
@@ -46,6 +48,7 @@ function BudgetBody({
 }) {
 	const t = useTranslations("budgetPage");
 	const actions = useBudgetActions(data);
+	const phone = useIsMobile();
 	const label = useMonthLabel();
 	const [query, setQuery] = useState("");
 	const [chip, setChip] = useState<Chip | null>(null);
@@ -53,6 +56,14 @@ function BudgetBody({
 	const planning = data.month.state === "NEXT";
 	const key = data.month.key;
 	const filter = { query, chip };
+	const promoted = promotedActions({
+		actions,
+		readOnly: closed,
+		planning,
+		isCurrent: key === current,
+		phone,
+	});
+	const onPlan = () => onMonth(shiftMonth(current, 1));
 	const groups = useMemo(
 		() => filterGroups(data.groups, { query, chip }),
 		[data.groups, query, chip],
@@ -64,8 +75,17 @@ function BudgetBody({
 					<HeaderMenu
 						actions={actions}
 						hasDebt={hasDebt(data)}
-						onPlan={() => onMonth(shiftMonth(current, 1))}
+						onPlan={onPlan}
+						promoted={promoted}
 						readOnly={closed}
+					/>
+				}
+				primary={
+					<HeaderActions
+						actions={actions}
+						onPlan={onPlan}
+						phone={phone}
+						promoted={promoted}
 					/>
 				}
 				title={t("title")}

@@ -2,6 +2,8 @@ import { createHash, createHmac } from "node:crypto";
 import { IDEMPOTENCY_TTL_MS } from "@retrospend/api-contract/common";
 import { env } from "~/env";
 import { db, type db as globalDb } from "~/server/db";
+import { stashedIconPath } from "~/server/services/accounts/icon";
+import { deleteFile } from "~/server/storage";
 import { Prisma } from "~prisma";
 
 /** A user-scoped client (createUserScopedDb): RLS keeps keys per user. */
@@ -216,6 +218,16 @@ export async function completeIdempotentRequest(
  * startIdempotentRequest; expired rows hold nothing anyone can replay.
  */
 export async function pruneExpiredKeys(now: Date = new Date()) {
+	// A deleted account's uploaded picture was kept for its undo; once the
+	// stash expires nothing can bring the account back, so the file goes too.
+	const stashes = await db.idempotencyKey.findMany({
+		where: { expiresAt: { lt: now }, key: { startsWith: "undo-stash:" } },
+		select: { responseBody: true },
+	});
+	for (const { responseBody } of stashes) {
+		const path = stashedIconPath(responseBody);
+		if (path) await deleteFile(path).catch(() => {});
+	}
 	const { count } = await db.idempotencyKey.deleteMany({
 		where: { expiresAt: { lt: now } },
 	});

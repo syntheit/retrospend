@@ -13,6 +13,7 @@ import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Money } from "~/components/money/money";
 import { CryptoIcon } from "~/components/ui/crypto-icon";
+import { AccountMark } from "./account-mark";
 import { useRowDates } from "./dates";
 import { usePercent } from "./percent";
 import { IconTile, Row, type RowPassThrough, RowSub } from "./row";
@@ -107,7 +108,9 @@ export function AccountRow({
 				)
 			}
 			lead={
-				account.kind === "crypto" ? (
+				account.icon ? (
+					<AccountMark icon={account.icon} name={account.name} />
+				) : account.kind === "crypto" ? (
 					<IconTile>
 						<CryptoIcon
 							className="size-5 border-0 bg-transparent"

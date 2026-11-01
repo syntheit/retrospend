@@ -6,6 +6,7 @@
  * Amounts are Money in minor units; the client only formats them.
  */
 import { categoryTone } from "@retrospend/domain/category-tone";
+import { type AccountIcon, iconOf } from "~/lib/account-icons";
 import type { Money } from "~/server/figures/registry";
 import type { PrismaClient } from "~prisma";
 import { defaultAccounts } from "../accounts/defaults";
@@ -38,6 +39,8 @@ export interface EntryPlace {
 	/** "Part of my budget" (MONEY-MOVES §2.1), its default when unset. */
 	readonly inBudget: boolean;
 	readonly liability: boolean;
+	/** The mark beside it; null keeps the flag of its currency. */
+	readonly icon: AccountIcon | null;
 }
 
 export interface EntryCatalog {
@@ -106,6 +109,8 @@ export async function entryCatalog(
 				currency: true,
 				balance: true,
 				inBudget: true,
+				iconKind: true,
+				iconValue: true,
 			},
 		}),
 		defaultAccounts(db, userId),
@@ -129,6 +134,7 @@ export async function entryCatalog(
 			},
 			inBudget: inBudget(a, home),
 			liability: isLiability(a.type),
+			icon: iconOf(a),
 		})),
 		defaultAccounts: defaults,
 	};

@@ -14,6 +14,8 @@ import { NetWorthHero } from "./net-worth-hero";
 import { AccountSheet } from "./sheets/account-sheet";
 import { CloseAccountSheet } from "./sheets/close-account-sheet";
 import { UpdateBalanceSheet } from "./sheets/update-balance-sheet";
+import { WEALTH_SORT_COOKIE, type WealthSort } from "./sort";
+import { SortMenu } from "./sort-menu";
 import type { WealthView } from "./types";
 import { type SheetState, useAccountActions } from "./use-account-actions";
 import { WealthHeader } from "./wealth-header";
@@ -23,11 +25,19 @@ const MASK =
 	"[&_[data-slot=money]]:select-none [&_[data-slot=money]]:rounded-chip [&_[data-slot=money]]:bg-raised [&_[data-slot=money]]:text-transparent";
 
 /** The Wealth page: header, hero, one toolbar, the accounts or the breakdown. */
-export function WealthScreen({ view }: { view: WealthView }) {
+export function WealthScreen({
+	view,
+	initialSort,
+}: {
+	view: WealthView;
+	/** The sort this viewer last picked (a cookie the server read). */
+	initialSort: WealthSort;
+}) {
 	const t = useTranslations("wealthPage");
 	const [hidden, setHidden] = useState(view.hideAmounts);
 	const [mode, setMode] = useState<"accounts" | "breakdown">("accounts");
 	const [filters, setFilters] = useState<AccountFilters>(NO_FILTERS);
+	const [sort, setSort] = useState<WealthSort>(initialSort);
 	const [sheet, setSheet] = useState<SheetState>(null);
 	const actions = useAccountActions(view, setSheet);
 	const closeSheet = (open: boolean) => {
@@ -36,6 +46,11 @@ export function WealthScreen({ view }: { view: WealthView }) {
 	const set = (patch: Partial<AccountFilters>) =>
 		setFilters((f) => ({ ...f, ...patch }));
 	const accounts = mode === "accounts";
+	const pickSort = (next: WealthSort) => {
+		setSort(next);
+		// Remembered for this viewer; the server reads it on the next visit.
+		document.cookie = `${WEALTH_SORT_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+	};
 
 	return (
 		<PageFrame label="wealth">
@@ -102,6 +117,7 @@ export function WealthScreen({ view }: { view: WealthView }) {
 							</FilterChip>
 						</FilterChips>
 					) : null}
+					{accounts ? <SortMenu onChange={pickSort} value={sort} /> : null}
 				</Toolbar>
 				{accounts ? (
 					<AccountList
@@ -110,6 +126,7 @@ export function WealthScreen({ view }: { view: WealthView }) {
 						onAdd={() => setSheet({ kind: "add" })}
 						onClear={() => setFilters(NO_FILTERS)}
 						onOpen={(a) => setSheet({ kind: "update", account: a })}
+						sort={sort}
 						view={view}
 					/>
 				) : (

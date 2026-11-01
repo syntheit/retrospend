@@ -14,8 +14,7 @@
 		"searchLimits": "Buscar limites",
 		"chips": "Filtrar por situação",
 		"overspent": "Estourados {count}",
-		"underfunded": "Sem fundos suficientes {count}",
-		"plan": "Planejar {month}"
+		"underfunded": "Sem fundos suficientes {count}"
 	},
 	"hero": {
 		"why": "Como isso é calculado",
@@ -140,6 +139,15 @@
 			"open": "Atribuir dinheiro",
 			"fromWealth": "Mover do Patrimônio"
 		}
+	},
+	"insights": {
+		"title": "Gastos e plano",
+		"spent": "Você gastou <spent></spent> de <planned></planned> planejados",
+		"bar": "Gasto do plano",
+		"incomplete": "Ficam de fora: linhas sem taxa",
+		"mostOver": "Mais acima do plano",
+		"mostRoom": "Mais folga restante",
+		"trend": "Gastos por mês"
 	},
 	"unavailable": {
 		"title": "Indisponível no momento",

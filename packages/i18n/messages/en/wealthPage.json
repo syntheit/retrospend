@@ -76,7 +76,8 @@
 		"updated": "{name} updated",
 		"added": "Added {name}",
 		"saved": "{name} saved",
-		"failed": "Couldn't save. Try again."
+		"failed": "Couldn't save. Try again.",
+		"iconFailed": "Saved, but the icon didn't upload. Try again."
 	},
 	"rateTypes": {
 		"official": "Official",
@@ -131,6 +132,39 @@
 			"submit": "Close account",
 			"body": "{name} leaves your accounts and net worth from today. Its balance history stays, and you can reopen it from Closed accounts.",
 			"left": "It still shows <amount></amount>. Update the balance to zero first if the money moved elsewhere."
+		},
+		"icon": {
+			"label": "Icon",
+			"default": "Default",
+			"letter": "Letter",
+			"image": "Your image",
+			"title": "Account icon",
+			"find": "Find a logo",
+			"empty": "No logo matches",
+			"none": "Default icon",
+			"letters": "Letter on a color",
+			"logos": "Logos",
+			"selected": "Selected",
+			"upload": "Upload image",
+			"tooLarge": "Pick an image under 5 MB.",
+			"colors": {
+				"avatar-1": "Blue",
+				"avatar-2": "Orange",
+				"avatar-3": "Pink",
+				"avatar-4": "Green",
+				"avatar-5": "Purple",
+				"avatar-6": "Red",
+				"avatar-7": "Indigo",
+				"avatar-8": "Teal"
+			}
 		}
+	},
+	"sort": {
+		"button": "Sort: {sort}",
+		"label": "Sort accounts by",
+		"balance": "Balance",
+		"name": "Name",
+		"type": "Type",
+		"updated": "Recently updated"
 	}
 }
