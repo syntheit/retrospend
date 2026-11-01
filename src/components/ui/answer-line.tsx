@@ -3,7 +3,7 @@
 import { Fragment } from "react";
 import { cn } from "~/lib/utils";
 
-export type SummaryPart = {
+export type AnswerPart = {
 	id: string;
 	text: string;
 	/** An unset answer reads in the attention color. */
@@ -14,15 +14,15 @@ export type SummaryPart = {
 };
 
 /**
- * SummaryLine (provisional, composer design D): the answers so far as plain
+ * AnswerLine (provisional, composer design D): the answers so far as plain
  * text joined by " · ". It wraps (two lines on a phone) and each part is a
  * button that opens its panel.
  */
-export function SummaryLine({
+export function AnswerLine({
 	parts,
 	className,
 }: {
-	parts: readonly SummaryPart[];
+	parts: readonly AnswerPart[];
 	className?: string;
 }) {
 	return (

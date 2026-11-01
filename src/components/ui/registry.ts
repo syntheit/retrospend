@@ -193,9 +193,9 @@ export const REGISTRY: Primitive[] = [
 		job: "Anchored panel for a picker or a short form",
 	},
 	{
-		file: "project-row",
+		file: "project-choice",
 		status: "core",
-		job: "PROVISIONAL (composer design D, owner review): a project as a row with cover, one-line name, face stack and meta; picks a project in the composer",
+		job: "PROVISIONAL (composer design D, owner review): a project as a pick row with cover, one-line name, face stack and meta, in a ul; the composer's Project panel (not the ProjectRow list row)",
 	},
 	{
 		file: "progress",
@@ -271,9 +271,9 @@ export const REGISTRY: Primitive[] = [
 		job: "The one Toaster, mounted in the root layout. Show a toast with useToast from toast",
 	},
 	{
-		file: "summary-line",
+		file: "answer-line",
 		status: "core",
-		job: "PROVISIONAL (composer design D, owner review): the composer answers as wrapping text joined by dots, each part a button that opens its panel",
+		job: "PROVISIONAL (composer design D, owner review): the composer's answers as wrapping text joined by dots, each part a button that opens its panel (not the SummaryLine key numbers)",
 	},
 	{
 		file: "switch",

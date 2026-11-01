@@ -5,11 +5,11 @@ import { type FacePerson, FaceStack } from "~/components/ui/avatar-face";
 import { cn } from "~/lib/utils";
 
 /**
- * ProjectRow (provisional, composer design D): a project as a row with its
+ * ProjectChoice (provisional, composer design D): a project as a row with its
  * cover, name (one line), a small face stack and a meta line ("4 people ·
  * USD"). Selected is the brand border plus the brand soft fill.
  */
-export function ProjectRow({
+export function ProjectChoice({
 	name,
 	meta,
 	coverUrl,
