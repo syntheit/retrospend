@@ -2,11 +2,11 @@
 
 import { SearchX, Star } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { useEffect, useRef, useState } from "react";
 import { BackButton, PageFrame } from "~/components/layout/page-frame";
 import { PageHeader } from "~/components/layout/page-header";
 import { Toolbar } from "~/components/layout/toolbar";
+import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { useRowDates } from "~/components/rows/dates";
 import { Button } from "~/components/ui/button";
 import { FilterChip, FilterChips } from "~/components/ui/chip";
@@ -67,27 +67,14 @@ export function CurrenciesScreen({
 	const { short } = useRowDates();
 	const search = useRef<HTMLInputElement>(null);
 	useSlashFocus(search);
-	const firstPriced = view.rows.find((r) => r.types.length)?.code ?? null;
+	// The open currency: a row click, or the one named in the link.
 	const [selected, setSelected] = useState<string | null>(
-		initial && view.rows.some((r) => r.code === initial)
-			? initial
-			: firstPriced,
+		initial && view.rows.some((r) => r.code === initial) ? initial : null,
 	);
-	const [sheetOpen, setSheetOpen] = useState(false);
-	// A currency in the link opens its sheet on a phone, once the width is known.
-	const opened = useRef(false);
-	useEffect(() => {
-		if (!phone || opened.current || !initial) return;
-		opened.current = true;
-		setSheetOpen(true);
-	}, [phone, initial]);
 	const [query, setQuery] = useState("");
 	const [favorites, setFavorites] = useState(false);
 	const [kind, setKind] = useState<Kind>(null);
-	const select = (code: string) => {
-		setSelected(code);
-		if (phone) setSheetOpen(true);
-	};
+	const select = (code: string) => setSelected(code);
 	const { handlers, setFavorite, favoriteBusy } = useCurrencyActions(
 		view,
 		select,
@@ -148,20 +135,11 @@ export function CurrenciesScreen({
 			onFavorite={setFavorite}
 			onSelect={select}
 			rows={rows}
-			selected={selected}
 		/>
 	);
-	const detail = row ? (
-		<CurrencyDetail
-			favoriteBusy={favoriteBusy}
-			onFavorite={(on) => setFavorite(row, on)}
-			row={row}
-			view={view}
-		/>
-	) : null;
 
 	return (
-		<PageFrame label="currencies">
+		<PageFrame contain label="currencies">
 			<PageHeader
 				lead={<BackButton href="/wealth" label={nav("wealth")} />}
 				sub={sub || undefined}
@@ -212,28 +190,24 @@ export function CurrenciesScreen({
 					})}
 				</Notice>
 			) : null}
-			{phone ? (
-				list
-			) : (
-				<div className="flex items-start gap-8">
-					<div className="min-w-0 flex-1">{list}</div>
-					<aside
-						aria-label={t("detail.label")}
-						className="sticky top-0 w-90 shrink-0"
-					>
-						{detail}
-					</aside>
-				</div>
-			)}
-			{phone && row ? (
+			{list}
+			{row ? (
 				<Sheet
 					detent="large"
 					footer={false}
-					onOpenChange={setSheetOpen}
-					open={sheetOpen}
+					onOpenChange={(open) => {
+						if (!open) setSelected(null);
+					}}
+					open
 					title={t("detail.sheetTitle", { code: row.code })}
+					wide
 				>
-					{detail}
+					<CurrencyDetail
+						favoriteBusy={favoriteBusy}
+						onFavorite={(on) => setFavorite(row, on)}
+						row={row}
+						view={view}
+					/>
 				</Sheet>
 			) : null}
 		</PageFrame>

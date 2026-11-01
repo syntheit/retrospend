@@ -319,6 +319,8 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"exchangeRate.getLastSync": to("GET /rates/sync-status"),
 	"exchangeRate.getRate": to("GET /rates/{currency}/best"),
 	"exchangeRate.getRatesForCurrency": to("GET /rates/{currency}/history"),
+	"exchangeRate.history": to("GET /rates/{currency}/series"),
+	"exchangeRate.spending": to("GET /currencies/{currency}/spending"),
 	"exchangeRate.syncNow": to("POST /rates/sync"),
 
 	// ── expenses ─────────────────────────────────────────────────────────

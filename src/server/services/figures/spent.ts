@@ -16,9 +16,16 @@
  * included, so it never imports the db.
  */
 
+import {
+	getCurrentFiscalMonth,
+	getFiscalMonthRange,
+} from "@retrospend/domain/fiscal-month";
+import {
+	currencyDecimals,
+	type MoneyItem,
+	sumIn,
+} from "@retrospend/domain/money";
 import { toMinor } from "@retrospend/domain/money-minor";
-import { getCurrentFiscalMonth, getFiscalMonthRange } from "@retrospend/domain/fiscal-month";
-import { currencyDecimals, type MoneyItem, sumIn } from "@retrospend/domain/money";
 import type {
 	FigureDb,
 	FigureDefinition,
@@ -46,6 +53,8 @@ export interface SpentFilter {
 	/** Inclusive bounds on the entry date; either may be left open. */
 	date?: DateRange;
 	categoryIds?: readonly string[];
+	/** Only entries in these original currencies (a share by its own currency). */
+	currencies?: readonly string[];
 	/** Also counts spending and refunds with no category (with or without categoryIds). */
 	uncategorized?: boolean;
 	/**
@@ -146,6 +155,7 @@ function rowWhere(
 		// An import or an old client can still file a row under an income category.
 		NOT: { category: { is: { kind: "INCOME" } } },
 		...categoryWhere(filter),
+		...(filter.currencies ? { currency: { in: [...filter.currencies] } } : {}),
 	};
 }
 
@@ -202,7 +212,11 @@ async function sharesFor(db: AppDb, filter: SpentFilter) {
 				withPeople: filter.withPeople,
 			})
 		: getSharedExpenseShares(...base));
-	return shares.filter((s) => categoryPasses(filter, s.categoryId));
+	return shares.filter(
+		(s) =>
+			categoryPasses(filter, s.categoryId) &&
+			(!filter.currencies || filter.currencies.includes(s.currency)),
+	);
 }
 
 /** Your spending matching `filter`, as items to total with sumIn. */

@@ -34,7 +34,6 @@
 		"unavailable": "{code} aún no puede ser favorita"
 	},
 	"detail": {
-		"label": "Moneda seleccionada",
 		"sheetTitle": "Tipos de cambio de {code}",
 		"sub": "{code} · {date}",
 		"noRate": "No hay tipo de cambio de {code}. Las cuentas y gastos en {code} quedan fuera de los totales.",
@@ -61,5 +60,29 @@
 		"title": "Los tipos de cambio no están disponibles ahora",
 		"hint": "Inténtalo de nuevo en un momento.",
 		"retry": "Reintentar"
+	},
+	"history": {
+		"title": "Historial de precios",
+		"range": {
+			"label": "Período",
+			"1M": "1M",
+			"3M": "3M",
+			"1Y": "1A",
+			"ALL": "Todo"
+		},
+		"type": "Clase de cambio",
+		"series": "Precio",
+		"summary": "El precio pasó de {start} el {from} a {end} el {to}",
+		"empty": "Aún no hay suficiente historial",
+		"failed": "No se ha podido cargar el historial. Inténtalo de nuevo."
+	},
+	"expenses": {
+		"title": "Tus gastos en {code}",
+		"total": "{count, plural, one {# gasto} other {# gastos}}",
+		"inHome": "En {home}",
+		"recent": "Últimos gastos",
+		"seeAll": "Ver todo",
+		"empty": "Aún no hay gastos en {code}",
+		"failed": "No se han podido cargar tus gastos. Inténtalo de nuevo."
 	}
 }

@@ -41,6 +41,11 @@ export const listV2Input = z.object({
 	/** Category ids; NO_CATEGORY also lists the rows that have none. */
 	categoryIds: ids.optional(),
 	projectIds: ids.optional(),
+	/** Original currencies (ISO codes or coin tickers); rows in any of them. */
+	currencies: z
+		.array(z.string().regex(/^[A-Z]{3,10}$/))
+		.max(50)
+		.optional(),
 	people: z.array(personKey).max(50).optional(),
 	/** "me" or a person key. */
 	paidBy: z

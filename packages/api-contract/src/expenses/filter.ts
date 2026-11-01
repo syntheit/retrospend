@@ -11,6 +11,7 @@
  * - `person`: comma-separated person keys (`user:ID`, `shadow:ID`, `guest:ID`).
  * - `paidby`: `me` and/or person keys.
  * - `kind`: comma-separated kinds (ACTIVITY_KINDS).
+ * - `currency`: comma-separated original currencies (`ARS,BTC`), upper case.
  * - `q`: text matched in titles, notes and amounts, ignoring case and
  *   accents. It is opaque to the server (no trimming or case folding here).
  * - `range=all`: every date.
@@ -48,6 +49,7 @@ export type ActivityFilterValue = {
 	people?: string[];
 	paidBy?: string[];
 	kinds?: ActivityKind[];
+	currencies?: string[];
 	q?: string;
 	/** `range=all` was sent. */
 	rangeAll?: boolean;
@@ -67,6 +69,7 @@ const KEYS = [
 	"project",
 	"paidby",
 	"kind",
+	"currency",
 	"q",
 	"range",
 ] as const;
@@ -150,6 +153,12 @@ export function parseActivityFilter(raw: string | undefined): FilterParse {
 			`one of ${ACTIVITY_KINDS.join(", ")}`,
 		);
 		if (kinds) value.kinds = kinds as ActivityKind[];
+		const currencies = list(
+			"currency",
+			(v) => /^[A-Z]{3,10}$/.test(v),
+			"currency codes like ARS",
+		);
+		if (currencies) value.currencies = currencies;
 		const q = params.get("q");
 		if (q !== null) {
 			if (q.length === 0 || q.length > FILTER_TEXT_MAX)

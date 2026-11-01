@@ -136,6 +136,7 @@ export function listExpenses(
 			people: f.people,
 			paidBy: f.paidBy,
 			kinds: f.kinds,
+			currencies: f.currencies,
 			q: f.q,
 			cursor: page.cursor,
 			limit: page.limit,

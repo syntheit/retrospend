@@ -30,7 +30,7 @@ export type TotalsContext = {
 };
 
 /**
- * Whether spent() can total this filter: dates and categories only. People,
+ * Whether spent() can total this filter: dates, categories and currencies only. People,
  * projects, payer, a type or search text narrow the list to rows spent()
  * cannot pick out, so the footer shows no total rather than a wrong one.
  */
@@ -63,6 +63,7 @@ function spentFilter(
 		date: inclusive(bounds),
 		excludedProjectIds: c.excludedProjectIds,
 		...(ids.length ? { categoryIds: ids } : {}),
+		...(filter.currencies?.length ? { currencies: filter.currencies } : {}),
 		...(filter.categoryIds?.includes(NO_CATEGORY)
 			? { uncategorized: true }
 			: {}),

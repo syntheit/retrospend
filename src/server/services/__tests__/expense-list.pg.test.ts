@@ -361,6 +361,26 @@ describe("expense.listV2", () => {
 		expect((await list(me, { ...OCT, paidBy: ["me"] })).total).toBeNull();
 	});
 
+	it("narrows by original currency across personal rows, shares and payments, and still totals", async () => {
+		const titles = async (currencies: string[]) =>
+			(await list(me, { ...OCT, currencies })).items.map(
+				(i) => i.title || i.kind,
+			);
+		expect(await titles(["USD"])).toEqual(["Netflix"]);
+		expect(await titles(["ARS"])).toEqual([
+			"payment",
+			"Almacén Don José",
+			"Cena en La Esquina",
+		]);
+		expect(await titles(["USD", "ARS"])).toHaveLength(4);
+		expect(await titles(["EUR"])).toEqual([]);
+		// spent() expresses a currency, so the footer still totals: Netflix
+		// 12.99 USD at 1,000 ARS per USD.
+		const usd = await list(me, { ...OCT, currencies: ["USD"] });
+		expect(usd.count).toBe(1);
+		expect(usd.total?.value).toEqual({ minor: 1299000, currency: "ARS" });
+	});
+
 	it("lists spending with no category: the sentinel alone or beside an id", async () => {
 		const titles = async (categoryIds: string[]) =>
 			(await list(me, { ...OCT, categoryIds })).items.map(

@@ -34,7 +34,6 @@
 		"unavailable": "{code} can't be a favorite yet"
 	},
 	"detail": {
-		"label": "Selected currency",
 		"sheetTitle": "{code} rates",
 		"sub": "{code} · {date}",
 		"noRate": "No {code} rate. Accounts and expenses in {code} are left out of totals.",
@@ -61,5 +60,29 @@
 		"title": "Rates aren't available right now",
 		"hint": "Try again in a moment.",
 		"retry": "Try again"
+	},
+	"history": {
+		"title": "Price history",
+		"range": {
+			"label": "Range",
+			"1M": "1M",
+			"3M": "3M",
+			"1Y": "1Y",
+			"ALL": "All"
+		},
+		"type": "Rate type",
+		"series": "Price",
+		"summary": "Price went from {start} on {from} to {end} on {to}",
+		"empty": "Not enough history yet",
+		"failed": "Couldn't load the history. Try again."
+	},
+	"expenses": {
+		"title": "Your expenses in {code}",
+		"total": "{count, plural, one {# expense} other {# expenses}}",
+		"inHome": "In {home}",
+		"recent": "Latest expenses",
+		"seeAll": "See all",
+		"empty": "No expenses in {code} yet",
+		"failed": "Couldn't load your expenses. Try again."
 	}
 }

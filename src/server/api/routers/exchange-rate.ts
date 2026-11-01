@@ -1,17 +1,20 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-
+import { HISTORY_RANGES } from "~/features/currencies/types";
 import {
 	adminProcedure,
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
 } from "~/server/api/trpc";
+import { readCurrencySpending } from "~/server/services/currency-spending.service";
 import {
 	getRateSyncStatus,
 	RateSyncUnavailable,
 	requestRateSync,
 } from "~/server/services/exchange-rate.service";
+import { readRateHistory } from "~/server/services/rate-history.service";
+import type { PrismaClient } from "~prisma";
 
 export const exchangeRateRouter = createTRPCRouter({
 	getRate: publicProcedure
@@ -53,6 +56,34 @@ export const exchangeRateRouter = createTRPCRouter({
 
 			return rates;
 		}),
+
+	/** A currency's rate history against the home currency, per rate type. */
+	history: protectedProcedure
+		.input(
+			z.object({
+				currency: z.string().regex(/^[A-Z]{3,10}$/),
+				range: z.enum(HISTORY_RANGES).default("3M"),
+			}),
+		)
+		.query(({ ctx, input }) =>
+			readRateHistory(
+				ctx.db as PrismaClient,
+				ctx.session.user.id,
+				input.currency,
+				input.range,
+			),
+		),
+
+	/** What you spent in one original currency, all time. */
+	spending: protectedProcedure
+		.input(z.object({ currency: z.string().regex(/^[A-Z]{3,10}$/) }))
+		.query(({ ctx, input }) =>
+			readCurrencySpending(
+				ctx.db as PrismaClient,
+				ctx.session.user.id,
+				input.currency,
+			),
+		),
 
 	getAllRates: protectedProcedure
 		.input(

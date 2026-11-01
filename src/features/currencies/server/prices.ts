@@ -47,7 +47,7 @@ function byType(rows: readonly RateRow[]) {
 	return out;
 }
 
-const order = (types: Iterable<string>) =>
+export const order = (types: Iterable<string>) =>
 	[...new Set(types)].sort((a, b) => {
 		const ia = KNOWN.indexOf(a);
 		const ib = KNOWN.indexOf(b);
@@ -136,6 +136,11 @@ export function toMoney(value: Dec, currency: string): Money {
  * formats it without computing anything.
  */
 export function toRate(value: Dec, currency: string): Rate {
+	return toRateAt(value, currency, placesFor(value, currency));
+}
+
+/** The decimal places `toRate` gives a value (the series charts take the widest). */
+export function placesFor(value: Dec, currency: string): number {
 	const own = currencyDecimals(currency);
 	const limit = isCrypto(currency) ? Math.max(own, 8) : own + 6;
 	let places = own;
@@ -145,6 +150,11 @@ export function toRate(value: Dec, currency: string): Rate {
 		value.toDecimalPlaces(places).lt(new Dec(10).pow(1 - places))
 	)
 		places++;
+	return places;
+}
+
+/** A rate as Money at a fixed number of decimal places. */
+export function toRateAt(value: Dec, currency: string, places: number): Rate {
 	const minor = value
 		.mul(new Dec(10).pow(places))
 		.toDecimalPlaces(0)

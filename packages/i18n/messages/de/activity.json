@@ -25,7 +25,8 @@
 			"people": "Person",
 			"projects": "Projekt",
 			"paidBy": "Bezahlt von",
-			"kinds": "Art"
+			"kinds": "Art",
+			"currencies": "Währung"
 		},
 		"kind": {
 			"expense": "Ausgaben",

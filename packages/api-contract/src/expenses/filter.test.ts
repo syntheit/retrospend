@@ -24,6 +24,15 @@ describe("parseActivityFilter", () => {
 		});
 	});
 
+	it("reads currency as upper case codes and refuses anything else", () => {
+		expect(parseActivityFilter("currency=ARS,BTC")).toEqual({
+			ok: true,
+			value: { currencies: ["ARS", "BTC"] },
+		});
+		for (const bad of ["currency=ars", "currency=A", "currency=AR$"])
+			expect(parseActivityFilter(bad)).toMatchObject({ ok: false });
+	});
+
 	it("is empty when there is no filter, and reads range=all", () => {
 		expect(parseActivityFilter(undefined)).toEqual({ ok: true, value: {} });
 		expect(parseActivityFilter("")).toEqual({ ok: true, value: {} });

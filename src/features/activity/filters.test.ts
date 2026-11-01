@@ -32,6 +32,13 @@ describe("Activity filter in the URL", () => {
 		expect(read(writeFilter(f, TODAY))).toEqual(f);
 	});
 
+	it("reads currency codes in any case, drops bad ones, and sends them to the server", () => {
+		const f = read("currency=ars,BTC,x,12&range=all");
+		expect(f.currencies).toEqual(["ARS", "BTC"]);
+		expect(writeFilter(f, TODAY)).toBe("currency=ARS%2CBTC&range=all");
+		expect(queryOf(f)).toEqual({ currencies: ["ARS", "BTC"] });
+	});
+
 	it("keeps All time explicit and drops unknown kinds and bad dates", () => {
 		const all = { ...read(""), range: { from: null, to: null } };
 		expect(writeFilter(all, TODAY)).toBe("range=all");

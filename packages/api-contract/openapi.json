@@ -61528,6 +61528,160 @@
 				"x-required-scope": "read"
 			}
 		},
+		"/currencies/{currency}/spending": {
+			"get": {
+				"description": "All time, from the one spending definition Activity's footer uses. The list of those expenses is GET /expenses with filter=currency=CODE.",
+				"operationId": "getCurrencySpending",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "currency",
+						"required": true,
+						"schema": {
+							"description": "ISO 4217 code, or the app's code for a crypto asset.",
+							"examples": [
+								"USD",
+								"ARS",
+								"BTC"
+							],
+							"pattern": "^[A-Z0-9]{2,10}$",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"count": {
+											"maximum": 9007199254740991,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"currency": {
+											"description": "ISO 4217 code, or the app's code for a crypto asset.",
+											"examples": [
+												"USD",
+												"ARS",
+												"BTC"
+											],
+											"pattern": "^[A-Z0-9]{2,10}$",
+											"type": "string"
+										},
+										"home": {
+											"description": "ISO 4217 code, or the app's code for a crypto asset.",
+											"examples": [
+												"USD",
+												"ARS",
+												"BTC"
+											],
+											"pattern": "^[A-Z0-9]{2,10}$",
+											"type": "string"
+										},
+										"inHome": {
+											"anyOf": [
+												{
+													"$ref": "#/components/schemas/Money"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"original": {
+											"$ref": "#/components/schemas/Money"
+										}
+									},
+									"required": [
+										"currency",
+										"home",
+										"count",
+										"original",
+										"inHome"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "What the caller spent in one original currency",
+				"tags": [
+					"Currencies"
+				],
+				"x-required-scope": "read"
+			}
+		},
 		"/entry/catalog": {
 			"get": {
 				"operationId": "getEntryCatalog",
@@ -104866,6 +105020,286 @@
 					}
 				],
 				"summary": "Stored rates for one currency, newest first",
+				"tags": [
+					"Currencies"
+				],
+				"x-required-scope": "read"
+			}
+		},
+		"/rates/{currency}/series": {
+			"get": {
+				"description": "One line per rate type, priced like the rate table: the stronger currency of the pair is the one unit, at the same decimal places on every point. Days come from the stored rate history; a side with no rate gives an empty series, never a 1.",
+				"operationId": "getRateSeries",
+				"parameters": [
+					{
+						"in": "path",
+						"name": "currency",
+						"required": true,
+						"schema": {
+							"description": "ISO 4217 code, or the app's code for a crypto asset.",
+							"examples": [
+								"USD",
+								"ARS",
+								"BTC"
+							],
+							"pattern": "^[A-Z0-9]{2,10}$",
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
+						"name": "range",
+						"schema": {
+							"default": "3M",
+							"description": "How far back: 1M, 3M, 1Y or ALL (every stored day).",
+							"enum": [
+								"1M",
+								"3M",
+								"1Y",
+								"ALL"
+							],
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"base": {
+											"anyOf": [
+												{
+													"description": "ISO 4217 code, or the app's code for a crypto asset.",
+													"examples": [
+														"USD",
+														"ARS",
+														"BTC"
+													],
+													"pattern": "^[A-Z0-9]{2,10}$",
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"currency": {
+											"description": "ISO 4217 code, or the app's code for a crypto asset.",
+											"examples": [
+												"USD",
+												"ARS",
+												"BTC"
+											],
+											"pattern": "^[A-Z0-9]{2,10}$",
+											"type": "string"
+										},
+										"defaultType": {
+											"anyOf": [
+												{
+													"examples": [
+														"official",
+														"blue"
+													],
+													"maxLength": 32,
+													"minLength": 1,
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
+										"home": {
+											"description": "ISO 4217 code, or the app's code for a crypto asset.",
+											"examples": [
+												"USD",
+												"ARS",
+												"BTC"
+											],
+											"pattern": "^[A-Z0-9]{2,10}$",
+											"type": "string"
+										},
+										"range": {
+											"enum": [
+												"1M",
+												"3M",
+												"1Y",
+												"ALL"
+											],
+											"type": "string"
+										},
+										"series": {
+											"items": {
+												"properties": {
+													"changeBp": {
+														"anyOf": [
+															{
+																"maximum": 9007199254740991,
+																"minimum": -9007199254740991,
+																"type": "integer"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
+													"derived": {
+														"type": "boolean"
+													},
+													"points": {
+														"items": {
+															"properties": {
+																"date": {
+																	"format": "date",
+																	"type": "string"
+																},
+																"price": {
+																	"properties": {
+																		"currency": {
+																			"description": "ISO 4217 code, or the app's code for a crypto asset.",
+																			"examples": [
+																				"USD",
+																				"ARS",
+																				"BTC"
+																			],
+																			"pattern": "^[A-Z0-9]{2,10}$",
+																			"type": "string"
+																		},
+																		"minor": {
+																			"maximum": 9007199254740991,
+																			"minimum": -9007199254740991,
+																			"type": "integer"
+																		},
+																		"places": {
+																			"maximum": 30,
+																			"minimum": 0,
+																			"type": "integer"
+																		}
+																	},
+																	"required": [
+																		"minor",
+																		"currency",
+																		"places"
+																	],
+																	"type": "object"
+																}
+															},
+															"required": [
+																"date",
+																"price"
+															],
+															"type": "object"
+														},
+														"type": "array"
+													},
+													"type": {
+														"examples": [
+															"official",
+															"blue"
+														],
+														"maxLength": 32,
+														"minLength": 1,
+														"type": "string"
+													}
+												},
+												"required": [
+													"type",
+													"derived",
+													"changeBp",
+													"points"
+												],
+												"type": "object"
+											},
+											"type": "array"
+										}
+									},
+									"required": [
+										"currency",
+										"home",
+										"range",
+										"base",
+										"defaultType",
+										"series"
+									],
+									"type": "object"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Bad request or validation failed"
+					},
+					"401": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "No valid credentials"
+					},
+					"403": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Missing scope, or the API is turned off"
+					},
+					"429": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Rate limited; see Retry-After"
+					},
+					"500": {
+						"content": {
+							"application/problem+json": {
+								"schema": {
+									"$ref": "#/components/schemas/Problem"
+								}
+							}
+						},
+						"description": "Server error"
+					}
+				},
+				"security": [
+					{
+						"bearerAuth": [
+							"read"
+						]
+					},
+					{
+						"apiKeyAuth": [
+							"read"
+						]
+					},
+					{
+						"cookieAuth": [
+							"read"
+						]
+					}
+				],
+				"summary": "A currency's rate history against the home currency",
 				"tags": [
 					"Currencies"
 				],

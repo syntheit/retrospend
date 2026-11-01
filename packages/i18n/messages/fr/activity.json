@@ -25,7 +25,8 @@
 			"people": "Personne",
 			"projects": "Projet",
 			"paidBy": "Payé par",
-			"kinds": "Type"
+			"kinds": "Type",
+			"currencies": "Devise"
 		},
 		"kind": {
 			"expense": "Dépenses",

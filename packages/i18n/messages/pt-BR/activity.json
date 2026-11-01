@@ -25,7 +25,8 @@
 			"people": "Pessoa",
 			"projects": "Projeto",
 			"paidBy": "Pago por",
-			"kinds": "Tipo"
+			"kinds": "Tipo",
+			"currencies": "Moeda"
 		},
 		"kind": {
 			"expense": "Gastos",

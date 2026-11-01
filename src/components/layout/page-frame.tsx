@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/cn";
 import { Tip } from "~/components/ui/tooltip";
+import { cn } from "~/lib/cn";
 
 /**
  * PageFrame: the scrolling column a v2 page sits in inside the shell's main
@@ -16,19 +17,32 @@ export function PageFrame({
 	children,
 	label,
 	fill,
+	contain = false,
 }: {
 	children: ReactNode;
 	/** Names the page for the audits ("wealth"); a loading fallback leaves it out. */
 	label?: string;
 	/** Desktop: the content runs to the bottom of the window. */
 	fill?: boolean;
+	/**
+	 * Desktop only: the page does not scroll, the one list or table in it
+	 * does, inside its own region under the header and toolbar. A phone
+	 * scrolls the page as usual.
+	 */
+	contain?: boolean;
 }) {
 	return (
-		<div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+		<div
+			className={cn(
+				"flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto",
+				contain && "md:overflow-y-hidden",
+			)}
+		>
 			<div
 				className={cn(
 					"px-gutter mx-auto w-full max-w-280 pt-6 pb-12",
 					fill && "md:flex md:flex-1 md:flex-col md:pb-6",
+					contain && "md:flex md:min-h-0 md:flex-1 md:flex-col md:pb-6",
 				)}
 				data-page={label}
 				data-ui={label ? "v2" : undefined}

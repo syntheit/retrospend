@@ -60,13 +60,12 @@ function RateCell({
  * Desktop: one table, a column per rate type, each cell the stronger currency of the pair
  * priced in the weaker,
  * the default type in bold. A row click selects the currency for the
- * detail panel; right-click and ⋯ open the registry menu.
+ * detail dialog; right-click and ⋯ open the registry menu.
  */
 export function RatesTable({
 	rows,
 	columns,
 	base,
-	selected,
 	handlers,
 	onSelect,
 	onFavorite,
@@ -75,7 +74,6 @@ export function RatesTable({
 	rows: CurrencyRow[];
 	columns: string[];
 	base: string | null;
-	selected: string | null;
 	handlers: ActionHandlers<CurrencyTarget>;
 	onSelect: (code: string) => void;
 	onFavorite: (row: CurrencyRow, on: boolean) => void;
@@ -84,8 +82,8 @@ export function RatesTable({
 	const t = useTranslations("currenciesPage");
 	const label = useRateLabel();
 	return (
-		<div>
-			<Table look="panel">
+		<div className="flex min-h-0 flex-col md:flex-1">
+			<Table look="panel" wrapperClassName="md:max-h-full">
 				<TableHeader>
 					<TableRow>
 						<TableHead className="w-12">
@@ -111,9 +109,7 @@ export function RatesTable({
 							target={targetOf(row)}
 						>
 							<TableRow
-								aria-current={row.code === selected ? "true" : undefined}
 								className="cursor-pointer"
-								data-state={row.code === selected ? "selected" : undefined}
 								onClick={() => onSelect(row.code)}
 								onKeyDown={(e) => {
 									if (e.key === "Enter" && e.target === e.currentTarget)

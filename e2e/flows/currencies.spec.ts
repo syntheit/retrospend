@@ -19,6 +19,27 @@ import { untilSaved } from "../helpers/trpc";
 // adds one EUR rate with a cuid-shaped id (0.9 per USD: 1 EUR is
 // ARS 1,611.11).
 
+/** A few days of USD-priced history so the dialog has a line to draw. */
+async function addHistory(): Promise<void> {
+	const pool = new Pool({ connectionString: E2E_DATABASE_URL });
+	try {
+		for (const [offset, ars] of [
+			[3, 1400],
+			[2, 1420],
+			[1, 1435],
+			[0, 1450],
+		] as const)
+			await pool.query(
+				`INSERT INTO "exchange_rate_history" (date, currency, type, rate)
+				 VALUES (current_date - $1::int, 'ARS', 'official', $2)
+				 ON CONFLICT DO NOTHING`,
+				[offset, ars],
+			);
+	} finally {
+		await pool.end();
+	}
+}
+
 /** The EUR rate the favorite step needs. */
 async function addEurRate(): Promise<void> {
 	const pool = new Pool({ connectionString: E2E_DATABASE_URL });
@@ -44,6 +65,7 @@ async function openCurrencies(page: Page, query = ""): Promise<void> {
 
 test.beforeAll(async () => {
 	await addEurRate();
+	await addHistory();
 });
 
 test("Currencies: the stronger currency priced in the weaker, convert, search converter, favorite", async ({
@@ -67,10 +89,22 @@ test("Currencies: the stronger currency priced in the weaker, convert, search co
 	await expect(brl).toContainText("1 BRL = $269");
 	await expect(brl.locator("[data-minor='26852']").first()).toBeVisible();
 
-	// The detail panel reads the same way and converts on the server.
+	// A row opens the currency in a dialog: it reads the same way, draws the
+	// stored history, lists your expenses in it and converts on the server.
 	await usd.first().click();
-	const detail = main.getByRole("complementary", { name: "Selected currency" });
+	const detail = page.getByRole("dialog", { name: "USD rates" });
+	await expect(detail).toBeVisible();
 	await expect(detail).toContainText("1 USD = $1,450");
+	await expect(
+		detail.getByRole("heading", { name: "Price history" }),
+	).toBeVisible();
+	await expect(
+		detail.getByRole("img", { name: /Price went from/ }),
+	).toBeVisible();
+	await detail.getByRole("radio", { name: "1Y" }).click();
+	await expect(
+		detail.getByRole("heading", { name: "Your expenses in USD" }),
+	).toBeVisible();
 	// From the stronger currency by default: USD 100 into ARS.
 	await expect(detail.getByRole("textbox", { name: "Amount" })).toHaveValue(
 		"100",
@@ -78,6 +112,8 @@ test("Currencies: the stronger currency priced in the weaker, convert, search co
 	await expect(detail).toContainText("$145,000");
 	await detail.getByRole("button", { name: "Swap direction" }).click();
 	await expect(detail).toContainText("USD 0.07");
+	await page.keyboard.press("Escape");
+	await expect(detail).toBeHidden();
 
 	// The search field doubles as a converter.
 	await main

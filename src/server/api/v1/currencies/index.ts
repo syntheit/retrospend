@@ -3,6 +3,8 @@ import {
 	convertAmount,
 	readRateTable,
 } from "~/server/services/api-v1/currency-table";
+import { readCurrencySpending } from "~/server/services/currency-spending.service";
+import { readRateHistory } from "~/server/services/rate-history.service";
 import { serve } from "../core/serve";
 import { signedIn, v1 } from "../middleware";
 
@@ -42,6 +44,27 @@ export const currenciesRouter = {
 	),
 	rateTable: c.rateTable.handler(
 		serve(({ context }) => readRateTable(signedIn(context))),
+	),
+	rateSeries: c.rateSeries.handler(
+		serve(({ context, input }) => {
+			const caller = signedIn(context);
+			return readRateHistory(
+				caller.db,
+				caller.principal.userId,
+				input.currency,
+				input.range,
+			);
+		}),
+	),
+	currencySpending: c.currencySpending.handler(
+		serve(({ context, input }) => {
+			const caller = signedIn(context);
+			return readCurrencySpending(
+				caller.db,
+				caller.principal.userId,
+				input.currency,
+			);
+		}),
 	),
 	convert: c.convert.handler(
 		serve(({ context, input }) => convertAmount(signedIn(context), input)),

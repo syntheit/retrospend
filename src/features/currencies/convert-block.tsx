@@ -4,6 +4,7 @@ import { parseMoneyInput } from "@retrospend/domain/parse";
 import { ArrowRightLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { Section } from "~/components/layout/section";
 import { Money } from "~/components/money/money";
 import { MoneyInput } from "~/components/money/money-input";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
@@ -46,10 +47,7 @@ export function ConvertBlock({
 		direction,
 	);
 	return (
-		<div>
-			<div className="text-fg-2 text-small mb-1 font-semibold">
-				{t("title")}
-			</div>
+		<Section id="convert" title={t("title")}>
 			<div className="flex items-center gap-2">
 				<div className="min-w-0 flex-1">
 					<MoneyInput
@@ -98,6 +96,6 @@ export function ConvertBlock({
 					))
 				)}
 			</div>
-		</div>
+		</Section>
 	);
 }

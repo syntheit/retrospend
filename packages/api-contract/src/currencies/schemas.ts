@@ -129,3 +129,64 @@ export const conversionSchema = z
 	.meta({ id: "Conversion" });
 
 export type ConversionDto = z.infer<typeof conversionSchema>;
+
+/** The ranges a rate history takes; `ALL` is every stored day. */
+export const historyRangeSchema = z.enum(["1M", "3M", "1Y", "ALL"]);
+
+export type HistoryRangeDto = z.infer<typeof historyRangeSchema>;
+
+/**
+ * A currency's rate history against the home currency: for each rate type
+ * its days, oldest first, priced like the rate table (the stronger currency
+ * of the pair as the one unit) at one `places` across every point, so a line
+ * is comparable between days and rate types. Clients draw it and format
+ * with `places`; they never compute it.
+ */
+export const rateHistorySchema = z
+	.object({
+		currency: currencyCodeSchema,
+		home: currencyCodeSchema,
+		range: historyRangeSchema,
+		/** The one unit every point shares; null with no history. */
+		base: currencyCodeSchema.nullable(),
+		/** The rate type to open on; null with no history. */
+		defaultType: rateTypeSchema.nullable(),
+		series: z.array(
+			z.object({
+				type: rateTypeSchema,
+				/** Priced through another type's rate (one side lacks this type). */
+				derived: z.boolean(),
+				/** First to last day, in hundredths of a percent; null with one day. */
+				changeBp: z.int().nullable(),
+				points: z.array(
+					z.object({
+						date: z.iso.date(),
+						price: z.object({
+							minor: z.int(),
+							currency: currencyCodeSchema,
+							places: z.int().min(0).max(30),
+						}),
+					}),
+				),
+			}),
+		),
+	})
+	.meta({ id: "RateHistory" });
+
+export type RateHistoryDto = z.infer<typeof rateHistorySchema>;
+
+/** What the caller spent in one original currency, all time. */
+export const currencySpendingSchema = z
+	.object({
+		currency: currencyCodeSchema,
+		home: currencyCodeSchema,
+		/** Expenses counted: the caller's, shares included, refunds not. */
+		count: z.int().min(0),
+		/** Spent in the currency itself, net of refunds; never converted. */
+		original: moneySchema,
+		/** The same spending in the home currency; null when a rate is missing. */
+		inHome: moneySchema.nullable(),
+	})
+	.meta({ id: "CurrencySpending" });
+
+export type CurrencySpendingDto = z.infer<typeof currencySpendingSchema>;
