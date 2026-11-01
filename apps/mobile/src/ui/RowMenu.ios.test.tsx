@@ -80,7 +80,7 @@ describe("iOS RowMenu", () => {
 		expect(root.findAll((n) => "matchContents" in n.props)).toHaveLength(0);
 		const wrapper = root.findAll((n) => typeof n.props.onLayout === "function");
 		act(() => {
-			(wrapper[0]?.props.onLayout as (e: unknown) => void)({
+			(wrapper[0]?.props.onLayout as ((e: unknown) => void) | undefined)?.({
 				nativeEvent: { layout: { width: 368 } },
 			});
 		});
