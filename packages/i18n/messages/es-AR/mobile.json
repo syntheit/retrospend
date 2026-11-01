@@ -1835,7 +1835,6 @@
 		"youOwe": "Le debés a {name} {amount}",
 		"owesYou": "{name} te debe {amount}",
 		"rate": "Cotización {currency}",
-		"rateLine": "{unit} = {value} · {type}",
 		"method": "Medio",
 		"date": "Fecha",
 		"methodNames": {
@@ -2817,7 +2816,6 @@
 		"missing": "Todavía no hay cotización de {codes}. {count, plural, one {{names} queda} other {{names} quedan}} fuera del patrimonio.",
 		"noRate": "Sin cotización",
 		"noRateSub": "Sin cotización. Fuera de los totales.",
-		"base": "1 {code} =",
 		"derived": "Derivado a través de {home}",
 		"loading": "Cargando cotizaciones",
 		"error": "Las cotizaciones no están disponibles ahora",

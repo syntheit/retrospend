@@ -1835,7 +1835,6 @@
 		"youOwe": "Le debes a {name} {amount}",
 		"owesYou": "{name} te debe {amount}",
 		"rate": "Cotización {currency}",
-		"rateLine": "{unit} = {value} · {type}",
 		"method": "Medio",
 		"date": "Fecha",
 		"methodNames": {
@@ -2817,7 +2816,6 @@
 		"missing": "Aún no hay tipo de cambio de {codes}. {count, plural, one {{names} queda} other {{names} quedan}} fuera del patrimonio.",
 		"noRate": "Sin tipo de cambio",
 		"noRateSub": "Sin tipo de cambio. Fuera de los totales.",
-		"base": "1 {code} =",
 		"derived": "Derivado a través de {home}",
 		"loading": "Cargando tipos de cambio",
 		"error": "Los tipos de cambio no están disponibles ahora",

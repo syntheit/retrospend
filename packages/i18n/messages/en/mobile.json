@@ -1835,7 +1835,6 @@
 		"youOwe": "You owe {name} {amount}",
 		"owesYou": "{name} owes you {amount}",
 		"rate": "{currency} rate",
-		"rateLine": "{unit} = {value} · {type}",
 		"method": "Method",
 		"date": "Date",
 		"methodNames": {
@@ -2817,7 +2816,6 @@
 		"missing": "No rate yet for {codes}. {count, plural, one {{names} is} other {{names} are}} left out of net worth.",
 		"noRate": "No rate",
 		"noRateSub": "No rate. Left out of totals.",
-		"base": "1 {code} =",
 		"derived": "Derived through {home}",
 		"loading": "Loading rates",
 		"error": "Rates aren't available right now",

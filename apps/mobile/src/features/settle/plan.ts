@@ -266,7 +266,14 @@ export interface RateChoices {
 	/** The type the conversion uses now. */
 	current: string | null;
 	/** What one unit of each debt currency is worth in the payment currency. */
-	rates: { currency: string; unit: Money; value: Money; type: string }[];
+	rates: {
+		currency: string;
+		unit: Money;
+		value: Money;
+		/** The rate unrounded: how the rate reads as a number (R8). */
+		rate: string;
+		type: string;
+	}[];
 }
 
 /**
@@ -295,7 +302,15 @@ export function rateChoices(
 	const rates = currencies.flatMap((currency) => {
 		const rate = context.rates.find((r) => r.currency === currency)?.rate;
 		return rate
-			? [{ currency, unit: rate.unit, value: rate.value, type: rate.type }]
+			? [
+					{
+						currency,
+						unit: rate.unit,
+						value: rate.value,
+						rate: rate.rate,
+						type: rate.type,
+					},
+				]
 			: [];
 	});
 	return {
@@ -343,3 +358,11 @@ export function answerFor<T extends { key: string }>(
 ): T | null {
 	return answer !== null && key !== null && answer.key === key ? answer : null;
 }
+
+/** One rate the server read for a currency: unit and value as Money, `rate` unrounded. */
+export type RateRead = {
+	unit: Money;
+	value: Money;
+	rate: string;
+	type: string;
+};

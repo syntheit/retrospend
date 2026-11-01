@@ -1835,7 +1835,6 @@
 		"youOwe": "Você deve {amount} a {name}",
 		"owesYou": "{name} deve {amount} a você",
 		"rate": "Cotação {currency}",
-		"rateLine": "{unit} = {value} · {type}",
 		"method": "Forma",
 		"date": "Data",
 		"methodNames": {
@@ -2817,7 +2816,6 @@
 		"missing": "Ainda não há cotação de {codes}. {count, plural, one {{names} fica} other {{names} ficam}} fora do patrimônio.",
 		"noRate": "Sem cotação",
 		"noRateSub": "Sem cotação. Fora dos totais.",
-		"base": "1 {code} =",
 		"derived": "Derivado via {home}",
 		"loading": "Carregando cotações",
 		"error": "As cotações não estão disponíveis agora",

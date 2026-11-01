@@ -51,6 +51,15 @@ export function useRateFormat() {
 				to: string,
 				perFrom: RateInput,
 			) => formatRateWithType(typeName, from, to, perFrom, locale),
+			/** The number and the other code, in the direction that reads at least 1 ("1,545.20 ARS"). */
+			number: (
+				from: string,
+				to: string,
+				perFrom: RateInput,
+			): string | null => {
+				const o = orientRate(from, to, perFrom);
+				return o ? `${formatRateValue(o.value, locale)} ${o.quote}` : null;
+			},
 			/** Just the number and the other code ("1,545.20 ARS") with `base` as the one unit. */
 			inUnit: (
 				base: string,

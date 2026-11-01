@@ -67,9 +67,13 @@ export function orientRateAs(
 	return null;
 }
 
-/** The oriented number in the locale's marks: 2 decimals from 100 up, 2 to 4 below. */
+/**
+ * The number in the locale's marks: 2 decimals from 100 up, 2 to 4 from 1
+ * up. Below 1 (only when a caller pins the direction) up to 8, so a weak
+ * currency's rate is never "0.00".
+ */
 export function formatRateValue(value: number, locale = "en-US"): string {
-	const max = value >= 100 ? 2 : 4;
+	const max = value >= 100 ? 2 : value >= 1 ? 4 : 8;
 	const fixed = new Intl.NumberFormat("en-US", {
 		minimumFractionDigits: 2,
 		maximumFractionDigits: max,

@@ -1835,7 +1835,6 @@
 		"youOwe": "Du schuldest {name} {amount}",
 		"owesYou": "{name} schuldet dir {amount}",
 		"rate": "Kurs {currency}",
-		"rateLine": "{unit} = {value} · {type}",
 		"method": "Zahlungsart",
 		"date": "Datum",
 		"methodNames": {
@@ -2817,7 +2816,6 @@
 		"missing": "Noch kein Kurs für {codes}. {count, plural, one {{names} zählt} other {{names} zählen}} nicht zum Vermögen.",
 		"noRate": "Kein Kurs",
 		"noRateSub": "Kein Kurs. Zählt nicht zu den Summen.",
-		"base": "1 {code} =",
 		"derived": "Über {home} abgeleitet",
 		"loading": "Kurse werden geladen",
 		"error": "Kurse sind gerade nicht verfügbar",

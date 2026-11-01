@@ -1835,7 +1835,6 @@
 		"youOwe": "Tu dois {amount} à {name}",
 		"owesYou": "{name} te doit {amount}",
 		"rate": "Taux {currency}",
-		"rateLine": "{unit} = {value} · {type}",
 		"method": "Moyen",
 		"date": "Date",
 		"methodNames": {
@@ -2817,7 +2816,6 @@
 		"missing": "Pas encore de taux pour {codes}. {count, plural, one {{names} est exclu} other {{names} sont exclus}} du patrimoine.",
 		"noRate": "Pas de taux",
 		"noRateSub": "Pas de taux. Exclu des totaux.",
-		"base": "1 {code} =",
 		"derived": "Dérivé via {home}",
 		"loading": "Chargement des taux",
 		"error": "Les taux ne sont pas disponibles pour le moment",

@@ -1835,7 +1835,6 @@
 		"youOwe": "Вы должны {name} {amount}",
 		"owesYou": "{name} должен(на) вам {amount}",
 		"rate": "Курс {currency}",
-		"rateLine": "{unit} = {value} · {type}",
 		"method": "Способ",
 		"date": "Дата",
 		"methodNames": {
@@ -2817,7 +2816,6 @@
 		"missing": "Пока нет курса {codes}. {count, plural, one {{names} не входит} few {{names} не входят} many {{names} не входят} other {{names} не входят}} в капитал.",
 		"noRate": "Нет курса",
 		"noRateSub": "Нет курса. Не входит в итоги.",
-		"base": "1 {code} =",
 		"derived": "Рассчитан через {home}",
 		"loading": "Загрузка курсов",
 		"error": "Курсы сейчас недоступны",

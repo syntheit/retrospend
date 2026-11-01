@@ -12,6 +12,7 @@ import {
 	everythingConverts,
 	isOverpay,
 	type PaymentPreview,
+	type RateRead,
 	recordInput,
 	startMethod,
 } from "./plan";
@@ -81,7 +82,7 @@ export function useSettle(person: PersonRef, active: boolean) {
 	}, []);
 	// What one unit of a debt currency is worth at each rate type, so the
 	// chips can show the rate they would use; the server prices each type.
-	const [typeRates, setTypeRates] = useState<Record<string, Money>>({});
+	const [typeRates, setTypeRates] = useState<Record<string, RateRead>>({});
 	const [paidOn, setPaidOn] = useState<string | null>(null);
 	// A new rate type moves Everything and the parts: until the server's
 	// figures are in again, nothing is previewed or recorded.
@@ -183,7 +184,7 @@ export function useSettle(person: PersonRef, active: boolean) {
 				.then((ctx) => {
 					const rate = ctx.rates.find((r) => r.rate !== null)?.rate;
 					if (!cancelled && rate)
-						setTypeRates((was) => ({ ...was, [type]: rate.value }));
+						setTypeRates((was) => ({ ...was, [type]: rate }));
 				})
 				.catch(() => {});
 		}

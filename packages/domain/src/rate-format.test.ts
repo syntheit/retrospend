@@ -95,6 +95,11 @@ describe("formatRateValue: decimals and the locale's marks", () => {
 		expect(formatRateValue(1.0834)).toBe("1.0834");
 	});
 
+	it("keeps digits below 1 so a pinned weak direction never reads 0.00", () => {
+		expect(formatRateValue(0.000647128)).toBe("0.00064713");
+		expect(formatRateValue(0.5)).toBe("0.50");
+	});
+
 	it("follows the locale", () => {
 		expect(formatRateValue(1545.2, "es-AR")).toBe("1.545,20");
 		expect(formatRateValue(5.4, "de-DE")).toBe("5,40");
