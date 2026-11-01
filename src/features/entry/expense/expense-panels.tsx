@@ -16,13 +16,13 @@ type Draft = ReturnType<typeof useExpenseDraft>;
 
 /** When: the last days as pills, then the calendar. */
 export function WhenPanel(p: {
-	x: Draft;
+	date: string;
+	onDate: (date: string) => void;
 	today: string;
 	days: readonly string[];
 	dayLabel: (iso: string) => string;
 }) {
 	const t = useTranslations("entry.expense");
-	const { x } = p;
 	return (
 		<div className="flex flex-col gap-3">
 			<FilterChips
@@ -32,8 +32,8 @@ export function WhenPanel(p: {
 				{p.days.map((iso) => (
 					<GlyphPill
 						key={iso}
-						onClick={() => x.set({ date: iso })}
-						selected={x.d.date === iso}
+						onClick={() => p.onDate(iso)}
+						selected={p.date === iso}
 					>
 						{p.dayLabel(iso)}
 					</GlyphPill>
@@ -42,9 +42,9 @@ export function WhenPanel(p: {
 			<div>
 				<DatePicker
 					calendarOnly
-					onChange={(date) => x.set({ date })}
+					onChange={p.onDate}
 					today={p.today}
-					value={x.d.date}
+					value={p.date}
 				/>
 			</div>
 		</div>

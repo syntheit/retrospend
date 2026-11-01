@@ -11,9 +11,10 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Money } from "~/components/money/money";
 import { AnswerLine } from "~/components/ui/answer-line";
-import { DetailPager, type DetailTab } from "~/components/ui/detail-pager";
+import type { DetailTab } from "~/components/ui/detail-pager";
 import { Input } from "~/components/ui/input";
 import { Notice } from "~/components/ui/notice";
+import { ComposerFrame } from "../composer-frame";
 import { type EntryCatalog, Field } from "../shared-ui";
 import type { EntryPerson } from "../types";
 import { AmountField, type RateState } from "./amount-field";
@@ -92,7 +93,7 @@ export function ExpenseFields(p: {
 	});
 	const moreOn = !!d.note || !!d.location || d.spread !== "one" || d.exclude;
 
-	const tabs: DetailTab[] = [
+	const tabs: (DetailTab & { id: TabId })[] = [
 		{
 			id: "category",
 			label: t("tabs.category"),
@@ -123,7 +124,13 @@ export function ExpenseFields(p: {
 			tip: t("tabs.tip", { name: t("tabs.when"), key: 2 }),
 			dot: d.date !== p.today,
 			panel: (
-				<WhenPanel dayLabel={dayLabel} days={days} today={p.today} x={x} />
+				<WhenPanel
+					date={d.date}
+					dayLabel={dayLabel}
+					days={days}
+					onDate={(date) => x.set({ date })}
+					today={p.today}
+				/>
 			),
 		},
 		...(showPeople
@@ -145,7 +152,7 @@ export function ExpenseFields(p: {
 								you={p.you}
 							/>
 						),
-					} satisfies DetailTab,
+					} satisfies DetailTab & { id: TabId },
 					{
 						id: "project",
 						label: t("tabs.project"),
@@ -160,7 +167,7 @@ export function ExpenseFields(p: {
 								you={p.you}
 							/>
 						),
-					} satisfies DetailTab,
+					} satisfies DetailTab & { id: TabId },
 				]
 			: []),
 		{
@@ -182,66 +189,54 @@ export function ExpenseFields(p: {
 	const active = tabs.some((x) => x.id === tab) ? tab : "category";
 
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: Alt+1 to 5 picks a tab from anywhere in the form
-		<div
-			className="grid gap-4 md:h-full md:grid-cols-5 md:gap-x-6 md:gap-y-4"
-			onKeyDown={(e) => {
-				if (!e.altKey || e.ctrlKey || e.metaKey) return;
-				const n = /^Digit([1-5])$/.exec(e.code)?.[1];
-				const hit = n ? tabs[Number(n) - 1] : undefined;
-				if (!hit) return;
-				e.preventDefault();
-				setTab(hit.id as TabId);
-			}}
-		>
-			<div className="flex min-w-0 flex-col gap-4 md:col-span-2 md:row-start-1">
-				{p.verified ? <Notice>{t("verified")}</Notice> : null}
-				<Field label={t("amount")}>
-					<AmountField
-						bookedHome={p.bookedHome}
-						d={d}
-						errors={{ amount: err("amount"), rate: err("rate") }}
-						favorites={p.favorites}
-						home={home}
-						onAmount={x.setAmount}
-						onCurrency={x.setCurrency}
-						onCustom={x.pickCustom}
-						onCustomText={x.setCustomText}
-						onRate={x.pickRate}
-						rate={p.rate}
-						shared={shared}
-						showErrors={p.tried}
-					/>
-				</Field>
-				<Field htmlFor="entry-title" label={t("titleField")}>
-					<Input
-						autoComplete="off"
-						id="entry-title"
-						onChange={(e) => x.set({ title: e.target.value })}
-						placeholder={t("titlePlaceholder")}
-						value={d.title}
-					/>
-					{x.hint && !d.minor ? (
-						<span className="text-fg-3 text-meta">
-							{t.rich("lastTime", { amount: () => <Money value={x.hint!} /> })}
-						</span>
+		<ComposerFrame
+			active={active}
+			changes={p.changes}
+			entry={
+				<>
+					{p.verified ? <Notice>{t("verified")}</Notice> : null}
+					<Field label={t("amount")}>
+						<AmountField
+							bookedHome={p.bookedHome}
+							d={d}
+							errors={{ amount: err("amount"), rate: err("rate") }}
+							favorites={p.favorites}
+							home={home}
+							onAmount={x.setAmount}
+							onCurrency={x.setCurrency}
+							onCustom={x.pickCustom}
+							onCustomText={x.setCustomText}
+							onRate={x.pickRate}
+							rate={p.rate}
+							shared={shared}
+							showErrors={p.tried}
+						/>
+					</Field>
+					<Field htmlFor="entry-title" label={t("titleField")}>
+						<Input
+							autoComplete="off"
+							id="entry-title"
+							onChange={(e) => x.set({ title: e.target.value })}
+							placeholder={t("titlePlaceholder")}
+							value={d.title}
+						/>
+						{x.hint && !d.minor ? (
+							<span className="text-fg-3 text-meta">
+								{t.rich("lastTime", {
+									amount: () => <Money value={x.hint!} />,
+								})}
+							</span>
+						) : null}
+					</Field>
+					<AnswerLine parts={parts} />
+					{p.duplicate ? (
+						<Notice tone="attention">{t("duplicate")}</Notice>
 					) : null}
-				</Field>
-				<AnswerLine parts={parts} />
-				{p.duplicate ? (
-					<Notice tone="attention">{t("duplicate")}</Notice>
-				) : null}
-			</div>
-			<DetailPager
-				active={active}
-				className="md:bg-raised md:rounded-panel md:col-span-3 md:col-start-3 md:row-span-2 md:row-start-1 md:p-3"
-				label={t("tabs.label")}
-				onActive={(id) => setTab(id as TabId)}
-				tabs={tabs}
-			/>
-			<div className="flex min-w-0 flex-col gap-4 md:col-span-2 md:row-start-2 md:self-end">
-				{p.changes}
-			</div>
-		</div>
+				</>
+			}
+			label={t("tabs.label")}
+			onActive={setTab}
+			tabs={tabs}
+		/>
 	);
 }

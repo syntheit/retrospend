@@ -214,7 +214,22 @@
 		},
 		"someoneElse": "Someone else",
 		"received": "You received",
-		"countsAs": "Counts as"
+		"countsAs": "Counts as",
+		"tabs": {
+			"label": "Details",
+			"tip": "{name}, Alt+{key}",
+			"category": "Category",
+			"when": "When",
+			"into": "Into",
+			"plan": "Plan",
+			"more": "More"
+		},
+		"summary": {
+			"into": "Into {account}",
+			"noAccount": "No account",
+			"plan": "Uses your plan"
+		},
+		"notPlanned": "Not planned yet"
 	},
 	"transfer": {
 		"titleTransfer": "Transfer",
@@ -248,7 +263,18 @@
 			"moved": "Moved {amount} · {from} to {to}",
 			"bought": "Bought {amount} · {from} to {to}",
 			"sold": "Sold {amount} · {from} to {to}"
-		}
+		},
+		"tabs": {
+			"label": "Details",
+			"tip": "{name}, Alt+{key}",
+			"from": "From",
+			"to": "To",
+			"when": "When",
+			"more": "More"
+		},
+		"youSend": "You send",
+		"youReceive": "You receive",
+		"bankFee": "Bank fee"
 	},
 	"read": {
 		"added": "{name} added this. Only {name} can edit it; you can ask them to fix it.",
