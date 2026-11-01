@@ -28,7 +28,7 @@ export function SheetHead({
 			<TextAction label={tc("cancel")} onPress={onCancel} />
 			<Text
 				accessibilityRole="header"
-				numberOfLines={1}
+				numberOfLines={2}
 				style={{ flex: 1 }}
 				variant="section"
 			>
