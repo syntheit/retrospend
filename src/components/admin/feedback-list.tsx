@@ -195,7 +195,6 @@ export function FeedbackList({ filter }: { filter: Filter }) {
 			) : null}
 			<ConfirmationDialog
 				confirmLabel={t("delete")}
-				description={t("deleteBody")}
 				isLoading={remove.isPending}
 				onCancel={() => setDeleting(null)}
 				onConfirm={() => deleting && remove.mutate({ id: deleting.id })}

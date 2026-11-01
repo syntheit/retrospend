@@ -206,7 +206,6 @@ export function useBulkActions(rows: ActivityRowDTO[]) {
 	const confirm = deleting ? (
 		<ConfirmationDialog
 			confirmLabel={t("confirmButton")}
-			description={t("confirmBody")}
 			onConfirm={() => void confirmDelete(deleting)}
 			onOpenChange={(open) => {
 				if (!open) setDeleting(null);
