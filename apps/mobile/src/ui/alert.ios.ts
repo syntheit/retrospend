@@ -2,6 +2,10 @@ import { Alert, type AlertButton } from "react-native";
 
 export type { AlertButton };
 
+// This file is `.ios.ts`, not a plain `.ts`: Metro tries each source extension
+// in turn, plain file included, so a plain `alert.ts` would be picked on
+// Android before `alert.android.tsx` (see platformFiles.test.ts).
+
 /**
  * A short confirmation or choice: a title, at most one line under it and the
  * buttons. On iOS it is the system alert (destructive style for a delete);

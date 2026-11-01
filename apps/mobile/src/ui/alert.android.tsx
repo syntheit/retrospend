@@ -76,13 +76,17 @@ export function AlertHost() {
 				onDismissRequest={() => set(null)}
 			>
 				<AlertDialog.Title>
-					<ComposeText>{request.title}</ComposeText>
+					<ComposeText style={{ typography: "headlineSmall" }}>
+						{request.title}
+					</ComposeText>
 				</AlertDialog.Title>
 				{request.message || choices.length > 0 ? (
 					<AlertDialog.Text>
 						<Column>
 							{request.message ? (
-								<ComposeText>{request.message}</ComposeText>
+								<ComposeText style={{ typography: "bodyMedium" }}>
+									{request.message}
+								</ComposeText>
 							) : null}
 							{choices.map((button) => (
 								<TextButton
