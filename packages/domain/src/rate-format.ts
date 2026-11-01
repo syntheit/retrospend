@@ -10,7 +10,12 @@
  * "No rate" instead). A rate type's name always travels with the number:
  * `formatRateWithType("Blue", ...)` is "Blue · 1 USD = 1,545.20 ARS".
  */
-import { groupDigits, numberSymbols } from "./format-locale";
+import {
+	decimalSeparator,
+	groupDigits,
+	numberSymbols,
+} from "./format-locale";
+import { parseRateText, rateToText } from "./rate-text";
 
 export type RateInput = number | string | null | undefined;
 
@@ -107,4 +112,91 @@ export function formatRateWithType(
 	const rate = formatRate(from, to, perFrom, locale);
 	if (!rate) return null;
 	return typeName ? `${typeName} · ${rate}` : rate;
+}
+
+// ── Typing a rate the way it reads ───────────────────────────────────────────
+
+/** The way a pair reads: 1 `base` = N `quote`. `flipped` when `base` is the pair's `to`. */
+export interface RateDirection {
+	base: string;
+	quote: string;
+	flipped: boolean;
+}
+
+/**
+ * The direction a custom rate is typed in for the pair `from` to `to`: the
+ * direction the pair's known rate reads at least 1 in (`reference` is any
+ * rate for the pair, units of `to` per one `from`: a table rate, or the one
+ * a saved entry was booked at). Without a reference the pair reads in its
+ * stored direction. The same pair always gives the same direction, so what
+ * is typed, shown and prefilled agree.
+ */
+export function rateDirection(
+	from: string,
+	to: string,
+	reference: RateInput,
+): RateDirection {
+	const o = orientRate(from, to, reference);
+	const a = from.toUpperCase();
+	const b = to.toUpperCase();
+	return o && o.base === b
+		? { base: b, quote: a, flipped: true }
+		: { base: a, quote: b, flipped: false };
+}
+
+/** 1 / `canonical` as a decimal at `places`, half-even; null when the result is not above zero. */
+function invertDecimal(canonical: string, places: number): string | null {
+	const [int = "", frac = ""] = canonical.split(".");
+	const n = BigInt(int + frac);
+	if (n === 0n) return null;
+	const num = 10n ** BigInt(frac.length + places);
+	let q = num / n;
+	const twice = (num % n) * 2n;
+	if (twice > n || (twice === n && q % 2n === 1n)) q += 1n;
+	if (q === 0n) return null;
+	const digits = q.toString().padStart(places + 1, "0");
+	const head = digits.slice(0, digits.length - places);
+	const tail = digits.slice(digits.length - places).replace(/0+$/, "");
+	return tail ? `${head}.${tail}` : head;
+}
+
+/**
+ * What the person typed (the number beside "1 BASE =") as the stored rate:
+ * units of `to` per one `from`, a plain decimal of at most 12 places. Null
+ * for empty, zero, negative or unreadable text, or a number too large to
+ * invert to a rate. `flipped` comes from {@link rateDirection}.
+ */
+export function typedRateToStored(
+	text: string,
+	flipped: boolean,
+	locale: string,
+): string | null {
+	const typed = parseRateText(text, locale);
+	if (typed === null) return null;
+	return flipped ? invertDecimal(typed, 12) : typed;
+}
+
+/**
+ * A stored rate as the text to put in the field, in the typed direction and
+ * the locale's decimal mark, with no grouping. A flipped rate shows 4
+ * decimals (2 for a very weak currency), trailing zeros dropped. Empty
+ * without a rate.
+ */
+export function storedRateToTyped(
+	stored: RateInput,
+	flipped: boolean,
+	locale = "en-US",
+): string {
+	const canonical =
+		typeof stored === "number"
+			? rateToText(stored)
+			: typeof stored === "string"
+				? parseRateText(stored, "en-US")
+				: null;
+	if (canonical === null) return "";
+	const typed = flipped
+		? invertDecimal(canonical, Number(canonical) < 0.001 ? 2 : 4)
+		: canonical;
+	if (typed === null) return "";
+	return typed.replace(".", decimalSeparator(locale));
 }

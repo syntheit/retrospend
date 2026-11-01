@@ -5,6 +5,9 @@ import {
 	formatRateWithType,
 	orientRate,
 	orientRateAs,
+	rateDirection,
+	storedRateToTyped,
+	typedRateToStored,
 } from "./rate-format";
 
 describe("formatRate: a weak currency against a strong one", () => {
@@ -129,5 +132,83 @@ describe("orientRateAs: one direction for a row of rates", () => {
 	it("refuses a base outside the pair and a missing rate", () => {
 		expect(orientRateAs("EUR", "USD", "ARS", 1545.2)).toBeNull();
 		expect(orientRateAs("USD", "USD", "ARS", null)).toBeNull();
+	});
+});
+
+describe("typing a custom rate the way it reads", () => {
+	// Home ARS, spending USD: stored 1545.2 ARS per USD; reads "1 USD = 1,545.20 ARS".
+	it("types a strong foreign currency in the stored direction", () => {
+		const d = rateDirection("USD", "ARS", "1545.2");
+		expect(d).toEqual({ base: "USD", quote: "ARS", flipped: false });
+		expect(typedRateToStored("1545.2", d.flipped, "en-US")).toBe("1545.2");
+		expect(typedRateToStored("1.545,25", d.flipped, "es-AR")).toBe("1545.25");
+		expect(storedRateToTyped("1545.2", d.flipped, "en-US")).toBe("1545.2");
+		expect(storedRateToTyped("1545.2", d.flipped, "es-AR")).toBe("1545,2");
+	});
+
+	// Home USD, spending ARS: stored 0.000647 USD per ARS; reads "1 USD = 1,545.20 ARS".
+	it("types a weak foreign currency as the >= 1 number and inverts it", () => {
+		const d = rateDirection("ARS", "USD", "0.00064716");
+		expect(d).toEqual({ base: "USD", quote: "ARS", flipped: true });
+		const stored = typedRateToStored("1545.2", d.flipped, "en-US");
+		expect(stored).toBe("0.000647165415");
+		// Shown and prefilled as the same number the person typed.
+		expect(storedRateToTyped(stored, d.flipped, "en-US")).toBe("1545.2");
+		expect(formatRate("ARS", "USD", stored)).toBe("1 USD = 1,545.20 ARS");
+	});
+
+	it("round trips every direction without drifting", () => {
+		const cases: [string, string, string, string][] = [
+			["USD", "ARS", "1545.2", "1545.2"],
+			["ARS", "USD", "0.000647", "1545.2"],
+			["EUR", "USD", "1.0834", "1.0834"],
+			["USD", "EUR", "0.9231", "1.0834"],
+			["BRL", "ARS", "270.5", "270.5"],
+			["ARS", "BRL", "0.0037", "270.5"],
+			["USD", "VND", "25000", "25000"],
+			["VND", "USD", "0.00004", "25000"],
+			["BTC", "USD", "64545.12", "64545.12"],
+			["USD", "BTC", "0.0000155", "64545.12"],
+		];
+		for (const [from, to, reference, typed] of cases) {
+			const d = rateDirection(from, to, reference);
+			const stored = typedRateToStored(typed, d.flipped, "en-US");
+			expect(stored, `${from}->${to}`).not.toBeNull();
+			expect(storedRateToTyped(stored, d.flipped, "en-US"), `${from}->${to}`).toBe(
+				typed,
+			);
+		}
+	});
+
+	it("shows the saved number on edit: the booked rate reads the way it was typed", () => {
+		// Saved from a typed 1,545.2 in a USD home for ARS spending.
+		const saved = typedRateToStored("1545.2", true, "en-US");
+		const d = rateDirection("ARS", "USD", saved);
+		expect(storedRateToTyped(saved, d.flipped, "en-US")).toBe("1545.2");
+	});
+
+	it("reads a number the server sent as a number", () => {
+		expect(storedRateToTyped(1545.2, false)).toBe("1545.2");
+		expect(storedRateToTyped(0.5, true)).toBe("2");
+	});
+
+	it("gives null for empty, zero, negative and garbage input", () => {
+		for (const flipped of [false, true]) {
+			for (const text of ["", " ", "0", "0.00", "-5", "abc", "1.2.3", "1e5"]) {
+				expect(typedRateToStored(text, flipped, "en-US"), text).toBeNull();
+			}
+		}
+		// Too large to invert to a rate above zero at 12 places.
+		expect(typedRateToStored("9999999999999", true, "en-US")).toBeNull();
+	});
+
+	it("reads without a reference in the stored direction", () => {
+		expect(rateDirection("USD", "ARS", null)).toEqual({
+			base: "USD",
+			quote: "ARS",
+			flipped: false,
+		});
+		expect(storedRateToTyped(null, false)).toBe("");
+		expect(storedRateToTyped("0", true)).toBe("");
 	});
 });
