@@ -43,7 +43,7 @@
 		"loadError": "Impossible d'ouvrir le formulaire",
 		"loadErrorDetail": "Vérifie ta connexion et réessaie.",
 		"titleField": "Titre",
-		"titlePlaceholder": "C'était quoi ? (facultatif)",
+		"titlePlaceholder": "C'était quoi ?",
 		"category": "Catégorie",
 		"with": "Avec",
 		"you": "Toi",
@@ -63,6 +63,7 @@
 		"errors": {
 			"amount": "Saisis un montant supérieur à zéro",
 			"category": "Choisis une catégorie",
+			"title": "Ajoute un nom",
 			"source": "Dis qui t'a payé"
 		},
 		"toast": {

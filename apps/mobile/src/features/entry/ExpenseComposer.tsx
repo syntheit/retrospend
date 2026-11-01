@@ -6,7 +6,7 @@ import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import type { PagerTab } from "@/ui/DetailPager";
 import { Text } from "@/ui/Text";
-import { TextField } from "@/ui/TextField";
+import { FieldError, TextField } from "@/ui/TextField";
 import type { MenuItem } from "@/ui/types";
 import { AmountBlock } from "./AmountBlock";
 import { AmountCard, type MoneyLine } from "./AmountCard";
@@ -296,6 +296,9 @@ export function ExpenseComposer({
 		</Text>
 	) : null;
 
+	// The name is required, like Income's source: said once Add was pressed.
+	const titleError = form.tried && form.expenseProblems.title === true;
+
 	// The large text sizes keep the system decimal keyboard: the amount is a field.
 	const amount = system ? (
 		<AmountCard
@@ -371,12 +374,18 @@ export function ExpenseComposer({
 						autoCapitalize="sentences"
 						bare
 						hideLabel
+						invalid={titleError}
 						label={t("titleField")}
 						onChangeText={(title) => form.patchExpense({ title })}
 						onTypingChange={form.setTyping}
 						placeholder={t("titlePlaceholder")}
 						value={draft.title}
 					/>
+					{titleError ? (
+						<View style={{ alignItems: "center" }}>
+							<FieldError>{t("errors.title")}</FieldError>
+						</View>
+					) : null}
 					{memory}
 					{duplicate ? (
 						<Text

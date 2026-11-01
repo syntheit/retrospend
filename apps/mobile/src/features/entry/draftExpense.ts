@@ -281,7 +281,7 @@ export function knownPeople(
 }
 
 export type ExpenseErrors = Partial<
-	Record<"amount" | "category" | "rate" | "split", true>
+	Record<"amount" | "title" | "category" | "rate" | "split", true>
 >;
 
 /** Whether the draft is a split that sends its people (a new split, or an edit that changed it). */
@@ -320,6 +320,7 @@ export function expenseErrors(
 ): ExpenseErrors {
 	const errors: ExpenseErrors = {};
 	if (!amountMinor(d.amountText, locale, d.currency)) errors.amount = true;
+	if (!d.title.trim()) errors.title = true;
 	const known =
 		!categories ||
 		categories.some((c) => c.id === d.categoryId) ||
@@ -400,7 +401,7 @@ export function splitRows(
  * The request for Save, or null while it cannot be saved. A split goes to
  * /shared-expenses with its payer and mode (you and equal unless picked), an
  * expense alone to /expenses.
- * An empty title saves as the category's name, as on the web.
+ * The title is required, as on Income's source: no title, no write.
  */
 export function buildExpenseWrite(
 	d: ExpenseDraft,
@@ -412,8 +413,8 @@ export function buildExpenseWrite(
 ): PendingWrite | null {
 	const minor = amountMinor(d.amountText, input.locale, d.currency);
 	const category = input.catalog.categories.find((c) => c.id === d.categoryId);
-	if (!minor || !category) return null;
-	const title = d.title.trim() || category.name;
+	const title = d.title.trim();
+	if (!minor || !category || !title) return null;
 	const amount = fromMinor(money(minor, d.currency));
 	if (d.editing) return null;
 	if (d.withKeys.length === 0 && !d.projectId) {
@@ -549,8 +550,8 @@ export function buildExpenseUpdate(
 		(editing?.category && editing.category.id === d.categoryId
 			? editing.category
 			: undefined);
-	if (!editing || !minor || !category) return null;
-	const title = d.title.trim() || category.name;
+	const title = d.title.trim();
+	if (!editing || !minor || !category || !title) return null;
 	const amount = fromMinor(money(minor, d.currency));
 	if (editing.source === "shared") {
 		if (!editing.split) return null;

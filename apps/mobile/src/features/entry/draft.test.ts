@@ -98,11 +98,24 @@ describe("the keypad to minor units", () => {
 });
 
 describe("validation", () => {
-	it("asks for an amount and a category", () => {
+	it("asks for an amount, a name and a category", () => {
 		const d = newExpenseDraft(base);
-		expect(expenseErrors(d, "en-US")).toEqual({ amount: true, category: true });
+		expect(expenseErrors(d, "en-US")).toEqual({
+			amount: true,
+			title: true,
+			category: true,
+		});
 		expect(
-			expenseErrors({ ...d, amountText: "10", categoryId: "food" }, "en-US"),
+			expenseErrors(
+				{ ...d, amountText: "10", categoryId: "food", title: "  " },
+				"en-US",
+			),
+		).toEqual({ title: true });
+		expect(
+			expenseErrors(
+				{ ...d, amountText: "10", categoryId: "food", title: "Lunch" },
+				"en-US",
+			),
 		).toEqual({});
 	});
 
@@ -120,14 +133,16 @@ describe("buildExpenseWrite", () => {
 		...newExpenseDraft(base),
 		amountText: "12,500",
 		categoryId: "food",
+		title: "Lunch",
 	};
 	const input = { locale: "en-US", meId: "me1", catalog };
 
-	it("is null until the amount and category are there", () => {
+	it("is null until the amount, the name and the category are there", () => {
 		expect(buildExpenseWrite(newExpenseDraft(base), input)).toBeNull();
 		expect(
 			buildExpenseWrite({ ...filled, categoryId: null }, input),
 		).toBeNull();
+		expect(buildExpenseWrite({ ...filled, title: "  " }, input)).toBeNull();
 	});
 
 	it("writes a personal expense with the client id and a decimal string", () => {
@@ -146,9 +161,9 @@ describe("buildExpenseWrite", () => {
 		});
 	});
 
-	it("saves an empty title as the category name", () => {
-		const write = buildExpenseWrite(filled, input);
-		expect(write?.body.title).toBe("Food");
+	it("saves the trimmed title", () => {
+		const write = buildExpenseWrite({ ...filled, title: " Lunch " }, input);
+		expect(write?.body.title).toBe("Lunch");
 	});
 
 	it("splits with a person: you pay, equal shares, you and them", () => {
@@ -375,6 +390,7 @@ describe("a project expense", () => {
 		...newExpenseDraft(base),
 		amountText: "100",
 		categoryId: "food",
+		title: "Dinner",
 		projectId: "trip",
 	};
 
@@ -499,6 +515,7 @@ describe("the details fields", () => {
 		...newExpenseDraft(base),
 		amountText: "12,500.00",
 		categoryId: "food",
+		title: "Lunch",
 	};
 	const details = {
 		location: " Cafe Tortoni ",
@@ -542,7 +559,7 @@ describe("the details fields", () => {
 		);
 		expect(write?.entity).toBe("shared-expenses");
 		expect(write?.body.notes).toBe("with the team");
-		expect(write?.body.description).toBe("Food");
+		expect(write?.body.description).toBe("Lunch");
 		for (const key of ["location", "amortizeOver", "excludeFromAnalytics"]) {
 			expect(write?.body).not.toHaveProperty(key);
 		}
@@ -725,6 +742,7 @@ describe("the exchange rate of a write", () => {
 		...newExpenseDraft({ ...base, currency: "USD" }),
 		amountText: "12",
 		categoryId: "food",
+		title: "Coffee",
 	};
 	const input = { locale: "en-US", meId: "me", catalog };
 
