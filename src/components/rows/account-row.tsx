@@ -65,9 +65,7 @@ function useAccountSub(account: AccountVM) {
 		code,
 		d.apr != null
 			? t("apr", { apr: percent(d.apr) })
-			: d.valuedAt
-				? t("valuedAt", { type: d.valuedAt })
-				: null,
+			: (d.valuedAt ?? null),
 		updated,
 	];
 }

@@ -39,8 +39,7 @@
 	},
 	"row": {
 		"paidTo": "You paid {name}",
-		"paidYou": "{name} paid you",
-		"rate": "{type} rate"
+		"paidYou": "{name} paid you"
 	},
 	"actions": {
 		"deleted": "Deleted {name}",

@@ -38,8 +38,7 @@
 		"change": "{change} this month",
 		"closed": "Closed {date}. History kept.",
 		"noRate": "No {currency} rate. Left out of net worth.",
-		"apr": "APR {apr}",
-		"valuedAt": "Valued at {type}"
+		"apr": "APR {apr}"
 	},
 	"envelope": {
 		"spent": "Spent of what you planned"

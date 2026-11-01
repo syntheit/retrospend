@@ -38,8 +38,7 @@
 		"change": "{change} ce mois-ci",
 		"closed": "Fermé le {date}. Historique conservé.",
 		"noRate": "Pas de taux {currency}. Exclu du patrimoine.",
-		"apr": "TAEG {apr}",
-		"valuedAt": "Évalué au {type}"
+		"apr": "TAEG {apr}"
 	},
 	"envelope": {
 		"spent": "Dépensé sur le prévu"

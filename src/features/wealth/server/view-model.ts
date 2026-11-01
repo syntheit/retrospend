@@ -30,6 +30,8 @@ export type DashboardInput = {
 		currency: string;
 		balance: number;
 		balanceInTargetCurrency: number;
+		/** Home currency per 1 unit of the account's currency, unrounded; null without a rate. */
+		homePerUnit?: number | null;
 		/** The stored rate (a Prisma Decimal); only a custom one is sent back. */
 		exchangeRate: { toString(): string } | null;
 		exchangeRateType: string | null;
@@ -59,6 +61,8 @@ export type WealthInput = {
 	/** wealth.getRunwayStats: average monthly spending in the home currency. */
 	averageMonthlySpend: number | null;
 	rateTypes: Record<string, string[]>;
+	/** Home per 1 unit of a currency at each rate type, unrounded text. */
+	typeRates?: Record<string, Record<string, string>>;
 	ratesUpdated: string | null;
 	hideAmounts: boolean;
 };
@@ -135,7 +139,9 @@ function account(
 				: signed(moneyFromMajor(a.balanceInTargetCurrency, input.home)),
 		liquid: a.isLiquid && !liability,
 		rateType: types.length > 1 ? a.exchangeRateType : null,
+		rate: foreign && !a.rateMissing ? (a.homePerUnit ?? null) : null,
 		rateTypes: types,
+		typeRates: foreign ? (input.typeRates?.[a.currency] ?? {}) : {},
 		valuation: {
 			type: a.exchangeRateType,
 			customRate:
@@ -273,7 +279,9 @@ export function buildWealthView(input: WealthInput): WealthView {
 				storedSign: c.balance < 0 ? -1 : 1,
 				liquid: false,
 				rateType: null,
+				rate: null,
 				rateTypes: input.rateTypes[c.currency] ?? [],
+				typeRates: {},
 				valuation: { type: null, customRate: null },
 				apr: null,
 				updated: isoDay(c.closedAt),

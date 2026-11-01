@@ -101,13 +101,13 @@
 	},
 	"sheets": {
 		"valuedAtLabel": "Évalué au",
-		"valuedAt": "Évalué au taux {type}",
+		"valuedAt": "Évalué à {type}",
 		"noRate": "Pas de taux pour {currency} : ce compte est exclu du patrimoine.",
 		"update": {
 			"title": "Mettre à jour le solde",
 			"submit": "Mettre à jour le solde",
 			"now": "Actuellement <amount></amount> · Mis à jour le {date}",
-			"rateChange": "Évalué au taux {next} à partir d'aujourd'hui. Les jours précédents gardent le taux {before}."
+			"rateChange": "Évalué au taux {next} à partir d'aujourd'hui. Les jours précédents gardent {before}."
 		},
 		"account": {
 			"addTitle": "Ajouter un compte",

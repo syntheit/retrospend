@@ -1,5 +1,6 @@
 import "server-only";
 
+import { priceAll } from "~/features/currencies/server/prices";
 import { api } from "~/trpc/server";
 import type { WealthView } from "../types";
 import { buildWealthView } from "./view-model";
@@ -13,6 +14,23 @@ export function rateTypesByCurrency(
 		const list = out[r.currency] ?? [];
 		if (!list.includes(r.type)) list.push(r.type);
 		out[r.currency] = list;
+	}
+	return out;
+}
+
+/** Home per 1 unit of each currency at each rate type, unrounded text (what an account is valued at). */
+export function typeRatesByCurrency(
+	rates: readonly { currency: string; type: string; rate: { toString(): string } }[],
+	home: string,
+): Record<string, Record<string, string>> {
+	const out: Record<string, Record<string, string>> = {};
+	for (const p of priceAll(rates, home)) {
+		out[p.code] = Object.fromEntries(
+			[...p.prices].map(([type, value]) => [
+				type,
+				value.toDecimalPlaces(12).toString(),
+			]),
+		);
 	}
 	return out;
 }
@@ -36,6 +54,7 @@ export async function loadWealthView(): Promise<WealthView> {
 		dashboard,
 		averageMonthlySpend: runway.averageMonthlySpend,
 		rateTypes: rateTypesByCurrency(rates),
+		typeRates: typeRatesByCurrency(rates, home),
 		ratesUpdated: lastSync ? lastSync.toISOString().slice(0, 10) : null,
 		hideAmounts: settings.defaultPrivacyMode,
 	});

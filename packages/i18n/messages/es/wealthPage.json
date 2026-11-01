@@ -101,13 +101,13 @@
 	},
 	"sheets": {
 		"valuedAtLabel": "Valorada a",
-		"valuedAt": "Valorada al tipo {type}",
+		"valuedAt": "Valorada a {type}",
 		"noRate": "No hay tipo de cambio de {currency}, así que esta cuenta queda fuera del patrimonio.",
 		"update": {
 			"title": "Actualizar saldo",
 			"submit": "Actualizar saldo",
 			"now": "Ahora <amount></amount> · Actualizada el {date}",
-			"rateChange": "Valorada a {next} desde hoy. Los días anteriores mantienen el tipo {before}."
+			"rateChange": "Valorada a {next} desde hoy. Los días anteriores mantienen {before}."
 		},
 		"account": {
 			"addTitle": "Añadir cuenta",

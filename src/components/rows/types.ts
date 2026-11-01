@@ -185,7 +185,7 @@ export type AccountVM = {
 	 * one fact about how it counts. Without it the row says when it changed.
 	 */
 	detail?: {
-		/** The rate type it is valued at, worded ("Blue"), when there are several. */
+		/** The rate it is valued at, worded with its number ("Blue · 1 USD = 1,545.20 ARS"), when there are several types. */
 		valuedAt?: string | null;
 		/** A liability's interest rate, in hundredths of a percent. */
 		apr?: Basis | null;

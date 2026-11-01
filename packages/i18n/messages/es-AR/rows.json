@@ -38,8 +38,7 @@
 		"change": "{change} este mes",
 		"closed": "Cerrada el {date}. El historial se conserva.",
 		"noRate": "Sin cotización de {currency}. Queda fuera del patrimonio.",
-		"apr": "TNA {apr}",
-		"valuedAt": "Valuada a {type}"
+		"apr": "TNA {apr}"
 	},
 	"envelope": {
 		"spent": "Gastado de lo planeado"

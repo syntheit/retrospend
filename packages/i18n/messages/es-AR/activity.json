@@ -39,8 +39,7 @@
 	},
 	"row": {
 		"paidTo": "Le pagaste a {name}",
-		"paidYou": "{name} te pagó",
-		"rate": "Tipo {type}"
+		"paidYou": "{name} te pagó"
 	},
 	"actions": {
 		"deleted": "Borraste {name}",

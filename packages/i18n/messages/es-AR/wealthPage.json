@@ -101,13 +101,13 @@
 	},
 	"sheets": {
 		"valuedAtLabel": "Valuada a",
-		"valuedAt": "Valuada a la cotización {type}",
+		"valuedAt": "Valuada a {type}",
 		"noRate": "No hay cotización de {currency}, así que esta cuenta queda fuera del patrimonio.",
 		"update": {
 			"title": "Actualizar saldo",
 			"submit": "Actualizar saldo",
 			"now": "Ahora <amount></amount> · Actualizada el {date}",
-			"rateChange": "Valuada a {next} desde hoy. Los días anteriores mantienen la cotización {before}."
+			"rateChange": "Valuada a {next} desde hoy. Los días anteriores mantienen {before}."
 		},
 		"account": {
 			"addTitle": "Agregar cuenta",
