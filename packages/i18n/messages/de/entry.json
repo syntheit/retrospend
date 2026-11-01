@@ -214,7 +214,22 @@
 		},
 		"someoneElse": "Jemand anderes",
 		"received": "Erhalten",
-		"countsAs": "Entspricht"
+		"countsAs": "Entspricht",
+		"tabs": {
+			"label": "Details",
+			"tip": "{name}, Alt+{key}",
+			"category": "Kategorie",
+			"when": "Wann",
+			"into": "Auf",
+			"plan": "Plan",
+			"more": "Mehr"
+		},
+		"summary": {
+			"into": "Auf {account}",
+			"noAccount": "Kein Konto",
+			"plan": "Nutzt deinen Plan"
+		},
+		"notPlanned": "Noch nicht verplant"
 	},
 	"transfer": {
 		"titleTransfer": "Überweisung",
@@ -248,7 +263,18 @@
 			"moved": "{amount} verschoben · {from} nach {to}",
 			"bought": "{amount} gekauft · {from} nach {to}",
 			"sold": "{amount} verkauft · {from} nach {to}"
-		}
+		},
+		"tabs": {
+			"label": "Details",
+			"tip": "{name}, Alt+{key}",
+			"from": "Von",
+			"to": "Nach",
+			"when": "Wann",
+			"more": "Mehr"
+		},
+		"youSend": "Du sendest",
+		"youReceive": "Du erhältst",
+		"bankFee": "Bankgebühr"
 	},
 	"read": {
 		"added": "{name} hat das hinzugefügt. Nur {name} kann es bearbeiten; du kannst um eine Korrektur bitten.",

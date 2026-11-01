@@ -31,6 +31,7 @@ export function CategoryPanel({
 	recents,
 	value,
 	ring,
+	kind = "EXPENSE",
 	onPick,
 }: {
 	categories: readonly Category[];
@@ -38,11 +39,12 @@ export function CategoryPanel({
 	value: string | null;
 	ring?: boolean;
 	onPick: (id: string) => void;
+	kind?: "EXPENSE" | "INCOME";
 }) {
 	const t = useTranslations("entry.expense");
 	const { displayName } = useCategoryName();
 	const [open, setOpen] = useState(false);
-	const mine = categories.filter((c) => c.kind === "EXPENSE");
+	const mine = categories.filter((c) => c.kind === kind);
 	const byId = new Map(mine.map((c) => [c.id, c]));
 	const ids = lineIds(recents, mine, value, SHOWN);
 	return (

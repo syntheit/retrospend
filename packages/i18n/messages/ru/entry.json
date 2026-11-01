@@ -214,7 +214,22 @@
 		},
 		"someoneElse": "Кто-то другой",
 		"received": "Вы получили",
-		"countsAs": "Это"
+		"countsAs": "Это",
+		"tabs": {
+			"label": "Детали",
+			"tip": "{name}, Alt+{key}",
+			"category": "Категория",
+			"when": "Когда",
+			"into": "На счёт",
+			"plan": "План",
+			"more": "Ещё"
+		},
+		"summary": {
+			"into": "На счёт {account}",
+			"noAccount": "Без счёта",
+			"plan": "По вашему плану"
+		},
+		"notPlanned": "Ещё не запланировано"
 	},
 	"transfer": {
 		"titleTransfer": "Перевод",
@@ -248,7 +263,18 @@
 			"moved": "Переведено {amount} · {from} в {to}",
 			"bought": "Куплено {amount} · {from} в {to}",
 			"sold": "Продано {amount} · {from} в {to}"
-		}
+		},
+		"tabs": {
+			"label": "Детали",
+			"tip": "{name}, Alt+{key}",
+			"from": "Откуда",
+			"to": "Куда",
+			"when": "Когда",
+			"more": "Ещё"
+		},
+		"youSend": "Вы отправляете",
+		"youReceive": "Вы получаете",
+		"bankFee": "Банковская комиссия"
 	},
 	"read": {
 		"added": "{name} добавил(а) это. Изменить может только {name}; вы можете попросить исправить.",

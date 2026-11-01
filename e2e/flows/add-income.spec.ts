@@ -34,13 +34,10 @@ test("Add income: no account, no plan without a budget, save and Undo", async ({
 	await sheet.getByRole("button", { name: "Someone else" }).click();
 	await sheet.getByRole("textbox", { name: "Who paid you" }).fill("E2E Andino");
 	await sheet.getByRole("button", { name: "Salary", exact: true }).click();
-	await expect(
-		sheet.getByText("No account: it goes to your budget as Not planned yet."),
-	).toBeVisible();
-	// No envelope budget: Use my plan is not preselected.
-	await expect(
-		sheet.getByRole("radio", { name: "Keep as Not planned yet" }),
-	).toBeChecked();
+	// No account picked: the answer line says so.
+	await expect(sheet.getByRole("button", { name: "No account" })).toBeVisible();
+	// No envelope budget: there is no Plan tab and no plan lines.
+	await expect(sheet.getByRole("tab", { name: /^Plan/ })).toHaveCount(0);
 	await expect(sheet.getByTestId("entry-plan")).toHaveCount(0);
 	// Nothing moves here, so no "Nothing else changes" line.
 	await expect(sheet.getByTestId("entry-changes")).toContainText(

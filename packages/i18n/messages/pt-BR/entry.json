@@ -214,7 +214,22 @@
 		},
 		"someoneElse": "Outra pessoa",
 		"received": "Você recebeu",
-		"countsAs": "Equivale a"
+		"countsAs": "Equivale a",
+		"tabs": {
+			"label": "Detalhes",
+			"tip": "{name}, Alt+{key}",
+			"category": "Categoria",
+			"when": "Quando",
+			"into": "Para",
+			"plan": "Plano",
+			"more": "Mais"
+		},
+		"summary": {
+			"into": "Para {account}",
+			"noAccount": "Sem conta",
+			"plan": "Usa seu plano"
+		},
+		"notPlanned": "Ainda não planejado"
 	},
 	"transfer": {
 		"titleTransfer": "Transferência",
@@ -248,7 +263,18 @@
 			"moved": "{amount} movido · de {from} para {to}",
 			"bought": "{amount} comprado · de {from} para {to}",
 			"sold": "{amount} vendido · de {from} para {to}"
-		}
+		},
+		"tabs": {
+			"label": "Detalhes",
+			"tip": "{name}, Alt+{key}",
+			"from": "De",
+			"to": "Para",
+			"when": "Quando",
+			"more": "Mais"
+		},
+		"youSend": "Você envia",
+		"youReceive": "Você recebe",
+		"bankFee": "Tarifa bancária"
 	},
 	"read": {
 		"added": "{name} adicionou isto. Só {name} pode editar; você pode pedir uma correção.",

@@ -29,8 +29,6 @@ export function useAnswers(p: {
 	go: (tab: "category" | "when" | "who" | "project" | "more") => void;
 }) {
 	const t = useTranslations("entry.expense");
-	const td = useTranslations("pickers.date");
-	const df = useDateFormat();
 	const { displayName } = useCategoryName();
 	const { d } = p.x;
 	const category = p.catalog.categories.find((c) => c.id === d.categoryId);
@@ -42,17 +40,7 @@ export function useAnswers(p: {
 		? t("you")
 		: ([...d.others, ...(d.outsidePayer ? [d.outsidePayer] : [])].find(same)
 				?.name ?? "");
-	const dayLabel = (iso: string) =>
-		iso === p.today
-			? td("today")
-			: iso === addDays(p.today, -1)
-				? td("yesterday")
-				: format(localDay(iso), "EEE d", {
-						locale: getDateFnsLocale(df.locale),
-					});
-	const days = Array.from({ length: DAYS_BACK + 1 }, (_, i) =>
-		addDays(p.today, -i),
-	);
+	const { days, dayLabel } = useDays(p.today);
 	const whoText = isShared(d)
 		? payer
 			? t("summary.splitPaid", { count, name: payer })
@@ -98,4 +86,22 @@ export function useAnswers(p: {
 			: []),
 	];
 	return { parts, days, dayLabel };
+}
+
+/** The last days as pills (Today, Yesterday, then the ones before) and how each reads. */
+export function useDays(today: string) {
+	const td = useTranslations("pickers.date");
+	const df = useDateFormat();
+	const dayLabel = (iso: string) =>
+		iso === today
+			? td("today")
+			: iso === addDays(today, -1)
+				? td("yesterday")
+				: format(localDay(iso), "EEE d", {
+						locale: getDateFnsLocale(df.locale),
+					});
+	const days = Array.from({ length: DAYS_BACK + 1 }, (_, i) =>
+		addDays(today, -i),
+	);
+	return { days, dayLabel };
 }

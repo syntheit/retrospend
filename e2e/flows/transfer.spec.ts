@@ -39,10 +39,10 @@ test("Exchange: both amounts typed, rate derived, preview, save and Undo", async
 		await page.keyboard.press("t");
 		const sheet = page.getByRole("dialog");
 		await expect(sheet).toBeVisible();
-		await sheet.getByRole("combobox", { name: "From" }).click();
-		await page.getByRole("option", { name: /^E2E pesos/ }).click();
-		await sheet.getByRole("combobox", { name: "To" }).click();
-		await page.getByRole("option", { name: /^E2E dollars/ }).click();
+		await sheet.getByRole("tab", { name: /^From/ }).click();
+		await sheet.getByRole("button", { name: /flag E2E pesos/ }).click();
+		await sheet.getByRole("tab", { name: /^To/ }).click();
+		await sheet.getByRole("button", { name: /flag E2E dollars/ }).click();
 		await expect(page.getByRole("dialog", { name: "Exchange" })).toBeVisible();
 
 		const amounts = sheet.getByRole("textbox", { name: "Amount" });
