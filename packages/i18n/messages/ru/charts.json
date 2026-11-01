@@ -10,7 +10,8 @@
 	},
 	"area": {
 		"label": "Капитал",
-		"summary": "Капитал изменился с {start} ({from}) до {end} ({to})"
+		"summary": "Капитал изменился с {start} ({from}) до {end} ({to})",
+		"pick": "{date}: {amount}"
 	},
 	"ranked": {
 		"summary": "По убыванию: {list}"

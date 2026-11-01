@@ -10,7 +10,8 @@
 	},
 	"area": {
 		"label": "Vermögen",
-		"summary": "Das Vermögen ging von {start} am {from} auf {end} am {to}"
+		"summary": "Das Vermögen ging von {start} am {from} auf {end} am {to}",
+		"pick": "{date}: {amount}"
 	},
 	"ranked": {
 		"summary": "Größte zuerst: {list}"

@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { AllocationBar } from "~/components/charts/allocation-bar";
 import { BalanceBar } from "~/components/charts/balance-bar";
 import { MonthlyBars } from "~/components/charts/monthly-bars";
-import { NetWorthArea, scrubPoint } from "~/components/charts/net-worth-area";
+import {
+	NetWorthArea,
+	scrubPoint,
+	stepScrub,
+} from "~/components/charts/net-worth-area";
 import { PaceLine } from "~/components/charts/pace-line";
 import { RankedBars } from "~/components/charts/ranked-bars";
 import {
@@ -236,5 +240,37 @@ describe("area scrub (pointer and touch share one handler)", () => {
 		expect(scrubPoint(points, "")).toBeNull();
 		expect(scrubPoint(points, 5)).toBeNull();
 		expect(scrubPoint(points, 0.5)).toBeNull();
+	});
+});
+
+describe("area scrub (keyboard)", () => {
+	const d = (date: string, v: number | null) => ({
+		date,
+		value: v === null ? null : ars(v),
+	});
+	const points = [
+		d("2026-10-01", 1),
+		d("2026-10-02", null),
+		d("2026-10-03", 3),
+		d("2026-10-04", 4),
+	];
+
+	it("starts at the newest point going back and the oldest going forward", () => {
+		expect(stepScrub(points, null, -1)).toBe(3);
+		expect(stepScrub(points, null, 1)).toBe(0);
+	});
+
+	it("steps over a gap, never onto it", () => {
+		expect(stepScrub(points, 0, 1)).toBe(2);
+		expect(stepScrub(points, 2, -1)).toBe(0);
+	});
+
+	it("stays at either end", () => {
+		expect(stepScrub(points, 3, 1)).toBe(3);
+		expect(stepScrub(points, 0, -1)).toBe(0);
+	});
+
+	it("steps several days at once and stops at the end", () => {
+		expect(stepScrub(points, 0, 7)).toBe(3);
 	});
 });

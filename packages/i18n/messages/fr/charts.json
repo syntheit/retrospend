@@ -10,7 +10,8 @@
 	},
 	"area": {
 		"label": "Patrimoine",
-		"summary": "Le patrimoine est passé de {start} le {from} à {end} le {to}"
+		"summary": "Le patrimoine est passé de {start} le {from} à {end} le {to}",
+		"pick": "{date} : {amount}"
 	},
 	"ranked": {
 		"summary": "Du plus grand au plus petit : {list}"

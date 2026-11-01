@@ -10,7 +10,8 @@
 	},
 	"area": {
 		"label": "Patrimônio",
-		"summary": "O patrimônio foi de {start} em {from} para {end} em {to}"
+		"summary": "O patrimônio foi de {start} em {from} para {end} em {to}",
+		"pick": "{date}: {amount}"
 	},
 	"ranked": {
 		"summary": "Do maior ao menor: {list}"

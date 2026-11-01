@@ -1,11 +1,18 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
-import { Area, AreaChart, ReferenceDot, XAxis, YAxis } from "recharts";
+import { type KeyboardEvent, useMemo, useState } from "react";
+import {
+	Area,
+	AreaChart,
+	ReferenceDot,
+	ReferenceLine,
+	XAxis,
+	YAxis,
+} from "recharts";
 import type { MoneyValue } from "~/components/money/format";
 import { useRowDates } from "~/components/rows/dates";
-import { ChartContainer, ChartTooltip } from "~/components/ui/chart";
+import { ChartContainer } from "~/components/ui/chart";
 import {
 	ChartEmpty,
 	ChartFrame,
@@ -37,10 +44,32 @@ export function scrubPoint(
 }
 
 /**
+ * The next point with a value from `from` in a direction (a gap is skipped,
+ * never read as zero); stays put at either end.
+ */
+export function stepScrub(
+	points: AreaPoint[],
+	from: number | null,
+	delta: number,
+): number | null {
+	const dir = delta < 0 ? -1 : 1;
+	let i = from ?? (dir < 0 ? points.length : -1);
+	for (let left = Math.abs(delta); left > 0; left--) {
+		let j = i + dir;
+		while (points[j] && points[j]?.value == null) j += dir;
+		if (!points[j]) break;
+		i = j;
+	}
+	return i >= 0 && i < points.length ? i : from;
+}
+
+/**
  * Area with scrub: net worth over time, accent line over a soft fill, a dot
  * on the latest point. Moving the pointer (or a held finger) across it scrubs:
  * `onScrub` gets the point under it so the page's hero can show that day,
- * and null when the scrub ends, so the hero returns to today.
+ * and null when the scrub ends, so the hero returns to today. The keyboard
+ * scrubs too: the chart is a slider, the arrow keys step a day (Page keys a
+ * week, Home and End the ends) and Escape or leaving it ends the scrub.
  */
 export function NetWorthArea({
 	points,
@@ -72,6 +101,7 @@ export function NetWorthArea({
 }) {
 	const t = useTranslations("charts");
 	const animate = useChartMotion();
+	const [active, setActive] = useState<number | null>(null);
 	const text = useMoneyText(moneyFormat);
 	const { monthShort, short } = useRowDates();
 	const fmt = label === "month" ? monthShort : short;
@@ -91,18 +121,40 @@ export function NetWorthArea({
 	const low = Math.min(...values);
 	const high = Math.max(...values);
 	const pad = (high - low) * 0.12 || 1;
-	const scrub = (state: { activeTooltipIndex?: unknown }) =>
-		onScrub?.(scrubPoint(points, state.activeTooltipIndex));
-	return (
-		<ChartFrame
-			height={height}
-			summary={(summaryText ?? ((s) => t("area.summary", s)))({
-				from: first ? fmt(first.date) : "",
-				start: first?.value ? text(first.value) : t("noData"),
-				to: last ? fmt(last.date) : "",
-				end: last?.value ? text(last.value) : t("noData"),
-			})}
-		>
+	const show = (index: number | null) => {
+		setActive(index);
+		onScrub?.(index === null ? null : (points[index] ?? null));
+	};
+	const scrub = (state: { activeTooltipIndex?: unknown }) => {
+		const point = scrubPoint(points, state.activeTooltipIndex);
+		show(point ? points.indexOf(point) : null);
+	};
+	const key = (e: KeyboardEvent) => {
+		const step: Record<string, number> = {
+			ArrowLeft: -1,
+			ArrowRight: 1,
+			PageDown: -7,
+			PageUp: 7,
+		};
+		if (e.key === "Escape") return show(null);
+		let next: number | null | undefined;
+		if (e.key in step) next = stepScrub(points, active, step[e.key] ?? 0);
+		else if (e.key === "Home") next = stepScrub(points, null, 1);
+		else if (e.key === "End") next = stepScrub(points, null, -1);
+		if (next === undefined) return;
+		e.preventDefault();
+		show(next);
+	};
+	const shown = active === null ? null : (points[active] ?? null);
+	const current = shown ?? last;
+	const summaryLabel = (summaryText ?? ((s) => t("area.summary", s)))({
+		from: first ? fmt(first.date) : "",
+		start: first?.value ? text(first.value) : t("noData"),
+		to: last ? fmt(last.date) : "",
+		end: last?.value ? text(last.value) : t("noData"),
+	});
+	const chart = (
+		<ChartFrame height={height} summary={summaryLabel}>
 			<ChartContainer
 				className="aspect-auto size-full touch-pan-y"
 				config={{
@@ -112,9 +164,9 @@ export function NetWorthArea({
 				<AreaChart
 					data={data}
 					margin={MARGIN.area}
-					onMouseLeave={() => onScrub?.(null)}
+					onMouseLeave={() => show(null)}
 					onMouseMove={scrub}
-					onTouchEnd={() => onScrub?.(null)}
+					onTouchEnd={() => show(null)}
 					onTouchMove={scrub}
 					onTouchStart={scrub}
 				>
@@ -129,14 +181,10 @@ export function NetWorthArea({
 						ticks={ticks}
 					/>
 					<YAxis domain={[low - pad, high + pad]} hide type="number" />
-					<ChartTooltip content={() => null} cursor={{ stroke: COLOR.axis }} />
+					{shown?.value ? (
+						<ReferenceLine stroke={COLOR.axis} x={shown.date} />
+					) : null}
 					<Area
-						activeDot={{
-							r: STROKE.dot,
-							fill: COLOR.accent,
-							stroke: COLOR.ring,
-							strokeWidth: STROKE.dotRing,
-						}}
 						animationDuration={MOTION.duration}
 						connectNulls={false}
 						dataKey="value"
@@ -148,18 +196,44 @@ export function NetWorthArea({
 						strokeWidth={STROKE.line}
 						type="linear"
 					/>
-					{last?.value && (
+					{(shown?.value ?? last?.value) && (
 						<ReferenceDot
 							fill={COLOR.accent}
 							r={STROKE.dot}
 							stroke={COLOR.ring}
 							strokeWidth={STROKE.dotRing}
-							x={last.date}
-							y={last.value.minor}
+							x={(shown?.value ? shown : last)?.date}
+							y={(shown?.value ?? last?.value)?.minor}
 						/>
 					)}
 				</AreaChart>
 			</ChartContainer>
 		</ChartFrame>
+	);
+	if (!onScrub) return chart;
+	return (
+		// biome-ignore lint/a11y/useSemanticElements: a chart has no native element; this is the ARIA slider pattern
+		<div
+			aria-label={summaryLabel}
+			aria-orientation="horizontal"
+			aria-valuemax={points.length - 1}
+			aria-valuemin={0}
+			aria-valuenow={active ?? points.length - 1}
+			aria-valuetext={
+				current?.value
+					? t("area.pick", {
+							date: fmt(current.date),
+							amount: text(current.value),
+						})
+					: t("noData")
+			}
+			className="rounded-ctl focus-visible:outline-brand outline-none focus-visible:outline-2 focus-visible:outline-offset-2"
+			onBlur={() => show(null)}
+			onKeyDown={key}
+			role="slider"
+			tabIndex={0}
+		>
+			{chart}
+		</div>
 	);
 }
