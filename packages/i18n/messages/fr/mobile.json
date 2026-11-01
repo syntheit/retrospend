@@ -484,18 +484,18 @@
 		"offlineSince": "Hors ligne depuis {time}",
 		"search": "Rechercher des dépenses",
 		"summary": {
-			"month": "{count, plural, one {# dépense} other {# dépenses}} ce mois-ci",
-			"all": "{count, plural, one {# dépense} other {# dépenses}}, toute la période"
+			"count": "{count, plural, one {# dépense} other {# dépenses}}"
 		},
 		"chip": {
 			"category": "Catégorie",
 			"person": "Personne",
-			"allCategories": "Toutes les catégories",
-			"everyone": "Tout le monde",
-			"anyKind": "Tous les types",
 			"project": "Projet",
-			"allProjects": "Tous les projets",
-			"filter": "Filtre"
+			"filter": "Filtre",
+			"type": "Type",
+			"reset": "Effacer",
+			"periodSpoken": "Période, {value}",
+			"allCategories": "Toutes les catégories",
+			"everyone": "Tout le monde"
 		},
 		"period": {
 			"month": "Ce mois-ci",
@@ -545,6 +545,14 @@
 			"label": "Activité",
 			"expenses": "Dépenses",
 			"recurring": "Récurrents"
+		},
+		"filters": {
+			"findPerson": "Trouver une personne",
+			"noPerson": "Aucune personne ne correspond",
+			"findProject": "Trouver un projet",
+			"noProject": "Aucun projet ne correspond",
+			"findType": "Trouver un type",
+			"noType": "Aucun type ne correspond"
 		}
 	},
 	"budget": {
@@ -694,16 +702,14 @@
 			"toastSet": "{name} a maintenant {amount} d’attribué"
 		},
 		"move": {
-			"direction": "Sens",
-			"in": "Ajouter",
-			"out": "Retirer",
 			"from": "De",
 			"to": "Vers",
 			"amount": "Montant à déplacer",
-			"submit": "Déplacer",
-			"nothingToMove": "Rien n’a d’argent à déplacer ici. {pool} est vide.",
+			"submit": "Déplacer de l’argent",
 			"toastIn": "{amount} déplacé de {other} vers {name}",
-			"toastOut": "{amount} déplacé de {name} vers {other}"
+			"toastOut": "{amount} déplacé de {name} vers {other}",
+			"add": "Déplacer",
+			"changes": "Changements"
 		},
 		"cover": {
 			"lead": "{name} dépasse de {amount}. Couvrir ramène de l’argent d’ailleurs.",
@@ -1427,10 +1433,10 @@
 			"notLoggedHint": "Tes revenus et dépenses ne changent pas. La différence est classée dans Non enregistré.",
 			"same": "C’est déjà le solde, rien ne change donc.",
 			"toast": "{name} est maintenant à {amount}",
-			"valuedAt": "Valorisé à {type}",
 			"rateChange": "Valorisé au taux {next} à partir d’aujourd’hui. Les jours précédents gardent {before}.",
 			"rateFromToday": "Valorisé au taux {next} à partir d’aujourd’hui.",
-			"error": "Impossible d’enregistrer. Réessaie."
+			"error": "Impossible d’enregistrer. Réessaie.",
+			"add": "Mettre à jour"
 		},
 		"account": {
 			"addTitle": "Ajouter un compte",

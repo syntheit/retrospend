@@ -43,6 +43,7 @@ jest.mock("@/ui/Menu", () => {
 jest.mock("@/ui/Sheet", () => ({
 	Sheet: ({ visible, children }: Record<string, unknown>) =>
 		visible ? (children as never) : null,
+	useSheetBodySize: () => ({}),
 }));
 jest.mock("@/ui/Segmented", () => ({ Segmented: () => null }));
 jest.mock("@/lib/intl", () => ({ useFormatLocale: () => "en-US" }));

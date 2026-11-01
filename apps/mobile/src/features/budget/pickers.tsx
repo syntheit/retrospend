@@ -46,7 +46,7 @@ export interface ExtraPlace {
 }
 
 /** The envelope's bare glyph in its own color. */
-function useEnvelopeLead() {
+export function useEnvelopeLead() {
 	const { color, size } = useTheme();
 	return (e: Pick<BudgetEnvelope, "name" | "icon" | "color">) => (
 		<CategoryGlyph

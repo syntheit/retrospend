@@ -484,18 +484,18 @@
 		"offlineSince": "Offline seit {time}",
 		"search": "Ausgaben suchen",
 		"summary": {
-			"month": "{count, plural, one {# Ausgabe} other {# Ausgaben}} diesen Monat",
-			"all": "{count, plural, one {# Ausgabe} other {# Ausgaben}}, gesamter Zeitraum"
+			"count": "{count, plural, one {# Ausgabe} other {# Ausgaben}}"
 		},
 		"chip": {
 			"category": "Kategorie",
 			"person": "Person",
-			"allCategories": "Alle Kategorien",
-			"everyone": "Alle",
-			"anyKind": "Alle Arten",
 			"project": "Projekt",
-			"allProjects": "Alle Projekte",
-			"filter": "Filter"
+			"filter": "Filter",
+			"type": "Art",
+			"reset": "Zurücksetzen",
+			"periodSpoken": "Zeitraum, {value}",
+			"allCategories": "Alle Kategorien",
+			"everyone": "Alle"
 		},
 		"period": {
 			"month": "Dieser Monat",
@@ -545,6 +545,14 @@
 			"label": "Aktivität",
 			"expenses": "Ausgaben",
 			"recurring": "Wiederkehrend"
+		},
+		"filters": {
+			"findPerson": "Person suchen",
+			"noPerson": "Keine Person passt",
+			"findProject": "Projekt suchen",
+			"noProject": "Kein Projekt passt",
+			"findType": "Art suchen",
+			"noType": "Keine Art passt"
 		}
 	},
 	"budget": {
@@ -694,16 +702,14 @@
 			"toastSet": "{name} hat jetzt {amount} zugewiesen"
 		},
 		"move": {
-			"direction": "Richtung",
-			"in": "Hinzufügen",
-			"out": "Entnehmen",
 			"from": "Von",
 			"to": "Nach",
 			"amount": "Betrag zum Verschieben",
-			"submit": "Verschieben",
-			"nothingToMove": "Nichts hat hier Geld zum Verschieben. {pool} ist leer.",
+			"submit": "Geld verschieben",
 			"toastIn": "{amount} von {other} nach {name} verschoben",
-			"toastOut": "{amount} von {name} nach {other} verschoben"
+			"toastOut": "{amount} von {name} nach {other} verschoben",
+			"add": "Verschieben",
+			"changes": "Änderungen"
 		},
 		"cover": {
 			"lead": "{name} ist um {amount} überzogen. Decken holt Geld von einem anderen Ort.",
@@ -1427,10 +1433,10 @@
 			"notLoggedHint": "Deine Einnahmen und Ausgaben bleiben, wie sie sind. Die Differenz wird als Nicht erfasst gebucht.",
 			"same": "Das ist schon der Saldo, es ändert sich also nichts.",
 			"toast": "{name} steht jetzt bei {amount}",
-			"valuedAt": "Bewertet zu {type}",
 			"rateChange": "Ab heute bewertet zu {next}. Frühere Tage behalten {before}.",
 			"rateFromToday": "Ab heute bewertet zu {next}.",
-			"error": "Das ließ sich nicht speichern. Versuche es erneut."
+			"error": "Das ließ sich nicht speichern. Versuche es erneut.",
+			"add": "Aktualisieren"
 		},
 		"account": {
 			"addTitle": "Konto hinzufügen",

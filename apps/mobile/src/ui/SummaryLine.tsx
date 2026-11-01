@@ -27,16 +27,19 @@ export const SUMMARY_SEPARATOR = " · ";
 export function SummaryLine({
 	parts,
 	accessibilityLabel,
+	align = "center",
 }: {
 	parts: SummaryPart[];
 	accessibilityLabel?: string;
+	/** Centered under an amount; at the start when it sits beside a control. */
+	align?: "center" | "start";
 }) {
 	const { color } = useTheme();
 	return (
 		<Text
 			accessibilityLabel={accessibilityLabel}
 			numberOfLines={2}
-			style={{ textAlign: "center" }}
+			style={{ textAlign: align === "center" ? "center" : "left" }}
 		>
 			{parts.map((part, index) => (
 				<Fragment key={part.key}>

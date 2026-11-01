@@ -44,6 +44,10 @@ jest.mock("@/ui/Sheet", () => ({
 				{footer}
 			</>
 		) : null,
+	useSheetBodySize: () => ({}),
+}));
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 jest.mock("@/ui/Button", () => {
 	const { Pressable } = require("react-native");
@@ -177,6 +181,14 @@ const disabled = (tree: Tree, label: string) =>
 	)?.disabled;
 
 beforeEach(() => {
+	// The jest window is at text scale 2, where the system keyboard stands in
+	// for the keypad; the keypad is what these tests press.
+	const { Dimensions } = require("react-native");
+	const now = Dimensions.get("window");
+	Dimensions.set({
+		window: { ...now, fontScale: 1 },
+		screen: { ...now, fontScale: 1 },
+	});
 	mockIdCounter = 0;
 	mockToast.show.mockClear();
 });
@@ -279,7 +291,7 @@ describe("Update balance", () => {
 		act(() => tree.unmount());
 	});
 
-	it("puts the keypad before the rate chips, puts it away on a pick and brings it back on the amount", async () => {
+	it("puts the keypad before the rate chips, puts it away on a pick once there is an amount and brings it back on the amount", async () => {
 		const { api } = fakeApi();
 		mockSession.api = api;
 		let tree!: Tree;
@@ -300,8 +312,11 @@ describe("Update balance", () => {
 				.findAll((n) => typeof n.props.accessibilityLabel === "string")
 				.map((n) => n.props.accessibilityLabel as string);
 		expect(labels().indexOf("5")).toBeGreaterThan(-1);
-		expect(labels().indexOf("5")).toBeLessThan(labels().indexOf("Blue"));
+		// With no amount yet, a pick leaves the keys up.
 		press(tree, "Blue");
+		expect(labels()).toContain("5");
+		press(tree, "5");
+		press(tree, "Official");
 		expect(labels()).not.toContain("5");
 		const amount = labels().find((l) => l.startsWith("What it holds today"));
 		press(tree, amount as string);

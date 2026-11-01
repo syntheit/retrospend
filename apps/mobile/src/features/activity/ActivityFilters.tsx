@@ -1,20 +1,29 @@
 import { ACTIVITY_KINDS } from "@retrospend/api-contract";
-import { ScrollView } from "react-native";
+import { useState } from "react";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { usePeopleOverview } from "@/features/people/usePeople";
 import { useProjectList } from "@/features/projects/useProjects";
 import { useTheme } from "@/theme";
+import { CategoryPickerSheet } from "@/ui/CategoryPickerSheet";
 import { Menu } from "@/ui/Menu";
+import { PickerSheet } from "@/ui/PickerSheet";
+import type { PickGroup } from "@/ui/pickGroups";
+import { SummaryLine, type SummaryPart } from "@/ui/SummaryLine";
 import type { MenuItem } from "@/ui/types";
 import { type ActivityFilter, DEFAULT_FILTER } from "./filter";
 import { useFilterLeads } from "./filterLeads";
 import { useCategories } from "./useCategories";
 
+type Dimension = "category" | "person" | "project" | "kind";
+
 /**
- * The filter chips: period, category, person, project, and Filter (type).
- * Each opens a menu; a chip that is set says what it is set to instead of its
- * own name and turns brand-soft; the period is set only when it is not this
- * month. The search bar is the screen header's (native).
+ * The filter as one plain line, the way the composer says its answers: "This
+ * month · Groceries · Martín". The period is always there and flips between
+ * this month and all time on a tap; each other part is a filter that is set
+ * and opens its picker to change it. A Filter menu at the end adds one that is
+ * not set yet, and Clear takes them all off. The search bar is the screen
+ * header's (native).
  */
 export function ActivityFilters({
 	filter,
@@ -24,125 +33,182 @@ export function ActivityFilters({
 	onChange: (next: ActivityFilter) => void;
 }) {
 	const t = useTranslations("mobile.activity");
+	const tp = useTranslations("mobile.pickers");
 	const { space } = useTheme();
 	const categories = useCategories();
 	const people = usePeopleOverview();
 	const projects = useProjectList();
 	const leads = useFilterLeads();
-
-	const periodItems: MenuItem[] = (["month", "all"] as const).map((period) => ({
-		id: period,
-		label: t(`period.${period}`),
-		onPress: () => onChange({ ...filter, period }),
-	}));
-
-	const kindItems: MenuItem[] = [
-		{
-			id: "any",
-			label: t("chip.anyKind"),
-			onPress: () => onChange({ ...filter, kind: null }),
-		},
-		...ACTIVITY_KINDS.map((kind) => ({
-			id: kind,
-			label: t(`kind.${kind}`),
-			onPress: () => onChange({ ...filter, kind }),
-		})),
-	];
+	const [open, setOpen] = useState<Dimension | null>(null);
 
 	const categoryList =
 		categories.state.status === "ready" ? categories.state.data : [];
-	const categoryItems: MenuItem[] = [
-		{
-			id: "all",
-			label: t("chip.allCategories"),
-			onPress: () => onChange({ ...filter, categoryId: null }),
-		},
-		...categoryList.map((c) => ({
-			id: c.id,
-			label: c.name,
-			lead: leads.category(c),
-			onPress: () => onChange({ ...filter, categoryId: c.id }),
-		})),
-	];
-
 	const peopleList =
 		people.state.status === "ready" ? people.state.data.people : [];
-	const personItems: MenuItem[] = [
-		{
-			id: "all",
-			label: t("chip.everyone"),
-			onPress: () => onChange({ ...filter, personKey: null }),
-		},
-		...peopleList.map((p) => ({
-			id: p.person.key,
-			label: p.person.name,
-			lead: leads.person(p.person),
-			onPress: () => onChange({ ...filter, personKey: p.person.key }),
-		})),
-	];
-
 	const projectList =
 		projects.state.status === "ready" ? projects.state.data.items : [];
-	const projectItems: MenuItem[] = [
-		{
-			id: "all",
-			label: t("chip.allProjects"),
-			onPress: () => onChange({ ...filter, projectId: null }),
-		},
-		...projectList.map((p) => ({
-			id: p.id,
-			label: p.name,
-			lead: leads.project(p),
-			onPress: () => onChange({ ...filter, projectId: p.id }),
-		})),
-	];
-
 	const category = categoryList.find((c) => c.id === filter.categoryId);
 	const person = peopleList.find((p) => p.person.key === filter.personKey);
 	const project = projectList.find((p) => p.id === filter.projectId);
 
+	const parts: SummaryPart[] = [
+		{
+			key: "period",
+			text: t(`period.${filter.period}`),
+			accessibilityLabel: t("chip.periodSpoken", {
+				value: t(`period.${filter.period}`),
+			}),
+			onPress: () =>
+				onChange({
+					...filter,
+					period: filter.period === "month" ? "all" : "month",
+				}),
+		},
+	];
+	if (category) {
+		parts.push({
+			key: "category",
+			text: category.name,
+			onPress: () => setOpen("category"),
+		});
+	}
+	if (person) {
+		parts.push({
+			key: "person",
+			text: person.person.name,
+			onPress: () => setOpen("person"),
+		});
+	}
+	if (project) {
+		parts.push({
+			key: "project",
+			text: project.name,
+			onPress: () => setOpen("project"),
+		});
+	}
+	if (filter.kind) {
+		parts.push({
+			key: "kind",
+			text: t(`kind.${filter.kind}`),
+			onPress: () => setOpen("kind"),
+		});
+	}
+	const anySet =
+		category || person || project || filter.kind || filter.period !== "month";
+	if (anySet) {
+		parts.push({
+			key: "clear",
+			text: t("chip.reset"),
+			onPress: () =>
+				onChange({ ...DEFAULT_FILTER, q: filter.q }),
+		});
+	}
+
+	// Adding a filter that is not set yet: the menu closes, then its picker opens.
+	const add = (dimension: Dimension) => () => setTimeout(() => setOpen(dimension), 0);
+	const addItems: MenuItem[] = [
+		...(category
+			? []
+			: [{ id: "category", label: t("chip.category"), onPress: add("category") }]),
+		...(person
+			? []
+			: [{ id: "person", label: t("chip.person"), onPress: add("person") }]),
+		...(project
+			? []
+			: [{ id: "project", label: t("chip.project"), onPress: add("project") }]),
+		...(filter.kind
+			? []
+			: [{ id: "kind", label: t("chip.type"), onPress: add("kind") }]),
+	];
+
+	const close = () => setOpen(null);
+	const group = (
+		title: string,
+		rows: PickGroup["rows"],
+	): PickGroup[] => [{ key: "all", heading: title, rows }];
+
 	return (
-		<ScrollView
-			contentContainerStyle={{
+		<View
+			style={{
+				flexDirection: "row",
 				alignItems: "center",
-				gap: space[2],
+				gap: space[3],
 				paddingHorizontal: space[4],
-				paddingVertical: space[1],
+				paddingVertical: space[2],
 			}}
-			horizontal
-			keyboardShouldPersistTaps="handled"
-			showsHorizontalScrollIndicator={false}
 		>
-			<Menu
-				active={filter.period !== DEFAULT_FILTER.period}
-				chip
-				items={periodItems}
-				label={t(`period.${filter.period}`)}
+			<View style={{ flex: 1, minWidth: 0 }}>
+				<SummaryLine align="start" parts={parts} />
+			</View>
+			{addItems.length > 0 ? (
+				<Menu chip items={addItems} label={t("chip.filter")} />
+			) : null}
+			<CategoryPickerSheet
+				categories={categoryList.map((c) => ({ ...c, icon: c.icon ?? null }))}
+				onChange={(id) => onChange({ ...filter, categoryId: id })}
+				onClose={close}
+				value={filter.categoryId}
+				visible={open === "category"}
 			/>
-			<Menu
-				active={category !== undefined}
-				chip
-				items={categoryItems}
-				label={category ? category.name : t("chip.category")}
+			<PickerSheet
+				clear={tp("clear")}
+				empty={t("filters.noPerson")}
+				find={t("filters.findPerson")}
+				groups={group(
+					t("chip.person"),
+					peopleList.map((p) => ({
+						id: p.person.key,
+						label: p.person.name,
+						lead: leads.person(p.person),
+						selected: p.person.key === filter.personKey,
+					})),
+				)}
+				onClose={close}
+				onSelect={(id) => onChange({ ...filter, personKey: id })}
+				title={t("chip.person")}
+				visible={open === "person"}
 			/>
-			<Menu
-				active={person !== undefined}
-				chip
-				items={personItems}
-				label={person ? person.person.name : t("chip.person")}
+			<PickerSheet
+				clear={tp("clear")}
+				empty={t("filters.noProject")}
+				find={t("filters.findProject")}
+				groups={group(
+					t("chip.project"),
+					projectList.map((p) => ({
+						id: p.id,
+						label: p.name,
+						lead: leads.project(p),
+						selected: p.id === filter.projectId,
+					})),
+				)}
+				onClose={close}
+				onSelect={(id) => onChange({ ...filter, projectId: id })}
+				title={t("chip.project")}
+				visible={open === "project"}
 			/>
-			<Menu
-				active={project !== undefined}
-				chip
-				items={projectItems}
-				label={project ? project.name : t("chip.project")}
+			<PickerSheet
+				clear={tp("clear")}
+				empty={t("filters.noType")}
+				find={t("filters.findType")}
+				groups={group(
+					t("chip.type"),
+					ACTIVITY_KINDS.map((kind) => ({
+						id: kind,
+						label: t(`kind.${kind}`),
+						lead: null,
+						selected: kind === filter.kind,
+					})),
+				)}
+				onClose={close}
+				onSelect={(id) =>
+					onChange({
+						...filter,
+						kind: ACTIVITY_KINDS.find((k) => k === id) ?? null,
+					})
+				}
+				title={t("chip.type")}
+				visible={open === "kind"}
 			/>
-			<Menu
-				active={filter.kind !== null}
-				chip
-				items={kindItems}
-				label={filter.kind ? t(`kind.${filter.kind}`) : t("chip.filter")}
-			/>
-		</ScrollView>
+		</View>
 	);
 }

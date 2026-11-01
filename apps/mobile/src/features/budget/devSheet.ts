@@ -23,6 +23,7 @@ export function devSheet(name: string, data: BudgetMonth): OpenSheet | null {
 		case "usePlan":
 		case "takeBack":
 			return { kind: name };
+		case "move":
 		case "target":
 		case "edit":
 		case "limit":

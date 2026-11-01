@@ -1,23 +1,25 @@
 import { useEffect, useState } from "react";
-import { Platform, View } from "react-native";
+import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useRateLine } from "@/features/currencies/useRateLine";
+import { AmountEntry } from "@/features/entry/AmountEntry";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
 import { figureLines } from "@/features/write/figures";
-import { Note, SheetBody, useAmountLocale } from "@/features/write/parts";
+import { KeypadForm } from "@/features/write/KeypadForm";
+import { Note, useAmountLocale } from "@/features/write/parts";
+import { useAmountLine } from "@/features/write/useAmountLine";
 import { useFigureLabel } from "@/features/write/useFigureLabel";
+import { useFoldingPad } from "@/features/write/useFoldingPad";
 import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { useUndoToast } from "@/features/write/useUndoToast";
 import { noSession, useApi } from "@/features/write/WriteFrame";
 import { useRateFormat } from "@/lib/rateFormat";
 import { useTheme } from "@/theme";
-import { AmountField } from "@/ui/AmountField";
-import { Button } from "@/ui/Button";
 import { ChangeList, type ChangeRow } from "@/ui/ChangeList";
 import { IconTile } from "@/ui/IconTile";
 import { useRateTypeLabel } from "@/ui/Money";
-import { Sheet, type SheetDetent } from "@/ui/Sheet";
+import { Sheet, type SheetDetent, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
 import { glyphOf } from "./accounts";
 import { ACCOUNT_BALANCE, balanceRows, isUnchanged } from "./balance";
@@ -26,22 +28,22 @@ import { rateTypeChanged, rateTypesOf } from "./rateType";
 import type { Account, CurrencyInfo } from "./source";
 
 /**
- * Update balance rests at large only. Its body is the account, the amount, the
- * operator keys and the whole keypad; at medium (half the window) the keypad
- * stopped after 4 5 6 and 7 8 9 0 needed a drag up before a balance could be
- * typed. At large the whole keypad and the Update balance footer are in view.
+ * Update balance rests at large only. Its body is the account, the amount and
+ * the whole keypad; at medium (half the window) the keypad stopped after 4 5 6
+ * and 7 8 9 0 needed a drag up before a balance could be typed. At large the
+ * whole keypad and the Update balance button are in view.
  */
 export const UPDATE_BALANCE_DETENTS: SheetDetent[] = ["large"];
 
 /**
- * Say what the account holds today. In the order the mockup sets: the account
- * and what it shows now, the new balance, the keypad, the rate type it is valued at
- * from today (earlier days keep theirs), What this changes, and the verb
- * pinned under them. The amount and keypad come first so they are in view at
- * the detent it rests at. The server works out the difference and records it
- * as Not logged (not income, not spending); the dry run shows the account's
- * new balance, net worth and that difference before Update is on. The toast
- * undoes it.
+ * Say what the account holds today, on the composer's footing: the account and
+ * what it shows now, the new balance as the big figure, the rate type it is
+ * valued at from today (earlier days keep theirs), What this changes, and the
+ * keypad that folds into one Update balance button. Picking a rate type puts
+ * the keypad away; tapping the figure brings it back. The server works out
+ * the difference and records it as Not logged (not income, not spending); the
+ * dry run shows the account's new balance, net worth and that difference
+ * before Update is on. The toast undoes it.
  */
 export function UpdateBalanceSheet({
 	account,
@@ -59,7 +61,6 @@ export function UpdateBalanceSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.wealth.update");
-	const common = useTranslations("mobile.common");
 	const tp = useTranslations("mobile.budget.preview");
 	const format = useFormatter();
 	const api = useApi();
@@ -68,6 +69,7 @@ export function UpdateBalanceSheet({
 	const rateName = useRateTypeLabel();
 	const locale = useAmountLocale();
 	const { space } = useTheme();
+	const body = useSheetBodySize();
 	const currency = account.balance.currency;
 	const types = rateTypesOf(catalog, currency, home);
 	const rateLine = useRateLine(visible && types.length > 1);
@@ -75,12 +77,20 @@ export function UpdateBalanceSheet({
 	const saved = account.rateType;
 	const [draft, setDraft] = useState("");
 	const [rateType, setRateType] = useState<string | null>(saved);
-	// The keypad is up on opening; picking a rate type puts it away, and
-	// tapping the amount brings it back.
-	const [keypad, setKeypad] = useState(true);
 	const entered = readAmount(draft, locale, currency);
 	// Zero is a real balance: an empty account, a paid-off card.
 	const minor = minorOf(entered, true);
+	// The keypad is up on opening; a pick of a rate type puts it away, and
+	// tapping the figure brings it back.
+	const pad = useFoldingPad(minor !== null);
+	const line = useAmountLine({
+		currency,
+		text: draft,
+		entered,
+		allowZero: true,
+		label: t("amount"),
+		onPress: () => pad.setPadOpen(true),
+	});
 	// A pick other than the saved type values the account from today on.
 	const switching = rateType !== null && rateType !== saved;
 	const bodyKey =
@@ -92,12 +102,13 @@ export function UpdateBalanceSheet({
 					rateType: switching ? rateType : null,
 				});
 	const { idFor, reset } = useWriteIds(bodyKey);
+	const { setPadOpen } = pad;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening starts empty and fresh
 	useEffect(() => {
 		if (!visible) return;
 		setDraft("");
 		setRateType(saved);
-		setKeypad(true);
+		setPadOpen(true);
 		reset();
 	}, [visible]);
 	const input =
@@ -170,17 +181,16 @@ export function UpdateBalanceSheet({
 			: null) ??
 		rateName(type);
 	// The dated note under the chips: what the pick does and what it leaves.
+	// Only a pick has one; the type it already sits on needs no sentence.
 	const rateNote =
-		rateType === null || types.length < 2
+		rateType === null || types.length < 2 || !switching
 			? null
-			: !switching
-				? t("valuedAt", { type: named(rateType) })
-				: rateTypeChanged(saved, rateType)
-					? t("rateChange", {
-							next: named(rateType),
-							before: saved ? named(saved) : "",
-						})
-					: t("rateFromToday", { next: named(rateType) });
+			: rateTypeChanged(saved, rateType)
+				? t("rateChange", {
+						next: named(rateType),
+						before: saved ? named(saved) : "",
+					})
+				: t("rateFromToday", { next: named(rateType) });
 
 	async function submit() {
 		const out = await flow.commit();
@@ -199,89 +209,105 @@ export function UpdateBalanceSheet({
 	return (
 		<Sheet
 			detents={UPDATE_BALANCE_DETENTS}
-			footer={
-				<>
-					{Platform.OS === "android" ? (
-						<Button label={common("cancel")} onPress={onClose} variant="text" />
-					) : null}
-					<Button
-						disabled={!ready || flow.committing}
-						label={flow.committing ? common("saving") : t("submit")}
-						onPress={submit}
-					/>
-				</>
-			}
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}
 		>
-			<SheetBody>
-				<View
-					style={{ flexDirection: "row", alignItems: "center", gap: space[3] }}
-				>
-					<IconTile name={glyphOf(account.type)} />
-					<View style={{ flex: 1, minWidth: 0 }}>
-						<Text numberOfLines={1} weight="semibold">
-							{account.name}
-						</Text>
-						<Text numberOfLines={1} tone="fg3" variant="meta">
-							{t("now", {
-								amount: money(account.balance),
-								date: format.dateTime(new Date(account.updatedAt), {
-									month: "short",
-									day: "numeric",
-								}),
-							})}
-						</Text>
-					</View>
-				</View>
-				<View style={{ gap: space[4] }}>
-					<AmountField
-						allowZero
-						currency={currency}
-						draft={draft}
-						entered={entered}
-						keypad={keypad}
-						label={t("amount")}
-						onDraftChange={setDraft}
-						onPress={() => setKeypad(true)}
-					/>
-					<View style={{ gap: space[4] }}>
-						<RateTypeChips
-							onChange={(next) => {
-								// The keypad gives way to what the pick changes.
-								setRateType(next);
-								setKeypad(false);
-							}}
-							types={types}
-							value={rateType}
+			<View style={body}>
+				<KeypadForm
+					add={{
+						onPress: submit,
+						label: t("add"),
+						description: t("submit"),
+						folded: t("submit"),
+						off: !ready,
+						busy: flow.committing,
+					}}
+					amount={
+						<AmountEntry
+							currency={currency}
+							error={entered.state === "invalid"}
+							line={line}
+							onFocusChange={pad.setTyping}
+							onPress={() => pad.setPadOpen(true)}
+							onText={setDraft}
+							padOpen={pad.padOpen}
+							system={pad.system}
+							text={draft}
+							typing={pad.typing}
 						/>
-						{rateNote ? (
-							<Text tone={switching ? "attention" : "fg2"} variant="small">
-								{rateNote}
-							</Text>
-						) : null}
-						{same ? (
-							<Note>{t("same")}</Note>
-						) : (
-							<>
-								<ChangeList
-									changes={changes}
-									status={flow.status}
-									stays={(lines?.stays ?? []).map((id) => label(id).inline)}
-									unavailable={(lines?.unavailable ?? []).map(
-										(id) => label(id).inline,
-									)}
-								/>
-								{rows?.notLogged ? <Note>{t("notLoggedHint")}</Note> : null}
-							</>
-						)}
-						{flow.commitFailed ? (
-							<Note tone="attention">{t("error")}</Note>
-						) : null}
-					</View>
-				</View>
-			</SheetBody>
+					}
+					head={
+						<View
+							style={{
+								flexDirection: "row",
+								alignItems: "center",
+								gap: space[3],
+							}}
+						>
+							<IconTile name={glyphOf(account.type)} />
+							<View style={{ flex: 1, minWidth: 0 }}>
+								<Text numberOfLines={1} weight="semibold">
+									{account.name}
+								</Text>
+								<Text numberOfLines={1} tone="fg3" variant="meta">
+									{t("now", {
+										amount: money(account.balance),
+										date: format.dateTime(new Date(account.updatedAt), {
+											month: "short",
+											day: "numeric",
+										}),
+									})}
+								</Text>
+							</View>
+						</View>
+					}
+					keypad={{
+						text: draft,
+						currency,
+						kind: "money",
+						onChange: setDraft,
+					}}
+					keypadOpen={pad.padOpen}
+					onScrollDrag={() => {
+						if (pad.system) pad.setPadOpen(false);
+					}}
+					typing={pad.typing}
+				>
+					<RateTypeChips
+						onChange={(next) => {
+							// The keypad gives way to what the pick changes.
+							setRateType(next);
+							pad.fold();
+						}}
+						types={types}
+						value={rateType}
+					/>
+					{rateNote ? (
+						<Text tone="attention" variant="small">
+							{rateNote}
+						</Text>
+					) : null}
+					{same ? (
+						<Note>{t("same")}</Note>
+					) : (
+						<>
+							<ChangeList
+								changes={changes}
+								status={flow.status}
+								stays={(lines?.stays ?? []).map((id) => label(id).inline)}
+								unavailable={(lines?.unavailable ?? []).map(
+									(id) => label(id).inline,
+								)}
+							/>
+							{rows?.notLogged ? <Note>{t("notLoggedHint")}</Note> : null}
+						</>
+					)}
+					{flow.commitFailed ? (
+						<Note tone="attention">{t("error")}</Note>
+					) : null}
+				</KeypadForm>
+			</View>
 		</Sheet>
 	);
 }
