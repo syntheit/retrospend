@@ -178,22 +178,26 @@
 			"noBudget": "Usar meu plano precisa de um orçamento por envelopes. Fica como Ainda não planejado.",
 			"otherCurrency": "Seu plano distribui em {currency}. Esta receita fica como Ainda não planejado.",
 			"none": "Nada: todos os envelopes já têm fundos.",
-			"stays": "Ainda não planejado fica"
+			"stays": "Ainda não planejado fica",
+			"waits": "Fica em Ainda não planejado até você atribuir no Orçamento."
 		},
 		"transfer": {
 			"from": "De",
 			"to": "Para",
 			"receivedPlaceholder": "Opcional",
-			"receivedHint": "Deixe vazio para usar a cotação de referência.",
 			"note": "Nota",
 			"notePlaceholder": "Opcional",
 			"errors": {
 				"same": "Escolha duas contas diferentes",
 				"places": "Escolha as duas contas",
-				"received": "Digite o que chegou como um valor, ou deixe vazio"
+				"received": "Digite o que chegou como um valor, ou deixe vazio",
+				"fee": "Digite a tarifa como um valor, ou remova"
 			},
 			"receivedLabel": "Recebido, {amount}",
-			"receivedEmpty": "Recebido em {currency}, opcional"
+			"receivedEmpty": "Recebido em {currency}, opcional",
+			"send": "Você envia",
+			"receive": "Você recebe",
+			"fee": "Tarifa bancária"
 		},
 		"note": "Nota",
 		"notePlaceholder": "Detalhes adicionais",
@@ -311,7 +315,9 @@
 			"project": "Projeto",
 			"more": "Mais",
 			"changed": "alterado",
-			"label": "Detalhes"
+			"label": "Detalhes",
+			"into": "Conta",
+			"plan": "Plano"
 		},
 		"summary": {
 			"you": "você",
@@ -339,6 +345,17 @@
 			"changes": "O que muda",
 			"show": "Mostrar",
 			"hide": "Ocultar"
+		},
+		"duplicate": "Já existe uma despesa parecida neste dia.",
+		"accounts": "Contas",
+		"incomeFlow": {
+			"noCategory": "Sem categoria",
+			"intoAccount": "Em {name}",
+			"noAccount": "Sem conta",
+			"budgetOnly": "Só orçamento",
+			"usesPlan": "Usa seu plano",
+			"repeats": "Repete todo mês",
+			"repeatsShort": "Todo mês"
 		}
 	},
 	"pickers": {

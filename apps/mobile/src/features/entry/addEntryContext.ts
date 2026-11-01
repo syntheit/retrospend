@@ -15,7 +15,7 @@ import {
 	Platform,
 } from "react-native";
 import type { ComposerPrefill } from "@/surfaces/prefill";
-import type { EntryMode } from "./ComposerShell";
+import type { EntryMode } from "./types";
 import { nextExpanded } from "./fabScroll";
 
 // The add button's context, apart from the provider: screens and lists reach

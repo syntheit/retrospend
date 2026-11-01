@@ -178,22 +178,26 @@
 			"noBudget": "Usar mi plan necesita un presupuesto por sobres. Queda como Sin planear aún.",
 			"otherCurrency": "Tu plan asigna en {currency}. Este ingreso queda como Sin planear aún.",
 			"none": "Nada: todos los sobres ya tienen fondos.",
-			"stays": "Sin planear aún queda"
+			"stays": "Sin planear aún queda",
+			"waits": "Espera en Sin planear aún hasta que lo asignes en Presupuesto."
 		},
 		"transfer": {
 			"from": "De",
 			"to": "A",
 			"receivedPlaceholder": "Opcional",
-			"receivedHint": "Si lo dejas vacío, se usa la cotización de referencia.",
 			"note": "Nota",
 			"notePlaceholder": "Opcional",
 			"errors": {
 				"same": "Elige dos cuentas distintas",
 				"places": "Elige las dos cuentas",
-				"received": "Escribe lo que llegó como un monto, o déjalo vacío"
+				"received": "Escribe lo que llegó como un monto, o déjalo vacío",
+				"fee": "Escribe la comisión como un monto, o quítala"
 			},
 			"receivedLabel": "Recibido, {amount}",
-			"receivedEmpty": "Recibido en {currency}, opcional"
+			"receivedEmpty": "Recibido en {currency}, opcional",
+			"send": "Envías",
+			"receive": "Recibes",
+			"fee": "Comisión bancaria"
 		},
 		"note": "Nota",
 		"notePlaceholder": "Más detalles",
@@ -311,7 +315,9 @@
 			"project": "Proyecto",
 			"more": "Más",
 			"changed": "cambiado",
-			"label": "Detalles"
+			"label": "Detalles",
+			"into": "Cuenta",
+			"plan": "Plan"
 		},
 		"summary": {
 			"you": "tú",
@@ -339,6 +345,17 @@
 			"changes": "Qué cambia",
 			"show": "Mostrar",
 			"hide": "Ocultar"
+		},
+		"duplicate": "Ya hay un gasto parecido en este día.",
+		"accounts": "Cuentas",
+		"incomeFlow": {
+			"noCategory": "Sin categoría",
+			"intoAccount": "En {name}",
+			"noAccount": "Sin cuenta",
+			"budgetOnly": "Solo presupuesto",
+			"usesPlan": "Usa tu plan",
+			"repeats": "Se repite cada mes",
+			"repeatsShort": "Cada mes"
 		}
 	},
 	"pickers": {

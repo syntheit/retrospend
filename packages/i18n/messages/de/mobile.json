@@ -178,22 +178,26 @@
 			"noBudget": "Meinen Plan nutzen braucht ein Umschlagbudget. Es bleibt Noch nicht verplant.",
 			"otherCurrency": "Dein Plan verteilt in {currency}. Diese Einnahme bleibt Noch nicht verplant.",
 			"none": "Nichts: Jeder Umschlag ist schon gefüllt.",
-			"stays": "Noch nicht verplant bleibt"
+			"stays": "Noch nicht verplant bleibt",
+			"waits": "Es wartet unter Noch nicht verplant, bis du es im Budget zuweist."
 		},
 		"transfer": {
 			"from": "Von",
 			"to": "Nach",
 			"receivedPlaceholder": "Optional",
-			"receivedHint": "Lass das Feld leer, dann gilt der Referenzkurs.",
 			"note": "Notiz",
 			"notePlaceholder": "Optional",
 			"errors": {
 				"same": "Wähle zwei verschiedene Konten",
 				"places": "Wähle beide Konten",
-				"received": "Gib an, was angekommen ist, oder lass das Feld leer"
+				"received": "Gib an, was angekommen ist, oder lass das Feld leer",
+				"fee": "Gib die Gebühr als Betrag an oder entferne sie"
 			},
 			"receivedLabel": "Erhalten, {amount}",
-			"receivedEmpty": "Erhalten in {currency}, optional"
+			"receivedEmpty": "Erhalten in {currency}, optional",
+			"send": "Du sendest",
+			"receive": "Du erhältst",
+			"fee": "Bankgebühr"
 		},
 		"note": "Notiz",
 		"notePlaceholder": "Weitere Angaben",
@@ -311,7 +315,9 @@
 			"project": "Projekt",
 			"more": "Mehr",
 			"changed": "geändert",
-			"label": "Details"
+			"label": "Details",
+			"into": "Konto",
+			"plan": "Plan"
 		},
 		"summary": {
 			"you": "du",
@@ -339,6 +345,17 @@
 			"changes": "Das ändert sich",
 			"show": "Zeigen",
 			"hide": "Ausblenden"
+		},
+		"duplicate": "Eine ähnliche Ausgabe gibt es an diesem Tag schon.",
+		"accounts": "Konten",
+		"incomeFlow": {
+			"noCategory": "Keine Kategorie",
+			"intoAccount": "Auf {name}",
+			"noAccount": "Kein Konto",
+			"budgetOnly": "Nur Budget",
+			"usesPlan": "Nutzt deinen Plan",
+			"repeats": "Wiederholt sich jeden Monat",
+			"repeatsShort": "Monatlich"
 		}
 	},
 	"pickers": {

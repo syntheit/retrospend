@@ -10,7 +10,7 @@ import { newClientId } from "@/data/ids";
 import { useMoneyLocale } from "@/lib/money";
 import type { ComposerPrefill } from "@/surfaces/prefill";
 import { useToast } from "@/ui/Toast";
-import type { EntryMode } from "./ComposerShell";
+import type { EntryMode } from "./types";
 import {
 	amountMinor,
 	DEFAULT_RATE,

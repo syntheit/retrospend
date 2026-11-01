@@ -26,7 +26,7 @@ type PeopleOverview = Awaited<ReturnType<RetrospendClient["people"]["list"]>>;
 
 export const ENTRY_CATALOG_CACHE = {
 	name: "entry-catalog",
-	schema: 5,
+	schema: 6,
 } as const;
 
 const PAGE = 200;
@@ -79,6 +79,7 @@ export function catalogFrom(input: {
 			tone: c.tone,
 			excludeByDefault: c.excludeByDefault,
 			uses: c.expenseCount,
+			kind: c.kind,
 		})),
 		people,
 		// The home currency first, then the default one, then the rest by code.
@@ -91,6 +92,10 @@ export function catalogFrom(input: {
 			name: p.name,
 			type: p.type,
 			currency: p.currency,
+			balance: p.balance
+				? { minor: p.balance.minor, currency: p.balance.currency }
+				: undefined,
+			inBudget: p.inBudget,
 		})),
 		projects: addableProjects(projects),
 		hasBudget,

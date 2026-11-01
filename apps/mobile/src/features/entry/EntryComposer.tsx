@@ -1,28 +1,21 @@
-import { useRef, useState } from "react";
-import { Keyboard, View } from "react-native";
+import { useState } from "react";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
-import { useMoneyLocale } from "@/lib/money";
 import type { ComposerPrefill } from "@/surfaces/prefill";
-import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
-import { applyKey } from "@/ui/keypad";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import type { MenuItem } from "@/ui/types";
 import { useMoneyLines } from "./AmountCard";
-import { ComposerHeader } from "./ComposerHeader";
-import { ComposerShell, type EntryMode } from "./ComposerShell";
 import { DeleteEntrySheet } from "./DeleteEntrySheet";
 import { ExpenseComposer } from "./ExpenseComposer";
+import { IncomeComposer } from "./IncomeComposer";
 import { type SavedEntry, useEditEntry, useEntryCatalog } from "./hooks";
-import { IncomeFields } from "./IncomeFields";
-import { MoreStep, StepSlide } from "./MoreStep";
-import { PreviewLine } from "./PreviewLine";
 import { RateField } from "./RateField";
 import { SyncIssues } from "./SyncIssues";
-import { TransferFields } from "./TransferFields";
-import type { EntryCatalog } from "./types";
+import { TransferComposer } from "./TransferComposer";
+import type { EntryCatalog, EntryMode } from "./types";
 import { useComposerPreview } from "./useComposerPreview";
 import { useEntryForm } from "./useEntryForm";
 import { useEntrySave } from "./useEntrySave";
@@ -167,8 +160,6 @@ function Form({
 	onDirtyChange,
 }: FormProps) {
 	const t = useTranslations("mobile.composer");
-	const locale = useMoneyLocale();
-	const { space } = useTheme();
 	const form = useEntryForm({
 		catalog,
 		initialMode,
@@ -189,18 +180,7 @@ function Form({
 	// Every saved expense deletes from here; a split asks first and Undo brings
 	// back every share.
 	const canDelete = form.editing && edit !== undefined;
-	// The More step slides in the first time it opens; the quick step is just there.
-	const visitedMore = useRef(false);
-	if (form.step === "more") visitedMore.current = true;
-
-	const { mode, expense, income, transfer, rated, tried } = form;
-
-	function goTo(step: "quick" | "more") {
-		// A field that unmounts never reports its blur.
-		Keyboard.dismiss();
-		form.setTyping(false);
-		form.setStep(step);
-	}
+	const { mode, expense, rated, tried } = form;
 
 	const rate =
 		rated && form.foreign ? (
@@ -219,17 +199,7 @@ function Form({
 			/>
 		) : null;
 
-	// Between currencies the hint sits under the second row, in the amount card.
-	const underAmount =
-		mode === "transfer" ? (
-			form.exchange ? (
-				<Text tone="fg2" variant="small">
-					{t("transfer.receivedHint")}
-				</Text>
-			) : null
-		) : (
-			rate
-		);
+	const underAmount = rate;
 
 	const notices = (
 		<>
@@ -296,76 +266,36 @@ function Form({
 		);
 	}
 
-	// Income and Transfer keep the earlier two-step frame until they move onto
-	// the detail pager like the expense.
+	if (mode === "income") {
+		return (
+			<IncomeComposer
+				busy={busy}
+				catalog={catalog}
+				form={form}
+				lines={lines}
+				notices={notices}
+				onAdd={add}
+				onCancel={onDone}
+				onModeChange={onModeChange}
+				pv={pv}
+				rate={underAmount}
+				surface={surface}
+			/>
+		);
+	}
+
 	return (
-		<ComposerShell
-			addDescription={mode === "income" ? t("addIncome") : t("addTransfer")}
-			addLabel={t("add")}
-			addOff={pv.blocked || form.typedAmount === null}
-			amountError={tried && form.amountProblem === true}
+		<TransferComposer
 			busy={busy}
-			header={
-				<ComposerHeader
-					context={null}
-					editing={false}
-					mode={mode}
-					modes={form.modes}
-					onModeChange={onModeChange}
-					onMore={() => goTo("more")}
-					step={form.step}
-					undoChanges={null}
-				/>
-			}
-			keypad={{
-				text: form.keypad.text,
-				currency: form.keypad.currency,
-				onChange: form.patchAmount,
-			}}
+			catalog={catalog}
+			form={form}
 			lines={lines}
+			notices={notices}
 			onAdd={add}
-			onBack={() => goTo("quick")}
-			onOperator={(sign) =>
-				form.patchAmount(
-					applyKey(form.keypad.text, sign, locale, form.keypad.currency),
-				)
-			}
-			onScrollDrag={() => form.setPadOpen(false)}
-			padOpen={form.padOpen}
-			preview={<PreviewLine state={pv.preview} />}
-			rate={underAmount}
-			step={form.step}
+			onCancel={onDone}
+			onModeChange={onModeChange}
+			pv={pv}
 			surface={surface}
-			typing={form.typing}
-		>
-			{form.step === "more" ? (
-				<StepSlide animate from={1} key="more">
-					<MoreStep form={form} preview={pv} rate={rate} />
-				</StepSlide>
-			) : (
-				<StepSlide animate={visitedMore.current} from={-1} key="quick">
-					<View style={{ gap: space[4] }}>
-						{notices}
-						{mode === "income" ? (
-							<IncomeFields
-								catalog={catalog}
-								draft={income}
-								errors={tried ? form.incomeProblems : {}}
-								onChange={form.patchIncome}
-								onTypingChange={form.setTyping}
-							/>
-						) : (
-							<TransferFields
-								draft={transfer}
-								errors={tried ? form.transferProblems : {}}
-								onChange={form.patchTransfer}
-								onTypingChange={form.setTyping}
-								places={catalog.places}
-							/>
-						)}
-					</View>
-				</StepSlide>
-			)}
-		</ComposerShell>
+		/>
 	);
 }

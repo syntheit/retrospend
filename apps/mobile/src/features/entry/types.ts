@@ -21,6 +21,8 @@ export interface EntryCategory {
 	excludeByDefault: boolean;
 	/** Expenses filed under it: the most used come first as recents. */
 	uses: number;
+	/** Whether it files expenses or income; a cached catalog may lack it. */
+	kind?: "expense" | "income";
 }
 
 export interface EntryPlace {
@@ -29,6 +31,10 @@ export interface EntryPlace {
 	/** The account's type, for example CASH or CHECKING. */
 	type: string;
 	currency: string;
+	/** What it holds now, as the server states it (a debt is negative). */
+	balance?: { minor: number; currency: string };
+	/** Part of your budget. */
+	inBudget?: boolean;
 }
 
 /** A project you can add expenses into (active, and you are not a viewer). */
@@ -62,3 +68,6 @@ export interface EntryCatalog {
 export function personKey(person: { type: PersonType; id: string }): string {
 	return `${person.type}:${person.id}`;
 }
+
+/** The three things the composer adds. */
+export type EntryMode = "expense" | "income" | "transfer";

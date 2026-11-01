@@ -25,7 +25,7 @@ import {
 	useHideAddButton,
 	useOptionalAddEntry,
 } from "./addEntryContext";
-import type { EntryMode } from "./ComposerShell";
+import type { EntryMode } from "./types";
 import { EntryComposer } from "./EntryComposer";
 import { replaceDraft } from "./replaceDraft";
 import { useOutboxFlush } from "./useOutboxFlush";

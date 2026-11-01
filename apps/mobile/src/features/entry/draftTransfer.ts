@@ -15,6 +15,8 @@ export interface TransferDraft {
 	receivedText: string;
 	note: string;
 	date: string;
+	/** A bank fee in the sending account's currency; empty is none. */
+	feeText: string;
 }
 
 export function newTransferDraft(input: {
@@ -35,11 +37,12 @@ export function newTransferDraft(input: {
 		receivedText: "",
 		note: "",
 		date: input.date,
+		feeText: "",
 	};
 }
 
 export type TransferErrors = Partial<
-	Record<"amount" | "same" | "places" | "received", true>
+	Record<"amount" | "same" | "places" | "received" | "fee", true>
 >;
 
 /** The place a transfer leaves from, with its currency (the amount's). */
@@ -75,6 +78,13 @@ export function transferErrors(
 	) {
 		errors.received = true;
 	}
+	if (
+		from &&
+		d.feeText.trim() !== "" &&
+		!amountMinor(d.feeText, input.locale, from)
+	) {
+		errors.fee = true;
+	}
 	return errors;
 }
 
@@ -95,6 +105,7 @@ export function buildTransferWrite(
 	const received =
 		from === to ? null : amountMinor(d.receivedText, input.locale, to);
 	const note = d.note.trim();
+	const fee = amountMinor(d.feeText, input.locale, from);
 	const fromName = input.places.find((p) => p.id === d.fromId)?.name ?? "";
 	const toName = input.places.find((p) => p.id === d.toId)?.name ?? "";
 	return {
@@ -110,6 +121,14 @@ export function buildTransferWrite(
 			...(received ? { toAmount: fromMinor(money(received, to)) } : {}),
 			date: d.date,
 			...(note ? { note } : {}),
+			...(fee
+				? {
+						fee: {
+							amount: fromMinor(money(fee, from)),
+							accountId: d.fromId,
+						},
+					}
+				: {}),
 		},
 	};
 }

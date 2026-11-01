@@ -28,7 +28,9 @@ const SHAPES = {
 export type GlyphName =
 	| CategoryIconName
 	| "AlarmClock"
+	| "ArrowDownToLine"
 	| "ArrowRight"
+	| "ArrowUpFromLine"
 	| "ArrowUpDown"
 	| "Bell"
 	| "Bitcoin"
