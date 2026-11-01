@@ -23,15 +23,22 @@ const order = (
 
 describe("sortAccounts", () => {
 	it("value: largest first, no rate last and never as zero", () => {
-		const list = [acct("Small", 10), acct("None", null), acct("Zero", 0), acct("Big", 99)];
+		const list = [
+			acct("Small", 10),
+			acct("None", null),
+			acct("Zero", 0),
+			acct("Big", 99),
+		];
 		expect(order(list, "value")).toEqual(["Big", "Small", "Zero", "None"]);
 	});
 
 	it("name: A to Z ignoring case and accents", () => {
 		const list = [acct("beta"), acct("Ángel"), acct("Alpha")];
-		expect(
-			names(sortAccounts(list, "name", "es", [], same)),
-		).toEqual(["Alpha", "Ángel", "beta"]);
+		expect(names(sortAccounts(list, "name", "es", [], same))).toEqual([
+			"Alpha",
+			"Ángel",
+			"beta",
+		]);
 	});
 
 	it("type: the kinds in the order of the groups, then by name", () => {
@@ -82,21 +89,25 @@ describe("moveInOrder", () => {
 	const saved = ["X", "Q", "Y", "Z"];
 
 	it("moves inside a group and leaves the other accounts in their slots", () => {
-		expect(
-			moveInOrder(all, saved, "en", ["X", "Y", "Z"], 2, 0, same),
-		).toEqual(["Z", "Q", "X", "Y"]);
+		expect(moveInOrder(all, saved, "en", ["X", "Y", "Z"], 2, 0, same)).toEqual([
+			"Z",
+			"Q",
+			"X",
+			"Y",
+		]);
 	});
 
 	it("starts from the fallback order when nothing is saved", () => {
 		const two = [acct("Small", 5), acct("Big", 500)];
-		expect(
-			moveInOrder(two, [], "en", ["Big", "Small"], 0, 1, same),
-		).toEqual(["Small", "Big"]);
+		expect(moveInOrder(two, [], "en", ["Big", "Small"], 0, 1, same)).toEqual([
+			"Small",
+			"Big",
+		]);
 	});
 
 	it("is a no-op when the account stays", () => {
-		expect(
-			moveInOrder(all, saved, "en", ["X", "Y", "Z"], 1, 1, same),
-		).toEqual(saved);
+		expect(moveInOrder(all, saved, "en", ["X", "Y", "Z"], 1, 1, same)).toEqual(
+			saved,
+		);
 	});
 });

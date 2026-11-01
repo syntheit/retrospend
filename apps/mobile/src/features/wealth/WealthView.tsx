@@ -8,15 +8,15 @@ import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { useMoneyLocale } from "@/lib/money";
 import { useDataExport } from "@/features/settings/security/useDataExport";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
+import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { Glyph } from "@/ui/Glyph";
-import { Menu } from "@/ui/Menu";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
+import { Menu } from "@/ui/Menu";
 import { rowEnter, rowExit } from "@/ui/motion";
 import { Screen } from "@/ui/Screen";
 import { Skeleton, SkeletonRows } from "@/ui/Skeleton";
@@ -204,7 +204,13 @@ function AccountsList({
 	const custom = order.sort === "custom";
 	return (
 		<View>
-			<View style={{ paddingHorizontal: theme.size.gutter.phone, paddingTop: theme.space[3], alignItems: "flex-start" }}>
+			<View
+				style={{
+					paddingHorizontal: theme.size.gutter.phone,
+					paddingTop: theme.space[3],
+					alignItems: "flex-start",
+				}}
+			>
 				<Menu
 					accessibilityLabel={`${t("sort.label")}, ${t(`sort.${order.sort}`)}`}
 					chip
@@ -444,12 +450,12 @@ export function WealthView() {
 						<View style={{ flex: 1 }}>{hero}</View>
 						<View style={{ flex: 1 }}>
 							<AccountsList
-							data={data}
-							onOrder={saveOrder}
-							onSheet={setSheet}
-							order={order}
-							query={query}
-						/>
+								data={data}
+								onOrder={saveOrder}
+								onSheet={setSheet}
+								order={order}
+								query={query}
+							/>
 						</View>
 					</View>
 				)}

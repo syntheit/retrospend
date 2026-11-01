@@ -61,9 +61,7 @@ export function sortAccounts<T>(
 			case "name":
 				return byName(x, y);
 			case "type":
-				return (
-					(TYPE_ORDER[x.type] ?? 99) - (TYPE_ORDER[y.type] ?? 99)
-				);
+				return (TYPE_ORDER[x.type] ?? 99) - (TYPE_ORDER[y.type] ?? 99);
 			case "updated":
 				return x.updated === y.updated ? 0 : x.updated < y.updated ? 1 : -1;
 			case "value":

@@ -124,20 +124,26 @@ describe("account sort", () => {
 	const ids = (l: Account[]) => l.map((a) => a.id);
 
 	it("sorts a group by home value, no rate last", () => {
-		expect(ids(sortedAccounts(list, "value", "en", []))).toEqual(["B", "A", "C"]);
+		expect(ids(sortedAccounts(list, "value", "en", []))).toEqual([
+			"B",
+			"A",
+			"C",
+		]);
 	});
 
 	it("custom follows the saved order and comes back after another sort", () => {
 		const saved = ["C", "A", "B"];
-		expect(ids(sortedAccounts(list, "name", "en", saved))).toEqual(["A", "B", "C"]);
+		expect(ids(sortedAccounts(list, "name", "en", saved))).toEqual([
+			"A",
+			"B",
+			"C",
+		]);
 		expect(ids(sortedAccounts(list, "custom", "en", saved))).toEqual(saved);
 	});
 
 	it("moves one account and keeps the rest of the order", () => {
-		expect(movedOrder(list, ["A", "B", "C"], "en", ["A", "B", "C"], 0, 2)).toEqual([
-			"B",
-			"C",
-			"A",
-		]);
+		expect(
+			movedOrder(list, ["A", "B", "C"], "en", ["A", "B", "C"], 0, 2),
+		).toEqual(["B", "C", "A"]);
 	});
 });

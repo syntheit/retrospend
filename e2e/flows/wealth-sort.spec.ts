@@ -30,7 +30,10 @@ async function names(page: Page, group: string): Promise<string[]> {
 		.getByRole("listitem")
 		.evaluateAll((items) =>
 			items.map(
-				(li) => li.querySelector("a, button:not([aria-label^='Reorder'])")?.textContent?.trim() ?? "",
+				(li) =>
+					li
+						.querySelector("a, button:not([aria-label^='Reorder'])")
+						?.textContent?.trim() ?? "",
 			),
 		);
 }
@@ -77,7 +80,9 @@ test("Wealth: a custom order is saved, and another sort in between does not touc
 	);
 	const byName = await names(page, group);
 	expect(byName).toEqual(
-		[...byName].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" })),
+		[...byName].sort((a, b) =>
+			a.localeCompare(b, "en", { sensitivity: "base" }),
+		),
 	);
 	await expect(main.getByRole("button", { name: /^Reorder / })).toHaveCount(0);
 

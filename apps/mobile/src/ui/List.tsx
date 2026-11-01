@@ -286,21 +286,21 @@ export function ListGroup({
 									})}
 								</Fragment>
 							) : (
-							<Animated.View
-								entering={rowEnter(theme)}
-								exiting={rowExit(theme)}
-								key={
-									isValidElement(row) && row.key !== null
-										? `key:${row.key}`
-										: `at:${index}`
-								}
-								layout={rowLayout(theme)}
-							>
-								{index > 0 ? (
-									<View style={{ height: 1, backgroundColor: color.line }} />
-								) : null}
-								{row}
-							</Animated.View>
+								<Animated.View
+									entering={rowEnter(theme)}
+									exiting={rowExit(theme)}
+									key={
+										isValidElement(row) && row.key !== null
+											? `key:${row.key}`
+											: `at:${index}`
+									}
+									layout={rowLayout(theme)}
+								>
+									{index > 0 ? (
+										<View style={{ height: 1, backgroundColor: color.line }} />
+									) : null}
+									{row}
+								</Animated.View>
 							),
 						)}
 					</LayoutAnimationConfig>

@@ -119,7 +119,10 @@ export function ReorderGroup({
 			drag: (index, translationY) => {
 				if (active.value !== index) return;
 				const h = rowH.value;
-				const y = Math.max(-index * h, Math.min((count - 1 - index) * h, translationY));
+				const y = Math.max(
+					-index * h,
+					Math.min((count - 1 - index) * h, translationY),
+				);
 				dragY.value = y;
 				over.value = clamp(index + Math.round(y / h));
 			},
@@ -183,7 +186,8 @@ function Wrap({ index, children }: { index: number; children: ReactNode }) {
 	return (
 		<Animated.View
 			onLayout={(event) => {
-				if (s.heights.current) s.heights.current[index] = event.nativeEvent.layout.height;
+				if (s.heights.current)
+					s.heights.current[index] = event.nativeEvent.layout.height;
 			}}
 			style={style}
 		>
