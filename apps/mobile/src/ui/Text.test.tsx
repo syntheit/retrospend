@@ -132,17 +132,17 @@ describe("Text", () => {
 		expect(style.textAlign).toBe("center");
 	});
 
-	// React Native never shrinks a view by default, so a clamped line beside a
-	// button pushed the button off the row (R7). A line with a line count
-	// yields to its row; a figure that fits itself and a free line do not.
-	it("lets a clamped line shrink with its row", () => {
-		const style = styleOf(<Text numberOfLines={2}>A long title</Text>);
-		expect(style.flexShrink).toBe(1);
-		expect(style.minWidth).toBe(0);
+	// React Native never shrinks a view by default, so words beside a button
+	// pushed the button off the row (R7). Words yield to their row; a figure
+	// that fits itself keeps its width.
+	it("lets words shrink with their row", () => {
+		expect(styleOf(<Text>A long title</Text>).flexShrink).toBe(1);
+		expect(
+			styleOf(<Text numberOfLines={2}>A long title</Text>).flexShrink,
+		).toBe(1);
 	});
 
-	it("leaves a free line and a fitted figure alone", () => {
-		expect(styleOf(<Text>A long title</Text>).flexShrink).toBeUndefined();
+	it("leaves a fitted figure alone", () => {
 		expect(
 			styleOf(
 				<Text adjustsFontSizeToFit numberOfLines={1}>

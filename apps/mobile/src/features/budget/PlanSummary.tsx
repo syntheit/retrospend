@@ -100,16 +100,14 @@ export function PlanSummary({
 								}))
 						}
 					>
-						{/* The title keeps its width; the amount shrinks first, and shows whole units. */}
-						<View style={{ flexShrink: 0 }}>
-							<Text numberOfLines={1} weight="medium">
-								{t("owed.title")}
-							</Text>
-							<Text numberOfLines={1} tone="fg3" variant="meta">
+						{/* The words wrap; the amount shows whole units and shrinks inside half the row. */}
+						<View style={{ flex: 1, minWidth: 0 }}>
+							<Text weight="medium">{t("owed.title")}</Text>
+							<Text tone="fg3" variant="meta">
 								{t("owed.people", { count: owed.people })}
 							</Text>
 						</View>
-						<View style={{ flex: 1, minWidth: 0 }}>
+						<View style={{ flexShrink: 1, maxWidth: "50%" }}>
 							<Text
 								adjustsFontSizeToFit
 								numberOfLines={1}

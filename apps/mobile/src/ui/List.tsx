@@ -317,7 +317,7 @@ export function useInGroup(): boolean {
 }
 
 /** The text scale from which a row title wraps instead of ending in an ellipsis. */
-const WRAP_FROM_SCALE = 1.3;
+export const WRAP_FROM_SCALE = 1.3;
 
 /**
  * The middle of a row: the title (14/500) over a sub line (12, fg-3). Either

@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { cloneElement, isValidElement, type ReactElement } from "react";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { currenciesHref } from "@/features/account/places";
 import { useFaces } from "@/features/read/faces";
@@ -8,6 +8,7 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { wealthHref } from "@/features/wealth/routes";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
+import { WRAP_FROM_SCALE } from "@/ui/List";
 import { MoneyAmount, useRateTypeLabel } from "@/ui/Money";
 import { Text } from "@/ui/Text";
 import { BudgetCard } from "./BudgetCard";
@@ -78,6 +79,7 @@ export function Glance({
 	const dates = useHomeDates();
 	const rateLabel = useRateTypeLabel();
 	const { space } = useTheme();
+	const { fontScale } = useWindowDimensions();
 	const tiles: ReactElement<{ spans?: boolean }>[] = [];
 
 	const pool = notPlannedOf(glance);
@@ -215,7 +217,11 @@ export function Glance({
 	}
 
 	const rows: ReactElement<{ spans?: boolean }>[][] = [];
-	for (let i = 0; i < tiles.length; i += 2) rows.push(tiles.slice(i, i + 2));
+	// A figure shrinks to half its size and is then cut, so at the largest text
+	// sizes each tile takes a row of its own instead of sharing half of one.
+	const perRow = fontScale > WRAP_FROM_SCALE ? 1 : 2;
+	for (let i = 0; i < tiles.length; i += perRow)
+		rows.push(tiles.slice(i, i + perRow));
 
 	return (
 		<View style={{ paddingHorizontal: space[4], gap: space[3] }}>

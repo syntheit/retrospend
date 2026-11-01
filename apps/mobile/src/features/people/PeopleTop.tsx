@@ -71,12 +71,18 @@ export function PeopleTop({
 				/>
 			</View>
 			<BalanceBar onPerson={onPerson} overview={overview} />
-			<View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+			<View
+				style={{
+					flexDirection: "row",
+					justifyContent: "space-between",
+					gap: space[3],
+				}}
+			>
 				<Text tone="fg3" variant="meta">
 					{t("peopleOweYou", { count: owed.length })}
 				</Text>
 				{owe.length > 0 ? (
-					<Text tone="fg3" variant="meta">
+					<Text style={{ textAlign: "right" }} tone="fg3" variant="meta">
 						{t("youOwePeople", { count: owe.length })}
 					</Text>
 				) : null}
