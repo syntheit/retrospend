@@ -46,7 +46,8 @@ function row(items: { id: string; label: string; onPress: () => void }[]) {
 			</RowMenu>,
 		);
 	});
-	return (tree.root as Node).findAll((n) => "delayLongPress" in n.props)[0].props;
+	const found = (tree.root as Node).findAll((n) => "delayLongPress" in n.props);
+	return found[0]?.props ?? {};
 }
 
 describe("iOS RowMenu", () => {
