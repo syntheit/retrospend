@@ -111,6 +111,7 @@ describe("Add expense: rate per entry", () => {
 		expect(view.options.find((o) => o.rateType === "blue")?.rate).toEqual({
 			unit: USD(100),
 			value: ARS(146_800),
+			rate: "1468",
 		});
 	});
 
@@ -252,7 +253,11 @@ describe("Transfer: Exchange", () => {
 			toAmount: "300",
 		});
 		const view = transferView(r.value);
-		expect(view.rate).toEqual({ unit: USD(100), value: ARS(147_500) });
+		expect(view.rate).toEqual({
+			unit: USD(100),
+			value: ARS(147_500),
+			rate: "1475.000000",
+		});
 		expect(view.vsReference).toEqual(ARS(-210_000));
 		expect(view.referenceRateType).toBe("blue");
 		expect(view.accounts.map((a) => [a.name, a.before, a.after])).toEqual([

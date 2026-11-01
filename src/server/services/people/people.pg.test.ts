@@ -188,6 +188,7 @@ describe("people.page", () => {
 				type: "blue",
 				unit: { minor: 100, currency: "BRL" },
 				value: ars(27_100),
+				rate: "271",
 			},
 		});
 		expect(page.scopes.map((s) => [s.project?.name ?? null, s.lines])).toEqual([
