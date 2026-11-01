@@ -3,22 +3,33 @@ import {
 	type ReactNode,
 	useCallback,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
 import {
 	type LayoutChangeEvent,
-	type NativeScrollEvent,
-	type NativeSyntheticEvent,
 	Pressable,
 	ScrollView,
-	type ScrollViewInstance,
 	useWindowDimensions,
 	View,
 } from "react-native";
-import { useReducedMotion } from "react-native-reanimated";
+import {
+	GestureDetector,
+	GestureHandlerRootView,
+	usePanGesture,
+} from "react-native-gesture-handler";
+import Animated, {
+	ReduceMotion,
+	useAnimatedStyle,
+	useReducedMotion,
+	useSharedValue,
+	withTiming,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import { useTheme } from "@/theme";
 import { Glyph, type GlyphName } from "./Glyph";
+import { easeLand } from "./motion";
 import { Text } from "./Text";
 
 /** One tab of the pager: its word, its glyph, and whether it is off its default. */
@@ -37,42 +48,66 @@ export const ICON_ONLY_SCALE = 1.5;
 /** The least height a panel keeps; it scrolls inside. */
 export const MIN_PANEL_HEIGHT = 140;
 
-/** Eases a number from `from` to `to` over `ms`, one call per frame; returns a stop function. */
-function tween(
+/**
+ * A swipe starts after 12 points sideways before 12 up or down: anything
+ * steeper stays the panel's own vertical scroll.
+ */
+export const PAGER_START = 12;
+export const PAGER_FAIL_Y = 12;
+/** How far ahead of the finger a fling carries the release point, in seconds. */
+const TOSS_SECONDS = 0.12;
+
+/**
+ * The page a released drag settles on: the one nearest the release point once
+ * the finger's velocity has carried it a little further (a short, fast flick
+ * turns the page), never more than one page from where the drag began, and
+ * never past the ends. `offset` is the strip's translation (0 at the first
+ * page, negative after), `velocity` the finger's, in points per second.
+ */
+export function settlePage(
+	offset: number,
+	velocity: number,
+	width: number,
+	count: number,
 	from: number,
-	to: number,
-	ms: number,
-	frame: (value: number) => void,
-	done: () => void,
-): () => void {
-	const start = Date.now();
-	let id = 0;
-	let stopped = false;
-	const step = () => {
-		if (stopped) return;
-		const t = Math.min(1, (Date.now() - start) / ms);
-		// Ease out, no overshoot.
-		const eased = 1 - (1 - t) ** 3;
-		frame(from + (to - from) * eased);
-		if (t >= 1) done();
-		else id = requestAnimationFrame(step);
-	};
-	id = requestAnimationFrame(step);
-	return () => {
-		stopped = true;
-		cancelAnimationFrame(id);
-	};
+): number {
+	"worklet";
+	if (width <= 0) return from;
+	const landing = Math.round(-(offset + velocity * TOSS_SECONDS) / width);
+	const near = Math.min(from + 1, Math.max(from - 1, landing));
+	return Math.min(count - 1, Math.max(0, near));
+}
+
+/**
+ * Where the strip sits while the finger drags: the strip as it was when the
+ * drag took hold plus how far the finger moved past the start distance (so the
+ * strip does not jump by it), held between the first and the last page. No
+ * rubber band and no overshoot.
+ */
+export function followOffset(
+	from: number,
+	translation: number,
+	width: number,
+	count: number,
+): number {
+	"worklet";
+	const pull =
+		translation > 0 ? translation - PAGER_START : translation + PAGER_START;
+	const drag = Math.abs(translation) < PAGER_START ? 0 : pull;
+	return Math.max(-(count - 1) * width, Math.min(0, from + drag));
 }
 
 /**
  * The details of an entry as one row of tabs over a pager. The tabs are a
  * fixed grid of equal icon-plus-word buttons (icons only on a narrow phone or
  * at the largest text sizes); the open one has the brand-soft fill and a
- * heavier word. Under them each tab has a panel, side by side: swipe across,
- * or pick a tab, and the pager snaps to it over the tab duration (reduced
- * motion: it jumps). Every panel scrolls inside its own height, so no control
- * is cut on a short phone. The page is owned by the caller: `onPageChange`
- * says which one the person asked for and how.
+ * heavier word. Under them each tab has a panel, side by side on a strip that
+ * follows the finger one to one while it drags and settles on release in the
+ * tab duration (velocity aware, interruptible by a new touch, no overshoot).
+ * A tab press slides the strip the same way; reduced motion: it jumps. Every
+ * panel scrolls inside its own height, so no control is cut on a short phone.
+ * The page is owned by the caller: `onPageChange` says which one the person
+ * asked for and how.
  */
 export function DetailPager({
 	tabs,
@@ -94,7 +129,8 @@ export function DetailPager({
 	dotLabel: string;
 	minHeight?: number;
 }) {
-	const { color, duration, radius, size, space } = useTheme();
+	const theme = useTheme();
+	const { color, duration, radius, size, space } = theme;
 	const { fontScale, width: windowWidth } = useWindowDimensions();
 	const reduce = useReducedMotion();
 	const [box, setBox] = useState({ width: 0, height: 0 });
@@ -103,64 +139,96 @@ export function DetailPager({
 	const pageWidth = Math.round(width || windowWidth);
 	const iconsOnly = pageWidth < ICON_ONLY_WIDTH || fontScale >= ICON_ONLY_SCALE;
 	const panels = Children.toArray(children);
-	const scroller = useRef<ScrollViewInstance>(null);
-	const offset = useRef(0);
-	const shown = useRef(page);
-	const stop = useRef<(() => void) | null>(null);
+	const count = panels.length;
+	const ease = useMemo(() => easeLand(theme), [theme]);
 
-	const goTo = useCallback(
-		(next: number, animate: boolean) => {
-			stop.current?.();
-			stop.current = null;
-			const target = next * pageWidth;
-			if (!animate || reduce || pageWidth === 0) {
-				scroller.current?.scrollTo({ x: target, animated: false });
-				offset.current = target;
-				return;
-			}
-			stop.current = tween(
-				offset.current,
-				target,
-				duration.tab,
-				(x) => {
-					scroller.current?.scrollTo({ x, animated: false });
-					offset.current = x;
-				},
-				() => {
-					stop.current = null;
-				},
-			);
+	// The strip's translation, and the facts the drag's worklets read.
+	const x = useSharedValue(-page * pageWidth);
+	const from = useSharedValue(0);
+	const widthSV = useSharedValue(pageWidth);
+	const countSV = useSharedValue(count);
+	const shown = useRef(page);
+
+	const slide = useCallback(
+		(to: number) => {
+			"worklet";
+			x.value = withTiming(to, {
+				duration: duration.tab,
+				easing: ease,
+				reduceMotion: ReduceMotion.System,
+			});
 		},
-		[pageWidth, reduce, duration.tab],
+		[duration.tab, ease, x],
 	);
 
-	// The caller moved the page (a tab, a summary part): the pager follows. A
-	// width change (rotation, a split view) lands on the page at once.
+	// The caller moved the page (a tab, a part of the summary line): the strip
+	// follows from wherever it is. A width change (rotation, a split view)
+	// lands on the page at once.
 	const lastWidth = useRef(pageWidth);
 	useEffect(() => {
 		const resized = lastWidth.current !== pageWidth;
 		lastWidth.current = pageWidth;
-		if (resized || shown.current !== page) {
-			goTo(page, !resized && shown.current !== page);
+		widthSV.value = pageWidth;
+		countSV.value = count;
+		if (resized) {
+			x.value = -page * pageWidth;
 			shown.current = page;
+		} else if (shown.current !== page) {
+			shown.current = page;
+			slide(-page * pageWidth);
 		}
-	}, [page, pageWidth, goTo]);
-	useEffect(() => () => stop.current?.(), []);
+	}, [page, pageWidth, count, slide, widthSV, countSV, x]);
 
-	function settled(event: NativeSyntheticEvent<NativeScrollEvent>) {
-		// A scroll the pager started itself is not a swipe.
-		if (pageWidth === 0 || stop.current) return;
-		const x = event.nativeEvent.contentOffset.x;
-		offset.current = x;
-		const next = Math.max(
-			0,
-			Math.min(panels.length - 1, Math.round(x / pageWidth)),
-		);
-		if (next !== shown.current) {
+	const settled = useCallback(
+		(next: number) => {
+			if (next === shown.current) return;
 			shown.current = next;
 			onPageChange(next, "swipe");
-		}
-	}
+		},
+		[onPageChange],
+	);
+
+	const pan = usePanGesture(
+		useMemo(
+			() => ({
+				enabled: count > 1,
+				activeOffsetX: [-PAGER_START, PAGER_START] as [number, number],
+				failOffsetY: [-PAGER_FAIL_Y, PAGER_FAIL_Y] as [number, number],
+				onActivate: () => {
+					"worklet";
+					// A drag that catches the strip mid-slide takes it from where it is.
+					from.value = x.value;
+				},
+				onUpdate: (event: { translationX: number }) => {
+					"worklet";
+					x.value = followOffset(
+						from.value,
+						event.translationX,
+						widthSV.value,
+						countSV.value,
+					);
+				},
+				onDeactivate: (event: { velocityX: number }) => {
+					"worklet";
+					const began = Math.round(-from.value / Math.max(widthSV.value, 1));
+					const next = settlePage(
+						x.value,
+						event.velocityX,
+						widthSV.value,
+						countSV.value,
+						began,
+					);
+					slide(-next * widthSV.value);
+					scheduleOnRN(settled, next);
+				},
+			}),
+			[count, countSV, from, settled, slide, widthSV, x],
+		),
+	);
+
+	const strip = useAnimatedStyle(() => ({
+		transform: [{ translateX: x.value }],
+	}));
 
 	const dot = space[2];
 	return (
@@ -240,58 +308,57 @@ export function DetailPager({
 				style={{
 					flex: 1,
 					minHeight: minHeight - size.touchMin.phone,
-					borderTopWidth: 1,
-					borderBottomWidth: 1,
-					borderColor: color.line,
 				}}
 			>
-				<View
-					onLayout={(event: LayoutChangeEvent) => {
-						const { width: w, height: h } = event.nativeEvent.layout;
-						setBox((b) =>
-							b.width === w && b.height === h ? b : { width: w, height: h },
-						);
-					}}
-					style={{ flex: 1 }}
-				>
-					<ScrollView
-						horizontal
-						nestedScrollEnabled
-						onMomentumScrollEnd={settled}
-						onScroll={(event) => {
-							if (!stop.current)
-								offset.current = event.nativeEvent.contentOffset.x;
+				{/* A sheet or modal hosts its own native tree: the gesture root goes inside it. */}
+				<GestureHandlerRootView style={{ flex: 1 }}>
+					<View
+						onLayout={(event: LayoutChangeEvent) => {
+							const { width: w, height: h } = event.nativeEvent.layout;
+							setBox((b) =>
+								b.width === w && b.height === h ? b : { width: w, height: h },
+							);
 						}}
-						pagingEnabled
-						ref={scroller}
-						scrollEventThrottle={16}
-						showsHorizontalScrollIndicator={false}
+						style={{ flex: 1, overflow: "hidden" }}
 					>
-						{panels.map((panel, index) => (
-							<View
-								accessibilityElementsHidden={index !== page}
-								importantForAccessibility={
-									index === page ? "auto" : "no-hide-descendants"
-								}
-								// biome-ignore lint/suspicious/noArrayIndexKey: the panels are fixed, one per tab
-								key={index}
-								style={{ width: pageWidth, height: box.height || undefined }}
+						<GestureDetector gesture={pan}>
+							<Animated.View
+								style={[
+									{
+										flexDirection: "row",
+										width: pageWidth * count,
+										height: box.height || undefined,
+									},
+									strip,
+								]}
 							>
-								<ScrollView
-									contentContainerStyle={{
-										padding: space[3],
-										gap: space[2],
-										flexGrow: 1,
-									}}
-									keyboardShouldPersistTaps="handled"
-									nestedScrollEnabled
-								>
-									{panel}
-								</ScrollView>
-							</View>
-						))}
-					</ScrollView>
-				</View>
+								{panels.map((panel, index) => (
+									<View
+										accessibilityElementsHidden={index !== page}
+										importantForAccessibility={
+											index === page ? "auto" : "no-hide-descendants"
+										}
+										// biome-ignore lint/suspicious/noArrayIndexKey: the panels are fixed, one per tab
+										key={index}
+										style={{ width: pageWidth, height: box.height || undefined }}
+									>
+										<ScrollView
+											contentContainerStyle={{
+												padding: space[3],
+												gap: space[2],
+												flexGrow: 1,
+											}}
+											keyboardShouldPersistTaps="handled"
+											nestedScrollEnabled
+										>
+											{panel}
+										</ScrollView>
+									</View>
+								))}
+							</Animated.View>
+						</GestureDetector>
+					</View>
+				</GestureHandlerRootView>
 			</View>
 		</View>
 	);

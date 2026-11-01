@@ -17,7 +17,7 @@ type Item =
  * and a check on the current one (GUIDELINE 8: pickers carry identity).
  * Typing narrows the list, ignoring case and accents. With `multiple` a tap
  * toggles the row and the sheet stays open (a check per chosen row); Done in
- * the header closes it.
+ * the header closes it. With `full` it opens at the large detent only.
  */
 export function PickerSheet({
 	visible,
@@ -29,6 +29,7 @@ export function PickerSheet({
 	groups,
 	onSelect,
 	multiple,
+	full,
 }: {
 	visible: boolean;
 	onClose: () => void;
@@ -43,6 +44,8 @@ export function PickerSheet({
 	onSelect: (id: string) => void;
 	/** Several rows can be chosen: taps do not close, Done does. */
 	multiple?: boolean;
+	/** Opens at the full height the sheet can have (a long list, a main choice), with no medium stop. */
+	full?: boolean;
 }) {
 	const { color, font, radius, size, space, type } = useTheme();
 	const body = useSheetBodySize();
@@ -68,7 +71,7 @@ export function PickerSheet({
 
 	return (
 		<Sheet
-			detents={["medium", "large"]}
+			detents={full ? ["large"] : ["medium", "large"]}
 			dismiss={multiple ? "done" : undefined}
 			onClose={close}
 			title={title}
