@@ -230,11 +230,13 @@ describe("entity rows", () => {
 		const valued = text(
 			list(
 				h(AccountRow, {
-					account: { ...account, detail: { valuedAt: "Blue" } },
+					account: { ...account, detail: { valuedAt: "Blue · 1 USD = 1,468.00 ARS" } },
 				}),
 			),
 		);
-		expect(valued).toContain("USD · Valued at Blue · Updated Oct 18");
+		expect(valued).toContain(
+			"USD · Blue · 1 USD = 1,468.00 ARS · Updated Oct 18",
+		);
 		const card = text(
 			list(
 				h(AccountRow, {

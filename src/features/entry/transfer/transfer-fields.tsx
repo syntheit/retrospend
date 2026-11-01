@@ -183,7 +183,12 @@ export function TransferFields({
 												{vs && ref && v.reference ? (
 													<>
 														{" · "}
-														{fmt.withType(ref, v.reference)}
+														{ref}{" "}
+														{fmt.number(
+															v.reference.unit.currency,
+															v.reference.value.currency,
+															v.reference.rate,
+														)}
 														{" · "}
 														{vs.minor === 0
 															? t("vsSame", { type: ref })

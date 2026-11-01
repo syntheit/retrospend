@@ -42,6 +42,7 @@ describe("balanceParts and netOf", () => {
 			type: "blue",
 			unit: { minor: 100, currency: "BRL" },
 			value: { minor: 27_100, currency: "ARS" },
+			rate: "271",
 		});
 		// 10,000 + 27,100 - 29,360 = ARS 7,740.
 		expect(netOf(parts, "ARS")).toEqual({ minor: 774_000, currency: "ARS" });

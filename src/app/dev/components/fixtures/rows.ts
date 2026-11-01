@@ -189,7 +189,7 @@ export const PHONE_ROWS: TransactionVM[] = [
 		category: CAT.subscriptions,
 		amount: m("2.99", "USD"),
 		home: m("4213.09"),
-		rateTip: "USD 1 = ARS 1,409 · Official · Oct 18",
+		rateTip: "Official · 1 USD = 1,409.00 ARS",
 		date: "2026-10-18",
 		reviewed: false,
 	}),
