@@ -61,7 +61,7 @@ export function OptionsSection(p: {
 	return (
 		<div className="flex flex-col gap-3">
 			{showSpread ? (
-				<div className="min-h-ctl flex items-center justify-between gap-3">
+				<div className="flex min-h-ctl items-center justify-between gap-3">
 					<span className="text-body text-fg">{t("spread")}</span>
 					<Select
 						kit
@@ -85,8 +85,8 @@ export function OptionsSection(p: {
 			) : null}
 			{p.personal ? (
 				<div className="flex flex-col gap-1">
-					<div className="min-h-ctl flex items-center justify-between gap-3">
-						<span className="text-body text-fg flex items-center gap-2">
+					<div className="flex min-h-ctl items-center justify-between gap-3">
+						<span className="flex items-center gap-2 text-body text-fg">
 							{t("exclude")}
 							<Tip content={t("excludeTip")}>
 								<Button
