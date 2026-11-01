@@ -118,6 +118,7 @@ export function ExpenseForm(p: {
 	return (
 		<>
 			<Sheet
+				className="md:h-150 md:max-w-4xl"
 				detent="large"
 				footer={
 					editing ? (
@@ -193,6 +194,7 @@ export function ExpenseForm(p: {
 				onSubmit={() => submit()}
 				open
 				title={title}
+				wide
 			>
 				<ExpenseFields
 					bookedHome={initial.bookedHome}

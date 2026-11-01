@@ -93,7 +93,25 @@
 			"confirm": "Eliminar gasto"
 		},
 		"projectAria": "Proyecto, {project}",
-		"addShort": "Añadir"
+		"addShort": "Añadir",
+		"tabs": {
+			"label": "Detalles",
+			"tip": "{name}, Alt+{key}",
+			"category": "Categoría",
+			"when": "Cuándo",
+			"who": "Quién",
+			"project": "Proyecto",
+			"more": "Más"
+		},
+		"summary": {
+			"label": "Respuestas",
+			"solo": "Solo vos",
+			"split": "Dividido entre {count}",
+			"splitPaid": "Dividido entre {count}, pagó {name}"
+		},
+		"projectPeople": "{count} personas",
+		"projectSolo": "Individual",
+		"allCategoriesFull": "Todas las categorías"
 	},
 	"rate": {
 		"default": "Tu tipo de cambio predeterminado para {currency}",

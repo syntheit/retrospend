@@ -132,6 +132,11 @@ export const REGISTRY: Primitive[] = [
 		job: "Today's date field for the pages that already use it. New code uses DatePicker or DateRange from src/components/pickers",
 	},
 	{
+		file: "detail-pager",
+		status: "core",
+		job: "PROVISIONAL (composer design D, owner review): a fixed grid of equal icon-over-word tabs with one panel each; swipe row on phones, the chosen panel in place from md up. The expense composer only",
+	},
+	{
 		file: "dialog",
 		status: "internal",
 		job: "Radix dialog building block",
@@ -152,6 +157,11 @@ export const REGISTRY: Primitive[] = [
 		file: "form",
 		status: "core",
 		job: "react-hook-form field wiring: label, control, hint, error",
+	},
+	{
+		file: "glyph-pill",
+		status: "core",
+		job: "PROVISIONAL (composer design D, owner review): the composer choice pill with a bare glyph or face lead, selected by brand border and soft fill (FilterChip look)",
 	},
 	{
 		file: "image-crop-dialog",
@@ -181,6 +191,11 @@ export const REGISTRY: Primitive[] = [
 		file: "popover",
 		status: "core",
 		job: "Anchored panel for a picker or a short form",
+	},
+	{
+		file: "project-row",
+		status: "core",
+		job: "PROVISIONAL (composer design D, owner review): a project as a row with cover, one-line name, face stack and meta; picks a project in the composer",
 	},
 	{
 		file: "progress",
@@ -254,6 +269,11 @@ export const REGISTRY: Primitive[] = [
 		file: "sonner",
 		status: "core",
 		job: "The one Toaster, mounted in the root layout. Show a toast with useToast from toast",
+	},
+	{
+		file: "summary-line",
+		status: "core",
+		job: "PROVISIONAL (composer design D, owner review): the composer answers as wrapping text joined by dots, each part a button that opens its panel",
 	},
 	{
 		file: "switch",

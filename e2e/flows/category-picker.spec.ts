@@ -19,7 +19,7 @@ test("Category picker in the expense sheet: type, arrows, Enter, Escape", async 
 	await expect(sheet).toBeVisible();
 	const all = sheet
 		.getByRole("group", { name: "Category" })
-		.getByRole("button", { name: "All" });
+		.getByRole("button", { name: "All categories" });
 
 	// Arrows move the highlight; Escape closes the picker, not the sheet.
 	await all.click();
