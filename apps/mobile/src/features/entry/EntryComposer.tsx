@@ -213,6 +213,8 @@ function Form({
 		form.setMode(next);
 		form.setTried(false);
 		form.setTarget("amount");
+		// Each mode has its own amount: the keys are up for it, as on a new entry.
+		form.setPadOpen(true);
 		told?.(next);
 	};
 

@@ -187,9 +187,7 @@ export function Sheet({
 	// A sheet that fits its content cannot scroll it; at a big size the content
 	// can outgrow the window, so it rests at large and the body scrolls.
 	const scrolls = !wanted?.length && fontScale > BIG_TEXT_SCALE;
-	const detents = scrolls
-		? ["large" as const]
-		: detentsForScale(wanted, fontScale);
+	const detents = scrolls ? ["large" as const] : detentsForScale(wanted, fontScale);
 	const way = dismiss ?? (title ? "close" : "none");
 	// A form hands its primary action up (usePinnedAction); the sheet draws it
 	// in the footer, under the scrolling body.
