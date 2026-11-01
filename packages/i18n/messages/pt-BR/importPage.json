@@ -156,7 +156,6 @@
 		"kept": "{count} mantidas",
 		"keep": "Manter",
 		"skip": "Ignorar",
-		"hint": "Deslize para a direita para manter, para a esquerda para ignorar",
 		"ready": "{count} prontas para importar",
 		"readyHint": "{skipped} ignoradas",
 		"backToCards": "Voltar aos cartões",
@@ -165,7 +164,6 @@
 	},
 	"match": {
 		"title": "Associar categorias",
-		"hint": "Uma etapa para cada categoria que não teve correspondência.",
 		"rows": "{count, plural, one {# linha} other {# linhas}}",
 		"suggested": "sugerida pelo seu histórico",
 		"create": "Criar \"{name}\"",

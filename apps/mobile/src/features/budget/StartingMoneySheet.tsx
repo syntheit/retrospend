@@ -104,7 +104,6 @@ export function StartingMoneySheet({
 				})
 			}
 		>
-			<Note>{t("lead")}</Note>
 			<AmountField
 				allowZero
 				currency={currency}

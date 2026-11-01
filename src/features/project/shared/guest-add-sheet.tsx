@@ -143,7 +143,6 @@ export function GuestAddSheet({
 							: []
 					}
 					stays={[t("staysExpenses"), t("staysPayments")]}
-					status={minor && minor > 0 ? undefined : t("fillIn")}
 				>
 					{minor && minor > 0 ? (
 						<p className="text-fg-2 text-small">

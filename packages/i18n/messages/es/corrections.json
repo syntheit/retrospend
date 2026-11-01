@@ -5,7 +5,6 @@
 		"placeholder": "Cuenta qué no cuadra",
 		"hintOpen": "Nada cambia hasta que {name} lo corrija.",
 		"hintLocked": "Solo la diferencia vuelve a abrir tu saldo con {name}.",
-		"empty": "Aún no hay nada que revisar.",
 		"send": "Enviar a {name}",
 		"sent": "Pediste a {name} que corrija {title}"
 	},
@@ -19,8 +18,7 @@
 		"accept": "Aceptar",
 		"decline": "Rechazar",
 		"declined": "Has rechazado la petición de {name}",
-		"failed": "No se pudo enviar tu respuesta",
-		"empty": "Aún no hay nada que revisar."
+		"failed": "No se pudo enviar tu respuesta"
 	},
 	"correct": {
 		"sheetTitle": "Corregir {title}",
@@ -34,8 +32,6 @@
 		"shareYou": "Tu parte",
 		"paidYou": "Tú pagaste",
 		"someone": "Alguien",
-		"nothing": "Cambia el importe, quién pagó o el reparto.",
-		"empty": "Indica el importe y el reparto para ver qué cambia.",
 		"failed": "No se pudo cargar este gasto",
 		"loading": "Cargando"
 	},

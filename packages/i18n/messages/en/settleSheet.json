@@ -42,7 +42,6 @@
 	"even": "Nothing to settle",
 	"evenHint": "You and {name} are even.",
 	"rule": {
-		"empty": "Type an amount or pick Everything.",
 		"overpay": "Choose how to record the extra amount above.",
 		"claim": "Confirms {name}'s payment. Final.",
 		"received": "Final: you received it.",

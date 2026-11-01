@@ -116,7 +116,6 @@ export function WhatIfSheet({
 			visible={visible}
 		>
 			<SheetBody>
-				<Note>{t("lead")}</Note>
 				<EnvelopePick
 					envelopes={envelopesOf(data)}
 					label={t("envelope")}
@@ -154,8 +153,6 @@ export function WhatIfSheet({
 							<Line label={t("uncovered")} value={money(short.uncovered)} />
 						) : null}
 					</>
-				) : !failed ? (
-					<Note>{t("idle")}</Note>
 				) : null}
 			</SheetBody>
 		</Sheet>

@@ -27,7 +27,7 @@ export function DeveloperSection() {
 			<TokensBlock isAdmin={isAdmin} />
 			<WebhooksBlock />
 			<SettingRows className="mt-6" label={t("reference")}>
-				<SettingRow label={t("reference")} meta={t("referenceHint")}>
+				<SettingRow label={t("reference")}>
 					<Button asChild kind="secondary" size="sm">
 						<Link href={API_DOCS_HREF}>{t("openReference")}</Link>
 					</Button>

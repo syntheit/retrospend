@@ -4,7 +4,6 @@
 		"toAssign": "À attribuer"
 	},
 	"changes": {
-		"idle": "Remplis ceci pour voir ce qui change. Rien ne change avant d'enregistrer.",
 		"notAvailable": "Indisponible",
 		"loading": "Vérification de ce qui change",
 		"cannot": "Impossible d'enregistrer ainsi. Rien n'a été modifié."
@@ -382,7 +381,6 @@
 	},
 	"rules": {
 		"title": "Règles de revenus",
-		"lead": "Ce qui se passe quand de l'argent arrive, dans l'ordre des règles. Chaque mouvement apparaît dans l'historique avec Annuler.",
 		"none": "Pas encore de règles. L'argent qui arrive reste Pas encore prévu jusqu'à ce que tu l'attribues.",
 		"done": "Terminé",
 		"active": "La règle {name} est active",
@@ -422,7 +420,6 @@
 		"title": "Et si je dépense dans {name}",
 		"titleAny": "Et si je dépense",
 		"done": "Terminé",
-		"lead": "Une dépense fictive. Rien n'est enregistré.",
 		"envelope": "Enveloppe",
 		"pick": "Choisis une enveloppe",
 		"ifSpend": "Si je dépense",
@@ -430,8 +427,7 @@
 		"wouldHave": "{name} aurait",
 		"coverIt": "Le couvrir",
 		"coverFrom": "Depuis {name}",
-		"uncovered": "Rien ne peut couvrir cette part",
-		"idle": "Saisis un montant pour voir l'effet."
+		"uncovered": "Rien ne peut couvrir cette part"
 	},
 	"coverAll": {
 		"title": "Couvrir les dépassements",
@@ -455,7 +451,6 @@
 		"exists": "Tu as déjà un budget. Change son style depuis le menu.",
 		"step": "Étape {at} sur {total}",
 		"styleTitle": "Comment aimes-tu budgétiser ?",
-		"styleSub": "Il n'y a pas de mauvaise réponse. Tu peux changer à tout moment.",
 		"methods": "Ou suis une méthode",
 		"recommended": "Recommandé",
 		"pickStyle": "Choisir {name}",
@@ -484,7 +479,6 @@
 			"WEEKLY": "Chaque semaine",
 			"VARIES": "Ça varie",
 			"next": "Prochaine paie",
-			"hint": "Nous afficherons ta prochaine paie dans le plan.",
 			"variesHint": "Ton plan démarre à l'arrivée de ta paie.",
 			"past": "Choisis aujourd'hui ou un jour plus tard."
 		},
@@ -716,9 +710,7 @@
 	},
 	"startingMoney": {
 		"title": "Argent de départ",
-		"lead": "Combien as-tu en ce moment ? Le budget compte à partir de là.",
 		"have": "Ce que tu as maintenant",
-		"idle": "Saisis un montant pour voir ce qui change.",
 		"save": "Confirmer",
 		"toast": "Argent de départ confirmé",
 		"moneyIn": "Entrées",
@@ -733,7 +725,6 @@
 		"envelope": "Dans quelle enveloppe ?",
 		"everythingElse": "Tout le reste",
 		"done": "Terminé",
-		"idle": "Saisis un montant et obtiens une réponse.",
 		"failed": "Impossible de vérifier. Réessaie.",
 		"state": {
 			"FITS": "Oui. C'est possible, et il te resterait <after></after>.",

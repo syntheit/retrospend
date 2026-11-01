@@ -103,7 +103,6 @@ export function WhatIfSheet({
 				<SkeletonRows count={3} />
 			) : (
 				<div className="flex flex-col gap-4 pb-4">
-					<p className="text-fg-2 text-small">{t("lead")}</p>
 					{startId ? null : (
 						<Field label={t("envelope")}>
 							<EnvelopeSelect
@@ -157,9 +156,7 @@ export function WhatIfSheet({
 								/>
 							) : null}
 						</RowList>
-					) : (
-						<p className="text-fg-3 text-small">{t("idle")}</p>
-					)}
+					) : null}
 				</div>
 			)}
 		</Sheet>

@@ -220,9 +220,6 @@ export function PlanSheet({
 								/>
 							</View>
 						) : null}
-						<View style={{ paddingHorizontal: space[4] }}>
-							<Note>{t("listLead")}</Note>
-						</View>
 						{read.status === "error" ? (
 							<View style={{ paddingHorizontal: space[4] }}>
 								<Note tone="attention">{t("error")}</Note>

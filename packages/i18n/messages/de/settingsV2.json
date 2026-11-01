@@ -1,6 +1,5 @@
 {
 	"title": "Einstellungen",
-	"autosaveNote": "Änderungen werden automatisch gespeichert",
 	"back": "Start",
 	"sections": {
 		"label": "Bereiche der Einstellungen",
@@ -29,7 +28,6 @@
 		"photoHint": "JPEG, PNG, WebP oder GIF, bis 5 MB",
 		"cropTitle": "Foto zuschneiden",
 		"removePhotoTitle": "Dein Foto entfernen?",
-		"removePhotoBody": "Andere sehen dann deine Initialen.",
 		"removePhotoConfirm": "Foto entfernen",
 		"photoUpdated": "Foto aktualisiert",
 		"photoRemoved": "Foto entfernt",
@@ -113,12 +111,10 @@
 		"display": "Anzeige",
 		"defaults": "Standards",
 		"homeCurrency": "Hauptwährung",
-		"homeCurrencyMeta": "Für Summen und Berichte",
 		"homeCurrencySaved": "Deine Hauptwährung ist jetzt {code}",
 		"defaultCurrency": "Standard für neue Ausgaben",
 		"defaultCurrencySaved": "Neue Ausgaben beginnen in {code}",
 		"numberFormat": "Zahlenformat",
-		"numberFormatMeta": "Sieht so aus: {example}",
 		"numberFollow": "Sprache folgen",
 		"smart": "Intelligente Formatierung",
 		"smartMeta": "Cents bei großen Beträgen ausblenden",
@@ -130,7 +126,6 @@
 		"themeSystem": "System",
 		"language": "Sprache",
 		"timeZone": "Zeitzone",
-		"timeZoneMeta": "Gilt, wenn dein Gerät keine eigene mitteilt",
 		"hideBalances": "Salden standardmäßig ausblenden",
 		"chartTap": "Tippen auf eine Kategorie im Diagramm",
 		"chartTapOpen": "Öffnet ihre Ausgaben",
@@ -352,7 +347,6 @@
 			"label": "Zu sendende Ereignisse",
 			"all": "Alle Ereignisse",
 			"some": "Ausgewählte Ereignisse",
-			"allHint": "Jedes Ereignis in deinem Konto.",
 			"tooMany": "Zu viele Bereiche gewählt. Nimm stattdessen Alle Ereignisse.",
 			"scope": {
 				"all": "{area}: alle Ereignisse",
@@ -384,7 +378,6 @@
 			"pending": "Ausstehend"
 		},
 		"reference": "API-Referenz",
-		"referenceHint": "Alle Routen mit ihrem Zugriffsbereich und ihren Feldern.",
 		"openReference": "Öffnen",
 		"areas": {
 			"expenses": "Ausgaben",
@@ -481,7 +474,6 @@
 		},
 		"failed": "Export konnte nicht erstellt werden",
 		"import": "Import",
-		"importMeta": "Kontoauszüge und CSV-Dateien",
 		"openImport": "Import öffnen"
 	},
 	"delete": {

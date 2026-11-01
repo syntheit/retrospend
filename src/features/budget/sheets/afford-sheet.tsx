@@ -172,9 +172,7 @@ function AffordForm({ open, onClose, month }: SheetProps) {
 					</div>
 				) : asked && asked > 0 ? (
 					<SkeletonRows count={2} />
-				) : (
-					<p className="text-fg-3 text-small">{t("idle")}</p>
-				)}
+				) : null}
 			</div>
 		</Sheet>
 	);

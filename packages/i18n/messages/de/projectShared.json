@@ -30,8 +30,7 @@
     "added": "{title} hinzugefügt",
     "split": "Von dir bezahlt, gleichmäßig aufgeteilt auf {count, plural, one {# Person} other {# Personen}}",
     "staysExpenses": "Frühere Ausgaben",
-    "staysPayments": "Zahlungen",
-    "fillIn": "Gib an, wofür es war, und den Betrag."
+    "staysPayments": "Zahlungen"
   },
   "errors": {
     "failed": "Das wurde nicht gespeichert. Versuche es noch einmal."

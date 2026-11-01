@@ -22,7 +22,6 @@ import type { GlyphName } from "@/ui/Glyph";
 import { IconTile } from "@/ui/IconTile";
 import { GroupItem, ListGroup, ListRow } from "@/ui/List";
 import { SwitchRow } from "@/ui/SwitchRow";
-import { Text } from "@/ui/Text";
 import { adminAccess } from "../admin/rules";
 import { channelsOn, type NotificationChannel } from "./channels";
 import { AboutFooter, Block, GroupNote, SettingsPage } from "./parts";
@@ -151,13 +150,6 @@ export function SettingsScreen() {
 
 	return (
 		<SettingsPage>
-			<Text
-				style={{ paddingHorizontal: space[4], paddingBottom: space[4] }}
-				tone="fg3"
-				variant="meta"
-			>
-				{t("autosave")}
-			</Text>
 			<ListGroup>
 				<ListRow
 					chevron

@@ -42,7 +42,6 @@
 	"even": "No hay nada que liquidar",
 	"evenHint": "Tú y {name} están a mano.",
 	"rule": {
-		"empty": "Escribe un monto o elige Todo.",
 		"overpay": "Elige cómo registrar lo que sobra.",
 		"claim": "Confirma el pago de {name}. Definitivo.",
 		"received": "Definitivo: lo recibiste.",

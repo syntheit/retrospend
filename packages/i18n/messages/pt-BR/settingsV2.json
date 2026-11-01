@@ -1,6 +1,5 @@
 {
 	"title": "Configurações",
-	"autosaveNote": "As alterações são salvas automaticamente",
 	"back": "Início",
 	"sections": {
 		"label": "Seções das configurações",
@@ -29,7 +28,6 @@
 		"photoHint": "JPEG, PNG, WebP ou GIF, até 5 MB",
 		"cropTitle": "Recorte sua foto",
 		"removePhotoTitle": "Remover sua foto?",
-		"removePhotoBody": "As pessoas verão suas iniciais no lugar.",
 		"removePhotoConfirm": "Remover foto",
 		"photoUpdated": "Foto atualizada",
 		"photoRemoved": "Foto removida",
@@ -113,12 +111,10 @@
 		"display": "Exibição",
 		"defaults": "Padrões",
 		"homeCurrency": "Moeda principal",
-		"homeCurrencyMeta": "Usada nos totais e relatórios",
 		"homeCurrencySaved": "Sua moeda principal agora é {code}",
 		"defaultCurrency": "Padrão para novas despesas",
 		"defaultCurrencySaved": "Novas despesas começam em {code}",
 		"numberFormat": "Formato de números",
-		"numberFormatMeta": "Aparece assim: {example}",
 		"numberFollow": "Seguir o idioma",
 		"smart": "Formatação inteligente",
 		"smartMeta": "Oculta os centavos em valores altos",
@@ -130,7 +126,6 @@
 		"themeSystem": "Sistema",
 		"language": "Idioma",
 		"timeZone": "Fuso horário",
-		"timeZoneMeta": "Usado quando seu dispositivo não informa o dele",
 		"hideBalances": "Ocultar saldos por padrão",
 		"chartTap": "Ao tocar em uma categoria em um gráfico",
 		"chartTapOpen": "Abre as despesas dela",
@@ -352,7 +347,6 @@
 			"label": "Eventos a enviar",
 			"all": "Todos os eventos",
 			"some": "Eventos escolhidos",
-			"allHint": "Todos os eventos que acontecem na sua conta.",
 			"tooMany": "Áreas demais escolhidas. Use Todos os eventos.",
 			"scope": {
 				"all": "{area}: todos os eventos",
@@ -384,7 +378,6 @@
 			"pending": "Pendente"
 		},
 		"reference": "Referência da API",
-		"referenceHint": "Todas as rotas, com seu escopo e seus campos.",
 		"openReference": "Abrir",
 		"areas": {
 			"expenses": "Despesas",
@@ -481,7 +474,6 @@
 		},
 		"failed": "Não foi possível gerar a exportação",
 		"import": "Importar",
-		"importMeta": "Extratos bancários e arquivos CSV",
 		"openImport": "Abrir Importar"
 	},
 	"delete": {

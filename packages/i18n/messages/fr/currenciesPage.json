@@ -39,8 +39,7 @@
 		"usedBy": "Utilisée par {names}",
 		"rates": "Taux",
 		"default": "Par défaut",
-		"defaultTitle": "Par défaut pour les nouvelles dépenses",
-		"defaultFixed": "Le réglage par défaut pour l'instant."
+		"defaultTitle": "Par défaut pour les nouvelles dépenses"
 	},
 	"convert": {
 		"title": "Convertir",

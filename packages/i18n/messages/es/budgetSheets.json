@@ -4,7 +4,6 @@
 		"toAssign": "Para asignar"
 	},
 	"changes": {
-		"idle": "Completa esto para ver qué cambia. Nada cambia hasta que guardes.",
 		"notAvailable": "No disponible",
 		"loading": "Revisando qué cambia",
 		"cannot": "Esto no se puede guardar así. No se cambió nada."
@@ -382,7 +381,6 @@
 	},
 	"rules": {
 		"title": "Reglas de ingresos",
-		"lead": "Qué pasa cuando llega dinero, en el orden en que corren las reglas. Cada movimiento queda en el historial con Deshacer.",
 		"none": "Todavía no hay reglas. El dinero que llega queda Sin planear aún hasta que lo asignes.",
 		"done": "Listo",
 		"active": "La regla {name} está activa",
@@ -422,7 +420,6 @@
 		"title": "Qué pasa si gasto en {name}",
 		"titleAny": "Qué pasa si gasto",
 		"done": "Listo",
-		"lead": "Un gasto de mentira. No se guarda nada.",
 		"envelope": "Sobre",
 		"pick": "Elige un sobre",
 		"ifSpend": "Si gasto",
@@ -430,8 +427,7 @@
 		"wouldHave": "{name} tendría",
 		"coverIt": "Cubrirlo",
 		"coverFrom": "Desde {name}",
-		"uncovered": "Nada puede cubrir esta parte",
-		"idle": "Escribe un monto para ver qué haría."
+		"uncovered": "Nada puede cubrir esta parte"
 	},
 	"coverAll": {
 		"title": "Cubrir excesos",
@@ -455,7 +451,6 @@
 		"exists": "Ya tienes un presupuesto. Cambia su estilo desde el menú.",
 		"step": "Paso {at} de {total}",
 		"styleTitle": "¿Cómo te gusta presupuestar?",
-		"styleSub": "No hay respuesta incorrecta. Lo puedes cambiar cuando quieras.",
 		"methods": "O sigue un método",
 		"recommended": "Recomendado",
 		"pickStyle": "Elegir {name}",
@@ -484,7 +479,6 @@
 			"WEEKLY": "Semanal",
 			"VARIES": "Varía",
 			"next": "Próximo cobro",
-			"hint": "Mostraremos tu próximo cobro en el plan.",
 			"variesHint": "Tu plan empieza cuando llegue tu cobro.",
 			"past": "Elige hoy o un día posterior."
 		},
@@ -716,9 +710,7 @@
 	},
 	"startingMoney": {
 		"title": "Dinero inicial",
-		"lead": "¿Cuánto dinero tienes ahora? El presupuesto empieza a contar desde aquí.",
 		"have": "Lo que tienes ahora",
-		"idle": "Escribe un importe para ver qué cambia.",
 		"save": "Confirmar",
 		"toast": "Dinero inicial confirmado",
 		"moneyIn": "Entradas",
@@ -733,7 +725,6 @@
 		"envelope": "¿De qué sobre?",
 		"everythingElse": "Todo lo demás",
 		"done": "Listo",
-		"idle": "Escribe un importe y tendrás una respuesta.",
 		"failed": "No se pudo comprobar. Inténtalo de nuevo.",
 		"state": {
 			"FITS": "Sí. Cabe, y te quedarían <after></after>.",

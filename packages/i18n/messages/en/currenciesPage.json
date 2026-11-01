@@ -39,8 +39,7 @@
 		"usedBy": "Used by {names}",
 		"rates": "Rates",
 		"default": "Default",
-		"defaultTitle": "Default for new expenses",
-		"defaultFixed": "The built-in default for now."
+		"defaultTitle": "Default for new expenses"
 	},
 	"convert": {
 		"title": "Convert",

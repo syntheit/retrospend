@@ -30,7 +30,6 @@
 		"delete": {
 			"label": "Löschen",
 			"confirmTitle": "{name} löschen?",
-			"confirmBody": "Betroffene Salden werden für alle Beteiligten aktualisiert.",
 			"confirmButton": "Ausgabe löschen"
 		},
 		"accept": {
@@ -88,7 +87,6 @@
 		"delete": {
 			"label": "Löschen",
 			"confirmTitle": "{name} löschen?",
-			"confirmBody": "Das Projekt verschwindet. Seine Ausgaben bleiben, außerhalb jedes Projekts. Das lässt sich nicht rückgängig machen.",
 			"confirmButton": "Projekt löschen"
 		},
 		"addPerson": {
@@ -132,7 +130,6 @@
 		"delete": {
 			"label": "Endgültig löschen",
 			"confirmTitle": "{name} endgültig löschen?",
-			"confirmBody": "Das Konto und sein gesamter Saldoverlauf werden gelöscht, und auch dein früheres Vermögen ändert sich. Um den Verlauf zu behalten, schließe das Konto stattdessen.",
 			"confirmButton": "Endgültig löschen"
 		}
 	},
@@ -155,7 +152,6 @@
 		"delete": {
 			"label": "Löschen",
 			"confirmTitle": "{name} löschen?",
-			"confirmBody": "Künftige entfallen, vergangene Ausgaben bleiben.",
 			"confirmButton": "Wiederkehrende Ausgabe löschen"
 		}
 	},
@@ -203,7 +199,6 @@
 		"revoke": {
 			"label": "Schlüssel widerrufen",
 			"confirmTitle": "{name} widerrufen?",
-			"confirmBody": "Alles, was diesen Schlüssel nutzt, funktioniert sofort nicht mehr.",
 			"confirmButton": "Schlüssel widerrufen"
 		}
 	},
@@ -211,7 +206,6 @@
 		"disconnect": {
 			"label": "Abmelden",
 			"confirmTitle": "{name} abmelden?",
-			"confirmBody": "Das Gerät wird sofort abgemeldet und muss sich neu anmelden.",
 			"confirmButton": "Gerät abmelden"
 		}
 	},
@@ -239,7 +233,6 @@
 		"notReceived": {
 			"label": "Nicht erhalten",
 			"confirmTitle": "Zahlung von {name} nicht erhalten?",
-			"confirmBody": "Die Zahlung wird als nicht erhalten markiert und dein Saldo bleibt, wie er war.",
 			"confirmButton": "Nicht erhalten"
 		}
 	},
@@ -400,7 +393,6 @@
 		"remove": {
 			"label": "Entfernen",
 			"confirmTitle": "{name} entfernen?",
-			"confirmBody": "Sie läuft nicht mehr auf neues Geld. Was sie schon zugewiesen hat, bleibt, wie es ist.",
 			"confirmButton": "Regel entfernen"
 		}
 	},
@@ -426,7 +418,6 @@
 		"delete": {
 			"label": "Webhook löschen",
 			"confirmTitle": "{name} löschen?",
-			"confirmBody": "Er empfängt keine Ereignisse mehr und sein Zustellprotokoll wird gelöscht. Das lässt sich nicht rückgängig machen.",
 			"confirmButton": "Webhook löschen"
 		}
 	}

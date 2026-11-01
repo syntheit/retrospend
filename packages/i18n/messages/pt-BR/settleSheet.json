@@ -42,7 +42,6 @@
 	"even": "Nada para quitar",
 	"evenHint": "Você e {name} estão quites.",
 	"rule": {
-		"empty": "Digite um valor ou escolha Tudo.",
 		"overpay": "Escolha acima como registrar o excedente.",
 		"claim": "Confirma o pagamento de {name}. Definitivo.",
 		"received": "Definitivo: você recebeu.",

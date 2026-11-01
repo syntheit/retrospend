@@ -73,7 +73,6 @@
 	"deleteBody": "Le message et sa capture d'écran sont supprimés définitivement.",
 	"deleted": "Retour supprimé",
 	"deleteReportTitle": "Supprimer ce rapport d'erreur ?",
-	"deleteReportBody": "Il est supprimé définitivement.",
 	"reportDeleted": "Rapport d'erreur supprimé",
 	"failed": "Ça n'a pas marché. Réessayez.",
 	"categoryLabel": "Catégorie"

@@ -58,7 +58,6 @@ function StartingMoneyForm({ open, onClose, month }: SheetProps) {
 			title={t("title")}
 		>
 			<div className="flex flex-col gap-4 pb-4">
-				<p className="text-fg-2 text-small">{t("lead")}</p>
 				<Field label={t("have")}>
 					<MoneyInput
 						autoFocus
@@ -69,7 +68,6 @@ function StartingMoneyForm({ open, onClose, month }: SheetProps) {
 				</Field>
 				<FigureChanges
 					dry={w.dry}
-					idle={t("idle")}
 					own={(p) => {
 						const r = p.value;
 						return [

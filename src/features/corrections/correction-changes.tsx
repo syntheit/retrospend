@@ -95,14 +95,12 @@ export function CorrectionChanges({
 	loading: boolean;
 	error: string | null;
 }) {
-	const t = useTranslations("corrections.correct");
 	const nothing = result !== null && result.transactionIds.length === 0;
 	return (
 		<ChangesBlock
 			byDesign={["accounts", "netWorth"]}
 			cannot={error}
 			diff={nothing ? null : diff}
-			empty={nothing ? t("nothing") : t("empty")}
 			loading={loading}
 			rows={
 				result && !nothing ? (

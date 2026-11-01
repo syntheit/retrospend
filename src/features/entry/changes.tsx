@@ -54,7 +54,6 @@ const rank = (id: string) => {
  */
 export function ChangesBlock({
 	diff,
-	empty,
 	loading,
 	edit,
 	byDesign = [],
@@ -63,7 +62,6 @@ export function ChangesBlock({
 	rows,
 }: {
 	diff: PreviewDiff | null | undefined;
-	empty: string;
 	loading?: boolean;
 	edit?: boolean;
 	byDesign?: readonly string[];
@@ -136,10 +134,8 @@ export function ChangesBlock({
 			status={
 				cannot
 					? t("cannot", { reason: cannot })
-					: !diff
-						? loading
-							? t("loading")
-							: empty
+					: !diff && loading
+						? t("loading")
 						: undefined
 			}
 			// Names inside a sentence come from their own keys: a language decides its case (German nouns).

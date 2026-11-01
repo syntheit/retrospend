@@ -4,7 +4,6 @@ import {
 	accessibilityLabel as a11yLabel,
 	background,
 	buttonStyle,
-	controlSize,
 	disabled as disabledModifier,
 	dynamicTypeSize,
 	font,
@@ -47,7 +46,7 @@ const DISABLED_OPACITY = 0.45;
  */
 const CHROME_DYNAMIC_TYPE = "xxLarge";
 
-type KitVariant = "filled" | "outlined" | "danger" | "dangerText";
+type KitVariant = "filled" | "outlined" | "danger" | "dangerText" | "text";
 
 /** The SF Symbol for each button glyph. */
 const SYMBOL = {
@@ -90,6 +89,7 @@ function KitLabel({
 		danger: color.dangerFg,
 		outlined: color.fg,
 		dangerText: color.danger,
+		text: color.brand,
 	}[variant];
 	const fill =
 		variant === "filled"
@@ -161,7 +161,10 @@ export function Button({
 }: ButtonProps) {
 	const { color } = useTheme();
 	const scheme = useColorScheme();
-	if (variant !== "text") {
+	// A small text button is drawn like the small dangerText beside it (13/500,
+	// the 28 point control), so two quiet controls on one row match. The
+	// regular one stays the system's plain button.
+	if (variant !== "text" || size === "small") {
 		const button = (
 			<SwiftButton
 				modifiers={[
@@ -208,7 +211,6 @@ export function Button({
 					tint(color.brand),
 					// The system label scales on its own; stop it where the kit's does.
 					dynamicTypeSize({ max: CHROME_DYNAMIC_TYPE }),
-					...(size === "small" ? [controlSize("small")] : []),
 					...(accessibilityLabel ? [a11yLabel(accessibilityLabel)] : []),
 					...(disabled ? [disabledModifier(true)] : []),
 				]}

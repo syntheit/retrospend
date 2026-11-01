@@ -167,7 +167,6 @@ export function ReviewCards({
 					{t("keep")}
 				</Button>
 			</div>
-			<p className="text-fg-3 text-meta">{t("hint")}</p>
 		</div>
 	);
 }

@@ -41,7 +41,6 @@ export function ExpenseForm(p: {
 	onMode?: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	const t = useTranslations("entry.expense");
-	const tc = useTranslations("entry.changes");
 	const home = p.catalog.homeCurrency;
 	// The sheet's starting point, kept once: Undo changes and the unsaved check compare to it.
 	const locale = useMoneyLocale();
@@ -221,7 +220,6 @@ export function ExpenseForm(p: {
 								cannot={valid ? s.previewError : null}
 								diff={valid ? s.preview : null}
 								edit={!!editing}
-								empty={tc("empty")}
 								loading={s.previewLoading}
 							/>
 							{failed ? <FieldError text={t("error.save")} /> : null}

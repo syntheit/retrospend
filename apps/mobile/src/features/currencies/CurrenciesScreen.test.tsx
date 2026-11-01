@@ -290,7 +290,6 @@ describe("CurrenciesScreen", () => {
 		const shown = texts(tree);
 		expect(shown).toContain("1 USD = 1,412.00 ARS");
 		expect(shown).toContain("mobile.currencies.detail.default");
-		expect(shown).toContain("mobile.currencies.detail.defaultFixed");
 	});
 
 	it("lists the chips for favorites, fiat and crypto", () => {

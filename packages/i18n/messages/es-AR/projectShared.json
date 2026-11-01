@@ -30,8 +30,7 @@
     "added": "Se agregó {title}",
     "split": "Lo pagaste vos, dividido en partes iguales entre {count, plural, one {# persona} other {# personas}}",
     "staysExpenses": "Gastos anteriores",
-    "staysPayments": "Pagos",
-    "fillIn": "Completá para qué fue y el monto."
+    "staysPayments": "Pagos"
   },
   "errors": {
     "failed": "No se guardó. Probá de nuevo."

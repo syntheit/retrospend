@@ -1,6 +1,5 @@
 {
 	"title": "Settings",
-	"autosaveNote": "Changes save automatically",
 	"back": "Home",
 	"sections": {
 		"label": "Settings sections",
@@ -29,7 +28,6 @@
 		"photoHint": "JPEG, PNG, WebP or GIF, up to 5 MB",
 		"cropTitle": "Crop your photo",
 		"removePhotoTitle": "Remove your photo?",
-		"removePhotoBody": "People will see your initials instead.",
 		"removePhotoConfirm": "Remove photo",
 		"photoUpdated": "Photo updated",
 		"photoRemoved": "Photo removed",
@@ -113,12 +111,10 @@
 		"display": "Display",
 		"defaults": "Defaults",
 		"homeCurrency": "Home currency",
-		"homeCurrencyMeta": "Totals and reports use this",
 		"homeCurrencySaved": "Home currency is now {code}",
 		"defaultCurrency": "Default for new expenses",
 		"defaultCurrencySaved": "New expenses start in {code}",
 		"numberFormat": "Number format",
-		"numberFormatMeta": "Reads like {example}",
 		"numberFollow": "Follow language",
 		"smart": "Smart formatting",
 		"smartMeta": "Hide cents on large amounts",
@@ -130,7 +126,6 @@
 		"themeSystem": "System",
 		"language": "Language",
 		"timeZone": "Time zone",
-		"timeZoneMeta": "Used when your device does not share its own",
 		"hideBalances": "Hide balances by default",
 		"chartTap": "Tapping a category in a chart",
 		"chartTapOpen": "Opens its expenses",
@@ -352,7 +347,6 @@
 			"label": "Events to send",
 			"all": "All events",
 			"some": "Chosen events",
-			"allHint": "Every event that happens in your account.",
 			"tooMany": "Too many areas chosen. Use All events instead.",
 			"scope": {
 				"all": "{area}: all events",
@@ -384,7 +378,6 @@
 			"pending": "Pending"
 		},
 		"reference": "API reference",
-		"referenceHint": "Every route, with its scope and fields.",
 		"openReference": "Open",
 		"areas": {
 			"expenses": "Expenses",
@@ -481,7 +474,6 @@
 		},
 		"failed": "Couldn't make the export",
 		"import": "Import",
-		"importMeta": "Bank statements and CSV files",
 		"openImport": "Open Import"
 	},
 	"delete": {

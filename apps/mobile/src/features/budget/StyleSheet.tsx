@@ -91,7 +91,6 @@ export function StyleSheet({
 					api.budget.setStyle(b, { context: { idempotencyKey: key } })
 				}
 			>
-				<Note>{t("now", { style: t(`name.${current}`) })}</Note>
 				<ChipGroup
 					accessibilityLabel={t("title")}
 					onChange={setPicked}

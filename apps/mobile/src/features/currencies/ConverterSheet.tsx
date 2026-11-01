@@ -81,10 +81,7 @@ export function ConverterSheet({
 											end={
 												price && item.defaultType ? (
 													<View style={{ alignItems: "flex-end" }}>
-														<PriceText
-															price={price}
-															showBase={price.base !== item.code}
-														/>
+														<PriceText price={price} showBase />
 														<Text tone="fg3" variant="meta">
 															{label(item.defaultType)}
 														</Text>

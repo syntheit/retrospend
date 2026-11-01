@@ -42,7 +42,6 @@
 	"even": "Nichts auszugleichen",
 	"evenHint": "Du und {name} seid quitt.",
 	"rule": {
-		"empty": "Gib einen Betrag ein oder wähle Alles.",
 		"overpay": "Wähle oben, wie der Mehrbetrag erfasst wird.",
 		"claim": "Bestätigt die Zahlung von {name}. Endgültig.",
 		"received": "Endgültig: du hast es erhalten.",

@@ -71,7 +71,6 @@ function TransferForm({
 	onMode: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	const t = useTranslations("entry.transfer");
-	const tc = useTranslations("entry.changes");
 	const locale = useMoneyLocale();
 	const toast = useToast();
 	const x = useTransfer(catalog, fromAccountId, carry);
@@ -132,7 +131,6 @@ function TransferForm({
 						<ChangesBlock
 							cannot={x.valid ? x.previewError : null}
 							diff={x.preview}
-							empty={tc("emptyAmount")}
 							hide={["accounts.balance"]}
 							loading={x.previewLoading}
 							rows={v?.accounts.map((a) => (

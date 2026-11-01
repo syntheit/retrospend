@@ -156,7 +156,6 @@
 		"kept": "{count} conservadas",
 		"keep": "Conservar",
 		"skip": "Saltear",
-		"hint": "Deslizá a la derecha para conservar, a la izquierda para saltear",
 		"ready": "{count} listas para importar",
 		"readyHint": "{skipped} salteadas",
 		"backToCards": "Volver a las tarjetas",
@@ -165,7 +164,6 @@
 	},
 	"match": {
 		"title": "Asociar categorías",
-		"hint": "Un paso por cada categoría que no coincidió.",
 		"rows": "{count, plural, one {# fila} other {# filas}}",
 		"suggested": "sugerida según tu historial",
 		"create": "Crear \"{name}\"",

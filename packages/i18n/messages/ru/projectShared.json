@@ -30,8 +30,7 @@
     "added": "Добавлено: {title}",
     "split": "Оплатили вы, поровну между {count, plural, one {# человеком} other {# людьми}}",
     "staysExpenses": "Прежние расходы",
-    "staysPayments": "Платежи",
-    "fillIn": "Укажите, на что потрачено, и сумму."
+    "staysPayments": "Платежи"
   },
   "errors": {
     "failed": "Не сохранилось. Попробуйте ещё раз."

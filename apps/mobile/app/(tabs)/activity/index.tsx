@@ -308,7 +308,7 @@ export default function ActivityScreen() {
 								: undefined
 						}
 						overflowLabel={t("overflow")}
-						title={segment === "recurring" ? tr("title") : t("title")}
+						title={t("title")}
 					/>
 				}
 				detail={

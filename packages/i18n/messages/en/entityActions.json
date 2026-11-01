@@ -30,7 +30,6 @@
 		"delete": {
 			"label": "Delete",
 			"confirmTitle": "Delete {name}?",
-			"confirmBody": "Balances it touched update for everyone on it.",
 			"confirmButton": "Delete expense"
 		},
 		"accept": {
@@ -88,7 +87,6 @@
 		"delete": {
 			"label": "Delete",
 			"confirmTitle": "Delete {name}?",
-			"confirmBody": "The project goes away. Its expenses stay, outside any project. This cannot be undone.",
 			"confirmButton": "Delete project"
 		},
 		"addPerson": {
@@ -132,7 +130,6 @@
 		"delete": {
 			"label": "Delete permanently",
 			"confirmTitle": "Delete {name} permanently?",
-			"confirmBody": "This removes the account and its whole balance history, and past net worth changes too. To keep the history, close the account instead.",
 			"confirmButton": "Delete permanently"
 		}
 	},
@@ -155,7 +152,6 @@
 		"delete": {
 			"label": "Delete",
 			"confirmTitle": "Delete {name}?",
-			"confirmBody": "Future ones stop; past expenses stay.",
 			"confirmButton": "Delete recurring expense"
 		}
 	},
@@ -203,7 +199,6 @@
 		"revoke": {
 			"label": "Revoke key",
 			"confirmTitle": "Revoke {name}?",
-			"confirmBody": "Anything using this key stops working at once.",
 			"confirmButton": "Revoke key"
 		}
 	},
@@ -211,7 +206,6 @@
 		"disconnect": {
 			"label": "Sign out",
 			"confirmTitle": "Sign out {name}?",
-			"confirmBody": "It is signed out at once and needs to sign in again.",
 			"confirmButton": "Sign out device"
 		}
 	},
@@ -239,7 +233,6 @@
 		"notReceived": {
 			"label": "Not received",
 			"confirmTitle": "Not received from {name}?",
-			"confirmBody": "The payment is marked as not received and your balance stays as it was.",
 			"confirmButton": "Not received"
 		}
 	},
@@ -400,7 +393,6 @@
 		"remove": {
 			"label": "Remove",
 			"confirmTitle": "Remove {name}?",
-			"confirmBody": "It stops running on new money. What it already assigned stays as it is.",
 			"confirmButton": "Remove rule"
 		}
 	},
@@ -426,7 +418,6 @@
 		"delete": {
 			"label": "Delete webhook",
 			"confirmTitle": "Delete {name}?",
-			"confirmBody": "It stops receiving events and its delivery log is deleted. This can't be undone.",
 			"confirmButton": "Delete webhook"
 		}
 	}

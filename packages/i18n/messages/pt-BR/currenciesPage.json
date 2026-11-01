@@ -39,8 +39,7 @@
 		"usedBy": "Usada por {names}",
 		"rates": "Cotações",
 		"default": "Padrão",
-		"defaultTitle": "Padrão para novas despesas",
-		"defaultFixed": "O padrão do sistema, por enquanto."
+		"defaultTitle": "Padrão para novas despesas"
 	},
 	"convert": {
 		"title": "Converter",

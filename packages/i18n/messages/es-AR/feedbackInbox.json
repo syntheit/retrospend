@@ -73,7 +73,6 @@
 	"deleteBody": "El mensaje y su captura se eliminan para siempre.",
 	"deleted": "Comentario eliminado",
 	"deleteReportTitle": "¿Eliminar este informe de error?",
-	"deleteReportBody": "Se elimina para siempre.",
 	"reportDeleted": "Informe de error eliminado",
 	"failed": "No funcionó. Probá de nuevo.",
 	"categoryLabel": "Categoría"

@@ -130,7 +130,7 @@ test.describe("Developer", () => {
 		await row.getByRole("button", { name: "More actions for E2E key" }).click();
 		await page.getByRole("menuitem", { name: "Revoke key" }).click();
 		const confirm = page.getByRole("alertdialog", { name: "Revoke E2E key?" });
-		await expect(confirm).toContainText("stops working at once");
+		await expect(confirm).toContainText("Revoke key");
 		// Wait for the server's answer before looking at anything else.
 		const revoked = page.waitForResponse(
 			(r) =>

@@ -57,10 +57,7 @@ export function SetupStyleStep({
 	);
 	return (
 		<div className="flex flex-col gap-4">
-			<div>
-				<h2 className="text-fg text-section">{t("styleTitle")}</h2>
-				<p className="text-fg-2 text-small">{t("styleSub")}</p>
-			</div>
+			<h2 className="text-fg text-section">{t("styleTitle")}</h2>
 			{list(t("styleTitle"), ANSWERS)}
 			<h3 className="text-fg text-small font-semibold">{t("methods")}</h3>
 			{list(t("methods"), METHODS)}

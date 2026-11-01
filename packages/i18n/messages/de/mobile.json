@@ -81,8 +81,6 @@
 			"editRefused": "Diese Änderung ließ sich nicht speichern. Sie ist vielleicht gesperrt."
 		},
 		"changes": {
-			"emptyExpense": "Gib einen Betrag ein und wähle eine Kategorie, um zu sehen, was sich ändert.",
-			"emptyIncome": "Gib einen Betrag ein und sag, wer dich bezahlt hat, um zu sehen, was sich ändert.",
 			"loading": "Prüfe, was sich ändert",
 			"offline": "Du bist offline. Das wird auf deinem Telefon gespeichert und später synchronisiert.",
 			"refused": "Das lässt sich noch nicht speichern. Prüfe Betrag und Währung.",
@@ -134,7 +132,6 @@
 				"project_total": "die Projektsumme"
 			},
 			"noRate": "Noch kein Kurs für {currency}. Wähle eine andere Währung.",
-			"emptyTransfer": "Gib einen Betrag ein und wähle zwei Konten, um zu sehen, was sich ändert.",
 			"shares": {
 				"title": "Was jede Person schuldet",
 				"you": "Du",
@@ -209,7 +206,6 @@
 		"spreadOne": "Einmalig",
 		"spreadMonths": "{count} Monate",
 		"exclude": "Von den Ausgaben ausnehmen",
-		"excludeDetail": "Bleibt in Aktivität und deinem Budget, fehlt aber in Berichten und Insights.",
 		"editLocked": "Diese Ausgabe lässt sich nicht bearbeiten",
 		"editLockedDetail": "Eine Zahlung hat sie beglichen, oder du darfst sie nicht ändern.",
 		"replaceDraft": {
@@ -881,7 +877,6 @@
 			"title": "Kann ich mir das leisten?",
 			"amount": "Wie viel kostet es?",
 			"envelope": "Welcher Umschlag?",
-			"idle": "Gib einen Betrag ein und erhalte eine Antwort.",
 			"checking": "Wird geprüft",
 			"failed": "Das ließ sich nicht prüfen. Versuche es noch einmal.",
 			"state": {
@@ -951,7 +946,6 @@
 				"ONCE": "Einmal"
 			},
 			"noneNote": "Ohne Ziel wird dafür nichts geplant.",
-			"dueHint": "JJJJ-MM-TT",
 			"billAmount": "Betrag der Rechnung"
 		},
 		"merge": {
@@ -965,7 +959,6 @@
 		},
 		"style": {
 			"title": "Budgetstil",
-			"now": "Dein Stil ist {style}.",
 			"name": {
 				"FLEX": "Flex",
 				"EVERY_DOLLAR": "Jeder Euro",
@@ -1020,7 +1013,6 @@
 			"title": "Dein Budget einrichten",
 			"step": "Schritt {at} von {total}",
 			"styleTitle": "Wie planst du gern dein Geld?",
-			"styleSub": "Es gibt keine falsche Antwort. Du kannst das jederzeit ändern.",
 			"methods": "Oder folge einer Methode",
 			"moneyTitle": "Wie viel Geld kannst du gerade verplanen?",
 			"moneySub": "Zähle das Geld, von dem du lebst. Damit planst du jetzt.",
@@ -1100,7 +1092,6 @@
 		},
 		"rules": {
 			"title": "Einnahmeregeln",
-			"lead": "Was passiert, wenn Geld eintrifft, in der Reihenfolge der Regeln. Jede Bewegung steht im Verlauf mit Rückgängig.",
 			"none": "Noch keine Regeln. Eingehendes Geld bleibt Noch nicht verplant, bis du es zuweist.",
 			"paused": "Pausiert",
 			"add": "Regel hinzufügen",
@@ -1183,7 +1174,6 @@
 			"toast": "{name} geplant",
 			"error": "Das ließ sich nicht laden. Versuch es nochmal.",
 			"listTitle": "Den Monat planen",
-			"listLead": "Tippe auf einen Umschlag, um festzulegen, was er bekommt. Vor dem Zahltag bewegt sich nichts.",
 			"notPlanned": "Noch nicht geplant",
 			"leftToPlan": "Noch zu planen: {month}",
 			"plannedOf": "Geplant {planned} von {expected}"
@@ -1206,7 +1196,6 @@
 		},
 		"whatIf": {
 			"titleAny": "Was, wenn ich ausgebe",
-			"lead": "Eine gedachte Ausgabe. Nichts wird gespeichert.",
 			"envelope": "Umschlag",
 			"pick": "Umschlag wählen",
 			"ifSpend": "Wenn ich ausgebe",
@@ -1215,7 +1204,6 @@
 			"coverIt": "Ausgleichen",
 			"coverFrom": "Aus {name}",
 			"uncovered": "Dieser Teil lässt sich nicht ausgleichen",
-			"idle": "Gib einen Betrag ein, um zu sehen, was passieren würde.",
 			"title": "Was, wenn ich ausgebe"
 		},
 		"close": {
@@ -1271,9 +1259,7 @@
 		},
 		"startingMoney": {
 			"title": "Startgeld",
-			"lead": "Wie viel Geld hast du gerade? Das Budget zählt ab hier.",
 			"have": "Was du gerade hast",
-			"idle": "Gib einen Betrag ein, um die Änderung zu sehen.",
 			"save": "Speichern",
 			"toast": "Startgeld bestätigt",
 			"moneyIn": "Einnahmen",
@@ -1631,7 +1617,6 @@
 			"rateDate": "Stand {date}",
 			"netWorthNote": "Enthält, was andere dir schulden"
 		},
-		"netWorthMeta": "Enthält, was andere dir schulden",
 		"topBar": {
 			"converter": "Währungsrechner",
 			"notifications": "Benachrichtigungen",
@@ -1673,7 +1658,6 @@
 		},
 		"months": {
 			"title": "Monat für Monat",
-			"caption": "Die letzten sechs Monate, gleiche Filter.",
 			"summary": "Monat für Monat: {list}"
 		},
 		"ytd": {
@@ -1831,7 +1815,6 @@
 		},
 		"beforeAfter": "{before} auf {after}",
 		"figureIn": "{label} in {currency}",
-		"methodHint": "Zahlungsart und Datum stehen unten.",
 		"none": "nichts",
 		"checking": "Wird geprüft",
 		"record": "Zahlung erfassen",
@@ -2171,9 +2154,6 @@
 		"saveError": "Konnte nicht gespeichert werden. Versuche es erneut.",
 		"error": "Einstellungen konnten nicht geladen werden",
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
-		"device": {
-			"footer": "Gilt nur für diese App. Die Sprache im Web bleibt unverändert."
-		},
 		"language": {
 			"label": "Sprache",
 			"device": "Gerätesprache verwenden"
@@ -2250,7 +2230,6 @@
 		},
 		"money": {
 			"title": "Geld",
-			"footer": "Summen und Berichte nutzen deine Heimatwährung.",
 			"home": "Heimatwährung",
 			"default": "Standard für neue Ausgaben",
 			"monthStart": "Monat beginnt am Tag"
@@ -2308,14 +2287,12 @@
 		},
 		"numbers": {
 			"title": "Zahlen",
-			"footer": "Sieht so aus: {example}",
 			"format": "Zahlenformat",
 			"follow": "Sprache folgen"
 		},
 		"push": {
 			"title": "Push-Benachrichtigungen",
 			"master": "Push auf diesem Telefon",
-			"footerIos": "Benachrichtigungen kommen über den Push-Dienst von Apple. Wähl unten aus, welche.",
 			"footerAndroid": "Retrospend sucht etwa alle 15 Minuten nach Neuigkeiten, ohne Google-Dienste. Wähl unten aus, welche.",
 			"denied": "Benachrichtigungen sind für Retrospend aus. Schalte sie in den Systemeinstellungen ein.",
 			"unavailable": "Dieses Telefon konnte sich nicht für Push anmelden. Versuch es später noch einmal."
@@ -2409,7 +2386,6 @@
 				"thisPhone": "Dieses Telefon",
 				"others": "Andere Geräte",
 				"now": "Jetzt",
-				"footer": "Tippe auf eines, um es abzumelden.",
 				"none": "Du bist nirgendwo sonst angemeldet.",
 				"confirm": "Zuletzt genutzt am {used}. Angemeldet seit {since}.",
 				"signOut": "Abmelden",
@@ -2432,7 +2408,6 @@
 		},
 		"data": {
 			"title": "Daten",
-			"footer": "Jeder Export öffnet das Teilen-Menü, damit du die Datei sichern oder senden kannst.",
 			"kinds": {
 				"data": "Alles",
 				"expenses": "Ausgaben",
@@ -2446,7 +2421,6 @@
 			"preparing": "Wird vorbereitet",
 			"failed": "Der Export hat nicht geklappt. Versuch es erneut."
 		},
-		"autosave": "Änderungen werden automatisch gespeichert",
 		"display": "Anzeige",
 		"root": {
 			"preferences": "Präferenzen",
@@ -2559,7 +2533,6 @@
 			},
 			"createdBy": "Erstellt von {name}, {date}",
 			"usedBy": "Verwendet von {name}, {date}",
-			"tapNote": "Tippe auf einen Code, um ihn zu kopieren, zu teilen oder zu löschen.",
 			"error": "Einladungscodes konnten nicht geladen werden",
 			"errorDetail": "Prüfe deine Verbindung und versuch es erneut.",
 			"sheet": "Einladungscode",
@@ -2748,8 +2721,6 @@
 			"next": "{amount}, nächstes am {date}.",
 			"paused": "{amount}. Pausiert, nichts wird erfasst, bis du sie fortsetzt.",
 			"autoPay": "Automatisch erfassen",
-			"autoOnHint": "Wird am Fälligkeitstag automatisch erfasst.",
-			"autoOffHint": "Du bestätigst jedes Mal.",
 			"pause": "Pausieren",
 			"resume": "Fortsetzen",
 			"pausedToast": "{title} pausiert",
@@ -2864,8 +2835,7 @@
 			"usedBy": "Verwendet von {names}",
 			"rates": "Kurse",
 			"default": "Standard",
-			"defaultTitle": "Standard für neue Ausgaben",
-			"defaultFixed": "Vorerst der eingebaute Standard."
+			"defaultTitle": "Standard für neue Ausgaben"
 		},
 		"convert": {
 			"title": "Umrechnen",

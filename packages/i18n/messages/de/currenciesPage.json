@@ -39,8 +39,7 @@
 		"usedBy": "Verwendet von {names}",
 		"rates": "Kurse",
 		"default": "Standard",
-		"defaultTitle": "Standard für neue Ausgaben",
-		"defaultFixed": "Vorerst der eingebaute Standard."
+		"defaultTitle": "Standard für neue Ausgaben"
 	},
 	"convert": {
 		"title": "Umrechnen",

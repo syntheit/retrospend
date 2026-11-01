@@ -5,7 +5,6 @@
 		"placeholder": "Dis ce qui cloche",
 		"hintOpen": "Rien ne change tant que {name} ne l'a pas corrigé.",
 		"hintLocked": "Seule la différence rouvre ton solde avec {name}.",
-		"empty": "Rien à vérifier pour l'instant.",
 		"send": "Envoyer à {name}",
 		"sent": "Tu as demandé à {name} de corriger {title}"
 	},
@@ -19,8 +18,7 @@
 		"accept": "Accepter",
 		"decline": "Refuser",
 		"declined": "Demande de {name} refusée",
-		"failed": "Impossible d'envoyer ta réponse",
-		"empty": "Rien à vérifier pour l'instant."
+		"failed": "Impossible d'envoyer ta réponse"
 	},
 	"correct": {
 		"sheetTitle": "Corriger {title}",
@@ -34,8 +32,6 @@
 		"shareYou": "Ta part",
 		"paidYou": "Tu as payé",
 		"someone": "Quelqu'un",
-		"nothing": "Change le montant, qui a payé ou la répartition.",
-		"empty": "Indique le montant et la répartition pour voir ce qui change.",
 		"failed": "Impossible de charger cette dépense",
 		"loading": "Chargement"
 	},

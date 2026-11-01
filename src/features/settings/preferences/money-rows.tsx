@@ -45,7 +45,6 @@ export function MoneyRows({
 	const defaultCurrency = settings.defaultCurrency ?? settings.homeCurrency;
 	// Each option reads as the user's own amount, in the language's pattern.
 	const examples = numberFormatExamples(settings.homeCurrency, language);
-	const effective = examples[settings.numberFormat ?? "follow"];
 	const formatOptions: { value: NumberFormatOption; label: string }[] = [
 		{ value: "follow", label: t("numberFollow") },
 		{ value: "comma_dot", label: examples.comma_dot },
@@ -55,11 +54,7 @@ export function MoneyRows({
 
 	return (
 		<SettingRows>
-			<SettingRow
-				label={t("homeCurrency")}
-				labelFor="pf-home"
-				meta={t("homeCurrencyMeta")}
-			>
+			<SettingRow label={t("homeCurrency")} labelFor="pf-home">
 				<CurrencyField
 					id="pf-home"
 					label={t("homeCurrency")}
@@ -84,11 +79,7 @@ export function MoneyRows({
 					value={defaultCurrency}
 				/>
 			</SettingRow>
-			<SettingRow
-				label={t("numberFormat")}
-				labelFor="pf-number-format"
-				meta={t("numberFormatMeta", { example: effective })}
-			>
+			<SettingRow label={t("numberFormat")} labelFor="pf-number-format">
 				<SelectField
 					id="pf-number-format"
 					onChange={(v) =>

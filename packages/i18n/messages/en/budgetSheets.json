@@ -4,7 +4,6 @@
 		"toAssign": "To assign"
 	},
 	"changes": {
-		"idle": "Fill this in to see what changes. Nothing changes until you save.",
 		"notAvailable": "Not available",
 		"loading": "Checking what changes",
 		"cannot": "This cannot be saved as typed. Nothing was changed."
@@ -382,7 +381,6 @@
 	},
 	"rules": {
 		"title": "Income rules",
-		"lead": "What happens when money arrives, in the order the rules run. Every move shows in history with Undo.",
 		"none": "No rules yet. Money that arrives stays Not planned yet until you assign it.",
 		"done": "Done",
 		"active": "Rule {name} is on",
@@ -422,7 +420,6 @@
 		"title": "What if I spend in {name}",
 		"titleAny": "What if I spend",
 		"done": "Done",
-		"lead": "A pretend expense. Nothing is saved.",
 		"envelope": "Envelope",
 		"pick": "Pick an envelope",
 		"ifSpend": "If I spend",
@@ -430,8 +427,7 @@
 		"wouldHave": "{name} would have",
 		"coverIt": "Cover it",
 		"coverFrom": "From {name}",
-		"uncovered": "Nothing can cover this part",
-		"idle": "Type an amount to see what it would do."
+		"uncovered": "Nothing can cover this part"
 	},
 	"coverAll": {
 		"title": "Cover overspending",
@@ -455,7 +451,6 @@
 		"exists": "You already have a budget. Change its style from the menu.",
 		"step": "Step {at} of {total}",
 		"styleTitle": "How do you like to budget?",
-		"styleSub": "There is no wrong answer. You can change this anytime.",
 		"methods": "Or follow a method",
 		"recommended": "Recommended",
 		"pickStyle": "Pick {name}",
@@ -484,7 +479,6 @@
 			"WEEKLY": "Weekly",
 			"VARIES": "It varies",
 			"next": "Next pay",
-			"hint": "We'll show your next pay in the plan.",
 			"variesHint": "Your plan starts when your pay arrives.",
 			"past": "Pick today or a later day."
 		},
@@ -716,9 +710,7 @@
 	},
 	"startingMoney": {
 		"title": "Starting money",
-		"lead": "How much do you have right now? The budget starts counting from this.",
 		"have": "What you have right now",
-		"idle": "Type an amount to see what changes.",
 		"save": "Confirm",
 		"toast": "Starting money confirmed",
 		"moneyIn": "Money in",
@@ -733,7 +725,6 @@
 		"envelope": "Which envelope?",
 		"everythingElse": "Everything else",
 		"done": "Done",
-		"idle": "Type an amount and get one answer.",
 		"failed": "Could not check this. Try again.",
 		"state": {
 			"FITS": "Yes. It fits, and you would have <after></after> left.",

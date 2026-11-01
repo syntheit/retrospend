@@ -69,10 +69,8 @@ export function SetupPayStep({
 					/>
 				</Field>
 			) : null}
-			{value.frequency ? (
-				<p className="text-fg-3 text-small">
-					{value.frequency === "VARIES" ? t("variesHint") : t("hint")}
-				</p>
+			{value.frequency === "VARIES" ? (
+				<p className="text-fg-3 text-small">{t("variesHint")}</p>
 			) : null}
 		</div>
 	);

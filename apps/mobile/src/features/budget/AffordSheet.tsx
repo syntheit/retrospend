@@ -177,9 +177,7 @@ export function AffordSheet({
 							/>
 						) : null}
 					</>
-				) : minor === null ? (
-					<Note>{t("idle")}</Note>
-				) : (
+				) : minor === null ? null : (
 					<Note>{t("checking")}</Note>
 				)}
 			</SheetBody>
