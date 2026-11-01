@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Segmented } from "~/components/ui/segmented";
-import type { EntryMode } from "./types";
+import type { EntryCarry, EntryMode } from "./types";
 
 /**
  * The composer's mode switch (Expense, Income, Transfer), in the sheet's
@@ -10,17 +10,20 @@ import type { EntryMode } from "./types";
  */
 export function ModeSwitch({
 	mode,
+	carry,
 	onMode,
 }: {
 	mode: EntryMode;
-	onMode: (mode: EntryMode) => void;
+	/** What carries over to the other modes. */
+	carry: EntryCarry;
+	onMode: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	const t = useTranslations("entry.mode");
 	return (
 		<Segmented
 			className="max-md:flex"
 			label={t("label")}
-			onChange={onMode}
+			onChange={(m) => onMode(m, carry)}
 			options={[
 				{ value: "expense", label: t("expense") },
 				{ value: "income", label: t("income") },

@@ -99,17 +99,7 @@ function IncomeForm({
 			className="md:h-150 md:max-w-4xl"
 			detent="large"
 			headerSlot={
-				<ModeSwitch
-					mode="income"
-					onMode={(m) =>
-						onMode(m, {
-							minor: d.minor,
-							currency: d.currency,
-							date: d.date,
-							note: d.note,
-						})
-					}
-				/>
+				<ModeSwitch carry={d} mode="income" onMode={onMode} />
 			}
 			headerSubmit={t("save")}
 			onOpenChange={(o) => !o && onClose()}

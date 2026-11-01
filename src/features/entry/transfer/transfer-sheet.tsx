@@ -114,17 +114,7 @@ function TransferForm({
 			className="md:h-150 md:max-w-4xl"
 			detent="large"
 			headerSlot={
-				<ModeSwitch
-					mode="transfer"
-					onMode={(m) =>
-						onMode(m, {
-							minor: x.out.minor,
-							currency: x.fromCur,
-							date: x.date,
-							note: x.note,
-						})
-					}
-				/>
+				<ModeSwitch carry={{ minor: x.out.minor, currency: x.fromCur, date: x.date, note: x.note }} mode="transfer" onMode={onMode} />
 			}
 			headerSubmit={verb}
 			onOpenChange={(o) => !o && onClose()}

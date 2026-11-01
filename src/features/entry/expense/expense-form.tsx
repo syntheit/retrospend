@@ -198,17 +198,7 @@ export function ExpenseForm(p: {
 				}
 				headerSlot={
 					editing || !p.onMode ? undefined : (
-						<ModeSwitch
-							mode="expense"
-							onMode={(m) =>
-								p.onMode?.(m, {
-									minor: d.minor,
-									currency: d.currency,
-									date: d.date,
-									note: d.note,
-								})
-							}
-						/>
+						<ModeSwitch carry={d} mode="expense" onMode={p.onMode} />
 					)
 				}
 				headerSubmit={editing ? t("save") : t("addShort")}
