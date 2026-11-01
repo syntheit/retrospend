@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Money } from "~/components/money/money";
+import { useRateFormat } from "~/components/money/use-rate-format";
 import {
 	CategoryPicker,
 	type PickerCategory,
@@ -40,15 +41,12 @@ export const homeFigure = (r: ReviewRow) => `import.home:${r.index}`;
 
 function RateTip({ r }: { r: ReviewRow }) {
 	const t = useTranslations("importPage.rateType");
+	const fmt = useRateFormat();
 	if (!r.rate) return null;
 	const type = r.rate.type;
+	const name = type ? (t.has(type) ? t(type as "blue") : type) : "";
 	return (
-		<span className="tabular-nums">
-			<Money value={r.rate.unit} />
-			{" = "}
-			<Money value={r.rate.value} />
-			{type ? ` · ${t.has(type) ? t(type as "blue") : type}` : null}
-		</span>
+		<span className="tabular-nums">{fmt.withType(name, r.rate)}</span>
 	);
 }
 

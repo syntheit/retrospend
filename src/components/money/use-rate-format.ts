@@ -53,6 +53,20 @@ export function useRateFormat() {
 				perFrom: RateInput,
 			) => formatRateWithType(typeName, from, to, perFrom, locale),
 			/**
+			 * Just the number, with `base` as the single unit and the other
+			 * currency's code after it ("1,545.20 ARS"): for a table whose
+			 * header already says "1 USD =".
+			 */
+			inUnit: (
+				base: string,
+				from: string,
+				to: string,
+				perFrom: RateInput,
+			): string | null => {
+				const o = orientRateAs(base, from, to, perFrom);
+				return o ? `${formatRateValue(o.value, locale)} ${o.quote}` : null;
+			},
+			/**
 			 * A row of rates for one pair in one direction: the unit ("1 USD")
 			 * and each rate's number, so the numbers can sit side by side.
 			 */

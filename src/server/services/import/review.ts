@@ -37,7 +37,13 @@ export interface ImportReviewRow {
 	/** The home value the import saves; null when there is no rate yet. */
 	readonly home: Money | null;
 	/** 1 unit of the row's currency in home, and the rate type, for the rate tip. */
-	readonly rate: { unit: Money; value: Money; type: string | null } | null;
+	readonly rate: {
+		unit: Money;
+		value: Money;
+		/** The rate unrounded: home per `unit`. */
+		rate: string;
+		type: string | null;
+	} | null;
 	/** The category name the file has ("" when none). */
 	readonly fileCategory: string;
 	readonly categoryId: string | null;
@@ -105,6 +111,7 @@ function rateView(rate: ImportRate | null, currency: string, home: string) {
 	return {
 		unit: moneyOf(1, currency),
 		value: moneyOf(rate.home.homeRate, home),
+		rate: rate.home.homeRate,
 		type: rate.home.rateType,
 	};
 }

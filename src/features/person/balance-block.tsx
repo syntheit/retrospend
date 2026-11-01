@@ -3,6 +3,7 @@
 import { Bell } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Money } from "~/components/money/money";
+import { useRateFormat } from "~/components/money/use-rate-format";
 import { useRowDates } from "~/components/rows/dates";
 import { Button } from "~/components/ui/button";
 import { StatusDot } from "~/components/ui/status-dot";
@@ -29,6 +30,7 @@ function PartLine({
 }) {
 	const t = useTranslations("personPage.balance");
 	const typeName = useRateTypeName();
+	const fmt = useRateFormat();
 	const owed = part.amount.minor > 0;
 	const rate = part.rate;
 	return (
@@ -56,10 +58,7 @@ function PartLine({
 						{t.rich("worth", {
 							amount: () => <Money sign="never" value={part.home} />,
 						})}{" "}
-						{t.rich("at", {
-							type: typeName(rate.type),
-							rate: () => <Money value={rate.value} />,
-						})}
+						{t("at", { rate: fmt.withType(typeName(rate.type), rate) ?? "" })}
 					</>
 				) : part.home ? null : (
 					t("noRate")

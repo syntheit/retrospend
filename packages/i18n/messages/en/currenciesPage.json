@@ -24,7 +24,6 @@
 	"actions": "Actions",
 	"noRate": "No rate",
 	"noType": "No rate of this type",
-	"base": "1 {code} =",
 	"derived": "Derived through {home}",
 	"subNoRate": "{name} · no rate",
 	"subDefault": "{name} · {type} by default",

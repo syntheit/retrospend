@@ -30,6 +30,8 @@ export interface RateDTO {
 	readonly type: string;
 	readonly unit: Money;
 	readonly value: Money;
+	/** The same rate unrounded: home per `unit`. Clients word it with the shared rate formatter. */
+	readonly rate: string;
 }
 
 /** One currency of a balance, with its home value when it converts. */

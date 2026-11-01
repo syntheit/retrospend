@@ -37,7 +37,7 @@
 		"owedToYou": "owed to you",
 		"youOwe": "you owe",
 		"worth": "≈ <amount></amount>",
-		"at": "at {type} <rate></rate>",
+		"at": "at {rate}",
 		"noRate": "No rate yet, not in the total",
 		"pendingPaid": "You paid {name} <amount></amount> on {date}. Waiting for {name} to confirm",
 		"remind": "Remind {name}",

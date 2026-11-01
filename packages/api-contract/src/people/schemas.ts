@@ -44,7 +44,13 @@ export const personIdentitySchema = z
 
 /** 1 unit of a currency in another, of a rate type. */
 export const rateViewSchema = z
-	.object({ type: z.string(), unit: moneySchema, value: moneySchema })
+	.object({
+		type: z.string(),
+		unit: moneySchema,
+		value: moneySchema,
+		/** The rate unrounded: home currency per one `unit`. Show it as a number of at least 1 (1 USD = 1,545.20 ARS). */
+		rate: z.string(),
+	})
 	.meta({ id: "PersonRate" });
 
 export const balancePartSchema = z
