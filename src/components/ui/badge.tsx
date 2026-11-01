@@ -72,7 +72,7 @@ function StatusBadge({ status, label, className }: StatusBadgeProps) {
 	return (
 		<span
 			className={cn(
-				"inline-flex h-6 w-fit shrink-0 items-center gap-2 whitespace-nowrap rounded-chip px-2 font-medium text-meta",
+				"inline-flex h-6 w-fit max-w-full shrink-0 items-center gap-2 whitespace-nowrap rounded-chip px-2 font-medium text-meta",
 				tone.pill,
 				tone.text,
 				className,
@@ -84,7 +84,9 @@ function StatusBadge({ status, label, className }: StatusBadgeProps) {
 				aria-hidden="true"
 				className={cn("size-2 shrink-0 rounded-full", tone.dot)}
 			/>
-			{label ?? t(STATUS[status].word)}
+			<span className="min-w-0 truncate">
+				{label ?? t(STATUS[status].word)}
+			</span>
 		</span>
 	);
 }
