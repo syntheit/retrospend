@@ -301,5 +301,11 @@
 	"common": {
 		"loading": "Wird geladen",
 		"failed": "Konnte nicht geladen werden. Versuch es noch einmal."
+	},
+	"mode": {
+		"label": "Art des Eintrags",
+		"expense": "Ausgabe",
+		"income": "Einnahme",
+		"transfer": "Umbuchung"
 	}
 }

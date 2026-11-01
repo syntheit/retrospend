@@ -43,7 +43,7 @@ export function blankDraft(o: {
 		title: p?.title ?? "",
 		categoryId: p?.categoryId ?? null,
 		categoryTouched: !!p?.categoryId,
-		date: dayKey(new Date()),
+		date: p?.date ?? dayKey(new Date()),
 		rateType: null,
 		custom: false,
 		customText: "",

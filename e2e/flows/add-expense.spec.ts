@@ -218,3 +218,32 @@ test("Add expense: the project tab shows each project with its people", async ({
 	expect(await bannedOutputOn(page), "banned output").toEqual([]);
 	await sheet.getByRole("button", { name: "Cancel" }).click();
 });
+
+test("Add expense: switching to Income carries the amount", async ({ page }) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await openV2(page, "/activity");
+	await page.keyboard.press("n");
+	const expense = page.getByRole("dialog", { name: "New expense" });
+	await expect(
+		expense.getByRole("radio", { name: "Expense", checked: true }),
+	).toBeVisible();
+	await expense.getByRole("textbox", { name: "Amount" }).fill("4200");
+	await expense.getByRole("radio", { name: "Income" }).click();
+
+	const income = page.getByRole("dialog", { name: "Add income" });
+	await expect(income).toBeVisible();
+	await expect(
+		income.getByRole("radio", { name: "Income", checked: true }),
+	).toBeVisible();
+	await expect(income.getByRole("textbox", { name: "Amount" })).toHaveValue(
+		/4,?200/,
+	);
+	// And on to Transfer: the amount still carries.
+	await income.getByRole("radio", { name: "Transfer" }).click();
+	const transfer = page.getByRole("dialog", { name: /^(Transfer|Exchange)$/ });
+	await expect(transfer).toBeVisible();
+	await expect(
+		transfer.getByRole("textbox", { name: "Amount" }).first(),
+	).toHaveValue(/4,?200/);
+	await transfer.getByRole("button", { name: "Cancel" }).click();
+});

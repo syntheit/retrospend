@@ -11,7 +11,7 @@ import { ExpenseSheet } from "./expense/expense-sheet";
 import { IncomeSheet } from "./income/income-sheet";
 import { SharedEntrySheet } from "./read/shared-entry-sheet";
 import { TransferSheet } from "./transfer/transfer-sheet";
-import type { EntryRequest } from "./types";
+import type { EntryCarry, EntryMode, EntryRequest } from "./types";
 
 type Open = { request: EntryRequest; key: number } | null;
 
@@ -25,6 +25,11 @@ export function EntrySheetsProvider({ children }: { children: ReactNode }) {
 	const open = useCallback(
 		(request: EntryRequest) =>
 			setCurrent((c) => ({ request, key: (c?.key ?? 0) + 1 })),
+		[],
+	);
+	// Same sheet, another mode: the key stays, so nothing else resets.
+	const swap = useCallback(
+		(request: EntryRequest) => setCurrent((c) => (c ? { ...c, request } : c)),
 		[],
 	);
 	const close = useCallback(() => setCurrent(null), []);
@@ -70,6 +75,7 @@ export function EntrySheetsProvider({ children }: { children: ReactNode }) {
 					<EntryHost
 						key={current.key}
 						onClose={close}
+						onMode={(mode, carry) => swap(requestFor(mode, carry))}
 						onOpen={open}
 						request={current.request}
 					/>
@@ -79,19 +85,47 @@ export function EntrySheetsProvider({ children }: { children: ReactNode }) {
 	);
 }
 
+/** The request for a mode, starting from what carries over. */
+function requestFor(mode: EntryMode, carry: EntryCarry): EntryRequest {
+	switch (mode) {
+		case "expense":
+			return {
+				kind: "expense",
+				mode: "create",
+				prefill: {
+					minor: carry.minor,
+					currency: carry.currency,
+					date: carry.date,
+					description: carry.note,
+				},
+			};
+		case "income":
+			return { kind: "income", carry };
+		case "transfer":
+			return { kind: "transfer", carry };
+	}
+}
+
 function EntryHost({
 	request,
 	onClose,
 	onOpen,
+	onMode,
 }: {
 	request: EntryRequest;
 	onClose: () => void;
 	onOpen: (r: EntryRequest) => void;
+	onMode: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	switch (request.kind) {
 		case "expense":
 			return (
-				<ExpenseSheet onClose={onClose} onOpen={onOpen} request={request} />
+				<ExpenseSheet
+					onClose={onClose}
+					onMode={onMode}
+					onOpen={onOpen}
+					request={request}
+				/>
 			);
 		case "shared":
 			return (
@@ -102,12 +136,21 @@ function EntryHost({
 				/>
 			);
 		case "income":
-			return <IncomeSheet accountId={request.accountId} onClose={onClose} />;
+			return (
+				<IncomeSheet
+					accountId={request.accountId}
+					carry={request.carry}
+					onClose={onClose}
+					onMode={onMode}
+				/>
+			);
 		case "transfer":
 			return (
 				<TransferSheet
+					carry={request.carry}
 					fromAccountId={request.fromAccountId}
 					onClose={onClose}
+					onMode={onMode}
 				/>
 			);
 	}

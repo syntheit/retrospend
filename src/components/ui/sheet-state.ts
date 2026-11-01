@@ -26,6 +26,12 @@ export interface SheetProps {
 	onOpenChange: (open: boolean) => void;
 	/** Text only: no icon, no colored stripe (GUIDELINE §10). */
 	title: string;
+	/**
+	 * A control that takes the title's place in the header on desktop (the
+	 * title stays for screen readers) and sits in its own row under the
+	 * header on a phone: the composer's mode switch.
+	 */
+	headerSlot?: React.ReactNode;
 	/** One short line under the title; read by screen readers. */
 	description?: string;
 	/** Phone: the detent it opens at. Desktop ignores it. */
