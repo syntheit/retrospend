@@ -2,14 +2,13 @@
 
 import { PencilIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { formatMoney } from "~/components/money/format";
 import { Money } from "~/components/money/money";
 import {
 	MoneyInput,
 	MoneyInputRow,
 	type MoneyRates,
 } from "~/components/money/money-input";
-import { useMoneyLocale } from "~/components/money/use-money-locale";
+import { useRateFormat } from "~/components/money/use-rate-format";
 import { useDateFormat } from "~/components/pickers/use-date-format";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -82,20 +81,26 @@ export function IncomeAmount({
 /** The strip: the pair's types with their rates and bookings, then Custom (never one button alone). */
 function useIncomeRates(x: Income, show: boolean): MoneyRates | undefined {
 	const t = useTranslations("entry");
-	const locale = useMoneyLocale();
+	const fmt = useRateFormat();
 	const name = useRateTypeName();
 	const rates = x.rates;
 	if (!show || !rates) return undefined;
+	const row = fmt.row(
+		x.d.currency,
+		rates.homeCurrency,
+		rates.options.map((o) => o.rate.rate),
+	);
 	return {
 		label: t("rate.label"),
+		...(row ? { unit: `${row.unit} =` } : {}),
 		value: x.rateType,
 		options: [
-			...rates.options.map((o) => ({
+			...rates.options.map((o, i) => ({
 				value: o.rateType,
 				label: name(o.rateType),
-				rate: <Money value={o.rate.value} />,
+				rate: row?.values[i] ? `${row.values[i]} ${row.quote}` : undefined,
 				home: o.home ? <Money value={o.home} /> : undefined,
-				ariaLabel: `${name(o.rateType)} ${formatMoney(o.rate.value, { locale })}`,
+				ariaLabel: fmt.withType(name(o.rateType), o.rate) ?? name(o.rateType),
 			})),
 			{
 				value: "custom",

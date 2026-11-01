@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	formatRate,
+	orientRateAs,
 	formatRateValue,
 	formatRateWithType,
 	orientRate,
@@ -104,5 +105,24 @@ describe("formatRateValue: decimals and the locale's marks", () => {
 
 	it("follows the account's separator choice riding on the locale", () => {
 		expect(formatRateValue(1545.2, "en-US-x-nf-dc")).toBe("1.545,20");
+	});
+});
+
+describe("orientRateAs: one direction for a row of rates", () => {
+	it("reads every type of a pair with the same base", () => {
+		expect(orientRateAs("USD", "ARS", "USD", 1545.2)?.value).toBeCloseTo(
+			1 / 1545.2,
+			10,
+		);
+		expect(orientRateAs("USD", "USD", "ARS", 1545.2)).toEqual({
+			base: "USD",
+			quote: "ARS",
+			value: 1545.2,
+		});
+	});
+
+	it("refuses a base outside the pair and a missing rate", () => {
+		expect(orientRateAs("EUR", "USD", "ARS", 1545.2)).toBeNull();
+		expect(orientRateAs("USD", "USD", "ARS", null)).toBeNull();
 	});
 });

@@ -372,6 +372,23 @@ export function bookedHome(
 	return money(toMinor(row.homeAmount, homeCurrency), homeCurrency);
 }
 
+/**
+ * The rate a row was booked at, unrounded: units of `homeCurrency` per 1 unit
+ * of the row's currency (homeRate, 12 decimals), when it was booked in
+ * `homeCurrency`. Clients word it with formatRate; null when no rate was
+ * booked in that home.
+ */
+export function bookedRate(
+	row: {
+		homeCurrency: string | null;
+		homeRate: Prisma.Decimal | null;
+	},
+	homeCurrency: string,
+): string | null {
+	if (row.homeCurrency !== homeCurrency || row.homeRate === null) return null;
+	return row.homeRate.toString();
+}
+
 // ── What the Add sheet offers ───────────────────────────────────────────────
 
 async function typesOf(db: RateDb, currency: string): Promise<string[]> {

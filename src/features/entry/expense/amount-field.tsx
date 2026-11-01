@@ -3,14 +3,13 @@
 import { fromMinor } from "@retrospend/domain/money-minor";
 import { PencilIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { formatMoney } from "~/components/money/format";
 import { Money } from "~/components/money/money";
 import {
 	MoneyInput,
 	MoneyInputRow,
 	type MoneyRates,
 } from "~/components/money/money-input";
-import { useMoneyLocale } from "~/components/money/use-money-locale";
+import { useRateFormat } from "~/components/money/use-rate-format";
 import { useDateFormat } from "~/components/pickers/use-date-format";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -152,21 +151,27 @@ function useRateStrip(
 	show: boolean,
 ): MoneyRates | undefined {
 	const t = useTranslations("entry");
-	const locale = useMoneyLocale();
+	const fmt = useRateFormat();
 	const name = useRateTypeName();
 	const opts = p.rate.opts;
 	if (!show || !opts) return undefined;
+	const row = fmt.row(
+		p.d.currency,
+		opts.homeCurrency,
+		opts.options.map((o) => o.rate.rate),
+	);
 	return {
 		label: t("rate.label"),
+		...(row ? { unit: `${row.unit} =` } : {}),
 		value: p.d.custom ? "custom" : p.rate.type,
 		options: [
-			...opts.options.map((o) => ({
+			...opts.options.map((o, i) => ({
 				value: o.rateType,
 				label: name(o.rateType),
-				rate: <Money value={o.rate.value} />,
+				rate: row?.values[i] ? `${row.values[i]} ${row.quote}` : undefined,
 				home: o.home ? <Money value={o.home} /> : undefined,
 				ariaLabel: [
-					`${name(o.rateType)} ${formatMoney(o.rate.value, { locale })}`,
+					fmt.withType(name(o.rateType), o.rate) ?? name(o.rateType),
 					opts.defaultType === o.rateType
 						? t("rate.default", { currency: p.d.currency })
 						: null,

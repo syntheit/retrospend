@@ -45,6 +45,28 @@ export function orientRate(
 		: { base: b, quote: a, value: 1 / n };
 }
 
+/**
+ * The same pair read with `base` as the single unit, whatever the number
+ * turns out to be: a row of rates for one pair (Official, Blue, MEP) shares
+ * one direction, taken from the first. Null when `base` is not in the pair
+ * or there is no usable rate.
+ */
+export function orientRateAs(
+	base: string,
+	from: string,
+	to: string,
+	perFrom: RateInput,
+): OrientedRate | null {
+	const n = readable(perFrom);
+	if (n === null) return null;
+	const a = from.toUpperCase();
+	const b = to.toUpperCase();
+	const want = base.toUpperCase();
+	if (want === a) return { base: a, quote: b, value: n };
+	if (want === b) return { base: b, quote: a, value: 1 / n };
+	return null;
+}
+
 /** The oriented number in the locale's marks: 2 decimals from 100 up, 2 to 4 below. */
 export function formatRateValue(value: number, locale = "en-US"): string {
 	const max = value >= 100 ? 2 : 4;

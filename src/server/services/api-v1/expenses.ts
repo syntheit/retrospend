@@ -38,7 +38,7 @@ import { listHomeCurrency } from "~/server/services/expense-dto";
 import { activityRow, listActivity } from "~/server/services/expense-list";
 import { forUser } from "~/server/services/preview";
 import type { MoneyMutation } from "~/server/services/preview/types";
-import { bookedHome } from "~/server/services/rate-types";
+import { bookedHome, bookedRate } from "~/server/services/rate-types";
 import { titleSuggestions } from "~/server/services/title-suggestions.service";
 import type { Prisma } from "~prisma";
 import { type Caller, moneyOf } from "./caller";
@@ -79,6 +79,7 @@ export function toExpenseDto(
 		amount: moneyOf(row.amount, row.currency),
 		home: row.currency === home ? null : bookedHome(row, home),
 		rateType: row.rateType,
+		rate: row.currency === home ? null : bookedRate(row, home),
 		date: dayKey(row.date, timeZone),
 		categoryId: row.categoryId,
 		location: row.location,

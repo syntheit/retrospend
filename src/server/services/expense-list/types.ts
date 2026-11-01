@@ -99,6 +99,8 @@ export type ActivityRowDTO = {
 	 * not the user's default for their home currency (GUIDELINE §7).
 	 */
 	rateType?: string;
+	/** With `rateType`: the rate it was booked at, home per 1 unit of the amount's currency, unrounded. */
+	rate?: string;
 	/** Home minor units for the amount column's sort; null without a rate. */
 	sortKey: number | null;
 	waiting?: "review" | "rejected";

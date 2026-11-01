@@ -15,7 +15,7 @@ export type MoneyRateOption = {
 	value: string;
 	/** The type's name: "Blue", "Custom". */
 	label: string;
-	/** Its rate, already formatted (a Money), or a mark for Custom. */
+	/** Its rate as a number in the strip's unit ("1,545.20"), or a mark for Custom. */
 	rate?: React.ReactNode;
 	/** What the amount books at this type (the server's figure), wide screens only. */
 	home?: React.ReactNode;
@@ -26,6 +26,8 @@ export type MoneyRateOption = {
 export type MoneyRates = {
 	/** Accessible name of the group ("Rate"). */
 	label: string;
+	/** What every rate counts, "1 USD =" before the numbers (R8). */
+	unit?: string;
 	value: string | null;
 	options: MoneyRateOption[];
 	onChange: (value: string) => void;
@@ -102,37 +104,42 @@ export function RateStrip({ rates }: { rates: MoneyRates }) {
 	return (
 		<div
 			aria-label={rates.label}
-			className="border-line-strong flex overflow-x-auto border-t"
+			className="border-line-strong flex flex-col border-t"
 			role="group"
 		>
-			{rates.options.map((o, i) => {
-				const on = o.value === rates.value;
-				return (
-					<Button
-						aria-label={o.ariaLabel}
-						aria-pressed={on}
-						className={cn(
-							"h-auto min-w-16 flex-1 flex-col gap-0 rounded-none border-0 px-2 py-2 focus-visible:-outline-offset-2",
-							i < rates.options.length - 1 && "border-line border-r",
-							// Selected by fill, as a selected chip (no stripe, R31).
-							on && "bg-brand-soft text-fg can-hover:hover:bg-brand-soft",
-						)}
-						key={o.value}
-						kind="ghost"
-						onClick={() => rates.onChange(o.value)}
-					>
-						<span className="text-meta font-medium">{o.label}</span>
-						{o.rate ? (
-							<span className="text-small tabular-nums">{o.rate}</span>
-						) : null}
-						{o.home ? (
-							<span className="text-fg-3 text-meta tabular-nums max-md:hidden">
-								{o.home}
-							</span>
-						) : null}
-					</Button>
-				);
-			})}
+			{rates.unit ? (
+				<span className="text-fg-3 text-meta px-3 pt-2">{rates.unit}</span>
+			) : null}
+			<div className="flex overflow-x-auto">
+				{rates.options.map((o, i) => {
+					const on = o.value === rates.value;
+					return (
+						<Button
+							aria-label={o.ariaLabel}
+							aria-pressed={on}
+							className={cn(
+								"h-auto min-w-16 flex-1 flex-col gap-0 rounded-none border-0 px-2 py-2 focus-visible:-outline-offset-2",
+								i < rates.options.length - 1 && "border-line border-r",
+								// Selected by fill, as a selected chip (no stripe, R31).
+								on && "bg-brand-soft text-fg can-hover:hover:bg-brand-soft",
+							)}
+							key={o.value}
+							kind="ghost"
+							onClick={() => rates.onChange(o.value)}
+						>
+							<span className="text-meta font-medium">{o.label}</span>
+							{o.rate ? (
+								<span className="text-small tabular-nums">{o.rate}</span>
+							) : null}
+							{o.home ? (
+								<span className="text-fg-3 text-meta tabular-nums max-md:hidden">
+									{o.home}
+								</span>
+							) : null}
+						</Button>
+					);
+				})}
+			</div>
 		</div>
 	);
 }

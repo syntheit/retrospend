@@ -72,7 +72,12 @@ export const accountChangeSchema = z
 
 /** A rate as a pair of amounts: "USD 1 = ARS 1,468" is { unit: USD 1, value: ARS 1,468 }. */
 export const ratePairSchema = z
-	.object({ unit: moneySchema, value: moneySchema })
+	.object({
+		unit: moneySchema,
+		value: moneySchema,
+		/** The rate unrounded: `value`'s currency per one `unit`. Show it as a number of at least 1 (1 USD = 1,545.20 ARS). */
+		rate: z.string(),
+	})
 	.meta({ id: "RatePair" });
 
 /**
