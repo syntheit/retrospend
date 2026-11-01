@@ -130,6 +130,7 @@ export function BudgetPreviewLine({
 		<Text
 			accessibilityLiveRegion="polite"
 			numberOfLines={1}
+			style={{ textAlign: "center" }}
 			tabular
 			tone={tone}
 			variant="small"

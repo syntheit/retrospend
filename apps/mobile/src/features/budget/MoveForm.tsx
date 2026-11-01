@@ -279,6 +279,13 @@ export function MoveForm({ data, envelope, month, onDone, onClose }: FormProps) 
 			}}
 			amount={
 				<AmountEntry
+					below={
+						<BudgetPreviewLine
+							data={data}
+							preview={flow.preview}
+							status={flow.status}
+						/>
+					}
 					currency={currency}
 					error={entered.state === "invalid"}
 					line={line}
@@ -306,13 +313,7 @@ export function MoveForm({ data, envelope, month, onDone, onClose }: FormProps) 
 			}}
 			page={page}
 			panels={panels}
-			preview={
-				<BudgetPreviewLine
-					data={data}
-					preview={flow.preview}
-					status={flow.status}
-				/>
-			}
+			preview={null}
 			summary={summary}
 			surface
 			tabs={tabs}
