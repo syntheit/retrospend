@@ -88,6 +88,10 @@ const templateFields = {
 	categoryId: idSchema.optional(),
 	frequency: frequencySchema,
 	nextDueDate: daySchema,
+	anchorDay: z.number().int().min(1).max(31).optional().meta({
+		description:
+			"Day of month a monthly, quarterly or yearly schedule keeps (1 to 31). nextDueDate must be that day, or the last day of a shorter month. Default is the day of nextDueDate.",
+	}),
 	direction: z.enum(["out", "in"]).optional().meta({
 		description: "`in` is recurring income. Default out.",
 	}),

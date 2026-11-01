@@ -5,7 +5,6 @@ import { AffordSheet } from "@/features/budget/AffordSheet";
 import { EnvelopeSheet } from "@/features/budget/EnvelopeSheet";
 import type { BudgetEnvelope, BudgetMonth } from "@/features/budget/source";
 import type { PersonIdentity } from "@/features/people/source";
-import { SettleSheet } from "@/features/settle/SettleSheet";
 import type { Account, CurrencyInfo } from "@/features/wealth/source";
 import { UpdateBalanceSheet } from "@/features/wealth/UpdateBalanceSheet";
 import { PickerSheet } from "./PickerSheet";
@@ -134,67 +133,6 @@ jest.mock("use-intl", () => {
 		}),
 	};
 });
-// Settle up reads its context from the server; the sheet's own layout is
-// what is under test, so the parts inside the body are stand-ins.
-jest.mock("@/features/settle/useSettle", () => ({
-	useSettle: () => ({
-		status: "ready",
-		context: {
-			currency: "ARS",
-			everything: { minor: 100_000, currency: "ARS" },
-			unpriced: [],
-			today: "2026-10-12",
-			yesterday: "2026-10-11",
-		},
-		direction: "TO_THEM",
-		choice: { kind: "everything" },
-		preview: null,
-		repricing: false,
-		recording: false,
-		overpaid: false,
-		previewFailed: false,
-		recordFailed: false,
-		shared: [],
-		method: "cash",
-		paidOn: "2026-10-12",
-		typeRates: {},
-		rateType: null,
-		setChoice: () => undefined,
-		setMethod: () => undefined,
-		setPaidOn: () => undefined,
-		changeDirection: () => undefined,
-		changeRate: () => undefined,
-		retryLoad: () => undefined,
-	}),
-}));
-jest.mock("@/features/settle/plan", () => ({
-	allocationDetail: () => null,
-	rateChoices: () => null,
-	fillOf: () => ({ minor: 100_000, currency: "ARS" }),
-	everythingConverts: () => false,
-}));
-jest.mock("@/features/settle/SettleHead", () => ({ SettleHead: () => null }));
-jest.mock("@/features/settle/AmountChoices", () => ({
-	AmountChoices: () => null,
-}));
-jest.mock("@/features/settle/AfterThis", () => ({
-	AfterThis: () => null,
-	OverpayAction: () => null,
-}));
-jest.mock("@/features/settle/PreviewList", () => ({ PreviewList: () => null }));
-jest.mock("@/features/settle/SettleDetails", () => {
-	const { Text } = require("react-native");
-	return {
-		RateChips: () => null,
-		MethodAndDate: () => (
-			<>
-				<Text>Method</Text>
-				<Text>Date</Text>
-			</>
-		),
-	};
-});
-
 const ars = (minor: number) => ({ minor, currency: "ARS" });
 
 const envelopes = [
@@ -240,12 +178,6 @@ const account = {
 	updatedAt: "2026-10-12T12:00:00.000Z",
 	rateType: null,
 } as unknown as Account;
-
-const person = {
-	type: "user",
-	id: "u-lucia",
-	name: "Lucía Gómez",
-} as unknown as PersonIdentity;
 
 const noop = () => undefined;
 
@@ -343,16 +275,6 @@ const CASES: Case[] = [
 				title="Envelope"
 				visible
 			/>
-		),
-	},
-	{
-		name: "Settle up",
-		title: "Settle up with Lucía",
-		fields: ["Amount", "Method", "Date"],
-		footer: ["Cancel", "Record payment"],
-		sheetBody: false,
-		render: () => (
-			<SettleSheet onClose={noop} onDone={noop} person={person} visible />
 		),
 	},
 ];
@@ -632,7 +554,9 @@ describe("sheet without detents", () => {
 		);
 		expect(footer).toHaveLength(1);
 		expect(inside(footer[0] as Node, body)).toBe(false);
-		const text = tree.root.findAll((n) => n.type === Text && textOf(n) === "Body");
+		const text = tree.root.findAll(
+			(n) => n.type === Text && textOf(n) === "Body",
+		);
 		expect(inside(text[0] as Node, body)).toBe(true);
 		act(() => tree.unmount());
 	});

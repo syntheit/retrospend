@@ -1855,7 +1855,10 @@
 		"overTheyOwe": "Das sind {amount} mehr, als {name} dir schuldet",
 		"overYouOwe": "Das sind {amount} mehr, als du {name} schuldest",
 		"recordExact": "Stattdessen {amount} erfassen",
-		"recordAmount": "{amount} erfassen"
+		"recordAmount": "{amount} erfassen",
+		"methodNone": "Keine Zahlungsart",
+		"rateTab": "Kurs",
+		"recordKey": "Erfassen"
 	},
 	"review": {
 		"open": "Prüfen",
@@ -2771,9 +2774,11 @@
 			"categoryNone": "Keine Kategorie",
 			"repeats": "Wiederholt sich",
 			"first": "Nächste Fälligkeit",
-			"firstHint": "Die erste wird an diesem Datum erfasst.",
 			"submit": "Hinzufügen",
-			"toast": "{title} hinzugefügt"
+			"toast": "{title} hinzugefügt",
+			"error": "Das konnte nicht hinzugefügt werden. Versuche es erneut.",
+			"dayOfMonth": "Tag des Monats",
+			"changes": "Änderungen"
 		},
 		"delete": {
 			"title": "{title} löschen?",

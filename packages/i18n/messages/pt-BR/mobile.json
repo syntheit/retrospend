@@ -1855,7 +1855,10 @@
 		"overTheyOwe": "São {amount} a mais do que {name} deve a você",
 		"overYouOwe": "São {amount} a mais do que você deve a {name}",
 		"recordExact": "Registrar {amount} em vez disso",
-		"recordAmount": "Registrar {amount}"
+		"recordAmount": "Registrar {amount}",
+		"methodNone": "Sem forma",
+		"rateTab": "Cotação",
+		"recordKey": "Registrar"
 	},
 	"review": {
 		"open": "Revisar",
@@ -2771,9 +2774,11 @@
 			"categoryNone": "Sem categoria",
 			"repeats": "Repete",
 			"first": "Próximo vencimento",
-			"firstHint": "A primeira é registrada nesta data.",
 			"submit": "Adicionar",
-			"toast": "{title} adicionada"
+			"toast": "{title} adicionada",
+			"error": "Não foi possível adicionar. Tente de novo.",
+			"dayOfMonth": "Dia do mês",
+			"changes": "Mudanças"
 		},
 		"delete": {
 			"title": "Excluir {title}?",

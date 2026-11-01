@@ -24,6 +24,12 @@ export interface NewTemplate {
 	readonly frequency: RecurringFrequency;
 	/** YYYY-MM-DD, the first due day in the caller's zone. */
 	readonly nextDueDate: string;
+	/**
+	 * Day of month a monthly-type schedule keeps (1 to 31). Without it the
+	 * anchor is the day of nextDueDate, which loses 31 when the first date
+	 * was clamped to a short month.
+	 */
+	readonly anchorDay?: number;
 	readonly direction?: ExpenseDirection;
 	readonly amountMode?: RecurringAmountMode;
 	readonly websiteUrl?: string;
@@ -67,6 +73,36 @@ async function refuseForeignCategory(
 /** The day of month a schedule is anchored to, read off the typed day. */
 const anchorOf = (day: string) => Number(day.slice(8, 10));
 
+const MONTH_BASED: readonly RecurringFrequency[] = [
+	"MONTHLY",
+	"QUARTERLY",
+	"YEARLY",
+];
+
+/**
+ * The anchor to store. A given anchorDay on a month-based schedule wins, but
+ * the first date must be that day, or the last day of a month too short for it.
+ */
+function resolveAnchor(input: NewTemplate): number {
+	const typed = anchorOf(input.nextDueDate);
+	const wanted = input.anchorDay;
+	if (wanted === undefined || !MONTH_BASED.includes(input.frequency))
+		return typed;
+	const [y, m] = input.nextDueDate.split("-").map(Number) as [number, number];
+	const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+	if (!Number.isInteger(wanted) || wanted < 1 || wanted > 31)
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "anchorDay must be 1 to 31",
+		});
+	if (typed !== Math.min(wanted, last))
+		throw new TRPCError({
+			code: "BAD_REQUEST",
+			message: "nextDueDate must fall on anchorDay",
+		});
+	return wanted;
+}
+
 /**
  * The stored due instant for a typed day. Recurring income keeps its day as
  * UTC midnight, which is how the income code reads it (add.mutation,
@@ -102,7 +138,7 @@ export async function createTemplate(
 			amountMode: input.amountMode ?? "FIXED",
 			frequency: input.frequency,
 			nextDueDate: dueInstant(input.nextDueDate, direction, timeZone),
-			anchorDay: anchorOf(input.nextDueDate),
+			anchorDay: resolveAnchor(input),
 			websiteUrl: input.websiteUrl,
 			paymentSource: input.paymentSource,
 			autoPay: input.autoPay ?? true,

@@ -22,7 +22,6 @@ import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
 import { SwipeRow } from "@/ui/SwipeRow";
 import { Text } from "@/ui/Text";
-import { AddRecurringSheet } from "./AddRecurringSheet";
 import { ConfirmSheet, useDayText } from "./ConfirmSheet";
 import { DeleteRecurringSheet } from "./DeleteRecurringSheet";
 import {
@@ -33,6 +32,7 @@ import {
 } from "./filter";
 import { groupsOf, isDue, type Period, type RecurringGroup } from "./groups";
 import { ItemSheet } from "./ItemSheet";
+import { AddRecurring } from "./RecurringComposer";
 import { RecurringFilters } from "./RecurringFilters";
 import { SkipSheet } from "./SkipSheet";
 import {
@@ -385,7 +385,7 @@ export function RecurringView({
 		</>
 	);
 	const addSheet = (
-		<AddRecurringSheet
+		<AddRecurring
 			onClose={closeAdd}
 			onDone={() => void reload()}
 			visible={isAdding}

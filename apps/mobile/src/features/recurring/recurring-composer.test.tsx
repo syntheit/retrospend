@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { AddRecurringSheet } from "./AddRecurringSheet";
+import { RecurringComposer } from "./RecurringComposer";
 
 // Add a recurring expense with real presses: the dry run of the exact body
 // comes first, Add stays off until it is in, the write carries the same body
@@ -33,22 +33,57 @@ jest.mock("@/data/ids", () => ({
 }));
 const mockToast = { show: jest.fn(), dismiss: jest.fn() };
 jest.mock("@/ui/Toast", () => ({ useToast: () => mockToast }));
-jest.mock("@/ui/Sheet", () => ({
-	Sheet: ({ visible, children }: { visible: boolean; children: unknown }) =>
-		visible ? children : null,
-}));
-jest.mock("@/ui/Button", () => {
+// The frame's own layout is not under test: it hands back what the composer
+// gave it as pressable stand-ins.
+const mockFrame: {
+	tabs: { key: string }[];
+	summary: { key: string; text: string }[];
+	panels: unknown[];
+} = { tabs: [], summary: [], panels: [] };
+jest.mock("@/features/entry/ComposerFrame", () => {
+	const { Pressable, View } = require("react-native");
+	return {
+		SYSTEM_PAD_SCALE: 1.5,
+		ComposerFrame: (props: {
+			add: { onPress: () => void; label: string; off: boolean };
+			title: unknown;
+			amount: unknown;
+			header: unknown;
+			tabs: { key: string }[];
+			summary: { key: string; text: string }[];
+			panels: unknown[];
+		}) => {
+			mockFrame.tabs = props.tabs;
+			mockFrame.summary = props.summary;
+			mockFrame.panels = props.panels;
+			return (
+				<View>
+					{props.header}
+					{props.title}
+					{props.amount}
+					{props.panels}
+					<Pressable
+						accessibilityLabel={props.add.label}
+						accessibilityState={{ disabled: props.add.off }}
+						onPress={props.add.off ? undefined : props.add.onPress}
+					/>
+				</View>
+			);
+		},
+	};
+});
+jest.mock("@/features/entry/AmountEntry", () => {
 	const { Pressable } = require("react-native");
 	return {
-		Button: ({ label, onPress, disabled }: Record<string, unknown>) => (
+		AmountEntry: ({ onText }: { onText: (text: string) => void }) => (
 			<Pressable
-				accessibilityLabel={label as string}
-				accessibilityState={{ disabled: Boolean(disabled) }}
-				onPress={disabled ? undefined : (onPress as () => void)}
+				accessibilityLabel="Type amount"
+				onPress={() => onText("12.50")}
 			/>
 		),
 	};
 });
+jest.mock("@/features/entry/SheetHead", () => ({ SheetHead: () => null }));
 jest.mock("@/ui/TextField", () => {
 	const { Pressable } = require("react-native");
 	return {
@@ -67,38 +102,16 @@ jest.mock("@/ui/TextField", () => {
 		),
 	};
 });
-jest.mock("@/features/write/parts", () => {
-	const { View } = require("react-native");
-	return {
-		...jest.requireActual("@/features/write/parts"),
-		SheetBody: ({ children }: { children: unknown }) => <View>{children}</View>,
-	};
-});
-jest.mock("@/ui/AmountField", () => {
-	const { Pressable } = require("react-native");
-	return {
-		AmountField: ({
-			onDraftChange,
-		}: {
-			onDraftChange: (draft: string) => void;
-		}) => (
-			<Pressable
-				accessibilityLabel="Type amount"
-				onPress={() => onDraftChange("12.50")}
-			/>
-		),
-	};
-});
-jest.mock("@/features/activity/useCategories", () => ({
-	useCategories: () => ({
-		state: {
-			status: "ready",
-			data: [
-				{ id: "c1", name: "Rent", kind: "expense", icon: null, tone: 1 },
-				{ id: "c2", name: "Salary", kind: "income", icon: null, tone: 2 },
-			],
-		},
-	}),
+const mockCategories: { ids: string[] } = { ids: [] };
+jest.mock("@/features/entry/CategoryPanel", () => ({
+	CategoryPanel: ({
+		catalog,
+	}: {
+		catalog: { categories: { id: string }[] };
+	}) => {
+		mockCategories.ids = catalog.categories.map((c) => c.id);
+		return null;
+	},
 }));
 jest.mock("@/features/entry/hooks", () => ({
 	useEntryCatalog: () => ({
@@ -111,17 +124,24 @@ jest.mock("@/features/entry/hooks", () => ({
 		},
 	}),
 }));
-const mockPicked: { rows: { id: string }[] } = { rows: [] };
-jest.mock("@/ui/PickField", () => ({
-	PickField: ({ rows }: { rows: { id: string }[] }) => {
-		mockPicked.rows = rows;
-		return null;
-	},
+jest.mock("@/features/entry/MorePanel", () => ({ OptionRow: () => null }));
+jest.mock("@/features/read/PreviewChanges", () => ({
+	PreviewChanges: () => null,
+}));
+jest.mock("@/features/write/useFigureLabel", () => ({
+	useFigureLabel: () => () => ({ name: "", inline: "" }),
+}));
+jest.mock("@/features/read/useMoneyText", () => ({
+	useMoneyText: () => () => "",
 }));
 jest.mock("@/ui/CurrencyPicker", () => ({ CurrencyPicker: () => null }));
 jest.mock("@/ui/DateField", () => ({ DateField: () => null }));
-jest.mock("@/ui/Segmented", () => ({ Segmented: () => null }));
-jest.mock("@/ui/SwitchRow", () => ({ SwitchRow: () => null }));
+jest.mock("@/ui/GlyphPill", () => ({ GlyphPill: () => null }));
+jest.mock("@/ui/Picker", () => ({ WheelField: () => null }));
+jest.mock("@/ui/Sheet", () => ({
+	Sheet: ({ children }: { children: unknown }) => children,
+	useSheetBodySize: () => ({}),
+}));
 jest.mock("@/lib/intl", () => ({ useFormatLocale: () => "en-US" }));
 jest.mock("use-intl", () => {
 	const { loadMessages } = require("@/lib/i18n");
@@ -177,6 +197,35 @@ beforeEach(() => {
 	mockToast.show.mockClear();
 });
 
+const catalog = {
+	categories: [
+		{
+			id: "c1",
+			name: "Rent",
+			kind: "expense",
+			icon: null,
+			tone: 1,
+			excludeByDefault: false,
+			uses: 1,
+		},
+		{
+			id: "c2",
+			name: "Salary",
+			kind: "income",
+			icon: null,
+			tone: 2,
+			excludeByDefault: false,
+			uses: 1,
+		},
+	],
+	people: [],
+	currencies: ["USD", "ARS"],
+	recentCurrencies: [],
+	places: [],
+	projects: [],
+	hasBudget: null,
+};
+
 describe("Add a recurring expense", () => {
 	it("previews the exact body, writes it under one key, and undoes by deleting", async () => {
 		const calls: { route: string; input: unknown; key?: string }[] = [];
@@ -208,11 +257,21 @@ describe("Add a recurring expense", () => {
 		let tree!: Tree;
 		await act(async () => {
 			tree = create(
-				<AddRecurringSheet onClose={onClose} onDone={onDone} visible />,
+				<RecurringComposer
+					catalog={catalog as never}
+					onClose={onClose}
+					onDone={onDone}
+				/>,
 			);
 		});
+		// The tabs are Category, Repeats and Changes.
+		expect(mockFrame.tabs.map((t) => t.key)).toEqual([
+			"category",
+			"repeats",
+			"changes",
+		]);
 		// An expense template offers expense categories only.
-		expect(mockPicked.rows.map((r) => r.id)).toEqual(["c1"]);
+		expect(mockCategories.ids).toEqual(["c1"]);
 		// Nothing to preview until there is a name and an amount.
 		expect(calls).toHaveLength(0);
 		expect(disabled(tree, "Add")).toBe(true);
@@ -227,6 +286,8 @@ describe("Add a recurring expense", () => {
 			frequency: "MONTHLY",
 			autoPay: false,
 		});
+		// The answers read as a line.
+		expect(mockFrame.summary.map((p) => p.text)).toContain("Monthly");
 		expect(disabled(tree, "Add")).toBe(false);
 
 		await press(tree, "Add");
