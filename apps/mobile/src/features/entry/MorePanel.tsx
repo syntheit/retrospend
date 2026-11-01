@@ -52,7 +52,7 @@ function RowState({ label, on }: { label: string; on: boolean }) {
  * what a tap does (Add or Remove; On or Off for a switch). Turning it on
  * opens its control under the row, in place.
  */
-function OptionRow({
+export function OptionRow({
 	icon,
 	name,
 	state,

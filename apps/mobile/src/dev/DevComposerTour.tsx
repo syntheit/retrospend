@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useSession } from "@/auth/session";
-import type { EntryMode } from "@/features/entry/ComposerShell";
+import type { EntryMode } from "@/features/entry/types";
 import { GALLERY_ENABLED } from "@/lib/flags";
 
 // A screenshot tour for the composer. simctl cannot tap, so a build made with

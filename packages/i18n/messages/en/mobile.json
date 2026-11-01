@@ -178,22 +178,26 @@
 			"noBudget": "Use my plan needs an envelope budget. It stays Not planned yet.",
 			"otherCurrency": "Your plan assigns in {currency}. This income stays Not planned yet.",
 			"none": "Nothing: every envelope is already funded.",
-			"stays": "Not planned yet stays"
+			"stays": "Not planned yet stays",
+			"waits": "It waits in Not planned yet until you assign it in Budget."
 		},
 		"transfer": {
 			"from": "From",
 			"to": "To",
 			"receivedPlaceholder": "Optional",
-			"receivedHint": "Leave it empty and the reference rate is used.",
 			"note": "Note",
 			"notePlaceholder": "Optional",
 			"errors": {
 				"same": "Pick two different accounts",
 				"places": "Pick both accounts",
-				"received": "Enter what arrived as an amount, or leave it empty"
+				"received": "Enter what arrived as an amount, or leave it empty",
+				"fee": "Enter the fee as an amount, or remove it"
 			},
 			"receivedLabel": "Received, {amount}",
-			"receivedEmpty": "Received in {currency}, optional"
+			"receivedEmpty": "Received in {currency}, optional",
+			"send": "You send",
+			"receive": "You receive",
+			"fee": "Bank fee"
 		},
 		"note": "Note",
 		"notePlaceholder": "Additional details",
@@ -311,7 +315,9 @@
 			"project": "Project",
 			"more": "More",
 			"changed": "changed",
-			"label": "Details"
+			"label": "Details",
+			"into": "Into",
+			"plan": "Plan"
 		},
 		"summary": {
 			"you": "you",
@@ -339,6 +345,17 @@
 			"changes": "What this changes",
 			"show": "Show",
 			"hide": "Hide"
+		},
+		"duplicate": "A similar expense is already on this day.",
+		"accounts": "Accounts",
+		"incomeFlow": {
+			"noCategory": "No category",
+			"intoAccount": "Into {name}",
+			"noAccount": "No account",
+			"budgetOnly": "Budget only",
+			"usesPlan": "Uses your plan",
+			"repeats": "Repeats every month",
+			"repeatsShort": "Repeats monthly"
 		}
 	},
 	"pickers": {

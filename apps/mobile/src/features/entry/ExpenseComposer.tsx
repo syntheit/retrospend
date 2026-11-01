@@ -12,15 +12,15 @@ import { AmountBlock } from "./AmountBlock";
 import { AmountCard, type MoneyLine } from "./AmountCard";
 import { CategoryPanel } from "./CategoryPanel";
 import { ComposerFrame, SYSTEM_PAD_SCALE } from "./ComposerFrame";
-import type { EntryMode } from "./ComposerShell";
 import { ComposerTop } from "./ComposerTop";
 import { type ExpenseDraft, isPersonal, pickCategory } from "./draft";
 import { MorePanel } from "./MorePanel";
 import { PreviewLine } from "./PreviewLine";
 import { ProjectPanel } from "./ProjectPanel";
 import { useTitleMemory } from "./titleMemory";
-import type { EntryCatalog, EntryCategory } from "./types";
+import type { EntryCatalog, EntryCategory, EntryMode } from "./types";
 import type { ComposerPreview } from "./useComposerPreview";
+import { useDuplicate } from "./useDuplicate";
 import type { EntryForm } from "./useEntryForm";
 import type { SplitView } from "./useSplitView";
 import { useDayWords, WhenPanel } from "./WhenPanel";
@@ -209,9 +209,14 @@ export function ExpenseComposer({
 	}));
 
 	const people = draft.projectId ? draft.projectPeople : catalog.people;
+	// Income categories belong to Income's panel.
+	const expenseCatalog = {
+		...catalog,
+		categories: catalog.categories.filter((c) => c.kind !== "income"),
+	};
 	const panels = [
 		<CategoryPanel
-			catalog={catalog}
+			catalog={expenseCatalog}
 			draft={draft}
 			error={form.tried && form.expenseProblems.category === true}
 			key="category"
@@ -273,6 +278,15 @@ export function ExpenseComposer({
 					kind: "money" as const,
 					onChange: form.patchAmount,
 				};
+
+	// A same-title, same-amount expense on this day: said, never blocking.
+	const duplicate = useDuplicate({
+		enabled: !editing,
+		title: draft.title,
+		minor: form.typedAmount,
+		currency: draft.currency,
+		date: draft.date,
+	});
 
 	const memory = last ? (
 		<Text style={{ textAlign: "center" }} tone="fg3" variant="meta">
@@ -364,6 +378,16 @@ export function ExpenseComposer({
 						value={draft.title}
 					/>
 					{memory}
+					{duplicate ? (
+						<Text
+							accessibilityLiveRegion="polite"
+							style={{ textAlign: "center" }}
+							tone="attention"
+							variant="small"
+						>
+							{t("duplicate")}
+						</Text>
+					) : null}
 				</View>
 			}
 			typing={form.typing}

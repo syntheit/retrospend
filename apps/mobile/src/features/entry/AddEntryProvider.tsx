@@ -25,9 +25,9 @@ import {
 	useHideAddButton,
 	useOptionalAddEntry,
 } from "./addEntryContext";
-import type { EntryMode } from "./ComposerShell";
 import { EntryComposer } from "./EntryComposer";
 import { replaceDraft } from "./replaceDraft";
+import type { EntryMode } from "./types";
 import { useOutboxFlush } from "./useOutboxFlush";
 
 // The screenshot tour is required only when its variable is set, so Metro drops

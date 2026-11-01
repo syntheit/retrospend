@@ -6,7 +6,7 @@ import { Segmented } from "@/ui/Segmented";
 import { Text } from "@/ui/Text";
 import { TextAction } from "@/ui/TextAction";
 import type { MenuItem } from "@/ui/types";
-import type { EntryMode } from "./ComposerShell";
+import type { EntryMode } from "./types";
 
 /** Past this text scale, or under this width on Android, the modes take their own row. */
 const STACK_SCALE = 1.3;

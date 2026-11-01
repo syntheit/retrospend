@@ -6,6 +6,7 @@ import {
 	type RateChoice,
 	rateFields,
 } from "./draftAmount";
+import type { EntryPlace } from "./types";
 
 // The income composer's state and the write it becomes.
 
@@ -18,6 +19,12 @@ export interface IncomeDraft extends RateChoice {
 	date: string;
 	usePlan: boolean;
 	note: string;
+	/** An income category; none files it under no category. */
+	categoryId: string | null;
+	/** The account it lands in; none is the budget only. */
+	into: string | null;
+	/** Also create the recurring income that repeats it every month. */
+	repeats: boolean;
 }
 
 export function newIncomeDraft(input: {
@@ -26,7 +33,16 @@ export function newIncomeDraft(input: {
 	date: string;
 	usePlan: boolean;
 }): IncomeDraft {
-	return { ...input, amountText: "", source: "", note: "", ...DEFAULT_RATE };
+	return {
+		...input,
+		amountText: "",
+		source: "",
+		note: "",
+		categoryId: null,
+		into: null,
+		repeats: false,
+		...DEFAULT_RATE,
+	};
 }
 
 export type IncomeErrors = Partial<Record<"amount" | "source" | "rate", true>>;
@@ -42,13 +58,22 @@ export function incomeErrors(d: IncomeDraft, locale: string): IncomeErrors {
 /** Add income: money in with no account, so it lands in To assign. */
 export function buildIncomeWrite(
 	d: IncomeDraft,
-	input: { locale: string; hasBudget: boolean | null },
+	input: {
+		locale: string;
+		hasBudget: boolean | null;
+		places?: EntryPlace[];
+	},
 ): PendingWrite | null {
 	const minor = amountMinor(d.amountText, input.locale, d.currency);
 	const source = d.source.trim();
 	const rate = rateFields(d, input.locale);
 	if (!minor || !source || !rate) return null;
 	const note = d.note.trim();
+	const place = d.into ? input.places?.find((p) => p.id === d.into) : undefined;
+	// An account outside the budget keeps the money in Wealth: no plan to use.
+	// When the catalog cannot say, the server's default decides (no keep sent).
+	const known = typeof place?.inBudget === "boolean";
+	const kept = place?.inBudget === false;
 	return {
 		entity: "income",
 		label: source,
@@ -61,7 +86,13 @@ export function buildIncomeWrite(
 			...rate,
 			...(note ? { description: note } : {}),
 			// Without an envelope budget there is no plan to use.
-			usePlan: d.usePlan && input.hasBudget === true,
+			...(d.categoryId ? { categoryId: d.categoryId } : {}),
+			...(d.into ? { into: d.into, ...(known ? { keep: kept } : {}) } : {}),
+			...(d.repeats ? { repeats: { frequency: "MONTHLY" } } : {}),
+			usePlan:
+				d.usePlan &&
+				input.hasBudget === true &&
+				(!d.into || place?.inBudget === true),
 		},
 	};
 }

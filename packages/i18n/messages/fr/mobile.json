@@ -178,22 +178,26 @@
 			"noBudget": "Utiliser mon plan demande un budget par enveloppes. Ça reste Pas encore prévu.",
 			"otherCurrency": "Ton plan attribue en {currency}. Ce revenu reste Pas encore prévu.",
 			"none": "Rien : chaque enveloppe est déjà remplie.",
-			"stays": "Pas encore prévu reste"
+			"stays": "Pas encore prévu reste",
+			"waits": "Il reste dans Pas encore prévu jusqu'à ce que tu l'attribues dans Budget."
 		},
 		"transfer": {
 			"from": "De",
 			"to": "Vers",
 			"receivedPlaceholder": "Facultatif",
-			"receivedHint": "Laisse vide pour utiliser le taux de référence.",
 			"note": "Note",
 			"notePlaceholder": "Facultatif",
 			"errors": {
 				"same": "Choisis deux comptes différents",
 				"places": "Choisis les deux comptes",
-				"received": "Saisis ce qui est arrivé comme montant, ou laisse vide"
+				"received": "Saisis ce qui est arrivé comme montant, ou laisse vide",
+				"fee": "Saisis les frais comme montant, ou retire-les"
 			},
 			"receivedLabel": "Reçu, {amount}",
-			"receivedEmpty": "Reçu en {currency}, facultatif"
+			"receivedEmpty": "Reçu en {currency}, facultatif",
+			"send": "Tu envoies",
+			"receive": "Tu reçois",
+			"fee": "Frais bancaires"
 		},
 		"note": "Note",
 		"notePlaceholder": "Détails supplémentaires",
@@ -311,7 +315,9 @@
 			"project": "Projet",
 			"more": "Plus",
 			"changed": "modifié",
-			"label": "Détails"
+			"label": "Détails",
+			"into": "Compte",
+			"plan": "Plan"
 		},
 		"summary": {
 			"you": "toi",
@@ -339,6 +345,17 @@
 			"changes": "Ce qui change",
 			"show": "Afficher",
 			"hide": "Masquer"
+		},
+		"duplicate": "Une dépense similaire existe déjà ce jour-là.",
+		"accounts": "Comptes",
+		"incomeFlow": {
+			"noCategory": "Sans catégorie",
+			"intoAccount": "Sur {name}",
+			"noAccount": "Aucun compte",
+			"budgetOnly": "Budget seulement",
+			"usesPlan": "Suit ton plan",
+			"repeats": "Se répète chaque mois",
+			"repeatsShort": "Chaque mois"
 		}
 	},
 	"pickers": {

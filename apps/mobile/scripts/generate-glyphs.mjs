@@ -32,7 +32,9 @@ const { getCountryCodeFromCurrency } = await import(
 /** Glyphs the screens need beyond the category icons. */
 const EXTRA_GLYPHS = [
 	"AlarmClock",
+	"ArrowDownToLine",
 	"ArrowRight",
+	"ArrowUpFromLine",
 	"ArrowUpDown",
 	"Bell",
 	"Bitcoin",

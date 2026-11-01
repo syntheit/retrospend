@@ -158,8 +158,11 @@ export function AmountCard({
 									{
 										flex: 1,
 										minHeight: size.touchMin.phone,
+										paddingVertical: 0,
 										paddingRight: space[2],
 										textAlign: "right",
+										textAlignVertical: "center",
+										includeFontPadding: false,
 										color: color.fg,
 									},
 								]}
@@ -276,7 +279,16 @@ export function useMoneyLines(form: EntryForm): MoneyLine[] {
 					currencies={choices.currencies}
 					onChange={(currency) =>
 						mode === "income"
-							? form.patchIncome({ currency, amountText: "", ...DEFAULT_RATE })
+							? form.patchIncome({
+									currency,
+									amountText: "",
+									...DEFAULT_RATE,
+									// An account holds one currency: another one leaves it.
+									...(catalog.places.find((p) => p.id === form.income.into)
+										?.currency !== currency
+										? { into: null }
+										: {}),
+								})
 							: form.patchExpense({ currency, amountText: "", ...DEFAULT_RATE })
 					}
 					recent={choices.recent}

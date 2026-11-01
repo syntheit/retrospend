@@ -2,9 +2,9 @@ import type { RetrospendClient } from "@retrospend/api-client";
 import { createReadCache } from "@/data/cache";
 import { createOutbox } from "@/data/outbox";
 import { createMemoryStore } from "@/data/store";
-import type { EntryMode } from "./ComposerShell";
 import { EntryComposer } from "./EntryComposer";
 import { forgetUndoTokens } from "./send";
+import type { EntryMode } from "./types";
 
 // The composer end to end, with real presses on its real components: the
 // milestone "coffee split with Lucía in 4 taps + 5 keys". The tab press that
@@ -653,11 +653,11 @@ describe("Add income with Use my plan", () => {
 			currency: "ARS",
 			usePlan: true,
 		});
-		// The quick step says it in one line; More has the whole block.
+		// One line above the Add bar; the Plan panel and More have the whole block.
 		expect(words(tree)).toContain("Not planned yet +ARS 340,000");
-		press(tree, "More");
 		// The plan's envelope names are read when it first shows.
 		await flush();
+		press(tree, "What this changes, Show");
 		expect(words(tree)).toContain("What this changes");
 		expect(words(tree)).toContain("Not planned yet");
 		expect(words(tree)).toContain("+ARS 340,000");
@@ -1421,7 +1421,7 @@ describe("The amount card", () => {
 		const tree = await open("transfer");
 		for (const key of ["1", "0", "0", "0"]) press(tree, key);
 		// The second row is the card's, not a text field: the keypad types into it.
-		press(tree, "Received in USD, optional");
+		press(tree, "You receive, Dollars. Received in USD, optional");
 		press(tree, "9");
 		await settle();
 		press(tree, "Add transfer");
@@ -1824,6 +1824,183 @@ describe("Add expense at the largest text size", () => {
 		await settle();
 		const typed = find(tree, (p) => p.keyboardType === "decimal-pad")[0];
 		expect(typed?.props.value).toBe("12,500");
+		act(() => tree.unmount());
+	});
+});
+
+describe("Add income on the pager", () => {
+	/** An income category and an account with a balance, beside the expense ones. */
+	function withIncomeData(api: RetrospendClient) {
+		const a = api as unknown as {
+			categories: { list: unknown };
+			entry: { catalog: unknown };
+		};
+		a.categories.list = async () =>
+			page([
+				{ ...category("cafe", "Cafe", 46), kind: "expense" },
+				{ ...category("salary", "Salary", 3), kind: "income" },
+			]);
+		a.entry.catalog = async () => ({
+			places: [
+				{
+					id: "cash",
+					name: "Cash",
+					type: "CASH",
+					currency: "ARS",
+					balance: { minor: 4_100_000, currency: "ARS" },
+					inBudget: true,
+				},
+				{
+					id: "bank",
+					name: "Bank",
+					type: "CHECKING",
+					currency: "ARS",
+					balance: { minor: 12_845_000, currency: "ARS" },
+					inBudget: true,
+				},
+			],
+		});
+	}
+	const keysOpen = (tree: Tree) =>
+		find(
+			tree,
+			(p) => p.accessibilityLabel === "5" && typeof p.onPress === "function",
+		).length > 0;
+
+	it("files the income under a category and an account, repeats it, and folds the keypad on a pick", async () => {
+		const { api, calls } = fakeApi();
+		withIncomeData(api);
+		mockSession.api = api;
+		const tree = await open("income");
+		type(tree, "From", "Acme payroll");
+		for (const key of ["8", "5", "0"]) press(tree, key);
+		expect(keysOpen(tree)).toBe(true);
+		// Only income categories are offered here, and a pick folds the keys.
+		expect(words(tree)).toContain("Salary");
+		press(tree, "Salary");
+		expect(keysOpen(tree)).toBe(false);
+		// The accounts show what they hold.
+		expect(words(tree)).toContain("ARS 128,450.00");
+		pressStarting(tree, "Bank");
+		press(tree, "Repeats every month, Add");
+		await settle();
+		expect(words(tree)).toContain("Into Bank");
+		press(tree, "Add income");
+		await flush();
+		expect(calls.find((c) => c.route === "income.create")?.input).toMatchObject(
+			{
+				title: "Acme payroll",
+				categoryId: "salary",
+				into: "bank",
+				keep: false,
+				repeats: { frequency: "MONTHLY" },
+			},
+		);
+		act(() => tree.unmount());
+	});
+
+	it("keeps income categories out of the expense panel", async () => {
+		const { api } = fakeApi();
+		withIncomeData(api);
+		mockSession.api = api;
+		const tree = await open("expense");
+		expect(words(tree)).not.toContain("Salary");
+		act(() => tree.unmount());
+	});
+
+	it("has no Plan tab without an envelope budget", async () => {
+		const { api } = fakeApi();
+		(api as unknown as { budget: { verdict: unknown } }).budget.verdict =
+			async () => null;
+		mockSession.api = api;
+		const tree = await open("income");
+		expect(find(tree, (p) => p.accessibilityLabel === "Plan")).toHaveLength(0);
+		act(() => tree.unmount());
+	});
+});
+
+describe("Add transfer on the pager", () => {
+	it("books a bank fee from the sending account", async () => {
+		const { api, calls } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("transfer");
+		for (const key of ["1", "5", "0", "0"]) press(tree, key);
+		press(tree, "Bank fee, Add");
+		type(tree, "Bank fee", "25");
+		await settle();
+		press(tree, "Add transfer");
+		await flush();
+		expect(
+			calls.find((c) => c.route === "transfer.create")?.input,
+		).toMatchObject({
+			fromAmount: "1500.00",
+			fee: { amount: "25.00", accountId: "cash" },
+		});
+		act(() => tree.unmount());
+	});
+
+	it("says which accounts the money moves between, and what it sends", async () => {
+		const { api } = fakeApi();
+		mockSession.api = api;
+		const tree = await open("transfer");
+		expect(words(tree)).toContain("Cash → Bank");
+		expect(words(tree)).toContain("You send");
+		expect(words(tree)).not.toContain("You receive");
+		act(() => tree.unmount());
+	});
+});
+
+describe("The duplicate warning", () => {
+	const warning = "A similar expense is already on this day.";
+	function withDuplicate(duplicate: boolean) {
+		const { api, calls } = fakeApi();
+		(
+			api as unknown as { expenses: Record<string, unknown> }
+		).expenses.duplicates = async (input: unknown) => {
+			calls.push({ route: "expenses.duplicates", input });
+			return { duplicate, expenseId: duplicate ? "e9" : null };
+		};
+		mockSession.api = api;
+		return calls;
+	}
+
+	it("asks the server once the title and amount rest, and says so without blocking Add", async () => {
+		const calls = withDuplicate(true);
+		const tree = await open("expense");
+		type(tree, "Title", "Cafe");
+		for (const key of ["3", "5", "0", "0"]) press(tree, key);
+		// Not asked while it is still being typed.
+		expect(calls.some((c) => c.route === "expenses.duplicates")).toBe(false);
+		await act(async () => {
+			jest.advanceTimersByTime(900);
+		});
+		await flush();
+		expect(calls.find((c) => c.route === "expenses.duplicates")?.input).toEqual(
+			{
+				title: "Cafe",
+				amount: "3500.00",
+				date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+			},
+		);
+		expect(words(tree)).toContain(warning);
+		act(() => tree.unmount());
+	});
+
+	it("says nothing when the server finds none, or without a title", async () => {
+		const calls = withDuplicate(false);
+		const tree = await open("expense");
+		for (const key of ["3", "5"]) press(tree, key);
+		await act(async () => {
+			jest.advanceTimersByTime(900);
+		});
+		await flush();
+		expect(calls.some((c) => c.route === "expenses.duplicates")).toBe(false);
+		type(tree, "Title", "Cafe");
+		await act(async () => {
+			jest.advanceTimersByTime(900);
+		});
+		await flush();
+		expect(words(tree)).not.toContain(warning);
 		act(() => tree.unmount());
 	});
 });
