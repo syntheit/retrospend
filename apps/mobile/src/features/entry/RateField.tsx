@@ -72,6 +72,7 @@ export function RateField({
 	const startCustom = (): Partial<RateChoice> => ({
 		custom: true,
 		customFlipped: dir.flipped,
+		customEdited: choice.customText !== "" && choice.customEdited,
 		...(choice.customText === "" && choice.savedRate
 			? { customText: storedRateToTyped(choice.savedRate, dir.flipped, locale) }
 			: {}),
@@ -155,7 +156,11 @@ export function RateField({
 							keyboardType="decimal-pad"
 							label={t("customLabel", { currency: dir.base, home: dir.quote })}
 							onChangeText={(customText) =>
-								onChange({ customText, customFlipped: dir.flipped })
+								onChange({
+									customText,
+									customFlipped: dir.flipped,
+									customEdited: true,
+								})
 							}
 							onTypingChange={onTypingChange}
 							placeholder={t("enterRate")}

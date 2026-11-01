@@ -48,6 +48,7 @@ export function blankDraft(o: {
 		custom: false,
 		customText: "",
 		customRate: null,
+		savedRate: null,
 		projectId: o.request?.projectId ?? null,
 		youIncluded: true,
 		others: p?.with ?? [],
@@ -118,6 +119,7 @@ export function useExpenseLoad(
 					rateType: e.rateType,
 					// A saved custom rate: kept until touched, and what Custom starts from.
 					customRate: e.rateType === "custom" ? e.rate : null,
+					savedRate: e.rateType === "custom" ? e.rate : null,
 					note: e.description ?? "",
 					location: e.location ?? "",
 					spread: e.isAmortizedParent ? spreadOf(e.children?.length) : "one",

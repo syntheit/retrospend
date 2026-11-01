@@ -1,10 +1,7 @@
 "use client";
 
 import { fromMinor } from "@retrospend/domain/money-minor";
-import {
-	type RateDirection,
-	rateDirection,
-} from "@retrospend/domain/rate-format";
+import type { RateDirection } from "@retrospend/domain/rate-format";
 import { PencilIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Money } from "~/components/money/money";
@@ -25,6 +22,7 @@ import {
 	useRateTypeName,
 	useSettled,
 } from "../shared-ui";
+import { customDirection } from "./custom-direction";
 import type { ExpenseDraft } from "./draft";
 
 type Options = RouterOutputs["entry"]["rateOptions"];
@@ -50,12 +48,12 @@ function directionOf(p: {
 	home: string;
 	rate: RateState;
 }): RateDirection {
-	const table = p.rate.opts?.options[0]?.rate.rate;
-	return rateDirection(
-		p.d.currency,
-		p.home,
-		table ?? (p.d.custom ? null : p.d.customRate),
-	);
+	return customDirection({
+		currency: p.d.currency,
+		home: p.home,
+		table: p.rate.opts?.options[0]?.rate.rate,
+		savedRate: p.d.savedRate,
+	});
 }
 
 /** The rate strip's data: every type the pair offers, booked by the server as Save books it. */

@@ -776,6 +776,31 @@ describe("the exchange rate of a write", () => {
 		}
 	});
 
+	it("books a saved custom rate exactly as stored until the person types", () => {
+		// EUR home, a USD expense saved at 0.923: Custom prefills the number it
+		// reads as (1.0834, rounded for the eye), and Save without typing must
+		// not rebuild the rate from that prefill.
+		const opened = {
+			...usd,
+			custom: true,
+			customText: "1.0834",
+			customFlipped: true,
+			savedRate: "0.923",
+			customEdited: false,
+		};
+		expect(rateFields(opened, "en-US")).toEqual({ customRate: "0.923" });
+		expect(buildExpenseWrite(opened, input)?.body).toMatchObject({
+			customRate: "0.923",
+		});
+		// Typing takes over, even the same digits again.
+		const typed = { ...opened, customEdited: true };
+		expect(rateFields(typed, "en-US")).toEqual({
+			customRate: "0.923020121839",
+		});
+		// Emptying the field waits for a rate: the saved one is not a fallback.
+		expect(rateFields({ ...typed, customText: "" }, "en-US")).toBeNull();
+	});
+
 	it("waits for a typed rate that reads as one: never 1, never zero", () => {
 		for (const customText of ["", "0", "abc"]) {
 			const typed = { ...usd, custom: true, customText };

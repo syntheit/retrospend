@@ -1,5 +1,6 @@
 import { parseMoneyInput } from "@retrospend/domain/parse";
 import { typedRateToStored } from "@retrospend/domain/rate-format";
+import { parseRateText } from "@retrospend/domain/rate-text";
 
 // What every composer draft shares: the exchange rate picked, the amount the
 // keypad typed as minor units, and the request a draft becomes.
@@ -22,6 +23,8 @@ export interface RateChoice {
 	customFlipped: boolean;
 	/** A saved entry's custom rate as stored (home per unit), what Custom starts from; null otherwise. */
 	savedRate: string | null;
+	/** The person typed in the field: until then a saved custom rate stays exactly as stored. */
+	customEdited: boolean;
 }
 
 /** No choice yet: the server books your default type. A new currency starts here. */
@@ -31,7 +34,20 @@ export const DEFAULT_RATE: RateChoice = {
 	customText: "",
 	customFlipped: false,
 	savedRate: null,
+	customEdited: false,
 };
+
+/**
+ * The typed rate as the plain decimal the server books, or null while it does
+ * not read as a rate above zero. A saved custom rate that was not touched
+ * stays the exact stored rate: the field's prefill is only the number it
+ * reads as, rounded for the eye, never what is booked.
+ */
+export function customRateOf(d: RateChoice, locale: string): string | null {
+	if (!d.customEdited && d.savedRate)
+		return parseRateText(d.savedRate, "en-US");
+	return typedRateToStored(d.customText, d.customFlipped, locale);
+}
 
 /** A write waiting for the outbox: the v1 collection and the request body. */
 export interface PendingWrite {
@@ -67,7 +83,7 @@ export function rateFields(
 	| Record<string, never>
 	| null {
 	if (d.custom) {
-		const customRate = typedRateToStored(d.customText, d.customFlipped, locale);
+		const customRate = customRateOf(d, locale);
 		return customRate ? { customRate } : null;
 	}
 	return d.rateType ? { rateType: d.rateType } : {};

@@ -90,6 +90,7 @@ export function useExpenseDraft(
 				custom: false,
 				customText: "",
 				customRate: null,
+				savedRate: null,
 				amountText: "",
 				minor: null,
 				exact: {},
@@ -102,8 +103,8 @@ export function useExpenseDraft(
 			set({
 				custom: true,
 				// A saved custom rate starts the field at the number it reads as.
-				...(d.customText === "" && d.customRate
-					? { customText: storedRateToTyped(d.customRate, flipped, locale) }
+				...(d.customText === "" && d.savedRate
+					? { customText: storedRateToTyped(d.savedRate, flipped, locale) }
 					: {}),
 			}),
 		setCustomText: (text: string, flipped: boolean) => {

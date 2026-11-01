@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { lineIds } from "./category-line";
 import {
-	type ExpenseDraft,
 	canEditPeople,
+	type ExpenseDraft,
 	personalInput,
 	sharedInput,
 	validate,
