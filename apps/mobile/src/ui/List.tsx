@@ -55,6 +55,7 @@ export function SectionHeader({
 			<View
 				style={{
 					flex: 1,
+					minWidth: 0,
 					flexDirection: "row",
 					alignItems: dot ? "center" : "baseline",
 					gap: space[2],
@@ -454,6 +455,8 @@ export function NavEnd({
 		<View
 			style={{
 				flexShrink: 1,
+				// A long value gives way before the row's label does.
+				maxWidth: "65%",
 				flexDirection: "row",
 				alignItems: "center",
 				gap: space[2],

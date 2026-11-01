@@ -102,6 +102,9 @@ export function toneColor(theme: Theme, tone: TextTone): string {
 	}
 }
 
+/** A clamped line yields to its row instead of pushing the row's other views away. */
+const CLAMPED = { flexShrink: 1, minWidth: 0 } as const;
+
 export type TextProps = NativeTextProps & {
 	/** The type role; body unless said otherwise. Not `role`, which is the ARIA role. */
 	variant?: TextRole;
@@ -138,6 +141,13 @@ export function Text({
 			style={[
 				typeStyle(theme, variant, { weight, tabular }),
 				{ color: toneColor(theme, tone) },
+				// React Native never shrinks a view by default (flexShrink 0), so a
+				// clamped line beside another view pushed it off the row. A line
+				// with a line count yields to its row and ends in its ellipsis; a
+				// figure that fits itself (adjustsFontSizeToFit) keeps its width.
+				rest.numberOfLines !== undefined && !rest.adjustsFontSizeToFit
+					? CLAMPED
+					: null,
 				style,
 			]}
 		/>

@@ -122,6 +122,7 @@ export function Hero({
 					<View
 						accessibilityElementsHidden
 						importantForAccessibility="no-hide-descendants"
+						style={{ flexShrink: 1 }}
 					>
 						{labelText}
 					</View>

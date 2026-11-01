@@ -42,7 +42,7 @@ export function PaneBar({
 			<Text
 				accessibilityRole="header"
 				numberOfLines={1}
-				style={{ flex: 1 }}
+				style={{ flex: 1, minWidth: 0 }}
 				variant="section"
 			>
 				{title}
