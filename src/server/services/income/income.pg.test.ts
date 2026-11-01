@@ -438,11 +438,16 @@ describe("income.moveIn (count only)", () => {
 		).toEqual(ARS(-14_600_000));
 	});
 
-	it.each([
+	// West and east of UTC, pinned so the case does not depend on the machine's zone.
+	const ZONES = ["America/Argentina/Buenos_Aires", "Pacific/Auckland"];
+	const NOWS = [
 		"2026-11-01T05:00:00.000Z",
 		"2026-11-15T15:00:00.000Z",
 		"2026-10-31T15:00:00.000Z",
-	])("a Move in on %s lands in the month of that day in the book's zone", async (now) => {
+	];
+	it.each(
+		ZONES.flatMap((zone) => NOWS.map((now) => [now, zone] as const)),
+	)("a Move in on %s lands in the month of that day in %s", async (now, zone) => {
 		vi.useFakeTimers({ toFake: ["Date"] });
 		try {
 			vi.setSystemTime(new Date(now));
@@ -453,12 +458,13 @@ describe("income.moveIn (count only)", () => {
 					.then((c) => c.id);
 			await forUser(p.userId).apply(setupEnvelopeBook, {
 				...setupInput({ rent: await cat("Rent"), dining: await cat("Dining") }),
-				timeZone: TODAY_ZONE,
+				timeZone: zone,
 			});
 			const moved = await forUser(p.userId).preview(moveIn, {
 				id: randomUUID(),
 				accountId: p.wise,
 				units: "100",
+				timeZone: zone,
 			});
 			expect(
 				moved.changes.find((c) => c.id === "budget.notPlannedYet")?.delta,
