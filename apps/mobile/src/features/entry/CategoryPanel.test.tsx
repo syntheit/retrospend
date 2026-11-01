@@ -121,19 +121,22 @@ describe("CategoryPanel", () => {
 				/>,
 			);
 		});
-		const wrap = tree.root.findAll(
-			(n) =>
+		const layout = (height: number) => {
+			const wrap = tree.root.findAll((n) =>
 				Boolean(n.props.accessibilityLabel === "category" && n.props.onLayout),
-		)[0] as TestNode;
-		const onLayout = wrap.props.onLayout as (e: object) => void;
+			)[0] as TestNode;
+			act(() =>
+				(wrap.props.onLayout as (e: object) => void)({
+					nativeEvent: { layout: { height } },
+				}),
+			);
+		};
 		// Too tall for the room: one pill goes each time, then it settles.
-		for (let i = 0; i < 3; i++) {
-			act(() => onLayout({ nativeEvent: { layout: { height: 140 } } }));
-		}
+		for (let i = 0; i < 3; i++) layout(140);
 		const after = labels(tree.root);
 		expect(after.filter((l) => names.includes(l))).toHaveLength(3);
 		expect(after).toContain("categoriesMore");
-		act(() => onLayout({ nativeEvent: { layout: { height: 90 } } }));
+		layout(90);
 		expect(labels(tree.root).filter((l) => names.includes(l))).toHaveLength(3);
 		mockRoom = null;
 	});

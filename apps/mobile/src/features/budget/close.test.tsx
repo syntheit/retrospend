@@ -41,6 +41,34 @@ jest.mock("@/ui/Button", () => require("./harness").buttonMock);
 jest.mock("@/ui/Sheet", () => require("./harness").sheetMock);
 jest.mock("@/ui/Segmented", () => require("./harness").segmentedMock);
 jest.mock("@/lib/intl", () => ({ useFormatLocale: () => "en-US" }));
+// The composer's frame needs the native tree; this stands in for it. It keeps
+// the props of the last render, lays every panel out and draws the one button.
+const mockFrame: { props: Record<string, any> } = { props: {} };
+jest.mock("@/features/entry/ComposerFrame", () => {
+	const { Pressable } = require("react-native");
+	return {
+		ComposerFrame: (props: Record<string, any>) => {
+			mockFrame.props = props;
+			return (
+				<>
+					{props.header}
+					{props.panels}
+					<Pressable
+						accessibilityLabel={props.add.label}
+						accessibilityState={{ disabled: props.add.off }}
+						onPress={props.add.off ? undefined : props.add.onPress}
+					/>
+				</>
+			);
+		},
+	};
+});
+jest.mock("@/features/entry/AmountEntry", () => ({ AmountEntry: () => null }));
+/** Types an amount on the frame's keypad. */
+const typeAmount = (text: string) =>
+	act(() => {
+		mockFrame.props.keypad.onChange(text);
+	});
 jest.mock("use-intl", () => require("./harness").intlMock);
 
 const ars = (minor: number) => ({ minor, currency: "ARS" });
@@ -521,9 +549,8 @@ describe("Move money to Wealth", () => {
 			);
 		});
 		await wait(10);
-		pick(tree, "Leaves from", "Food");
-		press(tree, "5");
-		press(tree, "0");
+		press(tree, "Food,");
+		typeAmount("50");
 		await wait(400);
 		const previews = calls.filter((c) => c.route === "previewCreate");
 		expect(previews.at(-1)?.input).toMatchObject({
@@ -614,8 +641,7 @@ describe("Count Wealth money in the budget", () => {
 		});
 		await wait(10);
 		press(tree, "No, just count it");
-		press(tree, "7");
-		press(tree, "5");
+		typeAmount("75");
 		await wait(400);
 		const previews = calls.filter((c) => c.route === "previewMoveIn");
 		expect(previews.at(-1)?.input).toMatchObject({

@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "use-intl";
 import type { TopBarAction } from "@/ui/types";
 import { useSearchOpener, useSearchShortcut } from "./searchShortcut";
@@ -34,6 +34,7 @@ export function useHeaderSearch({
 	const t = useTranslations("mobile.tabs");
 	const ref = useSearchShortcut(owner);
 	const [open, setOpen] = useState(false);
+	const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const openRef = useRef(open);
 	openRef.current = open;
 
@@ -44,8 +45,15 @@ export function useHeaderSearch({
 		}
 		setOpen(true);
 		// The bar mounts on the next render; focus it once it has.
-		setTimeout(() => ref.current?.focus(), 150);
+		if (focusTimer.current) clearTimeout(focusTimer.current);
+		focusTimer.current = setTimeout(() => ref.current?.focus(), 150);
 	}, [ref]);
+	useEffect(
+		() => () => {
+			if (focusTimer.current) clearTimeout(focusTimer.current);
+		},
+		[],
+	);
 	const close = useCallback(() => {
 		setOpen(false);
 		onChange("");
