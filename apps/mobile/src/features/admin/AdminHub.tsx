@@ -1,5 +1,5 @@
-import { router } from "expo-router";
 import { useTranslations } from "use-intl";
+import { useOpenSettingsRoute } from "@/layout/settingsPath";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow } from "@/ui/List";
 import { PageState, SettingsPage } from "../settings/parts";
@@ -13,6 +13,7 @@ import { useAdminRead } from "./useAdminRead";
  */
 export function AdminHub() {
 	const t = useTranslations("mobile.admin");
+	const open = useOpenSettingsRoute();
 	const { state, reload } = useAdminRead(async (api) => {
 		const [stats, feedback, settings] = await Promise.all([
 			api.admin.stats(),
@@ -38,14 +39,14 @@ export function AdminHub() {
 				<ListRow
 					chevron
 					lead={<IconTile name="Users" />}
-					onPress={() => router.push("/settings/admin-users")}
+					onPress={() => open("admin-users")}
 					sub={t("hub.users", { count: stats.userCount })}
 					title={t("users.title")}
 				/>
 				<ListRow
 					chevron
 					lead={<IconTile name="KeyRound" />}
-					onPress={() => router.push("/settings/admin-invites")}
+					onPress={() => open("admin-invites")}
 					sub={
 						settings.inviteOnlyEnabled
 							? t("hub.inviteOnly")
@@ -56,7 +57,7 @@ export function AdminHub() {
 				<ListRow
 					chevron
 					lead={<IconTile name="MessageSquare" />}
-					onPress={() => router.push("/settings/admin-feedback")}
+					onPress={() => open("admin-feedback")}
 					sub={
 						feedback.counts.unread > 0
 							? t("hub.unread", { count: feedback.counts.unread })
@@ -67,7 +68,7 @@ export function AdminHub() {
 				<ListRow
 					chevron
 					lead={<IconTile name="SlidersHorizontal" />}
-					onPress={() => router.push("/settings/admin-settings")}
+					onPress={() => open("admin-settings")}
 					sub={t("hub.settings")}
 					title={t("settings.title")}
 				/>

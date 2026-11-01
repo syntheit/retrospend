@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useFormatter, useTranslations } from "use-intl";
 import { Cover } from "@/features/projects/Cover";
 import { openProject } from "@/features/projects/openProject";
+import { entryHref, personHref } from "@/layout/detailRoutes";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
@@ -83,10 +84,7 @@ export function SearchScreen() {
 						lead={<IconTile name="Receipt" />}
 						onPress={() =>
 							open(() =>
-								router.push({
-									pathname: "/activity/[id]",
-									params: { id: hit.id },
-								}),
+								router.push(entryHref(hit.id, true)),
 							)
 						}
 						sub={format.dateTime(new Date(`${hit.date}T12:00:00`), {
@@ -111,10 +109,7 @@ export function SearchScreen() {
 						}
 						onPress={() =>
 							open(() =>
-								router.push({
-									pathname: "/people/[type]/[id]",
-									params: { type: hit.participantType, id: hit.id },
-								}),
+								router.push(personHref(hit.participantType, hit.id, true)),
 							)
 						}
 						sub={hit.username ? `@${hit.username}` : undefined}
@@ -142,7 +137,7 @@ export function SearchScreen() {
 								name={hit.name}
 							/>
 						}
-						onPress={() => open(() => openProject(hit))}
+						onPress={() => open(() => openProject(hit, {}, true))}
 						title={hit.name}
 					/>
 				);

@@ -31,7 +31,7 @@ export function NotificationsScreen() {
 	const open = (n: InboxNotification) => {
 		if (!n.isRead) void inbox.markRead([n.id]);
 		const target = targetOf(n);
-		if (target) openTarget(target);
+		if (target) openTarget(target, "push", true);
 	};
 
 	const canMarkAll =

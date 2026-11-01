@@ -118,6 +118,8 @@ export interface TopBarAction {
 	label: string;
 	icon: GlyphName;
 	onPress: () => void;
+	/** A count shown on the glyph (unread notifications); none when 0 or absent. */
+	badge?: number;
 }
 
 export interface TopBarProps {

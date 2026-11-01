@@ -4,6 +4,7 @@ import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { currenciesHref } from "@/features/account/places";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { useCachedRead } from "@/features/read/useCachedRead";
@@ -71,7 +72,7 @@ function WealthTopBar({ onAdd }: { onAdd: () => void }) {
 		{
 			id: "currencies",
 			label: t("menu.currencies"),
-			onPress: () => router.push("/currencies"),
+			onPress: () => router.push(currenciesHref()),
 		},
 		{
 			id: "export",

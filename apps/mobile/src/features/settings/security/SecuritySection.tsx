@@ -1,9 +1,9 @@
-import { router } from "expo-router";
 import { useState } from "react";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
 import { useSignOut } from "@/features/account/useSignOut";
+import { useOpenSettingsRoute } from "@/layout/settingsPath";
 import { ListGroup, ListRow, NavEnd } from "@/ui/List";
 import { Block, GroupNote, SettingsPage } from "../parts";
 import { hostOf } from "../source";
@@ -21,6 +21,7 @@ export const TWO_FACTOR_PAGE = "/settings#security";
  */
 export function SecuritySection() {
 	const t = useTranslations("mobile.settings.security");
+	const open = useOpenSettingsRoute();
 	const ts = useTranslations("mobile.settings");
 	const { state } = useSession();
 	const { connection, disconnect } = useServerConnection();
@@ -58,7 +59,7 @@ export function SecuritySection() {
 						) : null}
 						<ListRow
 							chevron
-							onPress={() => router.push("/settings/sessions")}
+							onPress={() => open("sessions")}
 							title={t("devices")}
 						/>
 					</ListGroup>

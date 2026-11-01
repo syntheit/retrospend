@@ -1,5 +1,6 @@
 import { NotificationsScreen } from "@/features/notifications/NotificationsScreen";
 
-export default function InboxRoute() {
+// The inbox opens inside Home's stack (the bell), for the same reason.
+export default function HomeInboxRoute() {
 	return <NotificationsScreen />;
 }

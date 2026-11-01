@@ -54,13 +54,11 @@ export const SETTINGS_SCREENS: readonly {
 	{ name: "settings/categories", title: "manage.categories" },
 	{ name: "settings/payment-methods", title: "manage.payment" },
 	{ name: "settings/notifications", title: "root.notifications" },
-	{ name: "settings/inbox" },
 	{ name: "settings/security", title: "security.title" },
 	{ name: "settings/sessions", title: "security.sessions.title" },
 	{ name: "settings/data", title: "data.title" },
 	{ name: "settings/danger", title: "root.danger" },
 	{ name: "settings/currencies" },
-	{ name: "settings/search" },
 	{ name: "settings/recurring", redirect: true },
 	{ name: "settings/admin", title: "title", ns: "admin" },
 	{ name: "settings/admin-users", title: "users.title", ns: "admin" },
@@ -69,3 +67,19 @@ export const SETTINGS_SCREENS: readonly {
 	{ name: "settings/admin-feedback", title: "feedback.title", ns: "admin" },
 	{ name: "settings/admin-settings", title: "settings.title", ns: "admin" },
 ];
+
+/**
+ * The account sheet in the root stack: a native form sheet (the profile icon
+ * opens it) with a stack of its own, so the places it lists push inside it
+ * with the system back chevron and the sheet never changes height. One
+ * detent, large, like the sheet it replaced. The sheet's own stack draws the
+ * headers, so the root draws none.
+ */
+export function accountSheetOptions() {
+	return {
+		presentation: "formSheet" as const,
+		headerShown: false,
+		sheetAllowedDetents: [1],
+		sheetGrabberVisible: true,
+	};
+}

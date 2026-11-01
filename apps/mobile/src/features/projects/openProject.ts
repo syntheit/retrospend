@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { projectHref } from "@/layout/detailRoutes";
 import { PROJECTS_APART } from "@/layout/destinations";
 
 /**
@@ -9,6 +10,8 @@ import { PROJECTS_APART } from "@/layout/destinations";
 export function openProject(
 	project: { id: string; name: string },
 	open: { settle?: boolean; add?: boolean } = {},
+	/** Opened from a screen in Home's stack (Search): the project opens there too. */
+	home = false,
 ) {
 	const params = {
 		id: project.id,
@@ -16,6 +19,11 @@ export function openProject(
 		...(open.settle ? { settle: "1" } : {}),
 		...(open.add ? { add: "person" } : {}),
 	};
+	if (home) {
+		const base = projectHref(project.id, true) as { pathname: string };
+		router.push({ pathname: base.pathname, params } as never);
+		return;
+	}
 	router.push(
 		PROJECTS_APART
 			? { pathname: "/projects/[id]", params }
