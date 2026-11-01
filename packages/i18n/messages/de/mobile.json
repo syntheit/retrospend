@@ -44,7 +44,7 @@
 		"loadError": "Das Formular lässt sich nicht öffnen",
 		"loadErrorDetail": "Prüfe deine Verbindung und versuche es noch einmal.",
 		"titleField": "Titel",
-		"titlePlaceholder": "Was war es? (optional)",
+		"titlePlaceholder": "Was war es?",
 		"category": "Kategorie",
 		"with": "Mit",
 		"you": "Du",
@@ -64,6 +64,7 @@
 		"errors": {
 			"amount": "Gib einen Betrag über null ein",
 			"category": "Wähle eine Kategorie",
+			"title": "Gib einen Namen ein",
 			"source": "Sag, wer dich bezahlt hat"
 		},
 		"toast": {

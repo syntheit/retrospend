@@ -38,6 +38,7 @@ const draft = {
 	...newExpenseDraft({ id: ID, currency: "ARS", date: "2026-10-25" }),
 	amountText: "100",
 	categoryId: "food",
+	title: "Dinner",
 	withKeys: ["user:lucia1"],
 };
 

@@ -2,6 +2,7 @@ import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Text } from "@/ui/Text";
 import type { MoneyLine } from "./AmountCard";
+import { AmountCaret } from "./AmountCaret";
 
 /** One row of the transfer's amount: what it is, its account, and the figure. */
 export interface TransferRow {
@@ -34,7 +35,7 @@ export function TransferAmount({
 	return (
 		<View style={{ gap: space[2] }}>
 			{rows.map(({ line, title, account }) => {
-				const on = keysUp && line.active && rows.length > 1;
+				const on = keysUp && line.active;
 				return (
 					<Pressable
 						accessibilityLabel={`${title}, ${account}. ${line.spoken}`}
@@ -56,7 +57,11 @@ export function TransferAmount({
 								: on
 									? color.brand
 									: "transparent",
-							backgroundColor: keysUp ? color.surface : color.raised,
+							backgroundColor: on
+								? color.brandSoft
+								: keysUp
+									? color.surface
+									: color.raised,
 						}}
 					>
 						<View style={{ flex: 1, minWidth: 0 }}>
@@ -88,6 +93,7 @@ export function TransferAmount({
 							>
 								{line.text || line.placeholder}
 							</Text>
+							{on ? <AmountCaret figure="title" /> : null}
 						</View>
 					</Pressable>
 				);

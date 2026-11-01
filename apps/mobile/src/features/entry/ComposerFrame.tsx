@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useLayoutEffect, useMemo, useRef } from "react";
 import {
 	KeyboardAvoidingView,
 	Platform,
@@ -6,11 +6,19 @@ import {
 	useWindowDimensions,
 	View,
 } from "react-native";
+import Animated, {
+	ReduceMotion,
+	useAnimatedStyle,
+	useSharedValue,
+	withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/theme";
 import { DetailPager, type PagerTab } from "@/ui/DetailPager";
 import { FoldingKeypad, type KeypadEntry } from "@/ui/FoldingKeypad";
+import { easeLand } from "@/ui/motion";
 import { SummaryLine, type SummaryPart } from "@/ui/SummaryLine";
+import type { EntryMode } from "./types";
 
 /**
  * Above this text scale the keypad steps aside for the system decimal
@@ -34,25 +42,7 @@ export const COMPACT_HEIGHT = 740;
  * Typing in a text field (the title, a note) swaps the keypad for the system
  * keyboard, and the keypad comes back when the field is left.
  */
-export function ComposerFrame({
-	header,
-	amount,
-	title,
-	summary,
-	tabs,
-	page,
-	onPageChange,
-	panels,
-	tabsLabel,
-	changedLabel,
-	preview,
-	keypad,
-	keypadOpen,
-	typing,
-	add,
-	onScrollDrag,
-	surface,
-}: {
+export interface ComposerFrameProps {
 	header: ReactNode;
 	/** The amount block, with the rate line under it for another currency. */
 	amount: ReactNode;
@@ -86,12 +76,55 @@ export function ComposerFrame({
 	onScrollDrag: () => void;
 	/** On a sheet: the sheet's own surface, with no panel of the page's color. */
 	surface?: boolean;
-}) {
-	const { color, space } = useTheme();
+	/** The mode on screen (Add entry only): a change fades the details in, and the pager lands on its page at once. */
+	mode?: EntryMode;
+}
+
+export function ComposerFrame({
+	header,
+	amount,
+	title,
+	summary,
+	tabs,
+	page,
+	onPageChange,
+	panels,
+	tabsLabel,
+	changedLabel,
+	preview,
+	keypad,
+	keypadOpen,
+	typing,
+	add,
+	onScrollDrag,
+	surface,
+	mode,
+}: ComposerFrameProps) {
+	const theme = useTheme();
+	const { color, duration, space } = theme;
 	const { fontScale, height } = useWindowDimensions();
 	const { bottom } = useSafeAreaInsets();
 	const system = fontScale > SYSTEM_PAD_SCALE;
 	const open = keypadOpen && !typing && !system;
+
+	// Switching Expense, Income and Transfer keeps the head, the segmented
+	// control, the amount and the keypad exactly where they are; only the
+	// details under them change, and they fade in (menu duration).
+	const fade = useSharedValue(1);
+	const shownMode = useRef(mode);
+	const ease = useMemo(() => easeLand(theme), [theme]);
+	useLayoutEffect(() => {
+		if (shownMode.current === mode) return;
+		shownMode.current = mode;
+		fade.value = 0;
+		fade.value = withTiming(1, {
+			duration: duration.menu,
+			easing: ease,
+			// Opacity is what reduced motion keeps.
+			reduceMotion: ReduceMotion.Never,
+		});
+	}, [mode, duration.menu, ease, fade]);
+	const details = useAnimatedStyle(() => ({ opacity: fade.value }));
 	return (
 		<KeyboardAvoidingView
 			behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -118,42 +151,45 @@ export function ComposerFrame({
 					{amount}
 				</View>
 			)}
-			<ScrollView
-				bounces={false}
-				contentContainerStyle={{ flexGrow: 1, gap: space[2] }}
-				keyboardShouldPersistTaps="handled"
-				onScrollBeginDrag={onScrollDrag}
-				showsVerticalScrollIndicator={false}
-				style={{ flex: 1 }}
-			>
-				{system ? (
-					<View style={{ paddingHorizontal: space[4] }}>{header}</View>
-				) : null}
-				<View style={{ paddingHorizontal: space[4], gap: space[1] }}>
-					{title}
-				</View>
-				<View style={{ paddingHorizontal: space[4] }}>
-					<SummaryLine parts={summary} />
-				</View>
-				<DetailPager
-					dotLabel={changedLabel}
-					label={tabsLabel}
-					onPageChange={onPageChange}
-					page={page}
-					tabs={tabs}
+			<Animated.View style={[{ flex: 1 }, details]}>
+				<ScrollView
+					bounces={false}
+					contentContainerStyle={{ flexGrow: 1, gap: space[3] }}
+					keyboardShouldPersistTaps="handled"
+					onScrollBeginDrag={onScrollDrag}
+					showsVerticalScrollIndicator={false}
+					style={{ flex: 1 }}
 				>
-					{panels}
-				</DetailPager>
-				<View
-					style={{
-						paddingHorizontal: space[4],
-						minHeight: space[6],
-						justifyContent: "center",
-					}}
-				>
-					{preview}
-				</View>
-			</ScrollView>
+					{system ? (
+						<View style={{ paddingHorizontal: space[4] }}>{header}</View>
+					) : null}
+					<View style={{ paddingHorizontal: space[4], gap: space[1] }}>
+						{title}
+					</View>
+					<View style={{ paddingHorizontal: space[4] }}>
+						<SummaryLine parts={summary} />
+					</View>
+					<DetailPager
+						dotLabel={changedLabel}
+						label={tabsLabel}
+						onPageChange={onPageChange}
+						page={page}
+						snapKey={mode}
+						tabs={tabs}
+					>
+						{panels}
+					</DetailPager>
+					<View
+						style={{
+							paddingHorizontal: space[4],
+							minHeight: space[6],
+							justifyContent: "center",
+						}}
+					>
+						{preview}
+					</View>
+				</ScrollView>
+			</Animated.View>
 			{system ? (
 				<View style={{ paddingHorizontal: space[4], paddingBottom: space[1] }}>
 					{amount}

@@ -5,14 +5,16 @@ import { useTheme } from "@/theme";
 import { Text } from "@/ui/Text";
 import { FieldError } from "@/ui/TextField";
 import type { MoneyLine } from "./AmountCard";
+import { AmountCaret } from "./AmountCaret";
 
 /**
  * The amount, big and centered: the currency (its picker, or the plain code
  * when it comes from an account) and the figure at the hero size, with the
  * rate line under it for another currency. While the keypad is folded the
  * block sits on a raised background and is a button that brings the keypad
- * back; while the keypad is open the figure is still the target, so tapping
- * it keeps the keys on the amount (and not on a part of a split).
+ * back. While the keypad is open the block is the active field: the focus
+ * border and soft fill of the brand, and a blinking cursor after the figure.
+ * Tapping it keeps the keys on the amount (and not on a part of a split).
  */
 export function AmountBlock({
 	line,
@@ -45,8 +47,12 @@ export function AmountBlock({
 					paddingHorizontal: space[3],
 					borderRadius: radius.panel,
 					borderWidth: 1,
-					borderColor: error ? color.danger : "transparent",
-					backgroundColor: folded ? color.raised : "transparent",
+					borderColor: error
+						? color.danger
+						: folded
+							? "transparent"
+							: color.brand,
+					backgroundColor: folded ? color.raised : color.brandSoft,
 				}}
 			>
 				{line.currency}
@@ -61,17 +67,21 @@ export function AmountBlock({
 						justifyContent: "center",
 					}}
 				>
-					<Text
-						accessibilityLiveRegion="polite"
-						adjustsFontSizeToFit
-						numberOfLines={1}
-						tabular
-						tone={line.text ? "fg" : "fg3"}
-						variant="hero"
-						weight="medium"
-					>
-						{line.text || line.placeholder}
-					</Text>
+					<View style={{ flexDirection: "row", alignItems: "center" }}>
+						<Text
+							accessibilityLiveRegion="polite"
+							adjustsFontSizeToFit
+							numberOfLines={1}
+							style={{ flexShrink: 1 }}
+							tabular
+							tone={line.text ? "fg" : "fg3"}
+							variant="hero"
+							weight="medium"
+						>
+							{line.text || line.placeholder}
+						</Text>
+						{folded ? null : <AmountCaret />}
+					</View>
 				</Pressable>
 			</View>
 			{error ? (

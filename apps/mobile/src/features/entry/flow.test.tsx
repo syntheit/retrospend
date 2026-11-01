@@ -542,6 +542,7 @@ describe("Add expense: coffee split with Lucía", () => {
 		mockSession.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done);
+		type(tree, "Title", "Cafe");
 
 		const taps = ["Cafe", "Lucía Fernández", "Add expense"];
 		const keys = ["1", "2", "5", "0", "0"];
@@ -602,6 +603,7 @@ describe("Add expense: coffee split with Lucía", () => {
 		press(tree, "Add expense");
 		await flush();
 		expect(words(tree)).toContain("Pick a category");
+		expect(words(tree)).toContain("Add a name");
 		expect(calls.filter((c) => c.route.endsWith(".create"))).toEqual([]);
 		act(() => tree.unmount());
 	});
@@ -616,6 +618,7 @@ describe("Add expense: coffee split with Lucía", () => {
 		};
 		mockSession.api = api;
 		const tree = await open("expense");
+		type(tree, "Title", "Cafe");
 		press(tree, "Cafe");
 		press(tree, "Lucía Fernández");
 		for (const key of ["9", "0", "0"]) press(tree, key);
@@ -731,6 +734,7 @@ describe("Save waits for the dry run of what it will send", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense");
+		type(tree, "Title", "Cafe");
 		fill(tree);
 		press(tree, "Add expense");
 		await flush();
@@ -754,6 +758,7 @@ describe("Save waits for the dry run of what it will send", () => {
 		};
 		mockSession.api = api;
 		const tree = await open("expense");
+		type(tree, "Title", "Cafe");
 		fill(tree);
 		await settle();
 		expect(words(tree)).toContain(
@@ -774,6 +779,7 @@ describe("Save waits for the dry run of what it will send", () => {
 		};
 		mockSession.api = api;
 		const tree = await open("expense");
+		type(tree, "Title", "Cafe");
 		fill(tree);
 		await settle();
 		expect(words(tree)).toContain("You're offline.");
@@ -789,6 +795,7 @@ describe("Add expense into a project", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense");
+		type(tree, "Title", "Cafe");
 		// The Project panel lists the projects you can add to, not the ones you only view.
 		expect(
 			find(
@@ -907,6 +914,7 @@ describe("Details", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense");
+		type(tree, "Title", "Cafe");
 		press(tree, "Cafe");
 		for (const key of ["9", "0", "0"]) press(tree, key);
 		// More holds each option as a row; turning one on opens its control in place.
@@ -936,6 +944,7 @@ describe("Details", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense");
+		type(tree, "Title", "Cafe");
 		press(tree, "Lucía Fernández");
 		press(tree, "Cafe");
 		for (const key of ["9", "0", "0"]) press(tree, key);
@@ -973,6 +982,7 @@ describe("An expense in another currency", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense");
+		type(tree, "Title", "Cafe");
 		press(tree, "Cafe");
 		for (const key of ["1", "2"]) press(tree, key);
 		await settle();
@@ -1391,6 +1401,7 @@ describe("The amount card", () => {
 		const { api, calls } = fakeApi();
 		mockSession.api = api;
 		const tree = await open("expense");
+		type(tree, "Title", "Cafe");
 		press(tree, "Cafe");
 		press(tree, "1");
 		press(tree, "2");
@@ -1624,6 +1635,7 @@ describe("Who paid and a custom split", () => {
 		};
 		mockSession.api = api;
 		const tree = await open("expense");
+		type(tree, "Title", "Cafe");
 		press(tree, "Cafe");
 		press(tree, "Lucía Fernández");
 		for (const key of ["1", "0", "0"]) press(tree, key);

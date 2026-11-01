@@ -8,13 +8,13 @@ import { recentCategories } from "./catalog";
 import type { ExpenseDraft } from "./draft";
 import type { EntryCatalog, EntryCategory } from "./types";
 
-/** How many categories show as pills before the rest wait behind All categories. */
-const SHOWN = 12;
+/** How many categories show as pills before the rest wait behind More. */
+const SHOWN = 6;
 
 /**
  * The category, in place: your most used first as pills, each with its own
- * glyph in its color (bare, no tile), then All categories, which opens the
- * searchable list. The picked pill has the brand border and fill; a pick
+ * glyph in its color (bare, no tile), then a More pill, which opens the
+ * full-height searchable list. The picked pill has the brand border and fill; a pick
  * from the full list takes the first slot so it is always on screen. A saved
  * category that is not in your catalog (someone else's, on their split)
  * stays offered.

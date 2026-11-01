@@ -44,7 +44,7 @@
 		"loadError": "Couldn't open the composer",
 		"loadErrorDetail": "Check your connection and try again.",
 		"titleField": "Title",
-		"titlePlaceholder": "What was it? (optional)",
+		"titlePlaceholder": "What was it?",
 		"category": "Category",
 		"with": "With",
 		"you": "You",
@@ -64,6 +64,7 @@
 		"errors": {
 			"amount": "Enter an amount above zero",
 			"category": "Pick a category",
+			"title": "Add a name",
 			"source": "Say who paid you"
 		},
 		"toast": {

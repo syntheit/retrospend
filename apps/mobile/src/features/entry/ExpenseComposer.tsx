@@ -6,12 +6,12 @@ import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import type { PagerTab } from "@/ui/DetailPager";
 import { Text } from "@/ui/Text";
-import { TextField } from "@/ui/TextField";
+import { FieldError, TextField } from "@/ui/TextField";
 import type { MenuItem } from "@/ui/types";
 import { AmountBlock } from "./AmountBlock";
 import { AmountCard, type MoneyLine } from "./AmountCard";
 import { CategoryPanel } from "./CategoryPanel";
-import { ComposerFrame, SYSTEM_PAD_SCALE } from "./ComposerFrame";
+import { type ComposerFrameProps, SYSTEM_PAD_SCALE } from "./ComposerFrame";
 import { ComposerTop } from "./ComposerTop";
 import { type ExpenseDraft, isPersonal, pickCategory } from "./draft";
 import { MorePanel } from "./MorePanel";
@@ -47,7 +47,8 @@ const PANEL_ICON = {
  * a panel, swipes, or taps a tab or a part of the line; tapping the amount
  * brings it back. An edit opens folded.
  */
-export function ExpenseComposer({
+export function useExpenseFrame({
+	active,
 	form,
 	pv,
 	split,
@@ -78,7 +79,9 @@ export function ExpenseComposer({
 	/** Sync issues and the shared-file notice, under the head. */
 	notices: ReactNode;
 	surface?: boolean;
-}) {
+	/** This mode is on screen: only then do its side effects run. */
+	active: boolean;
+}): ComposerFrameProps {
 	const t = useTranslations("mobile.composer");
 	const { format } = useFormatMoney();
 	const locale = useMoneyLocale();
@@ -134,7 +137,7 @@ export function ExpenseComposer({
 	// The title's memory picks the category for a title you have used, and says what it cost.
 	const last = useTitleMemory({
 		title: draft.title,
-		enabled: !editing,
+		enabled: active && !editing,
 		categories: catalog.categories,
 		picked,
 		onPick: (id) =>
@@ -281,7 +284,7 @@ export function ExpenseComposer({
 
 	// A same-title, same-amount expense on this day: said, never blocking.
 	const duplicate = useDuplicate({
-		enabled: !editing,
+		enabled: active && !editing,
 		title: draft.title,
 		minor: form.typedAmount,
 		currency: draft.currency,
@@ -295,6 +298,9 @@ export function ExpenseComposer({
 			})}
 		</Text>
 	) : null;
+
+	// The name is required, like Income's source: said once Add was pressed.
+	const titleError = form.tried && form.expenseProblems.title === true;
 
 	// The large text sizes keep the system decimal keyboard: the amount is a field.
 	const amount = system ? (
@@ -326,71 +332,76 @@ export function ExpenseComposer({
 		/>
 	);
 
-	return (
-		<ComposerFrame
-			add={{
-				onPress: onAdd,
-				label: editing ? t("save") : t("add"),
-				description: editing ? t("saveExpense") : t("addExpense"),
-				folded: editing ? t("save") : t("addExpense"),
-				off: pv.blocked || form.typedAmount === null,
-				busy,
-			}}
-			amount={amount}
-			changedLabel={t("tabs.changed")}
-			header={
-				<View style={{ gap: space[2] }}>
-					<ComposerTop
-						actions={actions}
-						editing={editing}
-						mode={form.mode}
-						modes={form.modes}
-						onCancel={onCancel}
-						onModeChange={onModeChange}
-					/>
-					{notices}
-				</View>
-			}
-			keypad={keypad}
-			keypadOpen={form.padOpen}
-			onPageChange={(next) => goTo(next)}
-			onScrollDrag={() => {
-				if (system) form.setPadOpen(false);
-			}}
-			page={page}
-			panels={panels}
-			preview={<PreviewLine state={pv.preview} />}
-			summary={parts}
-			surface={surface}
-			tabs={tabs}
-			tabsLabel={t("tabs.label")}
-			title={
-				<View>
-					<TextField
-						align="center"
-						autoCapitalize="sentences"
-						bare
-						hideLabel
-						label={t("titleField")}
-						onChangeText={(title) => form.patchExpense({ title })}
-						onTypingChange={form.setTyping}
-						placeholder={t("titlePlaceholder")}
-						value={draft.title}
-					/>
-					{memory}
-					{duplicate ? (
-						<Text
-							accessibilityLiveRegion="polite"
-							style={{ textAlign: "center" }}
-							tone="attention"
-							variant="small"
-						>
-							{t("duplicate")}
-						</Text>
-					) : null}
-				</View>
-			}
-			typing={form.typing}
-		/>
-	);
+	return {
+		add: {
+			onPress: onAdd,
+			label: editing ? t("save") : t("add"),
+			description: editing ? t("saveExpense") : t("addExpense"),
+			folded: editing ? t("save") : t("addExpense"),
+			off: pv.blocked || form.typedAmount === null,
+			busy,
+		},
+		amount: amount,
+		changedLabel: t("tabs.changed"),
+		header: (
+			<View style={{ gap: space[2] }}>
+				<ComposerTop
+					actions={actions}
+					editing={editing}
+					mode={form.mode}
+					modes={form.modes}
+					onCancel={onCancel}
+					onModeChange={onModeChange}
+				/>
+				{notices}
+			</View>
+		),
+		keypad: keypad,
+		keypadOpen: form.padOpen,
+		mode: "expense" as const,
+		onPageChange: (next: number) => goTo(next),
+		onScrollDrag: () => {
+			if (system) form.setPadOpen(false);
+		},
+		page: page,
+		panels: panels,
+		preview: <PreviewLine state={pv.preview} />,
+		summary: parts,
+		surface: surface,
+		tabs: tabs,
+		tabsLabel: t("tabs.label"),
+		title: (
+			<View>
+				<TextField
+					align="center"
+					autoCapitalize="sentences"
+					bare
+					hideLabel
+					invalid={titleError}
+					label={t("titleField")}
+					onChangeText={(title) => form.patchExpense({ title })}
+					onTypingChange={form.setTyping}
+					placeholder={t("titlePlaceholder")}
+					value={draft.title}
+				/>
+				{titleError ? (
+					<View style={{ alignItems: "center" }}>
+						<FieldError>{t("errors.title")}</FieldError>
+					</View>
+				) : null}
+				{memory}
+				{duplicate ? (
+					<Text
+						accessibilityLiveRegion="polite"
+						style={{ textAlign: "center" }}
+						tone="attention"
+						variant="small"
+					>
+						{t("duplicate")}
+					</Text>
+				) : null}
+			</View>
+		),
+		typing: form.typing,
+	};
 }
