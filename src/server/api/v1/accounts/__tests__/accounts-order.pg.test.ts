@@ -107,7 +107,7 @@ describe("/api/v1/accounts/order", () => {
 
 	it("refuses an empty body, a repeated id and an account that is not yours", async () => {
 		const before = await get();
-		await expectProblem(await put({}), 400, "bad_request");
+		await expectProblem(await put({}), 400, "validation_failed");
 		const [a] = ids as [string];
 		await expectProblem(await put({ order: [a, a] }), 400, "bad_request");
 		await expectProblem(
@@ -115,7 +115,11 @@ describe("/api/v1/accounts/order", () => {
 			400,
 			"bad_request",
 		);
-		await expectProblem(await put({ sort: "newest" }), 400, "bad_request");
+		await expectProblem(
+			await put({ sort: "newest" }),
+			400,
+			"validation_failed",
+		);
 		expect(await get()).toEqual(before);
 	});
 
