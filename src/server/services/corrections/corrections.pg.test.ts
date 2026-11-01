@@ -17,11 +17,11 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CorrectInput } from "~/lib/schemas/corrections";
-import { dayKey } from "@retrospend/domain/time-zone";
 import { userTransaction } from "~/server/db-tx";
 import { readFigures } from "~/server/figures/read";
 import {
@@ -68,7 +68,10 @@ import { removeSelfFromSplit } from "./guards";
 
 type Seed = Awaited<ReturnType<typeof seedUser>>;
 
-const today = dayKey(new Date());
+// The zone the books and the fixtures read days in, so "today" and "this month"
+// agree at any hour (after 00:00 UTC it is still yesterday in Buenos Aires).
+const ZONE = "America/Argentina/Buenos_Aires";
+const today = dayKey(new Date(), ZONE);
 const ref = (u: Seed): ParticipantRef => ({
 	participantType: "user",
 	participantId: u.user.id,
@@ -103,7 +106,7 @@ async function book(u: Seed, currency: "PEN" | "USD") {
 		where: { id: u.user.id },
 		data: { homeCurrency: currency },
 	});
-	await as(u).apply(setupEnvelopeBook, { ...setupInput(u), timeZone: "UTC" });
+	await as(u).apply(setupEnvelopeBook, { ...setupInput(u), timeZone: ZONE });
 }
 
 interface World {
@@ -979,7 +982,7 @@ describe("review: nobody leaves a correction", () => {
 		const result = await userTransaction(adminDb, w.sofia.user.id, (tx) =>
 			rebalanceExpenses(
 				tx,
-				{ userId: w.sofia.user.id, timeZone: "UTC" },
+				{ userId: w.sofia.user.id, timeZone: ZONE },
 				{
 					projectId: project.id,
 					participantType: paz.participantType,

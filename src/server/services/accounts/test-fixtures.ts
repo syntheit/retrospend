@@ -15,6 +15,7 @@ import { type AccountFields, createAccount } from "./manage";
  * calendar day (accounts/dates.ts), not the UTC one, so the tests pass at
  * any hour in any TZ.
  */
+export const TODAY_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 export const TODAY = new Date(`${dayKey(new Date())}T00:00:00.000Z`);
 /** A day as the YYYY-MM-DD a money move takes. */
 export const isoDay = (date: Date) => date.toISOString().slice(0, 10);

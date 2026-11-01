@@ -21,6 +21,7 @@ import {
 	openAccount,
 	seedArsRates,
 	TODAY,
+	TODAY_ZONE,
 } from "../accounts/test-fixtures";
 import { type AddIncomeInput, addIncome } from "./add.mutation";
 import {
@@ -371,7 +372,7 @@ describe("income.moveIn (count only)", () => {
 				.then((c) => c.id);
 		await forUser(p.userId).apply(setupEnvelopeBook, {
 			...setupInput({ rent: await cat("Rent"), dining: await cat("Dining") }),
-			timeZone: "UTC",
+			timeZone: TODAY_ZONE,
 		});
 		const first = { id: randomUUID(), accountId: p.wise, units: "100" };
 		const second = { id: randomUUID(), accountId: p.wise, units: "50" };
@@ -415,7 +416,7 @@ describe("income.moveIn (count only)", () => {
 				.then((c) => c.id);
 		await forUser(p.userId).apply(setupEnvelopeBook, {
 			...setupInput({ rent: await cat("Rent"), dining: await cat("Dining") }),
-			timeZone: "UTC",
+			timeZone: TODAY_ZONE,
 		});
 		const moved = await forUser(p.userId).preview(moveIn, {
 			id: randomUUID(),
