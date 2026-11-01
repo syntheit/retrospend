@@ -69,6 +69,7 @@
 		"undoChanges": "Änderungen verwerfen",
 		"error": {
 			"amount": "Gib einen Betrag über null ein",
+			"title": "Gib einen Namen ein",
 			"category": "Wähle eine Kategorie",
 			"rate": "Gib einen Kurs für {currency} ein",
 			"splitAmount": "Die Aufteilung ergibt nicht den Betrag",

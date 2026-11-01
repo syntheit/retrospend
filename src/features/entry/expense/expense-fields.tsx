@@ -219,7 +219,13 @@ export function ExpenseFields(p: {
 							onChange={(e) => x.set({ title: e.target.value })}
 							placeholder={t("titlePlaceholder")}
 							value={d.title}
+							{...(err("title") ? { "aria-invalid": true } : {})}
 						/>
+						{err("title") ? (
+							<span className="text-danger text-small" role="alert">
+								{t("error.title")}
+							</span>
+						) : null}
 						{x.hint && !d.minor ? (
 							<span className="text-fg-3 text-meta">
 								{t.rich("lastTime", {

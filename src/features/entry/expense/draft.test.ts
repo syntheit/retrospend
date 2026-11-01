@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { lineIds } from "./category-line";
 import {
-	type ExpenseDraft,
 	canEditPeople,
+	type ExpenseDraft,
 	personalInput,
 	sharedInput,
 	validate,
@@ -21,7 +21,7 @@ const base: ExpenseDraft = {
 	currency: "ARS",
 	amountText: "3,500",
 	minor: 350_000,
-	title: "",
+	title: "Cafe",
 	categoryId: "cafe",
 	categoryTouched: true,
 	date: "2026-10-22",
@@ -49,8 +49,8 @@ const base: ExpenseDraft = {
 const ctx = { home: "ARS", you, rateMissing: false };
 
 describe("Add expense draft", () => {
-	it("an empty title saves as the category name; amounts go as decimal strings", () => {
-		expect(personalInput(base, { home: "ARS", categoryName: "Cafe" })).toEqual({
+	it("amounts go as decimal strings and the title is the name typed", () => {
+		expect(personalInput(base, { home: "ARS" })).toEqual({
 			id: "new-1",
 			title: "Cafe",
 			amount: "3500.00",
@@ -63,21 +63,17 @@ describe("Add expense draft", () => {
 
 	it("a foreign amount sends the picked type, or the typed rate; the server books it", () => {
 		const usd = { ...base, currency: "USD", minor: 1200, rateType: "blue" };
-		expect(
-			personalInput(usd, { home: "ARS", categoryName: "x" }),
-		).toMatchObject({
+		expect(personalInput(usd, { home: "ARS" })).toMatchObject({
 			amount: "12.00",
 			rateType: "blue",
 		});
 		const custom = { ...usd, custom: true, customRate: "1475" };
-		expect(
-			personalInput(custom, { home: "ARS", categoryName: "x" }),
-		).toMatchObject({
+		expect(personalInput(custom, { home: "ARS" })).toMatchObject({
 			customRate: "1475",
 		});
-		expect(
-			personalInput(custom, { home: "ARS", categoryName: "x" }),
-		).not.toHaveProperty("rateType");
+		expect(personalInput(custom, { home: "ARS" })).not.toHaveProperty(
+			"rateType",
+		);
 	});
 
 	it("a missing rate blocks saving, never converted at 1", () => {
@@ -91,9 +87,12 @@ describe("Add expense draft", () => {
 		);
 	});
 
-	it("amount and category are required; a custom split must add up", () => {
-		expect(validate({ ...base, minor: null, categoryId: null }, ctx)).toEqual({
+	it("amount, name and category are required; a custom split must add up", () => {
+		expect(
+			validate({ ...base, minor: null, categoryId: null, title: " " }, ctx),
+		).toEqual({
 			amount: true,
+			title: true,
 			category: true,
 		});
 		const custom: ExpenseDraft = {
@@ -114,15 +113,13 @@ describe("Add expense draft", () => {
 
 	it("a shared expense sends the split rows; Martín owes all becomes one EXACT row", () => {
 		const shared = { ...base, others: [martin], title: "Dinner" };
-		expect(sharedInput(shared, { you, categoryName: "x" })).toMatchObject({
+		expect(sharedInput(shared, { you })).toMatchObject({
 			amount: "3500.00",
 			description: "Dinner",
 			splitMode: "EQUAL",
 			splitWith: [you, { participantType: "user", participantId: "martin" }],
 		});
-		expect(
-			sharedInput({ ...shared, split: "full" }, { you, categoryName: "x" }),
-		).toMatchObject({
+		expect(sharedInput({ ...shared, split: "full" }, { you })).toMatchObject({
 			splitMode: "EXACT",
 			splitWith: [{ participantId: "martin", shareAmount: 3500 }],
 		});

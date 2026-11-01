@@ -142,7 +142,12 @@ function CorrectForm({
 		categories: catalog.categories,
 	});
 	const { d } = x;
-	const errors = validate(d, { home, you: youRef, rateMissing: false });
+	// The sheet has no name field: an old expense may have none.
+	const { title: _name, ...errors } = validate(d, {
+		home,
+		you: youRef,
+		rateMissing: false,
+	});
 	const [tried, setTried] = useState(false);
 	const [discard, setDiscard] = useState(false);
 	const closing = useRef(false);
