@@ -95,7 +95,6 @@ describe("Add expense draft", () => {
 			title: true,
 			category: true,
 		});
-		expect(personalInput({ ...base, title: "" }, { home: "ARS" })).toBeNull();
 		const custom: ExpenseDraft = {
 			...base,
 			others: [martin],

@@ -150,7 +150,7 @@ function rateFields(d: ExpenseDraft, home: string) {
 
 /** entry.expense.create / update input, or null while it cannot be saved. */
 export function personalInput(d: ExpenseDraft, o: { home: string }) {
-	if (!d.minor || !d.categoryId || !d.title.trim()) return null;
+	if (!d.minor || !d.categoryId) return null;
 	return {
 		id: d.editing?.id ?? d.newId,
 		title: d.title.trim(),
@@ -168,7 +168,7 @@ export function personalInput(d: ExpenseDraft, o: { home: string }) {
 
 /** entry.shared.create input (and update with the id), or null while it cannot be saved. */
 export function sharedInput(d: ExpenseDraft, o: { you: SplitRef }) {
-	if (!d.minor || !d.categoryId || !d.title.trim()) return null;
+	if (!d.minor || !d.categoryId) return null;
 	const split = buildSplitInput(splitStateOf(d, o.you));
 	if (split.splitWith.length === 0) return null;
 	return {

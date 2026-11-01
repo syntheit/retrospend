@@ -24,7 +24,7 @@ export function correctionInput(
 	d: ExpenseDraft,
 	o: { id: string; transactionId: string; title: string; you: SplitRef },
 ): CorrectInput | null {
-	const s = sharedInput(d, { you: o.you, categoryName: "" });
+	const s = sharedInput(d, { you: o.you });
 	if (!s) return null;
 	return {
 		id: o.id,
