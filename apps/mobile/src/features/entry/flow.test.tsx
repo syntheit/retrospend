@@ -2,9 +2,9 @@ import type { RetrospendClient } from "@retrospend/api-client";
 import { createReadCache } from "@/data/cache";
 import { createOutbox } from "@/data/outbox";
 import { createMemoryStore } from "@/data/store";
-import type { EntryMode } from "./types";
 import { EntryComposer } from "./EntryComposer";
 import { forgetUndoTokens } from "./send";
+import type { EntryMode } from "./types";
 
 // The composer end to end, with real presses on its real components: the
 // milestone "coffee split with Lucía in 4 taps + 5 keys". The tab press that
@@ -1975,13 +1975,13 @@ describe("The duplicate warning", () => {
 			jest.advanceTimersByTime(900);
 		});
 		await flush();
-		expect(
-			calls.find((c) => c.route === "expenses.duplicates")?.input,
-		).toEqual({
-			title: "Cafe",
-			amount: "3500.00",
-			date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-		});
+		expect(calls.find((c) => c.route === "expenses.duplicates")?.input).toEqual(
+			{
+				title: "Cafe",
+				amount: "3500.00",
+				date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+			},
+		);
 		expect(words(tree)).toContain(warning);
 		act(() => tree.unmount());
 	});

@@ -31,7 +31,8 @@ export function useComposerPreview(form: EntryForm) {
 		[expense, locale, meId, catalog],
 	);
 	const incomeWrite = useMemo(
-		() => buildIncomeWrite(income, {
+		() =>
+			buildIncomeWrite(income, {
 				locale,
 				hasBudget: catalog.hasBudget,
 				places: catalog.places,

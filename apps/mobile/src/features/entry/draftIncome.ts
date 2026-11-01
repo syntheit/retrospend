@@ -69,9 +69,7 @@ export function buildIncomeWrite(
 	const rate = rateFields(d, input.locale);
 	if (!minor || !source || !rate) return null;
 	const note = d.note.trim();
-	const place = d.into
-		? input.places?.find((p) => p.id === d.into)
-		: undefined;
+	const place = d.into ? input.places?.find((p) => p.id === d.into) : undefined;
 	// An account outside the budget keeps the money in Wealth: no plan to use.
 	const kept = place ? place.inBudget === false : false;
 	return {

@@ -11,14 +11,13 @@ import { AmountBlock } from "./AmountBlock";
 import { AmountCard, type MoneyLine } from "./AmountCard";
 import { CategoryPanel } from "./CategoryPanel";
 import { ComposerFrame } from "./ComposerFrame";
-import type { EntryMode } from "./types";
 import { ComposerTop } from "./ComposerTop";
 import { DEFAULT_RATE } from "./draft";
 import { OptionRow } from "./MorePanel";
 import { ChangesRow, NoteRow } from "./MoreRows";
 import { PlanPanel } from "./PlanPanel";
 import { PreviewLine } from "./PreviewLine";
-import type { EntryCatalog } from "./types";
+import type { EntryCatalog, EntryMode } from "./types";
 import type { ComposerPreview } from "./useComposerPreview";
 import type { EntryForm } from "./useEntryForm";
 import { usePanelFold } from "./usePanelFold";
@@ -162,7 +161,10 @@ export function IncomeComposer({
 		into: (
 			<AccountPanel
 				key="into"
-				none={{ name: t("incomeFlow.noAccount"), meta: t("incomeFlow.budgetOnly") }}
+				none={{
+					name: t("incomeFlow.noAccount"),
+					meta: t("incomeFlow.budgetOnly"),
+				}}
 				onPick={(picked) =>
 					patch(
 						picked

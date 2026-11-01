@@ -10,7 +10,6 @@ import { newClientId } from "@/data/ids";
 import { useMoneyLocale } from "@/lib/money";
 import type { ComposerPrefill } from "@/surfaces/prefill";
 import { useToast } from "@/ui/Toast";
-import type { EntryMode } from "./types";
 import {
 	amountMinor,
 	DEFAULT_RATE,
@@ -29,6 +28,7 @@ import {
 	transferErrors,
 } from "./draft";
 import { type SavedEntry, useRateOptions } from "./hooks";
+import type { EntryMode } from "./types";
 import { type EntryCatalog, type EntryPerson, personKey } from "./types";
 
 const today = () => dayKey(new Date());

@@ -12,16 +12,15 @@ import { AmountBlock } from "./AmountBlock";
 import { AmountCard, type MoneyLine } from "./AmountCard";
 import { CategoryPanel } from "./CategoryPanel";
 import { ComposerFrame, SYSTEM_PAD_SCALE } from "./ComposerFrame";
-import type { EntryMode } from "./types";
 import { ComposerTop } from "./ComposerTop";
 import { type ExpenseDraft, isPersonal, pickCategory } from "./draft";
 import { MorePanel } from "./MorePanel";
 import { PreviewLine } from "./PreviewLine";
 import { ProjectPanel } from "./ProjectPanel";
 import { useTitleMemory } from "./titleMemory";
-import { useDuplicate } from "./useDuplicate";
-import type { EntryCatalog, EntryCategory } from "./types";
+import type { EntryCatalog, EntryCategory, EntryMode } from "./types";
 import type { ComposerPreview } from "./useComposerPreview";
+import { useDuplicate } from "./useDuplicate";
 import type { EntryForm } from "./useEntryForm";
 import type { SplitView } from "./useSplitView";
 import { useDayWords, WhenPanel } from "./WhenPanel";
@@ -360,20 +359,7 @@ export function ExpenseComposer({
 			}}
 			page={page}
 			panels={panels}
-			preview={
-				<>
-					{duplicate ? (
-						<Text
-							accessibilityLiveRegion="polite"
-							tone="attention"
-							variant="small"
-						>
-							{t("duplicate")}
-						</Text>
-					) : null}
-					<PreviewLine state={pv.preview} />
-				</>
-			}
+			preview={<PreviewLine state={pv.preview} />}
 			summary={parts}
 			surface={surface}
 			tabs={tabs}
@@ -392,6 +378,16 @@ export function ExpenseComposer({
 						value={draft.title}
 					/>
 					{memory}
+					{duplicate ? (
+						<Text
+							accessibilityLiveRegion="polite"
+							style={{ textAlign: "center" }}
+							tone="attention"
+							variant="small"
+						>
+							{t("duplicate")}
+						</Text>
+					) : null}
 				</View>
 			}
 			typing={form.typing}

@@ -158,8 +158,11 @@ export function AmountCard({
 									{
 										flex: 1,
 										minHeight: size.touchMin.phone,
+										paddingVertical: 0,
 										paddingRight: space[2],
 										textAlign: "right",
+										textAlignVertical: "center",
+										includeFontPadding: false,
 										color: color.fg,
 									},
 								]}

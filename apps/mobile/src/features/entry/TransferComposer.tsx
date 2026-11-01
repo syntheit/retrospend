@@ -9,13 +9,12 @@ import { FieldError, TextField } from "@/ui/TextField";
 import { AccountPanel } from "./AccountPanel";
 import { AmountCard, type MoneyLine } from "./AmountCard";
 import { ComposerFrame } from "./ComposerFrame";
-import type { EntryMode } from "./types";
 import { ComposerTop } from "./ComposerTop";
 import { OptionRow } from "./MorePanel";
 import { ChangesRow, NoteRow } from "./MoreRows";
 import { PreviewLine } from "./PreviewLine";
 import { TransferAmount } from "./TransferAmount";
-import type { EntryCatalog } from "./types";
+import type { EntryCatalog, EntryMode } from "./types";
 import type { ComposerPreview } from "./useComposerPreview";
 import type { EntryForm } from "./useEntryForm";
 import { usePanelFold } from "./usePanelFold";
@@ -84,8 +83,7 @@ export function TransferComposer({
 	const parts = [
 		{
 			key: "accounts",
-			text:
-				from && to ? `${from.name} → ${to.name}` : tt("errors.places"),
+			text: from && to ? `${from.name} → ${to.name}` : tt("errors.places"),
 			tone: from && to ? undefined : ("attention" as const),
 			page: 0,
 		},
@@ -246,7 +244,9 @@ export function TransferComposer({
 					rows={rows}
 				/>
 			)}
-			{problems.received ? <FieldError>{tt("errors.received")}</FieldError> : null}
+			{problems.received ? (
+				<FieldError>{tt("errors.received")}</FieldError>
+			) : null}
 		</View>
 	);
 
