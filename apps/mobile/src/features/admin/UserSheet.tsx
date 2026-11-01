@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -15,6 +15,7 @@ import { userLabel } from "./rules";
 import { confirmWithDevice, emailMatches, hasDeviceLock } from "./stepUp";
 import type { AdminUser } from "./types";
 import { detailOf } from "./useAdminRead";
+import { showAlert } from "@/ui/alert";
 
 type AiChoice = "default" | "allowed" | "blocked";
 
@@ -143,7 +144,7 @@ export function UserSheet({
 			setConfirming(kind);
 			return;
 		}
-		Alert.alert(
+		showAlert(
 			kind === "disable"
 				? t("disableTitle", { name })
 				: t("deleteTitle", { name }),

@@ -20,6 +20,7 @@ import {
 } from "react";
 import { useServerConnection } from "@/auth/server-connection";
 import { createReadCache, type ReadCache } from "@/data/cache";
+import { newClientId } from "@/data/ids";
 import { createOutbox, type Outbox } from "@/data/outbox";
 import { createSqliteStore } from "@/data/sqlite-store";
 import { getErrorLog } from "@/features/feedback/runtime";
@@ -154,6 +155,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			baseUrl && tokens
 				? createRetrospendClient({
 						baseUrl,
+						// Hermes has no crypto.randomUUID, and the server refuses a
+						// write without a key (a sort or a setting saved from the phone).
+						newIdempotencyKey: newClientId,
 						authHeaders: async (): Promise<Record<string, string>> => {
 							const token = await tokens.get();
 							return token ? { authorization: `Bearer ${token}` } : {};

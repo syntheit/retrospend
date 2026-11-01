@@ -1,6 +1,6 @@
-import { Alert } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { showAlert } from "@/ui/alert";
 
 /**
  * Sign out, asking first when changes made on this phone have not synced
@@ -22,7 +22,7 @@ export function useSignOut(afterSignOut?: () => Promise<void> | void) {
 			await finish();
 			return;
 		}
-		Alert.alert(t("signOut"), t("unsynced", { count }), [
+		showAlert(t("signOut"), t("unsynced", { count }), [
 			{ text: tc("cancel"), style: "cancel" },
 			{
 				text: t("signOutDiscard"),

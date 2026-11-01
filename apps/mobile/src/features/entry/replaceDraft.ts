@@ -1,4 +1,4 @@
-import { Alert } from "react-native";
+import { showAlert } from "@/ui/alert";
 
 /**
  * A share, a Quick Settings tile, a Control or a link can arrive while the
@@ -14,7 +14,7 @@ export function replaceDraft(
 		replace();
 		return;
 	}
-	Alert.alert(words.title, words.detail, [
+	showAlert(words.title, words.detail, [
 		{ text: words.keep, style: "cancel" },
 		{ text: words.replace, style: "destructive", onPress: replace },
 	]);

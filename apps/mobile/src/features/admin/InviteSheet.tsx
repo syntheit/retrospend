@@ -1,6 +1,6 @@
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
-import { Alert, Share, View } from "react-native";
+import { Share, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
@@ -13,6 +13,7 @@ import { useToast } from "@/ui/Toast";
 import { inviteLink } from "./rules";
 import type { InviteCodeDto } from "./types";
 import { detailOf } from "./useAdminRead";
+import { showAlert } from "@/ui/alert";
 
 /**
  * One invite code: the code itself, then copy it, copy the sign-up link,
@@ -69,7 +70,7 @@ export function InviteSheet({
 	}
 
 	function askDelete() {
-		Alert.alert(t("deleteTitle"), undefined, [
+		showAlert(t("deleteTitle"), undefined, [
 			{ text: tc("cancel"), style: "cancel" },
 			{
 				text: t("delete"),

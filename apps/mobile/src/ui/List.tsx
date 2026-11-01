@@ -444,11 +444,18 @@ export function NavEnd({
 	value,
 	lead,
 	chevron = true,
+	capped = true,
 }: {
 	value?: string;
 	lead?: ReactNode;
 	/** False for a value the row shows but cannot open. */
 	chevron?: boolean;
+	/**
+	 * False when a wrapper around this end already caps its width (a percent
+	 * of a shrink-wrapped parent resolves against the content and squeezes
+	 * the value to a stub).
+	 */
+	capped?: boolean;
 }) {
 	const { space } = useTheme();
 	return (
@@ -456,7 +463,7 @@ export function NavEnd({
 			style={{
 				flexShrink: 1,
 				// A long value gives way before the row's label does.
-				maxWidth: "65%",
+				maxWidth: capped ? "65%" : undefined,
 				flexDirection: "row",
 				alignItems: "center",
 				gap: space[2],

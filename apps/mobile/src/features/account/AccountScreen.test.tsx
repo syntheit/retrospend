@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { AccountScreen } from "./AccountScreen";
 
 const renderer = require("react-test-renderer");
@@ -21,11 +22,17 @@ jest.mock("@/auth/server-connection", () => ({
 }));
 const mockPush = jest.fn();
 const mockGoBack = jest.fn();
+let mockScreenOptions: { headerRight?: unknown } = {};
 jest.mock("expo-router", () => ({
 	router: { push: (to: string) => mockPush(to) },
 	usePathname: () => "/account",
 	useNavigation: () => ({ getParent: () => ({ goBack: mockGoBack }) }),
-	Stack: { Screen: () => null },
+	Stack: {
+		Screen: ({ options }: { options: { headerRight?: unknown } }) => {
+			mockScreenOptions = options;
+			return null;
+		},
+	},
 }));
 jest.mock("@/features/feedback/FeedbackProvider", () => ({
 	useFeedback: () => ({ open: jest.fn() }),
@@ -71,6 +78,25 @@ const member = {
 };
 
 describe("account sheet", () => {
+	it("has Done at the end of the bar on iOS only; Android has the back arrow", async () => {
+		const real = Platform.OS;
+		try {
+			for (const [os, hasDone] of [
+				["ios", true],
+				["android", false],
+			] as const) {
+				Platform.OS = os;
+				const tree = await render(member);
+				expect(typeof mockScreenOptions.headerRight === "function").toBe(
+					hasDone,
+				);
+				act(() => tree.unmount());
+			}
+		} finally {
+			Platform.OS = real;
+		}
+	});
+
 	it("leaves Notifications to the bell on Home, and shows no Admin group to a member", async () => {
 		const texts = await labels(member);
 		expect(texts).not.toContain("notifications");

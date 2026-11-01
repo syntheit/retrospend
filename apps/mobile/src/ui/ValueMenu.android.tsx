@@ -28,7 +28,8 @@ export function ValueMenu({
 	const { color } = useTheme();
 	useTransient(open ? () => setOpen(false) : null);
 	return (
-		<View style={{ flexShrink: 1 }}>
+		// The cap sits here, on the row's own child, and not on the value inside.
+		<View style={{ flexShrink: 1, maxWidth: "65%" }}>
 			{children}
 			<View
 				pointerEvents="none"

@@ -34,6 +34,9 @@ export function RowMenu({ items, children, onPress }: RowMenuProps) {
 					name: item.id,
 					label: item.label,
 				}))}
+				accessibilityRole={onPress ? "button" : undefined}
+				// The press feedback of the row (its children carry no press of their own).
+				android_ripple={onPress ? { color: color.raised } : undefined}
 				delayLongPress={LONG_PRESS_MS}
 				onAccessibilityAction={(event) =>
 					items

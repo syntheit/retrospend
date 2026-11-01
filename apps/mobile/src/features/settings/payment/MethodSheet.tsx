@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -18,6 +18,7 @@ import {
 	withEdit,
 	without,
 } from "./source";
+import { showAlert } from "@/ui/alert";
 
 const VISIBILITIES: Visibility[] = ["PUBLIC", "FRIENDS_ONLY", "PAYMENT_ONLY"];
 
@@ -89,7 +90,7 @@ export function MethodSheet({
 	}
 
 	function askDelete() {
-		Alert.alert(t("removeTitle"), undefined, [
+		showAlert(t("removeTitle"), undefined, [
 			{ text: tc("cancel"), style: "cancel" },
 			{
 				text: t("removeConfirm"),

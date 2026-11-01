@@ -31,6 +31,7 @@ import { holdSplash, releaseSplash, SPLASH_CAP_MS } from "@/lib/splash";
 import "@/push/background";
 import { PushProvider } from "@/push/PushProvider";
 import { navigationTheme, themeFor, useTheme } from "@/theme";
+import { AlertHost } from "@/ui/alert";
 import { ToastProvider } from "@/ui/Toast";
 
 // Metro folds the inlined env var, so a build without it leaves the dev
@@ -120,6 +121,7 @@ export default function RootLayout() {
 											<FeedbackProvider>
 												<Routes />
 												<ErrorReportsFlusher />
+												<AlertHost />
 												{DevAutoSignIn ? <DevAutoSignIn /> : null}
 											</FeedbackProvider>
 										</ToastProvider>

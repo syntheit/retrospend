@@ -76,7 +76,7 @@ export function PickerValueRow<T extends string>({
 					open={open}
 					setOpen={setOpen}
 				>
-					<NavEnd value={shown} />
+					<NavEnd capped={false} value={shown} />
 				</ValueMenu>
 			}
 			onPress={() => setOpen(true)}
