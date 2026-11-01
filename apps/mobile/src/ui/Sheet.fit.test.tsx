@@ -205,8 +205,10 @@ const CASES: Case[] = [
 	{
 		name: "Update balance",
 		title: "Update balance",
-		fields: ["Galicia (ARS)", "1", "0"],
-		footer: ["Update balance"],
+		// The account and the figure are the head; the keypad and its Update
+		// balance key are the foot. Both stay outside the scrolling middle.
+		fields: [],
+		footer: ["Update balance", "1", "0"],
 		sheetBody: true,
 		render: () => (
 			<UpdateBalanceSheet

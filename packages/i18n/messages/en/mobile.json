@@ -484,18 +484,18 @@
 		"offlineSince": "Offline since {time}",
 		"search": "Search expenses",
 		"summary": {
-			"month": "{count, plural, one {# expense} other {# expenses}} this month",
-			"all": "{count, plural, one {# expense} other {# expenses}}, all time"
+			"count": "{count, plural, one {# expense} other {# expenses}}"
 		},
 		"chip": {
 			"category": "Category",
 			"person": "Person",
-			"allCategories": "All categories",
-			"everyone": "Everyone",
-			"anyKind": "All types",
 			"project": "Project",
-			"allProjects": "All projects",
-			"filter": "Filter"
+			"filter": "Filter",
+			"type": "Type",
+			"reset": "Clear",
+			"periodSpoken": "Period, {value}",
+			"allCategories": "All categories",
+			"everyone": "Everyone"
 		},
 		"period": {
 			"month": "This month",
@@ -545,6 +545,14 @@
 			"label": "Activity",
 			"expenses": "Expenses",
 			"recurring": "Recurring"
+		},
+		"filters": {
+			"findPerson": "Find a person",
+			"noPerson": "No person matches",
+			"findProject": "Find a project",
+			"noProject": "No project matches",
+			"findType": "Find a type",
+			"noType": "No type matches"
 		}
 	},
 	"budget": {
@@ -694,16 +702,14 @@
 			"toastSet": "{name} now has {amount} assigned"
 		},
 		"move": {
-			"direction": "Direction",
-			"in": "Add",
-			"out": "Take out",
 			"from": "From",
 			"to": "To",
 			"amount": "Amount to move",
-			"submit": "Move",
-			"nothingToMove": "Nothing has money to move here. {pool} is empty.",
+			"submit": "Move money",
 			"toastIn": "Moved {amount} from {other} to {name}",
-			"toastOut": "Moved {amount} from {name} to {other}"
+			"toastOut": "Moved {amount} from {name} to {other}",
+			"add": "Move",
+			"changes": "Changes"
 		},
 		"cover": {
 			"lead": "{name} is over by {amount}. Covering moves money here from another place.",
@@ -1427,10 +1433,10 @@
 			"notLoggedHint": "Your income and spending stay as they are. The difference is recorded as Not logged.",
 			"same": "That is already the balance, so nothing changes.",
 			"toast": "{name} is now {amount}",
-			"valuedAt": "Valued at the {type} rate",
 			"rateChange": "Valued at {next} from today. Earlier days keep the {before} rate.",
 			"rateFromToday": "Valued at {next} from today.",
-			"error": "Couldn't save. Try again."
+			"error": "Couldn't save. Try again.",
+			"add": "Update"
 		},
 		"account": {
 			"addTitle": "Add account",

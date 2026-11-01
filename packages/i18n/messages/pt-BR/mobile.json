@@ -484,18 +484,18 @@
 		"offlineSince": "Sem conexão desde {time}",
 		"search": "Buscar despesas",
 		"summary": {
-			"month": "{count, plural, one {# despesa} other {# despesas}} neste mês",
-			"all": "{count, plural, one {# despesa} other {# despesas}}, todo o período"
+			"count": "{count, plural, one {# despesa} other {# despesas}}"
 		},
 		"chip": {
 			"category": "Categoria",
 			"person": "Pessoa",
-			"allCategories": "Todas as categorias",
-			"everyone": "Todos",
-			"anyKind": "Todos os tipos",
 			"project": "Projeto",
-			"allProjects": "Todos os projetos",
-			"filter": "Filtro"
+			"filter": "Filtro",
+			"type": "Tipo",
+			"reset": "Limpar",
+			"periodSpoken": "Período, {value}",
+			"allCategories": "Todas as categorias",
+			"everyone": "Todos"
 		},
 		"period": {
 			"month": "Este mês",
@@ -545,6 +545,14 @@
 			"label": "Atividade",
 			"expenses": "Despesas",
 			"recurring": "Recorrentes"
+		},
+		"filters": {
+			"findPerson": "Buscar uma pessoa",
+			"noPerson": "Nenhuma pessoa corresponde",
+			"findProject": "Buscar um projeto",
+			"noProject": "Nenhum projeto corresponde",
+			"findType": "Buscar um tipo",
+			"noType": "Nenhum tipo corresponde"
 		}
 	},
 	"budget": {
@@ -694,16 +702,14 @@
 			"toastSet": "{name} agora tem {amount} atribuídos"
 		},
 		"move": {
-			"direction": "Direção",
-			"in": "Adicionar",
-			"out": "Tirar",
 			"from": "De",
 			"to": "Para",
 			"amount": "Valor a mover",
-			"submit": "Mover",
-			"nothingToMove": "Nada tem dinheiro para mover aqui. {pool} está vazio.",
+			"submit": "Mover dinheiro",
 			"toastIn": "Você moveu {amount} de {other} para {name}",
-			"toastOut": "Você moveu {amount} de {name} para {other}"
+			"toastOut": "Você moveu {amount} de {name} para {other}",
+			"add": "Mover",
+			"changes": "Alterações"
 		},
 		"cover": {
 			"lead": "{name} estourou em {amount}. Cobrir traz dinheiro de outro lugar.",
@@ -1427,10 +1433,10 @@
 			"notLoggedHint": "Suas receitas e gastos ficam como estão. A diferença é guardada como “Sem registro”.",
 			"same": "Esse já é o saldo, então nada muda.",
 			"toast": "{name} agora tem {amount}",
-			"valuedAt": "Avaliada na cotação {type}",
 			"rateChange": "Avaliada em {next} a partir de hoje. Os dias anteriores mantêm a cotação {before}.",
 			"rateFromToday": "Avaliada em {next} a partir de hoje.",
-			"error": "Não foi possível salvar. Tente de novo."
+			"error": "Não foi possível salvar. Tente de novo.",
+			"add": "Atualizar"
 		},
 		"account": {
 			"addTitle": "Adicionar conta",

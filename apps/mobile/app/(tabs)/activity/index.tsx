@@ -188,7 +188,7 @@ export default function ActivityScreen() {
 				<View>
 					{segments}
 					{page && !picked ? (
-						<ActivitySummary page={page} period={filter.period} />
+						<ActivitySummary page={page} />
 					) : null}
 					<StaleNote
 						since={state.status === "ready" ? state.staleSince : null}
