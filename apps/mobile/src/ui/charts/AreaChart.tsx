@@ -6,6 +6,7 @@ import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import type { Money } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { TEXT_SCALE_CAP } from "../Text";
 import { areaShape, nearestIndex, type Plot } from "./area";
 import {
 	AXIS,
@@ -235,6 +236,8 @@ export function AreaChart({
 				{ticks.map((point) => (
 					<Text
 						key={point.date}
+						// The axis row has a fixed height: its labels stop growing at the chrome cap.
+						maxFontSizeMultiplier={TEXT_SCALE_CAP.chrome}
 						numberOfLines={1}
 						style={{ color: tone.label, fontSize: type.meta.size }}
 					>
