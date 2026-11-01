@@ -49,6 +49,7 @@ describe("rateView: the rate row reads the server's options", () => {
 			customText: "1200",
 			customFlipped: false,
 			savedRate: null,
+			customEdited: false,
 		};
 		expect(rateView(options, typed)).toMatchObject({
 			type: "custom",
