@@ -46,6 +46,7 @@ export function templateBody(item: ActivityItem) {
 		...(item.category?.id ? { categoryId: item.category.id } : {}),
 		frequency: "MONTHLY" as const,
 		nextDueDate: nextMonthly(item.date),
+		anchorDay: Number(item.date.slice(8, 10)),
 		autoPay: false,
 	};
 }

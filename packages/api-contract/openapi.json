@@ -105644,6 +105644,12 @@
 										],
 										"type": "string"
 									},
+									"anchorDay": {
+										"description": "Day of month a monthly, quarterly or yearly schedule keeps (1 to 31). nextDueDate must be that day, or the last day of a shorter month. Default is the day of nextDueDate.",
+										"maximum": 31,
+										"minimum": 1,
+										"type": "integer"
+									},
 									"autoPay": {
 										"description": "Default true.",
 										"type": "boolean"
@@ -106745,6 +106751,12 @@
 											"ask"
 										],
 										"type": "string"
+									},
+									"anchorDay": {
+										"description": "Day of month a monthly, quarterly or yearly schedule keeps (1 to 31). nextDueDate must be that day, or the last day of a shorter month. Default is the day of nextDueDate.",
+										"maximum": 31,
+										"minimum": 1,
+										"type": "integer"
 									},
 									"autoPay": {
 										"description": "Default true.",

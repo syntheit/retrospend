@@ -1,5 +1,10 @@
 import type { ActivityItem } from "@/features/activity/source";
-import { canRepeat, nextMonthly, nextOnDay } from "./makeRecurring";
+import {
+	canRepeat,
+	nextMonthly,
+	nextOnDay,
+	templateBody,
+} from "./makeRecurring";
 
 const item = (over: Partial<ActivityItem> = {}): ActivityItem => ({
 	id: "a",
@@ -51,5 +56,19 @@ describe("nextOnDay", () => {
 	it("takes the last day of a short month", () => {
 		expect(nextOnDay("2026-02-10", 31)).toBe("2026-02-28");
 		expect(nextOnDay("2026-01-31", 30)).toBe("2026-02-28");
+	});
+});
+
+describe("templateBody", () => {
+	it("keeps the entry's day as the anchor when the next month is shorter", () => {
+		const body = templateBody(item({ date: "2027-01-31" }));
+		expect(body.nextDueDate).toBe("2027-02-28");
+		expect(body.anchorDay).toBe(31);
+	});
+});
+
+describe("nextOnDay with a short month", () => {
+	it("clamps the first date, so the anchor has to travel separately", () => {
+		expect(nextOnDay("2027-02-10", 31)).toBe("2027-02-28");
 	});
 });

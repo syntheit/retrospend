@@ -5,6 +5,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
+import { nextRecurringDate } from "@retrospend/domain/recurring";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { bookedUser } from "../../budget/__tests__/fixtures";
 import {
@@ -112,6 +113,44 @@ describe("/api/v1/recurring", () => {
 			c.get,
 		);
 		expect(got.id).toBe(item.id);
+	});
+
+	it("keeps anchorDay 31 through a clamped first date", async () => {
+		const item = await make({
+			name: "Anchored",
+			nextDueDate: "2027-02-28",
+			anchorDay: 31,
+		});
+		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+			where: { id: item.id },
+		});
+		expect(row.anchorDay).toBe(31);
+		const mar = nextRecurringDate(row.nextDueDate, "MONTHLY", row.anchorDay);
+		const apr = nextRecurringDate(mar, "MONTHLY", row.anchorDay);
+		expect([mar, apr].map((d) => d.toISOString().slice(0, 10))).toEqual([
+			"2027-03-31",
+			"2027-04-30",
+		]);
+	});
+
+	it("refuses a first date that is not on anchorDay", async () => {
+		const res = await send("POST", "/recurring", {
+			name: "Off anchor",
+			amount: "15",
+			currency: "USD",
+			frequency: "MONTHLY",
+			nextDueDate: "2027-02-27",
+			anchorDay: 31,
+		});
+		expect(res.status).toBe(400);
+	});
+
+	it("without anchorDay the anchor is the day of the first date", async () => {
+		const item = await make({ name: "Unanchored", nextDueDate: "2027-02-28" });
+		const row = await adminDb.recurringTemplate.findUniqueOrThrow({
+			where: { id: item.id },
+		});
+		expect(row.anchorDay).toBe(28);
 	});
 
 	it("previews a new template without writing it", async () => {

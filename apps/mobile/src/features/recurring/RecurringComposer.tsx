@@ -93,6 +93,9 @@ export function RecurringComposer({
 	const [categoryId, setCategoryId] = useState<string | null>(null);
 	const [frequency, setFrequency] = useState<Frequency>("MONTHLY");
 	const [first, setFirst] = useState(() => nextMonthly(dayKey(new Date())));
+	const [anchor, setAnchor] = useState(() =>
+		Number(nextMonthly(dayKey(new Date())).slice(8, 10)),
+	);
 	const [autoPay, setAutoPay] = useState(false);
 	const [tried, setTried] = useState(false);
 
@@ -109,6 +112,7 @@ export function RecurringComposer({
 					...(categoryId ? { categoryId } : {}),
 					frequency,
 					nextDueDate: first,
+					...(frequency === "MONTHLY" ? { anchorDay: anchor } : {}),
 					autoPay,
 				}
 			: null;
@@ -158,7 +162,7 @@ export function RecurringComposer({
 		pad.fold();
 	};
 	const today = dayKey(new Date());
-	const dayOfMonth = Number(first.slice(8, 10));
+	const dayOfMonth = anchor;
 
 	const parts = [
 		{
@@ -223,7 +227,10 @@ export function RecurringComposer({
 				<WheelField
 					label={t("add.dayOfMonth")}
 					onChange={(next) =>
-						patch(() => setFirst(nextOnDay(today, Number(next))))
+						patch(() => {
+							setAnchor(Number(next));
+							setFirst(nextOnDay(today, Number(next)));
+						})
 					}
 					options={DAYS_IN_MONTH.map((d) => ({ value: d, label: d }))}
 					value={String(dayOfMonth)}
