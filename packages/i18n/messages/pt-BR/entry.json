@@ -301,5 +301,11 @@
 	"common": {
 		"loading": "Carregando",
 		"failed": "Não foi possível carregar. Tente de novo."
+	},
+	"mode": {
+		"label": "Tipo de lançamento",
+		"expense": "Gasto",
+		"income": "Receita",
+		"transfer": "Transferência"
 	}
 }

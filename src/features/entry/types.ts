@@ -20,6 +20,17 @@ export interface ExpensePrefill {
 	readonly description?: string | null;
 	readonly location?: string | null;
 	readonly with?: readonly EntryPerson[];
+	/** A day key (yyyy-mm-dd); today when absent. */
+	readonly date?: string;
+}
+
+/** What survives a switch between Expense, Income and Transfer. */
+export interface EntryCarry {
+	/** Minor units in `currency`. */
+	readonly minor: number | null;
+	readonly currency: string;
+	readonly date: string;
+	readonly note: string;
 }
 
 export type EntryRequest =
@@ -39,5 +50,16 @@ export type EntryRequest =
 			/** Open Ask to fix or Correct right away (a row menu); the read view otherwise. */
 			readonly start?: "ask" | "correct";
 	  }
-	| { readonly kind: "income"; readonly accountId?: string }
-	| { readonly kind: "transfer"; readonly fromAccountId?: string };
+	| {
+			readonly kind: "income";
+			readonly accountId?: string;
+			readonly carry?: EntryCarry;
+	  }
+	| {
+			readonly kind: "transfer";
+			readonly fromAccountId?: string;
+			readonly carry?: EntryCarry;
+	  };
+
+/** The three composer modes. */
+export type EntryMode = "expense" | "income" | "transfer";

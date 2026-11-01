@@ -1,7 +1,7 @@
 "use client";
 
 import { fromMinor } from "@retrospend/domain/money-minor";
-import { parseMoneyInput } from "@retrospend/domain/parse";
+import { draftFromMinor, parseMoneyInput } from "@retrospend/domain/parse";
 import { readRateText } from "@retrospend/domain/rate-text";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { keepPreviousData } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
 import { type EntryCatalog, useSettled } from "../shared-ui";
+import type { EntryCarry } from "../types";
 
 export type IncomeDraft = {
 	currency: string;
@@ -38,16 +39,22 @@ export type IncomeDraft = {
  * Add income (owner N71: its own sheet, INCOME.md): state, the server's
  * preview of income.add with Use my plan, and the save with its undo.
  */
-export function useIncome(catalog: EntryCatalog, accountId?: string) {
+export function useIncome(
+	catalog: EntryCatalog,
+	accountId?: string,
+	carry?: EntryCarry,
+) {
 	const locale = useMoneyLocale();
 	const home = catalog.homeCurrency;
 	const [d, setD] = useState<IncomeDraft>(() => {
 		const account = catalog.places.find((p) => p.id === accountId);
-		const currency = account?.currency ?? home;
+		const currency = carry?.currency ?? account?.currency ?? home;
 		return {
 			currency,
-			amountText: "",
-			minor: null,
+			amountText: carry?.minor
+				? draftFromMinor(carry.minor, locale, currency)
+				: "",
+			minor: carry?.minor ?? null,
 			rateType: null,
 			custom: false,
 			customText: "",
@@ -56,9 +63,9 @@ export function useIncome(catalog: EntryCatalog, accountId?: string) {
 			categoryId: null,
 			into: account?.id ?? catalog.defaultAccounts[currency] ?? null,
 			keep: null,
-			date: dayKey(new Date()),
+			date: carry?.date ?? dayKey(new Date()),
 			repeats: false,
-			note: "",
+			note: carry?.note ?? "",
 			// Use my plan is the primary path (N72), but only with an envelope budget to fill.
 			usePlan: null,
 		};

@@ -69,6 +69,7 @@ function SheetBody(
 	);
 	// Phone web, ADD-EXPENSE-R2: close, the title centered, the verb in the header.
 	const verb = props.phone && props.headerSubmit;
+	const slot = props.headerSlot;
 	return (
 		<SheetDepth.Provider value={props.depth + 1}>
 			<div className="flex items-center gap-2 px-6 pt-4 pb-2 max-md:px-4 max-md:pt-2">
@@ -77,10 +78,14 @@ function SheetBody(
 					className={cn(
 						"text-fg text-section min-w-0 flex-1 truncate",
 						verb && "text-center",
+						slot && !props.phone && "sr-only flex-none",
 					)}
 				>
 					{props.title}
 				</DialogPrimitive.Title>
+				{slot && !props.phone ? (
+					<div className="min-w-0 flex-1">{slot}</div>
+				) : null}
 				{verb ? (
 					<Button
 						data-sheet-submit=""
@@ -96,6 +101,7 @@ function SheetBody(
 					close
 				)}
 			</div>
+			{slot && props.phone ? <div className="px-4 pb-2">{slot}</div> : null}
 			{props.description ? (
 				<DialogPrimitive.Description className="text-fg-2 text-small px-6 pb-2 max-md:px-4">
 					{props.description}

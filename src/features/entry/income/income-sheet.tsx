@@ -9,17 +9,23 @@ import { Sheet } from "~/components/ui/sheet";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
 import { ChangesBlock } from "../changes";
+import { ModeSwitch } from "../mode-switch";
 import { type EntryCatalog, useEntryCatalog } from "../shared-ui";
+import type { EntryCarry, EntryMode } from "../types";
 import { IncomeFields } from "./income-fields";
 import { useIncome } from "./use-income";
 
 /** Add income: its own sheet (owner N71), Use my plan as the primary path (N72). */
 export function IncomeSheet({
 	accountId,
+	carry,
 	onClose,
+	onMode,
 }: {
 	accountId?: string;
+	carry?: EntryCarry;
 	onClose: () => void;
+	onMode: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	const t = useTranslations("entry.income");
 	const catalog = useEntryCatalog();
@@ -38,8 +44,10 @@ export function IncomeSheet({
 	return (
 		<IncomeForm
 			accountId={accountId}
+			carry={carry}
 			catalog={catalog.data}
 			onClose={onClose}
+			onMode={onMode}
 		/>
 	);
 }
@@ -47,17 +55,21 @@ export function IncomeSheet({
 function IncomeForm({
 	catalog,
 	accountId,
+	carry,
 	onClose,
+	onMode,
 }: {
 	catalog: EntryCatalog;
 	accountId?: string;
+	carry?: EntryCarry;
 	onClose: () => void;
+	onMode: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	const t = useTranslations("entry.income");
 	const tc = useTranslations("entry.changes");
 	const toast = useToast();
 	const locale = useMoneyLocale();
-	const x = useIncome(catalog, accountId);
+	const x = useIncome(catalog, accountId, carry);
 	const { d } = x;
 	const [tried, setTried] = useState(false);
 
@@ -86,6 +98,19 @@ function IncomeForm({
 		<Sheet
 			className="md:h-150 md:max-w-4xl"
 			detent="large"
+			headerSlot={
+				<ModeSwitch
+					mode="income"
+					onMode={(m) =>
+						onMode(m, {
+							minor: d.minor,
+							currency: d.currency,
+							date: d.date,
+							note: d.note,
+						})
+					}
+				/>
+			}
 			headerSubmit={t("save")}
 			onOpenChange={(o) => !o && onClose()}
 			onSubmit={submit}

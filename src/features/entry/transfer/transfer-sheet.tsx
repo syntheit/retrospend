@@ -10,16 +10,22 @@ import { Sheet } from "~/components/ui/sheet";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
 import { ChangesBlock } from "../changes";
+import { ModeSwitch } from "../mode-switch";
 import { type EntryCatalog, useEntryCatalog } from "../shared-ui";
+import type { EntryCarry, EntryMode } from "../types";
 import { TransferFields } from "./transfer-fields";
 import { useTransfer } from "./use-transfer";
 
 export function TransferSheet({
 	fromAccountId,
+	carry,
 	onClose,
+	onMode,
 }: {
 	fromAccountId?: string;
+	carry?: EntryCarry;
 	onClose: () => void;
+	onMode: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	const t = useTranslations("entry.transfer");
 	const catalog = useEntryCatalog();
@@ -37,9 +43,11 @@ export function TransferSheet({
 		);
 	return (
 		<TransferForm
+			carry={carry}
 			catalog={catalog.data}
 			fromAccountId={fromAccountId}
 			onClose={onClose}
+			onMode={onMode}
 		/>
 	);
 }
@@ -52,17 +60,21 @@ export function TransferSheet({
 function TransferForm({
 	catalog,
 	fromAccountId,
+	carry,
 	onClose,
+	onMode,
 }: {
 	catalog: EntryCatalog;
 	fromAccountId?: string;
+	carry?: EntryCarry;
 	onClose: () => void;
+	onMode: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	const t = useTranslations("entry.transfer");
 	const tc = useTranslations("entry.changes");
 	const locale = useMoneyLocale();
 	const toast = useToast();
-	const x = useTransfer(catalog, fromAccountId);
+	const x = useTransfer(catalog, fromAccountId, carry);
 	const [tried, setTried] = useState(false);
 	const home = catalog.homeCurrency;
 	const v = x.preview?.value ?? null;
@@ -101,6 +113,19 @@ function TransferForm({
 		<Sheet
 			className="md:h-150 md:max-w-4xl"
 			detent="large"
+			headerSlot={
+				<ModeSwitch
+					mode="transfer"
+					onMode={(m) =>
+						onMode(m, {
+							minor: x.out.minor,
+							currency: x.fromCur,
+							date: x.date,
+							note: x.note,
+						})
+					}
+				/>
+			}
 			headerSubmit={verb}
 			onOpenChange={(o) => !o && onClose()}
 			onSubmit={submit}

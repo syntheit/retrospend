@@ -301,5 +301,11 @@
 	"common": {
 		"loading": "Loading",
 		"failed": "Couldn't load this. Try again."
+	},
+	"mode": {
+		"label": "Entry type",
+		"expense": "Expense",
+		"income": "Income",
+		"transfer": "Transfer"
 	}
 }

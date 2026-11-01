@@ -301,5 +301,11 @@
 	"common": {
 		"loading": "Chargement",
 		"failed": "Impossible de charger. Réessaie."
+	},
+	"mode": {
+		"label": "Type de saisie",
+		"expense": "Dépense",
+		"income": "Revenu",
+		"transfer": "Virement"
 	}
 }

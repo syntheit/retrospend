@@ -1,7 +1,7 @@
 "use client";
 
 import { fromMinor } from "@retrospend/domain/money-minor";
-import { parseMoneyInput } from "@retrospend/domain/parse";
+import { draftFromMinor, parseMoneyInput } from "@retrospend/domain/parse";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useState } from "react";
@@ -9,6 +9,7 @@ import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { generateId } from "~/lib/id";
 import { api } from "~/trpc/react";
 import { type EntryCatalog, useSettled } from "../shared-ui";
+import type { EntryCarry } from "../types";
 
 type Amount = { text: string; minor: number | null };
 const empty: Amount = { text: "", minor: null };
@@ -20,21 +21,37 @@ const empty: Amount = { text: "", minor: null };
  * The preview is transfer.create's dry run, so it lists every place that
  * moves and the exchange result against the reference.
  */
-export function useTransfer(catalog: EntryCatalog, fromAccountId?: string) {
+export function useTransfer(
+	catalog: EntryCatalog,
+	fromAccountId?: string,
+	carry?: EntryCarry,
+) {
 	const locale = useMoneyLocale();
 	const places = catalog.places;
-	const first = places.find((p) => p.id === fromAccountId) ?? places[0] ?? null;
+	// A carried amount starts on a place in its currency, when there is one.
+	const first =
+		places.find((p) => p.id === fromAccountId) ??
+		(carry?.minor ? places.find((p) => p.currency === carry.currency) : null) ??
+		places[0] ??
+		null;
 	const [from, setFrom] = useState<string | null>(first?.id ?? null);
 	const [to, setTo] = useState<string | null>(
 		places.find((p) => p.id !== first?.id)?.id ?? null,
 	);
-	const [out, setOut] = useState<Amount>(empty);
+	const [out, setOut] = useState<Amount>(() =>
+		carry?.minor && first?.currency === carry.currency
+			? {
+					text: draftFromMinor(carry.minor, locale, carry.currency),
+					minor: carry.minor,
+				}
+			: empty,
+	);
 	const [inn, setIn] = useState<Amount>(empty);
 	const [fee, setFee] = useState<Amount>(empty);
 	const [feeOpen, setFeeOpen] = useState(false);
 	const [envelopeId, setEnvelopeId] = useState<string | null>(null);
-	const [date, setDate] = useState(dayKey(new Date()));
-	const [note, setNote] = useState("");
+	const [date, setDate] = useState(carry?.date ?? dayKey(new Date()));
+	const [note, setNote] = useState(carry?.note ?? "");
 	// The sheet's own id: a second click cannot write a second move.
 	const [id] = useState(generateId);
 	const fromPlace = places.find((p) => p.id === from) ?? null;

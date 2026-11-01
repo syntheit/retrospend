@@ -14,7 +14,13 @@ import { api } from "~/trpc/react";
 import { ChangesBlock } from "../changes";
 import type { EntryCatalog } from "../shared-ui";
 import { FieldError, useSettled } from "../shared-ui";
-import type { EntryPerson, EntryRequest } from "../types";
+import { ModeSwitch } from "../mode-switch";
+import type {
+	EntryCarry,
+	EntryMode,
+	EntryPerson,
+	EntryRequest,
+} from "../types";
 import { useRateState } from "./amount-field";
 import { isShared, validate } from "./draft";
 import { ExpenseFields } from "./expense-fields";
@@ -32,6 +38,7 @@ export function ExpenseForm(p: {
 	favorites?: readonly string[];
 	onClose: () => void;
 	onOpen: (r: EntryRequest) => void;
+	onMode: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	const t = useTranslations("entry.expense");
 	const tc = useTranslations("entry.changes");
@@ -187,6 +194,21 @@ export function ExpenseForm(p: {
 								{t("add")}
 							</Button>
 						</>
+					)
+				}
+				headerSlot={
+					editing ? undefined : (
+						<ModeSwitch
+							mode="expense"
+							onMode={(m) =>
+								p.onMode(m, {
+									minor: d.minor,
+									currency: d.currency,
+									date: d.date,
+									note: d.note,
+								})
+							}
+						/>
 					)
 				}
 				headerSubmit={editing ? t("save") : t("addShort")}

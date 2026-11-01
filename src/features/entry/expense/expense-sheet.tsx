@@ -7,7 +7,12 @@ import { useSession } from "~/hooks/use-session";
 import { useSettings } from "~/hooks/use-settings";
 import { api } from "~/trpc/react";
 import { useEntryCatalog } from "../shared-ui";
-import type { EntryPerson, EntryRequest } from "../types";
+import type {
+	EntryCarry,
+	EntryMode,
+	EntryPerson,
+	EntryRequest,
+} from "../types";
 import { ExpenseForm } from "./expense-form";
 import { type ExpenseRequest, useExpenseLoad } from "./use-expense-load";
 
@@ -20,10 +25,12 @@ export function ExpenseSheet({
 	request,
 	onClose,
 	onOpen,
+	onMode,
 }: {
 	request: ExpenseRequest | Extract<EntryRequest, { kind: "expense" }>;
 	onClose: () => void;
 	onOpen: (r: EntryRequest) => void;
+	onMode: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	const t = useTranslations("entry");
 	const catalog = useEntryCatalog();
@@ -79,6 +86,7 @@ export function ExpenseSheet({
 			favorites={favorites}
 			initial={loaded}
 			onClose={onClose}
+			onMode={onMode}
 			onOpen={onOpen}
 			request={request as ExpenseRequest}
 			you={you}
