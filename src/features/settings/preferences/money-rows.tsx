@@ -7,6 +7,7 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import { useDateFormat } from "~/components/pickers/use-date-format";
 import { Switch } from "~/components/ui/switch";
+import { useHydrated } from "~/hooks/use-hydrated";
 import { SelectField } from "../select-field";
 import { SettingRow, SettingRows } from "../setting-row";
 import { CurrencyField } from "./currency-field";
@@ -37,7 +38,10 @@ export function MoneyRows({
 	const dates = useDateFormat();
 	const language = useLocale();
 	const startDay = settings.fiscalMonthStartDay ?? 1;
-	const span = monthSpan(new Date(), startDay);
+	// Read from the browser clock only after hydration, so the server HTML
+	// matches when the two sit on either side of a month change.
+	const hydrated = useHydrated();
+	const span = hydrated ? monthSpan(new Date(), startDay) : null;
 	const defaultCurrency = settings.defaultCurrency ?? settings.homeCurrency;
 	// Each option reads as the user's own amount, in the language's pattern.
 	const examples = numberFormatExamples(settings.homeCurrency, language);
@@ -108,10 +112,14 @@ export function MoneyRows({
 			<SettingRow
 				label={t("monthStart")}
 				labelFor="pf-start"
-				meta={t("monthStartMeta", {
-					start: dates.label.short(span.start),
-					end: dates.label.short(span.end),
-				})}
+				meta={
+					span
+						? t("monthStartMeta", {
+								start: dates.label.short(span.start),
+								end: dates.label.short(span.end),
+							})
+						: undefined
+				}
 			>
 				<SelectField
 					id="pf-start"

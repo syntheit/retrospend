@@ -159,7 +159,7 @@ test.describe("Developer", () => {
 			baseURL: E2E_BASE_URL,
 		});
 		const admin = await adminContext.newPage();
-		await gotoReady(admin, "/admin");
+		await gotoReady(admin, "/admin#settings");
 		const switchRow = admin.getByRole("switch", {
 			name: "Allow private webhook targets",
 		});
