@@ -1,6 +1,7 @@
 "use client";
 
 import { fromMinor } from "@retrospend/domain/money-minor";
+import { type RateDirection, rateDirection } from "@retrospend/domain/rate-format";
 import { PencilIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Money } from "~/components/money/money";
@@ -35,6 +36,24 @@ export type RateState = {
 	/** An edit keeps its saved custom rate until the rate is touched. */
 	keptCustom: boolean;
 };
+
+/**
+ * The way the pair reads, which is the way a custom rate is typed: the number
+ * beside "1 USD =" is the >= 1 one. The table's rate for the pair decides;
+ * a saved custom rate decides for a pair the table does not have.
+ */
+function directionOf(p: {
+	d: ExpenseDraft;
+	home: string;
+	rate: RateState;
+}): RateDirection {
+	const table = p.rate.opts?.options[0]?.rate.rate;
+	return rateDirection(
+		p.d.currency,
+		p.home,
+		table ?? (p.d.custom ? null : p.d.customRate),
+	);
+}
 
 /** The rate strip's data: every type the pair offers, booked by the server as Save books it. */
 export function useRateState(
@@ -93,8 +112,8 @@ export function AmountField(p: {
 	onAmount: (text: string) => void;
 	onCurrency: (code: string) => void;
 	onRate: (type: string) => void;
-	onCustom: () => void;
-	onCustomText: (text: string) => void;
+	onCustom: (flipped: boolean) => void;
+	onCustomText: (text: string, flipped: boolean) => void;
 }) {
 	const t = useTranslations("entry");
 	const { d, home, rate } = p;
@@ -185,7 +204,8 @@ function useRateStrip(
 				rate: <PencilIcon aria-hidden="true" className="size-4" />,
 			},
 		],
-		onChange: (v) => (v === "custom" ? p.onCustom() : p.onRate(v)),
+		onChange: (v) =>
+			v === "custom" ? p.onCustom(directionOf(p).flipped) : p.onRate(v),
 	};
 }
 
@@ -195,6 +215,7 @@ function RateRows(p: Parameters<typeof AmountField>[0] & { noRate: boolean }) {
 	const { label: dates } = useDateFormat();
 	const { d, home, rate } = p;
 	if (d.currency === home) return null;
+	const dir = directionOf(p);
 	return (
 		<>
 			{p.noRate && !d.custom ? (
@@ -205,24 +226,28 @@ function RateRows(p: Parameters<typeof AmountField>[0] & { noRate: boolean }) {
 							date: dates.short(d.date),
 						})}
 					</span>
-					<Button kind="secondary" onClick={p.onCustom} size="sm">
+					<Button
+						kind="secondary"
+						onClick={() => p.onCustom(dir.flipped)}
+						size="sm"
+					>
 						{t("rate.enterRate")}
 					</Button>
 				</MoneyInputRow>
 			) : null}
 			{d.custom ? (
 				<MoneyInputRow>
-					<span>{t("rate.customRate", { currency: d.currency })}</span>
+					<span>{t("rate.customRate", { currency: dir.base })}</span>
 					<Input
-						aria-label={t("rate.customAria", { home })}
+						aria-label={t("rate.customAria", { home: dir.quote })}
 						autoFocus
 						className="h-ctl-sm w-32 text-right tabular-nums"
 						inputMode="decimal"
-						onChange={(e) => p.onCustomText(e.target.value)}
+						onChange={(e) => p.onCustomText(e.target.value, dir.flipped)}
 						placeholder={t("rate.enterRate")}
 						value={d.customText}
 					/>
-					<span>{home}</span>
+					<span>{dir.quote}</span>
 				</MoneyInputRow>
 			) : null}
 			{/* A shared expense books at your default type: the rate is stated, not picked. */}

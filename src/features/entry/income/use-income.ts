@@ -2,6 +2,10 @@
 
 import { fromMinor } from "@retrospend/domain/money-minor";
 import { draftFromMinor, parseMoneyInput } from "@retrospend/domain/parse";
+import {
+	storedRateToTyped,
+	typedRateToStored,
+} from "@retrospend/domain/rate-format";
 import { readRateText } from "@retrospend/domain/rate-text";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { keepPreviousData } from "@tanstack/react-query";
@@ -160,10 +164,20 @@ export function useIncome(
 		rates: rates.data,
 		rateType,
 		pickRate: (type: string) => set({ rateType: type, custom: false }),
-		pickCustom: () => set({ custom: true }),
-		setCustomText: (text: string) => {
+		pickCustom: (flipped: boolean) =>
+			set({
+				custom: true,
+				...(d.customText === "" && d.customRate
+					? { customText: storedRateToTyped(d.customRate, flipped, locale) }
+					: {}),
+			}),
+		// The typed number reads >= 1; `flipped` stores it the other way for a weak currency.
+		setCustomText: (text: string, flipped: boolean) => {
 			const read = readRateText(text, locale);
-			set({ customText: read.text, customRate: read.rate });
+			set({
+				customText: read.text,
+				customRate: typedRateToStored(read.text, flipped, locale),
+			});
 		},
 		usePlan,
 		hasBudget: !!book.data,

@@ -1,5 +1,6 @@
 "use client";
 
+import { type RateDirection, rateDirection } from "@retrospend/domain/rate-format";
 import { PencilIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Money } from "~/components/money/money";
@@ -40,6 +41,12 @@ export function IncomeAmount({
 		: (rates?.options.find((o) => o.rateType === x.rateType) ?? null);
 	const noRate = x.foreign && !!rates?.missing;
 	const strip = useIncomeRates(x, x.foreign && !noRate);
+	// The pair reads the way its rate reads: the typed number is the >= 1 one.
+	const dir = rateDirection(
+		d.currency,
+		home,
+		rates?.options[0]?.rate.rate ?? null,
+	);
 	return (
 		<>
 			<MoneyInput
@@ -64,7 +71,7 @@ export function IncomeAmount({
 				onChange={x.setAmount}
 				onCurrencyChange={x.setCurrency}
 				rates={strip}
-				rows={<IncomeRateRows home={home} noRate={noRate} x={x} />}
+				rows={<IncomeRateRows dir={dir} noRate={noRate} x={x} />}
 				showErrors={tried}
 				value={d.amountText}
 			/>
@@ -108,18 +115,27 @@ function useIncomeRates(x: Income, show: boolean): MoneyRates | undefined {
 				rate: <PencilIcon aria-hidden="true" className="size-4" />,
 			},
 		],
-		onChange: (v) => (v === "custom" ? x.pickCustom() : x.pickRate(v)),
+		onChange: (v) =>
+			v === "custom"
+				? x.pickCustom(
+						rateDirection(
+							x.d.currency,
+							rates.homeCurrency,
+							rates.options[0]?.rate.rate ?? null,
+						).flipped,
+					)
+				: x.pickRate(v),
 	};
 }
 
 /** Inside the field under the strip: no rate (Enter rate), the typed rate. */
 function IncomeRateRows({
 	x,
-	home,
+	dir,
 	noRate,
 }: {
 	x: Income;
-	home: string;
+	dir: RateDirection;
 	noRate: boolean;
 }) {
 	const t = useTranslations("entry");
@@ -136,24 +152,28 @@ function IncomeRateRows({
 							date: dates.short(d.date),
 						})}
 					</span>
-					<Button kind="secondary" onClick={x.pickCustom} size="sm">
+					<Button
+						kind="secondary"
+						onClick={() => x.pickCustom(dir.flipped)}
+						size="sm"
+					>
 						{t("rate.enterRate")}
 					</Button>
 				</MoneyInputRow>
 			) : null}
 			{d.custom ? (
 				<MoneyInputRow>
-					<span>{t("rate.customRate", { currency: d.currency })}</span>
+					<span>{t("rate.customRate", { currency: dir.base })}</span>
 					<Input
-						aria-label={t("rate.customAria", { home })}
+						aria-label={t("rate.customAria", { home: dir.quote })}
 						autoFocus
 						className="h-ctl-sm w-32 text-right tabular-nums"
 						inputMode="decimal"
-						onChange={(e) => x.setCustomText(e.target.value)}
+						onChange={(e) => x.setCustomText(e.target.value, dir.flipped)}
 						placeholder={t("rate.enterRate")}
 						value={d.customText}
 					/>
-					<span>{home}</span>
+					<span>{dir.quote}</span>
 				</MoneyInputRow>
 			) : null}
 		</>

@@ -116,6 +116,8 @@ export function useExpenseLoad(
 					categoryTouched: true,
 					date: dayKey(new Date(e.date)),
 					rateType: e.rateType,
+					// A saved custom rate: kept until touched, and what Custom starts from.
+					customRate: e.rateType === "custom" ? e.rate : null,
 					note: e.description ?? "",
 					location: e.location ?? "",
 					spread: e.isAmortizedParent ? spreadOf(e.children?.length) : "one",
