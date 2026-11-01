@@ -2,7 +2,6 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "~/components/ui/button";
-import { cn } from "~/lib/cn";
 import { Tip } from "~/components/ui/tooltip";
 import { cn } from "~/lib/cn";
 
