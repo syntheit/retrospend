@@ -181,7 +181,9 @@ test("Add expense: errors before saving, and nothing is saved", async ({
 	await expect(
 		sheet.getByText("Pick a category", { exact: true }).first(),
 	).toBeVisible();
-	await expect(sheet.getByRole("alert")).toContainText("Pick a category");
+	await expect(
+		sheet.getByRole("alert").filter({ hasText: "Pick a category" }),
+	).toBeVisible();
 	await sheet.getByRole("button", { name: "Cancel" }).click();
 	await expect(sheet).toBeHidden();
 });
