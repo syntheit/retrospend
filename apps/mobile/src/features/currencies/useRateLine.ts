@@ -1,18 +1,37 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSession } from "@/auth/session";
 import { useRateFormat } from "@/lib/rateFormat";
 import { useRateTypeName } from "@/lib/rateTypes";
-import { useRateTable } from "./useCurrencies";
+import type { RateTable } from "./source";
 
 /**
  * "Blue · 1 USD = 1,545.20 ARS" for a currency at a rate type, from the
- * server's rate table (cached, so it works offline). A type never shows
- * without its number (R8): null when the table has no price for the type.
+ * server's rate table (read once while `enabled`). A type never shows without
+ * its number (R8): null when the table has no price for the type, or has not
+ * answered yet.
  */
-export function useRateLine() {
-	const { state } = useRateTable();
+export function useRateLine(enabled: boolean) {
+	const { api } = useSession();
 	const fmt = useRateFormat();
 	const name = useRateTypeName();
-	const rows = state.status === "ready" ? state.data.rows : null;
+	const [rows, setRows] = useState<RateTable["rows"] | null>(null);
+	useEffect(() => {
+		if (!enabled || !api) return;
+		let live = true;
+		try {
+			api.currencies
+				.rateTable()
+				.then((table) => {
+					if (live) setRows(table.rows);
+				})
+				.catch(() => {});
+		} catch {
+			// No table to read from: the line stays without a number.
+		}
+		return () => {
+			live = false;
+		};
+	}, [api, enabled]);
 	return useCallback(
 		(currency: string, type: string): string | null => {
 			const price = rows

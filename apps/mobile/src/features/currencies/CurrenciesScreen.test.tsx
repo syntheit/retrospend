@@ -240,11 +240,11 @@ describe("CurrenciesScreen", () => {
 		const rows = tree.root.findAllByType("RowMenu");
 		expect(rows.map((r) => r.props.title)).toEqual(["USD", "BRL", "CLP"]);
 		const shown = texts(tree);
-		expect(shown).toContain("ARS:146800");
+		expect(shown).toContain("1,468.00 ARS");
 		expect(shown).toContain("mobile.currencies.rateTypes.blue");
-		expect(shown).toContain("ARS:26200");
+		expect(shown).toContain("262.00 ARS");
 		// Each price is for the row's own currency, so it names no unit.
-		expect(shown.some((s) => s.startsWith("mobile.currencies.base"))).toBe(
+		expect(shown.some((s) => s.includes(" = "))).toBe(
 			false,
 		);
 		// No rate reads as words, never a figure.
@@ -290,7 +290,7 @@ describe("CurrenciesScreen", () => {
 			'mobile.currencies.detail.title {"code":"USD"}',
 		);
 		const shown = texts(tree);
-		expect(shown).toContain("ARS:141200");
+		expect(shown).toContain("1 USD = 1,412.00 ARS");
 		expect(shown).toContain("mobile.currencies.detail.default");
 		expect(shown).toContain("mobile.currencies.detail.defaultFixed");
 	});
