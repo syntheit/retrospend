@@ -93,7 +93,25 @@
 			"confirm": "Ausgabe löschen"
 		},
 		"projectAria": "Projekt, {project}",
-		"addShort": "Hinzufügen"
+		"addShort": "Hinzufügen",
+		"tabs": {
+			"label": "Details",
+			"tip": "{name}, Alt+{key}",
+			"category": "Kategorie",
+			"when": "Wann",
+			"who": "Wer",
+			"project": "Projekt",
+			"more": "Mehr"
+		},
+		"summary": {
+			"label": "Angaben",
+			"solo": "Nur du",
+			"split": "Geteilt durch {count}",
+			"splitPaid": "Geteilt durch {count}, {name} hat bezahlt"
+		},
+		"projectPeople": "{count} Personen",
+		"projectSolo": "Allein",
+		"allCategoriesFull": "Alle Kategorien"
 	},
 	"rate": {
 		"default": "Dein Standardkurs für {currency}",

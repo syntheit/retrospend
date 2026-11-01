@@ -7,6 +7,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { Money } from "~/components/money/money";
 import { Face } from "~/components/ui/avatar-face";
 import { Button } from "~/components/ui/button";
+import { FilterChips } from "~/components/ui/chip";
+import { GlyphPill } from "~/components/ui/glyph-pill";
 import { Input } from "~/components/ui/input";
 import { Segmented } from "~/components/ui/segmented";
 import {
@@ -77,35 +79,33 @@ export function SplitSection(p: {
 	];
 	return (
 		<div className="flex flex-col gap-3">
-			<div className="flex flex-wrap items-start gap-3">
+			<div className="flex flex-col gap-3">
 				<div className="flex min-w-0 flex-col gap-2">
 					<span className="text-fg-2 text-small font-medium">
 						{t("paidBy")}
 					</span>
-					<Select
-						kit
-						onValueChange={(key) => {
-							const hit = payers.find((x) => splitKey(x) === key);
-							if (hit)
-								p.x.setPayer({
-									participantType: hit.participantType,
-									participantId: hit.participantId,
-								});
-						}}
-						value={splitKey(d.paidBy)}
+					<FilterChips
+						className="max-md:flex-wrap max-md:overflow-x-visible"
+						label={t("paidBy")}
 					>
-						<SelectTrigger aria-label={t("paidBy")} className="min-w-40">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							{payers.map((x) => (
-								<SelectItem key={splitKey(x)} value={splitKey(x)}>
-									<Face imageUrl={x.avatarUrl} name={x.name} size="xs" />
-									{splitKey(x) === splitKey(p.you) ? t("you") : x.name}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
+						{payers.map((x) => (
+							<GlyphPill
+								key={splitKey(x)}
+								lead={<Face imageUrl={x.avatarUrl} name={x.name} size="xs" />}
+								onClick={() =>
+									p.x.setPayer({
+										participantType: x.participantType,
+										participantId: x.participantId,
+									})
+								}
+								selected={splitKey(x) === splitKey(d.paidBy)}
+							>
+								{splitKey(x) === splitKey(p.you)
+									? t("you")
+									: x.name.split(" ")[0]}
+							</GlyphPill>
+						))}
+					</FilterChips>
 				</div>
 				{/* On a phone the options get their own row, so none is cut off. */}
 				<div className="flex min-w-0 flex-1 flex-col gap-2 max-md:basis-full">

@@ -66,6 +66,10 @@ export type DraftErrors = Partial<
 export const isShared = (d: ExpenseDraft) =>
 	d.others.length > 0 || d.projectId !== null || d.editing?.source === "shared";
 
+/** Who and Project tabs: a new expense or an edit of a shared one, never a personal edit. */
+export const canEditPeople = (d: Pick<ExpenseDraft, "editing">) =>
+	d.editing === null || d.editing.source === "shared";
+
 export const isForeign = (d: ExpenseDraft, home: string) => d.currency !== home;
 
 /** Major units of a minor amount, as the shared service takes them. */

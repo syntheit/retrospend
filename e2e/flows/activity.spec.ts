@@ -147,7 +147,7 @@ test("Activity: shared rows, payments, accent search and Add expense", async ({
 	// A new category is not in the recents line yet: All opens the picker.
 	await dialog
 		.getByRole("group", { name: "Category" })
-		.getByRole("button", { name: "All" })
+		.getByRole("button", { name: "All categories" })
 		.click();
 	await page.getByRole("option", { name: category }).click();
 	await untilSaved(page, "entry.expense.create.save", () =>

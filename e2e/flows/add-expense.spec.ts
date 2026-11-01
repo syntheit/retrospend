@@ -69,7 +69,7 @@ test("Add expense: USD at the Official rate, preview, save and Undo", async ({
 	// The recents line fits the width; All reaches every category.
 	await sheet
 		.getByRole("group", { name: "Category" })
-		.getByRole("button", { name: "All" })
+		.getByRole("button", { name: "All categories" })
 		.click();
 	await page.getByRole("option", { name: "Subscriptions" }).click();
 
@@ -130,9 +130,10 @@ test("Add expense: split evenly with Martín, then Undo", async ({ page }) => {
 	await sheet.getByRole("textbox", { name: "Title" }).fill("E2E dinner");
 	await sheet
 		.getByRole("group", { name: "Category" })
-		.getByRole("button", { name: "All" })
+		.getByRole("button", { name: "All categories" })
 		.click();
 	await page.getByRole("option", { name: "Restaurants" }).click();
+	await sheet.getByRole("tab", { name: "Who, Alt+3" }).click();
 	await sheet
 		.getByRole("group", { name: "With" })
 		.getByRole("button", { name: /Martín/ })
@@ -147,6 +148,10 @@ test("Add expense: split evenly with Martín, then Undo", async ({ page }) => {
 	).toContainText("$3,000");
 	await expect(
 		sheet.getByRole("radio", { name: "Martín owes all" }),
+	).toBeVisible();
+	// The summary line carries the answers and opens their panels.
+	await expect(
+		sheet.getByRole("button", { name: "Split 2 ways, You paid" }),
 	).toBeVisible();
 	await expect(sheet.getByTestId("entry-changes")).toContainText("+$3,000");
 
@@ -174,31 +179,37 @@ test("Add expense: errors before saving, and nothing is saved", async ({
 	await sheet.getByRole("button", { name: "Add expense" }).click();
 	await expect(sheet.getByText("Enter an amount above zero")).toBeVisible();
 	await expect(
-		sheet.getByText("Pick a category", { exact: true }),
+		sheet.getByText("Pick a category", { exact: true }).first(),
+	).toBeVisible();
+	await expect(
+		sheet.getByRole("alert").filter({ hasText: "Pick a category" }),
 	).toBeVisible();
 	await sheet.getByRole("button", { name: "Cancel" }).click();
 	await expect(sheet).toBeHidden();
 });
 
-test("Add expense: the project picker shows each project with its people", async ({
+test("Add expense: the project tab shows each project with its people", async ({
 	page,
 }) => {
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await openV2(page, "/activity");
 	await page.keyboard.press("n");
 	const sheet = page.getByRole("dialog", { name: "New expense" });
-	await sheet.getByRole("button", { name: "Project, None" }).click();
-	const depto = page.getByRole("option", { name: /Depto Palermo/ });
+	await sheet.getByRole("tab", { name: "Project, Alt+4" }).click();
+	const projects = sheet.getByRole("list", { name: "Project" });
+	const depto = projects.getByRole("button", { name: /Depto Palermo/ });
 	// The server's head count (you and Martín) and the project's currency.
 	await expect(depto).toContainText("2 people · ARS");
 	await depto.click();
 	// The project brings its currency and its people into the sheet.
+	await expect(depto).toHaveAttribute("aria-pressed", "true");
 	await expect(
-		sheet.getByRole("button", { name: "Project, Depto Palermo" }),
+		sheet.getByRole("button", { name: "Depto Palermo", exact: true }),
 	).toBeVisible();
 	await expect(
 		sheet.getByRole("button", { name: "Currency, ARS" }),
 	).toBeVisible();
+	await sheet.getByRole("tab", { name: "Who, Alt+3" }).click();
 	await expect(
 		sheet
 			.getByRole("group", { name: "With" })

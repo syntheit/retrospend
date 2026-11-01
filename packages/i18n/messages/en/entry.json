@@ -93,7 +93,25 @@
 			"confirm": "Delete expense"
 		},
 		"projectAria": "Project, {project}",
-		"addShort": "Add"
+		"addShort": "Add",
+		"tabs": {
+			"label": "Details",
+			"tip": "{name}, Alt+{key}",
+			"category": "Category",
+			"when": "When",
+			"who": "Who",
+			"project": "Project",
+			"more": "More"
+		},
+		"summary": {
+			"label": "Answers",
+			"solo": "Just you",
+			"split": "Split {count} ways",
+			"splitPaid": "Split {count} ways, {name} paid"
+		},
+		"projectPeople": "{count} people",
+		"projectSolo": "Solo",
+		"allCategoriesFull": "All categories"
 	},
 	"rate": {
 		"default": "Your default rate for {currency}",

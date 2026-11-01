@@ -93,7 +93,25 @@
 			"confirm": "Удалить расход"
 		},
 		"projectAria": "Проект, {project}",
-		"addShort": "Добавить"
+		"addShort": "Добавить",
+		"tabs": {
+			"label": "Детали",
+			"tip": "{name}, Alt+{key}",
+			"category": "Категория",
+			"when": "Когда",
+			"who": "Кто",
+			"project": "Проект",
+			"more": "Ещё"
+		},
+		"summary": {
+			"label": "Ответы",
+			"solo": "Только вы",
+			"split": "Поровну на {count}",
+			"splitPaid": "Поровну на {count}, платил {name}"
+		},
+		"projectPeople": "{count} чел.",
+		"projectSolo": "Один",
+		"allCategoriesFull": "Все категории"
 	},
 	"rate": {
 		"default": "Ваш курс по умолчанию для {currency}",
