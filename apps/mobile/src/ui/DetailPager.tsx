@@ -194,43 +194,42 @@ export function DetailPager({
 		[onPageChange],
 	);
 
-	const pan = usePanGesture(
-		useMemo(
-			() => ({
-				enabled: count > 1,
-				activeOffsetX: [-PAGER_START, PAGER_START] as [number, number],
-				failOffsetY: [-PAGER_FAIL_Y, PAGER_FAIL_Y] as [number, number],
-				onActivate: () => {
-					"worklet";
-					// A drag that catches the strip mid-slide takes it from where it is.
-					from.value = x.value;
-				},
-				onUpdate: (event: { translationX: number }) => {
-					"worklet";
-					x.value = followOffset(
-						from.value,
-						event.translationX,
-						widthSV.value,
-						countSV.value,
-					);
-				},
-				onDeactivate: (event: { velocityX: number }) => {
-					"worklet";
-					const began = Math.round(-from.value / Math.max(widthSV.value, 1));
-					const next = settlePage(
-						x.value,
-						event.velocityX,
-						widthSV.value,
-						countSV.value,
-						began,
-					);
-					slide(-next * widthSV.value);
-					scheduleOnRN(settled, next);
-				},
-			}),
-			[count, countSV, from, settled, slide, widthSV, x],
-		),
+	const panConfig = useMemo(
+		() => ({
+			enabled: count > 1,
+			activeOffsetX: [-PAGER_START, PAGER_START] as [number, number],
+			failOffsetY: [-PAGER_FAIL_Y, PAGER_FAIL_Y] as [number, number],
+			onActivate: () => {
+				"worklet";
+				// A drag that catches the strip mid-slide takes it from where it is.
+				from.value = x.value;
+			},
+			onUpdate: (event: { translationX: number }) => {
+				"worklet";
+				x.value = followOffset(
+					from.value,
+					event.translationX,
+					widthSV.value,
+					countSV.value,
+				);
+			},
+			onDeactivate: (event: { velocityX: number }) => {
+				"worklet";
+				const began = Math.round(-from.value / Math.max(widthSV.value, 1));
+				const next = settlePage(
+					x.value,
+					event.velocityX,
+					widthSV.value,
+					countSV.value,
+					began,
+				);
+				slide(-next * widthSV.value);
+				scheduleOnRN(settled, next);
+			},
+		}),
+		[count, countSV, from, settled, slide, widthSV, x],
 	);
+	const pan = usePanGesture(panConfig);
 
 	const strip = useAnimatedStyle(() => ({
 		transform: [{ translateX: x.value }],
