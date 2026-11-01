@@ -53,6 +53,7 @@ test.describe("Admin", () => {
 		await expect(main.getByText("Sidecar")).toBeVisible();
 
 		// A link with a hash lands on its tab.
+		await gotoReady(page, "/profile");
 		await gotoReady(page, "/admin#invite-codes");
 		await expect(tabs.getByRole("tab", { name: "Invite codes" })).toHaveAttribute(
 			"aria-selected",
