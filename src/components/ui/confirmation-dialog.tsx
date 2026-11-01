@@ -65,7 +65,8 @@ export function ConfirmationDialog({
 
 	return (
 		<AlertDialog onOpenChange={onOpenChange} open={open}>
-			<AlertDialogContent>
+			{/* A title-only confirm has no description to point at. */}
+			<AlertDialogContent {...(description ? {} : { "aria-describedby": undefined })}>
 				<AlertDialogHeader>
 					<AlertDialogTitle>{title}</AlertDialogTitle>
 					{description && (
