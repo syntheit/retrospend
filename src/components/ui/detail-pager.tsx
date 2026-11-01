@@ -98,14 +98,16 @@ export function DetailPager({
 								tabIndex={on ? 0 : -1}
 								type="button"
 							>
-								{t.icon}
+								<span className="relative">
+									{t.icon}
+									{t.dot ? (
+										<span
+											aria-hidden="true"
+											className="bg-ds-accent absolute -top-1 -right-2 size-1.5 rounded-full"
+										/>
+									) : null}
+								</span>
 								<span className="text-meta max-w-full truncate">{t.label}</span>
-								{t.dot ? (
-									<span
-										aria-hidden="true"
-										className="bg-ds-accent absolute top-2 right-3 size-1.5 rounded-full"
-									/>
-								) : null}
 							</button>
 						</Tip>
 					);
