@@ -1,7 +1,13 @@
+import {
+	crossRate,
+	fromUSD,
+	isValidRate,
+	toUSD,
+	USD,
+} from "@retrospend/domain/money";
 import { TRPCError } from "@trpc/server";
 import { BASE_CURRENCY } from "~/lib/constants";
 import { normalizeDate } from "~/lib/date";
-import { fromUSD, isValidRate, toUSD, USD } from "@retrospend/domain/money";
 import { toNumberOrNull, toNumberWithDefault } from "~/lib/utils";
 import type { AssetType, Prisma, PrismaClient } from "~prisma";
 import { findExchangeRate, findExchangeRatesForDates } from "../exchange-rates";
@@ -265,6 +271,7 @@ export class WealthService {
 					balance,
 					balanceInUSD: 0,
 					balanceInTargetCurrency: 0,
+					homePerUnit: null,
 					rateMissing: true,
 				};
 			}
@@ -286,6 +293,11 @@ export class WealthService {
 					asset.currency === targetCurrency
 						? balance
 						: convertToTarget(balanceInUSD),
+				// One unit of the account's currency in the target: the rate the account is valued at.
+				homePerUnit:
+					asset.currency === targetCurrency
+						? 1
+						: crossRate(asset.currency, rate, targetCurrency, targetRate),
 				rateMissing: false,
 			};
 		});

@@ -3,6 +3,10 @@
 import { predictCategory } from "@retrospend/domain/category-matcher";
 import { toMinorUnits } from "@retrospend/domain/money";
 import { parseMoneyInput } from "@retrospend/domain/parse";
+import {
+	storedRateToTyped,
+	typedRateToStored,
+} from "@retrospend/domain/rate-format";
 import { readRateText } from "@retrospend/domain/rate-text";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
@@ -86,6 +90,7 @@ export function useExpenseDraft(
 				custom: false,
 				customText: "",
 				customRate: null,
+				savedRate: null,
 				amountText: "",
 				minor: null,
 				exact: {},
@@ -93,11 +98,23 @@ export function useExpenseDraft(
 		pickCategory: (id: string) =>
 			setD((x) => ({ ...x, ...categoryPatch(x, id), categoryTouched: true })),
 		pickRate: (type: string) => set({ rateType: type, custom: false }),
-		pickCustom: () => set({ custom: true }),
-		setCustomText: (text: string) => {
+		// `flipped`: the pair reads the other way round than it is stored (rateDirection).
+		pickCustom: (flipped: boolean) =>
+			set({
+				custom: true,
+				// A saved custom rate starts the field at the number it reads as.
+				...(d.customText === "" && d.savedRate
+					? { customText: storedRateToTyped(d.savedRate, flipped, locale) }
+					: {}),
+			}),
+		setCustomText: (text: string, flipped: boolean) => {
 			// A rate, not home money: up to 12 decimals (EUR 1.0834 into USD, anything into JPY).
+			// The typed number reads >= 1 (1 USD = 1,545.20 ARS); the stored rate is the other way for a weak currency.
 			const read = readRateText(text, locale);
-			set({ customText: read.text, customRate: read.rate });
+			set({
+				customText: read.text,
+				customRate: typedRateToStored(read.text, flipped, locale),
+			});
 		},
 		toggleYou: () => set({ youIncluded: !d.youIncluded, ...resetSplit }),
 		togglePerson: (p: EntryPerson) => {

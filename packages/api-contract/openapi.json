@@ -251,6 +251,16 @@
 													"name": {
 														"type": "string"
 													},
+													"rate": {
+														"anyOf": [
+															{
+																"type": "string"
+															},
+															{
+																"type": "null"
+															}
+														]
+													},
 													"rateType": {
 														"anyOf": [
 															{
@@ -299,6 +309,7 @@
 													"inBudget",
 													"isLiquid",
 													"rateType",
+													"rate",
 													"closedAt",
 													"interestRate",
 													"minimumPayment",
@@ -668,6 +679,16 @@
 												"name": {
 													"type": "string"
 												},
+												"rate": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"rateType": {
 													"anyOf": [
 														{
@@ -716,6 +737,7 @@
 												"inBudget",
 												"isLiquid",
 												"rateType",
+												"rate",
 												"closedAt",
 												"interestRate",
 												"minimumPayment",
@@ -2865,6 +2887,16 @@
 																"name": {
 																	"type": "string"
 																},
+																"rate": {
+																	"anyOf": [
+																		{
+																			"type": "string"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
 																"rateType": {
 																	"anyOf": [
 																		{
@@ -2913,6 +2945,7 @@
 																"inBudget",
 																"isLiquid",
 																"rateType",
+																"rate",
 																"closedAt",
 																"interestRate",
 																"minimumPayment",
@@ -3036,6 +3069,16 @@
 																"name": {
 																	"type": "string"
 																},
+																"rate": {
+																	"anyOf": [
+																		{
+																			"type": "string"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
 																"rateType": {
 																	"anyOf": [
 																		{
@@ -3084,6 +3127,7 @@
 																"inBudget",
 																"isLiquid",
 																"rateType",
+																"rate",
 																"closedAt",
 																"interestRate",
 																"minimumPayment",
@@ -3207,6 +3251,16 @@
 																"name": {
 																	"type": "string"
 																},
+																"rate": {
+																	"anyOf": [
+																		{
+																			"type": "string"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
 																"rateType": {
 																	"anyOf": [
 																		{
@@ -3255,6 +3309,7 @@
 																"inBudget",
 																"isLiquid",
 																"rateType",
+																"rate",
 																"closedAt",
 																"interestRate",
 																"minimumPayment",
@@ -3378,6 +3433,16 @@
 																"name": {
 																	"type": "string"
 																},
+																"rate": {
+																	"anyOf": [
+																		{
+																			"type": "string"
+																		},
+																		{
+																			"type": "null"
+																		}
+																	]
+																},
 																"rateType": {
 																	"anyOf": [
 																		{
@@ -3426,6 +3491,7 @@
 																"inBudget",
 																"isLiquid",
 																"rateType",
+																"rate",
 																"closedAt",
 																"interestRate",
 																"minimumPayment",
@@ -4247,6 +4313,16 @@
 										"name": {
 											"type": "string"
 										},
+										"rate": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
 										"rateType": {
 											"anyOf": [
 												{
@@ -4321,6 +4397,7 @@
 										"inBudget",
 										"isLiquid",
 										"rateType",
+										"rate",
 										"closedAt",
 										"interestRate",
 										"minimumPayment",
@@ -4679,6 +4756,16 @@
 												"name": {
 													"type": "string"
 												},
+												"rate": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"rateType": {
 													"anyOf": [
 														{
@@ -4727,6 +4814,7 @@
 												"inBudget",
 												"isLiquid",
 												"rateType",
+												"rate",
 												"closedAt",
 												"interestRate",
 												"minimumPayment",
@@ -5768,6 +5856,16 @@
 												"name": {
 													"type": "string"
 												},
+												"rate": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"rateType": {
 													"anyOf": [
 														{
@@ -5816,6 +5914,7 @@
 												"inBudget",
 												"isLiquid",
 												"rateType",
+												"rate",
 												"closedAt",
 												"interestRate",
 												"minimumPayment",
@@ -8416,6 +8515,16 @@
 												"name": {
 													"type": "string"
 												},
+												"rate": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"rateType": {
 													"anyOf": [
 														{
@@ -8464,6 +8573,7 @@
 												"inBudget",
 												"isLiquid",
 												"rateType",
+												"rate",
 												"closedAt",
 												"interestRate",
 												"minimumPayment",
@@ -62597,6 +62707,9 @@
 														},
 														"rate": {
 															"properties": {
+																"rate": {
+																	"type": "string"
+																},
 																"unit": {
 																	"$ref": "#/components/schemas/Money"
 																},
@@ -62606,7 +62719,8 @@
 															},
 															"required": [
 																"unit",
-																"value"
+																"value",
+																"rate"
 															],
 															"type": "object"
 														},
@@ -62698,6 +62812,9 @@
 													},
 													"rate": {
 														"properties": {
+															"rate": {
+																"type": "string"
+															},
 															"unit": {
 																"$ref": "#/components/schemas/Money"
 															},
@@ -62707,7 +62824,8 @@
 														},
 														"required": [
 															"unit",
-															"value"
+															"value",
+															"rate"
 														],
 														"type": "object"
 													},
@@ -63547,6 +63665,9 @@
 															}
 														]
 													},
+													"rate": {
+														"type": "string"
+													},
 													"rateType": {
 														"type": "string"
 													},
@@ -63925,6 +64046,16 @@
 														}
 													]
 												},
+												"rate": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"rateType": {
 													"anyOf": [
 														{
@@ -63968,6 +64099,7 @@
 												"amount",
 												"home",
 												"rateType",
+												"rate",
 												"date",
 												"categoryId",
 												"location",
@@ -66198,6 +66330,9 @@
 												}
 											]
 										},
+										"rate": {
+											"type": "string"
+										},
 										"rateType": {
 											"type": "string"
 										},
@@ -67317,6 +67452,16 @@
 												}
 											]
 										},
+										"rate": {
+											"anyOf": [
+												{
+													"type": "string"
+												},
+												{
+													"type": "null"
+												}
+											]
+										},
 										"rateType": {
 											"anyOf": [
 												{
@@ -67360,6 +67505,7 @@
 										"amount",
 										"home",
 										"rateType",
+										"rate",
 										"date",
 										"categoryId",
 										"location",
@@ -67646,6 +67792,16 @@
 														}
 													]
 												},
+												"rate": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"type": "null"
+														}
+													]
+												},
 												"rateType": {
 													"anyOf": [
 														{
@@ -67689,6 +67845,7 @@
 												"amount",
 												"home",
 												"rateType",
+												"rate",
 												"date",
 												"categoryId",
 												"location",
@@ -76578,6 +76735,9 @@
 														"anyOf": [
 															{
 																"properties": {
+																	"rate": {
+																		"type": "string"
+																	},
 																	"type": {
 																		"anyOf": [
 																			{
@@ -76598,6 +76758,7 @@
 																"required": [
 																	"unit",
 																	"value",
+																	"rate",
 																	"type"
 																],
 																"type": "object"
@@ -89199,6 +89360,9 @@
 																	"anyOf": [
 																		{
 																			"properties": {
+																				"rate": {
+																					"type": "string"
+																				},
 																				"type": {
 																					"type": "string"
 																				},
@@ -89212,7 +89376,8 @@
 																			"required": [
 																				"type",
 																				"unit",
-																				"value"
+																				"value",
+																				"rate"
 																			],
 																			"type": "object"
 																		},
@@ -90332,6 +90497,9 @@
 														"anyOf": [
 															{
 																"properties": {
+																	"rate": {
+																		"type": "string"
+																	},
 																	"type": {
 																		"type": "string"
 																	},
@@ -90345,7 +90513,8 @@
 																"required": [
 																	"type",
 																	"unit",
-																	"value"
+																	"value",
+																	"rate"
 																],
 																"type": "object"
 															},
@@ -91909,6 +92078,9 @@
 														"anyOf": [
 															{
 																"properties": {
+																	"rate": {
+																		"type": "string"
+																	},
 																	"type": {
 																		"type": "string"
 																	},
@@ -91922,7 +92094,8 @@
 																"required": [
 																	"type",
 																	"unit",
-																	"value"
+																	"value",
+																	"rate"
 																],
 																"type": "object"
 															},
@@ -108374,6 +108547,9 @@
 															}
 														]
 													},
+													"rate": {
+														"type": "string"
+													},
 													"rateType": {
 														"type": "string"
 													},
@@ -123858,6 +124034,9 @@
 													"anyOf": [
 														{
 															"properties": {
+																"rate": {
+																	"type": "string"
+																},
 																"unit": {
 																	"$ref": "#/components/schemas/Money"
 																},
@@ -123867,7 +124046,8 @@
 															},
 															"required": [
 																"unit",
-																"value"
+																"value",
+																"rate"
 															],
 															"type": "object"
 														},
@@ -123880,6 +124060,9 @@
 													"anyOf": [
 														{
 															"properties": {
+																"rate": {
+																	"type": "string"
+																},
 																"unit": {
 																	"$ref": "#/components/schemas/Money"
 																},
@@ -123889,7 +124072,8 @@
 															},
 															"required": [
 																"unit",
-																"value"
+																"value",
+																"rate"
 															],
 															"type": "object"
 														},

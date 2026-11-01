@@ -21,6 +21,7 @@ import { useIsMobile } from "~/hooks/use-mobile";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
 import { dayFigure, opens, toExpenseTarget, toTransactionVM } from "./to-vm";
 import { useBulkActions } from "./use-bulk-actions";
+import { useRateWord } from "./use-rate-word";
 
 type Props = {
 	rows: ActivityRowDTO[];
@@ -38,7 +39,7 @@ type Props = {
 /** One row's view model, registry target and handlers, built once per row. */
 function useEntries(rows: ActivityRowDTO[], props: Props) {
 	const t = useTranslations("activity.row");
-	const types = useTranslations("activity.rateTypes");
+	const rateWord = useRateWord();
 	return useMemo(
 		() =>
 			rows.map((row) => {
@@ -48,7 +49,7 @@ function useEntries(rows: ActivityRowDTO[], props: Props) {
 						t(p.direction === "sent" ? "paidTo" : "paidYou", {
 							name: p.counterparty,
 						}),
-					(type) => t("rate", { type: types.has(type) ? types(type) : type }),
+					rateWord,
 				);
 				return {
 					row,
@@ -57,7 +58,7 @@ function useEntries(rows: ActivityRowDTO[], props: Props) {
 					handlers: props.handlersFor(row),
 				};
 			}),
-		[rows, props.handlersFor, t, types],
+		[rows, props.handlersFor, t, rateWord],
 	);
 }
 

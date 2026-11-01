@@ -7,6 +7,7 @@
  * reach the client.
  */
 import type { Expense, Prisma, PrismaClient } from "~prisma";
+import { bookedRate } from "./booked-rate";
 import { bookedHome } from "./rate-types";
 
 export function expenseDto<T extends Expense>(row: T, homeCurrency: string) {
@@ -25,6 +26,8 @@ export function expenseDto<T extends Expense>(row: T, homeCurrency: string) {
 		amountInUSD: Number(amountInUSD),
 		exchangeRate: Number(exchangeRate),
 		home: bookedHome(row, homeCurrency),
+		/** The booked rate, unrounded: home per 1 unit of the entry's currency (a typed custom rate shows it back). */
+		rate: bookedRate(row, homeCurrency),
 	};
 }
 
@@ -46,4 +49,3 @@ type ActivityCategory = {
 	color: string;
 	icon: string | null;
 };
-

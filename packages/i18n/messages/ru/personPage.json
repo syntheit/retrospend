@@ -37,7 +37,7 @@
 		"owedToYou": "должны вам",
 		"youOwe": "вы должны",
 		"worth": "≈ <amount></amount>",
-		"at": "по курсу {type} <rate></rate>",
+		"at": "по курсу {rate}",
 		"noRate": "Курса пока нет, не входит в итог",
 		"pendingPaid": "Вы заплатили {name} <amount></amount> {date}. Ждём подтверждения от {name}",
 		"remind": "Напомнить {name}",

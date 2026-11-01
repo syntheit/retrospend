@@ -38,8 +38,7 @@
 		"change": "{change} este mês",
 		"closed": "Encerrada em {date}. Histórico mantido.",
 		"noRate": "Sem cotação de {currency}. Fora do patrimônio.",
-		"apr": "Juros {apr}",
-		"valuedAt": "Avaliada a {type}"
+		"apr": "Juros {apr}"
 	},
 	"envelope": {
 		"spent": "Gasto do planejado"

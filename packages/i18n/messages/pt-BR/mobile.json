@@ -222,7 +222,6 @@
 		"excludeAuto": "Excluído automaticamente pela categoria",
 		"rate": {
 			"title": "Câmbio",
-			"trigger": "Cotação {type}",
 			"triggerLabel": "Câmbio, {type}",
 			"find": "Buscar uma cotação",
 			"empty": "Nenhuma cotação encontrada",
@@ -1428,8 +1427,8 @@
 			"notLoggedHint": "Suas receitas e gastos ficam como estão. A diferença é guardada como “Sem registro”.",
 			"same": "Esse já é o saldo, então nada muda.",
 			"toast": "{name} agora tem {amount}",
-			"valuedAt": "Avaliada na cotação {type}",
-			"rateChange": "Avaliada em {next} a partir de hoje. Os dias anteriores mantêm a cotação {before}.",
+			"valuedAt": "Avaliada a {type}",
+			"rateChange": "Avaliada em {next} a partir de hoje. Os dias anteriores mantêm {before}.",
 			"rateFromToday": "Avaliada em {next} a partir de hoje.",
 			"error": "Não foi possível salvar. Tente de novo."
 		},
@@ -1852,7 +1851,6 @@
 		"youOwe": "Você deve {amount} a {name}",
 		"owesYou": "{name} deve {amount} a você",
 		"rate": "Cotação {currency}",
-		"rateLine": "{unit} = {value} · {type}",
 		"method": "Forma",
 		"date": "Data",
 		"methodNames": {
@@ -2831,7 +2829,6 @@
 		"missing": "Ainda não há cotação de {codes}. {count, plural, one {{names} fica} other {{names} ficam}} fora do patrimônio.",
 		"noRate": "Sem cotação",
 		"noRateSub": "Sem cotação. Fora dos totais.",
-		"base": "1 {code} =",
 		"derived": "Derivado via {home}",
 		"loading": "Carregando cotações",
 		"error": "As cotações não estão disponíveis agora",

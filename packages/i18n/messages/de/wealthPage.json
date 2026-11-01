@@ -100,13 +100,13 @@
 	},
 	"sheets": {
 		"valuedAtLabel": "Bewertet zum",
-		"valuedAt": "Bewertet zum Kurs {type}",
+		"valuedAt": "Bewertet zu {type}",
 		"noRate": "Kein {currency}-Kurs, daher zählt dieses Konto nicht zum Vermögen.",
 		"update": {
 			"title": "Saldo aktualisieren",
 			"submit": "Saldo aktualisieren",
 			"now": "Jetzt <amount></amount> · Aktualisiert am {date}",
-			"rateChange": "Ab heute zum Kurs {next} bewertet. Frühere Tage behalten den Kurs {before}."
+			"rateChange": "Ab heute zum Kurs {next} bewertet. Frühere Tage behalten {before}."
 		},
 		"account": {
 			"addTitle": "Konto hinzufügen",

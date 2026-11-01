@@ -12,6 +12,7 @@ import { withDefaultRange } from "@retrospend/api-contract";
 import { dayKey, parseDateOnlyIn } from "@retrospend/domain/time-zone";
 import { TRPCError } from "@trpc/server";
 import type * as z from "zod";
+import { bookedRate } from "~/server/services/booked-rate";
 import {
 	type DeleteManyInput,
 	deleteExpensesBulk,
@@ -79,6 +80,7 @@ export function toExpenseDto(
 		amount: moneyOf(row.amount, row.currency),
 		home: row.currency === home ? null : bookedHome(row, home),
 		rateType: row.rateType,
+		rate: row.currency === home ? null : bookedRate(row, home),
 		date: dayKey(row.date, timeZone),
 		categoryId: row.categoryId,
 		location: row.location,

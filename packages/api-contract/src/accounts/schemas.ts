@@ -124,6 +124,12 @@ export const accountItemSchema = z
 		inBudget: z.boolean(),
 		isLiquid: z.boolean(),
 		rateType: z.string().nullable(),
+		/**
+		 * What it is valued at: home currency per 1 unit of its currency,
+		 * unrounded. Null in the home currency or without a rate. Show it as a
+		 * number of at least 1, always beside the rate type.
+		 */
+		rate: z.string().nullable(),
 		closedAt: timestampSchema.nullable(),
 		interestRate: z
 			.string()

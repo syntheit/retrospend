@@ -8,6 +8,7 @@ import { USD } from "@retrospend/domain/money";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { findExchangeRatesForDates } from "~/server/exchange-rates";
 import type { Prisma } from "~prisma";
+import { bookedRate } from "../booked-rate";
 import {
 	buildCallerRoleMap,
 	deriveCanModify,
@@ -111,8 +112,13 @@ async function personalRows(db: Db, ids: string[], c: ShapeContext) {
 			: e.homeCurrency === c.rates.home && e.homeAmount !== null
 				? decimalMoney(e.homeAmount, c.rates.home)
 				: homeFromUSD(Number(e.amountInUSD), c.rates);
+		// A type is named only with its number: no booked rate, no type.
+		const bookedAt = foreign ? bookedRate(e, c.rates.home) : null;
 		const named =
-			foreign && e.rateType !== null && e.rateType !== c.defaultRateType;
+			foreign &&
+			e.rateType !== null &&
+			e.rateType !== c.defaultRateType &&
+			bookedAt !== null;
 		const kind = personalKind(e);
 		return {
 			id: e.id,
@@ -123,7 +129,9 @@ async function personalRows(db: Db, ids: string[], c: ShapeContext) {
 			category: categoryRef(e.category),
 			amount,
 			...homeField(e.currency, home, c.rates),
-			...(named && e.rateType ? { rateType: e.rateType } : {}),
+			...(named && e.rateType && bookedAt
+				? { rateType: e.rateType, rate: bookedAt }
+				: {}),
 			sortKey: home?.minor ?? null,
 			...leftOut(e, kind),
 			project: null,

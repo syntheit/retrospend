@@ -291,6 +291,7 @@ describe("rateChoices", () => {
 		type,
 		unit: brl(100),
 		value: ars(27100),
+		rate: "271",
 	});
 	const withRates: SettleContext = {
 		...context,
@@ -326,7 +327,13 @@ describe("rateChoices", () => {
 			types: ["blue", "official"],
 			current: "blue",
 			rates: [
-				{ currency: "BRL", unit: brl(100), value: ars(27100), type: "blue" },
+				{
+					currency: "BRL",
+					unit: brl(100),
+					value: ars(27100),
+					rate: "271",
+					type: "blue",
+				},
 			],
 		});
 		expect(rateChoices(withRates, allocation(rows), "official")?.current).toBe(

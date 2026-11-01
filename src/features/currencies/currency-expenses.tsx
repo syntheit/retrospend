@@ -7,6 +7,7 @@ import { RowList } from "~/components/rows/row";
 import { TransactionRow } from "~/components/rows/transaction-row";
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { toTransactionVM } from "~/features/activity/to-vm";
+import { useRateWord } from "~/features/activity/use-rate-word";
 import { api } from "~/trpc/react";
 
 const RECENT = 5;
@@ -20,7 +21,7 @@ const RECENT = 5;
 export function CurrencyExpenses({ code }: { code: string }) {
 	const t = useTranslations("currenciesPage.expenses");
 	const row = useTranslations("activity.row");
-	const types = useTranslations("activity.rateTypes");
+	const rateWord = useRateWord();
 	const spending = api.exchangeRate.spending.useQuery(
 		{ currency: code },
 		{ staleTime: 30_000 },
@@ -77,10 +78,7 @@ export function CurrencyExpenses({ code }: { code: string }) {
 											row(p.direction === "sent" ? "paidTo" : "paidYou", {
 												name: p.counterparty,
 											}),
-										(type) =>
-											row("rate", {
-												type: types.has(type) ? types(type) : type,
-											}),
+										rateWord,
 									)}
 								/>
 							))}

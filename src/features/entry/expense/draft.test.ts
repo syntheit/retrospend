@@ -29,6 +29,7 @@ const base: ExpenseDraft = {
 	custom: false,
 	customText: "",
 	customRate: null,
+	savedRate: null,
 	projectId: null,
 	youIncluded: true,
 	others: [],

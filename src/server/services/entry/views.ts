@@ -13,6 +13,8 @@ import type { TransferValue } from "../transfers/create.mutation";
 export interface RatePair {
 	readonly unit: Money;
 	readonly value: Money;
+	/** The same rate unrounded (12 decimals max): quote units per one base unit. Clients show it as a number of at least 1 (1 USD = 1,545.20 ARS). */
+	readonly rate: string;
 }
 
 const money = (amount: string, currency: string): Money => ({
@@ -21,7 +23,7 @@ const money = (amount: string, currency: string): Money => ({
 });
 
 export function ratePair(base: string, quote: string, value: string): RatePair {
-	return { unit: money("1", base), value: money(value, quote) };
+	return { unit: money("1", base), value: money(value, quote), rate: value };
 }
 
 export interface RateOptionView {

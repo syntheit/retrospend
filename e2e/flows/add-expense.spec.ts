@@ -63,7 +63,7 @@ test("Add expense: USD at the Official rate, preview, save and Undo", async ({
 	// Every rate type the pair offers sits beside the amount, the default pressed.
 	const rates = sheet.getByRole("group", { name: "Rate" });
 	await expect(
-		rates.getByRole("button", { name: /Official \$1,450/ }),
+		rates.getByRole("button", { name: /Official · 1 USD = 1,450\.00 ARS/ }),
 	).toHaveAttribute("aria-pressed", "true");
 	await expect(rates.getByRole("button", { name: "Custom" })).toBeVisible();
 	// The recents line fits the width; All reaches every category.

@@ -222,7 +222,6 @@
 		"excludeAuto": "Automatisch ausgeschlossen, laut Kategorie",
 		"rate": {
 			"title": "Wechselkurs",
-			"trigger": "Kurs: {type}",
 			"triggerLabel": "Wechselkurs, {type}",
 			"find": "Kursart suchen",
 			"empty": "Keine Kursart passt",
@@ -1428,8 +1427,8 @@
 			"notLoggedHint": "Deine Einnahmen und Ausgaben bleiben, wie sie sind. Die Differenz wird als Nicht erfasst gebucht.",
 			"same": "Das ist schon der Saldo, es ändert sich also nichts.",
 			"toast": "{name} steht jetzt bei {amount}",
-			"valuedAt": "Bewertet zum Kurs {type}",
-			"rateChange": "Ab heute bewertet zu {next}. Frühere Tage behalten den Kurs {before}.",
+			"valuedAt": "Bewertet zu {type}",
+			"rateChange": "Ab heute bewertet zu {next}. Frühere Tage behalten {before}.",
 			"rateFromToday": "Ab heute bewertet zu {next}.",
 			"error": "Das ließ sich nicht speichern. Versuche es erneut."
 		},
@@ -1852,7 +1851,6 @@
 		"youOwe": "Du schuldest {name} {amount}",
 		"owesYou": "{name} schuldet dir {amount}",
 		"rate": "Kurs {currency}",
-		"rateLine": "{unit} = {value} · {type}",
 		"method": "Zahlungsart",
 		"date": "Datum",
 		"methodNames": {
@@ -2831,7 +2829,6 @@
 		"missing": "Noch kein Kurs für {codes}. {count, plural, one {{names} zählt} other {{names} zählen}} nicht zum Vermögen.",
 		"noRate": "Kein Kurs",
 		"noRateSub": "Kein Kurs. Zählt nicht zu den Summen.",
-		"base": "1 {code} =",
 		"derived": "Über {home} abgeleitet",
 		"loading": "Kurse werden geladen",
 		"error": "Kurse sind gerade nicht verfügbar",

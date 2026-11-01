@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Money } from "~/components/money/money";
 import { MoneyInput, MoneyInputRow } from "~/components/money/money-input";
+import { useRateFormat } from "~/components/money/use-rate-format";
 import { AnswerLine, type AnswerPart } from "~/components/ui/answer-line";
 import type { DetailTab } from "~/components/ui/detail-pager";
 import { Input } from "~/components/ui/input";
@@ -49,6 +50,7 @@ export function TransferFields({
 }) {
 	const t = useTranslations("entry.transfer");
 	const name = useRateTypeName();
+	const fmt = useRateFormat();
 	const { days, dayLabel } = useDays(today);
 	const [tab, setTab] = useState<TabId>("from");
 	const home = catalog.homeCurrency;
@@ -181,7 +183,12 @@ export function TransferFields({
 												{vs && ref && v.reference ? (
 													<>
 														{" · "}
-														{ref} <Money value={v.reference.value} />
+														{ref}{" "}
+														{fmt.number(
+															v.reference.unit.currency,
+															v.reference.value.currency,
+															v.reference.rate,
+														)}
 														{" · "}
 														{vs.minor === 0
 															? t("vsSame", { type: ref })

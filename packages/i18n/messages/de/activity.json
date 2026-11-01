@@ -39,8 +39,7 @@
 	},
 	"row": {
 		"paidTo": "Du hast {name} bezahlt",
-		"paidYou": "{name} hat dich bezahlt",
-		"rate": "Kurs: {type}"
+		"paidYou": "{name} hat dich bezahlt"
 	},
 	"actions": {
 		"deleted": "{name} gelöscht",

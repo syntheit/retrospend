@@ -222,7 +222,6 @@
 		"excludeAuto": "Excluido automáticamente según la categoría",
 		"rate": {
 			"title": "Tipo de cambio",
-			"trigger": "Tipo {type}",
 			"triggerLabel": "Tipo de cambio, {type}",
 			"find": "Buscar un tipo",
 			"empty": "Ningún tipo coincide",
@@ -1428,8 +1427,8 @@
 			"notLoggedHint": "Tus ingresos y gastos siguen igual. La diferencia se guarda como «Sin registrar».",
 			"same": "Ese ya es el saldo, así que no cambia nada.",
 			"toast": "{name} ahora tiene {amount}",
-			"valuedAt": "Valuada a la cotización {type}",
-			"rateChange": "Valuada a {next} desde hoy. Los días anteriores conservan la cotización {before}.",
+			"valuedAt": "Valuada a {type}",
+			"rateChange": "Valuada a {next} desde hoy. Los días anteriores conservan {before}.",
 			"rateFromToday": "Valuada a {next} desde hoy.",
 			"error": "No se pudo guardar. Inténtalo de nuevo."
 		},
@@ -1852,7 +1851,6 @@
 		"youOwe": "Le debes a {name} {amount}",
 		"owesYou": "{name} te debe {amount}",
 		"rate": "Cotización {currency}",
-		"rateLine": "{unit} = {value} · {type}",
 		"method": "Medio",
 		"date": "Fecha",
 		"methodNames": {
@@ -2831,7 +2829,6 @@
 		"missing": "Aún no hay tipo de cambio de {codes}. {count, plural, one {{names} queda} other {{names} quedan}} fuera del patrimonio.",
 		"noRate": "Sin tipo de cambio",
 		"noRateSub": "Sin tipo de cambio. Fuera de los totales.",
-		"base": "1 {code} =",
 		"derived": "Derivado a través de {home}",
 		"loading": "Cargando tipos de cambio",
 		"error": "Los tipos de cambio no están disponibles ahora",

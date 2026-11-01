@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode, Ref } from "react";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { AccountTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
+import { useRateFormat } from "~/components/money/use-rate-format";
 import { AccountRow } from "~/components/rows/account-row";
 import { RowList } from "~/components/rows/row";
 import { ReorderGroup, SortableItem } from "./reorder";
@@ -32,6 +33,7 @@ export function Rows({
 	onMove?: (from: number, to: number) => void;
 }) {
 	const rate = useRateLabel();
+	const fmt = useRateFormat();
 	const row = (
 		a: WealthAccount,
 		extra: {
@@ -61,7 +63,16 @@ export function Rows({
 						change: null,
 						// The sub line of wealth.html: the code, then how it counts.
 						detail: {
-							valuedAt: a.rateType ? rate(a.rateType) : null,
+							// The type never shows without its number (R8).
+							valuedAt:
+								a.rateType && a.home
+									? fmt.typed(
+											rate(a.rateType),
+											a.amount.currency,
+											a.home.currency,
+											a.rate,
+										)
+									: null,
 							// APR as typed (118 is 118%), in hundredths for the formatter.
 							apr: a.apr != null ? Math.round(a.apr * 100) : null,
 							noRate: a.home === null,

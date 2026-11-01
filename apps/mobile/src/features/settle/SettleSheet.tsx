@@ -6,6 +6,7 @@ import type { PersonIdentity } from "@/features/people/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { readAmount } from "@/features/write/amount";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
+import { useRateFormat } from "@/lib/rateFormat";
 import { useRateTypeName } from "@/lib/rateTypes";
 import { useTheme } from "@/theme";
 import { FixedCurrency } from "@/ui/AmountField";
@@ -120,6 +121,7 @@ function SettleComposer({
 	const locale = useMoneyLocale();
 	const day = useDayWords();
 	const rateName = useRateTypeName();
+	const rateFmt = useRateFormat();
 	const flow = useSettle({ type: person.type, id: person.id }, true);
 	const methodName = useMethodName(flow.shared);
 	const first = person.name.split(/\s+/)[0] ?? person.name;
@@ -225,7 +227,14 @@ function SettleComposer({
 			? [
 					{
 						key: "rate",
-						text: rateName(shownRates.current),
+						// A type carries its number (R8).
+						text:
+							(shownRates.rates[0]
+								? rateFmt.withType(
+										rateName(shownRates.current),
+										shownRates.rates[0],
+									)
+								: null) ?? rateName(shownRates.current),
 						page: at("rate"),
 					},
 				]

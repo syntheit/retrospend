@@ -1,13 +1,12 @@
-import type { Money } from "@retrospend/domain/money-minor";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useMoneyText } from "@/features/read/useMoneyText";
+import { useRateFormat } from "@/lib/rateFormat";
 import { useRateTypeName } from "@/lib/rateTypes";
 import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
 import { Text } from "@/ui/Text";
 import { FieldLabel } from "@/ui/TextField";
-import { offeredMethods, type RateChoices } from "./plan";
+import { offeredMethods, type RateChoices, type RateRead } from "./plan";
 import type { SharedMethod } from "./useSettle";
 
 function ChipRow({ children }: { children: React.ReactNode }) {
@@ -33,21 +32,24 @@ export function RateChips({
 }: {
 	choices: RateChoices;
 	/** What one unit of the converting currency is worth at each type, from the server. */
-	values: Record<string, Money>;
+	values: Record<string, RateRead>;
 	onPick: (type: string) => void;
 }) {
 	const t = useTranslations("mobile.settle");
-	const money = useMoneyText();
 	const rateName = useRateTypeName();
+	const fmt = useRateFormat();
 	const { space } = useTheme();
 	const label = t("rate", { currency: choices.currencies.join(", ") });
 	const single = choices.currencies.length === 1 && choices.types.length > 0;
 	const chipLabel = (type: string): string => {
-		const value =
-			values[type] ??
-			(choices.current === type ? choices.rates[0]?.value : undefined);
-		return single && value
-			? t("rateChip", { type: rateName(type), value: money(value) })
+		const read =
+			values[type] ?? (choices.current === type ? choices.rates[0] : undefined);
+		// The type carries its number (R8): "Blue 1,468.00 ARS" under "{currency} rate".
+		const number = read
+			? fmt.number(read.unit.currency, read.value.currency, read.rate)
+			: null;
+		return single && number
+			? t("rateChip", { type: rateName(type), value: number })
 			: rateName(type);
 	};
 	return (
@@ -67,11 +69,7 @@ export function RateChips({
 			) : null}
 			{(single ? [] : choices.rates).map((rate) => (
 				<Text key={rate.currency} tabular tone="fg2" variant="small">
-					{t("rateLine", {
-						unit: money(rate.unit),
-						value: money(rate.value),
-						type: rateName(rate.type),
-					})}
+					{fmt.withType(rateName(rate.type), rate)}
 				</Text>
 			))}
 		</View>

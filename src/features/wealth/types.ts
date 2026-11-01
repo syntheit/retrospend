@@ -39,8 +39,12 @@ export type WealthAccount = {
 	liquid: boolean;
 	/** The rate type the account is valued at, when its currency has several. */
 	rateType: string | null;
+	/** Home per 1 unit of the account's currency, unrounded; null in home or without a rate. Show it with the formatter, always beside the type. */
+	rate: number | null;
 	/** Every rate type the server has for the account's currency. */
 	rateTypes: string[];
+	/** Home per 1 unit of the account's currency at each of those types, unrounded text. */
+	typeRates: Record<string, string>;
 	/**
 	 * How the account is valued as stored: its rate type and, for a custom
 	 * rate, the rate as typed (exact decimal text). Sent back on save, so an

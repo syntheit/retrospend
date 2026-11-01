@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Money } from "~/components/money/money";
+import { useRateFormat } from "~/components/money/use-rate-format";
 import { useRowDates } from "~/components/rows/dates";
 import { Button } from "~/components/ui/button";
 import { FilterChip, FilterChips } from "~/components/ui/chip";
@@ -23,6 +24,7 @@ type Allocation = NonNullable<Preview["value"]["allocation"]>;
 function Rates({ s, allocation }: { s: SettleState; allocation: Allocation }) {
 	const t = useTranslations("settleSheet");
 	const name = useRateTypeName();
+	const fmt = useRateFormat();
 	const c = s.ctx;
 	const pay = allocation.amount.currency;
 	const currencies = [
@@ -61,8 +63,7 @@ function Rates({ s, allocation }: { s: SettleState; allocation: Allocation }) {
 			)}
 			{rates.map(({ cur, rate }) => (
 				<span className="text-fg-2 text-small" key={cur}>
-					<Money value={rate.unit} /> = <Money value={rate.value} /> ·{" "}
-					{name(rate.type)}
+					{fmt.withType(name(rate.type), rate)}
 				</span>
 			))}
 		</div>

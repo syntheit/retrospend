@@ -90,7 +90,11 @@ export function FeedbackList({ filter }: { filter: Filter }) {
 		return (
 			<Empty
 				action={
-					<Button kind="secondary" onClick={() => void query.refetch()} size="sm">
+					<Button
+						kind="secondary"
+						onClick={() => void query.refetch()}
+						size="sm"
+					>
 						{t("retry")}
 					</Button>
 				}
@@ -133,6 +137,7 @@ export function FeedbackList({ filter }: { filter: Filter }) {
 									size="sm"
 								/>
 							}
+							key={item.id}
 							lead={
 								<Face
 									imageUrl={
@@ -143,7 +148,6 @@ export function FeedbackList({ filter }: { filter: Filter }) {
 									name={item.user.name}
 								/>
 							}
-							key={item.id}
 							open={{
 								label: t("openEntry", { name: item.user.name }),
 								onOpen: () => setOpenId(item.id),
@@ -152,7 +156,9 @@ export function FeedbackList({ filter }: { filter: Filter }) {
 								<RowSub
 									parts={[
 										item.user.name,
-										t(`category.${item.category === "bug" || item.category === "idea" ? item.category : "other"}`),
+										t(
+											`category.${item.category === "bug" || item.category === "idea" ? item.category : "other"}`,
+										),
 										{ shrink: pageName(item.pageUrl) },
 										version,
 										platform === "web"

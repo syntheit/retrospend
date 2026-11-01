@@ -2,16 +2,11 @@ import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useFormatter, useLocale, useTranslations } from "use-intl";
 import { localCurrencyName } from "@/lib/currency-names";
-import { useFormatMoney } from "@/lib/money";
+import { useRateFormat } from "@/lib/rateFormat";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
 import { Text } from "@/ui/Text";
-import {
-	type CurrencyRow,
-	priceCents,
-	type RatePrice,
-	rateTypeKey,
-} from "./source";
+import { type CurrencyRow, type RatePrice, rateTypeKey } from "./source";
 
 /** A rate type's name: Official, Blue, MEP; an unknown one capitalized. */
 export function useRateLabel() {
@@ -42,11 +37,21 @@ export function useCurrencyName() {
 		sentenceCaseName(localCurrencyName(code, locale), locale);
 }
 
-/** A price as the server sent it, through the one formatter, with its places. */
+/**
+ * A price through the shared rate formatter (R8): "1 USD = 1,545.20 ARS" or,
+ * where the screen already names the one unit, "1,545.20 ARS".
+ */
 export function usePriceText() {
-	const { format } = useFormatMoney();
-	return (price: RatePrice) =>
-		format(price, { places: price.places, cents: priceCents(price) }) ?? "";
+	const fmt = useRateFormat();
+	return (price: RatePrice, showBase: boolean) => {
+		// The price counts `minor` x 10^-places of its currency per 1 base.
+		const perBase = price.minor / 10 ** price.places;
+		return (
+			(showBase
+				? fmt.rate(price.base, price.currency, perBase)
+				: fmt.inUnit(price.base, price.base, price.currency, perBase)) ?? ""
+		);
+	};
 }
 
 /** A rate day ("Oct 21"), in the app language. */
@@ -61,9 +66,9 @@ export function useDayText() {
 }
 
 /**
- * A price, right-aligned with tabular figures. `showBase` adds the single
- * unit it is for ("1 USD =") in muted text, where the screen does not
- * already name one unit for every price.
+ * A price, right-aligned with tabular figures. `showBase` words the whole
+ * rate ("1 USD = 1,545.20 ARS") where the screen does not already name one
+ * unit for every price.
  */
 export function PriceText({
 	price,
@@ -74,27 +79,16 @@ export function PriceText({
 	showBase: boolean;
 	strong?: boolean;
 }) {
-	const t = useTranslations("mobile.currencies");
 	const text = usePriceText();
-	const { space } = useTheme();
 	return (
-		<View
-			style={{ flexDirection: "row", alignItems: "baseline", gap: space[1] }}
+		<Text
+			numberOfLines={1}
+			style={{ textAlign: "right" }}
+			tabular
+			weight={strong ? "semibold" : "medium"}
 		>
-			{showBase ? (
-				<Text tone="fg3" variant="meta">
-					{t("base", { code: price.base })}
-				</Text>
-			) : null}
-			<Text
-				numberOfLines={1}
-				style={{ textAlign: "right" }}
-				tabular
-				weight={strong ? "semibold" : "medium"}
-			>
-				{text(price)}
-			</Text>
-		</View>
+			{text(price, showBase)}
+		</Text>
 	);
 }
 

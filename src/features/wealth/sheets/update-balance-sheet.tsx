@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Money } from "~/components/money/money";
 import { MoneyInput } from "~/components/money/money-input";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
+import { useRateFormat } from "~/components/money/use-rate-format";
 import { useRowDates } from "~/components/rows/dates";
 import { Sheet } from "~/components/ui/sheet";
 import type { WealthAccount } from "../types";
@@ -40,11 +41,23 @@ export function UpdateBalanceSheet({
 	const locale = useMoneyLocale();
 	const { short } = useRowDates();
 	const rateLabel = useRateLabel();
+	const fmt = useRateFormat();
 	const currency = account.amount.currency;
 	const [text, setText] = useState(() => startText(account, locale));
 	const [type, setType] = useState(account.rateType);
 	const [tried, setTried] = useState(false);
 	const result = parseMoneyInput(text, locale, currency);
+	const home = account.home?.currency ?? null;
+	// A type's name always carries its number (R8).
+	const named = (key: string | null) => {
+		if (!key) return "";
+		const label = rateLabel(key);
+		return (
+			(home
+				? fmt.typed(label, currency, home, account.typeRates[key])
+				: null) ?? label
+		);
+	};
 	const changed =
 		type != null && account.rateType != null && type !== account.rateType;
 	return (
@@ -102,10 +115,10 @@ export function UpdateBalanceSheet({
 					>
 						{changed
 							? t("update.rateChange", {
-									next: rateLabel(type),
-									before: rateLabel(account.rateType ?? ""),
+									next: named(type),
+									before: named(account.rateType),
 								})
-							: t("valuedAt", { type: rateLabel(type) })}
+							: t("valuedAt", { type: named(type) })}
 					</p>
 				) : null}
 			</div>

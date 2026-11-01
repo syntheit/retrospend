@@ -9,8 +9,9 @@
  * she paid ARS 5,000 of it (pending, so it does not count for Sofía yet,
  * I5). Rates (Blue, per USD): ARS 1,355 and BRL 5, so BRL 1 = ARS 271.
  */
-import { beforeAll, describe, expect, it } from "vitest";
+
 import { dayKey } from "@retrospend/domain/time-zone";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
 	applyPayment,
 	previewPayment,
@@ -188,6 +189,7 @@ describe("people.page", () => {
 				type: "blue",
 				unit: { minor: 100, currency: "BRL" },
 				value: ars(27_100),
+				rate: "271",
 			},
 		});
 		expect(page.scopes.map((s) => [s.project?.name ?? null, s.lines])).toEqual([

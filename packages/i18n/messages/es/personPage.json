@@ -37,7 +37,7 @@
 		"owedToYou": "te deben",
 		"youOwe": "debes",
 		"worth": "≈ <amount></amount>",
-		"at": "a {type} <rate></rate>",
+		"at": "a {rate}",
 		"noRate": "Todavía sin cotización, fuera del total",
 		"pendingPaid": "Le pagaste a {name} <amount></amount> el {date}. Esperando que {name} confirme",
 		"remind": "Recordarle a {name}",

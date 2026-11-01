@@ -11,8 +11,8 @@ export type PaymentTitle = (
 	p: NonNullable<ActivityRowDTO["payment"]>,
 ) => string;
 
-/** Words a rate type for the amount's tip ("Official rate"). */
-export type RateWord = (rateType: string) => string;
+/** Words a row's rate for the amount's tip ("Official · 1 USD = 1,545.20 ARS"); null: no tip. */
+export type RateWord = (row: ActivityRowDTO) => string | null;
 
 /** Figure ids for the audit: one per row amount and share (scope = row id). */
 export const rowFigure = (id: string) => `entry.amount:${id}`;
@@ -25,6 +25,7 @@ export function toTransactionVM(
 	paymentTitle: PaymentTitle,
 	rateWord?: RateWord,
 ): TransactionVM {
+	const rateTip = rateWord?.(row);
 	return {
 		id: row.id,
 		title: row.payment ? paymentTitle(row.payment) : row.title,
@@ -37,7 +38,7 @@ export function toTransactionVM(
 		amount: row.amount,
 		...(row.home !== undefined ? { home: row.home } : {}),
 		// Only a type that is not the default reaches the row (GUIDELINE §7).
-		...(row.rateType && rateWord ? { rateTip: rateWord(row.rateType) } : {}),
+		...(rateTip ? { rateTip } : {}),
 		...(row.share
 			? { share: row.share, shareFigure: shareFigure(row.id) }
 			: {}),

@@ -39,8 +39,7 @@
 	},
 	"row": {
 		"paidTo": "Вы заплатили: {name}",
-		"paidYou": "{name} заплатил(а) вам",
-		"rate": "Курс: {type}"
+		"paidYou": "{name} заплатил(а) вам"
 	},
 	"actions": {
 		"deleted": "Удалено: {name}",

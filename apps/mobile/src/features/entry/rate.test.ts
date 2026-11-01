@@ -10,12 +10,12 @@ const options: RateOptions = {
 	options: [
 		{
 			rateType: "official",
-			rate: { unit: usd1, value: ars(105_000) },
+			rate: { unit: usd1, value: ars(105_000), rate: "1050" },
 			home: ars(1_260_000),
 		},
 		{
 			rateType: "blue",
-			rate: { unit: usd1, value: ars(146_500) },
+			rate: { unit: usd1, value: ars(146_500), rate: "1465" },
 			home: ars(1_758_000),
 		},
 	],
@@ -43,7 +43,14 @@ describe("rateView: the rate row reads the server's options", () => {
 	});
 
 	it("shows a typed rate as the server booked it, nothing before it answers", () => {
-		const typed = { rateType: null, custom: true, customText: "1200" };
+		const typed = {
+			rateType: null,
+			custom: true,
+			customText: "1200",
+			customFlipped: false,
+			savedRate: null,
+			customEdited: false,
+		};
 		expect(rateView(options, typed)).toMatchObject({
 			type: "custom",
 			home: null,
@@ -52,7 +59,7 @@ describe("rateView: the rate row reads the server's options", () => {
 			...options,
 			custom: {
 				rateType: "custom",
-				rate: { unit: usd1, value: ars(120_000) },
+				rate: { unit: usd1, value: ars(120_000), rate: "1200" },
 				home: ars(1_440_000),
 			},
 		};

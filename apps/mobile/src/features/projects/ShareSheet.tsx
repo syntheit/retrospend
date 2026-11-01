@@ -2,8 +2,8 @@ import * as Clipboard from "expo-clipboard";
 import { useEffect, useState } from "react";
 import { Alert, Platform, Share, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useSession } from "@/auth/session";
 import { useServerBaseUrl } from "@/auth/server-connection";
+import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { announceEntryChange } from "@/features/entry/events";
 import { Note, SheetBody } from "@/features/write/parts";
@@ -230,7 +230,9 @@ export function ShareSheet({
 									);
 								})
 							: null}
-						{flow.failed ? <Note tone="attention">{t("linkError")}</Note> : null}
+						{flow.failed ? (
+							<Note tone="attention">{t("linkError")}</Note>
+						) : null}
 						<Note>{t("linksHint")}</Note>
 					</View>
 				) : null}
@@ -243,9 +245,7 @@ export function ShareSheet({
 						onChange={(on) => void changePublic(on)}
 						value={isPublic}
 					/>
-					{canSetPublic(page.myRole) ? null : (
-						<Note>{t("publicOwner")}</Note>
-					)}
+					{canSetPublic(page.myRole) ? null : <Note>{t("publicOwner")}</Note>}
 					{isPublic && pageUrl ? (
 						<View
 							style={{

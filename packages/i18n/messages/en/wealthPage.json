@@ -100,13 +100,13 @@
 	},
 	"sheets": {
 		"valuedAtLabel": "Valued at",
-		"valuedAt": "Valued at the {type} rate",
+		"valuedAt": "Valued at {type}",
 		"noRate": "No {currency} rate, so this account is left out of net worth.",
 		"update": {
 			"title": "Update balance",
 			"submit": "Update balance",
 			"now": "Now <amount></amount> · Updated {date}",
-			"rateChange": "Valued at {next} from today. Earlier days keep the {before} rate."
+			"rateChange": "Valued at {next} from today. Earlier days keep {before}."
 		},
 		"account": {
 			"addTitle": "Add account",

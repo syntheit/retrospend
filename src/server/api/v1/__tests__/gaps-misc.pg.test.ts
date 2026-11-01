@@ -46,7 +46,13 @@ describe("gap-closing reads and small writes", () => {
 		headers: Record<string, string>,
 		body?: unknown,
 		key?: string,
-	) => call(path, { method, headers: { ...ip, ...headers }, body, idempotent: key ?? true });
+	) =>
+		call(path, {
+			method,
+			headers: { ...ip, ...headers },
+			body,
+			idempotent: key ?? true,
+		});
 	const get = (path: string, headers = as) =>
 		call(path, { headers: { ...ip, ...headers } });
 
@@ -84,7 +90,11 @@ describe("gap-closing reads and small writes", () => {
 			const day = TODAY.toISOString().slice(0, 10);
 			const strip = await expectBody<{
 				homeCurrency: string;
-				options: { rateType: string; rate: { value: Money }; home: Money | null }[];
+				options: {
+					rateType: string;
+					rate: { value: Money; rate: string };
+					home: Money | null;
+				}[];
 				missing: unknown;
 			}>(
 				await get(`/entry/rate-options?currency=USD&date=${day}&amount=10`),
@@ -93,6 +103,8 @@ describe("gap-closing reads and small writes", () => {
 			expect(strip.missing).toBeNull();
 			const blue = strip.options.find((o) => o.rateType === "blue");
 			expect(blue?.rate.value).toEqual({ minor: 146_800, currency: "ARS" });
+			// The unrounded rate rides along, so a weak currency never reads 0.00.
+			expect(Number(blue?.rate.rate)).toBe(1468);
 			expect(blue?.home).toEqual({ minor: 1_468_000, currency: "ARS" });
 			// Your home currency offers none.
 			const home = await expectBody<{ options: unknown[] }>(
@@ -125,15 +137,19 @@ describe("gap-closing reads and small writes", () => {
 				"bad_request",
 			);
 			const cleared = await expectBody<{ items: unknown[] }>(
-				await send("PUT", "/entry/default-rate-types/ARS", as, { rateType: null }),
+				await send("PUT", "/entry/default-rate-types/ARS", as, {
+					rateType: null,
+				}),
 				contract.entry.setDefaultRateType,
 			);
 			expect(cleared.items).toEqual([]);
 			expect(
-				(await expectBody<{ items: unknown[] }>(
-					await get("/entry/default-rate-types", asOther),
-					contract.entry.defaultRateTypes,
-				)).items,
+				(
+					await expectBody<{ items: unknown[] }>(
+						await get("/entry/default-rate-types", asOther),
+						contract.entry.defaultRateTypes,
+					)
+				).items,
 			).toEqual([]);
 		});
 	});
@@ -156,11 +172,19 @@ describe("gap-closing reads and small writes", () => {
 			expect(await adminDb.needsYouSnooze.count({ where: { userId } })).toBe(1);
 
 			// Someone else's snooze list is their own.
-			await send("DELETE", `/needs-you/snoozes/${encodeURIComponent(itemId)}`, asOther);
+			await send(
+				"DELETE",
+				`/needs-you/snoozes/${encodeURIComponent(itemId)}`,
+				asOther,
+			);
 			expect(await adminDb.needsYouSnooze.count({ where: { userId } })).toBe(1);
 
 			await expectBody(
-				await send("DELETE", `/needs-you/snoozes/${encodeURIComponent(itemId)}`, as),
+				await send(
+					"DELETE",
+					`/needs-you/snoozes/${encodeURIComponent(itemId)}`,
+					as,
+				),
 				contract["needs-you"].unsnooze,
 			);
 			expect(await adminDb.needsYouSnooze.count({ where: { userId } })).toBe(0);
@@ -244,17 +268,26 @@ describe("gap-closing reads and small writes", () => {
 					createdById: userId,
 					splitParticipants: {
 						create: [
-							{ participantType: "user", participantId: userId, shareAmount: "5", verificationStatus: "ACCEPTED" },
-							{ participantType: "user", participantId: other.user.id, shareAmount: "5", verificationStatus: "ACCEPTED" },
+							{
+								participantType: "user",
+								participantId: userId,
+								shareAmount: "5",
+								verificationStatus: "ACCEPTED",
+							},
+							{
+								participantType: "user",
+								participantId: other.user.id,
+								shareAmount: "5",
+								verificationStatus: "ACCEPTED",
+							},
 						],
 					},
 				},
 			});
 			expect(shared.id).toBeTruthy();
-			const frequent = await expectBody<{ items: { id: string; type: string }[] }>(
-				await get("/people/frequent"),
-				contract.people.frequent,
-			);
+			const frequent = await expectBody<{
+				items: { id: string; type: string }[];
+			}>(await get("/people/frequent"), contract.people.frequent);
 			expect(frequent.items).toEqual([
 				expect.objectContaining({ id: other.user.id, type: "user" }),
 			]);
@@ -267,7 +300,9 @@ describe("gap-closing reads and small writes", () => {
 				await send("POST", "/me/consent", as, { consentVersion: "2026-10" }),
 				contract.account.recordConsent,
 			);
-			const row = await adminDb.user.findUniqueOrThrow({ where: { id: userId } });
+			const row = await adminDb.user.findUniqueOrThrow({
+				where: { id: userId },
+			});
 			expect(row.consentVersion).toBe("2026-10");
 			expect(row.consentedAt).not.toBeNull();
 			expect(row.consentIp).toBe("198.51.100.91");
@@ -304,11 +339,13 @@ describe("gap-closing reads and small writes", () => {
 			);
 			const id = income.income.id;
 			const counted = async () =>
-				(await adminDb.assetAccount.findUniqueOrThrow({ where: { id: wise } }))
-					.countedUnits.toString();
+				(
+					await adminDb.assetAccount.findUniqueOrThrow({ where: { id: wise } })
+				).countedUnits.toString();
 			const balance = async () =>
-				(await adminDb.assetAccount.findUniqueOrThrow({ where: { id: wise } }))
-					.balance.toString();
+				(
+					await adminDb.assetAccount.findUniqueOrThrow({ where: { id: wise } })
+				).balance.toString();
 			const before = await balance();
 
 			const preview = await send("POST", "/income/move-in/preview", as, {
@@ -319,7 +356,12 @@ describe("gap-closing reads and small writes", () => {
 
 			const key = randomUUID();
 			const moved = await expectBody<{
-				moved: { accountId: string; expenseId: string; amount: Money; countedUnits: string };
+				moved: {
+					accountId: string;
+					expenseId: string;
+					amount: Money;
+					countedUnits: string;
+				};
 				undo: string;
 			}>(
 				await send("POST", "/income/move-in", as, { expenseId: id }, key),
@@ -336,7 +378,13 @@ describe("gap-closing reads and small writes", () => {
 			// No account moved: the dollars stay in Wise.
 			expect(await balance()).toBe(before);
 			expect(await counted()).toBe("2000");
-			const replay = await send("POST", "/income/move-in", as, { expenseId: id }, key);
+			const replay = await send(
+				"POST",
+				"/income/move-in",
+				as,
+				{ expenseId: id },
+				key,
+			);
 			expect(replay.headers.get("idempotent-replayed")).toBe("true");
 			// Once is enough.
 			await expectProblem(
@@ -376,8 +424,11 @@ describe("gap-closing reads and small writes", () => {
 			);
 			expect(
 				Number(
-					(await adminDb.assetAccount.findUniqueOrThrow({ where: { id: wise } }))
-						.countedUnits,
+					(
+						await adminDb.assetAccount.findUniqueOrThrow({
+							where: { id: wise },
+						})
+					).countedUnits,
 				),
 			).toBe(before + 100);
 			await expectProblem(
@@ -390,7 +441,11 @@ describe("gap-closing reads and small writes", () => {
 				"not_found",
 			);
 			await expectProblem(
-				await send("POST", "/income/move-in", as, { ...move, id: randomUUID(), units: "999999" }),
+				await send("POST", "/income/move-in", as, {
+					...move,
+					id: randomUUID(),
+					units: "999999",
+				}),
 				400,
 				"bad_request",
 			);

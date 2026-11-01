@@ -28,6 +28,7 @@ export function rateOf(
 		type: quote.rateType,
 		unit: money(toMinor("1", currency), currency),
 		value: money(toMinor(quote.perUnit, home), home),
+		rate: quote.perUnit.toString(),
 	};
 }
 

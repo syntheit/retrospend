@@ -37,7 +37,7 @@
 		"owedToYou": "dir geschuldet",
 		"youOwe": "du schuldest",
 		"worth": "≈ <amount></amount>",
-		"at": "zum Kurs {type} <rate></rate>",
+		"at": "zum Kurs {rate}",
 		"noRate": "Noch kein Kurs, nicht in der Summe",
 		"pendingPaid": "Du hast {name} am {date} <amount></amount> gezahlt. Wartet auf die Bestätigung von {name}",
 		"remind": "{name} erinnern",

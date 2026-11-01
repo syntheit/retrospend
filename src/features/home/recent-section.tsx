@@ -3,7 +3,6 @@
 import { Plus, Receipt } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
-import { useEntryActions } from "~/features/entry/entry-actions";
 import { Section } from "~/components/layout/section";
 import { RowList } from "~/components/rows/row";
 import { TransactionRow } from "~/components/rows/transaction-row";
@@ -15,7 +14,9 @@ import {
 	toExpenseTarget,
 	toTransactionVM,
 } from "~/features/activity/to-vm";
+import { useRateWord } from "~/features/activity/use-rate-word";
 import { useRowActions } from "~/features/activity/use-row-actions";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
 import { PartUnavailable } from "./home-states";
 
@@ -38,7 +39,7 @@ export function RecentSection({
 }) {
 	const t = useTranslations("homePage.recent");
 	const row = useTranslations("activity.row");
-	const types = useTranslations("activity.rateTypes");
+	const rateWord = useRateWord();
 	const modal = useEntryActions();
 	const { handlersFor, open } = useRowActions(rows ?? []);
 	const has = !!rows?.length;
@@ -74,8 +75,7 @@ export function RecentSection({
 							row(p.direction === "sent" ? "paidTo" : "paidYou", {
 								name: p.counterparty,
 							}),
-						(type) =>
-							row("rate", { type: types.has(type) ? types(type) : type }),
+						rateWord,
 					);
 					const target = toExpenseTarget(r, vm.title);
 					const handlers = handlersFor(r);

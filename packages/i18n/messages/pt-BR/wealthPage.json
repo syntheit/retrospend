@@ -100,13 +100,13 @@
 	},
 	"sheets": {
 		"valuedAtLabel": "Avaliada pela",
-		"valuedAt": "Avaliada pela cotação {type}",
+		"valuedAt": "Avaliada a {type}",
 		"noRate": "Sem cotação de {currency}, então esta conta fica fora do patrimônio.",
 		"update": {
 			"title": "Atualizar saldo",
 			"submit": "Atualizar saldo",
 			"now": "Agora <amount></amount> · Atualizada em {date}",
-			"rateChange": "Avaliada pela cotação {next} a partir de hoje. Os dias anteriores mantêm a cotação {before}."
+			"rateChange": "Avaliada pela cotação {next} a partir de hoje. Os dias anteriores mantêm {before}."
 		},
 		"account": {
 			"addTitle": "Adicionar conta",

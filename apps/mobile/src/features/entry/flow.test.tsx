@@ -227,7 +227,7 @@ function fakeApi() {
 				};
 				const unit = { minor: 100, currency: "USD" };
 				const at = (rate: number) => ({
-					rate: { unit, value: money(rate * 100) },
+					rate: { unit, value: money(rate * 100), rate: String(rate) },
 					home: amount ? money(Number(amount) * rate * 100) : null,
 				});
 				return {
@@ -999,14 +999,18 @@ describe("An expense in another currency", () => {
 		// The original stays the big number; home is the server's 12 x 1,465.
 		expect(words(tree)).toContain("ARS 17,580");
 		expect(
-			find(tree, (p) => p.label === "Blue rate" && p.variant === "text"),
+			find(
+				tree,
+				(p) =>
+					p.label === "Blue · 1 USD = 1,465.00 ARS" && p.variant === "text",
+			),
 		).not.toHaveLength(0);
 		act(() => tree.unmount());
 	});
 
 	it("saves the picked rate type", async () => {
 		const { tree, calls } = await twelveDollars();
-		press(tree, "Exchange rate, Blue");
+		press(tree, "Exchange rate, Blue · 1 USD = 1,465.00 ARS");
 		press(tree, "pick Official");
 		await settle();
 		expect(words(tree)).toContain("ARS 12,600");
@@ -1020,7 +1024,7 @@ describe("An expense in another currency", () => {
 
 	it("saves a typed rate, and waits while it does not read as one", async () => {
 		const { tree, calls } = await twelveDollars();
-		press(tree, "Exchange rate, Blue");
+		press(tree, "Exchange rate, Blue · 1 USD = 1,465.00 ARS");
 		press(tree, "pick Custom rate");
 		press(tree, "Add expense");
 		await flush();
@@ -1041,9 +1045,15 @@ describe("An expense in another currency", () => {
 		const { tree } = await twelveDollars();
 		press(tree, "Lucía Fernández");
 		await settle();
-		expect(words(tree)).toContain("Your default rate: Blue");
+		expect(words(tree)).toContain(
+			"Your default rate: Blue · 1 USD = 1,465.00 ARS",
+		);
 		expect(
-			find(tree, (p) => p.accessibilityLabel === "Exchange rate, Blue"),
+			find(
+				tree,
+				(p) =>
+					p.accessibilityLabel === "Exchange rate, Blue · 1 USD = 1,465.00 ARS",
+			),
 		).toHaveLength(0);
 		act(() => tree.unmount());
 	});

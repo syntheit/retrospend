@@ -38,8 +38,7 @@
 		"change": "{change} diesen Monat",
 		"closed": "Geschlossen am {date}. Verlauf bleibt.",
 		"noRate": "Kein {currency}-Kurs. Nicht im Vermögen.",
-		"apr": "Effektivzins {apr}",
-		"valuedAt": "Bewertet zu {type}"
+		"apr": "Effektivzins {apr}"
 	},
 	"envelope": {
 		"spent": "Ausgegeben vom Geplanten"

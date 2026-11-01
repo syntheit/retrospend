@@ -93,6 +93,8 @@ const importReviewRowSchema = z
 			.object({
 				unit: moneySchema,
 				value: moneySchema,
+				/** The rate unrounded: home currency per one `unit`. Show it as a number of at least 1 (1 USD = 1,545.20 ARS). */
+				rate: z.string(),
 				type: z.string().nullable(),
 			})
 			.nullable(),

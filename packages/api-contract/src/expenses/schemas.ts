@@ -28,6 +28,12 @@ export const expenseSchema = z
 		home: moneySchema.nullable(),
 		/** The rate type the entry was booked at (official, blue, custom...), if any. */
 		rateType: rateTypeSchema.nullable(),
+		/**
+		 * The rate it was booked at, unrounded: home currency per 1 unit of
+		 * `amount`'s currency. Null when same currency or none was booked. Read
+		 * it as a number of at least 1: 1 USD = 1,545.20 ARS, not 1 ARS = 0.00065 USD.
+		 */
+		rate: z.string().nullable(),
 		date: daySchema,
 		categoryId: idSchema.nullable(),
 		location: z.string().nullable(),
@@ -159,6 +165,8 @@ export const activityRowSchema = z
 		share: moneySchema.optional(),
 		/** The rate type a foreign row was booked at, when it is not your default. */
 		rateType: z.string().optional(),
+		/** With `rateType`: the rate it was booked at (home currency per 1 unit of `amount`'s currency), unrounded. */
+		rate: z.string().optional(),
 		/** Home minor units for sorting by amount; null without a rate. */
 		sortKey: z.number().nullable(),
 		waiting: z.enum(["review", "rejected"]).optional(),

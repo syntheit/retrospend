@@ -1,6 +1,5 @@
 import { fromMinor, money } from "@retrospend/domain/money-minor";
 import { decimalSeparator } from "@retrospend/domain/parse";
-import { parseRateText } from "@retrospend/domain/rate-text";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard } from "react-native";
@@ -12,6 +11,7 @@ import type { ComposerPrefill } from "@/surfaces/prefill";
 import { useToast } from "@/ui/Toast";
 import {
 	amountMinor,
+	customRateOf,
 	DEFAULT_RATE,
 	type ExpenseDraft,
 	expenseErrors,
@@ -282,8 +282,7 @@ export function useEntryForm({
 				rated && typedMinor
 					? fromMinor(money(typedMinor, rated.currency))
 					: null,
-			customRate:
-				rated?.custom === true ? parseRateText(rated.customText, locale) : null,
+			customRate: rated?.custom === true ? customRateOf(rated, locale) : null,
 		},
 		foreign,
 	);

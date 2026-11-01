@@ -43,7 +43,11 @@ export function ErrorReportList() {
 		return (
 			<Empty
 				action={
-					<Button kind="secondary" onClick={() => void query.refetch()} size="sm">
+					<Button
+						kind="secondary"
+						onClick={() => void query.refetch()}
+						size="sm"
+					>
 						{t("retry")}
 					</Button>
 				}

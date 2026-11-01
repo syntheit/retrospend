@@ -1,7 +1,12 @@
+import {
+	rateDirection,
+	storedRateToTyped,
+} from "@retrospend/domain/rate-format";
 import { useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useFormatMoney } from "@/lib/money";
+import { useFormatMoney, useMoneyLocale } from "@/lib/money";
+import { useRateFormat } from "@/lib/rateFormat";
 import { useRateTypeName } from "@/lib/rateTypes";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
@@ -51,12 +56,35 @@ export function RateField({
 	const tp = useTranslations("mobile.pickers");
 	const name = useRateTypeName();
 	const { format } = useFormatMoney();
+	const fmt = useRateFormat();
 	const { space } = useTheme();
 	const [open, setOpen] = useState(false);
 	const view = rateView(options, choice, keptHome);
+	const locale = useMoneyLocale();
+	// The pair reads the way its rate reads: the typed number is the >= 1 one,
+	// whatever way the rate is stored (the table decides, a saved rate backs it).
+	const dir = rateDirection(
+		currency,
+		homeCurrency,
+		options?.options[0]?.rate.rate ?? choice.savedRate,
+	);
+	// Custom starts from the saved custom rate, read the way it reads now.
+	const startCustom = (): Partial<RateChoice> => ({
+		custom: true,
+		customFlipped: dir.flipped,
+		customEdited: choice.customText !== "" && choice.customEdited,
+		...(choice.customText === "" && choice.savedRate
+			? { customText: storedRateToTyped(choice.savedRate, dir.flipped, locale) }
+			: {}),
+	});
 	// Offline before the first answer: nothing to pick from or show yet.
 	if (!options && !choice.custom && !view.home) return null;
-	const typeName = name(view.type);
+	// A type never shows without its number: "Blue · 1 USD = 1,545.20 ARS" (R8).
+	const typeName = view.picked
+		? fmt.withType(name(view.type), view.picked.rate)
+		: null;
+	// While a custom rate is being typed there is no number yet: the trigger still leaves Custom.
+	const triggerText = typeName ?? (choice.custom ? name("custom") : null);
 	const home = view.home ? format(view.home) : null;
 
 	return (
@@ -69,14 +97,16 @@ export function RateField({
 				}}
 			>
 				{shared ? (
-					<Text
-						accessibilityHint={t("sharedFixed")}
-						style={{ flexShrink: 1 }}
-						tone="fg2"
-						variant="small"
-					>
-						{t("fixed", { type: typeName })}
-					</Text>
+					typeName ? (
+						<Text
+							accessibilityHint={t("sharedFixed")}
+							style={{ flexShrink: 1 }}
+							tone="fg2"
+							variant="small"
+						>
+							{t("fixed", { type: typeName })}
+						</Text>
+					) : null
 				) : view.missing ? (
 					<>
 						<Text
@@ -89,18 +119,18 @@ export function RateField({
 						</Text>
 						<Button
 							label={t("enterRate")}
-							onPress={() => onChange({ custom: true })}
+							onPress={() => onChange(startCustom())}
 							variant="text"
 						/>
 					</>
-				) : (
+				) : triggerText ? (
 					<Button
-						accessibilityLabel={t("triggerLabel", { type: typeName })}
-						label={t("trigger", { type: typeName })}
+						accessibilityLabel={t("triggerLabel", { type: triggerText })}
+						label={triggerText}
 						onPress={() => setOpen(true)}
 						variant="text"
 					/>
-				)}
+				) : null}
 				<View style={{ flex: 1 }} />
 				{home ? (
 					<Text
@@ -118,20 +148,26 @@ export function RateField({
 				<View
 					style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}
 				>
-					<Text tone="fg2">{t("customUnit", { currency })}</Text>
+					<Text tone="fg2">{t("customUnit", { currency: dir.base })}</Text>
 					<View style={{ flex: 1 }}>
 						<TextField
 							hideLabel
 							invalid={error}
 							keyboardType="decimal-pad"
-							label={t("customLabel", { currency, home: homeCurrency })}
-							onChangeText={(customText) => onChange({ customText })}
+							label={t("customLabel", { currency: dir.base, home: dir.quote })}
+							onChangeText={(customText) =>
+								onChange({
+									customText,
+									customFlipped: dir.flipped,
+									customEdited: true,
+								})
+							}
 							onTypingChange={onTypingChange}
 							placeholder={t("enterRate")}
 							value={choice.customText}
 						/>
 					</View>
-					<Text tone="fg2">{homeCurrency}</Text>
+					<Text tone="fg2">{dir.quote}</Text>
 				</View>
 			) : null}
 			{error ? <FieldError>{t("error")}</FieldError> : null}
@@ -148,7 +184,7 @@ export function RateField({
 								...options.options.map((o) => ({
 									id: o.rateType,
 									label: name(o.rateType),
-									detail: `${format(o.rate.unit, { cents: false }) ?? ""} = ${format(o.rate.value) ?? ""}`,
+									detail: fmt.pair(o.rate) ?? "",
 									lead: null,
 									selected: !choice.custom && view.type === o.rateType,
 								})),
@@ -164,9 +200,7 @@ export function RateField({
 					onClose={() => setOpen(false)}
 					onSelect={(id) =>
 						onChange(
-							id === CUSTOM
-								? { custom: true }
-								: { custom: false, rateType: id },
+							id === CUSTOM ? startCustom() : { custom: false, rateType: id },
 						)
 					}
 					title={t("title")}

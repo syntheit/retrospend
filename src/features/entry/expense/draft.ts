@@ -38,6 +38,8 @@ export interface ExpenseDraft {
 	readonly customText: string;
 	/** The custom rate as a decimal string in home units, when it reads. */
 	readonly customRate: string | null;
+	/** A saved entry's custom rate as stored: what the pair's direction and the Custom prefill start from. It never changes while typing. */
+	readonly savedRate: string | null;
 	readonly projectId: string | null;
 	readonly youIncluded: boolean;
 	readonly others: readonly EntryPerson[];

@@ -4,6 +4,7 @@ import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useFaces } from "@/features/read/faces";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useRateFormat } from "@/lib/rateFormat";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
@@ -94,6 +95,7 @@ export function EntryFacts({
 	const money = useMoneyText();
 	const faces = useFaces();
 	const rateName = useRateTypeLabel();
+	const rateFmt = useRateFormat();
 	const { state: session } = useSession();
 	const { color, size, space } = useTheme();
 	const me = session.status === "signedIn" ? session.me : null;
@@ -125,6 +127,15 @@ export function EntryFacts({
 				? t("you")
 				: null;
 	const rate = item.rateType ?? extra?.rateType;
+	const rateText =
+		rate && item.home
+			? rateFmt.typed(
+					rateName(rate),
+					item.amount.currency,
+					item.home.currency,
+					item.rate ?? extra?.rate,
+				)
+			: null;
 	const foreign = item.home !== undefined;
 	const status = rowStatus(item, ta);
 	const category = item.category;
@@ -154,13 +165,7 @@ export function EntryFacts({
 				{format.dateTime(dayDate(item.date), { dateStyle: "long" })}
 			</Fact>
 			<Fact label={t("rate")}>
-				{foreign
-					? item.home === null
-						? tm("noRate")
-						: rate
-							? rateName(rate)
-							: null
-					: null}
+				{foreign ? (item.home === null ? tm("noRate") : rateText) : null}
 			</Fact>
 			<Fact label={t("project")}>{item.project?.name}</Fact>
 			<Fact label={t("category")}>

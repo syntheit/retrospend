@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useMoneyLocale } from "@/lib/money";
+import { useRateFormat } from "@/lib/rateFormat";
 import { useTheme } from "@/theme";
 import { IconTile } from "@/ui/IconTile";
 import { ListRow } from "@/ui/List";
@@ -41,6 +42,7 @@ export function AccountRow({
 	const locale = useMoneyLocale();
 	const money = useMoneyText();
 	const rateName = useRateTypeLabel();
+	const rateFmt = useRateFormat();
 	const { space } = useTheme();
 	const closed = account.closedAt !== null;
 	const missing = account.value === null && !closed;
@@ -50,12 +52,22 @@ export function AccountRow({
 	const day = (iso: string) =>
 		format.dateTime(new Date(iso), { month: "short", day: "numeric" });
 	const apr = aprBasis(account.interestRate);
+	// The type never shows without its number (R8).
 	const valued = valuedAt(account);
+	const valuedText =
+		valued && account.value
+			? rateFmt.typed(
+					rateName(valued),
+					account.balance.currency,
+					account.value.currency,
+					account.rate,
+				)
+			: null;
 	const terms =
 		apr !== null
 			? t("apr", { rate: formatPercent(apr, { locale, digits: 2 }) })
-			: valued
-				? t("valuedAt", { type: rateName(valued) })
+			: valuedText
+				? t("valuedAt", { type: valuedText })
 				: null;
 	const bits = closed
 		? [
