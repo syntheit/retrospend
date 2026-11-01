@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { Alert } from "react-native";
 import { createReadCache } from "@/data/cache";
 import { createOutbox } from "@/data/outbox";
 import { createMemoryStore } from "@/data/store";
@@ -1437,7 +1438,24 @@ describe("The amount card", () => {
 	});
 });
 
+type AlertButton = { text?: string; style?: string; onPress?: () => void };
+let alertSpy: jest.SpyInstance<void, Parameters<typeof Alert.alert>>;
+function lastAlert(): [string, string | undefined, AlertButton[]] {
+	const call = alertSpy.mock.calls.at(-1);
+	if (!call) throw new Error("no alert");
+	return [String(call[0]), call[1] ?? undefined, (call[2] ?? []) as AlertButton[]];
+}
+function destructive(buttons: AlertButton[]): () => void {
+	const button = buttons.find((b) => b.style === "destructive");
+	if (!button?.onPress) throw new Error("no destructive button");
+	return button.onPress;
+}
+
 describe("Edit: undo changes and delete", () => {
+	beforeEach(() => {
+		alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+	});
+
 	it("puts every field back from the actions menu", async () => {
 		const { api } = fakeApi();
 		mockSession.api = api;
@@ -1468,13 +1486,12 @@ describe("Edit: undo changes and delete", () => {
 		expect(
 			calls.find((c) => c.route === "expense.previewDelete")?.input,
 		).toEqual({ id: "e1" });
-		const confirm = find(
-			tree,
-			(p) => p.label === "Delete expense" && typeof p.onPress === "function",
-		)[0];
-		if (!confirm) throw new Error("no Delete button");
+		// The system alert: the title alone, nothing beyond this entry to say.
+		const [title, message, buttons] = lastAlert();
+		expect(title).toBe("Delete expense?");
+		expect(message).toBeUndefined();
 		await act(async () => {
-			(confirm.props.onPress as () => void)();
+			destructive(buttons)();
 		});
 		await flush();
 		expect(calls.find((c) => c.route === "expense.delete")?.input).toEqual({
@@ -1500,13 +1517,12 @@ describe("Edit: undo changes and delete", () => {
 		expect(
 			calls.find((c) => c.route === "shared.previewDelete")?.input,
 		).toEqual({ id: "s1" });
-		const confirm = find(
-			tree,
-			(p) => p.label === "Delete expense" && typeof p.onPress === "function",
-		)[0];
-		if (!confirm) throw new Error("no Delete button");
+		// A split tells everyone on it, in one line.
+		const [title, message, buttons] = lastAlert();
+		expect(title).toBe("Delete expense?");
+		expect(message).toBe("Everyone on it is told, and what they owe changes.");
 		await act(async () => {
-			(confirm.props.onPress as () => void)();
+			destructive(buttons)();
 		});
 		await flush();
 		// Nothing was warned about, so nothing was confirmed for the person.
@@ -1531,25 +1547,20 @@ describe("Edit: undo changes and delete", () => {
 		const tree = await open("expense", () => {}, "s1", true);
 		press(tree, "Delete");
 		await flush();
-		// The warning is on the sheet, and the dry run is asked again as if confirmed.
+		// The warning is the alert's line, and the dry run is asked again as if confirmed.
 		expect(
 			calls
 				.filter((c) => c.route === "shared.previewDelete")
 				.map((c) => c.input),
 		).toEqual([{ id: "s1" }, { id: "s1", confirmUnsettled: true }]);
-		expect(
-			find(tree, (p) =>
-				String(p.children ?? "").startsWith("This expense still has"),
-			).length,
-		).toBeGreaterThan(0);
+		const [, message, buttons] = lastAlert();
+		expect(String(message)).toContain("This expense still has");
 		expect(calls.some((c) => c.route === "shared.delete")).toBe(false);
-		const anyway = find(
-			tree,
-			(p) => p.label === "Delete anyway" && typeof p.onPress === "function",
-		)[0];
-		if (!anyway) throw new Error("no Delete anyway button");
+		expect(buttons.find((b) => b.style === "destructive")?.text).toBe(
+			"Delete anyway",
+		);
 		await act(async () => {
-			(anyway.props.onPress as () => void)();
+			destructive(buttons)();
 		});
 		await flush();
 		expect(calls.find((c) => c.route === "shared.delete")?.input).toEqual({
