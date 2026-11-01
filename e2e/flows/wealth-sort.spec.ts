@@ -58,8 +58,12 @@ test("Wealth: a custom order is saved, and another sort in between does not touc
 		.getByRole("list", { name: group })
 		.getByRole("button", { name: `Reorder ${first}` });
 	await grip.focus();
+	// The screen reader hears each step; the test waits for them too.
+	const heard = page.locator("[aria-live]").first();
 	await page.keyboard.press("Space");
+	await expect(heard).toContainText(`${first} moved to position 1`);
 	await page.keyboard.press("ArrowDown");
+	await expect(heard).toContainText(`${first} moved to position 2`);
 	await untilSaved(page, "wealth.accounts.setOrder", () =>
 		page.keyboard.press("Space"),
 	);
