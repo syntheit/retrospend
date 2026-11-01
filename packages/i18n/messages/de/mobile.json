@@ -305,7 +305,8 @@
 			"undoFailed": "Rückgängig machen nicht möglich. Versuche es unter Aktivität.",
 			"failed": "Löschen nicht möglich. Versuche es erneut.",
 			"noUndo": "Das lässt sich nicht rückgängig machen.",
-			"anyway": "Trotzdem löschen"
+			"anyway": "Trotzdem löschen",
+			"sharedEffect": "Alle darauf erfahren es, und was sie schulden, ändert sich."
 		},
 		"tabs": {
 			"category": "Kategorie",

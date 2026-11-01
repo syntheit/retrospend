@@ -3,13 +3,12 @@ import { type ReactNode, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
-import { DeleteEntrySheet } from "@/features/entry/DeleteEntrySheet";
+import { useDeleteEntry } from "@/features/entry/useDeleteEntry";
 import { MakeRecurringSheet } from "@/features/recurring/MakeRecurringSheet";
 import { canRepeat } from "@/features/recurring/makeRecurring";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { BulkSheet } from "./BulkSheet";
 import { canSelect } from "./bulk";
 import { canEditEntry } from "./canEdit";
 import type { ActivityItem } from "./source";
@@ -18,8 +17,8 @@ import type { ActivityItem } from "./source";
  * The actions of an entry, split by where they belong. Edit is the pencil in
  * the header and opens the existing edit flow (a view never edits in place).
  * Delete and Make recurring are small quiet controls at the end of the page;
- * Delete shows what it changes before it saves and ends in an Undo toast, and
- * Make recurring does the same for the template it creates. Each only where
+ * Delete asks in a system alert (after the server's dry run) and ends in an
+ * Undo toast; Make recurring shows what it changes for the template it creates. Each only where
  * the server lets you: your own expense deletes and repeats, and a split you
  * may change edits and deletes (it warns first when others owe on it, and Undo
  * brings back every share). `repeating` is true once the expense already has a
@@ -48,7 +47,6 @@ export function useEntryActions({
 	const add = useOptionalAddEntry();
 	const { listDetail } = useLayoutClass();
 	const { space } = useTheme();
-	const [deleting, setDeleting] = useState(false);
 	const [repeat, setRepeat] = useState(false);
 
 	const canDeleteOwn = editable && canSelect(item);
@@ -60,9 +58,15 @@ export function useEntryActions({
 
 	// Deleted: a pushed page leaves for the list, a pane shows its empty state.
 	function leave() {
-		setDeleting(false);
 		if (!listDetail && router.canGoBack()) router.back();
 	}
+	// The system alert (after the server's dry run), then the Undo toast.
+	const askDelete = useDeleteEntry({
+		id: item.entityId,
+		shared: canDeleteSplit,
+		title: item.title,
+		onDeleted: leave,
+	});
 
 	const footer =
 		canDelete || canRepeatIt ? (
@@ -88,7 +92,7 @@ export function useEntryActions({
 				{canDelete ? (
 					<Button
 						label={t("delete")}
-						onPress={() => setDeleting(true)}
+						onPress={askDelete}
 						size="small"
 						variant="dangerText"
 					/>
@@ -98,23 +102,6 @@ export function useEntryActions({
 
 	const sheets = (
 		<>
-			{canDeleteSplit ? (
-				<DeleteEntrySheet
-					id={item.entityId}
-					onClose={() => setDeleting(false)}
-					onDeleted={leave}
-					shared
-					title={item.title}
-					visible={deleting}
-				/>
-			) : (
-				<BulkSheet
-					action={deleting ? { kind: "delete" } : null}
-					ids={[item.entityId]}
-					onClose={() => setDeleting(false)}
-					onDone={leave}
-				/>
-			)}
 			<MakeRecurringSheet
 				item={item}
 				onClose={() => setRepeat(false)}

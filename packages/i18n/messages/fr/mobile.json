@@ -305,7 +305,8 @@
 			"undoFailed": "Impossible d'annuler. Réessaie depuis Activité.",
 			"failed": "Impossible de supprimer. Réessaie.",
 			"noUndo": "Cette action est irréversible.",
-			"anyway": "Supprimer quand même"
+			"anyway": "Supprimer quand même",
+			"sharedEffect": "Tout le monde est prévenu et ce que chacun doit change."
 		},
 		"tabs": {
 			"category": "Catégorie",

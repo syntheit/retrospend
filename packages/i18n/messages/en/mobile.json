@@ -305,7 +305,8 @@
 			"undoFailed": "Couldn't undo. Try again from Activity.",
 			"failed": "Couldn't delete this. Try again.",
 			"noUndo": "This can't be undone.",
-			"anyway": "Delete anyway"
+			"anyway": "Delete anyway",
+			"sharedEffect": "Everyone on it is told, and what they owe changes."
 		},
 		"tabs": {
 			"category": "Category",

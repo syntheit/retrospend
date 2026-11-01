@@ -305,7 +305,8 @@
 			"undoFailed": "No se pudo deshacer. Inténtalo desde Actividad.",
 			"failed": "No se pudo eliminar. Inténtalo de nuevo.",
 			"noUndo": "No se puede deshacer.",
-			"anyway": "Eliminar igualmente"
+			"anyway": "Eliminar igualmente",
+			"sharedEffect": "Se avisa a todos los involucrados y cambia lo que deben."
 		},
 		"tabs": {
 			"category": "Categoría",

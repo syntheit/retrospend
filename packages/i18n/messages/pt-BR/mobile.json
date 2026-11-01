@@ -305,7 +305,8 @@
 			"undoFailed": "Não foi possível desfazer. Tente pela Atividade.",
 			"failed": "Não foi possível excluir. Tente de novo.",
 			"noUndo": "Isso não pode ser desfeito.",
-			"anyway": "Excluir mesmo assim"
+			"anyway": "Excluir mesmo assim",
+			"sharedEffect": "Todos os envolvidos são avisados e o que devem muda."
 		},
 		"tabs": {
 			"category": "Categoria",
