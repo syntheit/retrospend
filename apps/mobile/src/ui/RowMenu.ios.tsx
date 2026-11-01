@@ -6,7 +6,8 @@ import {
 	RNHostView,
 } from "@expo/ui/swift-ui";
 import { contentShape, shapes } from "@expo/ui/swift-ui/modifiers";
-import { Pressable, useColorScheme } from "react-native";
+import { useState } from "react";
+import { Pressable, useColorScheme, View } from "react-native";
 import { useTheme } from "@/theme";
 import type { RowMenuProps } from "./types";
 
@@ -30,10 +31,17 @@ const noop = () => undefined;
  * row. The row's tap stays a React Native press, which a hold past
  * LONG_PRESS_MS cancels, so a long press never opens the row: the menu shows,
  * or nothing happens.
+ *
+ * The hosted row is laid out by its own Yoga root, which does not know how
+ * wide the SwiftUI host is: a long title measured at its one-line width and
+ * pushed the trailing button off the row. The row is given the width of the
+ * view the host sits in, and stays hidden for the one frame before that is
+ * known.
  */
 export function RowMenu({ items, children, onPress }: RowMenuProps) {
 	const { radius } = useTheme();
 	const scheme = useColorScheme();
+	const [width, setWidth] = useState<number | null>(null);
 	const row = (
 		<Pressable
 			accessibilityActions={items.map((item) => ({
@@ -50,12 +58,17 @@ export function RowMenu({ items, children, onPress }: RowMenuProps) {
 			// nothing on release instead of falling back to a tap.
 			onLongPress={noop}
 			onPress={onPress}
+			style={width === null ? undefined : { width }}
 		>
 			{children}
 		</Pressable>
 	);
 	if (items.length === 0) return row;
 	return (
+		<View
+			onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+			style={{ opacity: width === null ? 0 : 1 }}
+		>
 		<Host
 			colorScheme={scheme === "dark" || scheme === "light" ? scheme : undefined}
 			matchContents={{ vertical: true }}
@@ -85,5 +98,6 @@ export function RowMenu({ items, children, onPress }: RowMenuProps) {
 				</ContextMenu.Trigger>
 			</ContextMenu>
 		</Host>
+		</View>
 	);
 }
