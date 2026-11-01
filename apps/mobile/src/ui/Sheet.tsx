@@ -82,6 +82,17 @@ interface SheetProps {
 	 */
 	footer?: ReactNode;
 	/**
+	 * Puts the footer's two ends apart (Cancel at the start, the verb at the
+	 * end) instead of side by side. A confirm of a destructive verb uses it, so
+	 * the two are never a pair of equal buttons under one thumb.
+	 */
+	footerApart?: boolean;
+	/**
+	 * A view sheet's Edit: a pencil icon button before the dismiss item. The
+	 * sheet shows facts; pressing it opens what changes them (R2, R3).
+	 */
+	edit?: { label: string; onPress: () => void };
+	/**
 	 * A sheet of cards (the composer): the page color, so the surface cards on
 	 * it read as cards, the way iOS groups a form. Default: the surface.
 	 */
@@ -135,6 +146,29 @@ function DismissItem({
 	);
 }
 
+/** The header's edit item: a pencil, 28 high with a hit slop to the 44 point target. */
+function EditItem({ label, onPress }: { label: string; onPress: () => void }) {
+	const { color, size, space } = useTheme();
+	return (
+		<Pressable
+			accessibilityLabel={label}
+			accessibilityRole="button"
+			hitSlop={space[2]}
+			onPress={onPress}
+			style={{
+				width: size.ctlSm.phone,
+				height: size.ctlSm.phone,
+				alignItems: "center",
+				justifyContent: "center",
+				borderRadius: size.ctlSm.phone / 2,
+				backgroundColor: color.raised,
+			}}
+		>
+			<Glyph color={color.fg2} name="Pencil" size={size.icon.phone} />
+		</Pressable>
+	);
+}
+
 /** The header's back item: a chevron, 28 high with a hit slop to the 44 point target. */
 function BackItem({ label, onPress }: { label: string; onPress: () => void }) {
 	const { color, size, space } = useTheme();
@@ -174,6 +208,8 @@ export function Sheet({
 	detents: wanted,
 	dismiss,
 	footer,
+	footerApart = false,
+	edit,
 	grouped = false,
 	onBack,
 	backLabel,
@@ -261,6 +297,7 @@ export function Sheet({
 					>
 						{title ?? ""}
 					</Text>
+					{edit ? <EditItem label={edit.label} onPress={edit.onPress} /> : null}
 					{way === "none" ? null : <DismissItem kind={way} onPress={onClose} />}
 				</View>
 			) : null}
@@ -289,7 +326,7 @@ export function Sheet({
 				<View
 					style={{
 						flexDirection: "row",
-						justifyContent: "flex-end",
+						justifyContent: footerApart ? "space-between" : "flex-end",
 						alignItems: "center",
 						gap: space[2],
 						paddingTop: space[3],

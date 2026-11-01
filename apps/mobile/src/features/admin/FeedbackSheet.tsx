@@ -103,7 +103,7 @@ export function FeedbackSheet({
 	}
 
 	function askDelete() {
-		Alert.alert(t("deleteTitle"), t("deleteBody"), [
+		Alert.alert(t("deleteTitle"), undefined, [
 			{ text: tc("cancel"), style: "cancel" },
 			{
 				text: t("delete"),

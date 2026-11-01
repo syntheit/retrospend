@@ -23,6 +23,7 @@ import { heroCents, useRateTypeLabel } from "@/ui/Money";
 import { Screen } from "@/ui/Screen";
 import { Skeleton, SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
+import { TopBarAction } from "@/ui/TopBarAction";
 import { AccountSheets, type SheetTarget } from "./AccountSheets";
 import { isLiability } from "./accounts";
 import { actionsOf } from "./actions";
@@ -145,8 +146,10 @@ export function AccountView({ id }: { id: string }) {
 	const updated = format.dateTime(new Date(account.updatedAt), {
 		dateStyle: "medium",
 	});
+	// Edit is the pencil in the header; the rest (Close or Reopen, Delete) is
+	// in the overflow menu. Update balance is the page's one primary button.
 	const menu = actionsOf(account)
-		.filter((action) => action !== "update")
+		.filter((action) => action !== "update" && action !== "edit")
 		.map((action) => ({
 			id: action,
 			label: t(`actions.${action}`),
@@ -160,12 +163,28 @@ export function AccountView({ id }: { id: string }) {
 				options={{
 					title: account.name,
 					headerRight: () => (
-						<Menu
-							accessibilityLabel={t("more")}
-							icon
-							items={menu}
-							label={t("more")}
-						/>
+						<View
+							style={{
+								flexDirection: "row",
+								alignItems: "center",
+								gap: space[2],
+							}}
+						>
+							{closed ? null : (
+								<TopBarAction
+									id="edit"
+									icon="Pencil"
+									label={t("actions.edit")}
+									onPress={() => setSheet({ kind: "edit", account })}
+								/>
+							)}
+							<Menu
+								accessibilityLabel={t("more")}
+								icon
+								items={menu}
+								label={t("more")}
+							/>
+						</View>
 					),
 				}}
 			/>

@@ -10,9 +10,9 @@ import { canArchiveProject, canEditProject } from "./projectForm";
 import type { ProjectPage } from "./source";
 
 /**
- * Edit, Add person, Share, Settings, Archive and Restore for one project, as
- * items of its overflow menu. Edit opens the project sheet, Share the share
- * sheet and Settings the settings sheet (switches and member dates). Archive asks first (a native alert: no money
+ * Add person, Share, Settings, Archive and Restore for one project, as items
+ * of its overflow menu, and `edit` for the header's pencil (it opens the
+ * project sheet). Share opens the share sheet and Settings the settings sheet (switches and member dates). Archive asks first (a native alert: no money
  * moves) and ends with a toast that restores it, since the API restores with
  * the same write. What the role may not do is left out; the server checks it
  * again.
@@ -23,6 +23,8 @@ export function useProjectActions(
 	startAdding = false,
 ): {
 	items: MenuItem[];
+	/** Opens the project sheet (the header's pencil); null where the role may not edit. */
+	edit: (() => void) | null;
 	editing: boolean;
 	closeEdit: () => void;
 	adding: boolean;
@@ -91,13 +93,6 @@ export function useProjectActions(
 	const items: MenuItem[] = [];
 	if (canEditProject(page.myRole)) {
 		items.push({
-			id: "edit-project",
-			label: t("edit"),
-			onPress: () => setEditing(true),
-		});
-	}
-	if (canEditProject(page.myRole)) {
-		items.push({
 			id: "add-person",
 			label: t("addPerson"),
 			onPress: () => setAdding(true),
@@ -132,7 +127,7 @@ export function useProjectActions(
 						onPress: () =>
 							Alert.alert(
 								t("archiveTitle", { name: page.name }),
-								t("archiveBody"),
+								undefined,
 								[
 									{ text: tc("cancel"), style: "cancel" },
 									{
@@ -147,6 +142,7 @@ export function useProjectActions(
 	}
 	return {
 		items,
+		edit: canEditProject(page.myRole) ? () => setEditing(true) : null,
 		editing,
 		closeEdit: () => setEditing(false),
 		adding,

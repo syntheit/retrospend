@@ -73,6 +73,7 @@ export function DeleteAccountSheet({
 	return (
 		<Sheet
 			detents={["medium"]}
+			footerApart
 			footer={
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
@@ -89,16 +90,12 @@ export function DeleteAccountSheet({
 			visible={visible}
 		>
 			<SheetBody>
-				<Note>{t("body")}</Note>
 				{open ? (
-					<>
-						<Note>{t("keepHistory")}</Note>
-						<Button
-							label={t("closeInstead")}
-							onPress={onCloseInstead}
-							variant="outlined"
-						/>
-					</>
+					<Button
+						label={t("closeInstead")}
+						onPress={onCloseInstead}
+						variant="outlined"
+					/>
 				) : null}
 				<PreviewChanges preview={flow.preview} status={flow.status} />
 				{flow.commitFailed ? <Note tone="attention">{t("error")}</Note> : null}

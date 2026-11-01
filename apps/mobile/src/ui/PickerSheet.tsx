@@ -11,7 +11,7 @@ type Item =
 
 /**
  * The one list picker: the platform sheet (a SwiftUI sheet, a form sheet on
- * iPad; an M3 modal bottom sheet) at medium, pulled up to large, holding a
+ * iPad; an M3 modal bottom sheet) at its full height, holding a
  * search field and the choices in groups under 13 fg-3 headings. Each row
  * has its identity in front, its name at 14/500 over a 12 fg-3 detail line,
  * and a check on the current one (GUIDELINE 8: pickers carry identity).
@@ -68,7 +68,7 @@ export function PickerSheet({
 
 	return (
 		<Sheet
-			detents={["medium", "large"]}
+			detents={["large"]}
 			dismiss={multiple ? "done" : undefined}
 			onClose={close}
 			title={title}

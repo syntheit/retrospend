@@ -147,7 +147,7 @@ export function UserSheet({
 			kind === "disable"
 				? t("disableTitle", { name })
 				: t("deleteTitle", { name }),
-			kind === "disable" ? t("disableBody") : t("deleteBody"),
+			undefined,
 			[
 				{ text: tc("cancel"), style: "cancel" },
 				{

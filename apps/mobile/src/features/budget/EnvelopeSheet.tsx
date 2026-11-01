@@ -199,15 +199,6 @@ export function EnvelopeSheet({
 						},
 					]
 				: []),
-			...(kind !== "closed"
-				? [
-						{
-							id: "edit",
-							label: t("editAction"),
-							onPress: () => setMode("edit"),
-						},
-					]
-				: []),
 		];
 		return (
 			<>
@@ -299,6 +290,12 @@ export function EnvelopeSheet({
 				mode === "overview" || envelope === null
 					? undefined
 					: () => setMode("overview")
+			}
+			// Edit is the pencil in the header; the overview shows facts (R2, R3).
+			edit={
+				mode === "overview" && envelope !== null && kind !== "closed"
+					? { label: tc("edit"), onPress: () => setMode("edit") }
+					: undefined
 			}
 			onClose={onClose}
 			title={title}

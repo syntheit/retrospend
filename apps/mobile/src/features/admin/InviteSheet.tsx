@@ -69,7 +69,7 @@ export function InviteSheet({
 	}
 
 	function askDelete() {
-		Alert.alert(t("deleteTitle"), t("deleteBody", { code }), [
+		Alert.alert(t("deleteTitle"), undefined, [
 			{ text: tc("cancel"), style: "cancel" },
 			{
 				text: t("delete"),

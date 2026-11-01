@@ -117,6 +117,7 @@ export function DeleteEntrySheet({
 	return (
 		<Sheet
 			detents={["medium"]}
+			footerApart
 			footer={
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
@@ -133,7 +134,6 @@ export function DeleteEntrySheet({
 			visible={visible}
 		>
 			<View style={{ gap: space[4] }}>
-				<Text tone="fg2">{shared ? t("sharedBody") : t("body")}</Text>
 				{undoable ? null : <Text tone="fg2">{t("noUndo")}</Text>}
 				{warning ? (
 					<Text accessibilityLiveRegion="polite" tone="attention">

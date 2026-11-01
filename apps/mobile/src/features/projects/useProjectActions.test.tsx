@@ -1,7 +1,7 @@
 import { Alert } from "react-native";
 import { useProjectActions } from "./useProjectActions";
 
-// The project's overflow items: Edit, Add person, Share and Settings for Owners
+// The project's overflow items: Add person, Share and Settings for Owners
 // and Editors, Archive or Restore for Owners. Archive asks first, then archives and offers Undo,
 // which restores.
 const renderer = require("react-test-renderer");
@@ -49,9 +49,8 @@ describe("project menu items", () => {
 		mockShow.mockClear();
 	});
 
-	it("gives an Owner Edit, Add person and Archive", () => {
+	it("gives an Owner Add person, Share, Settings and Archive", () => {
 		expect(items(page({})).items.map((i) => i.id)).toEqual([
-			"edit-project",
 			"add-person",
 			"share-project",
 			"project-settings",
@@ -59,9 +58,8 @@ describe("project menu items", () => {
 		]);
 	});
 
-	it("gives an Owner Edit, Add person and Restore on an archived project", () => {
+	it("gives an Owner Add person, Share, Settings and Restore on an archived project", () => {
 		expect(items(page({ status: "ARCHIVED" })).items.map((i) => i.id)).toEqual([
-			"edit-project",
 			"add-person",
 			"share-project",
 			"project-settings",
@@ -69,9 +67,8 @@ describe("project menu items", () => {
 		]);
 	});
 
-	it("gives an Editor Edit, Add person, Share and Settings", () => {
+	it("gives an Editor Add person, Share and Settings, and Edit for the pencil", () => {
 		expect(items(page({ myRole: "EDITOR" })).items.map((i) => i.id)).toEqual([
-			"edit-project",
 			"add-person",
 			"share-project",
 			"project-settings",

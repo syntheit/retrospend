@@ -26,7 +26,8 @@
 		"today": "Hoje",
 		"yesterday": "Ontem",
 		"pickDate": "Escolher uma data",
-		"clearFilters": "Remover filtros"
+		"clearFilters": "Remover filtros",
+		"edit": "Editar"
 	},
 	"keypad": {
 		"delete": "Apagar",
@@ -298,13 +299,11 @@
 		"delete": {
 			"row": "Excluir",
 			"title": "Excluir gasto?",
-			"body": "Ele sai dos seus gastos e do seu orçamento.",
 			"button": "Excluir gasto",
 			"deleted": "{title} excluído",
 			"restored": "{title} restaurado",
 			"undoFailed": "Não foi possível desfazer. Tente pela Atividade.",
 			"failed": "Não foi possível excluir. Tente de novo.",
-			"sharedBody": "Todos os envolvidos são avisados, e o que devem muda.",
 			"noUndo": "Isso não pode ser desfeito.",
 			"anyway": "Excluir mesmo assim"
 		},
@@ -528,7 +527,6 @@
 			"done": "Concluir",
 			"deleteLimit": "Você pode excluir até {max} de uma vez.",
 			"deleteTitle": "{count, plural, one {Excluir # despesa?} other {Excluir # despesas?}}",
-			"deleteBody": "Despesas excluídas saem dos seus totais. Desfazer traz de volta.",
 			"deleteButton": "{count, plural, one {Excluir # despesa} other {Excluir # despesas}}",
 			"categorizeTitle": "{count, plural, one {Categorizar # despesa} other {Categorizar # despesas}}",
 			"categorizeBody": "Elas vão para {name}. Os valores não mudam.",
@@ -1507,8 +1505,6 @@
 		},
 		"delete": {
 			"title": "Excluir {name}?",
-			"body": "Isso remove a conta e todo o histórico de saldos. O histórico do patrimônio também muda.",
-			"keepHistory": "Para manter o histórico, encerre a conta.",
 			"closeInstead": "Encerrar em vez disso",
 			"submit": "Excluir conta",
 			"deleting": "Excluindo",
@@ -2021,7 +2017,6 @@
 			"archive": "Arquivar projeto",
 			"restore": "Restaurar projeto",
 			"archiveTitle": "Arquivar {name}?",
-			"archiveBody": "Ele vai para os projetos arquivados. As despesas e os saldos continuam, e você pode restaurá-lo.",
 			"archiveConfirm": "Arquivar",
 			"archived": "{name} arquivado",
 			"restored": "{name} restaurado",
@@ -2063,11 +2058,9 @@
 			"share": "Compartilhar",
 			"newLink": "Novo link",
 			"newLinkTitle": "Substituir este link?",
-			"newLinkBody": "O link antigo deixa de funcionar. Quem já entrou continua no projeto.",
 			"newLinkConfirm": "Substituir",
 			"turnOff": "Desativar",
 			"turnOffTitle": "Desativar este link?",
-			"turnOffBody": "Ninguém mais consegue entrar com ele. Quem já entrou continua no projeto.",
 			"turnOffConfirm": "Desativar",
 			"linkError": "Não foi possível mudar o link. Tente de novo.",
 			"linksHint": "Quem tem um link entra com esse papel.",
@@ -2175,7 +2168,6 @@
 			"removePhoto": "Remover",
 			"photoHint": "JPEG, PNG, WebP ou GIF, até 5 MB",
 			"removePhotoTitle": "Remover sua foto?",
-			"removePhotoBody": "As pessoas verão suas iniciais no lugar.",
 			"removePhotoConfirm": "Remover foto",
 			"photoUpdated": "Foto atualizada",
 			"photoRemoved": "Foto removida",
@@ -2353,7 +2345,6 @@
 			"preferredToast": "Método preferido alterado",
 			"remove": "Excluir método de pagamento",
 			"removeTitle": "Excluir método de pagamento?",
-			"removeBody": "Isso não pode ser desfeito. As pessoas com quem você divide não o verão mais.",
 			"removeConfirm": "Excluir",
 			"removed": "Método de pagamento excluído",
 			"saveError": "Não foi possível salvar. Tente de novo."
@@ -2550,7 +2541,6 @@
 			"share": "Compartilhar link de cadastro",
 			"delete": "Excluir código",
 			"deleteTitle": "Excluir este código?",
-			"deleteBody": "{code} deixa de funcionar na hora.",
 			"deleteError": "Não foi possível excluir o código. Tente de novo.",
 			"deleted": "Código de convite excluído",
 			"codeCopied": "Código copiado",
@@ -2589,7 +2579,6 @@
 			"unarchive": "Desarquivar",
 			"delete": "Excluir feedback",
 			"deleteTitle": "Excluir este feedback?",
-			"deleteBody": "Isso não pode ser desfeito.",
 			"deleted": "Feedback excluído",
 			"moved": {
 				"read": "Marcado como lido",
@@ -2782,7 +2771,6 @@
 		},
 		"delete": {
 			"title": "Excluir {title}?",
-			"body": "Ela deixa de aparecer. Os lançamentos que já registrou ficam.",
 			"future": "Próximas vezes",
 			"futureValue": "Param, a próxima era {date}",
 			"autoPay": "Registrar automaticamente",
@@ -2790,7 +2778,9 @@
 			"submit": "Excluir gasto recorrente",
 			"submitIn": "Excluir receita recorrente",
 			"toast": "{title} excluída",
-			"error": "Não foi possível excluir. Tente de novo."
+			"error": "Não foi possível excluir. Tente de novo.",
+			"logged": "Lançamentos já registrados",
+			"loggedStays": "Permanecem"
 		},
 		"pick": "Escolha uma despesa recorrente"
 	},

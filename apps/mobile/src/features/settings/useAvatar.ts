@@ -76,7 +76,7 @@ export function useAvatar(onChanged: () => void) {
 
 	function confirmRemove() {
 		if (busy) return;
-		Alert.alert(t("removePhotoTitle"), t("removePhotoBody"), [
+		Alert.alert(t("removePhotoTitle"), undefined, [
 			{ text: tc("cancel"), style: "cancel" },
 			{
 				text: t("removePhotoConfirm"),

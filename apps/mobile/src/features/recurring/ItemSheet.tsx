@@ -33,6 +33,8 @@ export function ItemSheet({
 	onDelete: () => void;
 }) {
 	const t = useTranslations("mobile.recurring.item");
+	const tr = useTranslations("mobile.recurring");
+	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const announce = useRecurringToast();
 	const money = useMoneyText();
@@ -40,6 +42,12 @@ export function ItemSheet({
 	const { space } = useTheme();
 	const [busy, setBusy] = useState(false);
 	const [failed, setFailed] = useState(false);
+	const [editing, setEditing] = useState(false);
+
+	function close() {
+		setEditing(false);
+		onClose();
+	}
 
 	async function change(patch: { paused?: boolean; autoPay?: boolean }) {
 		if (!api || busy) return;
@@ -71,7 +79,7 @@ export function ItemSheet({
 				},
 				onChanged: onDone,
 			});
-			onClose();
+			close();
 		} catch {
 			setFailed(true);
 		} finally {
@@ -79,21 +87,53 @@ export function ItemSheet({
 		}
 	}
 
+	// A view shows the template's facts; the pencil opens what changes them.
+	if (!editing) {
+		return (
+			<Sheet
+				detents={["medium"]}
+				edit={{ label: tc("edit"), onPress: () => setEditing(true) }}
+				onClose={close}
+				title={item.title}
+				visible={visible}
+			>
+				<SheetBody>
+					<View style={{ gap: space[4] }}>
+						<Note>
+							{t(item.paused ? "paused" : "next", {
+								amount: money(item.amount),
+								date: day(item.next),
+							})}
+						</Note>
+						<Note>
+							{[
+								tr(`frequency.${item.frequency}`),
+								tr(item.autoPay ? "autoPayOn" : "autoPayOff"),
+							].join(" · ")}
+						</Note>
+						<View style={{ alignItems: "flex-start" }}>
+							<Button
+								label={t("delete")}
+								onPress={onDelete}
+								size="small"
+								variant="dangerText"
+							/>
+						</View>
+					</View>
+				</SheetBody>
+			</Sheet>
+		);
+	}
+
 	return (
 		<Sheet
 			detents={["medium"]}
-			onClose={onClose}
+			onClose={close}
 			title={item.title}
 			visible={visible}
 		>
 			<SheetBody>
 				<View style={{ gap: space[4] }}>
-					<Note>
-						{t(item.paused ? "paused" : "next", {
-							amount: money(item.amount),
-							date: day(item.next),
-						})}
-					</Note>
 					<SwitchRow
 						detail={t(item.autoPay ? "autoOnHint" : "autoOffHint")}
 						disabled={busy}
@@ -107,12 +147,6 @@ export function ItemSheet({
 						label={item.paused ? t("resume") : t("pause")}
 						onPress={() => change({ paused: !item.paused })}
 						variant="outlined"
-					/>
-					<Button
-						disabled={busy}
-						label={t("delete")}
-						onPress={onDelete}
-						variant="dangerText"
 					/>
 				</View>
 			</SheetBody>
