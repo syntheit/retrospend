@@ -55,7 +55,6 @@
 		"liquid": "Liquide",
 		"illiquid": "Non liquide"
 	},
-	"ratesToday": "Taux du jour",
 	"ratesOn": "Taux du {date}",
 	"withoutRate": "{count, plural, one {# compte sans taux} other {# comptes sans taux}}",
 	"showAmounts": "Afficher les montants",
@@ -118,7 +117,8 @@
 			"namePlaceholder": "Compte épargne",
 			"nameMissing": "Donne un nom au compte",
 			"type": "Type",
-			"balance": "Solde",
+			"custom": "Ordre personnalisé",
+		"value": "Valeur",
 			"owed": "Montant dû",
 			"noRate": "Pas encore de taux pour {currency} : le compte ne peut pas être évalué. Choisis une autre devise pour l'instant.",
 			"liquid": "Liquide",
@@ -165,6 +165,12 @@
 		"balance": "Solde",
 		"name": "Nom",
 		"type": "Type",
-		"updated": "Mis à jour récemment"
+		"updated": "Mis à jour récemment",
+		"reorder": "Déplacer {name}",
+		"instructions": "Appuyez sur Espace pour saisir un compte, sur les flèches pour le déplacer et sur Espace pour le déposer.",
+		"picked": "{name} saisi. Position {position} sur {count}.",
+		"moved": "{name} déplacé à la position {position} sur {count}.",
+		"dropped": "{name} déposé à la position {position} sur {count}.",
+		"cancelled": "Déplacement annulé."
 	}
 }

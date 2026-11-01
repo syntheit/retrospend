@@ -2,7 +2,7 @@
 
 import { ChevronRight, SearchX } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { type CSSProperties, type ReactNode, type Ref, useState } from "react";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { AccountTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
@@ -14,7 +14,8 @@ import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import { cn } from "~/lib/cn";
 import { useRateLabel } from "./sheets/rate-type-chips";
-import { sortAccounts, type WealthSort } from "./sort";
+import { ReorderGroup, SortableItem } from "./reorder";
+import { moveInOrder, sortAccounts, type WealthSort } from "./sort";
 import type { WealthAccount, WealthGroup, WealthView } from "./types";
 
 export type AccountFilters = {
@@ -69,56 +70,73 @@ function Rows({
 	handlers,
 	onOpen,
 	label,
+	onMove,
 }: {
 	accounts: WealthAccount[];
 	handlers: ActionHandlers<AccountTarget>;
 	onOpen?: (a: WealthAccount) => void;
 	label: string;
+	/** Set in the Custom sort: the rows get a grip and can be dragged. */
+	onMove?: (from: number, to: number) => void;
 }) {
 	const rate = useRateLabel();
+	const row = (
+		a: WealthAccount,
+		extra: {
+			ref?: Ref<HTMLLIElement>;
+			style?: CSSProperties;
+			className?: string;
+			handle?: ReactNode;
+		} = {},
+	) => {
+		const target = targetOf(a);
+		return (
+			<ActionArea
+				entity="account"
+				handlers={handlers}
+				key={a.id}
+				target={target}
+			>
+				<AccountRow
+					account={{
+						id: a.id,
+						name: a.name,
+						kind: a.kind,
+						icon: a.icon,
+						amount: a.amount,
+						home: a.home,
+						updated: a.updated,
+						change: null,
+						// The sub line of wealth.html: the code, then how it counts.
+						detail: {
+							valuedAt: a.rateType ? rate(a.rateType) : null,
+							// APR as typed (118 is 118%), in hundredths for the formatter.
+							apr: a.apr != null ? Math.round(a.apr * 100) : null,
+							noRate: a.home === null,
+							closedOn: a.closedOn,
+						},
+					}}
+					actions={
+						<ActionMenu entity="account" handlers={handlers} target={target} />
+					}
+					onOpen={onOpen ? () => onOpen(a) : undefined}
+					{...extra}
+				/>
+			</ActionArea>
+		);
+	};
+	if (!onMove)
+		return <RowList label={label}>{accounts.map((a) => row(a))}</RowList>;
 	return (
-		<RowList label={label}>
-			{accounts.map((a) => {
-				const target = targetOf(a);
-				return (
-					<ActionArea
-						entity="account"
-						handlers={handlers}
-						key={a.id}
-						target={target}
-					>
-						<AccountRow
-							account={{
-								id: a.id,
-								name: a.name,
-								kind: a.kind,
-								icon: a.icon,
-								amount: a.amount,
-								home: a.home,
-								updated: a.updated,
-								change: null,
-								// The sub line of wealth.html: the code, then how it counts.
-								detail: {
-									valuedAt: a.rateType ? rate(a.rateType) : null,
-									// APR as typed (118 is 118%), in hundredths for the formatter.
-									apr: a.apr != null ? Math.round(a.apr * 100) : null,
-									noRate: a.home === null,
-									closedOn: a.closedOn,
-								},
-							}}
-							actions={
-								<ActionMenu
-									entity="account"
-									handlers={handlers}
-									target={target}
-								/>
-							}
-							onOpen={onOpen ? () => onOpen(a) : undefined}
-						/>
-					</ActionArea>
-				);
-			})}
-		</RowList>
+		<ReorderGroup items={accounts} onMove={onMove}>
+			<RowList label={label}>
+				{accounts.map((a) => (
+					<SortableItem id={a.id} key={a.id} name={a.name}>
+						{(parts) => row(a, parts)}
+					</SortableItem>
+				))}
+			</RowList>
+		</ReorderGroup>
 	);
 }
 
@@ -160,6 +178,8 @@ export function AccountList({
 	view,
 	filters,
 	sort,
+	custom,
+	onReorder,
 	handlers,
 	onOpen,
 	onClear,
@@ -168,6 +188,10 @@ export function AccountList({
 	view: WealthView;
 	filters: AccountFilters;
 	sort: WealthSort;
+	/** The saved custom order: account ids. */
+	custom: readonly string[];
+	/** The whole custom order after a drag. */
+	onReorder: (order: string[]) => void;
 	handlers: ActionHandlers<AccountTarget>;
 	onOpen: (a: WealthAccount) => void;
 	onClear: () => void;
@@ -196,6 +220,7 @@ export function AccountList({
 				g.accounts.filter((a) => matches(a, filters, view.home)),
 				sort,
 				locale,
+				custom,
 			),
 		}))
 		.filter((g) => g.accounts.length);
@@ -203,7 +228,9 @@ export function AccountList({
 		view.closed.filter((a) => matches(a, filters, view.home)),
 		sort,
 		locale,
+		custom,
 	);
+	const all = [...view.groups.flatMap((g) => g.accounts), ...view.closed];
 	return (
 		<div>
 			{shown.map((g) => (
@@ -212,6 +239,21 @@ export function AccountList({
 						accounts={g.accounts}
 						handlers={handlers}
 						label={t(`groups.${g.key}`)}
+						onMove={
+							sort === "custom"
+								? (from, to) =>
+										onReorder(
+											moveInOrder(
+												all,
+												custom,
+												locale,
+												g.accounts.map((a) => a.id),
+												from,
+												to,
+											),
+										)
+								: undefined
+						}
 						onOpen={onOpen}
 					/>
 				</Group>

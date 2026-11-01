@@ -61,10 +61,10 @@ export function WealthHeader({
 	const phone = useIsMobile();
 	const { short } = useRowDates();
 	const exportCsv = api.wealth.exportCsv.useMutation();
-	const updated = !view.ratesUpdated
-		? null
-		: view.ratesUpdated === view.today
-			? t("ratesToday")
+	// Said only when the rates are older than today: fresh rates are assumed.
+	const updated =
+		!view.ratesUpdated || view.ratesUpdated === view.today
+			? null
 			: t("ratesOn", { date: short(view.ratesUpdated) });
 	const sub = [
 		updated,

@@ -55,7 +55,6 @@
 		"liquid": "Líquido",
 		"illiquid": "Não líquido"
 	},
-	"ratesToday": "Cotações de hoje",
 	"ratesOn": "Cotações de {date}",
 	"withoutRate": "{count, plural, one {# conta sem cotação} other {# contas sem cotação}}",
 	"showAmounts": "Mostrar valores",
@@ -118,7 +117,8 @@
 			"namePlaceholder": "Conta poupança",
 			"nameMissing": "Dê um nome à conta",
 			"type": "Tipo",
-			"balance": "Saldo",
+			"custom": "Ordem própria",
+		"value": "Valor",
 			"owed": "Valor devido",
 			"noRate": "Ainda não há cotação de {currency}, então a conta não pode ser avaliada. Escolha outra moeda por enquanto.",
 			"liquid": "Líquida",
@@ -165,6 +165,12 @@
 		"balance": "Saldo",
 		"name": "Nome",
 		"type": "Tipo",
-		"updated": "Atualizadas recentemente"
+		"updated": "Atualizadas recentemente",
+		"reorder": "Reordenar {name}",
+		"instructions": "Pressione Espaço para pegar uma conta, as setas para movê-la e Espaço para soltá-la.",
+		"picked": "{name} pega. Posição {position} de {count}.",
+		"moved": "{name} movida para a posição {position} de {count}.",
+		"dropped": "{name} solta na posição {position} de {count}.",
+		"cancelled": "Reordenação cancelada."
 	}
 }

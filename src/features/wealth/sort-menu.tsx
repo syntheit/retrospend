@@ -12,7 +12,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { WEALTH_SORTS, type WealthSort } from "./sort";
 
-/** Sort the accounts by balance, name, type or when they changed. */
+/** Sort the accounts: your own order, value, name, type or when they changed. */
 export function SortMenu({
 	value,
 	onChange,

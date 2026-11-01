@@ -304,9 +304,6 @@ export function WealthView() {
 	const hero = (
 		<View style={{ gap: space[2] }}>
 			<StaleNote since={state.staleSince} />
-			<Text style={{ paddingHorizontal: space[4] }} tone="fg3" variant="meta">
-				{t("ratesToday")}
-			</Text>
 			{missing > 0 ? (
 				<Text
 					style={{ paddingHorizontal: space[4] }}

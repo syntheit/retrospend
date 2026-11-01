@@ -55,7 +55,6 @@
 		"liquid": "Líquido",
 		"illiquid": "No líquido"
 	},
-	"ratesToday": "Cotizaciones de hoy",
 	"ratesOn": "Cotizaciones del {date}",
 	"withoutRate": "{count, plural, one {# cuenta sin cotización} other {# cuentas sin cotización}}",
 	"showAmounts": "Mostrar montos",
@@ -118,7 +117,8 @@
 			"namePlaceholder": "Caja de ahorro",
 			"nameMissing": "Ponele un nombre a la cuenta",
 			"type": "Tipo",
-			"balance": "Saldo",
+			"custom": "Orden propio",
+		"value": "Valor",
 			"owed": "Monto adeudado",
 			"noRate": "Todavía no hay cotización de {currency}, así que la cuenta no se puede valuar. Por ahora elegí otra moneda.",
 			"liquid": "Líquida",
@@ -165,6 +165,12 @@
 		"balance": "Saldo",
 		"name": "Nombre",
 		"type": "Tipo",
-		"updated": "Actualizadas hace poco"
+		"updated": "Actualizadas hace poco",
+		"reorder": "Reordenar {name}",
+		"instructions": "Apretá Espacio para agarrar una cuenta, las flechas para moverla y Espacio para soltarla.",
+		"picked": "{name} agarrada. Posición {position} de {count}.",
+		"moved": "{name} movida a la posición {position} de {count}.",
+		"dropped": "{name} soltada en la posición {position} de {count}.",
+		"cancelled": "Reordenamiento cancelado."
 	}
 }
