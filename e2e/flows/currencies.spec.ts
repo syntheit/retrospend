@@ -79,22 +79,17 @@ test("Currencies: the stronger currency priced in the weaker, convert, search co
 	const table = main.getByRole("table");
 	// The units differ (USD, BRL, EUR), so every cell names its own.
 	const usd = table.getByRole("row").filter({ hasText: "USD" });
-	await expect(usd).toContainText("1 USD = $1,450");
-	await expect(usd.locator("[data-minor='145000']").first()).toHaveAttribute(
-		"data-currency",
-		"ARS",
-	);
-	// Whole units from ARS 100 up; the server's price keeps its cents.
+	await expect(usd).toContainText("1 USD = 1,450.00 ARS");
+	// A rate is a number in the direction that reads at least 1, with both codes.
 	const brl = table.getByRole("row").filter({ hasText: "BRL" });
-	await expect(brl).toContainText("1 BRL = $269");
-	await expect(brl.locator("[data-minor='26852']").first()).toBeVisible();
+	await expect(brl).toContainText("1 BRL = 268.52 ARS");
 
 	// A row opens the currency in a dialog: it reads the same way, draws the
 	// stored history, lists your expenses in it and converts on the server.
 	await usd.first().click();
 	const detail = page.getByRole("dialog", { name: "USD rates" });
 	await expect(detail).toBeVisible();
-	await expect(detail).toContainText("1 USD = $1,450");
+	await expect(detail).toContainText("1 USD = 1,450.00 ARS");
 	await expect(
 		detail.getByRole("heading", { name: "Price history" }),
 	).toBeVisible();
@@ -132,7 +127,7 @@ test("Currencies: the stronger currency priced in the weaker, convert, search co
 
 	// Favorite EUR through today's favorites; it sorts first.
 	await expect(table.getByRole("row").filter({ hasText: "EUR" })).toContainText(
-		"1 EUR = $1,611",
+		"1 EUR = 1,611.11 ARS",
 	);
 	await untilSaved(page, "preferences.toggleFavoriteExchangeRate", () =>
 		table.getByRole("button", { name: "Add EUR to favorites" }).click(),
@@ -156,7 +151,7 @@ test("Currencies at 390: rows open the rates sheet", async ({ page }) => {
 	await openCurrencies(page, "?currency=USD");
 	const sheet = page.getByRole("dialog", { name: "USD rates" });
 	await expect(sheet).toBeVisible();
-	await expect(sheet).toContainText("1 USD = $1,450");
+	await expect(sheet).toContainText("1 USD = 1,450.00 ARS");
 	await expect(sheet).toContainText("$145,000");
 	await sheet.getByRole("button", { name: "Swap direction" }).click();
 	await expect(sheet).toContainText("USD 0.07");
