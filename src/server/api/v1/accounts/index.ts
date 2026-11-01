@@ -31,6 +31,8 @@ export const accountsRouter = {
 	netWorth: a.netWorth.handler(h(read.netWorth)),
 	summary: a.summary.handler(h(wealthSummary)),
 	defaults: a.defaults.handler(h(read.defaults)),
+	order: a.order.handler(h(read.order)),
+	setOrder: a.setOrder.handler(h(read.setOrder)),
 	export: a.export.handler(h(read.export)),
 	get: a.get.handler(h(read.get)),
 	setDefault: a.setDefault.handler(h(read.setDefault)),

@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { ACCOUNT_SORTS, MAX_CUSTOM_ORDER } from "@retrospend/api-contract";
 import { z } from "zod";
 import { generateDefaultCategoryPreferences } from "~/lib/analytics-defaults";
 import { BASE_CURRENCY, DEFAULT_PAGE_SIZE } from "~/lib/constants";
@@ -29,6 +30,9 @@ export const WealthSettingsSchema = z.object({
 	version: z.literal(1),
 	showCurrencyExposure: z.boolean(),
 	showHistoryChart: z.boolean(),
+	/** How the Wealth accounts are sorted, and the ids in your custom order. */
+	sort: z.enum(ACCOUNT_SORTS).default("value"),
+	order: z.array(z.string().min(1).max(64)).max(MAX_CUSTOM_ORDER).default([]),
 });
 
 export const ExchangeRatesSettingsSchema = z.object({
@@ -124,6 +128,8 @@ export const DEFAULT_PAGE_SETTINGS: Record<
 		version: 1,
 		showCurrencyExposure: true,
 		showHistoryChart: true,
+		sort: "value",
+		order: [],
 	},
 	EXCHANGE_RATES: {
 		version: 1,

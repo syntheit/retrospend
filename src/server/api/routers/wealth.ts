@@ -6,6 +6,10 @@ import {
 	defaultAccounts,
 	setDefaultAccount,
 } from "~/server/services/accounts/defaults";
+import {
+	getAccountOrder,
+	setAccountOrder,
+} from "~/server/services/accounts/order";
 import { exactRate, withRateNumber } from "~/server/services/accounts/exact-rate";
 import { setAccountIcon } from "~/server/services/accounts/icon";
 import * as schema from "~/server/services/accounts/input";
@@ -206,6 +210,14 @@ export const wealthRouter = createTRPCRouter({
 		revertRateType: createTRPCRouter(
 			money(z.object({ rateTypeId: z.string().min(1) }), revertRateType),
 		),
+		order: protectedProcedure.query(({ ctx }) =>
+			getAccountOrder(ctx.db, ctx.session.user.id),
+		),
+		setOrder: protectedProcedure
+			.input(schema.setAccountOrderSchema)
+			.mutation(({ ctx, input }) =>
+				setAccountOrder(ctx.db, ctx.session.user.id, input),
+			),
 		defaults: protectedProcedure.query(({ ctx }) =>
 			defaultAccounts(ctx.db, ctx.session.user.id),
 		),

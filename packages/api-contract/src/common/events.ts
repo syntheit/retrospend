@@ -115,6 +115,7 @@ export const EVENT_TYPES = [
 	"account.created",
 	"account.default_set",
 	"account.deleted",
+	"account.order_set",
 	"account.rate_type_set",
 	"account.reopened",
 	"account.undone",
