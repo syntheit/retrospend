@@ -3,7 +3,6 @@
 import { Plus, Receipt } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
-import { useEntryActions } from "~/features/entry/entry-actions";
 import { Section } from "~/components/layout/section";
 import { RowList } from "~/components/rows/row";
 import { TransactionRow } from "~/components/rows/transaction-row";
@@ -17,6 +16,7 @@ import {
 } from "~/features/activity/to-vm";
 import { useRateWord } from "~/features/activity/use-rate-word";
 import { useRowActions } from "~/features/activity/use-row-actions";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
 import { PartUnavailable } from "./home-states";
 

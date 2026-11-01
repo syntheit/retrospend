@@ -33,7 +33,9 @@ export function useRateFormat() {
 				formatRate(from, to, perFrom, locale),
 			/** The same for a server rate pair. */
 			pair: (p: RatePairLike | null | undefined) =>
-				p ? formatRate(p.unit.currency, p.value.currency, p.rate, locale) : null,
+				p
+					? formatRate(p.unit.currency, p.value.currency, p.rate, locale)
+					: null,
 			/** "Blue · 1 USD = 1,545.20 ARS". */
 			withType: (typeName: string, p: RatePairLike | null | undefined) =>
 				p
@@ -46,18 +48,10 @@ export function useRateFormat() {
 						)
 					: null,
 			/** "Blue · 1 USD = 1,545.20 ARS" from the raw pair. */
-			typed: (
-				typeName: string,
-				from: string,
-				to: string,
-				perFrom: RateInput,
-			) => formatRateWithType(typeName, from, to, perFrom, locale),
+			typed: (typeName: string, from: string, to: string, perFrom: RateInput) =>
+				formatRateWithType(typeName, from, to, perFrom, locale),
 			/** The number and the other code, in the direction that reads at least 1 ("1,545.20 ARS"). */
-			number: (
-				from: string,
-				to: string,
-				perFrom: RateInput,
-			): string | null => {
+			number: (from: string, to: string, perFrom: RateInput): string | null => {
 				const o = orientRate(from, to, perFrom);
 				return o ? `${formatRateValue(o.value, locale)} ${o.quote}` : null;
 			},

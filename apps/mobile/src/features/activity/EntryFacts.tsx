@@ -4,10 +4,10 @@ import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useFaces } from "@/features/read/faces";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useRateFormat } from "@/lib/rateFormat";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import { CategoryGlyph, categoryColor, Glyph } from "@/ui/Glyph";
-import { useRateFormat } from "@/lib/rateFormat";
 import { useRateTypeLabel } from "@/ui/Money";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
@@ -172,11 +172,7 @@ export function EntryFacts({
 				{format.dateTime(dayDate(item.date), { dateStyle: "long" })}
 			</Fact>
 			<Fact label={t("rate")}>
-				{foreign
-					? item.home === null
-						? tm("noRate")
-						: rateText
-					: null}
+				{foreign ? (item.home === null ? tm("noRate") : rateText) : null}
 			</Fact>
 			<Fact label={t("project")}>{item.project?.name}</Fact>
 			<Fact

@@ -20,7 +20,11 @@ export function rateTypesByCurrency(
 
 /** Home per 1 unit of each currency at each rate type, unrounded text (what an account is valued at). */
 export function typeRatesByCurrency(
-	rates: readonly { currency: string; type: string; rate: { toString(): string } }[],
+	rates: readonly {
+		currency: string;
+		type: string;
+		rate: { toString(): string };
+	}[],
 	home: string,
 ): Record<string, Record<string, string>> {
 	const out: Record<string, Record<string, string>> = {};

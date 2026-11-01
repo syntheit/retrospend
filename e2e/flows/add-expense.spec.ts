@@ -219,7 +219,9 @@ test("Add expense: the project tab shows each project with its people", async ({
 	await sheet.getByRole("button", { name: "Cancel" }).click();
 });
 
-test("Add expense: switching to Income carries the amount", async ({ page }) => {
+test("Add expense: switching to Income carries the amount", async ({
+	page,
+}) => {
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await openV2(page, "/activity");
 	await page.keyboard.press("n");

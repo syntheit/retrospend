@@ -6,11 +6,7 @@ import { useRateFormat } from "@/lib/rateFormat";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
 import { Text } from "@/ui/Text";
-import {
-	type CurrencyRow,
-	type RatePrice,
-	rateTypeKey,
-} from "./source";
+import { type CurrencyRow, type RatePrice, rateTypeKey } from "./source";
 
 /** A rate type's name: Official, Blue, MEP; an unknown one capitalized. */
 export function useRateLabel() {

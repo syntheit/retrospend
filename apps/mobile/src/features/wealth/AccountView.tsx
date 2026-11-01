@@ -7,6 +7,7 @@ import { subscribeEntryChanges } from "@/features/entry/events";
 import { ENTITY_CACHE_LIMIT } from "@/features/read/loadCached";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useRateFormat } from "@/lib/rateFormat";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { EmptyState } from "@/ui/EmptyState";
@@ -19,7 +20,6 @@ import {
 	StaleNote,
 } from "@/ui/List";
 import { Menu } from "@/ui/Menu";
-import { useRateFormat } from "@/lib/rateFormat";
 import { heroCents, useRateTypeLabel } from "@/ui/Money";
 import { Screen } from "@/ui/Screen";
 import { Skeleton, SkeletonRows } from "@/ui/Skeleton";

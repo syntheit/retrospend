@@ -19,9 +19,9 @@ import {
 import { SkeletonRows } from "~/components/ui/skeleton";
 import { useIsMobile } from "~/hooks/use-mobile";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
-import { useRateWord } from "./use-rate-word";
 import { dayFigure, opens, toExpenseTarget, toTransactionVM } from "./to-vm";
 import { useBulkActions } from "./use-bulk-actions";
+import { useRateWord } from "./use-rate-word";
 
 type Props = {
 	rows: ActivityRowDTO[];

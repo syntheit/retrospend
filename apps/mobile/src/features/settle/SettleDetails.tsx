@@ -43,8 +43,7 @@ export function RateChips({
 	const single = choices.currencies.length === 1 && choices.types.length > 0;
 	const chipLabel = (type: string): string => {
 		const read =
-			values[type] ??
-			(choices.current === type ? choices.rates[0] : undefined);
+			values[type] ?? (choices.current === type ? choices.rates[0] : undefined);
 		// The type carries its number (R8): "Blue 1,468.00 ARS" under "{currency} rate".
 		const number = read
 			? fmt.number(read.unit.currency, read.value.currency, read.rate)

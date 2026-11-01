@@ -45,9 +45,7 @@ function RateTip({ r }: { r: ReviewRow }) {
 	if (!r.rate) return null;
 	const type = r.rate.type;
 	const name = type ? (t.has(type) ? t(type as "blue") : type) : "";
-	return (
-		<span className="tabular-nums">{fmt.withType(name, r.rate)}</span>
-	);
+	return <span className="tabular-nums">{fmt.withType(name, r.rate)}</span>;
 }
 
 /**

@@ -244,9 +244,7 @@ describe("CurrenciesScreen", () => {
 		expect(shown).toContain("mobile.currencies.rateTypes.blue");
 		expect(shown).toContain("262.00 ARS");
 		// Each price is for the row's own currency, so it names no unit.
-		expect(shown.some((s) => s.includes(" = "))).toBe(
-			false,
-		);
+		expect(shown.some((s) => s.includes(" = "))).toBe(false);
 		// No rate reads as words, never a figure.
 		expect(shown).toContain("mobile.currencies.noRateSub");
 		expect(shown.some((s) => s.startsWith("mobile.currencies.missing"))).toBe(

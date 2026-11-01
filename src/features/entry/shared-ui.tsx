@@ -65,11 +65,11 @@ export function Field({
 	return (
 		<div className="flex min-w-0 flex-col gap-2">
 			{htmlFor ? (
-				<label className="font-medium text-fg-2 text-small" htmlFor={htmlFor}>
+				<label className="text-fg-2 text-small font-medium" htmlFor={htmlFor}>
 					{label}
 				</label>
 			) : (
-				<span className="font-medium text-fg-2 text-small">{label}</span>
+				<span className="text-fg-2 text-small font-medium">{label}</span>
 			)}
 			{children}
 			<FieldError text={error} />

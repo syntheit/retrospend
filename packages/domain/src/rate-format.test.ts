@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
 	formatRate,
-	orientRateAs,
 	formatRateValue,
 	formatRateWithType,
 	orientRate,
+	orientRateAs,
 } from "./rate-format";
 
 describe("formatRate: a weak currency against a strong one", () => {

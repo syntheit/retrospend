@@ -127,11 +127,11 @@ export function BalanceBlock({
 			<Money
 				// A net across currencies is converted at today's rates (person.html).
 				approx={!!foreign}
-				figure={heroFigure}
 				className={cn(
 					"text-hero mt-1 block",
 					dir === "owed" ? "text-positive" : "text-owe",
 				)}
+				figure={heroFigure}
 				missing="noRate"
 				sign="never"
 				value={page.net}
