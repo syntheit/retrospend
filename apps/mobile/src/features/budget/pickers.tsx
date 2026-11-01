@@ -1,41 +1,23 @@
 import { categoryTone } from "@retrospend/domain/category-tone";
-import { type ReactNode, useState } from "react";
-import { View } from "react-native";
+import { useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { AccountDot } from "@/features/wealth/AccountDot";
 import { useTheme } from "@/theme";
+import { CategoryPickerSheet } from "@/ui/CategoryPickerSheet";
 import { Chip } from "@/ui/Chip";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
-import { PickerSheet } from "@/ui/PickerSheet";
+import { PickLabeled, PickMany } from "@/ui/PickLabeled";
 import { PickField } from "@/ui/PickField";
-import type { PickRow } from "@/ui/pickGroups";
-import { FieldLabel } from "@/ui/TextField";
 import type { BudgetEnvelope } from "./source";
 
 /**
  * The pickers of the budget sheets. Each is a flat-form field: the label
  * above, then the one picker trigger (identity, name) that opens the shared
- * picker sheet with a search field. Envelopes lead with their bare glyph in
- * their color, accounts with their group dot (GUIDELINE 8).
+ * picker sheet with a search field. Envelopes open the category picker (the
+ * same sheet as the composer's More pill), with their bare glyph in their
+ * color; accounts lead with their group dot (GUIDELINE 8).
  */
-
-/** A form field: the label above its trigger, flush left. */
-export function PickLabeled({
-	label,
-	children,
-}: {
-	label: string;
-	children: ReactNode;
-}) {
-	const { space } = useTheme();
-	return (
-		<View style={{ gap: space[2], alignItems: "flex-start" }}>
-			<FieldLabel>{label}</FieldLabel>
-			{children}
-		</View>
-	);
-}
 
 /** A place that is not an envelope but can stand in a list of them (the pool). */
 export interface ExtraPlace {
@@ -60,7 +42,8 @@ export function useEnvelopeLead() {
 /**
  * Pick an envelope (and, ahead of them, places like the pool). Each row says
  * what the envelope has left. While nothing is picked the trigger says
- * `placeholder`; `none` adds a first row that clears the choice.
+ * `placeholder`; `none` adds a first row that clears the choice. The list is
+ * the shared category picker: a full-height, searchable sheet.
  */
 export function EnvelopePick({
 	label,
@@ -85,32 +68,57 @@ export function EnvelopePick({
 	const t = useTranslations("mobile.budget.pick");
 	const money = useMoneyText();
 	const leadOf = useEnvelopeLead();
+	const [open, setOpen] = useState(false);
+	const categories = useMemo(
+		() =>
+			envelopes.map((e) => ({
+				id: e.id,
+				name: e.name,
+				icon: e.icon,
+				tone: categoryTone(e.color ?? ""),
+			})),
+		[envelopes],
+	);
+	const byId = new Map(envelopes.map((e) => [e.id, e]));
+	const picked = value === null ? undefined : byId.get(value);
+	const extra = extras.find((x) => x.id === value);
+	const shown = picked
+		? { text: picked.name, lead: leadOf(picked) }
+		: extra
+			? { text: extra.name, lead: null }
+			: none
+				? { text: none.label, lead: null }
+				: { text: placeholder ?? "", lead: null };
 	return (
 		<PickLabeled label={label}>
-			<PickField
-				empty={t("envelopeEmpty")}
-				find={t("envelopeFind")}
-				label={label}
-				none={none ? { label: none.label, lead: null } : undefined}
-				onChange={onChange}
-				placeholder={placeholder}
-				rows={[
-					...extras.map((x) => ({
-						id: x.id,
-						label: x.name,
-						detail: x.detail,
-						lead: null,
-					})),
-					...envelopes.map((e) => ({
-						id: e.id,
-						label: e.name,
-						detail: detailOf ? detailOf(e) : money(e.left),
-						lead: leadOf(e),
-					})),
-				]}
-				title={label}
+			<Chip
+				accessibilityLabel={`${label}, ${shown.text}`}
+				label={shown.text}
+				leading={shown.lead}
+				onPress={() => setOpen(true)}
+				variant="trigger"
+			/>
+			<CategoryPickerSheet
+				categories={categories}
+				copy={{
+					title: label,
+					find: t("envelopeFind"),
+					empty: t("envelopeEmpty"),
+				}}
+				detailOf={(c) => {
+					const e = byId.get(c.id);
+					return e ? (detailOf ? detailOf(e) : money(e.left)) : undefined;
+				}}
+				extras={extras}
+				none={
+					none
+						? { label: none.label, onPick: () => onChange(null) }
+						: undefined
+				}
+				onChange={(id) => onChange(id)}
+				onClose={() => setOpen(false)}
 				value={value}
-				variant="pill"
+				visible={open}
 			/>
 		</PickLabeled>
 	);
@@ -156,88 +164,6 @@ export function AccountPick({
 				title={label}
 				value={value}
 				variant="pill"
-			/>
-		</PickLabeled>
-	);
-}
-
-/** Pick one of a few named options with no identity (a budget group). */
-export function GroupPick({
-	label,
-	groups,
-	value,
-	onChange,
-}: {
-	label: string;
-	groups: readonly { id: string; label: string }[];
-	value: string;
-	onChange: (id: string) => void;
-}) {
-	const t = useTranslations("mobile.budget.pick");
-	return (
-		<PickLabeled label={label}>
-			<PickField
-				empty={t("groupEmpty")}
-				find={t("groupFind")}
-				label={label}
-				onChange={(id) => id !== null && onChange(id)}
-				rows={groups.map((g) => ({ id: g.id, label: g.label, lead: null }))}
-				title={label}
-				value={value}
-				variant="pill"
-			/>
-		</PickLabeled>
-	);
-}
-
-/**
- * Pick several from a list: a trigger that says how many, and the picker
- * sheet in its multiple mode (a check per row, Done closes).
- */
-export function PickMany({
-	label,
-	summary,
-	find,
-	empty,
-	rows,
-	selected,
-	onToggle,
-}: {
-	label: string;
-	/** What the trigger says: "3 categories", or the prompt while none. */
-	summary: string;
-	find: string;
-	empty: string;
-	rows: Omit<PickRow, "selected">[];
-	selected: ReadonlySet<string>;
-	onToggle: (id: string) => void;
-}) {
-	const tp = useTranslations("mobile.pickers");
-	const [open, setOpen] = useState(false);
-	return (
-		<PickLabeled label={label}>
-			<Chip
-				accessibilityLabel={`${label}, ${summary}`}
-				label={summary}
-				onPress={() => setOpen(true)}
-				variant="trigger"
-			/>
-			<PickerSheet
-				clear={tp("clear")}
-				empty={empty}
-				find={find}
-				groups={[
-					{
-						key: "all",
-						heading: label,
-						rows: rows.map((r) => ({ ...r, selected: selected.has(r.id) })),
-					},
-				]}
-				multiple
-				onClose={() => setOpen(false)}
-				onSelect={onToggle}
-				title={label}
-				visible={open}
 			/>
 		</PickLabeled>
 	);

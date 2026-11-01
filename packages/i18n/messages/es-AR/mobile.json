@@ -1283,7 +1283,7 @@
 			"nothing": "Coincide con lo que tiene el presupuesto. No se agrega nada."
 		},
 		"toWealth": {
-			"title": "Mover {name} a Patrimonio",
+			"title": "Mover a Patrimonio",
 			"lead": "La plata sale de {name} hacia una cuenta fuera del presupuesto. El avance de su meta no cambia.",
 			"noAccount": "Todavía no tenés una cuenta de Patrimonio fuera de tu presupuesto. Agregá una en Patrimonio.",
 			"from": "Sale de",
@@ -1293,7 +1293,8 @@
 			"got": "Recibís (opcional)",
 			"move": "Mover",
 			"toast": "Moviste {amount} de {name} a {account}",
-			"envelope": "Sale de"
+			"envelope": "Sale de",
+			"account": "Cuenta"
 		},
 		"fromWealth": {
 			"title": "Mover desde Patrimonio",
@@ -1314,7 +1315,8 @@
 			"putIn": "Ponerlo en",
 			"move": "Traer",
 			"toastMoved": "Trajiste {amount}",
-			"toastCounted": "Contaste plata de {name}. {name} no cambió"
+			"toastCounted": "Contaste plata de {name}. {name} no cambió",
+			"account": "Cuenta"
 		},
 		"resume": "Retomar el presupuesto",
 		"targetLine": {

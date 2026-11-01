@@ -7,7 +7,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { Keyboard, Platform, View } from "react-native";
+import { Animated, Keyboard, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { ADD_CONTROL } from "@/layout/destinations";
@@ -16,6 +16,7 @@ import { useSurfaceLinks } from "@/surfaces/useSurfaceLinks";
 import { useTheme } from "@/theme";
 import { AddButton } from "@/ui/AddButton";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
+import { useToastLift } from "@/ui/Toast";
 import { useTransient } from "@/ui/transient";
 import {
 	type AddEntryApi,
@@ -94,6 +95,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 	}>({ count: 0 });
 	useOutboxFlush();
 	const keyboard = useKeyboardShown();
+	const toastLift = useToastLift();
 	const [hiders, setHiders] = useState(0);
 	const hideButton = useCallback(() => {
 		setHiders((n) => n + 1);
@@ -159,12 +161,14 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 			{children}
 			{DevComposerTour ? <DevComposerTour add={api} /> : null}
 			{ADD_CONTROL === "floating" && !keyboard && hiders === 0 ? (
-				<View
+				<Animated.View
 					pointerEvents="box-none"
 					style={{
 						position: "absolute",
 						right: space[4],
 						bottom: insets.bottom + space[4] + BAR_HEIGHT,
+						// Clear of the Undo toast while one shows.
+						transform: [{ translateY: toastLift }],
 					}}
 				>
 					<AddButton
@@ -184,7 +188,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 						label={t("addExpense")}
 						onPress={() => show("expense")}
 					/>
-				</View>
+				</Animated.View>
 			) : null}
 			<Sheet
 				detents={["large"]}

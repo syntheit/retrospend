@@ -18,6 +18,8 @@ jest.mock("@/ui/Glyph", () => ({
 	CategoryGlyph: () => null,
 	categoryColor: () => "#000000",
 }));
+let mockRoom: number | null = null;
+jest.mock("@/ui/DetailPager", () => ({ usePanelRoom: () => mockRoom }));
 jest.mock("@/ui/CategoryPickerSheet", () => ({
 	CategoryPickerSheet: ({
 		visible,
@@ -104,5 +106,35 @@ describe("CategoryPanel", () => {
 		const sheet = root.findAll((n) => n.props.visible === true)[0];
 		expect(sheet).toBeDefined();
 		expect((sheet as TestNode).props.top).toHaveLength(6);
+	});
+
+	it("drops pills until the rows fit the panel, keeping More", () => {
+		mockRoom = 100;
+		let tree!: { root: TestNode };
+		act(() => {
+			tree = create(
+				<CategoryPanel
+					catalog={catalog}
+					draft={{ categoryId: null, editing: null }}
+					error={false}
+					onPick={jest.fn()}
+				/>,
+			);
+		});
+		const wrap = tree.root.findAll(
+			(n) =>
+				Boolean(n.props.accessibilityLabel === "category" && n.props.onLayout),
+		)[0] as TestNode;
+		const onLayout = wrap.props.onLayout as (e: object) => void;
+		// Too tall for the room: one pill goes each time, then it settles.
+		for (let i = 0; i < 3; i++) {
+			act(() => onLayout({ nativeEvent: { layout: { height: 140 } } }));
+		}
+		const after = labels(tree.root);
+		expect(after.filter((l) => names.includes(l))).toHaveLength(3);
+		expect(after).toContain("categoriesMore");
+		act(() => onLayout({ nativeEvent: { layout: { height: 90 } } }));
+		expect(labels(tree.root).filter((l) => names.includes(l))).toHaveLength(3);
+		mockRoom = null;
 	});
 });

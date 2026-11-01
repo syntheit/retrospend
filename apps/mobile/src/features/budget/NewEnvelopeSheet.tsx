@@ -6,7 +6,7 @@ import type { SheetDetent } from "@/ui/Sheet";
 import { CategoryList, loadCategories } from "./CategoryList";
 import { TextField } from "./fields";
 import { createEnvelopeBody, nameOk } from "./moreBodies";
-import { GroupPick } from "./pickers";
+import { GroupPick } from "@/ui/PickLabeled";
 import type { BudgetMonth } from "./source";
 import { useSheetRead } from "./useSheetRead";
 import { FormSheet, WriteForm } from "./WriteSheet";

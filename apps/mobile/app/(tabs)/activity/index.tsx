@@ -1,4 +1,4 @@
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Platform, SectionList, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,7 +26,7 @@ import {
 } from "@/features/entry/addEntryContext";
 import { RecurringView } from "@/features/recurring/RecurringView";
 import { RECURRING_APART } from "@/layout/destinations";
-import { useSearchShortcut } from "@/layout/searchShortcut";
+import { useHeaderSearch } from "@/layout/headerSearch";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
@@ -45,7 +45,6 @@ export default function ActivityScreen() {
 	const dayLabel = useDayLabel();
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
-	const searchRef = useSearchShortcut();
 	const insets = useSafeAreaInsets();
 	const addInset = useAddInset();
 	const fabScroll = useAddButtonScroll();
@@ -71,6 +70,11 @@ export default function ActivityScreen() {
 	const [search, setSearch] = useDebouncedSearch((q) =>
 		setFilter((f) => (f.q === q ? f : { ...f, q })),
 	);
+	const headerSearch = useHeaderSearch({
+		enabled: !listDetail,
+		onChange: setSearch,
+		placeholder: segment === "recurring" ? tr("search") : t("search"),
+	});
 	const [selected, setSelected] = useState<ActivityItem | null>(null);
 	// An entry opened by a link (a Home row, a notification) fills the detail.
 	const { link: linked, release: releaseLink } = useLinkedEntry();
@@ -270,32 +274,23 @@ export default function ActivityScreen() {
 
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
-			{listDetail ? null : (
-				<Stack.Screen
-					options={{
-						headerSearchBarOptions: {
-							ref: searchRef,
-							placeholder: segment === "recurring" ? tr("search") : t("search"),
-							onChangeText: (event) => setSearch(event.nativeEvent.text),
-						},
-					}}
-				/>
-			)}
+			{headerSearch.screen}
 			<ListDetail
 				bar={
 					<AccountTopBar
-						actions={
-							segment === "recurring"
+						actions={[
+							...(headerSearch.action ? [headerSearch.action] : []),
+							...(segment === "recurring"
 								? [
 										{
 											id: "add-recurring",
-											icon: "Plus",
+											icon: "Plus" as const,
 											label: tr("add.title"),
 											onPress: () => setAddingRecurring(true),
 										},
 									]
-								: undefined
-						}
+								: []),
+						]}
 						overflow={
 							segment === "expenses" && !picked
 								? [
@@ -346,7 +341,7 @@ export default function ActivityScreen() {
 					value: search,
 					onChange: setSearch,
 					placeholder: segment === "recurring" ? tr("search") : t("search"),
-					ref: searchRef,
+					ref: headerSearch.ref,
 				}}
 			/>
 			{bulk.sheets}

@@ -7,7 +7,7 @@ import { CategoryList, loadCategories } from "./CategoryList";
 import { TextField } from "./fields";
 import { updateEnvelopeBody } from "./moreBodies";
 import { groupChoices } from "./NewEnvelopeSheet";
-import { GroupPick } from "./pickers";
+import { GroupPick } from "@/ui/PickLabeled";
 import { useSheetRead } from "./useSheetRead";
 import { WriteForm } from "./WriteSheet";
 

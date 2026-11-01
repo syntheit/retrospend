@@ -34,6 +34,8 @@ interface ToastApi {
 }
 
 const ToastContext = createContext<ToastApi | null>(null);
+/** How far the floating Add button moves up for the toast on screen (a negative translateY). */
+const ToastLiftContext = createContext<Animated.AnimatedInterpolation<number> | number>(0);
 const UNDO_MS = 6000;
 const PLAIN_MS = 4000;
 /** Clears the tab bar; the toast floats above it. */
@@ -49,6 +51,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 	const insets = useSafeAreaInsets();
 	const t = useTranslations("mobile.common");
 	const [current, setCurrent] = useState<ToastOptions | null>(null);
+	// The toast's height once laid out: the Add button clears it.
+	const [toastHeight, setToastHeight] = useState(size.touchMin.phone);
 	const progress = useRef(new Animated.Value(0)).current;
 	const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [reduceMotion, setReduceMotion] = useState(false);
@@ -99,9 +103,26 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 	);
 
 	const api = useMemo(() => ({ show, dismiss }), [show, dismiss]);
+	// The Add button rides up with the toast (the Material snackbar rule, the
+	// same on iOS): the same progress drives both, so they move as one. Reduced
+	// motion moves it at once.
+	const clearance = toastHeight + space[2];
+	const lift = useMemo(
+		() =>
+			reduceMotion
+				? current
+					? -clearance
+					: 0
+				: progress.interpolate({
+						inputRange: [0, 1],
+						outputRange: [0, -clearance],
+					}),
+		[reduceMotion, current, clearance, progress],
+	);
 
 	return (
 		<ToastContext.Provider value={api}>
+			<ToastLiftContext.Provider value={lift}>
 			{children}
 			{current ? (
 				<Animated.View
@@ -125,6 +146,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 					}}
 				>
 					<View
+						onLayout={(event) =>
+							setToastHeight(Math.round(event.nativeEvent.layout.height))
+						}
 						accessibilityActions={[{ name: "dismiss", label: t("dismiss") }]}
 						accessibilityLiveRegion="polite"
 						onAccessibilityAction={(event) => {
@@ -178,8 +202,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 					</View>
 				</Animated.View>
 			) : null}
+			</ToastLiftContext.Provider>
 		</ToastContext.Provider>
 	);
+}
+
+/**
+ * The translateY that keeps a floating control clear of the toast: 0 with no
+ * toast, the toast's height (and a gap) upward while one shows. Use it on an
+ * `Animated.View`; without a ToastProvider it is 0.
+ */
+export function useToastLift(): Animated.AnimatedInterpolation<number> | number {
+	return useContext(ToastLiftContext);
 }
 
 export function useToast(): ToastApi {

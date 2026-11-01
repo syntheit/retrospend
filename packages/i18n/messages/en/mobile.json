@@ -1283,7 +1283,7 @@
 			"nothing": "That matches what the budget holds. Nothing is added."
 		},
 		"toWealth": {
-			"title": "Move {name} to Wealth",
+			"title": "Move to Wealth",
 			"lead": "Money leaves {name} for an account outside the budget. Its goal progress does not change.",
 			"noAccount": "You have no Wealth account outside your budget yet. Add one in Wealth.",
 			"from": "Leaves from",
@@ -1293,7 +1293,8 @@
 			"got": "You get (optional)",
 			"move": "Move",
 			"toast": "Moved {amount} from {name} to {account}",
-			"envelope": "Leaves from"
+			"envelope": "Leaves from",
+			"account": "Account"
 		},
 		"fromWealth": {
 			"title": "Move from Wealth",
@@ -1314,7 +1315,8 @@
 			"putIn": "Put it in",
 			"move": "Move in",
 			"toastMoved": "Moved {amount} in",
-			"toastCounted": "Counted money from {name}. {name} did not change"
+			"toastCounted": "Counted money from {name}. {name} did not change",
+			"account": "Account"
 		},
 		"resume": "Resume the budget",
 		"targetLine": {

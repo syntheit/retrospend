@@ -7,7 +7,8 @@ import { useWriteIds } from "@/features/write/useMoneyWrite";
 import { AmountField } from "@/ui/AmountField";
 import { CurrencyPicker } from "@/ui/CurrencyPicker";
 import { forgivable, forgiveBody, type OwedPerson } from "./owedBodies";
-import { EnvelopePick, PickLabeled } from "./pickers";
+import { PickLabeled } from "@/ui/PickLabeled";
+import { EnvelopePick } from "./pickers";
 import { type BudgetMonth, envelopesOf } from "./source";
 import { WriteForm } from "./WriteSheet";
 

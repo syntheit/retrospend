@@ -1283,7 +1283,7 @@
 			"nothing": "Isso bate com o orçamento. Nada é adicionado."
 		},
 		"toWealth": {
-			"title": "Mover {name} para Patrimônio",
+			"title": "Mover para Patrimônio",
 			"lead": "O dinheiro sai de {name} para uma conta fora do orçamento. O progresso da meta não muda.",
 			"noAccount": "Você ainda não tem uma conta de Patrimônio fora do orçamento. Adicione uma em Patrimônio.",
 			"from": "Sai de",
@@ -1293,7 +1293,8 @@
 			"got": "Você recebe (opcional)",
 			"move": "Mover",
 			"toast": "Você moveu {amount} de {name} para {account}",
-			"envelope": "Sai de"
+			"envelope": "Sai de",
+			"account": "Conta"
 		},
 		"fromWealth": {
 			"title": "Mover do Patrimônio",
@@ -1314,7 +1315,8 @@
 			"putIn": "Colocar em",
 			"move": "Trazer",
 			"toastMoved": "Você trouxe {amount}",
-			"toastCounted": "Você contou dinheiro de {name}. {name} não mudou"
+			"toastCounted": "Você contou dinheiro de {name}. {name} não mudou",
+			"account": "Conta"
 		},
 		"resume": "Retomar o orçamento",
 		"targetLine": {

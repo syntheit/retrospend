@@ -7,12 +7,40 @@ type SearchRef = RefObject<SearchBarCommands | null>;
 /** The search bar of the screen in front, the one Cmd+F reaches. */
 let current: SearchRef | null = null;
 
-/** Puts the cursor in the current screen's search bar; false when it has none. */
+/** Opens the search of the screen in front when its bar is not showing yet. */
+let currentOpen: (() => void) | null = null;
+
+/**
+ * Puts the cursor in the current screen's search bar, opening it first when
+ * the screen keeps it closed until the Search action is pressed; false when
+ * it has none.
+ */
 export function focusSearch(): boolean {
 	const bar = current?.current;
-	if (!bar) return false;
-	bar.focus();
-	return true;
+	if (bar) {
+		bar.focus();
+		return true;
+	}
+	if (currentOpen) {
+		currentOpen();
+		return true;
+	}
+	return false;
+}
+
+/** While the screen is focused, Cmd+F opens its search with `open`. */
+export function useSearchOpener(open: () => void): void {
+	const latest = useRef(open);
+	latest.current = open;
+	useFocusEffect(
+		useCallback(() => {
+			const opener = () => latest.current();
+			currentOpen = opener;
+			return () => {
+				if (currentOpen === opener) currentOpen = null;
+			};
+		}, []),
+	);
 }
 
 /**

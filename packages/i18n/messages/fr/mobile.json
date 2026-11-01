@@ -1283,7 +1283,7 @@
 			"nothing": "Cela correspond au budget. Rien n'est ajouté."
 		},
 		"toWealth": {
-			"title": "Déplacer {name} vers Patrimoine",
+			"title": "Déplacer vers Patrimoine",
 			"lead": "L'argent quitte {name} pour un compte hors budget. La progression de son objectif ne change pas.",
 			"noAccount": "Tu n'as pas encore de compte Patrimoine hors budget. Ajoutes-en un dans Patrimoine.",
 			"from": "Part de",
@@ -1293,7 +1293,8 @@
 			"got": "Tu reçois (facultatif)",
 			"move": "Déplacer",
 			"toast": "{amount} déplacé de {name} vers {account}",
-			"envelope": "Sort de"
+			"envelope": "Sort de",
+			"account": "Compte"
 		},
 		"fromWealth": {
 			"title": "Déplacer depuis Patrimoine",
@@ -1314,7 +1315,8 @@
 			"putIn": "Mettre dans",
 			"move": "Faire entrer",
 			"toastMoved": "{amount} ajouté",
-			"toastCounted": "Argent de {name} compté. {name} n'a pas changé"
+			"toastCounted": "Argent de {name} compté. {name} n'a pas changé",
+			"account": "Compte"
 		},
 		"resume": "Reprendre le budget",
 		"targetLine": {

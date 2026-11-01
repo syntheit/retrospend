@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
+import type { TopBarAction } from "@/ui/types";
 import { useExpensesExport } from "@/features/people/useExpensesExport";
 import { openProject } from "./openProject";
 import { ProjectSheet } from "./ProjectSheet";
@@ -13,7 +14,14 @@ import { ProjectSheet } from "./ProjectSheet";
  * note, a currency, an optional budget and who it is for; "With others" opens
  * the new project on Add person.
  */
-export function ProjectsTopBar({ title }: { title: string }) {
+export function ProjectsTopBar({
+	title,
+	search,
+}: {
+	title: string;
+	/** The list's Search icon, first in the bar. */
+	search?: TopBarAction | null;
+}) {
 	const t = useTranslations("mobile.projects.form");
 	const more = useTranslations("mobile.activity")("overflow");
 	const overflow = useExpensesExport();
@@ -24,6 +32,7 @@ export function ProjectsTopBar({ title }: { title: string }) {
 		<>
 			<AccountTopBar
 				actions={[
+					...(search ? [search] : []),
 					{
 						id: "new-project",
 						icon: "FolderPlus",

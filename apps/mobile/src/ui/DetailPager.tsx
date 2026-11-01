@@ -1,7 +1,9 @@
 import {
 	Children,
+	createContext,
 	type ReactNode,
 	useCallback,
+	useContext,
 	useEffect,
 	useMemo,
 	useRef,
@@ -31,6 +33,18 @@ import { useTheme } from "@/theme";
 import { Glyph, type GlyphName } from "./Glyph";
 import { easeLand } from "./motion";
 import { Text } from "./Text";
+
+/**
+ * The height a panel has to show its content, before it has to scroll
+ * (null until the pager has been laid out). A panel with a choice of its own
+ * length (the category pills) reads it to show as many as fit.
+ */
+const PanelRoomContext = createContext<number | null>(null);
+
+/** The height of the panel this component is in, less the panel's own padding. */
+export function usePanelRoom(): number | null {
+	return useContext(PanelRoomContext);
+}
 
 /** One tab of the pager: its word, its glyph, and whether it is off its default. */
 export interface PagerTab {
@@ -359,7 +373,11 @@ export function DetailPager({
 											keyboardShouldPersistTaps="handled"
 											nestedScrollEnabled
 										>
-											{panel}
+											<PanelRoomContext.Provider
+												value={box.height > 0 ? box.height - 2 * space[3] : null}
+											>
+												{panel}
+											</PanelRoomContext.Provider>
 										</ScrollView>
 									</View>
 								))}

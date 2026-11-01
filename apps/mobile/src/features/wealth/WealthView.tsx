@@ -1,16 +1,17 @@
-import { router, Stack } from "expo-router";
+import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
+import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { currenciesHref } from "@/features/account/places";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useDataExport } from "@/features/settings/security/useDataExport";
-import { useSearchShortcut } from "@/layout/searchShortcut";
+import { useHeaderSearch } from "@/layout/headerSearch";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
@@ -23,8 +24,7 @@ import { Screen } from "@/ui/Screen";
 import { Skeleton, SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
-import { TopBar } from "@/ui/TopBar";
-import type { MenuItem } from "@/ui/types";
+import type { MenuItem, TopBarAction } from "@/ui/types";
 import { AccountRow } from "./AccountRow";
 import { AccountSheets, type SheetTarget } from "./AccountSheets";
 import { GroupDot } from "./AllocationBar";
@@ -53,7 +53,13 @@ import { useAccountActions } from "./useAccountActions";
  * income, Currencies and rates). Neither is the page's primary action, so
  * neither is filled.
  */
-function WealthTopBar({ onAdd }: { onAdd: () => void }) {
+function WealthTopBar({
+	onAdd,
+	search,
+}: {
+	onAdd: () => void;
+	search: TopBarAction | null;
+}) {
 	const t = useTranslations("mobile.wealth");
 	const failed = useTranslations("mobile.settings.data")("failed");
 	const add = useOptionalAddEntry();
@@ -86,8 +92,9 @@ function WealthTopBar({ onAdd }: { onAdd: () => void }) {
 		},
 	];
 	return (
-		<TopBar
+		<AccountTopBar
 			actions={[
+				...(search ? [search] : []),
 				{
 					id: "add",
 					icon: "Plus",
@@ -310,7 +317,10 @@ export function WealthView() {
 	const [sheet, setSheet] = useState<SheetTarget | null>(null);
 	const [why, setWhy] = useState(false);
 	const [query, setQuery] = useState("");
-	const searchRef = useSearchShortcut();
+	const headerSearch = useHeaderSearch({
+		onChange: setQuery,
+		placeholder: t("search"),
+	});
 	const [refreshing, setRefreshing] = useState(false);
 	const toast = useToast();
 	const [saved, setSaved] = useState<AccountOrder | null>(null);
@@ -347,8 +357,13 @@ export function WealthView() {
 		setRefreshing(false);
 	}, [reload]);
 
+	const hasAccounts =
+		state.status === "ready" && state.data.list.accounts.length > 0;
 	const title = (
-		<WealthTopBar onAdd={() => setSheet({ kind: "add", account: null })} />
+		<WealthTopBar
+			onAdd={() => setSheet({ kind: "add", account: null })}
+			search={hasAccounts ? headerSearch.action : null}
+		/>
 	);
 	if (state.status === "loading")
 		return (
@@ -425,15 +440,7 @@ export function WealthView() {
 	return (
 		<>
 			{title}
-			<Stack.Screen
-				options={{
-					headerSearchBarOptions: {
-						ref: searchRef,
-						placeholder: t("search"),
-						onChangeText: (event) => setQuery(event.nativeEvent.text),
-					},
-				}}
-			/>
+			{headerSearch.screen}
 			<Screen flush onRefresh={refresh} refreshing={refreshing}>
 				{widthClass === "compact" ? (
 					<>
