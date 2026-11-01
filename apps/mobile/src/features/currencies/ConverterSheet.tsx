@@ -1,8 +1,6 @@
-import { router } from "expo-router";
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
-import { currenciesHref } from "@/features/account/places";
 import { useTheme } from "@/theme";
 import { CurrencyFlag } from "@/ui/CurrencyFlag";
 import { EmptyState } from "@/ui/EmptyState";
@@ -10,7 +8,6 @@ import { ListGroup, ListRow } from "@/ui/List";
 import { Sheet } from "@/ui/Sheet";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
-import { TextAction } from "@/ui/TextAction";
 import { ConvertBlock } from "./ConvertBlock";
 import { PriceText, useCurrencyName, useRateLabel } from "./parts";
 import { type CurrencyRow, defaultPrice, priced } from "./source";
@@ -106,13 +103,6 @@ export function ConverterSheet({
 							</ListGroup>
 						</View>
 						<ConvertBlock home={table.home} key={row.code} row={row} />
-						<TextAction
-							label={t("all")}
-							onPress={() => {
-								onClose();
-								router.push(currenciesHref());
-							}}
-						/>
 					</>
 				) : (
 					<EmptyState title={tr("empty.none")} />

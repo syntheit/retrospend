@@ -10,7 +10,7 @@ import { pushedHeader, SETTINGS_SCREENS } from "./pushedHeader";
  * title on iOS, every page under it an inline title (GUIDELINE 15). Used by
  * the root stack (`settings/...`, pushed over the tabs) and by the account
  * sheet's own stack (`account/...`); `scope` is the folder the routes live in.
- * The sheet leaves out what it never opens (Search, the inbox).
+ * The sheet leaves out what it never opens (the Recurring redirect).
  */
 export function useSettingsScreens(scope: "settings" | "account") {
 	const t = useTranslations("mobile.settings");
@@ -20,8 +20,7 @@ export function useSettingsScreens(scope: "settings" | "account") {
 	const header = pushedHeader(color, android);
 	const inSheet = scope === "account";
 	return SETTINGS_SCREENS.filter(
-		(screen) =>
-			!inSheet || !["settings/search", "settings/inbox", "settings/recurring"].includes(screen.name),
+		(screen) => !inSheet || screen.name !== "settings/recurring",
 	).map((screen) => (
 		<Stack.Screen
 			key={screen.name}

@@ -1,3 +1,4 @@
+import { usePathname } from "expo-router";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -7,7 +8,11 @@ import {
 	setErrorReportsPref,
 	useErrorReportsPref,
 } from "@/features/feedback/pref";
-import { useOpenSettingsRoute } from "@/layout/settingsPath";
+import {
+	isAccountPath,
+	useCloseAccountSheet,
+	useOpenSettingsRoute,
+} from "@/layout/settingsPath";
 import { useLanguagePref } from "@/lib/language-pref";
 import { LANGUAGE_NAMES } from "@/lib/locales";
 import { usePush } from "@/push/PushProvider";
@@ -60,6 +65,8 @@ const TILES: Record<Exclude<SectionId, "profile">, GlyphName> = {
 export function SettingsScreen() {
 	const t = useTranslations("mobile.settings");
 	const open = useOpenSettingsRoute();
+	const closeSheet = useCloseAccountSheet();
+	const inAccount = isAccountPath(usePathname());
 	const tr = useTranslations("mobile.settings.root");
 	const tc = useTranslations("mobile.settings.notifications.channel");
 	const ta = useTranslations("mobile.admin");
@@ -190,7 +197,13 @@ export function SettingsScreen() {
 					<ListRow
 						chevron
 						lead={<IconTile name="MessageSquare" />}
-						onPress={() => feedback.open()}
+						onPress={() => {
+							// Inside the account sheet, the sheet leaves first: two native sheets never stack.
+							if (inAccount) {
+								closeSheet();
+								feedback.open({ afterSheet: true });
+							} else feedback.open();
+						}}
 						title={tf("title")}
 					/>
 					<GroupItem>

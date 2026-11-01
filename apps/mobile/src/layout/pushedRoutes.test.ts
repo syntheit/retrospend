@@ -45,7 +45,12 @@ describe("pushed screens have the back button", () => {
 		expect(pushed.sort()).toEqual(
 			[
 				"(tabs)/activity/[id].tsx",
+				"(tabs)/home/entry/[id].tsx",
+				"(tabs)/home/inbox.tsx",
 				"(tabs)/home/insights.tsx",
+				"(tabs)/home/person/[type]/[id].tsx",
+				"(tabs)/home/project/[id].tsx",
+				"(tabs)/home/search.tsx",
 				"(tabs)/people/[type]/[id].tsx",
 				"(tabs)/people/project/[id].tsx",
 				"(tabs)/projects/[id].tsx",
@@ -88,7 +93,7 @@ describe("pushed screens have the back button", () => {
 		expect(inSheet).toContain("account/index");
 		// Every page the sheet lists is a re-export of the page Settings pushes.
 		const pages = SETTINGS_SCREENS.map((s) => s.name)
-			.filter((n) => !["settings/search", "settings/inbox", "settings/recurring"].includes(n))
+			.filter((n) => n !== "settings/recurring")
 			.map((n) => `account/${n.replace(/^settings\//, "").replace(/^index$/, "settings")}`);
 		for (const page of pages) expect(inSheet).toContain(page);
 		const layout = readFileSync(join(APP, "account/_layout.tsx"), "utf8");

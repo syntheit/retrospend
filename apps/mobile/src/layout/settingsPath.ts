@@ -1,4 +1,4 @@
-import { router, usePathname } from "expo-router";
+import { router, useNavigation, usePathname } from "expo-router";
 
 /**
  * The pages of Settings open in two places: pushed over the tabs
@@ -40,4 +40,14 @@ export function isAccountPath(pathname: string): boolean {
 export function useOpenSettingsRoute(): (page: SettingsRoute) => void {
 	const inAccount = isAccountPath(usePathname());
 	return (page) => router.push(settingsHref(page, inAccount) as never);
+}
+
+/**
+ * Closes the whole account sheet from any page inside it: the sheet is one
+ * screen of the root stack, so going back from its parent pops the sheet
+ * with everything pushed in it.
+ */
+export function useCloseAccountSheet(): () => void {
+	const navigation = useNavigation();
+	return () => (navigation.getParent() ?? navigation).goBack();
 }

@@ -12,6 +12,7 @@ import { Glance } from "@/features/home/Glance";
 import { HomeSkeleton } from "@/features/home/HomeSkeleton";
 import { NeedsYou } from "@/features/home/NeedsYou";
 import { fetchHome, HOME_CACHE } from "@/features/home/source";
+import { entryHref } from "@/layout/detailRoutes";
 import { useUnreadNotifications } from "@/features/notifications/useUnreadCount";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useShowConverter } from "@/lib/converter-pref";
@@ -80,10 +81,7 @@ export default function HomeScreen() {
 										item={item}
 										key={item.id}
 										onPress={() =>
-											router.navigate({
-												pathname: "/activity/[id]",
-												params: { id: item.id, row: JSON.stringify(item) },
-											})
+											router.push(entryHref(item.id, true, JSON.stringify(item)))
 										}
 									/>
 								))}
@@ -108,7 +106,7 @@ export default function HomeScreen() {
 						id: "search",
 						icon: "Search",
 						label: ts("search"),
-						onPress: () => router.push("/settings/search"),
+						onPress: () => router.push("/home/search"),
 					},
 					...(showConverter
 						? [
@@ -128,7 +126,7 @@ export default function HomeScreen() {
 								? tb("notificationsUnread", { count: unread })
 								: tb("notifications"),
 						badge: unread,
-						onPress: () => router.push("/settings/inbox"),
+						onPress: () => router.push("/home/inbox"),
 					},
 				]}
 				title={t("title")}

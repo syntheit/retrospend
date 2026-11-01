@@ -1,4 +1,4 @@
-import { router, Stack } from "expo-router";
+import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
@@ -7,7 +7,7 @@ import { useSession } from "@/auth/session";
 import { adminAccess } from "@/features/admin/rules";
 import { useFeedback } from "@/features/feedback/FeedbackProvider";
 import { openWebPage } from "@/features/settings/webPages";
-import { useOpenSettingsRoute } from "@/layout/settingsPath";
+import { useCloseAccountSheet, useOpenSettingsRoute } from "@/layout/settingsPath";
 import { appBuild } from "@/lib/appVersion";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
@@ -62,8 +62,7 @@ export function AccountScreen() {
 	const admin = adminAccess(me) === "ok";
 	const unreadFeedback = useUnreadFeedback(admin);
 
-	/** Done is on the sheet's first page, so Back closes the sheet. */
-	const close = () => router.back();
+	const close = useCloseAccountSheet();
 	const web = (path: string) => () =>
 		baseUrl ? void openWebPage(baseUrl, path) : undefined;
 	const opensWeb = t("opensWeb");

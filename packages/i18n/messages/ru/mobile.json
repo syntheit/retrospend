@@ -2876,8 +2876,7 @@
 		},
 		"pricesInHome": "Цены в {home}.",
 		"converter": {
-			"title": "Конвертер валют",
-			"all": "Все валюты"
+			"title": "Конвертер валют"
 		}
 	},
 	"status": {

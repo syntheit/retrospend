@@ -2876,8 +2876,7 @@
 		},
 		"pricesInHome": "Prix en {home}.",
 		"converter": {
-			"title": "Convertisseur de devises",
-			"all": "Toutes les devises"
+			"title": "Convertisseur de devises"
 		}
 	},
 	"status": {

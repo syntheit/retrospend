@@ -2876,8 +2876,7 @@
 		},
 		"pricesInHome": "Precios en {home}.",
 		"converter": {
-			"title": "Conversor de monedas",
-			"all": "Todas las monedas"
+			"title": "Conversor de monedas"
 		}
 	},
 	"status": {
