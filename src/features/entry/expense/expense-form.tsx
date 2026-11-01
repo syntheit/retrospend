@@ -38,7 +38,7 @@ export function ExpenseForm(p: {
 	favorites?: readonly string[];
 	onClose: () => void;
 	onOpen: (r: EntryRequest) => void;
-	onMode: (mode: EntryMode, carry: EntryCarry) => void;
+	onMode?: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	const t = useTranslations("entry.expense");
 	const tc = useTranslations("entry.changes");
@@ -197,11 +197,11 @@ export function ExpenseForm(p: {
 					)
 				}
 				headerSlot={
-					editing ? undefined : (
+					editing || !p.onMode ? undefined : (
 						<ModeSwitch
 							mode="expense"
 							onMode={(m) =>
-								p.onMode(m, {
+								p.onMode?.(m, {
 									minor: d.minor,
 									currency: d.currency,
 									date: d.date,

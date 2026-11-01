@@ -30,7 +30,7 @@ export function ExpenseSheet({
 	request: ExpenseRequest | Extract<EntryRequest, { kind: "expense" }>;
 	onClose: () => void;
 	onOpen: (r: EntryRequest) => void;
-	onMode: (mode: EntryMode, carry: EntryCarry) => void;
+	onMode?: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
 	const t = useTranslations("entry");
 	const catalog = useEntryCatalog();
