@@ -6,7 +6,8 @@ import {
 	RNHostView,
 } from "@expo/ui/swift-ui";
 import { contentShape, shapes } from "@expo/ui/swift-ui/modifiers";
-import { Pressable, useColorScheme } from "react-native";
+import { useState } from "react";
+import { Pressable, useColorScheme, View } from "react-native";
 import { useTheme } from "@/theme";
 import type { RowMenuProps } from "./types";
 
@@ -30,10 +31,18 @@ const noop = () => undefined;
  * row. The row's tap stays a React Native press, which a hold past
  * LONG_PRESS_MS cancels, so a long press never opens the row: the menu shows,
  * or nothing happens.
+ *
+ * A row laid out inside the SwiftUI host is measured at its content width
+ * (no width reaches it), so a long title never wrapped and pushed the
+ * trailing button off the row (R7). The row therefore starts as a plain React
+ * Native row, which lays out in the width its list gives it; once that width
+ * is known the host mounts around the row with the width set on it, so the
+ * hosted layout starts from the real width.
  */
 export function RowMenu({ items, children, onPress }: RowMenuProps) {
 	const { radius } = useTheme();
 	const scheme = useColorScheme();
+	const [width, setWidth] = useState<number | null>(null);
 	const row = (
 		<Pressable
 			accessibilityActions={items.map((item) => ({
@@ -50,40 +59,52 @@ export function RowMenu({ items, children, onPress }: RowMenuProps) {
 			// nothing on release instead of falling back to a tap.
 			onLongPress={noop}
 			onPress={onPress}
+			style={width === null ? undefined : { width }}
 		>
 			{children}
 		</Pressable>
 	);
 	if (items.length === 0) return row;
 	return (
-		<Host
-			colorScheme={scheme === "dark" || scheme === "light" ? scheme : undefined}
-			matchContents={{ vertical: true }}
-		>
-			<ContextMenu>
-				<ContextMenu.Items>
-					{items.map((item) => (
-						<Button
-							key={item.id}
-							label={item.label}
-							onPress={item.onPress}
-							role={item.destructive ? "destructive" : undefined}
-						/>
-					))}
-				</ContextMenu.Items>
-				<ContextMenu.Trigger>
-					<Group
-						modifiers={[
-							contentShape(
-								shapes.roundedRectangle({ cornerRadius: radius.panel }),
-								["contextMenuPreview"],
-							),
-						]}
-					>
-						<RNHostView matchContents={{ vertical: true }}>{row}</RNHostView>
-					</Group>
-				</ContextMenu.Trigger>
-			</ContextMenu>
-		</Host>
+		<View onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
+			{width === null ? (
+				row
+			) : (
+				<Host
+					key={width}
+					colorScheme={
+						scheme === "dark" || scheme === "light" ? scheme : undefined
+					}
+					matchContents={{ vertical: true }}
+				>
+					<ContextMenu>
+						<ContextMenu.Items>
+							{items.map((item) => (
+								<Button
+									key={item.id}
+									label={item.label}
+									onPress={item.onPress}
+									role={item.destructive ? "destructive" : undefined}
+								/>
+							))}
+						</ContextMenu.Items>
+						<ContextMenu.Trigger>
+							<Group
+								modifiers={[
+									contentShape(
+										shapes.roundedRectangle({ cornerRadius: radius.panel }),
+										["contextMenuPreview"],
+									),
+								]}
+							>
+								<RNHostView matchContents={{ vertical: true }}>
+									{row}
+								</RNHostView>
+							</Group>
+						</ContextMenu.Trigger>
+					</ContextMenu>
+				</Host>
+			)}
+		</View>
 	);
 }

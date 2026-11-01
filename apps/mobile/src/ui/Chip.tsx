@@ -91,6 +91,8 @@ export function Chip({
 			hitSlop={space[1]}
 			onPress={onPress}
 			style={({ pressed }) => ({
+				// A long label ends in an ellipsis inside the row it sits in.
+				maxWidth: "100%",
 				minHeight: size.ctl.phone,
 				flexDirection: "row",
 				alignItems: "center",

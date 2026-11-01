@@ -41,7 +41,8 @@ export function Line({
 					{label}
 				</Text>
 				<Text
-					style={{ textAlign: "right" }}
+					// The figure keeps its width; the label gives way.
+					style={{ textAlign: "right", flexShrink: 0 }}
 					tabular
 					weight={emphasis ? "semibold" : "normal"}
 				>

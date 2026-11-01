@@ -102,6 +102,9 @@ export function toneColor(theme: Theme, tone: TextTone): string {
 	}
 }
 
+/** Words yield to their row instead of pushing the row's other views away. */
+const YIELDS = { flexShrink: 1 } as const;
+
 export type TextProps = NativeTextProps & {
 	/** The type role; body unless said otherwise. Not `role`, which is the ARIA role. */
 	variant?: TextRole;
@@ -138,6 +141,11 @@ export function Text({
 			style={[
 				typeStyle(theme, variant, { weight, tabular }),
 				{ color: toneColor(theme, tone) },
+				// React Native never shrinks a view by default (flexShrink 0), so a
+				// line beside another view pushed it off the row. Words yield to
+				// their row (wrapping, or ending in an ellipsis when clamped); a
+				// figure that fits itself (adjustsFontSizeToFit) keeps its width.
+				rest.adjustsFontSizeToFit ? null : YIELDS,
 				style,
 			]}
 		/>

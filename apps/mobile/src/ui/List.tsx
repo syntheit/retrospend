@@ -55,6 +55,7 @@ export function SectionHeader({
 			<View
 				style={{
 					flex: 1,
+					minWidth: 0,
 					flexDirection: "row",
 					alignItems: dot ? "center" : "baseline",
 					gap: space[2],
@@ -316,7 +317,7 @@ export function useInGroup(): boolean {
 }
 
 /** The text scale from which a row title wraps instead of ending in an ellipsis. */
-const WRAP_FROM_SCALE = 1.3;
+export const WRAP_FROM_SCALE = 1.3;
 
 /**
  * The middle of a row: the title (14/500) over a sub line (12, fg-3). Either
@@ -454,6 +455,8 @@ export function NavEnd({
 		<View
 			style={{
 				flexShrink: 1,
+				// A long value gives way before the row's label does.
+				maxWidth: "65%",
 				flexDirection: "row",
 				alignItems: "center",
 				gap: space[2],
