@@ -9,7 +9,7 @@ import { Button } from "@/ui/Button";
 import { IconTile } from "@/ui/IconTile";
 import { Menu } from "@/ui/Menu";
 import { ProgressBar } from "@/ui/ProgressBar";
-import { Sheet, type SheetDetent } from "@/ui/Sheet";
+import { Sheet, type SheetDetent, useSheetBodySize } from "@/ui/Sheet";
 import { StatusText, type StatusTone } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { AssignForm } from "./AssignForm";
@@ -42,7 +42,7 @@ const MODE_DETENTS: Record<EnvelopeMode, SheetDetent[]> = {
 	overview: ["medium", "large"],
 	cover: ["medium", "large"],
 	limit: ["medium", "large"],
-	move: ["medium", "large"],
+	move: ["large"],
 	assign: ["large"],
 	target: ["large"],
 	edit: ["large"],
@@ -124,6 +124,7 @@ export function EnvelopeSheet({
 	const money = useMoneyText();
 	const targetText = useTargetText();
 	const { space } = useTheme();
+	const moveSize = useSheetBodySize();
 	const [mode, setMode] = useState<EnvelopeMode>(startMode);
 	const id = envelope?.id ?? null;
 
@@ -301,11 +302,15 @@ export function EnvelopeSheet({
 			title={title}
 			visible={envelope !== null}
 		>
-			<SheetBody>
-				{mode === "assign"
-					? form((e) => <AssignForm {...props(e)} />)
-					: mode === "move"
-						? form((e) => <MoveForm {...props(e)} />)
+			{mode === "move" ? (
+				// The keypad form runs its own scroll and foot, like the composer.
+				<View style={moveSize}>
+					{envelope ? <MoveForm {...props(envelope)} /> : null}
+				</View>
+			) : (
+				<SheetBody>
+					{mode === "assign"
+						? form((e) => <AssignForm {...props(e)} />)
 						: mode === "cover"
 							? form((e) => <CoverForm {...props(e)} />)
 							: mode === "limit"
@@ -317,7 +322,8 @@ export function EnvelopeSheet({
 										: envelope && actions
 											? overview(envelope, actions)
 											: null}
-			</SheetBody>
+				</SheetBody>
+			)}
 		</Sheet>
 	);
 }

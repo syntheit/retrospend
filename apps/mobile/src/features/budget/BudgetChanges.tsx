@@ -4,26 +4,21 @@ import { figureLines } from "@/features/write/figures";
 import { useFigureLabel } from "@/features/write/useFigureLabel";
 import type { PreviewStatus } from "@/features/write/useMoneyWrite";
 import { ChangeList, type ChangeRow } from "@/ui/ChangeList";
+import { Text } from "@/ui/Text";
 import { envelopeMoves, hiddenFor } from "./preview";
 import { type BudgetMonth, type BudgetPreview, envelopeById } from "./source";
 
 /**
- * The server's dry run of a budget write, laid out like the web's block:
- * each envelope's Left, every figure that moved (the pool, Left to spend,
- * Left in your limits, what the budget holds...), what was checked and stays,
- * and what could not be checked. Nothing is added up here; every amount is a
- * field of the preview.
+ * The rows of a budget write's dry run, laid out like the web's block: each
+ * envelope's Left, then every figure that moved (the pool, Left to spend,
+ * Left in your limits, what the budget holds...), plus what was checked and
+ * stays and what could not be checked. Nothing is added up here; every amount
+ * is a field of the preview.
  */
-export function BudgetChanges({
-	status,
-	preview,
-	data,
-}: {
-	status: PreviewStatus;
-	preview: BudgetPreview | null;
-	/** Null before there is a budget (set up): no envelope names. */
-	data: BudgetMonth | null;
-}) {
+export function useChangeRows(
+	preview: BudgetPreview | null,
+	data: BudgetMonth | null,
+) {
 	const t = useTranslations("mobile.budget");
 	const money = useMoneyText();
 	const label = useFigureLabel(
@@ -63,12 +58,83 @@ export function BudgetChanges({
 			spoken: `${name}, ${value}`,
 		});
 	}
+	return {
+		rows,
+		stays: (lines?.stays ?? []).map((id) => label(id).inline),
+		unavailable: (lines?.unavailable ?? []).map((id) => label(id).inline),
+	};
+}
+
+/**
+ * The server's dry run of a budget write as the full block: every row that
+ * moved, what stays and what could not be checked.
+ */
+export function BudgetChanges({
+	status,
+	preview,
+	data,
+}: {
+	status: PreviewStatus;
+	preview: BudgetPreview | null;
+	/** Null before there is a budget (set up): no envelope names. */
+	data: BudgetMonth | null;
+}) {
+	const { rows, stays, unavailable } = useChangeRows(preview, data);
 	return (
 		<ChangeList
 			changes={rows}
 			status={status}
-			stays={(lines?.stays ?? []).map((id) => label(id).inline)}
-			unavailable={(lines?.unavailable ?? []).map((id) => label(id).inline)}
+			stays={stays}
+			unavailable={unavailable}
 		/>
+	);
+}
+
+/**
+ * The same dry run in one line, the way the composer's preview line says it:
+ * the first row that moves ("Left of Groceries $80 to $100") and how many more
+ * move. Before the answer it says it is checking; before there is a body to
+ * check it says nothing.
+ */
+export function BudgetPreviewLine({
+	status,
+	preview,
+	data,
+}: {
+	status: PreviewStatus;
+	preview: BudgetPreview | null;
+	data: BudgetMonth | null;
+}) {
+	const t = useTranslations("mobile.composer.changes");
+	const tc = useTranslations("mobile.changes");
+	const { rows } = useChangeRows(preview, data);
+	if (status === "idle") return null;
+	let text: string;
+	let tone: "fg2" | "attention" = "fg2";
+	if (status === "loading") text = tc("checking");
+	else if (status === "failed" || status === "refused") {
+		tone = "attention";
+		text = tc(status === "failed" ? "error" : "refused");
+	} else {
+		const first = rows[0];
+		text = !first
+			? t("oneLineNone")
+			: rows.length > 1
+				? t("oneLineMore", {
+						figure: `${first.label} ${first.value}`,
+						count: rows.length - 1,
+					})
+				: `${first.label} ${first.value}`;
+	}
+	return (
+		<Text
+			accessibilityLiveRegion="polite"
+			numberOfLines={1}
+			tabular
+			tone={tone}
+			variant="small"
+		>
+			{text}
+		</Text>
 	);
 }
