@@ -2,19 +2,15 @@
 
 import { ChevronRight, SearchX } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { type CSSProperties, type ReactNode, type Ref, useState } from "react";
-import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
+import { useState } from "react";
 import type { AccountTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
 import { seriesColor } from "~/components/charts/spec";
 import { Money } from "~/components/money/money";
-import { AccountRow } from "~/components/rows/account-row";
-import { RowList } from "~/components/rows/row";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import { cn } from "~/lib/cn";
-import { useRateLabel } from "./sheets/rate-type-chips";
-import { ReorderGroup, SortableItem } from "./reorder";
+import { Rows } from "./account-rows";
 import { moveInOrder, sortAccounts, type WealthSort } from "./sort";
 import type { WealthAccount, WealthGroup, WealthView } from "./types";
 
@@ -45,12 +41,6 @@ export function matches(a: WealthAccount, f: AccountFilters, home: string) {
 	return true;
 }
 
-export const targetOf = (a: WealthAccount): AccountTarget => ({
-	id: a.id,
-	name: a.name,
-	closed: a.closedOn != null,
-});
-
 /** The group's identity dot: its series color (R19); liabilities stay hollow. */
 function GroupDot({ series }: { series?: number }) {
 	return (
@@ -62,81 +52,6 @@ function GroupDot({ series }: { series?: number }) {
 			)}
 			style={series ? { background: seriesColor(series) } : undefined}
 		/>
-	);
-}
-
-function Rows({
-	accounts,
-	handlers,
-	onOpen,
-	label,
-	onMove,
-}: {
-	accounts: WealthAccount[];
-	handlers: ActionHandlers<AccountTarget>;
-	onOpen?: (a: WealthAccount) => void;
-	label: string;
-	/** Set in the Custom sort: the rows get a grip and can be dragged. */
-	onMove?: (from: number, to: number) => void;
-}) {
-	const rate = useRateLabel();
-	const row = (
-		a: WealthAccount,
-		extra: {
-			ref?: Ref<HTMLLIElement>;
-			style?: CSSProperties;
-			className?: string;
-			handle?: ReactNode;
-		} = {},
-	) => {
-		const target = targetOf(a);
-		return (
-			<ActionArea
-				entity="account"
-				handlers={handlers}
-				key={a.id}
-				target={target}
-			>
-				<AccountRow
-					account={{
-						id: a.id,
-						name: a.name,
-						kind: a.kind,
-						icon: a.icon,
-						amount: a.amount,
-						home: a.home,
-						updated: a.updated,
-						change: null,
-						// The sub line of wealth.html: the code, then how it counts.
-						detail: {
-							valuedAt: a.rateType ? rate(a.rateType) : null,
-							// APR as typed (118 is 118%), in hundredths for the formatter.
-							apr: a.apr != null ? Math.round(a.apr * 100) : null,
-							noRate: a.home === null,
-							closedOn: a.closedOn,
-						},
-					}}
-					actions={
-						<ActionMenu entity="account" handlers={handlers} target={target} />
-					}
-					onOpen={onOpen ? () => onOpen(a) : undefined}
-					{...extra}
-				/>
-			</ActionArea>
-		);
-	};
-	if (!onMove)
-		return <RowList label={label}>{accounts.map((a) => row(a))}</RowList>;
-	return (
-		<ReorderGroup items={accounts} onMove={onMove}>
-			<RowList label={label}>
-				{accounts.map((a) => (
-					<SortableItem id={a.id} key={a.id} name={a.name}>
-						{(parts) => row(a, parts)}
-					</SortableItem>
-				))}
-			</RowList>
-		</ReorderGroup>
 	);
 }
 

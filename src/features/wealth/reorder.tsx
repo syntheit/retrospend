@@ -131,7 +131,7 @@ export function SortableItem({
 			<Tip content={label}>
 				<Button
 					aria-label={label}
-					className="touch-none cursor-grab"
+					className="cursor-grab touch-none"
 					icon
 					kind="ghost"
 					ref={setActivatorNodeRef}
