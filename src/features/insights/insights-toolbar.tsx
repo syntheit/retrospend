@@ -27,9 +27,11 @@ export function InsightsToolbar({
 	const items = useDimItems();
 	const chip = (dim: InsightsDim) => (
 		<DimChip
+			categories={dim === "cats" ? items.categories : undefined}
 			items={items[dim]}
 			label={tf(`dim.${dim}`)}
 			onChange={(value) => setView({ ...view, [dim]: value })}
+			recentIds={items.recentIds}
 			value={view[dim]}
 		/>
 	);

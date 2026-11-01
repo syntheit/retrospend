@@ -571,11 +571,11 @@ export const PLANNED: Planned[] = [
 	{
 		name: "CategoryPicker",
 		status: "built",
-		job: "Pick a category, recents first, bare glyph in its color (R25)",
+		job: "Pick a category (or several, `multiple`, for a filter): a Find field that ranks as you type, most used first, bare glyph in its color (R25)",
 		replaces: "4 category pickers",
 		planRow: INPUTS,
 		target: "src/components/pickers/category-picker.tsx",
-		use: "CategoryPicker in a PickerPopover; do not add a fifth",
+		use: "CategoryPicker in a PickerPopover (a sheet on phones); do not add a fifth",
 	},
 	{
 		name: "PersonPicker",

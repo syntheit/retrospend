@@ -10,6 +10,7 @@ import {
 import { PickerPopover } from "~/components/pickers/picker-popover";
 import { FilterChip, FilterChips } from "~/components/ui/chip";
 import { Tip } from "~/components/ui/tooltip";
+import { useCategoryName } from "~/hooks/use-category-name";
 import { cn } from "~/lib/cn";
 import type { EntryCatalog } from "../shared-ui";
 
@@ -99,6 +100,7 @@ export function CategoryLine({
 	kind?: "EXPENSE" | "INCOME";
 }) {
 	const t = useTranslations("entry.expense");
+	const { displayName } = useCategoryName();
 	const [open, setOpen] = useState(false);
 	const mine = categories.filter((c) => c.kind === kind);
 	const line = (n: number) => lineIds(recents, mine, value, n);
@@ -130,7 +132,7 @@ export function CategoryLine({
 						onClick={() => onPick(id)}
 						selected={on}
 					>
-						{c.name}
+						{displayName(c.name)}
 						{c.excludeByDefault ? (
 							<EyeOff aria-label={t("notCounted")} />
 						) : null}

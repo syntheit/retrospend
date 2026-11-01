@@ -22,12 +22,10 @@ function files(dir: string): string[] {
 
 /**
  * Today's pages still use these older components of the same name; the
- * overhaul replaces them page by page (registry: date-picker; the old
- * category picker is one of the "4 category pickers"). Nothing else may
+ * overhaul replaces them page by page (registry: date-picker). Nothing else may
  * share a built component's name.
  */
 const BEING_REPLACED: Record<string, string> = {
-	CategoryPicker: "src/components/category-picker.tsx",
 	DatePicker: "src/components/ui/date-picker.tsx",
 };
 

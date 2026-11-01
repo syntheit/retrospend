@@ -29,18 +29,23 @@ export function PickerList(props: {
 	empty: string;
 	search?: string;
 	onSearch?: (q: string) => void;
+	/** Matching and order of the filtered items; the default only matches. */
+	filter?: (value: string, search: string, keywords?: string[]) => number;
+	/** Under the list, outside the filter (a Clear for a multi-select). */
+	footer?: React.ReactNode;
 	children: React.ReactNode;
 	className?: string;
 }) {
 	return (
 		<Command
-			className={cn("bg-transparent", props.className)}
-			filter={pickerFilter}
+			className={cn("gap-2 overflow-visible bg-transparent", props.className)}
+			filter={props.filter ?? pickerFilter}
 			label={props.label}
 		>
 			<CommandInput
 				aria-label={props.placeholder}
 				autoFocus={!coarse()}
+				kit
 				onValueChange={props.onSearch}
 				placeholder={props.placeholder}
 				value={props.search}
@@ -51,6 +56,7 @@ export function PickerList(props: {
 				</CommandEmpty>
 				{props.children}
 			</CommandList>
+			{props.footer}
 		</Command>
 	);
 }

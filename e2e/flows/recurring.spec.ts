@@ -57,8 +57,8 @@ test("Recurring: add one, see it grouped and summed, confirm it", async ({
 	await expect(dialog).toBeVisible();
 	await dialog.getByLabel("Name").fill("Club de ajedrez");
 	await dialog.locator("#amount").fill("15000");
-	await dialog.getByRole("combobox", { name: "Select category" }).click();
-	await page.getByRole("button", { name: category, exact: true }).click();
+	await dialog.getByRole("button", { name: "Category" }).click();
+	await page.getByRole("option", { name: category }).click();
 	await untilSaved(page, "recurring.create", () =>
 		dialog.getByRole("button", { name: "Create Subscription" }).click(),
 	);

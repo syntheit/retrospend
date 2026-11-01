@@ -66,8 +66,29 @@ function CommandDialog({
 
 function CommandInput({
   className,
+  kit = false,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+  /** The design's search field: a bordered control with the magnifier inside. */
+  kit?: boolean
+}) {
+  if (kit)
+    return (
+      <div
+        data-slot="command-input-wrapper"
+        className="flex h-ctl shrink-0 items-center gap-2 rounded-ctl border border-line-strong bg-surface px-3"
+      >
+        <SearchIcon aria-hidden="true" className="size-4 shrink-0 text-fg-3" />
+        <CommandPrimitive.Input
+          data-slot="command-input"
+          className={cn(
+            "h-full w-full min-w-0 bg-transparent rounded-ctl text-body text-fg placeholder:text-fg-3 focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-brand",
+            className
+          )}
+          {...props}
+        />
+      </div>
+    )
   return (
     <div
       data-slot="command-input-wrapper"

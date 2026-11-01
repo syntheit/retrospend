@@ -26,7 +26,7 @@ import {
 	readTypedDate,
 	weekdayOrder,
 } from "./dates";
-import { fold, pickerFilter, splitRecent } from "./match";
+import { fold, pickerFilter, rankedFilter, splitRecent } from "./match";
 import { dayState } from "./month-grid";
 import { togglePerson } from "./person-picker";
 
@@ -252,6 +252,25 @@ describe("list pickers", () => {
 		expect(pickerFilter("c1", "cafe", ["Café"])).toBe(1);
 		expect(pickerFilter("c1", "uber", ["Café"])).toBe(0);
 		expect(pickerFilter("c1", "", ["Café"])).toBe(1);
+	});
+
+	it("ranked search puts the best match first, so Enter picks it", () => {
+		const names = ["Dining out", "Groceries", "Going out", "Gifts"];
+		const rank = (q: string) =>
+			names
+				.map((name, i) => ({ name, i, score: rankedFilter(name, q, [name]) }))
+				.filter((r) => r.score > 0)
+				.sort((a, b) => b.score - a.score || a.i - b.i)
+				.map((r) => r.name);
+		// Starts with beats a word that starts with, which beats contains.
+		expect(rank("go")).toEqual(["Going out"]);
+		expect(rank("g")).toEqual(["Groceries", "Going out", "Gifts", "Dining out"]);
+		expect(rank("in")).toEqual(["Dining out", "Going out"]);
+		// Case and accents are ignored, nothing typed matches everything.
+		expect(rankedFilter("c", "CAFE", ["Café"])).toBe(3);
+		expect(rankedFilter("c", "", ["Café"])).toBe(1);
+		expect(rankedFilter("c", "uber", ["Café"])).toBe(0);
+		expect(rankedFilter("c", "fe", ["Café"])).toBe(1);
 	});
 
 	it("recents first, in their order, once; unknown ids dropped", () => {

@@ -7,9 +7,9 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { CategoryPicker } from "~/components/category-picker";
 import { MoneyInput } from "~/components/money/money-input";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
+import { RecurringCategoryField } from "~/components/recurring-category-field";
 import { Button } from "~/components/ui/button";
 import { DatePicker } from "~/components/ui/date-picker";
 import { Input } from "~/components/ui/input";
@@ -248,9 +248,8 @@ export function RecurringModal({
 				{/* Category */}
 				<div className="space-y-2">
 					<Label>{t("fieldCategory")}</Label>
-					<CategoryPicker
-						onValueChange={(value) => setValue("categoryId", value)}
-						placeholder={t("fieldCategoryPlaceholder")}
+					<RecurringCategoryField
+						onChange={(id) => setValue("categoryId", id, { shouldValidate: true })}
 						value={watch("categoryId")}
 					/>
 					{errors.categoryId && (
