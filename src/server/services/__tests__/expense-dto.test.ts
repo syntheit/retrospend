@@ -32,6 +32,8 @@ describe("expenseDto", () => {
 			exchangeRate: 1,
 			rateType: "blue",
 			home: { minor: 2_026_440, currency: "ARS" },
+			// The rate is sent unrounded, as text, so a typed custom rate shows back.
+			rate: "1560",
 		});
 		expect(dto).not.toHaveProperty("homeRate");
 		expect(dto).not.toHaveProperty("homeAmount");

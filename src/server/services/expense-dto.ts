@@ -15,6 +15,7 @@ export function expenseDto<T extends Expense>(row: T, homeCurrency: string) {
 		amount,
 		amountInUSD,
 		exchangeRate,
+		homeRate: _homeRate,
 		homeAmount: _homeAmount,
 		homeCurrency: _homeCurrency,
 		...fields
