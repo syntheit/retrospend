@@ -22,6 +22,7 @@ describe("readRateHistory range", () => {
 			data: { homeCurrency: "USD" },
 		});
 		await adminDb.exchangeRateHistory.createMany({
+			skipDuplicates: true,
 			data: [
 				["2026-01-01", "50"],
 				["2026-03-01", "55"],
