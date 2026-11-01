@@ -366,7 +366,10 @@ function SettleComposer({
 			page={pad.page}
 			panels={names.map((name) => panelOf[name])}
 			preview={
-				<View style={{ gap: space[2] }}>
+				<View style={{ gap: space[3] }}>
+					{flow.preview ? (
+						<PreviewList name={first} preview={flow.preview} />
+					) : null}
 					{context.unpriced.length > 0
 						? note(
 								t("unpriced", { currencies: context.unpriced.join(", ") }),
@@ -412,15 +415,12 @@ function SettleComposer({
 						}}
 					/>
 					{flow.preview ? (
-						<View style={{ gap: space[3] }}>
-							<AfterThis
-								direction={direction}
-								name={first}
-								onRetrospend={person.onRetrospend}
-								preview={flow.preview}
-							/>
-							<PreviewList name={first} preview={flow.preview} />
-						</View>
+						<AfterThis
+							direction={direction}
+							name={first}
+							onRetrospend={person.onRetrospend}
+							preview={flow.preview}
+						/>
 					) : null}
 				</View>
 			}
