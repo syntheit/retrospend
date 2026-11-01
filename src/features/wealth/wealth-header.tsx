@@ -27,6 +27,7 @@ import { Tip } from "~/components/ui/tooltip";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { entryOf } from "~/lib/nav";
 import { api } from "~/trpc/react";
+import { ratesAreStale } from "./rates-stale";
 import type { WealthView } from "./types";
 
 /** Saves the server's CSV as a file. */
@@ -63,9 +64,9 @@ export function WealthHeader({
 	const exportCsv = api.wealth.exportCsv.useMutation();
 	// Said only when the rates are older than today: fresh rates are assumed.
 	const updated =
-		!view.ratesUpdated || view.ratesUpdated === view.today
-			? null
-			: t("ratesOn", { date: short(view.ratesUpdated) });
+		view.ratesUpdated && ratesAreStale(view.ratesUpdated, view.today)
+			? t("ratesOn", { date: short(view.ratesUpdated) })
+			: null;
 	const sub = [
 		updated,
 		view.missingRates ? t("withoutRate", { count: view.missingRates }) : null,
