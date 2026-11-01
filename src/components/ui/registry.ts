@@ -203,11 +203,6 @@ export const REGISTRY: Primitive[] = [
 		job: "Progress bar: accent on track, attention only when over",
 	},
 	{
-		file: "rate-selector",
-		status: "core",
-		job: "Pick an exchange rate type (official, blue, card, MEP, custom)",
-	},
-	{
 		file: "scroll-area",
 		status: "core",
 		job: "Scroll region with themed scrollbar",
