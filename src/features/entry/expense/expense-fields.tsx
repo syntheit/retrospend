@@ -1,22 +1,29 @@
 "use client";
 
 import { format } from "date-fns";
-import { CalendarDays, FolderOpen, MoreHorizontal, Tag, Users } from "lucide-react";
+import {
+	CalendarDays,
+	FolderOpen,
+	MoreHorizontal,
+	Tag,
+	Users,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Money } from "~/components/money/money";
 import { DatePicker } from "~/components/pickers/date-picker";
 import { addDays, localDay } from "~/components/pickers/dates";
 import { useDateFormat } from "~/components/pickers/use-date-format";
+import { FilterChips } from "~/components/ui/chip";
 import { DetailPager, type DetailTab } from "~/components/ui/detail-pager";
 import { GlyphPill } from "~/components/ui/glyph-pill";
-import { ProjectRow } from "~/components/ui/project-row";
-import { SummaryLine, type SummaryPart } from "~/components/ui/summary-line";
 import { Input } from "~/components/ui/input";
 import { Notice } from "~/components/ui/notice";
+import { ProjectRow } from "~/components/ui/project-row";
+import { SummaryLine, type SummaryPart } from "~/components/ui/summary-line";
 import { useCategoryName } from "~/hooks/use-category-name";
 import { getDateFnsLocale } from "~/lib/date-locale";
-import { Field, type EntryCatalog } from "../shared-ui";
+import { type EntryCatalog, Field } from "../shared-ui";
 import type { EntryPerson } from "../types";
 import { AmountField, type RateState } from "./amount-field";
 import { CategoryPanel } from "./category-panel";
@@ -147,10 +154,9 @@ export function ExpenseFields(p: {
 			dot: d.date !== p.today,
 			panel: (
 				<div className="flex flex-col gap-3">
-					<div
-						aria-label={t("date")}
-						className="flex flex-wrap items-center gap-2"
-						role="group"
+					<FilterChips
+						className="max-md:flex-wrap max-md:overflow-x-visible"
+						label={t("date")}
 					>
 						{days.map((iso) => (
 							<GlyphPill
@@ -161,10 +167,7 @@ export function ExpenseFields(p: {
 								{dayLabel(iso)}
 							</GlyphPill>
 						))}
-						{!days.includes(d.date) ? (
-							<GlyphPill selected>{df.label.long(d.date)}</GlyphPill>
-						) : null}
-					</div>
+					</FilterChips>
 					<div>
 						<DatePicker
 							calendarOnly
@@ -233,11 +236,7 @@ export function ExpenseFields(p: {
 						tip: t("tabs.tip", { name: t("tabs.project"), key: 4 }),
 						dot: !!d.projectId,
 						panel: (
-							<div
-								aria-label={t("project")}
-								className="flex flex-col gap-2"
-								role="group"
-							>
+							<ul aria-label={t("project")} className="flex flex-col gap-2">
 								<ProjectRow
 									name={t("noProject")}
 									onSelect={() => p.onProject(null)}
@@ -263,7 +262,7 @@ export function ExpenseFields(p: {
 										selected={d.projectId === pr.id}
 									/>
 								))}
-							</div>
+							</ul>
 						),
 					} satisfies DetailTab,
 				]
@@ -382,7 +381,7 @@ export function ExpenseFields(p: {
 						</span>
 					) : null}
 				</Field>
-				<SummaryLine label={t("summary.label")} parts={parts} />
+				<SummaryLine parts={parts} />
 				{p.duplicate ? (
 					<Notice tone="attention">{t("duplicate")}</Notice>
 				) : null}

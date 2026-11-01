@@ -194,7 +194,7 @@ test("Add expense: the project tab shows each project with its people", async ({
 	await page.keyboard.press("n");
 	const sheet = page.getByRole("dialog", { name: "New expense" });
 	await sheet.getByRole("tab", { name: "Project, Alt+4" }).click();
-	const projects = sheet.getByRole("group", { name: "Project" });
+	const projects = sheet.getByRole("list", { name: "Project" });
 	const depto = projects.getByRole("button", { name: /Depto Palermo/ });
 	// The server's head count (you and Martín) and the project's currency.
 	await expect(depto).toContainText("2 people · ARS");

@@ -6,9 +6,9 @@ import { Minus, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Money } from "~/components/money/money";
 import { Face } from "~/components/ui/avatar-face";
+import { Button } from "~/components/ui/button";
 import { FilterChips } from "~/components/ui/chip";
 import { GlyphPill } from "~/components/ui/glyph-pill";
-import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Segmented } from "~/components/ui/segmented";
 import {
@@ -84,7 +84,10 @@ export function SplitSection(p: {
 					<span className="text-fg-2 text-small font-medium">
 						{t("paidBy")}
 					</span>
-					<FilterChips label={t("paidBy")}>
+					<FilterChips
+						className="max-md:flex-wrap max-md:overflow-x-visible"
+						label={t("paidBy")}
+					>
 						{payers.map((x) => (
 							<GlyphPill
 								key={splitKey(x)}
@@ -97,7 +100,9 @@ export function SplitSection(p: {
 								}
 								selected={splitKey(x) === splitKey(d.paidBy)}
 							>
-								{splitKey(x) === splitKey(p.you) ? t("you") : x.name.split(" ")[0]}
+								{splitKey(x) === splitKey(p.you)
+									? t("you")
+									: x.name.split(" ")[0]}
 							</GlyphPill>
 						))}
 					</FilterChips>

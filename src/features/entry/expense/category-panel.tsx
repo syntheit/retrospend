@@ -46,14 +46,19 @@ export function CategoryPanel({
 	const byId = new Map(mine.map((c) => [c.id, c]));
 	const ids = lineIds(recents, mine, value, SHOWN);
 	return (
-		<FilterChips label={t("category")}>
+		<FilterChips
+			className="max-md:flex-wrap max-md:overflow-x-visible"
+			label={t("category")}
+		>
 			{ids.map((id) => {
 				const c = byId.get(id);
 				if (!c) return null;
 				const on = value === id;
 				const pill = (
 					<GlyphPill
-						className={cn(on && ring && "outline-brand outline-2 outline-offset-2")}
+						className={cn(
+							on && ring && "outline-brand outline-2 outline-offset-2",
+						)}
 						key={id}
 						lead={<CategoryGlyph category={c} />}
 						onClick={() => onPick(id)}
@@ -73,7 +78,7 @@ export function CategoryPanel({
 					pill
 				);
 			})}
-			{(
+			{
 				<PickerPopover
 					onOpenChange={setOpen}
 					open={open}
@@ -90,7 +95,7 @@ export function CategoryPanel({
 						value={value}
 					/>
 				</PickerPopover>
-			)}
+			}
 		</FilterChips>
 	);
 }

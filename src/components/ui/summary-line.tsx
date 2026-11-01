@@ -20,18 +20,13 @@ export type SummaryPart = {
  */
 export function SummaryLine({
 	parts,
-	label,
 	className,
 }: {
 	parts: readonly SummaryPart[];
-	label: string;
 	className?: string;
 }) {
 	return (
-		<p
-			aria-label={label}
-			className={cn("text-body text-fg max-md:line-clamp-2", className)}
-		>
+		<p className={cn("text-body text-fg max-md:line-clamp-2", className)}>
 			{parts.map((part, i) => (
 				<Fragment key={part.id}>
 					{i > 0 ? (
@@ -42,7 +37,7 @@ export function SummaryLine({
 					<button
 						aria-label={part.label}
 						className={cn(
-							"rounded-ctl focus-visible:outline-brand cursor-pointer text-left underline-offset-4 transition-colors duration-(--t-state) focus-visible:outline-2 focus-visible:outline-offset-2 can-hover:hover:underline",
+							"rounded-ctl focus-visible:outline-brand can-hover:hover:underline cursor-pointer text-left underline-offset-4 transition-colors duration-(--t-state) focus-visible:outline-2 focus-visible:outline-offset-2",
 							part.tone === "attention" ? "text-attention-text" : "text-fg",
 						)}
 						onClick={part.onSelect}

@@ -27,26 +27,28 @@ export function ProjectRow({
 	label?: string;
 }) {
 	return (
-		<button
-			aria-label={label}
-			aria-pressed={selected}
-			className={cn(
-				"rounded-ctl focus-visible:outline-brand flex min-h-11 w-full cursor-pointer items-center gap-3 border px-3 py-2 text-left transition-colors duration-(--t-state) focus-visible:outline-2 focus-visible:outline-offset-2",
-				selected
-					? "border-brand bg-brand-soft"
-					: "border-line-strong bg-surface can-hover:hover:bg-raised",
-			)}
-			onClick={onSelect}
-			type="button"
-		>
-			<ProjectThumb className="size-10" coverUrl={coverUrl} />
-			<span className="flex min-w-0 flex-1 flex-col">
-				<span className="text-body text-fg truncate">{name}</span>
-				{meta ? <span className="text-meta text-fg-3">{meta}</span> : null}
-			</span>
-			{members.length > 0 ? (
-				<FaceStack max={3} on="surface" people={members} size="xs" />
-			) : null}
-		</button>
+		<li>
+			<button
+				aria-label={label}
+				aria-pressed={selected}
+				className={cn(
+					"rounded-ctl focus-visible:outline-brand flex min-h-11 w-full cursor-pointer items-center gap-3 border px-3 py-2 text-left transition-colors duration-(--t-state) focus-visible:outline-2 focus-visible:outline-offset-2",
+					selected
+						? "border-brand bg-brand-soft"
+						: "border-line-strong bg-surface can-hover:hover:bg-raised",
+				)}
+				onClick={onSelect}
+				type="button"
+			>
+				<ProjectThumb className="size-10" coverUrl={coverUrl} />
+				<span className="flex min-w-0 flex-1 flex-col">
+					<span className="text-body text-fg truncate">{name}</span>
+					{meta ? <span className="text-meta text-fg-3">{meta}</span> : null}
+				</span>
+				{members.length > 0 ? (
+					<FaceStack max={3} on="surface" people={members} size="xs" />
+				) : null}
+			</button>
+		</li>
 	);
 }
