@@ -1488,7 +1488,8 @@
 			"reorder": "{name} verschieben",
 			"up": "Nach oben",
 			"down": "Nach unten",
-			"position": "Position {position} von {count}"
+			"position": "Position {position} von {count}",
+			"failed": "Reihenfolge nicht gespeichert"
 		},
 		"months": "{months, plural, one {# Monat} other {# Monate}}",
 		"valuedAtLabel": "Bewertet zu",

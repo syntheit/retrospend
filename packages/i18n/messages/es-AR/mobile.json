@@ -1488,7 +1488,8 @@
 			"reorder": "Reordenar {name}",
 			"up": "Subir",
 			"down": "Bajar",
-			"position": "Posición {position} de {count}"
+			"position": "Posición {position} de {count}",
+			"failed": "No se pudo guardar el orden"
 		},
 		"months": "{months, plural, one {# mes} other {# meses}}",
 		"valuedAtLabel": "Valuada a",

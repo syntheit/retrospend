@@ -39,10 +39,10 @@ function tick() {
 /**
  * A value over time (GUIDELINE §9, the web's net worth area): a 2pt accent
  * line over the accent at 16%, an axis, an end dot with a surface ring and
- * three date labels at 12 fg-3. Press and hold, then drag, to scrub: a
+ * three date labels at 12 fg-3. Drag sideways (or press and hold, then drag) to scrub: a
  * crosshair in line-strong follows the finger, the dot moves to that day and
  * `onScrub` gets the point so the page's hero can show it; lifting the finger
- * sends null. The figures are the server's: the chart only places them.
+ * sends null. A sideways drag scrubs at once; a vertical one scrolls the page. The figures are the server's: the chart only places them.
  * Charts draw in place, with no motion, so reduced motion needs nothing.
  * For a screen reader the chart is one adjustable element: swipe up or down
  * to move from day to day. With no known value it draws nothing.
@@ -104,16 +104,25 @@ export function AreaChart({
 	};
 	const at = (x: number) => nearestIndex(x, points.length, plot);
 
-	// Hold, then drag: a quick swipe falls through to the page scroll.
-	const pan = Gesture.Pan()
-		.runOnJS(true)
-		.activateAfterLongPress(SCRUB.holdMs)
-		.onStart((e) => {
-			tick();
-			select(at(e.x));
-		})
-		.onUpdate((e) => select(at(e.x)))
-		.onFinalize(() => select(null));
+	// Drag sideways at once, or hold and then drag: a vertical swipe falls
+	// through to the page scroll.
+	const scrub = (gesture: ReturnType<typeof Gesture.Pan>) =>
+		gesture
+			.runOnJS(true)
+			.onStart((e) => {
+				tick();
+				select(at(e.x));
+			})
+			.onUpdate((e) => select(at(e.x)))
+			.onFinalize(() => select(null));
+	const pan = Gesture.Race(
+		scrub(
+			Gesture.Pan()
+				.activeOffsetX([-SCRUB.startPx, SCRUB.startPx])
+				.failOffsetY([-SCRUB.failPx, SCRUB.failPx]),
+		),
+		scrub(Gesture.Pan().activateAfterLongPress(SCRUB.holdMs)),
+	);
 
 	const move = (delta: number) => {
 		const from = active.current ?? points.length - 1;

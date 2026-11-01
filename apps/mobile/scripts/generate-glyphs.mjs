@@ -58,6 +58,7 @@ const EXTRA_GLYPHS = [
 	"FileText",
 	"FileUp",
 	"Folder",
+	"GripVertical",
 	"FolderPlus",
 	"HandCoins",
 	"Info",

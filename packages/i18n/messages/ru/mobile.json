@@ -1488,7 +1488,8 @@
 			"reorder": "Переместить {name}",
 			"up": "Выше",
 			"down": "Ниже",
-			"position": "Позиция {position} из {count}"
+			"position": "Позиция {position} из {count}",
+			"failed": "Не удалось сохранить порядок"
 		},
 		"months": "{months, plural, one {# месяц} few {# месяца} many {# месяцев} other {# месяца}}",
 		"valuedAtLabel": "Оценка по",

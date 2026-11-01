@@ -9,6 +9,7 @@ type Client = RetrospendClient["accounts"];
 
 export type AccountList = Awaited<ReturnType<Client["list"]>>;
 export type Account = AccountList["accounts"][number];
+export type AccountOrder = Awaited<ReturnType<Client["order"]>>;
 export type NetWorth = Awaited<ReturnType<Client["netWorth"]>>;
 export type WealthSummary = Awaited<ReturnType<Client["summary"]>>;
 export type SeriesPoint = NetWorth["series"][number];
@@ -23,13 +24,15 @@ export interface WealthData {
 	netWorth: NetWorth;
 	/** The page's totals the server works out: groups, allocation, liquid, runway. */
 	summary: WealthSummary;
+	/** How the accounts are sorted and the order you set by dragging, saved per person. */
+	order: AccountOrder;
 }
 
 /** The longest range the chart offers; one read covers every shorter one. */
 export const SERIES_DAYS = 365;
 export const CHANGE_DAYS = 30;
 
-export const WEALTH_CACHE: CacheKey = { name: "wealth", schema: 2 };
+export const WEALTH_CACHE: CacheKey = { name: "wealth", schema: 3 };
 export const ACCOUNT_CACHE_PREFIX = "account.";
 export const ACCOUNT_CACHE_KEEP = 20;
 
@@ -39,12 +42,13 @@ export function accountCache(id: string): CacheKey {
 
 export function fetchWealth(api: RetrospendClient) {
 	return async (): Promise<WealthData> => {
-		const [list, netWorth, summary] = await Promise.all([
+		const [list, netWorth, summary, order] = await Promise.all([
 			api.accounts.list(),
 			api.accounts.netWorth({ days: SERIES_DAYS, changeDays: CHANGE_DAYS }),
 			api.accounts.summary(),
+			api.accounts.order(),
 		]);
-		return { list, netWorth, summary };
+		return { list, netWorth, summary, order };
 	};
 }
 

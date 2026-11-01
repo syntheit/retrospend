@@ -1488,7 +1488,8 @@
 			"reorder": "Déplacer {name}",
 			"up": "Monter",
 			"down": "Descendre",
-			"position": "Position {position} sur {count}"
+			"position": "Position {position} sur {count}",
+			"failed": "Impossible d'enregistrer l'ordre"
 		},
 		"months": "{months, plural, one {# mois} other {# mois}}",
 		"valuedAtLabel": "Valorisé au",

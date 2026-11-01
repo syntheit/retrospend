@@ -1,5 +1,5 @@
 import { router, Stack } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
@@ -8,12 +8,14 @@ import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useMoneyLocale } from "@/lib/money";
 import { useDataExport } from "@/features/settings/security/useDataExport";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { Glyph } from "@/ui/Glyph";
+import { Menu } from "@/ui/Menu";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { rowEnter, rowExit } from "@/ui/motion";
 import { Screen } from "@/ui/Screen";
@@ -28,13 +30,21 @@ import { GroupDot } from "./AllocationBar";
 import {
 	closedAccounts,
 	matchingAccounts,
+	movedOrder,
 	sectionsOf,
+	sortedAccounts,
 	unvalued,
 } from "./accounts";
 import { NetWorthChangeSheet } from "./NetWorthChangeSheet";
 import { KeyFigures, NetWorthHero } from "./NetWorthHero";
+import { ReorderGrip, ReorderGroup } from "./Reorder";
 import { useAccountHref } from "./routes";
-import { fetchWealth, WEALTH_CACHE, type WealthData } from "./source";
+import {
+	type AccountOrder,
+	fetchWealth,
+	WEALTH_CACHE,
+	type WealthData,
+} from "./source";
 import { useAccountActions } from "./useAccountActions";
 
 /**
@@ -134,14 +144,21 @@ function ClosedToggle({
 	);
 }
 
+const SORTS = ["custom", "value", "name", "type", "updated"] as const;
+
 function AccountsList({
 	data,
 	query,
+	order,
+	onOrder,
 	onSheet,
 }: {
 	data: WealthData;
 	/** What the search bar holds; the groups show the accounts that match. */
 	query: string;
+	/** The sort and the custom order, saved on the server. */
+	order: AccountOrder;
+	onOrder: (patch: Partial<AccountOrder>) => void;
 	onSheet: (target: SheetTarget) => void;
 }) {
 	const [showClosed, setShowClosed] = useState(false);
@@ -155,25 +172,49 @@ function AccountsList({
 			[onSheet],
 		),
 	);
+	const locale = useMoneyLocale();
 	const accounts = matchingAccounts(data.list.accounts, query);
-	const sections = sectionsOf(accounts);
-	const closed = closedAccounts(accounts);
-	const rows = (list: typeof accounts) =>
-		list.map((account) => (
+	const sorted = (list: typeof accounts) =>
+		sortedAccounts(list, order.sort, locale, order.order);
+	const sections = sectionsOf(accounts).map((s) => ({
+		...s,
+		accounts: sorted(s.accounts),
+	}));
+	const closed = sorted(closedAccounts(accounts));
+	const rows = (list: typeof accounts, grip = false) =>
+		list.map((account, index) => (
 			<AccountRow
 				account={account}
 				actions={actionsFor(account)}
+				handle={
+					grip ? <ReorderGrip index={index} name={account.name} /> : undefined
+				}
 				key={account.id}
 				onPress={() => router.push(hrefOf(account.id))}
 			/>
 		));
+	const sortItems: MenuItem[] = SORTS.map((mode) => ({
+		id: mode,
+		label: t(`sort.${mode}`),
+		onPress: () => onOrder({ sort: mode }),
+	}));
 	if (query.trim() !== "" && accounts.length === 0) {
 		return <EmptyState title={t("noMatch")} />;
 	}
+	const custom = order.sort === "custom";
 	return (
 		<View>
+			<View style={{ paddingHorizontal: theme.size.gutter.phone, paddingTop: theme.space[3], alignItems: "flex-start" }}>
+				<Menu
+					accessibilityLabel={`${t("sort.label")}, ${t(`sort.${order.sort}`)}`}
+					chip
+					items={sortItems}
+					label={t(`sort.${order.sort}`)}
+				/>
+			</View>
 			{sections.map((section) => {
 				const group = data.summary.groups.find((g) => g.key === section.group);
+				const ids = section.accounts.map((a) => a.id);
 				return (
 					<View key={section.group}>
 						<SectionHeader
@@ -181,7 +222,31 @@ function AccountsList({
 							title={t(`groups.${section.group}`)}
 							total={group?.total ? money(group.total) : undefined}
 						/>
-						<ListGroup>{rows(section.accounts)}</ListGroup>
+						{custom ? (
+							<ReorderGroup
+								ids={ids}
+								onMove={(from, to) =>
+									onOrder({
+										order: movedOrder(
+											data.list.accounts,
+											order.order,
+											locale,
+											ids,
+											from,
+											to,
+										),
+									})
+								}
+							>
+								{(wrapRow) => (
+									<ListGroup wrapRow={wrapRow}>
+										{rows(section.accounts, true)}
+									</ListGroup>
+								)}
+							</ReorderGroup>
+						) : (
+							<ListGroup>{rows(section.accounts)}</ListGroup>
+						)}
 					</View>
 				);
 			})}
@@ -240,6 +305,35 @@ export function WealthView() {
 	const [query, setQuery] = useState("");
 	const searchRef = useSearchShortcut();
 	const [refreshing, setRefreshing] = useState(false);
+	const toast = useToast();
+	const [saved, setSaved] = useState<AccountOrder | null>(null);
+	const serverOrder = state.status === "ready" ? state.data.order : null;
+	const order: AccountOrder = saved ??
+		serverOrder ?? { sort: "value", order: [] };
+	// Saved at once, one after the other so the last change wins; a failed
+	// save puts the screen back as it was.
+	const queue = useRef<Promise<unknown>>(Promise.resolve());
+	const orderRef = useRef(order);
+	orderRef.current = order;
+	const saveOrder = useCallback(
+		(patch: Partial<AccountOrder>) => {
+			const before = orderRef.current;
+			const next = { ...before, ...patch };
+			orderRef.current = next;
+			setSaved(next);
+			queue.current = queue.current.then(async () => {
+				try {
+					await api?.accounts.setOrder(patch);
+					void reload();
+				} catch {
+					orderRef.current = before;
+					setSaved(before);
+					toast.show({ message: t("sort.failed") });
+				}
+			});
+		},
+		[api, reload, toast, t],
+	);
 	const refresh = useCallback(async () => {
 		setRefreshing(true);
 		await reload();
@@ -337,13 +431,25 @@ export function WealthView() {
 				{widthClass === "compact" ? (
 					<>
 						{hero}
-						<AccountsList data={data} onSheet={setSheet} query={query} />
+						<AccountsList
+							data={data}
+							onOrder={saveOrder}
+							onSheet={setSheet}
+							order={order}
+							query={query}
+						/>
 					</>
 				) : (
 					<View style={{ flexDirection: "row", gap: space[6] }}>
 						<View style={{ flex: 1 }}>{hero}</View>
 						<View style={{ flex: 1 }}>
-							<AccountsList data={data} onSheet={setSheet} query={query} />
+							<AccountsList
+							data={data}
+							onOrder={saveOrder}
+							onSheet={setSheet}
+							order={order}
+							query={query}
+						/>
 						</View>
 					</View>
 				)}

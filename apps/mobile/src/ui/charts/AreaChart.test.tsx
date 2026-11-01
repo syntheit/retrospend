@@ -21,13 +21,15 @@ jest.mock("react-native-gesture-handler", () => {
 	for (const name of [
 		"runOnJS",
 		"activateAfterLongPress",
+		"activeOffsetX",
+		"failOffsetY",
 		"onStart",
 		"onUpdate",
 		"onFinalize",
 	])
 		chain[name] = () => chain;
 	return {
-		Gesture: { Pan: () => chain },
+		Gesture: { Pan: () => chain, Race: () => chain },
 		GestureDetector: ({ children }: { children: unknown }) => children,
 	};
 });

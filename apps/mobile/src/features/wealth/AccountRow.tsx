@@ -1,4 +1,5 @@
 import { formatPercent } from "@retrospend/domain/format-percent";
+import type { ReactNode } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
@@ -26,10 +27,13 @@ export function AccountRow({
 	account,
 	onPress,
 	actions,
+	handle,
 }: {
 	account: Account;
 	onPress: () => void;
 	actions: AccountRowActions;
+	/** The grip before the tile, while the list is in the Custom sort. */
+	handle?: ReactNode;
 }) {
 	const t = useTranslations("mobile.wealth");
 	const notCounted = useTranslations("mobile.status")("notCounted");
@@ -99,7 +103,16 @@ export function AccountRow({
 						) : null}
 					</View>
 				}
-				lead={<IconTile name={glyphOf(account.type)} />}
+				lead={
+					handle ? (
+						<View style={{ flexDirection: "row", alignItems: "center" }}>
+							{handle}
+							<IconTile name={glyphOf(account.type)} />
+						</View>
+					) : (
+						<IconTile name={glyphOf(account.type)} />
+					)
+				}
 				sub={
 					<Text numberOfLines={1} tone="fg3" variant="meta">
 						{line}
