@@ -5,7 +5,6 @@
 		"placeholder": "Contá qué no cierra",
 		"hintOpen": "Nada cambia hasta que {name} lo corrija.",
 		"hintLocked": "Solo la diferencia vuelve a abrir tu saldo con {name}.",
-		"empty": "Todavía no hay nada para revisar.",
 		"send": "Enviar a {name}",
 		"sent": "Le pediste a {name} que corrija {title}"
 	},
@@ -19,8 +18,7 @@
 		"accept": "Aceptar",
 		"decline": "Rechazar",
 		"declined": "Rechazaste el pedido de {name}",
-		"failed": "No se pudo enviar tu respuesta",
-		"empty": "Todavía no hay nada para revisar."
+		"failed": "No se pudo enviar tu respuesta"
 	},
 	"correct": {
 		"sheetTitle": "Corregir {title}",
@@ -34,8 +32,6 @@
 		"shareYou": "Tu parte",
 		"paidYou": "Pagaste vos",
 		"someone": "Alguien",
-		"nothing": "Cambiá el monto, quién pagó o el reparto.",
-		"empty": "Completá el monto y el reparto para ver qué cambia.",
 		"failed": "No se pudo cargar este gasto",
 		"loading": "Cargando"
 	},

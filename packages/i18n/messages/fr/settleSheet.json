@@ -42,7 +42,6 @@
 	"even": "Rien à régler",
 	"evenHint": "Toi et {name}, vous êtes quittes.",
 	"rule": {
-		"empty": "Saisis un montant ou choisis Tout.",
 		"overpay": "Choisis ci-dessus comment enregistrer le surplus.",
 		"claim": "Confirme le paiement de {name}. Définitif.",
 		"received": "Définitif : tu l'as reçu.",

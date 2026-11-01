@@ -133,6 +133,7 @@ function SettleSheetFor({
 	};
 
 	const nothing = c && !c.lines.length && !done;
+	const rule = ruleOf(t, s, person);
 	return (
 		<Sheet
 			cancelLabel={done || nothing ? t("done") : undefined}
@@ -178,7 +179,7 @@ function SettleSheetFor({
 							{t("rateOutOfRange")}
 						</p>
 					) : null}
-					<p className="text-fg-3 text-meta">{ruleOf(t, s, person)}</p>
+					{rule ? <p className="text-fg-3 text-meta">{rule}</p> : null}
 				</div>
 			)}
 		</Sheet>
@@ -190,8 +191,8 @@ function ruleOf(
 	t: ReturnType<typeof useTranslations<"settleSheet">>,
 	s: ReturnType<typeof useSettle>,
 	person: PersonIdentityDTO,
-): string {
-	if (!s.input) return t("rule.empty");
+): string | null {
+	if (!s.input) return null;
 	if (
 		s.preview?.value.recorded === false &&
 		s.preview.value.reason === "overpay"

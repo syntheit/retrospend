@@ -4,7 +4,6 @@
 		"toAssign": "To assign"
 	},
 	"changes": {
-		"idle": "Fill this in to see what changes. Nothing changes until you save.",
 		"notAvailable": "Not available",
 		"loading": "Checking what changes",
 		"cannot": "This cannot be saved as typed. Nothing was changed."
@@ -428,8 +427,7 @@
 		"wouldHave": "{name} would have",
 		"coverIt": "Cover it",
 		"coverFrom": "From {name}",
-		"uncovered": "Nothing can cover this part",
-		"idle": "Type an amount to see what it would do."
+		"uncovered": "Nothing can cover this part"
 	},
 	"coverAll": {
 		"title": "Cover overspending",
@@ -713,7 +711,6 @@
 	"startingMoney": {
 		"title": "Starting money",
 		"have": "What you have right now",
-		"idle": "Type an amount to see what changes.",
 		"save": "Confirm",
 		"toast": "Starting money confirmed",
 		"moneyIn": "Money in",
@@ -728,7 +725,6 @@
 		"envelope": "Which envelope?",
 		"everythingElse": "Everything else",
 		"done": "Done",
-		"idle": "Type an amount and get one answer.",
 		"failed": "Could not check this. Try again.",
 		"state": {
 			"FITS": "Yes. It fits, and you would have <after></after> left.",

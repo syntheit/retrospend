@@ -117,7 +117,6 @@ export function ImportSheet({
 				<ChangesBlock
 					cannot={preview.error ? preview.error.message : null}
 					diff={data ?? null}
-					empty={t("loading")}
 					loading={preview.isPending}
 				/>
 			</div>

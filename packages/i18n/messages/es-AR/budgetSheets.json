@@ -4,7 +4,6 @@
 		"toAssign": "Para asignar"
 	},
 	"changes": {
-		"idle": "Completá esto para ver qué cambia. Nada cambia hasta que guardes.",
 		"notAvailable": "No disponible",
 		"loading": "Revisando qué cambia",
 		"cannot": "Esto no se puede guardar así. No se cambió nada."
@@ -428,8 +427,7 @@
 		"wouldHave": "{name} tendría",
 		"coverIt": "Cubrirlo",
 		"coverFrom": "Desde {name}",
-		"uncovered": "Nada puede cubrir esta parte",
-		"idle": "Escribí un monto para ver qué haría."
+		"uncovered": "Nada puede cubrir esta parte"
 	},
 	"coverAll": {
 		"title": "Cubrir excesos",
@@ -713,7 +711,6 @@
 	"startingMoney": {
 		"title": "Plata inicial",
 		"have": "Lo que tenés ahora",
-		"idle": "Escribí un monto para ver qué cambia.",
 		"save": "Confirmar",
 		"toast": "Plata inicial confirmada",
 		"moneyIn": "Entradas",
@@ -728,7 +725,6 @@
 		"envelope": "¿De qué sobre?",
 		"everythingElse": "Todo lo demás",
 		"done": "Listo",
-		"idle": "Escribí un monto y tenés una respuesta.",
 		"failed": "No se pudo comprobar. Probá de nuevo.",
 		"state": {
 			"FITS": "Sí. Entra, y te quedarían <after></after>.",

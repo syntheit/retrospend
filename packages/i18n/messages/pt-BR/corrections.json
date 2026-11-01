@@ -5,7 +5,6 @@
 		"placeholder": "Diga o que não bate",
 		"hintOpen": "Nada muda até {name} corrigir.",
 		"hintLocked": "Só a diferença reabre seu saldo com {name}.",
-		"empty": "Nada para conferir ainda.",
 		"send": "Enviar para {name}",
 		"sent": "Você pediu a {name} que corrija {title}"
 	},
@@ -19,8 +18,7 @@
 		"accept": "Aceitar",
 		"decline": "Recusar",
 		"declined": "Pedido de {name} recusado",
-		"failed": "Não foi possível enviar sua resposta",
-		"empty": "Nada para conferir ainda."
+		"failed": "Não foi possível enviar sua resposta"
 	},
 	"correct": {
 		"sheetTitle": "Corrigir {title}",
@@ -34,8 +32,6 @@
 		"shareYou": "Sua parte",
 		"paidYou": "Você pagou",
 		"someone": "Alguém",
-		"nothing": "Mude o valor, quem pagou ou a divisão.",
-		"empty": "Preencha o valor e a divisão para ver o que muda.",
 		"failed": "Não foi possível carregar este gasto",
 		"loading": "Carregando"
 	},

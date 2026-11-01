@@ -30,8 +30,7 @@
     "added": "{title} ajoutée",
     "split": "Payée par toi, répartie à parts égales entre {count, plural, one {# personne} other {# personnes}}",
     "staysExpenses": "Dépenses précédentes",
-    "staysPayments": "Paiements",
-    "fillIn": "Indique pour quoi c'était et le montant."
+    "staysPayments": "Paiements"
   },
   "errors": {
     "failed": "Ça n'a pas été enregistré. Réessaie."

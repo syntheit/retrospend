@@ -90,7 +90,6 @@ export function AskToFixSheet({
 					byDesign={NO_MONEY}
 					cannot={dry.error}
 					diff={dry.data}
-					empty={t("empty")}
 					loading={dry.loading}
 				/>
 			</div>

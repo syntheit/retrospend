@@ -156,9 +156,7 @@ export function WhatIfSheet({
 								/>
 							) : null}
 						</RowList>
-					) : (
-						<p className="text-fg-3 text-small">{t("idle")}</p>
-					)}
+					) : null}
 				</div>
 			)}
 		</Sheet>

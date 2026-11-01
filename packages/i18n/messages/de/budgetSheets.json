@@ -4,7 +4,6 @@
 		"toAssign": "Zuzuweisen"
 	},
 	"changes": {
-		"idle": "Fülle das aus, um zu sehen, was sich ändert. Nichts ändert sich, bis du speicherst.",
 		"notAvailable": "Nicht verfügbar",
 		"loading": "Änderungen werden geprüft",
 		"cannot": "So lässt sich das nicht speichern. Es wurde nichts geändert."
@@ -428,8 +427,7 @@
 		"wouldHave": "{name} hätte",
 		"coverIt": "Ausgleichen",
 		"coverFrom": "Aus {name}",
-		"uncovered": "Dieser Teil lässt sich nicht ausgleichen",
-		"idle": "Gib einen Betrag ein, um zu sehen, was passieren würde."
+		"uncovered": "Dieser Teil lässt sich nicht ausgleichen"
 	},
 	"coverAll": {
 		"title": "Überziehungen ausgleichen",
@@ -713,7 +711,6 @@
 	"startingMoney": {
 		"title": "Startgeld",
 		"have": "Was du gerade hast",
-		"idle": "Gib einen Betrag ein, um die Änderung zu sehen.",
 		"save": "Bestätigen",
 		"toast": "Startgeld bestätigt",
 		"moneyIn": "Einnahmen",
@@ -728,7 +725,6 @@
 		"envelope": "Aus welchem Umschlag?",
 		"everythingElse": "Alles andere",
 		"done": "Fertig",
-		"idle": "Gib einen Betrag ein und erhalte eine Antwort.",
 		"failed": "Das konnte nicht geprüft werden. Versuche es erneut.",
 		"state": {
 			"FITS": "Ja. Es passt, und dir blieben <after></after>.",

@@ -5,7 +5,6 @@
 		"placeholder": "Schreib, was nicht passt",
 		"hintOpen": "Bis {name} es korrigiert, ändert sich nichts.",
 		"hintLocked": "Nur die Differenz öffnet deinen Saldo mit {name} wieder.",
-		"empty": "Noch nichts zu prüfen.",
 		"send": "An {name} senden",
 		"sent": "{name} um Korrektur von {title} gebeten"
 	},
@@ -19,8 +18,7 @@
 		"accept": "Annehmen",
 		"decline": "Ablehnen",
 		"declined": "Bitte von {name} abgelehnt",
-		"failed": "Deine Antwort konnte nicht gesendet werden",
-		"empty": "Noch nichts zu prüfen."
+		"failed": "Deine Antwort konnte nicht gesendet werden"
 	},
 	"correct": {
 		"sheetTitle": "{title} korrigieren",
@@ -34,8 +32,6 @@
 		"shareYou": "Dein Anteil",
 		"paidYou": "Du hast bezahlt",
 		"someone": "Jemand",
-		"nothing": "Ändere den Betrag, wer bezahlt hat oder die Aufteilung.",
-		"empty": "Gib Betrag und Aufteilung ein, um zu sehen, was sich ändert.",
 		"failed": "Diese Ausgabe konnte nicht geladen werden",
 		"loading": "Wird geladen"
 	},

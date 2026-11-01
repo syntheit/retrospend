@@ -48,7 +48,6 @@ export function FigureChanges<P extends Diff>({
 	own,
 	poolName,
 	done = false,
-	idle,
 	hide = [],
 	envelopeName,
 }: {
@@ -57,8 +56,6 @@ export function FigureChanges<P extends Diff>({
 	own?: (preview: P) => ChangeLine[];
 	poolName?: string;
 	done?: boolean;
-	/** What to say while there is nothing to preview yet. */
-	idle?: ReactNode;
 	/** Figure ids this sheet leaves out of the block. */
 	hide?: readonly string[];
 	/** One envelope this write moves with no per-envelope result: its Left line shows under this name. */
@@ -66,7 +63,7 @@ export function FigureChanges<P extends Diff>({
 }) {
 	const t = useTranslations("budgetSheets.changes");
 	const label = useFigureLabel(poolName);
-	if (dry.status === "idle") return <SheetChanges status={idle ?? t("idle")} />;
+	if (dry.status === "idle") return <SheetChanges />;
 	if (dry.status === "error") return <SheetChanges status={t("cannot")} />;
 	const p = dry.preview;
 	if (!p) return <SheetChanges status={t("loading")} />;

@@ -5,7 +5,6 @@
 		"placeholder": "Say what looks off",
 		"hintOpen": "Nothing changes until {name} fixes it.",
 		"hintLocked": "Only the difference reopens your balance with {name}.",
-		"empty": "Nothing to check yet.",
 		"send": "Send to {name}",
 		"sent": "Asked {name} to fix {title}"
 	},
@@ -19,8 +18,7 @@
 		"accept": "Accept",
 		"decline": "Decline",
 		"declined": "Declined {name}'s request",
-		"failed": "Couldn't send your answer",
-		"empty": "Nothing to check yet."
+		"failed": "Couldn't send your answer"
 	},
 	"correct": {
 		"sheetTitle": "Correct {title}",
@@ -34,8 +32,6 @@
 		"shareYou": "Your share",
 		"paidYou": "You paid",
 		"someone": "Someone",
-		"nothing": "Change the amount, who paid or the split.",
-		"empty": "Fill in the amount and the split to see what changes.",
 		"failed": "Couldn't load this expense",
 		"loading": "Loading"
 	},
