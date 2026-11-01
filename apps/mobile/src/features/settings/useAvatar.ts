@@ -1,11 +1,12 @@
 import { AVATAR_MAX_BYTES } from "@retrospend/api-contract";
 import { useState } from "react";
-import { Alert } from "react-native";
+
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { useToast } from "@/ui/Toast";
 import { type AvatarSource, pickAvatar, readAvatar } from "./avatar";
+import { showAlert } from "@/ui/alert";
 
 /**
  * Your profile picture: pick one (camera or library, cropped square),
@@ -76,7 +77,7 @@ export function useAvatar(onChanged: () => void) {
 
 	function confirmRemove() {
 		if (busy) return;
-		Alert.alert(t("removePhotoTitle"), undefined, [
+		showAlert(t("removePhotoTitle"), undefined, [
 			{ text: tc("cancel"), style: "cancel" },
 			{
 				text: t("removePhotoConfirm"),

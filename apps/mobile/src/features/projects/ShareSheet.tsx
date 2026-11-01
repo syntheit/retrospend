@@ -1,6 +1,6 @@
 import * as Clipboard from "expo-clipboard";
 import { useEffect, useState } from "react";
-import { Alert, Platform, Share, View } from "react-native";
+import { Platform, Share, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerBaseUrl } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
@@ -24,6 +24,7 @@ import {
 } from "./share";
 import type { ProjectPage } from "./source";
 import { useMagicLinks } from "./useMagicLinks";
+import { showAlert } from "@/ui/alert";
 
 /** The system share sheet with one address: iOS sends it as a link, Android as text. */
 async function sendAddress(url: string) {
@@ -86,7 +87,7 @@ export function ShareSheet({
 	}
 
 	function ask(title: string, confirm: string, run: () => void) {
-		Alert.alert(title, undefined, [
+		showAlert(title, undefined, [
 			{ text: tc("cancel"), style: "cancel" },
 			{ text: confirm, style: "destructive", onPress: run },
 		]);

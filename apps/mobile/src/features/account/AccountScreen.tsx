@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerBaseUrl } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
@@ -72,9 +72,12 @@ export function AccountScreen() {
 			<Stack.Screen
 				options={{
 					title: t("title"),
-					headerRight: () => (
-						<TextAction label={tc("done")} onPress={close} />
-					),
+					// Android's bar already has the back arrow, which closes the sheet
+					// from its first page (as does the system back); Done would repeat it.
+					headerRight:
+						Platform.OS === "android"
+							? undefined
+							: () => <TextAction label={tc("done")} onPress={close} />,
 				}}
 			/>
 			<Screen flush>

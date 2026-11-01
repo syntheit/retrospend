@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert } from "react-native";
+
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -8,6 +8,7 @@ import { useToast } from "@/ui/Toast";
 import type { MenuItem } from "@/ui/types";
 import { canArchiveProject, canEditProject } from "./projectForm";
 import type { ProjectPage } from "./source";
+import { showAlert } from "@/ui/alert";
 
 /**
  * Add person, Share, Settings, Archive and Restore for one project, as items
@@ -125,7 +126,7 @@ export function useProjectActions(
 						label: t("archive"),
 						destructive: true,
 						onPress: () =>
-							Alert.alert(
+							showAlert(
 								t("archiveTitle", { name: page.name }),
 								undefined,
 								[

@@ -18,6 +18,7 @@ const mockStore = createMemoryStore();
 const mockKeystore = new Map<string, string>();
 let mockConnection: { status: string; baseUrl?: string } = { status: "loading" };
 let mockMe: () => Promise<unknown> = async () => me;
+let mockClientOptions: { newIdempotencyKey?: () => string } | null = null;
 
 jest.mock("@/data/sqlite-store", () => ({
 	// Called when session.tsx loads, before the store below exists.
@@ -43,8 +44,12 @@ jest.mock("@/auth/server-connection", () => ({
 	useServerConnection: () => ({ connection: mockConnection }),
 }));
 jest.mock("@retrospend/api-client", () => ({
-	createRetrospendClient: () => ({ platform: { me: () => mockMe() } }),
+	createRetrospendClient: (options: { newIdempotencyKey?: () => string }) => {
+		mockClientOptions = options;
+		return { platform: { me: () => mockMe() } };
+	},
 }));
+jest.mock("expo-crypto", () => ({ randomUUID: () => "key-1" }));
 jest.mock("./auth-api", () => ({
 	createAuthApi: () => ({ clearLocal: async () => undefined }),
 }));
@@ -95,6 +100,18 @@ const statuses = () => seen.map((s) => s.status);
 afterEach(() => {
 	jest.useRealTimers();
 	mockMe = async () => me;
+});
+
+describe("the client", () => {
+	it("makes its own idempotency keys, since Hermes has no crypto.randomUUID", async () => {
+		mockClientOptions = null;
+		await coldStart({ token: true, cached: true });
+		const options = mockClientOptions as {
+			newIdempotencyKey?: () => string;
+		} | null;
+		expect(typeof options?.newIdempotencyKey).toBe("function");
+		expect(options?.newIdempotencyKey?.()).toBe("key-1");
+	});
 });
 
 describe("cold start", () => {

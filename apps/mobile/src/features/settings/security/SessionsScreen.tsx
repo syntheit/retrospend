@@ -1,6 +1,6 @@
 import type { SignedInSessionDto } from "@retrospend/api-contract";
 import { useCallback, useEffect, useState } from "react";
-import { Alert } from "react-native";
+
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -11,6 +11,7 @@ import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 import { Block, GroupNote, SettingsPage } from "../parts";
 import { orderSessions, type SessionName, sessionName } from "./rules";
+import { showAlert } from "@/ui/alert";
 
 type Load =
 	| { status: "loading" }
@@ -75,7 +76,7 @@ export function SessionsScreen() {
 
 	function ask(s: SignedInSessionDto) {
 		const name = nameOf(s);
-		Alert.alert(
+		showAlert(
 			name,
 			t("confirm", { used: day(s.lastUsedAt), since: day(s.createdAt) }),
 			[

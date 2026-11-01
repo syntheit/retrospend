@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Alert } from "react-native";
+
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -7,6 +7,7 @@ import { useToast } from "@/ui/Toast";
 import { previewDelete, runDelete } from "./deleteEntry";
 import { announceEntryChange } from "./events";
 import { undoWrite } from "./send";
+import { showAlert } from "@/ui/alert";
 
 /**
  * Delete one entry: the server's dry run first (R30), then the system alert
@@ -80,7 +81,7 @@ export function useDeleteEntry({
 			const message =
 				out.warning ??
 				(!out.undoable ? t("noUndo") : shared ? t("sharedEffect") : undefined);
-			Alert.alert(t("title"), message, [
+			showAlert(t("title"), message, [
 				{ text: tc("cancel"), style: "cancel" },
 				{
 					text: warned ? t("anyway") : t("row"),

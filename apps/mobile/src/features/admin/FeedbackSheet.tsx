@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -12,6 +12,7 @@ import { TextField } from "@/ui/TextField";
 import { useToast } from "@/ui/Toast";
 import type { AdminFeedback } from "./types";
 import { detailOf } from "./useAdminRead";
+import { showAlert } from "@/ui/alert";
 
 type Status = AdminFeedback["status"];
 
@@ -103,7 +104,7 @@ export function FeedbackSheet({
 	}
 
 	function askDelete() {
-		Alert.alert(t("deleteTitle"), undefined, [
+		showAlert(t("deleteTitle"), undefined, [
 			{ text: tc("cancel"), style: "cancel" },
 			{
 				text: t("delete"),

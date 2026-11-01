@@ -1,6 +1,6 @@
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
-import { Alert, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
@@ -20,6 +20,7 @@ import { hostOf, type Profile } from "./source";
 import { useAvatar } from "./useAvatar";
 import { useProfile } from "./useSettings";
 import { openWebPage } from "./webPages";
+import { showAlert } from "@/ui/alert";
 
 const USERNAME = /^[a-zA-Z0-9]{1,50}$/;
 
@@ -105,7 +106,7 @@ function ProfileBody({ me, reload }: { me: Profile; reload: () => void }) {
 		if (!userOk || username === me.username) return;
 		const next = username;
 		const old = me.username;
-		Alert.alert(
+		showAlert(
 			t("changeUsernameTitle", { username: next }),
 			t("changeUsernameBody", { old }),
 			[
@@ -133,7 +134,7 @@ function ProfileBody({ me, reload }: { me: Profile; reload: () => void }) {
 	}
 
 	function chooseSource() {
-		Alert.alert(t("uploadPhoto"), undefined, [
+		showAlert(t("uploadPhoto"), undefined, [
 			{ text: t("takePhoto"), onPress: () => void avatar.pick("camera") },
 			{ text: t("choosePhoto"), onPress: () => void avatar.pick("library") },
 			{ text: tc("cancel"), style: "cancel" },

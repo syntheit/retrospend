@@ -125,7 +125,8 @@ function Row({
 					fallback="Repeat"
 				/>
 			}
-			onPress={due ? undefined : onDetails}
+			// No press of its own: the SwipeRow around it owns the tap and the
+			// long press, and an inner press would take the touch from the hold.
 			sub={
 				<View>
 					<RowStatus item={item} />
