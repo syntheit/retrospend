@@ -71,7 +71,9 @@ export function buildIncomeWrite(
 	const note = d.note.trim();
 	const place = d.into ? input.places?.find((p) => p.id === d.into) : undefined;
 	// An account outside the budget keeps the money in Wealth: no plan to use.
-	const kept = place ? place.inBudget === false : false;
+	// When the catalog cannot say, the server's default decides (no keep sent).
+	const known = typeof place?.inBudget === "boolean";
+	const kept = place?.inBudget === false;
 	return {
 		entity: "income",
 		label: source,
@@ -85,9 +87,12 @@ export function buildIncomeWrite(
 			...(note ? { description: note } : {}),
 			// Without an envelope budget there is no plan to use.
 			...(d.categoryId ? { categoryId: d.categoryId } : {}),
-			...(d.into ? { into: d.into, keep: kept } : {}),
+			...(d.into ? { into: d.into, ...(known ? { keep: kept } : {}) } : {}),
 			...(d.repeats ? { repeats: { frequency: "MONTHLY" } } : {}),
-			usePlan: d.usePlan && input.hasBudget === true && !kept,
+			usePlan:
+				d.usePlan &&
+				input.hasBudget === true &&
+				(!d.into || place?.inBudget === true),
 		},
 	};
 }

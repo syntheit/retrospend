@@ -19,7 +19,7 @@ import {
 	splitRows,
 	transferErrors,
 } from "./draft";
-import type { EntryCatalog, EntryPerson } from "./types";
+import type { EntryCatalog, EntryPerson, EntryPlace } from "./types";
 
 const ID = "6f1d1c1e-5b0e-4f5c-9c33-0a4a1c0f8a11";
 const lucia: EntryPerson = {
@@ -282,6 +282,23 @@ describe("buildIncomeWrite", () => {
 			{ locale: "en-US", hasBudget: true },
 		);
 		expect(write?.body.usePlan).toBe(false);
+	});
+
+	it("sends keep only when the account's budget side is known", () => {
+		const into = (inBudget?: boolean) =>
+			buildIncomeWrite(
+				{ ...filled, into: "acc-1" },
+				{
+					locale: "en-US",
+					hasBudget: true,
+					places: [{ id: "acc-1", inBudget } as EntryPlace],
+				},
+			)?.body;
+		expect(into(false)).toMatchObject({ keep: true, usePlan: false });
+		expect(into(true)).toMatchObject({ keep: false, usePlan: true });
+		const unknown = into(undefined);
+		expect(unknown).not.toHaveProperty("keep");
+		expect(unknown?.usePlan).toBe(false);
 	});
 
 	it("is null without an amount or a source", () => {
