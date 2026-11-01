@@ -1,7 +1,6 @@
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Platform, SectionList, View } from "react-native";
-import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
@@ -33,7 +32,7 @@ import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, StaleNote } from "@/ui/List";
 import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
-import { usePaneEnter } from "@/ui/motion";
+import { markPaneSwitch } from "@/ui/PaneVeil";
 import { Screen, useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { useTransient } from "@/ui/transient";
@@ -63,10 +62,10 @@ export default function ActivityScreen() {
 	useEffect(() => {
 		if (RECURRING_APART) return;
 		if (params.segment === "recurring" || params.segment === "expenses") {
+			markPaneSwitch();
 			setSegment(params.segment);
 		}
 	}, [params.segment]);
-	const paneEnter = usePaneEnter(segment === "expenses" ? 0 : 1);
 	const [addingRecurring, setAddingRecurring] = useState(false);
 	const [filter, setFilter] = useState(DEFAULT_FILTER);
 	const [search, setSearch] = useDebouncedSearch((q) =>
@@ -183,12 +182,14 @@ export default function ActivityScreen() {
 					<View style={{ height: addInset }} />
 				)
 			}
+			// Over the rows: the pane's cover hangs from the tabs in this header.
+			ListHeaderComponentStyle={{ zIndex: 1 }}
 			ListHeaderComponent={
 				<View>
+					{segments}
 					{page && !picked ? (
 						<ActivitySummary page={page} period={filter.period} />
 					) : null}
-					{segments}
 					<StaleNote
 						since={state.status === "ready" ? state.staleSince : null}
 					/>
@@ -326,7 +327,7 @@ export default function ActivityScreen() {
 					)
 				}
 				list={
-					<Animated.View entering={paneEnter} key={segment} style={{ flex: 1 }}>
+					<View key={segment} style={{ flex: 1 }}>
 						{segment === "recurring" ? (
 							<RecurringView
 								adding={addingRecurring}
@@ -339,7 +340,7 @@ export default function ActivityScreen() {
 						) : (
 							list
 						)}
-					</Animated.View>
+					</View>
 				}
 				search={{
 					value: search,

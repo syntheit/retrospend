@@ -9,6 +9,7 @@ import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { usePaneEnter } from "@/ui/motion";
+import { markPaneSwitch, PaneVeil } from "@/ui/PaneVeil";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
 import type { PeopleChip, PeopleSort } from "./groups";
 import { PeopleList } from "./PeopleList";
@@ -49,10 +50,14 @@ export function PeopleHub() {
 
 	useEffect(() => {
 		const next = parseSegment(requested);
-		if (next) setSegment(next);
+		if (next) {
+			markPaneSwitch();
+			setSegment(next);
+		}
 	}, [requested]);
 
 	function choose(next: PeopleSegment) {
+		markPaneSwitch();
 		setSegment(next);
 		writeSegment(next);
 		// The param must follow the choice: a later link to the segment it
@@ -61,16 +66,20 @@ export function PeopleHub() {
 	}
 
 	const switcher = (
-		<View style={{ paddingBottom: space[2], backgroundColor: color.bg }}>
-			<UnderlineTabs
-				accessibilityLabel={tp("segmentLabel")}
-				onChange={choose}
-				tabs={[
-					{ value: "people", label: t("peopleSegment") },
-					{ value: "projects", label: t("projects") },
-				]}
-				value={segment}
-			/>
+		<View style={{ zIndex: 1 }}>
+			<View style={{ paddingBottom: space[2], backgroundColor: color.bg }}>
+				<UnderlineTabs
+					accessibilityLabel={tp("segmentLabel")}
+					onChange={choose}
+					tabs={[
+						{ value: "people", label: t("peopleSegment") },
+						{ value: "projects", label: t("projects") },
+					]}
+					value={segment}
+				/>
+			</View>
+			{/* In the list's header the new pane fades in under the tabs. */}
+			{fixedTabs ? null : <PaneVeil />}
 		</View>
 	);
 
@@ -83,7 +92,11 @@ export function PeopleHub() {
 			 * child of each view, and the account sheet is a native view (see
 			 * ListDetail).
 			 */}
-			<Animated.View entering={paneEnter} key={segment} style={{ flex: 1 }}>
+			<Animated.View
+				entering={fixedTabs ? paneEnter : undefined}
+				key={segment}
+				style={{ flex: 1 }}
+			>
 				{segment === "people" ? (
 					<PeopleList
 						filters={{ query, chip, onChip: setChip, sort, onSort: setSort }}

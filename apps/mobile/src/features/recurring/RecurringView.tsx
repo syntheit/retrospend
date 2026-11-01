@@ -421,12 +421,13 @@ export function RecurringView({
 		<>
 			{title}
 			<Screen flush onRefresh={() => void reload()}>
+				{/* The tabs lead, as in the other segment, so a switch moves nothing. */}
+				{header}
 				<View style={{ paddingHorizontal: space[4] }}>
 					<Text tone="fg2" variant="small">
 						{t("count", { count: data.items.length })}
 					</Text>
 				</View>
-				{header}
 				<StaleNote since={state.staleSince} />
 				<RecurringFilters filter={chips} onChange={setChips} />
 				<Summary data={data} />
