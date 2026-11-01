@@ -3,18 +3,15 @@
 import { ChevronRight, SearchX } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
-import { ActionArea, ActionMenu } from "~/components/actions/action-menu";
 import type { AccountTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
 import { seriesColor } from "~/components/charts/spec";
 import { Money } from "~/components/money/money";
-import { AccountRow } from "~/components/rows/account-row";
-import { RowList } from "~/components/rows/row";
 import { Button } from "~/components/ui/button";
 import { Empty } from "~/components/ui/empty-state";
 import { cn } from "~/lib/cn";
-import { useRateLabel } from "./sheets/rate-type-chips";
-import { sortAccounts, type WealthSort } from "./sort";
+import { Rows } from "./account-rows";
+import { moveInOrder, sortAccounts, type WealthSort } from "./sort";
 import type { WealthAccount, WealthGroup, WealthView } from "./types";
 
 export type AccountFilters = {
@@ -44,12 +41,6 @@ export function matches(a: WealthAccount, f: AccountFilters, home: string) {
 	return true;
 }
 
-export const targetOf = (a: WealthAccount): AccountTarget => ({
-	id: a.id,
-	name: a.name,
-	closed: a.closedOn != null,
-});
-
 /** The group's identity dot: its series color (R19); liabilities stay hollow. */
 function GroupDot({ series }: { series?: number }) {
 	return (
@@ -61,64 +52,6 @@ function GroupDot({ series }: { series?: number }) {
 			)}
 			style={series ? { background: seriesColor(series) } : undefined}
 		/>
-	);
-}
-
-function Rows({
-	accounts,
-	handlers,
-	onOpen,
-	label,
-}: {
-	accounts: WealthAccount[];
-	handlers: ActionHandlers<AccountTarget>;
-	onOpen?: (a: WealthAccount) => void;
-	label: string;
-}) {
-	const rate = useRateLabel();
-	return (
-		<RowList label={label}>
-			{accounts.map((a) => {
-				const target = targetOf(a);
-				return (
-					<ActionArea
-						entity="account"
-						handlers={handlers}
-						key={a.id}
-						target={target}
-					>
-						<AccountRow
-							account={{
-								id: a.id,
-								name: a.name,
-								kind: a.kind,
-								icon: a.icon,
-								amount: a.amount,
-								home: a.home,
-								updated: a.updated,
-								change: null,
-								// The sub line of wealth.html: the code, then how it counts.
-								detail: {
-									valuedAt: a.rateType ? rate(a.rateType) : null,
-									// APR as typed (118 is 118%), in hundredths for the formatter.
-									apr: a.apr != null ? Math.round(a.apr * 100) : null,
-									noRate: a.home === null,
-									closedOn: a.closedOn,
-								},
-							}}
-							actions={
-								<ActionMenu
-									entity="account"
-									handlers={handlers}
-									target={target}
-								/>
-							}
-							onOpen={onOpen ? () => onOpen(a) : undefined}
-						/>
-					</ActionArea>
-				);
-			})}
-		</RowList>
 	);
 }
 
@@ -160,6 +93,8 @@ export function AccountList({
 	view,
 	filters,
 	sort,
+	custom,
+	onReorder,
 	handlers,
 	onOpen,
 	onClear,
@@ -168,6 +103,10 @@ export function AccountList({
 	view: WealthView;
 	filters: AccountFilters;
 	sort: WealthSort;
+	/** The saved custom order: account ids. */
+	custom: readonly string[];
+	/** The whole custom order after a drag. */
+	onReorder: (order: string[]) => void;
 	handlers: ActionHandlers<AccountTarget>;
 	onOpen: (a: WealthAccount) => void;
 	onClear: () => void;
@@ -196,6 +135,7 @@ export function AccountList({
 				g.accounts.filter((a) => matches(a, filters, view.home)),
 				sort,
 				locale,
+				custom,
 			),
 		}))
 		.filter((g) => g.accounts.length);
@@ -203,7 +143,9 @@ export function AccountList({
 		view.closed.filter((a) => matches(a, filters, view.home)),
 		sort,
 		locale,
+		custom,
 	);
+	const all = [...view.groups.flatMap((g) => g.accounts), ...view.closed];
 	return (
 		<div>
 			{shown.map((g) => (
@@ -212,6 +154,21 @@ export function AccountList({
 						accounts={g.accounts}
 						handlers={handlers}
 						label={t(`groups.${g.key}`)}
+						onMove={
+							sort === "custom"
+								? (from, to) =>
+										onReorder(
+											moveInOrder(
+												all,
+												custom,
+												locale,
+												g.accounts.map((a) => a.id),
+												from,
+												to,
+											),
+										)
+								: undefined
+						}
 						onOpen={onOpen}
 					/>
 				</Group>

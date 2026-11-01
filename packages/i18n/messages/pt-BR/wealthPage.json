@@ -55,7 +55,6 @@
 		"liquid": "Líquido",
 		"illiquid": "Não líquido"
 	},
-	"ratesToday": "Cotações de hoje",
 	"ratesOn": "Cotações de {date}",
 	"withoutRate": "{count, plural, one {# conta sem cotação} other {# contas sem cotação}}",
 	"showAmounts": "Mostrar valores",
@@ -162,9 +161,16 @@
 	"sort": {
 		"button": "Ordem: {sort}",
 		"label": "Ordenar contas por",
-		"balance": "Saldo",
+		"custom": "Ordem própria",
+		"value": "Valor",
 		"name": "Nome",
 		"type": "Tipo",
-		"updated": "Atualizadas recentemente"
+		"updated": "Atualizadas recentemente",
+		"reorder": "Reordenar {name}",
+		"instructions": "Pressione Espaço para pegar uma conta, as setas para movê-la e Espaço para soltá-la.",
+		"picked": "{name} pega. Posição {position} de {count}.",
+		"moved": "{name} movida para a posição {position} de {count}.",
+		"dropped": "{name} solta na posição {position} de {count}.",
+		"cancelled": "Reordenação cancelada."
 	}
 }

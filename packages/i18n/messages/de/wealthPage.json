@@ -55,7 +55,6 @@
 		"liquid": "Liquide",
 		"illiquid": "Nicht liquide"
 	},
-	"ratesToday": "Kurse von heute",
 	"ratesOn": "Kurse vom {date}",
 	"withoutRate": "{count, plural, one {# Konto ohne Kurs} other {# Konten ohne Kurs}}",
 	"showAmounts": "Beträge zeigen",
@@ -162,9 +161,16 @@
 	"sort": {
 		"button": "Sortierung: {sort}",
 		"label": "Konten sortieren nach",
-		"balance": "Kontostand",
+		"custom": "Eigene Reihenfolge",
+		"value": "Wert",
 		"name": "Name",
 		"type": "Typ",
-		"updated": "Zuletzt aktualisiert"
+		"updated": "Zuletzt aktualisiert",
+		"reorder": "{name} verschieben",
+		"instructions": "Mit der Leertaste ein Konto aufnehmen, mit den Pfeiltasten bewegen und mit der Leertaste ablegen.",
+		"picked": "{name} aufgenommen. Position {position} von {count}.",
+		"moved": "{name} auf Position {position} von {count} verschoben.",
+		"dropped": "{name} auf Position {position} von {count} abgelegt.",
+		"cancelled": "Verschieben abgebrochen."
 	}
 }

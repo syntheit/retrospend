@@ -55,6 +55,7 @@ export type GlyphName =
 	| "FileUp"
 	| "Folder"
 	| "FolderPlus"
+	| "GripVertical"
 	| "HandCoins"
 	| "Info"
 	| "KeyRound"

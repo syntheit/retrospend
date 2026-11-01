@@ -306,6 +306,43 @@ export const setDefaultAccountSchema = z.object({
 	accountId: idSchema.nullable(),
 });
 
+/**
+ * How the accounts list is ordered. `custom` follows the order you set by
+ * dragging; the others sort by what the account holds, its name, its kind or
+ * when it last changed.
+ */
+export const ACCOUNT_SORTS = [
+	"custom",
+	"value",
+	"name",
+	"type",
+	"updated",
+] as const;
+
+export const accountSortSchema = z
+	.enum(ACCOUNT_SORTS)
+	.meta({ id: "AccountSort" });
+
+/** The ids in the custom order are at most this many (a sanity cap, not a limit anyone meets). */
+export const MAX_CUSTOM_ORDER = 1000;
+
+export const accountOrderSchema = z
+	.object({
+		sort: accountSortSchema,
+		/** Account ids in your custom order. New accounts are not in it until you place them. */
+		order: z.array(idSchema).max(MAX_CUSTOM_ORDER),
+	})
+	.meta({ id: "AccountOrder" });
+
+export const setAccountOrderSchema = z
+	.object({
+		sort: accountSortSchema.optional(),
+		order: z.array(idSchema).max(MAX_CUSTOM_ORDER).optional(),
+	})
+	.refine((v) => v.sort !== undefined || v.order !== undefined, {
+		message: "Send a sort, an order or both",
+	});
+
 export const exportCsvSchema = z.object({ csv: z.string() });
 
 // ── Write inputs and results ────────────────────────────────────────────────

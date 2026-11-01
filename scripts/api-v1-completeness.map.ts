@@ -577,6 +577,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 
 	// ── wealth ───────────────────────────────────────────────────────────
 	"wealth.accounts.defaults": to("GET /accounts/defaults"),
+	"wealth.accounts.order": to("GET /accounts/order"),
 	"wealth.accounts.revertBalanceUpdate.preview": to(
 		"POST /accounts/undo/preview",
 	),
@@ -584,6 +585,7 @@ export const COMPLETENESS: Readonly<Record<string, Entry>> = {
 	"wealth.accounts.revertRateType.preview": to("POST /accounts/undo/preview"),
 	"wealth.accounts.revertRateType.save": to("POST /accounts/undo"),
 	"wealth.accounts.setDefault": to("PUT /accounts/defaults/{currency}"),
+	"wealth.accounts.setOrder": to("PUT /accounts/order"),
 	"wealth.accounts.setRateType.preview": to(
 		"POST /accounts/{id}/rate-type/preview",
 	),

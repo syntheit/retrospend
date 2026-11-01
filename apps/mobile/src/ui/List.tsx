@@ -229,11 +229,18 @@ export function ListGroup({
 	children,
 	accessibilityLabel,
 	form,
+	wrapRow,
 }: {
 	children: ReactNode;
 	accessibilityLabel?: string;
 	/** A group of settings or form values: row titles at 400, not 500. */
 	form?: boolean;
+	/**
+	 * Draws each row's wrapper (the hairline above it and the row) itself, in
+	 * place of the group's fade and slide: a list the person reorders by
+	 * dragging moves its rows on its own.
+	 */
+	wrapRow?: (props: { index: number; children: ReactNode }) => ReactNode;
 }) {
 	const theme = useTheme();
 	const { color, radius, size } = theme;
@@ -255,23 +262,47 @@ export function ListGroup({
 			<InGroup.Provider value={true}>
 				<InForm.Provider value={form === true}>
 					<LayoutAnimationConfig skipEntering skipExiting>
-						{rows.map((row, index) => (
-							<Animated.View
-								entering={rowEnter(theme)}
-								exiting={rowExit(theme)}
-								key={
-									isValidElement(row) && row.key !== null
-										? `key:${row.key}`
-										: `at:${index}`
-								}
-								layout={rowLayout(theme)}
-							>
-								{index > 0 ? (
-									<View style={{ height: 1, backgroundColor: color.line }} />
-								) : null}
-								{row}
-							</Animated.View>
-						))}
+						{rows.map((row, index) =>
+							wrapRow ? (
+								<Fragment
+									key={
+										isValidElement(row) && row.key !== null
+											? `key:${row.key}`
+											: `at:${index}`
+									}
+								>
+									{wrapRow({
+										index,
+										children: (
+											<>
+												{index > 0 ? (
+													<View
+														style={{ height: 1, backgroundColor: color.line }}
+													/>
+												) : null}
+												{row}
+											</>
+										),
+									})}
+								</Fragment>
+							) : (
+								<Animated.View
+									entering={rowEnter(theme)}
+									exiting={rowExit(theme)}
+									key={
+										isValidElement(row) && row.key !== null
+											? `key:${row.key}`
+											: `at:${index}`
+									}
+									layout={rowLayout(theme)}
+								>
+									{index > 0 ? (
+										<View style={{ height: 1, backgroundColor: color.line }} />
+									) : null}
+									{row}
+								</Animated.View>
+							),
+						)}
 					</LayoutAnimationConfig>
 				</InForm.Provider>
 			</InGroup.Provider>

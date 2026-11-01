@@ -1,9 +1,12 @@
+import { randomUUID } from "node:crypto";
+import { ACCOUNT_SORTS, MAX_CUSTOM_ORDER } from "@retrospend/api-contract";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { generateDefaultCategoryPreferences } from "~/lib/analytics-defaults";
 import { BASE_CURRENCY, DEFAULT_PAGE_SIZE } from "~/lib/constants";
 import type { db as globalDb } from "~/server/db";
-import type { Page } from "~prisma";
+import { userTransaction } from "~/server/db-tx";
+import type { Page, Prisma } from "~prisma";
 
 type AppDb = typeof globalDb;
 
@@ -29,6 +32,9 @@ export const WealthSettingsSchema = z.object({
 	version: z.literal(1),
 	showCurrencyExposure: z.boolean(),
 	showHistoryChart: z.boolean(),
+	/** How the Wealth accounts are sorted, and the ids in your custom order. */
+	sort: z.enum(ACCOUNT_SORTS).default("value"),
+	order: z.array(z.string().min(1).max(64)).max(MAX_CUSTOM_ORDER).default([]),
 });
 
 export const ExchangeRatesSettingsSchema = z.object({
@@ -124,6 +130,8 @@ export const DEFAULT_PAGE_SETTINGS: Record<
 		version: 1,
 		showCurrencyExposure: true,
 		showHistoryChart: true,
+		sort: "value",
+		order: [],
 	},
 	EXCHANGE_RATES: {
 		version: 1,
@@ -197,7 +205,31 @@ export async function getPageSettings<T extends Page>(
 }
 
 /**
- * Update page settings for a user
+ * Locks the user's row for one page and returns what it holds (a default row
+ * is written first when there is none). Two writers of the same page, a drag
+ * save and a settings toggle, queue on this lock instead of each reading the
+ * old JSON and overwriting the other's keys. Call it first in a
+ * `userTransaction`.
+ */
+export async function lockPageSettings(
+	tx: Prisma.TransactionClient,
+	userId: string,
+	page: Page,
+): Promise<unknown> {
+	await tx.$executeRaw`
+		INSERT INTO "user_page_setting" ("id", "userId", "page", "settings")
+		VALUES (${randomUUID()}, ${userId}, ${page}::"Page", ${JSON.stringify(DEFAULT_PAGE_SETTINGS[page])}::jsonb)
+		ON CONFLICT ("userId", "page") DO NOTHING`;
+	const rows = await tx.$queryRaw<{ settings: unknown }[]>`
+		SELECT "settings" FROM "user_page_setting"
+		WHERE "userId" = ${userId} AND "page" = ${page}::"Page"
+		FOR UPDATE`;
+	return rows[0]?.settings;
+}
+
+/**
+ * Update page settings for a user. The read and the write happen under the
+ * row's lock, so concurrent updates each keep the other's keys.
  */
 export async function updatePageSettings<T extends Page>(
 	db: AppDb,
@@ -205,33 +237,30 @@ export async function updatePageSettings<T extends Page>(
 	page: T,
 	settings: Partial<PageSettings>,
 ): Promise<PageSettings> {
-	const currentSettings = await getPageSettings(db, userId, page);
+	return userTransaction(db, userId, async (tx) => {
+		const parsed = PAGE_SCHEMAS[page].safeParse(
+			await lockPageSettings(tx, userId, page),
+		);
+		const currentSettings = parsed.success
+			? parsed.data
+			: DEFAULT_PAGE_SETTINGS[page];
 
-	// Merge with updates
-	const updatedSettings = { ...currentSettings, ...settings } as PageSettings;
+		// Merge with updates
+		const updatedSettings = {
+			...currentSettings,
+			...settings,
+		} as PageSettings;
 
-	// Validate the merged settings
-	PAGE_SCHEMAS[page].parse(updatedSettings);
+		// Validate the merged settings
+		PAGE_SCHEMAS[page].parse(updatedSettings);
 
-	// Save to database
-	await db.userPageSetting.upsert({
-		where: {
-			userId_page: {
-				userId,
-				page,
-			},
-		},
-		update: {
-			settings: JSON.parse(JSON.stringify(updatedSettings)),
-		},
-		create: {
-			userId,
-			page,
-			settings: JSON.parse(JSON.stringify(updatedSettings)),
-		},
+		await tx.userPageSetting.update({
+			where: { userId_page: { userId, page } },
+			data: { settings: JSON.parse(JSON.stringify(updatedSettings)) },
+		});
+
+		return updatedSettings;
 	});
-
-	return updatedSettings;
 }
 
 /**

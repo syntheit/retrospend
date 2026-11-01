@@ -10,7 +10,8 @@
 	},
 	"area": {
 		"label": "Net worth",
-		"summary": "Net worth went from {start} on {from} to {end} on {to}"
+		"summary": "Net worth went from {start} on {from} to {end} on {to}",
+		"pick": "{date}: {amount}"
 	},
 	"ranked": {
 		"summary": "Largest first: {list}"

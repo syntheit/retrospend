@@ -4,6 +4,11 @@ import {
 	setDefaultAccount,
 } from "~/server/services/accounts/defaults";
 import { exportAccountsCsv } from "~/server/services/accounts/manage";
+import {
+	type AccountOrder,
+	getAccountOrder,
+	setAccountOrder,
+} from "~/server/services/accounts/order";
 import type { Caller } from "../caller";
 import { wire } from "../wire";
 import { accountDetailIn, accountItemsIn } from "./items";
@@ -28,6 +33,12 @@ export const accountReads = {
 	defaults: async (caller: Caller) => ({
 		defaults: await defaultAccounts(caller.db, caller.principal.userId),
 	}),
+	order: (caller: Caller) =>
+		getAccountOrder(caller.db, caller.principal.userId),
+	setOrder: (
+		caller: Caller,
+		input: { sort?: AccountOrder["sort"]; order?: string[] },
+	) => setAccountOrder(caller.db, caller.principal.userId, input),
 	export: (caller: Caller) =>
 		exportAccountsCsv(caller.db, caller.principal.userId),
 	setDefault: async (

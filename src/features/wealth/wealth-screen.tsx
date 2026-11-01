@@ -1,20 +1,22 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { PageFrame } from "~/components/layout/page-frame";
 import { Toolbar } from "~/components/layout/toolbar";
 import { FilterChip, FilterChips } from "~/components/ui/chip";
 import { Input } from "~/components/ui/input";
 import { Segmented } from "~/components/ui/segmented";
+import { useToast } from "~/components/ui/toast";
 import { cn } from "~/lib/cn";
+import { api } from "~/trpc/react";
 import { type AccountFilters, AccountList, NO_FILTERS } from "./account-list";
 import { Breakdown } from "./breakdown";
 import { NetWorthHero } from "./net-worth-hero";
 import { AccountSheet } from "./sheets/account-sheet";
 import { CloseAccountSheet } from "./sheets/close-account-sheet";
 import { UpdateBalanceSheet } from "./sheets/update-balance-sheet";
-import { WEALTH_SORT_COOKIE, type WealthSort } from "./sort";
+import type { WealthSort } from "./sort";
 import { SortMenu } from "./sort-menu";
 import type { WealthView } from "./types";
 import { type SheetState, useAccountActions } from "./use-account-actions";
@@ -27,17 +29,20 @@ const MASK =
 /** The Wealth page: header, hero, one toolbar, the accounts or the breakdown. */
 export function WealthScreen({
 	view,
-	initialSort,
+	initialOrder,
 }: {
 	view: WealthView;
-	/** The sort this viewer last picked (a cookie the server read). */
-	initialSort: WealthSort;
+	/** The sort this person last picked and their custom order, saved on the server. */
+	initialOrder: { sort: WealthSort; order: string[] };
 }) {
 	const t = useTranslations("wealthPage");
 	const [hidden, setHidden] = useState(view.hideAmounts);
 	const [mode, setMode] = useState<"accounts" | "breakdown">("accounts");
 	const [filters, setFilters] = useState<AccountFilters>(NO_FILTERS);
-	const [sort, setSort] = useState<WealthSort>(initialSort);
+	const [sort, setSort] = useState<WealthSort>(initialOrder.sort);
+	const [custom, setCustom] = useState<string[]>(initialOrder.order);
+	const toast = useToast();
+	const saveOrder = api.wealth.accounts.setOrder.useMutation();
 	const [sheet, setSheet] = useState<SheetState>(null);
 	const actions = useAccountActions(view, setSheet);
 	const closeSheet = (open: boolean) => {
@@ -46,10 +51,30 @@ export function WealthScreen({
 	const set = (patch: Partial<AccountFilters>) =>
 		setFilters((f) => ({ ...f, ...patch }));
 	const accounts = mode === "accounts";
+	// Saved at once, one after the other so the last change wins; a failed
+	// save puts the screen back as it was.
+	const queue = useRef<Promise<unknown>>(Promise.resolve());
+	const save = (
+		next: { sort?: WealthSort; order?: string[] },
+		undo: () => void,
+	) => {
+		queue.current = queue.current.then(() =>
+			saveOrder.mutateAsync(next).catch(() => {
+				undo();
+				toast.failed(t("toast.failed"));
+			}),
+		);
+		return queue.current;
+	};
 	const pickSort = (next: WealthSort) => {
+		const before = sort;
 		setSort(next);
-		// Remembered for this viewer; the server reads it on the next visit.
-		document.cookie = `${WEALTH_SORT_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+		void save({ sort: next }, () => setSort(before));
+	};
+	const reorder = (order: string[]) => {
+		const before = custom;
+		setCustom(order);
+		void save({ order }, () => setCustom(before));
 	};
 
 	return (
@@ -121,11 +146,13 @@ export function WealthScreen({
 				</Toolbar>
 				{accounts ? (
 					<AccountList
+						custom={custom}
 						filters={filters}
 						handlers={actions.handlers}
 						onAdd={() => setSheet({ kind: "add" })}
 						onClear={() => setFilters(NO_FILTERS)}
 						onOpen={(a) => setSheet({ kind: "update", account: a })}
+						onReorder={reorder}
 						sort={sort}
 						view={view}
 					/>

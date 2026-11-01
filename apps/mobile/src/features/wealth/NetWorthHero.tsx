@@ -28,7 +28,7 @@ const CHART_HEIGHT = 220;
  * Net worth: the one hero of Wealth. The number and its 30-day change (with
  * the percent) are the server's summary; the change is a link to the sheet
  * that says why it moved. The chart is the server's daily series on the one
- * area chart, opening on a month; holding and dragging swaps the number for
+ * area chart, opening on a month; dragging across it swaps the number for
  * that day's. Under it: what you own by group, the server's shares.
  */
 export function NetWorthHero({

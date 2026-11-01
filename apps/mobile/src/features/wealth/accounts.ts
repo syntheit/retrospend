@@ -1,3 +1,9 @@
+import {
+	type AccountSortMode,
+	moveInOrder as moveIn,
+	type SortFacts,
+	sortAccounts as sort,
+} from "@retrospend/domain/account-sort";
 import type { GlyphName } from "@/ui/Glyph";
 import type { Account } from "./source";
 
@@ -104,4 +110,37 @@ export function aprBasis(text: string | null): number | null {
 	const whole = Number(match[1]);
 	const fraction = Number(`${match[2] ?? ""}00`.slice(0, 2));
 	return whole * 100 + fraction;
+}
+
+/** What the order needs to know: the home value by size (a debt by what is owed), none without a rate. */
+function facts(a: Account): SortFacts {
+	return {
+		id: a.id,
+		name: a.name,
+		type: a.type,
+		size: a.value === null ? null : Math.abs(a.value.minor),
+		updated: a.updatedAt,
+	};
+}
+
+/** The accounts of one group in the chosen sort; Custom follows the saved order (domain/account-sort). */
+export function sortedAccounts(
+	accounts: readonly Account[],
+	mode: AccountSortMode,
+	locale: string,
+	custom: readonly string[],
+): Account[] {
+	return sort(accounts, mode, locale, custom, facts);
+}
+
+/** The whole custom order after the account at `from` moves to `to` inside the group `shown`. */
+export function movedOrder(
+	all: readonly Account[],
+	custom: readonly string[],
+	locale: string,
+	shown: readonly string[],
+	from: number,
+	to: number,
+): string[] {
+	return moveIn(all, custom, locale, shown, from, to, facts);
 }

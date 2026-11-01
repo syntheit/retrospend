@@ -1,8 +1,7 @@
 import "server-only";
 
-import { cookies } from "next/headers";
+import { api } from "~/trpc/server";
 import { loadWealthView } from "./server/load";
-import { readSort, WEALTH_SORT_COOKIE } from "./sort";
 import { WealthScreen } from "./wealth-screen";
 import { WealthUnavailable } from "./wealth-states";
 
@@ -18,6 +17,6 @@ export async function WealthPage() {
 		console.error("[wealth] the page could not load", error);
 		return <WealthUnavailable />;
 	}
-	const sort = readSort((await cookies()).get(WEALTH_SORT_COOKIE)?.value);
-	return <WealthScreen initialSort={sort} view={view} />;
+	const order = await api.wealth.accounts.order();
+	return <WealthScreen initialOrder={order} view={view} />;
 }

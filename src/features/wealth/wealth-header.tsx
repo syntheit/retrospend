@@ -27,6 +27,7 @@ import { Tip } from "~/components/ui/tooltip";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { entryOf } from "~/lib/nav";
 import { api } from "~/trpc/react";
+import { ratesAreStale } from "./rates-stale";
 import type { WealthView } from "./types";
 
 /** Saves the server's CSV as a file. */
@@ -61,11 +62,11 @@ export function WealthHeader({
 	const phone = useIsMobile();
 	const { short } = useRowDates();
 	const exportCsv = api.wealth.exportCsv.useMutation();
-	const updated = !view.ratesUpdated
-		? null
-		: view.ratesUpdated === view.today
-			? t("ratesToday")
-			: t("ratesOn", { date: short(view.ratesUpdated) });
+	// Said only when the rates are older than today: fresh rates are assumed.
+	const updated =
+		view.ratesUpdated && ratesAreStale(view.ratesUpdated, view.today)
+			? t("ratesOn", { date: short(view.ratesUpdated) })
+			: null;
 	const sub = [
 		updated,
 		view.missingRates ? t("withoutRate", { count: view.missingRates }) : null,
@@ -146,12 +147,7 @@ export function WealthHeader({
 	return (
 		<>
 			<PageHeader
-				lead={
-					<BackButton
-						href={entryOf("home").href}
-						label={nav("home")}
-					/>
-				}
+				lead={<BackButton href={entryOf("home").href} label={nav("home")} />}
 				overflow={menu}
 				primary={
 					<>

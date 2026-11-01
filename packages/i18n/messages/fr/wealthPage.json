@@ -55,7 +55,6 @@
 		"liquid": "Liquide",
 		"illiquid": "Non liquide"
 	},
-	"ratesToday": "Taux du jour",
 	"ratesOn": "Taux du {date}",
 	"withoutRate": "{count, plural, one {# compte sans taux} other {# comptes sans taux}}",
 	"showAmounts": "Afficher les montants",
@@ -162,9 +161,16 @@
 	"sort": {
 		"button": "Tri : {sort}",
 		"label": "Trier les comptes par",
-		"balance": "Solde",
+		"custom": "Ordre personnalisé",
+		"value": "Valeur",
 		"name": "Nom",
 		"type": "Type",
-		"updated": "Mis à jour récemment"
+		"updated": "Mis à jour récemment",
+		"reorder": "Déplacer {name}",
+		"instructions": "Appuyez sur Espace pour saisir un compte, sur les flèches pour le déplacer et sur Espace pour le déposer.",
+		"picked": "{name} saisi. Position {position} sur {count}.",
+		"moved": "{name} déplacé à la position {position} sur {count}.",
+		"dropped": "{name} déposé à la position {position} sur {count}.",
+		"cancelled": "Déplacement annulé."
 	}
 }

@@ -10,6 +10,7 @@ import {
 	accountIdParamsSchema,
 	accountItemSchema,
 	accountListSchema,
+	accountOrderSchema,
 	accountRateRevertedSchema,
 	accountRemovedSchema,
 	balanceUpdateSchema,
@@ -19,6 +20,7 @@ import {
 	netWorthQuerySchema,
 	netWorthSchema,
 	rateTypeSwitchSchema,
+	setAccountOrderSchema,
 	setDefaultAccountSchema,
 	setRateTypeSchema,
 	updateAccountSchema,
@@ -176,6 +178,31 @@ export const accountsContract = {
 		})
 		.meta({ scope: "read" })
 		.output(defaultAccountsSchema),
+	order: v1
+		.route({
+			method: "GET",
+			path: "/accounts/order",
+			operationId: "getAccountOrder",
+			tags: TAG,
+			summary: "How your accounts are sorted and your custom order",
+			description:
+				"The sort you last chose and the account ids in the order you set by dragging. Switching the sort never changes the custom order.",
+		})
+		.meta({ scope: "read" })
+		.output(accountOrderSchema),
+	setOrder: v1
+		.route({
+			method: "PUT",
+			path: "/accounts/order",
+			operationId: "setAccountOrder",
+			tags: TAG,
+			summary: "Choose the sort and save your custom order",
+			description:
+				"Send the sort, the order or both; what you leave out stays as it was. Every id in the order must be one of your accounts. It moves no money.",
+		})
+		.meta({ scope: "write:settings", event: "account.order_set" })
+		.input(setAccountOrderSchema)
+		.output(accountOrderSchema),
 	export: v1
 		.route({
 			method: "GET",

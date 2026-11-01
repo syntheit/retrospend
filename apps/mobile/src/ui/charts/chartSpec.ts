@@ -91,10 +91,12 @@ export const BAR = { maxSize: 48, radius: 4, yAxisWidth: 44 } as const;
 export const THIN = { ranked: 8, allocation: 10, balance: 12, gap: 2 } as const;
 
 /**
- * Scrubbing on a phone: press and hold this long, then drag (the mockup's
- * hold), so a quick swipe still scrolls the page.
+ * Scrubbing on a phone: drag sideways at once (it starts after `startPx` of
+ * sideways travel, and gives way to the page scroll after `failPx` of
+ * vertical travel), or press and hold `holdMs` and then drag any way for a
+ * precise read.
  */
-export const SCRUB = { holdMs: 240 } as const;
+export const SCRUB = { holdMs: 240, startPx: 8, failPx: 12 } as const;
 
 /** "Nice" top of a value axis: 1, 2, 2.5, 5 or 10 times a power of ten. */
 export function niceMax(max: number): number {

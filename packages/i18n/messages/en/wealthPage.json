@@ -55,7 +55,6 @@
 		"liquid": "Liquid",
 		"illiquid": "Illiquid"
 	},
-	"ratesToday": "Rates updated today",
 	"ratesOn": "Rates updated {date}",
 	"withoutRate": "{count, plural, one {# account without a rate} other {# accounts without a rate}}",
 	"showAmounts": "Show amounts",
@@ -162,9 +161,16 @@
 	"sort": {
 		"button": "Sort: {sort}",
 		"label": "Sort accounts by",
-		"balance": "Balance",
+		"custom": "Custom order",
+		"value": "Value",
 		"name": "Name",
 		"type": "Type",
-		"updated": "Recently updated"
+		"updated": "Recently updated",
+		"reorder": "Reorder {name}",
+		"instructions": "Press Space to pick up an account, the arrow keys to move it and Space to drop it.",
+		"picked": "{name} picked up. Position {position} of {count}.",
+		"moved": "{name} moved to position {position} of {count}.",
+		"dropped": "{name} dropped at position {position} of {count}.",
+		"cancelled": "Reordering cancelled."
 	}
 }

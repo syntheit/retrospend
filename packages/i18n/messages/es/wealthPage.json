@@ -55,7 +55,6 @@
 		"liquid": "Líquido",
 		"illiquid": "No líquido"
 	},
-	"ratesToday": "Tipos de cambio de hoy",
 	"ratesOn": "Tipos de cambio del {date}",
 	"withoutRate": "{count, plural, one {# cuenta sin tipo de cambio} other {# cuentas sin tipo de cambio}}",
 	"showAmounts": "Mostrar importes",
@@ -162,9 +161,16 @@
 	"sort": {
 		"button": "Orden: {sort}",
 		"label": "Ordenar cuentas por",
-		"balance": "Saldo",
+		"custom": "Orden propio",
+		"value": "Valor",
 		"name": "Nombre",
 		"type": "Tipo",
-		"updated": "Actualizadas hace poco"
+		"updated": "Actualizadas hace poco",
+		"reorder": "Reordenar {name}",
+		"instructions": "Pulsa Espacio para coger una cuenta, las flechas para moverla y Espacio para soltarla.",
+		"picked": "{name} recogida. Posición {position} de {count}.",
+		"moved": "{name} movida a la posición {position} de {count}.",
+		"dropped": "{name} soltada en la posición {position} de {count}.",
+		"cancelled": "Reordenación cancelada."
 	}
 }

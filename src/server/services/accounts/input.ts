@@ -5,6 +5,9 @@
  * their number fields until stream 4 rebuilds them.
  */
 import { accountRateTextSchema } from "@retrospend/api-contract";
+
+export { setAccountOrderSchema } from "@retrospend/api-contract";
+
 import { z } from "zod";
 import { restChoiceSchema } from "~/lib/schemas/envelope";
 import { customRateSchema } from "~/lib/schemas/rate";

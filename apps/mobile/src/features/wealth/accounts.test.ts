@@ -5,7 +5,9 @@ import {
 	groupOf,
 	isLiability,
 	matchingAccounts,
+	movedOrder,
 	sectionsOf,
+	sortedAccounts,
 	unvalued,
 } from "./accounts";
 import type { Account } from "./source";
@@ -110,5 +112,38 @@ describe("account search", () => {
 		]);
 		expect(matchingAccounts(list, "VIS").map((a) => a.id)).toEqual(["Visa"]);
 		expect(matchingAccounts(list, "zzz")).toEqual([]);
+	});
+});
+
+describe("account sort", () => {
+	const list = [
+		account("A", "CASH", { value: { minor: 100, currency: "USD" } }),
+		account("B", "CASH", { value: { minor: 900, currency: "USD" } }),
+		account("C", "CASH", { value: null }),
+	];
+	const ids = (l: Account[]) => l.map((a) => a.id);
+
+	it("sorts a group by home value, no rate last", () => {
+		expect(ids(sortedAccounts(list, "value", "en", []))).toEqual([
+			"B",
+			"A",
+			"C",
+		]);
+	});
+
+	it("custom follows the saved order and comes back after another sort", () => {
+		const saved = ["C", "A", "B"];
+		expect(ids(sortedAccounts(list, "name", "en", saved))).toEqual([
+			"A",
+			"B",
+			"C",
+		]);
+		expect(ids(sortedAccounts(list, "custom", "en", saved))).toEqual(saved);
+	});
+
+	it("moves one account and keeps the rest of the order", () => {
+		expect(
+			movedOrder(list, ["A", "B", "C"], "en", ["A", "B", "C"], 0, 2),
+		).toEqual(["B", "C", "A"]);
 	});
 });

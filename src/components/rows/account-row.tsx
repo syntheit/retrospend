@@ -81,16 +81,31 @@ export function AccountRow({
 	account,
 	onOpen,
 	actions,
+	handle,
 	...rest
 }: {
 	account: AccountVM;
 	onOpen?: () => void;
 	actions?: ReactNode;
+	/** A grip before the mark, while the list is in a custom order. */
+	handle?: ReactNode;
 } & RowPassThrough) {
 	const sub = useAccountSub(account);
 	const foreign =
 		account.home !== undefined &&
 		account.home?.currency !== account.amount.currency;
+	const mark = account.icon ? (
+		<AccountMark icon={account.icon} name={account.name} />
+	) : account.kind === "crypto" ? (
+		<IconTile>
+			<CryptoIcon
+				className="size-5 border-0 bg-transparent"
+				currencyCode={account.amount.currency}
+			/>
+		</IconTile>
+	) : (
+		<IconTile icon={KIND_ICON[account.kind]} />
+	);
 	return (
 		<Row
 			{...rest}
@@ -108,17 +123,13 @@ export function AccountRow({
 				)
 			}
 			lead={
-				account.icon ? (
-					<AccountMark icon={account.icon} name={account.name} />
-				) : account.kind === "crypto" ? (
-					<IconTile>
-						<CryptoIcon
-							className="size-5 border-0 bg-transparent"
-							currencyCode={account.amount.currency}
-						/>
-					</IconTile>
+				handle ? (
+					<div className="flex items-center gap-1">
+						{handle}
+						{mark}
+					</div>
 				) : (
-					<IconTile icon={KIND_ICON[account.kind]} />
+					mark
 				)
 			}
 			open={onOpen ? { onOpen, label: account.name } : undefined}

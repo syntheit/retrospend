@@ -1,67 +1,51 @@
+import { ACCOUNT_SORTS } from "@retrospend/api-contract";
+import {
+	moveInOrder as moveIn,
+	type SortFacts,
+	sortAccounts as sort,
+} from "@retrospend/domain/account-sort";
 import type { WealthAccount } from "./types";
 
-export const WEALTH_SORTS = ["balance", "name", "type", "updated"] as const;
+/**
+ * The sort modes (Spotify's model): Custom follows the order you set by
+ * dragging, the rest sort by a fact of the account. The mode and the custom
+ * order are saved on the server per person (accounts/order), so switching
+ * away from Custom and back restores the order exactly. The ordering itself
+ * is shared with the phone (domain/account-sort).
+ */
+export const WEALTH_SORTS = ACCOUNT_SORTS;
 export type WealthSort = (typeof WEALTH_SORTS)[number];
 
-/** The sort a viewer last picked, remembered in this cookie (read on the server, so no flash). */
-export const WEALTH_SORT_COOKIE = "rs-wealth-sort";
+export const DEFAULT_SORT: WealthSort = "value";
 
-export const DEFAULT_SORT: WealthSort = "balance";
-
-export function readSort(value: string | undefined | null): WealthSort {
-	return WEALTH_SORTS.find((s) => s === value) ?? DEFAULT_SORT;
-}
-
-const TYPE_ORDER: Record<WealthAccount["type"], number> = {
-	CASH: 0,
-	INVESTMENT: 1,
-	CRYPTO: 2,
-	REAL_ESTATE: 3,
-	VEHICLE: 4,
-	LIABILITY_LOAN: 5,
-	LIABILITY_CREDIT_CARD: 6,
-	LIABILITY_MORTGAGE: 7,
-};
-
-/**
- * What the account counts for, in minor units of the home currency, by size
- * (a debt by what is owed). An account with no rate sorts last, never as zero.
- */
-function size(a: WealthAccount): number | null {
+/** What the account counts for: its home value by size (a debt by what is owed); no rate is null. */
+function facts(a: WealthAccount): SortFacts {
 	const v = a.home === undefined ? a.amount : a.home;
-	return v === null ? null : Math.abs(v.minor);
+	return {
+		id: a.id,
+		name: a.name,
+		type: a.type,
+		size: v === null ? null : Math.abs(v.minor),
+		updated: a.updated,
+	};
 }
 
-/**
- * Orders the accounts of one group. Balance: largest first by home value.
- * Name: A to Z. Type: the kinds in the order of the groups, then by name.
- * Updated: newest change first. Ties fall back to the name, so the order is
- * stable between reloads.
- */
 export function sortAccounts(
 	accounts: readonly WealthAccount[],
-	sort: WealthSort,
+	mode: WealthSort,
 	locale: string,
+	custom: readonly string[] = [],
 ): WealthAccount[] {
-	const byName = (x: WealthAccount, y: WealthAccount) =>
-		x.name.localeCompare(y.name, locale, { sensitivity: "base" });
-	const compare = (x: WealthAccount, y: WealthAccount): number => {
-		switch (sort) {
-			case "name":
-				return byName(x, y);
-			case "type":
-				return TYPE_ORDER[x.type] - TYPE_ORDER[y.type];
-			case "updated":
-				return x.updated === y.updated ? 0 : x.updated < y.updated ? 1 : -1;
-			case "balance": {
-				const a = size(x);
-				const b = size(y);
-				if (a === b) return 0;
-				if (a === null) return 1;
-				if (b === null) return -1;
-				return b - a;
-			}
-		}
-	};
-	return [...accounts].sort((x, y) => compare(x, y) || byName(x, y));
+	return sort(accounts, mode, locale, custom, facts);
+}
+
+export function moveInOrder(
+	all: readonly WealthAccount[],
+	custom: readonly string[],
+	locale: string,
+	shown: readonly string[],
+	from: number,
+	to: number,
+): string[] {
+	return moveIn(all, custom, locale, shown, from, to, facts);
 }
