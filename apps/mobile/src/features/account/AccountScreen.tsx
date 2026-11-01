@@ -1,4 +1,4 @@
-import { Stack, useNavigation } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
@@ -56,15 +56,14 @@ export function AccountScreen() {
 	const confirmSignOut = useSignOut();
 	const feedback = useFeedback();
 	const open = useOpenSettingsRoute();
-	const navigation = useNavigation();
 	const { space } = useTheme();
 	const me = state.status === "signedIn" ? state.me : null;
 	const face = useMyFace();
 	const admin = adminAccess(me) === "ok";
 	const unreadFeedback = useUnreadFeedback(admin);
 
-	/** Done closes the whole sheet, wherever it is. */
-	const close = () => (navigation.getParent() ?? navigation).goBack();
+	/** Done is on the sheet's first page, so Back closes the sheet. */
+	const close = () => router.back();
 	const web = (path: string) => () =>
 		baseUrl ? void openWebPage(baseUrl, path) : undefined;
 	const opensWeb = t("opensWeb");

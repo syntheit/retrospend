@@ -22,9 +22,8 @@ jest.mock("@/auth/server-connection", () => ({
 const mockPush = jest.fn();
 const mockGoBack = jest.fn();
 jest.mock("expo-router", () => ({
-	router: { push: (to: string) => mockPush(to) },
+	router: { push: (to: string) => mockPush(to), back: () => mockGoBack() },
 	usePathname: () => "/account",
-	useNavigation: () => ({ getParent: () => ({ goBack: mockGoBack }) }),
 	Stack: { Screen: () => null },
 }));
 jest.mock("@/features/feedback/FeedbackProvider", () => ({

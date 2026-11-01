@@ -55,7 +55,7 @@ export function ConverterSheet({
 
 	return (
 		<Sheet
-			detents={["large"]}
+			detents={["medium", "large"]}
 			onClose={onClose}
 			title={t("title")}
 			visible={visible}
