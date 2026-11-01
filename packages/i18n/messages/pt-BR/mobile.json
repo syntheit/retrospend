@@ -220,7 +220,6 @@
 		"excludeAuto": "Excluído automaticamente pela categoria",
 		"rate": {
 			"title": "Câmbio",
-			"trigger": "Cotação {type}",
 			"triggerLabel": "Câmbio, {type}",
 			"find": "Buscar uma cotação",
 			"empty": "Nenhuma cotação encontrada",
@@ -1427,8 +1426,8 @@
 			"notLoggedHint": "Suas receitas e gastos ficam como estão. A diferença é guardada como “Sem registro”.",
 			"same": "Esse já é o saldo, então nada muda.",
 			"toast": "{name} agora tem {amount}",
-			"valuedAt": "Avaliada na cotação {type}",
-			"rateChange": "Avaliada em {next} a partir de hoje. Os dias anteriores mantêm a cotação {before}.",
+			"valuedAt": "Avaliada a {type}",
+			"rateChange": "Avaliada em {next} a partir de hoje. Os dias anteriores mantêm {before}.",
 			"rateFromToday": "Avaliada em {next} a partir de hoje.",
 			"error": "Não foi possível salvar. Tente de novo."
 		},

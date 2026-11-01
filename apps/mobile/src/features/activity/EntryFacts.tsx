@@ -7,6 +7,7 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import { CategoryGlyph, categoryColor, Glyph } from "@/ui/Glyph";
+import { useRateFormat } from "@/lib/rateFormat";
 import { useRateTypeLabel } from "@/ui/Money";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
@@ -109,6 +110,7 @@ export function EntryFacts({
 	const money = useMoneyText();
 	const faces = useFaces();
 	const rateName = useRateTypeLabel();
+	const rateFmt = useRateFormat();
 	const { state: session } = useSession();
 	const { color, size, space } = useTheme();
 	const me = session.status === "signedIn" ? session.me : null;
@@ -140,6 +142,15 @@ export function EntryFacts({
 				? t("you")
 				: null;
 	const rate = item.rateType ?? extra?.rateType;
+	const rateText =
+		rate && item.home
+			? rateFmt.typed(
+					rateName(rate),
+					item.amount.currency,
+					item.home.currency,
+					item.rate ?? extra?.rate,
+				)
+			: null;
 	const foreign = item.home !== undefined;
 	const status = rowStatus(item, ta);
 	const category = item.category;
@@ -164,9 +175,7 @@ export function EntryFacts({
 				{foreign
 					? item.home === null
 						? tm("noRate")
-						: rate
-							? rateName(rate)
-							: null
+						: rateText
 					: null}
 			</Fact>
 			<Fact label={t("project")}>{item.project?.name}</Fact>

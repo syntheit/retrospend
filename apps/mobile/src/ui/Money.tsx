@@ -39,7 +39,6 @@ export const useRateTypeLabel = useRateTypeName;
 export function MoneyAmount({
 	value,
 	home,
-	rateType,
 	tone = "default",
 	sign = "auto",
 	strong,
@@ -52,8 +51,6 @@ export function MoneyAmount({
 }: {
 	value: Money;
 	home?: Money | null;
-	/** Shown after the home amount when it is not the default rate type. */
-	rateType?: string;
 	tone?: Tone;
 	sign?: "auto" | "exceptZero";
 	strong?: boolean;
@@ -72,7 +69,6 @@ export function MoneyAmount({
 	cents?: boolean;
 }) {
 	const t = useTranslations("mobile.money");
-	const rateName = useRateTypeLabel();
 	const { size: sizes, type } = useTheme();
 	const { format, pair } = useFormatMoney();
 	const hero = size === "hero";
@@ -98,7 +94,6 @@ export function MoneyAmount({
 	const heroSize = sizes.hero.phone;
 	const weight =
 		strong || hero ? "semibold" : weightName === "normal" ? "normal" : "medium";
-	const rate = rateType ? rateName(rateType) : "";
 	return (
 		<View
 			style={{
@@ -139,11 +134,7 @@ export function MoneyAmount({
 					tone="fg3"
 					variant="meta"
 				>
-					{home === null || homeText === null
-						? t("noRate")
-						: rate
-							? t("homeWithRate", { amount: homeText, rate })
-							: homeText}
+					{home === null || homeText === null ? t("noRate") : homeText}
 				</Text>
 			) : null}
 		</View>

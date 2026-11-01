@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
+import { useRateFormat } from "@/lib/rateFormat";
 import { useRateTypeName } from "@/lib/rateTypes";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
@@ -51,12 +52,18 @@ export function RateField({
 	const tp = useTranslations("mobile.pickers");
 	const name = useRateTypeName();
 	const { format } = useFormatMoney();
+	const fmt = useRateFormat();
 	const { space } = useTheme();
 	const [open, setOpen] = useState(false);
 	const view = rateView(options, choice, keptHome);
 	// Offline before the first answer: nothing to pick from or show yet.
 	if (!options && !choice.custom && !view.home) return null;
-	const typeName = name(view.type);
+	// A type never shows without its number: "Blue · 1 USD = 1,545.20 ARS" (R8).
+	const typeName = view.picked
+		? fmt.withType(name(view.type), view.picked.rate)
+		: null;
+	// While a custom rate is being typed there is no number yet: the trigger still leaves Custom.
+	const triggerText = typeName ?? (choice.custom ? name("custom") : null);
 	const home = view.home ? format(view.home) : null;
 
 	return (
@@ -69,14 +76,16 @@ export function RateField({
 				}}
 			>
 				{shared ? (
-					<Text
-						accessibilityHint={t("sharedFixed")}
-						style={{ flexShrink: 1 }}
-						tone="fg2"
-						variant="small"
-					>
-						{t("fixed", { type: typeName })}
-					</Text>
+					typeName ? (
+						<Text
+							accessibilityHint={t("sharedFixed")}
+							style={{ flexShrink: 1 }}
+							tone="fg2"
+							variant="small"
+						>
+							{t("fixed", { type: typeName })}
+						</Text>
+					) : null
 				) : view.missing ? (
 					<>
 						<Text
@@ -93,14 +102,14 @@ export function RateField({
 							variant="text"
 						/>
 					</>
-				) : (
+				) : triggerText ? (
 					<Button
-						accessibilityLabel={t("triggerLabel", { type: typeName })}
-						label={t("trigger", { type: typeName })}
+						accessibilityLabel={t("triggerLabel", { type: triggerText })}
+						label={triggerText}
 						onPress={() => setOpen(true)}
 						variant="text"
 					/>
-				)}
+				) : null}
 				<View style={{ flex: 1 }} />
 				{home ? (
 					<Text
@@ -148,7 +157,7 @@ export function RateField({
 								...options.options.map((o) => ({
 									id: o.rateType,
 									label: name(o.rateType),
-									detail: `${format(o.rate.unit, { cents: false }) ?? ""} = ${format(o.rate.value) ?? ""}`,
+									detail: fmt.pair(o.rate) ?? "",
 									lead: null,
 									selected: !choice.custom && view.type === o.rateType,
 								})),

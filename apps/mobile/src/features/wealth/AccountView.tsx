@@ -19,6 +19,7 @@ import {
 	StaleNote,
 } from "@/ui/List";
 import { Menu } from "@/ui/Menu";
+import { useRateFormat } from "@/lib/rateFormat";
 import { heroCents, useRateTypeLabel } from "@/ui/Money";
 import { Screen } from "@/ui/Screen";
 import { Skeleton, SkeletonRows } from "@/ui/Skeleton";
@@ -90,6 +91,7 @@ export function AccountView({ id }: { id: string }) {
 	const format = useFormatter();
 	const money = useMoneyText();
 	const rateName = useRateTypeLabel();
+	const rateFmt = useRateFormat();
 	const { api, state: session } = useSession();
 	const me = session.status === "signedIn" ? session.me : null;
 	const { space } = useTheme();
@@ -131,14 +133,24 @@ export function AccountView({ id }: { id: string }) {
 	const currency = account.balance.currency;
 	const foreign = account.value !== null && account.value.currency !== currency;
 	const rate = valuedAt(account);
+	// The type never shows without its number (R8).
+	const rateText =
+		rate && account.value
+			? rateFmt.typed(
+					rateName(rate),
+					currency,
+					account.value.currency,
+					account.rate,
+				)
+			: null;
 	const homeLine =
 		account.value === null
 			? null
 			: foreign
-				? rate
+				? rateText
 					? tm("homeWithRate", {
 							amount: money(account.value),
-							rate: rateName(rate),
+							rate: rateText,
 						})
 					: money(account.value)
 				: null;

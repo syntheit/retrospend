@@ -3,6 +3,8 @@ import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFaces } from "@/features/read/faces";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useRateFormat } from "@/lib/rateFormat";
+import { useRateTypeName } from "@/lib/rateTypes";
 import { useTheme } from "@/theme";
 import { AvatarStack } from "@/ui/Avatar";
 import { Glyph } from "@/ui/Glyph";
@@ -126,6 +128,8 @@ export function ActivityRow({
 	const tm = useTranslations("mobile.money");
 	const { space } = useTheme();
 	const format = useMoneyText();
+	const rateFmt = useRateFormat();
+	const rateName = useRateTypeName();
 	const faces = useFaces();
 	const status = rowStatus(item, t);
 	const title = rowTitle(item, t);
@@ -250,6 +254,15 @@ export function ActivityRow({
 						? tm("noRate")
 						: null,
 				share ? tm("yourShare", { amount: share }) : null,
+				// The booked rate is spoken here and shown in the detail, never as a bare name.
+				item.rateType && item.rate && item.home
+					? rateFmt.typed(
+							rateName(item.rateType),
+							item.amount.currency,
+							item.home.currency,
+							item.rate,
+						)
+					: null,
 			]
 				.filter(Boolean)
 				.join(", ")}
@@ -257,7 +270,6 @@ export function ActivityRow({
 				<View style={{ alignItems: "flex-end" }}>
 					<MoneyAmount
 						home={item.home}
-						rateType={item.rateType}
 						sign={income ? "exceptZero" : "auto"}
 						tone={income ? "positive" : muted ? "muted" : "default"}
 						value={item.amount}

@@ -220,7 +220,6 @@
 		"excludeAuto": "Auto-excluded based on category settings",
 		"rate": {
 			"title": "Exchange rate",
-			"trigger": "{type} rate",
 			"triggerLabel": "Exchange rate, {type}",
 			"find": "Find a rate type",
 			"empty": "No rate type matches",
@@ -1427,8 +1426,8 @@
 			"notLoggedHint": "Your income and spending stay as they are. The difference is recorded as Not logged.",
 			"same": "That is already the balance, so nothing changes.",
 			"toast": "{name} is now {amount}",
-			"valuedAt": "Valued at the {type} rate",
-			"rateChange": "Valued at {next} from today. Earlier days keep the {before} rate.",
+			"valuedAt": "Valued at {type}",
+			"rateChange": "Valued at {next} from today. Earlier days keep {before}.",
 			"rateFromToday": "Valued at {next} from today.",
 			"error": "Couldn't save. Try again."
 		},

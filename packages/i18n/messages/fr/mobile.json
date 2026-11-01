@@ -220,7 +220,6 @@
 		"excludeAuto": "Exclue automatiquement selon la catégorie",
 		"rate": {
 			"title": "Taux de change",
-			"trigger": "Taux {type}",
 			"triggerLabel": "Taux de change, {type}",
 			"find": "Chercher un taux",
 			"empty": "Aucun taux ne correspond",
@@ -1427,8 +1426,8 @@
 			"notLoggedHint": "Tes revenus et dépenses ne changent pas. La différence est classée dans Non enregistré.",
 			"same": "C’est déjà le solde, rien ne change donc.",
 			"toast": "{name} est maintenant à {amount}",
-			"valuedAt": "Valorisé au taux {type}",
-			"rateChange": "Valorisé au taux {next} à partir d’aujourd’hui. Les jours précédents gardent le taux {before}.",
+			"valuedAt": "Valorisé à {type}",
+			"rateChange": "Valorisé au taux {next} à partir d’aujourd’hui. Les jours précédents gardent {before}.",
 			"rateFromToday": "Valorisé au taux {next} à partir d’aujourd’hui.",
 			"error": "Impossible d’enregistrer. Réessaie."
 		},

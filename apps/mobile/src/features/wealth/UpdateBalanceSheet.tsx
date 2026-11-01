@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Platform, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
+import { useRateLine } from "@/features/currencies/useRateLine";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
 import { figureLines } from "@/features/write/figures";
@@ -64,6 +65,7 @@ export function UpdateBalanceSheet({
 	const announce = useUndoToast("accounts");
 	const money = useMoneyText();
 	const rateName = useRateTypeLabel();
+	const rateLine = useRateLine();
 	const locale = useAmountLocale();
 	const { space } = useTheme();
 	const currency = account.balance.currency;
@@ -152,18 +154,20 @@ export function UpdateBalanceSheet({
 	const same = rows ? isUnchanged(rows) && !switching : false;
 	const ready = flow.status === "ready" && !same;
 
+	// A type is named with its number (R8); the table is cached, so this is seldom bare.
+	const named = (type: string) => rateLine(currency, type) ?? rateName(type);
 	// The dated note under the chips: what the pick does and what it leaves.
 	const rateNote =
 		rateType === null || types.length < 2
 			? null
 			: !switching
-				? t("valuedAt", { type: rateName(rateType) })
+				? t("valuedAt", { type: named(rateType) })
 				: rateTypeChanged(saved, rateType)
 					? t("rateChange", {
-							next: rateName(rateType),
-							before: rateName(saved ?? ""),
+							next: named(rateType),
+							before: saved ? named(saved) : "",
 						})
-					: t("rateFromToday", { next: rateName(rateType) });
+					: t("rateFromToday", { next: named(rateType) });
 
 	async function submit() {
 		const out = await flow.commit();

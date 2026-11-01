@@ -1,7 +1,11 @@
 import { iconOf } from "~/lib/account-icons";
 import { homeCurrencyOf, ratePickFor } from "~/server/services/accounts/ledger";
 import { inBudget, worthOf } from "~/server/services/accounts/places";
-import { homeValue, type RatePick } from "~/server/services/accounts/valuation";
+import {
+	homePerUnit,
+	homeValue,
+	type RatePick,
+} from "~/server/services/accounts/valuation";
 import { accountViewIn } from "~/server/services/accounts/view";
 import { dec, toMinor } from "~/server/services/envelope/units";
 import type { Prisma } from "~prisma";
@@ -24,6 +28,19 @@ export function accountItem(row: Row, home: string, pick: RatePick) {
 		home,
 		new Date(),
 	);
+	const perUnit =
+		row.currency === home
+			? null
+			: homePerUnit(
+					pick,
+					{
+						currency: row.currency,
+						rateType: row.exchangeRateType,
+						storedRate: row.exchangeRate,
+					},
+					home,
+					new Date(),
+				);
 	return {
 		id: row.id,
 		name: row.name,
@@ -35,6 +52,7 @@ export function accountItem(row: Row, home: string, pick: RatePick) {
 		inBudget: inBudget(row, home),
 		isLiquid: row.isLiquid,
 		rateType: row.exchangeRateType,
+		rate: perUnit ? perUnit.toDecimalPlaces(12).toString() : null,
 		closedAt: row.closedAt?.toISOString() ?? null,
 		interestRate: row.interestRate?.toString() ?? null,
 		minimumPayment: row.minimumPayment
