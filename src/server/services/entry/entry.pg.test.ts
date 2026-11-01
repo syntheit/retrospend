@@ -20,6 +20,7 @@ import {
 	openAccount,
 	seedArsRates,
 	TODAY,
+	TODAY_ZONE,
 } from "../accounts/test-fixtures";
 import { seedUser, setupInput } from "../envelope/__tests__/pg-fixture";
 import { getMonth } from "../envelope/read.service";
@@ -65,7 +66,7 @@ const usd100 = (id: string, categoryId: string, rateType?: string) =>
 			categoryId,
 			...(rateType ? { rateType } : {}),
 		},
-		"UTC",
+		TODAY_ZONE,
 	);
 
 describe("Add expense: rate per entry", () => {
@@ -146,7 +147,7 @@ describe("Add expense: rate per entry", () => {
 					categoryId: cat.id,
 					customRate: "1475",
 				},
-				"UTC",
+				TODAY_ZONE,
 			),
 		);
 		const saved = await adminDb.expense.findUniqueOrThrow({ where: { id } });
@@ -267,7 +268,7 @@ describe("Add income: Use my plan", () => {
 		await forUser(s.user.id).apply(setupEnvelopeBook, {
 			...setupInput(s),
 			startingMoneyMinor: 0,
-			timeZone: "UTC",
+			timeZone: TODAY_ZONE,
 		});
 		const input = {
 			title: "Salary, Grupo Andino",

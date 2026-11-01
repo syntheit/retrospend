@@ -6,7 +6,9 @@
 import { randomUUID } from "node:crypto";
 import { contract } from "@retrospend/api-contract";
 import { nextRecurringDate } from "@retrospend/domain/recurring";
+import { dayKey } from "@retrospend/domain/time-zone";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { defaultTimeZone } from "~/server/services/user-time-zone";
 import { bookedUser } from "../../budget/__tests__/fixtures";
 import {
 	adminDb,
@@ -54,6 +56,11 @@ type Preview = {
 
 const daysAgo = (n: number) =>
 	new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+
+// Due today in the caller's zone: a confirm books the entry on its due day, so a
+// day in the past would fall in the previous month on the 1st and leave this
+// month's Spent unchanged.
+const dueToday = () => dayKey(new Date(), defaultTimeZone());
 
 describe("/api/v1/recurring", () => {
 	let userId: string;
@@ -507,7 +514,7 @@ describe("/api/v1/recurring", () => {
 	});
 
 	it("confirms a due template after a preview, and moves it on", async () => {
-		const item = await make({ name: "Confirm me" });
+		const item = await make({ name: "Confirm me", nextDueDate: dueToday() });
 		const preview = await expectBody<Preview>(
 			await send("POST", `/recurring/${item.id}/confirm/preview`, {
 				dueAt: item.dueAt,
@@ -606,7 +613,7 @@ describe("/api/v1/recurring", () => {
 	});
 
 	it("undoes a confirm: the entry goes and the template is due again", async () => {
-		const item = await make({ name: "Undo me" });
+		const item = await make({ name: "Undo me", nextDueDate: dueToday() });
 		const done = await expectBody<Confirm>(
 			await send("POST", `/recurring/${item.id}/confirm`, {}),
 			c.confirm,

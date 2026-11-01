@@ -7,7 +7,7 @@
 
 import { randomUUID } from "node:crypto";
 import { dayKey } from "@retrospend/domain/time-zone";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { setupInput } from "~/server/services/envelope/__tests__/pg-fixture";
 import { setupEnvelopeBook } from "~/server/services/envelope/setup.mutation";
 import { ExpenseService } from "~/server/services/expense.service";
@@ -436,6 +436,42 @@ describe("income.moveIn (count only)", () => {
 		expect(
 			out.changes.find((c) => c.id === "budget.notPlannedYet")?.delta,
 		).toEqual(ARS(-14_600_000));
+	});
+
+	// West and east of UTC, pinned so the case does not depend on the machine's zone.
+	const ZONES = ["America/Argentina/Buenos_Aires", "Pacific/Auckland"];
+	const NOWS = [
+		"2026-11-01T05:00:00.000Z",
+		"2026-11-15T15:00:00.000Z",
+		"2026-10-31T15:00:00.000Z",
+	];
+	it.each(
+		ZONES.flatMap((zone) => NOWS.map((now) => [now, zone] as const)),
+	)("a Move in on %s lands in the month of that day in %s", async (now, zone) => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		try {
+			vi.setSystemTime(new Date(now));
+			const p = await places();
+			const cat = (name: string) =>
+				adminDb.category
+					.create({ data: { name, color: "blue", userId: p.userId } })
+					.then((c) => c.id);
+			await forUser(p.userId).apply(setupEnvelopeBook, {
+				...setupInput({ rent: await cat("Rent"), dining: await cat("Dining") }),
+				timeZone: zone,
+			});
+			const moved = await forUser(p.userId).preview(moveIn, {
+				id: randomUUID(),
+				accountId: p.wise,
+				units: "100",
+				timeZone: zone,
+			});
+			expect(
+				moved.changes.find((c) => c.id === "budget.notPlannedYet")?.delta,
+			).toEqual(ARS(14_120_000));
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });
 
