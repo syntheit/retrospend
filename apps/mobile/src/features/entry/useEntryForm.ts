@@ -1,6 +1,6 @@
 import { fromMinor, money } from "@retrospend/domain/money-minor";
 import { decimalSeparator } from "@retrospend/domain/parse";
-import { parseRateText } from "@retrospend/domain/rate-text";
+import { typedRateToStored } from "@retrospend/domain/rate-format";
 import { dayKey } from "@retrospend/domain/time-zone";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard } from "react-native";
@@ -283,7 +283,9 @@ export function useEntryForm({
 					? fromMinor(money(typedMinor, rated.currency))
 					: null,
 			customRate:
-				rated?.custom === true ? parseRateText(rated.customText, locale) : null,
+				rated?.custom === true
+					? typedRateToStored(rated.customText, rated.customFlipped, locale)
+					: null,
 		},
 		foreign,
 	);

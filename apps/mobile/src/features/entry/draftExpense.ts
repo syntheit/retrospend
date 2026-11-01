@@ -138,6 +138,8 @@ export function expenseFromEntry(
 		amount: { minor: number; currency: string };
 		home?: { minor: number; currency: string } | null;
 		rateType: string | null;
+		/** The rate it was booked at, unrounded; a saved custom rate shows back from it. */
+		rate?: string | null;
 		date: string;
 		categoryId: string | null;
 		location: string | null;
@@ -169,6 +171,7 @@ export function expenseFromEntry(
 		// The saved type starts picked; a saved custom rate is kept as "custom".
 		...DEFAULT_RATE,
 		rateType: entry.rateType,
+		savedRate: entry.rateType === "custom" ? (entry.rate ?? null) : null,
 		editing: {
 			source: "personal",
 			currency,

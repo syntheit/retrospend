@@ -2,6 +2,11 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useFormatMoney } from "@/lib/money";
+import {
+	rateDirection,
+	storedRateToTyped,
+} from "@retrospend/domain/rate-format";
+import { useMoneyLocale } from "@/lib/money";
 import { useRateFormat } from "@/lib/rateFormat";
 import { useRateTypeName } from "@/lib/rateTypes";
 import { useTheme } from "@/theme";
@@ -56,6 +61,22 @@ export function RateField({
 	const { space } = useTheme();
 	const [open, setOpen] = useState(false);
 	const view = rateView(options, choice, keptHome);
+	const locale = useMoneyLocale();
+	// The pair reads the way its rate reads: the typed number is the >= 1 one,
+	// whatever way the rate is stored (the table decides, a saved rate backs it).
+	const dir = rateDirection(
+		currency,
+		homeCurrency,
+		options?.options[0]?.rate.rate ?? choice.savedRate,
+	);
+	// Custom starts from the saved custom rate, read the way it reads now.
+	const startCustom = (): Partial<RateChoice> => ({
+		custom: true,
+		customFlipped: dir.flipped,
+		...(choice.customText === "" && choice.savedRate
+			? { customText: storedRateToTyped(choice.savedRate, dir.flipped, locale) }
+			: {}),
+	});
 	// Offline before the first answer: nothing to pick from or show yet.
 	if (!options && !choice.custom && !view.home) return null;
 	// A type never shows without its number: "Blue · 1 USD = 1,545.20 ARS" (R8).
@@ -98,7 +119,7 @@ export function RateField({
 						</Text>
 						<Button
 							label={t("enterRate")}
-							onPress={() => onChange({ custom: true })}
+							onPress={() => onChange(startCustom())}
 							variant="text"
 						/>
 					</>
@@ -127,20 +148,22 @@ export function RateField({
 				<View
 					style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}
 				>
-					<Text tone="fg2">{t("customUnit", { currency })}</Text>
+					<Text tone="fg2">{t("customUnit", { currency: dir.base })}</Text>
 					<View style={{ flex: 1 }}>
 						<TextField
 							hideLabel
 							invalid={error}
 							keyboardType="decimal-pad"
-							label={t("customLabel", { currency, home: homeCurrency })}
-							onChangeText={(customText) => onChange({ customText })}
+							label={t("customLabel", { currency: dir.base, home: dir.quote })}
+							onChangeText={(customText) =>
+								onChange({ customText, customFlipped: dir.flipped })
+							}
 							onTypingChange={onTypingChange}
 							placeholder={t("enterRate")}
 							value={choice.customText}
 						/>
 					</View>
-					<Text tone="fg2">{homeCurrency}</Text>
+					<Text tone="fg2">{dir.quote}</Text>
 				</View>
 			) : null}
 			{error ? <FieldError>{t("error")}</FieldError> : null}
@@ -174,7 +197,7 @@ export function RateField({
 					onSelect={(id) =>
 						onChange(
 							id === CUSTOM
-								? { custom: true }
+								? startCustom()
 								: { custom: false, rateType: id },
 						)
 					}
