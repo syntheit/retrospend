@@ -146,12 +146,7 @@ export function WealthHeader({
 	return (
 		<>
 			<PageHeader
-				lead={
-					<BackButton
-						href={entryOf("home").href}
-						label={nav("home")}
-					/>
-				}
+				lead={<BackButton href={entryOf("home").href} label={nav("home")} />}
 				overflow={menu}
 				primary={
 					<>

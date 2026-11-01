@@ -29,16 +29,16 @@ import {
 	payers,
 	projectNeeds,
 } from "./filters";
-import { ProjectExpenseDays } from "./ProjectExpenses";
 import { opensWebPage } from "./joinLink";
+import { ProjectExpenseDays } from "./ProjectExpenses";
 import { ProjectHeader, ProjectTitle } from "./ProjectHeader";
 import { ProjectPeopleTab } from "./ProjectPeopleTab";
 import { ProjectSettingsSheet } from "./ProjectSettingsSheet";
 import { ProjectSheet } from "./ProjectSheet";
 import { ProjectSummaryTab } from "./ProjectSummaryTab";
 import { SettleAllSheet } from "./SettleAllSheet";
-import { projectPageUrl } from "./share";
 import { ShareSheet } from "./ShareSheet";
+import { projectPageUrl } from "./share";
 import { useProjectActions } from "./useProjectActions";
 import { useProject, useProjectSummary } from "./useProjects";
 

@@ -1,7 +1,7 @@
 "use client";
 
-import type React from "react";
 import { useTranslations } from "next-intl";
+import type React from "react";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -70,7 +70,11 @@ export function ConfirmationDialog({
 					<AlertDialogTitle>{title}</AlertDialogTitle>
 					{description && (
 						<AlertDialogDescription asChild={typeof description !== "string"}>
-							{typeof description === "string" ? description : <div>{description}</div>}
+							{typeof description === "string" ? (
+								description
+							) : (
+								<div>{description}</div>
+							)}
 						</AlertDialogDescription>
 					)}
 				</AlertDialogHeader>
@@ -112,8 +116,8 @@ export function ConfirmDialog({
 }) {
 	return (
 		<ConfirmationDialog
-			confirmLabel={confirmText}
 			cancelLabel={cancelText}
+			confirmLabel={confirmText}
 			{...rest}
 		/>
 	);

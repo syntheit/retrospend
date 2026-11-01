@@ -1,12 +1,11 @@
-import { useState } from "react";
-import { View } from "react-native";
-import { useTranslations } from "use-intl";
-import { useFormatMoney } from "@/lib/money";
 import {
 	rateDirection,
 	storedRateToTyped,
 } from "@retrospend/domain/rate-format";
-import { useMoneyLocale } from "@/lib/money";
+import { useState } from "react";
+import { View } from "react-native";
+import { useTranslations } from "use-intl";
+import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useRateFormat } from "@/lib/rateFormat";
 import { useRateTypeName } from "@/lib/rateTypes";
 import { useTheme } from "@/theme";
@@ -196,9 +195,7 @@ export function RateField({
 					onClose={() => setOpen(false)}
 					onSelect={(id) =>
 						onChange(
-							id === CUSTOM
-								? startCustom()
-								: { custom: false, rateType: id },
+							id === CUSTOM ? startCustom() : { custom: false, rateType: id },
 						)
 					}
 					title={t("title")}

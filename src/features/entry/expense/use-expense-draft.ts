@@ -3,11 +3,11 @@
 import { predictCategory } from "@retrospend/domain/category-matcher";
 import { toMinorUnits } from "@retrospend/domain/money";
 import { parseMoneyInput } from "@retrospend/domain/parse";
-import { readRateText } from "@retrospend/domain/rate-text";
 import {
 	storedRateToTyped,
 	typedRateToStored,
 } from "@retrospend/domain/rate-format";
+import { readRateText } from "@retrospend/domain/rate-text";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
 import {

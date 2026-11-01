@@ -10,11 +10,7 @@
  * "No rate" instead). A rate type's name always travels with the number:
  * `formatRateWithType("Blue", ...)` is "Blue · 1 USD = 1,545.20 ARS".
  */
-import {
-	decimalSeparator,
-	groupDigits,
-	numberSymbols,
-} from "./format-locale";
+import { decimalSeparator, groupDigits, numberSymbols } from "./format-locale";
 import { parseRateText, rateToText } from "./rate-text";
 
 export type RateInput = number | string | null | undefined;

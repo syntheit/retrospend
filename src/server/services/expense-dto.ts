@@ -48,4 +48,3 @@ type ActivityCategory = {
 	color: string;
 	icon: string | null;
 };
-

@@ -174,9 +174,10 @@ describe("typing a custom rate the way it reads", () => {
 			const d = rateDirection(from, to, reference);
 			const stored = typedRateToStored(typed, d.flipped, "en-US");
 			expect(stored, `${from}->${to}`).not.toBeNull();
-			expect(storedRateToTyped(stored, d.flipped, "en-US"), `${from}->${to}`).toBe(
-				typed,
-			);
+			expect(
+				storedRateToTyped(stored, d.flipped, "en-US"),
+				`${from}->${to}`,
+			).toBe(typed);
 		}
 	});
 

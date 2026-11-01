@@ -43,7 +43,13 @@ describe("rateView: the rate row reads the server's options", () => {
 	});
 
 	it("shows a typed rate as the server booked it, nothing before it answers", () => {
-		const typed = { rateType: null, custom: true, customText: "1200" };
+		const typed = {
+			rateType: null,
+			custom: true,
+			customText: "1200",
+			customFlipped: false,
+			savedRate: null,
+		};
 		expect(rateView(options, typed)).toMatchObject({
 			type: "custom",
 			home: null,

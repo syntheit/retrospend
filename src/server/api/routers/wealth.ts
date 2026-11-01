@@ -6,7 +6,10 @@ import {
 	defaultAccounts,
 	setDefaultAccount,
 } from "~/server/services/accounts/defaults";
-import { exactRate, withRateNumber } from "~/server/services/accounts/exact-rate";
+import {
+	exactRate,
+	withRateNumber,
+} from "~/server/services/accounts/exact-rate";
 import { setAccountIcon } from "~/server/services/accounts/icon";
 import * as schema from "~/server/services/accounts/input";
 import {

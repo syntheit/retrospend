@@ -30,7 +30,7 @@ export function AvatarRow({ fallbackName }: { fallbackName: string }) {
 				// The profile picture is the largest face in the app (mockup):
 				// 64 on desktop, 80 on phones.
 				<Face
-					className="size-20 text-title md:size-16"
+					className="text-title size-20 md:size-16"
 					imageUrl={avatar.avatarUrl}
 					name={name}
 					size="lg"

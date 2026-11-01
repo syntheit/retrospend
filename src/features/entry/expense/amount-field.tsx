@@ -1,7 +1,10 @@
 "use client";
 
 import { fromMinor } from "@retrospend/domain/money-minor";
-import { type RateDirection, rateDirection } from "@retrospend/domain/rate-format";
+import {
+	type RateDirection,
+	rateDirection,
+} from "@retrospend/domain/rate-format";
 import { PencilIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Money } from "~/components/money/money";
