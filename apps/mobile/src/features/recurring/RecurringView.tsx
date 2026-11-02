@@ -1,11 +1,11 @@
 import { type ReactNode, useMemo, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { useHeaderSearch } from "@/layout/headerSearch";
 import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useHeaderSearch } from "@/layout/headerSearch";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import {
