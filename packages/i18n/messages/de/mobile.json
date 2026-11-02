@@ -772,7 +772,6 @@
 			"undone": "Rückgängig gemacht",
 			"undoError": "Das ließ sich nicht rückgängig machen. Es hat sich vielleicht schon geändert."
 		},
-		"listAnd": "{head} und {last}",
 		"figures": {
 			"budget_notPlannedYet": "Noch nicht verplant",
 			"budget_leftToSpend": "Noch verfügbar",

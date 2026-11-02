@@ -1,3 +1,4 @@
+import { dayKey } from "@/lib/days";
 import type { PushPayload } from "@/push/kinds";
 import type {
 	InboxData,
@@ -174,11 +175,6 @@ export interface NotificationDay {
 	/** Noon of the day, for the date format. */
 	date: Date;
 	items: InboxNotification[];
-}
-
-function dayKey(date: Date): string {
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 /** Newest first in, one section per run of the same day out. */

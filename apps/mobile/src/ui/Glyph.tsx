@@ -152,6 +152,7 @@ export function CategoryGlyph({
 
 /** The color of a category's slot (1 to 21); grey when the slot is unknown. */
 export function categoryColor(color: Theme["color"], tone: number): string {
-	const palette = color as unknown as Record<string, string>;
-	return palette[`category${((tone - 1) % 21) + 1}`] ?? color.fg3;
+	return (
+		color[`category${((tone - 1) % 21) + 1}` as keyof typeof color] ?? color.fg3
+	);
 }

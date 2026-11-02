@@ -73,16 +73,6 @@ export function missingRows(rows: readonly CurrencyRow[]): CurrencyRow[] {
 	return rows.filter((r) => !priced(r) && r.usedBy.length > 0);
 }
 
-/**
- * How a price shows: whole units from 100 up (ARS 1,555), the currency's
- * digits below (BRL 5.35), and every digit the server sent for a rate under
- * one minor unit (USD 0.00064). A comparison of what was sent, not math on
- * money: the formatter does the rounding.
- */
-export function priceCents(price: RatePrice): false | "auto" {
-	return Math.abs(price.minor) >= 100 * 10 ** price.places ? false : "auto";
-}
-
 export type ConvQuery = {
 	code: string;
 	from: string;

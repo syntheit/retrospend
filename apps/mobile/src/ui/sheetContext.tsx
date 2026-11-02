@@ -1,13 +1,15 @@
+import { light } from "@retrospend/tokens/theme";
 import { createContext, useContext, useEffect, useRef } from "react";
 import { Platform, useWindowDimensions } from "react-native";
 import { type Theme, useTheme } from "@/theme";
+import { HAIRLINE } from "./metrics";
 
 /** The sheet's handle and header row above a body, plus its padding. */
 export const SHEET_CHROME = Platform.OS === "ios" ? 84 : 120;
 
 /** The pinned footer's height: a hairline, its padding and one button row. */
 export function footerHeight({ size, space }: Theme): number {
-	return 1 + space[3] + size.touchMin.phone;
+	return HAIRLINE + space[3] + size.touchMin.phone;
 }
 
 /** How much of the window an Android sheet at full height gives its body. */
@@ -16,7 +18,7 @@ const LARGE_FILL = 0.8;
 const MEDIUM_SHARE = 0.5;
 
 /** The space above the content inside an iOS sheet, under the grabber. */
-export const SHEET_PAD_TOP = 16;
+export const SHEET_PAD_TOP = light.space[4];
 /** The share of the window the floating iPad sheet takes (always large there). */
 const IPAD_SHEET_SHARE = 0.88;
 /**

@@ -8,6 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { useTheme } from "@/theme";
+import { LAYER } from "./metrics";
 import { easeLand } from "./motion";
 
 /** When the open tab last changed; a pane that mounts this soon after is the switch. */
@@ -56,7 +57,7 @@ export function PaneVeil() {
 	if (!shown) return null;
 	// A zero-height anchor: the cover hangs from it down over the pane.
 	return (
-		<View pointerEvents="none" style={{ height: 0, zIndex: 1 }}>
+		<View pointerEvents="none" style={{ height: 0, zIndex: LAYER.above }}>
 			<Animated.View
 				style={[
 					{

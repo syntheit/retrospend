@@ -170,6 +170,8 @@ export const groupTotalsSchema = z.object({
 	activity: moneySchema,
 	/** Σ spent of its envelopes (see `spent` on a row). */
 	spent: moneySchema,
+	/** Spent of what the group holds (carried in plus assigned), hundredths of a percent, 0 to 10000; null when it holds nothing. */
+	spentBasis: z.number().int().min(0).max(10_000).nullable(),
 	left: moneySchema,
 	/** Σ overspending inside the group ("Over by X" on a Flex row). */
 	over: moneySchema,

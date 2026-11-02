@@ -11,9 +11,6 @@ export type NotificationPreference = Awaited<
 	ReturnType<RetrospendClient["notifications"]["getPreferences"]>
 >["preferences"][number];
 export type NotificationType = NotificationPreference["type"];
-export type CurrencyOption = Awaited<
-	ReturnType<RetrospendClient["currencies"]["list"]>
->["items"][number];
 
 export const PROFILE_CACHE: CacheKey = { name: "settings.profile", schema: 1 };
 export const SETTINGS_CACHE: CacheKey = { name: "settings.general", schema: 1 };

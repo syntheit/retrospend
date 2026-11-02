@@ -5,7 +5,7 @@ import { useServerConnection } from "@/auth/server-connection";
 import { absoluteImage, useFaces } from "@/features/read/faces";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useTheme } from "@/theme";
-import { AvatarStack, avatarSlot } from "@/ui/Avatar";
+import { AvatarStack, avatarColor } from "@/ui/Avatar";
 import { Button } from "@/ui/Button";
 import { ListGroup } from "@/ui/List";
 import { MoneyAmount } from "@/ui/Money";
@@ -28,15 +28,13 @@ function Banner({ project }: { project: ProjectItem }) {
 	const [failed, setFailed] = useState(false);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new address resets
 	useEffect(() => setFailed(false), [uri]);
-	const palette = color as unknown as Record<string, string>;
 	return (
 		<View
 			accessibilityElementsHidden
 			importantForAccessibility="no-hide-descendants"
 			style={{
 				height: space[12] * 2,
-				backgroundColor:
-					palette[`avatar${avatarSlot(`project:${project.id}`)}`],
+				backgroundColor: avatarColor(color, `project:${project.id}`),
 				alignItems: "center",
 				justifyContent: "center",
 			}}

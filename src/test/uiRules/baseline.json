@@ -285,7 +285,7 @@
 		"src/styles/globals.css": 1
 	},
 	"UI-121": {
-		"packages/i18n/messages/en.json": 16,
+		"packages/i18n/messages/en.json": 14,
 		"src/app/(site)/docs/configuration/email/page.tsx": 1,
 		"src/app/(site)/docs/features/projects/page.tsx": 8,
 		"src/app/(site)/docs/features/shared-expenses/page.tsx": 1,

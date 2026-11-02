@@ -6,6 +6,7 @@ import { useTranslations } from "use-intl";
 import { pushedHeader } from "@/layout/pushedHeader";
 import { useSettingsScreens } from "@/layout/useSettingsScreens";
 import { useTheme } from "@/theme";
+import { LAYER } from "@/ui/metrics";
 import { ToastProvider } from "@/ui/Toast";
 import { RetrospendPredictiveBack } from "../../modules/predictive-back";
 
@@ -26,7 +27,7 @@ function DragHandle() {
 			style={{
 				height: space[6],
 				// Above the stack, which moves up under it (see AccountLayout).
-				zIndex: 1,
+				zIndex: LAYER.above,
 				alignItems: "center",
 				justifyContent: "center",
 			}}

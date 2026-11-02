@@ -232,13 +232,6 @@ export type ButtonIcon =
 	| "Banknote"
 	| "Bell";
 
-/** A settings picker row's menu: its options, the current one, and the change. */
-export interface FormMenuProps<T extends string> {
-	options: { value: T; label: string }[];
-	value: T;
-	onChange: (value: T) => void;
-}
-
 export interface DateFieldProps {
 	label: string;
 	/** A calendar day, "yyyy-MM-dd"; empty while none is picked. */

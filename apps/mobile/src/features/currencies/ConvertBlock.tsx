@@ -5,8 +5,8 @@ import { useTranslations } from "use-intl";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { MoneyCell } from "@/ui/MoneyCell";
 import { Text } from "@/ui/Text";
+import { MoneyCell } from "./MoneyCell";
 import { TypeLine, useRateLabel } from "./parts";
 import {
 	type Conversion,

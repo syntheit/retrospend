@@ -175,6 +175,7 @@ export function SwipeRow({
 
 	const action = (a: SwipeAction, at: "left" | "right") => (
 		<Pressable
+			accessibilityLabel={a.label}
 			accessibilityRole="button"
 			onPress={() => {
 				shut();

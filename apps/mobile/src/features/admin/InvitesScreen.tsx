@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Platform, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -21,24 +21,36 @@ import { detailOf, useAdminRead } from "./useAdminRead";
 import { useServerSettings } from "./useServerSettings";
 
 /**
- * Invite codes: whether sign-up needs a code and whether every user may make
- * their own (both save at once), then the codes, Active or Used, newest
- * first. The plus in the bar makes a new code and opens it. Tapping a code
- * opens its sheet to copy, share or delete it.
+ * The codes, Active or Used, newest first, for the server's (`admin`) or the
+ * person's own (`mine`) endpoints. The plus in the bar makes a new code and
+ * opens it; tapping a code opens its sheet to copy, share or delete it.
+ * `settings` is the Admin's block above the codes.
  */
-export function InvitesScreen() {
+function InviteCodes({
+	scope,
+	settings,
+}: {
+	scope: "admin" | "mine";
+	settings?: ReactNode;
+}) {
 	const t = useTranslations("mobile.admin.invites");
 	const { api } = useSession();
 	const toast = useToast();
 	const { space } = useTheme();
-	const settings = useServerSettings();
+	const mine = scope === "mine";
 	const [status, setStatus] = useState<InviteStatus>("active");
 	const [openId, setOpenId] = useState<string | null>(null);
 	const [creating, setCreating] = useState(false);
 
 	const codes = useAdminRead(
 		(client) =>
-			readInviteCodes((query) => client.admin.listInviteCodes(query), status),
+			readInviteCodes(
+				(query) =>
+					mine
+						? client["invite-codes"].list(query)
+						: client.admin.listInviteCodes(query),
+				status,
+			),
 		status,
 	);
 
@@ -46,9 +58,10 @@ export function InvitesScreen() {
 		if (!api || creating) return;
 		setCreating(true);
 		try {
-			const made = await api.admin.createInviteCode(undefined, {
-				context: { idempotencyKey: newClientId() },
-			});
+			const call = { context: { idempotencyKey: newClientId() } };
+			const made = mine
+				? await api["invite-codes"].create(undefined, call)
+				: await api.admin.createInviteCode(undefined, call);
 			setStatus("active");
 			await codes.reload();
 			setOpenId(made.id);
@@ -60,46 +73,73 @@ export function InvitesScreen() {
 		}
 	}
 
-	// The plus is the bar's: the system glass plus on iOS, the plus icon on Android.
-	const add = (
-		<Stack.Screen
-			options={{
-				headerRight: () =>
-					Platform.OS === "ios" ? (
-						<AddButton label={t("create")} onPress={() => void create()} />
-					) : (
-						<TopBarAction
-							icon="Plus"
-							id="create"
-							label={t("create")}
-							onPress={() => {
-								if (!creating) void create();
-							}}
-						/>
-					),
-			}}
-		/>
-	);
-
-	if (settings.state.status !== "ready") {
-		return (
-			<>
-				{add}
-				<PageState
-					failed={settings.state.status === "error"}
-					onRetry={() => void settings.reload()}
-				/>
-			</>
-		);
-	}
-	const server = settings.state.data;
 	const items = codes.state.status === "ready" ? codes.state.data : null;
 	const open = items?.find((code) => code.id === openId) ?? null;
 
 	return (
 		<>
-			{add}
+			{/* The plus is the bar's: the system glass plus on iOS, the plus icon on Android. */}
+			<Stack.Screen
+				options={{
+					headerRight: () =>
+						Platform.OS === "ios" ? (
+							<AddButton label={t("create")} onPress={() => void create()} />
+						) : (
+							<TopBarAction
+								icon="Plus"
+								id="create"
+								label={t("create")}
+								onPress={() => {
+									if (!creating) void create();
+								}}
+							/>
+						),
+				}}
+			/>
 			<SettingsPage>
+				{settings}
+				<Block title={t("codes")}>
+					<InviteCodeList
+						codes={codes}
+						mine={mine}
+						onOpen={setOpenId}
+						onStatus={setStatus}
+						status={status}
+					/>
+				</Block>
+				{settings ? <View style={{ height: space[2] }} /> : null}
+			</SettingsPage>
+			<InviteSheet
+				invite={open}
+				key={open?.id ?? "none"}
+				mine={mine}
+				onChanged={codes.reload}
+				onClose={() => setOpenId(null)}
+			/>
+		</>
+	);
+}
+
+/**
+ * Invite codes (Admin): whether sign-up needs a code and whether every user
+ * may make their own (both save at once), then the codes.
+ */
+export function InvitesScreen() {
+	const t = useTranslations("mobile.admin.invites");
+	const settings = useServerSettings();
+	if (settings.state.status !== "ready") {
+		return (
+			<PageState
+				failed={settings.state.status === "error"}
+				onRetry={() => void settings.reload()}
+			/>
+		);
+	}
+	const server = settings.state.data;
+	return (
+		<InviteCodes
+			scope="admin"
+			settings={
 				<ListGroup form>
 					<GroupItem>
 						<SwitchRow
@@ -120,22 +160,16 @@ export function InvitesScreen() {
 						/>
 					</GroupItem>
 				</ListGroup>
-				<Block title={t("codes")}>
-					<InviteCodeList
-						codes={codes}
-						onOpen={setOpenId}
-						onStatus={setStatus}
-						status={status}
-					/>
-				</Block>
-				<View style={{ height: space[2] }} />
-			</SettingsPage>
-			<InviteSheet
-				invite={open}
-				key={open?.id ?? "none"}
-				onChanged={codes.reload}
-				onClose={() => setOpenId(null)}
-			/>
-		</>
+			}
+		/>
 	);
+}
+
+/**
+ * Your own invite codes, for a person the server lets invite (the web's
+ * Invite codes page). None of the server's invite settings are here: those
+ * are Admin's.
+ */
+export function InviteCodesScreen() {
+	return <InviteCodes scope="mine" />;
 }

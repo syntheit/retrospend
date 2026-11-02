@@ -1,8 +1,9 @@
 import { Stack } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
-import { Platform, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
+import { LARGE_TITLE } from "@/layout/pushedHeader";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
@@ -213,7 +214,7 @@ export function CurrenciesScreen() {
 		<Stack.Screen
 			options={{
 				title: t("title"),
-				headerLargeTitle: Platform.OS === "ios",
+				headerLargeTitle: LARGE_TITLE,
 				headerSearchBarOptions: {
 					ref: searchRef,
 					placeholder: t("search"),

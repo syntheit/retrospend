@@ -178,31 +178,6 @@ export function previewRows(preview: PaymentPreview): {
 	return { changes, kept };
 }
 
-/**
- * What the payment pays, in the payment currency, from the allocation the
- * server answers with in the preview's detail (the same one the write
- * returns). `converted` is true when a debt in another currency was turned
- * into the payment currency at a rate, so the amount is an estimate.
- */
-export function allocationOf(
-	preview: PaymentPreview,
-): { amount: Money; converted: boolean } | null {
-	const detail = preview.detail as
-		| {
-				allocation?: {
-					amount: Money;
-					rows?: { rate: unknown | null }[];
-				} | null;
-		  }
-		| undefined;
-	const allocation = detail?.allocation;
-	if (!allocation) return null;
-	return {
-		amount: allocation.amount,
-		converted: (allocation.rows ?? []).some((row) => row.rate !== null),
-	};
-}
-
 /** Which way a signed line points: they owe you (incoming) or you owe them. */
 function pointsTheWay(minor: number, direction: Direction): boolean {
 	return direction === "incoming" ? minor > 0 : minor < 0;
@@ -357,6 +332,27 @@ export function answerFor<T extends { key: string }>(
 	key: string | null,
 ): T | null {
 	return answer !== null && key !== null && answer.key === key ? answer : null;
+}
+
+/**
+ * The rates read per type for the chips: the rate, or null when that read
+ * failed or the server had no price (a missing rate is never shown as 1).
+ */
+export type TypeRates = Record<string, RateRead | null>;
+
+/**
+ * What a rate-type chip can say about its number: the rate it would use, that
+ * none is available, or nothing yet (the read has not answered).
+ */
+export function chipRate(
+	values: TypeRates,
+	choices: { current: string | null; rates: readonly RateRead[] },
+	type: string,
+): { kind: "rate"; read: RateRead } | { kind: "none" } | { kind: "pending" } {
+	const read =
+		values[type] ?? (choices.current === type ? choices.rates[0] : undefined);
+	if (read) return { kind: "rate", read };
+	return values[type] === null ? { kind: "none" } : { kind: "pending" };
 }
 
 /** One rate the server read for a currency: unit and value as Money, `rate` unrounded. */

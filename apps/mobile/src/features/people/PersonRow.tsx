@@ -1,6 +1,7 @@
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useFaces } from "@/features/read/faces";
+import { dayDate } from "@/lib/days";
 import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import { ListRow } from "@/ui/List";
@@ -17,8 +18,7 @@ function useAgo() {
 	return (day: string): string => {
 		const ago = agoOf(daysSince(day, new Date()));
 		if (ago === null) {
-			const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-			return format.dateTime(new Date(y, m - 1, d, 12), {
+			return format.dateTime(dayDate(day), {
 				month: "short",
 				day: "numeric",
 				year: "numeric",

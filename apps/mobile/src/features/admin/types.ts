@@ -10,6 +10,5 @@ export type AdminFeedback = Awaited<
 >["items"][number];
 export type FeedbackPage = Awaited<ReturnType<Admin["listFeedback"]>>;
 export type ServerSettings = Awaited<ReturnType<Admin["getSettings"]>>;
-export type AiSettings = Awaited<ReturnType<Admin["getAiSettings"]>>;
 
 export type { InviteCodeDto } from "@retrospend/api-contract";

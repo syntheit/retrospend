@@ -772,7 +772,6 @@
 			"undone": "Desfeito",
 			"undoError": "Não foi possível desfazer. Talvez já tenha mudado."
 		},
-		"listAnd": "{head} e {last}",
 		"figures": {
 			"budget_notPlannedYet": "Ainda não planejado",
 			"budget_leftToSpend": "Disponível para gastar",

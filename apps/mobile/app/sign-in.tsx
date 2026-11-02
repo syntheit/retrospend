@@ -5,6 +5,7 @@ import { useTranslations } from "use-intl";
 import type { AuthFailure } from "@/auth/errors";
 import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
+import { LARGE_TITLE } from "@/layout/pushedHeader";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
 import { Screen } from "@/ui/Screen";
@@ -52,7 +53,7 @@ export default function SignInScreen() {
 			<Stack.Screen
 				options={{
 					headerShown: true,
-					headerLargeTitle: Platform.OS === "ios",
+					headerLargeTitle: LARGE_TITLE,
 					headerShadowVisible: false,
 					title: t("title"),
 				}}

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Glyph } from "./Glyph";
+import { HAIRLINE } from "./metrics";
 import { Text } from "./Text";
 import { FieldLabel } from "./TextField";
 
@@ -100,7 +101,7 @@ export function Chip({
 				paddingLeft: leading ? space[2] : space[3],
 				paddingRight: chevron || clear ? space[2] : space[3],
 				borderRadius: radius.chip,
-				borderWidth: 1,
+				borderWidth: HAIRLINE,
 				borderColor: on ? color.brand : color.lineStrong,
 				backgroundColor: on
 					? color.brandSoft

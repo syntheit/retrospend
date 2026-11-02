@@ -6,12 +6,11 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import { Line, Note, SheetBody, useAmountLocale } from "@/features/write/parts";
 import { AmountField } from "@/ui/AmountField";
+import { TYPING_SETTLE_MS } from "@/ui/metrics";
 import { Sheet, type SheetDetent } from "@/ui/Sheet";
 import { type DraftOutcome, whatIfBody } from "./draftsBody";
 import { EnvelopePick } from "./pickers";
 import { type BudgetMonth, envelopeById, envelopesOf } from "./source";
-
-const SETTLE_MS = 300;
 
 /**
  * What if I spend: a pretend expense on a draft nothing is written for. The
@@ -87,7 +86,7 @@ export function WhatIfSheet({
 					if (!cancelled) setFailed(true);
 				}
 			});
-		}, SETTLE_MS);
+		}, TYPING_SETTLE_MS);
 		return () => {
 			cancelled = true;
 			clearTimeout(timer);

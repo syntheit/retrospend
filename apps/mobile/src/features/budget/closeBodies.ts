@@ -12,7 +12,6 @@ export type AcknowledgeInput = Parameters<Client["acknowledgeMonth"]>[0];
 export type MonthSummary = NonNullable<
 	Awaited<ReturnType<Client["monthSummary"]>>
 >;
-export type WelcomeBackState = Awaited<ReturnType<Client["welcomeBackState"]>>;
 
 /**
  * The overspends that can still be taken from next month, exactly as the

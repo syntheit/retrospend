@@ -1,15 +1,15 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { addMonthsClamped } from "@retrospend/domain/recurring";
 import type { ActivityItem } from "@/features/activity/source";
 import { wireAmount } from "@/features/write/amount";
+import { dayDate, dayKey } from "@/lib/days";
 
 /**
  * The day one month after `day` ("2026-01-31" gives "2026-02-28"): the month
  * moves on and the day stays, or is the last of a shorter month.
  */
 export function nextMonthly(day: string): string {
-	const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-	const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-	return new Date(Date.UTC(y, m, Math.min(d, last))).toISOString().slice(0, 10);
+	return dayKey(addMonthsClamped(dayDate(day), 1));
 }
 
 /**
@@ -17,11 +17,10 @@ export function nextMonthly(day: string): string {
  * 15 gives "2026-11-15"); a month too short for `day` gives its last day.
  */
 export function nextOnDay(today: string, day: number): string {
-	const [y, m, d] = today.split("-").map(Number) as [number, number, number];
+	const from = dayDate(today);
 	for (let step = 0; step < 2; step++) {
-		const last = new Date(Date.UTC(y, m - 1 + step + 1, 0)).getUTCDate();
-		const on = new Date(Date.UTC(y, m - 1 + step, Math.min(day, last)));
-		if (step > 0 || on.getUTCDate() >= d) return on.toISOString().slice(0, 10);
+		const on = dayKey(addMonthsClamped(from, step, day));
+		if (on >= today) return on;
 	}
 	return today;
 }

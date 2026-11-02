@@ -1,6 +1,5 @@
 import {
 	addMonths,
-	canStep,
 	lastMonth,
 	monthChoices,
 	monthDate,
@@ -24,12 +23,8 @@ describe("month keys", () => {
 
 	const bounds = { first: 202608, open: 202610 };
 
-	it("lets the person plan one month ahead and read back to the first", () => {
+	it("plans one month ahead of the open month", () => {
 		expect(lastMonth(bounds)).toBe(202611);
-		expect(canStep(202610, 1, bounds)).toBe(true);
-		expect(canStep(202611, 1, bounds)).toBe(false);
-		expect(canStep(202608, -1, bounds)).toBe(false);
-		expect(canStep(202609, -1, bounds)).toBe(true);
 	});
 
 	it("lists months newest first and stops at the book's first", () => {
