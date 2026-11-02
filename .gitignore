@@ -90,3 +90,6 @@ result
 .cursorrules
 # Copied from circle-flags by postinstall
 /public/images/flags/
+
+# Claude Code personal settings
+.claude/settings.local.json
