@@ -41,6 +41,7 @@ import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { markPaneSwitch } from "@/ui/PaneVeil";
 import { Screen, useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
+import { useTabBarCover } from "@/ui/tabBarMetrics";
 import { useTransient } from "@/ui/transient";
 
 export default function ActivityScreen() {
@@ -53,6 +54,7 @@ export default function ActivityScreen() {
 	const { listDetail } = useLayoutClass();
 	const insets = useSafeAreaInsets();
 	const addInset = useAddInset();
+	const tabCover = useTabBarCover();
 	const collapsing = useCollapsingBar();
 	const barMetrics = useBarMetrics(collapsing?.footer ?? 0);
 	const fabScroll = useAddButtonScroll();
@@ -262,9 +264,10 @@ export default function ActivityScreen() {
 			style={
 				floatingBulk
 					? {
-							// Android: the floating toolbar over the foot of the list.
+							// Android: the floating toolbar over the foot of the list, above
+							// the floating tab bar (its cover is the bar and the gesture area).
 							position: "absolute",
-							bottom: space[4],
+							bottom: space[4] + tabCover,
 							left: space[4],
 							right: space[4],
 							zIndex: 2,
