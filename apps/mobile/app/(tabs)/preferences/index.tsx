@@ -9,5 +9,5 @@ export default function PreferencesTab() {
 	if (!IPAD_SIDEBAR && navigation !== "sidebar") {
 		return <Redirect href="/settings" />;
 	}
-	return <SettingsScreen />;
+	return <SettingsScreen panes />;
 }

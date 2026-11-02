@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
+import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { Button } from "./Button";
 import { Glyph } from "./Glyph";
@@ -16,7 +17,9 @@ import { HAIRLINE } from "./metrics";
 import { SheetFrame } from "./SheetFrame";
 import {
 	BIG_TEXT_SCALE,
+	DIALOG_WIDTH,
 	detentsForScale,
+	dialogHeight,
 	fillsSheet,
 	footerHeight,
 	type PinnedAction,
@@ -43,6 +46,7 @@ export function useSheetBodySize(options?: { footer?: boolean }): {
 } {
 	const insets = useSafeAreaInsets();
 	const { height, width } = useWindowDimensions();
+	const { tablet } = useLayoutClass();
 	const theme = useTheme();
 	if (Platform.OS === "ios") {
 		return Platform.isPad
@@ -50,6 +54,14 @@ export function useSheetBodySize(options?: { footer?: boolean }): {
 			: { width: width - 2 * theme.space[4], flex: 1, minHeight: 0 };
 	}
 	const footer = options?.footer ? footerHeight(theme) + theme.space[3] : 0;
+	if (tablet) {
+		// The centered dialog (SheetFrame.android): a form sheet's width and
+		// most of the window's height.
+		return {
+			width: DIALOG_WIDTH - 2 * theme.space[4],
+			height: Math.round(dialogHeight(height) - SHEET_CHROME - footer),
+		};
+	}
 	return {
 		width: width - 2 * theme.space[4],
 		height: Math.round(

@@ -507,6 +507,7 @@
 		"errorDetail": "Revisa tu conexión e inténtalo de nuevo.",
 		"noBudget": "Todavía no hay presupuesto",
 		"noBudgetDetail": "Crea uno para planificar tu dinero en sobres.",
+		"inspector": { "empty": "Elige un sobre" },
 		"paused": "Tu presupuesto está en pausa",
 		"pausedDetail": "No se cuenta nada mientras está en pausa.",
 		"month": {

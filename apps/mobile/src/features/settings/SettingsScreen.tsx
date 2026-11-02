@@ -1,8 +1,10 @@
 import { usePathname } from "expo-router";
+import { type ComponentType, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
-import { useMyFace } from "@/features/account/AccountTopBar";
+import { AccountTopBar, useMyFace } from "@/features/account/AccountTopBar";
+import { AdminHub } from "@/features/admin/AdminHub";
 import { useFeedback } from "@/features/feedback/FeedbackProvider";
 import {
 	setErrorReportsPref,
@@ -13,6 +15,7 @@ import {
 	useCloseAccountSheet,
 	useOpenSettingsRoute,
 } from "@/layout/settingsPath";
+import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useLanguagePref } from "@/lib/language-pref";
 import { LANGUAGE_NAMES } from "@/lib/locales";
 import { usePush } from "@/push/PushProvider";
@@ -21,9 +24,19 @@ import { Avatar } from "@/ui/Avatar";
 import type { GlyphName } from "@/ui/Glyph";
 import { IconTile } from "@/ui/IconTile";
 import { GroupItem, ListGroup, ListRow } from "@/ui/List";
+import { ListDetail } from "@/ui/ListDetail";
+import { PaneBar } from "@/ui/PaneBar";
 import { SwitchRow } from "@/ui/SwitchRow";
 import { adminAccess } from "../admin/rules";
 import { channelsOn, type NotificationChannel } from "./channels";
+import { CategoriesScreen } from "./categories/CategoriesScreen";
+import { DangerSection } from "./DangerSection";
+import { DataSection } from "./DataSection";
+import { NotificationsSection } from "./NotificationsSection";
+import { PaymentMethodsScreen } from "./payment/PaymentMethodsScreen";
+import { PreferencesSection } from "./PreferencesSection";
+import { ProfileSection } from "./ProfileSection";
+import { SecuritySection } from "./security/SecuritySection";
 import { AboutFooter, Block, GroupNote, SettingsPage } from "./parts";
 import {
 	useCategories,
@@ -44,6 +57,21 @@ export type SectionId =
 	| "data"
 	| "danger";
 
+type Pane = SectionId | "admin";
+
+/** The page each row shows in the detail pane (the same components the routes render). */
+const PAGES: Record<Pane, ComponentType> = {
+	profile: ProfileSection,
+	preferences: PreferencesSection,
+	categories: CategoriesScreen,
+	"payment-methods": PaymentMethodsScreen,
+	notifications: NotificationsSection,
+	security: SecuritySection,
+	data: DataSection,
+	danger: DangerSection,
+	admin: AdminHub,
+};
+
 const TILES: Record<Exclude<SectionId, "profile">, GlyphName> = {
 	preferences: "SlidersHorizontal",
 	categories: "Tags",
@@ -61,8 +89,12 @@ const TILES: Record<Exclude<SectionId, "profile">, GlyphName> = {
  * the lines fill in as the reads answer. Recurring expenses live in Activity,
  * not here. Delete account sits alone below, then the About footer.
  */
-export function SettingsScreen() {
+export function SettingsScreen({ panes = false }: { panes?: boolean }) {
 	const t = useTranslations("mobile.settings");
+	// Panes: the sections beside the list on a tablet (the Settings tab).
+	const { listDetail } = useLayoutClass();
+	const pair = panes && listDetail;
+	const [picked, setPicked] = useState<Pane>("profile");
 	const open = useOpenSettingsRoute();
 	const closeSheet = useCloseAccountSheet();
 	const inAccount = isAccountPath(usePathname());
@@ -137,24 +169,28 @@ export function SettingsScreen() {
 		danger: tr("danger"),
 	};
 
+	// In panes a row shows its page beside the list; otherwise it opens the page.
+	const go = (id: Pane) => (pair ? setPicked(id) : open(id));
 	const row = (id: Exclude<SectionId, "profile">) => (
 		<ListRow
-			chevron
+			chevron={!pair}
 			key={id}
 			lead={<IconTile name={TILES[id]} />}
-			onPress={() => open(id)}
+			onPress={() => go(id)}
+			selected={pair && picked === id}
 			sub={subs[id]}
 			title={titles[id]}
 		/>
 	);
 
-	return (
+	const list = (
 		<SettingsPage>
 			<ListGroup>
 				<ListRow
-					chevron
+					chevron={!pair}
 					lead={face ? <Avatar face={face} /> : <IconTile name="User" />}
-					onPress={() => open("profile")}
+					onPress={() => go("profile")}
+					selected={pair && picked === "profile"}
 					sub={me?.name ?? signedIn?.name}
 					title={t("profile.title")}
 				/>
@@ -170,13 +206,10 @@ export function SettingsScreen() {
 					<View style={{ height: space[6] }} />
 					<ListGroup>
 						<ListRow
-							chevron={admin === "ok"}
+							chevron={admin === "ok" && !pair}
 							lead={<IconTile name="Shield" />}
-							onPress={
-								admin === "ok"
-									? () => open("admin")
-									: undefined
-							}
+							onPress={admin === "ok" ? () => go("admin") : undefined}
+							selected={pair && picked === "admin"}
 							sub={admin === "signIn" ? ta("signInAgain") : undefined}
 							title={ta("title")}
 						/>
@@ -212,5 +245,28 @@ export function SettingsScreen() {
 			<ListGroup>{row("danger")}</ListGroup>
 			<AboutFooter />
 		</SettingsPage>
+	);
+
+	if (!pair) return list;
+	const Page = PAGES[picked];
+	return (
+		<ListDetail
+			bar={<AccountTopBar title={t("title")} />}
+			detail={
+				<View style={{ flex: 1 }}>
+					<PaneBar
+						title={
+							picked === "profile"
+								? t("profile.title")
+								: picked === "admin"
+									? ta("title")
+									: titles[picked]
+						}
+					/>
+					<Page />
+				</View>
+			}
+			list={list}
+		/>
 	);
 }

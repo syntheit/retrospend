@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Keyboard, useWindowDimensions } from "react-native";
 import { SYSTEM_PAD_SCALE } from "@/features/entry/ComposerFrame";
+import { useSystemPad } from "@/layout/useHardwareKeyboard";
 
 /**
  * The keypad's folding and the pager's page, the one rule of every keypad
@@ -15,7 +16,7 @@ export function usePadFold(
 	setPadOpen: (open: boolean) => void,
 ) {
 	const { fontScale } = useWindowDimensions();
-	const system = fontScale > SYSTEM_PAD_SCALE;
+	const system = useSystemPad(fontScale, SYSTEM_PAD_SCALE);
 	const [page, setPage] = useState(0);
 	const fold = useCallback(() => {
 		if (!hasAmount) return;

@@ -19,6 +19,7 @@ import Animated, {
 	withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSystemPad } from "@/layout/useHardwareKeyboard";
 import { useTheme } from "@/theme";
 import { DetailPager, type PagerTab } from "@/ui/DetailPager";
 import { FoldingKeypad, type KeypadEntry } from "@/ui/FoldingKeypad";
@@ -112,7 +113,7 @@ export function ComposerFrame({
 	const { bottom } = useSafeAreaInsets();
 	// The details scroll as a whole on a short window: the panels get what is left.
 	const [viewport, setViewport] = useState<number | undefined>(undefined);
-	const system = fontScale > SYSTEM_PAD_SCALE;
+	const system = useSystemPad(fontScale, SYSTEM_PAD_SCALE);
 	const open = keypadOpen && !typing && !system;
 
 	// Switching Expense, Income and Transfer keeps the head, the segmented

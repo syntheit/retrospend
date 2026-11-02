@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
@@ -14,6 +15,7 @@ import { SkeletonRows } from "@/ui/Skeleton";
 import { BudgetBody } from "./BudgetBody";
 import { BudgetSheets, type OpenSheet } from "./BudgetSheets";
 import { devSheet } from "./devSheet";
+import { EnvelopeInspector } from "./EnvelopeInspector";
 import { useManageItems } from "./ManageList";
 import { monthInfo } from "./months";
 import { SetupSheet } from "./SetupSheet";
@@ -21,6 +23,7 @@ import {
 	BUDGET_CACHE_KEEP,
 	BUDGET_CACHE_PREFIX,
 	budgetCache,
+	envelopeById,
 	fetchBudget,
 } from "./source";
 
@@ -34,7 +37,8 @@ export function BudgetView() {
 	const t = useTranslations("mobile.budget");
 	const common = useTranslations("mobile.common");
 	const { api } = useSession();
-	const { widthClass } = useLayoutClass();
+	const { widthClass, columns } = useLayoutClass();
+	const [inspectedId, setInspectedId] = useState<string | null>(null);
 	// null is the current month; a number is a month the person stepped to.
 	const [selected, setSelected] = useState<number | null>(null);
 	const [seenOpen, setSeenOpen] = useState<number | null>(null);
@@ -76,8 +80,19 @@ export function BudgetView() {
 		if (GALLERY_ENABLED && devName && data) setSheet(devSheet(devName, data));
 	}, [devName, data !== null]);
 
+	// Expanded tablets: a row tap fills the inspector beside the table instead
+	// of opening the envelope sheet; its actions open the same forms.
+	const inspected =
+		columns && data && inspectedId ? envelopeById(data, inspectedId) : null;
+	const open = (next: OpenSheet) =>
+		columns && next.kind === "envelope" && next.mode === "overview"
+			? setInspectedId(next.id)
+			: setSheet(next);
+
 	return (
 		<>
+			<View style={{ flex: 1, flexDirection: "row" }}>
+				<View style={{ flex: 1 }}>
 			<Screen
 				flush
 				onRefresh={() => {
@@ -119,7 +134,7 @@ export function BudgetView() {
 						bounds={info.bounds}
 						data={data}
 						kind={info.kind}
-						onOpen={setSheet}
+						onOpen={open}
 						onSelectMonth={setSelected}
 						payoff={state.data.payoff}
 						stale={state.staleSince}
@@ -127,6 +142,19 @@ export function BudgetView() {
 					/>
 				)}
 			</Screen>
+				</View>
+				{columns && data && info && !data.book.paused ? (
+					<EnvelopeInspector
+						data={data}
+						envelope={inspected}
+						kind={info.kind}
+						onMode={(mode) =>
+							inspected &&
+							setSheet({ kind: "envelope", id: inspected.id, mode })
+						}
+					/>
+				) : null}
+			</View>
 			{/* After the scroll view: see ListDetail. */}
 			<AccountTopBar
 				overflow={overflow}

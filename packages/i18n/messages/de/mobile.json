@@ -507,6 +507,7 @@
 		"errorDetail": "Prüfe deine Verbindung und versuche es erneut.",
 		"noBudget": "Noch kein Budget",
 		"noBudgetDetail": "Richte eines ein, um dein Geld in Umschlägen zu planen.",
+		"inspector": { "empty": "Wähle einen Umschlag" },
 		"paused": "Dein Budget ist pausiert",
 		"pausedDetail": "Solange es pausiert ist, wird nichts gezählt.",
 		"month": {

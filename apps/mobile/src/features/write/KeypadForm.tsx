@@ -11,6 +11,7 @@ import {
 	COMPACT_HEIGHT,
 	SYSTEM_PAD_SCALE,
 } from "@/features/entry/ComposerFrame";
+import { useSystemPad } from "@/layout/useHardwareKeyboard";
 import { useTheme } from "@/theme";
 import { FoldingKeypad, type KeypadEntry } from "@/ui/FoldingKeypad";
 
@@ -52,7 +53,7 @@ export function KeypadForm({
 	const { space } = useTheme();
 	const { fontScale, height } = useWindowDimensions();
 	const { bottom } = useSafeAreaInsets();
-	const system = fontScale > SYSTEM_PAD_SCALE;
+	const system = useSystemPad(fontScale, SYSTEM_PAD_SCALE);
 	const open = keypadOpen && !typing && !system;
 	return (
 		<KeyboardAvoidingView
