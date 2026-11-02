@@ -1,4 +1,5 @@
 import { useTranslations } from "use-intl";
+import { useFigureLabel } from "@/features/write/useFigureLabel";
 import { Text } from "@/ui/Text";
 import { useChangeWords } from "./changeWords";
 import { changeLines, type PreviewState } from "./preview";
@@ -12,7 +13,8 @@ import { changeLines, type PreviewState } from "./preview";
  */
 export function PreviewLine({ state }: { state: PreviewState }) {
 	const t = useTranslations("mobile.composer.changes");
-	const { money, marked, name } = useChangeWords();
+	const { money, marked } = useChangeWords();
+	const label = useFigureLabel();
 	if (state.status === "idle" || state.status === "loading") return null;
 	let text: string;
 	let tone: "fg2" | "attention" = "fg2";
@@ -29,7 +31,7 @@ export function PreviewLine({ state }: { state: PreviewState }) {
 		const { moved } = changeLines(state.diff);
 		const first = moved[0];
 		if (!first) return null;
-		const figure = `${name(first.figure, false)} ${marked(
+		const figure = `${label(first.figure).name} ${marked(
 			money(first.delta, "exceptZero"),
 			first.approx,
 		)}`;

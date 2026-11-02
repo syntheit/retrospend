@@ -4,14 +4,11 @@ import { useTranslations } from "use-intl";
 import { newClientId } from "@/data/ids";
 import { announceEntryChange } from "@/features/entry/events";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import {
-	type FigureDiff,
-	figureKey,
-	figureLines,
-} from "@/features/write/figures";
+import { type FigureDiff, figureLines } from "@/features/write/figures";
 import { Note } from "@/features/write/parts";
 import { WriteForm } from "@/features/write/WriteForm";
 import { useApi } from "@/features/write/WriteFrame";
+import { useFigureLabel } from "@/features/write/useFigureLabel";
 import { useTheme } from "@/theme";
 import { ChangeList, type ChangeStatus } from "@/ui/ChangeList";
 import { DateField } from "@/ui/DateField";
@@ -86,19 +83,9 @@ function DatesChanges({
 	status: ChangeStatus;
 	name: string;
 }) {
-	const tf = useTranslations("mobile.projects.dates.figures");
-	const ti = useTranslations("mobile.projects.dates.figuresInline");
 	const tp = useTranslations("mobile.budget.preview");
 	const money = useMoneyText();
-	const label = (id: string) => {
-		const key = figureKey(id);
-		return tf.has(key as "other")
-			? {
-					name: tf(key as "other", { name }),
-					inline: ti(key as "other", { name }),
-				}
-			: { name: tf("other"), inline: ti("other") };
-	};
+	const label = useFigureLabel({ person: name });
 	const lines = preview ? figureLines(preview) : null;
 	const side = (value: { minor: number; currency: string } | null): string =>
 		value ? money(value) : tp("notAvailable");
