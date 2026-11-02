@@ -146,7 +146,6 @@ export function ExpenseForm(p: {
 								{t("undoChanges")}
 							</Button>
 							<span className="flex-1" />
-							{/* Phones save from the header (headerSubmit). */}
 							<Button
 								className="max-md:hidden"
 								kind="secondary"
@@ -155,7 +154,6 @@ export function ExpenseForm(p: {
 								{t("cancel")}
 							</Button>
 							<Button
-								className="max-md:hidden"
 								data-sheet-submit=""
 								kind="primary"
 								loading={s.busy}
@@ -175,15 +173,15 @@ export function ExpenseForm(p: {
 							</Button>
 							<span className="flex-1 max-md:hidden" />
 							<Button
-								className="max-md:flex-1"
 								kind="secondary"
 								loading={s.busy}
 								onClick={() => void submit(true)}
 							>
 								{t("addAndNew")}
 							</Button>
+							{/* On a phone the verb sits at the bottom, above the keyboard. */}
 							<Button
-								className="max-md:hidden"
+								className="max-md:flex-1"
 								data-sheet-submit=""
 								kind="primary"
 								loading={s.busy}
@@ -199,7 +197,6 @@ export function ExpenseForm(p: {
 						<ModeSwitch carry={d} mode="expense" onMode={p.onMode} />
 					)
 				}
-				headerSubmit={editing ? t("save") : t("addShort")}
 				onOpenChange={(open) => (open ? undefined : requestClose())}
 				onSubmit={() => submit()}
 				open
@@ -268,13 +265,14 @@ function useDuplicate(d: ReturnType<typeof useExpenseDraft>["d"]) {
 			? {
 					title: d.title.trim(),
 					amount: Number(fromMinor({ minor: d.minor, currency: d.currency })),
+					currency: d.currency,
 					date: new Date(`${d.date}T12:00:00`),
 				}
 			: null,
 		800,
 	);
 	const { data } = api.expense.checkDuplicate.useQuery(
-		q ?? { title: "x", amount: 1, date: new Date() },
+		q ?? { title: "x", amount: 1, currency: "USD", date: new Date() },
 		{ enabled: !!q },
 	);
 	return !!q && !!data?.isDuplicate;

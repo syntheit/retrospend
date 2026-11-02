@@ -326,13 +326,14 @@ export async function previewRemoveExpenses(caller: Caller, input: BulkDelete) {
 
 export async function checkDuplicate(
 	caller: LedgerCaller,
-	q: { title: string; amount: string; date: string },
+	q: { title: string; amount: string; currency?: string; date: string },
 ) {
 	const match = await new ExpenseService(caller.db).findDuplicate(
 		caller.principal.userId,
 		{
 			title: q.title,
 			amount: q.amount,
+			currency: q.currency,
 			date: parseDateOnlyIn(q.date, caller.timeZone),
 			timeZone: caller.timeZone,
 		},

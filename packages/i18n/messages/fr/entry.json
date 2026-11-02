@@ -93,7 +93,6 @@
 			"confirm": "Supprimer la dépense"
 		},
 		"projectAria": "Projet, {project}",
-		"addShort": "Ajouter",
 		"tabs": {
 			"label": "Détails",
 			"tip": "{name}, Alt+{key}",

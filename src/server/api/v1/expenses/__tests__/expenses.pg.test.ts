@@ -634,6 +634,26 @@ describe("/api/v1/expenses", () => {
 		);
 		expect(none.duplicate).toBe(false);
 
+		// The currency is part of the match: 30 EUR is not 30 USD.
+		const asked = async (currency?: string) =>
+			(
+				await expectBody<{ duplicate: boolean }>(
+					await call(
+						`/expenses/duplicates?${new URLSearchParams({
+							title: "Gym membership",
+							amount: "30",
+							date: today(),
+							...(currency ? { currency } : {}),
+						})}`,
+						{ headers: as },
+					),
+					c.duplicates,
+				)
+			).duplicate;
+		expect(await asked("USD")).toBe(true);
+		expect(await asked("EUR")).toBe(false);
+		expect(await asked()).toBe(true);
+
 		const suggestions = await expectBody<{
 			items: {
 				title: string;

@@ -93,7 +93,6 @@
 			"confirm": "Delete expense"
 		},
 		"projectAria": "Project, {project}",
-		"addShort": "Add",
 		"tabs": {
 			"label": "Details",
 			"tip": "{name}, Alt+{key}",

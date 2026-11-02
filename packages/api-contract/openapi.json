@@ -65480,6 +65480,23 @@
 						"allowEmptyValue": true,
 						"allowReserved": true,
 						"in": "query",
+						"name": "currency",
+						"required": false,
+						"schema": {
+							"description": "ISO 4217 code, or the app's code for a crypto asset.",
+							"examples": [
+								"USD",
+								"ARS",
+								"BTC"
+							],
+							"pattern": "^[A-Z0-9]{2,10}$",
+							"type": "string"
+						}
+					},
+					{
+						"allowEmptyValue": true,
+						"allowReserved": true,
+						"in": "query",
 						"name": "date",
 						"required": true,
 						"schema": {

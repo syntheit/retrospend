@@ -93,7 +93,6 @@
 			"confirm": "Ausgabe löschen"
 		},
 		"projectAria": "Projekt, {project}",
-		"addShort": "Hinzufügen",
 		"tabs": {
 			"label": "Details",
 			"tip": "{name}, Alt+{key}",
