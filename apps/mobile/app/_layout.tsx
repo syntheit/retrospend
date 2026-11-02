@@ -6,9 +6,12 @@ import { Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 import { type ComponentType, useEffect } from "react";
-import { useColorScheme } from "react-native";
+import { Platform, useColorScheme, useWindowDimensions } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import {
+	SafeAreaProvider,
+	useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import {
 	ServerConnectionProvider,
@@ -20,6 +23,7 @@ import { FeedbackProvider } from "@/features/feedback/FeedbackProvider";
 import { installErrorHandlers } from "@/features/feedback/handlers";
 import { getErrorLog } from "@/features/feedback/runtime";
 import { ScreenTracker } from "@/features/feedback/ScreenTracker";
+import { usePredictiveBack } from "@/layout/predictiveBack";
 import { accountSheetOptions, tabsScreenOptions } from "@/layout/pushedHeader";
 import { useSettingsScreens } from "@/layout/useSettingsScreens";
 import { GALLERY_ENABLED } from "@/lib/flags";
@@ -52,6 +56,10 @@ function Routes() {
 	const { state } = useSession();
 	const settingsScreens = useSettingsScreens("settings");
 	const back = useTranslations("mobile.common")("back");
+	usePredictiveBack();
+	const windowHeight = useWindowDimensions().height;
+	const topInset = useSafeAreaInsets().top;
+	const { color } = useTheme();
 	// The keystore reads take a moment; the native splash covers it.
 	const loading = connection.status === "loading" || state.status === "loading";
 	useEffect(() => {
@@ -67,7 +75,12 @@ function Routes() {
 				<Stack.Protected guard={signedIn}>
 					<Stack.Screen name="(tabs)" options={tabsScreenOptions(back)} />
 					{settingsScreens}
-					<Stack.Screen name="account" options={accountSheetOptions()} />
+					<Stack.Screen name="account" options={accountSheetOptions(
+							windowHeight,
+							topInset,
+							Platform.OS === "android",
+							color.bg,
+						)} />
 				</Stack.Protected>
 				<Stack.Protected guard={connected && !signedIn}>
 					<Stack.Screen name="sign-in" />

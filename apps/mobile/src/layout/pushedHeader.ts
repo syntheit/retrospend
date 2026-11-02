@@ -69,17 +69,48 @@ export const SETTINGS_SCREENS: readonly {
 ];
 
 /**
+ * The Material 3 modal bottom sheet's shape on Android: 28 dp top corners and
+ * a top margin of 72 dp (status bar included) that leaves the scrim showing
+ * above the sheet at its large detent. Platform constants of the component,
+ * not app tokens (provisional: the owner may want them in the token set).
+ */
+export const M3_SHEET_RADIUS = 28;
+export const M3_SHEET_TOP_MARGIN = 72;
+
+/**
  * The account sheet in the root stack: a native form sheet (the profile icon
  * opens it) with a stack of its own, so the places it lists push inside it
  * with the system back chevron and the sheet never changes height. One
  * detent, large, like the sheet it replaced. The sheet's own stack draws the
- * headers, so the root draws none.
+ * headers, so the root draws none. On Android it is a Material 3 modal bottom
+ * sheet: the large detent stops 72 dp below the top (the scrim shows above
+ * it), 28 dp top corners, dragged down or tapped out to close. The drag
+ * handle is drawn by the sheet's layout (app/account/_layout.tsx).
  */
-export function accountSheetOptions() {
+export function accountSheetOptions(
+	windowHeight: number,
+	topInset: number,
+	android: boolean,
+	background: string,
+) {
+	// The sheet's stack starts under the status bar and the detent is a share
+	// of that, so the 72 dp margin is measured from the top of the screen.
+	const stack = windowHeight - topInset;
+	const large = android
+		? Math.min(1, Math.max(0.5, 1 - (M3_SHEET_TOP_MARGIN - topInset) / stack))
+		: 1;
 	return {
 		presentation: "formSheet" as const,
 		headerShown: false,
-		sheetAllowedDetents: [1],
+		sheetAllowedDetents: [large],
 		sheetGrabberVisible: true,
+		...(android
+			? {
+					sheetCornerRadius: M3_SHEET_RADIUS,
+					// The sheet's container: the shape the corners are cut from takes
+					// this color (the page color, so the cards in it read as cards).
+					contentStyle: { backgroundColor: background },
+				}
+			: {}),
 	};
 }
