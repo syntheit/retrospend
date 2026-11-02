@@ -1,4 +1,8 @@
 import { light } from "@retrospend/tokens/theme";
+import { Platform } from "react-native";
+
+/** Large titles are iOS's; Android's top app bar keeps the small one. */
+export const LARGE_TITLE = Platform.OS === "ios";
 
 /**
  * The header of a screen pushed over another (Settings and its pages). It is

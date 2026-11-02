@@ -4,8 +4,8 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
-import { subscribeEntryChanges } from "@/features/entry/events";
 import { useCachedRead } from "@/features/read/useCachedRead";
+import { useReloadOnEntryChange } from "@/features/read/useReloadOnEntryChange";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { GALLERY_ENABLED } from "@/lib/flags";
 import { EmptyState } from "@/ui/EmptyState";
@@ -51,7 +51,7 @@ export function BudgetView() {
 		keep: BUDGET_CACHE_KEEP,
 	});
 	// An expense added, undone or sent from the outbox moves every envelope.
-	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
+	useReloadOnEntryChange(reload);
 
 	const data = state.status === "ready" ? state.data.month : null;
 	useEffect(() => {

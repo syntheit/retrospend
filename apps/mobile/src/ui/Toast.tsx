@@ -40,8 +40,6 @@ const ToastContext = createContext<ToastApi | null>(null);
 const ToastLiftContext = createContext<Animated.AnimatedInterpolation<number> | number>(0);
 const UNDO_MS = 6000;
 const PLAIN_MS = 4000;
-/** Clears the iOS tab bar; the toast floats above it. The Android pill clears by its own footprint. */
-const TAB_BAR_CLEARANCE = 64;
 
 /**
  * One toast at a time, bottom of the screen above the tab bar. It announces
@@ -138,7 +136,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 							insets.bottom +
 							(Platform.OS === "android"
 								? tabBarFootprint(theme) + space[2]
-								: TAB_BAR_CLEARANCE),
+								: space[12] + space[4]),
 						opacity: progress,
 						transform: reduceMotion
 							? []

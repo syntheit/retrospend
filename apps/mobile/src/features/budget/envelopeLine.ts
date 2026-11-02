@@ -1,5 +1,5 @@
 import type { Money } from "@retrospend/domain/money-minor";
-import type { BudgetEnvelope, BudgetGroup } from "./source";
+import type { BudgetEnvelope } from "./source";
 
 // What an envelope row says under its name, and how its Left reads at the end.
 // The server decides every figure and status; this only picks which of the
@@ -90,23 +90,9 @@ export function leftAtom(
 }
 
 /**
- * The share of what a group holds (carried in plus assigned) that it spent,
- * for the bar under a folded group's name: whole percent, 0 to 100. A bar
- * only draws a length, it shows no figure; both inputs are the group's own
- * server totals in one currency. Null when the group holds nothing.
+ * A bar length: the server's basis points (0 to 10000) as a percent. An
+ * envelope's is null for a goal, a group's when it holds nothing.
  */
-export function groupSpentPercent(
-	totals: Pick<BudgetGroup["totals"], "carryIn" | "assigned" | "spent">,
-): number | null {
-	const held = totals.carryIn.minor + totals.assigned.minor;
-	if (held <= 0) return null;
-	return Math.max(
-		0,
-		Math.min(100, Math.round((totals.spent.minor / held) * 100)),
-	);
-}
-
-/** An envelope's bar length: the server's basis points (0 to 10000) as a percent, null for a goal. */
 export function envelopeSpentPercent(
 	e: Pick<BudgetEnvelope, "spentBasis">,
 ): number | null {

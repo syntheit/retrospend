@@ -1,5 +1,6 @@
 import { useFocusEffect } from "expo-router";
 import { createContext, useCallback, useContext } from "react";
+import { Platform } from "react-native";
 import type { ComposerPrefill } from "@/surfaces/prefill";
 import type { EntryMode } from "./types";
 
@@ -11,6 +12,8 @@ export interface AddEntryApi {
 	open(mode?: EntryMode, prefill?: ComposerPrefill): void;
 	/** Opens the composer on a saved expense (its id); Save replaces it, and Undo restores it. */
 	edit(entryId: string, kind?: "shared"): void;
+	/** Opens the composer on an entry still waiting on this phone (its client id); Save writes it again in place. */
+	editPending(clientId: string): void;
 	/**
 	 * Hides the floating add button until the returned function is called (the
 	 * entry page, where the entry is the subject). Counts, so two pages
@@ -40,6 +43,14 @@ export function useHideAddButton(hidden = true): void {
 			return add.hideButton();
 		}, [add, hidden]),
 	);
+}
+
+/**
+ * A pushed detail page: Android has no floating add button there (the page
+ * has its own actions); iOS keeps it.
+ */
+export function useHideAddButtonOnDetail(): void {
+	useHideAddButton(Platform.OS === "android");
 }
 
 /** Like useAddEntry, but null outside a provider (the gallery has none). */

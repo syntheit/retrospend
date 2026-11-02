@@ -30,7 +30,6 @@ export function createEnabledStore(store: KeyValueStore) {
 		clear: () => store.delete(KEY),
 	};
 }
-export type EnabledStore = ReturnType<typeof createEnabledStore>;
 
 /** The key all the per-account push state is filed under. */
 export function pushScope(value: PushEnabled): string {

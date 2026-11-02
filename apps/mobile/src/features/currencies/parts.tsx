@@ -5,6 +5,7 @@ import { localCurrencyName } from "@/lib/currency-names";
 import { useRateFormat } from "@/lib/rateFormat";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
+import { HAIRLINE } from "@/ui/metrics";
 import { Text } from "@/ui/Text";
 import { type CurrencyRow, type RatePrice, rateTypeKey } from "./source";
 
@@ -168,7 +169,7 @@ export function TypeLine({
 				justifyContent: "space-between",
 				gap: space[3],
 				paddingVertical: space[2],
-				borderBottomWidth: 1,
+				borderBottomWidth: HAIRLINE,
 				borderBottomColor: color.line,
 			}}
 		>

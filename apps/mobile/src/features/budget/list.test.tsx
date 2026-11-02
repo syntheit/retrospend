@@ -27,6 +27,7 @@ const totals = (over: Partial<BudgetGroup["totals"]> = {}) =>
 		assigned: ars(100_000),
 		activity: ars(0),
 		spent: ars(25_000),
+		spentBasis: 2500,
 		left: ars(75_000),
 		over: ars(0),
 		limitLeft: null,

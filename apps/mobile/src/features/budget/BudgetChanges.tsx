@@ -21,9 +21,9 @@ export function useChangeRows(
 ) {
 	const t = useTranslations("mobile.budget");
 	const money = useMoneyText();
-	const label = useFigureLabel(
-		t(`pool.${data?.toAssign.poolName ?? "NOT_PLANNED_YET"}`),
-	);
+	const label = useFigureLabel({
+		poolName: t(`pool.${data?.toAssign.poolName ?? "NOT_PLANNED_YET"}`),
+	});
 	const side = (value: { minor: number; currency: string } | null) =>
 		value ? money(value) : t("preview.notAvailable");
 	const pair = (

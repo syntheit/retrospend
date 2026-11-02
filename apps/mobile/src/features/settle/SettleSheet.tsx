@@ -5,6 +5,7 @@ import { useTranslations } from "use-intl";
 import type { PersonIdentity } from "@/features/people/source";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { readAmount } from "@/features/write/amount";
+import { useFoldingPad } from "@/features/write/useFoldingPad";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useRateFormat } from "@/lib/rateFormat";
 import { useRateTypeName } from "@/lib/rateTypes";
@@ -19,7 +20,6 @@ import type { MoneyLine } from "../entry/AmountCard";
 import { AmountEntry } from "../entry/AmountEntry";
 import { ComposerFrame } from "../entry/ComposerFrame";
 import { SheetHead } from "../entry/SheetHead";
-import { useLocalPad } from "../entry/useLocalPad";
 import { useDayWords, WhenPanel } from "../entry/WhenPanel";
 import { AfterThis, OverpayAction } from "./AfterThis";
 import { AmountChoices } from "./AmountChoices";
@@ -154,7 +154,7 @@ function SettleComposer({
 	const amountMinor = entered.state === "ok" ? entered.minor : 0;
 	// It opens on the server's suggestion, already filled, with the keys put
 	// away. Tapping the amount brings them up; any pick puts them away again.
-	const pad = useLocalPad({ open: false, hasAmount: amountMinor > 0 });
+	const pad = useFoldingPad(amountMinor > 0, false);
 
 	function changeDraft(next: string) {
 		setTyped(next);

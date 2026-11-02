@@ -138,14 +138,6 @@ export function resolveLocale(
 	return DEFAULT_LOCALE;
 }
 
-/** The catalog for one tag, with the system's region setting when given. */
-export function matchLocale(
-	tag: string | null | undefined,
-	regionCode?: string | null,
-): AppLocale {
-	return resolveLocale([{ languageTag: tag, regionCode }]);
-}
-
 function catalogOf(locale: AppLocale): MessageCatalog {
 	const { shared, features } = LOCALES[locale]();
 	return assembleCatalog(shared, features);

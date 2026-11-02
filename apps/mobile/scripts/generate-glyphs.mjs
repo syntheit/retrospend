@@ -54,6 +54,7 @@ const EXTRA_GLYPHS = [
 	"CircleAlert",
 	"CircleCheck",
 	"CircleHelp",
+	"CloudOff",
 	"Coins",
 	"DollarSign",
 	"Download",

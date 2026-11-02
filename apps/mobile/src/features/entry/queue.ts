@@ -1,5 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import type { Outbox } from "@/data/outbox";
+import type { Outbox, OutboxEntry } from "@/data/outbox";
 import { flushOutbox } from "@/data/sync";
 import type { PendingWrite } from "./draft";
 import {
@@ -12,6 +12,7 @@ import {
 	undoFor,
 	undoWrite,
 } from "./send";
+import { releaseSent, retainSent } from "./sentRetain";
 
 // Save and Undo for the composers. Every write goes through the outbox first
 // (the phone is offline-first), then one flush tries to send it: online it
@@ -38,15 +39,38 @@ export function exclusive<T>(
 	return run;
 }
 
+/**
+ * Takes a waiting entry out of the outbox (a delete, or an edit that will
+ * write it again), alone on the outbox so no send of it is in flight. Null
+ * when it is gone already: a flush sent it first, and the server has it.
+ */
+export function takeFromOutbox(
+	outbox: Outbox,
+	clientId: string,
+): Promise<OutboxEntry | null> {
+	return exclusive(outbox, async () => {
+		const entry = (await outbox.all()).find((e) => e.clientId === clientId);
+		if (!entry) return null;
+		await outbox.discard(clientId);
+		return entry;
+	});
+}
+
 /** One flush of the composers' entries, alone on the outbox. */
 export function flushEntries(
 	outbox: Outbox,
 	api: RetrospendClient,
 	options?: SenderOptions,
 ) {
-	return exclusive(outbox, () =>
-		flushOutbox(entryOutbox(outbox), createEntrySender(api, options)),
-	);
+	return exclusive(outbox, async () => {
+		const mine = entryOutbox(outbox);
+		const before = await mine.pending();
+		const report = await flushOutbox(mine, createEntrySender(api, options));
+		// What left the outbox was sent: lists hold it until the server's row lands.
+		const left = new Set((await outbox.all()).map((e) => e.clientId));
+		retainSent(before.filter((e) => !left.has(e.clientId)));
+		return report;
+	});
 }
 
 export type SaveOutcome =
@@ -121,6 +145,7 @@ export function undoSaved(input: {
 			const known = undoFor(clientId);
 			if (known) {
 				await undoWrite(api, known, clientId);
+				releaseSent(clientId);
 				return "undone";
 			}
 			const entry = (await outbox.all()).find((e) => e.clientId === clientId);
@@ -155,6 +180,7 @@ export function undoSaved(input: {
 			// No token means the server held it already and answered without one.
 			if (!token) return "failed";
 			await undoWrite(api, token, clientId);
+			releaseSent(clientId);
 			return "undone";
 		} catch {
 			return "failed";

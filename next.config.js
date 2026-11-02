@@ -50,6 +50,10 @@ const config = {
 				destination: "/activity/recurring",
 				permanent: true,
 			},
+			// Addresses only the phone apps open (app links): the bell and an
+			// expense have no page of their own on the web.
+			{ source: "/notifications", destination: "/home", permanent: false },
+			{ source: "/entries/:id", destination: "/activity", permanent: false },
 		];
 	},
 	devIndicators: {

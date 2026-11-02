@@ -1,3 +1,4 @@
+import { dayKey } from "@/lib/days";
 import type { PushPayload } from "@/push/kinds";
 import type {
 	InboxData,
@@ -176,11 +177,6 @@ export interface NotificationDay {
 	items: InboxNotification[];
 }
 
-function dayKey(date: Date): string {
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
 /** Newest first in, one section per run of the same day out. */
 export function groupByDay(
 	items: InboxNotification[],
@@ -208,6 +204,38 @@ export function groupByDay(
 		});
 	}
 	return days;
+}
+
+export const NOTIFICATION_FILTERS = [
+	"all",
+	"expenses",
+	"settlements",
+	"projects",
+] as const;
+export type NotificationFilter = (typeof NOTIFICATION_FILTERS)[number];
+
+const FILTER_TYPES: Record<
+	NotificationFilter,
+	InboxNotification["type"][] | null
+> = {
+	all: null,
+	expenses: ["EXPENSE_SPLIT", "EXPENSE_EDITED", "EXPENSE_DELETED"],
+	settlements: [
+		"SETTLEMENT_RECEIVED",
+		"SETTLEMENT_CONFIRMED",
+		"SETTLEMENT_REJECTED",
+		"PAYMENT_REMINDER",
+	],
+	projects: ["PERIOD_CLOSED", "PARTICIPANT_ADDED", "VERIFICATION_REQUEST"],
+};
+
+/** The same four filters as the web inbox, by notification kind. */
+export function filterNotifications(
+	items: InboxNotification[],
+	filter: NotificationFilter,
+): InboxNotification[] {
+	const types = FILTER_TYPES[filter];
+	return types ? items.filter((n) => types.includes(n.type)) : items;
 }
 
 export function unreadCount(items: InboxNotification[]): number {

@@ -181,6 +181,67 @@ describe("routeForUrl", () => {
 	});
 });
 
+describe("app links (universal links and Android app links)", () => {
+	const route = (path: string) => ({ kind: "route", path });
+
+	it.each([
+		[
+			"https://retrospend.app/projects/p1?invite=l1",
+			"/shared/p1?invite=l1&server=https%3A%2F%2Fretrospend.app",
+		],
+		[
+			"https://dev.retrospend.app/projects/p1",
+			"/shared/p1?server=https%3A%2F%2Fdev.retrospend.app",
+		],
+		["https://dev.retrospend.app/projects", "/people?segment=projects"],
+		["https://retrospend.app/people/user/u1", "/people/user/u1"],
+		["https://retrospend.app/people", "/people"],
+		["https://dev.retrospend.app/entries/e1", "/activity/e1"],
+		["https://dev.retrospend.app/entries/shared:t1", "/activity/shared:t1"],
+		["https://dev.retrospend.app/notifications", "/home/inbox"],
+		["https://dev.retrospend.app/home", "/home"],
+		["https://dev.retrospend.app/activity", "/activity"],
+		["https://dev.retrospend.app/activity?q=rent", "/activity?q=rent"],
+		["https://dev.retrospend.app/budget", "/budget"],
+		["https://dev.retrospend.app/wealth", "/wealth"],
+	])("maps %s to %s", (url, path) => {
+		expect(routeForUrl(url)).toEqual(route(path));
+		expect(systemPath(url)).toBe(path);
+	});
+
+	it("opens Activity's sub-pages, never read as an entry id", () => {
+		expect(
+			routeForUrl("https://dev.retrospend.app/activity/recurring"),
+		).toEqual(route("/activity?segment=recurring"));
+		expect(
+			routeForUrl("https://dev.retrospend.app/activity/insights"),
+		).toEqual(route("/home/insights"));
+	});
+
+	it("maps the same screens from the retrospend:// scheme", () => {
+		expect(routeForUrl("retrospend://notifications")).toEqual(
+			route("/home/inbox"),
+		);
+		expect(routeForUrl("retrospend://entries/e1")).toEqual(
+			route("/activity/e1"),
+		);
+	});
+
+	it("leaves web pages the app has no screen for to the browser", () => {
+		for (const url of [
+			"https://retrospend.app/login",
+			"https://retrospend.app/signup?code=abc",
+			"https://retrospend.app/claim/token",
+			"https://retrospend.app/docs/features",
+			"https://retrospend.app/u/someone",
+			"https://retrospend.app/",
+		]) {
+			expect(routeForUrl(url)).toBeNull();
+			expect(systemPath(url)).toBe("/");
+		}
+	});
+});
+
 describe("systemPath (+native-intent)", () => {
 	it("sends the composer links to the start", () => {
 		expect(systemPath("retrospend://add?amount=5")).toBe("/");

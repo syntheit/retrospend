@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { HAIRLINE } from "@/ui/metrics";
 import { Text } from "@/ui/Text";
 import { FieldError } from "@/ui/TextField";
 import type { MoneyLine } from "./AmountCard";
@@ -46,7 +47,7 @@ export function AmountBlock({
 					gap: space[2],
 					paddingHorizontal: space[3],
 					borderRadius: radius.panel,
-					borderWidth: 1,
+					borderWidth: HAIRLINE,
 					borderColor: error
 						? color.danger
 						: folded

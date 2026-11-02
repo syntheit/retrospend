@@ -4,6 +4,7 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { useFormatMoney } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { HAIRLINE } from "@/ui/metrics";
 import { Text } from "@/ui/Text";
 import type { PlanView } from "./preview";
 
@@ -67,7 +68,7 @@ export function PlanBlock({ plan }: { plan: PlanView }) {
 			style={{
 				gap: space[2],
 				paddingTop: space[3],
-				borderTopWidth: 1,
+				borderTopWidth: HAIRLINE,
 				borderTopColor: color.line,
 			}}
 		>

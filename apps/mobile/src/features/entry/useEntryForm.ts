@@ -28,6 +28,7 @@ import {
 	transferErrors,
 } from "./draft";
 import { type SavedEntry, useRateOptions } from "./hooks";
+import type { RestoredDraft } from "./pendingDraft";
 import type { EntryMode } from "./types";
 import { type EntryCatalog, type EntryPerson, personKey } from "./types";
 
@@ -44,6 +45,8 @@ export interface EntryFormInput {
 	initialMode: EntryMode;
 	prefill?: ComposerPrefill;
 	edit?: SavedEntry;
+	/** A waiting entry being edited: its drafts replace the fresh ones. */
+	restored?: RestoredDraft;
 	onDirtyChange?: (dirty: boolean) => void;
 }
 
@@ -97,6 +100,7 @@ export function useEntryForm({
 	initialMode,
 	prefill,
 	edit,
+	restored,
 	onDirtyChange,
 }: EntryFormInput) {
 	const t = useTranslations("mobile.composer");
@@ -145,6 +149,13 @@ export function useEntryForm({
 			catalog.currencies,
 			catalog.people,
 		);
+		if (restored) {
+			return {
+				expense: restored.expense ?? start.expense,
+				income: restored.income ?? start.income,
+				transfer: restored.transfer ?? start.transfer,
+			};
+		}
 		if (!edit) return start;
 		return {
 			...start,

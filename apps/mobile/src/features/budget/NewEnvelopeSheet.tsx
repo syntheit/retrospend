@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "use-intl";
 import { Note } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { useResetOnOpen } from "@/features/write/useResetOnOpen";
+import { GroupPick } from "@/ui/PickLabeled";
 import type { SheetDetent } from "@/ui/Sheet";
 import { CategoryList, loadCategories } from "./CategoryList";
 import { TextField } from "./fields";
 import { createEnvelopeBody, nameOk } from "./moreBodies";
-import { GroupPick } from "@/ui/PickLabeled";
 import type { BudgetMonth } from "./source";
 import { useSheetRead } from "./useSheetRead";
 import { FormSheet, WriteForm } from "./WriteSheet";
@@ -48,14 +49,12 @@ export function NewEnvelopeSheet({
 	const { idFor, reset } = useWriteIds(
 		visible ? `${name}|${group}|${picked.join(",")}` : null,
 	);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: a new opening starts empty
-	useEffect(() => {
-		if (!visible) return;
+	useResetOnOpen(visible, () => {
 		reset();
 		setName("");
 		setGroup("none");
 		setPicked([]);
-	}, [visible]);
+	});
 
 	const ready = nameOk(name);
 	const input = ready

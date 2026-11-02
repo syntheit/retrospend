@@ -1,11 +1,11 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ActivityFilters } from "@/features/activity/ActivityFilters";
-import { ActivityRow } from "@/features/activity/ActivityRow";
+import { ActivityRow, type RowOps } from "@/features/activity/ActivityRow";
 import { ActivitySegments } from "@/features/activity/ActivitySegments";
 import { ActivitySummary } from "@/features/activity/ActivitySummary";
 import { BulkControls } from "@/features/activity/BulkControls";
@@ -13,9 +13,9 @@ import { canSelect, entityIdsOf } from "@/features/activity/bulk";
 import { DayHeader, useDayLabel } from "@/features/activity/DayHeader";
 import { groupByDay } from "@/features/activity/days";
 import { EntryDetail } from "@/features/activity/EntryView";
+import { stashRow } from "@/features/activity/entryRow";
 import { DEFAULT_FILTER, isDefaultFilter } from "@/features/activity/filter";
 import { useLinkedEntry } from "@/features/activity/linkedEntry";
-import { rowActions } from "@/features/activity/rowActions";
 import type { ActivityItem } from "@/features/activity/source";
 import { useActivity } from "@/features/activity/useActivity";
 import { useBulkActions } from "@/features/activity/useBulkActions";
@@ -24,6 +24,8 @@ import {
 	useHideAddButton,
 	useOptionalAddEntry,
 } from "@/features/entry/addEntryContext";
+import { SyncIssues } from "@/features/entry/SyncIssues";
+import { useDeletePending } from "@/features/entry/useDeletePending";
 import { RecurringView } from "@/features/recurring/RecurringView";
 import { RECURRING_APART } from "@/layout/destinations";
 import { useHeaderSearch } from "@/layout/headerSearch";
@@ -95,6 +97,7 @@ export default function ActivityScreen() {
 	useTransient(picked ? () => setPicked(null) : null);
 	const { state, reload, loadMore, loadingMore } = useActivity(filter);
 	const bulk = useBulkActions(() => setPicked(null));
+	const deletePending = useDeletePending();
 	// Android: the floating toolbar takes the Add button's place while picking,
 	// and the count and Done move to the top bar.
 	const floatingBulk = Platform.OS === "android";
@@ -133,34 +136,50 @@ export default function ActivityScreen() {
 			releaseLink();
 			return;
 		}
-		router.push({
-			pathname: "/activity/[id]",
-			params: { id: item.id, row: JSON.stringify(item) },
-		});
+		stashRow(item);
+		router.push({ pathname: "/activity/[id]", params: { id: item.id } });
 	}
 
-	const words = {
-		select: t("bulk.select"),
-		edit: te("edit"),
-		categorize: t("bulk.categorize"),
-		delete: t("bulk.delete"),
-	};
-	const actionsOf = (item: ActivityItem) =>
-		rowActions(
-			item,
-			words,
-			{
-				select: () => setPicked(new Set([item.id])),
-				edit: () =>
-					add?.edit(
-						item.entityId,
-						item.source === "shared" ? "shared" : undefined,
-					),
-				categorize: () => bulk.categorize([item.entityId]),
-				remove: () => bulk.remove([item.entityId]),
+	// The rows are memoized, so what they get must not change between
+	// renders: `ops` and `onOpen` are stable and read the screen's latest
+	// state through a ref.
+	const latest = useRef({ add, bulk, open, deletePending });
+	latest.current = { add, bulk, open, deletePending };
+	const canEdit = add !== null;
+	const ops = useMemo<RowOps>(
+		() => ({
+			words: {
+				select: t("bulk.select"),
+				edit: te("edit"),
+				categorize: t("bulk.categorize"),
+				delete: t("bulk.delete"),
 			},
-			add !== null,
-		);
+			canEdit,
+			select: (item) => setPicked(new Set([item.id])),
+			// An entry only this phone has edits and deletes where it waits.
+			edit: (item) =>
+				item.unsynced
+					? latest.current.add?.editPending(item.entityId)
+					: latest.current.add?.edit(
+							item.entityId,
+							item.source === "shared" ? "shared" : undefined,
+						),
+			categorize: (item) => latest.current.bulk.categorize([item.entityId]),
+			remove: (item) =>
+				item.unsynced
+					? latest.current.deletePending({
+							clientId: item.entityId,
+							kind: item.kind,
+							title: item.title,
+						})
+					: latest.current.bulk.remove([item.entityId]),
+		}),
+		[t, te, canEdit],
+	);
+	const onOpen = useCallback(
+		(item: ActivityItem) => latest.current.open(item),
+		[],
+	);
 
 	const segments = RECURRING_APART ? null : (
 		<ActivitySegments onChange={setSegment} value={segment} />
@@ -190,6 +209,9 @@ export default function ActivityScreen() {
 		<BarSectionList
 			contentInsetAdjustmentBehavior="automatic"
 			extraData={picked}
+			// One item is a whole day, so a few cover the first screen; the
+			// window keeps what is near the viewport mounted.
+			initialNumToRender={6}
 			keyboardDismissMode="on-drag"
 			keyboardShouldPersistTaps="handled"
 			keyExtractor={(items) => items[0]?.id ?? "empty"}
@@ -210,6 +232,7 @@ export default function ActivityScreen() {
 						<StaleNote
 							since={state.status === "ready" ? state.staleSince : null}
 						/>
+						<SyncIssues padded />
 						<ActivityFilters filter={filter} onChange={setFilter} />
 					</View>
 				) : undefined
@@ -220,19 +243,17 @@ export default function ActivityScreen() {
 			onEndReachedThreshold={0.6}
 			onRefresh={reload}
 			refreshing={false}
+			removeClippedSubviews={Platform.OS === "android"}
 			renderItem={({ item: items }) => (
 				<ListGroup>
 					{items.map((item) => (
 						<ActivityRow
-							actions={picked ? undefined : actionsOf(item)}
+							checked={picked?.has(item.id)}
 							item={item}
 							key={item.id}
-							onPress={() => open(item)}
-							pick={
-								picked
-									? { checked: picked.has(item.id), enabled: canSelect(item) }
-									: undefined
-							}
+							onOpen={onOpen}
+							ops={ops}
+							picking={picked !== null}
 							selected={listDetail && !picked && selected?.id === item.id}
 						/>
 					))}
@@ -247,6 +268,7 @@ export default function ActivityScreen() {
 			sections={sections}
 			stickySectionHeadersEnabled={false}
 			style={{ backgroundColor: color.bg }}
+			windowSize={7}
 		/>
 	);
 	const rows = rowsList(true);

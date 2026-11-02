@@ -59,6 +59,7 @@ function group(
 			assigned: ars(0),
 			activity: ars(0),
 			spent: ars(0),
+			spentBasis: null,
 			left: ars(0),
 			over: ars(0),
 			limitLeft: null,

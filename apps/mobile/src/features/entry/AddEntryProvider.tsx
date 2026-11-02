@@ -62,6 +62,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 		prefill?: ComposerPrefill;
 		editId?: string;
 		editShared?: boolean;
+		pendingId?: string;
 		count: number;
 	}>({ count: 0 });
 	useOutboxFlush();
@@ -89,12 +90,19 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 			prefill?: ComposerPrefill,
 			editId?: string,
 			editShared?: boolean,
+			pendingId?: string,
 		) => {
 			replaceDraft(
 				isOpen.current && dirty.current,
 				() => {
 					dirty.current = false;
-					setFill((f) => ({ prefill, editId, editShared, count: f.count + 1 }));
+					setFill((f) => ({
+						prefill,
+						editId,
+						editShared,
+						pendingId,
+						count: f.count + 1,
+					}));
 					setOpen(next);
 				},
 				{
@@ -113,6 +121,8 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 				show(next, prefill),
 			edit: (entryId: string, kind?: "shared") =>
 				show("expense", undefined, entryId, kind === "shared"),
+			editPending: (clientId: string) =>
+				show("expense", undefined, undefined, undefined, clientId),
 			hideButton,
 		}),
 		[show, hideButton],
@@ -176,6 +186,7 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 							key={fill.count}
 							onDirtyChange={onDirtyChange}
 							onDone={close}
+							pendingId={fill.pendingId}
 							prefill={fill.prefill}
 							surface
 						/>

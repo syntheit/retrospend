@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { HAIRLINE } from "./metrics";
 import { Text } from "./Text";
 import { TextAction } from "./TextAction";
 
@@ -134,7 +135,7 @@ export function ChangeList({
 			style={{
 				gap: space[2],
 				paddingTop: space[3],
-				borderTopWidth: 1,
+				borderTopWidth: HAIRLINE,
 				borderTopColor: color.line,
 			}}
 		>

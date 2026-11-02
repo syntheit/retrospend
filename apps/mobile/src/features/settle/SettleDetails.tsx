@@ -6,7 +6,12 @@ import { useTheme } from "@/theme";
 import { Chip } from "@/ui/Chip";
 import { Text } from "@/ui/Text";
 import { FieldLabel } from "@/ui/TextField";
-import { offeredMethods, type RateChoices, type RateRead } from "./plan";
+import {
+	chipRate,
+	offeredMethods,
+	type RateChoices,
+	type TypeRates,
+} from "./plan";
 import type { SharedMethod } from "./useSettle";
 
 function ChipRow({ children }: { children: React.ReactNode }) {
@@ -32,24 +37,34 @@ export function RateChips({
 }: {
 	choices: RateChoices;
 	/** What one unit of the converting currency is worth at each type, from the server. */
-	values: Record<string, RateRead>;
+	values: TypeRates;
 	onPick: (type: string) => void;
 }) {
 	const t = useTranslations("mobile.settle");
+	const tm = useTranslations("mobile.money");
 	const rateName = useRateTypeName();
 	const fmt = useRateFormat();
 	const { space } = useTheme();
 	const label = t("rate", { currency: choices.currencies.join(", ") });
 	const single = choices.currencies.length === 1 && choices.types.length > 0;
 	const chipLabel = (type: string): string => {
-		const read =
-			values[type] ?? (choices.current === type ? choices.rates[0] : undefined);
+		if (!single) return rateName(type);
 		// The type carries its number (R8): "Blue 1,468.00 ARS" under "{currency} rate".
-		const number = read
-			? fmt.number(read.unit.currency, read.value.currency, read.rate)
-			: null;
-		return single && number
-			? t("rateChip", { type: rateName(type), value: number })
+		const rate = chipRate(values, choices, type);
+		if (rate.kind === "rate") {
+			const { read } = rate;
+			const value = fmt.number(
+				read.unit.currency,
+				read.value.currency,
+				read.rate,
+			);
+			return value
+				? t("rateChip", { type: rateName(type), value })
+				: rateName(type);
+		}
+		// A read that failed says so; a missing rate is never shown as 1.
+		return rate.kind === "none"
+			? t("rateChip", { type: rateName(type), value: tm("noRate") })
 			: rateName(type);
 	};
 	return (

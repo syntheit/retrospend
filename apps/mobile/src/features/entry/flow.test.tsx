@@ -1858,6 +1858,7 @@ describe("The duplicate warning", () => {
 			{
 				title: "Cafe",
 				amount: "3500.00",
+				currency: expect.stringMatching(/^[A-Z]{3}$/),
 				date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
 			},
 		);

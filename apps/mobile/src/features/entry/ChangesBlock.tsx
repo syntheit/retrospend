@@ -5,6 +5,7 @@ import {
 	type ChangeRow,
 	type ChangeStatus,
 } from "@/ui/ChangeList";
+import { useFigureLabel } from "@/features/write/useFigureLabel";
 import { useChangeWords } from "./changeWords";
 import {
 	type ChangeLines,
@@ -36,7 +37,8 @@ export function ChangesBlock({
 	onRetry?: () => void;
 }) {
 	const t = useTranslations("mobile.composer.changes");
-	const { money, marked, name } = useChangeWords();
+	const { money, marked } = useChangeWords();
+	const label = useFigureLabel();
 	const lines: ChangeLines | null =
 		state.status === "ready" ? changeLines(state.diff) : null;
 	const shares: ShareLine[] | null =
@@ -50,7 +52,7 @@ export function ChangesBlock({
 
 	const changes: ChangeRow[] = (lines?.moved ?? []).map((line) => ({
 		key: line.key,
-		label: name(line.figure, false),
+		label: label(line.figure).name,
 		value: marked(money(line.delta, "exceptZero"), line.approx),
 		detail: line.after
 			? t("to", { amount: marked(money(line.after), line.approx) })
@@ -108,8 +110,8 @@ export function ChangesBlock({
 			message={message}
 			onRetry={retry}
 			status={status}
-			stays={(lines?.stays ?? []).map((id) => name(id, true))}
-			unavailable={(lines?.unknown ?? []).map((id) => name(id, true))}
+			stays={(lines?.stays ?? []).map((id) => label(id).inline)}
+			unavailable={(lines?.unknown ?? []).map((id) => label(id).inline)}
 		/>
 	);
 }

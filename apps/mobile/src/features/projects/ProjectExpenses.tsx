@@ -1,11 +1,11 @@
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { dayDate } from "@/lib/days";
 import { useTheme } from "@/theme";
 import { CategoryTile, ListGroup, ListRow } from "@/ui/List";
 import { MoneyAmount } from "@/ui/Money";
 import { Text } from "@/ui/Text";
-import { dayDate } from "./dates";
 import { groupByDay } from "./days";
 import type { ProjectExpense } from "./source";
 

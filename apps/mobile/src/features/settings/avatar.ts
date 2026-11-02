@@ -1,5 +1,6 @@
 import { AVATAR_MAX_BYTES } from "@retrospend/api-contract";
 import * as ImagePicker from "expo-image-picker";
+import { asFile } from "@/lib/asFile";
 
 export type AvatarSource = "camera" | "library";
 
@@ -37,11 +38,7 @@ export async function pickAvatar(source: AvatarSource): Promise<AvatarPick> {
 	return { status: "picked", uri: asset.uri };
 }
 
-/**
- * The picked file as a Blob, which API v1 sends as multipart. The client's
- * type says File (the web's); the server reads the same bytes either way.
- */
+/** The picked picture as a file for the multipart upload. */
 export async function readAvatar(uri: string): Promise<File> {
-	const blob = await (await fetch(uri)).blob();
-	return blob as unknown as File;
+	return asFile(await (await fetch(uri)).blob());
 }

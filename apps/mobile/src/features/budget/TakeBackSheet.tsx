@@ -1,8 +1,8 @@
-import { useEffect } from "react";
 import { useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { useResetOnOpen } from "@/features/write/useResetOnOpen";
 import type { SheetDetent } from "@/ui/Sheet";
 import { takeBackBody } from "./bodies";
 import type { BudgetMonth } from "./source";
@@ -34,10 +34,7 @@ export function TakeBackSheet({
 	const owed = data.verdict.plannedTooMuch;
 	const needed = owed.minor > 0;
 	const { idFor, reset } = useWriteIds(needed ? "take-back" : null);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: a new opening is a new write
-	useEffect(() => {
-		if (visible) reset();
-	}, [visible]);
+	useResetOnOpen(visible, reset);
 	const input = needed ? takeBackBody(idFor("batch")) : null;
 
 	return (

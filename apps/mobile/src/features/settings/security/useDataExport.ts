@@ -6,6 +6,7 @@ import { useServerConnection } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
 import { createTokenStore } from "@/auth/token-store";
 import { newClientId } from "@/data/ids";
+import { dayKey } from "@/lib/days";
 import { webUrl } from "../webPages";
 import { exportFile, removeFile, shareThenDelete } from "./exportFiles";
 import {
@@ -25,11 +26,7 @@ export type DataKind = ExportKind | "wealth";
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Today as yyyy-mm-dd on the phone's clock, for a file name. */
-function today(): string {
-	const d = new Date();
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
+const today = () => dayKey(new Date());
 
 /**
  * Exports put the file on the phone and open the system share sheet, where

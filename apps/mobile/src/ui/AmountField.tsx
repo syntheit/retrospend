@@ -8,6 +8,7 @@ import { CurrencyFlag } from "./CurrencyFlag";
 import { CurrencyPicker } from "./CurrencyPicker";
 import { applyKey } from "./keypad";
 import { MoneyKeypad } from "./MoneyKeypad";
+import { HAIRLINE } from "./metrics";
 import { OperatorKeys } from "./OperatorKeys";
 import { Text } from "./Text";
 import { FieldLabel } from "./TextField";
@@ -124,7 +125,7 @@ export function AmountField({
 						minHeight: size.moneyInput.phone,
 						paddingHorizontal: space[1],
 						backgroundColor: color.surface,
-						borderWidth: 1,
+						borderWidth: HAIRLINE,
 						borderColor: invalid ? color.danger : color.lineStrong,
 						borderRadius: radius.ctl,
 					}}

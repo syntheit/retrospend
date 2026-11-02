@@ -113,6 +113,7 @@ function month(o: {
 					assigned: zero,
 					activity: zero,
 					spent: zero,
+					spentBasis: null,
 					left: zero,
 					over: zero,
 					limitLeft: null,

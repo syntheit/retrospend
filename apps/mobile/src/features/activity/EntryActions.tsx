@@ -3,6 +3,7 @@ import { type ReactNode, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
 import { useDeleteEntry } from "@/features/entry/useDeleteEntry";
+import { useDeletePending } from "@/features/entry/useDeletePending";
 import { MakeRecurringSheet } from "@/features/recurring/MakeRecurringSheet";
 import { canRepeat } from "@/features/recurring/makeRecurring";
 import { useLayoutClass } from "@/layout/useLayoutClass";
@@ -46,6 +47,9 @@ export function useEntryActions({
 	const { listDetail } = useLayoutClass();
 	const [repeat, setRepeat] = useState(false);
 
+	const deletePending = useDeletePending();
+	// Only this phone has it: it edits and deletes where it waits (the outbox).
+	const waiting = item.unsynced === true;
 	const canDeleteOwn = editable && canSelect(item);
 	const canDeleteSplit =
 		editable && item.source === "shared" && canEditEntry(item);
@@ -66,29 +70,45 @@ export function useEntryActions({
 	});
 
 	// Make recurring, then Delete (last, destructive): the header's menu.
-	const menu: MenuItem[] = [
-		...(canRepeatIt
-			? [
-					{
-						id: "make-recurring",
-						label: t("makeRecurring"),
-						icon: "Repeat" as const,
-						onPress: () => setRepeat(true),
-					},
-				]
-			: []),
-		...(canDelete
-			? [
-					{
-						id: "delete",
-						label: t("delete"),
-						icon: "Trash2" as const,
-						destructive: true,
-						onPress: askDelete,
-					},
-				]
-			: []),
-	];
+	const menu: MenuItem[] = waiting
+		? [
+				{
+					id: "delete",
+					label: t("delete"),
+					icon: "Trash2" as const,
+					destructive: true,
+					onPress: () =>
+						deletePending({
+							clientId: item.entityId,
+							kind: item.kind,
+							title: item.title,
+							onDeleted: leave,
+						}),
+				},
+			]
+		: [
+				...(canRepeatIt
+					? [
+							{
+								id: "make-recurring",
+								label: t("makeRecurring"),
+								icon: "Repeat" as const,
+								onPress: () => setRepeat(true),
+							},
+						]
+					: []),
+				...(canDelete
+					? [
+							{
+								id: "delete",
+								label: t("delete"),
+								icon: "Trash2" as const,
+								destructive: true,
+								onPress: askDelete,
+							},
+						]
+					: []),
+			];
 
 	const sheets = (
 		<>
@@ -100,6 +120,17 @@ export function useEntryActions({
 			/>
 		</>
 	);
+
+	if (waiting) {
+		return {
+			edit:
+				add !== null && item.canEdit
+					? () => add.editPending(item.entityId)
+					: null,
+			menu,
+			sheets: null,
+		};
+	}
 
 	return {
 		edit: canEdit

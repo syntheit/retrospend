@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Image, View } from "react-native";
 import { useTheme } from "@/theme";
-import { avatarSlot } from "@/ui/Avatar";
+import { avatarColor } from "@/ui/Avatar";
 import { Text } from "@/ui/Text";
 
 /**
@@ -25,7 +25,6 @@ export function Cover({
 	const [failed, setFailed] = useState(false);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new address resets
 	useEffect(() => setFailed(false), [imageUri]);
-	const palette = color as unknown as Record<string, string>;
 	return (
 		<View
 			accessibilityElementsHidden
@@ -35,7 +34,7 @@ export function Cover({
 				height: diameter,
 				borderRadius: radius.ctl,
 				overflow: "hidden",
-				backgroundColor: palette[`avatar${avatarSlot(`project:${id}`)}`],
+				backgroundColor: avatarColor(color, `project:${id}`),
 				alignItems: "center",
 				justifyContent: "center",
 			}}

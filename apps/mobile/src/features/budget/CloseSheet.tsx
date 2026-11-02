@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
@@ -6,6 +6,7 @@ import { newClientId } from "@/data/ids";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note, SheetBody } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { useResetOnOpen } from "@/features/write/useResetOnOpen";
 import { Button } from "@/ui/Button";
 import { ListRow, SectionHeader } from "@/ui/List";
 import { MoneyAmount } from "@/ui/Money";
@@ -83,11 +84,10 @@ export function CloseSheet({
 		onDone();
 	};
 
-	useEffect(() => {
-		if (!visible) return;
+	useResetOnOpen(visible, () => {
 		setCarrying(null);
 		setFailed(false);
-	}, [visible]);
+	});
 
 	async function done() {
 		const ack = summary ? acknowledgeBody(month, summary) : null;

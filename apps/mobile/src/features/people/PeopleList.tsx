@@ -22,6 +22,7 @@ import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { Menu } from "@/ui/Menu";
+import { LAYER } from "@/ui/metrics";
 import { useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 
@@ -185,7 +186,7 @@ export function PeopleList({
 				)
 			}
 			// Over the rows: the pane cover hangs from the tabs in this header.
-			ListHeaderComponentStyle={{ zIndex: 1 }}
+			ListHeaderComponentStyle={{ zIndex: LAYER.above }}
 			onRefresh={reload}
 			refreshing={false}
 			renderItem={({ item: section }) => (

@@ -1,14 +1,6 @@
-import { dayBefore, groupByDay } from "./days";
+import { groupByDay } from "./days";
 
 const row = (id: string, date: string) => ({ id, date });
-
-describe("dayBefore", () => {
-	it("crosses month and year ends", () => {
-		expect(dayBefore("2026-10-01")).toBe("2026-09-30");
-		expect(dayBefore("2026-01-01")).toBe("2025-12-31");
-		expect(dayBefore("2024-03-01")).toBe("2024-02-29");
-	});
-});
 
 describe("groupByDay", () => {
 	const totals = { "2026-10-24": { minor: 100, currency: "ARS" } };

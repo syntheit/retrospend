@@ -7,7 +7,10 @@ import {
 	View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { COMPACT_HEIGHT, SYSTEM_PAD_SCALE } from "@/features/entry/ComposerFrame";
+import {
+	COMPACT_HEIGHT,
+	SYSTEM_PAD_SCALE,
+} from "@/features/entry/ComposerFrame";
 import { useTheme } from "@/theme";
 import { FoldingKeypad, type KeypadEntry } from "@/ui/FoldingKeypad";
 

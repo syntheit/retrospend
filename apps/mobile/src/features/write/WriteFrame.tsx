@@ -42,6 +42,7 @@ export function WriteFrame({
 	ready,
 	busy,
 	failed,
+	error,
 	onSubmit,
 }: {
 	children: ReactNode;
@@ -50,6 +51,8 @@ export function WriteFrame({
 	ready: boolean;
 	busy: boolean;
 	failed: boolean;
+	/** The sentence for a write that did not go through; the generic one by default. */
+	error?: string;
 	onSubmit: () => void;
 }) {
 	const t = useTranslations("mobile.budget.write");
@@ -68,7 +71,7 @@ export function WriteFrame({
 		<View style={{ gap: space[4] }}>
 			{children}
 			{changes}
-			{failed ? <Note tone="attention">{t("error")}</Note> : null}
+			{failed ? <Note tone="attention">{error ?? t("error")}</Note> : null}
 			{pinned ? null : (
 				<Button
 					busy={busy}

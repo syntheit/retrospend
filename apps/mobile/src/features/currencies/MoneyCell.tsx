@@ -9,7 +9,8 @@ import { TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { type Money, useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
-import { Text, typeStyle } from "./Text";
+import { HAIRLINE } from "@/ui/metrics";
+import { Text, typeStyle } from "@/ui/Text";
 
 /**
  * The error a cell shows, or null. Nothing typed is not an error, and zero is
@@ -134,7 +135,7 @@ export function MoneyCell({
 							...(readOnly
 								? null
 								: {
-										borderWidth: 1,
+										borderWidth: HAIRLINE,
 										borderColor: bad ? color.danger : color.lineStrong,
 										backgroundColor: color.surface,
 									}),

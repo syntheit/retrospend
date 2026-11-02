@@ -28,6 +28,7 @@ import { newClientId } from "@/data/ids";
 import { createOutbox, type Outbox } from "@/data/outbox";
 import { createSqliteStore } from "@/data/sqlite-store";
 import { getErrorLog } from "@/features/feedback/runtime";
+import { invalidateReads } from "@/features/read/readLedger";
 import { sweepExports } from "@/features/settings/security/exportFiles";
 import { appBuild } from "@/lib/appVersion";
 import { createPushControl, forgetServerPush } from "@/push/control";
@@ -175,6 +176,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 						fetch: async (input, init) => {
 							const response = await fetch(input, init);
 							if (response.status === 401) expire();
+							// A write that went through makes every read stale.
+							const method = (
+								init?.method ??
+								(typeof input === "object" && "method" in input
+									? input.method
+									: "GET")
+							).toUpperCase();
+							if (response.ok && method !== "GET" && method !== "HEAD") {
+								invalidateReads();
+							}
 							return response;
 						},
 					})

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
+import { HAIRLINE } from "@/ui/metrics";
 import { Text } from "@/ui/Text";
 
 export { TextField } from "@/ui/TextField";
@@ -62,7 +63,7 @@ export function ChoiceList({
 							alignItems: "center",
 							gap: space[3],
 							backgroundColor: pressed ? color.raised : undefined,
-							borderBottomWidth: 1,
+							borderBottomWidth: HAIRLINE,
 							borderBottomColor: color.line,
 						})}
 					>

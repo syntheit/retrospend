@@ -12,6 +12,7 @@ import { useTheme } from "@/theme";
 import { Button } from "./Button";
 import { Glyph } from "./Glyph";
 import { Menu } from "./Menu";
+import { HAIRLINE } from "./metrics";
 import { SheetFrame } from "./SheetFrame";
 import {
 	BIG_TEXT_SCALE,
@@ -350,7 +351,7 @@ export function Sheet({
 						alignItems: "center",
 						gap: space[2],
 						paddingTop: space[3],
-						borderTopWidth: 1,
+						borderTopWidth: HAIRLINE,
 						borderTopColor: color.line,
 					}}
 				>

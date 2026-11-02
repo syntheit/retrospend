@@ -3,7 +3,6 @@ import {
 	defaultPrice,
 	missingRows,
 	pinChange,
-	priceCents,
 	rateTypeKey,
 	readConvQuery,
 	visibleRows,
@@ -126,12 +125,6 @@ describe("prices", () => {
 	it("takes the default type's price, or none without a rate", () => {
 		expect(defaultPrice(usd)).toEqual(price(146800, "ARS", 2, "USD"));
 		expect(defaultPrice(clp)).toBeNull();
-	});
-
-	it("drops cents from 100 up and keeps every digit sent below", () => {
-		expect(priceCents(price(146800, "ARS", 2, "USD"))).toBe(false);
-		expect(priceCents(price(535, "BRL", 2, "USD"))).toBe("auto");
-		expect(priceCents(price(64, "USD", 5, "ARS"))).toBe("auto");
 	});
 
 	it("names only currencies an open account uses as missing", () => {

@@ -1,21 +1,59 @@
+import { dayKey } from "@retrospend/domain/time-zone";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/auth/session";
-import { subscribeEntryChanges } from "@/features/entry/events";
-import { type ActivityFilter, filterString } from "./filter";
+import { useReloadOnEntryChange } from "@/features/read/useReloadOnEntryChange";
+import { type ActivityFilter, filterString, isDefaultFilter } from "./filter";
+import { mergePending, pendingPage } from "./pending";
 import {
 	type ActivityState,
 	appendPage,
 	createActivitySource,
 	loadActivity,
 } from "./source";
+import { usePendingRows } from "./usePending";
 
 /**
  * The Activity list for a filter: the first page (cache first for the
  * default list), more pages as the list scrolls, and a refresh that runs
- * when the screen comes back into focus and on pull.
+ * when the screen comes back into focus and on pull. Entries still waiting
+ * on this phone join the default list here, in this one place; a chosen
+ * filter is the server's to answer.
  */
 export function useActivity(filter: ActivityFilter) {
+	const server = useServerActivity(filter);
+	const read = server.state;
+	const pending = usePendingRows(
+		read.status === "ready" && !read.refreshing && read.staleSince === null
+			? read.data
+			: null,
+	);
+	const merge = isDefaultFilter(filter);
+	const { state: session } = useSession();
+	const home = session.status === "signedIn" ? session.me?.homeCurrency : null;
+	const state = useMemo<ActivityState>(() => {
+		if (!merge || pending.length === 0) return read;
+		if (read.status === "ready") {
+			return { ...read, data: mergePending(read.data, pending) };
+		}
+		// Nothing cached and no server: what was just written still shows.
+		if (read.status === "error" && home) {
+			return {
+				status: "ready",
+				data: pendingPage(pending, {
+					today: dayKey(new Date()),
+					homeCurrency: home,
+				}),
+				staleSince: new Date().toISOString(),
+				refreshing: false,
+			};
+		}
+		return read;
+	}, [merge, read, pending, home]);
+	return { ...server, state };
+}
+
+function useServerActivity(filter: ActivityFilter) {
 	const { api, local } = useSession();
 	const source = useMemo(() => (api ? createActivitySource(api) : null), [api]);
 	const [state, setState] = useState<ActivityState>({ status: "loading" });
@@ -42,11 +80,19 @@ export function useActivity(filter: ActivityFilter) {
 	}, [source, local]);
 
 	// An entry added, undone or sent from the outbox changes the list.
-	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
+	useReloadOnEntryChange(reload);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `text` is the trigger
 	useEffect(() => {
-		setState({ status: "loading" });
+		// The rows stay (marked as refreshing) until the new filter's answer
+		// arrives; a skeleton only stands in when there is nothing to show.
+		setState((prev) =>
+			prev.status === "ready" && !prev.refreshing
+				? { ...prev, refreshing: true }
+				: prev.status === "ready"
+					? prev
+					: { status: "loading" },
+		);
 	}, [text]);
 
 	useFocusEffect(

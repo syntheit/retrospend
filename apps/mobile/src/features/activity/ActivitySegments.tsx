@@ -1,6 +1,7 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { LAYER } from "@/ui/metrics";
 import { markPaneSwitch, PaneVeil } from "@/ui/PaneVeil";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
 
@@ -23,7 +24,7 @@ export function ActivitySegments({
 	const t = useTranslations("mobile.activity.segment");
 	const { color, space } = useTheme();
 	return (
-		<View style={{ zIndex: 1 }}>
+		<View style={{ zIndex: LAYER.above }}>
 			<View style={{ paddingBottom: space[2], backgroundColor: color.bg }}>
 				<UnderlineTabs<ActivitySegment>
 					accessibilityLabel={t("label")}

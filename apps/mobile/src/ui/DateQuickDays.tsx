@@ -1,7 +1,7 @@
 import { dayKey } from "@retrospend/domain/time-zone";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
-import { shiftDay } from "@/features/entry/dates";
+import { shiftDay } from "@/lib/days";
 import { useTheme } from "@/theme";
 import { Chip } from "./Chip";
 

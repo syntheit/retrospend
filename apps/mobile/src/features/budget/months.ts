@@ -1,15 +1,8 @@
 // Month keys are YYYYMM numbers (the contract's own). Stepping and bounds are
 // calendar arithmetic on the key, never on money.
+import { addMonths, monthParts } from "@retrospend/domain/month-key";
 
-export function monthParts(key: number): { year: number; month: number } {
-	return { year: Math.floor(key / 100), month: key % 100 };
-}
-
-export function addMonths(key: number, delta: number): number {
-	const { year, month } = monthParts(key);
-	const index = year * 12 + (month - 1) + delta;
-	return Math.floor(index / 12) * 100 + (index % 12) + 1;
-}
+export { addMonths, monthParts };
 
 /** A date inside the month, for the locale's month name (UTC, so no zone shifts it). */
 export function monthDate(key: number): Date {
@@ -27,15 +20,6 @@ export interface MonthBounds {
 /** The newest month that can be planned: the one after the open month. */
 export function lastMonth(bounds: MonthBounds): number {
 	return addMonths(bounds.open, 1);
-}
-
-export function canStep(
-	key: number,
-	delta: -1 | 1,
-	bounds: MonthBounds,
-): boolean {
-	const next = addMonths(key, delta);
-	return next >= bounds.first && next <= lastMonth(bounds);
 }
 
 /** Newest first, from the month after the open one back to the book's first (at most `limit`). */

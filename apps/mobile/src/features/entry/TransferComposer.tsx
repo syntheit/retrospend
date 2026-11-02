@@ -2,6 +2,7 @@ import { formatMoneyDraft } from "@retrospend/domain/parse";
 import { type ReactNode, useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
+import { usePadFold } from "@/features/write/useFoldingPad";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import type { PagerTab } from "@/ui/DetailPager";
@@ -17,7 +18,6 @@ import { TransferAmount } from "./TransferAmount";
 import type { EntryCatalog, EntryMode } from "./types";
 import type { ComposerPreview } from "./useComposerPreview";
 import type { EntryForm } from "./useEntryForm";
-import { usePanelFold } from "./usePanelFold";
 import { useDayWords, WhenPanel } from "./WhenPanel";
 
 const PANELS = ["from", "to", "when", "more"] as const;
@@ -67,7 +67,10 @@ export function useTransferFrame({
 	const { space } = useTheme();
 	const day = useDayWords();
 	const draft = form.transfer;
-	const { page, goTo, fold, system } = usePanelFold(form);
+	const { page, goTo, fold, system } = usePadFold(
+		form.typedAmount !== null,
+		form.setPadOpen,
+	);
 	const from = catalog.places.find((p) => p.id === draft.fromId);
 	const to = catalog.places.find((p) => p.id === draft.toId);
 	const problems = form.tried ? form.transferProblems : {};

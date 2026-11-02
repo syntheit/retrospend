@@ -37571,6 +37571,18 @@
 																	},
 																	"spent": {
 																		"$ref": "#/components/schemas/Money"
+																	},
+																	"spentBasis": {
+																		"anyOf": [
+																			{
+																				"maximum": 10000,
+																				"minimum": 0,
+																				"type": "integer"
+																			},
+																			{
+																				"type": "null"
+																			}
+																		]
 																	}
 																},
 																"required": [
@@ -37578,6 +37590,7 @@
 																	"assigned",
 																	"activity",
 																	"spent",
+																	"spentBasis",
 																	"left",
 																	"over",
 																	"limitLeft",

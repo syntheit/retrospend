@@ -54,6 +54,7 @@ export function useDuplicate({
 				api.expenses.duplicates({
 					title: text,
 					amount: fromMinor(money(minor, currency)),
+					currency,
 					date,
 				}),
 			)
