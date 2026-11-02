@@ -26,7 +26,7 @@ export function usePadFold(
 		setPage(next);
 		fold();
 	};
-	return { page, goTo, fold, system };
+	return { page, setPage, goTo, fold, system };
 }
 
 /**
