@@ -1,0 +1,52 @@
+name: Bug report
+description: Something works wrong.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Activity
+        2. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - Web (desktop)
+        - Web (phone)
+        - iPhone or iPad app
+        - Android app
+        - Server or Docker
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown in Settings. For the apps, include the build number.
+    validations:
+      required: true
+  - type: dropdown
+    id: instance
+    attributes:
+      label: Server
+      options:
+        - retrospend.app
+        - Self-hosted
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or logs
+      description: Remove amounts, names and anything personal first.
