@@ -10,6 +10,7 @@ import { useMoneyText } from "@/features/read/useMoneyText";
 import { useRateFormat } from "@/lib/rateFormat";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
+import { DetailActions } from "@/ui/DetailActions";
 import { EmptyState } from "@/ui/EmptyState";
 import { Hero } from "@/ui/Hero";
 import {
@@ -19,15 +20,13 @@ import {
 	SectionHeader,
 	StaleNote,
 } from "@/ui/List";
-import { Menu } from "@/ui/Menu";
 import { heroCents, useRateTypeLabel } from "@/ui/Money";
 import { Screen } from "@/ui/Screen";
 import { Skeleton, SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
-import { TopBarAction } from "@/ui/TopBarAction";
 import { AccountSheets, type SheetTarget } from "./AccountSheets";
 import { isLiability } from "./accounts";
-import { actionsOf } from "./actions";
+import { ACCOUNT_ICON, actionsOf } from "./actions";
 import { valuedAt } from "./rateType";
 import {
 	ACCOUNT_CACHE_PREFIX,
@@ -166,6 +165,7 @@ export function AccountView({ id }: { id: string }) {
 		.map((action) => ({
 			id: action,
 			label: t(`actions.${action}`),
+			icon: ACCOUNT_ICON[action],
 			onPress: () => setSheet({ kind: action, account }),
 			destructive: action === "delete",
 		}));
@@ -176,28 +176,12 @@ export function AccountView({ id }: { id: string }) {
 				options={{
 					title: account.name,
 					headerRight: () => (
-						<View
-							style={{
-								flexDirection: "row",
-								alignItems: "center",
-								gap: space[2],
-							}}
-						>
-							{closed ? null : (
-								<TopBarAction
-									icon="Pencil"
-									id="edit"
-									label={t("actions.edit")}
-									onPress={() => setSheet({ kind: "edit", account })}
-								/>
-							)}
-							<Menu
-								accessibilityLabel={t("more")}
-								icon
-								items={menu}
-								label={t("more")}
-							/>
-						</View>
+						<DetailActions
+							edit={closed ? null : () => setSheet({ kind: "edit", account })}
+							editLabel={t("actions.edit")}
+							items={menu}
+							moreLabel={t("more")}
+						/>
 					),
 				}}
 			/>

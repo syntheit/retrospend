@@ -11,6 +11,18 @@ export const GLYPHS: Record<string, GlyphShape[]> = {
 		["path", { d: "M6.38 18.7 4 21" }],
 		["path", { d: "M17.64 18.67 20 21" }],
 	],
+	Archive: [
+		["rect", { width: "20", height: "5", x: "2", y: "3", rx: "1" }],
+		["path", { d: "M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" }],
+		["path", { d: "M10 12h4" }],
+	],
+	ArchiveRestore: [
+		["rect", { width: "20", height: "5", x: "2", y: "3", rx: "1" }],
+		["path", { d: "M4 8v11a2 2 0 0 0 2 2h2" }],
+		["path", { d: "M20 8v11a2 2 0 0 1-2 2h-2" }],
+		["path", { d: "m9 15 3-3 3 3" }],
+		["path", { d: "M12 12v9" }],
+	],
 	ArrowDownToLine: [
 		["path", { d: "M12 17V3" }],
 		["path", { d: "m6 11 6 6 6-6" }],
@@ -256,6 +268,11 @@ export const GLYPHS: Record<string, GlyphShape[]> = {
 		["circle", { cx: "12", cy: "12", r: "1" }],
 		["circle", { cx: "19", cy: "12", r: "1" }],
 		["circle", { cx: "5", cy: "12", r: "1" }],
+	],
+	EllipsisVertical: [
+		["circle", { cx: "12", cy: "12", r: "1" }],
+		["circle", { cx: "12", cy: "5", r: "1" }],
+		["circle", { cx: "12", cy: "19", r: "1" }],
 	],
 	EyeOff: [
 		[
@@ -602,6 +619,11 @@ export const GLYPHS: Record<string, GlyphShape[]> = {
 		],
 		["circle", { cx: "12", cy: "12", r: "3" }],
 	],
+	Share: [
+		["path", { d: "M12 2v13" }],
+		["path", { d: "m16 6-4-4-4 4" }],
+		["path", { d: "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" }],
+	],
 	Shield: [
 		[
 			"path",
@@ -704,6 +726,13 @@ export const GLYPHS: Record<string, GlyphShape[]> = {
 		["path", { d: "m18 22-2-3" }],
 		["path", { d: "M8 15h.01" }],
 		["path", { d: "M16 15h.01" }],
+	],
+	Trash2: [
+		["path", { d: "M10 11v6" }],
+		["path", { d: "M14 11v6" }],
+		["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" }],
+		["path", { d: "M3 6h18" }],
+		["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" }],
 	],
 	TriangleAlert: [
 		[

@@ -13,6 +13,7 @@
 	},
 	"common": {
 		"cancel": "Cancelar",
+		"more": "Mais ações",
 		"undo": "Desfazer",
 		"dismiss": "Dispensar",
 		"retry": "Tentar de novo",
@@ -408,7 +409,8 @@
 		"paid": "pagou",
 		"addedBy": "{name} adicionou isto. Só essa pessoa pode alterar.",
 		"delete": "Excluir",
-		"makeRecurring": "Tornar recorrente"
+		"makeRecurring": "Tornar recorrente",
+		"more": "Mais ações"
 	},
 	"connect": {
 		"title": "Conecte-se a um servidor",

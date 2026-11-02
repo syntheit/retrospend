@@ -19,6 +19,7 @@ import {
 	strokeBorder,
 } from "@expo/ui/swift-ui/modifiers";
 import { useTheme } from "@/theme";
+import { MENU_SYMBOL } from "./menuIcons";
 import { NativeHost } from "./NativeHost";
 import { useChromeTextSize } from "./Text";
 import type { MenuProps } from "./types";
@@ -201,6 +202,7 @@ export function Menu({
 								label={item.label}
 								onPress={item.onPress}
 								role={item.destructive ? "destructive" : undefined}
+								systemImage={item.icon && MENU_SYMBOL[item.icon]}
 							/>
 						))}
 					</SwiftMenu>
@@ -262,6 +264,7 @@ export function Menu({
 						label={item.label}
 						onPress={item.onPress}
 						role={item.destructive ? "destructive" : undefined}
+						systemImage={item.icon && MENU_SYMBOL[item.icon]}
 					/>
 				))}
 			</SwiftMenu>

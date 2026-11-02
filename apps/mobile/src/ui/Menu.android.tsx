@@ -124,7 +124,7 @@ export function Menu({
 				justifyContent: "center",
 			}}
 		>
-			<Glyph color={color.fg} name="Ellipsis" size={size.icon.phone} />
+			<Glyph color={color.fg} name="EllipsisVertical" size={size.icon.phone} />
 		</Pressable>
 	) : heading ? (
 		<Pressable

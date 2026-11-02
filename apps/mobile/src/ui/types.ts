@@ -6,6 +6,7 @@
 import type { ReactElement } from "react";
 import type { Face } from "./Avatar";
 import type { GlyphName } from "./Glyph";
+import type { MenuIcon } from "./menuIcons";
 
 /** The platform sheet around the content Sheet lays out (SheetFrame). */
 export interface SheetFrameProps {
@@ -26,6 +27,12 @@ export interface MenuItem {
 	label: string;
 	onPress: () => void;
 	destructive?: boolean;
+	/**
+	 * A glyph before the label: the action's own mark (repeat, trash). The iOS
+	 * system menu draws its SF Symbol, Android the lucide glyph. Identity marks
+	 * (faces, categories) use `lead` instead.
+	 */
+	icon?: MenuIcon;
 	/**
 	 * An identity mark before the label: a face, a bare category glyph or a
 	 * cover (GUIDELINE 8), for filter menus of people, categories and

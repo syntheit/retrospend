@@ -1,3 +1,4 @@
+import type { MenuIcon } from "@/ui/menuIcons";
 import type { SwipeAction } from "@/ui/SwipeRow";
 import type { MenuItem } from "@/ui/types";
 import type { Account } from "./source";
@@ -19,6 +20,15 @@ export interface AccountRowActions {
 	leading: SwipeAction;
 	trailing: SwipeAction;
 }
+
+/** The mark each action leads with in a menu. */
+export const ACCOUNT_ICON = {
+	update: undefined,
+	edit: "Pencil",
+	reopen: "ArchiveRestore",
+	close: "Archive",
+	delete: "Trash2",
+} as const satisfies Record<AccountAction, MenuIcon | undefined>;
 
 /** The actions of an account's menu, in order. */
 export function actionsOf(account: Target): AccountAction[] {

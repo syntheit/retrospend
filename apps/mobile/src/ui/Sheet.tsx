@@ -11,6 +11,7 @@ import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { Button } from "./Button";
 import { Glyph } from "./Glyph";
+import { Menu } from "./Menu";
 import { SheetFrame } from "./SheetFrame";
 import {
 	BIG_TEXT_SCALE,
@@ -22,6 +23,7 @@ import {
 	SheetContext,
 } from "./sheetContext";
 import { Text } from "./Text";
+import type { MenuItem } from "./types";
 
 /**
  * The size of a full-height body (a scrolling list, the composer) in a sheet
@@ -92,6 +94,11 @@ interface SheetProps {
 	 * sheet shows facts; pressing it opens what changes them (R2, R3).
 	 */
 	edit?: { label: string; onPress: () => void };
+	/**
+	 * A view sheet's overflow menu, after the pencil: the secondary actions and
+	 * Delete last (the same place a detail page's header keeps them).
+	 */
+	menu?: { label: string; items: MenuItem[] };
 	/**
 	 * A sheet of cards (the composer): the page color, so the surface cards on
 	 * it read as cards, the way iOS groups a form. Default: the surface.
@@ -210,6 +217,7 @@ export function Sheet({
 	footer,
 	footerApart = false,
 	edit,
+	menu,
 	grouped = false,
 	onBack,
 	backLabel,
@@ -301,6 +309,14 @@ export function Sheet({
 						{title ?? ""}
 					</Text>
 					{edit ? <EditItem label={edit.label} onPress={edit.onPress} /> : null}
+					{menu && menu.items.length > 0 ? (
+						<Menu
+							accessibilityLabel={menu.label}
+							icon
+							items={menu.items}
+							label={menu.label}
+						/>
+					) : null}
 					{way === "none" ? null : <DismissItem kind={way} onPress={onClose} />}
 				</View>
 			) : null}
