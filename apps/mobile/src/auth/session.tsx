@@ -19,12 +19,17 @@ import {
 	useState,
 } from "react";
 import { useServerConnection } from "@/auth/server-connection";
-import { createReadCache, type ReadCache } from "@/data/cache";
+import {
+	createReadCache,
+	type ReadCache,
+	STICKY_CACHE_NAMES,
+} from "@/data/cache";
 import { newClientId } from "@/data/ids";
 import { createOutbox, type Outbox } from "@/data/outbox";
 import { createSqliteStore } from "@/data/sqlite-store";
 import { getErrorLog } from "@/features/feedback/runtime";
 import { sweepExports } from "@/features/settings/security/exportFiles";
+import { appBuild } from "@/lib/appVersion";
 import { createPushControl, forgetServerPush } from "@/push/control";
 import { type AuthApi, createAuthApi, type SignInStep } from "./auth-api";
 import { isSessionEnded } from "./errors";
@@ -66,6 +71,11 @@ interface SessionValue {
 
 const SessionContext = createContext<SessionValue | null>(null);
 const store = createSqliteStore();
+// The account's read cache answers only with what this build wrote (data/cache.ts).
+const CACHE_BINDING = {
+	build: appBuild().build,
+	sticky: STICKY_CACHE_NAMES,
+};
 
 /** Push for the account that is signed in, for the steps that end its session. */
 function pushOf(
@@ -106,7 +116,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		if (!baseUrl || !meId) return null;
 		const scope = `${baseUrl}|${meId}`;
 		return {
-			cache: createReadCache(store, scope),
+			cache: createReadCache(store, scope, undefined, CACHE_BINDING),
 			outbox: createOutbox(store, scope),
 		};
 	}, [baseUrl, meId]);

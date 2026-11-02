@@ -20,6 +20,7 @@ export interface HomeData {
 }
 
 export const HOME_CACHE: CacheKey = { name: "home", schema: 3 };
+// Per-phone choice, kept across builds (STICKY_CACHE_NAMES in data/cache.ts).
 export const SNOOZE_CACHE: CacheKey = { name: "home.later", schema: 1 };
 export const RECENT_COUNT = 5;
 
