@@ -120,6 +120,12 @@ export interface TopBarAction {
 	onPress: () => void;
 	/** A count shown on the glyph (unread notifications); none when 0 or absent. */
 	badge?: number;
+	/**
+	 * Android's collapsing bar: the icon appears only once the bar has
+	 * collapsed (search, while a search bar sits on the page). Ignored
+	 * elsewhere.
+	 */
+	revealOnCollapse?: boolean;
 }
 
 export interface TopBarProps {
@@ -139,6 +145,12 @@ export interface TopBarProps {
 	account?: Face;
 	accountLabel?: string;
 	onAccountPress?: () => void;
+	/**
+	 * Android's collapsing bar: a row pinned under the bar that rides with it
+	 * (People's tabs). Its height is the one the tab stack gave the provider
+	 * (TabStack `footer`). Ignored elsewhere.
+	 */
+	footer?: ReactElement;
 }
 
 export interface RowMenuProps {
