@@ -6,7 +6,14 @@ import { announceEntryChange } from "@/features/entry/events";
 import { useToast } from "@/ui/Toast";
 
 /** Which family of v1 writes an undo token belongs to. */
-export type UndoFamily = "budget" | "accounts" | "transfers" | "income";
+export type UndoFamily =
+	| "budget"
+	| "accounts"
+	| "transfers"
+	| "income"
+	| "recurringConfirm"
+	| "recurringSkip"
+	| "recurringDelete";
 
 /**
  * A money write ends in a toast that undoes it (R15). The token is the
@@ -34,6 +41,12 @@ export function useUndoToast(family: UndoFamily) {
 					await api.transfers.undo({ token }, options);
 				} else if (family === "income") {
 					await api.income.undo({ token }, options);
+				} else if (family === "recurringConfirm") {
+					await api.recurring.undo({ token }, options);
+				} else if (family === "recurringSkip") {
+					await api.recurring.undoSkip({ token }, options);
+				} else if (family === "recurringDelete") {
+					await api.recurring.undoDelete({ token }, options);
 				} else await api.accounts.undo({ token }, options);
 				return true;
 			} catch {
