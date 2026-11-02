@@ -9,8 +9,6 @@ import { Text } from "./Text";
  * 56 point control. It does not take text: pressing it opens the expanded
  * search view (SearchView), the way the M3 search bar expands. A screen reader
  * hears a button named by the placeholder ("Search expenses").
- *
- * Provisional: a new primitive (M3 on Android), waiting for the owner's sign-off.
  */
 export function SearchPill({
 	label,

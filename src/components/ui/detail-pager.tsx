@@ -16,7 +16,7 @@ export type DetailTab = {
 };
 
 /**
- * DetailPager (provisional, composer design D): a fixed grid of equal
+ * DetailPager (composer design D): a fixed grid of equal
  * icon-over-word tabs and one panel per tab. On a phone the panels sit in a
  * snap-scrolling row (swipe or pick a tab). From md up the panels share one
  * cell and slide: the chosen one rests, the others wait to its left or right

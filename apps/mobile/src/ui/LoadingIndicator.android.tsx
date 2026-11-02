@@ -45,8 +45,6 @@ function useReducedMotion(): boolean {
  *
  * Reduced motion: the shape does not turn. A plain dot fades in and out
  * instead (opacity only, §11).
- *
- * Provisional primitive (needs the owner's sign-off).
  */
 export function LoadingIndicator({
 	size = 24,

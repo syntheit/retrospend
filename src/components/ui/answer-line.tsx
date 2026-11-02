@@ -14,7 +14,7 @@ export type AnswerPart = {
 };
 
 /**
- * AnswerLine (provisional, composer design D): the answers so far as plain
+ * AnswerLine (composer design D): the answers so far as plain
  * text joined by " · ". It wraps (two lines on a phone) and each part is a
  * button that opens its panel.
  */
