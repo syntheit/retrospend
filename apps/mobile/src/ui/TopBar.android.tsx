@@ -1,6 +1,11 @@
 import { Stack } from "expo-router";
 import { View } from "react-native";
+import { useTranslations } from "use-intl";
+import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
+import { singleAdd } from "@/layout/destinations";
+import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
+import { AddPill } from "./AddPill";
 import { AccountButton } from "./AccountButton";
 import { useCollapsingBar } from "./barScroll";
 import { CollapsingBar, RevealOnCollapse } from "./CollapsingBar";
@@ -28,14 +33,31 @@ export function TopBar({
 	onAccountPress,
 	footer,
 }: TopBarProps) {
+	const t = useTranslations("mobile.composer");
 	const { color, space } = useTheme();
 	const inPair = useInPair();
 	const collapsing = useCollapsingBar() !== null;
-	const items = overflow ?? [];
-	const pageActions = actions ?? [];
-	const hasTrailing = items.length > 0 || pageActions.length > 0 || account;
+	const add = useOptionalAddEntry();
+	// A tablet has no floating button: Add is a pill in the toolbar, and a
+	// page's own add moves into its overflow (one plus per header).
+	const { tablet } = useLayoutClass();
+	const showAdd = tablet && add !== null;
+	const { actions: pageActions, overflow: items } = singleAdd(
+		showAdd ? "toolbar" : "floating",
+		actions ?? [],
+		overflow ?? [],
+	);
+	const hasTrailing =
+		showAdd || items.length > 0 || pageActions.length > 0 || account;
 	const buttons = () => (
 		<View style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}>
+			{showAdd ? (
+				<AddPill
+					label={t("addExpense")}
+					onPress={() => add?.open("expense")}
+					text={t("add")}
+				/>
+			) : null}
 			{pageActions.map((action) =>
 				action.revealOnCollapse && collapsing ? (
 					<RevealOnCollapse key={action.id}>
