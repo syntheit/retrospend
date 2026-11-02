@@ -14,6 +14,7 @@ COPY prisma/ ./prisma/
 # Copy prisma.config.ts
 COPY prisma.config.ts ./
 COPY scripts/ ./scripts/
+COPY patches/ ./patches/
 
 # Install the web app and the workspace packages it uses; other workspace
 # projects (apps/mobile) stay out of the image.
