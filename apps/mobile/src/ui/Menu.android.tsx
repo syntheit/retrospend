@@ -1,15 +1,10 @@
-import {
-	Box,
-	Text as ComposeText,
-	DropdownMenu,
-	TextButton,
-} from "@expo/ui/jetpack-compose";
+import { Box, Text as ComposeText, TextButton } from "@expo/ui/jetpack-compose";
 import { semantics, size as sized } from "@expo/ui/jetpack-compose/modifiers";
 import { type ReactNode, useState } from "react";
 import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Chip, ChipChevron } from "./Chip";
-import { DropdownItems } from "./DropdownItems";
+import { DropdownPanel } from "./DropdownItems";
 import { Glyph } from "./Glyph";
 import { NativeHost } from "./NativeHost";
 import { Text } from "./Text";
@@ -28,24 +23,17 @@ function Dropdown({
 	items: MenuItem[];
 	trigger: ReactNode;
 }) {
-	const { color } = useTheme();
 	return (
-		<DropdownMenu
-			color={color.surface}
-			expanded={open}
-			onDismissRequest={() => setOpen(false)}
-		>
-			<DropdownMenu.Trigger>{trigger}</DropdownMenu.Trigger>
-			<DropdownMenu.Items>
-				<DropdownItems
-					items={items}
-					onPick={(item) => {
-						setOpen(false);
-						item.onPress();
-					}}
-				/>
-			</DropdownMenu.Items>
-		</DropdownMenu>
+		<DropdownPanel
+			items={items}
+			onDismiss={() => setOpen(false)}
+			onPick={(item) => {
+				setOpen(false);
+				item.onPress();
+			}}
+			open={open}
+			trigger={trigger}
+		/>
 	);
 }
 
@@ -179,7 +167,13 @@ export function Menu({
 				{trigger}
 				<View
 					pointerEvents="none"
-					style={{ position: "absolute", left: 0, bottom: 0 }}
+					// The overflow mark hangs its menu from the trailing edge (M3 aligns
+					// the menu's end with the icon button's); the rest from the leading.
+					style={{
+						position: "absolute",
+						bottom: 0,
+						...(icon ? { right: 0 } : { left: 0 }),
+					}}
 				>
 					<NativeHost>
 						<Dropdown

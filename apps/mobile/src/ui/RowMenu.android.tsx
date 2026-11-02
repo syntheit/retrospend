@@ -1,10 +1,10 @@
-import { Box, DropdownMenu } from "@expo/ui/jetpack-compose";
+import { Box } from "@expo/ui/jetpack-compose";
 import { size as sized } from "@expo/ui/jetpack-compose/modifiers";
 import { AndroidHaptics, performAndroidHapticsAsync } from "expo-haptics";
 import { useRef, useState } from "react";
 import { type HostInstance, Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
-import { DropdownItems } from "./DropdownItems";
+import { DropdownPanel } from "./DropdownItems";
 import { NativeHost } from "./NativeHost";
 import { useTransient } from "./transient";
 import type { RowMenuProps } from "./types";
@@ -66,24 +66,16 @@ export function RowMenu({ items, children, onPress }: RowMenuProps) {
 					style={{ position: "absolute", left: at.x, top: at.y }}
 				>
 					<NativeHost>
-						<DropdownMenu
-							color={color.surface}
-							expanded
-							onDismissRequest={close}
-						>
-							<DropdownMenu.Trigger>
-								<Box modifiers={[sized(1, 1)]} />
-							</DropdownMenu.Trigger>
-							<DropdownMenu.Items>
-								<DropdownItems
-									items={items}
-									onPick={(item) => {
-										close();
-										item.onPress();
-									}}
-								/>
-							</DropdownMenu.Items>
-						</DropdownMenu>
+						<DropdownPanel
+							items={items}
+							onDismiss={close}
+							onPick={(item) => {
+								close();
+								item.onPress();
+							}}
+							open
+							trigger={<Box modifiers={[sized(1, 1)]} />}
+						/>
 					</NativeHost>
 				</View>
 			)}
