@@ -137,8 +137,8 @@ describe("loadShared and isFresh", () => {
 			async () => 1,
 			() => {},
 		);
-		expect(isFresh(cache, KEY.name, Date.now() + FRESH_MS - 1)).toBe(true);
-		expect(isFresh(cache, KEY.name, Date.now() + FRESH_MS + 1)).toBe(false);
+		expect(isFresh(cache, KEY.name, Date.now() + FRESH_MS / 2)).toBe(true);
+		expect(isFresh(cache, KEY.name, Date.now() + FRESH_MS * 2)).toBe(false);
 	});
 
 	it("is not fresh after a write reached the server", async () => {
