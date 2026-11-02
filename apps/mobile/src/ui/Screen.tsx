@@ -1,9 +1,9 @@
-import type { ReactNode } from "react";
-import { Platform, RefreshControl } from "react-native";
+import type { ReactElement, ReactNode } from "react";
+import { type FlatListProps, Platform, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ADD_CONTROL } from "@/layout/destinations";
 import { useTheme } from "@/theme";
-import { BarScrollView, useBarInset } from "./barScroll";
+import { BarFlatList, BarScrollView, useBarInset } from "./barScroll";
 import { useSidesCleared } from "./ListDetail";
 import { useTabBarCover } from "./tabBarMetrics";
 
@@ -51,9 +51,7 @@ export function Screen({
 	onRefresh?: () => void;
 }) {
 	const { color, space } = useTheme();
-	const cleared = useSidesCleared();
 	const inset = useAddInset();
-	const cover = useTabBarCover();
 	const barInset = useBarInset();
 	const body = (
 		<BarScrollView
@@ -85,10 +83,19 @@ export function Screen({
 			{children}
 		</BarScrollView>
 	);
-	// The native SafeAreaView clears only what covers it: the iPad sidebar that
-	// floats over the content, a landscape notch, Android's bars. A screen in
-	// the detail pane is cleared by its ListDetail already.
-	if (cleared && Platform.OS !== "android") return body;
+	return <ScreenFrame>{body}</ScreenFrame>;
+}
+
+/**
+ * The native SafeAreaView clears only what covers it: the iPad sidebar that
+ * floats over the content, a landscape notch, Android's bars. A screen in
+ * the detail pane is cleared by its ListDetail already.
+ */
+function ScreenFrame({ children }: { children: ReactNode }) {
+	const { color } = useTheme();
+	const cleared = useSidesCleared();
+	const cover = useTabBarCover();
+	if (cleared && Platform.OS !== "android") return <>{children}</>;
 	return (
 		<SafeAreaView
 			edges={
@@ -100,7 +107,52 @@ export function Screen({
 			}
 			style={{ flex: 1, backgroundColor: color.bg }}
 		>
-			{body}
+			{children}
 		</SafeAreaView>
+	);
+}
+
+/**
+ * A Screen whose body is a virtualized list: the same frame, background,
+ * bottom room and pull to refresh, with rows mounted as they scroll. Put the
+ * content above the rows in `ListHeaderComponent`.
+ */
+export function ScreenList<T>({
+	refreshing = false,
+	onRefresh,
+	...props
+}: Omit<FlatListProps<T>, "refreshControl" | "refreshing" | "onRefresh"> & {
+	refreshing?: boolean;
+	onRefresh?: () => void;
+}): ReactElement {
+	const { color, space } = useTheme();
+	const inset = useAddInset();
+	const barInset = useBarInset();
+	return (
+		<ScreenFrame>
+			<BarFlatList
+				contentContainerStyle={{ paddingBottom: space[8] + inset }}
+				contentInsetAdjustmentBehavior="automatic"
+				initialNumToRender={14}
+				keyboardShouldPersistTaps="handled"
+				maxToRenderPerBatch={10}
+				refreshControl={
+					onRefresh ? (
+						<RefreshControl
+							colors={[color.fg2]}
+							onRefresh={onRefresh}
+							progressBackgroundColor={color.surface}
+							progressViewOffset={barInset}
+							refreshing={refreshing}
+							tintColor={color.fg2}
+						/>
+					) : undefined
+				}
+				removeClippedSubviews={Platform.OS === "android"}
+				style={{ flex: 1, backgroundColor: color.bg }}
+				windowSize={7}
+				{...props}
+			/>
+		</ScreenFrame>
 	);
 }

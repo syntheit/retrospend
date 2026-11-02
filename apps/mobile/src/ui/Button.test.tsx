@@ -37,6 +37,7 @@ jest.mock("react-native/Libraries/Utilities/useWindowDimensions", () => ({
 		fontScale: fontScale.current,
 	}),
 }));
+jest.mock("./fontScale", () => ({ useFontScale: () => fontScale.current }));
 jest.mock("react-native/Libraries/Utilities/useColorScheme", () => ({
 	__esModule: true,
 	default: () => "light",
