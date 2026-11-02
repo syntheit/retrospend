@@ -1,4 +1,5 @@
 import type { RetrospendClient } from "@retrospend/api-client";
+import { Text } from "react-native";
 import {
 	act,
 	disabled,
@@ -100,7 +101,9 @@ function Sheet({
 			api.accounts.previewClose(body),
 		write: (api: RetrospendClient, body: { id: string }, key: string) =>
 			api.accounts.close(body, { context: { idempotencyKey: key } }),
-		changes: ({ status }: { status: string }) => <>{`dry run ${status}`}</>,
+		changes: ({ status }: { status: string }) => (
+			<Text>{`dry run ${status}`}</Text>
+		),
 	};
 	return destructive ? (
 		<WriteSheet

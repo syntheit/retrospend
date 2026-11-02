@@ -21,12 +21,20 @@ jest.mock(
 	"@/ui/Segmented",
 	() => require("../../../test/native").segmentedMock,
 );
-const mockFrame: { props: Record<string, any> } = { props: {} };
+interface FrameProps {
+	header: unknown;
+	panels: unknown;
+	add: { label: string; off: boolean; onPress: () => void };
+	keypad: { onChange: (text: string) => void };
+	summary: { text: string }[];
+	tabs: { key: string }[];
+}
+const mockFrame = { props: {} as FrameProps };
 jest.mock("@/features/entry/ComposerFrame", () => {
 	const { Pressable } = require("react-native");
 	return {
 		SYSTEM_PAD_SCALE: 1.5,
-		ComposerFrame: (props: Record<string, any>) => {
+		ComposerFrame: (props: FrameProps) => {
 			mockFrame.props = props;
 			return (
 				<>
@@ -112,7 +120,7 @@ describe("Move money (envelope)", () => {
 		);
 		// Nothing to save until there is an amount and a dry run.
 		expect(disabled(tree, "Move")).toBe(true);
-		expect(mockFrame.props.summary[0].text).toBe("To assign → Food");
+		expect(mockFrame.props.summary[0]?.text).toBe("To assign → Food");
 		typeAmount("25");
 		await wait(400);
 		const preview = calls.find((c) => c.route === "previewAssign");
@@ -123,7 +131,7 @@ describe("Move money (envelope)", () => {
 		await pressAsync(tree, "Move");
 		const write = calls.find((c) => c.route === "assign");
 		expect(write?.input).toEqual(preview?.input);
-		expect(write?.key).toBe((write?.input as { batchId: string }).batchId);
+		expect(write?.key).toBe((write?.input as { batchId?: string })?.batchId);
 		expect(onDone).toHaveBeenCalledTimes(1);
 		expect(onClose).toHaveBeenCalledTimes(1);
 		expect(lastToast().message).toMatch(
@@ -179,6 +187,6 @@ describe("Move to Wealth (shared frame)", () => {
 			"changes",
 		]);
 		pressStarting(tree, "Food,");
-		expect(mockFrame.props.summary[0].text).toBe("Food → Savings");
+		expect(mockFrame.props.summary[0]?.text).toBe("Food → Savings");
 	});
 });
