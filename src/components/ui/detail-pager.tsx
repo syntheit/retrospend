@@ -134,6 +134,8 @@ export function DetailPager({
 							i > index && "md:translate-x-full md:motion-reduce:translate-x-0",
 						)}
 						id={`panel-${t.id}`}
+						// The waiting panels leave the tab order and the accessibility tree at once, while the chosen one is still sliding in.
+						inert={t.id !== active}
 						key={t.id}
 						role="tabpanel"
 					>
