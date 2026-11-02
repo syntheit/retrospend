@@ -38,7 +38,7 @@ test("Activity row: right-click and Shift+F10 open the menu", async ({
 }) => {
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await gotoReady(page, "/activity");
-	const row = page.getByRole("row").nth(1);
+	const row = page.getByRole("row").filter({ hasText: "Recarga SUBE" });
 	await row.click({ button: "right" });
 	const menu = page.getByRole("menu");
 	await expect(menu).toBeVisible();
