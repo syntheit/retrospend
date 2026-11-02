@@ -2591,7 +2591,15 @@
 		"errorDetail": "Vérifie ta connexion et réessaie.",
 		"showMore": "Afficher plus",
 		"markError": "Impossible d'enregistrer. Réessaie.",
-		"moreError": "Impossible d'en charger plus. Réessaie."
+		"moreError": "Impossible d'en charger plus. Réessaie.",
+		"filterLabel": "Afficher",
+		"filter": {
+			"all": "Toutes",
+			"expenses": "Dépenses",
+			"settlements": "Paiements",
+			"projects": "Projets"
+		},
+		"noMatches": "Rien ici"
 	},
 	"recurring": {
 		"title": "Dépenses récurrentes",

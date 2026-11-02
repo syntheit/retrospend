@@ -52,9 +52,10 @@ export const env = createEnv({
 		FCM_SERVICE_ACCOUNT: z.string().optional(),
 		FCM_SERVICE_ACCOUNT_FILE: z.string().optional(),
 
-		// SHA-256 fingerprint(s) of the Android app's signing certificate,
-		// comma-separated. Served in /.well-known/assetlinks.json so the
-		// phone's password manager can trust the app for this domain.
+		// More SHA-256 fingerprint(s) of the Android app's signing certificate,
+		// comma-separated, besides the release key. Served in
+		// /.well-known/assetlinks.json so the phone trusts the app for this
+		// domain (app links, password manager autofill).
 		ANDROID_APP_CERT_SHA256: z.string().optional(),
 	},
 

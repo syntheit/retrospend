@@ -52,6 +52,10 @@ jest.mock("@/ui/EmptyState", () => ({
 	EmptyState: (props: Json) =>
 		require("react").createElement("EmptyState", props),
 }));
+jest.mock("@/ui/Segmented", () => ({
+	Segmented: (props: Json) =>
+		require("react").createElement("Segmented", props),
+}));
 jest.mock("@/ui/Skeleton", () => ({
 	SkeletonRows: () => require("react").createElement("SkeletonRows"),
 }));
@@ -209,6 +213,40 @@ describe("NotificationsScreen", () => {
 		expect(headerActions().map((a) => a.id)).toEqual(["markAll", "settings"]);
 		fire(tree.root.findByType("LinkButton"), "onPress");
 		expect(mockShowMore).toHaveBeenCalled();
+		act(() => tree.unmount());
+	});
+
+	it("filters by kind like the web inbox and says when a filter is empty", () => {
+		inbox({
+			items: [
+				note({ id: "a" }),
+				note({ id: "b", type: "PERIOD_CLOSED", data: { projectId: "p1" } }),
+			],
+		});
+		const tree = render();
+		const segmented = tree.root.findByType("Segmented");
+		const options = segmented.props.options as { value: string }[];
+		expect(options.map((o) => o.value)).toEqual([
+			"all",
+			"expenses",
+			"settlements",
+			"projects",
+		]);
+		expect(tree.root.findAllByType("NotificationRow")).toHaveLength(2);
+		act(() => (segmented.props.onChange as (v: string) => void)("projects"));
+		expect(tree.root.findAllByType("NotificationRow")).toHaveLength(1);
+		act(() => (segmented.props.onChange as (v: string) => void)("settlements"));
+		expect(tree.root.findAllByType("NotificationRow")).toHaveLength(0);
+		expect(tree.root.findByType("EmptyState").props.title).toBe(
+			"mobile.notifications.noMatches",
+		);
+		act(() => tree.unmount());
+	});
+
+	it("shows no filter while there is nothing to filter", () => {
+		inbox();
+		const tree = render();
+		expect(tree.root.findAllByType("Segmented")).toHaveLength(0);
 		act(() => tree.unmount());
 	});
 

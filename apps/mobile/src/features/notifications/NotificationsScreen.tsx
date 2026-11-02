@@ -1,4 +1,5 @@
 import { router, Stack } from "expo-router";
+import { useState } from "react";
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { DayHeader, useDayLabel } from "@/features/activity/DayHeader";
@@ -6,11 +7,19 @@ import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
 import { LinkButton, ListGroup, StaleNote } from "@/ui/List";
 import { Screen } from "@/ui/Screen";
+import { Segmented } from "@/ui/Segmented";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { TopBarAction } from "@/ui/TopBarAction";
 import { NotificationRow } from "./NotificationRow";
 import { openTarget } from "./openTarget";
-import { groupByDay, leadOf, targetOf } from "./rules";
+import {
+	filterNotifications,
+	groupByDay,
+	leadOf,
+	NOTIFICATION_FILTERS,
+	type NotificationFilter,
+	targetOf,
+} from "./rules";
 import type { InboxNotification } from "./source";
 import { useInbox } from "./useInbox";
 
@@ -27,6 +36,7 @@ export function NotificationsScreen() {
 	const dayLabel = useDayLabel();
 	const inbox = useInbox();
 	const { data, state } = inbox;
+	const [filter, setFilter] = useState<NotificationFilter>("all");
 
 	const open = (n: InboxNotification) => {
 		if (!n.isRead) void inbox.markRead([n.id]);
@@ -92,7 +102,7 @@ export function NotificationsScreen() {
 		);
 	}
 
-	const days = groupByDay(data.items, new Date());
+	const days = groupByDay(filterNotifications(data.items, filter), new Date());
 	return (
 		<>
 			{header}
@@ -104,8 +114,25 @@ export function NotificationsScreen() {
 				{state.status === "ready" ? (
 					<StaleNote since={state.staleSince} />
 				) : null}
+				{data.items.length > 0 ? (
+					<View style={{ paddingHorizontal: space[4], paddingBottom: space[2] }}>
+						<Segmented<NotificationFilter>
+							accessibilityLabel={t("filterLabel")}
+							onChange={setFilter}
+							options={NOTIFICATION_FILTERS.map((value) => ({
+								value,
+								label: t(`filter.${value}`),
+							}))}
+							stretch
+							value={filter}
+						/>
+					</View>
+				) : null}
 				{days.length === 0 ? (
-					<EmptyState detail={t("emptyDetail")} title={t("empty")} />
+					<EmptyState
+						detail={data.items.length === 0 ? t("emptyDetail") : undefined}
+						title={data.items.length === 0 ? t("empty") : t("noMatches")}
+					/>
 				) : (
 					days.map((day) => (
 						<View key={day.day}>
