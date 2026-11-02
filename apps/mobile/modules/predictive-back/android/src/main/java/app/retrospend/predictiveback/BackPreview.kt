@@ -253,6 +253,7 @@ internal class BackPreview(private val activity: Activity) {
         if (trailing > 0f) Screen.StackAnimation.SLIDE_FROM_RIGHT
         else Screen.StackAnimation.SLIDE_FROM_LEFT
     }
+    val countBefore = (leaving?.container as? ScreenStack)?.screenCount ?: 0
     // The stack pops through JavaScript, as for a back key.
     @Suppress("DEPRECATION")
     host.onBackPressed()
@@ -284,8 +285,13 @@ internal class BackPreview(private val activity: Activity) {
         override fun run() {
           if (mine != gesture) return
           val elapsed = SystemClock.uptimeMillis() - started
+          // The pop happened once the screen left the stack's list (a sheet
+          // stays its top screen until its own dismissal ends, so the top
+          // screen alone would call a closing sheet stuck).
+          val stack = popped?.container as? ScreenStack
           val stuck =
-            popped != null && (popped.container as? ScreenStack)?.topScreen === popped
+            popped != null && stack != null && stack.topScreen === popped &&
+              stack.screenCount >= countBefore
           when {
             elapsed > WATCH_MS -> {
               restore()
