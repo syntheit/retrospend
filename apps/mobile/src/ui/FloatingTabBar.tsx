@@ -151,7 +151,6 @@ export function FloatingTabBar({
 								accessibilityLabel={tab.label}
 								accessibilityRole="tab"
 								accessibilityState={{ selected: on }}
-								android_ripple={{ color: color.brandSoft }}
 								key={tab.name}
 								onPress={() => {
 									if (!route) return;
