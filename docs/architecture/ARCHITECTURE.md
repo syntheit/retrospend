@@ -204,7 +204,7 @@ Preferred, for the same reason:
 ## Deploy shape
 
 - Two images, `synzeit/retrospend` and `synzeit/retrospend-sidecar`, plus `postgres:16-alpine`. See `docker-compose.example.yml`.
-- The web image is a four-stage `node:24-alpine` build. It installs only the web app's workspace dependencies, so mobile dependencies never enter it. It runs as a non-root user on port 1997.
+- The web image is a three-stage `node:24-alpine` build. It installs only the web app's workspace dependencies, so mobile dependencies never enter it. It runs as a non-root user on port 1997.
 - Runtime configuration comes from the environment, never baked into the image. Uploads and exports live on separate volumes.
 
 ## Decision log

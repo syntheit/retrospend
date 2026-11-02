@@ -43,8 +43,8 @@ Set these in `.env`. Runtime settings are read at start; nothing is baked into t
 | `POSTGRES_DB_NAME` | **Yes** | `retrospend` | Database name |
 | `DATABASE_URL` | **Yes** | | Full PostgreSQL connection string |
 | `WORKER_API_KEY` | **Yes** | | Shared secret between app, worker, and importer: `openssl rand -base64 32` |
-| `NEXT_PUBLIC_SHOW_LANDING_PAGE` | No | `false` | Show public landing page at `/` |
-| `NEXT_PUBLIC_ENABLE_LEGAL_PAGES` | No | `false` | Show `/privacy` and `/terms` |
+| `SHOW_LANDING_PAGE` | No | `false` | Show public landing page at `/` |
+| `ENABLE_LEGAL_PAGES` | No | `true` | Show `/privacy` and `/terms` |
 | `UNSUBSCRIBE_SECRET` | No | | Secret for signed one-click unsubscribe links in emails |
 | `SMTP_HOST` | No | | SMTP server hostname |
 | `SMTP_PORT` | No | | SMTP port (e.g. `587`) |
@@ -93,7 +93,7 @@ What is pushed: a shared expense added or changed on a split you are on, a payme
 
 The sidecar service handles scheduled database backups on the schedule set by `BACKUP_CRON` (default: daily at 3 AM UTC). Retention is controlled by `BACKUP_RETENTION_DAYS` (default: 30).
 
-Backup files are written inside the sidecar container. To persist them on the host, mount a volume to `/app/backups`.
+Backup files are written inside the sidecar container. They go to `BACKUP_DIR` (default `/backups`), which the example compose file mounts as the `backup_data` volume.
 
 ## Updating
 
