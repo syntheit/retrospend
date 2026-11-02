@@ -53,6 +53,8 @@ jest.mock("@/ui/List", () => {
 		StaleNote: () => null,
 		ListGroup: (props: { children: unknown }) =>
 			createElement("ListGroup", null, props.children),
+		ListGroupItem: (props: { children: unknown }) =>
+			createElement("ListGroupItem", null, props.children),
 		ListRow: (props: {
 			lead: unknown;
 			title: unknown;
@@ -70,6 +72,26 @@ jest.mock("@/ui/List", () => {
 	};
 });
 jest.mock("@/ui/Screen", () => ({
+	ScreenList: (props: {
+		data: unknown[];
+		renderItem: (arg: { item: unknown; index: number }) => unknown;
+		ListHeaderComponent: unknown;
+		ListEmptyComponent: unknown;
+	}) =>
+		require("react").createElement(
+			"Screen",
+			null,
+			props.ListHeaderComponent,
+			props.data.length === 0
+				? props.ListEmptyComponent
+				: props.data.map((item, index) =>
+						require("react").createElement(
+							require("react").Fragment,
+							{ key: index },
+							props.renderItem({ item, index }),
+						),
+					),
+		),
 	Screen: (props: { children: unknown }) =>
 		require("react").createElement("Screen", null, props.children),
 }));
