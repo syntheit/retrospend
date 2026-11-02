@@ -38,7 +38,7 @@ export default function HomeScreen() {
 	const { api } = useSession();
 	const fetch = useMemo(() => (api ? fetchHome(api) : null), [api]);
 	const { state, reload } = useCachedRead(HOME_CACHE, fetch);
-	const rowOps = useHomeRowOps();
+	const { ops: rowOps, sheet: recurringSheet } = useHomeRowOps();
 	// Entries still waiting on this phone join Recent, as they join Activity.
 	const pending = usePendingRows(
 		state.status === "ready" && !state.refreshing && state.staleSince === null
@@ -149,6 +149,7 @@ export default function HomeScreen() {
 				]}
 				title={t("title")}
 			/>
+			{recurringSheet}
 			{showConverter ? (
 				<ConverterSheet
 					onClose={() => setConverter(false)}

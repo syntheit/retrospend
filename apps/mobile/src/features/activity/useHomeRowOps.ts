@@ -1,9 +1,11 @@
-import { useMemo, useRef } from "react";
+import { type ReactNode, useMemo, useRef } from "react";
 import { useTranslations } from "use-intl";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
+import { announceEntryChange } from "@/features/entry/events";
 import { useDeleteEntry } from "@/features/entry/useDeleteEntry";
 import { useDeletePending } from "@/features/entry/useDeletePending";
 import type { RowOps } from "./ActivityRow";
+import { useRowRecurring } from "./useRowRecurring";
 
 /**
  * The long-press actions of a row outside Activity (Home's Recent): Edit and
@@ -13,21 +15,26 @@ import type { RowOps } from "./ActivityRow";
  * edits and deletes where it waits. The object is stable, so memoized rows
  * keep it.
  */
-export function useHomeRowOps(): RowOps {
+export function useHomeRowOps(): {
+	ops: RowOps;
+	sheet: ReactNode;
+} {
 	const te = useTranslations("mobile.entry");
 	const ta = useTranslations("mobile.activity");
 	const add = useOptionalAddEntry();
 	const deletePending = useDeletePending();
 	const deleteOne = useDeleteEntry();
-	const latest = useRef({ add, deletePending, deleteOne });
-	latest.current = { add, deletePending, deleteOne };
+	const recurring = useRowRecurring(() => announceEntryChange());
+	const latest = useRef({ add, deletePending, deleteOne, recurring });
+	latest.current = { add, deletePending, deleteOne, recurring };
 	const canEdit = add !== null;
-	return useMemo<RowOps>(
+	const ops = useMemo<RowOps>(
 		() => ({
 			words: {
 				select: "",
 				edit: te("edit"),
 				categorize: "",
+				makeRecurring: te("makeRecurring"),
 				delete: ta("bulk.delete"),
 			},
 			canEdit,
@@ -38,6 +45,7 @@ export function useHomeRowOps(): RowOps {
 							item.entityId,
 							item.source === "shared" ? "shared" : undefined,
 						),
+			makeRecurring: (item) => latest.current.recurring.open(item),
 			remove: (item) =>
 				item.unsynced
 					? latest.current.deletePending({
@@ -53,4 +61,5 @@ export function useHomeRowOps(): RowOps {
 		}),
 		[te, ta, canEdit],
 	);
+	return { ops, sheet: recurring.sheet };
 }

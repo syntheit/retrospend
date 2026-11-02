@@ -1,4 +1,9 @@
 import { menuOf } from "@/ui/actionRegistry";
+import {
+	DETAIL_ORDER,
+	entryActionsOf,
+	ROW_ORDER,
+} from "./activity/entryActions";
 import { rowActions } from "./activity/rowActions";
 import {
 	CURRENCY_ACTIONS,
@@ -147,6 +152,7 @@ describe("activity registry", () => {
 		select: "Select",
 		edit: "Edit",
 		categorize: "Categorize",
+		makeRecurring: "Make recurring",
 		delete: "Delete",
 	};
 	const on = {
@@ -187,5 +193,28 @@ describe("activity registry", () => {
 			true,
 		);
 		expect(items.map((i) => i.id)).toEqual(["edit", "delete"]);
+	});
+});
+
+describe("entry registry", () => {
+	it("is Make recurring and Delete on the page, Delete last in the row", () => {
+		const all = {
+			edit: true,
+			categorize: true,
+			"make-recurring": true,
+			select: true,
+			delete: true,
+		};
+		expect(entryActionsOf(DETAIL_ORDER, all)).toEqual([
+			"make-recurring",
+			"delete",
+		]);
+		expect(entryActionsOf(ROW_ORDER, all)).toEqual([
+			"edit",
+			"categorize",
+			"make-recurring",
+			"select",
+			"delete",
+		]);
 	});
 });

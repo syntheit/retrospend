@@ -129,6 +129,7 @@ export interface RowOps {
 	select?(item: ActivityItem): void;
 	edit(item: ActivityItem): void;
 	categorize?(item: ActivityItem): void;
+	makeRecurring?(item: ActivityItem): void;
 	remove(item: ActivityItem): void;
 }
 
@@ -175,6 +176,9 @@ export const ActivityRow = memo(function ActivityRow({
 							edit: () => ops.edit(item),
 							categorize: ops.categorize
 								? () => ops.categorize?.(item)
+								: undefined,
+							makeRecurring: ops.makeRecurring
+								? () => ops.makeRecurring?.(item)
 								: undefined,
 							remove: () => ops.remove(item),
 						},

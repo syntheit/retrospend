@@ -14,9 +14,21 @@ const TICK_MS = 32;
 /** No host mounts while rows are still being requested (a scroll): the list must be quiet this long. */
 const QUIET_MS = 200;
 let lastAdd = 0;
+let scrolling = false;
+let scrollEnd = 0;
+
+/**
+ * A list is being dragged or is coasting: no host mounts until it has been
+ * still for QUIET_MS. The scroll primitives (barScroll) report this.
+ */
+export function scrollActive(on: boolean): void {
+	scrolling = on;
+	if (!on) scrollEnd = Date.now();
+}
 
 function step() {
-	if (Date.now() - lastAdd < QUIET_MS) {
+	const now = Date.now();
+	if (scrolling || now - lastAdd < QUIET_MS || now - scrollEnd < QUIET_MS) {
 		setTimeout(step, TICK_MS);
 		return;
 	}
