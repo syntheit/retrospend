@@ -368,6 +368,56 @@ describe("project writes", () => {
 		);
 	});
 
+	it("joins with an invite link as yourself, once", async () => {
+		const joiner = await arsUser();
+		const asJoiner = await asMobile(joiner.user.id);
+		const link = await expectBody<Link>(
+			await send("POST", `/projects/${trip}/magic-links`, asSofia, {
+				roleGranted: "CONTRIBUTOR",
+			}),
+			c.createMagicLink,
+			201,
+		);
+		const joined = await expectBody<{ projectId: string; alreadyMember: boolean }>(
+			await send("POST", "/projects/join", asJoiner, { linkId: link.id }),
+			c.joinWithInvite,
+		);
+		expect(joined).toEqual({ projectId: trip, alreadyMember: false });
+		const row = await adminDb.projectParticipant.findFirstOrThrow({
+			where: { projectId: trip, participantId: joiner.user.id },
+		});
+		expect(row.role).toBe("CONTRIBUTOR");
+		// The second time changes nothing and does not count the link again.
+		const before = (await adminDb.magicLink.findUniqueOrThrow({ where: { id: link.id } })).useCount;
+		const again = await expectBody<{ alreadyMember: boolean }>(
+			await send("POST", "/projects/join", asJoiner, { linkId: link.id }),
+			c.joinWithInvite,
+		);
+		expect(again.alreadyMember).toBe(true);
+		expect(
+			(await adminDb.magicLink.findUniqueOrThrow({ where: { id: link.id } })).useCount,
+		).toBe(before);
+		await expectProblem(
+			await send("POST", "/projects/join", asJoiner, { linkId: randomUUID() }),
+			404,
+			"not_found",
+		);
+	});
+
+	it("limits joins per client address, not for everyone at once", async () => {
+		const joiner = await arsUser();
+		const asJoiner = await asMobile(joiner.user.id);
+		const from = (ip: string) => ({ ...asJoiner, "x-forwarded-for": ip });
+		const join = (ip: string) =>
+			send("POST", "/projects/join", from(ip), { linkId: randomUUID() });
+		// One address uses up its ten a minute on links that do not exist.
+		for (let i = 0; i < 10; i++)
+			await expectProblem(await join("203.0.113.7"), 404, "not_found");
+		await expectProblem(await join("203.0.113.7"), 409, "conflict");
+		// Another address is a different bucket and still gets its answer.
+		await expectProblem(await join("198.51.100.9"), 404, "not_found");
+	});
+
 	it("previews the rebalance without writing, then folds a member into equal splits", async () => {
 		const team = await seedProject(martin, [
 			{ user: sofia, role: "EDITOR" },

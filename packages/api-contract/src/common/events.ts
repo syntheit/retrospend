@@ -92,6 +92,7 @@ export const EVENT_TYPES = [
 	"project.magic_link_revoked",
 	"project.member_added",
 	"project.member_dates_set",
+	"project.member_joined",
 	"project.member_removed",
 	"project.member_role_set",
 	"project.ownership_transferred",

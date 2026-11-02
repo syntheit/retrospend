@@ -1709,7 +1709,9 @@
 			"added": "{name} ajouté",
 			"existing": "{name} est déjà là",
 			"error": "Impossible d'ajouter cette personne. Réessayez."
-		}
+		},
+		"exportPlan": "Exporter le plan de règlement (CSV)",
+		"exportProjectPdf": "Exporter le projet (PDF)"
 	},
 	"person": {
 		"owesYou": "te doit",
@@ -1990,7 +1992,8 @@
 			"restoreError": "Impossible de restaurer. Réessaie.",
 			"addPerson": "Ajouter une personne",
 			"share": "Partager le projet",
-			"settings": "Paramètres du projet"
+			"settings": "Paramètres du projet",
+			"delete": "Supprimer le projet"
 		},
 		"addPerson": {
 			"title": "Ajouter une personne",
@@ -2006,7 +2009,9 @@
 			"joinsHint": "Les dépenses avant cette date ne changent pas.",
 			"submit": "Ajouter au projet",
 			"added": "{name} ajouté",
-			"error": "Impossible d'ajouter cette personne. Réessaie."
+			"error": "Impossible d'ajouter cette personne. Réessaie.",
+			"undone": "{name} retiré",
+			"undoError": "Impossible d'annuler. Réessaie."
 		},
 		"share": {
 			"title": "Partager le projet",
@@ -2085,6 +2090,75 @@
 			"saved": "Dates de {name} enregistrées",
 			"undone": "Dates rétablies",
 			"undoError": "Impossible d'annuler. Réessaie."
+		},
+		"shared": {
+			"joinTitle": "Rejoindre {project}",
+			"joinSub": "{count, plural, one {# personne} other {# personnes}} · tu rejoins en tant que {role}",
+			"joinAsYou": "Rejoindre le projet",
+			"join": "Rejoindre le projet",
+			"joining": "Adhésion en cours",
+			"joinFailed": "Impossible de t'ajouter. Réessaie.",
+			"name": "Ton nom",
+			"email": "E-mail",
+			"back": "Retour à la liste",
+			"elsewhere": "{name} est aussi dans d'autres projets, donc cette invitation ne peut pas reprendre son historique. Rejoins plutôt en ton nom.",
+			"chooserTitle": "Es-tu l'une de ces personnes ?",
+			"chooserHint": "Quelqu'un t'a peut-être ajouté à {project}. Choisis-toi pour garder ton historique, ou rejoins en tant que nouvelle personne.",
+			"chooserNone": "Aucune, je suis nouveau",
+			"resumeTitle": "Vérifie tes e-mails",
+			"resumeHint": "Cet e-mail a déjà rejoint {project}. Nous avons envoyé un lien pour reprendre où tu t'étais arrêté. Il ne fonctionne qu'une fois et expire dans une heure.",
+			"noSummary": "Rien à totaliser pour l'instant.",
+			"byCategory": "Par catégorie",
+			"uncategorized": "Sans catégorie",
+			"yours": "À toi {amount}",
+			"privateTitle": "Ce projet est privé",
+			"privateHint": "Demande au propriétaire de le partager avec toi.",
+			"errorTitle": "Impossible de charger le projet",
+			"errorHint": "Vérifie ta connexion et réessaie.",
+			"noticeGuest": "Vue en tant que {name}, invité",
+			"noticeViewer": "Lecture seule",
+			"noticePublic": "Vue publique. Les soldes et les paiements restent privés.",
+			"createAccount": "Créer un compte",
+			"forget": "Oublier sur ce téléphone",
+			"forgetTitle": "Oublier ce projet sur ce téléphone ?",
+			"forgetConfirm": "Oublier",
+			"failed": {
+				"noServer": {
+					"title": "Aucun serveur à interroger",
+					"hint": "Ouvre ce lien depuis l'adresse du serveur dont il vient."
+				},
+				"resumeFailed": {
+					"title": "Ce lien ne fonctionne plus",
+					"hint": "Il ne fonctionne qu'une fois et expire en une heure. Ouvre à nouveau ton lien d'invitation."
+				},
+				"inviteInvalid": {
+					"title": "Cette invitation ne fonctionne pas",
+					"hint": "Demande un nouveau lien au propriétaire."
+				},
+				"otherProject": {
+					"title": "Cette invitation est pour un autre projet",
+					"hint": "Ouvre le lien du projet auquel tu as été invité."
+				},
+				"busy": {
+					"title": "Trop de tentatives",
+					"hint": "Attends une minute et ouvre à nouveau le lien."
+				}
+			},
+			"linkTitle": "Rejoindre avec un lien",
+			"linkLabel": "Lien du projet",
+			"linkOpen": "Ouvrir",
+			"linkInvalid": "Ce n'est pas un lien de projet.",
+			"confirmServerTitle": "Ouvrir ce lien sur ce serveur ?",
+			"confirmServerContinue": "Continuer"
+		},
+		"delete": {
+			"title": "Supprimer {name} ?",
+			"confirm": "Supprimer le projet",
+			"deleting": "Suppression",
+			"deleted": "{name} supprimé",
+			"checking": "Vérification de ce qui change",
+			"previewError": "Impossible de vérifier ce qui change. Réessaie.",
+			"error": "Impossible de supprimer le projet. Réessaie."
 		}
 	},
 	"settings": {

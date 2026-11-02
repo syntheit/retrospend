@@ -26,6 +26,11 @@ export const projectWritesRouter = {
 		),
 	),
 	addMember: p.addMember.handler(h(w.addMember)),
+	joinWithInvite: p.joinWithInvite.handler(
+		serve(({ context, input }) =>
+			w.joinWithInvite(signedIn(context), context.headers, input),
+		),
+	),
 	setMemberRole: p.setMemberRole.handler(h(w.setMemberRole)),
 	setMemberDates: p.setMemberDates.handler(h(w.setMemberDates)),
 	previewSetMemberDates: p.previewSetMemberDates.handler(h(w.previewMemberDates)),

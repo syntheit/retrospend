@@ -1,6 +1,7 @@
 import type {
 	addMemberSchema,
 	createMagicLinkSchema,
+	joinWithInviteSchema,
 	createProjectSchema,
 	memberDatesSchema,
 	memberParamsSchema,
@@ -21,7 +22,7 @@ import { isoDay } from "./caller";
 import { exactAmount } from "./amounts";
 import type { LedgerCaller } from "./money-op";
 import { toPreviewDto } from "./money-write";
-import { trpcProject } from "./trpc-bridge";
+import { trpcGuest, trpcProject } from "./trpc-bridge";
 
 /**
  * v1 adapters for the project writes. The logic stays where the web has it:
@@ -157,6 +158,18 @@ export async function addMember(
 		joinedOn: body.joinedOn,
 	});
 	return memberRow(row);
+}
+
+/** A signed-in person joins through an invite link with their own account. */
+export async function joinWithInvite(
+	caller: LedgerCaller,
+	headers: Headers,
+	body: Body<typeof joinWithInviteSchema>,
+) {
+	// The headers carry the client address the join's rate limit keys on.
+	return (await trpcGuest({ ...caller, headers })).joinWithAccount({
+		linkId: body.linkId,
+	});
 }
 
 export async function setMemberRole(

@@ -1,10 +1,8 @@
-import { Stack } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { router, Stack } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
-import { useServerBaseUrl } from "@/auth/server-connection";
 import { NeedsCard } from "@/features/people/NeedsCard";
 import { ReviewSheet } from "@/features/people/ReviewSheet";
 import { usePeopleOverview } from "@/features/people/usePeople";
@@ -22,6 +20,7 @@ import { Text } from "@/ui/Text";
 import { TopBarAction } from "@/ui/TopBarAction";
 import { UnderlineTabs } from "@/ui/UnderlineTabs";
 import { AddMemberSheet } from "./AddMemberSheet";
+import { DeleteProjectSheet } from "./DeleteProjectSheet";
 import {
 	categoriesOf,
 	filterExpenses,
@@ -30,7 +29,6 @@ import {
 	payers,
 	projectNeeds,
 } from "./filters";
-import { opensWebPage } from "./joinLink";
 import { ProjectExpenseDays } from "./ProjectExpenses";
 import { ProjectHeader, ProjectTitle } from "./ProjectHeader";
 import { ProjectPeopleTab } from "./ProjectPeopleTab";
@@ -39,7 +37,6 @@ import { ProjectSheet } from "./ProjectSheet";
 import { ProjectSummaryTab } from "./ProjectSummaryTab";
 import { SettleAllSheet } from "./SettleAllSheet";
 import { ShareSheet } from "./ShareSheet";
-import { projectPageUrl } from "./share";
 import { useProjectActions } from "./useProjectActions";
 import { useProject, useProjectSummary } from "./useProjects";
 
@@ -62,8 +59,6 @@ export function ProjectView({
 	name,
 	startSettling = false,
 	startAdding = false,
-	fromLink = false,
-	invite,
 }: {
 	id: string;
 	/** The name the list knew, shown in the title while the page loads. */
@@ -71,19 +66,10 @@ export function ProjectView({
 	startSettling?: boolean;
 	/** Open on Add person (a project just made "with others"). */
 	startAdding?: boolean;
-	/**
-	 * Opened by a share or join link. A project you are not in opens its web
-	 * page in the in-app browser (the guest join flow and the public page are
-	 * web pages); one you are in opens here.
-	 */
-	fromLink?: boolean;
-	/** The invite in a join link. */
-	invite?: string;
 }) {
 	const t = useTranslations("mobile.projects");
 	const tc = useTranslations("mobile.common");
 	const more = useTranslations("mobile.activity")("overflow");
-	const overflow = useProjectExport(id);
 	const { listDetail } = useLayoutClass();
 	const { space } = useTheme();
 	const { state, reload } = useProject(id);
@@ -99,6 +85,7 @@ export function ProjectView({
 	>(null);
 	const [settling, setSettling] = useState(startSettling);
 	const page = state.status === "ready" ? state.data : null;
+	const overflow = useProjectExport(id, page?.solo ?? false);
 	const actions = useProjectActions(
 		{
 			id,
@@ -114,23 +101,6 @@ export function ProjectView({
 	const pencil = actions.edit ? (
 		<TopBarAction icon="Pencil" id="edit" label={t("actions.edit")} onPress={actions.edit} />
 	) : null;
-	const baseUrl = useServerBaseUrl();
-	const webOpened = useRef(false);
-	const sendToWeb = baseUrl
-		? () => WebBrowser.openBrowserAsync(projectPageUrl(baseUrl, id, invite))
-		: null;
-	const linkRead = {
-		fromLink,
-		status: state.status,
-		refreshing: state.status === "ready" && state.refreshing,
-		myRole: page?.myRole ?? null,
-	};
-	const toWeb = opensWebPage(linkRead);
-	useEffect(() => {
-		if (!toWeb || !sendToWeb || webOpened.current) return;
-		webOpened.current = true;
-		void sendToWeb();
-	}, [toWeb, sendToWeb]);
 	const periodId = period === "current" ? (page?.openPeriod ?? null) : null;
 	const summary = useProjectSummary(id, periodId, tab === "summary");
 	const expenses = page?.expenses;
@@ -411,6 +381,13 @@ export function ProjectView({
 				onDone={reload}
 				project={page}
 				visible={actions.editing}
+			/>
+			<DeleteProjectSheet
+				onClose={actions.closeDelete}
+				onDeleted={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+				projectId={page.id}
+				projectName={page.name}
+				visible={actions.deleting}
 			/>
 			<ShareSheet
 				onClose={actions.closeShare}

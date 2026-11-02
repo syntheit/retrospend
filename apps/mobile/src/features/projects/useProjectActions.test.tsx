@@ -49,12 +49,13 @@ describe("project menu items", () => {
 		mockShow.mockClear();
 	});
 
-	it("gives an Owner Add person, Share, Settings and Archive", () => {
+	it("gives an Owner Add person, Share, Settings, Archive and Delete", () => {
 		expect(items(page({})).items.map((i) => i.id)).toEqual([
 			"add-person",
 			"share-project",
 			"project-settings",
 			"archive-project",
+			"delete-project",
 		]);
 	});
 
@@ -64,6 +65,7 @@ describe("project menu items", () => {
 			"share-project",
 			"project-settings",
 			"restore-project",
+			"delete-project",
 		]);
 	});
 
@@ -89,6 +91,17 @@ describe("project menu items", () => {
 		expect(out.configuring).toBe(true);
 		act(() => out.closeShare());
 		expect(out.sharing).toBe(false);
+	});
+
+	it("opens the delete sheet from its item, which is red", () => {
+		const menu = items(page({}));
+		const remove = menu.items.find((i) => i.id === "delete-project");
+		expect(remove?.destructive).toBe(true);
+		expect(menu.deleting).toBe(false);
+		act(() => remove?.onPress());
+		expect(out.deleting).toBe(true);
+		act(() => out.closeDelete());
+		expect(out.deleting).toBe(false);
 	});
 
 	it("gives a Contributor nothing", () => {

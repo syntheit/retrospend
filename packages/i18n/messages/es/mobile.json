@@ -1709,7 +1709,9 @@
 			"added": "{name} agregado",
 			"existing": "{name} ya está",
 			"error": "No se pudo agregar a esta persona. Inténtalo de nuevo."
-		}
+		},
+		"exportPlan": "Exportar plan de liquidación (CSV)",
+		"exportProjectPdf": "Exportar proyecto (PDF)"
 	},
 	"person": {
 		"owesYou": "te debe",
@@ -1990,7 +1992,8 @@
 			"restoreError": "No se pudo restaurar. Inténtalo de nuevo.",
 			"addPerson": "Agregar persona",
 			"share": "Compartir proyecto",
-			"settings": "Ajustes del proyecto"
+			"settings": "Ajustes del proyecto",
+			"delete": "Eliminar proyecto"
 		},
 		"addPerson": {
 			"title": "Agregar persona",
@@ -2006,7 +2009,9 @@
 			"joinsHint": "Los gastos anteriores a esta fecha no cambian.",
 			"submit": "Agregar al proyecto",
 			"added": "{name} agregado",
-			"error": "No se pudo agregar a esta persona. Inténtalo de nuevo."
+			"error": "No se pudo agregar a esta persona. Inténtalo de nuevo.",
+			"undone": "{name} quitado",
+			"undoError": "No se pudo deshacer. Inténtalo de nuevo."
 		},
 		"share": {
 			"title": "Compartir proyecto",
@@ -2085,6 +2090,75 @@
 			"saved": "Fechas de {name} guardadas",
 			"undone": "Fechas restauradas",
 			"undoError": "No se pudo deshacer. Inténtalo de nuevo."
+		},
+		"shared": {
+			"joinTitle": "Unirse a {project}",
+			"joinSub": "{count, plural, one {# persona} other {# personas}} · te unes como {role}",
+			"joinAsYou": "Unirse al proyecto",
+			"join": "Unirse al proyecto",
+			"joining": "Uniéndose",
+			"joinFailed": "No se pudo agregarte. Inténtalo de nuevo.",
+			"name": "Tu nombre",
+			"email": "Correo electrónico",
+			"back": "Volver a la lista",
+			"elsewhere": "{name} también está en otros proyectos, así que esta invitación no puede tomar su historial. Únete como tú mismo.",
+			"chooserTitle": "¿Eres una de estas personas?",
+			"chooserHint": "Alguien puede haberte agregado a {project}. Elígete para conservar tu historial o únete como alguien nuevo.",
+			"chooserNone": "Ninguna, soy nuevo",
+			"resumeTitle": "Revisa tu correo",
+			"resumeHint": "Este correo ya se unió a {project}. Enviamos un enlace para continuar donde lo dejaste. Funciona una vez y vence en una hora.",
+			"noSummary": "Aún no hay nada que sumar.",
+			"byCategory": "Por categoría",
+			"uncategorized": "Sin categoría",
+			"yours": "Tuyo {amount}",
+			"privateTitle": "Este proyecto es privado",
+			"privateHint": "Pide al propietario que lo comparta contigo.",
+			"errorTitle": "No se pudo cargar el proyecto",
+			"errorHint": "Revisa tu conexión e inténtalo de nuevo.",
+			"noticeGuest": "Viendo como {name}, invitado",
+			"noticeViewer": "Solo lectura",
+			"noticePublic": "Vista pública. Los saldos y pagos siguen siendo privados.",
+			"createAccount": "Crear cuenta",
+			"forget": "Olvidar en este teléfono",
+			"forgetTitle": "¿Olvidar este proyecto en este teléfono?",
+			"forgetConfirm": "Olvidar",
+			"failed": {
+				"noServer": {
+					"title": "No hay servidor al que preguntar",
+					"hint": "Abre este enlace desde la dirección del servidor del que vino."
+				},
+				"resumeFailed": {
+					"title": "Este enlace ya no funciona",
+					"hint": "Funciona una vez y vence en una hora. Abre tu enlace de invitación otra vez."
+				},
+				"inviteInvalid": {
+					"title": "Esta invitación no funciona",
+					"hint": "Pide al propietario un enlace nuevo."
+				},
+				"otherProject": {
+					"title": "Esta invitación es de otro proyecto",
+					"hint": "Abre el enlace del proyecto al que te invitaron."
+				},
+				"busy": {
+					"title": "Demasiados intentos",
+					"hint": "Espera un minuto y abre el enlace otra vez."
+				}
+			},
+			"linkTitle": "Unirse con un enlace",
+			"linkLabel": "Enlace del proyecto",
+			"linkOpen": "Abrir",
+			"linkInvalid": "Ese no es un enlace de proyecto.",
+			"confirmServerTitle": "¿Abrir este enlace en este servidor?",
+			"confirmServerContinue": "Continuar"
+		},
+		"delete": {
+			"title": "¿Eliminar {name}?",
+			"confirm": "Eliminar proyecto",
+			"deleting": "Eliminando",
+			"deleted": "{name} eliminado",
+			"checking": "Comprobando qué cambia",
+			"previewError": "No se pudo comprobar qué cambia. Inténtalo de nuevo.",
+			"error": "No se pudo eliminar el proyecto. Inténtalo de nuevo."
 		}
 	},
 	"settings": {
