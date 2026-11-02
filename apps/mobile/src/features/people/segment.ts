@@ -25,3 +25,16 @@ export function writeSegment(segment: PeopleSegment): void {
 		// The choice is a convenience; the screen works without it.
 	}
 }
+
+/**
+ * The height of the People and Projects tab row on an Android phone, pinned
+ * under the large bar (the row's 44 point tabs, their hairline and 8 of air
+ * above the lists): the tab stack gives it to the bar's provider, PeopleHub
+ * draws the row at that height.
+ */
+export function peopleTabsHeight(theme: {
+	size: { touchMin: { phone: number } };
+	space: Record<number, number>;
+}): number {
+	return theme.size.touchMin.phone + 1 + (theme.space[2] ?? 0);
+}

@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import type { ReactElement } from "react";
 import { useTranslations } from "use-intl";
 import { useServerBaseUrl } from "@/auth/server-connection";
 import { useSession } from "@/auth/session";
@@ -30,6 +31,7 @@ export function AccountTopBar({
 	actions,
 	overflow,
 	overflowLabel,
+	footer,
 }: {
 	title: string;
 	/** Icon-only page actions (Add person), before the overflow and the account button. */
@@ -37,6 +39,8 @@ export function AccountTopBar({
 	/** The page's overflow menu (the three dots), before the account button. */
 	overflow?: MenuItem[];
 	overflowLabel?: string;
+	/** Android's collapsing bar: a row pinned under it (People's tabs). */
+	footer?: ReactElement;
 }) {
 	const t = useTranslations("mobile.account");
 	const face = useMyFace();
@@ -45,6 +49,7 @@ export function AccountTopBar({
 			account={face ?? undefined}
 			accountLabel={t("open")}
 			actions={actions}
+			footer={footer}
 			onAccountPress={() => router.push("/account")}
 			overflow={overflow}
 			overflowLabel={overflowLabel}

@@ -9,7 +9,7 @@ jest.mock("react-native-worklets", () => ({
 
 jest.mock("react-native-reanimated", () => {
 	const React = require("react");
-	const { View, Text, ScrollView, Image } = require("react-native");
+	const { View, Text, ScrollView, FlatList, Image } = require("react-native");
 	const strip = (Component) =>
 		React.forwardRef(({ entering, exiting, layout, ...props }, ref) =>
 			React.createElement(Component, { ...props, ref }),
@@ -45,6 +45,7 @@ jest.mock("react-native-reanimated", () => {
 		View: AnimatedView,
 		Text: strip(Text),
 		ScrollView: strip(ScrollView),
+		FlatList: strip(FlatList),
 		Image: strip(Image),
 		createAnimatedComponent: strip,
 	};
@@ -68,6 +69,14 @@ jest.mock("react-native-reanimated", () => {
 		useAnimatedStyle: (fn) => fn(),
 		useDerivedValue: (fn) => ({ value: fn() }),
 		useAnimatedReaction: () => {},
+		useAnimatedRef: () => ({ current: null, observe: () => () => {} }),
+		useScrollOffset: (_ref, offset) => offset ?? { value: 0 },
+		Extrapolation: { CLAMP: "clamp", EXTEND: "extend", IDENTITY: "identity" },
+		interpolate: (x, input, output) => {
+			const t = (x - input[0]) / (input[1] - input[0]);
+			return output[0] + Math.min(Math.max(t, 0), 1) * (output[1] - output[0]);
+		},
+		interpolateColor: (_x, _input, output) => output[0],
 		useReducedMotion: () => false,
 		isSharedValue: () => false,
 		withTiming: (to, _config, done) => {

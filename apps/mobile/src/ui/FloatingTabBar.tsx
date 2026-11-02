@@ -11,7 +11,7 @@ import { Glyph, type GlyphName } from "./Glyph";
 import { easeLand } from "./motion";
 import { scrollFocusedToTop } from "./scrollToTop";
 import { Text } from "./Text";
-import { floatingBarMetrics } from "./tabBarMetrics";
+import { floatingBarMetrics, useTabBarHidden } from "./tabBarMetrics";
 import { useKeyboardShown } from "./useKeyboardShown";
 
 export interface FloatingTab {
@@ -68,6 +68,7 @@ export function FloatingTabBar({
 	const reduce = useReducedMotion();
 	const ease = useMemo(() => easeLand(theme), [theme]);
 	const keyboard = useKeyboardShown();
+	const covered = useTabBarHidden();
 	const [width, setWidth] = useState(0);
 	const tabWidth = width / tabs.length;
 
@@ -101,7 +102,7 @@ export function FloatingTabBar({
 		transform: [{ translateX: x.value }],
 	}));
 
-	if (keyboard) return null;
+	if (keyboard || covered) return null;
 
 	return (
 		<View

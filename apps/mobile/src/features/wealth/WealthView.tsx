@@ -446,7 +446,17 @@ export function WealthView() {
 	return (
 		<>
 			{title}
-			{headerSearch.screen}
+			{headerSearch.view(
+				<Screen flush>
+					<AccountsList
+						data={data}
+						onOrder={saveOrder}
+						onSheet={setSheet}
+						order={order}
+						query={query}
+					/>
+				</Screen>,
+			)}
 			<Screen flush onRefresh={refresh} refreshing={refreshing}>
 				{widthClass === "compact" ? (
 					<>

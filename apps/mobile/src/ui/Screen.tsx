@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { Platform, RefreshControl, ScrollView } from "react-native";
+import { Platform, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAddButtonScroll } from "@/features/entry/addEntryContext";
 import { ADD_CONTROL } from "@/layout/destinations";
 import { useTheme } from "@/theme";
+import { BarScrollView, useBarInset } from "./barScroll";
 import { useSidesCleared } from "./ListDetail";
-import { useScrollToTop } from "./scrollToTop";
 import { useTabBarCover } from "./tabBarMetrics";
 
 /**
@@ -34,6 +34,8 @@ export function useAddInset(): number {
  * the native SafeAreaView measures what is actually covered, so a tab screen
  * whose container already sits above the navigation bar gets no extra bottom
  * padding. The body always ends with the add control's inset.
+ * On a tab root with Android's collapsing bar the body is a BarScrollView: it
+ * reports its scroll to the bar and leaves the bar's band empty on top.
  * `flush` leaves out the side padding, for lists whose rows pad themselves.
  * `onRefresh` turns on pull to refresh; `refreshing` shows its spinner while
  * the reload runs.
@@ -54,9 +56,9 @@ export function Screen({
 	const inset = useAddInset();
 	const fabScroll = useAddButtonScroll();
 	const cover = useTabBarCover();
-	const scroller = useScrollToTop();
+	const barInset = useBarInset();
 	const body = (
-		<ScrollView
+		<BarScrollView
 			{...fabScroll}
 			contentContainerStyle={
 				flush
@@ -69,13 +71,13 @@ export function Screen({
 			}
 			contentInsetAdjustmentBehavior="automatic"
 			keyboardShouldPersistTaps="handled"
-			ref={scroller}
 			refreshControl={
 				onRefresh ? (
 					<RefreshControl
 						colors={[color.fg2]}
 						onRefresh={onRefresh}
 						progressBackgroundColor={color.surface}
+						progressViewOffset={barInset}
 						refreshing={refreshing}
 						tintColor={color.fg2}
 					/>
@@ -84,7 +86,7 @@ export function Screen({
 			style={{ flex: 1, backgroundColor: color.bg }}
 		>
 			{children}
-		</ScrollView>
+		</BarScrollView>
 	);
 	// The native SafeAreaView clears only what covers it: the iPad sidebar that
 	// floats over the content, a landscape notch, Android's bars. A screen in

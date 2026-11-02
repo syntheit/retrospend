@@ -7,5 +7,5 @@ export const unstable_settings = { anchor: "index" };
 
 export default function HomeLayout() {
 	const t = useTranslations("mobile.tabs");
-	return <TabStack title={t("home")} />;
+	return <TabStack collapsing title={t("home")} />;
 }

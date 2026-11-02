@@ -5,7 +5,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
 import { type FloatingTab, FloatingTabBar } from "./FloatingTabBar";
-import { TabBarCoverContext, tabBarFootprint } from "./tabBarMetrics";
+import {
+	TabBarCoverContext,
+	tabBarFootprint,
+	useTabBarHidden,
+} from "./tabBarMetrics";
 import { closeTransients } from "./transient";
 import { useKeyboardShown } from "./useKeyboardShown";
 
@@ -30,6 +34,7 @@ export function Tabs() {
 	const theme = useTheme();
 	const insets = useSafeAreaInsets();
 	const keyboard = useKeyboardShown();
+	const searching = useTabBarHidden();
 	const tab = (useSegments() as string[])[1];
 	// biome-ignore lint/correctness/useExhaustiveDependencies: runs on each tab switch
 	useEffect(() => closeTransients(), [tab]);
@@ -41,7 +46,8 @@ export function Tabs() {
 		{ name: "wealth", label: tw("title"), glyph: "Landmark" },
 		{ name: "people", label: t("people"), glyph: "Users" },
 	];
-	const cover = keyboard ? 0 : insets.bottom + tabBarFootprint(theme);
+	const cover =
+		keyboard || searching ? 0 : insets.bottom + tabBarFootprint(theme);
 
 	return (
 		<TabBarCoverContext.Provider value={cover}>

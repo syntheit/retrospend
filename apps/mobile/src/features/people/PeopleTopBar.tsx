@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactElement, useState } from "react";
 import { useTranslations } from "use-intl";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import type { TopBarAction } from "@/ui/types";
@@ -13,10 +13,13 @@ import { useExpensesExport } from "./useExpensesExport";
 export function PeopleTopBar({
 	title,
 	search,
+	footer,
 }: {
 	title: string;
 	/** The list's Search icon, first in the bar. */
 	search?: TopBarAction | null;
+	/** Android's collapsing bar: the tabs pinned under it. */
+	footer?: ReactElement;
 }) {
 	const t = useTranslations("mobile.people.add");
 	const more = useTranslations("mobile.activity")("overflow");
@@ -34,6 +37,7 @@ export function PeopleTopBar({
 						onPress: () => setAdding(true),
 					},
 				]}
+				footer={footer}
 				overflow={overflow}
 				overflowLabel={more}
 				title={title}

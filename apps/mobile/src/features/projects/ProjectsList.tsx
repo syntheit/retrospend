@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import { type ReactNode, useMemo, useState } from "react";
-import { FlatList, View } from "react-native";
+import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useAddButtonScroll } from "@/features/entry/addEntryContext";
 import { openProject } from "@/features/projects/openProject";
@@ -16,12 +16,12 @@ import { useProjectList } from "@/features/projects/useProjects";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
+import { BarFlatList } from "@/ui/barScroll";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
-import { useScrollToTop } from "@/ui/scrollToTop";
 
 /** The phone's today as a YYYY-MM-DD day; the list carries no server day. */
 function todayDay(): string {
@@ -38,18 +38,21 @@ export function ProjectsList({
 	top,
 	query: sharedQuery,
 	bar,
+	bare = false,
 }: {
+	/** What leads the list's header (the tabs, the search bar). */
 	top?: ReactNode;
 	query?: string;
 	/** The screen's top bar; a list-detail pair draws it over the list pane. */
 	bar?: ReactNode;
+	/** Only the rows, for the results of the expanded search view. */
+	bare?: boolean;
 }) {
 	const t = useTranslations("mobile.projects");
 	const tc = useTranslations("mobile.common");
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const inset = useAddInset();
-	const listRef = useScrollToTop();
 	const fabScroll = useAddButtonScroll();
 	const searchRef = useSearchShortcut(sharedQuery === undefined);
 	const { state, reload } = useProjectList();
@@ -65,7 +68,11 @@ export function ProjectsList({
 	);
 	// Layout A: the project you just came back from leads as the hero, the
 	// other active ones are cover cards, archived ones stay compact rows.
-	const hero = useMemo(() => justBack(shown, todayDay()), [shown]);
+	// The search results are rows only, so the hero has no card to lead them.
+	const hero = useMemo(
+		() => (bare ? null : justBack(shown, todayDay())),
+		[shown, bare],
+	);
 	const sections = useMemo(
 		() => groupProjects(shown.filter((p) => p !== hero)),
 		[shown, hero],
@@ -89,43 +96,45 @@ export function ProjectsList({
 		);
 
 	const list = (
-		<FlatList
+		<BarFlatList
 			{...fabScroll}
 			contentInsetAdjustmentBehavior="automatic"
 			data={sections}
 			keyboardDismissMode="on-drag"
+			keyboardShouldPersistTaps="handled"
 			keyExtractor={(group) => group.key}
 			ListEmptyComponent={empty}
 			ListFooterComponent={<View style={{ height: inset }} />}
 			ListHeaderComponent={
-				<View>
-					{top}
-					{state.status === "ready" ? (
-						<StaleNote since={state.staleSince} />
-					) : null}
-					{hero ? (
-						<View style={{ paddingTop: space[4] }}>
-							<ProjectCard
-								hero
-								onPress={() =>
-									listDetail ? setSelected(hero.id) : openProject(hero)
-								}
-								onSettle={() =>
-									listDetail
-										? setSelected(hero.id)
-										: openProject(hero, { settle: true })
-								}
-								project={hero}
-								today={today}
-							/>
-						</View>
-					) : null}
-				</View>
+				bare ? undefined : (
+					<View>
+						{top}
+						{state.status === "ready" ? (
+							<StaleNote since={state.staleSince} />
+						) : null}
+						{hero ? (
+							<View style={{ paddingTop: space[4] }}>
+								<ProjectCard
+									hero
+									onPress={() =>
+										listDetail ? setSelected(hero.id) : openProject(hero)
+									}
+									onSettle={() =>
+										listDetail
+											? setSelected(hero.id)
+											: openProject(hero, { settle: true })
+									}
+									project={hero}
+									today={today}
+								/>
+							</View>
+						) : null}
+					</View>
+				)
 			}
 			// Over the rows: the pane cover hangs from the tabs in this header.
 			ListHeaderComponentStyle={{ zIndex: 1 }}
 			onRefresh={reload}
-			ref={listRef}
 			refreshing={false}
 			renderItem={({ item: group }) => (
 				<View>

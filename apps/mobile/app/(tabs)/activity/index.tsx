@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Platform, SectionList, View } from "react-native";
+import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
@@ -29,13 +29,17 @@ import { RECURRING_APART } from "@/layout/destinations";
 import { useHeaderSearch } from "@/layout/headerSearch";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
+import {
+	BarSectionList,
+	useBarMetrics,
+	useCollapsingBar,
+} from "@/ui/barScroll";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, StaleNote } from "@/ui/List";
 import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { markPaneSwitch } from "@/ui/PaneVeil";
 import { Screen, useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
-import { useScrollToTop } from "@/ui/scrollToTop";
 import { useTransient } from "@/ui/transient";
 
 export default function ActivityScreen() {
@@ -48,7 +52,8 @@ export default function ActivityScreen() {
 	const { listDetail } = useLayoutClass();
 	const insets = useSafeAreaInsets();
 	const addInset = useAddInset();
-	const listRef = useScrollToTop();
+	const collapsing = useCollapsingBar();
+	const barMetrics = useBarMetrics(collapsing?.footer ?? 0);
 	const fabScroll = useAddButtonScroll();
 	const add = useOptionalAddEntry();
 	const params = useLocalSearchParams<{ segment?: string }>();
@@ -76,6 +81,7 @@ export default function ActivityScreen() {
 		enabled: !listDetail,
 		onChange: setSearch,
 		placeholder: segment === "recurring" ? tr("search") : t("search"),
+		pill: true,
 	});
 	const [selected, setSelected] = useState<ActivityItem | null>(null);
 	// An entry opened by a link (a Home row, a notification) fills the detail.
@@ -173,12 +179,15 @@ export default function ActivityScreen() {
 			/>
 		);
 
-	const rows = (
-		<SectionList
+	// The list, with its header (segments, search bar, summary, filters) on the
+	// page, or without it as the results of the expanded search view.
+	const rowsList = (withHeader: boolean) => (
+		<BarSectionList
 			{...fabScroll}
 			contentInsetAdjustmentBehavior="automatic"
 			extraData={picked}
 			keyboardDismissMode="on-drag"
+			keyboardShouldPersistTaps="handled"
 			keyExtractor={(items) => items[0]?.id ?? "empty"}
 			ListEmptyComponent={empty}
 			ListFooterComponent={
@@ -189,21 +198,23 @@ export default function ActivityScreen() {
 				)
 			}
 			ListHeaderComponent={
-				<View>
-					{segments}
-					{page && !picked ? <ActivitySummary page={page} /> : null}
-					<StaleNote
-						since={state.status === "ready" ? state.staleSince : null}
-					/>
-					<ActivityFilters filter={filter} onChange={setFilter} />
-				</View>
+				withHeader ? (
+					<View>
+						{segments}
+						{headerSearch.pill}
+						{page && !picked ? <ActivitySummary page={page} /> : null}
+						<StaleNote
+							since={state.status === "ready" ? state.staleSince : null}
+						/>
+						<ActivityFilters filter={filter} onChange={setFilter} />
+					</View>
+				) : undefined
 			}
 			// Over the rows: the pane's cover hangs from the tabs in this header.
 			ListHeaderComponentStyle={{ zIndex: 1 }}
 			onEndReached={loadMore}
 			onEndReachedThreshold={0.6}
 			onRefresh={reload}
-			ref={listRef}
 			refreshing={false}
 			renderItem={({ item: items }) => (
 				<ListGroup>
@@ -234,22 +245,36 @@ export default function ActivityScreen() {
 			style={{ backgroundColor: color.bg }}
 		/>
 	);
+	const rows = rowsList(true);
 	// The phone's large-title bar is transparent over the list, so the bulk bar
 	// takes its place at the top instead of sitting in the list's flow.
-	const overBar = Platform.OS === "ios" && !listDetail;
+	// Android's collapsing bar is drawn over the list too, so the controls
+	// cover it, at the height it has collapsed to.
+	const overBar = (Platform.OS === "ios" && !listDetail) || collapsing !== null;
 	const bulkBar = picked ? (
 		<View
 			style={
-				overBar
+				collapsing
 					? {
 							position: "absolute",
-							top: insets.top,
+							top: 0,
 							left: 0,
-							// Clears the account button the native bar keeps on top.
-							right: space[12] + space[4],
-							zIndex: 1,
+							right: 0,
+							height: barMetrics.collapsed,
+							justifyContent: "flex-end",
+							backgroundColor: color.raised,
+							zIndex: 3,
 						}
-					: undefined
+					: overBar
+						? {
+								position: "absolute",
+								top: insets.top,
+								left: 0,
+								// Clears the account button the native bar keeps on top.
+								right: space[12] + space[4],
+								zIndex: 1,
+							}
+						: undefined
 			}
 		>
 			<BulkControls
@@ -273,9 +298,29 @@ export default function ActivityScreen() {
 		rows
 	);
 
+	const recurring = (withHeader: boolean) => (
+		<RecurringView
+			adding={withHeader && addingRecurring}
+			embedded
+			header={
+				withHeader ? (
+					<>
+						{segments}
+						{headerSearch.pill}
+					</>
+				) : undefined
+			}
+			onAdd={() => setAddingRecurring(true)}
+			onAddClose={() => setAddingRecurring(false)}
+			query={search}
+		/>
+	);
+
 	return (
 		<View style={{ flex: 1, backgroundColor: color.bg }}>
-			{headerSearch.screen}
+			{headerSearch.view(
+				segment === "recurring" ? recurring(false) : rowsList(false),
+			)}
 			<ListDetail
 				bar={
 					<AccountTopBar
@@ -324,18 +369,7 @@ export default function ActivityScreen() {
 				}
 				list={
 					<View key={segment} style={{ flex: 1 }}>
-						{segment === "recurring" ? (
-							<RecurringView
-								adding={addingRecurring}
-								embedded
-								header={segments}
-								onAdd={() => setAddingRecurring(true)}
-								onAddClose={() => setAddingRecurring(false)}
-								query={search}
-							/>
-						) : (
-							list
-						)}
+						{segment === "recurring" ? recurring(true) : list}
 					</View>
 				}
 				search={{

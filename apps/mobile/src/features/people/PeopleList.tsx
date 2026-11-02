@@ -1,6 +1,6 @@
 import { router, Stack } from "expo-router";
 import { type ReactNode, useMemo, useState } from "react";
-import { FlatList, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useAddButtonScroll } from "@/features/entry/addEntryContext";
 import {
@@ -17,6 +17,7 @@ import { usePeopleOverview } from "@/features/people/usePeople";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
+import { BarFlatList } from "@/ui/barScroll";
 import { Chip } from "@/ui/Chip";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
@@ -24,7 +25,6 @@ import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
 import { Menu } from "@/ui/Menu";
 import { useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
-import { useScrollToTop } from "@/ui/scrollToTop";
 
 /** The chips narrow the list; pressing the one that is on turns it off. */
 const CHIPS: Exclude<PeopleChip, "all">[] = [
@@ -59,18 +59,21 @@ export function PeopleList({
 	top,
 	filters,
 	bar,
+	bare = false,
 }: {
+	/** What leads the list's header (the tabs, the search bar). */
 	top?: ReactNode;
 	filters?: PeopleFilters;
 	/** The screen's top bar; a list-detail pair draws it over the list pane. */
 	bar?: ReactNode;
+	/** Only the rows, for the results of the expanded search view. */
+	bare?: boolean;
 }) {
 	const t = useTranslations("mobile.people");
 	const tc = useTranslations("mobile.common");
 	const { color, space } = useTheme();
 	const { listDetail } = useLayoutClass();
 	const inset = useAddInset();
-	const listRef = useScrollToTop();
 	const fabScroll = useAddButtonScroll();
 	const searchRef = useSearchShortcut(filters === undefined);
 	const { state, reload } = usePeopleOverview();
@@ -116,73 +119,77 @@ export function PeopleList({
 	const firstNeedRef = firstNeed ? refOfKey(firstNeed.person.key) : null;
 
 	const list = (
-		<FlatList
+		<BarFlatList
 			{...fabScroll}
 			contentInsetAdjustmentBehavior="automatic"
 			data={sections}
 			keyboardDismissMode="on-drag"
+			keyboardShouldPersistTaps="handled"
 			keyExtractor={(section) => section.group}
 			ListEmptyComponent={empty}
 			ListFooterComponent={<View style={{ height: inset }} />}
 			ListHeaderComponent={
-				<View>
-					{top}
-					{overview ? (
-						<View style={{ gap: space[3] }}>
-							<StaleNote
-								since={state.status === "ready" ? state.staleSince : null}
-							/>
-							<PeopleTop
-								onPerson={(key) => {
-									const ref = refOfKey(key);
-									if (ref) open(ref);
-								}}
-								overview={overview}
-							/>
-							<NeedsCard
-								needs={overview.needs}
-								onPress={() => {
-									if (firstNeedRef) open(firstNeedRef);
-								}}
-							/>
-							<ScrollView
-								contentContainerStyle={{
-									alignItems: "center",
-									gap: space[2],
-									paddingHorizontal: space[4],
-								}}
-								horizontal
-								keyboardShouldPersistTaps="handled"
-								showsHorizontalScrollIndicator={false}
-							>
-								{CHIPS.map((id) => (
-									<Chip
-										key={id}
-										label={t(`chip.${id}`)}
-										onPress={() => setChip(chip === id ? "all" : id)}
-										selected={chip === id}
-									/>
-								))}
-								<Menu
-									accessibilityLabel={t("sortBy", { sort: t(`sort.${sort}`) })}
-									active={sort !== "balance"}
-									items={SORTS.map((id) => ({
-										id,
-										label: t(`sort.${id}`),
-										onPress: () => setSort(id),
-									}))}
-									label={t(`sort.${sort}`)}
-									sortIcon
+				bare ? undefined : (
+					<View>
+						{top}
+						{overview ? (
+							<View style={{ gap: space[3] }}>
+								<StaleNote
+									since={state.status === "ready" ? state.staleSince : null}
 								/>
-							</ScrollView>
-						</View>
-					) : null}
-				</View>
+								<PeopleTop
+									onPerson={(key) => {
+										const ref = refOfKey(key);
+										if (ref) open(ref);
+									}}
+									overview={overview}
+								/>
+								<NeedsCard
+									needs={overview.needs}
+									onPress={() => {
+										if (firstNeedRef) open(firstNeedRef);
+									}}
+								/>
+								<ScrollView
+									contentContainerStyle={{
+										alignItems: "center",
+										gap: space[2],
+										paddingHorizontal: space[4],
+									}}
+									horizontal
+									keyboardShouldPersistTaps="handled"
+									showsHorizontalScrollIndicator={false}
+								>
+									{CHIPS.map((id) => (
+										<Chip
+											key={id}
+											label={t(`chip.${id}`)}
+											onPress={() => setChip(chip === id ? "all" : id)}
+											selected={chip === id}
+										/>
+									))}
+									<Menu
+										accessibilityLabel={t("sortBy", {
+											sort: t(`sort.${sort}`),
+										})}
+										active={sort !== "balance"}
+										items={SORTS.map((id) => ({
+											id,
+											label: t(`sort.${id}`),
+											onPress: () => setSort(id),
+										}))}
+										label={t(`sort.${sort}`)}
+										sortIcon
+									/>
+								</ScrollView>
+							</View>
+						) : null}
+					</View>
+				)
 			}
 			// Over the rows: the pane cover hangs from the tabs in this header.
 			ListHeaderComponentStyle={{ zIndex: 1 }}
 			onRefresh={reload}
-			ref={listRef}
 			refreshing={false}
 			renderItem={({ item: section }) => (
 				<View>

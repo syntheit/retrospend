@@ -33,6 +33,7 @@ const { getCountryCodeFromCurrency } = await import(
 const EXTRA_GLYPHS = [
 	"AlarmClock",
 	"ArrowDownToLine",
+	"ArrowLeft",
 	"ArrowRight",
 	"ArrowUpFromLine",
 	"ArrowUpDown",

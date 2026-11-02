@@ -9,5 +9,5 @@ export const unstable_settings = { anchor: "index" };
 // and Budget's link switch to it.
 export default function WealthLayout() {
 	const t = useTranslations("mobile.wealth");
-	return <TabStack title={t("title")} />;
+	return <TabStack collapsing title={t("title")} />;
 }

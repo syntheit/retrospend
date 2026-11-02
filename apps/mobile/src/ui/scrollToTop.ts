@@ -1,12 +1,14 @@
 import { NavigationContext } from "expo-router/react-navigation";
-import { useCallback, useContext, useEffect, useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 
 /**
  * Tapping the open tab again scrolls its list to the top. iOS's native tab
  * bar does that itself; Android's floating bar (ui/FloatingTabBar) calls
- * `scrollFocusedToTop`, and every tab-level list registers here with
- * `useScrollToTop`. Only a list whose screen is on top answers.
+ * `scrollFocusedToTop`, and every tab-level list registers here through the
+ * Bar* scroll containers (ui/barScroll). Only a list whose screen is on top
+ * answers. Scrolling to the top also re-expands the collapsing title, since
+ * the bar follows the list's offset.
  */
 interface Target {
 	scroll: () => void;
@@ -22,45 +24,17 @@ export function scrollFocusedToTop() {
 	}
 }
 
-interface Scrollable {
-	scrollTo?: (options: { y: number; animated: boolean }) => void;
-	scrollToOffset?: (options: { offset: number; animated: boolean }) => void;
-	getScrollResponder?: () => unknown;
-}
-
-/**
- * Registers a list as a scroll-to-top target: pass the returned function as
- * the `ref` of a ScrollView, FlatList or SectionList.
- */
-export function useScrollToTop(): (node: Scrollable | null) => void {
+/** Registers a list's "go to the top" as a target of the open-tab tap (Android). */
+export function useScrollToTopTarget(scroll: () => void) {
 	const navigation = useContext(NavigationContext);
-	const node = useRef<Scrollable | null>(null);
-	const setNode = useCallback((next: Scrollable | null) => {
-		node.current = next;
-	}, []);
+	const latest = useRef(scroll);
+	latest.current = scroll;
 	useEffect(() => {
 		if (Platform.OS !== "android" || !navigation) return;
-		const target: Target = {
-			navigation,
-			scroll: () => {
-				const list = node.current;
-				if (!list) return;
-				if (list.scrollToOffset) {
-					list.scrollToOffset({ offset: 0, animated: true });
-				} else if (list.scrollTo) {
-					list.scrollTo({ y: 0, animated: true });
-				} else {
-					(list.getScrollResponder?.() as Scrollable | null)?.scrollTo?.({
-						y: 0,
-						animated: true,
-					});
-				}
-			},
-		};
+		const target: Target = { navigation, scroll: () => latest.current() };
 		targets.add(target);
 		return () => {
 			targets.delete(target);
 		};
 	}, [navigation]);
-	return setNode;
 }

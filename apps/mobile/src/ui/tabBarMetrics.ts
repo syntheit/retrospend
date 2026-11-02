@@ -1,4 +1,9 @@
-import { createContext, useContext } from "react";
+import {
+	createContext,
+	useContext,
+	useEffect,
+	useSyncExternalStore,
+} from "react";
 import { Platform } from "react-native";
 import type { Theme } from "@/theme";
 
@@ -50,4 +55,40 @@ export const TabBarCoverContext = createContext(0);
 
 export function useTabBarCover(): number {
 	return useContext(TabBarCoverContext);
+}
+
+// A full-screen view over a tab root (the expanded search view) hides the bar,
+// as the keyboard does; the bar and the screens' cover read the same count.
+let hiders = 0;
+const listeners = new Set<() => void>();
+const emit = () => {
+	for (const listener of listeners) listener();
+};
+const subscribe = (listener: () => void) => {
+	listeners.add(listener);
+	return () => {
+		listeners.delete(listener);
+	};
+};
+
+/** Hides the floating tab bar while `hidden` is true. */
+export function useHideTabBar(hidden = true) {
+	useEffect(() => {
+		if (!hidden) return;
+		hiders += 1;
+		emit();
+		return () => {
+			hiders -= 1;
+			emit();
+		};
+	}, [hidden]);
+}
+
+/** True while a full-screen view has hidden the floating tab bar. */
+export function useTabBarHidden(): boolean {
+	return useSyncExternalStore(
+		subscribe,
+		() => hiders > 0,
+		() => false,
+	);
 }
