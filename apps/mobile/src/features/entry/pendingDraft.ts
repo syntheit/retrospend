@@ -97,11 +97,12 @@ export function restoreDraft(
 				fromId: str(body.fromAccountId) || null,
 				toId: str(body.toAccountId) || null,
 				amountText: out,
-				receivedText:
-					amountText(body.toAmount, toCurrency, locale) ?? "",
+				receivedText: amountText(body.toAmount, toCurrency, locale) ?? "",
 				note: str(body.note),
 				date,
-				feeText: fee ? (amountText(fee.amount, fromCurrency, locale) ?? "") : "",
+				feeText: fee
+					? (amountText(fee.amount, fromCurrency, locale) ?? "")
+					: "",
 			},
 		};
 	}
@@ -140,7 +141,8 @@ export function restoreDraft(
 			(p) => !(p.type === "user" && p.id === input.meId),
 		);
 		const paidBy = (body.paidBy ?? null) as { type: string; id: string } | null;
-		const paidByMe = !paidBy || (paidBy.type === "user" && paidBy.id === input.meId);
+		const paidByMe =
+			!paidBy || (paidBy.type === "user" && paidBy.id === input.meId);
 		return {
 			mode: "expense",
 			expense: {

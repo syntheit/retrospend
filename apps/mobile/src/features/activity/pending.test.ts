@@ -222,7 +222,7 @@ describe("merging waiting rows into the server's page", () => {
 		});
 		const merged = mergePending(pageOf([synced]), rows(coffee));
 		expect(merged.items).toEqual([synced]);
-		expect(merged.items.some((i) => i.unsynced)).toBe(false);
+		expect(merged.items.some((i) => (i as ActivityItem).unsynced)).toBe(false);
 	});
 
 	it("matches a split by the entry it is about, not its row id", () => {

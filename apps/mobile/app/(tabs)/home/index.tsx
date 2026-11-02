@@ -6,17 +6,17 @@ import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ActivityRow } from "@/features/activity/ActivityRow";
 import { mergePending } from "@/features/activity/pending";
 import { usePendingRows } from "@/features/activity/usePending";
+import { ConverterSheet } from "@/features/currencies/ConverterSheet";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { SyncIssues } from "@/features/entry/SyncIssues";
-import { ConverterSheet } from "@/features/currencies/ConverterSheet";
 import { useHomeDates } from "@/features/home/dates";
 import { Glance } from "@/features/home/Glance";
 import { HomeSkeleton } from "@/features/home/HomeSkeleton";
 import { NeedsYou } from "@/features/home/NeedsYou";
 import { fetchHome, HOME_CACHE, RECENT_COUNT } from "@/features/home/source";
-import { entryHref } from "@/layout/detailRoutes";
 import { useUnreadNotifications } from "@/features/notifications/useUnreadCount";
 import { useCachedRead } from "@/features/read/useCachedRead";
+import { entryHref } from "@/layout/detailRoutes";
 import { useShowConverter } from "@/lib/converter-pref";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
@@ -96,7 +96,9 @@ export default function HomeScreen() {
 										item={item}
 										key={item.id}
 										onPress={() =>
-											router.push(entryHref(item.id, true, JSON.stringify(item)))
+											router.push(
+												entryHref(item.id, true, JSON.stringify(item)),
+											)
 										}
 									/>
 								))}

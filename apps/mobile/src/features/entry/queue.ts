@@ -2,7 +2,6 @@ import type { RetrospendClient } from "@retrospend/api-client";
 import type { Outbox, OutboxEntry } from "@/data/outbox";
 import { flushOutbox } from "@/data/sync";
 import type { PendingWrite } from "./draft";
-import { releaseSent, retainSent } from "./sentRetain";
 import {
 	createEntrySender,
 	entryOutbox,
@@ -13,6 +12,7 @@ import {
 	undoFor,
 	undoWrite,
 } from "./send";
+import { releaseSent, retainSent } from "./sentRetain";
 
 // Save and Undo for the composers. Every write goes through the outbox first
 // (the phone is offline-first), then one flush tries to send it: online it

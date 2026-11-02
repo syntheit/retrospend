@@ -81,7 +81,11 @@ export function useDeletePending(): (target: PendingTarget) => void {
 					: t("title");
 		showAlert(words, undefined, [
 			{ text: tc("cancel"), style: "cancel" },
-			{ text: t("row"), style: "destructive", onPress: () => void remove(target) },
+			{
+				text: t("row"),
+				style: "destructive",
+				onPress: () => void remove(target),
+			},
 		]);
 	};
 }

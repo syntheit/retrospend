@@ -182,11 +182,11 @@ export function AddEntryProvider({ children }: { children: ReactNode }) {
 						<EntryComposer
 							editId={fill.editId}
 							editShared={fill.editShared}
-							pendingId={fill.pendingId}
 							initialMode={open}
 							key={fill.count}
 							onDirtyChange={onDirtyChange}
 							onDone={close}
+							pendingId={fill.pendingId}
 							prefill={fill.prefill}
 							surface
 						/>

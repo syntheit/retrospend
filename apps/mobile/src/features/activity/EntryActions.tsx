@@ -87,28 +87,28 @@ export function useEntryActions({
 				},
 			]
 		: [
-		...(canRepeatIt
-			? [
-					{
-						id: "make-recurring",
-						label: t("makeRecurring"),
-						icon: "Repeat" as const,
-						onPress: () => setRepeat(true),
-					},
-				]
-			: []),
-		...(canDelete
-			? [
-					{
-						id: "delete",
-						label: t("delete"),
-						icon: "Trash2" as const,
-						destructive: true,
-						onPress: askDelete,
-					},
-				]
-			: []),
-	];
+				...(canRepeatIt
+					? [
+							{
+								id: "make-recurring",
+								label: t("makeRecurring"),
+								icon: "Repeat" as const,
+								onPress: () => setRepeat(true),
+							},
+						]
+					: []),
+				...(canDelete
+					? [
+							{
+								id: "delete",
+								label: t("delete"),
+								icon: "Trash2" as const,
+								destructive: true,
+								onPress: askDelete,
+							},
+						]
+					: []),
+			];
 
 	const sheets = (
 		<>

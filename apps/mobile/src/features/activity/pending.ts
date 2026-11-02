@@ -168,17 +168,17 @@ export function mergePending(
 	const last = page.items.at(-1);
 	const fresh = rows
 		.filter((row) => !have.has(row.entityId) && !have.has(row.id))
-		.filter(
-			(row) =>
-				page.nextCursor === null || !last || row.date >= last.date,
-		)
+		.filter((row) => page.nextCursor === null || !last || row.date >= last.date)
 		.slice()
 		.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 	if (fresh.length === 0) return page;
 	const items: ActivityItem[] = [];
 	let next = 0;
 	for (const item of page.items) {
-		while (next < fresh.length && (fresh[next] as ActivityItem).date >= item.date) {
+		while (
+			next < fresh.length &&
+			(fresh[next] as ActivityItem).date >= item.date
+		) {
 			items.push(fresh[next] as ActivityItem);
 			next++;
 		}

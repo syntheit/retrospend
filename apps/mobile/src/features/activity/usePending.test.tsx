@@ -1,9 +1,10 @@
 import type { RetrospendClient } from "@retrospend/api-client";
-import { act, flush, renderHook, world } from "../../../test/harness";
 import { announceEntryChange } from "@/features/entry/events";
 import { flushEntries, saveEntry } from "@/features/entry/queue";
-import { forgetSent } from "@/features/entry/sentRetain";
 import { forgetUndoTokens } from "@/features/entry/send";
+import { forgetSent } from "@/features/entry/sentRetain";
+import { act, flush, renderHook, world } from "../../../test/harness";
+import type { ActivityItem } from "./source";
 import { usePendingRows } from "./usePending";
 
 // The one place the lists get their waiting rows: an entry written offline
@@ -85,7 +86,10 @@ describe("waiting rows for the lists", () => {
 
 	it("keeps the sent row, no longer marked, until the list reads the server's", async () => {
 		world.api = offlineApi();
-		const hook = await renderHook((settled: unknown) => usePendingRows(settled), "page-1");
+		const hook = await renderHook<ActivityItem[], string>(
+			(settled) => usePendingRows(settled),
+			"page-1",
+		);
 		await act(async () => {
 			await saveEntry({
 				outbox: world.local.outbox,

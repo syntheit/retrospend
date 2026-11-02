@@ -115,7 +115,10 @@ export function useEntrySave({
 			// Editing a waiting entry: the old write leaves the outbox first. If a
 			// flush sent it meanwhile the server has it, and this edit would not
 			// replace anything: say so and leave it to Activity.
-			if (replaceId && (await takeFromOutbox(local.outbox, replaceId)) === null) {
+			if (
+				replaceId &&
+				(await takeFromOutbox(local.outbox, replaceId)) === null
+			) {
 				toast.show({ message: t("toast.editSynced") });
 				announceEntryChange();
 				onDone();

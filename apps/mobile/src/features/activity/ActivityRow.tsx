@@ -40,7 +40,9 @@ export function rowStatus(item: ActivityItem, t: Words): string | null {
 function RowStatus({ item, label }: { item: ActivityItem; label: string }) {
 	// Only this phone has it: a cloud with a slash, in the attention color, and the words.
 	if (item.unsynced) {
-		return <StatusText glyph="CloudOff" label={label} size="sm" tone="attention" />;
+		return (
+			<StatusText glyph="CloudOff" label={label} size="sm" tone="attention" />
+		);
 	}
 	const tone =
 		item.waiting === "review"
