@@ -9,7 +9,7 @@ import { extendTailwindMerge } from "tailwind-merge";
  */
 export const TOKEN_CLASS_NAMES = {
 	text: ["hero", "title", "section", "body", "small", "meta"],
-	radius: ["ctl", "panel", "chip"],
+	radius: ["ctl", "panel", "chip", "menu", "sheet"],
 	shadow: ["menu", "ctl"],
 	spacing: ["ctl", "ctl-sm", "row", "gutter", "trail", "money"],
 	ease: ["land", "leave"],
