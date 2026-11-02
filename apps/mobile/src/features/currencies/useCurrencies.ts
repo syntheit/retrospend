@@ -23,10 +23,16 @@ export function useRateTable() {
 /**
  * The currencies starred on the Currencies screen, in the table's order. The
  * currency picker lists them first, so the pins mean the same everywhere.
- * Empty until the table has been read once.
+ * The picker only reads what this run or the phone already has: the
+ * Currencies screen is what asks the server. Empty until the table has been
+ * read once.
  */
 export function usePinnedCurrencies(): string[] {
-	const { state } = useRateTable();
+	const { api } = useSession();
+	const fetch = useMemo(() => (api ? fetchRateTable(api) : null), [api]);
+	const { state } = useCachedRead(RATE_TABLE_CACHE, fetch, undefined, {
+		passive: true,
+	});
 	return useMemo(
 		() =>
 			state.status === "ready"
