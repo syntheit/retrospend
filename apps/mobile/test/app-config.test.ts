@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import config, {
 	apnsEnvironment,
+	associatedDomains,
 	assertBuildProfile,
 	defaultServer,
 	LINK_HOSTS,
@@ -76,10 +77,18 @@ describe("app config", () => {
 		);
 	});
 
-	it("opens the app for both server domains' links on iOS", () => {
-		const domains = config.ios?.associatedDomains ?? [];
+	it("adds iOS universal links only when RETROSPEND_IOS_APPLINKS=1", () => {
+		expect(associatedDomains({})).toEqual([
+			"webcredentials:retrospend.app",
+			"webcredentials:dev.retrospend.app",
+		]);
+		expect(associatedDomains({ RETROSPEND_IOS_APPLINKS: "0" })).not.toContain(
+			"applinks:retrospend.app",
+		);
+		const on = associatedDomains({ RETROSPEND_IOS_APPLINKS: "1" });
 		for (const host of ["retrospend.app", "dev.retrospend.app"]) {
-			expect(domains).toContain(`applinks:${host}`);
+			expect(on).toContain(`applinks:${host}`);
+			expect(on).toContain(`webcredentials:${host}`);
 		}
 	});
 
