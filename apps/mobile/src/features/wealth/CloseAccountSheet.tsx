@@ -1,12 +1,8 @@
-import { useEffect } from "react";
 import { useTranslations } from "use-intl";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
 import { useMoneyText } from "@/features/read/useMoneyText";
-import { Note, SheetBody } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
-import { Sheet } from "@/ui/Sheet";
+import { Note } from "@/features/write/parts";
+import { WriteSheet } from "@/features/write/WriteForm";
 import { isLiability } from "./accounts";
 import type { Account } from "./source";
 
@@ -31,75 +27,43 @@ export function CloseAccountSheet({
 	const t = useTranslations(
 		reopen ? "mobile.wealth.reopen" : "mobile.wealth.close",
 	);
-	const api = useApi();
-	const announce = useUndoToast("accounts");
 	const money = useMoneyText();
-	const input = { id: account.id };
-	const { idFor, reset } = useWriteIds(JSON.stringify(input));
-	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening gets a fresh write id
-	useEffect(() => {
-		if (visible) reset();
-	}, [visible]);
-
-	const flow = useMoneyWrite({
-		input: visible ? input : null,
-		idempotencyKey: idFor("write"),
-		preview: (body) =>
-			api
-				? reopen
+	return (
+		<WriteSheet
+			changes={({ preview, status }) => (
+				<PreviewChanges preview={preview} status={status} />
+			)}
+			detent="medium"
+			family="accounts"
+			input={{ id: account.id }}
+			message={() => t("toast", { name: account.name })}
+			onClose={onClose}
+			onDone={onDone}
+			preview={(api, body) =>
+				reopen
 					? api.accounts.previewReopen(body)
 					: api.accounts.previewClose(body)
-				: noSession(),
-		write: (body, key) => {
-			if (!api) return noSession();
-			const options = { context: { idempotencyKey: key } };
-			return reopen
-				? api.accounts.reopen(body, options)
-				: api.accounts.close(body, options);
-		},
-	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out) return;
-		announce({
-			message: t("toast", { name: account.name }),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
-
-	return (
-		<Sheet
-			detents={["medium"]}
-			onClose={onClose}
+			}
+			submitLabel={t("submit")}
 			title={t("title", { name: account.name })}
 			visible={visible}
+			write={(api, body, key) => {
+				const options = { context: { idempotencyKey: key } };
+				return reopen
+					? api.accounts.reopen(body, options)
+					: api.accounts.close(body, options);
+			}}
 		>
-			<SheetBody>
-				<WriteFrame
-					busy={flow.committing}
-					changes={
-						<PreviewChanges preview={flow.preview} status={flow.status} />
-					}
-					failed={flow.commitFailed}
-					onSubmit={submit}
-					ready={flow.status === "ready"}
-					submitLabel={t("submit")}
-				>
-					<Note>{t("body", { name: account.name })}</Note>
-					{!reopen && account.balance.minor !== 0 ? (
-						<Note tone="attention">
-							{t("left", {
-								amount: money(account.balance, {
-									sign: isLiability(account.type) ? "never" : "auto",
-								}),
-							})}
-						</Note>
-					) : null}
-				</WriteFrame>
-			</SheetBody>
-		</Sheet>
+			<Note>{t("body", { name: account.name })}</Note>
+			{!reopen && account.balance.minor !== 0 ? (
+				<Note tone="attention">
+					{t("left", {
+						amount: money(account.balance, {
+							sign: isLiability(account.type) ? "never" : "auto",
+						}),
+					})}
+				</Note>
+			) : null}
+		</WriteSheet>
 	);
 }

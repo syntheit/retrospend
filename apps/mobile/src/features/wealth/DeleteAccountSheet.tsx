@@ -1,12 +1,9 @@
-import { useEffect } from "react";
+import { useRef } from "react";
 import { useTranslations } from "use-intl";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
-import { Note, SheetBody } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import { noSession, useApi } from "@/features/write/WriteFrame";
+import { useResetOnOpen } from "@/features/write/useResetOnOpen";
+import { WriteSheet } from "@/features/write/WriteForm";
 import { Button } from "@/ui/Button";
-import { Sheet } from "@/ui/Sheet";
 import type { Account } from "./source";
 
 /**
@@ -32,75 +29,42 @@ export function DeleteAccountSheet({
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.wealth.delete");
-	const tc = useTranslations("mobile.common");
-	const api = useApi();
-	const announce = useUndoToast("accounts");
-	const input = { id: account.id };
-	const { idFor, reset } = useWriteIds(JSON.stringify(input));
-	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening gets a fresh write id
-	useEffect(() => {
-		if (visible) reset();
-	}, [visible]);
-
-	const flow = useMoneyWrite({
-		input: visible ? input : null,
-		idempotencyKey: idFor("write"),
-		preview: (body) => (api ? api.accounts.previewDelete(body) : noSession()),
-		write: (body, key) =>
-			api
-				? api.accounts.delete(body, { context: { idempotencyKey: key } })
-				: noSession(),
+	// The screen leaves once, when the account goes; an Undo only refreshes.
+	const gone = useRef(false);
+	useResetOnOpen(visible, () => {
+		gone.current = false;
 	});
-	const open = account.closedAt === null;
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out) return;
-		// The screen leaves once, when the account goes; an Undo only refreshes.
-		let gone = false;
-		announce({
-			message: t("toast", { name: account.name }),
-			token: out.undo,
-			onChanged: () => {
-				if (gone) return;
-				gone = true;
-				onDone();
-			},
-		});
-		onClose();
-	}
-
 	return (
-		<Sheet
-			detents={["medium"]}
-			footerApart
-			footer={
-				<>
-					<Button label={tc("cancel")} onPress={onClose} variant="text" />
-					<Button
-						busy={flow.committing}
-						disabled={flow.status !== "ready" || flow.committing}
-						label={flow.committing ? t("deleting") : t("submit")}
-						onPress={submit}
-						variant="danger"
-					/>
-				</>
-			}
+		<WriteSheet
+			changes={({ preview, status }) => (
+				<PreviewChanges preview={preview} status={status} />
+			)}
+			destructive={{ label: t("submit"), busyLabel: t("deleting") }}
+			detent="medium"
+			error={t("error")}
+			family="accounts"
+			input={{ id: account.id }}
+			message={() => t("toast", { name: account.name })}
 			onClose={onClose}
+			onDone={() => {
+				if (gone.current) return;
+				gone.current = true;
+				onDone();
+			}}
+			preview={(api, body) => api.accounts.previewDelete(body)}
 			title={t("title", { name: account.name })}
 			visible={visible}
+			write={(api, body, key) =>
+				api.accounts.delete(body, { context: { idempotencyKey: key } })
+			}
 		>
-			<SheetBody>
-				{open ? (
-					<Button
-						label={t("closeInstead")}
-						onPress={onCloseInstead}
-						variant="outlined"
-					/>
-				) : null}
-				<PreviewChanges preview={flow.preview} status={flow.status} />
-				{flow.commitFailed ? <Note tone="attention">{t("error")}</Note> : null}
-			</SheetBody>
-		</Sheet>
+			{account.closedAt === null ? (
+				<Button
+					label={t("closeInstead")}
+					onPress={onCloseInstead}
+					variant="outlined"
+				/>
+			) : null}
+		</WriteSheet>
 	);
 }
