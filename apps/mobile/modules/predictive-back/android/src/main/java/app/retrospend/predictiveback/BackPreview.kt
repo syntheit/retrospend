@@ -23,10 +23,13 @@ import com.swmansion.rnscreens.ScreenStack
 /**
  * The back preview of a pushed screen: while the person drags from the edge,
  * the screen on top shrinks to 90 percent, rounds its corners and moves
- * toward the way the finger goes, as the system does for an app's window
- * (Material 3 "back to previous"). A sheet shrinks around its bottom edge.
- * Letting go past the threshold pops the stack the usual way; letting go
- * early settles the screen back.
+ * toward the way it will leave (Material 3 "back to previous"). A pushed
+ * screen entered from the trailing side, so it follows the trailing edge
+ * (right in LTR, left in RTL) whichever edge the swipe starts from, and on
+ * commit slides out that way. A sheet, the account sheet included, moves
+ * down: it shrinks around its bottom edge, sinks, and leaves downward.
+ * Nothing overshoots. Letting go past the threshold pops the stack the usual
+ * way; letting go early settles the screen back.
  *
  * The callback is registered at overlay priority so it sees the gesture
  * before the activity's own callbacks. It is registered only while the
@@ -42,7 +45,10 @@ internal class BackPreview(private val activity: Activity) {
 
   private var view: View? = null
   private var sheet = false
-  private var direction = 1f
+  /** Toward the trailing edge: 1 in LTR, -1 in RTL. */
+  private var trailing = 1f
+  /** The popped screen's own stack animation, put back after the gesture. */
+  private var savedAnimation: Screen.StackAnimation? = null
   private var startY = 0f
   private var progress = 0f
   private var touchY = 0f
@@ -145,7 +151,9 @@ internal class BackPreview(private val activity: Activity) {
     if (container != null && !(attachPrevious(screen, target)) && color != null) {
       container.setBackgroundColor(color)
     }
-    direction = if (event.swipeEdge == BackEvent.EDGE_LEFT) 1f else -1f
+    trailing =
+      if (activity.resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL) -1f
+      else 1f
     startY = event.touchY
     touchY = event.touchY
     progress = 0f
@@ -231,10 +239,18 @@ internal class BackPreview(private val activity: Activity) {
       return
     }
     val host = activity
-    // The stack pops through JavaScript, as for a back key. The stack's own
-    // exit animation would start from the full-size screen, so this carries
-    // the shrunk screen out itself (it keeps setting the screen's properties
-    // every frame, so nothing jumps) while the previous screen comes in.
+    // A pushed screen leaves the way it was dragged: the stack's own slide
+    // toward the trailing edge, run from the shrunk state the screen is in
+    // (the animation sits outside the view's scale and corners, so they stay
+    // and nothing jumps). Without this the default exit fades it out.
+    val leaving = poppedScreen
+    if (leaving != null && !sheet) {
+      savedAnimation = leaving.stackAnimation
+      leaving.stackAnimation =
+        if (trailing > 0f) Screen.StackAnimation.SLIDE_FROM_RIGHT
+        else Screen.StackAnimation.SLIDE_FROM_LEFT
+    }
+    // The stack pops through JavaScript, as for a back key.
     @Suppress("DEPRECATION")
     host.onBackPressed()
     // The stack now shows it as its top screen; it is no longer ours to remove.
@@ -242,16 +258,19 @@ internal class BackPreview(private val activity: Activity) {
     added = null
     if (view == null) return
     settle?.cancel()
-    settle =
-      ValueAnimator.ofFloat(0f, 1f).apply {
-        duration = EXIT_MS
-        interpolator = EASE
-        addUpdateListener {
-          exit = it.animatedValue as Float
-          apply()
+    // A sheet carries itself down (the pushed screen's slide is the stack's).
+    if (sheet) {
+      settle =
+        ValueAnimator.ofFloat(0f, 1f).apply {
+          duration = EXIT_MS
+          interpolator = EASE
+          addUpdateListener {
+            exit = it.animatedValue as Float
+            apply()
+          }
+          start()
         }
-        start()
-      }
+    }
     // The screen is put back once the pop is over (its view is gone). A pop
     // that did not happen (a screen that blocks back) settles it back instead.
     val popped = poppedScreen
@@ -313,15 +332,14 @@ internal class BackPreview(private val activity: Activity) {
     val scale = 1f - SCALE_DELTA * progress
     target.scaleX = scale
     target.scaleY = scale
-    target.alpha = 1f - exit * exit * exit
     if (sheet) {
+      // Down: sinks with the drag, then leaves through the bottom.
       target.translationX = 0f
-      target.translationY = exit * target.height * EXIT_SHIFT
+      target.translationY = (progress * SHEET_SINK + exit * (1f - progress * SHEET_SINK)) * target.height
       return
     }
-    // Slide toward the finger until the window is 8 dp from the far edge.
-    val room = (target.width * (1f - scale) / 2f - MARGIN_DP * density).coerceAtLeast(0f)
-    target.translationX = direction * (room + exit * target.width * EXIT_SHIFT)
+    // Toward the trailing edge, where the screen leaves to.
+    target.translationX = trailing * progress * target.width * PUSH_SHIFT
     val limit = target.height / 20f
     target.translationY = (touchY - startY).coerceIn(-limit, limit) * progress
     target.elevation = ELEVATION_DP * density * progress
@@ -334,12 +352,15 @@ internal class BackPreview(private val activity: Activity) {
     settle = null
     val target = view
     val before = saved
+    val popped = poppedScreen
     view = null
     saved = null
     progress = 0f
     if (target == null) return
     exit = 0f
     target.alpha = 1f
+    popped?.let { if (savedAnimation != null) it.stackAnimation = savedAnimation!! }
+    savedAnimation = null
     target.scaleX = 1f
     target.scaleY = 1f
     target.translationX = 0f
@@ -388,12 +409,12 @@ internal class BackPreview(private val activity: Activity) {
 
   private companion object {
     const val SCALE_DELTA = 0.1f
-    const val MARGIN_DP = 8f
+    const val PUSH_SHIFT = 0.1f
+    const val SHEET_SINK = 0.08f
     const val CORNER_DP = 28f
     const val ELEVATION_DP = 8f
     const val SETTLE_MS = 200L
     const val EXIT_MS = 300L
-    const val EXIT_SHIFT = 0.1f
     const val SETTLE_DELAY_MS = 500L
     // The stack's own exit animation (450 ms) has ended by then.
     const val WATCH_MS = 1200L
