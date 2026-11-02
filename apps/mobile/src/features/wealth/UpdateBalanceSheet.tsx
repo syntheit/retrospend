@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useRateLine } from "@/features/currencies/useRateLine";
@@ -11,9 +11,8 @@ import { Note, useAmountLocale } from "@/features/write/parts";
 import { useAmountLine } from "@/features/write/useAmountLine";
 import { useFigureLabel } from "@/features/write/useFigureLabel";
 import { useFoldingPad } from "@/features/write/useFoldingPad";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { useUndoToast } from "@/features/write/useUndoToast";
-import { noSession, useApi } from "@/features/write/WriteFrame";
+import { useResetOnOpen } from "@/features/write/useResetOnOpen";
+import { useWriteForm } from "@/features/write/WriteForm";
 import { useRateFormat } from "@/lib/rateFormat";
 import { useTheme } from "@/theme";
 import { ChangeList, type ChangeRow } from "@/ui/ChangeList";
@@ -63,8 +62,6 @@ export function UpdateBalanceSheet({
 	const t = useTranslations("mobile.wealth.update");
 	const tp = useTranslations("mobile.budget.preview");
 	const format = useFormatter();
-	const api = useApi();
-	const announce = useUndoToast("accounts");
 	const money = useMoneyText();
 	const rateName = useRateTypeLabel();
 	const locale = useAmountLocale();
@@ -94,24 +91,6 @@ export function UpdateBalanceSheet({
 	});
 	// A pick other than the saved type values the account from today on.
 	const switching = rateType !== null && rateType !== saved;
-	const bodyKey =
-		minor === null
-			? null
-			: JSON.stringify({
-					minor,
-					id: account.id,
-					rateType: switching ? rateType : null,
-				});
-	const { idFor, reset } = useWriteIds(bodyKey);
-	const { setPadOpen } = pad;
-	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening starts empty and fresh
-	useEffect(() => {
-		if (!visible) return;
-		setDraft("");
-		setRateType(saved);
-		setPadOpen(true);
-		reset();
-	}, [visible]);
 	const input =
 		minor === null
 			? null
@@ -120,16 +99,27 @@ export function UpdateBalanceSheet({
 					balance: wireAmount(minor, currency),
 					...(switching ? { rateType } : {}),
 				};
-
-	const flow = useMoneyWrite({
-		input: visible ? input : null,
-		idempotencyKey: input ? idFor("write") : null,
-		preview: (body) =>
-			api ? api.accounts.previewUpdateBalance(body) : noSession(),
-		write: (body, key) =>
-			api
-				? api.accounts.updateBalance(body, { context: { idempotencyKey: key } })
-				: noSession(),
+	const { setPadOpen } = pad;
+	useResetOnOpen(visible, () => {
+		setDraft("");
+		setRateType(saved);
+		setPadOpen(true);
+	});
+	const { flow, ready, submit } = useWriteForm({
+		input,
+		active: visible,
+		family: "accounts",
+		preview: (api, body) => api.accounts.previewUpdateBalance(body),
+		write: (api, body, key) =>
+			api.accounts.updateBalance(body, { context: { idempotencyKey: key } }),
+		canSave: (diff) => switching || !isUnchanged(balanceRows(diff)),
+		message: () =>
+			t("toast", {
+				name: account.name,
+				amount: money({ minor: minor ?? 0, currency }),
+			}),
+		onClose,
+		onDone,
 	});
 
 	const rows = flow.preview ? balanceRows(flow.preview) : null;
@@ -166,7 +156,6 @@ export function UpdateBalanceSheet({
 		});
 	}
 	const same = rows ? isUnchanged(rows) && !switching : false;
-	const ready = flow.status === "ready" && !same;
 
 	// A type is named with its number (R8). The saved type's own rate is on the
 	// account, so it has its number before the table answers.
@@ -192,20 +181,6 @@ export function UpdateBalanceSheet({
 						before: saved ? named(saved) : "",
 					})
 				: t("rateFromToday", { next: named(rateType) });
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out || minor === null) return;
-		announce({
-			message: t("toast", {
-				name: account.name,
-				amount: money({ minor, currency }),
-			}),
-			token: out.undo,
-			onChanged: onDone,
-		});
-		onClose();
-	}
 
 	return (
 		<Sheet
