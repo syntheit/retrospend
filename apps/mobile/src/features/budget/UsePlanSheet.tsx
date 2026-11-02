@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Line, Note } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { useResetOnOpen } from "@/features/write/useResetOnOpen";
 import { useApi } from "@/features/write/WriteFrame";
 import { useTheme } from "@/theme";
 import { Picker } from "@/ui/Picker";
@@ -69,10 +70,7 @@ export function UsePlanSheet({
 	const jobs = plan?.totals.filter((total) => total.amount.minor > 0) ?? [];
 	const bodyKey = plan && jobs.length > 0 ? JSON.stringify({ rest }) : null;
 	const { idFor, reset } = useWriteIds(bodyKey);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: a new opening is a new write
-	useEffect(() => {
-		if (visible) reset();
-	}, [visible]);
+	useResetOnOpen(visible, reset);
 	const input = bodyKey ? planBody({ batchId: idFor("batch"), rest }) : null;
 
 	const restLabel = (option: FillPlan["restOptions"][number]) => {

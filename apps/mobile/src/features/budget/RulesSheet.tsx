@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { Note, SheetBody } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { useResetOnOpen } from "@/features/write/useResetOnOpen";
 import { noSession, useApi } from "@/features/write/WriteFrame";
 import { Button } from "@/ui/Button";
 import { ListRow } from "@/ui/List";
@@ -83,13 +84,11 @@ export function RulesSheet({
 		visible && mode.kind === "apply" ? mode.id : null,
 	);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening starts at the list
-	useEffect(() => {
-		if (!visible) return;
+	useResetOnOpen(visible, () => {
 		reset();
 		setMode({ kind: "list" });
 		setFailed(false);
-	}, [visible]);
+	});
 
 	async function change(run: () => Promise<unknown>) {
 		setFailed(false);
