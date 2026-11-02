@@ -44,7 +44,7 @@ export interface FloatingTabBarProps {
 }
 
 /**
- * PROVISIONAL (owner option A of android-navbar-r2): the Android bottom bar.
+ * The Android bottom bar (owner option A of android-navbar-r2).
  * A floating pill inset from the sides and above the gesture area, in the
  * raised surface with a hairline (no glass, blur or shadow), five equal tabs
  * with the icon over the label. The open tab sits in one lozenge around the

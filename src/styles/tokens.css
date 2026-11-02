@@ -77,6 +77,8 @@
 	--r-ctl: 8px;
 	--r-panel: 12px;
 	--r-chip: 9999px;
+	--r-menu: 16px;
+	--r-sheet: 28px;
 	--ctl-h: 32px;
 	--ctl-sm: 28px;
 	--row-h: 40px;
@@ -242,6 +244,8 @@
 	--radius-ctl: var(--r-ctl);
 	--radius-panel: var(--r-panel);
 	--radius-chip: var(--r-chip);
+	--radius-menu: var(--r-menu);
+	--radius-sheet: var(--r-sheet);
 	--spacing-ctl: var(--ctl-h);
 	--spacing-ctl-sm: var(--ctl-sm);
 	--spacing-row: var(--row-h);

@@ -1,3 +1,5 @@
+import { light } from "@retrospend/tokens/theme";
+
 /**
  * The header of a screen pushed over another (Settings and its pages). It is
  * the system's: on iOS the chevron with the previous title or "Back", on
@@ -71,11 +73,11 @@ export const SETTINGS_SCREENS: readonly {
 /**
  * The Material 3 modal bottom sheet's shape on Android: 28 dp top corners and
  * a top margin of 72 dp (status bar included) that leaves the scrim showing
- * above the sheet at its large detent. Platform constants of the component,
- * not app tokens (provisional: the owner may want them in the token set).
+ * above the sheet at its large detent. Both come from the tokens
+ * (`radius.sheet`, `size.sheetTop`).
  */
-export const M3_SHEET_RADIUS = 28;
-export const M3_SHEET_TOP_MARGIN = 72;
+export const M3_SHEET_RADIUS = light.radius.sheet;
+export const M3_SHEET_TOP_MARGIN = light.size.sheetTop.phone;
 
 /**
  * The account sheet in the root stack: a native form sheet (the profile icon

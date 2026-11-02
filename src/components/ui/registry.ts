@@ -134,7 +134,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "detail-pager",
 		status: "core",
-		job: "PROVISIONAL (composer design D, owner review): a fixed grid of equal icon-over-word tabs with one panel each; swipe row on phones, the chosen panel in place from md up. The expense composer only",
+		job: "A fixed grid of equal icon-over-word tabs with one panel each; swipe row on phones, the chosen panel in place from md up. The expense composer only",
 	},
 	{
 		file: "dialog",
@@ -161,7 +161,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "glyph-pill",
 		status: "core",
-		job: "PROVISIONAL (composer design D, owner review): the composer choice pill with a bare glyph or face lead, selected by brand border and soft fill (FilterChip look)",
+		job: "The composer choice pill with a bare glyph or face lead, selected by brand border and soft fill (FilterChip look)",
 	},
 	{
 		file: "image-crop-dialog",
@@ -195,7 +195,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "project-choice",
 		status: "core",
-		job: "PROVISIONAL (composer design D, owner review): a project as a pick row with cover, one-line name, face stack and meta, in a ul; the composer's Project panel (not the ProjectRow list row)",
+		job: "A project as a pick row with cover, one-line name, face stack and meta, in a ul; the composer's Project panel (not the ProjectRow list row)",
 	},
 	{
 		file: "progress",
@@ -268,7 +268,7 @@ export const REGISTRY: Primitive[] = [
 	{
 		file: "answer-line",
 		status: "core",
-		job: "PROVISIONAL (composer design D, owner review): the composer's answers as wrapping text joined by dots, each part a button that opens its panel (not the SummaryLine key numbers)",
+		job: "The composer's answers as wrapping text joined by dots, each part a button that opens its panel (not the SummaryLine key numbers)",
 	},
 	{
 		file: "switch",

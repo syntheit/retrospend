@@ -41,8 +41,6 @@ import { TEXT_SCALE_CAP } from "./Text";
  *   offset to the shared value on the UI thread (no timed animation: the bar
  *   follows the finger).
  * - `useBarMetrics` is the one place the bar's heights are worked out.
- *
- * Provisional: a new primitive (M3 on Android), waiting for the owner's sign-off.
  */
 interface BarState {
 	/** The scroll offset of the screen's list, written on the UI thread. */

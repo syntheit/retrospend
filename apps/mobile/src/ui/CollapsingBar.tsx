@@ -25,8 +25,6 @@ import { Text } from "./Text";
  * It is drawn over the screen: the lists of the screen pad their top by the
  * bar's height (barScroll). `footer` is a row pinned under the bar that rides
  * with it (People's tabs), as tall as the provider's `footer`.
- *
- * Provisional: a new primitive (M3 on Android), waiting for the owner's sign-off.
  */
 export function CollapsingBar({
 	title,

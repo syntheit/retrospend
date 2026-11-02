@@ -25,8 +25,7 @@ import type { BulkActions } from "./useBulkActions";
  * The Compose toolbar can hide on scroll only when it sits in a Compose
  * scroll container; the list here is React Native, so it stays put.
  *
- * Provisional primitive (needs the owner's sign-off). Its size is the
- * Material toolbar's: a 64 dp pill (in the mockup, 64).
+ * Its size is the Material toolbar's: a 64 dp pill (in the mockup, 64).
  */
 export function BulkControls({
 	items,

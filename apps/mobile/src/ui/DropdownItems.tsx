@@ -6,6 +6,7 @@ import {
 	RNHostView,
 } from "@expo/ui/jetpack-compose";
 import { defaultMinSize, padding } from "@expo/ui/jetpack-compose/modifiers";
+import { light } from "@retrospend/tokens/theme";
 import { Fragment, type ReactNode } from "react";
 import { useTheme } from "@/theme";
 import { fontFamilyFor } from "@/theme/fonts";
@@ -14,17 +15,18 @@ import { useChromeTextSize } from "./Text";
 import type { MenuItem } from "./types";
 
 /**
- * The M3 menu's measurements, in dp. The container is the Material 3
- * Expressive menu (16 dp corners, an 8 dp lift); items are 48 dp tall with
- * 16 dp of side padding (the item's own 12 plus the 4 added here), a 20 dp
+ * The M3 menu's measurements, in dp. The corners and the leading mark come
+ * from the tokens (`radius.menu`, `size.menuIcon`); the 8 dp lift is the
+ * component's own. The container is the Material 3 Expressive menu; items
+ * are 48 dp tall with 16 dp of side padding (the item's own 12 plus the 4 added here), a 20 dp
  * leading mark and 12 dp between it and the label.
  */
 const MENU = {
-	corner: 16,
+	corner: light.radius.menu,
 	elevation: 8,
 	itemSide: 4,
 	minWidth: 200,
-	icon: 20,
+	icon: light.size.menuIcon.phone,
 	label: 16,
 	groupGap: 4,
 } as const;

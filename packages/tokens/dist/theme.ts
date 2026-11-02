@@ -128,7 +128,9 @@ export const light = {
 	"radius": {
 		"ctl": 8,
 		"panel": 12,
-		"chip": 9999
+		"chip": 9999,
+		"menu": 16,
+		"sheet": 28
 	},
 	"size": {
 		"ctl": {
@@ -179,6 +181,12 @@ export const light = {
 		},
 		"sidebar": {
 			"desktop": 232
+		},
+		"sheetTop": {
+			"phone": 72
+		},
+		"menuIcon": {
+			"phone": 20
 		},
 		"touchMin": {
 			"phone": 44
@@ -389,7 +397,9 @@ export const dark: Theme = {
 	"radius": {
 		"ctl": 8,
 		"panel": 12,
-		"chip": 9999
+		"chip": 9999,
+		"menu": 16,
+		"sheet": 28
 	},
 	"size": {
 		"ctl": {
@@ -440,6 +450,12 @@ export const dark: Theme = {
 		},
 		"sidebar": {
 			"desktop": 232
+		},
+		"sheetTop": {
+			"phone": 72
+		},
+		"menuIcon": {
+			"phone": 20
 		},
 		"touchMin": {
 			"phone": 44

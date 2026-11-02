@@ -33,8 +33,6 @@ import { useHideTabBar } from "./tabBarMetrics";
  *
  * The page stays under it, so a result that opens a page pushes it over the
  * view, and Back returns to the view with its query.
- *
- * Provisional: a new primitive (M3 on Android), waiting for the owner's sign-off.
  */
 export function SearchView({
 	open,
