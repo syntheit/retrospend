@@ -67,11 +67,6 @@ function tabsOf(p: FloatingTabBarProps) {
 	);
 }
 
-function pressIn(tabs: Node[], index: number) {
-	const onPressIn = tabs[index]?.props.onPressIn as (() => void) | undefined;
-	act(() => onPressIn?.());
-}
-
 function press(tabs: Node[], index: number) {
 	const onPress = tabs[index]?.props.onPress as (() => void) | undefined;
 	act(() => onPress?.());
@@ -105,15 +100,15 @@ describe("FloatingTabBar", () => {
 		expect(scrollFocusedToTop).not.toHaveBeenCalled();
 	});
 
-	it("goes to another tab on touch down, and the release does not go twice", () => {
+	it("does not switch on touch down, only when the finger lifts", () => {
 		const p = props(0);
 		const tabs = tabsOf(p);
-		pressIn(tabs, 3);
-		expect(p.emit).toHaveBeenCalledTimes(1);
-		expect(p.navigateToTab).toHaveBeenCalledWith("wealth-key");
+		expect(tabs.every((t) => t.props.onPressIn === undefined)).toBe(true);
+		expect(p.navigateToTab).not.toHaveBeenCalled();
 		press(tabs, 3);
 		expect(p.emit).toHaveBeenCalledTimes(1);
 		expect(p.navigateToTab).toHaveBeenCalledTimes(1);
+		expect(p.navigateToTab).toHaveBeenCalledWith("wealth-key");
 	});
 
 	it("shows the pressed tab as open before the navigator has moved", () => {
@@ -128,7 +123,7 @@ describe("FloatingTabBar", () => {
 					n.props.accessibilityRole === "tab" &&
 					typeof n.props.onPress === "function",
 			);
-		pressIn(find(), 2);
+		press(find(), 2);
 		expect(
 			find().map(
 				(t) => (t.props.accessibilityState as { selected: boolean }).selected,
@@ -136,19 +131,9 @@ describe("FloatingTabBar", () => {
 		).toEqual([false, false, true, false, false]);
 	});
 
-	it("does not leave on touch down when a listener prevents the press", () => {
-		const p = props(0);
-		p.emit.mockReturnValue({ defaultPrevented: true });
-		const tabs = tabsOf(p);
-		pressIn(tabs, 1);
-		expect(p.navigateToTab).not.toHaveBeenCalled();
-	});
-
 	it("leaves the open tab to its press (pop to the root)", () => {
 		const p = props(0, 1);
 		const tabs = tabsOf(p);
-		pressIn(tabs, 0);
-		expect(p.emit).not.toHaveBeenCalled();
 		press(tabs, 0);
 		expect(p.emit).toHaveBeenCalledTimes(1);
 		expect(p.navigateToTab).not.toHaveBeenCalled();

@@ -49,10 +49,13 @@ export interface FloatingTabBarProps {
  * raised surface with a hairline (no glass, blur or shadow), five equal tabs
  * with the icon over the label. The open tab sits in one lozenge around the
  * whole tab, brand-soft with a brand icon and label; it slides to the tab
- * you press (220, the land curve, no overshoot; it starts on touch down, in
- * the same frame the screen swap is requested, and runs on the UI thread),
- * and with reduced motion it jumps. A press on the open tab emits `tabPress`, which pops its stack to
- * the root; at the root it scrolls the list to the top. The bar steps aside
+ * you press (220, the land curve, no overshoot). The switch happens when the
+ * finger lifts, as on iOS and as Android's navigation bar does, so a scroll
+ * that starts on the bar never switches. In that one handler the slide is
+ * handed to the UI thread and the screen swap is requested, so the lozenge
+ * never waits for the navigator's render; with reduced motion it jumps. A
+ * press on the open tab emits `tabPress`, which pops its stack to the root;
+ * at the root it scrolls the list to the top. The bar steps aside
  * while the keyboard is up. Labels truncate at large text sizes, never
  * overlap. A screen reader hears a tab list with the open tab selected.
  */
@@ -76,15 +79,11 @@ export function FloatingTabBar({
 	const focusedName = state.routes[state.index]?.name;
 	const open = tabs.findIndex((tab) => tab.name === focusedName);
 
-	// The tab a press-in is taking you to, until the navigator catches up. The
-	// lozenge and the tab colors follow the finger at once; the screen swap
-	// (the heavy render) comes after, and never gates the highlight.
+	// The tab a release is taking you to, until the navigator catches up. The
+	// lozenge and the tab colors change at once; the screen swap (the heavy
+	// render) comes after, and never gates the highlight.
 	const [pending, setPending] = useState<number | null>(null);
 	const shownIndex = pending ?? open;
-	// The tab whose press-in already navigated, so its press (the release)
-	// does not navigate twice. A screen reader's activation has no press-in
-	// and goes through the press alone.
-	const taken = useRef<{ index: number; at: number } | null>(null);
 
 	const x = useSharedValue(0);
 	const shown = useSharedValue(0);
@@ -182,45 +181,23 @@ export function FloatingTabBar({
 								key={tab.name}
 								onPress={() => {
 									if (!route) return;
-									const done = taken.current;
-									taken.current = null;
-									if (
-										done &&
-										done.index === index &&
-										Date.now() - done.at < 2000
-									)
-										return;
 									const event = emitter.emit({
 										type: "tabPress",
 										target: route.key,
 										canPreventDefault: true,
 									});
 									if (event?.defaultPrevented) return;
+									// Another tab, on release: the slide goes to the UI thread
+									// first, then the swap is requested in the same handler.
 									if (index !== open) {
-										setPending(index);
 										slideTo(index);
+										setPending(index);
 										navigateToTab(route.key);
 									}
 									// Open already: the stack pops to its root (the event);
 									// at the root, the list goes to the top.
 									else if ((route.state?.index ?? 0) === 0)
 										scrollFocusedToTop();
-								}}
-								// Another tab goes on touch down: the lozenge starts to slide
-								// and the screen swaps without waiting for the finger to lift.
-								onPressIn={() => {
-									taken.current = null;
-									if (!route || index === shownIndex) return;
-									const event = emitter.emit({
-										type: "tabPress",
-										target: route.key,
-										canPreventDefault: true,
-									});
-									if (event?.defaultPrevented) return;
-									taken.current = { index, at: Date.now() };
-									setPending(index);
-									slideTo(index);
-									navigateToTab(route.key);
 								}}
 								style={{
 									flex: 1,
