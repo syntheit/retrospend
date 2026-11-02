@@ -16,6 +16,7 @@ import {
 	currentNav,
 	DESTINATIONS,
 	type NavBadges,
+	type NavEntry,
 	pinnedProjects,
 	projectHref,
 	TOOLS,
@@ -26,8 +27,8 @@ import { AddSplitButton } from "./add-button";
 import { SidebarLink } from "./nav-link";
 import { NotificationsButton } from "./notifications";
 import { useShellActions } from "./shell-context";
-import { EntryLinks, GroupLabel } from "./sidebar-links";
 import { SidebarRail } from "./sidebar-rail";
+import { sidebarTarget } from "./sidebar-target";
 
 /** Pinned projects for the sidebar; the same query Projects reads, so it is cached once. */
 export function usePinnedProjects() {
@@ -36,6 +37,45 @@ export function usePinnedProjects() {
 		{ staleTime: 60_000 },
 	);
 	return pinnedProjects(data ?? []);
+}
+
+function GroupLabel({ children }: { children: string }) {
+	return (
+		<h2 className="text-fg-3 text-meta px-3 pt-4 pb-1 font-medium tracking-wider uppercase">
+			{children}
+		</h2>
+	);
+}
+
+function EntryLinks({
+	entries,
+	current,
+	badges,
+	label,
+}: {
+	entries: readonly NavEntry[];
+	current: string | null;
+	badges?: NavBadges;
+	label: string;
+}) {
+	const t = useTranslations("shell.nav");
+	return (
+		<nav aria-label={label} className="flex flex-col gap-0.5">
+			{entries.map((entry) => {
+				const Icon = entry.icon;
+				return (
+					<SidebarLink
+						badge={badges?.[entry.id as keyof NavBadges]}
+						current={current === entry.id}
+						href={entry.href}
+						key={entry.id}
+						label={t(entry.id)}
+						lead={<Icon aria-hidden="true" className="size-4" />}
+					/>
+				);
+			})}
+		</nav>
+	);
 }
 
 /** A pinned project as the sidebar draws it; with a target it has a context menu. */
@@ -182,23 +222,6 @@ export function SidebarView({
 			{account}
 		</aside>
 	);
-}
-
-/** What a pinned project's menu needs from `project.list`; pinned projects are active. */
-function sidebarTarget(p: {
-	id: string;
-	name: string;
-	myRole: string | null;
-	_count: { participants: number };
-}): ProjectTarget & { archived: boolean; owner: boolean; editor: boolean } {
-	return {
-		id: p.id,
-		name: p.name,
-		solo: p._count.participants <= 1,
-		archived: false,
-		owner: p.myRole === "ORGANIZER",
-		editor: p.myRole === "ORGANIZER" || p.myRole === "EDITOR",
-	};
 }
 
 /** The sidebar on live data: pinned projects, the notifications bell, the account menu. */
