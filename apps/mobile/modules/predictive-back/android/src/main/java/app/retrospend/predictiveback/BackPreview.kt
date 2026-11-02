@@ -125,6 +125,8 @@ internal class BackPreview(private val activity: Activity) {
     removeIfUnused(pendingAdded)
     added = null
     pendingAdded = null
+    // A gesture that finds no target must not commit the last one's screen.
+    poppedScreen = null
     keyboardGesture = keyboardUp()
     if (keyboardGesture) return
     val found = findTarget()
