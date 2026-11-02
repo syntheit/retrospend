@@ -2,11 +2,9 @@
 
 import { toMinorUnits } from "@retrospend/domain/money";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
-import {
-	EntryActionsContext,
-	type EntryActions,
-} from "./entry-actions";
-import { EntrySheetsContext, type EntrySheets } from "./context";
+import { type EntrySheets, EntrySheetsContext } from "./context";
+import { type EntryActions, EntryActionsContext } from "./entry-actions";
+import { EntryFrame } from "./entry-frame";
 import { ExpenseSheet } from "./expense/expense-sheet";
 import { IncomeSheet } from "./income/income-sheet";
 import { SharedEntrySheet } from "./read/shared-entry-sheet";
@@ -117,41 +115,39 @@ function EntryHost({
 	onOpen: (r: EntryRequest) => void;
 	onMode: (mode: EntryMode, carry: EntryCarry) => void;
 }) {
-	switch (request.kind) {
-		case "expense":
-			return (
+	if (request.kind === "shared")
+		return (
+			<SharedEntrySheet
+				id={request.id}
+				onClose={onClose}
+				start={request.start}
+			/>
+		);
+	// One frame for the three modes: it stays mounted while the mode changes.
+	return (
+		<EntryFrame>
+			{request.kind === "expense" ? (
 				<ExpenseSheet
 					onClose={onClose}
 					onMode={onMode}
 					onOpen={onOpen}
 					request={request}
 				/>
-			);
-		case "shared":
-			return (
-				<SharedEntrySheet
-					id={request.id}
-					onClose={onClose}
-					start={request.start}
-				/>
-			);
-		case "income":
-			return (
+			) : request.kind === "income" ? (
 				<IncomeSheet
 					accountId={request.accountId}
 					carry={request.carry}
 					onClose={onClose}
 					onMode={onMode}
 				/>
-			);
-		case "transfer":
-			return (
+			) : (
 				<TransferSheet
 					carry={request.carry}
 					fromAccountId={request.fromAccountId}
 					onClose={onClose}
 					onMode={onMode}
 				/>
-			);
-	}
+			)}
+		</EntryFrame>
+	);
 }

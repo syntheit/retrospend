@@ -5,10 +5,10 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { formatMoney } from "~/components/money/format";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
-import { Sheet } from "~/components/ui/sheet";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
 import { ChangesBlock } from "../changes";
+import { EntrySheet } from "../entry-frame";
 import { ModeSwitch } from "../mode-switch";
 import { type EntryCatalog, useEntryCatalog } from "../shared-ui";
 import type { EntryCarry, EntryMode } from "../types";
@@ -31,7 +31,7 @@ export function IncomeSheet({
 	const catalog = useEntryCatalog();
 	if (!catalog.data)
 		return (
-			<Sheet
+			<EntrySheet
 				detent="large"
 				footer={false}
 				onOpenChange={(o) => !o && onClose()}
@@ -39,7 +39,7 @@ export function IncomeSheet({
 				title={t("title")}
 			>
 				<Skeleton className="h-40 w-full" />
-			</Sheet>
+			</EntrySheet>
 		);
 	return (
 		<IncomeForm
@@ -94,12 +94,10 @@ function IncomeForm({
 	};
 
 	return (
-		<Sheet
+		<EntrySheet
 			className="md:h-150 md:max-w-4xl"
 			detent="large"
-			headerSlot={
-				<ModeSwitch carry={d} mode="income" onMode={onMode} />
-			}
+			headerSlot={<ModeSwitch carry={d} mode="income" onMode={onMode} />}
 			headerSubmit={t("save")}
 			onOpenChange={(o) => !o && onClose()}
 			onSubmit={submit}
@@ -122,6 +120,6 @@ function IncomeForm({
 				tried={tried}
 				x={x}
 			/>
-		</Sheet>
+		</EntrySheet>
 	);
 }

@@ -2,10 +2,10 @@
 
 import { useTranslations } from "next-intl";
 import { Skeleton } from "~/components/ui/skeleton";
-import { Sheet } from "~/components/ui/sheet";
 import { useSession } from "~/hooks/use-session";
 import { useSettings } from "~/hooks/use-settings";
 import { api } from "~/trpc/react";
+import { EntrySheet } from "../entry-frame";
 import { useEntryCatalog } from "../shared-ui";
 import type {
 	EntryCarry,
@@ -54,7 +54,7 @@ export function ExpenseSheet({
 
 	if (!loaded || !catalog.data) {
 		return (
-			<Sheet
+			<EntrySheet
 				detent="large"
 				footer={false}
 				onOpenChange={(o) => !o && onClose()}
@@ -77,7 +77,7 @@ export function ExpenseSheet({
 						<Skeleton className="h-ctl w-1/2" />
 					</div>
 				)}
-			</Sheet>
+			</EntrySheet>
 		);
 	}
 	return (

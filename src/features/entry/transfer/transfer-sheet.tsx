@@ -6,10 +6,10 @@ import { useState } from "react";
 import { formatMoney } from "~/components/money/format";
 import { Money } from "~/components/money/money";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
-import { Sheet } from "~/components/ui/sheet";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useToast } from "~/components/ui/toast";
 import { ChangesBlock } from "../changes";
+import { EntrySheet } from "../entry-frame";
 import { ModeSwitch } from "../mode-switch";
 import { type EntryCatalog, useEntryCatalog } from "../shared-ui";
 import type { EntryCarry, EntryMode } from "../types";
@@ -31,7 +31,7 @@ export function TransferSheet({
 	const catalog = useEntryCatalog();
 	if (!catalog.data)
 		return (
-			<Sheet
+			<EntrySheet
 				detent="large"
 				footer={false}
 				onOpenChange={(o) => !o && onClose()}
@@ -39,7 +39,7 @@ export function TransferSheet({
 				title={t("titleTransfer")}
 			>
 				<Skeleton className="h-40 w-full" />
-			</Sheet>
+			</EntrySheet>
 		);
 	return (
 		<TransferForm
@@ -109,11 +109,20 @@ function TransferForm({
 		toast.saved(msg, { undo: () => x.undo(r.value.transferId) });
 	};
 	return (
-		<Sheet
+		<EntrySheet
 			className="md:h-150 md:max-w-4xl"
 			detent="large"
 			headerSlot={
-				<ModeSwitch carry={{ minor: x.out.minor, currency: x.fromCur, date: x.date, note: x.note }} mode="transfer" onMode={onMode} />
+				<ModeSwitch
+					carry={{
+						minor: x.out.minor,
+						currency: x.fromCur,
+						date: x.date,
+						note: x.note,
+					}}
+					mode="transfer"
+					onMode={onMode}
+				/>
 			}
 			headerSubmit={verb}
 			onOpenChange={(o) => !o && onClose()}
@@ -135,11 +144,11 @@ function TransferForm({
 							loading={x.previewLoading}
 							rows={v?.accounts.map((a) => (
 								<div
-									className="flex min-h-6 items-baseline justify-between gap-3 text-small"
+									className="text-small flex min-h-6 items-baseline justify-between gap-3"
 									key={a.accountId}
 								>
 									<span className="text-fg-2">{a.name}</span>
-									<span className="flex items-baseline gap-2 text-fg-3">
+									<span className="text-fg-3 flex items-baseline gap-2">
 										<Money value={a.before} />
 										{"→ "}
 										<Money
@@ -157,7 +166,7 @@ function TransferForm({
 				tried={tried}
 				x={x}
 			/>
-		</Sheet>
+		</EntrySheet>
 	);
 }
 
