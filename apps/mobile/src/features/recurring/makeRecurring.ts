@@ -31,7 +31,12 @@ export function nextOnDay(today: string, day: number): string {
  * split or a payment.
  */
 export function canRepeat(item: ActivityItem): boolean {
-	return item.source === "personal" && item.kind === "expense" && item.mine;
+	return (
+		!item.unsynced &&
+		item.source === "personal" &&
+		item.kind === "expense" &&
+		item.mine
+	);
 }
 
 /**

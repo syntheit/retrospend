@@ -12,6 +12,7 @@ import { ComposerFrame } from "./ComposerFrame";
 import { useExpenseFrame } from "./ExpenseComposer";
 import { type SavedEntry, useEditEntry, useEntryCatalog } from "./hooks";
 import { useIncomeFrame } from "./IncomeComposer";
+import type { RestoredDraft } from "./pendingDraft";
 import { RateField } from "./RateField";
 import { SyncIssues } from "./SyncIssues";
 import { useTransferFrame } from "./TransferComposer";
@@ -20,6 +21,7 @@ import { useComposerPreview } from "./useComposerPreview";
 import { useDeleteEntry } from "./useDeleteEntry";
 import { useEntryForm } from "./useEntryForm";
 import { useEntrySave } from "./useEntrySave";
+import { usePendingRestore } from "./usePendingRestore";
 import { useSplitView } from "./useSplitView";
 
 interface ComposerProps {
@@ -35,6 +37,8 @@ interface ComposerProps {
 	editId?: string;
 	/** The id is a split expense's, not a personal one's. */
 	editShared?: boolean;
+	/** An entry still waiting on this phone to edit; Save writes it again in its place. */
+	pendingId?: string;
 	/** Told whether anything was typed or picked since the composer opened. */
 	onDirtyChange?: (dirty: boolean) => void;
 }
@@ -64,6 +68,7 @@ function ComposerLoader({
 	const t = useTranslations("mobile.composer");
 	const catalog = useEntryCatalog();
 	const edit = useEditEntry(props.editId, props.editShared);
+	const restore = usePendingRestore(props.pendingId);
 	const { state } = useSession();
 	// The profile is cached on sign in; without it there is no "you" to split with.
 	if (state.status !== "signedIn" || !state.me) {
@@ -87,7 +92,12 @@ function ComposerLoader({
 			/>
 		);
 	}
-	if (edit.status === "loading") return <Notice loading />;
+	if (edit.status === "loading" || restore.status === "loading") {
+		return <Notice loading />;
+	}
+	if (restore.status === "gone") {
+		return <Notice title={t("toast.editSynced")} />;
+	}
 	if (edit.status === "error") {
 		return (
 			<Notice
@@ -108,6 +118,7 @@ function ComposerLoader({
 			{...props}
 			catalog={catalog.catalog}
 			edit={edit.status === "ready" ? edit.saved : undefined}
+			restored={restore.status === "ready" ? restore.restored : undefined}
 		/>
 	);
 }
@@ -148,6 +159,8 @@ function Notice({
 type FormProps = ComposerProps & {
 	catalog: EntryCatalog;
 	edit?: SavedEntry;
+	/** The draft of a waiting entry being edited. */
+	restored?: RestoredDraft;
 };
 
 function Form({
@@ -158,14 +171,17 @@ function Form({
 	surface,
 	prefill,
 	edit,
+	restored,
+	pendingId,
 	onDirtyChange,
 }: FormProps) {
 	const t = useTranslations("mobile.composer");
 	const form = useEntryForm({
 		catalog,
-		initialMode,
+		initialMode: restored?.mode ?? initialMode,
 		prefill,
 		edit,
+		restored,
 		onDirtyChange,
 	});
 	const pv = useComposerPreview(form);
@@ -173,6 +189,7 @@ function Form({
 		form,
 		write: pv.write,
 		blocked: pv.blocked,
+		replaceId: pendingId,
 		onDone,
 	});
 	const lines = useMoneyLines(form);

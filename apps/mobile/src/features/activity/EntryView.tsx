@@ -15,6 +15,7 @@ import { EntryShares } from "./EntryShares";
 import type { ActivityItem } from "./source";
 import { useEntryDetail } from "./useEntryDetail";
 import { useEntryRow } from "./useEntryRow";
+import { usePendingFeed } from "./usePending";
 
 /**
  * One entry by its Activity id, read from the server. What the list passed
@@ -32,11 +33,30 @@ export function EntryDetail({
 	titled?: boolean;
 }) {
 	const t = useTranslations("mobile.entry");
-	const { state, reload } = useEntryRow(id, placeholder);
+	// An entry that only this phone has reads from the outbox, not the server.
+	// It follows the outbox: edited in place it updates, synced it falls through
+	// to the server's row.
+	const feed = usePendingFeed(null);
+	const waiting =
+		placeholder?.unsynced === true
+			? feed.loaded
+				? feed.rows.find(
+						(row) =>
+							row.unsynced === true && row.entityId === placeholder.entityId,
+					)
+				: placeholder
+			: undefined;
+	const { state, reload } = useEntryRow(id, placeholder, waiting !== undefined);
 	const tc = useTranslations("mobile.common");
+	if (waiting) return <EntryView item={waiting} titled={titled} />;
 	if (state.status === "loading") {
 		return state.placeholder ? (
-			<EntryView editable={false} item={state.placeholder} titled={titled} />
+			// Sent while it was open: what it showed holds until the server's row.
+			<EntryView
+				editable={false}
+				item={{ ...state.placeholder, unsynced: false }}
+				titled={titled}
+			/>
 		) : (
 			<SkeletonRows count={3} grouped={false} />
 		);

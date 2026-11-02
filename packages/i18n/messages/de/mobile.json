@@ -79,7 +79,8 @@
 			"edited": "{title} gespeichert",
 			"restored": "{title} wiederhergestellt",
 			"editOffline": "Du bist offline. Bearbeiten braucht eine Verbindung.",
-			"editRefused": "Diese Änderung ließ sich nicht speichern. Sie ist vielleicht gesperrt."
+			"editRefused": "Diese Änderung ließ sich nicht speichern. Sie ist vielleicht gesperrt.",
+			"editSynced": "Dieser Eintrag ist schon synchronisiert. Öffne ihn in der Aktivität, um ihn zu bearbeiten."
 		},
 		"changes": {
 			"offline": "Du bist offline. Das wird auf deinem Telefon gespeichert und später synchronisiert.",
@@ -301,7 +302,9 @@
 			"failed": "Löschen nicht möglich. Versuche es erneut.",
 			"noUndo": "Das lässt sich nicht rückgängig machen.",
 			"anyway": "Trotzdem löschen",
-			"sharedEffect": "Alle darauf erfahren es, und was sie schulden, ändert sich."
+			"sharedEffect": "Alle darauf erfahren es, und was sie schulden, ändert sich.",
+			"titleIncome": "Einnahme löschen?",
+			"titleTransfer": "Überweisung löschen?"
 		},
 		"tabs": {
 			"category": "Kategorie",
@@ -410,7 +413,8 @@
 		"addedBy": "{name} hat das hinzugefügt. Nur diese Person kann es ändern.",
 		"delete": "Löschen",
 		"makeRecurring": "Wiederkehrend machen",
-		"more": "Weitere Aktionen"
+		"more": "Weitere Aktionen",
+		"waiting": "Wartet auf Synchronisierung"
 	},
 	"connect": {
 		"title": "Mit einem Server verbinden",
@@ -514,7 +518,8 @@
 			"transfer": "Überweisung",
 			"paymentSent": "Du hast {name} bezahlt",
 			"paymentReceived": "{name} hat dich bezahlt",
-			"paid": "{name} hat bezahlt"
+			"paid": "{name} hat bezahlt",
+			"unsynced": "Noch nicht synchronisiert"
 		},
 		"bulk": {
 			"select": "Auswählen",

@@ -79,7 +79,8 @@
 			"edited": "Saved {title}",
 			"restored": "Restored {title}",
 			"editOffline": "You're offline. Editing needs a connection.",
-			"editRefused": "Couldn't save this change. It may be locked."
+			"editRefused": "Couldn't save this change. It may be locked.",
+			"editSynced": "This entry already synced. Open it from Activity to edit it."
 		},
 		"changes": {
 			"offline": "You're offline. This saves on your phone and syncs later.",
@@ -301,7 +302,9 @@
 			"failed": "Couldn't delete this. Try again.",
 			"noUndo": "This can't be undone.",
 			"anyway": "Delete anyway",
-			"sharedEffect": "Everyone on it is told, and what they owe changes."
+			"sharedEffect": "Everyone on it is told, and what they owe changes.",
+			"titleIncome": "Delete income?",
+			"titleTransfer": "Delete transfer?"
 		},
 		"tabs": {
 			"category": "Category",
@@ -410,7 +413,8 @@
 		"addedBy": "{name} added this. Only they can change it.",
 		"delete": "Delete",
 		"makeRecurring": "Make recurring",
-		"more": "More actions"
+		"more": "More actions",
+		"waiting": "Waiting to sync"
 	},
 	"connect": {
 		"title": "Connect to a server",
@@ -514,7 +518,8 @@
 			"transfer": "Transfer",
 			"paymentSent": "Paid {name}",
 			"paymentReceived": "{name} paid you",
-			"paid": "{name} paid"
+			"paid": "{name} paid",
+			"unsynced": "Not synced yet"
 		},
 		"bulk": {
 			"select": "Select",

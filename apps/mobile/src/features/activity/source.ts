@@ -8,7 +8,11 @@ import { type ActivityFilter, filterString } from "./filter";
 // first page of the unfiltered list is cached so the phone opens offline;
 // later pages and filtered lists are read live.
 
-export type ActivityItem = ActivityRowDto;
+/**
+ * A row of the list. `unsynced` marks one that only this phone has so far (it
+ * waits in the outbox); the server's rows never carry it.
+ */
+export type ActivityItem = ActivityRowDto & { unsynced?: boolean };
 
 export type ActivityPage = Awaited<
 	ReturnType<RetrospendClient["expenses"]["list"]>

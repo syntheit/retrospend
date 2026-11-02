@@ -79,7 +79,8 @@
 			"edited": "{title} salvo",
 			"restored": "{title} restaurado",
 			"editOffline": "Você está offline. Editar precisa de conexão.",
-			"editRefused": "Não foi possível salvar esta alteração. Ela pode estar bloqueada."
+			"editRefused": "Não foi possível salvar esta alteração. Ela pode estar bloqueada.",
+			"editSynced": "Este lançamento já foi sincronizado. Abra-o em Atividade para editar."
 		},
 		"changes": {
 			"offline": "Você está offline. Isto é salvo no celular e sincronizado depois.",
@@ -301,7 +302,9 @@
 			"failed": "Não foi possível excluir. Tente de novo.",
 			"noUndo": "Isso não pode ser desfeito.",
 			"anyway": "Excluir mesmo assim",
-			"sharedEffect": "Todos os envolvidos são avisados e o que devem muda."
+			"sharedEffect": "Todos os envolvidos são avisados e o que devem muda.",
+			"titleIncome": "Excluir entrada?",
+			"titleTransfer": "Excluir transferência?"
 		},
 		"tabs": {
 			"category": "Categoria",
@@ -410,7 +413,8 @@
 		"addedBy": "{name} adicionou isto. Só essa pessoa pode alterar.",
 		"delete": "Excluir",
 		"makeRecurring": "Tornar recorrente",
-		"more": "Mais ações"
+		"more": "Mais ações",
+		"waiting": "Aguardando sincronização"
 	},
 	"connect": {
 		"title": "Conecte-se a um servidor",
@@ -514,7 +518,8 @@
 			"transfer": "Transferência",
 			"paymentSent": "Você pagou {name}",
 			"paymentReceived": "{name} pagou você",
-			"paid": "{name} pagou"
+			"paid": "{name} pagou",
+			"unsynced": "Ainda não sincronizado"
 		},
 		"bulk": {
 			"select": "Selecionar",

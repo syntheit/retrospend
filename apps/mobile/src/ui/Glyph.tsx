@@ -50,6 +50,7 @@ export type GlyphName =
 	| "CircleAlert"
 	| "CircleCheck"
 	| "CircleHelp"
+	| "CloudOff"
 	| "Coins"
 	| "DollarSign"
 	| "Download"

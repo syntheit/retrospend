@@ -25,8 +25,9 @@ export function useEntryDetail(item: ActivityItem): {
 	reload: () => void;
 } {
 	const { api } = useSession();
-	const isPersonal = item.source === "personal";
-	const isShared = item.source === "shared";
+	// A waiting entry is not on the server yet: nothing to read there.
+	const isPersonal = item.source === "personal" && !item.unsynced;
+	const isShared = item.source === "shared" && !item.unsynced;
 	const personalFetch = useMemo(
 		() =>
 			api && isPersonal ? () => api.expenses.get({ id: item.entityId }) : null,

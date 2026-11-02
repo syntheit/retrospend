@@ -4,6 +4,8 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ActivityRow } from "@/features/activity/ActivityRow";
+import { mergePending } from "@/features/activity/pending";
+import { usePendingRows } from "@/features/activity/usePending";
 import { subscribeEntryChanges } from "@/features/entry/events";
 import { SyncIssues } from "@/features/entry/SyncIssues";
 import { ConverterSheet } from "@/features/currencies/ConverterSheet";
@@ -11,7 +13,7 @@ import { useHomeDates } from "@/features/home/dates";
 import { Glance } from "@/features/home/Glance";
 import { HomeSkeleton } from "@/features/home/HomeSkeleton";
 import { NeedsYou } from "@/features/home/NeedsYou";
-import { fetchHome, HOME_CACHE } from "@/features/home/source";
+import { fetchHome, HOME_CACHE, RECENT_COUNT } from "@/features/home/source";
 import { entryHref } from "@/layout/detailRoutes";
 import { useUnreadNotifications } from "@/features/notifications/useUnreadCount";
 import { useCachedRead } from "@/features/read/useCachedRead";
@@ -35,6 +37,19 @@ export default function HomeScreen() {
 	const { api } = useSession();
 	const fetch = useMemo(() => (api ? fetchHome(api) : null), [api]);
 	const { state, reload } = useCachedRead(HOME_CACHE, fetch);
+	// Entries still waiting on this phone join Recent, as they join Activity.
+	const pending = usePendingRows(
+		state.status === "ready" && !state.refreshing && state.staleSince === null
+			? state.data
+			: null,
+	);
+	const recent = useMemo(
+		() =>
+			state.status === "ready"
+				? mergePending(state.data.recent, pending).items.slice(0, RECENT_COUNT)
+				: [],
+		[state, pending],
+	);
 	const [refreshing, setRefreshing] = useState(false);
 	// An entry added, undone or sent from the outbox changes what Home shows.
 	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
@@ -72,11 +87,11 @@ export default function HomeScreen() {
 							onAction={() => router.navigate("/activity")}
 							title={t("recent.title")}
 						/>
-						{state.data.recent.items.length === 0 ? (
+						{recent.length === 0 ? (
 							<EmptyState title={t("recent.empty")} />
 						) : (
 							<ListGroup>
-								{state.data.recent.items.map((item) => (
+								{recent.map((item) => (
 									<ActivityRow
 										item={item}
 										key={item.id}

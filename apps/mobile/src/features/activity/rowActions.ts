@@ -41,6 +41,27 @@ export function rowActions(
 	on: RowActionHandlers,
 	canAdd: boolean,
 ): RowActions {
+	// Only this phone has it: edit it where it waits, or delete it from there.
+	if (item.unsynced) {
+		const editIt = canAdd && item.canEdit;
+		return {
+			menu: [
+				...(editIt
+					? [{ id: "edit", label: words.edit, onPress: on.edit }]
+					: []),
+				{
+					id: "delete",
+					label: words.delete,
+					onPress: on.remove,
+					destructive: true,
+				},
+			],
+			leading: editIt
+				? { label: words.edit, onPress: on.edit, tone: "brand" }
+				: undefined,
+			trailing: { label: words.delete, onPress: on.remove, tone: "danger" },
+		};
+	}
 	const own = canSelect(item);
 	const edit = canAdd && canEditEntry(item);
 	const menu: MenuItem[] = [];
