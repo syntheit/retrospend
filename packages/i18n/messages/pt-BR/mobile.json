@@ -81,7 +81,6 @@
 			"editRefused": "Não foi possível salvar esta alteração. Ela pode estar bloqueada."
 		},
 		"changes": {
-			"loading": "Verificando o que muda",
 			"offline": "Você está offline. Isto é salvo no celular e sincronizado depois.",
 			"refused": "Ainda não dá para salvar. Confira o valor e a moeda.",
 			"to": "para {amount}",
@@ -141,7 +140,6 @@
 				"told": "Todos recebem um aviso da mudança.",
 				"same": "A parte de cada pessoa continua igual."
 			},
-			"oneLineNone": "Nenhum valor muda.",
 			"oneLineMore": "{figure} e mais {count}",
 			"splitOff": "As partes ainda não somam o total."
 		},

@@ -105,6 +105,14 @@ describe("FilterChips", () => {
 		expect(off).not.toContain("bg-brand-soft");
 	});
 
+	it("keeps an icon in the label inline with the text (a check never wraps)", () => {
+		const html = render(
+			h(FilterChip, { selected: true }, "You", h("svg", { "aria-hidden": true })),
+		);
+		expect(html).toContain("[&amp;_svg]:inline");
+		expect(html).toContain("whitespace-nowrap");
+	});
+
 	it("draws a value chip neutral with a chevron and no pressed state", () => {
 		const html = render(h(FilterChip, { value: true }, "Oct 2026"));
 		expect(html).not.toContain("aria-pressed");

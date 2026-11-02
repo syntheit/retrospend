@@ -234,7 +234,13 @@ function AccountsList({
 						<SectionHeader
 							dot={<GroupDot series={group?.series ?? null} />}
 							title={t(`groups.${section.group}`)}
-							total={group?.total ? money(group.total) : undefined}
+							total={
+								group?.total
+									? money(group.total, {
+											sign: section.group === "liabilities" ? "never" : "auto",
+										})
+									: undefined
+							}
 						/>
 						{custom ? (
 							<ReorderGroup

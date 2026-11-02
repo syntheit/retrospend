@@ -81,7 +81,6 @@
 			"editRefused": "Impossible d'enregistrer ce changement. Il est peut-être verrouillé."
 		},
 		"changes": {
-			"loading": "Vérification de ce qui change",
 			"offline": "Tu es hors ligne. C'est enregistré sur ton téléphone et synchronisé plus tard.",
 			"refused": "Impossible d'enregistrer pour l'instant. Vérifie le montant et la devise.",
 			"to": "à {amount}",
@@ -141,7 +140,6 @@
 				"told": "Chacun est prévenu du changement.",
 				"same": "La part de chacun ne change pas."
 			},
-			"oneLineNone": "Aucun chiffre ne change.",
 			"oneLineMore": "{figure} et {count} de plus",
 			"splitOff": "Les parts n'atteignent pas encore le total."
 		},

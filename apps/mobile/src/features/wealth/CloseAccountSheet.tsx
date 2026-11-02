@@ -7,6 +7,7 @@ import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
 import { useUndoToast } from "@/features/write/useUndoToast";
 import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
 import { Sheet } from "@/ui/Sheet";
+import { isLiability } from "./accounts";
 import type { Account } from "./source";
 
 /**
@@ -90,7 +91,11 @@ export function CloseAccountSheet({
 					<Note>{t("body", { name: account.name })}</Note>
 					{!reopen && account.balance.minor !== 0 ? (
 						<Note tone="attention">
-							{t("left", { amount: money(account.balance) })}
+							{t("left", {
+								amount: money(account.balance, {
+									sign: isLiability(account.type) ? "never" : "auto",
+								}),
+							})}
 						</Note>
 					) : null}
 				</WriteFrame>

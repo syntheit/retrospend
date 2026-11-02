@@ -85,7 +85,7 @@ export type ChangeStatus = "idle" | "loading" | "ready" | "failed" | "refused";
  * one line per place that moves, then one sentence for what was checked and
  * stays, and one for what could not be checked. The figures are the server's
  * dry run of the same write Save makes; the block only lays them out. It says
- * "Checking" until the dry run is in, so Save never runs ahead of it, and a
+ * nothing until the dry run is in (Save waits on it all the same), and a
  * `message` stands in for the lines when there is a reason to give (offline,
  * a missing rate). Each API shape feeds it through an adapter (PreviewChanges,
  * BudgetChanges, ChangesBlock, PreviewList); none of them lays out its own.
@@ -121,8 +121,9 @@ export function ChangeList({
 	const attention = status === "failed" || status === "refused";
 	let words = message;
 	if (!words) {
-		if (status === "loading") words = t("checking");
-		else if (status === "failed") words = t("error");
+		// Still asking: nothing to show yet, so no block (it appears with the answer).
+		if (status === "loading") return null;
+		if (status === "failed") words = t("error");
 		else if (status === "refused") words = t("refused");
 	}
 	if (status === "idle" && !words) return null;

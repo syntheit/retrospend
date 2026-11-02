@@ -49,7 +49,6 @@
 		"fewerShares": "Moins de parts pour {name}",
 		"moreShares": "Plus de parts pour {name}",
 		"spread": "Étaler sur",
-		"spreadAdd": "Étaler le coût",
 		"spreadOne": "Une seule fois",
 		"spreadMonths": "{count} mois",
 		"exclude": "Exclure des dépenses",
@@ -140,7 +139,6 @@
 	},
 	"changes": {
 		"titleEdit": "Ce que cette modification change",
-		"loading": "Vérification de ce qui change",
 		"cannot": "Impossible d'enregistrer pour l'instant : {reason}",
 		"figures": {
 			"spent": "Tes dépenses",

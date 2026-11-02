@@ -93,8 +93,8 @@ export function BudgetChanges({
 /**
  * The same dry run in one line, the way the composer's preview line says it:
  * the first row that moves ("Left of Groceries $80 to $100") and how many more
- * move. Before the answer it says it is checking; before there is a body to
- * check it says nothing.
+ * move. Before the answer, before there is a body to check and when nothing
+ * moves it says nothing.
  */
 export function BudgetPreviewLine({
 	status,
@@ -108,18 +108,17 @@ export function BudgetPreviewLine({
 	const t = useTranslations("mobile.composer.changes");
 	const tc = useTranslations("mobile.changes");
 	const { rows } = useChangeRows(preview, data);
-	if (status === "idle") return null;
+	if (status === "idle" || status === "loading") return null;
 	let text: string;
 	let tone: "fg2" | "attention" = "fg2";
-	if (status === "loading") text = tc("checking");
-	else if (status === "failed" || status === "refused") {
+	if (status === "failed" || status === "refused") {
 		tone = "attention";
 		text = tc(status === "failed" ? "error" : "refused");
 	} else {
 		const first = rows[0];
-		text = !first
-			? t("oneLineNone")
-			: rows.length > 1
+		if (!first) return null;
+		text =
+			rows.length > 1
 				? t("oneLineMore", {
 						figure: `${first.label} ${first.value}`,
 						count: rows.length - 1,

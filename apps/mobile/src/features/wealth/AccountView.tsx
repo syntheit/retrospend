@@ -133,6 +133,7 @@ export function AccountView({ id }: { id: string }) {
 	const liability = isLiability(account.type);
 	const currency = account.balance.currency;
 	const foreign = account.value !== null && account.value.currency !== currency;
+	const sign = liability ? "never" : "auto";
 	const rate = valuedAt(account);
 	// The type never shows without its number (R8).
 	const rateText =
@@ -150,10 +151,10 @@ export function AccountView({ id }: { id: string }) {
 			: foreign
 				? rateText
 					? tm("homeWithRate", {
-							amount: money(account.value),
+							amount: money(account.value, { sign }),
 							rate: rateText,
 						})
-					: money(account.value)
+					: money(account.value, { sign })
 				: null;
 	const updated = format.dateTime(new Date(account.updatedAt), {
 		dateStyle: "medium",
@@ -184,8 +185,8 @@ export function AccountView({ id }: { id: string }) {
 						>
 							{closed ? null : (
 								<TopBarAction
-									id="edit"
 									icon="Pencil"
+									id="edit"
 									label={t("actions.edit")}
 									onPress={() => setSheet({ kind: "edit", account })}
 								/>
@@ -206,7 +207,7 @@ export function AccountView({ id }: { id: string }) {
 					<Hero
 						label={liability ? t("owedNow") : t("balance")}
 						sub={homeLine ?? undefined}
-						value={money(account.balance, { cents: heroCents(currency) })}
+						value={money(account.balance, { cents: heroCents(currency), sign })}
 					/>
 					<Text tone="fg2" variant="small">
 						{[

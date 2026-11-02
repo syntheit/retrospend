@@ -63,10 +63,10 @@ export function FigureChanges<P extends Diff>({
 }) {
 	const t = useTranslations("budgetSheets.changes");
 	const label = useFigureLabel(poolName);
-	if (dry.status === "idle") return <SheetChanges />;
+	if (dry.status === "idle") return null;
 	if (dry.status === "error") return <SheetChanges status={t("cannot")} />;
 	const p = dry.preview;
-	if (!p) return <SheetChanges status={t("loading")} />;
+	if (!p) return null;
 	const skip = new Set([...(envelopeName ? [] : OWN), ...hide]);
 	const lines: ChangeLine[] = [
 		...(own ? own(p) : []),

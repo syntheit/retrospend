@@ -92,7 +92,6 @@
 		"accepted": "Aceptaste tu parte de {name}"
 	},
 	"preview": {
-		"checking": "Revisando qué cambia",
 		"figures": {
 			"project_total": "Total del grupo",
 			"project_member_balance": "{name} en el grupo",

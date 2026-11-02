@@ -34,7 +34,12 @@ export function CloseAccountSheet({
 			{account.amount.minor !== 0 ? (
 				<Notice className="mt-3" tone="attention">
 					{t.rich("left", {
-						amount: () => <Money value={account.amount} />,
+						amount: () => (
+							<Money
+								sign={account.kind === "liability" ? "never" : undefined}
+								value={account.amount}
+							/>
+						),
 					})}
 				</Notice>
 			) : null}

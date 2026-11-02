@@ -55,6 +55,8 @@ export function NoteRow({
 export function ChangesRow({ preview }: { preview: ComposerPreview }) {
 	const t = useTranslations("mobile.composer");
 	const [open, setOpen] = useState(false);
+	// Nothing to show until the dry run has a reason or a figure to give.
+	if (preview.preview.status === "idle") return null;
 	return (
 		<OptionRow
 			icon="ListChecks"

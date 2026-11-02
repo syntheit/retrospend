@@ -92,7 +92,6 @@
 		"accepted": "Вы приняли свою долю в {name}"
 	},
 	"preview": {
-		"checking": "Проверяем, что изменится",
 		"figures": {
 			"project_total": "Итог группы",
 			"project_member_balance": "{name} в группе",

@@ -188,7 +188,7 @@ function useRateStrip(
 			...opts.options.map((o, i) => ({
 				value: o.rateType,
 				label: name(o.rateType),
-				rate: row?.values[i] ? `${row.values[i]} ${row.quote}` : undefined,
+				rate: row?.values[i] ?? undefined,
 				home: o.home ? <Money value={o.home} /> : undefined,
 				ariaLabel: [
 					fmt.withType(name(o.rateType), o.rate) ?? name(o.rateType),

@@ -45,6 +45,8 @@ export function AccountRow({
 	const rateFmt = useRateFormat();
 	const { space } = useTheme();
 	const closed = account.closedAt !== null;
+	// A liability reads as the plain amount: its group and "You owe" say what it is.
+	const sign = isLiability(account.type) ? "never" : "auto";
 	const missing = account.value === null && !closed;
 	const foreign =
 		account.value !== null &&
@@ -86,8 +88,12 @@ export function AccountRow({
 	const spoken = [
 		account.name,
 		line,
-		money(account.balance),
-		missing ? notCounted : account.value ? money(account.value) : null,
+		money(account.balance, { sign }),
+		missing
+			? notCounted
+			: account.value
+				? money(account.value, { sign })
+				: null,
 	]
 		.filter(Boolean)
 		.join(", ");
@@ -105,6 +111,7 @@ export function AccountRow({
 					<View style={{ alignItems: "flex-end", gap: space[1] }}>
 						<MoneyAmount
 							home={foreign && !closed ? account.value : undefined}
+							sign={sign}
 							tone={closed ? "muted" : "default"}
 							value={account.balance}
 						/>

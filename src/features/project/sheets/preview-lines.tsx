@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import type { MoneyValue } from "~/components/money/format";
 import { Money } from "~/components/money/money";
 import { ChangeValue, SheetChanges } from "~/components/ui/sheet-changes";
@@ -35,8 +34,7 @@ export function PreviewLines({
 	inline: (id: string) => string;
 	loading?: boolean;
 }) {
-	const t = useTranslations("projectV2.preview");
-	if (loading || !preview) return <SheetChanges status={t("checking")} />;
+	if (loading || !preview) return null;
 	return (
 		<SheetChanges
 			lines={preview.changes.map((c) => ({

@@ -49,7 +49,6 @@
 		"fewerShares": "Weniger Anteile für {name}",
 		"moreShares": "Mehr Anteile für {name}",
 		"spread": "Verteilen auf",
-		"spreadAdd": "Kosten verteilen",
 		"spreadOne": "Einmalig",
 		"spreadMonths": "{count} Monate",
 		"exclude": "Von Ausgaben ausschließen",
@@ -140,7 +139,6 @@
 	},
 	"changes": {
 		"titleEdit": "Was diese Änderung ändert",
-		"loading": "Prüfe, was sich ändert",
 		"cannot": "Das lässt sich noch nicht speichern: {reason}",
 		"figures": {
 			"spent": "Deine Ausgaben",

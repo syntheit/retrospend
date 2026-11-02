@@ -80,7 +80,7 @@ function Group({
 					{t(`groups.${group.key}`)}
 				</h2>
 				<span className="text-body text-fg font-semibold">
-					<Money value={group.total} />
+					<Money sign={liab ? "never" : undefined} value={group.total} />
 				</span>
 			</div>
 			{children}

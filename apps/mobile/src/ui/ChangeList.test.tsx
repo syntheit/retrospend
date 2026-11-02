@@ -3,7 +3,7 @@ import { ChangeList } from "./ChangeList";
 
 // One "What this changes" block: the heading, the lines that moved, one
 // sentence for what stays and one for what could not be checked. It says
-// "Checking" until the dry run is in, and gives a reason in place of lines.
+// nothing until the dry run is in, and gives a reason in place of lines.
 const renderer = require("react-test-renderer");
 const { act, create } = renderer;
 
@@ -42,11 +42,8 @@ describe("ChangeList", () => {
 		expect(words(<ChangeList status="idle" />)).toEqual([]);
 	});
 
-	it("says Checking under the heading until the dry run is in", () => {
-		expect(words(<ChangeList status="loading" />)).toEqual([
-			"title",
-			"checking",
-		]);
+	it("shows nothing until the dry run is in", () => {
+		expect(words(<ChangeList status="loading" />)).toEqual([]);
 	});
 
 	it("lays out the lines, then one sentence for what stays and what could not be checked", () => {

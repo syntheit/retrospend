@@ -52,7 +52,7 @@ export function MoneyAmount({
 	value: Money;
 	home?: Money | null;
 	tone?: Tone;
-	sign?: "auto" | "exceptZero";
+	sign?: "auto" | "exceptZero" | "never";
 	strong?: boolean;
 	/** A row amount's weight: 500, or 400 for a quiet column. */
 	weight?: "normal" | "medium";

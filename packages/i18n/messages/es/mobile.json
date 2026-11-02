@@ -81,7 +81,6 @@
 			"editRefused": "No se pudo guardar este cambio. Puede estar bloqueado."
 		},
 		"changes": {
-			"loading": "Comprobando qué cambia",
 			"offline": "Sin conexión. Se guarda en tu teléfono y se sincroniza después.",
 			"refused": "Todavía no se puede guardar. Revisa el importe y la moneda.",
 			"to": "a {amount}",
@@ -141,7 +140,6 @@
 				"told": "Se les avisa del cambio.",
 				"same": "La parte de cada persona no cambia."
 			},
-			"oneLineNone": "No cambia ninguna cifra.",
 			"oneLineMore": "{figure} y {count} más",
 			"splitOff": "Las partes todavía no suman el total."
 		},

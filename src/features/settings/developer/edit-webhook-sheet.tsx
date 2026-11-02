@@ -189,8 +189,8 @@ export function EditWebhookSheet({
 						{t("eventsHeading")}
 					</span>
 					<EventPicker
-						original={current.eventTypes}
 						onChange={(eventTypes) => set({ eventTypes })}
+						original={current.eventTypes}
 						value={draft.eventTypes}
 					/>
 				</div>
@@ -206,8 +206,7 @@ export function EditWebhookSheet({
 				</div>
 				<SheetChanges
 					lines={lines}
-					status={changed ? undefined : tEdit("noChanges")}
-					stays={[t("changes.secret"), t("changes.log")]}
+					stays={changed ? [t("changes.secret"), t("changes.log")] : []}
 				/>
 			</div>
 		</Sheet>

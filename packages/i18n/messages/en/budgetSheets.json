@@ -5,7 +5,6 @@
 	},
 	"changes": {
 		"notAvailable": "Not available",
-		"loading": "Checking what changes",
 		"cannot": "This cannot be saved as typed. Nothing was changed."
 	},
 	"figures": {
