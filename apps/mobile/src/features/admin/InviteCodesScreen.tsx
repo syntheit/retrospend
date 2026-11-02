@@ -11,6 +11,7 @@ import { SwitchRow } from "@/ui/SwitchRow";
 import { useToast } from "@/ui/Toast";
 import { TopBarAction } from "@/ui/TopBarAction";
 import { Block, PageState, SettingsPage } from "../settings/parts";
+import { adminAccess } from "./rules";
 import {
 	InviteCodeList,
 	type InviteStatus,
@@ -120,11 +121,8 @@ function InviteCodes({
 	);
 }
 
-/**
- * Invite codes (Admin): whether sign-up needs a code and whether every user
- * may make their own (both save at once), then the codes.
- */
-export function InvitesScreen() {
+/** The admin's page: the server's two sign-up switches, then every code. */
+function AdminInviteCodes() {
 	const t = useTranslations("mobile.admin.invites");
 	const settings = useServerSettings();
 	if (settings.state.status !== "ready") {
@@ -166,10 +164,17 @@ export function InvitesScreen() {
 }
 
 /**
- * Your own invite codes, for a person the server lets invite (the web's
- * Invite codes page). None of the server's invite settings are here: those
- * are Admin's.
+ * Invite codes, one screen for both people. An Admin gets the server's
+ * sign-up switches and every code (the admin endpoints); anyone else the
+ * server lets invite gets their own codes (the invite-codes endpoints). The
+ * server decides every call: the role here only picks which endpoints to ask.
  */
 export function InviteCodesScreen() {
-	return <InviteCodes scope="mine" />;
+	const { state } = useSession();
+	const me = state.status === "signedIn" ? state.me : null;
+	return adminAccess(me) === "ok" ? (
+		<AdminInviteCodes />
+	) : (
+		<InviteCodes scope="mine" />
+	);
 }

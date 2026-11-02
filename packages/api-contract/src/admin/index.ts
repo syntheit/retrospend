@@ -10,6 +10,7 @@ import {
 import {
 	adminAiSettingsSchema,
 	adminErrorReportPageSchema,
+	adminParticipantsSchema,
 	adminFeedbackPageSchema,
 	adminSettingsSchema,
 	adminStatsSchema,
@@ -221,6 +222,52 @@ export const adminContract = {
 		})
 		.meta({ scope: "admin", event: "admin_backup.started" })
 		.output(backupStartedSchema),
+	listParticipants: v1
+		.route({
+			method: "GET",
+			path: "/admin/participants",
+			operationId: "listAdminParticipants",
+			tags: TAG,
+			summary: "Shadow profiles and guest sessions, with who made them",
+			description:
+				"Names and emails of people added to projects without an account.",
+		})
+		.meta({ scope: "admin" })
+		.output(adminParticipantsSchema),
+	deleteShadowProfile: v1
+		.route({
+			method: "DELETE",
+			path: "/admin/shadow-profiles/{id}",
+			operationId: "deleteAdminShadowProfile",
+			tags: TAG,
+			summary: "Delete a shadow profile and anonymize what references it",
+		})
+		.meta({ scope: "admin", event: "admin_shadow_profile.deleted" })
+		.input(idParamsSchema)
+		.output(okSchema),
+	deleteGuestSession: v1
+		.route({
+			method: "DELETE",
+			path: "/admin/guest-sessions/{id}",
+			operationId: "deleteAdminGuestSession",
+			tags: TAG,
+			summary: "Delete a guest session and anonymize what references it",
+		})
+		.meta({ scope: "admin", event: "admin_guest_session.deleted" })
+		.input(idParamsSchema)
+		.output(okSchema),
+	sendTestEmail: v1
+		.route({
+			method: "POST",
+			path: "/admin/test-email",
+			operationId: "sendAdminTestEmail",
+			tags: TAG,
+			summary: "Send a test email to your own address",
+			description:
+				"Sent even when email is off, so the server's mail settings can be checked.",
+		})
+		.meta({ scope: "admin", event: "admin_test_email.sent" })
+		.output(okSchema),
 	listInviteCodes: v1
 		.route({
 			method: "GET",

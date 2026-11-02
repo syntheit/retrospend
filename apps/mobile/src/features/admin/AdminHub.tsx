@@ -6,21 +6,22 @@ import { PageState, SettingsPage } from "../settings/parts";
 import { useAdminRead } from "./useAdminRead";
 
 /**
- * Admin, as a list of what an admin can run from the phone: the accounts,
- * the invite codes, the feedback inbox and the server settings. Each row says
- * where it stands. Nothing else is linked: what the phone does not do is not
- * offered here.
+ * Admin, as a list of everything the web's Admin has: the accounts, people
+ * added without one, invite codes, the feedback inbox and crash reports, AI
+ * usage, the server's state and backups, the audit log and the server
+ * settings. Each row says where it stands.
  */
 export function AdminHub() {
 	const t = useTranslations("mobile.admin");
 	const open = useOpenSettingsRoute();
 	const { state, reload } = useAdminRead(async (api) => {
-		const [stats, feedback, settings] = await Promise.all([
+		const [stats, feedback, settings, errors] = await Promise.all([
 			api.admin.stats(),
 			api.admin.listFeedback({ limit: 1 }),
 			api.admin.getSettings(),
+			api.admin.listErrorReports({ limit: 1 }),
 		]);
-		return { stats, feedback, settings };
+		return { stats, feedback, settings, errors };
 	});
 
 	if (state.status !== "ready") {
@@ -31,7 +32,7 @@ export function AdminHub() {
 			/>
 		);
 	}
-	const { stats, feedback, settings } = state.data;
+	const { stats, feedback, settings, errors } = state.data;
 
 	return (
 		<SettingsPage>
@@ -45,8 +46,15 @@ export function AdminHub() {
 				/>
 				<ListRow
 					chevron
+					lead={<IconTile name="User" />}
+					onPress={() => open("admin-participants")}
+					sub={t("hub.participants")}
+					title={t("participants.title")}
+				/>
+				<ListRow
+					chevron
 					lead={<IconTile name="KeyRound" />}
-					onPress={() => open("admin-invites")}
+					onPress={() => open("invite-codes")}
 					sub={
 						settings.inviteOnlyEnabled
 							? t("hub.inviteOnly")
@@ -64,6 +72,34 @@ export function AdminHub() {
 							: t("hub.noUnread")
 					}
 					title={t("feedback.title")}
+				/>
+				<ListRow
+					chevron
+					lead={<IconTile name="TriangleAlert" />}
+					onPress={() => open("admin-errors")}
+					sub={t("hub.errors", { count: errors.total })}
+					title={t("errors.title")}
+				/>
+				<ListRow
+					chevron
+					lead={<IconTile name="Zap" />}
+					onPress={() => open("admin-ai-usage")}
+					sub={t("hub.aiUsage")}
+					title={t("aiUsage.title")}
+				/>
+				<ListRow
+					chevron
+					lead={<IconTile name="Monitor" />}
+					onPress={() => open("admin-server")}
+					sub={t("hub.server")}
+					title={t("server.title")}
+				/>
+				<ListRow
+					chevron
+					lead={<IconTile name="ListChecks" />}
+					onPress={() => open("admin-audit")}
+					sub={t("hub.audit")}
+					title={t("audit.title")}
 				/>
 				<ListRow
 					chevron

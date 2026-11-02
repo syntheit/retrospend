@@ -22,6 +22,13 @@ vi.mock("next/headers", () => ({
 	cookies: async () => ({ get: () => undefined }),
 }));
 
+const sent = vi.hoisted(() => [] as { to: string; bypass: unknown }[]);
+vi.mock("~/server/mailer", () => ({
+	sendEmail: async (to: string, _subject: string, _html: string, bypass?: unknown) => {
+		sent.push({ to, bypass });
+	},
+}));
+
 const a = contract.admin;
 const SECRET = "SECRET-TITLE-Q7";
 
@@ -297,6 +304,94 @@ describe("/api/v1/admin", () => {
 		expect(status.available).toBe(false);
 		const start = await write("/admin/backups", "POST", {});
 		expect(start.status).toBe(500);
+	});
+
+	it("lists participants and deletes a shadow profile or guest session", async () => {
+		const shadow = await adminDb.shadowProfile.create({
+			data: { createdById: bob, name: "Ghost Gina", email: "gina@example.com" },
+		});
+		const guest = await adminDb.guestSession.create({
+			data: {
+				name: "Guest Gus",
+				email: "gus@example.com",
+				magicLinkId: "link-1",
+				projectId: "no-such-project",
+				sessionToken: `tok-${Date.now()}`,
+			},
+		});
+		const list = await read<{
+			shadowProfiles: { id: string; projectCount: number }[];
+			guestSessions: { id: string; projectName: string }[];
+		}>("/admin/participants", a.listParticipants);
+		expect(list.shadowProfiles.map((p) => p.id)).toContain(shadow.id);
+		expect(list.guestSessions.map((g) => g.id)).toContain(guest.id);
+
+		expect(
+			(await write(`/admin/shadow-profiles/${shadow.id}`, "DELETE")).status,
+		).toBe(200);
+		expect(
+			(await write(`/admin/guest-sessions/${guest.id}`, "DELETE")).status,
+		).toBe(200);
+		expect(
+			await adminDb.shadowProfile.findUnique({ where: { id: shadow.id } }),
+		).toBeNull();
+		expect(
+			await adminDb.guestSession.findUnique({ where: { id: guest.id } }),
+		).toBeNull();
+		await expectProblem(
+			await write(`/admin/shadow-profiles/${shadow.id}`, "DELETE"),
+			404,
+			"not_found",
+		);
+	});
+
+	it("sends a test email to the admin's own address only", async () => {
+		const me = await adminDb.user.findUniqueOrThrow({
+			where: { id: admin },
+			select: { email: true },
+		});
+		sent.length = 0;
+		expect((await write("/admin/test-email", "POST", {})).status).toBe(200);
+		expect(sent).toEqual([{ to: me.email, bypass: true }]);
+	});
+
+	it("is a 403 for a plain user on every admin route, keys and phones alike", async () => {
+		const phoneBob = await asMobile(bob);
+		const routes: [string, string][] = [
+			["GET", "/admin/stats"],
+			["GET", "/admin/users"],
+			["GET", "/admin/settings"],
+			["PATCH", "/admin/settings"],
+			["GET", "/admin/ai-settings"],
+			["PATCH", "/admin/ai-settings"],
+			["GET", "/admin/ai-usage"],
+			["GET", "/admin/event-logs"],
+			["GET", "/admin/backups"],
+			["POST", "/admin/backups"],
+			["GET", "/admin/participants"],
+			["DELETE", "/admin/shadow-profiles/x"],
+			["DELETE", "/admin/guest-sessions/x"],
+			["POST", "/admin/test-email"],
+			["GET", "/admin/invite-codes"],
+			["POST", "/admin/invite-codes"],
+			["DELETE", "/admin/invite-codes/x"],
+			["GET", "/admin/feedback"],
+			["GET", "/admin/error-reports"],
+			["DELETE", "/admin/error-reports/x"],
+			["POST", "/rates/sync"],
+		];
+		for (const headers of [phoneBob, asBob]) {
+			for (const [method, path] of routes) {
+				const res = await call(path, {
+					method,
+					headers,
+					body: method === "GET" || method === "DELETE" ? undefined : {},
+					idempotent: method !== "GET",
+				});
+				expect(res.status, `${method} ${path}`).toBe(403);
+			}
+		}
+		expect(sent.length).toBe(1);
 	});
 
 	it("manages invite codes, and lets users manage their own only when allowed", async () => {

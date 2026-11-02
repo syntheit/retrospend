@@ -128,7 +128,7 @@ export function AccountScreen() {
 							<Place
 								glyph="KeyRound"
 								label={t("inviteCodes")}
-								onPress={() => open(admin ? "admin-invites" : "invite-codes")}
+								onPress={() => open("invite-codes")}
 							/>
 							{admin ? (
 								<Place
