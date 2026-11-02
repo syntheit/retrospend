@@ -1,6 +1,6 @@
 "use client";
 
-import { PanelLeftClose, PanelLeftOpen, Plus, Search } from "lucide-react";
+import { PanelLeftClose, Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useCallback, useMemo } from "react";
@@ -16,7 +16,6 @@ import {
 	currentNav,
 	DESTINATIONS,
 	type NavBadges,
-	type NavEntry,
 	pinnedProjects,
 	projectHref,
 	TOOLS,
@@ -24,9 +23,11 @@ import {
 import { api } from "~/trpc/react";
 import { AccountMenu } from "./account-menu";
 import { AddSplitButton } from "./add-button";
-import { RailLink, SidebarLink } from "./nav-link";
+import { SidebarLink } from "./nav-link";
 import { NotificationsButton } from "./notifications";
 import { useShellActions } from "./shell-context";
+import { EntryLinks, GroupLabel } from "./sidebar-links";
+import { SidebarRail } from "./sidebar-rail";
 
 /** Pinned projects for the sidebar; the same query Projects reads, so it is cached once. */
 export function usePinnedProjects() {
@@ -35,45 +36,6 @@ export function usePinnedProjects() {
 		{ staleTime: 60_000 },
 	);
 	return pinnedProjects(data ?? []);
-}
-
-function GroupLabel({ children }: { children: string }) {
-	return (
-		<h2 className="text-fg-3 text-meta px-3 pt-4 pb-1 font-medium tracking-wider uppercase">
-			{children}
-		</h2>
-	);
-}
-
-function EntryLinks({
-	entries,
-	current,
-	badges,
-	label,
-}: {
-	entries: readonly NavEntry[];
-	current: string | null;
-	badges?: NavBadges;
-	label: string;
-}) {
-	const t = useTranslations("shell.nav");
-	return (
-		<nav aria-label={label} className="flex flex-col gap-0.5">
-			{entries.map((entry) => {
-				const Icon = entry.icon;
-				return (
-					<SidebarLink
-						badge={badges?.[entry.id as keyof NavBadges]}
-						current={current === entry.id}
-						href={entry.href}
-						key={entry.id}
-						label={t(entry.id)}
-						lead={<Icon aria-hidden="true" className="size-4" />}
-					/>
-				);
-			})}
-		</nav>
-	);
 }
 
 /** A pinned project as the sidebar draws it; with a target it has a context menu. */
@@ -114,88 +76,22 @@ export function SidebarView({
 	onToggleRail?: () => void;
 }) {
 	const t = useTranslations("shell");
-	const tn = useTranslations("shell.nav");
-	const { openPalette, add } = useShellActions();
+	const { openPalette } = useShellActions();
 	const pinnedCurrent = pinned.find((p) => pathname === projectHref(p.id));
 	// One item is the current page: a pinned project wins over Projects.
 	const current = pinnedCurrent ? null : currentNav(pathname);
 	if (rail)
 		return (
-			<aside
-				aria-label={t("sidebar.label")}
-				className={cn(
-					"border-line bg-bg flex w-20 shrink-0 flex-col items-center gap-1 overflow-y-auto border-r px-1 pt-4 pb-3",
-					className,
-				)}
-				data-rail=""
-			>
-				<span aria-hidden="true" className="rounded-ctl bg-brand size-5" />
-				<Tip content={t("add.expense")}>
-					<Button
-						aria-label={t("add.expense")}
-						className="my-2"
-						icon
-						kind="primary"
-						onClick={() => add("expense")}
-					>
-						<Plus aria-hidden="true" />
-					</Button>
-				</Tip>
-				<Tip content={t("palette.trigger")}>
-					<Button
-						aria-label={t("palette.trigger")}
-						className="text-fg-3"
-						icon
-						kind="ghost"
-						onClick={openPalette}
-					>
-						<Search aria-hidden="true" />
-					</Button>
-				</Tip>
-				{bell}
-				<nav
-					aria-label={t("sidebar.destinations")}
-					className="mt-2 flex w-full flex-col gap-0.5"
-				>
-					{[...DESTINATIONS, ...TOOLS].map((entry) => {
-						const Icon = entry.icon;
-						return (
-							<RailLink
-								badge={badges?.[entry.id as keyof NavBadges]}
-								current={current === entry.id}
-								href={entry.href}
-								key={entry.id}
-								label={tn(entry.id)}
-								lead={<Icon aria-hidden="true" className="size-4" />}
-							/>
-						);
-					})}
-					{pinned.map((p) => (
-						<RailLink
-							current={p.id === pinnedCurrent?.id}
-							href={projectHref(p.id)}
-							key={p.id}
-							label={p.name}
-							lead={p.lead}
-						/>
-					))}
-				</nav>
-				<div className="flex-1" />
-				{onToggleRail ? (
-					<Tip content={t("sidebar.expand")}>
-						<Button
-							aria-label={t("sidebar.expand")}
-							className="text-fg-3"
-							icon
-							kind="ghost"
-							onClick={onToggleRail}
-						>
-							<PanelLeftOpen aria-hidden="true" />
-						</Button>
-					</Tip>
-				) : null}
-				{account}
-			</aside>
+			<SidebarRail
+				account={account}
+				badges={badges}
+				bell={bell}
+				className={className}
+				current={current}
+				onToggleRail={onToggleRail}
+				pinned={pinned}
+				pinnedCurrentId={pinnedCurrent?.id}
+			/>
 		);
 	return (
 		<aside
