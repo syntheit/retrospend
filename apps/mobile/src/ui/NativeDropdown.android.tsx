@@ -6,10 +6,12 @@ import {
 	TextField,
 	useNativeState,
 } from "@expo/ui/jetpack-compose";
-import { menuAnchor } from "@expo/ui/jetpack-compose/modifiers";
+import { menuAnchor, padding } from "@expo/ui/jetpack-compose/modifiers";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/theme";
+import { fontFamilyFor } from "@/theme/fonts";
 import { dropdownFieldColors } from "./m3Colors";
+import { useChromeTextSize } from "./Text";
 
 /**
  * The M3 exposed dropdown, laid out as the universal Picker does on Android
@@ -26,6 +28,7 @@ export function NativeDropdown({
 	onChange: (value: string) => void;
 }) {
 	const { color } = useTheme();
+	const labelSize = useChromeTextSize(16);
 	const [expanded, setExpanded] = useState(false);
 	const shown = options.find((o) => o.value === value)?.label ?? "";
 	// The field's text lives in native state (TextField has no defaultValue
@@ -43,7 +46,7 @@ export function NativeDropdown({
 				value={text}
 			/>
 			<ExposedDropdownMenu
-				containerColor={color.raised}
+				containerColor={color.surface}
 				expanded={expanded}
 				onDismissRequest={() => setExpanded(false)}
 			>
@@ -56,7 +59,15 @@ export function NativeDropdown({
 						}}
 					>
 						<DropdownMenuItem.Text>
-							<ComposeText color={color.fg}>{option.label}</ComposeText>
+							<ComposeText
+								color={color.fg}
+								maxLines={1}
+								modifiers={[padding(4, 0, 4, 0)]}
+								overflow="ellipsis"
+								style={{ fontFamily: fontFamilyFor(400), fontSize: labelSize }}
+							>
+								{option.label}
+							</ComposeText>
 						</DropdownMenuItem.Text>
 					</DropdownMenuItem>
 				))}
