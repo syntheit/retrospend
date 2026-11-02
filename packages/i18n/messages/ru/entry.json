@@ -93,7 +93,6 @@
 			"confirm": "Удалить расход"
 		},
 		"projectAria": "Проект, {project}",
-		"addShort": "Добавить",
 		"tabs": {
 			"label": "Детали",
 			"tip": "{name}, Alt+{key}",

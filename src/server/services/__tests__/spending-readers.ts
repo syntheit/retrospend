@@ -104,6 +104,7 @@ async function routerReaders(fixture: SpendingFixture) {
 		duplicate: await c.expense.checkDuplicate({
 			title: "Super Mar",
 			amount: 12_000,
+			currency: HOME,
 			date: new Date("2026-03-05T12:00:00.000Z"),
 		}),
 		titles: (await c.expense.titleSuggestions({ query: "Super" })).map((t) => [
@@ -112,7 +113,10 @@ async function routerReaders(fixture: SpendingFixture) {
 			t.lastAmount,
 		]),
 		// Only a money-in row could match these, and none may.
-		duplicateOfMoneyIn: await c.expense.checkDuplicate(MONEY_IN_PROBE),
+		duplicateOfMoneyIn: await c.expense.checkDuplicate({
+			...MONEY_IN_PROBE,
+			currency: HOME,
+		}),
 		titlesOfMoneyIn: await c.expense.titleSuggestions({ query: "Payroll" }),
 		csvLines: csv.trim().split("\n").length,
 		categories: (await c.categories.getAll()).map((x) => x.name),

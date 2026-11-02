@@ -20,7 +20,7 @@ async function openWealth(page: Page): Promise<void> {
 async function pickSort(page: Page, name: string): Promise<void> {
 	const main = page.getByRole("main");
 	await main.getByRole("button", { name: /^Sort:/ }).click();
-	await page.getByRole("menuitem", { name }).click();
+	await page.getByRole("menuitemradio", { name }).click();
 }
 
 /** The names of the rows in one group, top to bottom. */

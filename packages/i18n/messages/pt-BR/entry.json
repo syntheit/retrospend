@@ -93,7 +93,6 @@
 			"confirm": "Excluir gasto"
 		},
 		"projectAria": "Projeto, {project}",
-		"addShort": "Adicionar",
 		"tabs": {
 			"label": "Detalhes",
 			"tip": "{name}, Alt+{key}",

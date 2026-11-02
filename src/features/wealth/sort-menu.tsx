@@ -29,7 +29,12 @@ export function SortMenu({
 			<DropdownMenuContent align="end">
 				<DropdownMenuLabel>{t("label")}</DropdownMenuLabel>
 				{WEALTH_SORTS.map((s) => (
-					<DropdownMenuItem key={s} onSelect={() => onChange(s)}>
+					<DropdownMenuItem
+						aria-checked={s === value}
+						key={s}
+						onSelect={() => onChange(s)}
+						role="menuitemradio"
+					>
 						<Check
 							aria-hidden="true"
 							className={s === value ? undefined : "invisible"}

@@ -102,13 +102,15 @@ export const bulkDeleteSchema = z
 export const duplicateQuerySchema = z.object({
 	title: userText("expense.title", 500),
 	amount: amountTextSchema,
+	/** The amount's currency. Without it, any currency with that amount matches. */
+	currency: currencyCodeSchema.optional(),
 	date: daySchema,
 });
 
 export const duplicateResultSchema = z
 	.object({
 		duplicate: z.boolean(),
-		/** The existing expense with the same title (any case), amount and day. */
+		/** The existing expense with the same title (any case), amount, currency and day. */
 		expenseId: idSchema.nullable(),
 	})
 	.meta({ id: "DuplicateCheck" });

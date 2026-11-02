@@ -7,9 +7,10 @@ import type { PrismaClient } from "~prisma";
 import { listedEntryWhere } from "./spending";
 
 /**
- * An expense with the same title (any case), amount and day, for the
- * duplicate warning. `amount` as decimal text is compared exactly; with a
- * `timeZone` the day is the user's, not the server's.
+ * An expense with the same title (any case), amount, currency and day, for
+ * the duplicate warning: 50 EUR is not a duplicate of 50 USD. `amount` as
+ * decimal text is compared exactly; with a `timeZone` the day is the user's,
+ * not the server's. Without a `currency`, any currency matches.
  */
 export async function findDuplicateExpense(
 	db: PrismaClient,
@@ -17,6 +18,7 @@ export async function findDuplicateExpense(
 	input: {
 		title: string;
 		amount: number | string;
+		currency?: string;
 		date: Date;
 		timeZone?: string;
 	},
@@ -44,6 +46,7 @@ export async function findDuplicateExpense(
 			...listedEntryWhere(userId),
 			title: { equals: input.title, mode: "insensitive" },
 			amount: { equals: input.amount },
+			...(input.currency ? { currency: input.currency } : {}),
 			date: { gte: startOfDay, lte: endOfDay },
 		},
 		select: { id: true, title: true },

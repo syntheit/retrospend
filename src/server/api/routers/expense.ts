@@ -230,7 +230,7 @@ export const expenseRouter = createTRPCRouter({
 	}),
 
 	/**
-	 * Checks if a potential duplicate expense exists (same title + amount + date).
+	 * Checks if a potential duplicate expense exists (same title + amount + currency + date).
 	 * Used to warn users before creating a duplicate.
 	 */
 	checkDuplicate: protectedProcedure
@@ -238,6 +238,7 @@ export const expenseRouter = createTRPCRouter({
 			z.object({
 				title: z.string().min(1),
 				amount: z.number().positive(),
+				currency: z.string().length(3),
 				date: z.date(),
 			}),
 		)

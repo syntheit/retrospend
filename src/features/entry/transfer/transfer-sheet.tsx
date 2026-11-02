@@ -124,7 +124,6 @@ function TransferForm({
 					onMode={onMode}
 				/>
 			}
-			headerSubmit={verb}
 			onOpenChange={(o) => !o && onClose()}
 			onSubmit={submit}
 			open
