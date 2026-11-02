@@ -61,14 +61,13 @@ export function usePlaces(data: BudgetMonth) {
 	);
 	const glyphCover = (name: GlyphName) =>
 		cover(<Glyph color={color.fg2} name={name} size={size.icon.phone} />);
-	const poolName = tb(`pool.${data.toAssign.poolName}`);
 	const left = (amount: { minor: number; currency: string }) =>
 		tb("row.leftSpoken", { amount: money(amount) });
 	/** The pool first, then every envelope, each with what is left. */
 	const envelopePlaces: Place[] = [
 		{
 			id: POOL,
-			name: poolName,
+			name: tb(`pool.${data.toAssign.poolName}`),
 			meta: left(data.toAssign.amount),
 			cover: glyphCover("Coins"),
 		},
@@ -85,7 +84,7 @@ export function usePlaces(data: BudgetMonth) {
 			),
 		})),
 	];
-	return { poolName, envelopePlaces, glyphCover, money };
+	return { envelopePlaces, glyphCover, money };
 }
 
 /** One panel of places: a row each, the picked one selected. */
