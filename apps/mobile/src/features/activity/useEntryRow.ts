@@ -1,7 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "@/auth/session";
-import { subscribeEntryChanges } from "@/features/entry/events";
+import { useReloadOnEntryChange } from "@/features/read/useReloadOnEntryChange";
 import { type EntryRowState, loadEntryRow } from "./entryRow";
 import type { ActivityItem } from "./source";
 
@@ -40,7 +40,7 @@ export function useEntryRow(
 		if (latest.current.id === asked) setState(next);
 	}, [api, local]);
 
-	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
+	useReloadOnEntryChange(reload);
 
 	useFocusEffect(
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `id` is the trigger

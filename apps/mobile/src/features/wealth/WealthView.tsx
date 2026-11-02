@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { useTranslations } from "use-intl";
@@ -7,9 +7,9 @@ import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { currenciesHref } from "@/features/account/places";
 import { useOptionalAddEntry } from "@/features/entry/AddEntryProvider";
-import { subscribeEntryChanges } from "@/features/entry/events";
 import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useReloadOnEntryChange } from "@/features/read/useReloadOnEntryChange";
 import { useDataExport } from "@/features/settings/security/useDataExport";
 import { useHeaderSearch } from "@/layout/headerSearch";
 import { useLayoutClass } from "@/layout/useLayoutClass";
@@ -319,7 +319,7 @@ export function WealthView() {
 	const fetch = useMemo(() => (api ? fetchWealth(api) : null), [api]);
 	const { state, reload } = useCachedRead(WEALTH_CACHE, fetch);
 	// An Undo from a toast can land while this screen is already in focus.
-	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
+	useReloadOnEntryChange(reload);
 	const [sheet, setSheet] = useState<SheetTarget | null>(null);
 	const [why, setWhy] = useState(false);
 	const [query, setQuery] = useState("");

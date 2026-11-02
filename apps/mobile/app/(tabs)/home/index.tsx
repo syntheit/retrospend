@@ -1,20 +1,20 @@
 import { router } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ActivityRow } from "@/features/activity/ActivityRow";
-import { subscribeEntryChanges } from "@/features/entry/events";
-import { SyncIssues } from "@/features/entry/SyncIssues";
 import { ConverterSheet } from "@/features/currencies/ConverterSheet";
+import { SyncIssues } from "@/features/entry/SyncIssues";
 import { useHomeDates } from "@/features/home/dates";
 import { Glance } from "@/features/home/Glance";
 import { HomeSkeleton } from "@/features/home/HomeSkeleton";
 import { NeedsYou } from "@/features/home/NeedsYou";
 import { fetchHome, HOME_CACHE } from "@/features/home/source";
-import { entryHref } from "@/layout/detailRoutes";
 import { useUnreadNotifications } from "@/features/notifications/useUnreadCount";
 import { useCachedRead } from "@/features/read/useCachedRead";
+import { useReloadOnEntryChange } from "@/features/read/useReloadOnEntryChange";
+import { entryHref } from "@/layout/detailRoutes";
 import { useShowConverter } from "@/lib/converter-pref";
 import { useTheme } from "@/theme";
 import { EmptyState } from "@/ui/EmptyState";
@@ -37,7 +37,7 @@ export default function HomeScreen() {
 	const { state, reload } = useCachedRead(HOME_CACHE, fetch);
 	const [refreshing, setRefreshing] = useState(false);
 	// An entry added, undone or sent from the outbox changes what Home shows.
-	useEffect(() => subscribeEntryChanges(() => void reload()), [reload]);
+	useReloadOnEntryChange(reload);
 
 	const refresh = useCallback(async () => {
 		setRefreshing(true);
@@ -81,7 +81,9 @@ export default function HomeScreen() {
 										item={item}
 										key={item.id}
 										onPress={() =>
-											router.push(entryHref(item.id, true, JSON.stringify(item)))
+											router.push(
+												entryHref(item.id, true, JSON.stringify(item)),
+											)
 										}
 									/>
 								))}
