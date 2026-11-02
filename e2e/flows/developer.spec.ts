@@ -240,7 +240,8 @@ test.describe("Developer", () => {
 			await page.getByRole("menuitem", { name: "Edit webhook" }).click();
 			const edit = page.getByRole("dialog", { name: "Edit E2E hook" });
 			const editChanges = edit.getByRole("region", { name: "What this changes" });
-			await expect(editChanges).toContainText("Nothing changed yet");
+			// Nothing changed yet: the block stays hidden until there is something to list.
+			await expect(editChanges).toHaveCount(0);
 			await expect(edit.getByRole("button", { name: "Save changes" })).toBeDisabled();
 			await edit
 				.getByLabel("URL", { exact: true })
