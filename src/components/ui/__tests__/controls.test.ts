@@ -83,7 +83,10 @@ describe("Segmented", () => {
 		expect(html).toContain('aria-label="View"');
 		expect(html.match(/aria-checked="true"/g)).toHaveLength(1);
 		expect(html.match(/tabindex="0"/g)).toHaveLength(1);
-		expect(html).toContain("bg-surface text-fg shadow-ctl");
+		// Before it is measured, the checked option carries the surface itself.
+		expect(html).toMatch(
+			/aria-checked="true"[^>]*class="[^"]*(?=[^"]*bg-surface)(?=[^"]*shadow-ctl)(?=[^"]*text-fg)/,
+		);
 		expect(html).toContain("h-ctl");
 	});
 
