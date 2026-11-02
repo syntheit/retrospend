@@ -2651,7 +2651,7 @@
 		"actionError": "Couldn't do that. Try again.",
 		"participants": {
 			"title": "People without an account",
-			"shadow": "Shadow profiles",
+			"shadow": "Added by users",
 			"guests": "Guests",
 			"empty": "No one here yet",
 			"email": "Email",

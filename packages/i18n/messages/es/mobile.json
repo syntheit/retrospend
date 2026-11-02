@@ -2651,7 +2651,7 @@
 		"actionError": "No se pudo hacer. Inténtalo de nuevo.",
 		"participants": {
 			"title": "Personas sin cuenta",
-			"shadow": "Perfiles sombra",
+			"shadow": "Añadidos por usuarios",
 			"guests": "Invitados",
 			"empty": "Todavía no hay nadie",
 			"email": "Correo",

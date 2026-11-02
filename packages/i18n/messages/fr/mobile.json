@@ -2651,7 +2651,7 @@
 		"actionError": "Impossible de le faire. Réessayez.",
 		"participants": {
 			"title": "Personnes sans compte",
-			"shadow": "Profils fantômes",
+			"shadow": "Ajoutés par des utilisateurs",
 			"guests": "Invités",
 			"empty": "Personne pour l'instant",
 			"email": "E-mail",

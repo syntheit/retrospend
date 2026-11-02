@@ -2651,7 +2651,7 @@
 		"actionError": "Das hat nicht geklappt. Versuch es noch einmal.",
 		"participants": {
 			"title": "Personen ohne Konto",
-			"shadow": "Schattenprofile",
+			"shadow": "Von Nutzern hinzugefügt",
 			"guests": "Gäste",
 			"empty": "Noch niemand",
 			"email": "E-Mail",
