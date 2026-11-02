@@ -1,8 +1,9 @@
 import { useCallback } from "react";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { useList } from "@/lib/list";
 import { monthDate } from "./months";
-import { joinNames, type VerdictLine, type VerdictValue } from "./verdict";
+import type { VerdictLine, VerdictValue } from "./verdict";
 
 /**
  * Turns a verdict line (a message key and the verdict's own values) into
@@ -13,7 +14,7 @@ import { joinNames, type VerdictLine, type VerdictValue } from "./verdict";
 export function useVerdictText(names: ReadonlyMap<string, string>) {
 	const t = useTranslations("mobile.budget.verdict");
 	const format = useFormatter();
-	const tb = useTranslations("mobile.budget");
+	const list = useList();
 	const money = useMoneyText();
 
 	const value = useCallback(
@@ -39,15 +40,14 @@ export function useVerdictText(names: ReadonlyMap<string, string>) {
 							})
 						: "";
 				case "names":
-					return joinNames(
+					return list(
 						v.ids.map((id) => names.get(id) ?? "").filter((n) => n !== ""),
-						(head, last) => tb("listAnd", { head, last }),
 					);
 				case "number":
 					return v.value;
 			}
 		},
-		[format, money, names, tb],
+		[format, list, money, names],
 	);
 
 	return useCallback(

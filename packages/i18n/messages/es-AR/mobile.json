@@ -772,7 +772,6 @@
 			"undone": "Deshecho",
 			"undoError": "No se pudo deshacer. Puede que ya haya cambiado."
 		},
-		"listAnd": "{head} y {last}",
 		"figures": {
 			"budget_notPlannedYet": "Sin planear aún",
 			"budget_leftToSpend": "Disponible para gastar",

@@ -1,4 +1,4 @@
-import type { Money } from "@retrospend/domain/money-minor";
+import { isMoney, type Money } from "@retrospend/domain/money-minor";
 import { ENVELOPE_LEFT, figureLines } from "@/features/write/figures";
 import type { BudgetPreview } from "./source";
 
@@ -11,16 +11,6 @@ export interface EnvelopeMove {
 	id: string;
 	before: Money;
 	after: Money;
-}
-
-function isMoney(value: unknown): value is Money {
-	const m = value as Money | null;
-	return (
-		typeof m === "object" &&
-		m !== null &&
-		typeof m.minor === "number" &&
-		typeof m.currency === "string"
-	);
 }
 
 /** The envelopes a write moved, with their Left before and after, when the answer lists them. */

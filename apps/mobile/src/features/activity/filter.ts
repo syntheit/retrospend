@@ -1,4 +1,5 @@
 import type { ActivityKind } from "@retrospend/api-contract";
+import { monthDays } from "@/lib/days";
 
 /**
  * What the Activity chips and the search bar choose. The default (this
@@ -43,15 +44,6 @@ export function effectivePeriod(filter: ActivityFilter): "month" | "all" {
 	if (filter.period === "all") return "all";
 	if (filter.period === "thisMonth") return "month";
 	return coversEveryMonth(filter) ? "all" : "month";
-}
-
-/** This month's first and last day; the server reads dates in the caller's zone. */
-function monthDays(now: Date): { from: string; to: string } {
-	const pad = (n: number) => String(n).padStart(2, "0");
-	const y = now.getFullYear();
-	const m = now.getMonth() + 1;
-	const last = new Date(y, m, 0).getDate();
-	return { from: `${y}-${pad(m)}-01`, to: `${y}-${pad(m)}-${pad(last)}` };
 }
 
 /** The `filter` query of GET /expenses, in the web's grammar. */

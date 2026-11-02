@@ -772,7 +772,6 @@
 			"undone": "Отменено",
 			"undoError": "Не удалось отменить. Возможно, всё уже изменилось."
 		},
-		"listAnd": "{head} и {last}",
 		"figures": {
 			"budget_notPlannedYet": "Ещё не запланировано",
 			"budget_leftToSpend": "Можно потратить",

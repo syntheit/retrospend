@@ -1,4 +1,5 @@
 import { useTranslations } from "use-intl";
+import { useList } from "@/lib/list";
 import { useFormatMoney } from "@/lib/money";
 
 type Money = { minor: number; currency: string };
@@ -11,7 +12,6 @@ type Money = { minor: number; currency: string };
  */
 export function useChangeWords() {
 	const t = useTranslations("mobile.composer.changes");
-	const tl = useTranslations("mobile.composer.list");
 	const tm = useTranslations("mobile.money");
 	const { format } = useFormatMoney();
 
@@ -30,17 +30,7 @@ export function useChangeWords() {
 		return t.has(key as never) ? t(key as never) : t(`${group}.other` as never);
 	};
 
-	// A list in the person's language: the words between items are messages.
-	const list = (items: string[]) => {
-		if (items.length < 2) return items[0] ?? "";
-		if (items.length === 2) {
-			return tl("two", { first: items[0] ?? "", second: items[1] ?? "" });
-		}
-		return tl("many", {
-			rest: items.slice(0, -1).join(tl("separator")),
-			last: items[items.length - 1] ?? "",
-		});
-	};
+	const list = useList();
 
 	return { money, marked, name, list };
 }

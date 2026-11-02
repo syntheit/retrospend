@@ -62,6 +62,8 @@ export function UpdateBalanceSheet({
 }) {
 	const t = useTranslations("mobile.wealth.update");
 	const tp = useTranslations("mobile.budget.preview");
+	const ts = useTranslations("mobile.settle");
+	const tm = useTranslations("mobile.money");
 	const format = useFormatter();
 	const api = useApi();
 	const announce = useUndoToast("accounts");
@@ -73,7 +75,9 @@ export function UpdateBalanceSheet({
 	const currency = account.balance.currency;
 	const plain = isLiability(account.type) ? "never" : "auto";
 	const types = rateTypesOf(catalog, currency, home);
-	const rateLine = useRateLine(visible && types.length > 1);
+	const { line: rateLine, failed: rateFailed } = useRateLine(
+		visible && types.length > 1,
+	);
 	const rateFmt = useRateFormat();
 	const saved = account.rateType;
 	const [draft, setDraft] = useState("");
@@ -287,6 +291,11 @@ export function UpdateBalanceSheet({
 					{rateNote ? (
 						<Text tone="attention" variant="small">
 							{rateNote}
+						</Text>
+					) : null}
+					{rateNote && rateFailed && rateType ? (
+						<Text tone="fg2" variant="small">
+							{ts("rateChip", { type: rateName(rateType), value: tm("noRate") })}
 						</Text>
 					) : null}
 					{same ? (

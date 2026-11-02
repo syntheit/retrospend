@@ -1,15 +1,8 @@
 // Month keys are YYYYMM numbers (the contract's own). Stepping and bounds are
 // calendar arithmetic on the key, never on money.
+import { addMonths, monthParts } from "@retrospend/domain/month-key";
 
-export function monthParts(key: number): { year: number; month: number } {
-	return { year: Math.floor(key / 100), month: key % 100 };
-}
-
-export function addMonths(key: number, delta: number): number {
-	const { year, month } = monthParts(key);
-	const index = year * 12 + (month - 1) + delta;
-	return Math.floor(index / 12) * 100 + (index % 12) + 1;
-}
+export { addMonths, monthParts };
 
 /** A date inside the month, for the locale's month name (UTC, so no zone shifts it). */
 export function monthDate(key: number): Date {

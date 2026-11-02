@@ -23,6 +23,7 @@
 		"./insights": "./src/insights.ts",
 		"./money": "./src/money.ts",
 		"./money-minor": "./src/money-minor.ts",
+		"./month-key": "./src/month-key.ts",
 		"./parse": "./src/parse.ts",
 		"./picker-match": "./src/picker-match.ts",
 		"./rate-format": "./src/rate-format.ts",

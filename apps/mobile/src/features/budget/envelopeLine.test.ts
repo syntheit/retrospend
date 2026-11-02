@@ -1,9 +1,4 @@
-import {
-	envelopeSpentPercent,
-	groupSpentPercent,
-	leftAtom,
-	targetLine,
-} from "./envelopeLine";
+import { envelopeSpentPercent, leftAtom, targetLine } from "./envelopeLine";
 import type { BudgetEnvelope, BudgetGroup } from "./source";
 
 const ars = (minor: number) => ({ minor, currency: "ARS" });
@@ -110,20 +105,12 @@ describe("Left at the end of a row", () => {
 });
 
 describe("bars", () => {
-	it("draws a group's spent share of what it holds, capped at the whole bar", () => {
-		const totals = (carry: number, assigned: number, spent: number) =>
-			({
-				carryIn: ars(carry),
-				assigned: ars(assigned),
-				spent: ars(spent),
-			}) as BudgetGroup["totals"];
-		expect(groupSpentPercent(totals(0, 10000, 2500))).toBe(25);
-		expect(groupSpentPercent(totals(1000, 9000, 15000))).toBe(100);
-		expect(groupSpentPercent(totals(0, 0, 500))).toBeNull();
-	});
-
 	it("takes an envelope's bar from the server's basis points", () => {
 		expect(envelopeSpentPercent({ spentBasis: 4250 })).toBe(42.5);
 		expect(envelopeSpentPercent({ spentBasis: null })).toBeNull();
+	});
+
+	it("takes a group's bar from the server's basis points too", () => {
+		expect(envelopeSpentPercent({ spentBasis: 10_000 })).toBe(100);
 	});
 });

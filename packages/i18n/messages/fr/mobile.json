@@ -772,7 +772,6 @@
 			"undone": "Annulé",
 			"undoError": "Impossible d’annuler. Cela a peut-être déjà changé."
 		},
-		"listAnd": "{head} et {last}",
 		"figures": {
 			"budget_notPlannedYet": "Pas encore prévu",
 			"budget_leftToSpend": "Reste à dépenser",

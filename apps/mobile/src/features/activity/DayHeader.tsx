@@ -2,6 +2,7 @@ import type { Money } from "@retrospend/domain/money-minor";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
+import { dayDate } from "@/lib/days";
 import { useTheme } from "@/theme";
 import { Text } from "@/ui/Text";
 
@@ -11,8 +12,7 @@ export function useDayLabel() {
 	const format = useFormatter();
 	return (day: string, relative: "today" | "yesterday" | null) => {
 		if (relative) return t(relative);
-		const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-		return format.dateTime(new Date(y, m - 1, d, 12), {
+		return format.dateTime(dayDate(day), {
 			weekday: "short",
 			month: "short",
 			day: "numeric",

@@ -288,6 +288,11 @@ describe("Update balance", () => {
 				String(n.props.children).startsWith("Valued at Blue from today"),
 		);
 		expect(note.length).toBeGreaterThan(0);
+		// The rate table could not be read here: the pick says so, never a rate of 1.
+		const gap = tree.root.findAll(
+			(n) => n.props.children === "Blue No rate yet",
+		);
+		expect(gap.length).toBeGreaterThan(0);
 		act(() => tree.unmount());
 	});
 

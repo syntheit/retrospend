@@ -1,10 +1,5 @@
 import { useFormatter, useTranslations } from "use-intl";
-
-/** A server day (YYYY-MM-DD) as a date at noon, so no time zone shifts it. */
-export function dayDate(day: string): Date {
-	const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-	return new Date(y, m - 1, d, 12);
-}
+import { dayDate } from "@/lib/days";
 
 /** True when both days fall in the same calendar year. */
 export function sameYear(a: string, b: string): boolean {

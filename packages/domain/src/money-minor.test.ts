@@ -3,6 +3,7 @@ import {
 	addMoney,
 	CurrencyMismatchError,
 	fromMinor,
+	isMoney,
 	money,
 	subtractMoney,
 	toMinor,
@@ -150,5 +151,21 @@ describe("addMoney and subtractMoney", () => {
 	it("refuses a result beyond the safe range", () => {
 		const max = usd(Number.MAX_SAFE_INTEGER);
 		expect(() => addMoney(max, usd(1))).toThrow(RangeError);
+	});
+});
+
+describe("isMoney", () => {
+	it("accepts the { minor, currency } shape", () => {
+		expect(isMoney({ minor: 1234, currency: "USD" })).toBe(true);
+		expect(isMoney({ minor: -5, currency: "KWD" })).toBe(true);
+	});
+
+	it("rejects anything else", () => {
+		expect(isMoney(null)).toBe(false);
+		expect(isMoney("12")).toBe(false);
+		expect(isMoney({ minor: "12", currency: "USD" })).toBe(false);
+		expect(isMoney({ minor: 1.5, currency: "USD" })).toBe(false);
+		expect(isMoney({ minor: Number.NaN, currency: "USD" })).toBe(false);
+		expect(isMoney({ minor: 1 })).toBe(false);
 	});
 });

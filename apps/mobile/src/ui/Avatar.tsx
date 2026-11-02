@@ -24,6 +24,11 @@ export function avatarSlot(key: string): number {
 	return (sum % 8) + 1;
 }
 
+/** The avatar color token for a person or project key (see avatarSlot). */
+export function avatarColor(color: Theme["color"], key: string): string {
+	return color[`avatar${avatarSlot(key)}` as keyof Theme["color"]] ?? color.fg3;
+}
+
 /**
  * Initials as the web draws them: the first letters of the first and last
  * words, or the first two letters of a one-word name. `one` keeps only the
@@ -77,7 +82,6 @@ export function Avatar({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a new address resets
 	useEffect(() => setFailed(false), [face.imageUri]);
 	const diameter = sizes.avatar[size];
-	const palette = color as unknown as Record<string, string>;
 	// The ring sits a hairline gap and its own width outside the face.
 	const gap = space[1] / 2;
 	const ringWidth = 1;
@@ -95,7 +99,7 @@ export function Avatar({
 					height: diameter,
 					borderRadius: diameter / 2,
 					overflow: "hidden",
-					backgroundColor: palette[`avatar${avatarSlot(face.key)}`],
+					backgroundColor: avatarColor(color, face.key),
 					alignItems: "center",
 					justifyContent: "center",
 				}}

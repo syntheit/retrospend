@@ -1,9 +1,8 @@
+import { dayKey, daysBetween } from "@/lib/days";
+
 /** A server day (YYYY-MM-DD) and the phone's day, in whole days apart. */
 export function daysSince(day: string, now: Date): number {
-	const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-	const then = Date.UTC(y, m - 1, d);
-	const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-	return Math.max(0, Math.round((today - then) / 86_400_000));
+	return Math.max(0, daysBetween(day, dayKey(now)));
 }
 
 export type Ago =

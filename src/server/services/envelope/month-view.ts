@@ -290,6 +290,18 @@ export function spentBasis(r: Row): number | null {
 	return Number(share > 10_000n ? 10_000n : share);
 }
 
+/**
+ * How much of what a group holds (carried in plus assigned) it spent, in
+ * hundredths of a percent capped at 10000 (the bar under a folded group).
+ * Null when the group holds nothing.
+ */
+export function groupSpentBasis(held: Minor, spent: Minor): number | null {
+	if (held <= 0) return null;
+	if (spent <= 0) return 0;
+	const share = (BigInt(spent) * 10_000n) / BigInt(held);
+	return Number(share > 10_000n ? 10_000n : share);
+}
+
 function rowDto(
 	r: Row,
 	p: MonthViewInput,
@@ -365,6 +377,10 @@ function groupsDto(
 					assigned: sum((r) => r.m.assigned),
 					activity: sum((r) => r.m.activity),
 					spent: sum((r) => r.m.wealth - r.m.activity),
+					spentBasis: groupSpentBasis(
+						mine.reduce((t, r) => t + r.m.carryIn + r.m.assigned, 0),
+						mine.reduce((t, r) => t + r.m.wealth - r.m.activity, 0),
+					),
 					left: sum((r) => r.m.left),
 					over: sum((r) => overBy(r, p.book)),
 					limitLeft:

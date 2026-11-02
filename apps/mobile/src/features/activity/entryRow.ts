@@ -1,3 +1,4 @@
+import { isMoney } from "@retrospend/domain/money-minor";
 import type { ReadCache } from "@/data/cache";
 import { ACTIVITY_CACHE, type ActivityItem, type ActivityPage } from "./source";
 
@@ -26,10 +27,6 @@ const SCHEMA = 1;
 type Shape = Record<string, unknown>;
 const isObject = (v: unknown): v is Shape =>
 	typeof v === "object" && v !== null && !Array.isArray(v);
-const isMoney = (v: unknown) =>
-	isObject(v) &&
-	Number.isSafeInteger(v.minor) &&
-	typeof v.currency === "string";
 const optional = (v: unknown, check: (v: unknown) => boolean) =>
 	v === undefined || v === null || check(v);
 const SOURCES = ["personal", "shared", "payment"];

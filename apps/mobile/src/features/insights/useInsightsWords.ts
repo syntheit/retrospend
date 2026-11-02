@@ -2,8 +2,9 @@ import { formatPercent } from "@retrospend/domain/format-percent";
 import type { Span } from "@retrospend/domain/insights";
 import { useMemo } from "react";
 import { useFormatter, useTranslations } from "use-intl";
+import { dayDate as localDate } from "@/lib/days";
 import { useMoneyLocale } from "@/lib/money";
-import { localDate, type RangeWords, rangeLabel } from "./labels";
+import { type RangeWords, rangeLabel } from "./labels";
 
 /**
  * The words Insights puts around the server's numbers: a span in words, a

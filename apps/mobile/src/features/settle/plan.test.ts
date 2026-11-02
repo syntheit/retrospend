@@ -5,6 +5,7 @@ import {
 	allocationOf,
 	answerFor,
 	balanceAfter,
+	chipRate,
 	everythingConverts,
 	fillOf,
 	isOverpay,
@@ -459,5 +460,34 @@ describe("startMethod", () => {
 		expect(startMethod("mercado_pago", [])).toBeNull();
 		expect(startMethod(null, [{ type: "pix" }, { type: "cash" }])).toBe("pix");
 		expect(startMethod(null, [])).toBeNull();
+	});
+});
+
+describe("chipRate", () => {
+	const read = (rate: string) => ({
+		unit: { minor: 100, currency: "USD" },
+		value: { minor: 100000, currency: "ARS" },
+		rate,
+		type: "blue",
+	});
+	const choices = { current: "official", rates: [read("1000")] };
+
+	it("uses the type's own read, else the current type's rate", () => {
+		expect(chipRate({ blue: read("1468") }, choices, "blue")).toEqual({
+			kind: "rate",
+			read: read("1468"),
+		});
+		expect(chipRate({}, choices, "official")).toEqual({
+			kind: "rate",
+			read: read("1000"),
+		});
+	});
+
+	it("says none when the read failed, never a rate of 1", () => {
+		expect(chipRate({ blue: null }, choices, "blue")).toEqual({ kind: "none" });
+	});
+
+	it("is pending until the read answers", () => {
+		expect(chipRate({}, choices, "blue")).toEqual({ kind: "pending" });
 	});
 });

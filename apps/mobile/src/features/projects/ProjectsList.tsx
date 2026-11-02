@@ -14,6 +14,7 @@ import {
 import { useProjectList } from "@/features/projects/useProjects";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
+import { dayKey } from "@/lib/days";
 import { useTheme } from "@/theme";
 import { BarFlatList } from "@/ui/barScroll";
 import { EmptyState } from "@/ui/EmptyState";
@@ -23,11 +24,7 @@ import { useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 
 /** The phone's today as a YYYY-MM-DD day; the list carries no server day. */
-function todayDay(): string {
-	const now = new Date();
-	const pad = (n: number) => String(n).padStart(2, "0");
-	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
+const todayDay = () => dayKey(new Date());
 
 /**
  * The Projects list (and its detail pane on wide windows), without a top bar.

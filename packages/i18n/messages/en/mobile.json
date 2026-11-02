@@ -772,7 +772,6 @@
 			"undone": "Undone",
 			"undoError": "Couldn't undo. It may have changed already."
 		},
-		"listAnd": "{head} and {last}",
 		"figures": {
 			"budget_notPlannedYet": "Not planned yet",
 			"budget_leftToSpend": "Left to spend",

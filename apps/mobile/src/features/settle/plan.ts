@@ -359,6 +359,27 @@ export function answerFor<T extends { key: string }>(
 	return answer !== null && key !== null && answer.key === key ? answer : null;
 }
 
+/**
+ * The rates read per type for the chips: the rate, or null when that read
+ * failed or the server had no price (a missing rate is never shown as 1).
+ */
+export type TypeRates = Record<string, RateRead | null>;
+
+/**
+ * What a rate-type chip can say about its number: the rate it would use, that
+ * none is available, or nothing yet (the read has not answered).
+ */
+export function chipRate(
+	values: TypeRates,
+	choices: { current: string | null; rates: readonly RateRead[] },
+	type: string,
+): { kind: "rate"; read: RateRead } | { kind: "none" } | { kind: "pending" } {
+	const read =
+		values[type] ?? (choices.current === type ? choices.rates[0] : undefined);
+	if (read) return { kind: "rate", read };
+	return values[type] === null ? { kind: "none" } : { kind: "pending" };
+}
+
 /** One rate the server read for a currency: unit and value as Money, `rate` unrounded. */
 export type RateRead = {
 	unit: Money;

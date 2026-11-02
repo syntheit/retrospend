@@ -15,6 +15,13 @@ export interface Money {
 	readonly currency: string;
 }
 
+/** Whether `value` has the money shape: a safe-integer `minor` and a `currency` code. For answers read as unknown. */
+export function isMoney(value: unknown): value is Money {
+	if (typeof value !== "object" || value === null) return false;
+	const m = value as { minor?: unknown; currency?: unknown };
+	return Number.isSafeInteger(m.minor) && typeof m.currency === "string";
+}
+
 /** Thrown when money in two currencies is added or compared as one. */
 export class CurrencyMismatchError extends Error {
 	constructor(

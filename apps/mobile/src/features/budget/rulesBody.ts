@@ -1,5 +1,6 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { wireAmount } from "@/features/write/amount";
+import { parseBasisPoints } from "@/lib/basisPoints";
 
 // Income rules: what happens to money that arrives. A rule moves no money
 // when it is made; "apply to this month" is the money write.
@@ -15,12 +16,8 @@ export type RuleKind = "PERCENT" | "AMOUNT" | "REMAINDER";
  * to 100 with at most two decimals. Read as text so no float is involved.
  */
 export function percentBasisPoints(text: string): number | null {
-	const match = /^(\d{1,3})(?:[.,](\d{1,2}))?$/.exec(text.trim());
-	if (!match) return null;
-	const whole = Number(match[1]);
-	const fraction = Number((match[2] ?? "").padEnd(2, "0"));
-	const bp = whole * 100 + fraction;
-	return bp >= 1 && bp <= 10_000 ? bp : null;
+	const bp = parseBasisPoints(text, { comma: true });
+	return bp !== null && bp >= 1 && bp <= 10_000 ? bp : null;
 }
 
 export function createRuleBody(input: {
