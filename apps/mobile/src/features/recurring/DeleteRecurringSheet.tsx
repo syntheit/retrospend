@@ -71,6 +71,7 @@ export function DeleteRecurringSheet({
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
 					<Button
+						busy={busy}
 						disabled={flow.status !== "ready" || busy}
 						label={
 							busy

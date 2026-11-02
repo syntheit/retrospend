@@ -5,6 +5,7 @@ import { useTranslations } from "use-intl";
 import { useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
 import { applyEntryKey, BACKSPACE, type EntryKind } from "./keypad";
+import { LoadingIndicator } from "./LoadingIndicator";
 import { Text } from "./Text";
 
 /** What the keypad types now: the text, how it reads, and where it goes. */
@@ -94,13 +95,19 @@ export function FoldingKeypad({
 						: color.brand,
 			})}
 		>
-			<Text
-				maxFontSizeMultiplier={KEY_LABEL_SCALE}
-				style={{ color: off ? color.fg3 : color.brandFg }}
-				variant="section"
+			<View
+				style={{ flexDirection: "row", alignItems: "center", gap: space[2] }}
 			>
-				{open ? addLabel : foldedLabel}
-			</Text>
+				{/* Android: the key is raised while it waits, the neutral indicator's ground. */}
+				{busy ? <LoadingIndicator size={space[6]} /> : null}
+				<Text
+					maxFontSizeMultiplier={KEY_LABEL_SCALE}
+					style={{ color: off ? color.fg3 : color.brandFg }}
+					variant="section"
+				>
+					{open ? addLabel : foldedLabel}
+				</Text>
+			</View>
 		</Pressable>
 	);
 

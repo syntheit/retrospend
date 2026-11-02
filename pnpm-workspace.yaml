@@ -77,3 +77,9 @@ minimumReleaseAgeExclude:
   - 'shadcn@4.22.1'
   - 'systeminformation@5.33.16'
   - 'vite@8.3.5'
+
+# Material 3 motion: Expo's Compose host wraps everything in the expressive
+# theme, whose springs overshoot (GUIDELINE section 11: no bounce). The patch
+# gives the host the standard motion scheme, as Expo's own TextField does.
+patchedDependencies:
+  '@expo/ui@58.0.20': patches/@expo__ui@58.0.20.patch

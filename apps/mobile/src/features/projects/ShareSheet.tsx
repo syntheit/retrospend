@@ -8,6 +8,7 @@ import { newClientId } from "@/data/ids";
 import { announceEntryChange } from "@/features/entry/events";
 import { Note, SheetBody } from "@/features/write/parts";
 import { useTheme } from "@/theme";
+import { showAlert } from "@/ui/alert";
 import { Button } from "@/ui/Button";
 import { Sheet } from "@/ui/Sheet";
 import { SwitchRow } from "@/ui/SwitchRow";
@@ -24,7 +25,6 @@ import {
 } from "./share";
 import type { ProjectPage } from "./source";
 import { useMagicLinks } from "./useMagicLinks";
-import { showAlert } from "@/ui/alert";
 
 /** The system share sheet with one address: iOS sends it as a link, Android as text. */
 async function sendAddress(url: string) {
@@ -220,6 +220,7 @@ export function ShareSheet({
 											) : (
 												<View style={{ alignItems: "flex-start" }}>
 													<Button
+														busy={busy}
 														disabled={busy}
 														label={busy ? tc("saving") : t("create")}
 														onPress={() => void flow.create(role)}

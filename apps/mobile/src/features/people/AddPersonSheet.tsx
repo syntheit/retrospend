@@ -73,6 +73,7 @@ export function AddPersonSheet({
 			detents={["medium"]}
 			footer={
 				<Button
+					busy={saving}
 					disabled={!ready}
 					label={saving ? t("saving") : t("save")}
 					onPress={submit}

@@ -123,6 +123,7 @@ export function BulkSheet({
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
 					<Button
+						busy={busy}
 						disabled={!ready || busy}
 						label={
 							busy

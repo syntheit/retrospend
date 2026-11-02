@@ -91,6 +91,8 @@ export function sheetContentHeight(
 export interface PinnedAction {
 	label: string;
 	disabled: boolean;
+	/** A request is in flight (Android shows the loading indicator in the button). */
+	busy?: boolean;
 	onPress: () => void;
 }
 
@@ -115,12 +117,12 @@ export function usePinnedAction(action: PinnedAction): boolean {
 	const pin = sheet?.pin ?? null;
 	const press = useRef(action.onPress);
 	press.current = action.onPress;
-	const { label, disabled } = action;
+	const { label, disabled, busy } = action;
 	useEffect(() => {
 		if (!pin) return;
-		pin({ label, disabled, onPress: () => press.current() });
+		pin({ label, disabled, busy, onPress: () => press.current() });
 		return () => pin(null);
-	}, [pin, label, disabled]);
+	}, [pin, label, disabled, busy]);
 	return pin !== null;
 }
 

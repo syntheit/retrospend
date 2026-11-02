@@ -162,6 +162,7 @@ export function AddMemberSheet({
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
 					<Button
+						busy={saving}
 						disabled={!ready}
 						label={saving ? tc("saving") : t("submit")}
 						onPress={() => void submit()}

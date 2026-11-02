@@ -127,8 +127,9 @@ const config: ExpoConfig = {
 		versionCode: BUILD_NUMBER,
 		// Edge-to-edge is always on (React Native 0.88, targetSdk 36); screens
 		// pad with safe-area insets.
-		// Off: with it on, React Native 0.88 registers its back callback only on
-		// Android 16+, and on Android 15 the system Back leaves the app.
+		// Off here; plugins/with-predictive-back turns it on for Android 16+ only
+		// (React Native 0.88 registers its back callback only there, and on
+		// Android 15 the flag makes the system Back leave the app).
 		predictiveBackGestureEnabled: false,
 	},
 	// iOS: the photo library, camera and Face ID permission texts, one file per
@@ -175,6 +176,10 @@ const config: ExpoConfig = {
 		],
 		// Android half of the http decision above.
 		"./plugins/with-cleartext-servers",
+		// Android 7 cannot start the app (expo-modules-core needs API 26).
+		"./plugins/with-android-min-sdk",
+		// Predictive back on Android 16+, today's back below.
+		"./plugins/with-predictive-back",
 		// R8 keep rules: without them the minified release dies in WorkManager.
 		"./plugins/with-android-proguard",
 		// Release signing from the environment (scripts/android-release.sh).

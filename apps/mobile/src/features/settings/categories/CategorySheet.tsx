@@ -108,6 +108,7 @@ export function CategorySheet({
 			detents={["large"]}
 			footer={
 				<Button
+					busy={busy}
 					disabled={busy || !ready}
 					label={busy ? tc("saving") : tc("save")}
 					onPress={save}

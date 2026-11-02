@@ -78,6 +78,7 @@ export function DeleteAccountSheet({
 				<>
 					<Button label={tc("cancel")} onPress={onClose} variant="text" />
 					<Button
+						busy={flow.committing}
 						disabled={flow.status !== "ready" || flow.committing}
 						label={flow.committing ? t("deleting") : t("submit")}
 						onPress={submit}
