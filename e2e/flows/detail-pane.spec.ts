@@ -22,7 +22,8 @@ test("Activity: an expense opens in a pane, Back closes it, pencil edits, delete
 	await main.getByText("Monotributo").first().click();
 	await expect(pane).toBeVisible();
 	await expect(page).toHaveURL(/expense=/);
-	await expect(pane).toContainText("Amount");
+	await expect(pane).toContainText("$42,000");
+	await expect(pane).toContainText("Taxes");
 	await expect(page.getByRole("dialog")).toHaveCount(0);
 
 	// Back closes it.
@@ -58,4 +59,23 @@ test("Activity: an expense opens in a pane, Back closes it, pencil edits, delete
 		toast.getByRole("button", { name: "Undo" }).dispatchEvent("click"),
 	);
 	await expect(main.getByText("Monotributo").first()).toBeVisible();
+});
+
+test("Activity at tablet width: with the pane open every amount stays visible", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 768, height: 1024 });
+	await openV2(page, "/activity?range=all");
+	await page.getByRole("main").getByText("Monotributo").first().click();
+	const pane = page.getByRole("complementary", { name: "Monotributo" });
+	await expect(pane).toBeVisible();
+	const row = page.getByRole("main").getByText("Recarga SUBE").first();
+	await expect(row).toBeVisible();
+	await expect(
+		page.getByRole("main").getByText("$42,000").first(),
+	).toBeInViewport();
+	// The rail shows only the six destinations and More.
+	const rail = page.locator("[data-rail]");
+	await expect(rail.getByRole("link")).toHaveCount(6);
+	await expect(rail.getByRole("button", { name: "More" })).toBeVisible();
 });
