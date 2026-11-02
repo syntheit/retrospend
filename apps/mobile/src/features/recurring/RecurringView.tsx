@@ -20,6 +20,8 @@ import { Screen } from "@/ui/Screen";
 import { Segmented } from "@/ui/Segmented";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
+import { menuOf } from "@/ui/actionRegistry";
+import { RECURRING_ACTIONS, recurringActionsOf } from "./recurringActions";
 import { SwipeRow } from "@/ui/SwipeRow";
 import { Text } from "@/ui/Text";
 import { ConfirmSheet, useDayText } from "./ConfirmSheet";
@@ -139,20 +141,29 @@ function Row({
 		/>
 	);
 	// A paused template says Paused and its amount reads quiet.
-	const remove = {
-		id: "delete",
-		label: t("delete.submit"),
-		onPress: onDelete,
-		destructive: true,
+	const words = {
+		confirm: t("confirm.submit"),
+		skip: t("confirm.skip"),
+		details: t("details"),
+		delete: t("delete.submit"),
 	};
+	const run = {
+		confirm: onConfirm,
+		skip: onSkip,
+		details: onDetails,
+		delete: onDelete,
+	};
+	const menu = menuOf(
+		recurringActionsOf(due),
+		RECURRING_ACTIONS,
+		words,
+		run,
+	);
 	// One that is not due swipes left to Delete; a tap opens its details.
 	if (!due)
 		return (
 			<SwipeRow
-				menu={[
-					{ id: "details", label: t("details"), onPress: onDetails },
-					remove,
-				]}
+				menu={menu}
 				menuTitle={item.title}
 				onPress={onDetails}
 				trailing={{
@@ -173,12 +184,7 @@ function Row({
 				onPress: onConfirm,
 				tone: "brand",
 			}}
-			menu={[
-				{ id: "confirm", label: t("confirm.submit"), onPress: onConfirm },
-				{ id: "skip", label: t("confirm.skip"), onPress: onSkip },
-				{ id: "details", label: t("details"), onPress: onDetails },
-				remove,
-			]}
+			menu={menu}
 			menuTitle={item.title}
 			onPress={onConfirm}
 			trailing={{ label: t("skip.submit"), onPress: onSkip, tone: "neutral" }}

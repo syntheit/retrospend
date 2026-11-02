@@ -6,11 +6,13 @@ import { EmptyState } from "@/ui/EmptyState";
 import type { GlyphName } from "@/ui/Glyph";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow, StaleNote } from "@/ui/List";
+import { RowMenu } from "@/ui/RowMenu";
 import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { GroupNote, SettingsPage } from "../parts";
 import { usePaymentMethods } from "../useSettings";
+import { methodMenu, useMethodWrites } from "./methodActions";
 import { MethodSheet } from "./MethodSheet";
 import type { PaymentMethod } from "./source";
 
@@ -36,6 +38,14 @@ export function PaymentMethodsScreen() {
 	const { state, reload } = usePaymentMethods();
 	const [editing, setEditing] = useState<PaymentMethod | null>(null);
 	const [open, setOpen] = useState(false);
+	const writes = useMethodWrites(
+		state.status === "ready" ? state.data : [],
+		() => void reload(),
+	);
+	function edit(method: PaymentMethod) {
+		setEditing(method);
+		setOpen(true);
+	}
 
 	if (state.status !== "ready") {
 		return (
@@ -63,13 +73,25 @@ export function PaymentMethodsScreen() {
 				) : (
 					<ListGroup>
 						{all.map((method) => (
-							<ListRow
+							<RowMenu
+								items={methodMenu(
+									method,
+									{
+										edit: tc("edit"),
+										prefer: t("prefer"),
+										remove: t("remove"),
+									},
+									{
+										edit: () => edit(method),
+										prefer: () => void writes.prefer(method),
+										remove: () => writes.remove(method),
+									},
+								)}
 								key={method.id}
+								onPress={() => edit(method)}
+							>
+							<ListRow
 								lead={<IconTile name={methodGlyph(method.type)} />}
-								onPress={() => {
-									setEditing(method);
-									setOpen(true);
-								}}
 								sub={[method.identifier, t(`visibility.${method.visibility}`)]
 									.filter(Boolean)
 									.join(" · ")}
@@ -96,6 +118,7 @@ export function PaymentMethodsScreen() {
 									</View>
 								}
 							/>
+							</RowMenu>
 						))}
 					</ListGroup>
 				)}

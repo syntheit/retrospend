@@ -37,7 +37,7 @@ import { ProjectSheet } from "./ProjectSheet";
 import { ProjectSummaryTab } from "./ProjectSummaryTab";
 import { SettleAllSheet } from "./SettleAllSheet";
 import { ShareSheet } from "./ShareSheet";
-import { useProjectActions } from "./useProjectActions";
+import { type ProjectStart, useProjectActions } from "./useProjectActions";
 import { useProject, useProjectSummary } from "./useProjects";
 
 type Tab = "expenses" | "summary" | "people";
@@ -59,6 +59,7 @@ export function ProjectView({
 	name,
 	startSettling = false,
 	startAdding = false,
+	startWith,
 }: {
 	id: string;
 	/** The name the list knew, shown in the title while the page loads. */
@@ -66,6 +67,8 @@ export function ProjectView({
 	startSettling?: boolean;
 	/** Open on Add person (a project just made "with others"). */
 	startAdding?: boolean;
+	/** A sheet to open once the page shows (from a row's menu). */
+	startWith?: ProjectStart;
 }) {
 	const t = useTranslations("mobile.projects");
 	const tc = useTranslations("mobile.common");
@@ -95,6 +98,7 @@ export function ProjectView({
 		},
 		reload,
 		startAdding,
+		startWith,
 	);
 	const menu = [...actions.items, ...overflow];
 	// Edit is the pencil in the header, not an item of the menu (R3).

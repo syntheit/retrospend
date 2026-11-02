@@ -174,6 +174,8 @@ export interface RowMenuProps {
 	items: MenuItem[];
 	/** A tap on the row. */
 	onPress?: () => void;
+	/** What a screen reader says for the row, when its content is not the label. */
+	accessibilityLabel?: string;
 	children: React.ReactNode;
 }
 

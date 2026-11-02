@@ -8,8 +8,10 @@ import { AvatarStack } from "@/ui/Avatar";
 import { ListRow } from "@/ui/List";
 import { MoneyAmount } from "@/ui/Money";
 import { ProgressBar } from "@/ui/ProgressBar";
+import { RowMenu } from "@/ui/RowMenu";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
+import type { MenuItem } from "@/ui/types";
 import { useBalanceWords } from "./Balance";
 import { Cover } from "./Cover";
 import { useDayRange } from "./dates";
@@ -71,10 +73,13 @@ export function ProjectRow({
 	project,
 	onPress,
 	selected,
+	menu,
 }: {
 	project: ProjectItem;
 	onPress: () => void;
 	selected?: boolean;
+	/** The long-press menu (the project's actions); none, no menu. */
+	menu?: MenuItem[];
 }) {
 	const t = useTranslations("mobile.projects");
 	const money = useMoneyText();
@@ -103,8 +108,13 @@ export function ProjectRow({
 	]
 		.filter(Boolean)
 		.join(", ");
-	return (
-		<ListRow accessibilityLabel={spoken} onPress={onPress} selected={selected}>
+	const holds = menu !== undefined && menu.length > 0;
+	const row = (
+		<ListRow
+			accessibilityLabel={spoken}
+			onPress={holds ? undefined : onPress}
+			selected={selected}
+		>
 			<View style={{ alignSelf: "flex-start" }}>
 				<Cover
 					diameter={size.avatar.row}
@@ -184,5 +194,11 @@ export function ProjectRow({
 				{project.budget ? <BudgetLine budget={project.budget} /> : null}
 			</View>
 		</ListRow>
+	);
+	if (!holds) return row;
+	return (
+		<RowMenu items={menu} onPress={onPress}>
+			{row}
+		</RowMenu>
 	);
 }

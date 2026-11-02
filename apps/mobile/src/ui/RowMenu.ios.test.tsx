@@ -49,6 +49,9 @@ function row(items: { id: string; label: string; onPress: () => void }[]) {
 }
 
 describe("iOS RowMenu", () => {
+	beforeEach(() => jest.useFakeTimers());
+	afterEach(() => jest.useRealTimers());
+
 	it("owns the long press with a menu", () => {
 		const props = row([{ id: "a", label: "A", onPress: () => undefined }]);
 		expect(typeof props.onLongPress).toBe("function");
@@ -84,10 +87,54 @@ describe("iOS RowMenu", () => {
 				nativeEvent: { layout: { width: 368 } },
 			});
 		});
+		// The host is lazy: laid out, the row is still plain until the idle queue's turn.
+		expect(root.findAll((n) => "matchContents" in n.props)).toHaveLength(0);
+		act(() => {
+			jest.runAllTimers();
+		});
 		expect(
 			root.findAll((n) => "matchContents" in n.props).length,
 		).toBeGreaterThan(0);
 		const pressable = root.findAll((n) => "delayLongPress" in n.props)[0];
 		expect(pressable?.props.style).toEqual({ width: 368 });
+	});
+
+	// Hundreds of rows used to mount hundreds of SwiftUI hosts in the render
+	// that painted them. They now take their host one at a time.
+	it("gives hosts to a list of rows one per tick", () => {
+		const items = [{ id: "a", label: "A", onPress: () => undefined }];
+		let tree: { root: unknown } = { root: null };
+		act(() => {
+			tree = create(
+				<>
+					{Array.from({ length: 5 }, (_, i) => (
+						<RowMenu items={items} key={i} onPress={() => undefined}>
+							{null}
+						</RowMenu>
+					))}
+				</>,
+			);
+		});
+		const root = tree.root as Node;
+		for (const w of root.findAll((n) => typeof n.props.onLayout === "function")) {
+			act(() => {
+				(w.props.onLayout as (e: unknown) => void)({
+					nativeEvent: { layout: { width: 300 } },
+				});
+			});
+		}
+		const hosts = () =>
+			root.findAll((n) => "matchContents" in n.props && "colorScheme" in n.props)
+				.length;
+		expect(hosts()).toBe(0);
+		act(() => {
+			jest.advanceTimersByTime(20);
+		});
+		const early = hosts();
+		expect(early).toBeLessThan(5);
+		act(() => {
+			jest.runAllTimers();
+		});
+		expect(hosts()).toBe(5);
 	});
 });

@@ -6,9 +6,10 @@ import {
 	RNHostView,
 } from "@expo/ui/swift-ui";
 import { contentShape, shapes } from "@expo/ui/swift-ui/modifiers";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, useColorScheme, View } from "react-native";
 import { useTheme } from "@/theme";
+import { whenIdle } from "./hostQueue";
 import type { RowMenuProps } from "./types";
 
 /**
@@ -38,13 +39,31 @@ const noop = () => undefined;
  * Native row, which lays out in the width its list gives it; once that width
  * is known the host mounts around the row with the width set on it, so the
  * hosted layout starts from the real width.
+ *
+ * The host is lazy: a list of hundreds of rows mounted one SwiftUI host per
+ * row in its first render. A row now paints plain and takes its host from the
+ * idle queue (one per tick, after interactions end). It is never mounted on a
+ * touch: swapping the row's tree mid-gesture would cancel the tap.
  */
-export function RowMenu({ items, children, onPress }: RowMenuProps) {
+export function RowMenu({
+	items,
+	children,
+	onPress,
+	accessibilityLabel,
+}: RowMenuProps) {
 	const { radius } = useTheme();
 	const scheme = useColorScheme();
 	const [width, setWidth] = useState<number | null>(null);
+	const [hosted, setHosted] = useState(false);
+	const wants = items.length > 0 && width !== null;
+	useEffect(() => {
+		if (!wants || hosted) return;
+		return whenIdle(() => setHosted(true));
+	}, [wants, hosted]);
 	const row = (
 		<Pressable
+			accessibilityLabel={accessibilityLabel}
+			accessibilityRole={accessibilityLabel && onPress ? "button" : undefined}
 			accessibilityActions={items.map((item) => ({
 				name: item.id,
 				label: item.label,
@@ -67,7 +86,7 @@ export function RowMenu({ items, children, onPress }: RowMenuProps) {
 	if (items.length === 0) return row;
 	return (
 		<View onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-			{width === null ? (
+			{width === null || !hosted ? (
 				row
 			) : (
 				<Host

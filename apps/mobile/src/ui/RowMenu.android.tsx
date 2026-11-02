@@ -21,7 +21,12 @@ export const LONG_PRESS_MS = 400;
  * stays in place behind it (no sheet, no scrim); a tap outside or a tab
  * switch closes it.
  */
-export function RowMenu({ items, children, onPress }: RowMenuProps) {
+export function RowMenu({
+	items,
+	children,
+	onPress,
+	accessibilityLabel,
+}: RowMenuProps) {
 	const { color } = useTheme();
 	const [at, setAt] = useState<{ x: number; y: number } | null>(null);
 	const row = useRef<HostInstance>(null);
@@ -30,6 +35,7 @@ export function RowMenu({ items, children, onPress }: RowMenuProps) {
 	return (
 		<View ref={row}>
 			<Pressable
+				accessibilityLabel={accessibilityLabel}
 				accessibilityActions={items.map((item) => ({
 					name: item.id,
 					label: item.label,

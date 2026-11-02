@@ -11,6 +11,7 @@ import {
 	justBack,
 	matchesProject,
 } from "@/features/projects/source";
+import { useProjectMenu } from "@/features/projects/useProjectMenu";
 import { useProjectList } from "@/features/projects/useProjects";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useLayoutClass } from "@/layout/useLayoutClass";
@@ -74,6 +75,14 @@ export function ProjectsList({
 		[shown, hero],
 	);
 
+	const menuOf = useProjectMenu(
+		(project, then) =>
+			listDetail ? setSelected(project.id) : openProject(project, { then }),
+		reload,
+		(project) =>
+			listDetail ? setSelected(project.id) : openProject(project, { add: true }),
+	);
+
 	const empty =
 		state.status === "loading" ? (
 			<SkeletonRows />
@@ -111,6 +120,7 @@ export function ProjectsList({
 							<View style={{ paddingTop: space[4] }}>
 								<ProjectCard
 									hero
+									menu={menuOf(hero)}
 									onPress={() =>
 										listDetail ? setSelected(hero.id) : openProject(hero)
 									}
@@ -144,6 +154,7 @@ export function ProjectsList({
 							{group.projects.map((project) => (
 								<ProjectCard
 									key={project.id}
+									menu={menuOf(project)}
 									onPress={() =>
 										listDetail ? setSelected(project.id) : openProject(project)
 									}
@@ -157,6 +168,7 @@ export function ProjectsList({
 							{group.projects.map((project) => (
 								<ProjectRow
 									key={project.id}
+									menu={menuOf(project)}
 									onPress={() =>
 										listDetail ? setSelected(project.id) : openProject(project)
 									}

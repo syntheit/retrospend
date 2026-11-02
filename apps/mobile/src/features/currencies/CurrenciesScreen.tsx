@@ -11,6 +11,8 @@ import { Chip } from "@/ui/Chip";
 import { CurrencyFlag } from "@/ui/CurrencyFlag";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, ListRow, StaleNote } from "@/ui/List";
+import { menuOf } from "@/ui/actionRegistry";
+import { CURRENCY_ACTIONS, currencyActionsOf } from "./currencyActions";
 import { RowMenu } from "@/ui/RowMenu";
 import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
@@ -91,28 +93,20 @@ function CurrencyLine({
 	const label = useRateLabel();
 	const price = defaultPrice(row);
 	const { space } = useTheme();
-	const canStar = row.favorite || row.rateId !== null;
-	const items = [
-		{ id: "convert", label: t("menu.convert"), onPress: onOpen },
-		...(canStar
-			? [
-					{
-						id: "favorite",
-						label: row.favorite ? t("menu.unfavorite") : t("menu.favorite"),
-						onPress: () => onFavorite(!row.favorite),
-					},
-				]
-			: []),
-		...(row.crypto
-			? []
-			: [
-					{
-						id: "history",
-						label: t("menu.history"),
-						onPress: () => openHistory(row.code, table.home),
-					},
-				]),
-	];
+	const items = menuOf(
+		currencyActionsOf(row),
+		CURRENCY_ACTIONS,
+		{
+			convert: t("menu.convert"),
+			favorite: row.favorite ? t("menu.unfavorite") : t("menu.favorite"),
+			history: t("menu.history"),
+		},
+		{
+			convert: onOpen,
+			favorite: () => onFavorite(!row.favorite),
+			history: () => openHistory(row.code, table.home),
+		},
+	);
 	return (
 		<RowMenu items={items} onPress={onOpen} title={row.code}>
 			<ListRow

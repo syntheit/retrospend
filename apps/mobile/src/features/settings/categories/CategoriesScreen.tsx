@@ -7,7 +7,9 @@ import { newClientId } from "@/data/ids";
 import { AddButton } from "@/ui/AddButton";
 import { EmptyState } from "@/ui/EmptyState";
 import { CategoryTile, ListGroup, ListRow, StaleNote } from "@/ui/List";
+import { menuOf } from "@/ui/actionRegistry";
 import { RowMenu } from "@/ui/RowMenu";
+import { CATEGORY_ACTIONS, categoryActionsOf } from "./categoryActions";
 import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
@@ -111,26 +113,23 @@ export function CategoriesScreen() {
 						const count = t("count", { count: category.expenseCount });
 						return (
 							<RowMenu
-								items={[
+								items={menuOf(
+									categoryActionsOf(),
+									CATEGORY_ACTIONS,
 									{
-										id: "rename",
-										label: t("menu.rename"),
-										onPress: () => show(category),
-									},
-									{
-										id: "icon",
-										label: t("menu.iconColor"),
-										onPress: () => show(category),
-									},
-									{
-										id: "count",
-										label: category.excludeByDefault
+										rename: t("menu.rename"),
+										icon: t("menu.iconColor"),
+										count: category.excludeByDefault
 											? t("menu.count")
 											: t("menu.uncount"),
-										onPress: () =>
+									},
+									{
+										rename: () => show(category),
+										icon: () => show(category),
+										count: () =>
 											void setCounted(category, category.excludeByDefault),
 									},
-								]}
+								)}
 								key={category.id}
 								onPress={() => show(category)}
 								title={category.name}
