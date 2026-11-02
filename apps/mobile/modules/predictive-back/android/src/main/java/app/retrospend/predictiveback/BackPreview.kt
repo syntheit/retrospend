@@ -132,11 +132,10 @@ internal class BackPreview(private val activity: Activity) {
     val screen = found
     poppedScreen = screen
     sheet = screen.stackPresentation == Screen.StackPresentation.FORM_SHEET
-    // The view that moves is the screen's parent (the stack's fragment root
-    // for a pushed screen, the sheet's coordinator for a sheet), so the
-    // stack's and the sheet's own exit animations add to the preview's
-    // transform instead of replacing it.
-    val target = screen.parent as? View ?: screen
+    // A pushed screen moves as the stack's fragment root, so the stack's exit
+    // animation adds to the preview's transform. A sheet moves as its own
+    // screen view: its parent holds the scrim, which must stay.
+    val target = if (sheet) screen else (screen.parent as? View ?: screen)
     view = target
     // Behind a pushed screen there is only its stack; give it the backdrop
     // color so the shrunk screen reads against something.
@@ -266,8 +265,7 @@ internal class BackPreview(private val activity: Activity) {
     if (view == null) return
     settle?.cancel()
     // The way out is the stack's own: a pushed screen slides to the trailing
-    // edge (above), a sheet slides down (its own exit animator, which moves
-    // the sheet's screen view and so adds to the transform kept on its parent).
+    // edge (above), a sheet slides down (the sheet's own exit animator).
     // The screen is put back once the pop is over (its view is gone). A pop
     // that did not happen (a screen that blocks back) settles it back instead.
     val popped = poppedScreen
@@ -334,9 +332,12 @@ internal class BackPreview(private val activity: Activity) {
     target.scaleX = scale
     target.scaleY = scale
     if (sheet) {
-      // Down: shrinks around the bottom edge and sinks with the drag.
+      // Down: shrinks around the bottom edge, so the top edge sinks toward the
+      // bottom, where the sheet leaves to. The sheet's own exit slide then
+      // starts from this state (it moves the same view from rest, so a
+      // translation here would jump back).
       target.translationX = 0f
-      target.translationY = progress * SHEET_SINK * target.height
+      target.translationY = 0f
       return
     }
     // Toward the trailing edge, where the screen leaves to.
@@ -411,7 +412,6 @@ internal class BackPreview(private val activity: Activity) {
   private companion object {
     const val SCALE_DELTA = 0.1f
     const val PUSH_SHIFT = 0.1f
-    const val SHEET_SINK = 0.08f
     const val CORNER_DP = 28f
     const val ELEVATION_DP = 8f
     const val SETTLE_MS = 200L
