@@ -80,10 +80,8 @@ export default function HomeScreen() {
 									<ActivityRow
 										item={item}
 										key={item.id}
-										onPress={() =>
-											router.push(
-												entryHref(item.id, true, JSON.stringify(item)),
-											)
+										onOpen={(row) =>
+											router.push(entryHref(row.id, true, JSON.stringify(row)))
 										}
 									/>
 								))}

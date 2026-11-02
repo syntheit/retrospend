@@ -1,6 +1,6 @@
 import { createReadCache } from "@/data/cache";
 import { createMemoryStore } from "@/data/store";
-import { loadEntryRow, rowFromParam } from "./entryRow";
+import { loadEntryRow, rowFromParam, stashedRow, stashRow } from "./entryRow";
 import { ACTIVITY_CACHE, type ActivityItem } from "./source";
 
 const row = (id: string, title = `Row ${id}`): ActivityItem => ({
@@ -83,5 +83,31 @@ describe("loadEntryRow", () => {
 		expect(await loadEntryRow("e3", offline, null)).toEqual({
 			status: "error",
 		});
+	});
+});
+
+describe("stashRow", () => {
+	it("gives back the row stashed for an id, and nothing for another", () => {
+		const opened = row("stash-1");
+		stashRow(opened);
+		expect(stashedRow("stash-1")).toBe(opened);
+		expect(stashedRow("stash-other")).toBeNull();
+		expect(stashedRow(undefined)).toBeNull();
+	});
+
+	it("keeps the 40 newest rows", () => {
+		for (let i = 0; i < 45; i++) stashRow(row(`lru-${i}`));
+		expect(stashedRow("lru-0")).toBeNull();
+		expect(stashedRow("lru-4")).toBeNull();
+		expect(stashedRow("lru-5")?.id).toBe("lru-5");
+		expect(stashedRow("lru-44")?.id).toBe("lru-44");
+	});
+
+	it("keeps a row that was opened again", () => {
+		stashRow(row("again-0"));
+		for (let i = 0; i < 39; i++) stashRow(row(`fill-${i}`));
+		stashRow(row("again-0"));
+		stashRow(row("fill-x"));
+		expect(stashedRow("again-0")?.id).toBe("again-0");
 	});
 });

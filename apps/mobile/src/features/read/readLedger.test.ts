@@ -20,8 +20,8 @@ function gate<T>() {
 	return { promise, resolve };
 }
 
-const ready = <T>(data: T): ReadState<T> => ({
-	status: "ready",
+const ready = <T>(data: T) => ({
+	status: "ready" as const,
 	data,
 	staleSince: null,
 	refreshing: false,

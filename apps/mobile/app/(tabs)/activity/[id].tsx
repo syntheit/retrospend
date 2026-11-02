@@ -7,7 +7,7 @@ import {
 import { useMemo } from "react";
 import { useTranslations } from "use-intl";
 import { EntryDetail } from "@/features/activity/EntryView";
-import { rowFromParam } from "@/features/activity/entryRow";
+import { rowFromParam, stashedRow } from "@/features/activity/entryRow";
 import { useHideAddButton } from "@/features/entry/AddEntryProvider";
 import { useRecordRenderError } from "@/features/feedback/useRecordRenderError";
 import { useLayoutClass } from "@/layout/useLayoutClass";
@@ -22,7 +22,10 @@ import { Screen } from "@/ui/Screen";
 export default function EntryScreen() {
 	const t = useTranslations("mobile.entry");
 	const { id, row } = useLocalSearchParams<{ id: string; row?: string }>();
-	const placeholder = useMemo(() => rowFromParam(row, id), [row, id]);
+	const placeholder = useMemo(
+		() => rowFromParam(row, id) ?? stashedRow(id),
+		[row, id],
+	);
 	// The entry is the subject here, so the floating add button steps aside.
 	useHideAddButton();
 	const { listDetail } = useLayoutClass();

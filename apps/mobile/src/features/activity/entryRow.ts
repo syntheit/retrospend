@@ -90,6 +90,28 @@ export function rowFromParam(
 	return isActivityRow(parsed) && parsed.id === id ? parsed : null;
 }
 
+// The row a list opens, kept by id so the route carries only the id (a JSON
+// copy of the row in the route is parsed and validated on every navigation
+// event). Like a row in a route, it is only what shows while the server
+// answers.
+const STASH_LIMIT = 40;
+const stash = new Map<string, ActivityItem>();
+
+/** Remember the row about to be opened, newest last. */
+export function stashRow(item: ActivityItem): void {
+	stash.delete(item.id);
+	stash.set(item.id, item);
+	for (const id of stash.keys()) {
+		if (stash.size <= STASH_LIMIT) break;
+		stash.delete(id);
+	}
+}
+
+/** The row the list stashed for this id, if it is still there. */
+export function stashedRow(id: string | undefined): ActivityItem | null {
+	return (id && stash.get(id)) || null;
+}
+
 const notFound = (error: unknown) =>
 	(error as { status?: number } | null)?.status === 404;
 
