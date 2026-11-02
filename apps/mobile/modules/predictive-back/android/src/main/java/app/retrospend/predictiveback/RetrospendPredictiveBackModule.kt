@@ -3,6 +3,9 @@ package app.retrospend.predictiveback
 import android.app.Activity
 import android.graphics.Color
 import android.os.Build
+import android.view.View
+import android.view.ViewGroup
+import com.swmansion.rnscreens.Screen
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -37,9 +40,37 @@ class RetrospendPredictiveBackModule : Module() {
       apply()
     }
 
+    // A modal bottom sheet (the account sheet) closes on a downward drag of
+    // its body when the list inside is at the top: nested scrolling, which the
+    // sheet's behavior wires up at layout time. The stack inside the sheet
+    // adds its screens after that layout, so the sheet has none to hand the
+    // drag to until it is laid out again. JavaScript calls this when a page of
+    // the sheet appears; it works on every Android version.
+    Function("refreshSheetScroll") {
+      val host = activity
+      if (host != null) {
+        val root = host.window.decorView
+        host.runOnUiThread { relayoutSheets(root) }
+        // The page's fragment is attached a little after the call.
+        root.postDelayed({ relayoutSheets(root) }, 450)
+      }
+      null
+    }
+
     OnActivityEntersForeground { apply() }
     OnActivityEntersBackground { release() }
     OnActivityDestroys { release() }
+  }
+
+  /** Asks the layout of every form sheet's container to run again. */
+  private fun relayoutSheets(view: View) {
+    if (view is Screen && view.stackPresentation == Screen.StackPresentation.FORM_SHEET) {
+      (view.parent as? View)?.requestLayout()
+      return
+    }
+    if (view is ViewGroup) {
+      for (i in 0 until view.childCount) relayoutSheets(view.getChildAt(i))
+    }
   }
 
   private fun apply() {

@@ -40,6 +40,12 @@ export interface MenuItem {
 	 * menu draws only SF Symbols, so it shows the label alone there.
 	 */
 	lead?: ReactElement;
+	/**
+	 * Marks the active choice of a list of options (the sort modes): iOS draws
+	 * the system menu's checked state, Android a check after the label. Leave
+	 * it unset on a menu of actions.
+	 */
+	selected?: boolean;
 }
 
 export interface MenuProps {
