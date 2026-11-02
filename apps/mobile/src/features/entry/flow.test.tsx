@@ -1,8 +1,18 @@
 import type { RetrospendClient } from "@retrospend/api-client";
 import { Alert } from "react-native";
-import { createReadCache } from "@/data/cache";
-import { createOutbox } from "@/data/outbox";
-import { createMemoryStore } from "@/data/store";
+import {
+	act,
+	find,
+	flush,
+	mount,
+	press,
+	pressStarting,
+	type Tree,
+	textOf,
+	type,
+	words,
+	world,
+} from "../../../test/harness";
 import { EntryComposer } from "./EntryComposer";
 import { forgetUndoTokens } from "./send";
 import type { EntryMode } from "./types";
@@ -10,128 +20,23 @@ import type { EntryMode } from "./types";
 // The composer end to end, with real presses on its real components: the
 // milestone "coffee split with Lucía in 4 taps + 5 keys". The tab press that
 // opens the composer is the first tap, so the composer itself takes three
-// presses and five keys. react-test-renderer is a dev dependency of the app.
-const renderer = require("react-test-renderer");
-const { act, create } = renderer;
+// presses and five keys. The session, toast, ids, network, translator and
+// safe area come from the shared harness; only the native pickers, menus and
+// sheets (no JS to press) have stand-ins.
+const FIXED_ID = "6f1d1c1e-5b0e-4f5c-9c33-0a4a1c0f8a11";
 
-interface TestNode {
-	props: Record<string, unknown>;
-	children: (TestNode | string)[];
-	findAll(match: (node: TestNode) => boolean): TestNode[];
-}
-interface Tree {
-	root: TestNode;
-	unmount(): void;
-}
-
-const mockMe = {
-	id: "me1",
-	homeCurrency: "ARS",
-	defaultCurrency: "ARS",
-	name: "Sofía Reyes",
-};
-const scope = "https://example.test|me1";
-const store = createMemoryStore();
-const local = {
-	cache: createReadCache(store, scope),
-	outbox: createOutbox(store, scope),
-};
-const mockSession: { api: unknown; local: unknown } = {
-	api: undefined,
-	local,
-};
-
-jest.mock("@/auth/session", () => ({
-	useSession: () => ({
-		api: mockSession.api,
-		local: mockSession.local,
-		state: { status: "signedIn", me: mockMe },
-	}),
-}));
-jest.mock("@/data/ids", () => ({
-	newClientId: () => "6f1d1c1e-5b0e-4f5c-9c33-0a4a1c0f8a11",
-}));
-const mockNet: { isInternetReachable: boolean | null } = {
-	isInternetReachable: true,
-};
-jest.mock("expo-network", () => ({ useNetworkState: () => mockNet }));
-const mockToast = { show: jest.fn(), dismiss: jest.fn() };
-jest.mock("@/ui/Toast", () => ({ useToast: () => mockToast }));
-// The native pickers have no JS to press; the flow uses chips and keys only.
-jest.mock("@/ui/CurrencyPicker", () => ({ CurrencyPicker: () => null }));
-jest.mock("./CategoryPicker", () => ({ CategoryPicker: () => null }));
-jest.mock("@/ui/Segmented", () => ({ Segmented: () => null }));
-// The sheet shows its body and footer while it is visible.
-jest.mock("@/ui/Sheet", () => ({
-	// biome-ignore lint/suspicious/noExplicitAny: a stand-in for a native sheet
-	Sheet: ({ visible, children, footer }: any) =>
-		visible ? [children, footer] : null,
-}));
-// The system menu's items as plain buttons, so a test can pick from it.
-jest.mock("@/ui/Menu", () => {
-	const { Pressable } = require("react-native");
-	const React = require("react");
-	return {
-		// biome-ignore lint/suspicious/noExplicitAny: a stand-in for a native menu
-		Menu: ({ items }: any) =>
-			// biome-ignore lint/suspicious/noExplicitAny: a stand-in for a native menu
-			items.map((item: any) =>
-				React.createElement(Pressable, {
-					key: item.id,
-					accessibilityLabel: item.label,
-					onPress: item.onPress,
-				}),
-			),
-	};
-});
-// The sheet's rows as plain buttons, so a test can pick from it.
-jest.mock("@/ui/PickerSheet", () => {
-	const { Pressable } = require("react-native");
-	const React = require("react");
-	return {
-		// biome-ignore lint/suspicious/noExplicitAny: a stand-in for a native sheet
-		PickerSheet: ({ visible, groups, onSelect }: any) =>
-			visible
-				? // biome-ignore lint/suspicious/noExplicitAny: a stand-in for a native sheet
-					groups.flatMap((g: any) =>
-						// biome-ignore lint/suspicious/noExplicitAny: a stand-in for a native sheet
-						g.rows.map((r: any) =>
-							React.createElement(Pressable, {
-								key: r.id,
-								accessibilityLabel: `pick ${r.label}`,
-								onPress: () => onSelect(r.id),
-							}),
-						),
-					)
-				: null,
-	};
-});
-jest.mock("@/lib/intl", () => ({ useFormatLocale: () => "en-US" }));
-jest.mock("react-native-safe-area-context", () => ({
-	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
-}));
-// use-intl ships untranspiled ES modules the jest preset does not transform;
-// this stand-in reads the real English catalog, so a missing key shows up.
-jest.mock("use-intl", () => {
-	const { loadMessages } = require("@/lib/i18n");
-	const messages = loadMessages("en");
-	const lookup = (ns: string | undefined, key: string) =>
-		(ns ? `${ns}.${key}` : key)
-			.split(".")
-			// biome-ignore lint/suspicious/noExplicitAny: a walk over the JSON tree
-			.reduce((node: any, part: string) => node?.[part], messages);
-	return {
-		useFormatter: () => ({ dateTime: (d: Date) => d.toDateString() }),
-		useTranslations: (ns?: string) => {
-			const t = (key: string, values: Record<string, unknown> = {}) =>
-				String(lookup(ns, key) ?? key).replace(/\{(\w+)\}/g, (_, name) =>
-					String(values[name]),
-				);
-			t.has = (key: string) => lookup(ns, key) !== undefined;
-			return t;
-		},
-	};
-});
+jest.mock("@/ui/CurrencyPicker", () =>
+	require("../../../test/native").currencyPickerMock,
+);
+jest.mock("./CategoryPicker", () =>
+	require("../../../test/native").categoryPickerMock,
+);
+jest.mock("@/ui/Segmented", () => require("../../../test/native").segmentedMock);
+jest.mock("@/ui/Sheet", () => require("../../../test/native").sheetMock);
+jest.mock("@/ui/Menu", () => require("../../../test/native").menuMock);
+jest.mock("@/ui/PickerSheet", () =>
+	require("../../../test/native").pickerSheetMock,
+);
 
 const page = <T,>(items: T[]) => ({ items, nextCursor: null });
 const category = (id: string, name: string, uses: number) => ({
@@ -424,86 +329,22 @@ function fakeApi() {
 	return { api, calls };
 }
 
-const flush = () => act(async () => {});
-
 async function open(
 	mode: EntryMode,
 	onDone: () => void = () => {},
 	editId?: string,
 	editShared = false,
 ) {
-	let tree!: Tree;
-	await act(async () => {
-		tree = create(
-			<EntryComposer
-				editId={editId}
-				editShared={editShared}
-				initialMode={mode}
-				onDone={onDone}
-			/>,
-		);
-	});
+	const tree = await mount(
+		<EntryComposer
+			editId={editId}
+			editShared={editShared}
+			initialMode={mode}
+			onDone={onDone}
+		/>,
+	);
 	await flush();
 	return tree;
-}
-
-const find = (tree: Tree, match: (props: Record<string, unknown>) => boolean) =>
-	tree.root.findAll((node) => match(node.props));
-
-function press(tree: Tree, label: string) {
-	const hit = find(
-		tree,
-		(p) => p.accessibilityLabel === label && typeof p.onPress === "function",
-	)[0];
-	if (!hit) throw new Error(`nothing to press: ${label}`);
-	act(() => {
-		(hit.props.onPress as () => void)();
-	});
-}
-
-/** Presses the button whose spoken label starts with `prefix` (a row that adds its detail to its name). */
-function pressStarting(tree: Tree, prefix: string) {
-	const hit = find(
-		tree,
-		(p) =>
-			typeof p.accessibilityLabel === "string" &&
-			p.accessibilityLabel.startsWith(prefix) &&
-			typeof p.onPress === "function",
-	)[0];
-	if (!hit) throw new Error(`nothing to press: ${prefix}`);
-	act(() => {
-		(hit.props.onPress as () => void)();
-	});
-}
-
-/** The words under a node, joined. */
-function textOf(node: TestNode | string): string {
-	if (typeof node === "string") return node;
-	return node.children.map(textOf).join("");
-}
-
-function type(tree: Tree, label: string, text: string) {
-	const hit = find(
-		tree,
-		(p) =>
-			p.accessibilityLabel === label && typeof p.onChangeText === "function",
-	)[0];
-	if (!hit) throw new Error(`nothing to type in: ${label}`);
-	act(() => {
-		(hit.props.onChangeText as (text: string) => void)(text);
-	});
-}
-
-/** Every string the screen shows. */
-function words(tree: Tree): string {
-	const out: string[] = [];
-	const walk = (node: TestNode | string) => {
-		if (typeof node === "string") out.push(node);
-		else for (const child of node.children) walk(child);
-	};
-	walk(tree.root);
-	// The formatter joins a code and its number with a no-break space.
-	return out.join(" ").replaceAll("\u00a0", " ");
 }
 
 /** Past the 350 ms the dry run waits for typing to stop, and its answer. */
@@ -514,13 +355,11 @@ async function settle() {
 	await flush();
 }
 
-beforeEach(async () => {
+beforeEach(() => {
 	// Every test makes the same client id, so nothing may carry over.
 	forgetUndoTokens();
-	mockNet.isInternetReachable = true;
-	await local.outbox.clear();
+	world.nextId = () => FIXED_ID;
 	jest.useFakeTimers();
-	mockToast.show.mockClear();
 });
 afterEach(() => jest.useRealTimers());
 
@@ -539,7 +378,7 @@ afterEach(() => jest.restoreAllMocks());
 describe("Add expense: coffee split with Lucía", () => {
 	it("takes the composer three taps and five keys, and writes through the outbox", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done);
 		type(tree, "Title", "Cafe");
@@ -582,7 +421,7 @@ describe("Add expense: coffee split with Lucía", () => {
 			},
 		});
 		expect(done).toHaveBeenCalledTimes(1);
-		expect(mockToast.show).toHaveBeenCalledWith(
+		expect(world.toast.show).toHaveBeenCalledWith(
 			expect.objectContaining({
 				message: "Added Cafe",
 				undo: expect.objectContaining({ label: "Undo" }),
@@ -593,7 +432,7 @@ describe("Add expense: coffee split with Lucía", () => {
 
 	it("asks for the missing amount and category instead of saving", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		// Add stays off until there is an amount.
 		const add = find(tree, (p) => p.accessibilityLabel === "Add expense")[0];
@@ -616,7 +455,7 @@ describe("Add expense: coffee split with Lucía", () => {
 		shared.create = async () => {
 			throw new TypeError("Network request failed");
 		};
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		type(tree, "Title", "Cafe");
 		press(tree, "Cafe");
@@ -625,10 +464,10 @@ describe("Add expense: coffee split with Lucía", () => {
 		await settle();
 		press(tree, "Add expense");
 		await flush();
-		const waiting = await local.outbox.all();
+		const waiting = await world.local.outbox.all();
 		expect(waiting).toHaveLength(1);
 		expect(waiting[0]).toMatchObject({ entity: "shared-expenses" });
-		expect(mockToast.show).toHaveBeenLastCalledWith(
+		expect(world.toast.show).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				message: "Saved Cafe on this phone. It syncs when you're online.",
 			}),
@@ -640,7 +479,7 @@ describe("Add expense: coffee split with Lucía", () => {
 describe("Add income with Use my plan", () => {
 	it("shows what changes before Save, writes usePlan and undoes through the server", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("income");
 		type(tree, "From", "Grupo Andino");
 		for (const key of ["3", "0", "0", "0"]) press(tree, key);
@@ -686,7 +525,7 @@ describe("Add income with Use my plan", () => {
 				usePlan: true,
 			},
 		);
-		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		const toast = world.toast.show.mock.calls.at(-1)?.[0];
 		expect(toast.message).toBe("Added Grupo Andino");
 		await act(async () => {
 			toast.undo.onUndo();
@@ -704,7 +543,7 @@ describe("Add income with Use my plan", () => {
 		const { api, calls } = fakeApi();
 		(api as unknown as { budget: { verdict: unknown } }).budget.verdict =
 			async () => null;
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("income");
 		for (const key of ["5", "0", "0"]) press(tree, key);
 		press(tree, "Add income");
@@ -732,7 +571,7 @@ describe("Save waits for the dry run of what it will send", () => {
 
 	it("does not send while the preview is on its way", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		type(tree, "Title", "Cafe");
 		fill(tree);
@@ -756,7 +595,7 @@ describe("Save waits for the dry run of what it will send", () => {
 				code: "missing_rate",
 			});
 		};
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		type(tree, "Title", "Cafe");
 		fill(tree);
@@ -777,7 +616,7 @@ describe("Save waits for the dry run of what it will send", () => {
 		]!.previewCreate = async () => {
 			throw new TypeError("Network request failed");
 		};
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		type(tree, "Title", "Cafe");
 		fill(tree);
@@ -793,7 +632,7 @@ describe("Save waits for the dry run of what it will send", () => {
 describe("Add expense into a project", () => {
 	it("hides projects a viewer can not add to, takes in the people and writes projectId", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		type(tree, "Title", "Cafe");
 		// The Project panel lists the projects you can add to, not the ones you only view.
@@ -830,7 +669,7 @@ describe("Add expense into a project", () => {
 describe("Add transfer", () => {
 	it("previews and writes a move between two accounts, and undoes it", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("transfer");
 		for (const key of ["1", "5", "0", "0"]) press(tree, key);
 		await settle();
@@ -846,7 +685,7 @@ describe("Add transfer", () => {
 			fromAmount: "1500.00",
 			date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
 		});
-		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		const toast = world.toast.show.mock.calls.at(-1)?.[0];
 		expect(toast.message).toBe("Added Cash > Bank");
 		await act(async () => toast.undo.onUndo());
 		expect(calls.some((c) => c.route === "transfer.undo")).toBe(true);
@@ -857,7 +696,7 @@ describe("Add transfer", () => {
 describe("Edit expense", () => {
 	it("starts from the saved values, previews the update, saves and undoes", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "e1");
 		expect(words(tree)).toContain("10,000");
@@ -878,14 +717,14 @@ describe("Edit expense", () => {
 			location: "Tortoni",
 		});
 		expect(done).toHaveBeenCalledTimes(1);
-		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		const toast = world.toast.show.mock.calls.at(-1)?.[0];
 		expect(toast.message).toBe("Saved Team lunch");
 		await act(async () => toast.undo.onUndo());
 		expect(calls.find((c) => c.route === "expense.undo")?.input).toEqual({
 			token: "undo-edit",
 		});
 		// An edit never goes through the outbox.
-		expect(await local.outbox.all()).toHaveLength(0);
+		expect(await world.local.outbox.all()).toHaveLength(0);
 		act(() => tree.unmount());
 	});
 
@@ -895,14 +734,14 @@ describe("Edit expense", () => {
 			async () => {
 				throw new TypeError("Network request failed");
 			};
-		mockSession.api = api;
+		world.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "e1");
 		await settle();
 		press(tree, "Save expense");
 		await flush();
 		expect(done).not.toHaveBeenCalled();
-		expect(mockToast.show).toHaveBeenLastCalledWith({
+		expect(world.toast.show).toHaveBeenLastCalledWith({
 			message: "You're offline. Editing needs a connection.",
 		});
 		act(() => tree.unmount());
@@ -912,7 +751,7 @@ describe("Edit expense", () => {
 describe("Details", () => {
 	it("shows note, place, spread and exclude with no toggle, and sends them on a personal expense", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		type(tree, "Title", "Cafe");
 		press(tree, "Cafe");
@@ -942,7 +781,7 @@ describe("Details", () => {
 
 	it("keeps place and spread out of a split, and sends its note as notes", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		type(tree, "Title", "Cafe");
 		press(tree, "Lucía Fernández");
@@ -972,15 +811,15 @@ describe("Details", () => {
 describe("An expense in another currency", () => {
 	// Dollars spent by someone whose home is pesos.
 	beforeEach(() => {
-		mockMe.defaultCurrency = "USD";
+		world.me.defaultCurrency = "USD";
 	});
 	afterEach(() => {
-		mockMe.defaultCurrency = "ARS";
+		world.me.defaultCurrency = "ARS";
 	});
 
 	async function twelveDollars() {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		type(tree, "Title", "Cafe");
 		press(tree, "Cafe");
@@ -1062,7 +901,7 @@ describe("An expense in another currency", () => {
 describe("Edit a split expense", () => {
 	it("previews, saves the saved split back with the new title, and undoes", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "s1", true);
 		type(tree, "Title", "Team dinner");
@@ -1087,7 +926,7 @@ describe("Edit a split expense", () => {
 			notes: "birthday",
 		});
 		expect(done).toHaveBeenCalledTimes(1);
-		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		const toast = world.toast.show.mock.calls.at(-1)?.[0];
 		await act(async () => toast.undo.onUndo());
 		expect(calls.find((c) => c.route === "shared.undo")?.input).toEqual({
 			token: "undo-shared-edit",
@@ -1134,7 +973,7 @@ describe("Edit a split expense", () => {
 				],
 			},
 		});
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense", () => {}, "s1", true);
 		type(tree, "Title", "Team dinner");
 		await settle();
@@ -1159,7 +998,7 @@ describe("Edit a split expense", () => {
 			new Promise((resolve) => {
 				answer = resolve;
 			});
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense", () => {}, "s1", true);
 		// Nothing changed yet: the saved shares are right.
 		expect(words(tree)).toContain("5,000");
@@ -1208,7 +1047,7 @@ describe("Edit a split expense", () => {
 			async () => {
 				throw new TypeError("Network request failed");
 			};
-		mockSession.api = api;
+		world.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "s1", true);
 		pressStarting(tree, "Yesterday");
@@ -1233,7 +1072,7 @@ describe("Edit a split expense", () => {
 			...(await (get as () => Promise<object>)()),
 			category: { id: "theirs", name: "Gifts", color: "x" },
 		});
-		mockSession.api = api;
+		world.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "s1", true);
 		expect(words(tree)).toContain("Gifts");
@@ -1258,7 +1097,7 @@ describe("Edit a split expense", () => {
 			...(await (get as () => Promise<object>)()),
 			canEdit: false,
 		});
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense", () => {}, "s1", true);
 		expect(words(tree)).toContain("This expense can't be edited");
 		act(() => tree.unmount());
@@ -1273,7 +1112,7 @@ describe("Edit needs its dry run", () => {
 		).expenses.previewUpdate = async () => {
 			throw new TypeError("Network request failed");
 		};
-		mockSession.api = api;
+		world.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "e1");
 		await settle();
@@ -1293,7 +1132,7 @@ describe("Edit needs its dry run", () => {
 		expenses.previewUpdate = async () => {
 			throw new TypeError("Network request failed");
 		};
-		mockSession.api = api;
+		world.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "e1");
 		await settle();
@@ -1329,13 +1168,13 @@ describe("Edit needs its dry run", () => {
 		expenses.previewUpdate = async () => {
 			throw new TypeError("Network request failed");
 		};
-		mockSession.api = api;
-		mockNet.isInternetReachable = false;
+		world.api = api;
+		world.reachable = false;
 		const tree = await open("expense", () => {}, "e1");
 		await settle();
 		expect(words(tree)).toContain("You're offline.");
 		expenses.previewUpdate = ok;
-		mockNet.isInternetReachable = true;
+		world.reachable = true;
 		// A render with the network back, as expo-network would cause.
 		type(tree, "Title", "Lunch");
 		await settle();
@@ -1357,7 +1196,7 @@ describe("Picking projects quickly", () => {
 						finishTrip = resolve;
 					})
 				: Promise.resolve({ items: [] });
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		pressStarting(tree, "Trip");
 		// The person changes their mind before the first answer comes.
@@ -1385,18 +1224,15 @@ describe("Picking projects quickly", () => {
 describe("Unsaved changes", () => {
 	it("tells the host once something is typed, so a share asks before replacing it", async () => {
 		const { api } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const dirty = jest.fn();
-		let tree!: Tree;
-		await act(async () => {
-			tree = create(
-				<EntryComposer
-					initialMode="expense"
-					onDirtyChange={dirty}
-					onDone={() => {}}
-				/>,
-			);
-		});
+		const tree = await mount(
+			<EntryComposer
+				initialMode="expense"
+				onDirtyChange={dirty}
+				onDone={() => {}}
+			/>,
+		);
 		await flush();
 		expect(dirty).toHaveBeenLastCalledWith(false);
 		type(tree, "Title", "Coffee");
@@ -1409,7 +1245,7 @@ describe("Unsaved changes", () => {
 describe("The amount card", () => {
 	it("adds up what the operators build, and sends the sum", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		type(tree, "Title", "Cafe");
 		press(tree, "Cafe");
@@ -1439,7 +1275,7 @@ describe("The amount card", () => {
 				{ id: "usd", name: "Dollars", type: "CASH", currency: "USD" },
 			],
 		});
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("transfer");
 		for (const key of ["1", "0", "0", "0"]) press(tree, key);
 		// The second row is the card's, not a text field: the keypad types into it.
@@ -1479,7 +1315,7 @@ describe("Edit: undo changes and delete", () => {
 
 	it("puts every field back from the actions menu", async () => {
 		const { api } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense", () => {}, "e1");
 		// Nothing changed yet, so there is nothing to undo.
 		expect(
@@ -1499,7 +1335,7 @@ describe("Edit: undo changes and delete", () => {
 
 	it("deletes after the dry run, and Undo takes it back", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "e1");
 		press(tree, "Delete");
@@ -1519,7 +1355,7 @@ describe("Edit: undo changes and delete", () => {
 			id: "e1",
 		});
 		expect(done).toHaveBeenCalledTimes(1);
-		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		const toast = world.toast.show.mock.calls.at(-1)?.[0];
 		expect(toast.message).toBe("Deleted Lunch");
 		await act(async () => toast.undo.onUndo());
 		expect(calls.find((c) => c.route === "expense.undo")?.input).toEqual({
@@ -1530,7 +1366,7 @@ describe("Edit: undo changes and delete", () => {
 	it("deletes a split after the dry run, and Undo brings back every share", async () => {
 		sharedDeleteWarning = null;
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const done = jest.fn();
 		const tree = await open("expense", done, "s1", true);
 		press(tree, "Delete");
@@ -1551,7 +1387,7 @@ describe("Edit: undo changes and delete", () => {
 			id: "s1",
 		});
 		expect(done).toHaveBeenCalledTimes(1);
-		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		const toast = world.toast.show.mock.calls.at(-1)?.[0];
 		expect(toast.message).toBe("Deleted Dinner");
 		await act(async () => toast.undo.onUndo());
 		expect(calls.find((c) => c.route === "shared.undo")?.input).toEqual({
@@ -1564,7 +1400,7 @@ describe("Edit: undo changes and delete", () => {
 		sharedDeleteWarning =
 			"This expense still has an unsettled balance between participants.";
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense", () => {}, "s1", true);
 		press(tree, "Delete");
 		await flush();
@@ -1643,7 +1479,7 @@ describe("Who paid and a custom split", () => {
 				},
 			};
 		};
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		type(tree, "Title", "Cafe");
 		press(tree, "Cafe");
@@ -1685,14 +1521,14 @@ describe("Who paid and a custom split", () => {
 				{ type: "user", id: "lucia1", sharePercentage: "70" },
 			],
 		});
-		const toast = mockToast.show.mock.calls.at(-1)?.[0];
+		const toast = world.toast.show.mock.calls.at(-1)?.[0];
 		expect(toast.undo.label).toBe("Undo");
 		act(() => tree.unmount());
 	});
 
 	it("an edit that changes who paid sends the whole split", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense", () => {}, "s1", true);
 		press(tree, "Paid by Lucía Fernández");
 		await settle();
@@ -1730,7 +1566,7 @@ describe("The keypad folds into the Add button", () => {
 
 	it("stays open while there is no amount, folds on a pick once there is one, and comes back when the amount is tapped", async () => {
 		const { api } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		expect(keys(tree).length).toBeGreaterThan(0);
 		// Nothing to add yet: picking a category leaves the keys.
@@ -1755,7 +1591,7 @@ describe("The keypad folds into the Add button", () => {
 
 	it("opens folded when editing", async () => {
 		const { api } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense", () => {}, "e1");
 		expect(keys(tree)).toHaveLength(0);
 		act(() => tree.unmount());
@@ -1763,7 +1599,7 @@ describe("The keypad folds into the Add button", () => {
 
 	it("folds when a tab is tapped after an amount", async () => {
 		const { api } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		press(tree, "9");
 		pressStarting(tree, "Who");
@@ -1793,7 +1629,7 @@ describe("The title remembers", () => {
 				},
 			],
 		});
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		type(tree, "Title", "Coffee");
 		await settle();
@@ -1817,7 +1653,7 @@ describe("The title remembers", () => {
 				},
 			],
 		});
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		press(tree, "Cafe");
 		type(tree, "Title", "Coffee");
@@ -1830,7 +1666,7 @@ describe("The title remembers", () => {
 
 	it("picks from a keyword when there is no history", async () => {
 		const { api } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		type(tree, "Title", "Grocery run");
 		await settle();
@@ -1844,7 +1680,7 @@ describe("Add expense at the largest text size", () => {
 	it("types the amount on the system decimal keyboard, with no keypad to cut off", async () => {
 		fontScale(3);
 		const { api } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 
 		// The keypad is gone; the amount is a text input on the decimal pad.
@@ -1903,7 +1739,7 @@ describe("Add income on the pager", () => {
 	it("files the income under a category and an account, repeats it, and folds the keypad on a pick", async () => {
 		const { api, calls } = fakeApi();
 		withIncomeData(api);
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("income");
 		type(tree, "From", "Acme payroll");
 		for (const key of ["8", "5", "0"]) press(tree, key);
@@ -1935,7 +1771,7 @@ describe("Add income on the pager", () => {
 	it("keeps income categories out of the expense panel", async () => {
 		const { api } = fakeApi();
 		withIncomeData(api);
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("expense");
 		expect(words(tree)).not.toContain("Salary");
 		act(() => tree.unmount());
@@ -1945,7 +1781,7 @@ describe("Add income on the pager", () => {
 		const { api } = fakeApi();
 		(api as unknown as { budget: { verdict: unknown } }).budget.verdict =
 			async () => null;
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("income");
 		expect(find(tree, (p) => p.accessibilityLabel === "Plan")).toHaveLength(0);
 		act(() => tree.unmount());
@@ -1955,7 +1791,7 @@ describe("Add income on the pager", () => {
 describe("Add transfer on the pager", () => {
 	it("books a bank fee from the sending account", async () => {
 		const { api, calls } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("transfer");
 		for (const key of ["1", "5", "0", "0"]) press(tree, key);
 		press(tree, "Bank fee, Add");
@@ -1974,7 +1810,7 @@ describe("Add transfer on the pager", () => {
 
 	it("says which accounts the money moves between, and what it sends", async () => {
 		const { api } = fakeApi();
-		mockSession.api = api;
+		world.api = api;
 		const tree = await open("transfer");
 		expect(words(tree)).toContain("Cash → Bank");
 		expect(words(tree)).toContain("You send");
@@ -1993,7 +1829,7 @@ describe("The duplicate warning", () => {
 			calls.push({ route: "expenses.duplicates", input });
 			return { duplicate, expenseId: duplicate ? "e9" : null };
 		};
-		mockSession.api = api;
+		world.api = api;
 		return calls;
 	}
 
