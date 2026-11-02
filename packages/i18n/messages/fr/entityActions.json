@@ -420,5 +420,13 @@
 			"confirmTitle": "Supprimer {name} ?",
 			"confirmButton": "Supprimer le webhook"
 		}
+	},
+	"notification": {
+		"open": {
+			"label": "Ouvrir"
+		},
+		"markRead": {
+			"label": "Marquer comme lue"
+		}
 	}
 }

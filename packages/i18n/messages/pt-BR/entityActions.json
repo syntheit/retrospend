@@ -420,5 +420,13 @@
 			"confirmTitle": "Excluir {name}?",
 			"confirmButton": "Excluir webhook"
 		}
+	},
+	"notification": {
+		"open": {
+			"label": "Abrir"
+		},
+		"markRead": {
+			"label": "Marcar como lida"
+		}
 	}
 }

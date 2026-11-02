@@ -59,6 +59,7 @@ export const ACTION_IDS = {
 	currency: ["convert", "favorite", "unfavorite", "copy", "history"],
 	payment: ["confirm", "notReceived"],
 	needsYou: ["open", "later"],
+	notification: ["open", "markRead"],
 	budget: [
 		"fund",
 		"cover",
