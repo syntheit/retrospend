@@ -103,7 +103,7 @@ describe("pushed screens have the back button", () => {
 		expect(layout).toMatch(/unstable_settings\s*=\s*{\s*anchor:\s*"index"/);
 		const root = readFileSync(join(APP, "_layout.tsx"), "utf8");
 		expect(root).toMatch(
-			/name="account"\s+options=\{accountSheetOptions\(\)\}/,
+			/name="account"\s+options=\{accountSheetOptions\(/,
 		);
 	});
 

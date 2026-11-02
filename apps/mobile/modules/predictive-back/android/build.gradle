@@ -1,0 +1,22 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'app.retrospend.predictiveback'
+version = '0.1.0'
+
+android {
+  namespace "app.retrospend.predictiveback"
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+}
+
+dependencies {
+  // The screens the preview moves; the app already ships the library.
+  compileOnly project(':react-native-screens')
+  // The stack's fragments; the same version react-native-screens ships.
+  compileOnly 'androidx.fragment:fragment-ktx:1.8.9'
+}

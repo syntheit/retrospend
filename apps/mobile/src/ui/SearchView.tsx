@@ -20,6 +20,7 @@ import { NoBar } from "./barScroll";
 import { easeLand } from "./motion";
 import { typeStyle } from "./Text";
 import { TopBarAction } from "./TopBarAction";
+import { useBackConsumer } from "@/layout/backConsumers";
 import { useHideTabBar } from "./tabBarMetrics";
 
 /**
@@ -60,6 +61,8 @@ export function SearchView({
 	const { top } = useSafeAreaInsets();
 	// The floating tab bar steps aside, as it does for the keyboard.
 	useHideTabBar(open);
+	// The back preview stands down: Back closes this view, it pops nothing.
+	useBackConsumer(open);
 	const input = useRef<ComponentRef<typeof TextInput>>(null);
 	// A plain fade in (state duration), driven by a value and not a layout
 	// animation: those wrap the field and drop what the keyboard types.
