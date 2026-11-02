@@ -16,13 +16,11 @@ import { undoWrite } from "./send";
  * entry: a split tells everyone on it, the server may warn that a debt would
  * be erased (then the button reads "Delete anyway"), or the delete may give no
  * Undo. One key per start, so a second tap replays the first delete.
+ *
+ * A detail page names its entry up front; a list calls the returned function
+ * with the row's entry (`hookless`), so one hook serves every row.
  */
-export function useDeleteEntry({
-	id,
-	shared,
-	title,
-	onDeleted,
-}: {
+export interface DeleteTargetArgs {
 	id: string;
 	/** A split expense: its own routes and its warning. */
 	shared: boolean;
@@ -30,14 +28,22 @@ export function useDeleteEntry({
 	title: string;
 	/** It is gone: close the page or the composer. */
 	onDeleted: () => void;
-}): () => void {
+}
+
+export function useDeleteEntry(
+	base?: DeleteTargetArgs,
+): (target?: Partial<DeleteTargetArgs>) => void {
 	const t = useTranslations("mobile.composer.delete");
 	const tc = useTranslations("mobile.common");
 	const { api } = useSession();
 	const toast = useToast();
 	const busy = useRef(false);
 
-	async function remove(key: string, confirmed: boolean) {
+	async function remove(
+		{ id, shared, title, onDeleted }: DeleteTargetArgs,
+		key: string,
+		confirmed: boolean,
+	) {
 		if (!api) return;
 		const outcome = await runDelete(api, { id, shared }, key, confirmed);
 		if (outcome.status !== "deleted") {
@@ -67,7 +73,16 @@ export function useDeleteEntry({
 		onDeleted();
 	}
 
-	return async function start() {
+	return async function start(target?: Partial<DeleteTargetArgs>) {
+		const now: DeleteTargetArgs = {
+			id: "",
+			shared: false,
+			title: "",
+			onDeleted: () => undefined,
+			...base,
+			...target,
+		};
+		const { id, shared } = now;
 		if (!api || busy.current) return;
 		busy.current = true;
 		try {
@@ -86,7 +101,7 @@ export function useDeleteEntry({
 				{
 					text: warned ? t("anyway") : t("row"),
 					style: "destructive",
-					onPress: () => void remove(key, warned),
+					onPress: () => void remove(now, key, warned),
 				},
 			]);
 		} finally {

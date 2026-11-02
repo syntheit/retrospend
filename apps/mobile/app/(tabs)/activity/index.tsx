@@ -25,6 +25,7 @@ import {
 	useOptionalAddEntry,
 } from "@/features/entry/addEntryContext";
 import { SyncIssues } from "@/features/entry/SyncIssues";
+import { useDeleteEntry } from "@/features/entry/useDeleteEntry";
 import { useDeletePending } from "@/features/entry/useDeletePending";
 import { RecurringView } from "@/features/recurring/RecurringView";
 import { RECURRING_APART } from "@/layout/destinations";
@@ -98,6 +99,8 @@ export default function ActivityScreen() {
 	const { state, reload, loadMore, loadingMore } = useActivity(filter);
 	const bulk = useBulkActions(() => setPicked(null));
 	const deletePending = useDeletePending();
+	// One entry from a row: the system alert after the server's dry run, then Undo.
+	const deleteOne = useDeleteEntry();
 	// Android: the floating toolbar takes the Add button's place while picking,
 	// and the count and Done move to the top bar.
 	const floatingBulk = Platform.OS === "android";
@@ -143,8 +146,8 @@ export default function ActivityScreen() {
 	// The rows are memoized, so what they get must not change between
 	// renders: `ops` and `onOpen` are stable and read the screen's latest
 	// state through a ref.
-	const latest = useRef({ add, bulk, open, deletePending });
-	latest.current = { add, bulk, open, deletePending };
+	const latest = useRef({ add, bulk, open, deletePending, deleteOne });
+	latest.current = { add, bulk, open, deletePending, deleteOne };
 	const canEdit = add !== null;
 	const ops = useMemo<RowOps>(
 		() => ({
@@ -172,7 +175,11 @@ export default function ActivityScreen() {
 							kind: item.kind,
 							title: item.title,
 						})
-					: latest.current.bulk.remove([item.entityId]),
+					: latest.current.deleteOne({
+							id: item.entityId,
+							shared: false,
+							title: item.title,
+						}),
 		}),
 		[t, te, canEdit],
 	);

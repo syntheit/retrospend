@@ -13,9 +13,11 @@ export interface RowActionWords {
 
 /** What each action does for one row. */
 export interface RowActionHandlers {
-	select: () => void;
+	/** Left out where rows are not selected in bulk (Home). */
+	select?: () => void;
 	edit: () => void;
-	categorize: () => void;
+	/** Left out where rows are not categorized in bulk (Home). */
+	categorize?: () => void;
 	remove: () => void;
 }
 
@@ -65,14 +67,18 @@ export function rowActions(
 	const own = canSelect(item);
 	const edit = canAdd && canEditEntry(item);
 	const menu: MenuItem[] = [];
-	if (own) menu.push({ id: "select", label: words.select, onPress: on.select });
+	if (own && on.select) {
+		menu.push({ id: "select", label: words.select, onPress: on.select });
+	}
 	if (edit) menu.push({ id: "edit", label: words.edit, onPress: on.edit });
-	if (own) {
+	if (own && on.categorize) {
 		menu.push({
 			id: "categorize",
 			label: words.categorize,
 			onPress: on.categorize,
 		});
+	}
+	if (own) {
 		menu.push({
 			id: "delete",
 			label: words.delete,

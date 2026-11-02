@@ -5,6 +5,7 @@ import { useSession } from "@/auth/session";
 import { AccountTopBar } from "@/features/account/AccountTopBar";
 import { ActivityRow } from "@/features/activity/ActivityRow";
 import { mergePending } from "@/features/activity/pending";
+import { useHomeRowOps } from "@/features/activity/useHomeRowOps";
 import { usePendingRows } from "@/features/activity/usePending";
 import { ConverterSheet } from "@/features/currencies/ConverterSheet";
 import { SyncIssues } from "@/features/entry/SyncIssues";
@@ -37,6 +38,7 @@ export default function HomeScreen() {
 	const { api } = useSession();
 	const fetch = useMemo(() => (api ? fetchHome(api) : null), [api]);
 	const { state, reload } = useCachedRead(HOME_CACHE, fetch);
+	const rowOps = useHomeRowOps();
 	// Entries still waiting on this phone join Recent, as they join Activity.
 	const pending = usePendingRows(
 		state.status === "ready" && !state.refreshing && state.staleSince === null
@@ -98,6 +100,7 @@ export default function HomeScreen() {
 										onOpen={(row) =>
 											router.push(entryHref(row.id, true, JSON.stringify(row)))
 										}
+										ops={rowOps}
 									/>
 								))}
 							</ListGroup>

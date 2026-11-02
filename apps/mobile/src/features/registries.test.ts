@@ -174,4 +174,18 @@ describe("activity registry", () => {
 		);
 		expect(items.map((i) => i.id)).toEqual(["delete"]);
 	});
+	it("leaves the bulk actions out where a screen has none (Home)", () => {
+		const { menu: items } = rowActions(
+			{
+				source: "personal",
+				mine: true,
+				canEdit: true,
+				kind: "expense",
+			} as never,
+			words,
+			{ edit: noop, remove: noop },
+			true,
+		);
+		expect(items.map((i) => i.id)).toEqual(["edit", "delete"]);
+	});
 });

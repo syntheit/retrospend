@@ -126,9 +126,8 @@ describe("iOS RowMenu", () => {
 			});
 		}
 		const hosts = () =>
-			root.findAll(
-				(n) => (n as unknown as { type: unknown }).type === "Host",
-			).length;
+			root.findAll((n) => (n as unknown as { type: unknown }).type === "Host")
+				.length;
 		expect(hosts()).toBe(0);
 		act(() => {
 			jest.advanceTimersByTime(20);
