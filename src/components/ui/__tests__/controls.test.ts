@@ -107,7 +107,12 @@ describe("FilterChips", () => {
 
 	it("keeps an icon in the label inline with the text (a check never wraps)", () => {
 		const html = render(
-			h(FilterChip, { selected: true }, "You", h("svg", { "aria-hidden": true })),
+			h(
+				FilterChip,
+				{ selected: true },
+				"You",
+				h("svg", { "aria-hidden": true }),
+			),
 		);
 		expect(html).toContain("[&amp;_svg]:inline");
 		expect(html).toContain("whitespace-nowrap");
