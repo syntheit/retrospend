@@ -2,7 +2,7 @@ import { Redirect, router, Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
-import { PROJECTS_APART } from "@/layout/destinations";
+import { projectHref } from "@/layout/detailRoutes";
 import { showAlert } from "@/ui/alert";
 import { EmptyState } from "@/ui/EmptyState";
 import { Screen } from "@/ui/Screen";
@@ -11,11 +11,6 @@ import { JoinFlow } from "./JoinFlow";
 import type { SharedFailure } from "./useSharedAccess";
 import { useSharedAccess } from "./useSharedAccess";
 import { SharedView } from "./SharedView";
-
-const projectHref = (id: string) =>
-	PROJECTS_APART
-		? ({ pathname: "/projects/[id]", params: { id } } as const)
-		: ({ pathname: "/people/project/[id]", params: { id } } as const);
 
 /** Whether the signed-in account already has a seat in the project. */
 function useIsMember(id: string): "checking" | "member" | "other" {
@@ -94,7 +89,7 @@ function Gateway({
 				info={access.info}
 				linkId={access.linkId}
 				onGuest={(record) => open("guest", record)}
-				onMember={() => router.replace(projectHref(id))}
+				onMember={() => router.replace(projectHref(id, false))}
 				projectId={id}
 			/>
 		);
@@ -161,7 +156,7 @@ export function SharedScreen({
 					<SkeletonRows />
 				</Screen>
 			) : member === "member" ? (
-				<Redirect href={projectHref(id)} />
+				<Redirect href={projectHref(id, false)} />
 			) : (
 				<Gateway
 					id={id}
