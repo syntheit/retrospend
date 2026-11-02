@@ -176,6 +176,8 @@ const config: ExpoConfig = {
 		],
 		// Android half of the http decision above.
 		"./plugins/with-cleartext-servers",
+		// Android 7 cannot start the app (expo-modules-core needs API 26).
+		"./plugins/with-android-min-sdk",
 		// Predictive back on Android 16+, today's back below.
 		"./plugins/with-predictive-back",
 		// R8 keep rules: without them the minified release dies in WorkManager.
