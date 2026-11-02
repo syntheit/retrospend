@@ -3,6 +3,7 @@ import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { AvatarStack, type Face } from "./Avatar";
 import { Glyph } from "./Glyph";
+import { HAIRLINE } from "./metrics";
 import { Text } from "./Text";
 
 /**
@@ -49,7 +50,7 @@ export function ProjectRow({
 				paddingLeft: space[2],
 				paddingRight: space[3],
 				borderRadius: radius.panel,
-				borderWidth: 1,
+				borderWidth: HAIRLINE,
 				borderColor: selected ? color.brand : "transparent",
 				backgroundColor: selected
 					? color.brandSoft

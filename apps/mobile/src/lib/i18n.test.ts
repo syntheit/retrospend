@@ -1,8 +1,4 @@
-import {
-	loadMessages,
-	resolveLocale,
-	SUPPORTED_LOCALES,
-} from "./i18n";
+import { loadMessages, resolveLocale, SUPPORTED_LOCALES } from "./i18n";
 import { APP_LOCALES } from "./locales";
 
 /** The catalog for one tag, with the system's region setting when given. */

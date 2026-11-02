@@ -11,6 +11,7 @@ import type { GlyphName } from "@/ui/Glyph";
 import { IconTile } from "@/ui/IconTile";
 import { ListGroup, ListRow } from "@/ui/List";
 import { MoneyAmount } from "@/ui/Money";
+import { HAIRLINE } from "@/ui/metrics";
 import { Pill } from "@/ui/Pill";
 import { ProgressBar } from "@/ui/ProgressBar";
 import { Text } from "@/ui/Text";
@@ -338,7 +339,7 @@ function BucketRows({
 			{open
 				? group.envelopes.map((envelope) => (
 						<View key={envelope.id}>
-							<View style={{ height: 1, backgroundColor: color.line }} />
+							<View style={{ height: HAIRLINE, backgroundColor: color.line }} />
 							<View style={{ paddingLeft: space[6] }}>
 								<EnvelopeRow
 									envelope={envelope}

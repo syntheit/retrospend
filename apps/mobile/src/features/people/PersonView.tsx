@@ -16,6 +16,7 @@ import { EmptyState } from "@/ui/EmptyState";
 import { Hero } from "@/ui/Hero";
 import { LinkButton, ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { Menu } from "@/ui/Menu";
+import { HAIRLINE } from "@/ui/metrics";
 import { PaneBar } from "@/ui/PaneBar";
 import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
@@ -243,7 +244,7 @@ export function PersonView({
 							<View
 								style={{
 									borderRadius: size.avatar.xxl,
-									borderWidth: 1,
+									borderWidth: HAIRLINE,
 									borderStyle: "dashed",
 									borderColor: color.lineStrong,
 									padding: space[1],

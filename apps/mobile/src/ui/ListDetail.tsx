@@ -5,6 +5,7 @@ import type { SearchBarCommands } from "react-native-screens";
 import { useLayoutClass } from "@/layout/useLayoutClass";
 import { useTheme } from "@/theme";
 import { EmptyState } from "./EmptyState";
+import { HAIRLINE } from "./metrics";
 import { PaneSearch } from "./PaneBar";
 
 const LIST_WIDTH = 360;
@@ -86,7 +87,7 @@ export function ListDetail({
 			<View
 				style={{
 					width: LIST_WIDTH,
-					borderRightWidth: 1,
+					borderRightWidth: HAIRLINE,
 					borderRightColor: color.line,
 				}}
 			>

@@ -10,6 +10,7 @@ import { useTheme } from "@/theme";
 import { Avatar } from "@/ui/Avatar";
 import { CategoryGlyph, categoryColor } from "@/ui/Glyph";
 import { useRateTypeLabel } from "@/ui/Money";
+import { HAIRLINE } from "@/ui/metrics";
 import { StatusText } from "@/ui/StatusText";
 import { Text } from "@/ui/Text";
 import { rowStatus } from "./ActivityRow";
@@ -40,7 +41,7 @@ function Fact({
 				justifyContent: "space-between",
 				gap: space[4],
 				paddingVertical: space[2],
-				borderBottomWidth: 1,
+				borderBottomWidth: HAIRLINE,
 				borderBottomColor: color.line,
 			}}
 		>

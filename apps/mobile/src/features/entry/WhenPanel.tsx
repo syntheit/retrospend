@@ -4,6 +4,7 @@ import { useFormatter, useTranslations } from "use-intl";
 import { shiftDay } from "@/lib/days";
 import { useTheme } from "@/theme";
 import { DateField } from "@/ui/DateField";
+import { HAIRLINE } from "@/ui/metrics";
 import { Text } from "@/ui/Text";
 import { pickerDate } from "./dates";
 
@@ -86,7 +87,7 @@ export function WhenPanel({
 									alignItems: "center",
 									justifyContent: "center",
 									borderRadius: radius.panel,
-									borderWidth: 1,
+									borderWidth: HAIRLINE,
 									borderColor: on ? color.brand : "transparent",
 									backgroundColor: on
 										? color.brandSoft

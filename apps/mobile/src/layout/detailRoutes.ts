@@ -10,7 +10,9 @@ import { projectRoute } from "./destinations";
 
 /** True for a screen inside Home's stack (its root, Search, the inbox, a detail opened from them). */
 export function isHomePath(pathname: string): boolean {
-	return pathname === "/" || pathname === "/home" || pathname.startsWith("/home/");
+	return (
+		pathname === "/" || pathname === "/home" || pathname.startsWith("/home/")
+	);
 }
 
 export function entryHref(id: string, home: boolean, row?: string): Href {

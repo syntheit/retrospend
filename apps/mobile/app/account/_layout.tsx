@@ -5,6 +5,7 @@ import { useTranslations } from "use-intl";
 import { pushedHeader } from "@/layout/pushedHeader";
 import { useSettingsScreens } from "@/layout/useSettingsScreens";
 import { useTheme } from "@/theme";
+import { LAYER } from "@/ui/metrics";
 import { ToastProvider } from "@/ui/Toast";
 
 // The sheet opens at its first page; a link to a page inside it still has
@@ -24,7 +25,7 @@ function DragHandle() {
 			style={{
 				height: space[6],
 				// Above the stack, which moves up under it (see AccountLayout).
-				zIndex: 1,
+				zIndex: LAYER.above,
 				alignItems: "center",
 				justifyContent: "center",
 			}}
@@ -59,9 +60,7 @@ export default function AccountLayout() {
 		<ToastProvider>
 			{android ? <DragHandle /> : null}
 			<View style={{ flex: 1, marginTop: android ? -inset : 0 }}>
-				<Stack
-					screenOptions={{ ...pushedHeader(color, android), title: "" }}
-				>
+				<Stack screenOptions={{ ...pushedHeader(color, android), title: "" }}>
 					<Stack.Screen
 						name="index"
 						options={{

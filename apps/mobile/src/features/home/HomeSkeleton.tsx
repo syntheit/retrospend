@@ -1,6 +1,7 @@
 import { View } from "react-native";
 import { useTranslations } from "use-intl";
 import { useTheme } from "@/theme";
+import { HAIRLINE } from "@/ui/metrics";
 import { Skeleton } from "@/ui/Skeleton";
 
 /** One placeholder card on the surface, as Home's cards stand. */
@@ -14,7 +15,7 @@ function Card({ second }: { second?: boolean }) {
 				padding: space[4],
 				gap: space[3],
 				backgroundColor: color.surface,
-				borderWidth: 1,
+				borderWidth: HAIRLINE,
 				borderColor: color.line,
 				borderRadius: radius.panel,
 			}}

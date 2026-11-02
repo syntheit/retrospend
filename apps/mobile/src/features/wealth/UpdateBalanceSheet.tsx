@@ -295,7 +295,10 @@ export function UpdateBalanceSheet({
 					) : null}
 					{rateNote && rateFailed && rateType ? (
 						<Text tone="fg2" variant="small">
-							{ts("rateChip", { type: rateName(rateType), value: tm("noRate") })}
+							{ts("rateChip", {
+								type: rateName(rateType),
+								value: tm("noRate"),
+							})}
 						</Text>
 					) : null}
 					{same ? (

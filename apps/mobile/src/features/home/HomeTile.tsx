@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
 import { Glyph, type GlyphName } from "@/ui/Glyph";
+import { HAIRLINE } from "@/ui/metrics";
 import { Text } from "@/ui/Text";
 
 /** The largest text scale for a tile's label: a tile is narrow, and the label wraps. */
@@ -45,7 +46,7 @@ export function HomeTile({
 				padding: space[3],
 				gap: space[1],
 				backgroundColor: pressed ? color.raised : color.surface,
-				borderWidth: 1,
+				borderWidth: HAIRLINE,
 				borderColor: color.line,
 				borderRadius: radius.panel,
 			})}

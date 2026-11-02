@@ -1,5 +1,6 @@
 import { Pressable, View } from "react-native";
 import { useTheme } from "@/theme";
+import { HAIRLINE } from "@/ui/metrics";
 import { Text } from "@/ui/Text";
 import type { MoneyLine } from "./AmountCard";
 import { AmountCaret } from "./AmountCaret";
@@ -51,7 +52,7 @@ export function TransferAmount({
 							paddingHorizontal: space[3],
 							paddingVertical: space[1],
 							borderRadius: radius.panel,
-							borderWidth: 1,
+							borderWidth: HAIRLINE,
 							borderColor: error
 								? color.danger
 								: on

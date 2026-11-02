@@ -1,10 +1,9 @@
 import { predictCategory } from "@retrospend/domain/category-matcher";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/auth/session";
+import { TYPING_SETTLE_MS } from "@/ui/metrics";
 import type { EntryCategory } from "./types";
 
-/** The title must rest this long before the history is asked, as on the web. */
-const SETTLE_MS = 300;
 /** A title is "known" once it has been used this many times. */
 const KNOWN_USES = 2;
 const MIN_QUERY = 2;
@@ -78,7 +77,7 @@ export function useTitleMemory({
 	pick.current = onPick;
 
 	useEffect(() => {
-		const id = setTimeout(() => setSettled(text), SETTLE_MS);
+		const id = setTimeout(() => setSettled(text), TYPING_SETTLE_MS);
 		return () => clearTimeout(id);
 	}, [text]);
 

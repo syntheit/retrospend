@@ -6,6 +6,7 @@ import {
 } from "react";
 import { Platform } from "react-native";
 import type { Theme } from "@/theme";
+import { HAIRLINE } from "./metrics";
 
 /** The iOS system tab bar's height; the floating Add button sits above it. */
 const IOS_BAR_HEIGHT = 49;
@@ -19,7 +20,7 @@ const IOS_BAR_HEIGHT = 49;
 export function floatingBarMetrics(theme: Theme) {
 	const { space } = theme;
 	const tab = space[12] + space[3];
-	const border = 1;
+	const border = HAIRLINE;
 	const height = tab + space[1] * 2 + border * 2;
 	return {
 		sideGap: space[3],

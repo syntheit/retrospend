@@ -20,6 +20,7 @@ import { BarFlatList } from "@/ui/barScroll";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, SectionHeader, StaleNote } from "@/ui/List";
 import { EmptyDetail, ListDetail } from "@/ui/ListDetail";
+import { LAYER } from "@/ui/metrics";
 import { useAddInset } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 
@@ -127,7 +128,7 @@ export function ProjectsList({
 				)
 			}
 			// Over the rows: the pane cover hangs from the tabs in this header.
-			ListHeaderComponentStyle={{ zIndex: 1 }}
+			ListHeaderComponentStyle={{ zIndex: LAYER.above }}
 			onRefresh={reload}
 			refreshing={false}
 			renderItem={({ item: group }) => (

@@ -6,6 +6,7 @@ import { useTheme } from "@/theme";
 import { Glyph } from "@/ui/Glyph";
 import { Hero } from "@/ui/Hero";
 import { heroCents, MoneyAmount } from "@/ui/Money";
+import { HAIRLINE } from "@/ui/metrics";
 import { Text } from "@/ui/Text";
 import { useHomeDates } from "./dates";
 import { type Glance, spentOf } from "./source";
@@ -47,7 +48,7 @@ export function HomeCard({ glance }: { glance: Glance }) {
 				padding: space[4],
 				gap: space[2],
 				backgroundColor: pressed ? color.raised : color.surface,
-				borderWidth: 1,
+				borderWidth: HAIRLINE,
 				borderColor: color.line,
 				borderRadius: radius.panel,
 			})}
