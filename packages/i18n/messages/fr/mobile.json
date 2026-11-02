@@ -79,7 +79,8 @@
 			"edited": "{title} enregistré",
 			"restored": "{title} rétabli",
 			"editOffline": "Tu es hors ligne. Modifier demande une connexion.",
-			"editRefused": "Impossible d'enregistrer ce changement. Il est peut-être verrouillé."
+			"editRefused": "Impossible d'enregistrer ce changement. Il est peut-être verrouillé.",
+			"editSynced": "Cette opération est déjà synchronisée. Ouvre-la depuis Activité pour la modifier."
 		},
 		"changes": {
 			"offline": "Tu es hors ligne. C'est enregistré sur ton téléphone et synchronisé plus tard.",
@@ -247,7 +248,9 @@
 			"failed": "Impossible de supprimer. Réessaie.",
 			"noUndo": "Cette action est irréversible.",
 			"anyway": "Supprimer quand même",
-			"sharedEffect": "Tout le monde est prévenu et ce que chacun doit change."
+			"sharedEffect": "Tout le monde est prévenu et ce que chacun doit change.",
+			"titleIncome": "Supprimer la rentrée ?",
+			"titleTransfer": "Supprimer le virement ?"
 		},
 		"tabs": {
 			"category": "Catégorie",
@@ -355,7 +358,8 @@
 		"addedBy": "{name} l'a ajouté. Seule cette personne peut le modifier.",
 		"delete": "Supprimer",
 		"makeRecurring": "Rendre récurrent",
-		"more": "Autres actions"
+		"more": "Autres actions",
+		"waiting": "En attente de synchronisation"
 	},
 	"connect": {
 		"title": "Se connecter à un serveur",
@@ -459,7 +463,8 @@
 			"transfer": "Virement",
 			"paymentSent": "Tu as payé {name}",
 			"paymentReceived": "{name} t’a payé",
-			"paid": "{name} a payé"
+			"paid": "{name} a payé",
+			"unsynced": "Pas encore synchronisé"
 		},
 		"bulk": {
 			"select": "Sélectionner",

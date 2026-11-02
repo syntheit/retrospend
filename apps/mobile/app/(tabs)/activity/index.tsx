@@ -24,6 +24,8 @@ import {
 	useHideAddButton,
 	useOptionalAddEntry,
 } from "@/features/entry/addEntryContext";
+import { SyncIssues } from "@/features/entry/SyncIssues";
+import { useDeletePending } from "@/features/entry/useDeletePending";
 import { RecurringView } from "@/features/recurring/RecurringView";
 import { RECURRING_APART } from "@/layout/destinations";
 import { useHeaderSearch } from "@/layout/headerSearch";
@@ -95,6 +97,7 @@ export default function ActivityScreen() {
 	useTransient(picked ? () => setPicked(null) : null);
 	const { state, reload, loadMore, loadingMore } = useActivity(filter);
 	const bulk = useBulkActions(() => setPicked(null));
+	const deletePending = useDeletePending();
 	// Android: the floating toolbar takes the Add button's place while picking,
 	// and the count and Done move to the top bar.
 	const floatingBulk = Platform.OS === "android";
@@ -140,8 +143,8 @@ export default function ActivityScreen() {
 	// The rows are memoized, so what they get must not change between
 	// renders: `ops` and `onOpen` are stable and read the screen's latest
 	// state through a ref.
-	const latest = useRef({ add, bulk, open });
-	latest.current = { add, bulk, open };
+	const latest = useRef({ add, bulk, open, deletePending });
+	latest.current = { add, bulk, open, deletePending };
 	const canEdit = add !== null;
 	const ops = useMemo<RowOps>(
 		() => ({
@@ -153,13 +156,23 @@ export default function ActivityScreen() {
 			},
 			canEdit,
 			select: (item) => setPicked(new Set([item.id])),
+			// An entry only this phone has edits and deletes where it waits.
 			edit: (item) =>
-				latest.current.add?.edit(
-					item.entityId,
-					item.source === "shared" ? "shared" : undefined,
-				),
+				item.unsynced
+					? latest.current.add?.editPending(item.entityId)
+					: latest.current.add?.edit(
+							item.entityId,
+							item.source === "shared" ? "shared" : undefined,
+						),
 			categorize: (item) => latest.current.bulk.categorize([item.entityId]),
-			remove: (item) => latest.current.bulk.remove([item.entityId]),
+			remove: (item) =>
+				item.unsynced
+					? latest.current.deletePending({
+							clientId: item.entityId,
+							kind: item.kind,
+							title: item.title,
+						})
+					: latest.current.bulk.remove([item.entityId]),
 		}),
 		[t, te, canEdit],
 	);
@@ -219,6 +232,7 @@ export default function ActivityScreen() {
 						<StaleNote
 							since={state.status === "ready" ? state.staleSince : null}
 						/>
+						<SyncIssues padded />
 						<ActivityFilters filter={filter} onChange={setFilter} />
 					</View>
 				) : undefined

@@ -15,6 +15,7 @@ export const BULK_DELETE_LIMIT = 100;
  */
 export function canSelect(item: ActivityItem): boolean {
 	return (
+		!item.unsynced &&
 		item.source === "personal" &&
 		item.kind === "expense" &&
 		item.mine &&

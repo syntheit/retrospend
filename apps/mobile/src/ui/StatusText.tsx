@@ -1,6 +1,7 @@
 import { Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 import { type Theme, useTheme } from "@/theme";
+import { Glyph, type GlyphName } from "./Glyph";
 
 /**
  * The tones of the one status map (R5), the same as the web's
@@ -77,6 +78,7 @@ export function StatusText({
 	label,
 	size = "default",
 	wrap,
+	glyph,
 }: (
 	| { kind: StatusKind; tone?: undefined }
 	| { kind?: undefined; tone: StatusTone }
@@ -85,6 +87,8 @@ export function StatusText({
 	size?: "default" | "sm";
 	/** Lets a long word wrap under the dot at big text sizes, not clip. */
 	wrap?: boolean;
+	/** A drawing in the dot's place, for a status a dot can not say (cloud-off: not synced). */
+	glyph?: GlyphName;
 }) {
 	const t = useTranslations("mobile.status");
 	const { color, space, type } = useTheme();
@@ -98,17 +102,21 @@ export function StatusText({
 				gap: space[2],
 			}}
 		>
-			<View
-				accessibilityElementsHidden
-				importantForAccessibility="no-hide-descendants"
-				style={{
-					width: space[2],
-					height: space[2],
-					borderRadius: space[1],
-					backgroundColor: colors.dot,
-					marginTop: wrap ? space[1] : 0,
-				}}
-			/>
+			{glyph ? (
+				<Glyph color={colors.dot} name={glyph} size={space[4]} />
+			) : (
+				<View
+					accessibilityElementsHidden
+					importantForAccessibility="no-hide-descendants"
+					style={{
+						width: space[2],
+						height: space[2],
+						borderRadius: space[1],
+						backgroundColor: colors.dot,
+						marginTop: wrap ? space[1] : 0,
+					}}
+				/>
+			)}
 			<Text
 				numberOfLines={wrap ? undefined : 1}
 				style={{

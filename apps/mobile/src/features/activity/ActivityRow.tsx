@@ -30,6 +30,7 @@ export function rowTitle(item: ActivityItem, t: Words): string {
 
 /** A status is a word, never color alone (GUIDELINE §2.1). */
 export function rowStatus(item: ActivityItem, t: Words): string | null {
+	if (item.unsynced) return t("row.unsynced");
 	if (item.waiting === "review") return t("row.review");
 	if (item.waiting === "rejected") return t("row.rejected");
 	if (item.pending) return t("row.pending");
@@ -38,6 +39,12 @@ export function rowStatus(item: ActivityItem, t: Words): string | null {
 
 /** The status as a dot and its word: attention needs you, muted is out of play, info is in flight. */
 function RowStatus({ item, label }: { item: ActivityItem; label: string }) {
+	// Only this phone has it: a cloud with a slash, in the attention color, and the words.
+	if (item.unsynced) {
+		return (
+			<StatusText glyph="CloudOff" label={label} size="sm" tone="attention" />
+		);
+	}
 	const tone =
 		item.waiting === "review"
 			? "attention"

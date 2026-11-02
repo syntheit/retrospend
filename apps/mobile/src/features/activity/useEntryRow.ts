@@ -13,14 +13,16 @@ import type { ActivityItem } from "./source";
 export function useEntryRow(
 	id: string,
 	placeholder: ActivityItem | null,
+	/** The entry is still on this phone: there is no server row to read. */
+	skip = false,
 ): { state: EntryRowState; reload: () => Promise<void> } {
 	const { api, local } = useSession();
 	const [state, setState] = useState<EntryRowState>({
 		status: "loading",
 		placeholder,
 	});
-	const latest = useRef({ id, placeholder });
-	latest.current = { id, placeholder };
+	const latest = useRef({ id, placeholder, skip });
+	latest.current = { id, placeholder, skip };
 
 	// Another row starts from its own placeholder, never the last row's data.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `id` is the trigger
@@ -29,6 +31,7 @@ export function useEntryRow(
 	}, [id]);
 
 	const reload = useCallback(async () => {
+		if (latest.current.skip) return;
 		const asked = latest.current.id;
 		const next = api
 			? await loadEntryRow(
@@ -46,7 +49,7 @@ export function useEntryRow(
 		// biome-ignore lint/correctness/useExhaustiveDependencies: `id` is the trigger
 		useCallback(() => {
 			reload();
-		}, [reload, id]),
+		}, [reload, id, skip]),
 	);
 
 	return { state, reload };

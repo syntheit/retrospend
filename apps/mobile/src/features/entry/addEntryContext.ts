@@ -12,6 +12,8 @@ export interface AddEntryApi {
 	open(mode?: EntryMode, prefill?: ComposerPrefill): void;
 	/** Opens the composer on a saved expense (its id); Save replaces it, and Undo restores it. */
 	edit(entryId: string, kind?: "shared"): void;
+	/** Opens the composer on an entry still waiting on this phone (its client id); Save writes it again in place. */
+	editPending(clientId: string): void;
 	/**
 	 * Hides the floating add button until the returned function is called (the
 	 * entry page, where the entry is the subject). Counts, so two pages

@@ -6,7 +6,12 @@ import { useToast } from "@/ui/Toast";
 import type { PendingWrite } from "./draft";
 import { saveExpenseEdit } from "./edit";
 import { announceEntryChange } from "./events";
-import { type SaveOutcome, saveEntry, undoSaved } from "./queue";
+import {
+	type SaveOutcome,
+	saveEntry,
+	takeFromOutbox,
+	undoSaved,
+} from "./queue";
 import { undoWrite } from "./send";
 import type { EntryForm } from "./useEntryForm";
 
@@ -20,11 +25,14 @@ export function useEntrySave({
 	form,
 	write,
 	blocked,
+	replaceId,
 	onDone,
 }: {
 	form: EntryForm;
 	write: PendingWrite | null;
 	blocked: boolean;
+	/** A waiting entry this add replaces (its client id). */
+	replaceId?: string;
 	onDone: () => void;
 }) {
 	const t = useTranslations("mobile.composer");
@@ -104,6 +112,18 @@ export function useEntrySave({
 		setBusy(true);
 		let outcome: SaveOutcome;
 		try {
+			// Editing a waiting entry: the old write leaves the outbox first. If a
+			// flush sent it meanwhile the server has it, and this edit would not
+			// replace anything: say so and leave it to Activity.
+			if (
+				replaceId &&
+				(await takeFromOutbox(local.outbox, replaceId)) === null
+			) {
+				toast.show({ message: t("toast.editSynced") });
+				announceEntryChange();
+				onDone();
+				return;
+			}
 			outcome = await saveEntry({ outbox: local.outbox, api, write });
 		} finally {
 			setBusy(false);

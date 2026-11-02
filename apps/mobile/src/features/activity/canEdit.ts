@@ -9,6 +9,7 @@ import type { ActivityItem } from "./source";
  */
 export function canEditEntry(item: ActivityItem): boolean {
 	return (
+		!item.unsynced &&
 		(item.source === "personal" || item.source === "shared") &&
 		item.kind === "expense" &&
 		item.canEdit &&

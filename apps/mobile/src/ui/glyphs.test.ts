@@ -21,6 +21,7 @@ describe("generated drawings", () => {
 			"ChartNoAxesCombined",
 			"Check",
 			"CircleHelp",
+			"CloudOff",
 			"Coins",
 			"Download",
 			"FolderPlus",

@@ -133,7 +133,7 @@ export function EntryFacts({
 				)
 			: null;
 	const foreign = item.home !== undefined;
-	const status = rowStatus(item, ta);
+	const status = item.unsynced ? null : rowStatus(item, ta);
 	const category = item.category;
 	const categoryName =
 		category?.name ?? (item.kind === "expense" ? t("uncategorized") : null);
@@ -186,7 +186,9 @@ export function EntryFacts({
 				) : null}
 			</Fact>
 			<Fact label={t("status")}>
-				{status ? (
+				{item.unsynced ? (
+					<StatusText glyph="CloudOff" label={t("waiting")} tone="attention" />
+				) : status ? (
 					<StatusText
 						label={status}
 						tone={
