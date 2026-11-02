@@ -35,7 +35,7 @@ export const PROJECT_ACTIONS: Record<
 	},
 };
 
-/** A sheet named by a route's `then` parameter, or nothing. */
+/** A sheet named by a route's `sheet` parameter, or nothing. */
 export function startOf(
 	value: string | undefined,
 ): "share" | "settings" | "delete" | undefined {

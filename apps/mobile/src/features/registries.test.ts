@@ -1,7 +1,9 @@
 import { menuOf } from "@/ui/actionRegistry";
 import { rowActions } from "./activity/rowActions";
-import { actionsOf as accountActions } from "./wealth/actions";
-import { CURRENCY_ACTIONS, currencyActionsOf } from "./currencies/currencyActions";
+import {
+	CURRENCY_ACTIONS,
+	currencyActionsOf,
+} from "./currencies/currencyActions";
 import { PERSON_ACTIONS, personActionsOf } from "./people/personActions";
 import {
 	PROJECT_ACTIONS,
@@ -16,7 +18,11 @@ import {
 	CATEGORY_ACTIONS,
 	categoryActionsOf,
 } from "./settings/categories/categoryActions";
-import { METHOD_ACTIONS, methodActionsOf } from "./settings/payment/methodActions";
+import {
+	METHOD_ACTIONS,
+	methodActionsOf,
+} from "./settings/payment/methodActions";
+import { actionsOf as accountActions } from "./wealth/actions";
 
 const noop = () => undefined;
 const words = (ids: readonly string[]) =>
@@ -28,12 +34,7 @@ function menu<Id extends string>(
 	ids: Id[],
 	defs: Record<Id, { id: Id; icon?: never; destructive?: boolean }>,
 ) {
-	return menuOf(
-		ids,
-		defs as never,
-		words(ids) as never,
-		runs(ids) as never,
-	);
+	return menuOf(ids, defs as never, words(ids) as never, runs(ids) as never);
 }
 
 describe("person registry", () => {
@@ -71,15 +72,15 @@ describe("project registry", () => {
 		expect(items.at(-1)?.destructive).toBe(true);
 	});
 	it("restores an archived project instead of archiving it", () => {
-		expect(projectActionsOf({ status: "ARCHIVED", myRole: "ORGANIZER" })).toEqual(
-			[
-				"add-person",
-				"share-project",
-				"project-settings",
-				"restore-project",
-				"delete-project",
-			],
-		);
+		expect(
+			projectActionsOf({ status: "ARCHIVED", myRole: "ORGANIZER" }),
+		).toEqual([
+			"add-person",
+			"share-project",
+			"project-settings",
+			"restore-project",
+			"delete-project",
+		]);
 	});
 	it("gives a viewer nothing", () => {
 		expect(projectActionsOf({ status: "ACTIVE", myRole: null })).toEqual([]);
@@ -126,9 +127,9 @@ describe("currency registry", () => {
 describe("category registry", () => {
 	it("renames, recolors and toggles counting, with nothing destructive", () => {
 		expect(categoryActionsOf()).toEqual(["rename", "icon", "count"]);
-		expect(
-			Object.values(CATEGORY_ACTIONS).some((a) => a.destructive),
-		).toBe(false);
+		expect(Object.values(CATEGORY_ACTIONS).some((a) => a.destructive)).toBe(
+			false,
+		);
 	});
 });
 

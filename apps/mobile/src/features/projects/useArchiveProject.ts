@@ -8,7 +8,7 @@ import type { ProjectActionId } from "./projectActions";
 
 /** The words of the project actions, from the mobile.projects.actions catalog. */
 export function projectWords(
-	t: (key: string) => string,
+	t: ReturnType<typeof useTranslations<"mobile.projects.actions">>,
 ): Record<ProjectActionId, string> {
 	return {
 		"add-person": t("addPerson"),
@@ -84,9 +84,7 @@ export function useArchiveProject(onChanged: () => void) {
 		async restore(project: { id: string; name: string }) {
 			const ok = await setStatus(project.id, "ACTIVE");
 			toast.show({
-				message: ok
-					? t("restored", { name: project.name })
-					: t("restoreError"),
+				message: ok ? t("restored", { name: project.name }) : t("restoreError"),
 			});
 		},
 	};

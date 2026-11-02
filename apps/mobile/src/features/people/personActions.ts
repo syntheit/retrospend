@@ -11,14 +11,16 @@ export type PersonActionId =
 	| "export-history"
 	| "share-statement";
 
-export const PERSON_ACTIONS: Record<PersonActionId, ActionDef<PersonActionId>> =
-	{
-		settle: { id: "settle" },
-		remind: { id: "remind" },
-		expense: { id: "expense" },
-		"export-history": { id: "export-history" },
-		"share-statement": { id: "share-statement" },
-	};
+export const PERSON_ACTIONS: Record<
+	PersonActionId,
+	ActionDef<PersonActionId>
+> = {
+	settle: { id: "settle" },
+	remind: { id: "remind" },
+	expense: { id: "expense" },
+	"export-history": { id: "export-history" },
+	"share-statement": { id: "share-statement" },
+};
 
 /**
  * The actions for one person. Settle up needs something shared, Remind needs

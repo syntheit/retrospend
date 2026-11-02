@@ -7,6 +7,7 @@ import { useCachedRead } from "@/features/read/useCachedRead";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { useHeaderSearch } from "@/layout/headerSearch";
 import { useTheme } from "@/theme";
+import { menuOf } from "@/ui/actionRegistry";
 import { EmptyState } from "@/ui/EmptyState";
 import {
 	CategoryTile,
@@ -20,8 +21,6 @@ import { Screen } from "@/ui/Screen";
 import { Segmented } from "@/ui/Segmented";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
-import { menuOf } from "@/ui/actionRegistry";
-import { RECURRING_ACTIONS, recurringActionsOf } from "./recurringActions";
 import { SwipeRow } from "@/ui/SwipeRow";
 import { Text } from "@/ui/Text";
 import { ConfirmSheet, useDayText } from "./ConfirmSheet";
@@ -36,6 +35,7 @@ import { groupsOf, isDue, type Period, type RecurringGroup } from "./groups";
 import { ItemSheet } from "./ItemSheet";
 import { AddRecurring } from "./RecurringComposer";
 import { RecurringFilters } from "./RecurringFilters";
+import { RECURRING_ACTIONS, recurringActionsOf } from "./recurringActions";
 import { SkipSheet } from "./SkipSheet";
 import {
 	fetchRecurring,
@@ -153,12 +153,7 @@ function Row({
 		details: onDetails,
 		delete: onDelete,
 	};
-	const menu = menuOf(
-		recurringActionsOf(due),
-		RECURRING_ACTIONS,
-		words,
-		run,
-	);
+	const menu = menuOf(recurringActionsOf(due), RECURRING_ACTIONS, words, run);
 	// One that is not due swipes left to Delete; a tap opens its details.
 	if (!due)
 		return (

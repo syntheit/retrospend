@@ -5,11 +5,10 @@ import { useTranslations } from "use-intl";
 import { useSession } from "@/auth/session";
 import { newClientId } from "@/data/ids";
 import { AddButton } from "@/ui/AddButton";
+import { menuOf } from "@/ui/actionRegistry";
 import { EmptyState } from "@/ui/EmptyState";
 import { CategoryTile, ListGroup, ListRow, StaleNote } from "@/ui/List";
-import { menuOf } from "@/ui/actionRegistry";
 import { RowMenu } from "@/ui/RowMenu";
-import { CATEGORY_ACTIONS, categoryActionsOf } from "./categoryActions";
 import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { StatusText } from "@/ui/StatusText";
@@ -18,6 +17,7 @@ import { TopBarAction } from "@/ui/TopBarAction";
 import { SettingsPage } from "../parts";
 import { useCategories } from "../useSettings";
 import { CategorySheet } from "./CategorySheet";
+import { CATEGORY_ACTIONS, categoryActionsOf } from "./categoryActions";
 import type { Category } from "./source";
 
 /**

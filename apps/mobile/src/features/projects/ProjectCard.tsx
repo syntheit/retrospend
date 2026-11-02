@@ -157,11 +157,7 @@ export function ProjectCard({
 	return (
 		<ListGroup>
 			<View>
-				<Tap
-					accessibilityLabel={spoken}
-					menu={menu}
-					onPress={onPress}
-				>
+				<Tap accessibilityLabel={spoken} menu={menu} onPress={onPress}>
 					<Banner project={project} />
 					<View style={{ gap: space[2], padding: space[4] }}>
 						{hero ? (

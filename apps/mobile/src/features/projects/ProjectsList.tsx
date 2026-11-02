@@ -77,10 +77,14 @@ export function ProjectsList({
 
 	const menuOf = useProjectMenu(
 		(project, then) =>
-			listDetail ? setSelected(project.id) : openProject(project, { then }),
+			listDetail
+				? setSelected(project.id)
+				: openProject(project, { sheet: then }),
 		reload,
 		(project) =>
-			listDetail ? setSelected(project.id) : openProject(project, { add: true }),
+			listDetail
+				? setSelected(project.id)
+				: openProject(project, { add: true }),
 	);
 
 	const empty =

@@ -12,9 +12,10 @@ import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { GroupNote, SettingsPage } from "../parts";
 import { usePaymentMethods } from "../useSettings";
-import { methodMenu, useMethodWrites } from "./methodActions";
 import { MethodSheet } from "./MethodSheet";
+import { methodMenu } from "./methodActions";
 import type { PaymentMethod } from "./source";
+import { useMethodWrites } from "./useMethodWrites";
 
 /** The tile for a kind of method: a bank, crypto, cash, or a card for the rest. */
 export function methodGlyph(type: string): GlyphName {
@@ -90,34 +91,34 @@ export function PaymentMethodsScreen() {
 								key={method.id}
 								onPress={() => edit(method)}
 							>
-							<ListRow
-								lead={<IconTile name={methodGlyph(method.type)} />}
-								sub={[method.identifier, t(`visibility.${method.visibility}`)]
-									.filter(Boolean)
-									.join(" · ")}
-								title={
-									<View
-										style={{
-											flexDirection: "row",
-											alignItems: "center",
-											gap: space[2],
-										}}
-									>
-										<Text
-											numberOfLines={1}
-											style={{ flexShrink: 1 }}
-											weight="medium"
+								<ListRow
+									lead={<IconTile name={methodGlyph(method.type)} />}
+									sub={[method.identifier, t(`visibility.${method.visibility}`)]
+										.filter(Boolean)
+										.join(" · ")}
+									title={
+										<View
+											style={{
+												flexDirection: "row",
+												alignItems: "center",
+												gap: space[2],
+											}}
 										>
-											{method.label || method.type}
-										</Text>
-										{method.rank === 1 ? (
-											<Text tone="fg2" variant="meta">
-												{t("preferred")}
+											<Text
+												numberOfLines={1}
+												style={{ flexShrink: 1 }}
+												weight="medium"
+											>
+												{method.label || method.type}
 											</Text>
-										) : null}
-									</View>
-								}
-							/>
+											{method.rank === 1 ? (
+												<Text tone="fg2" variant="meta">
+													{t("preferred")}
+												</Text>
+											) : null}
+										</View>
+									}
+								/>
 							</RowMenu>
 						))}
 					</ListGroup>

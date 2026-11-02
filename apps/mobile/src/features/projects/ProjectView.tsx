@@ -103,7 +103,12 @@ export function ProjectView({
 	const menu = [...actions.items, ...overflow];
 	// Edit is the pencil in the header, not an item of the menu (R3).
 	const pencil = actions.edit ? (
-		<TopBarAction icon="Pencil" id="edit" label={t("actions.edit")} onPress={actions.edit} />
+		<TopBarAction
+			icon="Pencil"
+			id="edit"
+			label={t("actions.edit")}
+			onPress={actions.edit}
+		/>
 	) : null;
 	const periodId = period === "current" ? (page?.openPeriod ?? null) : null;
 	const summary = useProjectSummary(id, periodId, tab === "summary");
@@ -200,7 +205,12 @@ export function ProjectView({
 								}}
 							>
 								{pencil}
-								<Menu accessibilityLabel={more} icon items={menu} label={more} />
+								<Menu
+									accessibilityLabel={more}
+									icon
+									items={menu}
+									label={more}
+								/>
 							</View>
 						),
 					}}
@@ -388,7 +398,9 @@ export function ProjectView({
 			/>
 			<DeleteProjectSheet
 				onClose={actions.closeDelete}
-				onDeleted={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+				onDeleted={() =>
+					router.canGoBack() ? router.back() : router.replace("/")
+				}
 				projectId={page.id}
 				projectName={page.name}
 				visible={actions.deleting}

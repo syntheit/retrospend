@@ -7,18 +7,18 @@ import { LARGE_TITLE } from "@/layout/pushedHeader";
 import { useSearchShortcut } from "@/layout/searchShortcut";
 import { useFormatMoney, useMoneyLocale } from "@/lib/money";
 import { useTheme } from "@/theme";
+import { menuOf } from "@/ui/actionRegistry";
 import { Chip } from "@/ui/Chip";
 import { CurrencyFlag } from "@/ui/CurrencyFlag";
 import { EmptyState } from "@/ui/EmptyState";
 import { ListGroup, ListRow, StaleNote } from "@/ui/List";
-import { menuOf } from "@/ui/actionRegistry";
-import { CURRENCY_ACTIONS, currencyActionsOf } from "./currencyActions";
 import { RowMenu } from "@/ui/RowMenu";
 import { Screen } from "@/ui/Screen";
 import { SkeletonRows } from "@/ui/Skeleton";
 import { Text } from "@/ui/Text";
 import { ConversionLines } from "./ConvertBlock";
 import { CurrencySheet } from "./CurrencySheet";
+import { CURRENCY_ACTIONS, currencyActionsOf } from "./currencyActions";
 import {
 	PriceText,
 	StarButton,

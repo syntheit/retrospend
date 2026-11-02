@@ -6,7 +6,6 @@ import { newClientId } from "@/data/ids";
 import { Note } from "@/features/write/parts";
 import { useTheme } from "@/theme";
 import { Button } from "@/ui/Button";
-import { useMethodWrites } from "./methodActions";
 import { Picker } from "@/ui/Picker";
 import { Sheet, useSheetBodySize } from "@/ui/Sheet";
 import { FieldLabel, TextField } from "@/ui/TextField";
@@ -17,6 +16,7 @@ import {
 	type Visibility,
 	withEdit,
 } from "./source";
+import { useMethodWrites } from "./useMethodWrites";
 
 const VISIBILITIES: Visibility[] = ["PUBLIC", "FRIENDS_ONLY", "PAYMENT_ONLY"];
 

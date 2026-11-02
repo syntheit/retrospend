@@ -62,12 +62,12 @@ export function RowMenu({
 	}, [wants, hosted]);
 	const row = (
 		<Pressable
-			accessibilityLabel={accessibilityLabel}
-			accessibilityRole={accessibilityLabel && onPress ? "button" : undefined}
 			accessibilityActions={items.map((item) => ({
 				name: item.id,
 				label: item.label,
 			}))}
+			accessibilityLabel={accessibilityLabel}
+			accessibilityRole={accessibilityLabel && onPress ? "button" : undefined}
 			delayLongPress={LONG_PRESS_MS}
 			onAccessibilityAction={(event) =>
 				items
@@ -90,10 +90,10 @@ export function RowMenu({
 				row
 			) : (
 				<Host
-					key={width}
 					colorScheme={
 						scheme === "dark" || scheme === "light" ? scheme : undefined
 					}
+					key={width}
 					matchContents={{ vertical: true }}
 				>
 					<ContextMenu>

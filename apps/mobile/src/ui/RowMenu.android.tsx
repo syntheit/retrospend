@@ -35,11 +35,11 @@ export function RowMenu({
 	return (
 		<View ref={row}>
 			<Pressable
-				accessibilityLabel={accessibilityLabel}
 				accessibilityActions={items.map((item) => ({
 					name: item.id,
 					label: item.label,
 				}))}
+				accessibilityLabel={accessibilityLabel}
 				accessibilityRole={onPress ? "button" : undefined}
 				// The press feedback of the row (its children carry no press of their own).
 				android_ripple={onPress ? { color: color.raised } : undefined}

@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "use-intl";
 import { menuOf } from "@/ui/actionRegistry";
 import type { MenuItem } from "@/ui/types";
-import { canEditProject } from "./projectForm";
 import {
 	PROJECT_ACTIONS,
 	type ProjectActionId,
 	projectActionsOf,
 } from "./projectActions";
+import { canEditProject } from "./projectForm";
 import type { ProjectPage } from "./source";
 import { projectWords, useArchiveProject } from "./useArchiveProject";
 

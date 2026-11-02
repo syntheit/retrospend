@@ -19,7 +19,5 @@ export const RECURRING_ACTIONS: Record<
 };
 
 export function recurringActionsOf(due: boolean): RecurringActionId[] {
-	return due
-		? ["confirm", "skip", "details", "delete"]
-		: ["details", "delete"];
+	return due ? ["confirm", "skip", "details", "delete"] : ["details", "delete"];
 }

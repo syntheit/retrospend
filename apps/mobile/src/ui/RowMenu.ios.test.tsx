@@ -107,8 +107,8 @@ describe("iOS RowMenu", () => {
 		act(() => {
 			tree = create(
 				<>
-					{Array.from({ length: 5 }, (_, i) => (
-						<RowMenu items={items} key={i} onPress={() => undefined}>
+					{["a", "b", "c", "d", "e"].map((id) => (
+						<RowMenu items={items} key={id} onPress={() => undefined}>
 							{null}
 						</RowMenu>
 					))}
@@ -116,7 +116,9 @@ describe("iOS RowMenu", () => {
 			);
 		});
 		const root = tree.root as Node;
-		for (const w of root.findAll((n) => typeof n.props.onLayout === "function")) {
+		for (const w of root.findAll(
+			(n) => typeof n.props?.onLayout === "function",
+		)) {
 			act(() => {
 				(w.props.onLayout as (e: unknown) => void)({
 					nativeEvent: { layout: { width: 300 } },
@@ -124,8 +126,9 @@ describe("iOS RowMenu", () => {
 			});
 		}
 		const hosts = () =>
-			root.findAll((n) => "matchContents" in n.props && "colorScheme" in n.props)
-				.length;
+			root.findAll(
+				(n) => (n as unknown as { type: unknown }).type === "Host",
+			).length;
 		expect(hosts()).toBe(0);
 		act(() => {
 			jest.advanceTimersByTime(20);
