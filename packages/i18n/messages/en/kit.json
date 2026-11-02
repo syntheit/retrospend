@@ -50,7 +50,6 @@
 	"changes": {
 		"title": "What this changes",
 		"titleDone": "What changed",
-		"loading": "Checking what changes",
 		"nothingElse": "Nothing else changes: {list} stay as they are.",
 		"nothingElseOne": "Nothing else changes: {item} stays as it is.",
 		"noneChange": "No change to {list}.",

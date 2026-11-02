@@ -35,7 +35,7 @@ describe("long text in primitives", () => {
 	it("FilterChip is never wider than its row and cuts its label with an ellipsis", () => {
 		const html = render(h(FilterChip, { value: true }, LONG));
 		expect(html).toContain("max-w-full");
-		expect(html).toContain('<span class="min-w-0 truncate">');
+		expect(html).toMatch(/<span class="min-w-0 truncate[ "]/);
 		expect(html).toMatch(
 			/<svg[^>]*class="[^"]*shrink-0|\[&amp;_svg\]:shrink-0/,
 		);

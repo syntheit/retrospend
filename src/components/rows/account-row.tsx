@@ -71,7 +71,9 @@ function useAccountSub(account: AccountVM) {
 /**
  * AccountRow: a wealth account, its native amount first and the home value
  * under it when the currency differs (Money.pair). Liabilities arrive
- * negative and stay neutral: no meaning color on owing.
+ * negative and stay neutral: no meaning color on owing. They read as the
+ * plain amount (the Liabilities group already says what they are); the
+ * figure attributes keep the server's signed value.
  */
 export function AccountRow({
 	account,
@@ -87,6 +89,7 @@ export function AccountRow({
 	handle?: ReactNode;
 } & RowPassThrough) {
 	const sub = useAccountSub(account);
+	const sign = account.kind === "liability" ? "never" : undefined;
 	const foreign =
 		account.home !== undefined &&
 		account.home?.currency !== account.amount.currency;
@@ -113,9 +116,10 @@ export function AccountRow({
 						home={account.home ?? null}
 						homeFigure={account.homeFigure}
 						original={account.amount}
+						sign={sign}
 					/>
 				) : (
-					<Money figure={account.figure} value={account.amount} />
+					<Money figure={account.figure} sign={sign} value={account.amount} />
 				)
 			}
 			lead={

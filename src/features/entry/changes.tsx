@@ -54,7 +54,6 @@ const rank = (id: string) => {
  */
 export function ChangesBlock({
 	diff,
-	loading,
 	edit,
 	byDesign = [],
 	cannot,
@@ -62,6 +61,7 @@ export function ChangesBlock({
 	rows,
 }: {
 	diff: PreviewDiff | null | undefined;
+	/** The dry run is running. Nothing shows for it: the block appears when there is something to say. */
 	loading?: boolean;
 	edit?: boolean;
 	byDesign?: readonly string[];
@@ -131,13 +131,7 @@ export function ChangesBlock({
 					/>
 				),
 			}))}
-			status={
-				cannot
-					? t("cannot", { reason: cannot })
-					: !diff && loading
-						? t("loading")
-						: undefined
-			}
+			status={cannot ? t("cannot", { reason: cannot }) : undefined}
 			// Names inside a sentence come from their own keys: a language decides its case (German nouns).
 			stays={[...new Set(stays)].map(inline)}
 			testId="entry-changes"

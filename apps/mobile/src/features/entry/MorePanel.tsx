@@ -293,21 +293,24 @@ export function MorePanel({
 					</OptionRow>
 				</>
 			) : null}
-			<OptionRow
-				icon="ListChecks"
-				name={t("extras.changes")}
-				on={changesOpen}
-				onPress={() => setChangesOpen(!changesOpen)}
-				state={changesOpen ? t("extras.hide") : t("extras.show")}
-			>
-				{changesOpen ? (
-					<ChangesBlock
-						idle=""
-						onRetry={preview.retry}
-						state={preview.preview}
-					/>
-				) : null}
-			</OptionRow>
+			{/* Nothing to show until the dry run has a figure or a reason. */}
+			{preview.preview.status === "idle" ? null : (
+				<OptionRow
+					icon="ListChecks"
+					name={t("extras.changes")}
+					on={changesOpen}
+					onPress={() => setChangesOpen(!changesOpen)}
+					state={changesOpen ? t("extras.hide") : t("extras.show")}
+				>
+					{changesOpen ? (
+						<ChangesBlock
+							idle=""
+							onRetry={preview.retry}
+							state={preview.preview}
+						/>
+					) : null}
+				</OptionRow>
+			)}
 		</View>
 	);
 }

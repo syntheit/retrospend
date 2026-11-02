@@ -267,6 +267,23 @@ describe("entity rows", () => {
 		expect(norate).toContain("text-attention-text");
 	});
 
+	it("AccountRow: a liability reads as the plain amount, the figure keeps the server's sign", () => {
+		const html = list(
+			h(AccountRow, {
+				account: {
+					id: "a9",
+					name: "Visa",
+					kind: "liability",
+					amount: ars(-48600000),
+					updated: "2026-10-18",
+				},
+			}),
+		);
+		expect(text(html)).toContain("486,000");
+		expect(text(html)).not.toContain("-");
+		expect(html).toContain('data-minor="-48600000"');
+	});
+
 	it("EnvelopeRow: one Available pill with its word", () => {
 		const html = list(
 			h(EnvelopeRow, {

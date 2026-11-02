@@ -37,11 +37,11 @@ test("Add expense: USD at the Official rate, preview, save and Undo", async ({
 	await expect(sheet.locator('[data-figure="entry.home"]')).toHaveText(
 		"$17,400",
 	);
-	// The currency is plain text with a chevron and one divider: no pill, no
-	// flag, so the field keeps a single outline.
+	// The currency is its flag and code with a chevron and one divider: no
+	// pill, so the field keeps a single outline.
 	const trigger = sheet.getByRole("button", { name: "Currency, USD" });
 	await expect(trigger).toHaveText("USD");
-	await expect(sheet.locator('img[alt$=" flag"]')).toHaveCount(0);
+	await expect(trigger.locator('img[alt="USD flag"]')).toHaveCount(1);
 	const edges = await trigger.evaluate((el) => {
 		const css = getComputedStyle(el);
 		return {

@@ -49,7 +49,6 @@
 		"fewerShares": "Fewer shares for {name}",
 		"moreShares": "More shares for {name}",
 		"spread": "Spread over",
-		"spreadAdd": "Spread cost",
 		"spreadOne": "One-time",
 		"spreadMonths": "{count} months",
 		"exclude": "Exclude from spending",
@@ -140,7 +139,6 @@
 	},
 	"changes": {
 		"titleEdit": "What this edit changes",
-		"loading": "Checking what changes",
 		"cannot": "This cannot be saved yet: {reason}",
 		"figures": {
 			"spent": "Your spending",

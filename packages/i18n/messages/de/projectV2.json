@@ -92,7 +92,6 @@
 		"accepted": "Deinen Anteil an {name} angenommen"
 	},
 	"preview": {
-		"checking": "Prüfe, was sich ändert",
 		"figures": {
 			"project_total": "Gruppensumme",
 			"project_member_balance": "{name} in der Gruppe",

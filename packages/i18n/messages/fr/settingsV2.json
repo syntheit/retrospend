@@ -420,7 +420,6 @@
 			"save": "Enregistrer les modifications",
 			"enabled": "Envoyer les événements à cette URL",
 			"saved": "{name} mis à jour",
-			"noChanges": "Rien n’a encore changé",
 			"status": "État",
 			"on": "Activé",
 			"off": "Désactivé"

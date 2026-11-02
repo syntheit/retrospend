@@ -83,7 +83,10 @@ describe("Segmented", () => {
 		expect(html).toContain('aria-label="View"');
 		expect(html.match(/aria-checked="true"/g)).toHaveLength(1);
 		expect(html.match(/tabindex="0"/g)).toHaveLength(1);
-		expect(html).toContain("bg-surface text-fg shadow-ctl");
+		// Before it is measured, the checked option carries the surface itself.
+		expect(html).toMatch(
+			/aria-checked="true"[^>]*class="[^"]*(?=[^"]*bg-surface)(?=[^"]*shadow-ctl)(?=[^"]*text-fg)/,
+		);
 		expect(html).toContain("h-ctl");
 	});
 
@@ -103,6 +106,19 @@ describe("FilterChips", () => {
 		const off = render(h(FilterChip, null, "Groceries"));
 		expect(off).toContain('aria-pressed="false"');
 		expect(off).not.toContain("bg-brand-soft");
+	});
+
+	it("keeps an icon in the label inline with the text (a check never wraps)", () => {
+		const html = render(
+			h(
+				FilterChip,
+				{ selected: true },
+				"You",
+				h("svg", { "aria-hidden": true }),
+			),
+		);
+		expect(html).toContain("[&amp;_svg]:inline");
+		expect(html).toContain("whitespace-nowrap");
 	});
 
 	it("draws a value chip neutral with a chevron and no pressed state", () => {

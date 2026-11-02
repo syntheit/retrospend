@@ -18,8 +18,11 @@ export type DetailTab = {
 /**
  * DetailPager (provisional, composer design D): a fixed grid of equal
  * icon-over-word tabs and one panel per tab. On a phone the panels sit in a
- * snap-scrolling row (swipe or pick a tab); from md up only the chosen panel
- * shows, in place. Left and Right move between tabs.
+ * snap-scrolling row (swipe or pick a tab). From md up the panels share one
+ * cell and slide: the chosen one rests, the others wait to its left or right
+ * (hidden), so the tabs and the frame never move or change height and the
+ * switch is one 220ms slide. Reduced motion: opacity only. Left and Right
+ * move between tabs.
  */
 export function DetailPager({
 	tabs,
@@ -114,18 +117,26 @@ export function DetailPager({
 				})}
 			</div>
 			<div
-				className="flex items-start max-md:snap-x max-md:snap-mandatory max-md:overflow-x-auto md:block"
+				className="flex items-start max-md:snap-x max-md:snap-mandatory max-md:overflow-x-auto md:-mx-1 md:grid md:overflow-x-clip md:px-1"
 				onScroll={onScroll}
 				ref={row}
 			>
-				{tabs.map((t) => (
+				{tabs.map((t, i) => (
 					<div
+						aria-hidden={t.id !== active ? true : undefined}
 						aria-labelledby={`tab-${t.id}`}
 						className={cn(
-							"w-full min-w-0 shrink-0 snap-center",
-							t.id !== active && "md:hidden",
+							"w-full min-w-0 shrink-0 snap-center md:col-start-1 md:row-start-1",
+							"md:ease-land md:transition-[translate,opacity,visibility] md:duration-(--t-tab)",
+							// Waiting panels sit a full width to the side, hidden and out of the tab order.
+							t.id !== active && "md:invisible md:opacity-0",
+							i < index &&
+								"md:-translate-x-full md:motion-reduce:translate-x-0",
+							i > index && "md:translate-x-full md:motion-reduce:translate-x-0",
 						)}
 						id={`panel-${t.id}`}
+						// The waiting panels leave the tab order and the accessibility tree at once, while the chosen one is still sliding in.
+						inert={t.id !== active}
 						key={t.id}
 						role="tabpanel"
 					>

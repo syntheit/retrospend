@@ -81,7 +81,6 @@
 			"editRefused": "Couldn't save this change. It may be locked."
 		},
 		"changes": {
-			"loading": "Checking what changes",
 			"offline": "You're offline. This saves on your phone and syncs later.",
 			"refused": "This can't be saved yet. Check the amount and the currency.",
 			"to": "to {amount}",
@@ -141,7 +140,6 @@
 				"told": "They're told about the change.",
 				"same": "Each person's share stays the same."
 			},
-			"oneLineNone": "No figures change.",
 			"oneLineMore": "{figure} and {count} more",
 			"splitOff": "The parts don't add up to the total yet."
 		},

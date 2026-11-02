@@ -63,7 +63,9 @@ describe("CategoryPicker", () => {
 			}),
 		);
 		expect(html).toContain('placeholder="Find a category"');
-		expect(html.indexOf("Most used")).toBeLessThan(html.indexOf("All categories"));
+		expect(html.indexOf("Most used")).toBeLessThan(
+			html.indexOf("All categories"),
+		);
 		expect(html.indexOf("Café")).toBeLessThan(html.indexOf("Groceries"));
 		expect(html).toContain("color:var(--category-7)");
 		expect(html).toContain('data-chosen="true"');
@@ -130,18 +132,18 @@ describe("MoneyInput", () => {
 
 	it("shows the currency chip: a fixed one as text, a changeable one as a named button", () => {
 		const fixed = render(h(MoneyInput, { ...base, value: "" }));
-		// Plain code, a divider, no pill and no flag (owner feedback round 1).
-		expect(fixed).toMatch(/<span[^>]*border-r[^>]*>ARS<\/span>/);
+		// Its flag and code, a divider, no pill.
+		expect(fixed).toMatch(
+			/<span[^>]*border-r[^>]*>.*alt="ARS flag".*ARS<\/span>/,
+		);
 		expect(fixed).not.toContain("rounded-chip");
-		expect(fixed).not.toContain("flag");
 		const open = render(
 			h(MoneyInput, { ...base, value: "", onCurrencyChange: vi.fn() }),
 		);
 		expect(open).toContain('aria-label="Currency, ARS"');
 		expect(open).toContain('aria-haspopup="dialog"');
-		expect(open).toMatch(/<button[^>]*border-r[^>]*>ARS<svg/);
+		expect(open).toMatch(/<button[^>]*border-r[^>]*>.*alt="ARS flag".*ARS<svg/);
 		expect(open).not.toContain("rounded-chip");
-		expect(open).not.toContain("flag");
 	});
 
 	it("shows the error after a Save attempt", () => {
@@ -181,9 +183,9 @@ describe("MoneyInput", () => {
 		expect(html).toMatch(/aria-label="Rate"[^>]*role="group"/);
 		expect(html).toMatch(/aria-pressed="true"[^>]*>.*Blue/);
 		expect(html).toMatch(/aria-pressed="false"[^>]*>.*Official/);
-		// The home row: the home currency's code, its words and the server's figure.
-		expect(html).not.toContain("flag");
-		expect(html).toMatch(/font-medium">USD<\/span>/);
+		// The home row: the home currency's flag and code, its words and the server's figure.
+		expect(html).toContain('alt="USD flag"');
+		expect(html).toMatch(/font-medium"><span[^>]*>.*USD<\/span>/);
 		expect(html).toContain("In budget as");
 		expect(html).toContain("USD 2.41");
 	});

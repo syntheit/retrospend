@@ -92,7 +92,6 @@
 		"accepted": "Accepted your share of {name}"
 	},
 	"preview": {
-		"checking": "Checking what this changes",
 		"figures": {
 			"project_total": "Group total",
 			"project_member_balance": "{name} in the group",

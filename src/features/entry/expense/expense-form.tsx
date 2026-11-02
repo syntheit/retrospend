@@ -8,10 +8,10 @@ import { useMemo, useRef, useState } from "react";
 import { useMoneyLocale } from "~/components/money/use-money-locale";
 import { Button } from "~/components/ui/button";
 import { ConfirmationDialog } from "~/components/ui/confirmation-dialog";
-import { Sheet } from "~/components/ui/sheet";
 import { UnsavedChangesDialog } from "~/components/ui/unsaved-changes-dialog";
 import { api } from "~/trpc/react";
 import { ChangesBlock } from "../changes";
+import { EntrySheet } from "../entry-frame";
 import { ModeSwitch } from "../mode-switch";
 import type { EntryCatalog } from "../shared-ui";
 import { FieldError, useSettled } from "../shared-ui";
@@ -122,7 +122,7 @@ export function ExpenseForm(p: {
 
 	return (
 		<>
-			<Sheet
+			<EntrySheet
 				className="md:h-150 md:max-w-4xl"
 				detent="large"
 				footer={
@@ -239,7 +239,7 @@ export function ExpenseForm(p: {
 					x={x}
 					you={p.you}
 				/>
-			</Sheet>
+			</EntrySheet>
 			<UnsavedChangesDialog
 				description={t("discard.body")}
 				onDiscard={close}

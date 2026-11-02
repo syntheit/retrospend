@@ -16,8 +16,9 @@ export type ChangeLine = {
  * left, before or delta → after right), then one sentence for what was
  * checked and stays, and one for what could not be checked. The figures are
  * the server's dry run of the same write Save makes; the block only lays
- * them out. `status` stands in for the lines while there is nothing to show
- * yet (loading, an empty form, a reason it cannot be saved).
+ * them out. `status` stands in for the lines when there is a reason to give
+ * (it cannot be saved). With nothing to show yet (loading, an empty form) the
+ * block renders nothing.
  */
 export function SheetChanges({
 	title,
@@ -39,7 +40,7 @@ export function SheetChanges({
 	stays?: readonly string[];
 	/** Names of the places that could not be checked (a missing rate). */
 	unavailable?: readonly string[];
-	/** Shown instead of the lines: loading, nothing to show yet, cannot save. */
+	/** Shown instead of the lines: the reason it cannot be saved. */
 	status?: ReactNode;
 	/** Lines the write itself states, before the figure lines. */
 	children?: ReactNode;
@@ -53,6 +54,14 @@ export function SheetChanges({
 	// One name per place, even when it moves in two currencies.
 	const stays = [...new Set(staysIn)];
 	const unavailable = [...new Set(unavailableIn)];
+	// Nothing to show yet (before the dry run, an empty form): no block at all.
+	if (
+		status == null &&
+		!anyLine &&
+		stays.length === 0 &&
+		unavailable.length === 0
+	)
+		return null;
 	return (
 		<section
 			aria-labelledby={headingId}
@@ -133,9 +142,4 @@ export function ChangeValue({
 			<span className="text-fg font-semibold">{to}</span>
 		</>
 	);
-}
-
-/** The loading word, for callers that pass `status` while the dry run runs. */
-export function useChangesLoading(): string {
-	return useTranslations("kit.changes")("loading");
 }

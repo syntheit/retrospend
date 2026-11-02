@@ -21,7 +21,7 @@ import { IconTile } from "@/ui/IconTile";
 import { useRateTypeLabel } from "@/ui/Money";
 import { Sheet, type SheetDetent, useSheetBodySize } from "@/ui/Sheet";
 import { Text } from "@/ui/Text";
-import { glyphOf } from "./accounts";
+import { glyphOf, isLiability } from "./accounts";
 import { ACCOUNT_BALANCE, balanceRows, isUnchanged } from "./balance";
 import { RateTypeChips } from "./RateTypeChips";
 import { rateTypeChanged, rateTypesOf } from "./rateType";
@@ -71,6 +71,7 @@ export function UpdateBalanceSheet({
 	const { space } = useTheme();
 	const body = useSheetBodySize();
 	const currency = account.balance.currency;
+	const plain = isLiability(account.type) ? "never" : "auto";
 	const types = rateTypesOf(catalog, currency, home);
 	const rateLine = useRateLine(visible && types.length > 1);
 	const rateFmt = useRateFormat();
@@ -137,7 +138,7 @@ export function UpdateBalanceSheet({
 		: null;
 	const label = useFigureLabel();
 	const side = (value: { minor: number; currency: string } | null) =>
-		value ? money(value) : tp("notAvailable");
+		value ? money(value, { sign: plain }) : tp("notAvailable");
 	const pair = (
 		before: { minor: number; currency: string } | null,
 		after: { minor: number; currency: string } | null,
@@ -252,7 +253,7 @@ export function UpdateBalanceSheet({
 								</Text>
 								<Text numberOfLines={1} tone="fg3" variant="meta">
 									{t("now", {
-										amount: money(account.balance),
+										amount: money(account.balance, { sign: plain }),
 										date: format.dateTime(new Date(account.updatedAt), {
 											month: "short",
 											day: "numeric",

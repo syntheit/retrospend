@@ -380,23 +380,22 @@ function LinePreview({
 			</Text>
 		);
 	}
-	if (status === "idle") return null;
+	// Nothing to show while it is asked, before it can be, or when no figure moves.
+	if (status === "idle" || status === "loading") return null;
 	let words: string;
 	let tone: "fg2" | "attention" = "fg2";
-	if (status === "loading") words = tcc("loading");
-	else if (status === "failed") words = tcc("offline");
+	if (status === "failed") words = tcc("offline");
 	else if (status === "refused") {
 		tone = "attention";
 		words = tcc("refused");
 	} else {
 		const first = preview ? figureLines(preview).changes[0] : undefined;
 		const side = (m: Money | null) => (m ? money(m) : tp("notAvailable"));
-		words = first
-			? `${label(first.id).name} ${tp("beforeAfter", {
-					before: side(first.before),
-					after: side(first.after),
-				})}`
-			: tcc("oneLineNone");
+		if (!first) return null;
+		words = `${label(first.id).name} ${tp("beforeAfter", {
+			before: side(first.before),
+			after: side(first.after),
+		})}`;
 	}
 	return (
 		<Text

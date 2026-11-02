@@ -7,6 +7,7 @@ import * as React from "react";
 import { CurrencyPicker } from "~/components/pickers/currency-picker";
 import { PickerPopover } from "~/components/pickers/picker-popover";
 import { Button } from "~/components/ui/button";
+import { CurrencyFlag } from "~/components/ui/currency-flag";
 import { cn } from "~/lib/utils";
 import type { MoneyInputProps } from "./money-input";
 
@@ -42,6 +43,18 @@ export type MoneyHome = {
 	label: string;
 };
 
+/** Flag and code: the identity of a currency in a money field. The code names it; the flag is for readers. */
+function CurrencyMark({ code }: { code: string }) {
+	return (
+		<>
+			<span aria-hidden="true" className="inline-flex shrink-0">
+				<CurrencyFlag className="size-4" currencyCode={code} />
+			</span>
+			{code}
+		</>
+	);
+}
+
 /**
  * The line between the currency and the amount, the field's only inner
  * line. Same color as the field's outline.
@@ -49,30 +62,34 @@ export type MoneyHome = {
 const divider = "border-r border-line-strong";
 
 /** A fixed currency reads as the same plain code, without the chevron. */
-const fixedCode = `inline-flex h-full min-w-12 shrink-0 items-center px-3 font-medium text-body text-fg-2 ${divider}`;
+const fixedCode = `inline-flex h-full min-w-12 shrink-0 items-center gap-2 px-3 font-medium text-body text-fg-2 ${divider}`;
 
 /**
- * The currency trigger inside a money field: the code and a chevron as
- * plain text at the start of the field, a hairline between it and the
- * amount. No pill, no flag (the field has one outline). Opens the
+ * The currency trigger inside a money field: its flag, the code and a
+ * chevron as plain text at the start of the field, a hairline between it
+ * and the amount. No pill (the field has one outline). Opens the
  * CurrencyPicker when the currency can change.
  */
 export function CurrencyChip(p: MoneyInputProps) {
 	const t = useTranslations("pickers.money");
 	const [open, setOpen] = React.useState(false);
 	if (!p.onCurrencyChange)
-		return <span className={fixedCode}>{p.currency}</span>;
+		return (
+			<span className={fixedCode}>
+				<CurrencyMark code={p.currency} />
+			</span>
+		);
 	const button = (
 		<Button
 			aria-label={t("currency", { code: p.currency })}
 			className={cn(
-				"text-fg h-full min-w-12 gap-1 rounded-none border-0 px-3 focus-visible:-outline-offset-2",
+				"text-fg h-full min-w-12 gap-2 rounded-none border-0 px-3 focus-visible:-outline-offset-2",
 				divider,
 			)}
 			disabled={p.disabled}
 			kind="ghost"
 		>
-			{p.currency}
+			<CurrencyMark code={p.currency} />
 			<ChevronDown aria-hidden="true" className="text-fg-3 size-3.5" />
 		</Button>
 	);
@@ -118,7 +135,7 @@ export function RateStrip({ rates }: { rates: MoneyRates }) {
 							aria-label={o.ariaLabel}
 							aria-pressed={on}
 							className={cn(
-								"h-auto min-w-16 flex-1 flex-col gap-0 rounded-none border-0 px-2 py-2 focus-visible:-outline-offset-2",
+								"h-auto min-w-20 flex-1 shrink-0 flex-col gap-1 rounded-none border-0 px-3 py-2 focus-visible:-outline-offset-2",
 								i < rates.options.length - 1 && "border-line border-r",
 								// Selected by fill, as a selected chip (no stripe, R31).
 								on && "bg-brand-soft text-fg can-hover:hover:bg-brand-soft",
@@ -127,12 +144,16 @@ export function RateStrip({ rates }: { rates: MoneyRates }) {
 							kind="ghost"
 							onClick={() => rates.onChange(o.value)}
 						>
-							<span className="text-meta font-medium">{o.label}</span>
+							<span className="text-meta max-w-full truncate font-medium">
+								{o.label}
+							</span>
 							{o.rate ? (
-								<span className="text-small tabular-nums">{o.rate}</span>
+								<span className="text-small whitespace-nowrap tabular-nums">
+									{o.rate}
+								</span>
 							) : null}
 							{o.home ? (
-								<span className="text-fg-3 text-meta tabular-nums max-md:hidden">
+								<span className="text-fg-3 text-meta whitespace-nowrap tabular-nums max-md:hidden">
 									{o.home}
 								</span>
 							) : null}
@@ -148,8 +169,8 @@ export function RateStrip({ rates }: { rates: MoneyRates }) {
 export function HomeRow({ home }: { home: MoneyHome }) {
 	return (
 		<div className="h-money border-line-strong bg-bg flex items-center gap-2 border-t">
-			<span className="text-body text-fg-2 min-w-12 shrink-0 px-3 font-medium">
-				{home.currency}
+			<span className="text-body text-fg-2 inline-flex min-w-12 shrink-0 items-center gap-2 px-3 font-medium">
+				<CurrencyMark code={home.currency} />
 			</span>
 			<span className="text-fg-3 text-small min-w-0 flex-1 truncate">
 				{home.label}

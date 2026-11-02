@@ -29,7 +29,6 @@ interface ChipProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 export function Chip({ active, className, ...props }: ChipProps) {
 	return (
 		<button
-			type="button"
 			className={cn(
 				"inline-flex cursor-pointer items-center justify-center rounded-full px-3 py-1 text-xs font-medium transition-all",
 				active
@@ -37,6 +36,7 @@ export function Chip({ active, className, ...props }: ChipProps) {
 					: "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
 				className,
 			)}
+			type="button"
 			{...props}
 		/>
 	);
@@ -74,14 +74,17 @@ export function FilterChip({
 					? "border-line-strong bg-surface text-fg"
 					: selected
 						? "border-brand bg-brand-soft text-fg"
-						: "border-line-strong bg-transparent text-fg-2 can-hover:hover:bg-raised",
+						: "border-line-strong text-fg-2 can-hover:hover:bg-raised bg-transparent",
 				className,
 			)}
 			type="button"
 			{...props}
 		>
 			{lead}
-			<span className="min-w-0 truncate">{children}</span>
+			{/* A trailing icon in the label (a check) stays inline with the text: svg is block by default and would wrap to its own line. */}
+			<span className="min-w-0 truncate [&_svg]:ml-2 [&_svg]:inline [&_svg]:align-middle">
+				{children}
+			</span>
 			{value && <ChevronDown aria-hidden="true" />}
 		</button>
 	);

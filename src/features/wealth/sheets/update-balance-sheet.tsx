@@ -82,7 +82,12 @@ export function UpdateBalanceSheet({
 						</div>
 						<div className="text-fg-3 text-meta">
 							{t.rich("update.now", {
-								amount: () => <Money value={account.amount} />,
+								amount: () => (
+									<Money
+										sign={account.kind === "liability" ? "never" : undefined}
+										value={account.amount}
+									/>
+								),
 								date: short(account.updated),
 							})}
 						</div>

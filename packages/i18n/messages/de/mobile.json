@@ -81,7 +81,6 @@
 			"editRefused": "Diese Änderung ließ sich nicht speichern. Sie ist vielleicht gesperrt."
 		},
 		"changes": {
-			"loading": "Prüfe, was sich ändert",
 			"offline": "Du bist offline. Das wird auf deinem Telefon gespeichert und später synchronisiert.",
 			"refused": "Das lässt sich noch nicht speichern. Prüfe Betrag und Währung.",
 			"to": "auf {amount}",
@@ -141,7 +140,6 @@
 				"told": "Alle werden über die Änderung informiert.",
 				"same": "Der Anteil jeder Person bleibt gleich."
 			},
-			"oneLineNone": "Keine Zahl ändert sich.",
 			"oneLineMore": "{figure} und {count} weitere",
 			"splitOff": "Die Werte ergeben noch nicht die Summe."
 		},

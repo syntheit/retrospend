@@ -49,7 +49,6 @@
 		"fewerShares": "Меньше долей для {name}",
 		"moreShares": "Больше долей для {name}",
 		"spread": "Распределить на",
-		"spreadAdd": "Распределить стоимость",
 		"spreadOne": "Разово",
 		"spreadMonths": "{count, plural, one {# месяц} few {# месяца} many {# месяцев} other {# месяца}}",
 		"exclude": "Не учитывать в расходах",
@@ -140,7 +139,6 @@
 	},
 	"changes": {
 		"titleEdit": "Что изменит эта правка",
-		"loading": "Проверяем, что изменится",
 		"cannot": "Пока нельзя сохранить: {reason}",
 		"figures": {
 			"spent": "Ваши расходы",
