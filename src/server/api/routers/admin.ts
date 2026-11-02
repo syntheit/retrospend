@@ -17,6 +17,7 @@ import {
 	getTestEmailTemplate,
 	getVerificationEmailTemplate,
 } from "~/server/email-templates";
+import { InMemoryRateLimiter } from "~/server/lib/rate-limiter";
 import { sendEmail } from "~/server/mailer";
 import { getAiUsageSummary } from "~/server/services/ai-access.service";
 import { migrateGuestDataForVerifiedUser } from "~/server/services/guest-migration.service";
@@ -28,6 +29,8 @@ import {
 	getAppSettings,
 	updateAppSettings,
 } from "~/server/services/settings";
+
+const testEmailLimiter = new InMemoryRateLimiter();
 
 export const adminRouter = createTRPCRouter({
 	getStats: adminProcedure.query(async ({ ctx }) => {
@@ -590,7 +593,23 @@ export const adminRouter = createTRPCRouter({
 					.default("basic"),
 			}),
 		)
-		.mutation(async ({ input }) => {
+		.mutation(async ({ ctx, input }) => {
+			// 3 a minute per admin: a test mail is real mail from the server.
+			if (!testEmailLimiter.check(`adminTestEmail_${ctx.session.user.id}`, 3, 60_000)) {
+				throw new TRPCError({
+					code: "TOO_MANY_REQUESTS",
+					message: "Too many test emails. Try again in a minute.",
+				});
+			}
+			logEventAsync({
+				eventType: "SETTINGS_UPDATED",
+				userId: ctx.session.user.id,
+				metadata: {
+					action: "admin_test_email",
+					adminId: ctx.session.user.id,
+					emailType: input.type,
+				},
+			});
 			try {
 				let subject = "Retrospend SMTP Test";
 				let html = getTestEmailTemplate();

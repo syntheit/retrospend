@@ -63,6 +63,16 @@ export async function anonymizeParticipantReferences(
 		data: { actorId: sentinelId },
 	});
 
+	// Anonymize fix requests the participant sent or was asked
+	await tx.fixRequest.updateMany({
+		where: { requestedByType: participantType, requestedById: participantId },
+		data: { requestedById: sentinelId },
+	});
+	await tx.fixRequest.updateMany({
+		where: { askedType: participantType, askedId: participantId },
+		data: { askedId: sentinelId },
+	});
+
 	// Remove ProjectParticipant records
 	await tx.projectParticipant.deleteMany({
 		where: { participantType, participantId },

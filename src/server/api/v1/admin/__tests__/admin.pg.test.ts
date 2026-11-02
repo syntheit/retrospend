@@ -355,8 +355,73 @@ describe("/api/v1/admin", () => {
 		expect(sent).toEqual([{ to: me.email, bypass: true }]);
 	});
 
+	it("throttles test emails to 3 a minute per admin and logs each one", async () => {
+		const other = (await createTestUser({ role: "ADMIN" })).user.id;
+		const headers = await asKey(other, ["admin"]);
+		const send = () =>
+			call("/admin/test-email", {
+				method: "POST",
+				headers,
+				body: {},
+				idempotent: true,
+			});
+		for (let n = 0; n < 3; n++) expect((await send()).status).toBe(200);
+		expect((await send()).status).toBe(429);
+		await expect
+			.poll(() =>
+				adminDb.eventLog.count({
+					where: { userId: other, eventType: "SETTINGS_UPDATED" },
+				}),
+			)
+			.toBe(3);
+	});
+
+	it("leaves no fix request pointing at a deleted shadow profile", async () => {
+		const shadow = await adminDb.shadowProfile.create({
+			data: { createdById: bob, name: "Ghost Fixer" },
+		});
+		const tx = await adminDb.sharedTransaction.create({
+			data: {
+				description: "Dinner",
+				amount: 10,
+				currency: "USD",
+				date: new Date(),
+				paidByType: "user",
+				paidById: bob,
+				createdByType: "user",
+				createdById: bob,
+			},
+		});
+		const request = await adminDb.fixRequest.create({
+			data: {
+				id: `fx-${Date.now()}`,
+				transactionId: tx.id,
+				requestedByType: "shadow",
+				requestedById: shadow.id,
+				askedType: "shadow",
+				askedId: shadow.id,
+			},
+		});
+		expect(
+			(await write(`/admin/shadow-profiles/${shadow.id}`, "DELETE")).status,
+		).toBe(200);
+		const after = await adminDb.fixRequest.findUniqueOrThrow({
+			where: { id: request.id },
+		});
+		expect(after.requestedById).not.toBe(shadow.id);
+		expect(after.askedId).not.toBe(shadow.id);
+		expect(
+			await adminDb.fixRequest.count({
+				where: {
+					OR: [{ requestedById: shadow.id }, { askedId: shadow.id }],
+				},
+			}),
+		).toBe(0);
+	});
+
 	it("is a 403 for a plain user on every admin route, keys and phones alike", async () => {
 		const phoneBob = await asMobile(bob);
+		const mailsBefore = sent.length;
 		const routes: [string, string][] = [
 			["GET", "/admin/stats"],
 			["GET", "/admin/users"],
@@ -391,7 +456,7 @@ describe("/api/v1/admin", () => {
 				expect(res.status, `${method} ${path}`).toBe(403);
 			}
 		}
-		expect(sent.length).toBe(1);
+		expect(sent.length).toBe(mailsBefore);
 	});
 
 	it("manages invite codes, and lets users manage their own only when allowed", async () => {
