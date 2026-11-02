@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "use-intl";
 import { Note } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { useResetOnOpen } from "@/features/write/useResetOnOpen";
 import type { SheetDetent } from "@/ui/Sheet";
 import { TextField } from "./fields";
 import { mergeBody } from "./moreBodies";
@@ -37,14 +38,12 @@ export function MergeSheet({
 	const stayer = all.find((e) => e.id === stays) ?? null;
 	const key = `${stays}|${[...from].sort().join(",")}|${name}`;
 	const { idFor, reset } = useWriteIds(visible ? key : null);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: a new opening starts empty
-	useEffect(() => {
-		if (!visible) return;
+	useResetOnOpen(visible, () => {
 		reset();
 		setStays(null);
 		setFrom(new Set());
 		setName("");
-	}, [visible]);
+	});
 
 	const body = mergeBody({
 		id: idFor("merge"),

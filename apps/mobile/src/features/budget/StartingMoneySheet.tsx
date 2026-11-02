@@ -1,10 +1,11 @@
 import type { Money } from "@retrospend/domain/money-minor";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useFormatter, useTranslations } from "use-intl";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount } from "@/features/write/amount";
 import { Line, Note, useAmountLocale } from "@/features/write/parts";
 import { useWriteIds } from "@/features/write/useMoneyWrite";
+import { useResetOnOpen } from "@/features/write/useResetOnOpen";
 import { AmountField } from "@/ui/AmountField";
 import type { SheetDetent } from "@/ui/Sheet";
 import { startingMoneyBody } from "./closeBodies";
@@ -48,9 +49,7 @@ export function StartingMoneySheet({
 	const minor = minorOf(readAmount(draft, locale, currency), true);
 	const { idFor } = useWriteIds(visible ? String(minor) : null);
 
-	useEffect(() => {
-		if (visible) setDraft("");
-	}, [visible]);
+	useResetOnOpen(visible, () => setDraft(""));
 
 	const body = startingMoneyBody({ id: idFor("start"), minor, currency });
 	return (

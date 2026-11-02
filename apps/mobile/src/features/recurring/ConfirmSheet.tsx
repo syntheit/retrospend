@@ -1,20 +1,18 @@
 import { draftFromMinor } from "@retrospend/domain/parse";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 import { PreviewChanges } from "@/features/read/PreviewChanges";
 import { useMoneyText } from "@/features/read/useMoneyText";
 import { minorOf, readAmount, wireAmount } from "@/features/write/amount";
-import { Note, SheetBody, useAmountLocale } from "@/features/write/parts";
-import { useMoneyWrite, useWriteIds } from "@/features/write/useMoneyWrite";
-import { noSession, useApi, WriteFrame } from "@/features/write/WriteFrame";
+import { Note, useAmountLocale } from "@/features/write/parts";
+import { useResetOnOpen } from "@/features/write/useResetOnOpen";
+import { WriteSheet } from "@/features/write/WriteForm";
 import { useTheme } from "@/theme";
 import { AmountField } from "@/ui/AmountField";
 import { Button } from "@/ui/Button";
 import { DateField } from "@/ui/DateField";
-import { Sheet } from "@/ui/Sheet";
 import type { RecurringItem } from "./source";
-import { useConfirmUndo, useRecurringToast } from "./useRecurringToast";
 
 /** A calendar day ("2026-11-01") as "Nov 1". */
 export function useDayText() {
@@ -55,9 +53,6 @@ export function ConfirmSheet({
 	onSkip: () => void;
 }) {
 	const t = useTranslations("mobile.recurring.confirm");
-	const api = useApi();
-	const announce = useRecurringToast();
-	const undoOf = useConfirmUndo();
 	const money = useMoneyText();
 	const day = useDayText();
 	const locale = useAmountLocale();
@@ -83,65 +78,39 @@ export function ConfirmSheet({
 					// Only another day than the due date is sent.
 					...(paidOn !== item.next ? { paidOn } : {}),
 				};
-	const { idFor, reset } = useWriteIds(input ? JSON.stringify(input) : null);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: each opening starts at the usual amount with a fresh write id
-	useEffect(() => {
-		if (!visible) return;
+	useResetOnOpen(visible, () => {
 		setDraft(usual);
 		setPaidOn(item.next);
-		reset();
-	}, [visible]);
-
-	const flow = useMoneyWrite({
-		input: visible ? input : null,
-		idempotencyKey: input ? idFor("write") : null,
-		preview: (body) => (api ? api.recurring.previewConfirm(body) : noSession()),
-		write: (body, key) =>
-			api
-				? api.recurring.confirm(body, { context: { idempotencyKey: key } })
-				: noSession(),
 	});
-
-	async function submit() {
-		const out = await flow.commit();
-		if (!out) return;
-		const booked = asks && minor !== null ? { minor, currency } : item.amount;
-		announce({
-			message: t("toast", { title: item.title, amount: money(booked) }),
-			undo: undoOf(out.undo),
-			onChanged: onDone,
-		});
-		onClose();
-	}
+	const booked = asks && minor !== null ? { minor, currency } : item.amount;
 
 	return (
-		<Sheet
-			detents={[asks ? "large" : "medium"]}
+		<WriteSheet
+			changes={({ preview, status }) => (
+				<PreviewChanges
+					lead={[
+						{ key: "next", label: t("nextDue"), value: day(item.nextAfter) },
+					]}
+					preview={preview}
+					status={status}
+				/>
+			)}
+			detent={asks ? "large" : "medium"}
+			family="recurringConfirm"
+			input={input}
+			message={() => t("toast", { title: item.title, amount: money(booked) })}
 			onClose={onClose}
+			onDone={onDone}
+			preview={(api, body) => api.recurring.previewConfirm(body)}
+			submitLabel={t(item.direction === "in" ? "submitIn" : "submitOut")}
 			title={t("title", { title: item.title })}
 			visible={visible}
+			write={(api, body, key) =>
+				api.recurring.confirm(body, { context: { idempotencyKey: key } })
+			}
 		>
-			<SheetBody>
-				<WriteFrame
-					busy={flow.committing}
-					changes={
-						<PreviewChanges
-							lead={[
-								{
-									key: "next",
-									label: t("nextDue"),
-									value: day(item.nextAfter),
-								},
-							]}
-							preview={flow.preview}
-							status={flow.status}
-						/>
-					}
-					failed={flow.commitFailed}
-					onSubmit={submit}
-					ready={flow.status === "ready"}
-					submitLabel={t(item.direction === "in" ? "submitIn" : "submitOut")}
-				>
+			{({ committing }) => (
+				<>
 					<Note>
 						{t(item.direction === "in" ? "bodyIn" : "bodyOut", {
 							date: day(item.next),
@@ -175,13 +144,13 @@ export function ConfirmSheet({
 						<Note>{t("fixed", { amount: money(item.amount) })}</Note>
 					)}
 					<Button
-						disabled={flow.committing}
+						disabled={committing}
 						label={t("skip")}
 						onPress={onSkip}
 						variant="text"
 					/>
-				</WriteFrame>
-			</SheetBody>
-		</Sheet>
+				</>
+			)}
+		</WriteSheet>
 	);
 }
