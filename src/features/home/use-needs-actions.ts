@@ -2,8 +2,9 @@
 
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
-import { useEntryActions } from "~/features/entry/entry-actions";
 import { useToast } from "~/components/ui/toast";
+import { useEntrySheets } from "~/features/entry/context";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { firstName } from "~/features/people/filter";
 import { canConfirm, useRecurring } from "~/features/recurring/use-recurring";
 import { generateId } from "~/lib/id";
@@ -53,6 +54,7 @@ export function useNeedsActions(list: NeedsYouList | undefined) {
 	const t = useTranslations("homePage.needs");
 	const toast = useToast();
 	const modal = useEntryActions();
+	const sheets = useEntrySheets();
 	const recurring = useRecurring();
 	const confirm = api.settlement.paymentConfirm.useMutation();
 	const unconfirm = api.settlement.paymentUnconfirm.useMutation();
@@ -140,7 +142,9 @@ export function useNeedsActions(list: NeedsYouList | undefined) {
 				case "split.rejected":
 				// The read view holds the request: Respond, then Correct or Edit.
 				case "split.fixRequested":
-					return item.entity && modal.openSharedExpense(item.entity.id);
+					return (
+						item.entity && sheets.open({ kind: "shared", id: item.entity.id })
+					);
 				case "recurring.due":
 				case "recurring.overdue":
 					return confirmRecurring(item);
@@ -161,6 +165,7 @@ export function useNeedsActions(list: NeedsYouList | undefined) {
 			confirmRecurring,
 			remindPerson,
 			modal,
+			sheets,
 			resend,
 			toast,
 			t,

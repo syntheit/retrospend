@@ -81,12 +81,10 @@ function PersonalPane({ id, onClose, phone }: PaneProps & { id: string }) {
 	const e = q.data;
 	const ta = useTranslations("activity.actions");
 
-	const refresh = useCallback(async () => {
-		await Promise.all([
-			utils.expense.listV2.invalidate(),
-			utils.entry.expense.get.invalidate({ id }),
-		]);
-	}, [utils, id]);
+	const refresh = useCallback(
+		() => utils.expense.listV2.invalidate(),
+		[utils],
+	);
 
 	const target = useMemo<ExpenseTarget | null>(
 		() =>
@@ -259,9 +257,7 @@ function SharedPane({ id, onClose, phone }: PaneProps & { id: string }) {
 			actions={
 				target ? (
 					<PaneActions
-						edit={
-							tx?.canEdit ? () => sheets.open({ kind: "shared", id }) : null
-						}
+						edit={() => sheets.open({ kind: "shared", id })}
 						editLabel={t("edit")}
 						menu={
 							<ActionMenu

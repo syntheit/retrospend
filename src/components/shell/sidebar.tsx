@@ -124,7 +124,7 @@ export function SidebarView({
 			<aside
 				aria-label={t("sidebar.label")}
 				className={cn(
-					"border-line bg-bg flex w-20 shrink-0 flex-col items-center gap-1 overflow-y-auto border-r px-2 pt-4 pb-3",
+					"border-line bg-bg flex w-20 shrink-0 flex-col items-center gap-1 overflow-y-auto border-r px-1 pt-4 pb-3",
 					className,
 				)}
 				data-rail=""

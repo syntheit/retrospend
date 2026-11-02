@@ -5,9 +5,9 @@ import { useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
 import type { ExpenseTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { useEntryActions } from "~/features/entry/entry-actions";
-import { useEntrySheets } from "~/features/entry/context";
 import { useToast } from "~/components/ui/toast";
+import { useEntrySheets } from "~/features/entry/context";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import type { ActivityRowDTO } from "~/server/services/expense-list/types";
 import { api } from "~/trpc/react";
 import { saveError } from "./error-code";
@@ -72,9 +72,14 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 	const handlers = useMemo<ActionHandlers<ExpenseTarget>>(() => {
 		const row = (target: ExpenseTarget) => byId.get(target.id);
 		return {
+			// Edit goes straight to the composer; a row click opens the pane.
 			edit: (target) => {
 				const r = row(target);
-				if (r) open(r);
+				if (!r || !opens(r)) return;
+				if (r.source === "personal")
+					sheets.open({ kind: "expense", mode: "edit", id: r.entityId });
+				else if (r.source === "shared")
+					sheets.open({ kind: "shared", id: r.entityId });
 			},
 			// The sheet itself opens, with the read view behind it.
 			askFix: (target) => {
@@ -120,7 +125,6 @@ export function useRowActions(rows: ActivityRowDTO[]) {
 		};
 	}, [
 		byId,
-		open,
 		modal,
 		sheets,
 		deletePersonal,

@@ -35,6 +35,10 @@ const today = () =>
 async function openRow(page: Page, title = TITLE) {
 	await openV2(page, "/activity?range=all");
 	await page.getByRole("main").getByText(title).first().click();
+	await page
+		.getByRole("complementary", { name: title })
+		.getByRole("button", { name: /^(Edit|Editar)$/ })
+		.click();
 	const read = page.getByRole("dialog", { name: title });
 	await expect(read).toBeVisible();
 	return read;
@@ -354,6 +358,10 @@ test("Corrections: editing a shared expense shows Who and Project and saves a ne
 		rowId = await addSplit(page, pool, title);
 		await openV2(page, "/activity?range=all");
 		await page.getByRole("main").getByText(title).first().click();
+		await page
+			.getByRole("complementary", { name: title })
+			.getByRole("button", { name: "Edit", exact: true })
+			.click();
 		const edit = page.getByRole("dialog", { name: "Edit shared expense" });
 		await expect(edit).toBeVisible();
 		await expect(edit.getByRole("tab", { name: /^Project/ })).toBeVisible();

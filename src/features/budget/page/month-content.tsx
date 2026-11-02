@@ -108,21 +108,23 @@ export function MonthContent({
 					<BudgetNotice actions={actions} data={data} notice={notice} />
 				</div>
 			)}
-			<div className="lg:flex lg:items-start lg:gap-12">
-				<div className="min-w-0 flex-1">
-					{groups.length === 0 ? (
-						<p className="text-fg-2 text-body py-12 text-center">
-							{t("table.noMatch")}
-						</p>
-					) : isMobile ? (
-						<GroupsList {...list} columns={columns} />
-					) : (
-						<GroupsTable {...list} columns={columns} />
-					)}
-					{!filtering && <BudgetInsights month={key} />}
-				</div>
-				<div className="mt-8 lg:mt-0 lg:w-64 lg:shrink-0">
-					<BudgetRail actions={actions} data={data} readOnly={closed} />
+			<div className="@container">
+				<div className="@4xl:flex @4xl:items-start @4xl:gap-12">
+					<div className="min-w-0 flex-1">
+						{groups.length === 0 ? (
+							<p className="text-fg-2 text-body py-12 text-center">
+								{t("table.noMatch")}
+							</p>
+						) : isMobile ? (
+							<GroupsList {...list} columns={columns} />
+						) : (
+							<GroupsTable {...list} columns={columns} />
+						)}
+						{!filtering && <BudgetInsights month={key} />}
+					</div>
+					<div className="mt-8 @4xl:mt-0 @4xl:w-64 @4xl:shrink-0">
+						<BudgetRail actions={actions} data={data} readOnly={closed} />
+					</div>
 				</div>
 			</div>
 		</>

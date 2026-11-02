@@ -69,7 +69,7 @@ export function SidebarLink({
 }
 
 const RAIL =
-	"relative flex w-full flex-col items-center gap-1 rounded-ctl px-1 py-2 font-medium text-meta text-fg-2 transition-colors duration-(--t-state) ease-land can-hover:hover:bg-raised can-hover:hover:text-fg focus-visible:outline-2 focus-visible:outline-brand focus-visible:-outline-offset-2 aria-[current=page]:bg-raised aria-[current=page]:font-semibold aria-[current=page]:text-brand";
+	"relative flex w-full flex-col items-center gap-1 rounded-ctl px-0 py-2 font-medium text-meta text-fg-2 transition-colors duration-(--t-state) ease-land can-hover:hover:bg-raised can-hover:hover:text-fg focus-visible:outline-2 focus-visible:outline-brand focus-visible:-outline-offset-2 aria-[current=page]:bg-raised aria-[current=page]:font-semibold aria-[current=page]:text-brand";
 
 /**
  * One rail row (the sidebar collapsed, T2): the icon over its label, and the

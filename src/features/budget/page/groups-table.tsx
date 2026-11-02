@@ -86,7 +86,7 @@ function EnvelopeTableRow({
 	};
 	const row = (
 		<TableRow data-envelope={e.id}>
-			<TableCell className="max-w-0">
+			<TableCell className="max-w-0 min-w-48">
 				<div className="flex items-center gap-3 pl-6">
 					<CategoryTile category={vm.category} />
 					<div className="min-w-0 leading-snug">
@@ -165,7 +165,7 @@ export function GroupsTable({
 		<Table aria-label={t("label")} look="panel">
 			<TableHeader>
 				<TableRow>
-					<TableHead className="w-1/3">{t("envelope")}</TableHead>
+					<TableHead className="w-1/3 min-w-48">{t("envelope")}</TableHead>
 					<TableHead className={NUM}>
 						{columns === "limits" ? t("limit") : t("assigned")}
 					</TableHead>
@@ -184,7 +184,7 @@ export function GroupsTable({
 					return (
 						<Fragment key={groupKey(g)}>
 							<TableRow data-envelope-group={groupKey(g)}>
-								<TableCell className="max-w-0">
+								<TableCell className="max-w-0 min-w-48">
 									<Button
 										aria-expanded={open}
 										className="text-body text-fg h-auto max-w-full justify-start gap-2 px-0 font-medium"

@@ -4,8 +4,9 @@ import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import type { ExpenseTarget } from "~/components/actions/registry";
 import type { ActionHandlers } from "~/components/actions/types";
-import { useEntryActions } from "~/features/entry/entry-actions";
 import { useToast } from "~/components/ui/toast";
+import { useEntrySheets } from "~/features/entry/context";
+import { useEntryActions } from "~/features/entry/entry-actions";
 import { api } from "~/trpc/react";
 
 /**
@@ -23,6 +24,7 @@ export function useExpenseActions(
 	const toast = useToast();
 	const utils = api.useUtils();
 	const { openSharedExpense } = useEntryActions();
+	const sheets = useEntrySheets();
 	const accept = api.verification.accept.useMutation({
 		onSuccess: () => {
 			void utils.project.pageView.invalidate({ id: projectId });
@@ -32,12 +34,12 @@ export function useExpenseActions(
 	return useMemo(
 		() => ({
 			open: (x) => openSharedExpense(x.id),
-			edit: (x) => openSharedExpense(x.id),
+			edit: (x) => sheets.open({ kind: "shared", id: x.id }),
 			review: async (x) => {
 				await accept.mutateAsync({ txnId: x.id });
 				toast.saved(t("accepted", { name: x.name }));
 			},
 		}),
-		[accept, openSharedExpense, t, toast],
+		[accept, openSharedExpense, sheets, t, toast],
 	);
 }
