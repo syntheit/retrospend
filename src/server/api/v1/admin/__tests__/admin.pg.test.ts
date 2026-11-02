@@ -358,14 +358,15 @@ describe("/api/v1/admin", () => {
 	it("throttles test emails to 3 a minute per admin and logs each one", async () => {
 		const other = (await createTestUser({ role: "ADMIN" })).user.id;
 		const headers = await asKey(other, ["admin"]);
+		let n = 0;
 		const send = () =>
 			call("/admin/test-email", {
 				method: "POST",
 				headers,
 				body: {},
-				idempotent: true,
+				idempotent: `test-mail-${n++}`,
 			});
-		for (let n = 0; n < 3; n++) expect((await send()).status).toBe(200);
+		for (let i = 0; i < 3; i++) expect((await send()).status).toBe(200);
 		expect((await send()).status).toBe(429);
 		await expect
 			.poll(() =>
